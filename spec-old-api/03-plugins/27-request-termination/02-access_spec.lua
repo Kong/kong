@@ -5,16 +5,16 @@ describe("Plugin: request-termination (access)", function()
   local client, admin_client
 
   setup(function()
-    local dao = select(3, helpers.get_db_utils())
+    local _, db, dao = helpers.get_db_utils()
 
     local api1 = assert(dao.apis:insert {
       name         = "api-1",
       hosts        = { "api1.request-termination.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name   = "request-termination",
-      api_id = api1.id,
+      api = { id = api1.id },
       config = {},
     })
     local api2 = assert(dao.apis:insert {
@@ -22,9 +22,9 @@ describe("Plugin: request-termination (access)", function()
       hosts        = { "api2.request-termination.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name   = "request-termination",
-      api_id = api2.id,
+      api = { id = api2.id },
       config = {
         status_code = 404,
       },
@@ -34,9 +34,9 @@ describe("Plugin: request-termination (access)", function()
       hosts        = { "api3.request-termination.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name   = "request-termination",
-      api_id = api3.id,
+      api = { id = api3.id },
       config = {
         status_code = 406,
         message     = "Invalid",
@@ -47,9 +47,9 @@ describe("Plugin: request-termination (access)", function()
       hosts        = { "api4.request-termination.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name   = "request-termination",
-      api_id = api4.id,
+      api = { id = api4.id },
       config = {
         body = "<html><body><h1>Service is down for maintenance</h1></body></html>",
       },
@@ -59,9 +59,9 @@ describe("Plugin: request-termination (access)", function()
       hosts        = { "api5.request-termination.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name   = "request-termination",
-      api_id = api5.id,
+      api = { id = api5.id },
       config = {
         status_code  = 451,
         content_type = "text/html",
@@ -73,9 +73,9 @@ describe("Plugin: request-termination (access)", function()
       hosts        = { "api6.request-termination.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name   = "request-termination",
-      api_id = api6.id,
+      api = { id = api6.id },
       config = {
         status_code = 503,
         body        = '{"code": 1, "message": "Service unavailable"}',

@@ -6,7 +6,7 @@ local UDP_PORT = 20000
 describe("Plugin: loggly (log)", function()
   local client
   setup(function()
-    local _, _, dao = helpers.get_db_utils()
+    local _, db, dao = helpers.get_db_utils()
 
     local api1 = assert(dao.apis:insert {
       name         = "api-1",
@@ -29,8 +29,8 @@ describe("Plugin: loggly (log)", function()
       upstream_url = helpers.mock_upstream_url,
     })
 
-    assert(dao.plugins:insert {
-      api_id = api1.id,
+    assert(db.plugins:insert {
+      api = { id = api1.id },
       name   = "loggly",
       config = {
         host                = "127.0.0.1",
@@ -41,8 +41,8 @@ describe("Plugin: loggly (log)", function()
       }
     })
 
-  assert(dao.plugins:insert {
-      api_id = api2.id,
+  assert(db.plugins:insert {
+      api = { id = api2.id },
       name   = "loggly",
       config = {
         host                = "127.0.0.1",
@@ -53,8 +53,8 @@ describe("Plugin: loggly (log)", function()
         successful_severity = "info",
       }
     })
-  assert(dao.plugins:insert {
-      api_id = api3.id,
+  assert(db.plugins:insert {
+      api = { id = api3.id },
       name   = "loggly",
       config = {
         host                   = "127.0.0.1",
@@ -65,8 +65,8 @@ describe("Plugin: loggly (log)", function()
         client_errors_severity = "warning",
       }
     })
-  assert(dao.plugins:insert {
-      api_id = api4.id,
+  assert(db.plugins:insert {
+      api = { id = api4.id },
       name   = "loggly",
       config = {
         host = "127.0.0.1",

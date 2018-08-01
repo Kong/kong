@@ -17,8 +17,8 @@ describe("Plugin: oauth2 (invalidations)", function()
     assert(db:truncate("routes"))
     assert(db:truncate("services"))
     assert(db:truncate("consumers"))
+    assert(db:truncate("plugins"))
     dao:truncate_table("apis")
-    dao:truncate_table("plugins")
     dao:truncate_table("oauth2_tokens")
     dao:truncate_table("oauth2_credentials")
     dao:truncate_table("oauth2_authorization_codes")
@@ -28,9 +28,9 @@ describe("Plugin: oauth2 (invalidations)", function()
       hosts        = { "oauth2.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name   = "oauth2",
-      api_id = api.id,
+      api = { id = api.id },
       config = {
         scopes                    = { "email", "profile" },
         enable_authorization_code = true,

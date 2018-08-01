@@ -5,19 +5,19 @@ describe("Plugin: basic-auth (invalidations)", function()
   local admin_client, proxy_client
   local dao
   local bp
-  local _
+  local db
 
   before_each(function()
-    bp, _, dao = helpers.get_db_utils()
+    bp, db, dao = helpers.get_db_utils()
 
     local api = assert(dao.apis:insert {
       name         = "api-1",
       hosts        = { "basic-auth.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name   = "basic-auth",
-      api_id = api.id,
+      api = { id = api.id },
     })
 
     local consumer = bp.consumers:insert {

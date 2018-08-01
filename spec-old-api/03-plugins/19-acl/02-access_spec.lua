@@ -3,10 +3,10 @@ local cjson = require "cjson"
 
 describe("Plugin: ACL (access)", function()
   local client, api_client
-  local bp, _, dao
+  local bp, db, dao
 
   setup(function()
-    bp, _, dao = helpers.get_db_utils()
+    bp, db, dao = helpers.get_db_utils()
 
     local consumer1 = bp.consumers:insert {
       username = "consumer1"
@@ -74,11 +74,11 @@ describe("Plugin: ACL (access)", function()
       hosts        = { "acl1.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name = "acl",
-      api_id = api1.id,
+      api = { id = api1.id },
       config = {
-        whitelist = "admin"
+        whitelist = { "admin" }
       }
     })
 
@@ -87,16 +87,16 @@ describe("Plugin: ACL (access)", function()
       hosts        = { "acl2.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name = "acl",
-      api_id = api2.id,
+      api = { id = api2.id },
       config = {
-        whitelist = "admin"
+        whitelist = { "admin" }
       }
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name = "key-auth",
-      api_id = api2.id,
+      api = { id = api2.id },
       config = {}
     })
 
@@ -105,16 +105,16 @@ describe("Plugin: ACL (access)", function()
       hosts        = { "acl3.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name = "acl",
-      api_id = api3.id,
+      api = { id = api3.id },
       config = {
         blacklist = {"admin"}
       }
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name = "key-auth",
-      api_id = api3.id,
+      api = { id = api3.id },
       config = {}
     })
 
@@ -123,16 +123,16 @@ describe("Plugin: ACL (access)", function()
       hosts        = { "acl4.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name = "acl",
-      api_id = api4.id,
+      api = { id = api4.id },
       config = {
         whitelist = {"admin", "pro"}
       }
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name = "key-auth",
-      api_id = api4.id,
+      api = { id = api4.id },
       config = {}
     })
 
@@ -141,16 +141,16 @@ describe("Plugin: ACL (access)", function()
       hosts        = { "acl5.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name = "acl",
-      api_id = api5.id,
+      api = { id = api5.id },
       config = {
         blacklist = {"admin", "pro"}
       }
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name = "key-auth",
-      api_id = api5.id,
+      api = { id = api5.id },
       config = {}
     })
 
@@ -159,16 +159,16 @@ describe("Plugin: ACL (access)", function()
       hosts        = { "acl6.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name = "acl",
-      api_id = api6.id,
+      api = { id = api6.id },
       config = {
         blacklist = {"admin", "pro", "hello"}
       }
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name = "key-auth",
-      api_id = api6.id,
+      api = { id = api6.id },
       config = {}
     })
 
@@ -177,16 +177,16 @@ describe("Plugin: ACL (access)", function()
       hosts        = { "acl7.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name = "acl",
-      api_id = api7.id,
+      api = { id = api7.id },
       config = {
         whitelist = {"admin", "pro", "hello"}
       }
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name = "key-auth",
-      api_id = api7.id,
+      api = { id = api7.id },
       config = {}
     })
 
@@ -196,17 +196,17 @@ describe("Plugin: ACL (access)", function()
       upstream_url = helpers.mock_upstream_url,
     })
 
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name = "acl",
-      api_id = api8.id,
+      api = { id = api8.id },
       config = {
         whitelist = {"anonymous"}
       }
     })
 
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name = "key-auth",
-      api_id = api8.id,
+      api = { id = api8.id },
       config = {
         anonymous = anonymous.id,
       }
@@ -467,7 +467,9 @@ describe("Plugin: ACL (access)", function()
           },
           body = {
             name = "acl",
-            ["config.whitelist"] = "admin" .. i
+            config = {
+              whitelist = { "admin" .. i }
+            }
           }
         })
         assert.res_status(201, res)

@@ -28,8 +28,8 @@ describe("Plugin: hmac-auth (API)", function()
         assert(db:truncate("routes"))
         assert(db:truncate("services"))
         assert(db:truncate("consumers"))
+        assert(db:truncate("plugins"))
         dao:truncate_table("apis")
-        dao:truncate_table("plugins")
         dao:truncate_table("hmacauth_credentials")
 
         consumer = bp.consumers:insert {

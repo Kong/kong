@@ -16,7 +16,7 @@ describe("Plugin: jwt (access)", function()
   local proxy_client, admin_client
 
   setup(function()
-    local bp, _, dao = helpers.get_db_utils()
+    local bp, db, dao = helpers.get_db_utils()
 
     local apis = {}
 
@@ -36,41 +36,41 @@ describe("Plugin: jwt (access)", function()
     local consumer5 = cdao:insert({ username = "jwt_tests_rsa_consumer_5" })
     local anonymous_user = cdao:insert({ username = "no-body" })
 
-    local pdao = dao.plugins
+    local pdao = db.plugins
     assert(pdao:insert({ name   = "jwt",
-                         api_id = apis[1].id,
+                         api = { id = apis[1].id },
                          config = {},
                        }))
     assert(pdao:insert({ name   = "jwt",
-                         api_id = apis[2].id,
+                         api = { id = apis[2].id },
                          config = { uri_param_names = { "token", "jwt" } },
                        }))
     assert(pdao:insert({ name   = "jwt",
-                         api_id = apis[3].id,
+                         api = { id = apis[3].id },
                          config = { claims_to_verify = {"nbf", "exp"} },
                        }))
     assert(pdao:insert({ name   = "jwt",
-                         api_id = apis[4].id,
+                         api = { id = apis[4].id },
                          config = { key_claim_name = "aud" },
                        }))
     assert(pdao:insert({ name   = "jwt",
-                         api_id = apis[5].id,
+                         api = { id = apis[5].id },
                          config = { secret_is_base64 = true },
                        }))
     assert(pdao:insert({ name   = "jwt",
-                         api_id = apis[6].id,
+                         api = { id = apis[6].id },
                          config = { anonymous = anonymous_user.id },
                        }))
     assert(pdao:insert({ name   = "jwt",
-                         api_id = apis[7].id,
+                         api = { id = apis[7].id },
                          config = { anonymous = utils.uuid() },
                        }))
     assert(pdao:insert({ name   = "jwt",
-                         api_id = apis[8].id,
+                         api = { id = apis[8].id },
                          config = { run_on_preflight = false },
                        }))
     assert(pdao:insert({ name   = "jwt",
-                         api_id = apis[9].id,
+                         api = { id = apis[9].id },
                          config = { cookie_names = { "silly", "crumble" } },
                        }))
 
@@ -543,20 +543,20 @@ describe("Plugin: jwt (access)", function()
   local client, user1, user2, anonymous, jwt_token
 
   setup(function()
-    local bp, _, dao = helpers.get_db_utils()
+    local bp, db, dao = helpers.get_db_utils()
 
     local api1 = assert(dao.apis:insert {
       name         = "api-1",
       hosts        = { "logical-and.com" },
       upstream_url = helpers.mock_upstream_url .. "/request",
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name   = "jwt",
-      api_id = api1.id,
+      api = { id = api1.id },
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name   = "key-auth",
-      api_id = api1.id,
+      api = { id = api1.id },
     })
 
     anonymous = bp.consumers:insert {
@@ -574,16 +574,16 @@ describe("Plugin: jwt (access)", function()
       hosts        = { "logical-or.com" },
       upstream_url = helpers.mock_upstream_url .. "/request",
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name   = "jwt",
-      api_id = api2.id,
+      api = { id = api2.id },
       config = {
         anonymous = anonymous.id,
       },
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name   = "key-auth",
-      api_id = api2.id,
+      api = { id = api2.id },
       config = {
         anonymous = anonymous.id,
       },

@@ -4,7 +4,7 @@ local pl_file = require "pl.file"
 describe("Plugin: datadog (log)", function()
   local client
   setup(function()
-    local bp, _, dao = helpers.get_db_utils()
+    local bp, db, dao = helpers.get_db_utils()
 
     local consumer1 = bp.consumers:insert {
       username = "foo",
@@ -20,9 +20,9 @@ describe("Plugin: datadog (log)", function()
       hosts        = { "datadog1.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name   = "key-auth",
-      api_id = api1.id
+      api = { id = api1.id }
     })
     local api2     = assert(dao.apis:insert {
       name         = "dd2",
@@ -39,21 +39,21 @@ describe("Plugin: datadog (log)", function()
       hosts        = { "datadog4.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name   = "key-auth",
-      api_id = api4.id
+      api = { id = api4.id }
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name   = "datadog",
-      api_id = api1.id,
+      api = { id = api1.id },
       config = {
         host = "127.0.0.1",
         port = 9999,
       },
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name   = "datadog",
-      api_id = api2.id,
+      api = { id = api2.id },
       config = {
         host    = "127.0.0.1",
         port    = 9999,
@@ -71,9 +71,9 @@ describe("Plugin: datadog (log)", function()
         },
       },
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name   = "datadog",
-      api_id = api3.id,
+      api = { id = api3.id },
       config = {
         host    = "127.0.0.1",
         port    = 9999,
@@ -99,9 +99,9 @@ describe("Plugin: datadog (log)", function()
         },
       },
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name   = "datadog",
-      api_id = api4.id,
+      api = { id = api4.id },
       config = {
         host   = "127.0.0.1",
         port   = 9999,

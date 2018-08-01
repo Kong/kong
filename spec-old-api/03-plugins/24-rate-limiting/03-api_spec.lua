@@ -42,7 +42,10 @@ describe("Plugin: rate-limiting (API)", function()
       })
       local body = assert.res_status(400, res)
       local json = cjson.decode(body)
-      assert.same({ config = "You need to set at least one limit: second, minute, hour, day, month, year" }, json)
+      assert.same([[at least one of these fields must be non-empty: ]] ..
+                  [['config.second', 'config.minute', 'config.hour', ]] ..
+                  [['config.day', 'config.month', 'config.year']],
+                  json.fields["@entity"][1])
     end)
 
     it("should save with proper config", function()

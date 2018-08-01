@@ -36,8 +36,8 @@ describe("Plugin: response-transformer (API)", function()
             name = "response-transformer",
             config = {
               remove = {
-                headers = "just_a_key",
-                json = "just_a_key",
+                headers = { "just_a_key" },
+                json = { "just_a_key" },
               },
             },
           },
@@ -58,7 +58,7 @@ describe("Plugin: response-transformer (API)", function()
             name = "response-transformer",
             config = {
               add = {
-                headers = "just_a_key",
+                headers = { "just_a_key" },
               },
             },
           },
@@ -68,7 +68,7 @@ describe("Plugin: response-transformer (API)", function()
         })
         local body = assert.response(res).has.status(400)
         local json = cjson.decode(body)
-        assert.same({ ["config.add.headers"] = "key 'just_a_key' has no value" }, json)
+        assert.same("invalid value: just_a_key", json.fields.config.add.headers)
       end)
       it("replace fails with missing colons for key/value separation", function()
         local res = assert(admin_client:send {
@@ -78,7 +78,7 @@ describe("Plugin: response-transformer (API)", function()
             name = "response-transformer",
             config = {
               replace = {
-                headers = "just_a_key",
+                headers = { "just_a_key" },
               },
             },
           },
@@ -88,7 +88,7 @@ describe("Plugin: response-transformer (API)", function()
         })
         local body = assert.response(res).has.status(400)
         local json = cjson.decode(body)
-        assert.same({ ["config.replace.headers"] = "key 'just_a_key' has no value" }, json)
+        assert.same("invalid value: just_a_key", json.fields.config.replace.headers)
       end)
       it("append fails with missing colons for key/value separation", function()
         local res = assert(admin_client:send {
@@ -98,7 +98,7 @@ describe("Plugin: response-transformer (API)", function()
             name = "response-transformer",
             config = {
               append = {
-                headers = "just_a_key",
+                headers = { "just_a_key" },
               },
             },
           },
@@ -108,7 +108,7 @@ describe("Plugin: response-transformer (API)", function()
         })
         local body = assert.response(res).has.status(400)
         local json = cjson.decode(body)
-        assert.same({ ["config.append.headers"] = "key 'just_a_key' has no value" }, json)
+        assert.same("invalid value: just_a_key", json.fields.config.append.headers)
       end)
     end)
   end)

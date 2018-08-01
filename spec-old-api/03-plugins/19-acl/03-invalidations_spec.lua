@@ -5,10 +5,10 @@ describe("Plugin: ACL (invalidations)", function()
   local consumer1, acl1
   local dao
   local bp
-  local _
+  local db
 
   before_each(function()
-    bp, _, dao = helpers.get_db_utils()
+    bp, db, dao = helpers.get_db_utils()
 
     consumer1 = bp.consumers:insert {
       username = "consumer1"
@@ -43,13 +43,13 @@ describe("Plugin: ACL (invalidations)", function()
       hosts        = { "acl1.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name = "key-auth",
-      api_id = api1.id
+      api = { id = api1.id }
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name = "acl",
-      api_id = api1.id,
+      api = { id = api1.id },
       config = {
         whitelist = {"admin"}
       }
@@ -60,13 +60,13 @@ describe("Plugin: ACL (invalidations)", function()
       hosts        = { "acl2.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name = "key-auth",
-      api_id = api2.id
+      api = { id = api2.id }
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name = "acl",
-      api_id = api2.id,
+      api = { id = api2.id },
       config = {
         whitelist = {"ya"}
       }

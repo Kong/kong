@@ -37,8 +37,8 @@ pending("Plugin: http-log (log)", function()
       upstream_url = "http://mockbin.com"
     })
 
-    assert(helpers.dao.plugins:insert {
-      api_id = api1.id,
+    assert(helpers.db.plugins:insert {
+      api = { id = api1.id },
       name = "http-log",
       config = {
         http_endpoint = "http://mockbin.org/bin/" .. mock_bin_http
@@ -51,8 +51,8 @@ pending("Plugin: http-log (log)", function()
       upstream_url = "http://mockbin.com"
     })
 
-    assert(helpers.dao.plugins:insert {
-      api_id = api2.id,
+    assert(helpers.db.plugins:insert {
+      api = { id = api2.id },
       name = "http-log",
       config = {
         http_endpoint = "https://mockbin.org/bin/" .. mock_bin_https
@@ -64,8 +64,8 @@ pending("Plugin: http-log (log)", function()
       hosts = { "http_basic_auth_logging.com" },
       upstream_url = "http://mockbin.com"
     })
-    assert(helpers.dao.plugins:insert {
-      api_id = api3.id,
+    assert(helpers.db.plugins:insert {
+      api = { id = api3.id },
       name = "http-log",
       config = {
         http_endpoint = "http://testuser:testpassword@mockbin.org/bin/" .. mock_bin_http_basic_auth
