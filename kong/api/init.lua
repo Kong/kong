@@ -250,8 +250,8 @@ do
             local parent = routes[route_pattern]["methods"][verb]
             if parent ~= nil and type(handler) == "function" then
               routes[route_pattern]["methods"][verb] = function(self, db, helpers)
-                return handler(self, db, helpers, function()
-                  return parent(self, db, helpers)
+                return handler(self, db, helpers, function(post_process)
+                  return parent(self, db, helpers, post_process)
                 end)
               end
 
