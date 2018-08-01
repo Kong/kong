@@ -1460,7 +1460,7 @@ describe("schema", function()
           { d = { type = "integer" }, },
           { e = { type = "boolean" }, },
           { f = { type = "string" }, },
-                { g = { type = "record", fields = {} }, },
+          { g = { type = "record", fields = {} }, },
           { h = { type = "map", keys = {}, values = {} }, },
         }
       })
@@ -1555,6 +1555,29 @@ describe("schema", function()
       assert.same("foo",                data.f)
       assert.same({ foo = 1, bar = 2 }, data.g)
       assert.same({ f = 123 },          data.h)
+      assert.same({ r = { a = "nr", b = 123, }}, data.nested_record)
+    end)
+
+    it("nested defaults in non-nullable records produce a default record", function()
+      local Test = Schema.new({
+        fields = {
+          { nested_record = {
+              type = "record",
+              nullable = false,
+              fields = {
+                { r = {
+                    type = "record",
+                    nullable = false,
+                    fields = {
+                      { a = { type = "string", default = "nr", } },
+                      { b = { type = "number", default = 123, } }
+                    }
+                } }
+              }
+          } }
+        }
+      })
+      local data = Test:process_auto_fields({})
       assert.same({ r = { a = "nr", b = 123, }}, data.nested_record)
     end)
 
@@ -1779,5 +1802,54 @@ describe("schema", function()
         assert.is_nil(tbl.map.https)
       end
     end)
+
+    describe("in subschemas", function()
+      it("a specialized field can set a default", function()
+        local Test = Schema.new({
+          name = "test",
+          subschema_key = "name",
+          fields = {
+            { name = { type = "string", required = true, } },
+            { config = { type = "record", abstract = true } },
+          }
+        })
+        Test:new_subschema("my_subschema", {
+          fields = {
+            { config = {
+                type = "record",
+                fields = {
+                  { foo = { type = "string", default = "bar" } },
+                },
+                default = { foo = "bla" }
+             } }
+          }
+        })
+
+        local input = {
+          name = "my_subschema",
+          config = { foo = "hello" },
+        }
+        local ok = Test:validate(input)
+        assert.truthy(ok)
+        local output = Test:process_auto_fields(input)
+        assert.same(input, output)
+
+        input = {
+          name = "my_subschema",
+          config = nil,
+        }
+        ok = Test:validate(input)
+        assert.truthy(ok)
+        output = Test:process_auto_fields(input)
+        assert.same({
+          name = "my_subschema",
+          config = {
+            foo = "bla",
+          }
+        }, output)
+
+      end)
+    end)
+
   end)
 end)

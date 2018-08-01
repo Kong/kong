@@ -660,13 +660,19 @@ end
 -- If a default value cannot be produced (due to circumstances that
 -- will produce errors later on validation), it simply returns `nil`.
 local function default_value(field)
+  if field.abstract then
+    return nil
+  end
 
   if field.nullable ~= false then
     return null
   end
 
-  if field.type == "array" or field.type == "set"
-     or field.type == "map" or field.type == "record" then
+  if field.type == "record" then
+    local field_schema = get_field_schema(field)
+    return field_schema:process_auto_fields({}, "insert")
+  elseif field.type == "array" or field.type == "set"
+     or field.type == "map" then
     return {}
   elseif field.type == "number" or field.type == "integer" then
     return 0
@@ -742,6 +748,35 @@ local function compatible_fields(f1, f2)
 end
 
 
+local function get_subschema_fields(self, input)
+  if self.subschemas and self.subschema_key then
+    local subschema = self.subschemas[input[self.subschema_key]]
+    if subschema then
+      return self.subschemas[input[self.subschema_key]].fields
+    end
+  end
+  return nil
+end
+
+
+local function resolve_field(self, k, field, subschema_fields)
+  field = field or self.fields[k]
+  if not field then
+    return nil, validation_errors.UNKNOWN
+  end
+  if subschema_fields then
+    local ss_field = subschema_fields[k]
+    if ss_field then
+      if not compatible_fields(field, ss_field) then
+        return nil, validation_errors.SUBSCHEMA_BAD_TYPE
+      end
+      field = ss_field
+    end
+  end
+  return field
+end
+
+
 --- Validate fields of a table, individually, against the schema.
 -- @param self The schema
 -- @param input The input table.
@@ -752,36 +787,23 @@ end
 validate_fields = function(self, input)
   assert(type(input) == "table", validation_errors.BAD_INPUT)
 
-  local errors = {}
+  local errors, _ = {}
 
-  local subschema_fields
-  if self.subschemas and self.subschema_key then
-    local subschema = self.subschemas[input[self.subschema_key]]
-    if subschema then
-      subschema_fields = self.subschemas[input[self.subschema_key]].fields
-    end
-  end
+  local subschema_fields = get_subschema_fields(self, input)
 
   for k, v in pairs(input) do
+    local err
     local field = self.fields[k]
-    if not field then
-      errors[k] = validation_errors.UNKNOWN
-      goto continue
+    if field and field.type == "self" then
+      field = input
+    else
+      field, err = resolve_field(self, k, field, subschema_fields)
     end
-    field = (field.type == "self") and input or field
-    local _
-    if subschema_fields then
-      local ss_field = subschema_fields[k]
-      if ss_field then
-        if not compatible_fields(field, ss_field) then
-          errors[k] = validation_errors.SUBSCHEMA_BAD_TYPE
-          goto continue
-        end
-        field = ss_field
-      end
+    if field then
+      _, errors[k] = self:validate_field(field, v)
+    else
+      errors[k] = err
     end
-    _, errors[k] = self:validate_field(field, v)
-    ::continue::
   end
 
   if next(errors) then
@@ -1063,7 +1085,7 @@ function Schema:process_auto_fields(input, context, nulls)
   local now_s  = ngx_time()
   local now_ms = ngx_now()
 
-  for key, field in self:each_field() do
+  for key, field in self:each_field(input) do
     if field.auto then
       if field.uuid and context == "insert" then
         output[key] = utils.uuid()
@@ -1092,7 +1114,7 @@ function Schema:process_auto_fields(input, context, nulls)
         output[key] = make_array(field_value)
       elseif field_type == "set" then
         output[key] = make_set(field_value)
-      elseif field_type == "record" then
+      elseif field_type == "record" and not field.abstract then
         if field_value ~= null then
           local field_schema = get_field_schema(field)
           output[key] = field_schema:process_auto_fields(field_value, context)
@@ -1241,15 +1263,21 @@ end
 -- which produces the key and the field table,
 -- as in `for field_name, field_data in self:each_field() do`
 -- @return the iteration function
-function Schema:each_field()
+function Schema:each_field(values)
   local i = 1
+
+  local subschema_fields
+  if values then
+    subschema_fields = get_subschema_fields(self, values)
+  end
+
   return function()
     local item = self.fields[i]
     if not self.fields[i] then
       return nil
     end
     local key = next(item)
-    local field = item[key]
+    local field = resolve_field(self, key, item[key], subschema_fields)
     i = i + 1
     return key, field
   end

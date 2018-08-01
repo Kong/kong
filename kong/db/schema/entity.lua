@@ -30,6 +30,10 @@ function Entity.new(definition)
       return nil, entity_errors.NO_NILABLE:format(name)
     end
 
+    if field.abstract then
+      goto continue
+    end
+
     if field.type == "map" then
       if field.keys.type ~= "string" then
         return nil, entity_errors.MAP_KEY_STRINGS_ONLY:format(name)
@@ -44,6 +48,8 @@ function Entity.new(definition)
       end
 
     end
+
+    ::continue::
   end
 
   return self
