@@ -104,6 +104,8 @@ local function create_legacy_wrappers(self, constraints)
 
       constraints = constraints[name],
 
+      unwrapped = new_dao,
+
       cache_key = function(_, a1, a2, a3, a4, a5)
         return new_dao:cache_key(a1, a2, a3, a4, a5)
       end,
@@ -115,24 +117,63 @@ local function create_legacy_wrappers(self, constraints)
       insert = function(_, tbl, opts)
         log.debug(debug.traceback("[legacy wrapper] using legacy wrapper"))
         if opts then
-          if opts.ttl then
-            log.warn("[legacy wrapper] ttl is ignored")
-          end
           if opts.quiet then
             log.warn("[legacy wrapper] quiet is ignored, event always sent")
           end
         end
-        return new_dao:insert(tbl)
+        return new_dao:insert(tbl, { ttl = opts and opts.ttl })
       end,
 
       find = function(_, args)
         log.debug(debug.traceback("[legacy wrapper] using legacy wrapper"))
-        return new_dao:select(args)
+        local pk = new_dao.schema:extract_pk_values(args)
+        return new_dao:select(pk)
       end,
 
-      find_all = function(_)
+      find_all = function(_, filt)
+        local rows = {}
+        local filtering = false
+        if filt and next(filt) then
+          filtering = true
+        end
+        for row, err in new_dao:each() do
+          if err then
+            return nil, err
+          end
+          if filtering then
+            local match = true
+            for k,v in pairs(filt) do
+              local foreign = k:match("^(.*)_id$")
+              if foreign then
+                if (row[foreign] == ngx.null and v ~= ngx.null)
+                or (row[foreign].id ~= v) then
+                  goto continue
+                end
+              else
+                if row[k] ~= v then
+                  goto continue
+                end
+              end
+            end
+            if match then
+              rows[#rows + 1] = row
+            end
+          else
+            rows[#rows + 1] = row
+          end
+          ::continue::
+        end
         log.debug(debug.traceback("[legacy wrapper] using legacy wrapper"))
-        return nil, "[legacy wrapper] find_all not implemented"
+        return rows
+      end,
+
+      count = function(self, filt)
+        log.debug(debug.traceback("[legacy wrapper] using legacy wrapper"))
+        local rows, err = self:find_all(filt)
+        if err then
+          return nil, err
+        end
+        return #rows
       end,
 
       find_page = function(_, tbl, page_offset, page_size)
@@ -153,7 +194,8 @@ local function create_legacy_wrappers(self, constraints)
             log.warn("[legacy wrapper] quiet is ignored, event always sent")
           end
         end
-        return new_dao:update(filter_keys, tbl)
+        local pk = new_dao.schema:extract_pk_values(filter_keys)
+        return new_dao:update(pk, tbl)
       end,
 
       delete = function(_, tbl, opts)
