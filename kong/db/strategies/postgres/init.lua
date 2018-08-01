@@ -10,6 +10,7 @@ local encode_array  = arrays.encode_array
 local encode_json   = json.encode_json
 local setmetatable  = setmetatable
 local concat        = table.concat
+local insert        = table.insert
 local ipairs        = ipairs
 local pairs         = pairs
 local error         = error
@@ -872,7 +873,7 @@ function _M.new(connector, schema, errors)
   local foreign_key_indexes_escaped   = {}
   local foreign_key_indexes           = {}
   local foreign_key_count             = 0
-  local foreign_key_map               = {}
+  local foreign_key_list              = {}
   local foreign_keys                  = {}
 
   local unique_fields_count           = 0
@@ -957,11 +958,11 @@ function _M.new(connector, schema, errors)
         foreign_key_names[i]   = name
         foreign_key_escaped[i] = name_escaped
         foreign_col_names[i]   = escape_identifier(connector, foreign_field_name)
-        foreign_key_map[i]     = {
+        insert(foreign_key_list, {
           from   = name,
           entity = field_name,
           to     = foreign_field_name
-        }
+        })
       end
 
       foreign_keys[field_name] = {
@@ -1144,10 +1145,11 @@ function _M.new(connector, schema, errors)
         create_expression[11] = on_update
       end
 
-    elseif is_unique and not is_used_in_primary_key and not referenced_table then
-      -- TODO: unique attribute is considered only for non-composite fields that are not part of primary or foreign key
-      create_expression[4] = rep(" ", max_type_length - #type_postgres + (#type_postgres < max_name_length and 3 or 2))
-      create_expression[5] = "UNIQUE"
+    elseif is_unique then
+      if not is_used_in_primary_key and not referenced_table then
+        create_expression[4] = rep(" ", max_type_length - #type_postgres + (#type_postgres < max_name_length and 3 or 2))
+        create_expression[5] = "UNIQUE"
+      end
 
       unique_fields_count = unique_fields_count + 1
       unique_fields[unique_fields_count] = fields[i]
@@ -1419,9 +1421,9 @@ function _M.new(connector, schema, errors)
     schema             = schema,
     errors             = errors,
     expand             = foreign_key_count > 0 and
-                         expand(table_name .. "_expand", foreign_key_map) or
+                         expand(table_name .. "_expand", foreign_key_list) or
                          noop,
-    collapse           = collapse(table_name .. "_collapse", foreign_key_map),
+    collapse           = collapse(table_name .. "_collapse", foreign_key_list),
     [PRIVATE]          = {
       fields           = fields_hash,
       statements       = {
