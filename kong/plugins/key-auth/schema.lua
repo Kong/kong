@@ -23,10 +23,13 @@ local function check_keys(keys)
 end
 
 
-local function default_key_names(t)
-  if not t.key_names then
-    return { "apikey" }
+local function check_key(key)
+  local res, err = utils.validate_header_name(key, false)
+
+  if not res then
+    return false, "'" .. key .. "' is illegal: " .. err
   end
+  return true
 end
 
 
@@ -34,9 +37,19 @@ return {
   no_consumer = true,
   fields = {
     key_names = {
+      new_type = {
+        type = "array",
+        required = true,
+        elements = {
+          type = "string",
+          custom_validator = check_key,
+        },
+        nullable = false,
+        default = { "apikey" },
+      },
       required = true,
       type = "array",
-      default = default_key_names,
+      default = { "apikey" },
       func = check_keys,
     },
     hide_credentials = {
