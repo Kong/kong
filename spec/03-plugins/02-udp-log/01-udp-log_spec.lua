@@ -17,7 +17,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.plugins:insert {
-        route_id = route.id,
+        route = { id = route.id },
         name     = "udp-log",
         config   = {
           host   = "127.0.0.1",

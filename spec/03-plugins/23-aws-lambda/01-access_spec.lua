@@ -69,7 +69,7 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name     = "aws-lambda",
-        route_id = route1.id,
+        route = { id = route1.id },
         config   = {
           port          = 10001,
           aws_key       = "mock-key",
@@ -81,7 +81,7 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name     = "aws-lambda",
-        route_id = route2.id,
+        route = { id = route2.id },
         config   = {
           port            = 10001,
           aws_key         = "mock-key",
@@ -94,7 +94,7 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name     = "aws-lambda",
-        route_id = route3.id,
+        route = { id = route3.id },
         config   = {
           port            = 10001,
           aws_key         = "mock-key",
@@ -107,7 +107,7 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name     = "aws-lambda",
-        route_id = route4.id,
+        route = { id = route4.id },
         config   = {
           port          = 10001,
           aws_key       = "mock-key",
@@ -120,7 +120,7 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name     = "aws-lambda",
-        route_id = route5.id,
+        route = { id = route5.id },
         config   = {
           port          = 10001,
           aws_key       = "mock-key",
@@ -132,7 +132,7 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name     = "aws-lambda",
-        route_id = route6.id,
+        route = { id = route6.id },
         config   = {
           port            = 10001,
           aws_key         = "mock-key",
@@ -145,7 +145,7 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name     = "aws-lambda",
-        route_id = route7.id,
+        route = { id = route7.id },
         config   = {
           port            = 10001,
           aws_key         = "mock-key",
@@ -158,7 +158,7 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name     = "aws-lambda",
-        route_id = route8.id,
+        route = { id = route8.id },
         config   = {
           port             = 10001,
           aws_key          = "mock-key",
@@ -171,7 +171,7 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name     = "aws-lambda",
-        route_id = route9.id,
+        route = { id = route9.id },
         config   = {
           port                    = 10001,
           aws_key                 = "mock-key",
@@ -187,7 +187,7 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name     = "aws-lambda",
-        route_id = route10.id,
+        route = { id = route10.id },
         config                    = {
           port                    = 10001,
           aws_key                 = "mock-key",

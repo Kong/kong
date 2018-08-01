@@ -21,7 +21,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.plugins:insert {
-        route_id = route.id,
+        route = { id = route.id },
         name     = "file-log",
         config   = {
           path   = FILE_LOG_PATH,

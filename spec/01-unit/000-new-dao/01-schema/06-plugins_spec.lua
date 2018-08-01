@@ -2,7 +2,7 @@ local Schema = require "kong.db.schema"
 local typedefs = require "kong.db.schema.typedefs"
 local utils = require "kong.tools.utils"
 local plugins_definition = require "kong.db.schema.entities.plugins"
-local plugins_loader = require "kong.runloop.plugins_loader"
+local dao_plugins = require "kong.db.dao.plugins"
 
 
 describe("plugins", function()
@@ -44,7 +44,7 @@ describe("plugins", function()
       }
     }
 
-    assert(plugins_loader.load_plugins(kong_conf, db))
+    assert(dao_plugins.load_plugin_schemas(db.plugins, kong_conf.loaded_plugins))
 
   end)
 

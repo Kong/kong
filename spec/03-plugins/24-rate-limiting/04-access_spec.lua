@@ -99,7 +99,7 @@ for _, strategy in helpers.each_strategy() do
         }
 
         bp.rate_limiting_plugins:insert({
-          route_id = route1.id,
+          route = { id = route1.id },
           config = {
             policy         = policy,
             minute         = 6,
@@ -116,7 +116,7 @@ for _, strategy in helpers.each_strategy() do
         }
 
         bp.rate_limiting_plugins:insert({
-          route_id = route2.id,
+          route = { id = route2.id },
           config = {
             minute         = 3,
             hour           = 5,
@@ -135,11 +135,11 @@ for _, strategy in helpers.each_strategy() do
 
         bp.plugins:insert {
           name     = "key-auth",
-          route_id = route3.id,
+          route = { id = route3.id },
         }
 
         bp.rate_limiting_plugins:insert({
-          route_id = route3.id,
+          route = { id = route3.id },
           config = {
             minute         = 6,
             limit_by       = "credential",
@@ -153,8 +153,8 @@ for _, strategy in helpers.each_strategy() do
         })
 
         bp.rate_limiting_plugins:insert({
-          route_id = route3.id,
-          consumer_id = consumer1.id,
+          route = { id = route3.id },
+          consumer = { id = consumer1.id },
           config      = {
             minute         = 8,
             fault_tolerant = false,
@@ -172,12 +172,12 @@ for _, strategy in helpers.each_strategy() do
 
         bp.plugins:insert {
           name     = "key-auth",
-          route_id = route4.id,
+          route = { id = route4.id },
         }
 
         bp.rate_limiting_plugins:insert({
-          route_id = route4.id,
-          consumer_id = consumer1.id,
+          route = { id = route4.id },
+          consumer = { id = consumer1.id },
           config           = {
             minute         = 6,
             fault_tolerant = true,
@@ -194,7 +194,7 @@ for _, strategy in helpers.each_strategy() do
         }
 
         bp.rate_limiting_plugins:insert({
-          route_id = route5.id,
+          route = { id = route5.id },
           config = {
             policy              = policy,
             minute              = 6,
@@ -218,7 +218,7 @@ for _, strategy in helpers.each_strategy() do
         }
 
         bp.rate_limiting_plugins:insert({
-          service_id = service.id,
+          service = { id = service.id },
           config = {
             policy         = policy,
             minute         = 6,
@@ -434,7 +434,7 @@ for _, strategy in helpers.each_strategy() do
             }
 
             bp.rate_limiting_plugins:insert {
-              route_id = route1.id,
+              route = { id = route1.id },
               config   = { minute = 6, fault_tolerant = false }
             }
 
@@ -444,7 +444,7 @@ for _, strategy in helpers.each_strategy() do
 
             bp.rate_limiting_plugins:insert {
               name     = "rate-limiting",
-              route_id = route2.id,
+              route = { id = route2.id },
               config   = { minute = 6, fault_tolerant = true },
             }
 
@@ -515,7 +515,7 @@ for _, strategy in helpers.each_strategy() do
             }
 
             bp.rate_limiting_plugins:insert {
-              route_id = route1.id,
+              route = { id = route1.id },
               config  = { minute = 6, policy = policy, redis_host = "5.5.5.5", fault_tolerant = false },
             }
 
@@ -529,7 +529,7 @@ for _, strategy in helpers.each_strategy() do
 
             bp.rate_limiting_plugins:insert {
               name   = "rate-limiting",
-              route_id = route2.id,
+              route = { id = route2.id },
               config = { minute = 6, policy = policy, redis_host = "5.5.5.5", fault_tolerant = true },
             }
 
@@ -573,7 +573,7 @@ for _, strategy in helpers.each_strategy() do
           }
 
           bp.rate_limiting_plugins:insert {
-            route_id = route.id,
+            route = { id = route.id },
             config   = {
               minute         = 6,
               policy         = policy,
@@ -642,7 +642,7 @@ for _, strategy in helpers.each_strategy() do
 
         -- just consumer, no no route or service
         bp.rate_limiting_plugins:insert({
-          consumer_id = consumer.id,
+          consumer = { id = consumer.id },
           config = {
             limit_by       = "credential",
             policy         = policy,

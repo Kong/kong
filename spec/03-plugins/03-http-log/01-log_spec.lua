@@ -21,7 +21,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.plugins:insert {
-        route_id = route1.id,
+        route = { id = route1.id },
         name     = "http-log",
         config   = {
           http_endpoint = "http://" .. helpers.mock_upstream_host
@@ -43,7 +43,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.plugins:insert {
-        route_id = route1.id,
+        route = { id = route1.id },
         name     = "http-log",
         config   = {
           http_endpoint = "http://" .. helpers.mock_upstream_host
@@ -65,7 +65,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.plugins:insert {
-        route_id = route2.id,
+        route = { id = route2.id },
         name     = "http-log",
         config   = {
           http_endpoint = "https://" .. helpers.mock_upstream_ssl_host
@@ -87,7 +87,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.plugins:insert {
-        route_id = route3.id,
+        route = { id = route3.id },
         name     = "http-log",
         config   = {
           http_endpoint = "http://" .. "testuser:testpassword@"
@@ -105,7 +105,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.plugins:insert {
-        route_id = route4.id,
+        route = { id = route4.id },
         name     = "http-log",
         config   = {
           queue_size = 5,

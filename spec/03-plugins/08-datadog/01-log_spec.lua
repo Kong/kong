@@ -41,12 +41,12 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name     = "key-auth",
-        route_id = route1.id,
+        route = { id = route1.id },
       }
 
       bp.plugins:insert {
         name     = "datadog",
-        route_id = route1.id,
+        route = { id = route1.id },
         config   = {
           host   = "127.0.0.1",
           port   = 9999,
@@ -55,7 +55,7 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name     = "datadog",
-        route_id = route2.id,
+        route = { id = route2.id },
         config   = {
           host    = "127.0.0.1",
           port    = 9999,
@@ -76,7 +76,7 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name     = "datadog",
-        route_id = route3.id,
+        route = { id = route3.id },
         config   = {
           host    = "127.0.0.1",
           port    = 9999,
@@ -91,13 +91,13 @@ for _, strategy in helpers.each_strategy() do
               name        = "request_count",
               stat_type   = "counter",
               sample_rate = 1,
-              tags        = {"T2:V2,T3:V3,T4"},
+              tags        = {"T2:V2", "T3:V3", "T4"},
             },
             {
               name        = "latency",
               stat_type   = "gauge",
               sample_rate = 1,
-              tags        = {"T2:V2:V3,T4"},
+              tags        = {"T2:V2:V3", "T4"},
             },
           },
         },
@@ -105,12 +105,12 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name       = "key-auth",
-        route_id   = route4.id,
+        route = { id = route4.id },
       }
 
       bp.plugins:insert {
         name     = "datadog",
-        route_id = route4.id,
+        route = { id = route4.id },
         config   = {
           host   = "127.0.0.1",
           port   = 9999,

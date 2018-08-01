@@ -20,7 +20,7 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name     = "hmac-auth",
-        route_id = route.id,
+        route = { id = route.id },
         config   = {
           clock_skew = 3000,
         },

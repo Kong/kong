@@ -26,7 +26,7 @@ for _, strategy in helpers.each_strategy() do
     local admin_client
 
     setup(function()
-      local bp = helpers.get_db_utils(strategy)
+      local bp = helpers.get_db_utils(strategy, nil, { "ctx-checker" })
 
       local routes = {}
 
@@ -51,73 +51,73 @@ for _, strategy in helpers.each_strategy() do
 
       plugins:insert({
         name     = "jwt",
-        route_id = routes[1].id,
+        route = { id = routes[1].id },
         config   = {},
       })
 
       plugins:insert({
         name     = "jwt",
-        route_id = routes[2].id,
+        route = { id = routes[2].id },
         config   = { uri_param_names = { "token", "jwt" } },
       })
 
       plugins:insert({
         name     = "jwt",
-        route_id = routes[3].id,
+        route = { id = routes[3].id },
         config   = { claims_to_verify = {"nbf", "exp"} },
       })
 
       plugins:insert({
         name     = "jwt",
-        route_id = routes[4].id,
+        route = { id = routes[4].id },
         config   = { key_claim_name = "aud" },
       })
 
       plugins:insert({
         name     = "jwt",
-        route_id = routes[5].id,
+        route = { id = routes[5].id },
         config   = { secret_is_base64 = true },
       })
 
       plugins:insert({
         name     = "jwt",
-        route_id = routes[6].id,
+        route = { id = routes[6].id },
         config   = { anonymous = anonymous_user.id },
       })
 
       plugins:insert({
         name     = "jwt",
-        route_id = routes[7].id,
+        route = { id = routes[7].id },
         config   = { anonymous = utils.uuid() },
       })
 
       plugins:insert({
         name     = "jwt",
-        route_id = routes[8].id,
+        route = { id = routes[8].id },
         config   = { run_on_preflight = false },
       })
 
       plugins:insert({
         name     = "jwt",
-        route_id = routes[9].id,
+        route = { id = routes[9].id },
         config   = { cookie_names = { "silly", "crumble" } },
       })
 
       plugins:insert({
         name     = "jwt",
-        route_id = routes[10].id,
+        route = { id = routes[10].id },
         config   = { key_claim_name = "kid" },
       })
 
       plugins:insert({
         name     = "jwt",
-        route_id = routes[11].id,
+        route = { id = routes[11].id },
         config   = { claims_to_verify = {"nbf", "exp"}, maximum_expiration = 300 },
       })
 
       plugins:insert({
         name     = "ctx-checker",
-        route_id = routes[1].id,
+        route = { id = routes[1].id },
         config   = { ctx_check_field = "authenticated_jwt_token" },
       })
 
@@ -739,12 +739,12 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name     = "jwt",
-        route_id = route1.id,
+        route = { id = route1.id },
       }
 
       bp.plugins:insert {
         name     = "key-auth",
-        route_id = route1.id,
+        route = { id = route1.id },
       }
 
       anonymous = bp.consumers:insert {
@@ -770,7 +770,7 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name     = "jwt",
-        route_id = route2.id,
+        route = { id = route2.id },
         config   = {
           anonymous = anonymous.id,
         },
@@ -778,7 +778,7 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name     = "key-auth",
-        route_id = route2.id,
+        route = { id = route2.id },
         config   = {
           anonymous = anonymous.id,
         },

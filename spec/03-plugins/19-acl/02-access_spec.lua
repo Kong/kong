@@ -89,9 +89,9 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name     = "acl",
-        route_id = route1.id,
+        route = { id = route1.id },
         config   = {
-          whitelist = "admin"
+          whitelist = { "admin" },
         }
       }
 
@@ -101,15 +101,15 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name     = "acl",
-        route_id = route2.id,
+        route = { id = route2.id },
         config   = {
-          whitelist = "admin"
+          whitelist = { "admin" },
         }
       }
 
       bp.plugins:insert {
         name     = "key-auth",
-        route_id = route2.id,
+        route = { id = route2.id },
         config   = {}
       }
 
@@ -119,7 +119,7 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name     = "acl",
-        route_id = route3.id,
+        route = { id = route3.id },
         config   = {
           blacklist = {"admin"}
         }
@@ -127,7 +127,7 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name     = "key-auth",
-        route_id = route3.id,
+        route = { id = route3.id },
         config   = {}
       }
 
@@ -137,7 +137,7 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name     = "acl",
-        route_id = route4.id,
+        route = { id = route4.id },
         config   = {
           whitelist = {"admin", "pro"}
         }
@@ -145,7 +145,7 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name     = "key-auth",
-        route_id = route4.id,
+        route = { id = route4.id },
         config   = {}
       }
 
@@ -155,7 +155,7 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name     = "acl",
-        route_id = route5.id,
+        route = { id = route5.id },
         config   = {
           blacklist = {"admin", "pro"}
         }
@@ -163,7 +163,7 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name     = "key-auth",
-        route_id = route5.id,
+        route = { id = route5.id },
         config   = {}
       }
 
@@ -173,7 +173,7 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name     = "acl",
-        route_id = route6.id,
+        route = { id = route6.id },
         config   = {
           blacklist = {"admin", "pro", "hello"}
         }
@@ -181,7 +181,7 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name     = "key-auth",
-        route_id = route6.id,
+        route = { id = route6.id },
         config   = {}
       }
 
@@ -191,14 +191,14 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name     = "acl",
-        route_id = route7.id,
+        route = { id = route7.id },
         config   = {
           whitelist = {"admin", "pro", "hello"}
         }
       }
       bp.plugins:insert {
         name     = "key-auth",
-        route_id = route7.id,
+        route = { id = route7.id },
         config   = {}
       }
 
@@ -208,7 +208,7 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name     = "acl",
-        route_id = route8.id,
+        route = { id = route8.id },
         config   = {
           whitelist = {"anonymous"}
         }
@@ -216,7 +216,7 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name     = "key-auth",
-        route_id = route8.id,
+        route = { id = route8.id },
         config   = {
           anonymous = anonymous.id,
         }
@@ -227,18 +227,18 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.plugins:insert {
-        name     = "acl",
-        route_id = route9.id,
-        config   = {
-          whitelist = "admin",
-          hide_groups_header = true    
+        name = "acl",
+        route = { id = route9.id },
+        config = {
+          whitelist = { "admin" },
+          hide_groups_header = true
         }
       }
 
       bp.plugins:insert {
-        name     = "key-auth",
-        route_id = route9.id,
-        config   = {}
+        name = "key-auth",
+        route = { id = route9.id },
+        config = {}
       }
           
       local route10 = bp.routes:insert {
@@ -246,18 +246,18 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.plugins:insert {
-        name     = "acl",
-        route_id = route10.id,
-        config   = {
-          whitelist = "admin",
-          hide_groups_header = false    
+        name = "acl",
+        route = { id = route10.id },
+        config = {
+          whitelist = { "admin" },
+          hide_groups_header = false
         }
       }
 
       bp.plugins:insert {
-        name     = "key-auth",
-        route_id = route10.id,
-        config   = {}
+        name = "key-auth",
+        route = { id = route10.id },
+        config = {}
       }
 
       assert(helpers.start_kong({
@@ -499,7 +499,7 @@ for _, strategy in helpers.each_strategy() do
           }
         })
         local body = cjson.decode(assert.res_status(201, res))
-        local consumer_id = body.id
+        local consumer = { id = body.id }
 
         -- Create key
         local res = assert(admin_client:send {
@@ -545,8 +545,8 @@ for _, strategy in helpers.each_strategy() do
             },
             body    = {
               name                 = "acl",
-              ["config.whitelist"] = "admin" .. i,
-              route_id             = json.id,
+              config = { whitelist = { "admin" .. i } },
+              route = { id = json.id },
             }
           })
 
@@ -561,7 +561,7 @@ for _, strategy in helpers.each_strategy() do
             },
             body    = {
               name     = "key-auth",
-              route_id = json.id,
+              route = { id = json.id },
             }
           })
           assert.res_status(201, res)
@@ -580,7 +580,7 @@ for _, strategy in helpers.each_strategy() do
           assert.res_status(201, res)
 
           -- Wait for cache to be invalidated
-          local cache_key = dao.acls:cache_key(consumer_id)
+          local cache_key = dao.acls:cache_key(consumer)
 
           helpers.wait_until(function()
             local res = assert(admin_client:send {
