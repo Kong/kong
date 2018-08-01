@@ -48,19 +48,6 @@ local _mt = {}
 _mt.__index = _mt
 
 
-local function extract_pk_values(schema, entity)
-  local pk_len = #schema.primary_key
-  local pk_values = new_tab(0, pk_len)
-
-  for i = 1, pk_len do
-    local pk_name = schema.primary_key[i]
-    pk_values[pk_name] = entity[pk_name]
-  end
-
-  return pk_values
-end
-
-
 local function is_partitioned(self)
   local cql
 
@@ -600,7 +587,7 @@ function _mt:insert(entity, options)
   if res[APPLIED_COLUMN] == false then
     -- lightweight transaction (IF NOT EXISTS) failed,
     -- retrieve PK values for the PK violation error
-    local pk_values = extract_pk_values(schema, entity)
+    local pk_values = schema:extract_pk_values(entity)
 
     return nil, self.errors:primary_key_violation(pk_values)
   end
@@ -616,7 +603,7 @@ function _mt:insert(entity, options)
 
     if field.type == "foreign" then
       if value ~= ngx.null and value ~= nil then
-        value = extract_pk_values(field.schema, value)
+        value = field.schema:extract_pk_values(value)
 
       else
         value = ngx.null
@@ -864,7 +851,7 @@ do
       end
     end
 
-    local pk = extract_pk_values(self.schema, row)
+    local pk = self.schema:extract_pk_values(row)
 
     return self[mode](self, pk, entity, options)
   end
@@ -983,7 +970,7 @@ function _mt:delete_by_field(field_name, field_value, options)
     return true
   end
 
-  local pk = extract_pk_values(self.schema, row)
+  local pk = self.schema:extract_pk_values(row)
 
   return self:delete(pk)
 end

@@ -26,6 +26,18 @@ local Schema       = {}
 Schema.__index     = Schema
 
 
+local new_tab
+do
+  local ok
+  ok, new_tab = pcall(require, "table.new")
+  if not ok then
+    new_tab = function(narr, nrec)
+      return {}
+    end
+  end
+end
+
+
 local validation_errors = {
   -- general message
   ERROR                     = "Validation error: %s",
@@ -1321,6 +1333,23 @@ function Schema:errors_to_string(errors)
 
   local summary = concat(msgs, "; ")
   return validation_errors.ERROR:format(summary)
+end
+
+
+--- Given an entity, return a table containing only its primary key entries
+-- @param entity a table mapping field names to their values
+-- @return a subset of the input table, containing only the keys that
+-- are part of the primary key for this schema.
+function Schema:extract_pk_values(entity)
+  local pk_len = #self.primary_key
+  local pk_values = new_tab(0, pk_len)
+
+  for i = 1, pk_len do
+    local pk_name = self.primary_key[i]
+    pk_values[pk_name] = entity[pk_name]
+  end
+
+  return pk_values
 end
 
 
