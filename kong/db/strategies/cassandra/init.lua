@@ -648,7 +648,8 @@ function _mt:select_by_field(field_name, field_value, options)
   end
   local select_cql = fmt(cql, field_name .. " = ?")
   local bind_args = new_tab(1, 0)
-  bind_args[1] = field_value
+  local field = self.schema.fields[field_name]
+  bind_args[1] = serialize_arg(field, field_value)
 
   return _select(self, select_cql, bind_args)
 end
