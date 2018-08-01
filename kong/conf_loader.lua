@@ -35,6 +35,14 @@ local DYNAMIC_KEY_PREFIXES = {
   ["nginx_admin_directives"] = "nginx_admin_",
 }
 
+local KONG_PHASE_HANDLERS = {
+  "rewrite",
+  "access",
+  "header_filter",
+  "body_filter",
+  "log",
+}
+
 local PREFIX_PATHS = {
   nginx_pid = {"pids", "nginx.pid"},
   nginx_err_logs = {"logs", "error.log"},
@@ -134,6 +142,8 @@ local CONF_INFERENCES = {
 
   lua_ssl_verify_depth = {typ = "number"},
   lua_socket_pool_size = {typ = "number"},
+
+  phase_handlers = {typ = "array"}
 }
 
 -- List of settings whose values must not be printed when
@@ -340,6 +350,13 @@ local function check_and_infer(conf)
       errors[#errors+1] = "trusted_ips must be a comma separated list in "..
                           "the form of IPv4 or IPv6 address or CIDR "..
                           "block or 'unix:', got '" .. address .. "'"
+    end
+  end
+
+  -- validate phase handlers
+  for _, phase in ipairs(conf.phase_handlers) do
+    if not tablex.find(KONG_PHASE_HANDLERS, phase) then
+      errors[#errors + 1] = "'" .. phase .. "' is not a valid phase handler"
     end
   end
 
