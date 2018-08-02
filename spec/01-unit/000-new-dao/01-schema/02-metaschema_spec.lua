@@ -45,6 +45,24 @@ describe("metaschema", function()
     assert.truthy(MetaSchema:validate(s))
   end)
 
+  it("a schema can be marked as legacy", function()
+    local s = {
+      name = "hello",
+      primary_key = { "foo" },
+      legacy = true,
+      fields = {
+        { foo = { type = "number" } } } }
+    assert.truthy(MetaSchema:validate(s))
+
+    s = {
+      name = "hello",
+      primary_key = { "foo" },
+      legacy = 2,
+      fields = {
+        { foo = { type = "number" } } } }
+    assert.falsy(MetaSchema:validate(s))
+  end)
+
   it("allows only one entity check per array field", function()
     local s = {
       name = "bad",

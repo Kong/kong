@@ -298,6 +298,12 @@ local MetaSchema = Schema.new({
       },
     },
     {
+      legacy = {
+        type = "boolean",
+        nilable = true,
+      },
+    },
+    {
       fields = fields_array,
     },
     {

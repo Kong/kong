@@ -494,7 +494,7 @@ local function generate_endpoints(schema, endpoints)
   generate_entity_endpoints(endpoints, schema)
 
   for foreign_field_name, foreign_field in schema:each_field() do
-    if foreign_field.type == "foreign" then
+    if foreign_field.type == "foreign" and not foreign_field.schema.legacy then
       -- e.g. /routes/:routes/service
       generate_entity_endpoints(endpoints, schema, foreign_field.schema, foreign_field_name)
 

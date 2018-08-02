@@ -233,12 +233,15 @@ do
 
   -- Auto Generated Routes
   for _, dao in pairs(singletons.db.daos) do
-    routes = Endpoints.new(dao.schema, routes)
+    if not dao.schema.legacy then
+      routes = Endpoints.new(dao.schema, routes)
+    end
   end
 
   -- Custom Routes
   for _, dao in pairs(singletons.db.daos) do
     local schema = dao.schema
+
     local ok, custom_endpoints = utils.load_module_if_exists("kong.api.routes." .. schema.name)
     if ok then
       for route_pattern, verbs in pairs(custom_endpoints) do
