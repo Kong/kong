@@ -137,6 +137,7 @@ local meta_errors = {
   TABLE = "'%s' must be a table",
   BOOLEAN = "'%s' must be a boolean",
   TYPE = "missing type declaration",
+  FIELD_EMPTY = "field entry table is empty",
   FIELDS_ARRAY = "each entry in fields must be a sub-table",
   FIELDS_KEY = "each key in fields must be a string",
   ENDPOINT_KEY = "value must be a field name",
@@ -212,6 +213,10 @@ local check_fields = function(schema, errors)
       break
     end
     local k = next(item)
+    if not k then
+      errors["fields"] = meta_errors.FIELD_EMPTY
+      break
+    end
     local field = item[k]
     if type(field) == "table" then
       check_field(k, field, errors)

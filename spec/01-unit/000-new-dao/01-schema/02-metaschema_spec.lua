@@ -14,6 +14,19 @@ describe("metaschema", function()
     assert.falsy(MetaSchema:validate(s))
   end)
 
+  it("fields cannot be empty", function()
+    local s = {
+      name = "bad",
+      fields = {
+        {}
+      },
+      primary_key = { "foo" },
+    }
+    local ok, err = MetaSchema:validate(s)
+    assert.falsy(ok)
+    assert.match("field entry table is empty", err.fields)
+  end)
+
   it("rejects an invalid entity check", function()
     local s = {
       name = "bad",
