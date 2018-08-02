@@ -123,7 +123,7 @@ for _, strategy in helpers.each_strategy() do
           start_tls = false,
           base_dn   = "ou=scientists,dc=ldap,dc=mashape,dc=com",
           attribute = "uid",
-          header_type = "basic",
+          header_type = "Basic",
         }
       }
 
@@ -359,6 +359,21 @@ for _, strategy in helpers.each_strategy() do
         }
       })
       assert.response(r).has.status(200)
+    end)
+    it("injects conf.header_type in WWW-Authenticate header", function()
+      local res = assert(proxy_client:send {
+        method  = "GET",
+        path    = "/get",
+        headers = {
+          host  = "ldap5.com",
+        }
+      })
+      assert.response(res).has.status(401)
+
+      local value = assert.response(res).has.header("www-authenticate")
+      assert.equal('Basic realm="kong"', value)
+      local json = assert.response(res).has.jsonbody()
+      assert.equal("Unauthorized", json.message)
     end)
     it("fails if custom credential type is invalid in post request", function()
       local r = assert(proxy_client:send {
