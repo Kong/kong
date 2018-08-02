@@ -99,4 +99,29 @@ typedefs.auto_timestamp_ms = Schema.define {
   auto = true
 }
 
+typedefs.no_api = Schema.define {
+  type = "foreign",
+  reference = "apis",
+  eq = ngx.null,
+}
+
+typedefs.no_route = Schema.define {
+  type = "foreign",
+  reference = "routes",
+  eq = ngx.null,
+}
+
+typedefs.no_service = Schema.define {
+  type = "foreign",
+  reference = "services",
+  eq = ngx.null,
+}
+
+typedefs.no_consumer = Schema.define {
+  type = "foreign",
+  reference = "consumers",
+  eq = ngx.null,
+}
+
+
 return typedefs
