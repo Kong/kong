@@ -96,6 +96,10 @@ local function create_legacy_wrappers(self, constraints)
   local new_db = self.db.new_db
   local dao_wrappers = {}
   for name, new_dao in pairs(new_db.daos) do
+    if new_dao.schema.legacy then
+      goto continue
+    end
+
     dao_wrappers[name] = {
 
       constraints = constraints[name],
@@ -169,6 +173,8 @@ local function create_legacy_wrappers(self, constraints)
         return new_dao:truncate()
       end,
     }
+
+    ::continue::
   end
 
   -- Make wrappers accessible by keying daos, but do not return
