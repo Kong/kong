@@ -313,6 +313,20 @@ function _mt:truncate()
 end
 
 
+function _mt:truncate_table(table_name)
+  local truncate_statement = {
+    "TRUNCATE TABLE ", table_name, " RESTART IDENTITY CASCADE;"
+  }
+
+  local ok, err = self:query(truncate_statement)
+  if not ok then
+    return nil, err
+  end
+
+  return true
+end
+
+
 local _M = {}
 
 

@@ -618,7 +618,7 @@ end
 
 
 function _mt:truncate()
-  local res, err = execute(self, "drop")
+  local res, err = execute(self, "truncate")
   if not res then
     return toerror(self, err)
   end
@@ -1276,7 +1276,7 @@ function _M.new(connector, schema, errors)
   }
 
   local truncate_statement = concat {
-    "TRUNCATE ", table_name_escaped, ";"
+    "TRUNCATE TABLE ", table_name_escaped, " RESTART IDENTITY CASCADE;"
   }
 
   local drop_statement

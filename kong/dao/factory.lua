@@ -168,8 +168,7 @@ local function create_legacy_wrappers(self, constraints)
 
       truncate = function(_)
         log.debug(debug.traceback("[legacy wrapper] using legacy wrapper"))
-        log.err("[legacy wrapper] truncate not implemented")
-        return nil
+        return new_dao:truncate()
       end,
     }
   end
