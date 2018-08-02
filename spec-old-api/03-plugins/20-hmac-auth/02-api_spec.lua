@@ -25,8 +25,13 @@ describe("Plugin: hmac-auth (API)", function()
   describe("/consumers/:consumer/hmac-auth/", function()
     describe("POST", function()
       before_each(function()
-        dao:truncate_tables()
-        db:truncate()
+        assert(db:truncate("routes"))
+        assert(db:truncate("services"))
+        assert(db:truncate("consumers"))
+        dao:truncate_table("apis")
+        dao:truncate_table("plugins")
+        dao:truncate_table("hmacauth_credentials")
+
         consumer = bp.consumers:insert {
           username = "bob",
           custom_id = "1234"

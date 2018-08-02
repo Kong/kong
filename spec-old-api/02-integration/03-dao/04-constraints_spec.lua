@@ -22,10 +22,6 @@ for _, strategy in helpers.each_strategy() do
       bp, db, dao = helpers.get_db_utils(strategy)
       apis = dao.apis
       plugins = dao.plugins
-      assert(dao:run_migrations())
-
-      dao:truncate_tables()
-      assert(db:truncate())
     end)
     before_each(function()
       plugin_fixture = utils.shallow_copy(plugin_tbl)
@@ -34,8 +30,9 @@ for _, strategy in helpers.each_strategy() do
       api_fixture = api
     end)
     after_each(function()
-      dao:truncate_tables()
-      assert(db:truncate())
+      dao:truncate_table("apis")
+      dao:truncate_table("plugins")
+      assert(db:truncate("consumers"))
     end)
 
     -- Check behavior just in case
@@ -177,8 +174,9 @@ for _, strategy in helpers.each_strategy() do
         assert.falsy(err)
       end)
       after_each(function()
-        dao:truncate_tables()
-        assert(db:truncate())
+        dao:truncate_table("apis")
+        dao:truncate_table("plugins")
+        assert(db:truncate("consumers"))
       end)
 
       it("delete", function()

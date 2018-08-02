@@ -34,8 +34,7 @@ describe("Admin API (" .. strategy .. "): ", function()
 
   local consumer, consumer2
   before_each(function()
-    assert(db:truncate())
-    dao:truncate_tables()
+    assert(db:truncate("consumers"))
     consumer = assert(bp.consumers:insert {
       username = "bob",
       custom_id = "wxyz"
@@ -191,13 +190,12 @@ describe("Admin API (" .. strategy .. "): ", function()
 
     describe("GET", function()
       before_each(function()
-        assert(db:truncate())
-        dao:truncate_tables()
+        assert(db:truncate("consumers"))
         bp.consumers:insert_n(10)
       end)
       teardown(function()
-        assert(db:truncate())
-        dao:truncate_tables()
+        assert(db:truncate("consumers"))
+        dao:truncate_table("plugins")
       end)
 
       it("retrieves the first page", function()
@@ -493,9 +491,10 @@ describe("Admin API (" .. strategy .. "): ", function()
               })
               local body = assert.res_status(400, res)
               assert.same({
-                code    = Errors.codes.SCHEMA_VIOLATION,
-                name    = "schema violation",
-                fields  = {
+                code     = Errors.codes.SCHEMA_VIOLATION,
+                name     = "schema violation",
+                strategy = strategy,
+                fields   = {
                   ["@entity"] = {
                     "at least one of these fields must be non-empty: 'custom_id', 'username'"
                   }

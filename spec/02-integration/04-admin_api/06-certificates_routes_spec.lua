@@ -52,7 +52,7 @@ describe("Admin API: #" .. strategy, function()
   end)
 
   setup(function()
-    bp, db, dao = helpers.get_db_utils(strategy)
+    bp, db, dao = helpers.get_db_utils(strategy, {})
     assert(dao:run_migrations())
 
     assert(helpers.start_kong({
@@ -66,7 +66,9 @@ describe("Admin API: #" .. strategy, function()
 
   describe("/certificates", function()
     before_each(function()
-      assert(db:truncate())
+      assert(db:truncate("certificates"))
+      assert(db:truncate("snis"))
+
       local res = client:post("/certificates", {
         body    = {
           cert  = ssl_fixtures.cert,
@@ -176,7 +178,9 @@ describe("Admin API: #" .. strategy, function()
     local certificate
 
     before_each(function()
-      assert(db:truncate())
+      assert(db:truncate("certificates"))
+      assert(db:truncate("snis"))
+
       local res = client:post("/certificates", {
         body    = {
           cert  = ssl_fixtures.cert,
@@ -296,9 +300,10 @@ describe("Admin API: #" .. strategy, function()
         })
         local body = assert.res_status(400, res)
         assert.same({
-          code    = Errors.codes.SCHEMA_VIOLATION,
-          name    = "schema violation",
-          message = "2 schema violations (cert: required field missing; key: required field missing)",
+          code     = Errors.codes.SCHEMA_VIOLATION,
+          name     = "schema violation",
+          strategy = strategy,
+          message  = "2 schema violations (cert: required field missing; key: required field missing)",
           fields  = {
             cert = "required field missing",
             key = "required field missing",
@@ -312,7 +317,8 @@ describe("Admin API: #" .. strategy, function()
       local cert_bar
 
       before_each(function()
-        assert(db:truncate())
+        assert(db:truncate("certificates"))
+        assert(db:truncate("snis"))
 
         local res = client:post("/certificates", {
           body    = {
@@ -550,7 +556,8 @@ describe("Admin API: #" .. strategy, function()
 
       local certificate
       before_each(function()
-        assert(db:truncate())
+        assert(db:truncate("certificates"))
+        assert(db:truncate("snis"))
 
         certificate = bp.certificates:insert()
         bp.snis:insert({
@@ -627,7 +634,9 @@ describe("Admin API: #" .. strategy, function()
 
     describe("GET", function()
       it("retrieves a list of snis", function()
-        assert(db:truncate())
+        assert(db:truncate("certificates"))
+        assert(db:truncate("snis"))
+
         local certificate = bp.certificates:insert()
         bp.snis:insert {
           name        = "foo.com",
@@ -648,7 +657,9 @@ describe("Admin API: #" .. strategy, function()
     local certificate, sni
 
     before_each(function()
-      assert(db:truncate())
+      assert(db:truncate("certificates"))
+      assert(db:truncate("snis"))
+
       certificate = bp.certificates:insert()
       sni = bp.snis:insert {
         name        = "foo.com",
@@ -716,10 +727,11 @@ describe("Admin API: #" .. strategy, function()
         })
         local body = assert.res_status(400, res)
         assert.same({
-          code    = Errors.codes.SCHEMA_VIOLATION,
-          name    = "schema violation",
-          message = "2 schema violations (certificate: required field missing; name: required field missing)",
-          fields  = {
+          code     = Errors.codes.SCHEMA_VIOLATION,
+          name     = "schema violation",
+          strategy = strategy,
+          message  = "2 schema violations (certificate: required field missing; name: required field missing)",
+          fields   = {
             certificate = "required field missing",
             name = "required field missing",
           }

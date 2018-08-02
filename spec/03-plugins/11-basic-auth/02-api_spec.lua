@@ -18,11 +18,17 @@ for _, strategy in helpers.each_strategy() do
         database = strategy,
       }))
 
-      admin_client = helpers.admin_client()
     end)
     teardown(function()
-      if admin_client then admin_client:close() end
       helpers.stop_kong()
+    end)
+
+    before_each(function()
+      admin_client = helpers.admin_client()
+    end)
+
+    after_each(function()
+      if admin_client then admin_client:close() end
     end)
 
     describe("/consumers/:consumer/basic-auth/", function()
@@ -74,6 +80,30 @@ for _, strategy in helpers.each_strategy() do
           local hash   = crypto.encrypt {
             consumer_id = consumer.id,
             password    = "kong"
+          }
+          assert.equal(hash, json.password)
+        end)
+        it("encrypts the password without trimming whitespace", function()
+          local res = assert(admin_client:send {
+            method  = "POST",
+            path    = "/consumers/bob/basic-auth",
+            body    = {
+              username = "bob",
+              password = " kong "
+            },
+            headers = {
+              ["Content-Type"] = "application/json"
+            }
+          })
+          local body = assert.res_status(201, res)
+          local json = cjson.decode(body)
+          assert.is_string(json.password)
+          assert.not_equal(" kong ", json.password)
+
+          local crypto = require "kong.plugins.basic-auth.crypto"
+          local hash   = crypto.encrypt {
+            consumer_id = consumer.id,
+            password    = " kong "
           }
           assert.equal(hash, json.password)
         end)

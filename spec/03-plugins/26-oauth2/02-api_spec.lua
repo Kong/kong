@@ -14,9 +14,13 @@ for _, strategy in helpers.each_strategy() do
     setup(function()
       bp, db, dao = helpers.get_db_utils(strategy)
 
-      assert(db:truncate())
-      dao:truncate_tables()
-      assert(dao:run_migrations())
+      assert(db:truncate("routes"))
+      assert(db:truncate("services"))
+      assert(db:truncate("consumers"))
+      dao:truncate_table("plugins")
+      dao:truncate_table("oauth2_tokens")
+      dao:truncate_table("oauth2_credentials")
+      dao:truncate_table("oauth2_authorization_codes")
 
       helpers.prepare_prefix()
 
@@ -251,7 +255,9 @@ for _, strategy in helpers.each_strategy() do
       local credential
       before_each(function()
         dao:truncate_table("oauth2_credentials")
-        assert(db:truncate())
+        assert(db:truncate("routes"))
+        assert(db:truncate("services"))
+        assert(db:truncate("consumers"))
 
         service = bp.services:insert({ host = "oauth2_token.com" })
         consumer = bp.consumers:insert({ username = "bob" })

@@ -32,7 +32,7 @@ for _, strategy in helpers.each_strategy() do
 
     before_each(function()
       helpers.stop_kong()
-      assert(db:truncate())
+      assert(db:truncate("services"))
       assert(helpers.start_kong({
         database = strategy,
       }))
@@ -752,9 +752,10 @@ for _, strategy in helpers.each_strategy() do
             local json = cjson.decode(body)
             assert.same(
               {
-                name    = "schema violation",
-                code    = Errors.codes.SCHEMA_VIOLATION,
-                message = unindent([[
+                name     = "schema violation",
+                strategy = strategy,
+                code     = Errors.codes.SCHEMA_VIOLATION,
+                message  = unindent([[
                   2 schema violations
                   (host: required field missing;
                   path: should start with: /)

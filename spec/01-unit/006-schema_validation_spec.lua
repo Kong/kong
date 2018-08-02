@@ -64,6 +64,45 @@ describe("Schemas", function()
       end)
     end)
 
+    describe("[string]", function()
+      it("should trim whitespace from value with no trim_whitespace property set", function()
+        local values = {string = " kong "}
+
+        local valid, err = validate_entity(values, schema)
+        assert.True(valid)
+        assert.falsy(err)
+        assert.are.same("kong", values.string)
+      end)
+      it("should trim whitespace from value with trim_whitespace = true", function()
+        local trim_schema = {
+          fields = {
+            string = { type = "string", trim_whitespace = true},
+          }
+        }
+
+        local values = {string = " kong "}
+
+        local valid, err = validate_entity(values, trim_schema)
+        assert.True(valid)
+        assert.falsy(err)
+        assert.are.same("kong", values.string)
+      end)
+      it("should not trim whitespace from value with trim_whitespace = false", function()
+        local notrim_schema = {
+          fields = {
+            string = { type = "string", trim_whitespace = false},
+          }
+        }
+
+        local values = {string = " kong "}
+
+        local valid, err = validate_entity(values, notrim_schema)
+        assert.True(valid)
+        assert.falsy(err)
+        assert.are.same(" kong ", values.string)
+      end)
+    end)
+
     describe("[type]", function()
       --[]
       it("should validate the type of a property if it has a type field", function()

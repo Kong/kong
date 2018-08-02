@@ -16,6 +16,7 @@ describe("Admin API post-processing", function()
 
   setup(function()
     assert(helpers.dao:run_migrations())
+    helpers.dao:truncate_table("plugins")
     assert(helpers.start_kong {
       plugins = "bundled, admin-api-post-process, dummy"
     })
@@ -32,7 +33,7 @@ describe("Admin API post-processing", function()
   end)
 
   before_each(function()
-    helpers.dao:truncate_tables()
+    helpers.dao:truncate_table("plugins")
     plugin =  helpers.dao.plugins:insert({
       name = "admin-api-post-process",
     })

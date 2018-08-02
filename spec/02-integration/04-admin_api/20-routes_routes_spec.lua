@@ -23,7 +23,7 @@ for _, strategy in helpers.each_strategy() do
     local client
 
     setup(function()
-      bp, db, dao = helpers.get_db_utils(strategy)
+      bp, db, dao = helpers.get_db_utils(strategy, {})
     end)
 
     teardown(function()
@@ -32,7 +32,8 @@ for _, strategy in helpers.each_strategy() do
 
     before_each(function()
       helpers.stop_kong()
-      assert(db:truncate())
+      assert(db:truncate("routes"))
+      assert(db:truncate("services"))
       assert(helpers.start_kong({
         database = strategy,
       }))
@@ -117,14 +118,15 @@ for _, strategy in helpers.each_strategy() do
               })
               local body = assert.res_status(400, res)
               assert.same({
-                code    = Errors.codes.SCHEMA_VIOLATION,
-                name    = "schema violation",
-                message = unindent([[
+                code     = Errors.codes.SCHEMA_VIOLATION,
+                name     = "schema violation",
+                strategy = strategy,
+                message  = unindent([[
                   2 schema violations
                   (at least one of these fields must be non-empty: 'methods', 'hosts', 'paths';
                   service: required field missing)
                 ]], true, true),
-                fields  = {
+                fields = {
                   service   = "required field missing",
                   ["@entity"] = {
                     "at least one of these fields must be non-empty: 'methods', 'hosts', 'paths'"
@@ -142,12 +144,13 @@ for _, strategy in helpers.each_strategy() do
               })
               body = assert.res_status(400, res)
               assert.same({
-                code    = Errors.codes.SCHEMA_VIOLATION,
-                name    = "schema violation",
-                message = "2 schema violations " ..
+                code     = Errors.codes.SCHEMA_VIOLATION,
+                name     = "schema violation",
+                strategy = strategy,
+                message  = "2 schema violations " ..
                           "(protocols: expected one of: http, https; " ..
                           "service: required field missing)",
-                fields  = {
+                fields = {
                   protocols = "expected one of: http, https",
                   service   = "required field missing",
                 }
@@ -234,9 +237,10 @@ for _, strategy in helpers.each_strategy() do
             local res  = client:get("/routes", { query = { offset = "x" } })
             local body = assert.res_status(400, res)
             assert.same({
-              code    = Errors.codes.INVALID_OFFSET,
-              name    = "invalid offset",
-              message = "'x' is not a valid offset for this strategy: bad base64 encoding"
+              code     = Errors.codes.INVALID_OFFSET,
+              name     = "invalid offset",
+              strategy = strategy,
+              message  = "'x' is not a valid offset for this strategy: bad base64 encoding"
             }, cjson.decode(body))
 
             res  = client:get("/routes", { query = { offset = "potato" } })
@@ -246,8 +250,9 @@ for _, strategy in helpers.each_strategy() do
             json.message = nil
 
             assert.same({
-              code    = Errors.codes.INVALID_OFFSET,
-              name    = "invalid offset",
+              code     = Errors.codes.INVALID_OFFSET,
+              name     = "invalid offset",
+              strategy = strategy,
             }, json)
           end)
 
@@ -268,10 +273,11 @@ for _, strategy in helpers.each_strategy() do
             local body = assert.res_status(400, res)
             local pk = { id = "expected a valid UUID" }
             assert.same({
-              code    = Errors.codes.INVALID_PRIMARY_KEY,
-              name    = "invalid primary key",
-              message = [[invalid primary key: '{id="expected a valid UUID"}']],
-              fields  = pk
+              code     = Errors.codes.INVALID_PRIMARY_KEY,
+              name     = "invalid primary key",
+              strategy = strategy,
+              message  = [[invalid primary key: '{id="expected a valid UUID"}']],
+              fields   = pk
             }, cjson.decode(body))
           end)
         end)
@@ -394,9 +400,10 @@ for _, strategy in helpers.each_strategy() do
                 })
                 local body = assert.res_status(400, res)
                 assert.same({
-                  code    = Errors.codes.SCHEMA_VIOLATION,
-                  name    = "schema violation",
-                  message = unindent([[
+                  code     = Errors.codes.SCHEMA_VIOLATION,
+                  name     = "schema violation",
+                  strategy = strategy,
+                  message  = unindent([[
                   2 schema violations
                   (at least one of these fields must be non-empty: 'methods', 'hosts', 'paths';
                   service: required field missing)
@@ -419,9 +426,10 @@ for _, strategy in helpers.each_strategy() do
                 })
                 body = assert.res_status(400, res)
                 assert.same({
-                  code    = Errors.codes.SCHEMA_VIOLATION,
-                  name    = "schema violation",
-                  message = "2 schema violations " ..
+                  code     = Errors.codes.SCHEMA_VIOLATION,
+                  name     = "schema violation",
+                  strategy = strategy,
+                  message  = "2 schema violations " ..
                     "(protocols: expected one of: http, https; " ..
                     "service: required field missing)",
                   fields  = {
@@ -442,10 +450,11 @@ for _, strategy in helpers.each_strategy() do
                 })
                 local body = assert.res_status(400, res)
                 assert.same({
-                  code    = Errors.codes.SCHEMA_VIOLATION,
-                  name    = "schema violation",
-                  message = "schema violation (regex_priority: expected an integer)",
-                  fields  = {
+                  code     = Errors.codes.SCHEMA_VIOLATION,
+                  name     = "schema violation",
+                  strategy = strategy,
+                  message  = "schema violation (regex_priority: expected an integer)",
+                  fields   = {
                     regex_priority = "expected an integer"
                   },
                 }, cjson.decode(body))
@@ -604,10 +613,11 @@ for _, strategy in helpers.each_strategy() do
                 })
                 local body = assert.res_status(400, res)
                 assert.same({
-                  code    = Errors.codes.SCHEMA_VIOLATION,
-                  name    = "schema violation",
-                  message = "schema violation (regex_priority: expected an integer)",
-                  fields  = {
+                  code     = Errors.codes.SCHEMA_VIOLATION,
+                  name     = "schema violation",
+                  strategy = strategy,
+                  message  = "schema violation (regex_priority: expected an integer)",
+                  fields   = {
                     regex_priority = "expected an integer"
                   },
                 }, cjson.decode(body))
@@ -746,10 +756,11 @@ for _, strategy in helpers.each_strategy() do
                 })
                 local body = assert.res_status(400, res)
                 assert.same({
-                  code    = Errors.codes.SCHEMA_VIOLATION,
-                  name    = "schema violation",
-                  message = "schema violation (connect_timeout: expected an integer)",
-                  fields  = {
+                  code     = Errors.codes.SCHEMA_VIOLATION,
+                  name     = "schema violation",
+                  strategy = strategy,
+                  message  = "schema violation (connect_timeout: expected an integer)",
+                  fields   = {
                     connect_timeout = "expected an integer",
                   },
                 }, cjson.decode(body))

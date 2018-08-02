@@ -66,8 +66,9 @@ for _, strategy in helpers.each_strategy() do
 
     describe("no routes match", function()
       setup(function()
-        assert(db:truncate())
-        dao:truncate_tables()
+        assert(db:truncate("routes"))
+        assert(db:truncate("services"))
+        dao:truncate_table("apis")
 
         assert(helpers.start_kong({
           database = strategy,
@@ -98,8 +99,9 @@ for _, strategy in helpers.each_strategy() do
       local routes
 
       setup(function()
-        assert(db:truncate())
-        dao:truncate_tables()
+        assert(db:truncate("routes"))
+        assert(db:truncate("services"))
+        dao:truncate_table("apis")
 
         routes = insert_routes {
           { -- service-1
@@ -301,8 +303,9 @@ for _, strategy in helpers.each_strategy() do
       local routes1, routes2
 
       setup(function()
-        assert(db:truncate())
-        dao:truncate_tables()
+        assert(db:truncate("routes"))
+        assert(db:truncate("services"))
+        dao:truncate_table("apis")
 
         routes1 = insert_routes {
           {
@@ -378,8 +381,9 @@ for _, strategy in helpers.each_strategy() do
 
     describe("URI regexes order of evaluation with regex_priority", function()
       setup(function()
-        assert(db:truncate())
-        dao:truncate_tables()
+        assert(db:truncate("routes"))
+        assert(db:truncate("services"))
+        dao:truncate_table("apis")
 
         -- TEST 1 (regex_priority)
 
@@ -469,16 +473,15 @@ for _, strategy in helpers.each_strategy() do
     describe("URI arguments (querystring)", function()
 
       setup(function()
-        assert(db:truncate())
-        dao:truncate_tables()
+        assert(db:truncate("routes"))
+        assert(db:truncate("services"))
+        dao:truncate_table("apis")
 
         insert_routes {
           {
             hosts = { "mock_upstream" },
           },
         }
-
-        assert(dao:run_migrations())
 
         assert(helpers.start_kong({
           database   = strategy,
@@ -542,8 +545,9 @@ for _, strategy in helpers.each_strategy() do
       local routes
 
       setup(function()
-        assert(db:truncate())
-        dao:truncate_tables()
+        assert(db:truncate("routes"))
+        assert(db:truncate("services"))
+        dao:truncate_table("apis")
 
         routes = insert_routes {
           {
@@ -598,8 +602,9 @@ for _, strategy in helpers.each_strategy() do
     describe("strip_path", function()
 
       setup(function()
-        assert(db:truncate())
-        dao:truncate_tables()
+        assert(db:truncate("routes"))
+        assert(db:truncate("services"))
+        dao:truncate_table("apis")
 
         insert_routes {
           {
@@ -666,8 +671,9 @@ for _, strategy in helpers.each_strategy() do
     describe("preserve_host", function()
 
       setup(function()
-        assert(db:truncate())
-        dao:truncate_tables()
+        assert(db:truncate("routes"))
+        assert(db:truncate("services"))
+        dao:truncate_table("apis")
 
         insert_routes {
           {
@@ -784,8 +790,9 @@ for _, strategy in helpers.each_strategy() do
       local routes
 
       setup(function()
-        assert(db:truncate())
-        dao:truncate_tables()
+        assert(db:truncate("routes"))
+        assert(db:truncate("services"))
+        dao:truncate_table("apis")
 
         routes = insert_routes {
           {
@@ -839,8 +846,9 @@ for _, strategy in helpers.each_strategy() do
       local routes
 
       setup(function()
-        assert(db:truncate())
-        dao:truncate_tables()
+        assert(db:truncate("routes"))
+        assert(db:truncate("services"))
+        dao:truncate_table("apis")
 
         routes = insert_routes {
           {
@@ -886,8 +894,9 @@ for _, strategy in helpers.each_strategy() do
       local routes
 
       setup(function()
-        assert(db:truncate())
-        dao:truncate_tables()
+        assert(db:truncate("routes"))
+        assert(db:truncate("services"))
+        dao:truncate_table("apis")
 
         routes = insert_routes {
           {
@@ -966,8 +975,9 @@ for _, strategy in helpers.each_strategy() do
       }
 
       setup(function()
-        assert(db:truncate())
-        dao:truncate_tables()
+        assert(db:truncate("routes"))
+        assert(db:truncate("services"))
+        dao:truncate_table("apis")
 
         for i, args in ipairs(checks) do
           assert(insert_routes {

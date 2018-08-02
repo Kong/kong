@@ -109,7 +109,7 @@ for _, strategy in helpers.each_strategy() do
     before_each(function()
       reports_server = mock_reports_server()
 
-      assert(helpers.get_db_utils(strategy))
+      assert(helpers.get_db_utils(strategy, {}))
 
       assert(helpers.start_kong({
         nginx_conf = "spec/fixtures/custom_nginx.template",

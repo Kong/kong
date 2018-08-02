@@ -6,7 +6,7 @@ local function insert_apis(arr)
     return error("expected arg #1 to be a table", 2)
   end
 
-  helpers.dao:truncate_tables()
+  helpers.dao:truncate_table("apis")
 
   for i = 1, #arr do
     assert(helpers.dao.apis:insert(arr[i]))
@@ -29,7 +29,9 @@ describe("Router", function()
   describe("no APIs match", function()
 
     setup(function()
-      helpers.dao:truncate_tables()
+      helpers.dao:truncate_table("apis")
+      helpers.db:truncate("routes")
+      helpers.db:truncate("services")
       helpers.dao:run_migrations()
       assert(helpers.start_kong())
     end)
@@ -180,7 +182,7 @@ describe("Router", function()
 
   describe("URI regexes order of evaluation", function()
     setup(function()
-      helpers.dao:truncate_tables()
+      helpers.dao:truncate_table("apis")
 
       assert(helpers.dao.apis:insert {
         name = "api-1",
@@ -714,7 +716,7 @@ describe("Router", function()
     }
 
     setup(function()
-      helpers.dao:truncate_tables()
+      helpers.dao:truncate_table("apis")
 
       for i, args in ipairs(checks) do
         assert(helpers.dao.apis:insert {

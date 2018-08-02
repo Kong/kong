@@ -20,7 +20,7 @@ describe("Admin API: #" .. kong_config.database, function()
   setup(function()
 
     local _
-    _, _, dao = helpers.get_db_utils(kong_config.database)
+    _, _, dao = helpers.get_db_utils(kong_config.database, {})
 
     assert(helpers.start_kong{
       database = kong_config.database
@@ -36,7 +36,7 @@ describe("Admin API: #" .. kong_config.database, function()
   describe("/upstreams #" .. kong_config.database, function()
     describe("POST", function()
       before_each(function()
-        dao:truncate_tables()
+        dao:truncate_table("upstreams")
       end)
       it_content_types("creates an upstream with defaults", function(content_type)
         return function()
@@ -447,7 +447,7 @@ describe("Admin API: #" .. kong_config.database, function()
 
     describe("PUT", function()
       before_each(function()
-        dao:truncate_tables()
+        dao:truncate_table("upstreams")
       end)
 
       it_content_types("creates if not exists", function(content_type)
@@ -565,7 +565,7 @@ describe("Admin API: #" .. kong_config.database, function()
 
     describe("GET", function()
       setup(function()
-        dao:truncate_tables()
+        dao:truncate_table("upstreams")
 
         for i = 1, 10 do
           assert(dao.upstreams:insert {
@@ -574,7 +574,7 @@ describe("Admin API: #" .. kong_config.database, function()
         end
       end)
       teardown(function()
-        dao:truncate_tables()
+        dao:truncate_table("upstreams")
       end)
 
       it("retrieves the first page", function()
@@ -640,7 +640,7 @@ describe("Admin API: #" .. kong_config.database, function()
 
       describe("empty results", function()
         setup(function()
-          dao:truncate_tables()
+          dao:truncate_table("upstreams")
         end)
 
         it("data property is an empty array", function()

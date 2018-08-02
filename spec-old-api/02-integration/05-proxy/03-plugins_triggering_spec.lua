@@ -174,7 +174,8 @@ describe("Plugins triggering", function()
       end
 
       helpers.stop_kong()
-      helpers.dao:truncate_tables()
+      helpers.dao:truncate_table("apis")
+      helpers.dao:truncate_table("plugins")
 
 
       do
@@ -389,7 +390,8 @@ describe("Plugins triggering", function()
 
       helpers.stop_kong()
 
-      helpers.dao:truncate_tables()
+      helpers.dao:truncate_table("apis")
+      helpers.dao:truncate_table("plugins")
 
       local api      = assert(helpers.dao.apis:insert {
         name         = "example",

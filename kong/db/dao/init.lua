@@ -221,6 +221,11 @@ function _M.new(db, schema, strategy, errors)
 end
 
 
+function DAO:truncate()
+  return self.strategy:truncate()
+end
+
+
 function DAO:select(primary_key)
   if type(primary_key) ~= "table" then
     error("primary_key must be a table", 2)

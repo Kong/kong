@@ -7,7 +7,7 @@ local function insert_apis(arr)
     return error("expected arg #1 to be a table", 2)
   end
 
-  helpers.dao:truncate_tables()
+  helpers.dao:truncate_table("apis")
 
   for i = 1, #arr do
     assert(helpers.dao.apis:insert(arr[i]))
