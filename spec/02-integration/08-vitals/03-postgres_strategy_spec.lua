@@ -46,9 +46,7 @@ dao_helpers.for_each_dao(function(kong_conf)
       assert(db:query("truncate table vitals_stats_seconds"))
       assert(db:query("truncate table vitals_stats_seconds_2"))
       assert(db:query("truncate table vitals_node_meta"))
-      assert(db:query("truncate table vitals_consumers"))
       assert(db:query("truncate table vitals_code_classes_by_cluster"))
-      assert(db:query("truncate table vitals_codes_by_service"))
       assert(db:query("truncate table vitals_codes_by_route"))
       assert(db:query("truncate table vitals_codes_by_consumer_route"))
       assert(db:query("truncate table vitals_locks"))
@@ -67,9 +65,7 @@ dao_helpers.for_each_dao(function(kong_conf)
       assert(db:query("truncate table vitals_stats_seconds_2"))
       assert(db:query("truncate table missing_seconds_table"))
       assert(db:query("truncate table vitals_node_meta"))
-      assert(db:query("truncate table vitals_consumers"))
       assert(db:query("truncate table vitals_code_classes_by_cluster"))
-      assert(db:query("truncate table vitals_codes_by_service"))
       assert(db:query("truncate table vitals_codes_by_route"))
       assert(db:query("truncate table vitals_codes_by_consumer_route"))
       assert(db:query("truncate table vitals_locks"))
@@ -1789,45 +1785,7 @@ dao_helpers.for_each_dao(function(kong_conf)
       local uuid_2 = utils.uuid()
 
       before_each(function()
-        db:query("TRUNCATE vitals_codes_by_service")
         db:query("TRUNCATE vitals_codes_by_route")
-      end)
-
-      it("cleans up vitals_codes_by_service", function()
-        local data = {
-          { uuid, 404, 1510560000, 1, 1 },
-          { uuid_2, 404, 1510560001, 1, 5 },
-          { uuid, 404, 1510560002, 1, 4 },
-          { uuid, 404, 1510560000, 60, 19 },
-          { uuid_2, 404, 1510560000, 60, 14 },
-          { uuid, 500, 1510560001, 1, 5 },
-          { uuid_2, 500, 1510560002, 1, 8 },
-          { uuid, 500, 1510560000, 60, 20 },
-          { uuid, 500, 1510560060, 60, 24 },
-        }
-
-        local q = [[
-          insert into vitals_codes_by_service(service_id, code, at, duration, count)
-          values('%s', '%s', to_timestamp(%d), %d, %d)
-        ]]
-
-        for _, v in ipairs(data) do
-          assert(db:query(fmt(q, unpack(v))))
-        end
-
-        local opts = {
-          entity_type = "service",
-          minutes = 1510560001,
-          seconds = 1510560002,
-        }
-
-        local res, err = strategy:delete_status_codes(opts)
-
-        assert.is_nil(err)
-        assert.same(6, res)
-
-        local res = db:query("select count(*) from vitals_codes_by_service")
-        assert.same(3, res[1].count)
       end)
 
       it("cleans up vitals_codes_by_route", function()

@@ -441,20 +441,24 @@ dao_helpers.for_each_dao(function(kong_conf)
 
     describe("flush_vitals_cache()", function()
       before_each(function()
-        assert(dao.db:truncate_table("vitals_consumers"))
+        if dao.db.name == "cassandra" then
+          assert(dao.db:truncate_table("vitals_consumers"))
+          assert(dao.db:truncate_table("vitals_codes_by_service"))
+        end
         assert(dao.db:truncate_table("vitals_code_classes_by_cluster"))
         assert(dao.db:truncate_table("vitals_codes_by_route"))
-        assert(dao.db:truncate_table("vitals_codes_by_service"))
         assert(dao.db:truncate_table("vitals_codes_by_consumer_route"))
       end)
 
       after_each(function()
         vitals.counter_cache:flush_all() -- mark expired
         vitals.counter_cache:flush_expired() -- really clean them up
-        assert(dao.db:truncate_table("vitals_consumers"))
+        if dao.db.name == "cassandra" then
+          assert(dao.db:truncate_table("vitals_consumers"))
+          assert(dao.db:truncate_table("vitals_codes_by_service"))
+        end
         assert(dao.db:truncate_table("vitals_code_classes_by_cluster"))
         assert(dao.db:truncate_table("vitals_codes_by_route"))
-        assert(dao.db:truncate_table("vitals_codes_by_service"))
         assert(dao.db:truncate_table("vitals_codes_by_consumer_route"))
       end)
 
@@ -754,7 +758,9 @@ dao_helpers.for_each_dao(function(kong_conf)
       local cons_id = utils.uuid()
 
       after_each(function()
-        assert(dao.db:query("truncate table vitals_consumers"))
+        if dao.db.name == "cassandra" then
+          assert(dao.db:query("truncate table vitals_consumers"))
+        end
         assert(dao.db:query("truncate table vitals_node_meta"))
         assert(dao.db:query("truncate table vitals_codes_by_consumer_route"))
       end)

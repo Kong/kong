@@ -552,4 +552,11 @@ return {
       DELETE FROM consumer_types;
     ]]
   },
+  {
+    name = "2018-07-30-038822_remove_old_vitals_tables",
+    up = [[
+      DROP TABLE vitals_codes_by_service;
+      DROP TABLE vitals_consumers;
+    ]]
+  },
 }
