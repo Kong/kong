@@ -2,13 +2,6 @@ local helpers = require "spec.helpers"
 
 describe("<dao>:cache_key()", function()
   describe("generates unique cache keys for core entities", function()
-    it("(Consumers)", function()
-      local consumer_id = "59c7fb5e-3430-11e7-b51f-784f437104fa"
-
-      local cache_key = helpers.db.consumers:cache_key(consumer_id)
-      assert.equal("consumers:" .. consumer_id .. "::::", cache_key)
-    end)
-
     it("(Plugins)", function()
       local name        = "my-plugin"
       local api_id      = "7c46b5f8-3430-11e7-afec-784f437104fa"

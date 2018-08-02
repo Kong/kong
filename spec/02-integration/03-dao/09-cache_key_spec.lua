@@ -5,7 +5,13 @@ describe("<dao>:cache_key()", function()
     it("(Consumers)", function()
       local consumer_id = "59c7fb5e-3430-11e7-b51f-784f437104fa"
 
+      -- raw string is a backwards-compatible alternative for entities
+      -- with an `id` as their primary key
       local cache_key = helpers.db.consumers:cache_key(consumer_id)
+      assert.equal("consumers:" .. consumer_id .. "::::", cache_key)
+
+      -- primary key in table form works the same
+      cache_key = helpers.db.consumers:cache_key({ id = consumer_id })
       assert.equal("consumers:" .. consumer_id .. "::::", cache_key)
     end)
 

@@ -163,46 +163,55 @@ return {
       local cluster_events = singletons.cluster_events
 
 
+      -- get a cache key using either the old or new DAO
+      local function get_cache_key(data, entity)
+        if data.schema.table then
+          return dao[data.schema.table]:entity_cache_key(entity)
+        else
+          return db[data.schema.name]:cache_key(entity)
+        end
+      end
+
+
       -- events dispatcher
 
 
       worker_events.register(function(data)
-        if not data.new_db then
-          if not data.schema then
-            log(ngx.ERR, "[events] missing schema in crud subscriber")
-            return
-          end
+        if not data.schema then
+          log(ngx.ERR, "[events] missing schema in crud subscriber")
+          return
+        end
 
-          if not data.entity then
-            log(ngx.ERR, "[events] missing entity in crud subscriber")
-            return
-          end
+        if not data.entity then
+          log(ngx.ERR, "[events] missing entity in crud subscriber")
+          return
+        end
 
-          -- invalidate this entity anywhere it is cached if it has a
-          -- caching key
+        -- invalidate this entity anywhere it is cached if it has a
+        -- caching key
 
-          local cache_key = dao[data.schema.table]:entity_cache_key(data.entity)
+        local cache_key = get_cache_key(data, data.entity)
+
+        if cache_key then
+          cache:invalidate(cache_key)
+        end
+
+        -- if we had an update, but the cache key was part of what was updated,
+        -- we need to invalidate the previous entity as well
+
+        if data.old_entity then
+          cache_key = get_cache_key(data, data.old_entity)
           if cache_key then
             cache:invalidate(cache_key)
           end
-
-          -- if we had an update, but the cache key was part of what was updated,
-          -- we need to invalidate the previous entity as well
-
-          if data.old_entity then
-            cache_key = dao[data.schema.table]:entity_cache_key(data.old_entity)
-            if cache_key then
-              cache:invalidate(cache_key)
-            end
-          end
-
-          if not data.operation then
-            log(ngx.ERR, "[events] missing operation in crud subscriber")
-            return
-          end
         end
 
-        -- new DB module and old DAO: public worker events propagation
+        if not data.operation then
+          log(ngx.ERR, "[events] missing operation in crud subscriber")
+          return
+        end
+
+        -- public worker events propagation
 
         local entity_channel           = data.schema.table or data.schema.name
         local entity_operation_channel = fmt("%s:%s", entity_channel,

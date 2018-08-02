@@ -7,6 +7,7 @@ local require      = require
 local error        = error
 local pairs        = pairs
 local floor        = math.floor
+local null         = ngx.null
 local type         = type
 local next         = next
 local log          = ngx.log
@@ -915,7 +916,6 @@ function DAO:post_crud_event(operation, entity)
     local _, err = self.events.post_local("dao:crud", operation, {
       operation = operation,
       schema    = self.schema,
-      new_db    = true,
       entity    = entity,
     })
     if err then
@@ -925,14 +925,53 @@ function DAO:post_crud_event(operation, entity)
 end
 
 
-function DAO:cache_key(arg1, arg2, arg3, arg4, arg5)
-  return fmt("%s:%s:%s:%s:%s:%s",
-             self.schema.name,
-             arg1 == nil and "" or arg1,
-             arg2 == nil and "" or arg2,
-             arg3 == nil and "" or arg3,
-             arg4 == nil and "" or arg4,
-             arg5 == nil and "" or arg5)
+function DAO:cache_key(key, arg2, arg3, arg4, arg5)
+
+  -- Fast path: passing the cache_key/primary_key entries in
+  -- order as arguments, this produces the same result as
+  -- the generic code below, but building the cache key
+  -- becomes a single string.format operation
+
+  if type(key) == "string" then
+    return fmt("%s:%s:%s:%s:%s:%s", self.schema.name,
+               key == nil and "" or key,
+               arg2 == nil and "" or arg2,
+               arg3 == nil and "" or arg3,
+               arg4 == nil and "" or arg4,
+               arg5 == nil and "" or arg5)
+  end
+
+  -- Generic path: build the cache key from the fields
+  -- listed in cache_key or primary_key
+
+  if type(key) ~= "table" then
+    error("key must be a string or an entity table", 2)
+  end
+
+  local values = new_tab(5, 0)
+  values[1] = self.schema.name
+  local source = self.schema.cache_key or self.schema.primary_key
+
+  local i = 2
+  for _, name in ipairs(source) do
+    local field = self.schema.fields[name]
+    local value = key[name]
+    if field.type == "foreign" then
+      -- FIXME extract foreign key, do not assume `id`
+      if value == null or value == nil then
+        value = ""
+      else
+        value = value.id
+      end
+    end
+    values[i] = tostring(value)
+    i = i + 1
+  end
+  for n = i, 6 do
+    values[n] = ""
+  end
+
+  return table.concat(values, ":")
 end
 
 
