@@ -10,7 +10,7 @@ helpers.for_each_dao(function(kong_config)
     setup(function()
       -- some `setup` functions also use `factory` and they run before the `before_each` chain
       -- hence we need to set it here, and again in `before_each`.
-      local db = DB.new(kong_config)
+      local db = assert(DB.new(kong_config))
       assert(db:init_connector())
       factory = assert(Factory.new(kong_config, db))
       factory:drop_schema()
@@ -21,7 +21,7 @@ helpers.for_each_dao(function(kong_config)
     end)
 
     before_each(function()
-      local db = DB.new(kong_config)
+      local db = assert(DB.new(kong_config))
       assert(db:init_connector())
       factory = assert(Factory.new(kong_config, db))
     end)
