@@ -109,9 +109,7 @@ local function create_legacy_wrappers(self, constraints)
       end,
 
       entity_cache_key = function(_, entity)
-        log.debug(debug.traceback("[legacy wrapper] using legacy wrapper"))
-        log.err("[legacy wrapper] entity_cache_key not implemented")
-        return nil
+        return new_dao:cache_key(entity)
       end,
 
       insert = function(_, tbl, opts)

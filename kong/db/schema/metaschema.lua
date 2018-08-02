@@ -142,6 +142,7 @@ local meta_errors = {
   FIELDS_ARRAY = "each entry in fields must be a sub-table",
   FIELDS_KEY = "each key in fields must be a string",
   ENDPOINT_KEY = "value must be a field name",
+  CACHE_KEY = "values must be field names",
   TTL_RESERVED = "ttl is a reserved field name when ttl is enabled",
   SUBSCHEMA_KEY = "value must be a field name",
   SUBSCHEMA_KEY_STRING = "must be a string field",
@@ -292,6 +293,15 @@ local MetaSchema = Schema.new({
       },
     },
     {
+      cache_key = {
+        type = "array",
+        elements = {
+          type = "string",
+        },
+        nilable = true,
+      },
+    },
+    {
       ttl = {
         type = "boolean",
         nilable = true,
@@ -348,6 +358,23 @@ local MetaSchema = Schema.new({
       end
       if not found then
         errors["endpoint_key"] = meta_errors.ENDPOINT_KEY
+      end
+    end
+
+    if schema.cache_key then
+      for _, e in ipairs(schema.cache_key) do
+        local found = false
+        for _, item in ipairs(schema.fields) do
+          local k = next(item)
+          if e == k then
+            found = true
+            break
+          end
+        end
+        if not found then
+          errors["cache_key"] = meta_errors.CACHE_KEY
+          break
+        end
       end
     end
 
