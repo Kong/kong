@@ -84,7 +84,7 @@ local function generate_foreign_key_methods(schema)
         return entities, nil, nil, new_offset
       end
 
-    elseif field.unique then
+    elseif field.unique or schema.endpoint_key == name then
       local function validate_unique_value(unique_value)
         local ok, err = schema:validate_field(field, unique_value)
         if not ok then

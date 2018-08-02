@@ -81,7 +81,7 @@ function _M.new(dao, db)
   end)
 
   local upstream_name_seq = new_sequence("upstream-%d")
-  res.upstreams = new_blueprint(dao.upstreams, function(overrides)
+  res.upstreams = new_blueprint(db.upstreams, function(overrides)
     local slots = overrides.slots or 100
 
     return {
@@ -99,9 +99,10 @@ function _M.new(dao, db)
     }
   end)
 
-  res.targets = new_blueprint(dao.targets, function()
+  res.targets = new_blueprint(db.targets, function(overrides)
     return {
       weight = 10,
+      upstream = overrides.upstream or res.upstreams:insert(),
     }
   end)
 

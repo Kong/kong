@@ -15,7 +15,7 @@ local pcall        = pcall
 local floor        = math.floor
 local type         = type
 local next         = next
-local time         = ngx.time
+local ngx_now      = ngx.now
 local null         = ngx.null
 local max          = math.max
 local sub          = string.sub
@@ -1058,7 +1058,7 @@ end
 -- appropriate updated values.
 function Schema:process_auto_fields(input, context)
   local output = tablex.deepcopy(input)
-  local now = time()
+  local now = ngx_now()
 
   for key, field in self:each_field() do
     if field.auto then
