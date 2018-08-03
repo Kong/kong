@@ -47,7 +47,7 @@ Finally, new bundled plugins allow Kong to better integrate with **Cloud
 Native** environments, such as Zipkin and Prometheus.
 
 As usual, major version upgrades require database migrations and changes to the
-NGINX configuration file (if you customized the default template). Please take
+Nginx configuration file (if you customized the default template). Please take
 a few minutes to read the [0.14 Upgrade
 Path](https://github.com/Kong/kong/blob/master/UPGRADE.md#upgrade-to-014x) for
 more details regarding breaking changes and migrations before planning to
@@ -113,7 +113,7 @@ upgrade your Kong cluster.
 
 ##### Core
 
-- :fireworks" Serve stale data from the database cache when the datastore
+- :fireworks: Serve stale data from the database cache when the datastore
   cannot be reached. Such stale items are "resurrected" for `db_resurrect_ttl`
   seconds (see configuration section).
   [#3579](https://github.com/Kong/kong/pull/3579)
@@ -436,7 +436,7 @@ separation of concerns and allowing for plugins to be applied to specific
 **endpoints**.
 
 As usual, major version upgrades require database migrations and changes to
-the NGINX configuration file (if you customized the default template).
+the Nginx configuration file (if you customized the default template).
 Please take a few minutes to read the [0.13 Upgrade
 Path](https://github.com/Kong/kong/blob/master/UPGRADE.md#upgrade-to-013x) for
 more details regarding breaking changes and migrations before planning to
@@ -473,7 +473,7 @@ upgrade your Kong cluster.
 
 - **Note to Docker users**: The `latest` tag on Docker Hub now points to the
   **alpine** image instead of CentOS. This also applies to the `0.13.0` tag.
-- The Openresty version shipped with our default packages has been bumped to
+- The OpenResty version shipped with our default packages has been bumped to
   `1.13.6.1`. The 0.13.0 release should still be compatible with the OpenResty
   `1.11.2.x` series for the time being.
 - Bumped [lua-resty-dns-client](https://github.com/Kong/lua-resty-dns-client)
