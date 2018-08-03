@@ -30,7 +30,7 @@ for _, strategy in helpers.each_strategy() do
 
       local routes = {}
 
-      for i = 1, 11 do
+      for i = 1, 12 do
         routes[i] = bp.routes:insert {
           hosts = { "jwt" .. i .. ".com" },
         }
@@ -113,6 +113,12 @@ for _, strategy in helpers.each_strategy() do
         name     = "jwt",
         route = { id = routes[11].id },
         config   = { claims_to_verify = {"nbf", "exp"}, maximum_expiration = 300 },
+      })
+
+      plugins:insert({
+        name     = "jwt",
+        route = { id = routes[12].id },
+        config   = { header_names = { "CustomAuthorization" } },
       })
 
       plugins:insert({
@@ -466,6 +472,32 @@ for _, strategy in helpers.each_strategy() do
           }
         })
         assert.res_status(401, res)
+      end)
+      it("returns 200 without cookies but with a JWT token in the CustomAuthorization header", function()
+        PAYLOAD.iss = jwt_secret.key
+        local jwt = jwt_encoder.encode(PAYLOAD, jwt_secret.secret)
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/request",
+          headers = {
+            ["Host"] = "jwt12.com",
+            ["CustomAuthorization"] = "Bearer " .. jwt,
+          }
+        })
+        assert.res_status(200, res)
+      end)
+      it("finds the JWT in the first header occurrence of a duplicated custom authorization header", function()
+        PAYLOAD.iss = jwt_secret.key
+        local jwt = jwt_encoder.encode(PAYLOAD, jwt_secret.secret)
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/request",
+          headers = {
+            ["Host"] = "jwt12.com",
+            ["CustomAuthorization"] = {"Bearer " .. jwt, "Bearer other-token"}
+          }
+        })
+        assert.res_status(200, res)
       end)
       it("finds the JWT if given in URL parameters", function()
         PAYLOAD.iss = jwt_secret.key

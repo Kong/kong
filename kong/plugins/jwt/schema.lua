@@ -29,6 +29,11 @@ return {
             default = 0,
             between = { 0, 31536000 },
           }, },
+          { header_names = {
+            type = "set",
+            elements = { type = "string" },
+            default = { "authorization" },
+          }, },
         },
       },
     },
