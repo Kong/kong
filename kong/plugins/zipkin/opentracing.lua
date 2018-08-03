@@ -211,11 +211,11 @@ function OpenTracingHandler:log(conf)
 	if ctx.authenticated_credentials then
 		request_span:set_tag("kong.credential", ctx.authenticated_credentials.id)
 	end
-	if ctx.route then
-		proxy_span:set_tag("kong.route", ctx.route.id)
-	end
 	if ctx.service then
 		proxy_span:set_tag("kong.service", ctx.service.id)
+		if ctx.route then
+			proxy_span:set_tag("kong.route", ctx.route.id)
+		end
 		if ctx.service.name ~= ngx.null then
 			proxy_span:set_tag("peer.service", ctx.service.name)
 		end
