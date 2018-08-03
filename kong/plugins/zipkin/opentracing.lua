@@ -208,8 +208,8 @@ function OpenTracingHandler:log(conf)
 	if ctx.authenticated_consumer then
 		request_span:set_tag("kong.consumer", ctx.authenticated_consumer.id)
 	end
-	if ctx.authenticated_credentials then
-		request_span:set_tag("kong.credential", ctx.authenticated_credentials.id)
+	if ctx.authenticated_credential then
+		request_span:set_tag("kong.credential", ctx.authenticated_credential.id)
 	end
 	if ctx.service and ctx.service.id then
 		proxy_span:set_tag("kong.service", ctx.service.id)
