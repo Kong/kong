@@ -31,10 +31,6 @@ local function handle_error(err_t)
     responses.send(500, tostring(err_t))
   end
 
-  if err_t.strategy then
-    err_t.strategy = nil
-  end
-
   local status = ERRORS_HTTP_CODES[err_t.code]
   if not status or status == 500 then
     return app_helpers.yield_error(err_t)
