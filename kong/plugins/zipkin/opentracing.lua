@@ -174,25 +174,25 @@ function OpenTracingHandler:log(conf)
 		opentracing.access_span:finish(ctx.KONG_ACCESS_ENDED_AT / 1000)
 	end
 
-	local balancer_address = ctx.balancer_address
-	if balancer_address then
-		local balancer_tries = balancer_address.tries
-		for i=1, balancer_address.try_count do
+	local balancer_data = ctx.balancer_data
+	if balancer_data then
+		local balancer_tries = balancer_data.tries
+		for i=1, balancer_data.try_count do
 			local try = balancer_tries[i]
 			local span = proxy_span:start_child_span("kong.balancer", try.balancer_start / 1000)
 			span:set_tag(ip_tag(try.ip), try.ip)
 			span:set_tag("peer.port", try.port)
 			span:set_tag("kong.balancer.try", i)
-			if i < balancer_address.try_count then
+			if i < balancer_data.try_count then
 				span:set_tag("error", true)
 				span:set_tag("kong.balancer.state", try.state)
 				span:set_tag("kong.balancer.code", try.code)
 			end
 			span:finish((try.balancer_start + try.balancer_latency) / 1000)
 		end
-		proxy_span:set_tag("peer.hostname", balancer_address.hostname) -- could be nil
-		proxy_span:set_tag(ip_tag(balancer_address.ip), balancer_address.ip)
-		proxy_span:set_tag("peer.port", balancer_address.port)
+		proxy_span:set_tag("peer.hostname", balancer_data.hostname) -- could be nil
+		proxy_span:set_tag(ip_tag(balancer_data.ip), balancer_data.ip)
+		proxy_span:set_tag("peer.port", balancer_data.port)
 	end
 
 	if not opentracing.header_filter_finished and opentracing.header_filter_span then
