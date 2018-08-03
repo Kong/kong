@@ -55,7 +55,6 @@ describe("Plugin: prometheus (custom server)",function()
     	  path    = "/metrics",
     	})
     	local body = assert.res_status(200, res)
-    	assert.matches('kong_http_status_total{code="200"} 1', body, nil, true)
     	assert.matches('kong_http_status{code="200",service="mock-service"} 1', body, nil, true)
     end)
   end)

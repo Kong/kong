@@ -29,16 +29,6 @@ local function init()
                                          {"state"})
   metrics.db_reachable = prometheus:gauge("datastore_reachable",
                                           "Datastore reachable from Kong, 0 is unreachable")
-  metrics.status_total = prometheus:counter("http_status_total",
-                                            "HTTP status codes aggreggated across all services in Kong",
-                                            {"code"})
-  metrics.latency_total = prometheus:histogram("latency_total",
-                                               "Latency added by Kong, total request time and upstream latency aggreggated across all services in Kong",
-                                               {"type"},
-                                               DEFAULT_BUCKETS) -- TODO make this configurable
-  metrics.bandwidth_total = prometheus:counter("bandwidth_total",
-                                               "Total bandwidth in bytes for all proxied requests in Kong",
-                                               {"type"})
 
   -- per service
   metrics.status = prometheus:counter("http_status",
@@ -67,36 +57,30 @@ local function log(message)
   service_name = service_name or ""
 
   metrics.status:inc(1, { message.response.status, service_name })
-  metrics.status_total:inc(1, { message.response.status })
 
   local request_size = tonumber(message.request.size)
   if request_size and request_size > 0 then
     metrics.bandwidth:inc(request_size, { "ingress", service_name })
-    metrics.bandwidth_total:inc(request_size, { "ingress" })
   end
 
   local response_size = tonumber(message.response.size)
   if response_size and response_size > 0 then
     metrics.bandwidth:inc(response_size, { "egress", service_name })
-    metrics.bandwidth_total:inc(response_size, { "egress" })
   end
 
   local request_latency = tonumber(message.latencies.request)
   if request_latency and request_latency >= 0 then
     metrics.latency:observe(request_latency, { "request", service_name })
-    metrics.latency_total:observe(request_latency, { "request" })
   end
 
   local upstream_latency = tonumber(message.latencies.proxy)
   if upstream_latency ~= nil and upstream_latency >= 0 then
     metrics.latency:observe(upstream_latency, {"upstream", service_name })
-    metrics.latency_total:observe(upstream_latency, { "upstream" })
   end
 
   local kong_proxy_latency = tonumber(message.latencies.kong)
   if kong_proxy_latency ~= nil and kong_proxy_latency >= 0 then
     metrics.latency:observe(kong_proxy_latency, { "kong", service_name })
-    metrics.latency_total:observe(kong_proxy_latency, { "kong" })
   end
 end
 
