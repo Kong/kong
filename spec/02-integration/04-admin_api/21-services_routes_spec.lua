@@ -753,7 +753,6 @@ for _, strategy in helpers.each_strategy() do
             assert.same(
               {
                 name     = "schema violation",
-                strategy = strategy,
                 code     = Errors.codes.SCHEMA_VIOLATION,
                 message  = unindent([[
                   2 schema violations
