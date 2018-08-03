@@ -185,4 +185,157 @@ function DB:set_events_handler(events)
 end
 
 
+do
+  local public = require "kong.tools.public"
+  local resty_lock = require "resty.lock"
+
+
+  local DEFAULT_TTL = 60 -- seconds
+  local MAX_LOCK_WAIT_STEP = 2 -- seconds
+
+
+  local function release_rlock_and_ret(rlock, ...)
+    rlock:unlock()
+
+    return ...
+  end
+
+
+  function DB:cluster_mutex(key, opts, cb)
+    if type(key) ~= "string" then
+      error("key must be a string", 2)
+    end
+
+    local owner
+    local ttl
+
+    if opts ~= nil then
+      if type(opts) ~= "table" then
+        error("opts must be a table", 2)
+      end
+
+      if opts.ttl and type(opts.ttl) ~= "number" then
+        error("opts.ttl must be a number", 2)
+      end
+
+      if opts.owner and type(opts.owner) ~= "string" then
+        error("opts.owner must be a string", 2)
+      end
+
+      owner = opts.owner
+      ttl = opts.ttl
+    end
+
+    if type(cb) ~= "function" then
+      local mt = getmetatable(cb)
+
+      if not mt or type(mt.__call) ~= "function" then
+        error("cb must be a function", 2)
+      end
+    end
+
+    if not owner then
+      -- generate a random string for this worker (resty-cli or runtime nginx
+      -- worker)
+      -- we use the `get_node_id()` public utility, but in the CLI context,
+      -- this value is ephemeral, so no assumptions should be made about the
+      -- real owner of a lock
+      local id, err = public.get_node_id()
+      if not id then
+        return nil, "failed to generate lock owner: " .. err
+      end
+
+      owner = id
+    end
+
+    if not ttl then
+      ttl = DEFAULT_TTL
+    end
+
+    local rlock, err = resty_lock:new("kong_locks", {
+      exptime = ttl,
+      timeout = ttl,
+    })
+    if not rlock then
+      return nil, "failed to create worker lock: " .. err
+    end
+
+    -- acquire a single worker
+
+    local elapsed, err = rlock:lock(key)
+    if not elapsed then
+      if err == "timeout" then
+        return nil, err
+      end
+
+      return nil, "failed to acquire worker lock: " .. err
+    end
+
+    if elapsed ~= 0 then
+      -- we did not acquire the worker lock, but it was released
+      return false
+    end
+
+    -- worker lock acquired, other workers are waiting on it
+    -- now acquire cluster lock via strategy-specific connector
+
+    -- ensure the locks table exists
+    local ok, err = self.connector:setup_locks(DEFAULT_TTL)
+    if not ok then
+      return nil, "failed to setup locks: " .. err
+    end
+
+    local ok, err = self.connector:insert_lock(key, ttl, owner)
+    if err then
+      return release_rlock_and_ret(rlock, nil, "failed to insert cluster lock: "
+                                               .. err)
+    end
+
+    if not ok then
+      -- waiting on cluster lock
+      local step = 0.1
+      local cluster_elapsed = 0
+
+      while cluster_elapsed < ttl do
+        ngx.sleep(step)
+        cluster_elapsed = cluster_elapsed + step
+
+        if cluster_elapsed >= ttl then
+          break
+        end
+
+        local locked, err = self.connector:read_lock(key)
+        if err then
+          return release_rlock_and_ret(rlock, nil, "failed to read cluster " ..
+                                                   "lock: " .. err)
+        end
+
+        if not locked then
+          -- the cluster lock was released
+          return release_rlock_and_ret(rlock, false)
+        end
+
+        step = math.min(step * 3, MAX_LOCK_WAIT_STEP)
+      end
+
+      return release_rlock_and_ret(rlock, nil, "timeout")
+    end
+
+    -- cluster lock acquired, run callback
+
+    local pok, perr = xpcall(cb, debug.traceback)
+    if not pok then
+      self.connector:remove_lock(key, owner)
+
+      return release_rlock_and_ret(rlock, nil, "cluster_mutex callback " ..
+                                   "threw an error: " .. perr)
+    end
+
+    self.connector:remove_lock(key, owner)
+
+    return release_rlock_and_ret(rlock, true)
+  end
+end
+
+
 return DB

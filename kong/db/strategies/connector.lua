@@ -35,4 +35,24 @@ function Connector:truncate()
 end
 
 
+function Connector:setup_locks()
+  error(fmt("setup_locks() not implemented for '%s' strategy", self.database))
+end
+
+
+function Connector:insert_lock()
+  error(fmt("insert_lock() not implemented for '%s' strategy", self.database))
+end
+
+
+function Connector:read_lock()
+  error(fmt("read_lock() not implemented for '%s' strategy", self.database))
+end
+
+
+function Connector:remove_lock()
+  error(fmt("remove_lock() not implemented for '%s' strategy", self.database))
+end
+
+
 return Connector

@@ -309,4 +309,87 @@ function CassandraConnector:truncate_table(table_name)
 end
 
 
+function CassandraConnector:setup_locks(default_ttl)
+  local ok, err = self:connect()
+  if not ok then
+    return nil, err
+  end
+
+  local cql = string.format([[
+    CREATE TABLE IF NOT EXISTS locks(
+      key text PRIMARY KEY,
+      owner text
+    ) WITH default_time_to_live = %d
+  ]], default_ttl)
+
+  local ok, err = self:query(cql)
+  if not ok then
+    self:setkeepalive()
+    return nil, err
+  end
+
+  ok, err = self.cluster:wait_schema_consensus(self.connection)
+  if not ok then
+    self:setkeepalive()
+    return nil, err
+  end
+
+  self:setkeepalive()
+
+  return true
+end
+
+
+function CassandraConnector:insert_lock(key, ttl, owner)
+  local cql = string.format([[
+    INSERT INTO locks(key, owner)
+      VALUES(?, ?)
+      IF NOT EXISTS
+      USING TTL %d
+  ]], ttl)
+
+  local res, err = self:query(cql, { key, owner }, {
+    consistency = cassandra.consistencies.quorum,
+  })
+  if not res then
+    return nil, err
+  end
+
+  res = res[1]
+  if not res then
+    return nil, "unexpected result"
+  end
+
+  return res["[applied]"]
+end
+
+
+function CassandraConnector:read_lock(key)
+  local res, err = self:query([[
+    SELECT * FROM locks WHERE key = ?
+  ]], { key }, {
+    consistency = cassandra.consistencies.serial,
+  })
+  if not res then
+    return nil, err
+  end
+
+  return res[1] ~= nil
+end
+
+
+function CassandraConnector:remove_lock(key, owner)
+  local res, err = self:query([[
+    DELETE FROM locks WHERE key = ? IF owner = ?
+  ]], { key, owner }, {
+    consistency = cassandra.consistencies.quorum,
+  })
+  if not res then
+    return nil, err
+  end
+
+  return true
+end
+
+
 return CassandraConnector
