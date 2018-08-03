@@ -219,6 +219,8 @@ function OpenTracingHandler:log(conf)
 		if ctx.service.name ~= ngx.null then
 			proxy_span:set_tag("peer.service", ctx.service.name)
 		end
+	elseif ctx.api and ctx.api.id then
+		proxy_span:set_tag("kong.api", ctx.api.id)
 	end
 	proxy_span:finish(proxy_end)
 	request_span:finish(now)
