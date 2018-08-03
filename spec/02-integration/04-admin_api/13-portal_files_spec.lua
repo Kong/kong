@@ -713,7 +713,7 @@ describe("Admin API - Developer Portal", function()
         local resp_body_json = cjson.decode(body)
         local message = resp_body_json.message
 
-        assert.equal("Invalid email", message)
+        assert.equal("Invalid email: missing '@' symbol", message)
       end)
 
       it("returns 409 if patched with an email that already exists", function()

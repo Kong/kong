@@ -32,6 +32,24 @@ portal_auto_approve = off
 portal_auth = NONE
 portal_auth_conf = NONE
 
+portal_invite_email = true
+portal_access_request_email = true
+portal_approved_email = true
+
+portal_smtp_host = localhost
+portal_smtp_port = 25
+portal_smtp_starttls = NONE
+portal_smtp_username = NONE
+portal_smtp_password = NONE
+portal_smtp_ssl = NONE
+portal_smtp_auth_type = NONE
+portal_smtp_domain = localhost.localdomain
+portal_smtp_timeout_connect = 60000
+portal_smtp_timeout_send = 60000
+portal_smtp_timeout_read = 60000
+portal_emails_from = NONE
+portal_emails_reply_to = NONE
+
 proxy_url = NONE
 
 proxy_listen = 0.0.0.0:8000, 0.0.0.0:8443 ssl
@@ -115,4 +133,7 @@ lua_package_path = ./?.lua;./?/init.lua;
 lua_package_cpath = NONE
 
 feature_conf_path = NONE
+
+smtp = off
+smtp_admin_emails = NONE
 ]]

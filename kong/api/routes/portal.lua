@@ -1,9 +1,8 @@
-local crud        = require "kong.api.crud_helpers"
-local singletons  = require "kong.singletons"
-local enums       = require "kong.enterprise_edition.dao.enums"
-local utils       = require "kong.portal.utils"
-local cjson       = require "cjson"
-
+local crud          = require "kong.api.crud_helpers"
+local singletons    = require "kong.singletons"
+local enums         = require "kong.enterprise_edition.dao.enums"
+local utils         = require "kong.portal.utils"
+local cjson         = require "cjson.safe"
 
 --- Allowed auth plugins
 -- Table containing allowed auth plugins that the developer portal api
@@ -107,8 +106,25 @@ return {
       return helpers.responses.send_HTTP_OK(self.consumer)
     end,
 
-    PATCH = function(self, dao_factory)
-      crud.patch(self.params, dao_factory.consumers, self.consumer)
+    PATCH = function(self, dao_factory, helpers)
+      -- save the previous status to determine if we should send an approval email
+      local previous_status = self.consumer.status
+
+      crud.patch(self.params, dao_factory.consumers, self.consumer, function(consumer)
+        local res = {consumer = consumer}
+
+        if consumer.status == enums.CONSUMERS.STATUS.APPROVED and
+           consumer.status ~= previous_status then
+          local email_res, err = singletons.portal_emails:approved(consumer.email)
+          if err then
+            return helpers.yield_error(err)
+          end
+
+          res.email = email_res
+        end
+
+        return res
+      end)
     end,
 
     DELETE = function(self, dao_factory)
@@ -219,8 +235,9 @@ return {
     end,
 
     PATCH = function(self, dao_factory, helpers)
-      if utils.validate_email(self.params.email) == nil then
-        return helpers.responses.send_HTTP_BAD_REQUEST("Invalid email")
+      local ok, err = utils.validate_email(self.params.email)
+      if not ok then
+        return helpers.responses.send_HTTP_BAD_REQUEST("Invalid email: " .. err)
       end
 
       local cred_params = {
@@ -329,6 +346,26 @@ return {
       crud.paginated_set(self, dao_factory.credentials, function (row)
         return row.credential_data
       end)
+    end
+  },
+
+  ["/portal/invite"] = {
+    POST = function(self, dao_factory, helpers)
+      if not self.params.emails or next(self.params.emails) == nil then
+        return helpers.responses.send_HTTP_BAD_REQUEST("emails param required")
+      end
+
+      local res, err = singletons.portal_emails:invite(self.params.emails)
+      if err then
+        return helpers.yield_error(err)
+      end
+
+      -- invite email is disabled
+      if not res then
+        return helpers.responses.send_HTTP_NOT_FOUND()
+      end
+
+      return helpers.responses.send_HTTP_OK(res)
     end
   },
 }

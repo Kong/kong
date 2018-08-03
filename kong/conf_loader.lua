@@ -161,6 +161,26 @@ local CONF_INFERENCES = {
   portal_auth = {typ = "string"},
   portal_auth_conf = {typ = "string"},
   portal_auto_approve = {typ = "boolean"},
+  portal_invite_email = {typ = "boolean"},
+  portal_access_request_email = {typ = "boolean"},
+  portal_approved_email = {typ = "boolean"},
+  portal_emails_from = {typ = "string"},
+  portal_emails_reply_to = {typ = "string"},
+
+  portal_smtp_host = {typ = "string"},
+  portal_smtp_port = {typ = "number"},
+  portal_smtp_starttls = {typ = "boolean"},
+  portal_smtp_username = {typ = "string"},
+  portal_smtp_password = {typ = "string"},
+  portal_smtp_ssl = {typ = "boolean"},
+  portal_smtp_auth_type = {typ = "string"},
+  portal_smtp_domain = {typ = "string"},
+  portal_smtp_timeout_connect = {typ = "number"},
+  portal_smtp_timeout_send = {typ = "number"},
+  portal_smtp_timeout_read = {typ = "number"},
+
+  smtp = {typ = "boolean"},
+  smtp_admin_emails = {typ = "array"},
 }
 
 -- List of settings whose values must not be printed when

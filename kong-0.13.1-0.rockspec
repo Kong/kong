@@ -29,6 +29,7 @@ dependencies = {
   "lua_pack == 1.0.5",
   "lua-resty-dns-client == 2.1.0",
   "lua-resty-worker-events == 0.3.2",
+  "lua-resty-mail == 1.0.0",
   "lua-resty-mediador == 0.1.2",
   "lua-resty-redis-connector == 0.03",
   "lua-resty-healthcheck == 0.4.1",
@@ -68,6 +69,7 @@ build = {
     ["kong.enterprise_edition.api_helpers"] = "kong/enterprise_edition/api_helpers.lua",
     ["kong.enterprise_edition.internal_statsd"] = "kong/enterprise_edition/internal_statsd.lua",
     ["kong.enterprise_edition.crud_helpers"] = "kong/enterprise_edition/crud_helpers.lua",
+    ["kong.enterprise_edition.smtp_client"] = "kong/enterprise_edition/smtp_client.lua",
 
     ["kong.templates.nginx"] = "kong/templates/nginx.lua",
     ["kong.templates.nginx_kong"] = "kong/templates/nginx_kong.lua",
@@ -183,6 +185,7 @@ build = {
     ["kong.portal.crud_helpers"] = "kong/portal/crud_helpers.lua",
     ["kong.portal.utils"] = "kong/portal/utils.lua",
     ["kong.portal.migrations.01_initial_files"] = "kong/portal/migrations/01_initial_files.lua",
+    ["kong.portal.emails"] = "kong/portal/emails.lua",
 
     ["kong.vitals"] = "kong/vitals/init.lua",
     ["kong.vitals.cassandra.strategy"] = "kong/vitals/cassandra/strategy.lua",

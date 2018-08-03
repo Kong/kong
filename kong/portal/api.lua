@@ -1,10 +1,11 @@
-local singletons  = require "kong.singletons"
-local app_helpers = require "lapis.application"
-local crud        = require "kong.api.crud_helpers"
-local enums       = require "kong.enterprise_edition.dao.enums"
-local utils       = require "kong.portal.utils"
-local constants   = require "kong.constants"
-local cjson       = require "cjson"
+local singletons    = require "kong.singletons"
+local app_helpers   = require "lapis.application"
+local crud          = require "kong.api.crud_helpers"
+local enums         = require "kong.enterprise_edition.dao.enums"
+local utils         = require "kong.portal.utils"
+local constants     = require "kong.constants"
+local cjson         = require "cjson.safe"
+
 
 
 --- Allowed auth plugins
@@ -122,8 +123,23 @@ return {
     end,
 
     POST = function(self, dao_factory, helpers)
-      if utils.validate_email(self.params.email) == nil then
-        return helpers.responses.send_HTTP_BAD_REQUEST("Invalid email")
+      local ok, err = utils.validate_email(self.params.email)
+      if not ok then
+        return helpers.responses.send_HTTP_BAD_REQUEST("Invalid email: " .. err)
+      end
+
+      if not self.params.meta then
+        return helpers.responses.send_HTTP_BAD_REQUEST("meta param is missing")
+      end
+
+      local meta, err = cjson.decode(self.params.meta)
+      if err then
+        return helpers.responses.send_HTTP_BAD_REQUEST("meta param is invalid")
+      end
+
+      local full_name = meta.full_name
+      if not full_name or full_name == "" then
+        return helpers.responses.send_HTTP_BAD_REQUEST("meta param missing key: 'full_name'")
       end
 
       self.params.type = enums.CONSUMERS.TYPE.DEVELOPER
@@ -187,10 +203,18 @@ return {
           crud.portal_crud.insert_credential(plugin.name,
                                              enums.CONSUMERS.TYPE.DEVELOPER
                                             )(credential)
-          return {
-            credential = credential,
-            consumer = consumer,
-          }
+
+        local res = {
+          credential = credential,
+          consumer = consumer,
+        }
+
+        if consumer.status == enums.CONSUMERS.STATUS.PENDING then
+          local email, err = singletons.portal_emails:access_request(consumer.email, full_name)
+          res.email = email or err
+        end
+
+        return res
         end)
     end,
   },
@@ -381,8 +405,9 @@ return {
     end,
 
     PATCH = function(self, dao_factory, helpers)
-      if utils.validate_email(self.params.email) == nil then
-        return helpers.responses.send_HTTP_BAD_REQUEST("Invalid email")
+      local ok, err = utils.validate_email(self.params.email)
+      if not ok then
+        return helpers.responses.send_HTTP_BAD_REQUEST("Invalid email: " .. err)
       end
 
       if singletons.configuration.portal_auth == "basic-auth" then

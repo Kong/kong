@@ -194,31 +194,31 @@ for _, strategy in helpers.each_strategy('postgres') do
             portal     = true,
             portal_auth = "basic-auth",
             rbac = rbac,
-            portal_auth_config = "{ \"hide_credentials\": true }"
+            portal_auth_config = "{ \"hide_credentials\": true }",
           }))
 
           local consumer_pending = bp.consumers:insert {
             username = "dale",
             type = enums.CONSUMERS.TYPE.DEVELOPER,
-            status = enums.CONSUMERS.STATUS.PENDING
+            status = enums.CONSUMERS.STATUS.PENDING,
           }
 
           consumer_approved = bp.consumers:insert {
             username = "hawk",
             type = enums.CONSUMERS.TYPE.DEVELOPER,
-            status = enums.CONSUMERS.STATUS.APPROVED
+            status = enums.CONSUMERS.STATUS.APPROVED,
           }
 
           assert(dao.basicauth_credentials:insert {
             username    = "dale",
             password    = "kong",
-            consumer_id = consumer_pending.id
+            consumer_id = consumer_pending.id,
           })
 
           assert(dao.basicauth_credentials:insert {
             username    = "hawk",
             password    = "kong",
-            consumer_id = consumer_approved.id
+            consumer_id = consumer_approved.id,
           })
         end)
 
@@ -248,7 +248,7 @@ for _, strategy in helpers.each_strategy('postgres') do
               path = "/" .. proxy_prefix .. "/portal/files",
               headers = {
                 ["Authorization"] = "Basic " .. ngx.encode_base64("dale:kong"),
-              }
+              },
             })
 
             local body = assert.res_status(401, res)
@@ -262,7 +262,7 @@ for _, strategy in helpers.each_strategy('postgres') do
               path = "/" .. proxy_prefix .. "/portal/files",
               headers = {
                 ["Authorization"] = "Basic " .. ngx.encode_base64("hawk:kong"),
-              }
+              },
             })
 
             local body = assert.res_status(200, res)
@@ -282,7 +282,7 @@ for _, strategy in helpers.each_strategy('postgres') do
               path = "/" .. proxy_prefix .. "/portal/files",
               headers = {
                 ["Authorization"] = consumer_auth_header,
-              }
+              },
             })
 
             assert.res_status(405, res_put)
@@ -292,7 +292,7 @@ for _, strategy in helpers.each_strategy('postgres') do
               path = "/" .. proxy_prefix .. "/portal/files",
               headers = {
                 ["Authorization"] = consumer_auth_header,
-              }
+              },
             })
 
             assert.res_status(405, res_patch)
@@ -302,7 +302,7 @@ for _, strategy in helpers.each_strategy('postgres') do
               path = "/" .. proxy_prefix .. "/portal/files",
               headers = {
                 ["Authorization"] = consumer_auth_header,
-              }
+              },
             })
 
             assert.res_status(405, res_post)
@@ -323,13 +323,126 @@ for _, strategy in helpers.each_strategy('postgres') do
         end)
 
         describe("POST", function()
+          it("returns a 400 if email is invalid format", function()
+            local res = assert(client:send {
+              method = "POST",
+              path = "/" .. proxy_prefix .. "/portal/register",
+              body = {
+                email = "grucekonghq.com",
+                password = "kong",
+                meta = "{\"full_name\":\"I Like Turtles\"}",
+              },
+              headers = {["Content-Type"] = "application/json"},
+            })
+
+            local body = assert.res_status(400, res)
+            local resp_body_json = cjson.decode(body)
+            local message = resp_body_json.message
+
+            assert.equal("Invalid email: missing '@' symbol", message)
+          end)
+
+          it("returns a 400 if email is invalid type", function()
+            local res = assert(client:send {
+              method = "POST",
+              path = "/" .. proxy_prefix .. "/portal/register",
+              body = {
+                email = 9000,
+                password = "kong",
+                meta = "{\"full_name\":\"I Like Turtles\"}",
+              },
+              headers = {["Content-Type"] = "application/json"},
+            })
+
+            local body = assert.res_status(400, res)
+            local resp_body_json = cjson.decode(body)
+            local message = resp_body_json.message
+
+            assert.equal("Invalid email: must be a string", message)
+          end)
+
+          it("returns a 400 if email is missing", function()
+            local res = assert(client:send {
+              method = "POST",
+              path = "/" .. proxy_prefix .. "/portal/register",
+              body = {
+                password = "kong",
+                meta = "{\"full_name\":\"I Like Turtles\"}",
+              },
+              headers = {["Content-Type"] = "application/json"},
+            })
+
+            local body = assert.res_status(400, res)
+            local resp_body_json = cjson.decode(body)
+            local message = resp_body_json.message
+
+            assert.equal("Invalid email: missing", message)
+          end)
+
+          it("returns a 400 if meta is missing", function()
+            local res = assert(client:send {
+              method = "POST",
+              path = "/" .. proxy_prefix .. "/portal/register",
+              body = {
+                email = "gruce@konghq.com",
+                password = "kong",
+              },
+              headers = {["Content-Type"] = "application/json"},
+            })
+
+            local body = assert.res_status(400, res)
+            local resp_body_json = cjson.decode(body)
+            local message = resp_body_json.message
+
+            assert.equal("meta param is missing", message)
+          end)
+
+          it("returns a 400 if meta is invalid", function()
+            local res = assert(client:send {
+              method = "POST",
+              path = "/" .. proxy_prefix .. "/portal/register",
+              body = {
+                email = "gruce@konghq.com",
+                password = "kong",
+                meta = "{weird}",
+              },
+              headers = {["Content-Type"] = "application/json"},
+            })
+
+            local body = assert.res_status(400, res)
+            local resp_body_json = cjson.decode(body)
+            local message = resp_body_json.message
+
+            assert.equal("meta param is invalid", message)
+          end)
+
+          it("returns a 400 if meta.full_name key is missing", function()
+            local res = assert(client:send {
+              method = "POST",
+              path = "/" .. proxy_prefix .. "/portal/register",
+              body = {
+                email = "gruce@konghq.com",
+                password = "kong",
+                meta = "{\"something_else\":\"not full name\"}",
+              },
+              headers = {["Content-Type"] = "application/json"},
+            })
+
+            local body = assert.res_status(400, res)
+            local resp_body_json = cjson.decode(body)
+            local message = resp_body_json.message
+
+            assert.equal("meta param missing key: 'full_name'", message)
+          end)
+
           it("registers a developer and set status to pending", function()
             local res = assert(client:send {
               method = "POST",
               path = "/" .. proxy_prefix .. "/portal/register",
               body = {
                 email = "gruce@konghq.com",
-                password = "kong"
+                password = "kong",
+                meta = "{\"full_name\":\"I Like Turtles\"}"
               },
               headers = {["Content-Type"] = "application/json"}
             })
@@ -675,9 +788,9 @@ for _, strategy in helpers.each_strategy('postgres') do
             body = {
               email = "gruce@konghq.com",
               password = "kong",
-              meta = "{\"full_name\":\"I Like Turtles\"}"
+              meta = "{\"full_name\":\"I Like Turtles\"}",
             },
-            headers = {["Content-Type"] = "application/json"}
+            headers = {["Content-Type"] = "application/json"},
           })
 
           assert.res_status(201, res)
@@ -688,9 +801,9 @@ for _, strategy in helpers.each_strategy('postgres') do
             body = {
               email = "fancypants@konghq.com",
               password = "mowmow",
-              meta = "{\"full_name\":\"Old Gregg\"}"
+              meta = "{\"full_name\":\"Old Gregg\"}",
             },
-            headers = {["Content-Type"] = "application/json"}
+            headers = {["Content-Type"] = "application/json"},
           })
 
           local body = assert.res_status(201, res)
@@ -728,7 +841,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             local resp_body_json = cjson.decode(body)
             local message = resp_body_json.message
 
-            assert.equal("Invalid email", message)
+            assert.equal("Invalid email: missing '@' symbol", message)
           end)
 
           it("returns 409 if patched with an email that already exists", function()

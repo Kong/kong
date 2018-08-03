@@ -64,6 +64,7 @@ local internal_proxies = require "kong.enterprise_edition.proxies"
 local vitals = require "kong.vitals"
 local ee = require "kong.enterprise_edition"
 local portal_utils = require "kong.portal.utils"
+local portal_emails = require "kong.portal.emails"
 
 local ngx              = ngx
 local header           = ngx.header
@@ -212,6 +213,7 @@ function Kong.init()
   singletons.db = db
   singletons.license = ee.read_license_info()
   singletons.internal_proxies = internal_proxies.new()
+  singletons.portal_emails = portal_emails.new(config)
 
   local _, err = ee.internal_statsd_init()
   if err then

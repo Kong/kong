@@ -6,62 +6,70 @@ local _M = {}
 -- Validates an email address
 _M.validate_email = function(str)
   if str == nil then
-    return nil
+    return nil, "missing"
   end
 
-  if type(str) ~= 'string' then
-    error("Expected string")
-    return nil
+  if type(str) ~= "string" then
+    return nil, "must be a string"
   end
 
-  local lastAt = str:find("[^%@]+$")
-  local localPart = str:sub(1, (lastAt - 2)) -- Returns the substring before '@' symbol
-  local domainPart = str:sub(lastAt, #str) -- Returns the substring after '@' symbol
+  local at = str:find("@")
+
+  if not at then
+    return nil, "missing '@' symbol"
+  end
+
+  local last_at = str:find("[^%@]+$")
+
+  if not last_at then
+    return nil, "missing domain"
+  end
+
+  local local_part = str:sub(1, (last_at - 2)) -- Returns the substring before '@' symbol
   -- we werent able to split the email properly
-  if localPart == nil then
-    return nil
+  if local_part == nil or local_part == "" then
+    return nil, "missing local-part"
   end
 
-  if domainPart == nil then
-    return nil
+  local domain_part = str:sub(last_at, #str) -- Returns the substring after '@' symbol
+
+  -- This may be redundant
+  if domain_part == nil or domain_part == "" then
+    return nil, "missing domain"
   end
 
   -- local part is maxed at 64 characters
-  if #localPart > 64 then
-    return nil
+  if #local_part > 64 then
+    return nil, "local-part over 64 characters"
   end
 
   -- domains are maxed at 253 characters
-  if #domainPart > 253 then
-    return nil
+  if #domain_part > 253 then
+    return nil, "domain over 253 characters"
   end
 
-  if lastAt >= 65 then
-    return nil
+  local quotes = local_part:find("[\"]")
+  if type(quotes) == "number" and quotes > 1 then
+    return nil, "local-part invalid quotes"
   end
 
-  local quotes = localPart:find("[\"]")
-  if type(quotes) == 'number' and quotes > 1 then
-    return nil
+  if local_part:find("%@+") and quotes == nil then
+    return nil, "local-part invalid '@' character"
   end
 
-  if localPart:find("%@+") and quotes == nil then
-    return nil
+  if not domain_part:find("%.") then
+    return nil, "domain missing '.' character"
   end
 
-  if not domainPart:find("%.") then
-    return nil
+  if domain_part:find("%.%.") then
+    return nil, "domain cannot contain consecutive '.'"
   end
-
-  if domainPart:find("%.%.") then
-    return nil
-  end
-  if localPart:find("%.%.") then
-    return nil
+  if local_part:find("%.%.") then
+    return nil, "local-part cannot contain consecutive '.'"
   end
 
   if not str:match('[%w]*[%p]*%@+[%w]*[%.]?[%w]*') then
-    return nil
+    return nil, "invalid format"
   end
 
   return true
