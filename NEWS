@@ -1,3 +1,10 @@
+UNRELEASED
+
+  - Fix operation when service and/or route are missing (#19)
+  - Fix cause of missing kong.credential field
+  - Support for deprecated Kong "api" entity via kong.api tag
+
+
 0.0.3 - 2018-07-06
 
   - Always pass tag values as strings
