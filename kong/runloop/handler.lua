@@ -306,7 +306,7 @@ return {
               operation, " to workers: ", err)
         end
         -- => to cluster_events handler
-        local key = fmt("%s:%s", operation, target.upstream_id)
+        local key = fmt("%s:%s", operation, target.upstream.id)
         ok, err = cluster_events:broadcast("balancer:targets", key)
         if not ok then
           log(ERR, "failed broadcasting target ", operation, " to cluster: ", err)
@@ -331,7 +331,7 @@ return {
         local ok, err = worker_events.post("balancer", "targets", {
           operation = operation,
           entity = {
-            upstream_id = key,
+            upstream = { id = key },
           }
         })
         if not ok then

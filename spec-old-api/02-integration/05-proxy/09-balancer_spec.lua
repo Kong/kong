@@ -1,4 +1,4 @@
--- these tests only apply to the ring-balancer
+  -- these tests only apply to the ring-balancer
 -- for dns-record balancing see the `dns_spec` files
 
 local helpers = require "spec.helpers"

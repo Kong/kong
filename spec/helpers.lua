@@ -363,7 +363,7 @@ end
 local function http_client(host, port, timeout)
   timeout = timeout or 10000
   local client = assert(http.new())
-  assert(client:connect(host, port))
+  assert(client:connect(host, port), "Could not connect to " .. host .. ":" .. port)
   client:set_timeout(timeout)
   return setmetatable({
     client = client
