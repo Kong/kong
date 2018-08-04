@@ -1,20 +1,21 @@
-local helpers     = require "spec.helpers"
+local DB = require "kong.db"
+local Factory = require "kong.dao.factory"
+local helpers = require "spec.helpers"
+local Blueprints = require "spec.fixtures.blueprints"
 local dao_helpers = require "spec.02-integration.03-dao.helpers"
-local DB          = require "kong.db"
-local Blueprints  = require "spec.fixtures.blueprints"
-local Factory     = require "kong.dao.factory"
 
 
 local UUID_PATTERN = "%x%x%x%x%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%x%x%x%x%x%x%x%x"
 
 
 for _, strategy in helpers.each_strategy() do
-  describe(string.format("blueprints db [%s]", strategy), function()
+  describe(string.format("blueprints db [#%s]", strategy), function()
 
     local bp
     setup(function()
       local db = assert(DB.new(helpers.test_conf, strategy))
       assert(db:init_connector())
+      assert(db.plugins:load_plugin_schemas(helpers.test_conf.loaded_plugins))
       assert(db:truncate())
       bp = assert(Blueprints.new({}, db))
     end)
@@ -71,12 +72,12 @@ for _, strategy in helpers.each_strategy() do
 end
 
 dao_helpers.for_each_dao(function(kong_config)
-  local bp, dao
+  local bp, dao, db
 
   setup(function()
-    local db = assert(DB.new(helpers.test_conf, kong_config.database))
+    db = assert(DB.new(helpers.test_conf, kong_config.database))
     assert(db:init_connector())
-
+    assert(db.plugins:load_plugin_schemas(helpers.test_conf.loaded_plugins))
     dao = assert(Factory.new(kong_config, db))
     bp  = assert(Blueprints.new(dao, db))
   end)
@@ -89,7 +90,7 @@ dao_helpers.for_each_dao(function(kong_config)
     ngx.shared.kong_cassandra:flush_expired()
   end)
 
-  describe(string.format("blueprints for %s", kong_config.database), function()
+  describe(string.format("blueprints for #%s", kong_config.database), function()
     pending("inserts apis", function()
       -- TODO: remove this test when APIs are removed
       local a = bp.apis:insert({ hosts = { "localhost" } })
@@ -100,10 +101,9 @@ dao_helpers.for_each_dao(function(kong_config)
 
     it("inserts oauth2 plugins", function()
       local s = bp.services:insert()
-      local p = bp.oauth2_plugins:insert({ service_id = s.id })
-
+      local p = bp.oauth2_plugins:insert({ service = { id = s.id } })
       assert.equal("oauth2", p.name)
-      assert.equal(s.id, p.service_id)
+      assert.equal(s.id, p.service.id)
       assert.same({ "email", "profile" }, p.config.scopes)
     end)
 
@@ -142,7 +142,7 @@ dao_helpers.for_each_dao(function(kong_config)
     end)
 
     it("inserts acl plugins", function()
-      local p = bp.acl_plugins:insert({ config = { whitelist = "admin" } })
+      local p = bp.acl_plugins:insert({ config = { whitelist = {"admin"} } })
       assert.equals("acl", p.name)
       assert.same({"admin"}, p.config.whitelist)
       assert.matches(UUID_PATTERN, p.id)
@@ -174,12 +174,6 @@ dao_helpers.for_each_dao(function(kong_config)
       assert.equals("udp-log", p.name)
       assert.equals("127.0.0.1", p.config.host)
       assert.equals(35001, p.config.port)
-      assert.matches(UUID_PATTERN, p.id)
-    end)
-
-    it("inserts galileo plugins", function()
-      local p = bp.galileo_plugins:insert({ config = { service_token = "foobar"} })
-      assert.equals("galileo", p.name)
       assert.matches(UUID_PATTERN, p.id)
     end)
 

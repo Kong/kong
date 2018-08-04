@@ -15,7 +15,11 @@ for _, strategy in helpers.each_strategy() do
     local db, bp, dao
 
     setup(function()
-      bp, db, dao = helpers.get_db_utils(strategy)
+      bp, db, dao = helpers.get_db_utils(strategy, {
+        "routes",
+        "services",
+        "basicauth_credentials",
+      })
     end)
 
     --[[

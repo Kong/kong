@@ -28,12 +28,10 @@ describe("Admin API #" .. strategy, function()
   local default_port = 8000
 
   setup(function()
-    bp, db = helpers.get_db_utils(strategy, {})
-  end)
-
-  before_each(function()
-    assert(db:truncate("upstreams"))
-    assert(db:truncate("targets"))
+    bp, db = helpers.get_db_utils(strategy, {
+      "upstreams",
+      "targets",
+    })
     assert(helpers.start_kong({
       database   = strategy,
       nginx_conf = "spec/fixtures/custom_nginx.template",

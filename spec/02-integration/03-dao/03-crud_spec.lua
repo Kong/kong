@@ -791,7 +791,7 @@ helpers.for_each_dao(function(kong_config)
       end)
 
       it("delete a row", function()
-        local res, err = apis:delete(api_fixture)
+        local res, err = apis:delete({ id = api_fixture.id })
         assert.falsy(err)
         assert.same(res, api_fixture)
 
@@ -802,9 +802,6 @@ helpers.for_each_dao(function(kong_config)
       it("return false if no rows were deleted", function()
         local res, err = apis:delete {
           id = "6f204116-d052-11e5-bec8-5bc780ae6c56",
-          name = "inexistent",
-          hosts = { "inexistent.com" },
-          upstream_url = "http://inexistent.com"
         }
         assert.falsy(err)
         assert.falsy(res)

@@ -44,7 +44,7 @@ for _, strategy in helpers.each_strategy() do
 
         teardown(function()
           if admin_client then admin_client:close() end
-          helpers.stop_kong()
+          helpers.stop_kong(nil, true)
         end)
 
         it("runs", function()
@@ -84,11 +84,11 @@ for _, strategy in helpers.each_strategy() do
           }
 
           bp.plugins:insert {
-            route_id   = route.id,
-            service_id = service.id,
-            name       = "rewriter",
-            config     = {
-              value    = "route-specific plugin",
+            route   = { id = route.id },
+            service = { id = service.id },
+            name    = "rewriter",
+            config  = {
+              value = "route-specific plugin",
             },
           }
 
@@ -103,7 +103,7 @@ for _, strategy in helpers.each_strategy() do
 
         teardown(function()
           if admin_client then admin_client:close() end
-          helpers.stop_kong()
+          helpers.stop_kong(nil, true)
         end)
 
         it("doesn't run", function()
@@ -145,13 +145,13 @@ for _, strategy in helpers.each_strategy() do
           }
 
           bp.plugins:insert {
-            name       = "key-auth",
-            route_id   = route.id,
-            service_id = service.id,
+            name    = "key-auth",
+            route   = { id = route.id },
+            service = { id = service.id },
           }
 
           local consumer3 = bp.consumers:insert {
-            username = "test-consumer",
+            username = "test-consumer-3",
           }
 
           bp.keyauth_credentials:insert {
@@ -160,10 +160,10 @@ for _, strategy in helpers.each_strategy() do
           }
 
           bp.plugins:insert {
-            consumer_id = consumer3.id,
-            name        = "rewriter",
-            config      = {
-              value     = "consumer-specific plugin",
+            consumer = { id = consumer3.id },
+            name     = "rewriter",
+            config   = {
+              value  = "consumer-specific plugin",
             },
           }
 
@@ -178,10 +178,10 @@ for _, strategy in helpers.each_strategy() do
 
         teardown(function()
           if admin_client then admin_client:close() end
-          helpers.stop_kong()
+          helpers.stop_kong(nil, true)
         end)
 
-        it("doesn't run", function()
+        it("#only doesn't run", function()
           local res = assert(proxy_client:send {
             method  = "GET",
             path    = "/request",
@@ -192,7 +192,7 @@ for _, strategy in helpers.each_strategy() do
           })
           assert.response(res).has.status(200)
           local value = assert.request(res).has.header("x-consumer-username")
-          assert.equal("test-consumer", value)
+          assert.equal("test-consumer-3", value)
           assert.request(res).has.no.header("rewriter")
         end)
       end)

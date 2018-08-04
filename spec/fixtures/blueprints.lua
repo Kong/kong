@@ -90,8 +90,8 @@ function _M.new(dao, db)
     }
   end)
 
-  local consumer_custom_id_seq = new_sequence("consumer-id-%d")
-  local consumer_username_seq = new_sequence("consumer-username-%d")
+  local consumer_custom_id_seq = new_sequence("consumer id-%d")
+  local consumer_username_seq = new_sequence("consumer username-%d")
   res.consumers = new_blueprint(db.consumers, function()
     return {
       custom_id = consumer_custom_id_seq:next(),
@@ -106,7 +106,7 @@ function _M.new(dao, db)
     }
   end)
 
-  res.plugins = new_blueprint(dao.plugins, function()
+  res.plugins = new_blueprint(db.plugins, function()
     return {}
   end)
 
@@ -124,7 +124,18 @@ function _M.new(dao, db)
     }
   end)
 
-  res.acl_plugins = new_blueprint(dao.plugins, function()
+  local named_service_name_seq = new_sequence("service-name-%d")
+  local named_service_host_seq = new_sequence("service-host-%d.test")
+  res.named_services = new_blueprint(db.services, function()
+    return {
+      protocol = "http",
+      name = named_service_name_seq:next(),
+      host = named_service_host_seq:next(),
+      port = 15555,
+    }
+  end)
+
+  res.acl_plugins = new_blueprint(db.plugins, function()
     return {
       name   = "acl",
       config = {},
@@ -135,7 +146,7 @@ function _M.new(dao, db)
     return {}
   end)
 
-  res.cors_plugins = new_blueprint(dao.plugins, function()
+  res.cors_plugins = new_blueprint(db.plugins, function()
     return {
       name   = "cors",
       config = {
@@ -149,14 +160,14 @@ function _M.new(dao, db)
     }
   end)
 
-  res.loggly_plugins = new_blueprint(dao.plugins, function()
+  res.loggly_plugins = new_blueprint(db.plugins, function()
     return {
       name   = "loggly",
       config = {}, -- all fields have default values already
     }
   end)
 
-  res.tcp_log_plugins = new_blueprint(dao.plugins, function()
+  res.tcp_log_plugins = new_blueprint(db.plugins, function()
     return {
       name   = "tcp-log",
       config = {
@@ -166,7 +177,7 @@ function _M.new(dao, db)
     }
   end)
 
-  res.udp_log_plugins = new_blueprint(dao.plugins, function()
+  res.udp_log_plugins = new_blueprint(db.plugins, function()
     return {
       name   = "udp-log",
       config = {
@@ -176,7 +187,7 @@ function _M.new(dao, db)
     }
   end)
 
-  res.galileo_plugins = new_blueprint(dao.plugins, function()
+  res.galileo_plugins = new_blueprint(db.plugins, function()
     return {
       name   = "galileo",
       config = {
@@ -185,7 +196,7 @@ function _M.new(dao, db)
     }
   end)
 
-  res.jwt_plugins = new_blueprint(dao.plugins, function()
+  res.jwt_plugins = new_blueprint(db.plugins, function()
     return {
       name   = "jwt",
       config = {},
@@ -201,7 +212,7 @@ function _M.new(dao, db)
     }
   end)
 
-  res.oauth2_plugins = new_blueprint(dao.plugins, function()
+  res.oauth2_plugins = new_blueprint(db.plugins, function()
     return {
       name   = "oauth2",
       config = {
@@ -238,7 +249,7 @@ function _M.new(dao, db)
     }
   end)
 
-  res.key_auth_plugins = new_blueprint(dao.plugins, function()
+  res.key_auth_plugins = new_blueprint(db.plugins, function()
     return {
       name   = "key-auth",
       config = {},
@@ -256,7 +267,7 @@ function _M.new(dao, db)
     return {}
   end)
 
-  res.hmac_auth_plugins = new_blueprint(dao.plugins, function()
+  res.hmac_auth_plugins = new_blueprint(db.plugins, function()
     return {
       name   = "hmac-auth",
       config = {},
@@ -271,30 +282,37 @@ function _M.new(dao, db)
     }
   end)
 
-  res.rate_limiting_plugins = new_blueprint(dao.plugins, function()
+  res.rate_limiting_plugins = new_blueprint(db.plugins, function()
     return {
       name   = "rate-limiting",
       config = {},
     }
   end)
 
-  res.response_ratelimiting_plugins = new_blueprint(dao.plugins, function()
+  res.response_ratelimiting_plugins = new_blueprint(db.plugins, function()
     return {
       name   = "response-ratelimiting",
       config = {},
     }
   end)
 
-  res.datadog_plugins = new_blueprint(dao.plugins, function()
+  res.datadog_plugins = new_blueprint(db.plugins, function()
     return {
       name   = "datadog",
       config = {},
     }
   end)
 
-  res.statsd_plugins = new_blueprint(dao.plugins, function()
+  res.statsd_plugins = new_blueprint(db.plugins, function()
     return {
       name   = "statsd",
+      config = {},
+    }
+  end)
+
+  res.rewriter_plugins = new_blueprint(db.plugins, function()
+    return {
+      name   = "rewriter",
       config = {},
     }
   end)
