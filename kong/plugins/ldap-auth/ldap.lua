@@ -53,7 +53,8 @@ function _M.bind_request(socket, username, password)
 
   local ldapAuth = encoder:encode({ _ldaptype = 80, password })
   local bindReq = encoder:encode(3) .. encoder:encode(username) .. ldapAuth
-  local ldapMsg = encoder:encode(ldapMessageId) .. encodeLDAPOp(encoder, APPNO.BindRequest, true, bindReq)
+  local ldapMsg = encoder:encode(ldapMessageId) ..
+    encodeLDAPOp(encoder, APPNO.BindRequest, true, bindReq)
   local packet
   local pos, packet_len, tmp, _
   local response = {}
@@ -71,7 +72,8 @@ function _M.bind_request(socket, username, password)
   response.protocolOp = asn1.intToBER(tmp)
 
   if response.protocolOp.number ~= APPNO.BindResponse then
-    return false, string_format("Received incorrect Op in packet: %d, expected %d", response.protocolOp.number, APPNO.BindResponse)
+    return false, string_format("Received incorrect Op in packet: %d, expected %d",
+                                response.protocolOp.number, APPNO.BindResponse)
   end
 
   pos, response.resultCode = decoder:decode(packet, pos)
@@ -95,7 +97,9 @@ function _M.unbind_request(socket)
   local encoder = asn1.ASN1Encoder:new()
 
   ldapMessageId = ldapMessageId +1
-  ldapMsg = encoder:encode(ldapMessageId) .. encodeLDAPOp(encoder, APPNO.UnbindRequest, false, nil)
+  ldapMsg = encoder:encode(ldapMessageId) ..
+            encodeLDAPOp(encoder, APPNO.UnbindRequest,
+                         false, nil)
   packet = encoder:encodeSeq(ldapMsg)
   socket:send(packet)
   return true, ""
@@ -110,7 +114,8 @@ function _M.start_tls(socket)
 
   local method_name = encoder:encode({_ldaptype = 80, "1.3.6.1.4.1.1466.20037"})
   ldapMessageId = ldapMessageId +1
-  ldapMsg = encoder:encode(ldapMessageId) .. encodeLDAPOp(encoder, APPNO.ExtendedRequest, true, method_name)
+  ldapMsg = encoder:encode(ldapMessageId) ..
+    encodeLDAPOp(encoder, APPNO.ExtendedRequest, true, method_name)
   packet = encoder:encodeSeq(ldapMsg)
   socket:send(packet)
   packet = socket:receive(2)
@@ -123,7 +128,8 @@ function _M.start_tls(socket)
   response.protocolOp = asn1.intToBER(tmp)
 
   if response.protocolOp.number ~= APPNO.ExtendedResponse then
-    return false, string_format("Received incorrect Op in packet: %d, expected %d", response.protocolOp.number, APPNO.ExtendedResponse)
+    return false, string_format("Received incorrect Op in packet: %d, expected %d",
+                                response.protocolOp.number, APPNO.ExtendedResponse)
   end
 
   pos, response.resultCode = decoder:decode(packet, pos)
