@@ -1,19 +1,15 @@
 # Kong Prometheus Plugin
 
-# DOCUMENT STATE: WORK IN PROGRESS
-
 This plugin exposes metrics in [Prometheus Exposition format](https://github.com/prometheus/docs/blob/master/content/docs/instrumenting/exposition_formats.md).
 
 
 ### Available metrics
 - *Status codes*: HTTP status codes returned by upstream services. 
-  These are available per service and across all services.
 - *Latencies Histograms*: Latency as measured at Kong:
    - *Request*: Total request latency 
    - *Kong*: Time taken for Kong to route, authenticate and run all plugins for a request
    - *Upstream*: Time taken by the upstream to respond to the request.
 - *Bandwidth*: Total Bandwidth (egress/ingress) flowing through Kong.
-  This metrics is availble per service and across all services.
 - *DB reachability*: Can the Kong node reach it's Database or not (Guage 0/1).
 - *Connections*: Various NGINX connection metrics like active, reading, writing,
   accepted connections.
@@ -124,7 +120,7 @@ kong_nginx_metric_errors_total 0
 In case Admin API of Kong is protected behind a firewall or requires
 authentication, you've two options:
 
-1. If your proxy nodes also serve the Admin API, then you can create a route
+If your proxy nodes also serve the Admin API, then you can create a route
 to `/metrics` endpoint and apply a IP restriction plugin.
 ```
 curl -XPOST http://localhost:8001/services -d name=prometheusEndpoint -d url=http://localhost:8001/metrics
@@ -132,13 +128,17 @@ curl -XPOST http://localhost:8001/services/prometheusEndpoint/routes -d paths[]=
 curl -XPOST http://localhost:8001/services/prometheusEndpoint/plugins -d name=ip-restriction -d config.whitelist=10.0.0.0/24
 ```
 
-2. This plugin has the capability to serve the content on a
+Alternatively, this plugin has the capability to serve the content on a
 different port using a custom server block in Kong's NGINX template.
 
-Please note that this requires a custom NGINX template for Kong.
+If you're using Kong 0.14.0 or above, then you can inject the server block
+using Kong's [injecting Nginx directives](https://docs.konghq.com/0.14.x/configuration/#injecting-nginx-directives) 
+feature.
 
-You can add the following block to a custom NGINX template which can be used by Kong:
+Consider the below `server` block:
+
 ```
+# /path/to/prometheus-server.conf
 server {
     server_name kong_prometheus_exporter;
     listen 0.0.0.0:9542; # can be any other port as well
@@ -158,3 +158,15 @@ server {
     }
 }
 ```
+
+Assuming you've the above file available in your file-system on which
+Kong is running, add the following line to your `kong.conf` to scrape metrics
+from `9542` port.
+
+```
+nginx_http_include=/path/to/prometheus-server.conf
+```
+
+If you're running Kong version older than 0.14.0, then you can achieve the
+same result by using a
+[custom Nginx template](https://docs.konghq.com/0.14.x/configuration/#custom-nginx-templates-embedding-kong).
