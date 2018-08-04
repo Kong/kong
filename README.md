@@ -1,5 +1,7 @@
 # Kong Prometheus Plugin
 
+[![Build Status][badge-travis-image]][badge-travis-url]
+
 This plugin exposes metrics in [Prometheus Exposition format](https://github.com/prometheus/docs/blob/master/content/docs/instrumenting/exposition_formats.md).
 
 
@@ -170,3 +172,7 @@ nginx_http_include=/path/to/prometheus-server.conf
 If you're running Kong version older than 0.14.0, then you can achieve the
 same result by using a
 [custom Nginx template](https://docs.konghq.com/0.14.x/configuration/#custom-nginx-templates-embedding-kong).
+
+
+[badge-travis-url]: https://travis-ci.com/Kong/kong-plugin-prometheus/branches
+[badge-travis-image]: https://travis-ci.com/Kong/kong-plugin-prometheus.svg
