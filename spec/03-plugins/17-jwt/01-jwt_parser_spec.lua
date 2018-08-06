@@ -34,76 +34,45 @@ describe("Plugin: jwt (parser)", function()
         name  = "John Doe",
         admin = true,
         sub   = "1234567890"
-      }, "secret", 'HS384')
+      }, "secret", "HS384")
 
-      if helpers.openresty_ver_num < 11123 then
-        assert.equal(u([[
-          eyJhbGciOiJIUzM4NCIsInR5cCI6IkpXVCJ9.eyJhZG1pbiI6d
-          HJ1ZSwibmFtZSI6IkpvaG4gRG9lIiwic3ViIjoiMTIzNDU2Nzg
-          5MCJ9.fAk3ps-s7_vQk6XpiVq5GiNjZ__cMW37kE9MEQoR6MwX
-          ELTFtSIoNOpmhOe_wnCS
-        ]], true), token)
-        assert.equal('not', 'implemented')
-      else
-        assert.equal(u([[
-          eyJhbGciOiJIUzM4NCIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoiS
-          m9obiBEb2UiLCJhZG1pbiI6dHJ1ZSwic3ViIjoiMTIzNDU2Nzg
-          5MCJ9.4Ok0xhf2eh04vVDC4tPG0vmRwmVYVqUueU8R9sRdQ4_Z
-          r2duC69lo0EtSUE6iO7c
-        ]], true), token)
-      end
+      assert.equal(u([[
+        eyJhbGciOiJIUzM4NCIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoiS
+        m9obiBEb2UiLCJhZG1pbiI6dHJ1ZSwic3ViIjoiMTIzNDU2Nzg
+        5MCJ9.4Ok0xhf2eh04vVDC4tPG0vmRwmVYVqUueU8R9sRdQ4_Z
+        r2duC69lo0EtSUE6iO7c
+      ]], true), token)
     end)
     it("should properly encode using HS512", function()
       local token = jwt_parser.encode({
         name  = "John Doe",
         admin = true,
         sub   = "1234567890"
-      }, "secret", 'HS512')
+      }, "secret", "HS512")
 
-      if helpers.openresty_ver_num < 11123 then
-        assert.equal(u([[
-          eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJhZG1pbiI6d
-          HJ1ZSwibmFtZSI6IkpvaG4gRG9lIiwic3ViIjoiMTIzNDU2Nzg
-          5MCJ9.OCrg2JkY29oW8nmDy0i-isffsbw-Cz4Tq5ge9emhRqc7
-          SPNeZz7m43sJ143I9XKBJz48k7T8KNBYo8NCeTpgSA
-        ]], true), token)
-      else
-        assert.equal(u([[
-          eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoiSm
-          9obiBEb2UiLCJhZG1pbiI6dHJ1ZSwic3ViIjoiMTIzNDU2Nzg5M
-          CJ9.3xG0Dl5rEokSV9iehelulvP0FhURRt4HlTNUorEPl7gkOR0
-          LEAjuRqn7mTncXSSq8qR64JMjnOc1M7ez0iejeA
-        ]], true), token)
-      end
+      assert.equal(u([[
+        eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoiSm
+        9obiBEb2UiLCJhZG1pbiI6dHJ1ZSwic3ViIjoiMTIzNDU2Nzg5M
+        CJ9.3xG0Dl5rEokSV9iehelulvP0FhURRt4HlTNUorEPl7gkOR0
+        LEAjuRqn7mTncXSSq8qR64JMjnOc1M7ez0iejeA
+      ]], true), token)
     end)
     it("should properly encode using RS256", function()
       local token = jwt_parser.encode({
         sub   = "1234567890",
         name  = "John Doe",
         admin = true
-      }, fixtures.rs256_private_key, 'RS256')
+      }, fixtures.rs256_private_key, "RS256")
 
-      if helpers.openresty_ver_num < 11123 then
-        assert.equal(u([[
-          eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJhZG1pbiI6dHJ1ZSwibmFtZSI6Ikpv
-          aG4gRG9lIiwic3ViIjoiMTIzNDU2Nzg5MCJ9.EiOLxyMimY8vbLR8EcGOlXAiEe-eEVn7
-          Aewgu0gYIBPyiEhVTq0CzB_XtHoQ_0y4gBBBZVRnz1pgruOtNmOzcaoXnyplFm1IbrCCB
-          KYQeA4lanmu_-Wzk6Dw4p-TimRHpf8EEHBUJSEbVEyet3cpozUo2Ep0dEfA_Nf3T-g8Rj
-          fOYXkFTr3M6FuIDq95cFZloH-DRGodUVQX508wgggtcFKN-Pi7_rWzBtQwP2u4CrFD4ZJ
-          bn2sxobzSlFb9fn4nRh_-rPPjDSeHVKwrpsYpFSLBJxwX-KhbeGUfalg2eu9tHLDPHC4g
-          TCpoQKxxRIwfMjW5zlHOZhohKZV2ZtpcgA
-        ]], true), token)
-      else
-        assert.equal(u([[
-          eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoiSm9obiBEb2UiLCJhZG1p
-          biI6dHJ1ZSwic3ViIjoiMTIzNDU2Nzg5MCJ9.m6E0DvUJrnw5oLYrvIwJ6n_xFFrAsXSL
-          zHtDAukzCv6yoDkJkMi37DhHB3EZr_shJFA-41UhdkSXSKg8xvnZ4VpeJcXx7UU4sdOQa
-          VGfJyRcZqdfYyXq3yz_oZjnoi74b1N2Eogas2Jw3wC8ee7_gMEyixQFQu88k8Mi9hm819
-          Hd-UJauLpAc60kMCpLXpl0i8zACbG7h1iO9--j16HMzyF3R8dysiNivScwVTHHNkM2VrF
-          BqyGv84CMqdr42bk0z4WiNnVOzSqReub9DXSDx4gNd9hK41UChFv6k2iDELXP0nwllnyu
-          qbGbjm0HM7GOAptzViFqULEBvGb-J-s99Q
-        ]], true), token)
-      end
+      assert.equal(u([[
+        eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoiSm9obiBEb2UiLCJhZG1p
+        biI6dHJ1ZSwic3ViIjoiMTIzNDU2Nzg5MCJ9.m6E0DvUJrnw5oLYrvIwJ6n_xFFrAsXSL
+        zHtDAukzCv6yoDkJkMi37DhHB3EZr_shJFA-41UhdkSXSKg8xvnZ4VpeJcXx7UU4sdOQa
+        VGfJyRcZqdfYyXq3yz_oZjnoi74b1N2Eogas2Jw3wC8ee7_gMEyixQFQu88k8Mi9hm819
+        Hd-UJauLpAc60kMCpLXpl0i8zACbG7h1iO9--j16HMzyF3R8dysiNivScwVTHHNkM2VrF
+        BqyGv84CMqdr42bk0z4WiNnVOzSqReub9DXSDx4gNd9hK41UChFv6k2iDELXP0nwllnyu
+        qbGbjm0HM7GOAptzViFqULEBvGb-J-s99Q
+      ]], true), token)
     end)
     it("should encode using RS512", function()
       local token = jwt_parser.encode({
@@ -191,13 +160,13 @@ describe("Plugin: jwt (parser)", function()
       assert.False(jwt:verify_signature("invalid"))
     end)
     it("using HS384", function()
-      local token = jwt_parser.encode({sub = "foo"}, "secret", 'HS384')
+      local token = jwt_parser.encode({sub = "foo"}, "secret", "HS384")
       local jwt = assert(jwt_parser:new(token))
       assert.True(jwt:verify_signature("secret"))
       assert.False(jwt:verify_signature("invalid"))
     end)
     it("using HS512", function()
-      local token = jwt_parser.encode({sub = "foo"}, "secret", 'HS512')
+      local token = jwt_parser.encode({sub = "foo"}, "secret", "HS512")
       local jwt = assert(jwt_parser:new(token))
       assert.True(jwt:verify_signature("secret"))
       assert.False(jwt:verify_signature("invalid"))
