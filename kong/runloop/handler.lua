@@ -83,6 +83,16 @@ local function build_api_router(dao, version)
   return true
 end
 
+local function raise_rebuild_router_event(db, version)
+  local version, err = cache:get("router:version", CACHE_ROUTER_OPTS, utils.uuid)
+  local ok, err = worker_events.post("rebuild", "router", {
+    version = version
+  })
+  if not ok then
+    log(ngx.ERR, "[events] could not broadcast rebuild router event: ", err)
+  end
+end
+
 
 local function build_router(db, version)
   local routes, i = {}, 0
@@ -239,19 +249,7 @@ return {
       worker_events.register(function()
         log(DEBUG, "[events] Route updated, invalidating router")
         cache:invalidate("router:version")
-        local version, err = cache:get("router:version", CACHE_ROUTER_OPTS, utils.uuid)
-        local ok, err = build_router(singletons.db, version)
-        if not ok then
-           router_err = err
-           log(ngx.CRIT, "could not rebuild router: ", err)
-        end
-        local ok, err = worker_events.post("rebuild", "routes", {
-           version = version
-        })
-        if not ok then
-          log(ngx.ERR, "[events] could not broadcast rebuild routes event: ", err)
-          return
-        end
+        raise_rebuild_router_event()
       end, "crud", "routes")
 
       worker_events.register(function(data)
@@ -262,18 +260,12 @@ return {
            router_err = err
            log(ngx.CRIT, "could not rebuild router: ", err)
         end
-      end, "rebuild", "routes")
+      end, "rebuild", "router")
 
       local ok, err = cluster_events:subscribe("invalidations", function(key)
         log(ngx.DEBUG, "received invalidate event from cluster for key: '", key, "'")
         if key == "router:version" then
-          log(ngx.DEBUG, "[events] Router updated, rebuilding router in this worker")
-          local version, err = cache:get(key, CACHE_ROUTER_OPTS, utils.uuid)
-          local ok, err = build_router(singletons.db, version)
-          if not ok then
-             router_err = err
-             log(ngx.CRIT, "could not rebuild router: ", err)
-          end
+          raise_rebuild_router_event()
         end
       end)
       if not ok then
@@ -291,6 +283,7 @@ return {
           -- only allowed because no Route is pointing to it anymore.
           log(DEBUG, "[events] Service updated, invalidating router")
           cache:invalidate("router:version")
+          raise_rebuild_router_event()
         end
       end, "crud", "services")
 
