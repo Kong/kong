@@ -264,6 +264,23 @@ return {
         end
       end, "rebuild", "routes")
 
+      local ok, err = cluster_events:subscribe("invalidations", function(key)
+        log(ngx.DEBUG, "received invalidate event from cluster for key: '", key, "'")
+        if key == "router:version" then
+          log(ngx.DEBUG, "[events] Router updated, rebuilding router in this worker")
+          local version, err = cache:get(key, CACHE_ROUTER_OPTS, utils.uuid)
+          local ok, err = build_router(singletons.db, version)
+          if not ok then
+             router_err = err
+             log(ngx.CRIT, "could not rebuild router: ", err)
+          end
+        end
+      end)
+      if not ok then
+        return nil, "failed to subscribe to invalidations cluster events " ..
+                    "channel: " .. err
+      end
+
       worker_events.register(function(data)
         if data.operation ~= "create" and
            data.operation ~= "delete"
