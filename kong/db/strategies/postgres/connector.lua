@@ -3,9 +3,11 @@ local pgmoon       = require "pgmoon"
 
 local setmetatable = setmetatable
 local concat       = table.concat
---local pairs        = pairs
---local type         = type
+local ipairs       = ipairs
+local pairs        = pairs
+local type         = type
 local ngx          = ngx
+local timer_every  = ngx.timer.every
 local get_phase    = ngx.get_phase
 local null         = ngx.null
 local log          = ngx.log
@@ -19,68 +21,68 @@ SELECT table_name
 ]]
 
 
---local function visit(k, n, m, s)
---  if m[k] == 0 then return 1 end
---  if m[k] == 1 then return end
---  m[k] = 0
---  local f = n[k]
---  for i=1, #f do
---    if visit(f[i], n, m, s) then return 1 end
---  end
---  m[k] = 1
---  s[#s+1] = k
---end
---
---
---local tsort = {}
---tsort.__index = tsort
---
---
---function tsort.new()
---  return setmetatable({ n = {} }, tsort)
---end
---
---
---function tsort:add(...)
---  local p = { ... }
---  local c = #p
---  if c == 0 then return self end
---  if c == 1 then
---    p = p[1]
---    if type(p) == "table" then
---      c = #p
---    else
---      p = { p }
---    end
---  end
---  local n = self.n
---  for i=1, c do
---    local f = p[i]
---    if n[f] == nil then n[f] = {} end
---  end
---  for i=2, c, 1 do
---    local f = p[i]
---    local t = p[i-1]
---    local o = n[f]
---    o[#o+1] = t
---  end
---  return self
---end
---
---
---function tsort:sort()
---  local n  = self.n
---  local s = {}
---  local m  = {}
---  for k in pairs(n) do
---    if m[k] == nil then
---      if visit(k, n, m, s) then
---        return nil, "There is a circular dependency in the graph. It is not possible to derive a topological sort."
---      end
---    end
---  end
---  return s
---end
+local function visit(k, n, m, s)
+  if m[k] == 0 then return 1 end
+  if m[k] == 1 then return end
+  m[k] = 0
+  local f = n[k]
+  for i=1, #f do
+    if visit(f[i], n, m, s) then return 1 end
+  end
+  m[k] = 1
+  s[#s+1] = k
+end
+
+
+local tsort = {}
+tsort.__index = tsort
+
+
+function tsort.new()
+  return setmetatable({ n = {} }, tsort)
+end
+
+
+function tsort:add(...)
+  local p = { ... }
+  local c = #p
+  if c == 0 then return self end
+  if c == 1 then
+    p = p[1]
+    if type(p) == "table" then
+      c = #p
+    else
+      p = { p }
+    end
+  end
+  local n = self.n
+  for i=1, c do
+    local f = p[i]
+    if n[f] == nil then n[f] = {} end
+  end
+  for i=2, c, 1 do
+    local f = p[i]
+    local t = p[i-1]
+    local o = n[f]
+    o[#o+1] = t
+  end
+  return self
+end
+
+
+function tsort:sort()
+  local n  = self.n
+  local s = {}
+  local m  = {}
+  for k in pairs(n) do
+    if m[k] == nil then
+      if visit(k, n, m, s) then
+        return nil, "There is a circular dependency in the graph. It is not possible to derive a topological sort."
+      end
+    end
+  end
+  return s
+end
 
 
 local function iterator(rows)
@@ -172,6 +174,68 @@ local _mt = {}
 _mt.__index = _mt
 
 
+function _mt:init_worker(strategies)
+  if ngx.worker.id() == 0 then
+    local graph
+    local found = false
+
+    for _, strategy in pairs(strategies) do
+      local schema = strategy.schema
+      if schema.ttl then
+        if not found then
+          graph = tsort.new()
+          found = true
+        end
+
+        local name = schema.name
+        graph:add(name)
+        for _, field in schema:each_field() do
+          if field.type == "foreign" then
+            graph:add(name, field.schema.name)
+          end
+        end
+      end
+    end
+
+    if not found then
+      return true
+    end
+
+    local sorted_strategies = graph:sort()
+    local ttl_escaped = self:escape_identifier("ttl")
+    local cleanup_statement = {}
+    for i, table_name in ipairs(sorted_strategies) do
+      cleanup_statement[i] = concat {
+        "  DELETE FROM ",
+        self:escape_identifier(table_name),
+        " WHERE ",
+        ttl_escaped,
+        " < CURRENT_TIMESTAMP;"
+      }
+    end
+
+    cleanup_statement = concat({
+      "BEGIN;",
+      concat(cleanup_statement, "\n"),
+      "COMMIT;"
+    }, "\n")
+
+    return timer_every(60, function()
+      local ok, err = self:query(cleanup_statement)
+      if not ok then
+        if err then
+          log(WARN, "unable to clean expired rows from postgres database (", err, ")")
+        else
+          log(WARN, "unable to clean expired rows from postgres database")
+        end
+      end
+    end)
+  end
+
+  return true
+end
+
+
 function _mt:connect()
   if self.connection and self.connection.sock then
     return true
@@ -246,40 +310,6 @@ function _mt:reset()
   if not ok then
     return nil, err
   end
-
-  --[[
-  -- Disabled for now because migrations will run from the old DAO.
-  -- Additionally, the purpose of `reset()` is to clean the database,
-  -- and leave it blank. Migrations will use it to reset the database,
-  -- and migrations will also be responsible for creating the necessary
-  -- tables.
-  local graph = tsort.new()
-  local hash  = {}
-
-  for _, strategy in pairs(strategies) do
-    local schema = strategy.schema
-    local name   = schema.name
-    local fields = schema.fields
-
-    hash[name]   = strategy
-    graph:add(name)
-
-    for _, field in ipairs(fields) do
-      if field.type == "foreign" then
-        graph:add(field.schema.name, name)
-      end
-    end
-  end
-
-  local sorted_strategies = graph:sort()
-
-  for _, name in ipairs(sorted_strategies) do
-    ok, err = hash[name]:create()
-    if not ok then
-      return nil, err
-    end
-  end
-  --]]
 
   return true
 end

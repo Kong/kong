@@ -10,6 +10,12 @@ function Connector:init()
 end
 
 
+function Connector:init_worker()
+  -- nop by default
+  return true
+end
+
+
 function Connector:connect()
   error(fmt("connect() not implemented for '%s' strategy", self.database))
 end
