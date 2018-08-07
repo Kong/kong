@@ -824,5 +824,21 @@ return {
       ALTER TABLE upstreams DROP hash_on_cookie;
       ALTER TABLE upstreams DROP hash_on_cookie_path;
     ]]
-  }
+  },
+  {
+    name = "2018-08-06-000001_make_ids_primary_keys_in_plugins",
+    up = [[
+      ALTER TABLE plugins
+        DROP CONSTRAINT IF EXISTS plugins_pkey;
+
+      DO $$
+      BEGIN
+        ALTER TABLE plugins
+          ADD PRIMARY KEY (id);
+      EXCEPTION WHEN duplicate_table THEN
+        -- Do nothing, accept existing state
+      END$$;
+    ]],
+    down = nil
+  },
 }
