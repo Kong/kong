@@ -1195,7 +1195,8 @@ function Schema:validate(input, full_check)
   if self.subschema_key then
     local key = input[self.subschema_key]
     if not (self.subschemas and self.subschemas[key]) then
-      subschema_error = validation_errors.SUBSCHEMA_UNKNOWN:format(key)
+      local errmsg = self.subschema_error or validation_errors.SUBSCHEMA_UNKNOWN
+      subschema_error = errmsg:format(key)
     end
   end
 
