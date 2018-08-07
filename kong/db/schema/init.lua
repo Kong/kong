@@ -1111,10 +1111,12 @@ function Schema:process_auto_fields(input, context, nulls)
   local output = tablex.deepcopy(input)
   local now_s  = ngx_time()
   local now_ms = ngx_now()
+  local read_before_write = false
 
   for key, field in self:each_field(input) do
+
     if field.auto then
-      if field.uuid and context == "insert" then
+      if field.uuid and context == "insert" and output[key] == nil then
         output[key] = utils.uuid()
       elseif field.uuid and context == "upsert" and output[key] == nil then
         output[key] = utils.uuid()
@@ -1142,6 +1144,9 @@ function Schema:process_auto_fields(input, context, nulls)
       elseif field_type == "set" then
         output[key] = make_set(field_value)
       elseif field_type == "record" and not field.abstract then
+        if context == "update" then
+          read_before_write = true
+        end
         if field_value ~= null then
           local field_schema = get_field_schema(field)
           output[key] = field_schema:process_auto_fields(field_value, context)
@@ -1157,6 +1162,42 @@ function Schema:process_auto_fields(input, context, nulls)
     end
   end
 
+  -- If a partial update does not provide the subschema key,
+  -- we need to do a read-before-write to get it and be
+  -- able to properly validate the entity.
+  if context == "update"
+     and self.subschema_key
+     and input[self.subschema_key] == nil then
+    read_before_write = true
+  end
+
+  return output, nil, read_before_write
+end
+
+
+--- Schema-aware deep-merge of two entities.
+-- Uses schema knowledge to merge two records field-by-field,
+-- but not merge the content of two arrays.
+-- @param top the entity whose values take precedence
+-- @param bottom the entity whose values are the fallback
+-- @return the merged entity
+function Schema:merge_values(top, bottom)
+  local output = {}
+  bottom = bottom or {}
+  for key, field in self:each_field(bottom) do
+    local top_v = top[key]
+
+    if top_v == nil then
+      output[key] = bottom[key]
+
+    else
+      if field.type == "record" and not field.abstract and top_v ~= null then
+        output[key] = get_field_schema(field):merge_values(top_v, bottom[key])
+      else
+        output[key] = top_v
+      end
+    end
+  end
   return output
 end
 

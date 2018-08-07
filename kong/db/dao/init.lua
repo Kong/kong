@@ -741,10 +741,20 @@ function DAO:update(primary_key, entity, options)
     return nil, tostring(err_t), err_t
   end
 
-  local entity_to_update, err = self.schema:process_auto_fields(entity, "update")
+  local entity_to_update, err, read_before_write =
+    self.schema:process_auto_fields(entity, "update")
   if not entity_to_update then
     local err_t = self.errors:schema_violation(err)
     return nil, tostring(err_t), err_t
+  end
+
+  if read_before_write then
+    local rbw_entity, err, err_t = self:select(primary_key)
+    if not rbw_entity then
+      return nil, err, err_t
+    end
+
+    entity_to_update = self.schema:merge_values(entity_to_update, rbw_entity)
   end
 
   ok, errors = self.schema:validate_update(entity_to_update)
