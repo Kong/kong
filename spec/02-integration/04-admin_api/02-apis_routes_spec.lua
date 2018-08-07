@@ -1239,19 +1239,26 @@ end)
 describe("Admin API request size", function()
   local client
   setup(function()
-    helpers.dao:truncate_table("apis")
-    helpers.dao:truncate_table("plugins")
-    helpers.db:truncate("routes")
-    helpers.db:truncate("services")
+    assert(helpers.get_db_utils(kong_config.database, {
+      "apis",
+      "plugins",
+      "routes",
+      "services",
+    }))
+    assert(helpers.start_kong{
+      database = kong_config.database
+    })
   end)
+
+  teardown(function()
+    helpers.stop_kong()
+  end)
+
   before_each(function()
-    assert(helpers.dao:run_migrations())
-    assert(helpers.start_kong())
     client = assert(helpers.admin_client())
   end)
   after_each(function()
     if client then client:close() end
-    helpers.stop_kong()
   end)
 
   it("handles req bodies < 10MB", function()
