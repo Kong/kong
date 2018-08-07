@@ -210,7 +210,7 @@ local function infer_value(value, field)
       end
     end
 
-  elseif field.type == "record" then
+  elseif field.type == "record" and not field.abstract then
     if type(value) == "table" then
       for k, v in pairs(value) do
         value[k] = infer_value(v, field.fields[k])
