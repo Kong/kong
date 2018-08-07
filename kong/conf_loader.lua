@@ -652,11 +652,14 @@ local function load(path, custom_conf)
     end
 
     if conf.custom_plugins and #conf.custom_plugins > 0 then
-      log.warn("the 'custom_plugins' configuration property is deprecated, " ..
-               "use 'plugins' instead")
-
+      local warned
       for i = 1, #conf.custom_plugins do
         local plugin_name = pl_stringx.strip(conf.custom_plugins[i])
+        if not plugins[plugin_name] and not warned then
+          log.warn("the 'custom_plugins' configuration property is deprecated, " ..
+                   "use 'plugins' instead")
+          warned = true
+        end
         plugins[plugin_name] = true
       end
     end
