@@ -36,19 +36,20 @@ env:
     - DOWNLOAD_CACHE=$HOME/download-cache
     - INSTALL_CACHE=$HOME/install-cache
     - JOBS=2
+    - KONG_TEST_PG_USER=postgres
+    - KONG_TEST_PG_DATABASE=travis
+    - KONG_TEST_CASSANDRA_KEYSPACE=kong_tests
+    - KONG_TEST_DB_UPDATE_PROPAGATION=1
   matrix:
-    - KONG_TEST_DATABASE=postgres KONG_TEST_PG_USER=postgres KONG_TEST_PG_DATABASE=travis
-    - KONG_TEST_DATABASE=cassandra KONG_TEST_CASSANDRA_KEYSPACE=kong_tests CASSANDRA=2.2 KONG_TEST_DB_UPDATE_PROPAGATION=1
-    - KONG_TEST_DATABASE=cassandra KONG_TEST_CASSANDRA_KEYSPACE=kong_tests CASSANDRA=3.9 KONG_TEST_DB_UPDATE_PROPAGATION=1
+    - KONG_TEST_DATABASE=postgres
+    - KONG_TEST_DATABASE=cassandra CASSANDRA=2.2
+    - KONG_TEST_DATABASE=cassandra CASSANDRA=3.9
 
 before_install:
   - source .ci/setup_env.sh
 
 install:
   - make dev
-
-script:
-  - .ci/run_tests.sh
 
 cache:
   apt: true
@@ -84,3 +85,6 @@ jobs:
       script: .ci/trigger-travis.sh $TRAVIS_ACCESS_TOKEN
       env:
         - KONG_DATABASE=none
+
+script:
+  - .ci/run_tests.sh

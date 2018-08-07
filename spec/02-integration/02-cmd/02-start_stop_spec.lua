@@ -113,6 +113,7 @@ describe("kong start/stop", function()
   describe("/etc/hosts resolving in CLI", function()
     it("resolves #cassandra hostname", function()
       assert(helpers.kong_exec("start --vv --run-migrations --conf " .. helpers.test_conf_path, {
+        cassandra_contact_points = "localhost",
         database = "cassandra"
       }))
     end)
