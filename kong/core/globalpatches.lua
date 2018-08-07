@@ -184,7 +184,7 @@ return function(options)
           local shm = rawget(self, key)
           if not shm then
             shm = SharedDict:new()
-            rawset(self, key, SharedDict:new())
+            rawset(self, key, shm)
           end
           return shm
         end
