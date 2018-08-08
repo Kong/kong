@@ -79,7 +79,7 @@ local validation_errors = {
   ENTITY_CHECK              = "failed entity check: %s(%s)",
   ENTITY_CHECK_N_FIELDS     = "entity check requires %d fields",
   CHECK                     = "entity check failed",
-  CONDITIONAL               = "failed conditional validation",
+  CONDITIONAL               = "failed conditional validation given value of field '%s'",
   AT_LEAST_ONE_OF           = "at least one of these fields must be non-empty: %s",
   ONLY_ONE_OF               = "only one of these fields must be non-empty: %s",
   DISTINCT                  = "values of these fields must be distinct: %s",
@@ -473,7 +473,7 @@ Schema.entity_checkers = {
       -- Handle `required`
       if arg.then_match.required == true and then_value == null then
         local field_errors = { [arg.then_field] = validation_errors.REQUIRED }
-        return nil, validation_errors.CONDITIONAL, field_errors
+        return nil, arg.if_field, field_errors
       end
 
       local then_merged = merge_field(schema.fields[arg.then_field], arg.then_match)
@@ -481,7 +481,7 @@ Schema.entity_checkers = {
       ok, err = Schema.validate_field(schema, then_merged, then_value)
       if not ok then
         local field_errors = { [arg.then_field] = err }
-        return nil, validation_errors.CONDITIONAL, field_errors
+        return nil, arg.if_field, field_errors
       end
 
       return true
