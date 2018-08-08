@@ -74,7 +74,6 @@ jobs:
       - bin/busted -v -o gtest spec/01-unit
       - bin/busted -v -o gtest spec-old-api/01-unit
       env:
-        - KONG_TEST_PG_DATABASE=foobar
         - KONG_DATABASE=none
     - stage: pdk tests
       script: TEST_NGINX_RANDOMIZE=1 prove -I. -j$JOBS -r t/01-pdk
