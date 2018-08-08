@@ -20,4 +20,35 @@ return {
     end,
     down = function(_, _, dao) end  -- not implemented
   },
+  {
+    name = "2018-08-08-100000_header_type_default_uppercase",
+    up = function(_, _, dao)
+      for ok, config, update in plugin_config_iterator(dao, "ldap-auth") do
+        if not ok then
+          return config
+        end
+        if config.header_type == 'ldap' then
+          config.header_type = 'LDAP'
+          local _, err = update(config)
+          if err then
+            return err
+          end
+        end
+      end
+    end,
+    down = function(_, _, dao)
+      for ok, config, update in plugin_config_iterator(dao, "ldap-auth") do
+        if not ok then
+          return config
+        end
+        if config.header_type == 'LDAP' then
+          config.header_type = 'ldap'
+          local _, err = update(config)
+          if err then
+            return err
+          end
+        end
+      end
+    end
+  },
 }
