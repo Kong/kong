@@ -775,5 +775,5 @@ return {
   tokens         = tokens,
   token_exchange = token_exchange,
   userinfo       = userinfo,
-  version        = "0.1.9",
+  version        = "0.2.0",
 }
