@@ -1971,24 +1971,22 @@ function OICHandler:access(conf)
 
           else
             if err then
-              return forbidden(
-                ctx,
-                iss,
-                forbidden_error_message,
-                "kong consumer was not found (" .. err .. ")",
-                session,
-                anonymous,
-                trusted_client)
+              return forbidden(ctx,
+                               iss,
+                               forbidden_error_message,
+                               "kong consumer was not found (" .. err .. ")",
+                               session,
+                               anonymous,
+                               trusted_client)
 
             else
-              return forbidden(
-                ctx,
-                iss,
-                forbidden_error_message,
-                "kong consumer was not found",
-                session,
-                anonymous,
-                trusted_client)
+              return forbidden(ctx,
+                               iss,
+                               forbidden_error_message,
+                               "kong consumer was not found",
+                               session,
+                               anonymous,
+                               trusted_client)
             end
           end
 
@@ -2165,24 +2163,22 @@ function OICHandler:access(conf)
 
       if not token_exchanged or error_status ~= 200 then
         if error_status == 401 then
-          return unauthorized(
-            ctx,
-            iss,
-            unauthorized_error_message,
-            err or "exchange token endpoint returned unauthorized",
-            session,
-            anonymous,
-            trusted_client)
+          return unauthorized(ctx,
+                              iss,
+                              unauthorized_error_message,
+                              err or "exchange token endpoint returned unauthorized",
+                              session,
+                              anonymous,
+                              trusted_client)
 
         elseif error_status == 403 then
-          return forbidden(
-            ctx,
-            iss,
-            forbidden_error_message,
-            err or "exchange token endpoint returned forbidden",
-            session,
-            anonymous,
-            trusted_client)
+          return forbidden(ctx,
+                           iss,
+                           forbidden_error_message,
+                           err or "exchange token endpoint returned forbidden",
+                           session,
+                           anonymous,
+                           trusted_client)
 
         else
           if err then
