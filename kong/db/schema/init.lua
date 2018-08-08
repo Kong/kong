@@ -53,6 +53,7 @@ local validation_errors = {
   FUNCTION                  = "expected a function",
   -- validations
   EQ                        = "value must be %s",
+  NE                        = "value must not be %s",
   BETWEEN                   = "value should be between %d and %d",
   LEN_EQ                    = "length must be %d",
   LEN_MIN                   = "length must be at least %d",
@@ -161,6 +162,14 @@ Schema.validators = {
     return nil, validation_errors.EQ:format(str)
   end,
 
+  ne = function(value, wanted)
+    if value ~= wanted then
+      return true
+    end
+    local str = (wanted == null) and "null" or tostring(value)
+    return nil, validation_errors.NE:format(str)
+  end,
+
   len_eq = make_length_validator("LEN_EQ", function(len, n)
     return len == n
   end),
@@ -256,6 +265,7 @@ Schema.validators = {
 
 Schema.validators_order = {
   "eq",
+  "ne",
   "one_of",
 
   -- type-dependent
@@ -513,11 +523,16 @@ local validate_fields
 function Schema:validate_field(field, value)
 
   if value == null then
+    if field.ne == null then
+      return nil, validation_errors.NE:format("null")
+    end
+    if field.eq ~= nil and field.eq ~= null then
+      return nil, validation_errors.EQ:format(tostring(field.eq))
+    end
     if field.nullable == false then
       return nil, validation_errors.NOT_NULLABLE
-    else
-      return true
     end
+    return true
   end
 
   if field.abstract == true then
@@ -635,7 +650,7 @@ function Schema:validate_field(field, value)
 
   elseif field.type == "function" then
     -- TODO: this type should only be used/visible from the
-    -- metachema to validate the 'custom_validator'
+    -- metaschema to validate the 'custom_validator'
     if type(value) ~= "function" then
       return nil, validation_errors.FUNCTION
     end
