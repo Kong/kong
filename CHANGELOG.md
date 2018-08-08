@@ -4,6 +4,9 @@
   verification fails
 - Fix cache.tokens_load ttl fallback to access token `exp` in case when `expires_in` is missing
 - Fix headers to not set when header value is `ngx.null` (a bit more robust now)
+- Fix encoding of complex upstream and downstream headers
+- Add `config.unauthorized_error_message`
+- Add `config.forbidden_error_message`
 - Remove the deprecated `openid-connect-authentication` plugin
 - Remove the deprecated `openid-connect-protection` plugin
 - Remove the deprecated `openid-connect-verification` plugin

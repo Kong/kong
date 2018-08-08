@@ -85,18 +85,28 @@ return {
       required                         = false,
       type                             = "array",
     },
-    unauthorized_redirect_uri          = {
+    forbidden_error_message            = {
       required                         = false,
-      type                             = "array",
-    },
-    unexpected_redirect_uri            = {
-      required                         = false,
-      type                             = "array",
+      type                             = "string",
+      default                          = "forbidden"
     },
     forbidden_destroy_session          = {
       required                         = false,
       type                             = "boolean",
       default                          = true,
+    },
+    unauthorized_redirect_uri          = {
+      required                         = false,
+      type                             = "array",
+    },
+    unauthorized_error_message         = {
+      required                         = false,
+      type                             = "string",
+      default                          = "unauthorized"
+    },
+    unexpected_redirect_uri            = {
+      required                         = false,
+      type                             = "array",
     },
     scopes                             = {
       required                         = false,
