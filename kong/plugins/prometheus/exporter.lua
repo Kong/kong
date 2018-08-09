@@ -23,7 +23,7 @@ local function init()
 
   prometheus = require("kong.plugins.prometheus.prometheus").init(shm, "kong_")
 
-  -- accross all services
+  -- across all services
   metrics.connections = prometheus:gauge("nginx_http_current_connections",
                                          "Number of HTTP connections",
                                          {"state"})
@@ -96,7 +96,7 @@ local function collect()
 
   if r.status ~= 200 then
     ngx_log(WARN, "prometheus: failed to retrieve /nginx_status ",
-            "whlie processing /metrics endpoint")
+            "while processing /metrics endpoint")
 
   else
     local accepted, handled, total = select(3, find(r.body,
