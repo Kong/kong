@@ -26,7 +26,7 @@ local span_kind_map = {
 	consumer = "CONSUMER";
 }
 function zipkin_reporter_methods:report(span)
-	local span_context = span.context
+	local span_context = span:context()
 	local span_kind = span:get_tag "span.kind"
 	local port = span:get_tag "peer.port"
 	local zipkin_tags = {}

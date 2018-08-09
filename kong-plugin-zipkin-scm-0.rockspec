@@ -16,7 +16,7 @@ dependencies = {
 	"lua-cjson";
 	"lua-resty-http >= 0.11";
 	"kong >= 0.14";
-	"opentracing";
+	"opentracing >= 0.0.2";
 }
 
 build = {

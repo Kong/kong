@@ -87,7 +87,7 @@ local function new_injector()
 		local Flags = ngx.req.get_headers()["x-b3-flags"] -- Get from request headers
 		headers["x-b3-flags"] = Flags
 		headers["x-b3-sampled"] = (not Flags) and (span_context.should_sample and "1" or "0") or nil
-		for key, value in span_context:each_baggage() do
+		for key, value in span_context:each_baggage_item() do
 			-- XXX: https://github.com/opentracing/specification/issues/117
 			headers["uberctx-"..key] = ngx.escape_uri(value)
 		end
