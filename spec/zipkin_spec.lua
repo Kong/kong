@@ -89,10 +89,10 @@ describe("integration tests with mock zipkin server", function()
         local r = http_request.new_from_uri("http://127.0.0.1:8001/services/mock-zipkin/routes")
         r.headers:upsert(":method", "POST")
         r.headers:upsert("content-type", "application/json")
-        r:set_body(string.format([[{
+        r:set_body([[{
           "hosts":["mock-zipkin"],
           "preserve_host": true
-        }]], ip, port))
+        }]])
         local headers = assert(r:go(TEST_TIMEOUT))
         assert.same("201", headers:get ":status")
       end
