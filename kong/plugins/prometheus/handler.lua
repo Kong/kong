@@ -8,7 +8,7 @@ PrometheusHandler.PRIORITY = 13
 PrometheusHandler.VERSION = "0.1.0"
 
 
-local function log(premature, conf, message)
+local function log(premature, message)
   if premature then
     return
   end
@@ -23,11 +23,11 @@ function PrometheusHandler:new()
 end
 
 
-function PrometheusHandler:log(conf)
+function PrometheusHandler:log(conf) -- luacheck: ignore 212
   PrometheusHandler.super.log(self)
 
   local message = basic_serializer.serialize(ngx)
-  local ok, err = ngx.timer.at(0, log, conf, message)
+  local ok, err = ngx.timer.at(0, log, message)
   if not ok then
     ngx.log(ngx.ERR, "failed to create timer: ", err)
   end
