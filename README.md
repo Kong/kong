@@ -16,18 +16,84 @@ This plugin exposes metrics in [Prometheus Exposition format](https://github.com
 - *Connections*: Various NGINX connection metrics like active, reading, writing,
   accepted connections.
 
+### Grafana Dashboard
+
+Metrics collected via this plugin can be graphed using the following dashboard:
+https://grafana.com/dashboards/7424
 
 ### Using the plugin
-
-#### TODO add installation steps if not bundled with CE/EE
 
 #### Enable the plugin
 ```bash
 $ curl http://localhost:8001/plugins name=prometheus
 ```
 
-#### Put metrics into Prometheus
+### Scraping metrics
+
+#### Via Kong's Admin API
+
 Metrics are availble on the admin API at `/metrics` endpoint:
+```
+curl http://localhost:8001/metrics
+```
+
+#### Via Kong's proxy
+
+If your proxy nodes also serve the Admin API, then you can create a route
+to `/metrics` endpoint and apply a IP restriction plugin.
+```
+curl -XPOST http://localhost:8001/services -d name=prometheusEndpoint -d url=http://localhost:8001/metrics
+curl -XPOST http://localhost:8001/services/prometheusEndpoint/routes -d paths[]=/metrics
+curl -XPOST http://localhost:8001/services/prometheusEndpoint/plugins -d name=ip-restriction -d config.whitelist=10.0.0.0/8
+```
+
+#### On a custom port
+
+Alternatively, this plugin has the capability to serve the content on a
+different port using a custom server block in Kong's NGINX template.
+
+If you're using Kong 0.14.0 or above, then you can inject the server block
+using Kong's [injecting Nginx directives](https://docs.konghq.com/0.14.x/configuration/#injecting-nginx-directives) 
+feature.
+
+Consider the below file containing an Nginx `server` block:
+
+```
+# /path/to/prometheus-server.conf
+server {
+    server_name kong_prometheus_exporter;
+    listen 0.0.0.0:9542; # can be any other port as well
+
+    location / {
+        default_type text/plain;
+        content_by_lua_block {
+            local serve = require "kong.plugins.prometheus.serve"
+            serve.prometheus_server()
+        }
+    }
+
+    location /nginx_status {
+        internal;
+        access_log off;
+        stub_status;
+    }
+}
+```
+
+Assuming you've the above file available in your file-system on which
+Kong is running, add the following line to your `kong.conf` to scrape metrics
+from `9542` port.
+
+```
+nginx_http_include=/path/to/prometheus-server.conf
+```
+
+If you're running Kong version older than 0.14.0, then you can achieve the
+same result by using a
+[custom Nginx template](https://docs.konghq.com/0.14.x/configuration/#custom-nginx-templates-embedding-kong).
+
+#### Sample /metrics output
+
 ```bash
 $ curl http://localhost:8001/metrics
 root@vagrant-ubuntu-trusty-64:~# curl -D - http://localhost:8001/metrics
@@ -119,59 +185,6 @@ kong_nginx_metric_errors_total 0
 
 ```
 
-In case Admin API of Kong is protected behind a firewall or requires
-authentication, you've two options:
-
-If your proxy nodes also serve the Admin API, then you can create a route
-to `/metrics` endpoint and apply a IP restriction plugin.
-```
-curl -XPOST http://localhost:8001/services -d name=prometheusEndpoint -d url=http://localhost:8001/metrics
-curl -XPOST http://localhost:8001/services/prometheusEndpoint/routes -d paths[]=/metrics
-curl -XPOST http://localhost:8001/services/prometheusEndpoint/plugins -d name=ip-restriction -d config.whitelist=10.0.0.0/24
-```
-
-Alternatively, this plugin has the capability to serve the content on a
-different port using a custom server block in Kong's NGINX template.
-
-If you're using Kong 0.14.0 or above, then you can inject the server block
-using Kong's [injecting Nginx directives](https://docs.konghq.com/0.14.x/configuration/#injecting-nginx-directives) 
-feature.
-
-Consider the below `server` block:
-
-```
-# /path/to/prometheus-server.conf
-server {
-    server_name kong_prometheus_exporter;
-    listen 0.0.0.0:9542; # can be any other port as well
-
-    location / {
-        default_type text/plain;
-        content_by_lua_block {
-            local serve = require "kong.plugins.prometheus.serve"
-            serve.prometheus_server()
-        }
-    }
-
-    location /nginx_status {
-        internal;
-        access_log off;
-        stub_status;
-    }
-}
-```
-
-Assuming you've the above file available in your file-system on which
-Kong is running, add the following line to your `kong.conf` to scrape metrics
-from `9542` port.
-
-```
-nginx_http_include=/path/to/prometheus-server.conf
-```
-
-If you're running Kong version older than 0.14.0, then you can achieve the
-same result by using a
-[custom Nginx template](https://docs.konghq.com/0.14.x/configuration/#custom-nginx-templates-embedding-kong).
 
 
 [badge-travis-url]: https://travis-ci.com/Kong/kong-plugin-prometheus/branches
