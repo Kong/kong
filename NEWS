@@ -4,6 +4,7 @@ UNRELEASED
   - Fix cause of missing kong.credential field
   - Support for deprecated Kong "api" entity via kong.api tag
   - Upgrade to opentracing-lua 0.0.2
+  - Start of test suite
 
 
 0.0.3 - 2018-07-06
