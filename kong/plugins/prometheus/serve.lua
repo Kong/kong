@@ -20,7 +20,7 @@ app.default_route = function(self)
 end
 
 
-app.handle_404 = function(self)
+app.handle_404 = function(self) -- luacheck: ignore 212
   return responses.send_HTTP_NOT_FOUND()
 end
 
