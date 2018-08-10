@@ -68,17 +68,17 @@ local function log(message)
     metrics.bandwidth:inc(response_size, { "egress", service_name })
   end
 
-  local request_latency = tonumber(message.latencies.request)
+  local request_latency = message.latencies.request
   if request_latency and request_latency >= 0 then
     metrics.latency:observe(request_latency, { "request", service_name })
   end
 
-  local upstream_latency = tonumber(message.latencies.proxy)
+  local upstream_latency = message.latencies.proxy
   if upstream_latency ~= nil and upstream_latency >= 0 then
     metrics.latency:observe(upstream_latency, {"upstream", service_name })
   end
 
-  local kong_proxy_latency = tonumber(message.latencies.kong)
+  local kong_proxy_latency = message.latencies.kong
   if kong_proxy_latency ~= nil and kong_proxy_latency >= 0 then
     metrics.latency:observe(kong_proxy_latency, { "kong", service_name })
   end
