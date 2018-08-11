@@ -501,13 +501,13 @@ end
 
 function DAO:post_crud_event(operation, entity)
   if self.events then
-    local ok, err = self.events.post_local("dao:crud", operation, {
+    local _, err = self.events.post_local("dao:crud", operation, {
       operation = operation,
       schema    = self.schema,
       new_db    = true,
       entity    = entity,
     })
-    if not ok then
+    if err then
       log(ERR, "[db] failed to propagate CRUD operation: ", err)
     end
   end
