@@ -488,8 +488,11 @@ local function deserialize_row(self, row)
 
     elseif field.timestamp and row[field_name] ~= nil then
       row[field_name] = row[field_name] / 1000
+
     elseif field.type == "record" then
-      row[field_name] = cjson.decode(row[field_name])
+      if type(row[field_name]) == "string" then
+        row[field_name] = cjson.decode(row[field_name])
+      end
     end
 
     if row[field_name] == nil then
