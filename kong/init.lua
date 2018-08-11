@@ -152,13 +152,18 @@ function Kong.init()
   local db = assert(DB.new(config))
   assert(db:init_connector())
 
+  local schema_state = assert(db:schema_state())
+  if schema_state.pending_migrations then
+    assert(db:load_pending_migrations(schema_state.pending_migrations))
+  end
+
   local dao = assert(DAOFactory.new(config, db)) -- instantiate long-lived DAO
   local ok, err_t = dao:init()
   if not ok then
     error(tostring(err_t))
   end
 
-  assert(dao:are_migrations_uptodate())
+  --assert(dao:are_migrations_uptodate())
 
   db.old_dao = dao
 

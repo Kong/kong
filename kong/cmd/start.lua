@@ -31,6 +31,7 @@ local function execute(args)
       assert(dao:run_migrations())
     end
 
+    --[[
     local ok, err = dao:are_migrations_uptodate()
     if err then
       -- error correctly formatted by the DAO
@@ -56,6 +57,7 @@ local function execute(args)
     if not ok then
       error("Cassandra has not reached cluster consensus yet")
     end
+    --]]
 
     assert(nginx_signals.start(conf))
 

@@ -94,6 +94,7 @@ function DB.new(kong_config, strategy)
     connector  = connector,
     strategy   = strategy,
     errors     = errors,
+    kong_config = kong_config,
   }
 
   do
@@ -358,6 +359,333 @@ do
     self.connector:remove_lock(key, owner)
 
     return release_rlock_and_ret(rlock, true)
+  end
+end
+
+
+do
+  -- migrations
+  local utils = require "kong.tools.utils"
+  local log = require "kong.cmd.utils.log"
+
+
+  -- TODO: migrations can be written from:
+  --    1. CE (core, this required module)
+  --    2. EE
+  --    3. Plugins
+  --
+  --    Since migration names are to be unique, remember to prefix
+  --    them
+  --    Reminder to also validate each property: name is required, types,
+  --    etc...
+  local migrations = {
+    {
+      subsystem = "core",
+      migrations = require "kong.db.migrations",
+    }
+  }
+
+
+  local function each_subsystem_migrations()
+    local i = 0
+
+    return function()
+      i = i + 1
+      local m = migrations[i]
+      if not m then
+        return nil
+      end
+
+      return m.subsystem, m.migrations
+    end
+  end
+
+
+  function DB:schema_state()
+    log.verbose("retrieving database schema state...")
+
+    local ok, err = self.connector:connect_migrations()
+    if not ok then
+      return nil, err
+    end
+
+    local rows, err = self.connector:schema_migrations()
+
+    self.connector:close()
+
+    if err then
+      return nil, "failed to check schema state: " .. err
+    end
+
+    log.verbose("schema state retrieved")
+
+    local schema_state = {
+      needs_bootstrap = false,
+      executed_migrations = nil,
+      pending_migrations = nil,
+      missing_migrations = nil,
+      new_migrations = nil,
+    }
+
+    local rows_as_hash = {}
+
+    if not rows then
+      schema_state.needs_bootstrap = true
+
+    else
+      for _, row in ipairs(rows) do
+        rows_as_hash[row.subsystem] = {
+          last_executed = row.last_executed,
+          executed = row.executed or {},
+          pending = row.pending or {},
+        }
+      end
+    end
+
+    for subsystem_name, subsystem_migrations in each_subsystem_migrations() do
+      local subsystem_state = {
+        executed_migrations = {},
+        pending_migrations = {},
+        missing_migrations = {},
+        new_migrations = {},
+      }
+
+      if not rows_as_hash[subsystem_name] then
+        -- no migrations for this subsystem in DB, all migrations are 'new' (to
+        -- run)
+        for i, mig in ipairs(subsystem_migrations) do
+          subsystem_state.new_migrations[i] = mig.name
+        end
+
+      else
+        -- some migrations have previously ran for this subsystem
+
+        local n
+
+        for i, mig in ipairs(subsystem_migrations) do
+          if mig.name == rows_as_hash[subsystem_name].last_executed then
+            n = i + 1
+          end
+
+          local found
+
+          for _, db_mig in ipairs(rows_as_hash[subsystem_name].executed) do
+            if mig.name == db_mig then
+              found = true
+              table.insert(subsystem_state.executed_migrations, mig.name)
+              break
+            end
+          end
+
+          if not found then
+            for _, db_mig in ipairs(rows_as_hash[subsystem_name].pending) do
+              if mig.name == db_mig then
+                found = true
+                table.insert(subsystem_state.pending_migrations, mig.name)
+                break
+              end
+            end
+          end
+
+          if not found then
+            if not n or i >= n then
+              table.insert(subsystem_state.new_migrations, mig.name)
+
+            else
+              table.insert(subsystem_state.missing_migrations, mig.name)
+            end
+          end
+        end
+      end
+
+      for k, v in pairs(subsystem_state) do
+        if #v > 0 then
+          if not schema_state[k] then
+            schema_state[k] = {}
+          end
+
+          table.insert(schema_state[k], {
+            subsystem = subsystem_name,
+            migrations = v,
+            namespace = subsystem_migrations.namespace,
+          })
+        end
+      end
+    end
+
+    return schema_state
+  end
+
+
+  function DB:schema_bootstrap()
+    local ok, err = self.connector:connect_migrations()
+    if not ok then
+      return nil, err
+    end
+
+    local ok, err = self.connector:schema_bootstrap(self.kong_config)
+
+    self.connector:close()
+
+    if not ok then
+      return nil, "failed to bootstrap database: " .. err
+    end
+
+    return true
+  end
+
+
+  function DB:schema_reset()
+    local ok, err = self.connector:connect_migrations()
+    if not ok then
+      return nil, err
+    end
+
+    local ok, err = self.connector:schema_reset()
+
+    self.connector:close()
+
+    if not ok then
+      return nil, err
+    end
+
+    return true
+  end
+
+
+  function DB:run_migrations(migrations, options)
+    if type(migrations) ~= "table" then
+      error("migrations must be a table", 2)
+    end
+
+    if type(options) ~= "table" then
+      error("options must be a table", 2)
+    end
+
+    local run_up = options.run_up
+    local run_teardown = options.run_teardown
+
+    if not run_up and not run_teardown then
+      error("options.run_up or options.run_teardown must be given", 2)
+    end
+
+    local ok, err = self.connector:connect_migrations({ use_keyspace = true })
+    if not ok then
+      return nil, err
+    end
+
+    for _, t in ipairs(migrations) do
+      -- TODO: for database/keyspace <db_name/keyspace_name>
+      log("migrating %s", t.subsystem)
+
+      for _, mig_name in ipairs(t.migrations) do
+        local ok, mod = utils.load_module_if_exists(t.namespace .. "." ..
+                                                    mig_name)
+        if not ok then
+          return nil, fmt("failed to load migration '%s': %s", mig_name,
+                          mod)
+        end
+
+        local strategy_migration = mod[self.strategy]
+        if not strategy_migration then
+          return nil, fmt("missing %s strategy for migration '%s'",
+                          self.strategy, mig_name)
+        end
+
+        log.debug("running migration: %s", mig_name)
+
+        if run_up then
+          -- kong migrations bootstrap
+          -- kong migrations up
+
+          local ok, err = self.connector:run_up_migration(strategy_migration.up)
+          if not ok then
+            self.connector:close()
+            return nil, fmt("failed to run migration '%s' up: %s", mig_name,
+                            err)
+          end
+
+          local state = "executed"
+          if options.upgrade and strategy_migration.teardown then
+            -- we are running 'kong migrations up' (upgrading) and this
+            -- migration has a teardown step for later
+            state = "pending"
+          end
+
+          local ok, err = self.connector:record_migration(t.subsystem,
+                                                          mig_name, state)
+          if not ok then
+            self.connector:close()
+            return nil, fmt("failed to record migration '%s': %s",
+                            mig_name, err)
+          end
+
+        else
+          -- kong migrations teardown
+          local f = strategy_migration.teardown
+
+          local pok, perr, err = xpcall(f, debug.traceback, self.connector)
+          if not pok or err then
+            self.connector:close()
+            return nil, fmt("failed to run migration '%s' teardown: %s",
+                            mig_name, perr or err)
+
+          end
+
+          local ok, err = self.connector:record_migration(t.subsystem,
+                                                          mig_name, "teardown")
+          if not ok then
+            self.connector:close()
+            return nil, fmt("failed to record migration '%s': %s",
+                            mig_name, err)
+          end
+        end
+
+        log("%s migrated up to: %s", t.subsystem, mig_name)
+      end
+    end
+
+    self.connector:close()
+
+    return true
+  end
+
+
+  function DB:load_pending_migrations(migrations)
+    if type(migrations) ~= "table" then
+      error("migrations must be a table", 2)
+    end
+
+    for _, t in ipairs(migrations) do
+      for _, mig_name in ipairs(t.migrations) do
+        local ok, mod = utils.load_module_if_exists(t.namespace .. "." ..
+                                                    mig_name)
+        if not ok then
+          return nil, fmt("failed to load migration '%s': %s", mig_name,
+                          mod)
+        end
+
+        if mod.translations then
+          ngx.log(ngx.INFO, "loading translation functions for migration ",
+                            "'", mig_name, "'")
+
+          for _, translation in ipairs(mod.translations) do
+            local dao = self.daos[translation.entity]
+            if not dao then
+              return nil, fmt("failed to load translation function for " ..
+                              "migration '%s': no '%s' DAO exists", mig_name,
+                              translation.entity)
+            end
+
+            dao:load_translations(mod.translations)
+          end
+        end
+      end
+    end
+
+    self.connector:close()
+
+    return true
   end
 end
 
