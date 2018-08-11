@@ -283,7 +283,7 @@ function _M:unique_violation(unique_key)
   end
 
   local message = fmt("UNIQUE violation detected on '%s'",
-                      pl_pretty(unique_key, ""))
+                      pl_pretty(unique_key, ""):gsub("\"userdata: NULL\"", "null"))
 
   return new_err_t(self, ERRORS.UNIQUE_VIOLATION, message, unique_key)
 end
