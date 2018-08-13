@@ -157,11 +157,47 @@ local function create_hash(request, hmac_params, headers)
   return hmac[hmac_params.algorithm](hmac_params.secret, signing_string)
 end
 
-local function validate_signature(request, hmac_params, headers)
-  local signature_1 = create_hash(request, hmac_params, headers)
-  local signature_2 = ngx_decode_base64(hmac_params.signature)
+-- plugin assumes the request parameters being used for creating
+-- signature by client are not changed by core or any other plugin
+-- DEPRECATED BY: https://github.com/Kong/kong/pull/3339
+local function create_hash_deprecated(request, hmac_params, headers)
+  local signing_string = ""
+  local hmac_headers = hmac_params.hmac_headers
+  local count = #hmac_headers
 
-  return signature_1 == signature_2
+  for i = 1, count do
+    local header = hmac_headers[i]
+    local header_value = headers[header]
+
+    if not header_value then
+      if header == "request-line" then
+        -- request-line in hmac headers list
+        local request_line = fmt("%s %s HTTP/%s", ngx.req.get_method(), ngx.var.uri, ngx.req.http_version())
+
+        signing_string = signing_string .. request_line
+      else
+        signing_string = signing_string .. header .. ":"
+      end
+    else
+      signing_string = signing_string .. header .. ":" .. " " .. header_value
+    end
+    if i < count then
+      signing_string = signing_string .. "\n"
+    end
+  end
+  return hmac[hmac_params.algorithm](hmac_params.secret, signing_string)
+end
+
+local function validate_signature(request, hmac_params, headers)
+  local signature_1            = create_hash(request, hmac_params, headers)
+  local signature_1_deprecated = create_hash_deprecated(request, hmac_params, headers)
+  local signature_2            = ngx_decode_base64(hmac_params.signature)
+
+  if signature_1 == signature_2 then
+    return true
+  else
+    return signature_1_deprecated == signature_2
+  end
 end
 
 local function load_credential_into_memory(username)
