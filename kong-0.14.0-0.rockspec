@@ -20,7 +20,7 @@ dependencies = {
   "multipart == 0.5.5",
   "version == 0.2",
   "kong-lapis == 1.6.0.1",
-  "lua-cassandra == 1.3.1",
+  "lua-cassandra == 1.3.2",
   "pgmoon == 1.8.0",
   "luatz == 0.3",
   "lua_system_constants == 0.1.2",
@@ -31,7 +31,7 @@ dependencies = {
   "lua-resty-dns-client == 2.1.0",
   "lua-resty-worker-events == 0.3.3",
   "lua-resty-mediador == 0.1.2",
-  "lua-resty-healthcheck == 0.4.2",
+  "lua-resty-healthcheck == 0.5.0",
   "lua-resty-cookie == 0.1.0",
   "lua-resty-mlcache == 2.2.0",
   -- external Kong plugins
