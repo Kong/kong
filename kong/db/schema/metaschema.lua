@@ -46,6 +46,7 @@ local validators = {
   { match_any = match_any_list },
   { starts_with = { type = "string" }, },
   { one_of = { type = "array", elements = { type = "string" } }, },
+  { is_regex = { type = "boolean" }, },
   { timestamp = { type = "boolean" }, },
   { uuid = { type = "boolean" }, },
   { custom_validator = { type = "function" }, },
@@ -176,6 +177,9 @@ local attribute_types = {
     ["string"] = true,
     ["number"] = true,
     ["integer"] = true,
+  },
+  is_regex = {
+    ["string"] = true,
   },
   timestamp = {
     ["number"] = true,
