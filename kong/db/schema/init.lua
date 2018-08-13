@@ -5,6 +5,7 @@ local cjson        = require "cjson"
 
 
 local setmetatable = setmetatable
+local re_match     = ngx.re.match
 local re_find      = ngx.re.find
 local concat       = table.concat
 local insert       = table.insert
@@ -65,6 +66,7 @@ local validation_errors = {
   MATCH_ANY                 = "invalid value: %s",
   STARTS_WITH               = "should start with: %s",
   ONE_OF                    = "expected one of: %s",
+  IS_REGEX                  = "not a valid regex: %s",
   TIMESTAMP                 = "expected a valid timestamp",
   UUID                      = "expected a valid UUID",
   VALIDATION                = "failed validating: %s",
@@ -190,6 +192,11 @@ Schema.validators = {
     return true
   end,
 
+  is_regex = function(value)
+    local _, err = re_match("any string", value)
+    return err == nil
+  end,
+
   not_match = function(value, pattern)
     local m = value:match(pattern)
     if m then
@@ -271,6 +278,7 @@ Schema.validators_order = {
   -- type-dependent
   "timestamp",
   "uuid",
+  "is_regex",
   "between",
 
   -- strings (1/2)
@@ -669,8 +677,8 @@ function Schema:validate_field(field, value)
       local ok, err = self.validators[k](value, field[k], field)
       if not ok then
         return nil, err
-                    or validation_errors[k:upper()]
-                    or validation_errors.VALIDATION:format(k)
+                    or validation_errors[k:upper()]:format(value)
+                    or validation_errors.VALIDATION:format(value)
       end
     end
   end
