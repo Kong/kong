@@ -1,11 +1,19 @@
 local constants = require "kong.constants"
 local BasePlugin = require "kong.plugins.base_plugin"
 
+
+local ngx = ngx
+local kong = kong
 local type = type
+local null = ngx.null
+local tostring = tostring
+
 
 local _realm = 'Key realm="' .. _KONG._NAME .. '"'
 
+
 local KeyAuthHandler = BasePlugin:extend()
+
 
 KeyAuthHandler.PRIORITY = 1003
 KeyAuthHandler.VERSION = "0.2.0"
@@ -40,14 +48,29 @@ local function load_consumer(consumer_id, anonymous)
   return result
 end
 
+
 local function set_consumer(consumer, credential)
   local const = constants.HEADERS
 
-  local new_headers = {
-    [const.CONSUMER_ID]        = consumer.id,
-    [const.CONSUMER_CUSTOM_ID] = tostring(consumer.custom_id),
-    [const.CONSUMER_USERNAME]  = consumer.username,
-  }
+  local new_headers = {}
+
+  if consumer.id and consumer.id ~= null then
+    new_headers[const.CONSUMER_ID] = tostring(consumer.id)
+  else
+    kong.service.request.clear_header(const.CONSUMER_ID)
+  end
+
+  if consumer.custom_id and consumer.custom_id ~= null then
+    new_headers[const.CONSUMER_CUSTOM_ID] = tostring(consumer.custom_id)
+  else
+    kong.service.request.clear_header(const.CONSUMER_CUSTOM_ID)
+  end
+
+  if consumer.username and consumer.username ~= null then
+    new_headers[const.CONSUMER_USERNAME] = tostring(consumer.username)
+  else
+    kong.service.request.clear_header(const.CONSUMER_USERNAME)
+  end
 
   kong.ctx.shared.authenticated_consumer = consumer -- forward compatibility
   ngx.ctx.authenticated_consumer = consumer         -- backward compatibility
@@ -55,7 +78,12 @@ local function set_consumer(consumer, credential)
   if credential then
     kong.ctx.shared.authenticated_credential = credential -- forward compatibility
     ngx.ctx.authenticated_credential = credential         -- backward compatibility
-    new_headers[const.CREDENTIAL_USERNAME] = credential.username
+    if type(credential) == "table" and credential.username and credential.username ~= null then
+      new_headers[const.CREDENTIAL_USERNAME] = credential.username
+    else
+      kong.service.request.clear_header(const.CREDENTIAL_USERNAME)
+    end
+
     kong.service.request.clear_header(const.ANONYMOUS) -- in case of auth plugins concatenation
 
   else
