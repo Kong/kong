@@ -14,6 +14,14 @@ return {
   fields = {
     -- add: Add a value (to response headers or response JSON body) only if the key does not already exist.
     remove = {
+      new_type = {
+        type = "record",
+        fields = {
+          { json = { type = "array", elements = { type = "string" }, default = {} } },
+          { headers = { type = "array", elements = { type = "string" }, default = {} } },
+        },
+        nullable = false,
+      },
       type = "table",
       schema = {
         fields = {
@@ -23,6 +31,14 @@ return {
       }
     },
     replace = {
+      new_type = {
+        type = "record",
+        fields = {
+          { json = { type = "array", elements = { type = "string", match = "^[^:]+:.*$" }, default = {} } },
+          { headers = { type = "array", elements = { type = "string", match = "^[^:]+:.*$" }, default = {} } },
+        },
+        nullable = false,
+      },
       type = "table",
       schema = {
         fields = {
@@ -32,6 +48,14 @@ return {
       }
     },
     add = {
+      new_type = {
+        type = "record",
+        fields = {
+          { json = { type = "array", elements = { type = "string", match = "^[^:]+:.*$" }, default = {} } },
+          { headers = { type = "array", elements = { type = "string", match = "^[^:]+:.*$" }, default = {} } },
+        },
+        nullable = false,
+      },
       type = "table",
       schema = {
         fields = {
@@ -41,6 +65,14 @@ return {
       }
     },
     append = {
+      new_type = {
+        type = "record",
+        fields = {
+          { json = { type = "array", elements = { type = "string", match = "^[^:]+:.*$" }, default = {} } },
+          { headers = { type = "array", elements = { type = "string", match = "^[^:]+:.*$" }, default = {} } },
+        },
+        nullable = false,
+      },
       type = "table",
       schema = {
         fields = {
