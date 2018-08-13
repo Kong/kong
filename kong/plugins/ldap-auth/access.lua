@@ -12,7 +12,6 @@ local fmt = string.format
 local ngx_log = ngx.log
 local request = ngx.req
 local ngx_error = ngx.ERR
-local ngx_debug = ngx.DEBUG
 local md5 = ngx.md5
 local decode_base64 = ngx.decode_base64
 local ngx_socket_tcp = ngx.socket.tcp
@@ -31,7 +30,8 @@ local _M = {}
 local function retrieve_credentials(authorization_header_value, conf)
   local username, password
   if authorization_header_value then
-    local s, e = find(lower(authorization_header_value), "^%s*" .. lower(conf.header_type) .. "%s+")
+    local s, e = find(lower(authorization_header_value), "^%s*" ..
+                      lower(conf.header_type) .. "%s+")
     if s == 1 then
       local cred = sub(authorization_header_value, e + 1)
       local decoded_cred = decode_base64(cred)
@@ -49,7 +49,8 @@ local function ldap_authenticate(given_username, given_password, conf)
   sock:settimeout(conf.timeout)
   ok, err = sock:connect(conf.ldap_host, conf.ldap_port)
   if not ok then
-    ngx_log(ngx_error, "[ldap-auth] failed to connect to " .. conf.ldap_host .. ":" .. tostring(conf.ldap_port) .. ": ", err)
+    ngx_log(ngx_error, "[ldap-auth] failed to connect to ", conf.ldap_host,
+            ":", tostring(conf.ldap_port),": ", err)
     return nil, err
   end
 
@@ -60,7 +61,8 @@ local function ldap_authenticate(given_username, given_password, conf)
     end
     local _, err = sock:sslhandshake(true, conf.ldap_host, conf.verify_ldap_host)
     if err ~= nil then
-      return false, "failed to do SSL handshake with " .. conf.ldap_host .. ":" .. tostring(conf.ldap_port) .. ": " .. err
+      return false, fmt("failed to do SSL handshake with %s:%s: %s",
+                        conf.ldap_host, tostring(conf.ldap_port), err)
     end
   end
 
@@ -69,14 +71,13 @@ local function ldap_authenticate(given_username, given_password, conf)
 
   ok, suppressed_err = sock:setkeepalive(conf.keepalive)
   if not ok then
-    ngx_log(ngx_error, "[ldap-auth] failed to keepalive to " .. conf.ldap_host .. ":" .. tostring(conf.ldap_port) .. ": ", suppressed_err)
+    ngx_log(ngx_error, "[ldap-auth] failed to keepalive to ", conf.ldap_host, ":",
+            tostring(conf.ldap_port), ": ", suppressed_err)
   end
   return is_authenticated, err
 end
 
 local function load_credential(given_username, given_password, conf)
-  ngx_log(ngx_debug, "[ldap-auth] authenticating user against LDAP server: " .. conf.ldap_host .. ":" .. conf.ldap_port)
-
   local ok, err = ldap_authenticate(given_username, given_password, conf)
   if err ~= nil then
     ngx_log(ngx_error, err)
@@ -92,7 +93,7 @@ local function load_credential(given_username, given_password, conf)
 end
 
 
-local function cache_key(conf, username)
+local function cache_key(conf, username, password)
   if not ldap_config_cache[conf] then
     ldap_config_cache[conf] = md5(fmt("%s:%u:%s:%s:%u",
       lower(conf.ldap_host),
@@ -103,18 +104,21 @@ local function cache_key(conf, username)
     ))
   end
 
-  return fmt("ldap_auth_cache:%s:%s", ldap_config_cache[conf], username)
+  return fmt("ldap_auth_cache:%s:%s:%s", ldap_config_cache[conf],
+             username, password)
 end
 
 
 local function authenticate(conf, given_credentials)
-  local given_username, given_password = retrieve_credentials(given_credentials, conf)
+  local given_username, given_password = retrieve_credentials(given_credentials,
+                                                              conf)
   if given_username == nil then
     return false
   end
 
-  local credential, err = singletons.cache:get(cache_key(conf, given_username), {
-    ttl = conf.cache_ttl
+  local credential, err = singletons.cache:get(cache_key(conf, given_username, given_password), {
+    ttl = conf.cache_ttl,
+    neg_ttl = conf.cache_ttl
   }, load_credential, given_username, given_password, conf)
   if err or credential == nil then
     return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
