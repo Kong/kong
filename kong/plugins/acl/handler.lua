@@ -81,7 +81,7 @@ function ACLHandler:access(conf)
     return responses.send_HTTP_FORBIDDEN("You cannot consume this service")
   end
 
-  if conf.set_groups_header then
+  if not conf.hide_groups_header then
     set_header(constants.HEADERS.CONSUMER_GROUPS, to_be_blocked)
   end
 end
