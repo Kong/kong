@@ -190,12 +190,13 @@ end
 
 local function validate_signature(request, hmac_params, headers)
   local signature_1            = create_hash(request, hmac_params, headers)
-  local signature_1_deprecated = create_hash_deprecated(request, hmac_params, headers)
   local signature_2            = ngx_decode_base64(hmac_params.signature)
 
   if signature_1 == signature_2 then
     return true
   else
+    local signature_1_deprecated = create_hash_deprecated(request, hmac_params, headers)
+
     return signature_1_deprecated == signature_2
   end
 end
