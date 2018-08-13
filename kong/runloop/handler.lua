@@ -43,7 +43,7 @@ local CACHE_ROUTER_OPTS = { ttl = 0 }
 local EMPTY_T = {}
 
 
-local router, router_version, router_err
+local router, router_err
 local api_router, api_router_version, api_router_err
 local server_header = meta._SERVER_TOKENS
 
@@ -148,10 +148,6 @@ local function build_router(db, version)
     return nil, "could not create router: " .. err
   end
 
-  if version then
-    router_version = version
-  end
-
   singletons.router = router
 
   return true
@@ -249,7 +245,11 @@ return {
         log(DEBUG, "[events] Route updated, invalidating router")
         cache:invalidate("router:version")
         local version, err = cache:get("router:version", CACHE_ROUTER_OPTS, utils.uuid)
-        raise_rebuild_router_event(worker_events, version)
+        if err then
+          log(ngx.CRIT, "could not ensure router is up to date: ", err)
+        else
+          raise_rebuild_router_event(worker_events, version)
+        end
       end, "crud", "routes")
 
       worker_events.register(function(data)
@@ -266,7 +266,11 @@ return {
         log(ngx.DEBUG, "received invalidate event from cluster for key: '", key, "'")
         if key == "router:version" then
           local version, err = cache:get("router:version", CACHE_ROUTER_OPTS, utils.uuid)
-          raise_rebuild_router_event(worker_events, version)
+          if err then
+            log(ngx.CRIT, "could not ensure router is up to date: ", err)
+          else
+            raise_rebuild_router_event(worker_events, version)
+          end
         end
       end)
       if not ok then
@@ -285,7 +289,11 @@ return {
           log(DEBUG, "[events] Service updated, invalidating router")
           cache:invalidate("router:version")
           local version, err = cache:get("router:version", CACHE_ROUTER_OPTS, utils.uuid)
-          raise_rebuild_router_event(worker_events, version)
+          if err then
+            log(ngx.CRIT, "could not ensure router is up to date: ", err)
+          else
+            raise_rebuild_router_event(worker_events, version)
+          end
         end
       end, "crud", "services")
 
