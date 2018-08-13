@@ -4,7 +4,8 @@ return {
   no_consumer = true,
   fields = {
     whitelist = { type = "array" },
-    blacklist = { type = "array" }
+    blacklist = { type = "array" },
+    set_groups_header = { type = "boolean", default = true }
   },
   self_check = function(schema, plugin_t, dao, is_update)
     if next(plugin_t.whitelist or {}) and next(plugin_t.blacklist or {}) then
