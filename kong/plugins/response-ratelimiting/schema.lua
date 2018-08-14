@@ -57,9 +57,42 @@ return {
           month = { type = "number" },
           year = { type = "number" }
         }
-      }
+      },
+      new_type = {
+        type = "map",
+        keys = {
+          type = "string",
+        },
+        values = {
+          type = "record",
+          fields = {
+            { second = { type = "number" } },
+            { minute = { type = "number" } },
+            { hour = { type = "number" } },
+            { day = { type = "number" } },
+            { month = { type = "number" } },
+            { year = { type = "number" } }
+          }
+        },
+        len_min = 1,
+        default = {},
+      },
     },
     hide_client_headers = { type = "boolean", default = false },
+  },
+  entity_checks = {
+    { conditional = {
+      if_field = "config.policy", if_match = { eq = "redis" },
+      then_field = "config.redis_host", then_match = { required = true },
+    } },
+    { conditional = {
+      if_field = "config.policy", if_match = { eq = "redis" },
+      then_field = "config.redis_port", then_match = { required = true },
+    } },
+    { conditional = {
+      if_field = "config.policy", if_match = { eq = "redis" },
+      then_field = "config.redis_timeout", then_match = { required = true },
+    } },
   },
   self_check = function(schema, plugin_t, dao, is_update)
     if not plugin_t.limits or (not next(plugin_t.limits)) then
