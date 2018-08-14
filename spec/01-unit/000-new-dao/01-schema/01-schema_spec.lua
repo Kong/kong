@@ -1432,6 +1432,53 @@ describe("schema", function()
       }))
     end)
 
+    it("supports entity checks on nested fields", function()
+      local Test = Schema.new({
+        fields = {
+          { config = {
+              type = "record",
+              fields = {
+                { policy = { type = "string", one_of = { "redis", "bla" } } },
+                { redis_host = { type = "string" } },
+                { redis_port = { type = "number" } },
+              }
+          } }
+        },
+        entity_checks = {
+          { conditional = { if_field = "config.policy",
+                            if_match = { eq = "redis" },
+                            then_field = "config.redis_host",
+                            then_match = { required = true } } },
+          { conditional = { if_field = "config.policy",
+                            if_match = { eq = "redis" },
+                            then_field = "config.redis_port",
+                            then_match = { required = true } } },
+        }
+      })
+      local ok, err = Test:validate_update({ config = { policy = "redis" } })
+      assert.falsy(ok)
+      assert.truthy(err)
+      assert.falsy(Test:validate_update({
+        config = {
+          policy = "redis",
+          redis_host = ngx.null,
+          redis_port = ngx.null,
+        }
+      }))
+      assert.truthy(Test:validate_update({
+        config = {
+          policy = "redis",
+          redis_host = "example.com",
+          redis_port = 80
+        }
+      }))
+      assert.falsy(Test:validate_update({
+        config = {
+          policy = "bla",
+        }
+      }))
+    end)
+
     it("does not demand interdependent fields that aren't being updated", function()
       local Test = Schema.new({
         fields = {
