@@ -31,9 +31,12 @@ describe("Admin API post-processing", function()
 
     helpers.stop_kong()
   end)
+  
+  after_each(function()
+    helpers.dao:truncate_table("plugins")
+  end)
 
   before_each(function()
-    helpers.dao:truncate_table("plugins")
     plugin =  helpers.dao.plugins:insert({
       name = "admin-api-post-process",
     })

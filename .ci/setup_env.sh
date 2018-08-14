@@ -108,21 +108,21 @@ eval `luarocks path`
 # -------------------------------------
 # Install ccm & setup Cassandra cluster
 # -------------------------------------
-if [[ "$TEST_SUITE" != "unit" ]] && [[ "$TEST_SUITE" != "lint" ]]; then
-  echo "Installing ccm and setting up Cassandra cluster..."
-  pip install --user PyYAML six ccm &> build.log || (cat build.log && exit 1)
-  ccm create test -v $CASSANDRA -n 1 -d
-  ccm start -v
-  ccm status
+if [[ "$KONG_TEST_DATABASE" == "cassandra" ]]; then
+  echo "Setting up Cassandra"
+  docker run -d --name=cassandra --rm -p 7199:7199 -p 7000:7000 -p 9160:9160 -p 9042:9042 cassandra:$CASSANDRA
+  grep -q 'Created default superuser role' <(docker logs -f cassandra)
 fi
 
 # -------------------
 # Install Test::Nginx
 # -------------------
-echo "Installing CPAN dependencies..."
-chmod +x $CPAN_DOWNLOAD/cpanm
-cpanm --notest Test::Nginx &> build.log || (cat build.log && exit 1)
-cpanm --notest --local-lib=$TRAVIS_BUILD_DIR/perl5 local::lib && eval $(perl -I $TRAVIS_BUILD_DIR/perl5/lib/perl5/ -Mlocal::lib)
+if [[ "$TEST_SUITE" == "pdk" ]]; then
+  echo "Installing CPAN dependencies..."
+  chmod +x $CPAN_DOWNLOAD/cpanm
+  cpanm --notest Test::Nginx &> build.log || (cat build.log && exit 1)
+  cpanm --notest --local-lib=$TRAVIS_BUILD_DIR/perl5 local::lib && eval $(perl -I $TRAVIS_BUILD_DIR/perl5/lib/perl5/ -Mlocal::lib)
+fi
 
 nginx -V
 resty -V
