@@ -18,6 +18,7 @@ local type         = type
 local next         = next
 local ngx_time     = ngx.time
 local ngx_now      = ngx.now
+local find         = string.find
 local null         = ngx.null
 local max          = math.max
 local sub          = string.sub
@@ -359,15 +360,38 @@ local function quoted_list(words)
 end
 
 
-local function merge_field(base, overrides)
-  local field = {}
-  for k,v in pairs(base) do
-    field[k] = v
+-- Get a field from a possibly-nested table using a string key
+-- such as "x.y.z", such that `get_field(t, "x.y.z")` is the
+-- same as `t.x.y.z`.
+local function get_field(tbl, name)
+  if tbl == nil then
+    return nil
   end
-  for k,v in pairs(overrides) do
-    field[k] = v
+  local dot = find(name, ".", 1, true)
+  if not dot then
+    return tbl[name]
   end
-  return field
+  local hd, tl = sub(name, 1, dot - 1), sub(name, dot + 1)
+  return get_field(tbl[hd], tl)
+end
+
+
+-- Set a field from a possibly-nested table using a string key
+-- such as "x.y.z", such that `set_field(t, "x.y.z", v)` is the
+-- same as `t.x.y.z = v`.
+local function set_field(tbl, name, value)
+  local dot = find(name, ".", 1, true)
+  if not dot then
+    tbl[name] = value
+    return
+  end
+  local hd, tl = sub(name, 1, dot - 1), sub(name, dot + 1)
+  local subtbl = tbl[hd]
+  if subtbl == nil then
+    subtbl = {}
+    tbl[hd] = subtbl
+  end
+  set_field(subtbl, tl, value)
 end
 
 
@@ -411,7 +435,7 @@ Schema.entity_checkers = {
     run_with_missing_fields = true,
     fn = function(entity, field_names)
       for _, name in ipairs(field_names) do
-        if is_nonempty(entity[name]) then
+        if is_nonempty(get_field(entity, name)) then
           return true
         end
       end
@@ -425,7 +449,7 @@ Schema.entity_checkers = {
       local found = false
       local ok = false
       for _, name in ipairs(field_names) do
-        if is_nonempty(entity[name]) then
+        if is_nonempty(get_field(entity, name)) then
           if not found then
             found = true
             ok = true
@@ -446,11 +470,12 @@ Schema.entity_checkers = {
     fn = function(entity, field_names)
       local seen = {}
       for _, name in ipairs(field_names) do
-        if is_nonempty(entity[name]) then
-          if seen[entity[name]] then
+        local value = get_field(entity, name)
+        if is_nonempty(value) then
+          if seen[value] then
             return nil, quoted_list(field_names)
           end
-          seen[entity[name]] = true
+          seen[value] = true
         end
       end
       return true
@@ -469,26 +494,28 @@ Schema.entity_checkers = {
   conditional = {
     field_sources = { "if_field", "then_field" },
     fn = function(entity, arg, schema)
-      local if_value = entity[arg.if_field]
-      local then_value = entity[arg.then_field]
+      local if_value = get_field(entity, arg.if_field)
+      local then_value = get_field(entity, arg.then_field)
 
-      local if_merged = merge_field(schema.fields[arg.if_field], arg.if_match)
-      local ok, _ = Schema.validate_field(schema, if_merged, if_value)
+      arg.if_match.type = "skip"
+      local ok, _ = Schema.validate_field(schema, arg.if_match, if_value)
       if not ok then
         return true
       end
 
       -- Handle `required`
       if arg.then_match.required == true and then_value == null then
-        local field_errors = { [arg.then_field] = validation_errors.REQUIRED }
+        local field_errors = {}
+        set_field(field_errors, arg.then_field, validation_errors.REQUIRED)
         return nil, arg.if_field, field_errors
       end
 
-      local then_merged = merge_field(schema.fields[arg.then_field], arg.then_match)
+      arg.then_match.type = "skip"
       local err
-      ok, err = Schema.validate_field(schema, then_merged, then_value)
+      ok, err = Schema.validate_field(schema, arg.then_match, then_value)
       if not ok then
-        local field_errors = { [arg.then_field] = err }
+        local field_errors = {}
+        set_field(field_errors, arg.then_field, err)
         return nil, arg.if_field, field_errors
       end
 
@@ -668,7 +695,8 @@ function Schema:validate_field(field, value)
       return nil, validation_errors[field.type:upper()]
     end
 
-  else
+  -- if type is "skip" (an internal marker), run validators only
+  elseif field.type ~= "skip" then
     return nil, validation_errors.SCHEMA_TYPE:format(field.type)
   end
 
@@ -783,24 +811,24 @@ local function compatible_fields(f1, f2)
 end
 
 
-local function get_subschema_fields(self, input)
+local function get_subschema(self, input)
   if self.subschemas and self.subschema_key then
     local subschema = self.subschemas[input[self.subschema_key]]
     if subschema then
-      return self.subschemas[input[self.subschema_key]].fields
+      return self.subschemas[input[self.subschema_key]]
     end
   end
   return nil
 end
 
 
-local function resolve_field(self, k, field, subschema_fields)
+local function resolve_field(self, k, field, subschema)
   field = field or self.fields[k]
   if not field then
     return nil, validation_errors.UNKNOWN
   end
-  if subschema_fields then
-    local ss_field = subschema_fields[k]
+  if subschema then
+    local ss_field = subschema.fields[k]
     if ss_field then
       if not compatible_fields(field, ss_field) then
         return nil, validation_errors.SUBSCHEMA_BAD_TYPE
@@ -824,7 +852,7 @@ validate_fields = function(self, input)
 
   local errors, _ = {}
 
-  local subschema_fields = get_subschema_fields(self, input)
+  local subschema = get_subschema(self, input)
 
   for k, v in pairs(input) do
     local err
@@ -832,7 +860,7 @@ validate_fields = function(self, input)
     if field and field.type == "self" then
       field = input
     else
-      field, err = resolve_field(self, k, field, subschema_fields)
+      field, err = resolve_field(self, k, field, subschema)
     end
     if field then
       _, errors[k] = self:validate_field(field, v)
@@ -858,7 +886,7 @@ end
 -- @param arg The argument table of the entity check declaration
 -- @return True on success, or nil followed by an error message and a table
 -- of field-specific errors.
-local function run_entity_check(self, name, input, arg)
+local function run_entity_check(self, name, input, arg, full_check)
   local ok = true
   local check_input = {}
   local field_errors = {}
@@ -882,19 +910,20 @@ local function run_entity_check(self, name, input, arg)
 
   local all_nil = true
   for _, fname in ipairs(fields_to_check) do
-    if input[fname] == nil then
+    local value = get_field(input, fname)
+    if value == nil then
       if not checker.run_with_missing_fields then
         local err = validation_errors.REQUIRED_FOR_ENTITY_CHECK
-        field_errors[fname] = err
+        set_field(field_errors, fname, err)
         ok = false
       end
     else
       all_nil = false
     end
-    check_input[fname] = input[fname]
+    set_field(check_input, fname, value)
   end
   -- Don't run check if none of the fields are present (update)
-  if all_nil then
+  if all_nil and not (checker.run_with_missing_fields and full_check) then
     return true
   end
 
@@ -963,40 +992,54 @@ local function run_self_check(self, input, entity_errors, field_errors)
 end
 
 
---- Run entity checks over the whole table.
--- This includes the custom `check` function.
--- In case of any errors, add them to the errors table.
--- @param self The schema
--- @param input The input table.
--- @return True on success; nil, the table of entity check errors
--- (where keys are the entity check names with string values or
--- "check" and an array of self-check error strings)
--- and the table of field errors otherwise.
-local function run_entity_checks(self, input)
-  local entity_errors = {}
-  local field_errors = {}
-
-  if self.entity_checks then
-    for _, check in ipairs(self.entity_checks) do
+local run_entity_checks
+do
+  local function run_checks(self, input, full_check, checks, entity_errs, field_errs)
+    if not checks then
+      return
+    end
+    for _, check in ipairs(checks) do
       local check_name = next(check)
-      local _, err, f_errs = run_entity_check(self, check_name, input, check[check_name])
-      insert(entity_errors, err)
+      local arg = check[check_name]
+      local _, err, f_errs = run_entity_check(self, check_name, input, arg, full_check)
+      insert(entity_errs, err)
       if f_errs then
-        merge_into_table(field_errors, f_errs)
+        merge_into_table(field_errs, f_errs)
       end
     end
   end
 
-  if self.check then
-    run_self_check(self, input, entity_errors, field_errors)
-  end
+  --- Run entity checks over the whole table.
+  -- This includes the custom `check` function.
+  -- In case of any errors, add them to the errors table.
+  -- @param self The schema
+  -- @param input The input table.
+  -- @param full_check If true, demands entity table to be complete.
+  -- @return True on success; nil, the table of entity check errors
+  -- (where keys are the entity check names with string values or
+  -- "check" and an array of self-check error strings)
+  -- and the table of field errors otherwise.
+  run_entity_checks = function(self, input, full_check)
+    local entity_errs = {}
+    local field_errs = {}
 
-  if next(entity_errors) or next(field_errors) then
-    return nil, entity_errors, field_errors
+    run_checks(self, input, full_check, self.entity_checks, entity_errs, field_errs)
+
+    local subschema = get_subschema(self, input)
+    if subschema then
+      run_checks(self, input, full_check, subschema.entity_checks, entity_errs, field_errs)
+    end
+
+    if self.check and full_check then
+      run_self_check(self, input, entity_errs, field_errs)
+    end
+
+    if next(entity_errs) or next(field_errs) then
+      return nil, entity_errs, field_errs
+    end
+    return true
   end
-  return true
 end
-
 
 --- Ensure that a given table contains only the primary-key
 -- fields of the entity and that their fields validate.
@@ -1264,7 +1307,7 @@ function Schema:validate(input, full_check)
   end
 
   local entity_errors, f_errs
-  ok, entity_errors, f_errs = run_entity_checks(self, input)
+  ok, entity_errors, f_errs = run_entity_checks(self, input, full_check)
   if not ok then
     if next(entity_errors) then
       field_errors["@entity"] = entity_errors
@@ -1343,9 +1386,9 @@ end
 function Schema:each_field(values)
   local i = 1
 
-  local subschema_fields
+  local subschema
   if values then
-    subschema_fields = get_subschema_fields(self, values)
+    subschema = get_subschema(self, values)
   end
 
   return function()
@@ -1354,7 +1397,7 @@ function Schema:each_field(values)
       return nil
     end
     local key = next(item)
-    local field = resolve_field(self, key, item[key], subschema_fields)
+    local field = resolve_field(self, key, item[key], subschema)
     i = i + 1
     return key, field
   end
