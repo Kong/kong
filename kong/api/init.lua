@@ -48,29 +48,6 @@ local function parse_params(fn)
 end
 
 
--- old DAO
-local function on_error(self)
-  local err = self.errors[1]
-
-  if type(err) ~= "table" then
-    return responses.send_HTTP_INTERNAL_SERVER_ERROR(tostring(err))
-  end
-
-  if err.db then
-    return responses.send_HTTP_INTERNAL_SERVER_ERROR(err.message)
-  end
-
-  if err.unique then
-    return responses.send_HTTP_CONFLICT(err.tbl)
-  end
-
-  if err.foreign then
-    return responses.send_HTTP_NOT_FOUND(err.tbl)
-  end
-
-  return responses.send_HTTP_BAD_REQUEST(err.tbl or err.message)
-end
-
 -- new DB
 local function new_db_on_error(self)
   local err = self.errors[1]
@@ -102,6 +79,34 @@ local function new_db_on_error(self)
   end
 
   return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+end
+
+
+-- old DAO
+local function on_error(self)
+  local err = self.errors[1]
+
+  if type(err) ~= "table" then
+    return responses.send_HTTP_INTERNAL_SERVER_ERROR(tostring(err))
+  end
+
+  if err.name then
+    return new_db_on_error(self)
+  end
+
+  if err.db then
+    return responses.send_HTTP_INTERNAL_SERVER_ERROR(err.message)
+  end
+
+  if err.unique then
+    return responses.send_HTTP_CONFLICT(err.tbl)
+  end
+
+  if err.foreign then
+    return responses.send_HTTP_NOT_FOUND(err.tbl)
+  end
+
+  return responses.send_HTTP_BAD_REQUEST(err.tbl or err.message)
 end
 
 

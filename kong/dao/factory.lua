@@ -121,13 +121,21 @@ local function create_legacy_wrappers(self, constraints)
             log.warn("[legacy wrapper] quiet is ignored, event always sent")
           end
         end
-        return new_dao:insert(tbl, { ttl = opts and opts.ttl })
+        local ok, _, err_t = new_dao:insert(tbl, { ttl = opts and opts.ttl })
+        if not ok then
+          return ok, err_t
+        end
+        return ok
       end,
 
       find = function(_, args)
         log.debug(debug.traceback("[legacy wrapper] using legacy wrapper"))
         local pk = new_dao.schema:extract_pk_values(args)
-        return new_dao:select(pk)
+        local row, _, err_t = new_dao:select(pk)
+        if not row then
+          return row, err_t
+        end
+        return row
       end,
 
       find_all = function(_, filt)
@@ -169,9 +177,9 @@ local function create_legacy_wrappers(self, constraints)
 
       count = function(self, filt)
         log.debug(debug.traceback("[legacy wrapper] using legacy wrapper"))
-        local rows, err = self:find_all(filt)
+        local rows, err, err_t = self:find_all(filt)
         if err then
-          return nil, err
+          return nil, err_t
         end
         return #rows
       end,
@@ -195,7 +203,11 @@ local function create_legacy_wrappers(self, constraints)
           end
         end
         local pk = new_dao.schema:extract_pk_values(filter_keys)
-        return new_dao:update(pk, tbl)
+        local ok, _, err_t = new_dao:update(pk, tbl)
+        if not ok then
+          return ok, err_t
+        end
+        return ok
       end,
 
       delete = function(_, tbl, opts)
@@ -205,7 +217,11 @@ local function create_legacy_wrappers(self, constraints)
             log.warn("[legacy wrapper] quiet is ignored, event always sent")
           end
         end
-        return new_dao:delete(tbl)
+        local ok, _, err_t = new_dao:delete(tbl)
+        if not ok then
+          return ok, err_t
+        end
+        return ok
       end,
 
       truncate = function(_)
