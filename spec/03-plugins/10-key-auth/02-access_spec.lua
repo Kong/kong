@@ -18,6 +18,17 @@ for _, strategy in helpers.each_strategy() do
         username = "bob"
       }
 
+      local consumer_without_username = bp.consumers:insert {
+        username = ngx.null,
+        custom_id = "consumer_without_username",
+
+      }
+
+      local consumer_without_custom_id = bp.consumers:insert {
+        username = "consumer_without_custom_id",
+        custom_id = ngx.null,
+      }
+
       local route1 = bp.routes:insert {
         hosts = { "key-auth1.com" },
       }
@@ -54,6 +65,14 @@ for _, strategy in helpers.each_strategy() do
         strip_path = true,
       }
 
+      local route8 = bp.routes:insert {
+        hosts = { "key-auth8.com" },
+      }
+
+      local route9 = bp.routes:insert {
+        hosts = { "key-auth9.com" },
+      }
+
       bp.plugins:insert {
         name     = "key-auth",
         route_id = route1.id,
@@ -70,6 +89,16 @@ for _, strategy in helpers.each_strategy() do
       bp.keyauth_credentials:insert {
         key         = "kong",
         consumer_id = consumer.id,
+      }
+
+      bp.keyauth_credentials:insert {
+        key         = "consumer-without-username",
+        consumer_id = consumer_without_username.id,
+      }
+
+      bp.keyauth_credentials:insert {
+        key         = "consumer-without-custom-id",
+        consumer_id = consumer_without_custom_id.id,
       }
 
       bp.plugins:insert {
@@ -111,6 +140,16 @@ for _, strategy in helpers.each_strategy() do
         config   = {
           run_on_preflight = false,
         },
+      }
+
+      bp.plugins:insert {
+        name     = "key-auth",
+        route_id = route8.id,
+      }
+
+      bp.plugins:insert {
+        name     = "key-auth",
+        route_id = route9.id,
       }
 
       assert(helpers.start_kong({
@@ -311,6 +350,39 @@ for _, strategy in helpers.each_strategy() do
         assert.equal("bob", json.headers["x-consumer-username"])
         assert.is_nil(json.headers["x-anonymous-consumer"])
       end)
+
+      it("sends Consumer headers to upstream except the missing consumer username", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/request?apikey=consumer-without-username",
+          headers = {
+            ["Host"] = "key-auth8.com",
+          }
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.is_string(json.headers["x-consumer-id"])
+        assert.equal("consumer_without_username", json.headers["x-consumer-custom-id"])
+        assert.is_nil(json.headers["x-consumer-username"])
+        assert.is_nil(json.headers["x-anonymous-consumer"])
+      end)
+
+      it("sends Consumer headers to upstream except the missing consumer custom id", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/request?apikey=consumer-without-custom-id",
+          headers = {
+            ["Host"] = "key-auth9.com",
+          }
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.is_string(json.headers["x-consumer-id"])
+        assert.equal("consumer_without_custom_id", json.headers["x-consumer-username"])
+        assert.is_nil(json.headers["x-consumer-custom-id"])
+        assert.is_nil(json.headers["x-anonymous-consumer"])
+      end)
+
     end)
 
     describe("config.hide_credentials", function()
