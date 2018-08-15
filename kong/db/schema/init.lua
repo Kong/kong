@@ -660,7 +660,6 @@ end
 -- If a default value cannot be produced (due to circumstances that
 -- will produce errors later on validation), it simply returns `nil`.
 local function default_value(field)
-
   if field.nullable ~= false then
     return null
   end
@@ -1057,13 +1056,13 @@ end
 -- valid values are: "insert", "update"
 -- @return A new table, with the auto fields containing
 -- appropriate updated values.
-function Schema:process_auto_fields(input, context)
+function Schema:process_auto_fields(input, context, nulls)
   local output = tablex.deepcopy(input)
   local now_s  = ngx_time()
   local now_ms = ngx_now()
 
   for key, field in self:each_field() do
-    if field.auto then
+    if field.auto and context == "insert" or context == "update" or context == "upsert" then
       if field.uuid and context == "insert" then
         output[key] = utils.uuid()
       elseif field.uuid and context == "upsert" and output[key] == nil then
@@ -1094,12 +1093,16 @@ function Schema:process_auto_fields(input, context)
       elseif field_type == "record" then
         if field_value ~= null then
           local field_schema = get_field_schema(field)
-          output[key] = field_schema:process_auto_fields(field_value, context)
+          output[key] = field_schema:process_auto_fields(field_value, context, nulls)
         end
       end
 
     elseif context ~= "update" then
       handle_missing_field(key, field, output)
+    end
+
+    if context == "select" and output[key] == null and not nulls then
+      output[key] = nil
     end
   end
 

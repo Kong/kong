@@ -182,9 +182,7 @@ for _, strategy in helpers.each_strategy() do
             created_at      = route.created_at,
             updated_at      = route.updated_at,
             protocols       = { "http" },
-            methods         = ngx.null,
             hosts           = { "example.com" },
-            paths           = ngx.null,
             regex_priority  = 0,
             preserve_host   = false,
             strip_path      = true,
@@ -214,7 +212,6 @@ for _, strategy in helpers.each_strategy() do
             created_at      = route.created_at,
             updated_at      = route.updated_at,
             protocols       = { "http" },
-            methods         = ngx.null,
             hosts           = { "example.com" },
             paths           = { "/example" },
             regex_priority  = 3,
@@ -457,7 +454,6 @@ for _, strategy in helpers.each_strategy() do
             assert.is_nil(err)
             assert.same({ "example2.com" }, new_route.hosts)
             assert.same({ "GET" }, new_route.methods)
-            assert.same(ngx.null, new_route.paths)
             route.hosts     = nil
             new_route.hosts = nil
             assert.same(route, new_route)
@@ -878,11 +874,9 @@ for _, strategy in helpers.each_strategy() do
             id              = service.id,
             created_at      = service.created_at,
             updated_at      = service.updated_at,
-            name            = ngx.null,
             protocol        = "http",
             host            = "example.com",
             port            = 80,
-            path            = ngx.null,
             connect_timeout = 60000,
             write_timeout   = 60000,
             read_timeout    = 60000,
@@ -1349,9 +1343,7 @@ for _, strategy in helpers.each_strategy() do
           created_at       = route.created_at,
           updated_at       = route.updated_at,
           protocols        = { "http" },
-          methods          = ngx.null,
           hosts            = { "example.com" },
-          paths            = ngx.null,
           regex_priority   = 0,
           strip_path       = true,
           preserve_host    = false,

@@ -1,9 +1,17 @@
-local cjson = require "cjson"
 local balancer = require "kong.runloop.balancer"
 local utils = require "kong.tools.utils"
+local cjson = require "cjson"
+
+
+local setmetatable = setmetatable
+local tostring = tostring
+local ipairs = ipairs
+local assert = assert
+local table = table
+local fmt = string.format
+
 
 local _TARGETS = {}
-
 local DEFAULT_PORT = 8000
 
 
@@ -19,10 +27,11 @@ end
 
 local function add_order(targets, sort_function)
   for _,target in ipairs(targets) do
-    target.order = string.format("%d:%s",
-                                 target.created_at * 1000,
-                                 target.id)
+    target.order = fmt("%d:%s",
+                       target.created_at * 1000,
+                       target.id)
   end
+
   table.sort(targets, sort_function)
 end
 
@@ -144,6 +153,7 @@ function _TARGETS:for_upstream_sorted(upstream_pk, ...)
   if not targets then
     return nil, err, err_t
   end
+
   add_order(targets, sort_by_order)
 
   return targets
@@ -155,6 +165,7 @@ function _TARGETS:for_upstream(upstream_pk, ...)
   if not targets then
     return nil, err, err_t
   end
+
   add_order(targets, sort_by_reverse_order)
 
   local seen           = {}
@@ -215,15 +226,18 @@ function _TARGETS:for_upstream_with_health(upstream_pk, ...)
 end
 
 
-function _TARGETS:for_upstream_first(upstream_pk, filter)
-  local targets = self:for_upstream(upstream_pk)
+function _TARGETS:for_upstream_first(upstream_pk, filter, options)
+  local targets = self:for_upstream(upstream_pk, nil, nil, options)
+
   assert(filter.id or filter.target)
+
   if filter.id then
     for _, t in ipairs(targets) do
       if t.id == filter.id then
         return t
       end
     end
+
     local err_t = self.errors:not_found(filter.id)
     return nil, tostring(err_t), err_t
   end
@@ -233,7 +247,9 @@ function _TARGETS:for_upstream_first(upstream_pk, filter)
       return t
     end
   end
+
   local err_t = self.errors:not_found_by_field({ target = filter.target })
+
   return nil, tostring(err_t), err_t
 end
 
@@ -241,6 +257,7 @@ end
 function _TARGETS:post_health(upstream, target, is_healthy)
   local addr = utils.normalize_ip(target.target)
   local ip, port = utils.format_host(addr.host), addr.port
+
   local _, err = balancer.post_health(upstream, ip, port, is_healthy)
   if err then
     return nil, err

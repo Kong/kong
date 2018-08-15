@@ -43,9 +43,7 @@ return {
     end,
 
     before = function(self, db, helpers)
-      local id = self.params.routes
-
-      local parent_entity, _, err_t = db.routes:select({ id = id })
+      local parent_entity, _, err_t = db.routes:select({ id = self.params.routes })
       if err_t then
         return endpoints.handle_error(err_t)
       end
