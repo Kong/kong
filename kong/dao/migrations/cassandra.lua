@@ -1,6 +1,7 @@
 local log = require "kong.cmd.utils.log"
 local cassandra = require "cassandra"
 local utils = require "kong.tools.utils"
+local cjson = require "cjson"
 
 local migration_helpers = require "kong.dao.migrations.helpers"
 
@@ -144,17 +145,27 @@ return {
   },
   {
     name = "2016-02-25-160900_remove_null_consumer_id",
-    up = function(_, _, dao)
-      local rows, err = dao.plugins:find_all {consumer_id = "00000000-0000-0000-0000-000000000000"}
-      if err then
-        return err
-      end
+    up = function(db, _, _)
 
-      for _, row in ipairs(rows) do
-        row.consumer_id = nil
-        local _, err = dao.plugins:update(row, row, {full = true})
+      local coordinator = db:get_coordinator()
+      for rows, err in coordinator:iterate([[
+        SELECT *
+        FROM plugins
+        WHERE consumer_id = 00000000-0000-0000-0000-000000000000
+      ]]) do
         if err then
           return err
+        end
+
+        for _, row in ipairs(rows) do
+          local _
+          _, err = db:query([[
+            UPDATE plugins
+            SET consumer_id = NULL
+            WHERE id = ?]], { row.id })
+          if err then
+            return err
+          end
         end
       end
     end
@@ -450,7 +461,7 @@ return {
   {
     name = "2017-03-27-132300_anonymous",
     -- this should have been in 0.10, but instead goes into 0.10.1 as a bugfix
-    up = function(_, _, dao)
+    up = function(db)
       for _, name in ipairs({
         "basic-auth",
         "hmac-auth",
@@ -459,17 +470,29 @@ return {
         "ldap-auth",
         "oauth2",
       }) do
-        local rows, err = dao.plugins:find_all( { name = name } )
-        if err then
-          return err
-        end
+        local coordinator = db:get_coordinator()
+        for rows, err in coordinator:iterate([[
+          SELECT * FROM plugins where name = ?
+        ]], { name }) do
+          if err then
+            return err
+          end
 
-        for _, row in ipairs(rows) do
-          if not row.config.anonymous then
-            row.config.anonymous = ""
-            local _, err = dao.plugins:update(row, { id = row.id })
-            if err then
-              return err
+          for _, row in ipairs(rows) do
+            local config
+            if type(row.config) == "string" then
+              config = cjson.decode(row.config)
+            end
+            if config and not config.anonymous then
+              config.anonymous = ""
+              local _
+              _, err = db:query([[
+                UPDATE plugins
+                SET config = ?
+                WHERE id = ?]], { cjson.encode(config), row.id })
+              if err then
+                return err
+              end
             end
           end
         end
