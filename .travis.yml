@@ -60,7 +60,7 @@ stages:
   - pdk tests
   - test
   - name: deploy
-    if: tag =~ 0. || TRAVIS_EVENT_TYPE == cron
+    if: tag =~ 0. || type == cron
 
 jobs:
   include:
