@@ -69,8 +69,9 @@ function ACLHandler:access(conf)
     end
 
     if to_be_blocked == false then
-      -- we're allowed, so go and convert 'false' to the header value
-      to_be_blocked = table_concat(consumer_groups, ", ")
+      -- we're allowed, so go and convert 'false' to the header value, if we need it.
+      -- if we don't need it, set a dummy value to save memory for potentially very long strings
+      to_be_blocked = conf.hide_groups_header and nil or table_concat(consumer_groups, ", ")
     end
 
     -- update cache
