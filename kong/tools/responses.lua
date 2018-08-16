@@ -59,6 +59,7 @@ local _M = {
     HTTP_CONFLICT = 409,
     HTTP_UNSUPPORTED_MEDIA_TYPE = 415,
     HTTP_INTERNAL_SERVER_ERROR = 500,
+    HTTP_BAD_GATEWAY = 502,
     HTTP_SERVICE_UNAVAILABLE = 503,
   }
 }
@@ -73,6 +74,7 @@ local _M = {
 -- @field status_codes.HTTP_INTERNAL_SERVER_ERROR Always "Internal Server Error"
 -- @field status_codes.HTTP_METHOD_NOT_ALLOWED Always "Method not allowed"
 -- @field status_codes.HTTP_SERVICE_UNAVAILABLE Default: "Service unavailable"
+-- @field status_codes.HTTP_BAD_GATEWAY Always: "Bad Gateway"
 local response_default_content = {
   [_M.status_codes.HTTP_UNAUTHORIZED] = function(content)
     return content or "Unauthorized"
@@ -91,6 +93,9 @@ local response_default_content = {
   end,
   [_M.status_codes.HTTP_SERVICE_UNAVAILABLE] = function(content)
     return content or "Service unavailable"
+  end,
+  [_M.status_codes.HTTP_BAD_GATEWAY] = function(content)
+    return "Bad Gateway"
   end,
 }
 
@@ -116,7 +121,7 @@ local function send_response(status_code)
       coroutine.yield()
     end
 
-    if status_code == _M.status_codes.HTTP_INTERNAL_SERVER_ERROR then
+    if status_code == _M.status_codes.HTTP_INTERNAL_SERVER_ERROR or status_code == _M.status_codes.HTTP_BAD_GATEWAY then
       if content then
         ngx.log(ngx.ERR, tostring(content))
       end
