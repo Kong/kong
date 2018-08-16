@@ -535,16 +535,22 @@ return {
   },
   {
     name = "2017-11-07-192100_upstream_healthchecks_2",
-    up = function(_, _, dao)
-      local db = dao.db.new_db
-      local default = db.upstreams.schema.fields.healthchecks.default
-      for row in db.upstreams:each() do
-        if not row.healthchecks then
-          local _, err = dao.upstreams:update({
-            healthchecks = default,
-          }, { id = row.id })
-          if err then
-            return err
+    up = function(db, _, dao)
+      local default = cjson.encode(dao.db.new_db.upstreams.schema.fields.healthchecks.default)
+      local coordinator = dao.db:get_coordinator()
+      for rows, err in coordinator:iterate([[SELECT * FROM upstreams;]]) do
+        if err then
+          return nil, nil, err
+        end
+        for _, row in ipairs(rows) do
+          if not row.healthchecks then
+            local _, err = db:query([[
+              UPDATE upstreams
+              SET healthchecks = ?
+              WHERE id = ?]], { default, row.id })
+            if err then
+              return err
+            end
           end
         end
       end
@@ -553,15 +559,21 @@ return {
   },
   {
     name = "2017-10-27-134100_consistent_hashing_2",
-    up = function(_, _, dao)
-      local db = dao.db.new_db
-      for row in db.upstreams:each() do
-        if not row.hash_on or not row.hash_fallback then
-          row.hash_on = "none"
-          row.hash_fallback = "none"
-          local _, err = db.upstreams:update(row, { id = row.id })
-          if err then
-            return err
+    up = function(db, _, dao)
+      local coordinator = dao.db:get_coordinator()
+      for rows, err in coordinator:iterate([[SELECT * FROM upstreams;]]) do
+        if err then
+          return nil, nil, err
+        end
+        for _, row in ipairs(rows) do
+          if not row.hash_on or not row.hash_fallback then
+            local _, err = db:query([[
+              UPDATE upstreams
+              SET hash_on = ?, hash_fallback = ?
+              WHERE id = ?]], { "none", "none", row.id })
+            if err then
+              return err
+            end
           end
         end
       end

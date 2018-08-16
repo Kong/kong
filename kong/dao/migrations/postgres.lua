@@ -1,4 +1,7 @@
 local utils = require "kong.tools.utils"
+local cjson = require("cjson")
+local json = require("pgmoon.json")
+local fmt = string.format
 
 
 return {
@@ -263,9 +266,6 @@ return {
         return err
       end
 
-      local fmt = string.format
-      local cjson = require("cjson")
-
       for _, row in ipairs(rows) do
         local set = {}
 
@@ -383,8 +383,6 @@ return {
     name = "2017-03-27-132300_anonymous",
     -- this should have been in 0.10, but instead goes into 0.10.1 as a bugfix
     up = function(_, _, dao)
-      local cjson = require "cjson"
-
       for _, name in ipairs({
         "basic-auth",
         "hmac-auth",
@@ -605,16 +603,27 @@ return {
     name = "2017-11-07-192100_upstream_healthchecks_2",
     up = function(_, _, dao)
       local db = dao.db.new_db
-      local default = db.upstreams.schema.fields.healthchecks.default
-      for row in db.upstreams:each() do
+      local default = json.encode_json(db.upstreams.schema.fields.healthchecks.default)
+      local rows, err = dao.db:query([[
+        SELECT * FROM upstreams;
+      ]])
+      if err then
+        return err
+      end
+
+      local sql = { "BEGIN;" }
+      for _, row in ipairs(rows) do
         if not row.healthchecks then
-          local _, err = db.upstreams:update({
-            healthchecks = default,
-          }, { id = row.id })
-          if err then
-            return err
-          end
+          sql[#sql + 1] = fmt("UPDATE upstreams " ..
+                              "SET healthchecks = %s " ..
+                              "WHERE id = '%s';",
+                              default, row.id)
         end
+      end
+      sql[#sql + 1] = "COMMIT;"
+      local _, err = dao.db:query(table.concat(sql))
+      if err then
+        return err
       end
     end,
     down = function(_, _, dao) end
@@ -629,18 +638,20 @@ return {
         return err
       end
 
-      local db = dao.db.new_db
-
+      local sql = { "BEGIN;" }
       for _, row in ipairs(rows) do
         if not row.hash_on or not row.hash_fallback then
-          row.hash_on = "none"
-          row.hash_fallback = "none"
-          row.created_at = nil
-          local _, err = db.upstreams:update(row, { id = row.id })
-          if err then
-            return err
-          end
+          sql[#sql + 1] = fmt("UPDATE upstreams " ..
+                              "SET hash_on = 'none', " ..
+                              "hash_fallback = 'none' " ..
+                              "WHERE id = '%s';",
+                              row.id)
         end
+      end
+      sql[#sql + 1] = "COMMIT;"
+      local _, err = dao.db:query(table.concat(sql))
+      if err then
+        return err
       end
     end,
     down = function(_, _, dao) end  -- n.a. since the columns will be dropped
@@ -749,8 +760,6 @@ return {
   {
     name = "2018-03-27-125400_fill_in_snis_ids",
     up = function(_, _, dao)
-      local fmt = string.format
-
       local rows, err = dao.db:query([[
         SELECT * FROM snis;
       ]])
