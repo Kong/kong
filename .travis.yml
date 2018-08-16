@@ -13,11 +13,6 @@ services:
   - redis-server
   - docker
 
-branches:
-  only:
-  - master
-  - next
-
 addons:
   postgresql: "9.5"
   apt:
