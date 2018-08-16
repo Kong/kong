@@ -53,14 +53,14 @@ return {
 
       -- cert was found via id or sni inside `before` section
       if utils.is_valid_uuid(id) then
-        cert, _, err_t = db.certificates:upsert({ id = id }, args)
+        cert, _, err_t = db.certificates:upsert({ id = id }, args, { nulls = true })
 
       else -- create a new cert. Add extra sni if provided on url
         if self.new_put_sni then
           args.snis = Set.values(Set(args.snis or {}) + self.new_put_sni)
           self.new_put_sni = nil
         end
-        cert, _, err_t = db.certificates:insert(args)
+        cert, _, err_t = db.certificates:insert(args, { nulls = true })
       end
 
       if err_t then

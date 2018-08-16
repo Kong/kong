@@ -139,7 +139,7 @@ for _, strategy in helpers.each_strategy() do
             protocols = { "http" },
             hosts = { "example.com" },
             service = assert(db.services:insert({ host = "service.com" })),
-          })
+          }, { nulls = true })
           assert.is_nil(err_t)
           assert.is_nil(err)
 
@@ -171,7 +171,7 @@ for _, strategy in helpers.each_strategy() do
             regex_priority  = 3,
             strip_path      = true,
             service         = bp.services:insert(),
-          })
+          }, { nulls = true })
           assert.is_nil(err_t)
           assert.is_nil(err)
 
@@ -419,16 +419,17 @@ for _, strategy in helpers.each_strategy() do
               hosts   = { "example.com" },
               methods = { "GET" },
               paths   = ngx.null,
-            })
+            }, { nulls = true })
 
             local new_route, err, err_t = db.routes:update({ id = route.id }, {
               hosts   = { "example2.com" },
-            })
+            }, { nulls = true })
             assert.is_nil(err_t)
             assert.is_nil(err)
             assert.same({ "example2.com" }, new_route.hosts)
             assert.same({ "GET" }, new_route.methods)
             assert.same(ngx.null, new_route.paths)
+            assert.same(ngx.null, route.paths)
             route.hosts     = nil
             new_route.hosts = nil
             assert.same(route, new_route)
@@ -838,7 +839,7 @@ for _, strategy in helpers.each_strategy() do
           local service, err, err_t = db.services:insert({
             --name     = "example service",
             host = "example.com",
-          })
+          }, { nulls = true })
           assert.is_nil(err_t)
           assert.is_nil(err)
 
@@ -1307,7 +1308,7 @@ for _, strategy in helpers.each_strategy() do
           protocols = { "http" },
           hosts     = { "example.com" },
           service   = service,
-        })
+        }, { nulls = true })
         assert.is_nil(err_t)
         assert.is_nil(err)
         assert.same({
@@ -1326,7 +1327,7 @@ for _, strategy in helpers.each_strategy() do
           },
         }, route)
 
-        local route_in_db, err, err_t = db.routes:select({ id = route.id })
+        local route_in_db, err, err_t = db.routes:select({ id = route.id }, { nulls = true })
         assert.is_nil(err_t)
         assert.is_nil(err)
         assert.same(route, route_in_db)

@@ -93,8 +93,12 @@ local function generate_foreign_key_methods(schema)
         end
       end
 
-      methods["select_by_" .. name] = function(self, unique_value)
+      methods["select_by_" .. name] = function(self, unique_value, options)
         validate_unique_value(unique_value)
+
+        if options ~= nil and type(options) ~= "table" then
+          error("options must be a table", 2)
+        end
 
         local row, err_t = self.strategy:select_by_field(name, unique_value)
         if err_t then
@@ -105,11 +109,15 @@ local function generate_foreign_key_methods(schema)
           return nil
         end
 
-        return self:row_to_entity(row)
+        return self:row_to_entity(row, options)
       end
 
-      methods["update_by_" .. name] = function(self, unique_value, entity)
+      methods["update_by_" .. name] = function(self, unique_value, entity, options)
         validate_unique_value(unique_value)
+
+        if options ~= nil and type(options) ~= "table" then
+          error("options must be a table", 2)
+        end
 
         local entity_to_update, err = self.schema:process_auto_fields(entity, "update")
         if not entity_to_update then
@@ -129,7 +137,7 @@ local function generate_foreign_key_methods(schema)
           return nil, tostring(err_t), err_t
         end
 
-        row, err, err_t = self:row_to_entity(row)
+        row, err, err_t = self:row_to_entity(row, options)
         if not row then
           return nil, err, err_t
         end
@@ -139,8 +147,12 @@ local function generate_foreign_key_methods(schema)
         return row
       end
 
-      methods["upsert_by_" .. name] = function(self, unique_value, entity)
+      methods["upsert_by_" .. name] = function(self, unique_value, entity, options)
         validate_unique_value(unique_value)
+
+        if options ~= nil and type(options) ~= "table" then
+          error("options must be a table", 2)
+        end
 
         local entity_to_upsert, err = self.schema:process_auto_fields(entity, "upsert")
         if not entity_to_upsert then
@@ -162,7 +174,7 @@ local function generate_foreign_key_methods(schema)
           return nil, tostring(err_t), err_t
         end
 
-        row, err, err_t = self:row_to_entity(row)
+        row, err, err_t = self:row_to_entity(row, options)
         if not row then
           return nil, err, err_t
         end
@@ -227,9 +239,13 @@ function DAO:truncate()
 end
 
 
-function DAO:select(primary_key)
+function DAO:select(primary_key, options)
   if type(primary_key) ~= "table" then
     error("primary_key must be a table", 2)
+  end
+
+  if options ~= nil and type(options) ~= "table" then
+    error("options must be a table", 2)
   end
 
   local ok, errors = self.schema:validate_primary_key(primary_key)
@@ -247,11 +263,11 @@ function DAO:select(primary_key)
     return nil
   end
 
-  return self:row_to_entity(row)
+  return self:row_to_entity(row, options)
 end
 
 
-function DAO:page(size, offset)
+function DAO:page(size, offset, options)
   size = tonumber(size == nil and 100 or size)
 
   if not size then
@@ -268,12 +284,16 @@ function DAO:page(size, offset)
     error("offset must be a string", 2)
   end
 
+  if options ~= nil and type(options) ~= "table" then
+    error("options must be a table", 2)
+  end
+
   local rows, err_t, offset = self.strategy:page(size, offset)
   if err_t then
     return nil, tostring(err_t), err_t
   end
 
-  local entities, err, err_t = self:rows_to_entities(rows)
+  local entities, err, err_t = self:rows_to_entities(rows, options)
   if not entities then
     return nil, err, err_t
   end
@@ -282,7 +302,7 @@ function DAO:page(size, offset)
 end
 
 
-function DAO:each(size)
+function DAO:each(size, options)
   size = tonumber(size == nil and 100 or size)
 
   if not size then
@@ -293,6 +313,10 @@ function DAO:each(size)
 
   if size < 0 then
     error("size must be positive (> 0)", 2)
+  end
+
+  if options ~= nil and type(options) ~= "table" then
+    error("options must be a table", 2)
   end
 
   local next_row = self.strategy:each(size)
@@ -308,7 +332,7 @@ function DAO:each(size)
     end
 
     local err
-    row, err, err_t = self:row_to_entity(row)
+    row, err, err_t = self:row_to_entity(row, options)
     if not row then
       return nil, err, err_t
     end
@@ -318,9 +342,13 @@ function DAO:each(size)
 end
 
 
-function DAO:insert(entity)
+function DAO:insert(entity, options)
   if type(entity) ~= "table" then
     error("entity must be a table", 2)
+  end
+
+  if options ~= nil and type(options) ~= "table" then
+    error("options must be a table", 2)
   end
 
   local entity_to_insert, err = self.schema:process_auto_fields(entity, "insert")
@@ -340,7 +368,7 @@ function DAO:insert(entity)
     return nil, tostring(err_t), err_t
   end
 
-  row, err, err_t = self:row_to_entity(row)
+  row, err, err_t = self:row_to_entity(row, options)
   if not row then
     return nil, err, err_t
   end
@@ -351,13 +379,17 @@ function DAO:insert(entity)
 end
 
 
-function DAO:update(primary_key, entity)
+function DAO:update(primary_key, entity, options)
   if type(primary_key) ~= "table" then
     error("primary_key must be a table", 2)
   end
 
   if type(entity) ~= "table" then
     error("entity must be a table", 2)
+  end
+
+  if options ~= nil and type(options) ~= "table" then
+    error("options must be a table", 2)
   end
 
   local ok, errors = self.schema:validate_primary_key(primary_key)
@@ -383,7 +415,7 @@ function DAO:update(primary_key, entity)
     return nil, tostring(err_t), err_t
   end
 
-  row, err, err_t = self:row_to_entity(row)
+  row, err, err_t = self:row_to_entity(row, options)
   if not row then
     return nil, err, err_t
   end
@@ -394,13 +426,17 @@ function DAO:update(primary_key, entity)
 end
 
 
-function DAO:upsert(primary_key, entity)
+function DAO:upsert(primary_key, entity, options)
   if type(primary_key) ~= "table" then
     error("primary_key must be a table", 2)
   end
 
   if type(entity) ~= "table" then
     error("entity must be a table", 2)
+  end
+
+  if options ~= nil and type(options) ~= "table" then
+    error("options must be a table", 2)
   end
 
   local ok, errors = self.schema:validate_primary_key(primary_key)
@@ -426,7 +462,7 @@ function DAO:upsert(primary_key, entity)
     return nil, tostring(err_t), err_t
   end
 
-  row, err, err_t = self:row_to_entity(row)
+  row, err, err_t = self:row_to_entity(row, options)
   if not row then
     return nil, err, err_t
   end
@@ -467,7 +503,7 @@ function DAO:delete(primary_key)
 end
 
 
-function DAO:rows_to_entities(rows)
+function DAO:rows_to_entities(rows, options)
   local count = #rows
   if count == 0 then
     return setmetatable(rows, cjson.empty_array_mt)
@@ -476,7 +512,7 @@ function DAO:rows_to_entities(rows)
   local entities = new_tab(count, 0)
 
   for i = 1, count do
-    local entity, err, err_t = self:row_to_entity(rows[i])
+    local entity, err, err_t = self:row_to_entity(rows[i], options)
     if not entity then
       return nil, err, err_t
     end
@@ -488,8 +524,14 @@ function DAO:rows_to_entities(rows)
 end
 
 
-function DAO:row_to_entity(row)
-  local entity, errors = self.schema:process_auto_fields(row, "select")
+function DAO:row_to_entity(row, options)
+  if options ~= nil and type(options) ~= "table" then
+    error("options must be a table", 2)
+  end
+
+  local nulls = options and options.nulls
+
+  local entity, errors = self.schema:process_auto_fields(row, "select", nulls)
   if not entity then
     local err_t = self.errors:schema_violation(errors)
     return nil, tostring(err_t), err_t
