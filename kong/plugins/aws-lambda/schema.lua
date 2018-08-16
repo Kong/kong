@@ -97,5 +97,9 @@ return {
       type = "boolean",
       default = false,
     },
+    is_proxy_integration = {
+      type = "boolean",
+      default = false,
+    },
   },
 }
