@@ -23,7 +23,8 @@ return {
       end
 
       local data, _, err_t, offset = db.consumers:page(self.args.size,
-                                                       self.args.offset)
+                                                       self.args.offset,
+                                                       { nulls = true })
       if err_t then
         return Endpoints.handle_error(err_t)
       end

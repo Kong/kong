@@ -86,7 +86,7 @@ end
 
 local function build_router(db, version)
   local routes, i = {}, 0
-  local routes_iterator = db.routes:each()
+  local routes_iterator = db.routes:each(nil, { nulls = true })
 
   local route, err = routes_iterator()
   while route do
@@ -99,7 +99,7 @@ local function build_router(db, version)
     local service
 
     -- TODO: db requests in loop, problem or not
-    service, err = db.services:select(service_pk)
+    service, err = db.services:select(service_pk, { nulls = true })
     if not service then
       return nil, "could not find service for route (" .. route.id .. "): " .. err
     end

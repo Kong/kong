@@ -24,6 +24,9 @@ local ERRORS_HTTP_CODES = {
 }
 
 
+local op_nulls = { nulls = true }
+
+
 local function handle_error(err_t)
   local status = ERRORS_HTTP_CODES[err_t.code]
   if not status or status == 500 then
@@ -44,16 +47,17 @@ local function query_entity(context, self, db, schema)
 
   local id = unescape_uri(self.params[schema.name])
   if utils.is_valid_uuid(id) then
-    return dao[context](dao, { id = id }, args)
+    return dao[context](dao, { id = id }, args, op_nulls)
   end
 
   if schema.endpoint_key then
     local field = schema.fields[schema.endpoint_key]
     local inferred_value = arguments.infer_value(id, field)
-    return dao[context .. "_by_" .. schema.endpoint_key](dao, inferred_value, args)
+    return dao[context .. "_by_" .. schema.endpoint_key](dao, inferred_value,
+                                                         args, op_nulls)
   end
 
-  return dao[context](dao, { id = id })
+  return dao[context](dao, { id = id }, op_nulls)
 end
 
 
@@ -90,7 +94,8 @@ end
 local function get_collection_endpoint(schema, foreign_schema, foreign_field_name)
   return not foreign_schema and function(self, db, helpers)
     local data, _, err_t, offset = db[schema.name]:page(self.args.size,
-                                                        self.args.offset)
+                                                        self.args.offset,
+                                                        op_nulls)
     if err_t then
       return handle_error(err_t)
     end
@@ -115,7 +120,8 @@ local function get_collection_endpoint(schema, foreign_schema, foreign_field_nam
 
     local dao = db[schema.name]
     local data, _, err_t, offset = dao["for_" .. foreign_field_name](dao, { id = foreign_entity.id },
-                                                                     self.args.size, self.args.offset)
+                                                                     self.args.size, self.args.offset,
+                                                                     op_nulls)
     if err_t then
       return handle_error(err_t)
     end
@@ -163,7 +169,7 @@ local function post_collection_endpoint(schema, foreign_schema, foreign_field_na
       self.args.post[foreign_field_name] = { id = foreign_entity.id }
     end
 
-    local entity, _, err_t = db[schema.name]:insert(self.args.post)
+    local entity, _, err_t = db[schema.name]:insert(self.args.post, op_nulls)
     if err_t then
       return handle_error(err_t)
     end
@@ -200,7 +206,7 @@ local function get_entity_endpoint(schema, foreign_schema, foreign_field_name)
         return helpers.responses.send_HTTP_NOT_FOUND()
       end
 
-      entity, _, err_t = db[foreign_schema.name]:select(id)
+      entity, _, err_t = db[foreign_schema.name]:select(id, op_nulls)
       if err_t then
         return handle_error(err_t)
       end
@@ -253,7 +259,7 @@ local function put_entity_endpoint(schema, foreign_schema, foreign_field_name)
       return helpers.responses.send_HTTP_NOT_FOUND()
     end
 
-    entity, _, err_t = db[foreign_schema.name]:upsert(id, self.args.post)
+    entity, _, err_t = db[foreign_schema.name]:upsert(id, self.args.post, op_nulls)
     if err_t then
       return handle_error(err_t)
     end
@@ -305,7 +311,7 @@ local function patch_entity_endpoint(schema, foreign_schema, foreign_field_name)
       return helpers.responses.send_HTTP_NOT_FOUND()
     end
 
-    entity, _, err_t = db[foreign_schema.name]:update(id, self.args.post)
+    entity, _, err_t = db[foreign_schema.name]:update(id, self.args.post, op_nulls)
     if err_t then
       return handle_error(err_t)
     end
