@@ -1081,6 +1081,10 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("should pass with GET with request-line having query param but signed without query param", function()
+        -- hmac-auth needs to validate signatures created both with and without 
+        -- query params for a supported deprecation period.
+        --
+        -- Regression for https://github.com/Kong/kong/issues/3672
         local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
         local encodedSignature = ngx.encode_base64(
           hmac_sha1_binary("secret", "date: "
