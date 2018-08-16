@@ -59,7 +59,7 @@ describe("Response helpers", function()
       end)
     end
   end)
-  it("calls `ngx.log` if and only if a 500 status code was given", function()
+  it("calls `ngx.log` if 500 or 502 status code was given", function()
     responses.send_HTTP_BAD_REQUEST()
     assert.stub(ngx.log).was_not_called()
 
@@ -69,8 +69,14 @@ describe("Response helpers", function()
     responses.send_HTTP_INTERNAL_SERVER_ERROR()
     assert.stub(ngx.log).was_not_called()
 
+    responses.send_HTTP_BAD_GATEWAY()
+    assert.stub(ngx.log).was_not_called()
+
     responses.send_HTTP_INTERNAL_SERVER_ERROR("error")
     assert.stub(ngx.log).was_called()
+
+    responses.send_HTTP_BAD_GATEWAY("error")
+    assert.stub(ngx.log).was_called(2)
   end)
 
   it("don't call `ngx.log` if a 503 status code was given", function()
