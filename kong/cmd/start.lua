@@ -14,7 +14,7 @@ local function execute(args)
   assert(not kill.is_running(conf.nginx_pid),
          "Kong is already running in " .. conf.prefix)
 
-  local db = DB.new(conf)
+  local db = assert(DB.new(conf))
   assert(db:init_connector())
   local dao = assert(DAOFactory.new(conf, db))
   local ok, err_t = dao:init()
