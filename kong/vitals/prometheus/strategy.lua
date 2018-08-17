@@ -67,16 +67,16 @@ function _M.new(_, opts)
     -- { label_name_to_be_returned, query string, is_rate }
     { "cache_datastore_hits_total", fmt("sum(kong_cache_datastore_hits_total{%s})", custom_filters_str), true },
     { "cache_datastore_misses_total", fmt("sum(kong_cache_datastore_misses_total{%s})", custom_filters_str), true },
-    { "latency_proxy_request_min_ms", fmt("min(kong_latency_proxy_request{%s})", custom_filters_str) }, -- statsd_exporter will sometimes return -1
-    { "latency_proxy_request_max_ms", fmt("max(kong_latency_proxy_request{%s})", custom_filters_str) },
-    { "latency_upstream_min_ms", fmt("min(kong_latency_upstream{%s})", custom_filters_str) }, -- statsd_exporter will sometimes return -1
-    { "latency_upstream_max_ms", fmt("max(kong_latency_upstream{%s})", custom_filters_str) },
+    { "latency_proxy_request_min_ms", fmt("min(kong_latency_proxy_request_min{%s})", custom_filters_str) },
+    { "latency_proxy_request_max_ms", fmt("max(kong_latency_proxy_request_max{%s})", custom_filters_str) },
+    { "latency_upstream_min_ms", fmt("min(kong_latency_upstream_min{%s})", custom_filters_str) },
+    { "latency_upstream_max_ms", fmt("max(kong_latency_upstream_max{%s})", custom_filters_str) },
     { "requests_proxy_total", fmt("sum(kong_requests_proxy{%s})", custom_filters_str), true },
     { "latency_proxy_request_avg_ms",
-      fmt("sum(rate(kong_latency_proxy_request_sum{%s}[1m])) / sum(rate(kong_latency_proxy_request_count{%s}[1m]))",
+      fmt("sum(rate(kong_latency_proxy_request_sum{%s}[1m])) / sum(rate(kong_latency_proxy_request_count{%s}[1m])) * 1000",
         custom_filters_str, custom_filters_str) }, -- we only have minute level precision
     { "latency_upstream_avg_ms",
-      fmt("sum(rate(kong_latency_upstream_sum{%s}[1m])) / sum(rate(kong_latency_upstream_count{%s}[1m]))",
+      fmt("sum(rate(kong_latency_upstream_sum{%s}[1m])) / sum(rate(kong_latency_upstream_count{%s}[1m])) * 1000",
         custom_filters_str, custom_filters_str) },
   }
 

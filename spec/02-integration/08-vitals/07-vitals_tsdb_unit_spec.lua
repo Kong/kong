@@ -314,13 +314,13 @@ describe("vitals Prometheus strategy", function()
           assert.same(metrics, {
             {"cache_datastore_hits_total", "sum(kong_cache_datastore_hits_total{})", true},
             {"cache_datastore_misses_total", "sum(kong_cache_datastore_misses_total{})", true},
-            {"latency_proxy_request_min_ms", "min(kong_latency_proxy_request{})"},
-            {"latency_proxy_request_max_ms", "max(kong_latency_proxy_request{})"},
-            {"latency_upstream_min_ms", "min(kong_latency_upstream{})"},
-            {"latency_upstream_max_ms", "max(kong_latency_upstream{})"},
+            {"latency_proxy_request_min_ms", "min(kong_latency_proxy_request_min{})"},
+            {"latency_proxy_request_max_ms", "max(kong_latency_proxy_request_max{})"},
+            {"latency_upstream_min_ms", "min(kong_latency_upstream_min{})"},
+            {"latency_upstream_max_ms", "max(kong_latency_upstream_max{})"},
             {"requests_proxy_total", "sum(kong_requests_proxy{})", true},
-            {"latency_proxy_request_avg_ms", "sum(rate(kong_latency_proxy_request_sum{}[1m])) / sum(rate(kong_latency_proxy_request_count{}[1m]))"},
-            {"latency_upstream_avg_ms", "sum(rate(kong_latency_upstream_sum{}[1m])) / sum(rate(kong_latency_upstream_count{}[1m]))"}
+            {"latency_proxy_request_avg_ms", "sum(rate(kong_latency_proxy_request_sum{}[1m])) / sum(rate(kong_latency_proxy_request_count{}[1m])) * 1000"},
+            {"latency_upstream_avg_ms", "sum(rate(kong_latency_upstream_sum{}[1m])) / sum(rate(kong_latency_upstream_count{}[1m])) * 1000"}
           })
           assert.equals(expected_interval, interval)
         end
@@ -340,13 +340,13 @@ describe("vitals Prometheus strategy", function()
           assert.same(metrics, {
             {"cache_datastore_hits_total", "sum(kong_cache_datastore_hits_total{})", true},
             {"cache_datastore_misses_total", "sum(kong_cache_datastore_misses_total{})", true},
-            {"latency_proxy_request_min_ms", "min(kong_latency_proxy_request{})"},
-            {"latency_proxy_request_max_ms", "max(kong_latency_proxy_request{})"},
-            {"latency_upstream_min_ms", "min(kong_latency_upstream{})"},
-            {"latency_upstream_max_ms", "max(kong_latency_upstream{})"},
+            {"latency_proxy_request_min_ms", "min(kong_latency_proxy_request_min{})"},
+            {"latency_proxy_request_max_ms", "max(kong_latency_proxy_request_max{})"},
+            {"latency_upstream_min_ms", "min(kong_latency_upstream_min{})"},
+            {"latency_upstream_max_ms", "max(kong_latency_upstream_max{})"},
             {"requests_proxy_total", "sum(kong_requests_proxy{})", true},
-            {"latency_proxy_request_avg_ms", "sum(rate(kong_latency_proxy_request_sum{}[1m])) / sum(rate(kong_latency_proxy_request_count{}[1m]))"},
-            {"latency_upstream_avg_ms", "sum(rate(kong_latency_upstream_sum{}[1m])) / sum(rate(kong_latency_upstream_count{}[1m]))"}
+            {"latency_proxy_request_avg_ms", "sum(rate(kong_latency_proxy_request_sum{}[1m])) / sum(rate(kong_latency_proxy_request_count{}[1m])) * 1000"},
+            {"latency_upstream_avg_ms", "sum(rate(kong_latency_upstream_sum{}[1m])) / sum(rate(kong_latency_upstream_count{}[1m])) * 1000"}
           })
           assert.equals(expected_interval, interval)
         end
