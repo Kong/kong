@@ -72,7 +72,8 @@ end
 function _M.bind_request(socket, username, password)
   local ldapAuth = encoder:encode({ _ldaptype = 80, password })
   local bindReq = encoder:encode(3) .. encoder:encode(username) .. ldapAuth
-  local ldapMsg = encoder:encode(ldapMessageId) .. encodeLDAPOp(encoder, APPNO.BindRequest, true, bindReq)
+  local ldapMsg = encoder:encode(ldapMessageId) ..
+    encodeLDAPOp(encoder, APPNO.BindRequest, true, bindReq)
 
   local send_packet = encoder:encodeSeq(ldapMsg)
   ldapMessageId = ldapMessageId +1
@@ -81,7 +82,8 @@ function _M.bind_request(socket, username, password)
   local _, protocolOp, packet, pos = receive_ldap_message(socket)
 
   if protocolOp.number ~= APPNO.BindResponse then
-    return false, string_format("Received incorrect Op in packet: %d, expected %d", protocolOp.number, APPNO.BindResponse)
+    return false, string_format("Received incorrect Op in packet: %d, expected %d",
+                                response.protocolOp.number, APPNO.BindResponse)
   end
 
   local resultCode
@@ -105,7 +107,9 @@ function _M.unbind_request(socket)
   local encoder = asn1.ASN1Encoder:new()
 
   ldapMessageId = ldapMessageId +1
-  ldapMsg = encoder:encode(ldapMessageId) .. encodeLDAPOp(encoder, APPNO.UnbindRequest, false, nil)
+  ldapMsg = encoder:encode(ldapMessageId) ..
+            encodeLDAPOp(encoder, APPNO.UnbindRequest,
+                         false, nil)
   packet = encoder:encodeSeq(ldapMsg)
   socket:send(packet)
   return true, ""
@@ -227,14 +231,16 @@ end
 function _M.start_tls(socket)
   local method_name = encoder:encode({_ldaptype = 80, "1.3.6.1.4.1.1466.20037"})
   ldapMessageId = ldapMessageId +1
-  local ldapMsg = encoder:encode(ldapMessageId) .. encodeLDAPOp(encoder, APPNO.ExtendedRequest, true, method_name)
+  local ldapMsg = encoder:encode(ldapMessageId) ..
+    encodeLDAPOp(encoder, APPNO.ExtendedRequest, true, method_name)
   local send_packet = encoder:encodeSeq(ldapMsg)
   socket:send(send_packet)
 
   local _, protocolOp, packet, pos = receive_ldap_message(socket)
 
   if protocolOp.number ~= APPNO.ExtendedResponse then
-    return false, string_format("Received incorrect Op in packet: %d, expected %d", protocolOp.number, APPNO.ExtendedResponse)
+    return false, string_format("Received incorrect Op in packet: %d, expected %d",
+                                protocolOp.number, APPNO.ExtendedResponse)
   end
 
   local resultCode
