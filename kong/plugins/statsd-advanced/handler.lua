@@ -8,7 +8,7 @@ local vitals           = require "kong.vitals"
 local ngx_log       = ngx.log
 local ngx_timer_at  = ngx.timer.at
 local ngx_time      = ngx.time
-local string_gsub   = string.gsub
+local re_gsub       = ngx.re.gsub
 local pairs         = pairs
 local string_format = string.format
 local NGX_ERR       = ngx.ERR
@@ -163,13 +163,13 @@ local function get_scope_name(message, service_identifier)
     if service_name == ngx.null then
       return "service.unnamed"
     end
-    return "service." .. string_gsub(service_name, "%.", "_")
+    return "service." .. re_gsub(service_name, [[\.]], "_", "oj")
 
   elseif api then
     if api == ngx.null then
       return "api.unnamed"
     end
-    return "api." .. string_gsub(api.name, "%.", "_")
+    return "api." .. re_gsub(api.name, [[\.]], "_", "oj")
 
   else
     -- TODO: this follows the pattern used by
@@ -250,7 +250,7 @@ function StatsdHandler:init_worker()
   -- cache worker id in module local variable
   worker_id = ngx.worker.id()
 
-  hostname = string_gsub(utils.get_hostname(), "%.", "_")
+  hostname = re_gsub(utils.get_hostname(), [[\.]], "_", "oj")
 end
 
 
