@@ -66,7 +66,9 @@ upstream kong_upstream {
     balancer_by_lua_block {
         Kong.balancer()
     }
+> if upstream_keepalive > 0 then
     keepalive ${{UPSTREAM_KEEPALIVE}};
+> end
 }
 
 server {
