@@ -24,6 +24,17 @@ int write(int fd, const void * ptr, int numbytes);
 -- fd tracking utility functions
 local file_descriptors = {}
 
+local LOG_LEVELS = {
+  debug = 7,
+  info = 6,
+  notice = 5,
+  warning = 4,
+  err = 3,
+  crit = 2,
+  alert = 1,
+  emerg = 0
+}
+
 -- Log to a file. Function used as callback from an nginx timer.
 -- @param `premature` see OpenResty `ngx.timer.at()`
 -- @param `conf`     Configuration table, holds http endpoint details
@@ -55,7 +66,18 @@ local function log(premature, conf, message)
     end
   end
 
-  ffi.C.write(fd, msg, #msg)
+  local severity
+  if message.response.status >= 500 then
+    severity = conf.server_errors_severity
+  elseif message.response.status >= 400 then
+    severity = conf.client_errors_severity
+  else
+    severity = conf.successful_severity
+  end
+
+  if LOG_LEVELS[severity] <= LOG_LEVELS[conf.log_level] then
+    ffi.C.write(fd, msg, #msg)
+  end
 end
 
 local FileLogHandler = BasePlugin:extend()
