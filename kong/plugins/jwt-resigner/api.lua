@@ -1,0 +1,163 @@
+local cache = require "kong.plugins.jwt-resigner.cache"
+local utils = require "kong.tools.utils"
+local crud  = require "kong.api.crud_helpers"
+local json  = require "cjson.safe"
+
+
+local setmetatable = setmetatable
+local ipairs = ipairs
+local type = type
+
+
+local EMPTY_ARRAY = setmetatable({}, json.empty_array_mt)
+
+
+local function clear_private_keys(jwks)
+  for _, jwk in ipairs(jwks) do
+    jwk.d = nil
+    jwk.p = nil
+    jwk.q = nil
+    jwk.dp = nil
+    jwk.dq = nil
+    jwk.qi = nil
+  end
+
+  return jwks
+end
+
+
+local function decode_jwks(row, key)
+  local jwks = row[key]
+  if jwks then
+    if type(jwks) == "string" then
+      jwks = json.decode(jwks)
+      if jwks then
+        row[key] = clear_private_keys(jwks)
+
+      else
+        row[key] = EMPTY_ARRAY
+      end
+    elseif type(jwks) == "table" then
+      row[key] = clear_private_keys(jwks)
+    else
+      row[key] = EMPTY_ARRAY
+    end
+  else
+    row[key] = EMPTY_ARRAY
+  end
+end
+
+
+local function post_process_keys(row)
+  decode_jwks(row, "keys")
+  decode_jwks(row, "previous")
+
+  return row
+end
+
+
+local function post_process_row(row)
+  row.id = nil
+  row.name = nil
+  row.created_at = nil
+  row.updated_at = nil
+
+  return post_process_keys(row)
+end
+
+
+return {
+  ["/jwt-resigner/jwks/"] = {
+    resource = "jwt-resigner",
+
+    GET = function(self, dao)
+      crud.paginated_set(self, dao.jwt_resigner_jwks, post_process_keys)
+    end,
+  },
+
+  ["/jwt-resigner/jwks/:id"] = {
+    resource = "jwt-resigner",
+
+    GET = function(self, dao, helpers)
+      local id = self.params.id
+
+      local row, err
+      if utils.is_valid_uuid(id) then
+        row, err = dao.jwt_resigner_jwks:find({ id = id })
+
+      else
+        row, err = dao.jwt_resigner_jwks:find_all({ name = id })
+        row = row and row[1]
+      end
+
+      if err then
+        return helpers.yield_error(err)
+      elseif row == nil then
+        return helpers.responses.send_HTTP_NOT_FOUND()
+      end
+
+      return helpers.responses.send_HTTP_OK(post_process_row(row))
+    end,
+
+    DELETE = function(self, dao, helpers)
+      local id = self.params.id
+
+      if utils.is_valid_uuid(id) then
+        return crud.delete({ id = self.params.id }, dao.jwt_resigner_jwks)
+      end
+
+      local row, err = dao.jwt_resigner_jwks:find_all({ name = id })
+      row = row and row[1]
+
+      if err then
+        return helpers.yield_error(err)
+      elseif row == nil then
+        return helpers.responses.send_HTTP_NOT_FOUND()
+      end
+
+      return crud.delete({ id = row.id }, dao.jwt_resigner_jwks)
+    end
+  },
+
+  ["/jwt-resigner/jwks/:id/rotate"] = {
+    resource = "jwt-resigner",
+
+    POST = function(self, dao, helpers)
+      local id = self.params.id
+
+      local row, err
+      if utils.is_valid_uuid(id) then
+        row, err = dao.jwt_resigner_jwks:find({ id = id })
+
+      else
+        row, err = dao.jwt_resigner_jwks:find_all({ name = id })
+        row = row and row[1]
+      end
+
+      if err then
+        return helpers.yield_error(err)
+
+      elseif row == nil then
+        return helpers.responses.send_HTTP_NOT_FOUND()
+      end
+
+      local ok
+
+      ok, err = cache.rotate_keys(row.name, row, true, true)
+      if not ok then
+        return helpers.yield_error(err)
+      end
+
+      row, err = dao.jwt_resigner_jwks:find({ id = row.id })
+      if err then
+        return helpers.yield_error(err)
+
+      elseif row == nil then
+        return helpers.responses.send_HTTP_NOT_FOUND()
+      end
+
+      return helpers.responses.send_HTTP_OK(post_process_row(row))
+    end,
+  },
+
+}
