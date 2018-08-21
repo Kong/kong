@@ -24,8 +24,6 @@ end
 
 local MINUTE = 60
 
-local SCRAPE_INTERVAL = 30
-
 local _log_prefix = "[vitals-strategy] "
 
 local _M = { }
@@ -86,6 +84,7 @@ function _M.new(_, opts)
     connection_timeout   = tonumber(opts.connection_timeout) or 5000, -- 5s
     custom_filters_str   = custom_filters_str,
     has_custom_filters   = #custom_filters_str > 0,
+    scrape_interval      = tonumber(opts.scrape_interval) or 15,
     common_stats_metrics = common_stats_metrics,
     headers              = { Authorization = opts.auth_header },
   }
@@ -99,7 +98,7 @@ end
 
 function _M:interval_width(level)
   if level == "seconds" then
-    return SCRAPE_INTERVAL
+    return self.scrape_interval
   elseif level == "minutes" then
     return 60
   else
@@ -198,10 +197,8 @@ local function translate_vitals_stats(metrics_query, prometheus_stats, interval,
 
   if interval == MINUTE then
     ret.meta.interval = "minutes"
-  elseif interval == SCRAPE_INTERVAL then
-    ret.meta.interval = "seconds"
   else
-    return nil, "invalid interval value, got ", interval, ", expecting 'minutes' or 'seconds'"
+    ret.meta.interval = "seconds"
   end
 
   ret.meta.interval_width = interval
@@ -383,10 +380,8 @@ local function translate_vitals_status(metrics_query, prometheus_stats, interval
 
   if interval == MINUTE then
     ret.meta.interval = "minutes"
-  elseif interval == SCRAPE_INTERVAL then
-    ret.meta.interval = "seconds"
   else
-    return nil, "invalid interval value, got ", interval, ", expecting 'minutes' or 'seconds'"
+    ret.meta.interval = "seconds"
   end
 
   ret.meta.interval_width = interval
@@ -485,7 +480,7 @@ local function translate_vitals_status(metrics_query, prometheus_stats, interval
   return ret, nil
 end
 
-local function get_interval_and_start_ts(level, start_ts)
+local function get_interval_and_start_ts(level, start_ts, scrape_interval)
   local interval
   if level == "minutes" or level == MINUTE then
     interval = MINUTE
@@ -494,7 +489,7 @@ local function get_interval_and_start_ts(level, start_ts)
       start_ts = ngx_time() - 720 * 60
     end
   else
-    interval = SCRAPE_INTERVAL
+    interval = scrape_interval
     -- backward compatibility for client that doesn't send start_ts
     if start_ts == nil then
       start_ts = ngx_time() - 5 * 60
@@ -506,7 +501,7 @@ end
 
 
 function _M:select_stats(query_type, level, node_id, start_ts)
-  local interval, start_ts = get_interval_and_start_ts(query_type, start_ts)
+  local interval, start_ts = get_interval_and_start_ts(query_type, start_ts, self.scrape_interval)
 
   local metrics = self.common_stats_metrics
 
@@ -526,7 +521,7 @@ function _M:select_stats(query_type, level, node_id, start_ts)
 end
 
 function _M:select_status_codes(opts)
-  local interval, start_ts = get_interval_and_start_ts(opts.duration, opts.start_ts)
+  local interval, start_ts = get_interval_and_start_ts(opts.duration, opts.start_ts, self.scrape_interval)
   
   -- build the filter table
   local filters = { }
@@ -594,7 +589,7 @@ function _M:select_status_codes(opts)
 end
 
 function _M:select_consumer_stats(opts)
-  local interval, start_ts = get_interval_and_start_ts(opts.duration, opts.start_ts)
+  local interval, start_ts = get_interval_and_start_ts(opts.duration, opts.start_ts, self.scrape_interval)
 
   local metrics = {
     { "requests_consumer_total", fmt("sum(kong_status_code_per_consumer{consumer=\"%s\", %s})",

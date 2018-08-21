@@ -1052,7 +1052,7 @@ describe("vitals Prometheus strategy", function()
           "earliest_ts": 1527892620,
           "latest_ts": 1527892920,
           "interval": "seconds",
-          "interval_width": 30,
+          "interval_width": 15,
           "level": "cluster",
           "nodes": {
               "cluster": {
