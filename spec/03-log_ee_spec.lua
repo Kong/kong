@@ -55,7 +55,7 @@ for _, strategy in helpers.each_strategy() do
         }
       end
 
-      for i = 12, 13 do
+      for i = 12, 14 do
         local service = bp.services:insert {
           protocol = helpers.mock_upstream_protocol,
           host     = helpers.mock_upstream_host,
@@ -356,6 +356,33 @@ for _, strategy in helpers.each_strategy() do
               service_identifier  = "service_name",
             }
           },
+        },
+      }
+
+
+      bp.key_auth_plugins:insert { route_id = routes[14].id }
+
+      bp.plugins:insert {
+        name     = "statsd-advanced",
+        route_id   = routes[14].id,
+        config     = {
+          host     = "127.0.0.1",
+          port     = UDP_PORT,
+          metrics  = {
+            {
+              name                = "request_count",
+              stat_type           = "counter",
+              sample_rate         = 1,
+              service_identifier  = "service_name",
+            },
+            {
+              name                = "status_count",
+              stat_type           = "counter",
+              sample_rate         = 1,
+              service_identifier  = "service_name",
+            }
+          },
+          hostname_in_prefix = true,
         },
       }
 
@@ -684,6 +711,27 @@ for _, strategy in helpers.each_strategy() do
         assert.True(ok)
         assert.contains("^kong.service.unnamed.request.count:1|c$", res, true)
         assert.contains("^kong.service.unnamed.status.200:1|c$", res, true)
+      end)
+    end)
+
+    describe("hostname_in_prefix", function()
+      it("prefixes metric names with the hostname", function()
+        local hostname = require("kong.tools.utils").get_hostname()
+        hostname = string.gsub(hostname, "%.", "_")
+
+        local thread = helpers.udp_server(UDP_PORT, metrics_count)
+        local response = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/request?apikey=kong",
+          headers = {
+            host  = "logging14.com"
+          }
+        })
+        assert.res_status(200, response)
+
+        local ok, metrics = thread:join()
+        assert.True(ok)
+        assert.matches("kong.node." .. hostname .. ".service.unnamed.request.count:1|c", metrics, nil, true)
       end)
     end)
   end)

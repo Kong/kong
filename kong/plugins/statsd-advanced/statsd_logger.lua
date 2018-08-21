@@ -62,7 +62,7 @@ function statsd_mt:new(conf)
   local statsd = {
     host       = conf.host,
     port       = conf.port,
-    prefix     = conf.prefix,
+    prefix     = conf._prefix,
     socket     = sock,
     stat_types = stat_types,
     -- EE only

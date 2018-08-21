@@ -1,5 +1,5 @@
 -- add vitals metrics
-local vitals   = require "kong.vitals"
+local vitals = require "kong.vitals"
 
 
 local ee_metrics = vitals.logging_metrics or {}
@@ -253,5 +253,9 @@ return {
       type     = "boolean",
       default  = false,
     },
-  }
+    hostname_in_prefix = {
+      type    = "boolean",
+      default = false,
+    },
+  },
 }

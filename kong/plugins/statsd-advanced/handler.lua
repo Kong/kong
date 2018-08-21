@@ -263,6 +263,12 @@ function StatsdHandler:log(conf)
     message[group_name] = ngx_ctx[group_name]
   end
 
+  conf._prefix = conf.prefix
+
+  if conf.hostname_in_prefix then
+    conf._prefix = conf._prefix .. ".node." .. hostname
+  end
+
   local ok, err = ngx_timer_at(0, log, conf, message)
   if not ok then
     ngx_log(NGX_ERR, "[statsd-advanced] failed to create timer: ", err)
