@@ -38,7 +38,7 @@ function _Routes:delete(primary_key)
     }, nil, "write")
     if not res then
       return nil, self.errors:database_error("could not delete plugin " ..
-                                              "associated with Route: " .. err)
+                                             "associated with Route: " .. err)
     end
   end
 

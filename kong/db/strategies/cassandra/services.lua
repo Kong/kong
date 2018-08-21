@@ -50,8 +50,8 @@ local function delete_cascade(connector, table_name, service_id, errors)
 end
 
 
-function _Services:delete(primary_key)
-  local ok, err_t = self.super.delete(self, primary_key)
+function _Services:delete(primary_key, options)
+  local ok, err_t = self.super.delete(self, primary_key, options)
   if not ok then
     return nil, err_t
   end

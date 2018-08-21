@@ -1,5 +1,5 @@
 local crud = require "kong.api.crud_helpers"
-local Endpoints = require "kong.api.endpoints"
+local endpoints = require "kong.api.endpoints"
 
 
 local null = ngx.null
@@ -12,26 +12,32 @@ return {
   ["/consumers"] = {
     GET = function(self, dao_factory, helpers)
       local db = dao_factory.db.new_db
+      local args = self.args.uri
+      local options = endpoints.extract_options(args, db.consumers.schema, "select")
 
-      if self.params.custom_id then
-        local consumer, _, err_t = db.consumers:select_by_custom_id(self.params.custom_id)
+      if args.custom_id then
+        local consumer, _, err_t = db.consumers:select_by_custom_id(args.custom_id, options)
+
         if err_t then
-          return Endpoints.handle_error(err_t)
+          return endpoints.handle_error(err_t)
         end
 
         return helpers.responses.send_HTTP_OK {
-          data   = { consumer },
+          data = {
+            consumer
+          },
+          next = null,
         }
       end
 
-      local size, err = Endpoints.get_page_size(self.args.uri)
+      local size, err = endpoints.get_page_size(args)
       if err then
-        return Endpoints.handle_error(db.consumers.errors:invalid_size(err))
+        return endpoints.handle_error(db.consumers.errors:invalid_size(err))
       end
 
-      local data, _, err_t, offset = db.consumers:page(size, self.args.uri.offset)
+      local data, _, err_t, offset = db.consumers:page(size, args.offset, options)
       if err_t then
-        return Endpoints.handle_error(err_t)
+        return endpoints.handle_error(err_t)
       end
 
       local next_page = offset and "/consumers?offset=" .. escape_uri(offset) or null

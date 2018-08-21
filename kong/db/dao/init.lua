@@ -207,7 +207,7 @@ local function generate_foreign_key_methods(schema)
         end
 
         local entities, err
-        entities, err, err_t = self:rows_to_entities(rows)
+        entities, err, err_t = self:rows_to_entities(rows, options)
         if err then
           return nil, err, err_t
         end
@@ -247,7 +247,7 @@ local function generate_foreign_key_methods(schema)
           return nil
         end
 
-        return self:row_to_entity(row)
+        return self:row_to_entity(row, options)
       end
 
       methods["update_by_" .. name] = function(self, unique_value, entity, options)
@@ -291,7 +291,7 @@ local function generate_foreign_key_methods(schema)
           return nil, tostring(err_t), err_t
         end
 
-        row, err, err_t = self:row_to_entity(row)
+        row, err, err_t = self:row_to_entity(row, options)
         if not row then
           return nil, err, err_t
         end
@@ -344,7 +344,7 @@ local function generate_foreign_key_methods(schema)
           return nil, tostring(err_t), err_t
         end
 
-        row, err, err_t = self:row_to_entity(row)
+        row, err, err_t = self:row_to_entity(row, options)
         if not row then
           return nil, err, err_t
         end
@@ -461,7 +461,7 @@ function DAO:select(primary_key, options)
     return nil
   end
 
-  return self:row_to_entity(row)
+  return self:row_to_entity(row, options)
 end
 
 
@@ -503,7 +503,7 @@ function DAO:page(size, offset, options)
   end
 
   local entities, err
-  entities, err, err_t = self:rows_to_entities(rows)
+  entities, err, err_t = self:rows_to_entities(rows, options)
   if not entities then
     return nil, err, err_t
   end
@@ -558,7 +558,7 @@ function DAO:each(size, options)
       return nil
     end
 
-    row, err, err_t = self:row_to_entity(row)
+    row, err, err_t = self:row_to_entity(row, options)
     if not row then
       return nil, err, err_t
     end
@@ -600,7 +600,7 @@ function DAO:insert(entity, options)
     return nil, tostring(err_t), err_t
   end
 
-  row, err, err_t = self:row_to_entity(row)
+  row, err, err_t = self:row_to_entity(row, options)
   if not row then
     return nil, err, err_t
   end
@@ -650,7 +650,7 @@ function DAO:update(primary_key, entity, options)
     return nil, tostring(err_t), err_t
   end
 
-  row, err, err_t = self:row_to_entity(row)
+  row, err, err_t = self:row_to_entity(row, options)
   if not row then
     return nil, err, err_t
   end
@@ -700,7 +700,7 @@ function DAO:upsert(primary_key, entity, options)
     return nil, tostring(err_t), err_t
   end
 
-  row, err, err_t = self:row_to_entity(row)
+  row, err, err_t = self:row_to_entity(row, options)
   if not row then
     return nil, err, err_t
   end
@@ -753,7 +753,7 @@ function DAO:delete(primary_key, options)
 end
 
 
-function DAO:rows_to_entities(rows)
+function DAO:rows_to_entities(rows, options)
   local count = #rows
   if count == 0 then
     return setmetatable(rows, cjson.empty_array_mt)
@@ -762,7 +762,7 @@ function DAO:rows_to_entities(rows)
   local entities = new_tab(count, 0)
 
   for i = 1, count do
-    local entity, err, err_t = self:row_to_entity(rows[i])
+    local entity, err, err_t = self:row_to_entity(rows[i], options)
     if not entity then
       return nil, err, err_t
     end
@@ -774,8 +774,12 @@ function DAO:rows_to_entities(rows)
 end
 
 
-function DAO:row_to_entity(row)
-  local entity, errors = self.schema:process_auto_fields(row, "select")
+function DAO:row_to_entity(row, options)
+  if options ~= nil then
+    validate_options_type(options)
+  end
+
+  local entity, errors = self.schema:process_auto_fields(row, "select", options and options.nulls)
   if not entity then
     local err_t = self.errors:schema_violation(errors)
     return nil, tostring(err_t), err_t

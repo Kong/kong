@@ -15,8 +15,8 @@ function Blueprint:build(overrides)
 end
 
 
-function Blueprint:insert(overrides)
-  local entity, err = self.dao:insert(self:build(overrides))
+function Blueprint:insert(overrides, options)
+  local entity, err = self.dao:insert(self:build(overrides), options)
   if err then
     error(err, 2)
   end
@@ -24,10 +24,10 @@ function Blueprint:insert(overrides)
 end
 
 
-function Blueprint:insert_n(n, overrides)
+function Blueprint:insert_n(n, overrides, options)
   local res = {}
   for i=1,n do
-    res[i] = self:insert(overrides)
+    res[i] = self:insert(overrides, options)
   end
   return res
 end
