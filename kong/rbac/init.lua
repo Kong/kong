@@ -704,8 +704,7 @@ local function resolve_role_endpoint_permissions(roles)
       end
 
       -- is it negative or positive?
-      nmap["/" .. role_endpoint.workspace .. role_endpoint.endpoint] =
-        role_endpoint.negative
+      nmap[ws_prefix .. role_endpoint.endpoint] = role_endpoint.negative
 
       pmap[role_endpoint.workspace][ws_prefix .. role_endpoint.endpoint] =
         bor(p, pmap[role_endpoint.workspace][role_endpoint.endpoint] or 0x0)
@@ -735,7 +734,7 @@ function _M.readable_endpoints_permissions(roles)
 
       map[workspace][endpoint] = {
         actions = actions_t,
-        negative = nmap["/" .. workspace .. endpoint],
+        negative = nmap[endpoint],
       }
     end
   end

@@ -457,6 +457,20 @@ describe("(#" .. kong_conf.database .. ")", function()
         assert.equals(0x1, map.foo["/foo/bar"])
       end)
 
+      it("returns a map and negative permissions map given a role", function()
+        local map, nmap = rbac.resolve_role_endpoint_permissions({
+          { id = role_ids[1] },
+        })
+        assert(map)
+        assert(nmap)
+
+        for workspace in pairs(map) do
+          for endpoint, actions in pairs(map[workspace]) do
+            assert.is_boolean(nmap[endpoint])
+          end
+        end
+      end)
+
       it("returns a permissions map for multiple roles", function()
         local map = rbac.resolve_role_endpoint_permissions({
           { id = role_ids[1] },
