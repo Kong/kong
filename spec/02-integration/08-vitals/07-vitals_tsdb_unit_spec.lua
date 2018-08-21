@@ -13,7 +13,7 @@ describe("vitals Prometheus strategy", function()
         "data": {
           "resultType": "matrix",
           "result": [{
-            "metric": {},
+            "metric": {"instance":"localhost:65555"},
             "values": [
               [1527892620, "2699"],
               [1527892680, "27402"],
@@ -27,14 +27,14 @@ describe("vitals Prometheus strategy", function()
       }
     ]]).data.result,
     -- the followings are identical in format thus not pretty-printed
-    cjson.decode('{"status":"success","data":{"resultType":"matrix","result":[{"metric":{},"values":[[1527892620,"5770"],[1527892680,"50789"],[1527892740,"50789"],[1527892800,"50789"],[1527892860,"50789"],[1527892920,"50789"]]}]}}').data.result,
-    cjson.decode('{"status":"success","data":{"resultType":"matrix","result":[{"metric":{},"values":[[1527892620,"0"],[1527892680,"1"],[1527892740,"1"],[1527892800,"1"],[1527892860,"1"],[1527892920,"1"]]}]}}').data.result,
-    cjson.decode('{"status":"success","data":{"resultType":"matrix","result":[{"metric":{},"values":[[1527892620,"4548"],[1527892680,"3099"],[1527892740,"3099"],[1527892800,"3099"],[1527892860,"3099"],[1527892920,"3099"]]}]}}').data.result,
-    cjson.decode('{"status":"success","data":{"resultType":"matrix","result":[{"metric":{},"values":[[1527892620,"-1"],[1527892680,"43"],[1527892740,"45"],[1527892800,"45"],[1527892860,"45"],[1527892920,"45"]]}]}}').data.result,
-    cjson.decode('{"status":"success","data":{"resultType":"matrix","result":[{"metric":{},"values":[[1527892620,"93"],[1527892680,"203"],[1527892740,"203"],[1527892800,"203"],[1527892860,"203"],[1527892920,"203"]]}]}}').data.result,
-    cjson.decode('{"status":"success","data":{"resultType":"matrix","result":[{"metric":{},"values":[[1527892620,"95"],[1527892680,"11386"],[1527892740,"11386"],[1527892800,"11386"],[1527892860,"11386"],[1527892920,"11386"]]}]}}').data.result,
-    cjson.decode('{"status":"success","data":{"resultType":"matrix","result":[{"metric":{},"values":[[1527892620,"3030.5333333333333"],[1527892680,"1352.1333333333334"],[1527892740,"1361.9"],[1527892800,"1361.9"],[1527892860,"1361.9"],[1527892920,"1361.9"]]}]}}').data.result,
-    cjson.decode('{"status":"success","data":{"resultType":"matrix","result":[{"metric":{},"values":[[1527892620,"25.066666666666666"],[1527892680,"102.66666666666667"],[1527892740,"103.03333333333333"],[1527892800,"103.03333333333333"],[1527892860,"103.03333333333333"],[1527892920,"103.03333333333333"]]}]}}').data.result,
+    cjson.decode('{"status":"success","data":{"resultType":"matrix","result":[{"metric":{"instance":"localhost:65555"},"values":[[1527892620,"5770"],[1527892680,"50789"],[1527892740,"50789"],[1527892800,"50789"],[1527892860,"50789"],[1527892920,"50789"]]}]}}').data.result,
+    cjson.decode('{"status":"success","data":{"resultType":"matrix","result":[{"metric":{"instance":"localhost:65555"},"values":[[1527892620,"0"],[1527892680,"1"],[1527892740,"1"],[1527892800,"1"],[1527892860,"1"],[1527892920,"1"]]}]}}').data.result,
+    cjson.decode('{"status":"success","data":{"resultType":"matrix","result":[{"metric":{"instance":"localhost:65555"},"values":[[1527892620,"4548"],[1527892680,"3099"],[1527892740,"3099"],[1527892800,"3099"],[1527892860,"3099"],[1527892920,"3099"]]}]}}').data.result,
+    cjson.decode('{"status":"success","data":{"resultType":"matrix","result":[{"metric":{"instance":"localhost:65555"},"values":[[1527892620,"-1"],[1527892680,"43"],[1527892740,"45"],[1527892800,"45"],[1527892860,"45"],[1527892920,"45"]]}]}}').data.result,
+    cjson.decode('{"status":"success","data":{"resultType":"matrix","result":[{"metric":{"instance":"localhost:65555"},"values":[[1527892620,"93"],[1527892680,"203"],[1527892740,"203"],[1527892800,"203"],[1527892860,"203"],[1527892920,"203"]]}]}}').data.result,
+    cjson.decode('{"status":"success","data":{"resultType":"matrix","result":[{"metric":{"instance":"localhost:65555"},"values":[[1527892620,"95"],[1527892680,"11386"],[1527892740,"11386"],[1527892800,"11386"],[1527892860,"11386"],[1527892920,"11386"]]}]}}').data.result,
+    cjson.decode('{"status":"success","data":{"resultType":"matrix","result":[{"metric":{"instance":"localhost:65555"},"values":[[1527892620,"3030.5333333333333"],[1527892680,"1352.1333333333334"],[1527892740,"1361.9"],[1527892800,"1361.9"],[1527892860,"1361.9"],[1527892920,"1361.9"]]}]}}').data.result,
+    cjson.decode('{"status":"success","data":{"resultType":"matrix","result":[{"metric":{"instance":"localhost:65555"},"values":[[1527892620,"25.066666666666666"],[1527892680,"102.66666666666667"],[1527892740,"103.03333333333333"],[1527892800,"103.03333333333333"],[1527892860,"103.03333333333333"],[1527892920,"103.03333333333333"]]}]}}').data.result,
   }
 
   local status_code_sample = {
@@ -272,7 +272,7 @@ describe("vitals Prometheus strategy", function()
 
   local consumer_stats_sample = {
     -- prometheus v1 format
-    cjson.decode('{"status":"success","data":{"resultType":"matrix","result":[{"metric":{},"values":[[1527892620,"2699"],[1527892680,"12342"],[1527892740,"15463"],[1527892800,"27453"],[1527892860,"38464"],[1527892920,"49573"]]}]}}').data.result
+    cjson.decode('{"status":"success","data":{"resultType":"matrix","result":[{"metric":{"instance":"localhost:65555"},"values":[[1527892620,"2699"],[1527892680,"12342"],[1527892740,"15463"],[1527892800,"27453"],[1527892860,"38464"],[1527892920,"49573"]]}]}}').data.result
   }
 
   local query_parameters = {
@@ -306,7 +306,7 @@ describe("vitals Prometheus strategy", function()
 
     for _, v in ipairs(query_parameters) do
       level, expected_duration_seconds, expected_interval, passed_in_interval = unpack(v)
-      it("duration " .. expected_duration_seconds .. "  common stats", function()
+      it("duration " .. expected_duration_seconds .. "  cluster level common stats", function()
         local expected_start_ts
         -- don't use assert.spy().was_called_with to have a better visibility on what's different
         prometheus.query = function(_, start_ts, metrics, interval)
@@ -325,7 +325,39 @@ describe("vitals Prometheus strategy", function()
           assert.equals(expected_interval, interval)
         end
 
-        local prom = prometheus.new({host = "notahost", port = 65555})
+        local prom = prometheus.new(nil, {host = "notahost", port = 65555, cluster_level = true})
+
+        expected_start_ts = ngx.time() - expected_duration_seconds
+        local _, err = prom:select_stats(level, "cluster", nil)
+        assert.is_nil(err)
+      end)
+
+      it("duration " .. expected_duration_seconds .. "  node level common stats", function()
+        local expected_start_ts
+        -- don't use assert.spy().was_called_with to have a better visibility on what's different
+        prometheus.query = function(_, start_ts, metrics, interval)
+          assert.equals(expected_start_ts, start_ts)
+          assert.same(metrics, {
+            {"cache_datastore_hits_total", "sum by (instance)(kong_cache_datastore_hits_total{})", true},
+            {"cache_datastore_misses_total", "sum by (instance)(kong_cache_datastore_misses_total{})", true},
+            {"latency_proxy_request_min_ms", "min by (instance)(kong_latency_proxy_request_min{})"},
+            {"latency_proxy_request_max_ms", "max by (instance)(kong_latency_proxy_request_max{})"},
+            {"latency_upstream_min_ms", "min by (instance)(kong_latency_upstream_min{})"},
+            {"latency_upstream_max_ms", "max by (instance)(kong_latency_upstream_max{})"},
+            {"requests_proxy_total", "sum by (instance)(kong_requests_proxy{})", true},
+            {"latency_proxy_request_avg_ms", "sum by (instance)(rate(kong_latency_proxy_request_sum{}[1m])) / sum by (instance)(rate(kong_latency_proxy_request_count{}[1m])) * 1000"},
+            {"latency_upstream_avg_ms", "sum by (instance)(rate(kong_latency_upstream_sum{}[1m])) / sum by (instance)(rate(kong_latency_upstream_count{}[1m])) * 1000"}
+          })
+          assert.equals(expected_interval, interval)
+        end
+
+        local prom = prometheus.new(nil, {host = "notahost", port = 65555, cluster_level = false})
+
+        expected_start_ts = ngx.time() - expected_duration_seconds
+        local _, err = prom:select_stats(level, "cluster", nil)
+        assert.is_nil(err)
+
+        local prom = prometheus.new(nil, {host = "notahost", port = 65555})
 
         expected_start_ts = ngx.time() - expected_duration_seconds
         local _, err = prom:select_stats(level, "cluster", nil)
@@ -351,7 +383,7 @@ describe("vitals Prometheus strategy", function()
           assert.equals(expected_interval, interval)
         end
 
-        local prom = prometheus.new({host = "notahost", port = 65555})
+        local prom = prometheus.new(nil, {host = "notahost", port = 65555, cluster_level = true})
 
         expected_start_ts = 1500000000
         local _, err = prom:select_stats(level, "cluster", nil, expected_start_ts)
@@ -369,7 +401,7 @@ describe("vitals Prometheus strategy", function()
           assert.equals(expected_interval, interval)
         end
 
-        local prom = prometheus.new({host = "notahost", port = 65555})
+        local prom = prometheus.new(nil, {host = "notahost", port = 65555})
 
         expected_start_ts = ngx.time() - expected_duration_seconds
         local _, err = prom:select_status_codes({
@@ -390,7 +422,7 @@ describe("vitals Prometheus strategy", function()
           assert.equals(expected_interval, interval)
         end
 
-        local prom = prometheus.new({host = "notahost", port = 65555})
+        local prom = prometheus.new(nil, {host = "notahost", port = 65555})
 
         expected_start_ts = ngx.time() - expected_duration_seconds
         local _, err = prom:select_status_codes({
@@ -417,7 +449,7 @@ describe("vitals Prometheus strategy", function()
           assert.equals(expected_interval, interval)
         end
 
-        local prom = prometheus.new({host = "notahost", port = 65555})
+        local prom = prometheus.new(nil, {host = "notahost", port = 65555})
 
         expected_start_ts = ngx.time() - expected_duration_seconds
         local _, err = prom:select_status_codes({
@@ -444,7 +476,7 @@ describe("vitals Prometheus strategy", function()
           assert.equals(expected_interval, interval)
         end
 
-        local prom = prometheus.new({host = "notahost", port = 65555})
+        local prom = prometheus.new(nil, {host = "notahost", port = 65555})
 
         expected_start_ts = ngx.time() - expected_duration_seconds
         local _, err = prom:select_status_codes({
@@ -471,7 +503,7 @@ describe("vitals Prometheus strategy", function()
           assert.equals(expected_interval, interval)
         end
 
-        local prom = prometheus.new({host = "notahost", port = 65555})
+        local prom = prometheus.new(nil, {host = "notahost", port = 65555})
 
         expected_start_ts = ngx.time() - expected_duration_seconds
         local _, err = prom:select_status_codes({
@@ -493,7 +525,7 @@ describe("vitals Prometheus strategy", function()
           assert.equals(expected_interval, interval)
         end
 
-        local prom = prometheus.new({host = "notahost", port = 65555})
+        local prom = prometheus.new(nil, {host = "notahost", port = 65555})
 
         expected_start_ts = 1500000000
         local _, err = prom:select_status_codes({
@@ -503,19 +535,50 @@ describe("vitals Prometheus strategy", function()
         assert.is_nil(err)
       end)
 
-      it("duration " .. expected_duration_seconds .. "  consumer stats", function()
+      it("duration " .. expected_duration_seconds .. "  cluster level consumer stats", function()
         local expected_start_ts
         local uuid = utils.uuid()
         -- don't use assert.spy().was_called_with to have a better visibility on what's different
         prometheus.query = function(_, start_ts, metrics, interval)
           assert.equals(expected_start_ts, start_ts)
           assert.same(metrics, {
-            {"requests_consumer_total", 'sum(kong_status_code_per_consumer{consumer="' .. uuid .. '", })', true},
+            {"requests_consumer_total", 'sum(kong_status_code_per_consumer{consumer="' .. uuid .. '", route_id!="", })', true},
            })
           assert.equals(expected_interval, interval)
         end
 
-        local prom = prometheus.new({host = "notahost", port = 65555})
+        local prom = prometheus.new(nil, {host = "notahost", port = 65555, cluster_level = true})
+
+        expected_start_ts = ngx.time() - expected_duration_seconds
+        local _, err = prom:select_consumer_stats({
+          duration = passed_in_interval,
+          consumer_id = uuid,
+        })
+        assert.is_nil(err)
+      end)
+
+      it("duration " .. expected_duration_seconds .. "  node level consumer stats", function()
+        local expected_start_ts
+        local uuid = utils.uuid()
+        -- don't use assert.spy().was_called_with to have a better visibility on what's different
+        prometheus.query = function(_, start_ts, metrics, interval)
+          assert.equals(expected_start_ts, start_ts)
+          assert.same(metrics, {
+            {"requests_consumer_total", 'sum(kong_status_code_per_consumer{consumer="' .. uuid .. '", route_id!="", })', true},
+           })
+          assert.equals(expected_interval, interval)
+        end
+
+        local prom = prometheus.new(nil, {host = "notahost", port = 65555, cluster_level = false})
+
+        expected_start_ts = ngx.time() - expected_duration_seconds
+        local _, err = prom:select_consumer_stats({
+          duration = passed_in_interval,
+          consumer_id = uuid,
+        })
+        assert.is_nil(err)
+
+        local prom = prometheus.new(nil, {host = "notahost", port = 65555})
 
         expected_start_ts = ngx.time() - expected_duration_seconds
         local _, err = prom:select_consumer_stats({
@@ -532,12 +595,12 @@ describe("vitals Prometheus strategy", function()
         prometheus.query = function(_, start_ts, metrics, interval)
           assert.equals(expected_start_ts, start_ts)
           assert.same(metrics, {
-            {"requests_consumer_total", 'sum(kong_status_code_per_consumer{consumer="' .. uuid .. '", })', true},
+            {"requests_consumer_total", 'sum(kong_status_code_per_consumer{consumer="' .. uuid .. '", route_id!="", })', true},
            })
           assert.equals(expected_interval, interval)
         end
 
-        local prom = prometheus.new({host = "notahost", port = 65555})
+        local prom = prometheus.new(nil, {host = "notahost", port = 65555, cluster_level = true})
 
         expected_start_ts = 1500000000
         local _, err = prom:select_consumer_stats({
@@ -754,10 +817,11 @@ describe("vitals Prometheus strategy", function()
       prometheus.query:revert()
     end)
 
-    it("common stats", function()
-      local prom = prometheus.new({host = "notahost", port = 65555})
+    it("cluster level common stats", function()
+      local prom = prometheus.new(nil, {host = "notahost", port = 65555, cluster_level = true})
       local ok, err = prom:select_stats("minutes", "cluster", nil)
       assert.is_nil(err)
+
       assert.same(cjson.decode([[
         {
           "meta": {
@@ -796,6 +860,55 @@ describe("vitals Prometheus strategy", function()
         }
       ]]), ok)
     end)
+
+    it("node level common stats", function()
+      local prom = prometheus.new(nil, {host = "notahost", port = 65555})
+      local ok, err = prom:select_stats("minutes", "cluster", nil)
+      assert.is_nil(err)
+
+      local prom = prometheus.new(nil, {host = "notahost", port = 65555, cluster_level = false})
+      local ok_explicit_arg, err = prom:select_stats("minutes", "cluster", nil)
+      assert.is_nil(err)
+      assert.same(ok, ok_explicit_arg)
+
+      assert.same(cjson.decode([[
+        {
+          "meta": {
+            "earliest_ts": 1527892620,
+            "latest_ts": 1527892920,
+            "interval": "minutes",
+            "interval_width": 60,
+            "level": "node",
+            "stat_labels": [
+              "cache_datastore_hits_total",
+              "cache_datastore_misses_total",
+              "latency_proxy_request_min_ms",
+              "latency_proxy_request_max_ms",
+              "latency_upstream_min_ms",
+              "latency_upstream_max_ms",
+              "requests_proxy_total",
+              "latency_proxy_request_avg_ms",
+              "latency_upstream_avg_ms"
+            ],
+            "nodes": {
+              "localhost:65555": {
+                "hostname": "localhost:65555"
+              }
+            }
+          },
+          "stats": {
+            "localhost:65555": {
+              "1527892680": [24703, 45019, 1, 3099, 43, 203, 11291, 1352, 102],
+              "1527892740": [0, 0, 1, 3099, 45, 203, 0, 1361, 103],
+              "1527892920": [0, 0, 1, 3099, 45, 203, 0, 1361, 103],
+              "1527892860": [0, 0, 1, 3099, 45, 203, 0, 1361, 103],
+              "1527892620": [null, null, 0, 4548, -1, 93, null, 3030, 25],
+              "1527892800": [0, 0, 1, 3099, 45, 203, 0, 1361, 103]
+            }
+          }
+        }
+      ]]), ok)
+    end)
   end)
 
   describe("translates", function()
@@ -811,7 +924,7 @@ describe("vitals Prometheus strategy", function()
     end)
 
     it("status code", function()
-      local prom = prometheus.new({host = "notahost", port = 65555})
+      local prom = prometheus.new(nil, {host = "notahost", port = 65555})
       -- we feed in per minute sample so we query for duration for minute
       local ok, err = prom:select_status_codes({ duration = 60, entity = ""})
       assert.is_nil(err)
@@ -897,7 +1010,7 @@ describe("vitals Prometheus strategy", function()
     end)
 
     it("status code with merged classes", function()
-      local prom = prometheus.new({host = "notahost", port = 65555})
+      local prom = prometheus.new(nil, {host = "notahost", port = 65555})
       -- we feed in per minute sample so we query for duration for minute
       local ok, err = prom:select_status_codes({ duration = 60, entity_type = "cluster"})
       assert.is_nil(err)
@@ -967,7 +1080,7 @@ describe("vitals Prometheus strategy", function()
     end)
 
     it("status code with key_by", function()
-      local prom = prometheus.new({host = "notahost", port = 65555})
+      local prom = prometheus.new(nil, {host = "notahost", port = 65555})
       -- we feed in per minute sample so we query for duration for minute
       local ok, err = prom:select_status_codes({
         duration = 60,
@@ -1042,8 +1155,8 @@ describe("vitals Prometheus strategy", function()
       prometheus.query:revert()
     end)
 
-    it("consumer stats", function()
-      local prom = prometheus.new({host = "notahost", port = 65555})
+    it("cluster level consumer stats", function()
+      local prom = prometheus.new(nil, {host = "notahost", port = 65555, cluster_level = true})
       local ok, err = prom:select_consumer_stats("minutes", "cluster", nil)
       assert.is_nil(err)
       assert.same(cjson.decode([[
@@ -1075,13 +1188,53 @@ describe("vitals Prometheus strategy", function()
       }
       ]]), ok)
     end)
+
+    pending("node level consumer stats", function()
+      local prom = prometheus.new(nil, {host = "notahost", port = 65555})
+      local ok, err = prom:select_consumer_stats("minutes", "cluster", nil)
+      assert.is_nil(err)
+
+      local prom = prometheus.new(nil, {host = "notahost", port = 65555, cluster_level = false})
+      local ok_explicit_arg, err = prom:select_consumer_stats("minutes", "cluster", nil)
+      assert.is_nil(err)
+      assert.same(ok, ok_explicit_arg)
+
+      assert.same(cjson.decode([[
+      {
+        "meta": {
+          "earliest_ts": 1527892620,
+          "latest_ts": 1527892920,
+          "interval": "seconds",
+          "interval_width": 30,
+          "level": "node",
+          "nodes": {
+            "localhost:65555": {
+              "hostname": "localhost:65555"
+            }
+          },
+          "stat_labels": [
+            "requests_consumer_total"
+          ]
+        },
+        "stats": {
+          "localhost:65555": {
+            "1527892680": 9643,
+            "1527892740": 3121,
+            "1527892800": 11990,
+            "1527892860": 11011,
+            "1527892920": 11109
+          }
+        }
+      }
+      ]]), ok)
+    end)
   end)
 
   describe("mocks", function()
     it("select_phone_home", function()
       local prometheus = require "kong.vitals.prometheus.strategy"
   
-      local prom_instance = prometheus.new({host = "notahost", port = 65555})
+      local prom_instance = prometheus.new(nil, {host = "notahost", port = 65555})
       local s = spy.new(prom_instance.select_phone_home)
 
       s()
@@ -1096,7 +1249,7 @@ describe("vitals Prometheus strategy", function()
     it("node_exists", function()
       local prometheus = require "kong.vitals.prometheus.strategy"
 
-      local prom_instance = prometheus.new({host = "notahost", port = 65555})
+      local prom_instance = prometheus.new(nil, {host = "notahost", port = 65555})
       local s = spy.new(prom_instance.node_exists)
 
       s()
@@ -1109,7 +1262,7 @@ describe("vitals Prometheus strategy", function()
     it("init", function()
       local prometheus = require "kong.vitals.prometheus.strategy"
 
-      local prom_instance = prometheus.new({host = "notahost", port = 65555})
+      local prom_instance = prometheus.new(nil, {host = "notahost", port = 65555})
       local s = spy.new(prom_instance.init)
 
       s()
@@ -1122,7 +1275,7 @@ describe("vitals Prometheus strategy", function()
     it("a dummy function", function()
       local prometheus = require "kong.vitals.prometheus.strategy"
 
-      local prom = prometheus.new({host = "notahost", port = 65555})
+      local prom = prometheus.new(nil, {host = "notahost", port = 65555})
       local s = spy.new(prom.this_is_a_dummy_function)
 
       s()

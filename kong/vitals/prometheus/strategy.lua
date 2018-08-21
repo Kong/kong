@@ -61,21 +61,33 @@ function _M.new(_, opts)
 
   local custom_filters_str = table_concat(opts.custom_filters or {}, ",")
 
+  local aggregator_str = ""
+  if not opts.cluster_level then
+    aggregator_str = " by (instance)"
+  end
+
   local common_stats_metrics = {
     -- { label_name_to_be_returned, query string, is_rate }
-    { "cache_datastore_hits_total", fmt("sum(kong_cache_datastore_hits_total{%s})", custom_filters_str), true },
-    { "cache_datastore_misses_total", fmt("sum(kong_cache_datastore_misses_total{%s})", custom_filters_str), true },
-    { "latency_proxy_request_min_ms", fmt("min(kong_latency_proxy_request_min{%s})", custom_filters_str) },
-    { "latency_proxy_request_max_ms", fmt("max(kong_latency_proxy_request_max{%s})", custom_filters_str) },
-    { "latency_upstream_min_ms", fmt("min(kong_latency_upstream_min{%s})", custom_filters_str) },
-    { "latency_upstream_max_ms", fmt("max(kong_latency_upstream_max{%s})", custom_filters_str) },
-    { "requests_proxy_total", fmt("sum(kong_requests_proxy{%s})", custom_filters_str), true },
+    { "cache_datastore_hits_total", fmt("sum%s(kong_cache_datastore_hits_total{%s})",
+      aggregator_str, custom_filters_str), true },
+    { "cache_datastore_misses_total", fmt("sum%s(kong_cache_datastore_misses_total{%s})",
+      aggregator_str, custom_filters_str), true },
+    { "latency_proxy_request_min_ms", fmt("min%s(kong_latency_proxy_request_min{%s})",
+      aggregator_str, custom_filters_str) },
+    { "latency_proxy_request_max_ms", fmt("max%s(kong_latency_proxy_request_max{%s})",
+      aggregator_str, custom_filters_str) },
+    { "latency_upstream_min_ms", fmt("min%s(kong_latency_upstream_min{%s})",
+      aggregator_str, custom_filters_str) },
+    { "latency_upstream_max_ms", fmt("max%s(kong_latency_upstream_max{%s})",
+      aggregator_str, custom_filters_str) },
+    { "requests_proxy_total", fmt("sum%s(kong_requests_proxy{%s})",
+      aggregator_str, custom_filters_str), true },
     { "latency_proxy_request_avg_ms",
-      fmt("sum(rate(kong_latency_proxy_request_sum{%s}[1m])) / sum(rate(kong_latency_proxy_request_count{%s}[1m])) * 1000",
-        custom_filters_str, custom_filters_str) }, -- we only have minute level precision
+      fmt("sum%s(rate(kong_latency_proxy_request_sum{%s}[1m])) / sum%s(rate(kong_latency_proxy_request_count{%s}[1m])) * 1000",
+        aggregator_str, custom_filters_str, aggregator_str, custom_filters_str) }, -- we only have minute level precision
     { "latency_upstream_avg_ms",
-      fmt("sum(rate(kong_latency_upstream_sum{%s}[1m])) / sum(rate(kong_latency_upstream_count{%s}[1m])) * 1000",
-        custom_filters_str, custom_filters_str) },
+      fmt("sum%s(rate(kong_latency_upstream_sum{%s}[1m])) / sum%s(rate(kong_latency_upstream_count{%s}[1m])) * 1000",
+        aggregator_str, custom_filters_str, aggregator_str, custom_filters_str) },
   }
 
   local self = {
@@ -87,6 +99,7 @@ function _M.new(_, opts)
     scrape_interval      = tonumber(opts.scrape_interval) or 15,
     common_stats_metrics = common_stats_metrics,
     headers              = { Authorization = opts.auth_header },
+    cluster_level        = opts.cluster_level or false,
   }
 
   return setmetatable(self, mt)
@@ -225,21 +238,22 @@ local function translate_vitals_stats(metrics_query, prometheus_stats, interval,
     local is_rate = metrics_query[idx][3]
     
     local series_not_empty = false
-    -- make sure every metrics is aggreated to one time series
     for series_idx, series in ipairs(series_list) do
-      if series_idx > 1 then
+      -- if not translate results with aggregate=true, make sure every metrics is aggreated to one time series
+      if series_idx > 1 and aggregate then
         log(WARN, _log_prefix, "metrics ", metric_name, " has ", series_idx, " series, may be it's not correctly aggregated?")
         break
       end
 
       series_not_empty = true
       -- Add to meta,nodes
-      -- TODO: change according to exporter tags
-      local host = nil -- agg.tags.instance
-      -- TODO: cluster type
+      local host
       if aggregate then
         host = "cluster"
+      else
+        host = series.metric.instance
       end
+
       if not node_stats[host] then
         node_stats[host] = new_tab(0, expected_dp_count)
         ret.meta.nodes[host] = { hostname = host }
@@ -513,7 +527,7 @@ function _M:select_stats(query_type, level, node_id, start_ts)
 
   if res then
     return translate_vitals_stats(metrics, res, interval, duration_seconds,
-      true -- Cloud: use true to hide node-level metrics
+      self.cluster_level -- Cloud: set to true to hide node-level metrics
     )
   else
     return res, err
@@ -592,7 +606,7 @@ function _M:select_consumer_stats(opts)
   local interval, start_ts = get_interval_and_start_ts(opts.duration, opts.start_ts, self.scrape_interval)
 
   local metrics = {
-    { "requests_consumer_total", fmt("sum(kong_status_code_per_consumer{consumer=\"%s\", %s})",
+    { "requests_consumer_total", fmt("sum(kong_status_code_per_consumer{consumer=\"%s\", route_id!=\"\", %s})",
                 opts.consumer_id, self.custom_filters_str),
       true },
   }
@@ -605,7 +619,7 @@ function _M:select_consumer_stats(opts)
 
   if res then
     return translate_vitals_stats(metrics, res, interval, duration_seconds,
-      true -- Cloud: use true to hide node-level metrics
+      true -- Cloud: set to true to hide node-level metrics
     )
   else
     return res, err
