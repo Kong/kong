@@ -31,6 +31,61 @@ local DAO   = {}
 DAO.__index = DAO
 
 
+local function page_iterator(pager, size, options)
+  local page = 1
+  local i, rows, err, offset = 0, pager(size, nil, options)
+
+  return function()
+    if not rows then
+      return nil, err
+    end
+
+    i = i + 1
+
+    local row = rows[i]
+    if row then
+      return row, nil, page
+    end
+
+    if i > size and offset then
+      i, rows, err, offset = 1, pager(size, offset, options)
+      if not rows then
+        return nil, err
+      end
+
+      page = page + 1
+
+      return rows[i], nil, page
+    end
+
+    return nil
+  end
+end
+
+
+local function row_iterator(self, pager, size, options)
+  local next_row = page_iterator(pager, size, options)
+  return function()
+    local row, err_t, page = next_row()
+    if not row then
+      if err_t then
+        return nil, tostring(err_t), err_t
+      end
+
+      return nil
+    end
+
+    local err
+    row, err, err_t = self:row_to_entity(row, options)
+    if not row then
+      return nil, err, err_t
+    end
+
+    return row, nil, page
+  end
+end
+
+
 local function generate_foreign_key_methods(schema)
   local methods = {}
 
@@ -319,26 +374,10 @@ function DAO:each(size, options)
     error("options must be a table", 2)
   end
 
-  local next_row = self.strategy:each(size)
-
-  return function()
-    local row, err_t, page = next_row()
-    if not row then
-      if err_t then
-        return nil, tostring(err_t), err_t
-      end
-
-      return nil
-    end
-
-    local err
-    row, err, err_t = self:row_to_entity(row, options)
-    if not row then
-      return nil, err, err_t
-    end
-
-    return row, nil, page
+  local pager = function(size, offset, options)
+    return self.strategy:page(size, offset, options)
   end
+  return row_iterator(self, pager, size, options)
 end
 
 
