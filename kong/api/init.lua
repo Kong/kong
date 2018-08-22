@@ -279,6 +279,15 @@ do
 end
 
 
+local function is_new_db_routes(mod)
+  for _, verbs in pairs(mod) do
+    if type(verbs) == "table" then -- ignore "before" functions
+      return verbs.schema
+    end
+  end
+end
+
+
 -- Loading plugins routes
 if singletons.configuration and singletons.configuration.loaded_plugins then
   for k in pairs(singletons.configuration.loaded_plugins) do
@@ -286,7 +295,11 @@ if singletons.configuration and singletons.configuration.loaded_plugins then
 
     if loaded then
       ngx.log(ngx.DEBUG, "Loading API endpoints for plugin: ", k)
-      attach_routes(mod)
+      if is_new_db_routes(mod) then
+        attach_new_db_routes(mod)
+      else
+        attach_routes(mod)
+      end
 
     else
       ngx.log(ngx.DEBUG, "No API endpoints loaded for plugin: ", k)
