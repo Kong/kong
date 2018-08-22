@@ -1235,6 +1235,11 @@ function Schema:process_auto_fields(input, context, nulls)
         elseif field.type == "integer" then
           output[key] = now_s
         end
+
+      elseif field.type == "string" and output[key] == nil
+                                    and (context == "insert" or
+                                         context == "upsert") then
+        output[key] = utils.random_string()
       end
     end
 
