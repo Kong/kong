@@ -1,3 +1,11 @@
+## 0.31.3
+
+### Fixed
+
+- Fix issue preventing the plugin to load configuration and create sync timers
+- Fix issue preventing the plugin to correctly propagate configuration changes
+among Kong Nginx workers
+
 ## 0.31.2
 
 ### Fixed

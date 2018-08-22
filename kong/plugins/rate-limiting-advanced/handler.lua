@@ -19,7 +19,7 @@ local RATELIMIT_REMAINING = "X-RateLimit-Remaining"
 
 
 NewRLHandler.PRIORITY = 902
-NewRLHandler.VERSION = "0.31.2"
+NewRLHandler.VERSION = "0.31.3"
 
 
 local human_window_size_lookup = {
