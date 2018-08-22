@@ -28,13 +28,9 @@ return {
       },
       created_at         = {
         type             = "timestamp",
-        dao_insert_value = true,
-        immutable        = true,
       },
       updated_at         = {
         type             = "timestamp",
-        immutable        = false,
-        dao_insert_value = true,
       },
     },
   },

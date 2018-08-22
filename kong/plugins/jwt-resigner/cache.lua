@@ -2,14 +2,17 @@ require "kong.plugins.jwt-resigner.env"
 
 
 local singletons = require "kong.singletons"
+local timestamp  = require "kong.tools.timestamp"
 local utils      = require "kong.tools.utils"
 local jwks       = require "kong.openid-connect.jwks"
 local keys       = require "kong.openid-connect.keys"
 local log        = require "kong.plugins.jwt-resigner.log"
+local json       = require "cjson.safe"
 
 
 local find = string.find
 local time = ngx.time
+local type = type
 
 
 local rediscover_keys
@@ -36,6 +39,7 @@ end
 
 local function rotate_keys(name, row, update, force)
   local err
+  local now = timestamp.get_utc_ms()
 
   if find(name, "https://", 1, true) == 1 or find(name, "http://", 1, true) == 1 then
     if not row then
@@ -47,8 +51,10 @@ local function rotate_keys(name, row, update, force)
       end
 
       row, err = singletons.dao.jwt_resigner_jwks:insert({
-        name = name,
-        keys = row,
+        name       = name,
+        keys       = row,
+        created_at = now,
+        updated_at = now,
       })
 
       if not row then
@@ -57,7 +63,8 @@ local function rotate_keys(name, row, update, force)
 
     elseif update ~= false then
       local updated_at = row.updated_at or 0
-      if not force and time() - updated_at < 300 then
+
+      if not force and now - updated_at < 300000 then
         log.notice("jwks were rotated less than 5 minutes ago (skipping)")
 
       else
@@ -66,13 +73,22 @@ local function rotate_keys(name, row, update, force)
         local previous_keys, current_keys
 
         previous_keys = row.keys
+        if type(previous_keys) == "table" then
+          previous_keys, err = json.encode(previous_keys)
+          if not previous_keys then
+            return nil, err
+          end
+        end
+
         current_keys, err = keys.load(name, { ssl_verify = false, unwrap = true, json = true })
         if not current_keys then
           return nil, err
         end
 
-        row, err = singletons.dao.jwt_resigner_jwks:update({ keys = current_keys, previous = previous_keys },
-                                                           { id = row.id })
+        local data = { keys = current_keys, previous = previous_keys, updated_at = now }
+        local id = { id = row.id }
+
+        row, err = singletons.dao.jwt_resigner_jwks:update(data, id)
 
         if not row then
           return nil, err
@@ -96,8 +112,10 @@ local function rotate_keys(name, row, update, force)
       end
 
       row, err = singletons.dao.jwt_resigner_jwks:insert({
-        name = name,
-        keys = row,
+        name       = name,
+        keys       = row,
+        created_at = now,
+        updated_at = now,
       })
 
       if not row then
@@ -110,13 +128,22 @@ local function rotate_keys(name, row, update, force)
       local previous_keys, current_keys
 
       previous_keys = row.keys
+      if type(previous_keys) == "table" then
+        previous_keys, err = json.encode(previous_keys)
+        if not previous_keys then
+          return nil, err
+        end
+      end
+
       current_keys, err = jwks.new({ json = true, unwrap = true })
       if not current_keys then
         return nil, err
       end
 
-      row, err = singletons.dao.jwt_resigner_jwks:update({ keys = current_keys, previous = previous_keys },
-                                                         { id = row.id })
+      local data = { keys = current_keys, previous = previous_keys, updated_at = now }
+      local id = { id = row.id }
+
+      row, err = singletons.dao.jwt_resigner_jwks:update(data, id)
       if not row then
         return nil, err
       end

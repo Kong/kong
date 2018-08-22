@@ -450,7 +450,7 @@ end
 
 
 JwtResignerHandler.PRIORITY = 802
-JwtResignerHandler.VERSION  = "0.0.1"
+JwtResignerHandler.VERSION  = "0.0.2"
 
 
 return JwtResignerHandler
