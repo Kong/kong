@@ -683,65 +683,6 @@ end
 
 
 do
-  local function iter(self)
-    if not self.rows then
-      local size = self.size
-      local offset = self.offset
-      local strategy = self.strategy
-
-      local rows, err_t, next_offset = strategy:page(size, offset)
-      if not rows then
-        return nil, err_t
-      end
-
-      self.rows = rows
-      self.rows_idx = 0
-      self.offset = next_offset
-      self.page = self.page + 1
-    end
-
-    local rows_idx = self.rows_idx
-    rows_idx = rows_idx + 1
-
-    local row = self.rows[rows_idx]
-    if row then
-      self.rows_idx = rows_idx
-      return row, nil, self.page
-    end
-
-    -- end of page
-
-    if not self.offset then
-      -- end of iteration
-      return nil
-    end
-
-    self.rows = nil
-
-    -- fetch next page
-    return iter(self)
-  end
-
-
-  local iter_mt = { __call = iter }
-
-
-  function _mt:each(size)
-    local iter_ctx = {
-      page         = 0,
-      rows         = nil,
-      rows_idx     = nil,
-      offset       = nil,
-      size         = size,
-      strategy     = self,
-    }
-
-    return setmetatable(iter_ctx, iter_mt)
-  end
-end
-
-
-do
   local function update(self, primary_key, entity, mode)
     local schema = self.schema
     local cql, err = get_query(self, mode)

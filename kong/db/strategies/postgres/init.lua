@@ -826,38 +826,6 @@ function _mt:page(size, token)
 end
 
 
-function _mt:each(size)
-  local page = 1
-  local i, rows, err, offset = 0, self:page(size)
-
-  return function()
-    if not rows then
-      return nil, err
-    end
-
-    i = i + 1
-
-    local row = rows[i]
-    if row then
-      return row, nil, page
-    end
-
-    if i > size and offset then
-      i, rows, err, offset = 1, self:page(size, offset)
-      if not rows then
-        return nil, err
-      end
-
-      page = page + 1
-
-      return rows[i], nil, page
-    end
-
-    return nil
-  end
-end
-
-
 local _M  = {}
 
 
