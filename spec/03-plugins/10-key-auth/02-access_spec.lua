@@ -68,8 +68,8 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.keyauth_credentials:insert {
-        key         = "kong",
-        consumer_id = consumer.id,
+        key      = "kong",
+        consumer = { id = consumer.id },
       }
 
       bp.plugins:insert {
@@ -524,13 +524,13 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.keyauth_credentials:insert {
-        key         = "Mouse",
-        consumer_id = user1.id,
+        key      = "Mouse",
+        consumer = { id = user1.id },
       }
 
       bp.basicauth_credentials:insert {
-        username    = "Aladdin",
-        password    = "OpenSesame",
+        username = "Aladdin",
+        password = "OpenSesame",
         consumer_id = user2.id,
       }
 

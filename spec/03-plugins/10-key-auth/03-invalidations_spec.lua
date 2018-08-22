@@ -5,11 +5,11 @@ local cjson   = require "cjson"
 for _, strategy in helpers.each_strategy() do
   describe("Plugin: key-auth (invalidations) [#" .. strategy .. "]", function()
     local admin_client, proxy_client
-    local dao
+    local db
 
     before_each(function()
-      local bp, _
-      bp, _, dao = helpers.get_db_utils(strategy)
+      local bp
+      bp, db = helpers.get_db_utils(strategy)
 
       local route = bp.routes:insert {
         hosts = { "key-auth.com" },
@@ -25,8 +25,8 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.keyauth_credentials:insert {
-        key         = "kong",
-        consumer_id = consumer.id,
+        key      = "kong",
+        consumer = { id = consumer.id },
       }
 
       assert(helpers.start_kong({
@@ -60,7 +60,7 @@ for _, strategy in helpers.each_strategy() do
       assert.res_status(200, res)
 
       -- ensure cache is populated
-      local cache_key = dao.keyauth_credentials:cache_key("kong")
+      local cache_key = db.keyauth_credentials:cache_key("kong")
       res = assert(admin_client:send {
         method = "GET",
         path   = "/cache/" .. cache_key
@@ -108,7 +108,7 @@ for _, strategy in helpers.each_strategy() do
       assert.res_status(200, res)
 
       -- ensure cache is populated
-      local cache_key = dao.keyauth_credentials:cache_key("kong")
+      local cache_key = db.keyauth_credentials:cache_key("kong")
       res = assert(admin_client:send {
         method = "GET",
         path   = "/cache/" .. cache_key
@@ -157,7 +157,7 @@ for _, strategy in helpers.each_strategy() do
       assert.res_status(200, res)
 
       -- ensure cache is populated
-      local cache_key = dao.keyauth_credentials:cache_key("kong")
+      local cache_key = db.keyauth_credentials:cache_key("kong")
       res = assert(admin_client:send {
         method = "GET",
         path   = "/cache/" .. cache_key

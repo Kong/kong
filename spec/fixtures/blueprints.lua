@@ -267,7 +267,7 @@ function _M.new(dao, db)
   end)
 
   local keyauth_key_seq = new_sequence("keyauth-key-%d")
-  res.keyauth_credentials = new_blueprint(dao.keyauth_credentials, function()
+  res.keyauth_credentials = new_blueprint(db.keyauth_credentials, function()
     return {
       key = keyauth_key_seq:next(),
     }
