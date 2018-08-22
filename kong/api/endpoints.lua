@@ -119,9 +119,10 @@ local function get_collection_endpoint(schema, foreign_schema, foreign_field_nam
     end
 
     local dao = db[schema.name]
-    local data, _, err_t, offset = dao["for_" .. foreign_field_name](dao, { id = foreign_entity.id },
-                                                                     self.args.size, self.args.offset,
-                                                                     op_nulls)
+    local method = "page_for_" .. foreign_field_name
+    local data, _, err_t, offset = dao[method](dao, { id = foreign_entity.id },
+                                               self.args.size, self.args.offset,
+                                               op_nulls)
     if err_t then
       return handle_error(err_t)
     end

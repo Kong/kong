@@ -518,7 +518,7 @@ local function page(self, size, token, foreign_key, foreign_entity_name)
 
   if token then
     if foreign_entity_name then
-      statement_name = concat({ "for", foreign_entity_name, "page_next" }, "_")
+      statement_name = concat({ "page_for", foreign_entity_name, "next" }, "_")
       attributes     = {
         [foreign_entity_name] = foreign_key,
         [LIMIT]               = limit,
@@ -547,7 +547,7 @@ local function page(self, size, token, foreign_key, foreign_entity_name)
 
   else
     if foreign_entity_name then
-      statement_name = concat({ "for", foreign_entity_name, "page_first" }, "_")
+      statement_name = concat({ "page_for", foreign_entity_name, "first" }, "_")
       attributes     = {
         [foreign_entity_name] = foreign_key,
         [LIMIT]               = limit,
@@ -1348,13 +1348,13 @@ function _M.new(connector, schema, errors)
           argn         = { LIMIT },
           argc         = 1,
           argv         = single_args,
-          make         = compile(table_name .. "_page_first" , page_first_statement),
+          make         = compile(table_name .. "_first" , page_first_statement),
         },
         page_next      = {
           argn         = page_next_names,
           argc         = page_next_count,
           argv         = page_next_args,
-          make         = compile(table_name .. "_page_next" , page_next_statement),
+          make         = compile(table_name .. "_next" , page_next_statement),
         },
       },
     }
@@ -1415,20 +1415,20 @@ function _M.new(connector, schema, errors)
         "   LIMIT $", argc_next, ";"
       }
 
-      local statement_name = "for_" .. foreign_entity_name
+      local statement_name = "page_for_" .. foreign_entity_name
 
-      statements[statement_name .. "_page_first"] = {
+      statements[statement_name .. "_first"] = {
         argn = argn_first,
         argc = argc_first,
         argv = argv_first,
         make = compile(concat({ table_name, statement_name, "page_first" }, "_"), page_first_statement)
       }
 
-      statements[statement_name .. "_page_next"] = {
+      statements[statement_name .. "_next"] = {
         argn = argn_next,
         argc = argc_next,
         argv = argv_next,
-        make = compile(concat({ table_name, statement_name, "page_next" }, "_"), page_next_statement)
+        make = compile(concat({ table_name, statement_name, "_next" }, "_"), page_next_statement)
       }
 
       self[statement_name] = make_select_for(foreign_entity_name)

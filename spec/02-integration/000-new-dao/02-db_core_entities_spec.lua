@@ -25,7 +25,7 @@ for _, strategy in helpers.each_strategy() do
     db.routes:select(primary_key)
     db.routes:update(primary_key, entity)
     db.routes:delete(primary_key)
-    db.routes:for_service(service_id)
+    db.routes:page_for_service(service_id)
     --]]
 
     describe("Routes", function()
@@ -1421,29 +1421,29 @@ for _, strategy in helpers.each_strategy() do
         assert.same(service, service_in_db)
       end)
 
-      describe("routes:for_service()", function()
+      describe("routes:page_for_service()", function()
         -- no I/O
         it("errors out if invalid arguments", function()
           assert.has_error(function()
-            db.routes:for_service(nil)
+            db.routes:page_for_service(nil)
           end, "foreign_key must be a table")
 
           assert.has_error(function()
-            db.routes:for_service({ id = 123 }, "100")
+            db.routes:page_for_service({ id = 123 }, "100")
           end, "size must be a number")
 
           assert.has_error(function()
-            db.routes:for_service({ id = 123 }, -100)
+            db.routes:page_for_service({ id = 123 }, -100)
           end, "size must be a positive number")
 
           assert.has_error(function()
-            db.routes:for_service({ id = 123 }, 100, 12345)
+            db.routes:page_for_service({ id = 123 }, 100, 12345)
           end, "offset must be a string")
         end)
 
         -- I/O
         it("lists no Routes associated to an inexsistent Service", function()
-          local rows, err, err_t = db.routes:for_service {
+          local rows, err, err_t = db.routes:page_for_service {
             id = a_blank_uuid,
           }
           assert.is_nil(err_t)
@@ -1452,7 +1452,7 @@ for _, strategy in helpers.each_strategy() do
         end)
 
         it("returns a table encoding to a JSON Array when empty", function()
-          local rows, err, err_t = db.routes:for_service {
+          local rows, err, err_t = db.routes:page_for_service {
             id = a_blank_uuid,
           }
           assert.is_nil(err_t)
@@ -1478,7 +1478,7 @@ for _, strategy in helpers.each_strategy() do
             -- different service
           }
 
-          local rows, err, err_t = db.routes:for_service {
+          local rows, err, err_t = db.routes:page_for_service {
             id = service.id,
           }
           assert.is_nil(err_t)
@@ -1496,7 +1496,7 @@ for _, strategy in helpers.each_strategy() do
             methods = { "GET" },
           }
 
-          local rows, err, err_t = db.routes:for_service {
+          local rows, err, err_t = db.routes:page_for_service {
             id = service.id,
           }
           assert.is_nil(err_t)
@@ -1530,7 +1530,7 @@ for _, strategy in helpers.each_strategy() do
             end)
 
             it("defaults page_size = 100", function()
-              local rows, err, err_t = db.routes:for_service {
+              local rows, err, err_t = db.routes:page_for_service {
                 id = service.id,
               }
               assert.is_nil(err_t)
@@ -1539,7 +1539,7 @@ for _, strategy in helpers.each_strategy() do
             end)
 
             it("max page_size = 1000", function()
-              local rows, err, err_t = db.routes:for_service({
+              local rows, err, err_t = db.routes:page_for_service({
                 id = service.id,
               }, 1002)
               assert.is_nil(err_t)
@@ -1563,7 +1563,7 @@ for _, strategy in helpers.each_strategy() do
             end)
 
             it("fetches all rows in one page", function()
-              local rows, err, err_t, offset = db.routes:for_service {
+              local rows, err, err_t, offset = db.routes:page_for_service {
                 id = service.id,
               }
               assert.is_nil(err_t)
@@ -1573,7 +1573,7 @@ for _, strategy in helpers.each_strategy() do
             end)
 
             it("fetched rows are returned in a table without hash part", function()
-              local rows, err, err_t = db.routes:for_service {
+              local rows, err, err_t = db.routes:page_for_service {
                 id = service.id,
               }
               assert.is_nil(err_t)
@@ -1590,15 +1590,15 @@ for _, strategy in helpers.each_strategy() do
             end)
 
             it("fetches rows always in same order", function()
-              local rows1 = db.routes:for_service { id = service.id }
-              local rows2 = db.routes:for_service { id = service.id }
+              local rows1 = db.routes:page_for_service { id = service.id }
+              local rows2 = db.routes:page_for_service { id = service.id }
               assert.is_table(rows1)
               assert.is_table(rows2)
               assert.same(rows1, rows2)
             end)
 
             it("returns offset when page_size < total", function()
-              local rows, err, err_t, offset = db.routes:for_service({
+              local rows, err, err_t, offset = db.routes:page_for_service({
                 id = service.id,
               }, 5)
               assert.is_nil(err_t)
@@ -1609,7 +1609,7 @@ for _, strategy in helpers.each_strategy() do
             end)
 
             it("fetches subsequent pages with offset", function()
-              local rows_1, err, err_t, offset = db.routes:for_service({
+              local rows_1, err, err_t, offset = db.routes:page_for_service({
                 id = service.id,
               }, 5)
               assert.is_nil(err_t)
@@ -1626,7 +1626,7 @@ for _, strategy in helpers.each_strategy() do
                 page_size = page_size + 1
               end
 
-              local rows_2, err, err_t, offset = db.routes:for_service({
+              local rows_2, err, err_t, offset = db.routes:page_for_service({
                 id = service.id,
               }, page_size, offset)
 
@@ -1646,14 +1646,14 @@ for _, strategy in helpers.each_strategy() do
             end)
 
             it("fetches same page with same offset", function()
-              local _, err, err_t, offset = db.routes:for_service({
+              local _, err, err_t, offset = db.routes:page_for_service({
                 id = service.id,
               }, 3)
               assert.is_nil(err_t)
               assert.is_nil(err)
               assert.is_string(offset)
 
-              local rows_a, err, err_t = db.routes:for_service({
+              local rows_a, err, err_t = db.routes:page_for_service({
                 id = service.id,
               }, 3, offset)
               assert.is_nil(err_t)
@@ -1661,7 +1661,7 @@ for _, strategy in helpers.each_strategy() do
               assert.is_table(rows_a)
               assert.equal(3, #rows_a)
 
-              local rows_b, err, err_t = db.routes:for_service({
+              local rows_b, err, err_t = db.routes:page_for_service({
                 id = service.id,
               }, 3, offset)
               assert.is_nil(err_t)
@@ -1680,7 +1680,7 @@ for _, strategy in helpers.each_strategy() do
               repeat
                 local err, err_t
 
-                rows, err, err_t, offset = db.routes:for_service({
+                rows, err, err_t, offset = db.routes:page_for_service({
                   id = service.id,
                 }, 3, offset)
                 assert.is_nil(err_t)
@@ -1695,7 +1695,7 @@ for _, strategy in helpers.each_strategy() do
             end)
 
             it("fetches first page with invalid offset", function()
-              local rows, err, err_t = db.routes:for_service({
+              local rows, err, err_t = db.routes:page_for_service({
                 id = service.id,
               }, 3, "hello")
               assert.is_nil(rows)
@@ -1711,7 +1711,7 @@ for _, strategy in helpers.each_strategy() do
             end)
           end)
         end) -- paginates
-      end) -- routes:for_service()
+      end) -- routes:page_for_service()
     end) -- Services and Routes association
   end) -- kong.db [strategy]
 end

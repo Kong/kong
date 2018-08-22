@@ -80,7 +80,7 @@ end
 -- Returns the name list for a given certificate
 function _SNIs:list_for_certificate(cert_pk)
   local name_list = setmetatable({}, cjson.empty_array_mt)
-  local rows, err, err_t = self:for_certificate(cert_pk)
+  local rows, err, err_t = self:page_for_certificate(cert_pk)
   if err then
     return nil, err, err_t
   end

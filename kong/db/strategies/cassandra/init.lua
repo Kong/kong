@@ -361,7 +361,7 @@ function _M.new(connector, schema, errors)
     queries                 = nil,
   }
 
-  -- foreign keys constraints and for_ selector methods
+  -- foreign keys constraints and page_for_ selector methods
 
   for field_name, field in schema:each_field() do
     if field.type == "foreign" then
@@ -385,7 +385,7 @@ function _M.new(connector, schema, errors)
       local db_columns_args_names = new_tab(#db_columns, 0)
 
       for i = 1, #db_columns do
-        -- keep args_names for 'for_*' methods
+        -- keep args_names for 'page_for_*' methods
         db_columns_args_names[i] = db_columns[i].col_name .. " = ?"
       end
 
@@ -402,12 +402,12 @@ function _M.new(connector, schema, errors)
     end
   end
 
-  -- generate for_ method for inverse selection
-  -- e.g. routes:for_service(service_pk)
+  -- generate page_for_ method for inverse selection
+  -- e.g. routes:page_for_service(service_pk)
   for field_name, field in schema:each_field() do
     if field.type == "foreign" then
 
-      local method_name = "for_" .. field_name
+      local method_name = "page_for_" .. field_name
       local db_columns = self.foreign_keys_db_columns[field_name]
 
       local select_foreign_bind_args = {}

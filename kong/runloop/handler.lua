@@ -271,7 +271,7 @@ return {
         log(DEBUG, "[events] SSL cert updated, invalidating cached certificates")
         local certificate = data.entity
 
-        local rows, err = db.snis:for_certificate({
+        local rows, err = db.snis:page_for_certificate({
           id = certificate.id
         })
         if not rows then
