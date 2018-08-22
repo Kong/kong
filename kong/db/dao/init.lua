@@ -140,6 +140,41 @@ local function generate_foreign_key_methods(schema)
         return entities, nil, nil, new_offset
       end
 
+      local each_method_name = "each_for_" .. name
+      methods[each_method_name] = function(self, foreign_key, size)
+        if type(foreign_key) ~= "table" then
+          error("foreign_key must be a table", 2)
+        end
+
+        if size ~= nil then
+          if type(size) ~= "number" then
+            error("size must be a number", 2)
+          end
+
+          if size < 0 then
+            error("size must be a positive number", 2)
+          end
+
+          size = min(size, 1000)
+
+        else
+          size = 100
+        end
+
+        local ok, errors = self.schema:validate_primary_key(foreign_key)
+        if not ok then
+          local err_t = self.errors:invalid_primary_key(errors)
+          return nil, tostring(err_t), err_t
+        end
+
+        local strategy = self.strategy
+
+        local pager = function(size, offset)
+          return strategy[page_method_name](strategy, foreign_key, size, offset)
+        end
+        return row_iterator(self, pager, size)
+      end
+
     elseif field.unique then
       local function validate_unique_value(unique_value)
         local ok, err = schema:validate_field(field, unique_value)
