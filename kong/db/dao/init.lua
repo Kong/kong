@@ -36,9 +36,9 @@ local function generate_foreign_key_methods(schema)
 
   for name, field in schema:each_field() do
     if field.type == "foreign" then
-      local method_name = "for_" .. name
 
-      methods[method_name] = function(self, foreign_key, size, offset)
+      local page_method_name = "page_for_" .. name
+      methods[page_method_name] = function(self, foreign_key, size, offset)
         if type(foreign_key) ~= "table" then
           error("foreign_key must be a table", 2)
         end
@@ -70,9 +70,9 @@ local function generate_foreign_key_methods(schema)
 
         local strategy = self.strategy
 
-        local rows, err_t, new_offset = strategy[method_name](strategy,
-                                                              foreign_key,
-                                                              size, offset)
+        local rows, err_t, new_offset = strategy[page_method_name](strategy,
+                                                                   foreign_key,
+                                                                   size, offset)
         if not rows then
           return nil, tostring(err_t), err_t
         end
