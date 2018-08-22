@@ -602,7 +602,7 @@ for _, strategy in helpers.each_strategy() do
           setup(function()
             assert(db:truncate("routes"))
 
-            for i = 1, 1002 do
+            for i = 1, 202 do
               bp.routes:insert({ hosts = { "example-" .. i .. ".com" } })
             end
           end)
@@ -1555,7 +1555,7 @@ for _, strategy in helpers.each_strategy() do
 
               service = bp.services:insert()
 
-              for i = 1, 1002 do
+              for i = 1, 202 do
                 bp.routes:insert {
                   hosts   = { "paginate-" .. i .. ".com" },
                   service = service,
