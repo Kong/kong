@@ -271,16 +271,12 @@ return {
         log(DEBUG, "[events] SSL cert updated, invalidating cached certificates")
         local certificate = data.entity
 
-        local rows, err = db.snis:page_for_certificate({
-          id = certificate.id
-        })
-        if not rows then
-          log(ERR, "[events] could not find associated snis for certificate: ",
-                   err)
-        end
-
-        for i = 1, #rows do
-          local sn = rows[i]
+        for sn, err in db.snis:each_for_certificate({ id = certificate.id }) do
+          if err then
+            log(ERR, "[events] could not find associated snis for certificate: ",
+                     err)
+            break
+          end
 
           cache:invalidate("pem_ssl_certificates:"    .. sn.name)
           cache:invalidate("parsed_ssl_certificates:" .. sn.name)

@@ -65,34 +65,56 @@ describe("Admin API: #" .. strategy, function()
   end)
 
   describe("/certificates", function()
-    before_each(function()
-      assert(db:truncate("certificates"))
-      assert(db:truncate("snis"))
-
-      local res = client:post("/certificates", {
-        body    = {
-          cert  = ssl_fixtures.cert,
-          key   = ssl_fixtures.key,
-          snis  = { "foo.com", "bar.com" },
-        },
-        headers = { ["Content-Type"] = "application/json" },
-      })
-      assert.res_status(201, res)
-    end)
 
     describe("GET", function()
-      it("retrieves all certificates", function()
+
+      it("retrieves all certificates with snis", function()
+
+        assert(db:truncate("certificates"))
+        assert(db:truncate("snis"))
+
+        local my_snis = {}
+        for i = 1, 150 do
+          table.insert(my_snis, string.format("my-sni-%03d.test", i))
+        end
+
+        local res = client:post("/certificates", {
+          body    = {
+            cert  = ssl_fixtures.cert,
+            key   = ssl_fixtures.key,
+            snis  = my_snis,
+          },
+          headers = { ["Content-Type"] = "application/json" },
+        })
+        assert.res_status(201, res)
+
         local res  = client:get("/certificates")
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
         assert.equal(1, #json.data)
         assert.is_string(json.data[1].cert)
         assert.is_string(json.data[1].key)
-        assert.same({ "bar.com", "foo.com" }, json.data[1].snis)
+        assert.same(my_snis, json.data[1].snis)
       end)
     end)
 
     describe("POST", function()
+
+      before_each(function()
+        assert(db:truncate("certificates"))
+        assert(db:truncate("snis"))
+
+        local res = client:post("/certificates", {
+          body    = {
+            cert  = ssl_fixtures.cert,
+            key   = ssl_fixtures.key,
+            snis  = { "foo.com", "bar.com" },
+          },
+          headers = { ["Content-Type"] = "application/json" },
+        })
+        assert.res_status(201, res)
+      end)
+
       it("returns a conflict when duplicated snis are present in the request", function()
         local res = client:post("/certificates", {
           body    = {
