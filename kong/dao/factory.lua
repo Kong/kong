@@ -58,7 +58,7 @@ local function build_constraints(schemas)
   return all_constraints
 end
 
-local function load_daos(self, schemas, constraints)
+local function load_daos(self, schemas, constraints, new_db)
   for m_name, schema in pairs(schemas) do
     if constraints[m_name] ~= nil and constraints[m_name].foreign ~= nil then
       for col, f_constraint in pairs(constraints[m_name].foreign) do
@@ -83,6 +83,18 @@ local function load_daos(self, schemas, constraints)
       end
     end
   end
+
+  -- Hardcode cascade-delete constraint between `apis` and `plugins`.
+  -- This is the only old-DAO to new-DAO constraint,
+  -- once `apis` becomes the last old-DAO entity.
+  local constraints_apis = constraints["apis"]
+  constraints_apis.cascade = constraints_apis.cascade or {}
+  constraints_apis.cascade["plugins"] = {
+    new_db = true,
+    db_entity = new_db.plugins,
+    table = "plugins",
+    f_col = "api",
+  }
 
   for m_name, schema in pairs(schemas) do
     self.daos[m_name] = DAO(self.db, ModelFactory(schema), schema,
@@ -277,7 +289,7 @@ function _M.new(kong_config, new_db)
   end
 
   local constraints = build_constraints(schemas)
-  load_daos(self, schemas, constraints)
+  load_daos(self, schemas, constraints, new_db)
 
   create_legacy_wrappers(self, constraints)
 
