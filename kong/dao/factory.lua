@@ -283,7 +283,9 @@ function _M.new(kong_config, new_db)
         end
       else
         for k, v in pairs(plugin_schemas) do
-          schemas[k] = v
+          if not v.name then
+            schemas[k] = v
+          end
         end
       end
     end
@@ -385,7 +387,9 @@ end
 
 function _M:truncate_tables()
   for _, dao in pairs(self.daos) do
-    self.db:truncate_table(dao.table)
+    if dao.table then
+      self.db:truncate_table(dao.table)
+    end
   end
 
   if self.db.additional_tables then
