@@ -17,7 +17,7 @@ local ee_metrics    = vitals.logging_metrics or {}
 
 local StatsdHandler = BasePlugin:extend()
 StatsdHandler.PRIORITY = 11
-StatsdHandler.VERSION = "0.1.0"
+StatsdHandler.VERSION = "0.1.1"
 
 local worker_id
 local hostname
