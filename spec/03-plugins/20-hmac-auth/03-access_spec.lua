@@ -1582,8 +1582,8 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.keyauth_credentials:insert {
-        key         = "Mouse",
-        consumer_id = user1.id
+        key      = "Mouse",
+        consumer = { id = user1.id },
       }
 
       local credential = bp.hmacauth_credentials:insert {

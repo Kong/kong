@@ -18,10 +18,10 @@ describe("Plugin: request-termination (integration)", function()
     consumer1 = bp.consumers:insert {
       username = "bob",
     }
-    assert(dao.keyauth_credentials:insert {
-      key         = "kong",
-      consumer_id = consumer1.id,
-    })
+    bp.keyauth_credentials:insert {
+      key      = "kong",
+      consumer = { id = consumer1.id },
+    }
 
     assert(helpers.start_kong({
       nginx_conf = "spec/fixtures/custom_nginx.template",

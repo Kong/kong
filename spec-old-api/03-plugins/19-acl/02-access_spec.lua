@@ -11,17 +11,17 @@ describe("Plugin: ACL (access)", function()
     local consumer1 = bp.consumers:insert {
       username = "consumer1"
     }
-    assert(dao.keyauth_credentials:insert {
+    bp.keyauth_credentials:insert({
       key = "apikey123",
-      consumer_id = consumer1.id
+      consumer = { id = consumer1.id },
     })
 
     local consumer2 = bp.consumers:insert {
       username = "consumer2"
     }
-    assert(dao.keyauth_credentials:insert {
+    bp.keyauth_credentials:insert({
       key = "apikey124",
-      consumer_id = consumer2.id
+      consumer = { id = consumer2.id },
     })
     assert(dao.acls:insert {
       group = "admin",
@@ -31,9 +31,9 @@ describe("Plugin: ACL (access)", function()
     local consumer3 = bp.consumers:insert {
       username = "consumer3"
     }
-    assert(dao.keyauth_credentials:insert {
+    bp.keyauth_credentials:insert({
       key = "apikey125",
-      consumer_id = consumer3.id
+      consumer = { id = consumer3.id },
     })
     assert(dao.acls:insert {
       group = "pro",
@@ -47,9 +47,9 @@ describe("Plugin: ACL (access)", function()
     local consumer4 = bp.consumers:insert {
       username = "consumer4"
     }
-    assert(dao.keyauth_credentials:insert {
+    bp.keyauth_credentials:insert({
       key = "apikey126",
-      consumer_id = consumer4.id
+      consumer = { id = consumer4.id },
     })
     assert(dao.acls:insert {
       group = "free",

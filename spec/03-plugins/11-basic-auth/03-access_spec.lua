@@ -413,9 +413,9 @@ for _, strategy in helpers.each_strategy() do
         },
       }
 
-      assert(dao.keyauth_credentials:insert {
-        key         = "Mouse",
-        consumer_id = user1.id,
+      bp.keyauth_credentials:insert({
+        key      = "Mouse",
+        consumer = { id = user1.id },
       })
 
       assert(dao.basicauth_credentials:insert {

@@ -18,8 +18,8 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.keyauth_credentials:insert {
-        key         = "apikey123",
-        consumer_id = consumer1.id
+        key      = "apikey123",
+        consumer = { id = consumer1.id },
       }
 
       local consumer2 = bp.consumers:insert {
@@ -27,8 +27,8 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.keyauth_credentials:insert {
-        key         = "apikey124",
-        consumer_id = consumer2.id
+        key      = "apikey124",
+        consumer = { id = consumer2.id },
       }
 
       bp.acls:insert {
@@ -41,8 +41,8 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.keyauth_credentials:insert {
-        key         = "apikey125",
-        consumer_id = consumer3.id
+        key      = "apikey125",
+        consumer = { id = consumer3.id },
       }
 
       bp.acls:insert {
@@ -60,8 +60,8 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.keyauth_credentials:insert {
-        key         = "apikey126",
-        consumer_id = consumer4.id
+        key      = "apikey126",
+        consumer = { id = consumer4.id },
       }
 
       bp.acls:insert {

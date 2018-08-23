@@ -113,10 +113,10 @@ describe("OpenResty phases", function()
         local consumer3 = bp.consumers:insert {
           username = "test-consumer",
         }
-        assert(dao.keyauth_credentials:insert {
-          key         = "kong",
-          consumer_id = consumer3.id,
-        })
+        bp.keyauth_credentials:insert {
+          key      = "kong",
+          consumer = { id = consumer3.id },
+        }
         assert(dao.plugins:insert {
           consumer = { id = consumer3.id },
           name        = "rewriter",

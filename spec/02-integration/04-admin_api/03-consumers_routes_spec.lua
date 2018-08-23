@@ -889,14 +889,9 @@ describe("Admin API (#" .. strategy .. "): ", function()
             })
             local body = assert.res_status(400, res)
             local json = cjson.decode(body)
-            assert.same({
-              code     = Errors.codes.SCHEMA_VIOLATION,
-              name     = "schema violation",
-              fields   = {
-                name = "plugin 'foo' not enabled; add it to the 'plugins' configuration property",
-              },
-              message = "schema violation (name: plugin 'foo' not enabled; add it to the 'plugins' configuration property)"
-            }, json)
+
+            assert.equals("schema violation", json.name)
+            assert.equals("plugin 'foo' not enabled; add it to the 'plugins' configuration property", json.fields.name)
           end
         end)
       end)

@@ -589,10 +589,10 @@ describe("Plugin: jwt (access)", function()
       },
     })
 
-    assert(dao.keyauth_credentials:insert {
-      key         = "Mouse",
-      consumer_id = user1.id,
-    })
+    bp.keyauth_credentials:insert {
+      key      = "Mouse",
+      consumer = { id = user1.id },
+    }
 
     local jwt_secret = assert(dao.jwt_secrets:insert {
       consumer_id = user2.id,

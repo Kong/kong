@@ -20,8 +20,8 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.keyauth_credentials:insert {
-        key         = "kong",
-        consumer_id = consumer.id,
+        key      = "kong",
+        consumer = { id = consumer.id },
       }
 
       local routes = {}

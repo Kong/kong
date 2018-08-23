@@ -7,16 +7,16 @@ for _, strategy in helpers.each_strategy() do
     local proxy_client
 
     setup(function()
-      local bp, _, dao = helpers.get_db_utils(strategy)
+      local bp = helpers.get_db_utils(strategy)
 
       local consumer = bp.consumers:insert {
         username  = "foo",
         custom_id = "bar"
       }
 
-      assert(dao.keyauth_credentials:insert {
-        key         = "kong",
-        consumer_id = consumer.id
+      bp.keyauth_credentials:insert({
+        key      = "kong",
+        consumer = { id = consumer.id },
       })
 
       local route1 = bp.routes:insert {

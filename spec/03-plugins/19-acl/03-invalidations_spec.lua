@@ -7,18 +7,19 @@ for _, strategy in helpers.each_strategy() do
     local consumer
     local acl
     local dao
+    local db
 
     before_each(function()
-      local bp, _
-      bp, _, dao = helpers.get_db_utils(strategy)
+      local bp
+      bp, db, dao = helpers.get_db_utils(strategy)
 
       consumer = bp.consumers:insert {
         username = "consumer1"
       }
 
       bp.keyauth_credentials:insert {
-        key         = "apikey123",
-        consumer_id = consumer.id
+        key      = "apikey123",
+        consumer = { id = consumer.id },
       }
 
       acl = bp.acls:insert {
@@ -36,8 +37,8 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.keyauth_credentials:insert {
-        key         = "apikey124",
-        consumer_id = consumer2.id
+        key      = "apikey124",
+        consumer = { id = consumer2.id },
       }
 
       bp.acls:insert {
@@ -273,7 +274,7 @@ for _, strategy in helpers.each_strategy() do
         end, 3)
 
         -- Wait for key to be invalidated
-        local keyauth_cache_key = dao.keyauth_credentials:cache_key("apikey123")
+        local keyauth_cache_key = db.keyauth_credentials:cache_key("apikey123")
         helpers.wait_until(function()
           local res = assert(admin_client:send {
             method  = "GET",

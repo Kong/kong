@@ -13,10 +13,10 @@ describe("Plugin: ACL (invalidations)", function()
     consumer1 = bp.consumers:insert {
       username = "consumer1"
     }
-    assert(dao.keyauth_credentials:insert {
+    bp.keyauth_credentials:insert {
       key = "apikey123",
-      consumer_id = consumer1.id
-    })
+      consumer = { id = consumer1.id },
+    }
     acl1 = assert(dao.acls:insert {
       group = "admin",
       consumer_id = consumer1.id
@@ -29,10 +29,10 @@ describe("Plugin: ACL (invalidations)", function()
     local consumer2 = bp.consumers:insert {
       username = "consumer2"
     }
-    assert(dao.keyauth_credentials:insert {
+    bp.keyauth_credentials:insert {
       key = "apikey124",
-      consumer_id = consumer2.id
-    })
+      consumer = { id = consumer2.id },
+    }
     assert(dao.acls:insert {
       group = "admin",
       consumer_id = consumer2.id
@@ -256,7 +256,7 @@ describe("Plugin: ACL (invalidations)", function()
       end, 3)
 
       -- Wait for key to be invalidated
-      local keyauth_cache_key = dao.keyauth_credentials:cache_key("apikey123")
+      local keyauth_cache_key = db.keyauth_credentials:cache_key("apikey123")
       helpers.wait_until(function()
         local res = assert(admin_client:send {
           method = "GET",

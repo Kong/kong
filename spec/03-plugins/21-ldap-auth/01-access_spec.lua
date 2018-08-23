@@ -555,8 +555,8 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.keyauth_credentials:insert {
-        key         = "Mouse",
-        consumer_id = user.id,
+        key      = "Mouse",
+        consumer = { id = user.id },
       }
 
       assert(helpers.start_kong({

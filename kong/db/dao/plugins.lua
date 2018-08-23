@@ -262,34 +262,36 @@ function Plugins:load_plugin_schemas(plugin_set)
       handler = handler(),
     }
 
-    local has_daos, daos_schemas = utils.load_module_if_exists("kong.plugins." .. plugin .. ".daos")
-    if has_daos then
-      local Strategy = require(string.format("kong.db.strategies.%s", db.strategy))
-      for name, schema_def in pairs(daos_schemas) do
-        if name ~= "tables" and schema_def.name then
-          ngx_log(ngx_DEBUG, string.format("Loading custom plugin entity: '%s.%s'", plugin, name))
-          local ok, err_t = MetaSchema:validate(schema_def)
-          if not ok then
-            return nil, string.format("schema of custom plugin entity '%s.%s' is invalid: %s", plugin, name,
-              -- tostring(db.errors:schema_violation(err_t)))
-              require("inspect")({ err_t = err_t, schema_def = schema_def }))
-          end
-          local schema, err = Entity.new(schema_def)
-          if not schema then
-            return nil, string.format("schema of custom plugin entity '%s.%s' is invalid: %s", plugin, name,
-              err)
-          end
-          local strategy, err = Strategy.new(db.connector, schema, db.errors)
-          if not strategy then
-            return nil, err
-          end
-          db.strategies[schema.name] = strategy
+    if db.strategy then -- skip during tests
+      local has_daos, daos_schemas = utils.load_module_if_exists("kong.plugins." .. plugin .. ".daos")
+      if has_daos then
+        local Strategy = require(string.format("kong.db.strategies.%s", db.strategy))
+        for name, schema_def in pairs(daos_schemas) do
+          if name ~= "tables" and schema_def.name then
+            ngx_log(ngx_DEBUG, string.format("Loading custom plugin entity: '%s.%s'", plugin, name))
+            local ok, err_t = MetaSchema:validate(schema_def)
+            if not ok then
+              return nil, string.format("schema of custom plugin entity '%s.%s' is invalid: %s", plugin, name,
+                -- tostring(db.errors:schema_violation(err_t)))
+                require("inspect")({ err_t = err_t, schema_def = schema_def }))
+            end
+            local schema, err = Entity.new(schema_def)
+            if not schema then
+              return nil, string.format("schema of custom plugin entity '%s.%s' is invalid: %s", plugin, name,
+                err)
+            end
+            local strategy, err = Strategy.new(db.connector, schema, db.errors)
+            if not strategy then
+              return nil, err
+            end
+            db.strategies[schema.name] = strategy
 
-          local dao, err = DAO.new(db, schema, strategy, db.errors)
-          if not dao then
-            return nil, err
+            local dao, err = DAO.new(db, schema, strategy, db.errors)
+            if not dao then
+              return nil, err
+            end
+            db.daos[schema.name] = dao
           end
-          db.daos[schema.name] = dao
         end
       end
     end
