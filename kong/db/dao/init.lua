@@ -31,6 +31,10 @@ local DAO   = {}
 DAO.__index = DAO
 
 
+local DEFAULT_PAGE_SIZE = 100
+local MAX_PAGE_SIZE = 1000
+
+
 local function page_iterator(pager, size, options)
   local page = 1
   local i, rows, err, offset = 0, pager(size, nil, options)
@@ -107,10 +111,10 @@ local function generate_foreign_key_methods(schema)
             error("size must be a positive number", 2)
           end
 
-          size = min(size, 1000)
+          size = min(size, MAX_PAGE_SIZE)
 
         else
-          size = 100
+          size = DEFAULT_PAGE_SIZE
         end
 
         if offset ~= nil and type(offset) ~= "string" then
@@ -155,10 +159,10 @@ local function generate_foreign_key_methods(schema)
             error("size must be a positive number", 2)
           end
 
-          size = min(size, 1000)
+          size = min(size, MAX_PAGE_SIZE)
 
         else
-          size = 100
+          size = DEFAULT_PAGE_SIZE
         end
 
         local ok, errors = self.schema:validate_primary_key(foreign_key)
@@ -358,13 +362,13 @@ end
 
 
 function DAO:page(size, offset, options)
-  size = tonumber(size == nil and 100 or size)
+  size = tonumber(size == nil and DEFAULT_PAGE_SIZE or size)
 
   if not size then
     error("size must be a number", 2)
   end
 
-  size = min(size, 1000)
+  size = min(size, MAX_PAGE_SIZE)
 
   if size < 0 then
     error("size must be positive (> 0)", 2)
@@ -393,13 +397,13 @@ end
 
 
 function DAO:each(size, options)
-  size = tonumber(size == nil and 100 or size)
+  size = tonumber(size == nil and DEFAULT_PAGE_SIZE or size)
 
   if not size then
     error("size must be a number", 2)
   end
 
-  size = min(size, 1000)
+  size = min(size, MAX_PAGE_SIZE)
 
   if size < 0 then
     error("size must be positive (> 0)", 2)

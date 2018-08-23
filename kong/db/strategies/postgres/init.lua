@@ -20,7 +20,6 @@ local find          = string.find
 local rep           = string.rep
 local sub           = string.sub
 local max           = math.max
-local min           = math.min
 local log           = ngx.log
 
 
@@ -509,8 +508,6 @@ end
 
 
 local function page(self, size, token, foreign_key, foreign_entity_name)
-  size = min(size or 100, 1000)
-
   local limit = size + 1
 
   local statement_name
