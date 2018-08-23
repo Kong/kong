@@ -99,7 +99,7 @@ describe("Admin API #" .. strategy, function()
           })
           assert.response(res).has.status(201)
         end
-        local history = db.targets:for_upstream_raw({ id = upstream.id })
+        local history = db.targets:select_by_upstream_raw({ id = upstream.id })
         -- there should be 2 left; 1 from the cleanup, and the final one
         -- inserted that triggered the cleanup
         assert.equal(2, #history)

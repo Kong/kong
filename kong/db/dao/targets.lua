@@ -7,23 +7,14 @@ local _TARGETS = {}
 local DEFAULT_PORT = 8000
 
 
-local function sort_by_reverse_order(a, b)
-  return a.order > b.order
-end
-
-
-local function sort_by_order(a, b)
-  return a.order < b.order
-end
-
-
-local function add_order(targets, sort_function)
-  for _,target in ipairs(targets) do
-    target.order = string.format("%d:%s",
-                                 target.created_at * 1000,
-                                 target.id)
+local function sort_targets(a, b)
+  if a.created_at < b.created_at then
+    return true
   end
-  table.sort(targets, sort_function)
+  if a.created_at == b.created_at then
+    return a.id < b.id
+  end
+  return false
 end
 
 
@@ -32,7 +23,7 @@ local function clean_history(self, upstream_pk)
   local cleanup_factor = 10
 
   --cleaning up history, check if it's necessary...
-  local targets, err, err_t = self:for_upstream_sorted(upstream_pk)
+  local targets, err, err_t = self:select_by_upstream_raw(upstream_pk)
   if not targets then
     return nil, err, err_t
   end
@@ -134,59 +125,101 @@ function _TARGETS:delete_by_target(tgt)
 end
 
 
-function _TARGETS:for_upstream_raw(upstream_pk, ...)
-  return self.super.for_upstream(self, upstream_pk, ...)
+-- Paginate through the target history for an upstream,
+-- including entries that have been since overriden, and those
+-- with weight=0 (i.e. the "raw" representation of targets in
+-- the database)
+function _TARGETS:page_for_upstream_raw(upstream_pk, ...)
+  return self.super.page_for_upstream(self, upstream_pk, ...)
 end
 
 
-function _TARGETS:for_upstream_sorted(upstream_pk, ...)
-  local targets, err, err_t = self:for_upstream_raw(upstream_pk, ...)
-  if not targets then
-    return nil, err, err_t
+-- Return the entire target history for an upstream,
+-- including entries that have been since overriden, and those
+-- with weight=0 (i.e. the "raw" representation of targets in
+-- the database)
+function _TARGETS:select_by_upstream_raw(upstream_pk)
+  local targets = {}
+
+  -- Note that each_for_upstream is not overridden, so it returns "raw".
+  for target, err, err_t in self:each_for_upstream(upstream_pk) do
+    if not target then
+      return nil, err, err_t
+    end
+
+    table.insert(targets, target)
   end
-  add_order(targets, sort_by_order)
+
+  table.sort(targets, sort_targets)
 
   return targets
 end
 
 
-function _TARGETS:for_upstream(upstream_pk, ...)
-  local targets, err, err_t = self:for_upstream_raw(upstream_pk, ...)
+-- Paginate through targets for an upstream, returning only the
+-- latest state of each active (weight>0) target.
+function _TARGETS:page_for_upstream(upstream_pk, size, offset)
+  -- We need to read all targets, then filter the history, then
+  -- extract the page requested by the user.
+
+  -- Read all targets; this returns the target history sorted chronologically
+  local targets, err, err_t = self:select_by_upstream_raw(upstream_pk)
   if not targets then
     return nil, err, err_t
   end
-  add_order(targets, sort_by_reverse_order)
 
-  local seen           = {}
-  local active_targets = setmetatable({}, cjson.empty_array_mt)
-  local len            = 0
+  local all_active_targets = setmetatable({}, cjson.empty_array_mt)
+  local seen = {}
+  local len = 0
 
-  for _, entry in ipairs(targets) do
+  -- Read the history in reverse order, to obtain the most
+  -- recent state of each target.
+  for i = #targets, 1, -1 do
+    local entry = targets[i]
     if not seen[entry.target] then
       if entry.weight == 0 then
         seen[entry.target] = true
 
       else
-        entry.order = nil -- dont show our order key to the client
-
         -- add what we want to send to the client in our array
         len = len + 1
-        active_targets[len] = entry
+        all_active_targets[len] = entry
 
         -- track that we found this host:port so we only show
-        -- the most recent one (kinda)
+        -- the most recent active one
         seen[entry.target] = true
       end
     end
   end
 
-  return active_targets
+  -- Extract the requested page
+  local page = {}
+  size = math.min(size or 100, 1000)
+  offset = offset or 0
+  for i = 1 + offset, size + offset do
+    local target = all_active_targets[i]
+    if not target then
+      break
+    end
+    table.insert(page, target)
+  end
+
+  local next_offset
+  if all_active_targets[size + offset + 1] then
+    next_offset = size + offset
+  end
+
+  return page, nil, nil, next_offset
 end
 
 
-function _TARGETS:for_upstream_with_health(upstream_pk, ...)
-  local active_targets, err, err_t = self:for_upstream(upstream_pk, ...)
-  if not active_targets then
+-- Paginate through targets for an upstream, returning only the
+-- latest state of each active (weight>0) target, and include
+-- health information to the returned records.
+function _TARGETS:page_for_upstream_with_health(upstream_pk, size, offset)
+  local targets, err, err_t, next_offset = self:page_for_upstream(upstream_pk,
+                                                                  size, offset)
+  if not targets then
     return nil, err, err_t
   end
 
@@ -196,7 +229,7 @@ function _TARGETS:for_upstream_with_health(upstream_pk, ...)
     ngx.log(ngx.ERR, "failed getting upstream health: ", err)
   end
 
-  for _, target in ipairs(active_targets) do
+  for _, target in ipairs(targets) do
     -- In case of DNS errors when registering a target,
     -- that error happens inside lua-resty-dns-client
     -- and the end-result is that it just doesn't launch the callback,
@@ -211,13 +244,17 @@ function _TARGETS:for_upstream_with_health(upstream_pk, ...)
                    or  "HEALTHCHECKS_OFF"
   end
 
-  return active_targets
+  return targets, nil, nil, next_offset
 end
 
 
-function _TARGETS:for_upstream_first(upstream_pk, filter)
-  local targets = self:for_upstream(upstream_pk)
+function _TARGETS:select_by_upstream_filter(upstream_pk, filter)
   assert(filter.id or filter.target)
+
+  local targets, err, err_t = self:select_by_upstream_raw(upstream_pk)
+  if not targets then
+    return nil, err, err_t
+  end
   if filter.id then
     for _, t in ipairs(targets) do
       if t.id == filter.id then
@@ -233,7 +270,7 @@ function _TARGETS:for_upstream_first(upstream_pk, filter)
       return t
     end
   end
-  local err_t = self.errors:not_found_by_field({ target = filter.target })
+  err_t = self.errors:not_found_by_field({ target = filter.target })
   return nil, tostring(err_t), err_t
 end
 

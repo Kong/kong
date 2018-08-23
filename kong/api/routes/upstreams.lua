@@ -16,7 +16,7 @@ end
 local function select_target(db, upstream, target_id)
   local id = ngx.unescape_uri(target_id)
   local filter = utils.is_valid_uuid(id) and { id = id } or { target = id }
-  return db.targets:for_upstream_first({ id = upstream.id }, filter)
+  return db.targets:select_by_upstream_filter({ id = upstream.id }, filter)
 end
 
 
@@ -53,9 +53,9 @@ return {
       end
 
       local targets_with_health, _, err_t, offset =
-      db.targets:for_upstream_with_health({ id = upstream.id },
-                                          tonumber(self.args.size),
-                                          self.args.offset)
+      db.targets:page_for_upstream_with_health({ id = upstream.id },
+                                               tonumber(self.args.size),
+                                               self.args.offset)
       if not targets_with_health then
         return endpoints.handle_error(err_t)
       end
@@ -84,9 +84,9 @@ return {
         return endpoints.handle_error(err_t)
       end
       local targets, _, err_t, offset =
-        db.targets:for_upstream_raw({ id = upstream.id },
-                                    tonumber(self.args.size),
-                                    self.args.offset)
+        db.targets:page_for_upstream_raw({ id = upstream.id },
+                                         tonumber(self.args.size),
+                                         self.args.offset)
       if not targets then
         return endpoints.handle_error(err_t)
       end

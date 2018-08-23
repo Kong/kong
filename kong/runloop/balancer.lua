@@ -111,7 +111,7 @@ do
   local function load_targets_into_memory(upstream_id)
     log(DEBUG, "fetching targets for upstream: ", tostring(upstream_id))
 
-    local target_history, err, err_t = singletons.db.targets:for_upstream_sorted({ id = upstream_id })
+    local target_history, err, err_t = singletons.db.targets:select_by_upstream_raw({ id = upstream_id })
     if not target_history then
       return nil, err, err_t
     end

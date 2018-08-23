@@ -223,13 +223,7 @@ describe("Balancer", function()
     singletons.db = {
       targets = {
         each = each(TARGETS_FIXTURES),
-        for_upstream = function(self, upstream_pk)
-          local targets = self:for_upstream_sorted(upstream_pk)
-          for _, tgt in ipairs(targets) do
-            tgt.order = nil
-          end
-        end,
-        for_upstream_sorted = function(self, upstream_pk)
+        select_by_upstream_raw = function(self, upstream_pk)
           local upstream_id = upstream_pk.id
           local res, len = {}, 0
           for tgt in self:each() do
