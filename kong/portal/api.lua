@@ -2,10 +2,11 @@ local singletons    = require "kong.singletons"
 local app_helpers   = require "lapis.application"
 local crud          = require "kong.api.crud_helpers"
 local enums         = require "kong.enterprise_edition.dao.enums"
-local utils         = require "kong.portal.utils"
+local portal_utils  = require "kong.portal.utils"
 local constants     = require "kong.constants"
 local cjson         = require "cjson.safe"
-
+local ee_jwt        = require "kong.enterprise_edition.jwt"
+local time          = ngx.time
 
 
 --- Allowed auth plugins
@@ -14,12 +15,12 @@ local cjson         = require "cjson.safe"
 --
 --["<route>"]:     {  name = "<name>",    dao = "<dao_collection>" }
 local auth_plugins = {
-  ["basic-auth"] = { name = "basic-auth", dao = "basicauth_credentials", },
+  ["basic-auth"] = { name = "basic-auth", dao = "basicauth_credentials", credential_key = "password" },
   ["acls"] =       { name = "acl",        dao = "acls" },
   ["oauth2"] =     { name = "oauth2",     dao = "oauth2_credentials" },
   ["hmac-auth"] =  { name = "hmac-auth",  dao = "hmacauth_credentials" },
   ["jwt"] =        { name = "jwt",        dao = "jwt_secrets" },
-  ["key-auth"] =   { name = "key-auth",   dao = "keyauth_credentials" },
+  ["key-auth"] =   { name = "key-auth",   dao = "keyauth_credentials", credential_key = "key" },
 }
 
 
@@ -123,7 +124,7 @@ return {
     end,
 
     POST = function(self, dao_factory, helpers)
-      local ok, err = utils.validate_email(self.params.email)
+      local ok, err = portal_utils.validate_email(self.params.email)
       if not ok then
         return helpers.responses.send_HTTP_BAD_REQUEST("Invalid email: " .. err)
       end
@@ -211,11 +212,208 @@ return {
 
         if consumer.status == enums.CONSUMERS.STATUS.PENDING then
           local email, err = singletons.portal_emails:access_request(consumer.email, full_name)
-          res.email = email or err
+          if err then
+            if err.code then
+              return helpers.responses.send(err.code, {message = err.message})
+            end
+
+            return helpers.yield_error(err)
+          end
+
+          res.email = email
         end
 
         return res
-        end)
+      end)
+    end,
+  },
+
+  ["/portal/reset-password"] = {
+    before = function(self, dao_factory, helpers)
+      self.portal_auth = singletons.configuration.portal_auth
+      -- auth required
+      if not self.portal_auth then
+        return helpers.responses.send_HTTP_NOT_FOUND()
+      end
+
+      local plugin = auth_plugins[self.portal_auth]
+      if not plugin then
+        return helpers.responses.send_HTTP_NOT_FOUND()
+      end
+
+      self.collection = dao_factory[plugin.dao]
+      self.credential_key = plugin.credential_key
+    end,
+
+    POST = function(self, dao_factory, helpers)
+      -- Verify params
+      if not self.params.token or self.params.token == "" then
+        return helpers.responses.send_HTTP_BAD_REQUEST("token is required")
+      end
+
+      -- key or password
+      local new_password = self.params[self.credential_key]
+      if not new_password or new_password == "" then
+        return helpers.responses.send_HTTP_BAD_REQUEST(self.credential_key .. " is required")
+      end
+
+      -- Parse and ensure that jwt contains the correct claims/headers.
+      -- Signature NOT verified yet
+      local jwt, err = portal_utils.validate_reset_jwt(self.params.token)
+      if err then
+        return helpers.responses.send_HTTP_UNAUTHORIZED(err)
+      end
+
+      -- Look up the secret by consumer id and pending status
+      local rows = singletons.dao.portal_reset_secrets:find_all({
+        consumer_id = jwt.claims.id,
+        status = enums.TOKENS.STATUS.PENDING,
+      })
+
+      if not rows or next(rows) == nil then
+        return helpers.responses.send_HTTP_UNAUTHORIZED()
+      end
+
+      local secret = rows[1]
+
+      -- Generate a new signature and compare it to passed token
+      local ok, _ = ee_jwt.verify_signature(jwt, secret.secret)
+      if not ok then
+        return helpers.responses.send_HTTP_UNAUTHORIZED()
+      end
+
+      -- If we made it this far, the jwt is valid format and properly signed.
+      -- Now we will lookup the consumer and credentials we need to update
+      -- Lookup consumer by id contained in jwt, if not found, this will 404
+      self.params.email_or_id = jwt.claims.id
+      crud.find_consumer_by_email_or_id(self, dao_factory, helpers, {__skip_rbac = true})
+
+      local credentials, err = dao_factory.credentials:find_all({
+        consumer_id = self.consumer.id,
+        consumer_type = enums.CONSUMERS.TYPE.DEVELOPER,
+        plugin = self.portal_auth,
+      })
+
+      if err then
+        return helpers.yield_error(err)
+      end
+
+      local credential = credentials[1]
+      if not credential then
+        return helpers.responses.send_HTTP_NOT_FOUND()
+      end
+
+      local credential_data = credential.credential_data
+      if not credential_data then
+        return helpers.responses.send_HTTP_NOT_FOUND()
+      end
+
+      local filter = {consumer_id = self.consumer.id, id = credential.id}
+      local cred_params = {[self.credential_key] = new_password}
+      local ok, err = crud.portal_crud.update_login_credential(cred_params,
+                                                      self.collection, filter)
+      if err then
+        return helpers.yield_error(err)
+      end
+
+      if not ok then
+        return helpers.responses.send_HTTP_NOT_FOUND()
+      end
+
+      -- Mark the token secret as consumed
+      local _, err = singletons.dao.portal_reset_secrets:update({
+        status = enums.TOKENS.STATUS.CONSUMED,
+      }, {
+        id = secret.id,
+      })
+
+      if err then
+        return helpers.yield_error(err)
+      end
+
+      return helpers.responses.send_HTTP_OK()
+    end,
+  },
+
+  ["/portal/forgot-password"] = {
+    before = function(self, dao_factory, helpers)
+      self.portal_auth = singletons.configuration.portal_auth
+      -- auth required
+      if not self.portal_auth then
+        return helpers.responses.send_HTTP_NOT_FOUND()
+      end
+
+      local plugin = auth_plugins[self.portal_auth]
+      if not plugin then
+        return helpers.responses.send_HTTP_NOT_FOUND()
+      end
+    end,
+
+    POST = function(self, dao_factory, helpers)
+      local token_ttl = singletons.configuration.portal_token_exp
+
+      local ok, err = portal_utils.validate_email(self.params.email)
+      if not ok then
+        return helpers.responses.send_HTTP_BAD_REQUEST("Invalid email: " .. err)
+      end
+
+      local filter = {__skip_rbac = true}
+      local rows, err = crud.find_by_id_or_field(dao_factory.consumers, filter,
+                                                    self.params.email, "email")
+      if err then
+        return helpers.yield_error(err)
+      end
+
+      -- If we do not have a consumer, return 200 ok
+      self.consumer = rows[1]
+      if not self.consumer then
+        return helpers.responses.send_HTTP_OK()
+      end
+
+      local rows, err = singletons.dao.portal_reset_secrets:find_all({
+        consumer_id = self.consumer.id
+      })
+
+      if err then
+        return helpers.yield_error(err)
+      end
+
+      -- Invalidate any pending resets for this consumer
+      for _, row in ipairs(rows) do
+        if row.status == enums.TOKENS.STATUS.PENDING then
+          local _, err = singletons.dao.portal_reset_secrets:update({
+            status = enums.TOKENS.STATUS.INVALIDATED
+          }, {
+            id = row.id
+          })
+          if err then
+            return helpers.yield_error(err)
+          end
+        end
+      end
+
+      -- Generate new reset
+      local row, err = singletons.dao.portal_reset_secrets:insert({
+        consumer_id = self.consumer.id,
+        client_addr = ngx.var.remote_addr,
+      })
+
+      if err then
+        return helpers.yield_error(err)
+      end
+
+      local claims = {id = self.consumer.id, exp = time() + token_ttl}
+      local jwt, err = ee_jwt.generate_JWT(claims, row.secret)
+      if err then
+        return helpers.yield_error(err)
+      end
+
+      local _, err = singletons.portal_emails:password_reset(self.consumer.email, jwt)
+      if err then
+        return helpers.yield_error(err)
+      end
+
+      return helpers.responses.send_HTTP_OK()
     end,
   },
 
@@ -405,7 +603,7 @@ return {
     end,
 
     PATCH = function(self, dao_factory, helpers)
-      local ok, err = utils.validate_email(self.params.email)
+      local ok, err = portal_utils.validate_email(self.params.email)
       if not ok then
         return helpers.responses.send_HTTP_BAD_REQUEST("Invalid email: " .. err)
       end

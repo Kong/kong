@@ -1,8 +1,14 @@
-local helpers = require "spec.helpers"
-local cjson = require "cjson"
-local enums = require "kong.enterprise_edition.dao.enums"
-local utils = require "kong.tools.utils"
+local helpers      = require "spec.helpers"
+local cjson        = require "cjson"
+local enums        = require "kong.enterprise_edition.dao.enums"
+local utils        = require "kong.tools.utils"
 local proxy_prefix = require("kong.enterprise_edition.proxies").proxy_prefix
+local ee_jwt       = require "kong.enterprise_edition.jwt"
+local time         = ngx.time
+local uuid         = require("kong.tools.utils").uuid
+local ee_helpers   = require "spec.ee_helpers"
+
+
 
 
 local function insert_files(dao)
@@ -310,8 +316,29 @@ for _, strategy in helpers.each_strategy('postgres') do
         end)
       end)
 
-
       describe("/_kong/portal/register ", function()
+        setup(function()
+          helpers.stop_kong()
+          assert(db:truncate())
+          helpers.register_consumer_relations(dao)
+
+          assert(helpers.start_kong({
+            portal_auto_approve = "off",
+            portal_emails_from = "me@example.com",
+            portal_emails_reply_to = "me@example.com",
+            smtp = "on",
+            smtp_mock = "on",
+            portal_gui_url = "http://127.0.0.1:8081",
+            admin_gui_url = "http://127.0.0.1:8080",
+            smtp_admin_emails = "admin1@example.com, admin2@example.com",
+            database = strategy,
+            portal = true,
+            portal_auth = "basic-auth",
+            rbac = rbac,
+            portal_auth_config = "{ \"hide_credentials\": true }",
+          }))
+        end)
+
         before_each(function()
           client = assert(helpers.proxy_client())
         end)
@@ -460,6 +487,670 @@ for _, strategy in helpers.each_strategy('postgres') do
             assert.equal(enums.CONSUMERS.STATUS.PENDING, consumer.status)
 
             assert.equal(consumer.id, credential.consumer_id)
+
+            local expected_email_res = {
+              error = {
+                count = 0,
+                emails = {}
+              },
+              sent = {
+                count = 2,
+                emails = {
+                  ["admin1@example.com"] = true,
+                  ["admin2@example.com"] = true,
+                }
+              },
+              smtp_mock = true,
+            }
+
+            assert.same(expected_email_res, resp_body_json.email)
+          end)
+        end)
+      end)
+
+      describe("/_kong/portal/forgot-password", function()
+        local developer
+
+        setup(function()
+          helpers.stop_kong()
+          assert(db:truncate())
+          ee_helpers.register_token_statuses(dao)
+          helpers.register_consumer_relations(dao)
+
+          assert(helpers.start_kong({
+            database = strategy,
+            portal = true,
+            rbac = rbac,
+            portal_auth = "basic-auth",
+            portal_auth_config = "{ \"hide_credentials\": true }",
+            portal_auto_approve = "on",
+            smtp = "on",
+            smtp_mock = "on",
+            portal_emails_from = "noreply@example.com",
+            portal_emails_reply_to = "noreply@example.com",
+            portal_gui_url = "http://127.0.0.1:8081",
+          }))
+
+          client = assert(helpers.proxy_client())
+
+          local res = assert(client:send {
+            method = "POST",
+            path = "/" .. proxy_prefix .. "/portal/register",
+            body = {
+              email = "gruce@konghq.com",
+              password = "kong",
+              meta = "{\"full_name\":\"I Like Turtles\"}"
+            },
+            headers = {["Content-Type"] = "application/json"}
+          })
+
+
+          local body = assert.res_status(201, res)
+          local resp_body_json = cjson.decode(body)
+
+          developer = resp_body_json.consumer
+
+          client:close()
+        end)
+
+        before_each(function()
+          client = assert(helpers.proxy_client())
+        end)
+
+        after_each(function()
+          if client then
+            client:close()
+          end
+        end)
+
+        describe("POST", function()
+          it("should return 400 if called with invalid email", function()
+            local res = assert(client:send {
+              method = "POST",
+              path = "/" .. proxy_prefix .. "/portal/forgot-password",
+              body = {
+                email = "grucekonghq.com",
+              },
+              headers = {["Content-Type"] = "application/json"}
+            })
+
+            local body = assert.res_status(400, res)
+            local resp_body_json = cjson.decode(body)
+            local message = resp_body_json.message
+
+            assert.equal("Invalid email: missing '@' symbol", message)
+          end)
+
+          it("should return 200 if called with email of a nonexistent user", function()
+            local res = assert(client:send {
+              method = "POST",
+              path = "/" .. proxy_prefix .. "/portal/forgot-password",
+              body = {
+                email = "creeper@example.com",
+              },
+              headers = {["Content-Type"] = "application/json"}
+            })
+
+            assert.res_status(200, res)
+
+            local count = dao.portal_reset_secrets:count()
+            assert.equals(0, count)
+          end)
+
+          it("should return 200 and generate a token secret if called with developer email", function()
+            local res = assert(client:send {
+              method = "POST",
+              path = "/" .. proxy_prefix .. "/portal/forgot-password",
+              body = {
+                email = "gruce@konghq.com",
+              },
+              headers = {["Content-Type"] = "application/json"}
+            })
+
+            assert.res_status(200, res)
+
+            local rows = dao.portal_reset_secrets:find_all({
+              consumer_id = developer.id
+            })
+
+            assert.is_string(rows[1].secret)
+            assert.equal(1, #rows)
+          end)
+
+          it("should invalidate the previous secret if called twice", function()
+            assert(dao.portal_reset_secrets:truncate())
+
+            local res = assert(client:send {
+              method = "POST",
+              path = "/" .. proxy_prefix .. "/portal/forgot-password",
+              body = {
+                email = "gruce@konghq.com",
+              },
+              headers = {["Content-Type"] = "application/json"}
+            })
+
+            assert.res_status(200, res)
+
+            local rows = dao.portal_reset_secrets:find_all({
+              consumer_id = developer.id
+            })
+
+            assert.equal(1, #rows)
+            assert.is_string(rows[1].secret)
+
+            local res = assert(client:send {
+              method = "POST",
+              path = "/" .. proxy_prefix .. "/portal/forgot-password",
+              body = {
+                email = "gruce@konghq.com",
+              },
+              headers = {["Content-Type"] = "application/json"}
+            })
+
+            assert.res_status(200, res)
+
+            local rows = dao.portal_reset_secrets:find_all({
+              consumer_id = developer.id
+            })
+
+            assert.equal(2, #rows)
+
+            local pending_count = 0
+            local invalidated_count = 0
+
+            for _, row in ipairs(rows) do
+              print("created : " .. row.created_at)
+              print("updated : " .. row.updated_at)
+
+              if row.status == enums.TOKENS.STATUS.PENDING then
+                pending_count = pending_count + 1
+              end
+
+              if row.status == enums.TOKENS.STATUS.INVALIDATED then
+                invalidated_count = invalidated_count + 1
+              end
+            end
+
+            assert.not_equal(rows[1].secret, rows[2].secret)
+            assert.equal(1, pending_count)
+            assert.equal(1, invalidated_count)
+          end)
+        end)
+      end)
+
+      describe("/_kong/portal/reset-password (basic-auth)", function()
+        local developer
+        local secret
+
+        setup(function()
+          helpers.stop_kong()
+          assert(db:truncate())
+          helpers.register_consumer_relations(dao)
+          ee_helpers.register_token_statuses(dao)
+
+          assert(helpers.start_kong({
+            database = strategy,
+            portal = true,
+            rbac = rbac,
+            portal_auth = "basic-auth",
+            portal_auth_config = "{ \"hide_credentials\": true }",
+            portal_auto_approve = "on",
+            smtp = "on",
+            smtp_mock = "on",
+            portal_emails_from = "noreply@example.com",
+            portal_emails_reply_to = "noreply@example.com",
+            portal_gui_url = "http://127.0.0.1:8081",
+          }))
+
+          client = assert(helpers.proxy_client())
+
+          local res = assert(client:send {
+            method = "POST",
+            path = "/" .. proxy_prefix .. "/portal/register",
+            body = {
+              email = "gruce@konghq.com",
+              password = "kong",
+              meta = "{\"full_name\":\"I Like Turtles\"}"
+            },
+            headers = {["Content-Type"] = "application/json"}
+          })
+
+          local body = assert.res_status(201, res)
+          local resp_body_json = cjson.decode(body)
+
+          developer = resp_body_json.consumer
+
+          res = assert(client:send {
+            method = "POST",
+            path = "/" .. proxy_prefix .. "/portal/forgot-password",
+            body = {
+              email = "gruce@konghq.com",
+            },
+            headers = {["Content-Type"] = "application/json"}
+          })
+
+          assert.res_status(200, res)
+
+          local rows = dao.portal_reset_secrets:find_all({
+            consumer_id = developer.id
+          })
+
+          secret = rows[1].secret
+
+          client:close()
+        end)
+
+        before_each(function()
+          client = assert(helpers.proxy_client())
+        end)
+
+        after_each(function()
+          if client then
+            client:close()
+          end
+        end)
+
+        describe("POST", function()
+          it("should return 400 if called without a token", function()
+            local res = assert(client:send {
+              method = "POST",
+              path = "/" .. proxy_prefix .. "/portal/reset-password",
+              body = {
+                token = "",
+              },
+              headers = {["Content-Type"] = "application/json"}
+            })
+
+            local body = assert.res_status(400, res)
+            local resp_body_json = cjson.decode(body)
+            local message = resp_body_json.message
+
+            assert.equal("token is required", message)
+          end)
+
+          it("should return 400 if called without a password", function()
+            local res = assert(client:send {
+              method = "POST",
+              path = "/" .. proxy_prefix .. "/portal/reset-password",
+              body = {
+                token = "token",
+                password = "",
+              },
+              headers = {["Content-Type"] = "application/json"}
+            })
+
+            local body = assert.res_status(400, res)
+            local resp_body_json = cjson.decode(body)
+            local message = resp_body_json.message
+
+            assert.equal("password is required", message)
+          end)
+
+          it("should return 401 if called with an invalid jwt format", function()
+            local res = assert(client:send {
+              method = "POST",
+              path = "/" .. proxy_prefix .. "/portal/reset-password",
+              body = {
+                token = "im_a_token_lol",
+                password = "derp",
+              },
+              headers = {["Content-Type"] = "application/json"}
+            })
+
+            local body = assert.res_status(401, res)
+            local resp_body_json = cjson.decode(body)
+            local message = resp_body_json.message
+
+            assert.equal("Invalid JWT", message)
+          end)
+
+          it("should return 401 if token is signed with an invalid secret", function()
+            local claims = {id = developer.id, exp = time() + 100000}
+            local bad_jwt = ee_jwt.generate_JWT(claims, "bad_secret")
+
+            local res = assert(client:send {
+              method = "POST",
+              path = "/" .. proxy_prefix .. "/portal/reset-password",
+              body = {
+                token = bad_jwt,
+                password = "derp",
+              },
+              headers = {["Content-Type"] = "application/json"}
+            })
+
+            local body = assert.res_status(401, res)
+            local resp_body_json = cjson.decode(body)
+            local message = resp_body_json.message
+
+            assert.equal("Unauthorized", message)
+          end)
+
+          it("should return 401 if token is expired", function()
+            local claims = {id = developer.id, exp = time() - 100000}
+            local expired_jwt = ee_jwt.generate_JWT(claims, secret)
+
+            local res = assert(client:send {
+              method = "POST",
+              path = "/" .. proxy_prefix .. "/portal/reset-password",
+              body = {
+                token = expired_jwt,
+                password = "derp",
+              },
+              headers = {["Content-Type"] = "application/json"}
+            })
+
+            local body = assert.res_status(401, res)
+            local resp_body_json = cjson.decode(body)
+            local message = resp_body_json.message
+
+            assert.equal("Expired JWT", message)
+          end)
+
+          it("should return 401 if token contains non-existent developer", function()
+            local claims = {id = uuid(), exp = time() + 100000}
+            local random_uuid_jwt = ee_jwt.generate_JWT(claims, secret)
+
+            local res = assert(client:send {
+              method = "POST",
+              path = "/" .. proxy_prefix .. "/portal/reset-password",
+              body = {
+                token = random_uuid_jwt,
+                password = "derp",
+              },
+              headers = {["Content-Type"] = "application/json"}
+            })
+
+            local body = assert.res_status(401, res)
+            local resp_body_json = cjson.decode(body)
+            local message = resp_body_json.message
+
+            assert.equal("Unauthorized", message)
+          end)
+
+          it("should return 200 if called with a valid token", function()
+            local claims = {id = developer.id, exp = time() + 100000}
+            local valid_jwt = ee_jwt.generate_JWT(claims, secret)
+
+            local res = assert(client:send {
+              method = "POST",
+              path = "/" .. proxy_prefix .. "/portal/reset-password",
+              body = {
+                token = valid_jwt,
+                password = "derp",
+              },
+              headers = {["Content-Type"] = "application/json"}
+            })
+
+            assert.res_status(200, res)
+
+            local rows = dao.portal_reset_secrets:find_all({
+              consumer_id = developer.id
+            })
+
+            -- token is consumed
+            assert.equal(1, #rows)
+            assert.equal(enums.TOKENS.STATUS.CONSUMED, rows[1].status)
+
+            -- old password fails
+            res = assert(client:send {
+              method = "GET",
+              path = "/" .. proxy_prefix .. "/portal/developer",
+              headers = {
+                ["Content-Type"] = "application/json",
+                ["Authorization"] = "Basic " .. ngx.encode_base64("gruce@konghq.com:kong"),
+              }
+            })
+
+            assert.res_status(403, res)
+
+            -- new password auths
+            res = assert(client:send {
+              method = "GET",
+              path = "/" .. proxy_prefix .. "/portal/developer",
+              headers = {
+                ["Content-Type"] = "application/json",
+                ["Authorization"] = "Basic " .. ngx.encode_base64("gruce@konghq.com:derp"),
+              }
+            })
+
+            assert.res_status(200, res)
+          end)
+        end)
+      end)
+
+      describe("/_kong/portal/reset-password (key-auth)", function()
+        local developer
+        local secret
+
+        setup(function()
+          helpers.stop_kong()
+          assert(db:truncate())
+          helpers.register_consumer_relations(dao)
+          ee_helpers.register_token_statuses(dao)
+
+          assert(helpers.start_kong({
+            database = strategy,
+            portal = true,
+            rbac = rbac,
+            portal_auth = "key-auth",
+            portal_auto_approve = "on",
+            smtp = "on",
+            smtp_mock = "on",
+            portal_emails_from = "noreply@example.com",
+            portal_emails_reply_to = "noreply@example.com",
+            portal_gui_url = "http://127.0.0.1:8081",
+          }))
+
+          client = assert(helpers.proxy_client())
+
+          local res = assert(client:send {
+            method = "POST",
+            path = "/" .. proxy_prefix .. "/portal/register",
+            body = {
+              email = "gruce@konghq.com",
+              key = "kongstrong",
+              meta = "{\"full_name\":\"I Like Turtles\"}"
+            },
+            headers = {["Content-Type"] = "application/json"}
+          })
+
+          local body = assert.res_status(201, res)
+          local resp_body_json = cjson.decode(body)
+
+          developer = resp_body_json.consumer
+
+          res = assert(client:send {
+            method = "POST",
+            path = "/" .. proxy_prefix .. "/portal/forgot-password",
+            body = {
+              email = "gruce@konghq.com",
+            },
+            headers = {["Content-Type"] = "application/json"}
+          })
+
+          assert.res_status(200, res)
+
+          local rows = dao.portal_reset_secrets:find_all({
+            consumer_id = developer.id
+          })
+
+          secret = rows[1].secret
+
+          client:close()
+        end)
+
+        before_each(function()
+          client = assert(helpers.proxy_client())
+        end)
+
+        after_each(function()
+          if client then
+            client:close()
+          end
+        end)
+
+        describe("POST", function()
+          it("should return 400 if called without a token", function()
+            local res = assert(client:send {
+              method = "POST",
+              path = "/" .. proxy_prefix .. "/portal/reset-password",
+              body = {
+                token = "",
+              },
+              headers = {["Content-Type"] = "application/json"}
+            })
+
+            local body = assert.res_status(400, res)
+            local resp_body_json = cjson.decode(body)
+            local message = resp_body_json.message
+
+            assert.equal("token is required", message)
+          end)
+
+          it("should return 400 if called without a password", function()
+            local res = assert(client:send {
+              method = "POST",
+              path = "/" .. proxy_prefix .. "/portal/reset-password",
+              body = {
+                token = "token",
+                key = "",
+              },
+              headers = {["Content-Type"] = "application/json"}
+            })
+
+            local body = assert.res_status(400, res)
+            local resp_body_json = cjson.decode(body)
+            local message = resp_body_json.message
+
+            assert.equal("key is required", message)
+          end)
+
+          it("should return 401 if called with an invalid jwt format", function()
+            local res = assert(client:send {
+              method = "POST",
+              path = "/" .. proxy_prefix .. "/portal/reset-password",
+              body = {
+                token = "im_a_token_lol",
+                key = "derp",
+              },
+              headers = {["Content-Type"] = "application/json"}
+            })
+
+            local body = assert.res_status(401, res)
+            local resp_body_json = cjson.decode(body)
+            local message = resp_body_json.message
+
+            assert.equal("Invalid JWT", message)
+          end)
+
+          it("should return 401 if token is signed with an invalid secret", function()
+            local claims = {id = developer.id, exp = time() + 100000}
+            local bad_jwt = ee_jwt.generate_JWT(claims, "bad_secret")
+
+            local res = assert(client:send {
+              method = "POST",
+              path = "/" .. proxy_prefix .. "/portal/reset-password",
+              body = {
+                token = bad_jwt,
+                key = "derp",
+              },
+              headers = {["Content-Type"] = "application/json"}
+            })
+
+            local body = assert.res_status(401, res)
+            local resp_body_json = cjson.decode(body)
+            local message = resp_body_json.message
+
+            assert.equal("Unauthorized", message)
+          end)
+
+          it("should return 401 if token is expired", function()
+            local claims = {id = developer.id, exp = time() - 100000}
+            local expired_jwt = ee_jwt.generate_JWT(claims, secret)
+
+            local res = assert(client:send {
+              method = "POST",
+              path = "/" .. proxy_prefix .. "/portal/reset-password",
+              body = {
+                token = expired_jwt,
+                key = "derp",
+              },
+              headers = {["Content-Type"] = "application/json"}
+            })
+
+            local body = assert.res_status(401, res)
+            local resp_body_json = cjson.decode(body)
+            local message = resp_body_json.message
+
+            assert.equal("Expired JWT", message)
+          end)
+
+          it("should return 401 if token contains non-existent developer", function()
+            local claims = {id = uuid(), exp = time() + 100000}
+            local random_uuid_jwt = ee_jwt.generate_JWT(claims, secret)
+
+            local res = assert(client:send {
+              method = "POST",
+              path = "/" .. proxy_prefix .. "/portal/reset-password",
+              body = {
+                token = random_uuid_jwt,
+                key = "derp",
+              },
+              headers = {["Content-Type"] = "application/json"}
+            })
+
+            local body = assert.res_status(401, res)
+            local resp_body_json = cjson.decode(body)
+            local message = resp_body_json.message
+
+            assert.equal("Unauthorized", message)
+          end)
+
+          it("should return 200 if called with a valid token", function()
+            local claims = {id = developer.id, exp = time() + 100000}
+            local valid_jwt = ee_jwt.generate_JWT(claims, secret)
+
+            local res = assert(client:send {
+              method = "POST",
+              path = "/" .. proxy_prefix .. "/portal/reset-password",
+              body = {
+                token = valid_jwt,
+                key = "derp",
+              },
+              headers = {["Content-Type"] = "application/json"}
+            })
+
+            assert.res_status(200, res)
+
+            local rows = dao.portal_reset_secrets:find_all({
+              consumer_id = developer.id
+            })
+
+            -- token is consumed
+            assert.equal(1, #rows)
+            assert.equal(enums.TOKENS.STATUS.CONSUMED, rows[1].status)
+
+            -- old key fails
+            res = assert(client:send {
+              method = "GET",
+              path = "/" .. proxy_prefix .. "/portal/developer?apikey=kongstrong",
+              headers = {
+                ["Content-Type"] = "application/json",
+              }
+            })
+
+            assert.res_status(403, res)
+
+            -- new key auths
+            res = assert(client:send {
+              method = "GET",
+              path = "/" .. proxy_prefix .. "/portal/developer?apikey=derp",
+              headers = {
+                ["Content-Type"] = "application/json",
+              }
+            })
+
+            assert.res_status(200, res)
           end)
         end)
       end)
@@ -895,7 +1586,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             -- new email succeeds
             local res = assert(client:send {
               method = "GET",
-              path = "/" .. proxy_prefix .. "/portal/developer", 
+              path = "/" .. proxy_prefix .. "/portal/developer",
               headers = {
                 ["Content-Type"] = "application/json",
                 ["Authorization"] = "Basic " .. ngx.encode_base64("new_email@whodis.com:kong"),

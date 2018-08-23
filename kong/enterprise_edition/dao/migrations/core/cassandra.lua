@@ -436,4 +436,45 @@ return {
       CREATE INDEX IF NOT EXISTS ON rbac_role_entities(entity_type);
     ]],
   },
+  {
+    name = "2018-08-06-114500_portal_reset_secrets",
+    up = [[
+
+      CREATE TABLE IF NOT EXISTS token_statuses(
+        id int PRIMARY KEY,
+        name text,
+        created_at timestamp
+      );
+
+      CREATE INDEX IF NOT EXISTS token_statuses_name
+      ON token_statuses (name);
+
+      INSERT INTO token_statuses(id, name, created_at)
+      VALUES (1, 'pending', dateof(now()));
+
+      INSERT INTO token_statuses(id, name, created_at)
+      VALUES (2, 'consumed', dateof(now()));
+
+      INSERT INTO token_statuses(id, name, created_at)
+      VALUES (3, 'invalidated', dateof(now()));
+
+      CREATE TABLE IF NOT EXISTS portal_reset_secrets(
+        id uuid PRIMARY KEY,
+        consumer_id uuid,
+        secret text,
+        status int,
+        client_addr text,
+        created_at timestamp,
+        updated_at timestamp
+      );
+
+      CREATE INDEX IF NOT EXISTS portal_reset_secrets_consumer_id ON portal_reset_secrets (consumer_id);
+      CREATE INDEX IF NOT EXISTS portal_reset_secrets_status ON portal_reset_secrets (status);
+
+    ]],
+    down = [[
+      DROP TABLE portal_reset_secrets;
+      DROP TABLE token_statuses;
+    ]]
+  },
 }

@@ -160,10 +160,12 @@ local CONF_INFERENCES = {
   proxy_uri = {typ = "string"},
   portal_auth = {typ = "string"},
   portal_auth_conf = {typ = "string"},
+  portal_token_exp = {typ = "number"},
   portal_auto_approve = {typ = "boolean"},
   portal_invite_email = {typ = "boolean"},
   portal_access_request_email = {typ = "boolean"},
   portal_approved_email = {typ = "boolean"},
+  portal_reset_email = {typ = "boolean"},
   portal_emails_from = {typ = "string"},
   portal_emails_reply_to = {typ = "string"},
 
@@ -181,6 +183,7 @@ local CONF_INFERENCES = {
 
   smtp = {typ = "boolean"},
   smtp_admin_emails = {typ = "array"},
+  smtp_mock = {typ = "boolean"},
 }
 
 -- List of settings whose values must not be printed when

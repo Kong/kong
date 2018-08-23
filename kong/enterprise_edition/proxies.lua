@@ -13,14 +13,18 @@ _M.proxy_prefix = "_kong"
 -- identifiers for internal proxies must be unique
 -- they are listed here to help prevent collisions when adding new services
 -- to add a new service and route, follow the almost-convention below
-local portal_service_id          = "00000000-0000-0000-0000-000000000001"
-local portal_route_id            = "00000000-0000-0000-0002-000000000000"
-local portal_files_service_id    = "00000000-0000-0000-0000-000000000003"
-local portal_files_route_id      = "00000000-0000-0000-0003-000000000000"
-local portal_register_service_id = "00000000-0000-0000-0000-000000000004"
-local portal_register_route_id   = "00000000-0000-0000-0004-000000000000"
-local admin_service_id           = "00000000-0000-0000-0000-000000000006"
-local admin_route_id             = "00000000-0000-0000-0006-000000000000"
+local portal_service_id           = "00000000-0000-0000-0000-000000000001"
+local portal_route_id             = "00000000-0000-0000-0002-000000000000"
+local portal_files_service_id     = "00000000-0000-0000-0000-000000000003"
+local portal_files_route_id       = "00000000-0000-0000-0003-000000000000"
+local portal_register_service_id  = "00000000-0000-0000-0000-000000000004"
+local portal_register_route_id    = "00000000-0000-0000-0004-000000000000"
+local portal_forgot_pw_service_id = "00000000-0000-0000-0000-000000000007"
+local portal_forgot_pw_route_id   = "00000000-0000-0000-0007-000000000000"
+local portal_reset_pw_service_id  = "00000000-0000-0000-0000-000000000008"
+local portal_reset_pw_route_id    = "00000000-0000-0000-0008-000000000000"
+local admin_service_id            = "00000000-0000-0000-0000-000000000006"
+local admin_route_id              = "00000000-0000-0000-0006-000000000000"
 
 
 -- todo move this into helpers
@@ -231,6 +235,34 @@ function _M:setup_portal()
       id = portal_register_route_id,
       service = portal_config_register.name,
       paths = { "/" .. _M.proxy_prefix .. "/portal/register" },
+    })
+
+    local portal_config_forgot_pw = utils.shallow_copy(portal_config)
+
+    portal_config_forgot_pw.name ="_kong-portal-forgot-pw"
+    portal_config_forgot_pw.id = portal_forgot_pw_service_id
+    portal_config_forgot_pw.path = "/portal/forgot-password"
+
+    self:add_service(portal_config_forgot_pw)
+
+    self:add_route({
+      id = portal_forgot_pw_route_id,
+      service = portal_config_forgot_pw.name,
+      paths = { "/" .. _M.proxy_prefix .. "/portal/forgot-password" },
+    })
+
+    local portal_config_reset_pw = utils.shallow_copy(portal_config)
+
+    portal_config_reset_pw.name ="_kong-portal-reset-pw"
+    portal_config_reset_pw.id = portal_reset_pw_service_id
+    portal_config_reset_pw.path = "/portal/reset-password"
+
+    self:add_service(portal_config_reset_pw)
+
+    self:add_route({
+      id = portal_reset_pw_route_id,
+      service = portal_config_reset_pw.name,
+      paths = { "/" .. _M.proxy_prefix .. "/portal/reset-password" },
     })
 
     self:add_plugin({

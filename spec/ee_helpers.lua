@@ -1,3 +1,5 @@
+local enums = require "kong.enterprise_edition.dao.enums"
+
 local _M = {}
 
 
@@ -97,6 +99,21 @@ function _M.register_rbac_resources(dao)
   end
 
   return super_admin, super_user_role
+end
+
+
+-- helper for reset token tests
+function _M.register_token_statuses(dao)
+  for status, id in pairs(enums.TOKENS.STATUS) do
+    local _, err = dao.token_statuses:insert({
+      id = id,
+      name = status,
+    })
+
+    if err then
+      return err
+    end
+  end
 end
 
 

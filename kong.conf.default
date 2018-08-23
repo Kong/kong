@@ -849,6 +849,11 @@
                         # registration. Access can still be revoked through the
                         # Admin GUI or API.
 
+#portal_token_exp = 21600
+                        # Duration in seconds for the expiration of portal
+                        # reset token.
+                        # Default `21600` (6 hours)
+
 #------------------------------------------------------------------------------
 # PORTAL SMTP CONFIGURATION
 #------------------------------------------------------------------------------
@@ -862,6 +867,10 @@
                                   # Note: This is overridden if `smtp` is `off`
 
 #portal_approved_email = on       # Enable of disable portal_approved_email
+                                  # Default `on`
+                                  # Note: This is overridden if `smtp` is `off`
+
+#portal_reset_email = on          # Enable of disable portal_reset_email
                                   # Default `on`
                                   # Note: This is overridden if `smtp` is `off`
 
@@ -941,3 +950,9 @@
 #smtp_admin_emails =    # Comma separated list of admin emails to receive notifications
                         # Example `admin1@example.com, admin2@example.com`
                         # Default `nil`
+
+#smtp_mock = off        # Mock the smtp client send method. This will cause the
+                        # SMTP client to function as normal, including SMTP configuration
+                        # validation but will not actually send emails.
+                        # Valid values are `on` or `off`
+                        # Default `off`

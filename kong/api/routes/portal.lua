@@ -117,6 +117,10 @@ return {
            consumer.status ~= previous_status then
           local email_res, err = singletons.portal_emails:approved(consumer.email)
           if err then
+            if err.code then
+              return helpers.responses.send(err.code, {message = err.message})
+            end
+
             return helpers.yield_error(err)
           end
 
@@ -357,12 +361,11 @@ return {
 
       local res, err = singletons.portal_emails:invite(self.params.emails)
       if err then
-        return helpers.yield_error(err)
-      end
+        if err.code then
+          return helpers.responses.send(err.code, {message = err.message})
+        end
 
-      -- invite email is disabled
-      if not res then
-        return helpers.responses.send_HTTP_NOT_FOUND()
+        return helpers.yield_error(err)
       end
 
       return helpers.responses.send_HTTP_OK(res)

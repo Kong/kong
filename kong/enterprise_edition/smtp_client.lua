@@ -14,13 +14,6 @@ _M.SEND_ERR      = "Error sending email"
 _M.LOG_PREFIX    = "[smtp-client]"
 
 
-local function init_email_res()
-  return {
-    sent  = {emails = {}, count = 0},
-    error = {emails = {}, count = 0},
-  }
-end
-
 -- conf = {
 --   host =            default localhost
 --   port =            default 25
@@ -34,16 +27,26 @@ end
 --   timeout_send =    default 60000 (ms)
 --   timeout_read  =   default 60000 (ms)
 -- }
-function _M.new(conf)
+function _M.new(conf, smtp_mock)
   conf = conf or {}
+  local mailer, err
 
-  local mailer, err = mail.new(conf)
-  if err then
-    return nil, err
+  if smtp_mock then
+    mailer = {
+      send = function()
+        return true
+      end,
+    }
+  else
+    mailer, err = mail.new(conf)
+    if err then
+      return nil, err
+    end
   end
 
   local self = {
     mailer = mailer,
+    smtp_mock = smtp_mock,
   }
 
   return setmetatable(self, mt)
@@ -92,7 +95,9 @@ end
 --    }
 -- }
 
-function _M.prep_conf(kong_conf, strategy_conf)
+function _M.prep_conf(kong_conf, base_conf)
+  local strategy_conf = pl_tablex.deepcopy(base_conf)
+
   -- iterate over each email in strategy_conf
   for email_name, email_conf in pairs(strategy_conf) do
     -- If the email is disabled, set its conf to nil
@@ -123,23 +128,41 @@ function _M.prep_conf(kong_conf, strategy_conf)
 end
 
 
-function _M:check_conf(email_conf)
+function _M.check_conf(client, name)
+  if not client.enabled then
+    return nil, "smtp is disabled"
+  end
+
+  local email_conf = client.conf[name]
+
   -- email is disabled
   if not email_conf then
-    return
+    return nil, name .. " is disabled"
   end
 
-  -- if missing a require conf, return with error
+  -- missing a require conf
   if email_conf.missing_conf then
-    return nil, "missing conf for " .. email_conf.name .. ": " .. email_conf.missing_conf
+    return nil, "missing conf for " .. name .. ": " .. email_conf.missing_conf
   end
 
-  return true
+  return email_conf
+end
+
+
+function _M.handle_res(res)
+  local code = res.code
+  res.code = nil
+
+  if res.sent.count < 1 then
+    return nil, {message = res, code = code or 500}
+  end
+
+  return res
 end
 
 
 function _M:send(emails, base_options, res)
-  local res            = res or init_email_res()
+  local res            = res or self:init_email_res()
   local emails_to_send = {}
   local seen_emails    = {}
   local sent           = res.sent
@@ -164,24 +187,40 @@ function _M:send(emails, base_options, res)
     end
   end
 
-  -- if any valid emails (not dupe and not invalid format)
-  if next(emails_to_send) ~= nil then
-    -- send the batch of emails (single send)
-    local send_options = pl_tablex.union({ to = emails_to_send }, base_options)
-    local ok, err      = self.mailer:send(send_options)
+  if next(emails_to_send) == nil then
+    res.code = 400
+    return res
+  end
 
-    -- iterate over sent emails and record response
-    for _, email in pairs(emails_to_send) do
-      if not ok then
-        -- log the full error, only return generic SEND_ERR msg
-        log(INFO, _M.LOG_PREFIX, _M.SEND_ERR .. ": " .. email .. ": " .. err)
-        error.emails[email] = _M.SEND_ERR
-        error.count = error.count + 1
-      else
-        sent.emails[email] = true
-        sent.count = sent.count + 1
-      end
+  -- send the batch of emails (single send)
+  local send_options = pl_tablex.union({ to = emails_to_send }, base_options)
+  local ok, err      = self.mailer:send(send_options)
+
+  -- iterate over sent emails and record response
+  for _, email in pairs(emails_to_send) do
+    if not ok then
+      -- log the full error, only return generic SEND_ERR msg
+      log(INFO, _M.LOG_PREFIX, _M.SEND_ERR .. ": " .. email .. ": " .. err)
+      error.emails[email] = _M.SEND_ERR
+      error.count = error.count + 1
+    else
+      sent.emails[email] = true
+      sent.count = sent.count + 1
     end
+  end
+
+  return res
+end
+
+function _M:init_email_res()
+  local res = {
+    sent  = {emails = {}, count = 0},
+    error = {emails = {}, count = 0},
+  }
+
+  -- if smtp is mocked, attach flag to response
+  if self.smtp_mock then
+    res.smtp_mock = true
   end
 
   return res

@@ -31,10 +31,12 @@ portal_api_error_log = logs/error.log
 portal_auto_approve = off
 portal_auth = NONE
 portal_auth_conf = NONE
+portal_token_exp = 21600
 
 portal_invite_email = true
 portal_access_request_email = true
 portal_approved_email = true
+portal_reset_email = true
 
 portal_smtp_host = localhost
 portal_smtp_port = 25
@@ -136,4 +138,5 @@ feature_conf_path = NONE
 
 smtp = off
 smtp_admin_emails = NONE
+smtp_mock = off
 ]]

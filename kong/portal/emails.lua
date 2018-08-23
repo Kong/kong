@@ -64,6 +64,26 @@ local base_conf = {
       </p>
     ]],
   },
+
+  portal_reset_email = {
+    name = "Password Reset",
+    required_conf_keys = {
+      "portal_emails_from",
+      "portal_emails_reply_to",
+      "portal_gui_url",
+    },
+    subject = "Password Reset Instructions for Developer Portal (%s)",
+    html = [[
+      <p>Hello Developer,</p>
+      <p>
+        Please click the link below to reset your Developer Portal password.
+      </p>
+      </p>
+        <a href="%s/reset-password?token=%s">%s/reset?token=%s</a>
+      </p>
+    ]],
+  }
+
 }
 
 
@@ -71,7 +91,6 @@ function _M.new(conf)
   conf = conf or {}
 
   local enabled = conf.smtp
-
   local client, err = smtp_client.new({
     host = conf.portal_smtp_host,                  -- default localhost
     port = conf.portal_smtp_port,                  -- default 25
@@ -84,7 +103,7 @@ function _M.new(conf)
     timeout_connect = conf.portal_smtp_timeout_connect, -- default 60000 (ms)
     timeout_send = conf.portal_smtp_timeout_send,  -- default 60000 (ms)
     timeout_read  = conf.portal_smtp_timeout_read, -- default 60000 (ms)
-  })
+  }, conf.smtp_mock)
 
   if err then
     log(INFO, _M.LOG_PREFIX, "unable to initialize smtp client: " .. err)
@@ -102,14 +121,9 @@ end
 
 
 function _M:invite(recipients)
-  if not self.enabled then
-    return
-  end
-
-  local conf = self.conf.portal_invite_email
-  local ok, err = self.client:check_conf(conf)
-  if not ok then
-    return nil, err
+  local conf, err = smtp_client.check_conf(self, "portal_invite_email")
+  if not conf then
+    return nil, {message = err, code = 501}
   end
 
   local options = {
@@ -126,19 +140,14 @@ function _M:invite(recipients)
     res = self.client:send({recipient}, options, res)
   end
 
-  return res
+  return smtp_client.handle_res(res)
 end
 
 
 function _M:access_request(developer_email, developer_name)
-  if not self.enabled then
-    return
-  end
-
-  local conf = self.conf.portal_access_request_email
-  local ok, err = self.client:check_conf(conf)
-  if not ok then
-    return nil, err
+  local conf, err = smtp_client.check_conf(self, "portal_access_request_email")
+  if not conf then
+    return nil, {message = err, code = 501}
   end
 
   local options = {
@@ -149,19 +158,15 @@ function _M:access_request(developer_email, developer_name)
                                   conf.admin_gui_url, conf.admin_gui_url),
   }
 
-  return self.client:send(conf.smtp_admin_emails, options)
+  local res = self.client:send(conf.smtp_admin_emails, options)
+  return smtp_client.handle_res(res)
 end
 
 
 function _M:approved(recipient)
-  if not self.enabled then
-    return
-  end
-
-  local conf = self.conf.portal_approved_email
-  local ok, err = self.client:check_conf(conf)
-  if not ok then
-    return nil, err
+  local conf, err = smtp_client.check_conf(self, "portal_approved_email")
+  if not conf then
+    return nil, {message = err, code = 501}
   end
 
   local options = {
@@ -171,7 +176,25 @@ function _M:approved(recipient)
     html = fmt(conf.html, conf.portal_gui_url, conf.portal_gui_url, conf.portal_gui_url),
   }
 
-  return self.client:send({recipient}, options)
+  local res = self.client:send({recipient}, options)
+  return smtp_client.handle_res(res)
+end
+
+function _M:password_reset(recipient, token)
+  local conf, err = smtp_client.check_conf(self, "portal_reset_email")
+  if not conf then
+    return nil, {message = err, code = 501}
+  end
+
+  local options = {
+    from = conf.portal_emails_from,
+    reply_to = conf.portal_emails_reply_to,
+    subject = fmt(conf.subject, conf.portal_gui_url),
+    html = fmt(conf.html, conf.portal_gui_url, token, conf.portal_gui_url, token),
+  }
+
+  local res = self.client:send({recipient}, options)
+  return smtp_client.handle_res(res)
 end
 
 

@@ -19,6 +19,15 @@ _M.CONSUMERS = {
 }
 
 
+_M.TOKENS = {
+  STATUS = {
+    PENDING = 1,
+    CONSUMED = 2,
+    INVALIDATED = 3,
+  }
+}
+
+
 for k, v in pairs(_M.CONSUMERS.STATUS) do
   _M.CONSUMERS.STATUS_LABELS[v] = k
 end

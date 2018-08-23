@@ -70,6 +70,9 @@ build = {
     ["kong.enterprise_edition.internal_statsd"] = "kong/enterprise_edition/internal_statsd.lua",
     ["kong.enterprise_edition.crud_helpers"] = "kong/enterprise_edition/crud_helpers.lua",
     ["kong.enterprise_edition.smtp_client"] = "kong/enterprise_edition/smtp_client.lua",
+    ["kong.enterprise_edition.jwt"] = "kong/enterprise_edition/jwt.lua",
+    ["kong.enterprise_edition.dao.schemas.portal_reset_secrets"] = "kong/enterprise_edition/dao/schemas/portal_reset_secrets.lua",
+    ["kong.enterprise_edition.dao.schemas.token_statuses"] = "kong/enterprise_edition/dao/schemas/token_statuses.lua",
 
     ["kong.templates.nginx"] = "kong/templates/nginx.lua",
     ["kong.templates.nginx_kong"] = "kong/templates/nginx_kong.lua",

@@ -82,32 +82,62 @@ describe("ee smtp client", function()
   end)
 
   describe("check_conf", function()
-    local client
+    it("returns nil, err if smtp is disabled", function()
+      local strat = {
+        enabled = false,
+        conf = {
+          my_email = {
+            name = "My Email",
+          },
+        },
+      }
 
-    before_each(function()
-      client = smtp_client.new()
+      local conf, err = smtp_client.check_conf(strat, "my_email")
+      assert.is_nil(conf)
+      assert.same("smtp is disabled", err)
+    end)
+
+    it("returns nil, err if email is disabled", function()
+      local strat = {
+        enabled = true,
+        conf = {
+          my_email = nil,
+        },
+      }
+
+      local conf, err = smtp_client.check_conf(strat, "my_email")
+      assert.is_nil(conf)
+      assert.same("my_email is disabled", err)
     end)
 
     it("returns nil, err if email is missing a required config", function()
-      local conf = {
-        name = "my_email",
+      local strat = {
         enabled = true,
-        missing_conf = "this_key, that_key"
+        conf = {
+          my_email = {
+            name = "My Email",
+            missing_conf = "this_key, that_key"
+          },
+        },
       }
 
-      local ok, err = client:check_conf(conf)
-      assert.is_nil(ok)
+      local conf, err = smtp_client.check_conf(strat, "my_email")
+      assert.is_nil(conf)
       assert.same("missing conf for my_email: this_key, that_key", err)
     end)
 
-    it("returns true if email is ok to send", function()
-      local conf = {
-        name = "my_email",
-        enabled = true,
-      }
+    it("returns conf if email is ok to send", function()
+        local strat = {
+          enabled = true,
+          conf = {
+            my_email = {
+              name = "My Email",
+            },
+          },
+        }
 
-      local ok, err = client:check_conf(conf)
-      assert.is_true(ok)
+      local conf, err = smtp_client.check_conf(strat, "my_email")
+      assert.same(strat.conf.my_email, conf)
       assert.is_nil(err)
     end)
   end)
@@ -116,13 +146,8 @@ describe("ee smtp client", function()
     local client, options
 
     before_each(function()
-      client = smtp_client.new()
-
-      client.mailer = {
-        send = spy.new(function()
-          return true
-        end)
-      }
+      client = smtp_client.new({}, true)
+      spy.on(client.mailer, "send")
 
       options = {
         some_option = true,
@@ -132,6 +157,7 @@ describe("ee smtp client", function()
 
     it("should handle a valid email", function()
       local expected_res = {
+        smtp_mock = true,
         sent = {
           emails = {
             ["dev@something.com"] = true,
@@ -151,6 +177,8 @@ describe("ee smtp client", function()
 
     it("should handle an invalid email", function()
       local expected_res = {
+        smtp_mock = true,
+        code = 400,
         sent = {
           emails = {},
           count = 0,
@@ -179,11 +207,13 @@ describe("ee smtp client", function()
 
       local res = client:send(to_send, options)
       assert.spy(client.mailer.send).was_not.called()
-      assert.same(res, expected_res)
+      assert.same(expected_res, res)
     end)
 
     it("should skip duplicate and invalid emails", function()
       local expected_res = {
+        smtp_mock = true,
+        code = 400,
         sent = {
           emails = {
             ["dev2@something.com"] = true,
@@ -226,7 +256,81 @@ describe("ee smtp client", function()
       client:send({"dev2@something.com"}, options, res)
       assert.spy(client.mailer.send).was_not.called(3)
 
-      assert.same(res, expected_res)
+      assert.same(expected_res, res)
+    end)
+  end)
+
+  describe("handle_res", function()
+    it("should return res if atleast one email was sent", function()
+      local email_res = {
+        sent = {
+          count = 1,
+        },
+        error = {
+          count = 5,
+        }
+      }
+
+      local res, err = smtp_client.handle_res(email_res)
+      assert.same(email_res, res)
+      assert.is_nil(err)
+    end)
+
+    it("should remove any error code if atleast one email was sent", function()
+      local email_res = {
+        code = 400,
+        sent = {
+          count = 1,
+        },
+        error = {
+          count = 5,
+        }
+      }
+
+      local res, err = smtp_client.handle_res(email_res)
+      assert.same(email_res, res)
+      assert.is_nil(err)
+    end)
+
+    it("should return nil, error with code if no emails are sent and no code present", function()
+      local email_res = {
+        sent = {
+          count = 0,
+        },
+        error = {
+          count = 5,
+        }
+      }
+
+      local expected_err = {
+        message = email_res,
+        code = 500
+      }
+
+      local res, err = smtp_client.handle_res(email_res)
+      assert.is_nil(res)
+      assert.same(expected_err, err)
+    end)
+
+    it("should return the error code if preset", function()
+      local email_res = {
+        code = 400,
+        sent = {
+          count = 0,
+        },
+        error = {
+          count = 5,
+        }
+      }
+
+      local expected_err = {
+        message = email_res,
+        code = 400
+      }
+
+      local res, err = smtp_client.handle_res(email_res)
+      assert.is_nil(res)
+      assert.same(expected_err, err)
     end)
   end)
 end)

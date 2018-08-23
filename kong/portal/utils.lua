@@ -1,4 +1,7 @@
-local enums       = require "kong.enterprise_edition.dao.enums"
+local enums  = require "kong.enterprise_edition.dao.enums"
+local ee_jwt = require "kong.enterprise_edition.jwt"
+local time   = ngx.time
+
 
 local _M = {}
 
@@ -75,12 +78,40 @@ _M.validate_email = function(str)
   return true
 end
 
+
 _M.get_developer_status = function(consumer)
   local status = consumer.status
   return {
     status = status,
-    label  = enums.CONSUMERS.STATUS_LABELS[status]
+    label  = enums.CONSUMERS.STATUS_LABELS[status],
   }
+end
+
+
+_M.validate_reset_jwt = function(token_param)
+  -- Decode jwt
+  local jwt, err = ee_jwt.parse_JWT(token_param)
+  if err then
+    return nil, ee_jwt.INVALID_JWT
+  end
+
+  if not jwt.header or jwt.header.typ ~= "JWT" or jwt.header.alg ~= "HS256" then
+    return nil, ee_jwt.INVALID_JWT
+  end
+
+  if not jwt.claims or not jwt.claims.exp then
+    return nil, ee_jwt.INVALID_JWT
+  end
+
+  if jwt.claims.exp <= time() then
+    return nil, ee_jwt.EXPIRED_JWT
+  end
+
+  if not jwt.claims.id then
+    return nil, ee_jwt.INVALID_JWT
+  end
+
+  return jwt
 end
 
 
