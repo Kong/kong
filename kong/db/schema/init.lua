@@ -1213,8 +1213,7 @@ function Schema:process_auto_fields(input, context, nulls)
   local now_s  = ngx_time()
   local now_ms = ngx_now()
   local read_before_write = false
-  local setting_cache_key = 0
-  local cache_key_len = self.cache_key and #self.cache_key
+  local cache_key_modified = false
 
   for key, field in self:each_field(input) do
 
@@ -1250,8 +1249,8 @@ function Schema:process_auto_fields(input, context, nulls)
     end
 
     if output[key] ~= nil then
-      if cache_key_len and self.cache_key_set[key] then
-        setting_cache_key = setting_cache_key + 1
+      if self.cache_key_set and self.cache_key_set[key] then
+        cache_key_modified = true
       end
     end
 
@@ -1260,19 +1259,17 @@ function Schema:process_auto_fields(input, context, nulls)
     end
   end
 
-  if context == "update" then
+  if context == "update" and (
     -- If a partial update does not provide the subschema key,
     -- we need to do a read-before-write to get it and be
     -- able to properly validate the entity.
-    if self.subschema_key and input[self.subschema_key] == nil then
-      read_before_write = true
-
-    -- If we're partially resetting the value of a composite cache key,
+    (self.subschema_key and input[self.subschema_key] == nil)
+    -- If we're resetting the value of a composite cache key,
     -- we to do a read-before-write to get the rest of the cache key
     -- and be able to properly update it.
-    elseif setting_cache_key > 0 and cache_key_len ~= setting_cache_key then
-      read_before_write = true
-    end
+    or cache_key_modified)
+  then
+    read_before_write = true
   end
 
   return output, nil, read_before_write

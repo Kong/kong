@@ -156,18 +156,19 @@ local function check_update(self, key, entity, options, name)
     self.schema:process_auto_fields(entity, "update")
   if not entity_to_update then
     local err_t = self.errors:schema_violation(err)
-    return nil, tostring(err_t), err_t
+    return nil, nil, tostring(err_t), err_t
   end
 
+  local rbw_entity
   if read_before_write then
-    local rbw_entity, err, err_t
+    local err, err_t
     if name then
        rbw_entity, err, err_t = self.strategy:select_by_field(name, key, options)
     else
        rbw_entity, err, err_t = self.strategy:select(key, options)
     end
     if not rbw_entity then
-      return nil, err, err_t
+      return nil, nil, err, err_t
     end
 
     entity_to_update = self.schema:merge_values(entity_to_update, rbw_entity)
@@ -176,14 +177,14 @@ local function check_update(self, key, entity, options, name)
   local ok, errors = self.schema:validate_update(entity_to_update)
   if not ok then
     local err_t = self.errors:schema_violation(errors)
-    return nil, tostring(err_t), err_t
+    return nil, nil, tostring(err_t), err_t
   end
 
   if options ~= nil then
     ok, errors = validate_options_value(options, self.schema, "update")
     if not ok then
       local err_t = self.errors:invalid_options(errors)
-      return nil, tostring(err_t), err_t
+      return nil, nil, tostring(err_t), err_t
     end
   end
 
@@ -191,7 +192,7 @@ local function check_update(self, key, entity, options, name)
     entity_to_update.cache_key = self:cache_key(entity_to_update)
   end
 
-  return entity_to_update
+  return entity_to_update, rbw_entity
 end
 
 
@@ -381,8 +382,8 @@ local function generate_foreign_key_methods(schema)
           return nil, tostring(err_t), err_t
         end
 
-        local entity_to_update, err, err_t = check_update(self, unique_value,
-                                                          entity, options, name)
+        local entity_to_update, rbw_entity, err, err_t = check_update(self, unique_value,
+                                                                      entity, options, name)
         if not entity_to_update then
           return nil, err, err_t
         end
@@ -398,6 +399,9 @@ local function generate_foreign_key_methods(schema)
           return nil, err, err_t
         end
 
+        if rbw_entity then
+          self:post_crud_event("update", rbw_entity)
+        end
         self:post_crud_event("update", row)
 
         return row
@@ -732,8 +736,8 @@ function DAO:update(primary_key, entity, options)
     return nil, tostring(err_t), err_t
   end
 
-  local entity_to_update, err, err_t = check_update(self, primary_key, entity,
-                                                    options)
+  local entity_to_update, rbw_entity, err, err_t = check_update(self, primary_key, entity,
+                                                                options)
   if not entity_to_update then
     return nil, err, err_t
   end
@@ -748,6 +752,9 @@ function DAO:update(primary_key, entity, options)
     return nil, err, err_t
   end
 
+  if rbw_entity then
+    self:post_crud_event("update", rbw_entity)
+  end
   self:post_crud_event("update", row)
 
   return row
