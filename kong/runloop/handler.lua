@@ -29,7 +29,6 @@ local fmt         = string.format
 local sort        = table.sort
 local ngx         = ngx
 local log         = ngx.log
-local null        = ngx.null
 local ngx_now     = ngx.now
 local update_time = ngx.update_time
 local unpack      = unpack
@@ -109,7 +108,7 @@ local function build_router(db, version)
       service = service,
     }
 
-    if route.hosts ~= null then
+    if route.hosts then
       -- TODO: headers should probably be moved to route
       r.headers = {
         host = route.hosts,
@@ -213,15 +212,15 @@ return {
                                              data.operation)
 
         -- crud:routes
-        local ok, err = worker_events.post_local("crud", entity_channel, data)
-        if not ok then
+        local _, err = worker_events.post_local("crud", entity_channel, data)
+        if err then
           log(ngx.ERR, "[events] could not broadcast crud event: ", err)
           return
         end
 
         -- crud:routes:create
-        ok, err = worker_events.post_local("crud", entity_operation_channel, data)
-        if not ok then
+        _, err = worker_events.post_local("crud", entity_operation_channel, data)
+        if err then
           log(ngx.ERR, "[events] could not broadcast crud event: ", err)
           return
         end
@@ -272,16 +271,12 @@ return {
         log(DEBUG, "[events] SSL cert updated, invalidating cached certificates")
         local certificate = data.entity
 
-        local rows, err = db.snis:for_certificate({
-          id = certificate.id
-        })
-        if not rows then
-          log(ERR, "[events] could not find associated snis for certificate: ",
-                   err)
-        end
-
-        for i = 1, #rows do
-          local sn = rows[i]
+        for sn, err in db.snis:each_for_certificate({ id = certificate.id }) do
+          if err then
+            log(ERR, "[events] could not find associated snis for certificate: ",
+                     err)
+            break
+          end
 
           cache:invalidate("pem_ssl_certificates:"    .. sn.name)
           cache:invalidate("parsed_ssl_certificates:" .. sn.name)
@@ -544,7 +539,7 @@ return {
       -- TODO: this is probably not optimal
       do
         local retries = service.retries or api.retries
-        if retries ~= null then
+        if retries then
           balancer_data.retries = retries
 
         else
@@ -553,7 +548,7 @@ return {
 
         local connect_timeout = service.connect_timeout or
                                 api.upstream_connect_timeout
-        if connect_timeout ~= null then
+        if connect_timeout then
           balancer_data.connect_timeout = connect_timeout
 
         else
@@ -562,7 +557,7 @@ return {
 
         local send_timeout = service.write_timeout or
                              api.upstream_send_timeout
-        if send_timeout ~= null then
+        if send_timeout then
           balancer_data.send_timeout = send_timeout
 
         else
@@ -571,7 +566,7 @@ return {
 
         local read_timeout = service.read_timeout or
                              api.upstream_read_timeout
-        if read_timeout ~= null then
+        if read_timeout then
           balancer_data.read_timeout = read_timeout
 
         else

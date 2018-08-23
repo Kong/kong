@@ -1,35 +1,98 @@
 # Table of Contents
 
-- [Scheduled](#scheduled)
-- [Released](#released)
-    - [0.14.0](#0140---20180705)
-    - [0.13.1](#0131---20180423)
-    - [0.13.0](#0130---20180322)
-    - [0.12.3](#0123---20180312)
-    - [0.12.2](#0122---20180228)
-    - [0.12.1](#0121---20180118)
-    - [0.12.0](#0120---20180116)
-    - [0.11.2](#0112---20171129)
-    - [0.11.1](#0111---20171024)
-    - [0.10.4](#0104---20171024)
-    - [0.11.0](#0110---20170816)
-    - [0.10.3](#0103---20170524)
-    - [0.10.2](#0102---20170501)
-    - [0.10.1](#0101---20170327)
-    - [0.10.0](#0100---20170307)
-    - [0.9.9 and prior](#099---20170202)
+- [0.14.1](#0141)
+- [0.14.0](#0140---20180705)
+- [0.13.1](#0131---20180423)
+- [0.13.0](#0130---20180322)
+- [0.12.3](#0123---20180312)
+- [0.12.2](#0122---20180228)
+- [0.12.1](#0121---20180118)
+- [0.12.0](#0120---20180116)
+- [0.11.2](#0112---20171129)
+- [0.11.1](#0111---20171024)
+- [0.10.4](#0104---20171024)
+- [0.11.0](#0110---20170816)
+- [0.10.3](#0103---20170524)
+- [0.10.2](#0102---20170501)
+- [0.10.1](#0101---20170327)
+- [0.10.0](#0100---20170307)
+- [0.9.9 and prior](#099---20170202)
 
-# Scheduled
+## [0.14.1]
 
-This section describes upcoming releases that have a release date, along with
-a detailed changeset of their content.
+> Released on: 2018/08/21
 
-*No scheduled releases yet.*
+### Additions
 
-# Released
+##### Plugins
 
-This section describes publicly available releases and a detailed changeset of
-their content.
+- jwt: Support for tokens signed with HS384 and HS512.
+  Thanks [@kepkin](https://github.com/kepkin) for the patch.
+  [#3589](https://github.com/Kong/kong/pull/3589)
+- acl: Add a new `hide_groups_header` configuration option. If enabled, this
+  option prevents the plugin from injecting the `X-Consumer-Groups` header
+  into the upstream request.
+  Thanks [@jeremyjpj0916](https://github.com/jeremyjpj0916) for the patch!
+  [#3703](https://github.com/Kong/kong/pull/3703)
+
+### Fixes
+
+##### Core
+
+- Prevent some plugins from breaking in subtle ways when manipulating some
+  entities and their attributes. An example of such breaking behavior could be
+  observed when Kong was wrongly injecting `X-Consumer-Username: userdata:
+  NULL` in upstream requests headers, instead of not injecting this header at
+  all.
+  [#3714](https://github.com/Kong/kong/pull/3714)
+- Fix an issue which, in some cases, prevented the use of Kong with Cassandra
+  in environments where DNS load-balancing is in effect for contact points
+  provided as hostnames (e.g. Kubernetes with `cassandra_contact_points =
+  cassandra`).
+  [#3693](https://github.com/Kong/kong/pull/3693)
+- Fix an issue which prevented the use of unix domain sockets in some logging
+  plugins, and custom plugins making use of such sockets.
+  Thanks [@rucciva](https://github.com/rucciva) for the patch.
+  [#3633](https://github.com/Kong/kong/pull/3633)
+- Avoid logging false-negative error messages related to worker events.
+  [#3692](https://github.com/Kong/kong/pull/3692)
+
+##### CLI
+
+- Database connectivity errors are properly prefixed with the database name
+  again (e.g. `[postgres]`).
+  [#3648](https://github.com/Kong/kong/pull/3648)
+
+##### Plugins
+
+- zipkin
+  - Allow usage of the plugin with the deprecated "API" entity, and introduce
+    a new `kong.api` tag.
+    [kong-plugin-zipkin/commit/4a645e9](https://github.com/Kong/kong-plugin-zipkin/commit/4a645e940e560f2e50567e0360b5df3b38f74853)
+  - Properly report the `kong.credential` tag.
+    [kong-plugin-zipkin/commit/c627c36](https://github.com/Kong/kong-plugin-zipkin/commit/c627c36402c9a14cc48011baa773f4ee08efafcf)
+  - Ensure the plugin does not throw errors when no Route was matched.
+    [kong-plugin-zipkin#19](https://github.com/Kong/kong-plugin-zipkin/issues/19)
+- basic-auth: Passwords with whitespaces are not trimmed anymore.
+  Thanks [@aloisbarreras](https://github.com/aloisbarreras) for the patch.
+  [#3650](https://github.com/Kong/kong/pull/3650)
+- hmac-auth: Ensure backwards compatibility for clients generating signatures
+  without the request's querystring, as is the case for Kong versions prior to
+  0.14.0, which broke this behavior. Users of this plugin on previous versions
+  of Kong can now safely upgrade to the 0.14 family.
+  Thanks [@mlehner616](https://github.com/mlehner616) for the patch!
+  [#3699](https://github.com/Kong/kong/pull/3699)
+- ldap-auth
+    - Set the WWW-Authenticate header authentication scheme accordingly with
+      the `conf.header_type` property, which allows browsers to show the
+      authentication popup automatically. Thanks
+      [@francois-maillard](https://github.com/francois-maillard) for the patch.
+      [#3656](https://github.com/Kong/kong/pull/3656)
+    - Invalid authentication attempts do not block subsequent valid attempts
+      anymore.
+      [#3677](https://github.com/Kong/kong/pull/3677)
+
+[Back to TOC](#table-of-contents)
 
 ## [0.14.0] - 2018/07/05
 
@@ -2783,6 +2846,7 @@ First version running with Cassandra.
 
 [Back to TOC](#table-of-contents)
 
+[0.14.1]: https://github.com/Kong/kong/compare/0.14.0...master
 [0.14.0]: https://github.com/Kong/kong/compare/0.13.1...0.14.0
 [0.13.1]: https://github.com/Kong/kong/compare/0.13.0...0.13.1
 [0.13.0]: https://github.com/Kong/kong/compare/0.12.3...0.13.0

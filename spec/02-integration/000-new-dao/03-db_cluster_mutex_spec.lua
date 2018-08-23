@@ -1,7 +1,7 @@
 local helpers = require "spec.helpers"
 
 
-for _, strategy in helpers.each_strategy("cassandra") do
+for _, strategy in helpers.each_strategy({ "cassandra" }) do
   describe("kong.db [#" .. strategy .. "]", function()
     local db
 

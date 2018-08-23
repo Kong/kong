@@ -23,6 +23,7 @@ local pl_utils = require "pl.utils"
 local pl_path = require "pl.path"
 local pl_file = require "pl.file"
 local pl_dir = require "pl.dir"
+local pl_Set = require "pl.Set"
 local cjson = require "cjson.safe"
 local utils = require "kong.tools.utils"
 local http = require "resty.http"
@@ -93,6 +94,7 @@ end
 ---------------
 local conf = assert(conf_loader(TEST_CONF_PATH))
 local db = assert(DB.new(conf))
+assert(db:init_connector())
 local dao = assert(DAOFactory.new(conf, db))
 db.old_dao = dao
 local blueprints = assert(Blueprints.new(dao, db))
@@ -101,25 +103,33 @@ local blueprints = assert(Blueprints.new(dao, db))
 local each_strategy
 
 do
-    local default_strategies = { "postgres", "cassandra" }
+  local default_strategies = {"postgres", "cassandra"}
+  local env_var = os.getenv("KONG_DATABASE")
+  if env_var then
+    default_strategies = { env_var }
+  end
+  local available_strategies = pl_Set(default_strategies)
 
-    local function iter(strategies, i)
-      i = i + 1
-      local strategy = strategies[i]
-      if strategy then
-        return i, strategy
-      end
+  local function iter(strategies, i)
+    i = i + 1
+    local strategy = strategies[i]
+    if strategy then
+      return i, strategy
+    end
+  end
+
+  each_strategy = function(strategies)
+    if not strategies then
+      return iter, default_strategies, 0
     end
 
-    each_strategy = function(...)
-      local args = { ... }
-      local strategies = default_strategies
-      if #args > 0 then
-        strategies = args
+    for i = #strategies, 1, -1 do
+      if not available_strategies[strategies[i]] then
+        table.remove(strategies, i)
       end
-
-      return iter, strategies, 0
     end
+    return iter, strategies, 0
+  end
 end
 
 local function truncate_tables(db, dao, tables)

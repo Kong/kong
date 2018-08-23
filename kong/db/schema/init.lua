@@ -1055,9 +1055,10 @@ end
 -- @param input The table containing data to be processed.
 -- @param context a string describing the CRUD context:
 -- valid values are: "insert", "update"
+-- @param nulls boolean: return nulls as explicit ngx.null values
 -- @return A new table, with the auto fields containing
 -- appropriate updated values.
-function Schema:process_auto_fields(input, context)
+function Schema:process_auto_fields(input, context, nulls)
   local output = tablex.deepcopy(input)
   local now_s  = ngx_time()
   local now_ms = ngx_now()
@@ -1100,6 +1101,10 @@ function Schema:process_auto_fields(input, context)
 
     elseif context ~= "update" then
       handle_missing_field(key, field, output)
+    end
+
+    if context == "select" and output[key] == null and not nulls then
+      output[key] = nil
     end
   end
 

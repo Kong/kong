@@ -221,6 +221,44 @@ for _, strategy in helpers.each_strategy() do
           anonymous = anonymous.id,
         }
       }
+          
+      local route9 = bp.routes:insert {
+        hosts = { "acl9.com" },
+      }
+
+      bp.plugins:insert {
+        name     = "acl",
+        route_id = route9.id,
+        config   = {
+          whitelist = "admin",
+          hide_groups_header = true    
+        }
+      }
+
+      bp.plugins:insert {
+        name     = "key-auth",
+        route_id = route9.id,
+        config   = {}
+      }
+          
+      local route10 = bp.routes:insert {
+        hosts = { "acl10.com" },
+      }
+
+      bp.plugins:insert {
+        name     = "acl",
+        route_id = route10.id,
+        config   = {
+          whitelist = "admin",
+          hide_groups_header = false    
+        }
+      }
+
+      bp.plugins:insert {
+        name     = "key-auth",
+        route_id = route10.id,
+        config   = {}
+      }
 
       assert(helpers.start_kong({
         database   = strategy,
@@ -271,7 +309,6 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
 
-
     describe("Simple lists", function()
       it("should fail when an authentication plugin is missing", function()
         local res = assert(proxy_client:send {
@@ -310,7 +347,31 @@ for _, strategy in helpers.each_strategy() do
         local body = cjson.decode(assert.res_status(200, res))
         assert.equal("admin", body.headers["x-consumer-groups"])
       end)
-
+          
+      it("should not send x-consumer-groups header when hide_groups_header flag true", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/request?apikey=apikey124",
+          headers = {
+            ["Host"] = "acl9.com"
+          }
+        })
+        local body = cjson.decode(assert.res_status(200, res))
+        assert.equal(nil, body.headers["x-consumer-groups"])
+      end)
+          
+      it("should send x-consumer-groups header when hide_groups_header flag false", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/request?apikey=apikey124",
+          headers = {
+            ["Host"] = "acl10.com"
+          }
+        })
+        local body = cjson.decode(assert.res_status(200, res))
+        assert.equal("admin", body.headers["x-consumer-groups"])
+      end)
+          
       it("should work when not in blacklist", function()
         local res = assert(proxy_client:send {
           method  = "GET",

@@ -7,7 +7,7 @@ local fmt     = string.format
 local md5     = ngx.md5
 
 
-local function cache_key(conf, username)
+local function cache_key(conf, username, password)
   local prefix = md5(fmt("%s:%u:%s:%s:%u",
     lower(conf.ldap_host),
     conf.ldap_port,
@@ -16,7 +16,7 @@ local function cache_key(conf, username)
     conf.cache_ttl
   ))
 
-  return fmt("ldap_auth_cache:%s:%s", prefix, username)
+  return fmt("ldap_auth_cache:%s:%s:%s", prefix, username, password)
 end
 
 local ldap_host_aws = "ec2-54-172-82-117.compute-1.amazonaws.com"
@@ -378,7 +378,7 @@ describe("Plugin: ldap-auth (access)", function()
     assert.response(r).has.status(200)
 
     -- Check that cache is populated
-    local key = cache_key(plugin2.config, "einstein")
+    local key = cache_key(plugin2.config, "einstein", "password")
 
     helpers.wait_until(function()
       local res = assert(client_admin:send {

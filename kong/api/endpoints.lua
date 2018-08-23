@@ -10,7 +10,6 @@ local unescape_uri = ngx.unescape_uri
 local tonumber     = tonumber
 local tostring     = tostring
 local null         = ngx.null
-local next         = next
 local type         = type
 local fmt          = string.format
 
@@ -54,7 +53,9 @@ local function extract_options(args, schema, context)
     return
   end
 
-  local options = {}
+  local options = {
+    nulls = true
+  }
 
   if schema.ttl == true and args.ttl ~= nil and (context == "insert" or
                                                  context == "update" or
@@ -63,9 +64,7 @@ local function extract_options(args, schema, context)
     args.ttl = nil
   end
 
-  if next(options) then
-    return options
-  end
+  return options
 end
 
 
@@ -147,11 +146,10 @@ local function get_collection_endpoint(schema, foreign_schema, foreign_field_nam
       return handle_error(db[schema.name].errors:invalid_size(err))
     end
 
+    local options = extract_options(self.args.uri, schema, "select")
     local data, _, err_t, offset = db[schema.name]:page(size,
                                                         self.args.uri.offset,
-                                                        extract_options(self.args.uri,
-                                                                        schema,
-                                                                        "select"))
+                                                        options)
     if err_t then
       return handle_error(err_t)
     end
@@ -180,12 +178,11 @@ local function get_collection_endpoint(schema, foreign_schema, foreign_field_nam
     end
 
     local dao = db[schema.name]
-    local data, _, err_t, offset = dao["for_" .. foreign_field_name](dao, { id = foreign_entity.id },
-                                                                     size,
-                                                                     self.args.uri.offset,
-                                                                     extract_options(self.args.uri,
-                                                                                     schema,
-                                                                                     "select"))
+    local options = extract_options(self.args.uri, schema, "select")
+    local method = "page_for_" .. foreign_field_name
+    local data, _, err_t, offset = dao[method](dao, { id = foreign_entity.id },
+                                               size, self.args.uri.offset,
+                                               options)
     if err_t then
       return handle_error(err_t)
     end
@@ -233,9 +230,8 @@ local function post_collection_endpoint(schema, foreign_schema, foreign_field_na
       self.args.post[foreign_field_name] = { id = foreign_entity.id }
     end
 
-    local entity, _, err_t = db[schema.name]:insert(self.args.post, extract_options(self.args.post,
-                                                                                    schema,
-                                                                                    "insert"))
+    local options = extract_options(self.args.post, schema, "insert")
+    local entity, _, err_t = db[schema.name]:insert(self.args.post, options)
     if err_t then
       return handle_error(err_t)
     end
@@ -272,9 +268,8 @@ local function get_entity_endpoint(schema, foreign_schema, foreign_field_name)
         return helpers.responses.send_HTTP_NOT_FOUND()
       end
 
-      entity, _, err_t = db[foreign_schema.name]:select(id, extract_options(self.args.uri,
-                                                                            foreign_schema,
-                                                                            "select"))
+      local options = extract_options(self.args.uri, foreign_schema, "select")
+      entity, _, err_t = db[foreign_schema.name]:select(id, options)
       if err_t then
         return handle_error(err_t)
       end
@@ -327,9 +322,8 @@ local function put_entity_endpoint(schema, foreign_schema, foreign_field_name)
       return helpers.responses.send_HTTP_NOT_FOUND()
     end
 
-    entity, _, err_t = db[foreign_schema.name]:upsert(id, self.args.post, extract_options(self.args.post,
-                                                                                          foreign_schema,
-                                                                                          "upsert"))
+    local options = extract_options(self.args.post, foreign_schema, "upsert")
+    entity, _, err_t = db[foreign_schema.name]:upsert(id, self.args.post, options)
     if err_t then
       return handle_error(err_t)
     end
@@ -381,10 +375,8 @@ local function patch_entity_endpoint(schema, foreign_schema, foreign_field_name)
       return helpers.responses.send_HTTP_NOT_FOUND()
     end
 
-    entity, _, err_t = db[foreign_schema.name]:update(id, self.args.post,
-                                                      extract_options(self.args.post,
-                                                                      foreign_schema,
-                                                                      "update"))
+    local options = extract_options(self.args.post, foreign_schema, "update")
+    entity, _, err_t = db[foreign_schema.name]:update(id, self.args.post, options)
     if err_t then
       return handle_error(err_t)
     end

@@ -69,8 +69,10 @@ function ACLHandler:access(conf)
     end
 
     if to_be_blocked == false then
-      -- we're allowed, so go and convert 'false' to the header value
-      to_be_blocked = table_concat(consumer_groups, ", ")
+      -- we're allowed, convert 'false' to the header value, if needed
+      -- if not needed, set dummy value to save mem for potential long strings
+      to_be_blocked = conf.hide_groups_header and "" 
+                      or table_concat(consumer_groups, ", ")
     end
 
     -- update cache
@@ -81,7 +83,9 @@ function ACLHandler:access(conf)
     return responses.send_HTTP_FORBIDDEN("You cannot consume this service")
   end
 
-  set_header(constants.HEADERS.CONSUMER_GROUPS, to_be_blocked)
+  if not conf.hide_groups_header then
+    set_header(constants.HEADERS.CONSUMER_GROUPS, to_be_blocked)
+  end
 end
 
 return ACLHandler

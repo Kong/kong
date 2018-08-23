@@ -63,7 +63,7 @@ describe("kong start/stop", function()
       assert.matches("[debug] prefix = ", stdout, nil, true)
       assert.matches("[debug] database = ", stdout, nil, true)
     end)
-    it("prints ENV variables when detected", function()
+    it("prints ENV variables when detected #postgres", function()
       local _, _, stdout = assert(helpers.kong_exec("start --vv --conf " .. helpers.test_conf_path, {
         database = "postgres",
         admin_listen = "127.0.0.1:8001"

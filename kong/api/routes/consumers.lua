@@ -29,7 +29,8 @@ return {
         return Endpoints.handle_error(db.consumers.errors:invalid_size(err))
       end
 
-      local data, _, err_t, offset = db.consumers:page(size, self.args.uri.offset)
+      local data, _, err_t, offset = db.consumers:page(size, self.args.offset,
+                                                       { nulls = true })
       if err_t then
         return Endpoints.handle_error(err_t)
       end

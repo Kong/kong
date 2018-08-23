@@ -11,11 +11,7 @@ notifications:
 
 services:
   - redis-server
-
-branches:
-  only:
-  - master
-  - next
+  - docker
 
 addons:
   postgresql: "9.5"
@@ -29,7 +25,6 @@ env:
   global:
     - LUAROCKS=2.4.3
     - OPENSSL=1.0.2n
-    - CASSANDRA=3.9
     - OPENRESTY_BASE=1.13.6.2
     - OPENRESTY_LATEST=1.13.6.2
     - OPENRESTY=$OPENRESTY_BASE
@@ -37,46 +32,15 @@ env:
     - INSTALL_CACHE=$HOME/install-cache
     - JOBS=2
   matrix:
-    - TEST_SUITE=pdk
-    - TEST_SUITE=lint
-    - TEST_SUITE=unit
-    - TEST_SUITE=integration
-      OPENRESTY=$OPENRESTY_LATEST
-    - TEST_SUITE=plugins
-      OPENRESTY=$OPENRESTY_LATEST
-    - TEST_SUITE=integration
-      OPENRESTY=$OPENRESTY_BASE
-      CASSANDRA=2.2.12
-    - TEST_SUITE=plugins
-      OPENRESTY=$OPENRESTY_BASE
-      CASSANDRA=2.2.12
-    - TEST_SUITE=old-unit
-    - TEST_SUITE=old-integration
-      OPENRESTY=$OPENRESTY_BASE
-    - TEST_SUITE=old-plugins
-      OPENRESTY=$OPENRESTY_BASE
+    - KONG_TEST_DATABASE=postgres
+    - KONG_TEST_DATABASE=cassandra CASSANDRA=2.2
+    - KONG_TEST_DATABASE=cassandra CASSANDRA=3.9
 
 before_install:
   - source .ci/setup_env.sh
 
 install:
   - make dev
-
-jobs:
-  include:
-    - stage: deploy
-      if: tag =~ 0.
-      script: .ci/trigger-travis.sh $TRAVIS_ACCESS_TOKEN
-      env:
-        - TEST_SUITE=none
-    - stage: nightly deploy
-      if: TRAVIS_EVENT_TYPE == cron
-      script: .ci/trigger-travis.sh $TRAVIS_ACCESS_TOKEN
-      env:
-        - TEST_SUITE=none
-
-script:
-  - .ci/run_tests.sh
 
 cache:
   apt: true
@@ -85,3 +49,33 @@ cache:
     - $DOWNLOAD_CACHE
     - $INSTALL_CACHE
     - $HOME/.ccm/repository
+
+stages:
+  - lint and unit
+  - pdk tests
+  - test
+  - name: deploy
+    if: tag =~ 0. || type == cron
+
+jobs:
+  include:
+    - stage: lint and unit
+      script:
+      - luacheck -q .
+      - bin/busted -v -o gtest spec/01-unit
+      - bin/busted -v -o gtest spec-old-api/01-unit
+      env:
+        - KONG_DATABASE=none
+    - stage: pdk tests
+      script: TEST_NGINX_RANDOMIZE=1 prove -I. -j$JOBS -r t/01-pdk
+      env:
+        - KONG_DATABASE=none TEST_SUITE=pdk
+    - stage: deploy
+      install: skip
+      before_install: skip
+      script: .ci/trigger-travis.sh $TRAVIS_ACCESS_TOKEN
+      env:
+        - KONG_DATABASE=none
+
+script:
+  - .ci/run_tests.sh

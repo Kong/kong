@@ -23,24 +23,12 @@ for _, strategy in helpers.each_strategy() do
 describe("Admin API #" .. strategy, function()
   local bp
   local db
-  local dao
   local client, upstream
   local weight_default, weight_min, weight_max = 100, 0, 1000
   local default_port = 8000
 
-  local dns_hostsfile
   setup(function()
-    bp, db, dao = helpers.get_db_utils(strategy)
-    -- Adding a name-based resolution that won't fail
-    dns_hostsfile = os.tmpname()
-    local fd = assert(io.open(dns_hostsfile, "w"))
-    assert(fd:write("127.0.0.1 localhost custom_localhost\n"))
-    fd:close()
-    assert(dao:run_migrations())
-  end)
-
-  teardown(function()
-    os.remove(dns_hostsfile)
+    bp, db = helpers.get_db_utils(strategy, {})
   end)
 
   before_each(function()
@@ -49,7 +37,6 @@ describe("Admin API #" .. strategy, function()
     assert(helpers.start_kong({
       database   = strategy,
       nginx_conf = "spec/fixtures/custom_nginx.template",
-      dns_hostsfile = dns_hostsfile,
     }))
     client = assert(helpers.admin_client())
 

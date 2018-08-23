@@ -390,7 +390,7 @@ function _M.new(connector, schema, errors)
     queries                 = nil,
   }
 
-  -- foreign keys constraints and for_ selector methods
+  -- foreign keys constraints and page_for_ selector methods
 
   for field_name, field in schema:each_field() do
     if field.type == "foreign" then
@@ -414,7 +414,7 @@ function _M.new(connector, schema, errors)
       local db_columns_args_names = new_tab(#db_columns, 0)
 
       for i = 1, #db_columns do
-        -- keep args_names for 'for_*' methods
+        -- keep args_names for 'page_for_*' methods
         db_columns_args_names[i] = db_columns[i].col_name .. " = ?"
       end
 
@@ -431,12 +431,12 @@ function _M.new(connector, schema, errors)
     end
   end
 
-  -- generate for_ method for inverse selection
-  -- e.g. routes:for_service(service_pk)
+  -- generate page_for_ method for inverse selection
+  -- e.g. routes:page_for_service(service_pk)
   for field_name, field in schema:each_field() do
     if field.type == "foreign" then
 
-      local method_name = "for_" .. field_name
+      local method_name = "page_for_" .. field_name
       local db_columns = self.foreign_keys_db_columns[field_name]
 
       local select_foreign_bind_args = {}
@@ -723,65 +723,6 @@ do
     rows.type = nil
 
     return rows, nil, next_offset
-  end
-end
-
-
-do
-  local function iter(self)
-    if not self.rows then
-      local size = self.size
-      local offset = self.offset
-      local strategy = self.strategy
-
-      local rows, err_t, next_offset = strategy:page(size, offset)
-      if not rows then
-        return nil, err_t
-      end
-
-      self.rows = rows
-      self.rows_idx = 0
-      self.offset = next_offset
-      self.page = self.page + 1
-    end
-
-    local rows_idx = self.rows_idx
-    rows_idx = rows_idx + 1
-
-    local row = self.rows[rows_idx]
-    if row then
-      self.rows_idx = rows_idx
-      return row, nil, self.page
-    end
-
-    -- end of page
-
-    if not self.offset then
-      -- end of iteration
-      return nil
-    end
-
-    self.rows = nil
-
-    -- fetch next page
-    return iter(self)
-  end
-
-
-  local iter_mt = { __call = iter }
-
-
-  function _mt:each(size, options)
-    local iter_ctx = {
-      page         = 0,
-      rows         = nil,
-      rows_idx     = nil,
-      offset       = nil,
-      size         = size,
-      strategy     = self,
-    }
-
-    return setmetatable(iter_ctx, iter_mt)
   end
 end
 

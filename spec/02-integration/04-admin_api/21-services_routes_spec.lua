@@ -295,7 +295,7 @@ for _, strategy in helpers.each_strategy() do
               assert.equal("https",    json.protocol)
               assert.equal(service.id, json.id)
 
-              local in_db = assert(db.services:select({ id = service.id }))
+              local in_db = assert(db.services:select({ id = service.id }, { nulls = true }))
               assert.same(json, in_db)
             end
           end)
@@ -329,7 +329,7 @@ for _, strategy in helpers.each_strategy() do
             local body = assert.res_status(204, res)
             assert.equal("", body)
 
-            local in_db, err = db.services:select({ id = service.id })
+            local in_db, err = db.services:select({ id = service.id }, { nulls = true })
             assert.is_nil(err)
             assert.is_nil(in_db)
           end)

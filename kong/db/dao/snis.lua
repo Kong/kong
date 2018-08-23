@@ -80,12 +80,13 @@ end
 -- Returns the name list for a given certificate
 function _SNIs:list_for_certificate(cert_pk)
   local name_list = setmetatable({}, cjson.empty_array_mt)
-  local rows, err, err_t = self:for_certificate(cert_pk)
-  if err then
-    return nil, err, err_t
-  end
-  for i = 1, #rows do
-    name_list[i] = rows[i].name
+
+  for sni, err, err_t in self:each_for_certificate(cert_pk) do
+    if err then
+      return nil, err, err_t
+    end
+
+    table.insert(name_list, sni.name)
   end
 
   table.sort(name_list)

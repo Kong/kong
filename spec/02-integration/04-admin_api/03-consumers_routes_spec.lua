@@ -443,7 +443,7 @@ describe("Admin API (" .. strategy .. "): ", function()
             local json = cjson.decode(body)
             assert.equal("peter", json.username)
 
-            local in_db = assert(db.consumers:select({ id = consumer.id }))
+            local in_db = assert(db.consumers:select({ id = consumer.id }, { nulls = true }))
             assert.same(json, in_db)
           end
         end)

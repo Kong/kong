@@ -1,5 +1,4 @@
 local helpers = require "spec.helpers"
-local cjson = require "cjson"
 local fmt = string.format
 local lower = string.lower
 local md5 = ngx.md5
@@ -7,9 +6,9 @@ local md5 = ngx.md5
 local ldap_host_aws = "ec2-54-172-82-117.compute-1.amazonaws.com"
 
 for _, strategy in helpers.each_strategy() do
-  describe("Plugin: ldap-auth (invalidations) [#" .. strategy .. "]", function()
-    local proxy_client
+  describe("Plugin: ldap-auth (invalidation) [#" .. strategy .. "]", function()
     local admin_client
+    local proxy_client
     local plugin
 
     setup(function()
@@ -28,7 +27,8 @@ for _, strategy in helpers.each_strategy() do
           ldap_port = "389",
           start_tls = false,
           base_dn   = "ou=scientists,dc=ldap,dc=mashape,dc=com",
-          attribute = "uid"
+          attribute = "uid",
+          cache_ttl = 1,
         }
       }
 
@@ -36,21 +36,27 @@ for _, strategy in helpers.each_strategy() do
         database   = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
       }))
+    end)
 
-      proxy_client = helpers.proxy_client()
+    before_each(function()
       admin_client = helpers.admin_client()
+      proxy_client = helpers.proxy_client()
+    end)
+
+    after_each(function()
+      if admin_client then
+        admin_client:close()
+      end
+      if proxy_client then
+        proxy_client:close()
+      end
     end)
 
     teardown(function()
-      if proxy_client and admin_client then
-        proxy_client:close()
-        admin_client:close()
-      end
-
       helpers.stop_kong(nil, true)
     end)
 
-    local function cache_key(conf, username)
+    local function cache_key(conf, username, password)
         local ldap_config_cache = md5(fmt("%s:%u:%s:%s:%u",
           lower(conf.ldap_host),
           conf.ldap_port,
@@ -59,11 +65,45 @@ for _, strategy in helpers.each_strategy() do
           conf.cache_ttl
         ))
 
-      return fmt("ldap_auth_cache:%s:%s", ldap_config_cache, username)
+      return fmt("ldap_auth_cache:%s:%s:%s", ldap_config_cache,
+                 username, password)
     end
 
     describe("authenticated LDAP user get cached", function()
-      it("should invalidate when Hmac Auth Credential entity is deleted", function()
+      it("should cache invalid credential", function()
+        local res = assert(proxy_client:send {
+          method = "GET",
+          path = "/requests",
+          body = {},
+          headers = {
+            ["HOST"] = "ldapauth.com",
+            authorization = "ldap " .. ngx.encode_base64("einstein:wrongpassword")
+          }
+        })
+        assert.res_status(403, res)
+
+        local cache_key = cache_key(plugin.config, "einstein", "wrongpassword")
+        res = assert(admin_client:send {
+          method = "GET",
+          path   = "/cache/" .. cache_key,
+          body   = {},
+        })
+        assert.res_status(200, res)
+      end)
+      it("should invalidate negative cache once ttl expires", function()
+        local cache_key = cache_key(plugin.config, "einstein", "wrongpassword")
+
+        helpers.wait_until(function()
+          local res = assert(admin_client:send {
+            method = "GET",
+            path   = "/cache/" .. cache_key,
+            body   = {},
+          })
+          res:read_body()
+          return res.status == 404
+        end)
+      end)
+      it("should cache valid credential", function()
         -- It should work
         local res = assert(proxy_client:send {
           method = "GET",
@@ -77,7 +117,7 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(200, res)
 
         -- Check that cache is populated
-        local cache_key = cache_key(plugin.config, "einstein")
+        local cache_key = cache_key(plugin.config, "einstein", "password")
         res = assert(admin_client:send {
           method = "GET",
           path   = "/cache/" .. cache_key,
@@ -85,37 +125,18 @@ for _, strategy in helpers.each_strategy() do
         })
         assert.res_status(200, res)
       end)
-      it("should not do negative cache", function()
-        local res = assert(proxy_client:send {
-          method = "GET",
-          path = "/requests",
-          body = {},
-          headers = {
-            ["HOST"] = "ldapauth.com",
-            authorization = "ldap " .. ngx.encode_base64("einstein:wrongpassword")
-          }
-        })
-        assert.res_status(403, res)
+      it("should invalidate cache once ttl expires", function()
+        local cache_key = cache_key(plugin.config, "einstein", "password")
 
-        local cache_key = cache_key(plugin.config, "einstein")
-        res = assert(admin_client:send {
-          method = "GET",
-          path   = "/cache/" .. cache_key,
-          body   = {},
-        })
-        local body = assert.res_status(200, res)
-        assert.is_equal("password", cjson.decode(body).password)
-
-        local res = assert(proxy_client:send {
-          method = "GET",
-          path = "/requests",
-          body = {},
-          headers = {
-            ["HOST"] = "ldapauth.com",
-            authorization = "ldap " .. ngx.encode_base64("einstein:password")
-          }
-        })
-        assert.res_status(200, res)
+        helpers.wait_until(function()
+          local res = assert(admin_client:send {
+            method = "GET",
+            path   = "/cache/" .. cache_key,
+            body   = {},
+          })
+          res:read_body()
+          return res.status == 404
+        end)
       end)
     end)
   end)

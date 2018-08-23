@@ -14,7 +14,8 @@ from startups to Global 5000 as well as government organizations.
 [Documentation](https://getkong.org/docs) |
 [Forum](https://discuss.konghq.com) |
 [Blog](https://konghq.com/blog) |
-IRC (freenode): [#kong](http://webchat.freenode.net/?channels=kong)
+IRC (freenode): [#kong](http://webchat.freenode.net/?channels=kong) |
+[Nightly Builds][kong-nightly-master]
 
 ## Summary
 
@@ -104,7 +105,8 @@ code, other repos are also under active development:
   Heroku in one click.
 - [Kong and Instaclustr](https://www.instaclustr.com/solutions/managed-cassandra-for-kong/): Let
   Instaclustr manage your Cassandra cluster.
-
+- [Nightly Builds][kong-nightly-master]: Builds of the master branch available
+  every morning at about 9AM PST.
 
 ## Development
 
@@ -248,6 +250,7 @@ limitations under the License.
 [kong-url]: https://konghq.com/
 [kong-logo]: https://konghq.com/wp-content/uploads/2018/05/kong-logo-github-readme.png
 [kong-benefits]: https://konghq.com/wp-content/uploads/2018/05/kong-benefits-github-readme.png
+[kong-nightly-master]: https://bintray.com/kong/kong-community-edition-nightly/kong-master
 [badge-travis-url]: https://travis-ci.org/Kong/kong/branches
 [badge-travis-image]: https://travis-ci.org/Kong/kong.svg?branch=master
 
