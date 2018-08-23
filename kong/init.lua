@@ -399,6 +399,11 @@ function Kong.balancer()
     if addr.balancer then
       if previous_try.state == "failed" then
         addr.balancer.report_tcp_failure(addr.ip, addr.port)
+        if previous_try.code == 504 then
+          addr.balancer.report_timeout(addr.ip, addr.port)
+        else
+          addr.balancer.report_tcp_failure(addr.ip, addr.port)
+        end
       else
         addr.balancer.report_http_status(addr.ip, addr.port, previous_try.code)
       end
