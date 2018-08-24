@@ -7,6 +7,7 @@ local responses = require "kong.tools.responses"
 local new_tab   = require "table.new"
 local workspaces = require "kong.workspaces"
 local singletons = require "kong.singletons"
+local tablex     = require "pl.tablex"
 
 
 local band  = bit.band
@@ -88,6 +89,13 @@ local function post_process_actions(row)
 
   row.actions = actions_t
   return row
+end
+
+
+local function post_process_role(role)
+  -- don't expose column that is for internal use only
+  role.is_default = nil
+  return role
 end
 
 
@@ -185,6 +193,14 @@ return {
     GET = function(self, dao_factory, helpers)
       local roles, err = entity_relationships(dao_factory, self.rbac_user,
                                               "user", "role")
+
+      -- filter out default roles and suppress the is_default column
+      roles = tablex.filter(roles, function(role) return not role.is_default end)
+
+      for _, role in ipairs(roles) do
+        post_process_role(role)
+      end
+
       if err then
         return helpers.yield_error(err)
       end
@@ -237,6 +253,13 @@ return {
         return helpers.yield_error(err)
       end
 
+      -- filter out default roles and suppress the is_default column
+      roles = tablex.filter(roles, function(role) return not role.is_default end)
+
+      for _, role in ipairs(roles) do
+        post_process_role(role)
+      end
+
       -- show the user and all of the roles they are in
       return helpers.responses.send_HTTP_CREATED({
         user  = self.rbac_user,
@@ -277,7 +300,8 @@ return {
 
   ["/rbac/roles"] = {
     GET = function(self, dao_factory)
-      crud.paginated_set(self, dao_factory.rbac_roles)
+      self.params["is_default"] = false
+      crud.paginated_set(self, dao_factory.rbac_roles, post_process_role)
     end,
 
     POST = function(self, dao_factory)
@@ -308,11 +332,12 @@ return {
 
   ["/rbac/roles/:name_or_id"] = {
     before = function(self, dao_factory, helpers)
+      self.params["is_default"] = false
       crud.find_rbac_role_by_name_or_id(self, dao_factory, helpers)
     end,
 
     GET = function(self, dao_factory, helpers)
-      return helpers.responses.send_HTTP_OK(self.rbac_role)
+      return helpers.responses.send_HTTP_OK(post_process_role(self.rbac_role))
     end,
 
     PATCH = function(self, dao_factory, helpers)

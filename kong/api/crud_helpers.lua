@@ -87,8 +87,10 @@ function _M.find_rbac_user_by_name_or_id(self, dao_factory, helpers)
 end
 
 function _M.find_rbac_role_by_name_or_id(self, dao_factory, helpers)
-  local rows, err = _M.find_by_id_or_field(dao_factory.rbac_roles, {},
-                                           self.params.name_or_id, "name")
+  local rows, err = _M.find_by_id_or_field(dao_factory.rbac_roles,
+                                           { is_default = false },
+                                           self.params.name_or_id,
+                                           "name")
 
   if err then
     return helpers.yield_error(err)

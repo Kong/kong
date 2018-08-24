@@ -17,6 +17,11 @@ return {
     comment = {
       type = "string",
     },
+    is_default = {
+      type = "boolean",
+      required = true,
+      default = false,
+    },
     created_at = {
       type = "timestamp",
       immutable = true,

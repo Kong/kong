@@ -86,6 +86,21 @@ local function map(pred, t)
 end
 
 
+-- workaround since dao.rbac_roles:find_all({ name = role_name }) returns nothing
+local function find_role(dao, role_name)
+  local res, err = dao.rbac_roles:find_all()
+  if err then
+    return nil, err
+  end
+
+  for _, role in ipairs(res) do
+    if role.name == role_name then
+      return role
+    end
+  end
+end
+
+
 dao_helpers.for_each_dao(function(kong_config)
 
 describe("Admin API RBAC with " .. kong_config.database, function()
@@ -164,12 +179,11 @@ describe("Admin API RBAC with " .. kong_config.database, function()
         assert.equal("fubar", json.name)
         assert.equal("fubarfu", json.user_token)
 
-        local role = assert(client:send {
-          method = "GET",
-          path = "/rbac/roles/fubar",
-        })
-
-        assert.res_status(200, role)
+        -- what I really want to do here is :find_all({ name = "fubar" }),
+        -- but that doesn't return any results
+        local role = find_role(dao, "fubar")
+        assert.not_nil(role)
+        assert.is_true(role.is_default)
       end)
 
       it("creates a new user with existing role as default role", function()
@@ -246,20 +260,17 @@ describe("Admin API RBAC with " .. kong_config.database, function()
             ["Content-Type"] = "application/json",
           }
         })
-        assert.res_status(201, res)
+        local body = assert.res_status(201, res)
+        local rbacy_user = cjson.decode(body)
 
-        -- make sure the user is in fact in that role!
-        res = assert(client:send {
-          method = "GET",
-          path = "/rbac/users/rbacy/roles",
-        })
-        local roles = assert.res_status(200, res)
-        local roles_json = cjson.decode(roles)
+        -- make sure rbacy_user has rbacy_role
+        local rbacy_role = find_role(dao, "rbacy")
+        local user_roles = dao.rbac_user_roles:find_all({ user_id = rbacy_user.id, role_id = rbacy_role.id })
+        assert.same(rbacy_role.id, user_roles[1].role_id)
 
-        assert(1, #roles_json.roles)
-        assert.equal("rbacy", roles_json.roles[1].name)
-
-        -- now, add another user to this role!
+        -- now, create another user who will have rbacy role
+        -- note that is to support legacy situation where default role
+        -- used to be exposed in the Admin API
         res = assert(client:send {
           method = "POST",
           path = "/rbac/users",
@@ -271,47 +282,31 @@ describe("Admin API RBAC with " .. kong_config.database, function()
             ["Content-Type"] = "application/json",
           }
         })
-        assert.res_status(201, res)
+        local body = assert.res_status(201, res)
+        local yarbacy_user = cjson.decode(body)
 
-        -- yarbacy is rbacy too
-        res = assert(client:send {
-          method = "POST",
-          path = "/rbac/users/yarbacy/roles",
-          body = {
-            roles = "rbacy",
-          },
-          headers = {
-            ["Content-Type"] = "application/json",
-          }
-        })
-        assert.res_status(201, res)
+        assert(dao.rbac_user_roles:insert({ user_id = yarbacy_user.id, role_id = rbacy_role.id }))
 
-        -- delete the rbacy...
+        -- delete the rbacy user
         res = assert(client:send {
           method = "DELETE",
           path = "/rbac/users/rbacy",
         })
         assert.res_status(204, res)
 
-        -- and check its rbacy role is still here, as yarbacy is
-        -- still in rbacy role and would hate to lose its role
-        res = assert(client:send {
-          method = "GET",
-          path = "/rbac/roles/rbacy",
-        })
-        assert.res_status(200, res)
+        -- and check the rbacy role is still here, as yarbacy
+        -- still has the rbacy role and would hate to lose it
+        local user_roles = dao.rbac_user_roles:find_all({ user_id = yarbacy_user.id, role_id = rbacy_role.id })
+        assert.equal(rbacy_role.id, user_roles[1].role_id)
 
-        -- cleanup
+        -- clean up user and role
+        -- note we never get here if an assertion above fails
         res = assert(client:send {
           method = "DELETE",
           path = "/rbac/users/yarbacy",
         })
         assert.res_status(204, res)
-        res = assert(client:send {
-          method = "DELETE",
-          path = "/rbac/roles/rbacy",
-        })
-        assert.res_status(204, res)
+        dao.rbac_roles:delete({ id = rbacy_role.id })
       end)
 
       it("creates a new user with non-default options", function()
@@ -620,21 +615,13 @@ describe("Admin API RBAC with " .. kong_config.database, function()
       it("lists roles", function()
         local res = assert(client:send {
           method = "GET",
-          path = "/rbac/users",
-        })
-
-        local users_body = assert.res_status(200, res)
-        local users_json = cjson.decode(users_body)
-
-        local res = assert(client:send {
-          method = "GET",
           path = "/rbac/roles",
         })
 
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
 
-        assert.equals(#users_json.data + 7, #json.data)
+        assert.equals(7, #json.data)
       end)
     end)
   end)
@@ -713,27 +700,7 @@ describe("Admin API RBAC with " .. kong_config.database, function()
 
         assert.res_status(204, res)
 
-        res = assert(client:send {
-          method = "GET",
-          path = "/rbac/users",
-        })
-
-        local user_body = assert.res_status(200, res)
-        local user_json = cjson.decode(user_body)
-
-        res = assert(client:send {
-          method = "GET",
-          path = "/rbac/roles",
-        })
-
-        local body = assert.res_status(200, res)
-        local json = cjson.decode(body)
-
-        assert.equals(#user_json.data + 6, #json.data)
-
-        for i = 1, #json.data do
-          assert.not_equals("foo", json.data[i].name)
-        end
+        assert.is_nil(find_role(dao, "baz"))
       end)
     end)
   end)
@@ -755,11 +722,9 @@ describe("Admin API RBAC with " .. kong_config.database, function()
         local body = assert.res_status(201, res)
         local json = cjson.decode(body)
 
-        -- user has one 'default' role, plus others he's added to
-        assert.same(2, #json.roles)
-        local names = map(function(x) return x.name end , json.roles)
-        assert.contains("bob", names)
-        assert.contains("read-only", names)
+        -- bob has read-only now
+        assert.same(1, #json.roles)
+        assert.same("read-only", json.roles[1].name)
         assert.same("bob", json.user.name)
       end)
 
@@ -778,8 +743,8 @@ describe("Admin API RBAC with " .. kong_config.database, function()
         local body = assert.res_status(201, res)
         local json = cjson.decode(body)
 
-        -- user has one 'default' role, plus others he's added to
-        assert.same(3, #json.roles)
+        -- jerry now has read-only and admin
+        assert.same(2, #json.roles)
       end)
 
       describe("errors", function()
@@ -857,7 +822,7 @@ describe("Admin API RBAC with " .. kong_config.database, function()
     end)
 
     describe("GET", function()
-      it("displays the roles associated with the user", function()
+      it("displays the public (non-default) roles associated with the user", function()
         local res = assert(client:send {
           path = "/rbac/users/bob/roles",
           method = "GET",
@@ -866,11 +831,9 @@ describe("Admin API RBAC with " .. kong_config.database, function()
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
 
-        -- user has one 'default' role and another he was just added to
-        assert.same(2, #json.roles)
-        local names = map(function(x) return x.name end , json.roles)
-        assert.contains("bob", names)
-        assert.contains("read-only", names)
+        -- bob has read-only role
+        assert.same(1, #json.roles)
+        assert.same("read-only", json.roles[1].name)
         assert.same("bob", json.user.name)
 
         res = assert(client:send {
@@ -881,8 +844,11 @@ describe("Admin API RBAC with " .. kong_config.database, function()
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
 
-        -- user has one 'default' role, plus others he's added to
-        assert.same(3, #json.roles)
+        -- jerry has admin and read-only
+        assert.same(2, #json.roles)
+        local names = map(function(x) return x.name end , json.roles)
+        assert.contains("admin", names)
+        assert.contains("read-only", names)
         assert.same("jerry", json.user.name)
       end)
     end)
@@ -910,8 +876,8 @@ describe("Admin API RBAC with " .. kong_config.database, function()
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
 
-        -- every user has at least 1 role
-        assert.same(1, #json.roles)
+        -- bob didn't have any other public roles
+        assert.same(0, #json.roles)
         assert.same("bob", json.user.name)
       end)
 
@@ -937,11 +903,9 @@ describe("Admin API RBAC with " .. kong_config.database, function()
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
 
-        -- user has one 'default' role and another he was just added to
-        assert.same(2, #json.roles)
-        local names = map(function(x) return x.name end, json.roles)
-        assert.contains("admin", names)
-        assert.contains("jerry", names)
+        -- jerry no longer has read-only
+        assert.same(1, #json.roles)
+        assert.same("admin", json.roles[1].name)
         assert.same("jerry", json.user.name)
       end)
 
@@ -1122,12 +1086,7 @@ describe("Admin API RBAC with " .. kong_config.database, function()
         },
       })
 
-      local body = assert.res_status(201, res)
-      local json = cjson.decode(body)
-
-      -- user has one 'default' role and another he was just added to
-      assert.equals(2, #json.roles)
-      assert.equals("bob", json.user.name)
+      assert.res_status(201, res)
 
       res = assert(client:send {
         method = "GET",
@@ -1163,12 +1122,7 @@ describe("Admin API RBAC with " .. kong_config.database, function()
         },
       })
 
-      local body = assert.res_status(201, res)
-      local json = cjson.decode(body)
-
-      -- user has one 'default' role and another he was just added to
-      assert.equals(2, #json.roles)
-      assert.equals("jerry", json.user.name)
+      assert.res_status(201, res)
 
       res = assert(client:send {
         method = "GET",
@@ -1204,13 +1158,7 @@ describe("Admin API RBAC with " .. kong_config.database, function()
         },
       })
 
-      local body = assert.res_status(201, res)
-      local json = cjson.decode(body)
-
-      -- user has one 'default' role and another he was just added to
-      assert.equals(2, #json.roles)
-      assert.equals("alice", json.user.name)
-
+      assert.res_status(201, res)
       res = assert(client:send {
         method = "GET",
         path = "/rbac/users/alice/permissions",
@@ -1249,12 +1197,7 @@ describe("Admin API RBAC with " .. kong_config.database, function()
         },
       })
 
-      local body = assert.res_status(201, res)
-      local json = cjson.decode(body)
-
-      -- user has one 'default' role and another he was just added to
-      assert.equals(2, #json.roles)
-      assert.equals("herb", json.user.name)
+      assert.res_status(201, res)
 
       res = assert(client:send {
         method = "GET",

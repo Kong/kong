@@ -1,5 +1,6 @@
 local rbac_migrations_defaults = require "kong.rbac.migrations.01_defaults"
 local rbac_migrations_user_default_role = require "kong.rbac.migrations.03_user_default_role"
+local rbac_migrations_default_role_flag = require "kong.rbac.migrations.04_user_default_role_flag"
 
 
 return {
@@ -263,6 +264,13 @@ return {
         negative boolean NOT NULL,
         PRIMARY KEY(role_id, workspace, endpoint)
       );
+    ]],
+  },
+  {
+    name = "2018-08-15-100000_rbac_role_defaults",
+    up = [[
+      ALTER TABLE rbac_roles ADD is_default boolean default false;
+      CREATE INDEX IF NOT EXISTS rbac_role_default_idx on rbac_roles(is_default);
     ]],
   },
   {
@@ -603,5 +611,11 @@ return {
       DROP TABLE portal_reset_secrets;
       DROP TABLE token_statuses;
     ]]
+  },
+  {
+    name = "2018-08-15-100001_rbac_role_defaults",
+    up = function(_, _, dao)
+      return rbac_migrations_default_role_flag.up(nil, nil, dao)
+    end,
   },
 }

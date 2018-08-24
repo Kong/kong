@@ -219,37 +219,6 @@ for _, strategy in helpers.each_strategy() do
           local in_db = assert(dao.rbac_role_entities:find_all {entity_id = cert.id})
           assert.equal(0, #in_db)
         end)
-        it("should remove role, entity relation when role is deleted", function()
-          local res = assert(client:send {
-            method = "POST",
-            path  = "/certificates",
-            headers = {
-              ["Kong-Admin-Token"] = "1234",
-              ["Content-Type"]     = "application/json",
-            },
-            body  = {
-              cert="-----CERTIFICATE-----",
-              key="-----CERTIFICATE-----",
-              snis="bar.com"
-            },
-          })
-
-          local body = assert.res_status(201, res)
-          local cert = cjson.decode(body)
-          local res = assert(client:send {
-            method = "DELETE",
-            path  = "/rbac/roles/" .. default_role_one.name,
-            headers = {
-              ["Kong-Admin-Token"] = "1234",
-              ["Content-Type"]     = "application/json",
-            }
-          })
-          assert.res_status(204, res)
-          local in_db = assert(dao.rbac_role_entities:find_all {entity_id = cert.id})
-          assert.equal(0, #in_db)
-          local in_db = assert(dao.rbac_role_endpoints:find_all {role_id = default_role_two.id})
-          assert.equal(0, #in_db)
-        end)
         it("should remove default role, entity relation when user is deleted", function()
           local res = assert(client:send {
             method = "POST",
@@ -293,9 +262,21 @@ for _, strategy in helpers.each_strategy() do
             }
           })
           assert.res_status(204, res)
-          local in_db = assert(dao.rbac_role_endpoints:find_all {role_id = default_role_two.id})
+          local in_db = assert(dao.rbac_role_endpoints:find_all {role_id = test_role.id})
           assert.equal(0, #in_db)
         end)
+      end)
+
+      it("cannot be deleted via API", function()
+        local res = assert(client:send {
+          method = "DELETE",
+          path  = "/rbac/roles/" .. default_role_one.id,
+          headers = {
+            ["Kong-Admin-Token"] = "1234",
+            ["Content-Type"]     = "application/json",
+          }
+        })
+        assert.res_status(404, res)
       end)
     end)
   end)
