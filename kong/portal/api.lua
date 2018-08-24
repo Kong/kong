@@ -323,6 +323,7 @@ return {
       -- Mark the token secret as consumed
       local _, err = singletons.dao.portal_reset_secrets:update({
         status = enums.TOKENS.STATUS.CONSUMED,
+        updated_at = time() * 1000,
       }, {
         id = secret.id,
       })
@@ -382,7 +383,8 @@ return {
       for _, row in ipairs(rows) do
         if row.status == enums.TOKENS.STATUS.PENDING then
           local _, err = singletons.dao.portal_reset_secrets:update({
-            status = enums.TOKENS.STATUS.INVALIDATED
+            status = enums.TOKENS.STATUS.INVALIDATED,
+            updated_at = time() * 1000,
           }, {
             id = row.id
           })
