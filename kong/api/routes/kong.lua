@@ -5,6 +5,7 @@ local conf_loader = require "kong.conf_loader"
 local cjson = require "cjson"
 local ee_api = require "kong.enterprise_edition.api_helpers"
 local crud = require "kong.api.crud_helpers"
+local rbac = require "kong.rbac"
 
 local sub = string.sub
 local find = string.find
@@ -147,8 +148,26 @@ return {
 
       crud.find_consumer_by_username_or_id(self, dao_factory, helpers)
 
-      local rbac = singletons.configuration.rbac
-      if rbac == "on" or rbac == "both" then
+      -- now to get the right permission set -- default is rbac not enabled
+      self.permissions = {
+        endpoints = {
+          ["*"] = {
+            ["*"] = {
+              actions = { "delete", "create", "update", "read", },
+              negative = false,
+            }
+          }
+        },
+        entities = {
+          ["*"] = {
+            actions = { "delete", "create", "update", "read", },
+            negative = false,
+          }
+        },
+      }
+
+      local rbac_enabled = singletons.configuration.rbac
+      if rbac_enabled ~= "off" then
         local user_consumer = dao_factory.consumers_rbac_users_map:find_all({
           consumer_id = self.consumer.id,
         })
@@ -161,6 +180,22 @@ return {
             return helpers.responses.send_HTTP_UNAUTHORIZED('user not found')
           end
         end
+
+        local roles, err = rbac.entity_relationships(dao_factory, self.rbac_user,
+          "user", "role")
+
+        if err then
+          ngx.log(ngx.ERR, "[userinfo] ", err)
+          return helpers.responses.send_HTTP_INTERNAL_SERVER_ERROR()
+        end
+
+        if rbac_enabled == "on" or rbac_enabled == "both" then
+          self.permissions.endpoints = rbac.readable_endpoints_permissions(roles)
+        end
+
+        if rbac_enabled == "entity" or rbac_enabled == "both" then
+          self.permissions.entities = rbac.readable_entities_permissions(roles)
+        end
       end
     end,
 
@@ -168,6 +203,7 @@ return {
       return helpers.responses.send_HTTP_OK({
         rbac_user = self.rbac_user,
         consumer = self.consumer,
+        permissions = self.permissions,
       })
     end,
   },

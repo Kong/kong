@@ -3,7 +3,6 @@ local cjson = require "cjson"
 local dao_helpers = require "spec.02-integration.03-dao.helpers"
 local proxy_prefix = require("kong.enterprise_edition.proxies").proxy_prefix
 local enums = require "kong.enterprise_edition.dao.enums"
-local utils = require "kong.tools.utils"
 local ee_helpers = require "spec.ee_helpers"
 
 
@@ -100,12 +99,28 @@ describe("Admin API - ee-specific Kong routes", function()
 
         res = assert.res_status(200, res)
         local json = cjson.decode(res)
-        assert.equals(json.consumer.username, 'hawk')
-        assert.equals(json.consumer.status, enums.CONSUMERS.STATUS.APPROVED)
-        assert.equals(json.consumer.type, enums.CONSUMERS.TYPE.ADMIN)
-        assert.is_true(utils.is_valid_uuid(json.consumer.id))
 
-        assert.is_nil(json.rbac_user)
+        local expected = {
+          consumer = consumer,
+          permissions = {
+            endpoints = {
+              ["*"] = {
+                ["*"] = {
+                  actions = { "delete", "create", "update", "read", },
+                  negative = false,
+                }
+              }
+            },
+            entities = {
+              ["*"] = {
+                actions = { "delete", "create", "update", "read", },
+                negative = false,
+              },
+            },
+          },
+        }
+
+        assert.same(expected, json)
       end)
 
       it("returns user info of admin consumer with rbac", function()
@@ -144,15 +159,34 @@ describe("Admin API - ee-specific Kong routes", function()
           path = "/" .. proxy_prefix .. "/admin/userinfo",
           headers = {
             ["Authorization"] = "Basic " .. ngx.encode_base64("hawk:kong"),
-            ["Kong-Admin-Token"] = super_admin.user_token,
           }
         })
 
         res = assert.res_status(200, res)
         local json = cjson.decode(res)
 
-        assert.same(consumer, json.consumer)
-        assert.same(super_admin, json.rbac_user)
+        local expected = {
+          consumer = consumer,
+          rbac_user = super_admin,
+          permissions = {
+            endpoints = {
+              ["*"] = {
+                ["*"] = {
+                  actions = { "delete", "create", "update", "read", },
+                  negative = false,
+                }
+              }
+            },
+            entities = {
+              ["*"] = {
+                actions = { "delete", "create", "update", "read", },
+                negative = false,
+              },
+            },
+          },
+        }
+
+        assert.same(expected, json)
       end)
 
       it("is whitelisted", function()
