@@ -94,7 +94,6 @@ return {
   DATABASE = {
     POSTGRES = {
       MIN = "9.5",
-      DEPRECATED = "9.4",
     },
     CASSANDRA = {
       MIN = "2.2",
