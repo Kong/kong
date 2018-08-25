@@ -10,7 +10,7 @@ return {
     local search_str = "Default user role generated for"
     for _, role in ipairs(roles) do
       if role.comment and role.comment:sub(1, #search_str) == search_str then
-        local _, err = dao.rbac_user_roles:update(
+        local _, err = dao.rbac_roles:update(
             { is_default = true, },
             { id = role.id, })
         if err then
