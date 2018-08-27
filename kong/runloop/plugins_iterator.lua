@@ -3,37 +3,17 @@ local responses    = require "kong.tools.responses"
 
 local kong         = kong
 local setmetatable = setmetatable
-local ipairs       = ipairs
 
 
 -- Loads a plugin config from the datastore.
 -- @return plugin config table or an empty sentinel table in case of a db-miss
-local function load_plugin_into_memory(route_id,
-                                       service_id,
-                                       consumer_id,
-                                       plugin_name,
-                                       api_id)
-  local rows, err = kong.dao.plugins:find_all {
-             name = plugin_name,
-         route_id = route_id,
-       service_id = service_id,
-      consumer_id = consumer_id,
-           api_id = api_id,
-  }
+local function load_plugin_into_memory(key)
+  local row, err = kong.db.plugins:select_by_cache_key(key)
   if err then
     return nil, tostring(err)
   end
 
-  if #rows > 0 then
-    for _, row in ipairs(rows) do
-      if    route_id == row.route_id    and
-          service_id == row.service_id  and
-         consumer_id == row.consumer_id and
-              api_id == row.api_id      then
-        return row
-      end
-    end
-  end
+  return row
 end
 
 
@@ -52,31 +32,28 @@ local function load_plugin_configuration(ctx,
                                          consumer_id,
                                          plugin_name,
                                          api_id)
-  local plugin_cache_key = kong.dao.plugins:cache_key(plugin_name,
-                                                            route_id,
-                                                            service_id,
-                                                            consumer_id,
-                                                            api_id)
+  local key = kong.db.plugins:cache_key(plugin_name,
+                                        route_id,
+                                        service_id,
+                                        consumer_id,
+                                        api_id)
 
-  local plugin, err = kong.cache:get(plugin_cache_key,
+  local plugin, err = kong.cache:get(key,
                                      nil,
                                      load_plugin_into_memory,
-                                     route_id,
-                                     service_id,
-                                     consumer_id,
-                                     plugin_name,
-                                     api_id)
+                                     key)
   if err then
     ctx.delay_response = false
     return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
   end
 
   if plugin ~= nil and plugin.enabled then
-    local cfg       = plugin.config or {}
-    cfg.api_id      = plugin.api_id
-    cfg.route_id    = plugin.route_id
-    cfg.service_id  = plugin.service_id
-    cfg.consumer_id = plugin.consumer_id
+    local cfg = plugin.config or {}
+
+    cfg.api_id      = plugin.api and plugin.api.id
+    cfg.route_id    = plugin.route and plugin.route.id
+    cfg.service_id  = plugin.service and plugin.service.id
+    cfg.consumer_id = plugin.consumer and plugin.consumer.id
 
     return cfg
   end
@@ -97,23 +74,22 @@ local function get_next(self)
 
   -- load the plugin configuration in early phases
   if self.access_or_cert_ctx then
-    local schema = plugin.schema or {}
 
     local api          = self.api
     local route        = self.route
     local service      = self.service
     local consumer     = ctx.authenticated_consumer
 
-    if api and schema.no_api then
+    if api and plugin.no_api then
       api = nil
     end
-    if route and schema.no_route then
+    if route and plugin.no_route then
       route = nil
     end
-    if service and schema.no_service then
+    if service and plugin.no_service then
       service = nil
     end
-    if consumer and schema.no_consumer then
+    if consumer and plugin.no_consumer then
       consumer = nil
     end
 

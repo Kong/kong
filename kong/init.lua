@@ -100,54 +100,15 @@ local voidpp = ffi.typeof("void**")
 
 local loaded_plugins
 
-local function load_plugins(kong_conf, dao)
-  local in_db_plugins, sorted_plugins = {}, {}
+-- Kong public context handlers.
+-- @section kong_handlers
 
-  ngx_log(ngx_DEBUG, "Discovering used plugins")
+local Kong = {}
 
-  local rows, err_t = dao.plugins:find_all()
-  if not rows then
-    return nil, tostring(err_t)
-  end
 
-  for _, row in ipairs(rows) do in_db_plugins[row.name] = true end
-
-  -- check all plugins in DB are enabled/installed
-  for plugin in pairs(in_db_plugins) do
-    if not kong_conf.loaded_plugins[plugin] then
-      return nil, plugin .. " plugin is in use but not enabled"
-    end
-  end
-
-  -- load installed plugins
-  for plugin in pairs(kong_conf.loaded_plugins) do
-    if constants.DEPRECATED_PLUGINS[plugin] then
-      ngx.log(ngx.WARN, "plugin '", plugin, "' has been deprecated")
-    end
-
-    -- NOTE: no version _G.kong (nor PDK) in plugins main chunk
-
-    local ok, handler = utils.load_module_if_exists("kong.plugins." .. plugin .. ".handler")
-    if not ok then
-      return nil, plugin .. " plugin is enabled but not installed;\n" .. handler
-    end
-
-    local ok, schema = utils.load_module_if_exists("kong.plugins." .. plugin .. ".schema")
-    if not ok then
-      return nil, "no configuration schema found for plugin: " .. plugin
-    end
-
-    ngx_log(ngx_DEBUG, "Loading plugin: " .. plugin)
-
-    sorted_plugins[#sorted_plugins+1] = {
-      name = plugin,
-      handler = handler(),
-      schema = schema
-    }
-  end
-
+local function sort_plugins_for_execution(kong_conf, db, plugin_list)
   -- sort plugins by order of execution
-  table.sort(sorted_plugins, function(a, b)
+  table.sort(plugin_list, function(a, b)
     local priority_a = a.handler.PRIORITY or 0
     local priority_b = b.handler.PRIORITY or 0
     return priority_a > priority_b
@@ -157,27 +118,19 @@ local function load_plugins(kong_conf, dao)
   if kong_conf.anonymous_reports then
     local reports = require "kong.reports"
 
-    local db_infos = dao:infos()
+    local db_infos = db.old_dao:infos()
     reports.add_ping_value("database", kong_conf.database)
     reports.add_ping_value("database_version", db_infos.version)
 
     reports.toggle(true)
 
-    sorted_plugins[#sorted_plugins+1] = {
+    plugin_list[#plugin_list+1] = {
       name = "reports",
       handler = reports,
-      schema = {},
     }
   end
-
-  return sorted_plugins
 end
 
-
--- Kong public context handlers.
--- @section kong_handlers
-
-local Kong = {}
 
 function Kong.init()
   local pl_path = require "pl.path"
@@ -209,7 +162,9 @@ function Kong.init()
 
   db.old_dao = dao
 
-  loaded_plugins = assert(load_plugins(config, dao))
+  assert(db.plugins:check_db_against_config(config.loaded_plugins))
+  loaded_plugins = assert(db.plugins:load_plugin_schemas(config.loaded_plugins))
+  sort_plugins_for_execution(config, db, loaded_plugins)
 
   assert(runloop.build_router(db, "init"))
   assert(runloop.build_api_router(dao, "init"))
@@ -636,5 +591,6 @@ function Kong.serve_admin_api(options)
 
   return lapis.serve("kong.api")
 end
+
 
 return Kong

@@ -889,6 +889,7 @@ return {
         name text,
         config text, -- serialized plugin configuration
         enabled boolean,
+        cache_key text,
         PRIMARY KEY (id)
       );
 
@@ -897,6 +898,7 @@ return {
       CREATE INDEX IF NOT EXISTS ON plugins(route_id);
       CREATE INDEX IF NOT EXISTS ON plugins(service_id);
       CREATE INDEX IF NOT EXISTS ON plugins(consumer_id);
+      CREATE INDEX IF NOT EXISTS ON plugins(cache_key);
     ]],
     down = nil
   },

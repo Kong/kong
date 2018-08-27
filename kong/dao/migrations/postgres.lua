@@ -841,4 +841,23 @@ return {
     ]],
     down = nil
   },
+  {
+    name = "2018-08-21-000001_plugins_add_cache_key_column",
+    up = [[
+      DO $$
+      BEGIN
+        ALTER TABLE plugins ADD COLUMN cache_key text UNIQUE;
+      EXCEPTION WHEN duplicate_column THEN
+          -- Do nothing, accept existing state
+      END$$;
+
+      DO $$
+      BEGIN
+        IF (SELECT to_regclass('plugins_cache_key_idx')) IS NULL THEN
+          CREATE INDEX plugins_cache_key_idx ON plugins(cache_key);
+        END IF;
+      END$$;
+    ]],
+    down = nil,
+  },
 }
