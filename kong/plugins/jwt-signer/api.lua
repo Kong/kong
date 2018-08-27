@@ -1,4 +1,4 @@
-local cache = require "kong.plugins.jwt-resigner.cache"
+local cache = require "kong.plugins.jwt-signer.cache"
 local utils = require "kong.tools.utils"
 local crud  = require "kong.api.crud_helpers"
 local json  = require "cjson.safe"
@@ -67,26 +67,26 @@ end
 
 
 return {
-  ["/jwt-resigner/jwks/"] = {
-    resource = "jwt-resigner",
+  ["/jwt-signer/jwks/"] = {
+    resource = "jwt-signer",
 
     GET = function(self, dao)
-      crud.paginated_set(self, dao.jwt_resigner_jwks, post_process_keys)
+      crud.paginated_set(self, dao.jwt_signer_jwks, post_process_keys)
     end,
   },
 
-  ["/jwt-resigner/jwks/:id"] = {
-    resource = "jwt-resigner",
+  ["/jwt-signer/jwks/:id"] = {
+    resource = "jwt-signer",
 
     GET = function(self, dao, helpers)
       local id = self.params.id
 
       local row, err
       if utils.is_valid_uuid(id) then
-        row, err = dao.jwt_resigner_jwks:find({ id = id })
+        row, err = dao.jwt_signer_jwks:find({ id = id })
 
       else
-        row, err = dao.jwt_resigner_jwks:find_all({ name = id })
+        row, err = dao.jwt_signer_jwks:find_all({ name = id })
         row = row and row[1]
       end
 
@@ -103,10 +103,10 @@ return {
       local id = self.params.id
 
       if utils.is_valid_uuid(id) then
-        return crud.delete({ id = self.params.id }, dao.jwt_resigner_jwks)
+        return crud.delete({ id = self.params.id }, dao.jwt_signer_jwks)
       end
 
-      local row, err = dao.jwt_resigner_jwks:find_all({ name = id })
+      local row, err = dao.jwt_signer_jwks:find_all({ name = id })
       row = row and row[1]
 
       if err then
@@ -115,22 +115,22 @@ return {
         return helpers.responses.send_HTTP_NOT_FOUND()
       end
 
-      return crud.delete({ id = row.id }, dao.jwt_resigner_jwks)
+      return crud.delete({ id = row.id }, dao.jwt_signer_jwks)
     end
   },
 
-  ["/jwt-resigner/jwks/:id/rotate"] = {
-    resource = "jwt-resigner",
+  ["/jwt-signer/jwks/:id/rotate"] = {
+    resource = "jwt-signer",
 
     POST = function(self, dao, helpers)
       local id = self.params.id
 
       local row, err
       if utils.is_valid_uuid(id) then
-        row, err = dao.jwt_resigner_jwks:find({ id = id })
+        row, err = dao.jwt_signer_jwks:find({ id = id })
 
       else
-        row, err = dao.jwt_resigner_jwks:find_all({ name = id })
+        row, err = dao.jwt_signer_jwks:find_all({ name = id })
         row = row and row[1]
       end
 
@@ -148,7 +148,7 @@ return {
         return helpers.yield_error(err)
       end
 
-      row, err = dao.jwt_resigner_jwks:find({ id = row.id })
+      row, err = dao.jwt_signer_jwks:find({ id = row.id })
       if err then
         return helpers.yield_error(err)
 

@@ -8,7 +8,7 @@ local ERR          = ngx.ERR
 
 
 local function write_log(level, ...)
-  return log(level, "[jwt-resigner] ", ...)
+  return log(level, "[jwt-signer] ", ...)
 end
 
 

@@ -1,8 +1,8 @@
 local migrations = {
   {
-    name = "2018-08-20-180000_jwt_resigner",
+    name = "2018-08-20-180000_jwt_signer",
     up = [[
-      CREATE TABLE IF NOT EXISTS jwt_resigner_jwks (
+      CREATE TABLE IF NOT EXISTS jwt_signer_jwks (
         id          UUID                      PRIMARY KEY,
         name        TEXT                      NOT NULL      UNIQUE,
         keys        JSONB                     NOT NULL,
@@ -12,7 +12,7 @@ local migrations = {
       );
     ]],
     down = [[
-      DROP TABLE jwt_resigner_jwks;
+      DROP TABLE jwt_signer_jwks;
     ]]
   },
 }

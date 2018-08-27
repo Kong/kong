@@ -1,5 +1,5 @@
-local arguments = require "kong.plugins.jwt-resigner.arguments"
-local cache     = require "kong.plugins.jwt-resigner.cache"
+local arguments = require "kong.plugins.jwt-signer.arguments"
+local cache     = require "kong.plugins.jwt-signer.cache"
 local errors    = require "kong.dao.errors"
 
 

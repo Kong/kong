@@ -1,12 +1,12 @@
 return {
-  jwt_resigner_jwks = {
+  jwt_signer_jwks = {
     primary_key = {
       "id",
     },
     cache_key   = {
       "name",
     },
-    table       = "jwt_resigner_jwks",
+    table       = "jwt_signer_jwks",
     fields      = {
       id                 = {
         type             = "id",

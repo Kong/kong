@@ -1,4 +1,4 @@
-require "kong.plugins.jwt-resigner.env"
+require "kong.plugins.jwt-signer.env"
 
 
 local singletons = require "kong.singletons"
@@ -6,7 +6,7 @@ local timestamp  = require "kong.tools.timestamp"
 local utils      = require "kong.tools.utils"
 local jwks       = require "kong.openid-connect.jwks"
 local keys       = require "kong.openid-connect.keys"
-local log        = require "kong.plugins.jwt-resigner.log"
+local log        = require "kong.plugins.jwt-signer.log"
 local json       = require "cjson.safe"
 
 
@@ -24,10 +24,10 @@ local function load_keys_db(name)
   local row, err
 
   if utils.is_valid_uuid(name) then
-    row, err = singletons.dao.jwt_resigner_jwks:find({ id = name })
+    row, err = singletons.dao.jwt_signer_jwks:find({ id = name })
 
   else
-    row, err = singletons.dao.jwt_resigner_jwks:find_all({ name = name })
+    row, err = singletons.dao.jwt_signer_jwks:find_all({ name = name })
     if row then
       row = row[1]
     end
@@ -50,7 +50,7 @@ local function rotate_keys(name, row, update, force)
         return nil, err
       end
 
-      row, err = singletons.dao.jwt_resigner_jwks:insert({
+      row, err = singletons.dao.jwt_signer_jwks:insert({
         name       = name,
         keys       = row,
         created_at = now,
@@ -88,7 +88,7 @@ local function rotate_keys(name, row, update, force)
         local data = { keys = current_keys, previous = previous_keys, updated_at = now }
         local id = { id = row.id }
 
-        row, err = singletons.dao.jwt_resigner_jwks:update(data, id)
+        row, err = singletons.dao.jwt_signer_jwks:update(data, id)
 
         if not row then
           return nil, err
@@ -111,7 +111,7 @@ local function rotate_keys(name, row, update, force)
         return nil, err
       end
 
-      row, err = singletons.dao.jwt_resigner_jwks:insert({
+      row, err = singletons.dao.jwt_signer_jwks:insert({
         name       = name,
         keys       = row,
         created_at = now,
@@ -143,7 +143,7 @@ local function rotate_keys(name, row, update, force)
       local data = { keys = current_keys, previous = previous_keys, updated_at = now }
       local id = { id = row.id }
 
-      row, err = singletons.dao.jwt_resigner_jwks:update(data, id)
+      row, err = singletons.dao.jwt_signer_jwks:update(data, id)
       if not row then
         return nil, err
       end
@@ -163,7 +163,7 @@ end
 
 
 local function load_keys(name)
-  local cache_key = singletons.dao.jwt_resigner_jwks:cache_key(name)
+  local cache_key = singletons.dao.jwt_signer_jwks:cache_key(name)
   local row, err = singletons.cache:get(cache_key, nil, load_keys_db, name)
 
   if err then

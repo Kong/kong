@@ -1,8 +1,8 @@
 local migrations = {
   {
-    name = "2018-08-20-180000_jwt_resigner",
+    name = "2018-08-20-180000_jwt_signer",
     up = [[
-      CREATE TABLE IF NOT EXISTS jwt_resigner_jwks (
+      CREATE TABLE IF NOT EXISTS jwt_signer_jwks (
         id          UUID       PRIMARY KEY,
         name        TEXT,
         keys        TEXT,
@@ -11,10 +11,10 @@ local migrations = {
         updated_at  TIMESTAMP,
       );
 
-      CREATE INDEX IF NOT EXISTS jwt_resigner_jwks_name_idx ON jwt_resigner_jwks(name);
+      CREATE INDEX IF NOT EXISTS jwt_signer_jwks_name_idx ON jwt_signer_jwks(name);
     ]],
     down = [[
-      DROP TABLE jwt_resigner_jwks;
+      DROP TABLE jwt_signer_jwks;
     ]]
   },
 }

@@ -1,8 +1,8 @@
 local BasePlugin = require "kong.plugins.base_plugin"
 local responses  = require "kong.tools.responses"
-local arguments  = require "kong.plugins.jwt-resigner.arguments"
-local cache      = require "kong.plugins.jwt-resigner.cache"
-local log        = require "kong.plugins.jwt-resigner.log"
+local arguments  = require "kong.plugins.jwt-signer.arguments"
+local cache      = require "kong.plugins.jwt-signer.cache"
+local log        = require "kong.plugins.jwt-signer.log"
 local token      = require "kong.openid-connect.token"
 local jwt        = require "kong.openid-connect.jwt"
 local jws        = require "kong.openid-connect.jws"
@@ -81,7 +81,7 @@ do
       expiring                    = "%s expiry verification",
       expired                     = "%s is expired",
       expiry                      = "%s expiry is mandatory",
-      resigning                   = "%s resigning",
+      signing                     = "%s signing",
       upstream_header             = "%s upstream header",
       scopes                      = "%s scopes verification",
       no_scopes                   = "%s has no scopes while scopes were required",
@@ -97,7 +97,7 @@ do
       inactive                    = "the %s inactive",
       expired                     = "the %s expired",
       expiry                      = "the %s has no expiry",
-      resigning                   = "the %s could not be resigned",
+      signing                     = "the %s could not be signed",
     } do
       ERRS[token_type][key] = fmt(value, token_name)
     end
@@ -207,21 +207,21 @@ local function unexpected(realm, err, desc, real_error)
 end
 
 
-local JwtResignerHandler = BasePlugin:extend()
+local JwtSignerHandler = BasePlugin:extend()
 
 
-function JwtResignerHandler:new()
-  JwtResignerHandler.super.new(self, "jwt-resigner")
+function JwtSignerHandler:new()
+  JwtSignerHandler.super.new(self, "jwt-signer")
 end
 
 
-function JwtResignerHandler:init_worker()
-  JwtResignerHandler.super.init_worker(self)
+function JwtSignerHandler:init_worker()
+  JwtSignerHandler.super.init_worker(self)
 end
 
 
-function JwtResignerHandler:access(conf)
-  JwtResignerHandler.super.access(self)
+function JwtSignerHandler:access(conf)
+  JwtSignerHandler.super.access(self)
 
   local args = arguments(conf)
   local realm =  args.get_conf_arg("realm")
@@ -403,7 +403,7 @@ function JwtResignerHandler:access(conf)
 
       local upstream_header = args.get_conf_arg(config.upstream_header)
       if upstream_header then
-        log(logs.resigning)
+        log(logs.signing)
 
         local issuer = args.get_conf_arg(config.issuer)
         if issuer then
@@ -430,27 +430,27 @@ function JwtResignerHandler:access(conf)
           return unexpected(realm, "unexpected", "the key could not be found", "signing algorithm was not found")
         end
 
-        local resigned_token
-        resigned_token, err = jws.encode({
+        local signed_token
+        signed_token, err = jws.encode({
           payload = payload,
           jwk     = jwk,
         })
 
-        if not resigned_token then
-          return unexpected(realm, "invalid_token", errs.resigning, err)
+        if not signed_token then
+          return unexpected(realm, "invalid_token", errs.signing, err)
         end
 
         log(logs.upstream_header)
 
-        args.set_header(upstream_header, resigned_token)
+        args.set_header(upstream_header, signed_token)
       end
     end
   end
 end
 
 
-JwtResignerHandler.PRIORITY = 802
-JwtResignerHandler.VERSION  = "0.0.2"
+JwtSignerHandler.PRIORITY = 802
+JwtSignerHandler.VERSION  = "0.0.3"
 
 
-return JwtResignerHandler
+return JwtSignerHandler
