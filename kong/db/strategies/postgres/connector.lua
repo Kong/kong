@@ -8,8 +8,10 @@ local pairs        = pairs
 local type         = type
 local ngx          = ngx
 local timer_every  = ngx.timer.every
+local update_time  = ngx.update_time
 local get_phase    = ngx.get_phase
 local null         = ngx.null
+local now          = ngx.now
 local log          = ngx.log
 
 
@@ -19,6 +21,12 @@ SELECT table_name
   FROM information_schema.tables
  WHERE table_schema = 'public';
 ]]
+
+
+local function now_updated()
+  update_time()
+  return now()
+end
 
 
 local function visit(k, n, m, s)
@@ -350,6 +358,94 @@ function _mt:truncate_table(table_name)
 
   local ok, err = self:query(truncate_statement)
   if not ok then
+    return nil, err
+  end
+
+  return true
+end
+
+
+function _mt:setup_locks(_)
+  local ok, err = self:query([[
+BEGIN;
+  CREATE TABLE IF NOT EXISTS locks (
+    key    TEXT PRIMARY KEY,
+    owner  TEXT,
+    ttl    TIMESTAMP WITH TIME ZONE
+  );
+  CREATE INDEX IF NOT EXISTS locks_ttl_idx ON locks (ttl);
+COMMIT;]])
+
+  if not ok then
+    return nil, err
+  end
+
+  return true
+end
+
+
+function _mt:insert_lock(key, ttl, owner)
+  local ttl_escaped = concat {
+                        "TO_TIMESTAMP(",
+                        self:escape_literal(now_updated() + ttl),
+                        ") AT TIME ZONE 'UTC'"
+                      }
+
+  local sql = concat { "BEGIN;\n",
+                       "  DELETE FROM locks\n",
+                       "        WHERE ttl < CURRENT_TIMESTAMP;\n",
+                       "  INSERT INTO locks (key, owner, ttl)\n",
+                       "       VALUES (", self:escape_literal(key),   ", ",
+                                          self:escape_literal(owner), ", ",
+                                          ttl_escaped, ")\n",
+                       "  ON CONFLICT DO NOTHING;\n",
+                       "COMMIT;"
+  }
+
+  local res, err_or_num_queries = self:query(sql)
+  if not res then
+    return nil, err_or_num_queries
+  end
+
+  if err_or_num_queries ~= 4 then
+    return nil, "unexpected result"
+  end
+
+  if res[3] and res[3].affected_rows == 1 then
+    return true
+  end
+
+  return false
+end
+
+
+function _mt:read_lock(key)
+  local sql = concat {
+    "SELECT *\n",
+    "  FROM locks\n",
+    " WHERE key = ", self:escape_literal(key), "\n",
+    "   AND ttl >= CURRENT_TIMESTAMP AT TIME ZONE 'UTC'\n",
+    " LIMIT 1;"
+  }
+
+  local res, err = self:query(sql)
+  if not res then
+    return nil, err
+  end
+
+  return res[1] ~= nil
+end
+
+
+function _mt:remove_lock(key, owner)
+  local sql = concat {
+    "DELETE FROM locks\n",
+    " WHERE key   = ", self:escape_literal(key), "\n",
+    "   AND owner = ", self:escape_literal(owner), ";"
+  }
+
+  local res, err = self:query(sql)
+  if not res then
     return nil, err
   end
 

@@ -1,7 +1,7 @@
 local helpers = require "spec.helpers"
 
 
-for _, strategy in helpers.each_strategy({ "cassandra" }) do
+for _, strategy in helpers.each_strategy() do
   describe("kong.db [#" .. strategy .. "]", function()
     local db
 
@@ -9,6 +9,12 @@ for _, strategy in helpers.each_strategy({ "cassandra" }) do
     setup(function()
       local _
       _, db, _ = helpers.get_db_utils(strategy)
+    end)
+
+
+    before_each(function()
+      ngx.shared.kong_locks:flush_all()
+      ngx.shared.kong_locks:flush_expired()
     end)
 
 
