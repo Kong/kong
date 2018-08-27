@@ -229,6 +229,50 @@ local function row_iterator(self, pager, size, options)
 end
 
 
+local function check_update(self, key, entity, options, name)
+  local entity_to_update, err, read_before_write =
+    self.schema:process_auto_fields(entity, "update")
+  if not entity_to_update then
+    local err_t = self.errors:schema_violation(err)
+    return nil, tostring(err_t), err_t
+  end
+
+  if read_before_write then
+    local rbw_entity, err, err_t
+    if name then
+       rbw_entity, err, err_t = self.strategy:select_by_field(name, key, options)
+    else
+       rbw_entity, err, err_t = self.strategy:select(key, options)
+    end
+    if not rbw_entity then
+      return nil, err, err_t
+    end
+
+    entity_to_update = self.schema:merge_values(entity_to_update, rbw_entity)
+  end
+
+  local ok, errors = self.schema:validate_update(entity_to_update)
+  if not ok then
+    local err_t = self.errors:schema_violation(errors)
+    return nil, tostring(err_t), err_t
+  end
+
+  if options ~= nil then
+    ok, errors = validate_options_value(options, self.schema, "update")
+    if not ok then
+      local err_t = self.errors:invalid_options(errors)
+      return nil, tostring(err_t), err_t
+    end
+  end
+
+  if self.schema.cache_key and #self.schema.cache_key > 1 then
+    entity_to_update.cache_key = self:cache_key(entity_to_update)
+  end
+
+  return entity_to_update
+end
+
+
 local function generate_foreign_key_methods(schema)
   local methods = {}
 
@@ -287,7 +331,7 @@ local function generate_foreign_key_methods(schema)
         end
 
         local entities, err
-        entities, err, err_t = self:rows_to_entities(rows)
+        entities, err, err_t = self:rows_to_entities(rows, options)
         if err then
           return nil, err, err_t
         end
@@ -381,29 +425,10 @@ local function generate_foreign_key_methods(schema)
           return nil, tostring(err_t), err_t
         end
 
-        if options ~= nil and type(options) ~= "table" then
-          error("options must be a table", 2)
-        end
-
-        local entity_to_update, err = self.schema:process_auto_fields(entity, "update")
+        local entity_to_update, err, err_t = check_update(self, unique_value,
+                                                          entity, options, name)
         if not entity_to_update then
-          local err_t = self.errors:schema_violation(err)
-          return nil, tostring(err_t), err_t
-        end
-
-        local errors
-        ok, errors = self.schema:validate_update(entity_to_update)
-        if not ok then
-          local err_t = self.errors:schema_violation(errors)
-          return nil, tostring(err_t), err_t
-        end
-
-        if options ~= nil then
-          ok, errors = validate_options_value(options, schema, "update")
-          if not ok then
-            local err_t = self.errors:invalid_options(errors)
-            return nil, tostring(err_t), err_t
-          end
+          return nil, err, err_t
         end
 
         local row, err_t = self.strategy:update_by_field(name, unique_value,
@@ -461,6 +486,10 @@ local function generate_foreign_key_methods(schema)
             local err_t = self.errors:invalid_options(errors)
             return nil, tostring(err_t), err_t
           end
+        end
+
+        if self.schema.cache_key and #self.schema.cache_key > 1 then
+          entity_to_upsert.cache_key = self:cache_key(entity)
         end
 
         local row, err_t = self.strategy:upsert_by_field(name, unique_value,
@@ -707,6 +736,10 @@ function DAO:insert(entity, options)
     end
   end
 
+  if self.schema.cache_key and #self.schema.cache_key > 1 then
+    entity_to_insert.cache_key = self:cache_key(entity)
+  end
+
   local row, err_t = self.strategy:insert(entity_to_insert, options)
   if not row then
     return nil, tostring(err_t), err_t
@@ -741,34 +774,10 @@ function DAO:update(primary_key, entity, options)
     return nil, tostring(err_t), err_t
   end
 
-  local entity_to_update, err, read_before_write =
-    self.schema:process_auto_fields(entity, "update")
+  local entity_to_update, err, err_t = check_update(self, primary_key, entity,
+                                                    options)
   if not entity_to_update then
-    local err_t = self.errors:schema_violation(err)
-    return nil, tostring(err_t), err_t
-  end
-
-  if read_before_write then
-    local rbw_entity, err, err_t = self:select(primary_key)
-    if not rbw_entity then
-      return nil, err, err_t
-    end
-
-    entity_to_update = self.schema:merge_values(entity_to_update, rbw_entity)
-  end
-
-  ok, errors = self.schema:validate_update(entity_to_update)
-  if not ok then
-    local err_t = self.errors:schema_violation(errors)
-    return nil, tostring(err_t), err_t
-  end
-
-  if options ~= nil then
-    ok, errors = validate_options_value(options, self.schema, "update")
-    if not ok then
-      local err_t = self.errors:invalid_options(errors)
-      return nil, tostring(err_t), err_t
-    end
+    return nil, err, err_t
   end
 
   local row, err_t = self.strategy:update(primary_key, entity_to_update, options)
@@ -823,6 +832,10 @@ function DAO:upsert(primary_key, entity, options)
       local err_t = self.errors:invalid_options(errors)
       return nil, tostring(err_t), err_t
     end
+  end
+
+  if self.schema.cache_key and #self.schema.cache_key > 1 then
+    entity_to_upsert.cache_key = self:cache_key(entity)
   end
 
   local row, err_t = self.strategy:upsert(primary_key, entity_to_upsert, options)
@@ -880,6 +893,33 @@ function DAO:delete(primary_key, options)
   self:post_crud_event("delete", entity)
 
   return true
+end
+
+
+function DAO:select_by_cache_key(cache_key)
+  local ck_definition = self.schema.cache_key
+  if not ck_definition then
+    error("entity does not have a cache_key defined", 2)
+  end
+
+  if type(cache_key) ~= "string" then
+    cache_key = self:cache_key(cache_key)
+  end
+
+  if #ck_definition == 1 then
+    return self["select_by_" .. ck_definition[1]](self, cache_key)
+  end
+
+  local row, err_t = self.strategy:select_by_field("cache_key", cache_key)
+  if err_t then
+    return nil, tostring(err_t), err_t
+  end
+
+  if not row then
+    return nil
+  end
+
+  return self:row_to_entity(row)
 end
 
 
