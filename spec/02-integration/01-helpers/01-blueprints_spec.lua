@@ -241,7 +241,7 @@ dao_helpers.for_each_dao(function(kong_config)
 
     it("inserts hmac usernames", function()
       local c = bp.consumers:insert()
-      local u = bp.hmacauth_credentials:insert({ consumer_id = c.id })
+      local u = bp.hmacauth_credentials:insert({ consumer = { id = c.id } })
       assert.is_string(u.username)
       assert.equals("secret", u.secret)
       assert.matches(UUID_PATTERN, u.id)

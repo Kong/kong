@@ -18,7 +18,7 @@ for _, strategy in helpers.each_strategy() do
       assert(db:truncate("services"))
       assert(db:truncate("consumers"))
       db:truncate("plugins")
-      dao:truncate_table("hmacauth_credentials")
+      db:truncate("hmacauth_credentials")
 
       local route = bp.routes:insert {
         hosts = { "basic-auth.com" },

@@ -42,9 +42,9 @@ for _, strategy in helpers.each_strategy() do
       }
 
       credential = bp.hmacauth_credentials:insert {
-        username    = "bob",
-        secret      = "secret",
-        consumer_id = consumer.id
+        username = "bob",
+        secret   = "secret",
+        consumer = { id = consumer.id },
       }
 
       local anonymous_user = bp.consumers:insert {
@@ -1587,9 +1587,9 @@ for _, strategy in helpers.each_strategy() do
       }
 
       local credential = bp.hmacauth_credentials:insert {
-        username    = "Aladdin",
-        secret      = "OpenSesame",
-        consumer_id = user2.id
+        username = "Aladdin",
+        secret   = "OpenSesame",
+        consumer = { id = user2.id },
       }
 
       hmacDate = os.date("!%a, %d %b %Y %H:%M:%S GMT")

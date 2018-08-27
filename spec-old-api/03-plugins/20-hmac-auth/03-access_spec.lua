@@ -33,10 +33,10 @@ describe("Plugin: hmac-auth (access)", function()
       username = "bob",
       custom_id = "1234"
     }
-    credential = assert(dao["hmacauth_credentials"]:insert {
+    credential = bp.hmacauth_credentials:insert({
       username = "bob",
       secret = "secret",
-      consumer_id = consumer.id
+      consumer = { id = consumer.id },
     })
 
     local anonymous_user = bp.consumers:insert {
@@ -1250,14 +1250,14 @@ describe("Plugin: hmac-auth (access)", function()
       }
     })
 
-    assert(dao.keyauth_credentials:insert {
+    bp.keyauth_credentials:insert {
       key = "Mouse",
-      consumer_id = user1.id
-    })
-    local credential = assert(dao.hmacauth_credentials:insert {
+      consumer = { id = user1.id },
+    }
+    local credential = bp.hmacauth_credentials:insert({
       username = "Aladdin",
       secret = "OpenSesame",
-      consumer_id = user2.id
+      consumer = { id = user2.id },
     })
     hmacDate = os.date("!%a, %d %b %Y %H:%M:%S GMT")
     local encodedSignature   = ngx.encode_base64(hmac_sha1_binary(credential.secret, "date: " .. hmacDate))

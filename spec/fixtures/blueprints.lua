@@ -285,7 +285,7 @@ function _M.new(dao, db)
   end)
 
   local hmac_username_seq = new_sequence("hmac-username-%d")
-  res.hmacauth_credentials = new_blueprint(dao.hmacauth_credentials, function()
+  res.hmacauth_credentials = new_blueprint(db.hmacauth_credentials, function()
     return {
       username = hmac_username_seq:next(),
       secret   = "secret",
