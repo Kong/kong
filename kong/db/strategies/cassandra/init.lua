@@ -34,6 +34,9 @@ end
 local APPLIED_COLUMN = "[applied]"
 
 
+local cache_key_field = { type = "string" }
+
+
 local _constraints = {}
 
 
@@ -85,27 +88,34 @@ local function build_queries(self)
   local schema   = self.schema
   local n_fields = #schema.fields
   local n_pk     = #schema.primary_key
+  local composite_cache_key = schema.cache_key and #schema.cache_key > 1
 
-  local insert_columns = new_tab(n_fields, 0)
+  local select_columns = new_tab(n_fields, 0)
   for field_name, field in schema:each_field() do
     if field.type == "foreign" then
       local db_columns = self.foreign_keys_db_columns[field_name]
       for i = 1, #db_columns do
-        insert(insert_columns, db_columns[i].col_name)
+        insert(select_columns, db_columns[i].col_name)
       end
     else
-      insert(insert_columns, field_name)
+      insert(select_columns, field_name)
     end
   end
-  insert_columns = concat(insert_columns, ", ")
+  select_columns = concat(select_columns, ", ")
+  local insert_columns = select_columns
+
+  local insert_bind_args = rep("?, ", n_fields):sub(1, -3)
+
+  if composite_cache_key then
+    insert_columns = select_columns .. ", cache_key"
+    insert_bind_args = insert_bind_args .. ", ?"
+  end
 
   local select_bind_args = new_tab(n_pk, 0)
   for _, field_name in self.each_pk_field() do
     insert(select_bind_args, field_name .. " = ?")
   end
   select_bind_args = concat(select_bind_args, " AND ")
-
-  local insert_bind_args = rep("?, ", n_fields):sub(1, -3)
 
   local partitioned, err = is_partitioned(self)
   if err then
@@ -124,15 +134,15 @@ local function build_queries(self)
 
       select = fmt([[
         SELECT %s FROM %s WHERE partition = '%s' AND %s
-      ]], insert_columns, schema.name, schema.name, select_bind_args),
+      ]], select_columns, schema.name, schema.name, select_bind_args),
 
       select_page = fmt([[
         SELECT %s FROM %s WHERE partition = '%s'
-      ]], insert_columns, schema.name, schema.name),
+      ]], select_columns, schema.name, schema.name),
 
       select_with_filter = fmt([[
         SELECT %s FROM %s WHERE partition = '%s' AND %s
-      ]], insert_columns, schema.name, schema.name, "%s"),
+      ]], select_columns, schema.name, schema.name, "%s"),
 
       update = fmt([[
         UPDATE %s SET %s WHERE partition = '%s' AND %s IF EXISTS
@@ -168,17 +178,17 @@ local function build_queries(self)
     -- might raise a "you must enable ALLOW FILTERING" error
     select = fmt([[
       SELECT %s FROM %s WHERE %s
-    ]], insert_columns, schema.name, select_bind_args),
+    ]], select_columns, schema.name, select_bind_args),
 
     -- might raise a "you must enable ALLOW FILTERING" error
     select_page = fmt([[
       SELECT %s FROM %s
-    ]], insert_columns, schema.name),
+    ]], select_columns, schema.name),
 
     -- might raise a "you must enable ALLOW FILTERING" error
     select_with_filter = fmt([[
       SELECT %s FROM %s WHERE %s
-    ]], insert_columns, schema.name, "%s"),
+    ]], select_columns, schema.name, "%s"),
 
     update = fmt([[
       UPDATE %s SET %s WHERE %s IF EXISTS
@@ -514,10 +524,52 @@ local function _select(self, cql, args)
 end
 
 
+local function check_unique(self, primary_key, entity, field_name)
+  -- a UNIQUE constaint is set on this field.
+  -- We unfortunately follow a read-before-write pattern in this case,
+  -- but this is made necessary for Kong to behave in a
+  -- database-agnostic fashion between its supported RDBMs and
+  -- Cassandra.
+  local row, err_t = self:select_by_field(field_name, entity[field_name])
+  if err_t then
+    return nil, err_t
+  end
+
+  if row then
+    for _, pk_field_name in self.each_pk_field() do
+      if primary_key[pk_field_name] ~= row[pk_field_name] then
+        -- already exists
+        if field_name == "cache_key" then
+          local keys = {}
+          local schema = self.schema
+          for _, k in ipairs(schema.cache_key) do
+            local field = schema.fields[k]
+            if field.type == "foreign" and entity[k] ~= ngx.null then
+              keys[k] = field.schema:extract_pk_values(entity[k])
+            else
+              keys[k] = entity[k]
+            end
+          end
+          return nil, self.errors:unique_violation(keys)
+        end
+
+        return nil, self.errors:unique_violation {
+          [field_name] = entity[field_name],
+        }
+      end
+    end
+  end
+
+  return true
+end
+
+
 function _mt:insert(entity, options)
   local schema = self.schema
   local args = new_tab(#schema.fields, 0)
   local ttl = schema.ttl and options and options.ttl
+  local composite_cache_key = schema.cache_key and #schema.cache_key > 1
+  local primary_key
 
   local cql, err
   if ttl then
@@ -561,21 +613,25 @@ function _mt:insert(entity, options)
         -- We unfortunately follow a read-before-write pattern in this case,
         -- but this is made necessary for Kong to behave in a database-agnostic
         -- fashion between its supported RDBMs and Cassandra.
-        local row, err_t = self:select_by_field(field_name, entity[field_name])
+        primary_key = primary_key or schema:extract_pk_values(entity)
+        local _, err_t = check_unique(self, primary_key, entity, field_name)
         if err_t then
           return nil, err_t
-        end
-
-        if row then
-          -- already exists
-          return nil, self.errors:unique_violation {
-            [field_name] = entity[field_name],
-          }
         end
       end
 
       insert(args, serialize_arg(field, entity[field_name]))
     end
+  end
+
+  if composite_cache_key then
+    primary_key = primary_key or schema:extract_pk_values(entity)
+    local _, err_t = check_unique(self, primary_key, entity, "cache_key")
+    if err_t then
+      return nil, err_t
+    end
+
+    insert(args, serialize_arg(cache_key_field, entity["cache_key"]))
   end
 
   -- execute query
@@ -591,9 +647,9 @@ function _mt:insert(entity, options)
   if res[APPLIED_COLUMN] == false then
     -- lightweight transaction (IF NOT EXISTS) failed,
     -- retrieve PK values for the PK violation error
-    local pk_values = schema:extract_pk_values(entity)
+    primary_key = primary_key or schema:extract_pk_values(entity)
 
-    return nil, self.errors:primary_key_violation(pk_values)
+    return nil, self.errors:primary_key_violation(primary_key)
   end
 
   -- return foreign key as if they were fetched from :select()
@@ -649,6 +705,11 @@ function _mt:select_by_field(field_name, field_value, options)
   local select_cql = fmt(cql, field_name .. " = ?")
   local bind_args = new_tab(1, 0)
   local field = self.schema.fields[field_name]
+
+  if field_name == "cache_key" then
+    field = cache_key_field
+  end
+
   bind_args[1] = serialize_arg(field, field_value)
 
   return _select(self, select_cql, bind_args)
@@ -726,6 +787,7 @@ do
   local function update(self, primary_key, entity, mode, options)
     local schema = self.schema
     local ttl = schema.ttl and options and options.ttl
+    local composite_cache_key = schema.cache_key and #schema.cache_key > 1
 
     local query_name
     if ttl then
@@ -762,25 +824,9 @@ do
 
         else
           if field.unique and entity[field_name] ~= ngx.null then
-            -- a UNIQUE constaint is set on this field.
-            -- We unfortunately follow a read-before-write pattern in this case,
-            -- but this is made necessary for Kong to behave in a
-            -- database-agnostic fashion between its supported RDBMs and
-            -- Cassandra.
-            local row, err_t = self:select_by_field(field_name, entity[field_name])
+            local _, err_t = check_unique(self, primary_key, entity, field_name)
             if err_t then
               return nil, err_t
-            end
-
-            if row then
-              for _, pk_field_name in self.each_pk_field() do
-                if primary_key[pk_field_name] ~= row[pk_field_name] then
-                  -- already exists
-                  return nil, self.errors:unique_violation {
-                    [field_name] = entity[field_name],
-                  }
-                end
-              end
             end
           end
 
@@ -788,6 +834,15 @@ do
           insert(args_names, field_name)
         end
       end
+    end
+
+    if composite_cache_key then
+      local _, err_t = check_unique(self, primary_key, entity, "cache_key")
+      if err_t then
+        return nil, err_t
+      end
+
+      insert(args, serialize_arg(cache_key_field, entity["cache_key"]))
     end
 
     -- serialize WHERE clause args
@@ -803,6 +858,10 @@ do
 
     for i = 1, n_args do
       update_columns_binds[i] = args_names[i] .. " = ?"
+    end
+
+    if composite_cache_key then
+      insert(update_columns_binds, "cache_key = ?")
     end
 
     if ttl then

@@ -386,6 +386,19 @@ local function toerror(strategy, err, primary_key, entity)
   if find(err, "violates unique constraint",   1, true) then
     log(NOTICE, err)
 
+    if find(err, "cache_key", 1, true) then
+      local keys = {}
+      for _, k in ipairs(schema.cache_key) do
+        local field = schema.fields[k]
+        if field.type == "foreign" and entity[k] ~= null then
+          keys[k] = field.schema:extract_pk_values(entity[k])
+        else
+          keys[k] = entity[k]
+        end
+      end
+      return nil, errors:unique_violation(keys)
+    end
+
     for field_name, field in schema:each_field() do
       if field.unique then
         if find(err, field_name, 1, true) then
@@ -539,7 +552,6 @@ local function execute(strategy, statement_name, attributes, options)
   end
 
   local sql = statement.make(argv)
-
   return connector:query(sql)
 end
 
@@ -859,6 +871,7 @@ function _M.new(connector, schema, errors)
   end
 
   local ttl                           = schema.ttl == true
+  local composite_cache_key           = schema.cache_key and #schema.cache_key > 1
   local max_name_length               = ttl and 3  or 1
   local max_type_length               = ttl and 24 or 1
   local fields                        = {}
@@ -1170,6 +1183,28 @@ function _M.new(connector, schema, errors)
   end
 
   local create_count = fields_count + 1
+
+  local cache_key_escaped
+  local cache_key_index
+  if composite_cache_key then
+    cache_key_escaped = escape_identifier(connector, "cache_key")
+    cache_key_index = escape_identifier(connector, table_name .. "_" .. "cache_key_idx")
+    update_fields_count = update_fields_count + 1
+    update_names[update_fields_count] = "cache_key"
+    update_args_names[update_fields_count] = "cache_key"
+    update_expressions[update_fields_count] = cache_key_escaped .. " = $" .. update_fields_count
+    upsert_expressions[update_fields_count] = cache_key_escaped .. " = "  .. "EXCLUDED." .. cache_key_escaped
+
+    local create_expression = {
+      cache_key_escaped,
+      rep(" ", max_name_length - #cache_key_escaped + 2),
+      field_type_to_postgres_type({ type = "string" }),
+    }
+
+    create_expressions[create_count] = concat(create_expression)
+    create_count = create_count + 1
+  end
+
   local ttl_escaped
   local ttl_index
   if ttl then
@@ -1233,6 +1268,16 @@ function _M.new(connector, schema, errors)
   local delete_statement
   local count_statement
   local drop_statement
+
+  if composite_cache_key then
+    fields_hash.cache_key = { type = "string" }
+
+    insert_count = fields_count + 1
+    insert_names[insert_count] = "cache_key"
+    insert_expressions[insert_count] = "$" .. insert_count
+    insert_columns[insert_count] = cache_key_escaped
+    fields_count = fields_count + 1
+  end
 
   if ttl then
     fields_hash.ttl = { timestamp = true }
@@ -1406,6 +1451,13 @@ function _M.new(connector, schema, errors)
     end
   end
 
+  if composite_cache_key then
+    create_statement = concat { create_statement,
+      "CREATE INDEX IF NOT EXISTS ", cache_key_index,
+      " ON ", table_name_escaped, " (", cache_key_escaped, ");"
+    }
+  end
+
   local truncate_statement = concat {
     "TRUNCATE ", table_name_escaped, " RESTART IDENTITY CASCADE;"
   }
@@ -1574,6 +1626,14 @@ function _M.new(connector, schema, errors)
     end
   end
 
+  if composite_cache_key then
+    unique_fields_count = unique_fields_count + 1
+    insert(unique_fields, {
+      name = "cache_key",
+      name_escaped = escape_identifier(connector, "cache_key"),
+    })
+  end
+
   if unique_fields_count > 0 then
     local update_by_args_count = update_fields_count + 1
     local update_by_args = new_tab(update_by_args_count, 0)
@@ -1648,10 +1708,14 @@ function _M.new(connector, schema, errors)
       }
 
       local upsert_by_statement_name = "upsert_by_" .. unique_name
+      local conflict_key = unique_escaped
+      if composite_cache_key then
+        conflict_key = escape_identifier(connector, "cache_key")
+      end
       local upsert_by_statement = concat {
         "INSERT INTO ",  table_name_escaped, " (", insert_columns, ")\n",
         "     VALUES (", insert_expressions, ")\n",
-        "ON CONFLICT (", unique_escaped, ") DO UPDATE\n",
+        "ON CONFLICT (", conflict_key, ") DO UPDATE\n",
         "        SET ",  concat(upsert_expressions, ", "), "\n",
         "  RETURNING ",  select_expressions, ";",
       }

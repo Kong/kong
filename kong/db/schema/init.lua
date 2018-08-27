@@ -1163,6 +1163,8 @@ function Schema:process_auto_fields(input, context, nulls)
   local now_s  = ngx_time()
   local now_ms = ngx_now()
   local read_before_write = false
+  local setting_cache_key = 0
+  local cache_key_len = self.cache_key and #self.cache_key
 
   for key, field in self:each_field(input) do
 
@@ -1189,6 +1191,11 @@ function Schema:process_auto_fields(input, context, nulls)
     local field_value = output[key]
 
     if field_value ~= nil then
+
+      if cache_key_len and self.cache_key_set[key] then
+        setting_cache_key = setting_cache_key + 1
+      end
+
       local field_type  = field.type
       if field_type == "array" then
         output[key] = make_array(field_value)
@@ -1213,13 +1220,19 @@ function Schema:process_auto_fields(input, context, nulls)
     end
   end
 
-  -- If a partial update does not provide the subschema key,
-  -- we need to do a read-before-write to get it and be
-  -- able to properly validate the entity.
-  if context == "update"
-     and self.subschema_key
-     and input[self.subschema_key] == nil then
-    read_before_write = true
+  if context == "update" then
+    -- If a partial update does not provide the subschema key,
+    -- we need to do a read-before-write to get it and be
+    -- able to properly validate the entity.
+    if self.subschema_key and input[self.subschema_key] == nil then
+      read_before_write = true
+
+    -- If we're partially resetting the value of a composite cache key,
+    -- we to do a read-before-write to get the rest of the cache key
+    -- and be able to properly update it.
+    elseif setting_cache_key > 0 and cache_key_len ~= setting_cache_key then
+      read_before_write = true
+    end
   end
 
   return output, nil, read_before_write
@@ -1520,6 +1533,13 @@ function Schema.new(definition)
 
   local self = copy(definition)
   setmetatable(self, Schema)
+
+  if self.cache_key then
+    self.cache_key_set = {}
+    for _, name in ipairs(self.cache_key) do
+      self.cache_key_set[name] = true
+    end
+  end
 
   -- Also give access to fields by name
   for key, field in self:each_field() do
