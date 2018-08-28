@@ -113,6 +113,7 @@ local CONF_INFERENCES = {
   dns_resolver = {typ = "array"},
   dns_hostsfile = {typ = "string"},
   dns_order = {typ = "array"},
+  dns_valid_ttl = {typ = "number"},
   dns_stale_ttl = {typ = "number"},
   dns_not_found_ttl = {typ = "number"},
   dns_error_ttl = {typ = "number"},
