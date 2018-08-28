@@ -1,5 +1,4 @@
 local plugin_config_iterator = require("kong.dao.migrations.helpers").plugin_config_iterator
-local schema = require("kong.plugins.ldap-auth.schema")
 
 return {
   {
