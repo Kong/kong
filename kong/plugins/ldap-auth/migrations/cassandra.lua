@@ -10,7 +10,7 @@ return {
           return config
         end
         if config.header_type == nil then
-          config.header_type = schema.fields.header_type.default
+          config.header_type = "ldap"
           local _, err = update(config)
           if err then
             return err
