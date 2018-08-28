@@ -76,6 +76,47 @@ describe("metaschema", function()
     assert.falsy(MetaSchema:validate(s))
   end)
 
+  it("a schema can declare a cache_key", function()
+    local s = {
+      name = "hello",
+      primary_key = { "foo" },
+      cache_key = { "foo" },
+      fields = {
+        { foo = { type = "number", unique = true } } } }
+    assert.truthy(MetaSchema:validate(s))
+  end)
+
+  it("cache_key elements must be fields", function()
+    local s = {
+      name = "hello",
+      primary_key = { "foo" },
+      cache_key = { "foo", "bar" },
+      fields = {
+        { foo = { type = "number" } } } }
+    assert.falsy(MetaSchema:validate(s))
+  end)
+
+  it("a field in a single-field cache_key must be unique", function()
+    local s = {
+      name = "hello",
+      primary_key = { "foo" },
+      cache_key = { "foo" },
+      fields = {
+        { foo = { type = "number" } } } }
+    assert.falsy(MetaSchema:validate(s))
+  end)
+
+  it("fields in a composite cache_key don't need to be unique", function()
+    local s = {
+      name = "hello",
+      primary_key = { "foo" },
+      cache_key = { "foo", "bar" },
+      fields = {
+        { foo = { type = "number" } },
+        { bar = { type = "number" } } } }
+    assert.truthy(MetaSchema:validate(s))
+  end)
+
   it("allows only one entity check per array field", function()
     local s = {
       name = "bad",
