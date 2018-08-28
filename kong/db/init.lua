@@ -298,13 +298,14 @@ do
     -- ensure the locks table exists
     local ok, err = self.connector:setup_locks(DEFAULT_TTL)
     if not ok then
-      return nil, "failed to setup locks: " .. err
+      return release_rlock_and_ret(rlock, nil,
+                                   "failed to setup locks: " .. err)
     end
 
     local ok, err = self.connector:insert_lock(key, ttl, owner)
     if err then
-      return release_rlock_and_ret(rlock, nil, "failed to insert cluster lock: "
-                                               .. err)
+      return release_rlock_and_ret(rlock, nil,
+                                   "failed to insert cluster lock: " .. err)
     end
 
     if not ok then
