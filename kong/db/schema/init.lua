@@ -1296,20 +1296,23 @@ function Schema:validate(input, full_check)
     full_check = true
   end
 
-  local ok, subschema_error
   if self.subschema_key then
+    -- If we can't determine the subschema, do not validate any further
     local key = input[self.subschema_key]
+    if key == null or key == nil then
+      return nil, {
+        [self.subschema_key] = validation_errors.REQUIRED
+      }
+    end
     if not (self.subschemas and self.subschemas[key]) then
       local errmsg = self.subschema_error or validation_errors.SUBSCHEMA_UNKNOWN
-      subschema_error = errmsg:format(key)
+      return nil, {
+        [self.subschema_key] = errmsg:format(key)
+      }
     end
   end
 
   local _, field_errors = validate_fields(self, input)
-
-  if subschema_error then
-    field_errors[self.subschema_key] = subschema_error
-  end
 
   for name, field in self:each_field() do
     if field.required
@@ -1319,8 +1322,7 @@ function Schema:validate(input, full_check)
     end
   end
 
-  local entity_errors, f_errs
-  ok, entity_errors, f_errs = run_entity_checks(self, input, full_check)
+  local ok, entity_errors, f_errs = run_entity_checks(self, input, full_check)
   if not ok then
     if next(entity_errors) then
       field_errors["@entity"] = entity_errors
@@ -1368,13 +1370,13 @@ function Schema:validate_update(input)
   validation_errors.REQUIRED_FOR_ENTITY_CHECK = rfec .. " when updating"
   validation_errors.AT_LEAST_ONE_OF = "when updating, " .. aloo
 
-  local ok, err, err_t = self:validate(input, false)
+  local ok, errors = self:validate(input, false)
 
   -- Restore the original error messages
   validation_errors.REQUIRED_FOR_ENTITY_CHECK = rfec
   validation_errors.AT_LEAST_ONE_OF = aloo
 
-  return ok, err, err_t
+  return ok, errors
 end
 
 
