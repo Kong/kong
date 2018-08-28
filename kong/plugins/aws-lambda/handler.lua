@@ -21,7 +21,6 @@ local ngx_req_get_uri_args = ngx.req.get_uri_args
 local ngx_req_get_headers  = ngx.req.get_headers
 local ngx_encode_base64    = ngx.encode_base64
 
-
 local new_tab
 do
   local ok
@@ -179,6 +178,7 @@ function AWSLambdaHandler:access(conf)
   end
 
   local content = res:read_body()
+
   local headers = res.headers
 
   local ok, err = client:set_keepalive(conf.keepalive)
@@ -186,21 +186,42 @@ function AWSLambdaHandler:access(conf)
     return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
   end
 
-  local status
+  local status = res.status
+  local body = content
   if conf.unhandled_status
-     and headers["X-Amz-Function-Error"] == "Unhandled"
+    and headers["X-Amz-Function-Error"] == "Unhandled"
   then
     status = conf.unhandled_status
 
   else
-    status = res.status
+    if headers["Content-Type"] then
+      local content_type = headers["Content-Type"]
+      if content_type:find("application/json", nil, true) then
+        local params = cjson.decode(content)
+        local statusCode = params.status_code
+        local resource   = params.body
+
+        if statusCode ~= nil then
+          headers['X-lambda-original-status'] = res.status
+          status = statusCode
+        end
+        if resource ~= nil then
+          -- As we're changing the body size, we can't set this header.
+          headers['Content-Length'] = #resource
+          body = resource
+        end
+        for k, v in pairs(params.headers) do
+          headers[k] = v
+        end
+      end
+    end
   end
 
   local ctx = ngx.ctx
   if ctx.delay_response and not ctx.delayed_response then
     ctx.delayed_response = {
       status_code = status,
-      content     = content,
+      content     = body,
       headers     = headers,
     }
 
@@ -209,7 +230,7 @@ function AWSLambdaHandler:access(conf)
     return
   end
 
-  return send(status, content, headers)
+  return send(status, body, headers)
 end
 
 
