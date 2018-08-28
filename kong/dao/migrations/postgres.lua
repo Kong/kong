@@ -860,4 +860,38 @@ return {
     ]],
     down = nil,
   },
+  {
+    name = "2018-08-28-000000_fill_in_plugins_cache_key",
+    up = function(_, _, dao)
+      local rows, err = dao.db:query([[
+        SELECT * FROM plugins;
+      ]])
+      if err then
+        return err
+      end
+      local sql_buffer = { "BEGIN;" }
+      local len = #rows
+      for i = 1, len do
+        local row = rows[i]
+        local cache_key = table.concat({
+          "plugins",
+          row.name,
+          row.route_id or "",
+          row.service_id or "",
+          row.consumer_id or "",
+          row.api_id or ""
+        }, ":")
+        sql_buffer[i + 1] = fmt("UPDATE plugins SET cache_key = '%s' WHERE id = '%s';",
+                                cache_key,
+                                row.id)
+      end
+      sql_buffer[len + 2] = "COMMIT;"
+
+      local _, err = dao.db:query(table.concat(sql_buffer))
+      if err then
+        return err
+      end
+    end,
+    down = nil
+  },
 }
