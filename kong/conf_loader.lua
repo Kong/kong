@@ -339,7 +339,7 @@ local function check_and_infer(conf)
   end
 
   -- enterprise validations
-  tablex.merge(errors, ee_conf_loader.validate(conf))
+  ee_conf_loader.validate(conf, errors)
 
   -- TODO: move these to ee_conf_loader
   if conf.portal then

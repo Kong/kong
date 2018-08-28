@@ -1,11 +1,8 @@
 local cjson = require "cjson.safe"
-local tablex = require "pl.tablex"
 local pl_path = require "pl.path"
 
 
-local function validate_admin_gui_authentication(conf)
-  local errors = {}
-
+local function validate_admin_gui_authentication(conf, errors)
 -- TODO: reinstate validation after testing all auth types
 --  if conf.admin_gui_auth then
 --    if conf.admin_gui_auth ~= "key-auth" and
@@ -37,14 +34,10 @@ local function validate_admin_gui_authentication(conf)
       })
     end
   end
-
-  return errors
 end
 
 
-local function validate_admin_gui_ssl(conf)
-  local errors = {}
-
+local function validate_admin_gui_ssl(conf, errors)
   if (table.concat(conf.admin_gui_listen, ",") .. " "):find("%sssl[%s,]") then
     if conf.admin_gui_ssl_cert and not conf.admin_gui_ssl_cert_key then
       errors[#errors+1] = "admin_gui_ssl_cert_key must be specified"
@@ -59,19 +52,12 @@ local function validate_admin_gui_ssl(conf)
       errors[#errors+1] = "admin_gui_ssl_cert_key: no such file at " .. conf.admin_gui_ssl_cert_key
     end
   end
-
-  return errors
 end
 
 
-local function validate(conf)
-  local errors = {}
-
-  tablex.merge(errors, validate_admin_gui_authentication(conf))
-
-  tablex.merge(errors, validate_admin_gui_ssl(conf))
-
-  return errors
+local function validate(conf, errors)
+  validate_admin_gui_authentication(conf, errors)
+  validate_admin_gui_ssl(conf, errors)
 end
 
 
