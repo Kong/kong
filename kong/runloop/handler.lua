@@ -42,7 +42,7 @@ local CACHE_ROUTER_OPTS = { ttl = 0 }
 local EMPTY_T = {}
 
 
-local router, router_version, router_err
+local router, router_err
 local api_router, api_router_version, api_router_err
 local server_header = meta._SERVER_TOKENS
 
@@ -80,6 +80,15 @@ local function build_api_router(dao, version)
   end
 
   return true
+end
+
+local function raise_rebuild_router_event(worker_events, version)
+  local ok, err = worker_events.post("rebuild", "router", {
+    version = version
+  })
+  if not ok then
+    log(ngx.ERR, "[events] could not broadcast rebuild router event: ", err)
+  end
 end
 
 
@@ -136,10 +145,6 @@ local function build_router(db, version)
   router, err = Router.new(routes)
   if not router then
     return nil, "could not create router: " .. err
-  end
-
-  if version then
-    router_version = version
   end
 
   singletons.router = router
@@ -238,8 +243,39 @@ return {
       worker_events.register(function()
         log(DEBUG, "[events] Route updated, invalidating router")
         cache:invalidate("router:version")
+        local version, err = cache:get("router:version", CACHE_ROUTER_OPTS, utils.uuid)
+        if err then
+          log(ngx.CRIT, "could not ensure router is up to date: ", err)
+        else
+          raise_rebuild_router_event(worker_events, version)
+        end
       end, "crud", "routes")
 
+      worker_events.register(function(data)
+        local version = data.version
+        log(DEBUG, "[events] Router updated, rebuilding router in this worker")
+        local ok, err = build_router(singletons.db, version)
+        if not ok then
+           router_err = err
+           log(ngx.CRIT, "could not rebuild router: ", err)
+        end
+      end, "rebuild", "router")
+
+      local ok, err = cluster_events:subscribe("invalidations", function(key)
+        log(ngx.DEBUG, "received invalidate event from cluster for key: '", key, "'")
+        if key == "router:version" then
+          local version, err = cache:get("router:version", CACHE_ROUTER_OPTS, utils.uuid)
+          if err then
+            log(ngx.CRIT, "could not ensure router is up to date: ", err)
+          else
+            raise_rebuild_router_event(worker_events, version)
+          end
+        end
+      end)
+      if not ok then
+        return nil, "failed to subscribe to invalidations cluster events " ..
+                    "channel: " .. err
+      end
 
       worker_events.register(function(data)
         if data.operation ~= "create" and
@@ -251,6 +287,12 @@ return {
           -- only allowed because no Route is pointing to it anymore.
           log(DEBUG, "[events] Service updated, invalidating router")
           cache:invalidate("router:version")
+          local version, err = cache:get("router:version", CACHE_ROUTER_OPTS, utils.uuid)
+          if err then
+            log(ngx.CRIT, "could not ensure router is up to date: ", err)
+          else
+            raise_rebuild_router_event(worker_events, version)
+          end
         end
       end, "crud", "services")
 
@@ -446,22 +488,6 @@ return {
       end
 
       -- router for Routes/Services
-
-      local version, err = cache:get("router:version", CACHE_ROUTER_OPTS, utils.uuid)
-      if err then
-        log(ngx.CRIT, "could not ensure router is up to date: ", err)
-
-      elseif router_version ~= version then
-        -- router needs to be rebuilt in this worker
-        log(DEBUG, "rebuilding router")
-
-        local ok, err = build_router(singletons.db, version)
-        if not ok then
-          router_err = err
-          log(ngx.CRIT, "could not rebuild router: ", err)
-        end
-      end
-
       if not router then
         return responses.send_HTTP_INTERNAL_SERVER_ERROR("no router to " ..
                   "route request (reason: " .. tostring(router_err) .. ")")
