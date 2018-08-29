@@ -28,6 +28,9 @@ local Schema       = {}
 Schema.__index     = Schema
 
 
+local _constraints = {}
+
+
 local new_tab
 do
   local ok
@@ -1519,12 +1522,22 @@ local function copy(t, cache)
 end
 
 
+function Schema:get_constraints()
+  if not _constraints[self.name] then
+    _constraints[self.name] = {}
+  end
+  return _constraints[self.name]
+end
+
+
 --- Instatiate a new schema from a definition.
 -- @param definition A table with attributes describing
 -- fields and other information about a schema.
+-- @param is_subschema boolean, true if definition
+-- is a subschema
 -- @return The object implementing the schema matching
 -- the given definition.
-function Schema.new(definition)
+function Schema.new(definition, is_subschema)
   if not definition then
     return nil, validation_errors.SCHEMA_NO_DEFINITION
   end
@@ -1543,14 +1556,26 @@ function Schema.new(definition)
     end
   end
 
-  -- Also give access to fields by name
   for key, field in self:each_field() do
+    -- Also give access to fields by name
     self.fields[key] = field
     if field.type == "foreign" then
       local err
       field.schema, err = get_foreign_schema_for_field(field)
       if not field.schema then
         return nil, err
+      end
+
+      if not is_subschema then
+        -- Store the inverse relation for implementing constraints
+        if not _constraints[field.reference] then
+          _constraints[field.reference] = {}
+        end
+        table.insert(_constraints[field.reference], {
+          schema     = self,
+          field_name = key,
+          on_delete  = field.on_delete,
+        })
       end
     end
   end
@@ -1567,7 +1592,7 @@ function Schema.new_subschema(self, key, definition)
     return nil, validation_errors.SUBSCHEMA_BAD_PARENT:format(self.name)
   end
 
-  local subschema, err = Schema.new(definition)
+  local subschema, err = Schema.new(definition, true)
   if not subschema then
     return nil, err
   end

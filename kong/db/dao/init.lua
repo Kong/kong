@@ -195,6 +195,40 @@ local function check_update(self, key, entity, options, name)
 end
 
 
+local function find_cascade_delete_entities(self, entity)
+  local constraints = self.schema:get_constraints()
+  local entries = {}
+  local pk = self.schema:extract_pk_values(entity)
+  for _, constraint in ipairs(constraints) do
+    if constraint.on_delete ~= "cascade" then
+      goto continue
+    end
+
+    local dao = self.db.daos[constraint.schema.name]
+    local method = "each_for_" .. constraint.field_name
+    for row, err in dao[method](dao, pk) do
+      if not row then
+        log(ERR, "[db] failed to traverse entities for cascade-delete: ", err)
+        break
+      end
+
+      table.insert(entries, { dao = dao, entity = row })
+    end
+
+    ::continue::
+  end
+
+  return entries
+end
+
+
+local function propagate_cascade_delete_events(entries)
+  for _, entry in ipairs(entries) do
+    entry.dao:post_crud_event("delete", entry.entity)
+  end
+end
+
+
 local function generate_foreign_key_methods(schema)
   local methods = {}
 
@@ -461,14 +495,16 @@ local function generate_foreign_key_methods(schema)
           return true
         end
 
-        local _
+        local cascade_entries = find_cascade_delete_entities(self, entity)
 
+        local _
         _, err_t = self.strategy:delete_by_field(name, unique_value, options)
         if err_t then
           return nil, tostring(err_t), err_t
         end
 
         self:post_crud_event("delete", entity)
+        propagate_cascade_delete_events(cascade_entries)
 
         return true
       end
@@ -806,6 +842,8 @@ function DAO:delete(primary_key, options)
     end
   end
 
+  local cascade_entries = find_cascade_delete_entities(self, primary_key)
+
   local _
   _, err_t = self.strategy:delete(primary_key, options)
   if err_t then
@@ -813,6 +851,7 @@ function DAO:delete(primary_key, options)
   end
 
   self:post_crud_event("delete", entity)
+  propagate_cascade_delete_events(cascade_entries)
 
   return true
 end

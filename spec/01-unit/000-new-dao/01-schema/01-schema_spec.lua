@@ -1245,6 +1245,7 @@ describe("schema", function()
         }
       }
       local Test = assert(Schema.new({
+        name = "Test",
         fields = {
           { f = { type = "foreign", reference = "schema-test" } },
           { b = { type = "number" }, },
@@ -1266,6 +1267,7 @@ describe("schema", function()
         }
       }
       local Test = assert(Schema.new({
+        name = "Test",
         fields = {
           { f = { type = "foreign", reference = "schema-test" } },
           { b = { type = "number" }, },
@@ -1289,6 +1291,7 @@ describe("schema", function()
         }
       }
       local Test = assert(Schema.new({
+        name = "Test",
         fields = {
           { f = { type = "foreign", reference = "schema-test" } },
           { b = { type = "number" }, },
