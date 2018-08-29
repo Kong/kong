@@ -132,6 +132,7 @@ build = {
 
     ["kong.db"] = "kong/db/init.lua",
     ["kong.db.errors"] = "kong/db/errors.lua",
+    ["kong.db.iteration"] = "kong/db/iteration.lua",
     ["kong.db.dao"] = "kong/db/dao/init.lua",
     ["kong.db.dao.certificates"] = "kong/db/dao/certificates.lua",
     ["kong.db.dao.snis"] = "kong/db/dao/snis.lua",
