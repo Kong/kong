@@ -1215,6 +1215,7 @@ function Schema:process_auto_fields(input, context, nulls)
   local read_before_write = false
   local cache_key_modified = false
 
+  --[[
   if context == "select" and self.translations then
     for _, translation in ipairs(self.translations) do
       if type(translation.read) == "function" then
@@ -1222,6 +1223,7 @@ function Schema:process_auto_fields(input, context, nulls)
       end
     end
   end
+  --]]
 
   for key, field in self:each_field(input) do
     if field.auto then
@@ -1266,6 +1268,7 @@ function Schema:process_auto_fields(input, context, nulls)
     end
   end
 
+  --[[
   if context ~= "select" and self.translations then
     for _, translation in ipairs(self.translations) do
       if type(translation.write) == "function" then
@@ -1273,6 +1276,7 @@ function Schema:process_auto_fields(input, context, nulls)
       end
     end
   end
+  --]]
 
   if context == "update" and (
     -- If a partial update does not provide the subschema key,
@@ -1318,6 +1322,7 @@ function Schema:merge_values(top, bottom)
 end
 
 
+--[[
 function Schema:load_translations(translation)
   if not self.translations then
     self.translations = {}
@@ -1331,6 +1336,7 @@ function Schema:load_translations(translation)
 
   insert(self.translations, translation)
 end
+--]]
 
 
 --- Validate a table against the schema, ensuring that the entity is complete.
