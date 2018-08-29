@@ -181,7 +181,6 @@ local CONF_INFERENCES = {
   portal_smtp_timeout_send = {typ = "number"},
   portal_smtp_timeout_read = {typ = "number"},
 
-  smtp = {typ = "boolean"},
   smtp_admin_emails = {typ = "array"},
   smtp_mock = {typ = "boolean"},
 }

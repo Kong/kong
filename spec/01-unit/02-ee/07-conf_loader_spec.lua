@@ -98,6 +98,7 @@ describe("Configuration loader - enterprise", function()
 
       conf, err = conf_loader(nil, {
         portal = "on",
+        smtp_mock = "on",
         portal_gui_listen = "127.0.0.1"
       })
       assert.is_nil(conf)
@@ -105,6 +106,7 @@ describe("Configuration loader - enterprise", function()
 
       conf, err = conf_loader(nil, {
         portal = "on",
+        smtp_mock = "on",
         portal_api_listen = "127.0.0.1"
       })
       assert.is_nil(conf)

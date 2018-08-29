@@ -9,8 +9,6 @@ local uuid         = require("kong.tools.utils").uuid
 local ee_helpers   = require "spec.ee_helpers"
 
 
-
-
 local function insert_files(dao)
   for i = 1, 10 do
     assert(dao.portal_files:insert {
@@ -323,14 +321,6 @@ for _, strategy in helpers.each_strategy('postgres') do
           helpers.register_consumer_relations(dao)
 
           assert(helpers.start_kong({
-            portal_auto_approve = "off",
-            portal_emails_from = "me@example.com",
-            portal_emails_reply_to = "me@example.com",
-            smtp = "on",
-            smtp_mock = "on",
-            portal_gui_url = "http://127.0.0.1:8081",
-            admin_gui_url = "http://127.0.0.1:8080",
-            smtp_admin_emails = "admin1@example.com, admin2@example.com",
             database = strategy,
             portal = true,
             portal_auth = "basic-auth",
@@ -494,10 +484,9 @@ for _, strategy in helpers.each_strategy('postgres') do
                 emails = {}
               },
               sent = {
-                count = 2,
+                count = 1,
                 emails = {
-                  ["admin1@example.com"] = true,
-                  ["admin2@example.com"] = true,
+                  ["admin@example.com"] = true,
                 }
               },
               smtp_mock = true,
@@ -524,11 +513,6 @@ for _, strategy in helpers.each_strategy('postgres') do
             portal_auth = "basic-auth",
             portal_auth_config = "{ \"hide_credentials\": true }",
             portal_auto_approve = "on",
-            smtp = "on",
-            smtp_mock = "on",
-            portal_emails_from = "noreply@example.com",
-            portal_emails_reply_to = "noreply@example.com",
-            portal_gui_url = "http://127.0.0.1:8081",
           }))
 
           client = assert(helpers.proxy_client())
@@ -659,9 +643,6 @@ for _, strategy in helpers.each_strategy('postgres') do
             local invalidated_count = 0
 
             for _, row in ipairs(rows) do
-              print("created : " .. row.created_at)
-              print("updated : " .. row.updated_at)
-
               if row.status == enums.TOKENS.STATUS.PENDING then
                 pending_count = pending_count + 1
               end
@@ -695,11 +676,6 @@ for _, strategy in helpers.each_strategy('postgres') do
             portal_auth = "basic-auth",
             portal_auth_config = "{ \"hide_credentials\": true }",
             portal_auto_approve = "on",
-            smtp = "on",
-            smtp_mock = "on",
-            portal_emails_from = "noreply@example.com",
-            portal_emails_reply_to = "noreply@example.com",
-            portal_gui_url = "http://127.0.0.1:8081",
           }))
 
           client = assert(helpers.proxy_client())
@@ -934,11 +910,6 @@ for _, strategy in helpers.each_strategy('postgres') do
             rbac = rbac,
             portal_auth = "key-auth",
             portal_auto_approve = "on",
-            smtp = "on",
-            smtp_mock = "on",
-            portal_emails_from = "noreply@example.com",
-            portal_emails_reply_to = "noreply@example.com",
-            portal_gui_url = "http://127.0.0.1:8081",
           }))
 
           client = assert(helpers.proxy_client())

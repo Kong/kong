@@ -136,7 +136,6 @@ lua_package_cpath = NONE
 
 feature_conf_path = NONE
 
-smtp = off
 smtp_admin_emails = NONE
 smtp_mock = off
 ]]

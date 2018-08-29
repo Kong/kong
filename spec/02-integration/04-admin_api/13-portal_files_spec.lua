@@ -14,7 +14,7 @@ end
 
 
 for _, strategy in helpers.each_strategy() do
-describe("Admin API - Developer Portal", function()
+describe("Admin API - Developer Portal - " .. strategy, function()
   local client
   local proxy_client
   local db
@@ -569,12 +569,6 @@ describe("Admin API - Developer Portal", function()
         portal_auth = "basic-auth",
         portal_auth_config = "{ \"hide_credentials\": true }",
         portal_auto_approve = "off",
-        portal_emails_from = "me@example.com",
-        portal_emails_reply_to = "me@example.com",
-        admin_gui_url = "http://127.0.0.1:8080",
-        smtp_admin_emails = "admin@example.com",
-        smtp = "on",
-        smtp_mock = "on",
       }))
 
       proxy_client = assert(helpers.proxy_client())
@@ -985,45 +979,6 @@ describe("Admin API - Developer Portal", function()
 
   describe("/portal/invite", function()
     describe("POST", function()
-      describe("smtp = off", function()
-        before_each(function()
-          helpers.stop_kong()
-          assert(db:truncate())
-          helpers.register_consumer_relations(dao)
-
-          assert(helpers.start_kong({
-            database   = strategy,
-            portal     = true,
-            portal_auth = "basic-auth",
-            portal_auth_config = "{ \"hide_credentials\": true }",
-            portal_auto_approve = "off",
-            smtp = "off",
-            smtp_mock = "on",
-          }))
-
-          client = assert(helpers.admin_client())
-        end)
-
-        it("returns 501 if smtp is turned off", function()
-          local res = assert(client:send {
-            method = "POST",
-            body = {
-              emails = {"me@example.com"},
-            },
-            path = "/portal/invite",
-            headers = {
-              ["Content-Type"] = "application/json",
-            }
-          })
-
-          local body = assert.res_status(501, res)
-          local resp_body_json = cjson.decode(body)
-          local message = resp_body_json.message
-
-          assert.equal("smtp is disabled", message)
-        end)
-      end)
-
       describe("portal_invite_email = off", function()
         before_each(function()
           helpers.stop_kong()
@@ -1037,8 +992,6 @@ describe("Admin API - Developer Portal", function()
             portal_auth_config = "{ \"hide_credentials\": true }",
             portal_auto_approve = "off",
             portal_invite_email = "off",
-            smtp = "on",
-            smtp_mock = "on",
           }))
 
           client = assert(helpers.admin_client())
@@ -1061,45 +1014,6 @@ describe("Admin API - Developer Portal", function()
           local message = resp_body_json.message
 
           assert.equal("portal_invite_email is disabled", message)
-        end)
-      end)
-
-      describe("smtp = on, missing config", function()
-        before_each(function()
-          helpers.stop_kong()
-          assert(db:truncate())
-          helpers.register_consumer_relations(dao)
-
-          assert(helpers.start_kong({
-            database   = strategy,
-            portal     = true,
-            portal_auth = "basic-auth",
-            portal_auth_config = "{ \"hide_credentials\": true }",
-            portal_auto_approve = "off",
-            smtp = "on",
-            smtp_mock = "on",
-          }))
-
-          client = assert(helpers.admin_client())
-        end)
-
-        it("returns 501 if missing invite email conf", function()
-          local res = assert(client:send {
-            method = "POST",
-            body = {
-              emails = {"me@example.com"},
-            },
-            path = "/portal/invite",
-            headers = {
-              ["Content-Type"] = "application/json",
-            }
-          })
-
-          local body = assert.res_status(501, res)
-          local resp_body_json = cjson.decode(body)
-          local message = resp_body_json.message
-
-          assert.equal("missing conf for portal_invite_email: portal_emails_from, portal_emails_reply_to", message)
         end)
       end)
 

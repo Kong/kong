@@ -1,5 +1,6 @@
-local cjson = require "cjson.safe"
-local pl_path = require "pl.path"
+local cjson        = require "cjson.safe"
+local pl_path      = require "pl.path"
+local portal_utils = require "kong.portal.utils"
 
 
 local function validate_admin_gui_authentication(conf, errors)
@@ -55,9 +56,52 @@ local function validate_admin_gui_ssl(conf, errors)
 end
 
 
+local function validate_email(email, key, errors)
+  local ok, err = portal_utils.validate_email(email)
+  if not ok then
+    errors[#errors+1] = key .. " is invalid: " .. err
+  end
+end
+
+
+local function validate_portal_smtp_config(conf, errors)
+  local smtp_admin_emails = conf.smtp_admin_emails
+  if conf.smtp_mock then
+    if next(smtp_admin_emails) == nil then
+      conf.smtp_admin_emails = {"admin@example.com"}
+    end
+    return
+  end
+
+  if not conf.portal_gui_url or conf.portal_gui_url == "" then
+    errors[#errors+1] = "portal_gui_url is required for portal"
+  end
+
+  if not conf.admin_gui_url or conf.admin_gui_url == "" then
+    errors[#errors+1] = "admin_gui_url is required for portal"
+  end
+
+  validate_email(conf.portal_emails_from, "portal_emails_from", errors)
+  validate_email(conf.portal_emails_reply_to, "portal_emails_reply_to", errors)
+  validate_email(conf.portal_emails_from, "portal_emails_from", errors)
+
+  if next(smtp_admin_emails) == nil then
+    errors[#errors+1] = "smtp_admin_emails is required for portal"
+  else
+    for _, email in ipairs(smtp_admin_emails) do
+      validate_email(email, "smtp_admin_emails", errors)
+    end
+  end
+end
+
+
 local function validate(conf, errors)
   validate_admin_gui_authentication(conf, errors)
   validate_admin_gui_ssl(conf, errors)
+
+  if conf.portal then
+    validate_portal_smtp_config(conf, errors)
+  end
 end
 
 
@@ -66,4 +110,5 @@ return {
   -- only exposed for unit testing :-(
   validate_admin_gui_authentication = validate_admin_gui_authentication,
   validate_admin_gui_ssl = validate_admin_gui_ssl,
+  validate_portal_smtp_config = validate_portal_smtp_config,
 }

@@ -14,11 +14,6 @@ _M.LOG_PREFIX = "[portal-smtp]"
 local base_conf = {
   portal_invite_email = {
     name = "Invite",
-    required_conf_keys = {
-      "portal_emails_from",
-      "portal_emails_reply_to",
-      "portal_gui_url",
-    },
     subject = "Invite to access Developer Portal (%s)",
     html = [[
       <p>Hello Developer!</p>
@@ -31,13 +26,6 @@ local base_conf = {
 
   portal_access_request_email = {
     name = "Access Request",
-    required_conf_keys = {
-      "portal_emails_from",
-      "portal_emails_reply_to",
-      "portal_gui_url",
-      "admin_gui_url",
-      "smtp_admin_emails"
-    },
     subject = "Request to access Developer Portal (%s)",
     html = [[
       <p>Hello Admin!</p>
@@ -50,11 +38,6 @@ local base_conf = {
 
   portal_approved_email = {
     name = "Approval",
-    required_conf_keys = {
-      "portal_emails_from",
-      "portal_emails_reply_to",
-      "portal_gui_url",
-    },
     subject = "Developer Portal access approved (%s)",
     html = [[
       <p>Hello Developer!</p>
@@ -67,11 +50,6 @@ local base_conf = {
 
   portal_reset_email = {
     name = "Password Reset",
-    required_conf_keys = {
-      "portal_emails_from",
-      "portal_emails_reply_to",
-      "portal_gui_url",
-    },
     subject = "Password Reset Instructions for Developer Portal (%s)",
     html = [[
       <p>Hello Developer,</p>
@@ -83,14 +61,12 @@ local base_conf = {
       </p>
     ]],
   }
-
 }
 
 
 function _M.new(conf)
   conf = conf or {}
 
-  local enabled = conf.smtp
   local client, err = smtp_client.new({
     host = conf.portal_smtp_host,                  -- default localhost
     port = conf.portal_smtp_port,                  -- default 25
@@ -107,13 +83,12 @@ function _M.new(conf)
 
   if err then
     log(INFO, _M.LOG_PREFIX, "unable to initialize smtp client: " .. err)
-    enabled = false
   end
 
   local self = {
-    enabled = enabled,
-    client  = client,
-    conf    = smtp_client.prep_conf(conf, base_conf),
+    client    = client,
+    conf      = base_conf,
+    kong_conf = conf,
   }
 
   return setmetatable(self, mt)
@@ -121,17 +96,18 @@ end
 
 
 function _M:invite(recipients)
-  local conf, err = smtp_client.check_conf(self, "portal_invite_email")
-  if not conf then
-    return nil, {message = err, code = 501}
+  local kong_conf = self.kong_conf
+  if not kong_conf.portal_invite_email then
+    return nil, {code =  501, message = "portal_invite_email is disabled"}
   end
 
+  local conf = self.conf.portal_invite_email
   local options = {
-    from = conf.portal_emails_from,
-    reply_to = conf.portal_emails_reply_to,
-    subject = fmt(conf.subject, conf.portal_gui_url),
-    html = fmt(conf.html, conf.portal_gui_url, conf.portal_gui_url,
-                                               conf.portal_gui_url),
+    from = kong_conf.portal_emails_from,
+    reply_to = kong_conf.portal_emails_reply_to,
+    subject = fmt(conf.subject, kong_conf.portal_gui_url),
+    html = fmt(conf.html, kong_conf.portal_gui_url, kong_conf.portal_gui_url,
+                                                    kong_conf.portal_gui_url),
   }
 
   local res
@@ -145,35 +121,39 @@ end
 
 
 function _M:access_request(developer_email, developer_name)
-  local conf, err = smtp_client.check_conf(self, "portal_access_request_email")
-  if not conf then
-    return nil, {message = err, code = 501}
+  local kong_conf = self.kong_conf
+  if not kong_conf.portal_access_request_email then
+    return nil
   end
 
+  local conf = self.conf.portal_access_request_email
   local options = {
-    from = conf.portal_emails_from,
-    reply_to = conf.portal_emails_reply_to,
-    subject = fmt(conf.subject, conf.portal_gui_url),
-    html = fmt(conf.html, developer_name, developer_email, conf.portal_gui_url,
-                                  conf.admin_gui_url, conf.admin_gui_url),
+    from = kong_conf.portal_emails_from,
+    reply_to = kong_conf.portal_emails_reply_to,
+    subject = fmt(conf.subject, kong_conf.portal_gui_url),
+    html = fmt(conf.html, developer_name, developer_email,
+                            kong_conf.portal_gui_url, kong_conf.admin_gui_url,
+                                                      kong_conf.admin_gui_url),
   }
 
-  local res = self.client:send(conf.smtp_admin_emails, options)
+  local res = self.client:send(kong_conf.smtp_admin_emails, options)
   return smtp_client.handle_res(res)
 end
 
 
 function _M:approved(recipient)
-  local conf, err = smtp_client.check_conf(self, "portal_approved_email")
-  if not conf then
-    return nil, {message = err, code = 501}
+  local kong_conf = self.kong_conf
+  if not kong_conf.portal_approved_email then
+    return nil
   end
 
+  local conf = self.conf.portal_approved_email
   local options = {
-    from = conf.portal_emails_from,
-    reply_to = conf.portal_emails_reply_to,
-    subject = fmt(conf.subject, conf.portal_gui_url),
-    html = fmt(conf.html, conf.portal_gui_url, conf.portal_gui_url, conf.portal_gui_url),
+    from = kong_conf.portal_emails_from,
+    reply_to = kong_conf.portal_emails_reply_to,
+    subject = fmt(conf.subject, kong_conf.portal_gui_url),
+    html = fmt(conf.html, kong_conf.portal_gui_url, kong_conf.portal_gui_url,
+                                                    kong_conf.portal_gui_url),
   }
 
   local res = self.client:send({recipient}, options)
@@ -181,16 +161,18 @@ function _M:approved(recipient)
 end
 
 function _M:password_reset(recipient, token)
-  local conf, err = smtp_client.check_conf(self, "portal_reset_email")
-  if not conf then
-    return nil, {message = err, code = 501}
+  local kong_conf = self.kong_conf
+  if not kong_conf.portal_reset_email then
+    return nil, {code =  501, message = "portal_reset_email is disabled"}
   end
 
+  local conf = self.conf.portal_reset_email
   local options = {
-    from = conf.portal_emails_from,
-    reply_to = conf.portal_emails_reply_to,
-    subject = fmt(conf.subject, conf.portal_gui_url),
-    html = fmt(conf.html, conf.portal_gui_url, token, conf.portal_gui_url, token),
+    from = kong_conf.portal_emails_from,
+    reply_to = kong_conf.portal_emails_reply_to,
+    subject = fmt(conf.subject, kong_conf.portal_gui_url),
+    html = fmt(conf.html, kong_conf.portal_gui_url, token,
+                                             kong_conf.portal_gui_url, token),
   }
 
   local res = self.client:send({recipient}, options)

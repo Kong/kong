@@ -860,19 +860,15 @@
 
 #portal_invite_email = on         # Enable of disable portal_invite_email
                                   # Default `on`
-                                  # Note: This is overridden if `smtp` is `off`
 
 #portal_access_request_email = on # Enable of disable portal_access_request_email
                                   # Default `on`
-                                  # Note: This is overridden if `smtp` is `off`
 
 #portal_approved_email = on       # Enable of disable portal_approved_email
                                   # Default `on`
-                                  # Note: This is overridden if `smtp` is `off`
 
 #portal_reset_email = on          # Enable of disable portal_reset_email
                                   # Default `on`
-                                  # Note: This is overridden if `smtp` is `off`
 
 #portal_emails_from =             # The name and email address for the `From` header
                                   # for portal emails
@@ -943,16 +939,6 @@
 #------------------------------------------------------------------------------
 
 
-#smtp = off             # Enable or disable smtp client
-                        # Valid values are `on` or `off`
-                        # Default `off`
-
 #smtp_admin_emails =    # Comma separated list of admin emails to receive notifications
                         # Example `admin1@example.com, admin2@example.com`
                         # Default `nil`
-
-#smtp_mock = off        # Mock the smtp client send method. This will cause the
-                        # SMTP client to function as normal, including SMTP configuration
-                        # validation but will not actually send emails.
-                        # Valid values are `on` or `off`
-                        # Default `off`
