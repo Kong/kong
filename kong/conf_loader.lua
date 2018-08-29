@@ -154,6 +154,18 @@ local typ_checks = {
   ngx_boolean = function(v) return v == "on" or v == "off" end
 }
 
+-- This meta table will prevent the parsed table to be passed on in the
+-- intermediate Kong config file in the prefix directory.
+-- We thus avoid 'table: 0x41c3fa58' from appearing into the prefix
+-- hidden configuration file.
+-- This is only to be applied to values that are injected into the
+-- configuration object, and not configuration properties themselves,
+-- otherwise we would prevent such properties from being specifiable
+-- via environment variables.
+local _nop_tostring_mt = {
+  __tostring = function() return "" end,
+}
+
 -- Validate properties (type/enum/custom) and infer their type.
 -- @param[type=table] conf The configuration table to treat.
 local function check_and_infer(conf)
@@ -608,9 +620,7 @@ local function load(path, custom_conf)
   -- nginx directives from conf
   for directives_block, dyn_key_prefix in pairs(DYNAMIC_KEY_PREFIXES) do
     local directives = parse_nginx_directives(dyn_key_prefix, conf)
-    conf[directives_block] = setmetatable(directives, {
-      __tostring = function() return "" end,
-    })
+    conf[directives_block] = setmetatable(directives, _nop_tostring_mt)
   end
 
   -- print alphabetically-sorted values
@@ -665,9 +675,7 @@ local function load(path, custom_conf)
       end
     end
 
-    conf.loaded_plugins = setmetatable(plugins, {
-      __tostring = function() return "" end,
-    })
+    conf.loaded_plugins = setmetatable(plugins, _nop_tostring_mt)
   end
 
   -- temporary workaround: inject an shm for prometheus plugin if needed
@@ -703,17 +711,12 @@ local function load(path, custom_conf)
 
   -- extract ports/listen ips
   do
-    local err
-    -- this meta table will prevent the parsed table to be passed on in the
-    -- intermediate Kong config file in the prefix directory
-    local mt = { __tostring = function() return "" end }
-
     conf.proxy_listeners, err = parse_listeners(conf.proxy_listen)
     if err then
       return nil, "proxy_listen " .. err
     end
 
-    setmetatable(conf.proxy_listeners, mt)  -- do not pass on, parse again
+    setmetatable(conf.proxy_listeners, _nop_tostring_mt)
     conf.proxy_ssl_enabled = false
 
     for _, listener in ipairs(conf.proxy_listeners) do
@@ -728,7 +731,7 @@ local function load(path, custom_conf)
       return nil, "admin_listen " .. err
     end
 
-    setmetatable(conf.admin_listeners, mt)  -- do not pass on, parse again
+    setmetatable(conf.admin_listeners, _nop_tostring_mt)
     conf.admin_ssl_enabled = false
 
     for _, listener in ipairs(conf.admin_listeners) do
@@ -765,9 +768,7 @@ local function load(path, custom_conf)
       enabled_headers[headers.UPSTREAM_LATENCY] = true
     end
 
-    conf.enabled_headers = setmetatable(enabled_headers, {
-      __tostring = function() return "" end,
-    })
+    conf.enabled_headers = setmetatable(enabled_headers, _nop_tostring_mt)
   end
 
   -- load absolute paths
