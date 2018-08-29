@@ -59,6 +59,7 @@ init_worker_by_lua_block {
     Kong.init_worker()
 }
 
+proxy_next_upstream timeout error  non_idempotent;
 
 > if #proxy_listeners > 0 then
 upstream kong_upstream {
@@ -81,7 +82,7 @@ server {
     error_log ${{PROXY_ERROR_LOG}} ${{LOG_LEVEL}};
 
     client_body_buffer_size ${{CLIENT_BODY_BUFFER_SIZE}};
-
+    
 > if proxy_ssl_enabled then
     ssl_certificate ${{SSL_CERT}};
     ssl_certificate_key ${{SSL_CERT_KEY}};
