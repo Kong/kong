@@ -27,9 +27,27 @@ local function self_check(_, conf)
       end
     end
 
-    local ok, err = cache.load_keys("kong")
-    if not ok then
-      return false, errors.schema(err)
+    local access_token_keyset = args.get_conf_arg("access_token_keyset")
+    if access_token_keyset then
+      local ok, err = cache.load_keys(access_token_keyset)
+      if not ok then
+        return false, errors.schema(err)
+      end
+    end
+
+    local channel_token_keyset = args.get_conf_arg("channel_token_keyset")
+    if channel_token_keyset and channel_token_keyset ~= access_token_keyset then
+      local ok, err = cache.load_keys(channel_token_keyset)
+      if not ok then
+        return false, errors.schema(err)
+      end
+    end
+
+    if access_token_keyset ~= "kong" and channel_token_keyset ~= "kong" then
+      local ok, err = cache.load_keys("kong")
+      if not ok then
+        return false, errors.schema(err)
+      end
     end
   end
 
@@ -45,6 +63,11 @@ return {
       type                                    = "string",
     },
     access_token_issuer                       = {
+      required                                = false,
+      type                                    = "string",
+      default                                 = "kong"
+    },
+    access_token_keyset                       = {
       required                                = false,
       type                                    = "string",
       default                                 = "kong"
@@ -125,7 +148,17 @@ return {
       type                                    = "boolean",
       default                                 = true,
     },
+    cache_access_token_introspection          = {
+      required                                = false,
+      type                                    = "boolean",
+      default                                 = true,
+    },
     channel_token_issuer                      = {
+      required                                = false,
+      type                                    = "string",
+      default                                 = "kong"
+    },
+    channel_token_keyset                      = {
       required                                = false,
       type                                    = "string",
       default                                 = "kong"
@@ -177,7 +210,7 @@ return {
     },
     channel_token_introspection_claim         = {
       required                                = false,
-      type                                    = "string",
+      type                                    = "array",
     },
     channel_token_signing_algorithm           = {
       required                                = true,
@@ -199,6 +232,11 @@ return {
       default                                 = true,
     },
     verify_channel_token_scopes               = {
+      required                                = false,
+      type                                    = "boolean",
+      default                                 = true,
+    },
+    cache_channel_token_introspection         = {
       required                                = false,
       type                                    = "boolean",
       default                                 = true,

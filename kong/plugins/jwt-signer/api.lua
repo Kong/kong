@@ -6,20 +6,29 @@ local json  = require "cjson.safe"
 
 local setmetatable = setmetatable
 local ipairs = ipairs
+local pairs = pairs
 local type = type
 
 
 local EMPTY_ARRAY = setmetatable({}, json.empty_array_mt)
+local PRIVATE = {
+  d = true,
+  p = true,
+  q = true,
+  dp = true,
+  dq = true,
+  qi = true,
+  oth = true,
+}
 
 
 local function clear_private_keys(jwks)
   for _, jwk in ipairs(jwks) do
-    jwk.d = nil
-    jwk.p = nil
-    jwk.q = nil
-    jwk.dp = nil
-    jwk.dq = nil
-    jwk.qi = nil
+    for key in pairs(jwk) do
+      if PRIVATE[key] then
+        jwk[key] = nil
+      end
+    end
   end
 
   return jwks

@@ -3,7 +3,6 @@ local responses  = require "kong.tools.responses"
 local arguments  = require "kong.plugins.jwt-signer.arguments"
 local cache      = require "kong.plugins.jwt-signer.cache"
 local log        = require "kong.plugins.jwt-signer.log"
-local token      = require "kong.openid-connect.token"
 local jwt        = require "kong.openid-connect.jwt"
 local jws        = require "kong.openid-connect.jws"
 local set        = require "kong.openid-connect.set"
@@ -41,6 +40,7 @@ do
     CONF[token_type] = {}
     for key, value in pairs {
       issuer                      = "%s_issuer",
+      keyset                      = "%s_keyset",
       jwks_uri                    = "%s_jwks_uri",
       request_header              = "%s_request_header",
       leeway                      = "%s_leeway",
@@ -56,6 +56,7 @@ do
       verify_signature            = "verify_%s_signature",
       verify_expiry               = "verify_%s_expiry",
       verify_scopes               = "verify_%s_scopes",
+      cache_introspection         = "cache_%s_introspection",
     } do
       CONF[token_type][key] = fmt(value, token_type)
     end
@@ -142,24 +143,13 @@ end
 
 
 
-local function load_keys(name)
-  return cache.load_keys(name)
+local function load_keys(...)
+  return cache.load_keys(...)
 end
 
 
-local function introspect(endpoint, opaque_token, hint, authorization)
-  local options = {
-    token_introspection_endpoint = endpoint,
-    ssl_verify                   = false,
-  }
-
-  if authorization then
-    options.headers = {
-      Authorization = authorization
-    }
-  end
-
-  return token:introspect(opaque_token, hint, options)
+local function introspect(...)
+  return cache.introspect(...)
 end
 
 
@@ -286,12 +276,14 @@ function JwtSignerHandler:access(conf)
           if introspection_endpoint then
             local introspection_hint          = args.get_conf_arg(config.introspection_hint)
             local introspection_authorization = args.get_conf_arg(config.introspection_authorization)
+            local cache_introspection         = args.get_conf_arg(config.cache_introspection)
 
             local token_info
             token_info, err = introspect(introspection_endpoint,
                                          request_token,
                                          introspection_hint,
-                                         introspection_authorization)
+                                         introspection_authorization,
+                                         cache_introspection)
 
             if type(token_info) ~= "table" then
               log(logs.introspection_error)
@@ -303,7 +295,7 @@ function JwtSignerHandler:access(conf)
             if token_info.active == true then
               local introspection_claim = args.get_conf_arg(config.introspection_claim)
               if introspection_claim then
-                local token_in_claim = token_info[introspection_claim]
+                local token_in_claim = find_claim(token_info, introspection_claim)
                 if not token_in_claim then
                   log(logs.introspection_claim)
                   return unauthorized(realm, "invalid_token", errs.invalid, err)
@@ -417,8 +409,10 @@ function JwtSignerHandler:access(conf)
           payload.exp = expiry + upstream_leeway
         end
 
+
+        local keyset = args.get_conf_arg(config.keyset, "kong")
         local private_keys
-        private_keys, err = load_keys(issuer or "kong")
+        private_keys, err = load_keys(keyset)
         if not private_keys then
           return unexpected(realm, "unexpected", "the keys could not be loaded", err)
         end
@@ -450,7 +444,7 @@ end
 
 
 JwtSignerHandler.PRIORITY = 802
-JwtSignerHandler.VERSION  = "0.0.3"
+JwtSignerHandler.VERSION  = "0.0.4"
 
 
 return JwtSignerHandler
