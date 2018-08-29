@@ -1,3 +1,4 @@
+local iteration = require "kong.db.iteration"
 local cassandra = require "cassandra"
 local cjson = require "cjson"
 
@@ -43,7 +44,6 @@ local _constraints = {}
 local _M  = {
   CUSTOM_STRATEGIES = {
     services = require("kong.db.strategies.cassandra.services"),
-    routes   = require("kong.db.strategies.cassandra.routes"),
   }
 }
 
@@ -1009,6 +1009,31 @@ do
             return nil, self.errors:foreign_key_violation_restricted(schema.name,
                                                                      constraint.schema.name)
           end
+
+        elseif behavior == "cascade" then
+
+          local strategy = _M.new(self.connector, constraint.schema, self.errors)
+          local method = "page_for_" .. constraint.field_name
+
+          local pager = function(size, offset)
+            return strategy[method](strategy, primary_key, size, offset)
+          end
+          for row, err in iteration.by_row(self, pager) do
+            if err then
+              return nil, self.errors:database_error("could not gather " ..
+                                                     "associated entities " ..
+                                                     "for delete cascade: ", err)
+            end
+
+            local row_pk = constraint.schema:extract_pk_values(row)
+            local _
+            _, err = strategy:delete(row_pk)
+            if err then
+              return nil, self.errors:database_error("could not cascade " ..
+                                                     "delete entity: ", err)
+            end
+          end
+
         end
 
       end

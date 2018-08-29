@@ -25,25 +25,6 @@ local function delete_cascade_legacy(self, table_name, fk)
 end
 
 
-local function delete_cascade(self, table_name, fk)
-  local entity = self.db[table_name]
-
-  for row, err in entity:each_for_consumer(fk) do
-    if not row then
-      ngx.log(ngx.ERR, "[consumers.delete_cascade] could not gather associated ",
-                     "entities for delete cascade: ", err)
-      return
-    end
-
-    local row_pk = entity.schema:extract_pk_values(row)
-    local _, err = entity:delete(row_pk)
-    if err then
-      ngx.log(ngx.ERR, "[consumers.delete_cascade] could not delete-cascade entity: ", err)
-    end
-  end
-end
-
-
 local function delete_cascade_all(self, consumer_id)
   local fk = { consumer_id = consumer_id }
 
@@ -53,8 +34,6 @@ local function delete_cascade_all(self, consumer_id)
   for table_name, _ in pairs(constraints.cascade) do
     delete_cascade_legacy(self, table_name, fk)
   end
-
-  delete_cascade(self, "plugins", { id = consumer_id })
 end
 
 
