@@ -255,6 +255,16 @@ server {
     gzip on;
     gzip_types text/plain text/css application/json application/javascript;
 
+    location ~* \.(jpg|jpeg|png|gif|ico|css|ttf|js)$ {
+        root portal;
+
+        add_header Cache-Control 'max-age=7776000';
+        etag off;
+
+        access_log logs/portal_gui_access.log;
+        error_log logs/portal_gui_error.log;
+    }
+
     location / {
         root portal;
 
