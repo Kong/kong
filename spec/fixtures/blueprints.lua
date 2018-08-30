@@ -152,8 +152,11 @@ function _M.new(dao, db)
     }
   end)
 
-  res.acls = new_blueprint(dao.acls, function()
-    return {}
+  local acl_group_seq = new_sequence("acl-group-%d")
+  res.acls = new_blueprint(db.acls, function()
+    return {
+      group = acl_group_seq:next(),
+    }
   end)
 
   res.cors_plugins = new_blueprint(db.plugins, function()

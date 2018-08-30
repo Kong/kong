@@ -1,32 +1,41 @@
 local cjson = require "cjson"
 local helpers = require "spec.helpers"
-local utils = require "kong.tools.utils"
 
-describe("Plugin: acl (API)", function()
-  local consumer, admin_client
-  local bp, db, dao
+
+for _, strategy in helpers.each_strategy() do
+describe("Plugin: acl (API) [#" .. strategy .. "]", function()
+  local consumer
+  local admin_client
+  local bp
+  local db
 
   setup(function()
-    bp, db, dao = helpers.get_db_utils()
+    bp, db = helpers.get_db_utils(strategy)
 
-    assert(helpers.start_kong())
+    assert(helpers.start_kong({
+      database = strategy,
+    }))
+
     admin_client = helpers.admin_client()
   end)
+
   teardown(function()
-    if admin_client then admin_client:close() end
+    if admin_client then
+      admin_client:close()
+    end
+
     helpers.stop_kong()
   end)
 
   describe("/consumers/:consumer/acls/", function()
     setup(function()
-      db:truncate("consumers")
-      dao:truncate_table("acls")
+      db:truncate()
       consumer = bp.consumers:insert {
         username = "bob"
       }
     end)
-    after_each(function()
-      dao:truncate_table("acls")
+    before_each(function()
+      db:truncate("acls")
     end)
 
     describe("POST", function()
@@ -43,7 +52,7 @@ describe("Plugin: acl (API)", function()
         })
         local body = assert.res_status(201, res)
         local json = cjson.decode(body)
-        assert.equal(consumer.id, json.consumer_id)
+        assert.equal(consumer.id, json.consumer.id)
         assert.equal("admin", json.group)
       end)
       describe("errors", function()
@@ -58,58 +67,18 @@ describe("Plugin: acl (API)", function()
           })
           local body = assert.res_status(400, res)
           local json = cjson.decode(body)
-          assert.same({ group = "group is required" }, json)
+          assert.same({ group = "required field missing" }, json.fields)
         end)
       end)
     end)
 
-    describe("PUT", function()
-      it("updates an ACL's groupname", function()
-        local res = assert(admin_client:send {
-          method = "PUT",
-          path = "/consumers/bob/acls",
-          body = {
-            group = "pro"
-          },
-          headers = {
-            ["Content-Type"] = "application/json"
-          }
-        })
-        local body = assert.res_status(201, res)
-        local json = cjson.decode(body)
-        assert.equal(consumer.id, json.consumer_id)
-        assert.equal("pro", json.group)
-      end)
-      describe("errors", function()
-        it("returns bad request", function()
-          local res = assert(admin_client:send {
-          method = "PUT",
-          path = "/consumers/bob/acls",
-          body = {},
-          headers = {
-            ["Content-Type"] = "application/json"
-          }
-        })
-          local body = assert.res_status(400, res)
-          local json = cjson.decode(body)
-          assert.same({ group = "group is required" }, json)
-        end)
-      end)
-    end)
 
     describe("GET", function()
-      setup(function()
-        for i = 1, 3 do
-          assert(dao.acls:insert {
-            group = "group" .. i,
-            consumer_id = consumer.id
-          })
-        end
-      end)
       teardown(function()
-        dao:truncate_table("acls")
+        db:truncate("acls")
       end)
       it("retrieves the first page", function()
+        bp.acls:insert_n(3, { consumer = { id = consumer.id } })
         local res = assert(admin_client:send {
           method = "GET",
           path = "/consumers/bob/acls"
@@ -118,7 +87,6 @@ describe("Plugin: acl (API)", function()
         local json = cjson.decode(body)
         assert.is_table(json.data)
         assert.equal(3, #json.data)
-        assert.equal(3, json.total)
       end)
     end)
   end)
@@ -126,15 +94,15 @@ describe("Plugin: acl (API)", function()
   describe("/consumers/:consumer/acls/:id", function()
     local acl, acl2
     before_each(function()
-      dao:truncate_table("acls")
-      acl = assert(dao.acls:insert {
+      db:truncate("acls")
+      acl = bp.acls:insert {
         group = "hello",
-        consumer_id = consumer.id
-      })
-      acl2 = assert(dao.acls:insert {
+        consumer = { id = consumer.id },
+      }
+      acl2 = bp.acls:insert {
         group = "hello2",
-        consumer_id = consumer.id
-      })
+        consumer = { id = consumer.id },
+      }
     end)
     describe("GET", function()
       it("retrieves by id", function()
@@ -187,6 +155,41 @@ describe("Plugin: acl (API)", function()
       end)
     end)
 
+    describe("PUT", function()
+      it("updates an ACL's groupname", function()
+        local res = assert(admin_client:send {
+          method = "PUT",
+          path = "/consumers/bob/acls/pro",
+          body = {},
+          headers = {
+            ["Content-Type"] = "application/json"
+          }
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.equal(consumer.id, json.consumer.id)
+        assert.equal("pro", json.group)
+      end)
+      describe("errors", function()
+        it("returns bad request", function()
+          local res = assert(admin_client:send {
+          method = "PUT",
+          path   = "/consumers/bob/acls/f7852533-9160-4f5a-ae12-1ab99219ea95",
+          body = {
+            group = 123,
+          },
+          headers = {
+            ["Content-Type"] = "application/json"
+          }
+        })
+          local body = assert.res_status(400, res)
+          local json = cjson.decode(body)
+          assert.same({ group = "expected a string" }, json.fields)
+        end)
+      end)
+    end)
+
+
     describe("PATCH", function()
       it("updates an ACL group by id", function()
         local previous_group = acl.group
@@ -227,14 +230,16 @@ describe("Plugin: acl (API)", function()
           local res = assert(admin_client:send {
             method = "PATCH",
             path = "/consumers/bob/acls/" .. acl.id,
-            body = {},
+            body = {
+              group            = 123,
+            },
             headers = {
               ["Content-Type"] = "application/json"
             }
           })
           local body = assert.res_status(400, res)
           local json = cjson.decode(body)
-          assert.same({ group = "ACL group already exist for this consumer" }, json)
+          assert.same({ group = "expected a string" }, json.fields)
         end)
       end)
     end)
@@ -278,13 +283,13 @@ describe("Plugin: acl (API)", function()
 
     describe("GET", function()
       setup(function()
-        dao:truncate_table("acls")
+        db:truncate("acls")
 
         for i = 1, 3 do
-          assert(dao.acls:insert {
-            group = "group" .. i,
-            consumer_id = consumer.id
-          })
+          bp.acls:insert {
+            group    = "group" .. i,
+            consumer = { id = consumer.id },
+          }
         end
 
         consumer2 = bp.consumers:insert {
@@ -292,10 +297,10 @@ describe("Plugin: acl (API)", function()
         }
 
         for i = 1, 3 do
-          assert(dao.acls:insert {
+          bp.acls:insert {
             group = "group" .. i,
-            consumer_id = consumer2.id
-          })
+            consumer = { id = consumer2.id },
+          }
         end
       end)
 
@@ -308,7 +313,6 @@ describe("Plugin: acl (API)", function()
         local json = cjson.decode(body)
         assert.is_table(json.data)
         assert.equal(6, #json.data)
-        assert.equal(6, json.total)
       end)
       it("retrieves all the acls without trailing slash", function()
         local res = assert(admin_client:send {
@@ -319,7 +323,6 @@ describe("Plugin: acl (API)", function()
         local json = cjson.decode(body)
         assert.is_table(json.data)
         assert.equal(6, #json.data)
-        assert.equal(6, json.total)
       end)
       it("paginates through the acls", function()
         local res = assert(admin_client:send {
@@ -330,7 +333,6 @@ describe("Plugin: acl (API)", function()
         local json_1 = cjson.decode(body)
         assert.is_table(json_1.data)
         assert.equal(3, #json_1.data)
-        assert.equal(6, json_1.total)
 
         res = assert(admin_client:send {
           method = "GET",
@@ -344,57 +346,12 @@ describe("Plugin: acl (API)", function()
         local json_2 = cjson.decode(body)
         assert.is_table(json_2.data)
         assert.equal(3, #json_2.data)
-        assert.equal(6, json_2.total)
 
         assert.not_same(json_1.data, json_2.data)
         -- Disabled: on Cassandra, the last page still returns a
         -- next_page token, and thus, an offset proprty in the
         -- response of the Admin API.
         --assert.is_nil(json_2.offset) -- last page
-      end)
-      it("retrieves acls for a consumer_id", function()
-        local res = assert(admin_client:send {
-          method = "GET",
-          path = "/acls?consumer_id=" .. consumer.id
-        })
-        local body = assert.res_status(200, res)
-        local json = cjson.decode(body)
-        assert.is_table(json.data)
-        assert.equal(3, #json.data)
-        assert.equal(3, json.total)
-      end)
-      it("returns empty for a non-existing consumer_id", function()
-        local res = assert(admin_client:send {
-          method = "GET",
-          path = "/acls?consumer_id=" .. utils.uuid(),
-        })
-        local body = assert.res_status(200, res)
-        local json = cjson.decode(body)
-        assert.is_table(json.data)
-        assert.equal(0, #json.data)
-        assert.equal(0, json.total)
-      end)
-      it("retrieves acls belong to a specific group", function()
-        local res = assert(admin_client:send {
-          method = "GET",
-          path = "/acls?group=" .. "group1",
-        })
-        local body = assert.res_status(200, res)
-        local json = cjson.decode(body)
-        assert.is_table(json.data)
-        assert.equal(2, #json.data)
-        assert.equal(2, json.total)
-      end)
-      it("returns empty for a non-existing group", function()
-        local res = assert(admin_client:send {
-          method = "GET",
-          path = "/acls?group=" .. "foo-group",
-        })
-        local body = assert.res_status(200, res)
-        local json = cjson.decode(body)
-        assert.is_table(json.data)
-        assert.equal(0, #json.data)
-        assert.equal(0, json.total)
       end)
     end)
   end)
@@ -404,11 +361,11 @@ describe("Plugin: acl (API)", function()
       local credential
 
       setup(function()
-        dao:truncate_table("acls")
-        credential = assert(dao.acls:insert {
+        db:truncate("acls")
+        credential = bp.acls:insert {
           group = "foo-group",
-          consumer_id = consumer.id
-        })
+          consumer = { id = consumer.id }
+        }
       end)
       it("retrieves a Consumer from an acl's id", function()
         local res = assert(admin_client:send {
@@ -419,20 +376,7 @@ describe("Plugin: acl (API)", function()
         local json = cjson.decode(body)
         assert.same(consumer, json)
       end)
-      it("returns 404 for a random non-existing id", function()
-        local res = assert(admin_client:send {
-          method = "GET",
-          path = "/acls/" .. utils.uuid()  .. "/consumer",
-        })
-        assert.res_status(404, res)
-      end)
-      it("returns 400 for an invalid uuid", function()
-        local res = assert(admin_client:send {
-          method = "GET",
-          path = "/acls/1234/consumer",
-        })
-        assert.res_status(400, res)
-      end)
     end)
   end)
 end)
+end

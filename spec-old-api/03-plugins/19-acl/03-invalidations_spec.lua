@@ -1,6 +1,7 @@
 local helpers = require "spec.helpers"
 
-describe("Plugin: ACL (invalidations)", function()
+for _, strategy in helpers.each_strategy() do
+describe("Plugin: ACL (invalidations) [#" .. strategy .. "]", function()
   local admin_client, proxy_client
   local consumer1, acl1
   local dao
@@ -8,7 +9,7 @@ describe("Plugin: ACL (invalidations)", function()
   local db
 
   before_each(function()
-    bp, db, dao = helpers.get_db_utils()
+    bp, db, dao = helpers.get_db_utils(strategy)
 
     consumer1 = bp.consumers:insert {
       username = "consumer1"
@@ -17,14 +18,14 @@ describe("Plugin: ACL (invalidations)", function()
       key = "apikey123",
       consumer = { id = consumer1.id },
     }
-    acl1 = assert(dao.acls:insert {
+    acl1 = bp.acls:insert {
       group = "admin",
-      consumer_id = consumer1.id
-    })
-    assert(dao.acls:insert {
+      consumer = { id = consumer1.id },
+    }
+    bp.acls:insert {
       group = "pro",
-      consumer_id = consumer1.id
-    })
+      consumer = { id = consumer1.id },
+    }
 
     local consumer2 = bp.consumers:insert {
       username = "consumer2"
@@ -33,10 +34,10 @@ describe("Plugin: ACL (invalidations)", function()
       key = "apikey124",
       consumer = { id = consumer2.id },
     }
-    assert(dao.acls:insert {
+    bp.acls:insert {
       group = "admin",
-      consumer_id = consumer2.id
-    })
+      consumer = { id = consumer2.id }
+    }
 
     local api1 = assert(dao.apis:insert {
       name         = "api-1",
@@ -73,6 +74,7 @@ describe("Plugin: ACL (invalidations)", function()
     })
 
     assert(helpers.start_kong({
+      database   = strategy,
       nginx_conf = "spec/fixtures/custom_nginx.template",
     }))
     proxy_client = helpers.proxy_client()
@@ -102,7 +104,7 @@ describe("Plugin: ACL (invalidations)", function()
 
       -- Check that the cache is populated
 
-      local cache_key = dao.acls:cache_key(consumer1.id)
+      local cache_key = db.acls:cache_key(consumer1.id)
       local res = assert(admin_client:send {
         method = "GET",
         path = "/cache/" .. cache_key,
@@ -161,7 +163,7 @@ describe("Plugin: ACL (invalidations)", function()
       assert.res_status(403, res)
 
       -- Check that the cache is populated
-      local cache_key = dao.acls:cache_key(consumer1.id)
+      local cache_key = db.acls:cache_key(consumer1.id)
       local res = assert(admin_client:send {
         method = "GET",
         path = "/cache/" .. cache_key,
@@ -228,7 +230,7 @@ describe("Plugin: ACL (invalidations)", function()
       assert.res_status(200, res)
 
       -- Check that the cache is populated
-      local cache_key = dao.acls:cache_key(consumer1.id)
+      local cache_key = db.acls:cache_key(consumer1.id)
       local res = assert(admin_client:send {
         method = "GET",
         path = "/cache/" .. cache_key,
@@ -280,3 +282,4 @@ describe("Plugin: ACL (invalidations)", function()
   end)
 
 end)
+end

@@ -23,9 +23,9 @@ describe("Plugin: ACL (access)", function()
       key = "apikey124",
       consumer = { id = consumer2.id },
     })
-    assert(dao.acls:insert {
+    bp.acls:insert({
       group = "admin",
-      consumer_id = consumer2.id
+      consumer = { id = consumer2.id },
     })
 
     local consumer3 = bp.consumers:insert {
@@ -35,13 +35,13 @@ describe("Plugin: ACL (access)", function()
       key = "apikey125",
       consumer = { id = consumer3.id },
     })
-    assert(dao.acls:insert {
+    bp.acls:insert({
       group = "pro",
-      consumer_id = consumer3.id
+      consumer = { id = consumer3.id },
     })
-    assert(dao.acls:insert {
+    bp.acls:insert({
       group = "hello",
-      consumer_id = consumer3.id
+      consumer = { id = consumer3.id },
     })
 
     local consumer4 = bp.consumers:insert {
@@ -51,22 +51,22 @@ describe("Plugin: ACL (access)", function()
       key = "apikey126",
       consumer = { id = consumer4.id },
     })
-    assert(dao.acls:insert {
+    bp.acls:insert({
       group = "free",
-      consumer_id = consumer4.id
+      consumer = { id = consumer4.id },
     })
-    assert(dao.acls:insert {
+    bp.acls:insert({
       group = "hello",
-      consumer_id = consumer4.id
+      consumer = { id = consumer4.id },
     })
 
     local anonymous = bp.consumers:insert {
       username = "anonymous"
     }
 
-    assert(dao.acls:insert {
+    bp.acls:insert({
       group = "anonymous",
-      consumer_id = anonymous.id
+      consumer = { id = anonymous.id },
     })
 
     local api1 = assert(dao.apis:insert {
@@ -501,7 +501,7 @@ describe("Plugin: ACL (access)", function()
         assert.res_status(201, res)
 
         -- Wait for cache to be invalidated
-        local cache_key = dao.acls:cache_key(consumer_id)
+        local cache_key = db.acls:cache_key(consumer_id)
 
         helpers.wait_until(function()
           local res = assert(api_client:send {
