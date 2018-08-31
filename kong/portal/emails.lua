@@ -60,6 +60,22 @@ local base_conf = {
         <a href="%s/reset-password?token=%s">%s/reset?token=%s</a>
       </p>
     ]],
+  },
+
+  portal_reset_success_email = {
+    name = "Password Reset Success",
+    subject = "Developer Portal password change success (%s)",
+    html = [[
+      <p>Hello Developer,</p>
+      <p>
+        We are emailing you to let you know that your Developer Portal password at <a href="%s">%s</a> has been changed.
+      </p>
+      <p>
+        Click the link below to sign in with your new credentials.
+        <br>
+        <a href="%s/login">%s/login</a>
+      </p>
+    ]],
   }
 }
 
@@ -179,5 +195,23 @@ function _M:password_reset(recipient, token)
   return smtp_client.handle_res(res)
 end
 
+function _M:password_reset_success(recipient)
+  local kong_conf = self.kong_conf
+  if not kong_conf.portal_reset_success_email then
+    return nil, {code =  501, message = "portal_reset_success_email is disabled"}
+  end
+
+  local conf = self.conf.portal_reset_success_email
+  local options = {
+    from = kong_conf.portal_emails_from,
+    reply_to = kong_conf.portal_emails_reply_to,
+    subject = fmt(conf.subject, kong_conf.portal_gui_url),
+    html = fmt(conf.html, kong_conf.portal_gui_url, kong_conf.portal_gui_url, 
+                          kong_conf.portal_gui_url, kong_conf.portal_gui_url),
+  }
+
+  local res = self.client:send({recipient}, options)
+  return smtp_client.handle_res(res)
+end
 
 return _M

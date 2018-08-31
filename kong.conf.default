@@ -858,16 +858,20 @@
 # PORTAL SMTP CONFIGURATION
 #------------------------------------------------------------------------------
 
-#portal_invite_email = on         # Enable of disable portal_invite_email
+#portal_invite_email = on         # Enable or disable portal_invite_email
                                   # Default `on`
 
-#portal_access_request_email = on # Enable of disable portal_access_request_email
+#portal_access_request_email = on # Enable or disable portal_access_request_email
                                   # Default `on`
 
-#portal_approved_email = on       # Enable of disable portal_approved_email
+#portal_approved_email = on       # Enable or disable portal_approved_email
                                   # Default `on`
 
-#portal_reset_email = on          # Enable of disable portal_reset_email
+#portal_reset_email = on          # Enable or disable portal_reset_email
+                                  # Default `on`
+                                  # Note: This is overridden if `smtp` is `off`
+
+#portal_reset_success_email = on  # Enable or disable portal_reset_success_email
                                   # Default `on`
 
 #portal_emails_from =             # The name and email address for the `From` header
@@ -909,8 +913,8 @@
 #portal_smtp_password =           # Password used for authentication with SMTP server
                                   # Default `nil`
 
-#portal_smtp_ssl =                # When set to `on`, SMTPS is used to encrypt communcation
-                                  # with the SMTP server. This is normally used in conjuction with
+#portal_smtp_ssl =                # When set to `on`, SMTPS is used to encrypt communication
+                                  # with the SMTP server. This is normally used in conjunction with
                                   # port 465.
                                   # Default `nil`
 

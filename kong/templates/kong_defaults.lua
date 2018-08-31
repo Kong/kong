@@ -37,6 +37,7 @@ portal_invite_email = true
 portal_access_request_email = true
 portal_approved_email = true
 portal_reset_email = true
+portal_reset_success_email = true
 
 portal_smtp_host = localhost
 portal_smtp_port = 25

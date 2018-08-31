@@ -332,6 +332,11 @@ return {
         return helpers.yield_error(err)
       end
 
+      local _, err = singletons.portal_emails:password_reset_success(self.consumer.email)
+      if err then
+        return helpers.yield_error(err)
+      end
+
       return helpers.responses.send_HTTP_OK()
     end,
   },

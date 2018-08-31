@@ -166,6 +166,7 @@ local CONF_INFERENCES = {
   portal_access_request_email = {typ = "boolean"},
   portal_approved_email = {typ = "boolean"},
   portal_reset_email = {typ = "boolean"},
+  portal_reset_success_email = {typ = "boolean"},
   portal_emails_from = {typ = "string"},
   portal_emails_reply_to = {typ = "string"},
 

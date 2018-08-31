@@ -13,6 +13,7 @@ describe("ee portal emails", function()
       portal_access_request_email = true,
       portal_approved_email = true,
       portal_reset_email = true,
+      portal_reset_success_email = true,
       smtp_admin_emails = {"admin@example.com"},
     }
   end)
@@ -168,6 +169,88 @@ describe("ee portal emails", function()
       }
 
       local res, err = portal_emails:approved("gruce@konghq.com")
+      assert.same(expected, res)
+      assert.is_nil(err)
+      assert.spy(portal_emails.client.send).was_called(1)
+    end)
+  end)
+
+  describe("password_reset", function()
+    it("should return err if portal_reset_email is disabled", function()
+      conf.portal_reset_email = false
+      portal_emails = emails.new(conf)
+
+      local expected = {
+        code = 501,
+        message = "portal_reset_email is disabled",
+      }
+
+      local res, err = portal_emails:password_reset("gruce@konghq.com", 'token')
+      assert.is_nil(res)
+      assert.same(expected, err)
+    end)
+
+    it("should call client:send", function()
+      portal_emails = emails.new(conf)
+      portal_emails.enabled = true
+      spy.on(portal_emails.client, "send")
+
+      local expected = {
+        smtp_mock = true,
+        error = {
+          count = 0,
+          emails = {},
+        },
+        sent = {
+          count = 1,
+          emails = {
+            ["gruce@konghq.com"] = true,
+          }
+        }
+      }
+
+      local res, err = portal_emails:password_reset("gruce@konghq.com" ,'token')
+      assert.same(expected, res)
+      assert.is_nil(err)
+      assert.spy(portal_emails.client.send).was_called(1)
+    end)
+  end)
+
+  describe("password_reset_success", function()
+    it("should return err if portal_reset_success_email is disabled", function()
+      conf.portal_reset_success_email = false
+      portal_emails = emails.new(conf)
+
+      local expected = {
+        code = 501,
+        message = "portal_reset_success_email is disabled",
+      }
+
+      local res, err = portal_emails:password_reset_success("gruce@konghq.com")
+      assert.is_nil(res)
+      assert.same(expected, err)
+    end)
+
+    it("should call client:send", function()
+      portal_emails = emails.new(conf)
+      portal_emails.enabled = true
+      spy.on(portal_emails.client, "send")
+
+      local expected = {
+        smtp_mock = true,
+        error = {
+          count = 0,
+          emails = {},
+        },
+        sent = {
+          count = 1,
+          emails = {
+            ["gruce@konghq.com"] = true,
+          }
+        }
+      }
+
+      local res, err = portal_emails:password_reset_success("gruce@konghq.com")
       assert.same(expected, res)
       assert.is_nil(err)
       assert.spy(portal_emails.client.send).was_called(1)
