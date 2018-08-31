@@ -257,8 +257,9 @@ server {
 
     location ~* \.(jpg|jpeg|png|gif|ico|css|ttf|js)$ {
         root portal;
-
-        add_header Cache-Control 'max-age=7776000';
+        
+        expires 90d;
+        add_header Cache-Control 'public';
         etag off;
 
         access_log logs/portal_gui_access.log;
