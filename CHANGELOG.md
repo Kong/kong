@@ -1,3 +1,8 @@
+## v0.0.5
+
+- Add `access_token_introspection_body_args`
+- Add `channel_token_introspection_body_args`
+
 ## v0.0.4
 
 - Add documentation

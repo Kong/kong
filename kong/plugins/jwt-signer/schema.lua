@@ -115,6 +115,10 @@ return {
       required                                = false,
       type                                    = "string",
     },
+    access_token_introspection_body_args      = {
+      required                                = false,
+      type                                    = "string",
+    },
     access_token_introspection_hint           = {
       required                                = false,
       type                                    = "string",
@@ -200,11 +204,15 @@ return {
       required                                = false,
       type                                    = "url",
     },
-    channel_token_introspection_hint           = {
+    channel_token_introspection_hint          = {
       required                                = false,
       type                                    = "string",
     },
     channel_token_introspection_authorization = {
+      required                                = false,
+      type                                    = "string",
+    },
+    channel_token_introspection_body_args     = {
       required                                = false,
       type                                    = "string",
     },

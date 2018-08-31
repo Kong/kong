@@ -50,6 +50,7 @@ do
       upstream_leeway             = "%s_upstream_leeway",
       introspection_endpoint      = "%s_introspection_endpoint",
       introspection_authorization = "%s_introspection_authorization",
+      introspection_body_args     = "%s_introspection_body_args",
       introspection_hint          = "%s_introspection_hint",
       introspection_claim         = "%s_introspection_claim",
       signing_algorithm           = "%s_signing_algorithm",
@@ -276,6 +277,7 @@ function JwtSignerHandler:access(conf)
           if introspection_endpoint then
             local introspection_hint          = args.get_conf_arg(config.introspection_hint)
             local introspection_authorization = args.get_conf_arg(config.introspection_authorization)
+            local introspection_body_args     = args.get_conf_arg(config.introspection_body_args)
             local cache_introspection         = args.get_conf_arg(config.cache_introspection)
 
             local token_info
@@ -283,6 +285,7 @@ function JwtSignerHandler:access(conf)
                                          request_token,
                                          introspection_hint,
                                          introspection_authorization,
+                                         introspection_body_args,
                                          cache_introspection)
 
             if type(token_info) ~= "table" then
@@ -409,7 +412,6 @@ function JwtSignerHandler:access(conf)
           payload.exp = expiry + upstream_leeway
         end
 
-
         local keyset = args.get_conf_arg(config.keyset, "kong")
         local private_keys
         private_keys, err = load_keys(keyset)
@@ -444,7 +446,8 @@ end
 
 
 JwtSignerHandler.PRIORITY = 802
-JwtSignerHandler.VERSION  = "0.0.4"
+JwtSignerHandler.VERSION  = "0.0.5"
 
 
 return JwtSignerHandler
+
