@@ -365,10 +365,15 @@ end
 
 do
   -- migrations
+  local Schema = require "kong.db.schema"
+  local Migration = require "kong.db.schema.others.migrations"
   local pl_path = require "pl.path"
   local pl_dir = require "pl.dir"
   local utils = require "kong.tools.utils"
   local log = require "kong.cmd.utils.log"
+
+
+  local MigrationSchema = Schema.new(Migration)
 
 
   local function load_subsystems(plugin_names)
@@ -451,14 +456,14 @@ do
                           mig_module, subsys.name)
         end
 
-        -- TODO schema validation of a migration
-
-        if type(migration) ~= "table" then
-          return nil, fmt("migration loaded from '%s' is not a table",
-                          mig_module)
-        end
-
         migration.name = mig_name
+
+        local ok, errors = MigrationSchema:validate(migration)
+        if not ok then
+          local err_t = Errors:schema_violation(errors)
+          return nil, fmt("migration '%s' of '%s' subsystem is invalid: %s",
+                          mig_module, subsys.name, tostring(err_t))
+        end
 
         table.insert(subsys.migrations, migration)
       end
@@ -473,7 +478,7 @@ do
 
     local subsystems, err = load_subsystems(self.kong_config.loaded_plugins)
     if not subsystems then
-      return nil, "failed to load migrations: " .. err
+      return nil, err
     end
 
     log.verbose("retrieving database schema state...")

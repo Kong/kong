@@ -27,13 +27,19 @@ Options:
 ]]
 
 
-local function print_migrations(mig_arr, lvl)
+local function print_migrations(subsystems, lvl)
   if not lvl then
     lvl = "info"
   end
 
-  for _, t in ipairs(mig_arr) do
-    log[lvl]("%s: %s", t.subsystem, table.concat(t.migrations, ", "))
+  for _, subsys in ipairs(subsystems) do
+    local names = {}
+
+    for _, migration in ipairs(subsys.migrations) do
+      table.insert(names, migration.name)
+    end
+
+    log[lvl]("%s: %s", subsys.subsystem, table.concat(names, ", "))
   end
 end
 
