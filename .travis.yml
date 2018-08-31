@@ -32,9 +32,15 @@ env:
     - INSTALL_CACHE=$HOME/install-cache
     - JOBS=2
   matrix:
-    - KONG_TEST_DATABASE=postgres
-    - KONG_TEST_DATABASE=cassandra CASSANDRA=2.2
-    - KONG_TEST_DATABASE=cassandra CASSANDRA=3.9
+    - KONG_TEST_DATABASE=postgres TEST_SUITE=integration
+    - KONG_TEST_DATABASE=cassandra CASSANDRA=2.2 TEST_SUITE=integration
+    - KONG_TEST_DATABASE=cassandra CASSANDRA=3.9 TEST_SUITE=integration
+    - KONG_TEST_DATABASE=postgres TEST_SUITE=plugins
+    - KONG_TEST_DATABASE=cassandra CASSANDRA=2.2 TEST_SUITE=plugins
+    - KONG_TEST_DATABASE=cassandra CASSANDRA=3.9 TEST_SUITE=plugins
+    - KONG_TEST_DATABASE=postgres TEST_SUITE=old-integration
+    - KONG_TEST_DATABASE=postgres TEST_SUITE=old-plugins
+    - TEST_SUITE=pdk
 
 before_install:
   - source .ci/setup_env.sh
@@ -66,10 +72,6 @@ jobs:
       - bin/busted -v -o gtest spec-old-api/01-unit
       env:
         - KONG_DATABASE=none
-    - stage: pdk tests
-      script: TEST_NGINX_RANDOMIZE=1 prove -I. -j$JOBS -r t/01-pdk
-      env:
-        - KONG_DATABASE=none TEST_SUITE=pdk
     - stage: deploy
       install: skip
       before_install: skip
