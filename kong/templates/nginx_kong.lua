@@ -261,9 +261,6 @@ server {
         expires 90d;
         add_header Cache-Control 'public';
         etag off;
-
-        access_log logs/portal_gui_access.log;
-        error_log logs/portal_gui_error.log;
     }
 
     location / {
