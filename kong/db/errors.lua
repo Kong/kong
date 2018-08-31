@@ -68,7 +68,11 @@ local _err_mt = {
        message = err_t.name
     end
 
-    return fmt("[%s] %s", err_t.strategy, message)
+    if err_t.strategy then
+      return fmt("[%s] %s", err_t.strategy, message)
+    end
+
+    return message
   end,
 
   __concat = function(a, b)

@@ -1,6 +1,9 @@
 return {
   postgres = {
     -- TODO
+    up = [[
+
+    ]],
   },
 
   cassandra = {
