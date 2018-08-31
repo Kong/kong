@@ -107,15 +107,16 @@ local validation_errors = {
 
 
 Schema.valid_types = {
-  array   = true,
-  set     = true,
-  string  = true,
-  number  = true,
-  boolean = true,
-  integer = true,
-  foreign = true,
-  map     = true,
-  record  = true,
+  array        = true,
+  set          = true,
+  string       = true,
+  number       = true,
+  boolean      = true,
+  integer      = true,
+  foreign      = true,
+  map          = true,
+  record       = true,
+  ["function"] = true,
 }
 
 
@@ -688,8 +689,6 @@ function Schema:validate_field(field, value)
     end
 
   elseif field.type == "function" then
-    -- TODO: this type should only be used/visible from the
-    -- metaschema to validate the 'custom_validator'
     if type(value) ~= "function" then
       return nil, validation_errors.FUNCTION
     end
