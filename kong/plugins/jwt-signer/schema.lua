@@ -56,198 +56,250 @@ end
 
 
 return {
-  self_check                                  = self_check,
-  fields                                      = {
-    realm                                     = {
-      required                                = false,
-      type                                    = "string",
+  self_check                                    = self_check,
+  fields                                        = {
+    realm                                       = {
+      required                                  = false,
+      type                                      = "string",
     },
-    access_token_issuer                       = {
-      required                                = false,
-      type                                    = "string",
-      default                                 = "kong"
+    access_token_issuer                         = {
+      required                                  = false,
+      type                                      = "string",
+      default                                   = "kong"
     },
-    access_token_keyset                       = {
-      required                                = false,
-      type                                    = "string",
-      default                                 = "kong"
+    access_token_keyset                         = {
+      required                                  = false,
+      type                                      = "string",
+      default                                   = "kong"
     },
-    access_token_jwks_uri                     = {
-      required                                = false,
-      type                                    = "url",
+    access_token_jwks_uri                       = {
+      required                                  = false,
+      type                                      = "url",
     },
-    access_token_request_header               = {
-      required                                = false,
-      type                                    = "string",
-      default                                 = "authorization:bearer",
+    access_token_request_header                 = {
+      required                                  = false,
+      type                                      = "string",
+      default                                   = "authorization:bearer",
     },
-    access_token_leeway                       = {
-      required                                = false,
-      type                                    = "number",
-      default                                 = 0,
+    access_token_leeway                         = {
+      required                                  = false,
+      type                                      = "number",
+      default                                   = 0,
     },
-    access_token_scopes_required              = {
-      required                                = false,
-      type                                    = "array",
+    access_token_scopes_required                = {
+      required                                  = false,
+      type                                      = "array",
     },
-    access_token_scopes_claim                 = {
-      required                                = true,
-      type                                    = "array",
-      default                                 = {
+    access_token_scopes_claim                   = {
+      required                                  = true,
+      type                                      = "array",
+      default                                   = {
         "scope"
       },
     },
-    access_token_upstream_header              = {
-      required                                = false,
-      type                                    = "string",
-      default                                 = "authorization:bearer",
+    access_token_upstream_header                = {
+      required                                  = false,
+      type                                      = "string",
+      default                                   = "authorization:bearer",
     },
-    access_token_upstream_leeway              = {
-      required                                = false,
-      type                                    = "number",
-      default                                 = 0,
+    access_token_upstream_leeway                = {
+      required                                  = false,
+      type                                      = "number",
+      default                                   = 0,
     },
-    access_token_introspection_endpoint       = {
-      required                                = false,
-      type                                    = "url",
+    access_token_introspection_endpoint         = {
+      required                                  = false,
+      type                                      = "url",
     },
-    access_token_introspection_authorization  = {
-      required                                = false,
-      type                                    = "string",
+    access_token_introspection_authorization    = {
+      required                                  = false,
+      type                                      = "string",
     },
-    access_token_introspection_body_args      = {
-      required                                = false,
-      type                                    = "string",
+    access_token_introspection_body_args        = {
+      required                                  = false,
+      type                                      = "string",
     },
-    access_token_introspection_hint           = {
-      required                                = false,
-      type                                    = "string",
-      default                                 = "access_token",
+    access_token_introspection_hint             = {
+      required                                  = false,
+      type                                      = "string",
+      default                                   = "access_token",
     },
-    access_token_introspection_claim          = {
-      required                                = false,
-      type                                    = "string",
+    access_token_introspection_claim            = {
+      required                                  = false,
+      type                                      = "string",
     },
-    access_token_signing_algorithm            = {
-      required                                = true,
-      type                                    = "enum",
+    access_token_introspection_leeway           = {
+      required                                  = false,
+      type                                      = "number",
+      default                                   = 0,
+    },
+    access_token_intrspection_scopes_required   = {
+      required                                  = false,
+      type                                      = "array",
+    },
+    access_token_introspection_scopes_claim     = {
+      required                                  = true,
+      type                                      = "array",
+      default                                   = {
+        "scope"
+      },
+    },
+    access_token_signing_algorithm              = {
+      required                                  = true,
+      type                                      = "enum",
       enum = {
         "RS256",
         "RS512",
       },
-      default                                 = "RS256",
+      default                                   = "RS256",
     },
-    verify_access_token_signature             = {
-      required                                = false,
-      type                                    = "boolean",
-      default                                 = true,
+    verify_access_token_signature               = {
+      required                                  = false,
+      type                                      = "boolean",
+      default                                   = true,
     },
-    verify_access_token_expiry                = {
-      required                                = false,
-      type                                    = "boolean",
-      default                                 = true,
+    verify_access_token_expiry                  = {
+      required                                  = false,
+      type                                      = "boolean",
+      default                                   = true,
     },
-    verify_access_token_scopes                = {
-      required                                = false,
-      type                                    = "boolean",
-      default                                 = true,
+    verify_access_token_introspection_expiry    = {
+      required                                  = false,
+      type                                      = "boolean",
+      default                                   = true,
     },
-    cache_access_token_introspection          = {
-      required                                = false,
-      type                                    = "boolean",
-      default                                 = true,
+    verify_access_token_scopes                  = {
+      required                                  = false,
+      type                                      = "boolean",
+      default                                   = true,
     },
-    channel_token_issuer                      = {
-      required                                = false,
-      type                                    = "string",
-      default                                 = "kong"
+    verify_access_token_introspection_scopes    = {
+      required                                  = false,
+      type                                      = "boolean",
+      default                                   = true,
     },
-    channel_token_keyset                      = {
-      required                                = false,
-      type                                    = "string",
-      default                                 = "kong"
+    cache_access_token_introspection            = {
+      required                                  = false,
+      type                                      = "boolean",
+      default                                   = true,
     },
-    channel_token_jwks_uri                    = {
-      required                                = false,
-      type                                    = "url",
+    channel_token_issuer                        = {
+      required                                  = false,
+      type                                      = "string",
+      default                                   = "kong"
     },
-    channel_token_request_header              = {
-      required                                = false,
-      type                                    = "string",
+    channel_token_keyset                        = {
+      required                                  = false,
+      type                                      = "string",
+      default                                   = "kong"
     },
-    channel_token_leeway                      = {
-      required                                = false,
-      type                                    = "number",
-      default                                 = 0,
+    channel_token_jwks_uri                      = {
+      required                                  = false,
+      type                                      = "url",
     },
-    channel_token_scopes_required             = {
-      required                                = false,
-      type                                    = "array",
+    channel_token_request_header                = {
+      required                                  = false,
+      type                                      = "string",
     },
-    channel_token_scopes_claim                = {
-      required                                = false,
-      type                                    = "array",
-      default                                 = {
+    channel_token_leeway                        = {
+      required                                  = false,
+      type                                      = "number",
+      default                                   = 0,
+    },
+    channel_token_scopes_required               = {
+      required                                  = false,
+      type                                      = "array",
+    },
+    channel_token_scopes_claim                  = {
+      required                                  = false,
+      type                                      = "array",
+      default                                   = {
         "scope"
       },
     },
-    channel_token_upstream_header             = {
-      required                                = false,
-      type                                    = "string",
+    channel_token_upstream_header               = {
+      required                                  = false,
+      type                                      = "string",
     },
-    channel_token_upstream_leeway             = {
-      required                                = false,
-      type                                    = "number",
-      default                                 = 0,
+    channel_token_upstream_leeway               = {
+      required                                  = false,
+      type                                      = "number",
+      default                                   = 0,
     },
-    channel_token_introspection_endpoint      = {
-      required                                = false,
-      type                                    = "url",
+    channel_token_introspection_endpoint        = {
+      required                                  = false,
+      type                                      = "url",
     },
-    channel_token_introspection_hint          = {
-      required                                = false,
-      type                                    = "string",
+    channel_token_introspection_hint            = {
+      required                                  = false,
+      type                                      = "string",
     },
-    channel_token_introspection_authorization = {
-      required                                = false,
-      type                                    = "string",
+    channel_token_introspection_authorization   = {
+      required                                  = false,
+      type                                      = "string",
     },
-    channel_token_introspection_body_args     = {
-      required                                = false,
-      type                                    = "string",
+    channel_token_introspection_body_args       = {
+      required                                  = false,
+      type                                      = "string",
     },
-    channel_token_introspection_claim         = {
-      required                                = false,
-      type                                    = "array",
+    channel_token_introspection_claim           = {
+      required                                  = false,
+      type                                      = "array",
     },
-    channel_token_signing_algorithm           = {
-      required                                = true,
-      type                                    = "enum",
+    channel_token_introspection_leeway          = {
+      required                                  = false,
+      type                                      = "number",
+      default                                   = 0,
+    },
+    channel_token_introspection_scopes_required = {
+      required                                  = false,
+      type                                      = "array",
+    },
+    channel_token_introspection_scopes_claim    = {
+      required                                  = false,
+      type                                      = "array",
+      default                                   = {
+        "scope"
+      },
+    },
+    channel_token_signing_algorithm             = {
+      required                                  = true,
+      type                                      = "enum",
       enum = {
         "RS256",
         "RS512",
       },
-      default                                 = "RS256",
+      default                                   = "RS256",
     },
-    verify_channel_token_signature            = {
-      required                                = false,
-      type                                    = "boolean",
-      default                                 = true,
+    verify_channel_token_signature              = {
+      required                                  = false,
+      type                                      = "boolean",
+      default                                   = true,
     },
-    verify_channel_token_expiry               = {
-      required                                = false,
-      type                                    = "boolean",
-      default                                 = true,
+    verify_channel_token_expiry                 = {
+      required                                  = false,
+      type                                      = "boolean",
+      default                                   = true,
     },
-    verify_channel_token_scopes               = {
-      required                                = false,
-      type                                    = "boolean",
-      default                                 = true,
+    verify_channel_token_scopes                 = {
+      required                                  = false,
+      type                                      = "boolean",
+      default                                   = true,
     },
-    cache_channel_token_introspection         = {
-      required                                = false,
-      type                                    = "boolean",
-      default                                 = true,
+    verify_channel_token_introspection_expiry   = {
+      required                                  = false,
+      type                                      = "boolean",
+      default                                   = true,
+    },
+    verify_channel_token_introspection_scopes   = {
+      required                                  = false,
+      type                                      = "boolean",
+      default                                   = true,
+    },
+    cache_channel_token_introspection           = {
+      required                                  = false,
+      type                                      = "boolean",
+      default                                   = true,
     },
   },
 }

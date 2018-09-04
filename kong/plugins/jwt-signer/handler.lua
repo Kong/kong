@@ -39,67 +39,81 @@ do
 
     CONF[token_type] = {}
     for key, value in pairs {
-      issuer                      = "%s_issuer",
-      keyset                      = "%s_keyset",
-      jwks_uri                    = "%s_jwks_uri",
-      request_header              = "%s_request_header",
-      leeway                      = "%s_leeway",
-      scopes_required             = "%s_scopes_required",
-      scopes_claim                = "%s_scopes_claim",
-      upstream_header             = "%s_upstream_header",
-      upstream_leeway             = "%s_upstream_leeway",
-      introspection_endpoint      = "%s_introspection_endpoint",
-      introspection_authorization = "%s_introspection_authorization",
-      introspection_body_args     = "%s_introspection_body_args",
-      introspection_hint          = "%s_introspection_hint",
-      introspection_claim         = "%s_introspection_claim",
-      signing_algorithm           = "%s_signing_algorithm",
-      verify_signature            = "verify_%s_signature",
-      verify_expiry               = "verify_%s_expiry",
-      verify_scopes               = "verify_%s_scopes",
-      cache_introspection         = "cache_%s_introspection",
+      issuer                        = "%s_issuer",
+      keyset                        = "%s_keyset",
+      jwks_uri                      = "%s_jwks_uri",
+      request_header                = "%s_request_header",
+      leeway                        = "%s_leeway",
+      scopes_required               = "%s_scopes_required",
+      scopes_claim                  = "%s_scopes_claim",
+      upstream_header               = "%s_upstream_header",
+      upstream_leeway               = "%s_upstream_leeway",
+      introspection_endpoint        = "%s_introspection_endpoint",
+      introspection_authorization   = "%s_introspection_authorization",
+      introspection_body_args       = "%s_introspection_body_args",
+      introspection_hint            = "%s_introspection_hint",
+      introspection_claim           = "%s_introspection_claim",
+      introspection_leeway          = "%s_introspection_leeway",
+      introspection_scopes_required = "%s_introspection_scopes_required",
+      introspection_scopes_claim    = "%s_introspection_scopes_claim",
+      signing_algorithm             = "%s_signing_algorithm",
+      verify_signature              = "verify_%s_signature",
+      verify_expiry                 = "verify_%s_expiry",
+      verify_scopes                 = "verify_%s_scopes",
+      verify_introspection_expiry   = "verify_%s_introspection_expiry",
+      verify_introspection_scopes   = "verify_%s_introspection_scopes",
+      cache_introspection           = "cache_%s_introspection",
     } do
       CONF[token_type][key] = fmt(value, token_type)
     end
 
     LOGS[token_type] = {}
     for key, value in pairs {
-      present                     = "%s present",
-      jws                         = "%s jws",
-      verification                = "%s signature verification",
-      jwks                        = "%s jwks could not be loaded",
-      jwks_signature              = "%s signature cannot be verified because jwks endpoint was not specified",
-      decode                      = "%s could not be decoded",
-      opaque                      = "%s opaque",
-      introspection_error         = "%s could not be introspected",
-      introspection_success       = "%s introspected",
-      introspection_claim         = "%s could not be found in introspection claim",
-      introspection_claim_decode  = "%s found in introspection claim could not be decoded",
-      introspection_endpoint      = "%s could not be instrospected because introspection endpoint was not specified",
-      inactive                    = "%s inactive",
-      format                      = "%s format not supported",
-      payload                     = "%s payload is invalid",
-      missing                     = "%s was not found",
-      expiring                    = "%s expiry verification",
-      expired                     = "%s is expired",
-      expiry                      = "%s expiry is mandatory",
-      signing                     = "%s signing",
-      upstream_header             = "%s upstream header",
-      scopes                      = "%s scopes verification",
-      no_scopes                   = "%s has no scopes while scopes were required",
-      scopes_required             = "%s required scopes",
+      present                       = "%s present",
+      jws                           = "%s jws",
+      verification                  = "%s signature verification",
+      jwks                          = "%s jwks could not be loaded",
+      jwks_signature                = "%s signature cannot be verified because jwks endpoint was not specified",
+      decode                        = "%s could not be decoded",
+      opaque                        = "%s opaque",
+      introspection_error           = "%s could not be introspected",
+      introspection_success         = "%s introspected",
+      introspection_claim           = "%s could not be found in introspection claim",
+      introspection_claim_decode    = "%s found in introspection claim could not be decoded",
+      introspection_endpoint        = "%s could not be instrospected because introspection endpoint was not specified",
+      inactive                      = "%s inactive",
+      format                        = "%s format not supported",
+      payload                       = "%s payload is invalid",
+      missing                       = "%s was not found",
+      expiring                      = "%s expiry verification",
+      expired                       = "%s is expired",
+      expiry                        = "%s expiry is mandatory",
+      introspection_expiring        = "%s introspection expiry verification",
+      introspection_expired         = "%s introspection expired",
+      introspection_expiry          = "%s introspection expiry is mandatory",
+      signing                       = "%s signing",
+      upstream_header               = "%s upstream header",
+      scopes                        = "%s scopes verification",
+      no_scopes                     = "%s has no scopes while scopes were required",
+      scopes_required               = "%s required scopes",
+      introspection_scopes          = "%s introspection scopes verification",
+      no_introspection_scopes       = "%s has no introspection scopes while scopes were required",
+      introspection_scopes_required = "%s required introspection scopes",
+
     } do
       LOGS[token_type][key] = fmt(value, token_name)
     end
 
     ERRS[token_type] = {}
     for key, value in pairs {
-      verification                = "the %s could not be verified",
-      invalid                     = "the %s is invalid",
-      inactive                    = "the %s inactive",
-      expired                     = "the %s expired",
-      expiry                      = "the %s has no expiry",
-      signing                     = "the %s could not be signed",
+      verification                  = "the %s could not be verified",
+      invalid                       = "the %s is invalid",
+      inactive                      = "the %s inactive",
+      expired                       = "the %s expired",
+      expiry                        = "the %s has no expiry",
+      introspection_expired         = "the %s introspection expired",
+      introspection_expiry          = "the %s introspection has no expiry",
+      signing                       = "the %s could not be signed",
     } do
       ERRS[token_type][key] = fmt(value, token_name)
     end
@@ -296,6 +310,55 @@ function JwtSignerHandler:access(conf)
             log(logs.introspection_success)
 
             if token_info.active == true then
+              local verify_introspection_expiry = args.get_conf_arg(config.verify_introspection_expiry)
+              if verify_introspection_expiry then
+                log(logs.introspection_expiring)
+
+                local introspection_leeway = args.get_conf_arg(config.introspection_leeway, 0)
+
+                local introspection_expiry = tonumber(token_info.exp)
+                if introspection_expiry then
+                  if time() > (introspection_expiry + introspection_leeway) then
+                    return unauthorized(realm, "invalid_token", errs.introspection_expired, logs.introspection_expired)
+                  end
+
+                else
+                  return unauthorized(realm, "invalid_token", errs.introspection_expiry, logs.introspection_expiry)
+                end
+              end
+
+              local verify_introspection_scopes = args.get_conf_arg(config.verify_introspection_scopes)
+              if verify_introspection_scopes then
+                log(logs.introspection_scopes)
+
+                local introspection_scopes_required = args.get_conf_arg(config.introspection_scopes_required)
+                if introspection_scopes_required then
+                  local introspection_scopes_claim = args.get_conf_arg(config.introspection_scopes_claim, { "scope" })
+
+                  local introspection_scopes = find_claim(token_info, introspection_scopes_claim)
+                  if not introspection_scopes then
+                    return forbidden(realm, "invalid_token", errs.invalid, logs.no_introspection_scopes)
+                  end
+
+                  introspection_scopes = set.new(introspection_scopes)
+
+                  local introspection_scopes_valid
+                  for _, introspection_scope_required in ipairs(introspection_scopes_required) do
+                    if set.has(introspection_scope_required, introspection_scopes) then
+                      introspection_scopes_valid = true
+                      break
+                    end
+                  end
+
+                  if not introspection_scopes_valid then
+                    local real_err = fmt(logs.introspection_scopes_required .. " [ %s ] were not found [ %s ]",
+                      concat(introspection_scopes_required, ", "), concat(introspection_scopes, ", "))
+
+                    return forbidden(realm, "invalid_token", errs.invalid, real_err)
+                  end
+                end
+              end
+
               local introspection_claim = args.get_conf_arg(config.introspection_claim)
               if introspection_claim then
                 local token_in_claim = find_claim(token_info, introspection_claim)
@@ -446,7 +509,7 @@ end
 
 
 JwtSignerHandler.PRIORITY = 802
-JwtSignerHandler.VERSION  = "0.0.5"
+JwtSignerHandler.VERSION  = "0.0.6"
 
 
 return JwtSignerHandler

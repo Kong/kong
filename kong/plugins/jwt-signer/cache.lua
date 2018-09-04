@@ -276,7 +276,7 @@ local function introspect(endpoint, opaque_token, hint, authorization, args, cac
       cache_key[i] = args
     end
 
-    local cache_key = base64.encode(hash.S256(concat(cache_key)))
+    cache_key = base64.encode(hash.S256(concat(cache_key)))
     if cache_key then
       cache_key = "jwt-signer:" .. cache_key
 

@@ -1,3 +1,16 @@
+## v0.0.6
+
+- Add `access_token_introspection_leeway`
+- Add `access_token_introspection_scopes_required`
+- Add `access_token_introspection_scopes_claim`
+- Add `verify_access_token_introspection_expiry`
+- Add `verify_access_token_introspection_scopes`
+- Add `channel_token_introspection_leeway`
+- Add `channel_token_introspection_scopes_required`
+- Add `channel_token_introspection_scopes_claim`
+- Add `verify_channel_token_introspection_expiry`
+- Add `verify_channel_token_introspection_scopes`
+
 ## v0.0.5
 
 - Add `access_token_introspection_body_args`
