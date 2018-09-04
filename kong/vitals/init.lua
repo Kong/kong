@@ -117,8 +117,6 @@ _M.logging_metrics = logging_metrics
   proxy and upstream max latencies
 ]]
 ffi.cdef[[
-  typedef uint32_t time_t;
-
   typedef struct vitals_metrics_s {
     uint32_t    l2_hits;
     uint32_t    l2_misses;
@@ -131,7 +129,7 @@ ffi.cdef[[
     uint32_t    proxy_latency_total;
     uint32_t    ulat_count;
     uint32_t    ulat_total;
-    time_t      timestamp;
+    uint32_t    timestamp;
   } vitals_metrics_t;
 ]]
 
