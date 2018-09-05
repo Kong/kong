@@ -388,14 +388,14 @@ do
           end
 
           -- plain or prefix match from the index
-          if route_t.strip_uri then
+--          if route_t.strip_uri then
             local stripped_uri = sub(ctx.req_uri, #uri_t.value + 1)
             if sub(stripped_uri, 1, 1) ~= "/" then
               stripped_uri = "/" .. stripped_uri
             end
 
             ctx.matches.stripped_uri = stripped_uri
-          end
+--          end
 
           ctx.matches.uri = uri_t.value
 
@@ -436,14 +436,14 @@ do
           if from == 1 then
             ctx.matches.uri = sub(ctx.req_uri, 1, to)
 
-            if route_t.strip_uri then
+--            if route_t.strip_uri then
               local stripped_uri = sub(ctx.req_uri, to + 1)
               if sub(stripped_uri, 1, 1) ~= "/" then
                 stripped_uri = "/" .. stripped_uri
               end
 
               ctx.matches.stripped_uri = stripped_uri
-            end
+--            end
 
             ctx.matches.uri = uri_t.value
 
@@ -644,7 +644,7 @@ function _M.new(routes)
 
     -- input sanitization for matchers
 
-    local raw_req_host = req_host
+--    local raw_req_host = req_host
 
     req_method = upper(req_method)
 
@@ -767,7 +767,7 @@ function _M.new(routes)
           end
 
           if matched_route then
-            local upstream_host
+--            local upstream_host
             local upstream_uri   = req_uri
             local upstream_url_t = matched_route.upstream_url_t
             local matches        = ctx.matches
@@ -775,7 +775,6 @@ function _M.new(routes)
             -- URI stripping logic
 
             local uri_root = req_uri == "/"
-
             if not uri_root and matched_route.strip_uri
                and matches.stripped_uri
             then
@@ -811,29 +810,34 @@ function _M.new(routes)
               end
             end
 
-            -- preserve_host header logic
-
-            if matched_route.preserve_host then
-              upstream_host = raw_req_host or ngx.var.http_host
-            end
+--            -- preserve_host header logic
+--
+--            if matched_route.preserve_host then
+--              upstream_host = raw_req_host or ngx.var.http_host
+--            end
 
             local match_t     = {
               route           = matched_route.route,
               service         = matched_route.service,
               headers         = matched_route.headers,
               upstream_url_t  = upstream_url_t,
-              upstream_scheme = upstream_url_t.scheme,
-              upstream_uri    = upstream_uri,
-              upstream_host   = upstream_host,
+              upstream_scheme = upstream_url_t.scheme, -- TODO: remove, just pass-through, no value add?
+              upstream_uri    = upstream_uri, -- TODO: remove when construction is in after-access
+--              upstream_host   = upstream_host, -- TODO: remove, preserve_host above logic gone, so no value add
               matches         = {
                 uri_captures  = matches.uri_captures,
                 uri           = matches.uri,
+                uri_postfix   = matches.stripped_uri,
                 host          = matches.host,
                 method        = matches.method,
               }
             }
 
             cache:set(cache_key, match_t)
+
+--print(require("pl.pretty").write(match_t))
+
+
 
             return match_t
           end
