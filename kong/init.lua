@@ -63,7 +63,6 @@ local kong_error_handlers = require "kong.core.error_handlers"
 local internal_proxies = require "kong.enterprise_edition.proxies"
 local vitals = require "kong.vitals"
 local ee = require "kong.enterprise_edition"
-local portal_utils = require "kong.portal.utils"
 local portal_emails = require "kong.portal.emails"
 
 local ngx              = ngx
@@ -484,14 +483,6 @@ function Kong.access()
         ctx.delay_response = false
         return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
       end
-
-      -- Validate status if we have a developer type consumer
-      local consumer = ctx.authenticated_consumer
-      if consumer and consumer.type == 1 and consumer.status ~= 0 then
-        ctx.delay_response = false
-        local msg = portal_utils.get_developer_status(consumer)
-        return responses.send_HTTP_UNAUTHORIZED(msg)
-      end
     end
     ctx.workspaces = old_ws
   end
@@ -564,17 +555,7 @@ function Kong.serve_admin_api(options)
   return lapis.serve("kong.api")
 end
 
-function Kong.serve_portal_api(options)
-  options = options or {}
-
-  header["Access-Control-Allow-Origin"] = options.allow_origin or "*"
-
-  if ngx.req.get_method() == "OPTIONS" then
-    header["Access-Control-Allow-Methods"] = options.acam or "GET, HEAD, PUT, DELETE"
-    header["Access-Control-Allow-Headers"] = options.acah or "Content-Type"
-    return ngx.exit(204)
-  end
-
+function Kong.serve_portal_api()
   return lapis.serve(require("kong.portal").app)
 end
 

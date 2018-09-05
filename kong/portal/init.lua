@@ -1,11 +1,10 @@
-local lapis       = require "lapis"
-local api_helpers = require "kong.api.api_helpers"
-local app_helpers = require "lapis.application"
-local singletons  = require "kong.singletons"
-local responses   = require "kong.tools.responses"
-local workspaces  = require "kong.workspaces"
-
-
+local lapis        = require "lapis"
+local api_helpers  = require "kong.api.api_helpers"
+local app_helpers  = require "lapis.application"
+local singletons   = require "kong.singletons"
+local responses    = require "kong.tools.responses"
+local workspaces   = require "kong.workspaces"
+local portal_utils = require "kong.portal.utils"
 local fmt = string.format
 
 
@@ -16,6 +15,17 @@ _M.app = lapis.Application()
 
 
 _M.app:before_filter(function(self)
+  -- manually apply cors plugin to this request
+  local cors_conf = {
+    origins = singletons.configuration.portal_gui_url or "*",
+    methods = { "GET", "PATCH", "DELETE", "POST" },
+    credentials = true,
+  }
+
+  local prepared_plugin = portal_utils.prepare_plugin("cors", cors_conf)
+  portal_utils.apply_plugin(prepared_plugin, "access")
+  portal_utils.apply_plugin(prepared_plugin, "header_filter")
+
   -- in case of endpoint with missing `/`, this block is executed twice.
   -- So previous workspace should be dropped
   ngx.ctx.admin_api_request = true

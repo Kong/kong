@@ -102,6 +102,18 @@ describe("portal_gui", function()
           ssl = true,
         }
       },
+      portal_api_listeners = {
+        {
+          ip = "0.0.0.0",
+          port = 8004,
+          ssl = false,
+        },
+        {
+          ip = "0.0.0.0",
+          port = 8447,
+          ssl = true,
+        }
+      },
       enforce_rbac = "off",
       rbac_auth_header = 'Kong-Admin-Token',
     }
@@ -124,11 +136,11 @@ describe("portal_gui", function()
 
       assert.matches("'PORTAL_AUTH': 'basic-auth'", portal_idx, nil, true)
       assert.matches("'PORTAL_GUI_URL': ''", portal_idx, nil, true)
-      assert.matches("'PROXY_URL': ''", portal_idx, nil, true)
+      assert.matches("'PORTAL_API_URL': ''", portal_idx, nil, true)
       assert.matches("'PORTAL_GUI_PORT': '8003'", portal_idx, nil, true)
       assert.matches("'PORTAL_GUI_SSL_PORT': '8446'", portal_idx, nil, true)
-      assert.matches("'PORTAL_API_PORT': '8000'", portal_idx, nil, true)
-      assert.matches("'PORTAL_API_SSL_PORT': '8443'", portal_idx, nil, true)
+      assert.matches("'PORTAL_API_PORT': '8004'", portal_idx, nil, true)
+      assert.matches("'PORTAL_API_SSL_PORT': '8447'", portal_idx, nil, true)
       assert.matches("'RBAC_ENFORCED': 'false'", portal_idx, nil, true)
       assert.matches("'RBAC_HEADER': 'Kong-Admin-Token'", portal_idx, nil, true)
     end)
@@ -138,7 +150,7 @@ describe("portal_gui", function()
 
       -- change configuration values
       new_conf.portal_gui_url = 'http://insecure.domain.com'
-      new_conf.proxy_url = 'http://127.0.0.1:8000'
+      new_conf.portal_api_url = 'http://127.0.0.1:8004'
 
       -- update template
       ee.prepare_portal(new_conf)
@@ -146,11 +158,11 @@ describe("portal_gui", function()
 
       -- test configuration values against template
       assert.matches("'PORTAL_GUI_URL': 'http://insecure.domain.com'", portal_idx, nil, true)
-      assert.matches("'PROXY_URL': 'http://127.0.0.1:8000'", portal_idx, nil, true)
+      assert.matches("'PORTAL_API_URL': 'http://127.0.0.1:8004'", portal_idx, nil, true)
       assert.matches("'PORTAL_GUI_PORT': '8003'", portal_idx, nil, true)
       assert.matches("'PORTAL_GUI_SSL_PORT': '8446'", portal_idx, nil, true)
-      assert.matches("'PORTAL_API_PORT': '8000'", portal_idx, nil, true)
-      assert.matches("'PORTAL_API_SSL_PORT': '8443'", portal_idx, nil, true)
+      assert.matches("'PORTAL_API_PORT': '8004'", portal_idx, nil, true)
+      assert.matches("'PORTAL_API_SSL_PORT': '8447'", portal_idx, nil, true)
       assert.matches("'RBAC_ENFORCED': 'false'", portal_idx, nil, true)
       assert.matches("'RBAC_HEADER': 'Kong-Admin-Token'", portal_idx, nil, true)
     end)

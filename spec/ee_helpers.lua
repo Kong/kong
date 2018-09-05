@@ -1,4 +1,7 @@
-local enums = require "kong.enterprise_edition.dao.enums"
+local enums       = require "kong.enterprise_edition.dao.enums"
+local helpers     = require "spec.helpers"
+local conf_loader = require "kong.conf_loader"
+
 
 local _M = {}
 
@@ -102,6 +105,42 @@ function _M.register_rbac_resources(dao)
 end
 
 
+--- Returns the Dev Portal port.
+-- @param ssl (boolean) if `true` returns the ssl port
+local function get_portal_port(ssl)
+  if ssl == nil then ssl = false end
+  for _, entry in ipairs(_M.portal_api_listeners) do
+    if entry.ssl == ssl then
+      return entry.port
+    end
+  end
+  error("No portal port found for ssl=" .. tostring(ssl), 2)
+end
+
+
+--- Returns the Dev Portal ip.
+-- @param ssl (boolean) if `true` returns the ssl ip address
+local function get_portal_ip(ssl)
+  if ssl == nil then ssl = false end
+  for _, entry in ipairs(_M.portal_api_listeners) do
+    if entry.ssl == ssl then
+      return entry.ip
+    end
+  end
+  error("No portal ip found for ssl=" .. tostring(ssl), 2)
+end
+
+
+--- returns a pre-configured `http_client` for the Dev Portal.
+-- @name portal_client
+function _M.portal_client(timeout)
+  local portal_ip = get_portal_ip()
+  local portal_port = get_portal_port()
+  assert(portal_ip, "No portal_ip found in the configuration")
+  return helpers.http_client(portal_ip, portal_port, timeout)
+end
+
+
 -- helper for reset token tests
 function _M.register_token_statuses(dao)
   for status, id in pairs(enums.TOKENS.STATUS) do
@@ -116,5 +155,7 @@ function _M.register_token_statuses(dao)
   end
 end
 
+
+_M.portal_api_listeners = conf_loader.parse_listeners(helpers.test_conf.portal_api_listen)
 
 return _M

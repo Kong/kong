@@ -2,7 +2,6 @@ local helpers      = require "spec.helpers"
 local cjson        = require "cjson"
 local enums        = require "kong.enterprise_edition.dao.enums"
 local utils        = require "kong.tools.utils"
-local proxy_prefix = require("kong.enterprise_edition.proxies").proxy_prefix
 local ee_jwt       = require "kong.enterprise_edition.jwt"
 local time         = ngx.time
 local uuid         = require("kong.tools.utils").uuid
@@ -19,6 +18,7 @@ local function insert_files(dao)
     })
   end
 end
+
 
 local rbac_mode = {"on", "endpoint", "off"}
 
@@ -43,7 +43,7 @@ for _, strategy in helpers.each_strategy('postgres') do
       -- this block is only run once, not for each rbac state
       if idx == 1 then
         describe("vitals", function ()
-          local proxy_client
+          local portal_client
 
           before_each(function()
             helpers.stop_kong()
@@ -56,7 +56,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             }))
 
             client = assert(helpers.admin_client())
-            proxy_client = assert(helpers.proxy_client())
+            portal_client = assert(ee_helpers.portal_client())
           end)
 
           after_each(function()
@@ -64,8 +64,8 @@ for _, strategy in helpers.each_strategy('postgres') do
               client:close()
             end
 
-            if proxy_client then
-              proxy_client:close()
+            if portal_client then
+              portal_client:close()
             end
           end)
 
@@ -90,9 +90,9 @@ for _, strategy in helpers.each_strategy('postgres') do
           it("does not report metrics for internal proxies", function()
             local service_id = "00000000-0000-0000-0000-000000000001"
 
-            local pres = assert(proxy_client:send {
+            local pres = assert(portal_client:send {
               method = "GET",
-              path = "/" .. proxy_prefix .. "/portal/files"
+              path = "/files"
             })
 
             assert.res_status(200, pres)
@@ -122,7 +122,7 @@ for _, strategy in helpers.each_strategy('postgres') do
         end)
       end
 
-      describe("/_kong/portal/files without auth", function()
+      describe("/files without auth", function()
         before_each(function()
           helpers.stop_kong()
 
@@ -136,7 +136,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             rbac = rbac,
           }))
 
-          client = assert(helpers.proxy_client())
+          client = assert(ee_helpers.portal_client())
         end)
 
         after_each(function()
@@ -157,7 +157,7 @@ for _, strategy in helpers.each_strategy('postgres') do
           it("retrieves files", function()
             local res = assert(client:send {
               method = "GET",
-              path = "/" .. proxy_prefix .. "/portal/files",
+              path = "/files",
             })
 
             local body = assert.res_status(200, res)
@@ -170,7 +170,7 @@ for _, strategy in helpers.each_strategy('postgres') do
           it("retrieves only unauthenticated files", function()
             local res = assert(client:send {
               method = "GET",
-              path = "/" .. proxy_prefix .. "/portal/files/unauthenticated",
+              path = "/files/unauthenticated",
             })
 
             local body = assert.res_status(200, res)
@@ -227,7 +227,7 @@ for _, strategy in helpers.each_strategy('postgres') do
         end)
 
         before_each(function()
-          client = assert(helpers.proxy_client())
+          client = assert(ee_helpers.portal_client())
         end)
 
         after_each(function()
@@ -240,7 +240,7 @@ for _, strategy in helpers.each_strategy('postgres') do
           it("returns 401 when unauthenticated", function()
             local res = assert(client:send {
               method = "GET",
-              path = "/" .. proxy_prefix .. "/portal/files",
+              path = "/files",
             })
 
             assert.res_status(401, res)
@@ -249,7 +249,7 @@ for _, strategy in helpers.each_strategy('postgres') do
           it("returns 401 when consumer is not approved", function()
             local res = assert(client:send {
               method = "GET",
-              path = "/" .. proxy_prefix .. "/portal/files",
+              path = "/files",
               headers = {
                 ["Authorization"] = "Basic " .. ngx.encode_base64("dale:kong"),
               },
@@ -263,7 +263,7 @@ for _, strategy in helpers.each_strategy('postgres') do
           it("retrieves files with an approved consumer", function()
             local res = assert(client:send {
               method = "GET",
-              path = "/" .. proxy_prefix .. "/portal/files",
+              path = "/files",
               headers = {
                 ["Authorization"] = "Basic " .. ngx.encode_base64("hawk:kong"),
               },
@@ -283,7 +283,7 @@ for _, strategy in helpers.each_strategy('postgres') do
 
             local res_put = assert(client:send {
               method = "PUT",
-              path = "/" .. proxy_prefix .. "/portal/files",
+              path = "/files",
               headers = {
                 ["Authorization"] = consumer_auth_header,
               },
@@ -293,7 +293,7 @@ for _, strategy in helpers.each_strategy('postgres') do
 
             local res_patch = assert(client:send {
               method = "PATCH",
-              path = "/" .. proxy_prefix .. "/portal/files",
+              path = "/files",
               headers = {
                 ["Authorization"] = consumer_auth_header,
               },
@@ -303,7 +303,7 @@ for _, strategy in helpers.each_strategy('postgres') do
 
             local res_post = assert(client:send {
               method = "POST",
-              path = "/" .. proxy_prefix .. "/portal/files",
+              path = "/files",
               headers = {
                 ["Authorization"] = consumer_auth_header,
               },
@@ -330,7 +330,7 @@ for _, strategy in helpers.each_strategy('postgres') do
         end)
 
         before_each(function()
-          client = assert(helpers.proxy_client())
+          client = assert(ee_helpers.portal_client())
         end)
 
         after_each(function()
@@ -343,7 +343,7 @@ for _, strategy in helpers.each_strategy('postgres') do
           it("returns a 400 if email is invalid format", function()
             local res = assert(client:send {
               method = "POST",
-              path = "/" .. proxy_prefix .. "/portal/register",
+              path = "/register",
               body = {
                 email = "grucekonghq.com",
                 password = "kong",
@@ -362,7 +362,7 @@ for _, strategy in helpers.each_strategy('postgres') do
           it("returns a 400 if email is invalid type", function()
             local res = assert(client:send {
               method = "POST",
-              path = "/" .. proxy_prefix .. "/portal/register",
+              path = "/register",
               body = {
                 email = 9000,
                 password = "kong",
@@ -381,7 +381,7 @@ for _, strategy in helpers.each_strategy('postgres') do
           it("returns a 400 if email is missing", function()
             local res = assert(client:send {
               method = "POST",
-              path = "/" .. proxy_prefix .. "/portal/register",
+              path = "/register",
               body = {
                 password = "kong",
                 meta = "{\"full_name\":\"I Like Turtles\"}",
@@ -399,7 +399,7 @@ for _, strategy in helpers.each_strategy('postgres') do
           it("returns a 400 if meta is missing", function()
             local res = assert(client:send {
               method = "POST",
-              path = "/" .. proxy_prefix .. "/portal/register",
+              path = "/register",
               body = {
                 email = "gruce@konghq.com",
                 password = "kong",
@@ -417,7 +417,7 @@ for _, strategy in helpers.each_strategy('postgres') do
           it("returns a 400 if meta is invalid", function()
             local res = assert(client:send {
               method = "POST",
-              path = "/" .. proxy_prefix .. "/portal/register",
+              path = "/register",
               body = {
                 email = "gruce@konghq.com",
                 password = "kong",
@@ -436,7 +436,7 @@ for _, strategy in helpers.each_strategy('postgres') do
           it("returns a 400 if meta.full_name key is missing", function()
             local res = assert(client:send {
               method = "POST",
-              path = "/" .. proxy_prefix .. "/portal/register",
+              path = "/register",
               body = {
                 email = "gruce@konghq.com",
                 password = "kong",
@@ -455,7 +455,7 @@ for _, strategy in helpers.each_strategy('postgres') do
           it("registers a developer and set status to pending", function()
             local res = assert(client:send {
               method = "POST",
-              path = "/" .. proxy_prefix .. "/portal/register",
+              path = "/register",
               body = {
                 email = "gruce@konghq.com",
                 password = "kong",
@@ -469,8 +469,6 @@ for _, strategy in helpers.each_strategy('postgres') do
             local credential = resp_body_json.credential
             local consumer = resp_body_json.consumer
 
-            assert.equal("gruce@konghq.com", credential.username)
-            assert.is_true(utils.is_valid_uuid(credential.id))
             assert.is_true(utils.is_valid_uuid(consumer.id))
 
             assert.equal(enums.CONSUMERS.TYPE.DEVELOPER, consumer.type)
@@ -515,11 +513,11 @@ for _, strategy in helpers.each_strategy('postgres') do
             portal_auto_approve = "on",
           }))
 
-          client = assert(helpers.proxy_client())
+          client = assert(ee_helpers.portal_client())
 
           local res = assert(client:send {
             method = "POST",
-            path = "/" .. proxy_prefix .. "/portal/register",
+            path = "/register",
             body = {
               email = "gruce@konghq.com",
               password = "kong",
@@ -538,7 +536,7 @@ for _, strategy in helpers.each_strategy('postgres') do
         end)
 
         before_each(function()
-          client = assert(helpers.proxy_client())
+          client = assert(ee_helpers.portal_client())
         end)
 
         after_each(function()
@@ -551,7 +549,7 @@ for _, strategy in helpers.each_strategy('postgres') do
           it("should return 400 if called with invalid email", function()
             local res = assert(client:send {
               method = "POST",
-              path = "/" .. proxy_prefix .. "/portal/forgot-password",
+              path = "/forgot-password",
               body = {
                 email = "grucekonghq.com",
               },
@@ -568,7 +566,7 @@ for _, strategy in helpers.each_strategy('postgres') do
           it("should return 200 if called with email of a nonexistent user", function()
             local res = assert(client:send {
               method = "POST",
-              path = "/" .. proxy_prefix .. "/portal/forgot-password",
+              path = "/forgot-password",
               body = {
                 email = "creeper@example.com",
               },
@@ -584,7 +582,7 @@ for _, strategy in helpers.each_strategy('postgres') do
           it("should return 200 and generate a token secret if called with developer email", function()
             local res = assert(client:send {
               method = "POST",
-              path = "/" .. proxy_prefix .. "/portal/forgot-password",
+              path = "/forgot-password",
               body = {
                 email = "gruce@konghq.com",
               },
@@ -606,7 +604,7 @@ for _, strategy in helpers.each_strategy('postgres') do
 
             local res = assert(client:send {
               method = "POST",
-              path = "/" .. proxy_prefix .. "/portal/forgot-password",
+              path = "/forgot-password",
               body = {
                 email = "gruce@konghq.com",
               },
@@ -624,7 +622,7 @@ for _, strategy in helpers.each_strategy('postgres') do
 
             local res = assert(client:send {
               method = "POST",
-              path = "/" .. proxy_prefix .. "/portal/forgot-password",
+              path = "/forgot-password",
               body = {
                 email = "gruce@konghq.com",
               },
@@ -678,11 +676,11 @@ for _, strategy in helpers.each_strategy('postgres') do
             portal_auto_approve = "on",
           }))
 
-          client = assert(helpers.proxy_client())
+          client = assert(ee_helpers.portal_client())
 
           local res = assert(client:send {
             method = "POST",
-            path = "/" .. proxy_prefix .. "/portal/register",
+            path = "/register",
             body = {
               email = "gruce@konghq.com",
               password = "kong",
@@ -698,7 +696,7 @@ for _, strategy in helpers.each_strategy('postgres') do
 
           res = assert(client:send {
             method = "POST",
-            path = "/" .. proxy_prefix .. "/portal/forgot-password",
+            path = "/forgot-password",
             body = {
               email = "gruce@konghq.com",
             },
@@ -717,7 +715,7 @@ for _, strategy in helpers.each_strategy('postgres') do
         end)
 
         before_each(function()
-          client = assert(helpers.proxy_client())
+          client = assert(ee_helpers.portal_client())
         end)
 
         after_each(function()
@@ -730,7 +728,7 @@ for _, strategy in helpers.each_strategy('postgres') do
           it("should return 400 if called without a token", function()
             local res = assert(client:send {
               method = "POST",
-              path = "/" .. proxy_prefix .. "/portal/reset-password",
+              path = "/reset-password",
               body = {
                 token = "",
               },
@@ -747,7 +745,7 @@ for _, strategy in helpers.each_strategy('postgres') do
           it("should return 400 if called without a password", function()
             local res = assert(client:send {
               method = "POST",
-              path = "/" .. proxy_prefix .. "/portal/reset-password",
+              path = "/reset-password",
               body = {
                 token = "token",
                 password = "",
@@ -765,7 +763,7 @@ for _, strategy in helpers.each_strategy('postgres') do
           it("should return 401 if called with an invalid jwt format", function()
             local res = assert(client:send {
               method = "POST",
-              path = "/" .. proxy_prefix .. "/portal/reset-password",
+              path = "/reset-password",
               body = {
                 token = "im_a_token_lol",
                 password = "derp",
@@ -786,7 +784,7 @@ for _, strategy in helpers.each_strategy('postgres') do
 
             local res = assert(client:send {
               method = "POST",
-              path = "/" .. proxy_prefix .. "/portal/reset-password",
+              path = "/reset-password",
               body = {
                 token = bad_jwt,
                 password = "derp",
@@ -807,7 +805,7 @@ for _, strategy in helpers.each_strategy('postgres') do
 
             local res = assert(client:send {
               method = "POST",
-              path = "/" .. proxy_prefix .. "/portal/reset-password",
+              path = "/reset-password",
               body = {
                 token = expired_jwt,
                 password = "derp",
@@ -828,7 +826,7 @@ for _, strategy in helpers.each_strategy('postgres') do
 
             local res = assert(client:send {
               method = "POST",
-              path = "/" .. proxy_prefix .. "/portal/reset-password",
+              path = "/reset-password",
               body = {
                 token = random_uuid_jwt,
                 password = "derp",
@@ -849,7 +847,7 @@ for _, strategy in helpers.each_strategy('postgres') do
 
             local res = assert(client:send {
               method = "POST",
-              path = "/" .. proxy_prefix .. "/portal/reset-password",
+              path = "/reset-password",
               body = {
                 token = valid_jwt,
                 password = "derp",
@@ -870,7 +868,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             -- old password fails
             res = assert(client:send {
               method = "GET",
-              path = "/" .. proxy_prefix .. "/portal/developer",
+              path = "/developer",
               headers = {
                 ["Content-Type"] = "application/json",
                 ["Authorization"] = "Basic " .. ngx.encode_base64("gruce@konghq.com:kong"),
@@ -882,7 +880,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             -- new password auths
             res = assert(client:send {
               method = "GET",
-              path = "/" .. proxy_prefix .. "/portal/developer",
+              path = "/developer",
               headers = {
                 ["Content-Type"] = "application/json",
                 ["Authorization"] = "Basic " .. ngx.encode_base64("gruce@konghq.com:derp"),
@@ -912,11 +910,11 @@ for _, strategy in helpers.each_strategy('postgres') do
             portal_auto_approve = "on",
           }))
 
-          client = assert(helpers.proxy_client())
+          client = assert(ee_helpers.portal_client())
 
           local res = assert(client:send {
             method = "POST",
-            path = "/" .. proxy_prefix .. "/portal/register",
+            path = "/register",
             body = {
               email = "gruce@konghq.com",
               key = "kongstrong",
@@ -932,7 +930,7 @@ for _, strategy in helpers.each_strategy('postgres') do
 
           res = assert(client:send {
             method = "POST",
-            path = "/" .. proxy_prefix .. "/portal/forgot-password",
+            path = "/forgot-password",
             body = {
               email = "gruce@konghq.com",
             },
@@ -951,7 +949,7 @@ for _, strategy in helpers.each_strategy('postgres') do
         end)
 
         before_each(function()
-          client = assert(helpers.proxy_client())
+          client = assert(ee_helpers.portal_client())
         end)
 
         after_each(function()
@@ -964,7 +962,7 @@ for _, strategy in helpers.each_strategy('postgres') do
           it("should return 400 if called without a token", function()
             local res = assert(client:send {
               method = "POST",
-              path = "/" .. proxy_prefix .. "/portal/reset-password",
+              path = "/reset-password",
               body = {
                 token = "",
               },
@@ -981,7 +979,7 @@ for _, strategy in helpers.each_strategy('postgres') do
           it("should return 400 if called without a password", function()
             local res = assert(client:send {
               method = "POST",
-              path = "/" .. proxy_prefix .. "/portal/reset-password",
+              path = "/reset-password",
               body = {
                 token = "token",
                 key = "",
@@ -999,7 +997,7 @@ for _, strategy in helpers.each_strategy('postgres') do
           it("should return 401 if called with an invalid jwt format", function()
             local res = assert(client:send {
               method = "POST",
-              path = "/" .. proxy_prefix .. "/portal/reset-password",
+              path = "/reset-password",
               body = {
                 token = "im_a_token_lol",
                 key = "derp",
@@ -1020,7 +1018,7 @@ for _, strategy in helpers.each_strategy('postgres') do
 
             local res = assert(client:send {
               method = "POST",
-              path = "/" .. proxy_prefix .. "/portal/reset-password",
+              path = "/reset-password",
               body = {
                 token = bad_jwt,
                 key = "derp",
@@ -1041,7 +1039,7 @@ for _, strategy in helpers.each_strategy('postgres') do
 
             local res = assert(client:send {
               method = "POST",
-              path = "/" .. proxy_prefix .. "/portal/reset-password",
+              path = "/reset-password",
               body = {
                 token = expired_jwt,
                 key = "derp",
@@ -1062,7 +1060,7 @@ for _, strategy in helpers.each_strategy('postgres') do
 
             local res = assert(client:send {
               method = "POST",
-              path = "/" .. proxy_prefix .. "/portal/reset-password",
+              path = "/reset-password",
               body = {
                 token = random_uuid_jwt,
                 key = "derp",
@@ -1083,7 +1081,7 @@ for _, strategy in helpers.each_strategy('postgres') do
 
             local res = assert(client:send {
               method = "POST",
-              path = "/" .. proxy_prefix .. "/portal/reset-password",
+              path = "/reset-password",
               body = {
                 token = valid_jwt,
                 key = "derp",
@@ -1104,7 +1102,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             -- old key fails
             res = assert(client:send {
               method = "GET",
-              path = "/" .. proxy_prefix .. "/portal/developer?apikey=kongstrong",
+              path = "/developer?apikey=kongstrong",
               headers = {
                 ["Content-Type"] = "application/json",
               }
@@ -1115,7 +1113,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             -- new key auths
             res = assert(client:send {
               method = "GET",
-              path = "/" .. proxy_prefix .. "/portal/developer?apikey=derp",
+              path = "/developer?apikey=derp",
               headers = {
                 ["Content-Type"] = "application/json",
               }
@@ -1143,11 +1141,11 @@ for _, strategy in helpers.each_strategy('postgres') do
             portal_auto_approve = "on",
           }))
 
-          client = assert(helpers.proxy_client())
+          client = assert(ee_helpers.portal_client())
 
           local res = assert(client:send {
             method = "POST",
-            path = "/" .. proxy_prefix .. "/portal/register",
+            path = "/register",
             body = {
               email = "gruce@konghq.com",
               password = "kong",
@@ -1164,7 +1162,7 @@ for _, strategy in helpers.each_strategy('postgres') do
         end)
 
         before_each(function()
-          client = assert(helpers.proxy_client())
+          client = assert(ee_helpers.portal_client())
         end)
 
         after_each(function()
@@ -1177,7 +1175,7 @@ for _, strategy in helpers.each_strategy('postgres') do
           it("returns the authenticated developer", function()
             local res = assert(client:send {
               method = "GET",
-              path = "/" .. proxy_prefix .. "/portal/developer",
+              path = "/developer",
               headers = {
                 ["Content-Type"] = "application/json",
                 ["Authorization"] = "Basic " .. ngx.encode_base64("gruce@konghq.com:kong"),
@@ -1196,7 +1194,7 @@ for _, strategy in helpers.each_strategy('postgres') do
           it("deletes authenticated developer", function()
             local res = assert(client:send {
               method = "DELETE",
-              path = "/" .. proxy_prefix .. "/portal/developer",
+              path = "/developer",
               headers = {
                 ["Content-Type"] = "application/json",
                 ["Authorization"] = "Basic " .. ngx.encode_base64("gruce@konghq.com:kong"),
@@ -1207,7 +1205,7 @@ for _, strategy in helpers.each_strategy('postgres') do
 
             local res = assert(client:send {
               method = "GET",
-              path = "/" .. proxy_prefix .. "/portal/developer",
+              path = "/developer",
               headers = {
                 ["Content-Type"] = "application/json",
                 ["Authorization"] = "Basic " .. ngx.encode_base64("gruce@konghq.com:kong"),
@@ -1235,11 +1233,11 @@ for _, strategy in helpers.each_strategy('postgres') do
             portal_auto_approve = "on",
           }))
 
-          client = assert(helpers.proxy_client())
+          client = assert(ee_helpers.portal_client())
 
           local res = assert(client:send {
             method = "POST",
-            path = "/" .. proxy_prefix .. "/portal/register",
+            path = "/register",
             body = {
               email = "gruce@konghq.com",
               password = "kong",
@@ -1254,7 +1252,7 @@ for _, strategy in helpers.each_strategy('postgres') do
         end)
 
         before_each(function()
-          client = assert(helpers.proxy_client())
+          client = assert(ee_helpers.portal_client())
         end)
 
         after_each(function()
@@ -1268,7 +1266,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             local res = assert(client:send {
               method = "PATCH",
               body = {},
-              path = "/" .. proxy_prefix .. "/portal/developer/password",
+              path = "/developer/password",
               headers = {
                 ["Content-Type"] = "application/json",
                 ["Authorization"] = "Basic " .. ngx.encode_base64("gruce@konghq.com:kong"),
@@ -1288,7 +1286,7 @@ for _, strategy in helpers.each_strategy('postgres') do
               body = {
                 password = "hunter1",
               },
-              path = "/" .. proxy_prefix .. "/portal/developer/password",
+              path = "/developer/password",
               headers = {
                 ["Content-Type"] = "application/json",
                 ["Authorization"] = "Basic " .. ngx.encode_base64("gruce@konghq.com:kong"),
@@ -1300,7 +1298,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             -- old password fails
             local res = assert(client:send {
               method = "GET",
-              path = "/" .. proxy_prefix .. "/portal/developer",
+              path = "/developer",
               headers = {
                 ["Content-Type"] = "application/json",
                 ["Authorization"] = "Basic " .. ngx.encode_base64("gruce@konghq.com:kong"),
@@ -1312,7 +1310,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             -- new password auths
             local res = assert(client:send {
               method = "GET",
-              path = "/" .. proxy_prefix .. "/portal/developer",
+              path = "/developer",
               headers = {
                 ["Content-Type"] = "application/json",
                 ["Authorization"] = "Basic " .. ngx.encode_base64("gruce@konghq.com:hunter1"),
@@ -1340,11 +1338,11 @@ for _, strategy in helpers.each_strategy('postgres') do
             portal_auto_approve = "on",
           }))
 
-          client = assert(helpers.proxy_client())
+          client = assert(ee_helpers.portal_client())
 
           local res = assert(client:send {
             method = "POST",
-            path = "/" .. proxy_prefix .. "/portal/register",
+            path = "/register",
             body = {
               email = "gruce@konghq.com",
               key = "myKeeeeeey",
@@ -1359,7 +1357,7 @@ for _, strategy in helpers.each_strategy('postgres') do
         end)
 
         before_each(function()
-          client = assert(helpers.proxy_client())
+          client = assert(ee_helpers.portal_client())
         end)
 
         after_each(function()
@@ -1373,7 +1371,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             local res = assert(client:send {
               method = "PATCH",
               body = {},
-              path = "/" .. proxy_prefix .. "/portal/developer/password?apikey=myKeeeeeey",
+              path = "/developer/password?apikey=myKeeeeeey",
               headers = {
                 ["Content-Type"] = "application/json",
               }
@@ -1392,7 +1390,7 @@ for _, strategy in helpers.each_strategy('postgres') do
               body = {
                 key = "hunter1",
               },
-              path = "/" .. proxy_prefix .. "/portal/developer/password?apikey=myKeeeeeey",
+              path = "/developer/password?apikey=myKeeeeeey",
               headers = {
                 ["Content-Type"] = "application/json",
               }
@@ -1403,7 +1401,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             -- old key fails
             local res = assert(client:send {
               method = "GET",
-              path = "/" .. proxy_prefix .. "/portal/developer?apikey=myKeeeeeey",
+              path = "/developer?apikey=myKeeeeeey",
               headers = {
                 ["Content-Type"] = "application/json",
               }
@@ -1414,7 +1412,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             -- new key auths
             local res = assert(client:send {
               method = "GET",
-              path = "/" .. proxy_prefix .. "/portal/developer?apikey=hunter1",
+              path = "/developer?apikey=hunter1",
               headers = {
                 ["Content-Type"] = "application/json",
               }
@@ -1442,11 +1440,11 @@ for _, strategy in helpers.each_strategy('postgres') do
             portal_auto_approve = "on",
           }))
 
-          client = assert(helpers.proxy_client())
+          client = assert(ee_helpers.portal_client())
 
           local res = assert(client:send {
             method = "POST",
-            path = "/" .. proxy_prefix .. "/portal/register",
+            path = "/register",
             body = {
               email = "gruce@konghq.com",
               password = "kong",
@@ -1459,7 +1457,7 @@ for _, strategy in helpers.each_strategy('postgres') do
 
           local res = assert(client:send {
             method = "POST",
-            path = "/" .. proxy_prefix .. "/portal/register",
+            path = "/register",
             body = {
               email = "fancypants@konghq.com",
               password = "mowmow",
@@ -1476,7 +1474,7 @@ for _, strategy in helpers.each_strategy('postgres') do
         end)
 
         before_each(function()
-          client = assert(helpers.proxy_client())
+          client = assert(ee_helpers.portal_client())
         end)
 
         after_each(function()
@@ -1492,7 +1490,7 @@ for _, strategy in helpers.each_strategy('postgres') do
               body = {
                 email = "emailol.com",
               },
-              path = "/" .. proxy_prefix .. "/portal/developer/email",
+              path = "/developer/email",
               headers = {
                 ["Content-Type"] = "application/json",
                 ["Authorization"] = "Basic " .. ngx.encode_base64("gruce@konghq.com:kong"),
@@ -1512,7 +1510,7 @@ for _, strategy in helpers.each_strategy('postgres') do
               body = {
                 email = developer2.email,
               },
-              path = "/" .. proxy_prefix .. "/portal/developer/email",
+              path = "/developer/email",
               headers = {
                 ["Content-Type"] = "application/json",
                 ["Authorization"] = "Basic " .. ngx.encode_base64("gruce@konghq.com:kong"),
@@ -1532,7 +1530,7 @@ for _, strategy in helpers.each_strategy('postgres') do
               body = {
                 email = "new_email@whodis.com",
               },
-              path = "/" .. proxy_prefix .. "/portal/developer/email",
+              path = "/developer/email",
               headers = {
                 ["Content-Type"] = "application/json",
                 ["Authorization"] = "Basic " .. ngx.encode_base64("gruce@konghq.com:kong"),
@@ -1544,7 +1542,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             -- old email fails
             local res = assert(client:send {
               method = "GET",
-              path = "/" .. proxy_prefix .. "/portal/developer",
+              path = "/developer",
               headers = {
                 ["Content-Type"] = "application/json",
                 ["Authorization"] = "Basic " .. ngx.encode_base64("gruce@konghq.com:kong"),
@@ -1557,7 +1555,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             -- new email succeeds
             local res = assert(client:send {
               method = "GET",
-              path = "/" .. proxy_prefix .. "/portal/developer",
+              path = "/developer",
               headers = {
                 ["Content-Type"] = "application/json",
                 ["Authorization"] = "Basic " .. ngx.encode_base64("new_email@whodis.com:kong"),
@@ -1588,11 +1586,11 @@ for _, strategy in helpers.each_strategy('postgres') do
             portal_auto_approve = "on",
           }))
 
-          client = assert(helpers.proxy_client())
+          client = assert(ee_helpers.portal_client())
 
           local res = assert(client:send {
             method = "POST",
-            path = "/" .. proxy_prefix .. "/portal/register",
+            path = "/register",
             body = {
               email = "gruce@konghq.com",
               key = "kong",
@@ -1605,7 +1603,7 @@ for _, strategy in helpers.each_strategy('postgres') do
 
           local res = assert(client:send {
             method = "POST",
-            path = "/" .. proxy_prefix .. "/portal/register",
+            path = "/register",
             body = {
               email = "fancypants@konghq.com",
               key = "mowmow",
@@ -1622,7 +1620,7 @@ for _, strategy in helpers.each_strategy('postgres') do
         end)
 
         before_each(function()
-          client = assert(helpers.proxy_client())
+          client = assert(ee_helpers.portal_client())
         end)
 
         after_each(function()
@@ -1638,7 +1636,7 @@ for _, strategy in helpers.each_strategy('postgres') do
               body = {
                 email = "emailol.com",
               },
-              path = "/" .. proxy_prefix .. "/portal/developer/email?apikey=wrongKey",
+              path = "/developer/email?apikey=wrongKey",
               headers = {
                 ["Content-Type"] = "application/json",
               }
@@ -1657,7 +1655,7 @@ for _, strategy in helpers.each_strategy('postgres') do
               body = {
                 email = developer2.email,
               },
-              path = "/" .. proxy_prefix .. "/portal/developer/email?apikey=kong",
+              path = "/developer/email?apikey=kong",
               headers = {
                 ["Content-Type"] = "application/json",
               }
@@ -1676,7 +1674,7 @@ for _, strategy in helpers.each_strategy('postgres') do
               body = {
                 email = "new_email@whodis.com",
               },
-              path = "/" .. proxy_prefix .. "/portal/developer/email?apikey=kong",
+              path = "/developer/email?apikey=kong",
               headers = {
                 ["Content-Type"] = "application/json",
               }
@@ -1686,7 +1684,7 @@ for _, strategy in helpers.each_strategy('postgres') do
 
             local res = assert(client:send {
               method = "GET",
-              path = "/" .. proxy_prefix .. "/portal/developer?apikey=kong",
+              path = "/developer?apikey=kong",
               headers = {
                 ["Content-Type"] = "application/json",
               }
@@ -1716,11 +1714,11 @@ for _, strategy in helpers.each_strategy('postgres') do
             portal_auto_approve = "on",
           }))
 
-          client = assert(helpers.proxy_client())
+          client = assert(ee_helpers.portal_client())
 
           local res = assert(client:send {
             method = "POST",
-            path = "/" .. proxy_prefix .. "/portal/register",
+            path = "/register",
             body = {
               email = "gruce@konghq.com",
               password = "kong",
@@ -1734,7 +1732,7 @@ for _, strategy in helpers.each_strategy('postgres') do
         end)
 
         before_each(function()
-          client = assert(helpers.proxy_client())
+          client = assert(ee_helpers.portal_client())
         end)
 
         after_each(function()
@@ -1752,7 +1750,7 @@ for _, strategy in helpers.each_strategy('postgres') do
               body = {
                 meta = new_meta
               },
-              path = "/" .. proxy_prefix .. "/portal/developer/meta",
+              path = "/developer/meta",
               headers = {
                 ["Content-Type"] = "application/json",
                 ["Authorization"] = "Basic " .. ngx.encode_base64("gruce@konghq.com:kong"),
@@ -1763,7 +1761,7 @@ for _, strategy in helpers.each_strategy('postgres') do
 
             local res = assert(client:send {
               method = "GET",
-              path = "/" .. proxy_prefix .. "/portal/developer",
+              path = "/developer",
               headers = {
                 ["Content-Type"] = "application/json",
                 ["Authorization"] = "Basic " .. ngx.encode_base64("gruce@konghq.com:kong"),
@@ -1780,7 +1778,7 @@ for _, strategy in helpers.each_strategy('postgres') do
           it("ignores keys that are not in the current meta", function()
             local res = assert(client:send {
               method = "GET",
-              path = "/" .. proxy_prefix .. "/portal/developer",
+              path = "/developer",
               headers = {
                 ["Content-Type"] = "application/json",
                 ["Authorization"] = "Basic " .. ngx.encode_base64("gruce@konghq.com:kong"),
@@ -1798,7 +1796,7 @@ for _, strategy in helpers.each_strategy('postgres') do
               body = {
                 meta = new_meta
               },
-              path = "/" .. proxy_prefix .. "/portal/developer/meta",
+              path = "/developer/meta",
               headers = {
                 ["Content-Type"] = "application/json",
                 ["Authorization"] = "Basic " .. ngx.encode_base64("gruce@konghq.com:kong"),
@@ -1809,7 +1807,7 @@ for _, strategy in helpers.each_strategy('postgres') do
 
             local res = assert(client:send {
               method = "GET",
-              path = "/" .. proxy_prefix .. "/portal/developer",
+              path = "/developer",
               headers = {
                 ["Content-Type"] = "application/json",
                 ["Authorization"] = "Basic " .. ngx.encode_base64("gruce@konghq.com:kong"),
@@ -1856,7 +1854,7 @@ for _, strategy in helpers.each_strategy('postgres') do
         end)
 
         before_each(function()
-          client = assert(helpers.proxy_client())
+          client = assert(ee_helpers.portal_client())
         end)
 
         after_each(function()
@@ -1869,7 +1867,7 @@ for _, strategy in helpers.each_strategy('postgres') do
           it("adds a credential to a developer - basic-auth", function()
             local res = assert(client:send {
               method = "POST",
-              path = "/" .. proxy_prefix .. "/portal/credentials",
+              path = "/credentials",
               body = {
                 username = "kong",
                 password = "hunter1"
@@ -1895,7 +1893,7 @@ for _, strategy in helpers.each_strategy('postgres') do
           it("patches a credential - basic-auth", function()
             local res = assert(client:send {
               method = "PATCH",
-              path = "/" .. proxy_prefix .. "/portal/credentials",
+              path = "/credentials",
               body = {
                 id = credential.id,
                 username = "anotherone",
@@ -1951,7 +1949,7 @@ for _, strategy in helpers.each_strategy('postgres') do
         end)
 
         before_each(function()
-          client = assert(helpers.proxy_client())
+          client = assert(ee_helpers.portal_client())
         end)
 
         after_each(function()
@@ -1967,7 +1965,7 @@ for _, strategy in helpers.each_strategy('postgres') do
 
             local res = assert(client:send {
               method = "POST",
-              path = "/" .. proxy_prefix .. "/portal/credentials/" .. plugin,
+              path = "/credentials/" .. plugin,
               body = {
                 username = "dude",
                 password = "hunter1"
@@ -1986,7 +1984,7 @@ for _, strategy in helpers.each_strategy('postgres') do
 
             local res = assert(client:send {
               method = "POST",
-              path = "/" .. proxy_prefix .. "/portal/credentials/" .. plugin,
+              path = "/credentials/" .. plugin,
               body = {
                 username = "dude",
                 password = "hunter1"
@@ -2012,7 +2010,7 @@ for _, strategy in helpers.each_strategy('postgres') do
 
             local res = assert(client:send {
               method = "POST",
-              path = "/" .. proxy_prefix .. "/portal/credentials/" .. plugin,
+              path = "/credentials/" .. plugin,
               body = {
                 key = "letmein"
               },
@@ -2035,7 +2033,7 @@ for _, strategy in helpers.each_strategy('postgres') do
         describe("GET", function()
           it("returns 404 if plugin is not one of the allowed auth plugins", function()
             local plugin = "awesome-custom-plugin"
-            local path = "/" .. proxy_prefix .. "/portal/credentials/"
+            local path = "/credentials/"
                           .. plugin .. "/" .. credential.id
 
             local res = assert(client:send {
@@ -2052,7 +2050,7 @@ for _, strategy in helpers.each_strategy('postgres') do
 
           it("retrieves a credential - basic-auth", function()
             local plugin = "basic-auth"
-            local path = "/" .. proxy_prefix .. "/portal/credentials/"
+            local path = "/credentials/"
                           .. plugin .. "/" .. credential.id
 
             local res = assert(client:send {
@@ -2076,7 +2074,7 @@ for _, strategy in helpers.each_strategy('postgres') do
         describe("PATCH", function()
           it("returns 404 if plugin is not one of the allowed auth plugins", function()
             local plugin = "awesome-custom-plugin"
-            local path = "/" .. proxy_prefix .. "/portal/credentials/"
+            local path = "/credentials/"
                           .. plugin .. "/" .. credential.id
 
             local res = assert(client:send {
@@ -2098,7 +2096,7 @@ for _, strategy in helpers.each_strategy('postgres') do
 
           it("/_kong/portal/credentials/:plugin/ - basic-auth", function()
             local plugin = "basic-auth"
-            local path = "/" .. proxy_prefix .. "/portal/credentials/"
+            local path = "/credentials/"
                           .. plugin .. "/" .. credential.id
 
             local res = assert(client:send {
@@ -2128,7 +2126,7 @@ for _, strategy in helpers.each_strategy('postgres') do
 
           it("/_kong/portal/portal/credentials/:plugin/:credential_id - basic-auth", function()
             local plugin = "basic-auth"
-            local path = "/" .. proxy_prefix .. "/portal/credentials/"
+            local path = "/credentials/"
                           .. plugin .. "/" .. credential.id
 
             local res = assert(client:send {
@@ -2159,7 +2157,7 @@ for _, strategy in helpers.each_strategy('postgres') do
         describe("DELETE", function()
           it("deletes a credential", function()
             local plugin = "key-auth"
-            local path = "/" .. proxy_prefix .. "/portal/credentials/"
+            local path = "/credentials/"
                           .. plugin .. "/" .. credential_key_auth.id
 
             local res = assert(client:send {
@@ -2190,7 +2188,7 @@ for _, strategy in helpers.each_strategy('postgres') do
           it("retrieves the kong config tailored for the dev portal", function()
             local res = assert(client:send {
               method = "GET",
-              path = "/" .. proxy_prefix .. "/portal/config",
+              path = "/config",
               headers = {
                 ["Content-Type"] = "application/json",
                 ["Authorization"] = "Basic " .. ngx.encode_base64("hawk:kong"),
@@ -2202,7 +2200,7 @@ for _, strategy in helpers.each_strategy('postgres') do
 
             local config = resp_body_json
 
-            assert.same({ "cors", "basic-auth" }, config.plugins.enabled_in_cluster)
+            assert.same({}, config.plugins.enabled_in_cluster)
           end)
         end)
       end)
@@ -2236,7 +2234,7 @@ for _, strategy in helpers.each_strategy('postgres') do
         end)
 
         before_each(function()
-          client = assert(helpers.proxy_client())
+          client = assert(ee_helpers.portal_client())
         end)
 
         after_each(function()
@@ -2251,7 +2249,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             it("returns 404 when vitals if off", function()
               local res = assert(client:send {
                 method = "GET",
-                path = "/" .. proxy_prefix .. "/portal/vitals/status_codes/by_consumer",
+                path = "/vitals/status_codes/by_consumer",
                 headers = {
                   ["Authorization"] = "Basic " .. ngx.encode_base64("hawk:kong"),
                 },
@@ -2268,7 +2266,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             it("returns 404 when vitals if off", function()
               local res = assert(client:send {
                 method = "GET",
-                path = "/" .. proxy_prefix .. "/portal/vitals/status_codes/by_consumer_and_route",
+                path = "/vitals/status_codes/by_consumer_and_route",
                 headers = {
                   ["Authorization"] = "Basic " .. ngx.encode_base64("hawk:kong"),
                 },
@@ -2285,7 +2283,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             it("returns 404 when vitals if off", function()
               local res = assert(client:send {
                 method = "GET",
-                path = "/" .. proxy_prefix .. "/portal/vitals/consumers/cluster",
+                path = "/vitals/consumers/cluster",
                 headers = {
                   ["Authorization"] = "Basic " .. ngx.encode_base64("hawk:kong"),
                 },
@@ -2302,7 +2300,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             it("returns 404 when vitals if off", function()
               local res = assert(client:send {
                 method = "GET",
-                path = "/" .. proxy_prefix .. "/portal/vitals/consumers/nodes",
+                path = "/vitals/consumers/nodes",
                 headers = {
                   ["Authorization"] = "Basic " .. ngx.encode_base64("hawk:kong"),
                 },
@@ -2356,7 +2354,7 @@ for _, strategy in helpers.each_strategy('postgres') do
         end)
 
         before_each(function()
-          client = assert(helpers.proxy_client())
+          client = assert(ee_helpers.portal_client())
         end)
 
         after_each(function()
@@ -2370,7 +2368,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             it("returns 401 when unauthenticated", function()
               local res = assert(client:send {
                 method = "GET",
-                path = "/" .. proxy_prefix .. "/portal/vitals/status_codes/by_consumer",
+                path = "/vitals/status_codes/by_consumer",
               })
 
               assert.res_status(401, res)
@@ -2379,7 +2377,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             it("returns 401 when consumer is not approved", function()
               local res = assert(client:send {
                 method = "GET",
-                path = "/" .. proxy_prefix .. "/portal/vitals/status_codes/by_consumer",
+                path = "/vitals/status_codes/by_consumer",
                 headers = {
                   ["Authorization"] = "Basic " .. ngx.encode_base64("dale:kong"),
                 },
@@ -2394,7 +2392,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             it("returns 400 when requested with invalid interval query param", function()
               local res = assert(client:send {
                 method = "GET",
-                path = "/" .. proxy_prefix .. "/portal/vitals/status_codes/by_consumer",
+                path = "/vitals/status_codes/by_consumer",
                 query = {
                   interval = "derp",
                 },
@@ -2414,7 +2412,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             it("returns seconds data", function()
               local res = assert(client:send {
                 method = "GET",
-                path = "/" .. proxy_prefix .. "/portal/vitals/status_codes/by_consumer",
+                path = "/vitals/status_codes/by_consumer",
                 query = {
                   interval = "seconds",
                 },
@@ -2441,7 +2439,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             it("returns minutes data", function()
               local res = assert(client:send {
                 method = "GET",
-                path = "/" .. proxy_prefix .. "/portal/vitals/status_codes/by_consumer",
+                path = "/vitals/status_codes/by_consumer",
                 query = {
                   interval = "minutes",
                 },
@@ -2472,7 +2470,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             it("returns 401 when unauthenticated", function()
               local res = assert(client:send {
                 method = "GET",
-                path = "/" .. proxy_prefix .. "/portal/vitals/status_codes/by_consumer_and_route",
+                path = "/vitals/status_codes/by_consumer_and_route",
               })
 
               assert.res_status(401, res)
@@ -2481,7 +2479,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             it("returns 401 when consumer is not approved", function()
               local res = assert(client:send {
                 method = "GET",
-                path = "/" .. proxy_prefix .. "/portal/vitals/status_codes/by_consumer_and_route",
+                path = "/vitals/status_codes/by_consumer_and_route",
                 headers = {
                   ["Authorization"] = "Basic " .. ngx.encode_base64("dale:kong"),
                 },
@@ -2496,7 +2494,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             it("returns 400 when requested with invalid interval query param", function()
               local res = assert(client:send {
                 method = "GET",
-                path = "/" .. proxy_prefix .. "/portal/vitals/status_codes/by_consumer_and_route",
+                path = "/vitals/status_codes/by_consumer_and_route",
                 query = {
                   interval = "derp",
                 },
@@ -2516,7 +2514,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             it("returns seconds data", function()
               local res = assert(client:send {
                 method = "GET",
-                path = "/" .. proxy_prefix .. "/portal/vitals/status_codes/by_consumer_and_route",
+                path = "/vitals/status_codes/by_consumer_and_route",
                 query = {
                   interval = "seconds",
                 },
@@ -2543,7 +2541,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             it("returns minutes data", function()
               local res = assert(client:send {
                 method = "GET",
-                path = "/" .. proxy_prefix .. "/portal/vitals/status_codes/by_consumer_and_route",
+                path = "/vitals/status_codes/by_consumer_and_route",
                 query = {
                   interval = "minutes",
                 },
@@ -2574,7 +2572,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             it("returns 401 when unauthenticated", function()
               local res = assert(client:send {
                 method = "GET",
-                path = "/" .. proxy_prefix .. "/portal/vitals/consumers/cluster",
+                path = "/vitals/consumers/cluster",
               })
 
               assert.res_status(401, res)
@@ -2583,7 +2581,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             it("returns 401 when consumer is not approved", function()
               local res = assert(client:send {
                 method = "GET",
-                path = "/" .. proxy_prefix .. "/portal/vitals/consumers/cluster",
+                path = "/vitals/consumers/cluster",
                 headers = {
                   ["Authorization"] = "Basic " .. ngx.encode_base64("dale:kong"),
                 },
@@ -2597,7 +2595,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             it("returns 400 when requested with invalid interval query param", function()
               local res = assert(client:send {
                 method = "GET",
-                path = "/" .. proxy_prefix .. "/portal/vitals/consumers/cluster",
+                path = "/vitals/consumers/cluster",
                 query = {
                   interval = "derp",
                 },
@@ -2617,7 +2615,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             it("returns seconds data", function()
               local res = assert(client:send {
                 method = "GET",
-                path = "/" .. proxy_prefix .. "/portal/vitals/consumers/cluster",
+                path = "/vitals/consumers/cluster",
                 query = {
                   interval = "seconds",
                 },
@@ -2641,7 +2639,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             it("returns minutes data", function()
               local res = assert(client:send {
                 method = "GET",
-                path = "/" .. proxy_prefix .. "/portal/vitals/consumers/cluster",
+                path = "/vitals/consumers/cluster",
                 query = {
                   interval = "minutes",
                 },

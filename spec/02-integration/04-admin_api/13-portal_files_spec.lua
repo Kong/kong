@@ -1,9 +1,8 @@
-local helpers = require "spec.helpers"
-local escape = require("socket.url").escape
-local cjson = require "cjson"
-local enums = require "kong.enterprise_edition.dao.enums"
-local proxy_prefix = require("kong.enterprise_edition.proxies").proxy_prefix
-
+local helpers    = require "spec.helpers"
+local ee_helpers = require "spec.ee_helpers"
+local escape     = require("socket.url").escape
+local cjson      = require "cjson"
+local enums      = require "kong.enterprise_edition.dao.enums"
 
 local function it_content_types(title, fn)
   local test_form_encoded = fn("application/x-www-form-urlencoded")
@@ -16,7 +15,7 @@ end
 for _, strategy in helpers.each_strategy() do
 describe("Admin API - Developer Portal - " .. strategy, function()
   local client
-  local proxy_client
+  local portal_client
   local db
   local dao
 
@@ -47,7 +46,7 @@ describe("Admin API - Developer Portal - " .. strategy, function()
 
   after_each(function()
     if client then client:close() end
-    if proxy_client then proxy_client:close() end
+    if portal_client then portal_client:close() end
   end)
 
   describe("/files", function()
@@ -571,12 +570,12 @@ describe("Admin API - Developer Portal - " .. strategy, function()
         portal_auto_approve = "off",
       }))
 
-      proxy_client = assert(helpers.proxy_client())
+      portal_client = assert(ee_helpers.portal_client())
       client = assert(helpers.admin_client())
 
-      local res = assert(proxy_client:send {
+      local res = assert(portal_client:send {
         method = "POST",
-        path = "/" .. proxy_prefix .. "/portal/register",
+        path = "/register",
         body = {
           email = "gruce@konghq.com",
           password = "kong",
@@ -654,12 +653,12 @@ describe("Admin API - Developer Portal - " .. strategy, function()
         portal_auto_approve = "on",
       }))
 
-      proxy_client = assert(helpers.proxy_client())
+      portal_client = assert(ee_helpers.portal_client())
       client = assert(helpers.admin_client())
 
-      local res = assert(proxy_client:send {
+      local res = assert(portal_client:send {
         method = "POST",
-        path = "/" .. proxy_prefix .. "/portal/register",
+        path = "/register",
         body = {
           email = "gruce@konghq.com",
           password = "kong",
@@ -702,9 +701,9 @@ describe("Admin API - Developer Portal - " .. strategy, function()
         assert.res_status(204, res)
 
         -- old password fails
-        local res = assert(proxy_client:send {
+        local res = assert(portal_client:send {
           method = "GET",
-          path = "/" .. proxy_prefix .. "/portal/developer",
+          path = "/developer",
           headers = {
             ["Content-Type"] = "application/json",
             ["Authorization"] = "Basic " .. ngx.encode_base64("gruce@konghq.com:kong"),
@@ -714,9 +713,9 @@ describe("Admin API - Developer Portal - " .. strategy, function()
         assert.res_status(403, res)
 
         -- new password auths
-        local res = assert(proxy_client:send {
+        local res = assert(portal_client:send {
           method = "GET",
-          path = "/" .. proxy_prefix .. "/portal/developer",
+          path = "/developer",
           headers = {
             ["Content-Type"] = "application/json",
             ["Authorization"] = "Basic " .. ngx.encode_base64("gruce@konghq.com:hunter1"),
@@ -745,12 +744,12 @@ describe("Admin API - Developer Portal - " .. strategy, function()
         portal_auto_approve = "on",
       }))
 
-      proxy_client = assert(helpers.proxy_client())
+      portal_client = assert(ee_helpers.portal_client())
       client = assert(helpers.admin_client())
 
-      local res = assert(proxy_client:send {
+      local res = assert(portal_client:send {
         method = "POST",
-        path = "/" .. proxy_prefix .. "/portal/register",
+        path = "/register",
         body = {
           email = "gruce@konghq.com",
           password = "kong",
@@ -763,9 +762,9 @@ describe("Admin API - Developer Portal - " .. strategy, function()
       local resp_body_json = cjson.decode(body)
       developer = resp_body_json.consumer
 
-      local res = assert(proxy_client:send {
+      local res = assert(portal_client:send {
         method = "POST",
-        path = "/" .. proxy_prefix .. "/portal/register",
+        path = "/register",
         body = {
           email = "fancypants@konghq.com",
           password = "mowmow",
@@ -833,9 +832,9 @@ describe("Admin API - Developer Portal - " .. strategy, function()
         assert.res_status(204, res)
 
         -- old email fails
-        local res = assert(proxy_client:send {
+        local res = assert(portal_client:send {
           method = "GET",
-          path = "/" .. proxy_prefix .. "/portal/developer",
+          path = "/developer",
           headers = {
             ["Content-Type"] = "application/json",
             ["Authorization"] = "Basic " .. ngx.encode_base64("gruce@konghq.com:kong"),
@@ -845,9 +844,9 @@ describe("Admin API - Developer Portal - " .. strategy, function()
         assert.res_status(403, res)
 
         -- new email succeeds
-        local res = assert(proxy_client:send {
+        local res = assert(portal_client:send {
           method = "GET",
-          path = "/" .. proxy_prefix .. "/portal/developer",
+          path = "/developer",
           headers = {
             ["Content-Type"] = "application/json",
             ["Authorization"] = "Basic " .. ngx.encode_base64("new_email@whodis.com:kong"),
@@ -878,12 +877,12 @@ describe("Admin API - Developer Portal - " .. strategy, function()
         portal_auto_approve = "on",
       }))
 
-      proxy_client = assert(helpers.proxy_client())
+      portal_client = assert(ee_helpers.portal_client())
       client = assert(helpers.admin_client())
 
-      local res = assert(proxy_client:send {
+      local res = assert(portal_client:send {
         method = "POST",
-        path = "/" .. proxy_prefix .. "/portal/register",
+        path = "/register",
         body = {
           email = "gruce@konghq.com",
           password = "kong",
@@ -914,9 +913,9 @@ describe("Admin API - Developer Portal - " .. strategy, function()
 
         assert.res_status(204, res)
 
-        local res = assert(proxy_client:send {
+        local res = assert(portal_client:send {
           method = "GET",
-          path = "/" .. proxy_prefix .. "/portal/developer",
+          path = "/developer",
           headers = {
             ["Content-Type"] = "application/json",
             ["Authorization"] = "Basic " .. ngx.encode_base64("gruce@konghq.com:kong"),
@@ -931,9 +930,9 @@ describe("Admin API - Developer Portal - " .. strategy, function()
       end)
 
       it("ignores keys that are not in the current meta", function()
-        local res = assert(proxy_client:send {
+        local res = assert(portal_client:send {
           method = "GET",
-          path = "/" .. proxy_prefix .. "/portal/developer",
+          path = "/developer",
           headers = {
             ["Content-Type"] = "application/json",
             ["Authorization"] = "Basic " .. ngx.encode_base64("gruce@konghq.com:kong"),
@@ -959,9 +958,9 @@ describe("Admin API - Developer Portal - " .. strategy, function()
 
         assert.res_status(204, res)
 
-        local res = assert(proxy_client:send {
+        local res = assert(portal_client:send {
           method = "GET",
-          path = "/" .. proxy_prefix .. "/portal/developer",
+          path = "/developer",
           headers = {
             ["Content-Type"] = "application/json",
             ["Authorization"] = "Basic " .. ngx.encode_base64("gruce@konghq.com:kong"),

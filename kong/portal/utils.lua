@@ -1,9 +1,32 @@
-local enums  = require "kong.enterprise_edition.dao.enums"
-local ee_jwt = require "kong.enterprise_edition.jwt"
-local time   = ngx.time
+local enums       = require "kong.enterprise_edition.dao.enums"
+local ee_jwt      = require "kong.enterprise_edition.jwt"
+local api_helpers = require "lapis.application"
+local singletons  = require "kong.singletons"
+local time        = ngx.time
+
+local SERVICE_ID = "00000000-0000-0000-0000-000000000000"
 
 
 local _M = {}
+
+
+_M.portal_plugins = {}
+
+
+_M.find_plugin = function(name)
+  if _M.portal_plugins[name] then
+    return _M.portal_plugins[name]
+  end
+
+  for _, plugin in ipairs(singletons.loaded_plugins) do
+    if plugin.name == name then
+      _M.portal_plugins[name] = plugin
+      return plugin
+    end
+  end
+
+  return nil, "plugin not found"
+end
 
 
 -- Validates an email address
@@ -85,6 +108,43 @@ _M.get_developer_status = function(consumer)
     status = status,
     label  = enums.CONSUMERS.STATUS_LABELS[status],
   }
+end
+
+_M.prepare_plugin = function(name, config)
+  local dao = singletons.dao
+
+  local plugin, err = _M.find_plugin(name)
+  if err then
+    return nil, api_helpers.yield_error(err)
+  end
+
+  local fields = {
+    name = plugin.name,
+    service_id = SERVICE_ID,
+    config = config
+  }
+
+  -- convert plugin configuration over to model to obtain defaults
+  local model = dao.plugins.model_mt(fields)
+
+  -- validate the model
+  local ok, err = model:validate({dao = dao.plugins})
+  if not ok then
+    return api_helpers.yield_error(err)
+  end
+
+  return {
+    handler = plugin.handler,
+    config = model.config,
+  }
+end
+
+
+_M.apply_plugin = function(plugin, phase)
+  local err = coroutine.wrap(plugin.handler[phase])(plugin.handler, plugin.config)
+  if err then
+    return api_helpers.yield_error(err)
+  end
 end
 
 

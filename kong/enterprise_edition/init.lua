@@ -236,23 +236,20 @@ function _M.prepare_portal(kong_config)
                                                   {ssl = true})
   local portal_gui_port = portal_gui_listener and portal_gui_listener.port
   local portal_gui_ssl_port = portal_gui_ssl_listener and portal_gui_ssl_listener.port
-
-  -- Developer Portal GUI communicates with the Developer Portal API through the
-  -- Kong Proxy using internal proxies (see proxies.lua)
-  local proxy_listener = select_listener(kong_config.proxy_listeners,
+  local portal_api_listener = select_listener(kong_config.portal_api_listeners,
                                          {ssl = false})
-  local proxy_ssl_listener = select_listener(kong_config.proxy_listeners,
+  local portal_api_ssl_listener = select_listener(kong_config.portal_api_listeners,
                                              {ssl = true})
-  local proxy_port = proxy_listener and proxy_listener.port
-  local proxy_ssl_port = proxy_ssl_listener and proxy_ssl_listener.port
+  local portal_api_port = portal_api_listener and portal_api_listener.port
+  local portal_api_ssl_port = portal_api_ssl_listener and portal_api_ssl_listener.port
 
   local rbac_enforced = kong_config.rbac == "both" or kong_config.rbac == "on"
 
   return prepare_interface("portal", {
-    PROXY_URL = prepare_variable(kong_config.proxy_url),
+    PORTAL_API_URL = prepare_variable(kong_config.portal_api_url),
     PORTAL_AUTH = prepare_variable(kong_config.portal_auth),
-    PORTAL_API_PORT = prepare_variable(proxy_port),
-    PORTAL_API_SSL_PORT = prepare_variable(proxy_ssl_port),
+    PORTAL_API_PORT = prepare_variable(portal_api_port),
+    PORTAL_API_SSL_PORT = prepare_variable(portal_api_ssl_port),
     PORTAL_GUI_URL = prepare_variable(kong_config.portal_gui_url),
     PORTAL_GUI_PORT = prepare_variable(portal_gui_port),
     PORTAL_GUI_SSL_PORT = prepare_variable(portal_gui_ssl_port),

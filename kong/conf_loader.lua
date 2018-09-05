@@ -728,12 +728,6 @@ local function load(path, custom_conf)
     end
 
     if conf.portal then
-      -- proxy must be enabled if portal is enabled
-      if #conf.proxy_listeners < 1 then
-        return nil, "proxy_listen cannot be set to 'off' when portal is set" ..
-                    "to 'on'"
-      end
-
       conf.portal_gui_listeners, err = parse_listeners(conf.portal_gui_listen)
       if err then
         return nil, "portal_gui_listen " .. err
@@ -841,7 +835,8 @@ return setmetatable({
       end
     end
     return purged_conf
-  end
+  end,
+  parse_listeners = parse_listeners,
 }, {
   __call = function(_, ...)
     return load(...)

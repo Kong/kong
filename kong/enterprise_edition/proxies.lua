@@ -1,6 +1,5 @@
 local singletons = require "kong.singletons"
 local url = require "socket.url"
-local utils = require "kong.tools.utils"
 
 
 local _M = {}
@@ -13,16 +12,6 @@ _M.proxy_prefix = "_kong"
 -- identifiers for internal proxies must be unique
 -- they are listed here to help prevent collisions when adding new services
 -- to add a new service and route, follow the almost-convention below
-local portal_service_id           = "00000000-0000-0000-0000-000000000001"
-local portal_route_id             = "00000000-0000-0000-0002-000000000000"
-local portal_files_service_id     = "00000000-0000-0000-0000-000000000003"
-local portal_files_route_id       = "00000000-0000-0000-0003-000000000000"
-local portal_register_service_id  = "00000000-0000-0000-0000-000000000004"
-local portal_register_route_id    = "00000000-0000-0000-0004-000000000000"
-local portal_forgot_pw_service_id = "00000000-0000-0000-0000-000000000007"
-local portal_forgot_pw_route_id   = "00000000-0000-0000-0007-000000000000"
-local portal_reset_pw_service_id  = "00000000-0000-0000-0000-000000000008"
-local portal_reset_pw_route_id    = "00000000-0000-0000-0008-000000000000"
 local admin_service_id            = "00000000-0000-0000-0000-000000000006"
 local admin_route_id              = "00000000-0000-0000-0006-000000000000"
 
@@ -90,8 +79,6 @@ function _M.new(opts)
 
   local cls = setmetatable(self, mt)
 
-  cls:setup_portal()
-
   cls:setup_admin()
 
   if opts.services then
@@ -157,124 +144,6 @@ function _M:setup_admin()
     service = admin_config.name,
     config = kong_config.admin_gui_auth_conf or {}
   })
-end
-
-
-function _M:setup_portal()
-  local kong_config = singletons.configuration
-  local proxy_enabled = kong_config.portal_auth and kong_config.proxy_listen
-  local portal_enabled = kong_config.portal
-  if not proxy_enabled and not portal_enabled then
-    ngx.log(ngx.DEBUG, "not enabling internal service for Dev Portal ",
-                       "proxy_enabled=", proxy_enabled, " ",
-                       "portal_enabled=", portal_enabled)
-    return
-  end
-
-  local portal_config = get_service_config("portal_api", 8004)
-
-  portal_config.id = portal_service_id
-  portal_config.name = "__kong_portal_api"
-
-  self:add_service(portal_config)
-  self:add_route({
-    id = portal_route_id,
-    service = portal_config.name,
-    paths = { "/" .. _M.proxy_prefix .. "/portal" },
-  })
-
-  self:add_plugin({
-    name = "cors",
-    service = portal_config.name,
-    config = {
-      origins = kong_config.portal_gui_url or "*",
-      methods = { "GET", "PATCH", "DELETE", "POST" },
-      credentials = true
-    }
-  })
-
-  -- Enable authentication
-  if kong_config.portal_auth then
-
-    self:add_plugin({
-      name = kong_config.portal_auth,
-      service = portal_config.name,
-      config = kong_config.portal_auth_conf or {}
-    })
-
-    local portal_config_unauthenticated = utils.shallow_copy(portal_config)
-
-    portal_config_unauthenticated.name ="_kong-portal-files-unauthenticated"
-    portal_config_unauthenticated.id = portal_files_service_id
-    portal_config_unauthenticated.path = "/files/unauthenticated"
-
-    self:add_service(portal_config_unauthenticated)
-
-    self:add_route({
-      id = portal_files_route_id,
-      service = portal_config_unauthenticated.name,
-      paths = { "/" .. _M.proxy_prefix .. "/portal/files/unauthenticated" },
-    })
-
-    local portal_config_register = utils.shallow_copy(portal_config)
-
-    portal_config_register.name ="_kong-portal-register"
-    portal_config_register.id = portal_register_service_id
-    portal_config_register.path = "/portal/register"
-
-    self:add_service({
-      id = portal_config_register.id,
-      name = portal_config_register.name,
-      host = portal_config.host,
-      port = portal_config.port,
-      protocol = portal_config.protocol,
-      path = portal_config_register.path
-    })
-
-    self:add_route({
-      id = portal_register_route_id,
-      service = portal_config_register.name,
-      paths = { "/" .. _M.proxy_prefix .. "/portal/register" },
-    })
-
-    local portal_config_forgot_pw = utils.shallow_copy(portal_config)
-
-    portal_config_forgot_pw.name ="_kong-portal-forgot-pw"
-    portal_config_forgot_pw.id = portal_forgot_pw_service_id
-    portal_config_forgot_pw.path = "/portal/forgot-password"
-
-    self:add_service(portal_config_forgot_pw)
-
-    self:add_route({
-      id = portal_forgot_pw_route_id,
-      service = portal_config_forgot_pw.name,
-      paths = { "/" .. _M.proxy_prefix .. "/portal/forgot-password" },
-    })
-
-    local portal_config_reset_pw = utils.shallow_copy(portal_config)
-
-    portal_config_reset_pw.name ="_kong-portal-reset-pw"
-    portal_config_reset_pw.id = portal_reset_pw_service_id
-    portal_config_reset_pw.path = "/portal/reset-password"
-
-    self:add_service(portal_config_reset_pw)
-
-    self:add_route({
-      id = portal_reset_pw_route_id,
-      service = portal_config_reset_pw.name,
-      paths = { "/" .. _M.proxy_prefix .. "/portal/reset-password" },
-    })
-
-    self:add_plugin({
-      name = "cors",
-      service = portal_config_unauthenticated.name,
-      config = {
-        origins = kong_config.portal_gui_url or "*",
-        methods = { "GET" },
-        credentials = true
-      }
-    })
-  end
 end
 
 
