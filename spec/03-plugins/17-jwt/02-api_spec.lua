@@ -7,19 +7,22 @@ for _, strategy in helpers.each_strategy() do
   describe("Plugin: jwt (API) [#" .. strategy .. "]", function()
     local admin_client
     local consumer
-    local jwt_secret
-    local dao
+    local db
     local bp
 
     setup(function()
-      local _
-      bp, _, dao = helpers.get_db_utils(strategy)
+      bp, db = helpers.get_db_utils(strategy)
+      db:truncate()
 
       assert(helpers.start_kong({
         database = strategy,
       }))
 
       admin_client = helpers.admin_client()
+
+      consumer = bp.consumers:insert {
+        username = "bob"
+      }
     end)
     teardown(function()
       if admin_client then
@@ -31,9 +34,6 @@ for _, strategy in helpers.each_strategy() do
 
     describe("/consumers/:consumer/jwt/", function()
       setup(function()
-        consumer = bp.consumers:insert {
-          username = "bob"
-        }
         bp.consumers:insert {
           username = "alice"
         }
@@ -43,9 +43,9 @@ for _, strategy in helpers.each_strategy() do
         local jwt1, jwt2
         teardown(function()
           if jwt1 == nil then return end
-          dao.jwt_secrets:delete(jwt1)
+          db.jwt_secrets:delete(jwt1)
           if jwt2 == nil then return end
-          dao.jwt_secrets:delete(jwt2)
+          db.jwt_secrets:delete(jwt2)
         end)
 
         it("creates a jwt secret", function()
@@ -58,7 +58,7 @@ for _, strategy in helpers.each_strategy() do
             }
           })
           local body = cjson.decode(assert.res_status(201, res))
-          assert.equal(consumer.id, body.consumer_id)
+          assert.equal(consumer.id, body.consumer.id)
           jwt1 = body
         end)
         it("accepts any given `secret` and `key` parameters", function()
@@ -169,7 +169,12 @@ for _, strategy in helpers.each_strategy() do
           })
           assert.response(res).has.status(400)
           local json = assert.response(res).has.jsonbody()
-          assert.equal("no mandatory 'rsa_public_key'", json.message)
+          assert.same({
+            rsa_public_key = "required field missing",
+            ["@entity"] = {
+              "failed conditional validation given value of field 'algorithm'"
+            }
+          }, json.fields)
         end)
         it("fails with an invalid rsa_public_key for RS256 algorithms", function ()
           local res = assert(admin_client:send {
@@ -186,7 +191,12 @@ for _, strategy in helpers.each_strategy() do
           })
           assert.response(res).has.status(400)
           local json = assert.response(res).has.jsonbody()
-          assert.equal("'rsa_public_key' format is invalid", json.message)
+          assert.same({
+            rsa_public_key = "invalid key",
+            ["@entity"] = {
+              "failed conditional validation given value of field 'algorithm'"
+            }
+          }, json.fields)
         end)
         it("does not fail when `secret` parameter for HS256 algorithms is missing", function ()
           local res = assert(admin_client:send {
@@ -208,23 +218,6 @@ for _, strategy in helpers.each_strategy() do
         end)
       end)
 
-      describe("PUT", function()
-        it("creates and update", function()
-          local res = assert(admin_client:send {
-            method = "PUT",
-            path = "/consumers/bob/jwt/",
-            body = {},
-            headers = {
-              ["Content-Type"] = "application/json"
-            }
-          })
-          local body = cjson.decode(assert.res_status(201, res))
-          assert.equal(consumer.id, body.consumer_id)
-
-          -- For GET tests
-          jwt_secret = body
-        end)
-      end)
 
       describe("GET", function()
         it("retrieves all", function()
@@ -239,6 +232,14 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("/consumers/:consumer/jwt/:id", function()
+      local jwt_secret
+      before_each(function()
+        db:truncate("jwt_secrets")
+        jwt_secret = bp.jwt_secrets:insert({
+          consumer = { id = consumer.id },
+        })
+      end)
+
       describe("GET", function()
         it("retrieves by id", function()
           local res = assert(admin_client:send {
@@ -256,6 +257,23 @@ for _, strategy in helpers.each_strategy() do
         end)
       end)
 
+      describe("PUT", function()
+        it("creates and update", function()
+          local res = assert(admin_client:send {
+            method = "PUT",
+            path = "/consumers/bob/jwt/abcd",
+            body = {},
+            headers = {
+              ["Content-Type"] = "application/json"
+            }
+          })
+          local body = cjson.decode(assert.res_status(200, res))
+          assert.equal("abcd", body.key)
+          assert.equal(consumer.id, body.consumer.id)
+        end)
+      end)
+
+
       describe("PATCH", function()
         it("updates a credential by id", function()
           local res = assert(admin_client:send {
@@ -270,8 +288,8 @@ for _, strategy in helpers.each_strategy() do
             }
           })
           local body = assert.res_status(200, res)
-          jwt_secret = cjson.decode(body)
-          assert.equal("newsecret", jwt_secret.secret)
+          local secr = cjson.decode(body)
+          assert.equal("newsecret", secr.secret)
         end)
         it("updates a credential by key", function()
           local res = assert(admin_client:send {
@@ -286,8 +304,8 @@ for _, strategy in helpers.each_strategy() do
             }
           })
           local body = assert.res_status(200, res)
-          jwt_secret = cjson.decode(body)
-          assert.equal("newsecret2", jwt_secret.secret)
+          local secr = cjson.decode(body)
+          assert.equal("newsecret2", secr.secret)
         end)
       end)
 
@@ -326,19 +344,22 @@ for _, strategy in helpers.each_strategy() do
         end)
       end)
     end)
+
     describe("/jwts", function()
       local consumer2
       describe("GET", function()
         setup(function()
-          dao:truncate_table("jwt_secrets")
-          bp.jwt_secrets:insert {
-            consumer_id = consumer.id,
-          }
           consumer2 = bp.consumers:insert {
             username = "bob-the-buidler"
           }
+        end)
+        before_each(function()
+          db:truncate("jwt_secrets")
           bp.jwt_secrets:insert {
-            consumer_id = consumer2.id,
+            consumer = { id = consumer.id },
+          }
+          bp.jwt_secrets:insert {
+            consumer = { id = consumer2.id },
           }
         end)
         it("retrieves all the jwts with trailing slash", function()
@@ -350,7 +371,6 @@ for _, strategy in helpers.each_strategy() do
           local json = cjson.decode(body)
           assert.is_table(json.data)
           assert.equal(2, #json.data)
-          assert.equal(2, json.total)
         end)
         it("retrieves all the jwts without trailing slash", function()
           local res = assert(admin_client:send {
@@ -361,7 +381,6 @@ for _, strategy in helpers.each_strategy() do
           local json = cjson.decode(body)
           assert.is_table(json.data)
           assert.equal(2, #json.data)
-          assert.equal(2, json.total)
         end)
         it("paginates through the jwts", function()
           local res = assert(admin_client:send {
@@ -372,7 +391,6 @@ for _, strategy in helpers.each_strategy() do
           local json_1 = cjson.decode(body)
           assert.is_table(json_1.data)
           assert.equal(1, #json_1.data)
-          assert.equal(2, json_1.total)
 
           res = assert(admin_client:send {
             method = "GET",
@@ -386,7 +404,6 @@ for _, strategy in helpers.each_strategy() do
           local json_2 = cjson.decode(body)
           assert.is_table(json_2.data)
           assert.equal(1, #json_2.data)
-          assert.equal(2, json_2.total)
 
           assert.not_same(json_1.data, json_2.data)
           -- Disabled: on Cassandra, the last page still returns a
@@ -394,38 +411,16 @@ for _, strategy in helpers.each_strategy() do
           -- response of the Admin API.
           --assert.is_nil(json_2.offset) -- last page
         end)
-        it("retrieve jwts for a consumer_id", function()
-          local res = assert(admin_client:send {
-            method = "GET",
-            path = "/jwts?consumer_id=" .. consumer.id
-          })
-          local body = assert.res_status(200, res)
-          local json = cjson.decode(body)
-          assert.is_table(json.data)
-          assert.equal(1, #json.data)
-          assert.equal(1, json.total)
-        end)
-        it("return empty for a non-existing consumer_id", function()
-          local res = assert(admin_client:send {
-            method = "GET",
-            path = "/jwts?consumer_id=" .. utils.uuid(),
-          })
-          local body = assert.res_status(200, res)
-          local json = cjson.decode(body)
-          assert.is_table(json.data)
-          assert.equal(0, #json.data)
-          assert.equal(0, json.total)
-        end)
       end)
     end)
     describe("/jwts/:jwt_key_or_id/consumer", function()
       describe("GET", function()
         local credential
-        setup(function()
-          dao:truncate_table("jwt_secrets")
-          credential = assert(dao.jwt_secrets:insert {
-            consumer_id = consumer.id
-          })
+        before_each(function()
+          db:truncate("jwt_secrets")
+          credential = bp.jwt_secrets:insert {
+            consumer = { id = consumer.id },
+          }
         end)
         it("retrieve consumer from a JWT id", function()
           local res = assert(admin_client:send {

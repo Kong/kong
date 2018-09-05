@@ -30,7 +30,8 @@ return {
     down = [[
       ALTER TABLE jwt_secrets DROP algorithm;
       ALTER TABLE jwt_secrets DROP rsa_public_key;
-    ]]
+    ]],
+    ignore_error = "Invalid column name",
   },
   {
     name = "2017-07-31-120200_jwt-auth_preflight_default",

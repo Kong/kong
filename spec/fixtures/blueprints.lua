@@ -217,11 +217,10 @@ function _M.new(dao, db)
   end)
 
   local jwt_key_seq = new_sequence("jwt-key-%d")
-  res.jwt_secrets = new_blueprint(dao.jwt_secrets, function()
+  res.jwt_secrets = new_blueprint(db.jwt_secrets, function()
     return {
       key       = jwt_key_seq:next(),
       secret    = "secret",
-      algorithm = "HS256",
     }
   end)
 
