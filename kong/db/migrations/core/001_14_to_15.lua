@@ -146,6 +146,13 @@ return {
       ALTER TABLE IF EXISTS ONLY "targets"
         ALTER "created_at" TYPE TIMESTAMP WITH TIME ZONE USING "created_at" AT TIME ZONE 'UTC',
         ALTER "created_at" SET DEFAULT CURRENT_TIMESTAMP(3) AT TIME ZONE 'UTC';
+
+
+      CREATE TABLE IF NOT EXISTS ca(
+        pk boolean not null check(pk=true) primary key,
+        key text not null,
+        cert text not null
+      );
     ]],
 
     teardown = function(connector, helpers)
@@ -195,6 +202,12 @@ return {
         enabled boolean,
         cache_key text,
         PRIMARY KEY (id)
+      );
+
+      CREATE TABLE IF NOT EXISTS ca(
+        pk boolean primary key,
+        key text,
+        cert text
       );
     ]],
 

@@ -50,6 +50,7 @@ _M.additional_tables = {
   "plugins",
   "certificates",
   "snis",
+  "ca",
 }
 
 function _M.new(kong_config)
