@@ -133,7 +133,7 @@ return {
       type                                      = "number",
       default                                   = 0,
     },
-    access_token_intrspection_scopes_required   = {
+    access_token_introspection_scopes_required   = {
       required                                  = false,
       type                                      = "array",
     },

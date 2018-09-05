@@ -1,3 +1,7 @@
+## v0.0.7
+
+- Fix typo in `access_token_intrspection_scopes_required` (the missing `o`)
+
 ## v0.0.6
 
 - Add `access_token_introspection_leeway`
