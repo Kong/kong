@@ -92,10 +92,47 @@ local function handle_vitals_response(res, err, helpers)
 end
 
 
+local function validate_jwt(self, dao_factory, helpers)
+  -- Verify params
+  if not self.params.token or self.params.token == "" then
+    return helpers.responses.send_HTTP_BAD_REQUEST("token is required")
+  end
+
+  -- Parse and ensure that jwt contains the correct claims/headers.
+  -- Signature NOT verified yet
+  local jwt, err = portal_utils.validate_reset_jwt(self.params.token)
+  if err then
+    return helpers.responses.send_HTTP_UNAUTHORIZED(err)
+  end
+
+  -- Look up the secret by consumer id and pending status
+  local rows = singletons.dao.portal_reset_secrets:find_all({
+    consumer_id = jwt.claims.id,
+    status = enums.TOKENS.STATUS.PENDING,
+  })
+
+  if not rows or next(rows) == nil then
+    return helpers.responses.send_HTTP_UNAUTHORIZED()
+  end
+
+  local reset_secret = rows[1]
+
+  -- Generate a new signature and compare it to passed token
+  local ok, _ = ee_jwt.verify_signature(jwt, reset_secret.secret)
+  if not ok then
+    return helpers.responses.send_HTTP_UNAUTHORIZED()
+  end
+
+  self.params.email_or_id = jwt.claims.id
+  self.reset_secret_id = reset_secret.id
+end
+
+
 return {
   ["/auth"] = {
     GET = function(self, dao_factory, helpers)
       authenticate(self, dao_factory, helpers)
+      return helpers.responses.send_HTTP_OK()
     end,
   },
 
@@ -248,52 +285,27 @@ return {
     end,
   },
 
-  ["/reset-password"] = {
+  ["/validate-reset"] = {
     before = function(self, dao_factory, helpers)
       validate_auth_plugin(self, dao_factory, helpers)
+      validate_jwt(self, dao_factory, helpers)
     end,
 
     POST = function(self, dao_factory, helpers)
-      -- Verify params
-      if not self.params.token or self.params.token == "" then
-        return helpers.responses.send_HTTP_BAD_REQUEST("token is required")
-      end
+      return helpers.responses.send_HTTP_OK()
+    end,
+  },
 
-      -- key or password
-      local new_password = self.params[self.plugin.credential_key]
-      if not new_password or new_password == "" then
-        return helpers.responses.send_HTTP_BAD_REQUEST(self.plugin.credential_key .. " is required")
-      end
+  ["/reset-password"] = {
+    before = function(self, dao_factory, helpers)
+      validate_auth_plugin(self, dao_factory, helpers)
+      validate_jwt(self, dao_factory, helpers)
+    end,
 
-      -- Parse and ensure that jwt contains the correct claims/headers.
-      -- Signature NOT verified yet
-      local jwt, err = portal_utils.validate_reset_jwt(self.params.token)
-      if err then
-        return helpers.responses.send_HTTP_UNAUTHORIZED(err)
-      end
-
-      -- Look up the secret by consumer id and pending status
-      local rows = singletons.dao.portal_reset_secrets:find_all({
-        consumer_id = jwt.claims.id,
-        status = enums.TOKENS.STATUS.PENDING,
-      })
-
-      if not rows or next(rows) == nil then
-        return helpers.responses.send_HTTP_UNAUTHORIZED()
-      end
-
-      local secret = rows[1]
-
-      -- Generate a new signature and compare it to passed token
-      local ok, _ = ee_jwt.verify_signature(jwt, secret.secret)
-      if not ok then
-        return helpers.responses.send_HTTP_UNAUTHORIZED()
-      end
-
+    POST = function(self, dao_factory, helpers)
       -- If we made it this far, the jwt is valid format and properly signed.
       -- Now we will lookup the consumer and credentials we need to update
       -- Lookup consumer by id contained in jwt, if not found, this will 404
-      self.params.email_or_id = jwt.claims.id
       crud.find_consumer_by_email_or_id(self, dao_factory, helpers, {__skip_rbac = true})
 
       local credentials, err = dao_factory.credentials:find_all({
@@ -311,9 +323,10 @@ return {
         return helpers.responses.send_HTTP_NOT_FOUND()
       end
 
-      local credential_data = credential.credential_data
-      if not credential_data then
-        return helpers.responses.send_HTTP_NOT_FOUND()
+      -- key or password
+      local new_password = self.params[self.plugin.credential_key]
+      if not new_password or new_password == "" then
+        return helpers.responses.send_HTTP_BAD_REQUEST(self.plugin.credential_key .. " is required")
       end
 
       local filter = {consumer_id = self.consumer.id, id = credential.id}
@@ -333,7 +346,7 @@ return {
         status = enums.TOKENS.STATUS.CONSUMED,
         updated_at = time() * 1000,
       }, {
-        id = secret.id,
+        id = self.reset_secret_id,
       })
 
       if err then
