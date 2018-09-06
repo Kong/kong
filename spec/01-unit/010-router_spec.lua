@@ -1678,48 +1678,77 @@ describe("Router", function()
       end)
     end)
 
-    describe("trailing slash", function()
+
+    describe("slash handling", function()
       local checks = {
         -- upstream url    paths            request path    expected path           strip uri
-        {  "/",            "/",            "/",            "/",                    true      },
+        {  "/",            "/",            "/",            "/",                    true      }, -- 1
         {  "/",            "/",            "/foo/bar",     "/foo/bar",             true      },
         {  "/",            "/",            "/foo/bar/",    "/foo/bar/",            true      },
         {  "/",            "/foo/bar",     "/foo/bar",     "/",                    true      },
         {  "/",            "/foo/bar/",    "/foo/bar/",    "/",                    true      },
-        {  "/foo/bar",     "/",            "/",            "/foo/bar",             true      },
-        {  "/foo/bar",     "/",            "/foo/bar",     "/foo/bar/foo/bar",     true      },
-        {  "/foo/bar",     "/",            "/foo/bar/",    "/foo/bar/foo/bar/",    true      },
-        {  "/foo/bar",     "/foo/bar",     "/foo/bar",     "/foo/bar",             true      },
-        {  "/foo/bar",     "/foo/bar/",    "/foo/bar/",    "/foo/bar/",            true      },
-        {  "/foo/bar/",    "/",            "/",            "/foo/bar/",            true      },
-        {  "/foo/bar/",    "/",            "/foo/bar",     "/foo/bar/foo/bar",     true      },
-        {  "/foo/bar/",    "/",            "/foo/bar/",    "/foo/bar/foo/bar/",    true      },
-        {  "/foo/bar/",    "/foo/bar",     "/foo/bar",     "/foo/bar",             true      },
-        {  "/foo/bar/",    "/foo/bar/",    "/foo/bar/",    "/foo/bar/",            true      },
+        {  "/fee/bor",     "/",            "/",            "/fee/bor",             true      },
+        {  "/fee/bor",     "/",            "/foo/bar",     "/fee/bor/foo/bar",     true      },
+        {  "/fee/bor",     "/",            "/foo/bar/",    "/fee/bor/foo/bar/",    true      },
+        {  "/fee/bor",     "/foo/bar",     "/foo/bar",     "/fee/bor",             true      },
+        {  "/fee/bor",     "/foo/bar/",    "/foo/bar/",    "/fee/bor/",            true      }, -- 10
+        {  "/fee/bor/",    "/",            "/",            "/fee/bor/",            true      },
+        {  "/fee/bor/",    "/",            "/foo/bar",     "/fee/bor/foo/bar",     true      },
+        {  "/fee/bor/",    "/",            "/foo/bar/",    "/fee/bor/foo/bar/",    true      },
+        {  "/fee/bor/",    "/foo/bar",     "/foo/bar",     "/fee/bor",             true      },
+        {  "/fee/bor/",    "/foo/bar/",    "/foo/bar/",    "/fee/bor/",            true      },
         {  "/",            "/",            "/",            "/",                    false     },
         {  "/",            "/",            "/foo/bar",     "/foo/bar",             false     },
         {  "/",            "/",            "/foo/bar/",    "/foo/bar/",            false     },
         {  "/",            "/foo/bar",     "/foo/bar",     "/foo/bar",             false     },
-        {  "/",            "/foo/bar/",    "/foo/bar/",    "/foo/bar/",            false     },
-        {  "/foo/bar",     "/",            "/",            "/foo/bar",             false     },
-        {  "/foo/bar",     "/",            "/foo/bar",     "/foo/bar/foo/bar",     false     },
-        {  "/foo/bar",     "/",            "/foo/bar/",    "/foo/bar/foo/bar/",    false     },
-        {  "/foo/bar",     "/foo/bar",     "/foo/bar",     "/foo/bar/foo/bar",     false     },
-        {  "/foo/bar",     "/foo/bar/",    "/foo/bar/",    "/foo/bar/foo/bar/",    false     },
-        {  "/foo/bar/",    "/",            "/",            "/foo/bar/",            false     },
-        {  "/foo/bar/",    "/",            "/foo/bar",     "/foo/bar/foo/bar",     false     },
-        {  "/foo/bar/",    "/",            "/foo/bar/",    "/foo/bar/foo/bar/",    false     },
-        {  "/foo/bar/",    "/foo/bar",     "/foo/bar",     "/foo/bar/foo/bar",     false     },
-        {  "/foo/bar/",    "/foo/bar/",    "/foo/bar/",    "/foo/bar/foo/bar/",    false     },
+        {  "/",            "/foo/bar/",    "/foo/bar/",    "/foo/bar/",            false     }, -- 20
+        {  "/fee/bor",     "/",            "/",            "/fee/bor",             false     },
+        {  "/fee/bor",     "/",            "/foo/bar",     "/fee/bor/foo/bar",     false     },
+        {  "/fee/bor",     "/",            "/foo/bar/",    "/fee/bor/foo/bar/",    false     },
+        {  "/fee/bor",     "/foo/bar",     "/foo/bar",     "/fee/bor/foo/bar",     false     },
+        {  "/fee/bor",     "/foo/bar/",    "/foo/bar/",    "/fee/bor/foo/bar/",    false     },
+        {  "/fee/bor/",    "/",            "/",            "/fee/bor/",            false     },
+        {  "/fee/bor/",    "/",            "/foo/bar",     "/fee/bor/foo/bar",     false     },
+        {  "/fee/bor/",    "/",            "/foo/bar/",    "/fee/bor/foo/bar/",    false     },
+        {  "/fee/bor/",    "/foo/bar",     "/foo/bar",     "/fee/bor/foo/bar",     false     },
+        {  "/fee/bor/",    "/foo/bar/",    "/foo/bar/",    "/fee/bor/foo/bar/",    false     }, -- 30
+        -- the following block runs the same tests, but with a request path that is longer
+        -- than the matched part, so either matches in the middle of a segment, or has an
+        -- additional segment.
+        {  "/",            "/",            "/foo/bars",    "/foo/bars",            true      },
+        {  "/",            "/",            "/foo/bar/s",   "/foo/bar/s",           true      },
+        {  "/",            "/foo/bar",     "/foo/bars",    "/s",                   true      },
+        {  "/",            "/foo/bar/",    "/foo/bar/s",   "/s",                   true      },
+        {  "/fee/bor",     "/",            "/foo/bars",    "/fee/bor/foo/bars",    true      },
+        {  "/fee/bor",     "/",            "/foo/bar/s",   "/fee/bor/foo/bar/s",   true      },
+        {  "/fee/bor",     "/foo/bar",     "/foo/bars",    "/fee/bor/s",           true      }, -- 37 TODO: remove the extra /?
+        {  "/fee/bor",     "/foo/bar/",    "/foo/bar/s",   "/fee/bor/s",           true      },
+        {  "/fee/bor/",    "/",            "/foo/bars",    "/fee/bor/foo/bars",    true      },
+        {  "/fee/bor/",    "/",            "/foo/bar/s",   "/fee/bor/foo/bar/s",   true      }, -- 40
+        {  "/fee/bor/",    "/foo/bar",     "/foo/bars",    "/fee/bor/s",           true      },
+        {  "/fee/bor/",    "/foo/bar/",    "/foo/bar/s",   "/fee/bor/s",           true      },
+        {  "/",            "/",            "/foo/bars",    "/foo/bars",            false     },
+        {  "/",            "/",            "/foo/bar/s",   "/foo/bar/s",           false     },
+        {  "/",            "/foo/bar",     "/foo/bars",    "/foo/bars",            false     },
+        {  "/",            "/foo/bar/",    "/foo/bar/s",   "/foo/bar/s",           false     },
+        {  "/fee/bor",     "/",            "/foo/bars",    "/fee/bor/foo/bars",    false     },
+        {  "/fee/bor",     "/",            "/foo/bar/s",   "/fee/bor/foo/bar/s",   false     },
+        {  "/fee/bor",     "/foo/bar",     "/foo/bars",    "/fee/bor/foo/bars",    false     },
+        {  "/fee/bor",     "/foo/bar/",    "/foo/bar/s",   "/fee/bor/foo/bar/s",   false     }, -- 50
+        {  "/fee/bor/",    "/",            "/foo/bars",    "/fee/bor/foo/bars",    false     },
+        {  "/fee/bor/",    "/",            "/foo/bar/s",   "/fee/bor/foo/bar/s",   false     },
+        {  "/fee/bor/",    "/foo/bar",     "/foo/bars",    "/fee/bor/foo/bars",    false     },
+        {  "/fee/bor/",    "/foo/bar/",    "/foo/bar/s",   "/fee/bor/foo/bar/s",   false     },
       }
 
       for i, args in ipairs(checks) do
 
         local config = args[5] == true and "(strip_uri = on)" or "(strip_uri = off)"
 
-        it(config .. " is not appended to upstream url " .. args[1] ..
-                     " (with uri "                       .. args[2] .. ")" ..
-                     " when requesting "                 .. args[3], function()
+        it("(" .. i .. ") " .. config ..
+           " is not appended to upstream url " .. args[1] ..
+           " (with uri "                       .. args[2] .. ")" ..
+           " when requesting "                 .. args[3], function()
 
 
           local use_case_routes = {
