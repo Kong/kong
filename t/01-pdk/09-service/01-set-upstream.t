@@ -32,7 +32,7 @@ host must be a string
 
 
 
-=== TEST 2: service.set_upstream() sets ngx.ctx.balancer_address.host
+=== TEST 2: service.set_upstream() sets ngx.ctx.balancer_data.host
 --- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
@@ -53,14 +53,14 @@ host must be a string
             local PDK = require "kong.pdk"
             local pdk = PDK.new()
 
-            ngx.ctx.balancer_address = {
+            ngx.ctx.balancer_data = {
                 host = "foo.xyz"
             }
 
             local ok = pdk.service.set_upstream("my_upstream")
 
             ngx.say(tostring(ok))
-            ngx.say("host: ", ngx.ctx.balancer_address.host)
+            ngx.say("host: ", ngx.ctx.balancer_data.host)
         }
     }
 --- request
@@ -94,7 +94,7 @@ host: my_upstream
             local PDK = require "kong.pdk"
             local pdk = PDK.new()
 
-            ngx.ctx.balancer_address = {
+            ngx.ctx.balancer_data = {
                 host = "foo.xyz"
             }
 
