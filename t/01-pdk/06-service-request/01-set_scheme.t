@@ -85,6 +85,8 @@ qq{
             local PDK = require "kong.pdk"
             local pdk = PDK.new()
 
+            ngx.ctx.upstream_url_data = {}
+
             local ok, err = pdk.service.request.set_scheme("https")
         }
 
@@ -122,6 +124,8 @@ qq{
         access_by_lua_block {
             local PDK = require "kong.pdk"
             local pdk = PDK.new()
+
+            ngx.ctx.upstream_url_data = {}
 
             local ok, err = pdk.service.request.set_scheme("http")
         }

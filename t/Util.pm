@@ -38,6 +38,7 @@ our $HttpConfig = <<_EOC_;
 
             -- mock balancer structure
             ngx.ctx.balancer_address = {}
+            ngx.ctx.upstream_url_data = {}
 
             local mod
             do

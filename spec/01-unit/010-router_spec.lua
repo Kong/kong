@@ -1637,7 +1637,9 @@ describe("Router", function()
           assert.equal("example.org", match_t.upstream_url_t.host)
         end)
 
-        it("uses the request's Host header when `grab_header` is disabled", function()
+        pending("uses the request's Host header when `grab_header` is disabled", function()
+-- the test looks obsolete, since the codde that introduced `grab_header` seesm to be gone
+-- from the code base.
           local use_case_routes = {
             {
               service         = service,
@@ -1661,7 +1663,7 @@ describe("Router", function()
 
         pending("uses the request's Host header if an route with no host was cached", function()
 -- since the host header is now constructed elsewhere, it no longer interferes
--- with whatever the router does.
+-- with whatever the router does. So this test can be removed?
           -- This is a regression test for:
           -- https://github.com/Kong/kong/issues/2825
           -- Ensure cached routes (in the LRU cache) still get proxied with the

@@ -122,6 +122,7 @@ qq{
             ngx.ctx.balancer_address = {
                 host = "foo.xyz"
             }
+            ngx.ctx.upstream_url_data = {}
 
             pdk.service.request.set_header("Host", "example.com")
 
@@ -160,6 +161,8 @@ qq{
         access_by_lua_block {
             local PDK = require "kong.pdk"
             local pdk = PDK.new()
+
+            ngx.ctx.upstream_url_data = {}
 
             pdk.service.request.set_header("X-Foo", "hello world")
 
