@@ -489,6 +489,11 @@
                                  # specified name). The format is a (case
                                  # insensitive) comma separated list.
 
+#dns_valid_ttl =                 # By default, DNS records are cached using
+                                 # the TTL value of a response. If this
+                                 # property receives a value (in seconds), it
+                                 # will override the TTL for all records.
+
 #dns_stale_ttl = 4               # Defines, in seconds, how long a record will
                                  # remain in cache past its TTL. This value
                                  # will be used while the new DNS record is

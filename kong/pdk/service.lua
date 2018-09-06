@@ -58,7 +58,7 @@ local function new()
       return nil, "could not find an Upstream named '" .. host .. "'"
     end
 
-    ngx.ctx.balancer_address.host = host
+    ngx.ctx.balancer_data.host = host
     return true
   end
 
@@ -95,8 +95,8 @@ local function new()
     end
 
     ngx.var.upstream_host = host
-    ngx.ctx.balancer_address.host = host
-    ngx.ctx.balancer_address.port = port
+    ngx.ctx.balancer_data.host = host
+    ngx.ctx.balancer_data.port = port
   end
 
 

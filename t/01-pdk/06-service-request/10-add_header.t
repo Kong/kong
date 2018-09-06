@@ -119,7 +119,7 @@ qq{
             local PDK = require "kong.pdk"
             local pdk = PDK.new()
 
-            ngx.ctx.balancer_address = {
+            ngx.ctx.balancer_data = {
                 host = "foo.xyz"
             }
 
@@ -163,7 +163,7 @@ qq{
             local PDK = require "kong.pdk"
             local pdk = PDK.new()
 
-            ngx.ctx.balancer_address = {
+            ngx.ctx.balancer_data = {
                 host = "foo.xyz"
             }
 

@@ -37,7 +37,7 @@ our $HttpConfig = <<_EOC_;
         function phase_check_functions(phase, skip_fnlist)
 
             -- mock balancer structure
-            ngx.ctx.balancer_address = {}
+            ngx.ctx.balancer_data = {}
 
             local mod
             do
