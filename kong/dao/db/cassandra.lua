@@ -30,7 +30,14 @@ _M.dao_insert_values = {
   end
 }
 
-_M.additional_tables = { "cluster_events", "routes", "services" }
+_M.additional_tables = {
+  "cluster_events",
+  "routes",
+  "services",
+  "consumers",
+  "certificates",
+  "snis",
+}
 
 function _M.new(kong_config)
   local self = _M.super.new()
