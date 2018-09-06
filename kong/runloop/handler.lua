@@ -601,14 +601,6 @@ return {
       ctx.balancer_address  = balancer_data -- for plugin backward compatibility
       ctx.upstream_url_data = upstream_url_data
 
-      -- `scheme` is the scheme to use for the upstream call
-      -- `uri` is the URI with which to call upstream, as returned by the
-      --       router, which might have truncated it (`strip_uri`).
-      -- `host` is the original header to be preserved if set.
---      var.upstream_scheme = match_t.upstream_scheme  --TODO: remove entire block since it goes to after-access
---      var.upstream_uri    = match_t.upstream_uri
---      var.upstream_host   = match_t.upstream_host
-
       -- Keep-Alive and WebSocket Protocol Upgrade Headers
       if var.http_upgrade and lower(var.http_upgrade) == "websocket" then
         var.upstream_connection = "upgrade"
@@ -634,30 +626,11 @@ return {
     end,
     -- Only executed if the `router` module found a route and allows nginx to proxy it.
     after = function(ctx)
-      local var = ngx.var
       local upstream_url_data = ctx.upstream_url_data
+      local balancer_data = ctx.balancer_data
 
-      local upstream_scheme = upstream_url_data.upstream_scheme
-      var.upstream_scheme = upstream_scheme
-
-      do  -- set the upstream uri
-
-        -- Nginx's behavior when proxying a request with an empty querystring
-        -- `/foo?` is to keep `$is_args` an empty string, hence effectively
-        -- stripping the empty querystring.
-        -- We overcome this behavior with our own logic, to preserve user
-        -- desired semantics.
-
-        -- TODO: build the upstream_uri instead of grabbing it
-        local upstream_uri = upstream_url_data.upstream_uri_full
-
-        if var.is_args == "?" or sub(var.request_uri, -1) == "?" then
-          upstream_uri = upstream_uri .. "?" .. (var.args or "")
-        end
-        var.upstream_uri = upstream_uri
-      end
-
-      local ok, err, errcode = balancer.execute(ctx.balancer_data, ctx)
+      -- execute name resolution
+      local ok, err, errcode = balancer.execute(balancer_data, ctx)
       if not ok then
         if errcode == 500 then
           err = "failed the initial dns/balancer resolve for '" ..
@@ -667,23 +640,20 @@ return {
         return responses.send(errcode, err)
       end
 
-      do  -- set the upstream host header
-        local upstream_host
-        local balancer_data = ctx.balancer_data
+      -- write the request info    <------------------------------------->: drop this TODO:
+      local uri = Router.build_uri(upstream_url_data.upstream_uri_full or upstream_url_data.request_uri_base,
+                                   upstream_url_data.upstream_uri_base,
+                                   upstream_url_data.upstream_uri_postfix,
+                                   upstream_url_data.strip_path)
 
-        if upstream_url_data.preserve_host then
-          upstream_host = upstream_url_data.request_host
-        else
-          upstream_host = balancer_data.hostname
-          if upstream_scheme == "http"  and balancer_data.port ~= 80 or
-            upstream_scheme == "https" and balancer_data.port ~= 443
-          then
-            upstream_host = upstream_host .. ":" .. balancer_data.port
-          end
-        end
+      Router.write_upstream(ngx,
+                            upstream_url_data.upstream_scheme,
+                            upstream_url_data.request_host,
+                            balancer_data.hostname,
+                            balancer_data.port,
+                            upstream_url_data.preserve_host,
+                            uri)
 
-        var.upstream_host = upstream_host
-      end
 
       local now = get_now()
 
