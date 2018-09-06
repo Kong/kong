@@ -523,6 +523,24 @@ return {
         return responses.send(426, "Please use HTTPS protocol")
       end
 
+      local upstream_url_data = {
+        -- info captured from the incoming request
+        request_host         = var.http_host or "",
+        request_uri_base     = match_t.matches.uri,
+        request_uri_postfix  = match_t.upstream_uri_postfix,
+        -- describe the outgoing/proxied request
+        -- (host & port go in 'balancer_data' below)
+        upstream_scheme      = upstream_url_t.scheme,
+        upstream_uri_base    = upstream_url_t.path,
+        upstream_file_base   = upstream_url_t.file,   -- TODO: do we need this here?
+        upstream_uri_postfix = match_t.upstream_uri_postfix,
+        upstream_uri_full    = match_t.upstream_uri,  -- TODO: remove when construction is in after-access
+        -- settings influencing the final construction of the proxied request
+        strip_path           = route.strip_path,
+        preserve_host        = route.preserve_host,
+      }
+--print(require("pl.pretty").write(upstream_url_data))
+
       local balancer_data = {
         type           = upstream_url_t.type, -- type of 'host': ipv4, ipv6, name
         host           = upstream_url_t.host, -- target host per `upstream_url`
@@ -575,20 +593,13 @@ return {
       end
 
       -- TODO: this needs to be removed when references to ctx.api are removed
-      ctx.api              = api
-      ctx.service          = service
-      ctx.route            = route
-      ctx.router_matches   = match_t.matches
-      ctx.balancer_data    = balancer_data
-      ctx.balancer_address = balancer_data -- for plugin backward compatibility
-
-      -- `scheme` is the scheme to use for the upstream call
-      -- `uri` is the URI with which to call upstream, as returned by the
-      --       router, which might have truncated it (`strip_uri`).
-      -- `host` is the original header to be preserved if set.
-      var.upstream_scheme = match_t.upstream_scheme
-      var.upstream_uri    = match_t.upstream_uri
-      var.upstream_host   = match_t.upstream_host
+      ctx.api               = api
+      ctx.service           = service
+      ctx.route             = route
+      ctx.router_matches    = match_t.matches
+      ctx.balancer_data     = balancer_data
+      ctx.balancer_address  = balancer_data -- for plugin backward compatibility
+      ctx.upstream_url_data = upstream_url_data
 
       -- Keep-Alive and WebSocket Protocol Upgrade Headers
       if var.http_upgrade and lower(var.http_upgrade) == "websocket" then
@@ -615,22 +626,11 @@ return {
     end,
     -- Only executed if the `router` module found a route and allows nginx to proxy it.
     after = function(ctx)
-      local var = ngx.var
+      local upstream_url_data = ctx.upstream_url_data
+      local balancer_data = ctx.balancer_data
 
-      do
-        -- Nginx's behavior when proxying a request with an empty querystring
-        -- `/foo?` is to keep `$is_args` an empty string, hence effectively
-        -- stripping the empty querystring.
-        -- We overcome this behavior with our own logic, to preserve user
-        -- desired semantics.
-        local upstream_uri = var.upstream_uri
-
-        if var.is_args == "?" or sub(var.request_uri, -1) == "?" then
-          var.upstream_uri = upstream_uri .. "?" .. (var.args or "")
-        end
-      end
-
-      local ok, err, errcode = balancer.execute(ctx.balancer_data, ctx)
+      -- execute name resolution
+      local ok, err, errcode = balancer.execute(balancer_data, ctx)
       if not ok then
         if errcode == 500 then
           err = "failed the initial dns/balancer resolve for '" ..
@@ -640,24 +640,20 @@ return {
         return responses.send(errcode, err)
       end
 
-      do
-        -- set the upstream host header if not `preserve_host`
-        local upstream_host = var.upstream_host
+      -- write the request info    <------------------------------------->: drop this TODO:
+      local uri = Router.build_uri(upstream_url_data.upstream_uri_full or upstream_url_data.request_uri_base,
+                                   upstream_url_data.upstream_uri_base,
+                                   upstream_url_data.upstream_uri_postfix,
+                                   upstream_url_data.strip_path)
 
-        if not upstream_host or upstream_host == "" then
-          local balancer_data = ctx.balancer_data
-          upstream_host = balancer_data.hostname
+      Router.write_upstream(ngx,
+                            upstream_url_data.upstream_scheme,
+                            upstream_url_data.request_host,
+                            balancer_data.hostname,
+                            balancer_data.port,
+                            upstream_url_data.preserve_host,
+                            uri)
 
-          local upstream_scheme = var.upstream_scheme
-          if upstream_scheme == "http"  and balancer_data.port ~= 80 or
-             upstream_scheme == "https" and balancer_data.port ~= 443
-          then
-            upstream_host = upstream_host .. ":" .. balancer_data.port
-          end
-
-          var.upstream_host = upstream_host
-        end
-      end
 
       local now = get_now()
 

@@ -193,7 +193,7 @@ local function marshall_route(r)
 
         else
           -- regex URI
-          local strip_regex  = path .. [[/?(?<stripped_uri>.*)]]
+          local strip_regex  = path .. [[(?<stripped_uri>.*)]]
           local has_captures = has_capturing_groups(path)
 
           local uri_t    = {
@@ -371,7 +371,7 @@ do
 
             if m then
               if m.stripped_uri then
-                ctx.matches.stripped_uri = "/" .. m.stripped_uri
+                ctx.matches.stripped_uri = m.stripped_uri
                 -- remove the stripped_uri group
                 m[#m]          = nil
                 m.stripped_uri = nil
@@ -388,14 +388,14 @@ do
           end
 
           -- plain or prefix match from the index
-          if route_t.strip_uri then
+--          if route_t.strip_uri then
             local stripped_uri = sub(ctx.req_uri, #uri_t.value + 1)
-            if sub(stripped_uri, 1, 1) ~= "/" then
-              stripped_uri = "/" .. stripped_uri
-            end
+            --if sub(stripped_uri, 1, 1) ~= "/" then
+            --  stripped_uri = "/" .. stripped_uri
+            --end
 
             ctx.matches.stripped_uri = stripped_uri
-          end
+--          end
 
           ctx.matches.uri = uri_t.value
 
@@ -415,7 +415,7 @@ do
 
           if m then
             if m.stripped_uri then
-              ctx.matches.stripped_uri = "/" .. m.stripped_uri
+              ctx.matches.stripped_uri = m.stripped_uri
               -- remove the stripped_uri group
               m[#m]          = nil
               m.stripped_uri = nil
@@ -436,14 +436,14 @@ do
           if from == 1 then
             ctx.matches.uri = sub(ctx.req_uri, 1, to)
 
-            if route_t.strip_uri then
+--            if route_t.strip_uri then
               local stripped_uri = sub(ctx.req_uri, to + 1)
-              if sub(stripped_uri, 1, 1) ~= "/" then
-                stripped_uri = "/" .. stripped_uri
-              end
+              --if sub(stripped_uri, 1, 1) ~= "/" then
+              --  stripped_uri = "/" .. stripped_uri
+              --end
 
               ctx.matches.stripped_uri = stripped_uri
-            end
+--            end
 
             ctx.matches.uri = uri_t.value
 
@@ -644,7 +644,7 @@ function _M.new(routes)
 
     -- input sanitization for matchers
 
-    local raw_req_host = req_host
+--    local raw_req_host = req_host
 
     req_method = upper(req_method)
 
@@ -767,7 +767,7 @@ function _M.new(routes)
           end
 
           if matched_route then
-            local upstream_host
+--            local upstream_host
             local upstream_uri   = req_uri
             local upstream_url_t = matched_route.upstream_url_t
             local matches        = ctx.matches
@@ -775,11 +775,13 @@ function _M.new(routes)
             -- URI stripping logic
 
             local uri_root = req_uri == "/"
-
             if not uri_root and matched_route.strip_uri
                and matches.stripped_uri
             then
               upstream_uri = matches.stripped_uri
+              if sub(upstream_uri, 1, 1) ~= "/" then
+                upstream_uri = "/" .. upstream_uri
+              end
             end
 
             -- uri trailing slash logic
@@ -811,10 +813,15 @@ function _M.new(routes)
               end
             end
 
-            -- preserve_host header logic
+--            -- preserve_host header logic
+--
+--            if matched_route.preserve_host then
+--              upstream_host = raw_req_host or ngx.var.http_host
+--            end
 
-            if matched_route.preserve_host then
-              upstream_host = raw_req_host or ngx.var.http_host
+            local uri_base = req_uri
+            if matches.stripped_uri then
+              uri_base = sub(req_uri, 1, -1 - #matches.stripped_uri)
             end
 
             local match_t     = {
@@ -822,18 +829,24 @@ function _M.new(routes)
               service         = matched_route.service,
               headers         = matched_route.headers,
               upstream_url_t  = upstream_url_t,
-              upstream_scheme = upstream_url_t.scheme,
-              upstream_uri    = upstream_uri,
-              upstream_host   = upstream_host,
+              upstream_scheme = upstream_url_t.scheme, -- TODO: remove, just pass-through, no value add?
+              upstream_uri    = upstream_uri, -- TODO: remove when construction is in after-access
+--              upstream_host   = upstream_host, -- TODO: remove, preserve_host above logic gone, so no value add
               matches         = {
                 uri_captures  = matches.uri_captures,
                 uri           = matches.uri,
+                uri_postfix   = matches.stripped_uri,
+                uri_base      = uri_base,
                 host          = matches.host,
                 method        = matches.method,
               }
             }
 
             cache:set(cache_key, match_t)
+
+--print(require("pl.pretty").write(match_t))
+
+
 
             return match_t
           end
@@ -886,5 +899,57 @@ function _M.new(routes)
   return self
 end
 
+-- builds the uri from its components
+function _M.build_uri(base_in, base_out, postfix, strip_path)
+
+  -- TODO: build the upstream_uri instead of getting it passed
+
+  return base_in
+end
+
+-- Construct and write the request destination.
+-- @param ngx the ngx table (useful to mock when testing)
+-- @param scheme the scheme/protocol to use
+-- @param host_in the incoming Host header value
+-- @param host_out the hostname belonging to the IP address we're headed for
+-- @param port the port number we're targetting
+-- @param preserve_host boolean indicating we need to retain the incoming Host header, or contruct a new one
+-- @param
+function _M.write_upstream(ngx, scheme,
+                           host_in, host_out, port, preserve_host,
+                           upstream_uri_full)
+  local var = ngx.var
+
+  -- set the upstream scheme
+  var.upstream_scheme = scheme
+
+  -- set the upstream uri
+  -- Nginx's behavior when proxying a request with an empty querystring
+  -- `/foo?` is to keep `$is_args` an empty string, hence effectively
+  -- stripping the empty querystring.
+  -- We overcome this behavior with our own logic, to preserve user
+  -- desired semantics.
+
+  if var.is_args == "?" or sub(var.request_uri, -1) == "?" then
+    upstream_uri_full = upstream_uri_full .. "?" .. (var.args or "")
+  end
+  var.upstream_uri = upstream_uri_full
+
+  -- set the upstream host header
+  local upstream_host
+
+  if preserve_host then
+    upstream_host = host_in
+  else
+    upstream_host = host_out
+  if scheme == "http"  and port ~= 80 or
+     scheme == "https" and port ~= 443
+    then
+      upstream_host = upstream_host .. ":" .. port
+    end
+  end
+
+  var.upstream_host = upstream_host
+end
 
 return _M

@@ -91,7 +91,7 @@ local function new(self)
       error("invalid scheme: " .. scheme, 2)
     end
 
-    ngx.var.upstream_scheme = scheme
+    ngx.ctx.upstream_url_data.upstream_scheme = scheme
   end
 
 
@@ -117,7 +117,8 @@ local function new(self)
 
     -- TODO: is this necessary in specific phases?
     -- ngx.req.set_uri(path)
-    ngx.var.upstream_uri = path
+    ngx.ctx.upstream_url_data.request_uri_base = path
+    ngx.ctx.upstream_url_data.request_uri_postfix = ""
   end
 
 
@@ -244,7 +245,7 @@ local function new(self)
   -- Sets a header in the request to the Service with the given value. Any existing header
   -- with the same name will be overridden.
   --
-  -- If the `header` argument is `"host"` (case-insensitive), then this is
+  -- If the `header` argument is `"host"` (case-insensitive), then this
   -- will also set the SNI of the request to the Service.
   --
   -- @function kong.service.request.set_header
@@ -260,7 +261,7 @@ local function new(self)
     validate_header(header, value)
 
     if string_lower(header) == "host" then
-      ngx.var.upstream_host = value
+      ngx.ctx.upstream_url_data.upstream_host = value
     end
 
     ngx.req.set_header(header, normalize_header(value))
@@ -286,7 +287,7 @@ local function new(self)
     validate_header(header, value)
 
     if string_lower(header) == "host" then
-      ngx.var.upstream_host = value
+      ngx.ctx.upstream_url_data.upstream_host = value
     end
 
     local headers = ngx.req.get_headers()[header]
@@ -370,10 +371,10 @@ local function new(self)
     validate_headers(headers)
 
     -- Now we can use ngx.req.set_header without pcall
-
+    local ctx = ngx.ctx
     for k, v in pairs(headers) do
       if string_lower(k) == "host" then
-        ngx.var.upstream_host = v
+        ctx.upstream_url_data.upstream_host = v
       end
 
       ngx.req.set_header(k, normalize_multi_header(v))

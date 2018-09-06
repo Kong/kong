@@ -1176,6 +1176,8 @@ describe("Router", function()
       assert.same(use_case_routes[1].route, match_t.route)
       assert.equal("host.com", match_t.matches.host)
       assert.equal("/my-route", match_t.matches.uri)
+      assert.equal("/my-route", match_t.matches.uri_base)
+      assert.equal("", match_t.matches.uri_postfix)
       assert.equal("GET", match_t.matches.method)
 
       _ngx = mock_ngx("GET", "/my-route/prefix/match", { host = "host.com" })
@@ -1183,6 +1185,8 @@ describe("Router", function()
       assert.same(use_case_routes[1].route, match_t.route)
       assert.equal("host.com", match_t.matches.host)
       assert.equal("/my-route", match_t.matches.uri)
+      assert.equal("/my-route", match_t.matches.uri_base)
+      assert.equal("/prefix/match", match_t.matches.uri_postfix)
       assert.equal("GET", match_t.matches.method)
 
       _ngx = mock_ngx("POST", "/my-route", { host = "host.com" })
@@ -1190,6 +1194,8 @@ describe("Router", function()
       assert.same(use_case_routes[2].route, match_t.route)
       assert.equal("host.com", match_t.matches.host)
       assert.equal("/my-route", match_t.matches.uri)
+      assert.equal("/my-route", match_t.matches.uri_base)
+      assert.equal("", match_t.matches.uri_postfix)
       assert.is_nil(match_t.matches.method)
 
       _ngx = mock_ngx("GET", "/", { host = "test.host.com" })
@@ -1197,6 +1203,8 @@ describe("Router", function()
       assert.same(use_case_routes[3].route, match_t.route)
       assert.equal("*.host.com", match_t.matches.host)
       assert.is_nil(match_t.matches.uri)
+      assert.equal("/", match_t.matches.uri_base)
+      assert.is_nil(match_t.matches.uri_postfix)
       assert.is_nil(match_t.matches.method)
 
       _ngx = mock_ngx("GET", "/users/123/profile", { host = "domain.org" })
@@ -1204,6 +1212,17 @@ describe("Router", function()
       assert.same(use_case_routes[4].route, match_t.route)
       assert.is_nil(match_t.matches.host)
       assert.equal([[/users/\d+/profile]], match_t.matches.uri)
+      assert.equal("/users/123/profile", match_t.matches.uri_base)
+      assert.equal("", match_t.matches.uri_postfix)
+      assert.is_nil(match_t.matches.method)
+
+      _ngx = mock_ngx("GET", "/users/123/profile/and/then/some", { host = "domain.org" })
+      match_t = router.exec(_ngx)
+      assert.same(use_case_routes[4].route, match_t.route)
+      assert.is_nil(match_t.matches.host)
+      assert.equal([[/users/\d+/profile]], match_t.matches.uri)
+      assert.equal("/users/123/profile", match_t.matches.uri_base)
+      assert.equal("/and/then/some", match_t.matches.uri_postfix)
       assert.is_nil(match_t.matches.method)
     end)
 
@@ -1581,16 +1600,33 @@ describe("Router", function()
           local _ngx = mock_ngx("GET", "/", { host = host })
 
           local match_t = router.exec(_ngx)
+          Router.write_upstream(_ngx,
+            use_case_routes[1].service.protocol,    -- scheme
+            host,                                   -- host-header incoming
+            use_case_routes[1].service.host,        -- upstream hostname
+            80,                                     -- upstream port
+            use_case_routes[1].route.preserve_host, -- preserve_host
+            "/" -- upstream full  uri ?????? TODO: this will change
+          )
           assert.same(use_case_routes[1].route, match_t.route)
-          assert.equal(host, match_t.upstream_host)
+          assert.equal(host, _ngx.var.upstream_host)
         end)
 
         it("uses the request's Host header incl. port", function()
-          local _ngx = mock_ngx("GET", "/", { host = host .. ":123" })
+          local host_port = host .. ":123"
+          local _ngx = mock_ngx("GET", "/", { host = host_port })
 
           local match_t = router.exec(_ngx)
+          Router.write_upstream(_ngx,
+            use_case_routes[1].service.protocol,    -- scheme
+            host_port,                              -- host-header incoming
+            use_case_routes[1].service.host,        -- upstream hostname
+            80,                                     -- upstream port
+            use_case_routes[1].route.preserve_host, -- preserve_host
+            "/" -- upstream full  uri ?????? TODO: this will change
+          )
           assert.same(use_case_routes[1].route, match_t.route)
-          assert.equal(host .. ":123", match_t.upstream_host)
+          assert.equal(host_port, _ngx.var.upstream_host)
         end)
 
         it("does not change the target upstream", function()
@@ -1623,7 +1659,9 @@ describe("Router", function()
           assert.equal("preserve.com", match_t.upstream_host)
         end)
 
-        it("uses the request's Host header if an route with no host was cached", function()
+        pending("uses the request's Host header if an route with no host was cached", function()
+-- since the host header is now constructed elsewhere, it no longer interferes
+-- with whatever the router does.
           -- This is a regression test for:
           -- https://github.com/Kong/kong/issues/2825
           -- Ensure cached routes (in the LRU cache) still get proxied with the
@@ -1678,48 +1716,74 @@ describe("Router", function()
       end)
     end)
 
-    describe("trailing slash", function()
+    describe("slash handling", function()
       local checks = {
         -- upstream url    paths            request path    expected path           strip uri
-        {  "/",            "/",            "/",            "/",                    true      },
+        {  "/",            "/",            "/",            "/",                    true      }, -- 1
         {  "/",            "/",            "/foo/bar",     "/foo/bar",             true      },
         {  "/",            "/",            "/foo/bar/",    "/foo/bar/",            true      },
         {  "/",            "/foo/bar",     "/foo/bar",     "/",                    true      },
         {  "/",            "/foo/bar/",    "/foo/bar/",    "/",                    true      },
-        {  "/foo/bar",     "/",            "/",            "/foo/bar",             true      },
-        {  "/foo/bar",     "/",            "/foo/bar",     "/foo/bar/foo/bar",     true      },
-        {  "/foo/bar",     "/",            "/foo/bar/",    "/foo/bar/foo/bar/",    true      },
-        {  "/foo/bar",     "/foo/bar",     "/foo/bar",     "/foo/bar",             true      },
-        {  "/foo/bar",     "/foo/bar/",    "/foo/bar/",    "/foo/bar/",            true      },
-        {  "/foo/bar/",    "/",            "/",            "/foo/bar/",            true      },
-        {  "/foo/bar/",    "/",            "/foo/bar",     "/foo/bar/foo/bar",     true      },
-        {  "/foo/bar/",    "/",            "/foo/bar/",    "/foo/bar/foo/bar/",    true      },
-        {  "/foo/bar/",    "/foo/bar",     "/foo/bar",     "/foo/bar",             true      },
-        {  "/foo/bar/",    "/foo/bar/",    "/foo/bar/",    "/foo/bar/",            true      },
+        {  "/fee/bor",     "/",            "/",            "/fee/bor",             true      },
+        {  "/fee/bor",     "/",            "/foo/bar",     "/fee/bor/foo/bar",     true      },
+        {  "/fee/bor",     "/",            "/foo/bar/",    "/fee/bor/foo/bar/",    true      },
+        {  "/fee/bor",     "/foo/bar",     "/foo/bar",     "/fee/bor",             true      },
+        {  "/fee/bor",     "/foo/bar/",    "/foo/bar/",    "/fee/bor/",            true      }, -- 10
+        {  "/fee/bor/",    "/",            "/",            "/fee/bor/",            true      },
+        {  "/fee/bor/",    "/",            "/foo/bar",     "/fee/bor/foo/bar",     true      },
+        {  "/fee/bor/",    "/",            "/foo/bar/",    "/fee/bor/foo/bar/",    true      },
+        {  "/fee/bor/",    "/foo/bar",     "/foo/bar",     "/fee/bor",             true      },
+        {  "/fee/bor/",    "/foo/bar/",    "/foo/bar/",    "/fee/bor/",            true      },
         {  "/",            "/",            "/",            "/",                    false     },
         {  "/",            "/",            "/foo/bar",     "/foo/bar",             false     },
         {  "/",            "/",            "/foo/bar/",    "/foo/bar/",            false     },
         {  "/",            "/foo/bar",     "/foo/bar",     "/foo/bar",             false     },
-        {  "/",            "/foo/bar/",    "/foo/bar/",    "/foo/bar/",            false     },
-        {  "/foo/bar",     "/",            "/",            "/foo/bar",             false     },
-        {  "/foo/bar",     "/",            "/foo/bar",     "/foo/bar/foo/bar",     false     },
-        {  "/foo/bar",     "/",            "/foo/bar/",    "/foo/bar/foo/bar/",    false     },
-        {  "/foo/bar",     "/foo/bar",     "/foo/bar",     "/foo/bar/foo/bar",     false     },
-        {  "/foo/bar",     "/foo/bar/",    "/foo/bar/",    "/foo/bar/foo/bar/",    false     },
-        {  "/foo/bar/",    "/",            "/",            "/foo/bar/",            false     },
-        {  "/foo/bar/",    "/",            "/foo/bar",     "/foo/bar/foo/bar",     false     },
-        {  "/foo/bar/",    "/",            "/foo/bar/",    "/foo/bar/foo/bar/",    false     },
-        {  "/foo/bar/",    "/foo/bar",     "/foo/bar",     "/foo/bar/foo/bar",     false     },
-        {  "/foo/bar/",    "/foo/bar/",    "/foo/bar/",    "/foo/bar/foo/bar/",    false     },
+        {  "/",            "/foo/bar/",    "/foo/bar/",    "/foo/bar/",            false     }, -- 20
+        {  "/fee/bor",     "/",            "/",            "/fee/bor",             false     },
+        {  "/fee/bor",     "/",            "/foo/bar",     "/fee/bor/foo/bar",     false     },
+        {  "/fee/bor",     "/",            "/foo/bar/",    "/fee/bor/foo/bar/",    false     },
+        {  "/fee/bor",     "/foo/bar",     "/foo/bar",     "/fee/bor/foo/bar",     false     },
+        {  "/fee/bor",     "/foo/bar/",    "/foo/bar/",    "/fee/bor/foo/bar/",    false     },
+        {  "/fee/bor/",    "/",            "/",            "/fee/bor/",            false     },
+        {  "/fee/bor/",    "/",            "/foo/bar",     "/fee/bor/foo/bar",     false     },
+        {  "/fee/bor/",    "/",            "/foo/bar/",    "/fee/bor/foo/bar/",    false     },
+        {  "/fee/bor/",    "/foo/bar",     "/foo/bar",     "/fee/bor/foo/bar",     false     },
+        {  "/fee/bor/",    "/foo/bar/",    "/foo/bar/",    "/fee/bor/foo/bar/",    false     }, -- 30
+
+        {  "/",            "/",            "/foo/bars",    "/foo/bars",            true      },
+        {  "/",            "/",            "/foo/bar/s",   "/foo/bar/s",           true      },
+        {  "/",            "/foo/bar",     "/foo/bars",    "/s",                   true      },
+        {  "/",            "/foo/bar/",    "/foo/bar/s",   "/s",                   true      },
+        {  "/fee/bor",     "/",            "/foo/bars",    "/fee/bor/foo/bars",    true      },
+        {  "/fee/bor",     "/",            "/foo/bar/s",   "/fee/bor/foo/bar/s",   true      },
+        {  "/fee/bor",     "/foo/bar",     "/foo/bars",    "/fee/bor/s",           true      }, -- 37 why force the extra /?
+        {  "/fee/bor",     "/foo/bar/",    "/foo/bar/s",   "/fee/bor/s",           true      },
+        {  "/fee/bor/",    "/",            "/foo/bars",    "/fee/bor/foo/bars",    true      },
+        {  "/fee/bor/",    "/",            "/foo/bar/s",   "/fee/bor/foo/bar/s",   true      }, -- 40
+        {  "/fee/bor/",    "/foo/bar",     "/foo/bars",    "/fee/bor/s",           true      },
+        {  "/fee/bor/",    "/foo/bar/",    "/foo/bar/s",   "/fee/bor/s",           true      },
+        {  "/",            "/",            "/foo/bars",    "/foo/bars",            false     },
+        {  "/",            "/",            "/foo/bar/s",   "/foo/bar/s",           false     },
+        {  "/",            "/foo/bar",     "/foo/bars",    "/foo/bars",            false     },
+        {  "/",            "/foo/bar/",    "/foo/bar/s",   "/foo/bar/s",           false     },
+        {  "/fee/bor",     "/",            "/foo/bars",    "/fee/bor/foo/bars",    false     },
+        {  "/fee/bor",     "/",            "/foo/bar/s",   "/fee/bor/foo/bar/s",   false     },
+        {  "/fee/bor",     "/foo/bar",     "/foo/bars",    "/fee/bor/foo/bars",    false     },
+        {  "/fee/bor",     "/foo/bar/",    "/foo/bar/s",   "/fee/bor/foo/bar/s",   false     }, -- 50
+        {  "/fee/bor/",    "/",            "/foo/bars",    "/fee/bor/foo/bars",    false     },
+        {  "/fee/bor/",    "/",            "/foo/bar/s",   "/fee/bor/foo/bar/s",   false     },
+        {  "/fee/bor/",    "/foo/bar",     "/foo/bars",    "/fee/bor/foo/bars",    false     },
+        {  "/fee/bor/",    "/foo/bar/",    "/foo/bar/s",   "/fee/bor/foo/bar/s",   false     },
       }
 
       for i, args in ipairs(checks) do
 
         local config = args[5] == true and "(strip_uri = on)" or "(strip_uri = off)"
 
-        it(config .. " is not appended to upstream url " .. args[1] ..
-                     " (with uri "                       .. args[2] .. ")" ..
-                     " when requesting "                 .. args[3], function()
+        it("(" .. i .. ") " .. config ..
+           " is not appended to upstream url " .. args[1] ..
+           " (with uri "                       .. args[2] .. ")" ..
+           " when requesting "                 .. args[3], function()
 
 
           local use_case_routes = {
