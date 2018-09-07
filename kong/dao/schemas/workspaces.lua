@@ -13,6 +13,7 @@ local function check_name(name)
   return true
 end
 
+
 return {
   table = "workspaces",
   primary_key = { "id" },
@@ -38,6 +39,10 @@ return {
       immutable = true,
       dao_insert_value = true,
       required = true,
+    },
+    meta = {
+      type = "table",
+      default = {},
     },
   },
 }

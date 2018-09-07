@@ -491,4 +491,10 @@ return {
       return rbac_migrations_default_role_flag.up(nil, nil, dao)
     end,
   },
+  {
+    name = "2018-09-05-144800_workspace_meta",
+    up = [[
+      ALTER TABLE workspaces ADD meta text;
+    ]]
+  }
 }

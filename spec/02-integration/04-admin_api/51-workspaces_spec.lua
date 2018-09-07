@@ -43,6 +43,9 @@ describe("(#" .. kong_config.database .. ") Admin API workspaces", function()
           path   = "/workspaces",
           body   = {
             name = "foo",
+            meta = {
+              color = "#92b6d5"
+            }
           },
           headers = {
             ["Content-Type"] = "application/json",
@@ -70,6 +73,25 @@ describe("(#" .. kong_config.database .. ") Admin API workspaces", function()
         })
 
         assert.res_status(409, res)
+      end)
+
+      it("handles invalid meta json", function()
+        local res = assert(client:send {
+          method = "POST",
+          path   = "/workspaces",
+          body   = {
+            name = "foo",
+            meta = "{ color: red }" -- invalid json
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          }
+        })
+
+        local body = assert.res_status(400, res)
+        local json = cjson.decode(body)
+
+        assert.equals("meta is not a table", json.meta)
       end)
     end)
 
@@ -112,6 +134,9 @@ describe("(#" .. kong_config.database .. ") Admin API workspaces", function()
           path   = "/workspaces/foo",
           body   = {
             comment = "foo comment",
+            meta = {
+              color = "red"
+            }
           },
           headers = {
             ["Content-Type"] = "application/json",
@@ -122,6 +147,7 @@ describe("(#" .. kong_config.database .. ") Admin API workspaces", function()
         local json = cjson.decode(body)
 
         assert.equals("foo comment", json.comment)
+        assert.equals("red", json.meta.color)
       end)
     end)
 
@@ -148,6 +174,7 @@ describe("(#" .. kong_config.database .. ") Admin API workspaces", function()
         local json = cjson.decode(body)
 
         assert.equals("foo", json.name)
+        assert.equals("red", json.meta.color)
       end)
 
       it("sends the appropriate status on an invalid entity", function()
