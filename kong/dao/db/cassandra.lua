@@ -834,4 +834,13 @@ function _M:reachable()
   return true
 end
 
+function _M:refresh()
+  local ok, err = self.cluster:refresh()
+  if not ok then
+    return nil, Errors.db(err)
+  end
+
+  return true
+end
+
 return _M

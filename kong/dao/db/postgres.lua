@@ -631,4 +631,15 @@ function _M:reachable()
   return true
 end
 
+function _M:refresh()
+  -- This is a dummy function to provide compatibility.
+  -- Refresh only applies to Cassandra.
+  local ok, err = true, true
+  if not ok then
+    return nil, Errors.db(err)
+  end
+
+  return true
+end
+
 return _M
