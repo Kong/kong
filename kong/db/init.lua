@@ -677,7 +677,8 @@ do
           -- kong migrations bootstrap
           -- kong migrations up
 
-          local ok, err = self.connector:run_up_migration(strategy_migration.up)
+          local ok, err = self.connector:run_up_migration(mig.name,
+                                                          strategy_migration.up)
           if not ok then
             self.connector:close()
             return nil, fmt("failed to run migration '%s' up: %s", mig.name,

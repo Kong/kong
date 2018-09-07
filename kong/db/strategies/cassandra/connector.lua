@@ -653,7 +653,11 @@ do
   end
 
 
-  function CassandraConnector:run_up_migration(up_cql)
+  function CassandraConnector:run_up_migration(name, up_cql)
+    if type(name) ~= "string" then
+      error("name must be a string", 2)
+    end
+
     if type(up_cql) ~= "string" then
       error("up_cql must be a string", 2)
     end
@@ -669,7 +673,15 @@ do
       if cql ~= "" then
         local res, err = self.connection:execute(cql)
         if not res then
-          return nil, err
+          if string.find(err, "Column .- was not found in table")
+             or string.find(err, "[Ii]nvalid column name") then
+            local log = require "kong.cmd.utils.log"
+            log.warn("ignored error while running '%s' migration: %s (%s)",
+                     name, err, cql:gsub("\n", " "):gsub("%s%s+", " "))
+
+          else
+            return nil, err
+          end
         end
       end
     end
