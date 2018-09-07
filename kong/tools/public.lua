@@ -175,10 +175,6 @@ do
         return node_id
       end
 
-      if ngx.get_phase() == "init" then
-        error("API disabled in the context of init_by_lua", 2)
-      end
-
       local shm = ngx.shared.kong
       local NODE_ID_KEY = "kong:node_id"
 
