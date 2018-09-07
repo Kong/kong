@@ -328,7 +328,6 @@ GET /t
 
 
 === TEST 14: log.set_format() complex format
---- ONLY
 --- http_config eval: $t::Util::HttpConfig
 --- config
     location /t {
