@@ -77,6 +77,18 @@ return {
       }
     end
   },
+  ["/refresh"] = {
+    PUT = function(self, dao, helpers)
+      local ok, err = dao.db:refresh()
+      if not ok then
+        ngx.log(ngx.ERR, "failed to refresh database as part of ",
+                         "/refresh endpoint: ", err)
+        return helpers.responses.send_HTTP_SERVICE_UNAVAILABLE(err)
+      end
+
+      return helpers.responses.send_HTTP_NO_CONTENT()
+    end
+  },
   ["/status"] = {
     GET = function(self, dao, helpers)
       local r = ngx.location.capture "/nginx_status"
