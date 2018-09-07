@@ -65,6 +65,11 @@ end
 
 
 local function validate_portal_smtp_config(conf, errors)
+  local portal_token_exp = conf.portal_token_exp
+  if type(portal_token_exp) ~= "number" or portal_token_exp < 1 then
+    errors[#errors+1] = "portal_token_exp must be a positive number"
+  end
+
   local smtp_admin_emails = conf.smtp_admin_emails
   if conf.smtp_mock then
     if next(smtp_admin_emails) == nil then

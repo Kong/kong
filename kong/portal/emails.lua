@@ -1,7 +1,8 @@
-local smtp_client = require "kong.enterprise_edition.smtp_client"
-local fmt         = string.format
-local log         = ngx.log
-local INFO        = ngx.INFO
+local smtp_client  = require "kong.enterprise_edition.smtp_client"
+local portal_utils = require "kong.portal.utils"
+local fmt          = string.format
+local log          = ngx.log
+local INFO         = ngx.INFO
 
 
 local _M = {}
@@ -58,6 +59,12 @@ local base_conf = {
       </p>
       </p>
         <a href="%s/reset-password?token=%s">%s/reset?token=%s</a>
+      </p>
+      <p>
+        This link will expire in %s.
+      </p>
+      <p>
+      If you didn't make this request, keep your account secure by clicking the link above to change your password.
       </p>
     ]],
   },
@@ -182,13 +189,19 @@ function _M:password_reset(recipient, token)
     return nil, {code =  501, message = "portal_reset_email is disabled"}
   end
 
+  local exp_seconds = kong_conf.portal_token_exp
+  if not exp_seconds then
+    return nil, {code =  500, message = "portal_token_exp is required"}
+  end
+
+  local exp_string = portal_utils.humanize_timestamp(exp_seconds)
   local conf = self.conf.portal_reset_email
   local options = {
     from = kong_conf.portal_emails_from,
     reply_to = kong_conf.portal_emails_reply_to,
     subject = fmt(conf.subject, kong_conf.portal_gui_url),
     html = fmt(conf.html, kong_conf.portal_gui_url, token,
-                                             kong_conf.portal_gui_url, token),
+             kong_conf.portal_gui_url, token, exp_string),
   }
 
   local res = self.client:send({recipient}, options)
@@ -206,7 +219,7 @@ function _M:password_reset_success(recipient)
     from = kong_conf.portal_emails_from,
     reply_to = kong_conf.portal_emails_reply_to,
     subject = fmt(conf.subject, kong_conf.portal_gui_url),
-    html = fmt(conf.html, kong_conf.portal_gui_url, kong_conf.portal_gui_url, 
+    html = fmt(conf.html, kong_conf.portal_gui_url, kong_conf.portal_gui_url,
                           kong_conf.portal_gui_url, kong_conf.portal_gui_url),
   }
 

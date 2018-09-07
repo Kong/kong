@@ -99,7 +99,8 @@ describe("Configuration loader - enterprise", function()
       conf, err = conf_loader(nil, {
         portal = "on",
         smtp_mock = "on",
-        portal_gui_listen = "127.0.0.1"
+        portal_gui_listen = "127.0.0.1",
+        portal_token_exp = 21600,
       })
       assert.is_nil(conf)
       assert.equal("portal_gui_listen must be of form: [off] | <ip>:<port> [ssl] [http2] [proxy_protocol], [... next entry ...]", err)
@@ -107,10 +108,49 @@ describe("Configuration loader - enterprise", function()
       conf, err = conf_loader(nil, {
         portal = "on",
         smtp_mock = "on",
-        portal_api_listen = "127.0.0.1"
+        portal_api_listen = "127.0.0.1",
+        portal_token_exp = 21600,
       })
       assert.is_nil(conf)
       assert.equal("portal_api_listen must be of form: [off] | <ip>:<port> [ssl] [http2] [proxy_protocol], [... next entry ...]", err)
+    end)
+
+    it("enforces positive number for portal_token_exp ", function()
+      local conf, err = conf_loader(nil, {
+        portal = "on",
+        smtp_mock = "on",
+        portal_api_listen = "0.0.0.0:8004, 0.0.0.0:8447 ssl",
+        portal_token_exp = 0,
+      })
+      assert.is_nil(conf)
+      assert.equal("portal_token_exp must be a positive number", err)
+
+      conf, err = conf_loader(nil, {
+        portal = "on",
+        smtp_mock = "on",
+        portal_api_listen = "0.0.0.0:8004, 0.0.0.0:8447 ssl",
+        portal_token_exp = "whut",
+      })
+      assert.is_nil(conf)
+      assert.equal("portal_token_exp must be a positive number", err)
+
+      conf, err = conf_loader(nil, {
+        portal = "on",
+        smtp_mock = "on",
+        portal_api_listen = "0.0.0.0:8004, 0.0.0.0:8447 ssl",
+        portal_token_exp = -1,
+      })
+      assert.is_nil(conf)
+      assert.equal("portal_token_exp must be a positive number", err)
+
+      conf, err = conf_loader(nil, {
+        portal = "on",
+        smtp_mock = "on",
+        portal_api_listen = "0.0.0.0:8004, 0.0.0.0:8447 ssl",
+        portal_token_exp = false,
+      })
+      assert.is_nil(conf)
+      assert.equal("portal_token_exp must be a positive number", err)
     end)
   end)
 end)

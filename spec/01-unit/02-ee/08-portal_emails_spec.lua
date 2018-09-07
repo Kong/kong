@@ -8,6 +8,7 @@ describe("ee portal emails", function()
   before_each(function()
     snapshot = assert:snapshot()
     conf = {
+      portal_token_exp = 3600,
       smtp_mock = true,
       portal_invite_email = true,
       portal_access_request_email = true,
