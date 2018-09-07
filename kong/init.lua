@@ -163,11 +163,6 @@ function Kong.init()
   db.old_dao = dao
 
   assert(db.plugins:check_db_against_config(config.loaded_plugins))
-  loaded_plugins = assert(db.plugins:load_plugin_schemas(config.loaded_plugins))
-  sort_plugins_for_execution(config, db, loaded_plugins)
-
-  assert(runloop.build_router(db, "init"))
-  assert(runloop.build_api_router(dao, "init"))
 
   -- LEGACY
   singletons.ip = ip.init(config)
@@ -212,6 +207,13 @@ function Kong.init()
   kong.dao = dao
   kong.db = db
   kong.dns = singletons.dns
+
+  -- Load plugins as late as possible so that everything is set up
+  loaded_plugins = assert(db.plugins:load_plugin_schemas(config.loaded_plugins))
+  sort_plugins_for_execution(config, db, loaded_plugins)
+
+  assert(runloop.build_router(db, "init"))
+  assert(runloop.build_api_router(dao, "init"))
 end
 
 function Kong.init_worker()
