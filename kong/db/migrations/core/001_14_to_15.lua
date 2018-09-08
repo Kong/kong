@@ -1,8 +1,67 @@
 return {
   postgres = {
     up = [[
+      DO $$
+      BEGIN
+        ALTER TABLE IF EXISTS ONLY "routes" ADD "name" TEXT UNIQUE;
+      EXCEPTION WHEN DUPLICATE_COLUMN THEN
+        -- Do nothing, accept existing state
+      END;
+      $$;
 
-    ]]
+
+
+      CREATE INDEX IF NOT EXISTS "targets_upstream_id_idx" ON "targets" ("upstream_id");
+
+
+
+      ALTER TABLE IF EXISTS ONLY "plugins" DROP CONSTRAINT IF EXISTS "plugins_pkey";
+      DO $$
+      BEGIN
+        ALTER TABLE IF EXISTS ONLY "plugins" ADD PRIMARY KEY ("id");
+      EXCEPTION WHEN DUPLICATE_TABLE THEN
+        -- Do nothing, accept existing state
+      END;
+      $$;
+
+      DO $$
+      BEGIN
+        ALTER TABLE IF EXISTS ONLY "plugins" ADD "cache_key" TEXT UNIQUE;
+      EXCEPTION WHEN DUPLICATE_COLUMN THEN
+        -- Do nothing, accept existing state
+      END;
+      $$;
+
+      ALTER TABLE IF EXISTS ONLY "plugins" ALTER "config" TYPE JSONB USING "config"::JSONB;
+    ]],
+
+    teardown = function(connector, helpers)
+      assert(connector:connect_migrations())
+
+      for rows, err in connector:iterate('SELECT * FROM "plugins";') do
+        if err then
+          return nil, err
+        end
+
+        for i = 1, #rows do
+          local row = rows[i]
+          local cache_key = table.concat({
+            "plugins",
+            row.name,
+            row.route_id or "",
+            row.service_id or "",
+            row.consumer_id or "",
+            row.api_id or ""
+          }, ":")
+
+          local sql = string.format([[
+            UPDATE "plugins" SET "cache_key" = '%s' WHERE "id" = '%s';
+          ]], cache_key, row.id)
+
+          assert(connector:query(sql))
+        end
+      end
+    end,
   },
 
   cassandra = {

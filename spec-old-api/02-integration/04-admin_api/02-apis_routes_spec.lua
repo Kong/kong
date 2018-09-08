@@ -1152,7 +1152,6 @@ describe("Admin API request size", function()
   local client
   setup(function()
     local dao = select(3, helpers.get_db_utils())
-    assert(dao:run_migrations())
 
     assert(dao.apis:insert {
       name = "my-cool-api",
