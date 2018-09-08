@@ -155,10 +155,10 @@ function Kong.init()
 
   schema_state = assert(db:schema_state())
   if schema_state.needs_bootstrap  then
-    error("database needs bootstrap, run 'kong migrations bootstrap'")
+    error("database needs bootstrap; run 'kong migrations bootstrap'")
 
   elseif schema_state.new_migrations then
-    error("new migrations available, run 'kong migrations check/up'")
+    error("new migrations available; run 'kong migrations check'")
   end
   --[[
   if schema_state.pending_migrations then

@@ -376,6 +376,26 @@ do
   local MigrationSchema = Schema.new(Migration)
 
 
+  local schema_migrations_mt = {
+    __tostring = function(t)
+      local subsystems = {}
+
+      for _, subsys in ipairs(t) do
+        local names = {}
+
+        for _, migration in ipairs(subsys.migrations) do
+          table.insert(names, migration.name)
+        end
+
+        table.insert(subsystems, fmt("%s: %s", subsys.subsystem,
+                                               table.concat(names, ", ")))
+      end
+
+      return table.concat(subsystems, "\n")
+    end,
+  }
+
+
   local function load_subsystems(plugin_names)
     if type(plugin_names) ~= "table" then
       error("plugin_names must be a table", 2)
@@ -580,7 +600,7 @@ do
       for k, v in pairs(subsystem_state) do
         if #v > 0 then
           if not schema_state[k] then
-            schema_state[k] = {}
+            schema_state[k] = setmetatable({}, schema_migrations_mt)
           end
 
           table.insert(schema_state[k], {
@@ -593,6 +613,15 @@ do
     end
 
     return schema_state
+  end
+
+
+  function DB:is_schema_up_to_date(schema_state)
+    if type(schema_state) ~= "table" then
+      error("schema_state must be a table", 2)
+    end
+
+    return not schema_state.needs_bootstrap and not schema_state.new_migrations
   end
 
 
