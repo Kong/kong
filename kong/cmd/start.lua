@@ -1,3 +1,4 @@
+local migrations_utils = require "kong.cmd.utils.migrations"
 local prefix_handler = require "kong.cmd.utils.prefix_handler"
 local nginx_signals = require "kong.cmd.utils.nginx_signals"
 local conf_loader = require "kong.conf_loader"
@@ -22,13 +23,21 @@ local function execute(args)
     error(tostring(err_t))
   end
 
+  local schema_state = assert(db:schema_state())
+
   local err
 
   xpcall(function()
     assert(prefix_handler.prepare_prefix(conf, args.nginx_conf))
 
     if args.run_migrations then
-      assert(dao:run_migrations())
+      migrations_utils.up(schema_state, db)
+
+    elseif not db:is_schema_up_to_date(schema_state) then
+      migrations_utils.print_state(schema_state, "error")
+      error("the current database schema does not match this "  ..
+            "version of Kong. Please run `kong migrations up` " ..
+            "first to update/initialise the database schema.")
     end
 
     --[[
