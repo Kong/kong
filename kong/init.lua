@@ -401,7 +401,7 @@ function Kong.balancer()
     local retries = balancer_data.retries
     -- non-idempotent method should not be retried
     local method = ngx.req.get_method()
-    if retries > 0 and method ~= "POST" and method ~= "PATCH" and method ~= "LOCK"then
+    if retries > 0 and method ~= "POST" and method ~= "PATCH" and method ~= "LOCK" then
       set_more_tries(retries)
     end
   end
