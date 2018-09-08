@@ -1,5 +1,6 @@
 ---[==[
 local DB = require "kong.db"
+local log = require "kong.cmd.utils.log"
 local conf_loader = require "kong.conf_loader"
 local migrations_utils = require "kong.cmd.utils.migrations"
 
@@ -15,6 +16,7 @@ Usage: kong migrations COMMAND [OPTIONS]
 Manage Kong's database migrations.
 
 The available commands are:
+  list
   check
   bootstrap
   up
@@ -35,7 +37,10 @@ local function execute(args)
 
   local schema_state = assert(db:schema_state())
 
-  if args.command == "check" then
+  if args.command == "list" then
+    log("executed migrations:\n%s", schema_state.executed_migrations)
+
+  elseif args.command == "check" then
     migrations_utils.print_state(schema_state)
 
   elseif args.command == "bootstrap" then
@@ -63,7 +68,7 @@ return {
   lapp = lapp,
   execute = execute,
   sub_commands = {
-    -- list
+    list = true,
     bootstrap = true,
     check = true,
     reset = true,
