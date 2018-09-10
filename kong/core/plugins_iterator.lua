@@ -71,7 +71,6 @@ local function load_plugin_into_memory_ws(route_id,
   end
 
   -- check if plugin in cache for each workspace
-  local cache_key_t = {}
   local ttl
   for _, ws in ipairs(ws_scope) do
     local plugin_cache_key = k .. ws.id
@@ -83,7 +82,6 @@ local function load_plugin_into_memory_ws(route_id,
     if ttl and plugin and not plugin.null then
       return plugin
     end
-    cache_key_t[ws.id] = plugin_cache_key
   end
 
   -- if ttl present, plugin present in negative cache
@@ -101,7 +99,7 @@ local function load_plugin_into_memory_ws(route_id,
 
   -- add positive and negative cache
   for _, ws in ipairs(ws_scope) do
-    local plugin_cache_key = cache_key_t[ws.id]
+    local plugin_cache_key = k .. ws.id
 
     local to_be_cached
     if plugin and not plugin.null and ws.id == plugin.workspace_id then
