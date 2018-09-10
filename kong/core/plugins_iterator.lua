@@ -170,13 +170,13 @@ local function load_plugin_configuration(route_id,
   end
 
   -- check for internal plugins
-  local cfg = singletons.internal_proxies:get_plugin_config({
-    route_id = route_id,
-    service_id = service_id,
-    consumer_id = consumer_id,
-    plugin_name = plugin_name,
-    api_id = api_id
-  })
+  local cfg = singletons.internal_proxies:get_plugin_config(
+    route_id,
+    service_id,
+    consumer_id,
+    plugin_name,
+    api_id
+  )
 
   if cfg then
     return cfg

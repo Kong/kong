@@ -244,16 +244,21 @@ function _M:build_routes(i, routes)
 end
 
 
-function _M:get_plugin_config(conf)
+function _M:get_plugin_config(
+  route_id,
+  service_id,
+  consumer_id,
+  plugin_name,
+  api_id)
   local plugins = self.config.plugins
   for i = 1, #plugins do
     local plugin = plugins[i]
 
-    if   conf.plugin_name == plugin.name
-    and     conf.route_id == plugin.route_id
-    and   conf.service_id == plugin.service_id
-    and  conf.consumer_id == plugin.consumer_id
-    and       conf.api_id == plugin.api_id then
+    if   plugin_name == plugin.name
+    and     route_id == plugin.route_id
+    and   service_id == plugin.service_id
+    and  consumer_id == plugin.consumer_id
+    and       api_id == plugin.api_id then
       local cfg       = plugin.config or {}
 
       cfg.api_id      = plugin.api_id
