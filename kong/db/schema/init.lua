@@ -1210,7 +1210,7 @@ function Schema:process_auto_fields(input, context, nulls)
         end
         if field_value ~= null then
           local field_schema = get_field_schema(field)
-          output[key] = field_schema:process_auto_fields(field_value, context)
+          output[key] = field_schema:process_auto_fields(field_value, context, nulls)
         end
       end
 
