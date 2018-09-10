@@ -71,21 +71,40 @@ local function load_plugin_into_memory_ws(route_id,
   end
 
   -- check if plugin in cache for each workspace
-  local ttl
+  local found
   for _, ws in ipairs(ws_scope) do
     local plugin_cache_key = k .. ws.id
-    ttl, err, plugin = singletons.cache:probe(plugin_cache_key)
-    if err then
-      return nil, err
+
+    plugin = singletons.cache.mlcache.lru:get(plugin_cache_key)
+    if plugin then
+      found = true
+
+      if not plugin.null then
+        return plugin
+      end
     end
 
-    if ttl and plugin and not plugin.null then
-      return plugin
+    if not plugin then
+      local ttl
+      ttl, err, plugin = singletons.cache:probe(plugin_cache_key)
+      if err then
+        return nil, err
+      end
+
+      singletons.cache.mlcache.lru:set(plugin_cache_key, plugin)
+
+      if ttl then
+        found = true
+
+        if plugin and not plugin.null then
+          return plugin
+        end
+      end
     end
   end
 
   -- if ttl present, plugin present in negative cache
-  if ttl then
+  if found then
     return plugin
   end
 
