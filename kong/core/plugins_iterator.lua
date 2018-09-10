@@ -46,16 +46,12 @@ local function load_plugin_into_memory_ws(route_id,
                                           consumer_id,
                                           plugin_name,
                                           api_id,
-                                          ctx)
+                                          ctx,
+                                          k)
   local ws_scope = ctx.workspaces or {}
 
   -- when there is no workspace, like in phase rewrite
-  local plugin_cache_key = singletons.dao.plugins:cache_key_ws(nil,
-                                                               plugin_name,
-                                                               route_id,
-                                                               service_id,
-                                                               consumer_id,
-                                                               api_id)
+  local plugin_cache_key = k
 
   local plugin, err = singletons.cache:get(plugin_cache_key,
                                            nil,
@@ -78,12 +74,7 @@ local function load_plugin_into_memory_ws(route_id,
   local cache_key_t = {}
   local ttl
   for _, ws in ipairs(ws_scope) do
-    local plugin_cache_key = singletons.dao.plugins:cache_key_ws(ws,
-                                                                 plugin_name,
-                                                                 route_id,
-                                                                 service_id,
-                                                                 consumer_id,
-                                                                 api_id)
+    local plugin_cache_key = k .. ws.id
     ttl, err, plugin = singletons.cache:probe(plugin_cache_key)
     if err then
       return nil, err
@@ -147,13 +138,15 @@ local function load_plugin_configuration(route_id,
                                          consumer_id,
                                          plugin_name,
                                          api_id,
-                                         ctx)
+                                         ctx,
+                                         k)
   local plugin, err = load_plugin_into_memory_ws(route_id,
                                                  service_id,
                                                  consumer_id,
                                                  plugin_name,
                                                  api_id,
-                                                 ctx)
+                                                 ctx,
+                                                 k)
   if err then
     ctx.delay_response = false
     return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
@@ -230,69 +223,81 @@ local function get_next(self)
     repeat
 
       if route_id and service_id and consumer_id then
-        plugin_configuration = load_plugin_configuration(route_id, service_id, consumer_id, plugin_name, nil, ctx)
+        local k = "plugins:"..plugin_name..":"..route_id..":"..service_id..":"..consumer_id.."::"
+        plugin_configuration = load_plugin_configuration(route_id, service_id, consumer_id, plugin_name, nil, ctx, k)
         if plugin_configuration then
           break
         end
       end
 
       if route_id and consumer_id then
-        plugin_configuration = load_plugin_configuration(route_id, nil, consumer_id, plugin_name, nil, ctx)
+        local k = "plugins:"..plugin_name..":"..route_id.."::"..consumer_id.."::"
+        plugin_configuration = load_plugin_configuration(route_id, nil, consumer_id, plugin_name, nil, ctx, k)
         if plugin_configuration then
           break
         end
       end
 
       if service_id and consumer_id then
-        plugin_configuration = load_plugin_configuration(nil, service_id, consumer_id, plugin_name, nil, ctx)
+        local k = "plugins:"..plugin_name.."::"..service_id..":"..consumer_id.."::"
+        plugin_configuration = load_plugin_configuration(nil, service_id, consumer_id, plugin_name, nil, ctx, k)
         if plugin_configuration then
           break
         end
       end
 
       if api_id and consumer_id then
-        plugin_configuration = load_plugin_configuration(nil, nil, consumer_id, plugin_name, api_id, ctx)
+        local k = "plugins:"..plugin_name..":::"..consumer_id..":"..api_id..":"
+        plugin_configuration = load_plugin_configuration(nil, nil, consumer_id, plugin_name, api_id, ctx, k)
         if plugin_configuration then
           break
         end
       end
 
       if route_id and service_id then
-        plugin_configuration = load_plugin_configuration(route_id, service_id, nil, plugin_name, nil, ctx)
+        local k = "plugins:"..plugin_name..":"..route_id..":"..service_id..":::"
+        plugin_configuration = load_plugin_configuration(route_id, service_id, nil, plugin_name, nil, ctx, k)
         if plugin_configuration then
           break
         end
       end
 
       if consumer_id then
-        plugin_configuration = load_plugin_configuration(nil, nil, consumer_id, plugin_name, nil, ctx)
+        local k = "plugins:"..plugin_name..":::"..consumer_id.."::"
+        plugin_configuration = load_plugin_configuration(nil, nil, consumer_id, plugin_name, nil, ctx, k)
         if plugin_configuration then
           break
         end
       end
 
       if route_id then
-        plugin_configuration = load_plugin_configuration(route_id, nil, nil, plugin_name, nil, ctx)
+        local k = "plugins:"..plugin_name..":"..route_id.."::::"
+        plugin_configuration = load_plugin_configuration(route_id, nil, nil, plugin_name, nil, ctx, k)
         if plugin_configuration then
           break
         end
       end
 
       if service_id then
-        plugin_configuration = load_plugin_configuration(nil, service_id, nil, plugin_name, nil, ctx)
+        local k = "plugins:"..plugin_name.."::"..service_id..":::"
+        plugin_configuration = load_plugin_configuration(nil, service_id, nil, plugin_name, nil, ctx, k)
         if plugin_configuration then
           break
         end
       end
 
       if api_id then
-        plugin_configuration = load_plugin_configuration(nil, nil, nil, plugin_name, api_id, ctx)
+        local k = "plugins:"..plugin_name.."::::"..api_id..":"
+        plugin_configuration = load_plugin_configuration(nil, nil, nil, plugin_name, api_id, ctx, k)
         if plugin_configuration then
           break
         end
       end
 
-      plugin_configuration = load_plugin_configuration(nil, nil, nil, plugin_name, nil, ctx)
+      do
+        local k = "plugins:"..plugin_name..":::::"
+        plugin_configuration = load_plugin_configuration(nil, nil, nil, plugin_name, nil, ctx, k)
+      end
 
     until true
 
