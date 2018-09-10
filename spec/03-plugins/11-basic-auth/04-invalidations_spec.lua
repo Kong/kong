@@ -5,20 +5,19 @@ for _, strategy in helpers.each_strategy() do
   describe("Plugin: basic-auth (invalidations) [#" .. strategy .. "]", function()
     local admin_client
     local proxy_client
-    local db
-    local dao
     local bp
+    local db
 
     setup(function()
-      bp, db, dao = helpers.get_db_utils(strategy)
+      bp, db = helpers.get_db_utils(strategy)
     end)
 
     before_each(function()
       assert(db:truncate("routes"))
       assert(db:truncate("services"))
       assert(db:truncate("consumers"))
-      db:truncate("plugins")
-      db:truncate("hmacauth_credentials")
+      assert(db:truncate("plugins"))
+      assert(db:truncate("hmacauth_credentials"))
 
       local route = bp.routes:insert {
         hosts = { "basic-auth.com" },
@@ -33,11 +32,11 @@ for _, strategy in helpers.each_strategy() do
         username = "bob",
       }
 
-      assert(dao.basicauth_credentials:insert {
-        username    = "bob",
-        password    = "kong",
-        consumer_id = consumer.id,
-      })
+      bp.basicauth_credentials:insert {
+        username = "bob",
+        password = "kong",
+        consumer = { id = consumer.id },
+      }
 
       assert(helpers.start_kong({
         database   = strategy,
@@ -57,7 +56,7 @@ for _, strategy in helpers.each_strategy() do
       helpers.stop_kong()
     end)
 
-    it("invalidates credentials when the Consumer is deleted", function()
+    it("#invalidates credentials when the Consumer is deleted", function()
       -- populate cache
       local res = assert(proxy_client:send {
         method  = "GET",
@@ -70,7 +69,7 @@ for _, strategy in helpers.each_strategy() do
       assert.res_status(200, res)
 
       -- ensure cache is populated
-      local cache_key = dao.basicauth_credentials:cache_key("bob")
+      local cache_key = db.basicauth_credentials:cache_key("bob")
       res = assert(admin_client:send {
         method = "GET",
         path   = "/cache/" .. cache_key
@@ -118,7 +117,7 @@ for _, strategy in helpers.each_strategy() do
       assert.res_status(200, res)
 
       -- ensure cache is populated
-      local cache_key = dao.basicauth_credentials:cache_key("bob")
+      local cache_key = db.basicauth_credentials:cache_key("bob")
       res = assert(admin_client:send {
         method = "GET",
         path   = "/cache/" .. cache_key
@@ -167,7 +166,7 @@ for _, strategy in helpers.each_strategy() do
       assert.res_status(200, res)
 
       -- ensure cache is populated
-      local cache_key = dao.basicauth_credentials:cache_key("bob")
+      local cache_key = db.basicauth_credentials:cache_key("bob")
       res = assert(admin_client:send {
         method = "GET",
         path   = "/cache/" .. cache_key

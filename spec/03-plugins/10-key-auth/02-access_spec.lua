@@ -531,7 +531,7 @@ for _, strategy in helpers.each_strategy() do
       bp.basicauth_credentials:insert {
         username = "Aladdin",
         password = "OpenSesame",
-        consumer_id = user2.id,
+        consumer = { id = user2.id },
       }
 
       assert(helpers.start_kong({

@@ -460,11 +460,11 @@ describe("Plugin: key-auth (access)", function()
       key      = "Mouse",
       consumer = { id = user1.id },
     }
-    assert(dao.basicauth_credentials:insert {
-      username    = "Aladdin",
-      password    = "OpenSesame",
-      consumer_id = user2.id,
-    })
+    bp.basicauth_credentials:insert {
+      username = "Aladdin",
+      password = "OpenSesame",
+      consumer = { id = user2.id },
+    }
 
     assert(helpers.start_kong({
       nginx_conf = "spec/fixtures/custom_nginx.template",

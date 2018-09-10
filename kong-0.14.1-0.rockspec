@@ -184,6 +184,7 @@ build = {
     ["kong.plugins.basic-auth.schema"] = "kong/plugins/basic-auth/schema.lua",
     ["kong.plugins.basic-auth.api"] = "kong/plugins/basic-auth/api.lua",
     ["kong.plugins.basic-auth.daos"] = "kong/plugins/basic-auth/daos.lua",
+    ["kong.plugins.basic-auth.basicauth_credentials"] = "kong/plugins/basic-auth/basicauth_credentials.lua",
 
     ["kong.plugins.key-auth.migrations.cassandra"] = "kong/plugins/key-auth/migrations/cassandra.lua",
     ["kong.plugins.key-auth.migrations.postgres"] = "kong/plugins/key-auth/migrations/postgres.lua",

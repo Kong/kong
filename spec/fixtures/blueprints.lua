@@ -275,7 +275,7 @@ function _M.new(dao, db)
     }
   end)
 
-  res.basicauth_credentials = new_blueprint(dao.basicauth_credentials, function()
+  res.basicauth_credentials = new_blueprint(db.basicauth_credentials, function()
     return {}
   end)
 
