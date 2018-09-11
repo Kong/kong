@@ -37,12 +37,12 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name     = "basic-auth",
-        route_id = route1.id,
+        route = { id = route1.id },
       }
 
       bp.plugins:insert {
         name     = "basic-auth",
-        route_id = route2.id,
+        route = { id = route2.id },
         config   = {
           hide_credentials = true,
         },
@@ -68,7 +68,7 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name     = "basic-auth",
-        route_id = route3.id,
+        route = { id = route3.id },
         config   = {
           anonymous = anonymous_user.id,
         },
@@ -76,7 +76,7 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name     = "basic-auth",
-        route_id = route4.id,
+        route = { id = route4.id },
         config   = {
           anonymous = utils.uuid(), -- a non-existing consumer id
         },
@@ -389,17 +389,17 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name     = "basic-auth",
-        route_id = route1.id,
+        route = { id = route1.id },
       }
 
       bp.plugins:insert {
         name     = "key-auth",
-        route_id = route1.id,
+        route = { id = route1.id },
       }
 
       bp.plugins:insert {
         name     = "basic-auth",
-        route_id = route2.id,
+        route = { id = route2.id },
         config   = {
           anonymous = anonymous.id,
         },
@@ -407,7 +407,7 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name     = "key-auth",
-        route_id = route2.id,
+        route = { id = route2.id },
         config   = {
           anonymous = anonymous.id,
         },

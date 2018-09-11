@@ -15,7 +15,30 @@ end
 return {
   no_consumer = true,
   fields = {
-    whitelist = { type = "array", func = check_regex },
-    blacklist = { type = "array", func = check_regex },
+    whitelist = {
+      type = "array",
+      func = check_regex,
+      new_type = {
+        type = "array",
+        elements = {
+          type = "string",
+          match = ".*",
+          is_regex = true,
+        },
+        default = {},
+      }
+    },
+    blacklist = {
+      type = "array",
+      func = check_regex,
+      new_type = {
+        type = "array",
+        elements = {
+          type = "string",
+          is_regex = true,
+        },
+        default = {},
+      }
+    },
   }
 }

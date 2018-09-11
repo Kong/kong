@@ -145,6 +145,7 @@ local meta_errors = {
   FIELDS_KEY = "each key in fields must be a string",
   ENDPOINT_KEY = "value must be a field name",
   CACHE_KEY = "values must be field names",
+  CACHE_KEY_UNIQUE = "a field used as a single cache key must be unique",
   TTL_RESERVED = "ttl is a reserved field name when ttl is enabled",
   SUBSCHEMA_KEY = "value must be a field name",
   SUBSCHEMA_KEY_STRING = "must be a string field",
@@ -373,18 +374,24 @@ local MetaSchema = Schema.new({
     end
 
     if schema.cache_key then
+      local found
       for _, e in ipairs(schema.cache_key) do
-        local found = false
+        found = nil
         for _, item in ipairs(schema.fields) do
           local k = next(item)
           if e == k then
-            found = true
+            found = item[k]
             break
           end
         end
         if not found then
           errors["cache_key"] = meta_errors.CACHE_KEY
           break
+        end
+      end
+      if #schema.cache_key == 1 then
+        if found and not found.unique then
+          errors["cache_key"] = meta_errors.CACHE_KEY_UNIQUE
         end
       end
     end

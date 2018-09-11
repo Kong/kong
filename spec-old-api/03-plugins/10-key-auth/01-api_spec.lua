@@ -300,7 +300,7 @@ describe("Plugin: key-auth (API)", function()
       local body = assert.response(res).has.jsonbody()
       assert.equal("'hello\\world' is illegal: bad header name " ..
                    "'hello\\world', allowed characters are A-Z, a-z, 0-9," ..
-                   " '_', and '-'", body["config.key_names"])
+                   " '_', and '-'", body.fields.config.key_names)
     end)
     it("succeeds with valid key_names", function()
       local key_name = "hello-world"

@@ -516,8 +516,13 @@ end
 
 local Endpoints = {
   handle_error = handle_error,
-  extract_options = extract_options,
   get_page_size = get_page_size,
+  select_entity = select_entity,
+  extract_options = extract_options,
+  get_entity_endpoint = get_entity_endpoint,
+  put_entity_endpoint = put_entity_endpoint,
+  patch_entity_endpoint = patch_entity_endpoint,
+  delete_entity_endpoint = delete_entity_endpoint,
   get_collection_endpoint = get_collection_endpoint,
   post_collection_endpoint = post_collection_endpoint,
 }

@@ -10,14 +10,24 @@ local function it_content_types(title, fn)
 end
 
 
-describe("Admin API post-processing", function()
+for _, strategy in helpers.each_strategy() do
+
+describe("Admin API post-processing #" .. strategy, function()
   local client
   local plugin
+  local db
 
   setup(function()
-    assert(helpers.dao:run_migrations())
-    helpers.dao:truncate_table("plugins")
+    local _
+    _, db = helpers.get_db_utils(strategy, {
+      "plugins",
+    }, {
+      "admin-api-post-process"
+    })
+
     assert(helpers.start_kong {
+      database = strategy,
+      nginx_conf = "spec/fixtures/custom_nginx.template",
       plugins = "bundled, admin-api-post-process, dummy"
     })
 
@@ -30,16 +40,23 @@ describe("Admin API post-processing", function()
     end
 
     helpers.stop_kong()
-  end)
-  
-  after_each(function()
-    helpers.dao:truncate_table("plugins")
+    db.plugins:truncate()
   end)
 
   before_each(function()
-    plugin =  helpers.dao.plugins:insert({
-      name = "admin-api-post-process",
+    db:truncate("plugins")
+    local client = helpers.admin_client()
+    local res = assert(client:send {
+      method = "POST",
+      path = "/plugins",
+      body = {
+        name = "admin-api-post-process",
+      },
+      headers = { ["Content-Type"] = "application/json" },
     })
+    local body = assert.res_status(201, res)
+    plugin = cjson.decode(body)
+    assert(client:close())
   end)
 
   it_content_types("post-processes paginated sets", function(content_type)
@@ -90,6 +107,11 @@ describe("Admin API post-processing", function()
         method = "PATCH",
         path = "/plugins/" .. plugin.id .. "/post_processed",
         body = {
+          name = "admin-api-post-process",
+          api = ngx.null,
+          route = ngx.null,
+          service = ngx.null,
+          consumer = ngx.null,
           config = {
             foo = "potato"
           }
@@ -122,3 +144,5 @@ describe("Admin API post-processing", function()
     end
   end)
 end)
+
+end

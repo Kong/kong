@@ -15,7 +15,16 @@ for _, strategy in helpers.each_strategy() do
     local bp
 
     setup(function()
-      bp, db, dao = helpers.get_db_utils(strategy)
+      bp, db, dao = helpers.get_db_utils(strategy, {
+        "apis",
+        "routes",
+        "services",
+        "plugins",
+        "consumers",
+        "keyauth_credentials",
+      }, {
+        "error-handler-log",
+      })
 
       local consumer1 = bp.consumers:insert {
         username = "consumer1"
@@ -72,20 +81,20 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.plugins:insert {
-        name       = "rate-limiting",
-        route_id   = route1.id,
-        service_id = service2.id,
-        config     = {
-          hour     = 2,
+        name    = "rate-limiting",
+        route   = { id = route1.id },
+        service = { id = service2.id },
+        config  = {
+          hour  = 2,
         },
       }
 
       -- Consumer Specific Configuration
       bp.plugins:insert {
-        name        = "rate-limiting",
-        consumer_id = consumer2.id,
-        config      = {
-          hour      = 3,
+        name     = "rate-limiting",
+        consumer = { id = consumer2.id },
+        config   = {
+          hour   = 3,
         },
       }
 
@@ -101,11 +110,11 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.plugins:insert {
-        name        = "rate-limiting",
-        route_id    = route2.id,
-        consumer_id = consumer2.id,
-        config      = {
-          hour      = 4,
+        name     = "rate-limiting",
+        route    = { id = route2.id },
+        consumer = { id = consumer2.id },
+        config   = {
+          hour   = 4,
         },
       }
 
@@ -125,17 +134,17 @@ for _, strategy in helpers.each_strategy() do
         config      = {
           anonymous = consumer3.id,
         },
-        route_id    = route3.id,
-        service_id  = service4.id,
+        route       = { id = route3.id },
+        service     = { id = service4.id },
       }
 
       bp.plugins:insert {
-        name        = "rate-limiting",
-        route_id    = route3.id,
-        service_id  = service4.id,
-        consumer_id = consumer3.id,
-        config      = {
-          hour      = 5,
+        name     = "rate-limiting",
+        route    = { id = route3.id },
+        service  = { id = service4.id },
+        consumer = { id = consumer3.id },
+        config   = {
+          hour   = 5,
         }
       }
 
@@ -223,7 +232,7 @@ for _, strategy in helpers.each_strategy() do
         db:truncate("routes")
         db:truncate("services")
         db:truncate("consumers")
-        dao:truncate_table("plugins")
+        db:truncate("plugins")
         dao:truncate_table("keyauth_credentials")
 
         do
@@ -241,14 +250,14 @@ for _, strategy in helpers.each_strategy() do
 
           -- plugin able to short-circuit a request
           assert(dao.plugins:insert {
-            name   = "key-auth",
-            route_id = route.id,
+            name  = "key-auth",
+            route = { id = route.id },
           })
 
           -- response/body filter plugin
           assert(dao.plugins:insert {
             name   = "dummy",
-            route_id = route.id,
+            route  = { id = route.id },
             config = {
               append_body = "appended from body filtering",
             }
@@ -256,8 +265,8 @@ for _, strategy in helpers.each_strategy() do
 
           -- log phase plugin
           assert(dao.plugins:insert {
-            name = "file-log",
-            route_id = route.id,
+            name   = "file-log",
+            route  = { id = route.id },
             config = {
               path = FILE_LOG_PATH,
             },
@@ -280,8 +289,8 @@ for _, strategy in helpers.each_strategy() do
 
           -- plugin that produces an error
           assert(dao.plugins:insert {
-            name = "dummy",
-            route_id = route.id,
+            name   = "dummy",
+            route  = { id = route.id },
             config = {
               append_body = "obtained even with error",
             }
@@ -289,8 +298,8 @@ for _, strategy in helpers.each_strategy() do
 
           -- log phase plugin
           assert(dao.plugins:insert {
-            name = "file-log",
-            route_id = route.id,
+            name   = "file-log",
+            route  = { id = route.id },
             config = {
               path = FILE_LOG_PATH,
             },
@@ -441,7 +450,7 @@ for _, strategy in helpers.each_strategy() do
         db:truncate("routes")
         db:truncate("services")
         db:truncate("consumers")
-        dao:truncate_table("plugins")
+        db:truncate("plugins")
         dao:truncate_table("keyauth_credentials")
 
         local service = bp.services:insert {
@@ -455,9 +464,9 @@ for _, strategy in helpers.each_strategy() do
         }
 
         bp.plugins:insert {
-          name       = "key-auth",
-          route_id   = route.id,
-          service_id = service.id,
+          name    = "key-auth",
+          route   = { id = route.id },
+          service = { id = service.id },
         }
 
         local consumer = bp.consumers:insert {
@@ -516,7 +525,7 @@ for _, strategy in helpers.each_strategy() do
         db:truncate("routes")
         db:truncate("services")
         db:truncate("consumers")
-        dao:truncate_table("plugins")
+        db:truncate("plugins")
         dao:truncate_table("keyauth_credentials")
 
         do
@@ -534,10 +543,10 @@ for _, strategy in helpers.each_strategy() do
           }
 
           bp.plugins:insert {
-            name = "file-log",
-            service_id = mock_service.id,
-            config = {
-              path = FILE_LOG_PATH,
+            name     = "file-log",
+            service  = { id = mock_service.id },
+            config   = {
+              path   = FILE_LOG_PATH,
               reopen = true,
             }
           }
@@ -556,10 +565,10 @@ for _, strategy in helpers.each_strategy() do
           }
 
           bp.plugins:insert {
-            name = "file-log",
-            service_id = mock_service.id,
-            config = {
-              path = FILE_LOG_PATH,
+            name     = "file-log",
+            service  = { id = mock_service.id },
+            config   = {
+              path   = FILE_LOG_PATH,
               reopen = true,
             }
           }
@@ -580,10 +589,10 @@ for _, strategy in helpers.each_strategy() do
           }
 
           bp.plugins:insert {
-            name = "file-log",
-            service_id = httpbin_service.id,
-            config = {
-              path = FILE_LOG_PATH,
+            name     = "file-log",
+            service  = { id = httpbin_service.id },
+            config   = {
+              path   = FILE_LOG_PATH,
               reopen = true,
             }
           }

@@ -6,7 +6,7 @@ local utils = require "kong.tools.utils"
 describe("Plugin: key-auth (access)", function()
   local client
   setup(function()
-    local bp, _, dao = helpers.get_db_utils()
+    local bp, db, dao = helpers.get_db_utils()
 
     local anonymous_user = bp.consumers:insert {
       username = "no-body",
@@ -17,9 +17,9 @@ describe("Plugin: key-auth (access)", function()
       hosts        = { "key-auth1.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name   = "key-auth",
-      api_id = api1.id,
+      api = { id = api1.id },
     })
 
     local api2 = assert(dao.apis:insert {
@@ -27,9 +27,9 @@ describe("Plugin: key-auth (access)", function()
       hosts        = { "key-auth2.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name   = "key-auth",
-      api_id = api2.id,
+      api = { id = api2.id },
       config = {
         hide_credentials = true,
       },
@@ -48,9 +48,9 @@ describe("Plugin: key-auth (access)", function()
       hosts        = { "key-auth3.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name   = "key-auth",
-      api_id = api3.id,
+      api = { id = api3.id },
       config = {
         anonymous = anonymous_user.id,
       },
@@ -61,9 +61,9 @@ describe("Plugin: key-auth (access)", function()
       hosts        = { "key-auth4.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name   = "key-auth",
-      api_id = api4.id,
+      api = { id = api4.id },
       config = {
         anonymous = utils.uuid(),  -- unknown consumer
       },
@@ -74,9 +74,9 @@ describe("Plugin: key-auth (access)", function()
       hosts        = { "key-auth5.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name   = "key-auth",
-      api_id = api5.id,
+      api = { id = api5.id },
       config = {
         key_in_body = true,
       },
@@ -87,9 +87,9 @@ describe("Plugin: key-auth (access)", function()
       hosts        = { "key-auth6.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name = "key-auth",
-      api_id = api6.id,
+      api = { id = api6.id },
       config = {
         key_in_body      = true,
         hide_credentials = true,
@@ -101,9 +101,9 @@ describe("Plugin: key-auth (access)", function()
       hosts = { "key-auth7.com" },
       upstream_url = "http://mockbin.com",
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name = "key-auth",
-      api_id = api7.id,
+      api = { id = api7.id },
       config = {
         run_on_preflight = false,
       },
@@ -410,20 +410,20 @@ describe("Plugin: key-auth (access)", function()
   local client, user1, user2, anonymous
 
   setup(function()
-    local bp, _, dao = helpers.get_db_utils()
+    local bp, db, dao = helpers.get_db_utils()
 
     local api1 = assert(dao.apis:insert {
       name         = "api-1",
       hosts        = { "logical-and.com" },
       upstream_url = helpers.mock_upstream_url .. "/request",
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name   = "basic-auth",
-      api_id = api1.id,
+      api = { id = api1.id },
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name   = "key-auth",
-      api_id = api1.id,
+      api = { id = api1.id },
     })
 
     anonymous = bp.consumers:insert {
@@ -441,16 +441,16 @@ describe("Plugin: key-auth (access)", function()
       hosts        = { "logical-or.com" },
       upstream_url = helpers.mock_upstream_url .. "/request",
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name   = "basic-auth",
-      api_id = api2.id,
+      api = { id = api2.id },
       config = {
         anonymous = anonymous.id,
       },
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name   = "key-auth",
-      api_id = api2.id,
+      api = { id = api2.id },
       config = {
         anonymous = anonymous.id,
       },

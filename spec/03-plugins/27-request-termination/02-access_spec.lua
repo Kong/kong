@@ -40,13 +40,13 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name     = "request-termination",
-        route_id = route1.id,
+        route = { id = route1.id },
         config   = {},
       }
 
       bp.plugins:insert {
         name     = "request-termination",
-        route_id = route2.id,
+        route = { id = route2.id },
         config   = {
           status_code = 404,
         },
@@ -54,7 +54,7 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name     = "request-termination",
-        route_id = route3.id,
+        route = { id = route3.id },
         config   = {
           status_code = 406,
           message     = "Invalid",
@@ -63,7 +63,7 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name     = "request-termination",
-        route_id = route4.id,
+        route = { id = route4.id },
         config   = {
           body = "<html><body><h1>Service is down for maintenance</h1></body></html>",
         },
@@ -71,7 +71,7 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name     = "request-termination",
-        route_id = route5.id,
+        route = { id = route5.id },
         config   = {
           status_code  = 451,
           content_type = "text/html",
@@ -81,7 +81,7 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name     = "request-termination",
-        route_id = route6.id,
+        route = { id = route6.id },
         config   = {
           status_code = 503,
           body        = '{"code": 1, "message": "Service unavailable"}',

@@ -23,10 +23,16 @@ end
 
 describe("Plugin: rate-limiting (integration)", function()
   local client
+  local bp
 
   setup(function()
-    -- only to run migrations
-    helpers.get_db_utils()
+    bp = helpers.get_db_utils(nil, {
+      "routes",
+      "services",
+      "plugins",
+    }, {
+      "rate-limiting"
+    })
   end)
 
   teardown(function()
@@ -45,14 +51,12 @@ describe("Plugin: rate-limiting (integration)", function()
       flush_redis(REDIS_DB_1)
       flush_redis(REDIS_DB_2)
 
-      local api1 = assert(helpers.dao.apis:insert {
-        name         = "redistest1_com",
+      local route1 = assert(bp.routes:insert {
         hosts        = { "redistest1.com" },
-        upstream_url = helpers.mock_upstream_url,
       })
-      assert(helpers.dao.plugins:insert {
-        name   = "rate-limiting",
-        api_id = api1.id,
+      assert(bp.plugins:insert {
+        name = "rate-limiting",
+        route = { id = route1.id },
         config = {
           minute         = 1,
           policy         = "redis",
@@ -63,14 +67,12 @@ describe("Plugin: rate-limiting (integration)", function()
         },
       })
 
-      local api2 = assert(helpers.dao.apis:insert {
-        name         = "redistest2_com",
+      local route2 = assert(bp.routes:insert {
         hosts        = { "redistest2.com" },
-        upstream_url = helpers.mock_upstream_url,
       })
-      assert(helpers.dao.plugins:insert {
-        name   = "rate-limiting",
-        api_id = api2.id,
+      assert(bp.plugins:insert {
+        name = "rate-limiting",
+        route = { id = route2.id },
         config = {
           minute         = 1,
           policy         = "redis",

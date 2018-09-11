@@ -32,12 +32,12 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name     = "correlation-id",
-        route_id = route1.id,
+        route = { id = route1.id },
       }
 
       bp.plugins:insert {
         name     = "correlation-id",
-        route_id = route2.id,
+        route = { id = route2.id },
         config   = {
           header_name = "Foo-Bar-Id",
         },
@@ -45,7 +45,7 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name     = "correlation-id",
-        route_id = route3.id,
+        route = { id = route3.id },
         config   = {
           generator       = "uuid",
           echo_downstream = true,
@@ -54,7 +54,7 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name     = "correlation-id",
-        route_id = route4.id,
+        route = { id = route4.id },
         config   = {
           generator = "tracker",
         },

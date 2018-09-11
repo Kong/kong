@@ -142,7 +142,7 @@ for _, strategy in helpers.each_strategy() do
         method = "POST",
         path = "/plugins",
         body = {
-          service_id = service.id,
+          service = { id = service.id },
           name = "tcp-log",
           config = {
             host = "dummy",
@@ -230,7 +230,7 @@ for _, strategy in helpers.each_strategy() do
         method = "POST",
         path = "/plugins",
         body = {
-          route_id = route.id,
+          route = { id = route.id },
           name = "tcp-log",
           config = {
             host = "dummy",

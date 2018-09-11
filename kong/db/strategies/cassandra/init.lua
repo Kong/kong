@@ -1,3 +1,4 @@
+local iteration = require "kong.db.iteration"
 local cassandra = require "cassandra"
 local cjson = require "cjson"
 
@@ -37,13 +38,9 @@ local APPLIED_COLUMN = "[applied]"
 local cache_key_field = { type = "string" }
 
 
-local _constraints = {}
-
-
 local _M  = {
   CUSTOM_STRATEGIES = {
     services = require("kong.db.strategies.cassandra.services"),
-    routes   = require("kong.db.strategies.cassandra.routes"),
   }
 }
 
@@ -418,17 +415,6 @@ function _M.new(connector, schema, errors)
       db_columns.args_names = concat(db_columns_args_names, " AND ")
 
       self.foreign_keys_db_columns[field_name] = db_columns
-
-      -- store in constraints to subsequently retrieve the inverse relation
-
-      if not _constraints[field.reference] then
-        _constraints[field.reference] = {}
-      end
-      insert(_constraints[field.reference], {
-        schema     = schema,
-        field_name = field_name,
-        on_delete  = field.on_delete,
-      })
     end
   end
 
@@ -977,40 +963,61 @@ do
     end
     local args = new_tab(#schema.primary_key, 0)
 
-    local constraints = _constraints[schema.name]
-    if constraints then
-      for i = 1, #constraints do
-        local constraint = constraints[i]
-        -- foreign keys could be pointing to this entity
-        -- this mimics the "ON DELETE" constraint of supported
-        -- RDBMs (e.g. PostgreSQL)
-        --
-        -- The possible behaviors on such a constraint are:
-        --  * RESTRICT (default)
-        --  * CASCADE  (on_delete = "cascade", NYI)
-        --  * SET NULL (NYI)
+    local constraints = schema:get_constraints()
+    for i = 1, #constraints do
+      local constraint = constraints[i]
+      -- foreign keys could be pointing to this entity
+      -- this mimics the "ON DELETE" constraint of supported
+      -- RDBMs (e.g. PostgreSQL)
+      --
+      -- The possible behaviors on such a constraint are:
+      --  * RESTRICT (default)
+      --  * CASCADE  (on_delete = "cascade", NYI)
+      --  * SET NULL (NYI)
 
-        local behavior = constraint.on_delete or "restrict"
+      local behavior = constraint.on_delete or "restrict"
 
-        if behavior == "restrict" then
+      if behavior == "restrict" then
 
-          local row, err_t = select_by_foreign_key(self,
-                                                    constraint.schema,
-                                                    constraint.field_name,
-                                                    primary_key)
-          if err_t then
-            return nil, err_t
-          end
-
-          if row then
-            -- a row is referring to this entity, we cannot delete it.
-            -- deleting the parent entity would violate the foreign key
-            -- constraint
-            return nil, self.errors:foreign_key_violation_restricted(schema.name,
-                                                                     constraint.schema.name)
-          end
+        local row, err_t = select_by_foreign_key(self,
+                                                  constraint.schema,
+                                                  constraint.field_name,
+                                                  primary_key)
+        if err_t then
+          return nil, err_t
         end
 
+        if row then
+          -- a row is referring to this entity, we cannot delete it.
+          -- deleting the parent entity would violate the foreign key
+          -- constraint
+          return nil, self.errors:foreign_key_violation_restricted(schema.name,
+                                                                   constraint.schema.name)
+        end
+
+      elseif behavior == "cascade" then
+
+        local strategy = _M.new(self.connector, constraint.schema, self.errors)
+        local method = "page_for_" .. constraint.field_name
+
+        local pager = function(size, offset)
+          return strategy[method](strategy, primary_key, size, offset)
+        end
+        for row, err in iteration.by_row(self, pager) do
+          if err then
+            return nil, self.errors:database_error("could not gather " ..
+                                                   "associated entities " ..
+                                                   "for delete cascade: ", err)
+          end
+
+          local row_pk = constraint.schema:extract_pk_values(row)
+          local _
+          _, err = strategy:delete(row_pk)
+          if err then
+            return nil, self.errors:database_error("could not cascade " ..
+                                                   "delete entity: ", err)
+          end
+        end
       end
     end
 

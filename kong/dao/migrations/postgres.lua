@@ -824,5 +824,74 @@ return {
       ALTER TABLE upstreams DROP hash_on_cookie;
       ALTER TABLE upstreams DROP hash_on_cookie_path;
     ]]
-  }
+  },
+  {
+    name = "2018-08-06-000001_make_ids_primary_keys_in_plugins",
+    up = [[
+      ALTER TABLE plugins
+        DROP CONSTRAINT IF EXISTS plugins_pkey;
+
+      DO $$
+      BEGIN
+        ALTER TABLE plugins
+          ADD PRIMARY KEY (id);
+      EXCEPTION WHEN duplicate_table THEN
+        -- Do nothing, accept existing state
+      END$$;
+    ]],
+    down = nil
+  },
+  {
+    name = "2018-08-21-000001_plugins_add_cache_key_column",
+    up = [[
+      DO $$
+      BEGIN
+        ALTER TABLE plugins ADD COLUMN cache_key text UNIQUE;
+      EXCEPTION WHEN duplicate_column THEN
+          -- Do nothing, accept existing state
+      END$$;
+
+      DO $$
+      BEGIN
+        IF (SELECT to_regclass('plugins_cache_key_idx')) IS NULL THEN
+          CREATE INDEX plugins_cache_key_idx ON plugins(cache_key);
+        END IF;
+      END$$;
+    ]],
+    down = nil,
+  },
+  {
+    name = "2018-08-28-000000_fill_in_plugins_cache_key",
+    up = function(_, _, dao)
+      local rows, err = dao.db:query([[
+        SELECT * FROM plugins;
+      ]])
+      if err then
+        return err
+      end
+      local sql_buffer = { "BEGIN;" }
+      local len = #rows
+      for i = 1, len do
+        local row = rows[i]
+        local cache_key = table.concat({
+          "plugins",
+          row.name,
+          row.route_id or "",
+          row.service_id or "",
+          row.consumer_id or "",
+          row.api_id or ""
+        }, ":")
+        sql_buffer[i + 1] = fmt("UPDATE plugins SET cache_key = '%s' WHERE id = '%s';",
+                                cache_key,
+                                row.id)
+      end
+      sql_buffer[len + 2] = "COMMIT;"
+
+      local _, err = dao.db:query(table.concat(sql_buffer))
+      if err then
+        return err
+      end
+    end,
+    down = nil
+  },
 }

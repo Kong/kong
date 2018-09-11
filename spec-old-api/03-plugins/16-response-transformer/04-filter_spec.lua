@@ -4,7 +4,7 @@ describe("Plugin: response-transformer (filter)", function()
   local client
 
   setup(function()
-    local dao = select(3, helpers.get_db_utils())
+    local _, db, dao = helpers.get_db_utils()
 
     local api1 = assert(dao.apis:insert {
       name         = "tests-response-transformer",
@@ -17,8 +17,8 @@ describe("Plugin: response-transformer (filter)", function()
       upstream_url = helpers.mock_upstream_url,
     })
 
-    assert(dao.plugins:insert {
-      api_id = api1.id,
+    assert(db.plugins:insert {
+      api = { id = api1.id },
       name = "response-transformer",
       config = {
         remove = {
@@ -27,8 +27,8 @@ describe("Plugin: response-transformer (filter)", function()
         }
       }
     })
-    assert(dao.plugins:insert {
-      api_id = api2.id,
+    assert(db.plugins:insert {
+      api = { id = api2.id },
       name = "response-transformer",
       config = {
         replace = {

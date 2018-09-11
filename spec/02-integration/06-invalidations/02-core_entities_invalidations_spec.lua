@@ -20,12 +20,18 @@ for _, strategy in helpers.each_strategy() do
     local service_fixture
 
     setup(function()
-      local bp = helpers.get_db_utils(strategy)
+      local bp = helpers.get_db_utils(strategy, {
+        "apis",
+        "routes",
+        "services",
+        "plugins",
+        "certificates",
+      })
 
       -- insert single fixture Service
       service_fixture = bp.services:insert()
 
-      local db_update_propagation = strategy == "cassandra" and 3 or 0
+      local db_update_propagation = strategy == "cassandra" and 0.1 or 0
 
       assert(helpers.start_kong {
         log_level             = "debug",
@@ -54,13 +60,13 @@ for _, strategy in helpers.each_strategy() do
       proxy_client_2 = helpers.http_client("127.0.0.1", 9000)
 
       wait_for_propagation = function()
-        ngx.sleep(POLL_INTERVAL + db_update_propagation)
+        ngx.sleep(POLL_INTERVAL * 2 + db_update_propagation * 2)
       end
     end)
 
     teardown(function()
-      helpers.stop_kong("servroot1")
-      helpers.stop_kong("servroot2")
+      helpers.stop_kong("servroot1", true)
+      helpers.stop_kong("servroot2", true)
     end)
 
     before_each(function()
@@ -636,8 +642,8 @@ for _, strategy in helpers.each_strategy() do
           method = "POST",
           path   = "/plugins",
           body   = {
-            name       = "dummy",
-            service_id = service_fixture.id,
+            name    = "dummy",
+            service = { id = service_fixture.id },
           },
           headers = {
             ["Content-Type"] = "application/json",
@@ -649,7 +655,6 @@ for _, strategy in helpers.each_strategy() do
 
         -- no need to wait for workers propagation (lua-resty-worker-events)
         -- because our test instance only has 1 worker
-
         local res_1 = assert(proxy_client_1:send {
           method  = "GET",
           path    = "/status/200",
@@ -678,7 +683,9 @@ for _, strategy in helpers.each_strategy() do
           method = "PATCH",
           path   = "/plugins/" .. service_plugin_id,
           body   = {
-            ["config.resp_header_value"] = "2",
+            config = {
+              resp_header_value = "2",
+            },
           },
           headers = {
             ["Content-Type"] = "application/json",
@@ -786,7 +793,7 @@ for _, strategy in helpers.each_strategy() do
         })
         local body = assert.res_status(201, admin_res_plugin)
         local plugin = cjson.decode(body)
-        global_dummy_plugin_id = plugin.id
+        global_dummy_plugin_id = assert(plugin.id)
 
         -- no need to wait for workers propagation (lua-resty-worker-events)
         -- because our test instance only has 1 worker

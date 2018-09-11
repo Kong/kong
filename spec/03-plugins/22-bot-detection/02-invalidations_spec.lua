@@ -14,7 +14,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       plugin = bp.plugins:insert {
-        route_id = route.id,
+        route = { id = route.id },
         name     = "bot-detection",
         config   = {},
       }
@@ -60,7 +60,7 @@ for _, strategy in helpers.each_strategy() do
         method  = "PATCH",
         path    = "/plugins/" .. plugin.id,
         body    = {
-          ["config.blacklist"] = "helloworld"
+          config = { blacklist = { "helloworld" } },
         },
         headers = {
           ["content-type"]     = "application/json"
@@ -99,7 +99,7 @@ for _, strategy in helpers.each_strategy() do
         method  = "PATCH",
         path    = "/plugins/" .. plugin.id,
         body    = {
-          ["config.whitelist"] = "facebookexternalhit/1.1"
+          config = { whitelist = { "facebookexternalhit/1.1" } },
         },
         headers = {
           ["content-type"] = "application/json",

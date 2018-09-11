@@ -17,7 +17,7 @@ for _, strategy in helpers.each_strategy() do
       assert(db:truncate("routes"))
       assert(db:truncate("services"))
       assert(db:truncate("consumers"))
-      dao:truncate_table("plugins")
+      db:truncate("plugins")
       dao:truncate_table("hmacauth_credentials")
 
       local route = bp.routes:insert {
@@ -26,7 +26,7 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name     = "basic-auth",
-        route_id = route.id,
+        route = { id = route.id },
       }
 
       local consumer = bp.consumers:insert {

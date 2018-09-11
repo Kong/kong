@@ -19,7 +19,7 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name     = "request-size-limiting",
-        route_id = route.id,
+        route = { id = route.id },
         config   = {
           allowed_payload_size = TEST_SIZE
         }

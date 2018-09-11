@@ -151,6 +151,19 @@ return {
       type     = "array",
       default  = default_metrics,
       func     = check_schema,
+      new_type = {
+        type = "array",
+        elements = {
+          type = "record",
+          fields = {
+            { name = { type = "string", required = true } },
+            { stat_type = { type = "string", required = true } },
+            { sample_rate = { type = "number" } },
+            { consumer_identifier = { type = "string" } },
+          }
+        },
+        default = default_metrics,
+      }
     },
     prefix =
     {

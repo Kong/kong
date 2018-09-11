@@ -24,8 +24,8 @@ describe("#flaky Plugin: syslog (log)", function()
       upstream_url = helpers.mock_upstream_url,
     })
 
-    assert(helpers.dao.plugins:insert {
-      api_id = api1.id,
+    assert(helpers.db.plugins:insert {
+      api = { id = api1.id },
       name   = "syslog",
       config = {
         log_level              = "info",
@@ -34,8 +34,8 @@ describe("#flaky Plugin: syslog (log)", function()
         server_errors_severity = "warning",
       },
     })
-    assert(helpers.dao.plugins:insert {
-      api_id = api2.id,
+    assert(helpers.db.plugins:insert {
+      api = { id = api2.id },
       name   = "syslog",
       config = {
         log_level              = "err",
@@ -44,8 +44,8 @@ describe("#flaky Plugin: syslog (log)", function()
         server_errors_severity = "warning",
       },
     })
-    assert(helpers.dao.plugins:insert {
-      api_id = api3.id,
+    assert(helpers.db.plugins:insert {
+      api = { id = api3.id },
       name   = "syslog",
       config = {
         log_level              = "warning",

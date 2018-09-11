@@ -17,7 +17,7 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name     = "key-auth",
-        route_id = route.id,
+        route = { id = route.id },
       }
 
       local consumer = bp.consumers:insert {

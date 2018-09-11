@@ -26,6 +26,7 @@ local CORE_ENTITIES = {
   "upstreams",
   "targets",
   "apis",
+  "plugins",
 }
 
 

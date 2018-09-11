@@ -146,10 +146,19 @@ local function truncate_tables(db, dao, tables)
   end
 end
 
-local function get_db_utils(strategy, tables)
+local function get_db_utils(strategy, tables, plugins)
   strategy = strategy or conf.database
   if tables ~= nil and type(tables) ~= "table" then
     error("arg #2 must be a list of tables to truncate", 2)
+  end
+  if plugins ~= nil and type(plugins) ~= "table" then
+    error("arg #3 must be a list of plugins to enable", 2)
+  end
+
+  if plugins then
+    for _, plugin in ipairs(plugins) do
+      conf.loaded_plugins[plugin] = true
+    end
   end
 
   -- new DAO (DB module)
@@ -168,6 +177,9 @@ local function get_db_utils(strategy, tables)
     assert(dao:run_migrations())
   end
 
+  db:truncate("plugins")
+  assert(db.plugins:load_plugin_schemas(conf.loaded_plugins))
+
   -- cleanup new DB tables
   if not tables then
     assert(db:truncate())
@@ -181,6 +193,12 @@ local function get_db_utils(strategy, tables)
 
   -- blueprints
   local bp = assert(Blueprints.new(dao, db))
+
+  if plugins then
+    for _, plugin in ipairs(plugins) do
+      conf.loaded_plugins[plugin] = false
+    end
+  end
 
   return bp, db, dao
 end

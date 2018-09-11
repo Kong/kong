@@ -26,6 +26,15 @@ return {
   fields = {
     http_method = {type = "string", func = check_method},
     remove = {
+      new_type = {
+        type = "record",
+        fields = {
+          { body = { type = "array", elements = { type = "string" }, default = {} } },
+          { headers = { type = "array", elements = { type = "string" }, default = {} } },
+          { querystring = { type = "array", elements = { type = "string" }, default = {} } },
+        },
+        nullable = false,
+      },
       type = "table",
       schema = {
         fields = {
@@ -36,6 +45,15 @@ return {
       }
     },
     rename = {
+      new_type = {
+        type = "record",
+        fields = {
+          { body = { type = "array", elements = { type = "string", match = "^[^:]+:.*$" }, default = {} } },
+          { headers = { type = "array", elements = { type = "string", match = "^[^:]+:.*$" }, default = {} } },
+          { querystring = { type = "array", elements = { type = "string", match = "^[^:]+:.*$" }, default = {} } },
+        },
+        nullable = false,
+      },
       type = "table",
       schema = {
         fields = {
@@ -46,6 +64,15 @@ return {
       }
     },
     replace = {
+      new_type = {
+        type = "record",
+        fields = {
+          { body = { type = "array", elements = { type = "string", match = "^[^:]+:.*$" }, default = {} } },
+          { headers = { type = "array", elements = { type = "string", match = "^[^:]+:.*$" }, default = {} } },
+          { querystring = { type = "array", elements = { type = "string", match = "^[^:]+:.*$" }, default = {} } },
+        },
+        nullable = false,
+      },
       type = "table",
       schema = {
         fields = {
@@ -56,6 +83,15 @@ return {
       }
     },
     add = {
+      new_type = {
+        type = "record",
+        fields = {
+          { body = { type = "array", elements = { type = "string", match = "^[^:]+:.*$" }, default = {} } },
+          { headers = { type = "array", elements = { type = "string", match = "^[^:]+:.*$" }, default = {} } },
+          { querystring = { type = "array", elements = { type = "string", match = "^[^:]+:.*$" }, default = {} } },
+        },
+        nullable = false,
+      },
       type = "table",
       schema = {
         fields = {
@@ -66,6 +102,15 @@ return {
       }
     },
     append = {
+      new_type = {
+        type = "record",
+        fields = {
+          { body = { type = "array", elements = { type = "string", match = "^[^:]+:.*$" }, default = {} } },
+          { headers = { type = "array", elements = { type = "string", match = "^[^:]+:.*$" }, default = {} } },
+          { querystring = { type = "array", elements = { type = "string", match = "^[^:]+:.*$" }, default = {} } },
+        },
+        nullable = false,
+      },
       type = "table",
       schema = {
         fields = {

@@ -18,7 +18,7 @@ for _, strategy in helpers.each_strategy() do
       assert(db:truncate("routes"))
       assert(db:truncate("services"))
       assert(db:truncate("consumers"))
-      dao:truncate_table("plugins")
+      db:truncate("plugins")
       dao:truncate_table("oauth2_tokens")
       dao:truncate_table("oauth2_credentials")
       dao:truncate_table("oauth2_authorization_codes")
@@ -33,7 +33,7 @@ for _, strategy in helpers.each_strategy() do
 
       assert(dao.plugins:insert {
         name     = "oauth2",
-        route_id = route.id,
+        route = { id = route.id },
         config   = {
           scopes                    = { "email", "profile" },
           enable_authorization_code = true,

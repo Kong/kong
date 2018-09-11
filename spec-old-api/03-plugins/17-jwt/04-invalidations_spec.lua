@@ -6,10 +6,10 @@ describe("Plugin: jwt (invalidations)", function()
   local admin_client, proxy_client, consumer1, api1
   local dao
   local bp
-  local _
+  local db
 
   before_each(function()
-    bp, _, dao = helpers.get_db_utils()
+    bp, db, dao = helpers.get_db_utils()
 
     api1 = assert(dao.apis:insert {
       name         = "api-1",
@@ -20,10 +20,10 @@ describe("Plugin: jwt (invalidations)", function()
       username = "consumer1",
     }
 
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name   = "jwt",
       config = {},
-      api_id = api1.id,
+      api = { id = api1.id },
     })
     assert(dao.jwt_secrets:insert {
       key         = "key123",

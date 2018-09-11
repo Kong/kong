@@ -288,7 +288,7 @@ for _, strategy in helpers.each_strategy() do
           path    = "/plugins",
           body    = {
             name  = "key-auth",
-            route_id   = route1.id,
+            route = { id = route1.id },
             config     = {
               key_names = {key_name},
             },
@@ -301,7 +301,7 @@ for _, strategy in helpers.each_strategy() do
         local body = assert.response(res).has.jsonbody()
         assert.equal("'hello\\world' is illegal: bad header name " ..
                      "'hello\\world', allowed characters are A-Z, a-z, 0-9," ..
-                     " '_', and '-'", body["config.key_names"])
+                     " '_', and '-'", body.fields.config.key_names)
       end)
       it("succeeds with valid key_names", function()
         local key_name = "hello-world"
@@ -309,7 +309,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "POST",
           path    = "/plugins",
           body    = {
-            route_id   = route2.id,
+            route = { id = route2.id },
             name       = "key-auth",
             config     = {
               key_names = {key_name},

@@ -25,7 +25,7 @@ local function setup_db()
 
   bp.plugins:insert {
     name = "dummy",
-    route_id = route2.id,
+    route = { id = route2.id },
     config = {
       resp_code = 500,
     }
@@ -39,7 +39,7 @@ local function setup_db()
 
   bp.plugins:insert {
     name = "key-auth",
-    route_id = route3.id,
+    route = { id = route3.id },
   }
 end
 

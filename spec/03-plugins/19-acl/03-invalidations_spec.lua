@@ -51,12 +51,12 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name     = "key-auth",
-        route_id = route1.id
+        route = { id = route1.id }
       }
 
       bp.plugins:insert {
         name     = "acl",
-        route_id = route1.id,
+        route = { id = route1.id },
         config   = {
           whitelist = {"admin"}
         }
@@ -68,12 +68,12 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name     = "key-auth",
-        route_id = route2.id
+        route = { id = route2.id }
       }
 
       bp.plugins:insert {
         name     = "acl",
-        route_id = route2.id,
+        route = { id = route2.id },
         config   = {
           whitelist = { "ya" }
         }

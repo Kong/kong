@@ -10,7 +10,7 @@ for _, strategy in helpers.each_strategy() do
       local cluster_policy = policies.cluster
 
       local identifier = uuid()
-      local conf       = { route_id = uuid(), service_id = uuid() }
+      local conf       = { route = { id = uuid() }, service = { id = uuid() } }
 
       local db
       local dao

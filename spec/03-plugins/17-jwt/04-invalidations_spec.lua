@@ -26,7 +26,7 @@ for _, strategy in helpers.each_strategy() do
       bp.plugins:insert {
         name     = "jwt",
         config   = {},
-        route_id = route.id,
+        route = { id = route.id },
       }
 
       bp.jwt_secrets:insert {

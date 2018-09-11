@@ -193,6 +193,20 @@ return {
       type     = "array",
       default  = default_metrics,
       func     = check_schema,
+      new_type = {
+        type = "array",
+        default  = default_metrics,
+        elements = {
+          type = "record",
+          fields = {
+            { name = { type = "string", required = true } },
+            { stat_type = { type = "string", required = true } },
+            { tags = { type = "array", elements = { type = "string", match = "^.*[^:]$" } } },
+            { sample_rate = { type = "number" } },
+            { consumer_identifier = { type = "string" } },
+          }
+        }
+      }
     },
     prefix = {
       type     = "string",

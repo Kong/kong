@@ -214,25 +214,25 @@ for _, strategy in helpers.each_strategy() do
       }))
 
       bp.oauth2_plugins:insert({
-        route_id = route1.id,
+        route = { id = route1.id },
         config   = { scopes = { "email", "profile", "user.email" } },
       })
 
       bp.oauth2_plugins:insert({
-        route_id = route2.id
+        route = { id = route2.id }
       })
 
       bp.oauth2_plugins:insert({
-        route_id = route2bis.id
+        route = { id = route2bis.id }
       })
 
       bp.oauth2_plugins:insert({
-        route_id = route3.id,
+        route = { id = route3.id },
         config   = { hide_credentials = true },
       })
 
       bp.oauth2_plugins:insert({
-        route_id = route4.id,
+        route = { id = route4.id },
         config   = {
           enable_client_credentials = true,
           enable_authorization_code = false,
@@ -240,7 +240,7 @@ for _, strategy in helpers.each_strategy() do
       })
 
       bp.oauth2_plugins:insert({
-        route_id = route5.id,
+        route = { id = route5.id },
         config   = {
           enable_password_grant     = true,
           enable_authorization_code = false,
@@ -248,7 +248,7 @@ for _, strategy in helpers.each_strategy() do
       })
 
       bp.oauth2_plugins:insert({
-        route_id = route6.id,
+        route = { id = route6.id },
         config   = {
           scopes                            = { "email", "profile", "user.email" },
           provision_key                     = "provision123",
@@ -257,7 +257,7 @@ for _, strategy in helpers.each_strategy() do
       })
 
       bp.oauth2_plugins:insert({
-        route_id = route7.id,
+        route = { id = route7.id },
         config   = {
           scopes    = { "email", "profile", "user.email" },
           anonymous = anonymous_user.id,
@@ -265,7 +265,7 @@ for _, strategy in helpers.each_strategy() do
       })
 
       bp.oauth2_plugins:insert({
-        route_id = route8.id,
+        route = { id = route8.id },
         config   = {
           scopes             = { "email", "profile", "user.email" },
           global_credentials = true,
@@ -274,7 +274,7 @@ for _, strategy in helpers.each_strategy() do
 
 
       bp.oauth2_plugins:insert({
-        route_id = route9.id,
+        route = { id = route9.id },
         config   = {
           scopes             = { "email", "profile", "user.email" },
           global_credentials = true,
@@ -282,7 +282,7 @@ for _, strategy in helpers.each_strategy() do
       })
 
       bp.oauth2_plugins:insert({
-        route_id = route10.id,
+        route = { id = route10.id },
         config   = {
           scopes             = { "email", "profile", "user.email" },
           global_credentials = true,
@@ -291,7 +291,7 @@ for _, strategy in helpers.each_strategy() do
       })
 
       bp.oauth2_plugins:insert({
-        route_id = route11.id,
+        route = { id = route11.id },
         config   = {
           scopes             = { "email", "profile", "user.email" },
           global_credentials = true,
@@ -301,7 +301,7 @@ for _, strategy in helpers.each_strategy() do
       })
 
       bp.oauth2_plugins:insert({
-        route_id = route12.id,
+        route = { id = route12.id },
         config   = {
           scopes             = { "email", "profile", "user.email" },
           global_credentials = true,
@@ -2356,13 +2356,13 @@ for _, strategy in helpers.each_strategy() do
       }))
 
       bp.oauth2_plugins:insert({
-        route_id = route1.id,
+        route = { id = route1.id },
         config   = { scopes = { "email", "profile", "user.email" } },
       })
 
       assert(dao.plugins:insert {
         name     = "key-auth",
-        route_id = route1.id,
+        route = { id = route1.id },
       })
 
       anonymous = bp.consumers:insert {
@@ -2388,7 +2388,7 @@ for _, strategy in helpers.each_strategy() do
       }))
 
       bp.oauth2_plugins:insert({
-        route_id = route2.id,
+        route = { id = route2.id },
         config   = {
           scopes    = { "email", "profile", "user.email" },
           anonymous = anonymous.id,
@@ -2397,7 +2397,7 @@ for _, strategy in helpers.each_strategy() do
 
       assert(dao.plugins:insert {
         name     = "key-auth",
-        route_id = route2.id,
+        route = { id = route2.id },
         config   = {
           anonymous = anonymous.id,
         },
@@ -2577,7 +2577,7 @@ for _, strategy in helpers.each_strategy() do
 
       assert(dao.plugins:insert {
         name = "oauth2",
-        route_id = route11.id,
+        route = { id = route11.id },
         config = {
           enable_authorization_code = true,
           mandatory_scope = false,
@@ -2596,7 +2596,7 @@ for _, strategy in helpers.each_strategy() do
 
       assert(dao.plugins:insert {
         name = "oauth2",
-        route_id = route12.id,
+        route = { id = route12.id },
         config = {
           enable_authorization_code = true,
           mandatory_scope = false,

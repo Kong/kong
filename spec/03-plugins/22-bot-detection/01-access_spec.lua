@@ -10,7 +10,11 @@ for _, strategy in helpers.each_strategy() do
     local proxy_client
 
     setup(function()
-      local bp = helpers.get_db_utils(strategy)
+      local bp = helpers.get_db_utils(strategy, {
+        "plugins",
+        "routes",
+        "services",
+      })
 
       local route1 = bp.routes:insert {
         hosts = { "bot.com" },
@@ -25,24 +29,24 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.plugins:insert {
-        route_id = route1.id,
+        route = { id = route1.id },
         name     = "bot-detection",
         config   = {},
       }
 
       bp.plugins:insert {
-        route_id = route2.id,
+        route = { id = route2.id },
         name     = "bot-detection",
         config   = {
-          blacklist = HELLOWORLD,
+          blacklist = { HELLOWORLD },
         },
       }
 
       bp.plugins:insert {
-        route_id = route3.id,
+        route = { id = route3.id },
         name     = "bot-detection",
         config   = {
-          whitelist = FACEBOOK,
+          whitelist = { FACEBOOK },
         },
       }
 
@@ -157,14 +161,18 @@ for _, strategy in helpers.each_strategy() do
     local proxy_client
 
     setup(function()
-      local bp = helpers.get_db_utils(strategy)
+      local bp = helpers.get_db_utils(strategy, {
+        "plugins",
+        "routes",
+        "services",
+      })
 
       bp.routes:insert {
         hosts = { "bot.com" },
       }
 
       bp.plugins:insert {
-        route_id = nil,  -- apply globally
+        route = nil,  -- apply globally
         name     = "bot-detection",
         config   = {},
       }

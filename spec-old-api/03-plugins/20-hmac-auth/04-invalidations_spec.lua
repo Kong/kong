@@ -7,19 +7,19 @@ describe("Plugin: hmac-auth (invalidations)", function()
   local client_proxy, client_admin, consumer, credential
   local dao
   local bp
-  local _
+  local db
 
   setup(function()
-    bp, _, dao = helpers.get_db_utils()
+    bp, db, dao = helpers.get_db_utils()
 
     local api = assert(dao.apis:insert {
       name         = "api-1",
       hosts        = { "hmacauth.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name   = "hmac-auth",
-      api_id = api.id,
+      api = { id = api.id },
       config = {
         clock_skew = 3000,
       },

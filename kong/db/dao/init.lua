@@ -1,4 +1,5 @@
-local cjson     = require "cjson"
+local cjson = require "cjson"
+local iteration = require "kong.db.iteration"
 
 
 local setmetatable = setmetatable
@@ -150,85 +151,6 @@ local function validate_options_value(options, schema, context)
 end
 
 
-local function iteration_failed(err, err_t)
-  local failed = false
-  return function()
-    if failed then
-      return nil
-    end
-    failed = true
-    return false, err, err_t
-  end
-end
-
-
-local function page_iterator(pager, size, options)
-  local page = 1
-  local i, rows, err, offset = 0, pager(size, nil, options)
-
-  return function()
-    if not rows then
-      return nil, err
-    end
-
-    i = i + 1
-
-    local row = rows[i]
-    if row then
-      return row, nil, page
-    end
-
-    if i > size and offset then
-      i, rows, err, offset = 1, pager(size, offset, options)
-      if not rows then
-        return nil, err
-      end
-
-      page = page + 1
-
-      return rows[i], nil, page
-    end
-
-    return nil
-  end
-end
-
-
-local function row_iterator(self, pager, size, options)
-  local next_row = page_iterator(pager, size, options)
-
-  local failed = false -- avoid infinite loop if error is not caught
-  return function()
-    local err_t
-    if failed then
-      return nil
-    end
-    local row, err, page = next_row()
-    if not row then
-      if err then
-        failed = true
-        if type(err) == "table" then
-          return false, tostring(err), err
-        end
-
-        err_t = self.errors:database_error(err)
-        return false, tostring(err_t), err_t
-      end
-
-      return nil
-    end
-
-    row, err, err_t = self:row_to_entity(row)
-    if not row then
-      failed = true
-      return false, err, err_t
-    end
-
-    return row, nil, page
-  end
-end
-
-
 local function check_update(self, key, entity, options, name)
   local entity_to_update, err, read_before_write =
     self.schema:process_auto_fields(entity, "update")
@@ -270,6 +192,40 @@ local function check_update(self, key, entity, options, name)
   end
 
   return entity_to_update
+end
+
+
+local function find_cascade_delete_entities(self, entity)
+  local constraints = self.schema:get_constraints()
+  local entries = {}
+  local pk = self.schema:extract_pk_values(entity)
+  for _, constraint in ipairs(constraints) do
+    if constraint.on_delete ~= "cascade" then
+      goto continue
+    end
+
+    local dao = self.db.daos[constraint.schema.name]
+    local method = "each_for_" .. constraint.field_name
+    for row, err in dao[method](dao, pk) do
+      if not row then
+        log(ERR, "[db] failed to traverse entities for cascade-delete: ", err)
+        break
+      end
+
+      table.insert(entries, { dao = dao, entity = row })
+    end
+
+    ::continue::
+  end
+
+  return entries
+end
+
+
+local function propagate_cascade_delete_events(entries)
+  for _, entry in ipairs(entries) do
+    entry.dao:post_crud_event("delete", entry.entity)
+  end
 end
 
 
@@ -351,7 +307,7 @@ local function generate_foreign_key_methods(schema)
           local ok, err = validate_size_value(size)
           if not ok then
             local err_t = self.errors:invalid_size(err)
-            return iteration_failed(tostring(err_t), err_t)
+            return iteration.failed(tostring(err_t), err_t)
           end
 
         else
@@ -361,7 +317,7 @@ local function generate_foreign_key_methods(schema)
         local ok, errors = self.schema:validate_primary_key(foreign_key)
         if not ok then
           local err_t = self.errors:invalid_primary_key(errors)
-          return iteration_failed(tostring(err_t), err_t)
+          return iteration.failed(tostring(err_t), err_t)
         end
 
         local strategy = self.strategy
@@ -369,7 +325,7 @@ local function generate_foreign_key_methods(schema)
         local pager = function(size, offset)
           return strategy[page_method_name](strategy, foreign_key, size, offset)
         end
-        return row_iterator(self, pager, size)
+        return iteration.by_row(self, pager, size)
       end
 
     elseif field.unique or schema.endpoint_key == name then
@@ -539,14 +495,16 @@ local function generate_foreign_key_methods(schema)
           return true
         end
 
-        local _
+        local cascade_entries = find_cascade_delete_entities(self, entity)
 
+        local _
         _, err_t = self.strategy:delete_by_field(name, unique_value, options)
         if err_t then
           return nil, tostring(err_t), err_t
         end
 
         self:post_crud_event("delete", entity)
+        propagate_cascade_delete_events(cascade_entries)
 
         return true
       end
@@ -701,7 +659,7 @@ function DAO:each(size, options)
   local pager = function(size, offset, options)
     return self.strategy:page(size, offset, options)
   end
-  return row_iterator(self, pager, size, options)
+  return iteration.by_row(self, pager, size, options)
 end
 
 
@@ -884,6 +842,8 @@ function DAO:delete(primary_key, options)
     end
   end
 
+  local cascade_entries = find_cascade_delete_entities(self, primary_key)
+
   local _
   _, err_t = self.strategy:delete(primary_key, options)
   if err_t then
@@ -891,6 +851,7 @@ function DAO:delete(primary_key, options)
   end
 
   self:post_crud_event("delete", entity)
+  propagate_cascade_delete_events(cascade_entries)
 
   return true
 end

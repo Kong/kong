@@ -113,9 +113,9 @@ describe("Plugin: oauth2 (access)", function()
       hosts        = { "oauth2.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name   = "oauth2",
-      api_id = api1.id,
+      api = { id = api1.id },
       config = {
         scopes                    = { "email", "profile", "user.email" },
         enable_authorization_code = true,
@@ -131,9 +131,9 @@ describe("Plugin: oauth2 (access)", function()
       hosts        = { "example-path.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name   = "oauth2",
-      api_id = api2.id,
+      api = { id = api2.id },
       config = {
         scopes                    = { "email", "profile" },
         enable_authorization_code = true,
@@ -149,9 +149,9 @@ describe("Plugin: oauth2 (access)", function()
       uris         = { "/somepath" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name   = "oauth2",
-      api_id = api2bis.id,
+      api = { id = api2bis.id },
       config = {
         scopes                    = { "email", "profile" },
         enable_authorization_code = true,
@@ -167,9 +167,9 @@ describe("Plugin: oauth2 (access)", function()
       hosts        = { "oauth2_3.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name   = "oauth2",
-      api_id = api3.id,
+      api = { id = api3.id },
       config = {
         scopes                    = { "email", "profile" },
         enable_authorization_code = true,
@@ -186,9 +186,9 @@ describe("Plugin: oauth2 (access)", function()
       hosts        = { "oauth2_4.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name   = "oauth2",
-      api_id = api4.id,
+      api = { id = api4.id },
       config = {
         scopes                    = { "email", "profile" },
         mandatory_scope           = true,
@@ -204,9 +204,9 @@ describe("Plugin: oauth2 (access)", function()
       hosts        = { "oauth2_5.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name   = "oauth2",
-      api_id = api5.id,
+      api = { id = api5.id },
       config = {
         scopes                    = { "email", "profile" },
         mandatory_scope           = true,
@@ -222,9 +222,9 @@ describe("Plugin: oauth2 (access)", function()
       hosts        = { "oauth2_6.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name   = "oauth2",
-      api_id = api6.id,
+      api = { id = api6.id },
       config = {
         scopes                            = { "email", "profile", "user.email" },
         enable_authorization_code         = true,
@@ -241,9 +241,9 @@ describe("Plugin: oauth2 (access)", function()
       hosts        = { "oauth2_7.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name   = "oauth2",
-      api_id = api7.id,
+      api = { id = api7.id },
       config = {
         scopes                    = { "email", "profile", "user.email" },
         enable_authorization_code = true,
@@ -261,9 +261,9 @@ describe("Plugin: oauth2 (access)", function()
       hosts        = { "oauth2_8.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name   = "oauth2",
-      api_id = api8.id,
+      api = { id = api8.id },
       config = {
         scopes                    = { "email", "profile", "user.email" },
         enable_authorization_code = true,
@@ -280,9 +280,9 @@ describe("Plugin: oauth2 (access)", function()
       hosts        = { "oauth2_9.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name   = "oauth2",
-      api_id = api9.id,
+      api = { id = api9.id },
       config = {
         scopes                    = { "email", "profile", "user.email" },
         enable_authorization_code = true,
@@ -299,9 +299,9 @@ describe("Plugin: oauth2 (access)", function()
       hosts        = { "oauth2_10.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name   = "oauth2",
-      api_id = api10.id,
+      api = { id = api10.id },
       config = {
         scopes                    = { "email", "profile", "user.email" },
         enable_authorization_code = true,
@@ -318,9 +318,9 @@ describe("Plugin: oauth2 (access)", function()
           hosts        = { "oauth2_11.com" },
           upstream_url = helpers.mock_upstream_url,
         })
-        assert(dao.plugins:insert {
+        assert(db.plugins:insert {
           name   = "oauth2",
-          api_id = api11.id,
+          api = { id = api11.id },
           config = {
             scopes                    = { "email", "profile", "user.email" },
             enable_authorization_code = true,
@@ -337,9 +337,9 @@ describe("Plugin: oauth2 (access)", function()
           hosts        = { "oauth2_12.com" },
           upstream_url = helpers.mock_upstream_url,
         })
-        assert(dao.plugins:insert {
+        assert(db.plugins:insert {
           name   = "oauth2",
-          api_id = api12.id,
+          api = { id = api12.id },
           config = {
             scopes                    = { "email", "profile", "user.email" },
             enable_authorization_code = true,
@@ -2346,19 +2346,19 @@ describe("Plugin: oauth2 (access)", function()
   local client, user1, user2, anonymous
   local dao
   local bp
-  local _
+  local db
 
   setup(function()
-    bp, _, dao = helpers.get_db_utils()
+    bp, db, dao = helpers.get_db_utils()
 
     local api1 = assert(dao.apis:insert {
       name         = "api-1",
       hosts        = { "logical-and.com" },
       upstream_url = helpers.mock_upstream_url .. "/request",
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name   = "oauth2",
-      api_id = api1.id,
+      api = { id = api1.id },
       config = {
         scopes                    = { "email", "profile", "user.email" },
         enable_authorization_code = true,
@@ -2369,9 +2369,9 @@ describe("Plugin: oauth2 (access)", function()
         global_credentials        = false,
       },
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name   = "key-auth",
-      api_id = api1.id,
+      api = { id = api1.id },
     })
 
     anonymous = bp.consumers:insert {
@@ -2389,9 +2389,9 @@ describe("Plugin: oauth2 (access)", function()
       hosts        = { "logical-or.com" },
       upstream_url = helpers.mock_upstream_url .. "/request",
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name   = "oauth2",
-      api_id = api2.id,
+      api = { id = api2.id },
       config = {
         scopes                    = { "email", "profile", "user.email" },
         enable_authorization_code = true,
@@ -2403,9 +2403,9 @@ describe("Plugin: oauth2 (access)", function()
         anonymous                 = anonymous.id,
       },
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name   = "key-auth",
-      api_id = api2.id,
+      api = { id = api2.id },
       config = {
         anonymous = anonymous.id,
       },
@@ -2575,10 +2575,10 @@ for _, strategy in helpers.each_strategy() do
     local client
     local dao
     local bp
-    local _
+    local db
 
     setup(function()
-      bp, _, dao = helpers.get_db_utils(strategy)
+      bp, db, dao = helpers.get_db_utils(strategy)
 
       local api11 = assert(dao.apis:insert {
         name = "api-11",
@@ -2586,9 +2586,9 @@ for _, strategy in helpers.each_strategy() do
         upstream_url = "http://mockbin.com"
       })
 
-      assert(dao.plugins:insert {
+      assert(db.plugins:insert {
         name = "oauth2",
-        api_id = api11.id,
+        api = { id = api11.id },
         config = {
           enable_authorization_code = true,
           mandatory_scope = false,
@@ -2605,9 +2605,9 @@ for _, strategy in helpers.each_strategy() do
         upstream_url = "http://mockbin.com"
       })
 
-      assert(dao.plugins:insert {
+      assert(db.plugins:insert {
         name = "oauth2",
-        api_id = api12.id,
+        api = { id = api12.id },
         config = {
           enable_authorization_code = true,
           mandatory_scope = false,

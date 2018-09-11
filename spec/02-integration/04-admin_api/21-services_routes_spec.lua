@@ -11,7 +11,7 @@ local function it_content_types(title, fn)
   local test_form_encoded = fn("application/x-www-form-urlencoded")
   local test_json = fn("application/json")
   it(title .. " with application/json", test_json)
-  it(title .. " with application/www-form-urlencoded", test_form_encoded)
+  it(title .. " with application/x-www-form-urlencoded", test_form_encoded)
 end
 
 
@@ -23,20 +23,20 @@ for _, strategy in helpers.each_strategy() do
     local client
 
     setup(function()
-      bp, db, dao = helpers.get_db_utils(strategy)
-    end)
-
-    teardown(function()
-      helpers.stop_kong()
-    end)
-
-    before_each(function()
-      helpers.stop_kong()
-      assert(db:truncate("services"))
+      bp, db, dao = helpers.get_db_utils(strategy, {
+        "routes",
+        "services",
+      })
       assert(helpers.start_kong({
         database = strategy,
       }))
+    end)
 
+    teardown(function()
+      helpers.stop_kong(nil, true)
+    end)
+
+    before_each(function()
       client = assert(helpers.admin_client())
     end)
 
@@ -150,11 +150,10 @@ for _, strategy in helpers.each_strategy() do
 
       describe("GET", function()
         describe("with data", function()
-          before_each(function()
-            for i = 1, 10 do
-              assert(db.services:insert {
-                host = ("example%d.com"):format(i)
-              })
+          setup(function()
+            db:truncate("services")
+            for _ = 1, 10 do
+              assert(bp.named_services:insert())
             end
           end)
 
@@ -193,6 +192,9 @@ for _, strategy in helpers.each_strategy() do
         end)
 
         describe("with no data", function()
+          setup(function()
+            db:truncate("services")
+          end)
           it("data property is an empty array and not an empty hash", function()
             local res = client:get("/services")
             local body = assert.res_status(200, res)
@@ -223,14 +225,10 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       describe("/services/{service}", function()
-        local service
-
-        before_each(function()
-          service = bp.services:insert({ name = "my-service", protocol = "http", host="example.com", path="/path" })
-        end)
 
         describe("GET", function()
           it("retrieves by id", function()
+            local service = bp.services:insert()
             local res  = client:get("/services/" .. service.id)
             local body = assert.res_status(200, res)
 
@@ -239,6 +237,7 @@ for _, strategy in helpers.each_strategy() do
           end)
 
           it("retrieves by name", function()
+            local service = bp.named_services:insert()
             local res  = client:get("/services/" .. service.name)
             local body = assert.res_status(200, res)
 
@@ -257,6 +256,7 @@ for _, strategy in helpers.each_strategy() do
           end)
 
           it("ignores an invalid body", function()
+            local service = bp.services:insert()
             local res = client:get("/services/" .. service.id, {
               headers = {
                 ["Content-Type"] = "application/json"
@@ -267,6 +267,7 @@ for _, strategy in helpers.each_strategy() do
           end)
 
           it("ignores an invalid body by name", function()
+            local service = bp.named_services:insert()
             local res = client:get("/services/" .. service.name, {
               headers = {
                 ["Content-Type"] = "application/json"
@@ -280,6 +281,7 @@ for _, strategy in helpers.each_strategy() do
         describe("PATCH", function()
           it_content_types("updates if found", function(content_type)
             return function()
+              local service = bp.services:insert()
               local res = client:patch("/services/" .. service.id, {
                 headers = {
                   ["Content-Type"] = content_type
@@ -302,6 +304,7 @@ for _, strategy in helpers.each_strategy() do
 
           it_content_types("updates if found by name", function(content_type)
             return function()
+              local service = bp.named_services:insert()
               local res = client:patch("/services/" .. service.name, {
                 headers = {
                   ["Content-Type"] = content_type
@@ -316,7 +319,7 @@ for _, strategy in helpers.each_strategy() do
               assert.equal(service.id,   json.id)
               assert.equal(service.name, json.name)
 
-              local in_db = assert(db.services:select_by_name(service.name))
+              local in_db = assert(db.services:select_by_name(service.name, { nulls = true }))
               assert.same(json, in_db)
             end
           end)
@@ -325,6 +328,7 @@ for _, strategy in helpers.each_strategy() do
 
         describe("DELETE", function()
           it("deletes a service", function()
+            local service = bp.services:insert()
             local res  = client:delete("/services/" .. service.id)
             local body = assert.res_status(204, res)
             assert.equal("", body)
@@ -335,6 +339,7 @@ for _, strategy in helpers.each_strategy() do
           end)
 
           it("deletes a service by name", function()
+            local service = bp.named_services:insert()
             local res  = client:delete("/services/" .. service.name)
             local body = assert.res_status(204, res)
             assert.equal("", body)
@@ -391,26 +396,31 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       describe("/services/{service}/plugins", function()
-        local service
 
-        before_each(function()
-          service = bp.services:insert {
-            name     = "my-service",
-            protocol = "http",
-            host     = "my-service.com",
-          }
-        end)
+--local service = bp.named_services:insert()
+
+        local inputs = {
+          ["application/x-www-form-urlencoded"] = {
+            name = "key-auth",
+            ["config.key_names[1]"] = "apikey",
+            ["config.key_names[2]"] = "key",
+          },
+          ["application/json"] = {
+            name = "key-auth",
+            config = {
+              key_names = {"apikey", "key"}
+            },
+          },
+        }
 
         describe("POST", function()
           it_content_types("creates a plugin config for a Service", function(content_type)
             return function()
+              local service = bp.services:insert()
               local res = assert(client:send {
                 method = "POST",
                 path = "/services/" .. service.id .. "/plugins",
-                body = {
-                  name = "key-auth",
-                  ["config.key_names"] = "apikey,key"
-                },
+                body = inputs[content_type],
                 headers = { ["Content-Type"] = content_type }
               })
               local body = assert.res_status(201, res)
@@ -422,13 +432,11 @@ for _, strategy in helpers.each_strategy() do
 
           it_content_types("references a Service by name", function(content_type)
             return function()
+              local service = bp.named_services:insert()
               local res = assert(client:send {
                 method = "POST",
                 path = "/services/" .. service.name .. "/plugins",
-                body = {
-                  name = "key-auth",
-                  ["config.key_names"] = "apikey,key"
-                },
+                body = inputs[content_type],
                 headers = { ["Content-Type"] = content_type }
               })
               local body = assert.res_status(201, res)
@@ -441,6 +449,7 @@ for _, strategy in helpers.each_strategy() do
           describe("errors", function()
             it_content_types("handles invalid input", function(content_type)
               return function()
+                local service = bp.services:insert()
                 local res = assert(client:send {
                   method = "POST",
                   path = "/services/" .. service.id .. "/plugins",
@@ -449,12 +458,20 @@ for _, strategy in helpers.each_strategy() do
                 })
                 local body = assert.res_status(400, res)
                 local json = cjson.decode(body)
-                assert.same({ name = "name is required" }, json)
+                assert.same({
+                  code = Errors.codes.SCHEMA_VIOLATION,
+                  name = "schema violation",
+                  message = "schema violation (name: required field missing)",
+                  fields = {
+                    name = "required field missing",
+                  }
+                }, json)
               end
             end)
 
             it_content_types("returns 409 on conflict (same plugin name)", function(content_type)
               return function()
+                local service = bp.services:insert()
                 -- insert initial plugin
                 local res = assert(client:send {
                   method = "POST",
@@ -478,12 +495,30 @@ for _, strategy in helpers.each_strategy() do
                 })
                 assert.response(res).has.status(409)
                 local json = assert.response(res).has.jsonbody()
-                assert.same({ name = "already exists with value 'basic-auth'"}, json)
+                assert.same({
+                  code = Errors.codes.UNIQUE_VIOLATION,
+                  name = "unique constraint violation",
+                  fields = {
+                    api = ngx.null,
+                    consumer = ngx.null,
+                    name = "basic-auth",
+                    route = ngx.null,
+                    service = {
+                      id = service.id,
+                    }
+                  },
+                  message = [[UNIQUE violation detected on '{consumer=null,]] ..
+                            [[api=null,service={id="]] ..
+                            service.id ..
+                            [["},name="basic-auth",route=null}']],
+                }, json)
               end
             end)
 
-            it_content_types("returns 409 on id conflict (same plugin id)", function(content_type)
+            -- Cassandra doesn't fail on this because its insert is an upsert
+            pending("returns 409 on id conflict (same plugin id)", function(content_type)
               return function()
+                local service = bp.services:insert()
                 -- insert initial plugin
                 local res = assert(client:send {
                   method = "POST",
@@ -514,171 +549,12 @@ for _, strategy in helpers.each_strategy() do
           end)
         end)
 
-        describe("PUT", function()
-          it_content_types("creates if not exists", function(content_type)
-            return function()
-              local res = assert(client:send {
-                method = "PUT",
-                path = "/services/" .. service.id .. "/plugins",
-                body = {
-                  name = "key-auth",
-                  ["config.key_names"] = "apikey,key",
-                  created_at = 1461276890000
-                },
-                headers = { ["Content-Type"] = content_type }
-              })
-              local body = assert.res_status(201, res)
-              local json = cjson.decode(body)
-              assert.equal("key-auth", json.name)
-              assert.same({ "apikey", "key" }, json.config.key_names)
-            end
-          end)
-
-          it_content_types("replaces if exists", function(content_type)
-            return function()
-              local res = assert(client:send {
-                method = "PUT",
-                path = "/services/" .. service.id .. "/plugins",
-                body = {
-                  name = "key-auth",
-                  ["config.key_names"] = "apikey,key",
-                  created_at = 1461276890000
-                },
-                headers = { ["Content-Type"] = content_type }
-              })
-              local body = assert.res_status(201, res)
-              local json = cjson.decode(body)
-
-              res = assert(client:send {
-                method = "PUT",
-                path = "/services/" .. service.id .. "/plugins",
-                body = {
-                  id = json.id,
-                  name = "key-auth",
-                  ["config.key_names"] = "key",
-                  created_at = 1461276890000
-                },
-                headers = { ["Content-Type"] = content_type }
-              })
-              body = assert.res_status(200, res)
-              json = cjson.decode(body)
-              assert.equal("key-auth", json.name)
-              assert.same({ "key" }, json.config.key_names)
-            end
-          end)
-
-          it_content_types("perfers default values when replacing", function(content_type)
-            return function()
-              local plugin = assert(dao.plugins:insert {
-                name = "key-auth",
-                service_id = service.id,
-                config = { hide_credentials = true }
-              })
-              assert.True(plugin.config.hide_credentials)
-              assert.same({ "apikey" }, plugin.config.key_names)
-
-              local res = assert(client:send {
-                method = "PUT",
-                path = "/services/" .. service.id .. "/plugins",
-                body = {
-                  id = plugin.id,
-                  name = "key-auth",
-                  ["config.key_names"] = "apikey,key",
-                  created_at = 1461276890000
-                },
-                headers = { ["Content-Type"] = content_type }
-              })
-              local body = assert.res_status(200, res)
-              local json = cjson.decode(body)
-              assert.False(json.config.hide_credentials) -- not true anymore
-
-              plugin = assert(dao.plugins:find {
-                id = plugin.id,
-                name = plugin.name
-              })
-              assert.False(plugin.config.hide_credentials)
-              assert.same({ "apikey", "key" }, plugin.config.key_names)
-            end
-          end)
-
-          it_content_types("overrides a plugin previous config if partial", function(content_type)
-            return function()
-              local plugin = assert(dao.plugins:insert {
-                name = "key-auth",
-                service_id = service.id
-              })
-              assert.same({ "apikey" }, plugin.config.key_names)
-
-              local res = assert(client:send {
-                method = "PUT",
-                path = "/services/" .. service.id .. "/plugins",
-                body = {
-                  id = plugin.id,
-                  name = "key-auth",
-                  ["config.key_names"] = "apikey,key",
-                  created_at = 1461276890000
-                },
-                headers = { ["Content-Type"] = content_type }
-              })
-              local body = assert.res_status(200, res)
-              local json = cjson.decode(body)
-              assert.same({ "apikey", "key" }, json.config.key_names)
-            end
-          end)
-
-          it_content_types("updates the enabled property", function(content_type)
-            return function()
-              local plugin = assert(dao.plugins:insert {
-                name = "key-auth",
-                service_id = service.id
-              })
-              assert.True(plugin.enabled)
-
-              local res = assert(client:send {
-                method = "PUT",
-                path = "/services/" .. service.id .. "/plugins",
-                body = {
-                  id = plugin.id,
-                  name = "key-auth",
-                  enabled = false,
-                  created_at = 1461276890000
-                },
-                headers = { ["Content-Type"] = content_type }
-              })
-              local body = assert.res_status(200, res)
-              local json = cjson.decode(body)
-              assert.False(json.enabled)
-
-              plugin = assert(dao.plugins:find {
-                id = plugin.id,
-                name = plugin.name
-              })
-              assert.False(plugin.enabled)
-            end
-          end)
-
-          describe("errors", function()
-            it_content_types("handles invalid input", function(content_type)
-              return function()
-                local res = assert(client:send {
-                  method = "PUT",
-                  path = "/services/" .. service.id .. "/plugins",
-                  body = {},
-                  headers = { ["Content-Type"] = content_type }
-                })
-                local body = assert.res_status(400, res)
-                local json = cjson.decode(body)
-                assert.same({ name = "name is required" }, json)
-              end
-            end)
-          end)
-        end)
-
         describe("GET", function()
           it("retrieves the first page", function()
+            local service = bp.services:insert()
             assert(dao.plugins:insert {
               name = "key-auth",
-              service_id = service.id
+              service = { id = service.id },
             })
             local res = assert(client:send {
               method = "GET",
@@ -690,6 +566,7 @@ for _, strategy in helpers.each_strategy() do
           end)
 
           it("ignores an invalid body", function()
+            local service = bp.services:insert()
             local res = assert(client:send {
               method = "GET",
               path = "/services/" .. service.id .. "/plugins",
@@ -771,4 +648,3 @@ for _, strategy in helpers.each_strategy() do
     end)
   end)
 end
-

@@ -61,7 +61,7 @@ describe("OpenResty phases", function()
           upstream_url = helpers.mock_upstream_url,
         })
         assert(dao.plugins:insert {
-          api_id = api2.id,
+          api = { id = api2.id },
           name   = "rewriter",
           config = {
             value = "api-specific plugin",
@@ -107,7 +107,7 @@ describe("OpenResty phases", function()
           upstream_url = helpers.mock_upstream_url,
         })
         assert(dao.plugins:insert {
-          api_id = api3.id,
+          api = { id = api3.id },
           name   = "key-auth",
         })
         local consumer3 = bp.consumers:insert {
@@ -118,7 +118,7 @@ describe("OpenResty phases", function()
           consumer_id = consumer3.id,
         })
         assert(dao.plugins:insert {
-          consumer_id = consumer3.id,
+          consumer = { id = consumer3.id },
           name        = "rewriter",
           config      = {
             value = "consumer-specific plugin",

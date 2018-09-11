@@ -15,7 +15,11 @@ for _, strategy in helpers.each_strategy() do
     local db, bp, dao
 
     setup(function()
-      bp, db, dao = helpers.get_db_utils(strategy)
+      bp, db, dao = helpers.get_db_utils(strategy, {
+        "routes",
+        "services",
+        "basicauth_credentials",
+      })
     end)
 
     --[[
@@ -598,7 +602,7 @@ for _, strategy in helpers.each_strategy() do
           setup(function()
             assert(db:truncate("routes"))
 
-            for i = 1, 1002 do
+            for i = 1, 202 do
               bp.routes:insert({ hosts = { "example-" .. i .. ".com" } })
             end
           end)
@@ -1551,7 +1555,7 @@ for _, strategy in helpers.each_strategy() do
 
               service = bp.services:insert()
 
-              for i = 1, 1002 do
+              for i = 1, 202 do
                 bp.routes:insert {
                   hosts   = { "paginate-" .. i .. ".com" },
                   service = service,
