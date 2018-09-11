@@ -431,7 +431,7 @@ local function check_and_infer(conf)
 
   for i, v in ipairs(conf.origins) do
     local from_scheme, from_host_port, to_host_port =
-      v:match("^(https?)://([^=]+:[%d]+)=https?://([^/]+)$")
+      v:match("^(%a[%w+.-]*)://([^=]+:[%d]+)=%a[%w+.-]*://([^/]+)$")
 
     if not from_scheme then
       errors[#errors + 1] = "an origin must be of the form " ..
@@ -449,7 +449,7 @@ local function check_and_infer(conf)
 
       else
         -- Check for duplicates
-        local from_origin = from_scheme .. "://" .. from_authority
+        local from_origin = from_scheme:lower() .. "://" .. from_authority
 
         if seen_origins[from_origin] then
           errors[#errors + 1] = "duplicate origin (" .. from_origin .. ")"
