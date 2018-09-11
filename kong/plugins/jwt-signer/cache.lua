@@ -21,9 +21,44 @@ local encode_args = ngx.encode_args
 local tonumber    = tonumber
 local concat      = table.concat
 local base64      = codec.base64
+local ipairs      = ipairs
 local time        = ngx.time
 local find        = string.find
 local type        = type
+local null        = ngx.null
+
+
+local function init_worker()
+  if not singletons.worker_events or not singletons.worker_events.register then
+    return
+  end
+
+  singletons.worker_events.register(function(data)
+    log("consumer updated, invalidating cache")
+
+    local old_entity = data.old_entity
+    if old_entity then
+      if old_entity.custom_id and old_entity.custom_id ~= null and old_entity.custom_id ~= "" then
+        singletons.cache:invalidate(singletons.dao.consumers:cache_key("custom_id", old_entity.custom_id))
+      end
+
+      if old_entity.username and old_entity.username ~= null and old_entity.username ~= "" then
+        singletons.cache:invalidate(singletons.dao.consumers:cache_key("username", old_entity.username))
+      end
+    end
+
+    local entity = data.entity
+    if entity then
+      if entity.custom_id and entity.custom_id ~= null and entity.custom_id ~= "" then
+        singletons.cache:invalidate(singletons.dao.consumers:cache_key("custom_id", entity.custom_id))
+      end
+
+      if entity.username and entity.username ~= null and entity.username ~= "" then
+        singletons.cache:invalidate(singletons.dao.consumers:cache_key("username", entity.username))
+      end
+    end
+  end, "crud", "consumers")
+end
 
 
 local rediscover_keys
@@ -185,6 +220,65 @@ local function load_keys(name)
 end
 
 
+local function load_consumer_db(subject, by)
+  if not subject or subject == "" then
+    return nil, "unable to load consumer by a missing subject"
+  end
+
+  local row, err
+
+  if by == "id" then
+    log("loading consumer by id using ", subject)
+    row, err = singletons.dao.consumers:find { id = subject }
+    if type(row) == "table" then
+      return row
+    end
+
+  else
+    log("loading consumer by " .. by .. " using " .. subject)
+    row, err = singletons.dao.consumers:find_all { [by] = subject }
+    if type(row) == "table" and type(row[1]) == "table" then
+      return row[1]
+    end
+  end
+
+  if err then
+    log("failed to load consumer (", err, ")")
+
+  else
+    log("failed to load consumer")
+  end
+
+  return nil, err
+end
+
+
+local function load_consumer(subject, consumer_by)
+  consumer_by = consumer_by or {
+    "username",
+    "custom_id",
+  }
+
+  local err
+  for _, by in ipairs(consumer_by) do
+    local cache_key
+    if by == "id" then
+      cache_key = singletons.dao.consumers:cache_key(subject)
+    else
+      cache_key = singletons.dao.consumers:cache_key(by, subject)
+    end
+
+    local consumer
+    consumer, err = singletons.cache:get(cache_key, nil, load_consumer_db, subject, by)
+    if consumer then
+      return consumer
+    end
+  end
+
+  return nil, err
+end
+
+
 local function introspect_uri(endpoint, opaque_token, hint, authorization, args)
   local options = {
     token_introspection_endpoint = endpoint,
@@ -313,7 +407,9 @@ end
 
 
 return {
-  load_keys   = load_keys,
-  rotate_keys = rotate_keys,
-  introspect  = introspect,
+  init_worker   = init_worker,
+  load_keys     = load_keys,
+  load_consumer = load_consumer,
+  rotate_keys   = rotate_keys,
+  introspect    = introspect,
 }

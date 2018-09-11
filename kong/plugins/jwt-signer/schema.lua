@@ -56,6 +56,7 @@ end
 
 
 return {
+  no_consumer                                   = true,
   self_check                                    = self_check,
   fields                                        = {
     realm                                       = {
@@ -97,6 +98,23 @@ return {
         "scope"
       },
     },
+    access_token_consumer_claim                 = {
+      required                                  = false,
+      type                                      = "array",
+    },
+    access_token_consumer_by                    = {
+      required                                  = false,
+      type                                      = "array",
+      enum                                      = {
+        "id",
+        "username",
+        "custom_id",
+      },
+      default                                   = {
+        "username",
+        "custom_id",
+      },
+    },
     access_token_upstream_header                = {
       required                                  = false,
       type                                      = "string",
@@ -124,16 +142,11 @@ return {
       type                                      = "string",
       default                                   = "access_token",
     },
-    access_token_introspection_claim            = {
+    access_token_introspection_jwt_claim        = {
       required                                  = false,
-      type                                      = "string",
+      type                                      = "array",
     },
-    access_token_introspection_leeway           = {
-      required                                  = false,
-      type                                      = "number",
-      default                                   = 0,
-    },
-    access_token_introspection_scopes_required   = {
+    access_token_introspection_scopes_required  = {
       required                                  = false,
       type                                      = "array",
     },
@@ -143,6 +156,28 @@ return {
       default                                   = {
         "scope"
       },
+    },
+    access_token_introspection_consumer_claim   = {
+      required                                  = false,
+      type                                      = "array",
+    },
+    access_token_introspection_consumer_by      = {
+      required                                  = false,
+      type                                      = "array",
+      enum                                      = {
+        "id",
+        "username",
+        "custom_id",
+      },
+      default                                   = {
+        "username",
+        "custom_id",
+      },
+    },
+    access_token_introspection_leeway           = {
+      required                                  = false,
+      type                                      = "number",
+      default                                   = 0,
     },
     access_token_signing_algorithm              = {
       required                                  = true,
@@ -168,12 +203,12 @@ return {
       type                                      = "boolean",
       default                                   = true,
     },
-    verify_access_token_introspection_expiry    = {
+    verify_access_token_scopes                  = {
       required                                  = false,
       type                                      = "boolean",
       default                                   = true,
     },
-    verify_access_token_scopes                  = {
+    verify_access_token_introspection_expiry    = {
       required                                  = false,
       type                                      = "boolean",
       default                                   = true,
@@ -184,6 +219,11 @@ return {
       default                                   = true,
     },
     cache_access_token_introspection            = {
+      required                                  = false,
+      type                                      = "boolean",
+      default                                   = true,
+    },
+    trust_access_token_introspection            = {
       required                                  = false,
       type                                      = "boolean",
       default                                   = true,
@@ -222,6 +262,23 @@ return {
         "scope"
       },
     },
+    channel_token_consumer_claim                = {
+      required                                  = false,
+      type                                      = "array",
+    },
+    channel_token_consumer_by                   = {
+      required                                  = false,
+      type                                      = "array",
+      enum                                      = {
+        "id",
+        "username",
+        "custom_id",
+      },
+      default                                   = {
+        "username",
+        "custom_id",
+      },
+    },
     channel_token_upstream_header               = {
       required                                  = false,
       type                                      = "string",
@@ -235,10 +292,6 @@ return {
       required                                  = false,
       type                                      = "url",
     },
-    channel_token_introspection_hint            = {
-      required                                  = false,
-      type                                      = "string",
-    },
     channel_token_introspection_authorization   = {
       required                                  = false,
       type                                      = "string",
@@ -247,14 +300,13 @@ return {
       required                                  = false,
       type                                      = "string",
     },
-    channel_token_introspection_claim           = {
+    channel_token_introspection_hint            = {
+      required                                  = false,
+      type                                      = "string",
+    },
+    channel_token_introspection_jwt_claim       = {
       required                                  = false,
       type                                      = "array",
-    },
-    channel_token_introspection_leeway          = {
-      required                                  = false,
-      type                                      = "number",
-      default                                   = 0,
     },
     channel_token_introspection_scopes_required = {
       required                                  = false,
@@ -266,6 +318,28 @@ return {
       default                                   = {
         "scope"
       },
+    },
+    channel_token_introspection_consumer_claim  = {
+      required                                  = false,
+      type                                      = "array",
+    },
+    channel_token_introspection_consumer_by     = {
+      required                                  = false,
+      type                                      = "array",
+      enum                                      = {
+        "id",
+        "username",
+        "custom_id",
+      },
+      default                                   = {
+        "username",
+        "custom_id",
+      },
+    },
+    channel_token_introspection_leeway          = {
+      required                                  = false,
+      type                                      = "number",
+      default                                   = 0,
     },
     channel_token_signing_algorithm             = {
       required                                  = true,
@@ -307,6 +381,11 @@ return {
       default                                   = true,
     },
     cache_channel_token_introspection           = {
+      required                                  = false,
+      type                                      = "boolean",
+      default                                   = true,
+    },
+    trust_channel_token_introspection           = {
       required                                  = false,
       type                                      = "boolean",
       default                                   = true,

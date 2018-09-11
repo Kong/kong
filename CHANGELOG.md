@@ -1,9 +1,23 @@
 ## v0.0.8
 
 - Change the checking of tokens to be ordered: `access token`, `channel token`
-- Change the priority of the plugin from 850 to 999
+- Change the priority of the plugin from `850` to `999`
+- Change `no_consumer` from `false` to `true`
 - Add `config.access_token_optional`
 - Add `config.channel_token_optional`
+- Add `config.trust_channel_token_introspection`
+- Add `config.trust_channel_token_introspection`
+- Add `config.access_token_consumer_claim`
+- Add `config.channel_token_consumer_claim`
+- Add `config.access_token_consumer_by`
+- Add `config.channel_token_consumer_by`
+- Add `config.access_token_introspection_consumer_claim`
+- Add `config.channel_token_introspection_consumer_claim`
+- Add `config.access_token_introspection_consumer_by`
+- Add `config.channel_token_introspection_consumer_by`
+- Rename `config.access_token_introspection_claim` to `config.access_token_introspection_jwt_claim` 
+- Rename `config.channel_token_introspection_claim` to `config.channel_token_introspection_jwt_claim`
+
 
 ## v0.0.7
 

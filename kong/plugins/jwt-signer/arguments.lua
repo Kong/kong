@@ -39,34 +39,6 @@ local function create_get_conf_arg(conf)
 end
 
 
-local function create_get_conf_args(get_conf_arg)
-  return function(args_names, args_values)
-    args_names = get_conf_arg(args_names)
-    if not args_names then
-      return nil
-    end
-
-    args_values = get_conf_arg(args_values)
-    if not args_values then
-      return nil
-    end
-
-    local args
-    for i, name in ipairs(args_names) do
-      if name and name ~= "" then
-        if not args then
-          args = {}
-        end
-
-        args[name] = args_values[i]
-      end
-    end
-
-    return args
-  end
-end
-
-
 local function create_get_headers()
   local initialized = false
   local headers
@@ -199,13 +171,11 @@ end
 
 return function(conf)
   local conf_arg  = create_get_conf_arg(conf)
-  local conf_args = create_get_conf_args(conf_arg)
   local headers   = create_get_headers()
   local header    = create_get_header(headers)
 
   return {
     get_value     = get_value,
-    get_conf_args = conf_args,
     get_conf_arg  = conf_arg,
     get_headers   = headers,
     get_header    = header,
