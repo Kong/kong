@@ -635,7 +635,7 @@ local function load(opts)
     if body_data then
       local pargs, err = json_decode(body_data)
       if pargs then
-        args.post = pargs
+        args.post = decode(pargs, options.schema)
 
       elseif err then
         log(NOTICE, err)
