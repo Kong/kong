@@ -255,9 +255,9 @@ server {
     gzip on;
     gzip_types text/plain text/css application/json application/javascript;
 
-    location ~* \.(jpg|jpeg|png|gif|ico|css|ttf|js)$ {
+    location ~* \.(jpg|jpeg|png|gif|ico|css|ttf)$ {
         root portal;
-        
+
         expires 90d;
         add_header Cache-Control 'public';
         etag off;
