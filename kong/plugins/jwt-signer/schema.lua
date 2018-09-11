@@ -153,6 +153,11 @@ return {
       },
       default                                   = "RS256",
     },
+    access_token_optional                       = {
+      required                                  = false,
+      type                                      = "boolean",
+      default                                   = false,
+    },
     verify_access_token_signature               = {
       required                                  = false,
       type                                      = "boolean",
@@ -270,6 +275,11 @@ return {
         "RS512",
       },
       default                                   = "RS256",
+    },
+    channel_token_optional                      = {
+      required                                  = false,
+      type                                      = "boolean",
+      default                                   = false,
     },
     verify_channel_token_signature              = {
       required                                  = false,

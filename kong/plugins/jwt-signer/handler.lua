@@ -19,13 +19,20 @@ local var        = ngx.var
 local fmt        = string.format
 
 
+local TOKEN_TYPES = {
+  "access_token",
+  "channel_token",
+}
+
 local TOKEN_NAMES = {
   access_token  = "access token",
   channel_token = "channel token",
 }
 
 
-local TOKEN_TYPES = {}
+local TOKEN_COUNT = #TOKEN_TYPES
+
+
 local CONF = {}
 local LOGS = {}
 local ERRS = {}
@@ -34,8 +41,9 @@ local ERRS = {}
 do
   local pairs = pairs
 
-  for token_type, token_name in pairs(TOKEN_NAMES) do
-    TOKEN_TYPES[#TOKEN_TYPES + 1] = token_type
+  for i = 1, TOKEN_COUNT do
+    local token_type = TOKEN_TYPES[i]
+    local token_name = TOKEN_NAMES[token_type]
 
     CONF[token_type] = {}
     for key, value in pairs {
@@ -57,6 +65,7 @@ do
       introspection_scopes_required = "%s_introspection_scopes_required",
       introspection_scopes_claim    = "%s_introspection_scopes_claim",
       signing_algorithm             = "%s_signing_algorithm",
+      optional                      = "%s_optional",
       verify_signature              = "verify_%s_signature",
       verify_expiry                 = "verify_%s_expiry",
       verify_scopes                 = "verify_%s_scopes",
@@ -85,6 +94,7 @@ do
       format                        = "%s format not supported",
       payload                       = "%s payload is invalid",
       missing                       = "%s was not found",
+      no_header                     = "%s cannot be found because the name of the header was not specified",
       expiring                      = "%s expiry verification",
       expired                       = "%s is expired",
       expiry                        = "%s expiry is mandatory",
@@ -99,7 +109,8 @@ do
       introspection_scopes          = "%s introspection scopes verification",
       no_introspection_scopes       = "%s has no introspection scopes while scopes were required",
       introspection_scopes_required = "%s required introspection scopes",
-
+      key_not_found                 = "%s signing key for a requested signing algorithm was not found",
+      optional                      = "%s was not found (optional)",
     } do
       LOGS[token_type][key] = fmt(value, token_name)
     end
@@ -109,11 +120,15 @@ do
       verification                  = "the %s could not be verified",
       invalid                       = "the %s is invalid",
       inactive                      = "the %s inactive",
+      no_header                     = "the %s header name was not configured",
       expired                       = "the %s expired",
       expiry                        = "the %s has no expiry",
+      introspection_endpoint        = "the %s introspection endpoint was not specified",
       introspection_expired         = "the %s introspection expired",
       introspection_expiry          = "the %s introspection has no expiry",
       signing                       = "the %s could not be signed",
+      keys_load                     = "the %s signing keyset could not be loaded",
+      key_not_found                 = "the %s signing key could not be found"
     } do
       ERRS[token_type][key] = fmt(value, token_name)
     end
@@ -231,7 +246,8 @@ function JwtSignerHandler:access(conf)
   local args = arguments(conf)
   local realm =  args.get_conf_arg("realm")
 
-  for _, token_type in ipairs(TOKEN_TYPES) do
+  for i = 1, TOKEN_COUNT do
+    local token_type = TOKEN_TYPES[i]
 
     local config = CONF[token_type]
     local logs   = LOGS[token_type]
@@ -387,23 +403,31 @@ function JwtSignerHandler:access(conf)
             end
 
           else
-            return unexpected(realm, "unexpected", "the introspection endpoint was not specified",
-                              logs.introspection_endpoint)
+            return unexpected(realm, "unexpected", errs.introspection_endpoint, logs.introspection_endpoint)
           end
 
         else
-          log(logs.format)
-          return unauthorized(realm, "invalid_token", errs.invalid, err)
+          return unauthorized(realm, "invalid_token", errs.invalid, logs.format)
         end
 
         if type(payload) ~= "table" then
-          log(logs.payload)
-          return unauthorized(realm, "invalid_token", errs.invalid, err)
+          return unauthorized(realm, "invalid_token", errs.invalid, logs.payload)
         end
 
       else
-        log(logs.missing)
-        return unauthorized(realm, "invalid_token", errs.invalid, err)
+        local optional = args.get_conf_arg(config.optional)
+        if not optional then
+          return unauthorized(realm, "invalid_token", errs.invalid, logs.missing)
+        else
+          log(logs.optional)
+        end
+      end
+    else
+      local optional = args.get_conf_arg(config.optional)
+      if not optional then
+        return unexpected(realm, "unexpected", errs.no_header, logs.no_header)
+      else
+        log(logs.optional)
       end
     end
 
@@ -479,14 +503,13 @@ function JwtSignerHandler:access(conf)
         local private_keys
         private_keys, err = load_keys(keyset)
         if not private_keys then
-          return unexpected(realm, "unexpected", "the keys could not be loaded", err)
+          return unexpected(realm, "unexpected", errs.keys_load, err)
         end
 
         local signing_algorithm = args.get_conf_arg(config.signing_algorithm)
         local jwk = private_keys[signing_algorithm]
-
         if not jwk then
-          return unexpected(realm, "unexpected", "the key could not be found", "signing algorithm was not found")
+          return unexpected(realm, "unexpected", errs.key_not_found, logs.key_not_found)
         end
 
         local signed_token
@@ -508,8 +531,8 @@ function JwtSignerHandler:access(conf)
 end
 
 
-JwtSignerHandler.PRIORITY = 802
-JwtSignerHandler.VERSION  = "0.0.7"
+JwtSignerHandler.PRIORITY = 999
+JwtSignerHandler.VERSION  = "0.0.8"
 
 
 return JwtSignerHandler

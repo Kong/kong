@@ -1,24 +1,31 @@
+## v0.0.8
+
+- Change the checking of tokens to be ordered: `access token`, `channel token`
+- Change the priority of the plugin from 850 to 999
+- Add `config.access_token_optional`
+- Add `config.channel_token_optional`
+
 ## v0.0.7
 
 - Fix typo in `access_token_intrspection_scopes_required` (the missing `o`)
 
 ## v0.0.6
 
-- Add `access_token_introspection_leeway`
-- Add `access_token_introspection_scopes_required`
-- Add `access_token_introspection_scopes_claim`
-- Add `verify_access_token_introspection_expiry`
-- Add `verify_access_token_introspection_scopes`
-- Add `channel_token_introspection_leeway`
-- Add `channel_token_introspection_scopes_required`
-- Add `channel_token_introspection_scopes_claim`
-- Add `verify_channel_token_introspection_expiry`
-- Add `verify_channel_token_introspection_scopes`
+- Add `config.access_token_introspection_leeway`
+- Add `config.access_token_introspection_scopes_required`
+- Add `config.access_token_introspection_scopes_claim`
+- Add `config.verify_access_token_introspection_expiry`
+- Add `config.verify_access_token_introspection_scopes`
+- Add `config.channel_token_introspection_leeway`
+- Add `config.channel_token_introspection_scopes_required`
+- Add `config.channel_token_introspection_scopes_claim`
+- Add `config.verify_channel_token_introspection_expiry`
+- Add `config.verify_channel_token_introspection_scopes`
 
 ## v0.0.5
 
-- Add `access_token_introspection_body_args`
-- Add `channel_token_introspection_body_args`
+- Add `config.access_token_introspection_body_args`
+- Add `config.channel_token_introspection_body_args`
 
 ## v0.0.4
 
