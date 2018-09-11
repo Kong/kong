@@ -178,11 +178,11 @@ function Kong.init()
     for i, v in ipairs(config.origins) do
       -- Validated in conf_loader
       local from_scheme, from_authority, to_scheme, to_authority =
-        v:match("^(https?)://([^=]+:[%d]+)=(https?)://(.+)$")
+        v:match("^(%a[%w+.-]*)://([^=]+:[%d]+)=(%a[%w+.-]*)://(.+)$")
 
       local from = assert(utils.normalize_ip(from_authority))
       local to = assert(utils.normalize_ip(to_authority))
-      local from_origin = from_scheme .. "://" .. utils.format_host(from)
+      local from_origin = from_scheme:lower() .. "://" .. utils.format_host(from)
 
       to.scheme = to_scheme
 
@@ -194,7 +194,7 @@ function Kong.init()
           to.port = 443
 
         else
-          error("unreachable")
+          error("scheme has unknown default port")
         end
       end
 

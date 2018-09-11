@@ -766,15 +766,27 @@ describe("Configuration loader", function()
                    "to_scheme://to_host:to_port', got " ..
                    "'http://foo:42=http://'", err)
     end)
-    it("rejects an unknown scheme", function()
-      local conf, err = conf_loader(nil, {
-        origins = "http://foo:42=ftp://example.com",
-      })
-      assert.is_nil(conf)
-      assert.equal("an origin must be of the form " ..
-                   "'from_scheme://from_host:from_port=" ..
-                   "to_scheme://to_host:to_port', got " ..
-                   "'http://foo:42=ftp://example.com'", err)
+    it("rejects invalid schemes", function()
+      for _, bad_origin in ipairs {
+          -- can't start with a number
+          "http://foo:42=0://example.com",
+          "0://foo:42=http://example.com",
+          -- contain non-alphanumeric
+          "invalid%scheme://foo:42=http://example.com",
+          "http://foo:42=invalid%scheme://example.com",
+          -- empty scheme
+          "://foo:42=http://example.com",
+          "http://foo:42=://example.com",
+      } do
+        local conf, err = conf_loader(nil, {
+          origins = bad_origin,
+        })
+        assert.is_nil(conf)
+        assert.equal("an origin must be of the form " ..
+                     "'from_scheme://from_host:from_port=" ..
+                     "to_scheme://to_host:to_port', got '" ..
+                     bad_origin .. "'", err)
+      end
     end)
     it("rejects a duplicate", function()
       local conf, err = conf_loader(nil, {
