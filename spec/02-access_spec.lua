@@ -52,7 +52,7 @@ describe("Plugin: prometheus (access)", function()
       }
     })
     assert.res_status(200, res)
-    local res = assert(admin_client:send {
+    res = assert(admin_client:send {
       method  = "GET",
       path    = "/metrics",
     })
@@ -60,7 +60,7 @@ describe("Plugin: prometheus (access)", function()
     assert.matches('kong_http_status{code="200",service="mock-service"} 1', body, nil, true)
 
     ngx.sleep(1)
-    local res = assert(proxy_client:send {
+    res = assert(proxy_client:send {
       method  = "GET",
       path    = "/status/400",
       headers = {
@@ -69,11 +69,11 @@ describe("Plugin: prometheus (access)", function()
     })
     assert.res_status(400, res)
 
-    local res = assert(admin_client:send {
+    res = assert(admin_client:send {
       method  = "GET",
       path    = "/metrics",
     })
-    local body = assert.res_status(200, res)
+    body = assert.res_status(200, res)
     assert.matches('kong_http_status{code="400",service="mock-service"} 1', body, nil, true)
   end)
 end)
