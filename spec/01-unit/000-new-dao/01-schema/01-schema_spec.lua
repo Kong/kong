@@ -1430,8 +1430,11 @@ describe("schema", function()
         redis_host = "example.com",
         redis_port = 80
       }))
-      assert.falsy(Test:validate_update({
+      assert.truthy(Test:validate_update({
         policy = "bla",
+      }))
+      assert.falsy(Test:validate_update({
+        policy = "redis",
       }))
     end)
 
@@ -1476,6 +1479,11 @@ describe("schema", function()
         }
       }))
       assert.falsy(Test:validate_update({
+        config = {
+          policy = "redis",
+        }
+      }))
+      assert.truthy(Test:validate_update({
         config = {
           policy = "bla",
         }
@@ -1536,7 +1544,7 @@ describe("schema", function()
           { d = { type = "integer" }, },
           { e = { type = "boolean" }, },
           { f = { type = "string" }, },
-                { g = { type = "record", fields = {} }, },
+          { g = { type = "record", fields = {} }, },
           { h = { type = "map", keys = {}, values = {} }, },
         }
       })
