@@ -50,7 +50,7 @@ describe("Plugin: prometheus (custom server)",function()
       assert.res_status(200, res)
 
       local client = helpers.http_client("127.0.0.1", 9542)
-      local res = assert(client:send {
+      res = assert(client:send {
         method  = "GET",
         path    = "/metrics",
       })
