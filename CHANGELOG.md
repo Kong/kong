@@ -5,7 +5,7 @@
 - Change `no_consumer` from `false` to `true`
 - Add `config.access_token_optional`
 - Add `config.channel_token_optional`
-- Add `config.trust_channel_token_introspection`
+- Add `config.trust_access_token_introspection`
 - Add `config.trust_channel_token_introspection`
 - Add `config.access_token_consumer_claim`
 - Add `config.channel_token_consumer_claim`
