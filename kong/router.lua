@@ -81,6 +81,13 @@ local function has_capturing_groups(subj)
 end
 
 
+local protocol_subsystem = {
+  http = "http",
+  https = "http",
+  tcp = "stream",
+  tls = "stream",
+}
+
 local function marshall_route(r)
   local route    = r.route          or null
   local service  = r.service        or null
@@ -98,6 +105,7 @@ local function marshall_route(r)
   end
 
   local route_t    = {
+    type           = protocol_subsystem[protocol],
     route          = route,
     service        = service,
     strip_uri      = route.strip_path    == true,
@@ -1145,7 +1153,6 @@ function _M.new(routes)
                 upstream_uri = upstream_base .. sub(req_uri, 2, -1)
               end
 
-
               -- preserve_host header logic
 
               if matched_route.preserve_host then
@@ -1191,12 +1198,18 @@ function _M.new(routes)
 
   self.select = find_route
 
-
   if ngx.config.subsystem == "http" then
     function self.exec(ngx)
+      local var = ngx.var
+
       local req_method = ngx.req.get_method()
-      local req_uri    = ngx.var.request_uri
-      local req_host   = ngx.var.http_host or ""
+      local req_uri = var.request_uri
+      local req_host = var.http_host or ""
+      local src_ip = var.remote_addr
+      local src_port = tonumber(var.remote_port, 10)
+      local dst_ip = var.server_addr
+      local dst_port = tonumber(var.server_port, 10)
+      local sni = var.ssl_server_name
 
       do
         local idx = find(req_uri, "?", 2, true)
@@ -1205,7 +1218,8 @@ function _M.new(routes)
         end
       end
 
-      local match_t = find_route(req_method, req_uri, req_host, ngx)
+      local match_t = find_route(req_method, req_uri, req_host, ngx,
+                                 src_ip, src_port, dst_ip, dst_port, sni)
       if not match_t then
         return nil
       end
@@ -1223,15 +1237,19 @@ function _M.new(routes)
 
       return match_t
     end
+
   else -- stream
     function self.exec(ngx)
-      local src_ip = ngx.var.remote_addr
-      local src_port = ngx.var.remote_port
-      local dst_ip = ngx.var.server_addr
-      local dst_port = ngx.var.server_port
-      local sni = ngx.var.ssl_server_name
+      local var = ngx.var
 
-      return find_route(nil, nil, nil, nil, src_ip, src_port, dst_ip, dst_port, sni)
+      local src_ip = var.remote_addr
+      local src_port = tonumber(var.remote_port, 10)
+      local dst_ip = var.server_addr
+      local dst_port = tonumber(var.server_port, 10)
+      local sni = var.ssl_preread_server_name
+
+      return find_route(nil, nil, nil, ngx,
+                        src_ip, src_port, dst_ip, dst_port, sni)
     end
   end
 

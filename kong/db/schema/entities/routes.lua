@@ -43,7 +43,7 @@ return {
                          len_min  = 1,
                          required = true,
                          elements = typedefs.protocol,
-                         default  = { "http", "https" },
+                         default  = { "http", "https" }, -- TODO: different default depending on service's scheme
                        }, },
     { methods        = { type = "set",
                          elements = typedefs.http_method,

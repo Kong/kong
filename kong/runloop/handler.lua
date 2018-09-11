@@ -33,6 +33,7 @@ local ngx         = ngx
 local log         = ngx.log
 local ngx_now     = ngx.now
 local update_time = ngx.update_time
+local subsystem   = ngx.config.subsystem
 local unpack      = unpack
 
 
@@ -89,6 +90,14 @@ local function build_api_router(dao, version)
 end
 
 do
+  -- Given a protocol, return the subsystem that handles it
+  local protocol_subsystem = {
+    http = "http",
+    https = "http",
+    tcp = "stream",
+    tls = "stream",
+  }
+
   local router
   local router_version
 
@@ -113,20 +122,23 @@ do
                     err
       end
 
-      local r = {
-        route   = route,
-        service = service,
-      }
-
-      if route.hosts then
-        -- TODO: headers should probably be moved to route
-        r.headers = {
-          host = route.hosts,
+      local stype = protocol_subsystem[service.protocol]
+      if subsystem == stype then
+        local r = {
+          route   = route,
+          service = service,
         }
-      end
 
-      i = i + 1
-      routes[i] = r
+        if stype == "http" and route.hosts then
+          -- TODO: headers should probably be moved to route
+          r.headers = {
+            host = route.hosts,
+          }
+        end
+
+        i = i + 1
+        routes[i] = r
+      end
     end
 
     sort(routes, function(r1, r2)
@@ -611,6 +623,88 @@ return {
     end,
     after = function (ctx)
       ctx.KONG_REWRITE_TIME = get_now() - ctx.KONG_REWRITE_START -- time spent in Kong's rewrite_by_lua
+    end
+  },
+  preread = {
+    before = function(ctx)
+      local router, err = get_router()
+      if not router then
+        log(ERR, "no router to route connection (reason: " .. err .. ")")
+        return ngx.exit(500)
+      end
+
+      local match_t = router.exec(ngx)
+      if not match_t then
+        log(ERR, "no Route found with those values")
+        return ngx.exit(500)
+      end
+
+      local var = ngx.var
+
+      local ssl_termination_ctx -- OpenSSL SSL_CTX to use for termination
+
+      local ssl_preread_alpn_protocols = var.ssl_preread_alpn_protocols
+      -- ssl_preread_alpn_protocols is a comma separated list
+      -- see https://trac.nginx.org/nginx/ticket/1616
+      if ssl_preread_alpn_protocols and
+         ssl_preread_alpn_protocols:find(mesh.get_mesh_alpn(), 1, true) then
+        -- Is probably an incoming service mesh connection
+        -- terminate service-mesh Mutual TLS
+        ssl_termination_ctx = mesh.mesh_server_ssl_ctx
+      else
+        -- TODO: stream router should decide if TLS is terminated or not
+        -- XXX: for now, use presence of SNI to terminate.
+        local sni = var.ssl_preread_server_name
+        if sni then
+          ngx.log(ngx.DEBUG, "SNI: ", sni)
+
+          local err
+          ssl_termination_ctx, err = certificate.find_certificate(sni)
+          if not ssl_termination_ctx then
+            ngx.log(ngx.ERR, err)
+            return ngx.exit(ngx.ERROR)
+          end
+
+          -- TODO Fake certificate phase?
+
+          ngx.log(ngx.INFO, "attempting to terminate TLS")
+        end
+      end
+
+      -- Terminate TLS
+      if ssl_termination_ctx and not ngx.req.starttls(ssl_termination_ctx) then -- luacheck: ignore
+        -- errors are logged by nginx core
+        return ngx.exit(ngx.ERROR)
+      end
+
+      ctx.KONG_PREREAD_START = get_now()
+
+      local api = match_t.api or EMPTY_T
+      local route = match_t.route or EMPTY_T
+      local service = match_t.service or EMPTY_T
+      local upstream_url_t = match_t.upstream_url_t
+
+      balancer_setup_stage1(ctx, match_t.upstream_scheme,
+                            upstream_url_t.type,
+                            upstream_url_t.host,
+                            upstream_url_t.port,
+                            service, route, api)
+    end,
+    after = function(ctx)
+      local ok, err, errcode = balancer_setup_stage2(ctx)
+      if not ok then
+        return responses.send(errcode, err)
+      end
+
+      local now = get_now()
+
+      -- time spent in Kong's preread_by_lua
+      ctx.KONG_PREREAD_TIME     = now - ctx.KONG_PREREAD_START
+      ctx.KONG_PREREAD_ENDED_AT = now
+      -- time spent in Kong before sending the request to upstream
+      -- ngx.req.start_time() is kept in seconds with millisecond resolution.
+      ctx.KONG_PROXY_LATENCY   = now - ngx.req.start_time() * 1000
+      ctx.KONG_PROXIED         = true
     end
   },
   access = {

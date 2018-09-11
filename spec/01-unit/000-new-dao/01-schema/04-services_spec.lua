@@ -434,4 +434,45 @@ describe("services", function()
       end
     end)
   end)
+
+  describe("stream context", function()
+    it("'protocol' accepts 'tcp'", function()
+      local service = {
+        protocol = "tcp",
+        host = "x.y",
+        port = 80,
+      }
+
+      local ok, err = Services:validate(service)
+      assert.is_nil(err)
+      assert.is_true(ok)
+    end)
+
+    it("'protocol' accepts 'tls'", function()
+      local service = {
+        protocol = "tls",
+        host = "x.y",
+        port = 80,
+      }
+
+      local ok, err = Services:validate(service)
+      assert.is_nil(err)
+      assert.is_true(ok)
+    end)
+
+    it("if 'protocol = tcp/tls', then 'path' is empty", function()
+      for _, v in ipairs({ "tcp", "tls" }) do
+        local service = {
+          protocol = v,
+          host = "x.y",
+          port = 80,
+          path = "/",
+        }
+
+        local ok, errs = Services:validate(service)
+        assert.falsy(ok)
+        assert.equal("value must be null", errs.path)
+      end
+    end)
+  end)
 end)

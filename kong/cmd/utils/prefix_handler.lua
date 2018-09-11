@@ -1,5 +1,6 @@
 local default_nginx_template = require "kong.templates.nginx"
 local kong_nginx_template = require "kong.templates.nginx_kong"
+local kong_nginx_stream_template = require "kong.templates.nginx_kong_stream"
 local openssl_bignum = require "openssl.bignum"
 local openssl_rand = require "openssl.rand"
 local openssl_pkey = require "openssl.pkey"
@@ -195,6 +196,10 @@ local function compile_kong_conf(kong_config)
   return compile_conf(kong_config, kong_nginx_template)
 end
 
+local function compile_kong_stream_conf(kong_config)
+  return compile_conf(kong_config, kong_nginx_stream_template)
+end
+
 local function compile_nginx_conf(kong_config, template)
   template = template or default_nginx_template
   return compile_conf(kong_config, template)
@@ -287,12 +292,19 @@ local function prepare_prefix(kong_config, nginx_custom_template_path)
   end
   pl_file.write(kong_config.nginx_conf, nginx_conf)
 
-  -- write Kong's NGINX conf
+  -- write Kong's HTTP NGINX conf
   local nginx_kong_conf, err = compile_kong_conf(kong_config)
   if not nginx_kong_conf then
     return nil, err
   end
   pl_file.write(kong_config.nginx_kong_conf, nginx_kong_conf)
+
+  -- write Kong's stream NGINX conf
+  local nginx_kong_stream_conf, err = compile_kong_stream_conf(kong_config)
+  if not nginx_kong_stream_conf then
+    return nil, err
+  end
+  pl_file.write(kong_config.nginx_kong_stream_conf, nginx_kong_stream_conf)
 
   -- testing written NGINX conf
   local ok, err = nginx_signals.check_conf(kong_config)

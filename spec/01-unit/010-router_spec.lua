@@ -7,6 +7,7 @@ end
 
 local service = {
   name = "service-invalid",
+  protocol = "http",
 }
 
 local use_case = {
@@ -1853,6 +1854,7 @@ describe("Router", function()
           local use_case_routes = {
             {
               service      = {
+                protocol   = "http",
                 name       = "service-invalid",
                 path       = args[1],
               },
@@ -1898,6 +1900,7 @@ describe("Router", function()
             local use_case_routes = {
               {
                 service      = {
+                  protocol   = "http",
                   name       = "service-invalid",
                   path       = args[1],
                 },

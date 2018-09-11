@@ -109,6 +109,7 @@ local voidpp = ffi.typeof("void**")
 
 local TLS_SCHEMES = {
   https = true,
+  tls = true,
 }
 
 local PLUGINS_MAP_CACHE_OPTS = { ttl = 0 }
@@ -335,7 +336,7 @@ function Kong.init()
   kong.dns = singletons.dns
   kong.default_client_ssl_ctx = default_client_ssl_ctx
 
-  if config.proxy_ssl_enabled then
+  if ngx.config.subsystem == "stream" or config.proxy_ssl_enabled then
     certificate.init()
   end
 
@@ -672,6 +673,32 @@ function Kong.rewrite()
   end
 
   runloop.rewrite.after(ctx)
+end
+
+function Kong.preread()
+  kong_global.set_phase(kong, PHASES.preread)
+
+  local ctx = ngx.ctx
+
+  runloop.preread.before(ctx)
+
+  local ok, err = plugins_map_wrapper()
+  if not ok then
+    ngx_log(ngx_CRIT, "could not ensure plugins map is up to date: ", err)
+    return ngx.exit(ngx.ERROR)
+  end
+
+  for plugin, plugin_conf in plugins_iterator(ctx, loaded_plugins,
+                                              configured_plugins, true) do
+    kong_global.set_named_ctx(kong, "plugin", plugin_conf)
+    kong_global.set_namespaced_log(kong, plugin.name)
+
+    plugin.handler:preread(plugin_conf)
+
+    kong_global.reset_log(kong)
+  end
+
+  runloop.preread.after(ctx)
 end
 
 function Kong.access()
