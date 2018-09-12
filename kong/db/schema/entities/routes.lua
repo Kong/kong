@@ -30,13 +30,15 @@ end
 
 
 return {
-  name        = "routes",
-  primary_key = { "id" },
+  name         = "routes",
+  primary_key  = { "id" },
+  endpoint_key = "name",
 
   fields = {
     { id             = typedefs.uuid, },
     { created_at     = typedefs.auto_timestamp_s },
     { updated_at     = typedefs.auto_timestamp_s },
+    { name           = typedefs.name },
     { protocols      = { type     = "set",
                          len_min  = 1,
                          required = true,

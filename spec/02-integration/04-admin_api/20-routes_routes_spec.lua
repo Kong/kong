@@ -64,6 +64,7 @@ for _, strategy in helpers.each_strategy() do
             assert.is_number(json.created_at)
             assert.is_number(json.regex_priority)
             assert.is_string(json.id)
+            assert.equals(cjson.null, json.name)
             assert.equals(cjson.null, json.paths)
             assert.False(json.preserve_host)
             assert.True(json.strip_path)
@@ -287,18 +288,6 @@ for _, strategy in helpers.each_strategy() do
             })
             assert.res_status(200, res)
           end)
-
-          it("validates invalid primary keys", function()
-            local res  = assert(client:get("/routes/foobar"))
-            local body = assert.res_status(400, res)
-            local pk = { id = "expected a valid UUID" }
-            assert.same({
-              code    = Errors.codes.INVALID_PRIMARY_KEY,
-              name    = "invalid primary key",
-              message = [[invalid primary key: '{id="expected a valid UUID"}']],
-              fields  = pk
-            }, cjson.decode(body))
-          end)
         end)
       end)
 
@@ -331,14 +320,39 @@ for _, strategy in helpers.each_strategy() do
             assert.same(route, json)
           end)
 
+          it("retrieves by name", function()
+            local route = bp.named_routes:insert()
+            local res  = client:get("/routes/" .. route.name)
+            local body = assert.res_status(200, res)
+
+            local json = cjson.decode(body)
+            assert.same(route, json)
+          end)
+
           it("returns 404 if not found", function()
             local res = client:get("/routes/" .. utils.uuid())
+            assert.res_status(404, res)
+          end)
+
+          it("returns 404 if not found by name", function()
+            local res = client:get("/routes/not-found")
             assert.res_status(404, res)
           end)
 
           it("ignores an invalid body", function()
             local route = bp.routes:insert({ paths = { "/my-route" } })
             local res = client:get("/routes/" .. route.id, {
+              headers = {
+                ["Content-Type"] = "application/json"
+              },
+              body = "this fails if decoded as json",
+            })
+            assert.res_status(200, res)
+          end)
+
+          it("ignores an invalid body by name", function()
+            local route = bp.named_routes:insert()
+            local res = client:get("/routes/" .. route.name, {
               headers = {
                 ["Content-Type"] = "application/json"
               },
@@ -374,6 +388,31 @@ for _, strategy in helpers.each_strategy() do
             end
           end)
 
+          it_content_types("creates if not found by name", function(content_type)
+            return function()
+              local service = bp.services:insert()
+              local name = "my-route"
+              local res = client:put("/routes/" .. name, {
+                headers = {
+                  ["Content-Type"] = content_type
+                },
+                body = {
+                  paths   = { "/updated-paths" },
+                  service = service
+                },
+              })
+              local body = assert.res_status(200, res)
+              local json = cjson.decode(body)
+              assert.same({ "/updated-paths" }, json.paths)
+              assert.same(cjson.null, json.hosts)
+              assert.same(cjson.null, json.methods)
+              assert.equal(name, json.name)
+
+              local in_db = assert(db.routes:select_by_name(name, { nulls = true }))
+              assert.same(json, in_db)
+            end
+          end)
+
           it_content_types("updates if found", function(content_type)
             return function()
               local route = bp.routes:insert({ paths = { "/my-route" } })
@@ -395,6 +434,36 @@ for _, strategy in helpers.each_strategy() do
 
               local in_db = assert(db.routes:select({ id = route.id }, { nulls = true }))
               assert.same(json, in_db)
+            end
+          end)
+
+          it_content_types("updates if found by name", function(content_type)
+            return function()
+              local route = bp.routes:insert({
+                name  = "my-put-route",
+                paths = { "/my-route" }
+              })
+              local res = client:put("/routes/my-put-route", {
+                headers = {
+                  ["Content-Type"] = content_type
+                },
+                body = {
+                  paths   = { "/updated-paths" },
+                  service = route.service
+                },
+              })
+              local body = assert.res_status(200, res)
+              local json = cjson.decode(body)
+              assert.same({ "/updated-paths" }, json.paths)
+              assert.same(cjson.null, json.hosts)
+              assert.same(cjson.null, json.methods)
+              assert.equal(route.id, json.id)
+              assert.equal(route.name, json.name)
+
+              local in_db = assert(db.routes:select_by_name(route.name, { nulls = true }))
+              assert.same(json, in_db)
+
+              db.routes:delete({ id = route.id })
             end
           end)
 
@@ -503,6 +572,36 @@ for _, strategy in helpers.each_strategy() do
 
               local in_db = assert(db.routes:select({ id = route.id }, { nulls = true }))
               assert.same(json, in_db)
+            end
+          end)
+
+          it_content_types("updates if found by name", function(content_type)
+            return function()
+              local route = bp.routes:insert({
+                name  = "my-patch-route",
+                paths = { "/my-route" },
+              })
+              local res = client:patch("/routes/my-patch-route", {
+                headers = {
+                  ["Content-Type"] = content_type
+                },
+                body = {
+                  methods = cjson.null,
+                  hosts   = cjson.null,
+                  paths   = { "/updated-paths" },
+                },
+              })
+              local body = assert.res_status(200, res)
+              local json = cjson.decode(body)
+              assert.same({ "/updated-paths" }, json.paths)
+              assert.same(cjson.null, json.hosts)
+              assert.same(cjson.null, json.methods)
+              assert.equal(route.id, json.id)
+
+              local in_db = assert(db.routes:select({ id = route.id }, { nulls = true }))
+              assert.same(json, in_db)
+
+              db.routes:delete({ id = route.id })
             end
           end)
 
@@ -660,6 +759,20 @@ for _, strategy in helpers.each_strategy() do
             assert.is_nil(in_db)
           end)
 
+          it("deletes a route by name", function()
+            local route = bp.routes:insert({
+              name  = "my-delete-route",
+              paths = { "/my-route" }
+            })
+            local res  = client:delete("/routes/my-delete-route")
+            local body = assert.res_status(204, res)
+            assert.equal("", body)
+
+            local in_db, err = db.routes:select({id = route.id}, { nulls = true })
+            assert.is_nil(err)
+            assert.is_nil(in_db)
+          end)
+
           describe("errors", function()
             it("returns HTTP 204 even if not found", function()
               local res = client:delete("/routes/" .. utils.uuid())
@@ -683,8 +796,24 @@ for _, strategy in helpers.each_strategy() do
             assert.same(service, json)
           end)
 
+          it("retrieves by name", function()
+            local service = bp.services:insert({ host = "example.com", path = "/" }, { nulls = true })
+            bp.routes:insert({ name = "my-get-route", paths = { "/my-route" }, service = service })
+
+            local res  = client:get("/routes/my-get-route/service")
+            local body = assert.res_status(200, res)
+
+            local json = cjson.decode(body)
+            assert.same(service, json)
+          end)
+
           it("returns 404 if not found", function()
             local res = client:get("/routes/" .. utils.uuid() .. "/service")
+            assert.res_status(404, res)
+          end)
+
+          it("returns 404 if not found by name", function()
+            local res = client:get("/routes/my-in-existent-route/service")
             assert.res_status(404, res)
           end)
 
@@ -727,6 +856,37 @@ for _, strategy in helpers.each_strategy() do
 
               local in_db = assert(db.services:select({ id = service.id }, { nulls = true }))
               assert.same(json, in_db)
+            end
+          end)
+
+          it_content_types("updates if found by name", function(content_type)
+            return function()
+              local service = bp.named_services:insert({ path = "/" })
+              local route = bp.routes:insert({ name = "my-service-patch-route", paths = { "/my-route" }, service = service })
+              local edited_name = "name-" .. service.name
+              local edited_host = "edited-" .. service.host
+              local res = client:patch("/routes/my-service-patch-route/service", {
+                headers = {
+                  ["Content-Type"] = content_type
+                },
+                body = {
+                  name  = edited_name,
+                  host  = edited_host,
+                  path  = cjson.null,
+                },
+              })
+              local body = assert.res_status(200, res)
+              local json = cjson.decode(body)
+              assert.equal(edited_name, json.name)
+              assert.equal(edited_host, json.host)
+              assert.same(cjson.null,   json.path)
+
+
+              local in_db = assert(db.services:select({ id = service.id }, { nulls = true }))
+              assert.same(json, in_db)
+
+              db.routes:delete({ id = route.id })
+              db.services:delete({ id = service.id })
             end
           end)
 
@@ -808,6 +968,11 @@ for _, strategy in helpers.each_strategy() do
 
             it("returns HTTP 404 with non-existing route", function()
               local res = client:delete("/routes/" .. utils.uuid() .. "/service")
+              assert.res_status(404, res)
+            end)
+
+            it("returns HTTP 404 with non-existing route by name", function()
+              local res = client:delete("/routes/in-existent-route/service")
               assert.res_status(404, res)
             end)
           end)
@@ -969,6 +1134,23 @@ for _, strategy in helpers.each_strategy() do
             local body = assert.res_status(200, res)
             local json = cjson.decode(body)
             assert.equal(1, #json.data)
+          end)
+
+          it("retrieves the first page by name", function()
+            local route = bp.routes:insert({ name = "my-plugins-route", paths = { "/my-route" } })
+            assert(dao.plugins:insert {
+              name = "key-auth",
+              route = { id = route.id },
+            })
+            local res = assert(client:send {
+              method = "GET",
+              path = "/routes/my-plugins-route/plugins"
+            })
+            local body = assert.res_status(200, res)
+            local json = cjson.decode(body)
+            assert.equal(1, #json.data)
+
+            db.routes:delete({ id = route.id })
           end)
 
           it("ignores an invalid body", function()

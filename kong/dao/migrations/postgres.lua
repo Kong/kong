@@ -894,4 +894,11 @@ return {
     end,
     down = nil
   },
+  {
+    name = "2018-09-12-100000_add_name_to_routes",
+    up = [[
+      ALTER TABLE routes ADD COLUMN name TEXT UNIQUE;
+    ]],
+    down = nil,
+  },
 }

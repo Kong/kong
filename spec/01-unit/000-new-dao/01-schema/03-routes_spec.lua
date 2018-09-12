@@ -15,6 +15,7 @@ describe("routes schema", function()
   it("validates a valid route", function()
     local route = {
       id             = a_valid_uuid,
+      name           = "my_route",
       protocols      = { "http" },
       methods        = { "GET", "POST" },
       hosts          = { "example.com" },
@@ -114,6 +115,7 @@ describe("routes schema", function()
     assert.is_nil(err)
     assert.truthy(ok)
     assert.match(uuid_pattern, route.id)
+    assert.same(ngx.null,      route.name)
     assert.same({ "http" },    route.protocols)
     assert.same(ngx.null,      route.methods)
     assert.same(ngx.null,      route.hosts)
@@ -536,6 +538,77 @@ describe("routes schema", function()
           paths = {},
           hosts = {},
           methods = { valid_methods[i] },
+        }
+
+        local ok, err = Routes:validate(route)
+        assert.is_nil(err)
+        assert.is_true(ok)
+      end
+    end)
+  end)
+
+  describe("name attribute", function()
+    -- refusals
+    it("must be a string", function()
+      local route = {
+        name = false,
+      }
+
+      local ok, err = Routes:validate(route)
+      assert.falsy(ok)
+      assert.equal("expected a string", err.name)
+    end)
+
+    it("must be a non-empty string", function()
+      local route = {
+        name = "",
+      }
+
+      local ok, err = Routes:validate(route)
+      assert.falsy(ok)
+      assert.equal("length must be at least 1", err.name)
+    end)
+
+    it("rejects invalid names", function()
+      local invalid_names = {
+        "examp:le",
+        "examp;le",
+        "examp/le",
+        "examp le",
+      }
+
+      for i = 1, #invalid_names do
+        local route = {
+          name = invalid_names[i],
+        }
+
+        local ok, err = Routes:validate(route)
+        assert.falsy(ok)
+        assert.equal(
+          "invalid value '" .. invalid_names[i] .. "': it must only contain alphanumeric and '., -, _, ~' characters",
+          err.name)
+      end
+    end)
+
+    -- acceptance
+    it("accepts valid names", function()
+      local valid_names = {
+        "example",
+        "EXAMPLE",
+        "exa.mp.le",
+        "3x4mp13",
+        "3x4-mp-13",
+        "3x4_mp_13",
+        "~3x4~mp~13",
+        "~3..x4~.M-p~1__3_",
+      }
+
+      for i = 1, #valid_names do
+        local route = {
+          protocols = { "http" },
+          paths = { "/" },
+          name = valid_names[i],
+          service = { id = a_valid_uuid }
         }
 
         local ok, err = Routes:validate(route)
