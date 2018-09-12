@@ -79,6 +79,7 @@ local function configure_credentials(ngx, conf)
     if req_origin then
       ngx.header["Access-Control-Allow-Origin"]      = req_origin
       ngx.header["Access-Control-Allow-Credentials"] = "true"
+      ngx.header["Vary"] = "Origin"
     end
   end
 end
