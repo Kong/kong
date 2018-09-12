@@ -495,10 +495,10 @@ Schema.entity_checkers = {
   --                 then_match = { required = true } }
   -- ```
   conditional = {
-    field_sources = { "if_field", "then_field" },
+    field_sources = { "if_field" },
     fn = function(entity, arg, schema)
       local if_value = get_field(entity, arg.if_field)
-      local then_value = get_field(entity, arg.then_field)
+      local then_value = get_field(entity, arg.then_field) or null
 
       arg.if_match.type = "skip"
       local ok, _ = Schema.validate_field(schema, arg.if_match, if_value)
@@ -772,22 +772,19 @@ end
 --- Given missing field named `k`, with definition `field`,
 -- fill its slot in `entity` with an appropriate default value,
 -- if possible.
--- @param k The field name.
 -- @param field The field definition table.
--- @param entity The entity object where key `k` is missing.
-local function handle_missing_field(k, field, entity)
+local function handle_missing_field(field, value)
   if field.default ~= nil then
-    entity[k] = tablex.deepcopy(field.default)
-    return
+    return tablex.deepcopy(field.default)
   end
 
   -- If `required`, it will fail later.
   -- If `nilable` (metaschema only), a default value is not necessary.
   if field.required or field.nilable then
-    return
+    return value
   end
 
-  entity[k] = default_value(field)
+  return default_value(field)
 end
 
 
@@ -1148,6 +1145,53 @@ local function make_set(set)
 end
 
 
+local function adjust_field_for_update(field, value, nulls)
+  if field.type == "record" and
+     not field.abstract and
+     ((value == null and field.nullable == false)
+     or (value == nil and field.nullable == false)
+     or (value ~= null and value ~= nil)) then
+    local field_schema = get_field_schema(field)
+    return field_schema:process_auto_fields(value or {}, "update", nulls)
+  end
+  if value == nil then
+    return nil
+  end
+  if field.type == "array" then
+    return make_array(value)
+  end
+  if field.type == "set" then
+    return make_set(value)
+  end
+
+  return value
+end
+
+
+local function adjust_field_for_context(field, value, context, nulls)
+  if value == null and field.nullable == false then
+    return handle_missing_field(field, value)
+  end
+  if field.type == "record" and not field.abstract
+     and value ~= null and
+     (value ~= nil or field.nullable == false) then
+    local field_schema = get_field_schema(field)
+    return field_schema:process_auto_fields(value or {}, context, nulls)
+  end
+  if value == nil then
+    return handle_missing_field(field, value)
+  end
+  if field.type == "array" then
+    return make_array(value)
+  end
+  if field.type == "set" then
+    return make_set(value)
+  end
+
+  return value
+end
+
+
 --- Given a table, update its fields whose schema
 -- definition declares them as `auto = true`,
 -- based on its CRUD operation context, and set
@@ -1191,31 +1235,16 @@ function Schema:process_auto_fields(input, context, nulls)
       end
     end
 
-    local field_value = output[key]
+    if context == "update" then
+      output[key] = adjust_field_for_update(field, output[key], nulls)
+    else
+      output[key] = adjust_field_for_context(field, output[key], context, nulls)
+    end
 
-    if field_value ~= nil then
-
+    if output[key] ~= nil then
       if cache_key_len and self.cache_key_set[key] then
         setting_cache_key = setting_cache_key + 1
       end
-
-      local field_type  = field.type
-      if field_type == "array" then
-        output[key] = make_array(field_value)
-      elseif field_type == "set" then
-        output[key] = make_set(field_value)
-      elseif field_type == "record" and not field.abstract then
-        if context == "update" then
-          read_before_write = true
-        end
-        if field_value ~= null then
-          local field_schema = get_field_schema(field)
-          output[key] = field_schema:process_auto_fields(field_value, context, nulls)
-        end
-      end
-
-    elseif context ~= "update" then
-      handle_missing_field(key, field, output)
     end
 
     if context == "select" and output[key] == null and not nulls then
@@ -1559,6 +1588,7 @@ function Schema.new(definition, is_subschema)
   for key, field in self:each_field() do
     -- Also give access to fields by name
     self.fields[key] = field
+
     if field.type == "foreign" then
       local err
       field.schema, err = get_foreign_schema_for_field(field)
