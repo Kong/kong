@@ -107,6 +107,10 @@ local ffi = require "ffi"
 local cast = ffi.cast
 local voidpp = ffi.typeof("void**")
 
+local TLS_SCHEMES = {
+  https = true,
+}
+
 local PLUGINS_MAP_CACHE_OPTS = { ttl = 0 }
 
 local plugins_map_semaphore
@@ -597,7 +601,7 @@ function Kong.balancer()
   end
 
   local ssl_ctx = balancer_data.ssl_ctx
-  if ssl_ctx then
+  if TLS_SCHEMES[balancer_data.scheme] and ssl_ctx ~= nil then
     if not set_ssl_ctx then
       -- this API depends on an OpenResty patch
       ngx_log(ngx_ERR, "failed to set the upstream SSL_CTX*: missing ",
