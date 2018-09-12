@@ -91,17 +91,17 @@ function _M.new(conf)
   conf = conf or {}
 
   local client, err = smtp_client.new({
-    host = conf.portal_smtp_host,                  -- default localhost
-    port = conf.portal_smtp_port,                  -- default 25
-    starttls = conf.portal_smtp_starttls,          -- default nil
-    ssl = conf.portal_smtp_ssl,                    -- default nil
-    username = conf.portal_smtp_username,          -- default nil
-    password = conf.portal_smtp_password,          -- default nil
-    auth_type = conf.portal_smtp_auth_type,        -- default nil
-    domain = conf.portal_smtp_domain,              -- default localhost.localdomain
-    timeout_connect = conf.portal_smtp_timeout_connect, -- default 60000 (ms)
-    timeout_send = conf.portal_smtp_timeout_send,  -- default 60000 (ms)
-    timeout_read  = conf.portal_smtp_timeout_read, -- default 60000 (ms)
+    host = conf.smtp_host,
+    port = conf.smtp_port,
+    starttls = conf.smtp_starttls,
+    ssl = conf.smtp_ssl,
+    username = conf.smtp_username,
+    password = conf.smtp_password,
+    auth_type = conf.smtp_auth_type,
+    domain = conf.smtp_domain,
+    timeout_connect = conf.smtp_timeout_connect,
+    timeout_send = conf.smtp_timeout_send,
+    timeout_read  = conf.smtp_timeout_read,
   }, conf.smtp_mock)
 
   if err then

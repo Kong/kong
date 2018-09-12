@@ -38,20 +38,20 @@ portal_access_request_email = true
 portal_approved_email = true
 portal_reset_email = true
 portal_reset_success_email = true
-
-portal_smtp_host = localhost
-portal_smtp_port = 25
-portal_smtp_starttls = NONE
-portal_smtp_username = NONE
-portal_smtp_password = NONE
-portal_smtp_ssl = NONE
-portal_smtp_auth_type = NONE
-portal_smtp_domain = localhost.localdomain
-portal_smtp_timeout_connect = 60000
-portal_smtp_timeout_send = 60000
-portal_smtp_timeout_read = 60000
 portal_emails_from = NONE
 portal_emails_reply_to = NONE
+
+smtp_host = localhost
+smtp_port = 25
+smtp_starttls = NONE
+smtp_username = NONE
+smtp_password = NONE
+smtp_ssl = NONE
+smtp_auth_type = NONE
+smtp_domain = localhost.localdomain
+smtp_timeout_connect = 60000
+smtp_timeout_send = 60000
+smtp_timeout_read = 60000
 
 proxy_url = NONE
 

@@ -858,91 +858,96 @@
 # PORTAL SMTP CONFIGURATION
 #------------------------------------------------------------------------------
 
-#portal_invite_email = on         # Enable or disable portal_invite_email
-                                  # Default `on`
+#portal_invite_email = on
+                        # Enable or disable portal_invite_email
+                        # Default `on`
 
-#portal_access_request_email = on # Enable or disable portal_access_request_email
-                                  # Default `on`
+#portal_access_request_email = on
+                        # Enable or disable portal_access_request_email
+                        # Default `on`
 
-#portal_approved_email = on       # Enable or disable portal_approved_email
-                                  # Default `on`
+#portal_approved_email = on
+                        # Enable or disable portal_approved_email
+                        # Default `on`
 
-#portal_reset_email = on          # Enable or disable portal_reset_email
-                                  # Default `on`
-                                  # Note: This is overridden if `smtp` is `off`
+#portal_reset_email = on
+                        # Enable or disable portal_reset_email
+                        # Default `on`
 
-#portal_reset_success_email = on  # Enable or disable portal_reset_success_email
-                                  # Default `on`
+#portal_reset_success_email = on
+                        # Enable or disable portal_reset_success_email
+                        # Default `on`
 
-#portal_emails_from =             # The name and email address for the `From` header
-                                  # for portal emails
-                                  #
-                                  # Example
-                                  # portal_emails_from = Your Name <example@example.com>
-                                  #
-                                  # Note: Some SMTP servers will not use
-                                  # this value, but instead insert the email and name
-                                  # associated with the account.
-                                  # Default `nil`
+#portal_emails_from =   # The name and email address for the `From` header
+                        # for portal emails
+                        #
+                        # Example
+                        # portal_emails_from = Your Name <example@example.com>
+                        #
+                        # Note: Some SMTP servers will not use
+                        # this value, but instead insert the email and name
+                        # associated with the account.
+                        # Default `nil`
 
-#portal_emails_reply_to =         # Email address for the `Reply-To` header for
-                                  # portal emails
-                                  #
-                                  # Example
-                                  # portal_emails_reply_to = example@example.com
-                                  #
-                                  # Note: Some SMTP servers will not use
-                                  # this value, but instead insert the email
-                                  # associated with the account.
-                                  # Default `nil`
-
-#portal_smtp_host =               # The host of the SMTP server to connect to.
-                                  # Default `localhost`
-
-#portal_smtp_port =               # The port number on the SMTP server to connect to.
-                                  # Default `25`
-
-#portal_smtp_starttls =           # When set to `on`, STARTTLS is used to encrypt communication
-                                  # with the SMTP server. This is normally used in conjunction with
-                                  # port 587.
-                                  # Default `nil`
-
-#portal_smtp_username =           # Username used for authentication with SMTP server
-                                  # Default `nil`
-
-#portal_smtp_password =           # Password used for authentication with SMTP server
-                                  # Default `nil`
-
-#portal_smtp_ssl =                # When set to `on`, SMTPS is used to encrypt communication
-                                  # with the SMTP server. This is normally used in conjunction with
-                                  # port 465.
-                                  # Default `nil`
-
-#portal_smtp_auth_type =          # The method used to authenticate with the SMTP server
-                                  # Valid options are `plain`, `login`, or `nil`
-                                  # Default `nil`
-
-#portal_smtp_domain = localhost.localdomain
-                                  # The domain used in the `EHLO` connection and part of
-                                  # the `Message-ID` header
-                                  # Default `localhost.localdomain`
-
-#portal_smtp_timeout_connect = 60000
-                                  # The timeout (in milliseconds) for connecting to the SMTP server.
-                                  # Default 60000
-
-#portal_smtp_timeout_send = 60000 # The timeout (in milliseconds) for sending data to the SMTP server.
-                                  # Default 60000
-
-#portal_smtp_timeout_read = 60000
-                                  # The timeout (in milliseconds) for reading data from the SMTP server.
-                                  # Default 60000
+#portal_emails_reply_to =
+                        # Email address for the `Reply-To` header for
+                        # portal emails
+                        #
+                        # Example
+                        # portal_emails_reply_to = example@example.com
+                        #
+                        # Note: Some SMTP servers will not use
+                        # this value, but instead insert the email
+                        # associated with the account.
+                        # Default `nil`
 
 #------------------------------------------------------------------------------
 # GENERAL SMTP CONFIGURATION
 #------------------------------------------------------------------------------
 
+#smtp_host =           # The host of the SMTP server to connect to.
+                       # Default `localhost`
 
-#smtp_admin_emails =    # Comma separated list of admin emails to receive notifications
-                        # Example `admin1@example.com, admin2@example.com`
-                        # Default `nil`
+#smtp_port =           # The port number on the SMTP server to connect to.
+                       # Default `25`
+
+#smtp_starttls =       # When set to `on`, STARTTLS is used to encrypt communication
+                       # with the SMTP server. This is normally used in conjunction with
+                       # port 587.
+                       # Default `nil`
+
+#smtp_username =       # Username used for authentication with SMTP server
+                       # Default `nil`
+
+#smtp_password =       # Password used for authentication with SMTP server
+                       # Default `nil`
+
+#smtp_ssl =            # When set to `on`, SMTPS is used to encrypt communication
+                       # with the SMTP server. This is normally used in conjunction with
+                       # port 465.
+                       # Default `nil`
+
+#smtp_auth_type =      # The method used to authenticate with the SMTP server
+                       # Valid options are `plain`, `login`, or `nil`
+                       # Default `nil`
+
+#smtp_domain = localhost.localdomain
+                       # The domain used in the `EHLO` connection and part of
+                       # the `Message-ID` header
+                       # Default `localhost.localdomain`
+
+#smtp_timeout_connect = 60000
+                       # The timeout (in milliseconds) for connecting to the SMTP server.
+                       # Default 60000
+
+#smtp_timeout_send = 60000
+                       # The timeout (in milliseconds) for sending data to the SMTP server.
+                       # Default 60000
+
+#smtp_timeout_read = 60000
+                       # The timeout (in milliseconds) for reading data from the SMTP server.
+                       # Default 60000
+
+#smtp_admin_emails =   # Comma separated list of admin emails to receive notifications
+                       # Example `admin1@example.com, admin2@example.com`
+                       # Default `nil`
