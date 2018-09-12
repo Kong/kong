@@ -188,4 +188,4 @@ kong_nginx_metric_errors_total 0
 
 
 [badge-travis-url]: https://travis-ci.com/Kong/kong-plugin-prometheus/branches
-[badge-travis-image]: https://travis-ci.com/Kong/kong-plugin-prometheus.svg
+[badge-travis-image]: https://travis-ci.com/Kong/kong-plugin-prometheus.svg?branch=master
