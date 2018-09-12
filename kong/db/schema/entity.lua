@@ -17,6 +17,18 @@ local base_types = {
   integer = true,
 }
 
+-- Make records in Entities non-nullable by default,
+-- so that they return their full structure on API queries.
+local function make_records_non_nullable(field)
+  if field.nullable == nil then
+    field.nullable = false
+  end
+  for _, f in Schema.each_field(field) do
+    if f.type == "record" then
+      make_records_non_nullable(f)
+    end
+  end
+end
 
 function Entity.new(definition)
 
@@ -46,6 +58,9 @@ function Entity.new(definition)
       if not base_types[field.elements.type] then
         return nil, entity_errors.AGGREGATE_ON_BASE_TYPES_ONLY:format(name)
       end
+
+    elseif field.type == "record" then
+      make_records_non_nullable(field)
 
     end
 
