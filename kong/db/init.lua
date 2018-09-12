@@ -121,6 +121,11 @@ local function prefix_err(self, err)
 end
 
 
+local function fmt_err(self, err, ...)
+  return prefix_err(self, fmt(err, ...))
+end
+
+
 function DB:init_connector()
   -- I/O with the DB connector singleton
   -- Implementation up to the strategy's connector. A place for:
@@ -218,10 +223,16 @@ do
   local MAX_LOCK_WAIT_STEP = 2 -- seconds
 
 
-  local function release_rlock_and_ret(rlock, ...)
+  local function release_rlock_and_ret(self, rlock, ...)
     rlock:unlock()
 
-    return ...
+    local args = { ... }
+
+    if type(args[2]) == "string" then
+      args[2] = prefix_err(self, args[2])
+    end
+
+    return unpack(args)
   end
 
 
@@ -232,6 +243,8 @@ do
 
     local owner
     local ttl
+    local no_wait
+    local no_cleanup
 
     if opts ~= nil then
       if type(opts) ~= "table" then
@@ -246,8 +259,18 @@ do
         error("opts.owner must be a string", 2)
       end
 
+      if opts.no_wait and type(opts.no_wait) ~= "boolean" then
+        error("opts.no_wait must be a boolean", 2)
+      end
+
+      if opts.no_cleanup and type(opts.no_cleanup) ~= "boolean" then
+        error("opts.no_cleanup must be a boolean", 2)
+      end
+
       owner = opts.owner
       ttl = opts.ttl
+      no_wait = opts.no_wait
+      no_cleanup = opts.no_cleanup
     end
 
     if type(cb) ~= "function" then
@@ -266,7 +289,7 @@ do
       -- real owner of a lock
       local id, err = public.get_node_id()
       if not id then
-        return nil, "failed to generate lock owner: " .. err
+        return nil, prefix_err(self, "failed to generate lock owner: " .. err)
       end
 
       owner = id
@@ -281,7 +304,7 @@ do
       timeout = ttl,
     })
     if not rlock then
-      return nil, "failed to create worker lock: " .. err
+      return nil, prefix_err(self, "failed to create worker lock: " .. err)
     end
 
     -- acquire a single worker
@@ -289,10 +312,10 @@ do
     local elapsed, err = rlock:lock(key)
     if not elapsed then
       if err == "timeout" then
-        return nil, err
+        return nil, prefix_err(self, err)
       end
 
-      return nil, "failed to acquire worker lock: " .. err
+      return nil, prefix_err(self, "failed to acquire worker lock: " .. err)
     end
 
     if elapsed ~= 0 then
@@ -306,17 +329,22 @@ do
     -- ensure the locks table exists
     local ok, err = self.connector:setup_locks(DEFAULT_TTL)
     if not ok then
-      return release_rlock_and_ret(rlock, nil,
+      return release_rlock_and_ret(self, rlock, nil,
                                    "failed to setup locks: " .. err)
     end
 
     local ok, err = self.connector:insert_lock(key, ttl, owner)
     if err then
-      return release_rlock_and_ret(rlock, nil,
+      return release_rlock_and_ret(self, rlock, nil,
                                    "failed to insert cluster lock: " .. err)
     end
 
     if not ok then
+      if no_wait then
+        -- don't wait on cluster locked
+        return release_rlock_and_ret(self, rlock, false)
+      end
+
       -- waiting on cluster lock
       local step = 0.1
       local cluster_elapsed = 0
@@ -331,19 +359,19 @@ do
 
         local locked, err = self.connector:read_lock(key)
         if err then
-          return release_rlock_and_ret(rlock, nil, "failed to read cluster " ..
-                                                   "lock: " .. err)
+          return release_rlock_and_ret(self, rlock, nil,
+                                       "failed to read cluster lock: " .. err)
         end
 
         if not locked then
           -- the cluster lock was released
-          return release_rlock_and_ret(rlock, false)
+          return release_rlock_and_ret(self, rlock, false)
         end
 
         step = math.min(step * 3, MAX_LOCK_WAIT_STEP)
       end
 
-      return release_rlock_and_ret(rlock, nil, "timeout")
+      return release_rlock_and_ret(self, rlock, nil, "timeout")
     end
 
     -- cluster lock acquired, run callback
@@ -352,13 +380,16 @@ do
     if not pok then
       self.connector:remove_lock(key, owner)
 
-      return release_rlock_and_ret(rlock, nil, "cluster_mutex callback " ..
-                                   "threw an error: " .. perr)
+      return release_rlock_and_ret(self, rlock, nil,
+                                   "cluster_mutex callback threw an error: "
+                                   .. perr)
     end
 
-    self.connector:remove_lock(key, owner)
+    if not no_cleanup then
+      self.connector:remove_lock(key, owner)
+    end
 
-    return release_rlock_and_ret(rlock, true)
+    return release_rlock_and_ret(self, rlock, true)
   end
 end
 
@@ -396,7 +427,7 @@ do
   }
 
 
-  local function load_subsystems(plugin_names)
+  local function load_subsystems(self, plugin_names)
     if type(plugin_names) ~= "table" then
       error("plugin_names must be a table", 2)
     end
@@ -419,7 +450,8 @@ do
     local dir_path, n = string.gsub(pl_path.abspath(core_path),
                                     "core" .. pl_path.sep .. "init%.lua$", "")
     if n ~= 1 then
-      return nil, "failed to substitute migrations path in " .. dir_path
+      return nil, prefix_err(self, "failed to substitute migrations path in "
+                             .. dir_path)
     end
 
     local dirs = pl_dir.getdirectories(dir_path)
@@ -433,7 +465,8 @@ do
 
         local mig_idx = index()
         if type(mig_idx) ~= "table" then
-          return nil, fmt("migrations index at '%s' must be a table", filepath)
+          return nil, fmt_err(self, "migrations index at '%s' must be a table",
+                              filepath)
         end
 
         table.insert(res, {
@@ -452,8 +485,8 @@ do
       local ok, mig_idx = utils.load_module_if_exists(namespace)
       if ok then
         if type(mig_idx) ~= "table" then
-          return nil, fmt("migrations index from '%s' must be a table",
-                          namespace)
+          return nil, fmt_err(self, "migrations index from '%s' must be a table",
+                              namespace)
         end
 
         table.insert(res, {
@@ -472,8 +505,8 @@ do
 
         local ok, migration = utils.load_module_if_exists(mig_module)
         if not ok then
-          return nil, fmt("failed to load migration '%s' of '%s' subsystem",
-                          mig_module, subsys.name)
+          return nil, fmt_err(self, "failed to load migration '%s' of '%s' subsystem",
+                              mig_module, subsys.name)
         end
 
         migration.name = mig_name
@@ -481,8 +514,8 @@ do
         local ok, errors = MigrationSchema:validate(migration)
         if not ok then
           local err_t = Errors:schema_violation(errors)
-          return nil, fmt("migration '%s' of '%s' subsystem is invalid: %s",
-                          mig_module, subsys.name, tostring(err_t))
+          return nil, fmt_err(self, "migration '%s' of '%s' subsystem is invalid: %s",
+                              mig_module, subsys.name, tostring(err_t))
         end
 
         table.insert(subsys.migrations, migration)
@@ -496,16 +529,16 @@ do
   function DB:schema_state()
     log.verbose("loading subsystems migrations...")
 
-    local subsystems, err = load_subsystems(self.kong_config.loaded_plugins)
+    local subsystems, err = load_subsystems(self, self.kong_config.loaded_plugins)
     if not subsystems then
-      return nil, err
+      return nil, prefix_err(self, err)
     end
 
     log.verbose("retrieving database schema state...")
 
     local ok, err = self.connector:connect_migrations()
     if not ok then
-      return nil, err
+      return nil, prefix_err(self, err)
     end
 
     local rows, err = self.connector:schema_migrations()
@@ -513,7 +546,7 @@ do
     self.connector:close()
 
     if err then
-      return nil, "failed to check schema state: " .. err
+      return nil, prefix_err(self, "failed to check schema state: " .. err)
     end
 
     log.verbose("schema state retrieved")
@@ -636,7 +669,7 @@ do
     self.connector:close()
 
     if not ok then
-      return nil, "failed to bootstrap database: " .. err
+      return nil, prefix_err(self, "failed to bootstrap database: " .. err)
     end
 
     return true
@@ -646,7 +679,7 @@ do
   function DB:schema_reset()
     local ok, err = self.connector:connect_migrations()
     if not ok then
-      return nil, err
+      return nil, prefix_err(self, err)
     end
 
     local ok, err = self.connector:schema_reset()
@@ -654,7 +687,7 @@ do
     self.connector:close()
 
     if not ok then
-      return nil, err
+      return nil, prefix_err(self, err)
     end
 
     return true
@@ -679,25 +712,27 @@ do
 
     local ok, err = self.connector:connect_migrations({ use_keyspace = true })
     if not ok then
-      return nil, err
+      return nil, prefix_err(self, err)
     end
+
+    local n_migrations = 0
 
     for _, t in ipairs(migrations) do
       -- TODO: for database/keyspace <db_name/keyspace_name>
-      log("migrating %s", t.subsystem)
+      log("migrating %s...", t.subsystem)
 
       for _, mig in ipairs(t.migrations) do
         local ok, mod = utils.load_module_if_exists(t.namespace .. "." ..
                                                     mig.name)
         if not ok then
-          return nil, fmt("failed to load migration '%s': %s", mig.name,
-                          mod)
+          return nil, fmt_err(self, "failed to load migration '%s': %s",
+                              mig.name, mod)
         end
 
         local strategy_migration = mod[self.strategy]
         if not strategy_migration then
-          return nil, fmt("missing %s strategy for migration '%s'",
-                          self.strategy, mig.name)
+          return nil, fmt_err(self, "missing %s strategy for migration '%s'",
+                              self.strategy, mig.name)
         end
 
         log.debug("running migration: %s", mig.name)
@@ -710,8 +745,8 @@ do
                                                           strategy_migration.up)
           if not ok then
             self.connector:close()
-            return nil, fmt("failed to run migration '%s' up: %s", mig.name,
-                            err)
+            return nil, fmt_err(self, "failed to run migration '%s' up: %s",
+                                mig.name, err)
           end
 
           local state = "executed"
@@ -725,8 +760,8 @@ do
                                                           mig.name, state)
           if not ok then
             self.connector:close()
-            return nil, fmt("failed to record migration '%s': %s",
-                            mig.name, err)
+            return nil, fmt_err(self, "failed to record migration '%s': %s",
+                                mig.name, err)
           end
 
         else
@@ -736,8 +771,8 @@ do
           local pok, perr, err = xpcall(f, debug.traceback, self.connector)
           if not pok or err then
             self.connector:close()
-            return nil, fmt("failed to run migration '%s' teardown: %s",
-                            mig.name, perr or err)
+            return nil, fmt_err(self, "failed to run migration '%s' teardown: %s",
+                                mig.name, perr or err)
 
           end
 
@@ -745,12 +780,24 @@ do
                                                           mig.name, "teardown")
           if not ok then
             self.connector:close()
-            return nil, fmt("failed to record migration '%s': %s",
-                            mig.name, err)
+            return nil, fmt_err(self, "failed to record migration '%s': %s",
+                                mig.name, err)
           end
         end
 
         log("%s migrated up to: %s", t.subsystem, mig.name)
+
+        n_migrations = n_migrations + 1
+      end
+    end
+
+    log("%d migration%s executed", n_migrations,
+        n_migrations > 1 and "s" or "")
+
+    if run_up then
+      ok, err = self.connector:post_run_up_migrations()
+      if not ok then
+        return nil, prefix_err(self, err)
       end
     end
 

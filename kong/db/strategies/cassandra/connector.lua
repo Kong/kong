@@ -1,9 +1,31 @@
 local cassandra = require "cassandra"
 local Cluster   = require "resty.cassandra.cluster"
+local log = require "kong.cmd.utils.log"
 
 
 local CassandraConnector   = {}
 CassandraConnector.__index = CassandraConnector
+
+
+local function wait_for_schema_consensus(self)
+  if not self.connection then
+    error("no connection")
+  end
+
+  log.verbose("waiting for Cassandra schema consensus (%dms timeout)...",
+              self.cluster.max_schema_consensus_wait)
+
+  local ok, err = self.cluster:wait_schema_consensus(self.connection)
+
+  log.verbose("Cassandra schema consensus: %s",
+              ok and "reached" or "not reached")
+
+  if err then
+    return nil, "failed to wait for schema consensus: " .. err
+  end
+
+  return true
+end
 
 
 function CassandraConnector.new(kong_config)
@@ -322,8 +344,9 @@ function CassandraConnector:reset()
     end
   end
 
-  ok, err = self.cluster:wait_schema_consensus(self.connection)
+  ok, err = wait_for_schema_consensus(self)
   if not ok then
+    self:setkeepalive()
     return nil, err
   end
 
@@ -389,6 +412,8 @@ function CassandraConnector:setup_locks(default_ttl)
     return nil, err
   end
 
+  log.verbose("creating 'locks' table if not existing...")
+
   local cql = string.format([[
     CREATE TABLE IF NOT EXISTS locks(
       key text PRIMARY KEY,
@@ -402,7 +427,9 @@ function CassandraConnector:setup_locks(default_ttl)
     return nil, err
   end
 
-  ok, err = self.cluster:wait_schema_consensus(self.connection)
+  log.verbose("successfully created 'locks' table")
+
+  ok, err = wait_for_schema_consensus(self)
   if not ok then
     self:setkeepalive()
     return nil, err
@@ -593,6 +620,9 @@ do
 
     -- create keyspace if not exists
 
+    log.verbose("creating '%s' keyspace if not existing...",
+                kong_config.cassandra_keyspace)
+
     local res, err = self.connection:execute(string.format([[
       CREATE KEYSPACE IF NOT EXISTS %q
       WITH REPLICATION = %s
@@ -601,6 +631,9 @@ do
       return nil, err
     end
 
+    log("successfully created '%s' keyspace",
+        kong_config.cassandra_keyspace)
+
     local ok, err = self.connection:change_keyspace(kong_config.cassandra_keyspace)
     if not ok then
       return nil, err
@@ -608,8 +641,10 @@ do
 
     -- create schema meta table if not exists
 
+    log.verbose("creating 'schema_meta' table...")
+
     local res, err = self.connection:execute([[
-      CREATE TABLE IF NOT EXISTS schema_meta (
+      CREATE TABLE IF NOT EXISTS schema_meta(
         key             text,
         subsystem       text,
         last_executed   text,
@@ -623,7 +658,9 @@ do
       return nil, err
     end
 
-    ok, err = self.cluster:wait_schema_consensus(self.connection)
+    log.verbose("successfully created 'schema_meta' table")
+
+    ok, err = wait_for_schema_consensus(self)
     if not ok then
       return nil, err
     end
@@ -644,7 +681,9 @@ do
       return nil, err
     end
 
-    ok, err = self.cluster:wait_schema_consensus(self.connection)
+    log("dropped '%s' keyspace", self.keyspace)
+
+    ok, err = wait_for_schema_consensus(self)
     if not ok then
       return nil, err
     end
@@ -675,7 +714,6 @@ do
         if not res then
           if string.find(err, "Column .- was not found in table")
              or string.find(err, "[Ii]nvalid column name") then
-            local log = require "kong.cmd.utils.log"
             log.warn("ignored error while running '%s' migration: %s (%s)",
                      name, err, cql:gsub("\n", " "):gsub("%s%s+", " "))
 
@@ -743,6 +781,16 @@ do
 
     local res, err = self.connection:execute(cql, args)
     if not res then
+      return nil, err
+    end
+
+    return true
+  end
+
+
+  function CassandraConnector:post_up_migrations()
+    local ok, err = wait_for_schema_consensus(self)
+    if not ok then
       return nil, err
     end
 
