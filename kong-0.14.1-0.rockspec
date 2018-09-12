@@ -84,6 +84,7 @@ build = {
     ["kong.cmd.utils.kill"] = "kong/cmd/utils/kill.lua",
     ["kong.cmd.utils.env"] = "kong/cmd/utils/env.lua",
     ["kong.cmd.utils.migrations"] = "kong/cmd/utils/migrations.lua",
+    ["kong.cmd.utils.tty"] = "kong/cmd/utils/tty.lua",
     ["kong.cmd.utils.nginx_signals"] = "kong/cmd/utils/nginx_signals.lua",
     ["kong.cmd.utils.prefix_handler"] = "kong/cmd/utils/prefix_handler.lua",
 

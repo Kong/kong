@@ -8,9 +8,16 @@ local log = require "kong.cmd.utils.log"
 local DB = require "kong.db"
 
 local function execute(args)
+  args.db_timeout = args.db_timeout * 1000
+  args.lock_timeout = args.lock_timeout * 1000
+
   local conf = assert(conf_loader(args.conf, {
     prefix = args.prefix
   }))
+
+  conf.cassandra_timeout = args.db_timeout -- connect + send + read
+  conf.cassandra_schema_consensus_timeout = args.db_timeout
+  -- TODO: no support for custom pgmoon timeout
 
   assert(not kill.is_running(conf.nginx_pid),
          "Kong is already running in " .. conf.prefix)
@@ -30,43 +37,16 @@ local function execute(args)
   xpcall(function()
     assert(prefix_handler.prepare_prefix(conf, args.nginx_conf))
 
-    if args.run_migrations then
-      migrations_utils.up(schema_state, db)
+    if not db:is_schema_up_to_date(schema_state) then
+      if args.run_migrations then
+        migrations_utils.up(schema_state, db, {
+          ttl = args.lock_timeout,
+        })
 
-    elseif not db:is_schema_up_to_date(schema_state) then
-      migrations_utils.print_state(schema_state, "error")
-      error("the current database schema does not match this "  ..
-            "version of Kong. Please run `kong migrations up` " ..
-            "first to update/initialise the database schema.")
+      else
+        migrations_utils.print_state(schema_state)
+      end
     end
-
-    --[[
-    local ok, err = dao:are_migrations_uptodate()
-    if err then
-      -- error correctly formatted by the DAO
-      error(err)
-    end
-
-    if not ok then
-      -- we cannot start, throw a very descriptive error to instruct the user
-      error("the current database schema does not match\n"                  ..
-            "this version of Kong.\n\nPlease run `kong migrations up` "     ..
-            "first to update/initialise the database schema.\nBe aware "    ..
-            "that Kong migrations should only run from a single node, and " ..
-            "that nodes\nrunning migrations concurrently will conflict "    ..
-            "with each other and might corrupt\nyour database schema!")
-    end
-
-    ok, err = dao:check_schema_consensus()
-    if err then
-      -- error correctly formatted by the DAO
-      error(err)
-    end
-
-    if not ok then
-      error("Cassandra has not reached cluster consensus yet")
-    end
-    --]]
 
     assert(nginx_signals.start(conf))
 
@@ -90,10 +70,21 @@ Start Kong (Nginx and other configured services) in the configured
 prefix directory.
 
 Options:
- -c,--conf        (optional string)   configuration file
- -p,--prefix      (optional string)   override prefix directory
- --nginx-conf     (optional string)   custom Nginx configuration template
- --run-migrations (optional boolean)  optionally run migrations on the DB
+ -c,--conf        (optional string)   Configuration file.
+
+ -p,--prefix      (optional string)   Override prefix directory.
+
+ --nginx-conf     (optional string)   Custom Nginx configuration template.
+
+ --run-migrations (optional boolean)  Run migrations before starting.
+
+ --db-timeout     (default 60)        Timeout, in seconds, for all database
+                                      operations (including schema consensus for
+                                      Cassandra).
+
+ --lock-timeout   (default 60)        When --run-migrations is enabled, timeout,
+                                      in seconds, for nodes waiting on the
+                                      leader node to finish running migrations.
 ]]
 
 return {

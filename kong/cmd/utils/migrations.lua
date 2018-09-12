@@ -1,9 +1,8 @@
 local log = require "kong.cmd.utils.log"
 
 
--- TODO: argument so migrations can take more than 60s without other nodes
--- timing out
-local MUTEX_TIMEOUT = 60
+local MIGRATIONS_MUTEX_KEY = "migrations"
+local NOT_LEADER_MSG = "aborted: another node is performing database changes"
 
 
 local function print_state(schema_state, lvl)
@@ -37,20 +36,24 @@ local function print_state(schema_state, lvl)
 end
 
 
-local function bootstrap(schema_state, db)
+local function bootstrap(schema_state, db, ttl)
   if schema_state.needs_bootstrap then
     log("bootstrapping database...")
     assert(db:schema_bootstrap())
 
   else
     log("database already bootstrapped")
+    return
   end
 
-  log("running migrations...")
+  local opts = {
+    ttl = ttl,
+    no_wait = true, -- exit the mutex if another node acquired it
+  }
 
-  local ok, err = db:cluster_mutex("bootstrap", { ttl = MUTEX_TIMEOUT }, function()
+  local ok, err = db:cluster_mutex(MIGRATIONS_MUTEX_KEY, opts, function()
     assert(db:run_migrations(schema_state.new_migrations, {
-      run_up = true
+      run_up = true,
     }))
     log("database is up-to-date")
   end)
@@ -59,19 +62,18 @@ local function bootstrap(schema_state, db)
   end
 
   if not ok then
-    -- TODO: show this log sooner
-    log("another node ran migrations")
+    log(NOT_LEADER_MSG)
   end
 end
 
 
-local function up(schema_state, db)
+local function up(schema_state, db, opts)
   if schema_state.needs_bootstrap then
     error("can't run migrations: database needs bootstrapping; " ..
           "run 'kong migrations bootstrap'")
   end
 
-  local ok, err = db:cluster_mutex("migrations", { ttl = MUTEX_TIMEOUT }, function()
+  local ok, err = db:cluster_mutex(MIGRATIONS_MUTEX_KEY, opts, function()
     schema_state = assert(db:schema_state())
 
     if schema_state.pending_migrations then
@@ -79,7 +81,7 @@ local function up(schema_state, db)
     end
 
     if not schema_state.new_migrations then
-      log("schema already up-to-date")
+      log("database is already up-to-date")
       return
     end
 
@@ -95,21 +97,25 @@ local function up(schema_state, db)
   end
 
   if not ok then
-    -- TODO: show this log sooner
-    log("another node ran migrations")
+    log(NOT_LEADER_MSG)
   end
 
   return ok
 end
 
 
-local function finish(schema_state, db)
+local function finish(schema_state, db, ttl)
   if schema_state.needs_bootstrap then
     log("can't run migrations: database not bootstrapped")
     return
   end
 
-  local ok, err = db:cluster_mutex("migrations", { ttl = MUTEX_TIMEOUT }, function()
+  local opts = {
+    ttl = ttl,
+    no_wait = true, -- exit the mutex if another node acquired it
+  }
+
+  local ok, err = db:cluster_mutex(MIGRATIONS_MUTEX_KEY, opts, function()
     local schema_state = assert(db:schema_state())
 
     if not schema_state.pending_migrations then
@@ -121,7 +127,7 @@ local function finish(schema_state, db)
               schema_state.pending_migrations)
 
     assert(db:run_migrations(schema_state.pending_migrations, {
-      run_teardown = true
+      run_teardown = true,
     }))
   end)
   if err then
@@ -129,16 +135,35 @@ local function finish(schema_state, db)
   end
 
   if not ok then
-    -- TODO: show this log sooner
-    log("another node ran pending migrations")
+    log(NOT_LEADER_MSG)
   end
 end
 
 
-local function reset(db)
-  -- TODO: confirmation prompt
-  assert(db:schema_reset())
-  log("schema reset")
+local function reset(schema_state, db, ttl)
+  if schema_state.needs_bootstrap then
+    log("database not bootstrapped, nothing to reset")
+    return
+  end
+
+  local opts = {
+    ttl = ttl,
+    no_wait = true,
+    no_cleanup = true,
+  }
+
+  local ok, err = db:cluster_mutex(MIGRATIONS_MUTEX_KEY, opts, function()
+    log("resetting database...")
+    assert(db:schema_reset())
+    log("database successfully reset")
+  end)
+  if err then
+    error(err)
+  end
+
+  if not ok then
+    log(NOT_LEADER_MSG)
+  end
 end
 
 
