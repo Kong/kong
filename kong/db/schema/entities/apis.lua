@@ -7,7 +7,7 @@ return {
   endpoint_key = "name",
 
   fields = {
-    { id = typedefs.uuid, },
-    { name = { type = "string", unique = true } },
+    { id   = typedefs.uuid, },
+    { name = typedefs.name },
   },
 }

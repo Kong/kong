@@ -135,6 +135,16 @@ function _M.new(dao, db)
     }
   end)
 
+  local named_route_name_seq = new_sequence("route-name-%d")
+  local named_route_host_seq = new_sequence("route-host-%d.test")
+  res.named_routes = new_blueprint(db.routes, function(overrides)
+    return {
+      name = named_route_name_seq:next(),
+      hosts = { named_route_host_seq:next() },
+      service = overrides.service or res.services:insert(),
+    }
+  end)
+
   res.acl_plugins = new_blueprint(db.plugins, function()
     return {
       name   = "acl",
