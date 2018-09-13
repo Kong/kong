@@ -325,7 +325,6 @@ qq{
         proxy_set_header Host $upstream_host;
         proxy_pass http://unix:/$TEST_NGINX_HTML_DIR/nginx.sock;
     }
---- only
 --- request
 GET /t
 --- response_body
