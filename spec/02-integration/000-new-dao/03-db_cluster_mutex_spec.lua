@@ -9,6 +9,8 @@ for _, strategy in helpers.each_strategy() do
     setup(function()
       local _
       _, db, _ = helpers.get_db_utils(strategy)
+
+      assert(db.connector:setup_locks(60))
     end)
 
 
@@ -104,7 +106,7 @@ for _, strategy in helpers.each_strategy() do
         local t2 = ngx.thread.spawn(function()
           local ok, err = db:cluster_mutex("my_key_5", { ttl = 0.5 }, cb2)
           assert.is_nil(ok)
-          assert.equal("timeout", err)
+          assert.matches("%[%w+ error%] timeout", err)
         end)
 
         ngx.thread.wait(t1)
