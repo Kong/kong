@@ -97,6 +97,19 @@ describe("integration tests with mock zipkin server", function()
         assert.same("201", headers:get ":status")
       end
     end
+    do -- create (deprecated) api pointing at the zipkin server
+      local r = http_request.new_from_uri("http://127.0.0.1:8001/apis/")
+      r.headers:upsert(":method", "POST")
+      r.headers:upsert("content-type", "application/json")
+      r:set_body(string.format([[{
+        "name":"mock-zipkin",
+        "upstream_url": "http://%s:%d",
+        "hosts":["mock-zipkin-api"],
+        "preserve_host": true
+      }]], ip, port))
+      local headers = assert(r:go(TEST_TIMEOUT))
+      assert.same("201", headers:get ":status")
+    end
   end)
 
   teardown(function()
@@ -124,6 +137,34 @@ describe("integration tests with mock zipkin server", function()
       end
     end, function()
       local req = http_request.new_from_uri("http://mock-zipkin-route/")
+      req.host = "127.0.0.1"
+      req.port = 8000
+      assert(req:go())
+    end))
+  end)
+  it("works with an api (deprecated)", function()
+    assert.truthy(with_server(function(req_headers, res_headers, stream)
+      if req_headers:get(":authority") == "mock-zipkin-api" then
+        -- is the request itself
+        res_headers:upsert(":status", "204")
+      else
+        local body = cjson.decode((assert(stream:get_body_as_string())))
+        assert.same("table", type(body))
+        assert.same("table", type(body[1]))
+        for _, v in ipairs(body) do
+          assert.same("string", type(v.traceId))
+          assert.truthy(v.traceId:match("^%x+$"))
+          assert.same("number", type(v.timestamp))
+          assert.same("table", type(v.tags))
+          assert.truthy(v.duration >= 0)
+          if v.localEndpoint ~= cjson.null then
+            assert.same("string", type(v.localEndpoint.service))
+          end
+        end
+        res_headers:upsert(":status", "204")
+      end
+    end, function()
+      local req = http_request.new_from_uri("http://mock-zipkin-api/")
       req.host = "127.0.0.1"
       req.port = 8000
       assert(req:go())
