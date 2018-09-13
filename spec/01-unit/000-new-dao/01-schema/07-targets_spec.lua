@@ -1,8 +1,10 @@
 local Schema = require "kong.db.schema"
 local targets = require "kong.db.schema.entities.targets"
+local upstreams = require "kong.db.schema.entities.upstreams"
 local utils = require "kong.tools.utils"
 
-local Targets = Schema.new(targets)
+assert(Schema.new(upstreams))
+local Targets = assert(Schema.new(targets))
 
 local function validate(b)
   return Targets:validate(Targets:process_auto_fields(b, "insert"))

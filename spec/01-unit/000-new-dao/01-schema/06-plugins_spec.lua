@@ -1,6 +1,10 @@
 local Schema = require "kong.db.schema"
 local typedefs = require "kong.db.schema.typedefs"
 local utils = require "kong.tools.utils"
+local apis_definition = require "kong.db.schema.entities.apis"
+local routes_definition = require "kong.db.schema.entities.routes"
+local services_definition = require "kong.db.schema.entities.services"
+local consumers_definition = require "kong.db.schema.entities.consumers"
 local plugins_definition = require "kong.db.schema.entities.plugins"
 local dao_plugins = require "kong.db.dao.plugins"
 
@@ -10,7 +14,11 @@ describe("plugins", function()
   local db
 
   setup(function()
-    Plugins = Schema.new(plugins_definition)
+    assert(Schema.new(consumers_definition))
+    assert(Schema.new(services_definition))
+    assert(Schema.new(routes_definition))
+    assert(Schema.new(apis_definition))
+    Plugins = assert(Schema.new(plugins_definition))
 
     local my_plugins = {
       "key-auth",
