@@ -32,6 +32,9 @@ local CORE_ENTITIES = {
 }
 
 
+local DEFAULT_LOCKS_TTL = 60 -- seconds
+
+
 local DB = {}
 DB.__index = function(self, k)
   return DB[k] or rawget(self, "daos")[k]
@@ -219,7 +222,6 @@ do
   local resty_lock = require "resty.lock"
 
 
-  local DEFAULT_TTL = 60 -- seconds
   local MAX_LOCK_WAIT_STEP = 2 -- seconds
 
 
@@ -296,7 +298,7 @@ do
     end
 
     if not ttl then
-      ttl = DEFAULT_TTL
+      ttl = DEFAULT_LOCKS_TTL
     end
 
     local rlock, err = resty_lock:new("kong_locks", {
@@ -325,13 +327,6 @@ do
 
     -- worker lock acquired, other workers are waiting on it
     -- now acquire cluster lock via strategy-specific connector
-
-    -- ensure the locks table exists
-    local ok, err = self.connector:setup_locks(DEFAULT_TTL)
-    if not ok then
-      return release_rlock_and_ret(self, rlock, nil,
-                                   "failed to setup locks: " .. err)
-    end
 
     local ok, err = self.connector:insert_lock(key, ttl, owner)
     if err then
@@ -664,7 +659,8 @@ do
       return nil, err
     end
 
-    local ok, err = self.connector:schema_bootstrap(self.kong_config)
+    local ok, err = self.connector:schema_bootstrap(self.kong_config,
+                                                    DEFAULT_LOCKS_TTL)
 
     self.connector:close()
 

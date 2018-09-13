@@ -153,7 +153,7 @@ end
 
 function CassandraConnector:connect()
   if self.connection then
-    return
+    return true
   end
 
   local peer, err = self.cluster:next_coordinator()
@@ -406,7 +406,7 @@ function CassandraConnector:truncate_table(table_name)
 end
 
 
-function CassandraConnector:setup_locks(default_ttl)
+function CassandraConnector:setup_locks(default_ttl, no_schema_consensus)
   local ok, err = self:connect()
   if not ok then
     return nil, err
@@ -429,13 +429,17 @@ function CassandraConnector:setup_locks(default_ttl)
 
   log.verbose("successfully created 'locks' table")
 
-  ok, err = wait_for_schema_consensus(self)
-  if not ok then
-    self:setkeepalive()
-    return nil, err
-  end
+  if not no_schema_consensus then
+    -- called from tests, ignored when called from bootstrapping, since
+    -- we wait for schema consensus as part of bootstrap
+    ok, err = wait_for_schema_consensus(self)
+    if not ok then
+      self:setkeepalive()
+      return nil, err
+    end
 
-  self:setkeepalive()
+    self:setkeepalive()
+  end
 
   return true
 end
@@ -579,7 +583,7 @@ do
   end
 
 
-  function CassandraConnector:schema_bootstrap(kong_config)
+  function CassandraConnector:schema_bootstrap(kong_config, default_locks_ttl)
     -- compute keyspace creation CQL
 
     local cql_replication
@@ -641,7 +645,7 @@ do
 
     -- create schema meta table if not exists
 
-    log.verbose("creating 'schema_meta' table...")
+    log.verbose("creating 'schema_meta' table if not existing...")
 
     local res, err = self.connection:execute([[
       CREATE TABLE IF NOT EXISTS schema_meta(
@@ -659,6 +663,11 @@ do
     end
 
     log.verbose("successfully created 'schema_meta' table")
+
+    ok, err = self:setup_locks(default_locks_ttl, true) -- no schema consensus
+    if not ok then
+      return nil, err
+    end
 
     ok, err = wait_for_schema_consensus(self)
     if not ok then
