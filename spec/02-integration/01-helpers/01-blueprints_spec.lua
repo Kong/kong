@@ -195,8 +195,8 @@ dao_helpers.for_each_dao(function(kong_config)
     it("inserts oauth2 credendials", function()
       local co = bp.consumers:insert()
       local c = bp.oauth2_credentials:insert({
-        consumer_id  = co.id,
-        redirect_uri = "http://foo.com",
+        consumer  = { id = co.id },
+        redirect_uris = { "http://foo.com" },
       })
       assert.equals("oauth2 credential", c.name)
       assert.equals("secret", c.client_secret)
@@ -206,10 +206,10 @@ dao_helpers.for_each_dao(function(kong_config)
     it("inserts oauth2 authorization codes", function()
       local co = bp.consumers:insert()
       local cr = bp.oauth2_credentials:insert({
-        consumer_id  = co.id,
-        redirect_uri = "http://foo.com",
+        consumer  = { id = co.id },
+        redirect_uris = { "http://foo.com" },
       })
-      local c = bp.oauth2_authorization_codes:insert({ credential_id = cr.id })
+      local c = bp.oauth2_authorization_codes:insert({ credential = { id = cr.id } })
       assert.is_string(c.code)
       assert.equals("default", c.scope)
       assert.matches(UUID_PATTERN, c.id)
@@ -218,10 +218,10 @@ dao_helpers.for_each_dao(function(kong_config)
     it("inserts oauth2 tokens", function()
       local co = bp.consumers:insert()
       local cr = bp.oauth2_credentials:insert({
-        consumer_id  = co.id,
-        redirect_uri = "http://foo.com",
+        consumer = { id = co.id },
+        redirect_uris = { "http://foo.com" },
       })
-      local t = bp.oauth2_tokens:insert({ credential_id = cr.id })
+      local t = bp.oauth2_tokens:insert({ credential = { id = cr.id } })
       assert.equals("bearer", t.token_type)
       assert.equals("default", t.scope)
       assert.matches(UUID_PATTERN, t.id)

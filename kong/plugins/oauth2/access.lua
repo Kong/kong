@@ -3,7 +3,6 @@ local utils = require "kong.tools.utils"
 local responses = require "kong.tools.responses"
 local constants = require "kong.constants"
 local timestamp = require "kong.tools.timestamp"
-local singletons = require "kong.singletons"
 local public_utils = require "kong.tools.public"
 
 local string_find = string.find
@@ -55,10 +54,10 @@ local function generate_token(conf, service, api, credential, authenticated_user
     api_id = api.id
   end
 
-  local token, err = singletons.dao.oauth2_tokens:insert({
-    service_id = service_id,
-    api_id = api_id,
-    credential_id = credential.id,
+  local token, err = kong.db.oauth2_tokens:insert({
+    service = service_id and { id = service_id } or nil,
+    api = api_id and { id = api_id } or nil,
+    credential = { id = credential.id },
     authenticated_userid = authenticated_userid,
     expires_in = token_expiration,
     refresh_token = refresh_token,
@@ -80,25 +79,25 @@ local function generate_token(conf, service, api, credential, authenticated_user
 end
 
 local function load_oauth2_credential_by_client_id_into_memory(client_id)
-  local credentials, err = singletons.dao.oauth2_credentials:find_all {client_id = client_id}
+  local credential, err = kong.db.oauth2_credentials:select_by_client_id(client_id)
   if err then
     return nil, err
   end
-  return credentials[1]
+  return credential
 end
 
-local function get_redirect_uri(client_id)
+local function get_redirect_uris(client_id)
   local client, err
   if client_id then
-    local credential_cache_key = singletons.dao.oauth2_credentials:cache_key(client_id)
-    client, err = singletons.cache:get(credential_cache_key, nil,
-                                       load_oauth2_credential_by_client_id_into_memory,
-                                       client_id)
+    local credential_cache_key = kong.db.oauth2_credentials:cache_key(client_id)
+    client, err = kong.cache:get(credential_cache_key, nil,
+                                 load_oauth2_credential_by_client_id_into_memory,
+                                 client_id)
     if err then
       return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
     end
   end
-  return client and client.redirect_uri or nil, client
+  return client and client.redirect_uris or nil, client
 end
 
 local function retrieve_parameters()
@@ -116,27 +115,29 @@ local function retrieve_parameters()
   return uri_args
 end
 
-local function retrieve_scopes(parameters, conf)
+local function retrieve_scope(parameters, conf)
   local scope = parameters[SCOPE]
   local scopes = {}
 
   if conf.scopes and scope ~= nil then
     if type(scope) ~= "string" then
-      return false, {[ERROR] = "invalid_scope", error_description = "scope must be a string"}
+      return nil, {[ERROR] = "invalid_scope", error_description = "scope must be a string"}
     end
 
     for v in scope:gmatch("%S+") do
       if not utils.table_contains(conf.scopes, v) then
-        return false, {[ERROR] = "invalid_scope", error_description = "\"" .. v .. "\" is an invalid " .. SCOPE}
+        return nil, {[ERROR] = "invalid_scope", error_description = "\"" .. v .. "\" is an invalid " .. SCOPE}
       else
         table.insert(scopes, v)
       end
     end
   elseif not scope and conf.mandatory_scope then
-    return false, {[ERROR] = "invalid_scope", error_description = "You must specify a " .. SCOPE}
+    return nil, {[ERROR] = "invalid_scope", error_description = "You must specify a " .. SCOPE}
   end
 
-  return true, scopes
+  if #scopes > 0 then
+    return table.concat(scopes, " ")
+  end -- else return nil
 end
 
 local function authorize(conf)
@@ -146,7 +147,7 @@ local function authorize(conf)
   local allowed_redirect_uris, client, redirect_uri, parsed_redirect_uri
   local is_implicit_grant
 
-  local is_https, err = check_https(singletons.ip.trusted(ngx.var.realip_remote_addr),
+  local is_https, err = check_https(kong.ip.is_trusted(ngx.var.realip_remote_addr),
                                     conf.accept_http_if_already_terminated)
   if not is_https then
     response_params = {[ERROR] = "access_denied", error_description = err or "You must use HTTPS"}
@@ -163,13 +164,13 @@ local function authorize(conf)
       end
 
       -- Check scopes
-      local ok, scopes = retrieve_scopes(parameters, conf)
-      if not ok then
-        response_params = scopes -- If it's not ok, then this is the error message
+      local scopes, err = retrieve_scope(parameters, conf)
+      if err then
+        response_params = err -- If it's not ok, then this is the error message
       end
 
       -- Check client_id and redirect_uri
-      allowed_redirect_uris, client = get_redirect_uri(parameters[CLIENT_ID])
+      allowed_redirect_uris, client = get_redirect_uris(parameters[CLIENT_ID])
 
       if not allowed_redirect_uris then
         response_params = {[ERROR] = "invalid_client", error_description = "Invalid client authentication" }
@@ -193,13 +194,13 @@ local function authorize(conf)
             service_id = ngx.ctx.service.id
             api_id = ngx.ctx.api.id
           end
-          local authorization_code, err = singletons.dao.oauth2_authorization_codes:insert({
-            service_id = service_id,
-            api_id = api_id,
-            credential_id = client.id,
+          local authorization_code, err = kong.db.oauth2_authorization_codes:insert({
+            service = service_id and { id = service_id } or nil,
+            api = api_id and { id = api_id } or nil,
+            credential = { id = client.id },
             authenticated_userid = parameters[AUTHENTICATED_USERID],
-            scope = table.concat(scopes, " ")
-          }, {ttl = 300})
+            scope = scopes
+          }, { ttl = 300 })
 
           if err then
             return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
@@ -210,7 +211,7 @@ local function authorize(conf)
           }
         else
           -- Implicit grant, override expiration to zero
-          response_params = generate_token(conf, ngx.ctx.service, ngx.ctx.api, client, parameters[AUTHENTICATED_USERID],  table.concat(scopes, " "), state, nil, true)
+          response_params = generate_token(conf, ngx.ctx.service, ngx.ctx.api, client, parameters[AUTHENTICATED_USERID], scopes, state, nil, true)
           is_implicit_grant = true
         end
       end
@@ -235,9 +236,16 @@ local function authorize(conf)
   end
 
   -- Sending response in JSON format
-  return responses.send(response_params[ERROR] and 400 or 200, redirect_uri and {
-    redirect_uri = url.build(parsed_redirect_uri)
-  } or response_params, {
+  local status = response_params[ERROR] and 400 or 200
+  local body
+  if redirect_uri then
+    body = { redirect_uri = url.build(parsed_redirect_uri) }
+
+  else
+    body = response_params
+  end
+
+  return responses.send(status, body, {
     ["cache-control"] = "no-store",
     ["pragma"] = "no-cache"
   })
@@ -283,7 +291,7 @@ local function issue_token(conf)
   local parameters = retrieve_parameters()
   local state = parameters[STATE]
 
-  local is_https, err = check_https(singletons.ip.trusted(ngx.var.realip_remote_addr),
+  local is_https, err = check_https(kong.ip.is_trusted(ngx.var.realip_remote_addr),
                                     conf.accept_http_if_already_terminated)
   if not is_https then
     response_params = {[ERROR] = "access_denied", error_description = err or "You must use HTTPS"}
@@ -299,16 +307,17 @@ local function issue_token(conf)
     local client_id, client_secret, from_authorization_header = retrieve_client_credentials(parameters, conf)
 
     -- Check client_id and redirect_uri
-    local allowed_redirect_uris, client = get_redirect_uri(client_id)
-    if not allowed_redirect_uris then
-      response_params = {[ERROR] = "invalid_client", error_description = "Invalid client authentication"}
-      if from_authorization_header then
-        invalid_client_properties = { status = 401, www_authenticate = "Basic realm=\"OAuth2.0\""}
-      end
-    else
+    local allowed_redirect_uris, client = get_redirect_uris(client_id)
+    if allowed_redirect_uris then
       local redirect_uri = parameters[REDIRECT_URI] and parameters[REDIRECT_URI] or allowed_redirect_uris[1]
       if not utils.table_contains(allowed_redirect_uris, redirect_uri) then
         response_params = {[ERROR] = "invalid_request", error_description = "Invalid " .. REDIRECT_URI .. " that does not match with any redirect_uri created with the application" }
+      end
+
+    else
+      response_params = {[ERROR] = "invalid_client", error_description = "Invalid client authentication"}
+      if from_authorization_header then
+        invalid_client_properties = { status = 401, www_authenticate = "Basic realm=\"OAuth2.0\""}
       end
     end
 
@@ -327,51 +336,63 @@ local function issue_token(conf)
           service_id = ngx.ctx.service.id
           api_id = ngx.ctx.api.id
         end
-        local authorization_code = code and
-                                   singletons.dao.oauth2_authorization_codes:find_all({
-                                     code       = code,
-                                     api_id     = api_id,
-                                     service_id = service_id,
-                                   })[1]
-        if not authorization_code then
-          response_params = {[ERROR] = "invalid_request", error_description = "Invalid " .. CODE}
-        elseif authorization_code.credential_id ~= client.id then
-          response_params = {[ERROR] = "invalid_request", error_description = "Invalid " .. CODE}
+        local authorization_code =
+          code and kong.db.oauth2_authorization_codes:select_by_code(code)
+
+        if not authorization_code
+        or (service_id and service_id ~= authorization_code.service.id)
+        or (api_id and api_id ~= authorization_code.api.id)
+        then
+          response_params = {[ERROR] = "invalid_request",
+                             error_description = "Invalid " .. CODE}
+
+        elseif authorization_code.credential.id ~= client.id then
+          response_params = {[ERROR] = "invalid_request",
+                             error_description = "Invalid " .. CODE}
+
         else
           response_params = generate_token(conf, ngx.ctx.service, ngx.ctx.api, client,
                                            authorization_code.authenticated_userid, authorization_code.scope, state)
-          singletons.dao.oauth2_authorization_codes:delete({id=authorization_code.id}) -- Delete authorization code so it cannot be reused
+          kong.db.oauth2_authorization_codes:delete({ id = authorization_code.id }) -- Delete authorization code so it cannot be reused
         end
+
       elseif grant_type == GRANT_CLIENT_CREDENTIALS then
         -- Only check the provision_key if the authenticated_userid is being set
         if parameters.authenticated_userid and conf.provision_key ~= parameters.provision_key then
           response_params = {[ERROR] = "invalid_provision_key", error_description = "Invalid provision_key"}
+
         else
           -- Check scopes
-          local ok, scopes = retrieve_scopes(parameters, conf)
-          if not ok then
-            response_params = scopes -- If it's not ok, then this is the error message
+          local scope, err = retrieve_scope(parameters, conf)
+          if err then
+            response_params = err -- If it's not ok, then this is the error message
+
           else
             response_params = generate_token(conf, ngx.ctx.service, ngx.ctx.api, client,
-                                             parameters.authenticated_userid, table.concat(scopes, " "), state, nil, true)
+                                             parameters.authenticated_userid, scope, state, nil, true)
           end
         end
+
       elseif grant_type == GRANT_PASSWORD then
         -- Check that it comes from the right client
         if conf.provision_key ~= parameters.provision_key then
           response_params = {[ERROR] = "invalid_provision_key", error_description = "Invalid provision_key"}
+
         elseif not parameters.authenticated_userid or utils.strip(parameters.authenticated_userid) == "" then
           response_params = {[ERROR] = "invalid_authenticated_userid", error_description = "Missing authenticated_userid parameter"}
+
         else
           -- Check scopes
-          local ok, scopes = retrieve_scopes(parameters, conf)
-          if not ok then
-            response_params = scopes -- If it's not ok, then this is the error message
+          local scope, err = retrieve_scope(parameters, conf)
+          if err then
+            response_params = err -- If it's not ok, then this is the error message
+
           else
             response_params = generate_token(conf, ngx.ctx.service, ngx.ctx.api, client,
-                                             parameters.authenticated_userid, table.concat(scopes, " "), state)
+                                             parameters.authenticated_userid, scope, state)
           end
         end
+
       elseif grant_type == GRANT_REFRESH_TOKEN then
         local refresh_token = parameters[REFRESH_TOKEN]
         local service_id, api_id
@@ -380,21 +401,22 @@ local function issue_token(conf)
           api_id = ngx.ctx.api.id
         end
         local token = refresh_token and
-                      singletons.dao.oauth2_tokens:find_all({
-                        refresh_token = refresh_token,
-                        api_id        = api_id,
-                        service_id    = service_id,
-                      })[1]
-        if not token then
+                      kong.db.oauth2_tokens:select_by_refresh_token(refresh_token)
+        if not token
+        or (service_id and service_id ~= token.service.id)
+        or (api_id and api_id ~= token.api.id)
+        then
           response_params = {[ERROR] = "invalid_request", error_description = "Invalid " .. REFRESH_TOKEN}
+
         else
           -- Check that the token belongs to the client application
-          if token.credential_id ~= client.id then
+          if token.credential.id ~= client.id then
             response_params = {[ERROR] = "invalid_client", error_description = "Invalid client authentication"}
+
           else
             response_params = generate_token(conf, ngx.ctx.service, ngx.ctx.api, client,
                                              token.authenticated_userid, token.scope, state)
-            singletons.dao.oauth2_tokens:delete({id=token.id}) -- Delete old token
+            kong.db.oauth2_tokens:delete({ id = token.id }) -- Delete old token
           end
         end
       end
@@ -419,28 +441,28 @@ local function load_token_into_memory(conf, service, api, access_token)
     service_id = service.id
     api_id     = api.id
   end
-  local credentials, err = singletons.dao.oauth2_tokens:find_all {
-    access_token = access_token,
-    service_id   = service_id,
-    api_id       = api_id,
-  }
-  local result
+  local credentials, err = kong.db.oauth2_tokens:select_by_access_token(access_token)
   if err then
     return nil, err
-  elseif #credentials > 0 then
-    result = credentials[1]
   end
-  return result
+
+  if credentials and(
+    (service_id and service_id ~= credentials.service.id)
+    or (api_id  and api_id     ~= credentials.api.id))
+  then
+    credentials = nil
+  end
+  return credentials
 end
 
 local function retrieve_token(conf, access_token)
   local token, err
   if access_token then
-    local token_cache_key = singletons.dao.oauth2_tokens:cache_key(access_token)
-    token, err = singletons.cache:get(token_cache_key, nil,
-                                      load_token_into_memory, conf,
-                                      ngx.ctx.service, ngx.ctx.api,
-                                      access_token)
+    local token_cache_key = kong.db.oauth2_tokens:cache_key(access_token)
+    token, err = kong.cache:get(token_cache_key, nil,
+                                load_token_into_memory, conf,
+                                ngx.ctx.service, ngx.ctx.api,
+                                access_token)
     if err then
       return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
     end
@@ -493,7 +515,7 @@ local function parse_access_token(conf)
 end
 
 local function load_oauth2_credential_into_memory(credential_id)
-  local result, err = singletons.dao.oauth2_credentials:find {id = credential_id}
+  local result, err = kong.db.oauth2_credentials:select { id = credential_id }
   if err then
     return nil, err
   end
@@ -501,7 +523,7 @@ local function load_oauth2_credential_into_memory(credential_id)
 end
 
 local function load_consumer_into_memory(consumer_id, anonymous)
-  local result, err = singletons.db.consumers:select { id = consumer_id }
+  local result, err = kong.db.consumers:select { id = consumer_id }
   if not result then
     if anonymous and not err then
       err = 'anonymous consumer "' .. consumer_id .. '" not found'
@@ -530,43 +552,45 @@ end
 local function do_authentication(conf)
   local access_token = parse_access_token(conf);
   if not access_token then
-    return false, {status = 401, message = {[ERROR] = "invalid_request", error_description = "The access token is missing"}, headers = {["WWW-Authenticate"] = 'Bearer realm="service"'}}
+    return nil, {status = 401, message = {[ERROR] = "invalid_request", error_description = "The access token is missing"}, headers = {["WWW-Authenticate"] = 'Bearer realm="service"'}}
   end
 
   local token = retrieve_token(conf, access_token)
   if not token then
-    return false, {status = 401, message = {[ERROR] = "invalid_token", error_description = "The access token is invalid or has expired"}, headers = {["WWW-Authenticate"] = 'Bearer realm="service" error="invalid_token" error_description="The access token is invalid or has expired"'}}
+    return nil, {status = 401, message = {[ERROR] = "invalid_token", error_description = "The access token is invalid or has expired"}, headers = {["WWW-Authenticate"] = 'Bearer realm="service" error="invalid_token" error_description="The access token is invalid or has expired"'}}
   end
 
-  if (token.service_id and ngx.ctx.service.id ~= token.service_id)
-  or (token.api_id and ngx.ctx.api.id ~= token.api_id)
-  or (token.service_id == nil and token.api_id == nil and not conf.global_credentials)
+  if (token.service and token.service.id and ngx.ctx.service.id ~= token.service.id)
+  or (token.api and token.api.id and ngx.ctx.api.id ~= token.api.id)
+  or ((not token.service or not token.service.id)
+      and (not token.api or not token.api.id)
+      and not conf.global_credentials)
   then
-    return false, {status = 401, message = {[ERROR] = "invalid_token", error_description = "The access token is invalid or has expired"}, headers = {["WWW-Authenticate"] = 'Bearer realm="service" error="invalid_token" error_description="The access token is invalid or has expired"'}}
+    return nil, {status = 401, message = {[ERROR] = "invalid_token", error_description = "The access token is invalid or has expired"}, headers = {["WWW-Authenticate"] = 'Bearer realm="service" error="invalid_token" error_description="The access token is invalid or has expired"'}}
   end
 
   -- Check expiration date
   if token.expires_in > 0 then -- zero means the token never expires
-    local now = timestamp.get_utc()
-    if now - token.created_at > (token.expires_in * 1000) then
-      return false, {status = 401, message = {[ERROR] = "invalid_token", error_description = "The access token is invalid or has expired"}, headers = {["WWW-Authenticate"] = 'Bearer realm="service" error="invalid_token" error_description="The access token is invalid or has expired"'}}
+    local now = timestamp.get_utc() / 1000
+    if now - token.created_at > token.expires_in then
+      return nil, {status = 401, message = {[ERROR] = "invalid_token", error_description = "The access token is invalid or has expired"}, headers = {["WWW-Authenticate"] = 'Bearer realm="service" error="invalid_token" error_description="The access token is invalid or has expired"'}}
     end
   end
 
   -- Retrieve the credential from the token
-  local credential_cache_key = singletons.dao.oauth2_credentials:cache_key(token.credential_id)
-  local credential, err = singletons.cache:get(credential_cache_key, nil,
+  local credential_cache_key = kong.db.oauth2_credentials:cache_key(token.credential.id)
+  local credential, err = kong.cache:get(credential_cache_key, nil,
                                                load_oauth2_credential_into_memory,
-                                               token.credential_id)
+                                               token.credential.id)
   if err then
     return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
   end
 
   -- Retrieve the consumer from the credential
-  local consumer_cache_key = singletons.db.consumers:cache_key(credential.consumer_id)
-  local consumer, err      = singletons.cache:get(consumer_cache_key, nil,
-                                                  load_consumer_into_memory,
-                                                  credential.consumer_id)
+  local consumer_cache_key = kong.db.consumers:cache_key(credential.consumer.id)
+  local consumer, err      = kong.cache:get(consumer_cache_key, nil,
+                                            load_consumer_into_memory,
+                                            credential.consumer.id)
   if err then
     return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
   end
@@ -604,10 +628,10 @@ function _M.execute(conf)
   if not ok then
     if conf.anonymous ~= "" then
       -- get anonymous user
-      local consumer_cache_key = singletons.db.consumers:cache_key(conf.anonymous)
-      local consumer, err      = singletons.cache:get(consumer_cache_key, nil,
-                                                      load_consumer_into_memory,
-                                                      conf.anonymous, true)
+      local consumer_cache_key = kong.db.consumers:cache_key(conf.anonymous)
+      local consumer, err      = kong.cache:get(consumer_cache_key, nil,
+                                                load_consumer_into_memory,
+                                                conf.anonymous, true)
       if err then
         return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
       end

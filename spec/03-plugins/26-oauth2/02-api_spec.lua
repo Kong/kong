@@ -8,19 +8,18 @@ for _, strategy in helpers.each_strategy() do
     local service
     local admin_client
     local db
-    local dao
     local bp
 
     setup(function()
-      bp, db, dao = helpers.get_db_utils(strategy)
+      bp, db = helpers.get_db_utils(strategy)
 
       assert(db:truncate("routes"))
       assert(db:truncate("services"))
       assert(db:truncate("consumers"))
-      db:truncate("plugins")
-      dao:truncate_table("oauth2_tokens")
-      dao:truncate_table("oauth2_credentials")
-      dao:truncate_table("oauth2_authorization_codes")
+      assert(db:truncate("oauth2_tokens"))
+      assert(db:truncate("oauth2_authorization_codes"))
+      assert(db:truncate("oauth2_credentials"))
+      assert(db:truncate("plugins"))
 
       helpers.prepare_prefix()
 
@@ -45,7 +44,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       after_each(function()
-        dao:truncate_table("oauth2_credentials")
+        assert(db:truncate("oauth2_credentials"))
       end)
 
       describe("POST", function()
@@ -54,43 +53,43 @@ for _, strategy in helpers.each_strategy() do
             method  = "POST",
             path    = "/consumers/bob/oauth2",
             body    = {
-              name             = "Test APP",
-              redirect_uri     = "http://google.com/"
+              name          = "Test APP",
+              redirect_uris = { "http://google.com/" },
             },
             headers = {
               ["Content-Type"] = "application/json"
             }
           })
           local body = cjson.decode(assert.res_status(201, res))
-          assert.equal(consumer.id, body.consumer_id)
+          assert.equal(consumer.id, body.consumer.id)
           assert.equal("Test APP", body.name)
-          assert.equal("http://google.com/", body.redirect_uri[1])
+          assert.same({ "http://google.com/" }, body.redirect_uris)
         end)
-        it("creates a oauth2 credential with multiple redirect_uri", function()
+        it("creates a oauth2 credential with multiple redirect_uris", function()
           local res = assert(admin_client:send {
             method  = "POST",
             path    = "/consumers/bob/oauth2",
             body    = {
-              name             = "Test APP",
-              redirect_uri     = "http://google.com/, http://google.org/"
+              name          = "Test APP",
+              redirect_uris = { "http://google.com/", "http://google.org/" },
             },
             headers = {
               ["Content-Type"] = "application/json"
             }
           })
           local body = cjson.decode(assert.res_status(201, res))
-          assert.equal(consumer.id, body.consumer_id)
+          assert.equal(consumer.id, body.consumer.id)
           assert.equal("Test APP", body.name)
-          assert.equal(2, #body.redirect_uri)
+          assert.same({ "http://google.com/", "http://google.org/" }, body.redirect_uris)
         end)
         it("creates multiple oauth2 credentials with the same client_secret", function()
           local res = assert(admin_client:send {
             method  = "POST",
             path    = "/consumers/bob/oauth2",
             body    = {
-              name             = "Test APP",
-              redirect_uri     = "http://google.com/",
-              client_secret    = "secret123",
+              name          = "Test APP",
+              redirect_uris = { "http://google.com/" },
+              client_secret = "secret123",
             },
             headers = {
               ["Content-Type"] = "application/json"
@@ -101,9 +100,9 @@ for _, strategy in helpers.each_strategy() do
             method = "POST",
             path   = "/consumers/sally/oauth2",
             body   = {
-              name             = "Test APP",
-              redirect_uri     = "http://google.com/",
-              client_secret    = "secret123",
+              name          = "Test APP",
+              redirect_uris = { "http://google.com/" },
+              client_secret = "secret123",
             },
             headers = {
               ["Content-Type"] = "application/json"
@@ -123,15 +122,15 @@ for _, strategy in helpers.each_strategy() do
             })
             local body = assert.res_status(400, res)
             local json = cjson.decode(body)
-            assert.same({ redirect_uri = "redirect_uri is required", name = "name is required" }, json)
+            assert.same({ redirect_uris = "required field missing", name = "required field missing" }, json.fields)
           end)
-          it("returns bad request with invalid redirect_uri", function()
+          it("returns bad request with invalid redirect_uris", function()
             local res = assert(admin_client:send {
               method  = "POST",
               path    = "/consumers/bob/oauth2",
               body    = {
                 name             = "Test APP",
-                redirect_uri     = "not-valid"
+                redirect_uris    = { "not-valid" }
               },
               headers = {
                 ["Content-Type"] = "application/json"
@@ -139,14 +138,29 @@ for _, strategy in helpers.each_strategy() do
             })
             local body = assert.res_status(400, res)
             local json = cjson.decode(body)
-            assert.same({ redirect_uri = "cannot parse 'not-valid'" }, json)
+            assert.same({ redirect_uris = "cannot parse 'not-valid'" }, json.fields)
+
+            local res = assert(admin_client:send {
+              method  = "POST",
+              path    = "/consumers/bob/oauth2",
+              body    = {
+                name            = "Test APP",
+                redirect_uris   = { "http://test.com/#with-fragment" },
+              },
+              headers = {
+                ["Content-Type"] = "application/json"
+              }
+            })
+            local body = assert.res_status(400, res)
+            local json = cjson.decode(body)
+            assert.same({ redirect_uris = "fragment not allowed in 'http://test.com/#with-fragment'" }, json.fields)
 
             local res = assert(admin_client:send {
               method  = "POST",
               path    = "/consumers/bob/oauth2",
               body    = {
                 name             = "Test APP",
-                redirect_uri     = "http://test.com/#with-fragment"
+                redirect_uris    = {"http://valid.com", "not-valid"}
               },
               headers = {
                 ["Content-Type"] = "application/json"
@@ -154,14 +168,14 @@ for _, strategy in helpers.each_strategy() do
             })
             local body = assert.res_status(400, res)
             local json = cjson.decode(body)
-            assert.same({ redirect_uri = "fragment not allowed in 'http://test.com/#with-fragment'" }, json)
+            assert.same({ redirect_uris = "cannot parse 'not-valid'" }, json.fields)
 
             local res = assert(admin_client:send {
               method  = "POST",
               path    = "/consumers/bob/oauth2",
               body    = {
                 name             = "Test APP",
-                redirect_uri     = {"http://valid.com", "not-valid"}
+                redirect_uris    = {"http://valid.com", "http://test.com/#with-fragment"}
               },
               headers = {
                 ["Content-Type"] = "application/json"
@@ -169,22 +183,7 @@ for _, strategy in helpers.each_strategy() do
             })
             local body = assert.res_status(400, res)
             local json = cjson.decode(body)
-            assert.same({ redirect_uri = "cannot parse 'not-valid'" }, json)
-
-            local res = assert(admin_client:send {
-              method  = "POST",
-              path    = "/consumers/bob/oauth2",
-              body    = {
-                name             = "Test APP",
-                redirect_uri     = {"http://valid.com", "http://test.com/#with-fragment"}
-              },
-              headers = {
-                ["Content-Type"] = "application/json"
-              }
-            })
-            local body = assert.res_status(400, res)
-            local json = cjson.decode(body)
-            assert.same({ redirect_uri = "fragment not allowed in 'http://test.com/#with-fragment'" }, json)
+            assert.same({ redirect_uris = "fragment not allowed in 'http://test.com/#with-fragment'" }, json.fields)
           end)
         end)
       end)
@@ -193,25 +192,26 @@ for _, strategy in helpers.each_strategy() do
         it("creates an oauth2 credential", function()
           local res = assert(admin_client:send {
             method  = "PUT",
-            path    = "/consumers/bob/oauth2",
+            path    = "/consumers/bob/oauth2/client_one",
             body = {
               name             = "Test APP",
-              redirect_uri     = "http://google.com/"
+              redirect_uris    = { "http://google.com/" },
             },
             headers = {
               ["Content-Type"] = "application/json"
             }
           })
-          local body = cjson.decode(assert.res_status(201, res))
-          assert.equal(consumer.id, body.consumer_id)
+          local body = cjson.decode(assert.res_status(200, res))
+          assert.equal(consumer.id, body.consumer.id)
           assert.equal("Test APP", body.name)
-          assert.equal("http://google.com/", body.redirect_uri[1])
+          assert.equal("client_one", body.client_id)
+          assert.same({ "http://google.com/" }, body.redirect_uris)
         end)
         describe("errors", function()
           it("returns bad request", function()
             local res = assert(admin_client:send {
               method  = "PUT",
-              path    = "/consumers/bob/oauth2",
+              path    = "/consumers/bob/oauth2/client_two",
               body    = {},
               headers = {
                 ["Content-Type"] = "application/json"
@@ -219,7 +219,7 @@ for _, strategy in helpers.each_strategy() do
             })
             local body = assert.res_status(400, res)
             local json = cjson.decode(body)
-            assert.same({ redirect_uri = "redirect_uri is required", name = "name is required" }, json)
+            assert.same({ redirect_uris = "required field missing", name = "required field missing" }, json.fields)
           end)
         end)
       end)
@@ -227,15 +227,15 @@ for _, strategy in helpers.each_strategy() do
       describe("GET", function()
         setup(function()
           for i = 1, 3 do
-            assert(dao.oauth2_credentials:insert {
-              name         = "app" .. i,
-              redirect_uri = helpers.mock_upstream_ssl_url,
-              consumer_id  = consumer.id,
-            })
+            bp.oauth2_credentials:insert {
+              name          = "app" .. i,
+              redirect_uris = { helpers.mock_upstream_ssl_url },
+              consumer      = { id = consumer.id },
+            }
           end
         end)
         teardown(function()
-          dao:truncate_table("oauth2_credentials")
+          assert(db:truncate("oauth2_credentials"))
         end)
         it("retrieves the first page", function()
           local res = assert(admin_client:send {
@@ -246,7 +246,6 @@ for _, strategy in helpers.each_strategy() do
           local json = cjson.decode(body)
           assert.is_table(json.data)
           assert.equal(3, #json.data)
-          assert.equal(3, json.total)
         end)
       end)
     end)
@@ -254,18 +253,18 @@ for _, strategy in helpers.each_strategy() do
     describe("/consumers/:consumer/oauth2/:id", function()
       local credential
       before_each(function()
-        dao:truncate_table("oauth2_credentials")
+        assert(db:truncate("oauth2_credentials"))
         assert(db:truncate("routes"))
         assert(db:truncate("services"))
         assert(db:truncate("consumers"))
 
         service = bp.services:insert({ host = "oauth2_token.com" })
         consumer = bp.consumers:insert({ username = "bob" })
-        credential = assert(dao.oauth2_credentials:insert {
-          name         = "test app",
-          redirect_uri = helpers.mock_upstream_ssl_url,
-          consumer_id  = consumer.id,
-        })
+        credential = bp.oauth2_credentials:insert {
+          name          = "test app",
+          redirect_uris = { helpers.mock_upstream_ssl_url },
+          consumer      = { id = consumer.id },
+        }
       end)
       describe("GET", function()
         it("retrieves oauth2 credential by id", function()
@@ -359,7 +358,7 @@ for _, strategy in helpers.each_strategy() do
               method  = "PATCH",
               path    = "/consumers/bob/oauth2/" .. credential.id,
               body    = {
-                redirect_uri     = "not-valid"
+                redirect_uris = { "not-valid" },
               },
               headers = {
                 ["Content-Type"] = "application/json"
@@ -367,7 +366,7 @@ for _, strategy in helpers.each_strategy() do
             })
             local body = assert.res_status(400, res)
             local json = cjson.decode(body)
-            assert.same({ redirect_uri = "cannot parse 'not-valid'" }, json)
+            assert.same({ redirect_uris = "cannot parse 'not-valid'" }, json.fields)
           end)
         end)
       end)
@@ -402,14 +401,14 @@ for _, strategy in helpers.each_strategy() do
     describe("/oauth2_tokens/", function()
       local oauth2_credential
       setup(function()
-        oauth2_credential = assert(dao.oauth2_credentials:insert {
-          name         = "Test APP",
-          redirect_uri = helpers.mock_upstream_ssl_url,
-          consumer_id  = consumer.id,
-        })
+        oauth2_credential = bp.oauth2_credentials:insert {
+          name          = "Test APP",
+          redirect_uris = { helpers.mock_upstream_ssl_url },
+          consumer      = { id = consumer.id },
+        }
       end)
       after_each(function()
-        dao:truncate_table("oauth2_tokens")
+        assert(db:truncate("oauth2_tokens"))
       end)
 
       describe("POST", function()
@@ -418,20 +417,20 @@ for _, strategy in helpers.each_strategy() do
             method  = "POST",
             path    = "/oauth2_tokens",
             body    = {
-              credential_id    = oauth2_credential.id,
-              service_id       = service.id,
-              expires_in       = 10
+              credential = { id = oauth2_credential.id },
+              service    = { id = service.id },
+              expires_in = 10
             },
             headers = {
               ["Content-Type"] = "application/json"
             }
           })
           local body = cjson.decode(assert.res_status(201, res))
-          assert.equal(oauth2_credential.id, body.credential_id)
+          assert.equal(oauth2_credential.id, body.credential.id)
           assert.equal(10, body.expires_in)
           assert.truthy(body.access_token)
-          assert.truthy(body.service_id)
-          assert.falsy(body.refresh_token)
+          assert.truthy(body.service.id)
+          assert.same(ngx.null, body.refresh_token)
           assert.equal("bearer", body.token_type)
         end)
         describe("errors", function()
@@ -446,45 +445,7 @@ for _, strategy in helpers.each_strategy() do
             })
             local body = assert.res_status(400, res)
             local json = cjson.decode(body)
-            assert.same({ credential_id = "credential_id is required", expires_in = "expires_in is required" }, json)
-          end)
-        end)
-      end)
-
-      describe("PUT", function()
-        it("creates an oauth2 credential", function()
-          local res = assert(admin_client:send {
-            method  = "PUT",
-            path    = "/oauth2_tokens",
-            body    = {
-              credential_id    = oauth2_credential.id,
-              service_id       = service.id,
-              expires_in       = 10
-            },
-            headers = {
-              ["Content-Type"] = "application/json"
-            }
-          })
-          local body = cjson.decode(assert.res_status(201, res))
-          assert.equal(oauth2_credential.id, body.credential_id)
-          assert.equal(10, body.expires_in)
-          assert.truthy(body.access_token)
-          assert.falsy(body.refresh_token)
-          assert.equal("bearer", body.token_type)
-        end)
-        describe("errors", function()
-          it("returns bad request", function()
-            local res = assert(admin_client:send {
-              method  = "PUT",
-              path    = "/oauth2_tokens",
-              body    = {},
-              headers = {
-                ["Content-Type"] = "application/json"
-              }
-            })
-            local body = assert.res_status(400, res)
-            local json = cjson.decode(body)
-            assert.same({ credential_id = "credential_id is required", expires_in = "expires_in is required" }, json)
+            assert.same({ expires_in = "required field missing" }, json.fields)
           end)
         end)
       end)
@@ -492,15 +453,15 @@ for _, strategy in helpers.each_strategy() do
       describe("GET", function()
         setup(function()
           for _ = 1, 3 do
-            assert(dao.oauth2_tokens:insert {
-              credential_id = oauth2_credential.id,
-              service_id    = service.id,
-              expires_in    = 10
-            })
+            bp.oauth2_tokens:insert {
+              credential = { id = oauth2_credential.id },
+              service    = { id = service.id },
+              expires_in = 10
+            }
           end
         end)
         teardown(function()
-          dao:truncate_table("oauth2_tokens")
+          assert(db:truncate("oauth2_tokens"))
         end)
         it("retrieves the first page", function()
           local res = assert(admin_client:send {
@@ -511,19 +472,18 @@ for _, strategy in helpers.each_strategy() do
           local json = cjson.decode(body)
           assert.is_table(json.data)
           assert.equal(3, #json.data)
-          assert.equal(3, json.total)
         end)
       end)
 
       describe("/oauth2_tokens/:id", function()
         local token
         before_each(function()
-          dao:truncate_table("oauth2_tokens")
-          token = assert(dao.oauth2_tokens:insert {
-            credential_id = oauth2_credential.id,
-            service_id    = service.id,
-            expires_in    = 10
-          })
+          assert(db:truncate("oauth2_tokens"))
+          token = db.oauth2_tokens:insert {
+            credential = { id = oauth2_credential.id },
+            service    = { id = service.id },
+            expires_in = 10
+          }
         end)
 
         describe("GET", function()
@@ -544,6 +504,44 @@ for _, strategy in helpers.each_strategy() do
             local body = assert.res_status(200, res)
             local json = cjson.decode(body)
             assert.equal(token.id, json.id)
+          end)
+        end)
+
+        describe("PUT", function()
+          it("creates an oauth2 credential", function()
+            local res = assert(admin_client:send {
+              method  = "PUT",
+              path    = "/oauth2_tokens/foobar",
+              body    = {
+                credential = { id = oauth2_credential.id },
+                service    = { id = service.id },
+                expires_in = 10
+              },
+              headers = {
+                ["Content-Type"] = "application/json"
+              }
+            })
+            local body = cjson.decode(assert.res_status(200, res))
+            assert.equal(oauth2_credential.id, body.credential.id)
+            assert.equal(10, body.expires_in)
+            assert.equal("foobar", body.access_token)
+            assert.equal(ngx.null, body.refresh_token)
+            assert.equal("bearer", body.token_type)
+          end)
+          describe("errors", function()
+            it("returns bad request", function()
+              local res = assert(admin_client:send {
+                method  = "PUT",
+                path    = "/oauth2_tokens/foobar",
+                body    = {},
+                headers = {
+                  ["Content-Type"] = "application/json"
+                }
+              })
+              local body = assert.res_status(400, res)
+              local json = cjson.decode(body)
+              assert.same({ expires_in = "required field missing" }, json.fields)
+            end)
           end)
         end)
 
@@ -596,7 +594,7 @@ for _, strategy in helpers.each_strategy() do
               })
               local body = assert.res_status(400, res)
               local json = cjson.decode(body)
-              assert.same({ expires_in = "expires_in is not a number" }, json)
+              assert.same({ expires_in = "expected an integer" }, json.fields)
             end)
           end)
         end)
@@ -610,19 +608,18 @@ for _, strategy in helpers.each_strategy() do
             assert.res_status(204, res)
           end)
           describe("errors", function()
-            it("returns 400 on invalid input", function()
+            it("returns 204 on inexisting tokens", function()
               local res = assert(admin_client:send {
                 method  = "DELETE",
                 path    = "/oauth2_tokens/blah"
               })
-              assert.res_status(404, res)
-            end)
-            it("returns 404 if not found", function()
+              assert.res_status(204, res)
+
               local res = assert(admin_client:send {
                 method  = "DELETE",
                 path    = "/oauth2_tokens/00000000-0000-0000-0000-000000000000"
               })
-              assert.res_status(404, res)
+              assert.res_status(204, res)
             end)
           end)
         end)

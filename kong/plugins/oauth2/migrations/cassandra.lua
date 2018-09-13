@@ -1,4 +1,5 @@
 local plugin_config_iterator = require("kong.dao.migrations.helpers").plugin_config_iterator
+local cjson = require "cjson"
 
 return {
   {
@@ -74,37 +75,49 @@ return {
   },
   {
     name = "2016-04-14-283949_serialize_redirect_uri",
-    up = function(_, _, factory)
-      local json = require "cjson"
-      local apps, err = factory.oauth2_credentials.db:find_all('oauth2_credentials', nil, nil);
-      if err then
-        return err
-      end
-      for _, app in ipairs(apps) do
-        local redirect_uri = {};
-        redirect_uri[1] = app.redirect_uri
-        local redirect_uri_str = json.encode(redirect_uri)
-        local req = "UPDATE oauth2_credentials SET redirect_uri='" .. redirect_uri_str .. "' WHERE id=" .. app.id
-        local _, err = factory.oauth2_credentials.db:queries(req)
+    up = function(_, _, dao)
+      local coordinator = dao.db:get_coordinator()
+      local q1 = [[
+        SELECT id, redirect_uri FROM oauth2_credentials;
+      ]]
+      for rows, err in coordinator:iterate(q1) do
         if err then
           return err
+        end
+
+        for _, row in ipairs(rows) do
+          local redirect_uri_str = cjson.encode({ row.redirect_uri })
+          local q = string.format("UPDATE oauth2_credentials SET redirect_uri='%' WHERE id='%s';",
+                                  redirect_uri_str, row.id)
+          local _, err = dao.db:query(q)
+          if err then
+            return err
+          end
         end
       end
     end,
-    down = function(_,_,factory)
-      local apps, err = factory.oauth2_credentials:find_all()
-      if err then
-        return err
-      end
-      for _, app in ipairs(apps) do
-        local redirect_uri = app.redirect_uri[1]
-        local req = "UPDATE oauth2_credentials SET redirect_uri='" .. redirect_uri .. "' WHERE id=" .. app.id
-        local _, err = factory.oauth2_credentials.db:queries(req)
+    down = function(_,_,dao)
+      local coordinator = dao.db:get_coordinator()
+      local q1 = [[
+        SELECT id, redirect_uri FROM oauth2_credentials;
+      ]]
+      for rows, err in coordinator:iterate(q1) do
         if err then
           return err
         end
+
+        for _, row in ipairs(rows) do
+          local redirect_uri = cjson.decode(row.redirect_uri)[1]
+          local q = string.format("UPDATE oauth2_credentials SET redirect_uri='%' WHERE id='%s';",
+                                  redirect_uri, row.id)
+          local _, err = dao.db:query(q)
+          if err then
+            return err
+          end
+        end
       end
-    end
+    end,
+    ignore_error = "redirect_uri"
   },
   {
     name = "2016-07-15-oauth2_code_credential_id",
@@ -114,7 +127,8 @@ return {
     ]],
     down = [[
       ALTER TABLE oauth2_authorization_codes DROP credential_id;
-    ]]
+    ]],
+    ignore_error = "Invalid column name credential_id"
   },
   {
     name = "2016-09-19-oauth2_code_index",
@@ -134,20 +148,18 @@ return {
     down = [[
       ALTER TABLE oauth2_authorization_codes DROP api_id;
       ALTER TABLE oauth2_tokens DROP api_id;
-    ]]
+    ]],
+    ignore_error = "Invalid column name api_id",
   },
   {
     name = "2016-12-15-set_global_credentials",
     up = function(_, _, dao)
-      local rows, err = dao.plugins:find_all({name = "oauth2"})
-      if err then
-        return err
-      end
-
-      for _, row in ipairs(rows) do
-        row.config.global_credentials = true
-
-        local _, err = dao.plugins:update(row, row)
+      for ok, config, update in plugin_config_iterator(dao, "oauth2") do
+        if not ok then
+          return config
+        end
+        config.global_credentials = true
+        local _, err = update(config)
         if err then
           return err
         end
@@ -203,5 +215,109 @@ return {
       ALTER TABLE oauth2_authorization_codes DROP service_id;
       ALTER TABLE oauth2_tokens DROP service_id;
      ]],
+     ignore_error = "Invalid column name service_id"
+  },
+  {
+    name = "2018-09-12-oauth2_cassandra_add_redirect_uris_field",
+    up = [[
+      ALTER TABLE oauth2_credentials ADD redirect_uris set<text>;
+    ]],
+    ignore_error = "Invalid column name redirect_uris",
+  },
+  {
+    name = "2018-09-12-oauth2_cassandra_parse_redirect_uris",
+    function(_, _, dao)
+      local coordinator = dao.db:get_coordinator()
+      local q1 = [[
+        SELECT id, redirect_uri FROM oauth2_credentials;
+      ]]
+      for rows, err in coordinator:iterate(q1) do
+        if err then
+          return err
+        end
+
+        for _, row in ipairs(rows) do
+          local uris = cjson.decode(row.redirect_uri)
+          local buffer = {}
+          for i, uri in ipairs(uris) do
+            buffer[i] = "'" .. uri .. "'"
+          end
+          local q = string.format("UPDATE oauth2_credentials SET redirect_uris = {%s} WHERE id = %s;",
+                                  table.concat(buffer, ","), row.id)
+          local _, err = dao.db:query(q)
+          if err then
+            return err
+          end
+        end
+      end
+    end,
+    ignore_error = "Invalid column name redirect_uri",
+  },
+  {
+    name = "2018-09-12-oauth2_cassandra_drop_redirect_uri",
+    up = [[
+      ALTER TABLE oauth2_credentials DROP redirect_uri;
+    ]],
+    ignore_error = "redirect_uri was not found",
+  },
+  {
+    name = "2018-09-13-oauth2_cassandra_add_ttl_to_codes",
+    up = [[
+      ALTER TABLE oauth2_authorization_codes ADD ttl timestamp;
+    ]],
+    ignore_error = "Invalid column name ttl",
+  },
+  {
+    name = "2018-09-13-oauth2_cassandra_fill_codes_ttl",
+    up = function(_, _, dao)
+      local coordinator = dao.db:get_coordinator()
+      local q1 = [[
+        SELECT id, created_at FROM oauth2_tokens;
+      ]]
+      for rows, err in coordinator:iterate(q1) do
+        if err then
+          return err
+        end
+
+        for _, row in ipairs(rows) do
+          local q = string.format("UPDATE oauth2_authorization_codes SET ttl = %d WHERE id = %s;",
+                                  row.created_at + 300, row.id)
+          local _, err = dao.db:query(q)
+          if err then
+            return err
+          end
+        end
+      end
+    end
+  },
+  {
+    name = "2018-09-13-oauth2_cassandra_add_ttl_to_tokens",
+    up = [[
+      ALTER TABLE oauth2_tokens ADD ttl timestamp;
+    ]],
+    ignore_error = "Invalid column name ttl",
+  },
+  {
+    name = "2018-09-13-oauth2_cassandra_fill_tokens_ttl",
+    up = function(_, _, dao)
+      local coordinator = dao.db:get_coordinator()
+      local q1 = [[
+        SELECT id, created_at, expires_in FROM oauth2_tokens;
+      ]]
+      for rows, err in coordinator:iterate(q1) do
+        if err then
+          return err
+        end
+
+        for _, row in ipairs(rows) do
+          local q = string.format("UPDATE oauth2_tokens SET ttl = %d WHERE id = %s;",
+                                  row.created_at + row.expires_in, row.id)
+          local _, err = dao.db:query(q)
+          if err then
+            return err
+          end
+        end
+      end
+    end
   },
 }

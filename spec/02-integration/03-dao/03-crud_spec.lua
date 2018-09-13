@@ -34,16 +34,12 @@ local api_tbl = {
 
 helpers.for_each_dao(function(kong_config)
   describe("Model (CRUD) with DB: #" .. kong_config.database, function()
-    local factory, apis, oauth2_credentials
+    local factory, apis
     setup(function()
       local db = DB.new(kong_config)
       assert(db:init_connector())
       factory = assert(Factory.new(kong_config, db))
       apis = factory.apis
-
-      -- DAO used for testing arrays
-      oauth2_credentials = factory.oauth2_credentials
-      oauth2_credentials.constraints.unique.client_id.schema.fields.consumer_id.required = false
 
       assert(factory:run_migrations())
     end)
@@ -76,40 +72,6 @@ helpers.for_each_dao(function(kong_config)
         assert.is_table(api)
         assert.equal("example", api.name)
         assert.raw_table(api)
-      end)
-      it("insert a valid array field and return it properly", function()
-        finally(function()
-          factory:truncate_table("oauth2_credentials")
-        end)
-
-        local res, err = oauth2_credentials:insert {
-          name = "test_app",
-          redirect_uri = "https://example.org"
-        }
-        assert.falsy(err)
-        assert.is_table(res)
-        assert.equal("test_app", res.name)
-        assert.is_table(res.redirect_uri)
-        assert.equal(1, #res.redirect_uri)
-        assert.same({"https://example.org"}, res.redirect_uri)
-        assert.raw_table(res)
-      end)
-      it("insert a valid array field and return it properly bis", function()
-        finally(function()
-          factory:truncate_table("oauth2_credentials")
-        end)
-
-        local res, err = oauth2_credentials:insert {
-          name = "test_app",
-          redirect_uri = "https://example.org, https://example.com"
-        }
-        assert.falsy(err)
-        assert.is_table(res)
-        assert.equal("test_app", res.name)
-        assert.is_table(res.redirect_uri)
-        assert.equal(2, #res.redirect_uri)
-        assert.same({"https://example.org", "https://example.com"}, res.redirect_uri)
-        assert.raw_table(res)
       end)
       it("add DAO-inserted values", function()
         local api, err = apis:insert(api_tbl)
@@ -232,7 +194,6 @@ helpers.for_each_dao(function(kong_config)
     describe("find_all()", function()
       setup(function()
         factory:truncate_table("apis")
-        factory:truncate_table("oauth2_credentials")
 
         for i = 1, 100 do
           local api, err = apis:insert {
@@ -243,17 +204,9 @@ helpers.for_each_dao(function(kong_config)
           assert.falsy(err)
           assert.truthy(api)
         end
-
-        local res, err = oauth2_credentials:insert {
-          name = "test_app",
-          redirect_uri = "https://example.org, https://example.com"
-        }
-        assert.falsy(err)
-        assert.truthy(res)
       end)
       teardown(function()
         factory:truncate_table("apis")
-        factory:truncate_table("oauth2_credentials")
       end)
 
       it("retrieve all rows", function()
@@ -282,19 +235,6 @@ helpers.for_each_dao(function(kong_config)
         assert.is_table(rows)
         assert.equal(1, #rows)
         assert.equal("fixture_100", rows[1].name)
-      end)
-      it("return rows with arrays", function()
-        finally(function()
-          factory:truncate_table("oauth2_credentials")
-        end)
-        local rows, err = oauth2_credentials:find_all()
-        assert.falsy(err)
-        assert.is_table(rows)
-        assert.equal(1, #rows)
-        assert.equal("test_app", rows[1].name)
-        assert.is_table(rows[1].redirect_uri)
-        assert.equal(2, #rows[1].redirect_uri)
-        assert.same({ "https://example.org", "https://example.com" }, rows[1].redirect_uri)
       end)
       pending("return empty table if no row match", function()
         local rows, err = apis:find_all {
