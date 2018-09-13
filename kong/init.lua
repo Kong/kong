@@ -158,7 +158,7 @@ function Kong.init()
     error("database needs bootstrap; run 'kong migrations bootstrap'")
 
   elseif schema_state.new_migrations then
-    error("new migrations available; run 'kong migrations check'")
+    error("new migrations available; run 'kong migrations list'")
   end
   --[[
   if schema_state.pending_migrations then

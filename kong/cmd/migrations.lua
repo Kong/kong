@@ -11,16 +11,23 @@ Usage: kong migrations COMMAND [OPTIONS]
 Manage database schema migrations.
 
 The available commands are:
-  list
-  check
-  bootstrap
-  up
-  finish
-  reset
+  bootstrap                         Bootstrap the database and run all
+                                    migrations.
+
+  up                                Run any new migrations.
+
+  finish                            Finish running any pending migrations after
+                                    'up'.
+
+  list                              List executed migrations.
+
+  reset                             Reset the database.
 
 Options:
  -y,--yes                           Assume "yes" to prompts and run
                                     non-interactively.
+
+ -q,--quiet                         Suppress all output.
 
  --db-timeout     (default 60)      Timeout, in seconds, for all database
                                     operations (including schema consensus for
@@ -62,6 +69,10 @@ local function execute(args)
   args.db_timeout = args.db_timeout * 1000
   args.lock_timeout = args.lock_timeout * 1000
 
+  if args.quiet then
+    log.disable()
+  end
+
   local conf = assert(conf_loader(args.conf))
   conf.cassandra_timeout = args.db_timeout -- connect + send + read
   conf.cassandra_schema_consensus_timeout = args.db_timeout
@@ -73,10 +84,26 @@ local function execute(args)
   local schema_state = assert(db:schema_state())
 
   if args.command == "list" then
-    log("executed migrations:\n%s", schema_state.executed_migrations)
+    if schema_state.needs_bootstrap then
+      log("database needs bootstrapping; run 'kong migrations bootstrap'")
+      os.exit(3)
+    end
 
-  elseif args.command == "check" then
+    if schema_state.executed_migrations then
+      log("executed migrations:\n%s", schema_state.executed_migrations)
+    end
+
     migrations_utils.print_state(schema_state)
+
+    if schema_state.pending_migrations then
+      os.exit(4)
+    end
+
+    if schema_state.new_migrations then
+      os.exit(5)
+    end
+
+    -- exit(0)
 
   elseif args.command == "bootstrap" then
     migrations_utils.bootstrap(schema_state, db, args.lock_timeout)
@@ -114,11 +141,10 @@ return {
   lapp = lapp,
   execute = execute,
   sub_commands = {
-    list = true,
     bootstrap = true,
-    check = true,
-    reset = true,
     up = true,
     finish = true,
+    list = true,
+    reset = true,
   }
 }
