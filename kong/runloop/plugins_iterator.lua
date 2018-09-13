@@ -1,6 +1,3 @@
-local responses    = require "kong.tools.responses"
-
-
 local kong         = kong
 local setmetatable = setmetatable
 
@@ -44,7 +41,8 @@ local function load_plugin_configuration(ctx,
                                      key)
   if err then
     ctx.delay_response = false
-    return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+    ngx.log(ngx.ERR, tostring(err))
+    return ngx.exit(ngx.ERROR)
   end
 
   if plugin ~= nil and plugin.enabled then
