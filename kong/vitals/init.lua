@@ -166,39 +166,22 @@ local function metrics_t_arr_init(sz, start_at)
 end
 
 
-local function load_tsdb_strategy()
-  local tsdb_config_str
-  if feature_flags.is_enabled(FF_FLAGS.VITALS_READ_FROM_TSDB) then
-    tsdb_config_str = feature_flags.get_feature_value(FF_VALUES.VITALS_TSDB_CONFIG)
-    if not tsdb_config_str then
-      return error(fmt("\"%s\" is turned on but \"%s\" is not defined",
-        FF_FLAGS.VITALS_READ_FROM_TSDB,
-        FF_VALUES.VITALS_TSDB_CONFIG
-      ))
-    end
-  end
-
-  if not tsdb_config_str then
-    -- no error and not using TSDB strategy
-    return nil, nil
-  end
-
-  if type(tsdb_config_str) == "table" then
-    tsdb_config_str = table.concat(tsdb_config_str, ",")
-  end
-  local tsdb_config, err = cjson.decode(tsdb_config_str)
-  if not tsdb_config then
-    return error(fmt("\"%s\" is not valid JSON for TSDB connection configuration: %s", tsdb_config_str, err))
-  elseif not tsdb_config.host or tsdb_config.port == nil then
-    return error("TSDB host or port is not defined")
-  end
-
-  if tsdb_config.type == "prometheus" then
+local function load_tsdb_strategy(strategy)
+  local conf = singletons.configuration
+  if strategy == "prometheus" then
     local db_strategy = require("kong.vitals.prometheus.strategy")
+    local tsdb_opts = {
+      host = conf.vitals_prometheus_host,
+      port = conf.vitals_prometheus_port,
+      scrape_interval = conf.vitals_prometheus_scrape_interval,
+      auth_header = feature_flags.get_feature_value(FF_VALUES.VITALS_PROMETHEUS_AUTH_HEADER),
+      custom_filters = feature_flags.get_feature_value(FF_VALUES.VITALS_PROMETHEUS_CUSTOM_FILTERS),
+      cluster_level = feature_flags.is_enabled(FF_FLAGS.VITALS_PROMETHEUS_ENABLE_CLUSTER_LEVEL),
+    }
     -- no error and we are using TSDB strategy
-    return db_strategy, tsdb_config
+    return db_strategy, tsdb_opts
   else
-    return error("no vitals TSDB strategy for " .. tsdb_config.type)
+    return error("no vitals TSDB strategy for " .. tostring(strategy))
   end
 end
 
@@ -227,18 +210,23 @@ function _M.new(opts)
       ttl_minutes = opts.ttl_minutes or 90000,
     }
 
-    local db_strategy, tsdb_strategy_opts = load_tsdb_strategy()
+    local db_strategy
 
-    if db_strategy then
-      strategy_opts = tsdb_strategy_opts
-      tsdb_storage = true
-    elseif dao_factory.db_type == "postgres" then
-      db_strategy = pg_strat
-      strategy_opts.delete_interval = opts.delete_interval_pg or 90000
-    elseif dao_factory.db_type == "cassandra" then
-      db_strategy = require "kong.vitals.cassandra.strategy"
+    local vitals_strategy_conf = singletons.configuration.vitals_strategy
+
+    if not vitals_strategy_conf or vitals_strategy_conf == "database" then
+      if dao_factory.db_type == "postgres" then
+        db_strategy = pg_strat
+        strategy_opts.delete_interval = opts.delete_interval_pg or 90000
+      elseif dao_factory.db_type == "cassandra" then
+        db_strategy = require "kong.vitals.cassandra.strategy"
+      else
+        return error("no vitals strategy for " .. dao_factory.db_type)
+      end
     else
-      return error("no vitals strategy for " .. dao_factory.db_type)
+      -- use TSDB strategies
+      db_strategy, strategy_opts = load_tsdb_strategy(vitals_strategy_conf)
+      tsdb_storage = true
     end
 
     strategy = db_strategy.new(dao_factory, strategy_opts)

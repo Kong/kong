@@ -143,6 +143,13 @@ local CONF_INFERENCES = {
   vitals_ttl_seconds = {typ = "number"},
   vitals_ttl_minutes = {typ = "number"},
 
+  vitals_strategy = {typ = "string"},
+  vitals_statsd_address = {typ = "string"},
+  vitals_statsd_prefix = {typ = "string"},
+  vitals_statsd_udp_packet_size = {typ = "number"},
+  vitals_prometheus_address = {typ = "string"},
+  vitals_prometheus_scrape_interval = {typ = "number"},
+
   admin_gui_listen = {typ = "array"},
   admin_gui_error_log = {typ = "string"},
   admin_gui_access_log = {typ = "string"},

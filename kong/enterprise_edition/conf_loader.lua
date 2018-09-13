@@ -1,6 +1,38 @@
 local cjson        = require "cjson.safe"
 local pl_path      = require "pl.path"
 local portal_utils = require "kong.portal.utils"
+local pl_stringx   = require "pl.stringx"
+
+
+-- @param value The options string to check for flags (whitespace separated)
+-- @param flags List of boolean flags to check for.
+-- @returns 1) remainder string after all flags removed, 2) table with flag
+-- booleans, 3) sanitized flags string
+local function parse_option_flags(value, flags)
+  assert(type(value) == "string")
+
+  value = " " .. value .. " "
+
+  local sanitized = ""
+  local result = {}
+
+  for _, flag in ipairs(flags) do
+    local count
+    local patt = "%s" .. flag .. "%s"
+
+    value, count = value:gsub(patt, " ")
+
+    if count > 0 then
+      result[flag] = true
+      sanitized = sanitized .. " " .. flag
+
+    else
+      result[flag] = false
+    end
+  end
+
+  return pl_stringx.strip(value), result, pl_stringx.strip(sanitized)
+end
 
 
 local function validate_admin_gui_authentication(conf, errors)
@@ -100,6 +132,64 @@ local function validate_portal_smtp_config(conf, errors)
 end
 
 
+local function validate_vitals_prometheus(conf, errors)
+  if conf.vitals_strategy == "prometheus" then
+    if not conf.vitals_statsd_address or not conf.vitals_prometheus_address then
+      errors[#errors+1] = "vitals_statsd_address and vitals_prometheus_address must be defined " .. 
+      "when vitals_strategy is set to \"prometheus\""
+    end
+  elseif conf.vitals_strategy ~= "database" then
+    errors[#errors+1] = "vitals_strategy must be either \"database\" or \"prometheus\""
+  end
+
+  do 
+    if conf.vitals_prometheus_address then
+      local host, port
+      host, port = conf.vitals_prometheus_address:match("(.+):([%d]+)$")
+      port = tonumber(port)
+      if not host or not port then
+        errors[#errors+1] = "vitals_prometheus_address must be of form: <ip>:<port>"
+      else
+        conf.vitals_prometheus_host = host
+        conf.vitals_prometheus_port = port
+      end
+    end
+  end
+
+  do
+    if conf.vitals_statsd_address then
+      local host, port
+      local remainder, _, protocol = parse_option_flags(conf.vitals_statsd_address, { "udp", "tcp" })
+      if remainder then
+        host, port = remainder:match("(.+):([%d]+)$")
+        port = tonumber(port)
+        if not host or not port then
+          host = remainder:match("(unix:/.+)$")
+          port = nil
+        end
+      end
+      if not host then
+        errors[#errors+1] = "vitals_statsd_address must be of form: <ip>:<port> [udp|tcp]"
+      else
+        conf.vitals_statsd_host = host
+        conf.vitals_statsd_port = port
+        conf.vitals_statsd_use_tcp = protocol == "tcp"
+      end
+    end
+  end
+
+  if conf.vitals_statsd_udp_packet_size <= 0 or conf.vitals_statsd_udp_packet_size > 65507 then
+    errors[#errors+1] = "vitals_statsd_udp_packet_size must be an positive integer and no larger than 65507"
+  end
+
+  if conf.vitals_prometheus_scrape_interval <= 0 then
+    errors[#errors+1] = "vitals_prometheus_scrape_interval must be an positive integer"
+  end
+
+  return errors
+end
+
+
 local function validate(conf, errors)
   validate_admin_gui_authentication(conf, errors)
   validate_admin_gui_ssl(conf, errors)
@@ -107,6 +197,8 @@ local function validate(conf, errors)
   if conf.portal then
     validate_portal_smtp_config(conf, errors)
   end
+
+  validate_vitals_prometheus(conf, errors)
 end
 
 

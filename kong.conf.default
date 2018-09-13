@@ -552,9 +552,6 @@
                                       # header from which the Admin API will
                                       # attempt to identify the RBAC user.
 
-#vitals = off                    # When enabled, Kong will store and report
-                                 # metrics about its performance.
-
 #------------------------------------------------------------------------------
 # ADMIN GUI
 #------------------------------------------------------------------------------
@@ -652,6 +649,50 @@
                         # Example for `basic-auth`:
                         #
                         #  admin_gui_auth_conf = { "hide_credentials": true }
+
+#------------------------------------------------------------------------------
+# VITALS
+#------------------------------------------------------------------------------
+
+#vitals = off                    # When enabled, Kong will store and report
+                                 # metrics about its performance.
+
+#vitals_strategy = database      # Determines whether to use the Kong database
+                                 # (either PostgreSQL or Cassandra, as defined
+                                 # by the 'database' config value above), or a
+                                 # separate storage engine,
+                                 # for Vitals metrics. Accepted values are
+                                 # 'database' or 'prometheus'.
+
+#vitals_statsd_address =         # Defines the host and port (and an optional
+                                 # protocol) of the StatsD server to which
+                                 # Kong should write Vitals metics. This value
+                                 # is only applied when the 'vitals_strategy' is
+                                 # set to 'prometheus'. This value accepts IPv4,
+                                 # IPv6, and, hostnames. Additionally, the suffix
+                                 # 'tcp' can be specified; doing so will result
+                                 # in Kong sending StatsD metrics via TCP
+                                 # instead of the UDP (default).
+
+#vitals_statsd_prefix = kong     # Defines the prefix value attached to all
+                                 # Vitals StatsD events. This prefix is useful
+                                 # when writing metrics to a multi-tenant StatsD
+                                 # exporter or server.
+
+#vitals_statsd_udp_packet_size = 1024   # Defines the maximum buffer size in
+                                        # which Vitals statsd metrics will be
+                                        # held and sent in batches.
+                                        # This value is defined in bytes.
+
+#vitals_prometheus_address =     # Defines the host and port of the Prometheus
+                                 # server from where Vitals data will be read.
+
+#vitals_prometheus_scrape_interval = 5  # Defines the scrape_interval query
+                                        # parameter sent to the Prometheus
+                                        # server when reading Vitals data.
+                                        # This should be same as the scrape
+                                        # interval (in seconds) of the
+                                        # Prometheus server.
 
 #------------------------------------------------------------------------------
 # DEVELOPER PORTAL

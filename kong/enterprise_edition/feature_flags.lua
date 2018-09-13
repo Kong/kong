@@ -14,8 +14,7 @@ local FLAGS = {
   REQUEST_TRANSFORMER_ENABLE_LIMIT_BODY = "request_transformation_enable_limit_body",
   REQUEST_TRANSFORMER_ADVANCED_ENABLE_LIMIT_BODY = "request_transformation_advanced_enable_limit_body",
   RESPONSE_TRANSFORMER_ENABLE_LIMIT_BODY = "response_transformation_enable_limit_body",
-  VITALS_READ_FROM_TSDB = "vitals_read_from_tsdb",
-  INTERNAL_STATSD_PLUGIN = "internal_statsd_plugin",
+  VITALS_PROMETHEUS_ENABLE_CLUSTER_LEVEL = "vitals_prometheus_enable_cluster_level",
 }
 
 
@@ -27,11 +26,8 @@ local VALUES = {
   REDIS_HOST = "redis_host",
   REDIS_PORT = "redis_port",
   REDIS_NAMESPACE = "redis_namespace",
-  -- This config specifies the location to read Vitals data from and the protocol to follow
-  -- example: vitals_tsdb_config={"type":"prometheus","host":"127.0.0.1","port":9090,"custom_filters"=[],"connection_timeout"=5000}
-  VITALS_TSDB_CONFIG = "vitals_tsdb_config",
-  -- example: internal_statsd_config={"host":"127.0.0.1","port":8125,"prefix":"kong","udp_packet_size":1000,"use_tcp":false}
-  INTERNAL_STATSD_PLUGIN_CONFIG = "internal_statsd_plugin_config",
+  VITALS_PROMETHEUS_AUTH_HEADER = "vitals_prometheus_auth_header",
+  VITALS_PROMETHEUS_CUSTOM_FILTERS = "vitals_prometheus_custom_filters"
 }
 
 

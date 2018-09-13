@@ -15,6 +15,13 @@ vitals_delete_interval_pg = 30
 vitals_ttl_seconds = 3600
 vitals_ttl_minutes = 90000
 
+vitals_strategy = database
+vitals_statsd_address = NONE
+vitals_statsd_prefix = kong
+vitals_statsd_udp_packet_size = 1024
+vitals_prometheus_address = NONE
+vitals_prometheus_scrape_interval = 5
+
 portal = off
 portal_gui_listen = 0.0.0.0:8003, 0.0.0.0:8446 ssl
 portal_gui_url = NONE

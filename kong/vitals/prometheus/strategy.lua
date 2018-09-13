@@ -2,6 +2,7 @@ local fmt        = string.format
 local sub        = string.sub
 local math_min   = math.min
 local math_max   = math.max
+local math_huge  = math.huge
 local math_floor = math.floor
 local log        = ngx.log
 local DEBUG      = ngx.DEBUG
@@ -59,7 +60,7 @@ function _M.new(_, opts)
     }
   end
 
-  local custom_filters_str = table_concat(opts.custom_filters or {}, ",")
+  local custom_filters_str = opts.custom_filters or ""
 
   local aggregator_str = ""
   if not opts.cluster_level then
@@ -302,7 +303,8 @@ local function translate_vitals_stats(metrics_query, prometheus_stats, interval,
         -- 'NaN' will be parsed to math.nan and cjson will not encode it
         local v = tonumber(dp[2])
         -- See http://lua-users.org/wiki/InfAndNanComparisons
-        if v ~= v then
+        -- cjson also won't encode inf and -inf
+        if v ~= v or v == math_huge or v == -math_huge then
           v = nil
         end
 

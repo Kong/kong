@@ -35,11 +35,11 @@ dao_helpers.for_each_dao(function(kong_conf)
       dao = assert(dao_factory.new(kong_conf))
       assert(dao:run_migrations())
 
+      singletons.configuration = { vitals = true }
       vitals = kong_vitals.new({
         dao = dao,
       })
 
-      singletons.configuration = { vitals = true }
       vitals:init()
     end)
 
