@@ -169,7 +169,7 @@ describe("Configuration loader - enterprise", function()
     it("can be set to prometheus", function()
       local conf = assert(conf_loader(helpers.test_conf_path, {
         vitals_strategy = "prometheus",
-        vitals_prometheus_address = "127.0.0.1:9090",
+        vitals_tsdb_address = "127.0.0.1:9090",
         vitals_statsd_address = "127.0.0.1:8125",
       }))
       assert.equal("prometheus", conf.vitals_strategy)
@@ -179,24 +179,28 @@ describe("Configuration loader - enterprise", function()
         vitals_strategy = "sometsdb"
       })
       assert.is_nil(ok)
-      assert.same("vitals_strategy must be either \"database\" or \"prometheus\"", err)
+      assert.same("vitals_strategy must be one of \"database\", \"prometheus\", or \"influxdb\"", err)
     end)
-    it("errors if vitals_prometheus_address or vitals_statsd_address not set", function()
-      local expected = "vitals_statsd_address and vitals_prometheus_address must be defined " .. 
+    it("errors if vitals_tsdb_address and vitals_statsd_address not set " ..
+       "with prometheus strategy", function()
+
+      local expected = "vitals_statsd_address must be defined " ..
       "when vitals_strategy is set to \"prometheus\""
       local ok, err = conf_loader(helpers.test_conf_path, {
         vitals_strategy = "prometheus",
-        vitals_prometheus_address = "127.0.0.1:9090",
+        vitals_tsdb_address = "127.0.0.1:9090",
       })
       assert.is_nil(ok)
       assert.same(expected, err)
 
-      local ok, err = conf_loader(helpers.test_conf_path, {
-        vitals_strategy = "prometheus",
-        vitals_statsd_address = "127.0.0.1:8125",
-      })
-      assert.is_nil(ok)
-      assert.same(expected, err)
+      for _, strategy in ipairs({"prometheus", "influxdb"}) do
+        expected = 'vitals_tsdb_address must be defined when vitals_strategy = "prometheus" or "influxdb"'
+        local ok, err = conf_loader(helpers.test_conf_path, {
+          vitals_strategy = strategy,
+        })
+        assert.is_nil(ok)
+        assert.same(expected, err)
+      end
 
       local ok, err = conf_loader(helpers.test_conf_path, {
         vitals_strategy = "prometheus",

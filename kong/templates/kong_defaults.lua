@@ -19,7 +19,7 @@ vitals_strategy = database
 vitals_statsd_address = NONE
 vitals_statsd_prefix = kong
 vitals_statsd_udp_packet_size = 1024
-vitals_prometheus_address = NONE
+vitals_tsdb_address = NONE
 vitals_prometheus_scrape_interval = 5
 
 portal = off

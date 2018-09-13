@@ -660,9 +660,22 @@
 #vitals_strategy = database      # Determines whether to use the Kong database
                                  # (either PostgreSQL or Cassandra, as defined
                                  # by the 'database' config value above), or a
-                                 # separate storage engine,
-                                 # for Vitals metrics. Accepted values are
-                                 # 'database' or 'prometheus'.
+                                 # separate storage engine, for Vitals metrics.
+                                 # Accepted values are 'database', 'prometheus',
+                                 # or 'influxdb'.
+
+#vitals_tsdb_address =           # Defines the host and port of the TSDB server
+                                 # to which Vitals data is written and read.
+                                 # This value is only applied when the
+                                 # 'vitals_strategy` option is set to
+                                 # 'prometheus' or 'influxdb'. This value
+                                 # accepts IPv4, IPv6, and hostname values.
+                                 # If the 'vitals_strategy' is set to
+                                 # 'prometheus', this value determines the
+                                 # address of the Prometheus server from which
+                                 # Vitals data will be read. For 'influxdb'
+                                 # strategies, this value controls both the read
+                                 # and write source for Vitals data.
 
 #vitals_statsd_address =         # Defines the host and port (and an optional
                                  # protocol) of the StatsD server to which
@@ -683,9 +696,6 @@
                                         # which Vitals statsd metrics will be
                                         # held and sent in batches.
                                         # This value is defined in bytes.
-
-#vitals_prometheus_address =     # Defines the host and port of the Prometheus
-                                 # server from where Vitals data will be read.
 
 #vitals_prometheus_scrape_interval = 5  # Defines the scrape_interval query
                                         # parameter sent to the Prometheus

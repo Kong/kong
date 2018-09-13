@@ -176,7 +176,7 @@ local function load_tsdb_strategy(strategy)
     local db_strategy = require("kong.vitals.prometheus.strategy")
 
     local host, port
-    host, port = conf.vitals_prometheus_address:match("(.+):([%d]+)$")
+    host, port = conf.vitals_tsdb_address:match("(.+):([%d]+)$")
     port = tonumber(port)
 
     local tsdb_opts = {
@@ -188,6 +188,20 @@ local function load_tsdb_strategy(strategy)
       cluster_level = feature_flags.is_enabled(FF_FLAGS.VITALS_PROMETHEUS_ENABLE_CLUSTER_LEVEL),
     }
     -- no error and we are using TSDB strategy
+    return db_strategy, tsdb_opts
+
+  elseif strategy == "influxdb" then
+    local db_strategy = require "kong.vitals.influxdb.strategy"
+
+    local host, port
+    host, port = conf.vitals_tsdb_address:match("(.+):([%d]+)$")
+    port = tonumber(port)
+
+    local tsdb_opts = {
+      host = host,
+      port = port,
+    }
+
     return db_strategy, tsdb_opts
   else
     return error("no vitals TSDB strategy for " .. tostring(strategy))
@@ -1423,9 +1437,8 @@ function _M:log_phase_after_plugins(ctx, status)
   end
 
   if self.tsdb_storage then
-    -- skip maintaining counters since TSDB strategy is a read-only strategy
-    -- data will be written out via statsd plugin
-    return true
+    -- skip maintaining counters since TSDB strategies handle writes directly
+    return self.strategy:log()
   end
 
   local seconds = time()

@@ -132,26 +132,40 @@ local function validate_portal_smtp_config(conf, errors)
 end
 
 
-local function validate_vitals_prometheus(conf, errors)
-  if conf.vitals_strategy == "prometheus" then
-    if not conf.vitals_statsd_address or not conf.vitals_prometheus_address then
-      errors[#errors+1] = "vitals_statsd_address and vitals_prometheus_address must be defined " .. 
-      "when vitals_strategy is set to \"prometheus\""
+local function validate_vitals_tsdb(conf, errors)
+  if conf.vitals_strategy == "prometheus" or
+     conf.vitals_strategy == "influxdb" then
+
+    if not conf.vitals_tsdb_address then
+      errors[#errors + 1] = "vitals_tsdb_address must be defined when " ..
+        "vitals_strategy = \"prometheus\" or \"influxdb\""
     end
+
+    if not conf.vitals_statsd_address and conf.vitals_strategy == "prometheus"
+      then
+
+      errors[#errors+1] = "vitals_statsd_address must be defined " ..
+        "when vitals_strategy is set to \"prometheus\""
+    end
+
   elseif conf.vitals_strategy ~= "database" then
-    errors[#errors+1] = "vitals_strategy must be either \"database\" or \"prometheus\""
+    errors[#errors+1] = 'vitals_strategy must be one of ' ..
+      '"database", "prometheus", or "influxdb"'
   end
 
   do
     -- validate the presence of form of host and port
     -- we cannot inject values into conf here as the table will be intersected
     -- with the defaults table following this call
-    if conf.vitals_prometheus_address then
+    if conf.vitals_tsdb_address then
       local host, port
-      host, port = conf.vitals_prometheus_address:match("(.+):([%d]+)$")
+      host, port = conf.vitals_tsdb_address:match("(.+):([%d]+)$")
       port = tonumber(port)
       if not host or not port then
-        errors[#errors+1] = "vitals_prometheus_address must be of form: <ip>:<port>"
+        errors[#errors+1] = "vitals_tsdb_address must be of form: <ip>:<port>"
+      else
+        conf.vitals_tsdb_host = host
+        conf.vitals_tsdb_port = port
       end
     end
   end
@@ -193,7 +207,7 @@ local function validate(conf, errors)
     validate_portal_smtp_config(conf, errors)
   end
 
-  validate_vitals_prometheus(conf, errors)
+  validate_vitals_tsdb(conf, errors)
 end
 
 

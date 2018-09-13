@@ -36,9 +36,9 @@ end
 
 local function new()
   local conf = singletons.configuration
-  -- skip creating internal statsd plugin if using vitals postgres/cassandra strategy
+  -- skip creating internal statsd plugin if not using prometheus strategy
   -- or vitals is not enabled
-  if conf.vitals_strategy == "database" or not singletons.configuration.vitals then
+  if conf.vitals_strategy ~= "prometheus" or not singletons.configuration.vitals then
     return true, nil
   end
 

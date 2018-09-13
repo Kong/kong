@@ -203,6 +203,7 @@ build = {
     ["kong.vitals.postgres.strategy"] = "kong/vitals/postgres/strategy.lua",
     ["kong.vitals.postgres.table_rotater"] = "kong/vitals/postgres/table_rotater.lua",
     ["kong.vitals.prometheus.strategy"] = "kong/vitals/prometheus/strategy.lua",
+    ["kong.vitals.influxdb.strategy"] = "kong/vitals/influxdb/strategy.lua",
     ["kong.db"] = "kong/db/init.lua",
     ["kong.db.errors"] = "kong/db/errors.lua",
     ["kong.db.dao"] = "kong/db/dao/init.lua",

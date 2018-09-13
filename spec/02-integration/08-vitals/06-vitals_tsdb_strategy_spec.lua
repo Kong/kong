@@ -55,7 +55,7 @@ dao_helpers.for_each_dao(function(kong_conf)
       assert(helpers.start_kong({
         vitals = "on",
         vitals_strategy = "prometheus",
-        vitals_prometheus_address = "127.0.0.1:9090",
+        vitals_tsdb_address = "127.0.0.1:9090",
         vitals_statsd_address = "127.0.0.1:8125",
       }))
 
@@ -79,11 +79,11 @@ dao_helpers.for_each_dao(function(kong_conf)
       local ok, err = helpers.start_kong({
         vitals = "on",
         vitals_strategy = "sometsdb",
-        vitals_prometheus_address = "127.0.0.1:9090",
+        vitals_tsdb_address = "127.0.0.1:9090",
         vitals_statsd_address = "127.0.0.1:8125",
       })
       assert.is.falsy(ok)
-      assert.matches("Error: vitals_strategy must be either \"database\" or \"prometheus\"", err)
+      assert.matches("Error: vitals_strategy must be one of \"database\", \"prometheus\", or \"influxdb\"", err)
 
       helpers.stop_kong()
     end)
