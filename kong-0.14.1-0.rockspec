@@ -136,7 +136,6 @@ build = {
     ["kong.db.dao"] = "kong/db/dao/init.lua",
     ["kong.db.dao.certificates"] = "kong/db/dao/certificates.lua",
     ["kong.db.dao.snis"] = "kong/db/dao/snis.lua",
-    ["kong.db.dao.consumers"] = "kong/db/dao/consumers.lua",
     ["kong.db.dao.targets"] = "kong/db/dao/targets.lua",
     ["kong.db.dao.plugins"] = "kong/db/dao/plugins.lua",
     ["kong.db.schema"] = "kong/db/schema/init.lua",

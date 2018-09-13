@@ -4,7 +4,6 @@ return {
   name         = "consumers",
   primary_key  = { "id" },
   endpoint_key = "username",
-  dao          = "kong.db.dao.consumers",
 
   fields = {
     { id             = typedefs.uuid, },
