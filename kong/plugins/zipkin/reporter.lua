@@ -38,7 +38,7 @@ function zipkin_reporter_methods:report(span)
 	end
 	local localEndpoint do
 		local service = ngx.ctx.service
-		if service and service.name ~= ngx.null then
+		if service and service.name and service.name ~= ngx.null then
 			localEndpoint = {
 				serviceName = service.name;
 				-- TODO: ip/port from ngx.var.server_name/ngx.var.server_port?
