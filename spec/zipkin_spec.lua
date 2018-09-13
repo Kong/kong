@@ -90,7 +90,7 @@ describe("integration tests with mock zipkin server", function()
         r.headers:upsert(":method", "POST")
         r.headers:upsert("content-type", "application/json")
         r:set_body([[{
-          "hosts":["mock-zipkin"],
+          "hosts":["mock-zipkin-route"],
           "preserve_host": true
         }]])
         local headers = assert(r:go(TEST_TIMEOUT))
@@ -105,20 +105,27 @@ describe("integration tests with mock zipkin server", function()
   end)
 
   it("vaguely works", function()
-    assert.truthy(with_server(function(_, res_headers, stream)
-      local body = cjson.decode((assert(stream:get_body_as_string())))
-      assert.same("table", type(body))
-      assert.same("table", type(body[1]))
-      for _, v in ipairs(body) do
-        assert.same("string", type(v.traceId))
-        assert.truthy(v.traceId:match("^%x+$"))
-        assert.same("number", type(v.timestamp))
-        assert.same("table", type(v.tags))
-        assert.truthy(v.duration >= 0)
+    assert.truthy(with_server(function(req_headers, res_headers, stream)
+      if req_headers:get(":authority") == "mock-zipkin-route" then
+        -- is the request itself
+        res_headers:upsert(":status", "204")
+      else
+        local body = cjson.decode((assert(stream:get_body_as_string())))
+        assert.same("table", type(body))
+        assert.same("table", type(body[1]))
+        for _, v in ipairs(body) do
+          assert.same("string", type(v.traceId))
+          assert.truthy(v.traceId:match("^%x+$"))
+          assert.same("number", type(v.timestamp))
+          assert.same("table", type(v.tags))
+          assert.truthy(v.duration >= 0)
+        end
+        res_headers:upsert(":status", "204")
       end
-      res_headers:upsert(":status", "204")
     end, function()
-      local req = http_request.new_from_uri("http://127.0.0.1:8000/")
+      local req = http_request.new_from_uri("http://mock-zipkin-route/")
+      req.host = "127.0.0.1"
+      req.port = 8000
       assert(req:go())
     end))
   end)
