@@ -29,6 +29,18 @@ local function get_identifier(conf)
     end
   elseif conf.limit_by == "credential" then
     identifier = ngx.ctx.authenticated_credential and ngx.ctx.authenticated_credential.id
+  elseif conf.limit_by == "key" then
+    identifier = kong.request.get_headers()[conf.key_name] or kong.request.get_query()[conf.key_name]
+
+    if not identifier and conf.key_in_body then
+      local body, err = kong.request.get_body()
+
+      if err then
+        ngx_log(ngx.ERR, "Cannot process request body: ", tostring(err))
+      else
+        identifier = body[conf.key_name]
+      end
+    end
   end
 
   if not identifier then

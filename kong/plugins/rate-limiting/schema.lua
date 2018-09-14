@@ -3,7 +3,6 @@ local typedefs = require "kong.db.schema.typedefs"
 
 local ORDERED_PERIODS = { "second", "minute", "hour", "day", "month", "year"}
 
-
 local function validate_periods_order(config)
   for i, lower_period in ipairs(ORDERED_PERIODS) do
     local v1 = config[lower_period]
@@ -38,7 +37,7 @@ return {
           { limit_by = {
               type = "string",
               default = "consumer",
-              one_of = { "consumer", "credential", "ip" },
+              one_of = { "consumer", "credential", "key", "ip" },
           }, },
           { policy = {
               type = "string",
@@ -46,6 +45,9 @@ return {
               len_min = 0,
               one_of = { "local", "cluster", "redis" },
           }, },
+
+          { key_name = { type = "string" } },
+          { key_in_body = { type = "boolean", default = false } },
           { fault_tolerant = { type = "boolean", default = true }, },
           { redis_host = typedefs.host },
           { redis_port = typedefs.port({ default = 6379 }), },
@@ -71,6 +73,14 @@ return {
     { conditional = {
       if_field = "config.policy", if_match = { eq = "redis" },
       then_field = "config.redis_timeout", then_match = { required = true },
+    } },
+    { conditional = {
+      if_field = "config.limit_by", if_match = { eq = "key" },
+      then_field = "config.key_name", then_match = { required = true },
+    } },
+    { conditional = {
+      if_field = "config.limit_by", if_match = { eq = "key" },
+      then_field = "config.key_in_body", then_match = { required = true },
     } },
   },
 }

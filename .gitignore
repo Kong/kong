@@ -3,6 +3,7 @@
 .buildpath
 .project
 .idea
+*.swp
 
 servroot*
 

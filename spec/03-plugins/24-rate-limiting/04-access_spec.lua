@@ -204,6 +204,26 @@ for _, strategy in helpers.each_strategy() do
           },
         })
 
+        local route6 = bp.routes:insert {
+          hosts = { "test6.com" },
+        }
+
+        bp.rate_limiting_plugins:insert({
+          route_id = route6.id,
+          config = {
+            limit_by            = "key",
+            key_name            = "token",
+            key_in_body         = true,
+            policy              = policy,
+            minute              = 6,
+            fault_tolerant      = false,
+            redis_host          = REDIS_HOST,
+            redis_port          = REDIS_PORT,
+            redis_password      = REDIS_PASSWORD,
+            redis_database      = REDIS_DATABASE,
+          },
+        })
+
         local service = bp.services:insert()
         bp.routes:insert {
           hosts = { "test-service1.com" },
@@ -412,6 +432,63 @@ for _, strategy in helpers.each_strategy() do
           assert.res_status(200, res)
           assert.is_nil(res.headers["x-ratelimit-limit-minute"])
           assert.is_nil(res.headers["x-ratelimit-remaining-minute"])
+        end)
+      end)
+
+      describe("Config with limit by key", function()
+        it("should limit by a key", function()
+          for i = 1, 6 do
+            local res = proxy_client():get("/status/200?token=t1", { headers = { Host = "test6.com" } })
+
+            ngx.sleep(SLEEP_TIME) -- Wait for async timer to increment the limit
+
+            assert.res_status(200, res)
+            assert.are.same(6, tonumber(res.headers["x-ratelimit-limit-minute"]))
+            assert.are.same(6 - i, tonumber(res.headers["x-ratelimit-remaining-minute"]))
+          end
+
+          local res = proxy_client():get("/status/200?token=t1", { headers = { Host = "test6.com" } })
+          local body = assert.res_status(429, res)
+          local json = cjson.decode(body)
+          assert.same({ message = "API rate limit exceeded" }, json)
+
+          -- Switch to other key, new counter will be used
+          local res = proxy_client():get("/status/200?token=t2", { headers = { Host = "test6.com" } })
+          assert.res_status(200, res)
+          assert.are.same(6, tonumber(res.headers["x-ratelimit-limit-minute"]))
+          assert.are.same(5, tonumber(res.headers["x-ratelimit-remaining-minute"]))
+        end)
+
+        it("should read key from body", function()
+          for i = 1, 6 do
+            local res = proxy_client():get("/status/200", {
+              headers = { Host = "test6.com", ["Content-Type"] = "application/json" },
+              body = { token = "t1" }
+            })
+
+            ngx.sleep(SLEEP_TIME) -- Wait for async timer to increment the limit
+
+            assert.res_status(200, res)
+            assert.are.same(6, tonumber(res.headers["x-ratelimit-limit-minute"]))
+            assert.are.same(6 - i, tonumber(res.headers["x-ratelimit-remaining-minute"]))
+          end
+
+          local res = proxy_client():get("/status/200", {
+            headers = { Host = "test6.com", ["Content-Type"] = "application/json" },
+            body = { token = "t1" }
+          })
+          local body = assert.res_status(429, res)
+          local json = cjson.decode(body)
+          assert.same({ message = "API rate limit exceeded" }, json)
+
+          -- Switch to other key, new counter will be used
+          local res = proxy_client():get("/status/200", {
+            headers = { Host = "test6.com", ["Content-Type"] = "application/json" },
+            body = { token = "t2" }
+          })
+          assert.res_status(200, res)
+          assert.are.same(6, tonumber(res.headers["x-ratelimit-limit-minute"]))
+          assert.are.same(5, tonumber(res.headers["x-ratelimit-remaining-minute"]))
         end)
       end)
 
