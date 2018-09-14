@@ -3,7 +3,6 @@ use warnings FATAL => 'all';
 use Test::Nginx::Socket::Lua;
 use t::Util;
 
-$ENV{TEST_NGINX_HTML_DIR} ||= html_dir();
 $ENV{TEST_NGINX_CERT_DIR} ||= File::Spec->catdir(server_root(), '..', 'certs');
 $ENV{TEST_NGINX_NXSOCK}   ||= html_dir();
 

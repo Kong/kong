@@ -3,8 +3,7 @@ use warnings FATAL => 'all';
 use Test::Nginx::Socket::Lua;
 use t::Util;
 
-$ENV{TEST_NGINX_HTML_DIR} ||= html_dir();
-$ENV{TEST_NGINX_NXSOCK}   ||= html_dir();
+$ENV{TEST_NGINX_NXSOCK} ||= html_dir();
 
 plan tests => repeat_each() * (blocks() * 2);
 
