@@ -4,6 +4,7 @@ use Test::Nginx::Socket::Lua;
 use t::Util;
 
 $ENV{TEST_NGINX_HTML_DIR} ||= html_dir();
+$ENV{TEST_NGINX_NXSOCK}   ||= html_dir();
 
 plan tests => repeat_each() * (blocks() * 2);
 
@@ -17,7 +18,7 @@ qq{
     $t::Util::HttpConfig
 
     server {
-        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_NXSOCK}/nginx.sock;
 
         location / {
             return 200;
@@ -152,7 +153,7 @@ qq{
 }
 --- config
     location /t {
-        proxy_pass http://unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        proxy_pass http://unix:$TEST_NGINX_NXSOCK/nginx.sock;
         set $upstream_uri '/t';
         set $upstream_scheme 'http';
 
@@ -189,7 +190,7 @@ qq{
     $t::Util::HttpConfig
 
     server {
-        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_NXSOCK}/nginx.sock;
 
         location / {
             return 200;
@@ -224,7 +225,7 @@ qq{
 }
 --- config
     location /t {
-        proxy_pass http://unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        proxy_pass http://unix:$TEST_NGINX_NXSOCK/nginx.sock;
         set $upstream_uri '/t';
         set $upstream_scheme 'http';
 
@@ -256,7 +257,7 @@ qq{
     $t::Util::HttpConfig
 
     server {
-        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_NXSOCK}/nginx.sock;
 
         location / {
             return 200;
@@ -285,7 +286,7 @@ qq{
 }
 --- config
     location /t {
-        proxy_pass http://unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        proxy_pass http://unix:$TEST_NGINX_NXSOCK/nginx.sock;
         set $upstream_uri '/t';
         set $upstream_scheme 'http';
 
@@ -306,7 +307,7 @@ qq{
     $t::Util::HttpConfig
 
     server {
-        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_NXSOCK}/nginx.sock;
 
         location / {
             return 200;
@@ -335,7 +336,7 @@ qq{
 }
 --- config
     location /t {
-        proxy_pass http://unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        proxy_pass http://unix:$TEST_NGINX_NXSOCK/nginx.sock;
         set $upstream_uri '/t';
         set $upstream_scheme 'http';
 
@@ -356,7 +357,7 @@ qq{
     $t::Util::HttpConfig
 
     server {
-        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_NXSOCK}/nginx.sock;
 
         location / {
             return 200;
@@ -385,7 +386,7 @@ qq{
 }
 --- config
     location /t {
-        proxy_pass http://unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        proxy_pass http://unix:$TEST_NGINX_NXSOCK/nginx.sock;
         set $upstream_uri '/t';
         set $upstream_scheme 'http';
 
@@ -406,7 +407,7 @@ qq{
     $t::Util::HttpConfig
 
     server {
-        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_NXSOCK}/nginx.sock;
 
         location / {
             return 200;
@@ -435,7 +436,7 @@ qq{
 }
 --- config
     location /t {
-        proxy_pass http://unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        proxy_pass http://unix:$TEST_NGINX_NXSOCK/nginx.sock;
         set $upstream_uri '/t';
         set $upstream_scheme 'http';
 

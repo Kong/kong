@@ -4,6 +4,7 @@ use Test::Nginx::Socket::Lua;
 use t::Util;
 
 $ENV{TEST_NGINX_HTML_DIR} ||= html_dir();
+$ENV{TEST_NGINX_NXSOCK}   ||= html_dir();
 
 plan tests => repeat_each() * (blocks() * 3);
 
@@ -63,7 +64,7 @@ qq{
 
     server {
         server_name K0nG;
-        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_NXSOCK}/nginx.sock;
 
         location /foo {
             content_by_lua_block {
@@ -83,7 +84,7 @@ qq{
             pdk.service.request.set_path("/foo")
         }
 
-        proxy_pass http://unix:/$TEST_NGINX_HTML_DIR/nginx.sock:$upstream_uri;
+        proxy_pass http://unix:/$TEST_NGINX_NXSOCK/nginx.sock:$upstream_uri;
     }
 --- request
 GET /t
@@ -101,7 +102,7 @@ qq{
 
     server {
         server_name K0nG;
-        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_NXSOCK}/nginx.sock;
 
         location /foo {
             content_by_lua_block {
@@ -121,7 +122,7 @@ qq{
             pdk.service.request.set_path("/foo")
         }
 
-        proxy_pass http://unix:/$TEST_NGINX_HTML_DIR/nginx.sock:$upstream_uri;
+        proxy_pass http://unix:/$TEST_NGINX_NXSOCK/nginx.sock:$upstream_uri;
     }
 --- request
 GET /t

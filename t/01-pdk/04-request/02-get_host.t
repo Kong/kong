@@ -6,6 +6,7 @@ use t::Util;
 
 $ENV{TEST_NGINX_HTML_DIR} ||= html_dir();
 $ENV{TEST_NGINX_CERT_DIR} ||= File::Spec->catdir(server_root(), '..', 'certs');
+$ENV{TEST_NGINX_NXSOCK}   ||= html_dir();
 
 plan tests => repeat_each() * (blocks() * 3);
 
@@ -39,7 +40,7 @@ qq{
     $t::Util::HttpConfig
 
     server {
-        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock ssl;
+        listen unix:$ENV{TEST_NGINX_NXSOCK}/nginx.sock ssl;
         ssl_certificate $ENV{TEST_NGINX_CERT_DIR}/test.crt;
         ssl_certificate_key $ENV{TEST_NGINX_CERT_DIR}/test.key;
 
@@ -59,7 +60,7 @@ qq{
 --- config
     location = /t {
         proxy_ssl_verify off;
-        proxy_pass https://unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        proxy_pass https://unix:$TEST_NGINX_NXSOCK/nginx.sock;
     }
 --- request
 GET /t
@@ -77,7 +78,7 @@ qq{
 
     server {
         server_name kong;
-        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_NXSOCK}/nginx.sock;
 
         location / {
             content_by_lua_block {
@@ -95,7 +96,7 @@ qq{
 --- config
     location /t {
         proxy_set_header Host "";
-        proxy_pass http://unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        proxy_pass http://unix:$TEST_NGINX_NXSOCK/nginx.sock;
     }
 --- request
 GET /t
@@ -221,7 +222,7 @@ qq{
 
     server {
         server_name K0nG;
-        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_NXSOCK}/nginx.sock;
 
         location / {
             content_by_lua_block {
@@ -239,7 +240,7 @@ qq{
 --- config
     location /t {
         proxy_set_header Host "";
-        proxy_pass http://unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        proxy_pass http://unix:$TEST_NGINX_NXSOCK/nginx.sock;
     }
 --- request
 GET /t

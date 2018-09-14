@@ -4,6 +4,7 @@ use Test::Nginx::Socket::Lua;
 use t::Util;
 
 $ENV{TEST_NGINX_HTML_DIR} ||= html_dir();
+$ENV{TEST_NGINX_NXSOCK}   ||= html_dir();
 
 plan tests => repeat_each() * (blocks() * 3);
 
@@ -172,7 +173,7 @@ qq{
 
     server {
         server_name kong;
-        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock proxy_protocol;
+        listen unix:$ENV{TEST_NGINX_NXSOCK}/nginx.sock proxy_protocol;
 
         location / {
             real_ip_header proxy_protocol;
@@ -194,7 +195,7 @@ qq{
     location = /t {
         content_by_lua_block {
             local sock = ngx.socket.tcp()
-            sock:connect("unix:$TEST_NGINX_HTML_DIR/nginx.sock")
+            sock:connect("unix:$TEST_NGINX_NXSOCK/nginx.sock")
 
             local request = "PROXY TCP4 10.0.0.1 " ..
                             ngx.var.server_addr    .. " " ..
@@ -322,7 +323,7 @@ qq{
 
     server {
         server_name kong;
-        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock proxy_protocol;
+        listen unix:$ENV{TEST_NGINX_NXSOCK}/nginx.sock proxy_protocol;
 
         location / {
             real_ip_header proxy_protocol;
@@ -340,7 +341,7 @@ qq{
     location = /t {
         content_by_lua_block {
             local sock = ngx.socket.tcp()
-            sock:connect("unix:$TEST_NGINX_HTML_DIR/nginx.sock")
+            sock:connect("unix:$TEST_NGINX_NXSOCK/nginx.sock")
 
             local request = "PROXY TCP4 10.0.0.1 " ..
                             ngx.var.server_addr    .. " " ..
