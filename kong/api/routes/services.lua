@@ -3,6 +3,15 @@ local reports     = require "kong.reports"
 local utils       = require "kong.tools.utils"
 
 
+local function post_process(data)
+  local r_data = utils.deep_copy(data)
+  r_data.config = nil
+  r_data.e = "s"
+  reports.send("api", r_data)
+  return data
+end
+
+
 return {
   ["/services"] = {
     POST = function(self, _, _, parent)
@@ -24,13 +33,6 @@ return {
 
   ["/services/:services/plugins"] = {
     POST = function(_, _, _, parent)
-      local post_process = function(data)
-        local r_data = utils.deep_copy(data)
-        r_data.config = nil
-        r_data.e = "s"
-        reports.send("api", r_data)
-        return data
-      end
       return parent(post_process)
     end,
   },

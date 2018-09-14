@@ -13,6 +13,15 @@ local post_api_plugin = endpoints.post_collection_endpoint(kong.db.plugins.schem
                                                            "api")
 
 
+local function post_process(data)
+  local r_data = utils.deep_copy(data)
+  r_data.config = nil
+  r_data.e = "a"
+  reports.send("api", r_data)
+  return data
+end
+
+
 return {
   ["/apis/"] = {
     GET = function(self, dao_factory)
@@ -52,13 +61,6 @@ return {
     end,
 
     POST = function(self, dao, helpers)
-      local post_process = function(data)
-        local r_data = utils.deep_copy(data)
-        r_data.config = nil
-        r_data.e = "a"
-        reports.send("api", r_data)
-        return data
-      end
       return post_api_plugin(self, dao.db.new_db, helpers, post_process)
     end
   },
