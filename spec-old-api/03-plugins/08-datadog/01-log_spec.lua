@@ -10,10 +10,10 @@ describe("Plugin: datadog (log)", function()
       username = "foo",
       custom_id = "bar"
     }
-    assert(dao.keyauth_credentials:insert {
+    bp.keyauth_credentials:insert {
       key = "kong",
-      consumer_id = consumer1.id
-    })
+      consumer = { id = consumer1.id },
+    }
 
     local api1 = assert(dao.apis:insert {
       name         = "dd1",

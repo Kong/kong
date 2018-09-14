@@ -8,10 +8,10 @@ describe("Plugin: key-auth (API)", function()
   local admin_client
   local dao
   local bp
+  local db
 
   setup(function()
-    local _
-    bp, _, dao = helpers.get_db_utils()
+    bp, db, dao = helpers.get_db_utils()
 
     assert(dao.apis:insert {
       name         = "keyauth1",
@@ -45,7 +45,7 @@ describe("Plugin: key-auth (API)", function()
   describe("/consumers/:consumer/key-auth", function()
     describe("POST", function()
       after_each(function()
-        dao:truncate_table("keyauth_credentials")
+        db:truncate("keyauth_credentials")
       end)
       it("creates a key-auth credential with key", function()
         local res = assert(admin_client:send {
@@ -60,7 +60,7 @@ describe("Plugin: key-auth (API)", function()
         })
         local body = assert.res_status(201, res)
         local json = cjson.decode(body)
-        assert.equal(consumer.id, json.consumer_id)
+        assert.equal(consumer.id, json.consumer.id)
         assert.equal("1234", json.key)
       end)
       it("creates a key-auth auto-generating a unique key", function()
@@ -74,11 +74,11 @@ describe("Plugin: key-auth (API)", function()
         })
         local body = assert.res_status(201, res)
         local json = cjson.decode(body)
-        assert.equal(consumer.id, json.consumer_id)
+        assert.equal(consumer.id, json.consumer.id)
         assert.is_string(json.key)
 
         local first_key = json.key
-        dao:truncate_table("keyauth_credentials")
+        db:truncate("keyauth_credentials")
 
         local res = assert(admin_client:send {
           method = "POST",
@@ -90,59 +90,24 @@ describe("Plugin: key-auth (API)", function()
         })
         local body = assert.res_status(201, res)
         local json = cjson.decode(body)
-        assert.equal(consumer.id, json.consumer_id)
+        assert.equal(consumer.id, json.consumer.id)
         assert.is_string(json.key)
 
         assert.not_equal(first_key, json.key)
       end)
     end)
 
-    describe("PUT", function()
-      after_each(function()
-        dao:truncate_table("keyauth_credentials")
-      end)
-      it("creates a key-auth credential with key", function()
-        local res = assert(admin_client:send {
-          method = "PUT",
-          path = "/consumers/bob/key-auth",
-          body = {
-            key = "1234"
-          },
-          headers = {
-            ["Content-Type"] = "application/json"
-          }
-        })
-        local body = assert.res_status(201, res)
-        local json = cjson.decode(body)
-        assert.equal(consumer.id, json.consumer_id)
-        assert.equal("1234", json.key)
-      end)
-      it("creates a key-auth credential auto-generating the key", function()
-        local res = assert(admin_client:send {
-          method = "PUT",
-          path = "/consumers/bob/key-auth",
-          body = {},
-          headers = {
-            ["Content-Type"] = "application/json"
-          }
-        })
-        local body = assert.res_status(201, res)
-        local json = cjson.decode(body)
-        assert.equal(consumer.id, json.consumer_id)
-        assert.is_string(json.key)
-      end)
-    end)
 
     describe("GET", function()
       setup(function()
         for i = 1, 3 do
-          assert(dao.keyauth_credentials:insert {
-            consumer_id = consumer.id
-          })
+          bp.keyauth_credentials:insert {
+            consumer = { id = consumer.id },
+          }
         end
       end)
       teardown(function()
-        dao:truncate_table("keyauth_credentials")
+        db:truncate("keyauth_credentials")
       end)
       it("retrieves the first page", function()
         local res = assert(admin_client:send {
@@ -153,7 +118,6 @@ describe("Plugin: key-auth (API)", function()
         local json = cjson.decode(body)
         assert.is_table(json.data)
         assert.equal(3, #json.data)
-        assert.equal(3, json.total)
       end)
     end)
   end)
@@ -161,9 +125,9 @@ describe("Plugin: key-auth (API)", function()
   describe("/consumers/:consumer/key-auth/:id", function()
     local credential
     before_each(function()
-      dao:truncate_table("keyauth_credentials")
-      credential = assert(dao.keyauth_credentials:insert {
-        consumer_id = consumer.id
+      db:truncate("keyauth_credentials")
+      credential = bp.keyauth_credentials:insert({
+        consumer = { id = consumer.id },
       })
     end)
     describe("GET", function()
@@ -203,6 +167,37 @@ describe("Plugin: key-auth (API)", function()
         assert.res_status(404, res)
       end)
     end)
+
+    describe("PUT", function()
+      after_each(function()
+        db:truncate("keyauth_credentials")
+      end)
+      it("creates a key-auth credential with key", function()
+        local res = assert(admin_client:send {
+          method  = "PUT",
+          path    = "/consumers/bob/key-auth/1234",
+          body    = {},
+          headers = { ["Content-Type"] = "application/json" },
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.equal(consumer.id, json.consumer.id)
+        assert.equal("1234", json.key)
+      end)
+      it("creates a key-auth credential with id", function()
+        local res = assert(admin_client:send {
+          method  = "PUT",
+          path    = "/consumers/bob/key-auth/c16bbff7-5d0d-4a28-8127-1ee581898f11",
+          body    = {},
+          headers = { ["Content-Type"] = "application/json" },
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.equal(consumer.id, json.consumer.id)
+        assert.is_string(json.key)
+      end)
+    end)
+
 
     describe("PATCH", function()
       it("updates a credential by id", function()
@@ -249,7 +244,7 @@ describe("Plugin: key-auth (API)", function()
           })
           local body = assert.res_status(400, res)
           local json = cjson.decode(body)
-          assert.same({ key = "key is not a string" }, json)
+          assert.same({ key = "expected a string" }, json.fields)
         end)
       end)
     end)
@@ -328,12 +323,12 @@ describe("Plugin: key-auth (API)", function()
 
     describe("GET", function()
       setup(function()
-        dao:truncate_table("keyauth_credentials")
+        db:truncate("keyauth_credentials")
 
         for i = 1, 3 do
-          assert(dao.keyauth_credentials:insert {
-            consumer_id = consumer.id
-          })
+          bp.keyauth_credentials:insert {
+            consumer = { id = consumer.id },
+          }
         end
 
         consumer2 = bp.consumers:insert {
@@ -341,9 +336,9 @@ describe("Plugin: key-auth (API)", function()
         }
 
         for i = 1, 3 do
-          assert(dao.keyauth_credentials:insert {
-            consumer_id = consumer2.id
-          })
+          bp.keyauth_credentials:insert {
+            consumer = { id = consumer2.id },
+          }
         end
       end)
 
@@ -356,7 +351,6 @@ describe("Plugin: key-auth (API)", function()
         local json = cjson.decode(body)
         assert.is_table(json.data)
         assert.equal(6, #json.data)
-        assert.equal(6, json.total)
       end)
       it("retrieves all the key-auths without trailing slash", function()
         local res = assert(admin_client:send {
@@ -367,7 +361,6 @@ describe("Plugin: key-auth (API)", function()
         local json = cjson.decode(body)
         assert.is_table(json.data)
         assert.equal(6, #json.data)
-        assert.equal(6, json.total)
       end)
       it("paginates through the key-auths", function()
         local res = assert(admin_client:send {
@@ -378,7 +371,6 @@ describe("Plugin: key-auth (API)", function()
         local json_1 = cjson.decode(body)
         assert.is_table(json_1.data)
         assert.equal(3, #json_1.data)
-        assert.equal(6, json_1.total)
 
         res = assert(admin_client:send {
           method = "GET",
@@ -392,35 +384,12 @@ describe("Plugin: key-auth (API)", function()
         local json_2 = cjson.decode(body)
         assert.is_table(json_2.data)
         assert.equal(3, #json_2.data)
-        assert.equal(6, json_2.total)
 
         assert.not_same(json_1.data, json_2.data)
         -- Disabled: on Cassandra, the last page still returns a
         -- next_page token, and thus, an offset proprty in the
         -- response of the Admin API.
         --assert.is_nil(json_2.offset) -- last page
-      end)
-      it("retrieves key-auths for a consumer_id", function()
-        local res = assert(admin_client:send {
-          method = "GET",
-          path = "/key-auths?consumer_id=" .. consumer.id
-        })
-        local body = assert.res_status(200, res)
-        local json = cjson.decode(body)
-        assert.is_table(json.data)
-        assert.equal(3, #json.data)
-        assert.equal(3, json.total)
-      end)
-      it("return empty for a non-existing consumer_id", function()
-        local res = assert(admin_client:send {
-          method = "GET",
-          path = "/key-auths?consumer_id=" .. utils.uuid(),
-        })
-        local body = assert.res_status(200, res)
-        local json = cjson.decode(body)
-        assert.is_table(json.data)
-        assert.equal(0, #json.data)
-        assert.equal(0, json.total)
       end)
     end)
   end)
@@ -430,10 +399,10 @@ describe("Plugin: key-auth (API)", function()
       local credential
 
       setup(function()
-        dao:truncate_table("keyauth_credentials")
-        credential = assert(dao.keyauth_credentials:insert {
-          consumer_id = consumer.id
-        })
+        db:truncate("keyauth_credentials")
+        credential = bp.keyauth_credentials:insert {
+          consumer = { id = consumer.id },
+        }
       end)
 
       it("retrieve Consumer from a credential's id", function()

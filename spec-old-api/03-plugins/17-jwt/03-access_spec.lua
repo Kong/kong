@@ -74,23 +74,23 @@ describe("Plugin: jwt (access)", function()
                          config = { cookie_names = { "silly", "crumble" } },
                        }))
 
-    jwt_secret = assert(dao.jwt_secrets:insert {consumer_id = consumer1.id})
-    base64_jwt_secret = assert(dao.jwt_secrets:insert {consumer_id = consumer2.id})
-    rsa_jwt_secret_1 = assert(dao.jwt_secrets:insert {
-      consumer_id = consumer3.id,
+    jwt_secret = bp.jwt_secrets:insert { consumer = { id = consumer1.id } }
+    base64_jwt_secret = bp.jwt_secrets:insert { consumer = { id = consumer2.id } }
+    rsa_jwt_secret_1 = bp.jwt_secrets:insert {
+      consumer = { id = consumer3.id },
       algorithm = "RS256",
       rsa_public_key = fixtures.rs256_public_key
-    })
-    rsa_jwt_secret_2 = assert(dao.jwt_secrets:insert {
-      consumer_id = consumer4.id,
+    }
+    rsa_jwt_secret_2 = bp.jwt_secrets:insert {
+      consumer = { id = consumer4.id },
       algorithm = "RS256",
       rsa_public_key = fixtures.rs256_public_key
-    })
-    rsa_jwt_secret_3 = assert(dao.jwt_secrets:insert {
-      consumer_id = consumer5.id,
+    }
+    rsa_jwt_secret_3 = bp.jwt_secrets:insert {
+      consumer = { id = consumer5.id },
       algorithm = "RS512",
       rsa_public_key = fixtures.rs512_public_key
-    })
+    }
 
     assert(helpers.start_kong {
       real_ip_header    = "X-Forwarded-For",
@@ -589,14 +589,14 @@ describe("Plugin: jwt (access)", function()
       },
     })
 
-    assert(dao.keyauth_credentials:insert {
-      key         = "Mouse",
-      consumer_id = user1.id,
-    })
+    bp.keyauth_credentials:insert {
+      key      = "Mouse",
+      consumer = { id = user1.id },
+    }
 
-    local jwt_secret = assert(dao.jwt_secrets:insert {
-      consumer_id = user2.id,
-    })
+    local jwt_secret = bp.jwt_secrets:insert {
+      consumer = { id = user2.id },
+    }
     PAYLOAD.iss = jwt_secret.key
     jwt_token   = "Bearer " .. jwt_encoder.encode(PAYLOAD, jwt_secret.secret)
 

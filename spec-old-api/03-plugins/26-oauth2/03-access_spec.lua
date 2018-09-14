@@ -2411,10 +2411,10 @@ describe("Plugin: oauth2 (access)", function()
       },
     })
 
-    assert(dao.keyauth_credentials:insert {
-      key         = "Mouse",
-      consumer_id = user1.id,
-    })
+    bp.keyauth_credentials:insert {
+      key      = "Mouse",
+      consumer = { id = user1.id },
+    }
 
     assert(dao.oauth2_credentials:insert {
       client_id     = "clientid123",

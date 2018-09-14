@@ -23,11 +23,11 @@ describe("Plugin: basic-auth (invalidations)", function()
     local consumer = bp.consumers:insert {
       username = "bob",
     }
-    assert(dao.basicauth_credentials:insert {
-      username    = "bob",
-      password    = "kong",
-      consumer_id = consumer.id,
-    })
+    bp.basicauth_credentials:insert {
+      username = "bob",
+      password = "kong",
+      consumer = { id = consumer.id },
+    }
 
     assert(helpers.start_kong({
       nginx_conf = "spec/fixtures/custom_nginx.template",
@@ -57,7 +57,7 @@ describe("Plugin: basic-auth (invalidations)", function()
     assert.res_status(200, res)
 
     -- ensure cache is populated
-    local cache_key = dao.basicauth_credentials:cache_key("bob")
+    local cache_key = db.basicauth_credentials:cache_key("bob")
     res = assert(admin_client:send {
       method = "GET",
       path = "/cache/" .. cache_key
@@ -105,7 +105,7 @@ describe("Plugin: basic-auth (invalidations)", function()
     assert.res_status(200, res)
 
     -- ensure cache is populated
-    local cache_key = dao.basicauth_credentials:cache_key("bob")
+    local cache_key = db.basicauth_credentials:cache_key("bob")
     res = assert(admin_client:send {
       method = "GET",
       path = "/cache/" .. cache_key
@@ -154,7 +154,7 @@ describe("Plugin: basic-auth (invalidations)", function()
     assert.res_status(200, res)
 
     -- ensure cache is populated
-    local cache_key = dao.basicauth_credentials:cache_key("bob")
+    local cache_key = db.basicauth_credentials:cache_key("bob")
     res = assert(admin_client:send {
       method = "GET",
       path = "/cache/" .. cache_key

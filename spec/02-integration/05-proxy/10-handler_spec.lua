@@ -155,8 +155,8 @@ for _, strategy in helpers.each_strategy() do
           }
 
           bp.keyauth_credentials:insert {
-            consumer_id = consumer3.id,
-            key         = "kong",
+            consumer = { id = consumer3.id },
+            key      = "kong",
           }
 
           bp.plugins:insert {

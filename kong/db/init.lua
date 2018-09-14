@@ -91,6 +91,7 @@ function DB.new(kong_config, strategy)
     strategies = strategies,
     connector  = connector,
     strategy   = strategy,
+    errors     = errors,
   }
 
   do

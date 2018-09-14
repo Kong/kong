@@ -121,36 +121,36 @@ for _, strategy in helpers.each_strategy() do
         config   = { ctx_check_field = "authenticated_jwt_token" },
       })
 
-      jwt_secret        = bp.jwt_secrets:insert { consumer_id = consumer1.id }
-      jwt_secret_2      = bp.jwt_secrets:insert { consumer_id = consumer6.id }
-      base64_jwt_secret = bp.jwt_secrets:insert { consumer_id = consumer2.id }
+      jwt_secret        = bp.jwt_secrets:insert { consumer = { id = consumer1.id } }
+      jwt_secret_2      = bp.jwt_secrets:insert { consumer = { id = consumer6.id } }
+      base64_jwt_secret = bp.jwt_secrets:insert { consumer = { id = consumer2.id } }
 
       rsa_jwt_secret_1 = bp.jwt_secrets:insert {
-        consumer_id    = consumer3.id,
+        consumer       = { id = consumer3.id },
         algorithm      = "RS256",
         rsa_public_key = fixtures.rs256_public_key
       }
 
       rsa_jwt_secret_2 = bp.jwt_secrets:insert {
-        consumer_id    = consumer4.id,
+        consumer       = { id = consumer4.id },
         algorithm      = "RS256",
         rsa_public_key = fixtures.rs256_public_key
       }
 
       rsa_jwt_secret_3 = bp.jwt_secrets:insert {
-        consumer_id    = consumer5.id,
+        consumer       = { id = consumer5.id },
         algorithm      = "RS512",
         rsa_public_key = fixtures.rs512_public_key
       }
 
       hs_jwt_secret_1 = bp.jwt_secrets:insert {
-        consumer_id   = consumer7.id,
+        consumer       = { id = consumer7.id },
         algorithm     = "HS384",
         secret        = fixtures.hs384_secret
       }
 
       hs_jwt_secret_2 = bp.jwt_secrets:insert {
-        consumer_id   = consumer8.id,
+        consumer       = { id = consumer8.id },
         algorithm     = "HS512",
         secret        = fixtures.hs512_secret
       }
@@ -785,12 +785,12 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.keyauth_credentials:insert {
-        key         = "Mouse",
-        consumer_id = user1.id,
+        key      = "Mouse",
+        consumer = { id = user1.id },
       }
 
       local jwt_secret = bp.jwt_secrets:insert {
-        consumer_id = user2.id,
+        consumer = { id = user2.id },
       }
 
       PAYLOAD.iss = jwt_secret.key

@@ -10,9 +10,9 @@ describe("Plugin: statsd (log)", function()
       username  = "bob",
       custom_id = "robert",
     }
-    assert(dao.keyauth_credentials:insert {
-      key         = "kong",
-      consumer_id = consumer1.id,
+    bp.keyauth_credentials:insert({
+      key      = "kong",
+      consumer = { id = consumer1.id },
     })
 
     local api1 = assert(dao.apis:insert {

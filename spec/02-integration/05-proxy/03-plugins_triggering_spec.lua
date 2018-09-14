@@ -31,8 +31,8 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.keyauth_credentials:insert {
-        key         = "secret1",
-        consumer_id = consumer1.id
+        key      = "secret1",
+        consumer = { id = consumer1.id },
       }
 
       local consumer2 = bp.consumers:insert {
@@ -40,8 +40,8 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.keyauth_credentials:insert {
-        key         = "secret2",
-        consumer_id = consumer2.id
+        key      = "secret2",
+        consumer = { id = consumer2.id },
       }
 
       local consumer3 = bp.consumers:insert {
@@ -233,7 +233,7 @@ for _, strategy in helpers.each_strategy() do
         db:truncate("services")
         db:truncate("consumers")
         db:truncate("plugins")
-        dao:truncate_table("keyauth_credentials")
+        db:truncate("keyauth_credentials")
 
         do
           local service = assert(bp.services:insert {
@@ -451,7 +451,7 @@ for _, strategy in helpers.each_strategy() do
         db:truncate("services")
         db:truncate("consumers")
         db:truncate("plugins")
-        dao:truncate_table("keyauth_credentials")
+        db:truncate("keyauth_credentials")
 
         local service = bp.services:insert {
           name = "example",
@@ -474,8 +474,8 @@ for _, strategy in helpers.each_strategy() do
         }
 
         bp.keyauth_credentials:insert {
-          key         = "abcd",
-          consumer_id = consumer.id,
+          key      = "abcd",
+          consumer = { id = consumer.id },
         }
 
         assert(helpers.start_kong {
@@ -526,7 +526,7 @@ for _, strategy in helpers.each_strategy() do
         db:truncate("services")
         db:truncate("consumers")
         db:truncate("plugins")
-        dao:truncate_table("keyauth_credentials")
+        db:truncate("keyauth_credentials")
 
         do
           -- service to mock HTTP 502

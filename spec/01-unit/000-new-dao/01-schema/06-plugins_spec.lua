@@ -41,11 +41,13 @@ describe("plugins", function()
             end
           end
         end,
-      }
+      },
     }
 
-    assert(dao_plugins.load_plugin_schemas(db.plugins, kong_conf.loaded_plugins))
-
+    assert(dao_plugins.load_plugin_schemas({
+      db = db.plugins,
+      schema = Plugins,
+    }, kong_conf.loaded_plugins))
   end)
 
   it("has a cache_key", function()

@@ -39,21 +39,21 @@ describe("Plugin: basic-auth (access)", function()
     local anonymous_user = bp.consumers:insert {
       username = "no-body",
     }
-    assert(dao.basicauth_credentials:insert {
-      username    = "bob",
-      password    = "kong",
-      consumer_id = consumer.id,
-    })
-     assert(dao.basicauth_credentials:insert {
-      username    = "user123",
-      password    = "password123",
-      consumer_id = consumer.id,
-    })
-    assert(dao.basicauth_credentials:insert {
-      username    = "user321",
-      password    = "password:123",
-      consumer_id = consumer.id,
-    })
+    bp.basicauth_credentials:insert {
+      username = "bob",
+      password = "kong",
+      consumer = { id = consumer.id },
+    }
+    bp.basicauth_credentials:insert {
+      username = "user123",
+      password = "password123",
+      consumer = { id = consumer.id },
+    }
+    bp.basicauth_credentials:insert {
+      username = "user321",
+      password = "password:123",
+      consumer = { id = consumer.id },
+    }
 
     local api3 = assert(dao.apis:insert {
       name         = "api-3",
@@ -397,15 +397,15 @@ describe("Plugin: basic-auth (access)", function()
       },
     })
 
-    assert(dao.keyauth_credentials:insert {
-      key         = "Mouse",
-      consumer_id = user1.id,
+    bp.keyauth_credentials:insert({
+      key      = "Mouse",
+      consumer = { id = user1.id },
     })
-    assert(dao.basicauth_credentials:insert {
-      username    = "Aladdin",
-      password    = "OpenSesame",
-      consumer_id = user2.id,
-    })
+    bp.basicauth_credentials:insert {
+      username = "Aladdin",
+      password = "OpenSesame",
+      consumer = { id = user2.id },
+    }
 
     assert(helpers.start_kong({
       nginx_conf = "spec/fixtures/custom_nginx.template",

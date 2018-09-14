@@ -1720,6 +1720,18 @@ describe("schema", function()
       assert.match(uuid_pattern, tbl.f)
     end)
 
+    it("auto-produces a random with 'string' and 'auto'", function()
+      local Test = Schema.new({
+        fields = {
+          { f = { type = "string", auto = true } }
+        }
+      })
+      local tbl = {}
+      tbl = Test:process_auto_fields(tbl, "insert")
+      assert.is_string(tbl.f)
+      assert.equals(32, #tbl.f)
+    end)
+
     it("auto-produces a timestamp with 'created_at' and 'auto'", function()
       local Test = Schema.new({
         fields = {

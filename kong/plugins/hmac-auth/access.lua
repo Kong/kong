@@ -1,7 +1,6 @@
 local utils = require "kong.tools.utils"
 local responses = require "kong.tools.responses"
 local constants = require "kong.constants"
-local singletons = require "kong.singletons"
 local openssl_hmac = require "openssl.hmac"
 local resty_sha256 = require "resty.sha256"
 
@@ -172,20 +171,20 @@ local function validate_signature(request, hmac_params, headers)
 end
 
 local function load_credential_into_memory(username)
-  local keys, err = singletons.dao.hmacauth_credentials:find_all { username = username }
+  local key, err = kong.db.hmacauth_credentials:select_by_username(username)
   if err then
     return nil, err
   end
-  return keys[1]
+  return key
 end
 
 local function load_credential(username)
   local credential, err
   if username then
-    local credential_cache_key = singletons.dao.hmacauth_credentials:cache_key(username)
-    credential, err = singletons.cache:get(credential_cache_key, nil,
-                                           load_credential_into_memory,
-                                           username)
+    local credential_cache_key = kong.db.hmacauth_credentials:cache_key(username)
+    credential, err = kong.cache:get(credential_cache_key, nil,
+                                     load_credential_into_memory,
+                                     username)
   end
 
   if err then
@@ -230,7 +229,7 @@ local function validate_body(digest_received)
 end
 
 local function load_consumer_into_memory(consumer_id, anonymous)
-  local result, err = singletons.db.consumers:select { id = consumer_id }
+  local result, err = kong.db.consumers:select { id = consumer_id }
   if not result then
     if anonymous and not err then
       err = 'anonymous consumer "' .. consumer_id .. '" not found'
@@ -300,10 +299,10 @@ local function do_authentication(conf)
   end
 
   -- Retrieve consumer
-  local consumer_cache_key = singletons.db.consumers:cache_key(credential.consumer_id)
-  local consumer, err      = singletons.cache:get(consumer_cache_key, nil,
-                                                  load_consumer_into_memory,
-                                                  credential.consumer_id)
+  local consumer_cache_key = kong.db.consumers:cache_key(credential.consumer.id)
+  local consumer, err      = kong.cache:get(consumer_cache_key, nil,
+                                            load_consumer_into_memory,
+                                            credential.consumer.id)
   if err then
     return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
   end
@@ -326,10 +325,10 @@ function _M.execute(conf)
   if not ok then
     if conf.anonymous ~= "" then
       -- get anonymous user
-      local consumer_cache_key = singletons.db.consumers:cache_key(conf.anonymous)
-      local consumer, err      = singletons.cache:get(consumer_cache_key, nil,
-                                                      load_consumer_into_memory,
-                                                      conf.anonymous, true)
+      local consumer_cache_key = kong.db.consumers:cache_key(conf.anonymous)
+      local consumer, err      = kong.cache:get(consumer_cache_key, nil,
+                                                load_consumer_into_memory,
+                                                conf.anonymous, true)
       if err then
         return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
       end

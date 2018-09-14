@@ -4,11 +4,10 @@ for _, strategy in helpers.each_strategy() do
 
 describe("Plugins triggering #" .. strategy, function()
   local client
-  local db, dao
+  local bp, db, dao
 
   setup(function()
-    local _
-    _, db, dao = helpers.get_db_utils(strategy, {
+    bp, db, dao = helpers.get_db_utils(strategy, {
       "consumers",
       "apis",
       "plugins",
@@ -21,17 +20,17 @@ describe("Plugins triggering #" .. strategy, function()
     local consumer1 = assert(db.consumers:insert {
       username = "consumer1"
     })
-    assert(dao.keyauth_credentials:insert {
+    bp.keyauth_credentials:insert {
       key = "secret1",
-      consumer_id = consumer1.id
-    })
+      consumer = { id = consumer1.id },
+    }
     local consumer2 = assert(db.consumers:insert {
       username = "consumer2"
     })
-    assert(dao.keyauth_credentials:insert {
+    bp.keyauth_credentials:insert {
       key = "secret2",
-      consumer_id = consumer2.id
-    })
+      consumer = { id = consumer2.id },
+    }
     local consumer3 = assert(db.consumers:insert {
       username = "anonymous"
     })
@@ -407,7 +406,7 @@ describe("Plugins triggering #" .. strategy, function()
       helpers.stop_kong(nil, true)
 
       dao:truncate_table("apis")
-      dao:truncate_table("keyauth_credentials")
+      db:truncate("keyauth_credentials")
       db:truncate("consumers")
       db:truncate("plugins")
 
@@ -426,10 +425,10 @@ describe("Plugins triggering #" .. strategy, function()
         username = "bob",
       })
 
-      assert(dao.keyauth_credentials:insert {
-        key         = "abcd",
-        consumer_id = consumer.id,
-      })
+      bp.keyauth_credentials:insert {
+        key      = "abcd",
+        consumer = { id = consumer.id },
+      }
 
       assert(helpers.start_kong {
         database = strategy,

@@ -152,8 +152,11 @@ function _M.new(dao, db)
     }
   end)
 
-  res.acls = new_blueprint(dao.acls, function()
-    return {}
+  local acl_group_seq = new_sequence("acl-group-%d")
+  res.acls = new_blueprint(db.acls, function()
+    return {
+      group = acl_group_seq:next(),
+    }
   end)
 
   res.cors_plugins = new_blueprint(db.plugins, function()
@@ -214,11 +217,10 @@ function _M.new(dao, db)
   end)
 
   local jwt_key_seq = new_sequence("jwt-key-%d")
-  res.jwt_secrets = new_blueprint(dao.jwt_secrets, function()
+  res.jwt_secrets = new_blueprint(db.jwt_secrets, function()
     return {
       key       = jwt_key_seq:next(),
       secret    = "secret",
-      algorithm = "HS256",
     }
   end)
 
@@ -267,13 +269,13 @@ function _M.new(dao, db)
   end)
 
   local keyauth_key_seq = new_sequence("keyauth-key-%d")
-  res.keyauth_credentials = new_blueprint(dao.keyauth_credentials, function()
+  res.keyauth_credentials = new_blueprint(db.keyauth_credentials, function()
     return {
       key = keyauth_key_seq:next(),
     }
   end)
 
-  res.basicauth_credentials = new_blueprint(dao.basicauth_credentials, function()
+  res.basicauth_credentials = new_blueprint(db.basicauth_credentials, function()
     return {}
   end)
 
@@ -285,7 +287,7 @@ function _M.new(dao, db)
   end)
 
   local hmac_username_seq = new_sequence("hmac-username-%d")
-  res.hmacauth_credentials = new_blueprint(dao.hmacauth_credentials, function()
+  res.hmacauth_credentials = new_blueprint(db.hmacauth_credentials, function()
     return {
       username = hmac_username_seq:next(),
       secret   = "secret",

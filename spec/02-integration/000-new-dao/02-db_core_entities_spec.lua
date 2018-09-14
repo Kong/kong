@@ -12,10 +12,10 @@ local a_blank_uuid = "00000000-0000-0000-0000-000000000000"
 
 for _, strategy in helpers.each_strategy() do
   describe("kong.db [#" .. strategy .. "]", function()
-    local db, bp, dao
+    local db, bp
 
     setup(function()
-      bp, db, dao = helpers.get_db_utils(strategy, {
+      bp, db = helpers.get_db_utils(strategy, {
         "routes",
         "services",
         "basicauth_credentials",
@@ -98,15 +98,16 @@ for _, strategy in helpers.each_strategy() do
           --assert.equal("invalid primary key for Service: id=(missing)", tostring(err_t))
         end)
 
-        it("cannot insert if foreign primary_key is invalid but it happens on the old DAO", function()
-          local credentials, err = dao.basicauth_credentials:insert({
+        it("cannot insert if foreign primary_key is invalid", function()
+          local fake_id = utils.uuid()
+          local credentials, _, err_t = db.basicauth_credentials:insert({
             username = "peter",
-            consumer_id = utils.uuid()
+            consumer = { id = fake_id },
           })
 
           assert.is_nil(credentials)
-          assert.is_truthy(err.foreign)
-          assert.is_string(err.message) -- the message is different between cassandra and postgresql
+          assert.equals("foreign key violation", err_t.name)
+          assert.same({ consumer = { id = fake_id } }, err_t.fields)
         end)
 
         -- I/O

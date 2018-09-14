@@ -38,10 +38,10 @@ describe("Plugin: key-auth (access)", function()
     local consumer1 = bp.consumers:insert {
       username = "bob"
     }
-    assert(dao.keyauth_credentials:insert {
-      key         = "kong",
-      consumer_id = consumer1.id,
-    })
+    bp.keyauth_credentials:insert {
+      key      = "kong",
+      consumer = { id = consumer1.id },
+    }
 
     local api3 = assert(dao.apis:insert {
       name         = "api-3",
@@ -456,15 +456,15 @@ describe("Plugin: key-auth (access)", function()
       },
     })
 
-    assert(dao.keyauth_credentials:insert {
-      key         = "Mouse",
-      consumer_id = user1.id,
-    })
-    assert(dao.basicauth_credentials:insert {
-      username    = "Aladdin",
-      password    = "OpenSesame",
-      consumer_id = user2.id,
-    })
+    bp.keyauth_credentials:insert {
+      key      = "Mouse",
+      consumer = { id = user1.id },
+    }
+    bp.basicauth_credentials:insert {
+      username = "Aladdin",
+      password = "OpenSesame",
+      consumer = { id = user2.id },
+    }
 
     assert(helpers.start_kong({
       nginx_conf = "spec/fixtures/custom_nginx.template",
