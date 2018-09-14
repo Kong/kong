@@ -152,9 +152,7 @@ return {
   ["/files/unauthenticated"] = {
     -- List all unauthenticated files stored in the portal file system
     GET = function(self, dao_factory, helpers)
-      self.params = {
-        auth = false,
-      }
+      self.params.auth = false
 
       crud.paginated_set(self, dao_factory.portal_files, nil, {__skip_rbac = true})
     end,

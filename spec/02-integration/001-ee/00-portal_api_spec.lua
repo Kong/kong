@@ -16,6 +16,13 @@ local function insert_files(dao)
       type = "partial",
       auth = i % 2 == 0 and true or false
     })
+
+    assert(dao.portal_files:insert {
+      name = "file-page" .. i,
+      contents = "i-" .. i,
+      type = "page",
+      auth = i % 2 == 0 and true or false
+    })
   end
 end
 
@@ -163,14 +170,30 @@ for _, strategy in helpers.each_strategy('postgres') do
             local body = assert.res_status(200, res)
             local json = cjson.decode(body)
 
-            assert.equal(10, json.total)
-            assert.equal(10, #json.data)
+            assert.equal(20, json.total)
+            assert.equal(20, #json.data)
           end)
 
           it("retrieves only unauthenticated files", function()
             local res = assert(client:send {
               method = "GET",
               path = "/files/unauthenticated",
+            })
+
+            local body = assert.res_status(200, res)
+            local json = cjson.decode(body)
+
+            assert.equal(10, json.total)
+            assert.equal(10, #json.data)
+            for key, value in ipairs(json.data) do
+              assert.equal(false, value.auth)
+            end
+          end)
+
+          it("retrieves filtered unauthenticated files", function()
+            local res = assert(client:send {
+              method = "GET",
+              path = "/files/unauthenticated?type=partial",
             })
 
             local body = assert.res_status(200, res)
@@ -272,8 +295,8 @@ for _, strategy in helpers.each_strategy('postgres') do
             local body = assert.res_status(200, res)
             local json = cjson.decode(body)
 
-            assert.equal(10, json.total)
-            assert.equal(10, #json.data)
+            assert.equal(20, json.total)
+            assert.equal(20, #json.data)
           end)
         end)
 
