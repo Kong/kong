@@ -515,7 +515,10 @@ describe("Admin API #" .. strategy, function()
           })
           local body = assert.response(res).has.status(200)
           local json = cjson.decode(body)
-          assert.same({ data = {} }, json)
+          assert.same({
+            data = {},
+            next = ngx.null,
+          }, json)
         end)
       end)
     end)

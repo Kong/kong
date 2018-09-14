@@ -1,3 +1,4 @@
+local singletons = require "kong.singletons"
 local balancer = require "kong.runloop.balancer"
 local utils = require "kong.tools.utils"
 local cjson = require "cjson"
@@ -257,7 +258,7 @@ end
 function _TARGETS:select_by_upstream_filter(upstream_pk, filter, options)
   assert(filter.id or filter.target)
 
-  local targets, err, err_t = self:select_by_upstream_raw(upstream_pk, options)
+  local targets, err, err_t = self:select_by_upstream_raw(upstream_pk, nil, options)
   if not targets then
     return nil, err, err_t
   end
@@ -283,7 +284,8 @@ end
 
 function _TARGETS:post_health(upstream, target, is_healthy)
   local addr = utils.normalize_ip(target.target)
-  local ip, port = utils.format_host(addr.host), addr.port
+  local ip   = utils.format_host(addr.host)
+  local port = addr.port
   local _, err = balancer.post_health(upstream, ip, port, is_healthy)
   if err then
     return nil, err
@@ -293,8 +295,9 @@ function _TARGETS:post_health(upstream, target, is_healthy)
   local packet = ("%s|%d|%d|%s|%s"):format(ip, port, health,
                                            upstream.id,
                                            upstream.name)
-  local cluster_events = require("kong.singletons").cluster_events
-  cluster_events:broadcast("balancer:post_health", packet)
+
+  singletons.cluster_events:broadcast("balancer:post_health", packet)
+
   return true
 end
 

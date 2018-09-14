@@ -8,6 +8,10 @@ local arguments = require "kong.api.arguments"
 local singletons = require "kong.singletons"
 
 
+local type = type
+local pairs = pairs
+
+
 local get_plugin = endpoints.get_entity_endpoint(kong.db.plugins.schema)
 local put_plugin = endpoints.put_entity_endpoint(kong.db.plugins.schema)
 local delete_plugin = endpoints.delete_entity_endpoint(kong.db.plugins.schema)
@@ -34,16 +38,20 @@ end
 
 
 local function fill_plugin_data(args, plugin)
-  args.post.name = args.post.name or plugin.name
+  local post = args.post
+
+  post.name = post.name or plugin.name
 
   -- Only now we can decode the 'config' table for form-encoded values
-  args.post = arguments.decode(args.post, kong.db.plugins.schema)
+  post = arguments.decode(post, kong.db.plugins.schema)
 
-  -- While we're at it, get values for composite uniqueness check:
-  args.post.api = args.post.api or plugin.api
-  args.post.route = args.post.route or plugin.route
-  args.post.service = args.post.service or plugin.service
-  args.post.consumer = args.post.consumer or plugin.consumer
+  -- While we're at it, get values for composite uniqueness check
+  post.api = post.api or plugin.api
+  post.route = post.route or plugin.route
+  post.service = post.service or plugin.service
+  post.consumer = post.consumer or plugin.consumer
+
+  args.post = post
 end
 
 
@@ -79,48 +87,56 @@ do
     return out
   end
 
+  local insert = table.insert
+  local ipairs = ipairs
+  local next = next
+
   schema_to_jsonable = function(schema)
     local fields = {}
     for _, field in ipairs(schema.fields) do
       local fname = next(field)
       local fdata = field[fname]
-      table.insert(fields, { [fname] = fdata_to_jsonable(fdata) })
+      insert(fields, { [fname] = fdata_to_jsonable(fdata) })
     end
     return { fields = fields }
   end
 end
 
+
+local function post_process(data)
+  local r_data = utils.deep_copy(data)
+  r_data.config = nil
+  if data.service ~= null and data.service.id then
+    r_data.e = "s"
+  elseif data.route ~= null and data.route.id then
+    r_data.e = "r"
+  elseif data.consumer ~= null and data.consumer.id then
+    r_data.e = "c"
+  elseif data.api ~= null and data.api.id then
+    r_data.e = "a"
+  end
+  reports.send("api", r_data)
+  return data
+end
+
+
 return {
   ["/plugins"] = {
     POST = function(_, _, _, parent)
-      local post_process = function(data)
-        local r_data = utils.deep_copy(data)
-        r_data.config = nil
-        if data.service ~= null and data.service.id then
-          r_data.e = "s"
-        elseif data.route ~= null and data.route.id then
-          r_data.e = "r"
-        elseif data.consumer ~= null and data.consumer.id then
-          r_data.e = "c"
-        elseif data.api ~= null and data.api.id then
-          r_data.e = "a"
-        end
-        reports.send("api", r_data)
-        return data
-      end
       return parent(post_process)
     end,
   },
 
   ["/plugins/:plugins"] = {
     PATCH = function(self, db, helpers, parent)
+      local post = self.args and self.args.post
+
       -- Read-before-write only if necessary
-      if self.args and self.args.post
-                   and (self.args.post.name == nil
-                        or self.args.post.route == nil
-                        or self.args.post.service == nil
-                        or self.args.post.consumer == nil
-                        or self.args.post.api == nil) then
+      if post and (post.name     == nil or
+                   post.route    == nil or
+                   post.service  == nil or
+                   post.consumer == nil or
+                   post.api      == nil) then
 
         -- We need the name, otherwise we don't know what type of
         -- plugin this is and we can't perform *any* validations.

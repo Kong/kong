@@ -1039,12 +1039,21 @@ describe("Admin API #" .. kong_config.database, function()
             assert.True(plugin.config.hide_credentials)
             assert.same({"apikey"}, plugin.config.key_names)
 
+            local body
+            if content_type == "application/json" then
+              body = {
+                config = { key_names = "my-new-key" },
+              }
+            else
+              body = {
+                ["config.key_names"] = { "my-new-key" }
+              }
+            end
+
             local res = assert(client:send {
               method = "PATCH",
               path = "/apis/" .. api.id .. "/plugins/" .. plugin.id,
-              body = {
-                ["config.key_names"] = {"my-new-key"}
-              },
+              body = body,
               headers = {["Content-Type"] = content_type}
             })
             local body = assert.res_status(200, res)

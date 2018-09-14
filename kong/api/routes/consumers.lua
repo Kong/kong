@@ -1,23 +1,27 @@
-local Endpoints = require "kong.api.endpoints"
+local endpoints = require "kong.api.endpoints"
 local reports = require "kong.reports"
 local utils = require "kong.tools.utils"
 
 
-return {
+local null = ngx.null
 
+
+return {
   ["/consumers"] = {
     GET = function(self, db, helpers, parent)
+      local args = self.args.uri
+      local opts = endpoints.extract_options(args, db.consumers.schema, "select")
 
       -- Search by custom_id: /consumers?custom_id=xxx
-      if self.params.custom_id then
-        local consumer, _, err_t =
-          db.consumers:select_by_custom_id(self.params.custom_id)
+      if args.custom_id then
+        local consumer, _, err_t = db.consumers:select_by_custom_id(args.custom_id, opts)
         if err_t then
-          return Endpoints.handle_error(err_t)
+          return endpoints.handle_error(err_t)
         end
 
         return helpers.responses.send_HTTP_OK {
           data = { consumer },
+          next = null,
         }
       end
 
