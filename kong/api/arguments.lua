@@ -13,6 +13,7 @@ local pairs         = pairs
 local lower         = string.lower
 local find          = string.find
 local sub           = string.sub
+local next          = next
 local type          = type
 local ngx           = ngx
 local req           = ngx.req
@@ -213,7 +214,16 @@ local function infer_value(value, field)
   elseif field.type == "record" and not field.abstract then
     if type(value) == "table" then
       for k, v in pairs(value) do
-        value[k] = infer_value(v, field.fields[k])
+        for i in ipairs(field.fields) do
+          local item = field.fields[i]
+          if item then
+            local key = next(item)
+            local fld = item[key]
+            if k == key then
+              value[k] = infer_value(v, fld)
+            end
+          end
+        end
       end
     end
   end
