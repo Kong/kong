@@ -7,8 +7,11 @@ local Errors  = require "kong.db.errors"
 
 local function it_content_types(title, fn)
   local test_form_encoded = fn("application/x-www-form-urlencoded")
+  local test_multipart = fn("multipart/form-data")
   local test_json = fn("application/json")
+
   it(title .. " with application/www-form-urlencoded", test_form_encoded)
+  it(title .. " with multipart/form-data", test_multipart)
   it(title .. " with application/json", test_json)
 end
 
@@ -159,12 +162,24 @@ describe("Admin API: #" .. strategy, function()
 
       it_content_types("creates a certificate and returns it with the snis pseudo-property", function(content_type)
         return function()
+          local body
+          if content_type == "multipart/form-data" then
+            body = {
+              cert        = ssl_fixtures.cert,
+              key         = ssl_fixtures.key,
+              ["snis[1]"] = "foobar.com",
+              ["snis[2]"] = "baz.com",
+            }
+          else
+            body = {
+              cert = ssl_fixtures.cert,
+              key  = ssl_fixtures.key,
+              snis = { "foobar.com", "baz.com", }
+            }
+          end
+
           local res = client:post("/certificates", {
-            body    = {
-              cert  = ssl_fixtures.cert,
-              key   = ssl_fixtures.key,
-              snis  = { "foobar.com", "baz.com" },
-            },
+            body    = body,
             headers = { ["Content-Type"] = content_type },
           })
 

@@ -9,9 +9,12 @@ local unindent = helpers.unindent
 
 local function it_content_types(title, fn)
   local test_form_encoded = fn("application/x-www-form-urlencoded")
+  local test_multipart = fn("multipart/form-data")
   local test_json = fn("application/json")
+
+  it(title .. " with application/www-form-urlencoded", test_form_encoded)
+  it(title .. " with multipart/form-data", test_multipart)
   it(title .. " with application/json", test_json)
-  it(title .. " with application/x-www-form-urlencoded", test_form_encoded)
 end
 
 
@@ -281,6 +284,11 @@ for _, strategy in helpers.each_strategy() do
         describe("PATCH", function()
           it_content_types("updates if found", function(content_type)
             return function()
+              if content_type == "multipart/form-data" then
+                -- the client doesn't play well with this
+                return
+              end
+
               local service = bp.services:insert()
               local res = client:patch("/services/" .. service.id, {
                 headers = {
@@ -416,6 +424,11 @@ for _, strategy in helpers.each_strategy() do
         describe("POST", function()
           it_content_types("creates a plugin config for a Service", function(content_type)
             return function()
+              if content_type == "multipart/form-data" then
+                -- the client doesn't play well with this
+                return
+              end
+
               local service = bp.services:insert()
               local res = assert(client:send {
                 method = "POST",
@@ -432,6 +445,11 @@ for _, strategy in helpers.each_strategy() do
 
           it_content_types("references a Service by name", function(content_type)
             return function()
+              if content_type == "multipart/form-data" then
+                -- the client doesn't play well with this
+                return
+              end
+
               local service = bp.named_services:insert()
               local res = assert(client:send {
                 method = "POST",

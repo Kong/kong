@@ -7,10 +7,14 @@ local utils   = require "kong.tools.utils"
 
 local function it_content_types(title, fn)
   local test_form_encoded = fn("application/x-www-form-urlencoded")
+  local test_multipart = fn("multipart/form-data")
   local test_json = fn("application/json")
-  it(title .. " with application/x-www-form-urlencoded", test_form_encoded)
+
+  it(title .. " with application/www-form-urlencoded", test_form_encoded)
+  it(title .. " with multipart/form-data", test_multipart)
   it(title .. " with application/json", test_json)
 end
+
 
 local gensym
 do
