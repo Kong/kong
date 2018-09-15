@@ -54,6 +54,7 @@ local function bootstrap(schema_state, db, ttl)
   local ok, err = db:cluster_mutex(MIGRATIONS_MUTEX_KEY, opts, function()
     assert(db:run_migrations(schema_state.new_migrations, {
       run_up = true,
+      run_teardown = true,
     }))
     log("database is up-to-date")
   end)
@@ -89,7 +90,6 @@ local function up(schema_state, db, opts)
 
     assert(db:run_migrations(schema_state.new_migrations, {
       run_up = true,
-      upgrade = true,
     }))
   end)
   if err then

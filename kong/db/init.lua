@@ -746,9 +746,8 @@ do
           end
 
           local state = "executed"
-          if options.upgrade and strategy_migration.teardown then
-            -- we are running 'kong migrations up' (upgrading) and this
-            -- migration has a teardown step for later
+          if strategy_migration.teardown then
+            -- this migration has a teardown step for later
             state = "pending"
           end
 
@@ -759,8 +758,9 @@ do
             return nil, fmt_err(self, "failed to record migration '%s': %s",
                                 mig.name, err)
           end
+        end
 
-        else
+        if run_teardown and strategy_migration.teardown then
           -- kong migrations teardown
           local f = strategy_migration.teardown
 
