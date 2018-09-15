@@ -52,14 +52,15 @@ if [ ! "$(ls -A $OPENSSL_INSTALL)" ]; then
     echo "Installing OpenSSL $OPENSSL..."
     ./config shared --prefix=$OPENSSL_INSTALL &> build.log || (cat build.log && exit 1)
     make &> build.log || (cat build.log && exit 1)
-    make install &> build.log || (cat build.log && exit 1)
+    make install_sw &> build.log || (cat build.log && exit 1)
   popd
 fi
 
 if [ ! "$(ls -A $OPENRESTY_INSTALL)" ]; then
   OPENRESTY_OPTS=(
     "--prefix=$OPENRESTY_INSTALL"
-    "--with-openssl=$OPENSSL_DOWNLOAD"
+    "--with-cc-opt='-I$OPENSSL_INSTALL/include'"
+    "--with-ld-opt='-L$OPENSSL_INSTALL/lib -Wl,-rpath,$OPENSSL_INSTALL/lib'"
     "--with-ipv6"
     "--with-pcre-jit"
     "--with-http_ssl_module"
@@ -78,7 +79,7 @@ if [ ! "$(ls -A $OPENRESTY_INSTALL)" ]; then
       popd
     fi
     echo "Installing OpenResty $OPENRESTY..."
-    ./configure ${OPENRESTY_OPTS[*]} &> build.log || (cat build.log && exit 1)
+    eval ./configure ${OPENRESTY_OPTS[*]} &> build.log || (cat build.log && exit 1)
     make &> build.log || (cat build.log && exit 1)
     make install &> build.log || (cat build.log && exit 1)
   popd
