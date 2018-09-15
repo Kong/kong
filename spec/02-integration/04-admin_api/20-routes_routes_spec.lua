@@ -9,9 +9,12 @@ local unindent = helpers.unindent
 
 local function it_content_types(title, fn)
   local test_form_encoded = fn("application/x-www-form-urlencoded")
+  local test_multipart = fn("multipart/form-data")
   local test_json = fn("application/json")
+
+  it(title .. " with application/www-form-urlencoded", test_form_encoded)
+  it(title .. " with multipart/form-data", test_multipart)
   it(title .. " with application/json", test_json)
-  it(title .. " with application/x-www-form-urlencoded", test_form_encoded)
 end
 
 
@@ -50,6 +53,11 @@ for _, strategy in helpers.each_strategy() do
       describe("POST", function()
         it_content_types("creates a route", function(content_type)
           return function()
+            if content_type == "multipart/form-data" then
+              -- the client doesn't play well with this
+              return
+            end
+
             local res = client:post("/routes", {
               body = {
                 protocols = { "http" },
@@ -73,6 +81,11 @@ for _, strategy in helpers.each_strategy() do
 
         it_content_types("creates a complex route", function(content_type)
           return function()
+            if content_type == "multipart/form-data" then
+              -- the client doesn't play well with this
+              return
+            end
+
             local s = bp.services:insert()
             local res = client:post("/routes", {
               body    = {
@@ -111,6 +124,11 @@ for _, strategy in helpers.each_strategy() do
 
           it_content_types("handles invalid input", function(content_type)
             return function()
+              if content_type == "multipart/form-data" then
+                -- the client doesn't play well with this
+                return
+              end
+
               -- Missing params
               local res = client:post("/routes", {
                 body = {},
@@ -365,6 +383,11 @@ for _, strategy in helpers.each_strategy() do
         describe("PUT", function()
           it_content_types("creates if not found", function(content_type)
             return function()
+              if content_type == "multipart/form-data" then
+                -- the client doesn't play well with this
+                return
+              end
+
               local service = bp.services:insert()
               local id = utils.uuid()
               local res = client:put("/routes/" .. id, {
@@ -390,6 +413,11 @@ for _, strategy in helpers.each_strategy() do
 
           it_content_types("creates if not found by name", function(content_type)
             return function()
+              if content_type == "multipart/form-data" then
+                -- the client doesn't play well with this
+                return
+              end
+
               local service = bp.services:insert()
               local name = "my-route"
               local res = client:put("/routes/" .. name, {
@@ -415,6 +443,11 @@ for _, strategy in helpers.each_strategy() do
 
           it_content_types("updates if found", function(content_type)
             return function()
+              if content_type == "multipart/form-data" then
+                -- the client doesn't play well with this
+                return
+              end
+
               local route = bp.routes:insert({ paths = { "/my-route" } })
               local res = client:put("/routes/" .. route.id, {
                 headers = {
@@ -439,6 +472,11 @@ for _, strategy in helpers.each_strategy() do
 
           it_content_types("updates if found by name", function(content_type)
             return function()
+              if content_type == "multipart/form-data" then
+                -- the client doesn't play well with this
+                return
+              end
+
               local route = bp.routes:insert({
                 name  = "my-put-route",
                 paths = { "/my-route" }
@@ -481,6 +519,11 @@ for _, strategy in helpers.each_strategy() do
 
             it_content_types("handles invalid input", function(content_type)
               return function()
+                if content_type == "multipart/form-data" then
+                  -- the client doesn't play well with this
+                  return
+                end
+
                 -- Missing params
                 local res = client:put("/routes/" .. utils.uuid(), {
                   body = {},
@@ -552,6 +595,11 @@ for _, strategy in helpers.each_strategy() do
         describe("PATCH", function()
           it_content_types("updates if found", function(content_type)
             return function()
+              if content_type == "multipart/form-data" then
+                -- the client doesn't play well with this
+                return
+              end
+
               local route = bp.routes:insert({ paths = { "/my-route" } })
               local res = client:patch("/routes/" .. route.id, {
                 headers = {
@@ -577,6 +625,11 @@ for _, strategy in helpers.each_strategy() do
 
           it_content_types("updates if found by name", function(content_type)
             return function()
+              if content_type == "multipart/form-data" then
+                -- the client doesn't play well with this
+                return
+              end
+
               local route = bp.routes:insert({
                 name  = "my-patch-route",
                 paths = { "/my-route" },
@@ -628,6 +681,11 @@ for _, strategy in helpers.each_strategy() do
 
           it_content_types("updates multiple fields at once", function(content_type)
             return function()
+              if content_type == "multipart/form-data" then
+                -- the client doesn't play well with this
+                return
+              end
+
               local route = bp.routes:insert({ paths = { "/my-route" } })
               local res = client:patch("/routes/" .. route.id, {
                 headers = {
@@ -708,6 +766,11 @@ for _, strategy in helpers.each_strategy() do
           describe("errors", function()
             it_content_types("returns 404 if not found", function(content_type)
               return function()
+                if content_type == "multipart/form-data" then
+                  -- the client doesn't play well with this
+                  return
+                end
+
                 local res = client:patch("/routes/" .. utils.uuid(), {
                   headers = {
                     ["Content-Type"] = content_type
@@ -833,6 +896,11 @@ for _, strategy in helpers.each_strategy() do
         describe("PATCH", function()
           it_content_types("updates if found", function(content_type)
             return function()
+              if content_type == "multipart/form-data" then
+                -- the client doesn't play well with this
+                return
+              end
+
               local service = bp.named_services:insert({ path = "/" })
               local route = bp.routes:insert({ paths = { "/my-route" }, service = service })
               local edited_name = "name-" .. service.name
@@ -861,6 +929,11 @@ for _, strategy in helpers.each_strategy() do
 
           it_content_types("updates if found by name", function(content_type)
             return function()
+              if content_type == "multipart/form-data" then
+                -- the client doesn't play well with this
+                return
+              end
+
               local service = bp.named_services:insert({ path = "/" })
               local route = bp.routes:insert({ name = "my-service-patch-route", paths = { "/my-route" }, service = service })
               local edited_name = "name-" .. service.name
@@ -983,6 +1056,11 @@ for _, strategy in helpers.each_strategy() do
         describe("POST", function()
           it_content_types("creates a plugin config on a Route", function(content_type)
             return function()
+              if content_type == "multipart/form-data" then
+                -- the client doesn't play well with this
+                return
+              end
+
               local route = bp.routes:insert({ paths = { "/my-route" } })
               local bodies = {
                 ["application/x-www-form-urlencoded"] = {

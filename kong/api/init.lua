@@ -11,6 +11,7 @@ local arguments   = require "kong.api.arguments"
 local Errors      = require "kong.db.errors"
 
 
+local ngx      = ngx
 local sub      = string.sub
 local find     = string.find
 local type     = type
@@ -209,7 +210,8 @@ local function attach_new_db_routes(routes)
     for method_name, method_handler in pairs(methods) do
       local wrapped_handler = function(self)
         self.args = arguments.load({
-          schema = schema,
+          schema  = schema,
+          request = self.req,
         })
 
         return method_handler(self, singletons.db, handler_helpers)
