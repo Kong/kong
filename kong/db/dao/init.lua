@@ -5,6 +5,8 @@ local iteration = require "kong.db.iteration"
 local setmetatable = setmetatable
 local tostring     = tostring
 local require      = require
+local ipairs       = ipairs
+local concat       = table.concat
 local error        = error
 local pairs        = pairs
 local floor        = math.floor
@@ -235,7 +237,6 @@ local function generate_foreign_key_methods(schema)
 
   for name, field in schema:each_field() do
     if field.type == "foreign" then
-
       local page_method_name = "page_for_" .. name
       methods[page_method_name] = function(self, foreign_key, size, offset, options)
         validate_foreign_key_type(foreign_key)
@@ -282,7 +283,9 @@ local function generate_foreign_key_methods(schema)
 
         local rows, err_t, new_offset = strategy[page_method_name](strategy,
                                                                    foreign_key,
-                                                                   size, offset)
+                                                                   size,
+                                                                   offset,
+                                                                   options)
         if not rows then
           return nil, tostring(err_t), err_t
         end
@@ -297,7 +300,7 @@ local function generate_foreign_key_methods(schema)
       end
 
       local each_method_name = "each_for_" .. name
-      methods[each_method_name] = function(self, foreign_key, size)
+      methods[each_method_name] = function(self, foreign_key, size, options)
         validate_foreign_key_type(foreign_key)
 
         if size ~= nil then
@@ -315,17 +318,30 @@ local function generate_foreign_key_methods(schema)
           size = 100
         end
 
+        if options ~= nil then
+          validate_options_type(options)
+        end
+
         local ok, errors = self.schema:validate_primary_key(foreign_key)
         if not ok then
           local err_t = self.errors:invalid_primary_key(errors)
           return iteration.failed(tostring(err_t), err_t)
         end
 
+        if options ~= nil then
+          ok, errors = validate_options_value(options, schema, "select")
+          if not ok then
+            local err_t = self.errors:invalid_options(errors)
+            return nil, tostring(err_t), err_t
+          end
+        end
+
         local strategy = self.strategy
 
         local pager = function(size, offset)
-          return strategy[page_method_name](strategy, foreign_key, size, offset)
+          return strategy[page_method_name](strategy, foreign_key, size, offset, options)
         end
+
         return iteration.by_row(self, pager, size)
       end
 
@@ -352,11 +368,7 @@ local function generate_foreign_key_methods(schema)
           end
         end
 
-        if options ~= nil and type(options) ~= "table" then
-          error("options must be a table", 2)
-        end
-
-        local row, err_t = self.strategy:select_by_field(name, unique_value)
+        local row, err_t = self.strategy:select_by_field(name, unique_value, options)
         if err_t then
           return nil, tostring(err_t), err_t
         end
@@ -402,6 +414,7 @@ local function generate_foreign_key_methods(schema)
         if rbw_entity then
           self:post_crud_event("update", rbw_entity)
         end
+
         self:post_crud_event("update", row)
 
         return row
@@ -419,10 +432,6 @@ local function generate_foreign_key_methods(schema)
         if not ok then
           local err_t = self.errors:invalid_unique(name, err)
           return nil, tostring(err_t), err_t
-        end
-
-        if options ~= nil and type(options) ~= "table" then
-          error("options must be a table", 2)
         end
 
         local entity_to_upsert, err = self.schema:process_auto_fields(entity, "upsert")
@@ -554,10 +563,6 @@ function DAO:select(primary_key, options)
     validate_options_type(options)
   end
 
-  if options ~= nil and type(options) ~= "table" then
-    error("options must be a table", 2)
-  end
-
   local ok, errors = self.schema:validate_primary_key(primary_key)
   if not ok then
     local err_t = self.errors:invalid_primary_key(errors)
@@ -617,7 +622,7 @@ function DAO:page(size, offset, options)
     end
   end
 
-  local rows, err_t, offset = self.strategy:page(size, offset, nil, options)
+  local rows, err_t, offset = self.strategy:page(size, offset, options)
   if err_t then
     return nil, tostring(err_t), err_t
   end
@@ -663,6 +668,7 @@ function DAO:each(size, options)
   local pager = function(size, offset, options)
     return self.strategy:page(size, offset, options)
   end
+
   return iteration.by_row(self, pager, size, options)
 end
 
@@ -672,10 +678,6 @@ function DAO:insert(entity, options)
 
   if options ~= nil then
     validate_options_type(options)
-  end
-
-  if options ~= nil and type(options) ~= "table" then
-    error("options must be a table", 2)
   end
 
   local entity_to_insert, err = self.schema:process_auto_fields(entity, "insert")
@@ -726,17 +728,15 @@ function DAO:update(primary_key, entity, options)
     validate_options_type(options)
   end
 
-  if options ~= nil and type(options) ~= "table" then
-    error("options must be a table", 2)
-  end
-
   local ok, errors = self.schema:validate_primary_key(primary_key)
   if not ok then
     local err_t = self.errors:invalid_primary_key(errors)
     return nil, tostring(err_t), err_t
   end
 
-  local entity_to_update, rbw_entity, err, err_t = check_update(self, primary_key, entity,
+  local entity_to_update, rbw_entity, err, err_t = check_update(self,
+                                                                primary_key,
+                                                                entity,
                                                                 options)
   if not entity_to_update then
     return nil, err, err_t
@@ -755,6 +755,7 @@ function DAO:update(primary_key, entity, options)
   if rbw_entity then
     self:post_crud_event("update", rbw_entity)
   end
+
   self:post_crud_event("update", row)
 
   return row
@@ -767,10 +768,6 @@ function DAO:upsert(primary_key, entity, options)
 
   if options ~= nil then
     validate_options_type(options)
-  end
-
-  if options ~= nil and type(options) ~= "table" then
-    error("options must be a table", 2)
   end
 
   local ok, errors = self.schema:validate_primary_key(primary_key)
@@ -864,7 +861,7 @@ function DAO:delete(primary_key, options)
 end
 
 
-function DAO:select_by_cache_key(cache_key)
+function DAO:select_by_cache_key(cache_key, options)
   local ck_definition = self.schema.cache_key
   if not ck_definition then
     error("entity does not have a cache_key defined", 2)
@@ -875,10 +872,10 @@ function DAO:select_by_cache_key(cache_key)
   end
 
   if #ck_definition == 1 then
-    return self["select_by_" .. ck_definition[1]](self, cache_key)
+    return self["select_by_" .. ck_definition[1]](self, cache_key, options)
   end
 
-  local row, err_t = self.strategy:select_by_field("cache_key", cache_key)
+  local row, err_t = self.strategy:select_by_field("cache_key", cache_key, options)
   if err_t then
     return nil, tostring(err_t), err_t
   end
@@ -887,7 +884,7 @@ function DAO:select_by_cache_key(cache_key)
     return nil
   end
 
-  return self:row_to_entity(row)
+  return self:row_to_entity(row, options)
 end
 
 
@@ -913,8 +910,8 @@ end
 
 
 function DAO:row_to_entity(row, options)
-  if options ~= nil and type(options) ~= "table" then
-    error("options must be a table", 2)
+  if options ~= nil then
+    validate_options_type(options)
   end
 
   local nulls = options and options.nulls
@@ -989,7 +986,7 @@ function DAO:cache_key(key, arg2, arg3, arg4, arg5)
     values[n] = ""
   end
 
-  return table.concat(values, ":")
+  return concat(values, ":")
 end
 
 

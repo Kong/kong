@@ -9,7 +9,14 @@ local MetaSchema = require "kong.db.schema.metaschema"
 local Plugins = {}
 
 
+local fmt = string.format
 local null = ngx.null
+local type = type
+local next = next
+local pairs = pairs
+local ipairs = ipairs
+local insert = table.insert
+local tostring = tostring
 local ngx_log = ngx.log
 local ngx_WARN = ngx.WARN
 local ngx_DEBUG = ngx.DEBUG
@@ -178,20 +185,20 @@ local function convert_legacy_schema(name, old_schema)
       new_fdata.type = "string"
     end
 
-    table.insert(new_schema.fields.config.fields, new_field)
+    insert(new_schema.fields.config.fields, new_field)
   end
 
   if old_schema.no_api then
-    table.insert(new_schema.fields, { api = typedefs.no_api })
+    insert(new_schema.fields, { api = typedefs.no_api })
   end
   if old_schema.no_route then
-    table.insert(new_schema.fields, { route = typedefs.no_route })
+    insert(new_schema.fields, { route = typedefs.no_route })
   end
   if old_schema.no_service then
-    table.insert(new_schema.fields, { service = typedefs.no_service })
+    insert(new_schema.fields, { service = typedefs.no_service })
   end
   if old_schema.no_consumer then
-    table.insert(new_schema.fields, { consumer = typedefs.no_consumer })
+    insert(new_schema.fields, { consumer = typedefs.no_consumer })
   end
   return new_schema
 end
@@ -265,19 +272,19 @@ function Plugins:load_plugin_schemas(plugin_set)
     if db.strategy then -- skip during tests
       local has_daos, daos_schemas = utils.load_module_if_exists("kong.plugins." .. plugin .. ".daos")
       if has_daos then
-        local Strategy = require(string.format("kong.db.strategies.%s", db.strategy))
+        local Strategy = require(fmt("kong.db.strategies.%s", db.strategy))
         for name, schema_def in pairs(daos_schemas) do
           if name ~= "tables" and schema_def.name then
-            ngx_log(ngx_DEBUG, string.format("Loading custom plugin entity: '%s.%s'", plugin, name))
+            ngx_log(ngx_DEBUG, fmt("Loading custom plugin entity: '%s.%s'", plugin, name))
             local ok, err_t = MetaSchema:validate(schema_def)
             if not ok then
-              return nil, string.format("schema of custom plugin entity '%s.%s' is invalid: %s", plugin, name,
+              return nil, fmt("schema of custom plugin entity '%s.%s' is invalid: %s", plugin, name,
                 -- tostring(db.errors:schema_violation(err_t)))
                 require("inspect")({ err_t = err_t, schema_def = schema_def }))
             end
             local schema, err = Entity.new(schema_def)
             if not schema then
-              return nil, string.format("schema of custom plugin entity '%s.%s' is invalid: %s", plugin, name,
+              return nil, fmt("schema of custom plugin entity '%s.%s' is invalid: %s", plugin, name,
                 err)
             end
             local strategy, err = Strategy.new(db.connector, schema, db.errors)

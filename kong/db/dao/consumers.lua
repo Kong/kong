@@ -1,4 +1,8 @@
+local pairs = pairs
+
+
 local _Consumers = {}
+
 
 local function delete_cascade_legacy(self, table_name, fk)
   local old_dao = self.db.old_dao
@@ -37,22 +41,26 @@ local function delete_cascade_all(self, consumer_id)
 end
 
 
-function _Consumers:delete(primary_key)
+function _Consumers:delete(primary_key, options)
   delete_cascade_all(self, primary_key.id)
-  return self.super.delete(self, primary_key)
+
+  return self.super.delete(self, primary_key, options)
 end
 
 
-function _Consumers:delete_by_username(username)
+function _Consumers:delete_by_username(username, options)
   local entity, err, err_t = self:select_by_username(username)
   if err then
     return nil, err, err_t
   end
+
   if not entity then
     return true
   end
+
   delete_cascade_all(self, entity.id)
-  return self.super.delete_by_username(self, username)
+
+  return self.super.delete_by_username(self, username, options)
 end
 
 
