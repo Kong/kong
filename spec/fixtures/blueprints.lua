@@ -24,10 +24,10 @@ function Blueprint:insert(overrides, options)
 end
 
 
-function Blueprint:insert_n(n, overrides)
+function Blueprint:insert_n(n, overrides, options)
   local res = {}
   for i=1,n do
-    res[i] = self:insert(overrides)
+    res[i] = self:insert(overrides, options)
   end
   return res
 end
@@ -90,8 +90,8 @@ function _M.new(dao, db)
     }
   end)
 
-  local consumer_custom_id_seq = new_sequence("consumer id-%d")
-  local consumer_username_seq = new_sequence("consumer username-%d")
+  local consumer_custom_id_seq = new_sequence("consumer-id-%d")
+  local consumer_username_seq = new_sequence("consumer-username-%d")
   res.consumers = new_blueprint(db.consumers, function()
     return {
       custom_id = consumer_custom_id_seq:next(),

@@ -1,5 +1,12 @@
-local cjson      = require "cjson"
-local utils      = require "kong.tools.utils"
+local cjson = require "cjson"
+local utils = require "kong.tools.utils"
+
+
+local setmetatable = setmetatable
+local tostring = tostring
+local ipairs = ipairs
+local table = table
+local type = type
 
 
 -- Get an array of SNI names from either
@@ -40,7 +47,7 @@ local _Certificates = {}
 -- If the provided cert has a field called "snis" it will be used to generate server
 -- names associated to the cert, after being parsed by parse_name_list.
 -- Returns a certificate with the snis sorted alphabetically.
-function _Certificates:insert(cert)
+function _Certificates:insert(cert, options)
   local name_list, err, err_t = parse_name_list(cert.snis, self.errors)
   if err then
     return nil, err, err_t
@@ -54,14 +61,15 @@ function _Certificates:insert(cert)
   end
 
   cert.snis = nil
-  cert, err, err_t = self.super.insert(self, cert)
+  cert, err, err_t = self.super.insert(self, cert, options)
   if not cert then
     return nil, err, err_t
   end
+
   cert.snis = name_list or cjson.empty_array
 
   if name_list then
-    local ok, err, err_t = self.db.snis:insert_list({id = cert.id}, name_list)
+    local ok, err, err_t = self.db.snis:insert_list({ id = cert.id }, name_list, options)
     if not ok then
       return nil, err, err_t
     end
@@ -78,15 +86,14 @@ end
 --   * Any new certificates will be added to the db.
 -- Returns an error if any of the new certificates where already assigned to a cert different
 -- from the one identified by cert_pk
-function _Certificates:update(cert_pk, cert)
+function _Certificates:update(cert_pk, cert, options)
   local name_list, err, err_t = parse_name_list(cert.snis, self.errors)
   if err then
     return nil, err, err_t
   end
 
   if name_list then
-    local ok, err, err_t =
-      self.db.snis:check_list_is_new(name_list, cert_pk.id)
+    local ok, err, err_t = self.db.snis:check_list_is_new(name_list, cert_pk.id)
     if not ok then
       return nil, err, err_t
     end
@@ -95,7 +102,7 @@ function _Certificates:update(cert_pk, cert)
   -- update certificate if necessary
   if cert.key or cert.cert then
     cert.snis = nil
-    cert, err, err_t = self.super.update(self, cert_pk, cert)
+    cert, err, err_t = self.super.update(self, cert_pk, cert, options)
     if err then
       return nil, err, err_t
     end
@@ -120,22 +127,21 @@ function _Certificates:update(cert_pk, cert)
 end
 
 -- Upsert override
-function _Certificates:upsert(cert_pk, cert)
+function _Certificates:upsert(cert_pk, cert, options)
   local name_list, err, err_t = parse_name_list(cert.snis, self.errors)
   if err then
     return nil, err, err_t
   end
 
   if name_list then
-    local ok, err, err_t =
-      self.db.snis:check_list_is_new(name_list, cert_pk.id)
+    local ok, err, err_t = self.db.snis:check_list_is_new(name_list, cert_pk.id)
     if not ok then
       return nil, err, err_t
     end
   end
 
   cert.snis = nil
-  cert, err, err_t = self.super.upsert(self, cert_pk, cert)
+  cert, err, err_t = self.super.upsert(self, cert_pk, cert, options)
   if err then
     return nil, err, err_t
   end
@@ -162,8 +168,8 @@ end
 -- Returns the certificate identified by cert_pk but adds the
 -- `snis` pseudo attribute to it. It is an array of strings
 -- representing the SNIs associated to the certificate.
-function _Certificates:select_with_name_list(cert_pk)
-  local cert, err, err_t = self:select(cert_pk)
+function _Certificates:select_with_name_list(cert_pk, options)
+  local cert, err, err_t = self:select(cert_pk, options)
   if err_t then
     return nil, err, err_t
   end
@@ -185,19 +191,19 @@ end
 -- associated to them. This method does N+1 queries, but for now we are limited
 -- by the DAO's select options (we can't query for "all the SNIs for this
 -- list of certificate ids" in one go).
-function _Certificates:page(size, offset)
-  local certs, err, err_t, offset = self.super.page(self, size, offset)
+function _Certificates:page(size, offset, options)
+  local certs, err, err_t, offset = self.super.page(self, size, offset, options)
   if not certs then
     return nil, err, err_t
   end
 
   for i=1, #certs do
     local cert = certs[i]
-    local snis, err, err_t =
-      self.db.snis:list_for_certificate({ id = cert.id })
+    local snis, err, err_t = self.db.snis:list_for_certificate({ id = cert.id })
     if not snis then
       return nil, err, err_t
     end
+
     cert.snis = snis
   end
 
@@ -206,7 +212,7 @@ end
 
 -- Overrides the default delete function by cascading-deleting all the SNIs
 -- associated to the certificate
-function _Certificates:delete(cert_pk)
+function _Certificates:delete(cert_pk, options)
   local name_list, err, err_t =
     self.db.snis:list_for_certificate(cert_pk)
   if not name_list then
@@ -218,7 +224,7 @@ function _Certificates:delete(cert_pk)
     return nil, err, err_t
   end
 
-  return self.super.delete(self, cert_pk)
+  return self.super.delete(self, cert_pk, options)
 end
 
 

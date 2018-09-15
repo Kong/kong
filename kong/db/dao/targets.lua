@@ -1,9 +1,16 @@
-local cjson = require "cjson"
 local balancer = require "kong.runloop.balancer"
 local utils = require "kong.tools.utils"
+local cjson = require "cjson"
+
+
+local setmetatable = setmetatable
+local tostring = tostring
+local ipairs = ipairs
+local assert = assert
+local table = table
+
 
 local _TARGETS = {}
-
 local DEFAULT_PORT = 8000
 
 
@@ -138,11 +145,11 @@ end
 -- including entries that have been since overriden, and those
 -- with weight=0 (i.e. the "raw" representation of targets in
 -- the database)
-function _TARGETS:select_by_upstream_raw(upstream_pk)
+function _TARGETS:select_by_upstream_raw(upstream_pk, ...)
   local targets = {}
 
   -- Note that each_for_upstream is not overridden, so it returns "raw".
-  for target, err, err_t in self:each_for_upstream(upstream_pk) do
+  for target, err, err_t in self:each_for_upstream(upstream_pk, ...) do
     if not target then
       return nil, err, err_t
     end
@@ -158,12 +165,12 @@ end
 
 -- Paginate through targets for an upstream, returning only the
 -- latest state of each active (weight>0) target.
-function _TARGETS:page_for_upstream(upstream_pk, size, offset)
+function _TARGETS:page_for_upstream(upstream_pk, size, offset, options)
   -- We need to read all targets, then filter the history, then
   -- extract the page requested by the user.
 
   -- Read all targets; this returns the target history sorted chronologically
-  local targets, err, err_t = self:select_by_upstream_raw(upstream_pk)
+  local targets, err, err_t = self:select_by_upstream_raw(upstream_pk, nil, options)
   if not targets then
     return nil, err, err_t
   end
@@ -216,9 +223,8 @@ end
 -- Paginate through targets for an upstream, returning only the
 -- latest state of each active (weight>0) target, and include
 -- health information to the returned records.
-function _TARGETS:page_for_upstream_with_health(upstream_pk, size, offset)
-  local targets, err, err_t, next_offset = self:page_for_upstream(upstream_pk,
-                                                                  size, offset)
+function _TARGETS:page_for_upstream_with_health(upstream_pk, ...)
+  local targets, err, err_t, next_offset = self:page_for_upstream(upstream_pk, ...)
   if not targets then
     return nil, err, err_t
   end
@@ -248,10 +254,10 @@ function _TARGETS:page_for_upstream_with_health(upstream_pk, size, offset)
 end
 
 
-function _TARGETS:select_by_upstream_filter(upstream_pk, filter)
+function _TARGETS:select_by_upstream_filter(upstream_pk, filter, options)
   assert(filter.id or filter.target)
 
-  local targets, err, err_t = self:select_by_upstream_raw(upstream_pk)
+  local targets, err, err_t = self:select_by_upstream_raw(upstream_pk, options)
   if not targets then
     return nil, err, err_t
   end

@@ -5,6 +5,11 @@ local cjson = require "cjson"
 
 local fmt           = string.format
 local rep           = string.rep
+local null          = ngx.null
+local type          = type
+local error         = error
+local pairs         = pairs
+local ipairs        = ipairs
 local insert        = table.insert
 local concat        = table.concat
 local setmetatable  = setmetatable
@@ -226,7 +231,7 @@ end
 local function serialize_arg(field, arg)
   local serialized_arg
 
-  if arg == ngx.null then
+  if arg == null then
     serialized_arg = cassandra.null
 
   elseif field.uuid then
@@ -283,8 +288,8 @@ local function serialize_foreign_pk(db_columns, args, args_names, foreign_pk)
   for _, db_column in ipairs(db_columns) do
     local to_serialize
 
-    if foreign_pk == ngx.null then
-      to_serialize = ngx.null
+    if foreign_pk == null then
+      to_serialize = null
 
     else
       to_serialize = foreign_pk[db_column.foreign_field_name]
@@ -431,8 +436,8 @@ function _M.new(connector, schema, errors)
         insert(select_foreign_bind_args, foreign_key_column.col_name .. " = ?")
       end
 
-      self[method_name] = function(self, foreign_key, size, offset)
-        return self:page(size, offset, foreign_key, db_columns)
+      self[method_name] = function(self, foreign_key, size, offset, options)
+        return self:page(size, offset, options, foreign_key, db_columns)
       end
     end
   end
@@ -483,7 +488,7 @@ function _mt:deserialize_row(row)
     end
 
     if row[field_name] == nil then
-      row[field_name] = ngx.null
+      row[field_name] = null
     end
   end
 
@@ -579,7 +584,7 @@ function _mt:insert(entity, options)
     if field.type == "foreign" then
       local foreign_pk = entity[field_name]
 
-      if foreign_pk ~= ngx.null then
+      if foreign_pk ~= null then
         -- if given, check if this foreign entity exists
         local exists, err_t = foreign_pk_exists(self, field_name, field, foreign_pk)
         if not exists then
@@ -592,7 +597,7 @@ function _mt:insert(entity, options)
 
     else
       if field.unique
-        and entity[field_name] ~= ngx.null
+        and entity[field_name] ~= null
         and entity[field_name] ~= nil
       then
         -- a UNIQUE constaint is set on this field.
@@ -648,11 +653,11 @@ function _mt:insert(entity, options)
     local value = entity[field_name]
 
     if field.type == "foreign" then
-      if value ~= ngx.null and value ~= nil then
+      if value ~= null and value ~= nil then
         value = field.schema:extract_pk_values(value)
 
       else
-        value = ngx.null
+        value = null
       end
     end
 
@@ -706,7 +711,7 @@ do
   local opts = new_tab(0, 2)
 
 
-  function _mt:page(size, offset, foreign_key, foreign_key_db_columns)
+  function _mt:page(size, offset, options, foreign_key, foreign_key_db_columns)
     if offset then
       local offset_decoded = decode_base64(offset)
       if not offset_decoded then
@@ -797,7 +802,7 @@ do
         if field.type == "foreign" then
           local foreign_pk = entity[field_name]
 
-          if foreign_pk ~= ngx.null then
+          if foreign_pk ~= null then
             -- if given, check if this foreign entity exists
             local exists, err_t = foreign_pk_exists(self, field_name, field, foreign_pk)
             if not exists then
@@ -809,7 +814,7 @@ do
           serialize_foreign_pk(db_columns, args, args_names, foreign_pk)
 
         else
-          if field.unique and entity[field_name] ~= ngx.null then
+          if field.unique and entity[field_name] ~= null then
             local _, err_t = check_unique(self, primary_key, entity, field_name)
             if err_t then
               return nil, err_t
@@ -1056,8 +1061,8 @@ function _mt:delete_by_field(field_name, field_value, options)
 end
 
 
-function _mt:truncate()
-  return self.connector:truncate_table(self.schema.name)
+function _mt:truncate(options)
+  return self.connector:truncate_table(self.schema.name, options)
 end
 
 
