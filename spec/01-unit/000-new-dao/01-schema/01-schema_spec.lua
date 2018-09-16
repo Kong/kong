@@ -132,6 +132,22 @@ describe("schema", function()
       assert.falsy(Test:validate({ a_number = 4 }))
       assert.falsy(Test:validate({ a_number = "wat" }))
     end)
+
+    it("validates arrays with 'contains'", function()
+      local Test = Schema.new({
+        fields = {
+          { pirate = { type = "array",
+                       elements = { type = "string" },
+                       contains = "arrr",
+                     },
+          }
+        }
+      })
+      assert.truthy(Test:validate({ pirate = { "aye", "arrr", "treasure" } }))
+      assert.falsy(Test:validate({ pirate = { "let's do our taxes", "please" } }))
+      assert.falsy(Test:validate({ pirate = {} }))
+    end)
+
     it("makes sure all types run validators", function()
       local num = { type = "number" }
       local tests = {

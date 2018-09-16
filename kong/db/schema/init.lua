@@ -70,6 +70,7 @@ local validation_errors = {
   MATCH_NONE                = "invalid value: %s",
   MATCH_ANY                 = "invalid value: %s",
   STARTS_WITH               = "should start with: %s",
+  CONTAINS                  = "expected to contain: %s",
   ONE_OF                    = "expected one of: %s",
   IS_REGEX                  = "not a valid regex: %s",
   TIMESTAMP                 = "expected a valid timestamp",
@@ -276,6 +277,16 @@ Schema.validators = {
     return re_find(value, uuid_regex, "ioj") and true or nil
   end,
 
+  contains = function(array, wanted)
+    for _, item in ipairs(array) do
+      if item == wanted then
+        return true
+      end
+    end
+
+    return nil, validation_errors.CONTAINS:format(wanted)
+  end,
+
   custom_validator = function(value, fn)
     return fn(value)
   end
@@ -307,6 +318,9 @@ Schema.validators_order = {
   "match",
   "match_all",
   "match_any",
+
+  -- arrays
+  "contains",
 
   -- other
   "custom_validator",
