@@ -60,21 +60,26 @@ return {
 
 
       CREATE TABLE IF NOT EXISTS snis(
+        partition          text,
+        id                 uuid,
         name               text,
-        created_at         timestamp,
         certificate_id     uuid,
-        PRIMARY KEY        (name, certificate_id)
+        created_at         timestamp,
+        PRIMARY KEY        (partition, id)
       );
+      CREATE INDEX IF NOT EXISTS snis_name_idx ON snis(name);
       CREATE INDEX IF NOT EXISTS snis_certificate_id_idx
         ON snis(certificate_id);
 
 
 
       CREATE TABLE IF NOT EXISTS certificates(
-        id         uuid PRIMARY KEY,
-        cert       text,
+        partition text,
+        id uuid,
+        cert text,
+        key text,
         created_at timestamp,
-        key        text
+        PRIMARY KEY (partition, id)
       );
 
 
@@ -116,6 +121,8 @@ return {
         hash_fallback        text,
         hash_fallback_header text,
         hash_on              text,
+        hash_on_cookie       text,
+        hash_on_cookie_path  text,
         hash_on_header       text,
         healthchecks         text,
         name                 text,
