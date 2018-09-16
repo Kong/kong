@@ -36,6 +36,7 @@ local validators = {
   { between = { type = "array", elements = { type = "integer" }, len_eq = 2 }, },
   { eq = { type = "any" }, },
   { ne = { type = "any" }, },
+  { gt = { type = "number" }, },
   { len_eq = { type = "integer" }, },
   { len_min = { type = "integer" }, },
   { len_max = { type = "integer" }, },

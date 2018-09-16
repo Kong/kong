@@ -59,6 +59,7 @@ local validation_errors = {
   -- validations
   EQ                        = "value must be %s",
   NE                        = "value must not be %s",
+  GT                        = "value must be greater than %s",
   BETWEEN                   = "value should be between %d and %d",
   LEN_EQ                    = "length must be %d",
   LEN_MIN                   = "length must be at least %d",
@@ -177,6 +178,13 @@ Schema.validators = {
     return nil, validation_errors.NE:format(str)
   end,
 
+  gt = function(value, limit)
+    if value > limit then
+      return true
+    end
+    return nil, validation_errors.GT:format(tostring(limit))
+  end,
+
   len_eq = make_length_validator("LEN_EQ", function(len, n)
     return len == n
   end),
@@ -281,6 +289,7 @@ Schema.validators_order = {
   "one_of",
 
   -- type-dependent
+  "gt",
   "timestamp",
   "uuid",
   "is_regex",
