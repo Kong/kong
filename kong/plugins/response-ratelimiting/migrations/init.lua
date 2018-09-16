@@ -1,3 +1,3 @@
 return {
-  "000-base-response-rate-limiting",
+  "000_base_response_rate_limiting",
 }

@@ -1,4 +1,4 @@
 return {
-  "000-base-oauth2",
+  "000_base_oauth2",
   "001_14_to_15",
 }

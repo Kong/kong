@@ -1,3 +1,3 @@
 return {
-  "000-base-hmac-auth",
+  "000_base_hmac_auth",
 }
