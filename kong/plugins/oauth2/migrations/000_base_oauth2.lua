@@ -1,7 +1,51 @@
 return {
   postgres = {
     up = [[
+      CREATE TABLE IF NOT EXISTS "oauth2_credentials" (
+        "id"             UUID                         PRIMARY KEY,
+        "created_at"     TIMESTAMP WITHOUT TIME ZONE  DEFAULT (CURRENT_TIMESTAMP(0) AT TIME ZONE 'UTC'),
+        "name"           TEXT,
+        "consumer_id"    UUID                         REFERENCES "consumers" ("id") ON DELETE CASCADE,
+        "client_id"      TEXT                         UNIQUE,
+        "client_secret"  TEXT,
+        "redirect_uri"   TEXT
+      );
 
+      CREATE INDEX IF NOT EXISTS "oauth2_credentials_consumer_idx" ON "oauth2_credentials" ("consumer_id");
+      CREATE INDEX IF NOT EXISTS "oauth2_credentials_secret_idx"   ON "oauth2_credentials" ("client_secret");
+
+
+
+      CREATE TABLE IF NOT EXISTS "oauth2_authorization_codes" (
+        "id"                    UUID                         PRIMARY KEY,
+        "created_at"            TIMESTAMP WITHOUT TIME ZONE  DEFAULT (CURRENT_TIMESTAMP(0) AT TIME ZONE 'UTC'),
+        "credential_id"         UUID                         REFERENCES "oauth2_credentials" ("id") ON DELETE CASCADE,
+        "service_id"            UUID                         REFERENCES "services" ("id") ON DELETE CASCADE,
+        "api_id"                UUID                         REFERENCES "apis" ("id") ON DELETE CASCADE,
+        "code"                  TEXT                         UNIQUE,
+        "authenticated_userid"  TEXT,
+        "scope"                 TEXT
+      );
+
+      CREATE INDEX IF NOT EXISTS "oauth2_authorization_userid_idx" ON "oauth2_authorization_codes" ("authenticated_userid");
+
+
+
+      CREATE TABLE IF NOT EXISTS "oauth2_tokens" (
+        "id"                    UUID                         PRIMARY KEY,
+        "created_at"            TIMESTAMP WITHOUT TIME ZONE  DEFAULT (CURRENT_TIMESTAMP(0) AT TIME ZONE 'UTC'),
+        "credential_id"         UUID                         REFERENCES "oauth2_credentials" ("id") ON DELETE CASCADE,
+        "service_id"            UUID                         REFERENCES "services" ("id") ON DELETE CASCADE,
+        "api_id"                UUID                         REFERENCES "apis" ("id") ON DELETE CASCADE,
+        "access_token"          TEXT                         UNIQUE,
+        "refresh_token"         TEXT                         UNIQUE,
+        "token_type"            TEXT,
+        "expires_in"            INTEGER,
+        "authenticated_userid"  TEXT,
+        "scope"                 TEXT
+      );
+
+      CREATE INDEX IF NOT EXISTS "oauth2_token_userid_idx" ON "oauth2_tokens" ("authenticated_userid");
     ]],
   },
 
