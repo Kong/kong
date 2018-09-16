@@ -59,10 +59,11 @@ for _, strategy in helpers.each_strategy() do
   for i, policy in ipairs({"local", "cluster", "redis"}) do
     describe(fmt("#flaky Plugin: response-ratelimiting (access) with policy: %s [#%s]", policy, strategy), function()
       local dao
+      local db
       local bp
 
       setup(function()
-        bp, _, dao = helpers.get_db_utils(strategy, {
+        bp, db, dao = helpers.get_db_utils(strategy, {
           "routes",
           "services",
           "plugins",
@@ -532,8 +533,7 @@ for _, strategy in helpers.each_strategy() do
 
           before_each(function()
             helpers.kill_all()
-            dao:drop_schema()
-            assert(dao:run_migrations())
+            assert(db:truncate())
 
             local route1 = bp.routes:insert {
               hosts = { "failtest1.com" },
@@ -575,8 +575,7 @@ for _, strategy in helpers.each_strategy() do
 
           teardown(function()
             helpers.kill_all()
-            dao:drop_schema()
-            assert(dao:run_migrations())
+            assert(db:truncate())
           end)
 
           it("does not work if an error occurs", function()
@@ -625,8 +624,7 @@ for _, strategy in helpers.each_strategy() do
 
           before_each(function()
             helpers.kill_all()
-            dao:drop_schema()
-            assert(dao:run_migrations())
+            assert(db:truncate())
 
             local service1 = bp.services:insert()
 
@@ -694,8 +692,7 @@ for _, strategy in helpers.each_strategy() do
       describe("Expirations", function()
         setup(function()
           helpers.stop_kong()
-          dao:drop_schema()
-          assert(dao:run_migrations())
+          assert(db:truncate())
 
           local service = bp.services:insert()
 
@@ -830,14 +827,11 @@ for _, strategy in helpers.each_strategy() do
     describe(fmt("#flaky Plugin: rate-limiting (access - global) with policy: %s [#%s]", policy, strategy), function()
       local bp
       local db
-      local dao
+
       setup(function()
         helpers.kill_all()
         flush_redis()
-        bp, db, dao = helpers.get_db_utils(strategy)
-        assert(db:truncate())
-        dao:truncate_tables()
-        assert(dao:run_migrations())
+        bp, db = helpers.get_db_utils(strategy)
 
         -- global plugin (not attached to route, service or consumer)
         bp.response_ratelimiting_plugins:insert({
@@ -864,9 +858,7 @@ for _, strategy in helpers.each_strategy() do
 
       teardown(function()
         helpers.kill_all()
-        dao:drop_schema()
         assert(db:truncate())
-        assert(dao:run_migrations())
       end)
 
       it("blocks if exceeding limit", function()

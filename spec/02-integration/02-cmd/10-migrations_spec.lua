@@ -5,7 +5,7 @@ local pl_utils = require "pl.utils"
 local dao = helpers.dao -- postgreSQL DAO (faster to test this command)
 
 
-describe("kong migrations", function()
+pending("kong migrations", function()
   describe("reset", function()
     before_each(function()
       assert(dao:run_migrations())
