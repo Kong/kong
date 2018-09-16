@@ -1,3 +1,3 @@
 return {
-  "000-base-rate-limiting",
+  "000_base_rate_limiting",
 }

@@ -1,3 +1,3 @@
 return {
-  "000-base-jwt",
+  "000_base_jwt",
 }

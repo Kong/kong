@@ -1,3 +1,3 @@
 return {
-  "000-base-basic-auth",
+  "000_base_basic_auth",
 }
