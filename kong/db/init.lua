@@ -391,12 +391,14 @@ end
 
 do
   -- migrations
-  local Schema = require "kong.db.schema"
-  local Migration = require "kong.db.schema.others.migrations"
-  local pl_path = require "pl.path"
-  local pl_dir = require "pl.dir"
   local utils = require "kong.tools.utils"
   local log = require "kong.cmd.utils.log"
+  local Schema = require "kong.db.schema"
+  local Migration = require "kong.db.schema.others.migrations"
+  local MigrationHelpers = require "kong.db.migrations.helpers"
+
+  local pl_path = require "pl.path"
+  local pl_dir = require "pl.dir"
 
 
   local MigrationSchema = Schema.new(Migration)
@@ -531,7 +533,7 @@ do
 
     log.verbose("retrieving database schema state...")
 
-    local ok, err = self.connector:connect_migrations()
+    local ok, err = self.connector:connect_migrations({ no_keyspace = true })
     if not ok then
       return nil, prefix_err(self, err)
     end
@@ -654,7 +656,7 @@ do
 
 
   function DB:schema_bootstrap()
-    local ok, err = self.connector:connect_migrations()
+    local ok, err = self.connector:connect_migrations({ no_keyspace = true })
     if not ok then
       return nil, err
     end
@@ -673,7 +675,7 @@ do
 
 
   function DB:schema_reset()
-    local ok, err = self.connector:connect_migrations()
+    local ok, err = self.connector:connect_migrations({ no_keyspace = true })
     if not ok then
       return nil, prefix_err(self, err)
     end
@@ -706,10 +708,12 @@ do
       error("options.run_up or options.run_teardown must be given", 2)
     end
 
-    local ok, err = self.connector:connect_migrations({ use_keyspace = true })
+    local ok, err = self.connector:connect_migrations()
     if not ok then
       return nil, prefix_err(self, err)
     end
+
+    local mig_helpers = MigrationHelpers.new(self.connector)
 
     local n_migrations = 0
 
@@ -764,7 +768,8 @@ do
           -- kong migrations teardown
           local f = strategy_migration.teardown
 
-          local pok, perr, err = xpcall(f, debug.traceback, self.connector)
+          local pok, perr, err = xpcall(f, debug.traceback, self.connector,
+                                        mig_helpers)
           if not pok or err then
             self.connector:close()
             return nil, fmt_err(self, "failed to run migration '%s' teardown: %s",
