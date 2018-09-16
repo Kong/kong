@@ -1,6 +1,7 @@
+local log = require "kong.cmd.utils.log"
 local cassandra = require "cassandra"
 local Cluster   = require "resty.cassandra.cluster"
-local log = require "kong.cmd.utils.log"
+local pl_stringx = require "pl.stringx"
 
 
 local CassandraConnector   = {}
@@ -171,7 +172,7 @@ end
 -- without a keyspace
 function CassandraConnector:connect_migrations(opts)
   if self.connection then
-    return
+    return self.connection
   end
 
   opts = opts or {}
@@ -181,7 +182,7 @@ function CassandraConnector:connect_migrations(opts)
     return nil, "failed to acquire contact point: " .. err
   end
 
-  if opts.use_keyspace then
+  if not opts.no_keyspace then
     local ok, err = peer:change_keyspace(self.keyspace)
     if not ok then
       return nil, err
@@ -190,7 +191,7 @@ function CassandraConnector:connect_migrations(opts)
 
   self.connection = peer
 
-  return true
+  return peer
 end
 
 
@@ -255,8 +256,25 @@ function CassandraConnector:query(query, args, opts, operation)
     end
   end
 
-  -- TODO: prepare queries
-  local res, err = coordinator:execute(query, args, opts)
+  local t_cql = pl_stringx.split(query, ";")
+
+  local res, err
+
+  if #t_cql == 1 then
+    -- TODO: prepare queries
+    res, err = coordinator:execute(query, args, opts)
+
+  else
+    for i = 1, #t_cql do
+      local cql = pl_stringx.strip(t_cql[i])
+      if cql ~= "" then
+        res, err = coordinator:execute(cql, nil, opts)
+        if not res then
+          break
+        end
+      end
+    end
+  end
 
   if not self.connection then
     coordinator:setkeepalive()
@@ -499,7 +517,6 @@ end
 
 do
   -- migrations
-  local pl_stringx = require "pl.stringx"
 
 
   local SCHEMA_META_KEY = "schema_meta"

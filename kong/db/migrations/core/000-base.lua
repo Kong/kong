@@ -82,15 +82,9 @@ return {
       CREATE TABLE IF NOT EXISTS consumers(
         id uuid    PRIMARY KEY,
         created_at timestamp,
-        custom_id  text,
-        email      text,
-        meta       text,
-        status     int,
-        type       int,
-        username   text
+        username   text,
+        custom_id  text
       );
-      CREATE INDEX IF NOT EXISTS consumers_type_idx ON consumers(type);
-      CREATE INDEX IF NOT EXISTS consumers_status_idx ON consumers(status);
       CREATE INDEX IF NOT EXISTS consumers_username_idx ON consumers(username);
       CREATE INDEX IF NOT EXISTS consumers_custom_id_idx ON consumers(custom_id);
 
