@@ -98,7 +98,6 @@ assert(db:init_connector())
 local dao = assert(DAOFactory.new(conf, db))
 db.old_dao = dao
 local blueprints = assert(Blueprints.new(dao, db))
--- make sure migrations are up-to-date
 
 local each_strategy
 
@@ -146,6 +145,20 @@ local function truncate_tables(db, dao, tables)
   end
 end
 
+local function bootstrap_database(db)
+  local schema_state = assert(db:schema_state())
+  if schema_state.needs_bootstrap then
+    assert(db:schema_bootstrap())
+  end
+
+  if schema_state.new_migrations then
+    assert(db:run_migrations(schema_state.new_migrations, {
+      run_up = true,
+      run_teardown = true,
+    }))
+  end
+end
+
 local function get_db_utils(strategy, tables, plugins)
   strategy = strategy or conf.database
   if tables ~= nil and type(tables) ~= "table" then
@@ -165,6 +178,8 @@ local function get_db_utils(strategy, tables, plugins)
   local db = assert(DB.new(conf, strategy))
   assert(db:init_connector())
 
+  bootstrap_database(db)
+
   -- legacy DAO
   local dao
 
@@ -174,7 +189,7 @@ local function get_db_utils(strategy, tables, plugins)
     dao = assert(DAOFactory.new(conf, db))
     conf.database = database
 
-    assert(dao:run_migrations())
+    --assert(dao:run_migrations())
   end
 
   db:truncate("plugins")
@@ -1173,6 +1188,7 @@ return {
   db = db,
   blueprints = blueprints,
   get_db_utils = get_db_utils,
+  bootstrap_database = bootstrap_database,
   bin_path = BIN_PATH,
   test_conf = conf,
   test_conf_path = TEST_CONF_PATH,

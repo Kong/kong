@@ -5,7 +5,9 @@ local Factory = require "kong.dao.factory"
 local DB = require "kong.db"
 
 helpers.for_each_dao(function(kong_config)
-  describe("Model migrations with DB: #" .. kong_config.database, function()
+  -- Disabled since we start running migrations from the new DAO
+  -- avoid potential corruptions of the test database
+  pending("Model migrations with DB: #" .. kong_config.database, function()
     local factory
     setup(function()
       -- some `setup` functions also use `factory` and they run before the `before_each` chain
