@@ -38,6 +38,14 @@ return {
 
       UPDATE oauth2_tokens
         SET ttl = created_at + (expires_in || ' second')::interval;
+
+      CREATE INDEX IF NOT EXISTS "oauth2_authorization_credential_id_idx" ON "oauth2_authorization_codes" ("credential_id");
+      CREATE INDEX IF NOT EXISTS "oauth2_authorization_service_id_idx"    ON "oauth2_authorization_codes" ("service_id");
+      CREATE INDEX IF NOT EXISTS "oauth2_authorization_api_id_idx"        ON "oauth2_authorization_codes" ("api_id");
+
+      CREATE INDEX IF NOT EXISTS "oauth2_tokens_credential_id_idx"        ON "oauth2_tokens" ("credential_id");
+      CREATE INDEX IF NOT EXISTS "oauth2_tokens_service_id_idx"           ON "oauth2_tokens" ("service_id");
+      CREATE INDEX IF NOT EXISTS "oauth2_tokens_api_id_idx"               ON "oauth2_tokens" ("api_id");
     ]],
 
     teardown = function(connector)
