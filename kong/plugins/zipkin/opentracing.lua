@@ -8,6 +8,7 @@ A plugin that derives this should:
 ]]
 
 local BasePlugin = require "kong.plugins.base_plugin"
+local public = require "kong.tools.public"
 local ngx_set_header = ngx.req.set_header
 
 local OpenTracingHandler = BasePlugin:extend()
@@ -211,6 +212,7 @@ function OpenTracingHandler:log(conf)
 	if ctx.authenticated_credential then
 		request_span:set_tag("kong.credential", ctx.authenticated_credential.id)
 	end
+	request_span:set_tag("kong.node.id", public.get_node_id())
 	if ctx.service and ctx.service.id then
 		proxy_span:set_tag("kong.service", ctx.service.id)
 		if ctx.route and ctx.route.id then

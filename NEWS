@@ -1,3 +1,8 @@
+UNRELEASED
+
+  - Add kong.node.id tag
+
+
 0.0.4 - 2018-08-09
 
   - Fix operation when service and/or route are missing (#19)

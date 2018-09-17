@@ -61,6 +61,7 @@ In addition to the above standardised tags, this plugin also adds:
   - `kong.api` (deprecated)
   - `kong.consumer`
   - `kong.credential`
+  - `kong.node.id`
   - `kong.route`
   - `kong.service`
   - `kong.balancer.try`
