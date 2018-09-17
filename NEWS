@@ -1,5 +1,6 @@
-UNRELEASED
+0.0.5 - 2018-09-16
 
+  - Fix possible bug when service name is missing
   - Add kong.node.id tag
 
 
