@@ -9,19 +9,19 @@ for _, strategy in helpers.each_strategy() do
     local db
 
     setup(function()
-      _, db = helpers.get_db_utils(strategy, {})
+      _, db = helpers.get_db_utils(strategy)
     end)
 
     before_each(function()
-      db:truncate("plugins")
+      assert(db:truncate("plugins"))
+      assert(db:truncate("consumers"))
       assert(db:truncate("routes"))
       assert(db:truncate("services"))
-      assert(db:truncate("consumers"))
 
-      local service, _, err_t = db.services:insert {
+      local service, _, err_t = db.services:insert({
         protocol = "http",
         host     = "example.com",
-      }
+      })
       assert.is_nil(err_t)
 
       service_fixture = service

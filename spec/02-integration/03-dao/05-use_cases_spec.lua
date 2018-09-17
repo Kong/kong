@@ -6,12 +6,7 @@ for _, strategy in helpers.each_strategy() do
     local bp, db
 
     setup(function()
-      bp, db = helpers.get_db_utils(strategy, {
-        "routes",
-        "services",
-        "consumers",
-        "plugins",
-      })
+      bp, db = helpers.get_db_utils(strategy)
     end)
 
     it("retrieves plugins for plugins_iterator", function()

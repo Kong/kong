@@ -1480,7 +1480,7 @@ function Schema:each_field(values)
 
   return function()
     local item = self.fields[i]
-    if not self.fields[i] then
+    if not item then
       return nil
     end
     local key = next(item)
