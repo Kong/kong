@@ -894,11 +894,17 @@ return {
     end,
     down = nil
   },
-  {
-    name = "2018-09-12-100000_add_name_to_routes",
-    up = [[
-      ALTER TABLE routes ADD COLUMN name TEXT UNIQUE;
-    ]],
-    down = nil,
-  },
+--  {
+--    name = "2018-09-12-100000_add_name_to_routes",
+--    up = [[
+--      DO $$
+--      BEGIN
+--        ALTER TABLE IF EXISTS ONLY "routes" ADD "name" TEXT UNIQUE;
+--      EXCEPTION WHEN DUPLICATE_COLUMN THEN
+--        -- Do nothing, accept existing state
+--      END;
+--      $$;
+--    ]],
+--    down = nil,
+--  },
 }
