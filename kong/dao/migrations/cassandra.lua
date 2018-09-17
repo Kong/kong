@@ -969,12 +969,12 @@ return {
     end,
     down = nil
   },
-  {
-    name = "2018-09-12-100000_add_name_to_routes",
-    up = [[
-      ALTER TABLE routes ADD name text;
-      CREATE INDEX IF NOT EXISTS routes_name_idx ON routes(name);
-    ]],
-    down = nil,
-  },
+--  {
+--    name = "2018-09-12-100000_add_name_to_routes",
+--    up = [[
+--      ALTER TABLE routes ADD name text;
+--      CREATE INDEX IF NOT EXISTS routes_name_idx ON routes(name);
+--    ]],
+--    down = nil,
+--  },
 }
