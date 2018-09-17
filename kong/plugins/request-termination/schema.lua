@@ -14,14 +14,18 @@ return {
       end
     end
 
-    if plugin_t.message then
-      if plugin_t.content_type or plugin_t.body then
+    if plugin_t.message and plugin_t.message ~= ngx.null then
+      if plugin_t.content_type or (plugin_t.body and plugin_t.body ~= ngx.null) then
         return false, Errors.schema("message cannot be used with content_type or body")
       end
     else
       if plugin_t.content_type and not plugin_t.body then
         return false, Errors.schema("content_type requires a body")
       end
+    end
+
+    if plugin_t.body == ngx.null and plugin_t.message == ngx.null then
+      return false, Errors.schema("either body or message must be set")
     end
 
     return true
