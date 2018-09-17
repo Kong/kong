@@ -120,7 +120,11 @@ local function execute(args)
       end
     end
 
-    migrations_utils.reset(schema_state, db, args.lock_timeout)
+    local ok = migrations_utils.reset(schema_state, db, args.lock_timeout)
+    if not ok then
+      os.exit(1)
+    end
+    os.exit(0)
 
   elseif args.command == "up" then
     migrations_utils.up(schema_state, db, {
