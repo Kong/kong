@@ -16,6 +16,11 @@ function Connector:init_worker()
 end
 
 
+function Connector:infos()
+  error(fmt("infos() not implemented for '%s' strategy", self.database))
+end
+
+
 function Connector:connect()
   error(fmt("connect() not implemented for '%s' strategy", self.database))
 end

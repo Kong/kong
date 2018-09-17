@@ -4,9 +4,6 @@ set -e
 export BUSTED_ARGS="-o gtest -v --exclude-tags=flaky,ipv6"
 
 if [ "$KONG_TEST_DATABASE" == "postgres" ]; then
-    export KONG_TEST_PG_DATABASE=travis
-    export KONG_TEST_PG_USER=postgres
-    export KONG_TEST_PG_DATABASE=travis
     export TEST_CMD="bin/busted $BUSTED_ARGS,cassandra"
 elif [ "$KONG_TEST_DATABASE" == "cassandra" ]; then
     export KONG_TEST_CASSANDRA_KEYSPACE=kong_tests

@@ -97,6 +97,7 @@ function DB.new(kong_config, strategy)
     connector  = connector,
     strategy   = strategy,
     errors     = errors,
+    infos      = connector:infos(),
     kong_config = kong_config,
   }
 
@@ -120,7 +121,7 @@ end
 
 
 local function prefix_err(self, err)
-  return "[" .. self.strategy .. " error] " .. err
+  return "[" .. self.infos.strategy .. " error] " .. err
 end
 
 
@@ -141,6 +142,8 @@ function DB:init_connector()
   if not ok then
     return nil, prefix_err(self, err)
   end
+
+  self.infos = self.connector:infos()
 
   return ok
 end
@@ -524,14 +527,14 @@ do
 
 
   function DB:schema_state()
-    log.verbose("loading subsystems migrations...")
+    log.debug("loading subsystems migrations...")
 
     local subsystems, err = load_subsystems(self, self.kong_config.loaded_plugins)
     if not subsystems then
       return nil, prefix_err(self, err)
     end
 
-    log.verbose("retrieving database schema state...")
+    log.verbose("retrieving %s schema state...", self.infos.db_desc)
 
     local ok, err = self.connector:connect_migrations({ no_keyspace = true })
     if not ok then
@@ -658,7 +661,7 @@ do
   function DB:schema_bootstrap()
     local ok, err = self.connector:connect_migrations({ no_keyspace = true })
     if not ok then
-      return nil, err
+      return nil, prefix_err(self, err)
     end
 
     local ok, err = self.connector:schema_bootstrap(self.kong_config,
@@ -716,10 +719,11 @@ do
     local mig_helpers = MigrationHelpers.new(self.connector)
 
     local n_migrations = 0
+    local n_pending = 0
 
     for _, t in ipairs(migrations) do
-      -- TODO: for database/keyspace <db_name/keyspace_name>
-      log("migrating %s...", t.subsystem)
+      log("migrating %s on %s '%s'...", t.subsystem, self.infos.db_desc,
+          self.infos.db_name)
 
       for _, mig in ipairs(t.migrations) do
         local ok, mod = utils.load_module_if_exists(t.namespace .. "." ..
@@ -749,10 +753,12 @@ do
                                 mig.name, err)
           end
 
+
           local state = "executed"
           if strategy_migration.teardown then
             -- this migration has a teardown step for later
             state = "pending"
+            n_pending = n_pending + 1
           end
 
           local ok, err = self.connector:record_migration(t.subsystem,
@@ -784,16 +790,30 @@ do
             return nil, fmt_err(self, "failed to record migration '%s': %s",
                                 mig.name, err)
           end
+
+          n_pending = math.max(n_pending - 1, 0)
         end
 
-        log("%s migrated up to: %s", t.subsystem, mig.name)
+        log("%s migrated up to: %s %s", t.subsystem, mig.name,
+            strategy_migration.teardown
+            and not run_teardown and "(pending)" or "(executed)")
 
         n_migrations = n_migrations + 1
       end
     end
 
-    log("%d migration%s executed", n_migrations,
+    log("%d migration%s processed", n_migrations,
         n_migrations > 1 and "s" or "")
+
+    local n_executed = n_migrations - n_pending
+
+    if n_executed > 0 then
+      log("%d executed", n_executed)
+    end
+
+    if n_pending > 0 then
+      log("%d pending", n_pending)
+    end
 
     if run_up then
       ok, err = self.connector:post_run_up_migrations()
