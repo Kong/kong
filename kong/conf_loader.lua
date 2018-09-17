@@ -59,11 +59,9 @@ local PREFIX_PATHS = {
 
   client_ssl_cert_default = {"ssl", "kong-default.crt"},
   client_ssl_cert_key_default = {"ssl", "kong-default.key"},
-  client_ssl_cert_csr_default = {"ssl", "kong-default.csr"},
 
   admin_ssl_cert_default = {"ssl", "admin-kong-default.crt"},
   admin_ssl_cert_key_default = {"ssl", "admin-kong-default.key"},
-  admin_ssl_cert_csr_default = {"ssl", "admin-kong-default.csr"},
 }
 
 
