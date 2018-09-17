@@ -102,8 +102,8 @@ function CassandraConnector.new(kong_config)
 end
 
 
-local function extract_major(release_version)
-  return string.match(release_version, "^(%d+)%.%d")
+local function extract_major_minor(release_version)
+  return string.match(release_version, "^((%d+)%.%d+)")
 end
 
 
@@ -125,6 +125,7 @@ function CassandraConnector:init()
   end
 
   local major_version
+  local major_minor_version
 
   for i = 1, #peers do
     local release_version = peers[i].release_version
@@ -132,23 +133,36 @@ function CassandraConnector:init()
       return nil, "no release_version for peer " .. peers[i].host
     end
 
-    local peer_major_version = tonumber(extract_major(release_version))
-    if not peer_major_version then
+    local major_minor, major = extract_major_minor(release_version)
+    major = tonumber(major)
+    if not major_minor or not major then
       return nil, "failed to extract major version for peer " .. peers[i].host
                   .. " with version: " .. tostring(peers[i].release_version)
     end
 
     if i == 1 then
-      major_version = peer_major_version
+      major_version = major
+      major_minor_version = major_minor
 
-    elseif peer_major_version ~= major_version then
+    elseif major ~= major_version then
       return nil, "different major versions detected"
     end
   end
 
   self.major_version = major_version
+  self.major_minor_version = major_minor_version
 
   return true
+end
+
+
+function CassandraConnector:infos()
+  return {
+    strategy = "Cassandra",
+    db_name = self.keyspace,
+    db_desc = "keyspace",
+    db_ver = self.major_minor_version or "unknown",
+  }
 end
 
 
@@ -430,7 +444,7 @@ function CassandraConnector:setup_locks(default_ttl, no_schema_consensus)
     return nil, err
   end
 
-  log.verbose("creating 'locks' table if not existing...")
+  log.debug("creating 'locks' table if not existing...")
 
   local cql = string.format([[
     CREATE TABLE IF NOT EXISTS locks(
@@ -445,7 +459,7 @@ function CassandraConnector:setup_locks(default_ttl, no_schema_consensus)
     return nil, err
   end
 
-  log.verbose("successfully created 'locks' table")
+  log.debug("successfully created 'locks' table")
 
   if not no_schema_consensus then
     -- called from tests, ignored when called from bootstrapping, since
@@ -641,8 +655,8 @@ do
 
     -- create keyspace if not exists
 
-    log.verbose("creating '%s' keyspace if not existing...",
-                kong_config.cassandra_keyspace)
+    log.debug("creating '%s' keyspace if not existing...",
+              kong_config.cassandra_keyspace)
 
     local res, err = self.connection:execute(string.format([[
       CREATE KEYSPACE IF NOT EXISTS %q
@@ -652,8 +666,8 @@ do
       return nil, err
     end
 
-    log("successfully created '%s' keyspace",
-        kong_config.cassandra_keyspace)
+    log.debug("successfully created '%s' keyspace",
+              kong_config.cassandra_keyspace)
 
     local ok, err = self.connection:change_keyspace(kong_config.cassandra_keyspace)
     if not ok then
@@ -662,7 +676,7 @@ do
 
     -- create schema meta table if not exists
 
-    log.verbose("creating 'schema_meta' table if not existing...")
+    log.debug("creating 'schema_meta' table if not existing...")
 
     local res, err = self.connection:execute([[
       CREATE TABLE IF NOT EXISTS schema_meta(
@@ -679,7 +693,7 @@ do
       return nil, err
     end
 
-    log.verbose("successfully created 'schema_meta' table")
+    log.debug("successfully created 'schema_meta' table")
 
     ok, err = self:setup_locks(default_locks_ttl, true) -- no schema consensus
     if not ok then

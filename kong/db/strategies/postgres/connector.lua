@@ -182,6 +182,31 @@ local _mt = {}
 _mt.__index = _mt
 
 
+local function extract_major_minor(release_version)
+  return string.match(release_version, "^(%d+%.%d+)")
+end
+
+
+function _mt:init()
+  local res, err = self:query("SHOW server_version;")
+  if not res then
+    return nil, "failed to retrieve server_version: " .. err
+  end
+
+  if #res < 1 or not res[1].server_version then
+    return nil, "failed to retrieve server_version"
+  end
+
+  self.major_minor_version = extract_major_minor(res[1].server_version)
+  if not self.major_minor_version then
+    return nil, "failed to extract major.minor version from '" ..
+                res[1].server_version .. "'"
+  end
+
+  return true
+end
+
+
 function _mt:init_worker(strategies)
   if ngx.worker.id() == 0 then
     local graph
@@ -241,6 +266,16 @@ function _mt:init_worker(strategies)
   end
 
   return true
+end
+
+
+function _mt:infos()
+  return {
+    strategy = "PostgreSQL",
+    db_name = self.config.database,
+    db_desc = "database",
+    db_ver = self.major_minor_version or "unknown",
+  }
 end
 
 
