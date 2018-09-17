@@ -1688,14 +1688,14 @@ describe("Router", function()
         {  "/",            "/foo/bar",     "/foo/bar",     "/",                    true      },
         {  "/",            "/foo/bar/",    "/foo/bar/",    "/",                    true      },
         {  "/fee/bor",     "/",            "/",            "/fee/bor",             true      },
-        {  "/fee/bor",     "/",            "/foo/bar",     "/fee/bor/foo/bar",     true      },
-        {  "/fee/bor",     "/",            "/foo/bar/",    "/fee/bor/foo/bar/",    true      },
+        {  "/fee/bor",     "/",            "/foo/bar",     "/fee/borfoo/bar",      true      },
+        {  "/fee/bor",     "/",            "/foo/bar/",    "/fee/borfoo/bar/",     true      },
         {  "/fee/bor",     "/foo/bar",     "/foo/bar",     "/fee/bor",             true      },
-        {  "/fee/bor",     "/foo/bar/",    "/foo/bar/",    "/fee/bor/",            true      }, -- 10
+        {  "/fee/bor",     "/foo/bar/",    "/foo/bar/",    "/fee/bor",             true      }, -- 10
         {  "/fee/bor/",    "/",            "/",            "/fee/bor/",            true      },
         {  "/fee/bor/",    "/",            "/foo/bar",     "/fee/bor/foo/bar",     true      },
         {  "/fee/bor/",    "/",            "/foo/bar/",    "/fee/bor/foo/bar/",    true      },
-        {  "/fee/bor/",    "/foo/bar",     "/foo/bar",     "/fee/bor",             true      },
+        {  "/fee/bor/",    "/foo/bar",     "/foo/bar",     "/fee/bor/",            true      },
         {  "/fee/bor/",    "/foo/bar/",    "/foo/bar/",    "/fee/bor/",            true      },
         {  "/",            "/",            "/",            "/",                    false     },
         {  "/",            "/",            "/foo/bar",     "/foo/bar",             false     },
@@ -1703,10 +1703,10 @@ describe("Router", function()
         {  "/",            "/foo/bar",     "/foo/bar",     "/foo/bar",             false     },
         {  "/",            "/foo/bar/",    "/foo/bar/",    "/foo/bar/",            false     }, -- 20
         {  "/fee/bor",     "/",            "/",            "/fee/bor",             false     },
-        {  "/fee/bor",     "/",            "/foo/bar",     "/fee/bor/foo/bar",     false     },
-        {  "/fee/bor",     "/",            "/foo/bar/",    "/fee/bor/foo/bar/",    false     },
-        {  "/fee/bor",     "/foo/bar",     "/foo/bar",     "/fee/bor/foo/bar",     false     },
-        {  "/fee/bor",     "/foo/bar/",    "/foo/bar/",    "/fee/bor/foo/bar/",    false     },
+        {  "/fee/bor",     "/",            "/foo/bar",     "/fee/borfoo/bar",      false     },
+        {  "/fee/bor",     "/",            "/foo/bar/",    "/fee/borfoo/bar/",     false     },
+        {  "/fee/bor",     "/foo/bar",     "/foo/bar",     "/fee/borfoo/bar",      false     },
+        {  "/fee/bor",     "/foo/bar/",    "/foo/bar/",    "/fee/borfoo/bar/",     false     },
         {  "/fee/bor/",    "/",            "/",            "/fee/bor/",            false     },
         {  "/fee/bor/",    "/",            "/foo/bar",     "/fee/bor/foo/bar",     false     },
         {  "/fee/bor/",    "/",            "/foo/bar/",    "/fee/bor/foo/bar/",    false     },
@@ -1719,10 +1719,10 @@ describe("Router", function()
         {  "/",            "/",            "/foo/bar/s",   "/foo/bar/s",           true      },
         {  "/",            "/foo/bar",     "/foo/bars",    "/s",                   true      },
         {  "/",            "/foo/bar/",    "/foo/bar/s",   "/s",                   true      },
-        {  "/fee/bor",     "/",            "/foo/bars",    "/fee/bor/foo/bars",    true      },
-        {  "/fee/bor",     "/",            "/foo/bar/s",   "/fee/bor/foo/bar/s",   true      },
-        {  "/fee/bor",     "/foo/bar",     "/foo/bars",    "/fee/bor/s",           true      }, -- 37 TODO: remove the extra /?
-        {  "/fee/bor",     "/foo/bar/",    "/foo/bar/s",   "/fee/bor/s",           true      },
+        {  "/fee/bor",     "/",            "/foo/bars",    "/fee/borfoo/bars",     true      },
+        {  "/fee/bor",     "/",            "/foo/bar/s",   "/fee/borfoo/bar/s",    true      },
+        {  "/fee/bor",     "/foo/bar",     "/foo/bars",    "/fee/bors",            true      },
+        {  "/fee/bor",     "/foo/bar/",    "/foo/bar/s",   "/fee/bors",            true      },
         {  "/fee/bor/",    "/",            "/foo/bars",    "/fee/bor/foo/bars",    true      },
         {  "/fee/bor/",    "/",            "/foo/bar/s",   "/fee/bor/foo/bar/s",   true      }, -- 40
         {  "/fee/bor/",    "/foo/bar",     "/foo/bars",    "/fee/bor/s",           true      },
@@ -1731,14 +1731,33 @@ describe("Router", function()
         {  "/",            "/",            "/foo/bar/s",   "/foo/bar/s",           false     },
         {  "/",            "/foo/bar",     "/foo/bars",    "/foo/bars",            false     },
         {  "/",            "/foo/bar/",    "/foo/bar/s",   "/foo/bar/s",           false     },
-        {  "/fee/bor",     "/",            "/foo/bars",    "/fee/bor/foo/bars",    false     },
-        {  "/fee/bor",     "/",            "/foo/bar/s",   "/fee/bor/foo/bar/s",   false     },
-        {  "/fee/bor",     "/foo/bar",     "/foo/bars",    "/fee/bor/foo/bars",    false     },
-        {  "/fee/bor",     "/foo/bar/",    "/foo/bar/s",   "/fee/bor/foo/bar/s",   false     }, -- 50
+        {  "/fee/bor",     "/",            "/foo/bars",    "/fee/borfoo/bars",     false     },
+        {  "/fee/bor",     "/",            "/foo/bar/s",   "/fee/borfoo/bar/s",    false     },
+        {  "/fee/bor",     "/foo/bar",     "/foo/bars",    "/fee/borfoo/bars",     false     },
+        {  "/fee/bor",     "/foo/bar/",    "/foo/bar/s",   "/fee/borfoo/bar/s",    false     }, -- 50
         {  "/fee/bor/",    "/",            "/foo/bars",    "/fee/bor/foo/bars",    false     },
         {  "/fee/bor/",    "/",            "/foo/bar/s",   "/fee/bor/foo/bar/s",   false     },
         {  "/fee/bor/",    "/foo/bar",     "/foo/bars",    "/fee/bor/foo/bars",    false     },
         {  "/fee/bor/",    "/foo/bar/",    "/foo/bar/s",   "/fee/bor/foo/bar/s",   false     },
+        -- the following block matches on host, instead of path
+        {  "/",            nil,            "/",            "/",                    false     },
+        {  "/",            nil,            "/foo/bar",     "/foo/bar",             false     },
+        {  "/",            nil,            "/foo/bar/",    "/foo/bar/",            false     },
+        {  "/fee/bor",     nil,            "/",            "/fee/bor",             false     },
+        {  "/fee/bor",     nil,            "/foo/bar",     "/fee/borfoo/bar",      false     },
+        {  "/fee/bor",     nil,            "/foo/bar/",    "/fee/borfoo/bar/",     false     }, -- 60
+        {  "/fee/bor/",    nil,            "/",            "/fee/bor/",            false     },
+        {  "/fee/bor/",    nil,            "/foo/bar",     "/fee/bor/foo/bar",     false     },
+        {  "/fee/bor/",    nil,            "/foo/bar/",    "/fee/bor/foo/bar/",    false     },
+        {  "/",            nil,            "/",            "/",                    true      },
+        {  "/",            nil,            "/foo/bar",     "/foo/bar",             true      },
+        {  "/",            nil,            "/foo/bar/",    "/foo/bar/",            true      },
+        {  "/fee/bor",     nil,            "/",            "/fee/bor",             true      },
+        {  "/fee/bor",     nil,            "/foo/bar",     "/fee/borfoo/bar",      true      },
+        {  "/fee/bor",     nil,            "/foo/bar/",    "/fee/borfoo/bar/",     true      },
+        {  "/fee/bor/",    nil,            "/",            "/fee/bor/",            true      }, -- 70
+        {  "/fee/bor/",    nil,            "/foo/bar",     "/fee/bor/foo/bar",     true      },
+        {  "/fee/bor/",    nil,            "/foo/bar/",    "/fee/bor/foo/bar/",    true      },
       }
 
       for i, args in ipairs(checks) do
@@ -1747,8 +1766,9 @@ describe("Router", function()
 
         it("(" .. i .. ") " .. config ..
            " is not appended to upstream url " .. args[1] ..
-           " (with uri "                       .. args[2] .. ")" ..
-           " when requesting "                 .. args[3], function()
+           " (with " .. (args[2] and ("uri " .. args[2]) or
+           ("host test" .. i .. ".domain.org")) .. ")" ..
+           " when requesting " .. args[3], function()
 
 
           local use_case_routes = {
@@ -1761,12 +1781,16 @@ describe("Router", function()
                 strip_path = args[5],
                 paths      = { args[2] },
               },
+              headers   = {
+                -- only add the header is no path is provided
+                host    = args[2] == nil and nil or { "test" .. i .. ".domain.org" },
+              },
             }
           }
 
           local router = assert(Router.new(use_case_routes) )
 
-          local _ngx = mock_ngx("GET", args[3], { host = "domain.org" })
+          local _ngx = mock_ngx("GET", args[3], { host = "test" .. i .. ".domain.org" })
           local match_t = router.exec(_ngx)
           assert.same(use_case_routes[1].route, match_t.route)
           assert.equal(args[1], match_t.upstream_url_t.path)

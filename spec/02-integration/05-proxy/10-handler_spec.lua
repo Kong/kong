@@ -181,7 +181,7 @@ for _, strategy in helpers.each_strategy() do
           helpers.stop_kong(nil, true)
         end)
 
-        it("#only doesn't run", function()
+        it("doesn't run", function()
           local res = assert(proxy_client:send {
             method  = "GET",
             path    = "/request",
