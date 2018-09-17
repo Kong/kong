@@ -583,6 +583,12 @@ function _mt:schema_migrations()
     return nil, err
   end
 
+  for _, row in ipairs(rows) do
+    if row.pending == null then
+      row.pending = nil
+    end
+  end
+
   -- no migrations: is bootstrapped but not migrated
   -- migrations: has some migrations
   return rows
