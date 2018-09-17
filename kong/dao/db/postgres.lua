@@ -627,7 +627,11 @@ function _M:reachable()
     return nil, Errors.db(err)
   end
 
-  pg:keepalive()
+  if conn_opts.socket_type == "nginx" then
+    pg:keepalive()
+  else
+    pg:disconnect()
+  end
 
   return true
 end
