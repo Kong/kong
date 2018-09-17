@@ -24,7 +24,7 @@
 -- |[[    ]]|
 -- ==========
 
-require "luarocks.loader"
+pcall(require, "luarocks.loader")
 require "resty.core"
 local constants = require "kong.constants"
 
