@@ -15,6 +15,7 @@ local ApiRouter   = require "kong.api_router"
 local reports     = require "kong.reports"
 local balancer    = require "kong.runloop.balancer"
 local constants   = require "kong.constants"
+local semaphore   = require "ngx.semaphore"
 local responses   = require "kong.tools.responses"
 local singletons  = require "kong.singletons"
 local certificate = require "kong.runloop.certificate"
@@ -45,6 +46,10 @@ local EMPTY_T = {}
 local router, router_version, router_err
 local api_router, api_router_version, api_router_err
 local server_header = meta._SERVER_TOKENS
+
+
+local build_router_semaphore
+local build_api_router_semaphore
 
 
 local function get_now()
@@ -410,6 +415,23 @@ return {
         balancer.init()
       end)
 
+      do
+        local err
+
+        build_api_router_semaphore, err = semaphore.new()
+        if err then
+          log(ngx.CRIT, "failed to create build_api_router_semaphore: ", err)
+        end
+
+        build_api_router_semaphore:post(1)
+
+        build_router_semaphore, err = semaphore.new()
+        if err then
+          log(ngx.CRIT, "failed to create build_router_semaphore: ", err)
+        end
+
+        build_router_semaphore:post(1)
+      end
     end
   },
   certificate = {
@@ -437,13 +459,51 @@ return {
         log(ngx.CRIT, "could not ensure API router is up to date: ", err)
 
       elseif api_router_version ~= version then
-        log(DEBUG, "rebuilding API router")
+        -- wrap api_router rebuilds in a per-worker mutex (via ngx.semaphore)
+        -- this prevents dogpiling the database during rebuilds in
+        -- high-concurrency traffic patterns; requests that arrive on this
+        -- process during a api_router rebuild will be queued. once the
+        -- semaphore resource is acquired we re-check the api_router version
+        -- again to prevent unnecessary subsequent rebuilds
 
-        local ok, err = build_api_router(singletons.dao, version)
-        if not ok then
-          api_router_err = err
-          log(ngx.CRIT, "could not rebuild API router: ", err)
+        -- for postgres-backed installations, wait up to 60 seconds (the
+        -- default socket timeout) to acquire the mutex when attempting to
+        -- build the router. cassandra-backed installations rely on the
+        -- 'cassandra_timeout' configuration to better align with the
+        -- configured timeout behavior that other cassandra queries use
+        local timeout = 60
+        if singletons.configuration.database == "cassandra" then
+          -- cassandra_timeout is defined in ms
+          timeout = singletons.configuration.cassandra_timeout / 1000
         end
+
+        local ok, err = build_api_router_semaphore:wait(timeout)
+        if not ok then
+          return responses.send_HTTP_INTERNAL_SERVER_ERROR(
+            "error attempting to acquire build_api_router lock: " .. err
+          )
+        end
+
+        -- lock acquired but we might not need to rebuild the api_router (if we
+        -- were not the first request in this process to enter this code path)
+        -- check again and rebuild if necessary
+
+        version, err = cache:get("api_router:version", CACHE_ROUTER_OPTS, utils.uuid)
+        if err then
+          log(ngx.CRIT, "could not ensure api_router is up to date: ", err)
+
+        elseif api_router_version ~= version then
+          -- api_router needs to be rebuilt in this worker
+          log(DEBUG, "rebuilding api_router")
+
+          local ok, err = build_api_router(singletons.dao, version)
+          if not ok then
+            api_router_err = err
+            log(ngx.CRIT, "could not rebuild api_router: ", err)
+          end
+        end
+
+        build_api_router_semaphore:post(1)
       end
 
       if not api_router then
@@ -458,14 +518,51 @@ return {
         log(ngx.CRIT, "could not ensure router is up to date: ", err)
 
       elseif router_version ~= version then
-        -- router needs to be rebuilt in this worker
-        log(DEBUG, "rebuilding router")
+        -- wrap router rebuilds in a per-worker mutex (via ngx.semaphore)
+        -- this prevents dogpiling the database during rebuilds in
+        -- high-concurrency traffic patterns
+        -- requests that arrive on this process during a router rebuild will be
+        -- queued. once the semaphore resource is acquired we re-check the
+        -- router version again to prevent unnecessary subsequent rebuilds
 
-        local ok, err = build_router(singletons.db, version)
-        if not ok then
-          router_err = err
-          log(ngx.CRIT, "could not rebuild router: ", err)
+        -- for postgres-backed installations, wait up to 60 seconds (the
+        -- default socket timeout) to acquire the mutex when attempting to
+        -- build the router. cassandra-backed installations rely on the
+        -- 'cassandra_timeout' configuration to better align with the
+        -- configured timeout behavior that other cassandra queries use
+        local timeout = 60
+        if singletons.configuration.database == "cassandra" then
+          -- cassandra_timeout is defined in ms
+          timeout = singletons.configuration.cassandra_timeout / 1000
         end
+
+        local ok, err = build_router_semaphore:wait(timeout)
+        if not ok then
+          return responses.send_HTTP_INTERNAL_SERVER_ERROR(
+            "error attempting to acquire build_router lock: " .. err
+          )
+        end
+
+        -- lock acquired but we might not need to rebuild the router (if we
+        -- were not the first request in this process to enter this code path)
+        -- check again and rebuild if necessary
+
+        version, err = cache:get("router:version", CACHE_ROUTER_OPTS, utils.uuid)
+        if err then
+          log(ngx.CRIT, "could not ensure router is up to date: ", err)
+
+        elseif router_version ~= version then
+          -- router needs to be rebuilt in this worker
+          log(DEBUG, "rebuilding router")
+
+          local ok, err = build_router(singletons.db, version)
+          if not ok then
+            router_err = err
+            log(ngx.CRIT, "could not rebuild router: ", err)
+          end
+        end
+
+        build_router_semaphore:post(1)
       end
 
       if not router then
