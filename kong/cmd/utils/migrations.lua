@@ -143,7 +143,7 @@ end
 local function reset(schema_state, db, ttl)
   if schema_state.needs_bootstrap then
     log("database not bootstrapped, nothing to reset")
-    return
+    return false
   end
 
   local opts = {
@@ -163,12 +163,14 @@ local function reset(schema_state, db, ttl)
     log("resetting database...")
     assert(db:schema_reset())
     log("database successfully reset")
-    return
+    return true
   end
 
   if not ok then
     log(NOT_LEADER_MSG)
+    return false
   end
+  return true
 end
 
 
