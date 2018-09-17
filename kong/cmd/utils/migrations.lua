@@ -158,7 +158,12 @@ local function reset(schema_state, db, ttl)
     log("database successfully reset")
   end)
   if err then
-    error(err)
+    -- failed to acquire locks - maybe locks table was dropped?
+    log.error(err .. " - retrying without cluster lock")
+    log("resetting database...")
+    assert(db:schema_reset())
+    log("database successfully reset")
+    return
   end
 
   if not ok then
