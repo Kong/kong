@@ -1,5 +1,37 @@
 local singletons = require "kong.singletons"
 local utils = require "kong.tools.utils"
+local pl_stringx   = require "pl.stringx"
+
+
+-- @param value The options string to check for flags (whitespace separated)
+-- @param flags List of boolean flags to check for.
+-- @returns 1) remainder string after all flags removed, 2) table with flag
+-- booleans, 3) sanitized flags string
+local function parse_option_flags(value, flags)
+  assert(type(value) == "string")
+
+  value = " " .. value .. " "
+
+  local sanitized = ""
+  local result = {}
+
+  for _, flag in ipairs(flags) do
+    local count
+    local patt = "%s" .. flag .. "%s"
+
+    value, count = value:gsub(patt, " ")
+
+    if count > 0 then
+      result[flag] = true
+      sanitized = sanitized .. " " .. flag
+
+    else
+      result[flag] = false
+    end
+  end
+
+  return pl_stringx.strip(value), result, pl_stringx.strip(sanitized)
+end
 
 
 local function new()
@@ -18,13 +50,25 @@ local function new()
 
   ngx.log(ngx.DEBUG, "enabling internal statsd-advanced plugin")
 
+  local host, port, use_tcp
+  local remainder, _, protocol = parse_option_flags(conf.vitals_statsd_address, { "udp", "tcp" })
+  if remainder then
+    host, port = remainder:match("(.+):([%d]+)$")
+    port = tonumber(port)
+    if not host or not port then
+      host = remainder:match("(unix:/.+)$")
+      port = nil
+    end
+  end
+  use_tcp = protocol == "tcp"
+
   singletons.internal_proxies:add_plugin({
     name = "statsd-advanced",
     config = {
-      host = conf.vitals_statsd_host,
-      port = conf.vitals_statsd_port,
+      host = host,
+      port = port,
       prefix = conf.vitals_statsd_prefix,
-      use_tcp = conf.vitals_statsd_use_tcp,
+      use_tcp = use_tcp,
       udp_packet_size = conf.vitals_statsd_udp_packet_size or 0,
       metrics = {
         { name = "request_count", sample_rate = 1, stat_type = "counter", service_identifier = "service_id" },
