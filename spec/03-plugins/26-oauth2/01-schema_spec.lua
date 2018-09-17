@@ -1,20 +1,17 @@
 local helpers         = require "spec.helpers"
 local validate_entity = require("kong.dao.schemas_validation").validate_entity
-local oauth2_daos     = require "kong.plugins.oauth2.daos"
 local utils           = require "kong.tools.utils"
 
 local oauth2_schema   = require "kong.plugins.oauth2.schema"
-
-local oauth2_authorization_codes_schema = oauth2_daos.oauth2_authorization_codes
-local oauth2_tokens_schema              = oauth2_daos.oauth2_tokens
-
-
 local fmt = string.format
 
-
 for _, strategy in helpers.each_strategy() do
+
   describe(fmt("Plugin: oauth2 [#%s] (schema)", strategy), function()
-    local bp, db, dao = helpers.get_db_utils(strategy)
+    local bp, db = helpers.get_db_utils(strategy)
+
+    local oauth2_authorization_codes_schema = db.oauth2_authorization_codes.schema
+    local oauth2_tokens_schema = db.oauth2_tokens.schema
 
     it("does not require `scopes` when `mandatory_scope` is false", function()
       local ok, errors = validate_entity({enable_authorization_code = true, mandatory_scope = false}, oauth2_schema)
@@ -81,62 +78,67 @@ for _, strategy in helpers.each_strategy() do
         assert.equal("To set a mandatory scope you also need to create available scopes", errors.mandatory_scope)
       end)
       it("errors when given an invalid service_id on oauth tokens", function()
-        local service = bp.services:insert()
-        local u = utils.uuid()
+        local ok, err_t = oauth2_tokens_schema:validate_insert({
+          credential = { id = "foo" },
+          service = { id = "bar" },
+          expires_in = 1,
+        })
+        assert.falsy(ok)
+        assert.same({
+          credential = { id = 'expected a valid UUID' },
+          service = { id = 'expected a valid UUID' },
+          token_type = "required field missing",
+        }, err_t)
 
-        local ok, err, err_t = validate_entity({
-          credential_id = "foo", expires_in = 1,
-          service_id = "bar",
-        }, oauth2_tokens_schema, { dao = dao })
-        assert.False(ok)
-        assert.is_nil(err)
-        assert.equals(err_t.tbl.fields.id, "expected a valid UUID")
+        local ok, err_t = oauth2_tokens_schema:validate_insert({
+          credential = { id = "foo" },
+          service = { id = utils.uuid() },
+          expires_in = 1,
+        })
+        assert.falsy(ok)
+        assert.same({
+          credential = { id = 'expected a valid UUID' },
+          token_type = "required field missing",
+        }, err_t)
 
-        local ok, err, err_t = validate_entity({
-          credential_id = "foo", expires_in = 1,
-          service_id = u,
-        }, oauth2_tokens_schema, { dao = dao })
-        assert.False(ok)
-        assert.is_nil(err)
-        assert.equals(err_t.message, fmt("no such Service (id=%s)", u))
 
-        local ok, err, err_t = validate_entity({
-          credential_id = "foo", expires_in = 1,
-          service_id = service.id,
-        }, oauth2_tokens_schema, { dao = dao })
+        local ok, err_t = oauth2_tokens_schema:validate_insert({
+          credential = { id = utils.uuid() },
+          service = { id = utils.uuid() },
+          expires_in = 1,
+          token_type = "bearer",
+        })
 
-        assert.True(ok)
-        assert.is_nil(err)
+        assert.is_truthy(ok)
         assert.is_nil(err_t)
       end)
 
-      it("errors when given an invalid service_id on oauth authorization codes", function()
-        local service = bp.services:insert()
-        local u = utils.uuid()
+      it("#errors when given an invalid service_id on oauth authorization codes", function()
+        local ok, err_t = oauth2_authorization_codes_schema:validate_insert({
+          credential = { id = "foo" },
+          service = { id = "bar" },
+        })
+        assert.falsy(ok)
+        assert.same({
+          credential = { id = 'expected a valid UUID' },
+          service = { id = 'expected a valid UUID' },
+        }, err_t)
 
-        local ok, err, err_t = validate_entity({
-          credential_id = "foo",
-          service_id = "bar",
-        }, oauth2_authorization_codes_schema, { dao = dao })
-        assert.False(ok)
-        assert.is_nil(err)
-        assert.equals(err_t.tbl.fields.id, "expected a valid UUID")
+        local ok, err_t = oauth2_authorization_codes_schema:validate_insert({
+          credential = { id = "foo" },
+          service = { id = utils.uuid() },
+        })
+        assert.falsy(ok)
+        assert.same({
+          credential = { id = 'expected a valid UUID' },
+        }, err_t)
 
-        local ok, err, err_t = validate_entity({
-          credential_id = "foo",
-          service_id = u,
-        }, oauth2_authorization_codes_schema, { dao = dao })
-        assert.False(ok)
-        assert.is_nil(err)
-        assert.equals(err_t.message, fmt("no such Service (id=%s)", u))
+        local ok, err_t = oauth2_authorization_codes_schema:validate_insert({
+          credential = { id = utils.uuid() },
+          service = { id = utils.uuid() },
+        })
 
-        local ok, err, err_t = validate_entity({
-          credential_id = "foo",
-          service_id = service.id,
-        }, oauth2_authorization_codes_schema, { dao = dao })
-
-        assert.True(ok)
-        assert.is_nil(err)
+        assert.truthy(ok)
         assert.is_nil(err_t)
       end)
     end)
@@ -146,29 +148,28 @@ for _, strategy in helpers.each_strategy() do
         local service = bp.services:insert()
         local consumer = bp.consumers:insert()
         local credential = bp.oauth2_credentials:insert({
-          redirect_uri = "http://example.com",
-          consumer_id = consumer.id,
+          redirect_uris = { "http://example.com" },
+          consumer = { id = consumer.id },
         })
 
         local ok, err, err_t
 
         local token = bp.oauth2_tokens:insert({
-          credential_id = credential.id,
-          service_id = service.id,
+          credential = { id = credential.id },
+          service = { id = service.id },
         })
         local code = bp.oauth2_authorization_codes:insert({
-          credential_id = credential.id,
-          service_id = service.id,
+          credential = { id = credential.id },
+          service = { id = service.id },
         })
 
-        token, err = dao.oauth2_tokens:find(token)
+        token, err = db.oauth2_tokens:select({ id = token.id })
         assert.falsy(err)
         assert.truthy(token)
 
-        code, err = dao.oauth2_authorization_codes:find(code)
+        code, err = db.oauth2_authorization_codes:select({ id = code.id })
         assert.falsy(err)
         assert.truthy(code)
-
 
         ok, err, err_t = db.services:delete({ id = service.id })
         assert.truthy(ok)
@@ -181,12 +182,12 @@ for _, strategy in helpers.each_strategy() do
         assert.falsy(service)
 
         -- no more token
-        token, err = dao.oauth2_tokens:find({ id = token.id })
+        token, err = db.oauth2_tokens:select({ id = token.id })
         assert.falsy(err)
         assert.falsy(token)
 
         -- no more code
-        local code, err = dao.oauth2_authorization_codes:find({ id = code.id })
+        code, err = db.oauth2_authorization_codes:select({ id = code.id })
         assert.falsy(err)
         assert.falsy(code)
       end)

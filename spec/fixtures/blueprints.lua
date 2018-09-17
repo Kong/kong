@@ -238,7 +238,7 @@ function _M.new(dao, db)
     }
   end)
 
-  res.oauth2_credentials = new_blueprint(dao.oauth2_credentials, function()
+  res.oauth2_credentials = new_blueprint(db.oauth2_credentials, function()
     return {
       name          = "oauth2 credential",
       client_secret = "secret",
@@ -246,14 +246,14 @@ function _M.new(dao, db)
   end)
 
   local oauth_code_seq = new_sequence("oauth-code-%d")
-  res.oauth2_authorization_codes = new_blueprint(dao.oauth2_authorization_codes, function()
+  res.oauth2_authorization_codes = new_blueprint(db.oauth2_authorization_codes, function()
     return {
       code  = oauth_code_seq:next(),
       scope = "default",
     }
   end)
 
-  res.oauth2_tokens = new_blueprint(dao.oauth2_tokens, function()
+  res.oauth2_tokens = new_blueprint(db.oauth2_tokens, function()
     return {
       token_type = "bearer",
       expires_in = 1000000000,

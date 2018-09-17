@@ -28,7 +28,7 @@ local Schema       = {}
 Schema.__index     = Schema
 
 
-local _constraints = {}
+local _cache = {}
 
 
 local new_tab
@@ -1522,16 +1522,12 @@ local function get_foreign_schema_for_field(field)
     return nil, validation_errors.SCHEMA_MISSING_ATTRIBUTE:format("reference")
   end
 
-  -- TODO add support for non-core entities
-  local pok, def = pcall(require, "kong.db.schema.entities." .. ref)
-  if not (pok and def) then
+  local foreign_schema = _cache[ref] and _cache[ref].schema
+  if not foreign_schema then
     return nil, validation_errors.SCHEMA_BAD_REFERENCE:format(ref)
   end
 
-  -- FIXME we really shouldn't be creating schema objects each
-  -- time, but rather getting schema objects from the modules,
-  -- instead of bare schema definition tables.
-  return Schema.new(def)
+  return foreign_schema
 end
 
 
@@ -1557,10 +1553,7 @@ end
 
 
 function Schema:get_constraints()
-  if not _constraints[self.name] then
-    _constraints[self.name] = {}
-  end
-  return _constraints[self.name]
+  return _cache[self.name].constraints
 end
 
 
@@ -1603,16 +1596,21 @@ function Schema.new(definition, is_subschema)
 
       if not is_subschema then
         -- Store the inverse relation for implementing constraints
-        if not _constraints[field.reference] then
-          _constraints[field.reference] = {}
-        end
-        table.insert(_constraints[field.reference], {
+        local constraints = assert(_cache[field.reference]).constraints
+        table.insert(constraints, {
           schema     = self,
           field_name = key,
           on_delete  = field.on_delete,
         })
       end
     end
+  end
+
+  if self.name then
+    _cache[self.name] = {
+      schema = self,
+      constraints = {},
+    }
   end
 
   return self

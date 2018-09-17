@@ -3,9 +3,6 @@ local helpers = require "spec.helpers"
 local utils   = require "kong.tools.utils"
 
 
-local fmt = string.format
-
-
 local function provision_code(host, extra_headers, client_id)
   local request_client = helpers.proxy_ssl_client()
   local res = assert(request_client:send {
@@ -67,11 +64,10 @@ for _, strategy in helpers.each_strategy() do
     local proxy_client
     local client1
     local db
-    local dao
     local bp
 
     setup(function()
-      bp, db, dao = helpers.get_db_utils(strategy)
+      bp, db = helpers.get_db_utils(strategy)
 
       local consumer = bp.consumers:insert {
         username = "bob"
@@ -81,45 +77,45 @@ for _, strategy in helpers.each_strategy() do
         username = "no-body"
       }
 
-      client1 = assert(dao.oauth2_credentials:insert {
-        client_id     = "clientid123",
-        client_secret = "secret123",
-        redirect_uri  = "http://google.com/kong",
-        name          = "testapp",
-        consumer_id   = consumer.id
-      })
+      client1 = bp.oauth2_credentials:insert {
+        client_id      = "clientid123",
+        client_secret  = "secret123",
+        redirect_uris  = { "http://google.com/kong" },
+        name           = "testapp",
+        consumer       = { id = consumer.id },
+      }
 
-      assert(dao.oauth2_credentials:insert {
-        client_id     = "clientid789",
-        client_secret = "secret789",
-        redirect_uri  = "http://google.com/kong?foo=bar&code=123",
-        name          = "testapp2",
-        consumer_id   = consumer.id
-      })
+      bp.oauth2_credentials:insert {
+        client_id      = "clientid789",
+        client_secret  = "secret789",
+        redirect_uris  = { "http://google.com/kong?foo=bar&code=123" },
+        name           = "testapp2",
+        consumer       = { id = consumer.id },
+      }
 
-      assert(dao.oauth2_credentials:insert {
+      bp.oauth2_credentials:insert {
         client_id     = "clientid333",
         client_secret = "secret333",
-        redirect_uri  = "http://google.com/kong",
+        redirect_uris = { "http://google.com/kong" },
         name          = "testapp3",
-        consumer_id   = consumer.id
-      })
+        consumer      = { id = consumer.id },
+      }
 
-      assert(dao.oauth2_credentials:insert {
+      bp.oauth2_credentials:insert {
         client_id     = "clientid456",
         client_secret = "secret456",
-        redirect_uri  = { "http://one.com/one/", "http://two.com/two" },
+        redirect_uris = { "http://one.com/one/", "http://two.com/two" },
         name          = "testapp3",
-        consumer_id   = consumer.id
-      })
+        consumer      = { id = consumer.id },
+      }
 
-      assert(dao.oauth2_credentials:insert {
+      bp.oauth2_credentials:insert {
         client_id     = "clientid1011",
         client_secret = "secret1011",
-        redirect_uri  = { "http://google.com/kong", },
+        redirect_uris = { "http://google.com/kong", },
         name          = "testapp31",
-        consumer_id   = consumer.id
-      })
+        consumer      = { id = consumer.id },
+      }
 
       local service1    = bp.services:insert()
       local service2    = bp.services:insert()
@@ -380,7 +376,7 @@ for _, strategy in helpers.each_strategy() do
           assert.are.equal("no-store", res.headers["cache-control"])
           assert.are.equal("no-cache", res.headers["pragma"])
         end)
-        it("returns an error when only the client_id is being sent", function()
+        it("#returns an error when only the client_id is being sent", function()
           local res = assert(proxy_ssl_client:send {
             method  = "POST",
             path    = "/oauth2/authorize",
@@ -497,7 +493,7 @@ for _, strategy in helpers.each_strategy() do
           local body = cjson.decode(assert.res_status(200, res))
           assert.is_table(ngx.re.match(body.redirect_uri, "^http://google\\.com/kong\\?code=[\\w]{32,32}&foo=bar$"))
         end)
-        it("works with multiple redirect_uri in the application", function()
+        it("works with multiple redirect_uris in the application", function()
           local res = assert(proxy_client:send {
             method  = "POST",
             path    = "/oauth2/authorize",
@@ -706,12 +702,11 @@ for _, strategy in helpers.each_strategy() do
           assert.is_nil(err)
           local m, err = iterator()
           assert.is_nil(err)
-          local data = dao.oauth2_authorization_codes:find_all {code = m[1]}
-          assert.are.equal(1, #data)
-          assert.are.equal(m[1], data[1].code)
-          assert.are.equal("userid123", data[1].authenticated_userid)
-          assert.are.equal("email", data[1].scope)
-          assert.are.equal(client1.id, data[1].credential_id)
+          local data = db.oauth2_authorization_codes:select_by_code(m[1])
+          assert.are.equal(m[1], data.code)
+          assert.are.equal("userid123", data.authenticated_userid)
+          assert.are.equal("email", data.scope)
+          assert.are.equal(client1.id, data.credential.id)
         end)
         it("returns success with a dotted scope and store authenticated user properties", function()
           local res = assert(proxy_ssl_client:send {
@@ -737,11 +732,10 @@ for _, strategy in helpers.each_strategy() do
           assert.is_nil(err)
           local m, err = iterator()
           assert.is_nil(err)
-          local data = dao.oauth2_authorization_codes:find_all {code = m[1]}
-          assert.are.equal(1, #data)
-          assert.are.equal(m[1], data[1].code)
-          assert.are.equal("userid123", data[1].authenticated_userid)
-          assert.are.equal("user.email", data[1].scope)
+          local data = db.oauth2_authorization_codes:select_by_code(m[1])
+          assert.are.equal(m[1], data.code)
+          assert.are.equal("userid123", data.authenticated_userid)
+          assert.are.equal("user.email", data.scope)
         end)
       end)
 
@@ -810,11 +804,10 @@ for _, strategy in helpers.each_strategy() do
           assert.is_nil(err)
           local m, err = iterator()
           assert.is_nil(err)
-          local data = dao.oauth2_tokens:find_all {access_token = m[1]}
-          assert.are.equal(1, #data)
-          assert.are.equal(m[1], data[1].access_token)
-          assert.are.equal(5, data[1].expires_in)
-          assert.falsy(data[1].refresh_token)
+          local data = db.oauth2_tokens:select_by_access_token(m[1])
+          assert.are.equal(m[1], data.access_token)
+          assert.are.equal(5, data.expires_in)
+          assert.falsy(data.refresh_token)
         end)
         it("returns success and store authenticated user properties", function()
           local res = assert(proxy_ssl_client:send {
@@ -839,15 +832,14 @@ for _, strategy in helpers.each_strategy() do
           assert.is_nil(err)
           local m, err = iterator()
           assert.is_nil(err)
-          local data = dao.oauth2_tokens:find_all {access_token = m[1]}
-          assert.are.equal(1, #data)
-          assert.are.equal(m[1], data[1].access_token)
-          assert.are.equal("userid123", data[1].authenticated_userid)
-          assert.are.equal("email profile", data[1].scope)
+          local data = db.oauth2_tokens:select_by_access_token(m[1])
+          assert.are.equal(m[1], data.access_token)
+          assert.are.equal("userid123", data.authenticated_userid)
+          assert.are.equal("email profile", data.scope)
 
           -- Checking that there is no refresh token since it's an implicit grant
-          assert.are.equal(5, data[1].expires_in)
-          assert.falsy(data[1].refresh_token)
+          assert.are.equal(5, data.expires_in)
+          assert.falsy(data.refresh_token)
         end)
         it("returns set the right upstream headers", function()
           local res = assert(proxy_ssl_client:send {
@@ -1935,11 +1927,10 @@ for _, strategy in helpers.each_strategy() do
         assert.is_nil(err)
         local m, err = iterator()
         assert.is_nil(err)
-        local data = dao.oauth2_tokens:find_all {access_token = m[1]}
-        assert.are.equal(1, #data)
-        assert.are.equal(m[1], data[1].access_token)
-        assert.are.equal(7, data[1].expires_in)
-        assert.falsy(data[1].refresh_token)
+        local data = db.oauth2_tokens:select_by_access_token(m[1])
+        assert.are.equal(m[1], data.access_token)
+        assert.are.equal(7, data.expires_in)
+        assert.falsy(data.refresh_token)
       end)
       describe("Global Credentials", function()
         it("does not access two different APIs that are not sharing global credentials", function()
@@ -2096,7 +2087,7 @@ for _, strategy in helpers.each_strategy() do
         local json = cjson.decode(body)
         assert.same({ error = "invalid_request", error_description = "Invalid refresh_token" }, json)
       end)
-      it("refreshes an valid access token", function()
+      it("#refreshes an valid access token", function()
         local token = provision_token()
 
         local res = assert(proxy_ssl_client:send {
@@ -2152,8 +2143,8 @@ for _, strategy in helpers.each_strategy() do
         })
         assert.res_status(200, res)
 
-        local id = dao.oauth2_tokens:find_all({access_token = token.access_token })[1].id
-        assert.truthy(dao.oauth2_tokens:find({id=id}))
+        local id = db.oauth2_tokens:select_by_access_token(token.access_token).id
+        assert.truthy(db.oauth2_tokens:select({ id = id }))
 
         -- But waiting after the cache expiration (5 seconds) should block the request
         ngx.sleep(7)
@@ -2192,7 +2183,7 @@ for _, strategy in helpers.each_strategy() do
         assert.falsy(token.access_token  == cjson.decode(body).access_token)
         assert.falsy(token.refresh_token == cjson.decode(body).refresh_token)
 
-        assert.falsy(dao.oauth2_tokens:find({id=id}))
+        assert.falsy(db.oauth2_tokens:select({ id = id }))
       end)
     end)
 
@@ -2339,11 +2330,10 @@ for _, strategy in helpers.each_strategy() do
     local user2
     local anonymous
     local db
-    local dao
     local bp
 
     setup(function()
-      bp, db, dao = helpers.get_db_utils(strategy)
+      bp, db = helpers.get_db_utils(strategy)
 
       local service1 = bp.services:insert({
         path = "/request"
@@ -2360,10 +2350,10 @@ for _, strategy in helpers.each_strategy() do
         config   = { scopes = { "email", "profile", "user.email" } },
       })
 
-      assert(dao.plugins:insert {
+      bp.plugins:insert {
         name     = "key-auth",
         route = { id = route1.id },
-      })
+      }
 
       anonymous = bp.consumers:insert {
         username = "Anonymous",
@@ -2395,26 +2385,26 @@ for _, strategy in helpers.each_strategy() do
         },
       })
 
-      assert(dao.plugins:insert {
+      bp.plugins:insert {
         name     = "key-auth",
         route = { id = route2.id },
         config   = {
           anonymous = anonymous.id,
         },
-      })
+      }
 
       bp.keyauth_credentials:insert({
         key      = "Mouse",
         consumer = { id = user1.id },
       })
 
-      assert(dao.oauth2_credentials:insert {
-        client_id     = "clientid123",
-        client_secret = "secret123",
-        redirect_uri  = "http://google.com/kong",
-        name          = "testapp",
-        consumer_id   = user2.id,
-      })
+      bp.oauth2_credentials:insert {
+        client_id      = "clientid123",
+        client_secret  = "secret123",
+        redirect_uris  = { "http://google.com/kong" },
+        name           = "testapp",
+        consumer       = { id = user2.id },
+      }
 
       assert(helpers.start_kong({
         database   = strategy,
@@ -2563,11 +2553,10 @@ for _, strategy in helpers.each_strategy() do
 
   describe("Plugin: oauth2 (ttl) with #"..strategy, function()
     local db
-    local dao
     local bp
 
     setup(function()
-      bp, db, dao = helpers.get_db_utils(strategy)
+      bp, db = helpers.get_db_utils(strategy)
 
       local route11 = assert(db.routes:insert({
         hosts     = { "oauth2_11.com" },
@@ -2575,7 +2564,7 @@ for _, strategy in helpers.each_strategy() do
         service   = bp.services:insert(),
       }))
 
-      assert(dao.plugins:insert {
+      db.plugins:insert {
         name = "oauth2",
         route = { id = route11.id },
         config = {
@@ -2586,7 +2575,7 @@ for _, strategy in helpers.each_strategy() do
           global_credentials = false,
           refresh_token_ttl = 2
         }
-      })
+      }
 
       local route12 = assert(db.routes:insert({
         hosts     = { "oauth2_12.com" },
@@ -2594,7 +2583,7 @@ for _, strategy in helpers.each_strategy() do
         service   = bp.services:insert(),
       }))
 
-      assert(dao.plugins:insert {
+      db.plugins:insert {
         name = "oauth2",
         route = { id = route12.id },
         config = {
@@ -2605,18 +2594,18 @@ for _, strategy in helpers.each_strategy() do
           global_credentials = false,
           refresh_token_ttl = 0
         }
-      })
+      }
 
       local consumer = bp.consumers:insert {
         username = "bob"
       }
-      assert(dao.oauth2_credentials:insert {
+      db.oauth2_credentials:insert {
         client_id = "clientid123",
         client_secret = "secret123",
-        redirect_uri = "http://google.com/kong",
+        redirect_uris = { "http://google.com/kong" },
         name = "testapp",
-        consumer_id = consumer.id
-      })
+        consumer = { id = consumer.id },
+      }
       assert(helpers.start_kong({
         database    = strategy,
         trusted_ips = "127.0.0.1",
@@ -2628,44 +2617,29 @@ for _, strategy in helpers.each_strategy() do
       helpers.stop_kong()
     end)
 
-    local function assert_ttls_records_for_token(uuid, count)
-      local DB = require "kong.dao.db.postgres"
-      local db = DB.new(helpers.test_conf)
-      local query = fmt("SELECT COUNT(*) FROM ttls where table_name='oauth2_tokens' AND primary_uuid_value = '%s'", tostring(uuid))
-      local result, error = db:query(query)
-      assert.falsy(error)
-      assert.truthy(result[1].count == count)
-    end
-
     describe("refresh token", function()
       it("is deleted after defined TTL", function()
         local token = provision_token("oauth2_11.com")
-        local token_entity = dao.oauth2_tokens:find_all { access_token = token.access_token }
-        assert.equal(1, #token_entity)
-
-        if strategy == "postgres" then
-          assert_ttls_records_for_token(token_entity[1].id, 1)
-        end
+        local token_entity = db.oauth2_tokens:select_by_access_token(token.access_token)
+        assert.is_table(token_entity)
 
         ngx.sleep(3)
 
-        token_entity = dao.oauth2_tokens:find_all { access_token = token.access_token }
-        assert.equal(0, #token_entity)
+        local err
+        token_entity, err = db.oauth2_tokens:select_by_access_token(token.access_token)
+        assert.is_nil(token_entity)
+        assert.is_nil(err)
       end)
 
       it("is not deleted when when TTL is 0 == never", function()
         local token = provision_token("oauth2_12.com")
-        local token_entity = dao.oauth2_tokens:find_all { access_token = token.access_token }
-        assert.equal(1, #token_entity)
-
-        if strategy == "postgres" then
-          assert_ttls_records_for_token(token_entity[1].id, 0)
-        end
+        local token_entity = db.oauth2_tokens:select_by_access_token(token.access_token)
+        assert.is_table(token_entity)
 
         ngx.sleep(3)
 
-        token_entity = dao.oauth2_tokens:find_all { access_token = token.access_token }
-        assert.equal(1, #token_entity)
+        token_entity = db.oauth2_tokens:select_by_access_token(token.access_token)
+        assert.is_table(token_entity)
       end)
     end)
   end)

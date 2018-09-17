@@ -17,10 +17,12 @@ local setmetatable = setmetatable
 -- maybe a temporary constant table -- could be move closer
 -- to schemas and entities since schemas will also be used
 -- independently from the DB module (Admin API for GUI)
+-- Notice that the order in which they are listed is important:
+-- schemas of dependencies need to be loaded first.
 local CORE_ENTITIES = {
   "consumers",
-  "routes",
   "services",
+  "routes",
   "certificates",
   "snis",
   "upstreams",

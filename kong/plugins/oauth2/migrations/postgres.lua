@@ -1,4 +1,5 @@
 local plugin_config_iterator = require("kong.dao.migrations.helpers").plugin_config_iterator
+local cjson = require "cjson"
 
 return {
   {
@@ -87,7 +88,12 @@ return {
     name = "2016-07-15-oauth2_code_credential_id",
     up = [[
       DELETE FROM oauth2_authorization_codes;
-      ALTER TABLE oauth2_authorization_codes ADD COLUMN credential_id uuid REFERENCES oauth2_credentials (id) ON DELETE CASCADE;
+      DO $$
+      BEGIN
+        ALTER TABLE oauth2_authorization_codes ADD COLUMN credential_id uuid REFERENCES oauth2_credentials (id) ON DELETE CASCADE;
+      EXCEPTION WHEN duplicate_column THEN
+        -- Do nothing, accept existing state
+      END$$;
     ]],
     down = [[
       ALTER TABLE oauth2_authorization_codes DROP COLUMN credential_id;
@@ -95,35 +101,37 @@ return {
   },
   {
     name = "2016-12-22-283949_serialize_redirect_uri",
-    up = function(_, _, factory)
-      local schema = factory.oauth2_credentials.schema
-      schema.fields.redirect_uri.type = "string"
-      local json = require "cjson"
-      local apps, err = factory.oauth2_credentials.db:find_all('oauth2_credentials', nil, schema);
+    up = function(_, _, dao)
+
+      local rows, err = dao.db:query([[
+        SELECT * from oauth2_credentials
+      ]])
       if err then
         return err
       end
-      for _, app in ipairs(apps) do
+
+      for _, row in ipairs(rows) do
         local redirect_uri = {};
-        redirect_uri[1] = app.redirect_uri
-        local redirect_uri_str = json.encode(redirect_uri)
-        local req = "UPDATE oauth2_credentials SET redirect_uri='" .. redirect_uri_str .. "' WHERE id='" .. app.id .. "'"
-        local _, err = factory.oauth2_credentials.db:queries(req)
+        redirect_uri[1] = row.redirect_uri
+        local redirect_uri_str = cjson.encode(redirect_uri)
+        local sql = "UPDATE oauth2_credentials SET redirect_uri='" .. redirect_uri_str .. "' WHERE id='" .. row.id .. "'"
+        local _, err = dao.db:query(sql)
         if err then
           return err
         end
       end
-      schema.fields.redirect_uri.type = "array"
     end,
-    down = function(_,_,factory)
-      local apps, err = factory.oauth2_credentials:find_all()
+    down = function(_, _, dao)
+      local rows, err = dao.db:query([[
+        SELECT * from oauth2_credentials
+      ]])
       if err then
         return err
       end
-      for _, app in ipairs(apps) do
-        local redirect_uri = app.redirect_uri[1]
-        local req = "UPDATE oauth2_credentials SET redirect_uri='" .. redirect_uri .. "' WHERE id='" .. app.id .. "'"
-        local _, err = factory.oauth2_credentials.db:queries(req)
+      for _, row in ipairs(rows) do
+        local redirect_uri = row.redirect_uri[1]
+        local sql = "UPDATE oauth2_credentials SET redirect_uri='" .. redirect_uri .. "' WHERE id='" .. row.id .. "'"
+        local _, err = dao.db:query(sql)
         if err then
           return err
         end
@@ -133,8 +141,13 @@ return {
   {
     name = "2016-09-19-oauth2_api_id",
     up = [[
-      ALTER TABLE oauth2_authorization_codes ADD COLUMN api_id uuid REFERENCES apis (id) ON DELETE CASCADE;
-      ALTER TABLE oauth2_tokens ADD COLUMN api_id uuid REFERENCES apis (id) ON DELETE CASCADE;
+      DO $$
+      BEGIN
+        ALTER TABLE oauth2_authorization_codes ADD COLUMN api_id uuid REFERENCES apis (id) ON DELETE CASCADE;
+        ALTER TABLE oauth2_tokens ADD COLUMN api_id uuid REFERENCES apis (id) ON DELETE CASCADE;
+      EXCEPTION WHEN duplicate_column THEN
+        -- Do nothing, accept existing state
+      END$$;
     ]],
     down = [[
       ALTER TABLE oauth2_authorization_codes DROP COLUMN api_id;
@@ -144,19 +157,17 @@ return {
   {
     name = "2016-12-15-set_global_credentials",
     up = function(_, _, dao)
-      local rows, err = dao.plugins:find_all({name = "oauth2"})
-      if err then
-        return err
-      end
-      for _, row in ipairs(rows) do
-        row.config.global_credentials = true
-
-        local _, err = dao.plugins:update(row, row)
+      for ok, config, update in plugin_config_iterator(dao, "oauth2") do
+        if not ok then
+          return config
+        end
+        config.global_credentials = true
+        local _, err = update(config)
         if err then
           return err
         end
       end
-    end
+    end,
   },
   {
     name = "2017-04-24-oauth2_client_secret_not_unique",
@@ -206,14 +217,77 @@ return {
   {
     name = "2018-01-09-oauth2_pg_add_service_id",
     up = [[
-      ALTER TABLE oauth2_authorization_codes ADD COLUMN service_id uuid
-        REFERENCES services (id) ON DELETE CASCADE;
-      ALTER TABLE oauth2_tokens ADD COLUMN service_id uuid
-        REFERENCES services ON DELETE CASCADE;
+      DO $$
+      BEGIN
+        ALTER TABLE oauth2_authorization_codes ADD COLUMN service_id uuid
+          REFERENCES services (id) ON DELETE CASCADE;
+        ALTER TABLE oauth2_tokens ADD COLUMN service_id uuid
+          REFERENCES services ON DELETE CASCADE;
+      EXCEPTION WHEN duplicate_column THEN
+        -- Do nothing, accept existing state
+      END$$;
+
     ]],
     down = [[
       ALTER TABLE oauth2_tokens DROP COLUMN service_id;
       ALTER TABLE oauth2_authorization_codes DROP COLUMN service_id;
+    ]],
+  },
+  {
+    name = "2018-09-12-oauth2_pg_make_redirect_uri_into_an_array",
+    up = [[
+      DO $$
+      BEGIN
+        ALTER TABLE oauth2_credentials
+        ADD COLUMN redirect_uris TEXT[];
+      EXCEPTION WHEN duplicate_column THEN
+        -- Do nothing, accept existing state
+      END$$;
+
+      DO $$
+      BEGIN
+        UPDATE oauth2_credentials
+        SET redirect_uris = TRANSLATE(redirect_uri, '[]','{}')::TEXT[];
+      EXCEPTION WHEN undefined_column THEN
+        -- Do nothing, accept existing state
+      END$$;
+
+      DO $$
+      BEGIN
+        ALTER TABLE oauth2_credentials
+        DROP COLUMN redirect_uri;
+      EXCEPTION WHEN undefined_column THEN
+        -- Do nothing, accept existing state
+      END$$;
+    ]],
+    down = ""
+  },
+  {
+    name = "2018-09-13-oauth2_pg_add_ttl_to_codes",
+    up = [[
+      DO $$
+      BEGIN
+        ALTER TABLE oauth2_authorization_codes
+        ADD COLUMN ttl timestamp without time zone;
+      EXCEPTION WHEN duplicate_column THEN
+        -- Do nothing, accept existing state
+      END$$;
+
+      UPDATE oauth2_authorization_codes SET ttl = created_at + interval '300 seconds';
+    ]],
+  },
+  {
+    name = "2018-09-13-oauth2_pg_add_ttl_to_tokens",
+    up = [[
+      DO $$
+      BEGIN
+        ALTER TABLE oauth2_tokens
+        ADD COLUMN ttl timestamp without time zone;
+      EXCEPTION WHEN duplicate_column THEN
+        -- Do nothing, accept existing state
+      END$$;
+
+      UPDATE oauth2_tokens SET ttl = created_at + (expires_in || ' second')::interval;
     ]],
   },
 }
