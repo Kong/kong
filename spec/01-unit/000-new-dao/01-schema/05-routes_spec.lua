@@ -289,7 +289,7 @@ describe("routes schema", function()
       end
     end)
 
-    it("rejects trailing slash", function()
+    it("accepts trailing slash", function()
       local route = {
         protocols = { "http" },
         service = { id = a_valid_uuid },
@@ -299,8 +299,8 @@ describe("routes schema", function()
       }
 
       local ok, err = Routes:validate(route)
-      assert.falsy(ok)
-      assert.match("must not have a trailing slash", err.paths)
+      assert.is_nil(err)
+      assert.is_true(ok)
     end)
   end)
 
