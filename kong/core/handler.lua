@@ -662,6 +662,7 @@ return {
 
       local err
       ctx.workspaces, err = workspaces.resolve_ws_scope(ctx, route.protocols and route or api)
+      ctx.log_request_workspaces = ctx.workspaces
       if err then
         return responses.send_HTTP_INTERNAL_SERVER_ERROR("failed to retrieve workspace " ..
           "for the request (reason: " .. tostring(err) .. ")")

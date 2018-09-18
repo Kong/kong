@@ -41,6 +41,7 @@ function _M.serialize(ngx)
     route = ngx.ctx.route,
     service = ngx.ctx.service,
     api = ngx.ctx.api,
+    workspaces = ngx.ctx.log_request_workspaces,
     consumer = ngx.ctx.authenticated_consumer,
     client_ip = ngx.var.remote_addr,
     started_at = ngx.req.start_time() * 1000

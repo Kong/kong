@@ -792,7 +792,7 @@ local function unique_workspaces(workspace_entities)
     local ws_id = x.workspace_id
     if ws_id and not seen[ws_id] then
       n = n + 1
-      r[n] = {id = ws_id}
+      r[n] = {id = ws_id, name = x.workspace_name}
       seen[ws_id] = true
     end
   end
