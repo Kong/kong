@@ -1681,81 +1681,87 @@ describe("Router", function()
 
     describe("slash handling", function()
       local checks = {
-        -- upstream url    paths            request path    expected path           strip uri
+        -- upstream url    paths           request path    expected path           strip uri
         {  "/",            "/",            "/",            "/",                    true      }, -- 1
         {  "/",            "/",            "/foo/bar",     "/foo/bar",             true      },
         {  "/",            "/",            "/foo/bar/",    "/foo/bar/",            true      },
         {  "/",            "/foo/bar",     "/foo/bar",     "/",                    true      },
+        {  "/",            "/foo/bar",     "/foo/bar/",    "/",                    true      },
         {  "/",            "/foo/bar/",    "/foo/bar/",    "/",                    true      },
         {  "/fee/bor",     "/",            "/",            "/fee/bor",             true      },
         {  "/fee/bor",     "/",            "/foo/bar",     "/fee/borfoo/bar",      true      },
         {  "/fee/bor",     "/",            "/foo/bar/",    "/fee/borfoo/bar/",     true      },
-        {  "/fee/bor",     "/foo/bar",     "/foo/bar",     "/fee/bor",             true      },
-        {  "/fee/bor",     "/foo/bar/",    "/foo/bar/",    "/fee/bor",             true      }, -- 10
+        {  "/fee/bor",     "/foo/bar",     "/foo/bar",     "/fee/bor",             true      }, -- 10
+        {  "/fee/bor",     "/foo/bar",     "/foo/bar/",    "/fee/bor/",            true      },
+        {  "/fee/bor",     "/foo/bar/",    "/foo/bar/",    "/fee/bor",             true      },
         {  "/fee/bor/",    "/",            "/",            "/fee/bor/",            true      },
         {  "/fee/bor/",    "/",            "/foo/bar",     "/fee/bor/foo/bar",     true      },
         {  "/fee/bor/",    "/",            "/foo/bar/",    "/fee/bor/foo/bar/",    true      },
         {  "/fee/bor/",    "/foo/bar",     "/foo/bar",     "/fee/bor/",            true      },
+        {  "/fee/bor/",    "/foo/bar",     "/foo/bar/",    "/fee/bor/",            true      },
         {  "/fee/bor/",    "/foo/bar/",    "/foo/bar/",    "/fee/bor/",            true      },
         {  "/",            "/",            "/",            "/",                    false     },
-        {  "/",            "/",            "/foo/bar",     "/foo/bar",             false     },
+        {  "/",            "/",            "/foo/bar",     "/foo/bar",             false     }, -- 20
         {  "/",            "/",            "/foo/bar/",    "/foo/bar/",            false     },
         {  "/",            "/foo/bar",     "/foo/bar",     "/foo/bar",             false     },
-        {  "/",            "/foo/bar/",    "/foo/bar/",    "/foo/bar/",            false     }, -- 20
+        {  "/",            "/foo/bar",     "/foo/bar/",    "/foo/bar/",            false     },
+        {  "/",            "/foo/bar/",    "/foo/bar/",    "/foo/bar/",            false     },
         {  "/fee/bor",     "/",            "/",            "/fee/bor",             false     },
         {  "/fee/bor",     "/",            "/foo/bar",     "/fee/borfoo/bar",      false     },
         {  "/fee/bor",     "/",            "/foo/bar/",    "/fee/borfoo/bar/",     false     },
         {  "/fee/bor",     "/foo/bar",     "/foo/bar",     "/fee/borfoo/bar",      false     },
-        {  "/fee/bor",     "/foo/bar/",    "/foo/bar/",    "/fee/borfoo/bar/",     false     },
+        {  "/fee/bor",     "/foo/bar",     "/foo/bar/",    "/fee/borfoo/bar/",     false     },
+        {  "/fee/bor",     "/foo/bar/",    "/foo/bar/",    "/fee/borfoo/bar/",     false     }, -- 30
         {  "/fee/bor/",    "/",            "/",            "/fee/bor/",            false     },
         {  "/fee/bor/",    "/",            "/foo/bar",     "/fee/bor/foo/bar",     false     },
         {  "/fee/bor/",    "/",            "/foo/bar/",    "/fee/bor/foo/bar/",    false     },
         {  "/fee/bor/",    "/foo/bar",     "/foo/bar",     "/fee/bor/foo/bar",     false     },
-        {  "/fee/bor/",    "/foo/bar/",    "/foo/bar/",    "/fee/bor/foo/bar/",    false     }, -- 30
+        {  "/fee/bor/",    "/foo/bar",     "/foo/bar/",    "/fee/bor/foo/bar/",    false     },
+        {  "/fee/bor/",    "/foo/bar/",    "/foo/bar/",    "/fee/bor/foo/bar/",    false     },
         -- the following block runs the same tests, but with a request path that is longer
         -- than the matched part, so either matches in the middle of a segment, or has an
         -- additional segment.
         {  "/",            "/",            "/foo/bars",    "/foo/bars",            true      },
         {  "/",            "/",            "/foo/bar/s",   "/foo/bar/s",           true      },
         {  "/",            "/foo/bar",     "/foo/bars",    "/s",                   true      },
-        {  "/",            "/foo/bar/",    "/foo/bar/s",   "/s",                   true      },
+        {  "/",            "/foo/bar/",    "/foo/bar/s",   "/s",                   true      }, -- 40
         {  "/fee/bor",     "/",            "/foo/bars",    "/fee/borfoo/bars",     true      },
         {  "/fee/bor",     "/",            "/foo/bar/s",   "/fee/borfoo/bar/s",    true      },
         {  "/fee/bor",     "/foo/bar",     "/foo/bars",    "/fee/bors",            true      },
         {  "/fee/bor",     "/foo/bar/",    "/foo/bar/s",   "/fee/bors",            true      },
         {  "/fee/bor/",    "/",            "/foo/bars",    "/fee/bor/foo/bars",    true      },
-        {  "/fee/bor/",    "/",            "/foo/bar/s",   "/fee/bor/foo/bar/s",   true      }, -- 40
+        {  "/fee/bor/",    "/",            "/foo/bar/s",   "/fee/bor/foo/bar/s",   true      },
         {  "/fee/bor/",    "/foo/bar",     "/foo/bars",    "/fee/bor/s",           true      },
         {  "/fee/bor/",    "/foo/bar/",    "/foo/bar/s",   "/fee/bor/s",           true      },
         {  "/",            "/",            "/foo/bars",    "/foo/bars",            false     },
-        {  "/",            "/",            "/foo/bar/s",   "/foo/bar/s",           false     },
+        {  "/",            "/",            "/foo/bar/s",   "/foo/bar/s",           false     }, -- 50
         {  "/",            "/foo/bar",     "/foo/bars",    "/foo/bars",            false     },
         {  "/",            "/foo/bar/",    "/foo/bar/s",   "/foo/bar/s",           false     },
         {  "/fee/bor",     "/",            "/foo/bars",    "/fee/borfoo/bars",     false     },
         {  "/fee/bor",     "/",            "/foo/bar/s",   "/fee/borfoo/bar/s",    false     },
         {  "/fee/bor",     "/foo/bar",     "/foo/bars",    "/fee/borfoo/bars",     false     },
-        {  "/fee/bor",     "/foo/bar/",    "/foo/bar/s",   "/fee/borfoo/bar/s",    false     }, -- 50
+        {  "/fee/bor",     "/foo/bar/",    "/foo/bar/s",   "/fee/borfoo/bar/s",    false     },
         {  "/fee/bor/",    "/",            "/foo/bars",    "/fee/bor/foo/bars",    false     },
         {  "/fee/bor/",    "/",            "/foo/bar/s",   "/fee/bor/foo/bar/s",   false     },
         {  "/fee/bor/",    "/foo/bar",     "/foo/bars",    "/fee/bor/foo/bars",    false     },
-        {  "/fee/bor/",    "/foo/bar/",    "/foo/bar/s",   "/fee/bor/foo/bar/s",   false     },
+        {  "/fee/bor/",    "/foo/bar/",    "/foo/bar/s",   "/fee/bor/foo/bar/s",   false     }, -- 60
         -- the following block matches on host, instead of path
         {  "/",            nil,            "/",            "/",                    false     },
         {  "/",            nil,            "/foo/bar",     "/foo/bar",             false     },
         {  "/",            nil,            "/foo/bar/",    "/foo/bar/",            false     },
         {  "/fee/bor",     nil,            "/",            "/fee/bor",             false     },
         {  "/fee/bor",     nil,            "/foo/bar",     "/fee/borfoo/bar",      false     },
-        {  "/fee/bor",     nil,            "/foo/bar/",    "/fee/borfoo/bar/",     false     }, -- 60
+        {  "/fee/bor",     nil,            "/foo/bar/",    "/fee/borfoo/bar/",     false     },
         {  "/fee/bor/",    nil,            "/",            "/fee/bor/",            false     },
         {  "/fee/bor/",    nil,            "/foo/bar",     "/fee/bor/foo/bar",     false     },
         {  "/fee/bor/",    nil,            "/foo/bar/",    "/fee/bor/foo/bar/",    false     },
-        {  "/",            nil,            "/",            "/",                    true      },
+        {  "/",            nil,            "/",            "/",                    true      }, -- 70
         {  "/",            nil,            "/foo/bar",     "/foo/bar",             true      },
         {  "/",            nil,            "/foo/bar/",    "/foo/bar/",            true      },
         {  "/fee/bor",     nil,            "/",            "/fee/bor",             true      },
         {  "/fee/bor",     nil,            "/foo/bar",     "/fee/borfoo/bar",      true      },
         {  "/fee/bor",     nil,            "/foo/bar/",    "/fee/borfoo/bar/",     true      },
-        {  "/fee/bor/",    nil,            "/",            "/fee/bor/",            true      }, -- 70
+        {  "/fee/bor/",    nil,            "/",            "/fee/bor/",            true      },
         {  "/fee/bor/",    nil,            "/foo/bar",     "/fee/bor/foo/bar",     true      },
         {  "/fee/bor/",    nil,            "/foo/bar/",    "/fee/bor/foo/bar/",    true      },
       }
