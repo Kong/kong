@@ -1208,6 +1208,8 @@ end
 -- @return A new table, with the auto fields containing
 -- appropriate updated values.
 function Schema:process_auto_fields(input, context, nulls)
+  ngx.update_time()
+
   local output = tablex.deepcopy(input)
   local now_s  = ngx_time()
   local now_ms = ngx_now()
