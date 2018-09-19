@@ -730,9 +730,11 @@ function Schema:validate_field(field, value)
     if field[k] then
       local ok, err = self.validators[k](value, field[k], field)
       if not ok then
+        if not err then
+          err = (validation_errors[k:upper()]
+                 or validation_errors.VALIDATION):format(value)
+        end
         return nil, err
-                    or validation_errors[k:upper()]:format(value)
-                    or validation_errors.VALIDATION:format(value)
       end
     end
   end
