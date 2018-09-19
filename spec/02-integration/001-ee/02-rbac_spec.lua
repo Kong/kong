@@ -2302,3 +2302,75 @@ describe("Admin API", function()
 end)
 
 end)
+
+dao_helpers.for_each_dao(function(kong_config)
+describe("RBAC users", function()
+  local dao, _
+  setup(function()
+    _,_,dao = helpers.get_db_utils(kong_config.database)
+
+    assert(helpers.start_kong({
+      database = kong_config.database,
+    }))
+    client = assert(helpers.admin_client("127.0.0.1", 8001))
+    dao:run_migrations()
+
+    -- create 2 workspaces
+    post("/workspaces", {name = "ws1"})
+    post("/workspaces", {name = "ws2"})
+
+    -- user 'admin' (role ws1ws2-admin) has powers over both
+    post("/ws1/rbac/users", {name = "admin", user_token = "ws1ws2-admin"})
+    post("/ws1/rbac/roles" , {name = "ws1ws2-admin"})
+    post("/ws1/rbac/roles/ws1ws2-admin/endpoints", {endpoint = "*", actions = "*", workspace = "ws2"})
+    post("/ws1/rbac/roles/ws1ws2-admin/endpoints", {endpoint = "*", actions = "*", workspace = "ws1"})
+    post("/ws1/rbac/users/admin/roles", {roles = "ws1ws2-admin"})
+
+    -- user bob (role ws1-admin) has only powers over ws1
+    post("/ws1/rbac/users", {name = "bob", user_token = "bob"})
+    post("/ws1/rbac/roles" , {name = "ws1-admin"})
+    post("/ws1/rbac/roles/ws1-admin/endpoints", {endpoint = "*", actions = "read,create,update,delete", workspace = "ws1"})
+    post("/ws1/rbac/users/bob/roles", {roles = "ws1-admin"})
+
+    helpers.stop_kong(nil, true, true)
+    assert(helpers.start_kong {
+      database              = kong_config.database,
+      enforce_rbac          = "on",
+    })
+    client = assert(helpers.admin_client())
+  end)
+
+  teardown(function()
+    helpers.stop_kong(nil, true, true)
+
+    if client then
+      client:close()
+    end
+  end)
+
+  it("cannot give permissions to workspaces they do not manage", function()
+    post("/ws1/rbac/roles/ws1-admin/endpoints", {
+      endpoint = "*",
+      workspace = "ws2",
+      actions = "read,create,update,delete"},
+        {["Kong-Admin-Token"] = "bob"}, 403)
+  end)
+
+  it("can give permissions to the same workspace of the request", function()
+    post("/ws1/rbac/roles/ws1-admin/endpoints", {
+      endpoint = "/bla",
+      workspace = "ws1",
+      actions = "read,create,update,delete"},
+        {["Kong-Admin-Token"] = "bob"}, 201)
+  end)
+
+  it("can give permissions to other workspaces if they manage", function()
+    post("/ws1/rbac/roles/ws1-admin/endpoints", {
+      endpoint = "*",
+      workspace = "ws2",
+      actions = "read,create,update,delete"},
+        {["Kong-Admin-Token"] = "ws1ws2-admin"}, 201)
+  end)
+
+end)
+end)

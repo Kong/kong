@@ -18,6 +18,24 @@ local fmt   = string.format
 local entity_relationships = rbac.entity_relationships
 
 
+local function rbac_operation_allowed(kong_conf, rbac_ctx, current_ws, dest_ws)
+  if kong_conf.rbac == "off" then
+    return true
+  end
+
+  if current_ws == dest_ws then
+    return true
+  end
+
+  -- dest is different from current
+  if rbac.user_can_manage_endpoints_from(rbac_ctx, dest_ws) then
+    return true
+  end
+
+  return false
+end
+
+
 local function objects_from_names(dao_factory, given_names, object_name)
   local names      = utils.split(given_names, ",")
   local objs       = new_tab(#names, 0)
@@ -475,25 +493,12 @@ return {
       --XXX we should probably factor this check out into kong.workspaces
       self.params.workspace = self.params.workspace or workspaces.DEFAULT_WORKSPACE
       local ws_name = self.params.workspace
+      local ctx = ngx.ctx
+      local request_ws = ctx.workspaces[1]
 
-      -- only super-admin role should be allowed to have global permission
-      -- its a hack and needs a different approach
-      local rbac_ctx = ngx.ctx.rbac
-      if ws_name == "*" and rbac_ctx then
-        -- make sure current user has permission to
-        -- add cross workspace permissions
-        local endpoints_perms = rbac_ctx.endpoints_perms
-        --todo  its a temp fix
-        if not endpoints_perms["*"] or not endpoints_perms["*"]["*"] == 15 then
-          local err = fmt("%s is not allowed to create cross workspace permissions",
-                          rbac_ctx.user.name)
-          helpers.responses.send_HTTP_BAD_REQUEST(err)
-        end
-      end
-
-      if ws_name ~= workspaces.DEFAULT_WORKSPACE and ws_name ~= "*" then
+      if ws_name ~= "*" then
         local w, err = dao_factory.workspaces:run_with_ws_scope({}, dao_factory.workspaces.find_all, {
-          name = self.params.workspace
+          name = ws_name
         })
         if err then
           helpers.yield_error(err)
@@ -502,6 +507,14 @@ return {
           local err = fmt("Workspace %s does not exist", self.params.workspace)
           helpers.responses.send_HTTP_NOT_FOUND(err)
         end
+      end
+
+      if not rbac_operation_allowed(singletons.configuration,
+        ctx.rbac, request_ws, ws_name) then
+        local err_str = fmt(
+          "%s is not allowed to create cross workspace permissions",
+          ctx.rbac.user.name)
+        helpers.responses.send_HTTP_FORBIDDEN(err_str)
       end
 
       local cache_key = dao_factory["rbac_roles"]:cache_key(self.rbac_role.id)

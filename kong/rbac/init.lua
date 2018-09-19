@@ -160,6 +160,21 @@ end
 _M.entity_relationships = entity_relationships
 
 
+-- predicate answering if a user (rbac_ctx) is able to manage
+-- endpoints from workspace (workspace). Answer is true if user has
+-- all permissions over all endpoints of that workspace ("*" being a
+-- general case of it)
+local function user_can_manage_endpoints_from(rbac_ctx, workspace)
+  return
+    (rbac_ctx.endpoints_perms[workspace]
+      and rbac_ctx.endpoints_perms[workspace]["*"] == bitfield_all_actions)
+    or
+    (rbac_ctx.endpoints_perms["*"]
+      and rbac_ctx.endpoints_perms["*"]["*"] == bitfield_all_actions)
+end
+_M.user_can_manage_endpoints_from = user_can_manage_endpoints_from
+
+
 local function retrieve_user(user_token)
   local users, err = singletons.dao.rbac_users:find_all({
     user_token = user_token,
