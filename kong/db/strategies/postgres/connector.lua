@@ -198,7 +198,7 @@ function _mt:init_worker(strategies)
         local name = schema.name
         graph:add(name)
         for _, field in schema:each_field() do
-          if field.type == "foreign" then
+          if field.type == "foreign" and field.schema.ttl then
             graph:add(name, field.schema.name)
           end
         end
