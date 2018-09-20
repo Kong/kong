@@ -172,6 +172,11 @@ return {
           consumer_id = self.consumer.id,
         })
 
+        if not next(user_consumer) then
+          ngx.log(ngx.ERR, "[userinfo] ", "rbac_user_consumer map not found")
+          return helpers.responses.send_HTTP_NOT_FOUND()
+        end
+
         if user_consumer and user_consumer[1].user_id then
           self.params.name_or_id = user_consumer[1].user_id
           crud.find_rbac_user_by_name_or_id(self, dao_factory, helpers)
