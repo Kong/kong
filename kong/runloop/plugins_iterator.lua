@@ -68,6 +68,10 @@ local function get_next(self)
 
   self.i = i
 
+  if not self.configured_plugins[plugin.name] then
+    return get_next(self)
+  end
+
   local ctx = self.ctx
 
   -- load the plugin configuration in early phases
@@ -194,7 +198,8 @@ local plugin_iter_mt = { __call = get_next }
 -- is access_by_lua_block. We don't use `ngx.get_phase()` simply because we can
 -- avoid it.
 -- @treturn function iterator
-local function iter_plugins_for_req(ctx, loaded_plugins, access_or_cert_ctx)
+local function iter_plugins_for_req(ctx, loaded_plugins, configured_plugins,
+                                    access_or_cert_ctx)
   if not ctx.plugins_for_request then
     ctx.plugins_for_request = {}
   end
@@ -206,6 +211,7 @@ local function iter_plugins_for_req(ctx, loaded_plugins, access_or_cert_ctx)
     route                 = ctx.route,
     service               = ctx.service,
     loaded_plugins        = loaded_plugins,
+    configured_plugins    = configured_plugins,
     access_or_cert_ctx    = access_or_cert_ctx,
   }
 
