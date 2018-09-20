@@ -1220,7 +1220,7 @@ end
 -- for value creation and update.
 -- @param input The table containing data to be processed.
 -- @param context a string describing the CRUD context:
--- valid values are: "insert", "update"
+-- valid values are: "insert", "update", "upsert"
 -- @param nulls boolean: return nulls as explicit ngx.null values
 -- @return A new table, with the auto fields containing
 -- appropriate updated values.
@@ -1244,11 +1244,21 @@ function Schema:process_auto_fields(input, context, nulls)
   --]]
 
   for key, field in self:each_field(input) do
+
+    if field.legacy and field.uuid and output[key] == "" then
+      output[key] = null
+    end
+
     if field.auto then
-      if field.uuid and context == "insert" and output[key] == nil then
-        output[key] = utils.uuid()
-      elseif field.uuid and context == "upsert" and output[key] == nil then
-        output[key] = utils.uuid()
+      if field.uuid then
+        if (context == "insert" or context == "upsert") and output[key] == nil then
+          output[key] = utils.uuid()
+        end
+
+      elseif field.type == "string" then
+        if (context == "insert" or context == "upsert") and output[key] == nil then
+          output[key] = utils.random_string()
+        end
 
       elseif (key == "created_at" and (context == "insert" or
                                        context == "upsert")) or
@@ -1261,11 +1271,6 @@ function Schema:process_auto_fields(input, context, nulls)
         elseif field.type == "integer" then
           output[key] = now_s
         end
-
-      elseif field.type == "string" and output[key] == nil
-                                    and (context == "insert" or
-                                         context == "upsert") then
-        output[key] = utils.random_string()
       end
     end
 
