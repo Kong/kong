@@ -244,7 +244,7 @@ describe("Admin API - ee-specific Kong routes", function()
           enforce_rbac = "on",
         }))
 
-        local super_admin = ee_helpers.register_rbac_resources(dao)
+        ee_helpers.register_rbac_resources(dao)
 
         client = assert(helpers.proxy_client())
 
@@ -268,7 +268,7 @@ describe("Admin API - ee-specific Kong routes", function()
           }
         })
 
-        res = assert.res_status(404, res)
+        assert.res_status(404, res)
       end)
     end)
   end)
