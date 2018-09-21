@@ -49,12 +49,6 @@ local positive_int_or_zero = Schema.define {
 }
 
 
-local header_name = Schema.define {
-  type = "string",
-  custom_validator = utils.validate_header_name,
-}
-
-
 local check_type = Schema.define {
   type = "string",
   one_of = { "tcp", "http", "https" },
@@ -162,8 +156,8 @@ local r =  {
     { name = { type = "string", required = true, unique = true, custom_validator = validate_name }, },
     { hash_on = hash_on },
     { hash_fallback = hash_on },
-    { hash_on_header = header_name, },
-    { hash_fallback_header = header_name, },
+    { hash_on_header = typedefs.header_name, },
+    { hash_fallback_header = typedefs.header_name, },
     { hash_on_cookie = { type = "string",  custom_validator = utils.validate_cookie_name }, },
     { hash_on_cookie_path = typedefs.path{ default = "/", }, },
     { slots = { type = "integer", default = 10000, between = { 10, 2^16 }, }, },

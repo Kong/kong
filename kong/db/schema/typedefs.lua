@@ -2,6 +2,7 @@
 -- @module kong.db.schema.typedefs
 local utils = require "kong.tools.utils"
 local Schema = require("kong.db.schema")
+local socket_url = require("socket.url")
 
 
 local match = string.match
@@ -75,6 +76,25 @@ local function validate_sni(host)
 end
 
 
+local function validate_url(url)
+  local parsed_url, err = socket_url.parse(url)
+
+  if not parsed_url then
+    return nil, "could not parse url. " .. err
+  end
+
+  if not parsed_url.host then
+    return nil, "missing host in url"
+  end
+
+  if not parsed_url.scheme then
+    return nil, "missing scheme in url"
+  end
+
+  return true
+end
+
+
 local typedefs = {}
 
 
@@ -114,6 +134,16 @@ typedefs.path = Schema.define {
     },
   },
   custom_validator = validate_path,
+}
+
+typedefs.url = Schema.define {
+  type = "string",
+  custom_validator = validate_url,
+}
+
+typedefs.header_name = Schema.define {
+  type = "string",
+  custom_validator = utils.validate_header_name,
 }
 
 

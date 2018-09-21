@@ -14,6 +14,11 @@ local fmt = string.format
 local NULL_UUID = "00000000-0000-0000-0000-000000000000"
 
 
+local function is_present(str)
+  return str and str ~= "" and str ~= ngx.null
+end
+
+
 local function get_ids(conf)
   conf = conf or {}
 
@@ -149,7 +154,7 @@ return {
         return nil, err
       end
 
-      if times == 0 and conf.redis_password and conf.redis_password ~= "" then
+      if times == 0 and is_present(conf.redis_password) then
         local ok, err = red:auth(conf.redis_password)
         if not ok then
           ngx_log(ngx.ERR, "failed to auth Redis: ", err)
@@ -228,7 +233,7 @@ return {
         return nil, err
       end
 
-      if times == 0 and conf.redis_password and conf.redis_password ~= "" then
+      if times == 0 and is_present(conf.redis_password) then
         local ok, err = red:auth(conf.redis_password)
         if not ok then
           ngx_log(ngx.ERR, "failed to auth Redis: ", err)

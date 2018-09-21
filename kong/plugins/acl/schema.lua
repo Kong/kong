@@ -1,18 +1,22 @@
-local Errors = require "kong.dao.errors"
+local typedefs = require "kong.db.schema.typedefs"
+
 
 return {
-  no_consumer = true,
+  name = "acl",
   fields = {
-    whitelist = { type = "array" },
-    blacklist = { type = "array" },
-    hide_groups_header = { type = "boolean", default = false },
+    { consumer = typedefs.no_consumer },
+    { config = {
+        type = "record",
+        fields = {
+          { whitelist = { type = "array", elements = { type = "string" }, }, },
+          { blacklist = { type = "array", elements = { type = "string" }, }, },
+          { hide_groups_header = { type = "boolean", default = false }, },
+        }
+      }
+    }
   },
-  self_check = function(schema, plugin_t, dao, is_update)
-    if next(plugin_t.whitelist or {}) and next(plugin_t.blacklist or {}) then
-      return false, Errors.schema "You cannot set both a whitelist and a blacklist"
-    elseif not (next(plugin_t.whitelist or {}) or next(plugin_t.blacklist or {})) then
-      return false, Errors.schema "You must set at least a whitelist or blacklist"
-    end
-    return true
-  end
+  entity_checks = {
+    { only_one_of = { "config.whitelist", "config.blacklist" }, },
+    { at_least_one_of = { "config.whitelist", "config.blacklist" }, },
+  },
 }

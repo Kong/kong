@@ -1,5 +1,12 @@
 return {
+  name = "request-size-limiting",
   fields = {
-    allowed_payload_size = { default = 128, type = "number" }
-  }
+    { config = {
+        type = "record",
+        fields = {
+          { allowed_payload_size = { type = "integer", default = 128 }, },
+        },
+      },
+    },
+  },
 }

@@ -1,13 +1,19 @@
-return {
-  fields = {
-    http_endpoint = { required = true, type = "url" },
-    method = { default = "POST", enum = { "POST", "PUT", "PATCH" } },
-    content_type = { default = "application/json", enum = { "application/json" } },
-    timeout = { default = 10000, type = "number" },
-    keepalive = { default = 60000, type = "number" },
+local typedefs = require "kong.db.schema.typedefs"
 
-    retry_count = {type = "number", default = 10},
-    queue_size = {type = "number", default = 1},
-    flush_timeout = {type = "number", default = 2},
-  }
+return {
+  name = "http-log",
+  fields = {
+    { config = {
+        type = "record",
+        fields = {
+          { http_endpoint = typedefs.url({ required = true }) },
+          { method = { type = "string", default = "POST", one_of = { "POST", "PUT", "PATCH" }, }, },
+          { content_type = { type = "string", default = "application/json", one_of = { "application/json" }, }, },
+          { timeout = { type = "number", default = 10000 }, },
+          { keepalive = { type = "number", default = 60000 }, },
+          { retry_count = { type = "integer", default = 10 }, },
+          { queue_size = { type = "integer", default = 1 }, },
+          { flush_timeout = { type = "number", default = 2 }, },
+    }, }, },
+  },
 }
