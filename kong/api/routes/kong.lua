@@ -173,7 +173,9 @@ return {
         })
 
         if not next(user_consumer) then
-          ngx.log(ngx.ERR, "[userinfo] ", "rbac_user_consumer map not found")
+          ngx.log(ngx.ERR, "[userinfo] ", "rbac_user_consumer map not found "
+                                          .. "for consumer id ="
+                                          .. self.consumer.id)
           return helpers.responses.send_HTTP_NOT_FOUND()
         end
 
@@ -182,7 +184,9 @@ return {
           crud.find_rbac_user_by_name_or_id(self, dao_factory, helpers)
 
           if not self.rbac_user then
-            return helpers.responses.send_HTTP_UNAUTHORIZED('user not found')
+            ngx.log(ngx.ERR, "[userinfo] ", "rbac user not found for user "
+                                          .. self.params.name_or_id)
+            return helpers.responses.send_HTTP_NOT_FOUND()
           end
         end
 
