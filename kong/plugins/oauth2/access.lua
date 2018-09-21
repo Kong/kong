@@ -452,6 +452,9 @@ local function parse_access_token(conf)
   local found_in = {}
   local access_token = ngx.req.get_headers()[conf.auth_header_name]
   if access_token then
+    if type(access_token) == "table" then --Take the first found
+      access_token = access_token[1]
+    end
     local parts = {}
     for v in access_token:gmatch("%S+") do -- Split by space
       table.insert(parts, v)
