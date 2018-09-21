@@ -5,6 +5,7 @@ local log          = ngx.log
 local DEBUG        = ngx.DEBUG
 local NOTICE       = ngx.NOTICE
 local ERR          = ngx.ERR
+local CRIT         = ngx.CRIT
 
 
 local function write_log(level, ...)
@@ -21,6 +22,9 @@ local logging = {
   end,
   err = function(...)
     return write_log(ERR, ...)
+  end,
+  crit = function(...)
+    return write_log(CRIT, ...)
   end,
 }
 

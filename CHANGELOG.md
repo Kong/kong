@@ -1,3 +1,21 @@
+## v0.1.0
+
+- Add `config.enable_instrumentation`
+- Add `config.access_token_introspection_timeout`
+- Add `config.channel_token_introspection_timeout`
+- Change `config.access_token_request_header` default value from `authorization:bearer` to `Authorization`
+- Change `config.access_token_upstream_header` default value from `authorization:bearer` to `Authorization`
+- Change both access token and channel token headers may be prefixed with `"Bearer"` or `"Basic"` (case-insensitive)
+
+
+## v0.0.9
+
+- Change in plugins Admin API to make it more stable on invalid keysets
+- Add `config.enable_access_token_introspection`
+- Add `config.enable_channel_token_introspection`
+- Add better error logging on plugin configuration phase
+
+
 ## v0.0.8
 
 - Change the checking of tokens to be ordered: `access token`, `channel token`
@@ -23,6 +41,7 @@
 
 - Fix typo in `access_token_intrspection_scopes_required` (the missing `o`)
 
+
 ## v0.0.6
 
 - Add `config.access_token_introspection_leeway`
@@ -36,10 +55,12 @@
 - Add `config.verify_channel_token_introspection_expiry`
 - Add `config.verify_channel_token_introspection_scopes`
 
+
 ## v0.0.5
 
 - Add `config.access_token_introspection_body_args`
 - Add `config.channel_token_introspection_body_args`
+
 
 ## v0.0.4
 
@@ -55,9 +76,11 @@
 
 - Plugin renamed to `jwt-signer`, also affects the Github repository as well.
 
+
 ## v0.0.2
 
 - Fix jwks.updated_at to correctly update on key rotation.
+
 
 ## v0.0.1
 

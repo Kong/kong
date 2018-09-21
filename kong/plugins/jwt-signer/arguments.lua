@@ -55,7 +55,7 @@ end
 
 
 local function create_get_header(hdrs)
-  return function(name, prefix)
+  return function(name)
     if not name then
       return nil
     end
@@ -69,55 +69,14 @@ local function create_get_header(hdrs)
     local name_lower = lower(name)
     if name_lower == "authorization:bearer" then
       name   = "Authorization"
-      bearer = true
 
     elseif name_lower == "authorization:basic" then
       name  = "Authorization"
-      basic = true
     end
 
     local header_arg = get_value(headers[name])
-    if not header_arg then
-      local prefix_type = type(prefix)
-      if prefix_type == "string" then
-        header_arg = get_value(headers[prefix .. "-" .. name])
-
-      elseif prefix_type == "table" then
-        for _, p in ipairs(prefix) do
-          header_arg = get_value(headers[p .. "-" .. name])
-          if header_arg then
-            break
-          end
-        end
-      end
-    end
-
     if type(header_arg) == "table" then
       return get_value(header_arg[1])
-    end
-
-    if header_arg then
-      local value_prefix = lower(sub(header_arg, 1, 6))
-      if bearer then
-        if value_prefix == "bearer" then
-          return sub(header_arg, 8)
-
-        else
-          return nil
-        end
-
-      elseif basic then
-        if sub(value_prefix, 1, 5) == "basic" then
-          header_arg = sub(header_arg, 7)
-          local decoded = decode_base64(header_arg)
-          if decoded then
-            header_arg = decoded
-          end
-
-        else
-          return nil
-        end
-      end
     end
 
     return header_arg
@@ -141,7 +100,7 @@ local function set_header_arg(name, value)
 end
 
 
-local function clear_header_arg(name, prefix)
+local function clear_header_arg(name)
   if not name then
     return nil
   end
@@ -151,20 +110,6 @@ local function clear_header_arg(name, prefix)
     clear_header("Authorization")
   else
     clear_header(name)
-  end
-
-  if not prefix then
-    return
-  end
-
-  local prefix_type = type(prefix)
-  if prefix_type == "string" then
-    clear_header(prefix .. "-" .. name)
-
-  elseif prefix_type == "table" then
-    for _, p in ipairs(prefix) do
-      clear_header(p .. "-" .. name)
-    end
   end
 end
 

@@ -211,7 +211,6 @@ end
 local function load_keys(name)
   local cache_key = singletons.dao.jwt_signer_jwks:cache_key(name)
   local row, err = singletons.cache:get(cache_key, nil, load_keys_db, name)
-
   if err then
     log(err)
   end
@@ -279,10 +278,11 @@ local function load_consumer(subject, consumer_by)
 end
 
 
-local function introspect_uri(endpoint, opaque_token, hint, authorization, args)
+local function introspect_uri(endpoint, opaque_token, hint, authorization, args, timeout)
   local options = {
     token_introspection_endpoint = endpoint,
     ssl_verify                   = false,
+    timeout                      = timeout,
   }
 
   if authorization then
@@ -305,10 +305,10 @@ local function introspect_uri(endpoint, opaque_token, hint, authorization, args)
 end
 
 
-local function introspect_uri_cache(endpoint, opaque_token, hint, authorization, args, now)
+local function introspect_uri_cache(endpoint, opaque_token, hint, authorization, args, now, timeout)
   log("introspecting token with ", endpoint)
 
-  local token_info, err = introspect_uri(endpoint, opaque_token, hint, authorization, args)
+  local token_info, err = introspect_uri(endpoint, opaque_token, hint, authorization, args, timeout)
   if not token_info then
     return nil, err or "unable to introspect token"
   end
@@ -332,7 +332,7 @@ local function introspect_uri_cache(endpoint, opaque_token, hint, authorization,
 end
 
 
-local function introspect(endpoint, opaque_token, hint, authorization, args, cache)
+local function introspect(endpoint, opaque_token, hint, authorization, args, cache, timeout)
   if not endpoint then
     return nil, "no endpoint given for introspection"
   end
@@ -383,7 +383,8 @@ local function introspect(endpoint, opaque_token, hint, authorization, args, cac
                                             hint,
                                             authorization,
                                             args_table or args,
-                                            now)
+                                            now,
+                                            timeout)
 
       if not res then
         return nil, err or "unable to introspect token"
@@ -392,7 +393,7 @@ local function introspect(endpoint, opaque_token, hint, authorization, args, cac
       local exp = res[2]
       if exp and now > exp then
         singletons.cache:invalidate(cache_key)
-        return introspect_uri(endpoint, opaque_token, hint, authorization, args_table or args)
+        return introspect_uri(endpoint, opaque_token, hint, authorization, args_table or args, timeout)
       end
 
       return tablex.deepcopy(res[1])
@@ -402,7 +403,7 @@ local function introspect(endpoint, opaque_token, hint, authorization, args, cac
     end
   end
 
-  return introspect_uri(endpoint, opaque_token, hint, authorization, args)
+  return introspect_uri(endpoint, opaque_token, hint, authorization, args, timeout)
 end
 
 

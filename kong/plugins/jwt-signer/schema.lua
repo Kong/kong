@@ -1,5 +1,6 @@
 local arguments = require "kong.plugins.jwt-signer.arguments"
 local cache     = require "kong.plugins.jwt-signer.cache"
+local log       = require "kong.plugins.jwt-signer.log"
 local errors    = require "kong.dao.errors"
 
 
@@ -15,7 +16,8 @@ local function self_check(_, conf)
     if access_token_jwks_uri then
       local ok, err = cache.load_keys(access_token_jwks_uri)
       if not ok then
-        return false, errors.schema(err)
+        log.notice("unable to load access token jwks (", err, ")")
+        return false, errors.schema("unable to load access token jwks")
       end
     end
 
@@ -23,7 +25,8 @@ local function self_check(_, conf)
     if channel_token_jwks_uri then
       local ok, err = cache.load_keys(channel_token_jwks_uri)
       if not ok then
-        return false, errors.schema(err)
+        log.notice("unable to load channel token jwks (", err, ")")
+        return false, errors.schema("unable to load channel token jwks")
       end
     end
 
@@ -31,7 +34,8 @@ local function self_check(_, conf)
     if access_token_keyset then
       local ok, err = cache.load_keys(access_token_keyset)
       if not ok then
-        return false, errors.schema(err)
+        log.notice("unable to load access token keyset (", err, ")")
+        return false, errors.schema("unable to load access token keyset")
       end
     end
 
@@ -39,14 +43,16 @@ local function self_check(_, conf)
     if channel_token_keyset and channel_token_keyset ~= access_token_keyset then
       local ok, err = cache.load_keys(channel_token_keyset)
       if not ok then
-        return false, errors.schema(err)
+        log.notice("unable to load channel token keyset (", err, ")")
+        return false, errors.schema("unable to load channel token keyset")
       end
     end
 
     if access_token_keyset ~= "kong" and channel_token_keyset ~= "kong" then
       local ok, err = cache.load_keys("kong")
       if not ok then
-        return false, errors.schema(err)
+        log.notice("unable to load kong keyset (", err, ")")
+        return false, errors.schema("unable to load kong keyset")
       end
     end
   end
@@ -62,6 +68,11 @@ return {
     realm                                       = {
       required                                  = false,
       type                                      = "string",
+    },
+    enable_instrumentation                      = {
+      required                                  = false,
+      type                                      = "boolean",
+      default                                   = false,
     },
     access_token_issuer                         = {
       required                                  = false,
@@ -80,7 +91,7 @@ return {
     access_token_request_header                 = {
       required                                  = false,
       type                                      = "string",
-      default                                   = "authorization:bearer",
+      default                                   = "Authorization",
     },
     access_token_leeway                         = {
       required                                  = false,
@@ -118,7 +129,7 @@ return {
     access_token_upstream_header                = {
       required                                  = false,
       type                                      = "string",
-      default                                   = "authorization:bearer",
+      default                                   = "Authorization",
     },
     access_token_upstream_leeway                = {
       required                                  = false,
@@ -179,9 +190,13 @@ return {
       type                                      = "number",
       default                                   = 0,
     },
+    access_token_introspection_timeout          = {
+      required                                  = false,
+      type                                      = "number",
+    },
     access_token_signing_algorithm              = {
       required                                  = true,
-      type                                      = "enum",
+      type                                      = "string",
       enum = {
         "RS256",
         "RS512",
@@ -224,6 +239,11 @@ return {
       default                                   = true,
     },
     trust_access_token_introspection            = {
+      required                                  = false,
+      type                                      = "boolean",
+      default                                   = true,
+    },
+    enable_access_token_introspection           = {
       required                                  = false,
       type                                      = "boolean",
       default                                   = true,
@@ -341,9 +361,13 @@ return {
       type                                      = "number",
       default                                   = 0,
     },
+    channel_token_introspection_timeout         = {
+      required                                  = false,
+      type                                      = "number",
+    },
     channel_token_signing_algorithm             = {
       required                                  = true,
-      type                                      = "enum",
+      type                                      = "string",
       enum = {
         "RS256",
         "RS512",
@@ -386,6 +410,11 @@ return {
       default                                   = true,
     },
     trust_channel_token_introspection           = {
+      required                                  = false,
+      type                                      = "boolean",
+      default                                   = true,
+    },
+    enable_channel_token_introspection          = {
       required                                  = false,
       type                                      = "boolean",
       default                                   = true,

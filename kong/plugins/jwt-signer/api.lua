@@ -23,12 +23,19 @@ local PRIVATE = {
 
 
 local function clear_private_keys(jwks)
-  for _, jwk in ipairs(jwks) do
-    for key in pairs(jwk) do
-      if PRIVATE[key] then
-        jwk[key] = nil
+  if type(jwks) == "table" then
+    for _, jwk in ipairs(jwks) do
+      if type(jwk) == "table" then
+        for key in pairs(jwk) do
+          if PRIVATE[key] then
+            jwk[key] = nil
+          end
+        end
       end
     end
+
+  else
+    return EMPTY_ARRAY
   end
 
   return jwks
@@ -46,11 +53,13 @@ local function decode_jwks(row, key)
       else
         row[key] = EMPTY_ARRAY
       end
+
     elseif type(jwks) == "table" then
       row[key] = clear_private_keys(jwks)
     else
       row[key] = EMPTY_ARRAY
     end
+
   else
     row[key] = EMPTY_ARRAY
   end
@@ -58,8 +67,10 @@ end
 
 
 local function post_process_keys(row)
-  decode_jwks(row, "keys")
-  decode_jwks(row, "previous")
+  if type(row) == "table" then
+    decode_jwks(row, "keys")
+    decode_jwks(row, "previous")
+  end
 
   return row
 end
@@ -168,5 +179,4 @@ return {
       return helpers.responses.send_HTTP_OK(post_process_row(row))
     end,
   },
-
 }
