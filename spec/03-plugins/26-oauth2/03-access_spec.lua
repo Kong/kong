@@ -1718,6 +1718,19 @@ for _, strategy in helpers.each_strategy() do
         })
         assert.res_status(200, res)
       end)
+      it("works when a correct access_token is being sent in duplicate custom headers", function()
+        local token = provision_token("oauth2_11.com",nil,"clientid1011","secret1011")
+
+        local res = assert(proxy_ssl_client:send {
+          method = "GET",
+          path = "/request",
+          headers = {
+            ["Host"] = "oauth2_11.com",
+            ["custom_header_name"] = { "bearer " .. token.access_token, "bearer " .. token.access_token },
+          }
+        })
+        assert.res_status(200, res)
+      end)
       it("fails when a correct access_token is being sent in the wrong header", function()
         local token = provision_token("oauth2_11.com",nil,"clientid1011","secret1011")
 
