@@ -508,7 +508,7 @@ local function new(self)
   -- @usage
   -- -- Given a body with payload "Hello, Earth!":
   --
-  -- kong.request.get_raw_body():gsub("Earth", Mars") -- "Hello, Mars!"
+  -- kong.request.get_raw_body():gsub("Earth", "Mars") -- "Hello, Mars!"
   function _REQUEST.get_raw_body()
     check_phase(before_content)
 
