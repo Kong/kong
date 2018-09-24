@@ -38,7 +38,7 @@ dependencies = {
   "kong-plugin-azure-functions ~> 0.1",
   "kong-plugin-zipkin ~> 0.0",
   "kong-plugin-serverless-functions ~> 0.1",
-  "kong-prometheus-plugin ~> 0.1",
+  "kong-prometheus-plugin ~> 0.2",
 }
 build = {
   type = "builtin",
