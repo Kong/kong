@@ -165,9 +165,16 @@ return {
       local worker_events  = singletons.worker_events
       local cluster_events = singletons.cluster_events
 
+      -- database topology refresher
+
+      worker_events.register(function()
+        local ok, err = dao.db:refresh()
+        if not ok then
+          ngx.log(ERR, "[events] failed to schedule DB refresh: ", err)
+        end
+      end, "database", "invalid")
 
       -- events dispatcher
-
 
       worker_events.register(function(data)
         if not data.new_db then
