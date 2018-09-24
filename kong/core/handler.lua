@@ -265,6 +265,15 @@ return {
 
 
       worker_events.register(function(data)
+        -- assume an update doesnt also change the whole entity!
+        if data.operation ~= "update" then
+          log(DEBUG, "[events] Plugin updated, invalidating plugin map")
+          cache:invalidate("plugins_map:version")
+        end
+      end, "crud", "plugins")
+
+
+      worker_events.register(function(data)
         if data.operation ~= "create" and
            data.operation ~= "delete"
         then

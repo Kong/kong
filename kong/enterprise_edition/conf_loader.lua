@@ -142,16 +142,16 @@ local function validate_vitals_prometheus(conf, errors)
     errors[#errors+1] = "vitals_strategy must be either \"database\" or \"prometheus\""
   end
 
-  do 
+  do
+    -- validate the presence of form of host and port
+    -- we cannot inject values into conf here as the table will be intersected
+    -- with the defaults table following this call
     if conf.vitals_prometheus_address then
       local host, port
       host, port = conf.vitals_prometheus_address:match("(.+):([%d]+)$")
       port = tonumber(port)
       if not host or not port then
         errors[#errors+1] = "vitals_prometheus_address must be of form: <ip>:<port>"
-      else
-        conf.vitals_prometheus_host = host
-        conf.vitals_prometheus_port = port
       end
     end
   end
@@ -159,21 +159,16 @@ local function validate_vitals_prometheus(conf, errors)
   do
     if conf.vitals_statsd_address then
       local host, port
-      local remainder, _, protocol = parse_option_flags(conf.vitals_statsd_address, { "udp", "tcp" })
+      local remainder, _, _ = parse_option_flags(conf.vitals_statsd_address, { "udp", "tcp" })
       if remainder then
         host, port = remainder:match("(.+):([%d]+)$")
         port = tonumber(port)
         if not host or not port then
           host = remainder:match("(unix:/.+)$")
-          port = nil
         end
       end
       if not host then
         errors[#errors+1] = "vitals_statsd_address must be of form: <ip>:<port> [udp|tcp]"
-      else
-        conf.vitals_statsd_host = host
-        conf.vitals_statsd_port = port
-        conf.vitals_statsd_use_tcp = protocol == "tcp"
       end
     end
   end

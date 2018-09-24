@@ -170,9 +170,14 @@ local function load_tsdb_strategy(strategy)
   local conf = singletons.configuration
   if strategy == "prometheus" then
     local db_strategy = require("kong.vitals.prometheus.strategy")
+
+    local host, port
+    host, port = conf.vitals_prometheus_address:match("(.+):([%d]+)$")
+    port = tonumber(port)
+
     local tsdb_opts = {
-      host = conf.vitals_prometheus_host,
-      port = conf.vitals_prometheus_port,
+      host = host,
+      port = port,
       scrape_interval = conf.vitals_prometheus_scrape_interval,
       auth_header = feature_flags.get_feature_value(FF_VALUES.VITALS_PROMETHEUS_AUTH_HEADER),
       custom_filters = feature_flags.get_feature_value(FF_VALUES.VITALS_PROMETHEUS_CUSTOM_FILTERS),

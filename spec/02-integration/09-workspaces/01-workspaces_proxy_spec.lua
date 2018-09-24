@@ -180,7 +180,7 @@ for _, strategy in helpers.each_strategy() do
         local body = assert.response(res).has.jsonbody()
         assert.is_equal(cred_default.consumer_id, body.id)
       end)
-      it("negative cache added for non enabled plugin in default workspace", function()
+      it("negative cache not added for non enabled plugin", function()
         local cache_key = dao.plugins:cache_key_ws(nil,
                                                    "request-transformer",
                                                    nil,
@@ -194,11 +194,10 @@ for _, strategy in helpers.each_strategy() do
             method = "GET",
             path = "/cache/" .. cache_key,
           })
-          return res.status == 200
+          return res.status == 404
         end)
 
-        local body = assert.response(res).has.jsonbody()
-        assert.is_equal(true, body.null)
+        assert.response(res).has.jsonbody()
       end)
       it("share api with foo", function()
         local res = assert(admin_client:send {
@@ -252,7 +251,7 @@ for _, strategy in helpers.each_strategy() do
         })
         assert.res_status(200, res)
         local body = assert.response(res).has.jsonbody()
-        assert("ok", body.headers["X-Test"])
+        assert.equals("ok", body.headers["x-test"])
       end)
       it("cache added for plugin in foo workspace", function()
         local cache_key = dao.plugins:cache_key_ws(ws_foo,
@@ -312,9 +311,9 @@ for _, strategy in helpers.each_strategy() do
         })
         assert.res_status(200, res)
         local body = assert.response(res).has.jsonbody()
-        assert.is_nil(body.headers["X-Test"])
+        assert.is_nil(body.headers["x-test"])
       end)
-      it("cache added for plugin in foo workspace", function()
+      it("cache not added for plugin in foo workspace", function()
         local cache_key = dao.plugins:cache_key_ws(nil,
                                                    "request-transformer",
                                                    nil,
@@ -328,10 +327,9 @@ for _, strategy in helpers.each_strategy() do
             method = "GET",
             path = "/cache/" .. cache_key,
           })
-          return res.status == 200
+          return res.status == 404
         end, 7)
-        local body = assert.response(res).has.jsonbody()
-        assert.is_equal(true, body.null)
+        assert.response(res).has.jsonbody()
       end)
     end)
   end)
