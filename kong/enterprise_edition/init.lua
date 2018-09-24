@@ -259,5 +259,28 @@ function _M.prepare_portal(kong_config)
   }, kong_config)
 end
 
+function _M.create_default_portal_config()
+  local dao = singletons.dao
+  local conf = singletons.configuration
+  local res = singletons.dao.workspaces:find_all({name = "default"})
+  local ws_default = res[1]
+
+  dao.portal_config:insert({
+    portal_auth = conf.portal_auth,
+    portal_auth_config = conf.configuration.portal_auth_config,
+    portal_auto_approve = conf.configuration.portal_auto_approve,
+    portal_token_exp = conf.configuration.portal_token_exp,
+  })
+
+  dao.workspace_entities:insert({
+    workspace_id = ws_default.id,
+    workspace_name = ws_default.name,
+    entity_id = res.id,
+    entity_type = "portal_config",
+    unique_field_name = "id",
+    unique_field_value = res.id,
+  })
+end
+
 
 return _M

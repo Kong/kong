@@ -624,5 +624,20 @@ return {
       ALTER TABLE workspaces
         ADD COLUMN meta json;
     ]]
+  },
+  {
+    name = "2018-09-24-144900_portal_config",
+    up = [[
+      CREATE TABLE IF NOT EXISTS portal_config(
+        id uuid PRIMARY KEY,
+        portal_auth text,
+        portal_auth_config json,
+        portal_auto_approve boolean,
+        portal_token_exp int
+      );
+    ]],
+    down = [[
+      DROP TABLE portal_config;
+    ]]
   }
 }

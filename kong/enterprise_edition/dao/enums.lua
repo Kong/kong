@@ -18,7 +18,6 @@ _M.CONSUMERS = {
   TYPE_LABELS   = {},
 }
 
-
 _M.TOKENS = {
   STATUS = {
     PENDING = 1,
