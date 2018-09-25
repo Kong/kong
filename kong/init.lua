@@ -291,17 +291,14 @@ function Kong.init()
       ttl_minutes    = config.vitals_ttl_minutes,
   }
 
-  local _, err = ee.create_default_portal_config()
-  if err then
-    error(tostring(err))
-  end
-
   plugins_map_semaphore, err = semaphore.new()
   if not plugins_map_semaphore then
     ngx_log(ngx.CRIT, "failed to create plugins map semaphore: ", err)
   end
 
   plugins_map_semaphore:post(1) -- one resource, treat this as a mutex
+
+  ee.create_default_portal_config()
 
   assert(core.build_router(db, "init"))
   assert(core.build_api_router(dao, "init"))
