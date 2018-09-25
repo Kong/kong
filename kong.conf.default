@@ -848,7 +848,7 @@
 # DEVELOPER PORTAL AUTHENTICATION
 #------------------------------------------------------------------------------
 
-portal_auth = basic-auth
+#portal_auth =
                         # Developer Portal Authentication Plugin Name
                         #
                         # Here you may specify the authentication plugin
@@ -882,7 +882,7 @@ portal_auth = basic-auth
                         #
                         #  portal_auth_conf = { "hide_credentials": true }
 
-portal_auto_approve = on
+#portal_auto_approve = off
                         # Developer Portal Auto Approve Access
                         #
                         # When this flag is set to "on", a developer will
@@ -992,5 +992,3 @@ portal_auto_approve = on
 #smtp_admin_emails =   # Comma separated list of admin emails to receive notifications
                        # Example `admin1@example.com, admin2@example.com`
                        # Default `nil`
-
-smtp_mock = on

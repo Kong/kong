@@ -146,7 +146,6 @@ local function is_blank(t)
 end
 
 function _M.create_default(dao)
-  print('I RAN!')
   dao = dao or singletons.dao
 
   local res, err = dao.workspaces:run_with_ws_scope({}, dao.workspaces.find_all, {
