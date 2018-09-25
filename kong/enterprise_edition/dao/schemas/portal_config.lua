@@ -14,10 +14,9 @@ return {
     },
     portal_auth = {
       type = "string",
-      required = true,
     },
     portal_auth_config = {
-      type = "string"
+      type = "string",
     },
     portal_auto_approve = {
       type = "boolean",
@@ -27,40 +26,31 @@ return {
       type = "number",
       required = true,
     },
-    invite_email = {
+    portal_invite_email = {
       type = "boolean",
       required = true,
     },
-    access_request_email = {
+    portal_access_request_email = {
       type = "boolean",
       required = true,
     },
-    approved_email = {
+    portal_approved_email = {
       type = "boolean",
       required = true,
     },
-    reset_email = {
+    portal_reset_email = {
       type = "boolean",
       required = true,
     },
-    reset_success_email = {
+    portal_reset_success_email = {
       type = "boolean",
       required = true,
     },
-    emails_from = {
+    portal_emails_from = {
       type = "string",
-      required = true,
     },
-    emails_reply_to = {
+    portal_emails_reply_to = {
       type = "string",
-      required = true,
-    },
-    smtp_host = {
-      type = "string",
-      required = true,
-    },
-    smtp_port = {
-      
     },
   },
 }

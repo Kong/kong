@@ -265,21 +265,38 @@ function _M.create_default_portal_config()
   local res = singletons.dao.workspaces:find_all({name = "default"})
   local ws_default = res[1]
 
-  dao.portal_config:insert({
-    portal_auth = conf.portal_auth,
-    portal_auth_config = conf.configuration.portal_auth_config,
-    portal_auto_approve = conf.configuration.portal_auto_approve,
-    portal_token_exp = conf.configuration.portal_token_exp,
+  res = singletons.dao.workspace_entities:find_all({
+    entity_type = "portal_config",
+    workspace_name = "default"
   })
 
-  dao.workspace_entities:insert({
-    workspace_id = ws_default.id,
-    workspace_name = ws_default.name,
-    entity_id = res.id,
-    entity_type = "portal_config",
-    unique_field_name = "id",
-    unique_field_value = res.id,
-  })
+  if not res[1] then
+    print(require("inspect")(res))
+    print('yolo hello')
+    
+    dao.portal_config:insert({
+      portal_auth = conf.portal_auth,
+      portal_auth_config = conf.portal_auth_config,
+      portal_auto_approve = conf.portal_auto_approve,
+      portal_token_exp = conf.portal_token_exp,
+      portal_invite_email = conf.portal_invite_email,
+      portal_access_request_email = conf.portal_access_request_email,
+      portal_approved_email = conf.portal_approved_email,
+      portal_reset_email = conf.portal_reset_email,
+      portal_reset_success_email = conf.portal_reset_success_email,
+      portal_emails_from = conf.portal_emails_from,
+      portal_emails_reply_to = conf.portal_emails_reply_to,
+    })
+  
+    dao.workspace_entities:insert({
+      workspace_id = ws_default.id,
+      workspace_name = ws_default.name,
+      entity_id = res.id,
+      entity_type = "portal_config",
+      unique_field_name = "id",
+      unique_field_value = res.id,
+    })
+  end
 end
 
 

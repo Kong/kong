@@ -633,7 +633,14 @@ return {
         portal_auth text,
         portal_auth_config json,
         portal_auto_approve boolean,
-        portal_token_exp int
+        portal_token_exp int,
+        portal_invite_email boolean,
+        portal_access_request_email boolean,
+        portal_approved_email boolean,
+        portal_reset_email boolean,
+        portal_reset_success_email boolean,
+        portal_emails_from text,
+        portal_emails_reply_to text
       );
     ]],
     down = [[
