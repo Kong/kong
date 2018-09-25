@@ -448,7 +448,7 @@ local function get_file_value(path, file_name)
 end
 
 
-local function log_print_override(override_type, override_name, override_value)
+local function log_print_override(override_type, key_name, override_name, override_value)
   local to_print = override_value
 
   if CONF_SENSITIVE[key_name] then
@@ -476,7 +476,7 @@ local function overrides(k, default_v, file_conf, arg_conf)
   local env_name = "KONG_" .. string.upper(k)
   local env = os.getenv(env_name)
   if env ~= nil then
-    log_print_override("ENV", env_name, env)
+    log_print_override("ENV", k, env_name, env)
     value = env
   end
 
@@ -484,7 +484,7 @@ local function overrides(k, default_v, file_conf, arg_conf)
 
   local file_secret = get_file_value(secret_path, k)
   if file_secret ~= nil then
-     log_print_override("FILE SECRET", k, file_secret)
+     log_print_override("FILE SECRET", k, k, file_secret)
      value = file_secret
   end
 
