@@ -128,7 +128,7 @@ local function authenticate(conf, given_credentials)
 end
 
 local function load_consumer(consumer_id, anonymous)
-  local result, err = singletons.db.consumers:select { id = consumer_id }
+  local result, err = kong.db.consumers:select { id = consumer_id }
   if not result then
     if anonymous and not err then
       err = 'anonymous consumer "' .. consumer_id .. '" not found'
@@ -213,7 +213,7 @@ function _M.execute(conf)
   if not ok then
     if conf.anonymous then
       -- get anonymous user
-      local consumer_cache_key = singletons.db.consumers:cache_key(conf.anonymous)
+      local consumer_cache_key = kong.db.consumers:cache_key(conf.anonymous)
       local consumer, err      = singletons.cache:get(consumer_cache_key, nil,
                                                       load_consumer,
                                                       conf.anonymous, true)
