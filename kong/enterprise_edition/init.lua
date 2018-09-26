@@ -1,4 +1,3 @@
-local cjson      = require "cjson.safe"
 local log        = require "kong.cmd.utils.log"
 local meta       = require "kong.enterprise_edition.meta"
 local pl_file    = require "pl.file"
@@ -7,13 +6,18 @@ local pl_path    = require "pl.path"
 local singletons = require "kong.singletons"
 local feature_flags = require "kong.enterprise_edition.feature_flags"
 local internal_statsd = require "kong.enterprise_edition.internal_statsd"
+local license_helpers = require "kong.enterprise_edition.license_helpers"
 
 
 local _M = {}
-local DEFAULT_KONG_LICENSE_PATH = "/etc/kong/license.json"
 
 
 _M.handlers = {
+  init_worker = {
+    after = function(ctx)
+      license_helpers.report_expired_license()
+    end,
+  },
   access = {
     after = function(ctx)
       if not ctx.is_internal then
@@ -56,58 +60,7 @@ function _M.internal_statsd_init()
   return true, nil
 end
 
-
-local function get_license_string()
-  local license_data_env = os.getenv("KONG_LICENSE_DATA")
-  if license_data_env then
-    return license_data_env
-  end
-
-  local license_path
-  if pl_path.exists(DEFAULT_KONG_LICENSE_PATH) then
-    license_path = DEFAULT_KONG_LICENSE_PATH
-
-  else
-    license_path = os.getenv("KONG_LICENSE_PATH")
-    if not license_path then
-      ngx.log(ngx.CRIT, "KONG_LICENSE_PATH is not set")
-      return nil
-    end
-  end
-
-  local license_file = io.open(license_path, "r")
-  if not license_file then
-    ngx.log(ngx.CRIT, "could not open license file")
-    return nil
-  end
-
-  local license_data = license_file:read("*a")
-  if not license_data then
-    ngx.log(ngx.CRIT, "could not read license file contents")
-    return nil
-  end
-
-  license_file:close()
-
-  return license_data
-end
-
-
-function _M.read_license_info()
-  local license_data = get_license_string()
-  if not license_data then
-    return nil
-  end
-
-  local license, err = cjson.decode(license_data)
-  if err then
-    ngx.log(ngx.ERR, "could not decode license JSON: " .. err)
-    return nil
-  end
-
-  return license
-end
-
+_M.read_license_info = license_helpers.read_license_info
 
 local function write_kconfig(configs, filename)
   local kconfig_str = "window.K_CONFIG = {\n"

@@ -427,6 +427,8 @@ function Kong.init_worker()
   for _, plugin in ipairs(singletons.loaded_plugins) do
     plugin.handler:init_worker()
   end
+
+  ee.handlers.init_worker.after(ngx.ctx)
 end
 
 function Kong.ssl_certificate()
