@@ -1,5 +1,11 @@
 local default_nginx_template = require "kong.templates.nginx"
 local kong_nginx_template = require "kong.templates.nginx_kong"
+local openssl_bignum = require "openssl.bignum"
+local openssl_rand = require "openssl.rand"
+local openssl_pkey = require "openssl.pkey"
+local x509 = require "openssl.x509"
+local x509_extension = require "openssl.x509.extension"
+local x509_name = require "openssl.x509.name"
 local pl_template = require "pl.template"
 local pl_stringx = require "pl.stringx"
 local pl_tablex = require "pl.tablex"
@@ -8,7 +14,6 @@ local pl_file = require "pl.file"
 local pl_path = require "pl.path"
 local pl_dir = require "pl.dir"
 local socket = require "socket"
-local utils = require "kong.tools.utils"
 local log = require "kong.cmd.utils.log"
 local constants = require "kong.constants"
 local ffi = require "ffi"
@@ -22,36 +27,56 @@ local function gen_default_ssl_cert(kong_config, admin)
     return nil, err
   end
 
-  local ssl_cert, ssl_cert_key, ssl_cert_csr
+  local ssl_cert, ssl_cert_key
   if admin then
     ssl_cert = kong_config.admin_ssl_cert_default
     ssl_cert_key = kong_config.admin_ssl_cert_key_default
-    ssl_cert_csr = kong_config.admin_ssl_cert_csr_default
   else
     ssl_cert = kong_config.ssl_cert_default
     ssl_cert_key = kong_config.ssl_cert_key_default
-    ssl_cert_csr = kong_config.ssl_cert_csr_default
   end
 
   if not pl_path.exists(ssl_cert) and not pl_path.exists(ssl_cert_key) then
     log.verbose("generating %s SSL certificate and key",
                      admin and "admin" or "default")
 
-    local passphrase = utils.random_string()
-    local commands = {
-      fmt("openssl genrsa -des3 -out %s -passout pass:%s 2048", ssl_cert_key, passphrase),
-      fmt("openssl req -new -key %s -out %s -subj \"/C=US/ST=California/L=San Francisco/O=Kong/OU=IT Department/CN=localhost\" -passin pass:%s -sha256", ssl_cert_key, ssl_cert_csr, passphrase),
-      fmt("cp %s %s.org", ssl_cert_key, ssl_cert_key),
-      fmt("openssl rsa -in %s.org -out %s -passin pass:%s", ssl_cert_key, ssl_cert_key, passphrase),
-      fmt("openssl x509 -req -in %s -signkey %s -out %s -sha256", ssl_cert_csr, ssl_cert_key, ssl_cert),
-      fmt("rm %s", ssl_cert_csr),
-      fmt("rm %s.org", ssl_cert_key)
-    }
-    for i = 1, #commands do
-      local ok, _, _, stderr = pl_utils.executeex(commands[i])
-      if not ok then
-        return nil, "could not generate " .. (admin and "admin" or "default") .. " SSL certificate: " .. stderr
-      end
+    local key = openssl_pkey.new { bits = 2048 }
+
+    local crt = x509.new()
+    crt:setPublicKey(key)
+    crt:setVersion(3)
+    crt:setSerial(openssl_bignum.fromBinary(openssl_rand.bytes(16)))
+    -- last for 20 years
+    local now = os.time()
+    crt:setLifetime(now, now+86400*20)
+    local name = x509_name.new()
+      :add("C", "US")
+      :add("ST", "California")
+      :add("L", "San Francisco")
+      :add("O", "Kong")
+      :add("OU", "IT Department")
+      :add("CN", "localhost")
+    crt:setSubject(name)
+    crt:setIssuer(name)
+    -- Not a CA
+    crt:setBasicConstraints { CA = false }
+    crt:setBasicConstraintsCritical(true)
+    -- Only allowed to be used for TLS connections (client or server)
+    crt:addExtension(x509_extension.new("extendedKeyUsage", "serverAuth,clientAuth"))
+    -- RFC-3280 4.2.1.2
+    crt:addExtension(x509_extension.new("subjectKeyIdentifier", "hash", { subject = crt }))
+    -- All done; sign
+    crt:sign(key)
+
+    do -- write key out
+      local fd = assert(io.open(ssl_cert_key, "w+b"))
+      assert(fd:write(key:toPEM("private")))
+      fd:close()
+    end
+    do -- write cert out
+      local fd = assert(io.open(ssl_cert, "w+b"))
+      assert(fd:write(crt:toPEM()))
+      fd:close()
     end
   else
     log.verbose("%s SSL certificate found at %s",

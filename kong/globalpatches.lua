@@ -214,9 +214,9 @@ return function(options)
     _G.math.randomseed = function()
       local seed = seeds[ngx.worker.pid()]
       if not seed then
-        if not options.cli and ngx.get_phase() ~= "init_worker" then
+        if not options.cli and (ngx.get_phase() ~= "init_worker" and ngx.get_phase() ~= "init") then
           ngx.log(ngx.WARN, debug.traceback("math.randomseed() must be " ..
-              "called in init_worker context", 2))
+              "called in init or init_worker context", 2))
         end
 
         local bytes, err = util.get_rand_bytes(8)

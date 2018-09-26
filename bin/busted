@@ -59,7 +59,7 @@ if not os.getenv("KONG_BUSTED_RESPAWNED") then
   os.exit(rc)
 end
 
-require "luarocks.loader"
+pcall(require, "luarocks.loader")
 
 require("kong.globalpatches")({
   cli = true,

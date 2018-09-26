@@ -1,6 +1,6 @@
 #!/usr/bin/env resty
 
-require "luarocks.loader"
+pcall(require, "luarocks.loader")
 
 package.path = (os.getenv("KONG_LUA_PATH_OVERRIDE") or "") .. "./?.lua;./?/init.lua;" .. package.path
 

@@ -24,7 +24,7 @@
 -- |[[    ]]|
 -- ==========
 
-require "luarocks.loader"
+pcall(require, "luarocks.loader")
 require "resty.core"
 local constants = require "kong.constants"
 
@@ -134,9 +134,15 @@ end
 
 
 function Kong.init()
+  -- special math.randomseed from kong.globalpatches not taking any argument.
+  -- Must only be called in the init or init_worker phases, to avoid
+  -- duplicated seeds.
+  math.randomseed()
+
   local pl_path = require "pl.path"
   local conf_loader = require "kong.conf_loader"
   local ip = require "kong.tools.ip"
+
 
   -- check if kong global is the correct one
   if not kong.version then
@@ -233,10 +239,9 @@ end
 function Kong.init_worker()
   kong_global.set_phase(kong, PHASES.init_worker)
 
-  -- special math.randomseed from kong.globalpatches
-  -- not taking any argument. Must be called only once
-  -- and in the init_worker phase, to avoid duplicated
-  -- seeds.
+  -- special math.randomseed from kong.globalpatches not taking any argument.
+  -- Must only be called in the init or init_worker phases, to avoid
+  -- duplicated seeds.
   math.randomseed()
 
 
