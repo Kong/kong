@@ -23,7 +23,7 @@ function _ACLs:post_crud_event(operation, entity)
   if err then
     return nil, err, err_t
   end
-  return self.super.post_crud_event(self, entity)
+  return self.super.post_crud_event(self, operation, entity)
 end
 
 return _ACLs
