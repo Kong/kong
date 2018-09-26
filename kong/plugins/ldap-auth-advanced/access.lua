@@ -1,21 +1,8 @@
-local openssl_digest = require "openssl.digest"
 local responses = require "kong.tools.responses"
 local constants = require "kong.constants"
 local singletons = require "kong.singletons"
 local ldap_cache = require "kong.plugins.ldap-auth-advanced.cache"
 local ldap = require "kong.plugins.ldap-auth-advanced.ldap"
-
-local ffi = require "ffi"
-
-
-ffi.cdef[[
-char *crypt(const char *key, const char *salt);
-]]
-
-
-local function crypt(key, salt)
-  return ffi.string(ffi.C.crypt(key, salt))
-end
 
 
 local match = string.match
@@ -33,8 +20,6 @@ local ngx_socket_tcp = ngx.socket.tcp
 local ngx_set_header = ngx.req.set_header
 local tostring =  tostring
 local ipairs = ipairs
-local type = type
-local next = next
 
 local AUTHORIZATION = "authorization"
 local PROXY_AUTHORIZATION = "proxy-authorization"
@@ -87,28 +72,49 @@ local function ldap_authenticate(given_username, given_password, conf)
   if conf.bind_dn then
     is_authenticated = false
     ok, err = ldap.bind_request(sock, conf.bind_dn, conf.ldap_password)
+
+    if err then
+      ngx_log(ngx_error, "[ldap-auth-advanced]", err)
+      return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+    end
+
     if ok then
-      local search_results = ldap.search_request(sock, {
+      local search_results, err = ldap.search_request(sock, {
         base = conf.base_dn;
         scope = "sub";
-        filter = conf.attribute .. "=" .. given_username;
-        attrs = "userPassword";
+        filter = conf.attribute .. "=" .. given_username,
       })
-      local user, value = next(search_results)
-      if user and type(value.userPassword) == "string" then
-        if value.userPassword:match("^%{[Cc][Rr][Yy][Pp][Tt]%}") then
-          local hash = value.userPassword:sub(8)
-          is_authenticated = crypt(given_password, hash) == hash
-        elseif value.userPassword:match("^%{[Ss][Hh][Aa]%}") then
-          local hash = decode_base64(value.userPassword:sub(6))
-          local digest = openssl_digest.new("sha1"):final(given_password)
-          is_authenticated = digest == hash
-        elseif value.userPassword:match("^%{[Ss][Ss][Hh][Aa]%}") then
-          local hash = decode_base64(value.userPassword:sub(7))
-          local salt = hash:sub(21)
-          local digest = openssl_digest.new("sha1"):update(given_password):final(salt) .. salt
-          is_authenticated = digest == hash
+
+      if err then
+        ngx_log(ngx_error, "[ldap-auth-advanced] failed ldap search for "..
+                            conf.attribute .. "=" .. given_username .. 
+                           " base_dn=" .. conf.base_dn)
+        return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+      end
+
+      local user_dn
+      for dn, _ in pairs(search_results) do
+        if user_dn then
+          ngx_log(ngx_debug, "[ldap-auth-advanced] more than one user found in" ..
+                             " ldap_search with attribute = " .. conf.attribute ..
+                             " and given_username=" .. given_username)
+          return responses.send_HTTP_INTERNAL_SERVER_ERROR()
         end
+
+        user_dn = dn
+      end
+      
+      if not user_dn then
+        ngx_log(ngx_debug, "[ldap-auth-advanced] user not found")
+        return false, "User not found"
+      end
+
+      is_authenticated, err = ldap.bind_request(sock, user_dn, given_password)
+
+      if err then
+        ngx_log(ngx_error, "[ldap-auth-advanced] bind request failed for"..
+                            " user " .. given_username)
+        return false, err
       end
     end
   else
@@ -127,7 +133,7 @@ end
 local function load_credential(given_username, given_password, conf)
   local ok, err = ldap_authenticate(given_username, given_password, conf)
   if err ~= nil then
-    ngx_log(ngx_error, err)
+    ngx_log(ngx_error, "[ldap-auth-advanced]", err)
   end
 
   if ok == nil then

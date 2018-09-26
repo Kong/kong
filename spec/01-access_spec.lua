@@ -57,6 +57,14 @@ for _, strategy in helpers.each_strategy() do
         hosts = { "ldap6.com" },
       }
 
+      local route7 = bp.routes:insert {
+        hosts   = { "ldap7.com" },
+      }
+
+      local route8 = bp.routes:insert {
+        hosts   = { "ldap8.com" },
+      }
+
       local anonymous_user = bp.consumers:insert {
         username = "no-body"
       }
@@ -144,6 +152,40 @@ for _, strategy in helpers.each_strategy() do
         }
       }
 
+      bp.plugins:insert {
+        route_id = route7.id,
+        name     = "ldap-auth-advanced",
+        config   = {
+          consumer_optional = true,
+          ldap_host         = ldap_host_aws,
+          ldap_password     = "password",
+          ldap_port         = "389",
+          start_tls         = false,
+          bind_dn           = "uid=einstein,ou=scientists,dc=ldap,dc=mashape,dc=com",
+          base_dn           = "dc=ldap,dc=mashape,dc=com",
+          attribute         = "uid",
+          hide_credentials  = true,
+          cache_ttl         = 2,
+        }
+      }
+
+      bp.plugins:insert {
+        route_id = route8.id,
+        name     = "ldap-auth-advanced",
+        config   = {
+          consumer_optional = true,
+          ldap_host         = ldap_host_aws,
+          ldap_password     = "password",
+          ldap_port         = "389",
+          start_tls         = false,
+          bind_dn           = "uid=einstein,ou=scientists,dc=ldap,dc=mashape,dc=com",
+          base_dn           = "dc=ldap,dc=mashape,dc=com",
+          attribute         = "cn",
+          hide_credentials  = true,
+          cache_ttl         = 2,
+        }
+      }
+
       assert(helpers.start_kong({
         custom_plugins = "ldap-auth-advanced",
         database   = strategy,
@@ -168,6 +210,48 @@ for _, strategy in helpers.each_strategy() do
       if admin_client then
         admin_client:close()
       end
+    end)
+
+    it("passes if credential is valid request with bind_dn", function()
+      local res = assert(proxy_client:send {
+        method  = "GET",
+        path    = "/get",
+        body    = {},
+        headers = {
+          host             = "ldap7.com",
+          authorization    = "ldap " .. ngx.encode_base64("euclid:password"),
+        }
+      })
+      assert.response(res).has.status(200)
+    end)
+
+    it("returns forbidden if user cannot be found with valid bind_dn", function()
+      local res = assert(proxy_client:send {
+        method  = "GET",
+        path    = "/get",
+        body    = {},
+        headers = {
+          host             = "ldap7.com",
+          authorization    = "ldap " .. ngx.encode_base64("nobody:found"),
+        }
+      })
+      assert.response(res).has.status(403)
+      local json = assert.response(res).has.jsonbody()
+      assert.equal("Invalid authentication credentials", json.message)
+    end)
+
+    it("passes if attribute is cn instead of uid with bind_dn", function()
+      local res = assert(proxy_client:send {
+        method  = "GET",
+        path    = "/get",
+        body    = {},
+        headers = {
+          host             = "ldap8.com",
+          authorization    = "ldap " .. ngx.encode_base64("einstein:password"),
+        }
+      })
+
+      assert.response(res).has.status(200)
     end)
 
     it("returns 'invalid credentials' and www-authenticate header when the credential is missing", function()
@@ -695,9 +779,10 @@ for _, strategy in helpers.each_strategy() do
     local bp
     local dao
     local routes
+    local plugin
 
-    local consumer_with_custom_id
-    local consumer_with_username
+    local consumer_with_custom_id, consumer2_with_custom_id
+    local consumer_with_username, consumer2_with_username
     local anonymous_consumer
 
     setup(function()
@@ -720,6 +805,18 @@ for _, strategy in helpers.each_strategy() do
         bp.routes:insert {
           hosts = { "ldap.anonymous.com" },
         },
+
+        bp.routes:insert {
+          hosts = { "ldap5.com" },
+        },
+
+        bp.routes:insert {
+          hosts = { "ldap6.com" },
+        },
+
+        bp.routes:insert {
+          hosts = { "ldap7.com" },
+        },
       }
 
       consumer_with_username = bp.consumers:insert {
@@ -728,6 +825,14 @@ for _, strategy in helpers.each_strategy() do
 
       consumer_with_custom_id = bp.consumers:insert {
         custom_id = "einstein"
+      }
+
+      consumer2_with_username = bp.consumers:insert {
+        username = "euclid"
+      }
+
+      consumer2_with_custom_id = bp.consumers:insert {
+        custom_id = "euclid"
       }
 
       anonymous_consumer = bp.consumers:insert {
@@ -783,6 +888,57 @@ for _, strategy in helpers.each_strategy() do
           base_dn   = "ou=scientists,dc=ldap,dc=mashape,dc=com",
           attribute = "uid",
           anonymous = anonymous_consumer.id
+        }
+      }
+
+      bp.plugins:insert {
+        route_id = routes[5].id,
+        name     = "ldap-auth-advanced",
+        config   = {
+          ldap_host         = ldap_host_aws,
+          ldap_password     = "password",
+          ldap_port         = "389",
+          start_tls         = false,
+          bind_dn           = "uid=einstein,ou=scientists,dc=ldap,dc=mashape,dc=com",
+          base_dn           = "dc=ldap,dc=mashape,dc=com",
+          consumer_by       = { "custom_id" },
+          attribute         = "uid",
+          hide_credentials  = true,
+          cache_ttl         = 2,
+        }
+      }
+
+      bp.plugins:insert {
+        route_id = routes[6].id,
+        name     = "ldap-auth-advanced",
+        config   = {
+          ldap_host         = ldap_host_aws,
+          ldap_password     = "password",
+          ldap_port         = "389",
+          start_tls         = false,
+          bind_dn           = "uid=einstein,ou=scientists,dc=ldap,dc=mashape,dc=com",
+          base_dn           = "dc=ldap,dc=mashape,dc=com",
+          consumer_by       = { "username" },
+          attribute         = "uid",
+          hide_credentials  = true,
+          cache_ttl         = 2,
+        }
+      }
+
+      bp.plugins:insert {
+        route_id = routes[7].id,
+        name     = "ldap-auth-advanced",
+        config   = {
+          ldap_host         = ldap_host_aws,
+          ldap_password     = "password",
+          ldap_port         = "389",
+          start_tls         = false,
+          bind_dn           = "something=is,wrong=com",
+          base_dn           = "dc=ldap,dc=mashape,dc=com",
+          consumer_by       = { "username" },
+          attribute         = "uid",
+          hide_credentials  = true,
+          cache_ttl         = 2,
         }
       }
 
@@ -942,6 +1098,57 @@ for _, strategy in helpers.each_strategy() do
           res:read_body()
           return res.status == 404
         end, plugin.config.cache_ttl + 10)
+      end)
+
+      it("bind_dn passes and authenticates user and maps consumer with " ..
+         "custom_id only, consumer_by = custom_id", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/get",
+          headers = {
+            ["Host"]          = routes[5].hosts[1],
+            ["Authorization"] = "ldap " .. ngx.encode_base64("euclid:password"),
+          }
+        })
+
+        assert.response(res).has.status(200)
+        assert.request(res).has.no.header("x-anonymous-consumer")
+        assert.are.equal(consumer2_with_custom_id.id,
+                         assert.request(res).has.header("x-consumer-id"))
+        assert.are.equal(consumer2_with_custom_id.username,
+                         assert.request(res).has.header("x-consumer-username"))
+      end)
+
+      it("bind_dn passes and authenticates user and maps consumer with " ..
+         "username only, consumer_by = username", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/get",
+          headers = {
+            ["Host"]          = routes[6].hosts[1],
+            ["Authorization"] = "ldap " .. ngx.encode_base64("euclid:password"),
+          }
+        })
+
+        assert.response(res).has.status(200)
+        assert.request(res).has.no.header("x-anonymous-consumer")
+        assert.are.equal(consumer2_with_username.id,
+                         assert.request(res).has.header("x-consumer-id"))
+        assert.are.equal(consumer2_with_username.username,
+                         assert.request(res).has.header("x-consumer-username"))
+      end)
+      
+      it("returns internal server error when bind_dn is invalid", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/get",
+          headers = {
+            ["Host"]          = routes[7].hosts[1],
+            ["Authorization"] = "ldap " .. ngx.encode_base64("einstein:password"),
+          }
+        })
+
+        assert.response(res).has.status(500)
       end)
     end)
   end)

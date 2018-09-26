@@ -83,7 +83,7 @@ function _M.bind_request(socket, username, password)
 
   if protocolOp.number ~= APPNO.BindResponse then
     return false, string_format("Received incorrect Op in packet: %d, expected %d",
-                                response.protocolOp.number, APPNO.BindResponse)
+                                protocolOp.number, APPNO.BindResponse)
   end
 
   local resultCode
@@ -220,6 +220,7 @@ function _M.search_request(socket, query)
     pos, _ = decoder:decode(packet, pos)
     _, errorMessage = decoder:decode(packet, pos)
     local error_msg = ERROR_MSG[resultCode]
+
     return false, string_format("\n  Error: %s\n  Details: %s",
       error_msg or "Unknown error occurred (code: " .. resultCode ..
       ")", errorMessage or "")
