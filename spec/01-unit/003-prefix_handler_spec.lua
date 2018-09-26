@@ -429,7 +429,10 @@ describe("NGINX conf compiler", function()
       }))
       assert.equal("foobar", conf.pg_database)
       assert(prefix_handler.prepare_prefix(conf))
-      local in_prefix_kong_conf = assert(conf_loader(tmp_config.kong_env))
+      local in_prefix_kong_conf = assert(conf_loader(tmp_config.kong_env, {
+        pg_database = "foobar",
+        prefix = tmp_config.prefix,
+      }))
       assert.same(conf, in_prefix_kong_conf)
     end)
     it("writes custom plugins in Kong conf", function()

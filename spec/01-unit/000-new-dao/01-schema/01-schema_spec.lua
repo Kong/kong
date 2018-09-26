@@ -30,7 +30,7 @@ describe("schema", function()
     end
     covered["foreign"] = true
     for name, _ in pairs(Schema.valid_types) do
-      assert.truthy(covered[name], name.." not covered")
+      assert.truthy(covered[name], "type '" .. name .. "' not covered")
     end
   end
 
@@ -139,6 +139,8 @@ describe("schema", function()
         { { type = "record" },  -- no record-specific validators
           "fail" },
         { { type = "boolean" }, -- no boolean-specific validators
+          "fail" },
+        { { type = "function" },
           "fail" },
       }
 
@@ -1521,6 +1523,7 @@ describe("schema", function()
           { f = { type = "string" }, },
           { g = { type = "record", fields = {} }, },
           { h = { type = "map", keys = {}, values = {} }, },
+          { i = { type = "function" }, },
         }
       })
       check_all_types_covered(Test.fields)
@@ -1534,6 +1537,7 @@ describe("schema", function()
       assert.same(ngx.null, data.f)
       assert.same(ngx.null, data.g)
       assert.same(ngx.null, data.h)
+      assert.same(ngx.null, data.i)
     end)
 
     it("does not produce non-required fields on 'update'", function()
@@ -1547,6 +1551,7 @@ describe("schema", function()
           { f = { type = "string" }, },
           { g = { type = "record", fields = {} }, },
           { h = { type = "map", keys = {}, values = {} }, },
+          { i = { type = "function" }, },
         }
       })
       check_all_types_covered(Test.fields)
@@ -1560,9 +1565,12 @@ describe("schema", function()
       assert.is_nil(data.f)
       assert.is_nil(data.g)
       assert.is_nil(data.h)
+      assert.is_nil(data.i)
     end)
 
     it("honors given default values", function()
+      local f = function() end
+
       local Test = Schema.new({
         fields = {
           { a = { type = "array",
@@ -1584,6 +1592,7 @@ describe("schema", function()
                     { f = { type = "number" }, },
                   },
                   default = { f = 123 } }, },
+          { i = { type = "function", default = f } },
           { nested_record = {
               type = "record",
               default = {
@@ -1614,6 +1623,7 @@ describe("schema", function()
       assert.same("foo",                data.f)
       assert.same({ foo = 1, bar = 2 }, data.g)
       assert.same({ f = 123 },          data.h)
+      assert.same(f,                    data.i)
       assert.same({ r = { a = "nr", b = 123, }}, data.nested_record)
     end)
 

@@ -990,4 +990,11 @@ function DAO:cache_key(key, arg2, arg3, arg4, arg5)
 end
 
 
+--[[
+function DAO:load_translations(t)
+  self.schema:load_translations(t)
+end
+--]]
+
+
 return _M

@@ -107,15 +107,16 @@ local validation_errors = {
 
 
 Schema.valid_types = {
-  array   = true,
-  set     = true,
-  string  = true,
-  number  = true,
-  boolean = true,
-  integer = true,
-  foreign = true,
-  map     = true,
-  record  = true,
+  array        = true,
+  set          = true,
+  string       = true,
+  number       = true,
+  boolean      = true,
+  integer      = true,
+  foreign      = true,
+  map          = true,
+  record       = true,
+  ["function"] = true,
 }
 
 
@@ -688,8 +689,6 @@ function Schema:validate_field(field, value)
     end
 
   elseif field.type == "function" then
-    -- TODO: this type should only be used/visible from the
-    -- metaschema to validate the 'custom_validator'
     if type(value) ~= "function" then
       return nil, validation_errors.FUNCTION
     end
@@ -1209,14 +1208,25 @@ end
 -- @return A new table, with the auto fields containing
 -- appropriate updated values.
 function Schema:process_auto_fields(input, context, nulls)
+  ngx.update_time()
+
   local output = tablex.deepcopy(input)
   local now_s  = ngx_time()
   local now_ms = ngx_now()
   local read_before_write = false
   local cache_key_modified = false
 
-  for key, field in self:each_field(input) do
+  --[[
+  if context == "select" and self.translations then
+    for _, translation in ipairs(self.translations) do
+      if type(translation.read) == "function" then
+        output = translation.read(output)
+      end
+    end
+  end
+  --]]
 
+  for key, field in self:each_field(input) do
     if field.auto then
       if field.uuid and context == "insert" and output[key] == nil then
         output[key] = utils.uuid()
@@ -1258,6 +1268,16 @@ function Schema:process_auto_fields(input, context, nulls)
       output[key] = nil
     end
   end
+
+  --[[
+  if context ~= "select" and self.translations then
+    for _, translation in ipairs(self.translations) do
+      if type(translation.write) == "function" then
+        output = translation.write(output)
+      end
+    end
+  end
+  --]]
 
   if context == "update" and (
     -- If a partial update does not provide the subschema key,
@@ -1301,6 +1321,23 @@ function Schema:merge_values(top, bottom)
   end
   return output
 end
+
+
+--[[
+function Schema:load_translations(translation)
+  if not self.translations then
+    self.translations = {}
+  end
+
+  for i = 1, #self.translations do
+    if self.translations[i] == translation then
+      return
+    end
+  end
+
+  insert(self.translations, translation)
+end
+--]]
 
 
 --- Validate a table against the schema, ensuring that the entity is complete.
@@ -1445,7 +1482,7 @@ function Schema:each_field(values)
 
   return function()
     local item = self.fields[i]
-    if not self.fields[i] then
+    if not item then
       return nil
     end
     local key = next(item)

@@ -2,7 +2,7 @@ local helpers = require "spec.helpers"
 
 describe("kong restart", function()
   setup(function()
-    assert(helpers.dao:run_migrations())
+    helpers.get_db_utils() -- runs migrations
     helpers.prepare_prefix()
   end)
   teardown(function()
@@ -30,7 +30,8 @@ describe("kong restart", function()
   end)
   it("restarts if already running from --prefix", function()
     local env = {
-      pg_database = helpers.test_conf.pg_database
+      pg_database = helpers.test_conf.pg_database,
+      cassandra_keyspace = helpers.test_conf.cassandra_keyspace,
     }
 
     assert(helpers.kong_exec("start --conf " .. helpers.test_conf_path, env))
@@ -43,7 +44,8 @@ describe("kong restart", function()
   end)
   it("accepts a custom nginx template", function()
     local env = {
-      pg_database = helpers.test_conf.pg_database
+      pg_database = helpers.test_conf.pg_database,
+      cassandra_keyspace = helpers.test_conf.cassandra_keyspace,
     }
 
     assert(helpers.kong_exec("start --conf " .. helpers.test_conf_path, env))

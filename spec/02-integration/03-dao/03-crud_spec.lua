@@ -20,6 +20,7 @@ say:set("assertion.raw_table.negative", "Expected %s\nto not be a raw_table")
 assert:register("assertion", "raw_table", raw_table, "assertion.raw_table.positive", "assertion.raw_table.negative")
 
 local helpers = require "spec.02-integration.03-dao.helpers"
+local spec_helpers = require "spec.helpers"
 local Factory = require "kong.dao.factory"
 local DB = require "kong.db"
 local version = require "version"
@@ -38,10 +39,12 @@ helpers.for_each_dao(function(kong_config)
     setup(function()
       local db = DB.new(kong_config)
       assert(db:init_connector())
-      factory = assert(Factory.new(kong_config, db))
-      apis = factory.apis
 
-      assert(factory:run_migrations())
+      spec_helpers.bootstrap_database(db)
+
+      factory = assert(Factory.new(kong_config, db))
+      assert(factory:init())
+      apis = factory.apis
     end)
     teardown(function()
       factory:truncate_table("apis")

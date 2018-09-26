@@ -11,7 +11,7 @@ describe("Admin API - Kong routes", function()
     local client
 
     setup(function()
-      assert(helpers.dao:run_migrations())
+      helpers.get_db_utils() -- runs migrations
       assert(helpers.start_kong {
         pg_password = "hide_me"
       })

@@ -67,9 +67,6 @@ for _, strategy in helpers.each_strategy() do
         flush_redis()
 
         bp, db, dao = helpers.get_db_utils(strategy)
-        assert(db:truncate())
-        dao:truncate_tables()
-        assert(dao:run_migrations())
 
         local consumer1 = bp.consumers:insert {
           custom_id = "provider_123",
@@ -239,9 +236,7 @@ for _, strategy in helpers.each_strategy() do
 
       teardown(function()
         helpers.stop_kong()
-        dao:drop_schema()
         assert(db:truncate())
-        assert(dao:run_migrations())
       end)
 
       before_each(function()
@@ -456,8 +451,7 @@ for _, strategy in helpers.each_strategy() do
 
           teardown(function()
             helpers.kill_all()
-            dao:drop_schema()
-            assert(dao:run_migrations())
+            assert(db:truncate())
           end)
 
           it("does not work if an error occurs", function()
@@ -620,14 +614,11 @@ for _, strategy in helpers.each_strategy() do
     describe(fmt("#flaky Plugin: rate-limiting (access - global for single consumer) with policy: %s [#%s]", policy, strategy), function()
       local bp
       local db
-      local dao
+
       setup(function()
         helpers.kill_all()
         flush_redis()
-        bp, db, dao = helpers.get_db_utils(strategy)
-        assert(db:truncate())
-        dao:truncate_tables()
-        assert(dao:run_migrations())
+        bp, db = helpers.get_db_utils(strategy)
 
         local consumer = bp.consumers:insert {
           custom_id = "provider_125",
@@ -667,9 +658,7 @@ for _, strategy in helpers.each_strategy() do
 
       teardown(function()
         helpers.kill_all()
-        dao:drop_schema()
         assert(db:truncate())
-        assert(dao:run_migrations())
       end)
 
       it("blocks when the consumer exceeds their quota, no matter what service/route used", function()
@@ -697,14 +686,11 @@ for _, strategy in helpers.each_strategy() do
     describe(fmt("#flaky Plugin: rate-limiting (access - global) with policy: %s [#%s]", policy, strategy), function()
       local bp
       local db
-      local dao
+
       setup(function()
         helpers.kill_all()
         flush_redis()
-        bp, db, dao = helpers.get_db_utils(strategy)
-        assert(db:truncate())
-        dao:truncate_tables()
-        assert(dao:run_migrations())
+        bp, db = helpers.get_db_utils(strategy)
 
         -- global plugin (not attached to route, service or consumer)
         bp.rate_limiting_plugins:insert({
@@ -731,9 +717,7 @@ for _, strategy in helpers.each_strategy() do
 
       teardown(function()
         helpers.kill_all()
-        dao:drop_schema()
         assert(db:truncate())
-        assert(dao:run_migrations())
       end)
 
       it("blocks if exceeding limit", function()

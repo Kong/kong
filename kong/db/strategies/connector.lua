@@ -16,13 +16,29 @@ function Connector:init_worker()
 end
 
 
+function Connector:infos()
+  error(fmt("infos() not implemented for '%s' strategy", self.database))
+end
+
+
 function Connector:connect()
   error(fmt("connect() not implemented for '%s' strategy", self.database))
 end
 
 
+function Connector:connect_migrations()
+  error(fmt("connect_migrations() not implemented for '%s' strategy",
+            self.database))
+end
+
+
 function Connector:setkeepalive()
   error(fmt("setkeepalive() not implemented for '%s' strategy", self.database))
+end
+
+
+function Connector:close()
+  error(fmt("close() not implemented for '%s' strategy", self.database))
 end
 
 
@@ -58,6 +74,41 @@ end
 
 function Connector:remove_lock()
   error(fmt("remove_lock() not implemented for '%s' strategy", self.database))
+end
+
+
+function Connector:schema_migrations()
+  error(fmt("schema_migrations() not implemented for '%s' strategy",
+            self.database))
+end
+
+
+function Connector:schema_bootstrap()
+  error(fmt("schema_bootstrap() not implemented for '%s' strategy",
+            self.database))
+end
+
+
+function Connector:schema_reset()
+  error(fmt("schema_reset() not implemented for '%s' strategy",
+            self.database))
+end
+
+
+function Connector:run_up_migration()
+  error(fmt("run_up_migration() not implemented for '%s' strategy",
+            self.database))
+end
+
+
+function Connector:post_run_up_migrations()
+  return true
+end
+
+
+function Connector:record_migration()
+  error(fmt("record_migration() not implemented for '%s' strategy",
+            self.database))
 end
 
 

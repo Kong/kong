@@ -98,7 +98,6 @@ assert(db:init_connector())
 local dao = assert(DAOFactory.new(conf, db))
 db.old_dao = dao
 local blueprints = assert(Blueprints.new(dao, db))
--- make sure migrations are up-to-date
 
 local each_strategy
 
@@ -146,6 +145,20 @@ local function truncate_tables(db, dao, tables)
   end
 end
 
+local function bootstrap_database(db)
+  local schema_state = assert(db:schema_state())
+  if schema_state.needs_bootstrap then
+    assert(db:schema_bootstrap())
+  end
+
+  if schema_state.new_migrations then
+    assert(db:run_migrations(schema_state.new_migrations, {
+      run_up = true,
+      run_teardown = true,
+    }))
+  end
+end
+
 local function get_db_utils(strategy, tables, plugins)
   strategy = strategy or conf.database
   if tables ~= nil and type(tables) ~= "table" then
@@ -165,6 +178,8 @@ local function get_db_utils(strategy, tables, plugins)
   local db = assert(DB.new(conf, strategy))
   assert(db:init_connector())
 
+  bootstrap_database(db)
+
   -- legacy DAO
   local dao
 
@@ -174,7 +189,7 @@ local function get_db_utils(strategy, tables, plugins)
     dao = assert(DAOFactory.new(conf, db))
     conf.database = database
 
-    assert(dao:run_migrations())
+    --assert(dao:run_migrations())
   end
 
   db:truncate("plugins")
@@ -1027,10 +1042,17 @@ luassert:register("assertion", "formparam", req_form_param,
 -- Modified version of `pl.utils.executeex()` so the output can directly be
 -- used on an assertion.
 -- @name execute
--- @param ... see penlight documentation
--- @return ok, stderr, stdout; stdout is only included when the result was ok
-local function exec(...)
-  local ok, _, stdout, stderr = pl_utils.executeex(...)
+-- @param cmd command to execute
+-- @param pl_returns (optional) boolean: if true, this function will
+-- return the same values as Penlight's executeex.
+-- @return if pl_returns is true, returns four return values
+-- (ok, code, stdout, stderr); if pl_returns is false,
+-- returns either (false, stderr) or (true, stderr, stdout).
+local function exec(cmd, pl_returns)
+  local ok, code, stdout, stderr = pl_utils.executeex(cmd)
+  if pl_returns then
+    return ok, code, stdout, stderr
+  end
   if not ok then
     stdout = nil -- don't return 3rd value if fail because of busted's `assert`
   end
@@ -1043,8 +1065,14 @@ end
 -- @param env (optional) table with kong parameters to set as environment
 -- variables, overriding the test config (each key will automatically be
 -- prefixed with `KONG_` and be converted to uppercase)
--- @return same output as `exec`
-local function kong_exec(cmd, env)
+-- @param pl_returns (optional) boolean: if true, this function will
+-- return the same values as Penlight's executeex.
+-- @param env_vars (optional) a string prepended to the command, so
+-- that arbitrary environment variables may be passed
+-- @return if pl_returns is true, returns four return values
+-- (ok, code, stdout, stderr); if pl_returns is false,
+-- returns either (false, stderr) or (true, stderr, stdout).
+local function kong_exec(cmd, env, pl_returns, env_vars)
   cmd = cmd or ""
   env = env or {}
 
@@ -1063,12 +1091,12 @@ local function kong_exec(cmd, env)
   end
 
   -- build Kong environment variables
-  local env_vars = ""
+  env_vars = env_vars or ""
   for k, v in pairs(env) do
     env_vars = string.format("%s KONG_%s='%s'", env_vars, k:upper(), v)
   end
 
-  return exec(env_vars .. " " .. BIN_PATH .. " " .. cmd)
+  return exec(env_vars .. " " .. BIN_PATH .. " " .. cmd, pl_returns)
 end
 
 --- Prepare the Kong environment.
@@ -1173,6 +1201,7 @@ return {
   db = db,
   blueprints = blueprints,
   get_db_utils = get_db_utils,
+  bootstrap_database = bootstrap_database,
   bin_path = BIN_PATH,
   test_conf = conf,
   test_conf_path = TEST_CONF_PATH,

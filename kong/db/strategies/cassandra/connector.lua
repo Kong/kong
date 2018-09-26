@@ -1,9 +1,32 @@
+local log = require "kong.cmd.utils.log"
 local cassandra = require "cassandra"
 local Cluster   = require "resty.cassandra.cluster"
+local pl_stringx = require "pl.stringx"
 
 
 local CassandraConnector   = {}
 CassandraConnector.__index = CassandraConnector
+
+
+local function wait_for_schema_consensus(self)
+  if not self.connection then
+    error("no connection")
+  end
+
+  log.verbose("waiting for Cassandra schema consensus (%dms timeout)...",
+              self.cluster.max_schema_consensus_wait)
+
+  local ok, err = self.cluster:wait_schema_consensus(self.connection)
+
+  log.verbose("Cassandra schema consensus: %s",
+              ok and "reached" or "not reached")
+
+  if err then
+    return nil, "failed to wait for schema consensus: " .. err
+  end
+
+  return true
+end
 
 
 function CassandraConnector.new(kong_config)
@@ -79,8 +102,8 @@ function CassandraConnector.new(kong_config)
 end
 
 
-local function extract_major(release_version)
-  return string.match(release_version, "^(%d+)%.%d")
+local function extract_major_minor(release_version)
+  return string.match(release_version, "^((%d+)%.%d+)")
 end
 
 
@@ -102,6 +125,7 @@ function CassandraConnector:init()
   end
 
   local major_version
+  local major_minor_version
 
   for i = 1, #peers do
     local release_version = peers[i].release_version
@@ -109,29 +133,42 @@ function CassandraConnector:init()
       return nil, "no release_version for peer " .. peers[i].host
     end
 
-    local peer_major_version = tonumber(extract_major(release_version))
-    if not peer_major_version then
+    local major_minor, major = extract_major_minor(release_version)
+    major = tonumber(major)
+    if not major_minor or not major then
       return nil, "failed to extract major version for peer " .. peers[i].host
                   .. " with version: " .. tostring(peers[i].release_version)
     end
 
     if i == 1 then
-      major_version = peer_major_version
+      major_version = major
+      major_minor_version = major_minor
 
-    elseif peer_major_version ~= major_version then
+    elseif major ~= major_version then
       return nil, "different major versions detected"
     end
   end
 
   self.major_version = major_version
+  self.major_minor_version = major_minor_version
 
   return true
 end
 
 
+function CassandraConnector:infos()
+  return {
+    strategy = "Cassandra",
+    db_name = self.keyspace,
+    db_desc = "keyspace",
+    db_ver = self.major_minor_version or "unknown",
+  }
+end
+
+
 function CassandraConnector:connect()
   if self.connection then
-    return
+    return true
   end
 
   local peer, err = self.cluster:next_coordinator()
@@ -145,12 +182,56 @@ function CassandraConnector:connect()
 end
 
 
+-- open a connection from the first available contact point,
+-- without a keyspace
+function CassandraConnector:connect_migrations(opts)
+  if self.connection then
+    return self.connection
+  end
+
+  opts = opts or {}
+
+  local peer, err = self.cluster:first_coordinator()
+  if not peer then
+    return nil, "failed to acquire contact point: " .. err
+  end
+
+  if not opts.no_keyspace then
+    local ok, err = peer:change_keyspace(self.keyspace)
+    if not ok then
+      return nil, err
+    end
+  end
+
+  self.connection = peer
+
+  return peer
+end
+
+
 function CassandraConnector:setkeepalive()
   if not self.connection then
     return
   end
 
   local ok, err = self.connection:setkeepalive()
+
+  self.connection = nil
+
+  if not ok then
+    return nil, err
+  end
+
+  return true
+end
+
+
+function CassandraConnector:close()
+  if not self.connection then
+    return
+  end
+
+  local ok, err = self.connection:close()
 
   self.connection = nil
 
@@ -189,8 +270,25 @@ function CassandraConnector:query(query, args, opts, operation)
     end
   end
 
-  -- TODO: prepare queries
-  local res, err = coordinator:execute(query, args, opts)
+  local t_cql = pl_stringx.split(query, ";")
+
+  local res, err
+
+  if #t_cql == 1 then
+    -- TODO: prepare queries
+    res, err = coordinator:execute(query, args, opts)
+
+  else
+    for i = 1, #t_cql do
+      local cql = pl_stringx.strip(t_cql[i])
+      if cql ~= "" then
+        res, err = coordinator:execute(cql, nil, opts)
+        if not res then
+          break
+        end
+      end
+    end
+  end
 
   if not self.connection then
     coordinator:setkeepalive()
@@ -204,7 +302,35 @@ function CassandraConnector:query(query, args, opts, operation)
 end
 
 
+local function select_keyspaces(self)
+  if not self.connection then
+    error("no connection")
+  end
+
+  if not self.major_version then
+    return nil, "missing self.major_version"
+  end
+
+  local cql
+
+  if self.major_version == 3 then
+    cql = [[SELECT * FROM system_schema.keyspaces
+              WHERE keyspace_name = ?]]
+
+  else
+    cql = [[SELECT * FROM system.schema_keyspaces
+              WHERE keyspace_name = ?]]
+  end
+
+  return self.connection:execute(cql, { self.keyspace })
+end
+
+
 local function select_tables(self)
+  if not self.connection then
+    error("no connection")
+  end
+
   if not self.major_version then
     return nil, "missing self.major_version"
   end
@@ -219,7 +345,7 @@ local function select_tables(self)
             WHERE keyspace_name = ?]]
   end
 
-  return self:query(cql, { self.keyspace })
+  return self.connection:execute(cql, { self.keyspace })
 end
 
 
@@ -250,8 +376,9 @@ function CassandraConnector:reset()
     end
   end
 
-  ok, err = self.cluster:wait_schema_consensus(self.connection)
+  ok, err = wait_for_schema_consensus(self)
   if not ok then
+    self:setkeepalive()
     return nil, err
   end
 
@@ -280,7 +407,9 @@ function CassandraConnector:truncate()
                        and rows[i].table_name
                        or rows[i].columnfamily_name
 
-    if table_name ~= "schema_migrations" then
+    if table_name ~= "schema_migrations" and
+       table_name ~= "schema_meta" and
+       table_name ~= "locks" then
       local cql = string.format("TRUNCATE TABLE %s.%s",
                                 self.keyspace, table_name)
 
@@ -309,11 +438,13 @@ function CassandraConnector:truncate_table(table_name)
 end
 
 
-function CassandraConnector:setup_locks(default_ttl)
+function CassandraConnector:setup_locks(default_ttl, no_schema_consensus)
   local ok, err = self:connect()
   if not ok then
     return nil, err
   end
+
+  log.debug("creating 'locks' table if not existing...")
 
   local cql = string.format([[
     CREATE TABLE IF NOT EXISTS locks(
@@ -328,13 +459,19 @@ function CassandraConnector:setup_locks(default_ttl)
     return nil, err
   end
 
-  ok, err = self.cluster:wait_schema_consensus(self.connection)
-  if not ok then
-    self:setkeepalive()
-    return nil, err
-  end
+  log.debug("successfully created 'locks' table")
 
-  self:setkeepalive()
+  if not no_schema_consensus then
+    -- called from tests, ignored when called from bootstrapping, since
+    -- we wait for schema consensus as part of bootstrap
+    ok, err = wait_for_schema_consensus(self)
+    if not ok then
+      self:setkeepalive()
+      return nil, err
+    end
+
+    self:setkeepalive()
+  end
 
   return true
 end
@@ -389,6 +526,316 @@ function CassandraConnector:remove_lock(key, owner)
   end
 
   return true
+end
+
+
+do
+  -- migrations
+
+
+  local SCHEMA_META_KEY = "schema_meta"
+
+
+  function CassandraConnector:schema_migrations()
+    if not self.connection then
+      error("no connection")
+    end
+
+    do
+      -- has keyspace table?
+
+      local rows, err = select_keyspaces(self)
+      if not rows then
+        return nil, err
+      end
+
+      local has_keyspace
+
+      for _, row in ipairs(rows) do
+        if row.keyspace_name == self.keyspace then
+          has_keyspace = true
+          break
+        end
+      end
+
+      if not has_keyspace then
+        -- no keyspace needs bootstrap
+        return nil
+      end
+    end
+
+    do
+      -- has schema_meta table?
+
+      local rows, err = select_tables(self)
+      if not rows then
+        return nil, err
+      end
+
+      local has_schema_meta_table
+
+      for _, row in ipairs(rows) do
+        -- Cassandra 3: table_name
+        -- Cassadra 2: columnfamily_name
+        if row.table_name == "schema_meta"
+          or row.columnfamily_name == "schema_meta" then
+          has_schema_meta_table = true
+          break
+        end
+      end
+
+      if not has_schema_meta_table then
+        -- keyspace, but no schema: needs bootstrap
+        return nil
+      end
+    end
+
+    local ok, err = self.connection:change_keyspace(self.keyspace)
+    if not ok then
+      return nil, err
+    end
+
+    do
+      -- has migrations?
+
+      local rows, err = self.connection:execute([[
+        SELECT * FROM schema_meta WHERE key = ?
+      ]], {
+        SCHEMA_META_KEY,
+      })
+      if not rows then
+        return nil, err
+      end
+
+      -- no migrations: is bootstrapped but not migrated
+      -- migrations: has some migrations
+      return rows
+    end
+  end
+
+
+  function CassandraConnector:schema_bootstrap(kong_config, default_locks_ttl)
+    -- compute keyspace creation CQL
+
+    local cql_replication
+    local cass_repl_strategy = kong_config.cassandra_repl_strategy
+
+    if cass_repl_strategy == "SimpleStrategy" then
+      cql_replication = string.format([[
+        {'class': 'SimpleStrategy', 'replication_factor': %d}
+      ]], kong_config.cassandra_repl_factor)
+
+    elseif cass_repl_strategy == "NetworkTopologyStrategy" then
+      local dcs = {}
+
+      for _, dc_conf in ipairs(kong_config.cassandra_data_centers) do
+        local dc_name, dc_repl = string.match(dc_conf, "([^:]+):(%d+)")
+        if dc_name and dc_repl then
+          table.insert(dcs, string.format("'%s': %s", dc_name, dc_repl))
+        end
+      end
+
+      if #dcs < 1 then
+        return nil, "invalid cassandra_data_centers configuration"
+      end
+
+      cql_replication = string.format([[
+        {'class': 'NetworkTopologyStrategy', %s}
+      ]], table.concat(dcs, ", "))
+
+    else
+      error("unknown replication_strategy: " .. tostring(cass_repl_strategy))
+    end
+
+    -- get a contact point connection (no keyspace set)
+
+    if not self.connection then
+      error("no connection")
+    end
+
+    -- create keyspace if not exists
+
+    log.debug("creating '%s' keyspace if not existing...",
+              kong_config.cassandra_keyspace)
+
+    local res, err = self.connection:execute(string.format([[
+      CREATE KEYSPACE IF NOT EXISTS %q
+      WITH REPLICATION = %s
+    ]], kong_config.cassandra_keyspace, cql_replication))
+    if not res then
+      return nil, err
+    end
+
+    log.debug("successfully created '%s' keyspace",
+              kong_config.cassandra_keyspace)
+
+    local ok, err = self.connection:change_keyspace(kong_config.cassandra_keyspace)
+    if not ok then
+      return nil, err
+    end
+
+    -- create schema meta table if not exists
+
+    log.debug("creating 'schema_meta' table if not existing...")
+
+    local res, err = self.connection:execute([[
+      CREATE TABLE IF NOT EXISTS schema_meta(
+        key             text,
+        subsystem       text,
+        last_executed   text,
+        executed        set<text>,
+        pending         set<text>,
+
+        PRIMARY KEY (key, subsystem)
+      )
+    ]])
+    if not res then
+      return nil, err
+    end
+
+    log.debug("successfully created 'schema_meta' table")
+
+    ok, err = self:setup_locks(default_locks_ttl, true) -- no schema consensus
+    if not ok then
+      return nil, err
+    end
+
+    ok, err = wait_for_schema_consensus(self)
+    if not ok then
+      return nil, err
+    end
+
+    return true
+  end
+
+
+  function CassandraConnector:schema_reset()
+    if not self.connection then
+      error("no connection")
+    end
+
+    local ok, err = self.connection:execute(string.format([[
+      DROP KEYSPACE IF EXISTS %q
+    ]], self.keyspace))
+    if not ok then
+      return nil, err
+    end
+
+    log("dropped '%s' keyspace", self.keyspace)
+
+    ok, err = wait_for_schema_consensus(self)
+    if not ok then
+      return nil, err
+    end
+
+    return true
+  end
+
+
+  function CassandraConnector:run_up_migration(name, up_cql)
+    if type(name) ~= "string" then
+      error("name must be a string", 2)
+    end
+
+    if type(up_cql) ~= "string" then
+      error("up_cql must be a string", 2)
+    end
+
+    if not self.connection then
+      error("no connection")
+    end
+
+    local t_cql = pl_stringx.split(up_cql, ";")
+
+    for i = 1, #t_cql do
+      local cql = pl_stringx.strip(t_cql[i])
+      if cql ~= "" then
+        local res, err = self.connection:execute(cql)
+        if not res then
+          if string.find(err, "Column .- was not found in table")
+             or string.find(err, "[Ii]nvalid column name") then
+            log.warn("ignored error while running '%s' migration: %s (%s)",
+                     name, err, cql:gsub("\n", " "):gsub("%s%s+", " "))
+
+          else
+            return nil, err
+          end
+        end
+      end
+    end
+
+    return true
+  end
+
+
+  function CassandraConnector:record_migration(subsystem, name, state)
+    if type(subsystem) ~= "string" then
+      error("subsystem must be a string", 2)
+    end
+
+    if type(name) ~= "string" then
+      error("name must be a string", 2)
+    end
+
+    if not self.connection then
+      error("no connection")
+    end
+
+    local cql
+    local args
+
+    if state == "executed" then
+      cql = [[UPDATE schema_meta
+              SET last_executed = ?, executed = executed + ?
+              WHERE key = ? AND subsystem = ?]]
+      args = {
+        name,
+        cassandra.set({ name }),
+      }
+
+    elseif state == "pending" then
+      cql = [[UPDATE schema_meta
+              SET pending = pending + ?
+              WHERE key = ? AND subsystem = ?]]
+      args = {
+        cassandra.set({ name }),
+      }
+
+    elseif state == "teardown" then
+      cql = [[UPDATE schema_meta
+              SET pending = pending - ?, executed = executed + ?,
+                  last_executed = ?
+              WHERE key = ? AND subsystem = ?]]
+      args = {
+        cassandra.set({ name }),
+        cassandra.set({ name }),
+        name,
+      }
+
+    else
+      error("unknown 'state' argument: " .. tostring(state))
+    end
+
+    table.insert(args, SCHEMA_META_KEY)
+    table.insert(args, subsystem)
+
+    local res, err = self.connection:execute(cql, args)
+    if not res then
+      return nil, err
+    end
+
+    return true
+  end
+
+
+  function CassandraConnector:post_up_migrations()
+    local ok, err = wait_for_schema_consensus(self)
+    if not ok then
+      return nil, err
+    end
+
+    return true
+  end
 end
 
 

@@ -42,7 +42,7 @@ for _, strategy in helpers.each_strategy() do
 describe("Admin API: #" .. strategy, function()
   local client
 
-  local bp, db, dao
+  local bp, db
 
   before_each(function()
     client = assert(helpers.admin_client())
@@ -55,8 +55,7 @@ describe("Admin API: #" .. strategy, function()
   end)
 
   setup(function()
-    bp, db, dao = helpers.get_db_utils(strategy, {})
-    assert(dao:run_migrations())
+    bp, db = helpers.get_db_utils(strategy, {})
 
     assert(helpers.start_kong({
       database = strategy,

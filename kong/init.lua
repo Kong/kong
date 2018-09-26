@@ -99,6 +99,7 @@ local cast = ffi.cast
 local voidpp = ffi.typeof("void**")
 
 local loaded_plugins
+local schema_state
 
 -- Kong public context handlers.
 -- @section kong_handlers
@@ -152,13 +153,26 @@ function Kong.init()
   local db = assert(DB.new(config))
   assert(db:init_connector())
 
+  schema_state = assert(db:schema_state())
+  if schema_state.needs_bootstrap  then
+    error("database needs bootstrap; run 'kong migrations bootstrap'")
+
+  elseif schema_state.new_migrations then
+    error("new migrations available; run 'kong migrations list'")
+  end
+  --[[
+  if schema_state.pending_migrations then
+    assert(db:load_pending_migrations(schema_state.pending_migrations))
+  end
+  --]]
+
   local dao = assert(DAOFactory.new(config, db)) -- instantiate long-lived DAO
   local ok, err_t = dao:init()
   if not ok then
     error(tostring(err_t))
   end
 
-  assert(dao:are_migrations_uptodate())
+  --assert(dao:are_migrations_uptodate())
 
   db.old_dao = dao
 
@@ -243,6 +257,31 @@ function Kong.init_worker()
   if not ok then
     ngx_log(ngx_CRIT, "could not init DAO: ", err)
     return
+  end
+
+
+  if ngx.worker.id() == 0 then
+    if schema_state.missing_migrations then
+      local missing = {}
+      for _, t in ipairs(schema_state.missing_migrations) do
+        table.insert(missing, string.format("%s (%s)", t.subsystem,
+                              table.concat(t.migrations, ", ")))
+      end
+
+      ngx.log(ngx.WARN, "missing migrations: ",
+                        table.concat(missing, " "))
+    end
+
+    if schema_state.pending_migrations then
+      local pending = {}
+      for _, t in ipairs(schema_state.pending_migrations) do
+        table.insert(pending, string.format("%s(%s)", t.subsystem,
+                              table.concat(t.migrations, ", ")))
+      end
+
+      ngx.log(ngx.INFO, "starting with pending migrations: ",
+                        table.concat(pending, ", "))
+    end
   end
 
 

@@ -1,10 +1,16 @@
+local logger       = require "kong.cmd.utils.log"
 local pgmoon       = require "pgmoon"
+local arrays       = require "pgmoon.arrays"
+local stringx      = require "pl.stringx"
 
 
 local setmetatable = setmetatable
+local encode_array = arrays.encode_array
+local tostring     = tostring
 local concat       = table.concat
 local ipairs       = ipairs
 local pairs        = pairs
+local error        = error
 local type         = type
 local ngx          = ngx
 local timer_every  = ngx.timer.every
@@ -13,6 +19,7 @@ local get_phase    = ngx.get_phase
 local null         = ngx.null
 local now          = ngx.now
 local log          = ngx.log
+local sub          = string.sub
 
 
 local WARN                          = ngx.WARN
@@ -21,6 +28,11 @@ SELECT table_name
   FROM information_schema.tables
  WHERE table_schema = 'public';
 ]]
+local PROTECTED_TABLES = {
+  schema_migrations = true,
+  schema_meta       = true,
+  locks             = true,
+}
 
 
 local function now_updated()
@@ -139,6 +151,27 @@ local function connect(config)
 end
 
 
+local function close(connection)
+  if not connection or not connection.sock then
+    return nil, "no active connection"
+  end
+
+  local ok, err = connection:disconnect()
+  if not ok then
+    if err then
+      log(WARN, "unable to close postgres connection (", err, ")")
+
+    else
+      log(WARN, "unable to close postgres connection")
+    end
+
+    return nil, err
+  end
+
+  return true
+end
+
+
 setkeepalive = function(connection)
   if not connection or not connection.sock then
     return nil, "no active connection"
@@ -180,6 +213,31 @@ local _mt = {}
 
 
 _mt.__index = _mt
+
+
+local function extract_major_minor(release_version)
+  return string.match(release_version, "^(%d+%.%d+)")
+end
+
+
+function _mt:init()
+  local res, err = self:query("SHOW server_version;")
+  if not res then
+    return nil, "failed to retrieve server_version: " .. err
+  end
+
+  if #res < 1 or not res[1].server_version then
+    return nil, "failed to retrieve server_version"
+  end
+
+  self.major_minor_version = extract_major_minor(res[1].server_version)
+  if not self.major_minor_version then
+    return nil, "failed to extract major.minor version from '" ..
+                res[1].server_version .. "'"
+  end
+
+  return true
+end
 
 
 function _mt:init_worker(strategies)
@@ -244,6 +302,16 @@ function _mt:init_worker(strategies)
 end
 
 
+function _mt:infos()
+  return {
+    strategy = "PostgreSQL",
+    db_name = self.config.database,
+    db_desc = "database",
+    db_ver = self.major_minor_version or "unknown",
+  }
+end
+
+
 function _mt:connect()
   if self.connection and self.connection.sock then
     return true
@@ -255,6 +323,35 @@ function _mt:connect()
   end
 
   self.connection = connection
+
+  return true
+end
+
+
+function _mt:connect_migrations(_)
+  if self.connection and self.connection.sock then
+    return self.connection
+  end
+
+  local connection, err = connect(self.config)
+  if not connection then
+    return nil, err
+  end
+
+  self.connection = connection
+
+  return connection
+end
+
+
+function _mt:close()
+  local ok, err = close(self.connection)
+
+  self.connection = nil
+
+  if not ok then
+    return nil, err
+  end
 
   return true
 end
@@ -328,7 +425,7 @@ function _mt:truncate()
 
   for row in self:iterate(SQL_INFORMATION_SCHEMA_TABLES) do
     local table_name = row.table_name
-    if table_name ~= "schema_migrations" then
+    if not PROTECTED_TABLES[table_name] then
       i = i + 1
       table_names[i] = self:escape_identifier(table_name)
     end
@@ -365,7 +462,9 @@ function _mt:truncate_table(table_name)
 end
 
 
-function _mt:setup_locks(_)
+function _mt:setup_locks(_, _)
+  logger.verbose("creating 'locks' table if not existing...")
+
   local ok, err = self:query([[
 BEGIN;
   CREATE TABLE IF NOT EXISTS locks (
@@ -379,6 +478,8 @@ COMMIT;]])
   if not ok then
     return nil, err
   end
+
+  logger.verbose("successfully created 'locks' table")
 
   return true
 end
@@ -449,6 +550,202 @@ function _mt:remove_lock(key, owner)
     return nil, err
   end
 
+  return true
+end
+
+
+function _mt:schema_migrations()
+  if not self.connection or not self.connection.sock then
+    error("no connection")
+  end
+
+  local has_schema_meta_table
+  for row in self:iterate(SQL_INFORMATION_SCHEMA_TABLES) do
+    local table_name = row.table_name
+    if table_name == "schema_meta" then
+      has_schema_meta_table = true
+      break
+    end
+  end
+
+  if not has_schema_meta_table then
+    -- database, but no schema_meta: needs bootstrap
+    return nil
+  end
+
+  local rows, err = self.connection:query(concat({
+    "SELECT *\n",
+    "  FROM schema_meta\n",
+    " WHERE key = ",  self:escape_literal("schema_meta"), ";"
+  }))
+
+  if not rows then
+    return nil, err
+  end
+
+  for _, row in ipairs(rows) do
+    if row.pending == null then
+      row.pending = nil
+    end
+  end
+
+  -- no migrations: is bootstrapped but not migrated
+  -- migrations: has some migrations
+  return rows
+end
+
+
+function _mt:schema_bootstrap(kong_config, default_locks_ttl)
+  if not self.connection or not self.connection.sock then
+    error("no connection")
+  end
+
+  -- create schema meta table if not exists
+
+  logger.verbose("creating 'schema_meta' table if not existing...")
+
+  local res, err = self.connection:query([[
+    CREATE TABLE IF NOT EXISTS schema_meta (
+      key            TEXT,
+      subsystem      TEXT,
+      last_executed  TEXT,
+      executed       TEXT[],
+      pending        TEXT[],
+
+      PRIMARY KEY (key, subsystem)
+    );]])
+
+  if not res then
+    return nil, err
+  end
+
+  logger.verbose("successfully created 'schema_meta' table")
+
+  local ok
+  ok, err = self:setup_locks(default_locks_ttl, true) -- no schema consensus
+  if not ok then
+    return nil, err
+  end
+
+  return true
+end
+
+
+function _mt:schema_reset()
+  if not self.connection or not self.connection.sock then
+    error("no connection")
+  end
+
+  local user = self:escape_identifier(self.config.user)
+  local ok, err = self.connection:query(concat {
+    "BEGIN;\n",
+    "  DROP SCHEMA IF EXISTS public CASCADE;\n",
+    "  CREATE SCHEMA IF NOT EXISTS public AUTHORIZATION ", user, ";\n",
+    "  GRANT ALL ON SCHEMA public TO ", user, ";\n",
+    "COMMIT;",
+  })
+
+  if not ok then
+    return nil, err
+  end
+
+  return true
+end
+
+function _mt:run_up_migration(name, up_sql)
+  if type(name) ~= "string" then
+    error("name must be a string", 2)
+  end
+
+  if type(up_sql) ~= "string" then
+    error("up_sql must be a string", 2)
+  end
+
+  if not self.connection or not self.connection.sock then
+    error("no connection")
+  end
+
+  local sql = stringx.strip(up_sql)
+  if sub(sql, -1) ~= ";" then
+    sql = sql .. ";"
+  end
+
+  local sql = concat {
+    "BEGIN;\n",
+    sql, "\n",
+    "COMMIT;\n",
+  }
+
+  local res, err = self.connection:query(sql)
+  if not res then
+    self.connection:query("ROLLBACK;")
+    return nil, err
+  end
+
+  return true
+end
+
+
+function _mt:record_migration(subsystem, name, state)
+  if type(subsystem) ~= "string" then
+    error("subsystem must be a string", 2)
+  end
+
+  if type(name) ~= "string" then
+    error("name must be a string", 2)
+  end
+
+  if not self.connection or not self.connection.sock then
+    error("no connection")
+  end
+
+  local key_escaped  = self:escape_literal("schema_meta")
+  local subsystem_escaped = self:escape_literal(subsystem)
+  local name_escaped = self:escape_literal(name)
+  local name_array   = encode_array({ name })
+
+  local sql
+  if state == "executed" then
+    sql = concat({
+      "INSERT INTO schema_meta (key, subsystem, last_executed, executed)\n",
+      "     VALUES (", key_escaped, ", ", subsystem_escaped, ", ", name_escaped, ", ", name_array, ")\n",
+      "ON CONFLICT (key, subsystem) DO UPDATE\n",
+      "        SET last_executed = EXCLUDED.last_executed,\n",
+      "            executed = ARRAY_APPEND(COALESCE(schema_meta.executed, ARRAY[]::TEXT[]), ", name_escaped, ");",
+    })
+
+  elseif state == "pending" then
+    sql = concat({
+      "INSERT INTO schema_meta (key, subsystem, pending)\n",
+      "     VALUES (", key_escaped, ", ", subsystem_escaped, ", ", name_array, ")\n",
+      "ON CONFLICT (key, subsystem) DO UPDATE\n",
+      "        SET pending = ARRAY_APPEND(schema_meta.pending, ", name_escaped, ");"
+    })
+
+  elseif state == "teardown" then
+    sql = concat({
+      "INSERT INTO schema_meta (key, subsystem, last_executed, executed)\n",
+      "     VALUES (", key_escaped, ", ", subsystem_escaped, ", ", name_escaped, ", ", name_array, ")\n",
+      "ON CONFLICT (key, subsystem) DO UPDATE\n",
+      "        SET last_executed = EXCLUDED.last_executed,\n",
+      "            executed = ARRAY_APPEND(COALESCE(schema_meta.executed, ARRAY[]::TEXT[]), ", name_escaped, "),\n",
+      "            pending  = ARRAY_REMOVE(COALESCE(schema_meta.pending,  ARRAY[]::TEXT[]), ", name_escaped, ");",
+    })
+
+  else
+    error("unknown 'state' argument: " .. tostring(state))
+  end
+
+  local res, err = self.connection:query(sql)
+  if not res then
+    return nil, err
+  end
+
+  return true
+end
+
+
+function _mt:post_up_migrations()
   return true
 end
 

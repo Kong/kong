@@ -5,8 +5,9 @@ local Entity = {}
 
 local entity_errors = {
   NO_NILABLE = "%s: Entities cannot have nilable types.",
-  MAP_KEY_STRINGS_ONLY = "%s: Map keys must be strings",
-  AGGREGATE_ON_BASE_TYPES_ONLY = "%s: Aggregates are allowed on base types only."
+  NO_FUNCTIONS = "%s: Entities cannot have function types.",
+  MAP_KEY_STRINGS_ONLY = "%s: Entities map keys must be strings.",
+  AGGREGATE_ON_BASE_TYPES_ONLY = "%s: Entities aggregates are only allowed on base types.",
 }
 
 
@@ -62,6 +63,8 @@ function Entity.new(definition)
     elseif field.type == "record" then
       make_records_non_nullable(field)
 
+    elseif field.type == "function" then
+      return nil, entity_errors.NO_FUNCTIONS:format(name)
     end
 
     ::continue::
