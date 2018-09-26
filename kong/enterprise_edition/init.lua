@@ -263,7 +263,7 @@ function _M.create_default_portal_config()
   local dao = singletons.dao
   local conf = singletons.configuration
   local res = dao.workspace_entities:find_all({
-    entity_type = "portal_config",
+    entity_type = "portal_configs",
     workspace_name = "default"
   })
 
@@ -272,18 +272,18 @@ function _M.create_default_portal_config()
     local ws_default = res[1]
     local ngx_log = ngx.log
     local DEBUG = ngx.DEBUG
-    
-    res, err = dao.portal_config:insert({})
+
+    res, err = dao.portal_configs:insert({})
 
     if err then
       ngx_log(DEBUG, "failed to instantiate default portal configuration: ", err)
     end
-  
+
     res, err = dao.workspace_entities:insert({
       workspace_id = ws_default.id,
       workspace_name = ws_default.name,
       entity_id = res.id,
-      entity_type = "portal_config",
+      entity_type = "portal_configs",
       unique_field_name = "id",
       unique_field_value = res.id,
     })

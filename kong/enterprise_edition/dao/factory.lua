@@ -9,7 +9,7 @@ local _M = {}
 _M.EE_MODELS = {
   "token_statuses",
   "portal_reset_secrets",
-  "portal_config",
+  "portal_configs",
 }
 
 

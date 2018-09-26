@@ -498,9 +498,9 @@ return {
     ]]
   },
   {
-    name = "2018-09-24-144900_portal_config",
+    name = "2018-09-24-144900_portal_configs",
     up = [[
-      CREATE TABLE IF NOT EXISTS portal_config(
+      CREATE TABLE IF NOT EXISTS portal_configs(
         id uuid PRIMARY KEY,
         portal_auth text,
         portal_auth_config text,
@@ -516,7 +516,7 @@ return {
       );
     ]],
     down = [[
-      DROP TABLE portal_config;
+      DROP TABLE portal_configs;
     ]]
   }
 }
