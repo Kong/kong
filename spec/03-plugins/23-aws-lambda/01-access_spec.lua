@@ -343,6 +343,19 @@ for _, strategy in helpers.each_strategy() do
       assert.is_string(res.headers["x-amzn-RequestId"])
       assert.equal("some_value_json1", body.key1)
     end)
+    it("passes empty json arrays unmodified", function()
+      local res = assert(proxy_client:send {
+        method  = "POST",
+        path    = "/post",
+        headers = {
+          ["Host"]         = "lambda.com",
+          ["Content-Type"] = "application/json"
+        },
+        body = '[{}, []]'
+      })
+      assert.res_status(200, res)
+      assert.equal('[{},[]]', string.gsub(res:read_body(), "\n",""))
+    end)
     it("invokes a Lambda function with POST and both querystring and body params", function()
       local res = assert(proxy_client:send {
         method  = "POST",
