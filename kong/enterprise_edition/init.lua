@@ -289,7 +289,7 @@ function _M.create_default_portal_config()
     return nil, pc_err
   end
 
-  local we_res, we_err = dao.workspace_entities:insert({
+  local _, we_err = dao.workspace_entities:insert({
     workspace_id = ws_default.id,
     workspace_name = ws_default.name,
     entity_id = pc_res.id,
