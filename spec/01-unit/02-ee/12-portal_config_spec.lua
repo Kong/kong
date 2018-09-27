@@ -51,19 +51,19 @@ describe("portal_utils", function()
       values = {
         portal_auth = "basic-auth",
       }
-      valid, _ = validate_entity(values, schema)
+      valid = validate_entity(values, schema)
       assert.True(valid)
 
       values = {
         portal_auth = "key-auth",
       }
-      valid, _ = validate_entity(values, schema)
+      valid = validate_entity(values, schema)
       assert.True(valid)
 
       values = {
         portal_auth = "openid-connect",
       }
-       valid, _ = validate_entity(values, schema)
+       valid = validate_entity(values, schema)
       assert.True(valid)
     end)
 

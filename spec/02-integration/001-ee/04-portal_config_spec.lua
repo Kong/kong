@@ -7,7 +7,7 @@ for _, strategy in helpers.each_strategy() do
     local client
 
     setup(function()
-      bp, db, dao = helpers.get_db_utils(strategy)
+      db, dao = helpers.get_db_utils(strategy)
     end)
 
     teardown(function()
