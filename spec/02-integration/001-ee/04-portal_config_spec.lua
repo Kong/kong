@@ -1,10 +1,7 @@
 local helpers = require "spec.helpers"
-local cjson = require "cjson"
-local proxy_prefix = require("kong.enterprise_edition.proxies").proxy_prefix
 
 for _, strategy in helpers.each_strategy() do
   describe("default portal_config initialization" .. strategy, function()
-    local bp
     local db
     local dao
     local client
@@ -34,7 +31,7 @@ for _, strategy in helpers.each_strategy() do
 
         local pc_id = we_res[1].entity_id
 
-        pc_res, pc_err = dao.portal_configs:find({ id = pc_id })
+        local pc_res, _ = dao.portal_configs:find({ id = pc_id })
         assert.equal(pc_res.id, pc_id)
       end)
 

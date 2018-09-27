@@ -11,7 +11,7 @@ describe("portal_utils", function()
         portal_emails_reply_to = "cat@kong.com",
       }
 
-      local valid, err = validate_entity(values, schema)
+      local valid, _ = validate_entity(values, schema)
       assert.True(valid)
       assert.True(valid)
     end)
@@ -22,7 +22,7 @@ describe("portal_utils", function()
         portal_emails_reply_to = "cat",
       }
 
-      local valid, err = validate_entity(values, schema)
+      local _, err = validate_entity(values, schema)
       assert.equal("dog is invalid: missing '@' symbol", err.portal_emails_from)
       assert.equal("cat is invalid: missing '@' symbol", err.portal_emails_reply_to)
     end)
@@ -32,7 +32,7 @@ describe("portal_utils", function()
         portal_token_exp = 1000,
       }
 
-      local valid, err = validate_entity(values, schema)
+      local valid, _ = validate_entity(values, schema)
       assert.True(valid)
     end)
 
@@ -41,29 +41,29 @@ describe("portal_utils", function()
         portal_token_exp = -1000,
       }
 
-      local valid, err = validate_entity(values, schema)
+      local _, err = validate_entity(values, schema)
       assert.equal("`portal_token_exp` must be more than 0", err.portal_token_exp)
     end)
 
     it("should accept valid auth types", function()
-      local values, valid, err
+      local values, valid
 
       values = {
         portal_auth = "basic-auth",
       }
-      valid, err = validate_entity(values, schema)
+      valid, _ = validate_entity(values, schema)
       assert.True(valid)
 
       values = {
         portal_auth = "key-auth",
       }
-      valid, err = validate_entity(values, schema)
+      valid, _ = validate_entity(values, schema)
       assert.True(valid)
 
       values = {
         portal_auth = "openid-connect",
       }
-       valid, err = validate_entity(values, schema)
+       valid, _ = validate_entity(values, schema)
       assert.True(valid)
     end)
 
@@ -72,7 +72,7 @@ describe("portal_utils", function()
         portal_auth = 'something-invalid',
       }
 
-      local valid, err = validate_entity(values, schema)
+      local _, err = validate_entity(values, schema)
       assert.equal("invalid auth type", err.portal_auth)
     end)
   end)

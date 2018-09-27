@@ -1,7 +1,4 @@
-local enums = require "kong.enterprise_edition.dao.enums"
 local portal_utils = require "kong.portal.utils"
-local singletons = require "kong.singletons"
-local utils = require "kong.tools.utils"
 
 local function check_portal_auth(auth)
   if auth ~= nil

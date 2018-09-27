@@ -261,7 +261,6 @@ end
 
 function _M.create_default_portal_config()
   local dao = singletons.dao
-  local conf = singletons.configuration
   local res, err = dao.workspace_entities:find_all({
     entity_type = "portal_configs",
     workspace_name = "default"
