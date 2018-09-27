@@ -82,8 +82,7 @@ return {
       local worker_events  = singletons.worker_events
       local ok, err = worker_events.post("database", "invalid", nil)
       if not ok then
-        ngx.log(ngx.ERR, "failed to refresh database as part of ",
-                         "/refresh endpoint: ", err)
+        ngx.log(ngx.ERR, "failed to schedule DB refresh ", err)
         return helpers.responses.send_HTTP_SERVICE_UNAVAILABLE(err)
       end
 

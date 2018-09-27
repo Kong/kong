@@ -170,7 +170,7 @@ return {
       worker_events.register(function()
         local ok, err = dao.db:refresh()
         if not ok then
-          ngx.log(ERR, "[events] failed to schedule DB refresh: ", err)
+          ngx.log(CRIT, "[events] failed to refresh database: ", err)
         end
       end, "database", "invalid")
 
