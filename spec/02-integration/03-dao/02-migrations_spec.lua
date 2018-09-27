@@ -137,16 +137,19 @@ helpers.for_each_dao(function(kong_config)
     describe("errors", function()
       it("returns errors prefixed by the DB type in __tostring()", function()
         local pg_port = kong_config.pg_port
+        local pg_timeout = kong_config.pg_timeout
         local cassandra_port = kong_config.cassandra_port
         local cassandra_timeout = kong_config.cassandra_timeout
         finally(function()
           kong_config.pg_port = pg_port
+          kong_config.pg_timeout = pg_timeout
           kong_config.cassandra_port = cassandra_port
           kong_config.cassandra_timeout = cassandra_timeout
           ngx.shared.kong_cassandra:flush_all()
           ngx.shared.kong_cassandra:flush_expired()
         end)
         kong_config.pg_port = 3333
+        kong_config.pg_timeout = 1000
         kong_config.cassandra_port = 3333
         kong_config.cassandra_timeout = 1000
 

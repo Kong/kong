@@ -332,6 +332,9 @@
 
 #pg_host = 127.0.0.1             # The PostgreSQL host to connect to.
 #pg_port = 5432                  # The port to connect to.
+#pg_timeout = 5000               # Defines the timeout (in ms), for connecting,
+                                 # reading and writing.
+
 #pg_user = kong                  # The username to authenticate if required.
 #pg_password =                   # The password to authenticate if required.
 #pg_database = kong              # The database name to connect to.

@@ -138,6 +138,10 @@ local function connect(config)
   connection.convert_null = true
   connection.NULL         = null
 
+  if config.timeout then
+    connection:settimeout(config.timeout)
+  end
+
   local ok, err = connection:connect()
   if not ok then
     return nil, err
@@ -230,6 +234,7 @@ function _mt:init()
   if major < 10 then
     self.major_version       = tonumber(fmt("%u.%u", major, floor(ver / 100 % 100)))
     self.major_minor_version = fmt("%u.%u.%u", major, floor(ver / 100 % 100), ver % 100)
+
   else
     self.major_version       = major
     self.major_minor_version = fmt("%u.%u", major, ver % 100)
@@ -761,6 +766,7 @@ function _M.new(kong_config)
   local config = {
     host       = kong_config.pg_host,
     port       = kong_config.pg_port,
+    timeout    = kong_config.pg_timeout,
     user       = kong_config.pg_user,
     password   = kong_config.pg_password,
     database   = kong_config.pg_database,
