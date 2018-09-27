@@ -8,6 +8,8 @@ function _M.serialize(ngx)
   local ctx = ngx.ctx
   local var = ngx.var
   local req = ngx.req
+  local proxy_request_state = ctx.proxy_request_state or EMPTY
+  local routing = proxy_request_state.routing or EMPTY
 
   local authenticated_entity
   if ctx.authenticated_credential ~= nil then
@@ -34,7 +36,7 @@ function _M.serialize(ngx)
       headers = ngx.resp.get_headers(),
       size = var.bytes_sent
     },
-    tries = (ctx.balancer_data or EMPTY).tries,
+    tries = ((ctx.proxy_request_state or EMPTY).proxy or EMPTY).try_data,
     latencies = {
       kong = (ctx.KONG_ACCESS_TIME or 0) +
              (ctx.KONG_RECEIVE_TIME or 0) +
@@ -44,9 +46,9 @@ function _M.serialize(ngx)
       request = var.request_time * 1000
     },
     authenticated_entity = authenticated_entity,
-    route = ctx.route,
-    service = ctx.service,
-    api = ctx.api,
+    route = routing.route,
+    service = routing.service,
+    api = routing.api,
     consumer = ctx.authenticated_consumer,
     client_ip = var.remote_addr,
     started_at = req.start_time() * 1000

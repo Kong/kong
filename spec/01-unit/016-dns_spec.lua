@@ -94,10 +94,14 @@ describe("DNS", function()
     }
 
     local ip, port, code = balancer.execute({
-      type = "name",
-      port = nil,
-      host = "konghq.com",
-      try_count = 0,
+      request_out = {
+        host_type = "name",
+        port = nil,
+        host = "konghq.com",
+      },
+      proxy = {
+        try_count = 0,
+      },
     })
     assert.is_nil(ip)
     assert.equals("name resolution failed", port)
@@ -113,10 +117,14 @@ describe("DNS", function()
     }
 
     local ip, port, code = balancer.execute({
-      type = "name",
-      port = nil,
-      host = "konghq.com",
-      try_count = 0,
+      request_out = {
+        host_type = "name",
+        port = nil,
+        host = "konghq.com",
+      },
+      proxy = {
+        try_count = 0,
+      },
     })
     assert.is_nil(ip)
     assert.equals("name resolution failed", port)

@@ -51,6 +51,69 @@ local server_header = meta._SERVER_TOKENS
 local build_router_semaphore
 local build_api_router_semaphore
 
+--- Debug function for development purposes.
+-- Will dump all passed in parameters in a pretty-printed way
+-- as a `warning` log message. Includes color markers to make it stand out.
+-- @param ... list of parameters to dump
+--[[local dump = function(...)
+  local info = debug.getinfo(2) or {}
+  local input = { n = select("#", ...), ...}
+  local write = require("inspect")
+  local serialized
+  if input.n == 1 and type(input[1]) == "table" then
+    serialized = "(" .. type(input[1]) .. "): " .. write(input[1])
+  elseif input.n == 1 then
+    serialized = "(" .. type(input[1]) .. "): " .. tostring(input[1]) .. "\n"
+  else
+    local n
+    n, input.n = input.n, nil
+    serialized = "(list, #" .. n .. "): " .. write(input)
+  end
+
+  ngx.log(ngx.WARN,
+          "\027[31m\n",
+          "function '", tostring(info.name), ":" , tostring(info.currentline),
+          "' in '", tostring(info.short_src), "' wants you to know:\n",
+          serialized,
+          "\027[0m")
+end  --]]
+
+--- protect a table by only allowing proper fields to be acccess
+-- @param t the table to protect
+-- @param fields array/list of fieldnames
+-- @param allow_existing (optional, default = true) are fields already in table
+-- 't' allowed?
+local function protect_table(t, fields, allow_existing)
+  if allow_existing == nil then allow_existing = true end
+  local lookup = {}
+  if allow_existing then
+    -- insert existing fields as allowed
+    for name, value in pairs(t) do
+      lookup[name] = true
+    end
+  end
+  -- add additional fields
+  for _, name in ipairs(fields or {}) do
+    lookup[name] = true
+  end
+  setmetatable(t, {
+    __index = function(self, name)
+      if not lookup[name] then
+        error("field '" .. tostring(name) .. "' is not a valid name", 2)
+      end
+      return rawget(self, name)
+    end,
+    __newindex = function(self, name, value)
+      if not lookup[name] then
+        error("field '" .. tostring(name) .. "' is not a valid name", 2)
+      end
+      return rawset(self, name, value)
+    end,
+  })
+  return
+end
+
+
 
 local function get_now()
   update_time()
@@ -591,13 +654,84 @@ return {
         end
       end
 
-      local api                = match_t.api or EMPTY_T
-      local route              = match_t.route or EMPTY_T
-      local service            = match_t.service or EMPTY_T
-      local upstream_url_t     = match_t.upstream_url_t
 
-      local realip_remote_addr = var.realip_remote_addr
-      local forwarded_proto
+      -- Build request context structure
+
+      local routing = {
+        api =                                                      match_t.api or EMPTY_T,
+        route = match_t.route or EMPTY_T,
+        service = match_t.service or EMPTY_T,
+        matches = match_t.matches,
+      }
+protect_table(routing)
+
+      local request_in = {
+        path              = var.request_uri,
+        path_base         = match_t.to_be_defined_base,
+        path_postfix      = match_t.to_be_defined_postfix,
+        host              = ngx.var.http_host or "",
+        scheme            = var.scheme,
+        port              = var.server_port,
+        real_remote_ip    = var.realip_remote_addr,
+        trusted_ip        = kong.ip.is_trusted(var.realip_remote_addr),
+      }
+protect_table(request_in, {"path",
+  -- "path_base", "path_postfix",
+  "host", "scheme", "port", "real_remote_ip", "trusted_ip",
+})
+
+      local request_out = {
+        scheme            = match_t.upstream_url_t.scheme, -- target scheme per `service.protocol`
+        host              = match_t.upstream_url_t.host, -- target host per `service.host`
+        host_type         = match_t.upstream_url_t.type, -- type: 'ipv4', 'ipv6', 'name'
+        port              = match_t.upstream_url_t.port, -- target port per `service.port`
+        path_base         = routing.service.path                   or routing.api.path,
+        path_postfix      = match_t.to_be_defined_postfix,
+        strip_path        = routing.route.strip_path               or routing.api.strip_path,
+        preserve_host     = routing.route.preserve_host            or routing.api.preserve_host,
+        resolved_ip       = nil, -- the ip as finally resolved
+        resolved_ip_host  = nil, -- the hostname belonging to the resolved_ip
+        resolved_port     = nil, -- the port as finally resolved
+        resolved_path     = match_t.upstream_uri, -- the final path constructed from the above
+      }
+protect_table(request_out, {"scheme", "host", "host_type", "port",
+  --"path",
+  --"path_base", "path_postfix",
+  "strip_path", "preserve_host", "resolved_ip", "resolved_ip_host", "resolved_port",
+  --"resolved_path",
+})
+
+      local proxy = {
+        retries           = routing.service.retries                or routing.api.retries,
+        try_count         = 0,   -- retry counter
+        try_data          = {},  -- stores info per try
+        balancer          = nil, -- the balancer object, if any
+        ssl_ctx           = nil, -- custom SSL_CTX* to use
+        hash_cookie       = nil, -- if Upstream sets hash_on_cookie
+        hash_value        = nil, -- actual hash value
+        connect_timeout   = routing.service.connect_timeout        or routing.api.upstream_connect_timeout,
+        write_timeout     = routing.service.write_timeout          or routing.api.upstream_send_timeout,
+        read_timeout      = routing.service.read_timeout           or routing.api.upstream_read_timeout,
+      }
+protect_table(proxy, {"retries", "try_count", "try_data", "balancer", "ssl_ctx",
+  "hash_cookie", "hash_value", "connect_timeout", "write_timeout", "read_timeout",
+})
+
+      ctx.proxy_request_state = {
+        routing           = routing,
+        request_in        = request_in,
+        request_out       = request_out,
+        proxy             = proxy,
+      }
+protect_table(ctx.proxy_request_state)
+
+--      local api                = match_t.api or EMPTY_T
+--      local route              = match_t.route or EMPTY_T
+--      local service            = match_t.service or EMPTY_T
+--      local upstream_url_t     = match_t.upstream_url_t
+
+--      local realip_remote_addr = var.realip_remote_addr
+      local forwarded_scheme
       local forwarded_host
       local forwarded_port
 
@@ -610,95 +744,99 @@ return {
       -- contains the IP that was originally in $remote_addr before realip
       -- module overrode that (aka the client that connected us).
 
-      local trusted_ip = kong.ip.is_trusted(realip_remote_addr)
-      if trusted_ip then
-        forwarded_proto = var.http_x_forwarded_proto or var.scheme
+      if request_in.trusted_ip then
+        forwarded_scheme = var.http_x_forwarded_proto or var.scheme
         forwarded_host  = var.http_x_forwarded_host  or var.host
         forwarded_port  = var.http_x_forwarded_port  or var.server_port
 
       else
-        forwarded_proto = var.scheme
+        forwarded_scheme = var.scheme
         forwarded_host  = var.host
         forwarded_port  = var.server_port
       end
 
-      local protocols = route.protocols
+      local protocols = routing.route.protocols
       if (protocols and
-          protocols.https and not protocols.http and forwarded_proto ~= "https")
-      or (api.https_only and not utils.check_https(trusted_ip,
-                                                   api.http_if_terminated))
+          protocols.https and not protocols.http and forwarded_scheme ~= "https")
+      or (routing.api.https_only and not utils.check_https(request_in.trusted_ip,
+                                                   routing.api.http_if_terminated))
       then
         ngx.header["connection"] = "Upgrade"
         ngx.header["upgrade"]    = "TLS/1.2, HTTP/1.1"
         return responses.send(426, "Please use HTTPS protocol")
       end
 
-      local balancer_data = {
-        type           = upstream_url_t.type, -- type of 'host': ipv4, ipv6, name
-        host           = upstream_url_t.host, -- target host per `upstream_url`
-        port           = upstream_url_t.port, -- final target port
-        try_count      = 0,                   -- retry counter
-        tries          = {},                  -- stores info per try
-        -- ssl_ctx     = nil,                 -- custom SSL_CTX* to use
-        -- ip          = nil,                 -- final target IP address
-        -- balancer    = nil,                 -- the balancer object, if any
-        -- hostname    = nil,                 -- hostname of the final target IP
-        -- hash_cookie = nil,                 -- if Upstream sets hash_on_cookie
-      }
-
+--      local balancer_data = {
+--        type           = upstream_url_t.type, -- type of 'host': ipv4, ipv6, name
+--        host           = upstream_url_t.host, -- target host per `upstream_url`
+--        port           = upstream_url_t.port, -- final target port
+--        try_count      = 0,                   -- retry counter
+--        tries          = {},                  -- stores info per try
+--        -- ssl_ctx     = nil,                 -- custom SSL_CTX* to use
+--        -- ip          = nil,                 -- final target IP address
+--        -- balancer    = nil,                 -- the balancer object, if any
+--        -- hostname    = nil,                 -- hostname of the final target IP
+--        -- hash_cookie = nil,                 -- if Upstream sets hash_on_cookie
+--      }
+--require("tabletrack").track_access(balancer_data, {
+--  name = "balancer_data",
+--  proxy = true,             -- enable a proxy table (loosing iterator support)
+--  full_trace = false,       -- single line, last call only
+--  file = "/kong/tabletrack.stats.out",
+--})
       -- TODO: this is probably not optimal
-      do
-        local retries = service.retries or api.retries
-        if retries then
-          balancer_data.retries = retries
+--      do
+--        local retries = service.retries or api.retries
+--        if retries then
+--          balancer_data.retries = retries
 
-        else
-          balancer_data.retries = 5
-        end
+--        else
+--          balancer_data.retries = 5
+--        end
 
-        local connect_timeout = service.connect_timeout or
-                                api.upstream_connect_timeout
-        if connect_timeout then
-          balancer_data.connect_timeout = connect_timeout
+--        local connect_timeout = service.connect_timeout or
+--                                api.upstream_connect_timeout
+--        if connect_timeout then
+--          balancer_data.connect_timeout = connect_timeout
 
-        else
-          balancer_data.connect_timeout = 60000
-        end
+--        else
+--          balancer_data.connect_timeout = 60000
+--        end
 
-        local send_timeout = service.write_timeout or
-                             api.upstream_send_timeout
-        if send_timeout then
-          balancer_data.send_timeout = send_timeout
+--        local send_timeout = service.write_timeout or
+--                             api.upstream_send_timeout
+--        if send_timeout then
+--          balancer_data.send_timeout = send_timeout
 
-        else
-          balancer_data.send_timeout = 60000
-        end
+--        else
+--          balancer_data.send_timeout = 60000
+--        end
 
-        local read_timeout = service.read_timeout or
-                             api.upstream_read_timeout
-        if read_timeout then
-          balancer_data.read_timeout = read_timeout
+--        local read_timeout = service.read_timeout or
+--                             api.upstream_read_timeout
+--        if read_timeout then
+--          balancer_data.read_timeout = read_timeout
 
-        else
-          balancer_data.read_timeout = 60000
-        end
-      end
+--        else
+--          balancer_data.read_timeout = 60000
+--        end
+--      end
 
       -- TODO: this needs to be removed when references to ctx.api are removed
-      ctx.api              = api
-      ctx.service          = service
-      ctx.route            = route
-      ctx.router_matches   = match_t.matches
-      ctx.balancer_data    = balancer_data
-      ctx.balancer_address = balancer_data -- for plugin backward compatibility
+--      ctx.api              = api
+--      ctx.service          = service
+--      ctx.route            = route
+--      ctx.router_matches   = match_t.matches
+--      ctx.balancer_data    = balancer_data
+--      ctx.balancer_address = balancer_data -- for plugin backward compatibility
 
       -- `scheme` is the scheme to use for the upstream call
       -- `uri` is the URI with which to call upstream, as returned by the
       --       router, which might have truncated it (`strip_uri`).
       -- `host` is the original header to be preserved if set.
-      var.upstream_scheme = match_t.upstream_scheme
-      var.upstream_uri    = match_t.upstream_uri
-      var.upstream_host   = match_t.upstream_host
+--      var.upstream_scheme = match_t.upstream_scheme
+--      var.upstream_uri    = match_t.upstream_uri
+--      var.upstream_host   = match_t.upstream_host
 
       -- Keep-Alive and WebSocket Protocol Upgrade Headers
       if var.http_upgrade and lower(var.http_upgrade) == "websocket" then
@@ -713,73 +851,89 @@ return {
       local http_x_forwarded_for = var.http_x_forwarded_for
       if http_x_forwarded_for then
         var.upstream_x_forwarded_for = http_x_forwarded_for .. ", " ..
-                                       realip_remote_addr
+                                       request_in.real_remote_ip
 
       else
         var.upstream_x_forwarded_for = var.remote_addr
       end
 
-      var.upstream_x_forwarded_proto = forwarded_proto
+      var.upstream_x_forwarded_proto = forwarded_scheme
       var.upstream_x_forwarded_host  = forwarded_host
       var.upstream_x_forwarded_port  = forwarded_port
     end,
     -- Only executed if the `router` module found a route and allows nginx to proxy it.
     after = function(ctx)
       local var = ngx.var
+      local proxy_request_state = ctx.proxy_request_state
+      local request_in = proxy_request_state.request_in
+      local request_out = proxy_request_state.request_out
 
       do
+        -- Check for KONG_ORIGINS override
+        local origin_key = request_out.scheme .. "://" .. utils.format_host(request_out.host, request_out.port)
+        local origin = singletons.origins[origin_key]
+        if origin then
+          request_out.scheme    = origin.scheme
+          request_out.host      = origin.host
+          request_out.host_type = origin.type
+          request_out.port      = origin.port
+        end
+      end
+
+      do
+        -- Perform initial dns resolution/loadbalancer invocation
+        local ok, err, errcode = balancer.execute(proxy_request_state, ctx)
+        if not ok then
+          if errcode == 500 then
+            err = "failed the initial dns/balancer resolve for '" ..
+                  request_out.host .. "' with: "         ..
+                  tostring(err)
+          end
+          return responses.send(errcode, err)
+        end
+      end
+
+
+      -- Now build the final outgoing request
+
+
+      do
+        -- TODO: build the path dynamically here
+        local upstream_uri = request_out.resolved_path
+
         -- Nginx's behavior when proxying a request with an empty querystring
         -- `/foo?` is to keep `$is_args` an empty string, hence effectively
         -- stripping the empty querystring.
         -- We overcome this behavior with our own logic, to preserve user
         -- desired semantics.
-        local upstream_uri = var.upstream_uri
-
-        if var.is_args == "?" or sub(var.request_uri, -1) == "?" then
-          var.upstream_uri = upstream_uri .. "?" .. (var.args or "")
+        if var.is_args == "?" or sub(request_in.path, -1) == "?" then
+          upstream_uri = upstream_uri .. "?" .. (var.args or "")
         end
-      end
 
-      local balancer_data = ctx.balancer_data
-
-      do -- Check for KONG_ORIGINS override
-        local origin_key = var.upstream_scheme .. "://" .. utils.format_host(balancer_data)
-        local origin = singletons.origins[origin_key]
-        if origin then
-          var.upstream_scheme = origin.scheme
-          balancer_data.type = origin.type
-          balancer_data.host = origin.host
-          balancer_data.port = origin.port
-        end
-      end
-
-      local ok, err, errcode = balancer.execute(balancer_data, ctx)
-      if not ok then
-        if errcode == 500 then
-          err = "failed the initial dns/balancer resolve for '" ..
-                balancer_data.host .. "' with: "         ..
-                tostring(err)
-        end
-        return responses.send(errcode, err)
+        var.upstream_uri = upstream_uri
       end
 
       do
         -- set the upstream host header if not `preserve_host`
-        local upstream_host = var.upstream_host
+        local upstream_host
+        if request_out.preserve_host then
+          upstream_host = request_in.host
+        else
+          upstream_host = request_out.resolved_ip_host
 
-        if not upstream_host or upstream_host == "" then
-          upstream_host = balancer_data.hostname
-
-          local upstream_scheme = var.upstream_scheme
-          if upstream_scheme == "http"  and balancer_data.port ~= 80 or
-             upstream_scheme == "https" and balancer_data.port ~= 443
+          local upstream_scheme = request_out.scheme
+          if upstream_scheme == "http"  and request_out.resolved_port ~= 80 or
+             upstream_scheme == "https" and request_out.resolved_port ~= 443
           then
-            upstream_host = upstream_host .. ":" .. balancer_data.port
+            upstream_host = upstream_host .. ":" .. request_out.resolved_port
           end
-
-          var.upstream_host = upstream_host
         end
+
+        var.upstream_host = upstream_host
       end
+
+      -- set remaining outgoing variables
+      var.upstream_scheme = request_out.scheme
 
       local now = get_now()
 
@@ -794,13 +948,13 @@ return {
   },
   balancer = {
     before = function(ctx)
-      local balancer_data = ctx.balancer_data
-      local current_try = balancer_data.tries[balancer_data.try_count]
+      local proxy = ctx.proxy_request_state.proxy
+      local current_try = proxy.try_data[proxy.try_count]
       current_try.balancer_start = get_now()
     end,
     after = function(ctx)
-      local balancer_data = ctx.balancer_data
-      local current_try = balancer_data.tries[balancer_data.try_count]
+      local proxy = ctx.proxy_request_state.proxy
+      local current_try = proxy.try_data[proxy.try_count]
 
       -- record try-latency
       local try_latency = get_now() - current_try.balancer_start
@@ -831,7 +985,7 @@ return {
         end
       end
 
-      local hash_cookie = ctx.balancer_data.hash_cookie
+      local hash_cookie = ctx.proxy_request_state.proxy.hash_cookie
       if not hash_cookie then
         return
       end
@@ -898,15 +1052,18 @@ return {
 
       -- If response was produced by an upstream (ie, not by a Kong plugin)
       -- Report HTTP status for health checks
-      local balancer_data = ctx.balancer_data
-      if balancer_data and balancer_data.balancer and balancer_data.ip then
-        local ip, port = balancer_data.ip, balancer_data.port
+      local proxy_request_state = ctx.proxy_request_state
+      if proxy_request_state and
+         proxy_request_state.proxy.balancer and
+         proxy_request_state.resolved_ip then
+        local ip   = proxy_request_state.resolved_ip
+        local port = proxy_request_state.resolved_port
 
         local status = ngx.status
         if status == 504 then
-          balancer_data.balancer.report_timeout(ip, port)
+          proxy_request_state.proxy.balancer.report_timeout(ip, port)
         else
-          balancer_data.balancer.report_http_status(ip, port, status)
+          proxy_request_state.proxy.balancer.report_http_status(ip, port, status)
         end
       end
     end

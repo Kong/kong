@@ -58,7 +58,7 @@ local function new()
       return nil, "could not find an Upstream named '" .. host .. "'"
     end
 
-    ngx.ctx.balancer_data.host = host
+    ngx.ctx.proxy_request_state.request_out.host = host
     return true
   end
 
@@ -95,8 +95,8 @@ local function new()
     end
 
     ngx.var.upstream_host = host
-    ngx.ctx.balancer_data.host = host
-    ngx.ctx.balancer_data.port = port
+    ngx.ctx.proxy_request_state.request_out.host = host
+    ngx.ctx.proxy_request_state.request_out.port = port
   end
 
 

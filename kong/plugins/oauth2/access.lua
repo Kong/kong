@@ -187,13 +187,15 @@ local function authorize(conf)
 
       parsed_redirect_uri = url.parse(redirect_uri)
 
+      local routing = ngx.ctx.proxy_request_state.routing
+
       -- If there are no errors, keep processing the request
       if not response_params[ERROR] then
         if response_type == CODE then
           local service_id, api_id
           if not conf.global_credentials then
-            service_id = ngx.ctx.service.id
-            api_id = ngx.ctx.api.id
+            service_id = routing.service.id
+            api_id = routing.api.id
           end
           local authorization_code, err = kong.db.oauth2_authorization_codes:insert({
             service = service_id and { id = service_id } or nil,
@@ -212,7 +214,7 @@ local function authorize(conf)
           }
         else
           -- Implicit grant, override expiration to zero
-          response_params = generate_token(conf, ngx.ctx.service, ngx.ctx.api, client, parameters[AUTHENTICATED_USERID], scopes, state, nil, true)
+          response_params = generate_token(conf, routing.service, routing.api, client, parameters[AUTHENTICATED_USERID], scopes, state, nil, true)
           is_implicit_grant = true
         end
       end
@@ -329,13 +331,15 @@ local function issue_token(conf)
       end
     end
 
+    local routing = ngx.ctx.proxy_request_state.routing
+
     if not response_params[ERROR] then
       if grant_type == GRANT_AUTHORIZATION_CODE then
         local code = parameters[CODE]
         local service_id, api_id
         if not conf.global_credentials then
-          service_id = ngx.ctx.service.id
-          api_id = ngx.ctx.api.id
+          service_id = routing.service.id
+          api_id = routing.api.id
         end
         local authorization_code =
           code and kong.db.oauth2_authorization_codes:select_by_code(code)
@@ -352,7 +356,7 @@ local function issue_token(conf)
                              error_description = "Invalid " .. CODE}
 
         else
-          response_params = generate_token(conf, ngx.ctx.service, ngx.ctx.api, client,
+          response_params = generate_token(conf, routing.service, routing.api, client,
                                            authorization_code.authenticated_userid, authorization_code.scope, state)
           kong.db.oauth2_authorization_codes:delete({ id = authorization_code.id }) -- Delete authorization code so it cannot be reused
         end
@@ -369,7 +373,7 @@ local function issue_token(conf)
             response_params = err -- If it's not ok, then this is the error message
 
           else
-            response_params = generate_token(conf, ngx.ctx.service, ngx.ctx.api, client,
+            response_params = generate_token(conf, routing.service, routing.api, client,
                                              parameters.authenticated_userid, scope, state, nil, true)
           end
         end
@@ -389,7 +393,7 @@ local function issue_token(conf)
             response_params = err -- If it's not ok, then this is the error message
 
           else
-            response_params = generate_token(conf, ngx.ctx.service, ngx.ctx.api, client,
+            response_params = generate_token(conf, routing.service, routing.api, client,
                                              parameters.authenticated_userid, scope, state)
           end
         end
@@ -398,8 +402,8 @@ local function issue_token(conf)
         local refresh_token = parameters[REFRESH_TOKEN]
         local service_id, api_id
         if not conf.global_credentials then
-          service_id = ngx.ctx.service.id
-          api_id = ngx.ctx.api.id
+          service_id = routing.service.id
+          api_id = routing.api.id
         end
         local token = refresh_token and
                       kong.db.oauth2_tokens:select_by_refresh_token(refresh_token)
@@ -415,7 +419,7 @@ local function issue_token(conf)
             response_params = {[ERROR] = "invalid_client", error_description = "Invalid client authentication"}
 
           else
-            response_params = generate_token(conf, ngx.ctx.service, ngx.ctx.api, client,
+            response_params = generate_token(conf, routing.service, routing.api, client,
                                              token.authenticated_userid, token.scope, state)
             kong.db.oauth2_tokens:delete({ id = token.id }) -- Delete old token
           end
@@ -458,11 +462,12 @@ end
 
 local function retrieve_token(conf, access_token)
   local token, err
+  local routing = ngx.ctx.proxy_request_state.routing
   if access_token then
     local token_cache_key = kong.db.oauth2_tokens:cache_key(access_token)
     token, err = kong.cache:get(token_cache_key, nil,
                                 load_token_into_memory, conf,
-                                ngx.ctx.service, ngx.ctx.api,
+                                routing.service, routing.api,
                                 access_token)
     if err then
       return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
@@ -563,8 +568,10 @@ local function do_authentication(conf)
     return nil, {status = 401, message = {[ERROR] = "invalid_token", error_description = "The access token is invalid or has expired"}, headers = {["WWW-Authenticate"] = 'Bearer realm="service" error="invalid_token" error_description="The access token is invalid or has expired"'}}
   end
 
-  if (token.service and token.service.id and ngx.ctx.service.id ~= token.service.id)
-  or (token.api and token.api.id and ngx.ctx.api.id ~= token.api.id)
+  local routing = ngx.ctx.proxy_request_state.routing
+
+  if (token.service and token.service.id and routing.service.id ~= token.service.id)
+  or (token.api and token.api.id and routing.api.id ~= token.api.id)
   or ((not token.service or not token.service.id)
       and (not token.api or not token.api.id)
       and not conf.global_credentials)

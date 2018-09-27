@@ -507,10 +507,10 @@ end
 -- @param no_create (optional) if true, do not attempt to create
 -- (for thorough testing purposes)
 -- @return balancer if found, `false` if not found, or nil+error on error
-local function get_balancer(target, no_create)
+local function get_balancer(proxy_request_state, no_create)
   -- NOTE: only called upon first lookup, so `cache_only` limitations
   -- do not apply here
-  local hostname = target.host
+  local hostname = proxy_request_state.request_out.host
 
 
   -- first go and find the upstream object, from cache or the db
@@ -668,7 +668,7 @@ local create_hash = function(upstream, ctx)
 
         identifier = utils.uuid()
 
-        ctx.balancer_data.hash_cookie = {
+        ctx.proxy_request_data.proxy.hash_cookie = {
           key = upstream.hash_on_cookie,
           value = identifier,
           path = upstream.hash_on_cookie_path
@@ -727,21 +727,23 @@ end
 
 
 --------------------------------------------------------------------------------
--- Resolves the target structure in-place (fields `ip`, `port`, and `hostname`).
+-- Resolves the target structure in-place.
+--   fields: host, port  -->  resolved_ip, resolved_ip_host, resolved_port
 --
 -- If the hostname matches an 'upstream' pool, then it must be balanced in that
 -- pool, in this case any port number provided will be ignored, as the pool
 -- provides it.
 --
--- @param target the data structure as defined in `core.access.before` where
+-- @param proxy_request_state the data structure as defined in `core.access.before` where
 -- it is created.
 -- @return true on success, nil+error message+status code otherwise
-local function execute(target, ctx)
-  if target.type ~= "name" then
+local function execute(proxy_request_state, ctx)
+  local request_out = proxy_request_state.request_out
+  if request_out.host_type ~= "name" then
     -- it's an ip address (v4 or v6), so nothing we can do...
-    target.ip = target.host
-    target.port = target.port or 80 -- TODO: remove this fallback value
-    target.hostname = target.host
+    request_out.resolved_ip = request_out.host
+    request_out.resolved_port = request_out.port
+    request_out.resolved_ip_host = request_out.host
     return true
   end
 
@@ -749,30 +751,31 @@ local function execute(target, ctx)
   --   it runs before the `balancer` context (in the `access` context),
   -- when tries >= 2,
   --   then it performs a retry in the `balancer` context
-  local dns_cache_only = target.try_count ~= 0
+  local proxy = proxy_request_state.proxy
+  local dns_cache_only = proxy.try_count ~= 0
   local balancer, upstream, hash_value
 
   if dns_cache_only then
     -- retry, so balancer is already set if there was one
-    balancer = target.balancer
+    balancer = proxy.balancer
 
   else
     -- first try, so try and find a matching balancer/upstream object
-    balancer, upstream = get_balancer(target)
+    balancer, upstream = get_balancer(proxy_request_state)
     if balancer == nil then -- `false` means no balancer, `nil` is error
       return nil, upstream, 500
     end
 
     if balancer then
       -- store for retries
-      target.balancer = balancer
+      proxy.balancer = balancer
 
       -- calculate hash-value
       -- only add it if it doesn't exist, in case a plugin inserted one
-      hash_value = target.hash_value
+      hash_value = proxy.hash_value
       if not hash_value then
         hash_value = create_hash(upstream, ctx)
-        target.hash_value = hash_value
+        proxy.hash_value = hash_value
       end
     end
   end
@@ -781,18 +784,18 @@ local function execute(target, ctx)
   if balancer then
     -- have to invoke the ring-balancer
     ip, port, hostname = balancer:getPeer(hash_value,
-                                          target.try_count,
+                                          proxy.try_count,
                                           dns_cache_only)
     if not ip and port == "No peers are available" then
       return nil, "failure to get a peer from the ring-balancer", 503
     end
-    target.hash_value = hash_value
+    proxy.hash_value = hash_value
 
   else
     -- have to do a regular DNS lookup
     local try_list
-    ip, port, try_list = toip(target.host, target.port, dns_cache_only)
-    hostname = target.host
+    ip, port, try_list = toip(request_out.host, request_out.port, dns_cache_only)
+    hostname = request_out.host
     if not ip then
       log(ERR, "[dns] ", port, ". Tried: ", tostring(try_list))
       if port == "dns server error: 3 name error" or
@@ -806,9 +809,9 @@ local function execute(target, ctx)
     return nil, port, 500
   end
 
-  target.ip = ip
-  target.port = port
-  target.hostname = hostname
+  request_out.resolved_ip = ip
+  request_out.resolved_port = port
+  request_out.resolved_ip_host = hostname
   return true
 end
 

@@ -2,6 +2,9 @@ local kong         = kong
 local setmetatable = setmetatable
 
 
+local EMPTY = {}
+
+
 -- Loads a plugin config from the datastore.
 -- @return plugin config table or an empty sentinel table in case of a db-miss
 local function load_plugin_into_memory(key)
@@ -204,12 +207,14 @@ local function iter_plugins_for_req(ctx, loaded_plugins, configured_plugins,
     ctx.plugins_for_request = {}
   end
 
+  local routing = (ctx.proxy_request_state or EMPTY).routing or EMPTY
+
   local plugin_iter_state = {
     i                     = 0,
     ctx                   = ctx,
-    api                   = ctx.api,
-    route                 = ctx.route,
-    service               = ctx.service,
+    api                   = routing.api,
+    route                 = routing.route,
+    service               = routing.service,
     loaded_plugins        = loaded_plugins,
     configured_plugins    = configured_plugins,
     access_or_cert_ctx    = access_or_cert_ctx,

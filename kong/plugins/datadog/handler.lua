@@ -161,8 +161,9 @@ end
 function DatadogHandler:log(conf)
   DatadogHandler.super.log(self)
 
-  if not ngx.ctx.service and
-     not ngx.ctx.api     then
+  local routing = ngx.ctx.proxy_request_state.routing
+  if not routing.service and
+     not routing.api     then
     return
   end
 

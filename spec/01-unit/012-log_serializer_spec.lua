@@ -6,11 +6,13 @@ describe("Log Serializer", function()
   before_each(function()
     ngx = {
       ctx = {
-        balancer_data = {
-          tries = {
-            {
-              ip = "127.0.0.1",
-              port = 8000,
+        proxy_request_state = {
+          proxy = {
+            try_data = {
+              {
+                ip = "127.0.0.1",
+                port = 8000,
+              },
             },
           },
         },
@@ -77,8 +79,12 @@ describe("Log Serializer", function()
     end)
 
     it("serializes the matching Route and Services", function()
-      ngx.ctx.route = { id = "my_route" }
-      ngx.ctx.service = { id = "my_service" }
+      ngx.ctx.proxy_request_state = {
+        routing = {
+          route = { id = "my_route" },
+          service = { id = "my_service" },
+        },
+      }
 
       local res = basic.serialize(ngx)
       assert.is_table(res)
@@ -114,10 +120,14 @@ describe("Log Serializer", function()
     end)
 
     it("serializes the tries and failure information", function()
-      ngx.ctx.balancer_data.tries = {
-        { ip = "127.0.0.1", port = 1234, state = "next",   code = 502 },
-        { ip = "127.0.0.1", port = 1234, state = "failed", code = nil },
-        { ip = "127.0.0.1", port = 1234 },
+      ngx.ctx.proxy_request_state = {
+        proxy = {
+          try_data = {
+            { ip = "127.0.0.1", port = 1234, state = "next",   code = 502 },
+            { ip = "127.0.0.1", port = 1234, state = "failed", code = nil },
+            { ip = "127.0.0.1", port = 1234 },
+          },
+        },
       }
 
       local res = basic.serialize(ngx)
@@ -141,7 +151,7 @@ describe("Log Serializer", function()
     end)
 
     it("does not fail when the 'balancer_data' structure is missing", function()
-      ngx.ctx.balancer_data = nil
+      ngx.ctx.proxy_request_state = nil
 
       local res = basic.serialize(ngx)
       assert.is_table(res)

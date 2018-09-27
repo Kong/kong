@@ -271,7 +271,7 @@ function Kong.init()
   do
     local origins = {}
 
-    for i, v in ipairs(config.origins) do
+    for _, v in ipairs(config.origins) do
       -- Validated in conf_loader
       local from_scheme, from_authority, to_scheme, to_authority =
         v:match("^(%a[%w+.-]*)://([^=]+:[%d]+)=(%a[%w+.-]*)://(.+)$")
@@ -511,27 +511,28 @@ function Kong.balancer()
   kong_global.set_phase(kong, PHASES.balancer)
 
   local ctx = ngx.ctx
-  local balancer_data = ctx.balancer_data
-  local tries = balancer_data.tries
+  local proxy = ctx.proxy_request_state.proxy
+  local request_out = ctx.proxy_request_state.request_out
+  local try_data = proxy.try_data
   local current_try = {}
-  balancer_data.try_count = balancer_data.try_count + 1
-  tries[balancer_data.try_count] = current_try
+  proxy.try_count = proxy.try_count + 1
+  try_data[proxy.try_count] = current_try
 
   runloop.balancer.before(ctx)
 
-  if balancer_data.try_count > 1 then
+  if proxy.try_count > 1 then
     -- only call balancer on retry, first one is done in `runloop.access.after`
     -- which runs in the ACCESS context and hence has less limitations than
     -- this BALANCER context where the retries are executed
 
     -- record failure data
-    local previous_try = tries[balancer_data.try_count - 1]
+    local previous_try = try_data[proxy.try_count - 1]
     previous_try.state, previous_try.code = get_last_failure()
 
     -- Report HTTP status for health checks
-    local balancer = balancer_data.balancer
+    local balancer = proxy.balancer
     if balancer then
-      local ip, port = balancer_data.ip, balancer_data.port
+      local ip, port = proxy.resolved_ip, proxy.resolved_port
 
       if previous_try.state == "failed" then
         if previous_try.code == 504 then
@@ -545,22 +546,22 @@ function Kong.balancer()
       end
     end
 
-    local ok, err, errcode = balancer_execute(balancer_data)
+    local ok, err, errcode = balancer_execute(ctx.proxy_request_state)
     if not ok then
       ngx_log(ngx_ERR, "failed to retry the dns/balancer resolver for ",
-              tostring(balancer_data.host), "' with: ", tostring(err))
+              tostring(request_out.host), "' with: ", tostring(err))
       return ngx.exit(errcode)
     end
 
   else
     -- first try, so set the max number of retries
-    local retries = balancer_data.retries
+    local retries = proxy.retries
     if retries > 0 then
       set_more_tries(retries)
     end
   end
 
-  local ssl_ctx = balancer_data.ssl_ctx
+  local ssl_ctx = proxy.ssl_ctx
   if ssl_ctx then
     if not set_ssl_ctx then
       -- this API depends on an OpenResty patch
@@ -580,23 +581,24 @@ function Kong.balancer()
     end
   end
 
-  current_try.ip   = balancer_data.ip
-  current_try.port = balancer_data.port
+  current_try.ip   = request_out.resolved_ip
+  current_try.port = request_out.resolved_port
 
   -- set the targets as resolved
-  ngx_log(ngx_DEBUG, "setting address (try ", balancer_data.try_count, "): ",
-                     balancer_data.ip, ":", balancer_data.port)
-  local ok, err = set_current_peer(balancer_data.ip, balancer_data.port)
+  ngx_log(ngx_DEBUG, "setting address (try ", proxy.try_count, "): ",
+        request_out.resolved_ip, ":", request_out.resolved_port)
+  local ok, err = set_current_peer(request_out.resolved_ip,
+                                   request_out.resolved_port)
   if not ok then
     ngx_log(ngx_ERR, "failed to set the current peer (address: ",
-            tostring(balancer_data.ip), " port: ", tostring(balancer_data.port),
-            "): ", tostring(err))
+            tostring(request_out.resolved_ip), " port: ",
+            tostring(request_out.resolved_port), "): ", tostring(err))
     return ngx.exit(500)
   end
 
-  ok, err = set_timeouts(balancer_data.connect_timeout / 1000,
-                         balancer_data.send_timeout / 1000,
-                         balancer_data.read_timeout / 1000)
+  ok, err = set_timeouts(proxy.connect_timeout / 1000,
+                         proxy.write_timeout / 1000,
+                         proxy.read_timeout / 1000)
   if not ok then
     ngx_log(ngx_ERR, "could not set upstream timeouts: ", err)
   end
