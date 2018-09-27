@@ -284,19 +284,7 @@ function _M.create_default_portal_config()
 
   local ws_default = res[1]
 
-  local pc_res, pc_err = dao.portal_configs:insert({
-    portal_auth = conf.portal_auth,
-    portal_auth_config = conf.portal_auth_config,
-    portal_auto_approve = conf.portal_auto_approve,
-    portal_token_exp = conf.portal_token_exp,
-    portal_invite_email = conf.portal_invite_email,
-    portal_access_request_email = conf.portal_access_request_email,
-    portal_approved_email = conf.portal_approved_email,
-    portal_reset_email = conf.portal_reset_email,
-    portal_reset_success_email = conf.portal_reset_success_email,
-    portal_emails_from = conf.portal_emails_from,
-    portal_emails_reply_to = conf.portal_emails_reply_to,
-  })
+  local pc_res, pc_err = dao.portal_configs:insert({})
 
   if pc_err then
     return nil, pc_err
