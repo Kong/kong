@@ -157,11 +157,16 @@ end
 
 
 function CassandraConnector:infos()
+  local db_ver
+  if self.major_minor_version then
+    db_ver = extract_major_minor(self.major_minor_version)
+  end
+
   return {
     strategy = "Cassandra",
     db_name = self.keyspace,
     db_desc = "keyspace",
-    db_ver = self.major_minor_version or "unknown",
+    db_ver = db_ver or "unknown",
   }
 end
 
