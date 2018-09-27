@@ -262,36 +262,62 @@ end
 function _M.create_default_portal_config()
   local dao = singletons.dao
   local conf = singletons.configuration
-  local res = dao.workspace_entities:find_all({
+  local res, err = dao.workspace_entities:find_all({
     entity_type = "portal_configs",
     workspace_name = "default"
   })
 
-  if not res[1] then
-    local res = dao.workspaces:find_all({name = "default"})
-    local ws_default = res[1]
-    local ngx_log = ngx.log
-    local DEBUG = ngx.DEBUG
-
-    res, err = dao.portal_configs:insert({})
-
-    if err then
-      ngx_log(DEBUG, "failed to instantiate default portal configuration: ", err)
-    end
-
-    res, err = dao.workspace_entities:insert({
-      workspace_id = ws_default.id,
-      workspace_name = ws_default.name,
-      entity_id = res.id,
-      entity_type = "portal_configs",
-      unique_field_name = "id",
-      unique_field_value = res.id,
-    })
-
-    if err then
-      ngx_log(DEBUG, "failed to instantiate default portal configuration: ", err)
-    end
+  if err then
+    return nil, err
   end
+
+  -- Default Portal config already set, no further action required.
+  if res[1] then
+    return true
+  end
+
+  res, err = dao.workspaces:find_all({name = "default"})
+
+  if err then
+    return nil, err
+  end
+
+  local ws_default = res[1]
+
+  local pc_res, pc_err = dao.portal_configs:insert({
+    portal_auth = conf.portal_auth,
+    portal_auth_config = conf.portal_auth_config,
+    portal_auto_approve = conf.portal_auto_approve,
+    portal_token_exp = conf.portal_token_exp,
+    portal_invite_email = conf.portal_invite_email,
+    portal_access_request_email = conf.portal_access_request_email,
+    portal_approved_email = conf.portal_approved_email,
+    portal_reset_email = conf.portal_reset_email,
+    portal_reset_success_email = conf.portal_reset_success_email,
+    portal_emails_from = conf.portal_emails_from,
+    portal_emails_reply_to = conf.portal_emails_reply_to,
+  })
+
+  if pc_err then
+    return nil, pc_err
+  end
+
+  local we_res, we_err = dao.workspace_entities:insert({
+    workspace_id = ws_default.id,
+    workspace_name = ws_default.name,
+    entity_id = pc_res.id,
+    entity_type = "portal_configs",
+    unique_field_name = "id",
+    unique_field_value = pc_res.id,
+  })
+
+  if we_err then
+    -- cleanup hanging config if join not successful
+    dao.portal_configs:delete(pc_res)
+    return nil, we_err
+  end
+
+  return true
 end
 
 
