@@ -1,7 +1,7 @@
 local connector = require "kong.db.strategies.cassandra.connector"
 
 
-describe("kong.db [#postgres] connector", function()
+describe("kong.db [#cassandra] connector", function()
   describe(":infos()", function()
     it("returns infos db_ver always with two digit groups divided with dot (.)", function()
       local infos = connector.infos{ major_version = 2, major_minor_version = "2.10" }

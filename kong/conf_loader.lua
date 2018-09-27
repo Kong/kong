@@ -104,6 +104,7 @@ local CONF_INFERENCES = {
 
   database = { enum = { "postgres", "cassandra" }  },
   pg_port = { typ = "number" },
+  pg_timeout = { typ = "number" },
   pg_password = { typ = "string" },
   pg_ssl = { typ = "boolean" },
   pg_ssl_verify = { typ = "boolean" },
