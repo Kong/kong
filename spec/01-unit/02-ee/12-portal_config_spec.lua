@@ -4,6 +4,15 @@ local schema = require "kong.enterprise_edition.dao.schemas.portal_configs"
 
 describe("portal_utils", function()
   describe("schema", function()
+    local snapshot
+
+    before_each(function()
+      snapshot = assert:snapshot()
+    end)
+
+    after_each(function()
+      snapshot:revert()
+    end)
 
     it("should accept properly formatted emails", function()
       local values = {
