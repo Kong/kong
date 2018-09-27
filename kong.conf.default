@@ -946,15 +946,25 @@
 # GENERAL SMTP CONFIGURATION
 #------------------------------------------------------------------------------
 
+#smtp_mock = off       # This flag will mock the sending of emails. This can be
+                       # used for testing before the SMTP client is fully
+                       # configured.
+                       #
+                       # Example
+                       # smtp_mock = on  - Emails will NOT attempt send.
+                       # smtp_mock = off - Emails will attempt send.
+                       #
+                       # Default `off`
+
 #smtp_host =           # The host of the SMTP server to connect to.
                        # Default `localhost`
 
 #smtp_port =           # The port number on the SMTP server to connect to.
                        # Default `25`
 
-#smtp_starttls =       # When set to `on`, STARTTLS is used to encrypt communication
-                       # with the SMTP server. This is normally used in conjunction with
-                       # port 587.
+#smtp_starttls =       # When set to `on`, STARTTLS is used to encrypt
+                       # communication with the SMTP server. This is normally
+                       # used in conjunction with port 587.
                        # Default `nil`
 
 #smtp_username =       # Username used for authentication with SMTP server
@@ -963,9 +973,9 @@
 #smtp_password =       # Password used for authentication with SMTP server
                        # Default `nil`
 
-#smtp_ssl =            # When set to `on`, SMTPS is used to encrypt communication
-                       # with the SMTP server. This is normally used in conjunction with
-                       # port 465.
+#smtp_ssl =            # When set to `on`, SMTPS is used to encrypt
+                       # communication with the SMTP server. This is normally
+                       # used in conjunction with port 465.
                        # Default `nil`
 
 #smtp_auth_type =      # The method used to authenticate with the SMTP server
@@ -978,17 +988,21 @@
                        # Default `localhost.localdomain`
 
 #smtp_timeout_connect = 60000
-                       # The timeout (in milliseconds) for connecting to the SMTP server.
+                       # The timeout (in milliseconds) for connecting to the
+                       # SMTP server.
                        # Default 60000
 
 #smtp_timeout_send = 60000
-                       # The timeout (in milliseconds) for sending data to the SMTP server.
+                       # The timeout (in milliseconds) for sending data to the
+                       # SMTP server.
                        # Default 60000
 
 #smtp_timeout_read = 60000
-                       # The timeout (in milliseconds) for reading data from the SMTP server.
+                       # The timeout (in milliseconds) for reading data from
+                       # the SMTP server.
                        # Default 60000
 
-#smtp_admin_emails =   # Comma separated list of admin emails to receive notifications
+#smtp_admin_emails =   # Comma separated list of admin emails to receive
+                       # notifications.
                        # Example `admin1@example.com, admin2@example.com`
                        # Default `nil`
