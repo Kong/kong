@@ -326,6 +326,11 @@ function _mt:truncate_table(table_name)
   return true
 end
 
+function _mt:refresh()
+  -- This is a dummy function to provide compatibility.
+  -- Refresh only applies to Cassandra.
+  return true
+end
 
 local _M = {}
 
