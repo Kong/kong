@@ -6,11 +6,13 @@ local stringx      = require "pl.stringx"
 
 local setmetatable = setmetatable
 local encode_array = arrays.encode_array
+local tonumber     = tonumber
 local tostring     = tostring
 local concat       = table.concat
 local ipairs       = ipairs
 local pairs        = pairs
 local error        = error
+local floor        = math.floor
 local type         = type
 local ngx          = ngx
 local timer_every  = ngx.timer.every
@@ -19,6 +21,8 @@ local get_phase    = ngx.get_phase
 local null         = ngx.null
 local now          = ngx.now
 local log          = ngx.log
+local match        = string.match
+local fmt          = string.format
 local sub          = string.sub
 
 
@@ -215,25 +219,20 @@ local _mt = {}
 _mt.__index = _mt
 
 
-local function extract_major_minor(release_version)
-  return string.match(release_version, "^(%d+%.%d+)")
-end
-
-
 function _mt:init()
-  local res, err = self:query("SHOW server_version;")
-  if not res then
-    return nil, "failed to retrieve server_version: " .. err
+  local res, err = self:query("SHOW server_version_num;")
+  local ver = tonumber(res and res[1] and res[1].server_version_num)
+  if not ver then
+    return nil, "failed to retrieve server_version_num: " .. err
   end
 
-  if #res < 1 or not res[1].server_version then
-    return nil, "failed to retrieve server_version"
-  end
-
-  self.major_minor_version = extract_major_minor(res[1].server_version)
-  if not self.major_minor_version then
-    return nil, "failed to extract major.minor version from '" ..
-                res[1].server_version .. "'"
+  local major = floor(ver / 10000)
+  if major < 10 then
+    self.major_version       = tonumber(fmt("%u.%u", major, floor(ver / 100 % 100)))
+    self.major_minor_version = fmt("%u.%u.%u", major, floor(ver / 100 % 100), ver % 100)
+  else
+    self.major_version       = major
+    self.major_minor_version = fmt("%u.%u", major, ver % 100)
   end
 
   return true
@@ -303,11 +302,16 @@ end
 
 
 function _mt:infos()
+  local db_ver
+  if self.major_minor_version then
+    db_ver = match(self.major_minor_version, "^(%d+%.%d+)")
+  end
+
   return {
     strategy = "PostgreSQL",
-    db_name = self.config.database,
-    db_desc = "database",
-    db_ver = self.major_minor_version or "unknown",
+    db_name  = self.config.database,
+    db_desc  = "database",
+    db_ver   = db_ver or "unknown",
   }
 end
 
