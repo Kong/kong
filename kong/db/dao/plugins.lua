@@ -91,7 +91,7 @@ local function convert_legacy_schema(name, old_schema)
           new_fdata.custom_validator = validate_url
 
         elseif v == "table" then
-          if old_fdata.schema.flexible then
+          if old_fdata.schema and old_fdata.schema.flexible then
             new_fdata.type = "map"
           else
             new_fdata.type = "record"
