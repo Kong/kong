@@ -271,7 +271,7 @@ function _M.create_default_portal_config()
   end
 
   -- Default Portal config already set, no further action required.
-  if res[1] then
+  if next(res) then
     return true
   end
 
