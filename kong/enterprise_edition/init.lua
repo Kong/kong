@@ -259,6 +259,7 @@ function _M.prepare_portal(kong_config)
   }, kong_config)
 end
 
+
 function _M.create_default_portal_config()
   local dao = singletons.dao
   local res, err = dao.workspace_entities:find_all({
@@ -276,7 +277,6 @@ function _M.create_default_portal_config()
   end
 
   res, err = dao.workspaces:find_all({name = "default"})
-
   if err then
     return nil, err
   end
@@ -284,7 +284,6 @@ function _M.create_default_portal_config()
   local ws_default = res[1]
 
   local pc_res, pc_err = dao.portal_configs:insert({})
-
   if pc_err then
     return nil, pc_err
   end

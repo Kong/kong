@@ -1,4 +1,5 @@
 local portal_utils = require "kong.portal.utils"
+ 
 
 local function check_portal_auth(auth)
   if auth ~= nil
@@ -11,6 +12,7 @@ local function check_portal_auth(auth)
   return true
 end
 
+
 local function check_portal_token_exp (timeout)
   if timeout ~= nil and timeout < 0 then
     return false, "`portal_token_exp` must be more than 0"
@@ -18,6 +20,7 @@ local function check_portal_token_exp (timeout)
 
   return true
 end
+
 
 local function validate_email(email)
   if email ~= nil then
@@ -29,6 +32,7 @@ local function validate_email(email)
 
   return true
 end
+
 
 return {
   table = "portal_configs",

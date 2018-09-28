@@ -145,6 +145,7 @@ local function is_blank(t)
   return not t or (type(t) == "table" and not t[1])
 end
 
+
 function _M.create_default(dao)
   dao = dao or singletons.dao
 
