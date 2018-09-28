@@ -125,7 +125,7 @@ return {
         max_window_size = tonumber(max_window_size)
         if max_window_size then
           for i = 1, #plugin_t.window_size do
-            if plugin_t.window_size[i] > max_window_size then
+            if tonumber(plugin_t.window_size[i]) > max_window_size then
               return false, Errors.schema("windown_size cannot be greater than "
                             .. max_window_size)
             end
