@@ -1026,75 +1026,141 @@ for _, strategy in helpers.each_strategy() do
         {  "/fee/bor/",    nil,            "/foo/bar/",    "/fee/bor/foo/bar/",    true      },
       }
 
-      setup(function()
-        assert(db:truncate("routes"))
-        assert(db:truncate("services"))
-        dao:truncate_table("apis")
+      describe("(plain)", function()
+        setup(function()
+          assert(db:truncate("routes"))
+          assert(db:truncate("services"))
+          dao:truncate_table("apis")
+
+          for i, args in ipairs(checks) do
+            assert(insert_routes {
+              {
+                strip_path   = args[5],
+                paths        = args[2] and {
+                  args[2],
+                } or nil,
+                hosts        = {
+                  "localbin-" .. i .. ".com",
+                },
+                service = {
+                  name = "service-" .. i,
+                  path = args[1]
+                }
+              }
+            })
+          end
+
+          assert(helpers.start_kong({
+            database   = strategy,
+            nginx_conf = "spec/fixtures/custom_nginx.template",
+          }))
+        end)
+
+        teardown(function()
+          helpers.stop_kong()
+        end)
+
+        local function check(i, request_uri, expected_uri)
+          return function()
+            local res = assert(proxy_client:send {
+              method  = "GET",
+              path    = request_uri,
+              headers = {
+                ["Host"] = "localbin-" .. i .. ".com",
+              }
+            })
+
+            local json = assert.res_status(200, res)
+            local data = cjson.decode(json)
+
+            assert.equal(expected_uri, data.vars.request_uri)
+          end
+        end
 
         for i, args in ipairs(checks) do
-          assert(insert_routes {
-            {
-              strip_path   = args[5],
-              paths        = args[2] and {
-                args[2],
-              } or nil,
-              hosts        = {
-                "localbin-" .. i .. ".com",
-              },
-              service = {
-                name = "service-" .. i,
-                path = args[1]
+          local config = "(strip = " .. (args[5] and "on" or "off") .. ")"
+
+          it("(" .. i .. ") " .. config ..
+             " is not appended to upstream url " .. args[1] ..
+             " (with " .. (args[2] and ("uri " .. args[2]) or
+             ("host test" .. i .. ".domain.org")) .. ")" ..
+             " when requesting " .. args[3], function()
+            check(i, args[3], args[4])
+          end)
+        end
+      end)
+
+      describe("(regex)", function()
+        local function make_a_regex(path)
+          return "/[0]?" .. path:sub(2, -1)
+        end
+
+        setup(function()
+          assert(db:truncate("routes"))
+          assert(db:truncate("services"))
+          dao:truncate_table("apis")
+
+          for i, args in ipairs(checks) do
+            assert(insert_routes {
+              {
+                strip_path   = args[5],
+                paths        = args[2] and {
+                  make_a_regex(args[2]),
+                } or nil,
+                hosts        = {
+                  "localbin-" .. i .. ".com",
+                },
+                service = {
+                  name = "service-" .. i,
+                  path = args[1]
+                }
               }
-            }
-          })
-        end
+            })
+          end
 
-        assert(helpers.start_kong({
-          database   = strategy,
-          nginx_conf = "spec/fixtures/custom_nginx.template",
-        }))
-      end)
-
-      teardown(function()
-        helpers.stop_kong()
-      end)
-
-      local function check(i, request_uri, expected_uri)
-        return function()
-          local res = assert(proxy_client:send {
-            method  = "GET",
-            path    = request_uri,
-            headers = {
-              ["Host"] = "localbin-" .. i .. ".com",
-            }
-          })
-
-          local json = assert.res_status(200, res)
-          local data = cjson.decode(json)
-
-          assert.equal(expected_uri, data.vars.request_uri)
-        end
-      end
-
-      for i, args in ipairs(checks) do
-
-        local config = "(strip_path = n/a)"
-
-        if args[5] == true then
-          config = "(strip_path = on) "
-
-        elseif args[5] == false then
-          config = "(strip_path = off)"
-        end
-
-        it("(" .. i .. ") " .. config ..
-           " is not appended to upstream url " .. args[1] ..
-           " (with " .. (args[2] and ("uri " .. args[2]) or
-           ("host test" .. i .. ".domain.org")) .. ")" ..
-           " when requesting " .. args[3], function()
-          check(i, args[3], args[4])
+          assert(helpers.start_kong({
+            database   = strategy,
+            nginx_conf = "spec/fixtures/custom_nginx.template",
+          }))
         end)
-      end
+
+        teardown(function()
+          helpers.stop_kong()
+        end)
+
+        local function check(i, request_uri, expected_uri)
+          return function()
+            local res = assert(proxy_client:send {
+              method  = "GET",
+              path    = request_uri,
+              headers = {
+                ["Host"] = "localbin-" .. i .. ".com",
+              }
+            })
+
+            local json = assert.res_status(200, res)
+            local data = cjson.decode(json)
+
+            assert.equal(expected_uri, data.vars.request_uri)
+          end
+        end
+
+        for i, args in ipairs(checks) do
+          if args[2] then  -- skip if hostbased match
+            local config = "(strip = " .. (args[5] and "on" or "off") .. ")"
+
+            it("(" .. i .. ") " .. config ..
+              " is not appended to upstream url " .. args[1] ..
+              " (with " .. (args[2] and ("uri " .. make_a_regex(args[2])) or
+              ("host test" .. i .. ".domain.org")) .. ")" ..
+              " when requesting " .. args[3], function()
+              check(i, args[3], args[4])
+            end)
+          end
+        end
+      end)
+
+
     end)
   end)
 end

@@ -1841,7 +1841,7 @@ describe("Router", function()
 
       for i, args in ipairs(checks) do
 
-        local config = args[5] == true and "(strip_uri = on)" or "(strip_uri = off)"
+        local config = args[5] == true and "(strip = on, plain)" or "(strip = off, plain)"
 
         it("(" .. i .. ") " .. config ..
            " is not appended to upstream url " .. args[1] ..
@@ -1876,8 +1876,55 @@ describe("Router", function()
           assert.equal(args[4], match_t.upstream_uri)
         end)
       end
+
+      -- this is identical to the tests above, except that for the path we match
+      -- with an injected regex sequence, effectively transforming the path
+      -- match into a regex match
+      local function make_a_regex(path)
+        return "/[0]?" .. path:sub(2, -1)
+      end
+
+      for i, args in ipairs(checks) do
+        local config = args[5] == true and "(strip = on, regex)" or "(strip = off, regex)"
+
+        if args[2] then -- skip test cases which match on host
+          it("(" .. i .. ") " .. config ..
+            " is not appended to upstream url " .. args[1] ..
+            " (with " .. (args[2] and ("uri " .. make_a_regex(args[2])) or
+            ("host test" .. i .. ".domain.org")) .. ")" ..
+            " when requesting " .. args[3], function()
+
+
+            local use_case_routes = {
+              {
+                service      = {
+                  name       = "service-invalid",
+                  path       = args[1],
+                },
+                route        = {
+                  strip_path = args[5],
+                  paths      = { make_a_regex(args[2]) },
+                },
+                headers   = {
+                  -- only add the header is no path is provided
+                  host    = args[2] == nil and nil or { "test" .. i .. ".domain.org" },
+                },
+              }
+            }
+
+            local router = assert(Router.new(use_case_routes) )
+
+            local _ngx = mock_ngx("GET", args[3], { host = "test" .. i .. ".domain.org" })
+            local match_t = router.exec(_ngx)
+            assert.same(use_case_routes[1].route, match_t.route)
+            assert.equal(args[1], match_t.upstream_url_t.path)
+            assert.equal(args[4], match_t.upstream_uri)
+          end)
+        end
+      end
     end)
   end)
+
 
   describe("has_capturing_groups()", function()
     -- load the `assert.fail` assertion
