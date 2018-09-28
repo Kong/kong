@@ -276,7 +276,7 @@ local function set_consumer(ctx, consumer, credential, is_anonymous)
       set_header(head.CONSUMER_USERNAME, nil)
     end
 
-  else
+  elseif not ctx.authenticated_credential then
     log("removing possible remnants of anonymous")
 
     ctx.authenticated_consumer   = nil
@@ -815,8 +815,8 @@ function OICHandler:access(conf)
 
   local trusted_client = find_trusted_client(args)
 
-  local unauthorized_error_message = args.get_conf_arg("unauthorized_error_message", "unauthorized")
-  local forbidden_error_message = args.get_conf_arg("forbidden_error_message", "forbidden")
+  local unauthorized_error_message = args.get_conf_arg("unauthorized_error_message", "Unauthorized")
+  local forbidden_error_message = args.get_conf_arg("forbidden_error_message", "Forbidden")
 
   local anonymous = args.get_conf_arg("anonymous")
   if anonymous and ctx.authenticated_credential then
@@ -1247,10 +1247,12 @@ function OICHandler:access(conf)
                 no_cache_headers()
 
                 if args.get_uri_arg("state") == state then
-                  return unauthorized(ctx, iss, unauthorized_error_message, err, authorization, anonymous, trusted_client)
+                  return unauthorized(ctx, iss, unauthorized_error_message, err,
+                                      authorization, anonymous, trusted_client)
 
                 elseif args.get_post_arg("state") == state then
-                  return unauthorized(ctx, iss, unauthorized_error_message, err, authorization, anonymous, trusted_client)
+                  return unauthorized(ctx, iss, unauthorized_error_message, err,
+                                      authorization, anonymous, trusted_client)
 
                 else
                   log(err)
@@ -1308,7 +1310,8 @@ function OICHandler:access(conf)
 
             no_cache_headers()
 
-            local extra_args  = args.get_conf_args("authorization_query_args_names", "authorization_query_args_values")
+            local extra_args  = args.get_conf_args("authorization_query_args_names",
+                                                   "authorization_query_args_values")
             local client_args = args.get_conf_arg("authorization_query_args_client")
             if client_args then
               for _, client_arg_name in ipairs(client_args) do
@@ -1360,14 +1363,13 @@ function OICHandler:access(conf)
           end
 
         else
-          return unauthorized(
-            ctx,
-            iss,
-            unauthorized_error_message,
-            "no suitable authorization credentials were provided",
-            nil,
-            anonymous,
-            trusted_client)
+          return unauthorized(ctx,
+                              iss,
+                              unauthorized_error_message,
+                              "no suitable authorization credentials were provided",
+                              nil,
+                              anonymous,
+                              trusted_client)
         end
       end
 
@@ -1409,7 +1411,8 @@ function OICHandler:access(conf)
     tokens_decoded, err = oic.token:verify(tokens_encoded)
     if not tokens_decoded then
       log("unable to verify bearer token")
-      return unauthorized(ctx, iss, unauthorized_error_message, err, session, anonymous, trusted_client)
+      return unauthorized(ctx, iss, unauthorized_error_message, err,
+                          session, anonymous, trusted_client)
     end
 
     log("bearer token verified")
@@ -1449,7 +1452,8 @@ function OICHandler:access(conf)
 
         if not token_introspected or not token_introspected.active then
           log("authentication with opaque bearer token failed")
-          return unauthorized(ctx, iss, unauthorized_error_message, err, session, anonymous, trusted_client)
+          return unauthorized(ctx, iss, unauthorized_error_message, err,
+                              session, anonymous, trusted_client)
         end
 
         auth_method = "introspection"
@@ -1476,7 +1480,8 @@ function OICHandler:access(conf)
 
         else
           log("unable to introspect jwt bearer token")
-          return unauthorized(ctx, iss, unauthorized_error_message, err, session, anonymous, trusted_client)
+          return unauthorized(ctx, iss, unauthorized_error_message, err,
+                              session, anonymous, trusted_client)
         end
       end
 
@@ -1544,14 +1549,16 @@ function OICHandler:access(conf)
 
     if not tokens_encoded then
       log("unable to exchange credentials with tokens")
-      return unauthorized(ctx, iss, unauthorized_error_message, err, session, anonymous, trusted_client)
+      return unauthorized(ctx, iss, unauthorized_error_message, err,
+                          session, anonymous, trusted_client)
     end
 
     log("verifying tokens")
     tokens_decoded, err = oic.token:verify(tokens_encoded, token_endpoint_args)
     if not tokens_decoded then
       log("token verification failed")
-      return unauthorized(ctx, iss, unauthorized_error_message, err, session, anonymous, trusted_client)
+      return unauthorized(ctx, iss, unauthorized_error_message, err,
+                          session, anonymous, trusted_client)
 
     else
       log("tokens verified")
@@ -1584,9 +1591,8 @@ function OICHandler:access(conf)
 
   log("checking for access token")
   if not tokens_encoded.access_token then
-    return unauthorized(ctx, iss, unauthorized_error_message,
-                        "access token was not found", session,
-                        anonymous, trusted_client)
+    return unauthorized(ctx, iss, unauthorized_error_message, "access token was not found",
+                        session, anonymous, trusted_client)
 
   else
     log("found access token")
@@ -1605,14 +1611,13 @@ function OICHandler:access(conf)
       tokens_decoded, err = oic.token:verify(tokens_encoded)
       if not tokens_decoded then
         log("reverifying tokens failed")
-        return unauthorized(
-          ctx,
-          iss,
-          unauthorized_error_message,
-          err,
-          session,
-          anonymous,
-          trusted_client)
+        return unauthorized(ctx,
+                            iss,
+                            unauthorized_error_message,
+                            err,
+                            session,
+                            anonymous,
+                            trusted_client)
 
       else
         log("reverified tokens")
@@ -1629,14 +1634,13 @@ function OICHandler:access(conf)
     if auth_methods.refresh_token then
       -- access token has expired, try to refresh the access token before proxying
       if not tokens_encoded.refresh_token then
-        return unauthorized(
-          ctx,
-          iss,
-          unauthorized_error_message,
-          "access token cannot be refreshed in absense of refresh token",
-          session,
-          anonymous,
-          trusted_client)
+        return unauthorized(ctx,
+                            iss,
+                            unauthorized_error_message,
+                            "access token cannot be refreshed in absense of refresh token",
+                            session,
+                            anonymous,
+                            trusted_client)
       end
 
       log("trying to refresh access token using refresh token")
@@ -1647,14 +1651,13 @@ function OICHandler:access(conf)
 
       if not tokens_refreshed then
         log("unable to refresh access token using refresh token")
-        return unauthorized(
-          ctx,
-          iss,
-          unauthorized_error_message,
-          err,
-          session,
-          anonymous,
-          trusted_client)
+        return unauthorized(ctx,
+                            iss,
+                            unauthorized_error_message,
+                            err,
+                            session,
+                            anonymous,
+                            trusted_client)
 
       else
         log("refreshed access token using refresh token")
@@ -1672,14 +1675,13 @@ function OICHandler:access(conf)
       tokens_decoded, err = oic.token:verify(tokens_refreshed)
       if not tokens_decoded then
         log("unable to verify refreshed tokens")
-        return unauthorized(
-          ctx,
-          iss,
-          unauthorized_error_message,
-          err,
-          session,
-          anonymous,
-          trusted_client)
+        return unauthorized(ctx,
+                            iss,
+                            unauthorized_error_message,
+                            err,
+                            session,
+                            anonymous,
+                            trusted_client)
 
       else
         log("verified refreshed tokens")
@@ -1700,14 +1702,13 @@ function OICHandler:access(conf)
       end
 
     else
-      return unauthorized(
-        ctx,
-        iss,
-        unauthorized_error_message,
-        "access token has expired and could not be refreshed",
-        session,
-        anonymous,
-        trusted_client)
+      return unauthorized(ctx,
+                          iss,
+                          unauthorized_error_message,
+                          "access token has expired and could not be refreshed",
+                          session,
+                          anonymous,
+                          trusted_client)
     end
   end
 
@@ -1725,14 +1726,13 @@ function OICHandler:access(conf)
           log("validating jwt claim against jwt session cookie")
           local jwt_session_cookie_value = args.get_value(var["cookie_" .. jwt_session_cookie])
           if not jwt_session_cookie_value then
-            return unauthorized(
-              ctx,
-              iss,
-              unauthorized_error_message,
-              "jwt session cookie was not specified for session claim verification",
-              session,
-              anonymous,
-              trusted_client)
+            return unauthorized(ctx,
+                                iss,
+                                unauthorized_error_message,
+                                "jwt session cookie was not specified for session claim verification",
+                                session,
+                                anonymous,
+                                trusted_client)
           end
 
           local jwt_session_claim = args.get_conf_arg("jwt_session_claim", "sid")
@@ -1741,25 +1741,25 @@ function OICHandler:access(conf)
           jwt_session_claim_value = tokens_decoded.access_token.payload[jwt_session_claim]
 
           if not jwt_session_claim_value then
-            return unauthorized(
-              ctx,
-              iss,
-              unauthorized_error_message,
-              "jwt session claim (" .. jwt_session_claim .. ") was not specified in jwt access token",
-              session,
-              anonymous,
-              trusted_client)
+            return unauthorized(ctx,
+                                iss,
+                                unauthorized_error_message,
+                                "jwt session claim (" .. jwt_session_claim ..
+                                ") was not specified in jwt access token",
+                                session,
+                                anonymous,
+                                trusted_client)
           end
 
           if jwt_session_claim_value ~= jwt_session_cookie_value then
-            return unauthorized(
-              ctx,
-              iss,
-              unauthorized_error_message,
-              "invalid jwt session claim (" .. jwt_session_claim .. ") was specified in jwt access token",
-              session,
-              anonymous,
-              trusted_client)
+            return unauthorized(ctx,
+                                iss,
+                                unauthorized_error_message,
+                                "invalid jwt session claim (" .. jwt_session_claim ..
+                                ") was specified in jwt access token",
+                                session,
+                                anonymous,
+                                trusted_client)
           end
 
           log("jwt claim matches jwt session cookie")
@@ -1811,14 +1811,13 @@ function OICHandler:access(conf)
       end
 
       if not access_token_scopes then
-        return forbidden(
-          ctx,
-          iss,
-          forbidden_error_message,
-          "scopes required but no scopes found",
-          session,
-          anonymous,
-          trusted_client)
+        return forbidden(ctx,
+                         iss,
+                         forbidden_error_message,
+                         "scopes required but no scopes found",
+                         session,
+                         anonymous,
+                         trusted_client)
       end
 
       access_token_scopes = set.new(access_token_scopes)
@@ -1835,14 +1834,13 @@ function OICHandler:access(conf)
         log("required scopes were found")
 
       else
-        return forbidden(
-          ctx,
-          iss,
-          forbidden_error_message,
-          "required scopes were not found [ " .. concat(access_token_scopes, ", ") .. " ]",
-          session,
-          anonymous,
-          trusted_client)
+        return forbidden(ctx,
+                         iss,
+                         forbidden_error_message,
+                         "required scopes were not found [ " .. concat(access_token_scopes, ", ") .. " ]",
+                         session,
+                         anonymous,
+                         trusted_client)
       end
     end
 
@@ -1891,14 +1889,13 @@ function OICHandler:access(conf)
       end
 
       if not access_token_audience then
-        return forbidden(
-          ctx,
-          iss,
-          forbidden_error_message,
-          "audience required but no audience found",
-          session,
-          anonymous,
-          trusted_client)
+        return forbidden(ctx,
+                         iss,
+                         forbidden_error_message,
+                         "audience required but no audience found",
+                         session,
+                         anonymous,
+                         trusted_client)
       end
 
       access_token_audience = set.new(access_token_audience)
@@ -1915,14 +1912,13 @@ function OICHandler:access(conf)
         log("required audience was found")
 
       else
-        return forbidden(
-          ctx,
-          iss,
-          forbidden_error_message,
-          "required audience was not found [ " .. concat(access_token_audience, ", ") .. " ]",
-          session,
-          anonymous,
-          trusted_client)
+        return forbidden(ctx,
+                         iss,
+                         forbidden_error_message,
+                         "required audience was not found [ " .. concat(access_token_audience, ", ") .. " ]",
+                         session,
+                         anonymous,
+                         trusted_client)
       end
     end
   end
@@ -2053,14 +2049,13 @@ function OICHandler:access(conf)
 
   -- check if the dev portal consumer is not approved
   if consumer and consumer.status ~= nil and consumer.status ~= 0 then
-    return forbidden(
-            ctx,
-            iss,
-            forbidden_error_message,
-            "consumer is not authorized",
-            session,
-            anonymous,
-            trusted_client)
+    return forbidden(ctx,
+                     iss,
+                     forbidden_error_message,
+                     "consumer is not authorized",
+                     session,
+                     anonymous,
+                     trusted_client)
   end
   -- setting consumer context and headers
   set_consumer(ctx, consumer, credential, is_anonymous)

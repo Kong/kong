@@ -515,7 +515,7 @@ local function introspection_load(oic, access_token, endpoint, hint, headers, no
     expires_in = 0
   end
 
-  return { now + expires_in, token }, nil, expires_in ~= 0 and expires_in or 0
+  return { now + expires_in, token }, nil, expires_in ~= 0 and expires_in or nil
 end
 
 
@@ -583,7 +583,7 @@ local function tokens_load(oic, args, now)
     expires_in = 0
   end
 
-  return { now + expires_in, tokens_encoded, headers }, nil, expires_in ~= 0 and expires_in or 0
+  return { now + expires_in, tokens_encoded, headers }, nil, expires_in ~= 0 and expires_in or nil
 end
 
 

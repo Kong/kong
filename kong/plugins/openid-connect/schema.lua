@@ -88,7 +88,7 @@ return {
     forbidden_error_message            = {
       required                         = false,
       type                             = "string",
-      default                          = "forbidden"
+      default                          = "Forbidden"
     },
     forbidden_destroy_session          = {
       required                         = false,
@@ -102,7 +102,7 @@ return {
     unauthorized_error_message         = {
       required                         = false,
       type                             = "string",
-      default                          = "unauthorized"
+      default                          = "Unauthorized"
     },
     unexpected_redirect_uri            = {
       required                         = false,
