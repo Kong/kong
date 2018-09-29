@@ -74,9 +74,11 @@ local function execute(args)
   end
 
   local conf = assert(conf_loader(args.conf))
+
+  conf.pg_timeout = args.db_timeout -- connect + send + read
+
   conf.cassandra_timeout = args.db_timeout -- connect + send + read
   conf.cassandra_schema_consensus_timeout = args.db_timeout
-  -- TODO: no support for custom pgmoon timeout
 
   local db = DB.new(conf)
   assert(db:init_connector())

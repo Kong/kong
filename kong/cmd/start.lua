@@ -15,9 +15,10 @@ local function execute(args)
     prefix = args.prefix
   }))
 
+  conf.pg_timeout = args.db_timeout -- connect + send + read
+
   conf.cassandra_timeout = args.db_timeout -- connect + send + read
   conf.cassandra_schema_consensus_timeout = args.db_timeout
-  -- TODO: no support for custom pgmoon timeout
 
   assert(not kill.is_running(conf.nginx_pid),
          "Kong is already running in " .. conf.prefix)
