@@ -55,11 +55,30 @@ local header_name = Schema.define {
 }
 
 
-local healthchecks_defaults = {
+local check_type = Schema.define {
+  type = "string",
+  one_of = { "tcp", "http", "https" },
+  default = "http",
+}
+
+
+local check_verify_certificate = Schema.define {
+  type = "boolean",
+  default = true,
+}
+
+
+local NO_DEFAULT = {}
+
+
+local healthchecks_config = {
   active = {
+    type = "http",
     timeout = 1,
     concurrency = 10,
     http_path = "/",
+    https_sni = NO_DEFAULT,
+    https_verify_certificate = true,
     healthy = {
       interval = 0,  -- 0 = probing disabled by default
       http_statuses = { 200, 302 },
@@ -75,6 +94,7 @@ local healthchecks_defaults = {
     },
   },
   passive = {
+    type = "http",
     healthy = {
       http_statuses = { 200, 201, 202, 203, 204, 205, 206, 207, 208, 226,
                         300, 301, 302, 303, 304, 305, 306, 307, 308 },
@@ -91,6 +111,7 @@ local healthchecks_defaults = {
 
 
 local types = {
+  type = check_type,
   timeout = seconds,
   concurrency = positive_int,
   interval = seconds,
@@ -100,24 +121,35 @@ local types = {
   http_failures = positive_int_or_zero,
   http_path = typedefs.path,
   http_statuses = http_statuses,
+  https_sni = typedefs.sni,
+  https_verify_certificate = check_verify_certificate,
 }
+
 
 local function gen_fields(tbl)
   local fields = {}
   local count = 0
   for name, default in pairs(tbl) do
     local typ = types[name]
-    local def
+    local def, required
+    if default == NO_DEFAULT then
+      default = nil
+      required = false
+      tbl[name] = nil
+    end
     if typ then
-      def = typ{ default = default }
+      def = typ{ default = default, required = required }
     else
       def = { type = "record", fields = gen_fields(default), default = default }
     end
     count = count + 1
     fields[count] = { [name] = def }
   end
-  return fields
+  return fields, tbl
 end
+
+
+local healthchecks_fields, healthchecks_defaults = gen_fields(healthchecks_config)
 
 
 local r =  {
@@ -137,9 +169,9 @@ local r =  {
     { slots = { type = "integer", default = 10000, between = { 10, 2^16 }, }, },
     { healthchecks = { type = "record",
         default = healthchecks_defaults,
-        fields = gen_fields(healthchecks_defaults),
+        fields = healthchecks_fields,
     }, },
-},
+  },
   entity_checks = {
     -- hash_on_header must be present when hashing on header
     { conditional = {

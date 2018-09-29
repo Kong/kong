@@ -152,9 +152,11 @@ describe("load upstreams", function()
     assert.same(u.slots, 10000)
     assert.same(u.healthchecks, {
       active = {
+        type = "http",
         timeout = 1,
         concurrency = 10,
         http_path = "/",
+        https_verify_certificate = true,
         healthy = {
           interval = 0,
           http_statuses = { 200, 302 },
@@ -170,6 +172,7 @@ describe("load upstreams", function()
         },
       },
       passive = {
+        type = "http",
         healthy = {
           http_statuses = { 200, 201, 202, 203, 204, 205, 206, 207, 208, 226,
                             300, 301, 302, 303, 304, 305, 306, 307, 308 },
@@ -221,6 +224,10 @@ describe("load upstreams", function()
       local zero_integer = "value should be between 0 and 2147483648"
       local status_code = "value should be between 100 and 999"
       local integer = "expected an integer"
+      local boolean = "expected a boolean"
+      local invalid_host = "invalid value: "
+      local invalid_host_port = "must not have a port"
+      local invalid_ip = "must not be an IP"
       local tests = {
         {{ active = { timeout = -1 }}, seconds },
         {{ active = { timeout = 1e+42 }}, seconds },
@@ -229,6 +236,20 @@ describe("load upstreams", function()
         {{ active = { concurrency = -10 }}, pos_integer },
         {{ active = { http_path = "" }}, "length must be at least 1" },
         {{ active = { http_path = "ovo" }}, "should start with: /" },
+        {{ active = { https_sni = "127.0.0.1", }}, invalid_ip },
+        {{ active = { https_sni = "127.0.0.1:8080", }}, invalid_ip },
+        {{ active = { https_sni = "/example", }}, invalid_host },
+        {{ active = { https_sni = ".example", }}, invalid_host },
+        {{ active = { https_sni = "example.", }}, invalid_host },
+        {{ active = { https_sni = "example:", }}, invalid_host },
+        {{ active = { https_sni = "mock;bin", }}, invalid_host },
+        {{ active = { https_sni = "example.com/org", }}, invalid_host },
+        {{ active = { https_sni = "example-.org", }}, invalid_host },
+        {{ active = { https_sni = "example.org-", }}, invalid_host },
+        {{ active = { https_sni = "hello..example.com", }}, invalid_host },
+        {{ active = { https_sni = "hello-.example.com", }}, invalid_host },
+        {{ active = { https_sni = "example.com:1234", }}, invalid_host_port },
+        {{ active = { https_verify_certificate = "ovo", }}, boolean },
         {{ active = { healthy = { interval = -1 }}}, seconds },
         {{ active = { healthy = { interval = 1e+42 }}}, seconds },
         {{ active = { healthy = { http_statuses = 404 }}}, "expected an array" },
@@ -292,7 +313,7 @@ describe("load upstreams", function()
         repeat
           leaf = leaf[next(leaf)]
         until type(leaf) ~= "table" or type(next(leaf)) ~= "string"
-        assert.equal(test[2], leaf, inspect(err))
+        assert.match(test[2], leaf, 1, true, inspect(err))
       end
     end)
 
@@ -304,6 +325,8 @@ describe("load upstreams", function()
         { active = { concurrency = 2 }},
         { active = { http_path = "/" }},
         { active = { http_path = "/test" }},
+        { active = { https_sni = "example.com" }},
+        { active = { https_verify_certificate = false }},
         { active = { healthy = { interval = 0 }}},
         { active = { healthy = { http_statuses = { 200, 300 } }}},
         { active = { healthy = { successes = 2 }}},
