@@ -25,7 +25,7 @@ https://grafana.com/dashboards/7424
 
 #### Enable the plugin
 ```bash
-$ curl http://localhost:8001/plugins name=prometheus
+$ curl http://localhost:8001/plugins -d name=prometheus
 ```
 
 ### Scraping metrics
