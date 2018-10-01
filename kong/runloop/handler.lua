@@ -466,15 +466,14 @@ return {
         -- semaphore resource is acquired we re-check the api_router version
         -- again to prevent unnecessary subsequent rebuilds
 
-        -- for postgres-backed installations, wait up to 60 seconds (the
-        -- default socket timeout) to acquire the mutex when attempting to
-        -- build the router. cassandra-backed installations rely on the
-        -- 'cassandra_timeout' configuration to better align with the
-        -- configured timeout behavior that other cassandra queries use
         local timeout = 60
         if singletons.configuration.database == "cassandra" then
           -- cassandra_timeout is defined in ms
           timeout = singletons.configuration.cassandra_timeout / 1000
+
+        elseif singletons.configuration.database == "postgres" then
+          -- pg_timeout is defined in ms
+          timeout = singletons.configuration.pg_timeout / 1000
         end
 
         local ok, err = build_api_router_semaphore:wait(timeout)
@@ -525,15 +524,14 @@ return {
         -- queued. once the semaphore resource is acquired we re-check the
         -- router version again to prevent unnecessary subsequent rebuilds
 
-        -- for postgres-backed installations, wait up to 60 seconds (the
-        -- default socket timeout) to acquire the mutex when attempting to
-        -- build the router. cassandra-backed installations rely on the
-        -- 'cassandra_timeout' configuration to better align with the
-        -- configured timeout behavior that other cassandra queries use
         local timeout = 60
         if singletons.configuration.database == "cassandra" then
           -- cassandra_timeout is defined in ms
           timeout = singletons.configuration.cassandra_timeout / 1000
+
+        elseif singletons.configuration.database == "postgres" then
+          -- pg_timeout is defined in ms
+          timeout = singletons.configuration.pg_timeout / 1000
         end
 
         local ok, err = build_router_semaphore:wait(timeout)
