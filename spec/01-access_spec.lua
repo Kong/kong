@@ -232,7 +232,7 @@ for _, strategy in helpers.each_strategy() do
         body    = {},
         headers = {
           host             = "ldap7.com",
-          authorization    = "ldap " .. ngx.encode_base64("john.nash:password"),
+          authorization    = "ldap " .. ngx.encode_base64("andrei.sakharov:password"),
         }
       })
       assert.response(res).has.status(200)
