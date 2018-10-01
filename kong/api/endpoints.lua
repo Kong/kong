@@ -520,7 +520,17 @@ local function generate_endpoints(schema, endpoints)
 end
 
 
+-- A reusable handler for endpoints that are deactivated
+-- (e.g. /targets/:targets)
+local not_found = {
+  before = function()
+    return responses.send_HTTP_NOT_FOUND()
+  end
+}
+
+
 local Endpoints = {
+  not_found = not_found,
   handle_error = handle_error,
   get_page_size = get_page_size,
   select_entity = select_entity,
