@@ -5,7 +5,20 @@ local typedefs = require("kong.db.schema.typedefs")
 describe("typedefs", function()
   local a_valid_uuid = "cbb297c0-a956-486d-ad1d-f9b42df9465a"
   local a_blank_uuid = "00000000-0000-0000-0000-000000000000"
- 
+
+  it("features sni typedef", function()
+    local Test = Schema.new({
+      fields = {
+        { f = typedefs.sni }
+      }
+    })
+    assert.truthy(Test:validate({ f = "example.com" }))
+    assert.truthy(Test:validate({ f = "9foo.te-st.bar.test" }))
+    assert.falsy(Test:validate({ f = "127.0.0.1" }))
+    assert.falsy(Test:validate({ f = "example.com:80" }))
+    assert.falsy(Test:validate({ f = "[::1]" }))
+  end)
+
   it("features port typedef", function()
     local Test = Schema.new({
       fields = {
@@ -19,7 +32,7 @@ describe("typedefs", function()
     assert.falsy(Test:validate({ f = 65536 }))
     assert.falsy(Test:validate({ f = 65536.1 }))
   end)
- 
+
   it("features protocol typedef", function()
     local Test = Schema.new({
       fields = {
@@ -77,7 +90,7 @@ describe("typedefs", function()
     local data = Test:process_auto_fields({})
     assert.truthy(Test:validate(data))
     assert.same(data.f, 120)
- 
+
     data = Test:process_auto_fields({ f = 900 })
     assert.truthy(Test:validate(data))
     assert.same(data.f, 900)

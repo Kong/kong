@@ -57,6 +57,24 @@ local function validate_name(name)
 end
 
 
+local function validate_sni(host)
+  local res, err_or_port = utils.normalize_ip(host)
+  if type(err_or_port) == "string" and err_or_port ~= "invalid port number" then
+    return nil, "invalid value: " .. host
+  end
+
+  if res.type ~= "name" then
+    return nil, "must not be an IP"
+  end
+
+  if err_or_port == "invalid port number" or type(res.port) == "number" then
+    return nil, "must not have a port"
+  end
+
+  return true
+end
+
+
 local typedefs = {}
 
 
@@ -158,6 +176,12 @@ typedefs.name = Schema.define {
   type = "string",
   unique = true,
   custom_validator = validate_name
+}
+
+
+typedefs.sni = Schema.define {
+  type = "string",
+  custom_validator = validate_sni,
 }
 
 
