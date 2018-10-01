@@ -312,7 +312,7 @@ end
 function CassandraConnector:refresh()
   local ok, err = self.cluster:refresh()
   if not ok then
-    return nil, Errors.db(err)
+    return nil, err
   end
 
   return true
