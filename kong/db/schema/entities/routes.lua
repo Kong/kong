@@ -71,9 +71,6 @@ return {
                              { pattern = "//",
                                err = "must not have empty segments"
                              },
-                             { pattern = "./$",
-                               err = "must not have a trailing slash"
-                             },
                            },
                          }
                        }, },

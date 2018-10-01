@@ -128,7 +128,7 @@ for _, strategy in helpers.each_strategy() do
             protocols  = { "http" },
             strip_path = false,
             service    = {
-              path     = "/basic-auth",
+              path     = "/basic-auth/",
             },
           },
           { -- service-5
@@ -939,107 +939,228 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
 
-    describe("trailing slash", function()
+    describe("slash handing", function()
       local checks = {
-        -- upstream url    paths            request path    expected path          strip path
-        {  "/",            "/",            "/",            "/",                    true      },
-        {  "/",            "/",            "/get/bar",     "/get/bar",             true      },
-        {  "/",            "/",            "/get/bar/",    "/get/bar/",            true      },
-        {  "/",            "/get/bar",     "/get/bar",     "/",                    true      },
-        {  "/",            "/get/bar",     "/get/bar/",    "/",                    true      },
-        {  "/get/bar",     "/",            "/",            "/get/bar",             true      },
-        {  "/get/bar",     "/",            "/get/bar",     "/get/bar/get/bar",     true      },
-        {  "/get/bar",     "/",            "/get/bar/",    "/get/bar/get/bar/",    true      },
-        {  "/get/bar",     "/get/bar",     "/get/bar",     "/get/bar",             true      },
-        {  "/get/bar",     "/get/bar",     "/get/bar/",    "/get/bar/",            true      },
-        {  "/get/bar/",    "/",            "/",            "/get/bar/",            true      },
-        {  "/get/bar/",    "/",            "/get/bar",     "/get/bar/get/bar",     true      },
-        {  "/get/bar/",    "/",            "/get/bar/",    "/get/bar/get/bar/",    true      },
-        {  "/get/bar/",    "/get/bar",     "/get/bar",     "/get/bar",             true      },
-        {  "/get/bar/",    "/get/bar",     "/get/bar/",    "/get/bar/",            true      },
+        -- upstream url    paths           request path    expected path           strip uri
+        {  "/",            "/",            "/",            "/",                    true      }, -- 1
+        {  "/",            "/",            "/foo/bar",     "/foo/bar",             true      },
+        {  "/",            "/",            "/foo/bar/",    "/foo/bar/",            true      },
+        {  "/",            "/foo/bar",     "/foo/bar",     "/",                    true      },
+        {  "/",            "/foo/bar",     "/foo/bar/",    "/",                    true      },
+        {  "/",            "/foo/bar/",    "/foo/bar/",    "/",                    true      },
+        {  "/fee/bor",     "/",            "/",            "/fee/bor",             true      },
+        {  "/fee/bor",     "/",            "/foo/bar",     "/fee/borfoo/bar",      true      },
+        {  "/fee/bor",     "/",            "/foo/bar/",    "/fee/borfoo/bar/",     true      },
+        {  "/fee/bor",     "/foo/bar",     "/foo/bar",     "/fee/bor",             true      }, -- 10
+        {  "/fee/bor",     "/foo/bar",     "/foo/bar/",    "/fee/bor/",            true      },
+        {  "/fee/bor",     "/foo/bar/",    "/foo/bar/",    "/fee/bor",             true      },
+        {  "/fee/bor/",    "/",            "/",            "/fee/bor/",            true      },
+        {  "/fee/bor/",    "/",            "/foo/bar",     "/fee/bor/foo/bar",     true      },
+        {  "/fee/bor/",    "/",            "/foo/bar/",    "/fee/bor/foo/bar/",    true      },
+        {  "/fee/bor/",    "/foo/bar",     "/foo/bar",     "/fee/bor/",            true      },
+        {  "/fee/bor/",    "/foo/bar",     "/foo/bar/",    "/fee/bor/",            true      },
+        {  "/fee/bor/",    "/foo/bar/",    "/foo/bar/",    "/fee/bor/",            true      },
         {  "/",            "/",            "/",            "/",                    false     },
-        {  "/",            "/",            "/get/bar",     "/get/bar",             false     },
-        {  "/",            "/",            "/get/bar/",    "/get/bar/",            false     },
-        {  "/",            "/get/bar",     "/get/bar",     "/get/bar",             false     },
-        {  "/",            "/get/bar",     "/get/bar/",    "/get/bar/",            false     },
-        {  "/get/bar",     "/",            "/",            "/get/bar",             false     },
-        {  "/get/bar",     "/",            "/get/bar",     "/get/bar/get/bar",     false     },
-        {  "/get/bar",     "/",            "/get/bar/",    "/get/bar/get/bar/",    false     },
-        {  "/get/bar",     "/get/bar",     "/get/bar",     "/get/bar/get/bar",     false     },
-        {  "/get/bar",     "/get/bar",     "/get/bar/",    "/get/bar/get/bar/",    false     },
-        {  "/get/bar/",    "/",            "/",            "/get/bar/",            false     },
-        {  "/get/bar/",    "/",            "/get/bar",     "/get/bar/get/bar",     false     },
-        {  "/get/bar/",    "/",            "/get/bar/",    "/get/bar/get/bar/",    false     },
-        {  "/get/bar/",    "/get/bar",     "/get/bar",     "/get/bar/get/bar",     false     },
-        {  "/get/bar/",    "/get/bar",     "/get/bar/",    "/get/bar/get/bar/",    false     },
+        {  "/",            "/",            "/foo/bar",     "/foo/bar",             false     }, -- 20
+        {  "/",            "/",            "/foo/bar/",    "/foo/bar/",            false     },
+        {  "/",            "/foo/bar",     "/foo/bar",     "/foo/bar",             false     },
+        {  "/",            "/foo/bar",     "/foo/bar/",    "/foo/bar/",            false     },
+        {  "/",            "/foo/bar/",    "/foo/bar/",    "/foo/bar/",            false     },
+        {  "/fee/bor",     "/",            "/",            "/fee/bor",             false     },
+        {  "/fee/bor",     "/",            "/foo/bar",     "/fee/borfoo/bar",      false     },
+        {  "/fee/bor",     "/",            "/foo/bar/",    "/fee/borfoo/bar/",     false     },
+        {  "/fee/bor",     "/foo/bar",     "/foo/bar",     "/fee/borfoo/bar",      false     },
+        {  "/fee/bor",     "/foo/bar",     "/foo/bar/",    "/fee/borfoo/bar/",     false     },
+        {  "/fee/bor",     "/foo/bar/",    "/foo/bar/",    "/fee/borfoo/bar/",     false     }, -- 30
+        {  "/fee/bor/",    "/",            "/",            "/fee/bor/",            false     },
+        {  "/fee/bor/",    "/",            "/foo/bar",     "/fee/bor/foo/bar",     false     },
+        {  "/fee/bor/",    "/",            "/foo/bar/",    "/fee/bor/foo/bar/",    false     },
+        {  "/fee/bor/",    "/foo/bar",     "/foo/bar",     "/fee/bor/foo/bar",     false     },
+        {  "/fee/bor/",    "/foo/bar",     "/foo/bar/",    "/fee/bor/foo/bar/",    false     },
+        {  "/fee/bor/",    "/foo/bar/",    "/foo/bar/",    "/fee/bor/foo/bar/",    false     },
+        -- the following block runs the same tests, but with a request path that is longer
+        -- than the matched part, so either matches in the middle of a segment, or has an
+        -- additional segment.
+        {  "/",            "/",            "/foo/bars",    "/foo/bars",            true      },
+        {  "/",            "/",            "/foo/bar/s",   "/foo/bar/s",           true      },
+        {  "/",            "/foo/bar",     "/foo/bars",    "/s",                   true      },
+        {  "/",            "/foo/bar/",    "/foo/bar/s",   "/s",                   true      }, -- 40
+        {  "/fee/bor",     "/",            "/foo/bars",    "/fee/borfoo/bars",     true      },
+        {  "/fee/bor",     "/",            "/foo/bar/s",   "/fee/borfoo/bar/s",    true      },
+        {  "/fee/bor",     "/foo/bar",     "/foo/bars",    "/fee/bors",            true      },
+        {  "/fee/bor",     "/foo/bar/",    "/foo/bar/s",   "/fee/bors",            true      },
+        {  "/fee/bor/",    "/",            "/foo/bars",    "/fee/bor/foo/bars",    true      },
+        {  "/fee/bor/",    "/",            "/foo/bar/s",   "/fee/bor/foo/bar/s",   true      },
+        {  "/fee/bor/",    "/foo/bar",     "/foo/bars",    "/fee/bor/s",           true      },
+        {  "/fee/bor/",    "/foo/bar/",    "/foo/bar/s",   "/fee/bor/s",           true      },
+        {  "/",            "/",            "/foo/bars",    "/foo/bars",            false     },
+        {  "/",            "/",            "/foo/bar/s",   "/foo/bar/s",           false     }, -- 50
+        {  "/",            "/foo/bar",     "/foo/bars",    "/foo/bars",            false     },
+        {  "/",            "/foo/bar/",    "/foo/bar/s",   "/foo/bar/s",           false     },
+        {  "/fee/bor",     "/",            "/foo/bars",    "/fee/borfoo/bars",     false     },
+        {  "/fee/bor",     "/",            "/foo/bar/s",   "/fee/borfoo/bar/s",    false     },
+        {  "/fee/bor",     "/foo/bar",     "/foo/bars",    "/fee/borfoo/bars",     false     },
+        {  "/fee/bor",     "/foo/bar/",    "/foo/bar/s",   "/fee/borfoo/bar/s",    false     },
+        {  "/fee/bor/",    "/",            "/foo/bars",    "/fee/bor/foo/bars",    false     },
+        {  "/fee/bor/",    "/",            "/foo/bar/s",   "/fee/bor/foo/bar/s",   false     },
+        {  "/fee/bor/",    "/foo/bar",     "/foo/bars",    "/fee/bor/foo/bars",    false     },
+        {  "/fee/bor/",    "/foo/bar/",    "/foo/bar/s",   "/fee/bor/foo/bar/s",   false     }, -- 60
+        -- the following block matches on host, instead of path
+        {  "/",            nil,            "/",            "/",                    false     },
+        {  "/",            nil,            "/foo/bar",     "/foo/bar",             false     },
+        {  "/",            nil,            "/foo/bar/",    "/foo/bar/",            false     },
+        {  "/fee/bor",     nil,            "/",            "/fee/bor",             false     },
+        {  "/fee/bor",     nil,            "/foo/bar",     "/fee/borfoo/bar",      false     },
+        {  "/fee/bor",     nil,            "/foo/bar/",    "/fee/borfoo/bar/",     false     },
+        {  "/fee/bor/",    nil,            "/",            "/fee/bor/",            false     },
+        {  "/fee/bor/",    nil,            "/foo/bar",     "/fee/bor/foo/bar",     false     },
+        {  "/fee/bor/",    nil,            "/foo/bar/",    "/fee/bor/foo/bar/",    false     },
+        {  "/",            nil,            "/",            "/",                    true      }, -- 70
+        {  "/",            nil,            "/foo/bar",     "/foo/bar",             true      },
+        {  "/",            nil,            "/foo/bar/",    "/foo/bar/",            true      },
+        {  "/fee/bor",     nil,            "/",            "/fee/bor",             true      },
+        {  "/fee/bor",     nil,            "/foo/bar",     "/fee/borfoo/bar",      true      },
+        {  "/fee/bor",     nil,            "/foo/bar/",    "/fee/borfoo/bar/",     true      },
+        {  "/fee/bor/",    nil,            "/",            "/fee/bor/",            true      },
+        {  "/fee/bor/",    nil,            "/foo/bar",     "/fee/bor/foo/bar",     true      },
+        {  "/fee/bor/",    nil,            "/foo/bar/",    "/fee/bor/foo/bar/",    true      },
       }
 
-      setup(function()
-        assert(db:truncate("routes"))
-        assert(db:truncate("services"))
-        dao:truncate_table("apis")
+      describe("(plain)", function()
+        setup(function()
+          assert(db:truncate("routes"))
+          assert(db:truncate("services"))
+          dao:truncate_table("apis")
+
+          for i, args in ipairs(checks) do
+            assert(insert_routes {
+              {
+                strip_path   = args[5],
+                paths        = args[2] and {
+                  args[2],
+                } or nil,
+                hosts        = {
+                  "localbin-" .. i .. ".com",
+                },
+                service = {
+                  name = "service-" .. i,
+                  path = args[1]
+                }
+              }
+            })
+          end
+
+          assert(helpers.start_kong({
+            database   = strategy,
+            nginx_conf = "spec/fixtures/custom_nginx.template",
+          }))
+        end)
+
+        teardown(function()
+          helpers.stop_kong()
+        end)
+
+        local function check(i, request_uri, expected_uri)
+          return function()
+            local res = assert(proxy_client:send {
+              method  = "GET",
+              path    = request_uri,
+              headers = {
+                ["Host"] = "localbin-" .. i .. ".com",
+              }
+            })
+
+            local json = assert.res_status(200, res)
+            local data = cjson.decode(json)
+
+            assert.equal(expected_uri, data.vars.request_uri)
+          end
+        end
 
         for i, args in ipairs(checks) do
-          assert(insert_routes {
-            {
-              strip_path   = args[5],
-              paths        = {
-                args[2],
-              },
-              hosts        = {
-                "localbin-" .. i .. ".com",
-              },
-              service = {
-                name = "service-" .. i,
-                path = args[1]
+          local config = "(strip = " .. (args[5] and "on" or "off") .. ")"
+
+          it("(" .. i .. ") " .. config ..
+             " is not appended to upstream url " .. args[1] ..
+             " (with " .. (args[2] and ("uri " .. args[2]) or
+             ("host test" .. i .. ".domain.org")) .. ")" ..
+             " when requesting " .. args[3], function()
+            check(i, args[3], args[4])
+          end)
+        end
+      end)
+
+      describe("(regex)", function()
+        local function make_a_regex(path)
+          return "/[0]?" .. path:sub(2, -1)
+        end
+
+        setup(function()
+          assert(db:truncate("routes"))
+          assert(db:truncate("services"))
+          dao:truncate_table("apis")
+
+          for i, args in ipairs(checks) do
+            assert(insert_routes {
+              {
+                strip_path   = args[5],
+                paths        = args[2] and {
+                  make_a_regex(args[2]),
+                } or nil,
+                hosts        = {
+                  "localbin-" .. i .. ".com",
+                },
+                service = {
+                  name = "service-" .. i,
+                  path = args[1]
+                }
               }
-            }
-          })
+            })
+          end
+
+          assert(helpers.start_kong({
+            database   = strategy,
+            nginx_conf = "spec/fixtures/custom_nginx.template",
+          }))
+        end)
+
+        teardown(function()
+          helpers.stop_kong()
+        end)
+
+        local function check(i, request_uri, expected_uri)
+          return function()
+            local res = assert(proxy_client:send {
+              method  = "GET",
+              path    = request_uri,
+              headers = {
+                ["Host"] = "localbin-" .. i .. ".com",
+              }
+            })
+
+            local json = assert.res_status(200, res)
+            local data = cjson.decode(json)
+
+            assert.equal(expected_uri, data.vars.request_uri)
+          end
         end
 
-        assert(helpers.start_kong({
-          database   = strategy,
-          nginx_conf = "spec/fixtures/custom_nginx.template",
-        }))
+        for i, args in ipairs(checks) do
+          if args[2] then  -- skip if hostbased match
+            local config = "(strip = " .. (args[5] and "on" or "off") .. ")"
+
+            it("(" .. i .. ") " .. config ..
+              " is not appended to upstream url " .. args[1] ..
+              " (with " .. (args[2] and ("uri " .. make_a_regex(args[2])) or
+              ("host test" .. i .. ".domain.org")) .. ")" ..
+              " when requesting " .. args[3], function()
+              check(i, args[3], args[4])
+            end)
+          end
+        end
       end)
 
-      teardown(function()
-        helpers.stop_kong()
-      end)
 
-      local function check(i, request_uri, expected_uri)
-        return function()
-          local res = assert(proxy_client:send {
-            method  = "GET",
-            path    = request_uri,
-            headers = {
-              ["Host"] = "localbin-" .. i .. ".com",
-            }
-          })
-
-          local json = assert.res_status(200, res)
-          local data = cjson.decode(json)
-
-          assert.equal(expected_uri, data.vars.request_uri)
-        end
-      end
-
-      for i, args in ipairs(checks) do
-
-        local config = "(strip_path = n/a)"
-
-        if args[5] == true then
-          config = "(strip_path = on) "
-
-        elseif args[5] == false then
-          config = "(strip_path = off)"
-        end
-
-        it(config .. " is not appended to upstream url " .. args[1] ..
-                     " (with uri "                       .. args[2] .. ")" ..
-                     " when requesting "                 .. args[3],
-          check(i, args[3], args[4]))
-      end
     end)
   end)
 end
