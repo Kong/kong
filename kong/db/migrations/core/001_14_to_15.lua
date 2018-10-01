@@ -15,12 +15,14 @@ return {
 
 
 
-      ALTER TABLE IF EXISTS ONLY "plugins" DROP CONSTRAINT IF EXISTS "plugins_pkey";
       DO $$
       BEGIN
-        ALTER TABLE IF EXISTS ONLY "plugins" ADD PRIMARY KEY ("id");
-      EXCEPTION WHEN DUPLICATE_TABLE THEN
-        -- Do nothing, accept existing state
+        ALTER TABLE IF EXISTS ONLY "plugins"
+          DROP CONSTRAINT IF EXISTS "plugins_pkey",
+          DROP CONSTRAINT IF EXISTS "plugins_id_key",
+          ADD PRIMARY KEY ("id");
+      EXCEPTION WHEN DUPLICATE_TABLE OR INVALID_TABLE_DEFINITION THEN
+          -- Do nothing, accept existing state
       END;
       $$;
 
@@ -32,7 +34,62 @@ return {
       END;
       $$;
 
-      ALTER TABLE IF EXISTS ONLY "plugins" ALTER "config" TYPE JSONB USING "config"::JSONB;
+
+
+      -- Unique constraint on "name" already adds btree index
+      DROP INDEX IF EXISTS "apis_name_idx";
+
+      -- Unique constraint on "name" already adds btree index
+      DROP INDEX IF EXISTS "upstreams_name_idx";
+
+      -- Unique constraint on "custom_id" already adds btree index
+      DROP INDEX IF EXISTS "custom_id_idx";
+
+
+
+      ALTER INDEX IF EXISTS "username_idx"               RENAME TO "consumers_username_idx";
+      ALTER INDEX IF EXISTS "ssl_certificates_pkey"      RENAME TO "certificates_pkey";
+      ALTER INDEX IF EXISTS "idx_cluster_events_at"      RENAME TO "cluster_events_at_idx";
+      ALTER INDEX IF EXISTS "idx_cluster_events_channel" RENAME TO "cluster_events_channel_idx";
+      ALTER INDEX IF EXISTS "routes_fkey_service"        RENAME TO "routes_service_id_idx";
+      ALTER INDEX IF EXISTS "snis_fkey_certificate"      RENAME TO "snis_certificate_id_idx";
+      ALTER INDEX IF EXISTS "plugins_api_idx"            RENAME TO "plugins_api_id_idx";
+      ALTER INDEX IF EXISTS "plugins_consumer_idx"       RENAME TO "plugins_consumer_id_idx";
+
+
+
+      DO $$
+      BEGIN
+        ALTER TABLE IF EXISTS ONLY "snis"
+          RENAME CONSTRAINT "snis_name_unique" TO "snis_name_key";
+      EXCEPTION WHEN UNDEFINED_OBJECT THEN
+        -- Do nothing, accept existing state
+      END;
+      $$;
+
+
+
+      ALTER TABLE IF EXISTS ONLY "apis"
+        ALTER "created_at" TYPE TIMESTAMP WITH TIME ZONE USING "created_at" AT TIME ZONE 'UTC',
+        ALTER "created_at" SET DEFAULT CURRENT_TIMESTAMP(3) AT TIME ZONE 'UTC';
+
+      ALTER TABLE IF EXISTS ONLY "consumers"
+        ALTER "created_at" TYPE TIMESTAMP WITH TIME ZONE USING "created_at" AT TIME ZONE 'UTC',
+        ALTER "created_at" SET DEFAULT CURRENT_TIMESTAMP(0) AT TIME ZONE 'UTC';
+
+      ALTER TABLE IF EXISTS ONLY "plugins"
+        ALTER "config"     TYPE JSONB USING "config"::JSONB,
+        ALTER "created_at" TYPE TIMESTAMP WITH TIME ZONE USING "created_at" AT TIME ZONE 'UTC',
+        ALTER "created_at" SET DEFAULT CURRENT_TIMESTAMP(0) AT TIME ZONE 'UTC';
+
+      ALTER TABLE IF EXISTS ONLY "upstreams"
+        ALTER "healthchecks" TYPE JSONB USING "healthchecks"::JSONB,
+        ALTER "created_at"   TYPE TIMESTAMP WITH TIME ZONE USING "created_at" AT TIME ZONE 'UTC',
+        ALTER "created_at"   SET DEFAULT CURRENT_TIMESTAMP(3) AT TIME ZONE 'UTC';
+
+      ALTER TABLE IF EXISTS ONLY "targets"
+        ALTER "created_at" TYPE TIMESTAMP WITH TIME ZONE USING "created_at" AT TIME ZONE 'UTC',
+        ALTER "created_at" SET DEFAULT CURRENT_TIMESTAMP(3) AT TIME ZONE 'UTC';
     ]],
 
     teardown = function(connector, helpers)
