@@ -569,23 +569,23 @@ describe("Balancer", function()
       it("uses the cookie when present in the request", function()
         local value = "some cookie value"
         ngx.var.cookie_Foo = value
-        ngx.ctx.proxy_request_data = { proxy = {} }
+        ngx.ctx.proxy_request_state = { proxy = {} }
         local hash = balancer._create_hash({
           hash_on = "cookie",
           hash_on_cookie = "Foo",
         })
         assert.are.same(crc32(value), hash)
-        assert.is_nil(ngx.ctx.proxy_request_data.proxy.hash_cookie)
+        assert.is_nil(ngx.ctx.proxy_request_state.proxy.hash_cookie)
       end)
       it("creates the cookie when not present in the request", function()
-        ngx.ctx.proxy_request_data = { proxy = {} }
+        ngx.ctx.proxy_request_state = { proxy = {} }
         balancer._create_hash({
           hash_on = "cookie",
           hash_on_cookie = "Foo",
           hash_on_cookie_path = "/",
         })
-        assert.are.same(ngx.ctx.proxy_request_data.proxy.hash_cookie.key, "Foo")
-        assert.are.same(ngx.ctx.proxy_request_data.proxy.hash_cookie.path, "/")
+        assert.are.same(ngx.ctx.proxy_request_state.proxy.hash_cookie.key, "Foo")
+        assert.are.same(ngx.ctx.proxy_request_state.proxy.hash_cookie.path, "/")
       end)
     end)
     it("multi-header", function()
@@ -648,25 +648,25 @@ describe("Balancer", function()
         it("uses the cookie when present in the request", function()
           local value = "some cookie value"
           ngx.var.cookie_Foo = value
-          ngx.ctx.proxy_request_data = { proxy = {} }
+          ngx.ctx.proxy_request_state = { proxy = {} }
           local hash = balancer._create_hash({
             hash_on = "consumer",
             hash_fallback = "cookie",
             hash_on_cookie = "Foo",
           })
           assert.are.same(crc32(value), hash)
-          assert.is_nil(ngx.ctx.proxy_request_data.proxy.hash_cookie)
+          assert.is_nil(ngx.ctx.proxy_request_state.proxy.hash_cookie)
         end)
         it("creates the cookie when not present in the request", function()
-          ngx.ctx.proxy_request_data = { proxy = {} }
+          ngx.ctx.proxy_request_state = { proxy = {} }
           balancer._create_hash({
             hash_on = "consumer",
             hash_fallback = "cookie",
             hash_on_cookie = "Foo",
             hash_on_cookie_path = "/",
           })
-          assert.are.same(ngx.ctx.proxy_request_data.proxy.hash_cookie.key, "Foo")
-          assert.are.same(ngx.ctx.proxy_request_data.proxy.hash_cookie.path, "/")
+          assert.are.same(ngx.ctx.proxy_request_state.proxy.hash_cookie.key, "Foo")
+          assert.are.same(ngx.ctx.proxy_request_state.proxy.hash_cookie.path, "/")
         end)
       end)
     end)

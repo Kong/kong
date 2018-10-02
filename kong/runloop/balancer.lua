@@ -668,7 +668,7 @@ local create_hash = function(upstream, ctx)
 
         identifier = utils.uuid()
 
-        ctx.proxy_request_data.proxy.hash_cookie = {
+        ctx.proxy_request_state.proxy.hash_cookie = {
           key = upstream.hash_on_cookie,
           value = identifier,
           path = upstream.hash_on_cookie_path

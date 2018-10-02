@@ -1055,9 +1055,9 @@ protect_table(ctx.proxy_request_state)
       local proxy_request_state = ctx.proxy_request_state
       if proxy_request_state and
          proxy_request_state.proxy.balancer and
-         proxy_request_state.resolved_ip then
-        local ip   = proxy_request_state.resolved_ip
-        local port = proxy_request_state.resolved_port
+         proxy_request_state.request_out.resolved_ip then
+        local ip   = proxy_request_state.request_out.resolved_ip
+        local port = proxy_request_state.request_out.resolved_port
 
         local status = ngx.status
         if status == 504 then

@@ -150,7 +150,7 @@ describe("Log Serializer", function()
         }, res.tries)
     end)
 
-    it("does not fail when the 'balancer_data' structure is missing", function()
+    it("does not fail when the 'proxy_request_state' structure is missing", function()
       ngx.ctx.proxy_request_state = nil
 
       local res = basic.serialize(ngx)

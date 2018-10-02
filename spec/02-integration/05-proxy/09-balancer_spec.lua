@@ -1682,7 +1682,7 @@ for _, strategy in helpers.each_strategy() do
                   assert.is_nil(set_cookie)
                 end)
 
-                it("replies with Set-Cookie if cookie is not set", function()
+                it("#only replies with Set-Cookie if cookie is not set", function()
                   local requests = SLOTS * 2 -- go round the balancer twice
 
                   local upstream_name = add_upstream({

@@ -532,7 +532,7 @@ function Kong.balancer()
     -- Report HTTP status for health checks
     local balancer = proxy.balancer
     if balancer then
-      local ip, port = proxy.resolved_ip, proxy.resolved_port
+      local ip, port = request_out.resolved_ip, request_out.resolved_port
 
       if previous_try.state == "failed" then
         if previous_try.code == 504 then

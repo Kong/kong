@@ -39,7 +39,8 @@ function ErrHandlerLog:header_filter(conf)
   ngx.header["Content-Length"] = nil
   ngx.header["Log-Plugin-Phases"] = table.concat(phases, ",")
 
-  ngx.header["Log-Plugin-Service-Matched"] = ngx.ctx.service and ngx.ctx.service.name
+  local service = ((ngx.ctx.proxy_request_state or {}).routing or {}).service
+  ngx.header["Log-Plugin-Service-Matched"] = service and service.name
 end
 
 
