@@ -90,10 +90,18 @@ local SELECT_CODE_CLASSES_CLUSTER = [[
    WHERE duration = %d AND at >= to_timestamp(%d)
 ]]
 
-local DELETE_CODE_CLASSES_CLUSTER = [[
-  DELETE FROM vitals_code_classes_by_cluster
-  WHERE ((duration = %d AND at < to_timestamp(%d) AT TIME ZONE 'UTC')
-  OR (duration = %d AND at < to_timestamp(%d) AT TIME ZONE 'UTC'))
+local INSERT_CODE_CLASSES_WORKSPACE = [[
+  INSERT INTO vitals_code_classes_by_workspace(workspace_id, code_class, at, duration, count)
+  VALUES %s
+  ON CONFLICT(workspace_id, code_class, at, duration) DO
+  UPDATE SET COUNT = vitals_code_classes_by_workspace.count + excluded.count
+]]
+
+local SELECT_CODE_CLASSES_WORKSPACE = [[
+  SELECT 'cluster' as node_id, code_class, extract('epoch' from at) as at, count
+    FROM vitals_code_classes_by_workspace
+   WHERE workspace_id = '%s'
+     AND duration = %d AND at >= to_timestamp(%d)
 ]]
 
 local INSERT_CODES_BY_ROUTE = [[
@@ -153,15 +161,24 @@ local DELETE_CODES = [[
 local STATUS_CODE_QUERIES = {
   SELECT = {
     cluster = SELECT_CODE_CLASSES_CLUSTER,
+    workspace = SELECT_CODE_CLASSES_WORKSPACE,
     consumer_route = SELECT_CODES_CONSUMER_ROUTE,
     consumer = SELECT_CODES_CONSUMER,
     service = SELECT_CODES_SERVICE,
     route = SELECT_CODES_ROUTE,
   },
   INSERT = {
+    cluster = INSERT_CODE_CLASSES_CLUSTER,
+    workspace = INSERT_CODE_CLASSES_WORKSPACE,
     consumer_route = INSERT_CODES_BY_CONSUMER_AND_ROUTE,
     route = INSERT_CODES_BY_ROUTE,
   },
+  DELETE = {
+    cluster = "vitals_code_classes_by_cluster",
+    workspace = "vitals_code_classes_by_workspace",
+    consumer_route = "vitals_codes_by_consumer_route",
+    route = "vitals_codes_by_route",
+  }
 }
 
 function _M.dynamic_table_names(dao)
@@ -258,7 +275,7 @@ delete_handler = function(premature, self)
     log(DEBUG, _log_prefix, "recurring postgres delete has started")
 
     -- iterate over status code entities and delete expired stats
-    for _, entity_type in ipairs({ "consumer_route", "route" }) do
+    for _, entity_type in ipairs({ "consumer_route", "route", "workspace", "cluster" }) do
       local _, err = self:delete_status_codes({
         entity_type = entity_type,
         seconds = now - self.ttl_seconds,
@@ -268,12 +285,6 @@ delete_handler = function(premature, self)
       if err then
         log(WARN, _log_prefix, "delete_status_codes() " .. entity_type .. " threw an error: ", err)
       end
-    end
-
-    -- now delete from status_code_classes
-    local _, err = self:delete_status_code_classes()
-    if err then
-      log(WARN, _log_prefix, "failed to delete status_code_classes: ", err)
     end
 
     -- release delete lock
@@ -716,27 +727,15 @@ end
 
 
 function _M:insert_status_code_classes(data)
-  if not data[1] then
-    return true
-  end
+  return self:insert_status_codes(data, {
+    entity_type = "cluster",
+  })
+end
 
-  local values_fmt = "%s('%s',to_timestamp(%d) at time zone 'UTC',%d,%d), "
-
-  local values = ""
-  for _, v in ipairs(data) do
-    values = fmt(values_fmt, values, unpack(v))
-  end
-
-  -- strip last comma
-  values = values:sub(1, -3)
-
-  local res, err = self.db:query(fmt(INSERT_CODE_CLASSES_CLUSTER, values))
-
-  if not res then
-    return nil, "could not insert status code classes. error: " .. err
-  end
-
-  return true
+function _M:insert_status_code_classes_by_workspace(data)
+  return self:insert_status_codes(data, {
+    entity_type = "workspace",
+  })
 end
 
 
@@ -762,10 +761,10 @@ function _M:select_status_codes(opts)
     cutoff_time = tonumber(opts.start_ts) or (time() - self.ttl_minutes)
   end
 
-  if entity_type ~= "cluster" then
-    query = fmt(query, opts.entity_id, opts.duration, cutoff_time)
-  else
+  if entity_type == "cluster" then
     query = fmt(query, opts.duration, cutoff_time)
+  else
+    query = fmt(query, opts.entity_id, opts.duration, cutoff_time)
   end
 
   local res, err = self.db:query(query)
@@ -775,41 +774,6 @@ function _M:select_status_codes(opts)
   end
 
   return res
-end
-
-
-function _M:delete_status_code_classes(cutoff_times)
-  -- if nothing passed in, use defaults
-  if not cutoff_times then
-    local now = time()
-    cutoff_times = {
-      seconds = now - self.ttl_seconds,
-      minutes = now - self.ttl_minutes,
-    }
-  end
-
-  if type(cutoff_times) ~= "table" then
-    return nil, "cutoff_times must be a table"
-  end
-
-  if type(cutoff_times.seconds) ~= "number" then
-    return nil, "cutoff seconds must be a number"
-  end
-
-  if type(cutoff_times.minutes) ~= "number" then
-    return nil, "cutoff minutes must be a number"
-  end
-
-  local query = fmt(DELETE_CODE_CLASSES_CLUSTER, 1, cutoff_times.seconds,
-                    60, cutoff_times.minutes)
-
-  local res, err = self.db:query(query)
-
-  if err then
-    return nil, "failed to delete code_classes. err: " .. err
-  end
-
-  return res.affected_rows
 end
 
 
@@ -837,6 +801,10 @@ function _M:insert_status_codes(data, opts)
       values_fmt = "%s('%s','%s','%s',to_timestamp(%d) at time zone 'UTC',%d,%d), "
     elseif entity_type == "consumer_route" then
       values_fmt = "%s('%s','%s','%s','%s',to_timestamp(%d) at time zone 'UTC',%d,%d), "
+    elseif entity_type == "cluster" then
+      values_fmt = "%s('%s',to_timestamp(%d) at time zone 'UTC',%d,%d), "
+    elseif entity_type == "workspace" then
+      values_fmt = "%s('%s','%s',to_timestamp(%d) at time zone 'UTC',%d,%d), "
     end
 
 
@@ -910,6 +878,15 @@ function _M:delete_status_codes(opts)
     return nil, "opts must be a table"
   end
 
+  -- if no cutoffs passed in, assume default
+  if not opts.seconds then
+    opts.seconds = time() - self.ttl_seconds
+  end
+
+  if not opts.minutes then
+    opts.minutes = time() - self.ttl_minutes
+  end
+
   if type(opts.seconds) ~= "number" then
     return nil, "opts.seconds must be a number"
   end
@@ -918,15 +895,10 @@ function _M:delete_status_codes(opts)
     return nil, "opts.minutes must be a number"
   end
 
-  -- TODO: Refactor this validation so that we don't have to edit
-  -- it every time we add an entity_type?
-  if opts.entity_type ~= "service" and
-    opts.entity_type ~= "route"   and
-    opts.entity_type ~= "consumer_route" then
-    return nil, "opts.entity_type must be 'service', 'route', or 'consumer_route'"
+  local table_name = STATUS_CODE_QUERIES.DELETE[opts.entity_type]
+  if not table_name then
+    return nil, "unknown entity_type: " .. tostring(opts.entity_type)
   end
-
-  local table_name = "vitals_codes_by_" .. opts.entity_type
 
   local query = fmt(DELETE_CODES, table_name, 1, opts.seconds, 60, opts.minutes)
 

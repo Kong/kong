@@ -1,13 +1,14 @@
 local json_null  = require("cjson").null
 local cjson      = require "cjson.safe"
 local ffi        = require "ffi"
-local tablex     = require("pl.tablex")
+local tablex     = require "pl.tablex"
+local pl_stringx = require "pl.stringx"
 local reports    = require "kong.core.reports"
 local singletons = require "kong.singletons"
 local utils      = require "kong.tools.utils"
 local public     = require "kong.tools.public"
 local pg_strat   = require "kong.vitals.postgres.strategy"
-local feature_flags    = require "kong.enterprise_edition.feature_flags"
+local feature_flags = require "kong.enterprise_edition.feature_flags"
 
 local timer_at   = ngx.timer.at
 local time       = ngx.time
@@ -57,7 +58,10 @@ local CONSUMER_STAT_LABELS = {
 
 local STATUS_CODE_STAT_LABELS = {
   cluster = {
-    "status_code_classes_total"
+    "status_code_classes_total",
+  },
+  workspace = {
+    "status_code_classes_per_workspace_total",
   },
   service = {
     "status_codes_per_service_total",
@@ -66,7 +70,7 @@ local STATUS_CODE_STAT_LABELS = {
     "status_codes_per_route_total",
   },
   consumer = {
-    "status_codes_per_consumer_total"
+    "status_codes_per_consumer_total",
   },
   consumer_route = {
     "status_codes_per_consumer_route_total",
@@ -677,6 +681,7 @@ local IDX = {
   route = 4,
   code = 5,
   consumer = 6,
+  workspaces = 7,
 }
 
 
@@ -695,6 +700,11 @@ local KEY_FORMATS = {
     key_format = "%s|%s|%s|",
     key_values = { IDX.code, IDX.at, IDX.duration },
     required_fields = { IDX.code },
+  },
+  code_classes_workspace = {
+    key_format = "%s|%s|%s|%s|",
+    key_values = { IDX.workspaces, IDX.code, IDX.at, IDX.duration },
+    required_fields = { IDX.workspaces, IDX.code },
   },
   requests_consumer= {
     key_format = "%s|%s|%s|",
@@ -795,7 +805,12 @@ local function prep_code_class_counters(query_type, keys, count, data)
 
     new_keys[IDX.code] = floor(code / 100)
 
-    prep_counters(query_type, new_keys, count, data)
+    -- create rows for each workspace
+    local workspaces = pl_stringx.split(keys[IDX.workspaces], ",")
+    for _, ws in ipairs(workspaces) do
+      new_keys[IDX.workspaces] = ws
+      prep_counters(query_type, new_keys, count, data)
+    end
   end
 end
 
@@ -830,6 +845,7 @@ function _M:flush_vitals_cache(batch_size, max)
     local codes_per_route = {}
     local codes_per_consumer_route = {}
     local code_classes = {}
+    local code_classes_per_workspace = {}
     local requests_per_consumer = {}
 
     for i, key in ipairs(keys) do
@@ -844,6 +860,7 @@ function _M:flush_vitals_cache(batch_size, max)
         prep_counters("codes_route", key_parts, count, codes_per_route)
         prep_counters("codes_consumer_route", key_parts, count, codes_per_consumer_route)
         prep_code_class_counters("code_classes", key_parts, count, code_classes)
+        prep_code_class_counters("code_classes_workspace", key_parts, count, code_classes_per_workspace)
         prep_counters("requests_consumer", key_parts, count, requests_per_consumer)
 
       elseif err then
@@ -860,6 +877,7 @@ function _M:flush_vitals_cache(batch_size, max)
       insert_status_codes_by_route = flatten_counters(codes_per_route),
       insert_status_codes_by_consumer_and_route = flatten_counters(codes_per_consumer_route),
       insert_status_code_classes = flatten_counters(code_classes),
+      insert_status_code_classes_by_workspace = flatten_counters(code_classes_per_workspace),
       insert_consumer_stats = flatten_counters(requests_per_consumer),
     }
 
@@ -1171,6 +1189,7 @@ function _M:get_status_codes(opts, key_by)
     return nil, "Invalid query params: interval must be 'minutes' or 'seconds'"
   end
 
+  -- we don't collect status codes or status code classes at the node level
   if opts.level ~= "cluster" then
     return nil, "Invalid query params: level must be 'cluster'"
   end
@@ -1286,6 +1305,7 @@ function _M.table_names(dao)
   -- tables common across both dbs
   local table_names = {
     "vitals_code_classes_by_cluster",
+    "vitals_code_classes_by_workspace",
     "vitals_codes_by_consumer_route",
     "vitals_codes_by_route",
     "vitals_codes_by_service",
@@ -1411,10 +1431,23 @@ function _M:log_phase_after_plugins(ctx, status)
   local seconds = time()
   local minutes = seconds - (seconds % 60)
 
+  -- TODO: add ctx.workspace_ids and dispense with all this
+  local workspaces = {}
+  local i = 1
+
+  if ctx.workspaces then
+    for _, v in ipairs(ctx.workspaces) do
+      workspaces[i] = v.id
+      i = i + 1
+    end
+  end
+  workspaces = table.concat(workspaces, ",")
+
   local key = (ctx.service and ctx.service.id or "") .. "|" ..
     (ctx.route and ctx.route.id or "") .. "|" ..
     (status or "") .. "|" ..
-    (ctx.authenticated_consumer and ctx.authenticated_consumer.id or "") .. "|"
+    (ctx.authenticated_consumer and ctx.authenticated_consumer.id or "") .. "|" ..
+    workspaces .. "|"
 
   local key_prefixes = {
     seconds .. "|1|",

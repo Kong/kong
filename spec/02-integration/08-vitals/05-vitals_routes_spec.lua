@@ -8,7 +8,6 @@ local time        = ngx.time
 local fmt         = string.format
 
 dao_helpers.for_each_dao(function(kong_conf)
-
   describe("Admin API Vitals with " .. kong_conf.database, function()
     local client, dao, strategy, bp, _
 
@@ -269,6 +268,16 @@ dao_helpers.for_each_dao(function(kong_conf)
                   }
                 },
                 status_code_classes_total = {
+                  levels = {
+                    cluster = {
+                      intervals = {
+                        seconds = { retention_period_seconds = 3600 },
+                        minutes = { retention_period_seconds = 90000 },
+                      },
+                    },
+                  }
+                },
+                status_code_classes_per_workspace_total = {
                   levels = {
                     cluster = {
                       intervals = {
@@ -683,7 +692,7 @@ dao_helpers.for_each_dao(function(kong_conf)
         end)
       end)
 
-      describe("/vitals/cluster/status_codes", function()
+      describe("/vitals/status_code_classes (cluster)", function()
         before_each(function()
           dao.db:truncate_table("vitals_code_classes_by_cluster")
         end)
@@ -702,7 +711,7 @@ dao_helpers.for_each_dao(function(kong_conf)
 
             local res = assert(client:send {
               methd = "GET",
-              path = "/vitals/cluster/status_codes",
+              path = "/vitals/status_code_classes",
               query = {
                 interval = "seconds",
               }
@@ -750,7 +759,7 @@ dao_helpers.for_each_dao(function(kong_conf)
 
             local res = assert(client:send {
               methd = "GET",
-              path = "/vitals/cluster/status_codes",
+              path = "/vitals/status_code_classes",
               query = {
                 interval = "minutes",
               }
@@ -784,35 +793,181 @@ dao_helpers.for_each_dao(function(kong_conf)
 
             assert.same(expected, json)
           end)
+        end)
+      end)
 
-          it("returns a 400 if called with invalid interval", function()
+      describe("/vitals/status_code_classes (workspace)", function()
+        local workspace, workspace_id
+
+        before_each(function()
+          dao.db:truncate_table("vitals_code_classes_by_workspace")
+
+          workspace = dao.workspaces:find_all({ name = "default" })[1]
+          assert.not_nil(workspace)
+
+          workspace_id = workspace.id
+        end)
+
+        describe("GET", function()
+          it("retrieves the seconds-level status code classes for a given workspace", function()
+            local now = time()
+
+            assert(strategy:insert_status_code_classes_by_workspace({
+                { workspace_id, 4, now, 1, 101},
+                { workspace_id, 2, now - 1, 1, 205},
+                { workspace_id, 5, now - 1, 1, 6},
+              }))
+
             local res = assert(client:send {
               methd = "GET",
-              path = "/vitals/cluster/status_codes",
+              path = "/vitals/status_code_classes",
               query = {
-                interval = "so-wrong",
+                interval   = "seconds",
+                workspace_id = workspace_id,
+              }
+            })
+
+            res = assert.res_status(200, res)
+            local json = cjson.decode(res)
+
+            local expected = {
+              meta = {
+                entity_type = "workspace",
+                entity_id   = workspace_id,
+                earliest_ts = now - 1,
+                interval    = "seconds",
+                latest_ts   = now,
+                level       = "cluster",
+                stat_labels = {
+                  "status_code_classes_per_workspace_total",
+                },
+              },
+              stats = {
+                cluster = {
+                  [tostring(now - 1)] = {
+                    ["2xx"] = 205,
+                    ["5xx"] = 6,
+                  },
+                  [tostring(now)] = {
+                    ["4xx"] = 101,
+                  },
+                }
+              }
+            }
+
+            assert.same(expected, json)
+          end)
+
+          it("retrieves the minutes-level response code data for a given workspace", function()
+            local minute_start_at = time() - (time() % 60)
+
+            assert(strategy:insert_status_code_classes_by_workspace({
+                { workspace_id, 4, minute_start_at, 60, 101},
+                { workspace_id, 2, minute_start_at - 60, 60, 205},
+                { workspace_id, 5, minute_start_at - 60, 60, 6},
+              }))
+
+            local res = assert(client:send {
+              methd = "GET",
+              path = "/vitals/status_code_classes",
+              query = {
+                interval   = "minutes",
+                workspace_id = workspace_id,
+              }
+            })
+
+            res = assert.res_status(200, res)
+            local json = cjson.decode(res)
+
+            local expected = {
+              meta = {
+                entity_type = "workspace",
+                entity_id   = workspace_id,
+                earliest_ts = minute_start_at - 60,
+                interval    = "minutes",
+                latest_ts   = minute_start_at,
+                level       = "cluster",
+                stat_labels = {
+                  "status_code_classes_per_workspace_total",
+                },
+              },
+              stats = {
+                cluster = {
+                  [tostring(minute_start_at - 60)] = {
+                    ["2xx"] = 205,
+                    ["5xx"] = 6,
+                  },
+                  [tostring(minute_start_at)] = {
+                    ["4xx"] = 101,
+                  },
+                }
+              }
+            }
+
+            assert.same(expected, json)
+          end)
+
+          it("returns a 400 if called with invalid workspace_id", function()
+            local workspace_id = "Yeah, did you get the memo about TPS reports"
+            local res = assert(client:send {
+              methd = "GET",
+              path = "/vitals/status_code_classes",
+              query = {
+                interval   = "minutes",
+                workspace_id = workspace_id,
               }
             })
             res = assert.res_status(400, res)
             local json = cjson.decode(res)
 
-            assert.same("Invalid query params: interval must be 'minutes' or 'seconds'", json.message)
+            assert.same("Invalid query params: workspace_id is invalid", json.message)
           end)
 
-          it("returns a 400 if called with invalid start_ts", function()
+          it("returns a 404 if called with a workspace_id that doesn't exist", function()
             local res = assert(client:send {
               methd = "GET",
-              path = "/vitals/cluster/status_codes",
+              path = "/vitals/status_code_classes",
               query = {
-                interval = "minutes",
-                start_ts = "foo",
+                interval   = "minutes",
+                workspace_id = utils.uuid(),
               }
             })
-            res = assert.res_status(400, res)
+            res = assert.res_status(404, res)
             local json = cjson.decode(res)
 
-            assert.same("Invalid query params: start_ts must be a number", json.message)
+            assert.same("Not found", json.message)
           end)
+        end)
+      end)
+
+      describe("/vitals/status_code_classes - validations", function()
+        it("returns a 400 if called with invalid interval", function()
+          local res = assert(client:send {
+            methd = "GET",
+            path = "/vitals/status_code_classes",
+            query = {
+              interval = "millenia",
+            }
+          })
+          res = assert.res_status(400, res)
+          local json = cjson.decode(res)
+
+          assert.same("Invalid query params: interval must be 'minutes' or 'seconds'", json.message)
+        end)
+
+        it("returns a 400 if called with invalid start_ts", function()
+          local res = assert(client:send {
+            methd = "GET",
+            path = "/vitals/status_code_classes",
+            query = {
+              interval = "seconds",
+              start_ts = "once, long ago",
+            }
+          })
+          res = assert.res_status(400, res)
+          local json = cjson.decode(res)
+
+          assert.same("Invalid query params: start_ts must be a number", json.message)
         end)
       end)
 

@@ -486,6 +486,19 @@ return {
     ]]
   },
   {
+    name = "2018-08-14-000000_vitals_workspaces",
+    up = [[
+      CREATE TABLE IF NOT EXISTS vitals_code_classes_by_workspace(
+        workspace_id uuid,
+        at timestamp,
+        duration int,
+        code_class int,
+        count counter,
+        PRIMARY KEY((workspace_id, duration), at, code_class)
+      );
+    ]],
+  },
+  {
     name = "2018-08-15-100001_rbac_role_defaults",
     up = function(_, _, dao)
       return rbac_migrations_default_role_flag.up(nil, nil, dao)

@@ -44,6 +44,7 @@ dao_helpers.for_each_dao(function(kong_conf)
       cluster:execute("TRUNCATE vitals_node_meta")
       cluster:execute("TRUNCATE vitals_consumers")
       cluster:execute("TRUNCATE vitals_code_classes_by_cluster")
+      cluster:execute("TRUNCATE vitals_code_classes_by_workspace")
       cluster:execute("TRUNCATE vitals_codes_by_service")
       cluster:execute("TRUNCATE vitals_codes_by_route")
       cluster:execute("TRUNCATE vitals_codes_by_consumer_route")
@@ -60,6 +61,7 @@ dao_helpers.for_each_dao(function(kong_conf)
       cluster:execute("TRUNCATE vitals_node_meta")
       cluster:execute("TRUNCATE vitals_consumers")
       cluster:execute("TRUNCATE vitals_code_classes_by_cluster")
+      cluster:execute("TRUNCATE vitals_code_classes_by_workspace")
       cluster:execute("TRUNCATE vitals_codes_by_service")
       cluster:execute("TRUNCATE vitals_codes_by_route")
       cluster:execute("TRUNCATE vitals_codes_by_consumer_route")
@@ -1056,6 +1058,64 @@ dao_helpers.for_each_dao(function(kong_conf)
     end)
 
     describe(":insert_status_codes", function()
+      it("inserts workspace data", function()
+        local uuid = utils.uuid()
+
+        local now    = ngx.time()
+        local minute = now - (now % 60)
+
+        local data = {
+          { uuid, "4", tostring(now), "1", 4 },
+          { uuid, "4", tostring(now - 1), "1", 2 },
+          { uuid, "5", tostring(minute), "60", 5 },
+        }
+
+        local opts = {
+          entity_type = "workspace",
+          prune = true,
+        }
+
+        assert(strategy:insert_status_codes(data, opts))
+
+        local q = "select * from vitals_code_classes_by_workspace"
+
+        local results = cluster:execute(q)
+
+        local expected = {
+          {
+            at         = (now - 1) * 1000,
+            code_class = 4,
+            count      = 2,
+            duration   = 1,
+            workspace_id = uuid,
+          },
+          {
+            at         = now * 1000,
+            code_class = 4,
+            count      = 4,
+            duration   = 1,
+            workspace_id = uuid,
+          },
+          {
+            at         = minute * 1000,
+            code_class = 5,
+            count      = 5,
+            duration   = 60,
+            workspace_id = uuid,
+          },
+          meta = {
+            has_more_pages = false,
+          },
+          type = 'ROWS',
+        }
+
+        table.sort(results, function(a,b)
+          return a.count < b.count
+        end)
+
+        assert.same(expected, results)
+      end)
+
       it("inserts service data", function()
         local uuid = utils.uuid()
 
@@ -1445,6 +1505,104 @@ dao_helpers.for_each_dao(function(kong_conf)
       end)
     end)
 
+    describe(":select_status_codes (workspace)", function()
+      local uuid   = utils.uuid()
+      local uuid_2 = utils.uuid()
+
+      assert(strategy:init(uuid, "testhostname"))
+
+      local now    = time()
+      local minute = now - (now % 60)
+
+      before_each(function()
+        local service_data = {
+          { cassandra.counter(1), cassandra.uuid(uuid), 2, cassandra.timestamp(now * 1000), 1 },
+          { cassandra.counter(3), cassandra.uuid(uuid), 2, cassandra.timestamp((now + 1) * 1000), 1 },
+          { cassandra.counter(4), cassandra.uuid(uuid), 2, cassandra.timestamp((now + 2) * 1000), 1 },
+          { cassandra.counter(19), cassandra.uuid(uuid), 2, cassandra.timestamp(minute * 1000), 60 },
+          { cassandra.counter(5), cassandra.uuid(uuid_2), 4, cassandra.timestamp((now + 1) * 1000), 1 },
+          { cassandra.counter(7), cassandra.uuid(uuid_2), 4, cassandra.timestamp((now + 2) * 1000), 1 },
+          { cassandra.counter(20), cassandra.uuid(uuid_2), 4, cassandra.timestamp(minute * 1000), 60 },
+          { cassandra.counter(24), cassandra.uuid(uuid_2), 5, cassandra.timestamp((minute + 60) * 1000), 60 },
+        }
+
+        local q = [[
+          UPDATE vitals_code_classes_by_workspace
+            SET count=count + ?
+            WHERE workspace_id = ?
+            AND code_class = ?
+            AND at = ?
+            AND duration = ?
+        ]]
+
+        for _, row in ipairs(service_data) do
+          assert(cluster:execute(q, row, { prepared = true, counter  = true }))
+        end
+      end)
+
+      it("returns codes by workspace (seconds)", function()
+        local opts = {
+          duration    = 1,
+          entity_id   = uuid,
+          entity_type = "workspace",
+        }
+
+        local results, err = strategy:select_status_codes(opts)
+        assert.is_nil(err)
+
+        local expected = {
+          {
+            at         = now,
+            code_class = 2,
+            count      = 1,
+          },
+          {
+            at         = now + 1,
+            code_class = 2,
+            count      = 3,
+          },
+          {
+            at         = now + 2,
+            code_class = 2,
+            count      = 4,
+          },
+        }
+
+        table.sort(results, function(a,b)
+          return a.count < b.count
+        end)
+
+        assert.same(expected, results)
+      end)
+
+      it("returns codes by workspace (minutes)", function()
+        local opts = {
+          duration    = 60,
+          entity_id   = uuid_2,
+          entity_type = "workspace",
+        }
+
+        local results, err = strategy:select_status_codes(opts)
+
+        assert.is_nil(err)
+
+        local expected = {
+          {
+            at         = minute,
+            code_class = 4,
+            count      = 20,
+          },
+          {
+            at         = minute + 60,
+            code_class = 5,
+            count      = 24,
+          },
+        }
+
+        assert.same(expected, results)
+      end)
+    end)
+
     describe(":select_status_codes (service)", function()
       local uuid   = utils.uuid()
       local uuid_2 = utils.uuid()
@@ -1794,55 +1952,26 @@ dao_helpers.for_each_dao(function(kong_conf)
     end)
 
     describe(":delete_status_codes_by_service()", function()
-      local service_ids = { utils.uuid(), utils.uuid() }
+      it("calls delete_status_codes with the right args", function()
+        stub(cassandra_strategy, "delete_status_codes")
 
-      before_each(function()
-        local q = "UPDATE vitals_codes_by_service SET count=count+? WHERE service_id=? AND code=? AND at=? AND duration=?"
-
-        -- the rows commented with "-- x" we expect will be deleted based on
-        -- the `cutoff_times` table below
-        local test_data = {
-          {cassandra.counter(1), cassandra.uuid(service_ids[1]), 200, cassandra.timestamp(1510560000000), 1}, -- x
-          {cassandra.counter(3), cassandra.uuid(service_ids[1]), 200, cassandra.timestamp(1510560001000), 1}, -- x
-          {cassandra.counter(4), cassandra.uuid(service_ids[1]), 200, cassandra.timestamp(1510560002000), 1},
-          {cassandra.counter(19), cassandra.uuid(service_ids[1]), 200, cassandra.timestamp(1510560000000), 60}, -- x
-          {cassandra.counter(5), cassandra.uuid(service_ids[2]), 403, cassandra.timestamp(1510560001000), 1}, -- x
-          {cassandra.counter(7), cassandra.uuid(service_ids[2]), 404, cassandra.timestamp(1510560002000), 1},
-          {cassandra.counter(20), cassandra.uuid(service_ids[2]), 404, cassandra.timestamp(1510560000000), 60}, -- x
-          {cassandra.counter(24), cassandra.uuid(service_ids[2]), 500, cassandra.timestamp(1510560060000), 60},
-        }
-
-        for _, row in ipairs(test_data) do
-          assert(cluster:execute(q, row, { prepared = true, counter  = true }))
-        end
-
-        local res, _ = cluster:execute("select * from vitals_codes_by_service")
-        assert.same(8, #res)
-      end)
-
-      it("cleans up status_codes_by_service", function()
-        -- query is "<" so bump the cutoff by a second
+        -- dummy data
+        local services = {}
         local cutoff_times = {
-          minutes = 1510560001,
-          seconds = 1510560002,
+          seconds = 100,
+          minutes = 200,
         }
 
-        local service_id_map = {}
-        for _, v in ipairs(service_ids) do
-          service_id_map[v] = true
-        end
+        local opts = {
+          entity_type = "service",
+          entities = services,
+          seconds_before = cutoff_times.seconds,
+          minutes_before = cutoff_times.minutes,
 
-        local results, err = strategy:delete_status_codes_by_service(service_id_map, cutoff_times)
-        assert.is_nil(err)
-        assert.is_true(results > 0)
+        }
 
-        -- delete only really does something in cassandra 3+
-        if dao.db.major_version_n >= 3 then
-          local res, err = cluster:execute("select * from vitals_codes_by_service")
-          assert.is_nil(err)
-
-          assert.same(3, #res)
-        end
+        strategy:delete_status_codes_by_service(services, cutoff_times)
+        assert.stub(cassandra_strategy.delete_status_codes).was_called_with(strategy, opts)
       end)
     end)
 
@@ -1932,9 +2061,9 @@ dao_helpers.for_each_dao(function(kong_conf)
     end)
 
     describe(":delete_status_codes()", function()
-      local service_ids = { utils.uuid(), utils.uuid() }
+      it("cleans up vitals_codes_by_service", function()
+        local service_ids = { utils.uuid(), utils.uuid() }
 
-      it("cleans up status codes by service", function()
         local q = "UPDATE vitals_codes_by_service SET count=count+? WHERE service_id=? AND code=? AND at=? AND duration=?"
 
         -- the rows commented with "-- x" we expect will be deleted based on
@@ -1982,20 +2111,65 @@ dao_helpers.for_each_dao(function(kong_conf)
         end
       end)
 
+      it("cleans up vitals_code_classes_by_workspace", function()
+        local workspace_ids = { utils.uuid(), utils.uuid() }
+
+        local q = "UPDATE vitals_code_classes_by_workspace SET count=count+? WHERE workspace_id=? AND code_class=? AND at=? AND duration=?"
+
+        -- the rows commented with "-- x" we expect will be deleted based on
+        -- the `opts.seconds_before` and `opts.minutes_before` values below
+        local test_data = {
+          {cassandra.counter(1), cassandra.uuid(workspace_ids[1]), 200, cassandra.timestamp(1510560000000), 1}, -- x
+          {cassandra.counter(3), cassandra.uuid(workspace_ids[1]), 200, cassandra.timestamp(1510560001000), 1}, -- x
+          {cassandra.counter(4), cassandra.uuid(workspace_ids[1]), 200, cassandra.timestamp(1510560002000), 1},
+          {cassandra.counter(19), cassandra.uuid(workspace_ids[1]), 200, cassandra.timestamp(1510560000000), 60}, -- x
+          {cassandra.counter(5), cassandra.uuid(workspace_ids[2]), 403, cassandra.timestamp(1510560001000), 1}, -- x
+          {cassandra.counter(7), cassandra.uuid(workspace_ids[2]), 404, cassandra.timestamp(1510560002000), 1},
+          {cassandra.counter(20), cassandra.uuid(workspace_ids[2]), 404, cassandra.timestamp(1510560000000), 60}, -- x
+          {cassandra.counter(24), cassandra.uuid(workspace_ids[2]), 500, cassandra.timestamp(1510560060000), 60},
+        }
+
+        for _, row in ipairs(test_data) do
+          assert(cluster:execute(q, row, { prepared = true, counter  = true }))
+        end
+
+        local res, _ = cluster:execute("SELECT * FROM vitals_code_classes_by_workspace")
+        assert.same(8, #res)
+
+        local id_map = {}
+        for _, v in ipairs(workspace_ids) do
+          id_map[v] = true
+        end
+
+        local opts = {
+          entity_type    = "workspace",
+          entities       = id_map,
+          seconds_before = 1510560002,
+          minutes_before = 1510560001,
+        }
+
+        local results, err = strategy:delete_status_codes(opts)
+        assert.is_nil(err)
+        assert.is_true(results > 0)
+
+        -- delete only really does something in cassandra 3+
+        if dao.db.major_version_n >= 3 then
+          local res, err = cluster:execute("select * from vitals_code_classes_by_workspace")
+          assert.is_nil(err)
+
+          assert.same(3, #res)
+        end
+      end)
+
       it("does not clean up status codes for an invalid entity type", function()
         if dao.db.major_version_n < 3 then
           -- delete not implemented for Cassandra 2.x
           return
         end
 
-        local service_id_map = {}
-        for _, v in ipairs(service_ids) do
-          service_id_map[v] = true
-        end
-
         local opts = {
-          entity_type    = nil,
-          entities       = service_id_map,
+          entity_type    = "foo",
+          entities       = {},
           seconds_before = 1510560002,
           minutes_before = 1510560001,
         }
@@ -2003,7 +2177,7 @@ dao_helpers.for_each_dao(function(kong_conf)
         local _, err = strategy:delete_status_codes(opts)
 
         assert.is_nil(_)
-        assert.same(err, "entity_type must be service or route")
+        assert.same(err, "unknown entity_type: foo")
       end)
     end)
 

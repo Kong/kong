@@ -217,6 +217,7 @@ dao_helpers.for_each_dao(function(kong_conf)
 
         local expected = {
           "vitals_code_classes_by_cluster",
+          "vitals_code_classes_by_workspace",
           "vitals_codes_by_consumer_route",
           "vitals_codes_by_route",
           "vitals_codes_by_service",
@@ -409,8 +410,8 @@ dao_helpers.for_each_dao(function(kong_conf)
 
       before_each(function()
         now = ngx_time()
-        seconds_key = now .. "|1|myservice|myroute|200||"
-        minutes_key = (now - (now % 60)) .. "|60|myservice|myroute|200||"
+        seconds_key = now .. "|1|myservice|myroute|200|||"
+        minutes_key = (now - (now % 60)) .. "|60|myservice|myroute|200|||"
       end)
 
       after_each(function()
@@ -446,6 +447,7 @@ dao_helpers.for_each_dao(function(kong_conf)
           assert(dao.db:truncate_table("vitals_codes_by_service"))
         end
         assert(dao.db:truncate_table("vitals_code_classes_by_cluster"))
+        assert(dao.db:truncate_table("vitals_code_classes_by_workspace"))
         assert(dao.db:truncate_table("vitals_codes_by_route"))
         assert(dao.db:truncate_table("vitals_codes_by_consumer_route"))
       end)
@@ -458,6 +460,7 @@ dao_helpers.for_each_dao(function(kong_conf)
           assert(dao.db:truncate_table("vitals_codes_by_service"))
         end
         assert(dao.db:truncate_table("vitals_code_classes_by_cluster"))
+        assert(dao.db:truncate_table("vitals_code_classes_by_workspace"))
         assert(dao.db:truncate_table("vitals_codes_by_route"))
         assert(dao.db:truncate_table("vitals_codes_by_consumer_route"))
       end)
@@ -468,14 +471,15 @@ dao_helpers.for_each_dao(function(kong_conf)
         local service_id = utils.uuid()
         local route_id = utils.uuid()
         local consumer_id = utils.uuid()
+        local workspace_id = utils.uuid()
         local now = ngx_time()
         local minute = now - (now % 60)
 
         local cache_entries = {
-          (now - 1) .. "|1|" .. service_id .. "|" .. route_id .. "|200|" .. consumer_id .. "|",
-          now .. "|1|" .. service_id .. "|" .. route_id .. "|404||",
-          minute .. "|60|" .. service_id .. "|" .. route_id .. "|200|" .. consumer_id .. "|",
-          minute .. "|60|" .. service_id .. "|" .. route_id .. "|404||",
+          (now - 1) .. "|1|" .. service_id .. "|" .. route_id .. "|200|" .. consumer_id .. "|" .. workspace_id .. "|",
+          now .. "|1|" .. service_id .. "|" .. route_id .. "|404||" .. workspace_id .. "|",
+          minute .. "|60|" .. service_id .. "|" .. route_id .. "|200|" .. consumer_id .. "|" .. workspace_id .. "|",
+          minute .. "|60|" .. service_id .. "|" .. route_id .. "|404||" .. workspace_id .. "|",
         }
 
         for i, v in ipairs(cache_entries) do
@@ -502,6 +506,26 @@ dao_helpers.for_each_dao(function(kong_conf)
           },
           [tostring(now)] = {
             ["404"] = 2,
+          }
+        }
+
+        assert.same(expected, res.stats.cluster)
+
+        local res, err = vitals:get_status_codes({
+          entity_type = "workspace",
+          entity_id   = workspace_id,
+          duration    = "seconds",
+          level       = "cluster"
+        })
+
+        assert.is_nil(err)
+
+        local expected = {
+          [tostring(now - 1)] = {
+            ["2xx"] = 1,
+          },
+          [tostring(now)] = {
+            ["4xx"] = 2,
           }
         }
 
@@ -707,6 +731,72 @@ dao_helpers.for_each_dao(function(kong_conf)
           assert.same(expected[i], res[i])
         end
 
+      end)
+
+      it("flushes cache entries (multiple workspaces", function()
+        stub(vitals, "enabled").returns(true)
+
+        local workspace_1 = utils.uuid()
+        local workspace_2 = utils.uuid()
+        local workspace_ids = workspace_1 .. "," .. workspace_2
+        local service_id = utils.uuid()
+        local route_id = utils.uuid()
+        local consumer_id = utils.uuid()
+        local now = ngx_time()
+        local minute = now - (now % 60)
+
+        local cache_entries = {
+          (now - 1) .. "|1|" .. service_id .. "|" .. route_id .. "|200|" .. consumer_id .. "|" .. workspace_ids .. "|",
+          now .. "|1|" .. service_id .. "|" .. route_id .. "|404||" .. workspace_1 .. "|",
+          minute .. "|60|" .. service_id .. "|" .. route_id .. "|200|" .. consumer_id .. "|" .. workspace_ids .. "|",
+          minute .. "|60|" .. service_id .. "|" .. route_id .. "|404||" .. workspace_1 .. "|",
+        }
+
+        for i, v in ipairs(cache_entries) do
+          assert(vitals.counter_cache:set(v, i))
+        end
+        assert.same(4, #vitals.counter_cache:get_keys())
+
+        local res, err = vitals:flush_vitals_cache()
+        assert.is_nil(err)
+        assert.same(4, res)
+
+        local res, err = vitals:get_status_codes({
+          entity_type = "workspace",
+          entity_id   = workspace_1,
+          duration    = "seconds",
+          level       = "cluster"
+        })
+
+        assert.is_nil(err)
+
+        local expected = {
+          [tostring(now - 1)] = {
+            ["2xx"] = 1,
+          },
+          [tostring(now)] = {
+            ["4xx"] = 2,
+          }
+        }
+
+        assert.same(expected, res.stats.cluster)
+
+        local res, err = vitals:get_status_codes({
+          entity_type = "workspace",
+          entity_id   = workspace_2,
+          duration    = "seconds",
+          level       = "cluster"
+        })
+
+        assert.is_nil(err)
+
+        local expected = {
+          [tostring(now - 1)] = {
+            ["2xx"] = 1,
+          },
+        }
+
+        assert.same(expected, res.stats.cluster)
       end)
     end)
 
@@ -1140,6 +1230,62 @@ dao_helpers.for_each_dao(function(kong_conf)
 
         local res, _ = vitals:get_status_codes({
           entity_type = "service",
+          duration    = "seconds",
+          level       = "cluster",
+          entity_id   = uuid,
+        })
+
+        assert.same(res, expected)
+      end)
+    end)
+
+    describe("get_status_codes() for workspace", function()
+      local now = ngx_time()
+      local uuid = utils.uuid()
+
+      local result_set = {
+        { workspace_id = uuid, at = now, code_class = 4, count = 5 },
+        { workspace_id = uuid, at = now, code_class = 2, count = 533 },
+        { workspace_id = uuid, at = now - 1 , code_class = 2, count = 23 },
+        { workspace_id = uuid, at = now - 2, code_class = 5, count = 1 },
+      }
+
+      setup(function()
+        stub(vitals.strategy, "select_status_codes").returns(result_set)
+      end)
+
+      it("returns converted stats", function()
+
+        local expected = {
+          meta = {
+            entity_type = "workspace",
+            entity_id = uuid,
+            earliest_ts = now - 2,
+            interval = "seconds",
+            latest_ts = now,
+            level = "cluster",
+            stat_labels = {
+              "status_code_classes_per_workspace_total",
+            },
+          },
+          stats = {
+            cluster = {
+              [tostring(now - 2)] = {
+                ["5xx"] = 1,
+              },
+              [tostring(now - 1)] = {
+                ["2xx"] = 23,
+              },
+              [tostring(now)] = {
+                ["4xx"] = 5,
+                ["2xx"] = 533
+              },
+            }
+          }
+        }
+
+        local res, _ = vitals:get_status_codes({
+          entity_type = "workspace",
           duration    = "seconds",
           level       = "cluster",
           entity_id   = uuid,

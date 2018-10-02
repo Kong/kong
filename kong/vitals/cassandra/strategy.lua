@@ -147,6 +147,22 @@ local DELETE_CODE_CLASSES_CLUSTER = [[
   AND duration = ? AND at < ?
 ]]
 
+local INSERT_CODE_CLASSES_WORKSPACE = [[
+  UPDATE vitals_code_classes_by_workspace
+     SET count = count + ?
+   WHERE at = ?
+     AND duration = ?
+     AND code_class = ?
+     AND workspace_id = ?
+]]
+
+local SELECT_CODE_CLASSES_WORKSPACE = [[
+  SELECT code_class, at, count
+    FROM vitals_code_classes_by_workspace
+   WHERE workspace_id = ?
+     AND duration = ? AND at >= ?
+]]
+
 local INSERT_CODES_BY_SERVICE = [[
   UPDATE vitals_codes_by_service
      SET count = count + ?
@@ -200,21 +216,41 @@ local SELECT_CODES_CONSUMER_ROUTE = [[
    WHERE consumer_id = ? AND duration = ? AND at >= ?
 ]]
 
-local DELETE_CODES = "DELETE FROM %s WHERE %s = ? AND duration = ? AND at < ?"
+local DELETE_CODES_SERVICE = [[
+  DELETE FROM vitals_codes_by_service
+   WHERE service_id = ? AND duration = ? AND at < ?
+]]
+
+local DELETE_CODES_ROUTE = [[
+  DELETE FROM vitals_codes_by_route
+   WHERE route_id = ? AND duration = ? AND at < ?
+]]
+
+local DELETE_CODE_CLASSES_WORKSPACE = [[
+  DELETE FROM vitals_code_classes_by_workspace
+   WHERE workspace_id = ? AND duration = ? AND at < ?
+]]
 
 local STATUS_CODE_QUERIES = {
   SELECT = {
     cluster        = SELECT_CODE_CLASSES_CLUSTER,
+    workspace      = SELECT_CODE_CLASSES_WORKSPACE,
     consumer_route = SELECT_CODES_CONSUMER_ROUTE,
     consumer       = SELECT_CODES_CONSUMER,
     service        = SELECT_CODES_SERVICE,
     route          = SELECT_CODES_ROUTE,
   },
   INSERT = {
+    workspace      = INSERT_CODE_CLASSES_WORKSPACE,
     consumer_route = INSERT_CODES_BY_CONSUMER_AND_ROUTE,
     service        = INSERT_CODES_BY_SERVICE,
     route          = INSERT_CODES_BY_ROUTE,
   },
+  DELETE = {
+    service        = DELETE_CODES_SERVICE,
+    route          = DELETE_CODES_ROUTE,
+    workspace      = DELETE_CODE_CLASSES_WORKSPACE,
+  }
 }
 
 local QUERY_OPTIONS = {
@@ -833,6 +869,14 @@ function _M:delete_status_code_classes(cutoff_times)
 end
 
 
+function _M:insert_status_code_classes_by_workspace(data)
+  return self:insert_status_codes(data, {
+    entity_type = "workspace",
+    prune = true,
+  })
+end
+
+
 function _M:insert_status_codes_by_service(data)
   return self:insert_status_codes(data, {
     entity_type = "service",
@@ -940,18 +984,16 @@ function _M:delete_status_codes(opts)
     return 1
   end
 
-  if entity_type ~= "service" and entity_type ~= "route" then
-    return nil, "entity_type must be service or route"
+  local query = STATUS_CODE_QUERIES.DELETE[entity_type]
+
+  if not query then
+    return nil, "unknown entity_type: " .. tostring(entity_type)
   end
 
   local count = 0
 
-  local table_name  = "vitals_codes_by_" .. entity_type
-  local column_name = entity_type .. "_id"
-  local fmt_query   = fmt(DELETE_CODES, table_name, column_name)
-
   for k, _ in pairs(entities) do
-    local _, err = self.cluster:execute(fmt_query, {
+    local _, err = self.cluster:execute(query, {
       cassandra.uuid(k),
       1,
       cassandra.timestamp(seconds_before * 1000),
@@ -963,7 +1005,7 @@ function _M:delete_status_codes(opts)
       count = count + 1
     end
 
-    _, err = self.cluster:execute(fmt_query, {
+    _, err = self.cluster:execute(query, {
       cassandra.uuid(k),
       60,
       cassandra.timestamp(minutes_before * 1000),
@@ -1001,7 +1043,7 @@ function _M:insert_status_codes(data, opts)
 
   for _, v in ipairs(data) do
     -- TODO: obviate the need for this check
-    if entity_type == "service" then
+    if entity_type == "service" or entity_type == "workspace" then
       entity_id, code, at, duration, count = unpack(v)
     elseif entity_type == "consumer_route" then
       entity_id, route_id, service_id, code, at, duration, count = unpack(v)

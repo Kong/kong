@@ -47,6 +47,7 @@ dao_helpers.for_each_dao(function(kong_conf)
       assert(db:query("truncate table vitals_stats_seconds_2"))
       assert(db:query("truncate table vitals_node_meta"))
       assert(db:query("truncate table vitals_code_classes_by_cluster"))
+      assert(db:query("truncate table vitals_code_classes_by_workspace"))
       assert(db:query("truncate table vitals_codes_by_route"))
       assert(db:query("truncate table vitals_codes_by_consumer_route"))
       assert(db:query("truncate table vitals_locks"))
@@ -66,6 +67,7 @@ dao_helpers.for_each_dao(function(kong_conf)
       assert(db:query("truncate table missing_seconds_table"))
       assert(db:query("truncate table vitals_node_meta"))
       assert(db:query("truncate table vitals_code_classes_by_cluster"))
+      assert(db:query("truncate table vitals_code_classes_by_workspace"))
       assert(db:query("truncate table vitals_codes_by_route"))
       assert(db:query("truncate table vitals_codes_by_consumer_route"))
       assert(db:query("truncate table vitals_locks"))
@@ -928,119 +930,33 @@ dao_helpers.for_each_dao(function(kong_conf)
 
 
     describe(":insert_status_code_classes", function()
-      it("turns Lua tables into Postgres rows", function()
-        local uuid = utils.uuid()
+      it("calls insert_status_codes with the right args", function()
+        stub(pg_strategy, "insert_status_codes")
 
-        assert(strategy:init(uuid, "testhostname"))
+        local data = {}
 
-        local now = ngx.time()
-        local minute = now - (now % 60)
-
-        local data = {
-          { 1, now, 1, 4 },
-          { 2, now, 1, 1 },
-          { 2, now - 1, 1, 2 },
-          { 2, minute, 60, 3 },
+        local opts = {
+          entity_type = "cluster",
         }
 
-        assert(strategy:insert_status_code_classes(data))
-
-        -- force a sort order to make assertion easier
-        local q = [[
-          select code_class, extract('epoch' from at) as at,
-            duration, count from vitals_code_classes_by_cluster
-              order by count
-        ]]
-
-        local results = db:query(q)
-
-        local expected = {
-          {
-            at         = now,
-            code_class = 2,
-            count      = 1,
-            duration   = 1,
-          },
-          {
-            at         = now - 1,
-            code_class = 2,
-            count      = 2,
-            duration   = 1,
-          },
-          {
-            at         = minute,
-            code_class = 2,
-            count      = 3,
-            duration   = 60,
-          },
-          {
-            at         = now,
-            code_class = 1,
-            count      = 4,
-            duration   = 1,
-          },
-        }
-
-        assert.same(expected, results)
+        strategy:insert_status_code_classes(data)
+        assert.stub(pg_strategy.insert_status_codes).was_called_with(strategy, data, opts)
       end)
     end)
 
-    describe(":delete_status_code_classes", function()
-      it("cleans up status code classes", function()
-        local q, query
 
-        q = "insert into vitals_code_classes_by_cluster(code_class, at, duration, count) " ..
-            "values('%s', to_timestamp(%d), %d, %d)"
+    describe(":insert_status_code_classes_by_workspace", function()
+      it("calls insert_status_codes with the right args", function()
+        stub(pg_strategy, "insert_status_codes")
 
-        local test_data = {
-          {4, 1510560000, 1, 1},
-          {4, 1510560001, 1, 3},
-          {4, 1510560002, 1, 4},
-          {4, 1510560000, 60, 19},
-          {5, 1510560001, 1, 5},
-          {5, 1510560002, 1, 7},
-          {5, 1510560000, 60, 20},
-          {5, 1510560060, 60, 24},
+        local data = {}
+
+        local opts = {
+          entity_type = "workspace",
         }
 
-        for _, row in ipairs(test_data) do
-          query = fmt(q, unpack(row))
-          assert(db:query(query))
-        end
-
-        local cutoff_times = {
-          minutes = 1510560001,
-          seconds = 1510560002,
-        }
-
-        local res, err = strategy:delete_status_code_classes(cutoff_times)
-
-        assert.is_nil(err)
-        assert.same(5, res)
-      end)
-
-      it("validates cutoff_times", function()
-        local _, err = strategy:delete_status_code_classes("foo")
-        assert.same("cutoff_times must be a table", err)
-
-        _, err = strategy:delete_status_code_classes({ seconds = "foo" })
-        assert.same("cutoff seconds must be a number", err)
-
-        _, err = strategy:delete_status_code_classes({ seconds = 999 })
-        assert.same("cutoff minutes must be a number", err)
-      end)
-
-      it("returns an error message when it fails", function()
-        stub(strategy.db, "query").returns(nil, "failure!")
-
-        local cutoff_times = {
-          minutes = 1510560001,
-          seconds = 1510560002,
-        }
-
-        local _, err = strategy:delete_status_code_classes(cutoff_times)
-
-        assert.same("failed to delete code_classes. err: failure!", err)
+        strategy:insert_status_code_classes_by_workspace(data)
+        assert.stub(pg_strategy.insert_status_codes).was_called_with(strategy, data, opts)
       end)
     end)
 
@@ -1079,7 +995,7 @@ dao_helpers.for_each_dao(function(kong_conf)
 
     describe(":insert_status_codes", function()
 
-      it("inserts route data", function()
+      it("inserts into vitals_codes_by_route", function()
         local route_id = utils.uuid()
         local service_id = utils.uuid()
 
@@ -1198,7 +1114,133 @@ dao_helpers.for_each_dao(function(kong_conf)
 
         assert.same(expected, results)
       end)
+
+      it ("inserts into vitals_code_classes_by_cluster", function()
+        local uuid = utils.uuid()
+
+        assert(strategy:init(uuid, "testhostname"))
+
+        local now = ngx.time()
+        local minute = now - (now % 60)
+
+        local data = {
+          { 1, now, 1, 4 },
+          { 2, now, 1, 1 },
+          { 2, now - 1, 1, 2 },
+          { 2, minute, 60, 3 },
+        }
+
+        local opts = {
+          entity_type = "cluster",
+        }
+
+        assert(strategy:insert_status_codes(data, opts))
+
+        -- force a sort order to make assertion easier
+        local q = [[
+          select code_class, extract('epoch' from at) as at,
+            duration, count from vitals_code_classes_by_cluster
+              order by count
+        ]]
+
+        local results = db:query(q)
+
+        local expected = {
+          {
+            at         = now,
+            code_class = 2,
+            count      = 1,
+            duration   = 1,
+          },
+          {
+            at         = now - 1,
+            code_class = 2,
+            count      = 2,
+            duration   = 1,
+          },
+          {
+            at         = minute,
+            code_class = 2,
+            count      = 3,
+            duration   = 60,
+          },
+          {
+            at         = now,
+            code_class = 1,
+            count      = 4,
+            duration   = 1,
+          },
+        }
+
+        assert.same(expected, results)
+      end)
+
+      it ("inserts into vitals_code_classes_by_workspace", function()
+        local node_id = utils.uuid()
+        local workspace_id = utils.uuid()
+
+        assert(strategy:init(node_id, "testhostname"))
+
+        local now = ngx.time()
+        local minute = now - (now % 60)
+
+        local data = {
+          { workspace_id, 1, now, 1, 4 },
+          { workspace_id, 2, now, 1, 1 },
+          { workspace_id, 2, now - 1, 1, 2 },
+          { workspace_id, 2, minute, 60, 3 },
+        }
+
+        local opts = {
+          entity_type = "workspace",
+        }
+
+        assert(strategy:insert_status_codes(data, opts))
+
+        -- force a sort order to make assertion easier
+        local q = [[
+          select workspace_id, code_class, extract('epoch' from at) as at,
+            duration, count from vitals_code_classes_by_workspace
+              order by count
+        ]]
+
+        local results = db:query(q)
+
+        local expected = {
+          {
+            at         = now,
+            code_class = 2,
+            count      = 1,
+            duration   = 1,
+            workspace_id = workspace_id,
+          },
+          {
+            at         = now - 1,
+            code_class = 2,
+            count      = 2,
+            duration   = 1,
+            workspace_id = workspace_id,
+          },
+          {
+            at         = minute,
+            code_class = 2,
+            count      = 3,
+            duration   = 60,
+            workspace_id = workspace_id,
+          },
+          {
+            at         = now,
+            code_class = 1,
+            count      = 4,
+            duration   = 1,
+            workspace_id = workspace_id,
+          },
+        }
+
+        assert.same(expected, results)
+      end)
     end)
+
 
     describe(":select_status_codes (cluster)", function()
       -- data starts a couple minutes ago
@@ -1373,6 +1415,188 @@ dao_helpers.for_each_dao(function(kong_conf)
         assert.same(expected, results)
       end)
     end)
+
+
+    describe(":select_status_codes (workspace)", function()
+      local workspace_id = utils.uuid()
+      local workspace_id_2 = utils.uuid()
+
+      -- data starts a couple minutes ago
+      local start_at = time() - 90
+      local start_minute = start_at - (start_at % 60)
+
+      before_each(function()
+        local test_data = {
+          {workspace_id, 4, start_at,      1, 1},
+          {workspace_id, 4, start_at + 1,  1, 3},
+          {workspace_id, 4, start_minute, 60, 4},
+          {workspace_id, 4, start_at + 60, 1, 7},
+          {workspace_id, 4, start_minute + 60, 60, 7},
+          {workspace_id, 5, start_at + 2,  1, 2},
+          {workspace_id, 5, start_minute, 60, 2},
+          {workspace_id, 5, start_at + 60, 1, 5},
+          {workspace_id, 5, start_at + 61, 1, 6},
+          {workspace_id, 5, start_at + 62, 1, 8},
+          {workspace_id, 5, start_minute + 60, 60, 19},
+          {workspace_id_2, 4, start_minute + 60, 60, 99},
+          {workspace_id_2, 5, start_at + 2,  1, 99},
+        }
+
+        local q = "insert into vitals_code_classes_by_workspace" ..
+            "(workspace_id, code_class, at, duration, count) " ..
+            "values('%s', '%s', to_timestamp(%d), %d, %d)"
+
+        for _, row in ipairs(test_data) do
+          assert(db:query(fmt(q, unpack(row))))
+        end
+      end)
+
+      after_each(function()
+        db:query("TRUNCATE vitals_code_classes_by_workspace")
+      end)
+
+      it("returns seconds counts across the workspace", function()
+        local opts = {
+          duration    = 1,
+          entity_type = "workspace",
+          entity_id   = workspace_id,
+        }
+
+        local results, err = strategy:select_status_codes(opts)
+        assert.is_nil(err)
+
+        local expected = {
+          {
+            node_id     = "cluster",
+            code_class  = 4,
+            at          = start_at,
+            count       = 1,
+          },
+          {
+            node_id     = "cluster",
+            code_class  = 5,
+            at          = start_at + 2,
+            count       = 2,
+          },
+          {
+            node_id     = "cluster",
+            code_class  = 4,
+            at          = start_at + 1,
+            count       = 3,
+          },
+          {
+            node_id     = "cluster",
+            code_class  = 5,
+            at          = start_at + 60,
+            count       = 5,
+          },
+          {
+            node_id     = "cluster",
+            code_class  = 5,
+            at          = start_at + 61,
+            count       = 6,
+          },
+          {
+            node_id     = "cluster",
+            code_class  = 4,
+            at          = start_at + 60,
+            count       = 7,
+          },
+          {
+            node_id     = "cluster",
+            code_class  = 5,
+            at          = start_at + 62,
+            count       = 8,
+          },
+        }
+
+        table.sort(results, function(a,b)
+          return a.count < b.count
+        end)
+
+        assert.same(expected, results)
+      end)
+
+
+      it("returns minutes counts across the workspace", function()
+        local opts = {
+          duration    = 60,
+          level       = "cluster",
+          entity_type = "workspace",
+          entity_id   = workspace_id,
+        }
+
+        local results, _ = strategy:select_status_codes(opts)
+
+        local expected = {
+          {
+            node_id     = "cluster",
+            code_class  = 5,
+            at          = start_minute,
+            count       = 2,
+          },
+          {
+            node_id     = "cluster",
+            code_class  = 4,
+            at          = start_minute,
+            count       = 4,
+          },
+          {
+            node_id     = "cluster",
+            code_class  = 4,
+            at          = start_minute + 60,
+            count       = 7,
+          },
+          {
+            node_id     = "cluster",
+            code_class  = 5,
+            at          = start_minute + 60,
+            count       = 19,
+          },
+        }
+
+        table.sort(results, function(a,b)
+          return a.count < b.count
+        end)
+
+        assert.same(expected, results)
+      end)
+
+
+      it("takes an optional start_ts", function()
+        local opts = {
+          duration    = 60,
+          level       = "cluster",
+          entity_type = "workspace",
+          entity_id   = workspace_id,
+          start_ts    = start_minute + 39,
+        }
+
+        local results, _ = strategy:select_status_codes(opts)
+
+        local expected = {
+          {
+            node_id     = "cluster",
+            code_class  = 4,
+            at          = start_minute + 60,
+            count       = 7,
+          },
+          {
+            node_id     = "cluster",
+            code_class  = 5,
+            at          = start_minute + 60,
+            count       = 19,
+          },
+        }
+
+        table.sort(results, function(a,b)
+          return a.count < b.count
+        end)
+
+        assert.same(expected, results)
+      end)
+    end)
+
 
     describe(":select_status_codes (service)", function()
       local uuid   = utils.uuid()
@@ -1749,6 +1973,7 @@ dao_helpers.for_each_dao(function(kong_conf)
       end)
     end)
 
+
     describe(":select_status_codes_by_consumer", function()
       it("calls select_status_codes with the right arguments", function()
         stub(pg_strategy, "select_status_codes")
@@ -1786,6 +2011,8 @@ dao_helpers.for_each_dao(function(kong_conf)
 
       before_each(function()
         db:query("TRUNCATE vitals_codes_by_route")
+        db:query("TRUNCATE vitals_code_classes_by_cluster")
+        db:query("TRUNCATE vitals_code_classes_by_workspace")
       end)
 
       it("cleans up vitals_codes_by_route", function()
@@ -1827,17 +2054,92 @@ dao_helpers.for_each_dao(function(kong_conf)
         assert.same(3, res[1].count)
       end)
 
+      it("cleans up vitals_code_classes_by_cluster", function()
+        local q, query
+
+        q = "insert into vitals_code_classes_by_cluster(code_class, at, duration, count) " ..
+          "values('%s', to_timestamp(%d), %d, %d)"
+
+        local test_data = {
+          {4, 1510560000, 1, 1},
+          {4, 1510560001, 1, 3},
+          {4, 1510560002, 1, 4},
+          {4, 1510560000, 60, 19},
+          {5, 1510560001, 1, 5},
+          {5, 1510560002, 1, 7},
+          {5, 1510560000, 60, 20},
+          {5, 1510560060, 60, 24},
+        }
+
+        for _, row in ipairs(test_data) do
+          query = fmt(q, unpack(row))
+          assert(db:query(query))
+        end
+
+        local opts = {
+          entity_type = "cluster",
+          minutes = 1510560001,
+          seconds = 1510560002,
+        }
+
+        local res, err = strategy:delete_status_codes(opts)
+
+        assert.is_nil(err)
+        assert.same(5, res)
+      end)
+
+      it("cleans up vitals_code_classes_by_workspace", function()
+        local q, query
+
+        q = "insert into vitals_code_classes_by_workspace(workspace_id, code_class, at, duration, count) " ..
+          "values('%s', '%s', to_timestamp(%d), %d, %d)"
+
+        local workspace_id = utils.uuid()
+
+        local test_data = {
+          {workspace_id, 4, 1510560000, 1, 1},
+          {workspace_id, 4, 1510560001, 1, 3},
+          {workspace_id, 4, 1510560002, 1, 4},
+          {workspace_id, 4, 1510560000, 60, 19},
+          {workspace_id, 5, 1510560001, 1, 5},
+          {workspace_id, 5, 1510560002, 1, 7},
+          {workspace_id, 5, 1510560000, 60, 20},
+          {workspace_id, 5, 1510560060, 60, 24},
+        }
+
+        for _, row in ipairs(test_data) do
+          query = fmt(q, unpack(row))
+          assert(db:query(query))
+        end
+
+        local opts = {
+          entity_type = "workspace",
+          minutes = 1510560001,
+          seconds = 1510560002,
+        }
+
+        local res, err = strategy:delete_status_codes(opts)
+
+        assert.is_nil(err)
+        assert.same(5, res)
+
+        res, err = db:query("select count(*) from vitals_code_classes_by_workspace")
+
+        assert.is_nil(err)
+        assert.same(3, res[1].count)
+      end)
+
       it("validates parameters", function()
         local _, err = strategy:delete_status_codes("foo")
         assert.same("opts must be a table", err)
 
         _, err = strategy:delete_status_codes({ entity_type = "foo", seconds = 999, minutes = 999 })
-        assert.same("opts.entity_type must be 'service', 'route', or 'consumer_route'", err)
+        assert.same("unknown entity_type: foo", err)
 
-        _, err = strategy:delete_status_codes({ entity_type = "service", seconds = "foo" })
+        _, err = strategy:delete_status_codes({ entity_type = "route", seconds = "foo" })
         assert.same("opts.seconds must be a number", err)
 
-        _, err = strategy:delete_status_codes({ entity_type = "service", seconds = 999 })
+        _, err = strategy:delete_status_codes({ entity_type = "route", seconds = 999, minutes = "foo" })
         assert.same("opts.minutes must be a number", err)
       end)
 
@@ -1845,7 +2147,7 @@ dao_helpers.for_each_dao(function(kong_conf)
         stub(strategy.db, "query").returns(nil, "failure!")
 
         local opts = {
-          entity_type = "service",
+          entity_type = "route",
           minutes = 1510560001,
           seconds = 1510560002,
         }

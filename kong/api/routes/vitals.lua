@@ -247,4 +247,46 @@ return {
       return helpers.responses.send_HTTP_OK(requested_routes)
     end
   },
+  ["/vitals/status_code_classes"] = {
+    GET = function(self, dao, helpers)
+      -- assume request is not workspace-specific
+      local entity_type = "cluster"
+      local entity_id = nil
+
+      if self.params.workspace_id then
+        entity_type = "workspace"
+        entity_id = self.params.workspace_id
+
+        local workspaces, err = singletons.dao.workspaces:find_all({ id = entity_id })
+
+        if err then
+          helpers.responses.send_HTTP_BAD_REQUEST("Invalid query params: workspace_id is invalid")
+        end
+
+        if not workspaces[1] then
+          helpers.responses.send_HTTP_NOT_FOUND()
+        end
+      end
+
+      local opts = {
+        entity_type = entity_type,
+        entity_id   = entity_id,
+        duration    = self.params.interval,
+        start_ts    = self.params.start_ts,
+        level       = "cluster",
+      }
+
+      local res, err = singletons.vitals:get_status_codes(opts)
+
+      if err then
+        if err:find("Invalid query params", nil, true) then
+          return helpers.responses.send_HTTP_BAD_REQUEST(err)
+        else
+          return helpers.yield_error(err)
+        end
+      end
+
+      return helpers.responses.send_HTTP_OK(res)
+    end
+  },
 }
