@@ -845,7 +845,10 @@
                         # directive.
 
 #------------------------------------------------------------------------------
-# DEVELOPER PORTAL AUTHENTICATION
+# DEFAULT DEVELOPER PORTAL AUTHENTICATION
+#
+# Referenced on workspace creation to set Dev Portal authentication defaults
+# in the database for that particular workspace.
 #------------------------------------------------------------------------------
 
 #portal_auth =
@@ -896,7 +899,10 @@
                         # Default `21600` (6 hours)
 
 #------------------------------------------------------------------------------
-# PORTAL SMTP CONFIGURATION
+# DEFAULT PORTAL SMTP CONFIGURATION
+#
+# Referenced on workspace creation to set SMTP defaults in the database
+# for that particular workspace.
 #------------------------------------------------------------------------------
 
 #portal_invite_email = on

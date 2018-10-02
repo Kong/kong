@@ -213,4 +213,51 @@ function _M.prepare_portal(kong_config)
 end
 
 
+function _M.create_default_portal_config()
+  local dao = singletons.dao
+  local res, err = dao.workspace_entities:find_all({
+    entity_type = "portal_configs",
+    workspace_name = "default"
+  })
+
+  if err then
+    return nil, err
+  end
+
+  -- Default Portal config already set, no further action required.
+  if next(res) then
+    return true
+  end
+
+  res, err = dao.workspaces:find_all({name = "default"})
+  if err then
+    return nil, err
+  end
+
+  local ws_default = res[1]
+
+  local pc_res, pc_err = dao.portal_configs:insert({})
+  if pc_err then
+    return nil, pc_err
+  end
+
+  local _, we_err = dao.workspace_entities:insert({
+    workspace_id = ws_default.id,
+    workspace_name = ws_default.name,
+    entity_id = pc_res.id,
+    entity_type = "portal_configs",
+    unique_field_name = "id",
+    unique_field_value = pc_res.id,
+  })
+
+  if we_err then
+    -- cleanup hanging config if join not successful
+    dao.portal_configs:delete(pc_res)
+    return nil, we_err
+  end
+
+  return true
+end
+
+
 return _M
