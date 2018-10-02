@@ -6,16 +6,6 @@ local VALUES = feature_flags.VALUES
 
 
 local overwrite_functions = {
-  ["key-auth"] = function(schema)
-    if not feature_flags.is_enabled(FLAGS.KEY_AUTH_DISABLE_KEY_IN_BODY) then
-      return true
-    end
-
-    ngx.log(ngx.DEBUG, "key-auth key_in_body feature disabled")
-    schema.fields["key_in_body"].default = nil
-    schema.fields["key_in_body"].overwrite = false
-    return true
-  end,
   ["hmac-auth"] = function(schema)
     if not feature_flags.is_enabled(FLAGS.HMAC_AUTH_DISABLE_VALIDATE_REQUEST_BODY) then
       return true
