@@ -472,19 +472,21 @@ end
 
 local function parse_access_token(conf)
   local found_in = {}
-  local result = retrieve_parameters()["access_token"]
-  if not result then
-    local authorization = ngx.req.get_headers()[conf.auth_header_name]
-    if authorization then
-      local parts = {}
-      for v in authorization:gmatch("%S+") do -- Split by space
-        table.insert(parts, v)
-      end
-      if #parts == 2 and (parts[1]:lower() == "token" or parts[1]:lower() == "bearer") then
-        result = parts[2]
-        found_in.authorization_header = true
-      end
+  local access_token = ngx.req.get_headers()[conf.auth_header_name]
+  if access_token then
+    if type(access_token) == "table" then --Take the first found
+      access_token = access_token[1]
     end
+    local parts = {}
+    for v in access_token:gmatch("%S+") do -- Split by space
+      table.insert(parts, v)
+    end
+    if #parts == 2 and (parts[1]:lower() == "token" or parts[1]:lower() == "bearer") then
+      access_token = parts[2]
+      found_in.authorization_header = true
+    end
+  else
+    access_token = retrieve_parameters()[ACCESS_TOKEN]
   end
 
   if conf.hide_credentials then
@@ -511,7 +513,7 @@ local function parse_access_token(conf)
     end
   end
 
-  return result
+  return access_token
 end
 
 local function load_oauth2_credential_into_memory(credential_id)

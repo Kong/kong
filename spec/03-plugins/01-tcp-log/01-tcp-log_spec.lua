@@ -100,7 +100,15 @@ for _, strategy in helpers.each_strategy() do
       local log_message = cjson.decode(res)
 
       assert.True(log_message.latencies.proxy < 3000)
-      assert.True(log_message.latencies.request >= log_message.latencies.kong + log_message.latencies.proxy)
+
+      -- Sometimes there's a split milisecond that makes numbers not
+      -- add up by 1. Adding an artificial 1 to make the test
+      -- resilient to those.
+      local is_latencies_sum_adding_up =
+        1+log_message.latencies.request >= log_message.latencies.kong +
+        log_message.latencies.proxy
+
+      assert.True(is_latencies_sum_adding_up)
     end)
 
     it("performs a TLS handshake on the remote TCP server", function()

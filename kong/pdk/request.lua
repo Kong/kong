@@ -315,7 +315,7 @@ local function new(self)
   -- If an argument with the same name is present multiple times in the
   -- querystring, this function will return the value of the first occurrence.
   --
-  -- @function kong.request.set_query_arg
+  -- @function kong.request.get_query_arg
   -- @phases rewrite, access, header_filter, body_filter, log
   -- @treturn string|boolean|nil the value of the argument
   -- @usage
@@ -508,7 +508,7 @@ local function new(self)
   -- @usage
   -- -- Given a body with payload "Hello, Earth!":
   --
-  -- kong.request.get_raw_body():gsub("Earth", Mars") -- "Hello, Mars!"
+  -- kong.request.get_raw_body():gsub("Earth", "Mars") -- "Hello, Mars!"
   function _REQUEST.get_raw_body()
     check_phase(before_content)
 

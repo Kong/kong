@@ -8,7 +8,9 @@ local _M = {}
 
 do
   local multipart = require "multipart"
-  local cjson     = require "cjson.safe"
+  local cjson     = (require "cjson.safe").new()
+  cjson.decode_array_with_array_mt(true)
+
   local utils     = require "kong.tools.utils"
 
 

@@ -237,7 +237,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     it("should not return a runtime error (regression)", function()
-      helpers.udp_server(9999, 1, 1)
+      local thread = helpers.udp_server(9999, 1, 1)
 
       local res = assert(proxy_client:send {
         method  = "GET",
@@ -251,6 +251,17 @@ for _, strategy in helpers.each_strategy() do
 
       local err_log = pl_file.read(helpers.test_conf.nginx_err_logs)
       assert.not_matches("attempt to index field 'api' (a nil value)", err_log, nil, true)
+
+      -- make a valid request to make thread end
+      assert(proxy_client:send {
+        method  = "GET",
+        path    = "/status/200",
+        headers = {
+          ["Host"] = "datadog3.com"
+        }
+      })
+
+      thread:join()
     end)
   end)
 end
