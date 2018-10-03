@@ -1,6 +1,9 @@
 --- A library of ready-to-use type synonyms to use in schema definitions.
 -- @module kong.db.schema.typedefs
 local utils = require "kong.tools.utils"
+local openssl_pkey = require "openssl.pkey"
+local openssl_x509 = require "openssl.x509"
+
 local Schema = require("kong.db.schema")
 local socket_url = require("socket.url")
 
@@ -89,6 +92,28 @@ local function validate_url(url)
 
   if not parsed_url.scheme then
     return nil, "missing scheme in url"
+  end
+
+  return true
+end
+
+
+local function validate_certificate(cert)
+  local ok
+  ok, cert = pcall(openssl_x509.new, cert)
+  if not ok then
+    return nil, "invalid certificate: " .. cert
+  end
+
+  return true
+end
+
+
+local function validate_key(key)
+  local ok
+  ok, key = pcall(openssl_pkey.new, key)
+  if not ok then
+    return nil, "invalid key: " .. key
   end
 
   return true
@@ -212,6 +237,18 @@ typedefs.name = Schema.define {
 typedefs.sni = Schema.define {
   type = "string",
   custom_validator = validate_sni,
+}
+
+
+typedefs.certificate = Schema.define {
+  type = "string",
+  custom_validator = validate_certificate,
+}
+
+
+typedefs.key = Schema.define {
+  type = "string",
+  custom_validator = validate_key,
 }
 
 

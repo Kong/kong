@@ -1,5 +1,8 @@
 local Schema = require "kong.db.schema"
 local typedefs = require("kong.db.schema.typedefs")
+local openssl_pkey = require "openssl.pkey"
+local openssl_x509 = require "openssl.x509"
+local ssl_fixtures = require "spec.fixtures.ssl"
 
 
 describe("typedefs", function()
@@ -17,6 +20,70 @@ describe("typedefs", function()
     assert.falsy(Test:validate({ f = "127.0.0.1" }))
     assert.falsy(Test:validate({ f = "example.com:80" }))
     assert.falsy(Test:validate({ f = "[::1]" }))
+  end)
+
+  it("features certificate typedef", function()
+    local Test = Schema.new({
+      fields = {
+        { f = typedefs.certificate }
+      }
+    })
+    assert.truthy(Test:validate({ f = ssl_fixtures.cert }))
+    do
+      local key = openssl_pkey.new { bits = 2048 }
+      local crt = openssl_x509.new()
+      crt:setPublicKey(key)
+      crt:sign(key)
+      assert.truthy(Test:validate({ f = crt:toPEM() }))
+    end
+    do
+      local ok, err = Test:validate({ f = 42 })
+      assert.falsy(ok)
+      assert.matches("expected a string", err.f)
+    end
+    do
+      local ok, err = Test:validate({ f = "not a certificate" })
+      assert.falsy(ok)
+      assert.matches("invalid certificate", err.f)
+    end
+    do
+      local ok, err = Test:validate({ f = [[
+-----BEGIN CERTIFICATE-----
+-----END CERTIFICATE-----
+]]})
+      assert.falsy(ok)
+      assert.matches("invalid certificate", err.f)
+    end
+  end)
+
+  it("features key typedef", function()
+    local Test = Schema.new({
+      fields = {
+        { f = typedefs.key }
+      }
+    })
+    assert.truthy(Test:validate({ f = ssl_fixtures.key }))
+    local tmpkey = openssl_pkey.new { bits = 2048 }
+    assert.truthy(Test:validate({ f = tmpkey:toPEM("private") }))
+    assert.truthy(Test:validate({ f = tmpkey:toPEM("public") }))
+    do
+      local ok, err = Test:validate({ f = 42 })
+      assert.falsy(ok)
+      assert.matches("expected a string", err.f)
+    end
+    do
+      local ok, err = Test:validate({ f = "not a key" })
+      assert.falsy(ok)
+      assert.matches("invalid key", err.f)
+    end
+    do
+      local ok, err = Test:validate({ f = [[
+-----BEGIN PRIVATE KEY-----
+-----END PRIVATE KEY-----
+]]})
+      assert.falsy(ok)
+      assert.matches("invalid key", err.f)
+    end
   end)
 
   it("features port typedef", function()
