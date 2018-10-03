@@ -193,6 +193,11 @@
 -- @section utilities
 
 
+--- Node-level utilities
+-- @field kong.node
+-- @redirect kong.node
+
+
 --- Utilities for Lua tables
 -- @field kong.table
 -- @redirect kong.table
@@ -211,6 +216,7 @@ local MAJOR_VERSIONS = {
     version = "0.1.0",
     modules = {
       "table",
+      "node",
       "log",
       "ctx",
       "ip",

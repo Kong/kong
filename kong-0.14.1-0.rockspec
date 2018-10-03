@@ -180,6 +180,7 @@ build = {
     ["kong.pdk.request"] = "kong/pdk/request.lua",
     ["kong.pdk.response"] = "kong/pdk/response.lua",
     ["kong.pdk.table"] = "kong/pdk/table.lua",
+    ["kong.pdk.node"] = "kong/pdk/node.lua",
 
     ["kong.plugins.base_plugin"] = "kong/plugins/base_plugin.lua",
 
