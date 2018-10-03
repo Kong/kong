@@ -6,16 +6,6 @@ local VALUES = feature_flags.VALUES
 
 
 local overwrite_functions = {
-  ["hmac-auth"] = function(schema)
-    if not feature_flags.is_enabled(FLAGS.HMAC_AUTH_DISABLE_VALIDATE_REQUEST_BODY) then
-      return true
-    end
-
-    ngx.log(ngx.DEBUG, "hmac-auth validate_request_body feature disabled")
-    schema.fields["validate_request_body"].default = nil
-    schema.fields["validate_request_body"].overwrite = false
-    return true
-  end,
   ["rate-limiting"] = function(schema)
     if not feature_flags.is_enabled(FLAGS.RATE_LIMITING_RESTRICT_REDIS_ONLY) then
       return true
