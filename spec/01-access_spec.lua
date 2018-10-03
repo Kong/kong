@@ -225,6 +225,19 @@ for _, strategy in helpers.each_strategy() do
       assert.response(res).has.status(200)
     end)
 
+    it("passes if credential contains non-word characters", function()
+      local res = assert(proxy_client:send {
+        method  = "GET",
+        path    = "/get",
+        body    = {},
+        headers = {
+          host             = "ldap7.com",
+          authorization    = "ldap " .. ngx.encode_base64("andrei.sakharov:password"),
+        }
+      })
+      assert.response(res).has.status(200)
+    end)
+
     it("returns forbidden if user cannot be found with valid bind_dn", function()
       local res = assert(proxy_client:send {
         method  = "GET",

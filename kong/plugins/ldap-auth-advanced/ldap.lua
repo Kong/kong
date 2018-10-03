@@ -138,7 +138,7 @@ function _M.search_request(socket, query)
   if filter == nil then
     filter = encoder:encodeTag("context", false, 7, "objectclass")
   else
-    local field, value = filter:match("(%w+)=(%w+)")
+    local field, value = filter:match("(%g+)=([%s%g]+)")
     if field then
       filter = encoder:encodeTag("context", true, 3, encoder:encode(field)..encoder:encode(value))
     else
