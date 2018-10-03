@@ -380,20 +380,28 @@ end
 
 
 function _mt:query(sql)
+  local res, err, partial, num_queries
+
   if self.connection and self.connection.sock then
-    return self.connection:query(sql)
+    res, err, partial, num_queries = self.connection:query(sql)
+
+  else
+    local connection
+    connection, err = connect(self.config)
+    if not connection then
+      return nil, err
+    end
+
+    res, err, partial, num_queries = connection:query(sql)
+
+    setkeepalive(connection)
   end
 
-  local connection, err = connect(self.config)
-  if not connection then
-    return nil, err
+  if res then
+    return res, nil, partial, num_queries or err
   end
 
-  local res, exc, partial, num_queries = connection:query(sql)
-
-  setkeepalive(connection)
-
-  return res, exc, partial, num_queries
+  return nil, err, partial, num_queries
 end
 
 
@@ -497,7 +505,7 @@ end
 function _mt:insert_lock(key, ttl, owner)
   local ttl_escaped = concat {
                         "TO_TIMESTAMP(",
-                        self:escape_literal(now_updated() + ttl),
+                        self:escape_literal(tonumber(fmt("%.3f", now_updated() + ttl))),
                         ") AT TIME ZONE 'UTC'"
                       }
 
@@ -512,12 +520,12 @@ function _mt:insert_lock(key, ttl, owner)
                        "COMMIT;"
   }
 
-  local res, err_or_num_queries = self:query(sql)
+  local res, err, _, num_queries = self:query(sql)
   if not res then
-    return nil, err_or_num_queries
+    return nil, err
   end
 
-  if err_or_num_queries ~= 4 then
+  if num_queries ~= 4 then
     return nil, "unexpected result"
   end
 
@@ -550,8 +558,8 @@ end
 function _mt:remove_lock(key, owner)
   local sql = concat {
     "DELETE FROM locks\n",
-    " WHERE key   = ", self:escape_literal(key), "\n",
-    "   AND owner = ", self:escape_literal(owner), ";"
+    "      WHERE key   = ", self:escape_literal(key), "\n",
+         "   AND owner = ", self:escape_literal(owner), ";"
   }
 
   local res, err = self:query(sql)
@@ -582,7 +590,7 @@ function _mt:schema_migrations()
     return nil
   end
 
-  local rows, err = self.connection:query(concat({
+  local rows, err = self:query(concat({
     "SELECT *\n",
     "  FROM schema_meta\n",
     " WHERE key = ",  self:escape_literal("schema_meta"), ";"
@@ -613,7 +621,7 @@ function _mt:schema_bootstrap(kong_config, default_locks_ttl)
 
   logger.verbose("creating 'schema_meta' table if not existing...")
 
-  local res, err = self.connection:query([[
+  local res, err = self:query([[
     CREATE TABLE IF NOT EXISTS schema_meta (
       key            TEXT,
       subsystem      TEXT,
@@ -631,7 +639,7 @@ function _mt:schema_bootstrap(kong_config, default_locks_ttl)
   logger.verbose("successfully created 'schema_meta' table")
 
   local ok
-  ok, err = self:setup_locks(default_locks_ttl, true) -- no schema consensus
+  ok, err = self:setup_locks(default_locks_ttl, true)
   if not ok then
     return nil, err
   end
@@ -646,7 +654,7 @@ function _mt:schema_reset()
   end
 
   local user = self:escape_identifier(self.config.user)
-  local ok, err = self.connection:query(concat {
+  local ok, err = self:query(concat {
     "BEGIN;\n",
     "  DROP SCHEMA IF EXISTS public CASCADE;\n",
     "  CREATE SCHEMA IF NOT EXISTS public AUTHORIZATION ", user, ";\n",
@@ -685,9 +693,9 @@ function _mt:run_up_migration(name, up_sql)
     "COMMIT;\n",
   }
 
-  local res, err = self.connection:query(sql)
+  local res, err = self:query(sql)
   if not res then
-    self.connection:query("ROLLBACK;")
+    self:query("ROLLBACK;")
     return nil, err
   end
 
@@ -745,7 +753,7 @@ function _mt:record_migration(subsystem, name, state)
     error("unknown 'state' argument: " .. tostring(state))
   end
 
-  local res, err = self.connection:query(sql)
+  local res, err = self:query(sql)
   if not res then
     return nil, err
   end
@@ -756,6 +764,194 @@ end
 
 function _mt:post_up_migrations()
   return true
+end
+
+
+function _mt:is_014()
+  local rows, err = self:schema_migrations()
+  if err then
+    return nil, err
+  end
+
+  if rows and #rows > 0 then
+    return {
+      is_eq_014 = false,
+      is_gt_014 = true,
+    }
+  end
+
+  local needed_migrations = {
+    ["core"] = {
+      "2015-01-12-175310_skeleton",
+      "2015-01-12-175310_init_schema",
+      "2015-11-23-817313_nodes",
+      "2016-02-29-142793_ttls",
+      "2016-09-05-212515_retries",
+      "2016-09-16-141423_upstreams",
+      "2016-12-14-172100_move_ssl_certs_to_core",
+      "2016-11-11-151900_new_apis_router_1",
+      "2016-11-11-151900_new_apis_router_2",
+      "2016-11-11-151900_new_apis_router_3",
+      "2016-01-25-103600_unique_custom_id",
+      "2017-01-24-132600_upstream_timeouts",
+      "2017-01-24-132600_upstream_timeouts_2",
+      "2017-03-27-132300_anonymous",
+      "2017-04-18-153000_unique_plugins_id",
+      "2017-04-18-153000_unique_plugins_id_2",
+      "2017-05-19-180200_cluster_events",
+      "2017-05-19-173100_remove_nodes_table",
+      "2017-06-16-283123_ttl_indexes",
+      "2017-07-28-225000_balancer_orderlist_remove",
+      "2017-10-02-173400_apis_created_at_ms_precision",
+      "2017-11-07-192000_upstream_healthchecks",
+      "2017-10-27-134100_consistent_hashing_1",
+      "2017-11-07-192100_upstream_healthchecks_2",
+      "2017-10-27-134100_consistent_hashing_2",
+      "2017-09-14-121200_routes_and_services",
+      "2017-10-25-180700_plugins_routes_and_services",
+      "2018-03-27-123400_prepare_certs_and_snis",
+      "2018-03-27-125400_fill_in_snis_ids",
+      "2018-03-27-130400_make_ids_primary_keys_in_snis",
+      "2018-05-17-173100_hash_on_cookie",
+    },
+    ["response-transformer"] = {
+      "2016-05-04-160000_resp_trans_schema_changes",
+    },
+    ["jwt"] = {
+      "2015-06-09-jwt-auth",
+      "2016-03-07-jwt-alg",
+      "2017-05-22-jwt_secret_not_unique",
+      "2017-07-31-120200_jwt-auth_preflight_default",
+      "2017-10-25-211200_jwt_cookie_names_default",
+      "2018-03-15-150000_jwt_maximum_expiration",
+    },
+    ["ip-restriction"] = {
+      "2016-05-24-remove-cache",
+    },
+    ["statsd"] = {
+      "2017-06-09-160000_statsd_schema_changes",
+    },
+    ["cors"] = {
+      "2017-03-14_multiple_orgins",
+    },
+    ["basic-auth"] = {
+      "2015-08-03-132400_init_basicauth",
+      "2017-01-25-180400_unique_username",
+    },
+    ["key-auth"] = {
+      "2015-07-31-172400_init_keyauth",
+      "2017-07-31-120200_key-auth_preflight_default",
+    },
+    ["ldap-auth"] = {
+      "2017-10-23-150900_header_type_default",
+    },
+    ["hmac-auth"] = {
+      "2015-09-16-132400_init_hmacauth",
+      "2017-06-21-132400_init_hmacauth",
+    },
+    ["datadog"] = {
+      "2017-06-09-160000_datadog_schema_changes",
+    },
+    ["tcp-log"] = {
+      "2017-12-13-120000_tcp-log_tls",
+    },
+    ["acl"] = {
+      "2015-08-25-841841_init_acl",
+    },
+    ["response-ratelimiting"] = {
+      "2015-08-03-132400_init_response_ratelimiting",
+      "2016-08-04-321512_response-rate-limiting_policies",
+      "2017-12-19-120000_add_route_and_service_id_to_response_ratelimiting",
+    },
+    ["request-transformer"] = {
+      "2016-05-04-160000_req_trans_schema_changes",
+    },
+    ["rate-limiting"] = {
+      "2015-08-03-132400_init_ratelimiting",
+      "2016-07-25-471385_ratelimiting_policies",
+      "2017-11-30-120000_add_route_and_service_id",
+    },
+    ["oauth2"] = {
+      "2015-08-03-132400_init_oauth2",
+      "2016-07-15-oauth2_code_credential_id",
+      "2016-12-22-283949_serialize_redirect_uri",
+      "2016-09-19-oauth2_api_id",
+      "2016-12-15-set_global_credentials",
+      "2017-04-24-oauth2_client_secret_not_unique",
+      "2017-10-19-set_auth_header_name_default",
+      "2017-10-11-oauth2_new_refresh_token_ttl_config_value",
+      "2018-01-09-oauth2_pg_add_service_id",
+    },
+  }
+
+  local rows, err = self:query([[
+    SELECT to_regclass('schema_migrations') AS "name";
+  ]])
+  if err then
+    return nil, err
+  end
+
+  if not rows or not rows[1] or rows[1].name ~= "schema_migrations" then
+    return {
+      is_eq_014 = false,
+      is_gt_014 = true,
+    }
+  end
+
+  rows, err = self:query([[
+    SELECT "id", "migrations"
+      FROM "schema_migrations";
+  ]])
+  if err then
+    return nil, err
+  end
+
+  if not rows then
+    return {
+      is_eq_014 = false,
+      is_gt_014 = false,
+    }
+  end
+
+  local schema_migrations = {}
+  for i = 1, #rows do
+    local row = rows[i]
+    schema_migrations[row.id] = row.migrations
+  end
+
+  for name, migrations in pairs(needed_migrations) do
+    local current_migrations = schema_migrations[name]
+    if not current_migrations then
+      return {
+        is_eq_014 = false,
+        is_gt_014 = false,
+        missing_component = name,
+      }
+    end
+
+    for _, needed_migration in ipairs(migrations) do
+      local found = false
+      for _, current_migration in ipairs(current_migrations) do
+        if current_migration == needed_migration then
+          found = true
+          break
+        end
+      end
+      if not found then
+        return {
+          is_eq_014 = false,
+          is_gt_014 = false,
+          missing_component = name,
+          missing_migration = needed_migration,
+        }
+      end
+    end
+  end
+
+  return {
+    is_eq_014 = true,
+    is_gt_014 = false,
+  }
 end
 
 

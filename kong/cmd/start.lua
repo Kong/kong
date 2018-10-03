@@ -9,7 +9,7 @@ local DB = require "kong.db"
 
 local function execute(args)
   args.db_timeout = args.db_timeout * 1000
-  args.lock_timeout = args.lock_timeout * 1000
+  args.lock_timeout = args.lock_timeout
 
   local conf = assert(conf_loader(args.conf, {
     prefix = args.prefix

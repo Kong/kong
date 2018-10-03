@@ -115,7 +115,7 @@ return {
         "custom_id"   TEXT                         UNIQUE
       );
 
-      CREATE INDEX IF NOT EXISTS username_idx ON "consumers" (LOWER("username"));
+      CREATE INDEX IF NOT EXISTS "username_idx" ON "consumers" (LOWER("username"));
 
 
 
@@ -165,7 +165,7 @@ return {
         "weight"       INTEGER                      NOT NULL
       );
 
-      CREATE INDEX IF NOT EXISTS "targets_target_idx"      ON "targets" ("target");
+      CREATE INDEX IF NOT EXISTS "targets_target_idx" ON "targets" ("target");
 
 
 
