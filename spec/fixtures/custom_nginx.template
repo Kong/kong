@@ -189,6 +189,11 @@ http {
                     acah = "Content-Type, ${{RBAC_AUTH_HEADER}}",
                 })
             }
+
+            log_by_lua_block {
+                local audit_log = require "kong.enterprise_edition.audit_log"
+                audit_log.admin_log_handler()
+            }
         }
 
         location /nginx_status {

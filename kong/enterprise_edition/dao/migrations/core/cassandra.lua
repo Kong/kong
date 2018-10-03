@@ -531,5 +531,42 @@ return {
     down = [[
       DROP TABLE portal_configs;
     ]]
-  }
+  },
+  {
+    name = "2018-10-03-120000_audit_requests_init",
+    up = [[
+      CREATE TABLE IF NOT EXISTS audit_requests(
+        request_id text,
+        request_timestamp timestamp,
+        client_ip text,
+        path text,
+        method text,
+        payload text,
+        status int,
+        rbac_user_id uuid,
+        workspace uuid,
+        signature text,
+        expire timestamp,
+        PRIMARY KEY (request_id)
+      ) WITH default_time_to_live = 2592000
+         AND comment = 'Kong Admin API request audit log';
+    ]],
+  },
+  {
+    name = "2018-10-03-120000_audit_objects_init",
+    up = [[
+      CREATE TABLE IF NOT EXISTS audit_objects(
+        id uuid,
+        request_id text,
+        entity_key uuid,
+        dao_name text,
+        operation text,
+        entity text,
+        rbac_user_id uuid,
+        signature text,
+        PRIMARY KEY (id)
+      ) WITH default_time_to_live = 2592000
+         AND comment = 'Kong database object audit log';
+    ]],
+  },
 }

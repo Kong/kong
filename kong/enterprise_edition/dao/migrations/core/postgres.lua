@@ -659,5 +659,105 @@ return {
     down = [[
       DROP TABLE portal_configs;
     ]]
-  }
+  },
+  {
+    name = "2018-10-03-120000_audit_requests_init",
+    up = [[
+      CREATE TABLE IF NOT EXISTS audit_requests(
+        request_id char(32) PRIMARY KEY,
+        request_timestamp timestamp without time zone default (CURRENT_TIMESTAMP(3) at time zone 'utc'),
+        client_ip text NOT NULL,
+        path text NOT NULL,
+        method text NOT NULL,
+        payload text,
+        status integer NOT NULL,
+        rbac_user_id uuid,
+        workspace uuid NOT NULL,
+        signature text,
+        expire timestamp without time zone
+      );
+
+      DO $$
+      BEGIN
+          IF (SELECT to_regclass('idx_audit_requests_expire')) IS NULL THEN
+              CREATE INDEX idx_audit_requests_expire on audit_requests(expire);
+          END IF;
+      END$$;
+
+      CREATE OR REPLACE FUNCTION delete_expired_audit_requests() RETURNS trigger
+          LANGUAGE plpgsql
+          AS $$
+      BEGIN
+          DELETE FROM audit_requests WHERE expire <= NOW();
+          RETURN NEW;
+      END;
+      $$;
+
+      DO $$
+      BEGIN
+          IF NOT EXISTS(
+              SELECT FROM information_schema.triggers
+               WHERE event_object_table = 'audit_requests'
+                 AND trigger_name = 'deleted_expired_audit_requests_trigger')
+          THEN
+              CREATE TRIGGER delete_expired_audit_requests_trigger
+               AFTER INSERT on audit_requests
+               EXECUTE PROCEDURE delete_expired_audit_requests();
+          END IF;
+      END;
+      $$;
+    ]],
+    down = [[
+      DROP TABLE audit_requests;
+    ]],
+  },
+  {
+    name = "2018-10-03-120000_audit_objects_init",
+    up = [[
+      CREATE TABLE IF NOT EXISTS audit_objects(
+        id uuid PRIMARY KEY,
+        request_id char(32),
+        entity_key uuid,
+        dao_name text NOT NULL,
+        operation char(6) NOT NULL,
+        entity text,
+        rbac_user_id uuid,
+        signature text,
+        expire timestamp without time zone
+      );
+
+      DO $$
+      BEGIN
+          IF (SELECT to_regclass('idx_audit_objects_expire')) IS NULL THEN
+              CREATE INDEX idx_audit_objects_expire on audit_objects(expire);
+          END IF;
+      END$$;
+
+      CREATE OR REPLACE FUNCTION delete_expired_audit_objects() RETURNS trigger
+          LANGUAGE plpgsql
+          AS $$
+      BEGIN
+          DELETE FROM audit_objects WHERE expire <= NOW();
+          RETURN NEW;
+      END;
+      $$;
+
+      DO $$
+      BEGIN
+          IF NOT EXISTS(
+              SELECT FROM information_schema.triggers
+               WHERE event_object_table = 'audit_objects'
+                 AND trigger_name = 'deleted_expired_audit_objects_trigger')
+          THEN
+              CREATE TRIGGER delete_expired_audit_objects_trigger
+               AFTER INSERT on audit_objects
+               EXECUTE PROCEDURE delete_expired_audit_objects();
+          END IF;
+      END;
+      $$;
+    ]],
+    down = [[
+      DROP TABLE audit_objects;
+    ]]
+  },
 }

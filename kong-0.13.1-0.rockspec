@@ -34,6 +34,7 @@ dependencies = {
   "lua-resty-redis-connector == 0.03",
   "lua-resty-healthcheck == 0.4.2",
   "lua-resty-mlcache == 2.0.2",
+  "lua-resty-rsa == 0.04",
   -- external Kong plugins
   "kong-plugin-azure-functions == 0.1.0",
   "kong-plugin-zipkin == 0.0.4",
@@ -75,6 +76,7 @@ build = {
     ["kong.enterprise_edition.dao.schemas.portal_configs"] = "kong/enterprise_edition/dao/schemas/portal_configs.lua",
     ["kong.enterprise_edition.dao.schemas.token_statuses"] = "kong/enterprise_edition/dao/schemas/token_statuses.lua",
     ["kong.enterprise_edition.license_helpers"] = "kong/enterprise_edition/license_helpers.lua",
+    ["kong.enterprise_edition.audit_log"] = "kong/enterprise_edition/audit_log.lua",
 
     ["kong.templates.nginx"] = "kong/templates/nginx.lua",
     ["kong.templates.nginx_kong"] = "kong/templates/nginx_kong.lua",
@@ -119,6 +121,7 @@ build = {
     ["kong.api.routes.workspaces"] = "kong/api/routes/workspaces.lua",
     ["kong.api.routes.portal"] = "kong/api/routes/portal.lua",
     ["kong.api.routes.admins"] = "kong/api/routes/admins.lua",
+    ["kong.api.routes.audit"] = "kong/api/routes/audit.lua",
 
     ["kong.tools.ip"] = "kong/tools/ip.lua",
     ["kong.tools.ciphers"] = "kong/tools/ciphers.lua",
@@ -175,6 +178,8 @@ build = {
     ["kong.dao.migrations.postgres"] = "kong/dao/migrations/postgres.lua",
     ["kong.dao.schemas.workspaces"] = "kong/dao/schemas/workspaces.lua",
     ["kong.dao.schemas.workspace_entities"] = "kong/dao/schemas/workspace_entities.lua",
+    ["kong.dao.schemas.audit_objects"] = "kong/dao/schemas/audit_objects.lua",
+    ["kong.dao.schemas.audit_requests"] = "kong/dao/schemas/audit_requests.lua",
 
     ["kong.rbac"] = "kong/rbac/init.lua",
     ["kong.rbac.migrations.01_defaults"] = "kong/rbac/migrations/01_defaults.lua",

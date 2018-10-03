@@ -31,6 +31,8 @@ local CORE_MODELS = {
   "consumer_statuses",
   "credentials",
   "consumers_rbac_users_map",
+  "audit_requests",
+  "audit_objects",
 }
 
 -- returns db errors as strings, including the initial `nil`

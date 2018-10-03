@@ -459,6 +459,12 @@ return {
         workspaces.run_with_ws_scope({}, balancer.init)
       end)
 
+      if singletons.configuration.audit_log then
+        log(DEBUG, "register audit log events handler")
+        local audit_log = require "kong.enterprise_edition.audit_log"
+        worker_events.register(audit_log.dao_audit_handler, "dao:crud")
+      end
+
     end
   },
   certificate = {

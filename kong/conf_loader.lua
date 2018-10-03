@@ -150,6 +150,13 @@ local CONF_INFERENCES = {
   vitals_prometheus_address = {typ = "string"},
   vitals_prometheus_scrape_interval = {typ = "number"},
 
+  audit_log = {typ = "boolean"},
+  audit_log_ignore_methods = {typ = "array"},
+  audit_log_ignore_paths = {typ = "array"},
+  audit_log_ignore_tables = {typ = "array"},
+  audit_log_record_ttl = {typ = "number"},
+  audit_log_signing_key = {typ = "string"},
+
   admin_gui_listen = {typ = "array"},
   admin_gui_error_log = {typ = "string"},
   admin_gui_access_log = {typ = "string"},
@@ -400,6 +407,19 @@ local function check_and_infer(conf)
         .. err
         .. " - " .. conf.portal_auth_conf
     end
+  end
+
+  if conf.audit_log_signing_key then
+    local k = pl_path.abspath(conf.audit_log_signing_key)
+
+    local resty_rsa = require "resty.rsa"
+    local p, err = resty_rsa:new({ private_key = pl_file.read(k) })
+    if not p then
+      errors[#errors + 1] = "audit_log_signing_key: invalid RSA private key ("
+                            .. err .. ")"
+    end
+
+    conf.audit_log_signing_key = k
   end
 
   if conf.ssl_cipher_suite ~= "custom" then
