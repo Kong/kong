@@ -59,10 +59,10 @@ for _, strategy in helpers.each_strategy() do
           name = "schema violation",
           fields = {
             config = {
-              limits = "length must be at least 1",
+              limits = "required field missing",
             }
           },
-          message = "schema violation (config.limits: length must be at least 1)",
+          message = "schema violation (config.limits: required field missing)",
         }, json)
       end)
       it("accepts proper config", function()

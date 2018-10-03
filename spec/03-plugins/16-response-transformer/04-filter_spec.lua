@@ -2,7 +2,7 @@ local helpers = require "spec.helpers"
 
 
 for _, strategy in helpers.each_strategy() do
-  describe("Plugin: response-transformer (filter)", function()
+  describe("Plugin: response-transformer (filter) [#" .. strategy .. "]", function()
     local proxy_client
 
     setup(function()

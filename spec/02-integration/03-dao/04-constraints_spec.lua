@@ -43,7 +43,6 @@ for _, strategy in helpers.each_strategy() do
           run_on_preflight = true,
           hide_credentials = false,
           key_names        = {"apikey"},
-          anonymous        = "",
           key_in_body      = false,
         }, plugin.config)
       end)
@@ -58,7 +57,6 @@ for _, strategy in helpers.each_strategy() do
           run_on_preflight = true,
           hide_credentials = false,
           key_names        = {"api-key"},
-          anonymous        = "",
           key_in_body      = false,
         }, plugin.config)
       end)

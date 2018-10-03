@@ -31,7 +31,6 @@ for _, strategy in helpers.each_strategy() do
 
           assert.same({
             config = {
-              anonymous = "",
               hide_credentials = false,
               run_on_preflight = true,
               key_in_body = false,
@@ -76,7 +75,6 @@ for _, strategy in helpers.each_strategy() do
 
           assert.same({
             config = {
-              anonymous = "",
               hide_credentials = false,
               run_on_preflight = true,
               key_in_body = false,

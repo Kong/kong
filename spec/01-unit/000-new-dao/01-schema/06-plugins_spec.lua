@@ -118,7 +118,7 @@ describe("plugins", function()
     assert.same({
       key_names = { "apikey" },
       hide_credentials = false,
-      anonymous = "",
+      anonymous = ngx.null,
       key_in_body = false,
       run_on_preflight = true,
     }, plugin.config)
