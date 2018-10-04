@@ -74,4 +74,11 @@ function Entity.new(definition)
 end
 
 
+function Entity.new_subschema(schema, key, definition)
+  make_records_non_nullable(definition)
+  definition.nullable = nil
+  return Schema.new_subschema(schema, key, definition)
+end
+
+
 return Entity
