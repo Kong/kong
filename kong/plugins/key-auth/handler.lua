@@ -137,7 +137,7 @@ local function do_authentication(conf)
                                     key)
   if err then
     kong.log.err(err)
-    return kong.response.exit(500, "An unexpected error ocurred")
+    return kong.response.exit(500, "An unexpected error occurred")
   end
 
   -- no credential in DB, for this key, it is invalid, HTTP 403
@@ -156,7 +156,7 @@ local function do_authentication(conf)
                                        credential.consumer.id)
   if err then
     kong.log.err(err)
-    return nil, { status = 500, message = "An unexpected error ocurred" }
+    return nil, { status = 500, message = "An unexpected error occurred" }
   end
 
   set_consumer(consumer, credential)
@@ -191,7 +191,7 @@ function KeyAuthHandler:access(conf)
                                            load_consumer, conf.anonymous, true)
       if err then
         kong.log.err(err)
-        return kong.response.exit(500, { message = "An unexpected error ocurred" })
+        return kong.response.exit(500, { message = "An unexpected error occurred" })
       end
 
       set_consumer(consumer, nil)
