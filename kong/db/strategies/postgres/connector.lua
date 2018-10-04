@@ -280,7 +280,7 @@ function _mt:init_worker(strategies)
         self:escape_identifier(table_name),
         " WHERE ",
         ttl_escaped,
-        " < CURRENT_TIMESTAMP;"
+        " < CURRENT_TIMESTAMP AT TIME ZONE 'UTC';"
       }
     end
 
@@ -503,7 +503,7 @@ function _mt:insert_lock(key, ttl, owner)
 
   local sql = concat { "BEGIN;\n",
                        "  DELETE FROM locks\n",
-                       "        WHERE ttl < CURRENT_TIMESTAMP;\n",
+                       "        WHERE ttl < CURRENT_TIMESTAMP AT TIME ZONE 'UTC';\n",
                        "  INSERT INTO locks (key, owner, ttl)\n",
                        "       VALUES (", self:escape_literal(key),   ", ",
                                           self:escape_literal(owner), ", ",
