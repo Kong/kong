@@ -1,3 +1,15 @@
+## 0.33
+
+### Fixed
+
+- Use Bind authentication to authenticate user instead of password matching
+  on Kong side
+- Fix issue where username couldn't have space or non-alaphanumeric characters
+
+### Changed
+
+- Drop irrelevant migrations
+
 ## 0.32.2
 
 ### Added
