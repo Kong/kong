@@ -91,6 +91,7 @@ describe("DNS", function()
     local client
 
     setup(function()
+      dao = select(3, helpers.get_db_utils())
       assert(dao.apis:insert {
         name = "tests-retries-bis",
         hosts = { "retries-bis.com" },

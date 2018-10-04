@@ -4,6 +4,15 @@ local function dump(...)
 end
 
 
+local function _run_with_ws_scope(self, ws_scope, cb, ...)
+  local old_ws = ngx.ctx.workspaces
+  ngx.ctx.workspaces = ws_scope
+  local res, err = cb(self, ...)
+  ngx.ctx.workspaces = old_ws
+  return res, err
+end
+
+
 describe("DNS", function()
   local balancer, resolver, query_func, old_new
   local mock_records, singletons, client
@@ -18,8 +27,13 @@ describe("DNS", function()
 
     singletons.dao = {}
     singletons.dao.upstreams = {
-      find_all = function(self) return {} end
+      find_all = function(self) return {} end,
+      run_with_ws_scope = _run_with_ws_scope
     }
+    singletons.dao.workspaces = {
+      find_all = function() return {} end
+    }
+    ngx.ctx.workspaces = {}
 
     balancer = require "kong.core.balancer"
     balancer.init()
@@ -32,6 +46,7 @@ describe("DNS", function()
     if type(ngx.log) == "table" then
       ngx.log:revert()
     end
+    ngx.ctx.workspaces = nil
   end)
 
   before_each(function()

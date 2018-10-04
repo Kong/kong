@@ -475,7 +475,6 @@ for _, strategy in helpers.each_strategy() do
   describe("Ring-balancer #" .. strategy, function()
 
     setup(function()
-      ngx.ctx.workspaces = nil
       local _, db, dao = helpers.get_db_utils(strategy, true)
 
       truncate_relevant_tables(db, dao)
@@ -494,6 +493,7 @@ for _, strategy in helpers.each_strategy() do
 
       setup(function()
         -- start a second Kong instance (ports are Kong test ports + 10)
+        ngx.ctx.workspaces = nil
         helpers.start_kong({
           database   = strategy,
           admin_listen = "127.0.0.1:9011",
@@ -672,14 +672,14 @@ for _, strategy in helpers.each_strategy() do
             local server1 = http_server(localhost, port, { 1 })
 
             -- give time for healthchecker to (not!) run
-            ngx.sleep(HEALTHCHECK_INTERVAL * 3)
+            ngx.sleep(HEALTHCHECK_INTERVAL * 8)
 
             patch_api(api_name, "http://" .. new_name)
 
             -- collect results
             local _, server1_oks, server1_fails, hcs = server1:done()
             assert.same({0, 0}, { server1_oks, server1_fails })
-            assert.truthy(hcs < 2)
+            assert.truthy(hcs < 4)
           end)
 
         end)

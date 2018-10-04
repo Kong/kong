@@ -351,7 +351,8 @@ return {
         local target = data.entity
 
         -- => to balancer update
-        balancer.on_target_event(operation, target)
+        workspaces.run_with_ws_scope({}, balancer.on_target_event,
+                                     operation, target)
       end, "balancer", "targets")
 
 
@@ -373,9 +374,9 @@ return {
 
       -- manual health updates
       cluster_events:subscribe("balancer:post_health", function(data)
-        local ip, port, health, name = data:match("([^|]+)|([^|]+)|([^|]+)|(.*)")
+        local ip, port, health, name, id = data:match("([^|]+)|([^|]+)|([^|]+)|([^|]+)|(.*)")
         port = tonumber(port)
-        local upstream = { name = name }
+        local upstream = { name = name, id = id }
         local ok, err = balancer.post_health(upstream, ip, port, health == "1")
         if not ok then
           log(ERR, "failed posting health of ", name, " to workers: ", err)
@@ -413,8 +414,19 @@ return {
         local operation = data.operation
         local upstream = data.entity
 
+        local workspace_list, err = dao.workspace_entities:find_all({
+          entity_id = data.entity.id,
+          __skip_rbac = true,
+        })
+
+        if err then
+          log(ngx.ERR, "[events] could not fetch workspaces: ", err)
+          return
+        end
+
         -- => to balancer update
-        balancer.on_upstream_event(operation, upstream)
+        workspaces.run_with_ws_scope({}, balancer.on_upstream_event, operation,
+                                     upstream, workspace_list)
       end, "balancer", "upstreams")
 
 
@@ -444,7 +456,7 @@ return {
 
       -- initialize balancers for active healthchecks
       ngx.timer.at(0, function()
-        balancer.init()
+        workspaces.run_with_ws_scope({}, balancer.init)
       end)
 
     end

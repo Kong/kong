@@ -452,8 +452,6 @@ end
 
 function Kong.balancer()
   local ctx = ngx.ctx
-  local old_ws = ctx.workspaces
-  ctx.workspaces = {}
   local addr = ctx.balancer_address
   local tries = addr.tries
   local current_try = {}
@@ -522,7 +520,6 @@ function Kong.balancer()
   end
 
   core.balancer.after()
-  ctx.workspaces = old_ws
 end
 
 local function plugins_map_wrapper()

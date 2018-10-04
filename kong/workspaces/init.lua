@@ -1074,4 +1074,13 @@ function _M.remove_ws_prefix(table_name, row, include_ws)
 end
 
 
+function _M.run_with_ws_scope(ws_scope, cb, ...)
+  local old_ws = ngx.ctx.workspaces
+  ngx.ctx.workspaces = ws_scope
+  local res, err = cb(...)
+  ngx.ctx.workspaces = old_ws
+  return res, err
+end
+
+
 return _M

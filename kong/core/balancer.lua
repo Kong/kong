@@ -11,6 +11,8 @@ local log = ngx.log
 local sleep = ngx.sleep
 local min = math.min
 local max = math.max
+local next = next
+local ipairs = ipairs
 
 local CRIT  = ngx.CRIT
 local ERR   = ngx.ERR
@@ -298,7 +300,7 @@ do
         healthcheck = require("resty.healthcheck") -- delayed initialization
       end
       local healthchecker, err = healthcheck.new({
-        name = upstream.name,
+        name = upstream.id,
         shm_name = "kong_healthchecks",
         checks = upstream.healthchecks,
       })
@@ -454,15 +456,17 @@ end
 
 
 local get_all_upstreams
+local get_all_upstreams_as_list
 do
   ------------------------------------------------------------------------------
   -- Implements a simple dictionary with all upstream-ids indexed
   -- by their name.
   -- @return The upstreams dictionary, a map with upstream names as string keys
   -- and upstream entity tables as values, or nil+error
-  local function load_upstreams_dict_into_memory()
+  local function load_upstreams_dict_into_memory(workspaces)
     log(DEBUG, "fetching all upstreams")
-    local upstreams, err = singletons.dao.upstreams:find_all()
+
+    local upstreams, err = singletons.dao.upstreams:run_with_ws_scope(workspaces, singletons.dao.upstreams.find_all, nil, true)
     if err then
       return nil, err
     end
@@ -483,14 +487,45 @@ do
   -- caching, invalidation, db access, et al.
   -- @param upstream_name string.
   -- @return upstream table, or `false` if not found, or nil+error
-  get_all_upstreams = function()
-    local upstreams_dict, err = singletons.cache:get("balancer:upstreams", nil,
-                                                load_upstreams_dict_into_memory)
+  get_all_upstreams = function(workspaces)
+     workspaces = workspaces or ngx.ctx.workspaces
+
+    -- for access phase
+    local upstreams_dict = {}
+    for _, workspace in ipairs(workspaces) do
+      local upstreams_dict, err = singletons.cache:get("balancer:upstreams:" .. workspace.id , nil,
+                                                       load_upstreams_dict_into_memory, {workspace})
+      if err then
+        return nil, err
+      end
+
+      if next(upstreams_dict) then
+        return  upstreams_dict
+      end
+    end
+
+    return upstreams_dict
+  end
+
+  get_all_upstreams_as_list = function()
+    local workspaces, err = singletons.dao.workspaces:find_all()
     if err then
       return nil, err
     end
 
-    return upstreams_dict
+    local upstream_list = {}
+    for _, workspace in ipairs(workspaces) do
+      local upstreams_dict, err = get_all_upstreams({workspace})
+      if err then
+        return nil, err
+      end
+
+      for k, v in pairs(upstreams_dict) do
+        upstream_list[#upstream_list + 1] = {id = v, name = k}
+      end
+    end
+
+    return upstream_list
   end
 end
 
@@ -585,13 +620,16 @@ end
 -- Called on any changes to an upstream.
 -- @param operation "create", "update" or "delete"
 -- @param upstream_data table with `id` and `name` fields
-local function on_upstream_event(operation, upstream_data)
+local function on_upstream_event(operation, upstream_data, workspaces)
+  workspaces = workspaces or {}
   local upstream_id = upstream_data.id
   local upstream_name = upstream_data.name
 
   if operation == "create" then
 
-    singletons.cache:invalidate_local("balancer:upstreams")
+    for _, workspace in ipairs(workspaces) do
+      singletons.cache:invalidate_local("balancer:upstreams:" .. workspace.workspace_id)
+    end
 
     local upstream = get_upstream_by_id(upstream_id)
     if not upstream then
@@ -606,7 +644,9 @@ local function on_upstream_event(operation, upstream_data)
 
   elseif operation == "delete" or operation == "update" then
 
-    singletons.cache:invalidate_local("balancer:upstreams")
+    for _, workspace in ipairs(workspaces) do
+      singletons.cache:invalidate_local("balancer:upstreams:" .. workspace.workspace_id)
+    end
     singletons.cache:invalidate_local("balancer:upstreams:" .. upstream_id)
     singletons.cache:invalidate_local("balancer:targets:"   .. upstream_id)
 
@@ -688,21 +728,20 @@ end
 
 
 local function init()
-
-  local upstreams, err = get_all_upstreams()
+  local upstreams, err = get_all_upstreams_as_list()
   if not upstreams then
     log(CRIT, "failed loading initial list of upstreams: " .. err)
     return
   end
 
   local oks, errs = 0, 0
-  for name, id in pairs(upstreams) do
-    local upstream = get_upstream_by_id(id)
+  for _, up in ipairs(upstreams) do
+    local upstream = get_upstream_by_id(up.id)
     local ok, err = create_balancer(upstream)
     if ok ~= nil then
       oks = oks + 1
     else
-      log(CRIT, "failed creating balancer for ", name, ": ", err)
+      log(CRIT, "failed creating balancer for [", up.id, ": ", up.name, "]: ", err)
       errs = errs + 1
     end
   end

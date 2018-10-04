@@ -1,5 +1,4 @@
 local helpers = require "spec.helpers"
-local Factory = require "kong.dao.factory"
 local dao_helpers = require "spec.02-integration.03-dao.helpers"
 
 
@@ -25,9 +24,7 @@ dao_helpers.for_each_dao(function(kong_config)
     local client
 
     setup(function()
-      factory = assert(Factory.new(kong_config))
-      assert(factory:run_migrations())
-      factory:truncate_tables()
+      factory = select(3, helpers.get_db_utils(kong_config.database))
 
       insert_apis {
         {
