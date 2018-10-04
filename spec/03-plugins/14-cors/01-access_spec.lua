@@ -321,6 +321,7 @@ for _, strategy in helpers.each_strategy() do
         })
         assert.res_status(200, res)
         assert.equal("http://www.example.com", res.headers["Access-Control-Allow-Origin"])
+        assert.equal("Origin", res.headers["Vary"])
 
         local domains = {
           ["example.com"]         = true,
@@ -341,6 +342,7 @@ for _, strategy in helpers.each_strategy() do
           assert.res_status(200, res)
           assert.equal(domains[domain] and domain or nil,
                        res.headers["Access-Control-Allow-Origin"])
+          assert.equal("Origin", res.headers["Vary"])
         end
       end)
 
