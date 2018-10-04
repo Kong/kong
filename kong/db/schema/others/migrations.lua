@@ -1,5 +1,5 @@
 local strat_migration = {
-  { up = { type = "string", required = true } },
+  { up = { type = "string", required = true, len_min = 0 } },
   { teardown = { type = "function" } },
 }
 
