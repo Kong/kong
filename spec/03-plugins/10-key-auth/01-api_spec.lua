@@ -4,7 +4,7 @@ local utils = require "kong.tools.utils"
 
 
 for _, strategy in helpers.each_strategy() do
-  describe("Plugin: key-auth (API) [" .. strategy .. "]", function()
+  describe("Plugin: key-auth (API) [#" .. strategy .. "]", function()
     local consumer
     local admin_client
     local bp
@@ -290,9 +290,8 @@ for _, strategy in helpers.each_strategy() do
         })
         assert.response(res).has.status(400)
         local body = assert.response(res).has.jsonbody()
-        assert.equal("'hello\\world' is illegal: bad header name " ..
-                     "'hello\\world', allowed characters are A-Z, a-z, 0-9," ..
-                     " '_', and '-'", body.fields.config.key_names)
+        assert.equal("bad header name 'hello\\world', allowed characters are A-Z, a-z, 0-9, '_', and '-'",
+                     body.fields.config.key_names)
       end)
       it("succeeds with valid key_names", function()
         local key_name = "hello-world"

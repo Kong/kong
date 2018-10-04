@@ -36,6 +36,7 @@ local validators = {
   { between = { type = "array", elements = { type = "integer" }, len_eq = 2 }, },
   { eq = { type = "any" }, },
   { ne = { type = "any" }, },
+  { gt = { type = "number" }, },
   { len_eq = { type = "integer" }, },
   { len_min = { type = "integer" }, },
   { len_max = { type = "integer" }, },
@@ -46,6 +47,7 @@ local validators = {
   { match_any = match_any_list },
   { starts_with = { type = "string" }, },
   { one_of = { type = "array", elements = { type = "string" } }, },
+  { contains = { type = "any" }, },
   { is_regex = { type = "boolean" }, },
   { timestamp = { type = "boolean" }, },
   { uuid = { type = "boolean" }, },
@@ -62,6 +64,7 @@ local field_schema = {
   { on_delete = { type = "string", one_of = { "restrict", "cascade", "null" } }, },
   { default = { type = "self" }, },
   { abstract = { type = "boolean" }, },
+  { legacy = { type = "boolean" }, },
 }
 
 for _, field in ipairs(validators) do
@@ -179,6 +182,10 @@ local attribute_types = {
     ["number"] = true,
     ["integer"] = true,
   },
+  contains = {
+    ["array"] = true,
+    ["set"]   = true,
+  },
   is_regex = {
     ["string"] = true,
   },
@@ -187,6 +194,9 @@ local attribute_types = {
     ["integer"] = true,
   },
   uuid = {
+    ["string"] = true,
+  },
+  legacy = {
     ["string"] = true,
   },
   unique = {

@@ -1,4 +1,4 @@
-local Schema = require "kong.db.schema"
+local Entity = require "kong.db.schema.entity"
 local typedefs = require "kong.db.schema.typedefs"
 local utils = require "kong.tools.utils"
 local apis_definition = require "kong.db.schema.entities.apis"
@@ -14,11 +14,11 @@ describe("plugins", function()
   local db
 
   setup(function()
-    assert(Schema.new(consumers_definition))
-    assert(Schema.new(services_definition))
-    assert(Schema.new(routes_definition))
-    assert(Schema.new(apis_definition))
-    Plugins = assert(Schema.new(plugins_definition))
+    assert(Entity.new(consumers_definition))
+    assert(Entity.new(services_definition))
+    assert(Entity.new(routes_definition))
+    assert(Entity.new(apis_definition))
+    Plugins = assert(Entity.new(plugins_definition))
 
     local my_plugins = {
       "key-auth",
@@ -106,7 +106,7 @@ describe("plugins", function()
     }, errors)
   end)
 
-  it("should have an empty config if none is specified and if the config schema does not have default", function()
+  it("should produce a base config if none is specified and the config field does not have a top-level default", function()
     -- Insert key-auth, whose config has some default values that should be set
     local plugin = {
       name = "key-auth",
@@ -118,7 +118,7 @@ describe("plugins", function()
     assert.same({
       key_names = { "apikey" },
       hide_credentials = false,
-      anonymous = "",
+      anonymous = ngx.null,
       key_in_body = false,
       run_on_preflight = true,
     }, plugin.config)

@@ -76,20 +76,20 @@ for _, strategy in helpers.each_strategy() do
 
         local consumer1 = bp.consumers:insert {custom_id = "provider_123"}
         bp.keyauth_credentials:insert {
-          key         = "apikey123",
-          consumer_id = consumer1.id
+          key      = "apikey123",
+          consumer = { id = consumer1.id },
         }
 
         local consumer2 = bp.consumers:insert {custom_id = "provider_124"}
         bp.keyauth_credentials:insert {
-          key         = "apikey124",
-          consumer_id = consumer2.id
+          key      = "apikey124",
+          consumer = { id = consumer2.id },
         }
 
         local consumer3 = bp.consumers:insert {custom_id = "provider_125"}
         bp.keyauth_credentials:insert {
-          key         = "apikey125",
-          consumer_id = consumer3.id
+          key      = "apikey125",
+          consumer = { id = consumer3.id },
         }
 
         local service1 = bp.services:insert()
@@ -769,8 +769,8 @@ for _, strategy in helpers.each_strategy() do
         bp.key_auth_plugins:insert()
 
         bp.keyauth_credentials:insert {
-          key         = "apikey125",
-          consumer_id = consumer.id,
+          key      = "apikey125",
+          consumer = { id = consumer.id },
         }
 
         -- just consumer, no no route or service

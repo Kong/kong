@@ -244,7 +244,7 @@ function Plugins:load_plugin_schemas(plugin_set)
       end
     end
 
-    ok, err = self.schema:new_subschema(plugin, schema)
+    ok, err = Entity.new_subschema(self.schema, plugin, schema)
     if not ok then
       return nil, "error initializing schema for plugin: " .. err
     end

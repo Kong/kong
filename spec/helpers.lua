@@ -15,6 +15,11 @@ local MOCK_UPSTREAM_HOSTNAME = "localhost"
 local MOCK_UPSTREAM_PORT = 15555
 local MOCK_UPSTREAM_SSL_PORT = 15556
 
+local consumers_schema_def = require "kong.db.schema.entities.consumers"
+local services_schema_def = require "kong.db.schema.entities.services"
+local plugins_schema_def = require "kong.db.schema.entities.plugins"
+local routes_schema_def = require "kong.db.schema.entities.routes"
+local apis_schema_def = require "kong.db.schema.entities.apis"
 local conf_loader = require "kong.conf_loader"
 local DAOFactory = require "kong.dao.factory"
 local Blueprints = require "spec.fixtures.blueprints"
@@ -24,6 +29,7 @@ local pl_path = require "pl.path"
 local pl_file = require "pl.file"
 local pl_dir = require "pl.dir"
 local pl_Set = require "pl.Set"
+local Schema = require "kong.db.schema"
 local cjson = require "cjson.safe"
 local utils = require "kong.tools.utils"
 local http = require "resty.http"
@@ -1185,6 +1191,34 @@ local function get_running_conf(prefix)
   return conf_loader(default_conf.kong_env)
 end
 
+
+-- Prepopulate Schema's cache
+Schema.new(consumers_schema_def)
+Schema.new(services_schema_def)
+Schema.new(routes_schema_def)
+Schema.new(apis_schema_def)
+
+local plugins_schema = assert(Schema.new(plugins_schema_def))
+
+local function validate_plugin_config_schema(config, schema_def)
+  assert(plugins_schema:new_subschema(schema_def.name, schema_def))
+  local entity = {
+    id = utils.uuid(),
+    name = schema_def.name,
+    config = config
+  }
+  local entity_to_insert, err = plugins_schema:process_auto_fields(entity, "insert")
+  if err then
+    return nil, err
+  end
+  local _, err = plugins_schema:validate_insert(entity_to_insert)
+  if err then return
+    nil, err
+  end
+  return entity_to_insert
+end
+
+
 ----------
 -- Exposed
 ----------
@@ -1238,6 +1272,7 @@ return {
   clean_prefix = clean_prefix,
   wait_for_invalidation = wait_for_invalidation,
   each_strategy = each_strategy,
+  validate_plugin_config_schema = validate_plugin_config_schema,
 
   -- miscellaneous
   intercept = intercept,

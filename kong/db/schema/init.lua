@@ -59,6 +59,7 @@ local validation_errors = {
   -- validations
   EQ                        = "value must be %s",
   NE                        = "value must not be %s",
+  GT                        = "value must be greater than %s",
   BETWEEN                   = "value should be between %d and %d",
   LEN_EQ                    = "length must be %d",
   LEN_MIN                   = "length must be at least %d",
@@ -69,6 +70,7 @@ local validation_errors = {
   MATCH_NONE                = "invalid value: %s",
   MATCH_ANY                 = "invalid value: %s",
   STARTS_WITH               = "should start with: %s",
+  CONTAINS                  = "expected to contain: %s",
   ONE_OF                    = "expected one of: %s",
   IS_REGEX                  = "not a valid regex: %s",
   TIMESTAMP                 = "expected a valid timestamp",
@@ -177,6 +179,13 @@ Schema.validators = {
     return nil, validation_errors.NE:format(str)
   end,
 
+  gt = function(value, limit)
+    if value > limit then
+      return true
+    end
+    return nil, validation_errors.GT:format(tostring(limit))
+  end,
+
   len_eq = make_length_validator("LEN_EQ", function(len, n)
     return len == n
   end),
@@ -268,6 +277,16 @@ Schema.validators = {
     return re_find(value, uuid_regex, "ioj") and true or nil
   end,
 
+  contains = function(array, wanted)
+    for _, item in ipairs(array) do
+      if item == wanted then
+        return true
+      end
+    end
+
+    return nil, validation_errors.CONTAINS:format(wanted)
+  end,
+
   custom_validator = function(value, fn)
     return fn(value)
   end
@@ -281,6 +300,7 @@ Schema.validators_order = {
   "one_of",
 
   -- type-dependent
+  "gt",
   "timestamp",
   "uuid",
   "is_regex",
@@ -298,6 +318,9 @@ Schema.validators_order = {
   "match",
   "match_all",
   "match_any",
+
+  -- arrays
+  "contains",
 
   -- other
   "custom_validator",
@@ -707,9 +730,11 @@ function Schema:validate_field(field, value)
     if field[k] then
       local ok, err = self.validators[k](value, field[k], field)
       if not ok then
+        if not err then
+          err = (validation_errors[k:upper()]
+                 or validation_errors.VALIDATION):format(value)
+        end
         return nil, err
-                    or validation_errors[k:upper()]:format(value)
-                    or validation_errors.VALIDATION:format(value)
       end
     end
   end
@@ -1147,41 +1172,33 @@ local function make_set(set)
 end
 
 
-local function adjust_field_for_update(field, value, nulls)
-  if field.type == "record" and
-     not field.abstract and
-     ((value == null and field.nullable == false)
-     or (value == nil and field.nullable == false)
-     or (value ~= null and value ~= nil)) then
-    local field_schema = get_field_schema(field)
-    return field_schema:process_auto_fields(value or {}, "update", nulls)
-  end
-  if value == nil then
-    return nil
-  end
-  if field.type == "array" then
-    return make_array(value)
-  end
-  if field.type == "set" then
-    return make_set(value)
-  end
-
-  return value
-end
-
-
 local function adjust_field_for_context(field, value, context, nulls)
-  if value == null and field.nullable == false then
+  if context ~= "update" and value == null and field.nullable == false then
     return handle_missing_field(field, value)
   end
-  if field.type == "record" and not field.abstract
-     and value ~= null and
-     (value ~= nil or field.nullable == false) then
-    local field_schema = get_field_schema(field)
-    return field_schema:process_auto_fields(value or {}, context, nulls)
+  if field.type == "record" and not field.abstract then
+    local should_recurse
+    if context == "update" then
+      -- avoid filling defaults in partial updates of records
+      should_recurse = ((value == null and field.nullable == false)
+                        or (value == nil and field.nullable == false)
+                        or (value ~= null and value ~= nil))
+    else
+      should_recurse = (value ~= null and
+                        (value ~= nil or field.nullable == false))
+    end
+    if should_recurse then
+      local field_schema = get_field_schema(field)
+      value = value or handle_missing_field(field, value)
+      return field_schema:process_auto_fields(value, context, nulls)
+    end
   end
   if value == nil then
-    return handle_missing_field(field, value)
+    if context == "update" then
+      return nil
+    else
+      return handle_missing_field(field, value)
+    end
   end
   if field.type == "array" then
     return make_array(value)
@@ -1203,7 +1220,7 @@ end
 -- for value creation and update.
 -- @param input The table containing data to be processed.
 -- @param context a string describing the CRUD context:
--- valid values are: "insert", "update"
+-- valid values are: "insert", "update", "upsert"
 -- @param nulls boolean: return nulls as explicit ngx.null values
 -- @return A new table, with the auto fields containing
 -- appropriate updated values.
@@ -1227,11 +1244,21 @@ function Schema:process_auto_fields(input, context, nulls)
   --]]
 
   for key, field in self:each_field(input) do
+
+    if field.legacy and field.uuid and output[key] == "" then
+      output[key] = null
+    end
+
     if field.auto then
-      if field.uuid and context == "insert" and output[key] == nil then
-        output[key] = utils.uuid()
-      elseif field.uuid and context == "upsert" and output[key] == nil then
-        output[key] = utils.uuid()
+      if field.uuid then
+        if (context == "insert" or context == "upsert") and output[key] == nil then
+          output[key] = utils.uuid()
+        end
+
+      elseif field.type == "string" then
+        if (context == "insert" or context == "upsert") and output[key] == nil then
+          output[key] = utils.random_string()
+        end
 
       elseif (key == "created_at" and (context == "insert" or
                                        context == "upsert")) or
@@ -1244,19 +1271,10 @@ function Schema:process_auto_fields(input, context, nulls)
         elseif field.type == "integer" then
           output[key] = now_s
         end
-
-      elseif field.type == "string" and output[key] == nil
-                                    and (context == "insert" or
-                                         context == "upsert") then
-        output[key] = utils.random_string()
       end
     end
 
-    if context == "update" then
-      output[key] = adjust_field_for_update(field, output[key], nulls)
-    else
-      output[key] = adjust_field_for_context(field, output[key], context, nulls)
-    end
+    output[key] = adjust_field_for_context(field, output[key], context, nulls)
 
     if output[key] ~= nil then
       if self.cache_key_set and self.cache_key_set[key] then

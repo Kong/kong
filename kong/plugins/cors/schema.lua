@@ -1,26 +1,40 @@
-local re_match = ngx.re.match
+local typedefs = require "kong.db.schema.typedefs"
+local is_regex = require("kong.db.schema").validators.is_regex
 
-local check_regex = function(value)
-  if value and (#value > 1 or value[1] ~= "*") then
-    for _, origin in ipairs(value) do
-      local _, err = re_match("just a string to test", origin)
-      if err then
-        return false, "origin '" .. origin .. "' is not a valid regex"
-      end
-    end
+
+local function validate_asterisk_or_regex(value)
+  if value == "*" or is_regex(value) then
+    return true
   end
-  return true
+  return nil, string.format("'%s' is not a valid regex", tostring(value))
 end
 
+
 return {
-  no_consumer = true,
+  name = "cors",
   fields = {
-    origins = { type = "array", func = check_regex },
-    headers = { type = "array" },
-    exposed_headers = { type = "array" },
-    methods = { type = "array", enum = { "HEAD", "GET", "POST", "PUT", "PATCH", "DELETE" } },
-    max_age = { type = "number" },
-    credentials = { type = "boolean", default = false },
-    preflight_continue = { type = "boolean", default = false }
-  }
+    { consumer = typedefs.no_consumer },
+    { config = {
+        type = "record",
+        fields = {
+          { origins = {
+              type = "array",
+              elements = {
+                type = "string",
+                custom_validator = validate_asterisk_or_regex,
+          }, }, },
+          { headers = { type = "array", elements = { type = "string" }, }, },
+          { exposed_headers = { type = "array", elements = { type = "string" }, }, },
+          { methods = {
+              type = "array",
+              elements = {
+                type = "string",
+                one_of = { "HEAD", "GET", "POST", "PUT", "PATCH", "DELETE" },
+          }, }, },
+          { max_age = { type = "number" }, },
+          { credentials = { type = "boolean", default = false }, },
+          { preflight_continue = { type = "boolean", default = false }, },
+    }, }, },
+  },
 }
+
