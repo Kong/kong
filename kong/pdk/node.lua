@@ -21,7 +21,7 @@ local function new(self)
   -- @function kong.node.get_id
   -- @treturn string The v4 UUID used by this node as its id
   -- @usage
-  -- local id, err = kong.node.get_id()
+  -- local id = kong.node.get_id()
   function _NODE.get_id()
     if node_id then
       return node_id
