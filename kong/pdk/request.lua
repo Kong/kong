@@ -411,7 +411,7 @@ local function new(self)
   -- @function kong.request.get_header
   -- @phases rewrite, access, header_filter, body_filter, log
   -- @tparam string name the name of the header to be returned
-  -- @treturn string the value of the header
+  -- @treturn string|nil the value of the header or nil if not present
   -- @usage
   -- -- Given a request with the following headers:
   --
