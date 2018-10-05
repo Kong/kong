@@ -59,7 +59,7 @@ X-Source: service
     location /t {
         content_by_lua_block {
           local PDK = require "kong.pdk"
-          local pdk = PDK.new()
+          local pdk = PDK.new({ enabled_headers = {} })
           pdk.response.exit(200, "ok")
         }
 

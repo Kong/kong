@@ -42,7 +42,7 @@ our $HttpConfig = <<_EOC_;
             local mod
             do
                 local PDK = require "kong.pdk"
-                local pdk = PDK.new()
+                local pdk = PDK.new({ enabled_headers = { ["Server"] = true } })
                 mod = pdk
                 for part in phase_check_module:gmatch("[^.]+") do
                     mod = mod[part]

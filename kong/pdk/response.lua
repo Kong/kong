@@ -47,7 +47,7 @@ local rewrite_access_header = phase_checker.new(PHASES.rewrite,
                                                 PHASES.header_filter)
 
 
-local function new(pdk, major_version)
+local function new(self, major_version)
   local _RESPONSE = {}
 
   local MIN_HEADERS          = 1
@@ -446,7 +446,10 @@ local function new(pdk, major_version)
     end
 
     ngx.status = status
-    ngx.header[SERVER_HEADER_NAME] = SERVER_HEADER_VALUE
+
+    if self.ctx.core.phase == phase_checker.phases.admin_api then
+      ngx.header[SERVER_HEADER_NAME] = SERVER_HEADER_VALUE
+    end
 
     if headers ~= nil then
       for name, value in pairs(headers) do
