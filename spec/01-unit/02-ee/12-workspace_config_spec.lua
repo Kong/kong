@@ -23,7 +23,7 @@ describe("workspace config", function()
         }
       }
 
-      local valid, err = validate_entity(values, schema)
+      local valid, _ = validate_entity(values, schema)
       assert.True(valid)
       assert.True(valid)
     end)
