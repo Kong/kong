@@ -447,6 +447,9 @@ local function generate_foreign_key_methods(schema)
           local err_t = self.errors:schema_violation(errors)
           return nil, tostring(err_t), err_t
         end
+        if self.schema.cache_key and #self.schema.cache_key > 1 then
+          entity_to_upsert.cache_key = self:cache_key(entity_to_upsert)
+        end
         entity_to_upsert[name] = nil
 
         if options ~= nil then
@@ -455,10 +458,6 @@ local function generate_foreign_key_methods(schema)
             local err_t = self.errors:invalid_options(errors)
             return nil, tostring(err_t), err_t
           end
-        end
-
-        if self.schema.cache_key and #self.schema.cache_key > 1 then
-          entity_to_upsert.cache_key = self:cache_key(entity)
         end
 
         local row, err_t = self.strategy:upsert_by_field(name, unique_value,
@@ -701,7 +700,7 @@ function DAO:insert(entity, options)
   end
 
   if self.schema.cache_key and #self.schema.cache_key > 1 then
-    entity_to_insert.cache_key = self:cache_key(entity)
+    entity_to_insert.cache_key = self:cache_key(entity_to_insert)
   end
 
   local row, err_t = self.strategy:insert(entity_to_insert, options)
@@ -797,7 +796,7 @@ function DAO:upsert(primary_key, entity, options)
   end
 
   if self.schema.cache_key and #self.schema.cache_key > 1 then
-    entity_to_upsert.cache_key = self:cache_key(entity)
+    entity_to_upsert.cache_key = self:cache_key(entity_to_upsert)
   end
 
   local row, err_t = self.strategy:upsert(primary_key, entity_to_upsert, options)
