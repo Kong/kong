@@ -298,11 +298,6 @@ function Kong.init()
 
   plugins_map_semaphore:post(1) -- one resource, treat this as a mutex
 
-  local _, err = ee.create_default_portal_config()
-  if err then
-    error(tostring(err))
-  end
-
   assert(core.build_router(db, "init"))
   assert(core.build_api_router(dao, "init"))
 end

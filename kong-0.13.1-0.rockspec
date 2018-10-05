@@ -72,7 +72,6 @@ build = {
     ["kong.enterprise_edition.smtp_client"] = "kong/enterprise_edition/smtp_client.lua",
     ["kong.enterprise_edition.jwt"] = "kong/enterprise_edition/jwt.lua",
     ["kong.enterprise_edition.dao.schemas.portal_reset_secrets"] = "kong/enterprise_edition/dao/schemas/portal_reset_secrets.lua",
-    ["kong.enterprise_edition.dao.schemas.portal_configs"] = "kong/enterprise_edition/dao/schemas/portal_configs.lua",
     ["kong.enterprise_edition.dao.schemas.token_statuses"] = "kong/enterprise_edition/dao/schemas/token_statuses.lua",
     ["kong.enterprise_edition.license_helpers"] = "kong/enterprise_edition/license_helpers.lua",
 
