@@ -23,6 +23,7 @@ local DEFAULT_PATHS = {
   "/etc/kong.conf",
 }
 
+local secret_path = "/etc/kong/secrets"
 
 local HEADERS = constants.HEADERS
 local HEADER_KEY_TO_NAME = {
@@ -428,6 +429,35 @@ local function check_and_infer(conf)
   return #errors == 0, errors[1], errors
 end
 
+local function get_file_value(path, file_name)
+  local fully_qualified_path = pl_path.join(path, file_name)
+
+  if pl_path.exists(fully_qualified_path) then
+    local f = io.open(fully_qualified_path, "r")
+    if f~=nil then
+      local line
+      line = f:read()
+      f:close(f)
+      return line
+    else
+      return nil
+    end
+  else
+    return nil
+  end
+end
+
+
+local function log_print_override(override_type, key_name, override_name, override_value)
+  local to_print = override_value
+
+  if CONF_SENSITIVE[key_name] then
+    to_print = CONF_SENSITIVE_PLACEHOLDER
+  end
+
+  log.debug('%s %s found with "%s"', override_name, override_type, to_print)
+end
+
 
 local function overrides(k, default_v, file_conf, arg_conf)
   local value -- definitive value for this property
@@ -446,14 +476,16 @@ local function overrides(k, default_v, file_conf, arg_conf)
   local env_name = "KONG_" .. string.upper(k)
   local env = os.getenv(env_name)
   if env ~= nil then
-    local to_print = env
-
-    if CONF_SENSITIVE[k] then
-      to_print = CONF_SENSITIVE_PLACEHOLDER
-    end
-
-    log.debug('%s ENV found with "%s"', env_name, to_print)
+    log_print_override("ENV", k, env_name, env)
     value = env
+  end
+
+  -- secrets in file mounts have higher priority
+
+  local file_secret = get_file_value(secret_path, k)
+  if file_secret ~= nil then
+     log_print_override("FILE SECRET", k, k, file_secret)
+     value = file_secret
   end
 
   -- arg_conf have highest priority
@@ -903,6 +935,14 @@ return setmetatable({
 
   add_default_path = function(path)
     DEFAULT_PATHS[#DEFAULT_PATHS+1] = path
+  end,
+
+  get_secrets_path = function()
+    return secret_path
+  end,
+
+  set_secrets_path = function(path)
+    secret_path = path
   end,
 
   remove_sensitive = function(conf)

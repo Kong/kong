@@ -794,3 +794,67 @@ describe("Configuration loader", function()
     end)
   end)
 end)
+
+describe("Configuration loader #secretsoverride", function ()
+
+  it("Has default secret path", function()
+
+    local secret_path = conf_loader.get_secrets_path()
+    assert.equal("/etc/kong/secrets", secret_path)
+
+  end)
+  it("Loads password from file secret override", function()
+
+    local old_path = conf_loader.get_secrets_path()
+    conf_loader.set_secrets_path("spec/fixtures/secrets_test/basic")
+
+    local loaded_conf = assert(conf_loader())
+    local configured_value = loaded_conf.pg_password
+
+    conf_loader.set_secrets_path(old_path)
+
+    assert.equal("123456789", configured_value)
+
+  end)
+  it("Loads blank line from file secret override", function()
+
+    local old_path = conf_loader.get_secrets_path()
+    conf_loader.set_secrets_path("spec/fixtures/secrets_test/blank")
+
+    local loaded_conf = assert(conf_loader())
+    local configured_value = loaded_conf.pg_password
+
+    conf_loader.set_secrets_path(old_path)
+
+    assert.is_nil(configured_value)
+
+  end)
+  it("Loads multiline from file secret override", function()
+
+    local old_path = conf_loader.get_secrets_path()
+    conf_loader.set_secrets_path("spec/fixtures/secrets_test/multiline")
+
+    local loaded_conf = assert(conf_loader())
+    local configured_value = loaded_conf.pg_password
+
+    conf_loader.set_secrets_path(old_path)
+
+    assert.equal("one", configured_value)
+
+  end)
+  it("Loads multiple from multiple files override", function()
+
+    local old_path = conf_loader.get_secrets_path()
+    conf_loader.set_secrets_path("spec/fixtures/secrets_test/multi")
+
+    local loaded_conf = assert(conf_loader())
+    local configured_host_value = loaded_conf.pg_host
+    local configured_port_value = loaded_conf.pg_port
+
+    conf_loader.set_secrets_path(old_path)
+
+    assert.equal("some.host.name", configured_host_value)
+    assert.equal(12345, configured_port_value)
+
+  end)
+end)
