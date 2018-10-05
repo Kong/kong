@@ -2,6 +2,12 @@ local cjson = require "cjson"
 local helpers = require "spec.helpers"
 local utils = require "kong.tools.utils"
 
+
+local kong = {
+  table = require("kong.pdk.table").new()
+}
+
+
 local function provision_code(host, extra_headers, client_id)
   local request_client = helpers.proxy_ssl_client()
   local res = assert(request_client:send {
@@ -15,7 +21,7 @@ local function provision_code(host, extra_headers, client_id)
       state = "hello",
       authenticated_userid = "userid123"
     },
-    headers = utils.table_merge({
+    headers = kong.table.merge({
       ["Host"] = host or "oauth2.com",
       ["Content-Type"] = "application/json"
     }, extra_headers)
@@ -43,7 +49,7 @@ local function provision_token(host, extra_headers, client_id, client_secret)
              client_id = client_id or "clientid123",
              client_secret = client_secret or "secret123",
              grant_type = "authorization_code" },
-    headers = utils.table_merge({
+    headers = kong.table.merge({
       ["Host"] = host or "oauth2.com",
       ["Content-Type"] = "application/json"
     }, extra_headers)

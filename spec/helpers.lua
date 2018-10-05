@@ -37,7 +37,11 @@ local nginx_signals = require "kong.cmd.utils.nginx_signals"
 local log = require "kong.cmd.utils.log"
 local DB = require "kong.db"
 
-local table_merge = utils.table_merge
+
+local kong = {
+  table = require("kong.pdk.table").new()
+}
+
 
 log.set_lvl(log.levels.quiet) -- disable stdout logs in tests
 
@@ -385,9 +389,9 @@ end
 -- Implements http_client:get("path", [options]), as well as post, put, etc.
 -- These methods are equivalent to calling http_client:send, but are shorter
 -- They also come with a built-in assert
-for method_name in ("get post put patch delete"):gmatch("%w+") do
+for _, method_name in ipairs({"get", "post", "put", "patch", "delete"}) do
   resty_http_proxy_mt[method_name] = function(self, path, options)
-    local full_options = table_merge({ method = method_name:upper(), path = path}, options or {})
+    local full_options = kong.table.merge({ method = method_name:upper(), path = path}, options)
     return assert(self:send(full_options))
   end
 end

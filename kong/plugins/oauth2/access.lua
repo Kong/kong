@@ -110,7 +110,7 @@ local function retrieve_parameters()
     ngx.req.read_body()
     local body_args = public_utils.get_body_args()
 
-    return utils.table_merge(uri_args, body_args)
+    return kong.table.merge(uri_args, body_args)
   end
 
   return uri_args
@@ -224,7 +224,7 @@ local function authorize(conf)
 
   -- Appending kong generated params to redirect_uri query string
   if parsed_redirect_uri then
-    local encoded_params = utils.encode_args(utils.table_merge(ngx.decode_args(
+    local encoded_params = utils.encode_args(kong.table.merge(ngx.decode_args(
       (is_implicit_grant and
         (parsed_redirect_uri.fragment and parsed_redirect_uri.fragment or "") or
         (parsed_redirect_uri.query and parsed_redirect_uri.query or "")
