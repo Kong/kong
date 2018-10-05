@@ -40,6 +40,7 @@ qq{
                 header_filter = true,
                 body_filter   = true,
                 log           = true,
+                admin_api     = true,
             }, {
                 method        = "get_header",
                 args          = { "X-Foo" },
@@ -50,6 +51,7 @@ qq{
                 header_filter = true,
                 body_filter   = true,
                 log           = true,
+                admin_api     = true,
             }, {
                 method        = "get_headers",
                 args          = { },
@@ -60,6 +62,7 @@ qq{
                 header_filter = true,
                 body_filter   = true,
                 log           = true,
+                admin_api     = true,
             }, {
                 method        = "get_headers",
                 args          = { 100 },
@@ -70,6 +73,7 @@ qq{
                 header_filter = true,
                 body_filter   = true,
                 log           = true,
+                admin_api     = true,
             }, {
                 method        = "set_status",
                 args          = { 200 },
@@ -80,6 +84,7 @@ qq{
                 header_filter = true,
                 body_filter   = false,
                 log           = false,
+                admin_api     = true,
             }, {
                 method        = "set_header",
                 args          = { "X-Foo", "bar" },
@@ -90,6 +95,7 @@ qq{
                 header_filter = true,
                 body_filter   = false,
                 log           = false,
+                admin_api     = true,
             }, {
                 method        = "add_header",
                 args          = { "X-Foo", "bar" },
@@ -100,6 +106,7 @@ qq{
                 header_filter = true,
                 body_filter   = false,
                 log           = false,
+                admin_api     = true,
             }, {
                 method        = "clear_header",
                 args          = { "X-Foo" },
@@ -110,6 +117,7 @@ qq{
                 header_filter = true,
                 body_filter   = false,
                 log           = false,
+                admin_api     = true,
             }, {
                 method        = "set_headers",
                 args          = { { ["X-Foo"] = "bar" } },
@@ -120,6 +128,7 @@ qq{
                 header_filter = true,
                 body_filter   = false,
                 log           = false,
+                admin_api     = true,
             }, {
                 method        = "exit",
                 args          = { 200, "Hello, world" },
@@ -130,6 +139,7 @@ qq{
                 header_filter = false,
                 body_filter   = false,
                 log           = false,
+                admin_api     = true,
             }, {
                 method        = "get_source",
                 args          = { },
@@ -140,6 +150,7 @@ qq{
                 header_filter = true,
                 body_filter   = true,
                 log           = true,
+                admin_api     = true,
             }
         }
 
@@ -212,6 +223,7 @@ qq{
                 header_filter = false,
                 body_filter   = false,
                 log           = false,
+                admin_api     = true,
             },
         }
 
@@ -329,6 +341,7 @@ qq{
                 header_filter = false,
                 body_filter   = false,
                 log           = false,
+                admin_api     = true,
             },
         }
     }
@@ -379,6 +392,7 @@ qq{
                 header_filter = false,
                 body_filter   = false,
                 log           = false,
+                admin_api     = true,
             },
         }
     }
@@ -429,6 +443,7 @@ qq{
                 header_filter = false,
                 body_filter   = false,
                 log           = false,
+                admin_api     = true,
             },
         }
     }
@@ -441,6 +456,108 @@ qq{
 
         access_by_lua_block {
             phase_check_functions(phases.access, true)
+        }
+    }
+--- request
+GET /t
+--- no_error_log
+[error]
+
+
+
+=== TEST 7: verify phase checking for kong.response.exit, admin_api, with plain string
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
+    server {
+        listen unix:$ENV{TEST_NGINX_NXSOCK}/nginx.sock;
+
+        location / {
+            return 200;
+        }
+    }
+
+    init_worker_by_lua_block {
+
+        phases = require("kong.pdk.private.phases").phases
+
+        phase_check_module = "response"
+        phase_check_data = {
+            {
+                method        = "exit",
+                args          = { 200, "Hello" },
+                init_worker   = false,
+                certificate   = "pending",
+                rewrite       = true,
+                access        = true,
+                header_filter = false,
+                body_filter   = false,
+                log           = false,
+                admin_api     = true,
+            },
+        }
+    }
+}
+--- config
+    location /t {
+        proxy_pass http://unix:$TEST_NGINX_NXSOCK/nginx.sock;
+        set $upstream_uri '/t';
+        set $upstream_scheme 'http';
+
+        access_by_lua_block {
+            phase_check_functions(phases.admin_api, true)
+        }
+    }
+--- request
+GET /t
+--- no_error_log
+[error]
+
+
+
+=== TEST 8: verify phase checking for kong.response.exit, admin_api, with tables
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
+    server {
+        listen unix:$ENV{TEST_NGINX_NXSOCK}/nginx.sock;
+
+        location / {
+            return 200;
+        }
+    }
+
+    init_worker_by_lua_block {
+
+        phases = require("kong.pdk.private.phases").phases
+
+        phase_check_module = "response"
+        phase_check_data = {
+            {
+                method        = "exit",
+                args          = { 200, { message = "Hello" }, { ["X-Foo"] = "bar" } },
+                init_worker   = false,
+                certificate   = "pending",
+                rewrite       = true,
+                access        = true,
+                header_filter = false,
+                body_filter   = false,
+                log           = false,
+                admin_api     = true,
+            },
+        }
+    }
+}
+--- config
+    location /t {
+        proxy_pass http://unix:$TEST_NGINX_NXSOCK/nginx.sock;
+        set $upstream_uri '/t';
+        set $upstream_scheme 'http';
+
+        access_by_lua_block {
+            phase_check_functions(phases.admin_api, true)
         }
     }
 --- request

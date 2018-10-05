@@ -41,6 +41,7 @@ qq{
                 header_filter = true,
                 body_filter   = true,
                 log           = true,
+                admin_api     = true,
             },
         }
 
@@ -64,6 +65,7 @@ qq{
 
         access_by_lua_block {
             phase_check_functions(phases.access)
+            phase_check_functions(phases.admin_api)
         }
 
         header_filter_by_lua_block {

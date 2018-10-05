@@ -57,7 +57,7 @@ local function new(self)
   -- normalized to lower-case form.
   --
   -- @function kong.request.get_scheme
-  -- @phases rewrite, access, header_filter, body_filter, log
+  -- @phases rewrite, access, header_filter, body_filter, log, admin_api
   -- @treturn string a string like `"http"` or `"https"`
   -- @usage
   -- -- Given a request to https://example.com:1234/v1/movies
@@ -75,7 +75,7 @@ local function new(self)
   -- "Host" header. The returned value is normalized to lower-case form.
   --
   -- @function kong.request.get_host
-  -- @phases rewrite, access, header_filter, body_filter, log
+  -- @phases rewrite, access, header_filter, body_filter, log, admin_api
   -- @treturn string the host
   -- @usage
   -- -- Given a request to https://example.com:1234/v1/movies
@@ -93,7 +93,7 @@ local function new(self)
   -- as a Lua number.
   --
   -- @function kong.request.get_port
-  -- @phases certificate, rewrite, access, header_filter, body_filter, log
+  -- @phases certificate, rewrite, access, header_filter, body_filter, log, admin_api
   -- @treturn number the port
   -- @usage
   -- -- Given a request to https://example.com:1234/v1/movies
@@ -122,7 +122,7 @@ local function new(self)
   -- offered yet since it is not supported by ngx\_http\_realip\_module.
   --
   -- @function kong.request.get_forwarded_scheme
-  -- @phases rewrite, access, header_filter, body_filter, log
+  -- @phases rewrite, access, header_filter, body_filter, log, admin_api
   -- @treturn string the forwarded scheme
   -- @usage
   -- kong.request.get_forwarded_scheme() -- "https"
@@ -157,7 +157,7 @@ local function new(self)
   -- (RFC 7239) since it is not supported by ngx_http_realip_module.
   --
   -- @function kong.request.get_forwarded_host
-  -- @phases rewrite, access, header_filter, body_filter, log
+  -- @phases rewrite, access, header_filter, body_filter, log, admin_api
   -- @treturn string the forwarded host
   -- @usage
   -- kong.request.get_forwarded_host() -- "example.com"
@@ -197,7 +197,7 @@ local function new(self)
   -- (RFC 7239) since it is not supported by ngx_http_realip_module.
   --
   -- @function kong.request.get_forwareded_port
-  -- @phases rewrite, access, header_filter, body_filter, log
+  -- @phases rewrite, access, header_filter, body_filter, log, admin_api
   -- @treturn number the forwared port
   -- @usage
   -- kong.request.get_forwarded_port() -- 1234
@@ -238,7 +238,7 @@ local function new(self)
   -- unrecognized values.
   --
   -- @function kong.request.get_http_version
-  -- @phases rewrite, access, header_filter, body_filter, log
+  -- @phases rewrite, access, header_filter, body_filter, log, admin_api
   -- @treturn string|nil the http version
   -- @usage
   -- kong.request.get_http_version() -- "1.1"
@@ -254,7 +254,7 @@ local function new(self)
   -- upper-case.
   --
   -- @function kong.request.get_method
-  -- @phases rewrite, access, header_filter, body_filter, log
+  -- @phases rewrite, access, header_filter, body_filter, log, admin_api
   -- @treturn string the request method
   -- @usage
   -- kong.request.get_method() -- "GET"
@@ -270,7 +270,7 @@ local function new(self)
   -- any way and does not include the querystring.
   --
   -- @function kong.request.get_path
-  -- @phases rewrite, access, header_filter, body_filter, log
+  -- @phases rewrite, access, header_filter, body_filter, log, admin_api
   -- @treturn string the path
   -- @usage
   -- -- Given a request to https://example.com:1234/v1/movies?movie=foo
@@ -291,7 +291,7 @@ local function new(self)
   -- include the leading `?` character.
   --
   -- @function kong.request.get_raw_query
-  -- @phases rewrite, access, header_filter, body_filter, log
+  -- @phases rewrite, access, header_filter, body_filter, log, admin_api
   -- @return string the query component of the request's URL
   -- @usage
   -- -- Given a request to https://example.com/foo?msg=hello%20world&bla=&bar
@@ -316,7 +316,7 @@ local function new(self)
   -- querystring, this function will return the value of the first occurrence.
   --
   -- @function kong.request.get_query_arg
-  -- @phases rewrite, access, header_filter, body_filter, log
+  -- @phases rewrite, access, header_filter, body_filter, log, admin_api
   -- @treturn string|boolean|nil the value of the argument
   -- @usage
   -- -- Given a request GET /test?foo=hello%20world&bar=baz&zzz&blo=&bar=bla&bar
@@ -357,7 +357,7 @@ local function new(self)
   -- greater than **1** and not greater than **1000**.
   --
   -- @function kong.request.get_query
-  -- @phases rewrite, access, header_filter, body_filter, log
+  -- @phases rewrite, access, header_filter, body_filter, log, admin_api
   -- @tparam[opt] number max_args set a limit on the maximum number of parsed
   -- arguments
   -- @treturn table A table representation of the query string
@@ -409,7 +409,7 @@ local function new(self)
   -- `X-Custom-Header` can also be retrieved as `x_custom_header`.
   --
   -- @function kong.request.get_header
-  -- @phases rewrite, access, header_filter, body_filter, log
+  -- @phases rewrite, access, header_filter, body_filter, log, admin_api
   -- @tparam string name the name of the header to be returned
   -- @treturn string|nil the value of the header or nil if not present
   -- @usage
@@ -452,7 +452,7 @@ local function new(self)
   -- be greater than **1** and not greater than **1000**.
   --
   -- @function kong.request.get_headers
-  -- @phases rewrite, access, header_filter, body_filter, log
+  -- @phases rewrite, access, header_filter, body_filter, log, admin_api
   -- @tparam[opt] number max_headers set a limit on the maximum number of
   -- parsed headers
   -- @treturn table the request headers in table form
@@ -490,7 +490,7 @@ local function new(self)
   end
 
 
-  local before_content = phase_checker.new(PHASES.rewrite, PHASES.access)
+  local before_content = phase_checker.new(PHASES.rewrite, PHASES.access, PHASES.admin_api)
 
 
   ---
@@ -503,7 +503,7 @@ local function new(self)
   -- message explaining this limitation.
   --
   -- @function kong.request.get_raw_body
-  -- @phases rewrite, access
+  -- @phases rewrite, access, admin_api
   -- @treturn string the plain request body
   -- @usage
   -- -- Given a body with payload "Hello, Earth!":
@@ -562,7 +562,7 @@ local function new(self)
   -- what MIME type the body was parsed as.
   --
   -- @function kong.request.get_body
-  -- @phases rewrite, access
+  -- @phases rewrite, access, admin_api
   -- @tparam[opt] string mimetype the MIME type
   -- @tparam[opt] number max_args set a limit on the maximum number of parsed
   -- arguments

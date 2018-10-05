@@ -40,6 +40,7 @@ qq{
                 header_filter = "forced false",
                 body_filter   = "forced false",
                 log           = "forced false",
+                admin_api     = "forced false",
             }, {
                 method        = "set_method",
                 args          = { "GET" },
@@ -50,6 +51,7 @@ qq{
                 header_filter = "forced false",
                 body_filter   = "forced false",
                 log           = "forced false",
+                admin_api     = "forced false",
             }, {
                 method        = "set_path",
                 args          = { "/" },
@@ -60,6 +62,7 @@ qq{
                 header_filter = "forced false",
                 body_filter   = "forced false",
                 log           = "forced false",
+                admin_api     = "forced false",
             }, {
                 method        = "set_raw_query",
                 args          = { "foo=bar&baz=bla" },
@@ -70,6 +73,7 @@ qq{
                 header_filter = "forced false",
                 body_filter   = "forced false",
                 log           = "forced false",
+                admin_api     = "forced false",
             }, {
                 method        = "set_query",
                 args          = { { foo = "bar", baz = "bla" } },
@@ -80,6 +84,7 @@ qq{
                 header_filter = "forced false",
                 body_filter   = "forced false",
                 log           = "forced false",
+                admin_api     = "forced false",
             }, {
                 method        = "set_header",
                 args          = { "X-Foo", "bar" },
@@ -90,6 +95,7 @@ qq{
                 header_filter = "forced false",
                 body_filter   = "forced false",
                 log           = "forced false",
+                admin_api     = "forced false",
             }, {
                 method        = "add_header",
                 args          = { "X-Foo", "bar" },
@@ -100,6 +106,7 @@ qq{
                 header_filter = "forced false",
                 body_filter   = "forced false",
                 log           = "forced false",
+                admin_api     = "forced false",
             }, {
                 method        = "clear_header",
                 args          = { "X-Foo" },
@@ -110,6 +117,7 @@ qq{
                 header_filter = "forced false",
                 body_filter   = "forced false",
                 log           = "forced false",
+                admin_api     = "forced false",
             }, {
                 method        = "set_headers",
                 args          = { { ["X-Foo"] = "bar" } },
@@ -120,6 +128,7 @@ qq{
                 header_filter = "forced false",
                 body_filter   = "forced false",
                 log           = "forced false",
+                admin_api     = "forced false",
             }, {
                 method        = "set_raw_body",
                 args          = { "foo" },
@@ -130,6 +139,7 @@ qq{
                 header_filter = false,
                 body_filter   = false,
                 log           = false,
+                admin_api     = "forced false",
             }, {
                 method        = "set_body",
                 args          = { { foo = "bar" }, "application/json" },
@@ -140,6 +150,7 @@ qq{
                 header_filter = false,
                 body_filter   = false,
                 log           = false,
+                admin_api     = "forced false",
             },
         }
 
@@ -162,6 +173,7 @@ qq{
 
         access_by_lua_block {
             phase_check_functions(phases.access)
+            phase_check_functions(phases.admin_api)
         }
 
         header_filter_by_lua_block {
