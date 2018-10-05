@@ -510,4 +510,10 @@ return {
       ALTER TABLE workspaces ADD meta text;
     ]]
   },
+  {
+    name = "2018-10-05-144800_workspace_config",
+    up = [[
+      ALTER TABLE workspaces ADD config text;
+    ]]
+  },
 }

@@ -638,4 +638,11 @@ return {
         ADD COLUMN meta json;
     ]]
   },
+  {
+    name = "2018-09-05-144800_workspace_config",
+    up = [[
+      ALTER TABLE workspaces
+        ADD COLUMN config json;
+    ]]
+  },
 }
