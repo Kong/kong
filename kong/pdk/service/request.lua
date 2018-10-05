@@ -71,9 +71,33 @@ local function new(self)
   local CONTENT_TYPE_JSON      = "application/json"
   local CONTENT_TYPE_FORM_DATA = "multipart/form-data"
 
+  local MIN_HEADERS            = 1
+  local MAX_HEADERS_DEFAULT    = 100
+  local MAX_HEADERS            = 1000
+  local MIN_QUERY_ARGS         = 1
+  local MAX_QUERY_ARGS_DEFAULT = 100
+  local MAX_QUERY_ARGS         = 1000
 
   ---
-  -- Sets the protocol to use when proxying the request to the Service.
+  -- Returns the scheme component of the request to the Service.
+  -- The returned value is normalized to lower-case form.
+  --
+  -- @function kong.service.request.get_scheme
+  -- @phases rewrite, access, header_filter, body_filter, log
+  -- @treturn string a string like `"http"` or `"https"`
+  -- @usage
+  -- -- Given a proxy request to https://example.com:1234/v1/movies
+  --
+  -- kong.service.request.get_scheme() -- "https"
+  request.get_scheme = function()
+    check_phase(PHASES.request)
+
+    return ngx.var.upstream_scheme
+  end
+
+
+  ---
+  -- Sets the protocol of the request to the Service.
   -- @function kong.service.request.set_scheme
   -- @phases `access`
   -- @tparam string scheme The scheme to be used. Supported values are `"http"` or `"https"`
@@ -92,6 +116,66 @@ local function new(self)
     end
 
     ngx.var.upstream_scheme = scheme
+  end
+
+
+  ---
+  -- Returns the host component of the request to the Service.
+  -- The returned value is normalized to lower-case form.
+  --
+  -- @function kong.service.request.get_host
+  -- @phases rewrite, access, header_filter, body_filter, log
+  -- @treturn string the host
+  -- @usage
+  -- -- Given a proxy request to https://example.com:1234/v1/movies
+  --
+  -- kong.service.request.get_host() -- "example.com"
+  request.get_host = function()
+    check_phase(PHASES.request)
+
+    if (ngx.ctx.balancer_data == nil) or (ngx.ctx.balancer_data.host == nil) then
+        return ""
+    end
+
+    return string_lower(ngx.ctx.balancer_data.host)
+  end
+
+
+  ---
+  -- Returns the port component of the request to the Service. The value is returned
+  -- as a Lua number.
+  --
+  -- @function kong.service.request.get_port
+  -- @phases certificate, rewrite, access, header_filter, body_filter, log
+  -- @treturn number the port
+  -- @usage
+  -- -- Given a proxy request to https://example.com:1234/v1/movies
+  --
+  -- kong.service.request.get_port() -- 1234
+  request.get_port = function()
+    check_phase(PHASES.request)
+
+    return tonumber(ngx.ctx.balancer_data.port)
+  end
+
+
+  ---
+  -- Returns the path component of the request to the Service.
+  -- It is not normalized in any way and does not include the querystring.
+  --
+  -- @function kong.service.request.get_path
+  -- @phases rewrite, access, header_filter, body_filter, log
+  -- @treturn string the path
+  -- @usage
+  -- -- Given a proxy request to https://example.com:1234/v1/movies?movie=foo
+  --
+  -- kong.service.request.get_path() -- "/v1/movies"
+  request.get_path = function()
+    check_phase(PHASES.request)
+
+    local uri = ngx.var.upstream_uri
+    local s = string_find(uri, "?", 2, true)
+    return s and string_sub(uri, 1, s - 1) or uri
   end
 
 
@@ -118,6 +202,25 @@ local function new(self)
     -- TODO: is this necessary in specific phases?
     -- ngx.req.set_uri(path)
     ngx.var.upstream_uri = path
+  end
+
+
+  ---
+  -- Returns the query component of the request to the Service. It is not normalized in
+  -- any way (not even URL-decoding of special characters) and does not
+  -- include the leading `?` character.
+  --
+  -- @function kong.service.request.get_raw_query
+  -- @phases rewrite, access, header_filter, body_filter, log
+  -- @return string the query component of the request's URL
+  -- @usage
+  -- -- Given a request to https://example.com/foo?msg=hello%20world&bla=&bar
+  --
+  -- kong.service.request.get_raw_query() -- "msg=hello%20world&bla=&bar"
+  request.get_raw_query = function()
+    check_phase(PHASES.request)
+
+    return ngx.var.args or ""
   end
 
 
@@ -166,7 +269,23 @@ local function new(self)
 
 
     ---
-    -- Sets the HTTP method for the request to the service.
+    -- Returns the HTTP method of the request to the Service.
+    -- The value is normalized to upper-case.
+    --
+    -- @function kong.service.request.get_method
+    -- @phases rewrite, access, header_filter, body_filter, log
+    -- @treturn string the request method
+    -- @usage
+    -- kong.service.request.get_method() -- "GET"
+    request.get_method = function()
+      check_phase(PHASES.request)
+
+      return ngx.req.get_method()
+    end
+
+
+    ---
+    -- Sets the HTTP method of the request to the Service.
     --
     -- @function kong.service.request.set_method
     -- @phases `rewrite`, `access`
@@ -191,6 +310,98 @@ local function new(self)
 
       ngx.req.set_method(method_id)
     end
+  end
+
+
+  ---
+  -- Returns the table of query arguments obtained from the querystring. Keys
+  -- are query argument names. Values are either a string with the argument
+  -- value, a boolean `true` if an argument was not given a value, or an array
+  -- if an argument was given in the query string multiple times. Keys and
+  -- values are unescaped according to URL-encoded escaping rules.
+  --
+  -- Note that a query string `?foo&bar` translates to two boolean `true`
+  -- arguments, and `?foo=&bar=` translates to two string arguments containing
+  -- empty strings.
+  --
+  -- By default, this function returns up to **100** arguments. The optional
+  -- `max_args` argument can be specified to customize this limit, but must be
+  -- greater than **1** and not greater than **1000**.
+  --
+  -- @function kong.service.request.get_query
+  -- @phases rewrite, access, header_filter, body_filter, log
+  -- @tparam[opt] number max_args set a limit on the maximum number of parsed
+  -- arguments
+  -- @treturn table A table representation of the query string
+  -- @usage
+  -- -- Given a proxy request GET /test?foo=hello%20world&bar=baz&zzz&blo=&bar=bla&bar
+  --
+  -- for k, v in pairs(kong.service.request.get_query()) do
+  --   kong.log.inspect(k, v)
+  -- end
+  --
+  -- -- Will print
+  -- -- "foo" "hello world"
+  -- -- "bar" {"baz", "bla", true}
+  -- -- "zzz" true
+  -- -- "blo" ""
+  request.get_query = function(max_args)
+    check_phase(PHASES.request)
+
+    if max_args == nil then
+      return ngx.req.get_uri_args(MAX_QUERY_ARGS_DEFAULT)
+    end
+
+    if type(max_args) ~= "number" then
+      error("max_args must be a number", 2)
+    end
+
+    if max_args < MIN_QUERY_ARGS then
+      error("max_args must be >= " .. MIN_QUERY_ARGS, 2)
+    end
+
+    if max_args > MAX_QUERY_ARGS then
+      error("max_args must be <= " .. MAX_QUERY_ARGS, 2)
+    end
+
+    return ngx.req.get_uri_args(max_args)
+  end
+
+
+  ---
+  -- Returns the value of the specified argument, obtained from the query
+  -- arguments of the current request to the Service.
+  --
+  -- The returned value is either a `string`, a boolean `true` if an
+  -- argument was not given a value, or `nil` if no argument with `name` was
+  -- found.
+  --
+  -- If an argument with the same name is present multiple times in the
+  -- querystring, this function will return the value of the first occurrence.
+  --
+  -- @function kong.service.request.get_query_arg
+  -- @phases rewrite, access, header_filter, body_filter, log
+  -- @treturn string|boolean|nil the value of the argument
+  -- @usage
+  -- -- Given a proxy request GET /test?foo=hello%20world&bar=baz&zzz&blo=&bar=bla&bar
+  --
+  -- kong.service.request.get_query_arg("foo") -- "hello world"
+  -- kong.service.request.get_query_arg("bar") -- "baz"
+  -- kong.service.request.get_query_arg("zzz") -- true
+  -- kong.service.request.get_query_arg("blo") -- ""
+  request.get_query_arg = function(name)
+    check_phase(PHASES.request)
+
+    if type(name) ~= "string" then
+      error("query argument name must be a string", 2)
+    end
+
+    local arg_value = request.get_query()[name]
+    if type(arg_value) == "table" then
+      return arg_value[1]
+    end
+
+    return arg_value
   end
 
 
@@ -237,6 +448,101 @@ local function new(self)
     end
 
     ngx.req.set_uri_args(querystring)
+  end
+
+
+  ---
+  -- Returns the value of the specified header of the request to the Service.
+  --
+  -- The returned value is either a `string`, or can be `nil` if a header with
+  -- `name` is not found in the request. If a header with the same name is
+  -- present multiple times in the request, this function will return the value
+  -- of the first occurrence of this header.
+  --
+  -- Header names in are case-insensitive and are normalized to lowercase, and
+  -- dashes (`-`) can be written as underscores (`_`); that is, the header
+  -- `X-Custom-Header` can also be retrieved as `x_custom_header`.
+  --
+  -- @function kong.service.request.get_header
+  -- @phases rewrite, access, header_filter, body_filter, log
+  -- @tparam string name the name of the header to be returned
+  -- @treturn string the value of the header
+  -- @usage
+  -- -- Given a proxy request with the following headers:
+  --
+  -- -- Host: foo.com
+  -- -- X-Custom-Header: bla
+  -- -- X-Another: foo bar
+  -- -- X-Another: baz
+  --
+  -- kong.service.request.get_header("Host")            -- "foo.com"
+  -- kong.service.request.get_header("x-custom-header") -- "bla"
+  -- kong.service.request.get_header("X-Another")       -- "foo bar"
+  request.get_header = function(name)
+    check_phase(PHASES.request)
+
+    if type(name) ~= "string" then
+      error("header name must be a string", 2)
+    end
+
+    local header_value = request.get_headers()[name]
+    if type(header_value) == "table" then
+      return header_value[1]
+    end
+
+    return header_value
+  end
+
+
+  ---
+  -- Returns a Lua table holding the headers of the request to the Service.
+  -- Keys are header names.
+  -- Values are either a string with the header value, or an array of strings
+  -- if a header is present multiple times. Header names in this table are
+  -- case-insensitive and are normalized to lowercase, and dashes (`-`) can be
+  -- written as underscores (`_`); that is, the header `X-Custom-Header` can
+  -- also be retrieved as `x_custom_header`.
+  --
+  -- By default, this function returns up to **100** headers. The optional
+  -- `max_headers` argument can be specified to customize this limit, but must
+  -- be greater than **1** and not greater than **1000**.
+  --
+  -- @function kong.service.request.get_headers
+  -- @phases rewrite, access, header_filter, body_filter, log
+  -- @tparam[opt] number max_headers set a limit on the maximum number of
+  -- parsed headers
+  -- @treturn table the request headers in table form
+  -- @usage
+  -- -- Given a proxy request with the following headers:
+  --
+  -- -- Host: foo.com
+  -- -- X-Custom-Header: bla
+  -- -- X-Another: foo bar
+  -- -- X-Another: baz
+  -- local headers = kong.service.request.get_headers()
+  --
+  -- headers.host            -- "foo.com"
+  -- headers.x_custom_header -- "bla"
+  -- headers.x_another[1]    -- "foo bar"
+  -- headers["X-Another"][2] -- "baz"
+  request.get_headers = function(max_headers)
+    check_phase(PHASES.request)
+
+    if max_headers == nil then
+      return ngx.req.get_headers(MAX_HEADERS_DEFAULT)
+    end
+
+    if type(max_headers) ~= "number" then
+      error("max_headers must be a number", 2)
+
+    elseif max_headers < MIN_HEADERS then
+      error("max_headers must be >= " .. MIN_HEADERS, 2)
+
+    elseif max_headers > MAX_HEADERS then
+      error("max_headers must be <= " .. MAX_HEADERS, 2)
+    end
+
+    return ngx.req.get_headers(max_headers)
   end
 
 
