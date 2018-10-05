@@ -15,7 +15,7 @@ end
 
 local function check_portal_token_exp (timeout)
   if timeout ~= nil and timeout < 0 then
-    return false, "`portal_token_exp` must be more than 0"
+    return false, "`portal_token_exp` must be equal to or greater than 0"
   end
 
   return true
