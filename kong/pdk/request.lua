@@ -618,8 +618,9 @@ local function new(self)
         return nil, err, CONTENT_TYPE_JSON
       end
 
-      -- TODO: cjson.decode_array_with_array_mt(true) (?)
+      cjson.decode_array_with_array_mt(true)
       local json = cjson.decode(body)
+      cjson.decode_array_with_array_mt(false)
       if not json then
         return nil, "invalid json body", CONTENT_TYPE_JSON
       end
