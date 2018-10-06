@@ -402,7 +402,7 @@ return {
         end
 
         for _, row in ipairs(rows) do
-          local config = cjson.decode(row.config)
+          local config = row.config
 
           if not config.anonymous then
             config.anonymous = ""
