@@ -18,9 +18,7 @@ for _, strategy in helpers.each_strategy() do
       setup(function()
         local _
         _, db, dao = helpers.get_db_utils(strategy)
-
-        local singletons = require "kong.singletons"
-        singletons.dao   = dao
+        _G.kong = _G.kong or { db = db }
       end)
 
       after_each(function()
