@@ -13,10 +13,10 @@ describe("Plugin: response-ratelimiting (policies)", function()
     local dao
 
     setup(function()
-      dao = select(3, helpers.get_db_utils())
+      local _, db
+      _, db, dao = helpers.get_db_utils()
 
-      local singletons = require "kong.singletons"
-      singletons.dao = dao
+      _G.kong = _G.kong or { db = db }
 
       dao:truncate_tables()
     end)

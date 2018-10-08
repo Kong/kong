@@ -1,4 +1,5 @@
 local timestamp = require "kong.tools.timestamp"
+local cassandra = require "cassandra"
 
 local concat = table.concat
 local pairs = pairs
@@ -12,11 +13,11 @@ local NULL_UUID = "00000000-0000-0000-0000-000000000000"
 
 return {
   ["cassandra"] = {
-    increment = function(db, route_id, service_id, identifier, current_timestamp, value, name)
+    increment = function(connector, route_id, service_id, identifier, current_timestamp, value, name)
       local periods = timestamp.get_timestamps(current_timestamp)
 
       for period, period_date in pairs(periods) do
-        local res, err = db:query([[
+        local res, err = connector:query([[
           UPDATE response_ratelimiting_metrics
           SET value = value + ?
           WHERE route_id = ?
@@ -26,12 +27,12 @@ return {
             AND period_date = ?
             AND period = ?
         ]], {
-          db.cassandra.counter(value),
-          db.cassandra.uuid(route_id),
-          db.cassandra.uuid(service_id),
-          db.cassandra.uuid(NULL_UUID),
+          cassandra.counter(value),
+          cassandra.uuid(route_id),
+          cassandra.uuid(service_id),
+          cassandra.uuid(NULL_UUID),
           identifier,
-          db.cassandra.timestamp(period_date),
+          cassandra.timestamp(period_date),
           name .. "_" .. period
         })
 
@@ -43,11 +44,11 @@ return {
 
       return true
     end,
-    increment_api = function(db, api_id, identifier, current_timestamp, value, name)
+    increment_api = function(connector, api_id, identifier, current_timestamp, value, name)
       local periods = timestamp.get_timestamps(current_timestamp)
 
       for period, period_date in pairs(periods) do
-        local res, err = db:query([[
+        local res, err = connector:query([[
           UPDATE response_ratelimiting_metrics
           SET value = value + ?
           WHERE api_id = ? AND
@@ -57,12 +58,12 @@ return {
                 period_date = ? AND
                 period = ?
         ]], {
-          db.cassandra.counter(value),
-          db.cassandra.uuid(api_id),
-          db.cassandra.uuid(NULL_UUID),
-          db.cassandra.uuid(NULL_UUID),
+          cassandra.counter(value),
+          cassandra.uuid(api_id),
+          cassandra.uuid(NULL_UUID),
+          cassandra.uuid(NULL_UUID),
           identifier,
-          db.cassandra.timestamp(period_date),
+          cassandra.timestamp(period_date),
           name .. "_" .. period,
         })
         if not res then
@@ -73,10 +74,10 @@ return {
 
       return true
     end,
-    find = function(db, route_id, service_id, identifier, current_timestamp, period, name)
+    find = function(connector, route_id, service_id, identifier, current_timestamp, period, name)
       local periods = timestamp.get_timestamps(current_timestamp)
 
-      local rows, err = db:query([[
+      local rows, err = connector:query([[
         SELECT * FROM response_ratelimiting_metrics
         WHERE route_id = ?
           AND service_id = ?
@@ -85,11 +86,11 @@ return {
           AND period_date = ?
           AND period = ?
       ]], {
-        db.cassandra.uuid(route_id),
-        db.cassandra.uuid(service_id),
-        db.cassandra.uuid(NULL_UUID),
+        cassandra.uuid(route_id),
+        cassandra.uuid(service_id),
+        cassandra.uuid(NULL_UUID),
         identifier,
-        db.cassandra.timestamp(periods[period]),
+        cassandra.timestamp(periods[period]),
         name .. "_" .. period,
       })
 
@@ -97,10 +98,10 @@ return {
       elseif #rows <= 1 then return rows[1]
       else                   return nil, "bad rows result" end
     end,
-    find_api = function(db, api_id, identifier, current_timestamp, period, name)
+    find_api = function(connector, api_id, identifier, current_timestamp, period, name)
       local periods = timestamp.get_timestamps(current_timestamp)
 
-      local rows, err = db:query([[
+      local rows, err = connector:query([[
         SELECT * FROM response_ratelimiting_metrics
         WHERE api_id = ? AND
               route_id = ? AND
@@ -109,11 +110,11 @@ return {
               period_date = ? AND
               period = ?
       ]], {
-        db.cassandra.uuid(api_id),
-        db.cassandra.uuid(NULL_UUID),
-        db.cassandra.uuid(NULL_UUID),
+        cassandra.uuid(api_id),
+        cassandra.uuid(NULL_UUID),
+        cassandra.uuid(NULL_UUID),
         identifier,
-        db.cassandra.timestamp(periods[period]),
+        cassandra.timestamp(periods[period]),
         name .. "_" .. period,
       })
       if not rows then       return nil, err
@@ -122,7 +123,7 @@ return {
     end,
   },
   ["postgres"] = {
-    increment = function(db, route_id, service_id, identifier, current_timestamp, value, name)
+    increment = function(connector, route_id, service_id, identifier, current_timestamp, value, name)
       local buf = {}
       local periods = timestamp.get_timestamps(current_timestamp)
 
@@ -133,14 +134,14 @@ return {
         ]], route_id, service_id, identifier, name, period, period_date/1000, value)
       end
 
-      local res, err = db:query(concat(buf, ";"))
+      local res, err = connector:query(concat(buf, ";"))
       if not res then
         return nil, err
       end
 
       return true
     end,
-    increment_api = function(db, api_id, identifier, current_timestamp, value, name)
+    increment_api = function(connector, api_id, identifier, current_timestamp, value, name)
       local buf = {}
       local periods = timestamp.get_timestamps(current_timestamp)
 
@@ -151,14 +152,14 @@ return {
         ]], api_id, identifier, name, period, period_date/1000, value)
       end
 
-      local res, err = db:query(concat(buf, ";"))
+      local res, err = connector:query(concat(buf, ";"))
       if not res then
         return nil, err
       end
 
       return true
     end,
-    find = function(db, route_id, service_id, identifier, current_timestamp, period, name)
+    find = function(connector, route_id, service_id, identifier, current_timestamp, period, name)
       local periods = timestamp.get_timestamps(current_timestamp)
 
       local q = fmt([[
@@ -171,14 +172,14 @@ return {
           AND period = '%s_%s'
       ]], route_id, service_id, identifier, periods[period]/1000, name, period)
 
-      local res, err = db:query(q)
-      if not res or err then
+      local res, err = connector:query(q)
+      if not res then
         return nil, err
       end
 
       return res[1]
     end,
-    find_api = function(db, api_id, identifier, current_timestamp, period, name)
+    find_api = function(connector, api_id, identifier, current_timestamp, period, name)
       local periods = timestamp.get_timestamps(current_timestamp)
 
       local q = fmt([[
@@ -190,8 +191,8 @@ return {
               period = '%s_%s'
       ]], api_id, identifier, periods[period]/1000, name, period)
 
-      local res, err = db:query(q)
-      if not res or err then
+      local res, err = connector:query(q)
+      if not res then
         return nil, err
       end
 
