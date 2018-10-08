@@ -13,9 +13,9 @@ describe("Plugin: rate-limiting (policies)", function()
     local dao
 
     setup(function()
-      local singletons = require "kong.singletons"
-      dao = select(3, helpers.get_db_utils())
-      singletons.dao = dao
+      local _, db
+      _, db, dao = helpers.get_db_utils()
+      _G.kong = _G.kong or { db = db }
 
       dao:truncate_tables()
     end)

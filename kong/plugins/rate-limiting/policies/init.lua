@@ -1,4 +1,3 @@
-local singletons = require "kong.singletons"
 local timestamp = require "kong.tools.timestamp"
 local redis = require "resty.redis"
 local policy_cluster = require "kong.plugins.rate-limiting.policies.cluster"
@@ -96,38 +95,40 @@ return {
   },
   ["cluster"] = {
     increment = function(conf, limits, identifier, current_timestamp, value)
-      local db = singletons.dao.db
+      local db = kong.db
       local route_id, service_id, api_id = get_ids(conf)
+      local policy = policy_cluster[db.strategy]
 
       local ok, err
 
       if api_id == NULL_UUID then
-        ok, err = policy_cluster[db.name].increment(db, limits, route_id, service_id,
-                                                    identifier, current_timestamp, value)
+        ok, err = policy.increment(db.connector, limits, route_id, service_id,
+                                   identifier, current_timestamp, value)
 
       else
-        ok, err = policy_cluster[db.name].increment_api(db, limits, api_id, identifier,
-                                                        current_timestamp, value)
+        ok, err = policy.increment_api(db.connector, limits, api_id, identifier,
+                                       current_timestamp, value)
       end
 
       if not ok then
         ngx_log(ngx.ERR, "[rate-limiting] cluster policy: could not increment ",
-                          db.name, " counter: ", err)
+                          db.strategy, " counter: ", err)
       end
 
       return ok, err
     end,
     usage = function(conf, identifier, current_timestamp, name)
-      local db = singletons.dao.db
+      local db = kong.db
       local route_id, service_id, api_id = get_ids(conf)
+      local policy = policy_cluster[db.strategy]
       local row, err
 
       if api_id == NULL_UUID then
-        row, err = policy_cluster[db.name].find(db, route_id, service_id,
-                                                identifier, current_timestamp, name)
+        row, err = policy.find(db.connector, route_id, service_id,
+                               identifier, current_timestamp, name)
       else
-        row, err = policy_cluster[db.name].find_api(db, api_id, identifier,
-                                                    current_timestamp, name)
+        row, err = policy.find_api(db.connector, api_id, identifier,
+                                   current_timestamp, name)
       end
 
       if err then
