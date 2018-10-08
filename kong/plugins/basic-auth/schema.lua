@@ -1,5 +1,6 @@
 local typedefs = require "kong.db.schema.typedefs"
 
+
 return {
   name = "basic-auth",
   fields = {

@@ -1,9 +1,10 @@
 local endpoints = require "kong.api.endpoints"
-local responses = require "kong.tools.responses"
 
 
+local kong               = kong
 local credentials_schema = kong.db.basicauth_credentials.schema
 local consumers_schema   = kong.db.consumers.schema
+
 
 return {
   ["/consumers/:consumers/basic-auth"] = {
@@ -19,13 +20,13 @@ return {
   ["/consumers/:consumers/basic-auth/:basicauth_credentials"] = {
     schema = credentials_schema,
     methods = {
-      before = function(self, db, helpers)
+      before = function(self, db)
         local consumer, _, err_t = endpoints.select_entity(self, db, consumers_schema)
         if err_t then
           return endpoints.handle_error(err_t)
         end
         if not consumer then
-          return responses.send_HTTP_NOT_FOUND()
+          return kong.response.exit(404, { message = "Not found" })
         end
 
         self.consumer = consumer
@@ -37,17 +38,18 @@ return {
 
         if self.req.cmd_mth ~= "PUT" then
           if not cred or cred.consumer.id ~= consumer.id then
-            return responses.send_HTTP_NOT_FOUND()
+            return kong.response.exit(404, { message = "Not found" })
           end
+
           self.basicauth_credential = cred
           self.params.basicauth_credentials = cred.id
         end
       end,
 
       GET  = endpoints.get_entity_endpoint(credentials_schema),
-      PUT  = function(self, db, helpers)
+      PUT  = function(self, ...)
         self.args.post.consumer = { id = self.consumer.id }
-        return endpoints.put_entity_endpoint(credentials_schema)(self, db, helpers)
+        return endpoints.put_entity_endpoint(credentials_schema)(self, ...)
       end,
       PATCH  = endpoints.patch_entity_endpoint(credentials_schema),
       DELETE = endpoints.delete_entity_endpoint(credentials_schema),
