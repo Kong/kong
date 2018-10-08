@@ -63,7 +63,7 @@ describe("workspace config", function()
       }
 
       local _, err = validate_entity(values, schema)
-      assert.equal("`portal_token_exp` must be more than 0", err["config.portal_token_exp"])
+      assert.equal("`portal_token_exp` must be equal to or greater than 0", err["config.portal_token_exp"])
     end)
 
     it("should accept valid auth types", function()
