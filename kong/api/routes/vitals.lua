@@ -144,6 +144,7 @@ return {
         start_ts    = self.params.start_ts,
         entity_id   = self.params.service_id,
         level       = "cluster",
+        workspace_id = ngx.ctx.workspaces[1] and ngx.ctx.workspaces[1].id,
       }
 
       local status_codes, err = singletons.vitals:get_status_codes(opts)
@@ -177,6 +178,7 @@ return {
         start_ts    = self.params.start_ts,
         entity_id   = self.params.route_id,
         level       = "cluster",
+        workspace_id = ngx.ctx.workspaces[1] and ngx.ctx.workspaces[1].id,
       }
 
       local status_codes, err = singletons.vitals:get_status_codes(opts)
@@ -227,14 +229,12 @@ return {
         entity_type = "consumer_route",
         duration    = self.params.interval,
         start_ts    = self.params.start_ts,
-        consumer_id   = self.consumer.id,
         entity_id   = self.consumer.id,
         level       = "cluster",
+        workspace_id = ngx.ctx.workspaces[1] and ngx.ctx.workspaces[1].id,
       }
 
-      local key_by = "route_id"
-
-      local requested_routes, err = singletons.vitals:get_status_codes(opts, key_by)
+      local requested_routes, err = singletons.vitals:get_status_codes(opts, "route_id")
 
       if err then
         if err:find("Invalid query params", nil, true) then
@@ -253,19 +253,11 @@ return {
       local entity_type = "cluster"
       local entity_id = nil
 
-      if self.params.workspace_id then
+      -- if you explicitly passed a workspace, then we'll find those
+      -- status_code_classes. Otherwise, we assume you meant cluster-level.
+      if string.find(ngx.var.uri, "/vitals") > 1 then
         entity_type = "workspace"
-        entity_id = self.params.workspace_id
-
-        local workspaces, err = singletons.dao.workspaces:find_all({ id = entity_id })
-
-        if err then
-          helpers.responses.send_HTTP_BAD_REQUEST("Invalid query params: workspace_id is invalid")
-        end
-
-        if not workspaces[1] then
-          helpers.responses.send_HTTP_NOT_FOUND()
-        end
+        entity_id = ngx.ctx.workspaces[1] and ngx.ctx.workspaces[1].id
       end
 
       local opts = {

@@ -439,16 +439,13 @@ end
 
 
 -- converts Kong status codes to format expected by Vitals API
-local function convert_status_codes(res, level, interval, entity_type, entity_id, row_key)
+local function convert_status_codes(res, meta, key_by)
   local stats = {}
-  local meta = {
-    level       = level,
-    interval    = interval,
-    entity_type = entity_type,
-    entity_id   = entity_id,
-  }
 
-  meta.stat_labels =  STATUS_CODE_STAT_LABELS[entity_type or "cluster"]
+  -- clean up the meta table
+  meta.stat_labels =  STATUS_CODE_STAT_LABELS[meta.entity_type or "cluster"]
+  meta.interval = meta.duration
+  meta.duration = nil
 
   -- no stats to process, return minimal metadata along with empty stats
   if not res[1] then
@@ -459,7 +456,7 @@ local function convert_status_codes(res, level, interval, entity_type, entity_id
   meta.latest_ts = -1
 
   for _, row in ipairs(res) do
-    local key = row_key and row[row_key] or "cluster"
+    local key = key_by and row[key_by] or "cluster"
     local at = tostring(row.at)
     local code = row.code_class and row.code_class .. "xx" or tostring(row.code)
 
@@ -1198,6 +1195,9 @@ function _M:get_status_codes(opts, key_by)
     return nil, "Invalid query params: start_ts must be a number"
   end
 
+  -- TODO ensure the requested entity is in the requested workspace (if any)
+  -- currently depending on the API (api/init.lua) to do that check
+
   local query_opts = {
     duration = opts.duration == "seconds" and 1 or 60,
     start_ts = opts.start_ts,
@@ -1217,7 +1217,7 @@ function _M:get_status_codes(opts, key_by)
     return res
   end
 
-  return convert_status_codes(res, opts.level, opts.duration, opts.entity_type, opts.entity_id, key_by)
+  return convert_status_codes(res, opts, key_by)
 end
 
 --[[
