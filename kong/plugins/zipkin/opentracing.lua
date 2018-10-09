@@ -2,14 +2,12 @@
 This file is not a kong plugin; but the prototype for one.
 
 A plugin that derives this should:
-	- Implement a :new_tracer(cond) method that returns an opentracing tracer
+	- Implement a .new_tracer(cond) method that returns an opentracing tracer
 	- The tracer must support the "http_headers" format.
 	- Implement a :initialise_request(conf, ctx) method if it needs to do per-request initialisation
 ]]
 
 local BasePlugin = require "kong.plugins.base_plugin"
-local public = require "kong.tools.public"
-local ngx_set_header = ngx.req.set_header
 
 local OpenTracingHandler = BasePlugin:extend()
 OpenTracingHandler.VERSION = "scm"
@@ -28,7 +26,7 @@ function OpenTracingHandler:get_tracer(conf)
 	local tracer = self.conf_to_tracer[conf]
 	if tracer == nil then
 		assert(self.new_tracer, "derived class must implement :new_tracer()")
-		tracer = self:new_tracer(conf)
+		tracer = self.new_tracer(conf)
 		assert(type(tracer) == "table", ":new_tracer() must return an opentracing tracer object")
 		self.conf_to_tracer[conf] = tracer
 	end
@@ -48,13 +46,16 @@ end
 
 function OpenTracingHandler:initialise_request(conf, ctx)
 	local tracer = self:get_tracer(conf)
-	local var = ngx.var
-	local wire_context = tracer:extract("http_headers", ngx.req.get_headers()) -- could be nil
-	local method, request_url -- if reading request line fails then var.request_uri is nil
-	if var.request_uri then
-		method = ngx.req.get_method()
-		request_url = var.scheme .. "://" .. var.host .. ":" .. var.server_port .. var.request_uri
+	local req = kong.request
+	local wire_context = tracer:extract("http_headers", req.get_headers()) -- could be nil
+	local method, url
+	local path_with_query = req.get_path_with_query()
+	if path_with_query ~= "" then
+		method = req.get_method()
+	  url = req.get_scheme() .. "://" .. req.get_host() .. ":"
+	        .. req.get_port() .. path_with_query
 	end
+	local forwarded_ip = kong.client.get_forwarded_ip()
 	local request_span = tracer:start_span("kong.request", {
 		child_of = wire_context;
 		start_timestamp = ngx.req.start_time(),
@@ -62,9 +63,9 @@ function OpenTracingHandler:initialise_request(conf, ctx)
 			component = "kong";
 			["span.kind"] = "server";
 			["http.method"] = method;
-			["http.url"] = request_url;
-			[ip_tag(var.remote_addr)] = var.remote_addr;
-			["peer.port"] = tonumber(var.remote_port, 10);
+			["http.url"] = url;
+			[ip_tag(forwarded_ip)] = forwarded_ip;
+			["peer.port"] = kong.client.get_forwarded_port();
 		}
 	})
 	ctx.opentracing = {
@@ -108,8 +109,9 @@ function OpenTracingHandler:access(conf)
 	-- Want to send headers to upstream
 	local outgoing_headers = {}
 	opentracing.tracer:inject(opentracing.proxy_span, "http_headers", outgoing_headers)
+	local set_header = kong.service.request.set_header
 	for k, v in pairs(outgoing_headers) do
-		ngx_set_header(k, v)
+		set_header(k, v)
 	end
 end
 
@@ -210,14 +212,14 @@ function OpenTracingHandler:log(conf)
 		opentracing.body_filter_span:finish(proxy_end)
 	end
 
-	request_span:set_tag("http.status_code", ngx.status)
+	request_span:set_tag("http.status_code", kong.response.get_status())
 	if ctx.authenticated_consumer then
 		request_span:set_tag("kong.consumer", ctx.authenticated_consumer.id)
 	end
 	if ctx.authenticated_credential then
 		request_span:set_tag("kong.credential", ctx.authenticated_credential.id)
 	end
-	request_span:set_tag("kong.node.id", public.get_node_id())
+	request_span:set_tag("kong.node.id", kong.node.get_id())
 	if ctx.service and ctx.service.id then
 		proxy_span:set_tag("kong.service", ctx.service.id)
 		if ctx.route and ctx.route.id then
