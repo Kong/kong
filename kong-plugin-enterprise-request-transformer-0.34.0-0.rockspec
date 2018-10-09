@@ -1,9 +1,9 @@
 package = "kong-plugin-enterprise-request-transformer"
-version = "0.31.1-0"
+version = "0.34.0-0"
 
 source = {
   url = "https://github.com/Kong/kong-plugin-enterprise-request-transformer",
-  tag = "0.31.1"
+  tag = "0.34.0"
 }
 
 supported_platforms = {"linux", "macosx"}
@@ -20,6 +20,5 @@ build = {
     ["kong.plugins.request-transformer-advanced.handler"] = "kong/plugins/request-transformer-advanced/handler.lua",
     ["kong.plugins.request-transformer-advanced.access"] = "kong/plugins/request-transformer-advanced/access.lua",
     ["kong.plugins.request-transformer-advanced.schema"] = "kong/plugins/request-transformer-advanced/schema.lua",
-    ["kong.plugins.request-transformer-advanced.feature_flags.limit_body"] = "kong/plugins/request-transformer-advanced/feature_flags/limit_body.lua",
   }
 }

@@ -54,7 +54,6 @@ install:
   - luarocks make
   - cd kong-ee
   - make dev
-  - cp -r ../spec/fixtures/ee/request_transformer_advanced spec/fixtures/ee
   - createuser --createdb kong
   - createdb -U kong kong_tests
 
