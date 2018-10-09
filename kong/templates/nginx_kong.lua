@@ -263,10 +263,26 @@ server {
         etag off;
     }
 
-    location / {
+    location ~* \.(js)$ {
         root portal;
 
-        try_files $uri /index.html;
+        add_header Cache-Control 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0';
+        etag off;
+
+        access_log logs/portal_gui_access.log;
+        error_log logs/portal_gui_error.log;
+    }
+
+
+    location / {
+        root portal;
+        default_type text/html;
+
+        content_by_lua_block {
+            kong.serve_portal_gui({
+                acah = "Content-Type",
+            })
+        }
 
         add_header Cache-Control 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0';
         etag off;

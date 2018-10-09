@@ -192,6 +192,7 @@ build = {
     ["kong.portal.utils"] = "kong/portal/utils.lua",
     ["kong.portal.migrations.01_initial_files"] = "kong/portal/migrations/01_initial_files.lua",
     ["kong.portal.emails"] = "kong/portal/emails.lua",
+    ["kong.portal.gui"] = "kong/portal/gui.lua",
 
     ["kong.vitals"] = "kong/vitals/init.lua",
     ["kong.vitals.cassandra.strategy"] = "kong/vitals/cassandra/strategy.lua",

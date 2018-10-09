@@ -364,10 +364,6 @@ local function prepare_prefix(kong_config, nginx_custom_template_path)
     ee.prepare_admin(kong_config)
   end
 
-  if kong_config.portal then
-    ee.prepare_portal(kong_config)
-  end
-
   return true
 end
 

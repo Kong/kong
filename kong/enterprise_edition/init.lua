@@ -198,7 +198,7 @@ function _M.prepare_portal(kong_config)
 
   local rbac_enforced = kong_config.rbac == "both" or kong_config.rbac == "on"
 
-  return prepare_interface("portal", {
+  return {
     PORTAL_API_URL = prepare_variable(kong_config.portal_api_url),
     PORTAL_AUTH = prepare_variable(kong_config.portal_auth),
     PORTAL_API_PORT = prepare_variable(portal_api_port),
@@ -209,7 +209,7 @@ function _M.prepare_portal(kong_config)
     RBAC_ENFORCED = prepare_variable(rbac_enforced),
     RBAC_HEADER = prepare_variable(kong_config.rbac_auth_header),
     KONG_VERSION = prepare_variable(meta.versions.package),
-  }, kong_config)
+  }
 end
 
 
