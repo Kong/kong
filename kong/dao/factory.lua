@@ -525,6 +525,17 @@ function _M:run_migrations(on_migrate, on_success)
   end
   migrations_ran = migrations_ran + n_ran
 
+  -- create entity counters per workspace
+  local workspace_entity_counters_migration = workspaces.get_initialize_workspace_entity_counters_migration()
+  local _, err, n_ran = migrate(self,
+    "workspace_counters",
+    workspace_entity_counters_migration,
+    cur_migrations, on_migrate, on_success)
+  if err then
+    return ret_error_string(self.db.name, nil, err)
+  end
+  migrations_ran = migrations_ran + n_ran
+
   if migrations_ran > 0 then
     log("%d migrations ran", migrations_ran)
 

@@ -553,4 +553,18 @@ return {
       ALTER TABLE workspaces ADD config text;
     ]]
   },
+  {
+    name = "2018-10-09-095247_create_entity_counters_table",
+    up = [[
+      CREATE TABLE IF NOT EXISTS workspace_entity_counters(
+      workspace_id uuid,
+      entity_type text,
+      count counter,
+      PRIMARY KEY(workspace_id, entity_type)
+    );
+  ]],
+    down = [[
+      DROP TABLE workspace_entity_counters;
+  ]]
+  },
 }

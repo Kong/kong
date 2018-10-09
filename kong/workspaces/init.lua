@@ -1,3 +1,4 @@
+local cassandra = require "cassandra"
 local singletons = require "kong.singletons"
 local utils      = require "kong.tools.utils"
 local tablex = require "pl.tablex"
@@ -520,7 +521,7 @@ function _M.get_req_workspace(ws_name)
     singletons.dao.workspaces.find_all, filter)
 end
 
-
+local inc_counter
 function _M.add_entity_relation(table_name, entity, workspace)
   local constraints = workspaceable_relations[table_name]
 
@@ -537,6 +538,7 @@ function _M.add_entity_relation(table_name, entity, workspace)
     end
   end
 
+  inc_counter(singletons.dao, workspace.id, table_name, 1);
   local _, err = add_entity_relation_db(singletons.dao.workspace_entities, workspace,
                                         entity[constraints.primary_key],
                                         table_name, constraints.primary_key,
@@ -561,18 +563,26 @@ function _M.delete_entity_relation(table_name, entity)
     return err
   end
 
+  local seen = {}
   for _, row in ipairs(res) do
     local _, err = dao.workspace_entities:delete(row, {__skip_rbac = true})
     if err then
       return err
     end
+
     if dao[table_name] then
       local cache_key = dao[table_name]:entity_cache_key(entity)
       if cache and cache_key then
         cache:invalidate(cache_key .. row.workspace_id)
       end
     end
+
+    if not seen[row.workspace_id] then
+      inc_counter(singletons.dao, row.workspace_id, table_name, -1);
+      seen[row.workspace_id] = true
+    end
   end
+
 end
 
 
@@ -989,7 +999,7 @@ _M.workspace_entities_map = workspace_entities_map
 function _M.apply_unique_per_ws(table_name, params, constraints)
   -- entity may have workspace_id, workspace_name fields, ex. in case of update
   -- needs to be removed as entity schema doesn't support them
-  if table_name ~= "workspace_entities" then
+  if table_name ~= "workspace_entities" and table_name ~= "workspace_entity_counters" then
     params.workspace_id = nil
     params.workspace_name = nil
   end
@@ -1092,6 +1102,117 @@ function _M.run_with_ws_scope(ws_scope, cb, ...)
   ngx.ctx.workspaces = old_ws
   return res, err
 end
+
+
+-- Entity count management
+
+local function counts(workspace_id)
+  local counts, err = singletons.dao.workspace_entity_counters:find_all({workspace_id = workspace_id})
+  if err then
+    return nil, err
+  end
+
+  local res = {}
+  for _, v in ipairs(counts) do
+    res[v.entity_type] = v.count
+  end
+
+  return res
+end
+_M.counts = counts
+
+
+inc_counter = function (dao, ws, entity_type, count)
+  if dao.db_type == "cassandra" then
+
+    local _, err = dao.db.cluster:execute([[
+      UPDATE workspace_entity_counters set
+      count=count + ? where workspace_id = ? and entity_type= ?]],
+      {cassandra.counter(count), cassandra.uuid(ws), entity_type},
+      {
+        counter = true,
+        prepared = true,
+    })
+    if err then
+      return nil, err
+    end
+  else
+
+    local incr_counter_query = [[
+      INSERT INTO workspace_entity_counters(workspace_id, entity_type, count)
+      VALUES('%s', '%s', %d)
+      ON CONFLICT(workspace_id, entity_type) DO
+      UPDATE SET COUNT = workspace_entity_counters.count + excluded.count]]
+    local _, err = dao.db:query(format(incr_counter_query, ws, entity_type, count))
+    if err then
+      return nil, err
+    end
+  end
+end
+_M.inc_counter = inc_counter
+
+
+local function get_counts_for_ws(dao, workspace_id)
+  local entity_types = {}
+  for relation, constraints in pairs(get_workspaceable_relations()) do
+    entity_types[relation] = constraints.primary_key
+  end
+
+  local counts = {}
+  for k, v in pairs(entity_types) do
+    local res, err = dao.workspace_entities:find_all({
+      workspace_id = workspace_id,
+      entity_type = k,
+      unique_field_name = v,
+    })
+    if err then
+      return nil, err
+    end
+
+    counts[k] = #res
+  end
+
+  return counts
+end
+
+
+local function initialize_counters_migration(dao)
+  local workspaces, err = dao.workspaces:find_all()
+  if err then
+    return nil, err
+  end
+
+  local workspaces_counts = {}
+  for _, ws in ipairs(workspaces) do
+    workspaces_counts[ws.id] = get_counts_for_ws(dao, ws.id)
+  end
+
+  for k, v in pairs(workspaces_counts) do
+    for entity_type, count in pairs(v) do
+      dao.workspace_entity_counters:insert({
+        workspace_id = k,
+        entity_type = entity_type,
+        count = count,
+      })
+    end
+  end
+end
+
+
+local function get_initialize_workspace_entity_counters_migration()
+  return
+    {
+      workspace_counters = {
+        {
+        name = "2018-10-11-164515_fill_counters",
+        up = function(_, _, dao)
+          initialize_counters_migration(dao)
+        end,
+        }
+      }
+    }
+end
+_M.get_initialize_workspace_entity_counters_migration = get_initialize_workspace_entity_counters_migration
 
 
 return _M

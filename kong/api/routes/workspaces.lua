@@ -155,6 +155,7 @@ return {
         table.insert(res, row)
       end
 
+
       return helpers.responses.send_HTTP_CREATED(res)
     end,
 
@@ -181,6 +182,8 @@ return {
             return helpers.yield_error(err)
           end
         end
+
+        workspaces.inc_counter(dao_factory, self.workspace.id, ws_e[1].entity_type, -1)
       end
 
       return helpers.responses.send_HTTP_NO_CONTENT()
@@ -234,5 +237,22 @@ return {
 
       return helpers.responses.send_HTTP_NO_CONTENT()
     end,
-  }
+  },
+  ["/workspaces/:workspace_name_or_id/meta"] = {
+    before = function(self, dao_factory, helpers)
+      self.params.workspace_name_or_id =
+        ngx.unescape_uri(self.params.workspace_name_or_id)
+      crud.find_workspace_by_name_or_id(self, dao_factory, helpers)
+    end,
+
+    GET = function(self, dao_factory, helpers)
+      local counts, err = workspaces.counts(self.workspace.id)
+      if not counts then
+        helpers.responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+      end
+
+      return helpers.responses.send_HTTP_OK({counts = counts})
+    end
+  },
+
 }
