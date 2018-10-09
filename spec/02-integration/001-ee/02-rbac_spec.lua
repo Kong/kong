@@ -1655,6 +1655,17 @@ describe("Admin API RBAC with " .. kong_config.database, function()
         assert.is_nil(json.comment)
       end)
 
+      it("new endpoint's workspace defaults to the current request's workspace", function()
+        post("/workspaces", {name = "ws123"})
+        post("/ws123/rbac/roles", {name = "ws123-admin"})
+        local perm = post("/ws123/rbac/roles/ws123-admin/endpoints",
+          {actions = "*", endpoint="*"})
+        assert.same({ "delete", "create", "update", "read" }, perm.actions)
+        assert.same("*", perm.endpoint)
+        assert.is_false(perm.negative)
+        assert.same("ws123", perm.workspace)
+      end)
+
       describe("errors", function()
         -- cassandra cannot apply the PK constraint here
         -- FIXME on cassandra
