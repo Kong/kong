@@ -113,7 +113,7 @@ local function build_plugins_map(db, version)
 
   for plugin, err in db.plugins:each() do
     if err then
-      return nil, tostring(err)
+      return nil, err
     end
 
     map[plugin.name] = true
@@ -133,9 +133,7 @@ local function plugins_map_wrapper()
                                       PLUGINS_MAP_CACHE_OPTS,
                                       utils.uuid)
   if err then
-    ngx_log(ngx_CRIT, "could not ensure plugins map is up to date: ", err)
-
-    return false
+    return nil, "failed to retrieve plugins map version: " .. err
 
   elseif plugins_map_version ~= version then
     -- try to acquire the mutex (semaphore)
@@ -152,37 +150,35 @@ local function plugins_map_wrapper()
 
     local ok, err = plugins_map_semaphore:wait(timeout)
 
-    if ok then
-      -- we have the lock but we might not have needed it. check the
-      -- version again and rebuild if necessary
+    if not ok then
+      return nil, "failed to acquire plugins map rebuild mutex: " .. err
+    end
 
-      version, err = kong.cache:get("plugins_map:version",
-                                    PLUGINS_MAP_CACHE_OPTS,
-                                    utils.uuid)
-      if err then
-        ngx_log(ngx_CRIT, "could not ensure plugins map is up to date: ", err)
+    -- we have the lock but we might not have needed it. check the
+    -- version again and rebuild if necessary
 
+    version, err = kong.cache:get("plugins_map:version",
+                                  PLUGINS_MAP_CACHE_OPTS,
+                                  utils.uuid)
+    if err then
+      plugins_map_semaphore:post(1)
+
+      return nil, "failed to re-retrieve plugins map version: " .. err
+
+    elseif plugins_map_version ~= version then
+      -- we have the lock and we need to rebuild the map. go go gadget!
+
+      ngx_log(ngx_DEBUG, "rebuilding plugins map")
+
+      local ok, err = build_plugins_map(kong.db, version)
+      if not ok then
         plugins_map_semaphore:post(1)
 
-        return false
-
-      elseif plugins_map_version ~= version then
-        -- we have the lock and we need to rebuild the map. go go gadget!
-
-        ngx_log(ngx_DEBUG, "rebuilding plugins map")
-
-        local ok, err = build_plugins_map(kong.db, version)
-        if not ok then
-          ngx_log(ngx_CRIT, "could not rebuild plugins map: ", err)
-        end
+        return nil, "failed to rebuild plugins map: " .. err
       end
-
-      plugins_map_semaphore:post(1)
-    else
-      ngx_log(ngx_CRIT, "could not acquire plugins map update mutex: ", err)
-
-      return false
     end
+
+    plugins_map_semaphore:post(1)
   end
 
   return true
@@ -504,6 +500,12 @@ function Kong.ssl_certificate()
 
   runloop.certificate.before(ctx)
 
+  local ok, err = plugins_map_wrapper()
+  if not ok then
+    ngx_log(ngx_CRIT, "could not ensure plugins map is up to date: ", err)
+    return ngx.exit(ngx.ERROR)
+  end
+
   for plugin, plugin_conf in plugins_iterator(ctx, loaded_plugins,
                                               configured_plugins, true) do
     kong_global.set_namespaced_log(kong, plugin.name)
@@ -617,8 +619,9 @@ function Kong.rewrite()
 
   runloop.rewrite.before(ctx)
 
-  local ok = plugins_map_wrapper()
+  local ok, err = plugins_map_wrapper()
   if not ok then
+    ngx_log(ngx_CRIT, "could not ensure plugins map is up to date: ", err)
     return responses.send_HTTP_INTERNAL_SERVER_ERROR()
   end
 
