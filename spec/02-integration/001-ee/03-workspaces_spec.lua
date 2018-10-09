@@ -54,6 +54,43 @@ end
 
 
 for _, strategy in helpers.each_strategy() do
+describe("DB [".. strategy .. "] sharing ", function()
+  setup(function()
+    helpers.get_db_utils(strategy)
+
+    assert(helpers.start_kong({
+      database = strategy,
+    }))
+
+    client = assert(helpers.admin_client())
+
+    post("/workspaces", {name = "ws1"})
+    post("/workspaces", {name = "ws2"})
+    post("/workspaces", {name = "ws3"})
+  end)
+
+  it("is allowed from the workspace where the entity lives", function()
+    -- create consumer in default workspace
+    local c1 = post("/consumers", {username = "c1"})
+    -- share it with ws1, from default workspace
+    post("/workspaces/ws1/entities", {entities = c1.id})
+  end)
+
+  it("is not allowed from a workspace that doesn't own the entity", function()
+    -- create consumer in ws1 workspace
+    local c2 = post("/ws1/consumers", {username = "c2"})
+    -- try to share it from default, while it is in ws1
+    post("/workspaces/ws2/entities", {entities = c2.id}, nil, 404)
+    -- try to share it from ws3, where neither the entity nor ws1 belong to
+    post("/ws3/workspaces/ws2/entities", {entities = c2.id}, nil, 404)
+  end)
+
+  teardown(function()
+    helpers.stop_kong()
+    client:close()
+  end)
+end)
+
 describe("DB [".. strategy .. "] routes are checked for colisions ", function()
   local route
   setup(function()
