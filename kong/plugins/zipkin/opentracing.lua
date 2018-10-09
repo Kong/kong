@@ -48,6 +48,7 @@ end
 
 function OpenTracingHandler:initialise_request(conf, ctx)
 	local tracer = self:get_tracer(conf)
+	local var = ngx.var
 	local wire_context = tracer:extract("http_headers", ngx.req.get_headers()) -- could be nil
 	local request_span = tracer:start_span("kong.request", {
 		child_of = wire_context;
@@ -56,9 +57,9 @@ function OpenTracingHandler:initialise_request(conf, ctx)
 			component = "kong";
 			["span.kind"] = "server";
 			["http.method"] = ngx.req.get_method();
-			["http.url"] = ngx.var.scheme .. "://" .. ngx.var.host .. ":" .. ngx.var.server_port .. ngx.var.request_uri;
-			[ip_tag(ngx.var.remote_addr)] = ngx.var.remote_addr;
-			["peer.port"] = tonumber(ngx.var.remote_port, 10);
+			["http.url"] = var.scheme .. "://" .. var.host .. ":" .. var.server_port .. var.request_uri;
+			[ip_tag(var.remote_addr)] = var.remote_addr;
+			["peer.port"] = tonumber(var.remote_port, 10);
 		}
 	})
 	ctx.opentracing = {
