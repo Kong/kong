@@ -2,9 +2,7 @@ local helpers        = require "spec.helpers"
 local prefix_handler = require "kong.cmd.utils.prefix_handler"
 local conf_loader    = require "kong.conf_loader"
 local ee             = require "kong.enterprise_edition"
-
-local pl_file = require "pl.file"
-local pl_path = require "pl.path"
+local meta           = require "kong.enterprise_edition.meta"
 
 local exists = helpers.path.exists
 
@@ -69,12 +67,10 @@ describe("portal_gui", function()
     assert.not_equals(key[1], key[2])
   end)
 
-  describe("prepare_prefix", function()
-    local mock_prefix  = "servroot"
-    local idx_filename = mock_prefix .. "/portal/kconfig.js"
+  describe("prepare_portal", function()
+    local index_conf
 
     local conf = {
-      prefix = mock_prefix,
       portal_auth = 'basic-auth',
       portal_gui_url = nil,
       proxy_url = nil,
@@ -119,52 +115,23 @@ describe("portal_gui", function()
     }
 
     setup(function()
-      helpers.execute("rm -f " .. idx_filename)
-      ee.prepare_portal(conf)
-      assert(pl_path.isdir(mock_prefix))
-      assert(pl_path.isfile(idx_filename))
-    end)
-
-    teardown(function()
-      if pl_path.isfile(idx_filename) then
-        pl_file.delete(idx_filename)
-      end
     end)
 
     it("inserts the appropriate values", function()
-      local portal_idx = pl_file.read(idx_filename)
+      index_conf = ee.prepare_portal(conf)
 
-      assert.matches("'PORTAL_AUTH': 'basic-auth'", portal_idx, nil, true)
-      assert.matches("'PORTAL_GUI_URL': ''", portal_idx, nil, true)
-      assert.matches("'PORTAL_API_URL': ''", portal_idx, nil, true)
-      assert.matches("'PORTAL_GUI_PORT': '8003'", portal_idx, nil, true)
-      assert.matches("'PORTAL_GUI_SSL_PORT': '8446'", portal_idx, nil, true)
-      assert.matches("'PORTAL_API_PORT': '8004'", portal_idx, nil, true)
-      assert.matches("'PORTAL_API_SSL_PORT': '8447'", portal_idx, nil, true)
-      assert.matches("'RBAC_ENFORCED': 'false'", portal_idx, nil, true)
-      assert.matches("'RBAC_HEADER': 'Kong-Admin-Token'", portal_idx, nil, true)
-    end)
-
-    it("inserts new values when called again", function()
-      local new_conf = conf
-
-      -- change configuration values
-      new_conf.portal_gui_url = 'http://insecure.domain.com'
-      new_conf.portal_api_url = 'http://127.0.0.1:8004'
-
-      -- update template
-      ee.prepare_portal(new_conf)
-      local portal_idx = pl_file.read(idx_filename)
-
-      -- test configuration values against template
-      assert.matches("'PORTAL_GUI_URL': 'http://insecure.domain.com'", portal_idx, nil, true)
-      assert.matches("'PORTAL_API_URL': 'http://127.0.0.1:8004'", portal_idx, nil, true)
-      assert.matches("'PORTAL_GUI_PORT': '8003'", portal_idx, nil, true)
-      assert.matches("'PORTAL_GUI_SSL_PORT': '8446'", portal_idx, nil, true)
-      assert.matches("'PORTAL_API_PORT': '8004'", portal_idx, nil, true)
-      assert.matches("'PORTAL_API_SSL_PORT': '8447'", portal_idx, nil, true)
-      assert.matches("'RBAC_ENFORCED': 'false'", portal_idx, nil, true)
-      assert.matches("'RBAC_HEADER': 'Kong-Admin-Token'", portal_idx, nil, true)
+      assert.same({
+        PORTAL_API_URL = "",
+        PORTAL_AUTH = "basic-auth",
+        PORTAL_API_PORT = "8004",
+        PORTAL_API_SSL_PORT = "8447",
+        PORTAL_GUI_URL = "",
+        PORTAL_GUI_PORT = "8003",
+        PORTAL_GUI_SSL_PORT = "8446",
+        RBAC_ENFORCED = 'false',
+        RBAC_HEADER = "Kong-Admin-Token",
+        KONG_VERSION = tostring(meta.versions.package),
+      }, index_conf)
     end)
   end)
 end)

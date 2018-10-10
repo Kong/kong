@@ -62,6 +62,13 @@ smtp_timeout_read = 60000
 
 proxy_url = NONE
 
+audit_log = off
+audit_log_record_ttl = 2592000
+audit_log_ignore_methods =
+audit_log_ignore_paths =
+audit_log_ignore_tables =
+audit_log_signing_key =
+
 proxy_listen = 0.0.0.0:8000, 0.0.0.0:8443 ssl
 admin_listen = 127.0.0.1:8001, 127.0.0.1:8444 ssl
 

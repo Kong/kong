@@ -152,6 +152,12 @@ end
 
 
 app:before_filter(function(self)
+  local req_id = utils.random_string()
+  ngx.ctx.admin_api = {
+    req_id = req_id,
+  }
+  ngx.header["X-Kong-Admin-Request-ID"] = req_id
+
   do
     -- in case of endpoint with missing `/`, this block is executed twice.
     -- So previous workspace should be dropped
@@ -259,7 +265,7 @@ ngx.log(ngx.DEBUG, "Loading Admin API endpoints")
 -- Load core routes
 for _, v in ipairs({"kong", "apis", "consumers", "plugins", "cache",
                     "certificates", "snis", "upstreams", "rbac", "vitals", "portal",
-                    "workspaces", "admins"}) do
+                    "workspaces", "admins", "audit"}) do
   local routes = require("kong.api.routes." .. v)
   attach_routes(routes)
 end

@@ -263,10 +263,26 @@ server {
         etag off;
     }
 
-    location / {
+    location ~* \.(js)$ {
         root portal;
 
-        try_files $uri /index.html;
+        add_header Cache-Control 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0';
+        etag off;
+
+        access_log logs/portal_gui_access.log;
+        error_log logs/portal_gui_error.log;
+    }
+
+
+    location / {
+        root portal;
+        default_type text/html;
+
+        content_by_lua_block {
+            kong.serve_portal_gui({
+                acah = "Content-Type",
+            })
+        }
 
         add_header Cache-Control 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0';
         etag off;
@@ -333,6 +349,12 @@ server {
     client_max_body_size 10m;
     client_body_buffer_size 10m;
 
+    real_ip_header     ${{REAL_IP_HEADER}};
+    real_ip_recursive  ${{REAL_IP_RECURSIVE}};
+> for i = 1, #trusted_ips do
+    set_real_ip_from   $(trusted_ips[i]);
+> end
+
 > if admin_ssl_enabled then
     ssl_certificate ${{ADMIN_SSL_CERT}};
     ssl_certificate_key ${{ADMIN_SSL_CERT_KEY}};
@@ -350,6 +372,11 @@ server {
             kong.serve_admin_api({
                 acah = "Content-Type, ${{RBAC_AUTH_HEADER}}",
             })
+        }
+
+        log_by_lua_block {
+            local audit_log = require "kong.enterprise_edition.audit_log"
+            audit_log.admin_log_handler()
         }
     }
 

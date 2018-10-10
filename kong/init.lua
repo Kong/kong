@@ -688,4 +688,8 @@ function Kong.serve_portal_api()
   return lapis.serve(require("kong.portal").app)
 end
 
+function Kong.serve_portal_gui()
+  return lapis.serve("kong.portal.gui")
+end
+
 return Kong

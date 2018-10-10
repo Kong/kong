@@ -748,7 +748,6 @@ return {
       local opts = {
         entity_type = "consumer_route",
         duration    = self.params.interval,
-        consumer_id = self.consumer.id,
         entity_id   = self.consumer.id,
         start_ts    = self.params.start_ts,
         level       = "cluster",

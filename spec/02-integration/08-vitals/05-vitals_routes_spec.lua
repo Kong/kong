@@ -820,10 +820,9 @@ dao_helpers.for_each_dao(function(kong_conf)
 
             local res = assert(client:send {
               methd = "GET",
-              path = "/vitals/status_code_classes",
+              path = "/default/vitals/status_code_classes",
               query = {
                 interval   = "seconds",
-                workspace_id = workspace_id,
               }
             })
 
@@ -869,10 +868,9 @@ dao_helpers.for_each_dao(function(kong_conf)
 
             local res = assert(client:send {
               methd = "GET",
-              path = "/vitals/status_code_classes",
+              path = "/default/vitals/status_code_classes",
               query = {
                 interval   = "minutes",
-                workspace_id = workspace_id,
               }
             })
 
@@ -907,35 +905,33 @@ dao_helpers.for_each_dao(function(kong_conf)
             assert.same(expected, json)
           end)
 
-          it("returns a 400 if called with invalid workspace_id", function()
-            local workspace_id = "Yeah, did you get the memo about TPS reports"
+          it("returns a 404 if called with invalid workspace_id", function()
             local res = assert(client:send {
               methd = "GET",
-              path = "/vitals/status_code_classes",
+              path = "/not-a-uuid/vitals/status_code_classes",
               query = {
-                interval   = "minutes",
-                workspace_id = workspace_id,
-              }
-            })
-            res = assert.res_status(400, res)
-            local json = cjson.decode(res)
-
-            assert.same("Invalid query params: workspace_id is invalid", json.message)
-          end)
-
-          it("returns a 404 if called with a workspace_id that doesn't exist", function()
-            local res = assert(client:send {
-              methd = "GET",
-              path = "/vitals/status_code_classes",
-              query = {
-                interval   = "minutes",
-                workspace_id = utils.uuid(),
+                interval = "minutes",
               }
             })
             res = assert.res_status(404, res)
             local json = cjson.decode(res)
 
-            assert.same("Not found", json.message)
+            assert.same("Workspace 'not-a-uuid' not found", json.message)
+          end)
+
+          it("returns a 404 if called with a workspace_id that doesn't exist", function()
+            local workspace_id = utils.uuid()
+            local res = assert(client:send {
+              methd = "GET",
+              path = "/" .. workspace_id .. "/vitals/status_code_classes",
+              query = {
+                interval = "minutes",
+              }
+            })
+            res = assert.res_status(404, res)
+            local json = cjson.decode(res)
+
+            assert.same("Workspace '".. workspace_id .. "' not found", json.message)
           end)
         end)
       end)
@@ -978,9 +974,7 @@ dao_helpers.for_each_dao(function(kong_conf)
           dao.db:truncate_table("vitals_codes_by_service")
           dao.db:truncate_table("services")
 
-          helpers.with_current_ws(nil, function()
-          service    = bp.services:insert()
-          end, dao)
+          service = bp.services:insert()
           service_id = service.id
         end)
 
@@ -1016,6 +1010,7 @@ dao_helpers.for_each_dao(function(kong_conf)
 
             local expected = {
               meta = {
+                workspace_id = ngx.ctx.workspaces[1].id,
                 entity_type = "service",
                 entity_id   = service_id,
                 earliest_ts = now - 1,
@@ -1072,6 +1067,7 @@ dao_helpers.for_each_dao(function(kong_conf)
 
             local expected = {
               meta = {
+                workspace_id = ngx.ctx.workspaces[1].id,
                 entity_type = "service",
                 entity_id   = service_id,
                 earliest_ts = minute_start_at - 60,
@@ -1160,6 +1156,40 @@ dao_helpers.for_each_dao(function(kong_conf)
 
             assert.same("Not found", json.message)
           end)
+
+          it("returns a 404 if called with a workspace that doesn't exist", function()
+            local res = assert(client:send {
+              methd = "GET",
+              path = "/cats/vitals/status_codes/by_service",
+              query = {
+                interval   = "minutes",
+                service_id = service_id,
+              }
+            })
+            res = assert.res_status(404, res)
+            local json = cjson.decode(res)
+
+            assert.same("Workspace 'cats' not found", json.message)
+          end)
+
+          it("returns a 404 if called with a workspace where the service doesn't belong", function()
+            local workspace, _ = dao.workspaces:insert({ name = "cats" })
+
+            local res = assert(client:send {
+              methd = "GET",
+              path = "/cats/vitals/status_codes/by_service",
+              query = {
+                interval   = "minutes",
+                service_id = service_id,
+              }
+            })
+            res = assert.res_status(404, res)
+            local json = cjson.decode(res)
+
+            assert.same("Not found", json.message)
+
+            dao.workspaces:delete({ id = workspace.id })
+          end)
         end)
       end)
 
@@ -1170,9 +1200,7 @@ dao_helpers.for_each_dao(function(kong_conf)
           dao.db:truncate_table("vitals_codes_by_route")
           dao.db:truncate_table("routes")
 
-          helpers.with_current_ws(nil, function()
-          route    = bp.routes:insert({ paths = { "/my-route" } })
-          end, dao)
+          route = bp.routes:insert({ paths = { "/my-route" } })
           route_id = route.id
         end)
 
@@ -1203,6 +1231,7 @@ dao_helpers.for_each_dao(function(kong_conf)
 
             local expected = {
               meta = {
+                workspace_id = ngx.ctx.workspaces[1].id,
                 entity_type = "route",
                 entity_id   = route_id,
                 earliest_ts = now - 1,
@@ -1254,6 +1283,7 @@ dao_helpers.for_each_dao(function(kong_conf)
 
             local expected = {
               meta = {
+                workspace_id = ngx.ctx.workspaces[1].id,
                 entity_type = "route",
                 entity_id   = route_id,
                 earliest_ts = minute_start_at - 60,
@@ -1341,7 +1371,7 @@ dao_helpers.for_each_dao(function(kong_conf)
             assert.same("Invalid query params: start_ts must be a number", json.message)
           end)
 
-          it("returns a 404 if called with a route_id that is not an actual id for a route", function()
+          it("returns a 404 if called with a route_id that doesn't exist", function()
             local route_id = "20426633-55dc-4050-89ef-2382c95a611a"
             local res = assert(client:send {
               methd = "GET",
@@ -1355,6 +1385,40 @@ dao_helpers.for_each_dao(function(kong_conf)
             local json = cjson.decode(res)
 
             assert.same("Not found", json.message)
+          end)
+
+          it("returns a 404 if called with a workspace that doesn't exist", function()
+            local res = assert(client:send {
+              methd = "GET",
+              path = "/cats/vitals/status_codes/by_route",
+              query = {
+                interval   = "minutes",
+                route_id = route_id,
+              }
+            })
+            res = assert.res_status(404, res)
+            local json = cjson.decode(res)
+
+            assert.same("Workspace 'cats' not found", json.message)
+          end)
+
+          it("returns a 404 if called with a workspace where the route doesn't belong", function()
+            local workspace, _ = dao.workspaces:insert({ name = "cats" })
+
+            local res = assert(client:send {
+              methd = "GET",
+              path = "/cats/vitals/status_codes/by_route",
+              query = {
+                interval   = "minutes",
+                route_id = route_id,
+              }
+            })
+            res = assert.res_status(404, res)
+            local json = cjson.decode(res)
+
+            assert.same("Not found", json.message)
+
+            dao.workspaces:delete({ id = workspace.id })
           end)
         end)
       end)
@@ -1635,6 +1699,7 @@ dao_helpers.for_each_dao(function(kong_conf)
 
             local expected = {
               meta = {
+                workspace_id = ngx.ctx.workspaces[1].id,
                 entity_type = "consumer_route",
                 entity_id   = consumer.id,
                 earliest_ts = now - 1,
@@ -1700,6 +1765,7 @@ dao_helpers.for_each_dao(function(kong_conf)
 
             local expected = {
               meta = {
+                workspace_id = ngx.ctx.workspaces[1].id,
                 entity_type = "consumer_route",
                 entity_id   = consumer.id,
                 earliest_ts = minute_start_at - 60,
@@ -1803,7 +1869,7 @@ dao_helpers.for_each_dao(function(kong_conf)
             assert.same("Not found", json.message)
           end)
 
-          it("returns a 404 if called with a consumer_id that is not an actual id for a consumer", function()
+          it("returns a 404 if called with a consumer_id that does not exist", function()
             local consumer_id = "20426633-55dc-4050-89ef-2382c95a611a"
             local res = assert(client:send {
               methd = "GET",
