@@ -1468,6 +1468,77 @@ describe("schema", function()
       }))
     end)
 
+    it("test custom entity checks", function()
+      local Test = Schema.new({
+        fields = {
+          { aaa = { type = "string" } },
+          { bbb = { type = "string" } },
+          { ccc = { type = "number" } },
+        },
+        entity_checks = {
+          { custom_entity_check = {
+            field_sources = { "bbb", "ccc" },
+            fn = function(entity)
+              assert(entity.aaa == nil)
+              if entity.bbb == "foo" and entity.ccc == 42 then
+                return true
+              end
+              return nil, "oh no"
+            end,
+          } }
+        }
+      })
+      local ok, err = Test:validate_update({
+        aaa = "bar",
+        bbb = "foo",
+        ccc = 42
+      })
+      assert.truthy(ok)
+      assert.falsy(err)
+
+      ok, err = Test:validate_update({
+        aaa = ngx.null,
+        bbb = "foo",
+        ccc = 42
+      })
+      assert.truthy(ok)
+      assert.falsy(err)
+
+      ok, err = Test:validate({
+        aaa = ngx.null,
+        bbb = "foo",
+      })
+      assert.falsy(ok)
+      assert.match("field required for entity check", err["ccc"])
+
+      ok, err = Test:validate_update({
+        aaa = ngx.null,
+        bbb = "foo",
+      })
+      assert.falsy(ok)
+      assert.match("field required for entity check when updating", err["ccc"])
+
+      ok, err = Test:validate_update({
+        aaa = ngx.null,
+      })
+      assert.truthy(ok)
+      assert.falsy(err)
+
+      ok, err = Test:validate_update({
+        bbb = "foo",
+        ccc = 43
+      })
+      assert.falsy(ok)
+      assert.match("oh no", err["@entity"][1])
+
+      ok, err = Test:validate_update({
+        bbb = "foooo",
+        ccc = 42
+      })
+      assert.falsy(ok)
+      assert.match("oh no", err["@entity"][1])
+    end)
+
     it("supports entity checks on nested fields", function()
       local Test = Schema.new({
         fields = {
