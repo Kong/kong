@@ -4,8 +4,6 @@ local cassandra = require "cassandra"
 local concat = table.concat
 local pairs = pairs
 local fmt = string.format
-local log = ngx.log
-local ERR = ngx.ERR
 
 
 local NULL_UUID = "00000000-0000-0000-0000-000000000000"
@@ -37,8 +35,8 @@ return {
         })
 
         if not res then
-          log(ERR, "[response-ratelimiting] cluster policy: could not increment ",
-                   "cassandra counter for period '", period, "': ", err)
+          kong.log.err("cluster policy: could not increment ",
+                       "cassandra counter for period '", period, "': ", err)
         end
       end
 
@@ -67,8 +65,8 @@ return {
           name .. "_" .. period,
         })
         if not res then
-          log(ERR, "[response-ratelimiting] cluster policy: could not increment ",
-            "cassandra counter for period '", period, "': ", err)
+          kong.log.err("cluster policy: could not increment ",
+                       "cassandra counter for period '", period, "': ", err)
         end
       end
 

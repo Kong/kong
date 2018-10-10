@@ -1,32 +1,49 @@
 local policies = require "kong.plugins.response-ratelimiting.policies"
 local timestamp = require "kong.tools.timestamp"
-local responses = require "kong.tools.responses"
 
 local pairs = pairs
 local tostring = tostring
+
+
+local HTTP_INTERNAL_SERVER_ERROR = 500
+local HTTP_TOO_MANY_REQUESTS = 429
+
+
+local function get_ctx(k)
+  local v = kong.ctx.shared[k] -- forward compatibility
+  if v ~= nil then
+    return v
+  end
+  return ngx.ctx[k] -- backward compatibility
+end
+
 
 local _M = {}
 
 local RATELIMIT_REMAINING = "X-RateLimit-Remaining"
 
 local function get_identifier(conf)
-  local identifier
+  if conf.limit_by == "ip" then
+    return kong.client.get_forwarded_ip()
+  end
 
   -- Consumer is identified by ip address or authenticated_credential id
   if conf.limit_by == "consumer" then
-    identifier = ngx.ctx.authenticated_consumer and ngx.ctx.authenticated_consumer.id
-    if not identifier and ngx.ctx.authenticated_credential then -- Fallback on credential
-      identifier = ngx.ctx.authenticated_credential.id
+    local authenticated_consumer = get_ctx("authenticated_consumer")
+    local identifier = authenticated_consumer and authenticated_consumer.id
+    if identifier then
+      return identifier
     end
-  elseif conf.limit_by == "credential" then
-    identifier = ngx.ctx.authenticated_credential and ngx.ctx.authenticated_credential.id
   end
 
-  if not identifier then
-    identifier = ngx.var.remote_addr
+  -- Fallback on credential
+  local authenticated_credential = get_ctx("authenticated_credential")
+  local identifier = authenticated_credential and authenticated_credential.id
+  if identifier then
+    return identifier
   end
 
-  return identifier
+  return kong.client.get_forwarded_ip()
 end
 
 local function get_usage(conf, identifier, current_timestamp, limits)
@@ -63,18 +80,20 @@ function _M.execute(conf)
 
   -- Load info
   local current_timestamp = timestamp.get_utc()
-  ngx.ctx.current_timestamp = current_timestamp -- For later use
+  kong.ctx.plugin.current_timestamp = current_timestamp -- For later use
   local identifier = get_identifier(conf)
-  ngx.ctx.identifier = identifier -- For later use
+  kong.ctx.plugin.identifier = identifier -- For later use
 
   -- Load current metric for configured period
   local usage, err = get_usage(conf, identifier, current_timestamp, conf.limits)
   if err then
     if conf.fault_tolerant then
-      ngx.log(ngx.ERR, "failed to get usage: ", tostring(err))
+      kong.log.err("failed to get usage: ", tostring(err))
       return
     else
-      return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+      return kong.response.exit(HTTP_INTERNAL_SERVER_ERROR, {
+        message = "An unexpected error occurred"
+      })
     end
   end
 
@@ -83,7 +102,9 @@ function _M.execute(conf)
     local remaining
     for lk, lv in pairs(usage[k]) do
       if conf.block_on_first_violation and lv.remaining == 0 then
-        return responses.send(429, "API rate limit exceeded for '" .. k .. "'")
+        return kong.response.exit(HTTP_TOO_MANY_REQUESTS, {
+          message = "API rate limit exceeded for '" .. k .. "'"
+        })
       end
 
       if not remaining or lv.remaining < remaining then
@@ -91,10 +112,10 @@ function _M.execute(conf)
       end
     end
 
-    ngx.req.set_header(RATELIMIT_REMAINING .. "-" .. k, remaining)
+    kong.service.request.set_header(RATELIMIT_REMAINING .. "-" .. k, remaining)
   end
 
-  ngx.ctx.usage = usage -- For later use
+  kong.ctx.plugin.usage = usage -- For later use
 end
 
 return _M

@@ -4,7 +4,7 @@ local policy_cluster = require "kong.plugins.response-ratelimiting.policies.clus
 local reports = require "kong.reports"
 
 
-local ngx_log = ngx.log
+local null = ngx.null
 local shm = ngx.shared.kong_rate_limiting_counters
 local pairs = pairs
 local fmt = string.format
@@ -14,7 +14,7 @@ local NULL_UUID = "00000000-0000-0000-0000-000000000000"
 
 
 local function is_present(str)
-  return str and str ~= "" and str ~= ngx.null
+  return str and str ~= "" and str ~= null
 end
 
 
@@ -23,7 +23,7 @@ local function get_ids(conf)
 
   local api_id = conf.api_id
 
-  if api_id and api_id ~= ngx.null then
+  if api_id and api_id ~= null then
     return nil, nil, api_id
   end
 
@@ -32,11 +32,11 @@ local function get_ids(conf)
   local route_id   = conf.route_id
   local service_id = conf.service_id
 
-  if not route_id or route_id == ngx.null then
+  if not route_id or route_id == null then
     route_id = NULL_UUID
   end
 
-  if not service_id or service_id == ngx.null then
+  if not service_id or service_id == null then
     service_id = NULL_UUID
   end
 
@@ -74,8 +74,8 @@ return {
 
         local newval, err = shm:incr(cache_key, value, 0)
         if not newval then
-          ngx_log(ngx.ERR, "[response-ratelimiting] could not increment counter ",
-                           "for period '", period, "': ", err)
+          kong.log.err("could not increment counter for period '",
+                       period, "': ", err)
           return nil, err
         end
       end
@@ -110,8 +110,8 @@ return {
       end
 
       if not ok then
-        ngx_log(ngx.ERR, "[response-ratelimiting] cluster policy: could not increment ",
-                          db.strategy, " counter: ", err)
+        kong.log.err("cluster policy: could not increment ", db.strategy,
+                     " counter: ", err)
       end
 
       return ok, err
@@ -145,20 +145,20 @@ return {
       red:set_timeout(conf.redis_timeout)
       local ok, err = red:connect(conf.redis_host, conf.redis_port)
       if not ok then
-        ngx_log(ngx.ERR, "failed to connect to Redis: ", err)
+        kong.log.err("failed to connect to Redis: ", err)
         return nil, err
       end
 
       local times, err = red:get_reused_times()
       if err then
-        ngx_log(ngx.ERR, "failed to get connect reused times: ", err)
+        kong.log.err("failed to get connect reused times: ", err)
         return nil, err
       end
 
       if times == 0 and is_present(conf.redis_password) then
         local ok, err = red:auth(conf.redis_password)
         if not ok then
-          ngx_log(ngx.ERR, "failed to auth Redis: ", err)
+          kong.log.err("failed to auth Redis: ", err)
           return nil, err
         end
       end
@@ -174,7 +174,7 @@ return {
 
         local ok, err = red:select(conf.redis_database or 0)
         if not ok then
-          ngx_log(ngx.ERR, "failed to change Redis database: ", err)
+          kong.log.err("failed to change Redis database: ", err)
           return nil, err
         end
       end
@@ -187,7 +187,7 @@ return {
         local cache_key = get_local_key(conf, identifier, period_date, name, period)
         local exists, err = red:exists(cache_key)
         if err then
-          ngx_log(ngx.ERR, "failed to query Redis: ", err)
+          kong.log.err("failed to query Redis: ", err)
           return nil, err
         end
 
@@ -208,12 +208,12 @@ return {
 
       local _, err = red:commit_pipeline()
       if err then
-        ngx_log(ngx.ERR, "failed to commit pipeline in Redis: ", err)
+        kong.log.err("failed to commit pipeline in Redis: ", err)
         return nil, err
       end
       local ok, err = red:set_keepalive(10000, 100)
       if not ok then
-        ngx_log(ngx.ERR, "failed to set Redis keepalive: ", err)
+        kong.log.err("failed to set Redis keepalive: ", err)
         return nil, err
       end
 
@@ -224,20 +224,20 @@ return {
       red:set_timeout(conf.redis_timeout)
       local ok, err = red:connect(conf.redis_host, conf.redis_port)
       if not ok then
-        ngx_log(ngx.ERR, "failed to connect to Redis: ", err)
+        kong.log.err("failed to connect to Redis: ", err)
         return nil, err
       end
 
       local times, err = red:get_reused_times()
       if err then
-        ngx_log(ngx.ERR, "failed to get connect reused times: ", err)
+        kong.log.err("failed to get connect reused times: ", err)
         return nil, err
       end
 
       if times == 0 and is_present(conf.redis_password) then
         local ok, err = red:auth(conf.redis_password)
         if not ok then
-          ngx_log(ngx.ERR, "failed to auth Redis: ", err)
+          kong.log.err("failed to auth Redis: ", err)
           return nil, err
         end
       end
@@ -253,7 +253,7 @@ return {
 
         local ok, err = red:select(conf.redis_database or 0)
         if not ok then
-          ngx_log(ngx.ERR, "failed to change Redis database: ", err)
+          kong.log.err("failed to change Redis database: ", err)
           return nil, err
         end
       end
@@ -267,13 +267,13 @@ return {
         return nil, err
       end
 
-      if current_metric == ngx.null then
+      if current_metric == null then
         current_metric = nil
       end
 
       local ok, err = red:set_keepalive(10000, 100)
       if not ok then
-        ngx_log(ngx.ERR, "failed to set Redis keepalive: ", err)
+        kong.log.err("failed to set Redis keepalive: ", err)
       end
 
       return current_metric or 0
