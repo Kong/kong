@@ -641,6 +641,18 @@ local function new(self)
     end
   end
 
+  ---
+  -- Returns the time at which the request was created
+  --
+  -- @function kong.request.get_start_time
+  -- @phases rewrite, access, header_filter, body_filter, log
+  -- @treturn number the distance in seconds from epoch, with milliseconds as the decimal part.
+  -- @usage
+  -- kong.request.get_start_time() -- 290132101.123
+  function _REQUEST.get_start_time()
+    check_phase(PHASES.request)
+    return ngx.req.start_time()
+  end
 
   return _REQUEST
 end
