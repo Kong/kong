@@ -150,6 +150,92 @@ local function build_router(db, version)
 end
 
 
+local function balancer_setup_stage1(ctx, scheme, host_type, host, port, service, route, api)
+  local balancer_data = {
+    scheme         = scheme,    -- scheme for balancer: http, https
+    type           = host_type, -- type of 'host': ipv4, ipv6, name
+    host           = host,      -- target host per `upstream_url`
+    port           = port,      -- final target port
+    try_count      = 0,         -- retry counter
+    tries          = {},        -- stores info per try
+    -- ssl_ctx     = nil,       -- custom SSL_CTX* to use
+    -- ip          = nil,       -- final target IP address
+    -- balancer    = nil,       -- the balancer object, if any
+    -- hostname    = nil,       -- hostname of the final target IP
+    -- hash_cookie = nil,       -- if Upstream sets hash_on_cookie
+  }
+
+  -- TODO: this is probably not optimal
+  do
+    local retries = service.retries or api.retries
+    if retries then
+      balancer_data.retries = retries
+
+    else
+      balancer_data.retries = 5
+    end
+
+    local connect_timeout = service.connect_timeout or
+                            api.upstream_connect_timeout
+    if connect_timeout then
+      balancer_data.connect_timeout = connect_timeout
+
+    else
+      balancer_data.connect_timeout = 60000
+    end
+
+    local send_timeout = service.write_timeout or
+                         api.upstream_send_timeout
+    if send_timeout then
+      balancer_data.send_timeout = send_timeout
+
+    else
+      balancer_data.send_timeout = 60000
+    end
+
+    local read_timeout = service.read_timeout or
+                         api.upstream_read_timeout
+    if read_timeout then
+      balancer_data.read_timeout = read_timeout
+
+    else
+      balancer_data.read_timeout = 60000
+    end
+  end
+
+  -- TODO: this needs to be removed when references to ctx.api are removed
+  ctx.api              = api
+  ctx.service          = service
+  ctx.route            = route
+  ctx.balancer_data    = balancer_data
+  ctx.balancer_address = balancer_data -- for plugin backward compatibility
+end
+
+
+local function balancer_setup_stage2(ctx)
+  local balancer_data = ctx.balancer_data
+
+  do -- Check for KONG_ORIGINS override
+    local origin_key = balancer_data.scheme .. "://" .. utils.format_host(balancer_data)
+    local origin = singletons.origins[origin_key]
+    if origin then
+      balancer_data.scheme = origin.scheme
+      balancer_data.type = origin.type
+      balancer_data.host = origin.host
+      balancer_data.port = origin.port
+    end
+  end
+
+  local ok, err, errcode = balancer.execute(balancer_data, ctx)
+  if not ok and errcode == 500 then
+    err = "failed the initial dns/balancer resolve for '" ..
+          balancer_data.host .. "' with: "         ..
+          tostring(err)
+  end
+  return ok, err, errcode
+end
+
+
 -- in the table below the `before` and `after` is to indicate when they run:
 -- before or after the plugins
 return {
@@ -624,70 +710,18 @@ return {
         return responses.send(426, "Please use HTTPS protocol")
       end
 
-      local balancer_data = {
-        type           = upstream_url_t.type, -- type of 'host': ipv4, ipv6, name
-        host           = upstream_url_t.host, -- target host per `upstream_url`
-        port           = upstream_url_t.port, -- final target port
-        try_count      = 0,                   -- retry counter
-        tries          = {},                  -- stores info per try
-        -- ssl_ctx     = nil,                 -- custom SSL_CTX* to use
-        -- ip          = nil,                 -- final target IP address
-        -- balancer    = nil,                 -- the balancer object, if any
-        -- hostname    = nil,                 -- hostname of the final target IP
-        -- hash_cookie = nil,                 -- if Upstream sets hash_on_cookie
-      }
+      balancer_setup_stage1(ctx, match_t.upstream_scheme,
+                            upstream_url_t.type,
+                            upstream_url_t.host,
+                            upstream_url_t.port,
+                            service, route, api)
 
-      -- TODO: this is probably not optimal
-      do
-        local retries = service.retries or api.retries
-        if retries then
-          balancer_data.retries = retries
+      ctx.router_matches = match_t.matches
 
-        else
-          balancer_data.retries = 5
-        end
-
-        local connect_timeout = service.connect_timeout or
-                                api.upstream_connect_timeout
-        if connect_timeout then
-          balancer_data.connect_timeout = connect_timeout
-
-        else
-          balancer_data.connect_timeout = 60000
-        end
-
-        local send_timeout = service.write_timeout or
-                             api.upstream_send_timeout
-        if send_timeout then
-          balancer_data.send_timeout = send_timeout
-
-        else
-          balancer_data.send_timeout = 60000
-        end
-
-        local read_timeout = service.read_timeout or
-                             api.upstream_read_timeout
-        if read_timeout then
-          balancer_data.read_timeout = read_timeout
-
-        else
-          balancer_data.read_timeout = 60000
-        end
-      end
-
-      -- TODO: this needs to be removed when references to ctx.api are removed
-      ctx.api              = api
-      ctx.service          = service
-      ctx.route            = route
-      ctx.router_matches   = match_t.matches
-      ctx.balancer_data    = balancer_data
-      ctx.balancer_address = balancer_data -- for plugin backward compatibility
-
-      -- `scheme` is the scheme to use for the upstream call
       -- `uri` is the URI with which to call upstream, as returned by the
       --       router, which might have truncated it (`strip_uri`).
       -- `host` is the original header to be preserved if set.
-      var.upstream_scheme = match_t.upstream_scheme
+      var.upstream_scheme = match_t.upstream_scheme -- COMPAT: pdk
       var.upstream_uri    = match_t.upstream_uri
       var.upstream_host   = match_t.upstream_host
 
@@ -732,27 +766,13 @@ return {
       end
 
       local balancer_data = ctx.balancer_data
-
-      do -- Check for KONG_ORIGINS override
-        local origin_key = var.upstream_scheme .. "://" .. utils.format_host(balancer_data)
-        local origin = singletons.origins[origin_key]
-        if origin then
-          var.upstream_scheme = origin.scheme
-          balancer_data.type = origin.type
-          balancer_data.host = origin.host
-          balancer_data.port = origin.port
-        end
-      end
-
-      local ok, err, errcode = balancer.execute(balancer_data, ctx)
+      balancer_data.scheme = var.upstream_scheme -- COMPAT: pdk
+      local ok, err, errcode = balancer_setup_stage2(ctx)
       if not ok then
-        if errcode == 500 then
-          err = "failed the initial dns/balancer resolve for '" ..
-                balancer_data.host .. "' with: "         ..
-                tostring(err)
-        end
         return responses.send(errcode, err)
       end
+
+      var.upstream_scheme = balancer_data.scheme
 
       do
         -- set the upstream host header if not `preserve_host`
