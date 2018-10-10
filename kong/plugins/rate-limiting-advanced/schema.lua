@@ -117,25 +117,6 @@ return {
                     "You must provide the same number of windows and limits")
     end
 
-    -- KongCloud start
-    local ok, feature_flags = utils.load_module_if_exists("kong.enterprise_edition.feature_flags")
-    if ok and feature_flags and feature_flags.is_enabled(feature_flags.FLAGS.RATE_LIMITING_ADVANCED_ENABLE_WINDOW_SIZE_LIMIT) then
-      local max_window_size, err = feature_flags.get_feature_value(feature_flags.VALUES.RATE_LIMITING_ADVANCED_WINDOW_SIZE_LIMIT)
-      if not err then
-        max_window_size = tonumber(max_window_size)
-        if max_window_size then
-          for i = 1, #plugin_t.window_size do
-            if tonumber(plugin_t.window_size[i]) > max_window_size then
-              return false, Errors.schema("windown_size cannot be greater than "
-                            .. max_window_size)
-            end
-          end
-        end
-      end
-    end
-    -- KongCloud end
-
-
     -- sort the window_size and limit arrays by limit
     -- first we create a temp table, each element of which is a pair of
     -- limit/window_size values. we then sort based on the limit element
