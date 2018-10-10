@@ -551,6 +551,14 @@ Schema.entity_checkers = {
     end,
   },
 
+  custom_entity_check = {
+    field_sources = { "field_sources" },
+    required_fields = { ["field_sources"] = true },
+    fn = function(entity, arg)
+      return arg.fn(entity)
+    end,
+  }
+
 }
 
 
@@ -918,28 +926,37 @@ local function run_entity_check(self, name, input, arg, full_check)
   local checker = self.entity_checkers[name]
   local fields_to_check = {}
 
+  local required_fields = {}
   if checker.field_sources then
     for _, source in ipairs(checker.field_sources) do
       local v = arg[source]
       if type(v) == "string" then
         insert(fields_to_check, v)
+        if checker.required_fields[source] then
+          required_fields[v] = true
+        end
       elseif type(v) == "table" then
         for _, fname in ipairs(v) do
           insert(fields_to_check, fname)
+          if checker.required_fields[source] then
+            required_fields[fname] = true
+          end
         end
       end
     end
   else
     fields_to_check = arg
+    for _, fname in ipairs(arg) do
+      required_fields[fname] = true
+    end
   end
 
   local all_nil = true
-  local required_fields = checker.required_fields
   for _, fname in ipairs(fields_to_check) do
     local value = get_field(input, fname)
     if value == nil then
-      if not (checker.run_with_missing_fields or
-             (required_fields and not required_fields[fname])) then
+      if (not checker.run_with_missing_fields) and
+         (required_fields and required_fields[fname]) then
         local err = validation_errors.REQUIRED_FOR_ENTITY_CHECK
         set_field(field_errors, fname, err)
         ok = false
@@ -964,7 +981,8 @@ local function run_entity_check(self, name, input, arg, full_check)
     return true
   end
 
-  err = validation_errors[name:upper()]:format(err)
+  local error_fmt = validation_errors[name:upper()]
+  err = error_fmt and error_fmt:format(err) or err
   if not err then
     local data = pretty.write({ name = arg }):gsub("%s+", " ")
     err = validation_errors.ENTITY_CHECK:format(name, data)

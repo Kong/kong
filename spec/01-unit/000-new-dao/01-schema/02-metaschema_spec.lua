@@ -138,6 +138,28 @@ describe("metaschema", function()
     assert.truthy(errs)
   end)
 
+  it("accepts a function in an entity check", function()
+    local s = {
+      name = "bad",
+      fields = {
+        { a = { type = "number" } },
+        { b = { type = "number" } },
+      },
+      entity_checks = {
+        { custom_entity_check = {
+            field_sources = { "a" },
+            fn = function()
+              return true
+            end,
+          }
+        },
+      }
+    }
+    local ok, errs = MetaSchema:validate(s)
+    assert.falsy(ok)
+    assert.truthy(errs)
+  end)
+
   it("demands a primary key", function()
     local s = {
       name = "bad",

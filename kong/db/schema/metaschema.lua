@@ -113,6 +113,13 @@ local entity_checkers = {
       },
     },
   },
+  { custom_entity_check = {
+    type = "record",
+    fields = {
+      { field_sources = { type = "array", elements = { type = "string" } } },
+      { fn = { type = "function" } },
+    }
+  } },
 }
 
 local entity_check_names = {}

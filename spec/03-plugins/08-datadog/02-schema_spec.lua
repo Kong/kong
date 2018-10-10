@@ -35,7 +35,7 @@ describe("Plugin: datadog (schema)", function()
       }
     }
     local _, err = v({ metrics = metrics_input }, schema_def)
-    assert.same({ stat_type = "required field missing" }, err.config.metrics)
+    assert.same({ stat_type = "field required for entity check" }, err.config.metrics)
     local metrics_input = {
       {
         stat_type = "counter",
@@ -43,7 +43,7 @@ describe("Plugin: datadog (schema)", function()
       }
     }
     _, err = v({ metrics = metrics_input }, schema_def)
-    assert.same("required field missing", err.config.metrics.name)
+    assert.same("field required for entity check", err.config.metrics.name)
   end)
   it("rejects counters without sample rate", function()
     local metrics_input = {
