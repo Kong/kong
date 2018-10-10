@@ -32,7 +32,7 @@ dependencies = {
   "lua-resty-mail == 1.0.0",
   "lua-resty-mediador == 0.1.2",
   "lua-resty-redis-connector == 0.03",
-  "lua-resty-healthcheck == 0.4.2",
+  "lua-resty-healthcheck == 0.6.0",
   "lua-resty-mlcache == 2.0.2",
   "lua-resty-rsa == 0.04",
   "lyaml == 6.2.3",

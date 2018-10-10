@@ -71,12 +71,49 @@ local function check_http_statuses(arg)
 end
 
 
+local function check_type(arg)
+  if arg == "tcp" or arg == "http" or arg == "https" then
+    return true
+  end
+  return false, "invalid value: " .. arg
+end
+
+
+local function check_https_snis(host)
+  if host == nil or host == "no default" then
+    return true
+  end
+  local res, err_or_port = utils.normalize_ip(host)
+  if type(err_or_port) == "string" and err_or_port ~= "invalid port number" then
+    return false, "invalid value: " .. host
+  end
+  if res.type ~= "name" then
+    return false, "must not be an IP"
+  end
+  if err_or_port == "invalid port number" or type(res.port) == "number" then
+    return false, "must not have a port"
+  end
+  return true
+end
+
+
+local function check_verify_certificate(arg)
+  arg = tostring(arg)
+  if arg ~= "false" and arg ~= "true" then
+    return false, "must be a boolean"
+  end
+  return true
+end
+
+
 -- same fields as lua-resty-healthcheck library
 local healthchecks_defaults = {
   active = {
+    type = "http",
     timeout = 1,
     concurrency = 10,
     http_path = "/",
+    https_verify_certificate = true,
     healthy = {
       interval = 0,  -- 0 = probing disabled by default
       http_statuses = { 200, 302 },
@@ -92,6 +129,7 @@ local healthchecks_defaults = {
     },
   },
   passive = {
+    type = "http",
     healthy = {
       http_statuses = { 200, 201, 202, 203, 204, 205, 206, 207, 208, 226,
                         300, 301, 302, 303, 304, 305, 306, 307, 308 },
@@ -108,6 +146,7 @@ local healthchecks_defaults = {
 
 
 local funcs = {
+  type = check_type,
   timeout = check_seconds,
   concurrency = check_positive_int,
   interval = check_seconds,
@@ -117,13 +156,15 @@ local funcs = {
   http_failures = check_positive_int_or_zero,
   http_path = check_http_path,
   http_statuses = check_http_statuses,
+  https_sni = check_https_snis,
+  https_verify_certificate = check_verify_certificate,
 }
 
 
 local function gen_schema(tbl)
   local ret = {}
   for k, v in pairs(tbl) do
-    if type(v) == "number" or type(v) == "string" then
+    if type(v) == "number" or type(v) == "string" or type(v) == "boolean" then
       ret[k] = { type = type(v), default = v, func = funcs[k] }
 
     elseif type(v) == "table" then
@@ -134,6 +175,7 @@ local function gen_schema(tbl)
       end
     end
   end
+  ret["https_sni"] = { type = "string", default = nil, required = false, func = funcs["https_sni"]}
   return { fields = ret }
 end
 
