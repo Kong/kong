@@ -128,6 +128,7 @@ for _, strategy in helpers.each_strategy() do
       it("should invalidate cache once ttl expires", function()
         local cache_key = cache_key(plugin.config, "einstein", "password")
 
+        -- XXX EE: flaky - increased timeout
         helpers.wait_until(function()
           local res = assert(admin_client:send {
             method = "GET",
@@ -136,7 +137,7 @@ for _, strategy in helpers.each_strategy() do
           })
           res:read_body()
           return res.status == 404
-        end)
+        end, 20)
       end)
     end)
   end)
