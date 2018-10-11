@@ -25,7 +25,7 @@ describe("Plugin: prometheus (access)", function()
     }
 
     assert(helpers.start_kong {
-        nginx_conf = "spec/fixtures/prometheus/valid_nginx.template",
+        nginx_conf = "spec/fixtures/custom_nginx.template",
         plugins = "bundled, prometheus",
     })
     proxy_client = helpers.proxy_client()
