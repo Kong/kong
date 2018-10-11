@@ -1539,6 +1539,61 @@ describe("schema", function()
       assert.match("oh no", err["@entity"][1])
     end)
 
+    it("does not run an entity check if fields have errors", function()
+      local Test = Schema.new({
+        fields = {
+          { aaa = { type = "string" } },
+          { bbb = { type = "string", len_min = 8 } },
+          { ccc = { type = "number", between = { 0, 10 } } },
+        },
+        entity_checks = {
+          { custom_entity_check = {
+            field_sources = { "bbb", "ccc" },
+            fn = function(entity)
+              assert(entity.aaa == nil)
+              if entity.bbb == "12345678" and entity.ccc == 2 then
+                return true
+              end
+              return nil, "oh no"
+            end,
+          } }
+        }
+      })
+      local ok, err = Test:validate_update({
+        aaa = "bar",
+        bbb = "foo",
+        ccc = 42
+      })
+      assert.falsy(ok)
+      assert.match("length must be at least 8", err["bbb"])
+      assert.match("value should be between 0 and 10", err["ccc"])
+      assert.falsy(err["@entity"])
+
+      ok, err = Test:validate({
+        aaa = ngx.null,
+        bbb = "foo",
+        ccc = 42
+      })
+      assert.falsy(ok)
+      assert.match("length must be at least 8", err["bbb"])
+      assert.match("value should be between 0 and 10", err["ccc"])
+      assert.falsy(err["@entity"])
+
+      ok, err = Test:validate({
+        bbb = "AAAAAAAA",
+        ccc = 9,
+      })
+      assert.falsy(ok)
+      assert.match("oh no", err["@entity"][1])
+
+      ok, err = Test:validate({
+        bbb = "12345678",
+        ccc = 2,
+      })
+      assert.truthy(ok)
+      assert.falsy(err)
+    end)
+
     it("supports entity checks on nested fields", function()
       local Test = Schema.new({
         fields = {
