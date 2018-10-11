@@ -140,12 +140,12 @@ return {
       for i = 1, #entity_ids do
         local entity_type, row, err = workspaces.resolve_entity_type(entity_ids[i])
         -- database error
-        if entity_type == nil then
+        if entity_type == nil and err then
           return helpers.responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
         end
         -- entity doesn't exist
-        if entity_type == false then
-          return helpers.responses.send_HTTP_BAD_REQUEST(err)
+        if entity_type == false or not row then
+          return helpers.responses.send_HTTP_NOT_FOUND()
         end
 
         local err = workspaces.add_entity_relation(entity_type, row, self.workspace)

@@ -490,11 +490,14 @@ return {
         helpers.responses.send_HTTP_BAD_REQUEST("'endpoint' is a required field")
       end
 
-      --XXX we should probably factor this check out into kong.workspaces
-      self.params.workspace = self.params.workspace or workspaces.DEFAULT_WORKSPACE
-      local ws_name = self.params.workspace
       local ctx = ngx.ctx
       local request_ws = ctx.workspaces[1]
+
+      -- if the `workspace` parameter wasn't passed, fallback to the current
+      -- request's workspace
+      self.params.workspace = self.params.workspace or request_ws.name
+
+      local ws_name = self.params.workspace
 
       if ws_name ~= "*" then
         local w, err = dao_factory.workspaces:run_with_ws_scope({}, dao_factory.workspaces.find_all, {
