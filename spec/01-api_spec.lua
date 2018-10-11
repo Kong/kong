@@ -8,7 +8,6 @@ describe("Plugin: prometheus (API)",function()
     setup(function()
       helpers.get_db_utils()
       assert(helpers.start_kong({
-        nginx_conf = "spec/fixtures/prometheus/invalid_nginx.template",
         plugins = "bundled, prometheus",
       }))
 
@@ -45,7 +44,6 @@ describe("Plugin: prometheus (API)",function()
     setup(function()
       helpers.get_db_utils()
       assert(helpers.start_kong({
-        nginx_conf = "spec/fixtures/prometheus/valid_nginx.template",
         plugins = "bundled, prometheus",
       }))
 
