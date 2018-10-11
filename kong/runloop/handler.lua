@@ -370,8 +370,7 @@ return {
         log(DEBUG, "[events] SNI updated, invalidating cached certificates")
         local sn = data.entity
 
-        cache:invalidate("pem_ssl_certificates:"    .. sn.name)
-        cache:invalidate("parsed_ssl_certificates:" .. sn.name)
+        cache:invalidate("certificates:" .. sn.name)
       end, "crud", "snis")
 
 
@@ -386,8 +385,7 @@ return {
             break
           end
 
-          cache:invalidate("pem_ssl_certificates:"    .. sn.name)
-          cache:invalidate("parsed_ssl_certificates:" .. sn.name)
+          cache:invalidate("certificates:" .. sn.name)
         end
       end, "crud", "certificates")
 
