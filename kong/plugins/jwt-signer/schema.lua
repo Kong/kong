@@ -129,7 +129,7 @@ return {
     access_token_upstream_header                = {
       required                                  = false,
       type                                      = "string",
-      default                                   = "Authorization",
+      default                                   = "Authorization:Bearer",
     },
     access_token_upstream_leeway                = {
       required                                  = false,

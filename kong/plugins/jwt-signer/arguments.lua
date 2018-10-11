@@ -3,12 +3,10 @@ local ngx           = ngx
 local get_headers   = ngx.req.get_headers
 local clear_header  = ngx.req.clear_header
 local set_header    = ngx.req.set_header
-local ipairs        = ipairs
 local lower         = string.lower
 local type          = type
 local null          = ngx.null
 local next          = next
-local decode_base64 = ngx.decode_base64
 
 
 local function get_value(value)
@@ -65,13 +63,11 @@ local function create_get_header(hdrs)
       return nil
     end
 
-    local bearer, basic
     local name_lower = lower(name)
-    if name_lower == "authorization:bearer" then
-      name   = "Authorization"
-
-    elseif name_lower == "authorization:basic" then
-      name  = "Authorization"
+    if sub(name_lower, -7) == ":bearer" then
+      name = sub(name, 1, -8)
+    elseif sub(name_lower, -6) == ":basic" then
+      name = sub(name, 1, -7)
     end
 
     local header_arg = get_value(headers[name])
@@ -90,13 +86,36 @@ local function set_header_arg(name, value)
   end
 
   local name_lower = lower(name)
-  if name_lower == "authorization:bearer" then
-    set_header("Authorization", "Bearer " .. value)
-  elseif name_lower == "authorization:basic" then
-    set_header("Authorization", "Basic " .. value)
-  else
-    set_header(name, value)
+  if sub(name_lower, -7) == ":bearer" then
+    name = sub(name, 1, -8)
+
+    local prefix = lower(sub(value, 1, 6))
+    if prefix ~= "bearer" then
+      prefix = lower(sub(prefix, 1, 5))
+      if prefix == "basic" then
+        value = "Bearer " .. sub(value, 7)
+      else
+        value = "Bearer " .. value
+      end
+    end
+
+  elseif sub(name_lower, -6) == ":basic" then
+    name = sub(name, 1, -7)
+
+    local prefix = lower(sub(value, 1, 6))
+    if prefix == "bearer" then
+      value = "Basic " .. sub(value, 8)
+
+    else
+      prefix = lower(sub(prefix, 1, 5))
+      if prefix ~= "basic" then
+        value = "Basic " .. value
+      end
+    end
+
   end
+
+  set_header(name, value)
 end
 
 
@@ -106,11 +125,13 @@ local function clear_header_arg(name)
   end
 
   local name_lower = lower(name)
-  if name_lower == "authorization:bearer" or name_lower == "authorization:basic" then
-    clear_header("Authorization")
-  else
-    clear_header(name)
+  if sub(name_lower, -7) == ":bearer" then
+    name = sub(name, 1, -8)
+  elseif sub(name_lower, -6) == ":basic" then
+    name = sub(name, 1, -7)
   end
+
+  clear_header(name)
 end
 
 

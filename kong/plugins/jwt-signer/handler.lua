@@ -17,7 +17,6 @@ local header     = ngx.header
 local lower      = string.lower
 local time       = ngx.time
 local type       = type
-local find       = string.find
 local var        = ngx.var
 local sub        = string.sub
 local fmt        = string.format
@@ -764,7 +763,7 @@ end
 
 
 JwtSignerHandler.PRIORITY = 999
-JwtSignerHandler.VERSION  = "0.1.0"
+JwtSignerHandler.VERSION  = "0.1.1"
 
 
 return JwtSignerHandler

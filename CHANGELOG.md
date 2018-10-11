@@ -1,3 +1,11 @@
+## v0.1.1
+
+- Change `config.access_token_upstream_header` default value from `Authorization` to `Authorization:Bearer`
+- Change now you can suffix the `config.access|channel_token_request_header` and
+  `config.access|channel_token_upstream_header` with `:Bearer` or `:Basic` (case-insensitive).
+  For request headers it just means that we look from the header without the suffix,
+  but for the upstream headers it means that you can force the prefix
+ 
 ## v0.1.0
 
 - Add `config.enable_instrumentation`
