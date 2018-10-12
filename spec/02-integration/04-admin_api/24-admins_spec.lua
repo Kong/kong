@@ -10,13 +10,18 @@ for _, strategy in helpers.each_strategy() do
     local client
     local dao
     local bp
-    local admin, rbac_user
+    local admin, rbac_user, proxy_consumers
+    local another_ws
 
     setup(function()
       bp, _, dao = helpers.get_db_utils(strategy)
 
       assert(helpers.start_kong({
         database = strategy,
+      }))
+
+      another_ws = assert(dao.workspaces:insert({
+        name = "another-one",
       }))
 
       ee_helpers.register_rbac_resources(dao)
@@ -42,7 +47,7 @@ for _, strategy in helpers.each_strategy() do
           type = enums.CONSUMERS.TYPE.DEVELOPER
         })
 
-        assert(bp.consumers:insert {
+        proxy_consumers = assert(bp.consumers:insert {
           username = "consumer-" .. i,
           custom_id = "consumer-" .. i,
           type = enums.CONSUMERS.TYPE.PROXY
@@ -335,6 +340,99 @@ for _, strategy in helpers.each_strategy() do
             },
           })
           assert.res_status(404, res)
+        end)
+      end)
+
+      describe("/admins/:consumer_id/workspaces", function()
+        describe("GET", function()
+          it("retrieves workspaces", function()
+            local res = assert(client:send {
+              method = "POST",
+              path = "/admins",
+              headers = {
+                ["Kong-Admin-Token"] = "letmein",
+                ["Content-Type"]     = "application/json",
+              },
+              body  = {
+                custom_id = "cooper",
+                username  = "dale",
+              },
+            })
+
+            local body = assert.res_status(200, res)
+            admin = cjson.decode(body)
+
+            local res = assert(client:send {
+              method = "GET",
+              path = "/admins/" .. admin.consumer.id .. "/workspaces",
+              headers = {
+                ["Kong-Admin-Token"] = "letmein",
+                ["Content-Type"]     = "application/json",
+              },
+            })
+
+            local body = assert.res_status(200, res)
+            local json = cjson.decode(body)
+
+            assert.equal(1, #json)
+            assert.equal("default", json[1].name)
+          end)
+
+          it("returns multiple workspaces admin belongs to", function()
+            local res = assert(client:send {
+              method = "POST",
+              path = "/workspaces/" .. another_ws.name .. "/entities",
+              headers = {
+                ["Kong-Admin-Token"] = "letmein",
+                ["Content-Type"]     = "application/json",
+              },
+              body  = {
+                entities = admin.consumer.id .. "," .. admin.rbac_user.id
+              },
+            })
+            assert.res_status(201, res)
+
+            local res = assert(client:send {
+              method = "GET",
+              path = "/admins/" .. admin.consumer.id .. "/workspaces",
+              headers = {
+                ["Kong-Admin-Token"] = "letmein",
+                ["Content-Type"]     = "application/json",
+              },
+            })
+
+            local body = assert.res_status(200, res)
+            local json = cjson.decode(body)
+
+            local names = { json[1].name, json[2].name }
+            assert.equal(2, #json)
+            assert.contains("default", names)
+            assert.contains(another_ws.name, names)
+          end)
+
+          it("returns 404 if not found", function()
+            local res = assert(client:send {
+              method = "GET",
+              path = "/admins/" .. admin.rbac_user.id .. "/workspaces",
+              headers = {
+                ["Kong-Admin-Token"] = "letmein",
+                ["Content-Type"]     = "application/json",
+              },
+            })
+            assert.res_status(404, res)
+          end)
+
+          it("returns 404 if consumer is not of type admin", function()
+            local res = assert(client:send {
+              method = "GET",
+              path = "/admins/" .. proxy_consumers.id .. "/workspaces",
+              headers = {
+                ["Kong-Admin-Token"] = "letmein",
+                ["Content-Type"]     = "application/json",
+              },
+            })
+            assert.res_status(404, res)
+          end)
         end)
       end)
     end)

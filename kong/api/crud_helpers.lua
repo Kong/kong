@@ -105,17 +105,17 @@ function _M.find_rbac_role_by_name_or_id(self, dao_factory, helpers)
   self.params.name_or_id = nil
 end
 
-function _M.find_rbac_user_consumer_map(self, dao_factory, helpers)
+function _M.find_consumer_rbac_user_map(self, dao_factory, helpers)
   local rows, err = dao_factory.consumers_rbac_users_map:find_all(self.params)
   if err then
     return helpers.yield_error(err)
   end
 
-  self.consumers_rbac_users_map = rows[1]
-
-  if not self.consumers_rbac_users_map then
+  if not next(rows) then
     return helpers.responses.send_HTTP_NOT_FOUND()
   end
+
+  self.consumer_rbac_user_map = rows[1]
 end
 
 function _M.find_api_by_name_or_id(self, dao_factory, helpers)

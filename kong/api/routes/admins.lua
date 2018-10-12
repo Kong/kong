@@ -1,8 +1,9 @@
-local crud    = require "kong.api.crud_helpers"
-local enums   = require "kong.enterprise_edition.dao.enums"
-local utils   = require "kong.tools.utils"
-local ee_crud = require "kong.enterprise_edition.crud_helpers"
-local rbac    = require "kong.rbac"
+local crud       = require "kong.api.crud_helpers"
+local enums      = require "kong.enterprise_edition.dao.enums"
+local utils      = require "kong.tools.utils"
+local ee_crud    = require "kong.enterprise_edition.crud_helpers"
+local rbac       = require "kong.rbac"
+local workspaces = require "kong.workspaces"
 
 local entity_relationships = rbac.entity_relationships
 
@@ -160,6 +161,72 @@ return {
       delete_rbac_user_roles(self, dao_factory, helpers)
       ee_crud.delete_without_sending_response(self.consumer.rbac_user, dao_factory.rbac_users)
       crud.delete(self.consumer, dao_factory.consumers)
+    end
+  },
+
+  ["/admins/:consumer_id/workspaces"] = {
+    before = function(self, dao_factory, helpers)
+      self.params.consumer_id = ngx.unescape_uri(self.params.consumer_id)
+      crud.find_consumer_rbac_user_map(self, dao_factory, helpers)
+    end,
+
+    GET = function(self, dao_factory, helpers)
+      local old_ws = ngx.ctx.workspaces
+      ngx.ctx.workspaces = {}
+
+      local rows, err = workspaces.find_workspaces_by_entity({
+        entity_id = self.consumer_rbac_user_map.user_id,
+        unique_field_name = "id",
+      })
+
+      if err then
+        ngx.log(ngx.ERR, "[admins] error fetching workspace for entity: " ..
+                self.consumer_rbac_user_map.user_id .. " : ", err)
+      end
+
+      local wrkspaces = {}
+      for i, workspace in ipairs(rows) do
+        local ws, err = dao_factory.workspaces:find({
+          id = workspace.workspace_id
+        })
+        if err then
+          ngx.log(ngx.ERR, "[admins] error fetching workspace: ", err)
+          return helpers.responses.send_HTTP_INTERNAL_SERVER_ERROR()
+        end
+
+        if ws then
+          -- only fetch the consumer from the first workspace
+          -- to avoid extraneous lookups
+          if i == 1 then
+            ngx.ctx.workspaces = { ws }
+            local consumer, err = dao_factory.consumers:find({
+              id = self.params.consumer_id
+            })
+            ngx.ctx.workspaces = {}
+
+            if err then
+              ngx.log(ngx.ERR, "[admins] error fetching consumer in workspace:" ..
+                      ws.workspace_name .. " :", err)
+            end
+
+            if not consumer then
+              ngx.log(ngx.DEBUG, "[admins] no consumer found in workspace:" ..
+                                                      ws.workspace_name)
+              helpers.responses.send_HTTP_NOT_FOUND()
+            end
+
+            if consumer.type ~= enums.CONSUMERS.TYPE.ADMIN then
+              ngx.log(ngx.DEBUG, "[admins] consumer is not of type admin")
+              helpers.responses.send_HTTP_NOT_FOUND()
+            end
+          end
+
+          wrkspaces[i] = ws
+        end
+      end
+
+      ngx.ctx.workspaces = old_ws
+      helpers.responses.send_HTTP_OK(wrkspaces)
     end
   },
 }
