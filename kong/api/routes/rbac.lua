@@ -604,11 +604,11 @@ return {
 
   ["/rbac/users/:user_id/consumers/:consumer_id"] = {
     before = function(self, dao_factory, helpers)
-      crud.find_rbac_user_consumer_map(self, dao_factory, helpers)
+      crud.find_consumer_rbac_user_map(self, dao_factory, helpers)
     end,
 
     GET = function(self, dao_factory, helpers)
-      return helpers.responses.send_HTTP_OK(self.consumers_rbac_users_map)
+      return helpers.responses.send_HTTP_OK(self.consumer_rbac_user_map)
     end,
   },
 }

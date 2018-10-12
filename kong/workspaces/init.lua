@@ -614,6 +614,17 @@ local function find_entity_by_unique_field(params)
 end
 _M.find_entity_by_unique_field = find_entity_by_unique_field
 
+local function find_workspaces_by_entity(params)
+  local rows, err = singletons.dao.workspace_entities:find_all(params)
+  if err then
+    return nil, err
+  end
+  if next(rows) then
+    return rows
+  end
+end
+_M.find_workspaces_by_entity = find_workspaces_by_entity
+
 local function match_route(router, method, uri, host)
   return router.select(method, uri, host)
 end
