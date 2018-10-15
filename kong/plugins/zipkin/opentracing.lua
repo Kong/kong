@@ -177,7 +177,7 @@ function OpenTracingHandler:log(conf)
 	end
 
 	if opentracing.access_span then
-		opentracing.access_span:finish(ctx.KONG_ACCESS_ENDED_AT / 1000)
+		opentracing.access_span:finish(ctx.KONG_ACCESS_ENDED_AT and ctx.KONG_ACCESS_ENDED_AT/1000 or proxy_end)
 	end
 
 	local balancer_data = ctx.balancer_data
