@@ -511,28 +511,6 @@ return {
     ]]
   },
   {
-    name = "2018-09-24-144900_portal_configs",
-    up = [[
-      CREATE TABLE IF NOT EXISTS portal_configs(
-        id uuid PRIMARY KEY,
-        portal_auth text,
-        portal_auth_config text,
-        portal_auto_approve boolean,
-        portal_token_exp int,
-        portal_invite_email boolean,
-        portal_access_request_email boolean,
-        portal_approved_email boolean,
-        portal_reset_email boolean,
-        portal_reset_success_email boolean,
-        portal_emails_from text,
-        portal_emails_reply_to text
-      );
-    ]],
-    down = [[
-      DROP TABLE portal_configs;
-    ]]
-  },
-  {
     name = "2018-10-03-120000_audit_requests_init",
     up = [[
       CREATE TABLE IF NOT EXISTS audit_requests(
@@ -568,5 +546,11 @@ return {
       ) WITH default_time_to_live = 2592000
          AND comment = 'Kong database object audit log';
     ]],
+  },
+  {
+    name = "2018-10-05-144800_workspace_config",
+    up = [[
+      ALTER TABLE workspaces ADD config text;
+    ]]
   },
 }

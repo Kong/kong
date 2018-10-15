@@ -1,8 +1,8 @@
 local schemas = require "kong.dao.schemas_validation"
 local validate_entity = schemas.validate_entity
-local schema = require "kong.enterprise_edition.dao.schemas.portal_configs"
+local schema = require "kong.dao.schemas.workspaces"
 
-describe("portal_utils", function()
+describe("workspace config", function()
   describe("schema", function()
     local snapshot
 
@@ -16,8 +16,11 @@ describe("portal_utils", function()
 
     it("should accept properly formatted emails", function()
       local values = {
-        portal_emails_from = "dog@kong.com",
-        portal_emails_reply_to = "cat@kong.com",
+        name = "test",
+        config = {
+          portal_emails_from = "dog@kong.com",
+          portal_emails_reply_to = "cat@kong.com",
+        }
       }
 
       local valid, _ = validate_entity(values, schema)
@@ -27,18 +30,24 @@ describe("portal_utils", function()
 
     it("should reject when email field is improperly formatted", function()
       local values = {
-        portal_emails_from = "dog",
-        portal_emails_reply_to = "cat",
+        name = "test",
+        config = {
+          portal_emails_from = "dog",
+          portal_emails_reply_to = "cat",
+        },
       }
 
       local _, err = validate_entity(values, schema)
-      assert.equal("dog is invalid: missing '@' symbol", err.portal_emails_from)
-      assert.equal("cat is invalid: missing '@' symbol", err.portal_emails_reply_to)
+      assert.equal("dog is invalid: missing '@' symbol", err["config.portal_emails_from"])
+      assert.equal("cat is invalid: missing '@' symbol", err["config.portal_emails_reply_to"])
     end)
 
     it("should accept properly formatted token expiration", function()
       local values = {
-        portal_token_exp = 1000,
+        name = "test",
+        config = {
+          portal_token_exp = 1000,
+        },
       }
 
       local valid, _ = validate_entity(values, schema)
@@ -47,42 +56,57 @@ describe("portal_utils", function()
 
     it("should reject improperly formatted token expiration", function()
       local values = {
-        portal_token_exp = -1000,
+        name = "test",
+        config = {
+          portal_token_exp = -1000,
+        },
       }
 
       local _, err = validate_entity(values, schema)
-      assert.equal("`portal_token_exp` must be more than 0", err.portal_token_exp)
+      assert.equal("`portal_token_exp` must be equal to or greater than 0", err["config.portal_token_exp"])
     end)
 
     it("should accept valid auth types", function()
       local values, valid
 
       values = {
-        portal_auth = "basic-auth",
+        name = "test",
+        config = {
+          portal_auth = "basic-auth",
+        },
       }
       valid = validate_entity(values, schema)
       assert.True(valid)
 
       values = {
-        portal_auth = "key-auth",
+        name = "test",
+        config = {
+          portal_auth = "key-auth",
+        }
       }
       valid = validate_entity(values, schema)
       assert.True(valid)
 
       values = {
-        portal_auth = "openid-connect",
+        name = "test",
+        config = {
+          portal_auth = "openid-connect",
+        },
       }
-       valid = validate_entity(values, schema)
+      valid = validate_entity(values, schema)
       assert.True(valid)
     end)
 
     it("should reject improperly formatted auth type", function()
       local values = {
-        portal_auth = 'something-invalid',
+        name = "test",
+        config = {
+          portal_auth = 'something-invalid',
+        },
       }
 
       local _, err = validate_entity(values, schema)
-      assert.equal("invalid auth type", err.portal_auth)
+      assert.equal("invalid auth type", err["config.portal_auth"])
     end)
   end)
 end)
