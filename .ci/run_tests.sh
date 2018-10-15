@@ -14,18 +14,19 @@ elif [ "$KONG_TEST_DATABASE" == "cassandra" ]; then
     export TEST_CMD="bin/busted $BUSTED_ARGS,postgres"
 fi
 
+mkdir output
 if [ "$TEST_SUITE" == "integration" ]; then
-    eval "$TEST_CMD" spec/02-integration/
+    eval "$TEST_CMD" spec/02-integration/ | tee output/integration.txt
 fi
 if [ "$TEST_SUITE" == "plugins" ]; then
-    eval "$TEST_CMD" spec/03-plugins/
+    eval "$TEST_CMD" spec/03-plugins/ | tee output/plugins.txt
 fi
 if [ "$TEST_SUITE" == "old-integration" ]; then
-    eval "$TEST_CMD" spec-old-api/02-integration/
+    eval "$TEST_CMD" spec-old-api/02-integration/ | tee output/old_integration.txt
 fi
 if [ "$TEST_SUITE" == "old-plugins" ]; then
-    eval "$TEST_CMD" spec-old-api/03-plugins/
+    eval "$TEST_CMD" spec-old-api/03-plugins/ | tee output/old_plugins.txt
 fi
 if [ "$TEST_SUITE" == "pdk" ]; then
-    TEST_NGINX_RANDOMIZE=1 prove -I. -j$JOBS -r t/01-pdk
+    TEST_NGINX_RANDOMIZE=1 prove -I. -j$JOBS -r t/01-pdk | tee output/pdk.txt
 fi

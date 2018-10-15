@@ -78,3 +78,6 @@ jobs:
 
 script:
   - .ci/run_tests.sh
+
+after_failure:
+  - .ci/track_failures.sh
