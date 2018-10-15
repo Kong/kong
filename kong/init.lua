@@ -195,9 +195,8 @@ local function sort_plugins_for_execution(kong_conf, db, plugin_list)
   if kong_conf.anonymous_reports then
     local reports = require "kong.reports"
 
-    local db_infos = db.old_dao:infos()
     reports.add_ping_value("database", kong_conf.database)
-    reports.add_ping_value("database_version", db_infos.version)
+    reports.add_ping_value("database_version", db.infos.db_ver)
 
     reports.toggle(true)
 
