@@ -29,7 +29,7 @@ function PrometheusHandler:log(conf) -- luacheck: ignore 212
   local message = basic_serializer.serialize(ngx)
   local ok, err = ngx.timer.at(0, log, message)
   if not ok then
-    ngx.log(ngx.ERR, "failed to create timer: ", err)
+    kong.log.ERR("failed to create timer: ", err)
   end
 end
 
