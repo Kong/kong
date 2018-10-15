@@ -13,8 +13,21 @@ return {
         ALTER "created_at" TYPE TIMESTAMP WITH TIME ZONE USING "created_at" AT TIME ZONE 'UTC',
         ALTER "created_at" SET DEFAULT CURRENT_TIMESTAMP(0) AT TIME ZONE 'UTC';
 
-      ALTER INDEX IF EXISTS "acls_consumer_id" RENAME TO "acls_consumer_id_idx";
-      ALTER INDEX IF EXISTS "acls_group"       RENAME TO "acls_group_idx";
+      DO $$
+      BEGIN
+        ALTER INDEX IF EXISTS "acls_consumer_id" RENAME TO "acls_consumer_id_idx";
+      EXCEPTION WHEN DUPLICATE_TABLE THEN
+        -- Do nothing, accept existing state
+      END;
+      $$;
+
+      DO $$
+      BEGIN
+        ALTER INDEX IF EXISTS "acls_group" RENAME TO "acls_group_idx";
+      EXCEPTION WHEN DUPLICATE_TABLE THEN
+        -- Do nothing, accept existing state
+      END;
+      $$;
     ]],
 
     teardown = function(connector, helpers)

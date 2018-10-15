@@ -47,23 +47,79 @@ return {
 
 
 
-      ALTER INDEX IF EXISTS "username_idx"               RENAME TO "consumers_username_idx";
-      ALTER INDEX IF EXISTS "ssl_certificates_pkey"      RENAME TO "certificates_pkey";
-      ALTER INDEX IF EXISTS "idx_cluster_events_at"      RENAME TO "cluster_events_at_idx";
-      ALTER INDEX IF EXISTS "idx_cluster_events_channel" RENAME TO "cluster_events_channel_idx";
-      ALTER INDEX IF EXISTS "routes_fkey_service"        RENAME TO "routes_service_id_idx";
-      ALTER INDEX IF EXISTS "snis_fkey_certificate"      RENAME TO "snis_certificate_id_idx";
-      ALTER INDEX IF EXISTS "plugins_api_idx"            RENAME TO "plugins_api_id_idx";
-      ALTER INDEX IF EXISTS "plugins_consumer_idx"       RENAME TO "plugins_consumer_id_idx";
+      DO $$
+      BEGIN
+        ALTER INDEX IF EXISTS "username_idx" RENAME TO "consumers_username_idx";
+      EXCEPTION WHEN DUPLICATE_TABLE THEN
+        -- Do nothing, accept existing state
+      END;
+      $$;
 
+      DO $$
+      BEGIN
+        ALTER INDEX IF EXISTS "ssl_certificates_pkey" RENAME TO "certificates_pkey";
+      EXCEPTION WHEN DUPLICATE_TABLE THEN
+        -- Do nothing, accept existing state
+      END;
+      $$;
 
+      DO $$
+      BEGIN
+        ALTER INDEX IF EXISTS "idx_cluster_events_at" RENAME TO "cluster_events_at_idx";
+      EXCEPTION WHEN DUPLICATE_TABLE THEN
+        -- Do nothing, accept existing state
+      END;
+      $$;
+
+      DO $$
+      BEGIN
+        ALTER INDEX IF EXISTS "idx_cluster_events_channel" RENAME TO "cluster_events_channel_idx";
+      EXCEPTION WHEN DUPLICATE_TABLE THEN
+        -- Do nothing, accept existing state
+      END;
+      $$;
+
+      DO $$
+      BEGIN
+        ALTER INDEX IF EXISTS "routes_fkey_service" RENAME TO "routes_service_id_idx";
+      EXCEPTION WHEN DUPLICATE_TABLE THEN
+        -- Do nothing, accept existing state
+      END;
+      $$;
+
+      DO $$
+      BEGIN
+        ALTER INDEX IF EXISTS "snis_fkey_certificate" RENAME TO "snis_certificate_id_idx";
+      EXCEPTION WHEN DUPLICATE_TABLE THEN
+        -- Do nothing, accept existing state
+      END;
+      $$;
+
+      DO $$
+      BEGIN
+        ALTER INDEX IF EXISTS "plugins_api_idx" RENAME TO "plugins_api_id_idx";
+      EXCEPTION WHEN DUPLICATE_TABLE THEN
+        -- Do nothing, accept existing state
+      END;
+      $$;
+
+      DO $$
+      BEGIN
+        ALTER INDEX IF EXISTS "plugins_consumer_idx" RENAME TO "plugins_consumer_id_idx";
+      EXCEPTION WHEN DUPLICATE_TABLE THEN
+        -- Do nothing, accept existing state
+      END;
+      $$;
 
       DO $$
       BEGIN
         ALTER TABLE IF EXISTS ONLY "snis"
           RENAME CONSTRAINT "snis_name_unique" TO "snis_name_key";
-      EXCEPTION WHEN UNDEFINED_OBJECT THEN
-        -- Do nothing, accept existing state
+      EXCEPTION
+        WHEN UNDEFINED_OBJECT THEN
+          -- Do nothing, accept existing state
+        WHEN DUPLICATE_TABLE THEN
+          -- Do nothing, accept existing state
       END;
       $$;
 
@@ -118,6 +174,8 @@ return {
           assert(connector:query(sql))
         end
       end
+
+      assert(connector:query('DROP TABLE IF EXISTS "schema_migrations" CASCADE;'))
     end,
   },
 
@@ -260,6 +318,7 @@ return {
       }))
 
       assert(connector:query("DROP TABLE IF EXISTS plugins_temp"))
+      assert(connector:query("DROP TABLE IF EXISTS schema_migrations"))
     end,
   },
 }

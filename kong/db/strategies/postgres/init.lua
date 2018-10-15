@@ -1,7 +1,7 @@
-local arrays     = require "pgmoon.arrays"
-local json       = require "pgmoon.json"
-local cjson      = require "cjson"
-local cjson_safe = require "cjson.safe"
+local arrays        = require "pgmoon.arrays"
+local json          = require "pgmoon.json"
+local cjson         = require "cjson"
+local cjson_safe    = require "cjson.safe"
 
 
 local encode_base64 = ngx.encode_base64
@@ -9,6 +9,8 @@ local decode_base64 = ngx.decode_base64
 local encode_array  = arrays.encode_array
 local encode_json   = json.encode_json
 local setmetatable  = setmetatable
+local update_time   = ngx.update_time
+local tonumber      = tonumber
 local concat        = table.concat
 local insert        = table.insert
 local ipairs        = ipairs
@@ -18,7 +20,8 @@ local upper         = string.upper
 local null          = ngx.null
 local load          = load
 local find          = string.find
-local time          = ngx.time
+local now           = ngx.now
+local fmt           = string.format
 local rep           = string.rep
 local sub           = string.sub
 local max           = math.max
@@ -59,6 +62,12 @@ local PRIVATE = {}
 
 local function noop(...)
   return ...
+end
+
+
+local function now_updated()
+  update_time()
+  return now()
 end
 
 
@@ -230,7 +239,7 @@ local function escape_literal(connector, literal, field)
 
   if field then
     if field.timestamp then
-      return concat { "TO_TIMESTAMP(", connector:escape_literal(literal), ") AT TIME ZONE 'UTC'" }
+      return concat { "TO_TIMESTAMP(", connector:escape_literal(tonumber(fmt("%.3f", literal))), ") AT TIME ZONE 'UTC'" }
     end
 
     if field.type == "array" or field.type == "set" then
@@ -243,7 +252,7 @@ local function escape_literal(connector, literal, field)
       if elements.timestamp then
         local timestamps = {}
         for i, v in ipairs(literal) do
-          timestamps[i] = concat { "TO_TIMESTAMP(", connector:escape_literal(v), ") AT TIME ZONE 'UTC'" }
+          timestamps[i] = concat { "TO_TIMESTAMP(", connector:escape_literal(tonumber(fmt("%.3f", v))), ") AT TIME ZONE 'UTC'" }
         end
         return encode_array(timestamps)
       end
@@ -517,7 +526,7 @@ local function execute(strategy, statement_name, attributes, options)
         ttl_value = escape_literal(connector, ttl_value + attributes.updated_at, fields.ttl)
 
       else
-        ttl_value = escape_literal(connector, ttl_value + time(), fields.ttl)
+        ttl_value = escape_literal(connector, ttl_value + now_updated(), fields.ttl)
       end
 
     else

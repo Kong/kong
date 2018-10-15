@@ -67,7 +67,7 @@ end
 
 local function execute(args)
   args.db_timeout = args.db_timeout * 1000
-  args.lock_timeout = args.lock_timeout * 1000
+  args.lock_timeout = args.lock_timeout
 
   if args.quiet then
     log.disable()

@@ -61,9 +61,30 @@ return {
       CREATE INDEX IF NOT EXISTS "oauth2_tokens_api_id_idx"               ON "oauth2_tokens" ("api_id");
 
 
-      ALTER INDEX IF EXISTS "oauth2_credentials_consumer_idx" RENAME TO "oauth2_credentials_consumer_id_idx";
-      ALTER INDEX IF EXISTS "oauth2_authorization_userid_idx" RENAME TO "oauth2_authorization_codes_authenticated_userid_idx";
-      ALTER INDEX IF EXISTS "oauth2_token_userid_idx"         RENAME TO "oauth2_tokens_authenticated_userid_idx";
+      DO $$
+      BEGIN
+        ALTER INDEX IF EXISTS "oauth2_credentials_consumer_idx" RENAME TO "oauth2_credentials_consumer_id_idx";
+      EXCEPTION WHEN DUPLICATE_TABLE THEN
+        -- Do nothing, accept existing state
+      END;
+      $$;
+
+      DO $$
+      BEGIN
+        ALTER INDEX IF EXISTS "oauth2_authorization_userid_idx" RENAME TO "oauth2_authorization_codes_authenticated_userid_idx";
+      EXCEPTION WHEN DUPLICATE_TABLE THEN
+        -- Do nothing, accept existing state
+      END;
+      $$;
+
+      DO $$
+      BEGIN
+        ALTER INDEX IF EXISTS "oauth2_token_userid_idx" RENAME TO "oauth2_tokens_authenticated_userid_idx";
+      EXCEPTION WHEN DUPLICATE_TABLE THEN
+        -- Do nothing, accept existing state
+      END;
+      $$;
+
 
       -- Unique constraint on "client_id" already adds btree index
       DROP INDEX IF EXISTS "oauth2_credentials_client_idx";

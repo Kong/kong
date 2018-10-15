@@ -112,4 +112,12 @@ function Connector:record_migration()
 end
 
 
+function Connector:is_014()
+  return {
+    is_eq_014 = false,
+    is_gt_014 = true,
+  }
+end
+
+
 return Connector
