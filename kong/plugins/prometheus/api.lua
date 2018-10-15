@@ -1,10 +1,15 @@
 local prometheus = require "kong.plugins.prometheus.exporter"
 
+local consumers_schema = kong.db.consumers.schema
 
 return {
+
   ["/metrics"] = {
-    GET = function(self, dao_factory) -- luacheck: ignore 212
-      prometheus.collect()
-    end,
+    schema = consumers_schema, -- not used, could be any schema
+    methods = {
+      GET = function()
+        prometheus.collect()
+      end,
+    },
   },
 }

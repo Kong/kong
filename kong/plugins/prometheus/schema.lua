@@ -1,13 +1,21 @@
-local Errors = require "kong.dao.errors"
+local typedefs = require "kong.db.schema.typedefs"
+
+local function validate_shared_dict()
+  if not ngx.shared.prometheus_metrics then
+    return nil,
+           "ngx shared dict 'prometheus_metrics' not found"
+  end
+  return true
+end
 
 
 return {
-  fields = {},
-  self_check = function(schema, plugin_t, dao, is_update) -- luacheck: ignore 212
-    if not ngx.shared.prometheus_metrics then
-      return false,
-             Errors.schema "ngx shared dict 'prometheus_metrics' not found"
-    end
-    return true
-  end,
+  name = "prometheus",
+  fields = {
+    { config = {
+        type = "record",
+        fields = {},
+        custom_validator = validate_shared_dict,
+    }, },
+  },
 }

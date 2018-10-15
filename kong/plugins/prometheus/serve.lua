@@ -26,8 +26,7 @@ end
 
 
 app:match("/", function()
-  ngx.say("Kong Prometheus exporter, visit /metrics")
-  ngx.exit(200)
+  kong.response.exit(200, "Kong Prometheus exporter, visit /metrics")
 end)
 
 
