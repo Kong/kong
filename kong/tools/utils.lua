@@ -29,7 +29,6 @@ local fmt        = string.format
 local find       = string.find
 local gsub       = string.gsub
 local split      = pl_stringx.split
-local strip      = pl_stringx.strip
 local re_find    = ngx.re.find
 local re_match   = ngx.re.match
 
@@ -61,9 +60,18 @@ local _M = {}
 _M.split = split
 
 --- strips whitespace from a string.
--- just a placeholder to the penlight `pl.stringx.strip` function
 -- @function strip
-_M.strip = strip
+_M.strip = function(str)
+  if str == nil then
+    return ""
+  end
+  str = tostring(str)
+  if #str > 200 then
+    return str:gsub("^%s+", ""):reverse():gsub("^%s+", ""):reverse()
+  else
+    return str:match("^%s*(.-)%s*$")
+  end
+end
 
 --- packs a set of arguments in a table.
 -- Explicitly sets field `n` to the number of arguments, so it is `nil` safe
