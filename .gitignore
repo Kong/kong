@@ -9,6 +9,8 @@ servroot*
 # kong
 nginx_tmp/
 kong*.yml
+kong.conf.*
+!kong.conf.default
 
 # luacov
 luacov.*
