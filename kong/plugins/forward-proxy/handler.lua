@@ -35,28 +35,41 @@ function ForwardProxyHandler:access(conf)
   local httpc = http:new()
 
   local ctx = ngx.ctx
-  local api = ctx.api
   local var = ngx.var
 
-  -- make the initial TCP connection
-  -- TODO upgrade lua-resty-http to at least 0.10 to support
-  -- set_timeouts
-  httpc:set_timeout(api.upstream_connect_timeout)
+  -- ... yep, this does exactly what you think it would
+  handler.access.after(ctx)
+  local addr = ctx.balancer_address
 
-  local ok, err = httpc:connect(conf.proxy_host, conf.proxy_port)
+  httpc:set_timeout(addr.connect_timeout)
+
+  local proxy_uri = "http://"  .. conf.proxy_host .. ":" .. conf.proxy_port .. "/"
+
+  local ok, err = httpc:connect_proxy(proxy_uri, var.upstream_scheme,
+                                      addr.host, addr.port)
+
   if not ok then
     log(ERR, _prefix_log, "failed to connect to proxy: ", err)
     return responses.send_HTTP_INTERNAL_SERVER_ERROR()
   end
 
-  -- ... yep, this does exactly what you think it would
-  handler.access.after(ctx)
+  if var.upstream_scheme == "https" then
+    -- Perform the TLS handshake for HTTPS request.
+    -- First param reuse_session set as `false` as session is not
+    -- reused
+    local ok, err = httpc:ssl_handshake(false, addr.host, conf.https_verify)
+    if not ok then
+      return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+    end
+  end
 
   local res
+  local headers = ngx_req_get_headers()
+  headers["Host"] = var.upstream_host
   res, err = httpc:request({
     method  = ngx_req_get_method(),
-    path    = "http://" .. var.upstream_host .. var.upstream_uri,
-    headers = ngx_req_get_headers(),
+    path    = var.upstream_scheme .."://" .. addr.host .. var.upstream_uri,
+    headers = headers,
     body    = httpc:get_client_body_reader(),
   })
   if not res then
@@ -68,7 +81,15 @@ function ForwardProxyHandler:access(conf)
     ngx.header["Via"] = server_header
 
     httpc:proxy_response(res)
-    httpc:set_keepalive()
+    if var.upstream_scheme ~= "https" then
+      -- Pooled SSL connection error out for next request, so connection
+      -- is kept alive only for non HTTPS connections. A Github issue is
+      -- created to track it https://github.com/pintsized/lua-resty-http/issues/161
+      local ok, err = httpc:set_keepalive()
+      if ok ~= 1 then
+        log(ERR, "could not keepalive connection: ", err)
+      end
+    end
 
     return ngx.exit(res.status)
   end

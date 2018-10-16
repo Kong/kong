@@ -28,6 +28,11 @@ return {
       },
       required = true,
       default = "http",
-    }
+    },
+    https_verify = {
+      type = "boolean",
+      required = true,
+      default = false,
+    },
   }
 }
