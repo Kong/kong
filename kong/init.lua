@@ -63,6 +63,11 @@ local DB = require "kong.db"
 local dns = require "kong.tools.dns"
 local utils = require "kong.tools.utils"
 local lapis = require "lapis"
+local pl_utils = require "pl.utils"
+local http_tls = require "http.tls"
+local openssl_ssl = require "openssl.ssl"
+local openssl_pkey = require "openssl.pkey"
+local openssl_x509 = require "openssl.x509"
 local runloop = require "kong.runloop.handler"
 local mesh = require "kong.runloop.mesh"
 local responses = require "kong.tools.responses"
@@ -83,6 +88,7 @@ local ngx              = ngx
 local header           = ngx.header
 local ngx_log          = ngx.log
 local ngx_ERR          = ngx.ERR
+local ngx_WARN         = ngx.WARN
 local ngx_CRIT         = ngx.CRIT
 local ngx_DEBUG        = ngx.DEBUG
 local ipairs           = ipairs
@@ -231,6 +237,25 @@ function Kong.init()
   local conf_path = pl_path.join(ngx.config.prefix(), ".kong_env")
   local config = assert(conf_loader(conf_path))
 
+  -- Set up default ssl client context
+  local default_client_ssl_ctx
+  if set_ssl_ctx then
+    default_client_ssl_ctx = http_tls.new_client_context()
+    default_client_ssl_ctx:setVerify(openssl_ssl.VERIFY_NONE)
+    default_client_ssl_ctx:setAlpnProtos { "http/1.1" }
+    -- TODO: copy proxy_ssl_* flags?
+    if config.client_ssl then
+      local pem_key = assert(pl_utils.readfile(config.client_ssl_cert_key))
+      default_client_ssl_ctx:setPrivateKey(openssl_pkey.new(pem_key))
+      -- XXX: intermediary certs are NYI https://github.com/wahern/luaossl/issues/123
+      local pem_cert = assert(pl_utils.readfile(config.client_ssl_cert))
+      default_client_ssl_ctx:setCertificate(openssl_x509.new(pem_cert))
+    end
+  else
+      ngx_log(ngx_WARN, "missing \"ngx.balancer\".set_ssl_ctx API. ",
+                        "Dynamic client SSL_CTX* will be unavailable")
+  end
+
   kong_global.init_pdk(kong, config, nil) -- nil: latest PDK
 
   local db = assert(DB.new(config))
@@ -304,6 +329,7 @@ function Kong.init()
   kong.dao = dao
   kong.db = db
   kong.dns = singletons.dns
+  kong.default_client_ssl_ctx = default_client_ssl_ctx
 
   if config.proxy_ssl_enabled then
     certificate.init()

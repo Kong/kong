@@ -159,7 +159,7 @@ local function balancer_setup_stage1(ctx, scheme, host_type, host, port,
     port           = port,      -- final target port
     try_count      = 0,         -- retry counter
     tries          = {},        -- stores info per try
-    -- ssl_ctx     = nil,       -- custom SSL_CTX* to use
+    ssl_ctx        = kong.default_client_ssl_ctx, -- SSL_CTX* to use
     -- ip          = nil,       -- final target IP address
     -- balancer    = nil,       -- the balancer object, if any
     -- hostname    = nil,       -- hostname of the final target IP
