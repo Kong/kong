@@ -279,7 +279,7 @@ local function new(self)
   function _REQUEST.get_path()
     check_phase(PHASES.request)
 
-    local uri = ngx.var.request_uri
+    local uri = ngx.var.request_uri or ""
     local s = find(uri, "?", 2, true)
     return s and sub(uri, 1, s - 1) or uri
   end
@@ -298,7 +298,7 @@ local function new(self)
   -- kong.request.get_raw_path_and_query() -- "/v1/movies?movie=foo"
   function _REQUEST.get_raw_path_and_query()
     check_phase(PHASES.request)
-    return ngx.var.request_uri
+    return ngx.var.request_uri or ""
   end
 
   ---
