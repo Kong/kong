@@ -286,6 +286,22 @@ local function new(self)
 
 
   ---
+  -- When the request has a query string, returns the path + "?" + the query string.
+  -- Otherwise it returns just the path. No transformations/normalizations are done.
+  --
+  -- @function kong.request.get_raw_path_and_query()
+  -- @phases rewrite, access, header_filter, body_filter, log
+  -- @treturn string the path and querystring
+  -- @usage
+  -- -- Given a request to https://example.com:1234/v1/movies?movie=foo
+  --
+  -- kong.request.get_raw_path_and_query() -- "/v1/movies?movie=foo"
+  function _REQUEST.get_raw_path_and_query()
+    check_phase(PHASES.request)
+    return ngx.var.request_uri
+  end
+
+  ---
   -- Returns the query component of the request's URL. It is not normalized in
   -- any way (not even URL-decoding of special characters) and does not
   -- include the leading `?` character.
