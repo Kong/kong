@@ -210,6 +210,7 @@ local function balancer_setup_stage1(ctx, scheme, host_type, host, port,
   ctx.route            = route
   ctx.balancer_data    = balancer_data
   ctx.balancer_address = balancer_data -- for plugin backward compatibility
+  kong.ctx.shared.balancer_data = balancer_data -- for plugin forwards compatibility
 end
 
 

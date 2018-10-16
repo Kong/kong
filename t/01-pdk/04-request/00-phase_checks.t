@@ -121,6 +121,16 @@ qq{
                 body_filter   = true,
                 log           = true,
             }, {
+                method        = "get_path_and_querystring",
+                args          = {},
+                init_worker   = false,
+                certificate   = "pending",
+                rewrite       = true,
+                access        = true,
+                header_filter = true,
+                body_filter   = true,
+                log           = true,
+            }, {
                 method        = "get_raw_query",
                 args          = {},
                 init_worker   = false,
