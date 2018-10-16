@@ -266,12 +266,14 @@ function Kong.init()
   singletons.internal_proxies = internal_proxies.new()
   singletons.portal_emails = portal_emails.new(config)
 
-  build_plugins_map(dao, "init")
-
+  -- ee.internal_statsd_init() has to occur before build_plugins_map
+  -- and after internal_proxies.new()
   local _, err = ee.internal_statsd_init()
   if err then
     error(tostring(err))
   end
+  
+  build_plugins_map(dao, "init")
 
   local reports = require "kong.core.reports"
   local l = singletons.license and

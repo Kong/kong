@@ -514,6 +514,29 @@ describe("vitals Prometheus strategy", function()
         assert.is_nil(err)
       end)
 
+      it("duration " .. expected_duration_seconds .. "  status codes per workspace", function()
+        local expected_start_ts
+        local uuid = utils.uuid()
+        -- don't use assert.spy().was_called_with to have a better visibility on what's different
+        prometheus.query = function(_, start_ts, metrics, interval)
+          assert.equals(expected_start_ts, start_ts)
+          assert.same(metrics, {
+            {"status_code", 'sum(kong_status_code_per_workspace{workspace="' .. uuid .. '"}) by (status_code)', true},
+          })
+          assert.equals(expected_interval, interval)
+        end
+
+        local prom = prometheus.new(nil, {host = "notahost", port = 65555})
+
+        expected_start_ts = ngx.time() - expected_duration_seconds
+        local _, err = prom:select_status_codes({
+          duration = passed_in_interval,
+          entity_type = "workspace",
+          entity_id = uuid,
+        })
+        assert.is_nil(err)
+      end)
+
       it("duration " .. expected_duration_seconds .. " with customed start_ts  status codes", function()
         local expected_start_ts
         -- don't use assert.spy().was_called_with to have a better visibility on what's different

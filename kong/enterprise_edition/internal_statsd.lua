@@ -77,6 +77,8 @@ local function new()
         { name = "kong_latency", stat_type = "timer", service_identifier = "service_id" },
         { name = "status_count_per_user", sample_rate = 1, consumer_identifier = "consumer_id",
           stat_type = "counter", service_identifier = "service_id" },
+        { name = "status_count_per_workspace", sample_rate = 1, stat_type = "counter",
+          workspace_identifier = "workspace_id" },
         { name = "status_count_per_user_per_route", sample_rate = 1, consumer_identifier = "consumer_id",
           stat_type = "counter", service_identifier = "service_id" },
         { name = "cache_datastore_misses_total", sample_rate = 1, stat_type = "counter",

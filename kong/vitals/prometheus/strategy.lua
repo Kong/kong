@@ -550,7 +550,7 @@ function _M:select_status_codes(opts)
   local entity_type = opts.entity_type
   -- only merge status codes to like "2xx" when showing on /vitals/status-codes
   local merge_status_class = false
-  if entity_type == "cluster" then
+  if entity_type == "cluster" or entity_type == "workspace" then
     merge_status_class = true
   end
 
@@ -580,6 +580,9 @@ function _M:select_status_codes(opts)
     -- use the default status_code metrics
     -- in statsd plugin we are regulating \. to _
     filters[filters_count + 1] = "service=\"" .. opts.entity_id .. "\""
+  elseif entity_type == "workspace" then
+    metric_name = "kong_status_code_per_workspace"
+    filters[filters_count + 1] = "workspace=\"" .. opts.entity_id .. "\""
   end
   
   filters = table_concat(filters, ",")
