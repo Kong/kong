@@ -5,27 +5,27 @@ describe("Plugin: key-auth (invalidations)", function()
   local admin_client, proxy_client
   local dao
   local bp
-  local _
+  local db
 
   before_each(function()
-    bp, _, dao = helpers.get_db_utils()
+    bp, db, dao = helpers.get_db_utils()
 
     local api = assert(dao.apis:insert {
       name         = "api-1",
       hosts        = { "key-auth.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name   = "key-auth",
-      api_id = api.id,
+      api = { id = api.id },
     })
 
     local consumer = bp.consumers:insert {
       username = "bob",
     }
-    assert(dao.keyauth_credentials:insert {
-      key         = "kong",
-      consumer_id = consumer.id,
+    bp.keyauth_credentials:insert({
+      key      = "kong",
+      consumer = { id = consumer.id },
     })
 
     assert(helpers.start_kong({
@@ -56,7 +56,7 @@ describe("Plugin: key-auth (invalidations)", function()
     assert.res_status(200, res)
 
     -- ensure cache is populated
-    local cache_key = dao.keyauth_credentials:cache_key("kong")
+    local cache_key = db.keyauth_credentials:cache_key("kong")
     res = assert(admin_client:send {
       method = "GET",
       path = "/cache/" .. cache_key
@@ -104,7 +104,7 @@ describe("Plugin: key-auth (invalidations)", function()
     assert.res_status(200, res)
 
     -- ensure cache is populated
-    local cache_key = dao.keyauth_credentials:cache_key("kong")
+    local cache_key = db.keyauth_credentials:cache_key("kong")
     res = assert(admin_client:send {
       method = "GET",
       path = "/cache/" .. cache_key
@@ -153,7 +153,7 @@ describe("Plugin: key-auth (invalidations)", function()
     assert.res_status(200, res)
 
     -- ensure cache is populated
-    local cache_key = dao.keyauth_credentials:cache_key("kong")
+    local cache_key = db.keyauth_credentials:cache_key("kong")
     res = assert(admin_client:send {
       method = "GET",
       path = "/cache/" .. cache_key

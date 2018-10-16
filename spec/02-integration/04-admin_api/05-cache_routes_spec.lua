@@ -7,7 +7,13 @@ describe("Admin API /cache [#" .. strategy .. "]", function()
   local admin_client
 
   setup(function()
-    local bp = helpers.get_db_utils(strategy)
+    local bp = helpers.get_db_utils(strategy, {
+      "routes",
+      "services",
+      "plugins",
+    }, {
+      "cache"
+    })
 
     local service = bp.services:insert()
 
@@ -23,13 +29,14 @@ describe("Admin API /cache [#" .. strategy .. "]", function()
     }
 
     bp.plugins:insert {
-      name       = "cache",
-      service_id = service.id,
+      name    = "cache",
+      service = { id = service.id },
     }
 
     assert(helpers.start_kong({
       database   = strategy,
       nginx_conf = "spec/fixtures/custom_nginx.template",
+      plugins = "cache",
     }))
     proxy_client = helpers.proxy_client()
     admin_client = helpers.admin_client()

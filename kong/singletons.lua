@@ -5,6 +5,7 @@ local _M = {
   dns = nil,
   worker_events = nil,
   router = nil,
+  origins = nil,
 }
 
 return _M

@@ -12,15 +12,15 @@ describe("Plugin: response-transformer", function()
   local client
 
   setup(function()
-    local dao = select(3, helpers.get_db_utils())
+    local _, db, dao = helpers.get_db_utils()
 
     local api = assert(dao.apis:insert {
       name         = "tests-response-transformer",
       hosts        = { "response.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(dao.plugins:insert {
-      api_id = api.id,
+    assert(db.plugins:insert {
+      api = { id = api.id },
       name   = "response-transformer",
       config = {
         add    = {

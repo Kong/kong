@@ -1,5 +1,6 @@
 local helpers = require "spec.helpers"
-local cjson   = require "cjson"
+local Errors = require "kong.db.errors"
+local cjson = require "cjson"
 
 
 for _, strategy in helpers.each_strategy() do
@@ -8,40 +9,44 @@ for _, strategy in helpers.each_strategy() do
     local bp
 
     setup(function()
-      bp = helpers.get_db_utils(strategy)
+      bp = helpers.get_db_utils(strategy, {
+        "routes",
+        "services",
+        "plugins",
+      })
+
+      assert(helpers.start_kong({
+        database   = strategy,
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+      }))
     end)
 
     teardown(function()
-      if admin_client then
-        admin_client:close()
-      end
-
       helpers.stop_kong()
     end)
 
     describe("POST", function()
-      local route
 
-      setup(function()
-        route = bp.routes:insert {
-          hosts = { "test1.com" },
-        }
-
-        assert(helpers.start_kong({
-          database   = strategy,
-          nginx_conf = "spec/fixtures/custom_nginx.template",
-        }))
-
+      before_each(function()
         admin_client = helpers.admin_client()
       end)
 
+      after_each(function()
+        if admin_client then
+          admin_client:close()
+        end
+      end)
+
       it("errors on empty config", function()
+        local route = bp.routes:insert {
+          hosts = { "test1.test" },
+        }
         local res = assert(admin_client:send {
           method  = "POST",
           path    = "/plugins",
           body    = {
             name     = "response-ratelimiting",
-            route_id = route.id
+            route = { id = route.id }
           },
           headers = {
             ["Content-Type"] = "application/json"
@@ -49,15 +54,27 @@ for _, strategy in helpers.each_strategy() do
         })
         local body = assert.res_status(400, res)
         local json = cjson.decode(body)
-        assert.same({ config = "You need to set at least one limit name" }, json)
+        assert.same({
+          code = Errors.codes.SCHEMA_VIOLATION,
+          name = "schema violation",
+          fields = {
+            config = {
+              limits = "required field missing",
+            }
+          },
+          message = "schema violation (config.limits: required field missing)",
+        }, json)
       end)
       it("accepts proper config", function()
+        local route = bp.routes:insert {
+          hosts = { "test1.test" },
+        }
         local res = assert(admin_client:send {
           method  = "POST",
           path    = "/plugins",
           body    = {
             name     = "response-ratelimiting",
-            route_id = route.id,
+            route = { id = route.id },
             config   = {
               limits = {
                 video = { second = 10 }

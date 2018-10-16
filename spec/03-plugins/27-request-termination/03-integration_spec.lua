@@ -23,8 +23,8 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.keyauth_credentials:insert {
-        key         = "kong",
-        consumer_id = consumer.id,
+        key      = "kong",
+        consumer = { id = consumer.id },
       }
 
       assert(helpers.start_kong({
@@ -54,7 +54,7 @@ for _, strategy in helpers.each_strategy() do
         },
         body    = {
           name        = "request-termination",
-          consumer_id = consumer.id,
+          consumer = { id = consumer.id },
         },
       })
       assert.response(res).has.status(201)

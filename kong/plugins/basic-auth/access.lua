@@ -1,5 +1,4 @@
 local crypto = require "kong.plugins.basic-auth.crypto"
-local singletons = require "kong.singletons"
 local constants = require "kong.constants"
 local responses = require "kong.tools.responses"
 
@@ -10,6 +9,7 @@ local ngx_re_match = ngx.re.match
 local realm = 'Basic realm="' .. _KONG._NAME .. '"'
 
 local _M = {}
+
 
 -- Fast lookup for credential retrieval depending on the type of the authentication
 --
@@ -69,7 +69,7 @@ end
 -- @param given_password The password as given in the Authorization header
 -- @return Success of authentication
 local function validate_credentials(credential, given_password)
-  local digest, err = crypto.encrypt({consumer_id = credential.consumer_id, password = given_password})
+  local digest, err = crypto.encrypt(credential.consumer.id, given_password)
   if err then
     ngx.log(ngx.ERR, "[basic-auth]  " .. err)
   end
@@ -77,11 +77,11 @@ local function validate_credentials(credential, given_password)
 end
 
 local function load_credential_into_memory(username)
-  local credentials, err = singletons.dao.basicauth_credentials:find_all {username = username}
+  local credential, err = kong.db.basicauth_credentials:select_by_username(username)
   if err then
     return nil, err
   end
-  return credentials[1]
+  return credential
 end
 
 local function load_credential_from_db(username)
@@ -89,10 +89,10 @@ local function load_credential_from_db(username)
     return
   end
 
-  local credential_cache_key = singletons.dao.basicauth_credentials:cache_key(username)
-  local credential, err      = singletons.cache:get(credential_cache_key, nil,
-                                                    load_credential_into_memory,
-                                                    username)
+  local credential_cache_key = kong.db.basicauth_credentials:cache_key(username)
+  local credential, err      = kong.cache:get(credential_cache_key, nil,
+                                              load_credential_into_memory,
+                                              username)
   if err then
     return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
   end
@@ -100,7 +100,7 @@ local function load_credential_from_db(username)
 end
 
 local function load_consumer_into_memory(consumer_id, anonymous)
-  local result, err = singletons.db.consumers:select { id = consumer_id }
+  local result, err = kong.db.consumers:select { id = consumer_id }
   if not result then
     if anonymous and not err then
       err = 'anonymous consumer "' .. consumer_id .. '" not found'
@@ -150,10 +150,10 @@ local function do_authentication(conf)
   end
 
   -- Retrieve consumer
-  local consumer_cache_key = singletons.db.consumers:cache_key(credential.consumer_id)
-  local consumer, err      = singletons.cache:get(consumer_cache_key, nil,
-                                                  load_consumer_into_memory,
-                                                  credential.consumer_id)
+  local consumer_cache_key = kong.db.consumers:cache_key(credential.consumer.id)
+  local consumer, err      = kong.cache:get(consumer_cache_key, nil,
+                                            load_consumer_into_memory,
+                                            credential.consumer.id)
   if err then
     return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
   end
@@ -166,7 +166,7 @@ end
 
 function _M.execute(conf)
 
-  if ngx.ctx.authenticated_credential and conf.anonymous ~= "" then
+  if ngx.ctx.authenticated_credential and conf.anonymous then
     -- we're already authenticated, and we're configured for using anonymous,
     -- hence we're in a logical OR between auth methods and we're already done.
     return
@@ -174,12 +174,12 @@ function _M.execute(conf)
 
   local ok, err = do_authentication(conf)
   if not ok then
-    if conf.anonymous ~= "" then
+    if conf.anonymous then
       -- get anonymous user
-      local consumer_cache_key = singletons.db.consumers:cache_key(conf.anonymous)
-      local consumer, err      = singletons.cache:get(consumer_cache_key, nil,
-                                                      load_consumer_into_memory,
-                                                      conf.anonymous, true)
+      local consumer_cache_key = kong.db.consumers:cache_key(conf.anonymous)
+      local consumer, err      = kong.cache:get(consumer_cache_key, nil,
+                                                load_consumer_into_memory,
+                                                conf.anonymous, true)
       if err then
         return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
       end

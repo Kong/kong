@@ -46,7 +46,7 @@ for _, strategy in helpers.each_strategy() do
       })
 
       bp.plugins:insert {
-        route_id = route1.id,
+        route = { id = route1.id },
         name     = "request-transformer",
         config   = {
           add = {
@@ -58,7 +58,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.plugins:insert {
-        route_id = route2.id,
+        route = { id = route2.id },
         name     = "request-transformer",
         config   = {
           add    = {
@@ -68,7 +68,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.plugins:insert {
-        route_id = route3.id,
+        route = { id = route3.id },
         name     = "request-transformer",
         config   = {
           add = {
@@ -92,7 +92,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.plugins:insert {
-        route_id = route4.id,
+        route = { id = route4.id },
         name     = "request-transformer",
         config   = {
           remove = {
@@ -104,7 +104,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.plugins:insert {
-        route_id = route5.id,
+        route = { id = route5.id },
         name     = "request-transformer",
         config   = {
           replace = {
@@ -116,7 +116,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.plugins:insert {
-        route_id = route6.id,
+        route = { id = route6.id },
         name     = "request-transformer",
         config   = {
           append = {
@@ -128,7 +128,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.plugins:insert {
-        route_id = route7.id,
+        route = { id = route7.id },
         name     = "request-transformer",
         config   = {
           http_method = "POST"
@@ -136,7 +136,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.plugins:insert {
-        route_id = route8.id,
+        route = { id = route8.id },
         name     = "request-transformer",
         config   = {
           http_method = "GET"
@@ -144,7 +144,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.plugins:insert {
-        route_id = route9.id,
+        route = { id = route9.id },
         name     = "request-transformer",
         config   = {
           rename = {

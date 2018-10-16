@@ -79,9 +79,9 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
         hosts        = { "test1.com" },
         upstream_url = helpers.mock_upstream_url,
       })
-      assert(helpers.dao.plugins:insert {
+      assert(helpers.db.plugins:insert {
         name   = "rate-limiting",
-        api_id = api1.id,
+        api = { id = api1.id },
         config = {
           policy         = policy,
           minute         = 6,
@@ -98,9 +98,9 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
         hosts        = { "test2.com" },
         upstream_url = helpers.mock_upstream_url,
       })
-      assert(helpers.dao.plugins:insert {
+      assert(helpers.db.plugins:insert {
         name   = "rate-limiting",
-        api_id = api2.id,
+        api = { id = api2.id },
         config = {
           minute         = 3,
           hour           = 5,
@@ -118,13 +118,13 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
         hosts        = { "test3.com" },
         upstream_url = helpers.mock_upstream_url,
       })
-      assert(helpers.dao.plugins:insert {
+      assert(helpers.db.plugins:insert {
         name   = "key-auth",
-        api_id = api3.id,
+        api = { id = api3.id },
       })
-      assert(helpers.dao.plugins:insert {
+      assert(helpers.db.plugins:insert {
         name   = "rate-limiting",
-        api_id = api3.id,
+        api = { id = api3.id },
         config = {
           minute         = 6,
           limit_by       = "credential",
@@ -136,9 +136,9 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
           redis_database = REDIS_DATABASE,
         }
       })
-      assert(helpers.dao.plugins:insert {
+      assert(helpers.db.plugins:insert {
         name = "rate-limiting",
-        api_id = api3.id,
+        api = { id = api3.id },
         consumer_id = consumer1.id,
         config = {
           minute = 8,
@@ -156,11 +156,11 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
         hosts        = { "test4.com" },
         upstream_url = helpers.mock_upstream_url,
       })
-      assert(helpers.dao.plugins:insert {
+      assert(helpers.db.plugins:insert {
         name   = "key-auth",
-        api_id = api4.id,
+        api = { id = api4.id },
       })
-      assert(helpers.dao.plugins:insert {
+      assert(helpers.db.plugins:insert {
         name        = "rate-limiting",
         api_id      = api4.id,
         consumer_id = consumer1.id,
@@ -180,9 +180,9 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
         hosts        = { "test5.com" },
         upstream_url = helpers.mock_upstream_url,
       })
-      assert(helpers.dao.plugins:insert {
+      assert(helpers.db.plugins:insert {
         name   = "rate-limiting",
-        api_id = api5.id,
+        api = { id = api5.id },
         config = {
           policy              = policy,
           minute              = 6,
@@ -416,9 +416,9 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
             hosts        = { "failtest1.com" },
             upstream_url = helpers.mock_upstream_url,
           })
-          assert(helpers.dao.plugins:insert {
+          assert(helpers.db.plugins:insert {
             name   = "rate-limiting",
-            api_id = api1.id,
+            api = { id = api1.id },
             config = { minute = 6, fault_tolerant = false }
           })
 
@@ -427,9 +427,9 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
             hosts        = { "failtest2.com" },
             upstream_url = helpers.mock_upstream_url,
           })
-          assert(helpers.dao.plugins:insert {
+          assert(helpers.db.plugins:insert {
             name   = "rate-limiting",
-            api_id = api2.id,
+            api = { id = api2.id },
             config = { minute = 6, fault_tolerant = true },
           })
 
@@ -511,9 +511,9 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
             hosts        = { "failtest3.com" },
             upstream_url = helpers.mock_upstream_url,
           })
-          assert(helpers.dao.plugins:insert {
+          assert(helpers.db.plugins:insert {
             name   = "rate-limiting",
-            api_id = api1.id,
+            api = { id = api1.id },
             config = { minute = 6, policy = policy, redis_host = "5.5.5.5", fault_tolerant = false },
           })
 
@@ -522,9 +522,9 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
             hosts        = { "failtest4.com" },
             upstream_url = helpers.mock_upstream_url,
           })
-          assert(helpers.dao.plugins:insert {
+          assert(helpers.db.plugins:insert {
             name   = "rate-limiting",
-            api_id = api2.id,
+            api = { id = api2.id },
             config = { minute = 6, policy = policy, redis_host = "5.5.5.5", fault_tolerant = true },
           })
 
@@ -574,9 +574,9 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
           hosts        = { "expire1.com" },
           upstream_url = helpers.mock_upstream_url,
         })
-        assert(helpers.dao.plugins:insert {
+        assert(helpers.db.plugins:insert {
           name   = "rate-limiting",
-          api_id = api.id,
+          api = { id = api.id },
           config = {
             minute         = 6,
             policy         = policy,

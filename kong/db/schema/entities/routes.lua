@@ -30,13 +30,15 @@ end
 
 
 return {
-  name        = "routes",
-  primary_key = { "id" },
+  name         = "routes",
+  primary_key  = { "id" },
+  endpoint_key = "name",
 
   fields = {
     { id             = typedefs.uuid, },
-    { created_at     = { type = "integer", timestamp = true, auto = true }, },
-    { updated_at     = { type = "integer", timestamp = true, auto = true }, },
+    { created_at     = typedefs.auto_timestamp_s },
+    { updated_at     = typedefs.auto_timestamp_s },
+    { name           = typedefs.name },
     { protocols      = { type     = "set",
                          len_min  = 1,
                          required = true,
@@ -68,9 +70,6 @@ return {
                            match_none = {
                              { pattern = "//",
                                err = "must not have empty segments"
-                             },
-                             { pattern = "./$",
-                               err = "must not have a trailing slash"
                              },
                            },
                          }

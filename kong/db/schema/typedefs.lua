@@ -1,9 +1,17 @@
 --- A library of ready-to-use type synonyms to use in schema definitions.
 -- @module kong.db.schema.typedefs
 local utils = require "kong.tools.utils"
+local openssl_pkey = require "openssl.pkey"
+local openssl_x509 = require "openssl.x509"
 
-local typedefs = {}
 local Schema = require("kong.db.schema")
+local socket_url = require("socket.url")
+
+
+local match = string.match
+local gsub = string.gsub
+local null = ngx.null
+local type = type
 
 
 local function validate_host(host)
@@ -21,7 +29,7 @@ end
 
 
 local function validate_path(path)
-  if not string.match(path, "^/[%w%.%-%_~%/%%]*$") then
+  if not match(path, "^/[%w%.%-%_~%/%%]*$") then
     return nil,
            "invalid path: '" .. path ..
            "' (characters outside of the reserved list of RFC 3986 found)",
@@ -30,7 +38,7 @@ local function validate_path(path)
 
   do
     -- ensure it is properly percent-encoded
-    local raw = string.gsub(path, "%%%x%x", "___")
+    local raw = gsub(path, "%%%x%x", "___")
 
     if raw:find("%", nil, true) then
       local err = raw:sub(raw:find("%%.?.?"))
@@ -42,28 +50,105 @@ local function validate_path(path)
 end
 
 
+local function validate_name(name)
+  if not match(name, "^[%w%.%-%_~]+$") then
+    return nil,
+    "invalid value '" .. name ..
+      "': it must only contain alphanumeric and '., -, _, ~' characters"
+  end
+
+  return true
+end
+
+
+local function validate_sni(host)
+  local res, err_or_port = utils.normalize_ip(host)
+  if type(err_or_port) == "string" and err_or_port ~= "invalid port number" then
+    return nil, "invalid value: " .. host
+  end
+
+  if res.type ~= "name" then
+    return nil, "must not be an IP"
+  end
+
+  if err_or_port == "invalid port number" or type(res.port) == "number" then
+    return nil, "must not have a port"
+  end
+
+  return true
+end
+
+
+local function validate_url(url)
+  local parsed_url, err = socket_url.parse(url)
+
+  if not parsed_url then
+    return nil, "could not parse url. " .. err
+  end
+
+  if not parsed_url.host then
+    return nil, "missing host in url"
+  end
+
+  if not parsed_url.scheme then
+    return nil, "missing scheme in url"
+  end
+
+  return true
+end
+
+
+local function validate_certificate(cert)
+  local ok
+  ok, cert = pcall(openssl_x509.new, cert)
+  if not ok then
+    return nil, "invalid certificate: " .. cert
+  end
+
+  return true
+end
+
+
+local function validate_key(key)
+  local ok
+  ok, key = pcall(openssl_pkey.new, key)
+  if not ok then
+    return nil, "invalid key: " .. key
+  end
+
+  return true
+end
+
+
+local typedefs = {}
+
+
 typedefs.http_method = Schema.define {
   type = "string",
   match = "^%u+$",
 }
 
+
 typedefs.protocol = Schema.define {
   type = "string",
   one_of = {
     "http",
-    "https"
+    "https",
   }
 }
+
 
 typedefs.host = Schema.define {
   type = "string",
   custom_validator = validate_host,
 }
 
+
 typedefs.port = Schema.define {
   type = "integer",
   between = { 0, 65535 }
 }
+
 
 typedefs.path = Schema.define {
   type = "string",
@@ -76,15 +161,95 @@ typedefs.path = Schema.define {
   custom_validator = validate_path,
 }
 
+typedefs.url = Schema.define {
+  type = "string",
+  custom_validator = validate_url,
+}
+
+typedefs.header_name = Schema.define {
+  type = "string",
+  custom_validator = utils.validate_header_name,
+}
+
+
 typedefs.timeout = Schema.define {
   type = "integer",
   between = { 0, math.pow(2, 31) - 2 },
 }
+
 
 typedefs.uuid = Schema.define {
   type = "string",
   uuid = true,
   auto = true,
 }
+
+
+typedefs.auto_timestamp_s = Schema.define {
+  type = "integer",
+  timestamp = true,
+  auto = true
+}
+
+
+typedefs.auto_timestamp_ms = Schema.define {
+  type = "number",
+  timestamp = true,
+  auto = true
+}
+
+
+typedefs.no_api = Schema.define {
+  type = "foreign",
+  reference = "apis",
+  eq = null,
+}
+
+
+typedefs.no_route = Schema.define {
+  type = "foreign",
+  reference = "routes",
+  eq = null,
+}
+
+
+typedefs.no_service = Schema.define {
+  type = "foreign",
+  reference = "services",
+  eq = null,
+}
+
+
+typedefs.no_consumer = Schema.define {
+  type = "foreign",
+  reference = "consumers",
+  eq = null,
+}
+
+
+typedefs.name = Schema.define {
+  type = "string",
+  unique = true,
+  custom_validator = validate_name
+}
+
+
+typedefs.sni = Schema.define {
+  type = "string",
+  custom_validator = validate_sni,
+}
+
+
+typedefs.certificate = Schema.define {
+  type = "string",
+  custom_validator = validate_certificate,
+}
+
+
+typedefs.key = Schema.define {
+  type = "string",
+  custom_validator = validate_key,
+}
+
 
 return typedefs

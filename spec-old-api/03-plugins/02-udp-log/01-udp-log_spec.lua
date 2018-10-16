@@ -7,7 +7,7 @@ describe("Plugin: udp-log (log)", function()
   local client
 
   setup(function()
-    local dao = select(3, helpers.get_db_utils())
+    local _, db, dao = helpers.get_db_utils()
 
     local api1 = assert(dao.apis:insert {
       name         = "tests-udp-logging",
@@ -15,8 +15,8 @@ describe("Plugin: udp-log (log)", function()
       upstream_url = helpers.mock_upstream_url,
     })
 
-    assert(dao.plugins:insert {
-      api_id = api1.id,
+    assert(db.plugins:insert {
+      api = { id = api1.id },
       name   = "udp-log",
       config = {
         host = "127.0.0.1",

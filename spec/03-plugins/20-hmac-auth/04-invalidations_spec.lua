@@ -8,11 +8,11 @@ for _, strategy in helpers.each_strategy() do
     local admin_client
     local consumer
     local credential
-    local dao
+    local db
 
     setup(function()
-      local bp, _
-      bp, _, dao = helpers.get_db_utils(strategy)
+      local bp
+      bp, db = helpers.get_db_utils(strategy)
 
       local route = bp.routes:insert {
         hosts = { "hmacauth.com" },
@@ -20,7 +20,7 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name     = "hmac-auth",
-        route_id = route.id,
+        route = { id = route.id },
         config   = {
           clock_skew = 3000,
         },
@@ -32,9 +32,9 @@ for _, strategy in helpers.each_strategy() do
       }
 
       credential = bp.hmacauth_credentials:insert {
-        username    = "bob",
-        secret      = "secret",
-        consumer_id = consumer.id,
+        username = "bob",
+        secret   = "secret",
+        consumer = { id = consumer.id },
       }
 
       assert(helpers.start_kong({
@@ -84,7 +84,7 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(200, res)
 
         -- Check that cache is populated
-        local cache_key = dao.hmacauth_credentials:cache_key("bob")
+        local cache_key = db.hmacauth_credentials:cache_key("bob")
         res = assert(admin_client:send {
           method = "GET",
           path   = "/cache/" .. cache_key,
@@ -138,9 +138,9 @@ for _, strategy in helpers.each_strategy() do
           method  = "POST",
           path    = "/consumers/consumer1/hmac-auth/",
           body    = {
-            username         = "bob",
-            secret           = "secret",
-            consumer_id      = consumer.id,
+            username      = "bob",
+            secret        = "secret",
+            consumer      = { id = consumer.id },
           },
           headers = {
             ["Content-Type"] = "application/json",
@@ -191,7 +191,7 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(200, res)
 
         -- ensure cache is invalidated
-        local cache_key = dao.hmacauth_credentials:cache_key("bob")
+        local cache_key = db.hmacauth_credentials:cache_key("bob")
         helpers.wait_until(function()
           local res = assert(admin_client:send {
             method  = "GET",
@@ -232,7 +232,7 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(200, res)
 
         -- Check that cache is populated
-        local cache_key = dao.hmacauth_credentials:cache_key("hello123")
+        local cache_key = db.hmacauth_credentials:cache_key("hello123")
         res = assert(admin_client:send {
           method = "GET",
           path   = "/cache/" .. cache_key,

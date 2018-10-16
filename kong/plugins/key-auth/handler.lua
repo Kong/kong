@@ -17,13 +17,11 @@ end
 
 
 local function load_credential(key)
-  local creds, err = kong.dao.keyauth_credentials:find_all {
-    key = key
-  }
-  if not creds then
+  local cred, err = kong.db.keyauth_credentials:select_by_key(key)
+  if not cred then
     return nil, err
   end
-  return creds[1]
+  return cred
 end
 
 
@@ -133,9 +131,8 @@ local function do_authentication(conf)
   -- retrieve our consumer linked to this API key
 
   local cache = kong.cache
-  local dao = kong.dao
 
-  local credential_cache_key = dao.keyauth_credentials:cache_key(key)
+  local credential_cache_key = kong.db.keyauth_credentials:cache_key(key)
   local credential, err = cache:get(credential_cache_key, nil, load_credential,
                                     key)
   if err then
@@ -154,9 +151,9 @@ local function do_authentication(conf)
 
   -- retrieve the consumer linked to this API key, to set appropriate headers
 
-  local consumer_cache_key = kong.db.consumers:cache_key(credential.consumer_id)
+  local consumer_cache_key = kong.db.consumers:cache_key(credential.consumer.id)
   local consumer, err      = cache:get(consumer_cache_key, nil, load_consumer,
-                                       credential.consumer_id)
+                                       credential.consumer.id)
   if err then
     kong.log.err(err)
     return nil, { status = 500, message = "An unexpected error ocurred" }
@@ -179,7 +176,7 @@ function KeyAuthHandler:access(conf)
   -- checking both old and new ctx for backward and forward compatibility
   local authenticated_credential = kong.ctx.shared.authenticated_credential
                                    or ngx.ctx.authenticated_credential
-  if authenticated_credential and conf.anonymous ~= "" then
+  if authenticated_credential and conf.anonymous then
     -- we're already authenticated, and we're configured for using anonymous,
     -- hence we're in a logical OR between auth methods and we're already done.
     return
@@ -187,7 +184,7 @@ function KeyAuthHandler:access(conf)
 
   local ok, err = do_authentication(conf)
   if not ok then
-    if conf.anonymous ~= "" then
+    if conf.anonymous then
       -- get anonymous user
       local consumer_cache_key = kong.db.consumers:cache_key(conf.anonymous)
       local consumer, err = kong.cache:get(consumer_cache_key, nil,

@@ -9,23 +9,21 @@ for _, strategy in helpers.each_strategy() do
     describe("cluster", function()
       local cluster_policy = policies.cluster
 
-      local conf = { route_id = uuid(), service_id = uuid() }
+      local conf = { route = { id = uuid() }, service = { id = uuid() } }
       local identifier = uuid()
 
-      local db
       local dao
 
       setup(function()
         local _
-        _, db, dao = helpers.get_db_utils(strategy)
+        _, _, dao = helpers.get_db_utils(strategy, {})
 
         local singletons = require "kong.singletons"
         singletons.dao   = dao
       end)
 
-      after_each(function()
-        assert(db:truncate())
-        dao:truncate_tables()
+      before_each(function()
+        dao.db:truncate_table("response_ratelimiting_metrics")
       end)
 
       it("should return nil when ratelimiting metrics are not existing", function()

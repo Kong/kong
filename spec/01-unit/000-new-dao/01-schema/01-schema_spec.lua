@@ -30,7 +30,7 @@ describe("schema", function()
     end
     covered["foreign"] = true
     for name, _ in pairs(Schema.valid_types) do
-      assert.truthy(covered[name], name.." not covered")
+      assert.truthy(covered[name], "type '" .. name .. "' not covered")
     end
   end
 
@@ -110,6 +110,44 @@ describe("schema", function()
       assert.falsy(Test:validate({ a_number = "wat" }))
     end)
 
+    it("forces a value with 'eq'", function()
+      local Test = Schema.new({
+        fields = {
+          { a_number = { type = "number", eq = 9 } }
+        }
+      })
+      assert.truthy(Test:validate({ a_number = 9 }))
+      assert.falsy(Test:validate({ a_number = 8 }))
+      assert.falsy(Test:validate({ a_number = "wat" }))
+    end)
+
+    it("forces a value with 'gt'", function()
+      local Test = Schema.new({
+        fields = {
+          { a_number = { type = "number", gt = 5 } }
+        }
+      })
+      assert.truthy(Test:validate({ a_number = 6 }))
+      assert.falsy(Test:validate({ a_number = 5 }))
+      assert.falsy(Test:validate({ a_number = 4 }))
+      assert.falsy(Test:validate({ a_number = "wat" }))
+    end)
+
+    it("validates arrays with 'contains'", function()
+      local Test = Schema.new({
+        fields = {
+          { pirate = { type = "array",
+                       elements = { type = "string" },
+                       contains = "arrr",
+                     },
+          }
+        }
+      })
+      assert.truthy(Test:validate({ pirate = { "aye", "arrr", "treasure" } }))
+      assert.falsy(Test:validate({ pirate = { "let's do our taxes", "please" } }))
+      assert.falsy(Test:validate({ pirate = {} }))
+    end)
+
     it("makes sure all types run validators", function()
       local num = { type = "number" }
       local tests = {
@@ -128,6 +166,8 @@ describe("schema", function()
         { { type = "record" },  -- no record-specific validators
           "fail" },
         { { type = "boolean" }, -- no boolean-specific validators
+          "fail" },
+        { { type = "function" },
           "fail" },
       }
 
@@ -671,6 +711,25 @@ describe("schema", function()
       assert.falsy(Test:validate({ f = { a = 2, b = "foo" } }))
     end)
 
+   it("validates nested records", function()
+      local Test = Schema.new({
+        fields = {
+          { f = {
+              type = "record",
+              fields = {
+                { r = {
+                    type = "record",
+                    fields = {
+                      { a = { type = "string" } },
+                      { b = { type = "number" } } }}}}}}}})
+      assert.truthy(Test:validate({ f = { r = { a = "foo" }}}))
+      assert.truthy(Test:validate({ f = { r = { b = 42 }}}))
+      assert.truthy(Test:validate({ f = { r = { a = "foo", b = 42 }}}))
+      assert.falsy(Test:validate({ f = { r = { a = 2 }}}))
+      assert.falsy(Test:validate({ f = { r = { b = "foo" }}}))
+      assert.falsy(Test:validate({ f = { r = { a = 2, b = "foo" }}}))
+    end)
+
     it("validates an integer", function()
       local Test = Schema.new({
         fields = {
@@ -850,6 +909,328 @@ describe("schema", function()
       assert.falsy(errmsg)
     end)
 
+    describe("subschemas", function()
+      it("validates loading a subschema", function()
+        local Test = Schema.new({
+          name = "test",
+          subschema_key = "name",
+          fields = {
+            { name = { type = "string", required = true, } },
+            { config = { type = "record", abstract = true, } },
+          }
+        })
+        Test:new_subschema("my_subschema", {
+          fields = {
+            { config = {
+                type = "record",
+                fields = {
+                  { foo = { type = "string" } },
+                  { bar = { type = "integer" } },
+                }
+            } }
+          }
+        })
+        assert.truthy(Test:validate({
+          name = "my_subschema",
+          config = {
+            foo = "hello",
+            bar = 123,
+          }
+        }))
+      end)
+
+      it("fails if subschema doesn't exist", function()
+        local Test = Schema.new({
+          name = "test",
+          subschema_key = "name",
+          fields = {
+            { name = { type = "string", required = true, } },
+          }
+        })
+        local ok, errors = Test:validate({
+          name = "my_invalid_subschema",
+        })
+        assert.falsy(ok)
+        assert.same({
+          ["name"] = "unknown type: my_invalid_subschema",
+        }, errors)
+      end)
+
+      it("ignores missing non-required abstract fields", function()
+        local Test = Schema.new({
+          name = "test",
+          subschema_key = "name",
+          fields = {
+            { name = { type = "string", required = true, } },
+            { config = { type = "record", abstract = true, } },
+            { bla = { type = "integer", abstract = true, } },
+          }
+        })
+        Test:new_subschema("my_subschema", {
+          fields = {
+            { config = {
+                type = "record",
+                fields = {
+                  { foo = { type = "string" } },
+                  { bar = { type = "integer" } },
+                }
+            } }
+          }
+        })
+        assert.truthy(Test:validate({
+          name = "my_subschema",
+          config = {
+            foo = "hello",
+            bar = 123,
+          }
+        }))
+      end)
+
+      it("cannot introduce new top-level fields", function()
+        local Test = Schema.new({
+          name = "test",
+          subschema_key = "name",
+          fields = {
+            { name = { type = "string", required = true, } },
+            { config = {
+                type = "record",
+                fields = {
+                  { foo = { type = "integer" } },
+                }
+            } },
+          }
+        })
+        Test:new_subschema("my_subschema", {
+          fields = {
+            { config = {
+                type = "record",
+                fields = {
+                  { foo = { type = "integer" } },
+                  { bar = { type = "integer" } },
+                }
+            } },
+            { new_field = { type = "string", required = true, } },
+          }
+        })
+
+        local ok, errors = Test:validate({
+          name = "my_subschema",
+          config = {
+            foo = 123,
+          },
+          new_field = "blah",
+        })
+        assert.falsy(ok)
+        assert.same({
+          new_field = "unknown field",
+        }, errors)
+      end)
+
+      it("fails when trying to use an abstract field (incomplete subschema)", function()
+        local Test = Schema.new({
+          name = "test",
+          subschema_key = "name",
+          fields = {
+            { name = { type = "string", required = true, } },
+            { config = { type = "record", abstract = true, } },
+            { bla = { type = "integer", abstract = true, } },
+          }
+        })
+        Test:new_subschema("my_subschema", {
+          fields = {
+            { config = {
+                type = "record",
+                fields = {
+                  { foo = { type = "string" } },
+                  { bar = { type = "integer" } },
+                }
+            } }
+          }
+        })
+        local ok, errors = Test:validate({
+          name = "my_subschema",
+          config = {
+            foo = "hello",
+            bar = 123,
+          },
+          bla = 456,
+        })
+        assert.falsy(ok)
+        assert.same({
+          bla = "error in schema definition: abstract field was not specialized",
+        }, errors)
+      end)
+
+      it("validates using both schema and subschema", function()
+        local Test = Schema.new({
+          name = "test",
+          subschema_key = "name",
+          fields = {
+            { name = { type = "string", required = true, } },
+            { bla = { type = "integer", } },
+            { config = { type = "record", abstract = true, } },
+          }
+        })
+        Test:new_subschema("my_subschema", {
+          fields = {
+            { config = {
+                type = "record",
+                fields = {
+                  { foo = { type = "string" } },
+                  { bar = { type = "integer" } },
+                }
+            } }
+          }
+        })
+        local ok, errors = Test:validate({
+          name = "my_subschema",
+          bla = 4.5,
+          config = {
+            foo = 456,
+            bar = 123,
+          }
+        })
+        assert.falsy(ok)
+        assert.same({
+          bla = "expected an integer",
+          config = {
+            foo = "expected a string",
+          }
+        }, errors)
+      end)
+
+      it("can specialize a field of the parent schema", function()
+        local Test = Schema.new({
+          name = "test",
+          subschema_key = "name",
+          fields = {
+            { name = { type = "string", required = true, } },
+            { consumer = { type = "string", } },
+          }
+        })
+        Test:new_subschema("length_5", {
+          fields = {
+            { consumer = {
+                type = "string",
+                len_eq = 5,
+            } }
+          }
+        })
+        Test:new_subschema("no_restrictions", {
+          fields = {}
+        })
+
+        local ok, errors = Test:validate({
+          name = "length_5",
+          consumer = "aaa",
+        })
+        assert.falsy(ok)
+        assert.same({
+          consumer = "length must be 5",
+        }, errors)
+
+        ok = Test:validate({
+          name = "length_5",
+          consumer = "aaaaa",
+        })
+        assert.truthy(ok)
+
+        ok = Test:validate({
+          name = "no_restrictions",
+          consumer = "aaa",
+        })
+        assert.truthy(ok)
+
+      end)
+
+      it("cannot change type when specializing a field", function()
+        local Test = Schema.new({
+          name = "test",
+          subschema_key = "name",
+          fields = {
+            { name = { type = "string", required = true, } },
+            { consumer = { type = "string", } },
+          }
+        })
+        Test:new_subschema("length_5", {
+          fields = {
+            { consumer = {
+                type = "integer",
+            } }
+          }
+        })
+        Test:new_subschema("no_restrictions", {
+          fields = {}
+        })
+
+        local ok, errors = Test:validate({
+          name = "length_5",
+          consumer = "aaaaa",
+        })
+        assert.falsy(ok)
+        assert.same({
+          consumer = "error in schema definition: cannot change type in a specialized field",
+        }, errors)
+
+        ok = Test:validate({
+          name = "no_restrictions",
+          consumer = "aaa",
+        })
+        assert.truthy(ok)
+
+      end)
+
+      it("a specialized field can force a value using 'eq'", function()
+        assert(Schema.new({
+          name = "mock_consumers",
+          primary_key = { "id" },
+          fields = {
+            { id = { type = "string" }, },
+          }
+        }))
+
+        local Test = assert(Schema.new({
+          name = "test",
+          subschema_key = "name",
+          fields = {
+            { name = { type = "string", required = true, } },
+            { consumer = { type = "foreign", reference = "mock_consumers" } },
+          }
+        }))
+        Test:new_subschema("no_consumer", {
+          fields = {
+            { consumer = { type = "foreign", reference = "mock_consumers", eq = ngx.null } }
+          }
+        })
+        Test:new_subschema("no_restrictions", {
+          fields = {}
+        })
+
+        local ok, errors = Test:validate({
+          name = "no_consumer",
+          consumer = { id = "hello" },
+        })
+        assert.falsy(ok)
+        assert.same({
+          consumer = "value must be null",
+        }, errors)
+
+        ok = Test:validate({
+          name = "no_consumer",
+          consumer = ngx.null,
+        })
+        assert.truthy(ok)
+
+        ok = Test:validate({
+          name = "no_restrictions",
+          consumer = { id = "hello" },
+        })
+        assert.truthy(ok)
+
+      end)
+
+    end)
+
   end)
 
   describe("validate_primary_key", function()
@@ -886,14 +1267,15 @@ describe("schema", function()
     end)
 
     it("fails on missing foreign primary keys", function()
-      package.loaded["kong.db.schema.entities.schema-test"] = {
+      assert(Schema.new({
         name = "schema-test",
         primary_key = { "id" },
         fields = {
           { id = { type = "string" }, },
         }
-      }
+      }))
       local Test = assert(Schema.new({
+        name = "Test",
         fields = {
           { f = { type = "foreign", reference = "schema-test" } },
           { b = { type = "number" }, },
@@ -907,14 +1289,15 @@ describe("schema", function()
     end)
 
     it("fails on bad foreign primary keys", function()
-      package.loaded["kong.db.schema.entities.schema-test"] = {
+      assert(Schema.new({
         name = "schema-test",
         primary_key = { "id" },
         fields = {
           { id = { type = "string", required = true }, },
         }
-      }
+      }))
       local Test = assert(Schema.new({
+        name = "Test",
         fields = {
           { f = { type = "foreign", reference = "schema-test" } },
           { b = { type = "number" }, },
@@ -938,6 +1321,7 @@ describe("schema", function()
         }
       }
       local Test = assert(Schema.new({
+        name = "Test",
         fields = {
           { f = { type = "foreign", reference = "schema-test" } },
           { b = { type = "number" }, },
@@ -1076,8 +1460,189 @@ describe("schema", function()
         redis_host = "example.com",
         redis_port = 80
       }))
-      assert.falsy(Test:validate_update({
+      assert.truthy(Test:validate_update({
         policy = "bla",
+      }))
+      assert.falsy(Test:validate_update({
+        policy = "redis",
+      }))
+    end)
+
+    it("test custom entity checks", function()
+      local Test = Schema.new({
+        fields = {
+          { aaa = { type = "string" } },
+          { bbb = { type = "string" } },
+          { ccc = { type = "number" } },
+        },
+        entity_checks = {
+          { custom_entity_check = {
+            field_sources = { "bbb", "ccc" },
+            fn = function(entity)
+              assert(entity.aaa == nil)
+              if entity.bbb == "foo" and entity.ccc == 42 then
+                return true
+              end
+              return nil, "oh no"
+            end,
+          } }
+        }
+      })
+      local ok, err = Test:validate_update({
+        aaa = "bar",
+        bbb = "foo",
+        ccc = 42
+      })
+      assert.truthy(ok)
+      assert.falsy(err)
+
+      ok, err = Test:validate_update({
+        aaa = ngx.null,
+        bbb = "foo",
+        ccc = 42
+      })
+      assert.truthy(ok)
+      assert.falsy(err)
+
+      ok, err = Test:validate({
+        aaa = ngx.null,
+        bbb = "foo",
+      })
+      assert.falsy(ok)
+      assert.match("field required for entity check", err["ccc"])
+
+      ok, err = Test:validate_update({
+        aaa = ngx.null,
+        bbb = "foo",
+      })
+      assert.falsy(ok)
+      assert.match("field required for entity check when updating", err["ccc"])
+
+      ok, err = Test:validate_update({
+        aaa = ngx.null,
+      })
+      assert.truthy(ok)
+      assert.falsy(err)
+
+      ok, err = Test:validate_update({
+        bbb = "foo",
+        ccc = 43
+      })
+      assert.falsy(ok)
+      assert.match("oh no", err["@entity"][1])
+
+      ok, err = Test:validate_update({
+        bbb = "foooo",
+        ccc = 42
+      })
+      assert.falsy(ok)
+      assert.match("oh no", err["@entity"][1])
+    end)
+
+    it("does not run an entity check if fields have errors", function()
+      local Test = Schema.new({
+        fields = {
+          { aaa = { type = "string" } },
+          { bbb = { type = "string", len_min = 8 } },
+          { ccc = { type = "number", between = { 0, 10 } } },
+        },
+        entity_checks = {
+          { custom_entity_check = {
+            field_sources = { "bbb", "ccc" },
+            fn = function(entity)
+              assert(entity.aaa == nil)
+              if entity.bbb == "12345678" and entity.ccc == 2 then
+                return true
+              end
+              return nil, "oh no"
+            end,
+          } }
+        }
+      })
+      local ok, err = Test:validate_update({
+        aaa = "bar",
+        bbb = "foo",
+        ccc = 42
+      })
+      assert.falsy(ok)
+      assert.match("length must be at least 8", err["bbb"])
+      assert.match("value should be between 0 and 10", err["ccc"])
+      assert.falsy(err["@entity"])
+
+      ok, err = Test:validate({
+        aaa = ngx.null,
+        bbb = "foo",
+        ccc = 42
+      })
+      assert.falsy(ok)
+      assert.match("length must be at least 8", err["bbb"])
+      assert.match("value should be between 0 and 10", err["ccc"])
+      assert.falsy(err["@entity"])
+
+      ok, err = Test:validate({
+        bbb = "AAAAAAAA",
+        ccc = 9,
+      })
+      assert.falsy(ok)
+      assert.match("oh no", err["@entity"][1])
+
+      ok, err = Test:validate({
+        bbb = "12345678",
+        ccc = 2,
+      })
+      assert.truthy(ok)
+      assert.falsy(err)
+    end)
+
+    it("supports entity checks on nested fields", function()
+      local Test = Schema.new({
+        fields = {
+          { config = {
+              type = "record",
+              fields = {
+                { policy = { type = "string", one_of = { "redis", "bla" } } },
+                { redis_host = { type = "string" } },
+                { redis_port = { type = "number" } },
+              }
+          } }
+        },
+        entity_checks = {
+          { conditional = { if_field = "config.policy",
+                            if_match = { eq = "redis" },
+                            then_field = "config.redis_host",
+                            then_match = { required = true } } },
+          { conditional = { if_field = "config.policy",
+                            if_match = { eq = "redis" },
+                            then_field = "config.redis_port",
+                            then_match = { required = true } } },
+        }
+      })
+      local ok, err = Test:validate_update({ config = { policy = "redis" } })
+      assert.falsy(ok)
+      assert.truthy(err)
+      assert.falsy(Test:validate_update({
+        config = {
+          policy = "redis",
+          redis_host = ngx.null,
+          redis_port = ngx.null,
+        }
+      }))
+      assert.truthy(Test:validate_update({
+        config = {
+          policy = "redis",
+          redis_host = "example.com",
+          redis_port = 80
+        }
+      }))
+      assert.falsy(Test:validate_update({
+        config = {
+          policy = "redis",
+        }
+      }))
+      assert.truthy(Test:validate_update({
+        config = {
+          policy = "bla",
+        }
       }))
     end)
 
@@ -1109,8 +1674,9 @@ describe("schema", function()
           { d = { type = "integer" }, },
           { e = { type = "boolean" }, },
           { f = { type = "string" }, },
-                { g = { type = "record", fields = {} }, },
+          { g = { type = "record", fields = {} }, },
           { h = { type = "map", keys = {}, values = {} }, },
+          { i = { type = "function" }, },
         }
       })
       check_all_types_covered(Test.fields)
@@ -1124,6 +1690,7 @@ describe("schema", function()
       assert.same(ngx.null, data.f)
       assert.same(ngx.null, data.g)
       assert.same(ngx.null, data.h)
+      assert.same(ngx.null, data.i)
     end)
 
     it("does not produce non-required fields on 'update'", function()
@@ -1135,8 +1702,9 @@ describe("schema", function()
           { d = { type = "integer" }, },
           { e = { type = "boolean" }, },
           { f = { type = "string" }, },
-                { g = { type = "record", fields = {} }, },
+          { g = { type = "record", fields = {} }, },
           { h = { type = "map", keys = {}, values = {} }, },
+          { i = { type = "function" }, },
         }
       })
       check_all_types_covered(Test.fields)
@@ -1150,9 +1718,12 @@ describe("schema", function()
       assert.is_nil(data.f)
       assert.is_nil(data.g)
       assert.is_nil(data.h)
+      assert.is_nil(data.i)
     end)
 
     it("honors given default values", function()
+      local f = function() end
+
       local Test = Schema.new({
         fields = {
           { a = { type = "array",
@@ -1174,6 +1745,25 @@ describe("schema", function()
                     { f = { type = "number" }, },
                   },
                   default = { f = 123 } }, },
+          { i = { type = "function", default = f } },
+          { nested_record = {
+              type = "record",
+              default = {
+                r = {
+                  a = "nr",
+                  b = 123,
+                }
+              },
+              fields = {
+                { r = {
+                    type = "record",
+                    fields = {
+                      { a = { type = "string" } },
+                      { b = { type = "number" } }
+                    }
+                } }
+              }
+          } }
         }
       })
       check_all_types_covered(Test.fields)
@@ -1186,6 +1776,31 @@ describe("schema", function()
       assert.same("foo",                data.f)
       assert.same({ foo = 1, bar = 2 }, data.g)
       assert.same({ f = 123 },          data.h)
+      assert.same(f,                    data.i)
+      assert.same({ r = { a = "nr", b = 123, }}, data.nested_record)
+    end)
+
+    it("nested defaults in non-nullable records produce a default record", function()
+      local Test = Schema.new({
+        fields = {
+          { nested_record = {
+              type = "record",
+              nullable = false,
+              fields = {
+                { r = {
+                    type = "record",
+                    nullable = false,
+                    fields = {
+                      { a = { type = "string", default = "nr", } },
+                      { b = { type = "number", default = 123, } }
+                    }
+                } }
+              }
+          } }
+        }
+      })
+      local data = Test:process_auto_fields({})
+      assert.same({ r = { a = "nr", b = 123, }}, data.nested_record)
     end)
 
     it("honors 'false' as a default", function()
@@ -1267,6 +1882,18 @@ describe("schema", function()
       local tbl = {}
       tbl = Test:process_auto_fields(tbl, "insert")
       assert.match(uuid_pattern, tbl.f)
+    end)
+
+    it("auto-produces a random with 'string' and 'auto'", function()
+      local Test = Schema.new({
+        fields = {
+          { f = { type = "string", auto = true } }
+        }
+      })
+      local tbl = {}
+      tbl = Test:process_auto_fields(tbl, "insert")
+      assert.is_string(tbl.f)
+      assert.equals(32, #tbl.f)
     end)
 
     it("auto-produces a timestamp with 'created_at' and 'auto'", function()
@@ -1409,5 +2036,54 @@ describe("schema", function()
         assert.is_nil(tbl.map.https)
       end
     end)
+
+    describe("in subschemas", function()
+      it("a specialized field can set a default", function()
+        local Test = Schema.new({
+          name = "test",
+          subschema_key = "name",
+          fields = {
+            { name = { type = "string", required = true, } },
+            { config = { type = "record", abstract = true } },
+          }
+        })
+        Test:new_subschema("my_subschema", {
+          fields = {
+            { config = {
+                type = "record",
+                fields = {
+                  { foo = { type = "string", default = "bar" } },
+                },
+                default = { foo = "bla" }
+             } }
+          }
+        })
+
+        local input = {
+          name = "my_subschema",
+          config = { foo = "hello" },
+        }
+        local ok = Test:validate(input)
+        assert.truthy(ok)
+        local output = Test:process_auto_fields(input)
+        assert.same(input, output)
+
+        input = {
+          name = "my_subschema",
+          config = nil,
+        }
+        ok = Test:validate(input)
+        assert.truthy(ok)
+        output = Test:process_auto_fields(input)
+        assert.same({
+          name = "my_subschema",
+          config = {
+            foo = "bla",
+          }
+        }, output)
+
+      end)
+    end)
+
   end)
 end)

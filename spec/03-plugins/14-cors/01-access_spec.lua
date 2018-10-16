@@ -46,12 +46,12 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name     = "cors",
-        route_id = route1.id,
+        route = { id = route1.id },
       }
 
       bp.plugins:insert {
         name     = "cors",
-        route_id = route2.id,
+        route = { id = route2.id },
         config   = {
           origins         = { "example.com" },
           methods         = { "GET" },
@@ -64,7 +64,7 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name     = "cors",
-        route_id = route3.id,
+        route = { id = route3.id },
         config   = {
           origins            = { "example.com" },
           methods            = { "GET" },
@@ -77,17 +77,17 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name     = "cors",
-        route_id = route4.id,
+        route = { id = route4.id },
       }
 
       bp.plugins:insert {
         name     = "key-auth",
-        route_id = route4.id
+        route = { id = route4.id }
       }
 
       bp.plugins:insert {
         name     = "cors",
-        route_id = route5.id,
+        route = { id = route5.id },
         config   = {
           origins     = { "*" },
           credentials = true
@@ -96,7 +96,7 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name     = "cors",
-        route_id = route6.id,
+        route = { id = route6.id },
         config   = {
           origins            = { "example.com", "example.org" },
           methods            = { "GET" },
@@ -109,7 +109,7 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name     = "cors",
-        route_id = route7.id,
+        route = { id = route7.id },
         config   = {
           origins     = { "*" },
           credentials = false
@@ -118,7 +118,7 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name     = "cors",
-        route_id = route8.id,
+        route = { id = route8.id },
         config   = {
           origins = {},
         }
@@ -126,7 +126,7 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name     = "cors",
-        route_id = route9.id,
+        route = { id = route9.id },
         config   = {
           origins = { [[.*\.?example(?:-foo)?.com]] },
         }

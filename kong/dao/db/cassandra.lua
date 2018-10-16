@@ -35,6 +35,7 @@ _M.additional_tables = {
   "routes",
   "services",
   "consumers",
+  "plugins",
   "certificates",
   "snis",
 }
@@ -676,10 +677,28 @@ function _M:delete(table_name, schema, primary_keys, constraints)
   local where, args = get_where(schema, primary_keys)
   local query = fmt("DELETE FROM %s WHERE %s", table_name, where)
   local res, err =  self:query(query, args)
-  if not res then return nil, err
-  elseif res.type == "VOID" then
-    if constraints and constraints.cascade then
-      for f_entity, cascade in pairs(constraints.cascade) do
+  if not res
+    then return nil, err
+  end
+  if res.type ~= "VOID" then
+    return nil
+  end
+
+  if constraints and constraints.cascade then
+    for f_entity, cascade in pairs(constraints.cascade) do
+      if cascade.new_db then
+        local db_entity = cascade.db_entity
+
+        for row, err in db_entity["each_for_" .. cascade.f_col](db_entity, primary_keys) do
+          if not row then
+            return nil, err
+          end
+
+          local key = db_entity.schema:extract_pk_values(row)
+          db_entity:delete(key)
+        end
+
+      else
         local tbl = {[cascade.f_col] = primary_keys[cascade.col]}
         local rows, err = self:find_all(cascade.table, tbl, cascade.schema)
         if not rows then
@@ -699,8 +718,8 @@ function _M:delete(table_name, schema, primary_keys, constraints)
         end
       end
     end
-    return row
   end
+  return row
 end
 
 --- Migrations

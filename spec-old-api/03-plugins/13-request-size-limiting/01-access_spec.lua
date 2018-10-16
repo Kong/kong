@@ -8,16 +8,16 @@ describe("Plugin: request-size-limiting (access)", function()
   local client
 
   setup(function()
-    local dao = select(3, helpers.get_db_utils())
+    local _, db, dao = helpers.get_db_utils()
 
     local api = assert(dao.apis:insert {
       name         = "limit.com",
       hosts        = { "limit.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name   = "request-size-limiting",
-      api_id = api.id,
+      api = { id = api.id },
       config = {
         allowed_payload_size = TEST_SIZE
       }

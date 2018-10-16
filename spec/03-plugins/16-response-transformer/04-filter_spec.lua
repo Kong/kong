@@ -2,7 +2,7 @@ local helpers = require "spec.helpers"
 
 
 for _, strategy in helpers.each_strategy() do
-  describe("Plugin: response-transformer (filter)", function()
+  describe("Plugin: response-transformer (filter) [#" .. strategy .. "]", function()
     local proxy_client
 
     setup(function()
@@ -21,7 +21,7 @@ for _, strategy in helpers.each_strategy() do
       })
 
       bp.plugins:insert {
-        route_id = route1.id,
+        route = { id = route1.id },
         name     = "response-transformer",
         config   = {
           remove    = {
@@ -32,7 +32,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.plugins:insert {
-        route_id = route2.id,
+        route = { id = route2.id },
         name     = "response-transformer",
         config   = {
           replace = {
@@ -42,7 +42,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.plugins:insert {
-        route_id = route3.id,
+        route = { id = route3.id },
         name     = "response-transformer",
         config   = {
           remove = {
@@ -52,7 +52,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.plugins:insert {
-        route_id = route3.id,
+        route = { id = route3.id },
         name     = "basic-auth",
       }
 

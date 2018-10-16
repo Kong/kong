@@ -15,6 +15,11 @@ local MOCK_UPSTREAM_HOSTNAME = "localhost"
 local MOCK_UPSTREAM_PORT = 15555
 local MOCK_UPSTREAM_SSL_PORT = 15556
 
+local consumers_schema_def = require "kong.db.schema.entities.consumers"
+local services_schema_def = require "kong.db.schema.entities.services"
+local plugins_schema_def = require "kong.db.schema.entities.plugins"
+local routes_schema_def = require "kong.db.schema.entities.routes"
+local apis_schema_def = require "kong.db.schema.entities.apis"
 local conf_loader = require "kong.conf_loader"
 local DAOFactory = require "kong.dao.factory"
 local Blueprints = require "spec.fixtures.blueprints"
@@ -23,6 +28,8 @@ local pl_utils = require "pl.utils"
 local pl_path = require "pl.path"
 local pl_file = require "pl.file"
 local pl_dir = require "pl.dir"
+local pl_Set = require "pl.Set"
+local Schema = require "kong.db.schema"
 local cjson = require "cjson.safe"
 local utils = require "kong.tools.utils"
 local http = require "resty.http"
@@ -93,19 +100,20 @@ end
 ---------------
 local conf = assert(conf_loader(TEST_CONF_PATH))
 local db = assert(DB.new(conf))
+assert(db:init_connector())
 local dao = assert(DAOFactory.new(conf, db))
 db.old_dao = dao
 local blueprints = assert(Blueprints.new(dao, db))
--- make sure migrations are up-to-date
 
 local each_strategy
 
 do
-  local default_strategies = { "postgres", "cassandra" }
+  local default_strategies = {"postgres", "cassandra"}
   local env_var = os.getenv("KONG_DATABASE")
   if env_var then
     default_strategies = { env_var }
   end
+  local available_strategies = pl_Set(default_strategies)
 
   local function iter(strategies, i)
     i = i + 1
@@ -115,8 +123,17 @@ do
     end
   end
 
-  each_strategy = function()
-    return iter, default_strategies, 0
+  each_strategy = function(strategies)
+    if not strategies then
+      return iter, default_strategies, 0
+    end
+
+    for i = #strategies, 1, -1 do
+      if not available_strategies[strategies[i]] then
+        table.remove(strategies, i)
+      end
+    end
+    return iter, strategies, 0
   end
 end
 
@@ -134,15 +151,40 @@ local function truncate_tables(db, dao, tables)
   end
 end
 
-local function get_db_utils(strategy, tables)
+local function bootstrap_database(db)
+  local schema_state = assert(db:schema_state())
+  if schema_state.needs_bootstrap then
+    assert(db:schema_bootstrap())
+  end
+
+  if schema_state.new_migrations then
+    assert(db:run_migrations(schema_state.new_migrations, {
+      run_up = true,
+      run_teardown = true,
+    }))
+  end
+end
+
+local function get_db_utils(strategy, tables, plugins)
   strategy = strategy or conf.database
   if tables ~= nil and type(tables) ~= "table" then
     error("arg #2 must be a list of tables to truncate", 2)
+  end
+  if plugins ~= nil and type(plugins) ~= "table" then
+    error("arg #3 must be a list of plugins to enable", 2)
+  end
+
+  if plugins then
+    for _, plugin in ipairs(plugins) do
+      conf.loaded_plugins[plugin] = true
+    end
   end
 
   -- new DAO (DB module)
   local db = assert(DB.new(conf, strategy))
   assert(db:init_connector())
+
+  bootstrap_database(db)
 
   -- legacy DAO
   local dao
@@ -153,8 +195,11 @@ local function get_db_utils(strategy, tables)
     dao = assert(DAOFactory.new(conf, db))
     conf.database = database
 
-    assert(dao:run_migrations())
+    --assert(dao:run_migrations())
   end
+
+  db:truncate("plugins")
+  assert(db.plugins:load_plugin_schemas(conf.loaded_plugins))
 
   -- cleanup new DB tables
   if not tables then
@@ -169,6 +214,12 @@ local function get_db_utils(strategy, tables)
 
   -- blueprints
   local bp = assert(Blueprints.new(dao, db))
+
+  if plugins then
+    for _, plugin in ipairs(plugins) do
+      conf.loaded_plugins[plugin] = false
+    end
+  end
 
   return bp, db, dao
 end
@@ -361,7 +412,7 @@ end
 local function http_client(host, port, timeout)
   timeout = timeout or 10000
   local client = assert(http.new())
-  assert(client:connect(host, port))
+  assert(client:connect(host, port), "Could not connect to " .. host .. ":" .. port)
   client:set_timeout(timeout)
   return setmetatable({
     client = client
@@ -997,10 +1048,17 @@ luassert:register("assertion", "formparam", req_form_param,
 -- Modified version of `pl.utils.executeex()` so the output can directly be
 -- used on an assertion.
 -- @name execute
--- @param ... see penlight documentation
--- @return ok, stderr, stdout; stdout is only included when the result was ok
-local function exec(...)
-  local ok, _, stdout, stderr = pl_utils.executeex(...)
+-- @param cmd command to execute
+-- @param pl_returns (optional) boolean: if true, this function will
+-- return the same values as Penlight's executeex.
+-- @return if pl_returns is true, returns four return values
+-- (ok, code, stdout, stderr); if pl_returns is false,
+-- returns either (false, stderr) or (true, stderr, stdout).
+local function exec(cmd, pl_returns)
+  local ok, code, stdout, stderr = pl_utils.executeex(cmd)
+  if pl_returns then
+    return ok, code, stdout, stderr
+  end
   if not ok then
     stdout = nil -- don't return 3rd value if fail because of busted's `assert`
   end
@@ -1013,8 +1071,14 @@ end
 -- @param env (optional) table with kong parameters to set as environment
 -- variables, overriding the test config (each key will automatically be
 -- prefixed with `KONG_` and be converted to uppercase)
--- @return same output as `exec`
-local function kong_exec(cmd, env)
+-- @param pl_returns (optional) boolean: if true, this function will
+-- return the same values as Penlight's executeex.
+-- @param env_vars (optional) a string prepended to the command, so
+-- that arbitrary environment variables may be passed
+-- @return if pl_returns is true, returns four return values
+-- (ok, code, stdout, stderr); if pl_returns is false,
+-- returns either (false, stderr) or (true, stderr, stdout).
+local function kong_exec(cmd, env, pl_returns, env_vars)
   cmd = cmd or ""
   env = env or {}
 
@@ -1033,12 +1097,12 @@ local function kong_exec(cmd, env)
   end
 
   -- build Kong environment variables
-  local env_vars = ""
+  env_vars = env_vars or ""
   for k, v in pairs(env) do
     env_vars = string.format("%s KONG_%s='%s'", env_vars, k:upper(), v)
   end
 
-  return exec(env_vars .. " " .. BIN_PATH .. " " .. cmd)
+  return exec(env_vars .. " " .. BIN_PATH .. " " .. cmd, pl_returns)
 end
 
 --- Prepare the Kong environment.
@@ -1127,6 +1191,34 @@ local function get_running_conf(prefix)
   return conf_loader(default_conf.kong_env)
 end
 
+
+-- Prepopulate Schema's cache
+Schema.new(consumers_schema_def)
+Schema.new(services_schema_def)
+Schema.new(routes_schema_def)
+Schema.new(apis_schema_def)
+
+local plugins_schema = assert(Schema.new(plugins_schema_def))
+
+local function validate_plugin_config_schema(config, schema_def)
+  assert(plugins_schema:new_subschema(schema_def.name, schema_def))
+  local entity = {
+    id = utils.uuid(),
+    name = schema_def.name,
+    config = config
+  }
+  local entity_to_insert, err = plugins_schema:process_auto_fields(entity, "insert")
+  if err then
+    return nil, err
+  end
+  local _, err = plugins_schema:validate_insert(entity_to_insert)
+  if err then return
+    nil, err
+  end
+  return entity_to_insert
+end
+
+
 ----------
 -- Exposed
 ----------
@@ -1143,6 +1235,7 @@ return {
   db = db,
   blueprints = blueprints,
   get_db_utils = get_db_utils,
+  bootstrap_database = bootstrap_database,
   bin_path = BIN_PATH,
   test_conf = conf,
   test_conf_path = TEST_CONF_PATH,
@@ -1155,6 +1248,7 @@ return {
                            MOCK_UPSTREAM_PORT,
 
   mock_upstream_ssl_protocol = MOCK_UPSTREAM_SSL_PROTOCOL,
+  mock_upstream_ssl_host     = MOCK_UPSTREAM_HOST,
   mock_upstream_ssl_port     = MOCK_UPSTREAM_SSL_PORT,
   mock_upstream_ssl_url      = MOCK_UPSTREAM_SSL_PROTOCOL .. "://" ..
                                MOCK_UPSTREAM_HOST .. ':' ..
@@ -1178,6 +1272,7 @@ return {
   clean_prefix = clean_prefix,
   wait_for_invalidation = wait_for_invalidation,
   each_strategy = each_strategy,
+  validate_plugin_config_schema = validate_plugin_config_schema,
 
   -- miscellaneous
   intercept = intercept,

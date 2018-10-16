@@ -1,19 +1,16 @@
-local schemas                    = require "kong.dao.schemas_validation"
-local request_transformer_schema = require "kong.plugins.request-transformer.schema"
-
-
-local validate_entity            = schemas.validate_entity
+local schema_def = require "kong.plugins.request-transformer.schema"
+local v = require("spec.helpers").validate_plugin_config_schema
 
 
 describe("Plugin: request-transformer (schema)", function()
   it("validates http_method", function()
-    local ok, err = validate_entity({http_method = "GET"}, request_transformer_schema)
-    assert.is_nil(err)
-    assert.True(ok)
+    local ok, err = v({ http_method = "GET" }, schema_def)
+    assert.truthy(ok)
+    assert.falsy(err)
   end)
   it("errors invalid http_method", function()
-    local ok, err = validate_entity({http_method = "HELLO"}, request_transformer_schema)
-    assert.equal("HELLO is not supported", err.http_method)
-    assert.False(ok)
+    local ok, err = v({ http_method = "HELLO!" }, schema_def)
+    assert.falsy(ok)
+    assert.equal("invalid value: HELLO!", err.config.http_method)
   end)
 end)

@@ -5,7 +5,7 @@ describe("Plugin: request-transformer (access)", function()
   local client
 
   setup(function()
-    local dao = select(3, helpers.get_db_utils())
+    local _, db, dao = helpers.get_db_utils()
 
     local api1 = assert(dao.apis:insert { name = "api-1", hosts = { "test1.com" }, upstream_url = helpers.mock_upstream_url})
     local api2 = assert(dao.apis:insert { name = "api-2", hosts = { "test2.com" }, upstream_url = helpers.mock_upstream_url})
@@ -17,8 +17,8 @@ describe("Plugin: request-transformer (access)", function()
     local api8 = assert(dao.apis:insert { name = "api-8", hosts = { "test8.com" }, upstream_url = helpers.mock_upstream_url})
     local api9 = assert(dao.apis:insert { name = "api-9", hosts = { "test9.com" }, upstream_url = helpers.mock_upstream_url})
 
-    assert(dao.plugins:insert {
-      api_id = api1.id,
+    assert(db.plugins:insert {
+      api = { id = api1.id },
       name = "request-transformer",
       config = {
         add = {
@@ -28,8 +28,8 @@ describe("Plugin: request-transformer (access)", function()
         }
       }
     })
-    assert(dao.plugins:insert {
-      api_id = api2.id,
+    assert(db.plugins:insert {
+      api = { id = api2.id },
       name = "request-transformer",
       config = {
         add = {
@@ -37,8 +37,8 @@ describe("Plugin: request-transformer (access)", function()
         }
       }
     })
-    assert(dao.plugins:insert {
-      api_id = api3.id,
+    assert(db.plugins:insert {
+      api = { id = api3.id },
       name = "request-transformer",
       config = {
         add = {
@@ -60,8 +60,8 @@ describe("Plugin: request-transformer (access)", function()
         }
       }
     })
-    assert(dao.plugins:insert {
-      api_id = api4.id,
+    assert(db.plugins:insert {
+      api = { id = api4.id },
       name = "request-transformer",
       config = {
         remove = {
@@ -71,8 +71,8 @@ describe("Plugin: request-transformer (access)", function()
         }
       }
     })
-    assert(dao.plugins:insert {
-      api_id = api5.id,
+    assert(db.plugins:insert {
+      api = { id = api5.id },
       name = "request-transformer",
       config = {
         replace = {
@@ -82,8 +82,8 @@ describe("Plugin: request-transformer (access)", function()
         }
       }
     })
-    assert(dao.plugins:insert {
-      api_id = api6.id,
+    assert(db.plugins:insert {
+      api = { id = api6.id },
       name = "request-transformer",
       config = {
         append = {
@@ -93,23 +93,23 @@ describe("Plugin: request-transformer (access)", function()
         }
       }
     })
-    assert(dao.plugins:insert {
-      api_id = api7.id,
+    assert(db.plugins:insert {
+      api = { id = api7.id },
       name = "request-transformer",
       config = {
         http_method = "POST"
       }
     })
-    assert(dao.plugins:insert {
-      api_id = api8.id,
+    assert(db.plugins:insert {
+      api = { id = api8.id },
       name = "request-transformer",
       config = {
         http_method = "GET"
       }
     })
 
-    assert(dao.plugins:insert {
-      api_id = api9.id,
+    assert(db.plugins:insert {
+      api = { id = api9.id },
       name = "request-transformer",
       config = {
         rename = {

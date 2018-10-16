@@ -9,7 +9,7 @@ for _, strategy in helpers.each_strategy() do
     local proxy_client
 
     setup(function()
-      local bp, _, dao = helpers.get_db_utils(strategy)
+      local bp = helpers.get_db_utils(strategy)
 
       local consumer = bp.consumers:insert {
         username = "bob",
@@ -37,38 +37,38 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name     = "basic-auth",
-        route_id = route1.id,
+        route = { id = route1.id },
       }
 
       bp.plugins:insert {
         name     = "basic-auth",
-        route_id = route2.id,
+        route = { id = route2.id },
         config   = {
           hide_credentials = true,
         },
       }
 
-      assert(dao.basicauth_credentials:insert {
-        username    = "bob",
-        password    = "kong",
-        consumer_id = consumer.id,
-      })
+      bp.basicauth_credentials:insert {
+        username = "bob",
+        password = "kong",
+        consumer = { id = consumer.id },
+      }
 
-      assert(dao.basicauth_credentials:insert {
-        username    = "user123",
-        password    = "password123",
-        consumer_id = consumer.id,
-      })
+      bp.basicauth_credentials:insert {
+        username = "user123",
+        password = "password123",
+        consumer = { id = consumer.id },
+      }
 
-      assert(dao.basicauth_credentials:insert {
-        username    = "user321",
-        password    = "password:123",
-        consumer_id = consumer.id,
-      })
+      bp.basicauth_credentials:insert {
+        username = "user321",
+        password = "password:123",
+        consumer = { id = consumer.id },
+      }
 
       bp.plugins:insert {
         name     = "basic-auth",
-        route_id = route3.id,
+        route = { id = route3.id },
         config   = {
           anonymous = anonymous_user.id,
         },
@@ -76,7 +76,7 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name     = "basic-auth",
-        route_id = route4.id,
+        route = { id = route4.id },
         config   = {
           anonymous = utils.uuid(), -- a non-existing consumer id
         },
@@ -355,7 +355,7 @@ for _, strategy in helpers.each_strategy() do
     local anonymous
 
     setup(function()
-      local bp, _, dao = helpers.get_db_utils(strategy)
+      local bp = helpers.get_db_utils(strategy)
 
       anonymous = bp.consumers:insert {
         username = "Anonymous",
@@ -389,17 +389,17 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name     = "basic-auth",
-        route_id = route1.id,
+        route = { id = route1.id },
       }
 
       bp.plugins:insert {
         name     = "key-auth",
-        route_id = route1.id,
+        route = { id = route1.id },
       }
 
       bp.plugins:insert {
         name     = "basic-auth",
-        route_id = route2.id,
+        route = { id = route2.id },
         config   = {
           anonymous = anonymous.id,
         },
@@ -407,22 +407,22 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name     = "key-auth",
-        route_id = route2.id,
+        route = { id = route2.id },
         config   = {
           anonymous = anonymous.id,
         },
       }
 
-      assert(dao.keyauth_credentials:insert {
-        key         = "Mouse",
-        consumer_id = user1.id,
+      bp.keyauth_credentials:insert({
+        key      = "Mouse",
+        consumer = { id = user1.id },
       })
 
-      assert(dao.basicauth_credentials:insert {
-        username    = "Aladdin",
-        password    = "OpenSesame",
-        consumer_id = user2.id,
-      })
+      bp.basicauth_credentials:insert {
+        username = "Aladdin",
+        password = "OpenSesame",
+        consumer = { id = user2.id },
+      }
 
       assert(helpers.start_kong({
         database   = strategy,

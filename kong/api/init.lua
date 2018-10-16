@@ -11,6 +11,7 @@ local arguments   = require "kong.api.arguments"
 local Errors      = require "kong.db.errors"
 
 
+local ngx      = ngx
 local sub      = string.sub
 local find     = string.find
 local type     = type
@@ -48,35 +49,16 @@ local function parse_params(fn)
 end
 
 
--- old DAO
-local function on_error(self)
-  local err = self.errors[1]
-
-  if type(err) ~= "table" then
-    return responses.send_HTTP_INTERNAL_SERVER_ERROR(tostring(err))
-  end
-
-  if err.db then
-    return responses.send_HTTP_INTERNAL_SERVER_ERROR(err.message)
-  end
-
-  if err.unique then
-    return responses.send_HTTP_CONFLICT(err.tbl)
-  end
-
-  if err.foreign then
-    return responses.send_HTTP_NOT_FOUND(err.tbl)
-  end
-
-  return responses.send_HTTP_BAD_REQUEST(err.tbl or err.message)
-end
-
 -- new DB
 local function new_db_on_error(self)
   local err = self.errors[1]
 
   if type(err) ~= "table" then
     return responses.send_HTTP_INTERNAL_SERVER_ERROR(tostring(err))
+  end
+
+  if err.strategy then
+    err.strategy = nil
   end
 
   if err.code == Errors.codes.SCHEMA_VIOLATION
@@ -92,12 +74,40 @@ local function new_db_on_error(self)
   end
 
   if err.code == Errors.codes.PRIMARY_KEY_VIOLATION
- -- or err.code == Errors.codes.UNIQUE_VIOLATION
+  or err.code == Errors.codes.UNIQUE_VIOLATION
   then
     return responses.send_HTTP_CONFLICT(err)
   end
 
   return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+end
+
+
+-- old DAO
+local function on_error(self)
+  local err = self.errors[1]
+
+  if type(err) ~= "table" then
+    return responses.send_HTTP_INTERNAL_SERVER_ERROR(tostring(err))
+  end
+
+  if err.name then
+    return new_db_on_error(self)
+  end
+
+  if err.db then
+    return responses.send_HTTP_INTERNAL_SERVER_ERROR(err.message)
+  end
+
+  if err.unique then
+    return responses.send_HTTP_CONFLICT(err.tbl)
+  end
+
+  if err.foreign then
+    return responses.send_HTTP_NOT_FOUND(err.tbl)
+  end
+
+  return responses.send_HTTP_BAD_REQUEST(err.tbl or err.message)
 end
 
 
@@ -200,7 +210,8 @@ local function attach_new_db_routes(routes)
     for method_name, method_handler in pairs(methods) do
       local wrapped_handler = function(self)
         self.args = arguments.load({
-          schema = schema,
+          schema  = schema,
+          request = self.req,
         })
 
         return method_handler(self, singletons.db, handler_helpers)
@@ -218,7 +229,7 @@ ngx.log(ngx.DEBUG, "Loading Admin API endpoints")
 
 
 -- Load core routes
-for _, v in ipairs({"kong", "apis", "consumers", "plugins", "cache", "upstreams"}) do
+for _, v in ipairs({"kong", "apis", "cache"}) do
   local routes = require("kong.api.routes." .. v)
   attach_routes(routes)
 end
@@ -229,12 +240,15 @@ do
 
   -- Auto Generated Routes
   for _, dao in pairs(singletons.db.daos) do
-    routes = Endpoints.new(dao.schema, routes)
+    if not dao.schema.legacy then
+      routes = Endpoints.new(dao.schema, routes)
+    end
   end
 
   -- Custom Routes
   for _, dao in pairs(singletons.db.daos) do
     local schema = dao.schema
+
     local ok, custom_endpoints = utils.load_module_if_exists("kong.api.routes." .. schema.name)
     if ok then
       for route_pattern, verbs in pairs(custom_endpoints) do
@@ -243,8 +257,8 @@ do
             local parent = routes[route_pattern]["methods"][verb]
             if parent ~= nil and type(handler) == "function" then
               routes[route_pattern]["methods"][verb] = function(self, db, helpers)
-                return handler(self, db, helpers, function()
-                  return parent(self, db, helpers)
+                return handler(self, db, helpers, function(post_process)
+                  return parent(self, db, helpers, post_process)
                 end)
               end
 
@@ -267,6 +281,15 @@ do
 end
 
 
+local function is_new_db_routes(mod)
+  for _, verbs in pairs(mod) do
+    if type(verbs) == "table" then -- ignore "before" functions
+      return verbs.schema
+    end
+  end
+end
+
+
 -- Loading plugins routes
 if singletons.configuration and singletons.configuration.loaded_plugins then
   for k in pairs(singletons.configuration.loaded_plugins) do
@@ -274,7 +297,11 @@ if singletons.configuration and singletons.configuration.loaded_plugins then
 
     if loaded then
       ngx.log(ngx.DEBUG, "Loading API endpoints for plugin: ", k)
-      attach_routes(mod)
+      if is_new_db_routes(mod) then
+        attach_new_db_routes(mod)
+      else
+        attach_routes(mod)
+      end
 
     else
       ngx.log(ngx.DEBUG, "No API endpoints loaded for plugin: ", k)

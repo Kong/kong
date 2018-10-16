@@ -5,12 +5,14 @@ local Factory = require "kong.dao.factory"
 local DB = require "kong.db"
 
 helpers.for_each_dao(function(kong_config)
-  describe("Model migrations with DB: #" .. kong_config.database, function()
+  -- Disabled since we start running migrations from the new DAO
+  -- avoid potential corruptions of the test database
+  pending("Model migrations with DB: #" .. kong_config.database, function()
     local factory
     setup(function()
       -- some `setup` functions also use `factory` and they run before the `before_each` chain
       -- hence we need to set it here, and again in `before_each`.
-      local db = DB.new(kong_config)
+      local db = assert(DB.new(kong_config))
       assert(db:init_connector())
       factory = assert(Factory.new(kong_config, db))
       factory:drop_schema()
@@ -21,7 +23,7 @@ helpers.for_each_dao(function(kong_config)
     end)
 
     before_each(function()
-      local db = DB.new(kong_config)
+      local db = assert(DB.new(kong_config))
       assert(db:init_connector())
       factory = assert(Factory.new(kong_config, db))
     end)
@@ -37,8 +39,7 @@ helpers.for_each_dao(function(kong_config)
           local invalid_conf = utils.shallow_copy(kong_config)
           invalid_conf.cassandra_keyspace = "_inexistent_"
 
-          local db = DB.new(kong_config)
-          assert(db:init_connector())
+          local db = assert(DB.new(kong_config))
           local xfactory = assert(Factory.new(invalid_conf, db))
           local cur_migrations, err = xfactory:current_migrations()
           assert.is_nil(err)
@@ -136,16 +137,19 @@ helpers.for_each_dao(function(kong_config)
     describe("errors", function()
       it("returns errors prefixed by the DB type in __tostring()", function()
         local pg_port = kong_config.pg_port
+        local pg_timeout = kong_config.pg_timeout
         local cassandra_port = kong_config.cassandra_port
         local cassandra_timeout = kong_config.cassandra_timeout
         finally(function()
           kong_config.pg_port = pg_port
+          kong_config.pg_timeout = pg_timeout
           kong_config.cassandra_port = cassandra_port
           kong_config.cassandra_timeout = cassandra_timeout
           ngx.shared.kong_cassandra:flush_all()
           ngx.shared.kong_cassandra:flush_expired()
         end)
         kong_config.pg_port = 3333
+        kong_config.pg_timeout = 1000
         kong_config.cassandra_port = 3333
         kong_config.cassandra_timeout = 1000
 

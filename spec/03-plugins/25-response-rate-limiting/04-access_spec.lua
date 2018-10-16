@@ -29,9 +29,6 @@ local function wait(second_offset)
 end
 
 
-wait() -- Wait before starting
-
-
 local function flush_redis()
   local redis = require "resty.redis"
   local red = redis:new()
@@ -62,29 +59,37 @@ for _, strategy in helpers.each_strategy() do
   for i, policy in ipairs({"local", "cluster", "redis"}) do
     describe(fmt("#flaky Plugin: response-ratelimiting (access) with policy: %s [#%s]", policy, strategy), function()
       local dao
+      local db
       local bp
 
       setup(function()
-        bp, _, dao = helpers.get_db_utils(strategy)
+        bp, db, dao = helpers.get_db_utils(strategy, {
+          "routes",
+          "services",
+          "plugins",
+          "consumers",
+          "keyauth_credentials",
+        })
+        dao.db:truncate_table("response_ratelimiting_metrics")
 
         flush_redis()
 
         local consumer1 = bp.consumers:insert {custom_id = "provider_123"}
         bp.keyauth_credentials:insert {
-          key         = "apikey123",
-          consumer_id = consumer1.id
+          key      = "apikey123",
+          consumer = { id = consumer1.id },
         }
 
         local consumer2 = bp.consumers:insert {custom_id = "provider_124"}
         bp.keyauth_credentials:insert {
-          key         = "apikey124",
-          consumer_id = consumer2.id
+          key      = "apikey124",
+          consumer = { id = consumer2.id },
         }
 
         local consumer3 = bp.consumers:insert {custom_id = "provider_125"}
         bp.keyauth_credentials:insert {
-          key         = "apikey125",
-          consumer_id = consumer3.id
+          key      = "apikey125",
+          consumer = { id = consumer3.id },
         }
 
         local service1 = bp.services:insert()
@@ -96,7 +101,7 @@ for _, strategy in helpers.each_strategy() do
         }
 
         bp.response_ratelimiting_plugins:insert({
-          route_id = route1.id,
+          route = { id = route1.id },
           config   = {
             fault_tolerant = false,
             policy         = policy,
@@ -117,7 +122,7 @@ for _, strategy in helpers.each_strategy() do
         }
 
         bp.response_ratelimiting_plugins:insert({
-          route_id = route2.id,
+          route = { id = route2.id },
           config   = {
             fault_tolerant = false,
             policy         = policy,
@@ -140,17 +145,17 @@ for _, strategy in helpers.each_strategy() do
 
         bp.plugins:insert {
           name     = "key-auth",
-          route_id = route3.id,
+          route = { id = route3.id },
         }
 
         bp.response_ratelimiting_plugins:insert({
-          route_id = route3.id,
+          route = { id = route3.id },
           config   = { limits = { video = { minute = 6 } } },
         })
 
         bp.response_ratelimiting_plugins:insert({
-          route_id = route3.id,
-          consumer_id = consumer1.id,
+          route = { id = route3.id },
+          consumer = { id = consumer1.id },
           config      = {
             fault_tolerant = false,
             policy         = policy,
@@ -171,7 +176,7 @@ for _, strategy in helpers.each_strategy() do
         }
 
         bp.response_ratelimiting_plugins:insert({
-          route_id = route4.id,
+          route = { id = route4.id },
           config   = {
             fault_tolerant = false,
             policy         = policy,
@@ -192,7 +197,7 @@ for _, strategy in helpers.each_strategy() do
         }
 
         bp.response_ratelimiting_plugins:insert({
-          route_id = route7.id,
+          route = { id = route7.id },
           config   = {
             fault_tolerant           = false,
             policy                   = policy,
@@ -222,7 +227,7 @@ for _, strategy in helpers.each_strategy() do
         }
 
         bp.response_ratelimiting_plugins:insert({
-          route_id = route8.id,
+          route = { id = route8.id },
           config   = {
             fault_tolerant = false,
             policy         = policy,
@@ -244,7 +249,7 @@ for _, strategy in helpers.each_strategy() do
         }
 
         bp.response_ratelimiting_plugins:insert({
-          route_id = route9.id,
+          route = { id = route9.id },
           config   = {
             fault_tolerant      = false,
             policy              = policy,
@@ -269,7 +274,7 @@ for _, strategy in helpers.each_strategy() do
         }
 
         bp.response_ratelimiting_plugins:insert({
-          service_id = service10.id,
+          service = { id = service10.id },
           config = {
             fault_tolerant = false,
             policy         = policy,
@@ -292,7 +297,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       before_each(function()
-        wait(1)
+        wait(45)
       end)
 
       describe("Without authentication (IP address)", function()
@@ -313,8 +318,7 @@ for _, strategy in helpers.each_strategy() do
             headers = { Host = "test1.com" },
           })
 
-          local body = assert.res_status(429, res)
-          assert.equal([[]], body)
+          assert.res_status(429, res)
         end)
 
         it("counts against the same service register from different routes", function()
@@ -344,8 +348,7 @@ for _, strategy in helpers.each_strategy() do
           local res = proxy_client():get("/response-headers?x-kong-limit=video=1, test=5", {
             headers = { Host = "test-service1.com" },
           })
-          local body = assert.res_status(429, res)
-          assert.equal([[]], body)
+          assert.res_status(429, res)
         end)
 
         it("handles multiple limits", function()
@@ -370,8 +373,7 @@ for _, strategy in helpers.each_strategy() do
             headers = { Host = "test2.com" },
           })
 
-          local body = assert.res_status(429, res)
-          assert.equal([[]], body)
+          assert.res_status(429, res)
           assert.equal(0, tonumber(res.headers["x-ratelimit-remaining-video-minute"]))
           assert.equal(4, tonumber(res.headers["x-ratelimit-remaining-video-hour"]))
           assert.equal(1, tonumber(res.headers["x-ratelimit-remaining-image-minute"]))
@@ -397,8 +399,7 @@ for _, strategy in helpers.each_strategy() do
             local res = proxy_client():get("/response-headers?apikey=apikey123&x-kong-limit=video=1", {
               headers = { Host = "test3.com" },
             })
-            local body = assert.res_status(429, res)
-            assert.equal([[]], body)
+            assert.res_status(429, res)
             assert.equal(0, tonumber(res.headers["x-ratelimit-remaining-video-minute"]))
             assert.equal(2, tonumber(res.headers["x-ratelimit-limit-video-minute"]))
           end)
@@ -442,8 +443,7 @@ for _, strategy in helpers.each_strategy() do
             local res = proxy_client():get("/response-headers?apikey=apikey125&x-kong-limit=video=1", {
               headers = { Host = "test3.com" },
             })
-            local body = assert.res_status(429, res)
-            assert.equal([[]], body)
+            assert.res_status(429, res)
             assert.equal(0, tonumber(res.headers["x-ratelimit-remaining-video-minute"]))
             assert.equal(6, tonumber(res.headers["x-ratelimit-limit-video-minute"]))
           end)
@@ -494,8 +494,7 @@ for _, strategy in helpers.each_strategy() do
             headers = { Host = "test4.com" },
           })
 
-          local body = assert.res_status(429, res)
-          assert.equal("", body)
+          assert.res_status(429, res)
           assert.equal(0, tonumber(res.headers["x-ratelimit-remaining-video-minute"]))
           assert.equal(1, tonumber(res.headers["x-ratelimit-remaining-image-minute"]))
         end)
@@ -534,15 +533,14 @@ for _, strategy in helpers.each_strategy() do
 
           before_each(function()
             helpers.kill_all()
-            dao:drop_schema()
-            assert(dao:run_migrations())
+            assert(db:truncate())
 
             local route1 = bp.routes:insert {
               hosts = { "failtest1.com" },
             }
 
             bp.response_ratelimiting_plugins:insert {
-              route_id = route1.id,
+              route = { id = route1.id },
               config   = {
                 fault_tolerant = false,
                 policy         = policy,
@@ -558,7 +556,7 @@ for _, strategy in helpers.each_strategy() do
             }
 
             bp.response_ratelimiting_plugins:insert {
-              route_id = route2.id,
+              route = { id = route2.id },
               config   = {
                 fault_tolerant = true,
                 policy         = policy,
@@ -577,8 +575,7 @@ for _, strategy in helpers.each_strategy() do
 
           teardown(function()
             helpers.kill_all()
-            dao:drop_schema()
-            assert(dao:run_migrations())
+            assert(db:truncate())
           end)
 
           it("does not work if an error occurs", function()
@@ -627,8 +624,7 @@ for _, strategy in helpers.each_strategy() do
 
           before_each(function()
             helpers.kill_all()
-            dao:drop_schema()
-            assert(dao:run_migrations())
+            assert(db:truncate())
 
             local service1 = bp.services:insert()
 
@@ -639,7 +635,7 @@ for _, strategy in helpers.each_strategy() do
             }
 
             bp.response_ratelimiting_plugins:insert {
-              route_id = route1.id,
+              route = { id = route1.id },
               config   = {
                 fault_tolerant = false,
                 policy         = policy,
@@ -657,7 +653,7 @@ for _, strategy in helpers.each_strategy() do
             }
 
             bp.response_ratelimiting_plugins:insert {
-              route_id = route2.id,
+              route = { id = route2.id },
               config   = {
                 fault_tolerant = true,
                 policy         = policy,
@@ -696,8 +692,7 @@ for _, strategy in helpers.each_strategy() do
       describe("Expirations", function()
         setup(function()
           helpers.stop_kong()
-          dao:drop_schema()
-          assert(dao:run_migrations())
+          assert(db:truncate())
 
           local service = bp.services:insert()
 
@@ -708,7 +703,7 @@ for _, strategy in helpers.each_strategy() do
           }
 
           bp.response_ratelimiting_plugins:insert {
-            route_id = route.id,
+            route = { id = route.id },
             config   = {
               policy         = policy,
               redis_host     = REDIS_HOST,
@@ -753,15 +748,19 @@ for _, strategy in helpers.each_strategy() do
 
     describe(fmt("#flaky Plugin: response-rate-limiting (access - global for single consumer) with policy: %s [#%s]", policy, strategy), function()
       local bp
-      local db
       local dao
       setup(function()
         helpers.kill_all()
         flush_redis()
-        bp, db, dao = helpers.get_db_utils(strategy)
-        assert(db:truncate())
-        dao:truncate_tables()
-        assert(dao:run_migrations())
+        local _
+        bp, _, dao = helpers.get_db_utils(strategy, {
+          "routes",
+          "services",
+          "plugins",
+          "consumers",
+          "keyauth_credentials",
+        })
+        dao.db:truncate_table("response_ratelimiting_metrics")
 
         local consumer = bp.consumers:insert {
           custom_id = "provider_125",
@@ -770,13 +769,13 @@ for _, strategy in helpers.each_strategy() do
         bp.key_auth_plugins:insert()
 
         bp.keyauth_credentials:insert {
-          key         = "apikey125",
-          consumer_id = consumer.id,
+          key      = "apikey125",
+          consumer = { id = consumer.id },
         }
 
         -- just consumer, no no route or service
         bp.response_ratelimiting_plugins:insert({
-          consumer_id = consumer.id,
+          consumer = { id = consumer.id },
           config = {
             fault_tolerant = false,
             policy         = policy,
@@ -799,10 +798,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       teardown(function()
-        helpers.kill_all()
-        dao:drop_schema()
-        assert(db:truncate())
-        assert(dao:run_migrations())
+        helpers.stop_kong()
       end)
 
       it("blocks when the consumer exceeds their quota, no matter what service/route used", function()
@@ -822,8 +818,7 @@ for _, strategy in helpers.each_strategy() do
         local res = proxy_client():get("/response-headers?apikey=apikey125&x-kong-limit=video=1", {
           headers = { Host = "test1.com" },
         })
-        local body = assert.res_status(429, res)
-        assert.equal([[]], body)
+        assert.res_status(429, res)
         assert.equal(0, tonumber(res.headers["x-ratelimit-remaining-video-minute"]))
         assert.equal(6, tonumber(res.headers["x-ratelimit-limit-video-minute"]))
       end)
@@ -832,14 +827,11 @@ for _, strategy in helpers.each_strategy() do
     describe(fmt("#flaky Plugin: rate-limiting (access - global) with policy: %s [#%s]", policy, strategy), function()
       local bp
       local db
-      local dao
+
       setup(function()
         helpers.kill_all()
         flush_redis()
-        bp, db, dao = helpers.get_db_utils(strategy)
-        assert(db:truncate())
-        dao:truncate_tables()
-        assert(dao:run_migrations())
+        bp, db = helpers.get_db_utils(strategy)
 
         -- global plugin (not attached to route, service or consumer)
         bp.response_ratelimiting_plugins:insert({
@@ -866,9 +858,7 @@ for _, strategy in helpers.each_strategy() do
 
       teardown(function()
         helpers.kill_all()
-        dao:drop_schema()
         assert(db:truncate())
-        assert(dao:run_migrations())
       end)
 
       it("blocks if exceeding limit", function()
@@ -888,8 +878,7 @@ for _, strategy in helpers.each_strategy() do
         local res = proxy_client():get("/response-headers?x-kong-limit=video=1", {
           headers = { Host = "test1.com" },
         })
-        local body = assert.res_status(429, res)
-        assert.equal([[]], body)
+        assert.res_status(429, res)
         assert.equal(0, tonumber(res.headers["x-ratelimit-remaining-video-minute"]))
         assert.equal(6, tonumber(res.headers["x-ratelimit-limit-video-minute"]))
       end)

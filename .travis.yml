@@ -30,6 +30,8 @@ env:
     - OPENRESTY=$OPENRESTY_BASE
     - DOWNLOAD_CACHE=$HOME/download-cache
     - INSTALL_CACHE=$HOME/install-cache
+    - KONG_TEST_PG_DATABASE=travis
+    - KONG_TEST_PG_USER=postgres
     - JOBS=2
   matrix:
     - KONG_TEST_DATABASE=postgres TEST_SUITE=integration

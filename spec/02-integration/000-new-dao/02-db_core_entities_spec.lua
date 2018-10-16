@@ -12,10 +12,14 @@ local a_blank_uuid = "00000000-0000-0000-0000-000000000000"
 
 for _, strategy in helpers.each_strategy() do
   describe("kong.db [#" .. strategy .. "]", function()
-    local db, bp, dao
+    local db, bp
 
     setup(function()
-      bp, db, dao = helpers.get_db_utils(strategy)
+      bp, db = helpers.get_db_utils(strategy, {
+        "routes",
+        "services",
+        "basicauth_credentials",
+      })
     end)
 
     --[[
@@ -35,6 +39,11 @@ for _, strategy in helpers.each_strategy() do
           assert.has_error(function()
             db.routes:insert()
           end, "entity must be a table")
+
+          assert.has_error(function()
+            db.routes:insert({}, "options")
+          end, "options must be a table when specified")
+
         end)
 
         it("errors on invalid fields", function()
@@ -89,15 +98,16 @@ for _, strategy in helpers.each_strategy() do
           --assert.equal("invalid primary key for Service: id=(missing)", tostring(err_t))
         end)
 
-        it("cannot insert if foreign primary_key is invalid but it happens on the old DAO", function()
-          local credentials, err = dao.basicauth_credentials:insert({
+        it("cannot insert if foreign primary_key is invalid", function()
+          local fake_id = utils.uuid()
+          local credentials, _, err_t = db.basicauth_credentials:insert({
             username = "peter",
-            consumer_id = utils.uuid()
+            consumer = { id = fake_id },
           })
 
           assert.is_nil(credentials)
-          assert.is_truthy(err.foreign)
-          assert.is_string(err.message) -- the message is different between cassandra and postgresql
+          assert.equals("foreign key violation", err_t.name)
+          assert.same({ consumer = { id = fake_id } }, err_t.fields)
         end)
 
         -- I/O
@@ -134,6 +144,30 @@ for _, strategy in helpers.each_strategy() do
           --assert.equal("foreign entity Service does not exist: id=( " .. u .. ")", tostring(err_t))
         end)
 
+        it("cannot use ttl option with Routes", function()
+          local route, err, err_t = db.routes:insert({
+            protocols = { "http" },
+            hosts = { "example.com" },
+            service = assert(db.services:insert({ host = "service.com" })),
+          }, {
+            ttl = 100,
+          })
+
+          assert.is_nil(route)
+          assert.is_string(err)
+          assert.is_table(err_t)
+          assert.same({
+            code     = Errors.codes.INVALID_OPTIONS,
+            name     = "invalid options",
+            strategy = strategy,
+            message  = unindent([[
+              invalid option (ttl: cannot be used with 'routes')
+            ]], true, true),
+            options   = {
+              ttl     = "cannot be used with 'routes'",
+            }}, err_t)
+        end)
+
         it("creates a Route and injects defaults", function()
           local route, err, err_t = db.routes:insert({
             protocols = { "http" },
@@ -153,6 +187,7 @@ for _, strategy in helpers.each_strategy() do
             created_at      = route.created_at,
             updated_at      = route.updated_at,
             protocols       = { "http" },
+            name            = ngx.null,
             methods         = ngx.null,
             hosts           = { "example.com" },
             paths           = ngx.null,
@@ -185,6 +220,7 @@ for _, strategy in helpers.each_strategy() do
             created_at      = route.created_at,
             updated_at      = route.updated_at,
             protocols       = { "http" },
+            name            = ngx.null,
             methods         = ngx.null,
             hosts           = { "example.com" },
             paths           = { "/example" },
@@ -205,8 +241,8 @@ for _, strategy in helpers.each_strategy() do
           }))
 
           local route_in_db = assert(db.routes:select({ id = route.id }))
-          assert.equal(now, route_in_db.created_at)
-          assert.equal(now, route_in_db.updated_at)
+          assert.truthy(now - route_in_db.created_at < 0.1)
+          assert.truthy(now - route_in_db.updated_at < 0.1)
         end)
 
         it("created_at/updated_at cannot be overriden", function()
@@ -519,9 +555,6 @@ for _, strategy in helpers.each_strategy() do
           assert.has_error(function()
             db.routes:page(false)
           end, "size must be a number")
-          assert.has_error(function()
-            db.routes:page(-1)
-          end, "size must be positive (> 0)")
         end)
 
         it("errors on invalid offset", function()
@@ -572,7 +605,7 @@ for _, strategy in helpers.each_strategy() do
           setup(function()
             assert(db:truncate("routes"))
 
-            for i = 1, 1002 do
+            for i = 1, 202 do
               bp.routes:insert({ hosts = { "example-" .. i .. ".com" } })
             end
           end)
@@ -583,14 +616,6 @@ for _, strategy in helpers.each_strategy() do
             assert.is_nil(err)
             assert.is_table(rows)
             assert.equal(100, #rows)
-          end)
-
-          it("max page_size = 1000", function()
-            local rows, err, err_t = db.routes:page(1002)
-            assert.is_nil(err_t)
-            assert.is_nil(err)
-            assert.is_table(rows)
-            assert.equal(1000, #rows)
           end)
         end)
 
@@ -720,10 +745,23 @@ for _, strategy in helpers.each_strategy() do
             assert.equal(1, #rows) -- last page
           end)
 
-          it("fetches first page with invalid offset", function()
+          it("returns an error with invalid size", function()
+            local rows, err, err_t = db.routes:page(5.5)
+            assert.is_nil(rows)
+            local message  = "size must be an integer between 1 and 1000"
+            assert.equal(fmt("[%s] %s", strategy, message), err)
+            assert.same({
+              code     = Errors.codes.INVALID_SIZE,
+              name     = "invalid size",
+              message  = message,
+              strategy = strategy,
+            }, err_t)
+          end)
+
+          it("returns an error with invalid offset", function()
             local rows, err, err_t = db.routes:page(3, "hello")
             assert.is_nil(rows)
-            local message  = "'hello' is not a valid offset for this strategy: bad base64 encoding"
+            local message  = "'hello' is not a valid offset: bad base64 encoding"
             assert.equal(fmt("[%s] %s", strategy, message), err)
             assert.same({
               code     = Errors.codes.INVALID_OFFSET,
@@ -752,10 +790,6 @@ for _, strategy in helpers.each_strategy() do
           assert.has_error(function()
             db.routes:each(false)
           end, "size must be a number")
-
-          assert.has_error(function()
-            db.routes:each(-1)
-          end, "size must be positive (> 0)")
         end)
 
         -- I/O
@@ -992,7 +1026,7 @@ for _, strategy in helpers.each_strategy() do
         it("errors on invalid arg", function()
           assert.has_error(function()
             db.services:select_by_name(123)
-          end, "invalid argument 'name' (expected a string)")
+          end, "name must be a string")
         end)
 
         -- I/O
@@ -1124,7 +1158,7 @@ for _, strategy in helpers.each_strategy() do
         it("errors on invalid arg", function()
           assert.has_error(function()
             db.services:update_by_name(123)
-          end, "invalid argument 'name' (expected a string)")
+          end, "name must be a string")
         end)
 
         it("errors on invalid values", function()
@@ -1217,6 +1251,13 @@ for _, strategy in helpers.each_strategy() do
           end, "primary_key must be a table")
         end)
 
+        -- no I/O
+        it("errors on invalid arg", function()
+          assert.has_error(function()
+            db.services:delete_by_name(123)
+          end, "name must be a string")
+        end)
+
         -- I/O
         it("returns nothing if the Service does not exist", function()
           local u = utils.uuid()
@@ -1265,7 +1306,7 @@ for _, strategy in helpers.each_strategy() do
         it("errors on invalid arg", function()
           assert.has_error(function()
             db.services:delete_by_name(123)
-          end, "invalid argument 'name' (expected a string)")
+          end, "name must be a string")
         end)
 
         -- I/O
@@ -1316,6 +1357,7 @@ for _, strategy in helpers.each_strategy() do
           created_at       = route.created_at,
           updated_at       = route.updated_at,
           protocols        = { "http" },
+          name             = ngx.null,
           methods          = ngx.null,
           hosts            = { "example.com" },
           paths            = ngx.null,
@@ -1433,10 +1475,6 @@ for _, strategy in helpers.each_strategy() do
           end, "size must be a number")
 
           assert.has_error(function()
-            db.routes:page_for_service({ id = 123 }, -100)
-          end, "size must be a positive number")
-
-          assert.has_error(function()
             db.routes:page_for_service({ id = 123 }, 100, 12345)
           end, "offset must be a string")
         end)
@@ -1521,7 +1559,7 @@ for _, strategy in helpers.each_strategy() do
 
               service = bp.services:insert()
 
-              for i = 1, 1002 do
+              for i = 1, 202 do
                 bp.routes:insert {
                   hosts   = { "paginate-" .. i .. ".com" },
                   service = service,
@@ -1539,12 +1577,15 @@ for _, strategy in helpers.each_strategy() do
             end)
 
             it("max page_size = 1000", function()
-              local rows, err, err_t = db.routes:page_for_service({
+              local _, _, err_t = db.routes:page_for_service({
                 id = service.id,
               }, 1002)
-              assert.is_nil(err_t)
-              assert.is_nil(err)
-              assert.equal(1000, #rows)
+              assert.same({
+                code = Errors.codes.INVALID_SIZE,
+                message = "size must be an integer between 1 and 1000",
+                name = "invalid size",
+                strategy = strategy,
+              }, err_t)
             end)
           end)
 
@@ -1699,7 +1740,7 @@ for _, strategy in helpers.each_strategy() do
                 id = service.id,
               }, 3, "hello")
               assert.is_nil(rows)
-              local message  = "'hello' is not a valid offset for this strategy: " ..
+              local message  = "'hello' is not a valid offset: " ..
                                "bad base64 encoding"
               assert.equal(fmt("[%s] %s", strategy, message), err)
               assert.same({

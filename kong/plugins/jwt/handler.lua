@@ -1,4 +1,3 @@
-local singletons = require "kong.singletons"
 local BasePlugin = require "kong.plugins.base_plugin"
 local responses = require "kong.tools.responses"
 local constants = require "kong.constants"
@@ -62,15 +61,15 @@ function JwtHandler:new()
 end
 
 local function load_credential(jwt_secret_key)
-  local rows, err = singletons.dao.jwt_secrets:find_all {key = jwt_secret_key}
+  local row, err = kong.db.jwt_secrets:select_by_key(jwt_secret_key)
   if err then
     return nil, err
   end
-  return rows[1]
+  return row
 end
 
 local function load_consumer(consumer_id, anonymous)
-  local result, err = singletons.db.consumers:select { id = consumer_id }
+  local result, err = kong.db.consumers:select { id = consumer_id }
   if not result then
     if anonymous and not err then
       err = 'anonymous consumer "' .. consumer_id .. '" not found'
@@ -127,9 +126,9 @@ local function do_authentication(conf)
   end
 
   -- Retrieve the secret
-  local jwt_secret_cache_key = singletons.dao.jwt_secrets:cache_key(jwt_secret_key)
-  local jwt_secret, err      = singletons.cache:get(jwt_secret_cache_key, nil,
-                                                    load_credential, jwt_secret_key)
+  local jwt_secret_cache_key = kong.db.jwt_secrets:cache_key(jwt_secret_key)
+  local jwt_secret, err      = kong.cache:get(jwt_secret_cache_key, nil,
+                                              load_credential, jwt_secret_key)
   if err then
     return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
   end
@@ -175,10 +174,10 @@ local function do_authentication(conf)
   end
 
   -- Retrieve the consumer
-  local consumer_cache_key = singletons.db.consumers:cache_key(jwt_secret.consumer_id)
-  local consumer, err      = singletons.cache:get(consumer_cache_key, nil,
-                                                  load_consumer,
-                                                  jwt_secret.consumer_id, true)
+  local consumer_cache_key = kong.db.consumers:cache_key(jwt_secret.consumer.id)
+  local consumer, err      = kong.cache:get(consumer_cache_key, nil,
+                                            load_consumer,
+                                            jwt_secret.consumer.id, true)
   if err then
     return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
   end
@@ -202,7 +201,7 @@ function JwtHandler:access(conf)
     return
   end
 
-  if ngx.ctx.authenticated_credential and conf.anonymous ~= "" then
+  if ngx.ctx.authenticated_credential and conf.anonymous then
     -- we're already authenticated, and we're configured for using anonymous,
     -- hence we're in a logical OR between auth methods and we're already done.
     return
@@ -210,12 +209,12 @@ function JwtHandler:access(conf)
 
   local ok, err = do_authentication(conf)
   if not ok then
-    if conf.anonymous ~= "" then
+    if conf.anonymous then
       -- get anonymous user
-      local consumer_cache_key = singletons.db.consumers:cache_key(conf.anonymous)
-      local consumer, err      = singletons.cache:get(consumer_cache_key, nil,
-                                                      load_consumer,
-                                                      conf.anonymous, true)
+      local consumer_cache_key = kong.db.consumers:cache_key(conf.anonymous)
+      local consumer, err      = kong.cache:get(consumer_cache_key, nil,
+                                                load_consumer,
+                                                conf.anonymous, true)
       if err then
         return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
       end

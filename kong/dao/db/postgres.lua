@@ -47,6 +47,7 @@ _M.additional_tables = {
   "routes",
   "services",
   "consumers",
+  "plugins",
   "certificates",
   "snis",
 }
@@ -57,6 +58,7 @@ function _M.new(kong_config)
   self.query_options = {
     host = kong_config.pg_host,
     port = kong_config.pg_port,
+    timeout = kong_config.pg_timeout,
     user = kong_config.pg_user,
     password = kong_config.pg_password,
     database = kong_config.pg_database,
@@ -353,6 +355,11 @@ end
 function _M:query(query, schema)
   local conn_opts = query_opts(self)
   local pg = pgmoon.new(conn_opts)
+
+  if conn_opts.timeout then
+    pg:settimeout(conn_opts.timeout)
+  end
+
   local ok, err = pg:connect()
   if not ok then
     return nil, Errors.db(err)
@@ -621,12 +628,20 @@ function _M:reachable()
   local conn_opts = query_opts(self)
   local pg = pgmoon.new(conn_opts)
 
+  if conn_opts.timeout then
+    pg:settimeout(conn_opts.timeout)
+  end
+
   local ok, err = pg:connect()
   if not ok then
     return nil, Errors.db(err)
   end
 
-  pg:keepalive()
+  if conn_opts.socket_type == "nginx" then
+    pg:keepalive()
+  else
+    pg:disconnect()
+  end
 
   return true
 end

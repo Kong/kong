@@ -62,11 +62,11 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.plugins:insert {
-        route_id = route1.id,
+        route = { id = route1.id },
         name     = "ldap-auth",
         config   = {
           ldap_host = ldap_host_aws,
-          ldap_port = "389",
+          ldap_port = 389,
           start_tls = false,
           base_dn   = "ou=scientists,dc=ldap,dc=mashape,dc=com",
           attribute = "uid"
@@ -74,11 +74,11 @@ for _, strategy in helpers.each_strategy() do
       }
 
       plugin2 = bp.plugins:insert {
-        route_id = route2.id,
+        route = { id = route2.id },
         name     = "ldap-auth",
         config   = {
           ldap_host        = ldap_host_aws,
-          ldap_port        = "389",
+          ldap_port        = 389,
           start_tls        = false,
           base_dn          = "ou=scientists,dc=ldap,dc=mashape,dc=com",
           attribute        = "uid",
@@ -88,11 +88,11 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.plugins:insert {
-        route_id = route3.id,
+        route = { id = route3.id },
         name     = "ldap-auth",
         config   = {
           ldap_host = ldap_host_aws,
-          ldap_port = "389",
+          ldap_port = 389,
           start_tls = false,
           base_dn   = "ou=scientists,dc=ldap,dc=mashape,dc=com",
           attribute = "uid",
@@ -101,11 +101,11 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.plugins:insert {
-        route_id = route4.id,
+        route = { id = route4.id },
         name     = "ldap-auth",
         config   = {
           ldap_host = "ec2-54-210-29-167.compute-1.amazonaws.com",
-          ldap_port = "389",
+          ldap_port = 389,
           start_tls = false,
           base_dn   = "ou=scientists,dc=ldap,dc=mashape,dc=com",
           attribute = "uid",
@@ -115,11 +115,11 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.plugins:insert {
-        route_id = route5.id,
+        route = { id = route5.id },
         name     = "ldap-auth",
         config   = {
           ldap_host = ldap_host_aws,
-          ldap_port = "389",
+          ldap_port = 389,
           start_tls = false,
           base_dn   = "ou=scientists,dc=ldap,dc=mashape,dc=com",
           attribute = "uid",
@@ -131,7 +131,7 @@ for _, strategy in helpers.each_strategy() do
         name     = "ldap-auth",
         config   = {
           ldap_host = ldap_host_aws,
-          ldap_port = "389",
+          ldap_port = 389,
           start_tls = false,
           base_dn   = "ou=scientists,dc=ldap,dc=mashape,dc=com",
           attribute = "uid"
@@ -500,11 +500,11 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.plugins:insert {
-        route_id = route1.id,
+        route = { id = route1.id },
         name     = "ldap-auth",
         config   = {
           ldap_host = ldap_host_aws,
-          ldap_port = "389",
+          ldap_port = 389,
           start_tls = false,
           base_dn   = "ou=scientists,dc=ldap,dc=mashape,dc=com",
           attribute = "uid",
@@ -513,7 +513,7 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name     = "key-auth",
-        route_id = route1.id,
+        route = { id = route1.id },
       }
 
       anonymous = bp.consumers:insert {
@@ -534,11 +534,11 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.plugins:insert {
-        route_id = route2.id,
+        route = { id = route2.id },
         name     = "ldap-auth",
         config   = {
           ldap_host = ldap_host_aws,
-          ldap_port = "389",
+          ldap_port = 389,
           start_tls = false,
           base_dn   = "ou=scientists,dc=ldap,dc=mashape,dc=com",
           attribute = "uid",
@@ -548,15 +548,15 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name     = "key-auth",
-        route_id = route2.id,
+        route = { id = route2.id },
         config   = {
           anonymous = anonymous.id,
         },
       }
 
       bp.keyauth_credentials:insert {
-        key         = "Mouse",
-        consumer_id = user.id,
+        key      = "Mouse",
+        consumer = { id = user.id },
       }
 
       assert(helpers.start_kong({

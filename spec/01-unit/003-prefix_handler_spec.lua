@@ -104,6 +104,13 @@ describe("NGINX conf compiler", function()
       assert.matches("listen 127.0.0.1:9001;", kong_nginx_conf, nil, true)
       assert.matches("listen 127.0.0.1:8444 ssl http2;", kong_nginx_conf, nil, true)
     end)
+    it("disables upstream keepalive", function()
+      local conf = assert(conf_loader(helpers.test_conf_path, {
+        upstream_keepalive = 0,
+      }))
+      local kong_nginx_conf = prefix_handler.compile_kong_conf(conf)
+      assert.not_matches("keepalive %d+;", kong_nginx_conf)
+    end)
     it("enables proxy_protocol", function()
       local conf = assert(conf_loader(helpers.test_conf_path, {
         proxy_listen = "0.0.0.0:9000 proxy_protocol",
@@ -422,7 +429,10 @@ describe("NGINX conf compiler", function()
       }))
       assert.equal("foobar", conf.pg_database)
       assert(prefix_handler.prepare_prefix(conf))
-      local in_prefix_kong_conf = assert(conf_loader(tmp_config.kong_env))
+      local in_prefix_kong_conf = assert(conf_loader(tmp_config.kong_env, {
+        pg_database = "foobar",
+        prefix = tmp_config.prefix,
+      }))
       assert.same(conf, in_prefix_kong_conf)
     end)
     it("writes custom plugins in Kong conf", function()

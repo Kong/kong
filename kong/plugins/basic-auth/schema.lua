@@ -1,17 +1,14 @@
-local utils = require "kong.tools.utils"
-
-local function check_user(anonymous)
-  if anonymous == "" or utils.is_valid_uuid(anonymous) then
-    return true
-  end
-
-  return false, "the anonymous user must be empty or a valid uuid"
-end
+local typedefs = require "kong.db.schema.typedefs"
 
 return {
-  no_consumer = true,
+  name = "basic-auth",
   fields = {
-    anonymous = {type = "string", default = "", func = check_user},
-    hide_credentials = {type = "boolean", default = false}
-  }
+    { consumer = typedefs.no_consumer },
+    { config = {
+        type = "record",
+        fields = {
+          { anonymous = { type = "string", uuid = true, legacy = true }, },
+          { hide_credentials = { type = "boolean", default = false }, },
+    }, }, },
+  },
 }

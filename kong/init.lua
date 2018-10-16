@@ -24,7 +24,7 @@
 -- |[[    ]]|
 -- ==========
 
-require "luarocks.loader"
+pcall(require, "luarocks.loader")
 require "resty.core"
 local constants = require "kong.constants"
 
@@ -65,6 +65,7 @@ local utils = require "kong.tools.utils"
 local lapis = require "lapis"
 local runloop = require "kong.runloop.handler"
 local responses = require "kong.tools.responses"
+local semaphore = require "ngx.semaphore"
 local singletons = require "kong.singletons"
 local DAOFactory = require "kong.dao.factory"
 local kong_cache = require "kong.cache"
@@ -75,6 +76,7 @@ local balancer_execute = require("kong.runloop.balancer").execute
 local kong_cluster_events = require "kong.cluster_events"
 local kong_error_handlers = require "kong.error_handlers"
 
+local kong             = kong
 local ngx              = ngx
 local header           = ngx.header
 local ngx_log          = ngx.log
@@ -85,61 +87,105 @@ local ipairs           = ipairs
 local assert           = assert
 local tostring         = tostring
 local coroutine        = coroutine
+local getmetatable     = getmetatable
+local registry         = debug.getregistry()
 local get_last_failure = ngx_balancer.get_last_failure
 local set_current_peer = ngx_balancer.set_current_peer
+local set_ssl_ctx      = ngx_balancer.set_ssl_ctx
 local set_timeouts     = ngx_balancer.set_timeouts
 local set_more_tries   = ngx_balancer.set_more_tries
 
+local ffi = require "ffi"
+local cast = ffi.cast
+local voidpp = ffi.typeof("void**")
+
+local PLUGINS_MAP_CACHE_OPTS = { ttl = 0 }
+
+local plugins_map_semaphore
+local plugins_map_version
+local configured_plugins
 local loaded_plugins
+local schema_state
 
-local function load_plugins(kong_conf, dao)
-  local in_db_plugins, sorted_plugins = {}, {}
+local function build_plugins_map(db, version)
+  local map = {}
 
-  ngx_log(ngx_DEBUG, "Discovering used plugins")
-
-  local rows, err_t = dao.plugins:find_all()
-  if not rows then
-    return nil, tostring(err_t)
-  end
-
-  for _, row in ipairs(rows) do in_db_plugins[row.name] = true end
-
-  -- check all plugins in DB are enabled/installed
-  for plugin in pairs(in_db_plugins) do
-    if not kong_conf.loaded_plugins[plugin] then
-      return nil, plugin .. " plugin is in use but not enabled"
-    end
-  end
-
-  -- load installed plugins
-  for plugin in pairs(kong_conf.loaded_plugins) do
-    if constants.DEPRECATED_PLUGINS[plugin] then
-      ngx.log(ngx.WARN, "plugin '", plugin, "' has been deprecated")
+  for plugin, err in db.plugins:each() do
+    if err then
+      return nil, err
     end
 
-    -- NOTE: no version _G.kong (nor PDK) in plugins main chunk
+    map[plugin.name] = true
+  end
 
-    local ok, handler = utils.load_module_if_exists("kong.plugins." .. plugin .. ".handler")
+  if version then
+    plugins_map_version = version
+  end
+
+  configured_plugins = map
+
+  return true
+end
+
+local function plugins_map_wrapper()
+  local version, err = kong.cache:get("plugins_map:version",
+                                      PLUGINS_MAP_CACHE_OPTS, utils.uuid)
+  if err then
+    return nil, "failed to retrieve plugins map version: " .. err
+  end
+
+  if plugins_map_version ~= version then
+    local timeout = 60
+    if singletons.configuration.database == "cassandra" then
+      -- cassandra_timeout is defined in ms
+      timeout = singletons.configuration.cassandra_timeout / 1000
+
+    elseif singletons.configuration.database == "postgres" then
+      -- pg_timeout is defined in ms
+      timeout = singletons.configuration.pg_timeout / 1000
+    end
+
+    -- try to acquire the mutex (semaphore)
+    local ok, err = plugins_map_semaphore:wait(timeout)
     if not ok then
-      return nil, plugin .. " plugin is enabled but not installed;\n" .. handler
+      return nil, "failed to acquire plugins map rebuild mutex: " .. err
     end
 
-    local ok, schema = utils.load_module_if_exists("kong.plugins." .. plugin .. ".schema")
-    if not ok then
-      return nil, "no configuration schema found for plugin: " .. plugin
+    -- we have the lock but we might not have needed it. check the
+    -- version again and rebuild if necessary
+    version, err = kong.cache:get("plugins_map:version",
+                                  PLUGINS_MAP_CACHE_OPTS, utils.uuid)
+    if err then
+      plugins_map_semaphore:post(1)
+      return nil, "failed to re-retrieve plugins map version: " .. err
     end
 
-    ngx_log(ngx_DEBUG, "Loading plugin: " .. plugin)
+    if plugins_map_version ~= version then
+      -- we have the lock and we need to rebuild the map
+      ngx_log(ngx_DEBUG, "rebuilding plugins map")
 
-    sorted_plugins[#sorted_plugins+1] = {
-      name = plugin,
-      handler = handler(),
-      schema = schema
-    }
+      local ok, err = build_plugins_map(kong.db, version)
+      if not ok then
+        plugins_map_semaphore:post(1)
+        return nil, "failed to rebuild plugins map: " .. err
+      end
+    end
+
+    plugins_map_semaphore:post(1)
   end
 
+  return true
+end
+
+-- Kong public context handlers.
+-- @section kong_handlers
+
+local Kong = {}
+
+
+local function sort_plugins_for_execution(kong_conf, db, plugin_list)
   -- sort plugins by order of execution
-  table.sort(sorted_plugins, function(a, b)
+  table.sort(plugin_list, function(a, b)
     local priority_a = a.handler.PRIORITY or 0
     local priority_b = b.handler.PRIORITY or 0
     return priority_a > priority_b
@@ -149,32 +195,30 @@ local function load_plugins(kong_conf, dao)
   if kong_conf.anonymous_reports then
     local reports = require "kong.reports"
 
-    local db_infos = dao:infos()
+    local db_infos = db.old_dao:infos()
     reports.add_ping_value("database", kong_conf.database)
     reports.add_ping_value("database_version", db_infos.version)
 
     reports.toggle(true)
 
-    sorted_plugins[#sorted_plugins+1] = {
+    plugin_list[#plugin_list+1] = {
       name = "reports",
       handler = reports,
-      schema = {},
     }
   end
-
-  return sorted_plugins
 end
 
 
--- Kong public context handlers.
--- @section kong_handlers
-
-local Kong = {}
-
 function Kong.init()
+  -- special math.randomseed from kong.globalpatches not taking any argument.
+  -- Must only be called in the init or init_worker phases, to avoid
+  -- duplicated seeds.
+  math.randomseed()
+
   local pl_path = require "pl.path"
   local conf_loader = require "kong.conf_loader"
   local ip = require "kong.tools.ip"
+
 
   -- check if kong global is the correct one
   if not kong.version then
@@ -191,20 +235,30 @@ function Kong.init()
   local db = assert(DB.new(config))
   assert(db:init_connector())
 
+  schema_state = assert(db:schema_state())
+  if schema_state.needs_bootstrap  then
+    error("database needs bootstrap; run 'kong migrations bootstrap'")
+
+  elseif schema_state.new_migrations then
+    error("new migrations available; run 'kong migrations list'")
+  end
+  --[[
+  if schema_state.pending_migrations then
+    assert(db:load_pending_migrations(schema_state.pending_migrations))
+  end
+  --]]
+
   local dao = assert(DAOFactory.new(config, db)) -- instantiate long-lived DAO
   local ok, err_t = dao:init()
   if not ok then
     error(tostring(err_t))
   end
 
-  assert(dao:are_migrations_uptodate())
+  --assert(dao:are_migrations_uptodate())
 
   db.old_dao = dao
 
-  loaded_plugins = assert(load_plugins(config, dao))
-
-  assert(runloop.build_router(db, "init"))
-  assert(runloop.build_api_router(dao, "init"))
+  assert(db.plugins:check_db_against_config(config.loaded_plugins))
 
   -- LEGACY
   singletons.ip = ip.init(config)
@@ -214,27 +268,114 @@ function Kong.init()
   singletons.db = db
   -- /LEGACY
 
+  do
+    local origins = {}
+
+    for i, v in ipairs(config.origins) do
+      -- Validated in conf_loader
+      local from_scheme, from_authority, to_scheme, to_authority =
+        v:match("^(%a[%w+.-]*)://([^=]+:[%d]+)=(%a[%w+.-]*)://(.+)$")
+
+      local from = assert(utils.normalize_ip(from_authority))
+      local to = assert(utils.normalize_ip(to_authority))
+      local from_origin = from_scheme:lower() .. "://" .. utils.format_host(from)
+
+      to.scheme = to_scheme
+
+      if to.port == nil then
+        if to_scheme == "http" then
+          to.port = 80
+
+        elseif to_scheme == "https" then
+          to.port = 443
+
+        else
+          error("scheme has unknown default port")
+        end
+      end
+
+      origins[from_origin] = to
+    end
+
+    singletons.origins = origins
+  end
+
   kong.dao = dao
   kong.db = db
   kong.dns = singletons.dns
+
+  -- Load plugins as late as possible so that everything is set up
+  loaded_plugins = assert(db.plugins:load_plugin_schemas(config.loaded_plugins))
+  sort_plugins_for_execution(config, db, loaded_plugins)
+
+  local err
+  plugins_map_semaphore, err = semaphore.new()
+  if not plugins_map_semaphore then
+    error("failed to create plugins map semaphore: " .. err)
+  end
+
+  plugins_map_semaphore:post(1) -- one resource, treat this as a mutex
+
+  local _, err = build_plugins_map(db, "init")
+  if err then
+    error("error building initial plugins map: ", err)
+  end
+
+  assert(runloop.build_router(db, "init"))
+  assert(runloop.build_api_router(dao, "init"))
 end
 
 function Kong.init_worker()
   kong_global.set_phase(kong, PHASES.init_worker)
 
-  -- special math.randomseed from kong.globalpatches
-  -- not taking any argument. Must be called only once
-  -- and in the init_worker phase, to avoid duplicated
-  -- seeds.
+  -- special math.randomseed from kong.globalpatches not taking any argument.
+  -- Must only be called in the init or init_worker phases, to avoid
+  -- duplicated seeds.
   math.randomseed()
+
+
+  -- init DB
+
+
+  local ok, err = kong.db:init_worker()
+  if not ok then
+    ngx_log(ngx_CRIT, "could not init DB: ", err)
+    return
+  end
+
 
   -- init DAO
 
 
   local ok, err = kong.dao:init_worker()
   if not ok then
-    ngx_log(ngx_CRIT, "could not init DB: ", err)
+    ngx_log(ngx_CRIT, "could not init DAO: ", err)
     return
+  end
+
+
+  if ngx.worker.id() == 0 then
+    if schema_state.missing_migrations then
+      local missing = {}
+      for _, t in ipairs(schema_state.missing_migrations) do
+        table.insert(missing, string.format("%s (%s)", t.subsystem,
+                              table.concat(t.migrations, ", ")))
+      end
+
+      ngx.log(ngx.WARN, "missing migrations: ",
+                        table.concat(missing, " "))
+    end
+
+    if schema_state.pending_migrations then
+      local pending = {}
+      for _, t in ipairs(schema_state.pending_migrations) do
+        table.insert(pending, string.format("%s(%s)", t.subsystem,
+                              table.concat(t.migrations, ", ")))
+      end
+
+      ngx.log(ngx.INFO, "starting with pending migrations: ",
+                        table.concat(pending, ", "))
+    end
   end
 
 
@@ -308,6 +449,14 @@ function Kong.init_worker()
     return
   end
 
+  local ok, err = cache:get("plugins_map:version", { ttl = 0 }, function()
+    return "init"
+  end)
+  if not ok then
+    ngx_log(ngx_CRIT, "could not set plugins map version in cache: ", err)
+    return
+  end
+
 
   -- LEGACY
   singletons.cache          = cache
@@ -344,7 +493,14 @@ function Kong.ssl_certificate()
 
   runloop.certificate.before(ctx)
 
-  for plugin, plugin_conf in plugins_iterator(loaded_plugins, true) do
+  local ok, err = plugins_map_wrapper()
+  if not ok then
+    ngx_log(ngx_CRIT, "could not ensure plugins map is up to date: ", err)
+    return ngx.exit(ngx.ERROR)
+  end
+
+  for plugin, plugin_conf in plugins_iterator(ctx, loaded_plugins,
+                                              configured_plugins, true) do
     kong_global.set_namespaced_log(kong, plugin.name)
     plugin.handler:certificate(plugin_conf)
     kong_global.reset_log(kong)
@@ -361,7 +517,7 @@ function Kong.balancer()
   balancer_data.try_count = balancer_data.try_count + 1
   tries[balancer_data.try_count] = current_try
 
-  runloop.balancer.before()
+  runloop.balancer.before(ctx)
 
   if balancer_data.try_count > 1 then
     -- only call balancer on retry, first one is done in `runloop.access.after`
@@ -404,6 +560,26 @@ function Kong.balancer()
     end
   end
 
+  local ssl_ctx = balancer_data.ssl_ctx
+  if ssl_ctx then
+    if not set_ssl_ctx then
+      -- this API depends on an OpenResty patch
+      ngx_log(ngx_ERR, "failed to set the upstream SSL_CTX*: missing ",
+                       "\"ngx.balancer\".set_ssl_ctx API")
+      return ngx.exit(500)
+    end
+
+    -- ensure a third-party (e.g. plugin) did not set an invalid type for
+    -- this value as such mistakes could cause segfaults
+    assert(getmetatable(ssl_ctx) == registry["SSL_CTX*"],
+           "unknown userdata type, expected SSL_CTX*")
+    local ok, err = set_ssl_ctx(cast(voidpp, ssl_ctx)[0])
+    if not ok then
+      ngx_log(ngx_ERR, "failed to set the upstream SSL_CTX*: ", err)
+      return ngx.exit(500)
+    end
+  end
+
   current_try.ip   = balancer_data.ip
   current_try.port = balancer_data.port
 
@@ -425,7 +601,7 @@ function Kong.balancer()
     ngx_log(ngx_ERR, "could not set upstream timeouts: ", err)
   end
 
-  runloop.balancer.after()
+  runloop.balancer.after(ctx)
 end
 
 function Kong.rewrite()
@@ -436,10 +612,17 @@ function Kong.rewrite()
 
   runloop.rewrite.before(ctx)
 
+  local ok, err = plugins_map_wrapper()
+  if not ok then
+    ngx_log(ngx_CRIT, "could not ensure plugins map is up to date: ", err)
+    return responses.send_HTTP_INTERNAL_SERVER_ERROR()
+  end
+
   -- we're just using the iterator, as in this rewrite phase no consumer nor
   -- api will have been identified, hence we'll just be executing the global
   -- plugins
-  for plugin, plugin_conf in plugins_iterator(loaded_plugins, true) do
+  for plugin, plugin_conf in plugins_iterator(ctx, loaded_plugins,
+                                              configured_plugins, true) do
     kong_global.set_named_ctx(kong, "plugin", plugin_conf)
     kong_global.set_namespaced_log(kong, plugin.name)
 
@@ -460,7 +643,8 @@ function Kong.access()
 
   ctx.delay_response = true
 
-  for plugin, plugin_conf in plugins_iterator(loaded_plugins, true) do
+  for plugin, plugin_conf in plugins_iterator(ctx, loaded_plugins,
+                                              configured_plugins, true) do
     if not ctx.delayed_response then
       kong_global.set_named_ctx(kong, "plugin", plugin_conf)
       kong_global.set_namespaced_log(kong, plugin.name)
@@ -492,7 +676,8 @@ function Kong.header_filter()
 
   runloop.header_filter.before(ctx)
 
-  for plugin, plugin_conf in plugins_iterator(loaded_plugins) do
+  for plugin, plugin_conf in plugins_iterator(ctx, loaded_plugins,
+                                              configured_plugins) do
     kong_global.set_named_ctx(kong, "plugin", plugin_conf)
     kong_global.set_namespaced_log(kong, plugin.name)
 
@@ -507,7 +692,10 @@ end
 function Kong.body_filter()
   kong_global.set_phase(kong, PHASES.body_filter)
 
-  for plugin, plugin_conf in plugins_iterator(loaded_plugins) do
+  local ctx = ngx.ctx
+
+  for plugin, plugin_conf in plugins_iterator(ctx, loaded_plugins,
+                                              configured_plugins) do
     kong_global.set_named_ctx(kong, "plugin", plugin_conf)
     kong_global.set_namespaced_log(kong, plugin.name)
 
@@ -516,13 +704,16 @@ function Kong.body_filter()
     kong_global.reset_log(kong)
   end
 
-  runloop.body_filter.after(ngx.ctx)
+  runloop.body_filter.after(ctx)
 end
 
 function Kong.log()
   kong_global.set_phase(kong, PHASES.log)
 
-  for plugin, plugin_conf in plugins_iterator(loaded_plugins) do
+  local ctx = ngx.ctx
+
+  for plugin, plugin_conf in plugins_iterator(ctx, loaded_plugins,
+                                              configured_plugins) do
     kong_global.set_named_ctx(kong, "plugin", plugin_conf)
     kong_global.set_namespaced_log(kong, plugin.name)
 
@@ -531,14 +722,15 @@ function Kong.log()
     kong_global.reset_log(kong)
   end
 
-  runloop.log.after(ngx.ctx)
+  runloop.log.after(ctx)
 end
 
 function Kong.handle_error()
   kong_resty_ctx.apply_ref()
 
-  if not ngx.ctx.plugins_for_request then
-    for plugin, plugin_conf in plugins_iterator(loaded_plugins, true) do
+  local ctx = ngx.ctx
+  if not ctx.plugins_for_request then
+    for _ in plugins_iterator(ctx, loaded_plugins, configured_plugins, true) do
       -- just build list of plugins
     end
   end
@@ -560,5 +752,6 @@ function Kong.serve_admin_api(options)
 
   return lapis.serve("kong.api")
 end
+
 
 return Kong

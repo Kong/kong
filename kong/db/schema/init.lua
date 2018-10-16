@@ -5,6 +5,7 @@ local cjson        = require "cjson"
 
 
 local setmetatable = setmetatable
+local re_match     = ngx.re.match
 local re_find      = ngx.re.find
 local concat       = table.concat
 local insert       = table.insert
@@ -15,7 +16,9 @@ local pcall        = pcall
 local floor        = math.floor
 local type         = type
 local next         = next
-local time         = ngx.time
+local ngx_time     = ngx.time
+local ngx_now      = ngx.now
+local find         = string.find
 local null         = ngx.null
 local max          = math.max
 local sub          = string.sub
@@ -23,6 +26,21 @@ local sub          = string.sub
 
 local Schema       = {}
 Schema.__index     = Schema
+
+
+local _cache = {}
+
+
+local new_tab
+do
+  local ok
+  ok, new_tab = pcall(require, "table.new")
+  if not ok then
+    new_tab = function(narr, nrec)
+      return {}
+    end
+  end
+end
 
 
 local validation_errors = {
@@ -39,6 +57,9 @@ local validation_errors = {
   INTEGER                   = "expected an integer",
   FUNCTION                  = "expected a function",
   -- validations
+  EQ                        = "value must be %s",
+  NE                        = "value must not be %s",
+  GT                        = "value must be greater than %s",
   BETWEEN                   = "value should be between %d and %d",
   LEN_EQ                    = "length must be %d",
   LEN_MIN                   = "length must be at least %d",
@@ -49,7 +70,9 @@ local validation_errors = {
   MATCH_NONE                = "invalid value: %s",
   MATCH_ANY                 = "invalid value: %s",
   STARTS_WITH               = "should start with: %s",
+  CONTAINS                  = "expected to contain: %s",
   ONE_OF                    = "expected one of: %s",
+  IS_REGEX                  = "not a valid regex: %s",
   TIMESTAMP                 = "expected a valid timestamp",
   UUID                      = "expected a valid UUID",
   VALIDATION                = "failed validating: %s",
@@ -64,31 +87,38 @@ local validation_errors = {
   ENTITY_CHECK              = "failed entity check: %s(%s)",
   ENTITY_CHECK_N_FIELDS     = "entity check requires %d fields",
   CHECK                     = "entity check failed",
-  CONDITIONAL               = "failed conditional validation",
+  CONDITIONAL               = "failed conditional validation given value of field '%s'",
   AT_LEAST_ONE_OF           = "at least one of these fields must be non-empty: %s",
   ONLY_ONE_OF               = "only one of these fields must be non-empty: %s",
+  DISTINCT                  = "values of these fields must be distinct: %s",
   -- schema error
   SCHEMA_NO_DEFINITION      = "expected a definition table",
   SCHEMA_NO_FIELDS          = "error in schema definition: no 'fields' table",
-  SCHEMA_MISSING_ATTRIBUTE  = "error in schema definition: missing attribute",
+  SCHEMA_MISSING_ATTRIBUTE  = "error in schema definition: missing attribute %s",
   SCHEMA_BAD_REFERENCE      = "schema refers to an invalid foreign entity: %s",
   SCHEMA_TYPE               = "invalid type: %s",
   -- primary key errors
   NOT_PK                    = "not a primary key",
   MISSING_PK                = "missing primary key",
+  -- subschemas
+  SUBSCHEMA_UNKNOWN         = "unknown type: %s",
+  SUBSCHEMA_BAD_PARENT      = "entities of type '%s' cannot have subschemas",
+  SUBSCHEMA_UNDEFINED_FIELD = "error in schema definition: abstract field was not specialized",
+  SUBSCHEMA_BAD_TYPE        = "error in schema definition: cannot change type in a specialized field",
 }
 
 
 Schema.valid_types = {
-  array   = true,
-  set     = true,
-  string  = true,
-  number  = true,
-  boolean = true,
-  integer = true,
-  foreign = true,
-  map     = true,
-  record  = true,
+  array        = true,
+  set          = true,
+  string       = true,
+  number       = true,
+  boolean      = true,
+  integer      = true,
+  foreign      = true,
+  map          = true,
+  record       = true,
+  ["function"] = true,
 }
 
 
@@ -133,6 +163,29 @@ Schema.validators = {
     return true
   end,
 
+  eq = function(value, wanted)
+    if value == wanted then
+      return true
+    end
+    local str = (wanted == null) and "null" or tostring(value)
+    return nil, validation_errors.EQ:format(str)
+  end,
+
+  ne = function(value, wanted)
+    if value ~= wanted then
+      return true
+    end
+    local str = (wanted == null) and "null" or tostring(value)
+    return nil, validation_errors.NE:format(str)
+  end,
+
+  gt = function(value, limit)
+    if value > limit then
+      return true
+    end
+    return nil, validation_errors.GT:format(tostring(limit))
+  end,
+
   len_eq = make_length_validator("LEN_EQ", function(len, n)
     return len == n
   end),
@@ -151,6 +204,11 @@ Schema.validators = {
       return nil, validation_errors.MATCH:format(value)
     end
     return true
+  end,
+
+  is_regex = function(value)
+    local _, err = re_match("any string", value)
+    return err == nil
   end,
 
   not_match = function(value, pattern)
@@ -219,6 +277,16 @@ Schema.validators = {
     return re_find(value, uuid_regex, "ioj") and true or nil
   end,
 
+  contains = function(array, wanted)
+    for _, item in ipairs(array) do
+      if item == wanted then
+        return true
+      end
+    end
+
+    return nil, validation_errors.CONTAINS:format(wanted)
+  end,
+
   custom_validator = function(value, fn)
     return fn(value)
   end
@@ -227,11 +295,15 @@ Schema.validators = {
 
 
 Schema.validators_order = {
+  "eq",
+  "ne",
   "one_of",
 
   -- type-dependent
+  "gt",
   "timestamp",
   "uuid",
+  "is_regex",
   "between",
 
   -- strings (1/2)
@@ -246,6 +318,9 @@ Schema.validators_order = {
   "match",
   "match_all",
   "match_any",
+
+  -- arrays
+  "contains",
 
   -- other
   "custom_validator",
@@ -312,15 +387,38 @@ local function quoted_list(words)
 end
 
 
-local function merge_field(base, overrides)
-  local field = {}
-  for k,v in pairs(base) do
-    field[k] = v
+-- Get a field from a possibly-nested table using a string key
+-- such as "x.y.z", such that `get_field(t, "x.y.z")` is the
+-- same as `t.x.y.z`.
+local function get_field(tbl, name)
+  if tbl == nil then
+    return nil
   end
-  for k,v in pairs(overrides) do
-    field[k] = v
+  local dot = find(name, ".", 1, true)
+  if not dot then
+    return tbl[name]
   end
-  return field
+  local hd, tl = sub(name, 1, dot - 1), sub(name, dot + 1)
+  return get_field(tbl[hd], tl)
+end
+
+
+-- Set a field from a possibly-nested table using a string key
+-- such as "x.y.z", such that `set_field(t, "x.y.z", v)` is the
+-- same as `t.x.y.z = v`.
+local function set_field(tbl, name, value)
+  local dot = find(name, ".", 1, true)
+  if not dot then
+    tbl[name] = value
+    return
+  end
+  local hd, tl = sub(name, 1, dot - 1), sub(name, dot + 1)
+  local subtbl = tbl[hd]
+  if subtbl == nil then
+    subtbl = {}
+    tbl[hd] = subtbl
+  end
+  set_field(subtbl, tl, value)
 end
 
 
@@ -362,9 +460,10 @@ Schema.entity_checkers = {
 
   at_least_one_of = {
     run_with_missing_fields = true,
+    run_with_invalid_fields = true,
     fn = function(entity, field_names)
       for _, name in ipairs(field_names) do
-        if is_nonempty(entity[name]) then
+        if is_nonempty(get_field(entity, name)) then
           return true
         end
       end
@@ -374,11 +473,13 @@ Schema.entity_checkers = {
   },
 
   only_one_of = {
+    run_with_missing_fields = false,
+    run_with_invalid_fields = true,
     fn = function(entity, field_names)
       local found = false
       local ok = false
       for _, name in ipairs(field_names) do
-        if is_nonempty(entity[name]) then
+        if is_nonempty(get_field(entity, name)) then
           if not found then
             found = true
             ok = true
@@ -395,6 +496,24 @@ Schema.entity_checkers = {
     end,
   },
 
+  distinct = {
+    run_with_missing_fields = false,
+    run_with_invalid_fields = true,
+    fn = function(entity, field_names)
+      local seen = {}
+      for _, name in ipairs(field_names) do
+        local value = get_field(entity, name)
+        if is_nonempty(value) then
+          if seen[value] then
+            return nil, quoted_list(field_names)
+          end
+          seen[value] = true
+        end
+      end
+      return true
+    end,
+  },
+
   --- Conditional validation: if the first field passes the given validator,
   -- then run the validator against the second field.
   -- Example:
@@ -405,36 +524,67 @@ Schema.entity_checkers = {
   --                 then_match = { required = true } }
   -- ```
   conditional = {
+    run_with_missing_fields = false,
+    run_with_invalid_fields = true,
     field_sources = { "if_field", "then_field" },
-    fn = function(entity, arg, schema)
-      local if_value = entity[arg.if_field]
-      local then_value = entity[arg.then_field]
+    required_fields = { ["if_field"] = true },
+    fn = function(entity, arg, schema, errors)
+      local if_value = get_field(entity, arg.if_field)
+      local then_value = get_field(entity, arg.then_field) or null
 
-      local if_merged = merge_field(schema.fields[arg.if_field], arg.if_match)
-      local ok, _ = Schema.validate_field(schema, if_merged, if_value)
+      arg.if_match.type = "skip"
+      local ok, _ = Schema.validate_field(schema, arg.if_match, if_value)
       if not ok then
         return true
       end
 
       -- Handle `required`
       if arg.then_match.required == true and then_value == null then
-        local field_errors = { [arg.then_field] = validation_errors.REQUIRED }
-        return nil, validation_errors.CONDITIONAL, field_errors
+        set_field(errors, arg.then_field, validation_errors.REQUIRED)
+        return nil, arg.if_field
       end
 
-      local then_merged = merge_field(schema.fields[arg.then_field], arg.then_match)
+      arg.then_match.type = "skip"
       local err
-      ok, err = Schema.validate_field(schema, then_merged, then_value)
+      ok, err = Schema.validate_field(schema, arg.then_match, then_value)
       if not ok then
-        local field_errors = { [arg.then_field] = err }
-        return nil, validation_errors.CONDITIONAL, field_errors
+        set_field(errors, arg.then_field, err)
+        return nil, arg.if_field
       end
 
       return true
     end,
   },
 
+  custom_entity_check = {
+    run_with_missing_fields = false,
+    run_with_invalid_fields = false,
+    field_sources = { "field_sources" },
+    required_fields = { ["field_sources"] = true },
+    fn = function(entity, arg)
+      return arg.fn(entity)
+    end,
+  }
+
 }
+
+
+local function memoize(fn)
+  local cache = setmetatable({}, { __mode = "k" })
+  return function(k)
+    if cache[k] then
+      return cache[k]
+    end
+    local v = fn(k)
+    cache[k] = v
+    return v
+  end
+end
+
+
+local get_field_schema = memoize(function(field)
+  return Schema.new(field)
+end)
 
 
 -- Forward declaration
@@ -451,11 +601,20 @@ local validate_fields
 function Schema:validate_field(field, value)
 
   if value == null then
+    if field.ne == null then
+      return nil, validation_errors.NE:format("null")
+    end
+    if field.eq ~= nil and field.eq ~= null then
+      return nil, validation_errors.EQ:format(tostring(field.eq))
+    end
     if field.nullable == false then
       return nil, validation_errors.NOT_NULLABLE
-    else
-      return true
     end
+    return true
+  end
+
+  if field.abstract == true then
+    return nil, validation_errors.SUBSCHEMA_UNDEFINED_FIELD
   end
 
   if field.type == "array" then
@@ -533,10 +692,10 @@ function Schema:validate_field(field, value)
       return nil, validation_errors.SCHEMA_MISSING_ATTRIBUTE:format("fields")
     end
 
-    local subschema = Schema.new(field)
+    local field_schema = get_field_schema(field)
     -- TODO return nested table or string?
-    local copy = subschema:process_auto_fields(value, "insert")
-    local ok, err = subschema:validate(copy)
+    local copy = field_schema:process_auto_fields(value, "insert")
+    local ok, err = field_schema:validate(copy)
     if not ok then
       return nil, err
     end
@@ -568,8 +727,6 @@ function Schema:validate_field(field, value)
     end
 
   elseif field.type == "function" then
-    -- TODO: this type should only be used/visible from the
-    -- metachema to validate the 'custom_validator'
     if type(value) ~= "function" then
       return nil, validation_errors.FUNCTION
     end
@@ -579,7 +736,8 @@ function Schema:validate_field(field, value)
       return nil, validation_errors[field.type:upper()]
     end
 
-  else
+  -- if type is "skip" (an internal marker), run validators only
+  elseif field.type ~= "skip" then
     return nil, validation_errors.SCHEMA_TYPE:format(field.type)
   end
 
@@ -587,9 +745,11 @@ function Schema:validate_field(field, value)
     if field[k] then
       local ok, err = self.validators[k](value, field[k], field)
       if not ok then
+        if not err then
+          err = (validation_errors[k:upper()]
+                 or validation_errors.VALIDATION):format(value)
+        end
         return nil, err
-                    or validation_errors[k:upper()]
-                    or validation_errors.VALIDATION:format(k)
       end
     end
   end
@@ -606,13 +766,19 @@ end
 -- If a default value cannot be produced (due to circumstances that
 -- will produce errors later on validation), it simply returns `nil`.
 local function default_value(field)
+  if field.abstract then
+    return nil
+  end
 
   if field.nullable ~= false then
     return null
   end
 
-  if field.type == "array" or field.type == "set"
-     or field.type == "map" or field.type == "record" then
+  if field.type == "record" then
+    local field_schema = get_field_schema(field)
+    return field_schema:process_auto_fields({}, "insert")
+  elseif field.type == "array" or field.type == "set"
+     or field.type == "map" then
     return {}
   elseif field.type == "number" or field.type == "integer" then
     return 0
@@ -625,43 +791,75 @@ local function default_value(field)
   return nil
 end
 
---- Merge the contents of a table into another. Numeric keys
--- are appended sequentially, string keys take over their slots.
--- For example:
--- `merge_into_table({ [1] = 2, a = 3 }, { [1] = 4, a = 5, b = 6 }`
--- produces `{ [1] = 2, [2] = 4, a = 5, b = 6 }`
--- @param dst The destination table
--- @param src The source table
-local function merge_into_table(dst, src)
-  for k,v in pairs(src) do
-    if type(k) == "number" then
-      insert(dst, v)
-    else
-      dst[k] = v
-    end
-  end
-end
-
 
 --- Given missing field named `k`, with definition `field`,
 -- fill its slot in `entity` with an appropriate default value,
 -- if possible.
--- @param k The field name.
 -- @param field The field definition table.
--- @param entity The entity object where key `k` is missing.
-local function handle_missing_field(k, field, entity)
+local function handle_missing_field(field, value)
   if field.default ~= nil then
-    entity[k] = field.default
-    return
+    return tablex.deepcopy(field.default)
   end
 
   -- If `required`, it will fail later.
   -- If `nilable` (metaschema only), a default value is not necessary.
   if field.required or field.nilable then
-    return
+    return value
   end
 
-  entity[k] = default_value(field)
+  return default_value(field)
+end
+
+
+--- Check if subschema field is compatible with the abstract field it replaces.
+-- @return true if compatible, false otherwise.
+local function compatible_fields(f1, f2)
+  local t1, t2 = f1.type, f2.type
+  if t1 ~= t2 then
+    return false
+  end
+  if t1 == "record" then
+    return true
+  end
+  if t1 == "array" or t1 == "set" then
+    return f1.elements.type == f2.elements.type
+  end
+  if t1 == "array" or t1 == "set" then
+    return f1.elements.type == f2.elements.type
+  end
+  if t1 == "map" then
+    return f1.keys.type == f2.keys.type and f1.values.type == f2.values.type
+  end
+  return true
+end
+
+
+local function get_subschema(self, input)
+  if self.subschemas and self.subschema_key then
+    local subschema = self.subschemas[input[self.subschema_key]]
+    if subschema then
+      return self.subschemas[input[self.subschema_key]]
+    end
+  end
+  return nil
+end
+
+
+local function resolve_field(self, k, field, subschema)
+  field = field or self.fields[k]
+  if not field then
+    return nil, validation_errors.UNKNOWN
+  end
+  if subschema then
+    local ss_field = subschema.fields[k]
+    if ss_field then
+      if not compatible_fields(field, ss_field) then
+        return nil, validation_errors.SUBSCHEMA_BAD_TYPE
+      end
+      field = ss_field
+    end
+  end
+  return field
 end
 
 
@@ -675,16 +873,22 @@ end
 validate_fields = function(self, input)
   assert(type(input) == "table", validation_errors.BAD_INPUT)
 
-  local errors = {}
+  local errors, _ = {}
+
+  local subschema = get_subschema(self, input)
 
   for k, v in pairs(input) do
+    local err
     local field = self.fields[k]
+    if field and field.type == "self" then
+      field = input
+    else
+      field, err = resolve_field(self, k, field, subschema)
+    end
     if field then
-      field = (field.type == "self") and input or field
-      local _
       _, errors[k] = self:validate_field(field, v)
     else
-      errors[k] = validation_errors.UNKNOWN
+      errors[k] = err
     end
   end
 
@@ -692,6 +896,14 @@ validate_fields = function(self, input)
     return nil, errors
   end
   return true, errors
+end
+
+
+local function insert_entity_error(errors, err)
+  if not errors["@entity"] then
+    errors["@entity"] = {}
+  end
+  insert(errors["@entity"], err)
 end
 
 
@@ -703,64 +915,90 @@ end
 -- @param name The name of the entity check
 -- @param input The whole input entity.
 -- @param arg The argument table of the entity check declaration
--- @return True on success, or nil followed by an error message and a table
--- of field-specific errors.
-local function run_entity_check(self, name, input, arg)
-  local ok = true
+-- @param errors The table where errors are accumulated.
+-- @return Nothing; the side-effect of this function is to add entries to
+-- `errors` if any errors occur.
+local function run_entity_check(self, name, input, arg, full_check, errors)
   local check_input = {}
-  local field_errors = {}
   local checker = self.entity_checkers[name]
   local fields_to_check = {}
 
+  local required_fields = {}
   if checker.field_sources then
     for _, source in ipairs(checker.field_sources) do
       local v = arg[source]
       if type(v) == "string" then
         insert(fields_to_check, v)
+        if checker.required_fields[source] then
+          required_fields[v] = true
+        end
       elseif type(v) == "table" then
         for _, fname in ipairs(v) do
           insert(fields_to_check, fname)
+          if checker.required_fields[source] then
+            required_fields[fname] = true
+          end
         end
       end
     end
   else
     fields_to_check = arg
+    for _, fname in ipairs(arg) do
+      required_fields[fname] = true
+    end
   end
 
+  local missing
   local all_nil = true
+  local all_ok = true
   for _, fname in ipairs(fields_to_check) do
-    if input[fname] == nil then
-      if not checker.run_with_missing_fields then
-        local err = validation_errors.REQUIRED_FOR_ENTITY_CHECK
-        field_errors[fname] = err
-        ok = false
+    local value = get_field(input, fname)
+    if value == nil then
+      if (not checker.run_with_missing_fields) and
+         (required_fields and required_fields[fname]) then
+        missing = missing or {}
+        insert(missing, fname)
       end
     else
       all_nil = false
     end
-    check_input[fname] = input[fname]
+    if errors[fname] then
+      all_ok = false
+    end
+    set_field(check_input, fname, value)
   end
+
+  -- Don't run check if any of its fields has errors
+  if not all_ok and not checker.run_with_invalid_fields then
+    return
+  end
+
   -- Don't run check if none of the fields are present (update)
-  if all_nil then
-    return true
+  if all_nil and not (checker.run_with_missing_fields and full_check) then
+    return
   end
 
-  if not ok then
-    return nil, nil, field_errors
+  -- Don't run check if a required field is missing
+  if missing then
+    for _, fname in ipairs(missing) do
+      set_field(errors, fname, validation_errors.REQUIRED_FOR_ENTITY_CHECK)
+    end
+    return
   end
 
-  local err
-  ok, err, field_errors = checker.fn(check_input, arg, self)
+  local ok, err = checker.fn(check_input, arg, self, errors)
   if ok then
-    return true
+    return
   end
 
-  err = validation_errors[name:upper()]:format(err)
+  local error_fmt = validation_errors[name:upper()]
+  err = error_fmt and error_fmt:format(err) or err
   if not err then
     local data = pretty.write({ name = arg }):gsub("%s+", " ")
     err = validation_errors.ENTITY_CHECK:format(name, data)
   end
-  return nil, err, field_errors
+
+  insert_entity_error(errors, err)
 end
 
 
@@ -769,21 +1007,19 @@ end
 -- TODO hopefully deprecate this function.
 -- @param self The schema table
 -- @param name The name of the entity check
--- @param entity_errors The current array of entity errors.
--- @param field_errors The current table of accumulated field errors.
--- the array with check errors if any
-local function run_self_check(self, input, entity_errors, field_errors)
+-- @param errors The current table of accumulated field errors.
+local function run_self_check(self, input, errors)
   local ok = true
   for fname, field in self:each_field() do
     if input[fname] == nil and not field.nilable then
       local err = validation_errors.REQUIRED_FOR_ENTITY_CHECK:format(fname)
-      field_errors[fname] = err
+      errors[fname] = err
       ok = false
     end
   end
 
   if not ok then
-    return nil
+    return
   end
 
   local err
@@ -793,57 +1029,59 @@ local function run_self_check(self, input, entity_errors, field_errors)
   end
 
   if type(err) == "string" then
-    insert(entity_errors, err)
+    insert_entity_error(errors, err)
 
   elseif type(err) == "table" then
     for k, v in pairs(err) do
       if type(k) == "number" then
-        insert(entity_errors, v)
+        insert_entity_error(errors, v)
       else
-        field_errors[k] = v
+        errors[k] = v
       end
     end
 
   else
-    insert(entity_errors, validation_errors.CHECK)
+    insert_entity_error(errors, validation_errors.CHECK)
   end
 end
 
 
---- Run entity checks over the whole table.
--- This includes the custom `check` function.
--- In case of any errors, add them to the errors table.
--- @param self The schema
--- @param input The input table.
--- @return True on success; nil, the table of entity check errors
--- (where keys are the entity check names with string values or
--- "check" and an array of self-check error strings)
--- and the table of field errors otherwise.
-local function run_entity_checks(self, input)
-  local entity_errors = {}
-  local field_errors = {}
-
-  if self.entity_checks then
-    for _, check in ipairs(self.entity_checks) do
+local run_entity_checks
+do
+  local function run_checks(self, input, full_check, checks, errors)
+    if not checks then
+      return
+    end
+    for _, check in ipairs(checks) do
       local check_name = next(check)
-      local _, err, f_errs = run_entity_check(self, check_name, input, check[check_name])
-      insert(entity_errors, err)
-      if f_errs then
-        merge_into_table(field_errors, f_errs)
-      end
+      local arg = check[check_name]
+      run_entity_check(self, check_name, input, arg, full_check, errors)
     end
   end
 
-  if self.check then
-    run_self_check(self, input, entity_errors, field_errors)
-  end
+  --- Run entity checks over the whole table.
+  -- This includes the custom `check` function.
+  -- In case of any errors, add them to the errors table.
+  -- @param self The schema
+  -- @param input The input table.
+  -- @param full_check If true, demands entity table to be complete.
+  -- @param errors The table where errors are accumulated.
+  -- @return Nothing; the side-effect of this function is to add entries to
+  -- `errors` if any errors occur.
+  run_entity_checks = function(self, input, full_check, errors)
 
-  if next(entity_errors) or next(field_errors) then
-    return nil, entity_errors, field_errors
+    run_checks(self, input, full_check, self.entity_checks, errors)
+
+    local subschema = get_subschema(self, input)
+    if subschema then
+      run_checks(self, input, full_check, subschema.entity_checks, errors)
+    end
+
+    if self.check and full_check then
+      run_self_check(self, input, errors)
+    end
   end
-  return true
 end
-
 
 --- Ensure that a given table contains only the primary-key
 -- fields of the entity and that their fields validate.
@@ -949,49 +1187,114 @@ local function make_set(set)
 end
 
 
+local function adjust_field_for_context(field, value, context, nulls)
+  if context ~= "update" and value == null and field.nullable == false then
+    return handle_missing_field(field, value)
+  end
+  if field.type == "record" and not field.abstract then
+    local should_recurse
+    if context == "update" then
+      -- avoid filling defaults in partial updates of records
+      should_recurse = ((value == null and field.nullable == false)
+                        or (value == nil and field.nullable == false)
+                        or (value ~= null and value ~= nil))
+    else
+      should_recurse = (value ~= null and
+                        (value ~= nil or field.nullable == false))
+    end
+    if should_recurse then
+      local field_schema = get_field_schema(field)
+      value = value or handle_missing_field(field, value)
+      return field_schema:process_auto_fields(value, context, nulls)
+    end
+  end
+  if value == nil then
+    if context == "update" then
+      return nil
+    else
+      return handle_missing_field(field, value)
+    end
+  end
+  if field.type == "array" then
+    return make_array(value)
+  end
+  if field.type == "set" then
+    return make_set(value)
+  end
+
+  return value
+end
+
+
 --- Given a table, update its fields whose schema
 -- definition declares them as `auto = true`,
--- based on its CRUD operation context.
+-- based on its CRUD operation context, and set
+-- defaults for missing values when the CRUD context
+-- is "insert".
 -- This function encapsulates various "smart behaviors"
 -- for value creation and update.
 -- @param input The table containing data to be processed.
 -- @param context a string describing the CRUD context:
--- valid values are: "insert", "update"
+-- valid values are: "insert", "update", "upsert"
 -- @param nulls boolean: return nulls as explicit ngx.null values
 -- @return A new table, with the auto fields containing
 -- appropriate updated values.
 function Schema:process_auto_fields(input, context, nulls)
-  local output = tablex.deepcopy(input)
-  local now = time()
+  ngx.update_time()
 
-  for key, field in self:each_field() do
+  local output = tablex.deepcopy(input)
+  local now_s  = ngx_time()
+  local now_ms = ngx_now()
+  local read_before_write = false
+  local cache_key_modified = false
+
+  --[[
+  if context == "select" and self.translations then
+    for _, translation in ipairs(self.translations) do
+      if type(translation.read) == "function" then
+        output = translation.read(output)
+      end
+    end
+  end
+  --]]
+
+  for key, field in self:each_field(input) do
+
+    if field.legacy and field.uuid and output[key] == "" then
+      output[key] = null
+    end
+
     if field.auto then
-      if field.uuid and context == "insert" then
-        output[key] = utils.uuid()
-      elseif field.uuid and context == "upsert" and output[key] == nil then
-        output[key] = utils.uuid()
+      if field.uuid then
+        if (context == "insert" or context == "upsert") and output[key] == nil then
+          output[key] = utils.uuid()
+        end
+
+      elseif field.type == "string" then
+        if (context == "insert" or context == "upsert") and output[key] == nil then
+          output[key] = utils.random_string()
+        end
 
       elseif (key == "created_at" and (context == "insert" or
                                        context == "upsert")) or
              (key == "updated_at" and (context == "insert" or
                                        context == "upsert" or
                                        context == "update")) then
-        output[key] = now
+
+        if field.type == "number" then
+          output[key] = now_ms
+        elseif field.type == "integer" then
+          output[key] = now_s
+        end
       end
     end
 
-    local field_value = output[key]
+    output[key] = adjust_field_for_context(field, output[key], context, nulls)
 
-    if field_value ~= nil then
-      local field_type  = field.type
-      if field_type == "array" then
-        output[key] = make_array(field_value)
-      elseif field_type == "set" then
-        output[key] = make_set(field_value)
+    if output[key] ~= nil then
+      if self.cache_key_set and self.cache_key_set[key] then
+        cache_key_modified = true
       end
-
-    elseif context ~= "update" then
-      handle_missing_field(key, field, output)
     end
 
     if context == "select" and output[key] == null and not nulls then
@@ -999,8 +1302,75 @@ function Schema:process_auto_fields(input, context, nulls)
     end
   end
 
+  --[[
+  if context ~= "select" and self.translations then
+    for _, translation in ipairs(self.translations) do
+      if type(translation.write) == "function" then
+        output = translation.write(output)
+      end
+    end
+  end
+  --]]
+
+  if context == "update" and (
+    -- If a partial update does not provide the subschema key,
+    -- we need to do a read-before-write to get it and be
+    -- able to properly validate the entity.
+    (self.subschema_key and input[self.subschema_key] == nil)
+    -- If we're resetting the value of a composite cache key,
+    -- we to do a read-before-write to get the rest of the cache key
+    -- and be able to properly update it.
+    or cache_key_modified)
+  then
+    read_before_write = true
+  end
+
+  return output, nil, read_before_write
+end
+
+
+--- Schema-aware deep-merge of two entities.
+-- Uses schema knowledge to merge two records field-by-field,
+-- but not merge the content of two arrays.
+-- @param top the entity whose values take precedence
+-- @param bottom the entity whose values are the fallback
+-- @return the merged entity
+function Schema:merge_values(top, bottom)
+  local output = {}
+  bottom = bottom or {}
+  for key, field in self:each_field(bottom) do
+    local top_v = top[key]
+
+    if top_v == nil then
+      output[key] = bottom[key]
+
+    else
+      if field.type == "record" and not field.abstract and top_v ~= null then
+        output[key] = get_field_schema(field):merge_values(top_v, bottom[key])
+      else
+        output[key] = top_v
+      end
+    end
+  end
   return output
 end
+
+
+--[[
+function Schema:load_translations(translation)
+  if not self.translations then
+    self.translations = {}
+  end
+
+  for i = 1, #self.translations do
+    if self.translations[i] == translation then
+      return
+    end
+  end
+
+  insert(self.translations, translation)
+end
+--]]
 
 
 --- Validate a table against the schema, ensuring that the entity is complete.
@@ -1033,27 +1403,36 @@ function Schema:validate(input, full_check)
     full_check = true
   end
 
-  local _, field_errors = validate_fields(self, input)
+  if self.subschema_key then
+    -- If we can't determine the subschema, do not validate any further
+    local key = input[self.subschema_key]
+    if key == null or key == nil then
+      return nil, {
+        [self.subschema_key] = validation_errors.REQUIRED
+      }
+    end
+    if not (self.subschemas and self.subschemas[key]) then
+      local errmsg = self.subschema_error or validation_errors.SUBSCHEMA_UNKNOWN
+      return nil, {
+        [self.subschema_key] = errmsg:format(key)
+      }
+    end
+  end
+
+  local _, errors = validate_fields(self, input)
 
   for name, field in self:each_field() do
     if field.required
        and (input[name] == null
             or (full_check and input[name] == nil)) then
-      field_errors[name] = validation_errors.REQUIRED
+      errors[name] = validation_errors.REQUIRED
     end
   end
 
-  local ok, entity_errors, f_errs
-  ok, entity_errors, f_errs = run_entity_checks(self, input)
-  if not ok then
-    if next(entity_errors) then
-      field_errors["@entity"] = entity_errors
-    end
-    merge_into_table(field_errors, f_errs)
-  end
+  run_entity_checks(self, input, full_check, errors)
 
-  if next(field_errors) then
-    return nil, field_errors
+  if next(errors) then
+    return nil, errors
   end
   return true
 end
@@ -1092,13 +1471,13 @@ function Schema:validate_update(input)
   validation_errors.REQUIRED_FOR_ENTITY_CHECK = rfec .. " when updating"
   validation_errors.AT_LEAST_ONE_OF = "when updating, " .. aloo
 
-  local ok, err, err_t = self:validate(input, false)
+  local ok, errors = self:validate(input, false)
 
   -- Restore the original error messages
   validation_errors.REQUIRED_FOR_ENTITY_CHECK = rfec
   validation_errors.AT_LEAST_ONE_OF = aloo
 
-  return ok, err, err_t
+  return ok, errors
 end
 
 
@@ -1120,15 +1499,21 @@ end
 -- which produces the key and the field table,
 -- as in `for field_name, field_data in self:each_field() do`
 -- @return the iteration function
-function Schema:each_field()
+function Schema:each_field(values)
   local i = 1
+
+  local subschema
+  if values then
+    subschema = get_subschema(self, values)
+  end
+
   return function()
     local item = self.fields[i]
-    if not self.fields[i] then
+    if not item then
       return nil
     end
     local key = next(item)
-    local field = item[key]
+    local field = resolve_field(self, key, item[key], subschema)
     i = i + 1
     return key, field
   end
@@ -1175,68 +1560,75 @@ function Schema:errors_to_string(errors)
 end
 
 
+--- Given an entity, return a table containing only its primary key entries
+-- @param entity a table mapping field names to their values
+-- @return a subset of the input table, containing only the keys that
+-- are part of the primary key for this schema.
+function Schema:extract_pk_values(entity)
+  local pk_len = #self.primary_key
+  local pk_values = new_tab(0, pk_len)
+
+  for i = 1, pk_len do
+    local pk_name = self.primary_key[i]
+    pk_values[pk_name] = entity[pk_name]
+  end
+
+  return pk_values
+end
+
+
 --- Given a field of type `"foreign"`, returns the schema object for it.
 -- @param field A field definition table
 -- @return A schema object, or nil and an error message.
 local function get_foreign_schema_for_field(field)
   local ref = field.reference
   if not ref then
-    return nil, validation_errors.SCHEMA_MISSING_ATTRIBUTE:format(ref)
+    return nil, validation_errors.SCHEMA_MISSING_ATTRIBUTE:format("reference")
   end
 
-  -- TODO add support for non-core entities
-  local pok, def = pcall(require, "kong.db.schema.entities." .. ref)
-  if not (pok and def) then
+  local foreign_schema = _cache[ref] and _cache[ref].schema
+  if not foreign_schema then
     return nil, validation_errors.SCHEMA_BAD_REFERENCE:format(ref)
   end
 
-  -- FIXME we really shouldn't be creating schema objects each
-  -- time, but rather getting schema objects from the modules,
-  -- instead of bare schema definition tables.
-  return Schema.new(def)
+  return foreign_schema
 end
 
 
 --- Cycle-aware table copy.
 -- To be replaced by tablex.deepcopy() when it supports cycles.
-local function copy(t, c, cache)
+local function copy(t, cache)
   if type(t) ~= "table" then
     return t
   end
   cache = cache or {}
-  c = c or {}
+  if cache[t] then
+    return cache[t]
+  end
+  local c = {}
+  cache[t] = c
   for k, v in pairs(t) do
-    local kk, vv = k, v
-    if type(k) == "table" then
-      if cache[k] then
-        kk = cache[k]
-      else
-        kk = {}
-        cache[k] = kk
-        copy(k, kk, cache)
-      end
-    end
-    if type(v) == "table" then
-      if cache[v] then
-        vv = cache[v]
-      else
-        vv = {}
-        cache[v] = vv
-        copy(v, vv, cache)
-      end
-    end
+    local kk = copy(k, cache)
+    local vv = copy(v, cache)
     c[kk] = vv
   end
   return c
 end
 
 
+function Schema:get_constraints()
+  return _cache[self.name].constraints
+end
+
+
 --- Instatiate a new schema from a definition.
 -- @param definition A table with attributes describing
 -- fields and other information about a schema.
+-- @param is_subschema boolean, true if definition
+-- is a subschema
 -- @return The object implementing the schema matching
 -- the given definition.
-function Schema.new(definition)
+function Schema.new(definition, is_subschema)
   if not definition then
     return nil, validation_errors.SCHEMA_NO_DEFINITION
   end
@@ -1248,19 +1640,66 @@ function Schema.new(definition)
   local self = copy(definition)
   setmetatable(self, Schema)
 
-  -- Also give access to fields by name
+  if self.cache_key then
+    self.cache_key_set = {}
+    for _, name in ipairs(self.cache_key) do
+      self.cache_key_set[name] = true
+    end
+  end
+
   for key, field in self:each_field() do
+    -- Also give access to fields by name
     self.fields[key] = field
+
     if field.type == "foreign" then
       local err
       field.schema, err = get_foreign_schema_for_field(field)
       if not field.schema then
         return nil, err
       end
+
+      if not is_subschema then
+        -- Store the inverse relation for implementing constraints
+        local constraints = assert(_cache[field.reference]).constraints
+        table.insert(constraints, {
+          schema     = self,
+          field_name = key,
+          on_delete  = field.on_delete,
+        })
+      end
     end
   end
 
+  if self.name then
+    _cache[self.name] = {
+      schema = self,
+      constraints = {},
+    }
+  end
+
   return self
+end
+
+
+function Schema.new_subschema(self, key, definition)
+  assert(type(key) == "string", "key must be a string")
+  assert(type(definition) == "table", "definition must be a table")
+
+  if not self.subschema_key then
+    return nil, validation_errors.SUBSCHEMA_BAD_PARENT:format(self.name)
+  end
+
+  local subschema, err = Schema.new(definition, true)
+  if not subschema then
+    return nil, err
+  end
+
+  if not self.subschemas then
+    self.subschemas = {}
+  end
+  self.subschemas[key] = subschema
+
+  return true
 end
 
 

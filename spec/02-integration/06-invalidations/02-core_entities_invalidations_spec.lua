@@ -20,12 +20,18 @@ for _, strategy in helpers.each_strategy() do
     local service_fixture
 
     setup(function()
-      local bp = helpers.get_db_utils(strategy)
+      local bp = helpers.get_db_utils(strategy, {
+        "apis",
+        "routes",
+        "services",
+        "plugins",
+        "certificates",
+      })
 
       -- insert single fixture Service
       service_fixture = bp.services:insert()
 
-      local db_update_propagation = strategy == "cassandra" and 3 or 0
+      local db_update_propagation = strategy == "cassandra" and 0.1 or 0
 
       assert(helpers.start_kong {
         log_level             = "debug",
@@ -54,13 +60,13 @@ for _, strategy in helpers.each_strategy() do
       proxy_client_2 = helpers.http_client("127.0.0.1", 9000)
 
       wait_for_propagation = function()
-        ngx.sleep(POLL_INTERVAL + db_update_propagation)
+        ngx.sleep(POLL_INTERVAL * 2 + db_update_propagation * 2)
       end
     end)
 
     teardown(function()
-      helpers.stop_kong("servroot1")
-      helpers.stop_kong("servroot2")
+      helpers.stop_kong("servroot1", true)
+      helpers.stop_kong("servroot2", true)
     end)
 
     before_each(function()
@@ -398,8 +404,8 @@ for _, strategy in helpers.each_strategy() do
 
         -- if you get an error when running these, you likely have an outdated version of openssl installed
         -- to update in osx: https://github.com/Kong/kong/pull/2776#issuecomment-320275043
-        assert.matches("CN=localhost", cert_1, nil, true)
-        assert.matches("CN=localhost", cert_2, nil, true)
+        assert.matches("CN%s*=%s*localhost", cert_1)
+        assert.matches("CN%s*=%s*localhost", cert_2)
       end)
 
       it("on certificate+sni create", function()
@@ -417,12 +423,12 @@ for _, strategy in helpers.each_strategy() do
         -- because our test instance only has 1 worker
 
         local cert_1 = get_cert(8443, "ssl-example.com")
-        assert.matches("CN=ssl-example.com", cert_1, nil, true)
+        assert.matches("CN%s*=%s*ssl%-example.com", cert_1)
 
         wait_for_propagation()
 
         local cert_2 = get_cert(9443, "ssl-example.com")
-        assert.matches("CN=ssl-example.com", cert_2, nil, true)
+        assert.matches("CN%s*=%s*ssl%-example.com", cert_2)
       end)
 
       it("on certificate delete+re-creation", function()
@@ -449,18 +455,18 @@ for _, strategy in helpers.each_strategy() do
         -- because our test instance only has 1 worker
 
         local cert_1a = get_cert(8443, "ssl-example.com")
-        assert.matches("CN=localhost", cert_1a, nil, true)
+        assert.matches("CN%s*=%s*localhost", cert_1a)
 
         local cert_1b = get_cert(8443, "new-ssl-example.com")
-        assert.matches("CN=ssl-example.com", cert_1b, nil, true)
+        assert.matches("CN%s*=%s*ssl%-example.com", cert_1b)
 
         wait_for_propagation()
 
         local cert_2a = get_cert(9443, "ssl-example.com")
-        assert.matches("CN=localhost", cert_2a, nil, true)
+        assert.matches("CN%s*=%s*localhost", cert_2a)
 
         local cert_2b = get_cert(9443, "new-ssl-example.com")
-        assert.matches("CN=ssl-example.com", cert_2b, nil, true)
+        assert.matches("CN%s*=%s*ssl%-example.com", cert_2b)
       end)
 
       it("on certificate update", function()
@@ -484,12 +490,12 @@ for _, strategy in helpers.each_strategy() do
         -- because our test instance only has 1 worker
 
         local cert_1 = get_cert(8443, "new-ssl-example.com")
-        assert.matches("CN=ssl-alt.com", cert_1, nil, true)
+        assert.matches("CN%s*=%s*ssl%-alt.com", cert_1)
 
         wait_for_propagation()
 
         local cert_2 = get_cert(9443, "new-ssl-example.com")
-        assert.matches("CN=ssl-alt.com", cert_2, nil, true)
+        assert.matches("CN%s*=%s*ssl%-alt.com", cert_2)
       end)
 
       it("on sni update via id", function()
@@ -504,18 +510,18 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(200, admin_res)
 
         local cert_1_old = get_cert(8443, "new-ssl-example.com")
-        assert.matches("CN=localhost", cert_1_old, nil, true)
+        assert.matches("CN%s*=%s*localhost", cert_1_old)
 
         local cert_1_new = get_cert(8443, "updated-sn-via-id.com")
-        assert.matches("CN=ssl-alt.com", cert_1_new, nil, true)
+        assert.matches("CN%s*=%s*ssl%-alt.com", cert_1_new)
 
         wait_for_propagation()
 
         local cert_2_old = get_cert(9443, "new-ssl-example.com")
-        assert.matches("CN=localhost", cert_2_old, nil, true)
+        assert.matches("CN%s*=%s*localhost", cert_2_old)
 
         local cert_2_new = get_cert(9443, "updated-sn-via-id.com")
-        assert.matches("CN=ssl-alt.com", cert_2_new, nil, true)
+        assert.matches("CN%s*=%s*ssl%-alt.com", cert_2_new)
       end)
 
       it("on sni update via name", function()
@@ -526,18 +532,18 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(200, admin_res)
 
         local cert_1_old = get_cert(8443, "updated-sn-via-id.com")
-        assert.matches("CN=localhost", cert_1_old, nil, true)
+        assert.matches("CN%s*=%s*localhost", cert_1_old)
 
         local cert_1_new = get_cert(8443, "updated-sn.com")
-        assert.matches("CN=ssl-alt.com", cert_1_new, nil, true)
+        assert.matches("CN%s*=%s*ssl%-alt.com", cert_1_new)
 
         wait_for_propagation()
 
         local cert_2_old = get_cert(9443, "updated-sn-via-id.com")
-        assert.matches("CN=localhost", cert_2_old, nil, true)
+        assert.matches("CN%s*=%s*localhost", cert_2_old)
 
         local cert_2_new = get_cert(9443, "updated-sn.com")
-        assert.matches("CN=ssl-alt.com", cert_2_new, nil, true)
+        assert.matches("CN%s*=%s*ssl%-alt.com", cert_2_new)
       end)
 
       it("on certificate delete", function()
@@ -550,12 +556,12 @@ for _, strategy in helpers.each_strategy() do
         -- because our test instance only has 1 worker
 
         local cert_1 = get_cert(8443, "updated-sn.com")
-        assert.matches("CN=localhost", cert_1, nil, true)
+        assert.matches("CN%s*=%s*localhost", cert_1)
 
         wait_for_propagation()
 
         local cert_2 = get_cert(9443, "updated-sn.com")
-        assert.matches("CN=localhost", cert_2, nil, true)
+        assert.matches("CN%s*=%s*localhost", cert_2)
       end)
     end)
 
@@ -636,8 +642,8 @@ for _, strategy in helpers.each_strategy() do
           method = "POST",
           path   = "/plugins",
           body   = {
-            name       = "dummy",
-            service_id = service_fixture.id,
+            name    = "dummy",
+            service = { id = service_fixture.id },
           },
           headers = {
             ["Content-Type"] = "application/json",
@@ -649,7 +655,6 @@ for _, strategy in helpers.each_strategy() do
 
         -- no need to wait for workers propagation (lua-resty-worker-events)
         -- because our test instance only has 1 worker
-
         local res_1 = assert(proxy_client_1:send {
           method  = "GET",
           path    = "/status/200",
@@ -678,7 +683,9 @@ for _, strategy in helpers.each_strategy() do
           method = "PATCH",
           path   = "/plugins/" .. service_plugin_id,
           body   = {
-            ["config.resp_header_value"] = "2",
+            config = {
+              resp_header_value = "2",
+            },
           },
           headers = {
             ["Content-Type"] = "application/json",
@@ -786,7 +793,7 @@ for _, strategy in helpers.each_strategy() do
         })
         local body = assert.res_status(201, admin_res_plugin)
         local plugin = cjson.decode(body)
-        global_dummy_plugin_id = plugin.id
+        global_dummy_plugin_id = assert(plugin.id)
 
         -- no need to wait for workers propagation (lua-resty-worker-events)
         -- because our test instance only has 1 worker

@@ -21,8 +21,6 @@ __DATA__
             local PDK = require "kong.pdk"
             local pdk = PDK.new()
 
-            ngx.ctx.balancer_data = 8000
-
             local pok, err = pcall(pdk.service.request.set_scheme)
             ngx.say(err)
         }
@@ -43,8 +41,6 @@ scheme must be a string
         content_by_lua_block {
             local PDK = require "kong.pdk"
             local pdk = PDK.new()
-
-            ngx.ctx.balancer_data = 8000
 
             local pok, err = pcall(pdk.service.request.set_scheme, "HTTP")
             ngx.say(err)

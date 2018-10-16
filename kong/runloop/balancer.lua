@@ -85,12 +85,12 @@ do
   local function load_upstream_into_memory(upstream_id)
     log(DEBUG, "fetching upstream: ", tostring(upstream_id))
 
-    local upstream, err = singletons.dao.upstreams:find_all {id = upstream_id}
+    local upstream, err = singletons.db.upstreams:select({id = upstream_id})
     if not upstream then
       return nil, err
     end
 
-    return upstream[1]  -- searched by id, so only 1 row in the returned set
+    return upstream
   end
   _load_upstream_into_memory = load_upstream_into_memory
 
@@ -105,15 +105,15 @@ end
 local fetch_target_history
 do
   ------------------------------------------------------------------------------
-  -- Loads the target history from the DAO.
+  -- Loads the target history from the DB.
   -- @param upstream_id Upstream uuid for which to load the target history
   -- @return The target history array, with target entity tables.
   local function load_targets_into_memory(upstream_id)
-    log(DEBUG, "fetching targets for upstream: ",tostring(upstream_id))
+    log(DEBUG, "fetching targets for upstream: ", tostring(upstream_id))
 
-    local target_history, err = singletons.dao.targets:find_all {upstream_id = upstream_id}
+    local target_history, err, err_t = singletons.db.targets:select_by_upstream_raw({ id = upstream_id })
     if not target_history then
-      return nil, err
+      return nil, err, err_t
     end
 
     -- perform some raw data updates
@@ -122,14 +122,7 @@ do
       local port
       target.name, port = string.match(target.target, "^(.-):(%d+)$")
       target.port = tonumber(port)
-
-      -- need exact order, so create sort-key by created-time and uuid
-      target.order = target.created_at .. ":" .. target.id
     end
-
-    table.sort(target_history, function(a,b)
-      return a.order < b.order
-    end)
 
     return target_history
   end
@@ -137,7 +130,7 @@ do
 
 
   ------------------------------------------------------------------------------
-  -- Fetch target history, from cache or the DAO.
+  -- Fetch target history, from cache or the DB.
   -- @param upstream The upstream entity object
   -- @return The target history array, with target entity tables.
   fetch_target_history = function(upstream)
@@ -339,7 +332,7 @@ do
   end
 
   ------------------------------------------------------------------------------
-  -- @param upstream (table) The upstream data
+  -- @param upstream (table) A db.upstreams entity
   -- @param recreate (boolean, optional) create new balancer even if one exists
   -- @param history (table, optional) history of target updates
   -- @param start (integer, optional) from where to start reading the history
@@ -364,6 +357,7 @@ do
         wheelSize = upstream.slots,
         dns = dns_client,
       })
+
     if not balancer then
       return nil, err
     end
@@ -461,18 +455,11 @@ do
   -- @return The upstreams dictionary, a map with upstream names as string keys
   -- and upstream entity tables as values, or nil+error
   local function load_upstreams_dict_into_memory()
-    log(DEBUG, "fetching all upstreams")
-    local upstreams, err = singletons.dao.upstreams:find_all()
-    if err then
-      return nil, err
-    end
-
-    -- build a dictionary, indexed by the upstream name
     local upstreams_dict = {}
-    for _, up in ipairs(upstreams) do
+    for up in singletons.db.upstreams:each() do
+    -- build a dictionary, indexed by the upstream name
       upstreams_dict[up.name] = up.id
     end
-
     return upstreams_dict
   end
   _load_upstreams_dict_into_memory = load_upstreams_dict_into_memory
@@ -525,6 +512,7 @@ local function get_balancer(target, no_create)
   -- do not apply here
   local hostname = target.host
 
+
   -- first go and find the upstream object, from cache or the db
   local upstream, err = get_upstream_by_name(hostname)
   if upstream == false then
@@ -556,10 +544,9 @@ end
 --------------------------------------------------------------------------------
 -- Called on any changes to a target.
 -- @param operation "create", "update" or "delete"
--- @param upstream Target table with `upstream_id` field
+-- @param target Target table with `upstream.id` field
 local function on_target_event(operation, target)
-  local upstream_id = target.upstream_id
-
+  local upstream_id = target.upstream.id
   singletons.cache:invalidate_local("balancer:targets:" .. upstream_id)
 
   local upstream = get_upstream_by_id(upstream_id)
@@ -640,19 +627,22 @@ end
 -- Will only be called once per request, on first try.
 -- @param upstream the upstream enity
 -- @return integer value or nil if there is no hash to calculate
-local create_hash = function(upstream)
+local create_hash = function(upstream, ctx)
   local hash_on = upstream.hash_on
   if hash_on == "none" then
     return -- not hashing, exit fast
   end
 
-  local ctx = ngx.ctx
   local identifier
   local header_field_name = "hash_on_header"
 
   for _ = 1,2 do
 
-    if hash_on == "consumer" then
+   if hash_on == "consumer" then
+      if not ctx then
+        ctx = ngx.ctx
+      end
+
       -- consumer, fallback to credential
       identifier = (ctx.authenticated_consumer or EMPTY_T).id or
                    (ctx.authenticated_credential or EMPTY_T).id
@@ -672,6 +662,10 @@ local create_hash = function(upstream)
       -- If the cookie doesn't exist, create one and store in `ctx`
       -- to be added to the "Set-Cookie" header in the response
       if not identifier then
+        if not ctx then
+          ctx = ngx.ctx
+        end
+
         identifier = utils.uuid()
 
         ctx.balancer_data.hash_cookie = {
@@ -741,11 +735,8 @@ end
 --
 -- @param target the data structure as defined in `core.access.before` where
 -- it is created.
--- @param silent Do not produce body data (to be used in OpenResty contexts
--- which do not support sending it)
 -- @return true on success, nil+error message+status code otherwise
-local function execute(target)
-
+local function execute(target, ctx)
   if target.type ~= "name" then
     -- it's an ip address (v4 or v6), so nothing we can do...
     target.ip = target.host
@@ -780,7 +771,7 @@ local function execute(target)
       -- only add it if it doesn't exist, in case a plugin inserted one
       hash_value = target.hash_value
       if not hash_value then
-        hash_value = create_hash(upstream)
+        hash_value = create_hash(upstream, ctx)
         target.hash_value = hash_value
       end
     end

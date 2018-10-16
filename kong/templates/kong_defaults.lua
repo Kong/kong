@@ -11,6 +11,7 @@ anonymous_reports = on
 
 proxy_listen = 0.0.0.0:8000, 0.0.0.0:8443 ssl
 admin_listen = 127.0.0.1:8001, 127.0.0.1:8444 ssl
+origins = NONE
 nginx_user = nobody nobody
 nginx_worker_processes = auto
 nginx_optimizations = on
@@ -38,6 +39,7 @@ database = postgres
 pg_host = 127.0.0.1
 pg_port = 5432
 pg_database = kong
+pg_timeout = 5000
 pg_user = kong
 pg_password = NONE
 pg_ssl = off

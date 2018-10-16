@@ -5,7 +5,7 @@ describe("Plugin: cors (access)", function()
   local client
 
   setup(function()
-    local dao = select(3, helpers.get_db_utils())
+    local _, db, dao = helpers.get_db_utils()
 
     local api1 = assert(dao.apis:insert {
       name         = "api-1",
@@ -54,14 +54,14 @@ describe("Plugin: cors (access)", function()
     })
 
 
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name = "cors",
-      api_id = api1.id
+      api = { id = api1.id }
     })
 
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name = "cors",
-      api_id = api2.id,
+      api = { id = api2.id },
       config = {
         origins = {"example.com"},
         methods = {"GET"},
@@ -72,9 +72,9 @@ describe("Plugin: cors (access)", function()
       }
     })
 
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name = "cors",
-      api_id = api3.id,
+      api = { id = api3.id },
       config = {
         origins = {"example.com"},
         methods = {"GET"},
@@ -85,27 +85,27 @@ describe("Plugin: cors (access)", function()
       }
     })
 
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name = "cors",
-      api_id = api4.id
+      api = { id = api4.id }
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name = "key-auth",
-      api_id = api4.id
+      api = { id = api4.id }
     })
 
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name = "cors",
-      api_id = api5.id,
+      api = { id = api5.id },
       config = {
         origins = { "*" },
         credentials = true
       }
     })
 
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name = "cors",
-      api_id = api6.id,
+      api = { id = api6.id },
       config = {
         origins = {"example.com", "example.org"},
         methods = {"GET"},
@@ -116,26 +116,26 @@ describe("Plugin: cors (access)", function()
       }
     })
 
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name = "cors",
-      api_id = api7.id,
+      api = { id = api7.id },
       config = {
         origins = { "*" },
         credentials = false
       }
     })
 
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name = "cors",
-      api_id = api8.id,
+      api = { id = api8.id },
       config = {
         origins = {},
       }
     })
 
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name = "cors",
-      api_id = api9.id,
+      api = { id = api9.id },
       config = {
         origins = { [[.*\.?example(?:-foo)?.com]] },
       }

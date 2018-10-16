@@ -12,7 +12,7 @@ for _, strategy in helpers.each_strategy() do
 
     before_each(function()
       dao:truncate_table("apis")
-      dao:truncate_table("plugins")
+      db:truncate("plugins")
       db:truncate("consumers")
     end)
 
@@ -28,48 +28,39 @@ for _, strategy in helpers.each_strategy() do
       assert.falsy(err)
 
       local key_auth, err = bp.plugins:insert {
-        name = "key-auth", api_id = api.id
+        name = "key-auth", api = { id = api.id }
       }
       assert.falsy(err)
 
-      local _, err = bp.plugins:insert {
-        name = "rate-limiting", api_id = api.id,
+      local rate_limiting_for_api, err = bp.plugins:insert {
+        name = "rate-limiting", api = { id = api.id },
         config = {minute = 1}
       }
       assert.falsy(err)
 
       local rate_limiting_for_consumer, err = bp.plugins:insert {
-        name = "rate-limiting", api_id = api.id, consumer_id = consumer.id,
+        name = "rate-limiting", api = { id = api.id }, consumer = { id = consumer.id },
         config = {minute = 1}
       }
       assert.falsy(err)
 
       -- Retrieval
-      local rows, err = dao.plugins:find_all {
-        name = "key-auth",
-        api_id = api.id
-      }
+      local key = db.plugins:cache_key("key-auth", nil, nil, nil, api.id)
+      local row, err = db.plugins:select_by_cache_key(key)
       assert.falsy(err)
-      assert.equal(1, #rows)
-      assert.same(key_auth, rows[1])
+      assert.same(key_auth, row)
 
       --
-      rows, err = dao.plugins:find_all {
-        name = "rate-limiting",
-        api_id = api.id
-      }
+      key = db.plugins:cache_key("rate-limiting", nil, nil, nil, api.id)
+      row, err = db.plugins:select_by_cache_key(key)
       assert.falsy(err)
-      assert.equal(2, #rows)
+      assert.same(rate_limiting_for_api, row)
 
       --
-      rows, err = dao.plugins:find_all {
-        name = "rate-limiting",
-        api_id = api.id,
-        consumer_id = consumer.id
-      }
+      key = db.plugins:cache_key("rate-limiting", nil, nil, consumer.id, api.id)
+      row, err = db.plugins:select_by_cache_key(key)
       assert.falsy(err)
-      assert.equal(1, #rows)
-      assert.same(rate_limiting_for_consumer, rows[1])
+      assert.same(rate_limiting_for_consumer, row)
     end)
 
     it("update a plugin config", function()
@@ -81,13 +72,13 @@ for _, strategy in helpers.each_strategy() do
       assert.falsy(err)
 
       local key_auth, err = bp.plugins:insert {
-        name = "key-auth", api_id = api.id
+        name = "key-auth", api = { id = api.id },
       }
       assert.falsy(err)
 
-      local updated_key_auth, err = dao.plugins:update({
+      local updated_key_auth, err = db.plugins:update({ id = key_auth.id }, {
         config = {key_names = {"key-updated"}}
-      }, key_auth)
+      })
       assert.falsy(err)
       assert.same({"key-updated"}, updated_key_auth.config.key_names)
     end)
@@ -101,16 +92,16 @@ for _, strategy in helpers.each_strategy() do
       assert.falsy(err)
 
       local key_auth, err = bp.plugins:insert {
-        name = "key-auth", api_id = api.id,
+        name = "key-auth", api = { id = api.id },
         config = {
           hide_credentials = true
         }
       }
       assert.falsy(err)
 
-      local updated_key_auth, err = dao.plugins:update({
+      local updated_key_auth, err = db.plugins:update({ id = key_auth.id }, {
         config = {key_names = {"key-set-null-test-updated"}}
-      }, key_auth)
+      })
       assert.falsy(err)
       assert.same({"key-set-null-test-updated"}, updated_key_auth.config.key_names)
       assert.True(updated_key_auth.config.hide_credentials)

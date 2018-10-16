@@ -21,6 +21,8 @@ describe("DNS", function()
       find_all = function(self) return {} end
     }
 
+    singletons.origins = {}
+
     balancer = require "kong.runloop.balancer"
     balancer.init()
 

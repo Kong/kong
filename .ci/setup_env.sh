@@ -61,7 +61,6 @@ if [ ! "$(ls -A $OPENRESTY_INSTALL)" ]; then
     "--prefix=$OPENRESTY_INSTALL"
     "--with-cc-opt='-I$OPENSSL_INSTALL/include'"
     "--with-ld-opt='-L$OPENSSL_INSTALL/lib -Wl,-rpath,$OPENSSL_INSTALL/lib'"
-    "--with-ipv6"
     "--with-pcre-jit"
     "--with-http_ssl_module"
     "--with-http_realip_module"

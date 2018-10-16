@@ -786,7 +786,7 @@ _M.format_host = function(p1, p2)
     return nil, "cannot format type '" .. t .. "'"
   end
   if typ == "ipv6" and not find(host, "[", nil, true) then
-    return "[" .. host .. "]" .. (port and ":" .. port or "")
+    return "[" .. _M.normalize_ipv6(host) .. "]" .. (port and ":" .. port or "")
   else
     return host ..  (port and ":" .. port or "")
   end

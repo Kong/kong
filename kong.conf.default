@@ -213,6 +213,9 @@
                                  # preserved in the cache of each worker
                                  # process. When this number is exceeded, the
                                  # least recently used connections are closed.
+                                 # A value of `0` will disable this behavior
+                                 # altogether, forcing each upstream request
+                                 # to open a new connection.
 
 #headers = server_tokens, latency_tokens
                                  # Specify Kong-specific headers that should
@@ -329,6 +332,9 @@
 
 #pg_host = 127.0.0.1             # The PostgreSQL host to connect to.
 #pg_port = 5432                  # The port to connect to.
+#pg_timeout = 5000               # Defines the timeout (in ms), for connecting,
+                                 # reading and writing.
+
 #pg_user = kong                  # The username to authenticate if required.
 #pg_password =                   # The password to authenticate if required.
 #pg_database = kong              # The database name to connect to.

@@ -4,9 +4,10 @@ local Entity = {}
 
 
 local entity_errors = {
-  NO_NILABLE = "Entities cannot have nilable types.",
-  MAP_KEY_STRINGS_ONLY = "Map keys must be strings",
-  AGGREGATE_ON_BASE_TYPES_ONLY = "Aggregates are allowed on base types only."
+  NO_NILABLE = "%s: Entities cannot have nilable types.",
+  NO_FUNCTIONS = "%s: Entities cannot have function types.",
+  MAP_KEY_STRINGS_ONLY = "%s: Entities map keys must be strings.",
+  AGGREGATE_ON_BASE_TYPES_ONLY = "%s: Entities aggregates are only allowed on base types.",
 }
 
 
@@ -17,6 +18,18 @@ local base_types = {
   integer = true,
 }
 
+-- Make records in Entities non-nullable by default,
+-- so that they return their full structure on API queries.
+local function make_records_non_nullable(field)
+  if field.nullable == nil then
+    field.nullable = false
+  end
+  for _, f in Schema.each_field(field) do
+    if f.type == "record" then
+      make_records_non_nullable(f)
+    end
+  end
+end
 
 function Entity.new(definition)
 
@@ -27,7 +40,11 @@ function Entity.new(definition)
 
   for name, field in self:each_field() do
     if field.nilable then
-      return nil, entity_errors.NO_NILABLE
+      return nil, entity_errors.NO_NILABLE:format(name)
+    end
+
+    if field.abstract then
+      goto continue
     end
 
     if field.type == "map" then
@@ -44,15 +61,23 @@ function Entity.new(definition)
       end
 
     elseif field.type == "record" then
-      for _, entry in ipairs(field.fields) do
-        if not base_types[entry[next(entry)].type] then
-          return nil, entity_errors.AGGREGATE_ON_BASE_TYPES_ONLY:format(name)
-        end
-      end
+      make_records_non_nullable(field)
+
+    elseif field.type == "function" then
+      return nil, entity_errors.NO_FUNCTIONS:format(name)
     end
+
+    ::continue::
   end
 
   return self
+end
+
+
+function Entity.new_subschema(schema, key, definition)
+  make_records_non_nullable(definition)
+  definition.nullable = nil
+  return Schema.new_subschema(schema, key, definition)
 end
 
 

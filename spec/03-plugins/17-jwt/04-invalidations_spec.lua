@@ -9,11 +9,11 @@ for _, strategy in helpers.each_strategy() do
     local proxy_client
     local consumer
     local route
-    local dao
+    local db
 
     before_each(function()
-      local bp, _
-      bp, _, dao = helpers.get_db_utils(strategy)
+      local bp
+      bp, db = helpers.get_db_utils(strategy)
 
       route = bp.routes:insert {
         hosts = { "jwt.com" },
@@ -26,13 +26,13 @@ for _, strategy in helpers.each_strategy() do
       bp.plugins:insert {
         name     = "jwt",
         config   = {},
-        route_id = route.id,
+        route = { id = route.id },
       }
 
       bp.jwt_secrets:insert {
-        key         = "key123",
-        secret      = "secret123",
-        consumer_id = consumer.id,
+        key      = "key123",
+        secret   = "secret123",
+        consumer = { id = consumer.id },
       }
 
       assert(helpers.start_kong({
@@ -80,7 +80,7 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(200, res)
 
         -- Check that cache is populated
-        local cache_key = dao.jwt_secrets:cache_key("key123")
+        local cache_key = db.jwt_secrets:cache_key("key123")
         res = assert(admin_client:send {
           method = "GET",
           path   = "/cache/" .. cache_key,
@@ -148,7 +148,7 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(403, res)
 
         -- Check that cache is populated
-        local cache_key = dao.jwt_secrets:cache_key("key123")
+        local cache_key = db.jwt_secrets:cache_key("key123")
         res = assert(admin_client:send {
           method = "GET",
           path   = "/cache/" .. cache_key,
@@ -224,7 +224,7 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(200, res)
 
         -- Check that cache is populated
-        local cache_key = dao.jwt_secrets:cache_key("key123")
+        local cache_key = db.jwt_secrets:cache_key("key123")
         res = assert(admin_client:send {
           method = "GET",
           path   = "/cache/" .. cache_key,

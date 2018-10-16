@@ -33,8 +33,13 @@ return {
   {
     name = "2016-03-07-jwt-alg",
     up = [[
-      ALTER TABLE jwt_secrets ADD COLUMN algorithm text;
-      ALTER TABLE jwt_secrets ADD COLUMN rsa_public_key text;
+      DO $$
+      BEGIN
+        ALTER TABLE jwt_secrets ADD COLUMN algorithm text;
+        ALTER TABLE jwt_secrets ADD COLUMN rsa_public_key text;
+      EXCEPTION WHEN duplicate_column THEN
+          -- Do nothing, accept existing state
+      END$$;
     ]],
     down = [[
       ALTER TABLE jwt_secrets DROP COLUMN algorithm;

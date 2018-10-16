@@ -416,6 +416,14 @@ do
 end
 
 
+local function truncate_relevant_tables(db, dao)
+  db:truncate("upstreams")
+  db:truncate("targets")
+  dao.apis:truncate()
+  dao.plugins:truncate()
+end
+
+
 local function poll_wait_health(upstream_name, localhost, port, value)
   local hard_timeout = 300
   local expire = ngx.now() + hard_timeout
@@ -462,13 +470,9 @@ for _, strategy in helpers.each_strategy() do
   describe("Ring-balancer #" .. strategy, function()
 
     setup(function()
-      assert(helpers.get_db_utils(strategy, {
-        "apis",
-        "plugins",
-        "upstreams",
-        "targets",
-      }))
+      local _, db, dao = helpers.get_db_utils(strategy, {})
 
+      truncate_relevant_tables(db, dao)
       helpers.start_kong({
         database   = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",

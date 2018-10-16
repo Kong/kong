@@ -25,7 +25,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.plugins:insert {
-        route_id = route1.id,
+        route = { id = route1.id },
         name     = "syslog",
         config   = {
           log_level              = "info",
@@ -36,7 +36,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.plugins:insert {
-        route_id = route2.id,
+        route = { id = route2.id },
         name     = "syslog",
         config   = {
           log_level              = "err",
@@ -47,7 +47,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.plugins:insert {
-        route_id = route3.id,
+        route = { id = route3.id },
         name     = "syslog",
         config   = {
           log_level              = "warning",

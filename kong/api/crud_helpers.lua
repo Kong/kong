@@ -239,6 +239,17 @@ end
 function _M.put(params, dao_collection, post_process)
   local new_entity, err
 
+  -- If a wrapper is detected, give it the new upsert behavior
+  if dao_collection.unwrapped then
+    local entity = dao_collection.unwrapped
+    local pk = entity.schema:extract_pk_values(params)
+    local new_entity, err = entity:upsert(pk, params)
+    if not err then
+      return responses.send_HTTP_OK(post_process_row(new_entity, post_process))
+    end
+    return app_helpers.yield_error(err)
+  end
+
   local model = dao_collection.model_mt(params)
   if not model:has_primary_keys() then
     -- If entity body has no primary key, deal with an insert

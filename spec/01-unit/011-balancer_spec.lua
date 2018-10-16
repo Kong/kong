@@ -21,7 +21,7 @@ describe("Balancer", function()
     balancer = require "kong.runloop.balancer"
     singletons = require "kong.singletons"
     singletons.worker_events = require "resty.worker.events"
-    singletons.dao = {}
+    singletons.db = {}
 
     singletons.worker_events.configure({
       shm = "kong_process_events", -- defined by "lua_shared_dict"
@@ -90,28 +90,28 @@ describe("Balancer", function()
       {
         id = "a1",
         created_at = "003",
-        upstream_id = "a",
+        upstream = { id = "a" },
         target = "mashape.com:80",
         weight = 10,
       },
       {
         id = "a2",
         created_at = "002",
-        upstream_id = "a",
+        upstream = { id = "a" },
         target = "mashape.com:80",
         weight = 10,
       },
       {
         id = "a3",
         created_at = "001",
-        upstream_id = "a",
+        upstream = { id = "a" },
         target = "mashape.com:80",
         weight = 10,
       },
       {
         id = "a4",
         created_at = "002",  -- same timestamp as "a2"
-        upstream_id = "a",
+        upstream = { id = "a" },
         target = "mashape.com:80",
         weight = 10,
       },
@@ -119,7 +119,7 @@ describe("Balancer", function()
       {
         id = "b1",
         created_at = "003",
-        upstream_id = "b",
+        upstream = { id = "b" },
         target = "mashape.com:80",
         weight = 10,
       },
@@ -127,21 +127,21 @@ describe("Balancer", function()
       {
         id = "e1",
         created_at = "001",
-        upstream_id = "e",
+        upstream = { id = "e" },
         target = "127.0.0.1:2112",
         weight = 10,
       },
       {
         id = "e2",
         created_at = "002",
-        upstream_id = "e",
+        upstream = { id = "e" },
         target = "127.0.0.1:2112",
         weight = 0,
       },
       {
         id = "e3",
         created_at = "003",
-        upstream_id = "e",
+        upstream = { id = "e" },
         target = "127.0.0.1:2112",
         weight = 10,
       },
@@ -149,21 +149,21 @@ describe("Balancer", function()
       {
         id = "f1",
         created_at = "001",
-        upstream_id = "f",
+        upstream = { id = "f" },
         target = "127.0.0.1:5150",
         weight = 10,
       },
       {
         id = "f2",
         created_at = "002",
-        upstream_id = "f",
+        upstream = { id = "f" },
         target = "127.0.0.1:5150",
         weight = 0,
       },
       {
         id = "f3",
         created_at = "003",
-        upstream_id = "f",
+        upstream = { id = "f" },
         target = "127.0.0.1:2112",
         weight = 10,
       },
@@ -171,7 +171,7 @@ describe("Balancer", function()
       {
         id = "hc1",
         created_at = "001",
-        upstream_id = "hc",
+        upstream = { id = "hc" },
         target = "localhost:1111",
         weight = 10,
       },
@@ -179,14 +179,14 @@ describe("Balancer", function()
       {
         id = "ph1",
         created_at = "001",
-        upstream_id = "ph",
+        upstream = { id = "ph" },
         target = "localhost:1111",
         weight = 10,
       },
       {
         id = "ph2",
         created_at = "001",
-        upstream_id = "ph",
+        upstream = { id = "ph" },
         target = "127.0.0.1:2222",
         weight = 10,
       },
@@ -194,34 +194,53 @@ describe("Balancer", function()
       {
         id = "ote1",
         created_at = "001",
-        upstream_id = "ote",
+        upstream = { id = "ote" },
         target = "localhost:1111",
         weight = 10,
       },
     }
 
-    local function find_all_in_fixture_fn(fixture)
-      return function(self, match_on)
-        local ret = {}
-        for _, rec in ipairs(fixture) do
-          for key, val in pairs(match_on or {}) do
-            if rec[key] ~= val then
-              rec = nil
-              break
-            end
-          end
-          if rec then table.insert(ret, rec) end
+    local function each(fixture)
+      return function()
+        local i = 0
+        return function(self)
+          i = i + 1
+          return fixture[i]
         end
-        return ret
       end
     end
 
-    singletons.dao = {
+    local function select(fixture)
+      return function(self, pk)
+        for item in self:each() do
+          if item.id == pk.id then
+            return item
+          end
+        end
+      end
+    end
+
+    singletons.db = {
       targets = {
-        find_all = find_all_in_fixture_fn(TARGETS_FIXTURES)
+        each = each(TARGETS_FIXTURES),
+        select_by_upstream_raw = function(self, upstream_pk)
+          local upstream_id = upstream_pk.id
+          local res, len = {}, 0
+          for tgt in self:each() do
+            if tgt.upstream.id == upstream_id then
+              tgt.order = string.format("%d:%s", tgt.created_at * 1000, tgt.id)
+              len = len + 1
+              res[len] = tgt
+            end
+          end
+
+          table.sort(res, function(a, b) return a.order < b.order end)
+          return res
+        end
       },
       upstreams = {
-        find_all = find_all_in_fixture_fn(UPSTREAMS_FIXTURES)
+        each = each(UPSTREAMS_FIXTURES),
+        select = select(UPSTREAMS_FIXTURES),
       },
     }
 
@@ -251,10 +270,10 @@ describe("Balancer", function()
       local my_balancer = assert(balancer._create_balancer(UPSTREAMS_FIXTURES[1]))
       local hc = assert(balancer._get_healthchecker(my_balancer))
       local target_history = {
-        { name = "mashape.com", port = 80, order = "001:a3", weight = 10 },
-        { name = "mashape.com", port = 80, order = "002:a2", weight = 10 },
-        { name = "mashape.com", port = 80, order = "002:a4", weight = 10 },
-        { name = "mashape.com", port = 80, order = "003:a1", weight = 10 },
+        { name = "mashape.com", port = 80, order = "1000:a3", weight = 10 },
+        { name = "mashape.com", port = 80, order = "2000:a2", weight = 10 },
+        { name = "mashape.com", port = 80, order = "2000:a4", weight = 10 },
+        { name = "mashape.com", port = 80, order = "3000:a1", weight = 10 },
       }
       assert.same(target_history, balancer._get_target_history(my_balancer))
       hc:stop()
@@ -276,10 +295,10 @@ describe("Balancer", function()
       local hc2 = balancer._get_healthchecker(b2)
       assert(hc2:stop())
       local target_history = {
-        { name = "mashape.com", port = 80, order = "001:a3", weight = 10 },
-        { name = "mashape.com", port = 80, order = "002:a2", weight = 10 },
-        { name = "mashape.com", port = 80, order = "002:a4", weight = 10 },
-        { name = "mashape.com", port = 80, order = "003:a1", weight = 10 },
+        { name = "mashape.com", port = 80, order = "1000:a3", weight = 10 },
+        { name = "mashape.com", port = 80, order = "2000:a2", weight = 10 },
+        { name = "mashape.com", port = 80, order = "2000:a4", weight = 10 },
+        { name = "mashape.com", port = 80, order = "3000:a1", weight = 10 },
       }
       assert.not_same(b1, b2)
       assert.same(target_history, balancer._get_target_history(b1))
@@ -302,9 +321,9 @@ describe("Balancer", function()
         host = "upstream_e"
       }, true))
       local target_history = {
-        { name = "127.0.0.1", port = 2112, order = "001:e1", weight = 10 },
-        { name = "127.0.0.1", port = 2112, order = "002:e2", weight = 0  },
-        { name = "127.0.0.1", port = 2112, order = "003:e3", weight = 10 },
+        { name = "127.0.0.1", port = 2112, order = "1000:e1", weight = 10 },
+        { name = "127.0.0.1", port = 2112, order = "2000:e2", weight = 0  },
+        { name = "127.0.0.1", port = 2112, order = "3000:e3", weight = 10 },
       }
       assert.same(target_history, balancer._get_target_history(my_balancer))
       local hc = assert(balancer._get_healthchecker(my_balancer))
@@ -318,9 +337,9 @@ describe("Balancer", function()
         host = "upstream_f"
       }, true))
       local target_history = {
-        { name = "127.0.0.1", port = 5150, order = "001:f1", weight = 10 },
-        { name = "127.0.0.1", port = 5150, order = "002:f2", weight = 0  },
-        { name = "127.0.0.1", port = 2112, order = "003:f3", weight = 10 },
+        { name = "127.0.0.1", port = 5150, order = "1000:f1", weight = 10 },
+        { name = "127.0.0.1", port = 5150, order = "2000:f2", weight = 0  },
+        { name = "127.0.0.1", port = 2112, order = "3000:f3", weight = 10 },
       }
       assert.same(target_history, balancer._get_target_history(my_balancer))
       local hc = assert(balancer._get_healthchecker(my_balancer))
@@ -397,11 +416,11 @@ describe("Balancer", function()
       table.insert(TARGETS_FIXTURES, {
         id = "ote2",
         created_at = "002",
-        upstream_id = "ote",
+        upstream = { id = "ote" },
         target = "localhost:1112",
         weight = 10,
       })
-      balancer.on_target_event("create", { upstream_id = "ote" })
+      balancer.on_target_event("create", { upstream = { id = "ote" } })
 
       local b2 = balancer._create_balancer(upstream_ote)
       assert.same(2, #(balancer._get_target_history(b2)))

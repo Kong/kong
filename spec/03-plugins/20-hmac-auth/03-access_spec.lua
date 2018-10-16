@@ -30,7 +30,7 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name     = "hmac-auth",
-        route_id = route1.id,
+        route = { id = route1.id },
         config   = {
           clock_skew = 3000
         }
@@ -42,9 +42,9 @@ for _, strategy in helpers.each_strategy() do
       }
 
       credential = bp.hmacauth_credentials:insert {
-        username    = "bob",
-        secret      = "secret",
-        consumer_id = consumer.id
+        username = "bob",
+        secret   = "secret",
+        consumer = { id = consumer.id },
       }
 
       local anonymous_user = bp.consumers:insert {
@@ -57,7 +57,7 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name     = "hmac-auth",
-        route_id = route2.id,
+        route = { id = route2.id },
         config   = {
           anonymous  = anonymous_user.id,
           clock_skew = 3000
@@ -70,7 +70,7 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name     = "hmac-auth",
-        route_id = route3.id,
+        route = { id = route3.id },
         config   = {
           anonymous  = utils.uuid(),  -- non existing consumer
           clock_skew = 3000
@@ -83,7 +83,7 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name     = "hmac-auth",
-        route_id = route4.id,
+        route = { id = route4.id },
         config   = {
           clock_skew            = 3000,
           validate_request_body = true
@@ -96,7 +96,7 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name     = "hmac-auth",
-        route_id = route5.id,
+        route = { id = route5.id },
         config   = {
           clock_skew            = 3000,
           enforce_headers       = {"date", "request-line"},
@@ -110,7 +110,7 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name     = "hmac-auth",
-        route_id = route6.id,
+        route = { id = route6.id },
         config   = {
           clock_skew            = 3000,
           enforce_headers       = {"date", "request-line"},
@@ -1535,12 +1535,12 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name     = "hmac-auth",
-        route_id = route1.id
+        route = { id = route1.id }
       }
 
       bp.plugins:insert {
         name     = "key-auth",
-        route_id = route1.id
+        route = { id = route1.id }
       }
 
       anonymous = bp.consumers:insert {
@@ -1567,7 +1567,7 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name     = "hmac-auth",
-        route_id = route2.id,
+        route = { id = route2.id },
         config   = {
           anonymous = anonymous.id
         }
@@ -1575,21 +1575,21 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name     = "key-auth",
-        route_id = route2.id,
+        route = { id = route2.id },
         config   = {
           anonymous = anonymous.id
         }
       }
 
       bp.keyauth_credentials:insert {
-        key         = "Mouse",
-        consumer_id = user1.id
+        key      = "Mouse",
+        consumer = { id = user1.id },
       }
 
       local credential = bp.hmacauth_credentials:insert {
-        username    = "Aladdin",
-        secret      = "OpenSesame",
-        consumer_id = user2.id
+        username = "Aladdin",
+        secret   = "OpenSesame",
+        consumer = { id = user2.id },
       }
 
       hmacDate = os.date("!%a, %d %b %Y %H:%M:%S GMT")

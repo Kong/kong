@@ -1,4 +1,5 @@
-local helpers   = require "spec.helpers"
+local helpers = require "spec.helpers"
+local cjson = require "cjson"
 
 
 local BAD_REGEX = [[(https?:\/\/.*]]  -- illegal regex, errors out
@@ -47,14 +48,17 @@ for _, strategy in helpers.each_strategy() do
         path    = "/plugins/",
         body    = {
           name                 = "bot-detection",
-          ["config.whitelist"] = { BAD_REGEX },
-          route_id             = route1.id
+          config = { whitelist = { BAD_REGEX } },
+          route = { id = route1.id }
         },
         headers = {
           ["content-type"] = "application/json"
         }
       })
-      assert.response(res).has.status(400)
+      local body = assert.response(res).has.status(400)
+      local json = cjson.decode(body)
+      assert.same("schema violation", json.name)
+      assert.same("not a valid regex: " .. BAD_REGEX, json.fields.config.whitelist)
     end)
 
     it("fails when blacklisting a bad regex", function()
@@ -63,8 +67,8 @@ for _, strategy in helpers.each_strategy() do
         path    = "/plugins/",
         body    = {
           name                 = "bot-detection",
-          ["config.whitelist"] = { BAD_REGEX },
-          route_id             = route2.id
+          config = { whitelist = { BAD_REGEX } },
+          route = { id = route2.id }
         },
         headers = {
           ["content-type"] = "application/json"

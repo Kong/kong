@@ -1,39 +1,51 @@
 local helpers = require "spec.helpers"
 
-describe("Plugins triggering", function()
-  local client
-  setup(function()
-    helpers.get_db_utils()
+for _, strategy in helpers.each_strategy() do
 
-    local consumer1 = assert(helpers.db.consumers:insert {
+describe("Plugins triggering #" .. strategy, function()
+  local client
+  local bp, db, dao
+
+  setup(function()
+    bp, db, dao = helpers.get_db_utils(strategy, {
+      "consumers",
+      "apis",
+      "plugins",
+      "keyauth_credentials",
+    }, {
+      "key-auth",
+    })
+    dao.db:truncate_table("ratelimiting_metrics")
+
+    local consumer1 = assert(db.consumers:insert {
       username = "consumer1"
     })
-    assert(helpers.dao.keyauth_credentials:insert {
+    bp.keyauth_credentials:insert {
       key = "secret1",
-      consumer_id = consumer1.id
-    })
-    local consumer2 = assert(helpers.db.consumers:insert {
+      consumer = { id = consumer1.id },
+    }
+    local consumer2 = assert(db.consumers:insert {
       username = "consumer2"
     })
-    assert(helpers.dao.keyauth_credentials:insert {
+    bp.keyauth_credentials:insert {
       key = "secret2",
-      consumer_id = consumer2.id
-    })
-    local consumer3 = assert(helpers.db.consumers:insert {
+      consumer = { id = consumer2.id },
+    }
+    local consumer3 = assert(db.consumers:insert {
       username = "anonymous"
     })
 
     -- Global configuration
-    assert(helpers.dao.apis:insert {
+    assert(dao.apis:insert {
       name         = "global1",
       hosts        = { "global1.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       name   = "key-auth",
       config = {},
     })
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       name   = "rate-limiting",
       config = {
         hour = 1,
@@ -41,66 +53,67 @@ describe("Plugins triggering", function()
     })
 
     -- API Specific Configuration
-    local api1 = assert(helpers.dao.apis:insert {
+    local api1 = assert(dao.apis:insert {
       name         = "api1",
       hosts        = { "api1.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(helpers.dao.plugins:insert {
-      name   = "rate-limiting",
-      api_id = api1.id,
+    assert(dao.plugins:insert {
+      name = "rate-limiting",
+      api = { id = api1.id },
       config = {
         hour = 2,
       },
     })
 
     -- Consumer Specific Configuration
-    assert(helpers.dao.plugins:insert {
-      name        = "rate-limiting",
-      consumer_id = consumer2.id,
-      config      = {
+    assert(dao.plugins:insert {
+      name = "rate-limiting",
+      consumer = { id = consumer2.id },
+      config = {
         hour = 3,
       },
     })
 
     -- API and Consumer Configuration
-    local api2 = assert(helpers.dao.apis:insert {
+    local api2 = assert(dao.apis:insert {
       name         = "api2",
       hosts        = { "api2.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(helpers.dao.plugins:insert {
-      name        = "rate-limiting",
-      api_id      = api2.id,
-      consumer_id = consumer2.id,
+    assert(dao.plugins:insert {
+      name = "rate-limiting",
+      api = { id = api2.id },
+      consumer = { id = consumer2.id },
       config = {
         hour = 4,
       },
     })
 
     -- API with anonymous configuration
-    local api3 = assert(helpers.dao.apis:insert {
+    local api3 = assert(dao.apis:insert {
       name         = "api3",
       hosts        = { "api3.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       name = "key-auth",
       config = {
         anonymous = consumer3.id,
       },
-      api_id = api3.id,
+      api = { id = api3.id },
     })
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       name = "rate-limiting",
-      consumer_id = consumer3.id,
-      api_id = api3.id,
+      consumer = { id = consumer3.id },
+      api = { id = api3.id },
       config = {
         hour = 5,
       }
     })
 
     assert(helpers.start_kong({
+      database = strategy,
       nginx_conf = "spec/fixtures/custom_nginx.template",
     }))
     client = helpers.proxy_client()
@@ -108,7 +121,7 @@ describe("Plugins triggering", function()
 
   teardown(function()
     if client then client:close() end
-    helpers.stop_kong()
+    helpers.stop_kong(nil, true)
   end)
 
   it("checks global configuration without credentials", function()
@@ -173,37 +186,38 @@ describe("Plugins triggering", function()
         client:close()
       end
 
-      helpers.stop_kong()
-      helpers.dao:truncate_table("apis")
-      helpers.dao:truncate_table("plugins")
+      helpers.stop_kong(nil, true)
+      dao:truncate_table("apis")
+      db:truncate("plugins")
+      db:truncate("consumers")
 
 
       do
-        local api = assert(helpers.dao.apis:insert {
+        local api = assert(dao.apis:insert {
           name         = "example",
           hosts        = { "mock_upstream" },
           upstream_url = helpers.mock_upstream_url,
         })
 
         -- plugin able to short-circuit a request
-        assert(helpers.dao.plugins:insert {
-          name   = "key-auth",
-          api_id = api.id,
+        assert(dao.plugins:insert {
+          name = "key-auth",
+          api = { id = api.id },
         })
 
         -- response/body filter plugin
-        assert(helpers.dao.plugins:insert {
+        assert(dao.plugins:insert {
           name   = "dummy",
-          api_id = api.id,
+          api = { id = api.id },
           config = {
             append_body = "appended from body filtering",
           }
         })
 
         -- log phase plugin
-        assert(helpers.dao.plugins:insert {
+        assert(dao.plugins:insert {
           name = "file-log",
-          api_id = api.id,
+          api = { id = api.id },
           config = {
             path = FILE_LOG_PATH,
           },
@@ -213,25 +227,25 @@ describe("Plugins triggering", function()
 
       do
         -- API that will produce an error
-        local api_err = assert(helpers.dao.apis:insert {
+        local api_err = assert(dao.apis:insert {
           name         = "example_err",
           hosts        = { "mock_upstream_err" },
           upstream_url = helpers.mock_upstream_url,
         })
 
         -- plugin that produces an error
-        assert(helpers.dao.plugins:insert {
+        assert(dao.plugins:insert {
           name   = "dummy",
-          api_id = api_err.id,
+          api = { id = api_err.id },
           config = {
             append_body = "obtained even with error",
           }
         })
 
         -- log phase plugin
-        assert(helpers.dao.plugins:insert {
+        assert(dao.plugins:insert {
           name = "file-log",
-          api_id = api_err.id,
+          api = { id = api_err.id },
           config = {
             path = FILE_LOG_PATH,
           },
@@ -240,6 +254,7 @@ describe("Plugins triggering", function()
 
 
       assert(helpers.start_kong {
+        database = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
       })
 
@@ -253,7 +268,7 @@ describe("Plugins triggering", function()
 
       os.remove(FILE_LOG_PATH)
 
-      helpers.stop_kong()
+      helpers.stop_kong(nil, true)
     end)
 
     after_each(function()
@@ -388,32 +403,35 @@ describe("Plugins triggering", function()
         client:close()
       end
 
-      helpers.stop_kong()
+      helpers.stop_kong(nil, true)
 
-      helpers.dao:truncate_table("apis")
-      helpers.dao:truncate_table("plugins")
+      dao:truncate_table("apis")
+      db:truncate("keyauth_credentials")
+      db:truncate("consumers")
+      db:truncate("plugins")
 
-      local api      = assert(helpers.dao.apis:insert {
+      local api      = assert(dao.apis:insert {
         name         = "example",
         hosts        = { "mock_upstream" },
         upstream_url = helpers.mock_upstream_url
       })
 
-      assert(helpers.dao.plugins:insert {
+      assert(dao.plugins:insert {
         name   = "key-auth",
-        api_id = api.id,
+        api = { id = api.id },
       })
 
-      local consumer = assert(helpers.db.consumers:insert {
+      local consumer = assert(db.consumers:insert {
         username = "bob",
       })
 
-      assert(helpers.dao.keyauth_credentials:insert {
-        key         = "abcd",
-        consumer_id = consumer.id,
-      })
+      bp.keyauth_credentials:insert {
+        key      = "abcd",
+        consumer = { id = consumer.id },
+      }
 
       assert(helpers.start_kong {
+        database = strategy,
         nginx_conf        = "spec/fixtures/custom_nginx.template",
         anonymous_reports = true,
       })
@@ -425,7 +443,7 @@ describe("Plugins triggering", function()
         client:close()
       end
 
-      helpers.stop_kong()
+      helpers.stop_kong(nil, true)
     end)
 
     it("runs without causing an internal error", function()
@@ -450,3 +468,5 @@ describe("Plugins triggering", function()
     end)
   end)
 end)
+
+end

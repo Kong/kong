@@ -193,7 +193,7 @@ local function marshall_route(r)
 
         else
           -- regex URI
-          local strip_regex  = path .. [[/?(?<stripped_uri>.*)]]
+          local strip_regex  = path .. [[(?<uri_postfix>.*)]]
           local has_captures = has_capturing_groups(path)
 
           local uri_t    = {
@@ -258,21 +258,7 @@ local function marshall_route(r)
     end
   end
 
-  -- TODO: service.path is not supported in new model
-  local path = service.path or null
-  local file = path
-  if path ~= null then
-    if sub(path, -1) == "/" and path ~= "/" then
-      file = sub(path,  1, -2)
-    end
-
-  else
-    path = "/"
-    file = "/"
-  end
-
-  route_t.upstream_url_t.path = path
-  route_t.upstream_url_t.file = file
+  route_t.upstream_url_t.path = service.path or "/"
 
   return route_t
 end
@@ -370,33 +356,25 @@ do
             end
 
             if m then
-              if m.stripped_uri then
-                ctx.matches.stripped_uri = "/" .. m.stripped_uri
-                -- remove the stripped_uri group
+              ctx.matches.uri_postfix = m.uri_postfix
+              ctx.matches.uri = uri_t.value
+
+              if m.uri_postfix then
+                -- remove the uri_postfix group
                 m[#m]          = nil
-                m.stripped_uri = nil
+                m.uri_postfix = nil
               end
 
               if uri_t.has_captures then
                 ctx.matches.uri_captures = m
               end
 
-              ctx.matches.uri = uri_t.value
-
               return true
             end
           end
 
           -- plain or prefix match from the index
-          if route_t.strip_uri then
-            local stripped_uri = sub(ctx.req_uri, #uri_t.value + 1)
-            if sub(stripped_uri, 1, 1) ~= "/" then
-              stripped_uri = "/" .. stripped_uri
-            end
-
-            ctx.matches.stripped_uri = stripped_uri
-          end
-
+          ctx.matches.uri_postfix = sub(ctx.req_uri, #uri_t.value + 1)
           ctx.matches.uri = uri_t.value
 
           return true
@@ -414,18 +392,18 @@ do
           end
 
           if m then
-            if m.stripped_uri then
-              ctx.matches.stripped_uri = "/" .. m.stripped_uri
-              -- remove the stripped_uri group
+            ctx.matches.uri_postfix = m.uri_postfix
+            ctx.matches.uri = uri_t.value
+
+            if m.uri_postfix then
+              -- remove the uri_postfix group
               m[#m]          = nil
-              m.stripped_uri = nil
+              m.uri_postfix = nil
             end
 
             if uri_t.has_captures then
               ctx.matches.uri_captures = m
             end
-
-            ctx.matches.uri = uri_t.value
 
             return true
           end
@@ -434,17 +412,7 @@ do
           -- plain or prefix match (not from the index)
           local from, to = find(ctx.req_uri, uri_t.value, nil, true)
           if from == 1 then
-            ctx.matches.uri = sub(ctx.req_uri, 1, to)
-
-            if route_t.strip_uri then
-              local stripped_uri = sub(ctx.req_uri, to + 1)
-              if sub(stripped_uri, 1, 1) ~= "/" then
-                stripped_uri = "/" .. stripped_uri
-              end
-
-              ctx.matches.stripped_uri = stripped_uri
-            end
-
+            ctx.matches.uri_postfix = sub(ctx.req_uri, to + 1)
             ctx.matches.uri = uri_t.value
 
             return true
@@ -768,48 +736,35 @@ function _M.new(routes)
 
           if matched_route then
             local upstream_host
-            local upstream_uri   = req_uri
+            local upstream_uri
             local upstream_url_t = matched_route.upstream_url_t
             local matches        = ctx.matches
 
-            -- URI stripping logic
 
-            local uri_root = req_uri == "/"
+            -- Path construction
 
-            if not uri_root and matched_route.strip_uri
-               and matches.stripped_uri
-            then
-              upstream_uri = matches.stripped_uri
-            end
+            -- if we do not have a path-match, then the postfix is simply the
+            -- incoming path, without the initial slash
+            local request_postfix = matches.uri_postfix or sub(req_uri, 2, -1)
+            local upstream_base = upstream_url_t.path
 
-            -- uri trailing slash logic
-
-            local upstream_url_path = upstream_url_t.path
-            local upstream_url_file = upstream_url_t.file
-
-            if upstream_url_path and upstream_url_path ~= "/" then
-              if upstream_uri ~= "/" then
-                upstream_uri = upstream_url_file .. upstream_uri
+            if matched_route.strip_uri then
+              -- we drop the matched part, replacing it with the upstream path
+              if sub(upstream_base, -1, -1) == "/" and
+                 sub(request_postfix, 1, 1) == "/" then
+                -- double "/", so drop the first
+                upstream_uri = sub(upstream_base, 1, -2) .. request_postfix
 
               else
-                if upstream_url_path ~= upstream_url_file then
-                  if uri_root or sub(req_uri, -1) == "/" then
-                    upstream_uri = upstream_url_path
-
-                  else
-                    upstream_uri = upstream_url_file
-                  end
-
-                else
-                  if uri_root or sub(req_uri, -1) ~= "/" then
-                    upstream_uri = upstream_url_file
-
-                  else
-                    upstream_uri = upstream_url_file .. upstream_uri
-                  end
-                end
+                upstream_uri = upstream_base .. request_postfix
               end
+
+            else
+              -- we retain the incoming path, just prefix it with the upstream
+              -- path, but skip the initial slash
+              upstream_uri = upstream_base .. sub(req_uri, 2, -1)
             end
+
 
             -- preserve_host header logic
 

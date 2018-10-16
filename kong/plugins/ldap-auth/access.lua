@@ -203,7 +203,7 @@ end
 
 function _M.execute(conf)
 
-  if ngx.ctx.authenticated_credential and conf.anonymous ~= "" then
+  if ngx.ctx.authenticated_credential and conf.anonymous then
     -- we're already authenticated, and we're configured for using anonymous,
     -- hence we're in a logical OR between auth methods and we're already done.
     return
@@ -211,7 +211,7 @@ function _M.execute(conf)
 
   local ok, err = do_authentication(conf)
   if not ok then
-    if conf.anonymous ~= "" then
+    if conf.anonymous then
       -- get anonymous user
       local consumer_cache_key = singletons.db.consumers:cache_key(conf.anonymous)
       local consumer, err      = singletons.cache:get(consumer_cache_key, nil,
