@@ -17,6 +17,7 @@ local metrics = {
   ["kong_latency"]          = true,
   ["status_count_per_user"] = true,
   -- EE only
+  ["status_count_per_workspace"]      = true,
   ["status_count_per_user_per_route"] = true,
   ["shdict_usage"]                    = true,
 }
@@ -42,6 +43,11 @@ local service_identifiers = {
   ["service_name"]         = true,
   ["service_host"]         = true,
   ["service_name_or_host"] = true,
+}
+
+local workspace_identifiers = {
+  ["workspace_id"]         = true,
+  ["workspace_name"]       = true,
 }
 
 local default_metrics = {
@@ -103,6 +109,12 @@ local default_metrics = {
     service_identifier  = "service_name_or_host",
   },
   -- EE only
+  {
+    name                 = "status_count_per_workspace",
+    stat_type            = "counter",
+    sample_rate          = 1,
+    workspace_identifier = "workspace_id",
+  },
   {
     name                = "status_count_per_user_per_route",
     stat_type           = "counter",
@@ -184,8 +196,25 @@ local function check_schema(value)
                "'. Choices are consumer_id, custom_id, and username"
     end
 
+    if entry.name == "status_count_per_workspace"
+        and not entry.workspace_identifier then
+
+      return false, "workspace_identifier must be defined for metric " ..
+             entry.name
+    end
+
+    if entry.name == "status_count_per_workspace"
+        and entry.workspace_identifier
+        and not workspace_identifiers[entry.workspace_identifier] then
+
+     return false, "invalid workspace_identifier for metric '" ..
+            entry.name ..
+            "'. Choices are workspace_id and workspace_name"
+    end
+
     if (entry.name == "status_count"
        or entry.name == "status_count_per_user"
+       or entry.name == "status_count_per_workspace"
        or entry.name == "status_count_per_user_per_route"
        or entry.name == "request_per_user")
        and entry.stat_type ~= "counter" then

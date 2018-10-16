@@ -55,6 +55,15 @@ local get_service_id = {
   end
 }
 
+local get_workspace_id = {
+  workspace_id         = function(workspaces)
+    return workspaces[1] and workspaces[1].id
+  end,
+  workspace_name       = function(workspaces)
+    return workspaces[1] and workspaces[1].name
+  end
+}
+
 local metrics = {
   unique_users = function (scope_name, message, metric_config, logger)
     local get_consumer_id = get_consumer_id[metric_config.consumer_identifier]
@@ -86,6 +95,17 @@ local metrics = {
     if consumer_id then
       logger:send_statsd(string_format("%s.user.%s.status.%s", scope_name,
                                        consumer_id, message.response.status),
+                         1, logger.stat_types.counter,
+                         metric_config.sample_rate)
+    end
+  end,
+  status_count_per_workspace = function (scope_name, message, metric_config, logger)
+    local get_workspace_id = get_workspace_id[metric_config.workspace_identifier]
+    local workspace_id     = get_workspace_id(message.workspaces)
+
+    if workspace_id then
+      logger:send_statsd(string_format("%s.workspace.%s.status.%s", scope_name,
+                                       workspace_id, message.response.status),
                          1, logger.stat_types.counter,
                          metric_config.sample_rate)
     end

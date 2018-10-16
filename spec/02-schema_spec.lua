@@ -2,7 +2,7 @@ local schemas = require "kong.dao.schemas_validation"
 local statsd_schema = require "kong.plugins.statsd-advanced.schema"
 local validate_entity = schemas.validate_entity
 
-pending("Plugin: statsd-advanced (schema)", function()
+describe("Plugin: statsd-advanced (schema)", function()
   it("accepts empty config", function()
     local ok, err = validate_entity({}, statsd_schema)
     assert.is_nil(err)
@@ -93,7 +93,7 @@ pending("Plugin: statsd-advanced (schema)", function()
   it("rejects invalid service identifier", function()
     local metrics_input = {
       {
-        name = "status_count_per_user",
+        name = "status_count",
         stat_type = "counter",
         sample_rate = 1,
         service_identifier = "fooo",
@@ -101,12 +101,13 @@ pending("Plugin: statsd-advanced (schema)", function()
     }
     local _, err = validate_entity({ metrics = metrics_input}, statsd_schema)
     assert.not_nil(err)
-    assert.equal("consumer_identifier must be defined for metric status_count_per_user", err.metrics)
+    assert.equal("invalid service_identifier for metric 'status_count'. " .. 
+                 "Choices are service_id, service_name, service_host and service_name_or_host", err.metrics)
   end)
   it("accepts empty service identifier", function()
     local metrics_input = {
       {
-        name = "status_count_per_user",
+        name = "status_count",
         stat_type = "counter",
         sample_rate = 1,
       }
@@ -118,10 +119,49 @@ pending("Plugin: statsd-advanced (schema)", function()
   it("accepts valid service identifier", function()
     local metrics_input = {
       {
-        name = "status_count_per_user",
+        name = "status_count",
         stat_type = "counter",
         sample_rate = 1,
         service_identifier = "service_id",
+      }
+    }
+    local ok, err = validate_entity({ metrics = metrics_input}, statsd_schema)
+    assert.is_nil(err)
+    assert.is_true(ok)
+  end)
+  it("rejects invalid workspace identifier", function()
+    local metrics_input = {
+      {
+        name = "status_count_per_workspace",
+        stat_type = "counter",
+        sample_rate = 1,
+        workspace_identifier = "fooo",
+      }
+    }
+    local _, err = validate_entity({ metrics = metrics_input}, statsd_schema)
+    assert.not_nil(err)
+    assert.equal("invalid workspace_identifier for metric 'status_count_per_workspace'. "..
+                 "Choices are workspace_id and workspace_name", err.metrics)
+  end)
+  it("rejects empty workspace identifier", function()
+    local metrics_input = {
+      {
+        name = "status_count_per_workspace",
+        stat_type = "counter",
+        sample_rate = 1,
+      }
+    }
+    local ok, err = validate_entity({ metrics = metrics_input}, statsd_schema)
+    assert.not_nil(err)
+    assert.equal("workspace_identifier must be defined for metric status_count_per_workspace", err.metrics)
+  end)
+  it("accepts valid workspace identifier", function()
+    local metrics_input = {
+      {
+        name = "status_count_per_workspace",
+        stat_type = "counter",
+        sample_rate = 1,
+        workspace_identifier = "workspace_id",
       }
     }
     local ok, err = validate_entity({ metrics = metrics_input}, statsd_schema)

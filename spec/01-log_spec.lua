@@ -288,7 +288,7 @@ for _, strategy in helpers.each_strategy() do
 
     describe("metrics", function()
       it("logs over UDP with default metrics", function()
-        local metrics_count = 11
+        local metrics_count = 12
         -- shdict_usage metrics
         metrics_count = metrics_count + (strategy == "cassandra" and 14 or 13) * 2
 
@@ -315,6 +315,8 @@ for _, strategy in helpers.each_strategy() do
         assert.contains("kong.service.statsdadvanced1.user.robert.request.count:1|c", metrics)
         assert.contains("kong.service.statsdadvanced1.user.robert.status.200:1|c",
                         metrics)
+        assert.contains("kong.service.statsdadvanced1.workspace." .. uuid_pattern .. ".status.200:1|c",
+                        metrics, true)
         assert.contains("kong.route." .. uuid_pattern .. ".user.robert.status.200:1|c", metrics, true)
         
         -- shdict_usage metrics, just test one is enough
@@ -322,7 +324,7 @@ for _, strategy in helpers.each_strategy() do
         assert.contains("kong.node..*.shdict.kong.free_space:%d+|g", metrics, true)
       end)
       it("logs over UDP with default metrics and new prefix", function()
-        local metrics_count = 11
+        local metrics_count = 12
         -- shdict_usage metrics, can't test again in 1 minutes
         -- metrics_count = metrics_count + (strategy == "cassandra" and 14 or 13) * 2
 
@@ -349,6 +351,8 @@ for _, strategy in helpers.each_strategy() do
         assert.contains("prefix.service.statsdadvanced13.user.robert.request.count:1|c", metrics)
         assert.contains("prefix.service.statsdadvanced13.user.robert.status.200:1|c",
                         metrics)
+        assert.contains("prefix.service.statsdadvanced13.workspace." .. uuid_pattern .. ".status.200:1|c",
+                        metrics, true)
         assert.contains("prefix.route." .. uuid_pattern .. ".user.robert.status.200:1|c", metrics, true)
         
         -- shdict_usage metrics, can't test again in 1 minutes

@@ -42,7 +42,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       local routes = {}
-      for i = 1, 11 do
+      for i = 1, 12 do
         local service = bp.services:insert {
           protocol = helpers.mock_upstream_protocol,
           host     = helpers.mock_upstream_host,
@@ -55,7 +55,7 @@ for _, strategy in helpers.each_strategy() do
         }
       end
 
-      for i = 12, 14 do
+      for i = 100, 102 do
         local service = bp.services:insert {
           protocol = helpers.mock_upstream_protocol,
           host     = helpers.mock_upstream_host,
@@ -104,6 +104,25 @@ for _, strategy in helpers.each_strategy() do
               stat_type           = "counter",
               consumer_identifier = "username",
               sample_rate         = 1,
+            }
+          },
+        },
+      }
+
+      bp.key_auth_plugins:insert { route_id = routes[12].id }
+
+      bp.plugins:insert {
+        name     = "statsd-advanced",
+        route_id   = routes[12].id,
+        config     = {
+          host     = "127.0.0.1",
+          port     = UDP_PORT,
+          metrics  = {
+            {
+              name                 = "status_count_per_workspace",
+              stat_type            = "counter",
+              sample_rate          = 1,
+              workspace_identifier = "workspace_id",
             }
           },
         },
@@ -309,11 +328,11 @@ for _, strategy in helpers.each_strategy() do
         },
       }
 
-      bp.key_auth_plugins:insert { route_id = routes[12].id }
+      bp.key_auth_plugins:insert { route_id = routes[100].id }
 
       bp.plugins:insert {
         name     = "statsd-advanced",
-        route_id   = routes[12].id,
+        route_id   = routes[100].id,
         config     = {
           host     = "127.0.0.1",
           port     = UDP_PORT,
@@ -334,11 +353,11 @@ for _, strategy in helpers.each_strategy() do
         },
       }
 
-      bp.key_auth_plugins:insert { route_id = routes[13].id }
+      bp.key_auth_plugins:insert { route_id = routes[101].id }
 
       bp.plugins:insert {
         name     = "statsd-advanced",
-        route_id   = routes[13].id,
+        route_id   = routes[101].id,
         config     = {
           host     = "127.0.0.1",
           port     = UDP_PORT,
@@ -360,11 +379,11 @@ for _, strategy in helpers.each_strategy() do
       }
 
 
-      bp.key_auth_plugins:insert { route_id = routes[14].id }
+      bp.key_auth_plugins:insert { route_id = routes[102].id }
 
       bp.plugins:insert {
         name     = "statsd-advanced",
-        route_id   = routes[14].id,
+        route_id   = routes[102].id,
         config     = {
           host     = "127.0.0.1",
           port     = UDP_PORT,
@@ -409,7 +428,7 @@ for _, strategy in helpers.each_strategy() do
 
     describe("metrics", function()
       it("logs over UDP with default metrics with vitals on", function()
-        local metrics_count = 11
+        local metrics_count = 12
         -- shdict_usage metrics
         metrics_count = metrics_count + (strategy == "cassandra" and 14 or 13) * 2
         -- vitals metrics
@@ -442,6 +461,8 @@ for _, strategy in helpers.each_strategy() do
         assert.contains("kong.service.statsdadvanced1.user.robert.request.count:1|c", metrics)
         assert.contains("kong.service.statsdadvanced1.user.robert.status.200:1|c",
                         metrics)
+        assert.contains("kong.service.statsdadvanced1.workspace." .. uuid_pattern .. ".status.200:1|c",
+                        metrics, true)
         assert.contains("kong.route." .. uuid_pattern .. ".user.robert.status.200:1|c", metrics, true)
         
         -- shdict_usage metrics, just test one is enough
@@ -457,7 +478,7 @@ for _, strategy in helpers.each_strategy() do
         end
       end)
       it("logs over UDP with default metrics and new prefix with vitals on", function()
-        local metrics_count = 11
+        local metrics_count = 12
         -- shdict_usage metrics, can't test again in 1 minutes
         -- metrics_count = metrics_count + (strategy == "cassandra" and 14 or 13) * 2
         -- vitals metrics
@@ -490,6 +511,8 @@ for _, strategy in helpers.each_strategy() do
         assert.contains("prefix.service.statsdadvanced2.user.robert.request.count:1|c", metrics)
         assert.contains("prefix.service.statsdadvanced2.user.robert.status.200:1|c",
                         metrics)
+        assert.contains("prefix.service.statsdadvanced2.workspace." .. uuid_pattern .. ".status.200:1|c",
+                        metrics, true)
         assert.contains("prefix.route." .. uuid_pattern .. ".user.robert.status.200:1|c", metrics, true)
         
         -- shdict_usage metrics, can't test again in 1 minutes
@@ -516,6 +539,21 @@ for _, strategy in helpers.each_strategy() do
         local ok, res = thread:join()
         assert.True(ok)
         assert.matches("kong.route." .. uuid_pattern .. ".user.bob.status.200:1|c", res)
+      end)
+      it("status_count_per_workspace", function()
+        local thread = helpers.udp_server(UDP_PORT)
+        local response = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/request?apikey=kong",
+          headers = {
+            host  = "logging12.com"
+          }
+        })
+        assert.res_status(200, response)
+
+        local ok, res = thread:join()
+        assert.True(ok)
+        assert.matches("kong.service.statsdadvanced12.workspace." .. uuid_pattern .. ".status.200:1|c", res)
       end)
       it("vitals logging_metrics", function()
         local packet_count = 0
@@ -684,7 +722,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging12.com"
+            host  = "logging100.com"
           }
         })
         assert.res_status(200, response)
@@ -702,7 +740,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging13.com"
+            host  = "logging101.com"
           }
         })
         assert.res_status(200, response)
@@ -724,7 +762,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging14.com"
+            host  = "logging102.com"
           }
         })
         assert.res_status(200, response)
@@ -798,7 +836,7 @@ for _, strategy in helpers.each_strategy() do
 
     describe("metrics", function()
       it("does not send vitals metrics when vitals is turned off", function()
-        local metrics_count = 11
+        local metrics_count = 12
         -- shdict_usage metrics
         metrics_count = metrics_count + (strategy == "cassandra" and 14 or 13) * 2
         -- should have no vitals metrics
@@ -826,6 +864,8 @@ for _, strategy in helpers.each_strategy() do
         assert.contains("kong.service.statsdadvanced1.user.robert.request.count:1|c", metrics)
         assert.contains("kong.service.statsdadvanced1.user.robert.status.200:1|c",
                         metrics)
+        assert.contains("kong.service.statsdadvanced1.workspace." .. uuid_pattern .. ".status.200:1|c",
+                        metrics, true)
         assert.contains("kong.route." .. uuid_pattern .. ".user.robert.status.200:1|c", metrics, true)
         
         -- shdict_usage metrics, just test one is enough
@@ -890,9 +930,9 @@ for _, strategy in helpers.each_strategy() do
 
     describe("configures globally", function()
       it("sends default metrics with global.matched namespace", function()
-        local metrics_count = 6 -- 5 less than normal
-        -- shdict_usage metrics
-        metrics_count = metrics_count + (strategy == "cassandra" and 14 or 13) * 2
+        local metrics_count = 6 -- 6 less than normal
+        -- should have no shdict_usage metrics
+        -- metrics_count = metrics_count + (strategy == "cassandra" and 14 or 13) * 2
         -- should have no vitals metrics
 
         local thread = helpers.udp_server(UDP_PORT, metrics_count)
@@ -918,11 +958,13 @@ for _, strategy in helpers.each_strategy() do
         assert.not_contains("kong.global.unmatched.user.robert.request.count:1|c", metrics)
         assert.not_contains("kong.global.unmatched.user.robert.status.404:1|c",
                         metrics)
+        assert.not_contains("kong.global.unmatched.workspace." .. uuid_pattern .. ".status.200:1|c",
+                        metrics, true)
         assert.not_contains("kong.route." .. uuid_pattern .. ".user.robert.status.404:1|c", metrics, true)
         
         -- shdict_usage metrics, just test one is enough
-        assert.contains("kong.node..*.shdict.kong.capacity:%d+|g", metrics, true)
-        assert.contains("kong.node..*.shdict.kong.free_space:%d+|g", metrics, true)
+        assert.not_contains("kong.node..*.shdict.kong.capacity:%d+|g", metrics, true)
+        assert.not_contains("kong.node..*.shdict.kong.free_space:%d+|g", metrics, true)
 
         -- vitals metrics should not be send, should not send metrics with value nil
         for _, group in pairs(vitals.logging_metrics) do
