@@ -361,6 +361,25 @@ describe("Admin API: #" .. strategy, function()
           }
         }, cjson.decode(body))
       end)
+
+      it("handles mismatched keys/certificates", function()
+        local res = client:post("/certificates", {
+          body = {
+            cert = ssl_fixtures.cert,
+            key = ssl_fixtures.key_alt,
+          },
+          headers = { ["Content-Type"] = "application/json" }
+        })
+        local body = assert.res_status(400, res)
+        assert.same({
+          code     = Errors.codes.SCHEMA_VIOLATION,
+          name     = "schema violation",
+          message  = "schema violation (certificate does not match key)",
+          fields  = {
+            ["@entity"] = { "certificate does not match key" },
+          }
+        }, cjson.decode(body))
+      end)
     end)
 
     describe("PATCH", function()
