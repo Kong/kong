@@ -1,6 +1,6 @@
-local pl_utils   = require "pl.utils"
-local ssl        = require "ngx.ssl"
 local singletons = require "kong.singletons"
+local ngx_ssl = require "ngx.ssl"
+local pl_utils = require "pl.utils"
 
 
 local ngx_log = ngx.log
@@ -50,12 +50,12 @@ local function parse_key_and_cert(row)
 
   -- parse cert and priv key for later usage by ngx.ssl
 
-  local cert, err = ssl.parse_pem_cert(row.cert)
+  local cert, err = ngx_ssl.parse_pem_cert(row.cert)
   if not cert then
     return nil, "could not parse PEM certificate: " .. err
   end
 
-  local key, err = ssl.parse_pem_priv_key(row.key)
+  local key, err = ngx_ssl.parse_pem_priv_key(row.key)
   if not key then
     return nil, "could not parse PEM private key: " .. err
   end
@@ -91,7 +91,7 @@ end
 
 
 local function execute()
-  local sn, err = ssl.server_name()
+  local sn, err = ngx_ssl.server_name()
   if err then
     log(ERR, "could not retrieve SNI: ", err)
     return ngx.exit(ngx.ERROR)
@@ -110,19 +110,19 @@ local function execute()
 
   -- set the certificate for this connection
 
-  local ok, err = ssl.clear_certs()
+  local ok, err = ngx_ssl.clear_certs()
   if not ok then
     log(ERR, "could not clear existing (default) certificates: ", err)
     return ngx.exit(ngx.ERROR)
   end
 
-  ok, err = ssl.set_cert(cert_and_key.cert)
+  ok, err = ngx_ssl.set_cert(cert_and_key.cert)
   if not ok then
     log(ERR, "could not set configured certificate: ", err)
     return ngx.exit(ngx.ERROR)
   end
 
-  ok, err = ssl.set_priv_key(cert_and_key.key)
+  ok, err = ngx_ssl.set_priv_key(cert_and_key.key)
   if not ok then
     log(ERR, "could not set configured private key: ", err)
     return ngx.exit(ngx.ERROR)
