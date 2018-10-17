@@ -1,54 +1,21 @@
 local BasePlugin    = require "kong.plugins.base_plugin"
-local singletons    = require "kong.singletons"
-local responses     = require "kong.tools.responses"
 local constants     = require "kong.constants"
 local meta          = require "kong.meta"
 local http          = require "resty.http"
 
 
 local pairs         = pairs
-local type          = type
-local ngx           = ngx
-local get_body_data = ngx.req.get_body_data
-local get_uri_args  = ngx.req.get_uri_args
-local get_headers   = ngx.req.get_headers
-local read_body     = ngx.req.read_body
-local get_method    = ngx.req.get_method
-local ngx_log       = ngx.log
-local var           = ngx.var
-
-
 local server_header = meta._SERVER_TOKENS
 local conf_cache    = setmetatable({}, { __mode = "k" })
 
 
 local function send(status, content, headers)
-  ngx.status = status
-
-  if type(headers) == "table" then
-    for k, v in pairs(headers) do
-      ngx.header[k] = v
-    end
+  if kong.configuration.enabled_headers[constants.HEADERS.VIA] then
+    headers = kong.table.merge(headers) -- create a copy of headers
+    headers[constants.HEADERS.VIA] = server_header
   end
 
-  if not ngx.header["Content-Length"] then
-    ngx.header["Content-Length"] = #content
-  end
-
-  if singletons.configuration.enabled_headers[constants.HEADERS.VIA] then
-    ngx.header[constants.HEADERS.VIA] = server_header
-  end
-
-  ngx.print(content)
-
-  return ngx.exit(status)
-end
-
-
-local function flush(ctx)
-  ctx = ctx or ngx.ctx
-  local response = ctx.delayed_response
-  return send(response.status_code, response.content, response.headers)
+  return kong.response.exit(status, content, headers)
 end
 
 
@@ -97,15 +64,15 @@ function azure:access(config)
 
   local ok, err = client:connect(config.host, config.port)
   if not ok then
-    ngx_log(ngx.ERR, "[azure-functions] could not connect to Azure service: ", err)
-    return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+    kong.log.err("could not connect to Azure service: ", err)
+    return kong.response.exit(500, { message = "An unexpected error ocurred" })
   end
 
   if config.https then
     local ok, err = client:ssl_handshake(false, config.host, config.https_verify)
     if not ok then
-      ngx_log(ngx.ERR, "[azure-functions] could not perform SSL handshake : ", err)
-      return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+      kong.log.err("could not perform SSL handshake : ", err)
+      return kong.response.exit(500, { message = "An unexpected error ocurred" })
     end
   end
 
@@ -144,7 +111,8 @@ function azure:access(config)
   }
 
   if not res then
-    return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+    kong.log.err(err)
+    return kong.response.exit(500, { message = "An unexpected error occurred" })
   end
 
   local response_headers = res.headers
@@ -153,20 +121,7 @@ function azure:access(config)
 
   ok, err = client:set_keepalive(config.keepalive)
   if not ok then
-    ngx_log(ngx.ERR, "[azure-functions] could not keepalive connection: ", err)
-  end
-
-  local ctx = ngx.ctx
-  if ctx.delay_response and not ctx.delayed_response then
-    ctx.delayed_response = {
-      status_code               = response_status,
-      content                   = response_content,
-      headers                   = response_headers,
-    }
-
-    ctx.delayed_response_callback = flush
-
-    return
+    kong.log.err("could not keepalive connection: ", err)
   end
 
   return send(response_status, response_content, response_headers)
