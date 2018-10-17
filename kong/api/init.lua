@@ -240,7 +240,7 @@ do
 
   -- Auto Generated Routes
   for _, dao in pairs(singletons.db.daos) do
-    if not dao.schema.legacy then
+    if dao.schema.generate_admin_api ~= false and not dao.schema.legacy then
       routes = Endpoints.new(dao.schema, routes)
     end
   end

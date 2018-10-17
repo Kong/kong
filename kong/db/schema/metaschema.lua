@@ -64,6 +64,7 @@ local field_schema = {
   { on_delete = { type = "string", one_of = { "restrict", "cascade", "null" } }, },
   { default = { type = "self" }, },
   { abstract = { type = "boolean" }, },
+  { generate_admin_api = { type = "boolean" }, },
   { legacy = { type = "boolean" }, },
 }
 
@@ -340,6 +341,13 @@ local MetaSchema = Schema.new({
       subschema_error = {
         type = "string",
         nilable = true,
+      },
+    },
+    {
+      generate_admin_api = {
+        type = "boolean",
+        nilable = true,
+        default = true,
       },
     },
     {
