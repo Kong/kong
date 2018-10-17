@@ -2,13 +2,18 @@
 
 # Kong Serverless Functions Plugin
 
-Dynamically run Lua code from Kong during access phase. It can be used in 
+Dynamically run Lua code from Kong during access phase. It can be used in
 combination with other request plugins.
 
-Please see the [plugin documentation][docs] for details on installation and 
+Please see the [plugin documentation][docs] for details on installation and
 usage.
 
 # History
+
+0.2.0
+
+* Updated schemas to new format
+* Updated specs to test Services & Routes instead of plugins, and adapted to new schemas
 
 0.1.0 Initial release
 
