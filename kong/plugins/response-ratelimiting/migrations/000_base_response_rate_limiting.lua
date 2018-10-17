@@ -59,7 +59,7 @@ return {
 
             BEGIN
               INSERT INTO response_ratelimiting_metrics (identifier, period, period_date, service_id, route_id, value)
-                   VALUES (i, p, p_date, r_id, s_id, v);
+                   VALUES (i, p, p_date, s_id, r_id, v);
               RETURN;
             EXCEPTION WHEN unique_violation THEN
 

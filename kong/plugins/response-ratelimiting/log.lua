@@ -19,7 +19,7 @@ end
 function _M.execute(conf, identifier, current_timestamp, increments, usage)
   local ok, err = ngx.timer.at(0, log, conf, identifier, current_timestamp, increments, usage)
   if not ok then
-    ngx.log(ngx.ERR, "failed to create timer: ", err)
+    kong.log.err("failed to create timer: ", err)
   end
 end
 

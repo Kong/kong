@@ -4,8 +4,6 @@ local cassandra = require "cassandra"
 local concat = table.concat
 local pairs = pairs
 local fmt = string.format
-local log = ngx.log
-local ERR = ngx.ERR
 
 
 local NULL_UUID = "00000000-0000-0000-0000-000000000000"
@@ -37,8 +35,8 @@ return {
         })
 
         if not res then
-          log(ERR, "[response-ratelimiting] cluster policy: could not increment ",
-                   "cassandra counter for period '", period, "': ", err)
+          kong.log.err("cluster policy: could not increment ",
+                       "cassandra counter for period '", period, "': ", err)
         end
       end
 
@@ -67,8 +65,8 @@ return {
           name .. "_" .. period,
         })
         if not res then
-          log(ERR, "[response-ratelimiting] cluster policy: could not increment ",
-            "cassandra counter for period '", period, "': ", err)
+          kong.log.err("cluster policy: could not increment ",
+                       "cassandra counter for period '", period, "': ", err)
         end
       end
 
@@ -129,9 +127,11 @@ return {
 
       for period, period_date in pairs(periods) do
         buf[#buf + 1] = fmt([[
-          SELECT increment_response_rate_limits('%s', '%s', '%s', '%s_%s',
-                                                to_timestamp('%s') at time zone 'UTC', %d)
-        ]], route_id, service_id, identifier, name, period, period_date/1000, value)
+          INSERT INTO response_ratelimiting_metrics AS old(identifier, period, period_date, service_id, route_id, value)
+                      VALUES ('%s', '%s_%s', to_timestamp('%s') at time zone 'UTC', '%s', '%s', %d)
+          ON CONFLICT ON CONSTRAINT response_ratelimiting_metrics_pkey
+          DO UPDATE SET value = old.value + %d;
+        ]], identifier, name, period, period_date/1000, service_id, route_id, value, value)
       end
 
       local res, err = connector:query(concat(buf, ";"))
@@ -146,10 +146,12 @@ return {
       local periods = timestamp.get_timestamps(current_timestamp)
 
       for period, period_date in pairs(periods) do
-        buf[#buf+1] = fmt([[
-          SELECT increment_response_rate_limits_api('%s', '%s', '%s_%s', to_timestamp('%s')
-          at time zone 'UTC', %d)
-        ]], api_id, identifier, name, period, period_date/1000, value)
+        buf[#buf + 1] = fmt([[
+          INSERT INTO response_ratelimiting_metrics AS old(identifier, period, period_date, api_id, value)
+                      VALUES ('%s', '%s_%s', to_timestamp('%s') at time zone 'UTC', '%s', %d)
+          ON CONFLICT ON CONSTRAINT response_ratelimiting_metrics_pkey
+          DO UPDATE SET value = old.value + %d;
+        ]], identifier, name, period, period_date/1000, api_id, value, value)
       end
 
       local res, err = connector:query(concat(buf, ";"))

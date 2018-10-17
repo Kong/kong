@@ -1,6 +1,10 @@
 local schema_def = require "kong.plugins.aws-lambda.schema"
-local utils = require "kong.tools.utils"
 local validate_plugin_config_schema = require("spec.helpers").validate_plugin_config_schema
+
+
+local kong = {
+  table = require("kong.pdk.table").new()
+}
 
 
 local DEFAULTS = {
@@ -18,7 +22,7 @@ local DEFAULTS = {
 
 local function v(config)
   return validate_plugin_config_schema(
-    utils.table_merge(DEFAULTS, config),
+    kong.table.merge(DEFAULTS, config),
     schema_def
   )
 end

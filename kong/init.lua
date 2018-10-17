@@ -738,6 +738,8 @@ function Kong.handle_error()
 end
 
 function Kong.serve_admin_api(options)
+  kong_global.set_phase(kong, PHASES.admin_api)
+
   options = options or {}
 
   header["Access-Control-Allow-Origin"] = options.allow_origin or "*"

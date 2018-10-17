@@ -1,22 +1,27 @@
 local url = require "socket.url"
 local utils = require "kong.tools.utils"
-local responses = require "kong.tools.responses"
 local constants = require "kong.constants"
 local timestamp = require "kong.tools.timestamp"
-local public_utils = require "kong.tools.public"
+
 
 local string_find = string.find
-local req_get_headers = ngx.req.get_headers
-local ngx_set_header = ngx.req.set_header
-local ngx_req_get_method = ngx.req.get_method
-local ngx_req_get_uri_args = ngx.req.get_uri_args
+
+
+local split = utils.split
+local strip = utils.strip
 local check_https = utils.check_https
+local encode_args = utils.encode_args
+local random_string = utils.random_string
+local table_contains = utils.table_contains
+
+
+local ngx_decode_args = ngx.decode_args
+local ngx_re_gmatch = ngx.re.gmatch
+local ngx_decode_base64 = ngx.decode_base64
 
 
 local _M = {}
 
-local CONTENT_LENGTH = "content-length"
-local CONTENT_TYPE = "content-type"
 local RESPONSE_TYPE = "response_type"
 local STATE = "state"
 local CODE = "code"
@@ -36,12 +41,33 @@ local ERROR = "error"
 local AUTHENTICATED_USERID = "authenticated_userid"
 
 
+local function internal_server_error(err)
+  kong.log.err(err)
+  return kong.response.exit(500, { message = "An unexpected error occurred" })
+end
+
+
+local function get_ctx(k)
+  local v = kong.ctx.shared[k] -- forward compatibility
+  if v ~= nil then
+    return v
+  end
+  return ngx.ctx[k] -- backward compatibility
+end
+
+
+local function set_ctx(k, v)
+  kong.ctx.shared[k] = v  -- forward compatibility
+  ngx.ctx[k] = v          -- backward compatibility
+end
+
+
 local function generate_token(conf, service, api, credential, authenticated_userid, scope, state, expiration, disable_refresh)
   local token_expiration = expiration or conf.token_expiration
 
   local refresh_token
   if not disable_refresh and token_expiration > 0 then
-    refresh_token = utils.random_string()
+    refresh_token = random_string()
   end
 
   local refresh_token_ttl
@@ -67,7 +93,7 @@ local function generate_token(conf, service, api, credential, authenticated_user
                                                                 -- permanently deleted after 'refresh_token_ttl' seconds
 
   if err then
-    return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+    return internal_server_error(err)
   end
 
   return {
@@ -95,7 +121,7 @@ local function get_redirect_uris(client_id)
                                  load_oauth2_credential_by_client_id_into_memory,
                                  client_id)
     if err then
-      return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+      return internal_server_error(err)
     end
   end
   return client and client.redirect_uris or nil, client
@@ -103,14 +129,13 @@ end
 
 local function retrieve_parameters()
   -- OAuth2 parameters could be in both the querystring or body
-  local uri_args = ngx_req_get_uri_args()
-  local method   = ngx_req_get_method()
+  local uri_args = kong.request.get_query()
+  local method   = kong.request.get_method()
 
   if method == "POST" or method == "PUT" or method == "PATCH" then
-    ngx.req.read_body()
-    local body_args = public_utils.get_body_args()
+    local body_args = kong.request.get_body()
 
-    return utils.table_merge(uri_args, body_args)
+    return kong.table.merge(uri_args, body_args)
   end
 
   return uri_args
@@ -126,7 +151,7 @@ local function retrieve_scope(parameters, conf)
     end
 
     for v in scope:gmatch("%S+") do
-      if not utils.table_contains(conf.scopes, v) then
+      if not table_contains(conf.scopes, v) then
         return nil, {[ERROR] = "invalid_scope", error_description = "\"" .. v .. "\" is an invalid " .. SCOPE}
       else
         table.insert(scopes, v)
@@ -148,14 +173,14 @@ local function authorize(conf)
   local allowed_redirect_uris, client, redirect_uri, parsed_redirect_uri
   local is_implicit_grant
 
-  local is_https, err = check_https(kong.ip.is_trusted(ngx.var.realip_remote_addr),
+  local is_https, err = check_https(kong.ip.is_trusted(kong.client.get_ip()),
                                     conf.accept_http_if_already_terminated)
   if not is_https then
     response_params = {[ERROR] = "access_denied", error_description = err or "You must use HTTPS"}
   else
     if conf.provision_key ~= parameters.provision_key then
       response_params = {[ERROR] = "invalid_provision_key", error_description = "Invalid provision_key"}
-    elseif not parameters.authenticated_userid or utils.strip(parameters.authenticated_userid) == "" then
+    elseif not parameters.authenticated_userid or strip(parameters.authenticated_userid) == "" then
       response_params = {[ERROR] = "invalid_authenticated_userid", error_description = "Missing authenticated_userid parameter"}
     else
       local response_type = parameters[RESPONSE_TYPE]
@@ -178,7 +203,7 @@ local function authorize(conf)
       else
         redirect_uri = parameters[REDIRECT_URI] and parameters[REDIRECT_URI] or allowed_redirect_uris[1]
 
-        if not utils.table_contains(allowed_redirect_uris, redirect_uri) then
+        if not table_contains(allowed_redirect_uris, redirect_uri) then
           response_params = {[ERROR] = "invalid_request", error_description = "Invalid " .. REDIRECT_URI .. " that does not match with any redirect_uri created with the application" }
           -- redirect_uri used in this case is the first one registered with the application
           redirect_uri = allowed_redirect_uris[1]
@@ -192,8 +217,8 @@ local function authorize(conf)
         if response_type == CODE then
           local service_id, api_id
           if not conf.global_credentials then
-            service_id = ngx.ctx.service.id
-            api_id = ngx.ctx.api.id
+            service_id = get_ctx("service").id
+            api_id = get_ctx("api").id
           end
           local authorization_code, err = kong.db.oauth2_authorization_codes:insert({
             service = service_id and { id = service_id } or nil,
@@ -204,7 +229,7 @@ local function authorize(conf)
           }, { ttl = 300 })
 
           if err then
-            return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+            return internal_server_error(err)
           end
 
           response_params = {
@@ -212,7 +237,7 @@ local function authorize(conf)
           }
         else
           -- Implicit grant, override expiration to zero
-          response_params = generate_token(conf, ngx.ctx.service, ngx.ctx.api, client, parameters[AUTHENTICATED_USERID], scopes, state, nil, true)
+          response_params = generate_token(conf, get_ctx("service"), get_ctx("api"), client, parameters[AUTHENTICATED_USERID], scopes, state, nil, true)
           is_implicit_grant = true
         end
       end
@@ -224,7 +249,7 @@ local function authorize(conf)
 
   -- Appending kong generated params to redirect_uri query string
   if parsed_redirect_uri then
-    local encoded_params = utils.encode_args(utils.table_merge(ngx.decode_args(
+    local encoded_params = encode_args(kong.table.merge(ngx_decode_args(
       (is_implicit_grant and
         (parsed_redirect_uri.fragment and parsed_redirect_uri.fragment or "") or
         (parsed_redirect_uri.query and parsed_redirect_uri.query or "")
@@ -246,7 +271,7 @@ local function authorize(conf)
     body = response_params
   end
 
-  return responses.send(status, body, {
+  return kong.response.exit(status, body, {
     ["cache-control"] = "no-store",
     ["pragma"] = "no-cache"
   })
@@ -254,28 +279,28 @@ end
 
 local function retrieve_client_credentials(parameters, conf)
   local client_id, client_secret, from_authorization_header
-  local authorization_header = ngx.req.get_headers()[conf.auth_header_name]
+  local authorization_header = kong.request.get_header(conf.auth_header_name)
   if parameters[CLIENT_ID] and parameters[CLIENT_SECRET] then
     client_id = parameters[CLIENT_ID]
     client_secret = parameters[CLIENT_SECRET]
   elseif authorization_header then
     from_authorization_header = true
-    local iterator, iter_err = ngx.re.gmatch(authorization_header, "\\s*[Bb]asic\\s*(.+)")
+    local iterator, iter_err = ngx_re_gmatch(authorization_header, "\\s*[Bb]asic\\s*(.+)")
     if not iterator then
-      ngx.log(ngx.ERR, iter_err)
+      kong.log.err(iter_err)
       return
     end
 
     local m, err = iterator()
     if err then
-      ngx.log(ngx.ERR, err)
+      kong.log.err(err)
       return
     end
 
     if m and next(m) then
-      local decoded_basic = ngx.decode_base64(m[1])
+      local decoded_basic = ngx_decode_base64(m[1])
       if decoded_basic then
-        local basic_parts = utils.split(decoded_basic, ":")
+        local basic_parts = split(decoded_basic, ":")
         client_id = basic_parts[1]
         client_secret = basic_parts[2]
       end
@@ -292,7 +317,7 @@ local function issue_token(conf)
   local parameters = retrieve_parameters()
   local state = parameters[STATE]
 
-  local is_https, err = check_https(kong.ip.is_trusted(ngx.var.realip_remote_addr),
+  local is_https, err = check_https(kong.ip.is_trusted(kong.client.get_ip()),
                                     conf.accept_http_if_already_terminated)
   if not is_https then
     response_params = {[ERROR] = "access_denied", error_description = err or "You must use HTTPS"}
@@ -311,7 +336,7 @@ local function issue_token(conf)
     local allowed_redirect_uris, client = get_redirect_uris(client_id)
     if allowed_redirect_uris then
       local redirect_uri = parameters[REDIRECT_URI] and parameters[REDIRECT_URI] or allowed_redirect_uris[1]
-      if not utils.table_contains(allowed_redirect_uris, redirect_uri) then
+      if not table_contains(allowed_redirect_uris, redirect_uri) then
         response_params = {[ERROR] = "invalid_request", error_description = "Invalid " .. REDIRECT_URI .. " that does not match with any redirect_uri created with the application" }
       end
 
@@ -334,8 +359,8 @@ local function issue_token(conf)
         local code = parameters[CODE]
         local service_id, api_id
         if not conf.global_credentials then
-          service_id = ngx.ctx.service.id
-          api_id = ngx.ctx.api.id
+          service_id = get_ctx("service").id
+          api_id = get_ctx("api").id
         end
         local authorization_code =
           code and kong.db.oauth2_authorization_codes:select_by_code(code)
@@ -352,7 +377,7 @@ local function issue_token(conf)
                              error_description = "Invalid " .. CODE}
 
         else
-          response_params = generate_token(conf, ngx.ctx.service, ngx.ctx.api, client,
+          response_params = generate_token(conf, get_ctx("service"), get_ctx("api"), client,
                                            authorization_code.authenticated_userid, authorization_code.scope, state)
           kong.db.oauth2_authorization_codes:delete({ id = authorization_code.id }) -- Delete authorization code so it cannot be reused
         end
@@ -369,7 +394,7 @@ local function issue_token(conf)
             response_params = err -- If it's not ok, then this is the error message
 
           else
-            response_params = generate_token(conf, ngx.ctx.service, ngx.ctx.api, client,
+            response_params = generate_token(conf, get_ctx("service"), get_ctx("api"), client,
                                              parameters.authenticated_userid, scope, state, nil, true)
           end
         end
@@ -379,7 +404,7 @@ local function issue_token(conf)
         if conf.provision_key ~= parameters.provision_key then
           response_params = {[ERROR] = "invalid_provision_key", error_description = "Invalid provision_key"}
 
-        elseif not parameters.authenticated_userid or utils.strip(parameters.authenticated_userid) == "" then
+        elseif not parameters.authenticated_userid or strip(parameters.authenticated_userid) == "" then
           response_params = {[ERROR] = "invalid_authenticated_userid", error_description = "Missing authenticated_userid parameter"}
 
         else
@@ -389,7 +414,7 @@ local function issue_token(conf)
             response_params = err -- If it's not ok, then this is the error message
 
           else
-            response_params = generate_token(conf, ngx.ctx.service, ngx.ctx.api, client,
+            response_params = generate_token(conf, get_ctx("service"), get_ctx("api"), client,
                                              parameters.authenticated_userid, scope, state)
           end
         end
@@ -398,8 +423,8 @@ local function issue_token(conf)
         local refresh_token = parameters[REFRESH_TOKEN]
         local service_id, api_id
         if not conf.global_credentials then
-          service_id = ngx.ctx.service.id
-          api_id = ngx.ctx.api.id
+          service_id = get_ctx("service").id
+          api_id = get_ctx("api").id
         end
         local token = refresh_token and
                       kong.db.oauth2_tokens:select_by_refresh_token(refresh_token)
@@ -415,7 +440,7 @@ local function issue_token(conf)
             response_params = {[ERROR] = "invalid_client", error_description = "Invalid client authentication"}
 
           else
-            response_params = generate_token(conf, ngx.ctx.service, ngx.ctx.api, client,
+            response_params = generate_token(conf, get_ctx("service"), get_ctx("api"), client,
                                              token.authenticated_userid, token.scope, state)
             kong.db.oauth2_tokens:delete({ id = token.id }) -- Delete old token
           end
@@ -428,7 +453,7 @@ local function issue_token(conf)
   response_params.state = state
 
   -- Sending response in JSON format
-  return responses.send(response_params[ERROR] and (invalid_client_properties and invalid_client_properties.status or 400)
+  return kong.response.exit(response_params[ERROR] and (invalid_client_properties and invalid_client_properties.status or 400)
                         or 200, response_params, {
     ["cache-control"] = "no-store",
     ["pragma"] = "no-cache",
@@ -462,10 +487,10 @@ local function retrieve_token(conf, access_token)
     local token_cache_key = kong.db.oauth2_tokens:cache_key(access_token)
     token, err = kong.cache:get(token_cache_key, nil,
                                 load_token_into_memory, conf,
-                                ngx.ctx.service, ngx.ctx.api,
+                                get_ctx("service"), get_ctx("api"),
                                 access_token)
     if err then
-      return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+      return internal_server_error(err)
     end
   end
   return token
@@ -473,7 +498,7 @@ end
 
 local function parse_access_token(conf)
   local found_in = {}
-  local access_token = ngx.req.get_headers()[conf.auth_header_name]
+  local access_token = kong.request.get_header(conf.auth_header_name)
   if access_token then
     if type(access_token) == "table" then --Take the first found
       access_token = access_token[1]
@@ -492,24 +517,21 @@ local function parse_access_token(conf)
 
   if conf.hide_credentials then
     if found_in.authorization_header then
-      ngx.req.clear_header(conf.auth_header_name)
+      kong.service.request.clear_header(conf.auth_header_name)
     else
       -- Remove from querystring
-      local parameters = ngx.req.get_uri_args()
+      local parameters = kong.request.get_query()
       parameters[ACCESS_TOKEN] = nil
-      ngx.req.set_uri_args(parameters)
+      kong.service.request.set_query(parameters)
 
-      local content_type = req_get_headers()[CONTENT_TYPE]
+      local content_type = kong.request.get_header("content-type")
       local is_form_post = content_type and
         string_find(content_type, "application/x-www-form-urlencoded", 1, true)
 
-      if ngx.req.get_method() ~= "GET" and is_form_post then -- Remove from body
-        ngx.req.read_body()
-        parameters = public_utils.get_body_args()
+      if kong.request.get_method() ~= "GET" and is_form_post then -- Remove from body
+        parameters = kong.request.get_body() or {}
         parameters[ACCESS_TOKEN] = nil
-        local encoded_args = ngx.encode_args(parameters)
-        ngx.req.set_header(CONTENT_LENGTH, #encoded_args)
-        ngx.req.set_body_data(encoded_args)
+        kong.service.request.set_body(parameters)
       end
     end
   end
@@ -537,17 +559,20 @@ local function load_consumer_into_memory(consumer_id, anonymous)
 end
 
 local function set_consumer(consumer, credential, token)
-  ngx_set_header(constants.HEADERS.CONSUMER_ID, consumer.id)
-  ngx_set_header(constants.HEADERS.CONSUMER_CUSTOM_ID, consumer.custom_id)
-  ngx_set_header(constants.HEADERS.CONSUMER_USERNAME, consumer.username)
-  ngx.ctx.authenticated_consumer = consumer
+  local clear_header = kong.service.request.clear_header
+  local set_header = kong.service.request.set_header
+
+  set_header(constants.HEADERS.CONSUMER_ID, consumer.id)
+  set_header(constants.HEADERS.CONSUMER_CUSTOM_ID, consumer.custom_id)
+  set_header(constants.HEADERS.CONSUMER_USERNAME, consumer.username)
+  set_ctx("authenticated_consumer", consumer)
   if credential then
-    ngx_set_header("x-authenticated-scope", token.scope)
-    ngx_set_header("x-authenticated-userid", token.authenticated_userid)
-    ngx.ctx.authenticated_credential = credential
-    ngx_set_header(constants.HEADERS.ANONYMOUS, nil) -- in case of auth plugins concatenation
+    set_header("x-authenticated-scope", token.scope)
+    set_header("x-authenticated-userid", token.authenticated_userid)
+    set_ctx("authenticated_credential", credential)
+    clear_header(constants.HEADERS.ANONYMOUS) -- in case of auth plugins concatenation
   else
-    ngx_set_header(constants.HEADERS.ANONYMOUS, true)
+    set_header(constants.HEADERS.ANONYMOUS, true)
   end
 
 end
@@ -563,8 +588,8 @@ local function do_authentication(conf)
     return nil, {status = 401, message = {[ERROR] = "invalid_token", error_description = "The access token is invalid or has expired"}, headers = {["WWW-Authenticate"] = 'Bearer realm="service" error="invalid_token" error_description="The access token is invalid or has expired"'}}
   end
 
-  if (token.service and token.service.id and ngx.ctx.service.id ~= token.service.id)
-  or (token.api and token.api.id and ngx.ctx.api.id ~= token.api.id)
+  if (token.service and token.service.id and get_ctx("service").id ~= token.service.id)
+  or (token.api and token.api.id and get_ctx("api").id ~= token.api.id)
   or ((not token.service or not token.service.id)
       and (not token.api or not token.api.id)
       and not conf.global_credentials)
@@ -586,7 +611,7 @@ local function do_authentication(conf)
                                                load_oauth2_credential_into_memory,
                                                token.credential.id)
   if err then
-    return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+    return internal_server_error(err)
   end
 
   -- Retrieve the consumer from the credential
@@ -595,7 +620,7 @@ local function do_authentication(conf)
                                             load_consumer_into_memory,
                                             credential.consumer.id)
   if err then
-    return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+    return internal_server_error(err)
   end
 
   set_consumer(consumer, credential, token)
@@ -607,21 +632,21 @@ end
 function _M.execute(conf)
 
 
-  if ngx.ctx.authenticated_credential and conf.anonymous then
+  if get_ctx("authenticated_credential") and conf.anonymous then
     -- we're already authenticated, and we're configured for using anonymous,
     -- hence we're in a logical OR between auth methods and we're already done.
     return
   end
 
-  if ngx.req.get_method() == "POST" then
-    local uri = ngx.var.uri
+  if kong.request.get_method() == "POST" then
+    local path = kong.request.get_path()
 
-    local from = string_find(uri, "/oauth2/token", nil, true)
+    local from = string_find(path, "/oauth2/token", nil, true)
     if from then
       return issue_token(conf)
     end
 
-    from = string_find(uri, "/oauth2/authorize", nil, true)
+    from = string_find(path, "/oauth2/authorize", nil, true)
     if from then
       return authorize(conf)
     end
@@ -636,12 +661,12 @@ function _M.execute(conf)
                                                 load_consumer_into_memory,
                                                 conf.anonymous, true)
       if err then
-        return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+        return internal_server_error(err)
       end
       set_consumer(consumer, nil, nil)
 
     else
-      return responses.send(err.status, err.message, err.headers)
+      return kong.response.exit(err.status, err.message, err.headers)
     end
   end
 end
