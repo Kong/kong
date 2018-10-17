@@ -10,6 +10,10 @@ for details on installation and usage.
 
 # History
 
+0.2.0
+- Use of new db & PDK functions
+- kong version compatibility bumped to >= 0.15.0
+
 0.1.1
 
 - Fix delayed response
