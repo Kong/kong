@@ -279,11 +279,27 @@ local function new(self)
   function _REQUEST.get_path()
     check_phase(PHASES.request)
 
-    local uri = ngx.var.request_uri
+    local uri = ngx.var.request_uri or ""
     local s = find(uri, "?", 2, true)
     return s and sub(uri, 1, s - 1) or uri
   end
 
+
+  ---
+  -- When the request has a query string, returns the path + "?" + the query string.
+  -- Otherwise it returns just the path. No transformations/normalizations are done.
+  --
+  -- @function kong.request.get_raw_path_and_query()
+  -- @phases rewrite, access, header_filter, body_filter, log
+  -- @treturn string the path and querystring
+  -- @usage
+  -- -- Given a request to https://example.com:1234/v1/movies?movie=foo
+  --
+  -- kong.request.get_raw_path_and_query() -- "/v1/movies?movie=foo"
+  function _REQUEST.get_raw_path_and_query()
+    check_phase(PHASES.request)
+    return ngx.var.request_uri or ""
+  end
 
   ---
   -- Returns the query component of the request's URL. It is not normalized in
@@ -641,6 +657,18 @@ local function new(self)
     end
   end
 
+  ---
+  -- Returns the time at which the request was created
+  --
+  -- @function kong.request.get_start_time
+  -- @phases rewrite, access, header_filter, body_filter, log
+  -- @treturn number the distance in seconds from epoch, with milliseconds as the decimal part.
+  -- @usage
+  -- kong.request.get_start_time() -- 290132101.123
+  function _REQUEST.get_start_time()
+    check_phase(PHASES.request)
+    return ngx.req.start_time()
+  end
 
   return _REQUEST
 end
