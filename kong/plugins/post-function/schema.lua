@@ -1,12 +1,10 @@
-local Errors = require "kong.dao.errors"
+local typedefs = require "kong.db.schema.typedefs"
 
 
-local function check_functions(value)
-  for i, entry in ipairs(value) do
-    local _, err = loadstring(entry)
-    if err then
-      return false, Errors.schema("Error parsing post-function #" .. i .. ": " .. err)
-    end
+local function validate_function(fun)
+  local _, err = loadstring(fun)
+  if err then
+    return false, "Error parsing post-function: " .. err
   end
 
   return true
@@ -14,22 +12,18 @@ end
 
 
 return {
-  no_consumer = true,
-  api_only = true,
-
+  name = "post-function",
   fields = {
-    functions = {
-      required = true,
-      type = "array",
-    }
+    { consumer = typedefs.no_consumer },
+    { config = {
+        type = "record",
+        fields = {
+          { functions = {
+              required = true, type = "array",
+              elements = { type = "string", custom_validator = validate_function },
+          }, },
+        },
+      },
+    },
   },
-
-  self_check = function(schema, config, dao, is_updating)
-    local _, err = check_functions(config.functions)
-    if err then
-      return false, err
-    end
-
-    return true
-  end,
 }

@@ -29,63 +29,69 @@ describe("Plugin: post-function (access)", function()
   local client, admin_client
 
   setup(function()
-    helpers.dao:run_migrations()
+    local bp, db = helpers.get_db_utils()
 
-    local api1 = assert(helpers.dao.apis:insert {
-      name         = "api-1",
-      hosts        = { "api1.post-function.com" },
-      upstream_url = helpers.mock_upstream_url,
-    })
-    assert(helpers.dao.plugins:insert {
-      name   = "post-function",
-      api_id = api1.id,
-      config = {
+    assert(db:truncate())
+
+    local service = bp.services:insert {
+      name     = "service-1",
+      host     = helpers.mock_upstream_host,
+      port     = helpers.mock_upstream_port,
+    }
+
+    local route1 = bp.routes:insert {
+      service = { id = service.id },
+      hosts   = { "one.post-function.com" },
+    }
+
+    local route2 = bp.routes:insert {
+      service = { id = service.id },
+      hosts   = { "two.post-function.com" },
+    }
+
+    local route3 = bp.routes:insert {
+      service = { id = service.id },
+      hosts   = { "three.post-function.com" },
+    }
+
+    local route4 = bp.routes:insert {
+      service = { id = service.id },
+      hosts   = { "four.post-function.com" },
+    }
+
+    bp.plugins:insert {
+      name    = "post-function",
+      route   = { id = route1.id },
+      config  = {
         functions = { mock_fn_one }
       },
-    })
+    }
 
-    local api2 = assert(helpers.dao.apis:insert {
-      name         = "api-2",
-      hosts        = { "api2.post-function.com" },
-      upstream_url = helpers.mock_upstream_url,
-    })
-    assert(helpers.dao.plugins:insert {
-      name   = "post-function",
-        api_id = api2.id,
-        config = {
-          functions = { mock_fn_two }
-        },
-    })
+    bp.plugins:insert {
+      name    = "post-function",
+      route   = { id = route2.id },
+      config  = {
+        functions = { mock_fn_two }
+      },
+    }
 
-    local api3 = assert(helpers.dao.apis:insert {
-      name         = "api-3",
-      hosts        = { "api3.post-function.com" },
-      upstream_url = helpers.mock_upstream_url,
-    })
-    assert(helpers.dao.plugins:insert {
-      name   = "post-function",
-        api_id = api3.id,
-        config = {
-          functions = { mock_fn_three }
-        },
-    })
+    bp.plugins:insert {
+      name    = "post-function",
+      route   = { id = route3.id },
+      config  = {
+        functions = { mock_fn_three }
+      },
+    }
 
-    local api4 = assert(helpers.dao.apis:insert {
-      name         = "api-4",
-      hosts        = { "api4.post-function.com" },
-      upstream_url = helpers.mock_upstream_url,
-    })
-    assert(helpers.dao.plugins:insert {
-      name   = "post-function",
-      api_id = api4.id,
-      config = {
+    bp.plugins:insert {
+      name    = "post-function",
+      route   = { id = route4.id },
+      config  = {
         functions = { mock_fn_four, mock_fn_five }
       },
-    })
-
+    }
 
     assert(helpers.start_kong({
-      custom_plugins = "post-function",
       nginx_conf = "spec/fixtures/custom_nginx.template",
     }))
 
@@ -107,7 +113,7 @@ describe("Plugin: post-function (access)", function()
         method = "GET",
         path = "/status/200",
         headers = {
-          ["Host"] = "api1.post-function.com"
+          ["Host"] = "one.post-function.com"
         }
       })
 
@@ -119,7 +125,7 @@ describe("Plugin: post-function (access)", function()
         method = "GET",
         path = "/status/200",
         headers = {
-          ["Host"] = "api2.post-function.com"
+          ["Host"] = "two.post-function.com"
         }
       })
       local body = assert.res_status(404, res)
@@ -131,7 +137,7 @@ describe("Plugin: post-function (access)", function()
         method = "GET",
         path = "/status/200",
         headers = {
-          ["Host"] = "api3.post-function.com"
+          ["Host"] = "three.post-function.com"
         }
       })
       local body = assert.res_status(406, res)
@@ -144,7 +150,7 @@ describe("Plugin: post-function (access)", function()
         method = "GET",
         path = "/status/200",
         headers = {
-          ["Host"] = "api4.post-function.com"
+          ["Host"] = "four.post-function.com"
         }
       })
       local body = assert.res_status(400, res)
