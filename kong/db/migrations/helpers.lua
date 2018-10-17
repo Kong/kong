@@ -186,7 +186,11 @@ function _M:copy_cassandra_records(source_table_def,
                             dest_column_name, source_table_def[dest_column_name])
           end
 
-          source_value = type_converter(source_value)
+          if source_value == nil then
+            source_value = cassandra.unset
+          else
+            source_value = type_converter(source_value)
+          end
 
         elseif type(source_value) == "function" then
           source_value = source_value(source_row)
