@@ -259,6 +259,12 @@ dao_helpers.for_each_dao(function(kong_conf)
 
       local now = ngx.time()
 
+      -- make sure that now and now-1 are in the same minute,
+      -- or else minutes tests below may fail (they get two rows instead of one)
+      if now % 60 == 0 then
+        now = now - 1
+      end
+
       local minute = now - now % 60
 
       local node_1_data = {

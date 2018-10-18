@@ -29,6 +29,7 @@ for _, strategy in helpers.each_strategy() do
       assert(bp.consumers:insert {
         username = "admin-1",
         custom_id = "admin-1",
+        email = "admin-1@test.com",
         type = enums.CONSUMERS.TYPE.ADMIN
       })
 
@@ -53,10 +54,16 @@ for _, strategy in helpers.each_strategy() do
           type = enums.CONSUMERS.TYPE.PROXY
         })
       end
+
+      assert(dao.rbac_users:insert({
+        name = "user-test-test",
+        user_token = utils.uuid(),
+        enabled = true,
+      }))
     end)
 
     teardown(function()
-      helpers.stop_kong(nil, true)
+      helpers.stop_kong()
     end)
 
     before_each(function()
@@ -87,8 +94,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       describe("POST", function ()
-
-        it("/POST admins", function()
+        it("creates an admin", function()
           local res = assert(client:send {
             method = "POST",
             path  = "/admins",
@@ -115,23 +121,21 @@ for _, strategy in helpers.each_strategy() do
           assert.equal("user-dale-cooper", json.rbac_user.name)
         end)
 
-        it([["/POST cannot create rbac user if consumer username or password
-            exists"]], function()
+        it("uses the admins_helpers validator", function()
           local res = assert(client:send {
             method = "POST",
-            path  = "/admins",
+            path  = "/" .. another_ws.name .. "/admins",
             headers = {
               ["Kong-Admin-Token"] = "letmein",
               ["Content-Type"]     = "application/json",
             },
             body  = {
-              custom_id = "cooper",
-              username  = "dale",
+              custom_id = "admin-1",
+              username  = "i-am-unique",
             },
           })
           assert.res_status(409, res)
         end)
-
       end)
     end)
 

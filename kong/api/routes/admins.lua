@@ -4,6 +4,13 @@ local utils      = require "kong.tools.utils"
 local ee_crud    = require "kong.enterprise_edition.crud_helpers"
 local rbac       = require "kong.rbac"
 local workspaces = require "kong.workspaces"
+local admins     = require "kong.enterprise_edition.admins_helpers"
+
+local log = ngx.log
+local ERR = ngx.ERR
+local DEBUG = ngx.DEBUG
+
+local _log_prefix = "[admins] "
 
 local entity_relationships = rbac.entity_relationships
 
@@ -17,17 +24,16 @@ local function set_rbac_user(self, dao_factory, helpers)
     helpers.yield_error(err)
   end
 
-  local consumer_user = maps[1]
+  local map = maps[1]
 
-  if not consumer_user then
-    ngx.log(ngx.ERR, "No RBAC user relation found for admin consumer "
-                      .. self.consumer.id)
+  if not map then
+    log(ERR, _log_prefix, "No rbac mapping found for consumer ", self.consumer.id)
     helpers.responses.send_HTTP_INTERNAL_SERVER_ERROR()
   end
 
   -- Find the rbac_user associated with the consumer
   local users, err = dao_factory.rbac_users:find_all({
-    id = consumer_user.user_id
+    id = map.user_id
   })
 
   if err then
@@ -38,9 +44,8 @@ local function set_rbac_user(self, dao_factory, helpers)
   local rbac_user = users[1]
 
   if not rbac_user then
-    ngx.log(ngx.ERR, "No RBAC user relation found for admin consumer "
-                      .. consumer_user.consumer_id .. " and rbac user "
-                      .. consumer_user.user_id)
+    log(ERR, _log_prefix, "No RBAC user found for consumer ", map.consumer_id,
+        " and rbac user ", map.user_id)
     helpers.responses.send_HTTP_INTERNAL_SERVER_ERROR()
   end
 
@@ -88,11 +93,22 @@ return {
     end,
 
     POST = function(self, dao_factory, helpers)
-      local responses = helpers.responses
+      local _, msg, err = admins.validate(self.params, dao_factory, "POST")
+
+      if err then
+        log(ERR, _log_prefix, "failed to validate params: ", err)
+        return helpers.responses.send_HTTP_INTERNAL_SERVER_ERROR()
+      end
+
+      if msg then
+        log(ERR, _log_prefix, "failed to create admin: ", msg)
+        return helpers.responses.send_HTTP_CONFLICT()
+      end
 
       crud.post({
         username  = self.params.username,
         custom_id = self.params.custom_id,
+        email     = self.params.email,
         type      = self.params.type,
         status    = enums.CONSUMERS.STATUS.APPROVED,
       }, dao_factory.consumers, function(consumer)
@@ -117,21 +133,20 @@ return {
             user_id = rbac_user.id,
           }, dao_factory.consumers_rbac_users_map,
           function()
-            return responses.send_HTTP_OK({
+            return helpers.responses.send_HTTP_OK({
               rbac_user = rbac_user,
               consumer = consumer
             })
           end)
 
-          return responses.send_HTTP_INTERNAL_SERVER_ERROR(
-            "Error mapping rbac user ".. rbac_user.id
-                                      .. " to consumer " .. consumer.id)
+          return helpers.responses.send_HTTP_INTERNAL_SERVER_ERROR(
+            "Error creating admin (1)")
         end)
 
-        return responses.send_HTTP_CREATED({ consumer = consumer })
+        return helpers.responses.send_HTTP_CREATED({ consumer = consumer })
       end)
 
-      return responses.send_HTTP_INTERNAL_SERVER_ERROR("Error creating admin")
+      return helpers.responses.send_HTTP_INTERNAL_SERVER_ERROR("Error creating admin (2)")
     end,
   },
 
@@ -151,7 +166,19 @@ return {
       return helpers.responses.send_HTTP_OK(self.consumer)
     end,
 
-    PATCH = function(self, dao_factory)
+    PATCH = function(self, dao_factory, helpers)
+      local _, msg, err = admins.validate(self.params, dao_factory, "PATCH")
+
+      if err then
+        log(ERR, _log_prefix, "failed to validate params: ", err)
+        return helpers.responses.send_HTTP_INTERNAL_SERVER_ERROR()
+      end
+
+      if msg then
+        log(ERR, _log_prefix, "failed to update admin: ", msg)
+        return helpers.responses.send_HTTP_CONFLICT()
+      end
+
       crud.patch(self.params, dao_factory.consumers, self.consumer)
     end,
 
@@ -180,8 +207,8 @@ return {
       })
 
       if err then
-        ngx.log(ngx.ERR, "[admins] error fetching workspace for entity: " ..
-                self.consumer_rbac_user_map.user_id .. " : ", err)
+        log(ERR, _log_prefix, "error fetching workspace for rbac user: ",
+            self.consumer_rbac_user_map.user_id, ": ", err)
       end
 
       local wrkspaces = {}
@@ -190,7 +217,7 @@ return {
           id = workspace.workspace_id
         })
         if err then
-          ngx.log(ngx.ERR, "[admins] error fetching workspace: ", err)
+          log(ERR, _log_prefix, "error fetching workspace: ", err)
           return helpers.responses.send_HTTP_INTERNAL_SERVER_ERROR()
         end
 
@@ -205,18 +232,18 @@ return {
             ngx.ctx.workspaces = {}
 
             if err then
-              ngx.log(ngx.ERR, "[admins] error fetching consumer in workspace:" ..
-                      ws.workspace_name .. " :", err)
+              log(ERR, _log_prefix, "error fetching consumer in workspace: ",
+                  ws.workspace_name, ": ", err)
             end
 
             if not consumer then
-              ngx.log(ngx.DEBUG, "[admins] no consumer found in workspace:" ..
-                                                      ws.workspace_name)
+              log(DEBUG, _log_prefix, "no consumer found in workspace: ",
+                  ws.workspace_name)
               helpers.responses.send_HTTP_NOT_FOUND()
             end
 
             if consumer.type ~= enums.CONSUMERS.TYPE.ADMIN then
-              ngx.log(ngx.DEBUG, "[admins] consumer is not of type admin")
+              log(DEBUG, _log_prefix, "consumer is not of type admin")
               helpers.responses.send_HTTP_NOT_FOUND()
             end
           end

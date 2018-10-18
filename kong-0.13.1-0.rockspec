@@ -77,6 +77,7 @@ build = {
     ["kong.enterprise_edition.dao.schemas.token_statuses"] = "kong/enterprise_edition/dao/schemas/token_statuses.lua",
     ["kong.enterprise_edition.license_helpers"] = "kong/enterprise_edition/license_helpers.lua",
     ["kong.enterprise_edition.audit_log"] = "kong/enterprise_edition/audit_log.lua",
+    ["kong.enterprise_edition.admins_helpers"] = "kong/enterprise_edition/admins_helpers.lua",
     ["kong.enterprise_edition.dao.schemas.workspace_entity_counters"] = "kong/enterprise_edition/dao/schemas/workspace_entity_counters.lua",
     ["kong.enterprise_edition.oas_config"] = "kong/enterprise_edition/oas_config.lua",
 
