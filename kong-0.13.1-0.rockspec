@@ -35,6 +35,7 @@ dependencies = {
   "lua-resty-healthcheck == 0.4.2",
   "lua-resty-mlcache == 2.0.2",
   "lua-resty-rsa == 0.04",
+  "lyaml == 6.2.3",
   -- external Kong plugins
   "kong-plugin-azure-functions == 0.1.0",
   "kong-plugin-zipkin == 0.0.4",
@@ -77,6 +78,7 @@ build = {
     ["kong.enterprise_edition.license_helpers"] = "kong/enterprise_edition/license_helpers.lua",
     ["kong.enterprise_edition.audit_log"] = "kong/enterprise_edition/audit_log.lua",
     ["kong.enterprise_edition.dao.schemas.workspace_entity_counters"] = "kong/enterprise_edition/dao/schemas/workspace_entity_counters.lua",
+    ["kong.enterprise_edition.oas_config"] = "kong/enterprise_edition/oas_config.lua",
 
     ["kong.templates.nginx"] = "kong/templates/nginx.lua",
     ["kong.templates.nginx_kong"] = "kong/templates/nginx_kong.lua",
@@ -122,6 +124,7 @@ build = {
     ["kong.api.routes.portal"] = "kong/api/routes/portal.lua",
     ["kong.api.routes.admins"] = "kong/api/routes/admins.lua",
     ["kong.api.routes.audit"] = "kong/api/routes/audit.lua",
+    ["kong.api.routes.oas_config"] = "kong/api/routes/oas_config.lua",
 
     ["kong.tools.ip"] = "kong/tools/ip.lua",
     ["kong.tools.ciphers"] = "kong/tools/ciphers.lua",
