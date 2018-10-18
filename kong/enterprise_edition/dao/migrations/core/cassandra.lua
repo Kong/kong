@@ -1,6 +1,9 @@
 local rbac_migrations_defaults = require "kong.rbac.migrations.01_defaults"
 local rbac_migrations_user_default_role = require "kong.rbac.migrations.03_user_default_role"
 local rbac_migrations_default_role_flag = require "kong.rbac.migrations.04_user_default_role_flag"
+local utils = require "kong.tools.utils"
+local timestamp = require "kong.tools.timestamp"
+local portal_files = require "kong.portal.migrations.01_initial_files"
 
 
 return {
@@ -309,18 +312,37 @@ return {
   {
     name = "2018-04-25-000001_portal_initial_files",
     up = function(_, _, dao)
-      local utils = require "kong.tools.utils"
-      local files = require "kong.portal.migrations.01_initial_files"
+      local cassandra = dao.db.cassandra
+
+      local coordinator, err = dao.db:get_coordinator()
+      if not coordinator then
+        return nil, err
+      end
+
+      local CASSANDRA_EXECUTE_OPTS = {
+        consistency = cassandra.consistencies.all,
+      }
+
+      local INSERT_FILE = [[
+        INSERT INTO portal_files (id, auth, name, type, contents, created_at)
+        VALUES(?, ?, ?, ?, ?, ?)
+        IF NOT EXISTS
+      ]]
 
       -- Iterate over file list and insert files that do not exist
-      for _, file in ipairs(files) do
-        dao.portal_files:insert({
-          id = utils.uuid(),
-          auth = file.auth,
-          name = file.name,
-          type = file.type,
-          contents = file.contents
-        })
+      for _, file in ipairs(portal_files) do
+       local _, err = coordinator:execute(INSERT_FILE, {
+          cassandra.uuid(utils.uuid()),
+          cassandra.boolean(file.auth),
+          file.name,
+          file.type,
+          file.contents,
+          cassandra.timestamp(math.floor(timestamp.get_utc_ms()))
+        }, CASSANDRA_EXECUTE_OPTS)
+
+        if err then
+          return nil, err
+        end
       end
     end,
   },

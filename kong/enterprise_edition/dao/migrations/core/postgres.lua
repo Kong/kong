@@ -1,6 +1,10 @@
 local rbac_migrations_defaults = require "kong.rbac.migrations.01_defaults"
 local rbac_migrations_user_default_role = require "kong.rbac.migrations.03_user_default_role"
 local rbac_migrations_default_role_flag = require "kong.rbac.migrations.04_user_default_role_flag"
+local files = require "kong.portal.migrations.01_initial_files"
+local fmt = string.format
+local utils = require "kong.tools.utils"
+local pgmoon = require "pgmoon"
 
 
 return {
@@ -404,18 +408,27 @@ return {
   {
     name = "2018-04-25-000001_portal_initial_files",
     up = function(_, _, dao)
-      local utils = require "kong.tools.utils"
-      local files = require "kong.portal.migrations.01_initial_files"
+
+      local INSERT_FILE = [[
+        INSERT INTO portal_files(id, auth, name, type, contents)
+        VALUES(%s, %s, %s, %s, %s)
+        ON CONFLICT DO NOTHING
+      ]]
 
       -- Iterate over file list and insert files that do not exist
       for _, file in ipairs(files) do
-        dao.portal_files:insert({
-          id = utils.uuid(),
-          auth = file.auth,
-          name = file.name,
-          type = file.type,
-          contents = file.contents
-        })
+        local id       = pgmoon.Postgres.escape_literal(nil, utils.uuid())
+        local auth     = pgmoon.Postgres.escape_literal(nil, file.auth)
+        local name     = pgmoon.Postgres.escape_literal(nil, file.name)
+        local type     = pgmoon.Postgres.escape_literal(nil, file.type)
+        local contents = pgmoon.Postgres.escape_literal(nil, file.contents)
+
+        local q = fmt(INSERT_FILE, id, auth, name, type, contents)
+
+        local _, err = dao.db:query(q)
+        if err then
+          return nil, err
+        end
       end
     end,
   },
