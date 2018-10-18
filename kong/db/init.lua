@@ -29,6 +29,7 @@ local CORE_ENTITIES = {
   "targets",
   "apis",
   "plugins",
+  "ca",
 }
 
 

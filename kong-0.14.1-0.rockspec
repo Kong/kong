@@ -106,6 +106,7 @@ build = {
     ["kong.api.routes.certificates"] = "kong/api/routes/certificates.lua",
     ["kong.api.routes.snis"] = "kong/api/routes/snis.lua",
 
+    ["kong.tools.ca"] = "kong/tools/ca.lua",
     ["kong.tools.ip"] = "kong/tools/ip.lua",
     ["kong.tools.ciphers"] = "kong/tools/ciphers.lua",
     ["kong.tools.dns"] = "kong/tools/dns.lua",
@@ -117,6 +118,7 @@ build = {
 
     ["kong.runloop.handler"] = "kong/runloop/handler.lua",
     ["kong.runloop.certificate"] = "kong/runloop/certificate.lua",
+    ["kong.runloop.mesh"] = "kong/runloop/mesh.lua",
     ["kong.runloop.plugins_iterator"] = "kong/runloop/plugins_iterator.lua",
     ["kong.runloop.balancer"] = "kong/runloop/balancer.lua",
 
@@ -143,6 +145,7 @@ build = {
     ["kong.db.dao.plugins"] = "kong/db/dao/plugins.lua",
     ["kong.db.schema"] = "kong/db/schema/init.lua",
     ["kong.db.schema.entities.apis"] = "kong/db/schema/entities/apis.lua",
+    ["kong.db.schema.entities.ca"] = "kong/db/schema/entities/ca.lua",
     ["kong.db.schema.entities.consumers"] = "kong/db/schema/entities/consumers.lua",
     ["kong.db.schema.entities.routes"] = "kong/db/schema/entities/routes.lua",
     ["kong.db.schema.entities.services"] = "kong/db/schema/entities/services.lua",

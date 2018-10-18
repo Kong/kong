@@ -64,6 +64,7 @@ local dns = require "kong.tools.dns"
 local utils = require "kong.tools.utils"
 local lapis = require "lapis"
 local runloop = require "kong.runloop.handler"
+local mesh = require "kong.runloop.mesh"
 local responses = require "kong.tools.responses"
 local semaphore = require "ngx.semaphore"
 local singletons = require "kong.singletons"
@@ -302,6 +303,8 @@ function Kong.init()
   kong.dao = dao
   kong.db = db
   kong.dns = singletons.dns
+
+  mesh.init()
 
   -- Load plugins as late as possible so that everything is set up
   loaded_plugins = assert(db.plugins:load_plugin_schemas(config.loaded_plugins))
