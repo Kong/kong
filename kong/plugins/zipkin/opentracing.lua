@@ -25,9 +25,9 @@ end
 function OpenTracingHandler:get_tracer(conf)
 	local tracer = self.conf_to_tracer[conf]
 	if tracer == nil then
-		assert(self.new_tracer, "derived class must implement :new_tracer()")
+		assert(self.new_tracer, "derived class must implement .new_tracer()")
 		tracer = self.new_tracer(conf)
-		assert(type(tracer) == "table", ":new_tracer() must return an opentracing tracer object")
+		assert(type(tracer) == "table", ".new_tracer() must return an opentracing tracer object")
 		self.conf_to_tracer[conf] = tracer
 	end
 	return tracer
