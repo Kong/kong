@@ -1,6 +1,6 @@
 #!/bin/bash
 
-if [ "$TRAVIS_BRANCH"  != "master" ]; then
+if ! [[ "$TRAVIS_BRANCH" == "master" || "$TRAVIS_BRANCH" == "next" ]] ; then
   exit 0
 fi
 
