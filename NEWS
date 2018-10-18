@@ -1,3 +1,9 @@
+0.0.6 - 2018-10-18
+
+  - Fix failures when request is invalid or exits early
+  - Note that this will be the last release that supports Kong 0.14.
+
+
 0.0.5 - 2018-09-16
 
   - Fix possible bug when service name is missing
