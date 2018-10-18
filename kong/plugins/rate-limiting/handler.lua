@@ -35,7 +35,7 @@ local function get_identifier(conf)
     if not identifier and conf.key_in_body then
       local body, err = kong.request.get_body()
       if err then
-        ngx_log(ngx.ERR, "cannot process request body: ", tostring(err))
+        kong.log.err("cannot process request body: ", tostring(err))
       else
         identifier = body[conf.key_name]
       end

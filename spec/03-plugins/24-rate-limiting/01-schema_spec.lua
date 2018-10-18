@@ -16,9 +16,9 @@ describe("Plugin: rate-limiting (schema)", function()
     assert.is_nil(err)
   end)
   it("proper config validates (limit by key)", function()
-    local config = {second = 10, limit_by = "key", key_name = "token"}
-    local ok, _, err = validate_entity(config, plugin_schema)
-    assert.True(ok)
+    local config = { second = 10, limit_by = "key" }
+    local ok, _, err = v(config, schema_def)
+    assert.truthy(ok)
     assert.is_nil(err)
   end)
 
@@ -35,6 +35,7 @@ describe("Plugin: rate-limiting (schema)", function()
       assert.falsy(ok)
       assert.equal("The limit for year(50.0) cannot be lower than the limit for month(60.0)", err.config)
     end)
+
     it("invalid limit", function()
       local config = {}
       local ok, err = v(config, schema_def)
@@ -44,9 +45,9 @@ describe("Plugin: rate-limiting (schema)", function()
     end)
     it("invalid key_name", function()
       local config = {second = 10, limit_by = "key"}
-      local ok, _, err = validate_entity(config, plugin_schema)
-      assert.False(ok)
-      assert.equal("You need to specify a key name", err.message)
+      local ok, _, err = v(config, schema_def)
+      assert.falsy(ok)
+      assert.equal("required field missing", err.config.key_name)
     end)
   end)
 end)

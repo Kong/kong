@@ -209,7 +209,7 @@ for _, strategy in helpers.each_strategy() do
         }
 
         bp.rate_limiting_plugins:insert({
-          route_id = route6.id,
+          route = { id = route6.id },
           config = {
             limit_by            = "key",
             key_name            = "token",
