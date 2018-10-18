@@ -36,7 +36,7 @@ dependencies = {
   "lua-resty-cookie == 0.1.0",
   "lua-resty-mlcache == 2.2.0",
   -- external Kong plugins
-  "kong-plugin-azure-functions ~> 0.1",
+  "kong-plugin-azure-functions ~> 0.2",
   "kong-plugin-zipkin ~> 0.0",
   "kong-plugin-serverless-functions ~> 0.1",
   "kong-prometheus-plugin ~> 0.3",
