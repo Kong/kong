@@ -151,28 +151,25 @@ return {
     teardown = function(connector, helpers)
       assert(connector:connect_migrations())
 
-      for rows, err in connector:iterate('SELECT * FROM "plugins";') do
+      for row, err in connector:iterate('SELECT * FROM "plugins";') do
         if err then
           return nil, err
         end
 
-        for i = 1, #rows do
-          local row = rows[i]
-          local cache_key = table.concat({
-            "plugins",
-            row.name,
-            row.route_id or "",
-            row.service_id or "",
-            row.consumer_id or "",
-            row.api_id or ""
-          }, ":")
+        local cache_key = table.concat({
+          "plugins",
+          row.name,
+          row.route_id    == ngx.null and "" or row.route_id,
+          row.service_id  == ngx.null and "" or row.service_id,
+          row.consumer_id == ngx.null and "" or row.consumer_id,
+          row.api_id      == ngx.null and "" or row.api_id,
+        }, ":")
 
-          local sql = string.format([[
-            UPDATE "plugins" SET "cache_key" = '%s' WHERE "id" = '%s';
-          ]], cache_key, row.id)
+        local sql = string.format([[
+          UPDATE "plugins" SET "cache_key" = '%s' WHERE "id" = '%s';
+        ]], cache_key, row.id)
 
-          assert(connector:query(sql))
-        end
+        assert(connector:query(sql))
       end
 
       assert(connector:query('DROP TABLE IF EXISTS "schema_migrations" CASCADE;'))
