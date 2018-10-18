@@ -52,8 +52,8 @@ function OpenTracingHandler:initialise_request(conf, ctx)
 	local path_with_query = req.get_path_with_query()
 	if path_with_query ~= "" then
 		method = req.get_method()
-	  url = req.get_scheme() .. "://" .. req.get_host() .. ":"
-	        .. req.get_port() .. path_with_query
+		url = req.get_scheme() .. "://" .. req.get_host() .. ":"
+			.. req.get_port() .. path_with_query
 	end
 	local forwarded_ip = kong.client.get_forwarded_ip()
 	local request_span = tracer:start_span("kong.request", {
