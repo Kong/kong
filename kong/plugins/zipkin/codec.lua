@@ -84,7 +84,7 @@ local function new_injector()
 		headers["x-b3-traceid"] = to_hex(span_context.trace_id)
 		headers["x-b3-parentspanid"] = span_context.parent_id and to_hex(span_context.parent_id) or nil
 		headers["x-b3-spanid"] = to_hex(span_context.span_id)
-		local Flags = ngx.req.get_headers()["x-b3-flags"] -- Get from request headers
+		local Flags = kong.request.get_header("x-b3-flags") -- Get from request headers
 		headers["x-b3-flags"] = Flags
 		headers["x-b3-sampled"] = (not Flags) and (span_context.should_sample and "1" or "0") or nil
 		for key, value in span_context:each_baggage_item() do
