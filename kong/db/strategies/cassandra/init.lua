@@ -46,6 +46,7 @@ local cache_key_field = { type = "string" }
 local _M  = {
   CUSTOM_STRATEGIES = {
     services = require("kong.db.strategies.cassandra.services"),
+    plugins = require("kong.db.strategies.cassandra.plugins"),
   }
 }
 

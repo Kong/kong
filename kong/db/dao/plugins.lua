@@ -309,4 +309,21 @@ function Plugins:load_plugin_schemas(plugin_set)
 end
 
 
+function Plugins:select_by_cache_key(key)
+  -- try new format
+  local entity, new_err = self.super.select_by_cache_key(self, key)
+  if entity then
+    return entity
+  end
+
+  -- try old format
+  local row, old_err = self.strategy:select_by_cache_key_migrating(key)
+  if row then
+    return self:row_to_entity(row)
+  end
+
+  return nil, (new_err and old_err) and new_err or old_err
+end
+
+
 return Plugins
