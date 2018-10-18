@@ -1,3 +1,9 @@
+0.1.0 - 2018-10-18
+
+  - Start using the new DB & PDK modules (compatibility with Kong >= 0.15.0)
+  - New schema format
+
+
 0.0.6 - 2018-10-18
 
   - Fix failures when request is invalid or exits early
