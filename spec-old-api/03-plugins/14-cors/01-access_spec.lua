@@ -321,11 +321,11 @@ describe("Plugin: cors (access)", function()
         method = "GET",
         headers = {
           ["Host"] = "cors6.com",
-          ["Origin"] = "http://www.example.com"
+          ["Origin"] = "example.com"
         }
       })
       assert.res_status(200, res)
-      assert.equal("http://www.example.com", res.headers["Access-Control-Allow-Origin"])
+      assert.equal("example.com", res.headers["Access-Control-Allow-Origin"])
 
       local domains = {
         ["example.com"] = true,
@@ -354,7 +354,7 @@ describe("Plugin: cors (access)", function()
         method = "GET",
         headers = {
           ["Host"] = "cors6.com",
-          ["Origin"] = "http://www.example.net"
+          ["Origin"] = "example.net"
         }
       })
       assert.res_status(200, res)
