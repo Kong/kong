@@ -772,4 +772,10 @@ return {
       DROP TABLE workspace_entity_counters;
   ]]
   },
+  {
+    name = "2018-10-17-160000_nested_workspaces_cleanup",
+    up = [[
+      DELETE FROM workspace_entities WHERE entity_type = 'workspaces'
+    ]]
+  },
 }

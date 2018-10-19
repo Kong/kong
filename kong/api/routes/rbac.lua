@@ -5,9 +5,9 @@ local bit       = require "bit"
 local cjson     = require "cjson"
 local responses = require "kong.tools.responses"
 local new_tab   = require "table.new"
-local workspaces = require "kong.workspaces"
 local singletons = require "kong.singletons"
 local tablex     = require "pl.tablex"
+local api_helpers = require "kong.enterprise_edition.api_helpers"
 
 
 local band  = bit.band
@@ -408,7 +408,9 @@ return {
       local entity_type = "wildcard"
       if self.params.entity_id ~= "*" then
         local _, err
-        entity_type, _, err = workspaces.resolve_entity_type(self.params.entity_id)
+        entity_type, _, err = api_helpers.resolve_entity_type(singletons.db,
+                                                              singletons.dao,
+                                                              self.params.entity_id)
         -- database error
         if entity_type == nil then
           return helpers.responses.send_HTTP_INTERNAL_SERVER_ERROR(err)

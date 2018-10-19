@@ -4,6 +4,7 @@ local rbac_migrations_default_role_flag = require "kong.rbac.migrations.04_user_
 local utils = require "kong.tools.utils"
 local timestamp = require "kong.tools.timestamp"
 local portal_files = require "kong.portal.migrations.01_initial_files"
+local cassandra = require "cassandra"
 
 
 return {
@@ -588,5 +589,35 @@ return {
     down = [[
       DROP TABLE workspace_entity_counters;
   ]]
+  },
+  {
+    name = "2018-10-17-160000_nested_workspaces_cleanup",
+    up = function(_, _, dao)
+      local coordinator = dao.db:get_coordinator()
+
+      local workspace_ids = {}
+      local entity_ids = {}
+
+      for rows, err in coordinator:iterate([[
+            SELECT * FROM workspace_entities WHERE entity_type = 'workspaces'
+          ]]) do
+        if err then
+          return nil, nil, err
+        end
+
+        for _, row in ipairs(rows) do
+          workspace_ids[#workspace_ids + 1] = cassandra.uuid(row.workspace_id)
+          entity_ids[#entity_ids + 1] = row.entity_id
+        end
+      end
+
+      local _, errmsg = coordinator:execute([[
+        DELETE FROM workspace_entities WHERE workspace_id IN ? AND
+          entity_id IN ?
+      ]], {workspace_ids, entity_ids})
+      if errmsg then
+        return nil, nil, errmsg
+      end
+    end,
   },
 }

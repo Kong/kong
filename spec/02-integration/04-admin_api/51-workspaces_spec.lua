@@ -294,7 +294,7 @@ describe("(#" .. kong_config.database .. ") Admin API workspaces", function()
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
         -- default, foo, blah
-        assert.equals(6, #json.data)
+        assert.equals(2, #json.data)
       end)
       it("returns a list of entities associated with the workspace", function()
         local res = assert(client:send {
@@ -350,10 +350,9 @@ describe("(#" .. kong_config.database .. ") Admin API workspaces", function()
           -- XXX if instead of inserting at the dao level we insert via the API,
           -- one test case will fail - ('{"message":"No workspace by name or id bar"}');
           -- investigate the root cause
-          local workspace = assert(dao.workspaces:insert {
+          assert(dao.workspaces:insert {
               name = "bar",
           })
-          entities.workspaces = workspace
         end)
 
         it("with many entity types", function()
@@ -416,7 +415,8 @@ describe("(#" .. kong_config.database .. ") Admin API workspaces", function()
           assert.equals("'nop' is not a valid UUID", json.message)
         end)
 
-        it("on circular reference", function()
+        -- XXX nested workspaces disabled
+        pending("on circular reference", function()
           local bar_id = dao.workspaces:find_all({
             name = "bar",
           })[1].id
@@ -956,7 +956,6 @@ dao_helpers.for_each_dao(function(kong_config)
 
       res = get("/workspaces/default/meta")
       assert.equal(1, res.counts.consumers)
-      assert.equal(1, res.counts.workspaces)
 
       -- share c1 with ws1
       post("/workspaces/ws1/entities", {entities = c1.id})
@@ -984,10 +983,7 @@ dao_helpers.for_each_dao(function(kong_config)
 
       -- delete ws1
       delete("/workspaces/ws1")
-      res = get("/workspaces/default/meta")
-
-      -- workspaces are counted correctly
-      assert.equal(0, res.counts.workspaces)
+      get("/workspaces/default/meta")
 
       -- ws1 doesn't exist anymore
       get("/workspaces/ws1/meta", nil, 404)
