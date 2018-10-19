@@ -549,7 +549,7 @@ function _mt:insert(entity)
 
   -- check for linearizable consistency (Paxos)
 
-  if res[APPLIED_COLUMN] == false then
+  if res[1][APPLIED_COLUMN] == false then
     -- lightweight transaction (IF NOT EXISTS) failed,
     -- retrieve PK values for the PK violation error
     local pk_values = extract_pk_values(schema, entity)

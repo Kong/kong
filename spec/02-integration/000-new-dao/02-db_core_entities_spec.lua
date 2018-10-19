@@ -916,6 +916,35 @@ for _, strategy in helpers.each_strategy() do
           assert.not_equal(0, service.updated_at)
         end)
 
+        it("cannot create a Service with an existing id", function()
+          -- insert 1
+          local _, _, err_t = db.services:insert {
+            id = a_blank_uuid,
+            name = "my_service",
+            protocol = "http",
+            host = "example.com",
+          }
+          assert.is_nil(err_t)
+
+          -- insert 2
+          local service, _, err_t = db.services:insert {
+            id = a_blank_uuid,
+            name = "my_other_service",
+            protocol = "http",
+            host = "other-example.com",
+          }
+          assert.is_nil(service)
+          assert.same({
+            code     = Errors.codes.PRIMARY_KEY_VIOLATION,
+            name     = "primary key violation",
+            message  = "primary key violation on key '{id=\"" .. a_blank_uuid .. "\"}'",
+            strategy = strategy,
+            fields   = {
+              id = a_blank_uuid,
+            }
+          }, err_t)
+        end)
+
         it("cannot create a Service with an existing name", function()
           -- insert 1
           local _, _, err_t = db.services:insert {
