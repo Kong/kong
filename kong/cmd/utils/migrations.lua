@@ -70,8 +70,7 @@ end
 
 local function up(schema_state, db, opts)
   if schema_state.needs_bootstrap then
-    error("can't run migrations: database needs bootstrapping; " ..
-          "run 'kong migrations bootstrap'")
+    assert(db:schema_bootstrap())
   end
 
   local ok, err = db:cluster_mutex(MIGRATIONS_MUTEX_KEY, opts, function()
