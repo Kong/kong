@@ -1,6 +1,36 @@
 local kong         = kong
 local setmetatable = setmetatable
 
+-- 0.14.x-compatible way of loading_plugin_into_memory
+local function load_plugin_into_memory_using_dao(route_id,
+                                                 service_id,
+                                                 consumer_id,
+                                                 plugin_name,
+                                                 api_id)
+  local rows, err = kong.dao.plugins:find_all {
+             name = plugin_name,
+         route_id = route_id,
+       service_id = service_id,
+      consumer_id = consumer_id,
+           api_id = api_id,
+  }
+
+  if err then
+    return nil, tostring(err)
+  end
+
+  if #rows > 0 then
+    for _, row in ipairs(rows) do
+      if    route_id == row.route_id    and
+          service_id == row.service_id  and
+         consumer_id == row.consumer_id and
+              api_id == row.api_id      then
+        return row
+      end
+    end
+  end
+end
+
 
 -- Loads a plugin config from the datastore.
 -- @return plugin config table or an empty sentinel table in case of a db-miss
@@ -29,6 +59,42 @@ local function load_plugin_configuration(ctx,
                                          consumer_id,
                                          plugin_name,
                                          api_id)
+
+  -- 0.14.x way of using plugins. Remove when no longer needed
+  if kong.dao and kong.dao.plugins then
+    local plugin_cache_key = kong.dao.plugins:cache_key(plugin_name,
+                                                        route_id,
+                                                        service_id,
+                                                        consumer_id,
+                                                        api_id)
+
+    local plugin, err = kong.cache:get(plugin_cache_key,
+                                       nil,
+                                       load_plugin_into_memory_using_dao,
+                                       route_id,
+                                       service_id,
+                                       consumer_id,
+                                       plugin_name,
+                                       api_id)
+    if err then
+      ctx.delay_response = false
+      kong.log.err(err)
+      return kong.response.exit(500, { message = "An unexpected error occurred" })
+    end
+
+    if plugin ~= nil and plugin.enabled then
+      local cfg       = plugin.config or {}
+      cfg.api_id      = plugin.api_id
+      cfg.route_id    = plugin.route_id
+      cfg.service_id  = plugin.service_id
+      cfg.consumer_id = plugin.consumer_id
+
+      return cfg
+    end
+
+    return nil
+  end
+
   local key = kong.db.plugins:cache_key(plugin_name,
                                         route_id,
                                         service_id,
