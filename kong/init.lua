@@ -71,6 +71,7 @@ local DAOFactory = require "kong.dao.factory"
 local kong_cache = require "kong.cache"
 local ngx_balancer = require "ngx.balancer"
 local kong_resty_ctx = require "kong.resty.ctx"
+local certificate = require "kong.runloop.certificate"
 local plugins_iterator = require "kong.runloop.plugins_iterator"
 local balancer_execute = require("kong.runloop.balancer").execute
 local kong_cluster_events = require "kong.cluster_events"
@@ -302,6 +303,10 @@ function Kong.init()
   kong.dao = dao
   kong.db = db
   kong.dns = singletons.dns
+
+  if config.proxy_ssl_enabled then
+    certificate.init()
+  end
 
   -- Load plugins as late as possible so that everything is set up
   loaded_plugins = assert(db.plugins:load_plugin_schemas(config.loaded_plugins))
