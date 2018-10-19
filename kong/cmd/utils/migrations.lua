@@ -1,4 +1,5 @@
 local log = require "kong.cmd.utils.log"
+local meta = require "kong.meta"
 
 
 local MIGRATIONS_MUTEX_KEY = "migrations"
@@ -70,8 +71,15 @@ end
 
 local function up(schema_state, db, opts)
   if schema_state.needs_bootstrap then
-    error("can't run migrations: database needs bootstrapping; " ..
-          "run 'kong migrations bootstrap'")
+    local v = meta._VERSION_TABLE
+    if v.major == 0 and v.minor == 14 then
+      log("bootstrapping schema ...")
+      assert(db:schema_bootstrap())
+
+    else
+      error("can't run migrations: database needs bootstrapping; " ..
+            "run 'kong migrations bootstrap'")
+    end
   end
 
   local ok, err = db:cluster_mutex(MIGRATIONS_MUTEX_KEY, opts, function()
