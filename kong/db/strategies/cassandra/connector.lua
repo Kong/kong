@@ -318,7 +318,7 @@ local function select_keyspaces(self)
 
   local cql
 
-  if self.major_version == 3 then
+  if self.major_version >= 3 then
     cql = [[SELECT * FROM system_schema.keyspaces
               WHERE keyspace_name = ?]]
 
@@ -342,7 +342,8 @@ local function select_tables(self)
 
   local cql
 
-  if self.major_version == 3 then
+  -- Assume a release version number of 3 & greater will use the same schema.
+  if self.major_version >= 3 then
     cql = [[SELECT * FROM system_schema.tables WHERE keyspace_name = ?]]
 
   else
@@ -366,7 +367,8 @@ function CassandraConnector:reset()
   end
 
   for i = 1, #rows do
-    local table_name = self.major_version == 3
+    -- Assume a release version number of 3 & greater will use the same schema.
+    local table_name = self.major_version >= 3
                        and rows[i].table_name
                        or rows[i].columnfamily_name
 
@@ -408,7 +410,8 @@ function CassandraConnector:truncate()
   end
 
   for i = 1, #rows do
-    local table_name = self.major_version == 3
+    -- Assume a release version number of 3 & greater will use the same schema.
+    local table_name = self.major_version >= 3
                        and rows[i].table_name
                        or rows[i].columnfamily_name
 

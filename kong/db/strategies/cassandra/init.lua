@@ -56,7 +56,8 @@ _mt.__index = _mt
 local function is_partitioned(self)
   local cql
 
-  if self.connector.major_version == 3 then
+  -- Assume a release version number of 3 & greater will use the same schema.
+  if self.connector.major_version >= 3 then
     cql = fmt([[
       SELECT * FROM system_schema.columns
       WHERE keyspace_name = '%s'
@@ -78,7 +79,8 @@ local function is_partitioned(self)
     return nil, err
   end
 
-  if self.connector.major_version == 3 then
+  -- Assume a release version number of 3 & greater will use the same schema.
+  if self.connector.major_version >= 3 then
     return rows[1] and rows[1].kind == "partition_key"
   end
 
