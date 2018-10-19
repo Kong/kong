@@ -14,7 +14,7 @@ from startups to Global 5000 as well as government organizations.
 [Documentation](https://docs.konghq.com) |
 [Forum](https://discuss.konghq.com) |
 [Blog](https://konghq.com/blog) |
-IRC (freenode): [#kong](http://webchat.freenode.net/?channels=kong) |
+IRC (freenode): [#kong](https://webchat.freenode.net/?channels=kong) |
 [Nightly Builds][kong-nightly-master]
 
 ## Summary
@@ -240,7 +240,7 @@ Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-   http://www.apache.org/licenses/LICENSE-2.0
+   https://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
