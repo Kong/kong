@@ -542,11 +542,18 @@ do
     end
 
     local rows, err = self.connector:schema_migrations()
+    if err then
+      self.connector:close()
+      return nil, prefix_err(self, "failed to check schema state: " .. err)
+    end
+
+    local legacy_res, err = self.connector:is_014(rows)
 
     self.connector:close()
 
     if err then
-      return nil, prefix_err(self, "failed to check schema state: " .. err)
+      return nil, prefix_err(self, "failed to check legacy schema state: " ..
+                                   err)
     end
 
     log.verbose("schema state retrieved")
@@ -557,7 +564,14 @@ do
       pending_migrations = nil,
       missing_migrations = nil,
       new_migrations = nil,
+      legacy_is_014 = legacy_res.is_014,
     }
+
+    if legacy_res.invalid_state then
+      schema_state.legacy_invalid_state = true
+      schema_state.legacy_missing_component = legacy_res.missing_component
+      schema_state.legacy_missing_migration = legacy_res.missing_migration
+    end
 
     local rows_as_hash = {}
 
@@ -737,48 +751,6 @@ do
         if not strategy_migration then
           return nil, fmt_err(self, "missing %s strategy for migration '%s'",
                               self.strategy, mig.name)
-        end
-
-        if t.subsystem == "core" and mig.name == "000_base" then
-          local res, err = self.connector:is_014()
-          if err then
-            return nil, fmt_err(self, "unable to detect database version (%s)",
-                                err)
-          end
-
-          if not res.is_eq_014 and not res.is_gt_014 then
-            if res.missing_migration then
-              return nil, fmt_err(self,
-                                  "Migration to 1.0 can only be performed "  ..
-                                  "from a 0.14.x %s %s, but the current "    ..
-                                  "one seems to be older (missing "          ..
-                                  "migration '%s' for '%s'). Migrate to "    ..
-                                  "0.14.x first, or install 1.0 on "         ..
-                                  "a fresh %s.",
-                                  self.strategy, self.infos.db_desc,
-                                  res.missing_migration, res.missing_component,
-                                  self.infos.db_desc)
-            end
-
-            if res.missing_component then
-              return nil, fmt_err(self,
-                                  "Migration to 1.0 can only be performed "  ..
-                                  "from a 0.14.x %s %s, but the current "    ..
-                                  "one seems to be older (missing "          ..
-                                  "migrations for '%s'). Migrate to 0.14.x " ..
-                                  "first, or install 1.0 on a fresh %s.",
-                                  self.strategy, self.infos.db_desc,
-                                  res.missing_component, self.infos.db_desc)
-            end
-
-            return nil, fmt_err(self,
-                                "Migration to 1.0 can only be performed "    ..
-                                "from a 0.14.x %s %s, but the current one "  ..
-                                "seems to be older (missing migrations)."    ..
-                                "Migrate to 0.14.x first, or install 1.0 "   ..
-                                "on a fresh %s.", self.strategy,
-                                self.infos.db_desc, self.infos.db_desc)
-          end
         end
 
         log.debug("running migration: %s", mig.name)
