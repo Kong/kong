@@ -1,24 +1,21 @@
-local utils = require "kong.tools.utils"
-local responses = require "kong.tools.responses"
 local constants = require "kong.constants"
-local openssl_hmac = require "openssl.hmac"
-local resty_sha256 = require "resty.sha256"
+local sha256 = require "resty.sha256"
+local hmac = require "openssl.hmac"
+local utils = require "kong.tools.utils"
 
-local math_abs = math.abs
-local ngx_time = ngx.time
-local ngx_gmatch = ngx.re.gmatch
-local ngx_decode_base64 = ngx.decode_base64
-local ngx_encode_base64 = ngx.encode_base64
-local ngx_parse_time = ngx.parse_http_time
-local ngx_set_header = ngx.req.set_header
-local ngx_get_headers = ngx.req.get_headers
-local ngx_log = ngx.log
-local req_read_body = ngx.req.read_body
-local req_get_body_data = ngx.req.get_body_data
-local ngx_hmac_sha1 = ngx.hmac_sha1
-local split = utils.split
-local fmt = string.format
+
+local ngx = ngx
+local kong = kong
+local time = ngx.time
+local abs = math.abs
+local decode_base64 = ngx.decode_base64
+local encode_base64 = ngx.encode_base64
+local parse_time = ngx.parse_http_time
+local re_gmatch = ngx.re.gmatch
+local hmac_sha1 = ngx.hmac_sha1
 local ipairs = ipairs
+local fmt = string.format
+
 
 local AUTHORIZATION = "authorization"
 local PROXY_AUTHORIZATION = "proxy-authorization"
@@ -28,41 +25,32 @@ local DIGEST = "digest"
 local SIGNATURE_NOT_VALID = "HMAC signature cannot be verified"
 local SIGNATURE_NOT_SAME = "HMAC signature does not match"
 
-local new_tab
-do
-  local ok
-  ok, new_tab = pcall(require, "table.new")
-  if not ok then
-    new_tab = function() return {} end
-  end
-end
-
-
-local _M = {}
 
 local hmac = {
   ["hmac-sha1"] = function(secret, data)
-    return ngx_hmac_sha1(secret, data)
+    return hmac_sha1(secret, data)
   end,
   ["hmac-sha256"] = function(secret, data)
-    return openssl_hmac.new(secret, "sha256"):final(data)
+    return hmac.new(secret, "sha256"):final(data)
   end,
   ["hmac-sha384"] = function(secret, data)
-    return openssl_hmac.new(secret, "sha384"):final(data)
+    return hmac.new(secret, "sha384"):final(data)
   end,
   ["hmac-sha512"] = function(secret, data)
-    return openssl_hmac.new(secret, "sha512"):final(data)
-  end
+    return hmac.new(secret, "sha512"):final(data)
+  end,
 }
 
+
 local function list_as_set(list)
-  local set = new_tab(0, #list)
+  local set = kong.table.new(0, #list)
   for _, v in ipairs(list) do
     set[v] = true
   end
 
   return set
 end
+
 
 local function validate_params(params, conf)
   -- check username and signature are present
@@ -73,11 +61,13 @@ local function validate_params(params, conf)
   -- check enforced headers are present
   if conf.enforce_headers and #conf.enforce_headers >= 1 then
     local enforced_header_set = list_as_set(conf.enforce_headers)
+
     if params.hmac_headers then
       for _, header in ipairs(params.hmac_headers) do
         enforced_header_set[header] = nil
       end
     end
+
     for _, header in ipairs(conf.enforce_headers) do
       if enforced_header_set[header] then
         return nil, "enforced header not used for signature creation"
@@ -95,81 +85,86 @@ local function validate_params(params, conf)
   return nil, fmt("algorithm %s not supported", params.algorithm)
 end
 
-local function retrieve_hmac_fields(request, headers, header_name, conf)
+
+local function retrieve_hmac_fields(authorization_header)
   local hmac_params = {}
-  local authorization_header = headers[header_name]
+
   -- parse the header to retrieve hamc parameters
   if authorization_header then
-    local iterator, iter_err = ngx_gmatch(authorization_header, "\\s*[Hh]mac\\s*username=\"(.+)\",\\s*algorithm=\"(.+)\",\\s*headers=\"(.+)\",\\s*signature=\"(.+)\"")
+    local iterator, iter_err = re_gmatch(authorization_header,
+                                         "\\s*[Hh]mac\\s*username=\"(.+)\"," ..
+                                         "\\s*algorithm=\"(.+)\",\\s*header" ..
+                                         "s=\"(.+)\",\\s*signature=\"(.+)\"")
     if not iterator then
-      ngx_log(ngx.ERR, iter_err)
+      kong.log.err(iter_err)
       return
     end
 
     local m, err = iterator()
     if err then
-      ngx_log(ngx.ERR, err)
+      kong.log.err(err)
       return
     end
 
     if m and #m >= 4 then
       hmac_params.username = m[1]
       hmac_params.algorithm = m[2]
-      hmac_params.hmac_headers = split(m[3], " ")
+      hmac_params.hmac_headers = utils.split(m[3], " ")
       hmac_params.signature = m[4]
     end
-  end
-
-  if conf.hide_credentials then
-    request.clear_header(header_name)
   end
 
   return hmac_params
 end
 
+
 -- plugin assumes the request parameters being used for creating
 -- signature by client are not changed by core or any other plugin
-local function create_hash(request, request_uri, hmac_params, headers)
+local function create_hash(request_uri, hmac_params)
   local signing_string = ""
   local hmac_headers = hmac_params.hmac_headers
-  local count = #hmac_headers
 
+  local count = #hmac_headers
   for i = 1, count do
     local header = hmac_headers[i]
-    local header_value = headers[header]
+    local header_value = kong.request.get_header(header)
 
     if not header_value then
       if header == "request-line" then
         -- request-line in hmac headers list
-        local request_line = fmt("%s %s HTTP/%s", ngx.req.get_method(),
-                                 request_uri, ngx.req.http_version())
+        local request_line = fmt("%s %s HTTP/%s", kong.request.get_method(),
+                                 request_uri, kong.request.get_http_version())
         signing_string = signing_string .. request_line
+
       else
         signing_string = signing_string .. header .. ":"
       end
+
     else
       signing_string = signing_string .. header .. ":" .. " " .. header_value
     end
+
     if i < count then
       signing_string = signing_string .. "\n"
     end
   end
+
   return hmac[hmac_params.algorithm](hmac_params.secret, signing_string)
 end
 
-local function validate_signature(request, hmac_params, headers)
-  local signature_1 = create_hash(request, ngx.var.request_uri, hmac_params, headers)
-  local signature_2 = ngx_decode_base64(hmac_params.signature)
 
+local function validate_signature(hmac_params)
+  local signature_1 = create_hash(kong.request.get_path_with_query(), hmac_params)
+  local signature_2 = decode_base64(hmac_params.signature)
   if signature_1 == signature_2 then
     return true
   end
 
   -- DEPRECATED BY: https://github.com/Kong/kong/pull/3339
-  local signature_1_deprecated = create_hash(request, ngx.var.uri, hmac_params, headers)
-
+  local signature_1_deprecated = create_hash(ngx.var.uri, hmac_params)
   return signature_1_deprecated == signature_2
 end
+
 
 local function load_credential_into_memory(username)
   local key, err = kong.db.hmacauth_credentials:select_by_username(username)
@@ -178,6 +173,7 @@ local function load_credential_into_memory(username)
   end
   return key
 end
+
 
 local function load_credential(username)
   local credential, err
@@ -189,45 +185,54 @@ local function load_credential(username)
   end
 
   if err then
-    return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+    kong.log.err(err)
+    return kong.response.exit(500, { message = "An unexpected error occurred" })
   end
 
   return credential
 end
 
-local function validate_clock_skew(headers, date_header_name, allowed_clock_skew)
-  local date = headers[date_header_name]
+
+local function validate_clock_skew(date_header_name, allowed_clock_skew)
+  local date = kong.request.get_header(date_header_name)
   if not date then
     return false
   end
 
-  local requestTime = ngx_parse_time(date)
+  local requestTime = parse_time(date)
   if not requestTime then
     return false
   end
 
-  local skew = math_abs(ngx_time() - requestTime)
+  local skew = abs(time() - requestTime)
   if skew > allowed_clock_skew then
     return false
   end
+
   return true
 end
 
-local function validate_body(digest_received)
-  req_read_body()
-  local body = req_get_body_data()
 
-  if not digest_received then
-    -- if there is no digest and no body, it is ok
-    return not body
+local function validate_body()
+  local body, err = kong.request.get_raw_body()
+  if err then
+    kong.log.debug(err)
+    return false
   end
 
-  local sha256 = resty_sha256:new()
-  sha256:update(body or '')
-  local digest_created = "SHA-256=" .. ngx_encode_base64(sha256:final())
+  local digest_received = kong.request.get_header(DIGEST)
+  if not digest_received then
+    -- if there is no digest and no body, it is ok
+    return body == ""
+  end
+
+  local digest = sha256:new()
+  digest:update(body or '')
+  local digest_created = "SHA-256=" .. encode_base64(digest:final())
 
   return digest_created == digest_received
 end
+
 
 local function load_consumer_into_memory(consumer_id, anonymous)
   local result, err = kong.db.consumers:select { id = consumer_id }
@@ -240,62 +245,86 @@ local function load_consumer_into_memory(consumer_id, anonymous)
   return result
 end
 
-local function set_consumer(consumer, credential)
-  ngx_set_header(constants.HEADERS.CONSUMER_ID, consumer.id)
-  ngx_set_header(constants.HEADERS.CONSUMER_CUSTOM_ID, consumer.custom_id)
-  ngx_set_header(constants.HEADERS.CONSUMER_USERNAME, consumer.username)
-  ngx.ctx.authenticated_consumer = consumer
-  if credential then
-    ngx_set_header(constants.HEADERS.CREDENTIAL_USERNAME, credential.username)
-    ngx.ctx.authenticated_credential = credential
-    ngx_set_header(constants.HEADERS.ANONYMOUS, nil) -- in case of auth plugins concatenation
-  else
-    ngx_set_header(constants.HEADERS.ANONYMOUS, true)
-  end
 
+local function set_consumer(consumer, credential)
+  kong.service.request.set_header(constants.HEADERS.CONSUMER_ID, consumer.id)
+  kong.service.request.set_header(constants.HEADERS.CONSUMER_CUSTOM_ID, consumer.custom_id)
+  kong.service.request.set_header(constants.HEADERS.CONSUMER_USERNAME, consumer.username)
+
+  local shared_ctx = kong.ctx.shared
+  local ngx_ctx = ngx.ctx -- TODO: for bc only
+
+  shared_ctx.authenticated_consumer = consumer
+  ngx_ctx.authenticated_consumer = consumer
+
+  if credential then
+    shared_ctx.authenticated_credential = credential
+    ngx_ctx.authenticated_credential = credential
+
+    kong.service.request.set_header(constants.HEADERS.CREDENTIAL_USERNAME, credential.username)
+    kong.service.request.clear_header(constants.HEADERS.ANONYMOUS)
+
+  else
+    kong.service.request.set_header(constants.HEADERS.ANONYMOUS, true)
+  end
 end
 
+
 local function do_authentication(conf)
-  local headers = ngx_get_headers()
+  local authorization = kong.request.get_header(AUTHORIZATION)
+  local proxy_authorization = kong.request.get_header(PROXY_AUTHORIZATION)
+
   -- If both headers are missing, return 401
-  if not (headers[AUTHORIZATION] or headers[PROXY_AUTHORIZATION]) then
-    return false, {status = 401}
+  if not (authorization or proxy_authorization) then
+    return false, { status = 401, message = "Unauthorized" }
   end
 
   -- validate clock skew
-  if not (validate_clock_skew(headers, X_DATE, conf.clock_skew) or validate_clock_skew(headers, DATE, conf.clock_skew)) then
-    return false, {status = 403, message = "HMAC signature cannot be verified, a valid date or x-date header is required for HMAC Authentication"}
+  if not (validate_clock_skew(X_DATE, conf.clock_skew) or
+          validate_clock_skew(DATE, conf.clock_skew)) then
+    return false, {
+      status = 403,
+      message = "HMAC signature cannot be verified, a valid date or " ..
+                "x-date header is required for HMAC Authentication"
+    }
   end
 
   -- retrieve hmac parameter from Proxy-Authorization header
-  local hmac_params = retrieve_hmac_fields(ngx.req, headers, PROXY_AUTHORIZATION, conf)
+  local hmac_params = retrieve_hmac_fields(proxy_authorization)
 
   -- Try with the authorization header
   if not hmac_params.username then
-    hmac_params = retrieve_hmac_fields(ngx.req, headers, AUTHORIZATION, conf)
+    hmac_params = retrieve_hmac_fields(authorization)
+    if hmac_params and conf.hide_credentials then
+      kong.service.request.clear_header(AUTHORIZATION)
+    end
+
+  elseif conf.hide_credentials then
+    kong.service.request.clear_header(PROXY_AUTHORIZATION)
   end
 
   local ok, err = validate_params(hmac_params, conf)
   if not ok then
-    ngx_log(ngx.DEBUG, err)
-    return false, {status = 403, message = SIGNATURE_NOT_VALID}
+    kong.log.debug(err)
+    return false, { status = 403, message = SIGNATURE_NOT_VALID }
   end
 
   -- validate signature
   local credential = load_credential(hmac_params.username)
   if not credential then
-    ngx_log(ngx.DEBUG, "failed to retrieve credential for ", hmac_params.username)
-    return false, {status = 403, message = SIGNATURE_NOT_VALID}
+    kong.log.debug("failed to retrieve credential for ", hmac_params.username)
+    return false, { status = 403, message = SIGNATURE_NOT_VALID }
   end
+
   hmac_params.secret = credential.secret
 
-  if not validate_signature(ngx.req, hmac_params, headers) then
+  if not validate_signature(hmac_params) then
     return false, { status = 403, message = SIGNATURE_NOT_SAME }
   end
 
   -- If request body validation is enabled, then verify digest.
-  if conf.validate_request_body and not validate_body(headers[DIGEST]) then
-    ngx_log(ngx.DEBUG, "digest validation failed")
+  if conf.validate_request_body and not validate_body() then
+    kong.log.debug("digest validation failed")
     return false, { status = 403, message = SIGNATURE_NOT_SAME }
   end
 
@@ -305,7 +334,8 @@ local function do_authentication(conf)
                                             load_consumer_into_memory,
                                             credential.consumer.id)
   if err then
-    return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+    kong.log.err(err)
+    return kong.response.exit(500, { message = "An unexpected error occurred" })
   end
 
   set_consumer(consumer, credential)
@@ -314,12 +344,24 @@ local function do_authentication(conf)
 end
 
 
-function _M.execute(conf)
+local _M = {}
 
-  if ngx.ctx.authenticated_credential and conf.anonymous then
-    -- we're already authenticated, and we're configured for using anonymous,
-    -- hence we're in a logical OR between auth methods and we're already done.
-    return
+
+function _M.execute(conf)
+  if conf.anonymous then
+    local shared_ctx = kong.ctx.shared
+    if shared_ctx.authenticated_credential then
+      -- we're already authenticated, and we're configured for using anonymous,
+      -- hence we're in a logical OR between auth methods and we're already done.
+      return
+    end
+
+    local ngx_ctx = ngx.ctx -- TODO: for bc only
+    if ngx_ctx.authenticated_credential then
+      -- we're already authenticated, and we're configured for using anonymous,
+      -- hence we're in a logical OR between auth methods and we're already done.
+      return
+    end
   end
 
   local ok, err = do_authentication(conf)
@@ -331,11 +373,14 @@ function _M.execute(conf)
                                                 load_consumer_into_memory,
                                                 conf.anonymous, true)
       if err then
-        return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+        kong.log.err(err)
+        return kong.response.exit(500, { message = "An unexpected error occurred" })
       end
+
       set_consumer(consumer, nil)
+
     else
-      return responses.send(err.status, err.message)
+      return kong.response.exit(err.status, { message = err.message }, err.headers)
     end
   end
 end

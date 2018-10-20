@@ -1,5 +1,6 @@
 local typedefs = require "kong.db.schema.typedefs"
 
+
 return {
   basicauth_credentials = {
     dao = "kong.plugins.basic-auth.basicauth_credentials",

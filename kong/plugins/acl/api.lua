@@ -1,8 +1,10 @@
 local endpoints = require "kong.api.endpoints"
-local responses = require "kong.tools.responses"
 
+
+local kong             = kong
 local acls_schema      = kong.db.acls.schema
 local consumers_schema = kong.db.consumers.schema
+
 
 return {
   ["/consumers/:consumers/acls/"] = {
@@ -24,7 +26,7 @@ return {
           return endpoints.handle_error(err_t)
         end
         if not consumer then
-          return responses.send_HTTP_NOT_FOUND()
+          return kong.response.exit(404, { message = "Not found" })
         end
 
         self.consumer = consumer
@@ -36,7 +38,7 @@ return {
 
         if self.req.cmd_mth ~= "PUT" then
           if not acl or acl.consumer.id ~= consumer.id then
-            return responses.send_HTTP_NOT_FOUND()
+            return kong.response.exit(404, { message = "Not found" })
           end
           self.acl = acl
           self.params.acls = acl.id

@@ -1,10 +1,12 @@
-local pl_tablex = require "pl.tablex"
+local tablex = require "pl.tablex"
 
 
-local EMPTY = pl_tablex.readonly {}
+local EMPTY = tablex.readonly {}
 
 
+local kong = kong
 local mt_cache = { __mode = "k" }
+local setmetatable = setmetatable
 local consumer_groups_cache = setmetatable({}, mt_cache)
 local consumer_in_groups_cache = setmetatable({}, mt_cache)
 
@@ -104,7 +106,9 @@ local function consumer_in_groups(groups_to_check, consumer_groups)
       break
     end
   end
+
   result1[consumer_groups] = result2
+
   return result2
 end
 
@@ -119,6 +123,7 @@ local function consumer_id_in_groups(groups_to_check, consumer_id)
   if not consumer_groups then
     return nil, err
   end
+
   return consumer_in_groups(groups_to_check, consumer_groups)
 end
 
@@ -128,9 +133,22 @@ end
 -- @return consumer_id (string), or alternatively `nil` if no consumer was
 -- authenticated.
 local function get_current_consumer_id()
-  local ctx = ngx.ctx
-  return (ctx.authenticated_consumer or EMPTY).id or
-         (ctx.authenticated_credential or EMPTY).consumer_id
+  local ctx = kong.ctx.shared
+  if ctx.authenticated_consumer and ctx.authenticated_consumer.id then
+    return ctx.authenticated_consumer.id
+  elseif ctx.authenticated_credential and ctx.authenticated_credential.consumer_id then
+    return ctx.authenticated_credential.consumer_id
+  end
+
+  -- TODO: only for backward compability (may be removed later)
+  ctx = ngx.ctx
+  if ctx.authenticated_consumer and ctx.authenticated_consumer.id then
+    return ctx.authenticated_consumer.id
+  elseif ctx.authenticated_credential and ctx.authenticated_credential.consumer_id then
+    return ctx.authenticated_credential.consumer_id
+  end
+
+  return nil
 end
 
 

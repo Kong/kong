@@ -1,16 +1,23 @@
 require "lua_pack"
 
-local bpack = string.pack
-local bunpack = string.unpack
-local math = math
-local bit = bit
+
 local setmetatable = setmetatable
-local table = table
-local string_reverse = string.reverse
-local string_char = string.char
+local tonumber = tonumber
+local bunpack = string.unpack
+local reverse = string.reverse
+local ipairs = ipairs
+local concat = table.concat
+local insert = table.insert
 local pairs = pairs
+local bpack = string.pack
+local math = math
+local type = type
+local char = string.char
+local bit = bit
+
 
 local _M = {}
+
 
 _M.BERCLASS = {
   Universal = 0,
@@ -19,8 +26,8 @@ _M.BERCLASS = {
   Private = 192
 }
 
-_M.ASN1Decoder = {
 
+_M.ASN1Decoder = {
   new = function(self,o)
     o = o or {}
     setmetatable(o, self)
@@ -32,8 +39,10 @@ _M.ASN1Decoder = {
   decode = function(self, encStr, pos)
     local etype, elen
     local newpos = pos
+
     newpos, etype = bunpack(encStr, "X1", newpos)
     newpos, elen = self.decodeLength(encStr, newpos)
+
     if self.decoder[etype] then
       return self.decoder[etype](self, encStr, elen, newpos)
     else
@@ -98,6 +107,7 @@ _M.ASN1Decoder = {
 
   registerTagDecoders = function(self, tagDecoders)
     self:registerBaseDecoders()
+
     for k, v in pairs(tagDecoders) do
       self.decoder[k] = v
     end
@@ -105,18 +115,22 @@ _M.ASN1Decoder = {
 
   decodeLength = function(encStr, pos)
     local elen
-    pos, elen = bunpack(encStr, 'C', pos)
+
+    pos, elen = bunpack(encStr, "C", pos)
     if elen > 128 then
       elen = elen - 128
       local elenCalc = 0
       local elenNext
+
       for i = 1, elen do
         elenCalc = elenCalc * 256
-        pos, elenNext = bunpack(encStr, 'C', pos)
+        pos, elenNext = bunpack(encStr, "C", pos)
         elenCalc = elenCalc + elenNext
       end
+
       elen = elenCalc
     end
+
     return pos, elen
   end,
 
@@ -124,15 +138,20 @@ _M.ASN1Decoder = {
     local seq = {}
     local sPos = 1
     local sStr
+
     pos, sStr = bunpack(encStr, "A" .. len, pos)
+
     while (sPos < len) do
       local newSeq
+
       sPos, newSeq = self:decode(sStr, sPos)
       if not newSeq and self.stoponerror then
         break
       end
-      table.insert(seq, newSeq)
+
+      insert(seq, newSeq)
     end
+
     return pos, seq
   end,
 
@@ -155,7 +174,7 @@ _M.ASN1Decoder = {
 
     last = pos + len - 1
     if pos <= last then
-      oid._snmp = '06'
+      oid._snmp = "06"
       pos, octet = bunpack(encStr, "C", pos)
       oid[2] = math.fmod(octet, 40)
       octet = octet - oid[2]
@@ -173,17 +192,19 @@ _M.ASN1Decoder = {
 
   decodeInt = function(encStr, len, pos)
     local hexStr
+
     pos, hexStr = bunpack(encStr, "X" .. len, pos)
+
     local value = tonumber(hexStr, 16)
     if value >= math.pow(256, len)/2 then
       value = value - math.pow(256, len)
     end
+
     return pos, value
   end
 }
 
 _M.ASN1Encoder = {
-
   new = function(self)
     local o = {}
     setmetatable(o, self)
@@ -193,7 +214,7 @@ _M.ASN1Encoder = {
   end,
 
   encodeSeq = function(self, seqData)
-    return bpack('XAA' , '30', self.encodeLength(#seqData), seqData)
+    return bpack("XAA" , "30", self.encodeLength(#seqData), seqData)
   end,
 
   encode = function(self, val)
@@ -206,6 +227,7 @@ _M.ASN1Encoder = {
 
   registerTagEncoders = function(self, tagEncoders)
     self:registerBaseEncoders()
+
     for k, v in pairs(tagEncoders) do
       self.encoder[k] = v
     end
@@ -214,100 +236,116 @@ _M.ASN1Encoder = {
   registerBaseEncoders = function(self)
     self.encoder = {}
 
-    self.encoder['table'] = function(self, val)
-      if val._ldap == '0A' then
+    self.encoder["table"] = function(self, val)
+      if val._ldap == "0A" then
         local ival = self.encodeInt(val[1])
         local len = self.encodeLength(#ival)
-        return bpack('XAA', '0A', len, ival)
+
+        return bpack("XAA", "0A", len, ival)
       end
+
       if val._ldaptype then
         local len
+
         if val[1] == nil or #val[1] == 0 then
-          return bpack('XC', val._ldaptype, 0)
-        else
-          len = self.encodeLength(#val[1])
-          return bpack('XAA', val._ldaptype, len, val[1])
+          return bpack("XC", val._ldaptype, 0)
         end
+
+        len = self.encodeLength(#val[1])
+        return bpack("XAA", val._ldaptype, len, val[1])
       end
 
       local encVal = ""
       for _, v in ipairs(val) do
         encVal = encVal .. self.encode(v) -- todo: buffer?
       end
+
       local tableType = "\x30"
       if val["_snmp"] then
         tableType = bpack("X", val["_snmp"])
       end
-      return bpack('AAA', tableType, self.encodeLength(#encVal), encVal)
+
+      return bpack("AAA", tableType, self.encodeLength(#encVal), encVal)
     end
 
     -- Boolean encoder
-    self.encoder['boolean'] = function(self, val)
+    self.encoder["boolean"] = function(self, val)
       if val then
-        return bpack('X','01 01 FF')
+        return bpack("X", "01 01 FF")
       else
-        return bpack('X', '01 01 00')
+        return bpack("X", "01 01 00")
       end
     end
 
     -- Integer encoder
-    self.encoder['number'] = function(self, val)
+    self.encoder["number"] = function(self, val)
       local ival = self.encodeInt(val)
       local len = self.encodeLength(#ival)
-      return bpack('XAA', '02', len, ival)
+
+      return bpack("XAA", "02", len, ival)
     end
 
     -- Octet String encoder
-    self.encoder['string'] = function(self, val)
+    self.encoder["string"] = function(self, val)
       local len = self.encodeLength(#val)
-      return bpack('XAA', '04', len, val)
+      return bpack("XAA", "04", len, val)
     end
 
     -- Null encoder
-    self.encoder['nil'] = function(self, val)
-      return bpack('X', '05 00')
+    self.encoder["nil"] = function(self, val)
+      return bpack("X", "05 00")
     end
-
   end,
 
   encode_oid_component = function(n)
     local parts = {}
-    parts[1] = string_char(n % 128)
+
+    parts[1] = char(n % 128)
     while n >= 128 do
       n = bit.rshift(n, 7)
-      parts[#parts + 1] = string_char(n % 128 + 0x80)
+      parts[#parts + 1] = char(n % 128 + 0x80)
     end
-    return string_reverse(table.concat(parts))
+
+    return reverse(concat(parts))
   end,
 
   encodeInt = function(val)
     local lsb = 0
+
     if val > 0 then
       local valStr = ""
+
       while (val > 0) do
         lsb = math.fmod(val, 256)
-        valStr = valStr .. bpack('C', lsb)
+        valStr = valStr .. bpack("C", lsb)
         val = math.floor(val/256)
       end
+
       if lsb > 127 then
         valStr = valStr .. "\0"
       end
 
-      return string_reverse(valStr)
+      return reverse(valStr)
+
     elseif val < 0 then
       local i = 1
       local tcval = val + 256
+
       while tcval <= 127 do
         tcval = tcval + (math.pow(256, i) * 255)
         i = i+1
       end
+
       local valStr = ""
+
       while (tcval > 0) do
         lsb = math.fmod(tcval, 256)
         valStr = valStr .. bpack("C", lsb)
         tcval = math.floor(tcval/256)
       end
-      return string_reverse(valStr)
+
+      return reverse(valStr)
+
     else -- val == 0
       return bpack("x")
     end
@@ -315,16 +353,17 @@ _M.ASN1Encoder = {
 
   encodeLength = function(len)
     if len < 128 then
-      return string_char(len)
+      return char(len)
+
     else
       local parts = {}
 
       while len > 0 do
-        parts[#parts + 1] = string_char(len % 256)
+        parts[#parts + 1] = char(len % 256)
         len = bit.rshift(len, 8)
       end
 
-      return string_char(#parts + 0x80) .. string_reverse(table.concat(parts))
+      return char(#parts + 0x80) .. reverse(concat(parts))
     end
   end
 }
@@ -339,8 +378,10 @@ function _M.BERtoInt(class, constructed, number)
   return asn1_type
 end
 
+
 function _M.intToBER(i)
   local ber = {}
+
   if bit.band(i, _M.BERCLASS.Application) == _M.BERCLASS.Application then
     ber.class = _M.BERCLASS.Application
   elseif bit.band(i, _M.BERCLASS.ContextSpecific) == _M.BERCLASS.ContextSpecific then
@@ -350,14 +391,18 @@ function _M.intToBER(i)
   else
     ber.class = _M.BERCLASS.Universal
   end
+
   if bit.band(i, 32) == 32 then
     ber.constructed = true
     ber.number = i - ber.class - 32
+
   else
     ber.primitive = true
     ber.number = i - ber.class
   end
+
   return ber
 end
+
 
 return _M

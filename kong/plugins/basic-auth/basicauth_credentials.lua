@@ -1,5 +1,5 @@
 local crypto = require "kong.plugins.basic-auth.crypto"
-local utils  = require "kong.tools.utils"
+local utils = require "kong.tools.utils"
 
 
 local encrypt_password = function(self, cred_id_or_username, cred)
