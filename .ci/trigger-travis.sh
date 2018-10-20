@@ -12,7 +12,7 @@
 #
 # where TRAVIS_ACCESS_TOKEN is, or ~/private/.travis-access-token contains,
 # the Travis access token.  Your Travis access token is the text after
-# "Your access token is " in the ouput of these commands:
+# "Your access token is " in the output of these commands:
 #   travis login && travis token
 # (If the travis program isn't installed, do so with one of these two commands:
 #    gem install travis
