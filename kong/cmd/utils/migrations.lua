@@ -1,6 +1,9 @@
 local log = require "kong.cmd.utils.log"
 
 
+local fmt = string.format
+
+
 local MIGRATIONS_MUTEX_KEY = "migrations"
 local NOT_LEADER_MSG = "aborted: another node is performing database changes"
 
@@ -38,6 +41,16 @@ end
 
 local function bootstrap(schema_state, db, ttl)
   if schema_state.needs_bootstrap then
+    if schema_state.legacy_is_014 then
+      error(fmt("cannot bootstrap a non-empty %s, run 'kong migrations " ..
+                "up' instead", db.infos.db_desc))
+    end
+
+    if schema_state.legacy_invalid_state then
+      error(fmt("cannot bootstrap a non-empty %s, upgrade to 0.14 first," ..
+                "and run 'kong migrations up'", db.infos.db_desc))
+    end
+
     log("bootstrapping database...")
     assert(db:schema_bootstrap())
 
@@ -70,8 +83,42 @@ end
 
 local function up(schema_state, db, opts)
   if schema_state.needs_bootstrap then
-    error("can't run migrations: database needs bootstrapping; " ..
-          "run 'kong migrations bootstrap'")
+    if schema_state.legacy_invalid_state then
+      -- legacy: migration from 0.14 to 1.0 cannot be performed
+      if schema_state.legacy_missing_component then
+        error(fmt("Migration to 1.0 can only be performed from a 0.14 %s " ..
+                  "%s, but the current one seems to be older (missing "    ..
+                  "migrations for '%s'). Migrate to 0.14 0.14 first, or "  ..
+                  "install 1.0 on a fresh %s.", db.strategy, db.infos.db_desc,
+                  schema_state.legacy_missing_component, db.infos.db_desc))
+      end
+
+      if schema_state.legacy_missing_migration then
+        error(fmt("Migration to 1.0 can only be performed from a 0.14 %s " ..
+                  "%s, but the current one seems to be older (missing "    ..
+                  "migration '%s' for '%s'). Migrate to 0.14 first, or "   ..
+                  "install 1.0 on a fresh %s.", db.strategy, db.infos.db_desc,
+                  schema_state.legacy_missing_migration,
+                  schema_state.legacy_missing_component, db.infos.db_desc))
+      end
+
+      error(fmt("Migration to 1.0 can only be performed from a 0.14 %s " ..
+                "%s, but the current one seems to be older (missing "    ..
+                "migrations). Migrate to 0.14 first, or install 1.0 "    ..
+                "on a fresh %s.", db.strategy, db.infos.db_desc,
+                db.infos.db_desc))
+    end
+
+    if schema_state.legacy_is_014 then
+      -- legacy: migration from 0.14 to 1.0 can be performed
+      log("upgrading from 0.14, bootstrapping database...")
+      assert(db:schema_bootstrap())
+
+    else
+      -- fresh install: must bootstrap (which will run migrations up)
+      error("can't run migrations: database needs bootstrapping; " ..
+            "run 'kong migrations bootstrap'")
+    end
   end
 
   local ok, err = db:cluster_mutex(MIGRATIONS_MUTEX_KEY, opts, function()

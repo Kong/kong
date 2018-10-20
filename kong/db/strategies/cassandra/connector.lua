@@ -844,17 +844,7 @@ do
 
 
   function CassandraConnector:is_014()
-    local rows, err = self:schema_migrations()
-    if err then
-      return nil, err
-    end
-
-    if rows and #rows > 0 then
-      return {
-        is_eq_014 = false,
-        is_gt_014 = true,
-      }
-    end
+    local res = {}
 
     local needed_migrations = {
       ["core"] = {
@@ -971,7 +961,7 @@ do
       ]]
     end
 
-    rows, err = self.connection:execute(cql, {
+    local rows, err = self.connection:execute(cql, {
       self.keyspace,
       "schema_migrations",
     })
@@ -980,41 +970,41 @@ do
     end
 
     if not rows or not rows[1] or rows[1].count == 0 then
-      return {
-        is_eq_014 = false,
-        is_gt_014 = true,
-      }
+      -- no trace of legacy migrations: above 0.14
+      return res
     end
 
-    rows, err = self.connection:execute([[
-      SELECT id, migrations
-        FROM schema_migrations
+    local ok, err = self.connection:change_keyspace(self.keyspace)
+    if not ok then
+      return nil, err
+    end
+
+    local schema_migrations_rows, err = self.connection:execute([[
+      SELECT id, migrations FROM schema_migrations
     ]])
     if err then
       return nil, err
     end
 
-    if not rows then
-      return {
-        is_eq_014 = false,
-        is_gt_014 = false,
-      }
+    if not schema_migrations_rows then
+      -- empty legacy migrations: invalid state
+      res.invalid_state = true
+      return res
     end
 
     local schema_migrations = {}
-    for i = 1, #rows do
-      local row = rows[i]
+    for i = 1, #schema_migrations_rows do
+      local row = schema_migrations_rows[i]
       schema_migrations[row.id] = row.migrations
     end
 
     for name, migrations in pairs(needed_migrations) do
       local current_migrations = schema_migrations[name]
       if not current_migrations then
-        return {
-          is_eq_014 = false,
-          is_gt_014 = false,
-          missing_component = name,
-        }
+        -- missing all migrations for a component: below 0.14
+        res.invalid_state = true
+        res.missing_component = name
+        return res
       end
 
       for _, needed_migration in ipairs(migrations) do
@@ -1025,21 +1015,21 @@ do
             break
           end
         end
+
         if not found then
-          return {
-            is_eq_014 = false,
-            is_gt_014 = false,
-            missing_component = name,
-            missing_migration = needed_migration,
-          }
+          -- missing at least one migration for a component: below 0.14
+          res.invalid_state = true
+          res.missing_component = name
+          res.missing_migration = needed_migration
+          return res
         end
       end
     end
 
-    return {
-      is_eq_014 = true,
-      is_gt_014 = false,
-    }
+    -- all migrations match: 0.14 install
+    res.is_014 = true
+
+    return res
   end
 end
 
