@@ -57,10 +57,10 @@ local get_service_id = {
 
 local get_workspace_id = {
   workspace_id         = function(workspaces)
-    return workspaces[1] and workspaces[1].id
+    return workspaces and workspaces[1] and workspaces[1].id
   end,
   workspace_name       = function(workspaces)
-    return workspaces[1] and workspaces[1].name
+    return workspaces and workspaces[1] and workspaces[1].name
   end
 }
 
