@@ -415,7 +415,7 @@
 # DATASTORE CACHE
 #------------------------------------------------------------------------------
 
-# In order to avoid unecessary communication with the datastore, Kong caches
+# In order to avoid unnecessary communication with the datastore, Kong caches
 # entities (such as APIs, Consumers, Credentials...) for a configurable period
 # of time. It also handles invalidations if such an entity is updated.
 #
