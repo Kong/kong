@@ -1524,7 +1524,7 @@ if you are planning to upgrade a Kong cluster.
   certificate in use (when `cassandra_ssl_verify` is enabled).
   [#2531](https://github.com/Kong/kong/pull/2531)
 - The DNS resolver no longer sends a A or AAAA DNS queries for SRV
-  records. This should improve performance by avoiding unecessary
+  records. This should improve performance by avoiding unnecessary
   lookups.
   [#2563](https://github.com/Kong/kong/pull/2563) &
   [Mashape/lua-resty-dns-client #12](https://github.com/Kong/lua-resty-dns-client/pull/12)
