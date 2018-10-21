@@ -10,8 +10,6 @@ local http = require "resty.http"
 local cjson = require "cjson.safe"
 local public_utils = require "kong.tools.public"
 local fetch_iam_credentials_from_metadata_service = require "kong.plugins.aws-lambda.iam-role-credentials"
-local singletons = require "kong.singletons"
-
 
 local tostring             = tostring
 local tonumber             = tonumber
