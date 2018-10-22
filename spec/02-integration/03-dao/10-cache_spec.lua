@@ -1,6 +1,5 @@
 local kong_cache = require "kong.cache"
 local kong_cluster_events = require "kong.cluster_events"
-local Factory = require "kong.dao.factory"
 local DB = require "kong.db"
 local helpers = require "spec.helpers"
 local worker_events = require "resty.worker.events"
@@ -36,9 +35,8 @@ describe("dao in-memory cache", function()
     })
     local db = DB.new(helpers.test_conf)
     assert(db:init_connector())
-    local dao_factory = assert(Factory.new(helpers.test_conf, db))
     local cluster_events = assert(kong_cluster_events.new {
-      dao = dao_factory,
+      db = db,
     })
     cache = kong_cache.new {
       cluster_events = cluster_events,

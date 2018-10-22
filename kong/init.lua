@@ -407,7 +407,7 @@ function Kong.init_worker()
 
 
   local cluster_events, err = kong_cluster_events.new {
-    dao                     = kong.dao,
+    db                      = kong.db,
     poll_interval           = kong.configuration.db_update_frequency,
     poll_offset             = kong.configuration.db_update_propagation,
   }
