@@ -1,5 +1,4 @@
 local basic = require "kong.plugins.log-serializers.basic"
-local utils = require "kong.tools.utils"
 
 describe("Log Serializer", function()
   local ngx
@@ -112,13 +111,6 @@ describe("Log Serializer", function()
                   res.authenticated_entity)
       assert.is_nil(res.consumer)
       assert.is_nil(res.api)
-    end)
-
-    it("serializes the workspaces information", function()
-      local req_workspaces = {{id = utils.uuid(), name = "default"}}
-      ngx.ctx.log_request_workspaces = req_workspaces
-      local res = basic.serialize(ngx)
-      assert.same(req_workspaces,  res.workspaces)
     end)
 
     it("serializes the tries and failure information", function()

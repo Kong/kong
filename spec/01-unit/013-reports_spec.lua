@@ -19,10 +19,6 @@ describe("reports", function()
         foobar = function() return { foo = "bar" } end,
         bazbat = { baz = "bat" },
         nilval = function() return nil end,
-        a = function() return 1 end,
-        c = function() return 2 end,
-        r = function() return 3 end,
-        s = function() return 4 end,
       }, "127.0.0.1", 8189)
 
       local ok, res = thread:join()
@@ -40,10 +36,6 @@ describe("reports", function()
       assert.not_matches("nilval", res, nil, true)
       assert.matches("foobar=" .. cjson.encode({ foo = "bar" }), res, nil, true)
       assert.matches("bazbat=" .. cjson.encode({ baz = "bat" }), res, nil, true)
-      assert.matches("a=%d+", res)
-      assert.matches("c=%d+", res)
-      assert.matches("r=%d+", res)
-      assert.matches("s=%d+", res)
     end)
     it("doesn't send if not enabled", function()
       reports.toggle(false)
