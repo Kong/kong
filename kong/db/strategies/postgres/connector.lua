@@ -408,7 +408,15 @@ end
 function _mt:iterate(sql)
   local res, err, partial, num_queries = self:query(sql)
   if not res then
-    return nil, err, partial, num_queries
+    local failed = false
+    return function()
+      if not failed then
+        failed = true
+        return false, err, partial, num_queries
+      end
+      -- return error only once to avoid infinite loop
+      return nil
+    end
   end
 
   if res == true then
