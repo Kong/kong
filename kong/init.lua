@@ -329,6 +329,21 @@ function Kong.init()
   assert(runloop.build_api_router(dao, "init"))
 end
 
+
+local function list_migrations(migtable)
+  local list = {}
+  for _, t in ipairs(migtable) do
+    local mignames = {}
+    for _, mig in ipairs(t.migrations) do
+      table.insert(mignames, mig.name)
+    end
+    table.insert(list, string.format("%s (%s)", t.subsystem,
+                       table.concat(mignames, ", ")))
+  end
+  return table.concat(list, " ")
+end
+
+
 function Kong.init_worker()
   kong_global.set_phase(kong, PHASES.init_worker)
 
@@ -360,25 +375,13 @@ function Kong.init_worker()
 
   if ngx.worker.id() == 0 then
     if schema_state.missing_migrations then
-      local missing = {}
-      for _, t in ipairs(schema_state.missing_migrations) do
-        table.insert(missing, string.format("%s (%s)", t.subsystem,
-                              table.concat(t.migrations, ", ")))
-      end
-
       ngx.log(ngx.WARN, "missing migrations: ",
-                        table.concat(missing, " "))
+              list_migrations(schema_state.missing_migrations))
     end
 
     if schema_state.pending_migrations then
-      local pending = {}
-      for _, t in ipairs(schema_state.pending_migrations) do
-        table.insert(pending, string.format("%s(%s)", t.subsystem,
-                              table.concat(t.migrations, ", ")))
-      end
-
       ngx.log(ngx.INFO, "starting with pending migrations: ",
-                        table.concat(pending, ", "))
+              list_migrations(schema_state.pending_migrations))
     end
   end
 
