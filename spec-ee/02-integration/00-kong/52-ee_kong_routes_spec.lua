@@ -4,7 +4,7 @@ local dao_helpers = require "spec.02-integration.03-dao.helpers"
 local enums = require "kong.enterprise_edition.dao.enums"
 local admins = require "kong.enterprise_edition.admins_helpers"
 local workspaces = require "kong.workspaces"
-local ee_helpers = require "spec.ee_helpers"
+local ee_helpers = require "spec-ee.helpers"
 
 
 describe("Admin API - ee-specific Kong routes", function()

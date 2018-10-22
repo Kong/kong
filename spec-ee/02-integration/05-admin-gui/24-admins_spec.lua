@@ -4,8 +4,9 @@ local enums      = require "kong.enterprise_edition.dao.enums"
 local utils      = require "kong.tools.utils"
 local ee_jwt     = require "kong.enterprise_edition.jwt"
 local ee_utils   = require "kong.enterprise_edition.utils"
-local ee_helpers = require "spec.ee_helpers"
+local ee_helpers = require "spec-ee.helpers"
 local escape = require("socket.url").escape
+
 
 local post = ee_helpers.post
 

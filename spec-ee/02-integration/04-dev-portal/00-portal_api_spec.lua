@@ -5,7 +5,7 @@ local utils        = require "kong.tools.utils"
 local ee_jwt       = require "kong.enterprise_edition.jwt"
 local time         = ngx.time
 local uuid         = require("kong.tools.utils").uuid
-local ee_helpers   = require "spec.ee_helpers"
+local ee_helpers   = require "spec-ee.helpers"
 
 
 local function insert_files(dao)

@@ -1,6 +1,6 @@
 local helpers    = require "spec.helpers"
 local cjson      = require "cjson"
-local ee_helpers = require "spec.ee_helpers"
+local ee_helpers = require "spec-ee.helpers"
 
 
 for _, strategy in helpers.each_strategy() do

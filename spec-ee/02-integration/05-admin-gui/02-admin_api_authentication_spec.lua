@@ -1,6 +1,6 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
-local ee_helpers = require "spec.ee_helpers"
+local ee_helpers = require "spec-ee.helpers"
 local workspaces = require "kong.workspaces"
 local enums      = require "kong.enterprise_edition.dao.enums"
 local admins = require "kong.enterprise_edition.admins_helpers"

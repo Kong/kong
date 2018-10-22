@@ -1,6 +1,6 @@
 local helpers = require "spec.helpers"
 local enums = require "kong.enterprise_edition.dao.enums"
-local ee_helpers = require "spec.ee_helpers"
+local ee_helpers = require "spec-ee.helpers"
 local singletons = require "kong.singletons"
 
 
