@@ -743,12 +743,14 @@ do
         local ok, mod = utils.load_module_if_exists(t.namespace .. "." ..
                                                     mig.name)
         if not ok then
+          self.connector:close()
           return nil, fmt_err(self, "failed to load migration '%s': %s",
                               mig.name, mod)
         end
 
         local strategy_migration = mod[self.strategy]
         if not strategy_migration then
+          self.connector:close()
           return nil, fmt_err(self, "missing %s strategy for migration '%s'",
                               self.strategy, mig.name)
         end
@@ -829,6 +831,7 @@ do
     if run_up then
       ok, err = self.connector:post_run_up_migrations()
       if not ok then
+        self.connector:close()
         return nil, prefix_err(self, err)
       end
     end
