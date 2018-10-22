@@ -396,14 +396,22 @@ $ luacheck .
 
 We use [busted](https://olivinelabs.com/busted/) to write our tests. Your patch
 should include the related test updates or additions, in the appropriate test
-suite. All tests of Kong Enterprise Edition functionality go into `spec-ee` to
-reduce collision and merge conflicts with CE tests.
+suite.
 
-- `spec-ee/01-unit` gathers our unit tests (to test a given Lua module or
+- `spec/01-unit` gathers our unit tests (to test a given Lua module or
   function)
-- `spec-ee/02-integration` contains tests that start Kong (connected to a running
+- `spec/02-integration` contains tests that start Kong (connected to a running
   database), execute Admin API and proxy requests against it, and verify the
   output
+- `spec/03-plugins` contains tests (both unit and integration) for the bundled
+  plugins (those plugins still live in the core repository as of now, but will
+  eventually be externalized)
+
+All tests of Kong Enterprise Edition functionality go into `spec-ee` to
+reduce collision and merge conflicts with CE tests.
+
+- `spec-ee/01-unit`
+- `spec-ee/02-integration`
 
 Unit and integration tests are both organized loosely by "feature". This reduces
 the possibility of numeric collision within `kong-ee` branches / pull requests.
