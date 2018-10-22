@@ -4,7 +4,7 @@ local app_helpers  = require "lapis.application"
 local singletons   = require "kong.singletons"
 local responses    = require "kong.tools.responses"
 local workspaces   = require "kong.workspaces"
-local portal_utils = require "kong.portal.utils"
+local ee_api      = require "kong.enterprise_edition.api_helpers"
 local fmt = string.format
 
 
@@ -22,9 +22,11 @@ _M.app:before_filter(function(self)
     credentials = true,
   }
 
-  local prepared_plugin = portal_utils.prepare_plugin("cors", cors_conf)
-  portal_utils.apply_plugin(prepared_plugin, "access")
-  portal_utils.apply_plugin(prepared_plugin, "header_filter")
+  local prepared_plugin = ee_api.prepare_plugin(ee_api.apis.PORTAL,
+                                                singletons.dao,
+                                                "cors", cors_conf)
+  ee_api.apply_plugin(prepared_plugin, "access")
+  ee_api.apply_plugin(prepared_plugin, "header_filter")
 
   -- in case of endpoint with missing `/`, this block is executed twice.
   -- So previous workspace should be dropped

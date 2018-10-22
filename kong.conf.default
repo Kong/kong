@@ -633,7 +633,6 @@
                         #
                         # Value to Use          | Authentication Type
                         # ----------------------+--------------------------
-                        # key-auth              | Key Authentication
                         # basic-auth            | Basic Authentication
                         # ldap-auth-advanced    | LDAP Authentication
 

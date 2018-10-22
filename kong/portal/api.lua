@@ -5,6 +5,7 @@ local portal_utils = require "kong.portal.utils"
 local cjson        = require "cjson.safe"
 local ee_jwt       = require "kong.enterprise_edition.jwt"
 local utils        = require "kong.tools.utils"
+local ee_api       = require "kong.enterprise_edition.api_helpers"
 local time         = ngx.time
 
 
@@ -67,13 +68,15 @@ local function authenticate(self, dao_factory, helpers)
 
   -- apply auth plugin
   local auth_conf = utils.deep_copy(singletons.configuration.portal_auth_conf or {})
-  local prepared_plugin = portal_utils.prepare_plugin(self.plugin.name, auth_conf)
-  portal_utils.apply_plugin(prepared_plugin, "access")
+  local prepared_plugin = ee_api.prepare_plugin(ee_api.apis.PORTAL,
+                                                dao_factory,
+                                                self.plugin.name, auth_conf)
+  ee_api.apply_plugin(prepared_plugin, "access")
 
   -- Validate status if we have a developer type consumer
   self.consumer = ngx.ctx.authenticated_consumer
   if self.consumer.status ~= 0 then
-    local msg = portal_utils.get_developer_status(self.consumer)
+    local msg = ee_api.get_consumer_status(self.consumer)
     return helpers.responses.send_HTTP_UNAUTHORIZED(msg)
   end
 end

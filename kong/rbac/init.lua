@@ -175,9 +175,9 @@ end
 _M.user_can_manage_endpoints_from = user_can_manage_endpoints_from
 
 
-local function retrieve_user(user_token)
+local function retrieve_user(user_token_or_name, key)
   local users, err = singletons.dao.rbac_users:find_all({
-    user_token = user_token,
+    [key] = user_token_or_name,
     __skip_rbac = true,
   })
   if err then
@@ -193,17 +193,42 @@ local function retrieve_user(user_token)
 end
 
 
-local function get_user(user_token)
-  local cache_key = singletons.dao.rbac_users:cache_key(user_token)
-  local user, err = singletons.cache:get(cache_key, nil,
-                                         retrieve_user, user_token)
+local function get_user(user_token_or_name, key)
+  key = key or "user_token"
 
-  if err then
-    return nil, err
+  if key ~= "name" and key ~= "user_token" then
+    return nil, "key must be 'name' or 'user_token'"
+  end
+
+  local user, err
+
+  -- we're only caching by user token
+  if key == "user_token" then
+    local cache_key = singletons.dao.rbac_users:cache_key(user_token_or_name)
+    user, err = singletons.cache:get(cache_key, nil,
+                                     retrieve_user, user_token_or_name, key)
+
+    if err then
+      return nil, err
+    end
+
+  else
+    -- look up user in db
+    local users, err = singletons.dao.rbac_users:run_with_ws_scope(
+                       {},
+                       singletons.dao.rbac_users.find_all,
+                       { [key] = user_token_or_name })
+
+    if err then
+      return nil, err
+    end
+
+    user = users[1]
   end
 
   return user
 end
+_M.get_user = get_user
 
 
 local function bitfield_check(map, key, bit)
@@ -387,6 +412,7 @@ local function get_rbac_user_info()
   ctx.workspaces = old_ws_ctx
   return user or guest_user
 end
+_M.get_rbac_user_info = get_rbac_user_info
 
 
 local function is_system_table(t)
@@ -867,14 +893,12 @@ function _M.load_rbac_ctx(dao_factory, ctx)
   local rbac_auth_header = singletons.configuration.rbac_auth_header
   local rbac_token = ngx.req.get_headers()[rbac_auth_header]
   local http_method = ngx.req.get_method()
-
   if type(rbac_token) ~= "string" then
     -- forbid empty rbac_token and also
     -- forbid sending rbac_token headers multiple times
     -- because get_user assume it's a string
     return false
   end
-
   local user, err = get_user(rbac_token)
   if err then
     return nil, err
@@ -1019,6 +1043,58 @@ function _M.check_cascade(entities, rbac_ctx)
   end
 
   return true
+end
+
+
+local function retrieve_consumer_user_map(rbac_user_id)
+  local users, err = singletons.dao.consumers_rbac_users_map:find_all({
+    user_id = rbac_user_id,
+    __skip_rbac = true,
+  })
+
+  if err then
+    log(ngx.ERR, "error retrieving consumer_user map from rbac_user.id: ",
+        rbac_user_id, err)
+    return nil, err
+  end
+
+  if not next(users) then
+    return nil
+  end
+
+  return users[1]
+end
+
+
+--- Retrieve rbac <> consumer map
+-- @param `rbac_user_id` id of rbac_user
+function _M.get_consumer_user_map(rbac_user_id)
+  local cache_key = singletons.dao.consumers_rbac_users_map:cache_key(rbac_user_id)
+  local user, err = singletons.cache:get(cache_key,
+                                         nil,
+                                         retrieve_consumer_user_map,
+                                         rbac_user_id)
+
+  if err then
+    return nil, err
+  end
+
+  return user
+end
+
+
+function _M.get_rbac_token()
+  local rbac_auth_header = singletons.configuration.rbac_auth_header
+  local rbac_token = ngx.req.get_headers()[rbac_auth_header]
+
+  if type(rbac_token) ~= "string" then
+    -- forbid empty rbac_token and also
+    -- forbid sending rbac_token headers multiple times
+    -- because get_user assume it's a string
+    return false
+  end
+
+  return rbac_token
 end
 
 

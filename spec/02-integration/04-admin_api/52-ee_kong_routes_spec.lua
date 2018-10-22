@@ -1,7 +1,6 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
 local dao_helpers = require "spec.02-integration.03-dao.helpers"
-local proxy_prefix = require("kong.enterprise_edition.proxies").proxy_prefix
 local enums = require "kong.enterprise_edition.dao.enums"
 local ee_helpers = require "spec.ee_helpers"
 
@@ -31,11 +30,11 @@ describe("Admin API - ee-specific Kong routes", function()
           database = strategy,
         }))
 
-        client = assert(helpers.proxy_client())
+        client = assert(helpers.admin_client())
 
         local res = assert(client:send {
           method = "GET",
-          path = "/" .. proxy_prefix .. "/admin/userinfo",
+          path = "/userinfo",
         })
         assert.res_status(404, res)
       end)
@@ -46,10 +45,11 @@ describe("Admin API - ee-specific Kong routes", function()
 
         assert(helpers.start_kong({
           database = strategy,
-          admin_gui_auth = 'basic-auth'
+          admin_gui_auth = 'basic-auth',
+          enforce_rbac = 'on',
         }))
 
-        client = assert(helpers.proxy_client())
+        client = assert(helpers.admin_client())
 
         bp.consumers:insert {
           username = "hawk",
@@ -59,68 +59,11 @@ describe("Admin API - ee-specific Kong routes", function()
 
         local res = assert(client:send {
           method = "GET",
-          path = "/" .. proxy_prefix .. "/admin/userinfo",
+          path = "/userinfo",
           ["Authorization"] = "Basic " .. ngx.encode_base64("iam:invalid"),
         })
 
         assert.res_status(401, res)
-      end)
-
-      it("returns user info of admin consumer with no rbac", function()
-        local _
-        bp, _, dao = helpers.get_db_utils(strategy)
-
-        assert(helpers.start_kong({
-          database = strategy,
-          admin_gui_auth = 'basic-auth',
-        }))
-
-        local consumer = bp.consumers:insert {
-          username = "hawk",
-          type = enums.CONSUMERS.TYPE.ADMIN,
-          status = enums.CONSUMERS.STATUS.APPROVED,
-        }
-
-        assert(dao.basicauth_credentials:insert {
-          username    = "hawk",
-          password    = "kong",
-          consumer_id = consumer.id,
-        })
-
-        client = assert(helpers.proxy_client())
-
-        local res = assert(client:send {
-          method = "GET",
-          path = "/" .. proxy_prefix .. "/admin/userinfo",
-          headers = {
-            ["Authorization"] = "Basic " .. ngx.encode_base64("hawk:kong"),
-          }
-        })
-
-        res = assert.res_status(200, res)
-        local json = cjson.decode(res)
-
-        local expected = {
-          consumer = consumer,
-          permissions = {
-            endpoints = {
-              ["*"] = {
-                ["*"] = {
-                  actions = { "delete", "create", "update", "read", },
-                  negative = false,
-                }
-              }
-            },
-            entities = {
-              ["*"] = {
-                actions = { "delete", "create", "update", "read", },
-                negative = false,
-              },
-            },
-          },
-        }
-
-        assert.same(expected, json)
       end)
 
       it("returns user info of admin consumer with rbac", function()
@@ -133,9 +76,9 @@ describe("Admin API - ee-specific Kong routes", function()
           enforce_rbac = "both",
         }))
 
-        local super_admin = ee_helpers.register_rbac_resources(dao)
+        local _, super_role = ee_helpers.register_rbac_resources(dao)
 
-        client = assert(helpers.proxy_client())
+        client = assert(helpers.admin_client())
 
         local consumer = bp.consumers:insert {
           username = "hawk",
@@ -149,16 +92,29 @@ describe("Admin API - ee-specific Kong routes", function()
           consumer_id = consumer.id,
         })
 
+        local user = dao.rbac_users:insert {
+          name = "hawk",
+          user_token = "tawken",
+          enabled = true,
+        }
+
+        -- make hawk super
+        assert(dao.rbac_user_roles:insert({
+          user_id = user.id,
+          role_id = super_role.role_id,
+        }))
+
         assert(dao.consumers_rbac_users_map:insert {
           consumer_id = consumer.id,
-          user_id = super_admin.id
+          user_id = user.id
         })
 
         local res = assert(client:send {
           method = "GET",
-          path = "/" .. proxy_prefix .. "/admin/userinfo",
+          path = "/userinfo",
           headers = {
             ["Authorization"] = "Basic " .. ngx.encode_base64("hawk:kong"),
+            ["Kong-Admin-User"] = "hawk",
           }
         })
 
@@ -167,7 +123,7 @@ describe("Admin API - ee-specific Kong routes", function()
 
         local expected = {
           consumer = consumer,
-          rbac_user = super_admin,
+          rbac_user = user,
           permissions = {
             endpoints = {
               ["*"] = {
@@ -189,7 +145,7 @@ describe("Admin API - ee-specific Kong routes", function()
         assert.same(expected, json)
       end)
 
-      it("is whitelisted", function()
+      it("is whitelisted and supports legacy rbac_user.name", function()
         local _
         bp, _, dao = helpers.get_db_utils(strategy)
 
@@ -199,9 +155,13 @@ describe("Admin API - ee-specific Kong routes", function()
           enforce_rbac = "both",
         }))
 
-        local super_admin = ee_helpers.register_rbac_resources(dao)
+        client = assert(helpers.admin_client())
 
-        client = assert(helpers.proxy_client())
+        local user = dao.rbac_users:insert {
+          name = "user-hawk",
+          user_token = "tawken",
+          enabled = true,
+        }
 
         local consumer = bp.consumers:insert {
           username = "hawk",
@@ -210,21 +170,23 @@ describe("Admin API - ee-specific Kong routes", function()
         }
 
         assert(dao.basicauth_credentials:insert {
-          username    = "hawk",
+          username    = consumer.username,
           password    = "kong",
           consumer_id = consumer.id,
         })
 
         assert(dao.consumers_rbac_users_map:insert {
           consumer_id = consumer.id,
-          user_id = super_admin.id
+          user_id = user.id
         })
 
+        -- rbac_user.name is "user-hawk", can look up by consumer.username "hawk"
         local res = assert(client:send {
           method = "GET",
-          path = "/" .. proxy_prefix .. "/admin/userinfo",
+          path = "/userinfo",
           headers = {
             ["Authorization"] = "Basic " .. ngx.encode_base64("hawk:kong"),
+            ["Kong-Admin-User"] = consumer.username,
           }
         })
 
@@ -232,7 +194,7 @@ describe("Admin API - ee-specific Kong routes", function()
         local json = cjson.decode(res)
 
         assert.same(consumer, json.consumer)
-        assert.same(super_admin, json.rbac_user)
+        assert.same(user, json.rbac_user)
       end)
 
       it("returns 404 on user info when consumer is not mapped to rbac user, ", function()
@@ -243,8 +205,6 @@ describe("Admin API - ee-specific Kong routes", function()
           admin_gui_auth = "basic-auth",
           enforce_rbac = "on",
         }))
-
-        ee_helpers.register_rbac_resources(dao)
 
         client = assert(helpers.proxy_client())
 
@@ -262,9 +222,10 @@ describe("Admin API - ee-specific Kong routes", function()
 
         local res = assert(client:send {
           method = "GET",
-          path = "/" .. proxy_prefix .. "/admin/userinfo",
+          path = "/userinfo",
           headers = {
             ["Authorization"] = "Basic " .. ngx.encode_base64("hawk:kong"),
+            ["Kong-Admin-User"] = "hawk",
           }
         })
 

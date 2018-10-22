@@ -13,7 +13,7 @@ local Errors      = require "kong.db.errors"
 
 local rbac = require "kong.rbac"
 local workspaces = require "kong.workspaces"
-
+local ee_api      = require "kong.enterprise_edition.api_helpers"
 
 local sub      = string.sub
 local find     = string.find
@@ -176,11 +176,26 @@ app:before_filter(function(self)
     ngx.ctx.workspaces = workspaces
     self.params.workspace_name = nil
 
-   -- ngx.var.uri is used to look for exact matches
-   -- self.route_name is used to look for wildcard matches,
-   -- by replacing named parameters with *
-   rbac.validate_user()
-   rbac.validate_endpoint(self.route_name, ngx.var.uri)
+    local cors_conf = {
+      origins = singletons.configuration.admin_gui_url or "*",
+      methods = { "GET", "PUT", "PATCH", "DELETE", "POST" },
+      credentials = true,
+    }
+    local prepared_plugin = ee_api.prepare_plugin(ee_api.apis.ADMIN,
+                                                  singletons.dao,
+                                                  "cors", cors_conf)
+    ee_api.apply_plugin(prepared_plugin, "access")
+    ee_api.apply_plugin(prepared_plugin, "header_filter")
+
+    ee_api.authenticate(self, singletons.dao,
+                              singletons.configuration.enforce_rbac ~= "off",
+                              singletons.configuration.admin_gui_auth)
+
+    -- ngx.var.uri is used to look for exact matches
+    -- self.route_name is used to look for wildcard matches,
+    -- by replacing named parameters with *
+    rbac.validate_user()
+    rbac.validate_endpoint(self.route_name, ngx.var.uri)
   end
 
   if not NEEDS_BODY[ngx.req.get_method()] then

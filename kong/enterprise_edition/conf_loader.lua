@@ -37,15 +37,19 @@ end
 
 local function validate_admin_gui_authentication(conf, errors)
 -- TODO: reinstate validation after testing all auth types
---  if conf.admin_gui_auth then
---    if conf.admin_gui_auth ~= "key-auth" and
---      conf.admin_gui_auth ~= "basic-auth" and
---      conf.admin_gui_auth ~= "ldap-auth-advanced" then
---      errors[#errors+1] = "admin_gui_auth must be 'key-auth', 'basic-auth', " ..
---        "'ldap-auth-advanced' or not set"
---    end
---
---  end
+  if conf.admin_gui_auth then
+    if conf.admin_gui_auth ~= "key-auth" and
+       conf.admin_gui_auth ~= "basic-auth" and
+       conf.admin_gui_auth ~= "ldap-auth-advanced" then
+      errors[#errors+1] = "admin_gui_auth must be 'key-auth', 'basic-auth', " ..
+        "'ldap-auth-advanced' or not set"
+    end
+
+    if not conf.enforce_rbac or conf.enforce_rbac == 'off' then
+      errors[#errors+1] = "enforce_rbac must be enabled when " ..
+          "admin_gui_auth is enabled"
+    end
+  end
 
   if conf.admin_gui_auth_conf and conf.admin_gui_auth_conf ~= "" then
     if not conf.admin_gui_auth or conf.admin_gui_auth == "" then

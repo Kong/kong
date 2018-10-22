@@ -3,8 +3,6 @@ local singletons = require "kong.singletons"
 local public = require "kong.tools.public"
 local conf_loader = require "kong.conf_loader"
 local cjson = require "cjson"
-local ee_api = require "kong.enterprise_edition.api_helpers"
-local crud = require "kong.api.crud_helpers"
 local rbac = require "kong.rbac"
 
 local sub = string.sub
@@ -134,11 +132,9 @@ return {
   -- See for reference: kong.rbac.authorize_request_endpoint()
   ["/userinfo"] = {
     before = function(self, dao_factory, helpers)
-      self.params.username_or_id = ee_api.get_consumer_id_from_headers()
-
       local admin_auth = singletons.configuration.admin_gui_auth
 
-      if admin_auth and not self.params.username_or_id then
+      if admin_auth and not self.consumer then
         return helpers.responses.send_HTTP_UNAUTHORIZED()
       end
 
@@ -146,9 +142,7 @@ return {
         return helpers.responses.send_HTTP_NOT_FOUND()
       end
 
-      crud.find_consumer_by_username_or_id(self, dao_factory, helpers)
-
-      -- now to get the right permission set -- default is rbac not enabled
+      -- now to get the right permission set
       self.permissions = {
         endpoints = {
           ["*"] = {
@@ -166,51 +160,29 @@ return {
         },
       }
 
+      local roles, err = rbac.entity_relationships(dao_factory,
+                                                   ngx.ctx.rbac.user,
+                                                   "user",
+                                                   "role")
+
+      if err then
+        ngx.log(ngx.ERR, "[userinfo] ", err)
+        return helpers.responses.send_HTTP_INTERNAL_SERVER_ERROR()
+      end
+
       local rbac_enabled = singletons.configuration.rbac
-      if rbac_enabled ~= "off" then
-        local user_consumer = dao_factory.consumers_rbac_users_map:find_all({
-          consumer_id = self.consumer.id,
-        })
+      if rbac_enabled == "on" or rbac_enabled == "both" then
+        self.permissions.endpoints = rbac.readable_endpoints_permissions(roles)
+      end
 
-        if not next(user_consumer) then
-          ngx.log(ngx.ERR, "[userinfo] ", "rbac_user_consumer map not found "
-                                          .. "for consumer id ="
-                                          .. self.consumer.id)
-          return helpers.responses.send_HTTP_NOT_FOUND()
-        end
-
-        if user_consumer and user_consumer[1].user_id then
-          self.params.name_or_id = user_consumer[1].user_id
-          crud.find_rbac_user_by_name_or_id(self, dao_factory, helpers)
-
-          if not self.rbac_user then
-            ngx.log(ngx.ERR, "[userinfo] ", "rbac user not found for user "
-                                          .. self.params.name_or_id)
-            return helpers.responses.send_HTTP_NOT_FOUND()
-          end
-        end
-
-        local roles, err = rbac.entity_relationships(dao_factory, self.rbac_user,
-          "user", "role")
-
-        if err then
-          ngx.log(ngx.ERR, "[userinfo] ", err)
-          return helpers.responses.send_HTTP_INTERNAL_SERVER_ERROR()
-        end
-
-        if rbac_enabled == "on" or rbac_enabled == "both" then
-          self.permissions.endpoints = rbac.readable_endpoints_permissions(roles)
-        end
-
-        if rbac_enabled == "entity" or rbac_enabled == "both" then
-          self.permissions.entities = rbac.readable_entities_permissions(roles)
-        end
+      if rbac_enabled == "entity" or rbac_enabled == "both" then
+        self.permissions.entities = rbac.readable_entities_permissions(roles)
       end
     end,
 
     GET = function(self, dao_factory, helpers)
       return helpers.responses.send_HTTP_OK({
-        rbac_user = self.rbac_user,
+        rbac_user = ngx.ctx.rbac.user,
         consumer = self.consumer,
         permissions = self.permissions,
       })

@@ -672,15 +672,19 @@ end
 function Kong.serve_admin_api(options)
   options = options or {}
 
-  header["Access-Control-Allow-Origin"] = options.allow_origin or "*"
+  -- if we support authentication via plugin as well as via RBAC token, then
+  -- use cors plugin in api/init.lua to process cors requests and
+  -- support the right origins, headers, etc.
+  if not singletons.configuration.admin_gui_auth then
+    header["Access-Control-Allow-Origin"] = options.allow_origin or "*"
 
-  if ngx.req.get_method() == "OPTIONS" then
-    header["Access-Control-Allow-Methods"] = options.acam or
-                                             "GET, HEAD, PATCH, POST, DELETE"
+    if ngx.req.get_method() == "OPTIONS" then
+      header["Access-Control-Allow-Methods"] = options.acam or
+        "GET, HEAD, PATCH, POST, DELETE"
+      header["Access-Control-Allow-Headers"] = options.acah or "Content-Type"
 
-    header["Access-Control-Allow-Headers"] = options.acah or "Content-Type"
-
-    return ngx.exit(204)
+      return ngx.exit(204)
+    end
   end
 
   return lapis.serve("kong.api")

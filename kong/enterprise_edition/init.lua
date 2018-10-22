@@ -145,21 +145,13 @@ function _M.prepare_admin(kong_config)
   local api_ssl_port
 
   -- only access the admin API on the proxy if auth is enabled
-  if kong_config.admin_gui_auth then
-    api_listen = select_listener(kong_config.proxy_listeners, {ssl = false})
-    api_port = api_listen and api_listen.port
-    api_ssl_listen = select_listener(kong_config.proxy_listeners, {ssl = true})
-    api_ssl_port = api_ssl_listen and api_ssl_listen.port
-    api_url = kong_config.proxy_url
-  else
-    api_listen = select_listener(kong_config.admin_listeners, {ssl = false})
-    api_port = api_listen and api_listen.port
-    api_ssl_listen = select_listener(kong_config.admin_listeners, {ssl = true})
-    api_ssl_port = api_ssl_listen and api_ssl_listen.port
-    -- TODO: stop using this property, and introduce admin_api_url so that
-    -- api_url always includes the protocol
-    api_url = kong_config.admin_api_uri
-  end
+  api_listen = select_listener(kong_config.admin_listeners, {ssl = false})
+  api_port = api_listen and api_listen.port
+  api_ssl_listen = select_listener(kong_config.admin_listeners, {ssl = true})
+  api_ssl_port = api_ssl_listen and api_ssl_listen.port
+  -- TODO: stop using this property, and introduce admin_api_url so that
+  -- api_url always includes the protocol
+  api_url = kong_config.admin_api_uri
 
   -- we will consider rbac to be on if it is set to "both" or "on",
   -- because we don't currently support entity-level

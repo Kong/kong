@@ -6,8 +6,10 @@ describe("ee conf loader", function()
     msgs = {}
   end)
   describe("validate_admin_gui_authentication()", function()
-    pending("returns error if admin_gui_auth value is not supported", function()
-      ee_conf_loader.validate_admin_gui_authentication({ admin_gui_auth =" foo" }, msgs)
+    it("returns error if admin_gui_auth value is not supported", function()
+      ee_conf_loader.validate_admin_gui_authentication({ admin_gui_auth ="foo",
+                                                         enforce_rbac = true,
+                                                       }, msgs)
 
       local expected = { "admin_gui_auth must be 'key-auth', 'basic-auth', " ..
                          "'ldap-auth-advanced' or not set" }
@@ -26,6 +28,7 @@ describe("ee conf loader", function()
       ee_conf_loader.validate_admin_gui_authentication({
         admin_gui_auth = "basic-auth",
         admin_gui_auth_conf = "{ \"hide_credentials\" = true }",
+        enforce_rbac = true,
       }, msgs)
 
       local expected = { "admin_gui_auth_conf must be valid json or not set: " ..
@@ -35,10 +38,23 @@ describe("ee conf loader", function()
       assert.same(expected, msgs)
     end)
 
+    it("returns error if admin_gui_auth is on but rbac is off", function()
+      ee_conf_loader.validate_admin_gui_authentication({
+        admin_gui_auth = "basic-auth",
+        enforce_rbac = false,
+      }, msgs)
+
+       local expected = { "enforce_rbac must be enabled when admin_gui_auth " ..
+                         "is enabled" }
+
+      assert.same(expected, msgs)
+    end)
+
     it("returns {} if there are no errors", function()
       ee_conf_loader.validate_admin_gui_authentication({
         admin_gui_auth = "basic-auth",
         admin_gui_auth_conf = "{ \"hide_credentials\": true }",
+        enforce_rbac = true,
       }, msgs)
 
       assert.same({}, msgs)

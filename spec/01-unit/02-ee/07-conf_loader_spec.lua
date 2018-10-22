@@ -74,7 +74,8 @@ describe("Configuration loader - enterprise", function()
 
     it("enforces admin_gui_auth if admin_gui_auth_conf is present", function()
       local conf, err = conf_loader(nil, {
-        admin_gui_auth_conf = "{ \"hide_credentials\": true }"
+        admin_gui_auth_conf = "{ \"hide_credentials\": true }",
+        enforce_rbac = "on",
       })
       assert.is_nil(conf)
       assert.equal("admin_gui_auth_conf is set with no admin_gui_auth", err)
@@ -83,7 +84,8 @@ describe("Configuration loader - enterprise", function()
     it("enforces valid json for admin_gui_auth_conf", function()
       local conf, err = conf_loader(nil, {
         admin_gui_auth = "basic-auth",
-        admin_gui_auth_conf = "{ \"hide_credentials\": derp }"
+        admin_gui_auth_conf = "{ \"hide_credentials\": derp }",
+        enforce_rbac = "on",
       })
       assert.is_nil(conf)
       assert.equal("admin_gui_auth_conf must be valid json or not set: Expected value but found invalid token at character 23 - { \"hide_credentials\": derp }", err)

@@ -118,7 +118,7 @@ for _, strategy in helpers.each_strategy() do
           assert.equal(enums.CONSUMERS.TYPE.ADMIN, json.consumer.type)
           assert.equal(enums.CONSUMERS.STATUS.APPROVED, json.consumer.status)
           assert.truthy(utils.is_valid_uuid(json.rbac_user.user_token))
-          assert.equal("user-dale-cooper", json.rbac_user.name)
+          assert.equal("dale", json.rbac_user.name)
         end)
 
         it("uses the admins_helpers validator", function()

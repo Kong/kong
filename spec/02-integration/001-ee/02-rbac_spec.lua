@@ -2221,6 +2221,16 @@ for _, h in ipairs({ "", "Custom-Auth-Token" }) do
       assert.matches("Content-Type, " .. expected,
                      res.headers["Access-Control-Allow-Headers"], nil, true)
     end)
+
+    it("defaults Access-Control-Allow-Origin to *", function()
+      local res = assert(client:send {
+        method = "OPTIONS",
+        path   = "/",
+      })
+
+      assert.res_status(204, res)
+      assert.same("*", res.headers["Access-Control-Allow-Origin"])
+    end)
   end)
 end
 

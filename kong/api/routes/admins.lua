@@ -108,19 +108,11 @@ return {
       crud.post({
         username  = self.params.username,
         custom_id = self.params.custom_id,
-        email     = self.params.email,
         type      = self.params.type,
+        email     = self.params.email,
         status    = enums.CONSUMERS.STATUS.APPROVED,
       }, dao_factory.consumers, function(consumer)
-        local name = "user"
-
-        if consumer.username then
-          name = name .. "-" .. consumer.username
-        end
-
-        if consumer.custom_id then
-          name = name .. "-" .. consumer.custom_id
-        end
+        local name = consumer.username or consumer.custom_id
 
         crud.post({
           name = name,
