@@ -31,7 +31,7 @@ local function execute(args)
     error(tostring(err_t))
   end
 
-  local schema_state = assert(db:schema_state())
+  local schema_state = assert(migrations_utils.get_schema_state())
 
   local err
 

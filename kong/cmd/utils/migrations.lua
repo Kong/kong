@@ -1,8 +1,34 @@
 local log = require "kong.cmd.utils.log"
+local singletons = require "kong.singletons"
 
 
 local MIGRATIONS_MUTEX_KEY = "migrations"
 local NOT_LEADER_MSG = "aborted: another node is performing database changes"
+local SCHEMA_STATE_CACHE_KEY = "migrations:schema_state"
+
+local function invalidate_schema_state_cluster_cache()
+  local ok, err = singletons.cluster_events:broadcast("migrations", "schema_state_change")
+  if not ok then
+    log.err("Failed to broadcast schema state change event to cluster: ", err)
+  end
+end
+
+
+local function invalidate_schema_state_cache()
+  local ok, err = singletons.cache:invalidate(SCHEMA_STATE_CACHE_KEY)
+  if not ok then
+    log.err("Failed to invalidate schema state cache: ", err)
+  end
+end
+
+
+local function get_schema_state()
+  local db = singletons.db
+  return singletons.cache:get(SCHEMA_STATE_CACHE_KEY,
+                              nil,
+                              db.schema_state,
+                              db)
+end
 
 
 local function print_state(schema_state, lvl)
@@ -40,6 +66,7 @@ local function bootstrap(schema_state, db, ttl)
   if schema_state.needs_bootstrap then
     log("bootstrapping database...")
     assert(db:schema_bootstrap())
+    invalidate_schema_state_cluster_cache()
 
   else
     log("database already bootstrapped")
@@ -57,6 +84,7 @@ local function bootstrap(schema_state, db, ttl)
       run_teardown = true,
     }))
     log("database is up-to-date")
+    invalidate_schema_state_cluster_cache()
   end)
   if err then
     error(err)
@@ -75,7 +103,7 @@ local function up(schema_state, db, opts)
   end
 
   local ok, err = db:cluster_mutex(MIGRATIONS_MUTEX_KEY, opts, function()
-    schema_state = assert(db:schema_state())
+    schema_state = assert(get_schema_state())
 
     if schema_state.pending_migrations then
       error("database has pending migrations; run 'kong migrations finish'")
@@ -91,6 +119,8 @@ local function up(schema_state, db, opts)
     assert(db:run_migrations(schema_state.new_migrations, {
       run_up = true,
     }))
+
+    invalidate_schema_state_cluster_cache()
   end)
   if err then
     error(err)
@@ -99,6 +129,7 @@ local function up(schema_state, db, opts)
   if not ok then
     log(NOT_LEADER_MSG)
   end
+
 
   return ok
 end
@@ -116,7 +147,7 @@ local function finish(schema_state, db, ttl)
   }
 
   local ok, err = db:cluster_mutex(MIGRATIONS_MUTEX_KEY, opts, function()
-    local schema_state = assert(db:schema_state())
+    local schema_state = assert(get_schema_state())
 
     if not schema_state.pending_migrations then
       log("no pending migrations to finish")
@@ -156,6 +187,7 @@ local function reset(schema_state, db, ttl)
     log("resetting database...")
     assert(db:schema_reset())
     log("database successfully reset")
+    invalidate_schema_state_cluster_cache()
   end)
   if err then
     -- failed to acquire locks - maybe locks table was dropped?
@@ -163,6 +195,7 @@ local function reset(schema_state, db, ttl)
     log("resetting database...")
     assert(db:schema_reset())
     log("database successfully reset")
+    invalidate_schema_state_cluster_cache()
     return true
   end
 
@@ -179,5 +212,7 @@ return {
   reset = reset,
   finish = finish,
   bootstrap = bootstrap,
+  get_schema_state = get_schema_state,
   print_state = print_state,
+  invalidate_schema_state_cache = invalidate_schema_state_cache,
 }

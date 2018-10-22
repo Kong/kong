@@ -18,6 +18,7 @@ local constants   = require "kong.constants"
 local semaphore   = require "ngx.semaphore"
 local responses   = require "kong.tools.responses"
 local singletons  = require "kong.singletons"
+local migrations  = require "kong.cmd.utils.migrations"
 local certificate = require "kong.runloop.certificate"
 
 
@@ -454,6 +455,15 @@ return {
       end)
 
 
+      -- migrations
+      cluster_events:subscribe("migrations:schema_state_changed", function()
+        local ok, err = worker_events.post("migrations", "schema_state_changed")
+        if not ok then
+          log(ERR, "failed notifying workers about new schema state: ", err)
+        end
+      end)
+
+
       -- upstream updates
 
 
@@ -487,6 +497,11 @@ return {
         -- => to balancer update
         balancer.on_upstream_event(operation, upstream)
       end, "balancer", "upstreams")
+
+
+      worker_events.register(function()
+        migrations.invalidate_schema_state_cache()
+      end, "migrations", "schema_state_changed")
 
 
       cluster_events:subscribe("balancer:upstreams", function(data)

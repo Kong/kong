@@ -83,7 +83,7 @@ local function execute(args)
   local db = DB.new(conf)
   assert(db:init_connector())
 
-  local schema_state = assert(db:schema_state())
+  local schema_state = assert(migrations_utils.get_schema_state())
 
   if args.command == "list" then
     if schema_state.needs_bootstrap then

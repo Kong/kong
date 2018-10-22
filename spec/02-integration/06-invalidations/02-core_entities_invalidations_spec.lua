@@ -1,5 +1,6 @@
 local cjson        = require "cjson"
 local helpers      = require "spec.helpers"
+local migrations   = require "kong.cmd.utils.migrations"
 local ssl_fixtures = require "spec.fixtures.ssl"
 
 
@@ -862,6 +863,22 @@ for _, strategy in helpers.each_strategy() do
         })
         assert.res_status(200, res_2)
         assert.is_nil(res_2.headers["Dummy-Plugin"])
+      end)
+    end)
+
+    describe("#schema state invalidated db [#" .. strategy .. "]", function()
+      pending("on reset", function()
+      end)
+
+      pending("on bootstrap", function()
+      end)
+
+      it("on up", function()
+        local res_1 = admin_client_1:get("/cache/migrations:schema_state")
+        error(res_1)
+
+        --migrations.up()
+
       end)
     end)
   end)
