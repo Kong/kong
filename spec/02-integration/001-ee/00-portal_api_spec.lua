@@ -10,14 +10,14 @@ local ee_helpers   = require "spec.ee_helpers"
 
 local function insert_files(dao)
   for i = 1, 10 do
-    assert(dao.portal_files:insert {
+    assert(dao.files:insert {
       name = "file-" .. i,
       contents = "i-" .. i,
       type = "partial",
       auth = i % 2 == 0 and true or false
     })
 
-    assert(dao.portal_files:insert {
+    assert(dao.files:insert {
       name = "file-page" .. i,
       contents = "i-" .. i,
       type = "page",

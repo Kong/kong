@@ -36,7 +36,7 @@ describe("Admin API - Developer Portal - " .. strategy, function()
   before_each(function()
     dao:truncate_tables()
 
-    fileStub = assert(dao.portal_files:insert {
+    fileStub = assert(dao.files:insert {
       name = "stub",
       contents = "1",
       type = "page"
@@ -196,7 +196,7 @@ describe("Admin API - Developer Portal - " .. strategy, function()
         dao:truncate_tables()
 
         for i = 1, 10 do
-          assert(dao.portal_files:insert {
+          assert(dao.files:insert {
             name = "file-" .. i,
             contents = "i-" .. i,
             type = "partial"
@@ -339,7 +339,7 @@ describe("Admin API - Developer Portal - " .. strategy, function()
             assert.equal("bar", json.contents)
             assert.equal(fileStub.id, json.id)
 
-            local in_db = assert(dao.portal_files:find {
+            local in_db = assert(dao.files:find {
               id = fileStub.id,
               name = fileStub.name,
             })
@@ -363,7 +363,7 @@ describe("Admin API - Developer Portal - " .. strategy, function()
             assert.equal("bar", json.contents)
             assert.equal(fileStub.id, json.id)
 
-            local in_db = assert(dao.portal_files:find {
+            local in_db = assert(dao.files:find {
               id = fileStub.id,
               name = fileStub.name,
             })

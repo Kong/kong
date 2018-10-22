@@ -148,7 +148,7 @@ return {
     end,
 
     GET = function(self, dao_factory, helpers)
-      crud.paginated_set(self, dao_factory.portal_files, nil, {__skip_rbac = true})
+      crud.paginated_set(self, dao_factory.files, nil, {__skip_rbac = true})
     end,
   },
 
@@ -157,13 +157,13 @@ return {
     GET = function(self, dao_factory, helpers)
       self.params.auth = false
 
-      crud.paginated_set(self, dao_factory.portal_files, nil, {__skip_rbac = true})
+      crud.paginated_set(self, dao_factory.files, nil, {__skip_rbac = true})
     end,
   },
 
   ["/files/*"] = {
     before = function(self, dao_factory, helpers)
-      local dao = dao_factory.portal_files
+      local dao = dao_factory.files
       local identifier = self.params.splat
 
       -- Find a file by id or field "name"
@@ -172,7 +172,7 @@ return {
         return helpers.yield_error(err)
       end
 
-      -- Since we know both the name and id of portal_files are unique
+      -- Since we know both the name and id of files are unique
       self.params.file_name_or_id = nil
       self.portal_file = rows[1]
       if not self.portal_file then

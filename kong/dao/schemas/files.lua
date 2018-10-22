@@ -1,6 +1,7 @@
 return {
-  table = "portal_files",
-  primary_key = {"id", "name"},
+  table = "files",
+  primary_key = {"id"},
+  cache_key = { "id", "name" },
   workspaceable = true,
   fields = {
     id = {

@@ -778,4 +778,15 @@ return {
       DELETE FROM workspace_entities WHERE entity_type = 'workspaces'
     ]]
   },
+  {
+    name = "2018-10-17-170000_portal_files_to_files",
+    up = [[
+      DO $$
+      BEGIN
+        ALTER TABLE IF EXISTS portal_files RENAME TO files;
+      EXCEPTION WHEN duplicate_table THEN
+         -- Do nothing, accept existing state
+      END$$;
+    ]]
+  },
 }

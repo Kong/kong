@@ -15,8 +15,15 @@ return {
       crud.put(self.params, dao_factory.workspaces)
     end,
 
-    POST = function(self, dao_factory)
-      crud.post(self.params, dao_factory.workspaces)
+    POST = function(self, dao_factory, helpers)
+      crud.post(self.params, dao_factory.workspaces, function(workspace)
+        local workspace, err = crud.portal_crud.check_initialized(workspace, dao_factory)
+        if not workspace then
+          return helpers.yield_error(err)
+        end
+
+        return workspace
+      end)
     end,
   },
 
@@ -30,8 +37,15 @@ return {
       return helpers.responses.send_HTTP_OK(self.workspace)
     end,
 
-    PATCH = function(self, dao_factory)
-      crud.patch(self.params, dao_factory.workspaces, self.workspace)
+    PATCH = function(self, dao_factory, helpers)
+      crud.patch(self.params, dao_factory.workspaces, self.workspace, function(workspace)
+        local workspace, err = crud.portal_crud.check_initialized(workspace, dao_factory)
+        if not workspace then
+          return helpers.yield_error(err)
+        end
+
+        return workspace
+      end)
     end,
 
     DELETE = function(self, dao_factory, helpers)

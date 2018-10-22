@@ -1,7 +1,8 @@
-local enums = require "kong.enterprise_edition.dao.enums"
-local cjson = require "cjson"
-local app_helpers   = require "lapis.application"
-local singletons = require "kong.singletons"
+local enums       = require "kong.enterprise_edition.dao.enums"
+local cjson       = require "cjson"
+local app_helpers = require "lapis.application"
+local singletons  = require "kong.singletons"
+local files       = require "kong.portal.migrations.01_initial_files"
 
 
 local _M = {}
@@ -69,5 +70,38 @@ function _M.update_login_credential(credential_params, dao_collection, filter_ke
   return _M.update_credential(credential)
 end
 
+function _M.check_initialized(workspace, dao)
+  -- if portal is not enabled, return early
+  local config = workspace.config
+  if not config.portal then
+    return workspace
+  end
+
+  local count, err = dao.files:run_with_ws_scope({workspace}, dao.files.count)
+  if not count then
+    return nil, err
+  end
+
+  -- if we already have files, return
+  if count > 0 then
+    return workspace
+  end
+
+  -- if no files for this workspace, create them!
+  for _, file in ipairs(files) do
+    local ok, err = dao.files:run_with_ws_scope({workspace}, dao.files.insert, {
+      auth = file.auth,
+      name = file.name,
+      type = file.type,
+      contents = file.contents,
+    })
+
+    if not ok then
+      return nil, err
+    end
+  end
+
+  return workspace
+end
 
 return _M

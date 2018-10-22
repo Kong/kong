@@ -5,6 +5,7 @@ local utils = require "kong.tools.utils"
 local timestamp = require "kong.tools.timestamp"
 local portal_files = require "kong.portal.migrations.01_initial_files"
 local cassandra = require "cassandra"
+local migration_helpers = require "kong.dao.migrations.helpers"
 
 
 return {
@@ -313,8 +314,6 @@ return {
   {
     name = "2018-04-25-000001_portal_initial_files",
     up = function(_, _, dao)
-      local cassandra = dao.db.cassandra
-
       local coordinator, err = dao.db:get_coordinator()
       if not coordinator then
         return nil, err
@@ -619,5 +618,78 @@ return {
         return nil, nil, errmsg
       end
     end,
+  },
+  {
+    name = "2018-10-17-170000_files_entity",
+    up = [[
+      CREATE TABLE IF NOT EXISTS files(
+        id uuid PRIMARY KEY,
+        auth boolean,
+        name text,
+        type text,
+        contents text,
+        created_at timestamp
+      );
+
+      CREATE INDEX IF NOT EXISTS ON files(name);
+      CREATE INDEX IF NOT EXISTS ON files(type);
+    ]],
+    down = [[
+      DROP TABLE files;
+    ]]
+  },
+  {
+    name = "2018-10-17-180000_copy_portal_files_to_files",
+    up = function(_, _, dao)
+      local portal_files = {
+        name = "portal_files",
+        columns = {
+          id = "uuid",
+          auth = "boolean",
+          name = "text",
+          type = "text",
+          contents = "text",
+          created_at = "timestamp",
+        },
+        partition_keys = { "id", "name" },
+      }
+
+      local files = {
+        name = "files",
+        columns = {
+          id = "uuid",
+          auth = "boolean",
+          name = "text",
+          type = "text",
+          contents = "text",
+          created_at = "timestamp",
+        },
+        partition_keys = { "id" },
+      }
+
+      local columns_to_copy = {
+        id = "id",
+        auth = "auth",
+        name = "name",
+        type = "type",
+        contents = "contents",
+        created_at = "created_at",
+      }
+
+      local _, err = migration_helpers.cassandra.copy_records(dao,
+        portal_files,
+        files,
+        columns_to_copy)
+
+      if err then
+        return err
+      end
+    end,
+  },
+  {
+    name = "2018-10-17-190000_cleanup_portal_files",
+    up = [[
+      DROP TABLE IF EXISTS portal_files
+    ]],
   },
 }

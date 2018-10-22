@@ -5,6 +5,7 @@ local cjson       = require "cjson"
 local utils       = require "kong.tools.utils"
 local workspaces  = require "kong.workspaces"
 local singletons  = require "kong.singletons"
+local init_files  = require "kong.portal.migrations.01_initial_files"
 
 
 dao_helpers.for_each_dao(function(kong_config)
@@ -58,6 +59,10 @@ describe("(#" .. kong_config.database .. ") Admin API workspaces", function()
         assert.is_true(utils.is_valid_uuid(json.id))
         assert.equals("foo", json.name)
         assert.is_nil(json.comment)
+
+        -- no files created, portal is off
+        local files_count = dao.files:count()
+        assert.equals(0, files_count)
       end)
 
       it("handles unique constraint conflicts", function()
@@ -93,6 +98,42 @@ describe("(#" .. kong_config.database .. ") Admin API workspaces", function()
 
         assert.equals("meta is not a table", json.meta)
       end)
+
+      it("creates default files if portal is ON", function()
+        local files = dao.files:find_all()
+        assert.equals(0, #files)
+
+
+        local res = assert(client:send {
+          method = "POST",
+          path   = "/workspaces",
+          body   = {
+            name = "ws-with-portal",
+            config = {
+              portal = true
+            }
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          }
+        })
+
+        local body = assert.res_status(201, res)
+        local json = cjson.decode(body)
+
+        assert.is_true(utils.is_valid_uuid(json.id))
+        assert.equals("ws-with-portal", json.name)
+        assert.is_nil(json.comment)
+
+        local files_count = helpers.with_current_ws(
+          {json},
+          function()
+            return dao.files:count()
+          end
+        )
+
+        assert.equals(#init_files, files_count)
+      end)
     end)
 
     describe("GET", function()
@@ -120,8 +161,8 @@ describe("(#" .. kong_config.database .. ") Admin API workspaces", function()
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
 
-        assert.equals(3, json.total)
-        assert.equals(3, #json.data)
+        assert.equals(4, json.total)
+        assert.equals(4, #json.data)
       end)
     end)
   end)
@@ -148,6 +189,57 @@ describe("(#" .. kong_config.database .. ") Admin API workspaces", function()
 
         assert.equals("foo comment", json.comment)
         assert.equals("red", json.meta.color)
+      end)
+
+      it("creates default files if portal is turned on", function()
+        local res = assert(client:send {
+          method = "POST",
+          path   = "/workspaces",
+          body   = {
+            name = "rad-portal-man",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          }
+        })
+
+        assert.res_status(201, res)
+        local body = assert.res_status(201, res)
+        local json = cjson.decode(body)
+
+        local files_count = helpers.with_current_ws(
+          {json},
+          function()
+            return dao.files:count()
+          end
+        )
+
+        assert.equals(0, files_count)
+
+        local res = assert(client:send {
+          method = "PATCH",
+          path   = "/workspaces/rad-portal-man",
+          body   = {
+            config = {
+              portal = true
+            }
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          }
+        })
+
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+
+        local files_count = helpers.with_current_ws(
+          {json},
+          function()
+            return dao.files:count()
+          end
+        )
+
+        assert.equals(#init_files, files_count)
       end)
     end)
 
