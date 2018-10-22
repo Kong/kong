@@ -736,8 +736,8 @@ function Schema:validate_field(field, value)
       return nil, validation_errors[field.type:upper()]
     end
 
-  -- if type is "skip" (an internal marker), run validators only
-  elseif field.type ~= "skip" then
+  -- if type is "any" or "skip" (an internal marker), run validators only
+  elseif field.type ~= "any" and field.type ~= "skip" then
     return nil, validation_errors.SCHEMA_TYPE:format(field.type)
   end
 
