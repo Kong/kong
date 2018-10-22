@@ -445,6 +445,9 @@ function Kong.ssl_certificate()
     plugin.handler:certificate(plugin_conf)
   end
   ctx.workspaces = old_ws
+  -- empty `plugins_for_request` table - this phase runs in a global scope, so
+  -- such table will have plugins that aren't part of this request's workspaces
+  ctx.plugins_for_request = {}
 end
 
 function Kong.balancer()
@@ -591,6 +594,9 @@ function Kong.rewrite()
     plugin.handler:rewrite(plugin_conf)
   end
   ctx.workspaces = old_ws
+  -- empty `plugins_for_request` table - this phase runs in a global scope, so
+  -- such table will have plugins that aren't part of this request's workspaces
+  ctx.plugins_for_request = {}
 
   core.rewrite.after(ctx)
 end

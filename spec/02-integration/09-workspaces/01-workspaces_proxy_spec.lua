@@ -1,6 +1,160 @@
 local helpers = require "spec.helpers"
+local cjson = require "cjson"
 
 for _, strategy in helpers.each_strategy() do
+  describe("#o Plugin execution is restricted to correct workspace", function()
+    local admin_client
+    setup(function()
+      helpers.get_db_utils()
+
+      assert(helpers.start_kong({
+        database   = strategy,
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+        db_update_propagation = strategy == "cassandra" and 3 or 0
+      }))
+
+      admin_client = helpers.admin_client()
+      proxy_client = helpers.proxy_client()
+
+      local res = assert(admin_client:send {
+        method = "POST",
+        path   = "/workspaces",
+        body   = {
+          name = "ws1",
+        },
+        headers = {
+          ["Content-Type"] = "application/json",
+        }
+      })
+      assert.res_status(201, res)
+
+      res = assert(admin_client:send {
+        method = "POST",
+        path   = "/services",
+        body   = {
+          name = "s1",
+          url  = "http://mockbin.org",
+        },
+        headers = {
+          ["Content-Type"] = "application/json",
+        }
+      })
+      assert.res_status(201, res)
+
+      res = assert(admin_client:send {
+        method = "POST",
+        path = "/services/s1/routes",
+        body = {
+          paths = {
+            "/default"
+          }
+        },
+        headers = {
+          ["Content-Type"] = "application/json",
+        }
+      })
+      assert.res_status(201, res)
+
+      res = assert(admin_client:send {
+        method = "POST",
+        path = "/plugins",
+        body = {
+          name = "key-auth"
+        },
+        headers = {
+          ["Content-Type"] = "application/json",
+        }
+      })
+      assert.res_status(201, res)
+
+      res = assert(admin_client:send {
+        method = "POST",
+        path   = "/consumers",
+        body   = {
+          username = "c1",
+        },
+        headers = {
+          ["Content-Type"] = "application/json",
+        }
+      })
+      assert.res_status(201, res)
+
+      res = assert(admin_client:send {
+        method = "POST",
+        path   = "/consumers/c1/key-auth",
+        body   = {
+          key = "c1key",
+        },
+        headers = {
+          ["Content-Type"] = "application/json",
+        }
+      })
+      assert.res_status(201, res)
+
+      res = assert(admin_client:send {
+        method = "POST",
+        path   = "/ws1/services",
+        body   = {
+          name = "s2",
+          url  = "http://mockbin.org",
+        },
+        headers = {
+          ["Content-Type"] = "application/json",
+        }
+      })
+
+      assert.res_status(201, res)
+
+      res = assert(admin_client:send {
+        method = "POST",
+        path = "/ws1/services/s2/routes",
+        body = {
+          paths = {
+            "/ws1"
+          }
+        },
+        headers = {
+          ["Content-Type"] = "application/json",
+        }
+      })
+      assert.res_status(201, res)
+    end)
+
+    teardown(function()
+      helpers.stop_kong(nil, true)
+    end)
+
+    it("Triggers plugin if it's in current request's workspaces", function()
+      local res = assert(proxy_client:send {
+        method = "GET",
+        path = "/default/status/200",
+      })
+      -- 401 means keyauth was triggered; as there's no apikey in the request,
+      -- the plugin returns 401
+      assert.res_status(401, res)
+
+      local res = assert(proxy_client:send {
+        method = "GET",
+        path = "/default/status/200",
+        headers = {
+          apikey = "c1key",
+        }
+      })
+      -- 200 means keyauth was triggered; as there's a valid apikey in the request,
+      -- we get the expected upstream response
+      assert.res_status(200, res)
+    end)
+
+    it("Doesn't trigger another workspace's plugin", function()
+      local res = assert(proxy_client:send {
+        method = "GET",
+        path = "/ws1/status/200",
+      })
+
+      -- 200 means keyauth wasn't triggered
+      assert.res_status(200, res)
+    end)
+  end)
   describe("Plugin: workspace scope test key-auth (access)", function()
     local admin_client, proxy_client, api1, plugin_foo, ws_foo, ws_default, dao
     local consumer_default, cred_default
