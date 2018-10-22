@@ -1,9 +1,9 @@
 local helpers = require "spec.helpers"
-local cjson = require "cjson"
 
 for _, strategy in helpers.each_strategy() do
   describe("Plugin execution is restricted to correct workspace", function()
-    local admin_client
+    local admin_client, proxy_client
+
     setup(function()
       helpers.get_db_utils()
 
