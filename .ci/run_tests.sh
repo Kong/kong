@@ -22,3 +22,13 @@ elif [ "$TEST_SUITE" == "old-integration" ]; then
 elif [ "$TEST_SUITE" == "old-plugins" ]; then
     make old-test-plugins
 fi
+
+
+# EE tests
+if [ "$TEST_SUITE" == "unit-ee" ]; then
+    make test-ee
+elif [ "$TEST_SUITE" == "integration-ee" ]; then
+    make test-integration-ee
+elif [ "$TEST_SUITE" == "plugins-ee" ]; then
+    make test-plugins-ee
+fi
