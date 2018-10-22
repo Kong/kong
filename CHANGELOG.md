@@ -1,3 +1,9 @@
+## Unreleased
+
+### Added
+
+* HTTPS support: the plugin can now connect with the proxy via HTTPS
+
 ## 0.0.3
 
 ### Fixes
