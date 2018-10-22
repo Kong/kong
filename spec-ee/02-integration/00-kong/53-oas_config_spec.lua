@@ -140,7 +140,7 @@ for _, strategy in helpers.each_strategy() do
           end)
 
           it("should return 400 if missing host - JSON, v2", function()
-            local f = assert(io.open("spec/fixtures/ee/oas_config/missing_host_v2.json"))
+            local f = assert(io.open("spec-ee/fixtures/oas_config/missing_host_v2.json"))
             local str = f:read("*a")
             f:close()
 
@@ -166,7 +166,7 @@ for _, strategy in helpers.each_strategy() do
           end)
 
           it("should return 400 if servers are missing - JSON, v3", function()
-            local f = assert(io.open("spec/fixtures/ee/oas_config/missing_servers_v3.json"))
+            local f = assert(io.open("spec-ee/fixtures/oas_config/missing_servers_v3.json"))
             local str = f:read("*a")
             f:close()
 
@@ -192,7 +192,7 @@ for _, strategy in helpers.each_strategy() do
           end)
 
           it("should return 400 if missing host - YAML, v2", function()
-            local f = assert(io.open("spec/fixtures/ee/oas_config/missing_host_v2.yaml"))
+            local f = assert(io.open("spec-ee/fixtures/oas_config/missing_host_v2.yaml"))
             local str = f:read("*a")
             f:close()
 
@@ -218,7 +218,7 @@ for _, strategy in helpers.each_strategy() do
           end)
 
           it("should return 400 if missing host - YAML, v3", function()
-            local f = assert(io.open("spec/fixtures/ee/oas_config/missing_servers_v3.yaml"))
+            local f = assert(io.open("spec-ee/fixtures/oas_config/missing_servers_v3.yaml"))
             local str = f:read("*a")
             f:close()
 
@@ -252,7 +252,7 @@ for _, strategy in helpers.each_strategy() do
             for _, format in ipairs(formats) do
               describe("Version: " .. version .. " Format: " .. format, function()
                 local resp_body_json
-                local file_path = "spec/fixtures/ee/oas_config/petstore_" .. version .. "." .. format
+                local file_path = "spec-ee/fixtures/oas_config/petstore_" .. version .. "." .. format
 
                 setup(function()
                   client = assert(helpers.admin_client())
@@ -476,7 +476,7 @@ for _, strategy in helpers.each_strategy() do
           end)
 
           it("should return 400 if missing host - JSON, v2", function()
-            local f = assert(io.open("spec/fixtures/ee/oas_config/missing_host_v2.json"))
+            local f = assert(io.open("spec-ee/fixtures/oas_config/missing_host_v2.json"))
             local str = f:read("*a")
             f:close()
 
@@ -502,7 +502,7 @@ for _, strategy in helpers.each_strategy() do
           end)
 
           it("should return 400 if servers are missing - JSON, v3", function()
-            local f = assert(io.open("spec/fixtures/ee/oas_config/missing_servers_v3.json"))
+            local f = assert(io.open("spec-ee/fixtures/oas_config/missing_servers_v3.json"))
             local str = f:read("*a")
             f:close()
 
@@ -528,7 +528,7 @@ for _, strategy in helpers.each_strategy() do
           end)
 
           it("should return 400 if missing host - YAML, v2", function()
-            local f = assert(io.open("spec/fixtures/ee/oas_config/missing_host_v2.yaml"))
+            local f = assert(io.open("spec-ee/fixtures/oas_config/missing_host_v2.yaml"))
             local str = f:read("*a")
             f:close()
 
@@ -554,7 +554,7 @@ for _, strategy in helpers.each_strategy() do
           end)
 
           it("should return 400 if missing host - YAML, v3", function()
-            local f = assert(io.open("spec/fixtures/ee/oas_config/missing_servers_v3.yaml"))
+            local f = assert(io.open("spec-ee/fixtures/oas_config/missing_servers_v3.yaml"))
             local str = f:read("*a")
             f:close()
 
@@ -589,7 +589,7 @@ for _, strategy in helpers.each_strategy() do
               describe("Version: " .. version .. " Format: " .. format, function()
                 local original_resp_body_json
                 local resp_body_json
-                local file_path = "spec/fixtures/ee/oas_config/petstore_" .. version .. "." .. format
+                local file_path = "spec-ee/fixtures/oas_config/petstore_" .. version .. "." .. format
 
                 setup(function()
                   client = assert(helpers.admin_client())
@@ -648,7 +648,7 @@ for _, strategy in helpers.each_strategy() do
                   end
 
 
-                  local patch_file_path = "spec/fixtures/ee/oas_config/petstore_" .. version .. "_service_patch." .. format
+                  local patch_file_path = "spec-ee/fixtures/oas_config/petstore_" .. version .. "_service_patch." .. format
                   local f = assert(io.open(patch_file_path))
                   local str = f:read("*a")
                   f:close()
@@ -710,7 +710,7 @@ for _, strategy in helpers.each_strategy() do
 
                 it("should delete and remake routes if 'recreate_routes' param is passed", function()
                   client = assert(helpers.admin_client())
-                  local patch_file_path = "spec/fixtures/ee/oas_config/petstore_" .. version .. "_service_patch." .. format
+                  local patch_file_path = "spec-ee/fixtures/oas_config/petstore_" .. version .. "_service_patch." .. format
                   local f = assert(io.open(patch_file_path))
                   local str = f:read("*a")
                   f:close()

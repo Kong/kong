@@ -8,7 +8,7 @@ describe("Admin API - Kong routes", function()
     setup(function()
       helpers.get_db_utils()
       assert(helpers.start_kong({
-        license_path = "spec/fixtures/mock_license.json",
+        license_path = "spec-ee/fixtures/mock_license.json",
       }))
       client = helpers.admin_client()
     end)
@@ -36,7 +36,7 @@ describe("Admin API - Kong routes", function()
     local client
 
     setup(function()
-      local f = assert(io.open("spec/fixtures/mock_license.json"))
+      local f = assert(io.open("spec-ee/fixtures/mock_license.json"))
       local d = f:read("*a")
       f:close()
 

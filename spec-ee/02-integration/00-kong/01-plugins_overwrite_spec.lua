@@ -84,7 +84,7 @@ describe("Plugins overwrite:", function()
 
       setup(function()
         assert(helpers.start_kong{
-          feature_conf_path = "spec/fixtures/ee/feature_rate_limit_plugins.conf",
+          feature_conf_path = "spec-ee/fixtures/feature_rate_limit_plugins.conf",
         })
         client = helpers.admin_client()
         bp = helpers.get_db_utils()
@@ -268,7 +268,7 @@ describe("Plugins overwrite:", function()
 
       setup(function()
         assert(helpers.start_kong{
-          feature_conf_path = "spec/fixtures/ee/feature_rate_limit_plugins.conf",
+          feature_conf_path = "spec-ee/fixtures/feature_rate_limit_plugins.conf",
         })
         client = helpers.admin_client()
         bp = helpers.get_db_utils()

@@ -3,7 +3,7 @@ local feature_flags = require "kong.enterprise_edition.feature_flags"
 
 describe("Feature Flags", function()
   it("loads feature flags from a feature conf file", function()
-    local ok, err = feature_flags.init("spec/fixtures/mock_feature_flags.conf")
+    local ok, err = feature_flags.init("spec-ee/fixtures/mock_feature_flags.conf")
     assert.True(ok)
     assert.is_nil(err)
 
@@ -22,7 +22,7 @@ describe("Feature Flags", function()
   end)
 
   it("throws an error if a value does not exist", function()
-    local ok, err = feature_flags.init("spec/fixtures/mock_feature_flags.conf")
+    local ok, err = feature_flags.init("spec-ee/fixtures/mock_feature_flags.conf")
     assert.True(ok)
     assert.is_nil(err)
 
@@ -37,7 +37,7 @@ describe("Feature Flags", function()
     assert.is_not_nil(err)
   end)
   it("does not split comma separated value", function()
-    local ok, err = feature_flags.init("spec/fixtures/mock_feature_flags.conf")
+    local ok, err = feature_flags.init("spec-ee/fixtures/mock_feature_flags.conf")
     assert.True(ok)
     assert.is_nil(err)
 

@@ -9,7 +9,7 @@ dao_helpers.for_each_dao(function(kong_conf)
     it("loads TSDB strategy with feature flags properly", function()
      assert(helpers.start_kong({
         vitals = "on",
-        feature_conf_path = "spec/fixtures/ee/feature_vitals_tsdb.conf"
+        feature_conf_path = "spec-ee/fixtures/feature_vitals_tsdb.conf"
       }))
 
       local client = helpers.admin_client()
