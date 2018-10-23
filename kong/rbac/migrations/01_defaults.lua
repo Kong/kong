@@ -47,7 +47,7 @@ return {
         role, err = dao.rbac_roles:insert({
           id = utils.uuid(),
           name = "admin",
-          comment = "Full access to all endpoints, across all workspaces - except RBAC Admin API",
+          comment = "Full access to all endpoints, across all workspaces—except RBAC Admin API",
         })
         if err then
           return err
