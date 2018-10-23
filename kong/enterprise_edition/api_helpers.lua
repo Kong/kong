@@ -32,7 +32,10 @@ _M.services = {
 
 
 -- cache of plugin configurations
-local plugin_models = {}
+local plugin_models = {
+  [_M.apis.PORTAL] = {},
+  [_M.apis.ADMIN] = {}
+}
 
 
 function _M.get_consumer_id_from_headers()
@@ -64,7 +67,8 @@ function _M.prepare_plugin(type, dao, name, config)
   }
 
   -- convert plugin configuration over to model to obtain defaults
-  local model = plugin_models[plugin.name]
+  local model = plugin_models[type][plugin.name]
+
   if not model then
     model = dao.plugins.model_mt(fields)
 
@@ -75,7 +79,7 @@ function _M.prepare_plugin(type, dao, name, config)
       return api_helpers.yield_error(err)
     end
 
-    plugin_models[plugin.name] = model
+    plugin_models[type][plugin.name] = model
   end
 
   return {
