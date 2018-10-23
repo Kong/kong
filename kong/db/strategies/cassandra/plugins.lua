@@ -19,9 +19,11 @@ function Plugins:select_by_cache_key_migrating(key)
   -- unpack cache_key
   local parts = split(key, ":")
 
+  local c3 = self.connector.major_version >= 3
+
   -- build query and args
-  local qbuild = { "SELECT * FROM %s WHERE name = ?" }
-  local args = { cassandra.text(parts[2]) }
+  local qbuild = {}
+  local args = {}
   for i, field in ipairs({
     "route_id",
     "service_id",
@@ -30,13 +32,21 @@ function Plugins:select_by_cache_key_migrating(key)
   }) do
     local id = parts[i + 2]
     if id ~= "" then
-      insert(qbuild, field .. " = ?")
-      insert(args, cassandra.uuid(id))
+      if c3 or #args == 0 then
+        insert(qbuild, field .. " = ?")
+        insert(args, cassandra.uuid(id))
+      end
     else
       parts[i + 2] = nil
     end
   end
-  local query = table.concat(qbuild, " AND ") .. " ALLOW FILTERING"
+  if c3 or #args == 0 then
+    insert(qbuild, "name = ?")
+    insert(args, cassandra.text(parts[2]))
+  end
+  local query = "SELECT * FROM %s WHERE " ..
+                table.concat(qbuild, " AND ") ..
+                " ALLOW FILTERING"
 
   -- perform query, trying both temp and old table
   local errs = 0
@@ -53,7 +63,8 @@ function Plugins:select_by_cache_key_migrating(key)
       for i = 1, #rows do
         local row = rows[i]
         if row then
-          if row.route_id == parts[3] and
+          if row.name == parts[2] and
+             row.route_id == parts[3] and
              row.service_id == parts[4] and
              row.consumer_id == parts[5] and
              row.api_id == parts[6] then
