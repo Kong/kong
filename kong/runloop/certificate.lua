@@ -45,6 +45,29 @@ local function find_certificate(sni_name)
 end
 
 
+local function parse_pem(pem)
+  -- no certificate found
+  if not pem then
+    return true
+  end
+
+  local cert, err = ssl.parse_pem_cert(pem.cert)
+  if not cert then
+    return nil, "could not parse PEM certificate: " .. err
+  end
+
+  local key, err = ssl.parse_pem_priv_key(pem.key)
+  if not key then
+    return nil, "could not parse PEM private key: " .. err
+  end
+
+  pem.parsed_cert = cert
+  pem.parsed_key = key
+
+  return pem
+end
+
+
 function _M.execute()
   -- retrieve sni or raw server IP
 
@@ -61,42 +84,19 @@ function _M.execute()
     return
   end
 
-  local lru              = singletons.cache.mlcache.lru
-  local pem_cache_key    = "pem_ssl_certificates:" .. sn
-  local parsed_cache_key = "parsed_ssl_certificates:" .. sn
+  local pem_cache_key = "pem_ssl_certificates:" .. sn
 
-  local pem_cert_and_key, err = singletons.cache:get(pem_cache_key, nil,
-                                                     find_certificate, sn)
-  if not pem_cert_and_key then
+  local pem, err = singletons.cache:get(pem_cache_key,
+                                        { l1_serializer = parse_pem },
+                                        find_certificate, sn)
+  if err then
     log(ERR, err)
     return ngx.exit(ngx.ERROR)
   end
 
-  if pem_cert_and_key == true then
+  if pem == true then
     -- use fallback certificate
     return
-  end
-
-  local cert_and_key = lru:get(parsed_cache_key)
-  if not cert_and_key then
-    -- parse cert and priv key for later usage by ngx.ssl
-
-    local cert, err = ssl.parse_pem_cert(pem_cert_and_key.cert)
-    if not cert then
-      return nil, "could not parse PEM certificate: " .. err
-    end
-
-    local key, err = ssl.parse_pem_priv_key(pem_cert_and_key.key)
-    if not key then
-      return nil, "could not parse PEM private key: " .. err
-    end
-
-    cert_and_key = {
-      cert = cert,
-      key = key,
-    }
-
-    lru:set(parsed_cache_key, cert_and_key)
   end
 
   -- set the certificate for this connection
@@ -107,13 +107,13 @@ function _M.execute()
     return ngx.exit(ngx.ERROR)
   end
 
-  ok, err = ssl.set_cert(cert_and_key.cert)
+  ok, err = ssl.set_cert(pem.parsed_cert)
   if not ok then
     log(ERR, "could not set configured certificate: ", err)
     return ngx.exit(ngx.ERROR)
   end
 
-  ok, err = ssl.set_priv_key(cert_and_key.key)
+  ok, err = ssl.set_priv_key(pem.parsed_key)
   if not ok then
     log(ERR, "could not set configured private key: ", err)
     return ngx.exit(ngx.ERROR)

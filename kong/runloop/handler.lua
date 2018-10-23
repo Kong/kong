@@ -263,7 +263,6 @@ return {
         local sn = data.entity
 
         cache:invalidate("pem_ssl_certificates:"    .. sn.name)
-        cache:invalidate("parsed_ssl_certificates:" .. sn.name)
       end, "crud", "snis")
 
 
@@ -279,7 +278,6 @@ return {
           end
 
           cache:invalidate("pem_ssl_certificates:"    .. sn.name)
-          cache:invalidate("parsed_ssl_certificates:" .. sn.name)
         end
       end, "crud", "certificates")
 
