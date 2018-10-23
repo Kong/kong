@@ -117,8 +117,12 @@ describe("portal_gui", function()
     setup(function()
     end)
 
-    it("inserts the appropriate values", function()
-      index_conf = ee.prepare_portal(conf)
+    it("inserts the appropriate values with empty config", function()
+      index_conf = ee.prepare_portal(conf, { params = {
+        workspace = {
+          name = "default"
+        }
+      }})
 
       assert.same({
         PORTAL_API_URL = "",
@@ -131,6 +135,54 @@ describe("portal_gui", function()
         RBAC_ENFORCED = 'false',
         RBAC_HEADER = "Kong-Admin-Token",
         KONG_VERSION = tostring(meta.versions.package),
+        WORKSPACE = 'default'
+      }, index_conf)
+    end)
+
+    it("inserts the appropriate values with different workspace name", function()
+      index_conf = ee.prepare_portal(conf, { params = {
+        workspace = {
+          name = "gruce"
+        }
+      }})
+
+      assert.same({
+        PORTAL_API_URL = "",
+        PORTAL_AUTH = "basic-auth",
+        PORTAL_API_PORT = "8004",
+        PORTAL_API_SSL_PORT = "8447",
+        PORTAL_GUI_URL = "",
+        PORTAL_GUI_PORT = "8003",
+        PORTAL_GUI_SSL_PORT = "8446",
+        RBAC_ENFORCED = 'false',
+        RBAC_HEADER = "Kong-Admin-Token",
+        KONG_VERSION = tostring(meta.versions.package),
+        WORKSPACE = 'gruce'
+      }, index_conf)
+    end)
+
+    it("inserts the appropriate values with different portal auth type", function()
+      index_conf = ee.prepare_portal(conf, { params = {
+        workspace = {
+          config = {
+            portal_auth = "key-auth",
+          },
+          name = "default"
+        }
+      }})
+
+      assert.same({
+        PORTAL_API_URL = "",
+        PORTAL_AUTH = "key-auth",
+        PORTAL_API_PORT = "8004",
+        PORTAL_API_SSL_PORT = "8447",
+        PORTAL_GUI_URL = "",
+        PORTAL_GUI_PORT = "8003",
+        PORTAL_GUI_SSL_PORT = "8446",
+        RBAC_ENFORCED = 'false',
+        RBAC_HEADER = "Kong-Admin-Token",
+        KONG_VERSION = tostring(meta.versions.package),
+        WORKSPACE = 'default'
       }, index_conf)
     end)
   end)

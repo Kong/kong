@@ -15,7 +15,7 @@ end
 for _, strategy in helpers.each_strategy() do
 describe("Admin API - Developer Portal - " .. strategy, function()
   local client
-  local portal_client
+  local portal_api_client
   local db
   local dao
 
@@ -46,7 +46,7 @@ describe("Admin API - Developer Portal - " .. strategy, function()
 
   after_each(function()
     if client then client:close() end
-    if portal_client then portal_client:close() end
+    if portal_api_client then portal_api_client:close() end
   end)
 
   describe("/files", function()
@@ -570,10 +570,10 @@ describe("Admin API - Developer Portal - " .. strategy, function()
         portal_auto_approve = "off",
       }))
 
-      portal_client = assert(ee_helpers.portal_client())
+      portal_api_client = assert(ee_helpers.portal_api_client())
       client = assert(helpers.admin_client())
 
-      local res = assert(portal_client:send {
+      local res = assert(portal_api_client:send {
         method = "POST",
         path = "/register",
         body = {
@@ -653,10 +653,10 @@ describe("Admin API - Developer Portal - " .. strategy, function()
         portal_auto_approve = "on",
       }))
 
-      portal_client = assert(ee_helpers.portal_client())
+      portal_api_client = assert(ee_helpers.portal_api_client())
       client = assert(helpers.admin_client())
 
-      local res = assert(portal_client:send {
+      local res = assert(portal_api_client:send {
         method = "POST",
         path = "/register",
         body = {
@@ -701,7 +701,7 @@ describe("Admin API - Developer Portal - " .. strategy, function()
         assert.res_status(204, res)
 
         -- old password fails
-        local res = assert(portal_client:send {
+        local res = assert(portal_api_client:send {
           method = "GET",
           path = "/developer",
           headers = {
@@ -713,7 +713,7 @@ describe("Admin API - Developer Portal - " .. strategy, function()
         assert.res_status(403, res)
 
         -- new password auths
-        local res = assert(portal_client:send {
+        local res = assert(portal_api_client:send {
           method = "GET",
           path = "/developer",
           headers = {
@@ -744,10 +744,10 @@ describe("Admin API - Developer Portal - " .. strategy, function()
         portal_auto_approve = "on",
       }))
 
-      portal_client = assert(ee_helpers.portal_client())
+      portal_api_client = assert(ee_helpers.portal_api_client())
       client = assert(helpers.admin_client())
 
-      local res = assert(portal_client:send {
+      local res = assert(portal_api_client:send {
         method = "POST",
         path = "/register",
         body = {
@@ -762,7 +762,7 @@ describe("Admin API - Developer Portal - " .. strategy, function()
       local resp_body_json = cjson.decode(body)
       developer = resp_body_json.consumer
 
-      local res = assert(portal_client:send {
+      local res = assert(portal_api_client:send {
         method = "POST",
         path = "/register",
         body = {
@@ -832,7 +832,7 @@ describe("Admin API - Developer Portal - " .. strategy, function()
         assert.res_status(204, res)
 
         -- old email fails
-        local res = assert(portal_client:send {
+        local res = assert(portal_api_client:send {
           method = "GET",
           path = "/developer",
           headers = {
@@ -844,7 +844,7 @@ describe("Admin API - Developer Portal - " .. strategy, function()
         assert.res_status(403, res)
 
         -- new email succeeds
-        local res = assert(portal_client:send {
+        local res = assert(portal_api_client:send {
           method = "GET",
           path = "/developer",
           headers = {
@@ -877,10 +877,10 @@ describe("Admin API - Developer Portal - " .. strategy, function()
         portal_auto_approve = "on",
       }))
 
-      portal_client = assert(ee_helpers.portal_client())
+      portal_api_client = assert(ee_helpers.portal_api_client())
       client = assert(helpers.admin_client())
 
-      local res = assert(portal_client:send {
+      local res = assert(portal_api_client:send {
         method = "POST",
         path = "/register",
         body = {
@@ -913,7 +913,7 @@ describe("Admin API - Developer Portal - " .. strategy, function()
 
         assert.res_status(204, res)
 
-        local res = assert(portal_client:send {
+        local res = assert(portal_api_client:send {
           method = "GET",
           path = "/developer",
           headers = {
@@ -930,7 +930,7 @@ describe("Admin API - Developer Portal - " .. strategy, function()
       end)
 
       it("ignores keys that are not in the current meta", function()
-        local res = assert(portal_client:send {
+        local res = assert(portal_api_client:send {
           method = "GET",
           path = "/developer",
           headers = {
@@ -958,7 +958,7 @@ describe("Admin API - Developer Portal - " .. strategy, function()
 
         assert.res_status(204, res)
 
-        local res = assert(portal_client:send {
+        local res = assert(portal_api_client:send {
           method = "GET",
           path = "/developer",
           headers = {

@@ -4,7 +4,7 @@ local pl_file    = require "pl.file"
 local pl_utils   = require "pl.utils"
 local pl_path    = require "pl.path"
 local singletons = require "kong.singletons"
-local feature_flags = require "kong.enterprise_edition.feature_flags"
+local feature_flags   = require "kong.enterprise_edition.feature_flags"
 local internal_statsd = require "kong.enterprise_edition.internal_statsd"
 local license_helpers = require "kong.enterprise_edition.license_helpers"
 
@@ -174,7 +174,10 @@ function _M.prepare_admin(kong_config)
 end
 
 
-function _M.prepare_portal(kong_config)
+function _M.prepare_portal(kong_config, self)
+  local workspace = self.params.workspace
+  local workspace_config = workspace.config or {}
+
   local portal_gui_listener = select_listener(kong_config.portal_gui_listeners,
                                               {ssl = false})
   local portal_gui_ssl_listener = select_listener(kong_config.portal_gui_listeners,
@@ -192,7 +195,7 @@ function _M.prepare_portal(kong_config)
 
   return {
     PORTAL_API_URL = prepare_variable(kong_config.portal_api_url),
-    PORTAL_AUTH = prepare_variable(kong_config.portal_auth),
+    PORTAL_AUTH = prepare_variable(workspace_config.portal_auth or kong_config.portal_auth),
     PORTAL_API_PORT = prepare_variable(portal_api_port),
     PORTAL_API_SSL_PORT = prepare_variable(portal_api_ssl_port),
     PORTAL_GUI_URL = prepare_variable(kong_config.portal_gui_url),
@@ -201,6 +204,7 @@ function _M.prepare_portal(kong_config)
     RBAC_ENFORCED = prepare_variable(rbac_enforced),
     RBAC_HEADER = prepare_variable(kong_config.rbac_auth_header),
     KONG_VERSION = prepare_variable(meta.versions.package),
+    WORKSPACE = prepare_variable(workspace.name)
   }
 end
 

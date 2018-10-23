@@ -142,7 +142,7 @@ end
 
 --- Returns the Dev Portal port.
 -- @param ssl (boolean) if `true` returns the ssl port
-local function get_portal_port(ssl)
+local function get_portal_api_port(ssl)
   if ssl == nil then ssl = false end
   for _, entry in ipairs(_M.portal_api_listeners) do
     if entry.ssl == ssl then
@@ -155,7 +155,7 @@ end
 
 --- Returns the Dev Portal ip.
 -- @param ssl (boolean) if `true` returns the ssl ip address
-local function get_portal_ip(ssl)
+local function get_portal_api_ip(ssl)
   if ssl == nil then ssl = false end
   for _, entry in ipairs(_M.portal_api_listeners) do
     if entry.ssl == ssl then
@@ -166,11 +166,45 @@ local function get_portal_ip(ssl)
 end
 
 
+--- Returns the Dev Portal port.
+-- @param ssl (boolean) if `true` returns the ssl port
+local function get_portal_gui_port(ssl)
+  if ssl == nil then ssl = false end
+  for _, entry in ipairs(_M.portal_gui_listeners) do
+    if entry.ssl == ssl then
+      return entry.port
+    end
+  end
+  error("No portal port found for ssl=" .. tostring(ssl), 2)
+end
+
+
+--- Returns the Dev Portal ip.
+-- @param ssl (boolean) if `true` returns the ssl ip address
+local function get_portal_gui_ip(ssl)
+  if ssl == nil then ssl = false end
+  for _, entry in ipairs(_M.portal_gui_listeners) do
+    if entry.ssl == ssl then
+      return entry.ip
+    end
+  end
+  error("No portal ip found for ssl=" .. tostring(ssl), 2)
+end
+
+
 --- returns a pre-configured `http_client` for the Dev Portal.
 -- @name portal_client
-function _M.portal_client(timeout)
-  local portal_ip = get_portal_ip()
-  local portal_port = get_portal_port()
+function _M.portal_api_client(timeout)
+  local portal_ip = get_portal_api_ip()
+  local portal_port = get_portal_api_port()
+  assert(portal_ip, "No portal_ip found in the configuration")
+  return helpers.http_client(portal_ip, portal_port, timeout)
+end
+
+
+function _M.portal_gui_client(timeout)
+  local portal_ip = get_portal_gui_ip()
+  local portal_port = get_portal_gui_port()
   assert(portal_ip, "No portal_ip found in the configuration")
   return helpers.http_client(portal_ip, portal_port, timeout)
 end
@@ -192,5 +226,6 @@ end
 
 
 _M.portal_api_listeners = conf_loader.parse_listeners(helpers.test_conf.portal_api_listen)
+_M.portal_gui_listeners = conf_loader.parse_listeners(helpers.test_conf.portal_gui_listen)
 
 return _M

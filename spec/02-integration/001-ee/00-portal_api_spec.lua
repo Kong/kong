@@ -50,7 +50,7 @@ for _, strategy in helpers.each_strategy('postgres') do
       -- this block is only run once, not for each rbac state
       if idx == 1 then
         describe("vitals", function ()
-          local portal_client
+          local portal_api_client
 
           before_each(function()
             helpers.stop_kong()
@@ -63,7 +63,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             }))
 
             client = assert(helpers.admin_client())
-            portal_client = assert(ee_helpers.portal_client())
+            portal_api_client = assert(ee_helpers.portal_api_client())
           end)
 
           after_each(function()
@@ -71,8 +71,8 @@ for _, strategy in helpers.each_strategy('postgres') do
               client:close()
             end
 
-            if portal_client then
-              portal_client:close()
+            if portal_api_client then
+              portal_api_client:close()
             end
           end)
 
@@ -97,7 +97,7 @@ for _, strategy in helpers.each_strategy('postgres') do
           it("does not report metrics for internal proxies", function()
             local service_id = "00000000-0000-0000-0000-000000000001"
 
-            local pres = assert(portal_client:send {
+            local pres = assert(portal_api_client:send {
               method = "GET",
               path = "/files"
             })
@@ -143,7 +143,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             rbac = rbac,
           }))
 
-          client = assert(ee_helpers.portal_client())
+          client = assert(ee_helpers.portal_api_client())
         end)
 
         after_each(function()
@@ -250,7 +250,7 @@ for _, strategy in helpers.each_strategy('postgres') do
         end)
 
         before_each(function()
-          client = assert(ee_helpers.portal_client())
+          client = assert(ee_helpers.portal_api_client())
         end)
 
         after_each(function()
@@ -353,7 +353,7 @@ for _, strategy in helpers.each_strategy('postgres') do
         end)
 
         before_each(function()
-          client = assert(ee_helpers.portal_client())
+          client = assert(ee_helpers.portal_api_client())
         end)
 
         after_each(function()
@@ -536,7 +536,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             portal_auto_approve = "on",
           }))
 
-          client = assert(ee_helpers.portal_client())
+          client = assert(ee_helpers.portal_api_client())
 
           local res = assert(client:send {
             method = "POST",
@@ -559,7 +559,7 @@ for _, strategy in helpers.each_strategy('postgres') do
         end)
 
         before_each(function()
-          client = assert(ee_helpers.portal_client())
+          client = assert(ee_helpers.portal_api_client())
         end)
 
         after_each(function()
@@ -699,7 +699,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             portal_auto_approve = "on",
           }))
 
-          client = assert(ee_helpers.portal_client())
+          client = assert(ee_helpers.portal_api_client())
 
           local res = assert(client:send {
             method = "POST",
@@ -738,7 +738,7 @@ for _, strategy in helpers.each_strategy('postgres') do
         end)
 
         before_each(function()
-          client = assert(ee_helpers.portal_client())
+          client = assert(ee_helpers.portal_api_client())
         end)
 
         after_each(function()
@@ -937,7 +937,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             portal_auto_approve = "on",
           }))
 
-          client = assert(ee_helpers.portal_client())
+          client = assert(ee_helpers.portal_api_client())
 
           local res = assert(client:send {
             method = "POST",
@@ -976,7 +976,7 @@ for _, strategy in helpers.each_strategy('postgres') do
         end)
 
         before_each(function()
-          client = assert(ee_helpers.portal_client())
+          client = assert(ee_helpers.portal_api_client())
         end)
 
         after_each(function()
@@ -1116,7 +1116,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             portal_auto_approve = "on",
           }))
 
-          client = assert(ee_helpers.portal_client())
+          client = assert(ee_helpers.portal_api_client())
 
           local res = assert(client:send {
             method = "POST",
@@ -1155,7 +1155,7 @@ for _, strategy in helpers.each_strategy('postgres') do
         end)
 
         before_each(function()
-          client = assert(ee_helpers.portal_client())
+          client = assert(ee_helpers.portal_api_client())
         end)
 
         after_each(function()
@@ -1352,7 +1352,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             portal_auto_approve = "on",
           }))
 
-          client = assert(ee_helpers.portal_client())
+          client = assert(ee_helpers.portal_api_client())
 
           local res = assert(client:send {
             method = "POST",
@@ -1391,7 +1391,7 @@ for _, strategy in helpers.each_strategy('postgres') do
         end)
 
         before_each(function()
-          client = assert(ee_helpers.portal_client())
+          client = assert(ee_helpers.portal_api_client())
         end)
 
         after_each(function()
@@ -1530,7 +1530,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             portal_auto_approve = "on",
           }))
 
-          client = assert(ee_helpers.portal_client())
+          client = assert(ee_helpers.portal_api_client())
 
           local res = assert(client:send {
             method = "POST",
@@ -1551,7 +1551,7 @@ for _, strategy in helpers.each_strategy('postgres') do
         end)
 
         before_each(function()
-          client = assert(ee_helpers.portal_client())
+          client = assert(ee_helpers.portal_api_client())
         end)
 
         after_each(function()
@@ -1622,7 +1622,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             portal_auto_approve = "on",
           }))
 
-          client = assert(ee_helpers.portal_client())
+          client = assert(ee_helpers.portal_api_client())
 
           local res = assert(client:send {
             method = "POST",
@@ -1641,7 +1641,7 @@ for _, strategy in helpers.each_strategy('postgres') do
         end)
 
         before_each(function()
-          client = assert(ee_helpers.portal_client())
+          client = assert(ee_helpers.portal_api_client())
         end)
 
         after_each(function()
@@ -1727,7 +1727,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             portal_auto_approve = "on",
           }))
 
-          client = assert(ee_helpers.portal_client())
+          client = assert(ee_helpers.portal_api_client())
 
           local res = assert(client:send {
             method = "POST",
@@ -1746,7 +1746,7 @@ for _, strategy in helpers.each_strategy('postgres') do
         end)
 
         before_each(function()
-          client = assert(ee_helpers.portal_client())
+          client = assert(ee_helpers.portal_api_client())
         end)
 
         after_each(function()
@@ -1829,7 +1829,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             portal_auto_approve = "on",
           }))
 
-          client = assert(ee_helpers.portal_client())
+          client = assert(ee_helpers.portal_api_client())
 
           local res = assert(client:send {
             method = "POST",
@@ -1863,7 +1863,7 @@ for _, strategy in helpers.each_strategy('postgres') do
         end)
 
         before_each(function()
-          client = assert(ee_helpers.portal_client())
+          client = assert(ee_helpers.portal_api_client())
         end)
 
         after_each(function()
@@ -1975,7 +1975,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             portal_auto_approve = "on",
           }))
 
-          client = assert(ee_helpers.portal_client())
+          client = assert(ee_helpers.portal_api_client())
 
           local res = assert(client:send {
             method = "POST",
@@ -2009,7 +2009,7 @@ for _, strategy in helpers.each_strategy('postgres') do
         end)
 
         before_each(function()
-          client = assert(ee_helpers.portal_client())
+          client = assert(ee_helpers.portal_api_client())
         end)
 
         after_each(function()
@@ -2103,7 +2103,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             portal_auto_approve = "on",
           }))
 
-          client = assert(ee_helpers.portal_client())
+          client = assert(ee_helpers.portal_api_client())
 
           local res = assert(client:send {
             method = "POST",
@@ -2121,7 +2121,7 @@ for _, strategy in helpers.each_strategy('postgres') do
         end)
 
         before_each(function()
-          client = assert(ee_helpers.portal_client())
+          client = assert(ee_helpers.portal_api_client())
         end)
 
         after_each(function()
@@ -2243,7 +2243,7 @@ for _, strategy in helpers.each_strategy('postgres') do
         end)
 
         before_each(function()
-          client = assert(ee_helpers.portal_client())
+          client = assert(ee_helpers.portal_api_client())
         end)
 
         after_each(function()
@@ -2338,7 +2338,7 @@ for _, strategy in helpers.each_strategy('postgres') do
         end)
 
         before_each(function()
-          client = assert(ee_helpers.portal_client())
+          client = assert(ee_helpers.portal_api_client())
         end)
 
         after_each(function()
@@ -2618,7 +2618,7 @@ for _, strategy in helpers.each_strategy('postgres') do
         end)
 
         before_each(function()
-          client = assert(ee_helpers.portal_client())
+          client = assert(ee_helpers.portal_api_client())
         end)
 
         after_each(function()
@@ -2738,7 +2738,7 @@ for _, strategy in helpers.each_strategy('postgres') do
         end)
 
         before_each(function()
-          client = assert(ee_helpers.portal_client())
+          client = assert(ee_helpers.portal_api_client())
         end)
 
         after_each(function()
