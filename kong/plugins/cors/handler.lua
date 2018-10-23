@@ -85,6 +85,7 @@ local function configure_credentials(conf, allow_all)
   if req_origin then
     set_header("Access-Control-Allow-Origin", req_origin)
     set_header("Access-Control-Allow-Credentials", "true")
+    set_header("Vary", "Origin")
   end
 end
 

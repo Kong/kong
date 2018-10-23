@@ -475,7 +475,7 @@ local function overrides(k, default_v, file_conf, arg_conf)
   -- default values have lowest priority
 
   if file_conf and file_conf[k] == nil then
-    -- PL will ignore empty strings, so we need a placeholer (NONE)
+    -- PL will ignore empty strings, so we need a placeholder (NONE)
     value = default_v == "NONE" and "" or default_v
   else
     value = file_conf[k] -- given conf values have middle priority

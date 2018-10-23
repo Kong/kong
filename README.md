@@ -14,7 +14,7 @@ from startups to Global 5000 as well as government organizations.
 [Documentation](https://docs.konghq.com) |
 [Forum](https://discuss.konghq.com) |
 [Blog](https://konghq.com/blog) |
-IRC (freenode): [#kong](http://webchat.freenode.net/?channels=kong) |
+IRC (freenode): [#kong](https://webchat.freenode.net/?channels=kong) |
 [Nightly Builds][kong-nightly-master]
 
 ## Summary
@@ -92,7 +92,7 @@ code, other repos are also under active development:
 - [Kong Packages](https://github.com/Kong/kong/releases): Pre-built packages
   for Debian, Red Hat, and OS X distributions (shipped with each release).
 - [Kong Vagrant](https://github.com/Kong/kong-vagrant): A Vagrantfile for
-  provisioning a development ready environment for Kong.
+  provisioning a development-ready environment for Kong.
 - [Kong Homebrew](https://github.com/Kong/homebrew-kong): Homebrew Formula
   for Kong.
 - [Kong CloudFormation](https://github.com/Kong/kong-dist-cloudformation):
@@ -117,7 +117,7 @@ installation. The `next` branch holds the latest unreleased source code.
 
 You can read more about writing your own plugins in the [Plugin Development
 Guide](https://docs.konghq.com/latest/plugin-development/), or browse an
-online version of Kong's source code documentation in the [Plugin development
+online version of Kong's source code documentation in the [Plugin Development
 Kit (PDK) Reference](https://docs.konghq.com/latest/pdk/).
 
 #### Vagrant

@@ -160,6 +160,7 @@ for _, strategy in helpers.each_strategy() do
         assert.is_nil(res.headers["Access-Control-Expose-Headers"])
         assert.is_nil(res.headers["Access-Control-Allow-Credentials"])
         assert.is_nil(res.headers["Access-Control-Max-Age"])
+        assert.is_nil(res.headers["Vary"])
       end)
 
       it("gives * wildcard when origins is empty", function()
@@ -182,6 +183,7 @@ for _, strategy in helpers.each_strategy() do
         assert.is_nil(res.headers["Access-Control-Expose-Headers"])
         assert.is_nil(res.headers["Access-Control-Allow-Credentials"])
         assert.is_nil(res.headers["Access-Control-Max-Age"])
+        assert.is_nil(res.headers["Vary"])
       end)
 
       it("gives appropriate defaults when origin is explicitly set to *", function()
@@ -198,6 +200,7 @@ for _, strategy in helpers.each_strategy() do
         assert.is_nil(res.headers["Access-Control-Expose-Headers"])
         assert.is_nil(res.headers["Access-Control-Allow-Credentials"])
         assert.is_nil(res.headers["Access-Control-Max-Age"])
+        assert.is_nil(res.headers["Vary"])
       end)
 
       it("accepts config options", function()
@@ -213,6 +216,7 @@ for _, strategy in helpers.each_strategy() do
         assert.equal("23", res.headers["Access-Control-Max-Age"])
         assert.equal("true", res.headers["Access-Control-Allow-Credentials"])
         assert.equal("origin,type,accepts", res.headers["Access-Control-Allow-Headers"])
+        assert.equal("Origin", res.headers["Vary"])
         assert.is_nil(res.headers["Access-Control-Expose-Headers"])
       end)
 
@@ -258,6 +262,7 @@ for _, strategy in helpers.each_strategy() do
         assert.is_nil(res.headers["Access-Control-Expose-Headers"])
         assert.is_nil(res.headers["Access-Control-Allow-Credentials"])
         assert.is_nil(res.headers["Access-Control-Max-Age"])
+        assert.is_nil(res.headers["Vary"])
       end)
 
       it("accepts config options", function()
@@ -271,6 +276,7 @@ for _, strategy in helpers.each_strategy() do
         assert.equal("example.com", res.headers["Access-Control-Allow-Origin"])
         assert.equal("x-auth-token", res.headers["Access-Control-Expose-Headers"])
         assert.equal("true", res.headers["Access-Control-Allow-Credentials"])
+        assert.equal("Origin", res.headers["Vary"])
         assert.is_nil(res.headers["Access-Control-Allow-Methods"])
         assert.is_nil(res.headers["Access-Control-Allow-Headers"])
         assert.is_nil(res.headers["Access-Control-Max-Age"])
@@ -291,6 +297,7 @@ for _, strategy in helpers.each_strategy() do
         assert.is_nil(res.headers["Access-Control-Expose-Headers"])
         assert.is_nil(res.headers["Access-Control-Allow-Credentials"])
         assert.is_nil(res.headers["Access-Control-Max-Age"])
+        assert.is_nil(res.headers["Vary"])
       end)
 
       it("works with 40x responses returned by another plugin", function()
@@ -307,6 +314,7 @@ for _, strategy in helpers.each_strategy() do
         assert.is_nil(res.headers["Access-Control-Expose-Headers"])
         assert.is_nil(res.headers["Access-Control-Allow-Credentials"])
         assert.is_nil(res.headers["Access-Control-Max-Age"])
+        assert.is_nil(res.headers["Vary"])
       end)
 
       it("sets CORS orgin based on origin host", function()
@@ -319,6 +327,7 @@ for _, strategy in helpers.each_strategy() do
         })
         assert.res_status(200, res)
         assert.equal("http://www.example.com", res.headers["Access-Control-Allow-Origin"])
+        assert.equal("Origin", res.headers["Vary"])
 
         local domains = {
           ["example.com"]         = true,
@@ -339,6 +348,7 @@ for _, strategy in helpers.each_strategy() do
           assert.res_status(200, res)
           assert.equal(domains[domain] and domain or nil,
                        res.headers["Access-Control-Allow-Origin"])
+          assert.equal("Origin", res.headers["Vary"])
         end
       end)
 
@@ -365,6 +375,7 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(200, res)
         assert.equals("http://www.example.net", res.headers["Access-Control-Allow-Origin"])
         assert.equals("true", res.headers["Access-Control-Allow-Credentials"])
+        assert.equal("Origin", res.headers["Vary"])
       end)
 
       it("responds with the requested Origin (including port) when config.credentials=true", function()
@@ -378,6 +389,7 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(200, res)
         assert.equals("http://www.example.net:3000", res.headers["Access-Control-Allow-Origin"])
         assert.equals("true", res.headers["Access-Control-Allow-Credentials"])
+        assert.equal("Origin", res.headers["Vary"])
       end)
 
       it("responds with * when config.credentials=false", function()
@@ -391,6 +403,7 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(200, res)
         assert.equals("*", res.headers["Access-Control-Allow-Origin"])
         assert.is_nil(res.headers["Access-Control-Allow-Credentials"])
+        assert.is_nil(res.headers["Vary"])
       end)
     end)
   end)
