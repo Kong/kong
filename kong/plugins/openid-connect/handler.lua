@@ -223,14 +223,18 @@ local function find_consumer(token, claim, anonymous, consumer_by, ttl)
 
   local subject = find_claim(payload, claim)
   if not subject then
-    return nil, "claim (" .. claim .. ") was not found for consumer mapping"
+    if type(claim) == "table" then
+      return nil, "claim (" .. concat(claim, ",") .. ") was not found for consumer mapping"
+    end
+
+    return nil, "claim (" .. tostring(claim) .. ") was not found for consumer mapping"
   end
 
   return cache.consumers.load(subject, anonymous, consumer_by, ttl)
 end
 
 
-local function set_consumer(ctx, consumer, credential, is_anonymous)
+local function set_consumer(ctx, consumer, credential)
   local head = constants.HEADERS
 
   if consumer then
@@ -242,19 +246,14 @@ local function set_consumer(ctx, consumer, credential, is_anonymous)
       ctx.authenticated_credential = credential
 
     else
-      if is_anonymous then
-        set_header(head.ANONYMOUS, true)
+      set_header(head.ANONYMOUS, nil)
 
+      if consumer.id and consumer.id ~= null then
+        ctx.authenticated_credential = {
+          consumer_id = consumer.id
+        }
       else
-        set_header(head.ANONYMOUS, nil)
-
-        if consumer.id and consumer.id ~= null then
-          ctx.authenticated_credential = {
-            consumer_id = consumer.id
-          }
-        else
-          ctx.authenticated_credential = nil
-        end
+        ctx.authenticated_credential = nil
       end
     end
 
@@ -1924,7 +1923,6 @@ function OICHandler:access(conf)
   end
 
   -- consumer mapping
-  local is_anonymous
   if not consumer then
     local consumer_claim = args.get_conf_arg("consumer_claim")
     if consumer_claim then
@@ -1960,89 +1958,33 @@ function OICHandler:access(conf)
       if not consumer then
         log("kong consumer was not found")
 
-        if not anonymous then
-          local consumer_optional = args.get_conf_arg("consumer_optional", false)
-          if consumer_optional then
-            log("kong consumer is optional")
-
-          else
-            if err then
-              return forbidden(ctx,
-                               iss,
-                               forbidden_error_message,
-                               "kong consumer was not found (" .. err .. ")",
-                               session,
-                               anonymous,
-                               trusted_client)
-
-            else
-              return forbidden(ctx,
-                               iss,
-                               forbidden_error_message,
-                               "kong consumer was not found",
-                               session,
-                               anonymous,
-                               trusted_client)
-            end
-          end
+        local consumer_optional = args.get_conf_arg("consumer_optional", false)
+        if consumer_optional then
+          log("kong consumer is optional")
 
         else
-          log("trying with anonymous kong consumer")
-
-          is_anonymous = true
-
-          local consumer_token = {
-            payload = {
-              id = anonymous
-            }
-          }
-
-          consumer, err = find_consumer(consumer_token, "id", true, "id")
-          if not consumer then
-            log("anonymous kong consumer was not found")
-
-            if err then
-              return unexpected(trusted_client, "anonymous consumer was not found (", err, ")")
-
-            else
-              return unexpected(trusted_client, "anonymous consumer was not found")
-            end
+          if err then
+            return forbidden(ctx,
+                             iss,
+                             forbidden_error_message,
+                             "kong consumer was not found (" .. err .. ")",
+                             session,
+                             anonymous,
+                             trusted_client)
 
           else
-            log("found anonymous kong consumer")
+            return forbidden(ctx,
+                             iss,
+                             forbidden_error_message,
+                             "kong consumer was not found",
+                             session,
+                             anonymous,
+                             trusted_client)
           end
         end
 
       else
         log("found kong consumer")
-      end
-
-    else
-      if anonymous then
-        log("trying to find anonymous kong consumer")
-
-        is_anonymous = true
-
-        local consumer_token = {
-          payload = {
-            id = anonymous
-          }
-        }
-
-        consumer, err = find_consumer(consumer_token, "id", true, "id")
-        if not consumer then
-          log("anonymous kong consumer was not found")
-
-          if err then
-            return unexpected(trusted_client, "anonymous consumer was not found (", err, ")")
-
-          else
-            return unexpected(trusted_client, "anonymous consumer was not found")
-          end
-
-        else
-          log("found anonymous kong consumer")
-        end
       end
     end
   end
@@ -2058,7 +2000,7 @@ function OICHandler:access(conf)
                      trusted_client)
   end
   -- setting consumer context and headers
-  set_consumer(ctx, consumer, credential, is_anonymous)
+  set_consumer(ctx, consumer, credential)
 
   -- setting credential by arbitrary claim, in case when consumer mapping was not used
   if not consumer then
@@ -2102,7 +2044,6 @@ function OICHandler:access(conf)
           end
         end
       end
-
 
       if credential_value == nil then
         log("credential claim was not found")
