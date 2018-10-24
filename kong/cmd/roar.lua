@@ -3,7 +3,7 @@ return {
     print [==[
 Kong, Monolith destroyer.
 
-     /\  ____
+     /\  ####
      <> ( oo )
      <>_| ^^ |_
      <>   @    \
