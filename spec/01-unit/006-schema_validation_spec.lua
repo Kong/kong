@@ -275,7 +275,7 @@ describe("Schemas", function()
       assert.falsy(err)
 
       -- Failure
-      local values = {array = {hello="world"}}
+      local values = {array = {hello = "world"}}
 
       local valid, err = validate_entity(values, s)
       assert.False(valid)
@@ -665,7 +665,7 @@ describe("Schemas", function()
 
         local schema = {
           fields = {
-            value = {type = "table", schema = {fields = {some_property={default="hello"}}}, func = validate_value, required = true}
+            value = {type = "table", schema = {fields = {some_property = {default = "hello"}}}, func = validate_value, required = true}
           }
         }
 
