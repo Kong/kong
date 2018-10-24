@@ -532,26 +532,26 @@ end
 local function do_authentication(conf)
   local access_token = parse_access_token(conf);
   if not access_token then
-    return false, {status = 401, message = {[ERROR] = "invalid_request", error_description = "The access token is missing"}, headers = {["WWW-Authenticate"] = 'Bearer realm = "service"'}}
+    return false, {status = 401, message = {[ERROR] = "invalid_request", error_description = "The access token is missing"}, headers = {["WWW-Authenticate"] = 'Bearer realm="service"'}}
   end
 
   local token = retrieve_token(conf, access_token)
   if not token then
-    return false, {status = 401, message = {[ERROR] = "invalid_token", error_description = "The access token is invalid or has expired"}, headers = {["WWW-Authenticate"] = 'Bearer realm = "service" error = "invalid_token" error_description = "The access token is invalid or has expired"'}}
+    return false, {status = 401, message = {[ERROR] = "invalid_token", error_description = "The access token is invalid or has expired"}, headers = {["WWW-Authenticate"] = 'Bearer realm="service" error="invalid_token" error_description="The access token is invalid or has expired"'}}
   end
 
   if (token.service_id and ngx.ctx.service.id ~= token.service_id)
   or (token.api_id and ngx.ctx.api.id ~= token.api_id)
   or (token.service_id == nil and token.api_id == nil and not conf.global_credentials)
   then
-    return false, {status = 401, message = {[ERROR] = "invalid_token", error_description = "The access token is invalid or has expired"}, headers = {["WWW-Authenticate"] = 'Bearer realm = "service" error = "invalid_token" error_description = "The access token is invalid or has expired"'}}
+    return false, {status = 401, message = {[ERROR] = "invalid_token", error_description = "The access token is invalid or has expired"}, headers = {["WWW-Authenticate"] = 'Bearer realm="service" error="invalid_token" error_description="The access token is invalid or has expired"'}}
   end
 
   -- Check expiration date
   if token.expires_in > 0 then -- zero means the token never expires
     local now = timestamp.get_utc()
     if now - token.created_at > (token.expires_in * 1000) then
-      return false, {status = 401, message = {[ERROR] = "invalid_token", error_description = "The access token is invalid or has expired"}, headers = {["WWW-Authenticate"] = 'Bearer realm = "service" error = "invalid_token" error_description = "The access token is invalid or has expired"'}}
+      return false, {status = 401, message = {[ERROR] = "invalid_token", error_description = "The access token is invalid or has expired"}, headers = {["WWW-Authenticate"]='Bearer realm="service" error="invalid_token" error_description="The access token is invalid or has expired"'}}
     end
   end
 
