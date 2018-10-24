@@ -177,7 +177,7 @@ local function do_authentication(conf)
       scheme = upper(scheme)
     end
 
-    ngx.header["WWW-Authenticate"] = scheme .. ' realm = "kong"'
+    ngx.header["WWW-Authenticate"] = scheme .. ' realm="kong"'
     return false, {status = 401}
   end
 
