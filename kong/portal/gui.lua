@@ -1,17 +1,15 @@
 local lapis       = require "lapis"
 local singletons  = require "kong.singletons"
 local ee          = require "kong.enterprise_edition"
-local pl_file     = require "pl.file"
 local workspaces  = require "kong.workspaces"
-local EtluaWidget = require("lapis.etlua").EtluaWidget
 local responses   = require "kong.tools.responses"
-
+local pl_file     = require "pl.file"
+local EtluaWidget = require("lapis.etlua").EtluaWidget
 
 local app = lapis.Application()
 
 app:enable("etlua")
-app.layout = EtluaWidget:load(pl_file.read("kong/portal/views/index.etlua"))
-
+app.layout = EtluaWidget:load(pl_file.read(singletons.configuration.prefix .. "/portal/views/index.etlua"))
 
 app:match("/:workspace(/*)", function(self)
   local workspace = workspaces.get_req_workspace(self.params.workspace)

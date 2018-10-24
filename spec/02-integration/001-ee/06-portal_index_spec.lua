@@ -1,5 +1,28 @@
+local pl_file    = require "pl.file"
+local pl_path    = require "pl.path"
 local helpers      = require "spec.helpers"
 local ee_helpers   = require "spec.ee_helpers"
+local singletons   = require "kong.singletons"
+
+local function create_portal_index()
+  local prefix = singletons.configuration and singletons.configuration.prefix or 'servroot/'
+  local portal_dir = 'portal'
+  local portal_path = prefix .. portal_dir
+  local views_path = portal_path .. '/views'
+  local index_filename = views_path .. "/index.etlua"
+  local index_str = "<% for key, value in pairs(configs) do %>  <meta name=\"KONG:<%= key %>\" content=\"<%= value %>\" /><% end %>"
+
+  if not pl_path.exists(portal_path) then
+    pl_path.mkdir(portal_path)
+  end
+
+  if not pl_path.exists(views_path) then
+    pl_path.mkdir(views_path)
+  end
+  
+  pl_file.write(index_filename, index_str)
+end
+
 
 -- TODO: Cassandra
 for _, strategy in helpers.each_strategy('postgres') do
@@ -30,6 +53,7 @@ for _, strategy in helpers.each_strategy('postgres') do
 
         client = assert(helpers.admin_client())
         portal_gui_client = assert(ee_helpers.portal_gui_client())
+        create_portal_index()
       end)
 
       after_each(function()
