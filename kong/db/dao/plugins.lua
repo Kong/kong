@@ -310,19 +310,35 @@ end
 
 
 function Plugins:select_by_cache_key(key)
-  -- try new format
+
+  -- first try new way
   local entity, new_err = self.super.select_by_cache_key(self, key)
-  if entity then
-    return entity
+
+  if not new_err then -- the step above didn't fail
+    -- we still need to check whether the migration is done,
+    -- because the new table may be only partially full
+    local schema_state = assert(self.db:schema_state())
+
+    -- if migration is complete, disable this translator function and return
+    if schema_state:is_migration_executed("core", "001_14_to_15") then
+      Plugins.select_by_cache_key = self.super.select_by_cache_key
+      return entity
+    end
   end
 
-  -- try old format
+  -- otherwise, we either have not started migrating, or we're migrating but
+  -- the plugin identified by key doesn't have a cache_key yet
+  -- do things "the old way" in both cases
   local row, old_err = self.strategy:select_by_cache_key_migrating(key)
   if row then
     return self:row_to_entity(row)
   end
 
-  return nil, (new_err and old_err) and new_err or old_err
+  -- when both ways have failed, return the "new" error message.
+  -- otherwise, return whichever error is not-nil
+  local err = (new_err and old_err) and new_err or old_err
+
+  return nil, err
 end
 
 

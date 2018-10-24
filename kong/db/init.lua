@@ -393,6 +393,7 @@ do
   end
 end
 
+
 do
   -- migrations
   local utils = require "kong.tools.utils"
@@ -613,5 +614,6 @@ do
   end
   --]]
 end
+
 
 return DB
