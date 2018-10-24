@@ -653,7 +653,7 @@
 # VITALS
 #------------------------------------------------------------------------------
 
-#vitals = off                    # When enabled, Kong will store and report
+#vitals = on                     # When enabled, Kong will store and report
                                  # metrics about its performance.
 
 #vitals_strategy = database      # Determines whether to use the Kong database
