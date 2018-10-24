@@ -227,7 +227,7 @@ index a66c230f..d4e416bc 100644
 
 - If you are relying on passive health-checks to detect TCP timeouts, you
   should double-check your health-check configurations. Previously, timeouts
-  were erroneously contriburing to the `tcp_failures` counter. They are now
+  were erroneously contributing to the `tcp_failures` counter. They are now
   properly contributing to the `timeout` counter. In order to short-circuit
   traffic based on timeouts, you must ensure that your `timeout` settings
   are properly configured. See the [Health Checks
@@ -1198,8 +1198,8 @@ consider setting some of its properties via environment variables, if the need
 arises. This behavior as well as all available settings are documented in the
 `kong.conf.default` file shipped with this version.
 
-Once your nodes configured, we recommend that you seamingly redirect your
-traffic through the new Kong 0.9 nodes before decomissioning your old nodes.
+Once your nodes configured, we recommend that you seemingly redirect your
+traffic through the new Kong 0.9 nodes before decommissioning your old nodes.
 
 ## Upgrade to `0.8.x`
 
@@ -1250,7 +1250,7 @@ $ kong migrations list --config kong.yml
 PostgreSQL. Additionally, we recommend that you **do not** use `kong reload` if
 you switch your cluster from Cassandra to PostgreSQL. Instead, we recommend
 that you migrate by spawning a new cluster and gradually redirect your traffic
-before decomissioning your old nodes.
+before decommissioning your old nodes.
 
 ## Upgrade to `0.7.x`
 
