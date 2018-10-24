@@ -53,7 +53,7 @@ for _, strategy in helpers.each_strategy() do
     end)
     it("does not set default value for `auth_header_name` when it is given", function()
       local t = {enable_authorization_code = true, mandatory_scope = true, scopes = {"email", "info"}, provision_key = "hello",
-      auth_header_name="custom_header_name"}
+      auth_header_name = "custom_header_name"}
       local ok, errors = validate_entity(t, oauth2_schema)
       assert.True(ok)
       assert.is_nil(errors)
