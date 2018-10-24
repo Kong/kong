@@ -130,7 +130,7 @@ end
 -- worker processes from sending the test request simultaneously.
 -- Other workers do not need to wait until this lock is released,
 -- and can ignore the event, knowing another worker is handling it.
--- We substract 1ms to the exp time to prevent a race condition
+-- We subtract 1ms to the exp time to prevent a race condition
 -- with the next timer event.
 local function get_lock(key, exptime)
   local ok, err = kong_dict:safe_add(key, true, exptime - 0.001)
