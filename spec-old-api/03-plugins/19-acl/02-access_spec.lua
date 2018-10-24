@@ -485,7 +485,7 @@ describe("Plugin: ACL (access)", function()
         })
         assert.res_status(201, res)
 
-        -- Add a new group the the consumer
+        -- Add a new group to the consumer
         local res = assert(api_client:send {
           method = "POST",
           path = "/consumers/acl_consumer/acls/",

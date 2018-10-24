@@ -566,7 +566,7 @@ for _, strategy in helpers.each_strategy() do
           })
           assert.res_status(201, res)
 
-          -- Add a new group the the consumer
+          -- Add a new group to the consumer
           local res = assert(admin_client:send {
             method  = "POST",
             path    = "/consumers/acl_consumer/acls/",
