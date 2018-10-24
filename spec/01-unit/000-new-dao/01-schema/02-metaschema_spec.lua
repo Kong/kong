@@ -351,6 +351,17 @@ describe("metaschema", function()
     assert.match("'set' cannot have attribute 'unique'", err.set)
   end)
 
+  it("a schema cannot have a field of type 'any'", function()
+    local s = {
+      name = "hello",
+      primary_key = { "foo" },
+      fields = {
+        { foo = { type = "any" } } } }
+    local ok, err = MetaSchema:validate(s)
+    assert.falsy(ok)
+    assert.match("expected one of", err.fields.type)
+  end)
+
   describe("subschemas", function()
 
     it("supports declaring subschemas", function()
@@ -459,6 +470,16 @@ describe("metaschema", function()
       assert.truthy(ok)
     end)
 
+  end)
+
+  it("validates a value with 'eq'", function()
+    assert.truthy(MetaSchema:validate({
+      name = "test",
+      primary_key = { "pk" },
+      fields = {
+        { pk = { type = "boolean", default = true, eq = true } },
+      },
+    }))
   end)
 
   it("validates the routes schema", function()
