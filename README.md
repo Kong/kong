@@ -28,7 +28,7 @@ IRC (freenode): [#kong](https://webchat.freenode.net/?channels=kong) |
 
 ## Why Kong?
 
-If you are building for web, mobile or IoT (Internet of Things) you will likely
+If you are building for the web, mobile or IoT (Internet of Things) you will likely
 end up needing common functionality to run your actual software. Kong can
 help by acting as a gateway (or a sidecar) for microservices requests while
 providing load balancing, logging, authentication, rate-limiting,
