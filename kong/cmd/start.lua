@@ -38,7 +38,7 @@ local function execute(args)
   xpcall(function()
     assert(prefix_handler.prepare_prefix(conf, args.nginx_conf))
 
-    if not db:is_schema_up_to_date(schema_state) then
+    if not schema_state:is_up_to_date() then
       if args.run_migrations then
         migrations_utils.up(schema_state, db, {
           ttl = args.lock_timeout,
