@@ -551,7 +551,7 @@ local function do_authentication(conf)
   if token.expires_in > 0 then -- zero means the token never expires
     local now = timestamp.get_utc()
     if now - token.created_at > (token.expires_in * 1000) then
-      return false, {status = 401, message = {[ERROR] = "invalid_token", error_description = "The access token is invalid or has expired"}, headers = {["WWW-Authenticate"]='Bearer realm="service" error="invalid_token" error_description="The access token is invalid or has expired"'}}
+      return false, {status = 401, message = {[ERROR] = "invalid_token", error_description = "The access token is invalid or has expired"}, headers = {["WWW-Authenticate"] = 'Bearer realm="service" error="invalid_token" error_description="The access token is invalid or has expired"'}}
     end
   end
 
