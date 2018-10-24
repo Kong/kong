@@ -28,7 +28,7 @@ IRC (freenode): [#kong](https://webchat.freenode.net/?channels=kong) |
 
 ## Why Kong?
 
-If you are building for web, mobile or IoT (Internet of Things) you will likely
+If you are building for the web, mobile or IoT (Internet of Things) you will likely
 end up needing common functionality to run your actual software. Kong can
 help by acting as a gateway (or a sidecar) for microservices requests while
 providing load balancing, logging, authentication, rate-limiting,
@@ -74,7 +74,7 @@ transformations, and more through plugins.
   updated across nodes.
 - **Scalability**: Distributed by nature, Kong scales horizontally by simply
   adding nodes.
-- **Performance**: Kong handles load with ease by scaling and using NGINX at
+- **Performance**: Kong handles the load with ease by scaling and using NGINX at
   the core.
 - **Plugins**: Extendable architecture for adding functionality to Kong and
   APIs.
