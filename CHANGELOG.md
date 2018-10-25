@@ -1,3 +1,13 @@
+## v0.2.1
+
+- IMPORTANT Change `config.ssl_verify` to default to `false`.
+- Add `config.http_proxy`
+- Add `config.https_proxy`
+- Add `config.keepalive`
+- Add `config.authenticated_groups_claim`
+- Fix `expiry` leeway counting when there is refresh token
+  available and when there is not.
+
 ## v0.2.0
 
 - Change to always log the original error message when authorization code flow

@@ -594,42 +594,33 @@ function tokens.load(oic, args, ttl, use_cache)
   local res
   local err
 
-  if args.grant_type == "password" then
-    if not args.username or not args.password then
-      return nil, "no credentials given for password grant"
+  if use_cache then
+    if args.grant_type == "password" then
+      if not args.username or not args.password then
+        return nil, "no credentials given for password grant"
+      end
+
+      key = cache_key(base64.encode(hash.S256(concat {
+        iss,
+        "#grant_type=password&",
+        args.username,
+        "&",
+        args.password
+      })))
+
+    elseif args.grant_type == "client_credentials" then
+      if not args.client_id or not args.client_secret then
+        return nil, "no credentials given for client credentials grant"
+      end
+
+      key = cache_key(base64.encode(hash.S256(concat {
+        iss,
+        "#grant_type=client_credentials&",
+        args.client_id,
+        "&",
+        args.client_secret
+      })))
     end
-
-    key = cache_key(base64.encode(hash.S256(concat {
-      iss,
-      "#grant_type=password&",
-      args.username,
-      "&",
-      args.password
-    })))
-
-  elseif args.grant_type == "client_credentials" then
-    if not args.client_id or not args.client_secret then
-      return nil, "no credentials given for client credentials grant"
-    end
-
-    key = cache_key(base64.encode(hash.S256(concat {
-      iss,
-      "#grant_type=client_credentials&",
-      args.client_id,
-      "&",
-      args.client_secret
-    })))
-
-  else
-    -- we don't cache authorization code requests
-    res, err = tokens_load(oic, args, now)
-    if not res then
-      return nil, err or "unable to exchange authorization code"
-    end
-
-    local tokens_encoded = res[2]
-    local headers        = res[3]
-    return tokens_encoded, nil, headers
   end
 
   if use_cache and key then
@@ -671,6 +662,16 @@ local function token_exchange_load(endpoint, opts)
 
   else
     httpc:set_timeout(opts.timeout)
+  end
+
+  if httpc.set_proxy_options and (opts.http_proxy  or
+                                  opts.https_proxy or
+                                  opts.no_proxy) then
+    httpc:set_proxy_options({
+      http_proxy  = opts.http_proxy,
+      https_proxy = opts.https_proxy,
+      no_proxy    = opts.no_proxy,
+    })
   end
 
   local res = httpc:request_uri(endpoint, opts)
@@ -775,5 +776,5 @@ return {
   tokens         = tokens,
   token_exchange = token_exchange,
   userinfo       = userinfo,
-  version        = "0.2.0",
+  version        = "0.2.1",
 }

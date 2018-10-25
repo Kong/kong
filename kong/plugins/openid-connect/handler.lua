@@ -91,8 +91,11 @@ local function create_get_http_opts(args)
   return function(options)
     options = options or {}
     options.http_version = args.get_conf_arg("http_version", 1.1)
-    options.ssl_verify   = args.get_conf_arg("ssl_verify",   true)
-    options.timeout      = args.get_conf_arg("timeout",      10000)
+    options.http_proxy   = args.get_conf_arg("http_proxy")
+    options.https_proxy  = args.get_conf_arg("https_proxy")
+    options.keepalive    = args.get_conf_arg("keepalive", true)
+    options.ssl_verify   = args.get_conf_arg("ssl_verify", true)
+    options.timeout      = args.get_conf_arg("timeout", 10000)
     return options
   end
 end
@@ -861,6 +864,9 @@ function OICHandler:access(conf)
       timeout           = args.get_conf_arg("timeout", 10000),
       leeway            = args.get_conf_arg("leeway", 0),
       http_version      = args.get_conf_arg("http_version", 1.1),
+      http_proxy        = args.get_conf_arg("http_proxy"),
+      https_proxy       = args.get_conf_arg("https_proxy"),
+      keepalive         = args.get_conf_arg("keepalive", true),
       ssl_verify        = args.get_conf_arg("ssl_verify", true),
       verify_parameters = args.get_conf_arg("verify_parameters"),
       verify_nonce      = args.get_conf_arg("verify_nonce"),
@@ -1597,7 +1603,12 @@ function OICHandler:access(conf)
     log("found access token")
   end
 
-  exp = (exp or lwy) - lwy
+  if auth_methods.refresh_token and tokens_encoded.refresh_token then
+    exp = (exp or lwy) - lwy
+  else
+    exp = (exp or lwy) + lwy
+  end
+
   ttl = max(exp - now, 0)
 
   log("checking for access token expiration")
@@ -2002,8 +2013,8 @@ function OICHandler:access(conf)
   -- setting consumer context and headers
   set_consumer(ctx, consumer, credential)
 
-  -- setting credential by arbitrary claim, in case when consumer mapping was not used
   if not consumer then
+    -- setting credential by arbitrary claim, in case when consumer mapping was not used
     local credential_claim = args.get_conf_arg("credential_claim")
     if credential_claim then
       log("finding credential claim value")
@@ -2056,6 +2067,60 @@ function OICHandler:access(conf)
         ctx.authenticated_credential = {
           id = tostring(credential_value)
         }
+      end
+    end
+
+    -- trying to find authenticated groups for ACL plugin to filter
+    local authenticated_groups_claim = args.get_conf_arg("authenticated_groups_claim")
+    if authenticated_groups_claim then
+      log("finding authenticated groups claim value")
+
+      local authenticated_groups
+      if token_introspected then
+        authenticated_groups = find_claim(token_introspected, authenticated_groups_claim)
+        if authenticated_groups then
+          log("authenticated groups claim found in introspection results")
+
+        else
+          log("authenticated groups claim not found in introspection results")
+        end
+
+      else
+        if not tokens_decoded then
+          tokens_decoded = oic.token:decode(tokens_encoded)
+        end
+
+        if tokens_decoded then
+          if type(tokens_decoded.access_token) == "table" then
+            authenticated_groups = find_claim(tokens_decoded.access_token.payload, authenticated_groups_claim)
+            if authenticated_groups then
+              log("authenticated groups claim found in jwt token")
+
+            else
+              log("authenticated groups claim not found in jwt token")
+            end
+
+          else
+            authenticated_groups = find_claim(token_introspected, authenticated_groups_claim)
+            if authenticated_groups then
+              log("authenticated groups claim found in introspection results")
+
+            else
+              log("authenticated groups claim not found in introspection results")
+            end
+          end
+        end
+      end
+
+      if authenticated_groups == nil then
+        log("authenticated groups claim was not found")
+
+      elseif type(authenticated_groups) == "table" then
+        log("authenticated groups claim is invalid")
+
+      else
+        log("authenticated groups found '", authenticated_groups, "'")
+        ctx.authenticated_groups = set.new(authenticated_groups)
       end
     end
   end

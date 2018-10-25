@@ -16,11 +16,7 @@ local function check_user(anonymous)
 end
 
 
-local function self_check(_, conf, _, is_update)
-  if is_update then
-    return true
-  end
-
+local function self_check(_, conf)
   local phase = get_phase()
   if phase == "access" or phase == "content" then
     local args = arguments(conf)
@@ -32,10 +28,13 @@ local function self_check(_, conf, _, is_update)
 
     local options = {
       http_version    = args.get_conf_arg("http_version", 1.1),
-      ssl_verify      = args.get_conf_arg("ssl_verify",   true),
-      timeout         = args.get_conf_arg("timeout",      10000),
-      headers         = args.get_conf_args("discovery_headers_names", "discovery_headers_values"),
+      http_proxy      = args.get_conf_arg("http_proxy"),
+      https_proxy     = args.get_conf_arg("https_proxy"),
+      keepalive       = args.get_conf_arg("keepalive", true),
+      ssl_verify      = args.get_conf_arg("ssl_verify", true),
+      timeout         = args.get_conf_arg("timeout", 10000),
       extra_jwks_uris = args.get_conf_arg("extra_jwks_uris"),
+      headers         = args.get_conf_args("discovery_headers_names", "discovery_headers_values"),
     }
 
     local issuer = cache.issuers.load(issuer_uri, options)
@@ -182,6 +181,10 @@ return {
     max_age                            = {
       required                         = false,
       type                             = "number",
+    },
+    authenticated_groups_claim         = {
+      required                         = false,
+      type                             = "array",
     },
     authorization_cookie_name          = {
       required                         = false,
@@ -678,10 +681,23 @@ return {
       },
       default                          = 1.1,
     },
-    ssl_verify                         = {
+    http_proxy                         = {
+      required                         = false,
+      type                             = "url",
+    },
+    https_proxy                        = {
+      required                         = false,
+      type                             = "url",
+    },
+    keepalive                          = {
       required                         = false,
       type                             = "boolean",
       default                          = true,
+    },
+    ssl_verify                         = {
+      required                         = false,
+      type                             = "boolean",
+      default                          = false,
     },
     timeout                            = {
       required                         = false,
