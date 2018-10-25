@@ -12,10 +12,16 @@ local phase_checker = require "kong.pdk.private.phases"
 
 local ngx = ngx
 local tonumber = tonumber
+local check_phase = phase_checker.check
 local check_not_phase = phase_checker.check_not
 
 
 local PHASES = phase_checker.phases
+local AUTH_AND_LATER = phase_checker.new(PHASES.access,
+                                         PHASES.header_filter,
+                                         PHASES.body_filter,
+                                         PHASES.log)
+local TABLE_OR_NIL = { ["table"] = true, ["nil"] = true }
 
 
 local function new(self)
@@ -118,6 +124,71 @@ local function new(self)
     check_not_phase(PHASES.init_worker)
 
     return tonumber(ngx.var.remote_port)
+  end
+
+
+  ---
+  -- Returns the credentials of the currently authenticated consumer.
+  -- If not set yet, it returns `nil`.
+  -- @function kong.client.get_credential
+  -- @phases access, header_filter, body_filter, log
+  -- @return the authenticated credential
+  -- @usage
+  -- local credential = kong.client.get_credential()
+  -- if credential then
+  --   consumer_id = credential.consumer_id
+  -- else
+  --   -- request not authenticated yet
+  -- end
+  function _CLIENT.get_credential()
+    check_phase(AUTH_AND_LATER)
+
+    return ngx.ctx.authenticated_credential
+  end
+
+
+  ---
+  -- Returns the `consumer` entity of the currently authenticated consumer.
+  -- If not set yet, it returns `nil`.
+  -- @function kong.client.get_consumer
+  -- @phases access, header_filter, body_filter, log
+  -- @treturn table the authenticated consumer entity
+  -- @usage
+  -- local consumer = kong.client.get_consumer()
+  -- if consumer then
+  --   consumer_id = consumer.id
+  -- else
+  --   -- request not authenticated yet, or a credential
+  --   -- without a consumer (external auth)
+  -- end
+  function _CLIENT.get_consumer()
+    check_phase(AUTH_AND_LATER)
+
+    return ngx.ctx.authenticated_consumer
+  end
+
+
+  ---
+  -- Sets the authenticated consumer (and credential) for the current request.
+  -- @function kong.client.set_consumer
+  -- @phases access
+  -- @tparam table consumer The consumer to set, this can be `nil`.
+  -- @tparam table credential The credential to set, this can be `nil`.
+  -- @usage
+  -- -- assuming `credential` and `consumer` have been set by some authentication code
+  -- kong.client.set_consumer(consumer, credentials)
+  function _CLIENT.set_consumer(consumer, credential)
+    check_phase(PHASES.access)
+
+    if not TABLE_OR_NIL[type(consumer)] then
+      error("consumer must be a table or nil", 2)
+    elseif not TABLE_OR_NIL[type(credential)] then
+      error("credential must be a table or nil", 2)
+    end
+
+    local ctx = ngx.ctx
+    ctx.authenticated_consumer = consumer
+    ctx.authenticated_credential = credential
   end
 
 

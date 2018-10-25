@@ -116,6 +116,11 @@
 -- @redirect kong.response
 
 
+--- Router module
+-- @field kong.router
+-- @redirect kong.router
+
+
 --- Singletons
 -- @section singletons
 
@@ -226,6 +231,7 @@ local MAJOR_VERSIONS = {
       "service.request",
       "service.response",
       "response",
+      "router",
     },
   },
 
