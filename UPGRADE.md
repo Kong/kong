@@ -241,7 +241,7 @@ index a66c230f..d4e416bc 100644
   can happen when Nginx itself produces an error while parsing the client's
   request. Similarly, `ngx.var` values (e.g. `ngx.var.request_uri`) may be
   `nil`. Plugins should be hardened to handle such cases and avoid using
-  unititialized variables, which could throw Lua errors.
+  uninitialized variables, which could throw Lua errors.
 - The Runscope plugin has been dropped, based on the EoL announcement made by
   Runscope about their Traffic Inspector product.
 
