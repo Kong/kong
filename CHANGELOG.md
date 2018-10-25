@@ -50,7 +50,7 @@
   provided as hostnames (e.g. Kubernetes with `cassandra_contact_points =
   cassandra`).
   [#3693](https://github.com/Kong/kong/pull/3693)
-- Fix an issue which prevented the use of unix domain sockets in some logging
+- Fix an issue which prevented the use of UNIX domain sockets in some logging
   plugins, and custom plugins making use of such sockets.
   Thanks [@rucciva](https://github.com/rucciva) for the patch.
   [#3633](https://github.com/Kong/kong/pull/3633)
@@ -76,7 +76,7 @@
 - basic-auth: Passwords with whitespaces are not trimmed anymore.
   Thanks [@aloisbarreras](https://github.com/aloisbarreras) for the patch.
   [#3650](https://github.com/Kong/kong/pull/3650)
-- hmac-auth: Ensure backwards compatibility for clients generating signatures
+- hmac-auth: Ensure backward compatibility for clients generating signatures
   without the request's querystring, as is the case for Kong versions prior to
   0.14.0, which broke this behavior. Users of this plugin on previous versions
   of Kong can now safely upgrade to the 0.14 family.
@@ -158,7 +158,7 @@ upgrade your Kong cluster.
   received notable usability improvements, but suffer from a few breaking
   changes.
   [#3386](https://github.com/Kong/kong/pull/3386)
-- :warning: The Consumers entitiy has moved to the new DAO implementation. As
+- :warning: The Consumers entity has moved to the new DAO implementation. As
   such, the `/consumers` endpoint has received notable usability improvements,
   but suffers from a few breaking changes.
   [#3437](https://github.com/Kong/kong/pull/3437)
@@ -245,7 +245,7 @@ upgrade your Kong cluster.
   traces and report them to a running Zipkin instance.
   (See: https://github.com/Kong/kong-plugin-zipkin)
   [#3434](https://github.com/Kong/kong/pull/3434)
-- :fireworks: **New bundled plugin: Prometheus**! This plugins allows Kong to
+- :fireworks: **New bundled plugin: Prometheus**! This plugin allows Kong to
   expose metrics in the Prometheus Exposition format. Available metrics include
   HTTP status codes, latencies histogram, bandwidth, and more...
   (See: https://github.com/Kong/kong-plugin-prometheus)
