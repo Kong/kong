@@ -567,6 +567,101 @@ for _, strategy in helpers.each_strategy() do
           end)
         end)
 
+        describe("PATCH", function()
+          it("updates a plugin", function()
+            local service = bp.services:insert()
+            local plugin = bp.key_auth_plugins:insert({ service = service })
+            local res = assert(client:send {
+              method = "PATCH",
+              path = "/services/" .. service.id .. "/plugins/" .. plugin.id,
+              body = {enabled = false},
+              headers = {["Content-Type"] = "application/json"}
+            })
+            local body = assert.res_status(200, res)
+            local json = cjson.decode(body)
+            assert.False(json.enabled)
+
+            local in_db = assert(db.plugins:select({ id = plugin.id }, { nulls = true }))
+            assert.same(json, in_db)
+          end)
+          it("updates a plugin bis", function()
+            local service = bp.services:insert()
+            local plugin = bp.key_auth_plugins:insert({ service = service })
+
+            plugin.enabled = not plugin.enabled
+            plugin.created_at = nil
+
+            local res = assert(client:send {
+              method = "PATCH",
+              path = "/services/" .. service.id .. "/plugins/" .. plugin.id,
+              body = plugin,
+              headers = {["Content-Type"] = "application/json"}
+            })
+            local body = assert.res_status(200, res)
+            local json = cjson.decode(body)
+            assert.equal(plugin.enabled, json.enabled)
+          end)
+          it("updates a plugin (removing foreign key reference)", function()
+            local service = bp.services:insert()
+            local plugin = bp.key_auth_plugins:insert({ service = service })
+
+            local res = assert(client:send {
+              method = "PATCH",
+              path = "/services/" .. service.id .. "/plugins/" .. plugin.id,
+              body = {
+                service = cjson.null,
+              },
+              headers = { ["Content-Type"] = "application/json" }
+            })
+            local body = assert.res_status(200, res)
+            local json = cjson.decode(body)
+            assert.same(ngx.null, json.service)
+
+            local in_db = assert(db.plugins:select({ id = plugin.id }, { nulls = true }))
+            assert.same(json, in_db)
+          end)
+
+          describe("errors", function()
+            it("handles invalid input", function()
+              local service = bp.services:insert()
+              local plugin = bp.key_auth_plugins:insert({
+                service = service,
+                config = { key_names = { "testkey" } },
+              })
+
+              local before = assert(db.plugins:select({ id = plugin.id }, { nulls = true }))
+              local res = assert(client:send {
+                method = "PATCH",
+                path = "/services/" .. service.id .. "/plugins/" .. plugin.id,
+                body = { foo = "bar" },
+                headers = {["Content-Type"] = "application/json"}
+              })
+              local body = cjson.decode(assert.res_status(400, res))
+              assert.same({
+                message = "schema violation (foo: unknown field)",
+                name = "schema violation",
+                fields = {
+                  foo = "unknown field",
+                },
+                code = 2,
+              }, body)
+              local after = assert(db.plugins:select({ id = plugin.id }, { nulls = true }))
+              assert.same(before, after)
+              assert.same({"testkey"}, after.config.key_names)
+            end)
+            it("returns 404 if not found", function()
+              local service = bp.services:insert()
+              local res = assert(client:send {
+                method = "PATCH",
+                path = "/services/" .. service.id .. "/plugins/f4aecadc-05c7-11e6-8d41-1f3b3d5fa15c",
+                body = {enabled = false},
+                headers = {["Content-Type"] = "application/json"}
+              })
+              assert.res_status(404, res)
+            end)
+          end)
+        end)
+
         describe("GET", function()
           it("retrieves the first page", function()
             local service = bp.services:insert()

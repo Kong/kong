@@ -1195,9 +1195,7 @@ local function adjust_field_for_context(field, value, context, nulls)
     local should_recurse
     if context == "update" then
       -- avoid filling defaults in partial updates of records
-      should_recurse = ((value == null and field.nullable == false)
-                        or (value == nil and field.nullable == false)
-                        or (value ~= null and value ~= nil))
+      should_recurse = (value ~= null and value ~= nil)
     else
       should_recurse = (value ~= null and
                         (value ~= nil or field.nullable == false))
@@ -1338,6 +1336,12 @@ end
 function Schema:merge_values(top, bottom)
   local output = {}
   bottom = bottom or {}
+  for k,v in pairs(bottom) do
+    output[k] = v
+  end
+  for k,v in pairs(top) do
+    output[k] = v
+  end
   for key, field in self:each_field(bottom) do
     local top_v = top[key]
 
@@ -1498,6 +1502,8 @@ end
 -- Returns a function to be used in `for` loops,
 -- which produces the key and the field table,
 -- as in `for field_name, field_data in self:each_field() do`
+-- @param values An instance of the entity, which is used
+-- only to determine which subschema to use.
 -- @return the iteration function
 function Schema:each_field(values)
   local i = 1

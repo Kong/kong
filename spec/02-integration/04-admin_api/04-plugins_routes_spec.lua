@@ -9,7 +9,8 @@ for _, strategy in helpers.each_strategy() do
 
     setup(function()
       _, db = helpers.get_db_utils(strategy, {
-        "apis",
+        "services",
+        "routes",
         "plugins",
       }, {
         "key-auth"
@@ -67,6 +68,9 @@ for _, strategy in helpers.each_strategy() do
           plugins[i] = assert(db.plugins:insert {
             name = "key-auth",
             service = { id = service.id },
+            config = {
+              key_names = { "testkey" },
+            }
           })
         end
       end)
@@ -169,6 +173,28 @@ for _, strategy in helpers.each_strategy() do
           end)
 
           describe("errors", function()
+            it("handles invalid input", function()
+              local before = assert(db.plugins:select({ id = plugins[1].id }, { nulls = true }))
+              local res = assert(client:send {
+                method = "PATCH",
+                path = "/plugins/" .. plugins[1].id,
+                body = { foo = "bar" },
+                headers = {["Content-Type"] = "application/json"}
+              })
+              local body = cjson.decode(assert.res_status(400, res))
+              assert.same({
+                message = "schema violation (foo: unknown field)",
+                name = "schema violation",
+                fields = {
+                  foo = "unknown field",
+                },
+                code = 2,
+              }, body)
+
+              local after = assert(db.plugins:select({ id = plugins[1].id }, { nulls = true }))
+              assert.same(before, after)
+              assert.same({"testkey"}, after.config.key_names)
+            end)
             it("returns 404 if not found", function()
               local res = assert(client:send {
                 method = "PATCH",
