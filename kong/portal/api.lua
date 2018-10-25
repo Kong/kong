@@ -1,12 +1,17 @@
-local singletons   = require "kong.singletons"
-local crud         = require "kong.api.crud_helpers"
-local enums        = require "kong.enterprise_edition.dao.enums"
-local portal_utils = require "kong.portal.utils"
-local cjson        = require "cjson.safe"
-local ee_jwt       = require "kong.enterprise_edition.jwt"
-local utils        = require "kong.tools.utils"
-local ee_api       = require "kong.enterprise_edition.api_helpers"
-local time         = ngx.time
+local singletons    = require "kong.singletons"
+local crud          = require "kong.api.crud_helpers"
+local ws_helper     = require "kong.workspaces.helper"
+local enums         = require "kong.enterprise_edition.dao.enums"
+local portal_utils  = require "kong.portal.utils"
+local cjson         = require "cjson.safe"
+local ee_jwt        = require "kong.enterprise_edition.jwt"
+local ee_api        = require "kong.enterprise_edition.api_helpers"
+local utils         = require "kong.tools.utils"
+local time          = ngx.time
+local constants     = require "kong.constants"
+local portal_smtp_client = require "kong.portal.emails"
+
+local ws_constants = constants.WORKSPACE_CONFIG
 
 
 --- Allowed auth plugins
@@ -24,9 +29,20 @@ local auth_plugins = {
   ["openid-connect"] = { name = "openid-connect" },
 }
 
+local function check_portal_status(helpers)
+  local workspace = ngx.ctx.workspaces and ngx.ctx.workspaces[1] or {}
+  local portal = ws_helper.retrieve_ws_config(ws_constants.PORTAL, workspace)
+  if not portal then
+    return helpers.responses.send_HTTP_NOT_FOUND()
+  end
+end
+
 
 local function validate_auth_plugin(self, dao_factory, helpers, plugin_name)
-  plugin_name = plugin_name or singletons.configuration.portal_auth
+  local workspace = ngx.ctx.workspaces and ngx.ctx.workspaces[1] or {}
+  local portal_auth = ws_helper.retrieve_ws_config(ws_constants.PORTAL_AUTH, workspace)
+
+  plugin_name = plugin_name or portal_auth
   self.plugin = auth_plugins[plugin_name]
   if not self.plugin then
     return helpers.responses.send_HTTP_NOT_FOUND()
@@ -67,7 +83,9 @@ local function authenticate(self, dao_factory, helpers)
   validate_auth_plugin(self, dao_factory, helpers)
 
   -- apply auth plugin
-  local auth_conf = utils.deep_copy(singletons.configuration.portal_auth_conf or {})
+  local workspace = ngx.ctx.workspaces and ngx.ctx.workspaces[1] or {}
+  local portal_auth_conf = ws_helper.retrieve_ws_config(ws_constants.PORTAL_AUTH_CONF, workspace)
+  local auth_conf = utils.deep_copy(portal_auth_conf or {})
   local prepared_plugin = ee_api.prepare_plugin(ee_api.apis.PORTAL,
                                                 dao_factory,
                                                 self.plugin.name, auth_conf)
@@ -133,6 +151,10 @@ end
 
 return {
   ["/auth"] = {
+    before = function(self, dao_factory, helpers)
+      check_portal_status(helpers)
+    end,
+
     GET = function(self, dao_factory, helpers)
       authenticate(self, dao_factory, helpers)
       return helpers.responses.send_HTTP_OK()
@@ -141,8 +163,13 @@ return {
 
   ["/files"] = {
     before = function(self, dao_factory, helpers)
+      check_portal_status(helpers)
+
+      local workspace = ngx.ctx.workspaces and ngx.ctx.workspaces[1] or {}
+      local portal_auth = ws_helper.retrieve_ws_config(ws_constants.PORTAL_AUTH, workspace)
+
       -- If auth is enabled, we need to validate consumer/developer
-      if singletons.configuration.portal_auth then
+      if portal_auth then
         authenticate(self, dao_factory, helpers)
       end
     end,
@@ -153,6 +180,10 @@ return {
   },
 
   ["/files/unauthenticated"] = {
+    before = function(self, dao_factory, helpers)
+      check_portal_status(helpers)
+    end,
+
     -- List all unauthenticated files stored in the portal file system
     GET = function(self, dao_factory, helpers)
       self.params.auth = false
@@ -163,6 +194,7 @@ return {
 
   ["/files/*"] = {
     before = function(self, dao_factory, helpers)
+      check_portal_status(helpers)
       local dao = dao_factory.files
       local identifier = self.params.splat
 
@@ -189,7 +221,9 @@ return {
 
   ["/register"] = {
     before = function(self, dao_factory, helpers)
-      self.auto_approve = singletons.configuration.portal_auto_approve
+      check_portal_status(helpers)
+      local workspace = ngx.ctx.workspaces and ngx.ctx.workspaces[1] or {}
+      self.auto_approve = ws_helper.retrieve_ws_config(ws_constants.PORTAL_AUTO_APPROVE, workspace)
       validate_email(self, dao_factory, helpers)
     end,
 
@@ -228,7 +262,10 @@ return {
       end
 
       -- omit credential post for oidc
-      if singletons.configuration.portal_auth == "openid-connect" then
+      local workspace = ngx.ctx.workspaces and ngx.ctx.workspaces[1] or {}
+      local portal_auth = ws_helper.retrieve_ws_config(ws_constants.PORTAL_AUTH, workspace)
+
+      if portal_auth == "openid-connect" then
         return helpers.responses.send_HTTP_CREATED({
           consumer = consumer,
           credential = {},
@@ -269,7 +306,8 @@ return {
         }
 
         if consumer.status == enums.CONSUMERS.STATUS.PENDING then
-          local email, err = singletons.portal_emails:access_request(consumer.email, full_name)
+          local portal_emails = portal_smtp_client.new()
+          local email, err = portal_emails:access_request(consumer.email, full_name)
           if err then
             if err.code then
               return helpers.responses.send(err.code, {message = err.message})
@@ -288,6 +326,7 @@ return {
 
   ["/validate-reset"] = {
     before = function(self, dao_factory, helpers)
+      check_portal_status(helpers)
       validate_auth_plugin(self, dao_factory, helpers)
       validate_jwt(self, dao_factory, helpers)
     end,
@@ -299,6 +338,7 @@ return {
 
   ["/reset-password"] = {
     before = function(self, dao_factory, helpers)
+      check_portal_status(helpers)
       validate_auth_plugin(self, dao_factory, helpers)
       validate_jwt(self, dao_factory, helpers)
     end,
@@ -354,7 +394,8 @@ return {
         return helpers.yield_error(err)
       end
 
-      local _, err = singletons.portal_emails:password_reset_success(self.consumer.email)
+      local portal_emails = portal_smtp_client.new()
+      local _, err = portal_emails:password_reset_success(self.consumer.email)
       if err then
         return helpers.yield_error(err)
       end
@@ -365,12 +406,14 @@ return {
 
   ["/forgot-password"] = {
     before = function(self, dao_factory, helpers)
+      check_portal_status(helpers)
       validate_auth_plugin(self, dao_factory, helpers)
       validate_email(self, dao_factory, helpers)
     end,
 
     POST = function(self, dao_factory, helpers)
-      local token_ttl = singletons.configuration.portal_token_exp
+      local workspace = ngx.ctx.workspaces and ngx.ctx.workspaces[1] or {}
+      local token_ttl = ws_helper.retrieve_ws_config(ws_constants.PORTAL_TOKEN_EXP, workspace)
       local filter = {__skip_rbac = true}
       local rows, err = crud.find_by_id_or_field(dao_factory.consumers, filter,
                                                     self.params.email, "email")
@@ -423,7 +466,8 @@ return {
         return helpers.yield_error(err)
       end
 
-      local _, err = singletons.portal_emails:password_reset(self.consumer.email, jwt)
+      local portal_emails = portal_smtp_client.new()
+      local _, err = portal_emails:password_reset(self.consumer.email, jwt)
       if err then
         return helpers.yield_error(err)
       end
@@ -434,6 +478,7 @@ return {
 
   ["/config"] = {
     before = function(self, dao_factory, helpers)
+      check_portal_status(helpers)
       authenticate(self, dao_factory, helpers)
     end,
 
@@ -469,6 +514,7 @@ return {
 
   ["/developer"] = {
     before = function(self, dao_factory, helpers)
+      check_portal_status(helpers)
       authenticate(self, dao_factory, helpers)
     end,
 
@@ -483,6 +529,7 @@ return {
 
   ["/developer/password"] = {
     before = function(self, dao_factory, helpers)
+      check_portal_status(helpers)
       authenticate(self, dao_factory, helpers)
       find_login_credential(self, dao_factory, helpers)
     end,
@@ -521,13 +568,17 @@ return {
 
   ["/developer/email"] = {
     before = function(self, dao_factory, helpers)
+      check_portal_status(helpers)
       authenticate(self, dao_factory, helpers)
       find_login_credential(self, dao_factory, helpers)
       validate_email(self, dao_factory, helpers)
     end,
 
     PATCH = function(self, dao_factory, helpers)
-      if singletons.configuration.portal_auth == "basic-auth" then
+      local workspace = ngx.ctx.workspaces and ngx.ctx.workspaces[1] or {}
+      local portal_auth = ws_helper.retrieve_ws_config(ws_constants.PORTAL_AUTH, workspace)
+
+      if portal_auth == "basic-auth" then
         local cred_params = {
           username = self.params.email,
         }
@@ -571,6 +622,7 @@ return {
 
   ["/developer/meta"] = {
     before = function(self, dao_factory, helpers)
+      check_portal_status(helpers)
       authenticate(self, dao_factory, helpers)
     end,
 
@@ -618,6 +670,7 @@ return {
 
   ["/credentials"] = {
     before = function(self, dao_factory, helpers)
+      check_portal_status(helpers)
       authenticate(self, dao_factory, helpers)
       self.params.consumer_id = self.consumer.id
     end,
@@ -640,6 +693,7 @@ return {
 
   ["/credentials/:plugin"] = {
     before = function(self, dao_factory, helpers)
+      check_portal_status(helpers)
       authenticate(self, dao_factory, helpers)
 
       local plugin_name = ngx.unescape_uri(self.params.plugin)
@@ -674,6 +728,7 @@ return {
 
   ["/credentials/:plugin/:credential_id"] = {
     before = function(self, dao_factory, helpers)
+      check_portal_status(helpers)
       authenticate(self, dao_factory, helpers)
 
       local plugin_name = ngx.unescape_uri(self.params.plugin)
@@ -716,6 +771,7 @@ return {
 
   ["/vitals/status_codes/by_consumer"] = {
     before = function(self, dao_factory, helpers)
+      check_portal_status(helpers)
       authenticate(self, dao_factory, helpers)
 
       if not singletons.configuration.vitals then
@@ -739,6 +795,7 @@ return {
 
   ["/vitals/status_codes/by_consumer_and_route"] = {
     before = function(self, dao_factory, helpers)
+      check_portal_status(helpers)
       authenticate(self, dao_factory, helpers)
 
       if not singletons.configuration.vitals then
@@ -763,6 +820,7 @@ return {
 
   ["/vitals/consumers/cluster"] = {
     before = function(self, dao_factory, helpers)
+      check_portal_status(helpers)
       authenticate(self, dao_factory, helpers)
 
       if not singletons.configuration.vitals then

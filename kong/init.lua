@@ -64,7 +64,6 @@ local kong_error_handlers = require "kong.core.error_handlers"
 local internal_proxies = require "kong.enterprise_edition.proxies"
 local vitals = require "kong.vitals"
 local ee = require "kong.enterprise_edition"
-local portal_emails = require "kong.portal.emails"
 
 local ngx              = ngx
 local header           = ngx.header
@@ -264,7 +263,6 @@ function Kong.init()
   singletons.db = db
   singletons.license = ee.read_license_info()
   singletons.internal_proxies = internal_proxies.new()
-  singletons.portal_emails = portal_emails.new(config)
 
   -- ee.internal_statsd_init() has to occur before build_plugins_map
   -- and after internal_proxies.new()

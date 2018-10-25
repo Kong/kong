@@ -4,11 +4,13 @@ local pl_file    = require "pl.file"
 local pl_utils   = require "pl.utils"
 local pl_path    = require "pl.path"
 local singletons = require "kong.singletons"
+local ws_helper  = require "kong.workspaces.helper"
+local constants  = require "kong.constants"
 local feature_flags   = require "kong.enterprise_edition.feature_flags"
 local internal_statsd = require "kong.enterprise_edition.internal_statsd"
 local license_helpers = require "kong.enterprise_edition.license_helpers"
 
-
+local ws_constants  = constants.WORKSPACE_CONFIG
 local _M = {}
 
 
@@ -176,7 +178,6 @@ end
 
 function _M.prepare_portal(kong_config, self)
   local workspace = self.params.workspace
-  local workspace_config = workspace.config or {}
 
   local portal_gui_listener = select_listener(kong_config.portal_gui_listeners,
                                               {ssl = false})
@@ -193,9 +194,11 @@ function _M.prepare_portal(kong_config, self)
 
   local rbac_enforced = kong_config.rbac == "both" or kong_config.rbac == "on"
 
+  local portal_auth = ws_helper.retrieve_ws_config(ws_constants.PORTAL_AUTH, workspace)
+
   return {
     PORTAL_API_URL = prepare_variable(kong_config.portal_api_url),
-    PORTAL_AUTH = prepare_variable(workspace_config.portal_auth or kong_config.portal_auth),
+    PORTAL_AUTH = prepare_variable(portal_auth),
     PORTAL_API_PORT = prepare_variable(portal_api_port),
     PORTAL_API_SSL_PORT = prepare_variable(portal_api_ssl_port),
     PORTAL_GUI_URL = prepare_variable(kong_config.portal_gui_url),

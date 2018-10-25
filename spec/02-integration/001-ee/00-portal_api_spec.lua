@@ -27,7 +27,21 @@ local function insert_files(dao)
 end
 
 
-local rbac_mode = {"on", "endpoint", "off"}
+local function configure_portal(dao)
+  local workspaces = dao.workspaces:find_all({name = "default"})
+  local workspace = workspaces[1]
+
+  dao.workspaces:update({
+    config = {
+      portal = true,
+    }
+  }, {
+    id = workspace.id,
+  })
+end
+
+
+local rbac_mode = {"off"}
 
 -- TODO: Cassandra
 for _, strategy in helpers.each_strategy('postgres') do
@@ -37,6 +51,7 @@ for _, strategy in helpers.each_strategy('postgres') do
       local db
       local dao
       local client
+      local portal_api_client
       local consumer_approved
 
       setup(function()
@@ -50,7 +65,6 @@ for _, strategy in helpers.each_strategy('postgres') do
       -- this block is only run once, not for each rbac state
       if idx == 1 then
         describe("vitals", function ()
-          local portal_api_client
 
           before_each(function()
             helpers.stop_kong()
@@ -64,13 +78,14 @@ for _, strategy in helpers.each_strategy('postgres') do
 
             client = assert(helpers.admin_client())
             portal_api_client = assert(ee_helpers.portal_api_client())
+            configure_portal(dao)
           end)
 
           after_each(function()
             if client then
               client:close()
             end
-
+          
             if portal_api_client then
               portal_api_client:close()
             end
@@ -79,7 +94,7 @@ for _, strategy in helpers.each_strategy('postgres') do
           it("does not track internal proxies", function()
             local service_id = "00000000-0000-0000-0000-000000000001"
 
-            local res = assert(client:send {
+            local res = assert(portal_api_client:send {
               method = "GET",
               path = "/vitals/status_codes/by_service",
               query = {
@@ -143,18 +158,24 @@ for _, strategy in helpers.each_strategy('postgres') do
             rbac = rbac,
           }))
 
-          client = assert(ee_helpers.portal_api_client())
+          client = assert(helpers.admin_client())
+          portal_api_client = assert(ee_helpers.portal_api_client())
         end)
 
         after_each(function()
           if client then
             client:close()
           end
+
+          if portal_api_client then
+            portal_api_client:close()
+          end
         end)
 
         describe("GET", function()
           before_each(function()
             insert_files(dao)
+            configure_portal(dao)
           end)
 
           teardown(function()
@@ -162,7 +183,7 @@ for _, strategy in helpers.each_strategy('postgres') do
           end)
 
           it("retrieves files", function()
-            local res = assert(client:send {
+            local res = assert(portal_api_client:send {
               method = "GET",
               path = "/files",
             })
@@ -175,7 +196,7 @@ for _, strategy in helpers.each_strategy('postgres') do
           end)
 
           it("retrieves only unauthenticated files", function()
-            local res = assert(client:send {
+            local res = assert(portal_api_client:send {
               method = "GET",
               path = "/files/unauthenticated",
             })
@@ -191,7 +212,7 @@ for _, strategy in helpers.each_strategy('postgres') do
           end)
 
           it("retrieves filtered unauthenticated files", function()
-            local res = assert(client:send {
+            local res = assert(portal_api_client:send {
               method = "GET",
               path = "/files/unauthenticated?type=partial",
             })
@@ -215,6 +236,7 @@ for _, strategy in helpers.each_strategy('postgres') do
           helpers.register_consumer_relations(dao)
 
           insert_files(dao)
+          configure_portal(dao)
 
           assert(helpers.start_kong({
             database   = strategy,
@@ -250,18 +272,23 @@ for _, strategy in helpers.each_strategy('postgres') do
         end)
 
         before_each(function()
-          client = assert(ee_helpers.portal_api_client())
+          client = assert(helpers.admin_client())
+          portal_api_client = assert(ee_helpers.portal_api_client())
         end)
 
         after_each(function()
           if client then
             client:close()
           end
+        
+          if portal_api_client then
+            portal_api_client:close()
+          end
         end)
 
         describe("GET", function()
           it("returns 401 when unauthenticated", function()
-            local res = assert(client:send {
+            local res = assert(portal_api_client:send {
               method = "GET",
               path = "/files",
             })
@@ -270,7 +297,7 @@ for _, strategy in helpers.each_strategy('postgres') do
           end)
 
           it("returns 401 when consumer is not approved", function()
-            local res = assert(client:send {
+            local res = assert(portal_api_client:send {
               method = "GET",
               path = "/files",
               headers = {
@@ -284,7 +311,7 @@ for _, strategy in helpers.each_strategy('postgres') do
           end)
 
           it("retrieves files with an approved consumer", function()
-            local res = assert(client:send {
+            local res = assert(portal_api_client:send {
               method = "GET",
               path = "/files",
               headers = {
@@ -304,7 +331,7 @@ for _, strategy in helpers.each_strategy('postgres') do
           it("does not allow forbidden methods", function()
             local consumer_auth_header = "Basic " .. ngx.encode_base64("hawk:kong")
 
-            local res_put = assert(client:send {
+            local res_put = assert(portal_api_client:send {
               method = "PUT",
               path = "/files",
               headers = {
@@ -314,7 +341,7 @@ for _, strategy in helpers.each_strategy('postgres') do
 
             assert.res_status(405, res_put)
 
-            local res_patch = assert(client:send {
+            local res_patch = assert(portal_api_client:send {
               method = "PATCH",
               path = "/files",
               headers = {
@@ -324,7 +351,7 @@ for _, strategy in helpers.each_strategy('postgres') do
 
             assert.res_status(405, res_patch)
 
-            local res_post = assert(client:send {
+            local res_post = assert(portal_api_client:send {
               method = "POST",
               path = "/files",
               headers = {
@@ -337,7 +364,7 @@ for _, strategy in helpers.each_strategy('postgres') do
         end)
       end)
 
-      describe("/register ", function()
+      describe("/register", function()
         setup(function()
           helpers.stop_kong()
           assert(db:truncate())
@@ -350,21 +377,28 @@ for _, strategy in helpers.each_strategy('postgres') do
             rbac = rbac,
             portal_auth_config = "{ \"hide_credentials\": true }",
           }))
+
+          configure_portal(dao)
         end)
 
         before_each(function()
-          client = assert(ee_helpers.portal_api_client())
+          client = assert(helpers.admin_client())
+          portal_api_client = assert(ee_helpers.portal_api_client())
         end)
 
         after_each(function()
           if client then
             client:close()
           end
+        
+          if portal_api_client then
+            portal_api_client:close()
+          end
         end)
 
         describe("POST", function()
           it("returns a 400 if email is invalid format", function()
-            local res = assert(client:send {
+            local res = assert(portal_api_client:send {
               method = "POST",
               path = "/register",
               body = {
@@ -383,7 +417,7 @@ for _, strategy in helpers.each_strategy('postgres') do
           end)
 
           it("returns a 400 if email is invalid type", function()
-            local res = assert(client:send {
+            local res = assert(portal_api_client:send {
               method = "POST",
               path = "/register",
               body = {
@@ -402,7 +436,7 @@ for _, strategy in helpers.each_strategy('postgres') do
           end)
 
           it("returns a 400 if email is missing", function()
-            local res = assert(client:send {
+            local res = assert(portal_api_client:send {
               method = "POST",
               path = "/register",
               body = {
@@ -420,7 +454,7 @@ for _, strategy in helpers.each_strategy('postgres') do
           end)
 
           it("returns a 400 if meta is missing", function()
-            local res = assert(client:send {
+            local res = assert(portal_api_client:send {
               method = "POST",
               path = "/register",
               body = {
@@ -438,7 +472,7 @@ for _, strategy in helpers.each_strategy('postgres') do
           end)
 
           it("returns a 400 if meta is invalid", function()
-            local res = assert(client:send {
+            local res = assert(portal_api_client:send {
               method = "POST",
               path = "/register",
               body = {
@@ -457,7 +491,7 @@ for _, strategy in helpers.each_strategy('postgres') do
           end)
 
           it("returns a 400 if meta.full_name key is missing", function()
-            local res = assert(client:send {
+            local res = assert(portal_api_client:send {
               method = "POST",
               path = "/register",
               body = {
@@ -476,7 +510,7 @@ for _, strategy in helpers.each_strategy('postgres') do
           end)
 
           it("registers a developer and set status to pending", function()
-            local res = assert(client:send {
+            local res = assert(portal_api_client:send {
               method = "POST",
               path = "/register",
               body = {
@@ -536,9 +570,10 @@ for _, strategy in helpers.each_strategy('postgres') do
             portal_auto_approve = "on",
           }))
 
-          client = assert(ee_helpers.portal_api_client())
+          portal_api_client = assert(ee_helpers.portal_api_client())
+          configure_portal(dao)
 
-          local res = assert(client:send {
+          local res = assert(portal_api_client:send {
             method = "POST",
             path = "/register",
             body = {
@@ -555,22 +590,27 @@ for _, strategy in helpers.each_strategy('postgres') do
 
           developer = resp_body_json.consumer
 
-          client:close()
+          portal_api_client:close()
         end)
 
         before_each(function()
-          client = assert(ee_helpers.portal_api_client())
+          client = assert(helpers.admin_client())
+          portal_api_client = assert(ee_helpers.portal_api_client())
         end)
 
         after_each(function()
           if client then
             client:close()
           end
+        
+          if portal_api_client then
+            portal_api_client:close()
+          end
         end)
 
         describe("POST", function()
           it("should return 400 if called with invalid email", function()
-            local res = assert(client:send {
+            local res = assert(portal_api_client:send {
               method = "POST",
               path = "/forgot-password",
               body = {
@@ -587,7 +627,7 @@ for _, strategy in helpers.each_strategy('postgres') do
           end)
 
           it("should return 200 if called with email of a nonexistent user", function()
-            local res = assert(client:send {
+            local res = assert(portal_api_client:send {
               method = "POST",
               path = "/forgot-password",
               body = {
@@ -603,7 +643,7 @@ for _, strategy in helpers.each_strategy('postgres') do
           end)
 
           it("should return 200 and generate a token secret if called with developer email", function()
-            local res = assert(client:send {
+            local res = assert(portal_api_client:send {
               method = "POST",
               path = "/forgot-password",
               body = {
@@ -625,7 +665,7 @@ for _, strategy in helpers.each_strategy('postgres') do
           it("should invalidate the previous secret if called twice", function()
             assert(dao.portal_reset_secrets:truncate())
 
-            local res = assert(client:send {
+            local res = assert(portal_api_client:send {
               method = "POST",
               path = "/forgot-password",
               body = {
@@ -643,7 +683,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             assert.equal(1, #rows)
             assert.is_string(rows[1].secret)
 
-            local res = assert(client:send {
+            local res = assert(portal_api_client:send {
               method = "POST",
               path = "/forgot-password",
               body = {
@@ -697,11 +737,13 @@ for _, strategy in helpers.each_strategy('postgres') do
             portal_auth = "basic-auth",
             portal_auth_config = "{ \"hide_credentials\": true }",
             portal_auto_approve = "on",
+            smtp_mock = "on"
           }))
 
-          client = assert(ee_helpers.portal_api_client())
+          portal_api_client = assert(ee_helpers.portal_api_client())
+          configure_portal(dao)
 
-          local res = assert(client:send {
+          local res = assert(portal_api_client:send {
             method = "POST",
             path = "/register",
             body = {
@@ -717,7 +759,7 @@ for _, strategy in helpers.each_strategy('postgres') do
 
           developer = resp_body_json.consumer
 
-          res = assert(client:send {
+          res = assert(portal_api_client:send {
             method = "POST",
             path = "/forgot-password",
             body = {
@@ -734,22 +776,27 @@ for _, strategy in helpers.each_strategy('postgres') do
 
           secret = rows[1].secret
 
-          client:close()
+          portal_api_client:close()
         end)
 
         before_each(function()
-          client = assert(ee_helpers.portal_api_client())
+          client = assert(helpers.admin_client())
+          portal_api_client = assert(ee_helpers.portal_api_client())
         end)
 
         after_each(function()
           if client then
             client:close()
           end
+        
+          if portal_api_client then
+            portal_api_client:close()
+          end
         end)
 
         describe("POST", function()
           it("should return 400 if called without a token", function()
-            local res = assert(client:send {
+            local res = assert(portal_api_client:send {
               method = "POST",
               path = "/reset-password",
               body = {
@@ -766,7 +813,7 @@ for _, strategy in helpers.each_strategy('postgres') do
           end)
 
           it("should return 401 if called with an invalid jwt format", function()
-            local res = assert(client:send {
+            local res = assert(portal_api_client:send {
               method = "POST",
               path = "/reset-password",
               body = {
@@ -787,7 +834,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             local claims = {id = developer.id, exp = time() + 100000}
             local bad_jwt = ee_jwt.generate_JWT(claims, "bad_secret")
 
-            local res = assert(client:send {
+            local res = assert(portal_api_client:send {
               method = "POST",
               path = "/reset-password",
               body = {
@@ -808,7 +855,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             local claims = {id = developer.id, exp = time() - 100000}
             local expired_jwt = ee_jwt.generate_JWT(claims, secret)
 
-            local res = assert(client:send {
+            local res = assert(portal_api_client:send {
               method = "POST",
               path = "/reset-password",
               body = {
@@ -829,7 +876,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             local claims = {id = uuid(), exp = time() + 100000}
             local random_uuid_jwt = ee_jwt.generate_JWT(claims, secret)
 
-            local res = assert(client:send {
+            local res = assert(portal_api_client:send {
               method = "POST",
               path = "/reset-password",
               body = {
@@ -850,7 +897,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             local claims = {id = developer.id, exp = time() + 100000}
             local valid_jwt = ee_jwt.generate_JWT(claims, secret)
 
-            local res = assert(client:send {
+            local res = assert(portal_api_client:send {
               method = "POST",
               path = "/reset-password",
               body = {
@@ -871,7 +918,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             local claims = {id = developer.id, exp = time() + 100000}
             local valid_jwt = ee_jwt.generate_JWT(claims, secret)
 
-            local res = assert(client:send {
+            local res = assert(portal_api_client:send {
               method = "POST",
               path = "/reset-password",
               body = {
@@ -892,7 +939,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             assert.equal(enums.TOKENS.STATUS.CONSUMED, rows[1].status)
 
             -- old password fails
-            res = assert(client:send {
+            res = assert(portal_api_client:send {
               method = "GET",
               path = "/developer",
               headers = {
@@ -904,7 +951,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             assert.res_status(403, res)
 
             -- new password auths
-            res = assert(client:send {
+            res = assert(portal_api_client:send {
               method = "GET",
               path = "/developer",
               headers = {
@@ -937,9 +984,10 @@ for _, strategy in helpers.each_strategy('postgres') do
             portal_auto_approve = "on",
           }))
 
-          client = assert(ee_helpers.portal_api_client())
+          portal_api_client = assert(ee_helpers.portal_api_client())
+          configure_portal(dao)
 
-          local res = assert(client:send {
+          local res = assert(portal_api_client:send {
             method = "POST",
             path = "/register",
             body = {
@@ -955,7 +1003,7 @@ for _, strategy in helpers.each_strategy('postgres') do
 
           developer = resp_body_json.consumer
 
-          res = assert(client:send {
+          res = assert(portal_api_client:send {
             method = "POST",
             path = "/forgot-password",
             body = {
@@ -972,22 +1020,27 @@ for _, strategy in helpers.each_strategy('postgres') do
 
           secret = rows[1].secret
 
-          client:close()
+          portal_api_client:close()
         end)
 
         before_each(function()
-          client = assert(ee_helpers.portal_api_client())
+          client = assert(helpers.admin_client())
+          portal_api_client = assert(ee_helpers.portal_api_client())
         end)
 
         after_each(function()
           if client then
             client:close()
           end
+        
+          if portal_api_client then
+            portal_api_client:close()
+          end
         end)
 
         describe("POST", function()
           it("should return 400 if called without a token", function()
-            local res = assert(client:send {
+            local res = assert(portal_api_client:send {
               method = "POST",
               path = "/validate-reset",
               body = {
@@ -1004,7 +1057,7 @@ for _, strategy in helpers.each_strategy('postgres') do
           end)
 
           it("should return 401 if called with an invalid jwt format", function()
-            local res = assert(client:send {
+            local res = assert(portal_api_client:send {
               method = "POST",
               path = "/validate-reset",
               body = {
@@ -1024,7 +1077,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             local claims = {id = developer.id, exp = time() + 100000}
             local bad_jwt = ee_jwt.generate_JWT(claims, "bad_secret")
 
-            local res = assert(client:send {
+            local res = assert(portal_api_client:send {
               method = "POST",
               path = "/validate-reset",
               body = {
@@ -1044,7 +1097,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             local claims = {id = developer.id, exp = time() - 100000}
             local expired_jwt = ee_jwt.generate_JWT(claims, secret)
 
-            local res = assert(client:send {
+            local res = assert(portal_api_client:send {
               method = "POST",
               path = "/validate-reset",
               body = {
@@ -1064,7 +1117,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             local claims = {id = uuid(), exp = time() + 100000}
             local random_uuid_jwt = ee_jwt.generate_JWT(claims, secret)
 
-            local res = assert(client:send {
+            local res = assert(portal_api_client:send {
               method = "POST",
               path = "/validate-reset",
               body = {
@@ -1084,7 +1137,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             local claims = {id = developer.id, exp = time() + 100000}
             local valid_jwt = ee_jwt.generate_JWT(claims, secret)
 
-            local res = assert(client:send {
+            local res = assert(portal_api_client:send {
               method = "POST",
               path = "/validate-reset",
               body = {
@@ -1116,9 +1169,10 @@ for _, strategy in helpers.each_strategy('postgres') do
             portal_auto_approve = "on",
           }))
 
-          client = assert(ee_helpers.portal_api_client())
+          portal_api_client = assert(ee_helpers.portal_api_client())
+          configure_portal(dao)
 
-          local res = assert(client:send {
+          local res = assert(portal_api_client:send {
             method = "POST",
             path = "/register",
             body = {
@@ -1134,7 +1188,7 @@ for _, strategy in helpers.each_strategy('postgres') do
 
           developer = resp_body_json.consumer
 
-          res = assert(client:send {
+          res = assert(portal_api_client:send {
             method = "POST",
             path = "/forgot-password",
             body = {
@@ -1151,22 +1205,27 @@ for _, strategy in helpers.each_strategy('postgres') do
 
           secret = rows[1].secret
 
-          client:close()
+          portal_api_client:close()
         end)
 
         before_each(function()
-          client = assert(ee_helpers.portal_api_client())
+          client = assert(helpers.admin_client())
+          portal_api_client = assert(ee_helpers.portal_api_client())
         end)
 
         after_each(function()
           if client then
             client:close()
           end
+        
+          if portal_api_client then
+            portal_api_client:close()
+          end
         end)
 
         describe("POST", function()
           it("should return 400 if called without a token", function()
-            local res = assert(client:send {
+            local res = assert(portal_api_client:send {
               method = "POST",
               path = "/reset-password",
               body = {
@@ -1183,7 +1242,7 @@ for _, strategy in helpers.each_strategy('postgres') do
           end)
 
           it("should return 401 if called with an invalid jwt format", function()
-            local res = assert(client:send {
+            local res = assert(portal_api_client:send {
               method = "POST",
               path = "/reset-password",
               body = {
@@ -1204,7 +1263,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             local claims = {id = developer.id, exp = time() + 100000}
             local bad_jwt = ee_jwt.generate_JWT(claims, "bad_secret")
 
-            local res = assert(client:send {
+            local res = assert(portal_api_client:send {
               method = "POST",
               path = "/reset-password",
               body = {
@@ -1225,7 +1284,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             local claims = {id = developer.id, exp = time() - 100000}
             local expired_jwt = ee_jwt.generate_JWT(claims, secret)
 
-            local res = assert(client:send {
+            local res = assert(portal_api_client:send {
               method = "POST",
               path = "/reset-password",
               body = {
@@ -1246,7 +1305,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             local claims = {id = uuid(), exp = time() + 100000}
             local random_uuid_jwt = ee_jwt.generate_JWT(claims, secret)
 
-            local res = assert(client:send {
+            local res = assert(portal_api_client:send {
               method = "POST",
               path = "/reset-password",
               body = {
@@ -1267,7 +1326,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             local claims = {id = developer.id, exp = time() + 100000}
             local valid_jwt = ee_jwt.generate_JWT(claims, secret)
 
-            local res = assert(client:send {
+            local res = assert(portal_api_client:send {
               method = "POST",
               path = "/reset-password",
               body = {
@@ -1288,7 +1347,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             local claims = {id = developer.id, exp = time() + 100000}
             local valid_jwt = ee_jwt.generate_JWT(claims, secret)
 
-            local res = assert(client:send {
+            local res = assert(portal_api_client:send {
               method = "POST",
               path = "/reset-password",
               body = {
@@ -1309,7 +1368,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             assert.equal(enums.TOKENS.STATUS.CONSUMED, rows[1].status)
 
             -- old key fails
-            res = assert(client:send {
+            res = assert(portal_api_client:send {
               method = "GET",
               path = "/developer?apikey=kongstrong",
               headers = {
@@ -1320,7 +1379,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             assert.res_status(403, res)
 
             -- new key auths
-            res = assert(client:send {
+            res = assert(portal_api_client:send {
               method = "GET",
               path = "/developer?apikey=derp",
               headers = {
@@ -1352,9 +1411,10 @@ for _, strategy in helpers.each_strategy('postgres') do
             portal_auto_approve = "on",
           }))
 
-          client = assert(ee_helpers.portal_api_client())
+          portal_api_client = assert(ee_helpers.portal_api_client())
+          configure_portal(dao)
 
-          local res = assert(client:send {
+          local res = assert(portal_api_client:send {
             method = "POST",
             path = "/register",
             body = {
@@ -1370,7 +1430,7 @@ for _, strategy in helpers.each_strategy('postgres') do
 
           developer = resp_body_json.consumer
 
-          res = assert(client:send {
+          res = assert(portal_api_client:send {
             method = "POST",
             path = "/forgot-password",
             body = {
@@ -1387,22 +1447,27 @@ for _, strategy in helpers.each_strategy('postgres') do
 
           secret = rows[1].secret
 
-          client:close()
+          portal_api_client:close()
         end)
 
         before_each(function()
-          client = assert(ee_helpers.portal_api_client())
+          client = assert(helpers.admin_client())
+          portal_api_client = assert(ee_helpers.portal_api_client())
         end)
 
         after_each(function()
           if client then
             client:close()
           end
+        
+          if portal_api_client then
+            portal_api_client:close()
+          end
         end)
 
         describe("POST", function()
           it("should return 400 if called without a token", function()
-            local res = assert(client:send {
+            local res = assert(portal_api_client:send {
               method = "POST",
               path = "/validate-reset",
               body = {
@@ -1419,7 +1484,7 @@ for _, strategy in helpers.each_strategy('postgres') do
           end)
 
           it("should return 401 if called with an invalid jwt format", function()
-            local res = assert(client:send {
+            local res = assert(portal_api_client:send {
               method = "POST",
               path = "/validate-reset",
               body = {
@@ -1439,7 +1504,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             local claims = {id = developer.id, exp = time() + 100000}
             local bad_jwt = ee_jwt.generate_JWT(claims, "bad_secret")
 
-            local res = assert(client:send {
+            local res = assert(portal_api_client:send {
               method = "POST",
               path = "/validate-reset",
               body = {
@@ -1459,7 +1524,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             local claims = {id = developer.id, exp = time() - 100000}
             local expired_jwt = ee_jwt.generate_JWT(claims, secret)
 
-            local res = assert(client:send {
+            local res = assert(portal_api_client:send {
               method = "POST",
               path = "/validate-reset",
               body = {
@@ -1479,7 +1544,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             local claims = {id = uuid(), exp = time() + 100000}
             local random_uuid_jwt = ee_jwt.generate_JWT(claims, secret)
 
-            local res = assert(client:send {
+            local res = assert(portal_api_client:send {
               method = "POST",
               path = "/validate-reset",
               body = {
@@ -1499,7 +1564,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             local claims = {id = developer.id, exp = time() + 100000}
             local valid_jwt = ee_jwt.generate_JWT(claims, secret)
 
-            local res = assert(client:send {
+            local res = assert(portal_api_client:send {
               method = "POST",
               path = "/validate-reset",
               body = {
@@ -1530,9 +1595,10 @@ for _, strategy in helpers.each_strategy('postgres') do
             portal_auto_approve = "on",
           }))
 
-          client = assert(ee_helpers.portal_api_client())
+          portal_api_client = assert(ee_helpers.portal_api_client())
+          configure_portal(dao)
 
-          local res = assert(client:send {
+          local res = assert(portal_api_client:send {
             method = "POST",
             path = "/register",
             body = {
@@ -1547,22 +1613,27 @@ for _, strategy in helpers.each_strategy('postgres') do
           local resp_body_json = cjson.decode(body)
           developer = resp_body_json.consumer
 
-          client:close()
+          portal_api_client:close()
         end)
 
         before_each(function()
-          client = assert(ee_helpers.portal_api_client())
+          client = assert(helpers.admin_client())
+          portal_api_client = assert(ee_helpers.portal_api_client())
         end)
 
         after_each(function()
           if client then
             client:close()
           end
+        
+          if portal_api_client then
+            portal_api_client:close()
+          end
         end)
 
         describe("GET", function()
           it("returns the authenticated developer", function()
-            local res = assert(client:send {
+            local res = assert(portal_api_client:send {
               method = "GET",
               path = "/developer",
               headers = {
@@ -1581,7 +1652,7 @@ for _, strategy in helpers.each_strategy('postgres') do
 
         describe("DELETE", function()
           it("deletes authenticated developer", function()
-            local res = assert(client:send {
+            local res = assert(portal_api_client:send {
               method = "DELETE",
               path = "/developer",
               headers = {
@@ -1592,7 +1663,7 @@ for _, strategy in helpers.each_strategy('postgres') do
 
             assert.res_status(204, res)
 
-            local res = assert(client:send {
+            local res = assert(portal_api_client:send {
               method = "GET",
               path = "/developer",
               headers = {
@@ -1622,9 +1693,10 @@ for _, strategy in helpers.each_strategy('postgres') do
             portal_auto_approve = "on",
           }))
 
-          client = assert(ee_helpers.portal_api_client())
+          portal_api_client = assert(ee_helpers.portal_api_client())
+          configure_portal(dao)
 
-          local res = assert(client:send {
+          local res = assert(portal_api_client:send {
             method = "POST",
             path = "/register",
             body = {
@@ -1637,22 +1709,27 @@ for _, strategy in helpers.each_strategy('postgres') do
 
           assert.res_status(201, res)
 
-          client:close()
+          portal_api_client:close()
         end)
 
         before_each(function()
-          client = assert(ee_helpers.portal_api_client())
+          client = assert(helpers.admin_client())
+          portal_api_client = assert(ee_helpers.portal_api_client())
         end)
 
         after_each(function()
           if client then
             client:close()
           end
+        
+          if portal_api_client then
+            portal_api_client:close()
+          end
         end)
 
         describe("PATCH", function()
           it("returns 400 if patched with no password", function()
-            local res = assert(client:send {
+            local res = assert(portal_api_client:send {
               method = "PATCH",
               body = {},
               path = "/developer/password",
@@ -1670,7 +1747,7 @@ for _, strategy in helpers.each_strategy('postgres') do
           end)
 
           it("updates the password", function()
-            local res = assert(client:send {
+            local res = assert(portal_api_client:send {
               method = "PATCH",
               body = {
                 password = "hunter1",
@@ -1685,7 +1762,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             assert.res_status(204, res)
 
             -- old password fails
-            local res = assert(client:send {
+            local res = assert(portal_api_client:send {
               method = "GET",
               path = "/developer",
               headers = {
@@ -1697,7 +1774,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             assert.res_status(403, res)
 
             -- new password auths
-            local res = assert(client:send {
+            local res = assert(portal_api_client:send {
               method = "GET",
               path = "/developer",
               headers = {
@@ -1727,9 +1804,10 @@ for _, strategy in helpers.each_strategy('postgres') do
             portal_auto_approve = "on",
           }))
 
-          client = assert(ee_helpers.portal_api_client())
+          portal_api_client = assert(ee_helpers.portal_api_client())
+          configure_portal(dao)
 
-          local res = assert(client:send {
+          local res = assert(portal_api_client:send {
             method = "POST",
             path = "/register",
             body = {
@@ -1742,22 +1820,27 @@ for _, strategy in helpers.each_strategy('postgres') do
 
           assert.res_status(201, res)
 
-          client:close()
+          portal_api_client:close()
         end)
 
         before_each(function()
-          client = assert(ee_helpers.portal_api_client())
+          client = assert(helpers.admin_client())
+          portal_api_client = assert(ee_helpers.portal_api_client())
         end)
 
         after_each(function()
           if client then
             client:close()
           end
+        
+          if portal_api_client then
+            portal_api_client:close()
+          end
         end)
 
         describe("PATCH", function()
           it("returns 400 if patched with no key", function()
-            local res = assert(client:send {
+            local res = assert(portal_api_client:send {
               method = "PATCH",
               body = {},
               path = "/developer/password?apikey=myKeeeeeey",
@@ -1774,7 +1857,7 @@ for _, strategy in helpers.each_strategy('postgres') do
           end)
 
           it("updates the key", function()
-            local res = assert(client:send {
+            local res = assert(portal_api_client:send {
               method = "PATCH",
               body = {
                 key = "hunter1",
@@ -1788,7 +1871,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             assert.res_status(204, res)
 
             -- old key fails
-            local res = assert(client:send {
+            local res = assert(portal_api_client:send {
               method = "GET",
               path = "/developer?apikey=myKeeeeeey",
               headers = {
@@ -1799,7 +1882,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             assert.res_status(403, res)
 
             -- new key auths
-            local res = assert(client:send {
+            local res = assert(portal_api_client:send {
               method = "GET",
               path = "/developer?apikey=hunter1",
               headers = {
@@ -1829,9 +1912,10 @@ for _, strategy in helpers.each_strategy('postgres') do
             portal_auto_approve = "on",
           }))
 
-          client = assert(ee_helpers.portal_api_client())
+          portal_api_client = assert(ee_helpers.portal_api_client())
+          configure_portal(dao)
 
-          local res = assert(client:send {
+          local res = assert(portal_api_client:send {
             method = "POST",
             path = "/register",
             body = {
@@ -1844,7 +1928,7 @@ for _, strategy in helpers.each_strategy('postgres') do
 
           assert.res_status(201, res)
 
-          local res = assert(client:send {
+          local res = assert(portal_api_client:send {
             method = "POST",
             path = "/register",
             body = {
@@ -1859,22 +1943,27 @@ for _, strategy in helpers.each_strategy('postgres') do
           local resp_body_json = cjson.decode(body)
           developer2 = resp_body_json.consumer
 
-          client:close()
+          portal_api_client:close()
         end)
 
         before_each(function()
-          client = assert(ee_helpers.portal_api_client())
+          client = assert(helpers.admin_client())
+          portal_api_client = assert(ee_helpers.portal_api_client())
         end)
 
         after_each(function()
           if client then
             client:close()
           end
+        
+          if portal_api_client then
+            portal_api_client:close()
+          end
         end)
 
         describe("PATCH", function()
           it("returns 400 if patched with an invalid email", function()
-            local res = assert(client:send {
+            local res = assert(portal_api_client:send {
               method = "PATCH",
               body = {
                 email = "emailol.com",
@@ -1894,7 +1983,7 @@ for _, strategy in helpers.each_strategy('postgres') do
           end)
 
           it("returns 409 if patched with an email that already exists", function()
-            local res = assert(client:send {
+            local res = assert(portal_api_client:send {
               method = "PATCH",
               body = {
                 email = developer2.email,
@@ -1914,7 +2003,7 @@ for _, strategy in helpers.each_strategy('postgres') do
           end)
 
           it("updates both email and username from passed email", function()
-            local res = assert(client:send {
+            local res = assert(portal_api_client:send {
               method = "PATCH",
               body = {
                 email = "new_email@whodis.com",
@@ -1929,7 +2018,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             assert.res_status(204, res)
 
             -- old email fails
-            local res = assert(client:send {
+            local res = assert(portal_api_client:send {
               method = "GET",
               path = "/developer",
               headers = {
@@ -1942,7 +2031,7 @@ for _, strategy in helpers.each_strategy('postgres') do
 
 
             -- new email succeeds
-            local res = assert(client:send {
+            local res = assert(portal_api_client:send {
               method = "GET",
               path = "/developer",
               headers = {
@@ -1975,9 +2064,10 @@ for _, strategy in helpers.each_strategy('postgres') do
             portal_auto_approve = "on",
           }))
 
-          client = assert(ee_helpers.portal_api_client())
+          portal_api_client = assert(ee_helpers.portal_api_client())
+          configure_portal(dao)
 
-          local res = assert(client:send {
+          local res = assert(portal_api_client:send {
             method = "POST",
             path = "/register",
             body = {
@@ -1990,7 +2080,7 @@ for _, strategy in helpers.each_strategy('postgres') do
 
           assert.res_status(201, res)
 
-          local res = assert(client:send {
+          local res = assert(portal_api_client:send {
             method = "POST",
             path = "/register",
             body = {
@@ -2005,22 +2095,27 @@ for _, strategy in helpers.each_strategy('postgres') do
           local resp_body_json = cjson.decode(body)
           developer2 = resp_body_json.consumer
 
-          client:close()
+          portal_api_client:close()
         end)
 
         before_each(function()
-          client = assert(ee_helpers.portal_api_client())
+          client = assert(helpers.admin_client())
+          portal_api_client = assert(ee_helpers.portal_api_client())
         end)
 
         after_each(function()
           if client then
             client:close()
           end
+        
+          if portal_api_client then
+            portal_api_client:close()
+          end
         end)
 
         describe("PATCH", function()
           it("returns 400 if patched with an invalid key", function()
-            local res = assert(client:send {
+            local res = assert(portal_api_client:send {
               method = "PATCH",
               body = {
                 email = "emailol.com",
@@ -2039,7 +2134,7 @@ for _, strategy in helpers.each_strategy('postgres') do
           end)
 
           it("returns 409 if patched with an email that already exists", function()
-            local res = assert(client:send {
+            local res = assert(portal_api_client:send {
               method = "PATCH",
               body = {
                 email = developer2.email,
@@ -2058,7 +2153,7 @@ for _, strategy in helpers.each_strategy('postgres') do
           end)
 
           it("updates both email and username from passed email", function()
-            local res = assert(client:send {
+            local res = assert(portal_api_client:send {
               method = "PATCH",
               body = {
                 email = "new_email@whodis.com",
@@ -2071,7 +2166,7 @@ for _, strategy in helpers.each_strategy('postgres') do
 
             assert.res_status(204, res)
 
-            local res = assert(client:send {
+            local res = assert(portal_api_client:send {
               method = "GET",
               path = "/developer?apikey=kong",
               headers = {
@@ -2103,9 +2198,10 @@ for _, strategy in helpers.each_strategy('postgres') do
             portal_auto_approve = "on",
           }))
 
-          client = assert(ee_helpers.portal_api_client())
+          portal_api_client = assert(ee_helpers.portal_api_client())
+          configure_portal(dao)
 
-          local res = assert(client:send {
+          local res = assert(portal_api_client:send {
             method = "POST",
             path = "/register",
             body = {
@@ -2117,16 +2213,21 @@ for _, strategy in helpers.each_strategy('postgres') do
           })
 
           assert.res_status(201, res)
-          client:close()
+          portal_api_client:close()
         end)
 
         before_each(function()
-          client = assert(ee_helpers.portal_api_client())
+          client = assert(helpers.admin_client())
+          portal_api_client = assert(ee_helpers.portal_api_client())
         end)
 
         after_each(function()
           if client then
             client:close()
+          end
+        
+          if portal_api_client then
+            portal_api_client:close()
           end
         end)
 
@@ -2134,7 +2235,7 @@ for _, strategy in helpers.each_strategy('postgres') do
           it("updates the meta", function()
             local new_meta = "{\"full_name\":\"KONG!!!\"}"
 
-            local res = assert(client:send {
+            local res = assert(portal_api_client:send {
               method = "PATCH",
               body = {
                 meta = new_meta
@@ -2148,7 +2249,7 @@ for _, strategy in helpers.each_strategy('postgres') do
 
             assert.res_status(204, res)
 
-            local res = assert(client:send {
+            local res = assert(portal_api_client:send {
               method = "GET",
               path = "/developer",
               headers = {
@@ -2165,7 +2266,7 @@ for _, strategy in helpers.each_strategy('postgres') do
           end)
 
           it("ignores keys that are not in the current meta", function()
-            local res = assert(client:send {
+            local res = assert(portal_api_client:send {
               method = "GET",
               path = "/developer",
               headers = {
@@ -2180,7 +2281,7 @@ for _, strategy in helpers.each_strategy('postgres') do
 
             local new_meta = "{\"new_key\":\"not in current meta\"}"
 
-            local res = assert(client:send {
+            local res = assert(portal_api_client:send {
               method = "PATCH",
               body = {
                 meta = new_meta
@@ -2194,7 +2295,7 @@ for _, strategy in helpers.each_strategy('postgres') do
 
             assert.res_status(204, res)
 
-            local res = assert(client:send {
+            local res = assert(portal_api_client:send {
               method = "GET",
               path = "/developer",
               headers = {
@@ -2212,7 +2313,7 @@ for _, strategy in helpers.each_strategy('postgres') do
         end)
       end)
 
-      describe("/credentials ", function()
+      describe("/credentials #test", function()
         local credential
 
         setup(function()
@@ -2240,21 +2341,27 @@ for _, strategy in helpers.each_strategy('postgres') do
             password    = "kong",
             consumer_id = consumer_approved.id,
           })
+
+          configure_portal(dao)
         end)
 
         before_each(function()
-          client = assert(ee_helpers.portal_api_client())
+          portal_api_client = assert(ee_helpers.portal_api_client())
         end)
 
         after_each(function()
           if client then
             client:close()
           end
+        
+          if portal_api_client then
+            portal_api_client:close()
+          end
         end)
 
         describe("POST", function()
           it("adds a credential to a developer - basic-auth", function()
-            local res = assert(client:send {
+            local res = assert(portal_api_client:send {
               method = "POST",
               path = "/credentials",
               body = {
@@ -2280,7 +2387,7 @@ for _, strategy in helpers.each_strategy('postgres') do
 
         describe("PATCH", function()
           it("patches a credential - basic-auth", function()
-            local res = assert(client:send {
+            local res = assert(portal_api_client:send {
               method = "PATCH",
               path = "/credentials",
               body = {
@@ -2335,15 +2442,22 @@ for _, strategy in helpers.each_strategy('postgres') do
             password    = "kong",
             consumer_id = consumer_approved.id,
           })
+
+          configure_portal(dao)
         end)
 
         before_each(function()
-          client = assert(ee_helpers.portal_api_client())
+          client = assert(helpers.admin_client())
+          portal_api_client = assert(ee_helpers.portal_api_client())
         end)
 
         after_each(function()
           if client then
             client:close()
+          end
+        
+          if portal_api_client then
+            portal_api_client:close()
           end
         end)
 
@@ -2352,7 +2466,7 @@ for _, strategy in helpers.each_strategy('postgres') do
           it("returns 404 if plugin is not one of the allowed auth plugins", function()
             local plugin = "awesome-custom-plugin"
 
-            local res = assert(client:send {
+            local res = assert(portal_api_client:send {
               method = "POST",
               path = "/credentials/" .. plugin,
               body = {
@@ -2371,7 +2485,7 @@ for _, strategy in helpers.each_strategy('postgres') do
           it("adds auth plugin credential - basic-auth", function()
             local plugin = "basic-auth"
 
-            local res = assert(client:send {
+            local res = assert(portal_api_client:send {
               method = "POST",
               path = "/credentials/" .. plugin,
               body = {
@@ -2397,7 +2511,7 @@ for _, strategy in helpers.each_strategy('postgres') do
           it("adds auth plugin credential - key-auth", function()
             local plugin = "key-auth"
 
-            local res = assert(client:send {
+            local res = assert(portal_api_client:send {
               method = "POST",
               path = "/credentials/" .. plugin,
               body = {
@@ -2424,7 +2538,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             local plugin = "awesome-custom-plugin"
             local path = "/credentials/" .. plugin .. "/" .. credential.id
 
-            local res = assert(client:send {
+            local res = assert(portal_api_client:send {
               method = "GET",
               path = path,
               headers = {
@@ -2440,7 +2554,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             local plugin = "basic-auth"
             local path = "/credentials/" .. plugin .. "/" .. credential.id
 
-            local res = assert(client:send {
+            local res = assert(portal_api_client:send {
               method = "GET",
               path = path,
               headers = {
@@ -2463,7 +2577,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             local plugin = "awesome-custom-plugin"
             local path = "/credentials/" .. plugin .. "/" .. credential.id
 
-            local res = assert(client:send {
+            local res = assert(portal_api_client:send {
               method = "PATCH",
               path = path,
               body = {
@@ -2484,7 +2598,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             local plugin = "basic-auth"
             local path = "/credentials/" .. plugin .. "/" .. credential.id
 
-            local res = assert(client:send {
+            local res = assert(portal_api_client:send {
               method = "PATCH",
               path = path,
               body = {
@@ -2513,7 +2627,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             local plugin = "basic-auth"
             local path = "/credentials/" .. plugin .. "/" .. credential.id
 
-            local res = assert(client:send {
+            local res = assert(portal_api_client:send {
               method = "PATCH",
               path = path,
               body = {
@@ -2544,7 +2658,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             local path = "/credentials/"
                           .. plugin .. "/" .. credential_key_auth.id
 
-            local res = assert(client:send {
+            local res = assert(portal_api_client:send {
               method = "DELETE",
               path = path,
               headers = {
@@ -2555,7 +2669,7 @@ for _, strategy in helpers.each_strategy('postgres') do
 
             assert.res_status(204, res)
 
-            local res = assert(client:send {
+            local res = assert(portal_api_client:send {
               method = "GET",
               path = path,
               headers = {
@@ -2570,7 +2684,7 @@ for _, strategy in helpers.each_strategy('postgres') do
 
         describe("GET", function()
           it("retrieves the kong config tailored for the dev portal", function()
-            local res = assert(client:send {
+            local res = assert(portal_api_client:send {
               method = "GET",
               path = "/config",
               headers = {
@@ -2615,15 +2729,22 @@ for _, strategy in helpers.each_strategy('postgres') do
             password    = "kong",
             consumer_id = consumer_approved.id,
           })
+
+          configure_portal(dao)
         end)
 
         before_each(function()
-          client = assert(ee_helpers.portal_api_client())
+          client = assert(helpers.admin_client())
+          portal_api_client = assert(ee_helpers.portal_api_client())
         end)
 
         after_each(function()
           if client then
             client:close()
+          end
+        
+          if portal_api_client then
+            portal_api_client:close()
           end
         end)
 
@@ -2631,7 +2752,7 @@ for _, strategy in helpers.each_strategy('postgres') do
           describe("GET", function()
 
             it("returns 404 when vitals if off", function()
-              local res = assert(client:send {
+              local res = assert(portal_api_client:send {
                 method = "GET",
                 path = "/vitals/status_codes/by_consumer",
                 headers = {
@@ -2648,7 +2769,7 @@ for _, strategy in helpers.each_strategy('postgres') do
           describe("GET", function()
 
             it("returns 404 when vitals if off", function()
-              local res = assert(client:send {
+              local res = assert(portal_api_client:send {
                 method = "GET",
                 path = "/vitals/status_codes/by_consumer_and_route",
                 headers = {
@@ -2665,7 +2786,7 @@ for _, strategy in helpers.each_strategy('postgres') do
           describe("GET", function()
 
             it("returns 404 when vitals if off", function()
-              local res = assert(client:send {
+              local res = assert(portal_api_client:send {
                 method = "GET",
                 path = "/vitals/consumers/cluster",
                 headers = {
@@ -2682,7 +2803,7 @@ for _, strategy in helpers.each_strategy('postgres') do
           describe("GET", function()
 
             it("returns 404 when vitals if off", function()
-              local res = assert(client:send {
+              local res = assert(portal_api_client:send {
                 method = "GET",
                 path = "/vitals/consumers/nodes",
                 headers = {
@@ -2735,22 +2856,28 @@ for _, strategy in helpers.each_strategy('postgres') do
             consumer_id = consumer_approved.id,
           })
 
+          configure_portal(dao)
         end)
 
         before_each(function()
-          client = assert(ee_helpers.portal_api_client())
+          client = assert(helpers.admin_client())
+          portal_api_client = assert(ee_helpers.portal_api_client())
         end)
 
         after_each(function()
           if client then
             client:close()
           end
+        
+          if portal_api_client then
+            portal_api_client:close()
+          end
         end)
 
         describe("/vitals/status_codes/by_consumer", function()
           describe("GET", function()
             it("returns 401 when unauthenticated", function()
-              local res = assert(client:send {
+              local res = assert(portal_api_client:send {
                 method = "GET",
                 path = "/vitals/status_codes/by_consumer",
               })
@@ -2759,7 +2886,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             end)
 
             it("returns 401 when consumer is not approved", function()
-              local res = assert(client:send {
+              local res = assert(portal_api_client:send {
                 method = "GET",
                 path = "/vitals/status_codes/by_consumer",
                 headers = {
@@ -2774,7 +2901,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             end)
 
             it("returns 400 when requested with invalid interval query param", function()
-              local res = assert(client:send {
+              local res = assert(portal_api_client:send {
                 method = "GET",
                 path = "/vitals/status_codes/by_consumer",
                 query = {
@@ -2794,7 +2921,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             end)
 
             it("returns seconds data", function()
-              local res = assert(client:send {
+              local res = assert(portal_api_client:send {
                 method = "GET",
                 path = "/vitals/status_codes/by_consumer",
                 query = {
@@ -2821,7 +2948,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             end)
 
             it("returns minutes data", function()
-              local res = assert(client:send {
+              local res = assert(portal_api_client:send {
                 method = "GET",
                 path = "/vitals/status_codes/by_consumer",
                 query = {
@@ -2852,7 +2979,7 @@ for _, strategy in helpers.each_strategy('postgres') do
         describe("/vitals/status_codes/by_consumer_and_route", function()
           describe("GET", function()
             it("returns 401 when unauthenticated", function()
-              local res = assert(client:send {
+              local res = assert(portal_api_client:send {
                 method = "GET",
                 path = "/vitals/status_codes/by_consumer_and_route",
               })
@@ -2861,7 +2988,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             end)
 
             it("returns 401 when consumer is not approved", function()
-              local res = assert(client:send {
+              local res = assert(portal_api_client:send {
                 method = "GET",
                 path = "/vitals/status_codes/by_consumer_and_route",
                 headers = {
@@ -2876,7 +3003,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             end)
 
             it("returns 400 when requested with invalid interval query param", function()
-              local res = assert(client:send {
+              local res = assert(portal_api_client:send {
                 method = "GET",
                 path = "/vitals/status_codes/by_consumer_and_route",
                 query = {
@@ -2896,7 +3023,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             end)
 
             it("returns seconds data", function()
-              local res = assert(client:send {
+              local res = assert(portal_api_client:send {
                 method = "GET",
                 path = "/vitals/status_codes/by_consumer_and_route",
                 query = {
@@ -2923,7 +3050,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             end)
 
             it("returns minutes data", function()
-              local res = assert(client:send {
+              local res = assert(portal_api_client:send {
                 method = "GET",
                 path = "/vitals/status_codes/by_consumer_and_route",
                 query = {
@@ -2954,7 +3081,7 @@ for _, strategy in helpers.each_strategy('postgres') do
         describe("/vitals/consumers/cluster", function()
           describe("GET", function()
             it("returns 401 when unauthenticated", function()
-              local res = assert(client:send {
+              local res = assert(portal_api_client:send {
                 method = "GET",
                 path = "/vitals/consumers/cluster",
               })
@@ -2963,7 +3090,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             end)
 
             it("returns 401 when consumer is not approved", function()
-              local res = assert(client:send {
+              local res = assert(portal_api_client:send {
                 method = "GET",
                 path = "/vitals/consumers/cluster",
                 headers = {
@@ -2977,7 +3104,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             end)
 
             it("returns 400 when requested with invalid interval query param", function()
-              local res = assert(client:send {
+              local res = assert(portal_api_client:send {
                 method = "GET",
                 path = "/vitals/consumers/cluster",
                 query = {
@@ -2997,7 +3124,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             end)
 
             it("returns seconds data", function()
-              local res = assert(client:send {
+              local res = assert(portal_api_client:send {
                 method = "GET",
                 path = "/vitals/consumers/cluster",
                 query = {
@@ -3021,7 +3148,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             end)
 
             it("returns minutes data", function()
-              local res = assert(client:send {
+              local res = assert(portal_api_client:send {
                 method = "GET",
                 path = "/vitals/consumers/cluster",
                 query = {
@@ -3046,7 +3173,6 @@ for _, strategy in helpers.each_strategy('postgres') do
             end)
           end)
         end)
-
       end)
     end)
   end

@@ -3,6 +3,7 @@ local prefix_handler = require "kong.cmd.utils.prefix_handler"
 local conf_loader    = require "kong.conf_loader"
 local ee             = require "kong.enterprise_edition"
 local meta           = require "kong.enterprise_edition.meta"
+local singletons     = require "kong.singletons"
 
 local exists = helpers.path.exists
 
@@ -71,7 +72,6 @@ describe("portal_gui", function()
     local index_conf
 
     local conf = {
-      portal_auth = 'basic-auth',
       portal_gui_url = nil,
       proxy_url = nil,
       portal_gui_listeners = {
@@ -118,9 +118,13 @@ describe("portal_gui", function()
     end)
 
     it("inserts the appropriate values with empty config", function()
+      singletons.configuration = {
+        portal_auth = "basic-auth"
+      }
+
       index_conf = ee.prepare_portal(conf, { params = {
         workspace = {
-          name = "default"
+          name = "default",
         }
       }})
 

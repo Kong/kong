@@ -3,6 +3,11 @@ local singletons    = require "kong.singletons"
 local enums         = require "kong.enterprise_edition.dao.enums"
 local utils         = require "kong.portal.utils"
 local cjson         = require "cjson.safe"
+local constants     = require "kong.constants"
+local ws_helper     = require "kong.workspaces.helper"
+local portal_smtp_client = require "kong.portal.emails"
+
+local ws_constants  = constants.WORKSPACE_CONFIG
 
 --- Allowed auth plugins
 -- Table containing allowed auth plugins that the developer portal api
@@ -19,14 +24,21 @@ local auth_plugins = {
 }
 
 
--- Disable API when Developer Portal is not enabled
-if not singletons.configuration.portal then
-  return {}
+local function check_portal_status(helpers)
+  local workspace = ngx.ctx.workspaces and ngx.ctx.workspaces[1] or {}
+  local portal = ws_helper.retrieve_ws_config(ws_constants.PORTAL, workspace)
+  if not portal then
+    return helpers.responses.send_HTTP_NOT_FOUND()
+  end
 end
 
 
 return {
   ["/files"] = {
+    before = function(self, dao_factory, helpers)
+      check_portal_status(helpers)
+    end,
+
     -- List all files stored in the portal file system
     GET = function(self, dao_factory, helpers)
       crud.paginated_set(self, dao_factory.files)
@@ -77,7 +89,8 @@ return {
   },
 
   ["/portal/developers"] = {
-    before = function(self, dao_factory)
+    before = function(self, dao_factory, helpers)
+      check_portal_status(helpers)
       self.params.type = enums.CONSUMERS.TYPE.DEVELOPER
       self.params.status = tonumber(self.params.status)
     end,
@@ -97,6 +110,7 @@ return {
 
   ["/portal/developers/:email_or_id"] = {
     before = function(self, dao_factory, helpers)
+      check_portal_status(helpers)
       self.params.email_or_id = ngx.unescape_uri(self.params.email_or_id)
       self.params.status = tonumber(self.params.status)
       crud.find_consumer_by_email_or_id(self, dao_factory, helpers)
@@ -115,7 +129,8 @@ return {
 
         if consumer.status == enums.CONSUMERS.STATUS.APPROVED and
            consumer.status ~= previous_status then
-          local email_res, err = singletons.portal_emails:approved(consumer.email)
+          local portal_emails = portal_smtp_client.new()
+          local email_res, err = portal_emails:approved(consumer.email)
           if err then
             if err.code then
               return helpers.responses.send(err.code, {message = err.message})
@@ -138,15 +153,17 @@ return {
 
   ["/portal/developers/:email_or_id/password"] = {
     before = function(self, dao_factory, helpers)
+      check_portal_status(helpers)
       -- auth required
-      if not singletons.configuration.portal_auth then
+      local workspace = ngx.ctx.workspaces and ngx.ctx.workspaces[1] or {}
+      self.portal_auth = ws_helper.retrieve_ws_config(ws_constants.PORTAL_AUTH, workspace)
+
+      if not self.portal_auth then
         return helpers.responses.send_HTTP_NOT_FOUND()
       end
 
       self.params.email_or_id = ngx.unescape_uri(self.params.email_or_id)
       crud.find_consumer_by_email_or_id(self, dao_factory, helpers)
-
-      self.portal_auth = singletons.configuration.portal_auth
 
       local plugin = auth_plugins[self.portal_auth]
       if not plugin then
@@ -204,15 +221,17 @@ return {
 
   ["/portal/developers/:email_or_id/email"] = {
     before = function(self, dao_factory, helpers)
+      check_portal_status(helpers)
       -- auth required
-      if not singletons.configuration.portal_auth then
+      local workspace = ngx.ctx.workspaces and ngx.ctx.workspaces[1] or {}
+      self.portal_auth = ws_helper.retrieve_ws_config(ws_constants.PORTAL_AUTH, workspace)
+
+      if not self.portal_auth then
         return helpers.responses.send_HTTP_NOT_FOUND()
       end
 
       self.params.email_or_id = ngx.unescape_uri(self.params.email_or_id)
       crud.find_consumer_by_email_or_id(self, dao_factory, helpers)
-
-      self.portal_auth = singletons.configuration.portal_auth
 
       local plugin = auth_plugins[self.portal_auth]
       if not plugin then
@@ -286,8 +305,12 @@ return {
 
   ["/portal/developers/:email_or_id/meta"] = {
     before = function(self, dao_factory, helpers)
+      check_portal_status(helpers)
       -- auth required
-      if not singletons.configuration.portal_auth then
+      local workspace = ngx.ctx.workspaces and ngx.ctx.workspaces[1] or {}
+      self.portal_auth = ws_helper.retrieve_ws_config(ws_constants.PORTAL_AUTH, workspace)
+
+      if not self.portal_auth then
         return helpers.responses.send_HTTP_NOT_FOUND()
       end
 
@@ -340,6 +363,7 @@ return {
 
   ["/portal/developers/:email_or_id/:plugin"] =  {
     before = function(self, dao_factory, helpers)
+      check_portal_status(helpers)
       self.params.email_or_id = ngx.unescape_uri(self.params.email_or_id)
       crud.find_consumer_by_email_or_id(self, dao_factory, helpers)
       self.params.consumer_id = self.consumer.id
@@ -354,12 +378,16 @@ return {
   },
 
   ["/portal/invite"] = {
+    before = function(self, dao_factory, helpers)
+      check_portal_status(helpers)
+    end,
+
     POST = function(self, dao_factory, helpers)
       if not self.params.emails or next(self.params.emails) == nil then
         return helpers.responses.send_HTTP_BAD_REQUEST("emails param required")
       end
-
-      local res, err = singletons.portal_emails:invite(self.params.emails)
+      local portal_emails = portal_smtp_client.new()
+      local res, err = portal_emails:invite(self.params.emails)
       if err then
         if err.code then
           return helpers.responses.send(err.code, {message = err.message})

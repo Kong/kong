@@ -46,8 +46,8 @@ local function config_schema()
         type = "string",
         func = check_portal_auth,
       },
-      portal_auth_config = {
-        type = "string",
+      portal_auth_conf = {
+        type = "table",
       },
       portal_auto_approve = {
         type = "boolean",

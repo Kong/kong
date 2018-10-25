@@ -11,6 +11,18 @@ local function it_content_types(title, fn)
   it(title .. " with application/json", test_json)
 end
 
+local function configure_portal(dao)
+  local workspaces = dao.workspaces:find_all({name = "default"})
+  local workspace = workspaces[1]
+
+  dao.workspaces:update({
+    config = {
+      portal = true,
+    }
+  }, {
+    id = workspace.id,
+  })
+end
 
 for _, strategy in helpers.each_strategy() do
 describe("Admin API - Developer Portal - " .. strategy, function()
@@ -42,6 +54,7 @@ describe("Admin API - Developer Portal - " .. strategy, function()
       type = "page"
     })
     client = assert(helpers.admin_client())
+    configure_portal(dao)
   end)
 
   after_each(function()
@@ -202,6 +215,7 @@ describe("Admin API - Developer Portal - " .. strategy, function()
             type = "partial"
           })
         end
+        configure_portal(dao)
       end)
 
       teardown(function()
@@ -510,6 +524,8 @@ describe("Admin API - Developer Portal - " .. strategy, function()
             })
           end
         end
+
+        configure_portal(dao)
       end)
 
       teardown(function()
@@ -572,6 +588,7 @@ describe("Admin API - Developer Portal - " .. strategy, function()
 
       portal_api_client = assert(ee_helpers.portal_api_client())
       client = assert(helpers.admin_client())
+      configure_portal(dao)
 
       local res = assert(portal_api_client:send {
         method = "POST",
@@ -655,6 +672,7 @@ describe("Admin API - Developer Portal - " .. strategy, function()
 
       portal_api_client = assert(ee_helpers.portal_api_client())
       client = assert(helpers.admin_client())
+      configure_portal(dao)
 
       local res = assert(portal_api_client:send {
         method = "POST",
@@ -746,6 +764,7 @@ describe("Admin API - Developer Portal - " .. strategy, function()
 
       portal_api_client = assert(ee_helpers.portal_api_client())
       client = assert(helpers.admin_client())
+      configure_portal(dao)
 
       local res = assert(portal_api_client:send {
         method = "POST",
@@ -879,6 +898,7 @@ describe("Admin API - Developer Portal - " .. strategy, function()
 
       portal_api_client = assert(ee_helpers.portal_api_client())
       client = assert(helpers.admin_client())
+      configure_portal(dao)
 
       local res = assert(portal_api_client:send {
         method = "POST",
@@ -994,6 +1014,7 @@ describe("Admin API - Developer Portal - " .. strategy, function()
           }))
 
           client = assert(helpers.admin_client())
+          configure_portal(dao)
         end)
 
         it("returns 501 if portal_invite_email is turned off", function()
@@ -1035,6 +1056,7 @@ describe("Admin API - Developer Portal - " .. strategy, function()
           }))
 
           client = assert(helpers.admin_client())
+          configure_portal(dao)
         end)
 
         it("returns 400 if not sent with emails param", function()

@@ -1,3 +1,4 @@
+local singletons = require "kong.singletons"
 local workspaces = require "kong.workspaces"
 local utils      = require "kong.tools.utils"
 
@@ -182,6 +183,20 @@ function _M.ws_scope_as_list(table_name)
   if workspaceable[table_name] and #ws_scope > 0 then
     return encode_ws_list(ws_scope)
   end
+end
+
+
+-- used to retrieve workspace specific configuration values.
+-- * config must exist in default configuration or will result
+--   in an error.
+-- * if workspace specific config does not exist fall back to 
+--   default config value.
+function _M.retrieve_ws_config(config_name, workspace)
+  if workspace.config and workspace.config[config_name] ~= nil then
+    return workspace.config[config_name]
+  end
+
+  return singletons.configuration[config_name]
 end
 
 

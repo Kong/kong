@@ -1,5 +1,10 @@
 local smtp_client  = require "kong.enterprise_edition.smtp_client"
 local portal_utils = require "kong.portal.utils"
+local singletons   = require "kong.singletons"
+local ws_helper    = require "kong.workspaces.helper"
+local constants    = require "kong.constants"
+
+local ws_constants = constants.WORKSPACE_CONFIG
 local fmt          = string.format
 local log          = ngx.log
 local INFO         = ngx.INFO
@@ -87,22 +92,20 @@ local base_conf = {
 }
 
 
-function _M.new(conf)
-  conf = conf or {}
-
+function _M:new()
   local client, err = smtp_client.new({
-    host = conf.smtp_host,
-    port = conf.smtp_port,
-    starttls = conf.smtp_starttls,
-    ssl = conf.smtp_ssl,
-    username = conf.smtp_username,
-    password = conf.smtp_password,
-    auth_type = conf.smtp_auth_type,
-    domain = conf.smtp_domain,
-    timeout_connect = conf.smtp_timeout_connect,
-    timeout_send = conf.smtp_timeout_send,
-    timeout_read  = conf.smtp_timeout_read,
-  }, conf.smtp_mock)
+    host = singletons.configuration.smtp_host,
+    port = singletons.configuration.smtp_port,
+    starttls = singletons.configuration.smtp_starttls,
+    ssl = singletons.configuration.smtp_ssl,
+    username = singletons.configuration.smtp_username,
+    password = singletons.configuration.smtp_password,
+    auth_type = singletons.configuration.smtp_auth_type,
+    domain = singletons.configuration.smtp_domain,
+    timeout_connect = singletons.configuration.smtp_timeout_connect,
+    timeout_send = singletons.configuration.smtp_timeout_send,
+    timeout_read  = singletons.configuration.smtp_timeout_read,
+  }, singletons.configuration.smtp_mock)
 
   if err then
     log(INFO, _M.LOG_PREFIX, "unable to initialize smtp client: " .. err)
@@ -111,7 +114,6 @@ function _M.new(conf)
   local self = {
     client    = client,
     conf      = base_conf,
-    kong_conf = conf,
   }
 
   return setmetatable(self, mt)
@@ -119,18 +121,22 @@ end
 
 
 function _M:invite(recipients)
-  local kong_conf = self.kong_conf
-  if not kong_conf.portal_invite_email then
+  local workspace = ngx.ctx.workspaces and ngx.ctx.workspaces[1] or {}
+  local portal_invite_email = ws_helper.retrieve_ws_config(ws_constants.PORTAL_INVITE_EMAIL, workspace)
+
+  if not portal_invite_email then
     return nil, {code =  501, message = "portal_invite_email is disabled"}
   end
 
+  local portal_emails_from = ws_helper.retrieve_ws_config(ws_constants.PORTAL_EMAILS_FROM, workspace)
+  local portal_emails_reply_to = ws_helper.retrieve_ws_config(ws_constants.PORTAL_EMAILS_REPLY_TO, workspace)
   local conf = self.conf.portal_invite_email
   local options = {
-    from = kong_conf.portal_emails_from,
-    reply_to = kong_conf.portal_emails_reply_to,
-    subject = fmt(conf.subject, kong_conf.portal_gui_url),
-    html = fmt(conf.html, kong_conf.portal_gui_url, kong_conf.portal_gui_url,
-                                                    kong_conf.portal_gui_url),
+    from = portal_emails_from,
+    reply_to = portal_emails_reply_to,
+    subject = fmt(conf.subject, singletons.configuration.portal_gui_url),
+    html = fmt(conf.html, singletons.configuration.portal_gui_url, singletons.configuration.portal_gui_url,
+                                                    singletons.configuration.portal_gui_url),
   }
 
   local res
@@ -144,39 +150,47 @@ end
 
 
 function _M:access_request(developer_email, developer_name)
-  local kong_conf = self.kong_conf
-  if not kong_conf.portal_access_request_email then
+  local workspace = ngx.ctx.workspaces and ngx.ctx.workspaces[1] or {}
+  local portal_access_request_email = ws_helper.retrieve_ws_config(ws_constants.PORTAL_ACCESS_REQUEST_EMAIL, workspace)
+
+  if not portal_access_request_email then
     return nil
   end
 
+  local portal_emails_from = ws_helper.retrieve_ws_config(ws_constants.PORTAL_EMAILS_FROM, workspace)
+  local portal_emails_reply_to = ws_helper.retrieve_ws_config(ws_constants.PORTAL_EMAILS_REPLY_TO, workspace)
   local conf = self.conf.portal_access_request_email
   local options = {
-    from = kong_conf.portal_emails_from,
-    reply_to = kong_conf.portal_emails_reply_to,
-    subject = fmt(conf.subject, kong_conf.portal_gui_url),
+    from = portal_emails_from,
+    reply_to = portal_emails_reply_to,
+    subject = fmt(conf.subject, singletons.configuration.portal_gui_url),
     html = fmt(conf.html, developer_name, developer_email,
-                            kong_conf.portal_gui_url, kong_conf.admin_gui_url,
-                                                      kong_conf.admin_gui_url),
+                            singletons.configuration.portal_gui_url, singletons.configuration.admin_gui_url,
+                                                      singletons.configuration.admin_gui_url),
   }
 
-  local res = self.client:send(kong_conf.smtp_admin_emails, options)
+  local res = self.client:send(singletons.configuration.smtp_admin_emails, options)
   return smtp_client.handle_res(res)
 end
 
 
 function _M:approved(recipient)
-  local kong_conf = self.kong_conf
-  if not kong_conf.portal_approved_email then
+  local workspace = ngx.ctx.workspaces and ngx.ctx.workspaces[1] or {}
+  local portal_approved_email = ws_helper.retrieve_ws_config(ws_constants.PORTAL_APPROVED_EMAIL, workspace)
+
+  if not portal_approved_email then
     return nil
   end
 
+  local portal_emails_from = ws_helper.retrieve_ws_config(ws_constants.PORTAL_EMAILS_FROM, workspace)
+  local portal_emails_reply_to = ws_helper.retrieve_ws_config(ws_constants.PORTAL_EMAILS_REPLY_TO, workspace)
   local conf = self.conf.portal_approved_email
   local options = {
-    from = kong_conf.portal_emails_from,
-    reply_to = kong_conf.portal_emails_reply_to,
-    subject = fmt(conf.subject, kong_conf.portal_gui_url),
-    html = fmt(conf.html, kong_conf.portal_gui_url, kong_conf.portal_gui_url,
-                                                    kong_conf.portal_gui_url),
+    from = portal_emails_from,
+    reply_to = portal_emails_reply_to,
+    subject = fmt(conf.subject, singletons.configuration.portal_gui_url),
+    html = fmt(conf.html, singletons.configuration.portal_gui_url, singletons.configuration.portal_gui_url,
+                                                    singletons.configuration.portal_gui_url),
   }
 
   local res = self.client:send({recipient}, options)
@@ -184,24 +198,28 @@ function _M:approved(recipient)
 end
 
 function _M:password_reset(recipient, token)
-  local kong_conf = self.kong_conf
-  if not kong_conf.portal_reset_email then
+  local workspace = ngx.ctx.workspaces and ngx.ctx.workspaces[1] or {}
+  local portal_reset_email = ws_helper.retrieve_ws_config(ws_constants.PORTAL_RESET_EMAIL, workspace)
+
+  if not portal_reset_email then
     return nil, {code =  501, message = "portal_reset_email is disabled"}
   end
 
-  local exp_seconds = kong_conf.portal_token_exp
+  local exp_seconds = ws_helper.retrieve_ws_config(ws_constants.PORTAL_TOKEN_EXP, workspace)
   if not exp_seconds then
     return nil, {code =  500, message = "portal_token_exp is required"}
   end
 
+  local portal_emails_from = ws_helper.retrieve_ws_config(ws_constants.PORTAL_EMAILS_FROM, workspace)
+  local portal_emails_reply_to = ws_helper.retrieve_ws_config(ws_constants.PORTAL_EMAILS_REPLY_TO, workspace)
   local exp_string = portal_utils.humanize_timestamp(exp_seconds)
   local conf = self.conf.portal_reset_email
   local options = {
-    from = kong_conf.portal_emails_from,
-    reply_to = kong_conf.portal_emails_reply_to,
-    subject = fmt(conf.subject, kong_conf.portal_gui_url),
-    html = fmt(conf.html, kong_conf.portal_gui_url, token,
-             kong_conf.portal_gui_url, token, exp_string),
+    from = portal_emails_from,
+    reply_to = portal_emails_reply_to,
+    subject = fmt(conf.subject, singletons.configuration.portal_gui_url),
+    html = fmt(conf.html, singletons.configuration.portal_gui_url, token,
+             singletons.configuration.portal_gui_url, token, exp_string),
   }
 
   local res = self.client:send({recipient}, options)
@@ -209,18 +227,22 @@ function _M:password_reset(recipient, token)
 end
 
 function _M:password_reset_success(recipient)
-  local kong_conf = self.kong_conf
-  if not kong_conf.portal_reset_success_email then
+  local workspace = ngx.ctx.workspaces and ngx.ctx.workspaces[1] or {}
+  local portal_reset_success_email = ws_helper.retrieve_ws_config(ws_constants.PORTAL_RESET_SUCCESS_EMAIL, workspace)
+
+  if not portal_reset_success_email then
     return nil, {code =  501, message = "portal_reset_success_email is disabled"}
   end
 
+  local portal_emails_from = ws_helper.retrieve_ws_config(ws_constants.PORTAL_EMAILS_FROM, workspace)
+  local portal_emails_reply_to = ws_helper.retrieve_ws_config(ws_constants.PORTAL_EMAILS_REPLY_TO, workspace)
   local conf = self.conf.portal_reset_success_email
   local options = {
-    from = kong_conf.portal_emails_from,
-    reply_to = kong_conf.portal_emails_reply_to,
-    subject = fmt(conf.subject, kong_conf.portal_gui_url),
-    html = fmt(conf.html, kong_conf.portal_gui_url, kong_conf.portal_gui_url,
-                          kong_conf.portal_gui_url, kong_conf.portal_gui_url),
+    from = portal_emails_from,
+    reply_to = portal_emails_reply_to,
+    subject = fmt(conf.subject, singletons.configuration.portal_gui_url),
+    html = fmt(conf.html, singletons.configuration.portal_gui_url, singletons.configuration.portal_gui_url,
+                          singletons.configuration.portal_gui_url, singletons.configuration.portal_gui_url),
   }
 
   local res = self.client:send({recipient}, options)

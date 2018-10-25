@@ -99,5 +99,19 @@ return {
       MIN = "2.2",
       DEPRECATED = "2.1",
     }
+  },
+  WORKSPACE_CONFIG = {
+    PORTAL = "portal",
+    PORTAL_AUTH = "portal_auth",
+    PORTAL_AUTH_CONF = "portal_auth_conf",
+    PORTAL_AUTO_APPROVE = "portal_auto_approve",
+    PORTAL_TOKEN_EXP = "portal_token_exp",
+    PORTAL_INVITE_EMAIL = "portal_invite_email",
+    PORTAL_ACCESS_REQUEST_EMAIL = "portal_access_request_email",
+    PORTAL_APPROVED_EMAIL = "portal_approved_email",
+    PORTAL_RESET_EMAIL = "portal_reset_email",
+    PORTAL_RESET_SUCCESS_EMAIL = "portal_reset_success_email",
+    PORTAL_EMAILS_FROM = "portal_emails_from",
+    PORTAL_EMAILS_REPLY_TO = "portal_emails_reply_to",
   }
 }
