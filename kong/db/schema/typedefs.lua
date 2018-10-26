@@ -28,6 +28,20 @@ local function validate_host(host)
 end
 
 
+local function validate_ip(ip)
+  local res, err = utils.normalize_ip(ip)
+  if not res then
+    return nil, err
+  end
+
+  if res.type == "name" then
+    return nil, "not an ip address: " .. ip
+  end
+
+  return true
+end
+
+
 local function validate_path(path)
   if not match(path, "^/[%w%.%-%_~%/%%]*$") then
     return nil,
@@ -141,6 +155,12 @@ typedefs.protocol = Schema.define {
 typedefs.host = Schema.define {
   type = "string",
   custom_validator = validate_host,
+}
+
+
+typedefs.ip = Schema.define {
+  type = "string",
+  custom_validator = validate_ip,
 }
 
 
