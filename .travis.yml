@@ -1,11 +1,6 @@
 dist: trusty
 sudo: required
 
-branches:
-  except:
-    - feat/jenkins-internal-previews
-    - add/jenkinsfile
-
 language: java
 
 jdk:
