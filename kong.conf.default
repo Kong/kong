@@ -508,7 +508,7 @@
 #dns_no_sync = off               # If enabled, then upon a cache-miss every
                                  # request will trigger its own dns query.
                                  # When disabled multiple requests for the
-                                 # same name/type will be synchronized to a
+                                 # same name/type will be synchronised to a
                                  # single query.
 
 #------------------------------------------------------------------------------
