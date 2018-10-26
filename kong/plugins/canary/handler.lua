@@ -1,7 +1,6 @@
 -- Copyright (C) Kong Inc.
 local BasePlugin  = require "kong.plugins.base_plugin"
 local groups = require "kong.plugins.canary.groups"
-local responses = require "kong.tools.responses"
 
 local math_random = math.random
 local math_floor  = math.floor
