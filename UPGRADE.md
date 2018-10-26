@@ -64,7 +64,7 @@ complete list of changes and new features.
 ##### Configuration
 
 - The `server_tokens` and `latency_tokens` configuration properties have been
-  removed. Instead, a new `headers` configuration properties replace them.
+  removed. Instead, a new `headers` configuration properties replaces them.
   See the default configuration file or the [configuration
   reference](https://docs.konghq.com/0.14.x/configuration/) for more details.
 - The Nginx configuration file has changed, which means that you need to update
