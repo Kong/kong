@@ -841,8 +841,9 @@ function OICHandler:access(conf)
     end
 
     local discovery_options = args.get_http_opts {
-      headers         = args.get_conf_args("discovery_headers_names", "discovery_headers_values"),
-      extra_jwks_uris = args.get_conf_arg("extra_jwks_uris"),
+      headers              = args.get_conf_args("discovery_headers_names", "discovery_headers_values"),
+      rediscovery_lifetime = args.get_conf_arg("rediscovery_lifetime", 300),
+      extra_jwks_uris      = args.get_conf_arg("extra_jwks_uris"),
     }
 
     local issuer
@@ -1538,6 +1539,21 @@ function OICHandler:access(conf)
           log("trying to exchange credentials using token endpoint with caching enabled")
           tokens_encoded, err, downstream_headers = cache.tokens.load(oic, arg, ttl_default, true)
 
+          if tokens_encoded and (arg.grant_type == "password" or
+                                 arg.grant_type == "client_credentials") then
+
+            log("verifying tokens")
+            tokens_decoded, err = oic.token:verify(tokens_encoded, token_endpoint_args)
+            if not tokens_decoded then
+              log("token verification failed, trying to exchange credentials ",
+                  "using token endpoint with cache flushed")
+              tokens_encoded, err, downstream_headers = cache.tokens.load(oic, arg, ttl_default, true, true)
+
+            else
+              log("tokens verified")
+            end
+          end
+
         else
           log("trying to exchange credentials using token endpoint")
           tokens_encoded, err, downstream_headers = cache.tokens.load(oic, arg, ttl_default, false)
@@ -1558,15 +1574,17 @@ function OICHandler:access(conf)
                           session, anonymous, trusted_client)
     end
 
-    log("verifying tokens")
-    tokens_decoded, err = oic.token:verify(tokens_encoded, token_endpoint_args)
     if not tokens_decoded then
-      log("token verification failed")
-      return unauthorized(ctx, iss, unauthorized_error_message, err,
-                          session, anonymous, trusted_client)
+      log("verifying tokens")
+      tokens_decoded, err = oic.token:verify(tokens_encoded, token_endpoint_args)
+      if not tokens_decoded then
+        log("token verification failed")
+        return unauthorized(ctx, iss, unauthorized_error_message, err,
+                            session, anonymous, trusted_client)
 
-    else
-      log("tokens verified")
+      else
+        log("tokens verified")
+      end
     end
 
     exp = get_exp(tokens_decoded.access_token, tokens_encoded, now, exp_default)
@@ -1728,7 +1746,7 @@ function OICHandler:access(conf)
     local jwt_session_cookie = args.get_conf_arg("jwt_session_cookie")
     if jwt_session_cookie then
       if not tokens_decoded then
-        tokens_decoded = oic.token:decode(tokens_encoded)
+        tokens_decoded = oic.token:decode(tokens_encoded, { verify_signature = false })
       end
 
       if tokens_decoded then
@@ -1795,7 +1813,7 @@ function OICHandler:access(conf)
 
       else
         if not tokens_decoded then
-          tokens_decoded = oic.token:decode(tokens_encoded)
+          tokens_decoded = oic.token:decode(tokens_encoded, { verify_signature = false })
         end
 
         if tokens_decoded then
@@ -1873,7 +1891,7 @@ function OICHandler:access(conf)
 
       else
         if not tokens_decoded then
-          tokens_decoded = oic.token:decode(tokens_encoded)
+          tokens_decoded = oic.token:decode(tokens_encoded, { verify_signature = false })
         end
 
         if tokens_decoded then
@@ -1943,7 +1961,7 @@ function OICHandler:access(conf)
 
       if not tokens_decoded then
         log("decoding tokens")
-        tokens_decoded, err = oic.token:decode(tokens_encoded)
+        tokens_decoded, err = oic.token:decode(tokens_encoded, { verify_signature = false })
       end
 
       if tokens_decoded then
@@ -2031,7 +2049,7 @@ function OICHandler:access(conf)
 
       else
         if not tokens_decoded then
-          tokens_decoded = oic.token:decode(tokens_encoded)
+          tokens_decoded = oic.token:decode(tokens_encoded, { verify_signature = false })
         end
 
         if tokens_decoded then
@@ -2087,7 +2105,7 @@ function OICHandler:access(conf)
 
       else
         if not tokens_decoded then
-          tokens_decoded = oic.token:decode(tokens_encoded)
+          tokens_decoded = oic.token:decode(tokens_encoded, { verify_signature = false })
         end
 
         if tokens_decoded then
@@ -2206,7 +2224,7 @@ function OICHandler:access(conf)
     else
       if tokens_decoded then
         if not tokens_decoded then
-          tokens_decoded = oic.token:decode(tokens_encoded)
+          tokens_decoded = oic.token:decode(tokens_encoded, { verify_signature = false })
         end
 
         if tokens_decoded then
@@ -2277,7 +2295,7 @@ function OICHandler:access(conf)
 
     set_headers(args, "access_token_jwk", function()
       if not tokens_decoded then
-        tokens_decoded = oic.token:decode(tokens_encoded)
+        tokens_decoded = oic.token:decode(tokens_encoded, { verify_signature = false })
       end
       if tokens_decoded then
         local access_token = tokens_decoded.access_token
@@ -2289,7 +2307,7 @@ function OICHandler:access(conf)
 
     set_headers(args, "id_token_jwk", function()
       if not tokens_decoded then
-        tokens_decoded = oic.token:decode(tokens_encoded)
+        tokens_decoded = oic.token:decode(tokens_encoded, { verify_signature = false })
       end
       if tokens_decoded then
         local id_token = tokens_decoded.id_token

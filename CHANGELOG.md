@@ -1,3 +1,14 @@
+## v0.2.2
+
+- Change decoding needed for option features does not verify
+  signature anymore (it is already verified earlier)
+- Fix issue when using password grant or client credentials
+  grant with token caching enabled, and rotating keys on IdP
+  that caused the cached tokens to give 403. The cached tokens
+  will now be flushed and new tokens will be retrieved from
+  the IdP.
+- Add `config.rediscovery_lifetime`
+
 ## v0.2.1
 
 - IMPORTANT Change `config.ssl_verify` to default to `false`.

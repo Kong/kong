@@ -222,8 +222,10 @@ function issuers.rediscover(issuer, opts)
       return nil, "decoding discovery document failed with " .. err
     end
 
+    local rediscovery_lifetime = opts.rediscovery_lifetime or 300
+
     local updated_at = cdec.updated_at or 0
-    if now - updated_at < 300 then
+    if now - updated_at < rediscovery_lifetime then
       log.notice("openid connect rediscovery was done in less than 5 mins ago, skipping")
       return discovery.keys
     end
@@ -587,14 +589,14 @@ local function tokens_load(oic, args, now)
 end
 
 
-function tokens.load(oic, args, ttl, use_cache)
+function tokens.load(oic, args, ttl, use_cache, flush)
   local now = time()
   local iss = oic.configuration.issuer
   local key
   local res
   local err
 
-  if use_cache then
+  if use_cache or flush then
     if args.grant_type == "password" then
       if not args.username or not args.password then
         return nil, "no credentials given for password grant"
@@ -620,6 +622,10 @@ function tokens.load(oic, args, ttl, use_cache)
         "&",
         args.client_secret
       })))
+    end
+
+    if flush and key then
+      cache_invalidate("oic:" .. key)
     end
   end
 
@@ -776,5 +782,5 @@ return {
   tokens         = tokens,
   token_exchange = token_exchange,
   userinfo       = userinfo,
-  version        = "0.2.1",
+  version        = "0.2.2",
 }

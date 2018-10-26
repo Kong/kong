@@ -271,6 +271,11 @@ return {
       type                             = "string",
       default                          = "sid",
     },
+    rediscovery_lifetime               = {
+      required                         = false,
+      type                             = "number",
+      default                          = 300,
+    },
     reverify                           = {
       required                         = false,
       type                             = "boolean",
