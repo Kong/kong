@@ -1,5 +1,6 @@
 local portal_utils = require "kong.portal.utils"
- 
+local workspaces   = require "kong.workspaces"
+
 
 local function check_portal_auth(auth)
   if auth ~= nil
@@ -34,13 +35,13 @@ local function validate_email(email)
 end
 
 
-local function config_schema()
+local function config_schema(workspace_t)
   return {
     fields = {
       portal = {
         type = "boolean",
         required = true,
-        default = false,
+        default = workspace_t.name == workspaces.DEFAULT_WORKSPACE,
       },
       portal_auth = {
         type = "string",
