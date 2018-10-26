@@ -1721,6 +1721,42 @@ describe("schema", function()
       assert.is_nil(data.i)
     end)
 
+    -- regression test for #3910
+    it("lets invalid values pass unchanged", function()
+      local Test = Schema.new({
+        fields = {
+          { my_array = { type = "array", elements = { type = "string" } }, },
+          { my_set = { type = "set", elements = { type = "string" } }, },
+          { my_number = { type = "number" }, },
+          { my_integer = { type = "integer" }, },
+          { my_boolean = { type = "boolean" }, },
+          { my_string = { type = "string" }, },
+          { my_record = { type = "record", fields = { { my_field = { type = "integer" } } } } },
+          { my_map = { type = "map", keys = {}, values = {} }, },
+          { my_function = { type = "function" }, },
+        }
+      })
+      check_all_types_covered(Test.fields)
+      local bad_value = {
+        my_array = "hello",
+        my_set = "hello",
+        my_number = "hello",
+        my_integer = "hello",
+        my_boolean = "hello",
+        my_string = 123,
+        my_record = "hello",
+        my_map = "hello",
+        my_function = "hello",
+      }
+      local data, err = Test:process_auto_fields(bad_value)
+      assert.is_nil(err)
+      assert.same(data, bad_value)
+
+      local data2, err = Test:process_auto_fields(bad_value, "update")
+      assert.is_nil(err)
+      assert.same(data2, bad_value)
+    end)
+
     it("honors given default values", function()
       local f = function() end
 
