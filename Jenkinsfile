@@ -121,7 +121,7 @@ pipeline {
       steps {
         parallel (
           alpine: {
-            sh './bintray-release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p alpine -e -v $KONG_VERSION $BUILD_ARG'
+            sh './bintray-release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -l -p alpine -e -v $KONG_VERSION $BUILD_ARG'
           },
           centos7: {
             sh './bintray-release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p centos -e -v $KONG_VERSION $BUILD_ARG'
