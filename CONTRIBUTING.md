@@ -221,7 +221,7 @@ logical units of work. You are free to propose a patch with one or many
 commits, as long as their atomicity is respected. This means that no unrelated
 changes should be included in a commit.
 
-For example: you are writing a patch to fix a bug, but in your endeavor, you
+For example: you are writing a patch to fix a bug, but in your endeavour, you
 spot another bug. **Do not fix both bugs in the same commit!**. Finish your
 work on the initial bug, propose your patch, and come back to the second bug
 later on. This is also valid for unrelated style fixes, refactorings, etc...
