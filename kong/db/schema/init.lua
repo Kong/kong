@@ -1237,7 +1237,9 @@ local function adjust_field_for_context(field, value, context, nulls)
     if should_recurse then
       local field_schema = get_field_schema(field)
       value = value or handle_missing_field(field, value)
-      return field_schema:process_auto_fields(value, context, nulls)
+      if type(value) == "table" then
+        return field_schema:process_auto_fields(value, context, nulls)
+      end
     end
   end
   if value == nil then
