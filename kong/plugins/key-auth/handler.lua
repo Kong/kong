@@ -47,12 +47,9 @@ local function set_consumer(consumer, credential)
     [const.CONSUMER_USERNAME]  = consumer.username,
   }
 
-  kong.ctx.shared.authenticated_consumer = consumer -- forward compatibility
-  ngx.ctx.authenticated_consumer = consumer         -- backward compatibility
+  kong.client.authenticate(consumer, credential)
 
   if credential then
-    kong.ctx.shared.authenticated_credential = credential -- forward compatibility
-    ngx.ctx.authenticated_credential = credential         -- backward compatibility
     new_headers[const.CREDENTIAL_USERNAME] = credential.username
     kong.service.request.clear_header(const.ANONYMOUS) -- in case of auth plugins concatenation
 
@@ -150,10 +147,10 @@ local function do_authentication(conf)
   -----------------------------------------
 
   -- retrieve the consumer linked to this API key, to set appropriate headers
-
-  local consumer_cache_key = kong.db.consumers:cache_key(credential.consumer.id)
-  local consumer, err      = cache:get(consumer_cache_key, nil, load_consumer,
-                                       credential.consumer.id)
+  local consumer_cache_key, consumer
+  consumer_cache_key = kong.db.consumers:cache_key(credential.consumer.id)
+  consumer, err      = cache:get(consumer_cache_key, nil, load_consumer,
+                                 credential.consumer.id)
   if err then
     kong.log.err(err)
     return nil, { status = 500, message = "An unexpected error occurred" }
@@ -173,10 +170,7 @@ function KeyAuthHandler:access(conf)
     return
   end
 
-  -- checking both old and new ctx for backward and forward compatibility
-  local authenticated_credential = kong.ctx.shared.authenticated_credential
-                                   or ngx.ctx.authenticated_credential
-  if authenticated_credential and conf.anonymous then
+  if conf.anonymous and kong.client.get_credential() then
     -- we're already authenticated, and we're configured for using anonymous,
     -- hence we're in a logical OR between auth methods and we're already done.
     return

@@ -120,16 +120,9 @@ local function set_consumer(consumer, credential)
   kong.service.request.set_header(constants.HEADERS.CONSUMER_CUSTOM_ID, consumer.custom_id)
   kong.service.request.set_header(constants.HEADERS.CONSUMER_USERNAME, consumer.username)
 
-  local shared_ctx = kong.ctx.shared
-  local ngx_ctx = ngx.ctx -- TODO: for bc only
-
-  shared_ctx.authenticated_consumer = consumer
-  ngx_ctx.authenticated_consumer = consumer
+  kong.client.authenticate(consumer, credential)
 
   if credential then
-    shared_ctx.authenticated_credential = credential
-    ngx_ctx.authenticated_credential = credential
-
     kong.service.request.set_header(constants.HEADERS.CREDENTIAL_USERNAME, credential.username)
     kong.service.request.clear_header(constants.HEADERS.ANONYMOUS)
 
@@ -183,20 +176,10 @@ end
 
 
 function _M.execute(conf)
-  if conf.anonymous then
-    local shared_ctx = kong.ctx.shared
-    if shared_ctx.authenticated_credential then
-      -- we're already authenticated, and we're configured for using anonymous,
-      -- hence we're in a logical OR between auth methods and we're already done.
-      return
-    end
-
-    local ngx_ctx = ngx.ctx -- TODO: for bc only
-    if ngx_ctx.authenticated_credential then
-      -- we're already authenticated, and we're configured for using anonymous,
-      -- hence we're in a logical OR between auth methods and we're already done.
-      return
-    end
+  if conf.anonymous and kong.client.get_credential() then
+    -- we're already authenticated, and we're configured for using anonymous,
+    -- hence we're in a logical OR between auth methods and we're already done.
+    return
   end
 
   local ok, err = do_authentication(conf)

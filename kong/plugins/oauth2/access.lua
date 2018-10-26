@@ -22,6 +22,7 @@ local ngx_decode_base64 = ngx.decode_base64
 
 local _M = {}
 
+local EMPTY = {}
 local RESPONSE_TYPE = "response_type"
 local STATE = "state"
 local CODE = "code"
@@ -44,21 +45,6 @@ local AUTHENTICATED_USERID = "authenticated_userid"
 local function internal_server_error(err)
   kong.log.err(err)
   return kong.response.exit(500, { message = "An unexpected error occurred" })
-end
-
-
-local function get_ctx(k)
-  local v = kong.ctx.shared[k] -- forward compatibility
-  if v ~= nil then
-    return v
-  end
-  return ngx.ctx[k] -- backward compatibility
-end
-
-
-local function set_ctx(k, v)
-  kong.ctx.shared[k] = v  -- forward compatibility
-  ngx.ctx[k] = v          -- backward compatibility
 end
 
 
@@ -217,8 +203,8 @@ local function authorize(conf)
         if response_type == CODE then
           local service_id, api_id
           if not conf.global_credentials then
-            service_id = get_ctx("service").id
-            api_id = get_ctx("api").id
+            service_id = (kong.router.get_service() or EMPTY).id
+            api_id = (ngx.ctx.api or EMPTY).id   -- TODO: deprecate API
           end
           local authorization_code, err = kong.db.oauth2_authorization_codes:insert({
             service = service_id and { id = service_id } or nil,
@@ -237,7 +223,10 @@ local function authorize(conf)
           }
         else
           -- Implicit grant, override expiration to zero
-          response_params = generate_token(conf, get_ctx("service"), get_ctx("api"), client, parameters[AUTHENTICATED_USERID], scopes, state, nil, true)
+          response_params = generate_token(conf, kong.router.get_service(),
+                                           ngx.ctx.api, client,
+                                           parameters[AUTHENTICATED_USERID],
+                                           scopes, state, nil, true)
           is_implicit_grant = true
         end
       end
@@ -359,8 +348,8 @@ local function issue_token(conf)
         local code = parameters[CODE]
         local service_id, api_id
         if not conf.global_credentials then
-          service_id = get_ctx("service").id
-          api_id = get_ctx("api").id
+          service_id = (kong.router.get_service() or EMPTY).id
+          api_id = (ngx.ctx.api or EMPTY).id   -- TODO: deprecate API
         end
         local authorization_code =
           code and kong.db.oauth2_authorization_codes:select_by_code(code)
@@ -377,8 +366,10 @@ local function issue_token(conf)
                              error_description = "Invalid " .. CODE}
 
         else
-          response_params = generate_token(conf, get_ctx("service"), get_ctx("api"), client,
-                                           authorization_code.authenticated_userid, authorization_code.scope, state)
+          response_params = generate_token(conf, kong.router.get_service(),
+                                           ngx.ctx.api, client,
+                                           authorization_code.authenticated_userid,
+                                           authorization_code.scope, state)
           kong.db.oauth2_authorization_codes:delete({ id = authorization_code.id }) -- Delete authorization code so it cannot be reused
         end
 
@@ -394,8 +385,10 @@ local function issue_token(conf)
             response_params = err -- If it's not ok, then this is the error message
 
           else
-            response_params = generate_token(conf, get_ctx("service"), get_ctx("api"), client,
-                                             parameters.authenticated_userid, scope, state, nil, true)
+            response_params = generate_token(conf, kong.router.get_service(),
+                                             ngx.ctx.api, client,
+                                             parameters.authenticated_userid,
+                                             scope, state, nil, true)
           end
         end
 
@@ -414,8 +407,10 @@ local function issue_token(conf)
             response_params = err -- If it's not ok, then this is the error message
 
           else
-            response_params = generate_token(conf, get_ctx("service"), get_ctx("api"), client,
-                                             parameters.authenticated_userid, scope, state)
+            response_params = generate_token(conf, kong.router.get_service(),
+                                             ngx.ctx.api, client,
+                                             parameters.authenticated_userid,
+                                             scope, state)
           end
         end
 
@@ -423,8 +418,8 @@ local function issue_token(conf)
         local refresh_token = parameters[REFRESH_TOKEN]
         local service_id, api_id
         if not conf.global_credentials then
-          service_id = get_ctx("service").id
-          api_id = get_ctx("api").id
+          service_id = (kong.router.get_service() or EMPTY).id
+          api_id = (ngx.ctx.api or EMPTY).id
         end
         local token = refresh_token and
                       kong.db.oauth2_tokens:select_by_refresh_token(refresh_token)
@@ -440,8 +435,10 @@ local function issue_token(conf)
             response_params = {[ERROR] = "invalid_client", error_description = "Invalid client authentication"}
 
           else
-            response_params = generate_token(conf, get_ctx("service"), get_ctx("api"), client,
-                                             token.authenticated_userid, token.scope, state)
+            response_params = generate_token(conf, kong.router.get_service(),
+                                             ngx.ctx.api, client,
+                                             token.authenticated_userid,
+                                             token.scope, state)
             kong.db.oauth2_tokens:delete({ id = token.id }) -- Delete old token
           end
         end
@@ -487,7 +484,8 @@ local function retrieve_token(conf, access_token)
     local token_cache_key = kong.db.oauth2_tokens:cache_key(access_token)
     token, err = kong.cache:get(token_cache_key, nil,
                                 load_token_into_memory, conf,
-                                get_ctx("service"), get_ctx("api"),
+                                kong.router.get_service(),
+                                ngx.ctx.api,
                                 access_token)
     if err then
       return internal_server_error(err)
@@ -565,11 +563,11 @@ local function set_consumer(consumer, credential, token)
   set_header(constants.HEADERS.CONSUMER_ID, consumer.id)
   set_header(constants.HEADERS.CONSUMER_CUSTOM_ID, consumer.custom_id)
   set_header(constants.HEADERS.CONSUMER_USERNAME, consumer.username)
-  set_ctx("authenticated_consumer", consumer)
+
+  kong.client.authenticate(consumer, credential)
   if credential then
     set_header("x-authenticated-scope", token.scope)
     set_header("x-authenticated-userid", token.authenticated_userid)
-    set_ctx("authenticated_credential", credential)
     clear_header(constants.HEADERS.ANONYMOUS) -- in case of auth plugins concatenation
   else
     set_header(constants.HEADERS.ANONYMOUS, true)
@@ -588,8 +586,8 @@ local function do_authentication(conf)
     return nil, {status = 401, message = {[ERROR] = "invalid_token", error_description = "The access token is invalid or has expired"}, headers = {["WWW-Authenticate"] = 'Bearer realm="service" error="invalid_token" error_description="The access token is invalid or has expired"'}}
   end
 
-  if (token.service and token.service.id and get_ctx("service").id ~= token.service.id)
-  or (token.api and token.api.id and get_ctx("api").id ~= token.api.id)
+  if (token.service and token.service.id and kong.router.get_service().id ~= token.service.id)
+  or (token.api and token.api.id and ngx.ctx.api.id ~= token.api.id)
   or ((not token.service or not token.service.id)
       and (not token.api or not token.api.id)
       and not conf.global_credentials)
@@ -615,10 +613,11 @@ local function do_authentication(conf)
   end
 
   -- Retrieve the consumer from the credential
-  local consumer_cache_key = kong.db.consumers:cache_key(credential.consumer.id)
-  local consumer, err      = kong.cache:get(consumer_cache_key, nil,
-                                            load_consumer_into_memory,
-                                            credential.consumer.id)
+  local consumer_cache_key, consumer
+  consumer_cache_key = kong.db.consumers:cache_key(credential.consumer.id)
+  consumer, err      = kong.cache:get(consumer_cache_key, nil,
+                                      load_consumer_into_memory,
+                                      credential.consumer.id)
   if err then
     return internal_server_error(err)
   end
@@ -632,7 +631,7 @@ end
 function _M.execute(conf)
 
 
-  if get_ctx("authenticated_credential") and conf.anonymous then
+  if conf.anonymous and kong.client.get_credential() then
     -- we're already authenticated, and we're configured for using anonymous,
     -- hence we're in a logical OR between auth methods and we're already done.
     return

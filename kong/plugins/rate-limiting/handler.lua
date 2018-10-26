@@ -12,9 +12,9 @@ local tostring = tostring
 local timer_at = ngx.timer.at
 
 
+local EMPTY = {}
 local RATELIMIT_LIMIT = "X-RateLimit-Limit"
 local RATELIMIT_REMAINING = "X-RateLimit-Remaining"
-
 
 local RateLimitingHandler = BasePlugin:extend()
 
@@ -26,30 +26,17 @@ RateLimitingHandler.VERSION = "0.2.0"
 local function get_identifier(conf)
   local identifier
 
-  if conf.limit_by == "consumer" or conf.limit_by == "credential" then
-    local shared_ctx = kong.ctx.shared
-    local ngx_ctx = ngx.ctx
+  if conf.limit_by == "consumer" then
+    identifier = (kong.client.get_consumer() or
+                  kong.client.get_credential() or
+                  EMPTY).id
 
-    local consumer = shared_ctx.authenticated_consumer or
-                     ngx_ctx.authenticated_consumer
-
-    if conf.limit_by == "consumer" then
-      identifier = consumer and consumer.id
-    end
-
-    if not identifier then
-      local credential = shared_ctx.authenticated_credential or
-                         ngx_ctx.authenticated_credential
-
-      identifier = credential and credential.id
-    end
+  elseif conf.limit_by == "credential" then
+    identifier = (kong.client.get_credential() or
+                  EMPTY).id
   end
 
-  if not identifier then
-    identifier = kong.client.get_forwarded_ip()
-  end
-
-  return identifier
+  return identifier or kong.client.get_forwarded_ip()
 end
 
 
