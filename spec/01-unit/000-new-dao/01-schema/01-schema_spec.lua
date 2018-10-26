@@ -1325,8 +1325,64 @@ describe("schema", function()
           assert.is_nil(errs)
           assert.truthy(ok)
         end)
+
+        it("supports a custom error message", function()
+          local Test = Schema.new({
+            fields = {
+              { a = { type = "number" }, },
+              { b = { type = "string" }, },
+              { c = { type = "string" }, },
+            },
+            entity_checks = {
+              { conditional_at_least_one_of = { if_field = "a",
+                                                if_match = { gt = 0 },
+                                                then_at_least_one_of = { "b", "c" },
+                                                then_err = "must set one of %s if 'a' is like this",
+                                                else_match = { ne = 0 },
+                                                else_then_at_least_one_of = { "c", "d" },
+                                                else_then_err = "must set one of %s if 'a' is like that" }, },
+            }
+          })
+
+          local ok, errs = Test:validate_insert({ a = 1 })
+          assert.falsy(ok)
+          assert.same({
+            "must set one of 'b', 'c' if 'a' is like this"
+          }, errs["@entity"])
+
+          local ok, errs = Test:validate_insert({ a = -1 })
+          assert.falsy(ok)
+          assert.same({
+            "must set one of 'c', 'd' if 'a' is like that"
+          }, errs["@entity"])
+        end)
       end)
 
+      describe("conditional", function()
+        it("supports a custom error message", function()
+          local Test = Schema.new({
+            fields = {
+              { a = { type = "number" }, },
+              { b = { type = "string" }, },
+              { c = { type = "string" }, },
+            },
+            entity_checks = {
+              { conditional = { if_field = "a",
+                                if_match = { gt = 0 },
+                                then_field = "b",
+                                then_match = { gt = 0 },
+                                then_err = "must set 'b > 0' if '%s' is like this", }
+              },
+            }
+          })
+
+          local ok, errs = Test:validate_insert({ a = 1, b = 0 })
+          assert.falsy(ok)
+          assert.same({
+            "must set 'b > 0' if 'a' is like this"
+          }, errs["@entity"])
+        end)
+      end)
     end)
   end)
 

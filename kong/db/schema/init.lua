@@ -503,7 +503,11 @@ Schema.entity_checkers = {
         return true
       end
 
-      arg.if_match.type = "skip"
+      local arg_mt = {
+        __index = get_schema_field(schema, arg.if_field),
+      }
+
+      setmetatable(arg.if_match, arg_mt)
       local ok, _ = Schema.validate_field(schema, arg.if_match, if_value)
       if not ok then
         if arg.else_match == nil then
@@ -511,7 +515,7 @@ Schema.entity_checkers = {
         end
 
         -- run 'else'
-        arg.else_match.type = "skip"
+        setmetatable(arg.else_match, arg_mt)
         local ok, _ = Schema.validate_field(schema, arg.else_match, if_value)
         if not ok then
           return true
@@ -523,7 +527,13 @@ Schema.entity_checkers = {
           end
         end
 
-        return nil, quoted_list(arg.else_then_at_least_one_of)
+        local list = quoted_list(arg.else_then_at_least_one_of)
+        local else_then_err
+        if arg.else_then_err then
+          else_then_err = arg.else_then_err:format(list)
+        end
+
+        return nil, list, else_then_err
       end
 
       -- run 'if'
@@ -533,7 +543,13 @@ Schema.entity_checkers = {
         end
       end
 
-      return nil, quoted_list(arg.then_at_least_one_of)
+      local list = quoted_list(arg.then_at_least_one_of)
+      local then_err
+      if arg.then_err then
+        then_err = arg.then_err:format(list)
+      end
+
+      return nil, list, then_err
     end,
   },
 
@@ -618,7 +634,13 @@ Schema.entity_checkers = {
       ok, err = Schema.validate_field(schema, arg.then_match, then_value)
       if not ok then
         set_field(errors, arg.then_field, err)
-        return nil, arg.if_field
+
+        local then_err
+        if arg.then_err then
+          then_err = arg.then_err:format(arg.if_field)
+        end
+
+        return nil, arg.if_field, then_err
       end
 
       return true
@@ -1034,19 +1056,25 @@ local function run_entity_check(self, name, input, arg, full_check, errors)
     return
   end
 
-  local ok, err = checker.fn(check_input, arg, self, errors)
+  local ok, err, err2 = checker.fn(check_input, arg, self, errors)
   if ok then
     return
   end
 
-  local error_fmt = validation_errors[name:upper()]
-  err = error_fmt and error_fmt:format(err) or err
-  if not err then
-    local data = pretty.write({ name = arg }):gsub("%s+", " ")
-    err = validation_errors.ENTITY_CHECK:format(name, data)
-  end
+  if err2 then
+    -- user provided custom error for this entity checker
+    insert_entity_error(errors, err2)
 
-  insert_entity_error(errors, err)
+  else
+    local error_fmt = validation_errors[name:upper()]
+    err = error_fmt and error_fmt:format(err) or err
+    if not err then
+      local data = pretty.write({ name = arg }):gsub("%s+", " ")
+      err = validation_errors.ENTITY_CHECK:format(name, data)
+    end
+
+    insert_entity_error(errors, err)
+  end
 end
 
 
