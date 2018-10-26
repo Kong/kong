@@ -1,6 +1,6 @@
 local constants = require "kong.constants"
 local sha256 = require "resty.sha256"
-local hmac = require "openssl.hmac"
+local openssl_hmac = require "openssl.hmac"
 local utils = require "kong.tools.utils"
 
 
@@ -31,13 +31,13 @@ local hmac = {
     return hmac_sha1(secret, data)
   end,
   ["hmac-sha256"] = function(secret, data)
-    return hmac.new(secret, "sha256"):final(data)
+    return openssl_hmac.new(secret, "sha256"):final(data)
   end,
   ["hmac-sha384"] = function(secret, data)
-    return hmac.new(secret, "sha384"):final(data)
+    return openssl_hmac.new(secret, "sha384"):final(data)
   end,
   ["hmac-sha512"] = function(secret, data)
-    return hmac.new(secret, "sha512"):final(data)
+    return openssl_hmac.new(secret, "sha512"):final(data)
   end,
 }
 
@@ -251,16 +251,9 @@ local function set_consumer(consumer, credential)
   kong.service.request.set_header(constants.HEADERS.CONSUMER_CUSTOM_ID, consumer.custom_id)
   kong.service.request.set_header(constants.HEADERS.CONSUMER_USERNAME, consumer.username)
 
-  local shared_ctx = kong.ctx.shared
-  local ngx_ctx = ngx.ctx -- TODO: for bc only
-
-  shared_ctx.authenticated_consumer = consumer
-  ngx_ctx.authenticated_consumer = consumer
+  kong.client.authenticate(consumer, credential)
 
   if credential then
-    shared_ctx.authenticated_credential = credential
-    ngx_ctx.authenticated_credential = credential
-
     kong.service.request.set_header(constants.HEADERS.CREDENTIAL_USERNAME, credential.username)
     kong.service.request.clear_header(constants.HEADERS.ANONYMOUS)
 
@@ -329,10 +322,11 @@ local function do_authentication(conf)
   end
 
   -- Retrieve consumer
-  local consumer_cache_key = kong.db.consumers:cache_key(credential.consumer.id)
-  local consumer, err      = kong.cache:get(consumer_cache_key, nil,
-                                            load_consumer_into_memory,
-                                            credential.consumer.id)
+  local consumer_cache_key, consumer
+  consumer_cache_key = kong.db.consumers:cache_key(credential.consumer.id)
+  consumer, err      = kong.cache:get(consumer_cache_key, nil,
+                                      load_consumer_into_memory,
+                                      credential.consumer.id)
   if err then
     kong.log.err(err)
     return kong.response.exit(500, { message = "An unexpected error occurred" })
@@ -348,20 +342,10 @@ local _M = {}
 
 
 function _M.execute(conf)
-  if conf.anonymous then
-    local shared_ctx = kong.ctx.shared
-    if shared_ctx.authenticated_credential then
-      -- we're already authenticated, and we're configured for using anonymous,
-      -- hence we're in a logical OR between auth methods and we're already done.
-      return
-    end
-
-    local ngx_ctx = ngx.ctx -- TODO: for bc only
-    if ngx_ctx.authenticated_credential then
-      -- we're already authenticated, and we're configured for using anonymous,
-      -- hence we're in a logical OR between auth methods and we're already done.
-      return
-    end
+  if conf.anonymous and kong.client.get_credential() then
+    -- we're already authenticated, and we're configured for using anonymous,
+    -- hence we're in a logical OR between auth methods and we're already done.
+    return
   end
 
   local ok, err = do_authentication(conf)

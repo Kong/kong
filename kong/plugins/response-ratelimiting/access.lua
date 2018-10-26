@@ -5,17 +5,9 @@ local pairs = pairs
 local tostring = tostring
 
 
+local EMPTY = {}
 local HTTP_INTERNAL_SERVER_ERROR = 500
 local HTTP_TOO_MANY_REQUESTS = 429
-
-
-local function get_ctx(k)
-  local v = kong.ctx.shared[k] -- forward compatibility
-  if v ~= nil then
-    return v
-  end
-  return ngx.ctx[k] -- backward compatibility
-end
 
 
 local _M = {}
@@ -23,27 +15,19 @@ local _M = {}
 local RATELIMIT_REMAINING = "X-RateLimit-Remaining"
 
 local function get_identifier(conf)
-  if conf.limit_by == "ip" then
-    return kong.client.get_forwarded_ip()
-  end
+  local identifier
 
-  -- Consumer is identified by ip address or authenticated_credential id
   if conf.limit_by == "consumer" then
-    local authenticated_consumer = get_ctx("authenticated_consumer")
-    local identifier = authenticated_consumer and authenticated_consumer.id
-    if identifier then
-      return identifier
-    end
+    identifier = (kong.client.get_consumer() or
+                  kong.client.get_credential() or
+                  EMPTY).id
+
+  elseif conf.limit_by == "credential" then
+    identifier = (kong.client.get_credential() or
+                  EMPTY).id
   end
 
-  -- Fallback on credential
-  local authenticated_credential = get_ctx("authenticated_credential")
-  local identifier = authenticated_credential and authenticated_credential.id
-  if identifier then
-    return identifier
-  end
-
-  return kong.client.get_forwarded_ip()
+  return identifier or kong.client.get_forwarded_ip()
 end
 
 local function get_usage(conf, identifier, current_timestamp, limits)
@@ -98,9 +82,9 @@ function _M.execute(conf)
   end
 
   -- Append usage headers to the upstream request. Also checks "block_on_first_violation".
-  for k, v in pairs(conf.limits) do
+  for k in pairs(conf.limits) do
     local remaining
-    for lk, lv in pairs(usage[k]) do
+    for _, lv in pairs(usage[k]) do
       if conf.block_on_first_violation and lv.remaining == 0 then
         return kong.response.exit(HTTP_TOO_MANY_REQUESTS, {
           message = "API rate limit exceeded for '" .. k .. "'"

@@ -169,7 +169,10 @@ local function new(self)
 
 
   ---
-  -- Sets the authenticated consumer (and credential) for the current request.
+  -- Sets the authenticated consumer and/or credential for the current request.
+  -- While both `consumer` and `credential` can be `nil`, it is required
+  -- that at least one of them exists. Otherwise this function will throw an
+  -- error.
   -- @function kong.client.authenticate
   -- @phases access
   -- @tparam table|nil consumer The consumer to set. Note: if no

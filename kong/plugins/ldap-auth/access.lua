@@ -44,7 +44,7 @@ end
 
 local function ldap_authenticate(given_username, given_password, conf)
   local is_authenticated
-  local err, suppressed_err, ok
+  local err, suppressed_err, ok, _
 
   local sock = tcp()
 
@@ -63,7 +63,7 @@ local function ldap_authenticate(given_username, given_password, conf)
       return false, err
     end
 
-    local _, err = sock:sslhandshake(true, conf.ldap_host, conf.verify_ldap_host)
+    _, err = sock:sslhandshake(true, conf.ldap_host, conf.verify_ldap_host)
     if err ~= nil then
       return false, fmt("failed to do SSL handshake with %s:%s: %s",
                         conf.ldap_host, tostring(conf.ldap_port), err)
@@ -149,8 +149,7 @@ end
 
 
 local function set_consumer(consumer, credential)
-  local shared_ctx = kong.ctx.shared
-  local ngx_ctx = ngx.ctx -- TODO: for bc only
+  kong.client.authenticate(consumer, credential)
 
   if consumer then
     -- this can only be the Anonymous user in this case
@@ -159,23 +158,15 @@ local function set_consumer(consumer, credential)
     kong.service.request.set_header(constants.HEADERS.CONSUMER_USERNAME, consumer.username)
     kong.service.request.set_header(constants.HEADERS.ANONYMOUS, true)
 
-    shared_ctx.authenticated_consumer = consumer
-    ngx_ctx.authenticated_consumer = consumer -- TODO: for bc only
-
     return
   end
 
   if credential then
     -- here we have been authenticated by ldap
     kong.service.request.set_header(constants.HEADERS.CREDENTIAL_USERNAME, credential.username)
-
-    ngx_ctx.authenticated_credential = credential
   end
 
   -- in case of auth plugins concatenation, remove remnants of anonymous
-  shared_ctx.authenticated_consumer = nil
-  ngx_ctx.authenticated_consumer = nil -- TODO: for bc only
-
   kong.service.request.clear_header(constants.HEADERS.ANONYMOUS)
   kong.service.request.clear_header(constants.HEADERS.CONSUMER_ID)
   kong.service.request.clear_header(constants.HEADERS.CONSUMER_CUSTOM_ID)
@@ -224,20 +215,10 @@ end
 
 
 function _M.execute(conf)
-  if conf.anonymous then
-    local shared_ctx = kong.ctx.shared
-    if shared_ctx.authenticated_credential then
-      -- we're already authenticated, and we're configured for using anonymous,
-      -- hence we're in a logical OR between auth methods and we're already done.
-      return
-    end
-
-    local ngx_ctx = ngx.ctx -- TODO: for bc only
-    if ngx_ctx.authenticated_credential then
-      -- we're already authenticated, and we're configured for using anonymous,
-      -- hence we're in a logical OR between auth methods and we're already done.
-      return
-    end
+  if conf.anonymous and kong.client.get_credential() then
+    -- we're already authenticated, and we're configured for using anonymous,
+    -- hence we're in a logical OR between auth methods and we're already done.
+    return
   end
 
   local ok, err = do_authentication(conf)

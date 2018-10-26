@@ -133,22 +133,8 @@ end
 -- @return consumer_id (string), or alternatively `nil` if no consumer was
 -- authenticated.
 local function get_current_consumer_id()
-  local ctx = kong.ctx.shared
-  if ctx.authenticated_consumer and ctx.authenticated_consumer.id then
-    return ctx.authenticated_consumer.id
-  elseif ctx.authenticated_credential and ctx.authenticated_credential.consumer_id then
-    return ctx.authenticated_credential.consumer_id
-  end
-
-  -- TODO: only for backward compability (may be removed later)
-  ctx = ngx.ctx
-  if ctx.authenticated_consumer and ctx.authenticated_consumer.id then
-    return ctx.authenticated_consumer.id
-  elseif ctx.authenticated_credential and ctx.authenticated_credential.consumer_id then
-    return ctx.authenticated_credential.consumer_id
-  end
-
-  return nil
+  return (kong.client.get_consumer() or EMPTY).id or
+         (kong.client.get_credential() or EMPTY).consumer_id
 end
 
 
