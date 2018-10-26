@@ -221,12 +221,12 @@ logical units of work. You are free to propose a patch with one or many
 commits, as long as their atomicity is respected. This means that no unrelated
 changes should be included in a commit.
 
-For example: you are writing a patch to fix a bug, but in your endeavour, you
+For example: you are writing a patch to fix a bug, but in your endeavor, you
 spot another bug. **Do not fix both bugs in the same commit!**. Finish your
 work on the initial bug, propose your patch, and come back to the second bug
 later on. This is also valid for unrelated style fixes, refactorings, etc...
 
-You should use your best judgement when facing such decisions. A good approach
+You should use your best judgment when facing such decisions. A good approach
 for this is to put yourself in the shoes of the person who will review your
 patch: will they understand your changes and reasoning just by reading your
 commit history? Will they find unrelated changes in a particular commit? They
@@ -492,7 +492,7 @@ practices:
   end
   ```
 
-And finally, most importantly: use your best judgement to design an
+And finally, most importantly: use your best judgment to design an
 efficient algorithm. Doing so will always be more performant than a
 poorly-designed algorithm, even following all the performance tricks of the
 language you are using. :smile:
@@ -504,7 +504,7 @@ language you are using. :smile:
 
 If your Pull Request to [Kong/kong](https://github.com/Kong/kong) was accepted,
 congratulations, you are eligible to receive the very special Contributor
-T-shirt! Go ahead and fill-out the [Contributors Submissions
+T-shirt! Go ahead and fill out the [Contributors Submissions
 form](https://goo.gl/forms/5w6mxLaE4tz2YM0L2).
 
 Proudly wear your T-shirt and show it to us by tagging
@@ -527,7 +527,7 @@ contributors should find themselves at ease when contributing to Kong.
 - Indentation should consist of 2 spaces
 
 When you are unsure about the style to adopt, please browse other parts of the
-code base to find a similar case, and stay consistent with it.
+codebase to find a similar case, and stay consistent with it.
 
 You might also notice places in the code base where the described style is not
 respected. This is due to legacy code. **Contributions to update the code to
