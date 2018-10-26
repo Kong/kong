@@ -43,7 +43,7 @@
                                           # `prefix` location.
 
 #proxy_error_log = logs/error.log         # Path for proxy port request error
-                                          # logs. Granularity of these logs is
+                                          # logs. The granularity of these logs is
                                           # adjusted by the `log_level`
                                           # directive.
 
@@ -55,7 +55,7 @@
                                           # `prefix` location.
 
 #admin_error_log = logs/error.log         # Path for Admin API request error
-                                          # logs. Granularity of these logs is
+                                          # logs. The granularity of these logs is
                                           # adjusted by the `log_level`
                                           # directive.
 
@@ -100,7 +100,7 @@
 #proxy_listen = 0.0.0.0:8000, 0.0.0.0:8443 ssl
                          # Comma-separated list of addresses and ports on
                          # which the proxy server should listen.
-                         # The proxy server is the public entrypoint of Kong,
+                         # The proxy server is the public entry point of Kong,
                          # which proxies traffic from your consumers to your
                          # backend services. This value accepts IPv4, IPv6, and
                          # hostnames.
@@ -156,7 +156,7 @@
 #nginx_worker_processes = auto   # Determines the number of worker processes
                                  # spawned by Nginx.
 
-#nginx_daemon = on               # Determines wether Nginx will run as a daemon
+#nginx_daemon = on               # Determines whether Nginx will run as a daemon
                                  # or as a foreground process. Mainly useful
                                  # for development or when running Kong inside
                                  # a Docker environment.
@@ -316,7 +316,7 @@
 # DATASTORE
 #------------------------------------------------------------------------------
 
-# Kong will store all of its data (such as APIs, consumers and plugins) in
+# Kong will store all of its data (such as APIs, consumers, and plugins) in
 # either Cassandra or PostgreSQL.
 #
 # All Kong nodes belonging to the same cluster must connect themselves to the
@@ -508,7 +508,7 @@
 #dns_no_sync = off               # If enabled, then upon a cache-miss every
                                  # request will trigger its own dns query.
                                  # When disabled multiple requests for the
-                                 # same name/type will be synchronised to a
+                                 # same name/type will be synchronized to a
                                  # single query.
 
 #------------------------------------------------------------------------------
@@ -518,7 +518,7 @@
 # Additional settings inherited from lua-nginx-module allowing for more
 # flexibility and advanced usage.
 #
-# See the lua-nginx-module documentation for more informations:
+# See the lua-nginx-module documentation for more information:
 # https://github.com/openresty/lua-nginx-module
 
 #lua_ssl_trusted_certificate =   # Absolute path to the certificate
