@@ -38,6 +38,11 @@ return {
     end,
 
     PATCH = function(self, dao_factory, helpers)
+      -- disallow changing workspace name
+      if self.params.name and self.params.name ~= self.workspace.name then
+        return helpers.responses.send_HTTP_BAD_REQUEST("Cannot rename a workspace")
+      end
+
       crud.patch(self.params, dao_factory.workspaces, self.workspace, function(workspace)
         local workspace, err = crud.portal_crud.check_initialized(workspace, dao_factory)
         if not workspace then

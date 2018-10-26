@@ -169,6 +169,23 @@ describe("(#" .. kong_config.database .. ") Admin API workspaces", function()
 
   describe("/workspaces/:workspace", function()
     describe("PATCH", function()
+      it("refuses to update the workspace name", function()
+        local res = assert(client:send {
+          method = "PATCH",
+          path = "/workspaces/foo",
+          body = {
+            name = "new_foo",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+        })
+
+        local body = assert.res_status(400, res)
+        local json = cjson.decode(body)
+
+        assert.equals("Cannot rename a workspace", json.message)
+      end)
       it("updates an existing entity", function()
         local res = assert(client:send {
           method = "PATCH",
