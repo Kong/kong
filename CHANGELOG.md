@@ -40,7 +40,7 @@
 ##### Core
 
 - Prevent some plugins from breaking in subtle ways when manipulating some
-  entities and their attributes. An example of such breaking behavior could be
+  entities and their attributes. An example of such breaking behaviour could be
   observed when Kong was wrongly injecting `X-Consumer-Username: userdata:
   NULL` in upstream requests headers, instead of not injecting this header at
   all.
@@ -77,8 +77,8 @@
   Thanks [@aloisbarreras](https://github.com/aloisbarreras) for the patch.
   [#3650](https://github.com/Kong/kong/pull/3650)
 - hmac-auth: Ensure backward compatibility for clients generating signatures
-  without the request's querystring, as is the case for Kong versions prior to
-  0.14.0, which broke this behavior. Users of this plugin on previous versions
+  without the request's query string, as is the case for Kong versions prior to
+  0.14.0, which broke this behaviour. Users of this plugin on previous versions
   of Kong can now safely upgrade to the 0.14 family.
   Thanks [@mlehner616](https://github.com/mlehner616) for the patch!
   [#3699](https://github.com/Kong/kong/pull/3699)
@@ -176,7 +176,7 @@ upgrade your Kong cluster.
 
 ##### Core
 
-- :fireworks: Serve stale data from the database cache when the datastore
+- :fireworks: Serve stale data from the database cache when the data store
   cannot be reached. Such stale items are "resurrected" for `db_resurrect_ttl`
   seconds (see configuration section).
   [#3579](https://github.com/Kong/kong/pull/3579)
@@ -301,11 +301,11 @@ upgrade your Kong cluster.
 - Properly report timeouts in passive health checks. Previously, connection
   timeouts were counted as `tcp_failures`, and upstream timeouts were ignored.
   Health check users should ensure that their `timeout` settings reflect their
-  intended behavior.
+  intended behaviour.
   [#3539](https://github.com/Kong/kong/pull/3539)
 - Ensure active health check probe requests send the `Host` header.
   [#3496](https://github.com/Kong/kong/pull/3496)
-- Overall, more reliable health checks healthiness counters behavior.
+- Overall, more reliable health checks healthiness counters behaviour.
   [#3496](https://github.com/Kong/kong/pull/3496)
 - Do not set `Content-Type` headers on HTTP 204 No Content responses.
   [#3351](https://github.com/Kong/kong/pull/3351)
@@ -399,7 +399,7 @@ core and plugins.
 
 ##### Admin API
 
-- Friendlier behavior of Routes schema validation: PATCH requests can be made
+- Friendlier behaviour of Routes schema validation: PATCH requests can be made
   without specifying all three of `methods`, `hosts`, or `paths` if at least
   one of the three is specified in the body.
   [#3364](https://github.com/Kong/kong/pull/3364)
@@ -453,7 +453,7 @@ core and plugins.
 - Properly URL-decode path segments of plugins endpoints accepting spaces
   (e.g. `/consumers/<consumer>/basic-auth/John%20Doe/`).
   [#3250](https://github.com/Kong/kong/pull/3250)
-- Properly serialize boolean filtering values when using Cassandra.
+- Properly serialize Boolean filtering values when using Cassandra.
   [#3362](https://github.com/Kong/kong/pull/3362)
 
 ##### Plugins
@@ -678,7 +678,7 @@ upgrade your Kong cluster.
   [#3187](https://github.com/Kong/kong/pull/3187)
 - Fix incomplete handling of errors when initializing DAO objects.
   [637532e](https://github.com/Kong/kong/commit/637532e05d8ed9a921b5de861cc7f463e96c6e04)
-- Remove bogus errors in the logs provoked by healthcheckers between the time
+- Remove bogus errors in the logs provoked by health checkers between the time
   they are unregistered and the time they are garbage-collected
   ([#3207](https://github.com/Kong/kong/pull/3207)) and when receiving an HTTP
   status not tracked by healthy or unhealthy lists
@@ -832,7 +832,7 @@ but will be dropped in subsequent ones.
   Kong! (e.g. HTTP 401 responses from auth plugins or HTTP 429 responses from
   rate limiting plugins, etc.) Kong now executes any subsequent plugins once a
   request has been short-circuited. Your plugin must be using the
-  `kong.tools.responses` module for this behavior to be respected.
+  `kong.tools.responses` module for this behaviour to be respected.
   [#3079](https://github.com/Kong/kong/pull/3079)
 - Kong is now compatible with OpenResty up to version 1.13.6.1. Be aware that
   the recommended (and default) version shipped with this release is still
@@ -863,7 +863,7 @@ but will be dropped in subsequent ones.
   transmissions of logging data.
   [#3091](https://github.com/Kong/kong/pull/3091)
 - jwt: Support for JWTs passed in cookies. Use the new `config.cookie_names`
-  property to configure the behavior to your liking.
+  property to configure the behaviour to your liking.
   Thanks [@mvanholsteijn](https://github.com/mvanholsteijn) for the patch!
   [#2974](https://github.com/Kong/kong/pull/2974)
 - oauth2
@@ -909,7 +909,7 @@ but will be dropped in subsequent ones.
 ##### Plugins
 
 - basic-auth:
-    - Accept passwords containing `:`.
+    - Accept passwords containing`:`.
       Thanks [@nico-acidtango](https://github.com/nico-acidtango) for the patch!
       [#3014](https://github.com/Kong/kong/pull/3014)
     - Performance improvements, courtesy of
@@ -1148,12 +1148,12 @@ The highlights of this release are:
 - A better integration with orchestration tools thanks to the support for **non
   FQDNs** in Kong's DNS resolver.
 
-As per usual, our major releases include datastore migrations which are
+As per usual, our major releases include data store migrations which are
 considered **breaking changes**. Additionally, this release contains numerous
-breaking changes to the deployment process and proxying behavior that you
+breaking changes to the deployment process and proxying behaviour that you
 should be familiar with.
 
-We strongly advise that you read this changeset thoroughly, as well as the
+We strongly advise that you read this change set thoroughly, as well as the
 [0.11 Upgrade Path](https://github.com/Kong/kong/blob/master/UPGRADE.md#upgrade-to-011x)
 if you are planning to upgrade a Kong cluster.
 
@@ -2013,7 +2013,7 @@ perform significantly better than any previous version.
 
 ### Changed
 
-- Dropping support for OpenResty 1.9.15.1 in favor of 1.11.2.1
+- Dropping support for OpenResty 1.9.15.1 in favour of 1.11.2.1
   [#1797](https://github.com/Kong/kong/pull/1797)
 
 ### Fixed
@@ -2195,7 +2195,7 @@ The main focus of this release is Kong's new CLI. With a simpler configuration f
 
 ## [0.8.3] - 2016/06/01
 
-This release includes some bugfixes:
+This release includes some bug fixes:
 
 ### Changed
 
@@ -2215,7 +2215,7 @@ This release includes some bugfixes:
 
 ## [0.8.2] - 2016/05/25
 
-This release includes bugfixes and minor updates:
+This release includes bug fixes and minor updates:
 
 ### Added
 
@@ -2445,7 +2445,7 @@ Other additions include:
 > - Event bus for local and cluster-wide events propagation. Plans for this event bus is to be widely used among Kong in the future.
 > - The Kong Public Lua API (Lua helpers integrated in Kong such as DAO and Admin API helpers) is now documented with [ldoc](http://stevedonovan.github.io/ldoc/) format and published on [the online documentation](https://getkong.org/docs/latest/lua-reference/).
 > - Work has been done to restore the reliability of the CI platforms.
-> - Migrations can now execute DML queries (instead of DDL queries only). Handy for migrations implying plugin configuration changes, plugins renamings etc... [#770](https://github.com/Kong/kong/pull/770)
+> - Migrations can now execute DML queries (instead of DDL queries only). Handy for migrations implying plugin configuration changes, plugins renaming's etc... [#770](https://github.com/Kong/kong/pull/770)
 
 [Back to TOC](#table-of-contents)
 
@@ -2488,7 +2488,7 @@ A few fixes requested by the community!
 
 ## [0.5.1] - 2015/10/13
 
-Fixing a few glitches we let out with 0.5.0!
+Fixing a few glitches, we let out with 0.5.0!
 
 ### Added
 
@@ -2566,7 +2566,7 @@ The old routes are still maintained but will be removed in upcoming versions. Co
 #### Fixed
 
 - Resolver
-  - Making a request with a querystring will now correctly match an API's path. [#496](https://github.com/Kong/kong/pull/496)
+  - Making a request with a query string will now correctly match an API's path. [#496](https://github.com/Kong/kong/pull/496)
 - Admin API
   - Data associated to a given API/Consumer will correctly be deleted if related Consumer/API is deleted. [#107](https://github.com/Kong/kong/issues/107) [#438](https://github.com/Kong/kong/issues/438) [#504](https://github.com/Kong/kong/issues/504)
   - The `/api/{api_name_or_id}/plugins/{plugin_name_or_id}` changed to `/api/{api_name_or_id}/plugins/{plugin_id}` to avoid requesting the wrong plugin if two are configured for one API. [#482](https://github.com/Kong/kong/pull/482)
@@ -2628,7 +2628,7 @@ The old routes are still maintained but will be removed in upcoming versions. Co
   - **New OAuth 2.0 plugin.** [#341](https://github.com/Kong/kong/pull/341) [#169](https://github.com/Kong/kong/pull/169)
   - **New Mashape Analytics plugin.** [#360](https://github.com/Kong/kong/pull/360) [#272](https://github.com/Kong/kong/pull/272)
   - **New IP whitelisting/blacklisting plugin.** [#379](https://github.com/Kong/kong/pull/379)
-  - Ratelimiting: support for multiple limits. [#382](https://github.com/Kong/kong/pull/382) [#205](https://github.com/Kong/kong/pull/205)
+  - Rate limiting: support for multiple limits. [#382](https://github.com/Kong/kong/pull/382) [#205](https://github.com/Kong/kong/pull/205)
   - HTTP logging: support for HTTPS endpoint. [#342](https://github.com/Kong/kong/issues/342)
   - Logging plugins: new properties for logs timing. [#351](https://github.com/Kong/kong/issues/351)
   - Key authentication: now auto-generates a key if none is specified. [#48](https://github.com/Kong/kong/pull/48)
@@ -2665,7 +2665,7 @@ The old routes are still maintained but will be removed in upcoming versions. Co
 
 #### Fixed
 
-- Uppercase Cassandra keyspace bug that prevented Kong to work with [kongdb.org](http://kongdb.org/)
+- Uppercase Cassandra key space bug that prevented Kong to work with [kongdb.org](http://kongdb.org/)
 - Multipart requests not properly parsed in the admin API. [#344](https://github.com/Kong/kong/issues/344)
 
 [Back to TOC](#table-of-contents)
@@ -2702,8 +2702,8 @@ The old routes are still maintained but will be removed in upcoming versions. Co
 
 #### Fixed
 
-- Uppercase Cassandra keyspace causing migration failure. [#249](https://github.com/Kong/kong/issues/249)
-- Guarantee that ratelimiting won't allow requests in case the atomicity of the counter update is not guaranteed. [#289](https://github.com/Kong/kong/issues/289)
+- Uppercase Cassandra key space causing migration failure. [#249](https://github.com/Kong/kong/issues/249)
+- Guarantee that rate limiting won't allow requests in case the atomicity of the counter update is not guaranteed. [#289](https://github.com/Kong/kong/issues/289)
 
 > **internal**
 > - Schemas:
@@ -2715,7 +2715,7 @@ The old routes are still maintained but will be removed in upcoming versions. Co
 > - Travis now lints `kong/`.
 > - Way faster Travis setup.
 > - Added a new HTTP client for in-nginx usage, using the cosocket API.
-> - Various refactorings.
+> - Various refactoring's.
 > - Fix [#196](https://github.com/Kong/kong/issues/196).
 > - Disabled ipv6 in resolver.
 
@@ -2745,7 +2745,7 @@ Queries effectuated during the downtime will still be lost. [#11](https://github
 
 #### Fixed
 - Resolver
-  - More explicit "API not found" message from the resolver if the Host was not found in the system. "Api not foun with Host: %s".
+  - More explicit "API not found" message from the resolver if the Host was not found in the system. "API not found with Host: %s".
   - If multiple hosts headers are being sent, Kong will test them all to see if one of the API is in the system. [#186](https://github.com/Kong/kong/pull/186)
 - Admin API: responses now have a new line after the body. [#164](https://github.com/Kong/kong/issues/164)
 - DAO: keepalive property is now properly passed when Kong calls `set_keepalive` on Cassandra sockets.
@@ -2793,7 +2793,7 @@ First public release of Kong. This version brings a lot of internal improvements
 
 #### Fixed
 
-- Wrong behavior of auto-migration in `kong start`.
+- Wrong behaviour of auto-migration in `kong start`.
 
 [Back to TOC](#table-of-contents)
 
