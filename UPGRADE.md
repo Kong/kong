@@ -281,7 +281,7 @@ a new database, if you can migrate your data. If you wish to temporarily make
 your APIs unavailable, you can leverage the
 [request-termination](https://getkong.org/plugins/request-termination/) plugin.
 
-The path to upgrade a 0.13 datastore is identical to the one of previous major
+The path to upgrading a 0.13 datastore is identical to one of the previous major
 releases:
 
 1. If you are planning on upgrading Kong while 0.13 nodes are running against
@@ -454,7 +454,7 @@ a new database, if you can migrate your data. If you wish to temporarily make
 your APIs unavailable, you can leverage the
 [request-termination](https://getkong.org/plugins/request-termination/) plugin.
 
-The path to upgrade a 0.12 datastore is identical to the one of previous major
+The path to upgrading a 0.12 datastore is identical to one of the previous major
 releases:
 
 1. If you are planning on upgrading Kong while 0.12 nodes are running against
@@ -593,7 +593,7 @@ a new database, if you can migrate your data. If you wish to temporarily make
 your APIs unavailable, you can leverage the
 [request-termination](https://getkong.org/plugins/request-termination/) plugin.
 
-The path to upgrade a 0.11 datastore is identical to the one of previous major
+The path to upgrading a 0.11 datastore is identical to one of the previous major
 releases:
 
 1. If you are planning on upgrading Kong while 0.11 nodes are running against
@@ -1080,7 +1080,7 @@ a new database, if you can migrate your data. If you wish to temporarily make
 your APIs unavailable, you can leverage the new
 [request-termination](https://getkong.org/plugins/request-termination/) plugin.
 
-The path to upgrade a 0.10 datastore is identical to the one of previous major
+The path to upgrading a 0.10 datastore is identical to one of the previous major
 releases:
 
 1. If you are planning on upgrading Kong while 0.10 nodes are running against
