@@ -449,7 +449,7 @@ You can now start migrating your cluster from `0.12.x` to `0.13`. If you are
 doing this upgrade "in-place", against the datastore of a running 0.12 cluster,
 then for a short period of time, your database schema won't be fully compatible
 with your 0.12 nodes anymore. This is why we suggest either performing this
-upgrade when your 0.12 cluster is warm and most entities are cached or against
+upgrade when your 0.12 cluster is warm and most entities are cached, or against
 a new database if you can migrate your data. If you wish to temporarily make
 your APIs unavailable, you can leverage the
 [request-termination](https://getkong.org/plugins/request-termination/) plugin.
@@ -1007,7 +1007,7 @@ end
 ```
 
 Now, cache invalidation will be an automatic process: every CRUD operation that
-affects this API key will be made Kong auto-generate the affected `cache_key`,
+affects this API key will make Kong auto-generate the affected `cache_key`,
 and send broadcast it to all of the other nodes on the cluster so they can
 evict that particular value from their cache, and fetch the fresh value from
 the datastore on the next request.

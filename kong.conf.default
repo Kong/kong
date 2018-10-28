@@ -43,8 +43,8 @@
                                           # `prefix` location.
 
 #proxy_error_log = logs/error.log         # Path for proxy port request error
-                                          # logs. The granularity of these logs is
-                                          # adjusted by the `log_level`
+                                          # logs. The granularity of these logs
+                                          # is adjusted by the `log_level`
                                           # directive.
 
 #admin_access_log = logs/admin_access.log # Path for Admin API request access
@@ -55,8 +55,8 @@
                                           # `prefix` location.
 
 #admin_error_log = logs/error.log         # Path for Admin API request error
-                                          # logs. The granularity of these logs is
-                                          # adjusted by the `log_level`
+                                          # logs. The granularity of these logs 
+                                          # is adjusted by the `log_level`
                                           # directive.
 
 #plugins = bundled               # Comma-separated list of plugins this node
