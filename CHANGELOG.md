@@ -133,7 +133,7 @@ upgrade your Kong cluster.
 
 - :warning: The `server_tokens` and `latency_tokens` configuration properties
   have been removed. Instead, a new `headers` configuration properties replaces
-  them and allows for a more granular setting of injected headers (e.g.
+  them and allows for more granular settings of injected headers (e.g.
   `Server`, `Via`, `X-Kong-*-Latency`, etc...).
   [#3300](https://github.com/Kong/kong/pull/3300)
 - :warning: New required `lua_shared_dict` entries must be added to the Nginx
