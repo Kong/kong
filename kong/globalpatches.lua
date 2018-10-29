@@ -27,31 +27,6 @@ return function(options)
 
 
 
-  do -- deal with ffi re-loading issues
-
-    if options.rbusted then
-      -- pre-load the ffi module, such that it becomes part of the environment
-      -- and Busted will not try to GC and reload it. The ffi is not suited
-      -- for that and will occasionally segfault if done so.
-      local ffi = require "ffi"
-
-      -- Now patch ffi.cdef to only be called once with each definition
-      local old_cdef = ffi.cdef
-      local exists = {}
-      ffi.cdef = function(def)
-        if exists[def] then
-          return
-        end
-        exists[def] = true
-        return old_cdef(def)
-      end
-
-    end
-
-  end
-
-
-
   do -- implement `sleep` in the `init_worker` context
 
     -- initialization code regularly uses the shm and locks.
@@ -296,7 +271,7 @@ return function(options)
         return first
       end
     end
-  
+
     local function resolve_connect(f, sock, host, port, opts)
       if sub(host, 1, 5) ~= "unix:" then
         host, port = toip(host, port)
