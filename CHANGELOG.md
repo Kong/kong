@@ -124,7 +124,7 @@ upgrade your Kong cluster.
   are installing Kong from one of our distribution packages, you are not
   affected by this change.
   [#3498](https://github.com/Kong/kong/pull/3498)
-- :warning: Support for PostreSQL 9.4 (deprecated in 0.12.0) is now dropped.
+- :warning: Support for PostgreSQL 9.4 (deprecated in 0.12.0) is now dropped.
   [#3490](https://github.com/Kong/kong/pull/3490)
 - :warning: Support for Cassandra 2.1 (deprecated in 0.12.0) is now dropped.
   [#3490](https://github.com/Kong/kong/pull/3490)
@@ -133,7 +133,7 @@ upgrade your Kong cluster.
 
 - :warning: The `server_tokens` and `latency_tokens` configuration properties
   have been removed. Instead, a new `headers` configuration properties replaces
-  them and allows for a more granular settings of injected headers (e.g.
+  them and allows for a more granular setting of injected headers (e.g.
   `Server`, `Via`, `X-Kong-*-Latency`, etc...).
   [#3300](https://github.com/Kong/kong/pull/3300)
 - :warning: New required `lua_shared_dict` entries must be added to the Nginx
