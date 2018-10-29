@@ -63,24 +63,24 @@ for _, strategy in helpers.each_strategy() do
         setup(function()
           local bp = helpers.get_db_utils(strategy)
 
-            -- route specific plugin
-            local service = bp.services:insert {
-              name = "mock_upstream",
-            }
+          -- route specific plugin
+          local service = bp.services:insert {
+            name = "mock_upstream",
+          }
 
-            local route = bp.routes:insert {
-              hosts   = { "mock_upstream" },
-              service = service,
-            }
+          local route = bp.routes:insert {
+            hosts   = { "mock_upstream" },
+            service = service,
+          }
 
-            bp.plugins:insert {
-              route_id   = route.id,
-              service_id = service.id,
-              name       = "rewriter",
-              config     = {
-                value    = "route-specific plugin",
-              },
-            }
+          bp.plugins:insert {
+            route_id   = route.id,
+            service_id = service.id,
+            name       = "rewriter",
+            config     = {
+              value    = "route-specific plugin",
+            },
+          }
 
           assert(helpers.start_kong({
             database   = strategy,

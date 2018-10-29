@@ -26,6 +26,7 @@ pending("Admin API #" .. kong_config.database, function()
     db = assert(DB.new(kong_config))
     assert(db:init_connector())
     assert(dao:run_migrations())
+
     singletons.dao = dao
 
     dao:truncate_tables()
@@ -37,7 +38,7 @@ pending("Admin API #" .. kong_config.database, function()
   end)
 
   teardown(function()
-    helpers.stop_kong(nil, true)
+    helpers.stop_kong()
   end)
 
   before_each(function()
@@ -1247,12 +1248,14 @@ pending("Admin API #" .. kong_config.database, function()
     end)
   end)
 end)
+
 describe("Admin API request size", function()
   local client
   setup(function()
-    singletons.dao = helpers.dao
     helpers.dao:truncate_tables()
     helpers.db:truncate()
+
+    singletons.dao = helpers.dao
   end)
   before_each(function()
     assert(helpers.dao:run_migrations())

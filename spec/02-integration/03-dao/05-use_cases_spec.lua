@@ -1,5 +1,6 @@
 local helpers = require "spec.helpers"
 
+
 for _, strategy in helpers.each_strategy() do
   describe("use-cases with DB: #" .. strategy, function()
     local dao
@@ -8,10 +9,6 @@ for _, strategy in helpers.each_strategy() do
     setup(function()
       local _
       bp, _, dao = helpers.get_db_utils(strategy)
-    end)
-
-    teardown(function()
-      ngx.ctx.workspaces = nil
     end)
 
     it("retrieves plugins for plugins_iterator", function()

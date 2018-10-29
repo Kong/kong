@@ -20,9 +20,7 @@ describe("Plugins", function()
 
   it("contain a VERSION field", function()
     for _, plugin in ipairs(plugins) do
-      assert(plugin.handler.VERSION,
-             "Expected a `VERSION` field in `kong.plugins." ..
-             plugin.name .. ".handler.lua`")
+      assert.not_nil(plugin.handler.VERSION)
     end
   end)
 end)

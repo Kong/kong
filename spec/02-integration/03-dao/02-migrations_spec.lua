@@ -68,14 +68,13 @@ helpers.for_each_dao(function(kong_config)
         end
       end)
       it("should run the migrations with callbacks", function()
-        ngx.ctx.workspaces = {}
-
         local on_migration = spy.new(function() end)
         local on_success = spy.new(function() end)
 
         local ok, err = factory:run_migrations(on_migration, on_success)
         assert.falsy(err)
         assert.True(ok)
+
         -- also counts migrations that run after core + plugins
         assert.spy(on_migration).was_called(n_ids + 4)
         assert.spy(on_success).was_called(#flatten_migrations + 4)

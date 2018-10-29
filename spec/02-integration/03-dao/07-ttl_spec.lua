@@ -1,5 +1,4 @@
 local helpers = require "spec.helpers"
-local singletons = require "kong.singletons"
 
 for _, strategy in helpers.each_strategy() do
 
@@ -14,7 +13,6 @@ for _, strategy in helpers.each_strategy() do
 
     setup(function()
       _, _, dao = helpers.get_db_utils(strategy)
-      singletons.dao = dao
     end)
 
     before_each(function()

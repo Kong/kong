@@ -9,7 +9,7 @@ for _, strategy in helpers.each_strategy() do
 
     setup(function()
       _, db, dao = helpers.get_db_utils(strategy)
-      require("kong.singletons").dao = dao
+
       assert(helpers.start_kong({
         database = strategy,
       }))

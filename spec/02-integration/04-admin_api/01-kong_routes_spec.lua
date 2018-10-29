@@ -82,7 +82,7 @@ describe("Admin API - Kong routes", function()
         path = "/"
       })
       local body = assert.res_status(200, res)
-      assert.matches('"enabled_in_cluster":[', body, nil, true)
+      assert.matches('"enabled_in_cluster":[]', body, nil, true)
     end)
     it("obfuscates sensitive settings from the configuration", function()
       local res = assert(client:send {

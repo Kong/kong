@@ -23,7 +23,6 @@ for _, strategy in helpers.each_strategy("postgres") do
     local client
 
     setup(function()
-      ngx.ctx.workspaces = nil
       bp, db, dao = helpers.get_db_utils(strategy)
     end)
 
@@ -51,12 +50,11 @@ for _, strategy in helpers.each_strategy("postgres") do
       describe("POST", function()
         it_content_types("creates a route", function(content_type)
           return function()
-            local s = bp.services:insert()
             local res = client:post("/routes", {
               body = {
                 protocols = { "http" },
                 hosts     = { "my.route.com" },
-                service   = s,
+                service   = bp.services:insert(),
               },
               headers = { ["Content-Type"] = content_type }
             })
@@ -556,6 +554,7 @@ for _, strategy in helpers.each_strategy("postgres") do
               assert.equal("edited.com", json.host)
               assert.same(cjson.null,    json.path)
 
+
               local in_db = assert(db.services:select({ id = service.id }))
               assert.same(json, in_db)
             end
@@ -576,6 +575,7 @@ for _, strategy in helpers.each_strategy("postgres") do
               assert.equal("edited2.com", json.host)
               assert.equal(1234,          json.port)
               assert.equal("/foo",        json.path)
+
 
               local in_db = assert(db.services:select({ id = service.id }))
               assert.same(json, in_db)
@@ -806,8 +806,7 @@ for _, strategy in helpers.each_strategy("postgres") do
 
           it_content_types("perfers default values when replacing", function(content_type)
             return function()
-              local plugin
-              plugin = assert(dao.plugins:insert {
+              local plugin = assert(dao.plugins:insert {
                 name = "key-auth",
                 route_id = route.id,
                 config = {hide_credentials = true}
