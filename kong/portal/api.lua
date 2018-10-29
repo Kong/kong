@@ -2,7 +2,6 @@ local singletons    = require "kong.singletons"
 local crud          = require "kong.api.crud_helpers"
 local ws_helper     = require "kong.workspaces.helper"
 local enums         = require "kong.enterprise_edition.dao.enums"
-local portal_utils  = require "kong.portal.utils"
 local cjson         = require "cjson.safe"
 local ee_jwt        = require "kong.enterprise_edition.jwt"
 local ee_api        = require "kong.enterprise_edition.api_helpers"
@@ -49,14 +48,6 @@ local function validate_auth_plugin(self, dao_factory, helpers, plugin_name)
   end
 
   self.collection = dao_factory[self.plugin.dao]
-end
-
-
-local function validate_email(self, dao_factory, helpers)
-  local ok, err = portal_utils.validate_email(self.params.email)
-  if not ok then
-    return helpers.responses.send_HTTP_BAD_REQUEST("Invalid email: " .. err)
-  end
 end
 
 
@@ -110,42 +101,6 @@ local function handle_vitals_response(res, err, helpers)
   end
 
   return helpers.responses.send_HTTP_OK(res)
-end
-
-
-local function validate_jwt(self, dao_factory, helpers)
-  -- Verify params
-  if not self.params.token or self.params.token == "" then
-    return helpers.responses.send_HTTP_BAD_REQUEST("token is required")
-  end
-
-  -- Parse and ensure that jwt contains the correct claims/headers.
-  -- Signature NOT verified yet
-  local jwt, err = portal_utils.validate_reset_jwt(self.params.token)
-  if err then
-    return helpers.responses.send_HTTP_UNAUTHORIZED(err)
-  end
-
-  -- Look up the secret by consumer id and pending status
-  local rows = singletons.dao.portal_reset_secrets:find_all({
-    consumer_id = jwt.claims.id,
-    status = enums.TOKENS.STATUS.PENDING,
-  })
-
-  if not rows or next(rows) == nil then
-    return helpers.responses.send_HTTP_UNAUTHORIZED()
-  end
-
-  local reset_secret = rows[1]
-
-  -- Generate a new signature and compare it to passed token
-  local ok, _ = ee_jwt.verify_signature(jwt, reset_secret.secret)
-  if not ok then
-    return helpers.responses.send_HTTP_UNAUTHORIZED()
-  end
-
-  self.params.email_or_id = jwt.claims.id
-  self.reset_secret_id = reset_secret.id
 end
 
 
@@ -224,7 +179,7 @@ return {
       check_portal_status(helpers)
       local workspace = ngx.ctx.workspaces and ngx.ctx.workspaces[1] or {}
       self.auto_approve = ws_helper.retrieve_ws_config(ws_constants.PORTAL_AUTO_APPROVE, workspace)
-      validate_email(self, dao_factory, helpers)
+      ee_api.validate_email(self, dao_factory, helpers)
     end,
 
     POST = function(self, dao_factory, helpers)
@@ -328,7 +283,7 @@ return {
     before = function(self, dao_factory, helpers)
       check_portal_status(helpers)
       validate_auth_plugin(self, dao_factory, helpers)
-      validate_jwt(self, dao_factory, helpers)
+      ee_api.validate_jwt(self, dao_factory, helpers)
     end,
 
     POST = function(self, dao_factory, helpers)
@@ -340,7 +295,7 @@ return {
     before = function(self, dao_factory, helpers)
       check_portal_status(helpers)
       validate_auth_plugin(self, dao_factory, helpers)
-      validate_jwt(self, dao_factory, helpers)
+      ee_api.validate_jwt(self, dao_factory, helpers)
     end,
 
     POST = function(self, dao_factory, helpers)
@@ -383,7 +338,7 @@ return {
       end
 
       -- Mark the token secret as consumed
-      local _, err = singletons.dao.portal_reset_secrets:update({
+      local _, err = singletons.dao.consumer_reset_secrets:update({
         status = enums.TOKENS.STATUS.CONSUMED,
         updated_at = time() * 1000,
       }, {
@@ -408,7 +363,7 @@ return {
     before = function(self, dao_factory, helpers)
       check_portal_status(helpers)
       validate_auth_plugin(self, dao_factory, helpers)
-      validate_email(self, dao_factory, helpers)
+      ee_api.validate_email(self, dao_factory, helpers)
     end,
 
     POST = function(self, dao_factory, helpers)
@@ -427,7 +382,7 @@ return {
         return helpers.responses.send_HTTP_OK()
       end
 
-      local rows, err = singletons.dao.portal_reset_secrets:find_all({
+      local rows, err = singletons.dao.consumer_reset_secrets:find_all({
         consumer_id = self.consumer.id
       })
 
@@ -438,7 +393,7 @@ return {
       -- Invalidate any pending resets for this consumer
       for _, row in ipairs(rows) do
         if row.status == enums.TOKENS.STATUS.PENDING then
-          local _, err = singletons.dao.portal_reset_secrets:update({
+          local _, err = singletons.dao.consumer_reset_secrets:update({
             status = enums.TOKENS.STATUS.INVALIDATED,
             updated_at = time() * 1000,
           }, {
@@ -451,7 +406,7 @@ return {
       end
 
       -- Generate new reset
-      local row, err = singletons.dao.portal_reset_secrets:insert({
+      local row, err = singletons.dao.consumer_reset_secrets:insert({
         consumer_id = self.consumer.id,
         client_addr = ngx.var.remote_addr,
       })
@@ -571,7 +526,7 @@ return {
       check_portal_status(helpers)
       authenticate(self, dao_factory, helpers)
       find_login_credential(self, dao_factory, helpers)
-      validate_email(self, dao_factory, helpers)
+      ee_api.validate_email(self, dao_factory, helpers)
     end,
 
     PATCH = function(self, dao_factory, helpers)

@@ -638,7 +638,7 @@ for _, strategy in helpers.each_strategy('postgres') do
 
             assert.res_status(200, res)
 
-            local count = dao.portal_reset_secrets:count()
+            local count = dao.consumer_reset_secrets:count()
             assert.equals(0, count)
           end)
 
@@ -654,7 +654,7 @@ for _, strategy in helpers.each_strategy('postgres') do
 
             assert.res_status(200, res)
 
-            local rows = dao.portal_reset_secrets:find_all({
+            local rows = dao.consumer_reset_secrets:find_all({
               consumer_id = developer.id
             })
 
@@ -663,7 +663,7 @@ for _, strategy in helpers.each_strategy('postgres') do
           end)
 
           it("should invalidate the previous secret if called twice", function()
-            assert(dao.portal_reset_secrets:truncate())
+            assert(dao.consumer_reset_secrets:truncate())
 
             local res = assert(portal_api_client:send {
               method = "POST",
@@ -676,7 +676,7 @@ for _, strategy in helpers.each_strategy('postgres') do
 
             assert.res_status(200, res)
 
-            local rows = dao.portal_reset_secrets:find_all({
+            local rows = dao.consumer_reset_secrets:find_all({
               consumer_id = developer.id
             })
 
@@ -694,7 +694,7 @@ for _, strategy in helpers.each_strategy('postgres') do
 
             assert.res_status(200, res)
 
-            local rows = dao.portal_reset_secrets:find_all({
+            local rows = dao.consumer_reset_secrets:find_all({
               consumer_id = developer.id
             })
 
@@ -770,7 +770,7 @@ for _, strategy in helpers.each_strategy('postgres') do
 
           assert.res_status(200, res)
 
-          local rows = dao.portal_reset_secrets:find_all({
+          local rows = dao.consumer_reset_secrets:find_all({
             consumer_id = developer.id
           })
 
@@ -930,7 +930,7 @@ for _, strategy in helpers.each_strategy('postgres') do
 
             assert.res_status(200, res)
 
-            local rows = dao.portal_reset_secrets:find_all({
+            local rows = dao.consumer_reset_secrets:find_all({
               consumer_id = developer.id
             })
 
@@ -1014,7 +1014,7 @@ for _, strategy in helpers.each_strategy('postgres') do
 
           assert.res_status(200, res)
 
-          local rows = dao.portal_reset_secrets:find_all({
+          local rows = dao.consumer_reset_secrets:find_all({
             consumer_id = developer.id
           })
 
@@ -1199,7 +1199,7 @@ for _, strategy in helpers.each_strategy('postgres') do
 
           assert.res_status(200, res)
 
-          local rows = dao.portal_reset_secrets:find_all({
+          local rows = dao.consumer_reset_secrets:find_all({
             consumer_id = developer.id
           })
 
@@ -1359,7 +1359,7 @@ for _, strategy in helpers.each_strategy('postgres') do
 
             assert.res_status(200, res)
 
-            local rows = dao.portal_reset_secrets:find_all({
+            local rows = dao.consumer_reset_secrets:find_all({
               consumer_id = developer.id
             })
 
@@ -1441,7 +1441,7 @@ for _, strategy in helpers.each_strategy('postgres') do
 
           assert.res_status(200, res)
 
-          local rows = dao.portal_reset_secrets:find_all({
+          local rows = dao.consumer_reset_secrets:find_all({
             consumer_id = developer.id
           })
 

@@ -92,21 +92,10 @@ local base_conf = {
 }
 
 
-function _M:new()
-  local client, err = smtp_client.new({
-    host = singletons.configuration.smtp_host,
-    port = singletons.configuration.smtp_port,
-    starttls = singletons.configuration.smtp_starttls,
-    ssl = singletons.configuration.smtp_ssl,
-    username = singletons.configuration.smtp_username,
-    password = singletons.configuration.smtp_password,
-    auth_type = singletons.configuration.smtp_auth_type,
-    domain = singletons.configuration.smtp_domain,
-    timeout_connect = singletons.configuration.smtp_timeout_connect,
-    timeout_send = singletons.configuration.smtp_timeout_send,
-    timeout_read  = singletons.configuration.smtp_timeout_read,
-  }, singletons.configuration.smtp_mock)
+function _M.new()
+  local conf = singletons.configuration or {}
 
+  local client, err = smtp_client.new_smtp_client(conf)
   if err then
     log(INFO, _M.LOG_PREFIX, "unable to initialize smtp client: " .. err)
   end
@@ -128,7 +117,7 @@ function _M:invite(recipients)
     return nil, {code =  501, message = "portal_invite_email is disabled"}
   end
 
-  local portal_emails_from = ws_helper.retrieve_ws_config(ws_constants.PORTAL_EMAILS_FROM, workspace)
+  local portal_emails_from = ws_helper.retrieve_ws_config(ws_constants.PORTAL_EMAILS_FROM, workspace) or ''
   local portal_emails_reply_to = ws_helper.retrieve_ws_config(ws_constants.PORTAL_EMAILS_REPLY_TO, workspace)
   local conf = self.conf.portal_invite_email
   local options = {
@@ -140,7 +129,7 @@ function _M:invite(recipients)
   }
 
   local res
-  -- send emails indiviually
+  -- send emails individually
   for _, recipient in ipairs(recipients) do
     res = self.client:send({recipient}, options, res)
   end
@@ -157,7 +146,7 @@ function _M:access_request(developer_email, developer_name)
     return nil
   end
 
-  local portal_emails_from = ws_helper.retrieve_ws_config(ws_constants.PORTAL_EMAILS_FROM, workspace)
+  local portal_emails_from = ws_helper.retrieve_ws_config(ws_constants.PORTAL_EMAILS_FROM, workspace) or ''
   local portal_emails_reply_to = ws_helper.retrieve_ws_config(ws_constants.PORTAL_EMAILS_REPLY_TO, workspace)
   local conf = self.conf.portal_access_request_email
   local options = {
@@ -182,7 +171,7 @@ function _M:approved(recipient)
     return nil
   end
 
-  local portal_emails_from = ws_helper.retrieve_ws_config(ws_constants.PORTAL_EMAILS_FROM, workspace)
+  local portal_emails_from = ws_helper.retrieve_ws_config(ws_constants.PORTAL_EMAILS_FROM, workspace) or ''
   local portal_emails_reply_to = ws_helper.retrieve_ws_config(ws_constants.PORTAL_EMAILS_REPLY_TO, workspace)
   local conf = self.conf.portal_approved_email
   local options = {
@@ -210,7 +199,7 @@ function _M:password_reset(recipient, token)
     return nil, {code =  500, message = "portal_token_exp is required"}
   end
 
-  local portal_emails_from = ws_helper.retrieve_ws_config(ws_constants.PORTAL_EMAILS_FROM, workspace)
+  local portal_emails_from = ws_helper.retrieve_ws_config(ws_constants.PORTAL_EMAILS_FROM, workspace) or ''
   local portal_emails_reply_to = ws_helper.retrieve_ws_config(ws_constants.PORTAL_EMAILS_REPLY_TO, workspace)
   local exp_string = portal_utils.humanize_timestamp(exp_seconds)
   local conf = self.conf.portal_reset_email
@@ -234,7 +223,7 @@ function _M:password_reset_success(recipient)
     return nil, {code =  501, message = "portal_reset_success_email is disabled"}
   end
 
-  local portal_emails_from = ws_helper.retrieve_ws_config(ws_constants.PORTAL_EMAILS_FROM, workspace)
+  local portal_emails_from = ws_helper.retrieve_ws_config(ws_constants.PORTAL_EMAILS_FROM, workspace) or ''
   local portal_emails_reply_to = ws_helper.retrieve_ws_config(ws_constants.PORTAL_EMAILS_REPLY_TO, workspace)
   local conf = self.conf.portal_reset_success_email
   local options = {

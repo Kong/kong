@@ -8,7 +8,7 @@ local _M = {}
 
 _M.EE_MODELS = {
   "token_statuses",
-  "portal_reset_secrets",
+  "consumer_reset_secrets",
   "workspace_entity_counters",
 }
 

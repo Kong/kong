@@ -2,11 +2,14 @@ local helpers    = require "spec.helpers"
 local cjson      = require "cjson"
 local enums      = require "kong.enterprise_edition.dao.enums"
 local utils      = require "kong.tools.utils"
+local ee_jwt     = require "kong.enterprise_edition.jwt"
 local ee_helpers = require "spec.ee_helpers"
+
+local post = ee_helpers.post
 
 
 for _, strategy in helpers.each_strategy() do
-  describe("Admin API - Admins", function()
+  describe("Admin API - Admins #" .. strategy, function()
     local client
     local dao
     local bp
@@ -18,6 +21,9 @@ for _, strategy in helpers.each_strategy() do
 
       assert(helpers.start_kong({
         database = strategy,
+        admin_gui_url = "http://manager.konghq.com",
+        admin_gui_auth = 'basic-auth',
+        enforce_rbac = "on",
       }))
 
       another_ws = assert(dao.workspaces:insert({
@@ -25,6 +31,7 @@ for _, strategy in helpers.each_strategy() do
       }))
 
       ee_helpers.register_rbac_resources(dao)
+      ee_helpers.register_token_statuses(dao)
 
       assert(bp.consumers:insert {
         username = "admin-1",
@@ -76,7 +83,6 @@ for _, strategy in helpers.each_strategy() do
 
     describe("/admins", function()
       describe("GET", function ()
-
         it("retrieves list of admins only", function()
           local res = assert(client:send {
             method = "GET",
@@ -105,6 +111,7 @@ for _, strategy in helpers.each_strategy() do
             body  = {
               custom_id = "cooper",
               username  = "dale",
+              email = "twinpeaks@konghq.com",
             },
           })
           res = assert.res_status(200, res)
@@ -115,8 +122,9 @@ for _, strategy in helpers.each_strategy() do
 
           assert.equal("dale", json.consumer.username)
           assert.equal("cooper", json.consumer.custom_id)
+          assert.equal("twinpeaks@konghq.com", json.consumer.email)
           assert.equal(enums.CONSUMERS.TYPE.ADMIN, json.consumer.type)
-          assert.equal(enums.CONSUMERS.STATUS.APPROVED, json.consumer.status)
+          assert.equal(enums.CONSUMERS.STATUS.INVITED, json.consumer.status)
           assert.truthy(utils.is_valid_uuid(json.rbac_user.user_token))
           assert.equal("dale", json.rbac_user.name)
         end)
@@ -132,6 +140,7 @@ for _, strategy in helpers.each_strategy() do
             body  = {
               custom_id = "admin-1",
               username  = "i-am-unique",
+              email = "twinpeaks@konghq.com",
             },
           })
           assert.res_status(409, res)
@@ -268,6 +277,7 @@ for _, strategy in helpers.each_strategy() do
             },
             body  = {
               username = "gruce",
+              email = "gruce@konghq.com",
             },
           })
 
@@ -360,6 +370,7 @@ for _, strategy in helpers.each_strategy() do
               body  = {
                 custom_id = "cooper",
                 username  = "dale",
+                email = "twinpeaks@konghq.com",
               },
             })
 
@@ -439,6 +450,220 @@ for _, strategy in helpers.each_strategy() do
           end)
         end)
       end)
+    end)
+  end)
+
+  describe("Admin API - Admins Register #" .. strategy, function()
+    local client
+    local dao
+
+    describe("/admins/register basic-auth", function()
+      local headers = {
+        ["Content-Type"] = "application/json",
+        ["Kong-Admin-Token"] = "letmein",
+      }
+
+      before_each(function()
+        _, _, dao = helpers.get_db_utils(strategy)
+        assert(helpers.start_kong({
+          database = strategy,
+          admin_gui_url = "http://manager.konghq.com",
+          admin_gui_auth = 'basic-auth',
+          enforce_rbac = "on",
+        }))
+        ee_helpers.register_rbac_resources(dao)
+        ee_helpers.register_token_statuses(dao)
+        client = assert(helpers.admin_client())
+      end)
+
+      after_each(function()
+        if client then client:close() end
+        assert(helpers.stop_kong())
+      end)
+
+      describe("/admins/register", function()
+        it("denies invalid emails", function()
+          local res = assert(client:send {
+            method = "POST",
+            path = "/admins/register",
+            headers = {
+              ["Content-Type"] = "application/json",
+            },
+            body  = {
+              username  = "dale",
+              email = "not-valid.com",
+            },
+          })
+
+          local body = assert.res_status(400, res)
+          local json = cjson.decode(body)
+          assert.truthy(string.match(json.message, "Invalid email"))
+        end)
+
+        it("successfully registers an invited admin", function()
+          local admin = post(client, "/admins", {
+                                      username = "bob",
+                                      email = "hong@konghq.com",
+                                    }, headers, 200)
+
+          local reset_secret = dao.consumer_reset_secrets:find_all({
+            consumer_id = admin.consumer.id
+          })[1]
+          assert.equal(enums.TOKENS.STATUS.PENDING, reset_secret.status)
+
+          local claims = {id = admin.consumer.id, exp = ngx.time() + 100000}
+          local valid_jwt = ee_jwt.generate_JWT(claims, reset_secret.secret,
+                                                "HS256")
+
+          local res = assert(client:send {
+            method = "POST",
+            path = "/admins/register",
+            headers = {
+              ["Content-Type"] = "application/json"
+            },
+            body  = {
+              username = "bob",
+              email = "hong@konghq.com",
+              token = valid_jwt,
+              password = "clawz"
+            },
+          })
+
+          local body = assert.res_status(201, res)
+          local json = cjson.decode(body)
+          assert.equal("bob", json.consumer.username)
+          assert.equal("bob", json.credential.username)
+          assert.is.falsy("clawz" == json.credential.password)
+
+          reset_secret = dao.consumer_reset_secrets:find_all({
+            id = reset_secret.id
+          })[1]
+
+          assert.equal(enums.TOKENS.STATUS.CONSUMED, reset_secret.status)
+        end)
+      end)
+    end)
+
+    describe("/admins/register ldap-auth-advanced", function()
+      local headers = {
+        ["Content-Type"] = "application/json",
+        ["Kong-Admin-Token"] = "letmein", -- super-admin
+      }
+
+      before_each(function()
+        _, _, dao = helpers.get_db_utils(strategy)
+        assert(helpers.start_kong({
+          database = strategy,
+          admin_gui_url = "http://manager.konghq.com",
+          admin_gui_auth = 'ldap-auth-advanced',
+          enforce_rbac = "on",
+        }))
+        ee_helpers.register_rbac_resources(dao)
+        ee_helpers.register_token_statuses(dao)
+        client = assert(helpers.admin_client())
+      end)
+
+      after_each(function()
+        if client then client:close() end
+        assert(helpers.stop_kong())
+      end)
+
+      describe("/admins/register", function()
+        it("cannot register an invited admin with ldap", function()
+          local admin = post(client, "/admins", {
+                                      username = "bob",
+                                      email = "hong@konghq.com",
+                                    }, headers, 200)
+
+          local reset_secret = dao.consumer_reset_secrets:find_all({
+            consumer_id = admin.consumer.id
+          })[1]
+          assert.equal(nil, reset_secret)
+
+          local res = assert(client:send {
+            method = "POST",
+            path = "/admins/register",
+            headers = {
+              ["Content-Type"] = "application/json"
+              -- no auth headers!
+            },
+            body  = {
+              username = "bob",
+              email = "hong@konghq.com",
+              password = "clawz"
+            },
+          })
+
+          assert.res_status(400, res)
+        end)
+      end)
+    end)
+  end)
+
+  describe("Admin API - auto-approval #" .. strategy, function()
+    local client
+    local dao
+    local consumer
+
+    before_each(function()
+      _, _, dao = helpers.get_db_utils(strategy)
+      assert(helpers.start_kong({
+        database = strategy,
+        admin_gui_url = "http://manager.konghq.com",
+        admin_gui_auth = 'basic-auth',
+        enforce_rbac = "on",
+      }))
+      ee_helpers.register_rbac_resources(dao)
+      ee_helpers.register_token_statuses(dao)
+      client = assert(helpers.admin_client())
+    end)
+
+    after_each(function()
+      if client then client:close() end
+      assert(helpers.stop_kong())
+    end)
+
+    it("manages state transition for invited admins", function()
+      -- create an admin who is pending
+      local res = assert(client:send {
+        method = "POST",
+        path  = "/admins",
+        headers = {
+          ["Kong-Admin-Token"] = "letmein",
+          ["Content-Type"] = "application/json",
+        },
+        body  = {
+          custom_id = "gruce",
+          username = "gruce@konghq.com",
+          email = "gruce@konghq.com",
+        },
+      })
+      res = assert.res_status(200, res)
+      local json = cjson.decode(res)
+      consumer = json.consumer
+
+      -- he's invited
+      assert.same(enums.CONSUMERS.STATUS.INVITED, consumer.status)
+
+      -- add credentials for him
+      assert(dao.basicauth_credentials:insert {
+        username    = "gruce@konghq.com",
+        password    = "kong",
+        consumer_id = consumer.id,
+      })
+
+      -- make an API call
+      assert(client:send{
+        method = "GET",
+        path = "/",
+        headers = {
+          ["Kong-Admin-User"] = "gruce@konghq.com",
+          ["Authorization"] = "Basic " .. ngx.encode_base64("gruce@konghq.com:kong")
+        }
+      })
+
+      local updated_consumers = dao.consumers:find_all { id = consumer.id }
+      assert.same(enums.CONSUMERS.STATUS.APPROVED, updated_consumers[1].status)
     end)
   end)
 end

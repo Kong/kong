@@ -1,6 +1,8 @@
 local enums       = require "kong.enterprise_edition.dao.enums"
 local helpers     = require "spec.helpers"
 local conf_loader = require "kong.conf_loader"
+local cjson = require "cjson.safe"
+local assert = require "luassert"
 
 
 local _M = {}
@@ -222,6 +224,19 @@ function _M.register_token_statuses(dao)
       return err
     end
   end
+end
+
+
+function _M.post(client, path, body, headers, expected_status)
+  headers = headers or {}
+  headers["Content-Type"] = "application/json"
+  local res = assert(client:send{
+    method = "POST",
+    path = path,
+    body = body or {},
+    headers = headers
+  })
+  return cjson.decode(assert.res_status(expected_status or 201, res))
 end
 
 

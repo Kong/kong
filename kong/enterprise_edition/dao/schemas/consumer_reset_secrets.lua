@@ -2,7 +2,7 @@ local utils = require "kong.tools.utils"
 local enums = require "kong.enterprise_edition.dao.enums"
 
 return {
-  table = "portal_reset_secrets",
+  table = "consumer_reset_secrets",
   primary_key = { "id" },
   fields = {
     id = {

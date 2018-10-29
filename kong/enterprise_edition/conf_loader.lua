@@ -1,7 +1,7 @@
 local cjson        = require "cjson.safe"
 local pl_path      = require "pl.path"
-local portal_utils = require "kong.portal.utils"
 local pl_stringx   = require "pl.stringx"
+local enterprise_utils = require "kong.enterprise_edition.utils"
 
 
 -- @param value The options string to check for flags (whitespace separated)
@@ -93,7 +93,7 @@ end
 
 
 local function validate_email(email, key, errors)
-  local ok, err = portal_utils.validate_email(email)
+  local ok, err = enterprise_utils.validate_email(email)
   if not ok then
     errors[#errors+1] = key .. " is invalid: " .. err
   end

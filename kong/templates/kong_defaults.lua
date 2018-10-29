@@ -80,6 +80,12 @@ admin_gui_error_log = logs/admin_gui_error.log
 admin_gui_flags = {}
 admin_gui_auth =
 admin_gui_auth_conf =
+admin_invite_email = true
+admin_approved_email = true
+admin_emails_from = NONE
+admin_emails_reply_to = NONE
+admin_docs_url = https://docs.konghq.com/enterprise/0.34/admin-gui/overview/
+admin_invitation_expiry = 259200
 
 nginx_user = nobody nobody
 nginx_worker_processes = auto

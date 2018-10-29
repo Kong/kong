@@ -4,15 +4,57 @@ local utils      = require "kong.tools.utils"
 local ee_crud    = require "kong.enterprise_edition.crud_helpers"
 local rbac       = require "kong.rbac"
 local workspaces = require "kong.workspaces"
+local singletons = require "kong.singletons"
 local admins     = require "kong.enterprise_edition.admins_helpers"
+local ee_jwt     = require "kong.enterprise_edition.jwt"
+local ee_api     = require "kong.enterprise_edition.api_helpers"
+local ee_utils   = require "kong.enterprise_edition.utils"
 
 local log = ngx.log
 local ERR = ngx.ERR
 local DEBUG = ngx.DEBUG
+local time = ngx.time
 
 local _log_prefix = "[admins] "
 
 local entity_relationships = rbac.entity_relationships
+
+
+--- Allowed auth plugins
+-- Table containing allowed auth plugins that the developer portal api
+-- can create credentials for.
+--
+--["<route>"]:     {  name = "<name>",    dao = "<dao_collection>" }
+local auth_plugins = {
+  ["basic-auth"] = {
+    name = "basic-auth",
+    dao = "basicauth_credentials",
+    credential_key = "password"
+  },
+  ["key-auth"] =   {
+    name = "key-auth",
+    dao = "keyauth_credentials",
+    credential_key = "key"
+  },
+  ["ldap-auth-advanced"] = { name = "ldap-auth-advanced" },
+}
+
+
+local function validate_auth_plugin(self, dao_factory, helpers, plugin_name)
+  local gui_auth = singletons.configuration.admin_gui_auth
+  plugin_name = plugin_name or gui_auth
+  self.plugin = auth_plugins[plugin_name]
+  if not self.plugin and gui_auth then
+    return helpers.responses.send_HTTP_NOT_FOUND()
+  end
+
+  if self.plugin and self.plugin.dao then
+    self.collection = dao_factory[self.plugin.dao]
+  else
+    self.token_optional = true
+  end
+end
+
 
 local function set_rbac_user(self, dao_factory, helpers)
   -- Lookup the rbac_user<->consumer map
@@ -52,6 +94,7 @@ local function set_rbac_user(self, dao_factory, helpers)
   self.consumer.rbac_user = rbac_user
 end
 
+
 local function delete_rbac_user_roles(self, dao_factory, helpers)
   local roles, err = entity_relationships(dao_factory, self.consumer.rbac_user,
                                           "user", "role")
@@ -84,7 +127,8 @@ end
 
 return {
   ["/admins"] = {
-    before = function(self, dao_factory)
+    before = function(self, dao_factory, helpers)
+      validate_auth_plugin(self, dao_factory, helpers)
       self.params.type = enums.CONSUMERS.TYPE.ADMIN
     end,
 
@@ -102,7 +146,14 @@ return {
 
       if msg then
         log(ERR, _log_prefix, "failed to create admin: ", msg)
-        return helpers.responses.send_HTTP_CONFLICT()
+        return helpers.responses.send_HTTP_CONFLICT(
+          "user already exists with same username, email, or custom_id"
+        )
+      end
+
+      local ok, err = ee_utils.validate_email(self.params.email)
+      if not ok then
+        return helpers.responses.send_HTTP_BAD_REQUEST("Invalid email: " .. err)
       end
 
       crud.post({
@@ -110,35 +161,75 @@ return {
         custom_id = self.params.custom_id,
         type      = self.params.type,
         email     = self.params.email,
-        status    = enums.CONSUMERS.STATUS.APPROVED,
+        status    = enums.CONSUMERS.STATUS.INVITED,
       }, dao_factory.consumers, function(consumer)
         local name = consumer.username or consumer.custom_id
+        local rbac_user
 
         crud.post({
           name = name,
           user_token = utils.uuid(),
           comment = "User generated on creation of Admin.",
         }, dao_factory.rbac_users,
-        function (rbac_user)
+        function (new_rbac_user)
+          rbac_user = new_rbac_user
           crud.post({
             consumer_id = consumer.id,
-            user_id = rbac_user.id,
+            user_id = new_rbac_user.id,
           }, dao_factory.consumers_rbac_users_map,
           function()
-            return helpers.responses.send_HTTP_OK({
-              rbac_user = rbac_user,
-              consumer = consumer
-            })
-          end)
+            local jwt
+            -- only generate secrets for auth plugins with credentials tables
+            if not self.token_optional then
+              local token_ttl = singletons.configuration.admin_invitation_expiry
 
-          return helpers.responses.send_HTTP_INTERNAL_SERVER_ERROR(
-            "Error creating admin (1)")
+              -- Generate new secret
+              local row, err = singletons.dao.consumer_reset_secrets:insert({
+                consumer_id = consumer.id,
+                client_addr = ngx.var.remote_addr,
+              })
+
+              if err then
+                return helpers.yield_error(err)
+              end
+
+              local claims = {id = consumer.id, exp = time() + token_ttl}
+              jwt, err = ee_jwt.generate_JWT(claims, row.secret)
+
+              if err then
+                return helpers.yield_error(err)
+              end
+            end
+
+            if singletons.admin_emails then
+              local _, err = singletons.admin_emails:invite({ consumer.email },
+                                                            jwt)
+                if err then
+                  ngx.log(ngx.ERR, "[admins] error inviting user : ",
+                          consumer.email)
+                  return helpers.responses.send_HTTP_OK({
+                    message = "User created, but error sending invitation email"
+                              .. ":" .. consumer.email,
+                    rbac_user = rbac_user,
+                    consumer = consumer
+                  })
+                end
+            else
+              ngx.log(ngx.ERR, "[admins] error. There's no configuration "
+                      .. "for email : ", consumer.email)
+            end
+              return helpers.responses.send_HTTP_OK({
+                rbac_user = rbac_user,
+                consumer = consumer
+              })
+            end)
+            return helpers.responses.send_HTTP_INTERNAL_SERVER_ERROR(
+              "Error creating admin (1)")
         end)
-
-        return helpers.responses.send_HTTP_CREATED({ consumer = consumer })
       end)
 
-      return helpers.responses.send_HTTP_INTERNAL_SERVER_ERROR("Error creating admin (2)")
+      return helpers.responses.send_HTTP_INTERNAL_SERVER_ERROR("Error "..
+                                                           "creating admin (2)")
     end,
   },
 
@@ -178,7 +269,8 @@ return {
       set_rbac_user(self, dao_factory, helpers)
 
       delete_rbac_user_roles(self, dao_factory, helpers)
-      ee_crud.delete_without_sending_response(self.consumer.rbac_user, dao_factory.rbac_users)
+      ee_crud.delete_without_sending_response(self.consumer.rbac_user,
+                                              dao_factory.rbac_users)
       crud.delete(self.consumer, dao_factory.consumers)
     end
   },
@@ -247,5 +339,114 @@ return {
       ngx.ctx.workspaces = old_ws
       helpers.responses.send_HTTP_OK(wrkspaces)
     end
+  },
+
+  ["/admins/register"] = {
+    before = function(self, dao_factory, helpers)
+      validate_auth_plugin(self, dao_factory, helpers)
+      if self.token_optional then
+        return helpers.responses.send_HTTP_BAD_REQUEST("cannot register " ..
+                                                       "with admin_gui_auth = "
+                                                       .. self.plugin.name)
+      end
+      ee_api.validate_email(self, dao_factory, helpers)
+      ee_api.validate_jwt(self, dao_factory, helpers)
+    end,
+
+    POST = function(self, dao_factory, helpers)
+      if not self.consumer_id then
+        log(ERR, _log_prefix, "consumer not found for registration")
+        return helpers.responses.send_HTTP_UNAUTHORIZED()
+      end
+
+      local rows, err = dao_factory.consumers:run_with_ws_scope({},
+                                    dao_factory.consumers.find_all,
+                                    {
+                                      id = self.consumer_id,
+                                    })
+      if err then
+        helpers.yield_error(err)
+      end
+
+      if not next(rows) then
+        return helpers.responses.send_HTTP_UNAUTHORIZED()
+      end
+
+      local consumer = rows[1]
+      local credential_data
+
+      if consumer.email ~= self.params.email then
+        return helpers.responses.send_HTTP_UNAUTHORIZED()
+      end
+
+      -- create credential object based on admin_gui_auth
+      if self.plugin.name == "basic-auth" then
+        credential_data = {
+          consumer_id = consumer.id,
+          username = consumer.username,
+          password = self.params.password,
+        }
+      end
+
+      if self.plugin.name == "key-auth" then
+        credential_data = {
+          consumer_id = consumer.id,
+          key = self.params.password,
+        }
+      end
+
+      if credential_data == nil then
+        return helpers.responses.send_HTTP_BAD_REQUEST(
+          "Cannot create credential with admin_gui_auth = " ..
+          self.plugin.name)
+      end
+
+      -- Find the workspace the consumer is in
+      local refs, err = dao_factory.workspace_entities:find_all{
+        entity_type = "consumers",
+        entity_id = consumer.id,
+        unique_field_name = "id",
+      }
+
+      if err then
+        helpers.yield_error(err)
+      end
+
+      -- Set the current workspace so the credential is created there
+      local workspace = {
+        id = refs[1].workspace_id,
+        name = refs[1].workspace_name,
+      }
+      ngx.ctx.workspaces = { workspace }
+
+      crud.post(credential_data, self.collection, function(credential)
+        crud.portal_crud.insert_credential(self.plugin.name,
+                                           enums.CONSUMERS.TYPE.ADMIN
+                                          )(credential)
+        local res = {
+          consumer = consumer,
+          credential = credential,
+        }
+
+        if consumer.status == enums.CONSUMERS.STATUS.INVITED then
+          dao_factory.consumers:update({status = enums.CONSUMERS.STATUS.APPROVED},
+                                      {id = consumer.id})
+        end
+
+        -- Mark the token secret as consumed
+        local _, err = singletons.dao.consumer_reset_secrets:update({
+          status = enums.TOKENS.STATUS.CONSUMED,
+          updated_at = ngx.now() * 1000,
+        }, {
+          id = self.reset_secret_id,
+        })
+
+        if err then
+          helpers.yield_error(err)
+        end
+
+        return res
+      end)
+    end,
   },
 }

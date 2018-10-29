@@ -1,4 +1,4 @@
-local portal_utils = require "kong.portal.utils"
+local enterprise_utils = require "kong.enterprise_edition.utils"
 local workspaces   = require "kong.workspaces"
 
 
@@ -25,7 +25,7 @@ end
 
 local function validate_email(email)
   if email ~= nil then
-    local ok, err = portal_utils.validate_email(email)
+    local ok, err = enterprise_utils.validate_email(email)
     if not ok then
       return false, email .. " is invalid: " .. err
     end

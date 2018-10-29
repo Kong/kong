@@ -2,21 +2,10 @@ local helpers = require "spec.helpers"
 local cjson = require "cjson"
 local ee_helpers = require "spec.ee_helpers"
 local workspaces = require "kong.workspaces"
+local enums      = require "kong.enterprise_edition.dao.enums"
 
 local client
-
-
-local function post(path, body, headers, expected_status)
-  headers = headers or {}
-  headers["Content-Type"] = "application/json"
-  local res = assert(client:send{
-    method = "POST",
-    path = path,
-    body = body or {},
-    headers = headers
-  })
-  return cjson.decode(assert.res_status(expected_status or 201, res))
-end
+local post = ee_helpers.post
 
 
 local function setup_ws_defaults(dao, workspace)
@@ -34,21 +23,26 @@ local function setup_ws_defaults(dao, workspace)
   end
 
   ngx.ctx.workspaces = { ws }
+  ee_helpers.register_token_statuses(dao)
   helpers.register_consumer_relations(dao)
   return ee_helpers.register_rbac_resources(dao, workspace)
 end
 
 
 for _, strategy in helpers.each_strategy() do
-  describe("Admin API Authentication - on " .. strategy, function()
+  describe("Admin API Authentication - on" .. strategy, function()
     local dao
     local super_admin_rbac_user
 
-    local function admin(workspace, name, rbac_user_token, role)
+    local function admin(client, assert, workspace, name, rbac_user_token, role, emailaddress)
       local headers = { ['Kong-Admin-Token'] = 'letmein'}
-      local admin = post("/" .. workspace .. "/admins", { username = name .. "-" .. workspace }, headers, 200)
-      post("/" .. workspace .. "/rbac/users/".. admin.rbac_user.name .. "/roles", { roles = role }, headers)
-
+      local admin = post(client, "/" .. workspace .. "/admins",
+                         { username = name .. "-" .. workspace,
+                           email = emailaddress}, headers, 200)
+      dao.consumers:update({status = enums.CONSUMERS.STATUS.APPROVED},
+                           {id = admin.consumer.id})
+      post(client, "/" .. workspace .. "/rbac/users/".. admin.rbac_user.name
+           .. "/roles", { roles = role }, headers, 201)
       return admin
     end
 
@@ -75,6 +69,7 @@ for _, strategy in helpers.each_strategy() do
           enforce_rbac = "on",
           admin_gui_auth_config = "{ \"hide_credentials\": true }",
           rbac_auth_header = 'Kong-Admin-Token',
+          smtp_mock = true,
         }))
 
         client = assert(helpers.admin_client())
@@ -83,9 +78,12 @@ for _, strategy in helpers.each_strategy() do
 
         super_admin_rbac_user = setup_ws_defaults(dao, workspace)
 
-        super_admin    = admin(workspace, 'mars', 'let-me-in', 'super-admin')
-        read_me        = admin(workspace, 'gruce', 'let-me-in-now', 'read-only')
-        proxy_consumer = admin(workspace, 'proxy-guy', 'let-me-in-now-plz', 'read-only')
+        super_admin    = admin(client, assert, workspace, 'mars', 'let-me-in',
+                               'super-admin','test@konghq.com')
+        read_me        = admin(client, assert, workspace, 'gruce', 'let-me-in-now',
+                               'read-only', 'test1@konghq.com')
+        proxy_consumer = admin(client, assert, workspace, 'proxy-guy',
+                               'let-me-in-now-plz', 'read-only', 'test2@konghq.com')
 
         assert(dao.basicauth_credentials:insert {
           username    = "i-am-mars",
@@ -110,15 +108,16 @@ for _, strategy in helpers.each_strategy() do
         setup_ws_defaults(dao, workspace)
 
         dao.rbac_roles:insert({ name = "another-one" })
-        another_one = admin(workspace, 'dj-khaled', 'another-one', 'another-one')
+        another_one = admin(client, assert, workspace, 'dj-khaled', 'another-one',
+                            'another-one', 'test45@konghq.com')
 
-        post("/" .. workspace .. "/rbac/roles/another-one/endpoints", {
+        post(client, "/" .. workspace .. "/rbac/roles/another-one/endpoints", {
           workspace = "default",
           endpoint = "/consumers",
           actions = "read"
         }, { ['Kong-Admin-Token'] = 'letmein'}, 201)
 
-        post("/" .. workspace .. "/rbac/roles/another-one/endpoints", {
+        post(client, "/" .. workspace .. "/rbac/roles/another-one/endpoints", {
           workspace = workspace,
           endpoint = "*",
           actions = "create,read,update,delete"
@@ -138,7 +137,8 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       describe("GET", function()
-        it("internal proxy no longer exists when gui_auth is enabled", function()
+        it("internal proxy no longer exists when gui_auth is enabled",
+        function()
           local res = assert(client:send {
             method = "GET",
             path = "/_kong/admin",
@@ -150,7 +150,8 @@ for _, strategy in helpers.each_strategy() do
           assert.res_status(404, res)
         end)
 
-        it("returns 401 when unauthenticated and no token or credentials provided", function()
+        it("returns 401 when unauthenticated and no token or credentials"
+          .. " provided", function()
           local res = assert(client:send {
             method = "GET",
             path = "/",
@@ -179,11 +180,11 @@ for _, strategy in helpers.each_strategy() do
             method = "GET",
             path = "/",
             headers = {
-              ["Authorization"] = "Basic " .. ngx.encode_base64("i-am-mars:hunter1"),
+              ["Authorization"] = "Basic "
+              .. ngx.encode_base64("i-am-mars:hunter1"),
               ["Kong-Admin-User"] = super_admin.rbac_user.name,
             }
           })
-
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
 
@@ -195,7 +196,8 @@ for _, strategy in helpers.each_strategy() do
             method = "GET",
             path = "/",
             headers = {
-              ["Authorization"] = "Basic " .. ngx.encode_base64("i-am-mars:but-mypassword-is-wrong"),
+              ["Authorization"] = "Basic "
+              .. ngx.encode_base64("i-am-mars:but-mypassword-is-wrong"),
               ["Kong-Admin-User"] = 'sup-dawg',
             }
           })
@@ -208,7 +210,8 @@ for _, strategy in helpers.each_strategy() do
             method = "GET",
             path = "/",
             headers = {
-              ["Authorization"] = "Basic " .. ngx.encode_base64("i-am-mars:but-mypassword-is-wrong"),
+              ["Authorization"] = "Basic "
+              .. ngx.encode_base64("i-am-mars:but-mypassword-is-wrong"),
               ["Kong-Admin-User"] = super_admin.rbac_user.name,
             }
           })
@@ -216,12 +219,14 @@ for _, strategy in helpers.each_strategy() do
           assert.res_status(403, res)
         end)
 
-        it("returns 401 when authenticated with mismatched user/credentials", function()
+        it("returns 401 when authenticated with mismatched user/credentials",
+          function()
           local res = assert(client:send {
             method = "GET",
             path = "/",
             headers = {
-              Authorization = "Basic " .. ngx.encode_base64("i-am-mars:hunter1"),
+              Authorization = "Basic "
+              .. ngx.encode_base64("i-am-mars:hunter1"),
               ["Kong-Admin-User"] = read_me.rbac_user.name,
             }
           })
@@ -230,12 +235,14 @@ for _, strategy in helpers.each_strategy() do
         end)
 
 
-        it("credentials in another workspace can access workspace data", function()
+        it("credentials in another workspace can access workspace data",
+          function()
           local res = client:send {
             method = "GET",
             path = "/another-one/rbac/users",
             headers = {
-              Authorization = "Basic " .. ngx.encode_base64("dj-khaled:another-one"),
+              Authorization = "Basic "
+              .. ngx.encode_base64("dj-khaled:another-one"),
               ["Kong-Admin-User"] = another_one.rbac_user.name,
             }
           }
@@ -246,12 +253,14 @@ for _, strategy in helpers.each_strategy() do
           assert.equal(1, #json.data)
         end)
 
-        it("rbac token in another workspace can access data across workspaces", function()
+        it("rbac token in another workspace can access data across workspaces",
+          function()
           local res = client:send {
             method = "GET",
             path = "/consumers",
             headers = {
-              Authorization = "Basic " .. ngx.encode_base64("dj-khaled:another-one"),
+              Authorization = "Basic "
+              .. ngx.encode_base64("dj-khaled:another-one"),
               ["Kong-Admin-User"] = another_one.rbac_user.name,
             }
           }
@@ -259,12 +268,14 @@ for _, strategy in helpers.each_strategy() do
           assert.res_status(200, res)
         end)
 
-        it("credentials in another workspace cannot access workspace data not permissioned for", function()
+        it("credentials in another workspace cannot access workspace data not"
+          .. " permissioned for", function()
           local res = client:send {
             method = "GET",
             path = "/plugins",
             headers = {
-              Authorization = "Basic " .. ngx.encode_base64("dj-khaled:another-one"),
+              Authorization = "Basic "
+              .. ngx.encode_base64("dj-khaled:another-one"),
               ["Kong-Admin-User"] = another_one.rbac_user.name,
             }
           }
@@ -272,10 +283,12 @@ for _, strategy in helpers.each_strategy() do
           local body = assert.res_status(403, res)
           local json = cjson.decode(body)
 
-          assert.truthy(string.match(json.message, "you do not have permissions to read"))
+          assert.truthy(string.match(json.message, "you do not have permissions"
+                        .." to read"))
         end)
 
-        it("rbac token in another workspace can NOT access workspace data not permissioned for", function()
+        it("rbac token in another workspace can NOT access workspace data not"
+          .. " permissioned for", function()
           local res = client:send {
             method = "GET",
             path = "/plugins",
@@ -287,10 +300,12 @@ for _, strategy in helpers.each_strategy() do
           local body = assert.res_status(403, res)
           local json = cjson.decode(body)
 
-          assert.truthy(string.match(json.message, "you do not have permissions to read"))
+          assert.truthy(string.match(json.message, "you do not have permissions"
+                        .. " to read"))
         end)
 
-        it("rbac token in another workspace can access workspace data", function()
+        it("rbac token in another workspace can access workspace data",
+          function()
           local res = client:send {
             method = "GET",
             path = "/another-one/rbac/users",
@@ -298,14 +313,14 @@ for _, strategy in helpers.each_strategy() do
               ['Kong-Admin-Token'] = another_one.rbac_user.user_token,
             }
           }
-
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
 
           assert.equal(1, #json.data)
         end)
 
-        it("rbac token in another workspace can access data across workspaces", function()
+        it("rbac token in another workspace can access data across workspaces",
+          function()
           local res = client:send {
             method = "GET",
             path = "/consumers",
@@ -340,9 +355,12 @@ for _, strategy in helpers.each_strategy() do
         -- Default workspace
         local workspace = "default"
 
-        super_admin    = admin(workspace, 'mars', 'let-me-in', 'super-admin')
-        read_me        = admin(workspace, 'gruce', 'let-me-in-now', 'read-only')
-        proxy_consumer = admin(workspace, 'proxy-guy', 'let-me-in-now-plz', 'read-only')
+        super_admin    = admin(client, assert, workspace, 'mars', 'let-me-in', 'super-admin',
+                               'test10@konghq.com')
+        read_me        = admin(client, assert, workspace, 'gruce', 'let-me-in-now', 'read-only',
+                               'test12@konghq.com')
+        proxy_consumer = admin(client, assert, workspace, 'proxy-guy', 'let-me-in-now-plz',
+                               'read-only', 'test14@konghq.com')
 
         assert(dao.keyauth_credentials:insert {
           key    = "hunter1",
@@ -396,7 +414,8 @@ for _, strategy in helpers.each_strategy() do
           assert.res_status(403, res)
         end)
 
-        it("returns 401 when authenticated with mismatched user/credentials", function()
+        it("returns 401 when authenticated with mismatched user/credentials",
+          function()
           local res = assert(client:send {
             method = "GET",
             path = "/",

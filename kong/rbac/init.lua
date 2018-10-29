@@ -23,6 +23,7 @@ end
 
 local whitelisted_endpoints = {
   ["/userinfo"] = true,
+  ["/admins/register"] = true,
 }
 
 

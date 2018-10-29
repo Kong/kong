@@ -1,5 +1,5 @@
 local mail       = require "resty.mail"
-local utils      = require "kong.portal.utils"
+local enterprise_utils = require "kong.enterprise_edition.utils"
 local pl_tablex  = require "pl.tablex"
 local log         = ngx.log
 local INFO        = ngx.INFO
@@ -77,7 +77,7 @@ function _M:send(emails, base_options, res)
     -- skip duplicate emails
     if not seen_emails[email] and not sent.emails[email]
                               and not error.emails[email] then
-      local ok, err = utils.validate_email(email)
+      local ok, err = enterprise_utils.validate_email(email)
       if not ok then
         log(INFO, _M.LOG_PREFIX, _M.INVALID_EMAIL .. ": " .. email .. ": " .. err)
         error.emails[email] = _M.INVALID_EMAIL .. ": " .. err
@@ -128,6 +128,23 @@ function _M:init_email_res()
   end
 
   return res
+end
+
+
+function _M.new_smtp_client(conf)
+  return _M.new({
+    host = conf.smtp_host,
+    port = conf.smtp_port,
+    starttls = conf.smtp_starttls,
+    ssl = conf.smtp_ssl,
+    username = conf.smtp_username,
+    password = conf.smtp_password,
+    auth_type = conf.smtp_auth_type,
+    domain = conf.smtp_domain,
+    timeout_connect = conf.smtp_timeout_connect,
+    timeout_send = conf.smtp_timeout_send,
+    timeout_read  = conf.smtp_timeout_read,
+  }, conf.smtp_mock)
 end
 
 

@@ -467,7 +467,7 @@ return {
     ]],
   },
   {
-    name = "2018-08-06-114500_portal_reset_secrets",
+    name = "2018-08-06-114500_consumer_reset_secrets",
     up = [[
 
       CREATE TABLE IF NOT EXISTS token_statuses(
@@ -488,7 +488,7 @@ return {
       INSERT INTO token_statuses(id, name, created_at)
       VALUES (3, 'invalidated', dateof(now()));
 
-      CREATE TABLE IF NOT EXISTS portal_reset_secrets(
+      CREATE TABLE IF NOT EXISTS consumer_reset_secrets(
         id uuid PRIMARY KEY,
         consumer_id uuid,
         secret text,
@@ -498,12 +498,12 @@ return {
         updated_at timestamp
       );
 
-      CREATE INDEX IF NOT EXISTS portal_reset_secrets_consumer_id ON portal_reset_secrets (consumer_id);
-      CREATE INDEX IF NOT EXISTS portal_reset_secrets_status ON portal_reset_secrets (status);
+      CREATE INDEX IF NOT EXISTS consumer_reset_secrets_consumer_id ON consumer_reset_secrets (consumer_id);
+      CREATE INDEX IF NOT EXISTS consumer_reset_secrets_status ON consumer_reset_secrets (status);
 
     ]],
     down = [[
-      DROP TABLE portal_reset_secrets;
+      DROP TABLE consumer_reset_secrets;
       DROP TABLE token_statuses;
     ]]
   },

@@ -163,6 +163,11 @@ local CONF_INFERENCES = {
   admin_gui_flags = {typ = "string"},
   admin_gui_auth = {typ = "string"},
   admin_gui_auth_conf = {type = "string"},
+  admin_invite_email = {typ = "boolean"},
+  admin_emails_from = {typ = "string"},
+  admin_emails_reply_to = {typ = "string"},
+  admin_docs_url = {typ = "string"},
+  admin_invitation_expiry = {typ = "number"},
 
   portal = {typ = "boolean"},
   portal_gui_listen = {typ = "array"},

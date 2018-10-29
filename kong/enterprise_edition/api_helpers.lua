@@ -6,6 +6,11 @@ local responses   = require "kong.tools.responses"
 local rbac        = require "kong.rbac"
 local utils       = require "kong.tools.utils"
 local workspaces  = require "kong.workspaces"
+local ee_utils    = require "kong.enterprise_edition.utils"
+local ee_jwt      = require "kong.enterprise_edition.jwt"
+
+local log = ngx.log
+local ERR = ngx.ERR
 
 local _M = {}
 
@@ -33,6 +38,10 @@ _M.services = {
 -- cache of admin plugin configurations
 local admin_plugin_models = {}
 
+
+local auth_whitelisted_uris = {
+  ["/admins/register"] = true
+}
 
 function _M.get_consumer_id_from_headers()
   return ngx.req.get_headers()[constants.HEADERS.CONSUMER_ID]
@@ -162,6 +171,12 @@ function _M.authenticate(self, dao_factory, rbac_enabled, gui_auth)
     -- if you have the rbac token you can bypass plugin run loop but if
     -- gui_auth is enabled with no rbac_token, do plugin run loop
     if not rbac_token and gui_auth then
+      local auth_whitelisted = auth_whitelisted_uris[ngx.var.request_uri]
+      if auth_whitelisted then
+        ctx.workspaces = old_ws
+        return
+      end
+
       local user_name = ngx.req.get_headers()['Kong-Admin-User']
 
       if not user_name then
@@ -253,6 +268,13 @@ function _M.authenticate(self, dao_factory, rbac_enabled, gui_auth)
                                                     gui_auth, auth_conf)
       _M.apply_plugin(prepared_plugin, "access")
 
+      -- Plugin ran but consumer was not created on context
+      if not ctx.authenticated_consumer then
+        ngx.log(ngx.ERR, _log_prefix, "no consumer mapped from plugin", gui_auth)
+
+        return responses.send_HTTP_UNAUTHORIZED()
+      end
+
       if self.consumer and ctx.authenticated_consumer.id ~= consumer_id then
         ngx.log(ngx.ERR, _log_prefix, "no rbac user mapped with these credentials")
 
@@ -261,21 +283,33 @@ function _M.authenticate(self, dao_factory, rbac_enabled, gui_auth)
 
       self.consumer = ctx.authenticated_consumer
 
-      if self.consumer.status ~= enums.CONSUMERS.STATUS.APPROVED and
-         self.consumer.type == enums.CONSUMERS.TYPE.ADMIN then
-        local msg = _M.get_consumer_status(consumer)
-
-        return responses.send_HTTP_UNAUTHORIZED(msg)
-      end
-
       if self.consumer.type ~= enums.CONSUMERS.TYPE.ADMIN then
         ngx.log(ngx.ERR, _log_prefix, "consumer ", self.consumer.id, " is not an admin")
         return responses.send_HTTP_UNAUTHORIZED()
       end
+
+      -- consumer transitions from INVITED to APPROVED on first successful login
+      if self.consumer.status == enums.CONSUMERS.STATUS.INVITED then
+        self.consumer, err = dao_factory.consumers:update(
+                             { status = enums.CONSUMERS.STATUS.APPROVED },
+                             { id = self.consumer.id})
+
+        if err then
+          ngx.log(ngx.ERR, _log_prefix, "failed to approve consumer: ",
+                  self.consumer.id, ". err: ", err)
+        
+          return responses.send_HTTP_INTERNAL_SERVER_ERROR()
+        end
+
+        ctx.authenticated_consumer = self.consumer
+      end
+
+      if self.consumer.status ~= enums.CONSUMERS.STATUS.APPROVED then
+        return responses.send_HTTP_UNAUTHORIZED(_M.get_consumer_status(consumer))
+      end
     end
 
     ngx.req.set_header(singletons.configuration.rbac_auth_header, rbac_token)
-    rbac.load_rbac_ctx(dao_factory, ctx)
 
     -- set back workspace context from request
     ctx.workspaces = old_ws
@@ -329,6 +363,60 @@ function _M.resolve_entity_type(new_dao, old_dao, entity_id)
   end
 
   return false, nil, "entity " .. entity_id .. " does not belong to any relation"
+end
+
+
+function _M.validate_jwt(self, dao_factory, helpers, token_optional)
+  -- Verify params
+  if token_optional then
+    return
+  end
+
+  if not self.params.token or self.params.token == "" then
+    return helpers.responses.send_HTTP_BAD_REQUEST("token is required")
+  end
+
+  -- Parse and ensure that jwt contains the correct claims/headers.
+  -- Signature NOT verified yet
+  local jwt, err = ee_utils.validate_reset_jwt(self.params.token)
+  if err then
+    return helpers.responses.send_HTTP_UNAUTHORIZED(err)
+  end
+
+  -- Look up the secret by consumer id and pending status
+  local rows, err = singletons.dao.consumer_reset_secrets:find_all({
+    consumer_id = jwt.claims.id,
+    status = enums.TOKENS.STATUS.PENDING,
+  })
+
+  if err then
+    return helpers.responses.send_HTTP_UNAUTHORIZED(err)
+  end
+
+  if not rows or next(rows) == nil then
+    return helpers.responses.send_HTTP_UNAUTHORIZED()
+  end
+
+  local reset_secret = rows[1]
+
+  -- Generate a new signature and compare it to passed token
+  local ok, _ = ee_jwt.verify_signature(jwt, reset_secret.secret)
+  if not ok then
+    log(ERR, _log_prefix, "JWT signature is invalid")
+    return helpers.responses.send_HTTP_UNAUTHORIZED()
+  end
+
+  self.params.email_or_id = jwt.claims.id
+  self.reset_secret_id = reset_secret.id
+  self.consumer_id = jwt.claims.id
+end
+
+
+function _M.validate_email(self, dao_factory, helpers)
+  local ok, err = ee_utils.validate_email(self.params.email)
+  if not ok then
+    return helpers.responses.send_HTTP_BAD_REQUEST("Invalid email: " .. err)
+  end
 end
 
 

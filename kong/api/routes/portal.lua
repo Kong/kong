@@ -1,7 +1,7 @@
 local crud          = require "kong.api.crud_helpers"
 local singletons    = require "kong.singletons"
 local enums         = require "kong.enterprise_edition.dao.enums"
-local utils         = require "kong.portal.utils"
+local enterprise_utils = require "kong.enterprise_edition.utils"
 local cjson         = require "cjson.safe"
 local constants     = require "kong.constants"
 local ws_helper     = require "kong.workspaces.helper"
@@ -258,7 +258,7 @@ return {
     end,
 
     PATCH = function(self, dao_factory, helpers)
-      local ok, err = utils.validate_email(self.params.email)
+      local ok, err = enterprise_utils.validate_email(self.params.email)
       if not ok then
         return helpers.responses.send_HTTP_BAD_REQUEST("Invalid email: " .. err)
       end

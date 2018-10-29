@@ -957,6 +957,28 @@
                         # associated with the account.
                         # Default `nil`
 
+
+#------------------------------------------------------------------------------
+# ADMIN SMTP CONFIGURATION
+#------------------------------------------------------------------------------
+
+#admin_invite_email = on              # Enable or disable invitation email sent
+                                      # to admins whom you're inviting to your
+                                      # Kong Manager
+
+#admin_emails_from =                  # The email address for the `From` header
+                                      # for admin emails
+
+#admin_emails_reply_to =              # Email address for the `Reply-To` header
+                                      # for admin emails
+
+#admin_invitation_expiry = 259200     # Seconds before admin invitation link
+                                      # expires. 0 means no expiration.
+                                      #
+                                      # Examples:
+                                      # 259200 = 1 * 60 * 60 * 72
+                                      #                        ^ number of hours
+
 #------------------------------------------------------------------------------
 # GENERAL SMTP CONFIGURATION
 #------------------------------------------------------------------------------

@@ -19,7 +19,7 @@ local function validate(params, dao, http_method)
     if user.name == params.username or
        user.name == params.custom_id or
        user.name == params.email then
-      
+
       matches = matches + 1
     end
   end
