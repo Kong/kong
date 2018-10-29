@@ -203,7 +203,7 @@ return function(options)
     -- one. This is to enforce best-practices for seeding in ngx_lua,
     -- and prevents third-party modules from overriding our correct seed
     -- (many modules make a wrong usage of `math.randomseed()` by calling
-    -- it multiple times or by not useing unique seeds for Nginx workers).
+    -- it multiple times or by not using unique seeds for Nginx workers).
     --
     -- This patched method will create a unique seed per worker process,
     -- using a combination of both time and the worker's pid.
