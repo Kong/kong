@@ -88,6 +88,7 @@ local validation_errors = {
   CHECK                     = "entity check failed",
   CONDITIONAL               = "failed conditional validation given value of field '%s'",
   AT_LEAST_ONE_OF           = "at least one of these fields must be non-empty: %s",
+  CONDITIONAL_AT_LEAST_ONE_OF = "at least one of these fields must be non-empty: %s",
   ONLY_ONE_OF               = "only one of these fields must be non-empty: %s",
   DISTINCT                  = "values of these fields must be distinct: %s",
   -- schema error
@@ -484,6 +485,55 @@ Schema.entity_checkers = {
       end
 
       return nil, quoted_list(field_names)
+    end,
+  },
+
+  conditional_at_least_one_of = {
+    run_with_missing_fields = true,
+    run_with_invalid_fields = true,
+    field_sources = {
+      "if_field",
+      "then_at_least_one_of",
+      "else_then_at_least_one_of",
+    },
+    required_fields = { "if_field" },
+    fn = function(entity, arg, schema)
+      local if_value = get_field(entity, arg.if_field)
+      if if_value == nil then
+        return true
+      end
+
+      arg.if_match.type = "skip"
+      local ok, _ = Schema.validate_field(schema, arg.if_match, if_value)
+      if not ok then
+        if arg.else_match == nil then
+          return true
+        end
+
+        -- run 'else'
+        arg.else_match.type = "skip"
+        local ok, _ = Schema.validate_field(schema, arg.else_match, if_value)
+        if not ok then
+          return true
+        end
+
+        for _, name in ipairs(arg.else_then_at_least_one_of) do
+          if is_nonempty(get_field(entity, name)) then
+            return true
+          end
+        end
+
+        return nil, quoted_list(arg.else_then_at_least_one_of)
+      end
+
+      -- run 'if'
+      for _, name in ipairs(arg.then_at_least_one_of) do
+        if is_nonempty(get_field(entity, name)) then
+          return true
+        end
+      end
+
+      return nil, quoted_list(arg.then_at_least_one_of)
     end,
   },
 
@@ -1486,14 +1536,17 @@ function Schema:validate_update(input)
   -- defeat the whole purpose of the mechanism).
   local rfec = validation_errors.REQUIRED_FOR_ENTITY_CHECK
   local aloo = validation_errors.AT_LEAST_ONE_OF
+  local caloo = validation_errors.CONDITIONAL_AT_LEAST_ONE_OF
   validation_errors.REQUIRED_FOR_ENTITY_CHECK = rfec .. " when updating"
   validation_errors.AT_LEAST_ONE_OF = "when updating, " .. aloo
+  validation_errors.CONDITIONAL_AT_LEAST_ONE_OF = "when updating, " .. caloo
 
   local ok, errors = self:validate(input, false)
 
   -- Restore the original error messages
   validation_errors.REQUIRED_FOR_ENTITY_CHECK = rfec
   validation_errors.AT_LEAST_ONE_OF = aloo
+  validation_errors.CONDITIONAL_AT_LEAST_ONE_OF = caloo
 
   return ok, errors
 end
