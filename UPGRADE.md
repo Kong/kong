@@ -46,7 +46,7 @@ In this release, the **API entity is still supported**, along with its related
 Admin API endpoints.
 
 This section will highlight breaking changes that you need to be aware of
-before upgrading, and will describe the recommended upgrade path. We recommend
+before upgrading and will describe the recommended upgrade path. We recommend
 that you consult the full [0.14.0
 Changelog](https://github.com/Kong/kong/blob/master/CHANGELOG.md) for a
 complete list of changes and new features.
@@ -237,7 +237,7 @@ index a66c230f..d4e416bc 100644
 ##### Plugins
 
 - Custom plugins can now see their `header_filter`, `body_filter`, and `log`
-  phases executed without the `rewrite` or `access` phases running first.  This
+  phases executed without the `rewrite` or `access` phases running first. This
   can happen when Nginx itself produces an error while parsing the client's
   request. Similarly, `ngx.var` values (e.g. `ngx.var.request_uri`) may be
   `nil`. Plugins should be hardened to handle such cases and avoid using
@@ -254,7 +254,7 @@ index a66c230f..d4e416bc 100644
   reference](https://docs.konghq.com/0.14.x/admin-api/#add-sni) for
   more details.
 - On the `/certificates` endpoint, the `snis` attribute is not specified as a
-  comma-separated list anymore. It must be specified as a JSON array, or using
+  comma-separated list anymore. It must be specified as a JSON array or using
   the url-formencoded array notation of other recent Admin API endpoints. See
   the [Admin API
   reference](https://docs.konghq.com/0.14.x/admin-api/#add-certificate) for
@@ -331,7 +331,7 @@ to **run migrations** and upgrade from a previous version of Kong.
 
 ##### Dependencies
 
-- Support for Cassandra 2.1 was deprecated in 0.12.0, and has been dropped
+- Support for Cassandra 2.1 was deprecated in 0.12.0 and has been dropped
   starting with 0.13.0.
 - Various dependencies have been bumped. Once again, consult the Changelog for
   a detailed list.
@@ -436,7 +436,7 @@ index 5639f319..62f5f1ae 100644
 
 Starting with 0.13.0, the "API" entity is considered **deprecated**. While
 still supported, we will eventually remove the entity and its related endpoints
-from the Admin API. Services and Routes are the new first class citizen
+from the Admin API. Services and Routes are the new first-class citizen
 entities that new users (or users upgrading their clusters) should configure.
 
 You can read more about Services and Routes in the [Proxy
@@ -450,7 +450,7 @@ doing this upgrade "in-place", against the datastore of a running 0.12 cluster,
 then for a short period of time, your database schema won't be fully compatible
 with your 0.12 nodes anymore. This is why we suggest either performing this
 upgrade when your 0.12 cluster is warm and most entities are cached, or against
-a new database, if you can migrate your data. If you wish to temporarily make
+a new database if you can migrate your data. If you wish to temporarily make
 your APIs unavailable, you can leverage the
 [request-termination](https://getkong.org/plugins/request-termination/) plugin.
 
@@ -459,7 +459,7 @@ releases:
 
 1. If you are planning on upgrading Kong while 0.12 nodes are running against
    the same datastore, make sure those nodes are warm enough (they should have
-   most of your entities cached already), or temporarily disable your APIs.
+   most of your entities cached already) or temporarily disable your APIs.
 2. Provision a 0.13 node and configure it as you wish (environment variables/
    configuration file). Make sure to point this new 0.13 node to your current
    datastore.
@@ -508,7 +508,7 @@ of our supported databases:
 - Support for Cassandra 2.1 and below is deprecated. Users are advised to
   upgrade to 2.2+
 
-Note that the above deprecated versions are still supported in this release,
+Note that the above-deprecated versions are still supported in this release,
 but will be dropped in subsequent ones.
 
 #### Breaking changes
@@ -1007,7 +1007,7 @@ end
 ```
 
 Now, cache invalidation will be an automatic process: every CRUD operation that
-affects this API key will be make Kong auto-generate the affected `cache_key`,
+affects this API key will make Kong auto-generate the affected `cache_key`,
 and send broadcast it to all of the other nodes on the cluster so they can
 evict that particular value from their cache, and fetch the fresh value from
 the datastore on the next request.
@@ -1028,7 +1028,7 @@ traditional `foreign = "parent_entity:parent_attribute"` syntax, or because
 it is not using the `cache_key` method from its DAO, or even because it is
 somehow abusing the caching mechanism.
 
-In those cases, you can manually setup your own subscriber to the same
+In those cases, you can manually set up your own subscriber to the same
 invalidation channels Kong is listening to, and perform your own, custom
 invalidation work. This process is similar to the old `hooks.lua` module.
 
@@ -1126,9 +1126,9 @@ Kong 0.10 introduced the following breaking changes:
   according to a combination of Host headers, URIs, and HTTP
   methods.
 - The `upstream_url` field of API Objects does not accept trailing slashes anymore.
-- Dynamic SSL certificates serving is now handled by the core, and **not**
+- Dynamic SSL certificates serving is now handled by the core and **not**
   through the `ssl` plugin anymore. This version introduced the `/certificates`
-  and `/snis` endpoints.  See the new [0.10 Proxy
+  and `/snis` endpoints. See the new [0.10 Proxy
   Guide](https://getkong.org/docs/0.10.x/proxy) to learn more about how to
   configure your SSL certificates on your APIs. The `ssl` plugin has been
   removed.
@@ -1189,13 +1189,13 @@ and you are upgrading, you must explicitly set `cassandra` as your `database`.
 This release introduces a new CLI, which uses the
 [lua-resty-cli](https://github.com/openresty/resty-cli) interpreter. As such,
 the `resty` executable (shipped in the OpenResty bundle) must be available in
-your `$PATH`.  Additionally, the `bin/kong` executable is not installed through
-Luarocks anymore, and must be placed in your `$PATH` as well.  This change of
+your `$PATH`. Additionally, the `bin/kong` executable is not installed through
+Luarocks anymore, and must be placed in your `$PATH` as well. This change of
 behavior is taken care of if you are using one of the official Kong packages.
 
 Once Kong updated, familiarize yourself with its new configuration format, and
-consider setting some of its properties via environment variables, if the need
-arises. This behavior as well as all available settings are documented in the
+consider setting some of its properties via environment variables if the need
+arises. This behavior, as well as all available settings, are documented in the
 `kong.conf.default` file shipped with this version.
 
 Once your nodes configured, we recommend that you seemingly redirect your
@@ -1263,7 +1263,7 @@ platform.
 
 As described in the Changelog, this upgrade has benefits, such as the SSL
 support and fixes for critical NGINX vulnerabilities, but also requires that
-you upgrade the `nginx` property of your Kong config, because it is not
+you upgrade the `nginx` property of your Kong config because it is not
 backwards compatible.
 
 - We advise that you retrieve the `nginx` property from the `0.7.x`
@@ -1429,7 +1429,7 @@ of them now.
 ##### 3. Upgrade without downtime
 
 You can now upgrade Kong to `0.5.x.` Proceed as a regular upgrade and follow
-the suggested upgrade path, in particular the `kong reload` command.
+the suggested upgrade path, in particular, the `kong reload` command.
 
 ##### 4. Purge your Cassandra cluster
 
