@@ -844,9 +844,6 @@ local function compatible_fields(f1, f2)
   if t1 == "array" or t1 == "set" then
     return f1.elements.type == f2.elements.type
   end
-  if t1 == "array" or t1 == "set" then
-    return f1.elements.type == f2.elements.type
-  end
   if t1 == "map" then
     return f1.keys.type == f2.keys.type and f1.values.type == f2.values.type
   end
