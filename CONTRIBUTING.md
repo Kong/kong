@@ -1,7 +1,7 @@
 # Contributing to Kong :monkey_face:
 
-Hello, and welcome! Whether you are looking for help, trying to report a bug,
-thinking about getting involved in the project or about to submit a patch, this
+Hello and welcome! Whether you are looking for help, trying to report a bug,
+thinking about getting involved in the project, or about to submit a patch, this
 document is for you! Its intent is to be both an entry point for newcomers to
 the community (with various technical backgrounds), and a guide/reference for
 contributors and maintainers.
