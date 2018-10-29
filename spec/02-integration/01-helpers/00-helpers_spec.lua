@@ -406,22 +406,3 @@ for _, strategy in helpers.each_strategy() do
     end)
   end)
 end
-
-
-describe("databases count", function()
-  it("runs both cassandra and postgres", function()
-    local n = 0
-    for _, v in helpers.each_strategy() do
-      n = n+1
-    end
-    assert.equals(n, 2)
-
-
-    local dao_helpers = require "spec/02-integration/03-dao/helpers"
-    n = 0
-    dao_helpers.for_each_dao(function()
-      n = n+1
-    end)
-    assert.equals(2, n)
-  end)
-end)
