@@ -100,7 +100,7 @@ make without coding:
 - Providing your feedback on the proposed features and designs
 - Reviewing Pull Requests
 
-If you wish to contribute code (features or bug fixes), see the [Submitting a
+If you wish to contribute to code (features or bug fixes), see the [Submitting a
 patch](#submitting-a-patch) section.
 
 [Back to TOC](#table-of-contents)
@@ -155,7 +155,7 @@ first!
 
 When contributing, please follow the guidelines provided in this document. They
 will cover topics such as the different Git branches we use, the commit message
-format to use or the appropriate code style.
+formats to use or the appropriate coding styles.
 
 Once you have read them, and you are ready to submit your Pull Request, be sure
 to verify a few things:
