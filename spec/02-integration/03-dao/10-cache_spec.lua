@@ -37,6 +37,7 @@ describe("dao in-memory cache", function()
       dao = dao_factory,
     })
 
+    -- XXX: EE only [[
     package.loaded["kong.singletons"] = {
       vitals = {
         cache_accessed = function()
@@ -56,6 +57,7 @@ describe("dao in-memory cache", function()
   teardown(function()
     package.loaded["kong.singletons"] = nil
   end)
+  --]]
 
   before_each(function()
     cb_call_count = 0
