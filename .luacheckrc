@@ -43,3 +43,9 @@ files["spec/**/*.lua"] = {
 files["spec-old-api/**/*.lua"] = {
     std = "ngx_lua+busted",
 }
+
+files["spec-ee/**/*.lua"] = {
+    std = "ngx_lua+busted",
+}
+
+
