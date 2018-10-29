@@ -1,4 +1,4 @@
-# Contributing to Kong :monkey_face:
+# Contributing to Kong 🦍
 
 Hello, and welcome! Whether you are looking for help, trying to report a bug,
 thinking about getting involved in the project or about to submit a patch, this
