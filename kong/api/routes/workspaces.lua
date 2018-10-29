@@ -18,7 +18,7 @@ return {
     POST = function(self, dao_factory, helpers)
       crud.post(self.params, dao_factory.workspaces, function(workspace)
         local workspace, err = crud.portal_crud.check_initialized(workspace, dao_factory)
-        if not workspace then
+        if err then
           return helpers.yield_error(err)
         end
 
@@ -45,7 +45,7 @@ return {
 
       crud.patch(self.params, dao_factory.workspaces, self.workspace, function(workspace)
         local workspace, err = crud.portal_crud.check_initialized(workspace, dao_factory)
-        if not workspace then
+        if err then
           return helpers.yield_error(err)
         end
 
