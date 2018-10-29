@@ -1,4 +1,3 @@
-local helpers = require "spec.helpers"
 local Errors = require "kong.db.errors"
 
 local fmt      = string.format
