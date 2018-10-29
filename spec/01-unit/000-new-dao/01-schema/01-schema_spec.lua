@@ -1231,6 +1231,103 @@ describe("schema", function()
 
     end)
 
+    describe("entity_checkers", function()
+
+      describe("conditional_at_least_one_of", function()
+        local Test = Schema.new({
+          fields = {
+            { a = { type = "number" }, },
+            { b = { type = "string" }, },
+            { c = { type = "string" }, },
+          },
+          entity_checks = {
+            { conditional_at_least_one_of = { if_field = "a",
+                                              if_match = { gt = 0 },
+                                              then_at_least_one_of = { "b", "c" }}
+            },
+          }
+        })
+
+        it("sanity", function()
+          local ok, errs = Test:validate_insert({ a = 1 })
+          assert.is_nil(ok)
+          assert.same({
+            "at least one of these fields must be non-empty: 'b', 'c'"
+          }, errs["@entity"])
+
+          local ok, errs = Test:validate_insert({ a = 1, b = "foo" })
+          assert.is_nil(errs)
+          assert.truthy(ok)
+        end)
+
+        it("does not run when condition is evaluated to false", function()
+          local ok, errs = Test:validate_insert({ a = 0 })
+          assert.is_nil(errs)
+          assert.truthy(ok)
+        end)
+
+        it("does not run when the 'if_field' is missing", function()
+          local ok, errs = Test:validate_insert({ b = "foo" })
+          assert.is_nil(errs)
+          assert.truthy(ok)
+        end)
+
+        it("works on updates", function()
+          assert.truthy(Test:validate_insert({ }))
+
+          -- Can update to whole valid record
+          assert.truthy(Test:validate_update({ a = 123, b = "foo" }))
+
+          -- Empty update works
+          assert.truthy(Test:validate_update({ }))
+
+          -- Cannot update if_field without respecifying at least one
+          -- of the then_at_least_one_of fields, because this checker
+          -- does not trigger a read-before-write (yet)
+          local ok, err = Test:validate_update({ a = 123 })
+          assert.falsy(ok)
+          assert.same({
+            ["@entity"] = {
+              [[when updating, at least one of these fields must be non-empty: 'b', 'c']]
+            }
+          }, err)
+        end)
+
+        it("supports an 'else' clause", function()
+          local Test = Schema.new({
+            fields = {
+              { a = { type = "number" }, },
+              { b = { type = "string" }, },
+              { c = { type = "string" }, },
+              { d = { type = "string" }, },
+            },
+            entity_checks = {
+              { conditional_at_least_one_of = { if_field = "a",
+                                                if_match = { gt = 0 },
+                                                then_at_least_one_of = { "b", "c" },
+                                                else_match = { ne = 0 },
+                                                else_then_at_least_one_of = { "c", "d" }, }
+              },
+            }
+          })
+
+          local ok, errs = Test:validate_insert({ a = -1 })
+          assert.is_nil(ok)
+          assert.same({
+            "at least one of these fields must be non-empty: 'c', 'd'"
+          }, errs["@entity"])
+
+          local ok, errs = Test:validate_insert({ a = -1, d = "foo" })
+          assert.is_nil(errs)
+          assert.truthy(ok)
+
+          local ok, errs = Test:validate_insert({ a = 0 })
+          assert.is_nil(errs)
+          assert.truthy(ok)
+        end)
+      end)
+
+    end)
   end)
 
   describe("validate_primary_key", function()
