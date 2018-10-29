@@ -589,7 +589,7 @@ upgrade your Kong cluster.
   In the future, existing endpoints will gradually be moved to using this new
   Admin API content producer.
   [#3224](https://github.com/Kong/kong/pull/3224)
-- :fireworks: Improved argument parsing in form-url encoded requests to the new
+- :fireworks: Improved argument parsing in form-urlencoded requests to the new
   endpoints as well.
   Kong now expects the following syntaxes for representing
   arrays: `hosts[]=a.com&hosts[]=b.com`, `hosts[1]=a.com&hosts[2]=b.com`, which
@@ -2445,7 +2445,7 @@ Other additions include:
 > - Event bus for local and cluster-wide events propagation. Plans for this event bus is to be widely used among Kong in the future.
 > - The Kong Public Lua API (Lua helpers integrated in Kong such as DAO and Admin API helpers) is now documented with [ldoc](http://stevedonovan.github.io/ldoc/) format and published on [the online documentation](https://getkong.org/docs/latest/lua-reference/).
 > - Work has been done to restore the reliability of the CI platforms.
-> - Migrations can now execute DML queries (instead of DDL queries only). Handy for migrations implying plugin configuration changes, plugins renaming’s etc... [#770](https://github.com/Kong/kong/pull/770)
+> - Migrations can now execute DML queries (instead of DDL queries only). Handy for migrations implying plugin configuration changes, plugins renamings etc... [#770](https://github.com/Kong/kong/pull/770)
 
 [Back to TOC](#table-of-contents)
 
@@ -2488,7 +2488,7 @@ A few fixes requested by the community!
 
 ## [0.5.1] - 2015/10/13
 
-Fixing a few glitches, we let out with 0.5.0!
+Fixing a few glitches we let out with 0.5.0!
 
 ### Added
 
