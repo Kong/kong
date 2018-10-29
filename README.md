@@ -1,6 +1,7 @@
 [![][kong-logo]][kong-url]
 
 [![Build Status][badge-travis-image]][badge-travis-url]
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://github.com/Kong/kong/blob/master/LICENSE)
 
 Kong is a cloud-native, fast, scalable, and distributed Microservice
 Abstraction Layer *(also known as an API Gateway, API Middleware or in some
