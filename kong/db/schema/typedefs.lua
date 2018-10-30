@@ -252,4 +252,11 @@ typedefs.key = Schema.define {
 }
 
 
+setmetatable(typedefs, {
+  __index = function(_, k)
+    error("schema typedef error: definition " .. k .. " does not exist", 2)
+  end
+})
+
+
 return typedefs
