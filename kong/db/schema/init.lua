@@ -422,6 +422,22 @@ local function set_field(tbl, name, value)
 end
 
 
+-- Get a field definition from a possibly-nested schema using a string key
+-- such as "x.y.z", such that `get_field(t, "x.y.z")` is the
+-- same as `t.x.y.z`.
+local function get_schema_field(schema, name)
+  if schema == nil then
+    return nil
+  end
+  local dot = find(name, ".", 1, true)
+  if not dot then
+    return schema.fields[name]
+  end
+  local hd, tl = sub(name, 1, dot - 1), sub(name, dot + 1)
+  return get_schema_field(schema.fields[hd], tl)
+end
+
+
 --- Entity checkers are cross-field validation rules.
 -- An entity checker is implemented as an entry in this table,
 -- containing a mandatory field `fn`, the checker function,
@@ -532,7 +548,9 @@ Schema.entity_checkers = {
       local if_value = get_field(entity, arg.if_field)
       local then_value = get_field(entity, arg.then_field) or null
 
-      arg.if_match.type = "skip"
+      setmetatable(arg.if_match, {
+        __index = get_schema_field(schema, arg.if_field)
+      })
       local ok, _ = Schema.validate_field(schema, arg.if_match, if_value)
       if not ok then
         return true
@@ -544,7 +562,9 @@ Schema.entity_checkers = {
         return nil, arg.if_field
       end
 
-      arg.then_match.type = "skip"
+      setmetatable(arg.then_match, {
+        __index = get_schema_field(schema, arg.then_field)
+      })
       local err
       ok, err = Schema.validate_field(schema, arg.then_match, then_value)
       if not ok then
@@ -736,8 +756,8 @@ function Schema:validate_field(field, value)
       return nil, validation_errors[field.type:upper()]
     end
 
-  -- if type is "any" or "skip" (an internal marker), run validators only
-  elseif field.type ~= "any" and field.type ~= "skip" then
+  -- if type is "any" (an internal marker), run validators only
+  elseif field.type ~= "any" then
     return nil, validation_errors.SCHEMA_TYPE:format(field.type)
   end
 
@@ -1074,7 +1094,21 @@ do
 
     local subschema = get_subschema(self, input)
     if subschema then
-      run_checks(self, input, full_check, subschema.entity_checks, errors)
+      local fields_proxy = setmetatable({}, {
+        __index = function(_, k)
+          return subschema.fields[k] or self.fields[k]
+        end
+      })
+      local self_proxy = setmetatable({}, {
+        __index = function(_, k)
+          if k == "fields" then
+            return fields_proxy
+          else
+            return self[k]
+          end
+        end
+      })
+      run_checks(self_proxy, input, full_check, subschema.entity_checks, errors)
     end
 
     if self.check and full_check then
@@ -1621,6 +1655,21 @@ function Schema:get_constraints()
 end
 
 
+local function allow_record_fields_by_name(record, loop)
+  loop = loop or {}
+  if loop[record] then
+    return
+  end
+  loop[record] = true
+  for k, f in Schema.each_field(record) do
+    record.fields[k] = f
+    if f.type == "record" and f.fields then
+      allow_record_fields_by_name(f, loop)
+    end
+  end
+end
+
+
 --- Instatiate a new schema from a definition.
 -- @param definition A table with attributes describing
 -- fields and other information about a schema.
@@ -1650,6 +1699,9 @@ function Schema.new(definition, is_subschema)
   for key, field in self:each_field() do
     -- Also give access to fields by name
     self.fields[key] = field
+    if field.type == "record" and field.fields then
+      allow_record_fields_by_name(field)
+    end
 
     if field.type == "foreign" then
       local err

@@ -1468,6 +1468,41 @@ describe("schema", function()
       }))
     end)
 
+    it("test conditional checks on set elements", function()
+      local Test = Schema.new({
+        fields = {
+          { redis_host = { type = "string" } },
+          { a_set = { type = "set", elements = { type = "string", one_of = { "foo", "bar" } } } },
+        },
+        entity_checks = {
+          { conditional = { if_field = "a_set",
+                            if_match = { elements = { type = "string", one_of = { "foo" } } },
+                            then_field = "redis_host",
+                            then_match = { eq = "host_foo" } } },
+        }
+      })
+      local ok, err = Test:validate_update({
+        a_set = { "foo" },
+        redis_host = "host_foo",
+      })
+      assert.truthy(ok)
+      assert.is_nil(err)
+
+      ok, err = Test:validate_update({
+        a_set = { "foo" },
+        redis_host = "host_bar",
+      })
+      assert.falsy(ok)
+      assert.same("value must be host_foo", err.redis_host)
+
+      ok, err = Test:validate_update({
+        a_set = { "bar" },
+        redis_host = "any_other_host",
+      })
+      assert.truthy(ok)
+      assert.is_nil(err)
+    end)
+
     it("test custom entity checks", function()
       local Test = Schema.new({
         fields = {
