@@ -162,10 +162,10 @@ describe("Plugin: response-transformer", function()
       end)
     end)
 
-    describe("remove, extract", function()
+    describe("extract", function()
       local conf = {
         remove   = {
-          json   = {"p1"}
+          json   = {}
         },
         replace  = {
           json   = {}
@@ -180,11 +180,11 @@ describe("Plugin: response-transformer", function()
           json   = {"p2"}
         },
       }
-      it("combination", function()
+      it("removes p2 and encode stringified json", function()
         local json = [[{"p1" : "v1", "p2" : "{\"foo\":\"bar\"}"}]]
         local body = body_transformer.transform_json_body(conf, json)
         local body_json = cjson.decode(body)
-        assert.same({foo = "bar"}, body_json)
+        assert.same({p1 = "v1", foo = "bar"}, body_json)
       end)
     end)
 
