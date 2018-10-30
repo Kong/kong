@@ -167,7 +167,7 @@ Schema.validators = {
     if value == wanted then
       return true
     end
-    local str = (wanted == null) and "null" or tostring(value)
+    local str = (wanted == null) and "null" or tostring(wanted)
     return nil, validation_errors.EQ:format(str)
   end,
 
