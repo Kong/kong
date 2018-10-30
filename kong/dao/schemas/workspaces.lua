@@ -3,14 +3,16 @@ local workspaces   = require "kong.workspaces"
 
 
 local function check_portal_auth(auth)
-  if auth ~= nil
-    and auth ~= "basic-auth"
-    and auth ~= "key-auth"
-    and auth ~= "openid-connect" then
-    return false, "invalid auth type"
+
+  if not auth
+     or auth == ""
+     or auth == "basic-auth"
+     or auth == "key-auth"
+     or auth == "openid-connect" then
+    return true
   end
 
-  return true
+  return false, "invalid auth type"
 end
 
 

@@ -37,6 +37,11 @@ local function check_portal_status(helpers)
 end
 
 
+local function portal_auth_enabled(portal_auth)
+  return portal_auth and portal_auth ~= ""
+end
+
+
 local function validate_auth_plugin(self, dao_factory, helpers, plugin_name)
   local workspace = ngx.ctx.workspaces and ngx.ctx.workspaces[1] or {}
   local portal_auth = ws_helper.retrieve_ws_config(ws_constants.PORTAL_AUTH, workspace)
@@ -124,7 +129,7 @@ return {
       local portal_auth = ws_helper.retrieve_ws_config(ws_constants.PORTAL_AUTH, workspace)
 
       -- If auth is enabled, we need to validate consumer/developer
-      if portal_auth then
+      if portal_auth_enabled(portal_auth) then
         authenticate(self, dao_factory, helpers)
       end
     end,

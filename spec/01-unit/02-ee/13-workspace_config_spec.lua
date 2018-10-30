@@ -100,6 +100,24 @@ describe("workspace config", function()
       }
       valid = validate_entity(values, schema)
       assert.True(valid)
+
+      values = {
+        name = "test",
+        config = {
+          portal_auth = "",
+        },
+      }
+      valid = validate_entity(values, schema)
+      assert.True(valid)
+
+      values = {
+        name = "test",
+        config = {
+          portal_auth = nil,
+        },
+      }
+      valid = validate_entity(values, schema)
+      assert.True(valid)
     end)
 
     it("should reject improperly formatted auth type", function()
@@ -216,7 +234,33 @@ describe("workspace config", function()
       assert.equal(ws_conf_item, workspace.config.portal_emails_reply_to)
     end)
 
+    it("should defer to default portal-auth when set to 'nil'", function()
+      local workspace = {
+        config = {
+          portal_auth = nil,
+        }
+      }
+
+      local ws_conf_item = ws_helper.retrieve_ws_config(ws_constants.PORTAL_AUTH, workspace)
+      assert.equal(ws_conf_item, singletons.configuration.portal_auth)
+    end)
+
+    it("should not defer to default portal-auth when set to emtpy string", function()
+      local workspace = {
+        config = {
+          portal_auth = '',
+        }
+      }
+
+      local ws_conf_item = ws_helper.retrieve_ws_config(ws_constants.PORTAL_AUTH, workspace)
+      assert.equal(ws_conf_item, workspace.config.portal_auth)
+    end)
+
     it("should return error if value not available", function()
+      singletons.configuration = {
+        portal_auth = "basic-auth",
+      }
+
       local workspace = {
         config = {
           portal_auth = "key-auth",

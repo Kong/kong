@@ -24,6 +24,11 @@ local auth_plugins = {
 }
 
 
+local function portal_auth_enabled(portal_auth)
+  return portal_auth and portal_auth ~= ""
+end
+
+
 local function check_portal_status(helpers)
   local workspace = ngx.ctx.workspaces and ngx.ctx.workspaces[1] or {}
   local portal = ws_helper.retrieve_ws_config(ws_constants.PORTAL, workspace)
@@ -158,7 +163,7 @@ return {
       local workspace = ngx.ctx.workspaces and ngx.ctx.workspaces[1] or {}
       self.portal_auth = ws_helper.retrieve_ws_config(ws_constants.PORTAL_AUTH, workspace)
 
-      if not self.portal_auth then
+      if not portal_auth_enabled(self.portal_auth) then
         return helpers.responses.send_HTTP_NOT_FOUND()
       end
 
@@ -226,7 +231,7 @@ return {
       local workspace = ngx.ctx.workspaces and ngx.ctx.workspaces[1] or {}
       self.portal_auth = ws_helper.retrieve_ws_config(ws_constants.PORTAL_AUTH, workspace)
 
-      if not self.portal_auth then
+      if not portal_auth_enabled(self.portal_auth) then
         return helpers.responses.send_HTTP_NOT_FOUND()
       end
 
@@ -310,7 +315,7 @@ return {
       local workspace = ngx.ctx.workspaces and ngx.ctx.workspaces[1] or {}
       self.portal_auth = ws_helper.retrieve_ws_config(ws_constants.PORTAL_AUTH, workspace)
 
-      if not self.portal_auth then
+      if not portal_auth_enabled(self.portal_auth) then
         return helpers.responses.send_HTTP_NOT_FOUND()
       end
 
