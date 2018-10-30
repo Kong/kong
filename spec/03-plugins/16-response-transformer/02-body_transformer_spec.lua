@@ -17,6 +17,9 @@ describe("Plugin: response-transformer", function()
         append   = {
           json   = {}
         },
+        extract  = {
+          json   = {}
+        },
       }
       it("parameter", function()
         local json = [[{"p2":"v1"}]]
@@ -45,6 +48,9 @@ describe("Plugin: response-transformer", function()
         },
         append   = {
           json   = {"p1:v1", "p3:\"v1\""}
+        },
+        extract  = {
+          json   = {}
         },
       }
       it("new key:value if key does not exists", function()
@@ -80,7 +86,10 @@ describe("Plugin: response-transformer", function()
         },
         append   = {
           json   = {}
-        }
+        },
+        extract  = {
+          json   = {}
+        },
       }
       it("parameter", function()
         local json = [[{"p1" : "v1", "p2" : "v1"}]]
@@ -102,7 +111,10 @@ describe("Plugin: response-transformer", function()
         },
         append   = {
           json   = {}
-        }
+        },
+        extract  = {
+          json   = {}
+        },
       }
       it("parameter if it exists", function()
         local json = [[{"p1" : "v1", "p2" : "v1"}]]
@@ -138,12 +150,145 @@ describe("Plugin: response-transformer", function()
         append   = {
           json   = {"p3:v2"}
         },
+        extract  = {
+          json   = {}
+        }
       }
       it("combination", function()
         local json = [[{"p1" : "v1", "p2" : "v1"}]]
         local body = body_transformer.transform_json_body(conf, json)
         local body_json = cjson.decode(body)
         assert.same({p2 = "v2", p3 = {"v1", "v2"}}, body_json)
+      end)
+    end)
+
+    describe("remove, extract", function()
+      local conf = {
+        remove   = {
+          json   = {"p1"}
+        },
+        replace  = {
+          json   = {}
+        },
+        add      = {
+          json   = {}
+        },
+        append   = {
+          json   = {}
+        },
+        extract  = {
+          json   = {"p2"}
+        },
+      }
+      it("combination", function()
+        local json = [[{"p1" : "v1", "p2" : "{\"foo\":\"bar\"}"}]]
+        local body = body_transformer.transform_json_body(conf, json)
+        local body_json = cjson.decode(body)
+        assert.same({foo = "bar"}, body_json)
+      end)
+    end)
+
+    describe("extract, replace", function()
+      local conf = {
+        remove   = {
+          json   = {}
+        },
+        extract  = {
+          json   = {"p2"}
+        },
+        replace  = {
+          json   = {"foo:baz"}
+        },
+        add      = {
+          json   = {}
+        },
+        append   = {
+          json   = {}
+        },
+      }
+      it("combination", function()
+        local json = [[{"p1" : "v1", "p2" : "{\"foo\":\"bar\"}"}]]
+        local body = body_transformer.transform_json_body(conf, json)
+        local body_json = cjson.decode(body)
+        assert.same({p1 = "v1", foo = "baz"}, body_json)
+      end)
+    end)
+
+    describe("extract, replace, add", function()
+      local conf = {
+        remove   = {
+          json   = {}
+        },
+        extract  = {
+          json   = {"p2"}
+        },
+        replace  = {
+          json   = {"foo:baz"}
+        },
+        add      = {
+          json   = {"bar:gummies"}
+        },
+        append   = {
+          json   = {}
+        },
+      }
+      it("combination", function()
+        local json = [[{"p1" : "v1", "p2" : "{\"foo\":\"bar\"}"}]]
+        local body = body_transformer.transform_json_body(conf, json)
+        local body_json = cjson.decode(body)
+        assert.same({p1 = "v1", foo = "baz", bar = "gummies"}, body_json)
+      end)
+    end)
+
+    describe("extract, replace, add, append", function()
+      local conf = {
+        remove   = {
+          json   = {}
+        },
+        extract  = {
+          json   = {"p2"}
+        },
+        replace  = {
+          json   = {"foo:baz"}
+        },
+        add      = {
+          json   = {"bar:gummies"}
+        },
+        append   = {
+          json   = {"foo:bar"}
+        },
+      }
+      it("combination", function()
+        local json = [[{"p1" : "v1", "p2" : "{\"foo\":\"bar\"}"}]]
+        local body = body_transformer.transform_json_body(conf, json)
+        local body_json = cjson.decode(body)
+        assert.same({p1 = "v1", foo = {"baz", "bar"}, bar = "gummies"}, body_json)
+      end)
+    end)
+
+    describe("remove, extract, replace, add, append", function()
+      local conf = {
+        remove   = {
+          json   = {"p1"}
+        },
+        extract  = {
+          json   = {"p2"}
+        },
+        replace  = {
+          json   = {"foo:baz"}
+        },
+        add      = {
+          json   = {"bar:gummies"}
+        },
+        append   = {
+          json   = {"foo:bar"}
+        },
+      }
+      it("combination", function()
+        local json = [[{"p1" : "v1", "p2" : "{\"foo\":\"bar\"}"}]]
+        local body = body_transformer.transform_json_body(conf, json)
+        local body_json = cjson.decode(body)
+        assert.same({foo = {"baz", "bar"}, bar = "gummies"}, body_json)
       end)
     end)
   end)
