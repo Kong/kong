@@ -2367,7 +2367,7 @@ This release contains tiny bug fixes that were especially annoying for complex C
  We would recommended to consult the suggested [0.6 upgrade path](https://github.com/Kong/kong/blob/master/UPGRADE.md#upgrade-to-06x) for this release.
 
 - [Serf](https://www.serfdom.io) is now a Kong dependency. It allows Kong nodes to communicate between each other opening the way to many features and improvements.
-- The configuration file changed. Some properties were renamed, others were moved, and some are new. We would recommended checking out the new default configuration file.
+- The configuration file changed. Some properties were renamed, others were moved, and some are new. We would recommend checking out the new default configuration file.
 - Drop the Lua 5.1 dependency which was only used by the CLI. The CLI now runs with LuaJIT, which is consistent with other Kong components (Luarocks and OpenResty) already relying on LuaJIT. Make sure the LuaJIT interpreter is included in your `$PATH`. [#799](https://github.com/Kong/kong/pull/799)
 
 ### Added
@@ -2745,7 +2745,7 @@ Queries effectuated during the downtime will still be lost. [#11](https://github
 
 #### Fixed
 - Resolver
-  - More explicit "API not found" message from the resolver if the Host was not found in the system. "Api not foun with Host: %s".
+  - More explicit "API not found" message from the resolver if the Host was not found in the system. "API not found with Host: %s".
   - If multiple hosts headers are being sent, Kong will test them all to see if one of the API is in the system. [#186](https://github.com/Kong/kong/pull/186)
 - Admin API: responses now have a new line after the body. [#164](https://github.com/Kong/kong/issues/164)
 - DAO: keepalive property is now properly passed when Kong calls `set_keepalive` on Cassandra sockets.
