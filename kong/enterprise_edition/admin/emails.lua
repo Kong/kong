@@ -64,7 +64,7 @@ function _M:invite(recipients, jwt)
   end
 
   local template = self.templates.invite
-  local registerUrl = kong_conf.admin_gui_url or ""
+  local registerUrl = (kong_conf.admin_gui_url or "")
                       .. "/register?email=" .. ngx.escape_uri(recipients[1])
                       .. "&token=" .. ngx.escape_uri(jwt)
 
