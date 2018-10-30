@@ -1311,6 +1311,33 @@ describe("Admin API: #" .. kong_config.database, function()
         assert.res_status(204, res)
       end)
     end)
+
+    describe("certificates through sni name", function()
+      it("get a certificate if sni not exist", function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/certificates/non-existent.com",
+        })
+
+        assert.res_status(404, res)
+      end)
+      it("patch a certificate if sni not exist", function()
+        local res = assert(client:send {
+          method = "PATCH",
+          path = "/certificates/non-existent.com",
+        })
+
+        assert.res_status(404, res)
+      end)
+      it("delete a certificate if sni not exist", function()
+        local res = assert(client:send {
+          method = "DELETE",
+          path = "/certificates/non-existent.com",
+        })
+
+        assert.res_status(404, res)
+      end)
+    end)
   end)
 end)
 

@@ -259,7 +259,7 @@ return {
           return helpers.yield_error(err)
         end
 
-        if not row then
+        if not row or not row.ssl_certificate_id then
           return helpers.responses.send_HTTP_NOT_FOUND()
         end
 
