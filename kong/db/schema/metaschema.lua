@@ -95,7 +95,12 @@ table.insert(field_schema, { keys     = { type = "record", fields = field_schema
 table.insert(field_schema, { values   = { type = "record", fields = field_schema } })
 table.insert(field_schema, { fields   = fields_array })
 
-local conditional_validators = { required = { type = "boolean" } }
+local conditional_validators = {
+  { required = { type = "boolean" } },
+  { elements = { type = "record", fields = field_schema } },
+  { keys     = { type = "record", fields = field_schema } },
+  { values   = { type = "record", fields = field_schema } },
+}
 for _, field in ipairs(validators) do
   table.insert(conditional_validators, field)
 end
