@@ -69,9 +69,9 @@ function _M.transform_json_body(conf, buffered_data)
   -- extract value from key and populate the body of the response
   -- by parsing the value and adding each key individually
   for _, name in iter(conf.extract.json) do
-    decoded_value = cjson_decode(json_body[name])
+    local extracted_decoded_value = cjson_decode(json_body[name])
     json_body[name] = nil
-    for k, v in pairs(decoded_value) do
+    for k, v in pairs(extracted_decoded_value) do
       json_body[k] = v
     end
   end
