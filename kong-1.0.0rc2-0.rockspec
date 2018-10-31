@@ -167,6 +167,7 @@ build = {
     ["kong.db.strategies.postgres"] = "kong/db/strategies/postgres/init.lua",
     ["kong.db.strategies.postgres.plugins"] = "kong/db/strategies/postgres/plugins.lua",
     ["kong.db.strategies.postgres.connector"] = "kong/db/strategies/postgres/connector.lua",
+    ["kong.db.migrations.state"] = "kong/db/migrations/state.lua",
     ["kong.db.migrations.helpers"] = "kong/db/migrations/helpers.lua",
     ["kong.db.migrations.core"] = "kong/db/migrations/core/init.lua",
     ["kong.db.migrations.core.000_base"] = "kong/db/migrations/core/000_base.lua",
