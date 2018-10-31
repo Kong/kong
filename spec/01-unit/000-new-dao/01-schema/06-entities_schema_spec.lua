@@ -44,21 +44,4 @@ describe("entity schema", function()
     assert.is_nil(ok)
     assert.equal("a_map: Entities map keys must be strings.", err)
   end)
-
-  it("rejects fields with aggregates on non-base types", function()
-    local s = {
-      name = "invalid",
-      fields = {
-        { a_map = {
-            type = "array",
-            elements = { type = "record" },
-          },
-        },
-      },
-    }
-    local ok, err = Entity.new(s)
-    assert.is_nil(ok)
-    assert.equal("a_map: Entities aggregates are only allowed on base types.",
-                 err)
-  end)
 end)
