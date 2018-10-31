@@ -545,7 +545,7 @@ end
 -- `port` (number), `ssl` (bool), `http2` (bool), `listener` (string, full listener)
 local function parse_listeners(values)
   local list = {}
-  local flags = { "ssl", "http2", "proxy_protocol" }
+  local flags = { "ssl", "http2", "proxy_protocol", "transparent" }
   local usage = "must be of form: [off] | <ip>:<port> [" ..
                 concat(flags, "] [") .. "], [... next entry ...]"
 

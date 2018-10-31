@@ -110,8 +110,11 @@
                          #   enabled.
                          # - `http2` will allow for clients to open HTTP/2
                          #   connections to Kong's proxy server.
-                         # - Finally, `proxy_protocol` will enable usage of the
+                         # - `proxy_protocol` will enable usage of the
                          #   PROXY protocol for a given address/port.
+                         # - `transparent` will cause kong to listen to, and
+                         #   respond from, any and all IP addresses and ports
+                         #   you configure in iptables.
                          #
                          # This value can be set to `off`, thus disabling
                          # the proxy port for this node, enabling a
