@@ -1,7 +1,7 @@
 local pl_file    = require "pl.file"
 local pl_path    = require "pl.path"
 local helpers      = require "spec.helpers"
-local ee_helpers   = require "spec.ee_helpers"
+local ee_helpers   = require "spec-ee.helpers"
 local singletons   = require "kong.singletons"
 
 local function create_portal_index()
