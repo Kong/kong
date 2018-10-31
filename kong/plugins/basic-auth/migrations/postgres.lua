@@ -33,5 +33,11 @@ return {
     down = [[
       ALTER TABLE basicauth_credentials DROP CONSTRAINT basicauth_credentials_username_key;
     ]]
-  }
+  },
+  {
+    name = "2018-10-29-190000_bcrypt_rounds",
+    up = [[
+      ALTER TABLE basicauth_credentials ADD COLUMN rounds int;
+    ]],
+  },
 }
