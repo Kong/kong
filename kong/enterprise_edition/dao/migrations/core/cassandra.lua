@@ -1,6 +1,5 @@
 local rbac_migrations_defaults = require "kong.rbac.migrations.01_defaults"
 local rbac_migrations_user_default_role = require "kong.rbac.migrations.03_user_default_role"
-local rbac_migrations_default_role_flag = require "kong.rbac.migrations.04_user_default_role_flag"
 local utils = require "kong.tools.utils"
 local timestamp = require "kong.tools.timestamp"
 local portal_files = require "kong.portal.migrations.01_initial_files"
@@ -521,12 +520,6 @@ return {
     ]],
   },
   {
-    name = "2018-08-15-100001_rbac_role_defaults",
-    up = function(_, _, dao)
-      return rbac_migrations_default_role_flag.up(nil, nil, dao)
-    end,
-  },
-  {
     name = "2018-09-05-144800_workspace_meta",
     up = [[
       ALTER TABLE workspaces ADD meta text;
@@ -691,5 +684,63 @@ return {
     up = [[
       DROP TABLE IF EXISTS portal_files
     ]],
+  },
+  {
+    name = "2018-10-23-000003_default_role_flag",
+    up = function(_, _, dao)
+      local coordinator = dao.db:get_coordinator()
+
+      local ids = {}
+
+      for rows, err in coordinator:iterate([[
+            SELECT id, comment FROM rbac_roles
+          ]]) do
+        if err then
+          return nil, nil, err
+        end
+
+        local search_str = "Default user role generated for"
+        for _, row in ipairs(rows) do
+          if row.comment and row.comment:sub(1, #search_str) == search_str then
+            ids[#ids + 1] = cassandra.uuid(row.id)
+          end
+        end
+      end
+
+      local _, errmsg = coordinator:execute([[
+        UPDATE rbac_roles SET is_default = true where ID in ?
+      ]], { ids })
+      if errmsg then
+        return nil, nil, errmsg
+      end
+    end,
+  },
+
+  {
+    name = "2018-10-24-000000_upgrade_admins",
+    up = function(_, _, dao)
+      local coordinator = dao.db:get_coordinator()
+
+      local admin_ids = {}
+
+      for rows, err in coordinator:iterate([[
+            SELECT id FROM consumers WHERE type = 2
+          ]]) do
+        if err then
+          return nil, nil, err
+        end
+
+        for _, row in ipairs(rows) do
+          admin_ids[#admin_ids + 1] = cassandra.uuid(row.id)
+        end
+      end
+
+      local _, errmsg = coordinator:execute([[
+        UPDATE consumers SET status = 0 where ID in ?
+      ]], { admin_ids })
+      if errmsg then
+        return nil, nil, errmsg
+      end
+    end,
   },
 }

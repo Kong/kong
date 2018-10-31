@@ -1,6 +1,5 @@
 local rbac_migrations_defaults = require "kong.rbac.migrations.01_defaults"
 local rbac_migrations_user_default_role = require "kong.rbac.migrations.03_user_default_role"
-local rbac_migrations_default_role_flag = require "kong.rbac.migrations.04_user_default_role_flag"
 local files = require "kong.portal.migrations.01_initial_files"
 local fmt = string.format
 local utils = require "kong.tools.utils"
@@ -275,6 +274,9 @@ return {
     up = [[
       ALTER TABLE rbac_roles ADD is_default boolean default false;
       CREATE INDEX IF NOT EXISTS rbac_role_default_idx on rbac_roles(is_default);
+      UPDATE rbac_roles
+         SET is_default = true
+       WHERE comment like 'Default user role generated for%';
     ]],
   },
   {
@@ -639,12 +641,6 @@ return {
     ]],
   },
   {
-    name = "2018-08-15-100001_rbac_role_defaults",
-    up = function(_, _, dao)
-      return rbac_migrations_default_role_flag.up(nil, nil, dao)
-    end,
-  },
-  {
     name = "2018-09-05-144800_workspace_meta",
     up = [[
       ALTER TABLE workspaces
@@ -787,6 +783,14 @@ return {
       EXCEPTION WHEN duplicate_table THEN
          -- Do nothing, accept existing state
       END$$;
+    ]]
+  },
+  {
+    name = "2018-10-24-000000_upgrade_admins",
+    up = [[
+      UPDATE consumers
+         SET status = 0
+       WHERE type = 2
     ]]
   },
 }

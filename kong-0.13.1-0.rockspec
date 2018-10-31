@@ -191,7 +191,6 @@ build = {
     ["kong.rbac.migrations.01_defaults"] = "kong/rbac/migrations/01_defaults.lua",
     ["kong.rbac.migrations.02_admins"] = "kong/rbac/migrations/02_admins.lua",
     ["kong.rbac.migrations.03_user_default_role"] = "kong/rbac/migrations/03_user_default_role.lua",
-    ["kong.rbac.migrations.04_user_default_role_flag"] = "kong/rbac/migrations/04_user_default_role_flag.lua",
 
     ["kong.workspaces"] = "kong/workspaces/init.lua",
     ["kong.workspaces.helper"] = "kong/workspaces/helper.lua",
