@@ -164,6 +164,20 @@ describe("(#" .. kong_config.database .. ") Admin API workspaces", function()
         assert.equals(4, json.total)
         assert.equals(4, #json.data)
       end)
+
+      it("returns 404 if called from other than default workspace", function()
+        local res = assert(client:send {
+          method = "GET",
+          path   = "/bar/workspaces",
+        })
+        assert.res_status(404, res)
+
+        res = assert(client:send {
+          method = "GET",
+          path   = "/default/workspaces",
+        })
+        assert.res_status(200, res)
+      end)
     end)
   end)
 
@@ -294,6 +308,33 @@ describe("(#" .. kong_config.database .. ") Admin API workspaces", function()
 
         assert.res_status(404, res)
       end)
+
+      it("returns 404 if we call from another workspace", function()
+        local res = assert(client:send {
+          method = "GET",
+          path   = "/foo/workspaces/default",
+        })
+        assert.res_status(404, res)
+
+        res = assert(client:send {
+          method = "GET",
+          path   = "/workspaces/foo",
+        })
+        assert.res_status(200, res)
+
+        res = assert(client:send {
+          method = "GET",
+          path   = "/default/workspaces/foo",
+        })
+        assert.res_status(200, res)
+
+        res = assert(client:send {
+          method = "GET",
+          path   = "/foo/workspaces/foo",
+        })
+        assert.res_status(200, res)
+      end)
+
     end)
 
     describe("DELETE", function()
@@ -1128,5 +1169,16 @@ dao_helpers.for_each_dao(function(kong_config)
       assert.equals(0, res.counts.services)
       delete("/workspaces/ws1") --cleanup
     end)
+
+    it("returns 404 if we call from another workspace", function()
+      post("/workspaces", {name = "ws1"})
+
+      local res = assert(client:send {
+        method = "GET",
+        path   = "/ws1/workspaces/default/meta",
+      })
+      assert.res_status(404, res)
+    end)
+
   end)
 end)

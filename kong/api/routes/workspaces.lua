@@ -4,10 +4,39 @@ local utils = require "kong.tools.utils"
 local rbac  = require "kong.rbac"
 local workspaces = require "kong.workspaces"
 
+-- FT-258: To block some endpoints of being wrongly called from a
+-- workspace namespace, we enforce that some workspace endpoints are
+-- called either from the default workspace or from a different
+-- workspace but having the same workspace passed as a parameter.
+local function ensure_valid_workspace(self, dao_factory, helpers)
+  local api_workspace = self.workspace
+  local namespace_workspace = ngx.ctx.workspaces[1]
+
+  -- call from default ws is ok.
+  if namespace_workspace.name == workspaces.DEFAULT_WORKSPACE then
+    return true
+  end
+
+  if api_workspace.id == namespace_workspace.id then
+    -- if called under a different workspace namespace and the api has
+    -- a workspace parameter on its own, ensure we're asking for the
+    -- same
+    return true
+  end
+
+  helpers.responses.send_HTTP_NOT_FOUND()
+end
+
 
 return {
   ["/workspaces/"] = {
-    GET = function(self, dao_factory)
+    before = function(self, dao_factory, helpers)
+      -- FT-258
+      if ngx.ctx.workspaces[1].name ~= workspaces.DEFAULT_WORKSPACE then
+        helpers.responses.send_HTTP_NOT_FOUND()
+      end
+    end,
+    GET = function(self, dao_factory, helpers)
       crud.paginated_set(self, dao_factory.workspaces)
     end,
 
@@ -31,9 +60,12 @@ return {
     before = function(self, dao_factory, helpers)
       self.params.workspace_name_or_id = ngx.unescape_uri(self.params.workspace_name_or_id)
       crud.find_workspace_by_name_or_id(self, dao_factory, helpers)
+
+      ensure_valid_workspace(self, dao_factory, helpers)
     end,
 
     GET = function(self, dao_factory, helpers)
+      ensure_valid_workspace(self, dao_factory, helpers)
       return helpers.responses.send_HTTP_OK(self.workspace)
     end,
 
@@ -79,6 +111,7 @@ return {
     end,
 
     GET = function(self, dao_factory, helpers)
+      ensure_valid_workspace(self, dao_factory, helpers)
       if self.params.resolve then
         local entities_hash = rbac.resolve_workspace_entities({ self.workspace.id })
 
@@ -262,6 +295,7 @@ return {
       self.params.workspace_name_or_id =
         ngx.unescape_uri(self.params.workspace_name_or_id)
       crud.find_workspace_by_name_or_id(self, dao_factory, helpers)
+      ensure_valid_workspace(self, dao_factory, helpers)
     end,
 
     GET = function(self, dao_factory, helpers)
