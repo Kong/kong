@@ -61,6 +61,7 @@ return {
     RATELIMIT_LIMIT = "X-RateLimit-Limit",
     RATELIMIT_REMAINING = "X-RateLimit-Remaining",
     CONSUMER_GROUPS = "X-Consumer-Groups",
+    AUTHENTICATED_GROUPS = "X-Authenticated-Groups",
     FORWARDED_HOST = "X-Forwarded-Host",
     FORWARDED_PREFIX = "X-Forwarded-Prefix",
     ANONYMOUS = "X-Anonymous-Consumer",

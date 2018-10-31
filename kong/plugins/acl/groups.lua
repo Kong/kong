@@ -5,6 +5,7 @@ local EMPTY = tablex.readonly {}
 
 
 local kong = kong
+local type = type
 local mt_cache = { __mode = "k" }
 local setmetatable = setmetatable
 local consumer_groups_cache = setmetatable({}, mt_cache)
@@ -28,7 +29,7 @@ end
 
 
 --- Returns the database records with groups the consumer belongs to
--- @param conumer_id (string) the consumer for which to fetch the groups it belongs to
+-- @param consumer_id (string) the consumer for which to fetch the groups it belongs to
 -- @return table with group records (empty table if none), or nil+error
 local function get_consumer_groups_raw(consumer_id)
   local cache_key = kong.db.acls:cache_key(consumer_id)
@@ -55,7 +56,7 @@ end
 --   admins = "admins",
 -- }
 -- If there are no groups defined, it will return an empty table
--- @param conumer_id (string) the consumer for which to fetch the groups it belongs to
+-- @param consumer_id (string) the consumer for which to fetch the groups it belongs to
 -- @return table with groups (empty table if none) or nil+error
 local function get_consumer_groups(consumer_id)
   local raw_groups, err = get_consumer_groups_raw(consumer_id)
@@ -113,21 +114,6 @@ local function consumer_in_groups(groups_to_check, consumer_groups)
 end
 
 
---- checks whether a consumer is part of the gieven list of groups
--- @param groups_to_check (table) an array of group names. Note: since the
--- results will be cached by this table, always use the same table for the
--- same set of groups!
--- @param consumer_id (string) id of consumer to verify
-local function consumer_id_in_groups(groups_to_check, consumer_id)
-  local consumer_groups, err = get_consumer_groups(consumer_id)
-  if not consumer_groups then
-    return nil, err
-  end
-
-  return consumer_in_groups(groups_to_check, consumer_groups)
-end
-
-
 --- Gets the currently identified consumer for the request.
 -- Checks both consumer and if not found the credentials.
 -- @return consumer_id (string), or alternatively `nil` if no consumer was
@@ -138,9 +124,60 @@ local function get_current_consumer_id()
 end
 
 
+--- Returns a table with all group names.
+-- The table will have an array part to iterate over, and a hash part
+-- where each group name is indexed by itself. Eg.
+-- {
+--   [1] = "users",
+--   [2] = "admins",
+--   users = "users",
+--   admins = "admins",
+-- }
+-- If there are no authenticated_groups defined, it will return nil
+-- @return table with groups or nil
+local function get_authenticated_groups()
+  local authenticated_groups = kong.ctx.shared.authenticated_groups
+  if type(authenticated_groups) ~= "table" then
+    authenticated_groups = ngx.ctx.authenticated_groups
+    if authenticated_groups == nil then
+      return nil
+    end
+
+    if type(authenticated_groups) ~= "table" then
+      kong.log.warn("invalid authenticated_groups, a table was expected")
+      return nil
+    end
+  end
+
+  local groups = {}
+  for i = 1, #authenticated_groups do
+    groups[i] = authenticated_groups[i]
+    groups[authenticated_groups[i]] = authenticated_groups[i]
+  end
+
+  return groups
+end
+
+
+--- checks whether a group-list is part of a given list of groups.
+-- @param groups_to_check (table) an array of group names.
+-- @param groups (table) list of groups (result from
+-- `get_authenticated_groups`)
+-- @return (boolean) whether the authenticated group is part of any of the
+-- groups.
+local function group_in_groups(groups_to_check, groups)
+  for i = 1, #groups_to_check do
+    if groups[groups_to_check[i]] then
+      return true
+    end
+  end
+end
+
+
 return {
-  get_consumer_groups = get_consumer_groups,
-  consumer_in_groups = consumer_in_groups,
-  consumer_id_in_groups = consumer_id_in_groups,
   get_current_consumer_id = get_current_consumer_id,
+  get_consumer_groups = get_consumer_groups,
+  get_authenticated_groups = get_authenticated_groups,
+  consumer_in_groups = consumer_in_groups,
+  group_in_groups = group_in_groups,
 }
