@@ -61,7 +61,7 @@ end
 function _M.prepare_plugin(type, dao, name, config)
   local plugin, err = _M.find_plugin(type, name)
   if err then
-    return nil, api_helpers.yield_error(err)
+    return api_helpers.yield_error(err)
   end
 
   local fields = {
@@ -234,7 +234,7 @@ function _M.authenticate(self, dao_factory, rbac_enabled, gui_auth)
 
       if not next(refs) then
         ngx.log(ngx.DEBUG, "no workspace found for consumer:" .. consumer_id)
-        return responses.send_HTTP_NOT_FOUND()
+        return responses.send_HTTP_INTERNAL_SERVER_ERROR()
       end
 
       local cache_key = dao_factory.consumers:cache_key(consumer_id)
@@ -244,11 +244,12 @@ function _M.authenticate(self, dao_factory, rbac_enabled, gui_auth)
 
       if err then
         ngx.log(ngx.ERR, _log_prefix, "error getting consumer: ", consumer_id)
+        return responses.send_HTTP_INTERNAL_SERVER_ERROR()
       end
 
       if not consumer then
         ngx.log(ngx.DEBUG, _log_prefix, "consumer not found: ", consumer_id)
-        return responses.send_HTTP_NOT_FOUND()
+        return responses.send_HTTP_INTERNAL_SERVER_ERROR()
       end
 
       local workspace = {
@@ -297,7 +298,7 @@ function _M.authenticate(self, dao_factory, rbac_enabled, gui_auth)
         if err then
           ngx.log(ngx.ERR, _log_prefix, "failed to approve consumer: ",
                   self.consumer.id, ". err: ", err)
-        
+
           return responses.send_HTTP_INTERNAL_SERVER_ERROR()
         end
 

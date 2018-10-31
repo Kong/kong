@@ -166,7 +166,12 @@ app:before_filter(function(self)
     ngx.ctx.rbac = nil
 
     local ws_name = self.params.workspace_name or workspaces.DEFAULT_WORKSPACE
-    local workspaces = workspaces.get_req_workspace(ws_name)
+    local workspaces, err = workspaces.get_req_workspace(ws_name)
+    if err then
+      ngx.log(ngx.ERR, err)
+      return responses.send_HTTP_INTERNAL_SERVER_ERROR()
+    end
+
     if not workspaces or #workspaces == 0 then
       responses.send_HTTP_NOT_FOUND(fmt("Workspace '%s' not found", ws_name))
     end
