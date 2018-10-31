@@ -832,6 +832,15 @@ local function load(path, custom_conf)
     end
   end
 
+  -- warn user if admin_invite_email is on but admin_gui_url is empty
+  if conf.admin_invite_email ~= "off" and not conf.admin_gui_url then
+    log.warn("admin_invite_email is set but admin_gui_url is nil")
+  end
+
+  -- warn user if admin_invite_email is on but admin_emails_from is empty
+  if conf.admin_invite_email ~= "off" and not conf.admin_emails_from then
+    log.warn("admin_invite_email is set but admin_emails_from is nil")
+  end
   -- warn user if ssl is disabled and rbac is enforced
   -- TODO CE would probably benefit from some helpers - eg, see
   -- kong.enterprise_edition.select_listener

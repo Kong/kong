@@ -966,7 +966,7 @@
                                       # to admins whom you're inviting to your
                                       # Kong Manager
 
-#admin_emails_from =                  # The email address for the `From` header
+#admin_emails_from =  ""              # The email address for the `From` header
                                       # for admin emails
 
 #admin_emails_reply_to =              # Email address for the `Reply-To` header
