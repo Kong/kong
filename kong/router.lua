@@ -59,27 +59,10 @@ local MATCH_LRUCACHE_SIZE = 5e3
 
 
 local MATCH_RULES = {
-  HOST            = 0x01,
+  HOST            = 0x04,
   URI             = 0x02,
-  METHOD          = 0x04,
+  METHOD          = 0x01,
 }
-
-local CATEGORIES = {
-  bor(MATCH_RULES.HOST,   MATCH_RULES.URI,     MATCH_RULES.METHOD),
-  bor(MATCH_RULES.HOST,   MATCH_RULES.URI),
-  bor(MATCH_RULES.HOST,   MATCH_RULES.METHOD),
-  bor(MATCH_RULES.METHOD, MATCH_RULES.URI),
-      MATCH_RULES.HOST,
-      MATCH_RULES.URI,
-      MATCH_RULES.METHOD,
-}
-
-local categories_len = #CATEGORIES
-
-local CATEGORIES_LOOKUP = {}
-for i = 1, categories_len do
-  CATEGORIES_LOOKUP[CATEGORIES[i]] = i
-end
 
 
 local match_route
@@ -113,6 +96,7 @@ local function marshall_route(r)
     strip_uri      = route.strip_path    == true,
     preserve_host  = route.preserve_host == true,
     match_rules    = 0x00,
+    match_weight   = 0,
     hosts          = {},
     uris           = {},
     methods        = {},
@@ -144,6 +128,7 @@ local function marshall_route(r)
 
     if #host_values > 0 then
       route_t.match_rules = bor(route_t.match_rules, MATCH_RULES.HOST)
+      route_t.match_weight = route_t.match_weight + 1
 
       for _, host_value in ipairs(host_values) do
         if find(host_value, "*", nil, true) then
@@ -178,6 +163,7 @@ local function marshall_route(r)
 
     if #paths > 0 then
       route_t.match_rules = bor(route_t.match_rules, MATCH_RULES.URI)
+      route_t.match_weight = route_t.match_weight + 1
 
       for _, path in ipairs(paths) do
         if re_find(path, [[^[a-zA-Z0-9\.\-_~/%]*$]]) then
@@ -222,6 +208,7 @@ local function marshall_route(r)
 
     if #methods > 0 then
       route_t.match_rules = bor(route_t.match_rules, MATCH_RULES.METHOD)
+      route_t.match_weight = route_t.match_weight + 1
 
       for _, method in ipairs(methods) do
         route_t.methods[upper(method)] = true
@@ -295,6 +282,7 @@ local function categorize_route_t(route_t, bit_category, categories)
   local category = categories[bit_category]
   if not category then
     category            = {
+      match_weight      = route_t.match_weight,
       routes_by_hosts   = {},
       routes_by_uris    = {},
       routes_by_methods = {},
@@ -580,10 +568,41 @@ function _M.new(routes)
   end
 
 
+  -- a sorted array of all categories bits (from the most significant
+  -- matching-wise, to the least significant)
+  local categories_weight_sorted = {}
+
+
+  -- a lookup array to get the category_idx from a category_bit. The
+  -- idx will be a categories_weight_sorted index
+  local categories_lookup = {}
+
+
+  for category_bit, category in pairs(categories) do
+    insert(categories_weight_sorted, {
+      category_bit = category_bit,
+      match_weight = category.match_weight,
+    })
+  end
+
+  sort(categories_weight_sorted, function(c1, c2)
+    if c1.match_weight ~= c2.match_weight then
+      return c1.match_weight > c2.match_weight
+    end
+
+    return c1.category_bit > c2.category_bit
+  end)
+
+  for i, c in ipairs(categories_weight_sorted) do
+    categories_lookup[c.category_bit] = i
+  end
+
+  -- the number of categories to iterate on for this instance of the router
+  local categories_len = #categories_weight_sorted
+
   sort(prefix_uris, function(p1, p2)
     return #p1.value > #p2.value
   end)
-
 
   local function find_route(req_method, req_uri, req_host, ngx)
     if type(req_method) ~= "string" then
@@ -696,11 +715,11 @@ function _M.new(routes)
     -- find our route
 
     if req_category ~= 0x00 then
-      local category_idx = CATEGORIES_LOOKUP[req_category]
+      local category_idx = categories_lookup[req_category] or 1
       local matched_route
 
       while category_idx <= categories_len do
-        local bit_category = CATEGORIES[category_idx]
+        local bit_category = categories_weight_sorted[category_idx].category_bit
         local category     = categories[bit_category]
 
         if category then
