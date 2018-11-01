@@ -6,14 +6,16 @@ local rbac       = require "kong.rbac"
 local workspaces = require "kong.workspaces"
 local singletons = require "kong.singletons"
 local admins     = require "kong.enterprise_edition.admins_helpers"
-local ee_jwt     = require "kong.enterprise_edition.jwt"
 local ee_api     = require "kong.enterprise_edition.api_helpers"
 local ee_utils   = require "kong.enterprise_edition.utils"
+local secrets = require "kong.enterprise_edition.consumer_reset_secret_helpers"
+
+
+local emails = singletons.admin_emails
 
 local log = ngx.log
 local ERR = ngx.ERR
 local DEBUG = ngx.DEBUG
-local time = ngx.time
 
 local _log_prefix = "[admins] "
 
@@ -178,32 +180,21 @@ return {
             user_id = new_rbac_user.id,
           }, dao_factory.consumers_rbac_users_map,
           function()
-            local jwt
+            local jwt, err
+
             -- only generate secrets for auth plugins with credentials tables
             if not self.token_optional then
-              local token_ttl = singletons.configuration.admin_invitation_expiry
+              local expiry = singletons.configuration.admin_invitation_expiry
 
-              -- Generate new secret
-              local row, err = singletons.dao.consumer_reset_secrets:insert({
-                consumer_id = consumer.id,
-                client_addr = ngx.var.remote_addr,
-              })
-
-              if err then
-                return helpers.yield_error(err)
-              end
-
-              local claims = {id = consumer.id, exp = time() + token_ttl}
-              jwt, err = ee_jwt.generate_JWT(claims, row.secret)
+              jwt, err = secrets.create(consumer, ngx.var.remote_addr, expiry)
 
               if err then
                 return helpers.yield_error(err)
               end
             end
 
-            if singletons.admin_emails then
-              local _, err = singletons.admin_emails:invite({ consumer.email },
-                                                            jwt)
+            if emails then
+              local _, err = emails:invite({ consumer.email }, jwt)
                 if err then
                   ngx.log(ngx.ERR, "[admins] error inviting user : ",
                           consumer.email)
@@ -246,6 +237,20 @@ return {
     GET = function(self, dao_factory, helpers)
       set_rbac_user(self, dao_factory, helpers)
 
+      -- if this user is still in an INVITED state, issue another invite
+      -- so the admin user can give it to them.
+      if self.consumer.status == enums.CONSUMERS.STATUS.INVITED and not self.token_optional then
+        local expiry = singletons.configuration.admin_invitation_expiry
+
+        local jwt, err = secrets.create(self.consumer, ngx.var.remote_addr, expiry)
+
+        if err then
+          return helpers.yield_error(err)
+        end
+
+        self.consumer.register_url = emails:register_url(self.consumer.email, jwt)
+      end
+
       return helpers.responses.send_HTTP_OK(self.consumer)
     end,
 
@@ -272,6 +277,87 @@ return {
       ee_crud.delete_without_sending_response(self.consumer.rbac_user,
                                               dao_factory.rbac_users)
       crud.delete(self.consumer, dao_factory.consumers)
+    end
+  },
+
+  ["/admins/password_resets"] = {
+    before = function(self, dao_factory, helpers)
+      validate_auth_plugin(self, dao_factory, helpers)
+
+      -- if we don't store your creds, you don't belong here
+      if self.token_optional then
+        return helpers.responses.send_HTTP_NOT_FOUND()
+      end
+
+      -- admin username is same as email address
+      -- if you've forgotten your password, this is all we know about you
+      self.consumer = admins.find_by_username_or_id(self.params.email)
+      if not self.consumer then
+        return helpers.responses.send_HTTP_NOT_FOUND()
+      end
+
+      -- when you reset your password, you come in with an email and a JWT
+      -- if it's there, make sure it's good
+      if self.params.token then
+        ee_api.validate_jwt(self, dao_factory, helpers)
+
+        -- make sure the email in the query params matches the one in the token
+        if self.consumer_id ~= self.consumer.id then
+          return helpers.responses.send_HTTP_NOT_FOUND()
+        end
+      end
+    end,
+
+    -- create a password reset request and send mail
+    POST = function(self, dao_factory, helpers)
+      local expiry = singletons.configuration.admin_invitation_expiry
+
+      local jwt, err = secrets.create(self.consumer, ngx.var.remote_addr, expiry)
+
+      if err then
+        log(ERR, _log_prefix, "failed to generate password reset token: ", err)
+        return helpers.responses.send_HTTP_INTERNAL_SERVER_ERROR()
+      end
+
+      -- send mail
+      local _, err = emails:reset_password(self.consumer.email, jwt)
+      if err then
+        log(ERR, _log_prefix, "failed to send reset_password email for: ",
+          self.consumer.email)
+
+        return helpers.responses.send_HTTP_INTERNAL_SERVER_ERROR()
+      end
+
+      return helpers.responses.send_HTTP_CREATED()
+    end,
+
+    -- reset password and consume token
+    PATCH = function(self, dao_factory, helpers)
+      local new_password = self.params.password
+      if not new_password or new_password == "" then
+        return helpers.responses.send_HTTP_BAD_REQUEST("password is required")
+      end
+
+      local found, err = admins.reset_password(self.plugin,
+                                               self.collection,
+                                               self.consumer,
+                                               new_password,
+                                               self.reset_secret_id)
+
+      if err then
+        return helpers.yield_error(err)
+      end
+
+      if not found then
+        return helpers.responses.send_HTTP_NOT_FOUND()
+      end
+
+      local _, err = emails:reset_password_success(self.consumer.email)
+      if err then
+        return helpers.yield_error(err)
+      end
+
+      return helpers.responses.send_HTTP_OK()
     end
   },
 

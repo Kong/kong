@@ -40,7 +40,8 @@ local admin_plugin_models = {}
 
 
 local auth_whitelisted_uris = {
-  ["/admins/register"] = true
+  ["/admins/register"] = true,
+  ["/admins/password_resets"] = true,
 }
 
 function _M.get_consumer_id_from_headers()
