@@ -116,16 +116,16 @@ function _M:invite(recipients)
   if not portal_invite_email then
     return nil, {code =  501, message = "portal_invite_email is disabled"}
   end
-
-  local portal_emails_from = ws_helper.retrieve_ws_config(ws_constants.PORTAL_EMAILS_FROM, workspace) or ''
+  
+  local portal_gui_url = ws_helper.build_ws_portal_gui_url(singletons.configuration, workspace)
+  local portal_emails_from = ws_helper.retrieve_ws_config(ws_constants.PORTAL_EMAILS_FROM, workspace)
   local portal_emails_reply_to = ws_helper.retrieve_ws_config(ws_constants.PORTAL_EMAILS_REPLY_TO, workspace)
   local conf = self.conf.portal_invite_email
   local options = {
     from = portal_emails_from,
     reply_to = portal_emails_reply_to,
-    subject = fmt(conf.subject, singletons.configuration.portal_gui_url),
-    html = fmt(conf.html, singletons.configuration.portal_gui_url, singletons.configuration.portal_gui_url,
-                                                    singletons.configuration.portal_gui_url),
+    subject = fmt(conf.subject, portal_gui_url),
+    html = fmt(conf.html, portal_gui_url, portal_gui_url, portal_gui_url),
   }
 
   local res
@@ -146,16 +146,16 @@ function _M:access_request(developer_email, developer_name)
     return nil
   end
 
-  local portal_emails_from = ws_helper.retrieve_ws_config(ws_constants.PORTAL_EMAILS_FROM, workspace) or ''
+  local admin_gui_url = singletons.configuration.admin_gui_url
+  local portal_gui_url = ws_helper.build_ws_portal_gui_url(singletons.configuration, workspace)
+  local portal_emails_from = ws_helper.retrieve_ws_config(ws_constants.PORTAL_EMAILS_FROM, workspace)
   local portal_emails_reply_to = ws_helper.retrieve_ws_config(ws_constants.PORTAL_EMAILS_REPLY_TO, workspace)
   local conf = self.conf.portal_access_request_email
   local options = {
     from = portal_emails_from,
     reply_to = portal_emails_reply_to,
-    subject = fmt(conf.subject, singletons.configuration.portal_gui_url),
-    html = fmt(conf.html, developer_name, developer_email,
-                            singletons.configuration.portal_gui_url, singletons.configuration.admin_gui_url,
-                                                      singletons.configuration.admin_gui_url),
+    subject = fmt(conf.subject, portal_gui_url),
+    html = fmt(conf.html, developer_name, developer_email, portal_gui_url, admin_gui_url, admin_gui_url),
   }
 
   local res = self.client:send(singletons.configuration.smtp_admin_emails, options)
@@ -171,15 +171,15 @@ function _M:approved(recipient)
     return nil
   end
 
-  local portal_emails_from = ws_helper.retrieve_ws_config(ws_constants.PORTAL_EMAILS_FROM, workspace) or ''
+  local portal_gui_url = ws_helper.build_ws_portal_gui_url(singletons.configuration, workspace)
+  local portal_emails_from = ws_helper.retrieve_ws_config(ws_constants.PORTAL_EMAILS_FROM, workspace)
   local portal_emails_reply_to = ws_helper.retrieve_ws_config(ws_constants.PORTAL_EMAILS_REPLY_TO, workspace)
   local conf = self.conf.portal_approved_email
   local options = {
     from = portal_emails_from,
     reply_to = portal_emails_reply_to,
-    subject = fmt(conf.subject, singletons.configuration.portal_gui_url),
-    html = fmt(conf.html, singletons.configuration.portal_gui_url, singletons.configuration.portal_gui_url,
-                                                    singletons.configuration.portal_gui_url),
+    subject = fmt(conf.subject, portal_gui_url),
+    html = fmt(conf.html, portal_gui_url, portal_gui_url, portal_gui_url),
   }
 
   local res = self.client:send({recipient}, options)
@@ -199,16 +199,16 @@ function _M:password_reset(recipient, token)
     return nil, {code =  500, message = "portal_token_exp is required"}
   end
 
-  local portal_emails_from = ws_helper.retrieve_ws_config(ws_constants.PORTAL_EMAILS_FROM, workspace) or ''
+  local portal_gui_url = ws_helper.build_ws_portal_gui_url(singletons.configuration, workspace)
+  local portal_emails_from = ws_helper.retrieve_ws_config(ws_constants.PORTAL_EMAILS_FROM, workspace)
   local portal_emails_reply_to = ws_helper.retrieve_ws_config(ws_constants.PORTAL_EMAILS_REPLY_TO, workspace)
   local exp_string = portal_utils.humanize_timestamp(exp_seconds)
   local conf = self.conf.portal_reset_email
   local options = {
     from = portal_emails_from,
     reply_to = portal_emails_reply_to,
-    subject = fmt(conf.subject, singletons.configuration.portal_gui_url),
-    html = fmt(conf.html, singletons.configuration.portal_gui_url, token,
-             singletons.configuration.portal_gui_url, token, exp_string),
+    subject = fmt(conf.subject, portal_gui_url),
+    html = fmt(conf.html, portal_gui_url, token, portal_gui_url, token, exp_string),
   }
 
   local res = self.client:send({recipient}, options)
@@ -223,15 +223,15 @@ function _M:password_reset_success(recipient)
     return nil, {code =  501, message = "portal_reset_success_email is disabled"}
   end
 
-  local portal_emails_from = ws_helper.retrieve_ws_config(ws_constants.PORTAL_EMAILS_FROM, workspace) or ''
+  local portal_gui_url = ws_helper.build_ws_portal_gui_url(singletons.configuration, workspace)
+  local portal_emails_from = ws_helper.retrieve_ws_config(ws_constants.PORTAL_EMAILS_FROM, workspace)
   local portal_emails_reply_to = ws_helper.retrieve_ws_config(ws_constants.PORTAL_EMAILS_REPLY_TO, workspace)
   local conf = self.conf.portal_reset_success_email
   local options = {
     from = portal_emails_from,
     reply_to = portal_emails_reply_to,
-    subject = fmt(conf.subject, singletons.configuration.portal_gui_url),
-    html = fmt(conf.html, singletons.configuration.portal_gui_url, singletons.configuration.portal_gui_url,
-                          singletons.configuration.portal_gui_url, singletons.configuration.portal_gui_url),
+    subject = fmt(conf.subject, portal_gui_url),
+    html = fmt(conf.html, portal_gui_url, portal_gui_url, portal_gui_url, portal_gui_url),
   }
 
   local res = self.client:send({recipient}, options)

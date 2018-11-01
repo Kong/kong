@@ -4,30 +4,26 @@ local app_helpers  = require "lapis.application"
 local singletons   = require "kong.singletons"
 local responses    = require "kong.tools.responses"
 local workspaces   = require "kong.workspaces"
-local ee_api      = require "kong.enterprise_edition.api_helpers"
+local ee_api       = require "kong.enterprise_edition.api_helpers"
+
+
 local fmt = string.format
-
-
 local _M = {}
 
 
 _M.app = lapis.Application()
 
 
+local get_portal_gui_url = function()
+  if singletons.configuration.portal_gui_use_subdomains then
+    return singletons.configuration.portal_gui_protocol .. '://' .. ngx.ctx.workspaces[1].name .. '.' .. singletons.configuration.portal_gui_host
+  end
+
+  return singletons.configuration.portal_gui_protocol .. '://' .. singletons.configuration.portal_gui_host
+end
+
+
 _M.app:before_filter(function(self)
-  -- manually apply cors plugin to this request
-  local cors_conf = {
-    origins = singletons.configuration.portal_gui_url or "*",
-    methods = { "GET", "PATCH", "DELETE", "POST" },
-    credentials = true,
-  }
-
-  local prepared_plugin = ee_api.prepare_plugin(ee_api.apis.PORTAL,
-                                                singletons.dao,
-                                                "cors", cors_conf)
-  ee_api.apply_plugin(prepared_plugin, "access")
-  ee_api.apply_plugin(prepared_plugin, "header_filter")
-
   -- in case of endpoint with missing `/`, this block is executed twice.
   -- So previous workspace should be dropped
   ngx.ctx.admin_api_request = true
@@ -43,6 +39,27 @@ _M.app:before_filter(function(self)
   -- 'default'
   ngx.ctx.workspaces = workspaces
   self.params.workspace_name = nil
+
+  -- manually apply cors plugin to this request
+  local portal_gui_match = "*"
+
+  if singletons.configuration.portal_gui_protocol
+  and singletons.configuration.portal_gui_host
+  and ngx.ctx.workspaces[1] then
+    portal_gui_match = get_portal_gui_url()
+  end
+
+  local cors_conf = {
+    origins = portal_gui_match,
+    methods = { "GET", "PATCH", "DELETE", "POST" },
+    credentials = true,
+  }
+
+  local prepared_plugin = ee_api.prepare_plugin(ee_api.apis.PORTAL,
+                                                singletons.dao,
+                                                "cors", cors_conf)
+  ee_api.apply_plugin(prepared_plugin, "access")
+  ee_api.apply_plugin(prepared_plugin, "header_filter")
 
   api_helpers.filter_body_content_type(self)
 end)

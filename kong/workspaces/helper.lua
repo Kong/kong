@@ -200,4 +200,19 @@ function _M.retrieve_ws_config(config_name, workspace)
 end
 
 
+function _M.build_ws_portal_gui_url(config, workspace)
+  if not config.portal_gui_host
+  or not config.portal_gui_protocol
+  or not workspace.name then
+    return config.portal_gui_host
+  end
+
+  if config.portal_gui_use_subdomains then
+    return config.portal_gui_protocol .. '://' .. workspace.name .. '.' .. config.portal_gui_host
+  end
+
+  return config.portal_gui_protocol .. '://' .. config.portal_gui_host .. '/' .. workspace.name
+end
+
+
 return _M

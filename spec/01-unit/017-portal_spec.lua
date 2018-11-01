@@ -122,11 +122,11 @@ describe("portal_gui", function()
         portal_auth = "basic-auth"
       }
 
-      index_conf = ee.prepare_portal(conf, { params = {
+      index_conf = ee.prepare_portal(conf, {
         workspace = {
           name = "default",
         }
-      }})
+      })
 
       assert.same({
         PORTAL_API_URL = "",
@@ -144,11 +144,11 @@ describe("portal_gui", function()
     end)
 
     it("inserts the appropriate values with different workspace name", function()
-      index_conf = ee.prepare_portal(conf, { params = {
+      index_conf = ee.prepare_portal(conf, {
         workspace = {
           name = "gruce"
         }
-      }})
+      })
 
       assert.same({
         PORTAL_API_URL = "",
@@ -166,14 +166,14 @@ describe("portal_gui", function()
     end)
 
     it("inserts the appropriate values with different portal auth type", function()
-      index_conf = ee.prepare_portal(conf, { params = {
+      index_conf = ee.prepare_portal(conf, {
         workspace = {
           config = {
             portal_auth = "key-auth",
           },
           name = "default"
         }
-      }})
+      })
 
       assert.same({
         PORTAL_API_URL = "",
