@@ -1,9 +1,15 @@
 # Table of Contents
 
-- [0.3.1](#030---20181017)
+- [0.3.2](#032---20181101)
+- [0.3.1](#031---20181017)
 - [0.3.0](#030---20181015)
 - [0.2.0](#020---20180924)
 - [0.1.0](#010---20180615)
+
+##  [0.3.2] - 2018/11/01
+
+- Fix a nil pointer de-reference bug when no routes are matched in Kong.
+  [#28](https://github.com/Kong/kong-plugin-prometheus/pull/28)
 
 ##  [0.3.1] - 2018/10/17
 
@@ -30,6 +36,7 @@
 
 - Initial release of Prometheus plugin for Kong.
 
+[0.3.2]: https://github.com/Kong/kong-plugin-prometheus/compare/0.3.1...0.3.2
 [0.3.1]: https://github.com/Kong/kong-plugin-prometheus/compare/0.3.0...0.3.1
 [0.3.0]: https://github.com/Kong/kong-plugin-prometheus/compare/0.2.0...0.3.0
 [0.2.0]: https://github.com/Kong/kong-plugin-prometheus/compare/0.1.0...0.2.0
