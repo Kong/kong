@@ -1,6 +1,7 @@
 local utils = require "kong.tools.utils"
 local singletons = require "kong.singletons"
 local public = require "kong.tools.public"
+local workspaces = require "kong.workspaces"
 local conf_loader = require "kong.conf_loader"
 local cjson = require "cjson"
 local rbac = require "kong.rbac"
@@ -160,10 +161,12 @@ return {
         },
       }
 
-      local roles, err = rbac.entity_relationships(dao_factory,
-                                                   ngx.ctx.rbac.user,
-                                                   "user",
-                                                   "role")
+      -- get roles across all workspaces
+      local roles, err = workspaces.run_with_ws_scope({},
+                                                      rbac.entity_relationships,
+                                                      dao_factory,
+                                                      ngx.ctx.rbac.user,
+                                                      "user", "role")
 
       if err then
         ngx.log(ngx.ERR, "[userinfo] ", err)
