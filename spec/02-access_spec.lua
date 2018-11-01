@@ -1,4 +1,5 @@
 local helpers = require "spec.helpers"
+local pl_file = require "pl.file"
 
 describe("Plugin: prometheus (access)", function()
   local proxy_client
@@ -17,6 +18,7 @@ describe("Plugin: prometheus (access)", function()
     bp.routes:insert {
       protocols = { "http" },
       paths = { "/" },
+      methods = { "GET" },
       service = service,
     }
 
@@ -75,5 +77,23 @@ describe("Plugin: prometheus (access)", function()
     })
     body = assert.res_status(200, res)
     assert.matches('kong_http_status{code="400",service="mock-service"} 1', body, nil, true)
+  end)
+
+  it("does not log error if no service was matched", function()
+    -- cleanup logs
+    local test_error_log_path = helpers.test_conf.nginx_err_logs
+    os.execute(":> " .. test_error_log_path)
+
+    local res = assert(proxy_client:send {
+      method  = "POST",
+      path    = "/no-route-match-in-kong",
+    })
+    assert.res_status(404, res)
+
+    -- make sure no errors
+    local logs = pl_file.read(test_error_log_path)
+    for line in logs:gmatch("[^\r\n]+") do
+      assert.not_match("[error]", line, nil, true)
+    end
   end)
 end)
