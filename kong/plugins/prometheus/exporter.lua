@@ -46,9 +46,13 @@ local function log(message)
     return
   end
 
-  local service_name = message.service and message.service.name or
-                       message.service.host
-  service_name = service_name or ""
+  local service_name
+  if message and message.service then
+    service_name = message.service.name or message.service.host
+  else
+    -- do not record any stats if the service is not present
+    return
+  end
 
   metrics.status:inc(1, { message.response.status, service_name })
 
