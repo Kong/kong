@@ -107,7 +107,7 @@ local function resource_ttl(res_cc)
   local max_age = res_cc["s-maxage"] or res_cc["max-age"]
 
   if not max_age then
-    local expires = ngx.var.expires
+    local expires = ngx.var.sent_http_expires
 
     -- if multiple Expires headers are present, last one wins
     if type(expires) == "table" then
@@ -198,7 +198,7 @@ local function cacheable_response(ngx, conf, cc)
     return false
   end
 
-  if conf.cache_control and (not cc["public"] or resource_ttl(cc) <= 0) then
+  if conf.cache_control and resource_ttl(cc) <= 0 then
     return false
   end
 

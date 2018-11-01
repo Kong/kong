@@ -596,6 +596,52 @@ for i, policy in ipairs({"memory", "redis"}) do
       assert.same("Bypass", res.headers["X-Cache-Status"])
     end)
 
+    it("public not present in Cache-Control, but max-age is", function()
+      -- httpbin's /cache endpoint always sets "Cache-Control: public"
+      -- necessary to set it manually using /response-headers instead
+      local res = assert(client:send {
+        method = "GET",
+        path = "/response-headers?Cache-Control=max-age%3D604800",
+        headers = {
+          host = "api-7.com",
+        }
+      })
+
+      assert.res_status(200, res)
+      assert.same("Miss", res.headers["X-Cache-Status"])
+      local cache_key = res.headers["X-Cache-Key"]
+    end)
+
+    it("Cache-Control contains s-maxage only", function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/response-headers?Cache-Control=s-maxage%3D604800",
+        headers = {
+          host = "api-7.com",
+        }
+      })
+
+      assert.res_status(200, res)
+      assert.same("Miss", res.headers["X-Cache-Status"])
+      local cache_key = res.headers["X-Cache-Key"]
+    end)
+
+    it("Expires present, Cache-Control absent", function()
+      local httpdate = ngx.escape_uri(os.date("!%a, %d %b %Y %X %Z", os.time()+5000))
+      local res = assert(client:send {
+        method = "GET",
+        path = "/response-headers",
+        query = "Expires=" .. httpdate,
+        headers = {
+          host = "api-7.com",
+        }
+      })
+
+      assert.res_status(200, res)
+      assert.same("Miss", res.headers["X-Cache-Status"])
+      local cache_key = res.headers["X-Cache-Key"]
+    end)
+
     describe("respects cache-control", function()
       it("min-fresh", function()
         -- bypass via unsatisfied min-fresh
