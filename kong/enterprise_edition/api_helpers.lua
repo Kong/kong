@@ -221,10 +221,11 @@ function _M.authenticate(self, dao_factory, rbac_enabled, gui_auth)
 
       local consumer_id = consumer_user.consumer_id
 
-      local refs, err = dao_factory.workspace_entities:find_all{
+      local workspace_entities, err = dao_factory.workspace_entities:find_all{
         entity_id = consumer_id,
         unique_field_name = "id",
       }
+      self.workspace_entities = workspace_entities
 
       if err then
         ngx.log(ngx.ERR, _log_prefix, "Error fetching workspaces for consumer: ",
@@ -232,7 +233,7 @@ function _M.authenticate(self, dao_factory, rbac_enabled, gui_auth)
         return responses.send_HTTP_INTERNAL_SERVER_ERROR()
       end
 
-      if not next(refs) then
+      if not next(workspace_entities) then
         ngx.log(ngx.DEBUG, "no workspace found for consumer:" .. consumer_id)
         return responses.send_HTTP_INTERNAL_SERVER_ERROR()
       end
@@ -253,8 +254,8 @@ function _M.authenticate(self, dao_factory, rbac_enabled, gui_auth)
       end
 
       local workspace = {
-        id = refs[1].workspace_id,
-        name = refs[1].workspace_name,
+        id = workspace_entities[1].workspace_id,
+        name = workspace_entities[1].workspace_name,
       }
 
       self.consumer = consumer

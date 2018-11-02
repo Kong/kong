@@ -188,6 +188,7 @@ return {
         rbac_user = ngx.ctx.rbac.user,
         consumer = self.consumer,
         permissions = self.permissions,
+        workspaces = self.workspace_entities,
       })
     end,
   },
