@@ -24,6 +24,18 @@ function Blueprint:insert(overrides)
 end
 
 
+-- insert blueprint in workspace specified by `ws`
+function Blueprint:insert_ws(overrides, workspace)
+  local old_workspaces = ngx.ctx.workspaces
+
+  ngx.ctx.workspaces = { workspace }
+  local entity = self:insert(overrides)
+  ngx.ctx.workspaces = old_workspaces
+
+  return entity
+end
+
+
 function Blueprint:insert_n(n, overrides)
   local res = {}
   for i=1,n do
@@ -295,6 +307,10 @@ function _M.new(dao, db)
       name   = "statsd",
       config = {},
     }
+  end)
+
+  res.workspaces = new_blueprint(dao.workspaces, function()
+    return {}
   end)
 
   return res

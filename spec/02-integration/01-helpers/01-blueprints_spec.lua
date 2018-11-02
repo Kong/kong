@@ -264,6 +264,12 @@ dao_helpers.for_each_dao(function(kong_config)
       assert.matches(UUID_PATTERN, p.id)
     end)
 
+    -- TODO move this into spec-ee/02-integration/0X-helpers
+    it("inserts workspaces", function()
+      local w = bp.workspaces:insert({ name = "ws1" })
+      assert.equals("ws1", w.name)
+      assert.matches(UUID_PATTERN, w.id)
+    end)
   end)
 end)
 

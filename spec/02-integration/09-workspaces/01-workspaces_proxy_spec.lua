@@ -2,122 +2,50 @@ local helpers = require "spec.helpers"
 
 for _, strategy in helpers.each_strategy() do
   describe("Plugin execution is restricted to correct workspace", function()
-    local admin_client, proxy_client
+    local proxy_client
 
     setup(function()
-      helpers.get_db_utils()
+      local bp = helpers.get_db_utils(strategy)
+
+      bp.routes:insert {
+        paths = {
+          "/default",
+        }
+      }
+
+      bp.plugins:insert {
+        name = "key-auth",
+      }
+
+      local c1 = bp.consumers:insert {
+        username = "c1",
+      }
+
+      bp.keyauth_credentials:insert {
+        key = "c1key",
+        consumer_id = c1.id,
+      }
+
+      -- create a route in a different workspace [[
+
+      local ws = bp.workspaces:insert {
+        name = "ws1",
+      }
+
+      bp.routes:insert_ws({
+        paths = {
+          "/ws1"
+        }
+      }, ws)
+
+      -- ]]
 
       assert(helpers.start_kong({
         database   = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
         db_update_propagation = strategy == "cassandra" and 3 or 0
       }))
-
-      admin_client = helpers.admin_client()
       proxy_client = helpers.proxy_client()
-
-      local res = assert(admin_client:send {
-        method = "POST",
-        path   = "/workspaces",
-        body   = {
-          name = "ws1",
-        },
-        headers = {
-          ["Content-Type"] = "application/json",
-        }
-      })
-      assert.res_status(201, res)
-
-      res = assert(admin_client:send {
-        method = "POST",
-        path   = "/services",
-        body   = {
-          name = "s1",
-          url  = "http://mockbin.org",
-        },
-        headers = {
-          ["Content-Type"] = "application/json",
-        }
-      })
-      assert.res_status(201, res)
-
-      res = assert(admin_client:send {
-        method = "POST",
-        path = "/services/s1/routes",
-        body = {
-          paths = {
-            "/default"
-          }
-        },
-        headers = {
-          ["Content-Type"] = "application/json",
-        }
-      })
-      assert.res_status(201, res)
-
-      res = assert(admin_client:send {
-        method = "POST",
-        path = "/plugins",
-        body = {
-          name = "key-auth"
-        },
-        headers = {
-          ["Content-Type"] = "application/json",
-        }
-      })
-      assert.res_status(201, res)
-
-      res = assert(admin_client:send {
-        method = "POST",
-        path   = "/consumers",
-        body   = {
-          username = "c1",
-        },
-        headers = {
-          ["Content-Type"] = "application/json",
-        }
-      })
-      assert.res_status(201, res)
-
-      res = assert(admin_client:send {
-        method = "POST",
-        path   = "/consumers/c1/key-auth",
-        body   = {
-          key = "c1key",
-        },
-        headers = {
-          ["Content-Type"] = "application/json",
-        }
-      })
-      assert.res_status(201, res)
-
-      res = assert(admin_client:send {
-        method = "POST",
-        path   = "/ws1/services",
-        body   = {
-          name = "s2",
-          url  = "http://mockbin.org",
-        },
-        headers = {
-          ["Content-Type"] = "application/json",
-        }
-      })
-
-      assert.res_status(201, res)
-
-      res = assert(admin_client:send {
-        method = "POST",
-        path = "/ws1/services/s2/routes",
-        body = {
-          paths = {
-            "/ws1"
-          }
-        },
-        headers = {
-          ["Content-Type"] = "application/json",
-        }
-      })
-      assert.res_status(201, res)
     end)
 
     teardown(function()
