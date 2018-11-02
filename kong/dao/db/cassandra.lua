@@ -5,6 +5,7 @@ local Errors = require "kong.dao.errors"
 local db_errors = require "kong.db.errors"
 local utils = require "kong.tools.utils"
 local cjson = require "cjson"
+local semaphore = require "ngx.semaphore"
 
 local tonumber = tonumber
 local concat = table.concat
@@ -110,6 +111,9 @@ function _M.new(kong_config)
     return nil, err
   end
 
+  local refresh_sema = semaphore.new(1)
+
+  self.refresh_sema = refresh_sema
   self.cluster = cluster
   self.query_options = query_opts
   self.cluster_options = cluster_options
@@ -302,6 +306,15 @@ function _M:query(query, args, options, schema, no_keyspace)
   local coordinator_opts = {}
   if no_keyspace then
     coordinator_opts.no_keyspace = true
+  end
+
+  if self.refresh_sema:count() < 1 then
+    local ready, err = self.refresh_sema:wait(10)
+
+    if not ready then
+      return nil, 'query timed out while waiting on refresh: ' .. err
+    end
+    self.refresh_sema:post(1)
   end
 
   if coordinator then
@@ -835,7 +848,12 @@ function _M:reachable()
 end
 
 function _M:refresh()
+  local ready, err = self.refresh_sema:wait(10)
+  if not ready then
+    return nil, 'failed to obtain refresh semaphore: ' .. err
+  end
   local ok, err = self.cluster:refresh()
+  self.refresh_sema:post(1)
   if not ok then
     return nil, Errors.db(err)
   end

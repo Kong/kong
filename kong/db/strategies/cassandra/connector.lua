@@ -1,5 +1,6 @@
 local cassandra = require "cassandra"
 local Cluster   = require "resty.cassandra.cluster"
+local semaphore = require "ngx.semaphore"
 
 
 local CassandraConnector   = {}
@@ -62,6 +63,8 @@ function CassandraConnector.new(kong_config)
     return nil, err
   end
 
+  local refresh_sema = semaphore.new(1)
+
   local self   = {
     cluster    = cluster,
     keyspace   = cluster_options.keyspace,
@@ -72,6 +75,7 @@ function CassandraConnector.new(kong_config)
         cassandra.consistencies[kong_config.cassandra_consistency:lower()],
       serial_consistency = cassandra.consistencies.serial, -- TODO: or local_serial
     },
+    refresh_sema = refresh_sema,
     connection = nil, -- created by connect()
   }
 
@@ -190,6 +194,14 @@ function CassandraConnector:query(query, args, opts, operation)
   end
 
   -- TODO: prepare queries
+  if self.refresh_sema:count() < 1 then
+    local ready, err = self.refresh_sema:wait(20)
+    if not ready then
+      return nil, 'query timed out while waiting on refresh: ' .. err
+    end
+    self.refresh_sema:post(1)
+  end
+
   local res, err = coordinator:execute(query, args, opts)
 
   if not self.connection then
@@ -310,7 +322,12 @@ end
 
 
 function CassandraConnector:refresh()
+  local ready, err = self.refresh_sema:wait(10)
+  if not ready then
+    return nil, 'failed to obtain refresh semaphore: ' .. err
+  end
   local ok, err = self.cluster:refresh()
+  self.refresh_sema:post(1)
   if not ok then
     return nil, err
   end
