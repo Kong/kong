@@ -595,6 +595,148 @@ describe("(#" .. kong_conf.database .. ")", function()
             rbac.actions_bitfields.read
           ))
         end)
+        it("adding super-admin to a user with admin role", function()
+          -- no workspace attached and no access to rbac paths
+          assert.equals(false, rbac.authorize_request_endpoint(
+            {
+              ["*"] = {
+                ["*"] = 15,
+                ["/*/rbac/*"] = 255,
+                ["/*/rbac/*/*"] = 255,
+                ["/*/rbac/*/*/*"] = 255,
+                ["/*/rbac/*/*/*/*"] = 255,
+                ["/*/rbac/*/*/*/*/*"] = 255
+              }
+            },
+            "default",
+            "/rbac/users/bob/permissions",
+            "/rbac/users/:name_or_id/permissions",
+            rbac.actions_bitfields.read
+          ))
+          --  workspace attached and no access to rbac paths
+          assert.equals(false, rbac.authorize_request_endpoint(
+            {
+              ["*"] = {
+                ["*"] = 15,
+                ["/*/rbac/*"] = 255,
+                ["/*/rbac/*/*"] = 255,
+                ["/*/rbac/*/*/*"] = 255,
+                ["/*/rbac/*/*/*/*"] = 255,
+                ["/*/rbac/*/*/*/*/*"] = 255
+              }
+            },
+            "foo",
+            "/foo/rbac/users/bob/permissions",
+            "workspace_/rbac/users/:name_or_id/permissions",
+            rbac.actions_bitfields.read
+          ))
+
+          --  workspace foo attached and no access to rbac paths
+          assert.equals(false, rbac.authorize_request_endpoint(
+            {
+              ["foo"] = {
+                ["*"] = 15,
+                ["/foo/rbac/*"] = 255,
+                ["/foo/rbac/*/*"] = 255,
+                ["/foo/rbac/*/*/*"] = 255,
+                ["/foo/rbac/*/*/*/*"] = 255,
+                ["/foo/rbac/*/*/*/*/*"] = 255
+              }
+            },
+            "foo",
+            "/foo/rbac/users/bob/permissions",
+            "workspace_/rbac/users/:name_or_id/permissions",
+            rbac.actions_bitfields.read
+          ))
+
+          --  workspace foo attached and access to workspace_/rbac/users/:name_or_id/permissions paths
+          assert.equals(true, rbac.authorize_request_endpoint(
+            {
+              ["foo"] = {
+                ["*"] = 15,
+                ["/foo/rbac/*"] = 255,
+                ["/foo/rbac/*/*"] = 255,
+                ["/foo/rbac/*/*/*"] = 15,
+                ["/foo/rbac/*/*/*/*"] = 255,
+                ["/foo/rbac/*/*/*/*/*"] = 255
+              }
+            },
+            "foo",
+            "/foo/rbac/users/bob/permissions",
+            "workspace_/rbac/users/:name_or_id/permissions",
+            rbac.actions_bitfields.read
+          ))
+
+          --  workspace default attached and and no access to default rbac paths
+          assert.equals(false, rbac.authorize_request_endpoint(
+            {
+              ["foo"] = {
+                ["*"] = 15,
+                ["/foo/rbac/*"] = 255,
+                ["/foo/rbac/*/*"] = 255,
+                ["/foo/rbac/*/*/*"] = 255,
+                ["/foo/rbac/*/*/*/*"] = 255,
+                ["/foo/rbac/*/*/*/*/*"] = 255
+              }
+            },
+            "default",
+            "/default/rbac/users/bob/permissions",
+            "workspace_/rbac/users/:name_or_id/permissions",
+            rbac.actions_bitfields.read
+          ))
+
+          --  any workspace foo attached and access to workspace_/rbac/users/:name_or_id/permissions paths\
+          assert.equals(true, rbac.authorize_request_endpoint(
+            {
+              ["*"] = {
+                ["*"] = 15,
+                ["/*/rbac/*"] = 255,
+                ["/*/rbac/*/*"] = 255,
+                ["/*/rbac/*/*/*"] = 15,
+                ["/*/rbac/*/*/*/*"] = 255,
+                ["/*/rbac/*/*/*/*/*"] = 255
+              }
+            },
+            "default",
+            "/rbac/users/bob/permissions",
+            "workspace_/rbac/users/:name_or_id/permissions",
+            rbac.actions_bitfields.read
+          ))
+
+          assert.equals(true, rbac.authorize_request_endpoint(
+            {
+              ["*"] = {
+                ["*"] = 15,
+                ["/*/rbac/*"] = 255,
+                ["/*/rbac/*/*"] = 255,
+                ["/*/rbac/*/*/*"] = 15,
+                ["/*/rbac/*/*/*/*"] = 255,
+                ["/*/rbac/*/*/*/*/*"] = 255
+              }
+            },
+            "default",
+            "/default/rbac/users/bob/permissions",
+            "workspace_/rbac/users/:name_or_id/permissions",
+            rbac.actions_bitfields.read
+          ))
+
+          assert.equals(true, rbac.authorize_request_endpoint(
+            {
+              ["*"] = {
+                ["*"] = 15,
+                ["/*/rbac/*"] = 255,
+                ["/*/rbac/*/*"] = 255,
+                ["/*/rbac/*/*/*"] = 15,
+                ["/*/rbac/*/*/*/*"] = 255,
+                ["/*/rbac/*/*/*/*/*"] = 255
+              }
+            },
+            "foo",
+            "/foo/rbac/users/bob/permissions",
+            "workspace_/rbac/users/:name_or_id/permissions",
+            rbac.actions_bitfields.read
+          ))
+        end)
       end)
       describe("workspace/*", function()
         it("(positive)", function()

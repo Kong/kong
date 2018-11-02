@@ -870,6 +870,14 @@ function _M.authorize_request_endpoint(map, workspace, endpoint, route_name, act
   -- explit allow means a match on the lower bit set
   -- and no match on the upper bits. if theres no match on the lower set,
   -- no need to check the upper bit set
+
+  -- drop workspace prefix from path
+  local is_ws_attached = string.find(route_name, "^workspace_")
+  if is_ws_attached then
+    route_name = ngx.re.gsub(route_name, "^workspace_", "")
+    endpoint = ngx.re.gsub(endpoint, "^/" .. workspace, "")
+  end
+
   for _, workspace in ipairs{workspace, "*"} do
     if map[workspace] then
       for _, endpoint in ipairs(get_endpoints(workspace, endpoint, route_name)) do
