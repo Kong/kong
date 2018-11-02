@@ -140,13 +140,13 @@ for _, strategy in helpers.each_strategy() do
                 name    = "schema violation",
                 message = unindent([[
                   2 schema violations
-                  (must set one of 'methods', 'hosts', 'paths' when 'protocols' is 'http' or 'https';
+                  (must set one of 'methods', 'hosts', 'paths', 'sources', 'destinations', 'snis' when 'protocols' is 'http' or 'https';
                   service: required field missing)
                 ]], true, true),
                 fields = {
                   service   = "required field missing",
                   ["@entity"] = {
-                    "must set one of 'methods', 'hosts', 'paths' when 'protocols' is 'http' or 'https'"
+                    "must set one of 'methods', 'hosts', 'paths', 'sources', 'destinations', 'snis' when 'protocols' is 'http' or 'https'"
                   }
                 }
               }, cjson.decode(body))
@@ -535,13 +535,13 @@ for _, strategy in helpers.each_strategy() do
                   name    = "schema violation",
                   message = unindent([[
                   2 schema violations
-                  (must set one of 'methods', 'hosts', 'paths' when 'protocols' is 'http' or 'https';
+                  (must set one of 'methods', 'hosts', 'paths', 'sources', 'destinations', 'snis' when 'protocols' is 'http' or 'https';
                   service: required field missing)
                 ]], true, true),
                   fields  = {
                     service   = "required field missing",
                     ["@entity"] = {
-                      "must set one of 'methods', 'hosts', 'paths' when 'protocols' is 'http' or 'https'"
+                      "must set one of 'methods', 'hosts', 'paths', 'sources', 'destinations', 'snis' when 'protocols' is 'http' or 'https'"
                     }
                   }
                 }, cjson.decode(body))

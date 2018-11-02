@@ -77,8 +77,9 @@ return {
     { regex_priority = { type = "integer", default = 0 }, },
     { strip_path     = { type = "boolean", default = true }, },
     { preserve_host  = { type = "boolean", default = false }, },
-    { snis = { type = "set",
-               elements = typedefs.sni }, },
+    -- TLS layer attributes
+    { snis           = { type = "set", elements = typedefs.sni }, },
+    -- IP layer attributes
     { sources = { type = "set",
                   elements = {
                     type = "record",
@@ -109,7 +110,7 @@ return {
   entity_checks = {
     { conditional_at_least_one_of = { if_field = "protocols",
                                       if_match = { elements = { type = "string", one_of = { "http", "https" }}},
-                                      then_at_least_one_of = { "methods", "hosts", "paths" },
+                                      then_at_least_one_of = { "methods", "hosts", "paths", "sources", "destinations", "snis" },
                                       then_err = "must set one of %s when 'protocols' is 'http' or 'https'",
                                       else_match = { elements = { type = "string", one_of = { "tcp", "tls" }}},
                                       else_then_at_least_one_of = { "sources", "destinations", "snis" },
@@ -133,25 +134,6 @@ return {
                       then_field = "methods",
                       then_match = { len_eq = 0 },
                       then_err = "cannot set 'methods' when 'protocols' is 'tcp' or 'tls'",
-                    }},
-
-    { conditional = { if_field = "protocols",
-                      if_match = { elements = { type = "string", one_of = { "http", "https" }}},
-                      then_field = "snis",
-                      then_match = { len_eq = 0 },
-                      then_err = "cannot set 'snis' when 'protocols' is 'http' or 'https'",
-                    }},
-    { conditional = { if_field = "protocols",
-                      if_match = { elements = { type = "string", one_of = { "http", "https" }}},
-                      then_field = "destinations",
-                      then_match = { len_eq = 0 },
-                      then_err = "cannot set 'destinations' when 'protocols' is 'http' or 'https'",
-                    }},
-    { conditional = { if_field = "protocols",
-                      if_match = { elements = { type = "string", one_of = { "http", "https" }}},
-                      then_field = "sources",
-                      then_match = { len_eq = 0 },
-                      then_err = "cannot set 'sources' when 'protocols' is 'http' or 'https'",
                     }},
   },
 }

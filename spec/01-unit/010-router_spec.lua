@@ -1968,205 +1968,202 @@ describe("Router", function()
     end)
   end)
 
-
-  describe("#stream context", function()
-    describe("[sources]", function()
-      local use_case = {
-        -- plain
-        {
-          service = service,
-          route = {
-            sources = {
-              { ip = "127.0.0.1" },
-              { ip = "127.0.0.2" },
-            }
+  describe("[sources]", function()
+    local use_case = {
+      -- plain
+      {
+        service = service,
+        route = {
+          sources = {
+            { ip = "127.0.0.1" },
+            { ip = "127.0.0.2" },
           }
-        },
-        {
-          service = service,
-          route = {
-            sources = {
-              { port = 65001 },
-              { port = 65002 },
-            }
+        }
+      },
+      {
+        service = service,
+        route = {
+          sources = {
+            { port = 65001 },
+            { port = 65002 },
           }
-        },
-        -- range
-        {
-          service = service,
-          route = {
-            sources = {
-              { ip = "127.168.0.0/8" },
-            }
+        }
+      },
+      -- range
+      {
+        service = service,
+        route = {
+          sources = {
+            { ip = "127.168.0.0/8" },
           }
-        },
-        -- ip + port
-        {
-          service = service,
-          route = {
-            sources = {
-              { ip = "127.0.0.1", port = 65001 },
-            }
+        }
+      },
+      -- ip + port
+      {
+        service = service,
+        route = {
+          sources = {
+            { ip = "127.0.0.1", port = 65001 },
           }
-        },
-        {
-          service = service,
-          route = {
-            sources = {
-              { ip = "127.0.0.2", port = 65300 },
-              { ip = "127.168.0.0/16", port = 65301 },
-            }
+        }
+      },
+      {
+        service = service,
+        route = {
+          sources = {
+            { ip = "127.0.0.2", port = 65300 },
+            { ip = "127.168.0.0/16", port = 65301 },
           }
-        },
-      }
+        }
+      },
+    }
 
-      local router = assert(Router.new(use_case))
+    local router = assert(Router.new(use_case))
 
-      it("[src_ip]", function()
-        local match_t = router.select(nil, nil, nil, nil, "127.0.0.1")
-        assert.truthy(match_t)
-        assert.same(use_case[1].route, match_t.route)
+    it("[src_ip]", function()
+      local match_t = router.select(nil, nil, nil, nil, "127.0.0.1")
+      assert.truthy(match_t)
+      assert.same(use_case[1].route, match_t.route)
 
-        match_t = router.select(nil, nil, nil, nil, "127.0.0.1")
-        assert.truthy(match_t)
-        assert.same(use_case[1].route, match_t.route)
-      end)
-
-      it("[src_port]", function()
-        local match_t = router.select(nil, nil, nil, nil, "127.0.0.3", 65001)
-        assert.truthy(match_t)
-        assert.same(use_case[2].route, match_t.route)
-      end)
-
-      it("[src_ip] range match", function()
-        local match_t = router.select(nil, nil, nil, nil, "127.168.0.1")
-        assert.truthy(match_t)
-        assert.same(use_case[3].route, match_t.route)
-      end)
-
-      it("[src_ip] + [src_port]", function()
-        local match_t = router.select(nil, nil, nil, nil, "127.0.0.1", 65001)
-        assert.truthy(match_t)
-        assert.same(use_case[4].route, match_t.route)
-      end)
-
-      it("[src_ip] range match + [src_port]", function()
-        local match_t = router.select(nil, nil, nil, nil, "127.168.10.1", 65301)
-        assert.truthy(match_t)
-        assert.same(use_case[5].route, match_t.route)
-      end)
-
-      it("[src_ip] no match", function()
-        local match_t = router.select(nil, nil, nil, nil, "10.0.0.1")
-        assert.falsy(match_t)
-
-        match_t = router.select(nil, nil, nil, nil, "10.0.0.2", 65301)
-        assert.falsy(match_t)
-      end)
+      match_t = router.select(nil, nil, nil, nil, "127.0.0.1")
+      assert.truthy(match_t)
+      assert.same(use_case[1].route, match_t.route)
     end)
 
+    it("[src_port]", function()
+      local match_t = router.select(nil, nil, nil, nil, "127.0.0.3", 65001)
+      assert.truthy(match_t)
+      assert.same(use_case[2].route, match_t.route)
+    end)
 
-    describe("[destinations]", function()
-      local use_case = {
-        -- plain
-        {
-          service = service,
-          route = {
-            destinations = {
-              { ip = "127.0.0.1" },
-              { ip = "127.0.0.2" },
-            }
+    it("[src_ip] range match", function()
+      local match_t = router.select(nil, nil, nil, nil, "127.168.0.1")
+      assert.truthy(match_t)
+      assert.same(use_case[3].route, match_t.route)
+    end)
+
+    it("[src_ip] + [src_port]", function()
+      local match_t = router.select(nil, nil, nil, nil, "127.0.0.1", 65001)
+      assert.truthy(match_t)
+      assert.same(use_case[4].route, match_t.route)
+    end)
+
+    it("[src_ip] range match + [src_port]", function()
+      local match_t = router.select(nil, nil, nil, nil, "127.168.10.1", 65301)
+      assert.truthy(match_t)
+      assert.same(use_case[5].route, match_t.route)
+    end)
+
+    it("[src_ip] no match", function()
+      local match_t = router.select(nil, nil, nil, nil, "10.0.0.1")
+      assert.falsy(match_t)
+
+      match_t = router.select(nil, nil, nil, nil, "10.0.0.2", 65301)
+      assert.falsy(match_t)
+    end)
+  end)
+
+
+  describe("[destinations]", function()
+    local use_case = {
+      -- plain
+      {
+        service = service,
+        route = {
+          destinations = {
+            { ip = "127.0.0.1" },
+            { ip = "127.0.0.2" },
           }
-        },
-        {
-          service = service,
-          route = {
-            destinations = {
-              { port = 65001 },
-              { port = 65002 },
-            }
+        }
+      },
+      {
+        service = service,
+        route = {
+          destinations = {
+            { port = 65001 },
+            { port = 65002 },
           }
-        },
-        -- range
-        {
-          service = service,
-          route = {
-            destinations = {
-              { ip = "127.168.0.0/8" },
-            }
+        }
+      },
+      -- range
+      {
+        service = service,
+        route = {
+          destinations = {
+            { ip = "127.168.0.0/8" },
           }
-        },
-        -- ip + port
-        {
-          service = service,
-          route = {
-            destinations = {
-              { ip = "127.0.0.1", port = 65001 },
-            }
+        }
+      },
+      -- ip + port
+      {
+        service = service,
+        route = {
+          destinations = {
+            { ip = "127.0.0.1", port = 65001 },
           }
-        },
-        {
-          service = service,
-          route = {
-            destinations = {
-              { ip = "127.0.0.2", port = 65300 },
-              { ip = "127.168.0.0/16", port = 65301 },
-            }
+        }
+      },
+      {
+        service = service,
+        route = {
+          destinations = {
+            { ip = "127.0.0.2", port = 65300 },
+            { ip = "127.168.0.0/16", port = 65301 },
           }
-        },
-      }
+        }
+      },
+    }
 
-      local router = assert(Router.new(use_case))
+    local router = assert(Router.new(use_case))
 
-      it("[dst_ip]", function()
-        local match_t = router.select(nil, nil, nil, nil, nil, nil,
-                                      "127.0.0.1")
-        assert.truthy(match_t)
-        assert.same(use_case[1].route, match_t.route)
+    it("[dst_ip]", function()
+      local match_t = router.select(nil, nil, nil, nil, nil, nil,
+                                    "127.0.0.1")
+      assert.truthy(match_t)
+      assert.same(use_case[1].route, match_t.route)
 
-        match_t = router.select(nil, nil, nil, nil, nil, nil,
-                                "127.0.0.1")
-        assert.truthy(match_t)
-        assert.same(use_case[1].route, match_t.route)
-      end)
+      match_t = router.select(nil, nil, nil, nil, nil, nil,
+                              "127.0.0.1")
+      assert.truthy(match_t)
+      assert.same(use_case[1].route, match_t.route)
+    end)
 
-      it("[dst_port]", function()
-        local match_t = router.select(nil, nil, nil, nil, nil, nil,
-                                      "127.0.0.3", 65001)
-        assert.truthy(match_t)
-        assert.same(use_case[2].route, match_t.route)
-      end)
+    it("[dst_port]", function()
+      local match_t = router.select(nil, nil, nil, nil, nil, nil,
+                                    "127.0.0.3", 65001)
+      assert.truthy(match_t)
+      assert.same(use_case[2].route, match_t.route)
+    end)
 
-      it("[dst_ip] range match", function()
-        local match_t = router.select(nil, nil, nil, nil, nil, nil,
-                                      "127.168.0.1")
-        assert.truthy(match_t)
-        assert.same(use_case[3].route, match_t.route)
-      end)
+    it("[dst_ip] range match", function()
+      local match_t = router.select(nil, nil, nil, nil, nil, nil,
+                                    "127.168.0.1")
+      assert.truthy(match_t)
+      assert.same(use_case[3].route, match_t.route)
+    end)
 
-      it("[dst_ip] + [dst_port]", function()
-        local match_t = router.select(nil, nil, nil, nil, nil, nil,
-                                      "127.0.0.1", 65001)
-        assert.truthy(match_t)
-        assert.same(use_case[4].route, match_t.route)
-      end)
+    it("[dst_ip] + [dst_port]", function()
+      local match_t = router.select(nil, nil, nil, nil, nil, nil,
+                                    "127.0.0.1", 65001)
+      assert.truthy(match_t)
+      assert.same(use_case[4].route, match_t.route)
+    end)
 
-      it("[dst_ip] range match + [dst_port]", function()
-        local match_t = router.select(nil, nil, nil, nil, nil, nil,
-                                      "127.168.10.1", 65301)
-        assert.truthy(match_t)
-        assert.same(use_case[5].route, match_t.route)
-      end)
+    it("[dst_ip] range match + [dst_port]", function()
+      local match_t = router.select(nil, nil, nil, nil, nil, nil,
+                                    "127.168.10.1", 65301)
+      assert.truthy(match_t)
+      assert.same(use_case[5].route, match_t.route)
+    end)
 
-      it("[dst_ip] no match", function()
-        local match_t = router.select(nil, nil, nil, nil, nil, nil,
-                                      "10.0.0.1")
-        assert.falsy(match_t)
+    it("[dst_ip] no match", function()
+      local match_t = router.select(nil, nil, nil, nil, nil, nil,
+                                    "10.0.0.1")
+      assert.falsy(match_t)
 
-        match_t = router.select(nil, nil, nil, nil, nil, nil,
-                                "10.0.0.2", 65301)
-        assert.falsy(match_t)
-      end)
+      match_t = router.select(nil, nil, nil, nil, nil, nil,
+                              "10.0.0.2", 65301)
+      assert.falsy(match_t)
     end)
 
 

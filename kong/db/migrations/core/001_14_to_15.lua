@@ -205,6 +205,11 @@ return {
       CREATE INDEX IF NOT EXISTS routes_name_idx ON routes(name);
 
 
+      ALTER TABLE routes ADD snis set<text>;
+      ALTER TABLE routes ADD sources set<text>;
+      ALTER TABLE routes ADD destinations set<text>;
+
+
       CREATE TABLE IF NOT EXISTS plugins_temp(
         id uuid,
         created_at timestamp,
