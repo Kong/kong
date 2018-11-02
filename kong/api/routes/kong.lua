@@ -185,14 +185,17 @@ return {
       -- fetch workspace resources from workspace entities
       self.workspaces = {}
 
+      local ws_dict = {} -- dict to keep track of which workspaces we have added
       local ws, err
       for k, v in ipairs(self.workspace_entities) do
-        ws, err = dao_factory.workspaces:find({id = v.workspace_id})
-        if err then
-          return helpers.yield_error(err)
+        if not ws_dict[v.workspace_id] then
+          ws, err = dao_factory.workspaces:find({id = v.workspace_id})
+          if err then
+            return helpers.yield_error(err)
+          end
+          ws_dict[v.workspace_id] = true
+          self.workspaces[k] = ws
         end
-
-        self.workspaces[k] = ws
       end
     end,
 
