@@ -327,12 +327,20 @@ local function issue_token(conf)
           service_id = ngx.ctx.service.id
           api_id = ngx.ctx.api.id
         end
-        local authorization_code = code and
-                                   singletons.dao.oauth2_authorization_codes:find_all({
-                                     code       = code,
-                                     api_id     = api_id,
-                                     service_id = service_id,
-                                   })[1]
+        local authorization_code
+        if code then
+          local authorization_codes = singletons.dao.oauth2_authorization_codes:find_all({ code = code })
+          if authorization_codes then
+            for i = 1, #authorization_codes do
+              if authorization_codes[i].api_id     == api_id and
+                 authorization_codes[i].service_id == service_id then
+                authorization_code = authorization_codes[i]
+                break
+              end
+            end
+          end
+        end
+
         if not authorization_code then
           response_params = {[ERROR] = "invalid_request", error_description = "Invalid " .. CODE}
         elseif authorization_code.credential_id ~= client.id then
@@ -379,12 +387,19 @@ local function issue_token(conf)
           service_id = ngx.ctx.service.id
           api_id = ngx.ctx.api.id
         end
-        local token = refresh_token and
-                      singletons.dao.oauth2_tokens:find_all({
-                        refresh_token = refresh_token,
-                        api_id        = api_id,
-                        service_id    = service_id,
-                      })[1]
+        local token
+        if refresh_token then
+          local tokens = singletons.dao.oauth2_tokens:find_all({ refresh_token = refresh_token })
+          if tokens then
+            for i = 1, #tokens do
+              if tokens[i].api_id     == api_id and
+                 tokens[i].service_id == service_id then
+                token = tokens[i]
+                break
+              end
+            end
+          end
+        end
         if not token then
           response_params = {[ERROR] = "invalid_request", error_description = "Invalid " .. REFRESH_TOKEN}
         else
@@ -419,18 +434,19 @@ local function load_token_into_memory(conf, service, api, access_token)
     service_id = service.id
     api_id     = api.id
   end
-  local credentials, err = singletons.dao.oauth2_tokens:find_all {
-    access_token = access_token,
-    service_id   = service_id,
-    api_id       = api_id,
-  }
-  local result
+
+  local credentials, err = singletons.dao.oauth2_tokens:find_all({ access_token = access_token })
   if err then
     return nil, err
-  elseif #credentials > 0 then
-    result = credentials[1]
   end
-  return result
+
+  for i = 1, #credentials do
+    if (not service_id or service_id == credentials[i].service_id) and
+       (not api_id     or     api_id == credentials[i].api_id)
+    then
+      return credentials[i]
+    end
+  end
 end
 
 local function retrieve_token(conf, access_token)
