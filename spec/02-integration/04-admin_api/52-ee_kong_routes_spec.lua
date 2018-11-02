@@ -2,6 +2,7 @@ local helpers = require "spec.helpers"
 local cjson = require "cjson"
 local dao_helpers = require "spec.02-integration.03-dao.helpers"
 local enums = require "kong.enterprise_edition.dao.enums"
+local workspaces = require "kong.workspaces"
 local ee_helpers = require "spec.ee_helpers"
 
 
@@ -121,6 +122,9 @@ describe("Admin API - ee-specific Kong routes", function()
         res = assert.res_status(200, res)
         local json = cjson.decode(res)
 
+        local user_workspaces = json.workspaces
+        json.workspaces = nil
+
         local expected = {
           consumer = consumer,
           rbac_user = user,
@@ -143,6 +147,8 @@ describe("Admin API - ee-specific Kong routes", function()
         }
 
         assert.same(expected, json)
+        assert.equal(1, #user_workspaces)
+        assert.equal(workspaces.DEFAULT_WORKSPACE, user_workspaces[1].name)
       end)
 
       it("is whitelisted and supports legacy rbac_user.name", function()

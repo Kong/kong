@@ -181,6 +181,22 @@ return {
       if rbac_enabled == "entity" or rbac_enabled == "both" then
         self.permissions.entities = rbac.readable_entities_permissions(roles)
       end
+
+      -- fetch workspace resources from workspace entities
+      self.workspaces = {}
+
+      local ws_dict = {} -- dict to keep track of which workspaces we have added
+      local ws, err
+      for k, v in ipairs(self.workspace_entities) do
+        if not ws_dict[v.workspace_id] then
+          ws, err = dao_factory.workspaces:find({id = v.workspace_id})
+          if err then
+            return helpers.yield_error(err)
+          end
+          ws_dict[v.workspace_id] = true
+          self.workspaces[k] = ws
+        end
+      end
     end,
 
     GET = function(self, dao_factory, helpers)
@@ -188,6 +204,7 @@ return {
         rbac_user = ngx.ctx.rbac.user,
         consumer = self.consumer,
         permissions = self.permissions,
+        workspaces = self.workspaces,
       })
     end,
   },
