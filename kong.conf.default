@@ -729,39 +729,43 @@
                         # specified for each pair, similarly to
                         # the `admin_listen` directive.
 
-#portal_gui_url =
-                        # Developer Portal GUI URL
+#portal_gui_protocol =
+                        # Developer Portal GUI protocol
                         #
-                        # Here you may provide the lookup, or balancer,
+                        # Here you may provide the protocol used in conjunction
+                        # with portal_gui_host to construct the lookup, or balancer 
                         # address for your Kong Proxy nodes.
-                        #
-                        # This value is commonly used in a microservices
-                        # or service-mesh oriented architecture.
-                        #
-                        # portal_gui_url sets 'Access-Control-Allow-Origin'
-                        # in regards to requests related to the developer
-                        # portal (set to * by default). It also acts as a
-                        # Dev Portal location reference for Kong, the Admin GUI,
-                        # and the Dev Portal itself.
-                        #
-                        # Accepted format (items in parenthesis are optional):
-                        #
-                        #   <scheme>://<IP / HOSTNAME>(:<PORT>(/<PATH>))
-                        #
-                        # Examples:
-                        #
-                        #   - <scheme>://<IP>:<PORT>
-                        #     portal_gui_url = http://127.0.0.1:8003
-                        #   - SSL <scheme>://<HOSTNAME>
-                        #     portal_gui_url = https://portal.domain.tld
-                        #   - <scheme>://<HOSTNAME>/<PATH>
-                        #     portal_gui_url = http://dev-machine/dev-285
                         #
                         # By default:
                         #
-                        #  Your Developer Portal will use the window request
-                        #  host and append the resolved listener port depending
-                        #  on the requested protocol.
+                        #  Your Developer Portal will use the window request protocol.
+
+#portal_gui_host =
+                        # Developer Portal GUI host
+                        #
+                        # Here you may provide the host used in conjunction
+                        # with portal_gui_protocol to construct the lookup,
+                        # or balancer address for your Kong Proxy nodes.
+                        #
+                        # By default:
+                        #
+                        #  Your Developer Portal will use the window request domain.
+
+#portal_gui_use_subdomains = off
+                        # Developer Portal GUI subdomain toggle
+                        #
+                        # By default Kong Portal uses the first namespace in
+                        # the request path to determine workspace. By turning
+                        # portal_gui_subdomains 'on', Kong Portal will expect
+                        # workspace to be included in the request url as a subdomain.
+                        #
+                        # Example (off):
+                        #   - <scheme>://<HOSTNAME>/<WORKSPACE>/<PATH>
+                        #     http://kong-portal.com/example-workspace/index
+                        #
+                        # Example (on):
+                        #   - <scheme>://<WORKSPACE>.<HOSTNAME>
+                        #     http://example-workspace.kong-portal.com/index
 
 #portal_gui_ssl_cert =
                         # Developer Portal GUI SSL Certificate
@@ -860,7 +864,7 @@
 # in the database for that particular workspace.
 #------------------------------------------------------------------------------
 
-#portal_auth =
+#portal_auth = 
                         # Developer Portal Authentication Plugin Name
                         #
                         # Here you may specify the authentication plugin

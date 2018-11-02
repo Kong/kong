@@ -4,6 +4,7 @@ local enums      = require "kong.enterprise_edition.dao.enums"
 local utils      = require "kong.tools.utils"
 local ee_jwt     = require "kong.enterprise_edition.jwt"
 local ee_helpers = require "spec.ee_helpers"
+local escape = require("socket.url").escape
 
 local post = ee_helpers.post
 
@@ -13,8 +14,9 @@ for _, strategy in helpers.each_strategy() do
     local client
     local dao
     local bp
-    local admin, rbac_user, proxy_consumers
+    local admin, proxy_consumer
     local another_ws
+    local admins = {}
 
     setup(function()
       bp, _, dao = helpers.get_db_utils(strategy)
@@ -33,40 +35,51 @@ for _, strategy in helpers.each_strategy() do
       ee_helpers.register_rbac_resources(dao)
       ee_helpers.register_token_statuses(dao)
 
+      for i = 1, 3 do
+        -- admins that are already approved
+        local consumer = assert(bp.consumers:insert {
+          username = "admin-" .. i .. "@test.com",
+          custom_id = "admin-" .. i,
+          email = "admin-" .. i .. "@test.com",
+          type = enums.CONSUMERS.TYPE.ADMIN,
+          status = enums.CONSUMERS.STATUS.APPROVED,
+        })
+
+        local rbac_user = assert(dao.rbac_users:insert {
+          name = "admin-" .. i,
+          user_token = utils.uuid(),
+          enabled = true,
+        })
+
+        assert(dao.consumers_rbac_users_map:insert {
+          consumer_id = consumer.id,
+          user_id = rbac_user.id,
+        })
+
+        -- for now, an admin is a munging of consumer + rbac_user
+        consumer.rbac_user = rbac_user
+
+        admins[i] = consumer
+
+      end
+
+      -- developers don't show up as admins
       assert(bp.consumers:insert {
-        username = "admin-1",
-        custom_id = "admin-1",
-        email = "admin-1@test.com",
-        type = enums.CONSUMERS.TYPE.ADMIN
+        username = "developer-1",
+        custom_id = "developer-1",
+        email = "developer-1@test.com",
+        type = enums.CONSUMERS.TYPE.DEVELOPER,
       })
 
-      for i = 2, 5 do
-        assert(bp.consumers:insert {
-          username = "admin-" .. i,
-          custom_id = "admin-" .. i,
-          type = enums.CONSUMERS.TYPE.ADMIN
-        })
-      end
+      -- proxy users don't show up as admins
+      proxy_consumer = assert(bp.consumers:insert {
+        username = "consumer-1",
+        custom_id = "consumer-1",
+        email = "consumer-1@test.com",
+        type = enums.CONSUMERS.TYPE.PROXY,
+      })
 
-      for i = 1, 3 do
-        assert(bp.consumers:insert {
-          username = "developer-" .. i,
-          custom_id = "developer-" .. i,
-          type = enums.CONSUMERS.TYPE.DEVELOPER
-        })
-
-        proxy_consumers = assert(bp.consumers:insert {
-          username = "consumer-" .. i,
-          custom_id = "consumer-" .. i,
-          type = enums.CONSUMERS.TYPE.PROXY
-        })
-      end
-
-      assert(dao.rbac_users:insert({
-        name = "user-test-test",
-        user_token = utils.uuid(),
-        enabled = true,
-      }))
+      admin = admins[1]
     end)
 
     teardown(function()
@@ -94,7 +107,7 @@ for _, strategy in helpers.each_strategy() do
 
           res = assert.res_status(200, res)
           local json = cjson.decode(res)
-          assert.equal(5, #json.data)
+          assert.equal(3, #json.data)
         end)
 
       end)
@@ -117,9 +130,6 @@ for _, strategy in helpers.each_strategy() do
           res = assert.res_status(200, res)
           local json = cjson.decode(res)
 
-          admin = json.consumer
-          rbac_user = json.rbac_user
-
           assert.equal("dale", json.consumer.username)
           assert.equal("cooper", json.consumer.custom_id)
           assert.equal("twinpeaks@konghq.com", json.consumer.email)
@@ -127,6 +137,13 @@ for _, strategy in helpers.each_strategy() do
           assert.equal(enums.CONSUMERS.STATUS.INVITED, json.consumer.status)
           assert.truthy(utils.is_valid_uuid(json.rbac_user.user_token))
           assert.equal("dale", json.rbac_user.name)
+
+          local consumer_reset_secrets, err = dao.consumer_reset_secrets:find_all {
+            consumer_id = json.consumer.id,
+          }
+
+          assert.is_nil(err)
+          assert.same(json.consumer.id, consumer_reset_secrets[1].consumer_id)
         end)
 
         it("uses the admins_helpers validator", function()
@@ -153,7 +170,7 @@ for _, strategy in helpers.each_strategy() do
         it("retrieves by id", function()
           local res = assert(client:send {
             method = "GET",
-            path = "/admins/" .. admin.id,
+            path = "/admins/" .. admins[1].id,
             headers = {
               ["Kong-Admin-Token"] = "letmein",
               ["Content-Type"]     = "application/json",
@@ -163,14 +180,13 @@ for _, strategy in helpers.each_strategy() do
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
 
-          admin.rbac_user = rbac_user
-          assert.same(admin, json)
+          assert.same(admins[1], json)
         end)
 
         it("retrieves by username", function()
           local res = assert(client:send {
             method = "GET",
-            path = "/admins/" .. admin.username,
+            path = "/admins/" .. escape("admin-2@test.com"),
             headers = {
               ["Kong-Admin-Token"] = "letmein",
               ["Content-Type"]     = "application/json",
@@ -178,7 +194,7 @@ for _, strategy in helpers.each_strategy() do
           })
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
-          assert.same(admin, json)
+          assert.same(admins[2], json)
         end)
 
         it("returns 404 if not found", function()
@@ -440,7 +456,7 @@ for _, strategy in helpers.each_strategy() do
           it("returns 404 if consumer is not of type admin", function()
             local res = assert(client:send {
               method = "GET",
-              path = "/admins/" .. proxy_consumers.id .. "/workspaces",
+              path = "/admins/" .. proxy_consumer.id .. "/workspaces",
               headers = {
                 ["Kong-Admin-Token"] = "letmein",
                 ["Content-Type"]     = "application/json",
@@ -665,5 +681,131 @@ for _, strategy in helpers.each_strategy() do
       local updated_consumers = dao.consumers:find_all { id = consumer.id }
       assert.same(enums.CONSUMERS.STATUS.APPROVED, updated_consumers[1].status)
     end)
+  end)
+
+  describe("Admin API - /admins/password_resets for admin #" .. strategy, function()
+    local client
+    local dao
+    local admin
+
+    before_each(function()
+      _, _, dao = helpers.get_db_utils(strategy)
+      assert(helpers.start_kong({
+        database = strategy,
+        admin_gui_url = "http://manager.konghq.com",
+        admin_gui_auth = "basic-auth",
+        enforce_rbac = "on",
+      }))
+      ee_helpers.register_rbac_resources(dao)
+      ee_helpers.register_token_statuses(dao)
+      client = assert(helpers.admin_client())
+
+      local res = assert(client:send {
+        method = "POST",
+        path  = "/admins",
+        headers = {
+          ["Kong-Admin-Token"] = "letmein",
+          ["Content-Type"] = "application/json",
+        },
+        body  = {
+          custom_id = "gruce",
+          username = "gruce@konghq.com",
+          email = "gruce@konghq.com",
+        }
+      })
+      res = assert.res_status(200, res)
+      local json = cjson.decode(res)
+      admin = json.consumer
+
+      -- add credentials for him
+      assert(dao.basicauth_credentials:insert {
+        username    = "gruce@konghq.com",
+        password    = "kong",
+        consumer_id = admin.id,
+      })
+    end)
+
+    after_each(function()
+      if client then client:close() end
+      assert(helpers.stop_kong())
+    end)
+
+    it("creates a consumer_reset_secret", function()
+      local res = assert(client:send {
+        method = "POST",
+        path  = "/admins/password_resets",
+        headers = {
+          ["Content-Type"] = "application/json",
+        },
+        body  = {
+          email = "gruce@konghq.com",
+        }
+      })
+      assert.res_status(201, res)
+
+      local resets, err = dao.consumer_reset_secrets:find_all({
+        consumer_id = admin.id
+      })
+
+      assert.is_nil(err)
+
+      -- one when he was invited, one when he forgot password
+      assert.same(2, #resets)
+    end)
+
+    it("returns 404 if you're not an admin", function()
+      local res = assert(client:send {
+        method = "POST",
+        path = "/admins/password_resets",
+        headers = {
+          ["Content-Type"] = "application/json",
+        },
+        body = {
+          email = "developer-1@test.com",
+        }
+      })
+
+      assert.res_status(404, res)
+    end)
+
+  end)
+
+  describe("Admin API - /admins/password_resets for admin #" .. strategy, function()
+    local client
+    local dao
+
+    before_each(function()
+      _, _, dao = helpers.get_db_utils(strategy)
+      assert(helpers.start_kong({
+        database = strategy,
+        admin_gui_url = "http://manager.konghq.com",
+        admin_gui_auth = "ldap-auth-advanced",
+        enforce_rbac = "on",
+      }))
+      ee_helpers.register_rbac_resources(dao)
+      ee_helpers.register_token_statuses(dao)
+      client = assert(helpers.admin_client())
+    end)
+
+    after_each(function()
+      if client then client:close() end
+      assert(helpers.stop_kong())
+    end)
+
+    it("returns 404 for 3rd-party auth", function()
+      local res = assert(client:send {
+        method = "POST",
+        path = "/admins/password_resets",
+        headers = {
+          ["Content-Type"] = "application/json",
+        },
+        body = {
+          email = "admin-1@test.com",
+        }
+      })
+
+      assert.res_status(404, res)
+    end)
+
   end)
 end

@@ -171,7 +171,9 @@ local CONF_INFERENCES = {
 
   portal = {typ = "boolean"},
   portal_gui_listen = {typ = "array"},
-  portal_gui_url = {typ = "string"},
+  portal_gui_host = {typ = "string"},
+  portal_gui_protocol = {typ = "string"},
+  portal_gui_use_subdomains = {typ = "boolean"},
 
   portal_api_listen = {typ = "array"},
   portal_api_url = {typ = "string"},

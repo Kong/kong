@@ -291,6 +291,12 @@ for _, v in ipairs({"kong", "apis", "consumers", "plugins", "cache",
 end
 
 
+-- attach `/:workspace/kong`, which replicates `/`
+local slash_handler = require "kong.api.routes.kong"["/"]
+app:match("ws_root" .. "/", "/:workspace_name/kong",
+  app_helpers.respond_to(slash_handler))
+
+
 do
   local routes = {}
 

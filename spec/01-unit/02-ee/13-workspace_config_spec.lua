@@ -272,3 +272,63 @@ describe("workspace config", function()
     end)
   end)
 end)
+
+describe("build_ws_portal_gui_url", function()
+  local snapshot
+
+  before_each(function()
+    snapshot = assert:snapshot()
+  end)
+
+  after_each(function()
+    snapshot:revert()
+  end)
+
+  it("should place workspace as path if portal_gui_use_subdomains off", function()
+    local config = {
+      portal_gui_host = 'mykewlwebsite.org',
+      portal_gui_protocol = 'http',
+      portal_gui_use_subdomains = false,
+    }
+
+    local workspace = {
+      name = "test_workspace"
+    }
+
+    local expected_url = 'http://mykewlwebsite.org/test_workspace'
+    local portal_gui_url = ws_helper.build_ws_portal_gui_url(config, workspace)
+    assert.equal(portal_gui_url, expected_url)
+  end)
+
+  it("should place workspace as subdomain if portal_gui_use_subdomains on", function()
+    local config = {
+      portal_gui_host = 'mykewlwebsite.org',
+      portal_gui_protocol = 'https',
+      portal_gui_use_subdomains = true,
+    }
+
+    local workspace = {
+      name = "test_workspace"
+    }
+
+    local expected_url = 'https://test_workspace.mykewlwebsite.org'
+    local portal_gui_url = ws_helper.build_ws_portal_gui_url(config, workspace)
+    assert.equal(portal_gui_url, expected_url)
+  end)
+
+  it("should properly handle host with subdomain present", function()
+    local config = {
+      portal_gui_host = 'subdomain.mykewlwebsite.org',
+      portal_gui_protocol = 'http',
+      portal_gui_use_subdomains = true,
+    }
+
+    local workspace = {
+      name = "test_workspace"
+    }
+
+    local expected_url = 'http://test_workspace.subdomain.mykewlwebsite.org'
+    local portal_gui_url = ws_helper.build_ws_portal_gui_url(config, workspace)
+    assert.equal(portal_gui_url, expected_url)
+  end)
+end)

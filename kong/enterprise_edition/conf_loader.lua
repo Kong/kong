@@ -114,8 +114,14 @@ local function validate_portal_smtp_config(conf, errors)
     return
   end
 
-  if not conf.portal_gui_url or conf.portal_gui_url == "" then
-    errors[#errors+1] = "portal_gui_url is required for portal"
+  local portal_gui_host = conf.portal_gui_host
+  if not portal_gui_host or portal_gui_host == "" then
+    errors[#errors+1] = "portal_gui_host is required for portal"
+  end
+
+  local portal_gui_protocol = conf.portal_gui_protocol
+  if not portal_gui_protocol or portal_gui_protocol == "" then
+    errors[#errors+1] = "portal_gui_protocol is required for portal"
   end
 
   if not conf.admin_gui_url or conf.admin_gui_url == "" then

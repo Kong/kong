@@ -24,7 +24,9 @@ vitals_prometheus_scrape_interval = 5
 
 portal = off
 portal_gui_listen = 0.0.0.0:8003, 0.0.0.0:8446 ssl
-portal_gui_url = NONE
+portal_gui_protocol = NONE
+portal_gui_host = NONE
+portal_gui_use_subdomains = off
 portal_gui_ssl_cert = NONE
 portal_gui_ssl_cert_key = NONE
 
