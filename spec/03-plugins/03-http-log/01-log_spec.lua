@@ -115,6 +115,23 @@ for _, strategy in helpers.each_strategy() do
                                     .. "/post_log/http_queue"
         }
       }
+      
+      local route6 = bp.routes:insert {
+        hosts   = { "https_logging_faulty.test" },
+        service = service2
+      }
+
+      bp.plugins:insert {
+        route = { id = route6.id },
+        name     = "http-log",
+        config   = {
+          http_endpoint = "https://" .. helpers.mock_upstream_ssl_host
+                                     .. ":"
+                                     .. helpers.mock_upstream_ssl_port
+                                     .. "/delay/1",
+          timeout = 1
+        }
+      }
 
       assert(helpers.start_kong({
         database = strategy,
@@ -236,6 +253,32 @@ for _, strategy in helpers.each_strategy() do
           return true
         end
       end, 10)
+    end)
+    
+    it("gracefully handles layer 4 failures", function()
+    	-- setup: cleanup logs
+      local test_error_log_path = helpers.test_conf.nginx_err_logs
+      os.execute(":> " .. test_error_log_path)
+
+      local res = assert(proxy_client:send({
+        method  = "GET",
+        path    = "/status/200",
+        headers = {
+          ["Host"] = "https_logging_faulty.test"
+        }
+      }))
+      assert.res_status(200, res)
+
+      -- Assertion: there should be no [error], including no error
+      -- resulting from attempting to reference a nil res on
+      -- res:body() calls within the http-log plugin
+
+      local pl_file = require "pl.file"
+      local logs = pl_file.read(test_error_log_path)
+
+      for line in logs:gmatch("[^\r\n]+") do
+        assert.not_match("[error]", line, nil, true)
+      end
     end)
 
     it("adds authorization if userinfo is present", function()
