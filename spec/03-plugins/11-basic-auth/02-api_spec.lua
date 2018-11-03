@@ -53,7 +53,7 @@ for _, strategy in helpers.each_strategy() do
           assert.equal(consumer.id, json.consumer_id)
           assert.equal("bob", json.username)
         end)
-        it("digests the password", function()
+        it("encrypts the password", function()
           local res = assert(admin_client:send {
             method  = "POST",
             path    = "/consumers/bob/basic-auth",
@@ -70,7 +70,12 @@ for _, strategy in helpers.each_strategy() do
           assert.is_string(json.password)
           assert.not_equal("kong", json.password)
 
-          assert.matches("$2b$", json.password, nil, true)
+          local crypto = require "kong.plugins.basic-auth.crypto"
+          local hash   = crypto.encrypt {
+            consumer_id = consumer.id,
+            password    = "kong"
+          }
+          assert.equal(hash, json.password)
         end)
         describe("errors", function()
           it("returns bad request", function()
