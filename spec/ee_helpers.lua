@@ -3,6 +3,7 @@ local helpers     = require "spec.helpers"
 local conf_loader = require "kong.conf_loader"
 local cjson = require "cjson.safe"
 local assert = require "luassert"
+local utils = require "kong.tools.utils"
 
 
 local _M = {}
@@ -237,6 +238,33 @@ function _M.post(client, path, body, headers, expected_status)
     headers = headers
   })
   return cjson.decode(assert.res_status(expected_status or 201, res))
+end
+
+
+function _M.create_admin(email, custom_id, status, bp, dao)
+  local consumer = assert(bp.consumers:insert {
+    username = email,
+    custom_id = custom_id,
+    email = email,
+    type = enums.CONSUMERS.TYPE.ADMIN,
+    status = status,
+  })
+
+  local rbac_user = assert(dao.rbac_users:insert {
+    name = email,
+    user_token = utils.uuid(),
+    enabled = true,
+  })
+
+  assert(dao.consumers_rbac_users_map:insert {
+    consumer_id = consumer.id,
+    user_id = rbac_user.id,
+  })
+
+  -- for now, an admin is a munging of consumer + rbac_user
+  consumer.rbac_user = rbac_user
+
+  return consumer
 end
 
 

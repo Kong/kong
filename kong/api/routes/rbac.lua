@@ -9,7 +9,6 @@ local singletons = require "kong.singletons"
 local tablex     = require "pl.tablex"
 local api_helpers = require "kong.enterprise_edition.api_helpers"
 
-
 local band  = bit.band
 local bxor  = bit.bxor
 local fmt   = string.format
@@ -117,10 +116,27 @@ local function post_process_role(role)
 end
 
 
+local function post_process_user(user)
+  local map, err = rbac.get_consumer_user_map(user.id)
+
+  if err then
+    return responses.send_HTTP_INTERNAL_SERVER_ERROR(
+        "error finding map for rbac_user: ", user.id)
+  end
+
+  -- don't include user associated to a consumer
+  if map then
+    return nil
+  end
+
+  return user
+end
+
+
 return {
   ["/rbac/users/"] = {
     GET = function(self, dao_factory)
-      crud.paginated_set(self, dao_factory.rbac_users)
+      crud.paginated_set(self, dao_factory.rbac_users, post_process_user)
     end,
 
     POST = function(self, dao_factory, helpers)

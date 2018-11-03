@@ -12,10 +12,7 @@ end
 
 
 for _, strategy in helpers.each_strategy() do
-  if strategy == "cassandra" then return end
-
-  describe("consumers_rbac_users_mapping invalidations with [#" .. strategy .. "]", function()
-
+  describe("consumers_rbac_users_mapping invalidations #" .. strategy, function()
     local bp
     local dao
 
@@ -120,11 +117,13 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(200, cache_res)
       end)
 
-      it("invalidates consumer rbac user map cache when rbac user is deleted",
+      it("invalidates consumer rbac user map cache when admin is deleted",
         function()
+          local admin = ee_helpers.create_admin("gruce@konghq.com", nil, 0, bp, dao)
+
           local res = assert(admin_client:send {
             method = "DELETE",
-            path   = "/rbac/users/" .. user.name,
+            path   = "/admins/" .. admin.id,
             headers = {
               ["Kong-Admin-Token"] = superuser.user_token
             }
@@ -134,7 +133,7 @@ for _, strategy in helpers.each_strategy() do
           helpers.wait_until(function()
             local res = assert(admin_client:send {
               method = "GET",
-              path   = "/cache/" .. cache_key(user),
+              path   = "/cache/" .. cache_key(admin.rbac_user.id),
               body   = {},
               headers = {
                 ["Kong-Admin-Token"] = superuser.user_token

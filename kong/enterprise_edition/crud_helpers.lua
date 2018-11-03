@@ -1,6 +1,7 @@
 local responses   = require "kong.tools.responses"
 local app_helpers = require "lapis.application"
-
+local api_crud_helpers = require "kong.api.crud_helpers"
+local enums = require "kong.enterprise_edition.dao.enums"
 
 local _M = {}
 
@@ -17,6 +18,14 @@ function _M.delete_without_sending_response(primary_keys, dao_collection)
   else
     return nil
   end
+end
+
+
+function _M.find_consumer_by_username_or_id(self, dao_factory, helpers, filter)
+  filter = filter or {}
+  filter.type = enums.CONSUMERS.TYPE.PROXY
+
+  api_crud_helpers.find_consumer_by_username_or_id(self, dao_factory, helpers, filter)
 end
 
 

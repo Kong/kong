@@ -3,6 +3,7 @@ local utils         = require "kong.tools.utils"
 local responses     = require "kong.tools.responses"
 local app_helpers   = require "lapis.application"
 local portal_crud   = require "kong.portal.crud_helpers"
+local rbac          = require "kong.rbac"
 
 
 local decode_base64 = ngx.decode_base64
@@ -81,6 +82,19 @@ function _M.find_rbac_user_by_name_or_id(self, dao_factory, helpers)
   if not self.rbac_user then
     return helpers.responses.send_HTTP_NOT_FOUND("No RBAC user by name or id " ..
                                                  self.params.name_or_id)
+  end
+
+  -- make sure it's not associated to a consumer
+  local map, err = rbac.get_consumer_user_map(self.rbac_user.id)
+
+  if err then
+    return responses.send_HTTP_INTERNAL_SERVER_ERROR(
+      "error finding map for rbac_user: ", self.rbac_user.id)
+  end
+
+  if map then
+    return helpers.responses.send_HTTP_NOT_FOUND("No RBAC user by name or id "
+      .. self.params.name_or_id)
   end
 
   self.params.name_or_id = nil
@@ -253,9 +267,21 @@ function _M.paginated_set(self, dao_collection, post_process, options)
 
   local data = setmetatable(rows, cjson.empty_array_mt)
 
+  -- allow post_process function to filter out rows.
+  -- Counts get a little off, but it's better than returning
+  -- data you're not supposed to have. If you can't accept this
+  -- behavior, don't pass a post_process function that returns nil.
+  local idx = 1
   if type(post_process) == "function" then
-    for i, row in ipairs(rows) do
-      data[i] = post_process(row)
+    local keep
+    for _, row in ipairs(rows) do
+      keep = post_process(row)
+      if keep then
+        data[idx] = keep
+        idx = idx + 1
+      else
+        total_count = total_count - 1
+      end
     end
   end
 

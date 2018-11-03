@@ -2,6 +2,7 @@ local dao_helpers = require "spec.02-integration.03-dao.helpers"
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
 local utils = require "kong.tools.utils"
+local ee_helpers = require "spec.ee_helpers"
 
 local client
 
@@ -103,11 +104,11 @@ end
 
 dao_helpers.for_each_dao(function(kong_config)
 
-describe("Admin API RBAC with " .. kong_config.database, function()
-  local dao, _
+describe("Admin API RBAC with #" .. kong_config.database, function()
+  local bp, dao, _
 
   setup(function()
-    _,_,dao = helpers.get_db_utils(kong_config.database)
+    bp,_,dao = helpers.get_db_utils(kong_config.database)
     dao:drop_schema()
     ngx.ctx.workspaces = {}
     dao:run_migrations()
@@ -420,6 +421,19 @@ describe("Admin API RBAC with " .. kong_config.database, function()
 
         assert.equals(4, #json.data)
       end)
+
+      it("filters out admins", function()
+        ee_helpers.create_admin("gruce-admin@konghq.com", nil, 0, bp, dao)
+
+        local res = assert(client:send {
+          method = "GET",
+          path = "/rbac/users/"
+        })
+
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.equals(5, #json.data)
+      end)
     end)
   end)
 
@@ -449,6 +463,17 @@ describe("Admin API RBAC with " .. kong_config.database, function()
         user2 = json
 
         assert.same(user1, user2)
+      end)
+
+      it("returns 404 for an rbac_user associated to an admin", function()
+        local admin = ee_helpers.create_admin("gruce@konghq.com", nil, 0, bp, dao)
+
+        local res = assert(client:send {
+          method = "GET",
+          path = "/rbac/users/" .. admin.rbac_user.id,
+        })
+
+        assert.res_status(404, res)
       end)
     end)
 

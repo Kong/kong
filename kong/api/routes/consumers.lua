@@ -1,5 +1,6 @@
 local crud = require "kong.api.crud_helpers"
 local enums = require "kong.enterprise_edition.dao.enums"
+local ee_crud    = require "kong.enterprise_edition.crud_helpers"
 
 return {
   ["/consumers/"] = {
@@ -25,7 +26,7 @@ return {
     before = function(self, dao_factory, helpers)
       self.params.type = enums.CONSUMERS.TYPE.PROXY
       self.params.username_or_id = ngx.unescape_uri(self.params.username_or_id)
-      crud.find_consumer_by_username_or_id(self, dao_factory, helpers)
+      ee_crud.find_consumer_by_username_or_id(self, dao_factory, helpers)
     end,
 
     GET = function(self, dao_factory, helpers)
@@ -45,7 +46,7 @@ return {
     before = function(self, dao_factory, helpers)
       self.params.type = enums.CONSUMERS.TYPE.PROXY
       self.params.username_or_id = ngx.unescape_uri(self.params.username_or_id)
-      crud.find_consumer_by_username_or_id(self, dao_factory, helpers)
+      ee_crud.find_consumer_by_username_or_id(self, dao_factory, helpers)
       self.params.consumer_id = self.consumer.id
     end,
 
@@ -66,7 +67,7 @@ return {
     before = function(self, dao_factory, helpers)
       self.params.type = enums.CONSUMERS.TYPE.PROXY
       self.params.username_or_id = ngx.unescape_uri(self.params.username_or_id)
-      crud.find_consumer_by_username_or_id(self, dao_factory, helpers)
+      ee_crud.find_consumer_by_username_or_id(self, dao_factory, helpers)
       crud.find_plugin_by_filter(self, dao_factory, {
         consumer_id = self.consumer.id,
         id          = self.params.id,

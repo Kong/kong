@@ -30,18 +30,18 @@ end
 
 
 for _, strategy in helpers.each_strategy() do
-  describe("Admin API Authentication - on" .. strategy, function()
+  describe("Admin API authentication on #" .. strategy, function()
     local dao
     local super_admin_rbac_user
 
     local function admin(client, assert, workspace, name, rbac_user_token, role, emailaddress)
       local headers = { ['Kong-Admin-Token'] = 'letmein'}
       local admin = post(client, "/" .. workspace .. "/admins",
-                         { username = name .. "-" .. workspace,
+                         { username = emailaddress,
                            email = emailaddress}, headers, 200)
       dao.consumers:update({status = enums.CONSUMERS.STATUS.APPROVED},
                            {id = admin.consumer.id})
-      post(client, "/" .. workspace .. "/rbac/users/".. admin.rbac_user.name
+      post(client, "/" .. workspace .. "/admins/".. admin.consumer.id
            .. "/roles", { roles = role }, headers, 201)
       return admin
     end

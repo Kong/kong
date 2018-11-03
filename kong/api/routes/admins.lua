@@ -8,7 +8,10 @@ local singletons = require "kong.singletons"
 local admins     = require "kong.enterprise_edition.admins_helpers"
 local ee_api     = require "kong.enterprise_edition.api_helpers"
 local ee_utils   = require "kong.enterprise_edition.utils"
+local tablex     = require "pl.tablex"
 local secrets = require "kong.enterprise_edition.consumer_reset_secret_helpers"
+local new_tab = require "table.new"
+local cjson = require "cjson"
 
 
 local emails = singletons.admin_emails
@@ -40,6 +43,31 @@ local auth_plugins = {
   },
   ["ldap-auth-advanced"] = { name = "ldap-auth-advanced" },
 }
+
+
+local function objects_from_names(dao_factory, given_names, object_name)
+  local names = utils.split(given_names, ",")
+  local objs = new_tab(#names, 0)
+  local object_dao = string.format("rbac_%ss", object_name)
+
+  for i = 1, #names do
+    local object, err = dao_factory[object_dao]:find_all({
+      name = names[i],
+    })
+    if err then
+      return nil, err
+    end
+
+    if not object[1] then
+      return nil, string.format("%s not found with name '%s'", object_name, names[i])
+    end
+
+    -- track the whole object so we have the id for the mapping later
+    objs[i] = object[1]
+  end
+
+  return objs
+end
 
 
 local function validate_auth_plugin(self, dao_factory, helpers, plugin_name)
@@ -94,6 +122,7 @@ local function set_rbac_user(self, dao_factory, helpers)
   end
 
   self.consumer.rbac_user = rbac_user
+  self.rbac_user = rbac_user
 end
 
 
@@ -278,6 +307,117 @@ return {
                                               dao_factory.rbac_users)
       crud.delete(self.consumer, dao_factory.consumers)
     end
+  },
+
+  ["/admins/:username_or_id/roles"] = {
+    before = function(self, dao_factory, helpers)
+      self.params.username_or_id = ngx.unescape_uri(self.params.username_or_id)
+      crud.find_consumer_by_username_or_id(self, dao_factory, helpers)
+
+      if self.consumer.type ~= enums.CONSUMERS.TYPE.ADMIN then
+        return helpers.responses.send_HTTP_NOT_FOUND()
+      end
+
+      set_rbac_user(self, dao_factory, helpers)
+    end,
+
+    GET = function(self, dao_factory, helpers)
+      local roles, err = entity_relationships(dao_factory, self.rbac_user,
+        "user", "role")
+
+      if err then
+        return helpers.yield_error(err)
+      end
+
+      -- filter out default roles
+      roles = tablex.filter(roles, function(role) return not role.is_default end)
+
+      setmetatable(roles, cjson.empty_array_mt)
+
+      return helpers.responses.send_HTTP_OK({
+        roles = roles,
+      })
+    end,
+
+    POST = function(self, dao_factory, helpers)
+      -- we have the user, now verify our roles
+      if not self.params.roles then
+        return helpers.responses.send_HTTP_BAD_REQUEST("must provide >= 1 role")
+      end
+
+      local roles, err = objects_from_names(dao_factory, self.params.roles,
+        "role")
+      if err then
+        if err:find("not found with name", nil, true) then
+          return helpers.responses.send_HTTP_BAD_REQUEST(err)
+
+        else
+          return helpers.yield_error(err)
+        end
+      end
+
+      -- we've now validated that all our roles exist, and this user exists,
+      -- so time to create the assignment
+      for i = 1, #roles do
+        local _, err = dao_factory.rbac_user_roles:insert({
+          user_id = self.rbac_user.id,
+          role_id = roles[i].id
+        })
+        if err then
+          return helpers.yield_error(err)
+        end
+      end
+
+      -- invalidate rbac user so we don't fetch the old roles
+      local cache_key = dao_factory["rbac_user_roles"]:cache_key(self.rbac_user.id)
+      singletons.cache:invalidate(cache_key)
+
+      -- re-fetch the users roles so we show all the role objects, not just our
+      -- newly assigned mappings
+      roles, err = entity_relationships(dao_factory, self.rbac_user,
+        "user", "role")
+      if err then
+        return helpers.yield_error(err)
+      end
+
+      -- filter out default roles
+      roles = tablex.filter(roles, function(role) return not role.is_default end)
+
+      -- show the user and all of the roles they are in
+      return helpers.responses.send_HTTP_CREATED({
+        roles = roles,
+      })
+    end,
+
+    DELETE = function(self, dao_factory, helpers)
+      -- we have the user, now verify our roles
+      if not self.params.roles then
+        return helpers.responses.send_HTTP_BAD_REQUEST("must provide >= 1 role")
+      end
+
+      local roles, err = objects_from_names(dao_factory, self.params.roles,
+        "role")
+      if err then
+        if err:find("not found with name", nil, true) then
+          return helpers.responses.send_HTTP_BAD_REQUEST(err)
+
+        else
+          return helpers.yield_error(err)
+        end
+      end
+
+      for i = 1, #roles do
+        dao_factory.rbac_user_roles:delete({
+          user_id = self.rbac_user.id,
+          role_id = roles[i].id,
+        })
+      end
+
+      local cache_key = dao_factory["rbac_users"]:cache_key(self.rbac_user.id)
+      singletons.cache:invalidate(cache_key)
+
+      return helpers.responses.send_HTTP_NO_CONTENT()
+    end,
   },
 
   ["/admins/password_resets"] = {
