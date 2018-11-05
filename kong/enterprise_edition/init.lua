@@ -172,6 +172,10 @@ function _M.prepare_admin(kong_config)
     RBAC_HEADER = prepare_variable(kong_config.rbac_auth_header),
     KONG_VERSION = prepare_variable(meta.versions.package),
     FEATURE_FLAGS = prepare_variable(kong_config.admin_gui_flags),
+    PORTAL = prepare_variable(kong_config.portal),
+    PORTAL_GUI_PROTOCOL = prepare_variable(kong_config.portal_gui_protocol),
+    PORTAL_GUI_HOST = prepare_variable(kong_config.portal_gui_host),
+    PORTAL_GUI_USE_SUBDOMAINS = prepare_variable(kong_config.portal_gui_use_subdomains)
   }, kong_config)
 end
 
