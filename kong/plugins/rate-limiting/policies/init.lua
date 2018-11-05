@@ -19,16 +19,8 @@ local function is_present(str)
 end
 
 
-local function get_ids(conf)
+local function get_service_and_route_ids(conf)
   conf = conf or {}
-
-  local api_id = conf.api_id
-
-  if api_id and api_id ~= null then
-    return EMPTY_UUID, EMPTY_UUID, api_id
-  end
-
-  api_id = EMPTY_UUID
 
   local service_id = conf.service_id
   local route_id   = conf.route_id
@@ -41,19 +33,15 @@ local function get_ids(conf)
     route_id = EMPTY_UUID
   end
 
-  return service_id, route_id, api_id
+  return service_id, route_id
 end
 
 
 local get_local_key = function(conf, identifier, period, period_date)
-  local service_id, route_id, api_id = get_ids(conf)
+  local service_id, route_id = get_service_and_route_ids(conf)
 
-  if api_id == EMPTY_UUID then
-    return fmt("ratelimit:%s:%s:%s:%s:%s", route_id, service_id, identifier,
-               period_date, period)
-  end
-
-  return fmt("ratelimit:%s:%s:%s:%s", api_id, identifier, period_date, period)
+  return fmt("ratelimit:%s:%s:%s:%s:%s", route_id, service_id, identifier,
+             period_date, period)
 end
 
 
@@ -90,29 +78,24 @@ return {
     usage = function(conf, identifier, period, current_timestamp)
       local periods = timestamp.get_timestamps(current_timestamp)
       local cache_key = get_local_key(conf, identifier, period, periods[period])
+
       local current_metric, err = shm:get(cache_key)
       if err then
         return nil, err
       end
+
       return current_metric or 0
     end
   },
   ["cluster"] = {
     increment = function(conf, limits, identifier, current_timestamp, value)
       local db = kong.db
-      local service_id, route_id, api_id = get_ids(conf)
+      local service_id, route_id = get_service_and_route_ids(conf)
       local policy = policy_cluster[db.strategy]
 
-      local ok, err
-
-      if api_id == EMPTY_UUID then
-        ok, err = policy.increment(db.connector, limits, identifier, current_timestamp,
-                                   service_id, route_id, value)
-
-      else
-        ok, err = policy.increment_api(db.connector, limits, identifier,
-                                       current_timestamp, api_id, value)
-      end
+      local ok, err = policy.increment(db.connector, limits, identifier,
+                                       current_timestamp, service_id, route_id,
+                                       value)
 
       if not ok then
         kong.log.err("cluster policy: could not increment ", db.strategy,
@@ -123,17 +106,11 @@ return {
     end,
     usage = function(conf, identifier, period, current_timestamp)
       local db = kong.db
-      local service_id, route_id, api_id = get_ids(conf)
+      local service_id, route_id = get_service_and_route_ids(conf)
       local policy = policy_cluster[db.strategy]
-      local row, err
 
-      if api_id == EMPTY_UUID then
-        row, err = policy.find(db.connector, identifier, period,
-                               current_timestamp, service_id, route_id)
-      else
-        row, err = policy.find_api(db.connector, identifier, period,
-                                   current_timestamp, api_id)
-      end
+      local row, err = policy.find(db.connector, identifier, period,
+                                   current_timestamp, service_id, route_id)
 
       if err then
         return nil, err
