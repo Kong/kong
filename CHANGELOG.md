@@ -1,3 +1,8 @@
+## 0.31.4
+
+### Changed
+ - Internal improvements
+
 ## 0.31.3
 
 ### Fixed
