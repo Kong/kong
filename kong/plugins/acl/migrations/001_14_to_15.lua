@@ -61,6 +61,7 @@ return {
     ]],
 
     teardown = function(connector, helpers)
+      local cassandra = require "cassandra"
       local coordinator = assert(connector:connect_migrations())
 
       for rows, err in coordinator:iterate("SELECT * FROM acls") do
@@ -74,11 +75,10 @@ return {
                                           row.consumer_id or "",
                                           row.group or "")
 
-          local cql = string.format([[
-            UPDATE acls SET cache_key = '%s' WHERE id = '%s'
-          ]], cache_key, row.id)
-
-          assert(connector:query(cql))
+          assert(connector:query("UPDATE acls SET cache_key = ? WHERE id = ?", {
+            cache_key,
+            cassandra.uuid(row.id),
+          }))
         end
       end
     end,
