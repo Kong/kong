@@ -168,23 +168,36 @@ return {
     end,
 
     POST = function(self, dao_factory, helpers)
-      local _, msg, err = admins.validate(self.params, dao_factory, "POST")
-
-      if err then
-        log(ERR, _log_prefix, "failed to validate params: ", err)
-        return helpers.responses.send_HTTP_INTERNAL_SERVER_ERROR()
-      end
-
-      if msg then
-        log(ERR, _log_prefix, "failed to create admin: ", msg)
-        return helpers.responses.send_HTTP_CONFLICT(
-          "user already exists with same username, email, or custom_id"
-        )
-      end
-
       local ok, err = ee_utils.validate_email(self.params.email)
       if not ok then
         return helpers.responses.send_HTTP_BAD_REQUEST("Invalid email: " .. err)
+      end
+
+      local _, match, err = admins.validate(self.params, dao_factory, "POST")
+
+      if err then
+        return helpers.responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+      end
+
+      if match then
+        -- already exists. try to link them to current workspace.
+        local consumer, err = admins.link_to_workspace(
+            match, dao_factory, ngx.ctx.workspaces[1], self.plugin)
+
+        if err then
+          return helpers.responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+        end
+
+        if consumer then
+          -- in a POST, this isn't the greatest response code, but we
+          -- haven't really created an admin, so...
+          return helpers.responses.send_HTTP_OK({ consumer = consumer })
+        end
+
+        -- if we got here, user already exists
+        return helpers.responses.send_HTTP_CONFLICT(
+          "user already exists with same username, email, or custom_id"
+        )
       end
 
       crud.post({

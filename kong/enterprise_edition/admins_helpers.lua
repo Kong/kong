@@ -1,6 +1,7 @@
 local singletons = require "kong.singletons"
 local enums = require "kong.enterprise_edition.dao.enums"
 local portal_crud = require "kong.portal.crud_helpers"
+local workspaces = require "kong.workspaces"
 
 local log = ngx.log
 local DEBUG = ngx.DEBUG
@@ -23,17 +24,19 @@ local function validate(params, dao, http_method)
   end
 
   local matches = 0
+  local matching_record
   for _, user in ipairs(rbac_users) do
     if user.name == params.username or
        user.name == params.custom_id or
        user.name == params.email then
 
       matches = matches + 1
+      matching_record = user
     end
   end
 
   if matches > max_count then
-    return false, "rbac_user already exists"
+    return false, { rbac_user = matching_record }
   end
 
   -- now check admin consumers
@@ -52,11 +55,12 @@ local function validate(params, dao, http_method)
       (admin.email and admin.email == params.email) then
 
       matches = matches + 1
+      matching_record = admin
     end
   end
 
   if matches > max_count then
-    return false, "consumer already exists"
+    return false, { consumer = matching_record }
   end
 
   return true
@@ -82,6 +86,105 @@ local function find_by_username_or_id(username_or_id)
   end
 end
 _M.find_by_username_or_id = find_by_username_or_id
+
+
+local function link_to_workspace(consumer_or_user, dao, workspace, plugin)
+  -- either a consumer or an rbac_user is passed in
+  -- figure out which one and initialize the other
+  local consumer = consumer_or_user.consumer
+  local rbac_user = consumer_or_user.rbac_user
+
+  local map_filter
+  if consumer then
+    map_filter = { consumer_id = consumer.id }
+
+  elseif rbac_user then
+    map_filter = { user_id = rbac_user.id }
+
+  else
+    return nil, "'admin' must include a consumer or an rbac_user"
+
+  end
+
+  local maps, err = dao.consumers_rbac_users_map:run_with_ws_scope({},
+                    dao.consumers_rbac_users_map.find_all, map_filter)
+
+  if err then
+    return nil, err
+  end
+
+  if not maps[1] then
+    local m = consumer.id and ("consumer " .. consumer.id)
+              or ("rbac_user " .. rbac_user.id)
+
+    return nil, "no map found for " .. m
+  end
+
+  if not consumer then
+    local res, err = dao.consumers:run_with_ws_scope({},
+                     dao.consumers.find_all, { id = maps[1].consumer_id })
+
+    if err then
+      return nil, err
+    end
+
+    if not res[1] then
+      return nil, "no consumer found with id " .. maps[1].consumer_id
+    end
+
+    consumer = res[1]
+  end
+
+  if not rbac_user then
+    local res, err = dao.rbac_users:run_with_ws_scope({},
+                     dao.rbac_users.find_all, { id = maps[1].user_id })
+
+    if err then
+      return nil, err
+    end
+
+    if not res[1] then
+      return nil, "no rbac_user found with id " .. maps[1].user_id
+    end
+
+    rbac_user = res[1]
+  end
+
+  -- see if this admin is already in this workspace
+  local ws_list, err = workspaces.find_workspaces_by_entity({
+    workspace_id = workspace.id,
+    entity_type = "consumers",
+    entity_id = consumer.id,
+  })
+
+  if err then
+    return nil, err
+  end
+
+  if ws_list and ws_list[1] then
+    -- already linked, so no new link made
+    return false
+  end
+
+  -- link consumer
+  local _, err = workspaces.add_entity_relation("consumers", consumer, workspace)
+
+  if err then
+    return nil, err
+  end
+
+  -- link rbac_user
+  local _, err = workspaces.add_entity_relation("rbac_users", rbac_user, workspace)
+
+  if err then
+    return nil, err
+  end
+
+  -- for now, an admin is a munging of consumer and rbac_user
+  consumer.rbac_user = rbac_user
+  return consumer
+end
+_M.link_to_workspace = link_to_workspace
 
 
 local function reset_password(plugin, collection, consumer, new_password, secret_id)

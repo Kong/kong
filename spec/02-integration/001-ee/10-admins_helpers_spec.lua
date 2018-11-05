@@ -2,12 +2,14 @@ local helpers = require "spec.helpers"
 local utils = require "kong.tools.utils"
 local enums = require "kong.enterprise_edition.dao.enums"
 local admins_helpers = require "kong.enterprise_edition.admins_helpers"
+local workspaces = require "kong.workspaces"
 
 for _, strategy in helpers.each_strategy() do
 
   describe("admin_helpers", function()
     local dao
     local default_ws, another_ws
+    local admins = {}
 
     setup(function()
       _, _, dao = helpers.get_db_utils(strategy)
@@ -16,11 +18,10 @@ for _, strategy in helpers.each_strategy() do
 
       another_ws = assert(dao.workspaces:insert({ name = "ws1" }))
 
-      local cons
       for i = 1, 4 do
         local ws_to_use = i % 2 == 0 and another_ws or default_ws
 
-        cons = assert(dao.consumers:run_with_ws_scope (
+        local cons = assert(dao.consumers:run_with_ws_scope (
           { ws_to_use },
           dao.consumers.insert,
           {
@@ -41,6 +42,9 @@ for _, strategy in helpers.each_strategy() do
           consumer_id = cons.id,
           user_id = user.id,
         }
+
+        cons.rbac_user = user
+        admins[i] = cons
       end
     end)
 
@@ -51,10 +55,10 @@ for _, strategy in helpers.each_strategy() do
           email = "unique@test.com",
         }
 
-        local res, msg, err = admins_helpers.validate(params, dao, "POST")
+        local res, match, err = admins_helpers.validate(params, dao, "POST")
 
         assert.is_nil(err)
-        assert.same("rbac_user already exists", msg)
+        assert.not_nil(match.rbac_user)
         assert.is_false(res)
       end)
 
@@ -65,10 +69,10 @@ for _, strategy in helpers.each_strategy() do
           email = "unique@test.com",
         }
 
-        local res, msg, err = admins_helpers.validate(params, dao, "POST")
+        local res, match, err = admins_helpers.validate(params, dao, "POST")
 
         assert.is_nil(err)
-        assert.same("rbac_user already exists", msg)
+        assert.not_nil(match.rbac_user)
         assert.is_false(res)
       end)
 
@@ -79,10 +83,10 @@ for _, strategy in helpers.each_strategy() do
           email = "admin-2@test.com",
         }
 
-        local res, msg, err = admins_helpers.validate(params, dao, "POST")
+        local res, match, err = admins_helpers.validate(params, dao, "POST")
 
         assert.is_nil(err)
-        assert.same("consumer already exists", msg)
+        assert.not_nil(match.consumer)
         assert.is_false(res)
       end)
 
@@ -93,11 +97,44 @@ for _, strategy in helpers.each_strategy() do
           email = "admin-2@test.com",
         }
 
-        local res, msg, err = admins_helpers.validate(params, dao, "PATCH")
+        local res, match, err = admins_helpers.validate(params, dao, "PATCH")
 
         assert.is_nil(err)
-        assert.same("consumer already exists", msg)
+        assert.not_nil(match.consumer)
         assert.is_false(res)
+      end)
+    end)
+
+    describe("link_to_workspace", function()
+      it("links an admin to another workspace", function()
+        -- odd-numbered admins are in default_ws
+        local admin, err = admins_helpers.link_to_workspace(admins[1], dao, another_ws)
+
+        assert.is_nil(err)
+
+        -- only returning the consumer, not the rbac user
+        local expected = utils.shallow_copy(admins[1])
+        assert.same(admin, expected)
+
+        local ws_list, err = workspaces.find_workspaces_by_entity({
+          workspace_id = another_ws.id,
+          entity_type = "consumers",
+          entity_id = admins[1].id,
+        })
+
+        assert.is_nil(err)
+        assert.not_nil(ws_list)
+        assert.same(ws_list[1].workspace_id, another_ws.id)
+
+        ws_list, err = workspaces.find_workspaces_by_entity({
+          workspace_id = another_ws.id,
+          entity_type = "rbac_users",
+          entity_id = admins[1].rbac_user.id,
+        })
+
+        assert.is_nil(err)
+        assert.not_nil(ws_list)
+        assert.same(ws_list[1].workspace_id, another_ws.id)
       end)
     end)
   end)

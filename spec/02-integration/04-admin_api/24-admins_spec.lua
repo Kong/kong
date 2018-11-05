@@ -149,7 +149,7 @@ for _, strategy in helpers.each_strategy() do
         it("uses the admins_helpers validator", function()
           local res = assert(client:send {
             method = "POST",
-            path  = "/" .. another_ws.name .. "/admins",
+            path  = "/admins",
             headers = {
               ["Kong-Admin-Token"] = "letmein",
               ["Content-Type"]     = "application/json",
@@ -161,6 +161,23 @@ for _, strategy in helpers.each_strategy() do
             },
           })
           assert.res_status(409, res)
+        end)
+
+        it("links an admin to another workspace", function()
+          local res = assert(client:send {
+            method = "POST",
+            path  = "/" .. another_ws.name .. "/admins",
+            headers = {
+              ["Kong-Admin-Token"] = "letmein",
+              ["Content-Type"]     = "application/json",
+            },
+            body  = {
+              custom_id = "admin-1",
+              username  = "i-am-unique",
+              email = "twinpeaks@konghq.com",
+            },
+          })
+          assert.res_status(200, res)
         end)
       end)
     end)
