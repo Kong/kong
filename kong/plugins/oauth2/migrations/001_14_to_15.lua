@@ -100,10 +100,11 @@ return {
     ]],
 
     teardown = function(connector)
+      assert(connector:connect_migrations())
       assert(connector:query [[
         DO $$
         BEGIN
-          ALTER TABLE "oauth2_credentials" DROP "redirect_uri";
+          ALTER TABLE IF EXISTS ONLY "oauth2_credentials" DROP "redirect_uri";
         EXCEPTION WHEN UNDEFINED_COLUMN THEN
           -- Do nothing, accept existing state
         END$$;
@@ -118,6 +119,7 @@ return {
 
     teardown = function(connector)
       local cjson = require "cjson"
+
       local coordinator = assert(connector:connect_migrations())
 
       for rows, err in coordinator:iterate([[
