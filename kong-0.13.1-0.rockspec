@@ -36,6 +36,7 @@ dependencies = {
   "lua-resty-mlcache == 2.0.2",
   "lua-resty-rsa == 0.04",
   "lyaml == 6.2.3",
+  "bcrypt == 2.1",
   -- external Kong plugins
   "kong-plugin-azure-functions == 0.1.0",
   "kong-plugin-zipkin == 0.0.4",
