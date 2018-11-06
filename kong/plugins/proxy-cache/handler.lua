@@ -271,7 +271,7 @@ local ProxyCacheHandler = BasePlugin:extend()
 
 
 ProxyCacheHandler.PRIORITY = 100
-ProxyCacheHandler.VERSION = "0.3.5"
+ProxyCacheHandler.VERSION = "0.3.6"
 
 
 function ProxyCacheHandler:new()
