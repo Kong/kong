@@ -112,6 +112,7 @@ describe("portal_gui", function()
       },
       enforce_rbac = "off",
       rbac_auth_header = 'Kong-Admin-Token',
+      portal_gui_use_subdomains = false,
     }
 
     setup(function()
@@ -119,7 +120,7 @@ describe("portal_gui", function()
 
     it("inserts the appropriate values with empty config", function()
       singletons.configuration = {
-        portal_auth = "basic-auth"
+        portal_auth = "basic-auth",
       }
 
       index_conf = ee.prepare_portal(conf, {
@@ -136,10 +137,11 @@ describe("portal_gui", function()
         PORTAL_GUI_URL = "",
         PORTAL_GUI_PORT = "8003",
         PORTAL_GUI_SSL_PORT = "8446",
+        PORTAL_GUI_USE_SUBDOMAINS = 'false',
         RBAC_ENFORCED = 'false',
         RBAC_HEADER = "Kong-Admin-Token",
         KONG_VERSION = tostring(meta.versions.package),
-        WORKSPACE = 'default'
+        WORKSPACE = 'default',
       }, index_conf)
     end)
 
@@ -158,6 +160,7 @@ describe("portal_gui", function()
         PORTAL_GUI_URL = "",
         PORTAL_GUI_PORT = "8003",
         PORTAL_GUI_SSL_PORT = "8446",
+        PORTAL_GUI_USE_SUBDOMAINS = 'false',
         RBAC_ENFORCED = 'false',
         RBAC_HEADER = "Kong-Admin-Token",
         KONG_VERSION = tostring(meta.versions.package),
@@ -183,6 +186,7 @@ describe("portal_gui", function()
         PORTAL_GUI_URL = "",
         PORTAL_GUI_PORT = "8003",
         PORTAL_GUI_SSL_PORT = "8446",
+        PORTAL_GUI_USE_SUBDOMAINS = 'false',
         RBAC_ENFORCED = 'false',
         RBAC_HEADER = "Kong-Admin-Token",
         KONG_VERSION = tostring(meta.versions.package),

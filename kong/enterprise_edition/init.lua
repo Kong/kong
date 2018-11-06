@@ -213,6 +213,7 @@ function _M.prepare_portal(kong_config, self)
     RBAC_HEADER = prepare_variable(kong_config.rbac_auth_header),
     KONG_VERSION = prepare_variable(meta.versions.package),
     WORKSPACE = prepare_variable(workspace.name),
+    PORTAL_GUI_USE_SUBDOMAINS = prepare_variable(kong_config.portal_gui_use_subdomains)
   }
 end
 
