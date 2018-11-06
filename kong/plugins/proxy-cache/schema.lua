@@ -66,7 +66,7 @@ return {
     },
     content_type = {
       type = "array",
-      default = { "text/plain" },
+      default = { "text/plain","application/json" },
       required = true,
     },
     cache_ttl = {

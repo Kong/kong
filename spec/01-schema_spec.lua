@@ -11,6 +11,14 @@ describe("proxy-cache schema", function()
     assert.is_true(ok)
   end)
 
+  it("defines default content-type values", function()
+    local config = {strategy = "memory"}
+    local ok, err = validate_entity(config, proxy_cache_schema)
+    assert.is_nil(err)
+    assert.is_true(ok)
+    assert.same(config.content_type, {"text/plain", "application/json"})
+  end)
+
   it("accepts a config with custom values", function()
     local ok, err = validate_entity({
       strategy = "memory",
