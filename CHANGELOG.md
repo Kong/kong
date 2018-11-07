@@ -1,8 +1,9 @@
-## Unreleased
+## 0.0.4
 
 ### Added
 
-* HTTPS support: the plugin can now connect with the proxy via HTTPS
+* HTTPS support: the plugin can now make CONNECT request to proxy
+to start SSL(HTTPS) communication with remote host
 
 ## 0.0.3
 
