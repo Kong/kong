@@ -568,6 +568,13 @@ do
         self.connector:close()
         return nil, prefix_err(self, err)
       end
+
+    elseif run_teardown then -- do not run if 'run_up' is already 'true'
+      ok, err = self.connector:post_run_teardown_migrations()
+      if not ok then
+        self.connector:close()
+        return nil, prefix_err(self, err)
+      end
     end
 
     self.connector:close()

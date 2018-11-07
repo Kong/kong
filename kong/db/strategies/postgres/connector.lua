@@ -770,11 +770,6 @@ function _mt:record_migration(subsystem, name, state)
 end
 
 
-function _mt:post_up_migrations()
-  return true
-end
-
-
 function _mt:is_014()
   local res = {}
 
