@@ -1,3 +1,3 @@
 return {
-  tables = {"response_ratelimiting_metrics"}
+  tables = { "response_ratelimiting_metrics" }
 }
