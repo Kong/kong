@@ -106,6 +106,11 @@ function Connector:post_run_up_migrations()
 end
 
 
+function Connector:post_run_teardown_migrations()
+  return true
+end
+
+
 function Connector:record_migration()
   error(fmt("record_migration() not implemented for '%s' strategy",
             self.database))

@@ -770,7 +770,12 @@ function _mt:record_migration(subsystem, name, state)
 end
 
 
-function _mt:post_up_migrations()
+function _mt:post_run_up_migrations()
+  return true
+end
+
+
+function _mt:post_run_teardown_migrations()
   return true
 end
 

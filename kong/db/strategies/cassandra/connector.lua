@@ -836,7 +836,17 @@ do
   end
 
 
-  function CassandraConnector:post_up_migrations()
+  function CassandraConnector:post_run_up_migrations()
+    local ok, err = wait_for_schema_consensus(self)
+    if not ok then
+      return nil, err
+    end
+
+    return true
+  end
+
+
+  function CassandraConnector:post_run_teardown_migrations()
     local ok, err = wait_for_schema_consensus(self)
     if not ok then
       return nil, err
