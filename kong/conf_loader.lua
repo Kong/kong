@@ -212,6 +212,7 @@ local CONF_INFERENCES = {
 local CONF_SENSITIVE = {
   pg_password = true,
   cassandra_password = true,
+  smtp_password = true,
 }
 
 local CONF_SENSITIVE_PLACEHOLDER = "******"

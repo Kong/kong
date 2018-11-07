@@ -79,11 +79,14 @@ describe("kong start/stop", function()
       local _, _, stdout = assert(helpers.kong_exec("start --vv --conf " .. helpers.test_conf_path, {
         pg_password = "do not print",
         cassandra_password = "do not print",
+        smtp_password = "do not print",
       }))
       assert.matches('KONG_PG_PASSWORD ENV found with "******"', stdout, nil, true)
       assert.matches('KONG_CASSANDRA_PASSWORD ENV found with "******"', stdout, nil, true)
+      assert.matches('KONG_SMTP_PASSWORD ENV found with "******"', stdout, nil, true)
       assert.matches('pg_password = "******"', stdout, nil, true)
       assert.matches('cassandra_password = "******"', stdout, nil, true)
+      assert.matches('smtp_password = "******"', stdout, nil, true)
     end)
   end)
 
