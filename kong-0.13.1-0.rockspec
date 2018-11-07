@@ -38,10 +38,10 @@ dependencies = {
   "lyaml == 6.2.3",
   "bcrypt == 2.1",
   -- external Kong plugins
-  "kong-plugin-azure-functions == 0.1.0",
-  "kong-plugin-zipkin == 0.0.4",
+  "kong-plugin-azure-functions == 0.1.1",
+  "kong-plugin-zipkin == 0.0.6",
   "kong-plugin-serverless-functions == 0.1.0",
-  "kong-prometheus-plugin == 0.1.0",
+  "kong-prometheus-plugin == 0.2.0",
 }
 build = {
   type = "builtin",
