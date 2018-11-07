@@ -29,6 +29,10 @@ for _, strategy in helpers.each_strategy() do
       local route4 = bp.routes:insert {
         hosts = { "correlation-tracker.com" },
       }
+      
+      local route5 = bp.routes:insert {
+        hosts = { "correlation5.com" },
+      }
 
       bp.plugins:insert {
         name     = "correlation-id",
@@ -57,6 +61,24 @@ for _, strategy in helpers.each_strategy() do
         route = { id = route4.id },
         config   = {
           generator = "tracker",
+        },
+      }
+      
+      bp.plugins:insert {
+        name     = "correlation-id",
+        route = { id = route5.id },
+        config   = {
+          generator       = "uuid",
+          echo_downstream = true,
+        },
+      }
+      
+      bp.plugins:insert {
+        name     = "request-termination",
+        route = { id = route5.id },
+        config   = {
+          status_code = 200,
+          message     = "Success",
         },
       }
 
@@ -114,7 +136,7 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
 
-    describe("uuid genetator", function()
+    describe("uuid generator", function()
       it("generates a unique UUID for every request", function()
         local res = assert(proxy_client:send {
           method  = "GET",
@@ -227,6 +249,19 @@ for _, strategy in helpers.each_strategy() do
       local json = cjson.decode(body)
       local id   = json.headers["kong-request-id"]
       assert.equal("foobar", id)
+    end)
+    
+    it("successfully executes with echo_downstream and request-termination enabled", function()
+      local res = assert(proxy_client:send {
+        method  = "GET",
+        path    = "/request",
+        headers = {
+          ["Host"]            = "correlation5.com"
+        }
+      })
+      local body = assert.res_status(200, res)
+      local json = cjson.decode(body)
+      assert.same({ message = "Success" }, json)
     end)
   end)
 end

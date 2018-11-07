@@ -80,7 +80,7 @@ end
 function CorrelationIdHandler:header_filter(conf)
   CorrelationIdHandler.super.header_filter(self)
 
-  if conf.echo_downstream then
+  if conf.echo_downstream and kong.ctx.plugin.correlationid_header_value then
     kong.response.set_header(conf.header_name, kong.ctx.plugin.correlationid_header_value)
   end
 end
