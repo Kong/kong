@@ -77,8 +77,8 @@ helpers.for_each_dao(function(kong_config)
         assert.falsy(err)
         assert.True(ok)
         -- also counts migrations that run after core + plugins
-        assert.spy(on_migration).was_called(n_ids + 4)
-        assert.spy(on_success).was_called(#flatten_migrations + 4)
+        assert.spy(on_migration).was_called(n_ids + 3)
+        assert.spy(on_success).was_called(#flatten_migrations + 3)
 
         for _, mig in ipairs(flatten_migrations) do
           assert.spy(on_migration).was_called_with(mig.identifier, factory:infos())
