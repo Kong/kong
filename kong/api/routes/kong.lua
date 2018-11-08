@@ -1,6 +1,5 @@
 local utils = require "kong.tools.utils"
 local singletons = require "kong.singletons"
-local public = require "kong.tools.public"
 local conf_loader = require "kong.conf_loader"
 local cjson = require "cjson"
 
@@ -9,6 +8,8 @@ local find = string.find
 local select = select
 local tonumber = tonumber
 local kong = kong
+local knode  = (kong and kong.node) and kong.node or
+               require "kong.pdk.node".new()
 
 
 local tagline = "Welcome to " .. _KONG._NAME
@@ -53,7 +54,7 @@ return {
         end
       end
 
-      local node_id, err = public.get_node_id()
+      local node_id, err = knode.get_id()
       if node_id == nil then
         ngx.log(ngx.ERR, "could not get node id: ", err)
       end

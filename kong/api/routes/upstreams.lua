@@ -1,7 +1,8 @@
 local endpoints = require "kong.api.endpoints"
 local responses = require "kong.tools.responses"
 local utils = require "kong.tools.utils"
-local public = require "kong.tools.public"
+local knode = (kong and kong.node) and kong.node or
+              require "kong.pdk.node".new()
 
 
 local unescape_uri = ngx.unescape_uri
@@ -92,7 +93,7 @@ return {
                                        escape_uri(upstream.id),
                                        escape_uri(offset)) or null
 
-      local node_id, err = public.get_node_id()
+      local node_id, err = knode.get_id()
       if err then
         ngx.log(ngx.ERR, "failed getting node id: ", err)
       end
