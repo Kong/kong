@@ -274,7 +274,7 @@ function Kong.init()
   if err then
     error(tostring(err))
   end
-  
+
   build_plugins_map(dao, "init")
 
   local reports = require "kong.core.reports"
@@ -663,8 +663,14 @@ end
 function Kong.log()
   local ctx = ngx.ctx
   local old_ws = ctx.workspaces
+
+  -- for request with no matching route, ctx.plugins_for_request would be empty
+  -- and there would not be any workspace linked to request.
+  -- So we would need to reload the plugins(global) which apply to the request by
+  -- setting access_or_cert_ctx to true.
   for plugin, plugin_conf in plugins_iterator(singletons.loaded_plugins,
-                                              singletons.configured_plugins) do
+                                              singletons.configured_plugins, not ctx.workspaces) do
+
     plugin.handler:log(plugin_conf)
     ctx.workspaces = old_ws
   end
