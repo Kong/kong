@@ -74,7 +74,7 @@
 -- @usage
 -- print(kong.configuration.prefix) -- "/usr/local/kong"
 -- -- this table is read-only; the following throws an error:
--- kong.configuration.custom_plugins = "foo"
+-- kong.configuration.prefix = "foo"
 
 --
 --- Request/Response

@@ -59,7 +59,7 @@ describe("SDK: kong.ctx", function()
     })
 
     assert(helpers.start_kong({
-      custom_plugins = "ctx-checker,ctx-checker-last",
+      plugins = "bundled,ctx-checker,ctx-checker-last",
       nginx_conf     = "spec/fixtures/custom_nginx.template",
     }))
 
@@ -102,7 +102,7 @@ describe("SDK: kong.ctx", function()
     })
 
     assert(helpers.start_kong({
-      custom_plugins = "ctx-checker,ctx-checker-last",
+      plugins = "bundled,ctx-checker,ctx-checker-last",
       nginx_conf     = "spec/fixtures/custom_nginx.template",
     }))
 

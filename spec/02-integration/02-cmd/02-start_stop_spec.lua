@@ -101,16 +101,6 @@ describe("kong start/stop", function()
     end)
   end)
 
-  describe("using deprecated custom_plugin property" , function()
-    it("prints a warning to stderr", function()
-      local _, stderr, stdout = assert(helpers.kong_exec("start --conf " ..
-                                  "spec/fixtures/deprecated_custom_plugin.conf"))
-      assert.matches("Kong started", stdout, nil, true)
-      assert.matches("[warn] the 'custom_plugins' configuration property is " ..
-                     "deprecated, use 'plugins' instead", stderr, nil, true)
-    end)
-  end)
-
   describe("/etc/hosts resolving in CLI", function()
     it("resolves #cassandra hostname", function()
       assert(helpers.kong_exec("start --vv --run-migrations --conf " .. helpers.test_conf_path, {
