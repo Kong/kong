@@ -134,7 +134,9 @@ return {
       end
 
       -- Setup and Admin user by default if ENV var is set
-      if os.getenv("KONG_RBAC_INITIAL_ADMIN_PASS") ~= nil then
+      local password = os.getenv("KONG_PASSWORD") or
+                 os.getenv("KONG_RBAC_INITIAL_ADMIN_PASS")
+      if password then
       -- an old migration in 0.32 (the migration is deleted)
       -- could have already created a kong_admin user, do not overwrite
         local user, err = dao.rbac_users:find_all({ name = "kong_admin" })
@@ -149,7 +151,7 @@ return {
         local user, err = dao.rbac_users:insert({
           id = utils.uuid(),
           name = "kong_admin",
-          user_token = os.getenv("KONG_RBAC_INITIAL_ADMIN_PASS"),
+          user_token = password,
           enabled = true,
           comment = "Initial RBAC Secure User"
         })
