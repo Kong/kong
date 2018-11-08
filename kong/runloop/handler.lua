@@ -43,7 +43,7 @@ local CACHE_ROUTER_OPTS = { ttl = 0 }
 local EMPTY_T = {}
 
 
-local router, router_version, router_err
+local get_router, build_router
 local api_router, api_router_version, api_router_err
 local server_header = meta._SERVER_TOKENS
 
@@ -87,66 +87,134 @@ local function build_api_router(dao, version)
   return true
 end
 
+do
+  local router
+  local router_version
 
-local function build_router(db, version)
-  local routes, i = {}, 0
 
-  for route, err in db.routes:each() do
-    if err then
-      return nil, "could not load routes: " .. err
-    end
+  build_router = function(db, version)
+    local routes, i = {}, 0
 
-    local service_pk = route.service
+    for route, err in db.routes:each() do
+      if err then
+        return nil, "could not load routes: " .. err
+      end
 
-    if not service_pk then
-      return nil, "route (" .. route.id .. ") is not associated with service"
-    end
+      local service_pk = route.service
 
-    local service
+      if not service_pk then
+        return nil, "route (" .. route.id .. ") is not associated with service"
+      end
 
-    -- TODO: db requests in loop, problem or not
-    service, err = db.services:select(service_pk)
-    if not service then
-      return nil, "could not find service for route (" .. route.id .. "): " .. err
-    end
+      local service, err = db.services:select(service_pk)
+      if not service then
+        return nil, "could not find service for route (" .. route.id .. "): " ..
+                    err
+      end
 
-    local r = {
-      route   = route,
-      service = service,
-    }
-
-    if route.hosts then
-      -- TODO: headers should probably be moved to route
-      r.headers = {
-        host = route.hosts,
+      local r = {
+        route   = route,
+        service = service,
       }
+
+      if route.hosts then
+        -- TODO: headers should probably be moved to route
+        r.headers = {
+          host = route.hosts,
+        }
+      end
+
+      i = i + 1
+      routes[i] = r
     end
 
-    i = i + 1
-    routes[i] = r
-  end
+    sort(routes, function(r1, r2)
+      r1, r2 = r1.route, r2.route
+      if r1.regex_priority == r2.regex_priority then
+        return r1.created_at < r2.created_at
+      end
+      return r1.regex_priority > r2.regex_priority
+    end)
 
-  sort(routes, function(r1, r2)
-    r1, r2 = r1.route, r2.route
-    if r1.regex_priority == r2.regex_priority then
-      return r1.created_at < r2.created_at
+    local err
+    router, err = Router.new(routes)
+    if not router then
+      return nil, "could not create router: " .. err
     end
-    return r1.regex_priority > r2.regex_priority
-  end)
 
-  local err
-  router, err = Router.new(routes)
-  if not router then
-    return nil, "could not create router: " .. err
+    if version then
+      router_version = version
+    end
+
+    singletons.router = router
+
+    return true
   end
 
-  if version then
-    router_version = version
+
+  get_router = function()
+    local cache = singletons.cache
+
+    local version, err = cache:get("router:version", CACHE_ROUTER_OPTS,
+                                   utils.uuid)
+    if err then
+      log(ngx.CRIT, "could not ensure router is up to date: ", err)
+      return nil, err
+    end
+
+    if version == router_version then
+      return router
+    end
+
+    -- wrap router rebuilds in a per-worker mutex (via ngx.semaphore)
+    -- this prevents dogpiling the database during rebuilds in
+    -- high-concurrency traffic patterns
+    -- requests that arrive on this process during a router rebuild will be
+    -- queued. once the semaphore resource is acquired we re-check the
+    -- router version again to prevent unnecessary subsequent rebuilds
+
+    local timeout = 60
+    if singletons.configuration.database == "cassandra" then
+      -- cassandra_timeout is defined in ms
+      timeout = singletons.configuration.cassandra_timeout / 1000
+
+    elseif singletons.configuration.database == "postgres" then
+      -- pg_timeout is defined in ms
+      timeout = singletons.configuration.pg_timeout / 1000
+    end
+
+    local ok, err = build_router_semaphore:wait(timeout)
+    if not ok then
+      return nil, "error attempting to acquire build_router lock: " .. err
+    end
+
+    -- lock acquired but we might not need to rebuild the router (if we
+    -- were not the first request in this process to enter this code path)
+    -- check again and rebuild if necessary
+
+    version, err = cache:get("router:version", CACHE_ROUTER_OPTS, utils.uuid)
+    if err then
+      log(ngx.CRIT, "could not ensure router is up to date: ", err)
+      return nil, err
+    end
+
+    if version == router_version then
+      return router
+    end
+
+    -- router needs to be rebuilt in this worker
+    log(DEBUG, "rebuilding router")
+
+    local ok, err = build_router(singletons.db, version)
+    if not ok then
+      log(ngx.CRIT, "could not rebuild router: ", err)
+      return nil, err
+    end
+
+    build_router_semaphore:post(1)
+
+    return router
   end
-
-  singletons.router = router
-
-  return true
 end
 
 
@@ -607,60 +675,10 @@ return {
 
       -- router for Routes/Services
 
-      local version, err = cache:get("router:version", CACHE_ROUTER_OPTS, utils.uuid)
-      if err then
-        log(ngx.CRIT, "could not ensure router is up to date: ", err)
-
-      elseif router_version ~= version then
-        -- wrap router rebuilds in a per-worker mutex (via ngx.semaphore)
-        -- this prevents dogpiling the database during rebuilds in
-        -- high-concurrency traffic patterns
-        -- requests that arrive on this process during a router rebuild will be
-        -- queued. once the semaphore resource is acquired we re-check the
-        -- router version again to prevent unnecessary subsequent rebuilds
-
-        local timeout = 60
-        if singletons.configuration.database == "cassandra" then
-          -- cassandra_timeout is defined in ms
-          timeout = singletons.configuration.cassandra_timeout / 1000
-
-        elseif singletons.configuration.database == "postgres" then
-          -- pg_timeout is defined in ms
-          timeout = singletons.configuration.pg_timeout / 1000
-        end
-
-        local ok, err = build_router_semaphore:wait(timeout)
-        if not ok then
-          return responses.send_HTTP_INTERNAL_SERVER_ERROR(
-            "error attempting to acquire build_router lock: " .. err
-          )
-        end
-
-        -- lock acquired but we might not need to rebuild the router (if we
-        -- were not the first request in this process to enter this code path)
-        -- check again and rebuild if necessary
-
-        version, err = cache:get("router:version", CACHE_ROUTER_OPTS, utils.uuid)
-        if err then
-          log(ngx.CRIT, "could not ensure router is up to date: ", err)
-
-        elseif router_version ~= version then
-          -- router needs to be rebuilt in this worker
-          log(DEBUG, "rebuilding router")
-
-          local ok, err = build_router(singletons.db, version)
-          if not ok then
-            router_err = err
-            log(ngx.CRIT, "could not rebuild router: ", err)
-          end
-        end
-
-        build_router_semaphore:post(1)
-      end
-
+      local router, err = get_router()
       if not router then
-        return responses.send_HTTP_INTERNAL_SERVER_ERROR("no router to " ..
-                  "route request (reason: " .. tostring(router_err) .. ")")
+        return responses.send_HTTP_INTERNAL_SERVER_ERROR(
+          "no router to route request (reason: " .. err ..  ")")
       end
 
       -- routing request
