@@ -1,6 +1,5 @@
 local utils = require "kong.tools.utils"
 local singletons = require "kong.singletons"
-local public = require "kong.tools.public"
 local conf_loader = require "kong.conf_loader"
 local cjson = require "cjson"
 
@@ -53,7 +52,7 @@ return {
         end
       end
 
-      local node_id, err = public.get_node_id()
+      local node_id, err = kong.node.get_id()
       if node_id == nil then
         ngx.log(ngx.ERR, "could not get node id: ", err)
       end

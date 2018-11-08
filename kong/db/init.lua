@@ -6,7 +6,6 @@ local MetaSchema   = require "kong.db.schema.metaschema"
 local log          = require "kong.cmd.utils.log"
 
 
-
 local fmt          = string.format
 local type         = type
 local pairs        = pairs
@@ -224,8 +223,8 @@ end
 
 
 do
-  local public = require "kong.tools.public"
   local resty_lock = require "resty.lock"
+  local node       = require "kong.pdk.node".new()
 
 
   local MAX_LOCK_WAIT_STEP = 2 -- seconds
@@ -292,10 +291,11 @@ do
     if not owner then
       -- generate a random string for this worker (resty-cli or runtime nginx
       -- worker)
-      -- we use the `get_node_id()` public utility, but in the CLI context,
-      -- this value is ephemeral, so no assumptions should be made about the
-      -- real owner of a lock
-      local id, err = public.get_node_id()
+      --
+      -- we use the `node.get_id()` from pdk, but in the CLI context, this
+      -- value is ephemeral, so no assumptions should be made about the real
+      -- owner of a lock
+      local id, err = node.get_id()
       if not id then
         return nil, prefix_err(self, "failed to generate lock owner: " .. err)
       end
