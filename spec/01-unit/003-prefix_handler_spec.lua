@@ -466,7 +466,7 @@ describe("NGINX conf compiler", function()
     end)
     it("writes custom plugins in Kong conf", function()
       local conf = assert(conf_loader(nil, {
-        custom_plugins = { "foo", "bar" },
+        plugins = { "foo", "bar" },
         prefix = tmp_config.prefix
       }))
 

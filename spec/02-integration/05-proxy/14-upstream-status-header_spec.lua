@@ -59,7 +59,7 @@ describe(constants.HEADERS.UPSTREAM_STATUS .. " header", function()
       assert(helpers.start_kong {
         nginx_conf = "spec/fixtures/custom_nginx.template",
         headers = "server_tokens,latency_tokens,x-kong-upstream-status",
-        custom_plugins = "dummy",
+        plugins = "bundled,dummy",
       })
 
       client = helpers.proxy_client()

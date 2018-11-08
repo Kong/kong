@@ -6,7 +6,6 @@ proxy_error_log = logs/error.log
 admin_access_log = logs/admin_access.log
 admin_error_log = logs/error.log
 plugins = bundled
-custom_plugins = NONE
 anonymous_reports = on
 
 proxy_listen = 0.0.0.0:8000, 0.0.0.0:8443 ssl

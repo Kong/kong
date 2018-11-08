@@ -71,7 +71,7 @@ describe("Configuration loader", function()
   end)
   it("loads custom plugins", function()
     local conf = assert(conf_loader(nil, {
-      custom_plugins = "hello-world,my-plugin"
+      plugins = "hello-world,my-plugin"
     }))
     assert.True(conf.loaded_plugins["hello-world"])
     assert.True(conf.loaded_plugins["my-plugin"])
@@ -79,18 +79,15 @@ describe("Configuration loader", function()
   it("merges plugins and custom plugins", function()
     local conf = assert(conf_loader(nil, {
       plugins = "foo, bar",
-      custom_plugins = "baz,foobaz",
     }))
     assert.is_not_nil(conf.loaded_plugins)
-    assert.same(4, tablex.size(conf.loaded_plugins))
+    assert.same(2, tablex.size(conf.loaded_plugins))
     assert.True(conf.loaded_plugins["foo"])
     assert.True(conf.loaded_plugins["bar"])
-    assert.True(conf.loaded_plugins["baz"])
-    assert.True(conf.loaded_plugins["foobaz"])
   end)
   it("loads custom plugins surrounded by spaces", function()
     local conf = assert(conf_loader(nil, {
-      custom_plugins = " hello-world ,   another-one  "
+      plugins = " hello-world ,   another-one  "
     }))
     assert.True(conf.loaded_plugins["hello-world"])
     assert.True(conf.loaded_plugins["another-one"])
