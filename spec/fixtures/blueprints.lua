@@ -200,15 +200,6 @@ function _M.new(dao, db)
     }
   end)
 
-  res.galileo_plugins = new_blueprint(db.plugins, function()
-    return {
-      name   = "galileo",
-      config = {
-        environment = "test",
-      },
-    }
-  end)
-
   res.jwt_plugins = new_blueprint(db.plugins, function()
     return {
       name   = "jwt",
