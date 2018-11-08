@@ -9,9 +9,7 @@ describe("Plugins", function()
 
   lazy_setup(function()
     local conf = assert(conf_loader(nil, {
-      -- ensure we test the galileo priority even if galileo isn't enabled by
-      -- default anymore
-      plugins = "bundled, galileo",
+      plugins = "bundled",
     }))
 
     plugins = {}
@@ -77,7 +75,6 @@ describe("Plugins", function()
       "tcp-log",
       "loggly",
       "syslog",
-      "galileo",
       "request-termination",
       "correlation-id",
       "post-function",

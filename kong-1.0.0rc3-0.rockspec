@@ -174,6 +174,7 @@ build = {
     ["kong.db.migrations.core"] = "kong/db/migrations/core/init.lua",
     ["kong.db.migrations.core.000_base"] = "kong/db/migrations/core/000_base.lua",
     ["kong.db.migrations.core.001_14_to_15"] = "kong/db/migrations/core/001_14_to_15.lua",
+    ["kong.db.migrations.core.002_15_to_1"] = "kong/db/migrations/core/002_15_to_1.lua",
 
     ["kong.pdk"] = "kong/pdk/init.lua",
     ["kong.pdk.private.checks"] = "kong/pdk/private/checks.lua",
@@ -247,14 +248,6 @@ build = {
 
     ["kong.plugins.file-log.handler"] = "kong/plugins/file-log/handler.lua",
     ["kong.plugins.file-log.schema"] = "kong/plugins/file-log/schema.lua",
-
-    ["kong.plugins.galileo.migrations.cassandra"] = "kong/plugins/galileo/migrations/cassandra.lua",
-    ["kong.plugins.galileo.migrations.postgres"] = "kong/plugins/galileo/migrations/postgres.lua",
-    ["kong.plugins.galileo.producer"] = "kong/plugins/galileo/producer.lua",
-    ["kong.plugins.galileo.handler"] = "kong/plugins/galileo/handler.lua",
-    ["kong.plugins.galileo.sender"] = "kong/plugins/galileo/sender.lua",
-    ["kong.plugins.galileo.schema"] = "kong/plugins/galileo/schema.lua",
-    ["kong.plugins.galileo.alf"] = "kong/plugins/galileo/alf.lua",
 
     ["kong.plugins.rate-limiting.migrations.cassandra"] = "kong/plugins/rate-limiting/migrations/cassandra.lua",
     ["kong.plugins.rate-limiting.migrations.postgres"] = "kong/plugins/rate-limiting/migrations/postgres.lua",
