@@ -21,7 +21,6 @@ local consumers_schema_def = require "kong.db.schema.entities.consumers"
 local services_schema_def = require "kong.db.schema.entities.services"
 local plugins_schema_def = require "kong.db.schema.entities.plugins"
 local routes_schema_def = require "kong.db.schema.entities.routes"
-local apis_schema_def = require "kong.db.schema.entities.apis"
 local conf_loader = require "kong.conf_loader"
 local DAOFactory = require "kong.dao.factory"
 local Blueprints = require "spec.fixtures.blueprints"
@@ -1240,7 +1239,6 @@ end
 Schema.new(consumers_schema_def)
 Schema.new(services_schema_def)
 Schema.new(routes_schema_def)
-Schema.new(apis_schema_def)
 
 local plugins_schema = assert(Schema.new(plugins_schema_def))
 

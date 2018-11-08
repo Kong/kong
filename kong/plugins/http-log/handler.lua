@@ -18,7 +18,7 @@ HttpLogHandler.PRIORITY = 12
 HttpLogHandler.VERSION = "0.1.0"
 
 
-local buffers = {} -- buffers per-route / -api
+local buffers = {} -- buffers per-route
 
 
 -- Only provide `name` when deriving from this class. Not when initializing an instance.
@@ -47,7 +47,7 @@ end
 function HttpLogHandler:log(conf)
   HttpLogHandler.super.log(self)
 
-  local route_id = conf.route_id or conf.api_id or "global"
+  local route_id = conf.route_id or "global"
   local buf = buffers[route_id]
   if not buf then
 

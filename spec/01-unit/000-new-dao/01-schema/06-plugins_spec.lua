@@ -1,7 +1,6 @@
 local Entity = require "kong.db.schema.entity"
 local typedefs = require "kong.db.schema.typedefs"
 local utils = require "kong.tools.utils"
-local apis_definition = require "kong.db.schema.entities.apis"
 local routes_definition = require "kong.db.schema.entities.routes"
 local services_definition = require "kong.db.schema.entities.services"
 local consumers_definition = require "kong.db.schema.entities.consumers"
@@ -17,7 +16,6 @@ describe("plugins", function()
     assert(Entity.new(consumers_definition))
     assert(Entity.new(services_definition))
     assert(Entity.new(routes_definition))
-    assert(Entity.new(apis_definition))
     Plugins = assert(Entity.new(plugins_definition))
 
     local my_plugins = {
@@ -154,43 +152,6 @@ describe("plugins", function()
   end)
 
   describe("should refuse if criteria in plugin schema not met", function()
-    it("no_api", function()
-      local subschema = {
-        name = "with-no-api",
-        fields = {
-          { api = typedefs.no_api },
-          { config = {
-              type = "record",
-              fields = {
-                { string = { type = "string", required = true } },
-              }
-          } }
-        }
-      }
-      assert(db.plugins.schema:new_subschema(subschema.name, subschema))
-
-      local ok, err = Plugins:validate(Plugins:process_auto_fields({
-        name = "with-no-api",
-        api = { id = utils.uuid() },
-        config = {
-          string = "foo",
-        }
-      }))
-      assert.falsy(ok)
-      assert.same({
-        api = "value must be null"
-      }, err)
-
-      ok = Plugins:validate(Plugins:process_auto_fields({
-        name = "with-no-api",
-        api = ngx.null,
-        config = {
-          string = "foo",
-        }
-      }))
-      assert.truthy(ok)
-    end)
-
     it("no_route", function()
       local subschema = {
         name = "with-no-route",
@@ -300,43 +261,6 @@ describe("plugins", function()
         }
       }))
       assert.truthy(ok)
-    end)
-
-    it("rejects a plugin if configured for both api and route", function()
-      local ok, err = Plugins:validate(Plugins:process_auto_fields({
-        name = "request-transformer",
-        api = { id = utils.uuid() },
-        route = { id = utils.uuid() },
-      }))
-      assert.falsy(ok)
-      assert.same({
-        ["@entity"] = {
-          "failed conditional validation given value of field 'api'"
-        },
-        route = "value must be null",
-      }, err)
-    end)
-
-    it("rejects a plugin if configured for both api and service", function()
-      local ok, err = Plugins:validate(Plugins:process_auto_fields({
-        name = "request-transformer",
-        api = { id = utils.uuid() },
-        service = { id = utils.uuid() },
-      }))
-      assert.falsy(ok)
-      assert.same({
-        ["@entity"] = {
-          "failed conditional validation given value of field 'api'"
-        },
-        service = "value must be null",
-      }, err)
-    end)
-
-    it("accepts a plugin if configured for api", function()
-      assert(Plugins:validate(Plugins:process_auto_fields({
-        name = "key-auth",
-        api = { id = utils.uuid() },
-      })))
     end)
 
     it("accepts a plugin if configured for route", function()

@@ -46,7 +46,6 @@ local function fill_plugin_data(args, plugin)
   post = arguments.decode(post, kong.db.plugins.schema)
 
   -- While we're at it, get values for composite uniqueness check
-  post.api = post.api or plugin.api
   post.route = post.route or plugin.route
   post.service = post.service or plugin.service
   post.consumer = post.consumer or plugin.consumer
@@ -112,8 +111,6 @@ local function post_process(data)
     r_data.e = "r"
   elseif data.consumer ~= null and data.consumer.id then
     r_data.e = "c"
-  elseif data.api ~= null and data.api.id then
-    r_data.e = "a"
   end
   reports.send("api", r_data)
   return data
@@ -135,8 +132,7 @@ return {
       if post and (post.name     == nil or
                    post.route    == nil or
                    post.service  == nil or
-                   post.consumer == nil or
-                   post.api      == nil) then
+                   post.consumer == nil) then
 
         -- We need the name, otherwise we don't know what type of
         -- plugin this is and we can't perform *any* validations.
@@ -201,14 +197,4 @@ return {
     PUT = put_plugin,
     DELETE = delete_plugin,
   },
-
-  -- Available for backward compatibility
-  ["/apis/:apis/plugins/:id"] = {
-    before = before_plugin_for_entity("apis", "api"),
-    PATCH = patch_plugin,
-    GET = get_plugin,
-    PUT = put_plugin,
-    DELETE = delete_plugin,
-  },
-
 }

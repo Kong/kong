@@ -357,7 +357,6 @@ function Kong.init()
   end
 
   assert(runloop.build_router(db, "init"))
-  assert(runloop.build_api_router(dao, "init"))
 end
 
 
@@ -476,14 +475,6 @@ function Kong.init_worker()
   end)
   if not ok then
     ngx_log(ngx_CRIT, "could not set router version in cache: ", err)
-    return
-  end
-
-  local ok, err = cache:get("api_router:version", { ttl = 0 }, function()
-    return "init"
-  end)
-  if not ok then
-    ngx_log(ngx_CRIT, "could not set API router version in cache: ", err)
     return
   end
 
@@ -657,7 +648,7 @@ function Kong.rewrite()
   end
 
   -- we're just using the iterator, as in this rewrite phase no consumer nor
-  -- api will have been identified, hence we'll just be executing the global
+  -- route will have been identified, hence we'll just be executing the global
   -- plugins
   for plugin, plugin_conf in plugins_iterator(ctx, loaded_plugins,
                                               configured_plugins, true) do

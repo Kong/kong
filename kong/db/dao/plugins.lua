@@ -188,9 +188,6 @@ local function convert_legacy_schema(name, old_schema)
     insert(new_schema.fields.config.fields, new_field)
   end
 
-  if old_schema.no_api then
-    insert(new_schema.fields, { api = typedefs.no_api })
-  end
   if old_schema.no_route then
     insert(new_schema.fields, { route = typedefs.no_route })
   end
@@ -249,9 +246,6 @@ function Plugins:load_plugin_schemas(plugin_set)
       return nil, "error initializing schema for plugin: " .. err
     end
 
-    if schema.fields.api and schema.fields.api.eq == null then
-      plugin.no_api = true
-    end
     if schema.fields.consumer and schema.fields.consumer.eq == null then
       plugin.no_consumer = true
     end

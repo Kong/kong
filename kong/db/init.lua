@@ -28,7 +28,6 @@ local CORE_ENTITIES = {
   "snis",
   "upstreams",
   "targets",
-  "apis",
   "plugins",
   "cluster_ca",
 }
