@@ -1,6 +1,3 @@
-local public = require "kong.tools.public"
-
-
 local ngx_debug = ngx.config.debug
 local DEBUG     = ngx.DEBUG
 local ERR       = ngx.ERR
@@ -121,7 +118,7 @@ function _M.new(opts)
 
   -- set node id (uuid)
 
-  self.node_id, err = public.get_node_id()
+  self.node_id, err = kong.node.get_id()
   if not self.node_id then
     return nil, err
   end

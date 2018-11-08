@@ -111,7 +111,6 @@ build = {
     ["kong.tools.ciphers"] = "kong/tools/ciphers.lua",
     ["kong.tools.dns"] = "kong/tools/dns.lua",
     ["kong.tools.utils"] = "kong/tools/utils.lua",
-    ["kong.tools.public"] = "kong/tools/public.lua",
     ["kong.tools.printable"] = "kong/tools/printable.lua",
     ["kong.tools.responses"] = "kong/tools/responses.lua",
     ["kong.tools.timestamp"] = "kong/tools/timestamp.lua",
