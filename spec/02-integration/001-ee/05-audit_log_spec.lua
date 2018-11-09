@@ -99,6 +99,25 @@ for _, strategy in helpers.each_strategy() do
           assert.is_nil(row.signature)
         end
       end)
+
+      it("creates an audit log entry when no workspace is found", function()
+        local res = assert(admin_client:send({
+          path = "/fdsfds/consumers",
+        }))
+        assert.res_status(404, res)
+        req_id = res.headers["X-Kong-Admin-Request-ID"]
+
+        delay()
+
+        res = assert(admin_client:send({
+          path = "/audit/requests?request_id=" .. req_id
+        }))
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+
+        assert.is_nil(json.data[1].workspace)
+      end)
+
     end)
 
     -- XXX EE: flaky

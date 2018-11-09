@@ -156,7 +156,7 @@ local function admin_log_handler()
     payload      = ngx.req.get_body_data(),
     method       = ngx.req.get_method(),
     status       = ngx.status,
-    workspace    = ngx.ctx.workspaces[1].id,
+    workspace    = ngx.ctx.workspaces and ngx.ctx.workspaces[1].id,
   }
 
 

@@ -44,7 +44,6 @@ return {
     },
     workspace = {
       type = "id",
-      required = true,
       immutable = true,
     },
     signature = {

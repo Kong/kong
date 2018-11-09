@@ -659,7 +659,7 @@ return {
         payload text,
         status integer NOT NULL,
         rbac_user_id uuid,
-        workspace uuid NOT NULL,
+        workspace uuid,
         signature text,
         expire timestamp without time zone
       );
