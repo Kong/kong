@@ -72,7 +72,7 @@ local function new(self, major_version)
   -- Returns the HTTP status code currently set for the downstream response (as
   -- a Lua number).
   --
-  -- If the request was proxied (as per `kong.service.get_source()`), the
+  -- If the request was proxied (as per `kong.response.get_source()`), the
   -- return value will be that of the response from the Service (identical to
   -- `kong.service.response.get_status()`).
   --
