@@ -246,6 +246,7 @@ local function balancer_setup_stage1(ctx, scheme, host_type, host, port,
     -- balancer    = nil,       -- the balancer object, if any
     -- hostname    = nil,       -- hostname of the final target IP
     -- hash_cookie = nil,       -- if Upstream sets hash_on_cookie
+    -- balancer_handle = nil,   -- balancer handle for the current connection
   }
 
   -- TODO: this is probably not optimal
@@ -943,14 +944,15 @@ return {
       -- Report HTTP status for health checks
       local balancer_data = ctx.balancer_data
       if balancer_data and balancer_data.balancer and balancer_data.ip then
-        local ip, port = balancer_data.ip, balancer_data.port
-
         local status = ngx.status
         if status == 504 then
-          balancer_data.balancer.report_timeout(ip, port)
+          balancer_data.balancer.report_timeout(balancer_data.balancer_handle)
         else
-          balancer_data.balancer.report_http_status(ip, port, status)
+          balancer_data.balancer.report_http_status(
+            balancer_data.balancer_handle, status)
         end
+        -- release the handle, so the balancer can update its statistics
+        balancer_data.balancer_handle:release()
       end
     end
   }
