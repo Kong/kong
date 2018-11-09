@@ -536,7 +536,13 @@ local function plugins_map_wrapper()
   elseif plugins_map_version ~= version then
     -- try to acquire the mutex (semaphore)
 
-    local ok, err = plugins_map_semaphore:wait(10)
+    local timeout = 60
+    if singletons.configuration.database == "cassandra" then
+      -- cassandra_timeout is defined in ms
+      timeout = singletons.configuration.cassandra_timeout / 1000
+    end
+
+    local ok, err = plugins_map_semaphore:wait(timeout)
 
     if ok then
       -- we have the lock but we might not have needed it. check the
