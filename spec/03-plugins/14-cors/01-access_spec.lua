@@ -6,7 +6,7 @@ for _, strategy in helpers.each_strategy() do
     local proxy_client
 
     lazy_setup(function()
-      local bp = helpers.get_db_utils(strategy)
+      local bp = helpers.get_db_utils(strategy, nil, { "error-generator-post" })
 
       local route1 = bp.routes:insert({
         hosts = { "cors1.com" },
@@ -44,15 +44,29 @@ for _, strategy in helpers.each_strategy() do
         hosts = { "cors9.com" },
       })
 
+      local mock_service = bp.services:insert {
+        host = "127.0.0.2",
+        port = 26865,
+      }
+
+      local route10 = bp.routes:insert {
+        hosts = { "cors-timeout.com" },
+        service = mock_service,
+      }
+
+      local route11 = bp.routes:insert {
+        hosts = { "cors-error.com" },
+      }
+
       bp.plugins:insert {
-        name     = "cors",
+        name = "cors",
         route = { id = route1.id },
       }
 
       bp.plugins:insert {
-        name     = "cors",
+        name = "cors",
         route = { id = route2.id },
-        config   = {
+        config = {
           origins         = { "example.com" },
           methods         = { "GET" },
           headers         = { "origin", "type", "accepts" },
@@ -63,9 +77,9 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.plugins:insert {
-        name     = "cors",
+        name = "cors",
         route = { id = route3.id },
-        config   = {
+        config = {
           origins            = { "example.com" },
           methods            = { "GET" },
           headers            = { "origin", "type", "accepts" },
@@ -76,28 +90,28 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.plugins:insert {
-        name     = "cors",
+        name = "cors",
         route = { id = route4.id },
       }
 
       bp.plugins:insert {
-        name     = "key-auth",
+        name = "key-auth",
         route = { id = route4.id }
       }
 
       bp.plugins:insert {
-        name     = "cors",
+        name = "cors",
         route = { id = route5.id },
-        config   = {
+        config = {
           origins     = { "*" },
           credentials = true
         }
       }
 
       bp.plugins:insert {
-        name     = "cors",
+        name = "cors",
         route = { id = route6.id },
-        config   = {
+        config = {
           origins            = { "example.com", "example.org" },
           methods            = { "GET" },
           headers            = { "origin", "type", "accepts" },
@@ -108,28 +122,62 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.plugins:insert {
-        name     = "cors",
+        name = "cors",
         route = { id = route7.id },
-        config   = {
+        config = {
           origins     = { "*" },
           credentials = false
         }
       }
 
       bp.plugins:insert {
-        name     = "cors",
+        name = "cors",
         route = { id = route8.id },
-        config   = {
+        config = {
           origins = {},
         }
       }
 
       bp.plugins:insert {
-        name     = "cors",
+        name = "cors",
         route = { id = route9.id },
-        config   = {
+        config = {
           origins = { [[.*\.?example(?:-foo)?.com]] },
         }
+      }
+
+      bp.plugins:insert {
+        name = "cors",
+        route = { id = route10.id },
+        config = {
+          origins            = { "example.com" },
+          methods            = { "GET" },
+          headers            = { "origin", "type", "accepts" },
+          exposed_headers    = { "x-auth-token" },
+          max_age            = 10,
+          preflight_continue = true
+        }
+      }
+
+      bp.plugins:insert {
+        name = "cors",
+        route = { id = route11.id },
+        config = {
+          origins            = { "example.com" },
+          methods            = { "GET" },
+          headers            = { "origin", "type", "accepts" },
+          exposed_headers    = { "x-auth-token" },
+          max_age            = 10,
+          preflight_continue = true
+        }
+      }
+
+      bp.plugins:insert {
+        name = "error-generator-post",
+        route = { id = route11.id },
+        config = {
+          access = true,
+        },
       }
 
       assert(helpers.start_kong({
@@ -277,6 +325,40 @@ for _, strategy in helpers.each_strategy() do
         assert.equal("x-auth-token", res.headers["Access-Control-Expose-Headers"])
         assert.equal("true", res.headers["Access-Control-Allow-Credentials"])
         assert.equal("Origin", res.headers["Vary"])
+        assert.is_nil(res.headers["Access-Control-Allow-Methods"])
+        assert.is_nil(res.headers["Access-Control-Allow-Headers"])
+        assert.is_nil(res.headers["Access-Control-Max-Age"])
+      end)
+
+      it("works even when upstream timeouts", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          headers = {
+            ["Host"] = "cors-timeout.com"
+          }
+        })
+        assert.res_status(502, res)
+        assert.equal("example.com", res.headers["Access-Control-Allow-Origin"])
+        assert.equal("x-auth-token", res.headers["Access-Control-Expose-Headers"])
+        assert.equal("Origin", res.headers["Vary"])
+        assert.is_nil(res.headers["Access-Control-Allow-Credentials"])
+        assert.is_nil(res.headers["Access-Control-Allow-Methods"])
+        assert.is_nil(res.headers["Access-Control-Allow-Headers"])
+        assert.is_nil(res.headers["Access-Control-Max-Age"])
+      end)
+
+      it("works even when a runtime error occurs", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          headers = {
+            ["Host"] = "cors-error.com"
+          }
+        })
+        assert.res_status(500, res)
+        assert.equal("example.com", res.headers["Access-Control-Allow-Origin"])
+        assert.equal("x-auth-token", res.headers["Access-Control-Expose-Headers"])
+        assert.equal("Origin", res.headers["Vary"])
+        assert.is_nil(res.headers["Access-Control-Allow-Credentials"])
         assert.is_nil(res.headers["Access-Control-Allow-Methods"])
         assert.is_nil(res.headers["Access-Control-Allow-Headers"])
         assert.is_nil(res.headers["Access-Control-Max-Age"])

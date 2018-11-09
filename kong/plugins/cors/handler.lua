@@ -1,10 +1,11 @@
 local BasePlugin = require "kong.plugins.base_plugin"
 
 
-local re_find         = ngx.re.find
-local concat          = table.concat
-local tostring        = tostring
-local ipairs          = ipairs
+local kong     = kong
+local re_find  = ngx.re.find
+local concat   = table.concat
+local tostring = tostring
+local ipairs   = ipairs
 
 
 local NO_CONTENT = 204
@@ -14,7 +15,7 @@ local CorsHandler = BasePlugin:extend()
 
 
 CorsHandler.PRIORITY = 2000
-CorsHandler.VERSION = "0.1.0"
+CorsHandler.VERSION = "1.0.0"
 
 
 local function configure_origin(conf)
@@ -75,7 +76,7 @@ local function configure_credentials(conf, allow_all)
   end
 
   if not allow_all then
-    set_header("Access-Control-Allow-Credentials", "true")
+    set_header("Access-Control-Allow-Credentials", true)
     return
   end
 
@@ -84,7 +85,7 @@ local function configure_credentials(conf, allow_all)
   local req_origin = kong.request.get_header("origin")
   if req_origin then
     set_header("Access-Control-Allow-Origin", req_origin)
-    set_header("Access-Control-Allow-Credentials", "true")
+    set_header("Access-Control-Allow-Credentials", true)
     set_header("Vary", "Origin")
   end
 end
@@ -116,7 +117,7 @@ function CorsHandler:access(conf)
 
   local set_header = kong.response.set_header
 
-  if conf.headers then
+  if conf.headers and #conf.headers > 0 then
     set_header("Access-Control-Allow-Headers", concat(conf.headers, ","))
 
   else
@@ -150,7 +151,7 @@ function CorsHandler:header_filter(conf)
   local allow_all = configure_origin(conf)
   configure_credentials(conf, allow_all)
 
-  if conf.exposed_headers then
+  if conf.exposed_headers and #conf.exposed_headers > 0 then
     kong.response.set_header("Access-Control-Expose-Headers",
                              concat(conf.exposed_headers, ","))
   end
