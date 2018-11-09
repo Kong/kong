@@ -58,7 +58,7 @@ local function new(pdk, major_version)
   -- @function kong.service.response.get_status
   -- @phases `header_filter`, `body_filter`, `log`
   -- @treturn number|nil the status code from the response from the Service, or `nil`
-  -- if the request was not proxied (i.e. `kong.service.get_source()` returned
+  -- if the request was not proxied (i.e. `kong.response.get_source()` returned
   -- anything other than `"service"`.
   -- @usage
   -- kong.log.inspect(kong.service.response.get_status()) -- 418
