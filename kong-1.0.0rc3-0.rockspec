@@ -93,7 +93,6 @@ build = {
     ["kong.api"] = "kong/api/init.lua",
     ["kong.api.api_helpers"] = "kong/api/api_helpers.lua",
     ["kong.api.arguments"] = "kong/api/arguments.lua",
-    ["kong.api.crud_helpers"] = "kong/api/crud_helpers.lua",
     ["kong.api.endpoints"] = "kong/api/endpoints.lua",
     ["kong.api.routes.kong"] = "kong/api/routes/kong.lua",
     ["kong.api.routes.consumers"] = "kong/api/routes/consumers.lua",
