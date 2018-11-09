@@ -967,7 +967,7 @@ for _, strategy in helpers.each_strategy() do
 
           end)
 
-          it("#perform passive health checks", function()
+          it("perform passive health checks", function()
 
             for nfails = 1, 3 do
 
