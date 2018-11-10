@@ -107,7 +107,6 @@ build = {
     ["kong.api.routes.snis"] = "kong/api/routes/snis.lua",
 
     ["kong.tools.cluster_ca"] = "kong/tools/cluster_ca.lua",
-    ["kong.tools.ip"] = "kong/tools/ip.lua",
     ["kong.tools.ciphers"] = "kong/tools/ciphers.lua",
     ["kong.tools.dns"] = "kong/tools/dns.lua",
     ["kong.tools.utils"] = "kong/tools/utils.lua",
