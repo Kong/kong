@@ -73,7 +73,6 @@ local mesh = require "kong.runloop.mesh"
 local responses = require "kong.tools.responses"
 local semaphore = require "ngx.semaphore"
 local singletons = require "kong.singletons"
-local DAOFactory = require "kong.dao.factory"
 local kong_cache = require "kong.cache"
 local ngx_balancer = require "ngx.balancer"
 local kong_resty_ctx = require "kong.resty.ctx"
@@ -277,21 +276,10 @@ function Kong.init()
   end
   --]]
 
-  local dao = assert(DAOFactory.new(config, db)) -- instantiate long-lived DAO
-  local ok, err_t = dao:init()
-  if not ok then
-    error(tostring(err_t))
-  end
-
-  --assert(dao:are_migrations_uptodate())
-
-  db.old_dao = dao
-
   assert(db.plugins:check_db_against_config(config.loaded_plugins))
 
   -- LEGACY
   singletons.dns = dns(config)
-  singletons.dao = dao
   singletons.configuration = config
   singletons.db = db
   -- /LEGACY
@@ -328,7 +316,6 @@ function Kong.init()
     singletons.origins = origins
   end
 
-  kong.dao = dao
   kong.db = db
   kong.dns = singletons.dns
   kong.default_client_ssl_ctx = default_client_ssl_ctx
@@ -389,16 +376,6 @@ function Kong.init_worker()
   local ok, err = kong.db:init_worker()
   if not ok then
     ngx_log(ngx_CRIT, "could not init DB: ", err)
-    return
-  end
-
-
-  -- init DAO
-
-
-  local ok, err = kong.dao:init_worker()
-  if not ok then
-    ngx_log(ngx_CRIT, "could not init DAO: ", err)
     return
   end
 
@@ -499,7 +476,6 @@ function Kong.init_worker()
   kong.cluster_events = cluster_events
 
   kong.db:set_events_handler(worker_events)
-  kong.dao:set_events_handler(worker_events)
 
 
   runloop.init_worker.before()

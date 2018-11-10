@@ -126,23 +126,11 @@
 
 
 ---
--- Instance of Kong's legacy DAO. This has the same interface as the object
--- returned by `new(config, db)` in the core's `kong.dao.factory` module.
---
--- * [Plugin Development Guide - Accessing the
--- Datastore](https://getkong.org/docs/latest/plugin-development/access-the-datastore/)
--- * Kong legacy DAO: https://github.com/Kong/kong/tree/master/kong/dao
---
--- @field kong.dao
-
-
----
--- Instance of Kong's DAO (the new `kong.db` module). Contains accessor objects
+-- Instance of Kong's DAO (the `kong.db` module). Contains accessor objects
 -- to various entities.
 --
 -- A more thorough documentation of this DAO and new schema definitions is to
--- be made available in the future, once this object will replace the old DAO
--- as the standard interface with which to create custom entities in plugins.
+-- be made available in the future.
 --
 -- @field kong.db
 -- @usage

@@ -112,7 +112,7 @@ for _, strategy in helpers.each_strategy() do
         local body = assert.response(res).has_status(404)
         local json = cjson.decode(body)
         assert.matches("^kong/", res.headers.server)
-        assert.equal("no route and no API found with those values", json.message)
+        assert.equal("no Route matched with those values", json.message)
       end)
     end)
 

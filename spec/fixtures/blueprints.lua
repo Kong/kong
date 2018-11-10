@@ -44,7 +44,7 @@ end
 
 local function new_blueprint(dao, build_function)
   return setmetatable({
-    dao            = dao,
+    dao = dao,
     build_function = build_function,
   }, Blueprint)
 end
@@ -71,7 +71,7 @@ end
 local _M = {}
 
 
-function _M.new(dao, db)
+function _M.new(db)
   local res = {}
 
   local sni_seq = new_sequence("server-name-%d")

@@ -2,7 +2,6 @@ local migrations_utils = require "kong.cmd.utils.migrations"
 local prefix_handler = require "kong.cmd.utils.prefix_handler"
 local nginx_signals = require "kong.cmd.utils.nginx_signals"
 local conf_loader = require "kong.conf_loader"
-local DAOFactory = require "kong.dao.factory"
 local kill = require "kong.cmd.utils.kill"
 local log = require "kong.cmd.utils.log"
 local DB = require "kong.db"
@@ -25,11 +24,6 @@ local function execute(args)
 
   local db = assert(DB.new(conf))
   assert(db:init_connector())
-  local dao = assert(DAOFactory.new(conf, db))
-  local ok, err_t = dao:init()
-  if not ok then
-    error(tostring(err_t))
-  end
 
   local schema_state = assert(db:schema_state())
 

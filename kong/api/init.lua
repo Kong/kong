@@ -189,7 +189,7 @@ local function attach_routes(routes)
 
     for method_name, method_handler in pairs(methods) do
       local wrapped_handler = function(self)
-        return method_handler(self, singletons.dao, handler_helpers)
+        return method_handler(self, {}, handler_helpers)
       end
 
       methods[method_name] = parse_params(wrapped_handler)

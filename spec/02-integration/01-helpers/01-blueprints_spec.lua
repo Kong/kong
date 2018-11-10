@@ -1,5 +1,4 @@
 local DB = require "kong.db"
-local Factory = require "kong.dao.factory"
 local helpers = require "spec.helpers"
 local Blueprints = require "spec.fixtures.blueprints"
 local dao_helpers = require "spec.02-integration.03-dao.helpers"
@@ -17,7 +16,7 @@ for _, strategy in helpers.each_strategy() do
       assert(db:init_connector())
       assert(db.plugins:load_plugin_schemas(helpers.test_conf.loaded_plugins))
       assert(db:truncate())
-      bp = assert(Blueprints.new({}, db))
+      bp = assert(Blueprints.new(db))
     end)
 
     local service
@@ -72,21 +71,16 @@ for _, strategy in helpers.each_strategy() do
 end
 
 dao_helpers.for_each_dao(function(kong_config)
-  local bp, dao, db
+  local bp, db
 
   lazy_setup(function()
     db = assert(DB.new(helpers.test_conf, kong_config.database))
     assert(db:init_connector())
     assert(db.plugins:load_plugin_schemas(helpers.test_conf.loaded_plugins))
-    dao = assert(Factory.new(kong_config, db))
-    bp  = assert(Blueprints.new(dao, db))
+    bp  = assert(Blueprints.new(db))
   end)
 
   lazy_teardown(function()
-    if dao then
-      dao:truncate_tables()
-    end
-
     ngx.shared.kong_cassandra:flush_expired()
   end)
 

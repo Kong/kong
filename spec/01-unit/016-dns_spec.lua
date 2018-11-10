@@ -16,10 +16,12 @@ describe("DNS", function()
       get = function() return {} end
     }
 
-    singletons.dao = {}
-    singletons.dao.upstreams = {
+    --[[
+    singletons.db = {}
+    singletons.db.upstreams = {
       find_all = function(self) return {} end
     }
+    --]]
 
     singletons.origins = {}
 
