@@ -20,7 +20,7 @@ addons:
 
 env:
   global:
-    - LUAROCKS=2.4.3
+    - LUAROCKS=3.0.4
     - OPENSSL=1.1.1
     - OPENRESTY_BASE=1.13.6.2
     - OPENRESTY_LATEST=1.13.6.2
