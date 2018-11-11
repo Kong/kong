@@ -442,9 +442,12 @@ return {
         return helpers.responses.send_HTTP_NOT_FOUND()
       end
 
-      -- admin username is same as email address
+      if not self.params.email or self.params.email == "" then
+        return helpers.responses.send_HTTP_BAD_REQUEST("email is required")
+      end
+
       -- if you've forgotten your password, this is all we know about you
-      self.consumer = admins.find_by_username_or_id(self.params.email)
+      self.consumer = admins.find_by_email(self.params.email)
       if not self.consumer then
         return helpers.responses.send_HTTP_NOT_FOUND()
       end

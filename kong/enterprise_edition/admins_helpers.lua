@@ -68,24 +68,22 @@ end
 _M.validate = validate
 
 
-local function find_by_username_or_id(username_or_id)
+local function find_by_email(email)
+  if not email or email == "" then
+    return nil, "email is required"
+  end
+
   local dao = singletons.dao
   local admins, err = dao.consumers:run_with_ws_scope({},
-    dao.consumers.find_all, { type =  enums.CONSUMERS.TYPE.ADMIN })
-
+                      dao.consumers.find_all,
+                      { type = enums.CONSUMERS.TYPE.ADMIN, email = email })
   if err then
     return nil, err
   end
 
-  for _, admin in ipairs(admins) do
-    if admin.id == username_or_id or
-       admin.username == username_or_id then
-
-      return admin
-    end
-  end
+  return admins[1]
 end
-_M.find_by_username_or_id = find_by_username_or_id
+_M.find_by_email = find_by_email
 
 
 local function link_to_workspace(consumer_or_user, dao, workspace, plugin)

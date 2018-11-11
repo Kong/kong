@@ -700,7 +700,7 @@ for _, strategy in helpers.each_strategy() do
     end)
   end)
 
-  describe("Admin API - /admins/password_resets for admin #" .. strategy, function()
+  describe("Admin API - /admins/password_resets #" .. strategy, function()
     local client
     local dao
     local admin
@@ -726,7 +726,7 @@ for _, strategy in helpers.each_strategy() do
         },
         body  = {
           custom_id = "gruce",
-          username = "gruce@konghq.com",
+          username = "gruce",
           email = "gruce@konghq.com",
         }
       })
@@ -736,7 +736,7 @@ for _, strategy in helpers.each_strategy() do
 
       -- add credentials for him
       assert(dao.basicauth_credentials:insert {
-        username    = "gruce@konghq.com",
+        username    = "gruce",
         password    = "kong",
         consumer_id = admin.id,
       })
