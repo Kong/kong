@@ -207,59 +207,12 @@ function _M.authenticate(self, dao_factory, rbac_enabled, gui_auth)
 
       rbac_token = rbac_user.user_token
 
-      local consumer_user, err = rbac.get_consumer_user_map(rbac_user.id)
-
-      if err then
-        ngx.log(ngx.ERR, _log_prefix, err)
-        return responses.send_HTTP_INTERNAL_SERVER_ERROR()
-      end
-
-      if not consumer_user then
-        ngx.log(ngx.DEBUG, _log_prefix, "no consumer mapping for rbac_user: ",
-                rbac_user.name)
-        return responses.send_HTTP_UNAUTHORIZED()
-      end
-
-      local consumer_id = consumer_user.consumer_id
-
-      local workspace_entities, err = dao_factory.workspace_entities:find_all{
-        entity_id = consumer_id,
-        unique_field_name = "id",
-      }
-      self.workspace_entities = workspace_entities
-
-      if err then
-        ngx.log(ngx.ERR, _log_prefix, "Error fetching workspaces for consumer: ",
-                consumer_id, ": ", err)
-        return responses.send_HTTP_INTERNAL_SERVER_ERROR()
-      end
-
-      if not next(workspace_entities) then
-        ngx.log(ngx.DEBUG, "no workspace found for consumer:" .. consumer_id)
-        return responses.send_HTTP_INTERNAL_SERVER_ERROR()
-      end
-
-      local cache_key = dao_factory.consumers:cache_key(consumer_id)
-      local consumer, err = singletons.cache:get(cache_key, nil,
-                                                 _M.retrieve_consumer,
-                                                 consumer_id)
-
-      if err then
-        ngx.log(ngx.ERR, _log_prefix, "error getting consumer: ", consumer_id)
-        return responses.send_HTTP_INTERNAL_SERVER_ERROR()
-      end
-
-      if not consumer then
-        ngx.log(ngx.DEBUG, _log_prefix, "consumer not found: ", consumer_id)
-        return responses.send_HTTP_INTERNAL_SERVER_ERROR()
-      end
+      _M.attach_consumer_and_workspaces(self, dao_factory, rbac_user.id)
 
       local workspace = {
-        id = workspace_entities[1].workspace_id,
-        name = workspace_entities[1].workspace_name,
+        id = self.workspace_entities[1].workspace_id,
+        name = self.workspace_entities[1].workspace_name,
       }
-
-      self.consumer = consumer
 
       ctx.workspaces = { workspace }
 
@@ -278,7 +231,7 @@ function _M.authenticate(self, dao_factory, rbac_enabled, gui_auth)
         return responses.send_HTTP_UNAUTHORIZED()
       end
 
-      if self.consumer and ctx.authenticated_consumer.id ~= consumer_id then
+      if self.consumer and ctx.authenticated_consumer.id ~= self.consumer.id then
         ngx.log(ngx.ERR, _log_prefix, "no rbac user mapped with these credentials")
 
         return responses.send_HTTP_UNAUTHORIZED()
@@ -308,7 +261,7 @@ function _M.authenticate(self, dao_factory, rbac_enabled, gui_auth)
       end
 
       if self.consumer.status ~= enums.CONSUMERS.STATUS.APPROVED then
-        return responses.send_HTTP_UNAUTHORIZED(_M.get_consumer_status(consumer))
+        return responses.send_HTTP_UNAUTHORIZED(_M.get_consumer_status(self.consumer))
       end
     end
 
@@ -317,6 +270,59 @@ function _M.authenticate(self, dao_factory, rbac_enabled, gui_auth)
     -- set back workspace context from request
     ctx.workspaces = old_ws
   end
+end
+
+
+function _M.attach_consumer_and_workspaces(self, dao_factory, rbac_user_id)
+  local consumer_user, err = rbac.get_consumer_user_map(rbac_user_id)
+
+  if err then
+    ngx.log(ngx.ERR, _log_prefix, err)
+    return responses.send_HTTP_INTERNAL_SERVER_ERROR()
+  end
+
+  if not consumer_user then
+    ngx.log(ngx.DEBUG, _log_prefix, "no consumer mapping for rbac_user: ",
+            rbac_user_id)
+    return responses.send_HTTP_UNAUTHORIZED()
+  end
+
+  local consumer_id = consumer_user.consumer_id
+
+  local workspace_entities, err = dao_factory.workspace_entities:find_all{
+    entity_id = consumer_id,
+    unique_field_name = "id",
+  }
+
+  self.workspace_entities = workspace_entities
+
+  if err then
+    ngx.log(ngx.ERR, _log_prefix, "Error fetching workspaces for consumer: ",
+            consumer_id, ": ", err)
+    return responses.send_HTTP_INTERNAL_SERVER_ERROR()
+  end
+
+  if not next(workspace_entities) then
+    ngx.log(ngx.DEBUG, "no workspace found for consumer:" .. consumer_id)
+    return responses.send_HTTP_INTERNAL_SERVER_ERROR()
+  end
+
+  local cache_key = dao_factory.consumers:cache_key(consumer_id)
+  local consumer, err = singletons.cache:get(cache_key, nil,
+                                             _M.retrieve_consumer,
+                                             consumer_id)
+
+  if err then
+    ngx.log(ngx.ERR, _log_prefix, "error getting consumer: ", consumer_id)
+    return responses.send_HTTP_INTERNAL_SERVER_ERROR()
+  end
+
+  if not consumer then
+    ngx.log(ngx.DEBUG, _log_prefix, "consumer not found: ", consumer_id)
+    return responses.send_HTTP_INTERNAL_SERVER_ERROR()
+  end
+
+  self.consumer = consumer
 end
 
 

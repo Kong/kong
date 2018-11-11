@@ -3,6 +3,7 @@ local singletons = require "kong.singletons"
 local public = require "kong.tools.public"
 local workspaces = require "kong.workspaces"
 local conf_loader = require "kong.conf_loader"
+local ee_api = require "kong.enterprise_edition.api_helpers"
 local cjson = require "cjson"
 local rbac = require "kong.rbac"
 
@@ -135,13 +136,11 @@ return {
     before = function(self, dao_factory, helpers)
       local admin_auth = singletons.configuration.admin_gui_auth
 
-      if admin_auth and not self.consumer then
-        return helpers.responses.send_HTTP_UNAUTHORIZED()
-      end
-
-      if not admin_auth then
+      if not admin_auth and not ngx.ctx.rbac then
         return helpers.responses.send_HTTP_NOT_FOUND()
       end
+
+      ee_api.attach_consumer_and_workspaces(self, dao_factory, ngx.ctx.rbac.user.id)
 
       -- now to get the right permission set
       self.permissions = {

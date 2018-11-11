@@ -149,6 +149,24 @@ describe("Admin API - ee-specific Kong routes", function()
         assert.same(expected, json)
         assert.equal(1, #user_workspaces)
         assert.equal(workspaces.DEFAULT_WORKSPACE, user_workspaces[1].name)
+
+        -- Now send the same request, but with just the rbac token
+        -- and make sure the responses are equivalent
+        res = assert(client:send {
+          method = "GET",
+          path = "/userinfo",
+          headers = {
+            ["Kong-Admin-Token"] = "tawken",
+          }
+        })
+
+        res = assert.res_status(200, res)
+        local json2 = cjson.decode(res)
+        local user_workspaces2 = json2.workspaces
+        json2.workspaces = nil
+
+        assert.same(json2, json)
+        assert.same(user_workspaces2, user_workspaces)
       end)
 
       it("is whitelisted and supports legacy rbac_user.name", function()
