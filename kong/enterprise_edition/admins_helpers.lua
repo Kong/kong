@@ -2,6 +2,7 @@ local singletons = require "kong.singletons"
 local enums = require "kong.enterprise_edition.dao.enums"
 local portal_crud = require "kong.portal.crud_helpers"
 local workspaces = require "kong.workspaces"
+local responses = require "kong.tools.responses"
 
 local log = ngx.log
 local DEBUG = ngx.DEBUG
@@ -10,7 +11,7 @@ local _log_prefix = "[admins] "
 
 local _M = {}
 
-local function validate(params, dao, http_method)
+function _M.validate(params, dao, http_method)
   -- how many rows do we expect to find?
   local max_count = http_method == "POST" and 0 or 1
 
@@ -65,10 +66,77 @@ local function validate(params, dao, http_method)
 
   return true
 end
-_M.validate = validate
 
 
-local function find_by_email(email)
+function _M.update(params, consumer, rbac_user)
+  if not next(params) then
+    return { code = responses.status_codes.HTTP_BAD_REQUEST, body = "empty body" }
+  end
+
+  -- get the rbac_user off of the consumer or update will fail
+  -- (this is a really weird data structure, I keep saying)
+  consumer.rbac_user = nil
+
+  -- update consumer
+  local admin, err = singletons.dao.consumers:update(params, consumer)
+  if err then
+    return nil, err
+  end
+
+  if not admin then
+    return { code = responses.status_codes.HTTP_NOT_FOUND }
+  end
+
+  if consumer.username == params.username then
+    -- username didn't change, nothing more to do here
+    return { code = responses.status_codes.HTTP_OK, body = admin }
+  end
+
+  -- update rbac_user if consumer.username changed, because these have
+  -- to stay in sync in order for us to authenticate this admin
+  if rbac_user.name ~= admin.username then
+    local _, err = singletons.dao.rbac_users:update(
+                   { name = admin.username },
+                   { id = rbac_user.id })
+    if err then
+      return nil, err
+    end
+  end
+
+  -- update any basic-auth credential for this user
+  local _, err = singletons.dao.basicauth_credentials:run_with_ws_scope({},
+                 singletons.dao.basicauth_credentials.update,
+                 { username = admin.username },
+                 { consumer_id = admin.id })
+
+  if err then
+    return nil, err
+  end
+
+  return { code = responses.status_codes.HTTP_OK, body = admin }
+end
+
+
+function _M.find_by_username_or_id(username_or_id)
+  local dao = singletons.dao
+  local admins, err = dao.consumers:run_with_ws_scope({},
+                      dao.consumers.find_all,
+                      { type =  enums.CONSUMERS.TYPE.ADMIN })
+  if err then
+    return nil, err
+  end
+
+  for _, admin in ipairs(admins) do
+    if admin.id == username_or_id or
+       admin.username == username_or_id then
+
+      return admin
+    end
+  end
+end
+
+
+function _M.find_by_email(email)
   if not email or email == "" then
     return nil, "email is required"
   end
@@ -83,10 +151,9 @@ local function find_by_email(email)
 
   return admins[1]
 end
-_M.find_by_email = find_by_email
 
 
-local function link_to_workspace(consumer_or_user, dao, workspace, plugin)
+function _M.link_to_workspace(consumer_or_user, dao, workspace, plugin)
   -- either a consumer or an rbac_user is passed in
   -- figure out which one and initialize the other
   local consumer = consumer_or_user.consumer
@@ -182,10 +249,9 @@ local function link_to_workspace(consumer_or_user, dao, workspace, plugin)
   consumer.rbac_user = rbac_user
   return consumer
 end
-_M.link_to_workspace = link_to_workspace
 
 
-local function reset_password(plugin, collection, consumer, new_password, secret_id)
+function _M.reset_password(plugin, collection, consumer, new_password, secret_id)
   log(DEBUG, _log_prefix, "searching ", plugin.name, "creds for consumer ", consumer.id)
   local credentials, err = singletons.dao.credentials:run_with_ws_scope({},
     singletons.dao.credentials.find_all,
@@ -238,6 +304,5 @@ local function reset_password(plugin, collection, consumer, new_password, secret
 
   return true
 end
-_M.reset_password = reset_password
 
 return _M

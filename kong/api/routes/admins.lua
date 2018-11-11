@@ -297,19 +297,25 @@ return {
     end,
 
     PATCH = function(self, dao_factory, helpers)
+      set_rbac_user(self, dao_factory, helpers)
+
       local _, msg, err = admins.validate(self.params, dao_factory, "PATCH")
 
       if err then
-        log(ERR, _log_prefix, "failed to validate params: ", err)
-        return helpers.responses.send_HTTP_INTERNAL_SERVER_ERROR()
+        return helpers.yield_error(err)
       end
 
       if msg then
-        log(ERR, _log_prefix, "failed to update admin: ", msg)
-        return helpers.responses.send_HTTP_CONFLICT()
+        return helpers.responses.send_HTTP_CONFLICT(
+            "user already exists with same username, email, or custom_id")
       end
 
-      crud.patch(self.params, dao_factory.consumers, self.consumer)
+      local res, err = admins.update(self.params, self.consumer, self.rbac_user)
+      if err then
+        return helpers.yield_error(err)
+      end
+
+      return helpers.responses.send(res.code, res.body)
     end,
 
     DELETE = function(self, dao_factory, helpers)

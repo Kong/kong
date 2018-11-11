@@ -248,6 +248,14 @@ for _, strategy in helpers.each_strategy() do
 
             local in_db = assert(bp.consumers:find {id = admin.id})
             assert.same(json, in_db)
+
+            -- keeps consumer.username and rbac_user.name in sync
+            local rbac_users = assert(dao.rbac_users:find_all({ name = "alice" }))
+            assert.same("alice", rbac_users[1].name)
+
+            -- keeps consumer.username and basic-auth cred.username in sync
+            local creds = assert(dao.basicauth_credentials:find_all({ consumer_id = admin.id} ))
+            assert.same("alice", creds[1].username)
           end
         end)
 
@@ -271,6 +279,32 @@ for _, strategy in helpers.each_strategy() do
 
             local in_db = assert(bp.consumers:find {id = admin.id})
             assert.same(json, in_db)
+          end
+        end)
+
+        it("doesn't modify rbac_user when username doesn't change", function()
+          return function()
+            local res = assert(client:send {
+              method = "PATCH",
+              path = "/admins/" .. admin.username,
+              body = {
+                custom_id = "alice"
+              },
+              headers = {
+                ["Kong-Admin-Token"] = "letmein",
+                ["Content-Type"]     = "application/json",
+              },
+            })
+            local body = assert.res_status(200, res)
+            local json = cjson.decode(body)
+            assert.equal("alice", json.username)
+            assert.equal(admin.id, json.id)
+
+            local in_db = assert(bp.consumers:find {id = admin.id})
+            assert.same(json, in_db)
+
+            local rbac_users = assert(dao.rbac_users:find_all({ name = admin.username }))
+            assert.same(admin.username, rbac_users[1].name)
           end
         end)
 
