@@ -24,13 +24,13 @@ describe("ee admin emails", function()
   end)
 
   describe("invite", function()
-    it("should return err if admin_invite_email is disabled", function()
-      conf.admin_invite_email = false
+    it("should return err if admin_gui_auth is disabled", function()
+      conf.admin_gui_auth = false
       admin_emails = emails.new(conf)
 
       local expected = {
         code = 501,
-        message = "admin_invite_email is disabled",
+        message = "admin_gui_auth is disabled",
       }
 
       local res, err = admin_emails:invite({"gruce@konghq.com"})
@@ -39,6 +39,7 @@ describe("ee admin emails", function()
     end)
 
     it("should call client:send for each email passed", function()
+      conf.admin_gui_auth = true
       admin_emails = emails.new(conf)
       spy.on(admin_emails.client, "send")
 

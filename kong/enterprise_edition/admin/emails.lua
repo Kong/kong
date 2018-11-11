@@ -99,8 +99,8 @@ function _M:invite(recipients, jwt)
     return nil, {code = 500, message = "recipients required"}
   end
   local kong_conf = self.kong_conf
-  if not kong_conf.admin_invite_email then
-    return nil, {code = 501, message = "admin_invite_email is disabled"}
+  if not kong_conf.admin_gui_auth then
+    return nil, {code = 501, message = "admin_gui_auth is disabled"}
   end
 
   local template = self.templates.invite

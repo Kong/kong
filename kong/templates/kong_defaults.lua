@@ -82,7 +82,6 @@ admin_gui_error_log = logs/admin_gui_error.log
 admin_gui_flags = {}
 admin_gui_auth =
 admin_gui_auth_conf =
-admin_invite_email = true
 admin_approved_email = true
 admin_emails_from = ""
 admin_emails_reply_to = NONE

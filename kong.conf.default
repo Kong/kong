@@ -966,10 +966,6 @@
 # ADMIN SMTP CONFIGURATION
 #------------------------------------------------------------------------------
 
-#admin_invite_email = on              # Enable or disable invitation email sent
-                                      # to admins whom you're inviting to your
-                                      # Kong Manager
-
 #admin_emails_from =  ""              # The email address for the `From` header
                                       # for admin emails
 
