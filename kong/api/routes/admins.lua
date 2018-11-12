@@ -121,6 +121,7 @@ local function set_rbac_user(self, dao_factory, helpers)
     helpers.responses.send_HTTP_INTERNAL_SERVER_ERROR()
   end
 
+  rbac_user.user_token = nil
   self.consumer.rbac_user = rbac_user
   self.rbac_user = rbac_user
 end
@@ -216,6 +217,8 @@ return {
           comment = "User generated on creation of Admin.",
         }, dao_factory.rbac_users,
         function (new_rbac_user)
+          -- don't include token
+          new_rbac_user.user_token = nil
           rbac_user = new_rbac_user
           crud.post({
             consumer_id = consumer.id,
@@ -234,7 +237,6 @@ return {
                 return helpers.yield_error(err)
               end
             end
-
             if emails then
               local _, err = emails:invite({ consumer.email }, jwt)
                 if err then

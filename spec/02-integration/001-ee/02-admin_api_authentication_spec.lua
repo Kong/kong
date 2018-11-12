@@ -3,8 +3,10 @@ local cjson = require "cjson"
 local ee_helpers = require "spec.ee_helpers"
 local workspaces = require "kong.workspaces"
 local enums      = require "kong.enterprise_edition.dao.enums"
+local admins = require "kong.enterprise_edition.admins_helpers"
 
 local client
+local bp, dao
 local post = ee_helpers.post
 
 
@@ -29,25 +31,28 @@ local function setup_ws_defaults(dao, workspace)
 end
 
 
+local function admin(client, workspace, name, role, email)
+  local admin = ee_helpers.create_admin(email,
+                                        name,
+                                        enums.CONSUMERS.STATUS.APPROVED,
+                                        bp,
+                                        dao)
+
+  admins.link_to_workspace(admin, dao, workspace)
+
+  post(client, "/" .. workspace .. "/admins/".. admin.id .. "/roles",
+       { roles = role }, { ["Kong-Admin-Token"] = "letmein" }, 201)
+
+  return admin
+end
+
+
 for _, strategy in helpers.each_strategy() do
   describe("Admin API authentication on #" .. strategy, function()
-    local dao
     local super_admin_rbac_user
 
-    local function admin(client, assert, workspace, name, rbac_user_token, role, emailaddress)
-      local headers = { ['Kong-Admin-Token'] = 'letmein'}
-      local admin = post(client, "/" .. workspace .. "/admins",
-                         { username = emailaddress,
-                           email = emailaddress}, headers, 200)
-      dao.consumers:update({status = enums.CONSUMERS.STATUS.APPROVED},
-                           {id = admin.consumer.id})
-      post(client, "/" .. workspace .. "/admins/".. admin.consumer.id
-           .. "/roles", { roles = role }, headers, 201)
-      return admin
-    end
-
     setup(function()
-      _, _, dao = helpers.get_db_utils(strategy)
+      bp, _, dao = helpers.get_db_utils(strategy)
     end)
 
     teardown(function()
@@ -58,7 +63,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("basic-auth authentication", function()
-      local super_admin, read_me, proxy_consumer, another_one
+      local super_admin, read_only_admin, test_admin
 
       setup(function()
         helpers.stop_kong()
@@ -74,51 +79,43 @@ for _, strategy in helpers.each_strategy() do
 
         client = assert(helpers.admin_client())
 
-        local workspace = workspaces.DEFAULT_WORKSPACE
+        local ws_name = workspaces.DEFAULT_WORKSPACE
 
-        super_admin_rbac_user = setup_ws_defaults(dao, workspace)
+        super_admin_rbac_user = setup_ws_defaults(dao, ws_name)
 
-        super_admin    = admin(client, assert, workspace, 'mars', 'let-me-in',
+        super_admin    = admin(client, ws_name, 'mars',
                                'super-admin','test@konghq.com')
-        read_me        = admin(client, assert, workspace, 'gruce', 'let-me-in-now',
+        read_only_admin = admin(client, ws_name, 'gruce',
                                'read-only', 'test1@konghq.com')
-        proxy_consumer = admin(client, assert, workspace, 'proxy-guy',
-                               'let-me-in-now-plz', 'read-only', 'test2@konghq.com')
 
         assert(dao.basicauth_credentials:insert {
-          username    = "i-am-mars",
+          username    = super_admin.username,
           password    = "hunter1",
-          consumer_id = super_admin.consumer.id,
+          consumer_id = super_admin.id,
         })
 
         assert(dao.basicauth_credentials:insert {
-          username    = "i-am-gruce",
+          username    = read_only_admin.username,
           password    = "hunter2",
-          consumer_id = read_me.consumer.id,
+          consumer_id = read_only_admin.id,
         })
 
-        assert(dao.basicauth_credentials:insert {
-          username    = "i-am-proxy-guy",
-          password    = "hunter3",
-          consumer_id = proxy_consumer.consumer.id,
-        })
-
-        -- Another Workspace
-        workspace = "another-one"
-        setup_ws_defaults(dao, workspace)
+        -- populate another workspace
+        ws_name = "test-ws"
+        setup_ws_defaults(dao, ws_name)
 
         dao.rbac_roles:insert({ name = "another-one" })
-        another_one = admin(client, assert, workspace, 'dj-khaled', 'another-one',
+        test_admin = admin(client, ws_name, 'dj-khaled',
                             'another-one', 'test45@konghq.com')
 
-        post(client, "/" .. workspace .. "/rbac/roles/another-one/endpoints", {
+        post(client, "/" .. ws_name .. "/rbac/roles/another-one/endpoints", {
           workspace = "default",
           endpoint = "/consumers",
           actions = "read"
         }, { ['Kong-Admin-Token'] = 'letmein'}, 201)
 
-        post(client, "/" .. workspace .. "/rbac/roles/another-one/endpoints", {
-          workspace = workspace,
+        post(client, "/" .. ws_name .. "/rbac/roles/another-one/endpoints", {
+          workspace = ws_name,
           endpoint = "*",
           actions = "create,read,update,delete"
         }, { ['Kong-Admin-Token'] = 'letmein'}, 201)
@@ -126,7 +123,7 @@ for _, strategy in helpers.each_strategy() do
         assert(dao.basicauth_credentials:insert {
           username    = "dj-khaled",
           password    = "another-one",
-          consumer_id = another_one.consumer.id,
+          consumer_id = test_admin.id,
         })
       end)
 
@@ -150,8 +147,7 @@ for _, strategy in helpers.each_strategy() do
           assert.res_status(404, res)
         end)
 
-        it("returns 401 when unauthenticated and no token or credentials"
-          .. " provided", function()
+        it("returns 401 when no token or credentials provided", function()
           local res = assert(client:send {
             method = "GET",
             path = "/",
@@ -180,8 +176,7 @@ for _, strategy in helpers.each_strategy() do
             method = "GET",
             path = "/",
             headers = {
-              ["Authorization"] = "Basic "
-              .. ngx.encode_base64("i-am-mars:hunter1"),
+              ["Authorization"] = "Basic " .. ngx.encode_base64(super_admin.username .. ":hunter1"),
               ["Kong-Admin-User"] = super_admin.rbac_user.name,
             }
           })
@@ -225,9 +220,8 @@ for _, strategy in helpers.each_strategy() do
             method = "GET",
             path = "/",
             headers = {
-              Authorization = "Basic "
-              .. ngx.encode_base64("i-am-mars:hunter1"),
-              ["Kong-Admin-User"] = read_me.rbac_user.name,
+              Authorization = "Basic " .. ngx.encode_base64(super_admin.username .. ":hunter1"),
+              ["Kong-Admin-User"] = read_only_admin.rbac_user.name,
             }
           })
 
@@ -239,11 +233,11 @@ for _, strategy in helpers.each_strategy() do
           function()
           local res = client:send {
             method = "GET",
-            path = "/another-one/rbac/users",
+            path = "/test-ws/rbac/users",
             headers = {
               Authorization = "Basic "
               .. ngx.encode_base64("dj-khaled:another-one"),
-              ["Kong-Admin-User"] = another_one.rbac_user.name,
+              ["Kong-Admin-User"] = test_admin.rbac_user.name,
             }
           }
 
@@ -261,7 +255,7 @@ for _, strategy in helpers.each_strategy() do
             headers = {
               Authorization = "Basic "
               .. ngx.encode_base64("dj-khaled:another-one"),
-              ["Kong-Admin-User"] = another_one.rbac_user.name,
+              ["Kong-Admin-User"] = test_admin.rbac_user.name,
             }
           }
 
@@ -276,7 +270,7 @@ for _, strategy in helpers.each_strategy() do
             headers = {
               Authorization = "Basic "
               .. ngx.encode_base64("dj-khaled:another-one"),
-              ["Kong-Admin-User"] = another_one.rbac_user.name,
+              ["Kong-Admin-User"] = test_admin.rbac_user.name,
             }
           }
 
@@ -293,7 +287,7 @@ for _, strategy in helpers.each_strategy() do
             method = "GET",
             path = "/plugins",
             headers = {
-              ['Kong-Admin-Token'] = another_one.rbac_user.user_token,
+              ['Kong-Admin-Token'] = test_admin.rbac_user.user_token,
             }
           }
 
@@ -308,9 +302,9 @@ for _, strategy in helpers.each_strategy() do
           function()
           local res = client:send {
             method = "GET",
-            path = "/another-one/rbac/users",
+            path = "/test-ws/rbac/users",
             headers = {
-              ['Kong-Admin-Token'] = another_one.rbac_user.user_token,
+              ['Kong-Admin-Token'] = test_admin.rbac_user.user_token,
             }
           }
           local body = assert.res_status(200, res)
@@ -325,7 +319,7 @@ for _, strategy in helpers.each_strategy() do
             method = "GET",
             path = "/consumers",
             headers = {
-              ['Kong-Admin-Token'] = another_one.rbac_user.user_token,
+              ['Kong-Admin-Token'] = test_admin.rbac_user.user_token,
             }
           }
 
@@ -335,7 +329,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("key-auth authentication", function()
-      local super_admin, read_me, proxy_consumer
+      local super_admin, read_only_admin
 
       setup(function()
         helpers.stop_kong()
@@ -352,29 +346,21 @@ for _, strategy in helpers.each_strategy() do
 
         super_admin_rbac_user = setup_ws_defaults(dao)
 
-        -- Default workspace
-        local workspace = "default"
+        local ws_name = "default"
 
-        super_admin    = admin(client, assert, workspace, 'mars', 'let-me-in', 'super-admin',
+        super_admin = admin(client, ws_name, 'mars', 'super-admin',
                                'test10@konghq.com')
-        read_me        = admin(client, assert, workspace, 'gruce', 'let-me-in-now', 'read-only',
+        read_only_admin = admin(client, ws_name, 'gruce', 'read-only',
                                'test12@konghq.com')
-        proxy_consumer = admin(client, assert, workspace, 'proxy-guy', 'let-me-in-now-plz',
-                               'read-only', 'test14@konghq.com')
 
         assert(dao.keyauth_credentials:insert {
           key    = "hunter1",
-          consumer_id = super_admin.consumer.id,
+          consumer_id = super_admin.id,
         })
 
         assert(dao.keyauth_credentials:insert {
           key    = "hunter2",
-          consumer_id = read_me.consumer.id,
-        })
-
-        assert(dao.keyauth_credentials:insert {
-          key    = "hunter3",
-          consumer_id = proxy_consumer.consumer.id,
+          consumer_id = read_only_admin.id,
         })
       end)
 
@@ -421,7 +407,7 @@ for _, strategy in helpers.each_strategy() do
             path = "/",
             headers = {
               apikey = "hunter1",
-              ["Kong-Admin-User"] = read_me.rbac_user.name,
+              ["Kong-Admin-User"] = read_only_admin.rbac_user.name,
             }
           })
 

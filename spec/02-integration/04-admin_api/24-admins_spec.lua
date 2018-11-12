@@ -56,11 +56,12 @@ for _, strategy in helpers.each_strategy() do
           user_id = rbac_user.id,
         })
 
-        -- for now, an admin is a munging of consumer + rbac_user
+        -- for now, an admin is a munging of consumer + rbac_user,
+        -- and we don't return the user_token in any responses
+        rbac_user.user_token = nil
         consumer.rbac_user = rbac_user
 
         admins[i] = consumer
-
       end
 
       -- developers don't show up as admins
@@ -135,7 +136,6 @@ for _, strategy in helpers.each_strategy() do
           assert.equal("twinpeaks@konghq.com", json.consumer.email)
           assert.equal(enums.CONSUMERS.TYPE.ADMIN, json.consumer.type)
           assert.equal(enums.CONSUMERS.STATUS.INVITED, json.consumer.status)
-          assert.truthy(utils.is_valid_uuid(json.rbac_user.user_token))
           assert.equal("dale", json.rbac_user.name)
 
           local consumer_reset_secrets, err = dao.consumer_reset_secrets:find_all {
