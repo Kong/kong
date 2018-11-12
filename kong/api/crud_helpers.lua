@@ -4,13 +4,13 @@ local responses     = require "kong.tools.responses"
 local app_helpers   = require "lapis.application"
 local portal_crud   = require "kong.portal.crud_helpers"
 local rbac          = require "kong.rbac"
+local tablex        = require "pl.tablex"
 
 
 local decode_base64 = ngx.decode_base64
 local encode_base64 = ngx.encode_base64
 local encode_args   = ngx.encode_args
 local tonumber      = tonumber
-local ipairs        = ipairs
 local next          = next
 local type          = type
 
@@ -271,17 +271,16 @@ function _M.paginated_set(self, dao_collection, post_process, options)
   -- Counts get a little off, but it's better than returning
   -- data you're not supposed to have. If you can't accept this
   -- behavior, don't pass a post_process function that returns nil.
-  local idx = 1
+  local is_sparse = false
   if type(post_process) == "function" then
-    local keep
-    for _, row in ipairs(rows) do
-      keep = post_process(row)
-      if keep then
-        data[idx] = keep
-        idx = idx + 1
-      else
-        total_count = total_count - 1
+    for i, row in ipairs(rows) do
+      data[i] = post_process(row)
+      if not data[i] then
+        is_sparse = true
       end
+    end
+    if is_sparse then
+      data = tablex.filter(data, function(row) return row ~= nil end)
     end
   end
 

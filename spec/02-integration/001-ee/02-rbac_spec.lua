@@ -432,7 +432,9 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
 
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
-        assert.equals(5, #json.data)
+        for _, user in ipairs(json.data) do
+          assert.are_not.same("gruce-admin@konghq.com", user.name)
+        end
       end)
     end)
   end)

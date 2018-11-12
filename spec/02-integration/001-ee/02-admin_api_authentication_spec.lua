@@ -27,6 +27,12 @@ local function setup_ws_defaults(dao, workspace)
   ngx.ctx.workspaces = { ws }
   ee_helpers.register_token_statuses(dao)
   helpers.register_consumer_relations(dao)
+
+  -- create a record we can use to test inter-workspace calls
+  assert(dao.consumers:insert({
+    username = workspace .. "-joe"
+  }))
+
   return ee_helpers.register_rbac_resources(dao, workspace)
 end
 
@@ -229,14 +235,12 @@ for _, strategy in helpers.each_strategy() do
         end)
 
 
-        it("credentials in another workspace can access workspace data",
-          function()
+        it("credentials in another workspace can access workspace data", function()
           local res = client:send {
             method = "GET",
-            path = "/test-ws/rbac/users",
+            path = "/test-ws/consumers",
             headers = {
-              Authorization = "Basic "
-              .. ngx.encode_base64("dj-khaled:another-one"),
+              Authorization = "Basic " .. ngx.encode_base64("dj-khaled:another-one"),
               ["Kong-Admin-User"] = test_admin.rbac_user.name,
             }
           }
@@ -302,7 +306,7 @@ for _, strategy in helpers.each_strategy() do
           function()
           local res = client:send {
             method = "GET",
-            path = "/test-ws/rbac/users",
+            path = "/test-ws/consumers",
             headers = {
               ['Kong-Admin-Token'] = test_admin.rbac_user.user_token,
             }

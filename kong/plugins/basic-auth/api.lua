@@ -1,9 +1,10 @@
 local crud = require "kong.api.crud_helpers"
+local ee_crud = require "kong.enterprise_edition.crud_helpers"
 
 return {
   ["/consumers/:username_or_id/basic-auth/"] = {
     before = function(self, dao_factory, helpers)
-      crud.find_consumer_by_username_or_id(self, dao_factory, helpers)
+      ee_crud.find_consumer_by_username_or_id(self, dao_factory, helpers)
       self.params.consumer_id = self.consumer.id
     end,
 
@@ -22,7 +23,7 @@ return {
   },
   ["/consumers/:username_or_id/basic-auth/:credential_username_or_id"] = {
     before = function(self, dao_factory, helpers)
-      crud.find_consumer_by_username_or_id(self, dao_factory, helpers)
+      ee_crud.find_consumer_by_username_or_id(self, dao_factory, helpers)
       self.params.consumer_id = self.consumer.id
 
       local credentials, err = crud.find_by_id_or_field(
@@ -58,7 +59,9 @@ return {
   },
   ["/basic-auths/"] = {
     GET = function(self, dao_factory)
-      crud.paginated_set(self, dao_factory.basicauth_credentials)
+      crud.paginated_set(self,
+                         dao_factory.basicauth_credentials,
+                         ee_crud.post_process_credential)
     end
   },
   ["/basic-auths/:credential_username_or_id/consumer"] = {
@@ -78,7 +81,7 @@ return {
       end
 
       self.params.username_or_id = credentials[1].consumer_id
-      crud.find_consumer_by_username_or_id(self, dao_factory, helpers)
+      ee_crud.find_consumer_by_username_or_id(self, dao_factory, helpers)
     end,
 
     GET = function(self, dao_factory,helpers)
