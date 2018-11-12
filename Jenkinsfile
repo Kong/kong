@@ -21,6 +21,11 @@ pipeline {
     )}"""
   }
   stages {
+    stage('Checkpoint') {
+      steps {
+        input("Kong version: $KONG_VERSION\nBuild arg: $BUILD_ARG\nShould I continue this build?")
+      }
+    }
     stage('Prepare Kong Distributions') {
       when {
         expression { BRANCH_NAME ==~ /^(release\/)?\d+.\d+(-\d+)?$/ }
