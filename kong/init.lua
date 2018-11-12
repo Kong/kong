@@ -769,6 +769,9 @@ function Kong.handle_error()
   kong_resty_ctx.apply_ref()
 
   local ctx = ngx.ctx
+
+  ctx.KONG_UNEXPECTED = true
+
   if not ctx.plugins_for_request then
     for _ in plugins_iterator(ctx, loaded_plugins, configured_plugins, true) do
       -- just build list of plugins
