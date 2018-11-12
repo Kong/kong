@@ -233,11 +233,17 @@ local function new(self, major_version)
   function _RESPONSE.get_source()
     check_phase(header_body_log)
 
-    if ngx.ctx.KONG_PROXIED then
+    local ctx = ngx.ctx
+
+    if ctx.KONG_UNEXPECTED then
+      return "error"
+    end
+
+    if ctx.KONG_PROXIED then
       return "service"
     end
 
-    if ngx.ctx.KONG_EXITED then
+    if ctx.KONG_EXITED then
       return "exit"
     end
 
