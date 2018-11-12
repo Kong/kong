@@ -130,6 +130,12 @@ end
 
 
 local function admin_log_handler()
+  -- if we never started the lapis execution (because this is an OPTIONS
+  -- request or something as such)
+  if not ngx.ctx.admin_api then
+    return
+  end
+
   if not singletons.configuration.audit_log then
     return
   end
