@@ -99,6 +99,21 @@ local function validate_email(email, key, errors)
   end
 end
 
+local function validate_smtp_config(conf, errors)
+  if conf.smtp_auth_type ~= nil then
+    if conf.smtp_auth_type ~= "plain" and conf.smtp_auth_type ~= "login" then
+      errors[#errors+1] = "smtp_auth_type must be 'plain', 'login', or nil"
+    end
+
+    if conf.smtp_username == nil or conf.smtp_username == "" then
+      errors[#errors+1] = "smtp_username must be set when using smtp_auth_type"
+    end
+
+    if conf.smtp_password == nil or conf.smtp_password == "" then
+      errors[#errors+1] = "smtp_password must be set when using smtp_auth_type"
+    end
+  end
+end
 
 local function validate_portal_smtp_config(conf, errors)
   local portal_token_exp = conf.portal_token_exp
@@ -203,6 +218,10 @@ local function validate(conf, errors)
   validate_admin_gui_authentication(conf, errors)
   validate_admin_gui_ssl(conf, errors)
 
+  if not conf.smtp_mock then
+    validate_smtp_config(conf, errors)
+  end
+
   if conf.portal then
     validate_portal_smtp_config(conf, errors)
 
@@ -210,7 +229,7 @@ local function validate(conf, errors)
     if not portal_gui_host or portal_gui_host == "" then
       errors[#errors+1] = "portal_gui_host is required for portal"
     end
-  
+
     local portal_gui_protocol = conf.portal_gui_protocol
     if not portal_gui_protocol or portal_gui_protocol == "" then
       errors[#errors+1] = "portal_gui_protocol is required for portal"
@@ -226,5 +245,6 @@ return {
   -- only exposed for unit testing :-(
   validate_admin_gui_authentication = validate_admin_gui_authentication,
   validate_admin_gui_ssl = validate_admin_gui_ssl,
+  validate_smtp_config = validate_smtp_config,
   validate_portal_smtp_config = validate_portal_smtp_config,
 }

@@ -24,8 +24,8 @@ vitals_prometheus_scrape_interval = 5
 
 portal = off
 portal_gui_listen = 0.0.0.0:8003, 0.0.0.0:8446 ssl
-portal_gui_protocol = NONE
-portal_gui_host = NONE
+portal_gui_protocol = http
+portal_gui_host = 0.0.0.0:8003
 portal_gui_use_subdomains = off
 portal_gui_ssl_cert = NONE
 portal_gui_ssl_cert_key = NONE
@@ -52,10 +52,10 @@ portal_emails_reply_to = NONE
 
 smtp_host = localhost
 smtp_port = 25
-smtp_starttls = NONE
+smtp_starttls = off
 smtp_username = NONE
 smtp_password = NONE
-smtp_ssl = NONE
+smtp_ssl = off
 smtp_auth_type = NONE
 smtp_domain = localhost.localdomain
 smtp_timeout_connect = 60000
@@ -159,5 +159,5 @@ lua_package_cpath = NONE
 feature_conf_path = NONE
 
 smtp_admin_emails = NONE
-smtp_mock = off
+smtp_mock = on
 ]]

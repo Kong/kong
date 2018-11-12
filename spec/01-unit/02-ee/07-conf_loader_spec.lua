@@ -155,6 +155,48 @@ describe("Configuration loader - enterprise", function()
       assert.is_nil(conf)
       assert.equal("portal_token_exp must be a positive number", err)
     end)
+
+    it("enforces smtp credentials when smtp_mock is off", function()
+      local _, err = conf_loader(nil, {
+        portal = "off",
+        smtp_mock = "off",
+      })
+      assert.is_nil(err)
+
+      local conf, err = conf_loader(nil, {
+        portal = "off",
+        smtp_mock = "off",
+        smtp_auth_type = "weirdo",
+      })
+      assert.is_nil(conf)
+      assert.equal("smtp_auth_type must be 'plain', 'login', or nil", err)
+
+      local conf, err = conf_loader(nil, {
+        portal = "off",
+        smtp_mock = "off",
+        smtp_auth_type = "plain",
+      })
+      assert.is_nil(conf)
+      assert.equal("smtp_username must be set when using smtp_auth_type", err)
+
+      local conf, err = conf_loader(nil, {
+        portal = "off",
+        smtp_mock = "off",
+        smtp_auth_type = "plain",
+        smtp_username = "meme_lord"
+      })
+      assert.is_nil(conf)
+      assert.equal("smtp_password must be set when using smtp_auth_type", err)
+
+      local _, err = conf_loader(nil, {
+        portal = "off",
+        smtp_mock = "off",
+        smtp_auth_type = "plain",
+        smtp_username = "meme_lord",
+        smtp_password = "dank memes"
+      })
+      assert.is_nil(err)
+    end)
   end)
 
   describe("vitals strategy", function()

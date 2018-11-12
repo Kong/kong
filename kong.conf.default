@@ -729,16 +729,17 @@
                         # specified for each pair, similarly to
                         # the `admin_listen` directive.
 
-#portal_gui_protocol =
+#portal_gui_protocol = http
                         # Developer Portal GUI protocol
                         #
                         # Here you may provide the protocol used in conjunction
-                        # with portal_gui_host to construct the lookup, or balancer 
+                        # with portal_gui_host to construct the lookup, or balancer
                         # address for your Kong Proxy nodes.
                         #
-                        # Examples: http/https
+                        # Examples: http
+                        #           https
 
-#portal_gui_host =
+#portal_gui_host = 0.0.0.0:8003
                         # Developer Portal GUI host
                         #
                         # Here you may provide the host used in conjunction
@@ -867,7 +868,7 @@
 # in the database for that particular workspace.
 #------------------------------------------------------------------------------
 
-#portal_auth = 
+#portal_auth =
                         # Developer Portal Authentication Plugin Name
                         #
                         # Here you may specify the authentication plugin
@@ -986,7 +987,7 @@
 # GENERAL SMTP CONFIGURATION
 #------------------------------------------------------------------------------
 
-#smtp_mock = off       # This flag will mock the sending of emails. This can be
+#smtp_mock = on        # This flag will mock the sending of emails. This can be
                        # used for testing before the SMTP client is fully
                        # configured.
                        #
@@ -994,7 +995,7 @@
                        # smtp_mock = on  - Emails will NOT attempt send.
                        # smtp_mock = off - Emails will attempt send.
                        #
-                       # Default `off`
+                       # Default `on`
 
 #smtp_host =           # The host of the SMTP server to connect to.
                        # Default `localhost`
@@ -1005,7 +1006,7 @@
 #smtp_starttls =       # When set to `on`, STARTTLS is used to encrypt
                        # communication with the SMTP server. This is normally
                        # used in conjunction with port 587.
-                       # Default `nil`
+                       # Default `off`
 
 #smtp_username =       # Username used for authentication with SMTP server
                        # Default `nil`
@@ -1016,7 +1017,7 @@
 #smtp_ssl =            # When set to `on`, SMTPS is used to encrypt
                        # communication with the SMTP server. This is normally
                        # used in conjunction with port 465.
-                       # Default `nil`
+                       # Default `off`
 
 #smtp_auth_type =      # The method used to authenticate with the SMTP server
                        # Valid options are `plain`, `login`, or `nil`
