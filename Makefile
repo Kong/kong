@@ -13,6 +13,20 @@ endif
 
 .PHONY: install dev lint test test-integration test-plugins test-all fix-windows
 
+include .requirements
+release:
+	if cd kong-build-tools; \
+	then git pull; \
+	else git clone git@github.com:Kong/kong-build-tools.git; fi
+	cd kong-build-tools; \
+	git reset --hard $$KONG_BUILD_TOOLS;
+	cd kong-build-tools; \
+	make setup_tests && \
+	export KONG_SOURCE_LOCATION=`pwd`/../ && \
+	export KONG_VERSION=1.2.3 && \
+	make package-kong && \
+	make release
+
 install:
 	@luarocks make OPENSSL_DIR=$(OPENSSL_DIR) CRYPTO_DIR=$(OPENSSL_DIR)
 
