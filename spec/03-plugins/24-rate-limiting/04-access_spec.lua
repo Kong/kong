@@ -73,12 +73,12 @@ end
 
 for _, strategy in helpers.each_strategy() do
   for _, policy in ipairs({ "local", "cluster", "redis" }) do
-    describe(fmt("#flaky Plugin: rate-limiting (access) with policy: %s [#%s]", policy, strategy), function()
+    describe(fmt("Plugin: rate-limiting (access) with policy: %s [#%s]", policy, strategy), function()
       local bp
       local db
       local dao
 
-      lazy_setup(function()
+      setup(function()
         helpers.kill_all()
         flush_redis()
 
@@ -249,7 +249,7 @@ for _, strategy in helpers.each_strategy() do
         }))
       end)
 
-      lazy_teardown(function()
+      teardown(function()
         helpers.stop_kong()
         assert(db:truncate())
       end)
@@ -445,7 +445,7 @@ for _, strategy in helpers.each_strategy() do
             }))
           end)
 
-          lazy_teardown(function()
+          teardown(function()
             helpers.kill_all()
             assert(db:truncate())
           end)
@@ -538,7 +538,7 @@ for _, strategy in helpers.each_strategy() do
             }))
           end)
 
-          lazy_teardown(function()
+          teardown(function()
             helpers.kill_all()
             assert(db:truncate())
           end)
@@ -566,7 +566,7 @@ for _, strategy in helpers.each_strategy() do
       describe("Expirations", function()
         local route
 
-        lazy_setup(function()
+        setup(function()
           helpers.stop_kong()
 
           local bp = helpers.get_db_utils(strategy)
@@ -614,11 +614,11 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
 
-    describe(fmt("#flaky Plugin: rate-limiting (access - global for single consumer) with policy: %s [#%s]", policy, strategy), function()
+    describe(fmt("Plugin: rate-limiting (access - global for single consumer) with policy: %s [#%s]", policy, strategy), function()
       local bp
       local db
 
-      lazy_setup(function()
+      setup(function()
         helpers.kill_all()
         flush_redis()
         bp, db = helpers.get_db_utils(strategy)
@@ -659,7 +659,7 @@ for _, strategy in helpers.each_strategy() do
         }))
       end)
 
-      lazy_teardown(function()
+      teardown(function()
         helpers.kill_all()
         assert(db:truncate())
       end)
@@ -684,11 +684,11 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
 
-    describe(fmt("#flaky Plugin: rate-limiting (access - global) with policy: %s [#%s]", policy, strategy), function()
+    describe(fmt("Plugin: rate-limiting (access - global) with policy: %s [#%s]", policy, strategy), function()
       local bp
       local db
 
-      lazy_setup(function()
+      setup(function()
         helpers.kill_all()
         flush_redis()
         bp, db = helpers.get_db_utils(strategy)
@@ -716,7 +716,7 @@ for _, strategy in helpers.each_strategy() do
         }))
       end)
 
-      lazy_teardown(function()
+      teardown(function()
         helpers.kill_all()
         assert(db:truncate())
       end)
