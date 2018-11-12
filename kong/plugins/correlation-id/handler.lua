@@ -44,7 +44,7 @@ local CorrelationIdHandler = BasePlugin:extend()
 
 
 CorrelationIdHandler.PRIORITY = 1
-CorrelationIdHandler.VERSION = "0.2.0"
+CorrelationIdHandler.VERSION = "1.0.0"
 
 
 function CorrelationIdHandler:new()
@@ -63,16 +63,18 @@ function CorrelationIdHandler:access(conf)
   CorrelationIdHandler.super.access(self)
 
   -- Set header for upstream
-  local header_value = kong.request.get_header(conf.header_name)
-  if not header_value then
+  local correlation_id = kong.request.get_header(conf.header_name)
+  if not correlation_id then
     -- Generate the header value
-    header_value = generators[conf.generator]()
-    kong.service.request.set_header(conf.header_name, header_value)
+    correlation_id = generators[conf.generator]()
+    if correlation_id then
+      kong.service.request.set_header(conf.header_name, correlation_id)
+    end
   end
 
   if conf.echo_downstream then
     -- For later use, to echo it back downstream
-    kong.ctx.plugin.correlationid_header_value = header_value
+    kong.ctx.plugin.correlation_id = correlation_id
   end
 end
 
@@ -80,10 +82,13 @@ end
 function CorrelationIdHandler:header_filter(conf)
   CorrelationIdHandler.super.header_filter(self)
 
-  local header_value = kong.ctx.plugin.correlationid_header_value
+  if not conf.echo_downstream then
+    return
+  end
 
-  if conf.echo_downstream and header_value then
-    kong.response.set_header(conf.header_name, header_value)
+  local correlation_id = kong.ctx.plugin.correlation_id
+  if correlation_id then
+    kong.response.set_header(conf.header_name, correlation_id)
   end
 end
 
