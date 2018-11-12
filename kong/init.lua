@@ -229,8 +229,6 @@ function Kong.init()
 
   local pl_path = require "pl.path"
   local conf_loader = require "kong.conf_loader"
-  local ip = require "kong.tools.ip"
-
 
   -- check if kong global is the correct one
   if not kong.version then
@@ -292,7 +290,6 @@ function Kong.init()
   assert(db.plugins:check_db_against_config(config.loaded_plugins))
 
   -- LEGACY
-  singletons.ip = ip.init(config)
   singletons.dns = dns(config)
   singletons.dao = dao
   singletons.configuration = config

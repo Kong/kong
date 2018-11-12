@@ -11,7 +11,7 @@ local tablex = require "pl.tablex"
 local utils = require "kong.tools.utils"
 local log = require "kong.cmd.utils.log"
 local env = require "kong.cmd.utils.env"
-local ip = require "kong.tools.ip"
+local ip = require "resty.mediador.ip"
 
 
 local fmt = string.format
