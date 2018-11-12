@@ -73,12 +73,8 @@ function _M.update(params, consumer, rbac_user)
     return { code = responses.status_codes.HTTP_BAD_REQUEST, body = "empty body" }
   end
 
-  -- get the rbac_user off of the consumer or update will fail
-  -- (this is a really weird data structure, I keep saying)
-  consumer.rbac_user = nil
-
   -- update consumer
-  local admin, err = singletons.dao.consumers:update(params, consumer)
+  local admin, err = singletons.dao.consumers:update(params, { id = consumer.id })
   if err then
     return nil, err
   end
@@ -88,31 +84,43 @@ function _M.update(params, consumer, rbac_user)
   end
 
   if consumer.username == params.username then
-    -- username didn't change, nothing more to do here
+    -- username didn't change, nothing more to do here.
+    -- return same data structure as passed in
+    admin.rbac_user = rbac_user
     return { code = responses.status_codes.HTTP_OK, body = admin }
   end
 
   -- update rbac_user if consumer.username changed, because these have
   -- to stay in sync in order for us to authenticate this admin
   if rbac_user.name ~= admin.username then
-    local _, err = singletons.dao.rbac_users:update(
-                   { name = admin.username },
-                   { id = rbac_user.id })
+    rbac_user, err = singletons.dao.rbac_users:update(
+                     { name = admin.username },
+                     { id = rbac_user.id })
     if err then
       return nil, err
     end
   end
 
-  -- update any basic-auth credential for this user
-  local _, err = singletons.dao.basicauth_credentials:run_with_ws_scope({},
-                 singletons.dao.basicauth_credentials.update,
-                 { username = admin.username },
-                 { consumer_id = admin.id })
-
+  -- update any basic-auth credential for this user. Have to find it first.
+  local creds, err = singletons.dao.basicauth_credentials:run_with_ws_scope({},
+                    singletons.dao.basicauth_credentials.find_all,
+                    { consumer_id = admin.id })
   if err then
     return nil, err
   end
 
+  if creds[1] then
+    local _, err = singletons.dao.basicauth_credentials:run_with_ws_scope({},
+                   singletons.dao.basicauth_credentials.update,
+                   { username = admin.username },
+                   { id = creds[1].id })
+    if err then
+      return nil, err
+    end
+  end
+
+  -- return the updated admin, including the updated rbac_user
+  admin.rbac_user = rbac_user
   return { code = responses.status_codes.HTTP_OK, body = admin }
 end
 

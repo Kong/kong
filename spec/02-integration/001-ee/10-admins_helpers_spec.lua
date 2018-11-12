@@ -105,6 +105,18 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
 
+    describe("update", function()
+      it("doesn't fail when admin doesn't have a credential", function()
+        local res = admins_helpers.update({ custom_id = "foo" }, admins[3], admins[3].rbac_user)
+
+        -- should look just like what we passed in, but with a custom_id
+        local expected = utils.deep_copy(admins[3])
+        expected.custom_id = "foo"
+
+        assert.same({ code = 200, body = expected }, res)
+      end)
+    end)
+
     describe("link_to_workspace", function()
       it("links an admin to another workspace", function()
         -- odd-numbered admins are in default_ws
