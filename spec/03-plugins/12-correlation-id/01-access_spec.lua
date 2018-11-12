@@ -12,7 +12,7 @@ for _, strategy in helpers.each_strategy() do
     local proxy_client
 
     lazy_setup(function()
-      local bp = helpers.get_db_utils(strategy)
+      local bp = helpers.get_db_utils(strategy, nil, { "error-generator-post" })
 
       local route1 = bp.routes:insert {
         hosts = { "correlation1.com" },
@@ -32,6 +32,20 @@ for _, strategy in helpers.each_strategy() do
 
       local route5 = bp.routes:insert {
         hosts = { "correlation5.com" },
+      }
+
+      local mock_service = bp.services:insert {
+        host = "127.0.0.2",
+        port = 26865,
+      }
+
+      local route6 = bp.routes:insert {
+        hosts     = { "correlation-timeout.com" },
+        service   = mock_service,
+      }
+
+      local route7 = bp.routes:insert {
+        hosts     = { "correlation-error.com" },
       }
 
       bp.plugins:insert {
@@ -79,6 +93,32 @@ for _, strategy in helpers.each_strategy() do
         config   = {
           status_code = 200,
           message     = "Success",
+        },
+      }
+
+      bp.plugins:insert {
+        name     = "correlation-id",
+        route = { id = route6.id },
+        config   = {
+          generator       = "uuid",
+          echo_downstream = true,
+        },
+      }
+
+      bp.plugins:insert {
+        name     = "correlation-id",
+        route = { id = route7.id },
+        config   = {
+          generator       = "uuid",
+          echo_downstream = true,
+        },
+      }
+
+      bp.plugins:insert {
+        name     = "error-generator-post",
+        route = { id = route7.id },
+        config   = {
+          access = true,
         },
       }
 
@@ -209,6 +249,28 @@ for _, strategy in helpers.each_strategy() do
         local downstream_id =  res.headers["kong-request-id"] -- header received by downstream (client)
         assert.matches(UUID_PATTERN, upstream_id)
         assert.equal(upstream_id, downstream_id)
+      end)
+      it("echo_downstream sends uuid back to client even when upstream timeouts", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/request",
+          headers = {
+            ["Host"] = "correlation-timeout.com"
+          }
+        })
+        assert.res_status(502, res)
+        assert.matches(UUID_PATTERN, res.headers["kong-request-id"])
+      end)
+      it("echo_downstream sends uuid back to client even there is a runtime error", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/request",
+          headers = {
+            ["Host"] = "correlation-error.com"
+          }
+        })
+        assert.res_status(500, res)
+        assert.matches(UUID_PATTERN, res.headers["kong-request-id"])
       end)
       it("echo_downstream does not send uuid back to client if not asked", function()
         local res = assert(proxy_client:send {
