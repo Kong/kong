@@ -2,12 +2,11 @@ local helpers = require "spec.helpers"
 local cjson   = require "cjson"
 local meta    = require "kong.meta"
 local utils   = require "kong.tools.utils"
-local pl_file = require "pl.file"
 
 
 for _, strategy in helpers.each_strategy() do
   describe("Plugin: basic-auth (access) [#" .. strategy .. "]", function()
-    local proxy_client, admin_client
+    local proxy_client
     local consumer, anonymous_user, route1, route2, route3, route4
 
     setup(function()
@@ -68,44 +67,6 @@ for _, strategy in helpers.each_strategy() do
                consumer_id = consumer.id,
       })
 
-      -- manually insert a legacy password
-      if strategy == "postgres" then
-        local crypto = require "kong.plugins.basic-auth.crypto"
-
-        local mock_id = utils.uuid()
-        local ws = dao.workspaces:find_all()[1]
-
-        assert(dao.db:query(string.format(
-          "INSERT INTO basicauth_credentials VALUES('%s', '%s', '%s', '%s', '%s', %s)",
-          mock_id,
-          consumer.id,
-          "default:legacyuser",
-          crypto.encrypt { consumer_id = consumer.id, password = "legacypassword" },
-          "2018-10-31 01:23:45",
-          7
-        )))
-
-        -- workspace association
-        assert(dao.db:query(string.format(
-          "INSERT INTO workspace_entities VALUES('%s', '%s', '%s', '%s', '%s', '%s')",
-          ws.id,
-          "default",
-          mock_id,
-          "basicauth_credentials",
-          "username",
-          "legacyuser"
-        )))
-        assert(dao.db:query(string.format(
-          "INSERT INTO workspace_entities VALUES('%s', '%s', '%s', '%s', '%s', '%s')",
-          ws.id,
-          "default",
-          mock_id,
-          "basicauth_credentials",
-          "id",
-          mock_id
-        )))
-      end
-
       bp.plugins:insert {
         name     = "basic-auth",
         route_id = route3.id,
@@ -126,21 +87,15 @@ for _, strategy in helpers.each_strategy() do
       assert(helpers.start_kong({
         database   = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
-        log_level  = "debug",
       }))
 
       proxy_client = helpers.proxy_client()
-      admin_client = helpers.admin_client()
     end)
 
 
     teardown(function()
       if proxy_client then
         proxy_client:close()
-      end
-
-      if admin_client then
-        admin_client:close()
       end
 
       helpers.stop_kong()
@@ -393,52 +348,6 @@ for _, strategy in helpers.each_strategy() do
 
     end)
 
-    describe("live password migration", function()
-
-      local f = strategy == "postgres" and it or pending
-
-      f("authenticates valid credentials in Authorization", function()
-        local res = assert(proxy_client:send {
-          method  = "GET",
-          path    = "/status/200",
-          headers = {
-            ["Authorization"] = "Basic bGVnYWN5dXNlcjpsZWdhY3lwYXNzd29yZA==",
-            ["Host"]          = "basic-auth1.com"
-          }
-        })
-        assert.res_status(200, res)
-      end)
-
-      f("updated the credential password in the database", function()
-        local res = assert(admin_client:send {
-          method = "GET",
-          path = "/consumers/bob/basic-auth/legacyuser"
-        })
-
-        local body = assert.res_status(200, res)
-        local json = cjson.decode(body)
-        assert.matches("$2b$", json.password, nil, true)
-      end)
-
-      f("logged a note indicating the migration occured", function()
-        local error_log, err = pl_file.read("./servroot/logs/error.log")
-        assert.is_nil(err)
-        assert(error_log:find("updating basicauth credential hash for credential"))
-      end)
-
-      f("authenticates valid credentials following migrations", function()
-        local res = assert(proxy_client:send {
-          method  = "GET",
-          path    = "/status/200",
-          headers = {
-            ["Authorization"] = "Basic bGVnYWN5dXNlcjpsZWdhY3lwYXNzd29yZA==",
-            ["Host"]          = "basic-auth1.com"
-          }
-        })
-        assert.res_status(200, res)
-      end)
-
-    end)
   end)
 
   describe("Plugin: basic-auth (access) [#" .. strategy .. "]", function()

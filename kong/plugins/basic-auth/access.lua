@@ -2,39 +2,14 @@ local crypto = require "kong.plugins.basic-auth.crypto"
 local singletons = require "kong.singletons"
 local constants = require "kong.constants"
 local responses = require "kong.tools.responses"
-local bcrypt = require "bcrypt"
 
-local find = string.find
 local ngx_set_header = ngx.req.set_header
 local ngx_get_headers = ngx.req.get_headers
 local ngx_re_match = ngx.re.match
 
 local realm = 'Basic realm="' .. _KONG._NAME .. '"'
 
-local LOG_ROUNDS = 7
-
 local _M = {}
-
-
-local function update_credential_hash(premature, credential, plaintext)
-  if premature then
-    return true
-  end
-
-  ngx.log(ngx.DEBUG, "updating basicauth credential hash for credential ",
-                     credential.id)
-
-  local digest = bcrypt.digest(plaintext, LOG_ROUNDS)
-
-  local _, err = singletons.dao.basicauth_credentials:update(
-    { password = digest, rounds = LOG_ROUNDS },
-    credential
-  )
-  if err then
-    ngx.log(ngx.ERR, "error attempting to update basicauth credential hash: ", err)
-  end
-end
-
 
 -- Fast lookup for credential retrieval depending on the type of the authentication
 --
@@ -93,20 +68,12 @@ end
 -- @param credential The retrieved credential from the username passed in the request
 -- @param given_password The password as given in the Authorization header
 -- @return Success of authentication
--- @return Boolean indicating the credential needs to be rotated
 local function validate_credentials(credential, given_password)
-  -- look for bcrypt first, then fallback to sha1
-
-  -- cheap lookup, not the world's most robust
-  if find(credential.password, "$2b$", nil, true) then
-    return bcrypt.verify(given_password, credential.password)
-  end
-
   local digest, err = crypto.encrypt({consumer_id = credential.consumer_id, password = given_password})
   if err then
     ngx.log(ngx.ERR, "[basic-auth]  " .. err)
   end
-  return credential.password == digest, true
+  return credential.password == digest
 end
 
 local function load_credential_into_memory(username)
@@ -178,17 +145,8 @@ local function do_authentication(conf)
     credential = load_credential_from_db(given_username)
   end
 
-  if not credential then
+  if not credential or not validate_credentials(credential, given_password) then
     return false, {status = 403, message = "Invalid authentication credentials"}
-  end
-
-  local match, need_rotate = validate_credentials(credential, given_password)
-  if not match then
-    return false, {status = 403, message = "Invalid authentication credentials"}
-  end
-
-  if need_rotate then
-    ngx.timer.at(0, update_credential_hash, credential, given_password)
   end
 
   -- Retrieve consumer

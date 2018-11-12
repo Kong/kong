@@ -17,11 +17,5 @@ return {
     down = [[
       DROP TABLE basicauth_credentials;
     ]]
-  },
-  {
-    name = "2018-10-29-190000_bcrypt_rounds",
-    up = [[
-      ALTER TABLE basicauth_credentials ADD rounds int;
-    ]],
-  },
+  }
 }

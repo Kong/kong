@@ -62,7 +62,12 @@ describe("Plugin: basic-auth (API)", function()
         assert.is_string(json.password)
         assert.not_equal("kong", json.password)
 
-        assert.matches("$2b$", json.password, nil, true)
+        local crypto = require "kong.plugins.basic-auth.crypto"
+        local hash = crypto.encrypt {
+          consumer_id = consumer.id,
+          password = "kong"
+        }
+        assert.equal(hash, json.password)
       end)
       describe("errors", function()
         it("returns bad request", function()
