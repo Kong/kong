@@ -4,7 +4,7 @@ local cjson = require "cjson"
 
 
 for _, strategy in helpers.each_strategy() do
-  describe("Plugin: response-rate-limiting (API) [#" .. strategy .. "]", function()
+  describe("Plugin: response-ratelimiting (API) [#" .. strategy .. "]", function()
     local admin_client
     local bp
 

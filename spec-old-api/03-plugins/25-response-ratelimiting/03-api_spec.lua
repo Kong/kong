@@ -1,7 +1,7 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
 
-describe("Plugin: response-rate-limiting (API)", function()
+describe("Plugin: response-ratelimiting (API)", function()
   local admin_client
 
   lazy_teardown(function()

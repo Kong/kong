@@ -2,7 +2,7 @@ local schema_def = require "kong.plugins.response-ratelimiting.schema"
 local v = require("spec.helpers").validate_plugin_config_schema
 
 
-describe("Plugin: response-rate-limiting (schema)", function()
+describe("Plugin: response-ratelimiting (schema)", function()
   it("proper config validates", function()
     local config = {limits = {video = {second = 1}}}
     local ok, err = v(config, schema_def)

@@ -1,34 +1,38 @@
 local policies = require "kong.plugins.response-ratelimiting.policies"
 local timestamp = require "kong.tools.timestamp"
 
+
+local kong = kong
+local next = next
 local pairs = pairs
 local tostring = tostring
 
 
-local EMPTY = {}
-local HTTP_INTERNAL_SERVER_ERROR = 500
-local HTTP_TOO_MANY_REQUESTS = 429
-
-
 local _M = {}
 
-local RATELIMIT_REMAINING = "X-RateLimit-Remaining"
 
 local function get_identifier(conf)
-  local identifier
-
   if conf.limit_by == "consumer" then
-    identifier = (kong.client.get_consumer() or
-                  kong.client.get_credential() or
-                  EMPTY).id
+    local consumer = kong.client.get_consumer()
+    if consumer and consumer.id then
+      return consumer.id
+    end
+
+    local credential = kong.client.get_credential()
+    if credential and credential.id then
+      return credential.id
+    end
 
   elseif conf.limit_by == "credential" then
-    identifier = (kong.client.get_credential() or
-                  EMPTY).id
+    local credential = kong.client.get_credential()
+    if credential and credential.id then
+      return credential.id
+    end
   end
 
-  return identifier or kong.client.get_forwarded_ip()
+  return kong.client.get_forwarded_ip()
 end
+
 
 local function get_usage(conf, identifier, current_timestamp, limits)
   local usage = {}
@@ -40,22 +44,22 @@ local function get_usage(conf, identifier, current_timestamp, limits)
         return nil, err
       end
 
-      local remaining = lv - current_usage
-
       if not usage[k] then
         usage[k] = {}
       end
+
       if not usage[k][lk] then
         usage[k][lk] = {}
       end
 
       usage[k][lk].limit = lv
-      usage[k][lk].remaining = remaining
+      usage[k][lk].remaining = lv - current_usage
     end
   end
 
   return usage
 end
+
 
 function _M.execute(conf)
   if not next(conf.limits) then
@@ -71,14 +75,15 @@ function _M.execute(conf)
   -- Load current metric for configured period
   local usage, err = get_usage(conf, identifier, current_timestamp, conf.limits)
   if err then
+    kong.log.err("failed to get usage: ", tostring(err))
+
     if conf.fault_tolerant then
-      kong.log.err("failed to get usage: ", tostring(err))
       return
-    else
-      return kong.response.exit(HTTP_INTERNAL_SERVER_ERROR, {
-        message = "An unexpected error occurred"
-      })
     end
+
+    return kong.response.exit(500, {
+      message = "An unexpected error occurred"
+    })
   end
 
   -- Append usage headers to the upstream request. Also checks "block_on_first_violation".
@@ -86,7 +91,7 @@ function _M.execute(conf)
     local remaining
     for _, lv in pairs(usage[k]) do
       if conf.block_on_first_violation and lv.remaining == 0 then
-        return kong.response.exit(HTTP_TOO_MANY_REQUESTS, {
+        return kong.response.exit(429, {
           message = "API rate limit exceeded for '" .. k .. "'"
         })
       end
@@ -96,10 +101,13 @@ function _M.execute(conf)
       end
     end
 
-    kong.service.request.set_header(RATELIMIT_REMAINING .. "-" .. k, remaining)
+    if remaining then
+      kong.service.request.set_header("X-RateLimit-Remaining-" .. k, remaining)
+    end
   end
 
   kong.ctx.plugin.usage = usage -- For later use
 end
+
 
 return _M

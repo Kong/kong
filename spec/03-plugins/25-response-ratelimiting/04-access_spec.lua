@@ -90,9 +90,9 @@ end
 
 
 for _, strategy in helpers.each_strategy() do
-for _, policy in ipairs({"local", "cluster", "redis"}) do
+for _, policy in ipairs({ "local", "cluster", "redis" }) do
 
-describe(fmt("#flaky Plugin: response-ratelimiting (access) with policy: #%s [#%s]", policy, strategy), function()
+describe(fmt("Plugin: response-ratelimiting (access) with policy: #%s [#%s]", policy, strategy), function()
 
   lazy_setup(function()
     local bp = init_db(strategy, policy)
@@ -334,7 +334,7 @@ describe(fmt("#flaky Plugin: response-ratelimiting (access) with policy: #%s [#%
       test_limit("/response-headers?x-kong-limit=video=1", "test1.com")
     end)
 
-    it("counts against the same service register from different routes", function()
+    it("#flaky counts against the same service register from different routes", function()
       wait()
       local n = math.floor(ITERATIONS / 2)
       for i = 1, n do
@@ -360,7 +360,7 @@ describe(fmt("#flaky Plugin: response-ratelimiting (access) with policy: #%s [#%
       assert.res_status(429, res)
     end)
 
-    it("handles multiple limits", function()
+    pending("handles multiple limits", function()
       wait()
       local n = math.floor(ITERATIONS / 2)
       local res
@@ -439,22 +439,22 @@ describe(fmt("#flaky Plugin: response-ratelimiting (access) with policy: #%s [#%
       assert.equal(ITERATIONS-2, tonumber(body.headers["x-ratelimit-remaining-video"]))
     end)
 
-    it("combines multiple x-kong-limit headers from upstream", function()
+    pending("combines multiple x-kong-limit headers from upstream", function()
       wait()
       for _ = 1, ITERATIONS do
-        local res = proxy_client():get("/response-headers?x-kong-limit=video%3D2&x-kong-limit=image%3D1", {
+        local res = proxy_client():get("/response-headers?x-kong-limit=video=2&x-kong-limit=image=1", {
           headers = { Host = "test4.com" },
         })
         assert.res_status(200, res)
       end
 
-      proxy_client():get("/response-headers?x-kong-limit=video%3D1", {
+      proxy_client():get("/response-headers?x-kong-limit=video=1", {
         headers = { Host = "test4.com" },
       })
 
       ngx.sleep(SLEEP_TIME) -- Wait for async timer to increment the limit
 
-      local res = proxy_client():get("/response-headers?x-kong-limit=video%3D2&x-kong-limit=image%3D1", {
+      local res = proxy_client():get("/response-headers?x-kong-limit=video=2&x-kong-limit=image=1", {
         headers = { Host = "test4.com" },
       })
 
@@ -495,7 +495,7 @@ describe(fmt("#flaky Plugin: response-ratelimiting (access) with policy: #%s [#%
   end)
 end)
 
-describe(fmt("#flaky Plugin: response-ratelimiting (expirations) with policy: #%s [#%s]", policy, strategy), function()
+describe(fmt("Plugin: response-ratelimiting (expirations) with policy: #%s [#%s]", policy, strategy), function()
 
   lazy_setup(function()
     local bp = init_db(strategy, policy)
@@ -598,12 +598,12 @@ describe(fmt("#flaky Plugin: response-ratelimiting (access - global for single c
     helpers.stop_kong(nil, true)
   end)
 
-  it("blocks when the consumer exceeds their quota, no matter what service/route used", function()
+  pending("blocks when the consumer exceeds their quota, no matter what service/route used", function()
     test_limit("/response-headers?apikey=apikey126&x-kong-limit=video=1", "test%d.com")
   end)
 end)
 
-describe(fmt("#flaky Plugin: response-ratelimiting (access - global) with policy: #%s [#%s]", policy, strategy), function()
+describe(fmt("Plugin: response-ratelimiting (access - global) with policy: #%s [#%s]", policy, strategy), function()
 
   lazy_setup(function()
     local bp = init_db(strategy, policy)
@@ -639,7 +639,7 @@ describe(fmt("#flaky Plugin: response-ratelimiting (access - global) with policy
     wait()
   end)
 
-  it("blocks if exceeding limit", function()
+  it("#flaky blocks if exceeding limit", function()
     wait()
     for i = 1, ITERATIONS do
       local res = proxy_client():get("/response-headers?x-kong-limit=video=1", {
