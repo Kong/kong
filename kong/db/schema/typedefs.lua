@@ -252,6 +252,13 @@ typedefs.key = Schema.define {
 }
 
 
+typedefs.run_on = Schema.define {
+  type = "string",
+  default = "first",
+  one_of = { "first", "second", "all" },
+}
+
+
 setmetatable(typedefs, {
   __index = function(_, k)
     error("schema typedef error: definition " .. k .. " does not exist", 2)
