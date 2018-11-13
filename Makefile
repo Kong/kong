@@ -17,7 +17,7 @@ include .requirements
 release:
 	if cd kong-build-tools; \
 	then git pull; \
-	else git clone git@github.com:Kong/kong-build-tools.git; fi
+	else git clone https://github.com/Kong/kong-build-tools.git; fi
 	cd kong-build-tools; \
 	git reset --hard $$KONG_BUILD_TOOLS;
 	cd kong-build-tools; \

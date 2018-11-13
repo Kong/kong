@@ -75,9 +75,9 @@ jobs:
       install: skip
       before_install: skip
       env: RESTY_IMAGE_BASE=ubuntu RESTY_IMAGE_TAG=trusty KONG_PACKAGE_NAME=kong-private KONG_VERSION=`date +%Y-%m-%d`
-      script: echo -e "machine github.com\n  login $CI_USER_TOKEN" > ~/.netrc && make release
-    - script: echo -e "machine github.com\n  login $CI_USER_TOKEN" > ~/.netrc && make release
-      env: RESTY_IMAGE_BASE=ubuntu RESTY_IMAGE_TAG=xenial KONG_PACKAGE_NAME=kong-private KONG_VERSION=`date +%Y-%m-%d`
+      script:
+        - echo -e "machine github.com\n  login $CI_USER_TOKEN" > ~/.netrc
+        - make release
 
 script:
   - .ci/run_tests.sh
