@@ -23,6 +23,7 @@ for _, strategy in helpers.each_strategy() do
           nginx_conf = "spec/fixtures/custom_nginx.template",
         }))
 
+
         admin_client = helpers.admin_client()
       end)
 
