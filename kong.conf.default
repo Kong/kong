@@ -739,7 +739,7 @@
                         # Examples: http
                         #           https
 
-#portal_gui_host = 0.0.0.0:8003
+#portal_gui_host = 127.0.0.1:8003
                         # Developer Portal GUI host
                         #
                         # Here you may provide the host used in conjunction
