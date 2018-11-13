@@ -76,8 +76,8 @@ jobs:
       before_install: skip
       env: KONG_PACKAGE_NAME=kong-private KONG_VERSION=`date +%Y-%m-%d`
       script: RESTY_IMAGE_BASE=ubuntu RESTY_IMAGE_TAG=trusty make release
-      env: KONG_PACKAGE_NAME=kong-private KONG_VERSION=`date +%Y-%m-%d`
     - script: RESTY_IMAGE_BASE=ubuntu RESTY_IMAGE_TAG=xenial make release
+      env: KONG_PACKAGE_NAME=kong-private KONG_VERSION=`date +%Y-%m-%d`
 
 script:
   - .ci/run_tests.sh
