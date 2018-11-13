@@ -51,13 +51,7 @@ local get_local_key = function(conf, identifier, period_date, name)
 end
 
 
-local function get_redis_pool_name(conf)
-  -- return a special pool name only if redis_database is set to non-zero
-  -- otherwise use the default pool name host:port
-  if conf.redis_database ~= 0 then 
-    local key = fmt("%s:%d:%d", conf.redis_port, conf.redis_port, conf.redis_database)
-  end
-end
+local sock_opts = {}
 
 
 local EXPIRATIONS = {
@@ -145,8 +139,13 @@ return {
     increment = function(conf, limits, identifier, current_timestamp, value)
       local red = redis:new()
       red:set_timeout(conf.redis_timeout)
+      -- use a special pool name only if redis_database is set to non-zero
+      -- otherwise use the default pool name host:port
+      sock_opts.pool = conf.redis_database and
+                       conf.redis_host .. ":" .. conf.redis_port .. 
+                       ":" .. conf.redis_database
       local ok, err = red:connect(conf.redis_host, conf.redis_port,
-                                  { pool = get_redis_pool_name(conf) })
+                                  sock_opts)
       if not ok then
         ngx_log(ngx.ERR, "failed to connect to Redis: ", err)
         return nil, err
