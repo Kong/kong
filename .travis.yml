@@ -74,10 +74,9 @@ jobs:
       if: branch=feat/kong-build-tools
       install: skip
       before_install: skip
-      script: make release
-      env: KONG_PACKAGE_NAME=kong-private KONG_VERSION=`date +%Y-%m-%d` RESTY_IMAGE_BASE=ubuntu RESTY_IMAGE_TAG=trusty
-      script: make release
-      env: KONG_PACKAGE_NAME=kong-private KONG_VERSION=`date +%Y-%m-%d` RESTY_IMAGE_BASE=ubuntu RESTY_IMAGE_TAG=xenial
+      env: KONG_PACKAGE_NAME=kong-private KONG_VERSION=`date +%Y-%m-%d`
+      script: RESTY_IMAGE_BASE=ubuntu RESTY_IMAGE_TAG=trusty make release
+    - script: RESTY_IMAGE_BASE=ubuntu RESTY_IMAGE_TAG=xenial make release
 
 script:
   - .ci/run_tests.sh
