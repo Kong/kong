@@ -1,3 +1,6 @@
+local typedefs = require "kong.db.schema.typedefs"
+
+
 local string_array = {
   type = "array",
   default = {},
@@ -34,6 +37,7 @@ local colon_string_record = {
 return {
   name = "response-transformer",
   fields = {
+    { run_on = typedefs.run_on_first },
     { config = {
         type = "record",
         fields = {

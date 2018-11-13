@@ -258,6 +258,12 @@ typedefs.run_on = Schema.define {
   one_of = { "first", "second", "all" },
 }
 
+typedefs.run_on_first = Schema.define {
+  type = "string",
+  default = "first",
+  one_of = { "first" },
+}
+
 
 setmetatable(typedefs, {
   __index = function(_, k)
