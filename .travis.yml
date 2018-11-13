@@ -1,4 +1,4 @@
-dist: trusty
+dist: xenial
 sudo: false
 
 language: python
@@ -55,10 +55,11 @@ cache:
 
 stages:
   - lint and unit
-  - pdk tests
   - test
   - name: deploy
-    if: tag =~ 0. || type == cron
+    if: tag =~ 0.
+  - name: deploy daily build
+    if: branch == feat/kong-build-tools
 
 jobs:
   include:
@@ -75,6 +76,13 @@ jobs:
       script: .ci/trigger-travis.sh $TRAVIS_ACCESS_TOKEN
       env:
         - KONG_DATABASE=none
+    - stage: deploy daily build
+      install: skip
+      before_install: skip
+      script: make release
+      env:
+        - KONG_PACKAGE_NAME=kong-private KONG_VERSION=`date +%Y-%m-%d` RESTY_IMAGE_BASE=ubuntu RESTY_IMAGE_TAG=trusty
+        - KONG_PACKAGE_NAME=kong-private KONG_VERSION=`date +%Y-%m-%d` RESTY_IMAGE_BASE=ubuntu RESTY_IMAGE_TAG=xenial
 
 script:
   - .ci/run_tests.sh
