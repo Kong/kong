@@ -50,11 +50,22 @@ describe("services", function()
 
   it("missing host produces error", function()
     local service = {
+      port = 80,
     }
     service = Services:process_auto_fields(service, "insert")
     local ok, errs = Services:validate(service)
     assert.falsy(ok)
     assert.truthy(errs["host"])
+  end)
+
+  it("missing port produces error", function()
+    local service = {
+      host = "www.example.com",
+    }
+    service = Services:process_auto_fields(service, "insert")
+    local ok, errs = Services:validate(service)
+    assert.falsy(ok)
+    assert.truthy(errs["port"])
   end)
 
   it("invalid retries produces error", function()
@@ -71,6 +82,7 @@ describe("services", function()
   it("produces defaults", function()
     local service = {
       host = "www.example.com",
+      port = 80,
     }
     service = Services:process_auto_fields(service, "insert")
     local ok, err = Services:validate(service)

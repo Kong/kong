@@ -21,6 +21,7 @@ for _, strategy in helpers.each_strategy() do
       local service, _, err_t = db.services:insert({
         protocol = "http",
         host     = "example.com",
+        port     = 80,
       })
       assert.is_nil(err_t)
 
@@ -137,6 +138,7 @@ for _, strategy in helpers.each_strategy() do
 
           service, _, err_t = db.services:insert {
             host = "example.com",
+            port = 80,
           }
 
           assert.is_nil(err_t)
@@ -189,6 +191,7 @@ for _, strategy in helpers.each_strategy() do
 
           service, _, err_t = db.services:insert {
             host = "example.com",
+            port = 80,
           }
 
           assert.is_nil(err_t)
@@ -247,6 +250,7 @@ for _, strategy in helpers.each_strategy() do
 
           service, _, err_t = db.services:insert {
             host = "example.com",
+            port = 80,
           }
 
           assert.is_nil(err_t)
@@ -436,6 +440,7 @@ for _, strategy in helpers.each_strategy() do
 
         service, _, err_t = db.services:insert {
           host = "example.com",
+          port = 80,
         }
 
         assert.is_nil(err_t)

@@ -15,7 +15,7 @@ return {
     -- { tags          = { type = "array", array = { type = "string" } }, },
     { protocol        = typedefs.protocol { required = true, default = "http" } },
     { host            = typedefs.host { required = true } },
-    { port            = typedefs.port { required = true, default = 80 }, },
+    { port            = typedefs.port { required = true } },
     { path            = typedefs.path },
     { connect_timeout = typedefs.timeout { default = 60000 }, },
     { write_timeout   = typedefs.timeout { default = 60000 }, },

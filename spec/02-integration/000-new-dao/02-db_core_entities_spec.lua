@@ -148,7 +148,7 @@ for _, strategy in helpers.each_strategy() do
           local route, err, err_t = db.routes:insert({
             protocols = { "http" },
             hosts = { "example.com" },
-            service = assert(db.services:insert({ host = "service.com" })),
+            service = assert(db.services:insert({ host = "service.com", port = 80 })),
           }, {
             ttl = 100,
           })
@@ -172,7 +172,7 @@ for _, strategy in helpers.each_strategy() do
           local route, err, err_t = db.routes:insert({
             protocols = { "http" },
             hosts = { "example.com" },
-            service = assert(db.services:insert({ host = "service.com" })),
+            service = assert(db.services:insert({ host = "service.com", port = 80 })),
           }, { nulls = true })
           assert.is_nil(err_t)
           assert.is_nil(err)
@@ -860,10 +860,11 @@ for _, strategy in helpers.each_strategy() do
           assert.same({
             code        = Errors.codes.SCHEMA_VIOLATION,
             name        = "schema violation",
-            message     = "schema violation (host: required field missing)",
+            message     = "2 schema violations (host: required field missing; port: required field missing)",
             strategy    = strategy,
             fields      = {
               host = "required field missing",
+              port = "required field missing",
             }
           }, err_t)
         end)
@@ -873,6 +874,7 @@ for _, strategy in helpers.each_strategy() do
           local service, err, err_t = db.services:insert({
             --name     = "example service",
             host = "example.com",
+            port = 80,
           }, { nulls = true })
           assert.is_nil(err_t)
           assert.is_nil(err)
@@ -939,6 +941,7 @@ for _, strategy in helpers.each_strategy() do
             name       = "example_service_overriding_created_at",
             protocol   = "http",
             host       = "example.com",
+            port       = 80,
             created_at = 0,
             updated_at = 0,
           })
@@ -962,6 +965,7 @@ for _, strategy in helpers.each_strategy() do
             name = "my_service",
             protocol = "http",
             host = "example.com",
+            port = 80,
           }
           assert.is_nil(err_t)
 
@@ -971,6 +975,7 @@ for _, strategy in helpers.each_strategy() do
             name = "my_other_service",
             protocol = "http",
             host = "other-example.com",
+            port = 80,
           }
           assert.is_nil(service)
           assert.same({
@@ -990,6 +995,7 @@ for _, strategy in helpers.each_strategy() do
             name = "my_service_name",
             protocol = "http",
             host = "example.com",
+            port = 80,
           }
           assert.is_nil(err_t)
 
@@ -998,6 +1004,7 @@ for _, strategy in helpers.each_strategy() do
             name = "my_service_name",
             protocol = "http",
             host = "other-example.com",
+            port = 80,
           }
           assert.is_nil(service)
           assert.same({
@@ -1032,7 +1039,8 @@ for _, strategy in helpers.each_strategy() do
 
         it("returns existing Service", function()
           local service = assert(db.services:insert({
-            host = "example.com"
+            host = "example.com",
+            port = 80,
           }))
 
           local service_in_db, err, err_t = db.services:select({
@@ -1052,6 +1060,7 @@ for _, strategy in helpers.each_strategy() do
             assert(db.services:insert({
               name = "service_" .. i,
               host = "service" .. i .. ".com",
+              port = 80,
             }))
           end
         end)
@@ -1121,7 +1130,8 @@ for _, strategy in helpers.each_strategy() do
 
         it("updates an existing Service", function()
           local service = assert(db.services:insert({
-            host = "service.com"
+            host = "service.com",
+            port = 80,
           }))
 
           local updated_service, err, err_t = db.services:update({
@@ -1145,6 +1155,7 @@ for _, strategy in helpers.each_strategy() do
             name = "service",
             protocol = "http",
             host = "example.com",
+            port = 80,
           }
           assert.is_nil(err_t)
 
@@ -1153,6 +1164,7 @@ for _, strategy in helpers.each_strategy() do
             name = "service_bis",
             protocol = "http",
             host = "other-example.com",
+            port = 80,
           }
           assert.is_nil(err_t)
 
@@ -1180,11 +1192,13 @@ for _, strategy in helpers.each_strategy() do
           assert(db.services:insert({
             name = "test-service",
             host = "test-service.com",
+            port = 80,
           }))
 
           assert(db.services:insert({
             name = "existing-service",
             host = "existing-service.com",
+            port = 80,
           }))
         end)
 
@@ -1226,7 +1240,8 @@ for _, strategy in helpers.each_strategy() do
 
         it("updates an existing Service", function()
           local service = assert(db.services:insert({
-            host = "service.com"
+            host = "service.com",
+            port = 80,
           }))
 
           local updated_service, err, err_t = db.services:update({
@@ -1305,7 +1320,8 @@ for _, strategy in helpers.each_strategy() do
 
         it("deletes an existing Service", function()
           local service = assert(db.services:insert({
-            host = "example.com"
+            host = "example.com",
+            port = 80,
           }))
 
           local ok, err, err_t = db.services:delete({
@@ -1333,6 +1349,7 @@ for _, strategy in helpers.each_strategy() do
           service = assert(db.services:insert({
             name = "service_1",
             host = "service1.com",
+            port = 80,
           }))
         end)
 
@@ -1376,7 +1393,8 @@ for _, strategy in helpers.each_strategy() do
       it(":insert() a Route with a relation to a Service", function()
         local service = assert(db.services:insert({
           protocol = "http",
-          host     = "service.com"
+          host     = "service.com",
+          port = 80,
         }))
 
         local route, err, err_t = db.routes:insert({
@@ -1410,8 +1428,8 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it(":update() attaches a Route to an existing Service", function()
-        local service1 = bp.services:insert({ host = "service1.com" })
-        local service2 = bp.services:insert({ host = "service2.com" })
+        local service1 = bp.services:insert({ host = "service1.com", port = 80 })
+        local service2 = bp.services:insert({ host = "service2.com", port = 80 })
 
         local route = bp.routes:insert({ service = service1, methods = { "GET" } })
 
@@ -1458,6 +1476,7 @@ for _, strategy in helpers.each_strategy() do
       it(":delete() a Service is not allowed if a Route is associated to it", function()
         local service = bp.services:insert({
           host = "example.com",
+          port = 80,
         })
 
         bp.routes:insert({ service = service, methods = { "GET" } })
@@ -1480,6 +1499,7 @@ for _, strategy in helpers.each_strategy() do
       it(":delete() a Route without deleting the associated Service", function()
         local service = bp.services:insert({
           host = "example.com",
+          port = 80,
         })
 
         local route = bp.routes:insert({ service = service, methods = { "GET" } })

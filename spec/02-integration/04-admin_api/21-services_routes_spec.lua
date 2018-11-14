@@ -57,6 +57,7 @@ for _, strategy in helpers.each_strategy() do
               body = {
                 protocol = "http",
                 host     = "service.com",
+                port     = 80,
               },
               headers = { ["Content-Type"] = content_type },
             })
@@ -378,6 +379,7 @@ for _, strategy in helpers.each_strategy() do
             local service = db.services:insert({
               protocol = "http",
               host     = "service.com",
+              port     = 80,
             })
 
             local route = db.routes:insert({
@@ -714,12 +716,14 @@ for _, strategy in helpers.each_strategy() do
             local json = cjson.decode(body)
             assert.same({
                 host = "required field missing",
+                port = "required field missing",
               }, json.fields)
 
             -- Invalid parameter
             res = client:post("/services", {
                 body = {
                   host     = "example.com",
+                  port     = 80,
                   protocol = "foo",
                 },
                 headers = { ["Content-Type"] = content_type }
@@ -745,12 +749,14 @@ for _, strategy in helpers.each_strategy() do
                 name     = "schema violation",
                 code     = Errors.codes.SCHEMA_VIOLATION,
                 message  = unindent([[
-                  2 schema violations
+                  3 schema violations
                   (host: required field missing;
-                  path: should start with: /)
+                  path: should start with: /;
+                  port: required field missing)
                 ]], true, true),
                 fields = {
                   host = "required field missing",
+                  port = "required field missing",
                   path = "should start with: /",
                 },
               }, json
