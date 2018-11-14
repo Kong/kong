@@ -1,4 +1,5 @@
 local crud          = require "kong.api.crud_helpers"
+local ee_crud       = require "kong.enterprise_edition.crud_helpers"
 local singletons    = require "kong.singletons"
 local enums         = require "kong.enterprise_edition.dao.enums"
 local enterprise_utils = require "kong.enterprise_edition.utils"
@@ -118,7 +119,7 @@ return {
       check_portal_status(helpers)
       self.params.email_or_id = ngx.unescape_uri(self.params.email_or_id)
       self.params.status = tonumber(self.params.status)
-      crud.find_consumer_by_email_or_id(self, dao_factory, helpers)
+      ee_crud.find_developer_by_email_or_id(self, dao_factory, helpers)
     end,
 
     GET = function(self, dao_factory, helpers)
@@ -168,7 +169,7 @@ return {
       end
 
       self.params.email_or_id = ngx.unescape_uri(self.params.email_or_id)
-      crud.find_consumer_by_email_or_id(self, dao_factory, helpers)
+      ee_crud.find_developer_by_email_or_id(self, dao_factory, helpers)
 
       local plugin = auth_plugins[self.portal_auth]
       if not plugin then
@@ -236,7 +237,7 @@ return {
       end
 
       self.params.email_or_id = ngx.unescape_uri(self.params.email_or_id)
-      crud.find_consumer_by_email_or_id(self, dao_factory, helpers)
+      ee_crud.find_developer_by_email_or_id(self, dao_factory, helpers)
 
       local plugin = auth_plugins[self.portal_auth]
       if not plugin then
@@ -321,7 +322,7 @@ return {
 
       self.params.email_or_id = ngx.unescape_uri(self.params.email_or_id)
 
-      crud.find_consumer_by_email_or_id(self, dao_factory, helpers)
+      ee_crud.find_developer_by_email_or_id(self, dao_factory, helpers)
     end,
 
     PATCH = function(self, dao_factory, helpers)
@@ -366,19 +367,46 @@ return {
     end,
   },
 
-  ["/portal/developers/:email_or_id/:plugin"] =  {
+  ["/portal/developers/:email_or_id/plugins/"] = {
     before = function(self, dao_factory, helpers)
-      check_portal_status(helpers)
       self.params.email_or_id = ngx.unescape_uri(self.params.email_or_id)
-      crud.find_consumer_by_email_or_id(self, dao_factory, helpers)
+      ee_crud.find_developer_by_email_or_id(self, dao_factory, helpers)
       self.params.consumer_id = self.consumer.id
     end,
 
+    GET = function(self, dao_factory)
+      crud.paginated_set(self, dao_factory.plugins)
+    end,
+
+    POST = function(self, dao_factory)
+      crud.post(self.params, dao_factory.plugins)
+    end,
+
+    PUT = function(self, dao_factory)
+      crud.put(self.params, dao_factory.plugins)
+    end
+  },
+
+  ["/portal/developers/:email_or_id/plugins/:id"] = {
+    before = function(self, dao_factory, helpers)
+      self.params.email_or_id = ngx.unescape_uri(self.params.email_or_id)
+      ee_crud.find_developer_by_email_or_id(self, dao_factory, helpers)
+      crud.find_plugin_by_filter(self, dao_factory, {
+        consumer_id = self.consumer.id,
+        id          = self.params.id,
+      }, helpers)
+    end,
+
     GET = function(self, dao_factory, helpers)
-      self.params.consumer_type = enums.CONSUMERS.TYPE.PROXY
-      crud.paginated_set(self, dao_factory.credentials, function (row)
-        return row.credential_data
-      end)
+      return helpers.responses.send_HTTP_OK(self.plugin)
+    end,
+
+    PATCH = function(self, dao_factory)
+      crud.patch(self.params, dao_factory.plugins, self.plugin)
+    end,
+
+    DELETE = function(self, dao_factory)
+      crud.delete(self.plugin, dao_factory.plugins)
     end
   },
 

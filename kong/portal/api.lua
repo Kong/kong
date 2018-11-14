@@ -1,5 +1,6 @@
 local singletons    = require "kong.singletons"
 local crud          = require "kong.api.crud_helpers"
+local ee_crud       = require "kong.enterprise_edition.crud_helpers"
 local ws_helper     = require "kong.workspaces.helper"
 local enums         = require "kong.enterprise_edition.dao.enums"
 local cjson         = require "cjson.safe"
@@ -307,7 +308,7 @@ return {
       -- If we made it this far, the jwt is valid format and properly signed.
       -- Now we will lookup the consumer and credentials we need to update
       -- Lookup consumer by id contained in jwt, if not found, this will 404
-      crud.find_consumer_by_email_or_id(self, dao_factory, helpers, {__skip_rbac = true})
+      ee_crud.find_developer_by_email_or_id(self, dao_factory, helpers, {__skip_rbac = true})
 
       local credentials, err = dao_factory.credentials:find_all({
         consumer_id = self.consumer.id,
