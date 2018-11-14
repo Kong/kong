@@ -238,7 +238,8 @@ return {
               end
             end
             if emails then
-              local _, err = emails:invite({ consumer.email }, jwt)
+              local _, err = emails:invite({{ username = name,
+                                              email = consumer.email }}, jwt)
                 if err then
                   ngx.log(ngx.ERR, "[admins] error inviting user : ",
                           consumer.email)

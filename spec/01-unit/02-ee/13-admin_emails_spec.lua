@@ -33,7 +33,9 @@ describe("ee admin emails", function()
         message = "admin_gui_auth is disabled",
       }
 
-      local res, err = admin_emails:invite({"gruce@konghq.com"})
+      local res, err = admin_emails:invite({
+        { email ="gruce@konghq.com", username = "gruce" }
+      })
       assert.is_nil(res)
       assert.same(expected, err)
     end)
@@ -58,10 +60,25 @@ describe("ee admin emails", function()
         }
       }
 
-      local res, err = admin_emails:invite({"gruce@konghq.com", "gruce2@konghq.com"})
+      local res, err = admin_emails:invite({
+        { email = "gruce@konghq.com", username = "gruce" },
+        { email = "gruce2@konghq.com", username = "gruce2" },
+      })
+
       assert.same(expected, res)
       assert.is_nil(err)
       assert.spy(admin_emails.client.send).was_called(2)
+    end)
+
+    it("should fail client:send when email/username not passed", function()
+      conf.admin_gui_auth = true
+      admin_emails = emails.new(conf)
+      spy.on(admin_emails.client, "send")
+
+      local _, err = admin_emails:invite({{"gruce@konghq.com", "gruce2@konghq.com"}})
+      assert.is_not_nil(err)
+      assert.equal("recipient does not have username or email", err.message)
+      assert.spy(admin_emails.client.send).was_called(0)
     end)
   end)
 end)

@@ -27,6 +27,10 @@ local templates = {
       Click the following link to <a href="%s">register</a>.
       </p>
       <p>
+      <br>
+
+      Username: %s<br><br><br>
+
       This link expires in %s hours.
       </p>
       <p>
@@ -89,36 +93,44 @@ function _M.new(conf)
   return setmetatable(self, mt)
 end
 
-function _M:register_url(email, jwt)
-  return fmt("%s/register?email=%s&token=%s",
-    self.admin_gui_url, ngx.escape_uri(email), ngx.escape_uri(jwt))
+function _M:register_url(email, jwt, username)
+  return fmt("%s/register?email=%s&username=%s&token=%s",
+    self.admin_gui_url, ngx.escape_uri(email), ngx.escape_uri(username), ngx.escape_uri(jwt))
 end
 
 function _M:invite(recipients, jwt)
   if not next(recipients) then
     return nil, {code = 500, message = "recipients required"}
   end
+
   local kong_conf = self.kong_conf
   if not kong_conf.admin_gui_auth then
     return nil, {code = 501, message = "admin_gui_auth is disabled"}
   end
 
   local template = self.templates.invite
-  
+
   local options = {
     from = kong_conf.admin_emails_from,
     reply_to = kong_conf.admin_emails_reply_to,
     subject = fmt(template.subject),
-    html = fmt(template.html,
-               self:register_url(recipients[1], jwt),
-               kong_conf.admin_invitation_expiry / 60 / 60,
-               kong_conf.admin_docs_url),
   }
 
   local res
   -- send emails individually
   for _, recipient in ipairs(recipients) do
-    res = self.client:send({recipient}, options, res)
+    if not recipient.email or not recipient.username then
+      return nil, {code = 500, message = "recipient does not have username or email"}
+    end
+
+    options.html = fmt(template.html,
+                       self:register_url(recipient.email,
+                                         jwt, recipient.username),
+                       recipient.username,
+                       kong_conf.admin_invitation_expiry / 60 / 60,
+                       kong_conf.admin_docs_url)
+
+    res = self.client:send({recipient.email}, options, res)
   end
 
   return smtp_client.handle_res(res)
