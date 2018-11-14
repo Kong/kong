@@ -206,15 +206,7 @@ function _M.authenticate(self, dao_factory, rbac_enabled, gui_auth)
       end
 
       rbac_token = rbac_user.user_token
-
       _M.attach_consumer_and_workspaces(self, dao_factory, rbac_user.id)
-
-      local workspace = {
-        id = self.workspace_entities[1].workspace_id,
-        name = self.workspace_entities[1].workspace_name,
-      }
-
-      ctx.workspaces = { workspace }
 
       -- apply auth plugin
       local auth_conf = utils.deep_copy(singletons.configuration.admin_gui_auth_conf
@@ -277,8 +269,7 @@ function _M.attach_consumer_and_workspaces(self, dao_factory, rbac_user_id)
   local consumer_user, err = rbac.get_consumer_user_map(rbac_user_id)
 
   if err then
-    ngx.log(ngx.ERR, _log_prefix, err)
-    return responses.send_HTTP_INTERNAL_SERVER_ERROR()
+    return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
   end
 
   if not consumer_user then
@@ -287,11 +278,40 @@ function _M.attach_consumer_and_workspaces(self, dao_factory, rbac_user_id)
     return responses.send_HTTP_UNAUTHORIZED()
   end
 
-  local consumer_id = consumer_user.consumer_id
+  local workspace = _M.attach_workspaces(self, dao_factory,
+                                         consumer_user.consumer_id)
 
+  ngx.ctx.workspaces = { workspace }
+
+  _M.attach_consumer(self, dao_factory, consumer_user.consumer_id)
+end
+
+
+function _M.attach_consumer(self, dao_factory, consumer_id)
+  local cache_key = dao_factory.consumers:cache_key(consumer_id)
+  local consumer, err = singletons.cache:get(cache_key, nil,
+                                            _M.retrieve_consumer,
+                                            consumer_id)
+
+  if err then
+    return responses.send_HTTP_INTERNAL_SERVER_ERROR("error getting consumer: "
+                                                     .. consumer_id)
+  end
+
+  if not consumer then
+    return responses.send_HTTP_INTERNAL_SERVER_ERROR("consumer not found: " ..
+                                                      consumer_id)
+  end
+
+  self.consumer = consumer
+end
+
+
+function _M.attach_workspaces(self, dao_factory, consumer_id)
   local workspace_entities, err = dao_factory.workspace_entities:find_all{
     entity_id = consumer_id,
     unique_field_name = "id",
+    entity_type = "consumers",
   }
 
   self.workspace_entities = workspace_entities
@@ -307,22 +327,10 @@ function _M.attach_consumer_and_workspaces(self, dao_factory, rbac_user_id)
     return responses.send_HTTP_INTERNAL_SERVER_ERROR()
   end
 
-  local cache_key = dao_factory.consumers:cache_key(consumer_id)
-  local consumer, err = singletons.cache:get(cache_key, nil,
-                                             _M.retrieve_consumer,
-                                             consumer_id)
-
-  if err then
-    ngx.log(ngx.ERR, _log_prefix, "error getting consumer: ", consumer_id)
-    return responses.send_HTTP_INTERNAL_SERVER_ERROR()
-  end
-
-  if not consumer then
-    ngx.log(ngx.DEBUG, _log_prefix, "consumer not found: ", consumer_id)
-    return responses.send_HTTP_INTERNAL_SERVER_ERROR()
-  end
-
-  self.consumer = consumer
+  return {
+    id = self.workspace_entities[1].workspace_id,
+    name = self.workspace_entities[1].workspace_name,
+  }
 end
 
 

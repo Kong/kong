@@ -140,7 +140,11 @@ return {
         return helpers.responses.send_HTTP_NOT_FOUND()
       end
 
-      ee_api.attach_consumer_and_workspaces(self, dao_factory, ngx.ctx.rbac.user.id)
+      -- For when only RBAC token comes in
+      if not self.consumer then
+        ee_api.attach_consumer_and_workspaces(self, dao_factory,
+                                              ngx.ctx.rbac.user.id)
+      end
 
       -- now to get the right permission set
       self.permissions = {

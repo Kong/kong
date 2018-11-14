@@ -2,6 +2,7 @@ local helpers = require "spec.helpers"
 local cjson = require "cjson"
 local dao_helpers = require "spec.02-integration.03-dao.helpers"
 local enums = require "kong.enterprise_edition.dao.enums"
+local admins = require "kong.enterprise_edition.admins_helpers"
 local workspaces = require "kong.workspaces"
 local ee_helpers = require "spec.ee_helpers"
 
@@ -254,6 +255,107 @@ describe("Admin API - ee-specific Kong routes", function()
         })
 
         assert.res_status(404, res)
+      end)
+
+      it("returns user info of admin consumer outside default workspace", function()
+        local _
+
+        bp, _, dao = helpers.get_db_utils(strategy)
+
+        assert(helpers.start_kong({
+          database = strategy,
+          admin_gui_auth = "basic-auth",
+          enforce_rbac = "both"
+        }))
+
+        client = assert(helpers.admin_client())
+
+        -- populate a new workspace with an admin
+        ee_helpers.register_rbac_resources(dao)
+        local ws_name = "test-ws"
+        local ws, err = dao.workspaces:insert({ name = ws_name, }, { quiet = true })
+        if err then
+          ws = dao.workspaces:find_all({ name = ws_name })[1]
+        end
+        ngx.ctx.workspaces = { ws }
+
+        -- create the non-default admin
+        local admin = ee_helpers.create_admin("test42@konghq.com", "dj-khaled",
+                                              enums.CONSUMERS.STATUS.APPROVED,
+                                              bp, dao)
+        local rbac_user = admin.rbac_user
+        admin.rbac_user = nil
+        admins.link_to_workspace(admin, dao, ws_name)
+
+        dao.rbac_roles:insert({ name = "another-one" })
+        ee_helpers.post(client, "/" .. ws_name .. "/rbac/roles/another-one/endpoints", {
+          workspace = "default",
+          endpoint = "*",
+          actions = "read"
+        }, { ['Kong-Admin-Token'] = 'letmein'})
+
+        ee_helpers.post(client, "/" .. ws_name .. "/admins/".. admin.id .. "/roles",
+             { roles = "another-one" }, { ["Kong-Admin-Token"] = "letmein" }, 201)
+
+        assert(dao.basicauth_credentials:insert {
+          username    = "dj-khaled",
+          password    = "another-one",
+          consumer_id = admin.id,
+        })
+
+        -- Make sure non-default admin can still request /userinfo
+        local res = assert(client:send {
+          method = "GET",
+          path = "/userinfo",
+          headers = {
+            ["Authorization"] = "Basic " .. ngx.encode_base64("dj-khaled:another-one"),
+            ["Kong-Admin-User"] = "test42@konghq.com",
+          }
+        })
+
+        res = assert.res_status(200, res)
+        local json = cjson.decode(res)
+
+        local user_workspaces = json.workspaces
+        json.workspaces = nil
+
+        local expected = {
+          consumer = admin,
+          rbac_user = rbac_user,
+          permissions = {
+            endpoints = {
+              ["default"] = {
+                ["*"] = {
+                  actions = { "read", },
+                  negative = false,
+                },
+              },
+            },
+            entities = {}
+          },
+        }
+
+        assert.same(expected, json)
+        assert.equal(1, #user_workspaces)
+        assert.equal("test-ws", user_workspaces[1].name)
+
+        -- Now send the same request, but with just the rbac token
+        -- and make sure the responses are equivalent
+        res = assert(client:send {
+          method = "GET",
+          path = "/userinfo",
+          headers = {
+            ["Kong-Admin-Token"] = rbac_user.user_token,
+          }
+        })
+
+        res = assert.res_status(200, res)
+        local json2 = cjson.decode(res)
+        local user_workspaces2 = json2.workspaces
+        json2.workspaces = nil
+
+        assert.same(json2, json)
+        assert.same(user_workspaces2, user_workspaces)
       end)
     end)
   end)
