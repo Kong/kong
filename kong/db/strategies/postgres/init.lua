@@ -272,7 +272,7 @@ local function escape_literal(connector, literal, field)
         for i, v in ipairs(literal) do
           jsons[i] = cjson.encode(v)
         end
-        return encode_array(jsons)
+        return encode_array(jsons) .. '::JSONB[]'
       end
 
       return encode_array(literal)
