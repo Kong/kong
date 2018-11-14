@@ -1,3 +1,6 @@
+local typedefs = require "kong.db.schema.typedefs"
+
+
 local is_present = function(v)
   return type(v) == "string" and #v > 0
 end
@@ -6,6 +9,7 @@ end
 return {
   name = "request-termination",
   fields = {
+    { run_on = typedefs.run_on_first },
     { config = {
         type = "record",
         fields = {

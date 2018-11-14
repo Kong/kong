@@ -80,7 +80,7 @@ local function execute(args)
   conf.cassandra_timeout = args.db_timeout -- connect + send + read
   conf.cassandra_schema_consensus_timeout = args.db_timeout
 
-  local db = DB.new(conf)
+  local db = assert(DB.new(conf))
   assert(db:init_connector())
 
   local schema_state = assert(db:schema_state())

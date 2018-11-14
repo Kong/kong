@@ -1,4 +1,5 @@
 local iputils = require "resty.iputils"
+local typedefs = require "kong.db.schema.typedefs"
 
 
 local function validate_ip(ip)
@@ -17,6 +18,7 @@ local ip = { type = "string", custom_validator = validate_ip }
 return {
   name = "ip-restriction",
   fields = {
+    { run_on = typedefs.run_on_first },
     { config = {
         type = "record",
         fields = {

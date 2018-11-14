@@ -38,6 +38,7 @@ local colon_strings_array_record = {
 return {
   name = "request-transformer",
   fields = {
+    { run_on = typedefs.run_on_first },
     { config = {
         type = "record",
         fields = {
