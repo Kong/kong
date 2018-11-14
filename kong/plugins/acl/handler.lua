@@ -22,7 +22,7 @@ local ACLHandler = BasePlugin:extend()
 
 
 ACLHandler.PRIORITY = 950
-ACLHandler.VERSION = "0.2.0"
+ACLHandler.VERSION = "1.0.0"
 
 
 function ACLHandler:new()
@@ -85,7 +85,7 @@ function ACLHandler:access(conf)
     return kong.response.exit(403, { message = "You cannot consume this service" })
   end
 
-  if not conf.hide_groups_header then
+  if not conf.hide_groups_header and to_be_blocked then
     kong.service.request.set_header(constants.HEADERS.CONSUMER_GROUPS,
                                     to_be_blocked)
   end
