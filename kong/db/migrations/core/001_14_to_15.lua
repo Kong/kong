@@ -87,13 +87,7 @@ return {
       END;
       $$;
 
-      DO $$
-      BEGIN
-        ALTER INDEX IF EXISTS "snis_fkey_certificate" RENAME TO "snis_certificate_id_idx";
-      EXCEPTION WHEN DUPLICATE_TABLE THEN
-        -- Do nothing, accept existing state
-      END;
-      $$;
+      CREATE INDEX IF NOT EXISTS "snis_certificate_id_idx" ON "snis" ("certificate_id");
 
       DO $$
       BEGIN

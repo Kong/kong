@@ -104,9 +104,6 @@ return {
         "certificate_id"  UUID                       REFERENCES "certificates" ("id")
       );
 
-      CREATE INDEX IF NOT EXISTS "snis_fkey_certificate" ON "snis" ("certificate_id");
-
-
 
       CREATE TABLE IF NOT EXISTS "consumers" (
         "id"          UUID                         PRIMARY KEY,
