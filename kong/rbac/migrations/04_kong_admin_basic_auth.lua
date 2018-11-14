@@ -1,64 +1,114 @@
 -- Migrate kong_admin from key-auth to basic-auth
 local enums = require "kong.enterprise_edition.dao.enums"
 local cjson = require "cjson"
+local singletons = require "kong.singletons"
+
+
+local workspaces
+local singletons_dao
+
+
+local function setup(dao)
+  workspaces = ngx.ctx.workspaces
+
+  -- the dao passed in eventually uses a module (workspaces) that uses
+  -- singletons.dao, which isn't initialized during migrations
+  singletons_dao = singletons.dao
+  singletons.dao = dao
+end
+
+local function teardown()
+  ngx.ctx.workspaces = workspaces
+  singletons.dao = singletons_dao
+end
+
+
+local function migrate(dao)
+  local kong_admins, err = dao.consumers:find_all({
+    username = "kong_admin",
+    type = enums.CONSUMERS.TYPE.ADMIN,
+  })
+  if err then
+    return err
+  end
+
+  local kong_admin = kong_admins[1]
+  if not kong_admin then
+    -- nothing to do here
+    return
+  end
+
+  local creds, err = dao.basicauth_credentials:find_all({
+    consumer_id = kong_admin.id,
+  })
+  if err then
+    return err
+  end
+
+  -- add cred only if not present
+  if creds[1] then
+    return
+  end
+
+  -- the password is the key of the key_auth credential
+  local credentials, err = dao.keyauth_credentials:find_all({
+    consumer_id = kong_admin.id
+  })
+  if err then
+    return err
+  end
+
+  local keyauth_cred = credentials[1]
+  if not keyauth_cred then
+    return
+  end
+
+  local credential, err = dao.basicauth_credentials:insert({
+    consumer_id = kong_admin.id,
+    username = "kong_admin",
+    password = keyauth_cred.key,
+  })
+
+  -- only report error if it's not a "record already exists" one
+  if err and not string.match(tostring(err), "exists") then
+    return err
+  end
+
+ if credential then
+    -- add creds to the common lookup table
+    local _, err = dao.credentials:insert({
+      id = credential.id,
+      consumer_id = credential.consumer_id,
+      consumer_type = enums.CONSUMERS.TYPE.ADMIN,
+      plugin = "basic-auth",
+      credential_data = tostring(cjson.encode(credential)),
+    })
+    if err then
+      return err
+    end
+ end
+end
+
 
 return {
   kong_admin_basic_auth = {
     {
       name = "2018-11-08-000000_kong_admin_basic_auth",
       up = function (_, _, dao)
-        local kong_admins, err = dao.consumers:find_all({
-          username = "kong_admin",
-          type = enums.CONSUMERS.TYPE.ADMIN,
-        })
-        if err then
-          return err
-        end
-        local kong_admin = kong_admins[1]
-        if not kong_admin then
-          -- nothing to do here
-          return
-        end
+        setup(dao)
 
-        local creds, err = dao.basicauth_credentials:find_all({
-          consumer_id = kong_admin.id,
-        })
+        -- look for kong_admin in default workspace,
+        -- and create basic-auth credential there, too.
+        local ws_scope, err = dao.workspaces:find_all({ name = "default" })
         if err then
           return err
         end
 
-        -- add cred only if not present
-        if next(creds) then
-          return
-        end
+        ngx.ctx.workspaces = ws_scope
 
-        -- the password is the key of the key_auth credential
-        local credentials, err = dao.keyauth_credentials:find_all({
-          consumer_id = kong_admin.id
-        })
-        if err then
-          return err
-        end
-        local keyauth_cred = credentials[1]
-        if not keyauth_cred then
-          return
-        end
-        local credential, err = dao.basicauth_credentials:insert({
-          consumer_id = kong_admin.id,
-          username = "kong_admin",
-          password = keyauth_cred.key,
-        })
-        if err then
-          return err
-        end
-        -- add creds to the common lookup table
-        local _, err = dao.credentials:insert({
-          id = credential.id,
-          consumer_id = credential.consumer_id,
-          consumer_type = enums.CONSUMERS.TYPE.ADMIN,
-          plugin = "basic-auth",
-          credential_data = tostring(cjson.encode(credential)),
-        })
+        local err = migrate(dao)
+        teardown()
+
         if err then
           return err
         end

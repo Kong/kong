@@ -532,8 +532,6 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
 
-        assert.equals(4, #json.data)
-
         for i = 1, #json.data do
           assert.not_equals("alice", json.data[i].name)
         end

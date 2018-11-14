@@ -517,17 +517,17 @@ function _M:run_migrations(on_migrate, on_success)
   end
   migrations_ran = migrations_ran + n_ran
 
-  -- this migration must happen after plugin migrations
-  local _, err, n_ran = migrate(self, "kong_admin_basic_auth", rbac_migrations_basic_auth,
+  -- run workspace-related migrations
+  local def_workspace_migration = workspaces.get_default_workspace_migration()
+  local _, err, n_ran = migrate(self, "default_workspace", def_workspace_migration,
     cur_migrations, on_migrate, on_success)
   if err then
     return ret_error_string(self.db.name, nil, err)
   end
   migrations_ran = migrations_ran + n_ran
 
-  -- run workspace-related migrations
-  local def_workspace_migration = workspaces.get_default_workspace_migration()
-  local _, err, n_ran = migrate(self, "default_workspace", def_workspace_migration,
+  -- this migration must happen after plugin migrations
+  local _, err, n_ran = migrate(self, "kong_admin_basic_auth", rbac_migrations_basic_auth,
     cur_migrations, on_migrate, on_success)
   if err then
     return ret_error_string(self.db.name, nil, err)
