@@ -644,7 +644,7 @@ return {
     name = "2018-09-05-144800_workspace_meta",
     up = [[
       ALTER TABLE workspaces
-        ADD COLUMN meta json;
+        ADD COLUMN meta json DEFAULT '{}';
     ]]
   },
   {
@@ -751,7 +751,8 @@ return {
     name = "2018-10-05-144800_workspace_config",
     up = [[
       ALTER TABLE workspaces
-        ADD COLUMN config json;
+        ADD COLUMN config json DEFAULT '{"portal":false}';
+      UPDATE workspaces SET config = '{"portal":true}' WHERE name = 'default';
     ]]
   },
   {

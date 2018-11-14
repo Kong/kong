@@ -743,4 +743,48 @@ return {
       end
     end,
   },
+  {
+    name = "2018-11-13-000006_set_workspace_meta",
+    up = function(_, _, dao)
+      local coordinator = dao.db:get_coordinator()
+
+      local ids = {}
+      local default_ws_id
+
+      for rows, err in coordinator:iterate([[
+            SELECT * FROM workspaces
+          ]]) do
+
+        if err then
+          return err
+        end
+
+        for _, row in ipairs(rows) do
+          local id = cassandra.uuid(row.id)
+
+          if row.name == "default" then
+            default_ws_id = id
+          end
+
+          ids[#ids + 1] = id
+        end
+      end
+
+      local _, err = coordinator:execute([[
+        UPDATE workspaces SET meta = '{}', config = '{"portal":false}' WHERE id in ?
+      ]], { ids })
+      if err then
+        return err
+      end
+
+      if default_ws_id then
+        local _, err = coordinator:execute([[
+          UPDATE workspaces SET config = '{"portal":true}' WHERE id=?
+        ]], { default_ws_id })
+        if err then
+          return err
+        end
+      end
+    end,
+  },
 }
