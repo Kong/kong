@@ -18,7 +18,7 @@ end
 
 
 HMACAuthHandler.PRIORITY = 1000
-HMACAuthHandler.VERSION = "0.2.0"
+HMACAuthHandler.VERSION = "1.0.0"
 
 
 return HMACAuthHandler
