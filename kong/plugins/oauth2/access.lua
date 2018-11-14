@@ -4,11 +4,12 @@ local constants = require "kong.constants"
 local timestamp = require "kong.tools.timestamp"
 
 
-local string_find = string.find
-
-
+local kong = kong
+local next = next
+local type = type
 local split = utils.split
 local strip = utils.strip
+local string_find = string.find
 local check_https = utils.check_https
 local encode_args = utils.encode_args
 local random_string = utils.random_string
@@ -21,6 +22,7 @@ local ngx_decode_base64 = ngx.decode_base64
 
 
 local _M = {}
+
 
 local EMPTY = {}
 local RESPONSE_TYPE = "response_type"
@@ -557,20 +559,48 @@ local function load_consumer_into_memory(consumer_id, anonymous)
 end
 
 local function set_consumer(consumer, credential, token)
-  local clear_header = kong.service.request.clear_header
   local set_header = kong.service.request.set_header
+  local clear_header = kong.service.request.clear_header
 
-  set_header(constants.HEADERS.CONSUMER_ID, consumer.id)
-  set_header(constants.HEADERS.CONSUMER_CUSTOM_ID, consumer.custom_id)
-  set_header(constants.HEADERS.CONSUMER_USERNAME, consumer.username)
+  if consumer and consumer.id then
+    set_header(constants.HEADERS.CONSUMER_ID, consumer.id)
+  else
+    clear_header(constants.HEADERS.CONSUMER_ID)
+  end
+
+  if consumer and consumer.custom_id then
+    set_header(constants.HEADERS.CONSUMER_CUSTOM_ID, consumer.custom_id)
+  else
+    clear_header(constants.HEADERS.CONSUMER_CUSTOM_ID)
+  end
+
+  if consumer and consumer.username then
+    set_header(constants.HEADERS.CONSUMER_USERNAME, consumer.username)
+  else
+    clear_header(constants.HEADERS.CONSUMER_USERNAME)
+  end
 
   kong.client.authenticate(consumer, credential)
+
   if credential then
-    set_header("x-authenticated-scope", token.scope)
-    set_header("x-authenticated-userid", token.authenticated_userid)
+    if token.scope then
+      set_header("x-authenticated-scope", token.scope)
+    else
+      clear_header("x-authenticated-scope")
+    end
+
+    if token.authenticated_userid then
+      set_header("x-authenticated-userid", token.authenticated_userid)
+    else
+      clear_header("x-authenticated-userid")
+    end
+
     clear_header(constants.HEADERS.ANONYMOUS) -- in case of auth plugins concatenation
+
   else
     set_header(constants.HEADERS.ANONYMOUS, true)
+    clear_header("x-authenticated-scope")
+    clear_header("x-authenticated-userid")
   end
 
 end
