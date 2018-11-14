@@ -196,6 +196,34 @@ return {
       type                             = "number",
       default                          = 600,
     },
+    authorization_cookie_path          = {
+      required                         = false,
+      type                             = "string",
+      default                          = "/",
+    },
+    authorization_cookie_domain        = {
+      required                         = false,
+      type                             = "string",
+    },
+    authorization_cookie_samesite      = {
+      required                         = false,
+      type                             = "string",
+      default                          = "off",
+      enum                             = {
+        "Strict",
+        "Lax",
+        "off",
+      },
+    },
+    authorization_cookie_httponly      = {
+      required                         = false,
+      type                             = "boolean",
+      default                          = true
+    },
+    authorization_cookie_secure        = {
+      required                         = false,
+      type                             = "boolean",
+    },
     session_cookie_name                = {
       required                         = false,
       type                             = "string",
@@ -205,6 +233,34 @@ return {
       required                         = false,
       type                             = "number",
       default                          = 3600,
+    },
+    session_cookie_path                = {
+      required                         = false,
+      type                             = "string",
+      default                          = "/",
+    },
+    session_cookie_domain              = {
+      required                         = false,
+      type                             = "string",
+    },
+    session_cookie_samesite            = {
+      required                         = false,
+      type                             = "string",
+      default                          = "Lax",
+      enum                             = {
+        "Strict",
+        "Lax",
+        "off",
+      },
+    },
+    session_cookie_httponly            = {
+      required                         = false,
+      type                             = "boolean",
+      default                          = true
+    },
+    session_cookie_secure              = {
+      required                         = false,
+      type                             = "boolean",
     },
     session_storage                    = {
       required                         = false,

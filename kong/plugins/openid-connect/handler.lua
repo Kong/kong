@@ -3,6 +3,7 @@ local cache           = require "kong.plugins.openid-connect.cache"
 local arguments       = require "kong.plugins.openid-connect.arguments"
 local log             = require "kong.plugins.openid-connect.log"
 local constants       = require "kong.constants"
+local singletons      = require "kong.singletons"
 local responses       = require "kong.tools.responses"
 local openid          = require "kong.openid-connect"
 local uri             = require "kong.openid-connect.uri"
@@ -18,11 +19,13 @@ local time            = ngx.time
 local null            = ngx.null
 local header          = ngx.header
 local set_header      = ngx.req.set_header
+local get_headers     = ngx.req.get_headers
 local escape_uri      = ngx.escape_uri
 local tonumber        = tonumber
 local tostring        = tostring
 local ipairs          = ipairs
 local concat          = table.concat
+local lower           = string.lower
 local find            = string.find
 local type            = type
 local sub             = string.sub
@@ -120,26 +123,87 @@ local function create_introspect_token(args, oic)
 end
 
 
-local function redirect_uri()
+local function redirect_uri(args)
   -- we try to use current url as a redirect_uri by default
   -- if none is configured.
+  local scheme
+  local host
+  local port
 
-  local scheme = var.scheme
-  if type(scheme) == "table" then
-    scheme = scheme[1]
+  if singletons.ip.trusted(var.realip_remote_addr or var.remote_addr) then
+    scheme = args.get_header("X-Forwarded-Proto")
+    if not scheme then
+      scheme = var.scheme
+      if type(scheme) == "table" then
+        scheme = scheme[1]
+      end
+    end
+
+    scheme = lower(scheme)
+
+    host = args.get_header("X-Forwarded-Host")
+    if host then
+      local s = find(host, "@", 1, true)
+      if s then
+        host = sub(host, s + 1)
+      end
+
+      s = find(host, ":", 1, true)
+      host = s and lower(sub(host, 1, s - 1)) or lower(host)
+
+    else
+      host = var.host
+      if type(host) == "table" then
+        host = host[1]
+      end
+    end
+
+    port = args.get_header("X-Forwarded-Port")
+    if port then
+      port = tonumber(port)
+      if not port or port < 1 or port > 65535 then
+        local h = args.get_header("X-Forwarded-Host")
+        if h then
+          local s = find(h, "@", 1, true)
+          if s then
+            h = sub(h, s + 1)
+          end
+
+          s = find(h, ":", 1, true)
+          if s then
+            port = tonumber(sub(h, s + 1))
+          end
+        end
+      end
+    end
+
+    if not port or port < 1 or port > 65535 then
+      port = var.server_port
+      if type(port) == "table" then
+        port = port[1]
+      end
+
+      port = tonumber(port)
+    end
+
+  else
+    scheme = var.scheme
+    if type(scheme) == "table" then
+      scheme = scheme[1]
+    end
+
+    host = var.host
+    if type(host) == "table" then
+      host = host[1]
+    end
+
+    port = var.server_port
+    if type(port) == "table" then
+      port = port[1]
+    end
+
+    port = tonumber(port)
   end
-
-  local host = var.host
-  if type(host) == "table" then
-    host = host[1]
-  end
-
-  local port = var.server_port
-  if type(port) == "table" then
-    port = port[1]
-  end
-
-  port = tonumber(port)
 
   local u = var.request_uri
   if type(u) == "table" then
@@ -363,7 +427,7 @@ local function find_trusted_client(args)
     client.id                        = client_id
     client.index                     = client_index
     client.secret                    = secrets[client_index]                    or secrets[1]
-    client.redirect_uri              = redirects[client_index]                  or redirects[1] or redirect_uri()
+    client.redirect_uri              = redirects[client_index]                  or redirects[1] or redirect_uri(args)
     client.login_redirect_uri        = login_redirect_uris[client_index]        or login_redirect_uris[1]
     client.logout_redirect_uri       = logout_redirect_uris[client_index]       or logout_redirect_uris[1]
     client.forbidden_redirect_uri    = forbidden_redirect_uris[client_index]    or forbidden_redirect_uris[1]
@@ -374,7 +438,7 @@ local function find_trusted_client(args)
     client.id                        = clients[1]
     client.index                     = 1
     client.secret                    = secrets[1]
-    client.redirect_uri              = redirects[1] or redirect_uri()
+    client.redirect_uri              = redirects[1] or redirect_uri(args)
     client.login_redirect_uri        = login_redirect_uris[1]
     client.logout_redirect_uri       = logout_redirect_uris[1]
     client.forbidden_redirect_uri    = forbidden_redirect_uris[1]
@@ -896,10 +960,33 @@ function OICHandler:access(conf)
   -- try to open session
   local session, session_present, session_data
   if auth_methods.session then
+
+    local session_secure = args.get_conf_arg("session_cookie_secure")
+    if session_secure == nil then
+      local scheme
+      if singletons.ip.trusted(var.realip_remote_addr or var.remote_addr) then
+        scheme = args.get_header("X-Forwarded-Proto")
+      end
+
+      if not scheme then
+        scheme = var.scheme
+        if type(scheme) == "table" then
+          scheme = scheme[1]
+        end
+      end
+
+      session_secure = lower(scheme) == "https"
+    end
+
     session, session_present = session_open {
       name = args.get_conf_arg("session_cookie_name", "session"),
       cookie = {
-        lifetime =  args.get_conf_arg("session_cookie_lifetime", 3600),
+        lifetime = args.get_conf_arg("session_cookie_lifetime", 3600),
+        path     = args.get_conf_arg("session_cookie_path", "/"),
+        domain   = args.get_conf_arg("session_cookie_domain"),
+        samesite = args.get_conf_arg("session_cookie_samesite", "Lax"),
+        httponly = args.get_conf_arg("session_cookie_httponly", true),
+        secure   = session_secure,
       },
     }
 
@@ -1213,11 +1300,33 @@ function OICHandler:access(conf)
         -- authorization code flow
         if auth_methods.authorization_code then
           log("trying to open authorization code flow session")
+
+          local authorization_secure = args.get_conf_arg("authorization_cookie_secure")
+          if authorization_secure == nil then
+            local scheme
+            if singletons.ip.trusted(var.realip_remote_addr or var.remote_addr) then
+              scheme = args.get_header("X-Forwarded-Proto")
+            end
+
+            if not scheme then
+              scheme = var.scheme
+              if type(scheme) == "table" then
+                scheme = scheme[1]
+              end
+            end
+
+            authorization_secure = lower(scheme) == "https"
+          end
+
           local authorization, authorization_present = session_open {
             name = args.get_conf_arg("authorization_cookie_name", "authorization"),
             cookie = {
-              lifetime =  args.get_conf_arg("authorization_cookie_lifetime", 600),
-              samesite = "off",
+              lifetime = args.get_conf_arg("authorization_cookie_lifetime", 600),
+              path     = args.get_conf_arg("authorization_cookie_path", "/"),
+              domain   = args.get_conf_arg("authorization_cookie_domain"),
+              samesite = args.get_conf_arg("authorization_cookie_samesite", "off"),
+              httponly = args.get_conf_arg("authorization_cookie_httponly", true),
+              secure   = authorization_secure,
             },
           }
 

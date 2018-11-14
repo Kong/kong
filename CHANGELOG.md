@@ -1,3 +1,21 @@
+## v0.2.3
+
+- Add support for `X-Forwarded-*` headers in automatic `config.redirect_uri` generation
+- Add `config.session_cookie_path`
+- Add `config.session_cookie_domain`
+- Add `config.session_cookie_samesite`
+- Add `config.session_cookie_httponly`
+- Add `config.session_cookie_secure`
+- Add `config.authorization_cookie_path`
+- Add `config.authorization_cookie_domain`
+- Add `config.authorization_cookie_samesite`
+- Add `config.authorization_cookie_httponly`
+- Add `config.authorization_cookie_secure`
+- Add back the deprecated `openid-connect-authentication` plugin one last time before final removal
+- Add back the deprecated `openid-connect-protection` plugin one last time before final removal
+- Add back the deprecated `openid-connect-verification` plugin one last time before final removal
+
+
 ## v0.2.2
 
 - Change decoding needed for option features does not verify
@@ -9,6 +27,7 @@
   the IdP.
 - Add `config.rediscovery_lifetime`
 
+
 ## v0.2.1
 
 - IMPORTANT Change `config.ssl_verify` to default to `false`.
@@ -18,6 +37,7 @@
 - Add `config.authenticated_groups_claim`
 - Fix `expiry` leeway counting when there is refresh token
   available and when there is not.
+
 
 ## v0.2.0
 
@@ -34,12 +54,14 @@
 - Remove the deprecated `openid-connect-protection` plugin
 - Remove the deprecated `openid-connect-verification` plugin
 
+
 ## v0.1.9
 
 - Fix `ngx.ctx.authenticated_credential` was set when we didn't actually find
   a value with `config.credential_claim`
 - Add check to `consumer.status` and return forbidden if consumer is unapproved
 - Drop support for Kong distributions based on CE 0.10.x (or older)
+
 
 ## v0.1.8
 
@@ -49,24 +71,29 @@
 - Fix `kong_oauth2` auth_method so that it works without having to
   also add`bearer` or `introspection` to `config.auth_methods` 
 
+
 ## v0.1.7
 
 - Change expired or non-active access tokens to give `401` instead of `403`
   to better follow: https://tools.ietf.org/html/rfc7231#section-6.5.3
 - Add `config.introspect_jwt_tokens`
 
+
 ## v0.1.6
 
 - Revert ill-merged RBACv2 PR #17.
+
 
 ## v0.1.5
 
 - Change `self_check` to run only on `content` and `access` phases. 
 
+
 ## v0.1.4
 
 - Fix `config.scopes` when set to `null` or `""` so that it doesn't add `openid`
   scope anymore.
+
 
 ## v0.1.3
 
@@ -75,16 +102,19 @@
 - Rediscovery of JWKS is now cached
 - Admin API self-check discovery
 
+
 ## v0.1.2
 
 This release adds option that allows e.g. rate-limiting by arbitrary claim:
 
 - Add `config.credential_claim`
 
+
 ## v0.1.1
 
 - Bearer token is now looked up on `Access-Token` and `X-Access-Token` headers
   too.
+
 
 ## v0.1.0
 
@@ -93,6 +123,7 @@ This release only fixes some bugs in 0.0.9.
 - Fix `exp` retrival
 - Fix `jwt_session_cookie` verification
 - Fix consumer mapping using introspection
+
 
 ## v0.0.9
 
@@ -146,6 +177,7 @@ This release adds:
 - Add `config.downstream_headers_claims`
 - Add `config.downstream_headers_names`
 
+
 ## v0.0.8
 
 NOTE: the way `config.anonymous` has changed in this release is a **BREAKING**
@@ -167,13 +199,16 @@ as other Kong Authentication plugins regarding to `config.anonymous`.
 - Change `config.client_id` from `required` to `optional`
 - Change `config.client_secret` from `required` to `optional`
 
+
 ## v0.0.7
 
 - Fixed authorization code flow client selection
 
+
 ## v0.0.6
 
 - Updated .VERSION property of all the plugins (sorry, forgot that in 0.0.5)
+
 
 ## v0.0.5
 
@@ -191,6 +226,7 @@ as other Kong Authentication plugins regarding to `config.anonymous`.
 - Add `config.end_session_endpoint`
 - Change `config.login_redirect_uri` from `string` to `array`
 
+
 ## v0.0.4
 
 - Add changelog
@@ -198,6 +234,7 @@ as other Kong Authentication plugins regarding to `config.anonymous`.
 - Fix invalid re-verify to cleanup existing session
 - Update docs with removal of non-accessible uris
 - Update .rockspec with new homepage and repository link
+
 
 ## v0.0.3
 
