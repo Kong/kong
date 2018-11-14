@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -e
+set -o pipefail
 
 export BUSTED_ARGS="-o gtest -v --exclude-tags=flaky,ipv6"
 
