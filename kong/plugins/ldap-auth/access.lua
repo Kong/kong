@@ -151,26 +151,45 @@ end
 local function set_consumer(consumer, credential)
   kong.client.authenticate(consumer, credential)
 
+  local set_header = kong.service.request.set_header
+  local clear_header = kong.service.request.clear_header
+
   if consumer then
     -- this can only be the Anonymous user in this case
-    kong.service.request.set_header(constants.HEADERS.CONSUMER_ID, consumer.id)
-    kong.service.request.set_header(constants.HEADERS.CONSUMER_CUSTOM_ID, consumer.custom_id)
-    kong.service.request.set_header(constants.HEADERS.CONSUMER_USERNAME, consumer.username)
-    kong.service.request.set_header(constants.HEADERS.ANONYMOUS, true)
+    if consumer.id then
+      set_header(constants.HEADERS.CONSUMER_ID, consumer.id)
+    else
+      clear_header(constants.HEADERS.CONSUMER_ID)
+    end
+
+    if consumer.custom_id then
+      set_header(constants.HEADERS.CONSUMER_CUSTOM_ID, consumer.custom_id)
+    else
+      clear_header(constants.HEADERS.CONSUMER_CUSTOM_ID)
+    end
+
+    if consumer.username then
+      set_header(constants.HEADERS.CONSUMER_USERNAME, consumer.username)
+    else
+      clear_header(constants.HEADERS.CONSUMER_USERNAME)
+    end
+
+    set_header(constants.HEADERS.ANONYMOUS, true)
 
     return
   end
 
-  if credential then
-    -- here we have been authenticated by ldap
-    kong.service.request.set_header(constants.HEADERS.CREDENTIAL_USERNAME, credential.username)
+  if credential and credential.username then
+    set_header(constants.HEADERS.CREDENTIAL_USERNAME, credential.username)
+  else
+    clear_header(constants.HEADERS.CREDENTIAL_USERNAME)
   end
 
   -- in case of auth plugins concatenation, remove remnants of anonymous
-  kong.service.request.clear_header(constants.HEADERS.ANONYMOUS)
-  kong.service.request.clear_header(constants.HEADERS.CONSUMER_ID)
-  kong.service.request.clear_header(constants.HEADERS.CONSUMER_CUSTOM_ID)
-  kong.service.request.clear_header(constants.HEADERS.CONSUMER_USERNAME)
+  clear_header(constants.HEADERS.ANONYMOUS)
+  clear_header(constants.HEADERS.CONSUMER_ID)
+  clear_header(constants.HEADERS.CONSUMER_CUSTOM_ID)
+  clear_header(constants.HEADERS.CONSUMER_USERNAME)
 end
 
 
