@@ -85,7 +85,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             if client then
               client:close()
             end
-          
+
             if portal_api_client then
               portal_api_client:close()
             end
@@ -280,7 +280,7 @@ for _, strategy in helpers.each_strategy('postgres') do
           if client then
             client:close()
           end
-        
+
           if portal_api_client then
             portal_api_client:close()
           end
@@ -376,6 +376,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             portal_auth = "basic-auth",
             rbac = rbac,
             portal_auth_config = "{ \"hide_credentials\": true }",
+            admin_gui_url = "http://localhost:8080",
           }))
 
           configure_portal(dao)
@@ -390,7 +391,7 @@ for _, strategy in helpers.each_strategy('postgres') do
           if client then
             client:close()
           end
-        
+
           if portal_api_client then
             portal_api_client:close()
           end
@@ -568,6 +569,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             portal_auth = "basic-auth",
             portal_auth_config = "{ \"hide_credentials\": true }",
             portal_auto_approve = "on",
+            admin_gui_url = "http://localhost:8080",
           }))
 
           portal_api_client = assert(ee_helpers.portal_api_client())
@@ -602,7 +604,7 @@ for _, strategy in helpers.each_strategy('postgres') do
           if client then
             client:close()
           end
-        
+
           if portal_api_client then
             portal_api_client:close()
           end
@@ -737,7 +739,8 @@ for _, strategy in helpers.each_strategy('postgres') do
             portal_auth = "basic-auth",
             portal_auth_config = "{ \"hide_credentials\": true }",
             portal_auto_approve = "on",
-            smtp_mock = "on"
+            smtp_mock = "on",
+            admin_gui_url = "http://localhost:8080",
           }))
 
           portal_api_client = assert(ee_helpers.portal_api_client())
@@ -788,7 +791,7 @@ for _, strategy in helpers.each_strategy('postgres') do
           if client then
             client:close()
           end
-        
+
           if portal_api_client then
             portal_api_client:close()
           end
@@ -982,6 +985,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             portal_auth = "basic-auth",
             portal_auth_config = "{ \"hide_credentials\": true }",
             portal_auto_approve = "on",
+            admin_gui_url = "http://localhost:8080",
           }))
 
           portal_api_client = assert(ee_helpers.portal_api_client())
@@ -1032,7 +1036,7 @@ for _, strategy in helpers.each_strategy('postgres') do
           if client then
             client:close()
           end
-        
+
           if portal_api_client then
             portal_api_client:close()
           end
@@ -1167,6 +1171,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             rbac = rbac,
             portal_auth = "key-auth",
             portal_auto_approve = "on",
+            admin_gui_url = "http://localhost:8080",
           }))
 
           portal_api_client = assert(ee_helpers.portal_api_client())
@@ -1217,7 +1222,7 @@ for _, strategy in helpers.each_strategy('postgres') do
           if client then
             client:close()
           end
-        
+
           if portal_api_client then
             portal_api_client:close()
           end
@@ -1409,6 +1414,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             rbac = rbac,
             portal_auth = "key-auth",
             portal_auto_approve = "on",
+            admin_gui_url = "http://localhost:8080",
           }))
 
           portal_api_client = assert(ee_helpers.portal_api_client())
@@ -1459,7 +1465,7 @@ for _, strategy in helpers.each_strategy('postgres') do
           if client then
             client:close()
           end
-        
+
           if portal_api_client then
             portal_api_client:close()
           end
@@ -1625,7 +1631,7 @@ for _, strategy in helpers.each_strategy('postgres') do
           if client then
             client:close()
           end
-        
+
           if portal_api_client then
             portal_api_client:close()
           end
@@ -1721,7 +1727,7 @@ for _, strategy in helpers.each_strategy('postgres') do
           if client then
             client:close()
           end
-        
+
           if portal_api_client then
             portal_api_client:close()
           end
@@ -1832,7 +1838,7 @@ for _, strategy in helpers.each_strategy('postgres') do
           if client then
             client:close()
           end
-        
+
           if portal_api_client then
             portal_api_client:close()
           end
@@ -1955,7 +1961,7 @@ for _, strategy in helpers.each_strategy('postgres') do
           if client then
             client:close()
           end
-        
+
           if portal_api_client then
             portal_api_client:close()
           end
@@ -2107,7 +2113,7 @@ for _, strategy in helpers.each_strategy('postgres') do
           if client then
             client:close()
           end
-        
+
           if portal_api_client then
             portal_api_client:close()
           end
@@ -2225,7 +2231,7 @@ for _, strategy in helpers.each_strategy('postgres') do
           if client then
             client:close()
           end
-        
+
           if portal_api_client then
             portal_api_client:close()
           end
@@ -2353,7 +2359,7 @@ for _, strategy in helpers.each_strategy('postgres') do
           if client then
             client:close()
           end
-        
+
           if portal_api_client then
             portal_api_client:close()
           end
@@ -2455,7 +2461,7 @@ for _, strategy in helpers.each_strategy('postgres') do
           if client then
             client:close()
           end
-        
+
           if portal_api_client then
             portal_api_client:close()
           end
@@ -2742,7 +2748,7 @@ for _, strategy in helpers.each_strategy('postgres') do
           if client then
             client:close()
           end
-        
+
           if portal_api_client then
             portal_api_client:close()
           end
@@ -2868,7 +2874,7 @@ for _, strategy in helpers.each_strategy('postgres') do
           if client then
             client:close()
           end
-        
+
           if portal_api_client then
             portal_api_client:close()
           end

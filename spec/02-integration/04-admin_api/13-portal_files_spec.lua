@@ -584,6 +584,7 @@ describe("Admin API - Developer Portal - " .. strategy, function()
         portal_auth = "basic-auth",
         portal_auth_config = "{ \"hide_credentials\": true }",
         portal_auto_approve = "off",
+        admin_gui_url = "http://localhost:8080",
       }))
 
       portal_api_client = assert(ee_helpers.portal_api_client())

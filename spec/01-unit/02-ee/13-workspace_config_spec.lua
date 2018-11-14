@@ -190,7 +190,7 @@ describe("workspace config", function()
       ws_conf_item = ws_helper.retrieve_ws_config(ws_constants.PORTAL_EMAILS_REPLY_TO, workspace)
       assert.equal(ws_conf_item, singletons.configuration.portal_emails_reply_to)
     end)
-  
+
     it("should overwrite default config value when present in db", function()
       local workspace = {
         config = {
@@ -330,5 +330,43 @@ describe("build_ws_portal_gui_url", function()
     local expected_url = 'http://test_workspace.subdomain.mykewlwebsite.org'
     local portal_gui_url = ws_helper.build_ws_portal_gui_url(config, workspace)
     assert.equal(portal_gui_url, expected_url)
+  end)
+end)
+
+describe("build_ws_admin_gui_url", function()
+  local snapshot
+
+  before_each(function()
+    snapshot = assert:snapshot()
+  end)
+
+  after_each(function()
+    snapshot:revert()
+  end)
+
+  it("should return admin_gui_url if no workspace name", function()
+    local config = {
+      admin_gui_url = "http://admins-are-fun.org",
+    }
+
+    local workspace = {}
+
+    local expected_url = "http://admins-are-fun.org"
+    local admin_gui_url = ws_helper.build_ws_admin_gui_url(config, workspace)
+    assert.equal(admin_gui_url, expected_url)
+  end)
+
+  it("should return admin_gui_url appended with workspace name", function()
+    local config = {
+      admin_gui_url = 'http://admins-are-fun.org',
+    }
+
+    local workspace = {
+      name = "test_workspace"
+    }
+
+    local expected_url = 'http://admins-are-fun.org/test_workspace'
+    local admin_gui_url = ws_helper.build_ws_admin_gui_url(config, workspace)
+    assert.equal(admin_gui_url, expected_url)
   end)
 end)

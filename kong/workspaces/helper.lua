@@ -189,7 +189,7 @@ end
 -- used to retrieve workspace specific configuration values.
 -- * config must exist in default configuration or will result
 --   in an error.
--- * if workspace specific config does not exist fall back to 
+-- * if workspace specific config does not exist fall back to
 --   default config value.
 function _M.retrieve_ws_config(config_name, workspace)
   if workspace.config and workspace.config[config_name] ~= nil then
@@ -197,6 +197,23 @@ function _M.retrieve_ws_config(config_name, workspace)
   end
 
   return singletons.configuration[config_name]
+end
+
+
+function _M.build_ws_admin_gui_url(config, workspace)
+  local admin_gui_url = config.admin_gui_url
+  -- this will only occur when smtp_mock is on
+  -- otherwise, conf_loader will throw an error if
+  -- admin_gui_url is nil
+  if not admin_gui_url then
+    return ""
+  end
+
+  if not workspace.name or workspace.name == "" then
+    return admin_gui_url
+  end
+
+  return admin_gui_url .. "/" .. workspace.name
 end
 
 

@@ -15,6 +15,7 @@ describe("ee portal emails", function()
       portal_approved_email = true,
       portal_reset_email = true,
       portal_reset_success_email = true,
+      admin_gui_url = "http://localhost:8080",
       smtp_admin_emails = {"admin@example.com"},
     }
   end)

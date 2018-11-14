@@ -116,7 +116,7 @@ function _M:invite(recipients)
   if not portal_invite_email then
     return nil, {code =  501, message = "portal_invite_email is disabled"}
   end
-  
+
   local portal_gui_url = ws_helper.build_ws_portal_gui_url(singletons.configuration, workspace)
   local portal_emails_from = ws_helper.retrieve_ws_config(ws_constants.PORTAL_EMAILS_FROM, workspace)
   local portal_emails_reply_to = ws_helper.retrieve_ws_config(ws_constants.PORTAL_EMAILS_REPLY_TO, workspace)
@@ -146,7 +146,7 @@ function _M:access_request(developer_email, developer_name)
     return nil
   end
 
-  local admin_gui_url = singletons.configuration.admin_gui_url
+  local admin_gui_url = ws_helper.build_ws_admin_gui_url(singletons.configuration, workspace)
   local portal_gui_url = ws_helper.build_ws_portal_gui_url(singletons.configuration, workspace)
   local portal_emails_from = ws_helper.retrieve_ws_config(ws_constants.PORTAL_EMAILS_FROM, workspace)
   local portal_emails_reply_to = ws_helper.retrieve_ws_config(ws_constants.PORTAL_EMAILS_REPLY_TO, workspace)
