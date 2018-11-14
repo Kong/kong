@@ -16,12 +16,12 @@ local invalidate_cache = function(self, entity)
   end
 
   local cache_key = self:cache_key(consumer.id)
-
   return singletons.cache:invalidate(cache_key)
 end
 
 
 local _ACLs = {}
+
 
 function _ACLs:post_crud_event(operation, entity)
   local _, err, err_t = invalidate_cache(self, entity)
