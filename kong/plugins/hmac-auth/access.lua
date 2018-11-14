@@ -247,18 +247,41 @@ end
 
 
 local function set_consumer(consumer, credential)
-  kong.service.request.set_header(constants.HEADERS.CONSUMER_ID, consumer.id)
-  kong.service.request.set_header(constants.HEADERS.CONSUMER_CUSTOM_ID, consumer.custom_id)
-  kong.service.request.set_header(constants.HEADERS.CONSUMER_USERNAME, consumer.username)
+  local set_header = kong.service.request.set_header
+  local clear_header = kong.service.request.clear_header
+
+  if consumer and consumer.id then
+    set_header(constants.HEADERS.CONSUMER_ID, consumer.id)
+  else
+    clear_header(constants.HEADERS.CONSUMER_ID)
+  end
+
+  if consumer and consumer.custom_id then
+    set_header(constants.HEADERS.CONSUMER_CUSTOM_ID, consumer.custom_id)
+  else
+    clear_header(constants.HEADERS.CONSUMER_CUSTOM_ID)
+  end
+
+  if consumer and consumer.username then
+    set_header(constants.HEADERS.CONSUMER_USERNAME, consumer.username)
+  else
+    clear_header(constants.HEADERS.CONSUMER_USERNAME)
+  end
 
   kong.client.authenticate(consumer, credential)
 
   if credential then
-    kong.service.request.set_header(constants.HEADERS.CREDENTIAL_USERNAME, credential.username)
-    kong.service.request.clear_header(constants.HEADERS.ANONYMOUS)
+    if credential.username then
+      set_header(constants.HEADERS.CREDENTIAL_USERNAME, credential.username)
+    else
+      clear_header(constants.HEADERS.CREDENTIAL_USERNAME)
+    end
+
+    clear_header(constants.HEADERS.ANONYMOUS)
 
   else
-    kong.service.request.set_header(constants.HEADERS.ANONYMOUS, true)
+    clear_header(constants.HEADERS.CREDENTIAL_USERNAME)
+    set_header(constants.HEADERS.ANONYMOUS, true)
   end
 end
 
