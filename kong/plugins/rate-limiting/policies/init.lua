@@ -170,7 +170,7 @@ return {
           -- Only call select first time, since we know the connection is shared
           -- between instances that use the same redis database
 
-          local ok, err = red:select(conf.redis_database or 0)
+          local ok, err = red:select(conf.redis_database)
           if not ok then
             ngx_log(ngx.ERR, "failed to change Redis database: ", err)
             return nil, err
