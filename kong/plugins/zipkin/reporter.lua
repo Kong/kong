@@ -56,7 +56,7 @@ function zipkin_reporter_methods:report(span)
 		kind = span_kind_map[span_kind];
 		timestamp = span.timestamp * 1000000;
 		duration = math.floor(span.duration * 1000000); -- zipkin wants integer
-		-- TODO: shared?
+		-- shared = nil; -- We don't use shared spans (server reuses client generated spanId)
 		-- TODO: debug?
 		localEndpoint = localEndpoint;
 		remoteEndpoint = port and {
