@@ -27,8 +27,6 @@ return {
     end,
 
     PATCH = function(self, dao, helpers)
-      rebuild_routes()
-
       local ok, err_t, res, resources_created = oas_config.patch_auto_config(self.params.spec, self.params.recreate_routes)
       if not ok then
         return endpoints.handle_error(err_t)
