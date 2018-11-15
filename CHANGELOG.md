@@ -50,7 +50,7 @@
   provided as hostnames (e.g. Kubernetes with `cassandra_contact_points =
   cassandra`).
   [#3693](https://github.com/Kong/kong/pull/3693)
-- Fix an issue which prevented the use of unix domain sockets in some logging
+- Fix an issue which prevented the use of UNIX domain sockets in some logging
   plugins, and custom plugins making use of such sockets.
   Thanks [@rucciva](https://github.com/rucciva) for the patch.
   [#3633](https://github.com/Kong/kong/pull/3633)
@@ -76,7 +76,7 @@
 - basic-auth: Passwords with whitespaces are not trimmed anymore.
   Thanks [@aloisbarreras](https://github.com/aloisbarreras) for the patch.
   [#3650](https://github.com/Kong/kong/pull/3650)
-- hmac-auth: Ensure backwards compatibility for clients generating signatures
+- hmac-auth: Ensure backward compatibility for clients generating signatures
   without the request's querystring, as is the case for Kong versions prior to
   0.14.0, which broke this behavior. Users of this plugin on previous versions
   of Kong can now safely upgrade to the 0.14 family.
@@ -124,7 +124,7 @@ upgrade your Kong cluster.
   are installing Kong from one of our distribution packages, you are not
   affected by this change.
   [#3498](https://github.com/Kong/kong/pull/3498)
-- :warning: Support for PostreSQL 9.4 (deprecated in 0.12.0) is now dropped.
+- :warning: Support for PostgreSQL 9.4 (deprecated in 0.12.0) is now dropped.
   [#3490](https://github.com/Kong/kong/pull/3490)
 - :warning: Support for Cassandra 2.1 (deprecated in 0.12.0) is now dropped.
   [#3490](https://github.com/Kong/kong/pull/3490)
@@ -133,7 +133,7 @@ upgrade your Kong cluster.
 
 - :warning: The `server_tokens` and `latency_tokens` configuration properties
   have been removed. Instead, a new `headers` configuration properties replaces
-  them and allows for a more granular settings of injected headers (e.g.
+  them and allows for more granular settings of injected headers (e.g.
   `Server`, `Via`, `X-Kong-*-Latency`, etc...).
   [#3300](https://github.com/Kong/kong/pull/3300)
 - :warning: New required `lua_shared_dict` entries must be added to the Nginx
@@ -158,7 +158,7 @@ upgrade your Kong cluster.
   received notable usability improvements, but suffer from a few breaking
   changes.
   [#3386](https://github.com/Kong/kong/pull/3386)
-- :warning: The Consumers entitiy has moved to the new DAO implementation. As
+- :warning: The Consumers entity has moved to the new DAO implementation. As
   such, the `/consumers` endpoint has received notable usability improvements,
   but suffers from a few breaking changes.
   [#3437](https://github.com/Kong/kong/pull/3437)
@@ -245,7 +245,7 @@ upgrade your Kong cluster.
   traces and report them to a running Zipkin instance.
   (See: https://github.com/Kong/kong-plugin-zipkin)
   [#3434](https://github.com/Kong/kong/pull/3434)
-- :fireworks: **New bundled plugin: Prometheus**! This plugins allows Kong to
+- :fireworks: **New bundled plugin: Prometheus**! This plugin allows Kong to
   expose metrics in the Prometheus Exposition format. Available metrics include
   HTTP status codes, latencies histogram, bandwidth, and more...
   (See: https://github.com/Kong/kong-plugin-prometheus)
@@ -2367,7 +2367,7 @@ This release contains tiny bug fixes that were especially annoying for complex C
  We would recommended to consult the suggested [0.6 upgrade path](https://github.com/Kong/kong/blob/master/UPGRADE.md#upgrade-to-06x) for this release.
 
 - [Serf](https://www.serfdom.io) is now a Kong dependency. It allows Kong nodes to communicate between each other opening the way to many features and improvements.
-- The configuration file changed. Some properties were renamed, others were moved, and some are new. We would recommended checking out the new default configuration file.
+- The configuration file changed. Some properties were renamed, others were moved, and some are new. We would recommend checking out the new default configuration file.
 - Drop the Lua 5.1 dependency which was only used by the CLI. The CLI now runs with LuaJIT, which is consistent with other Kong components (Luarocks and OpenResty) already relying on LuaJIT. Make sure the LuaJIT interpreter is included in your `$PATH`. [#799](https://github.com/Kong/kong/pull/799)
 
 ### Added
@@ -2745,7 +2745,7 @@ Queries effectuated during the downtime will still be lost. [#11](https://github
 
 #### Fixed
 - Resolver
-  - More explicit "API not found" message from the resolver if the Host was not found in the system. "Api not foun with Host: %s".
+  - More explicit "API not found" message from the resolver if the Host was not found in the system. "API not found with Host: %s".
   - If multiple hosts headers are being sent, Kong will test them all to see if one of the API is in the system. [#186](https://github.com/Kong/kong/pull/186)
 - Admin API: responses now have a new line after the body. [#164](https://github.com/Kong/kong/issues/164)
 - DAO: keepalive property is now properly passed when Kong calls `set_keepalive` on Cassandra sockets.

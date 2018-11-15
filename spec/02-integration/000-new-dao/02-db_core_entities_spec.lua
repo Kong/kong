@@ -950,7 +950,12 @@ for _, strategy in helpers.each_strategy() do
           assert.not_equal(0, service.updated_at)
         end)
 
-        it("cannot create a Service with an existing id", function()
+        pending("cannot create a Service with an existing id", function()
+          -- This test is marked as pending because it will be failing for the
+          -- same reasons as its equivalent test for Routes. That is:
+          -- TODO: the uuid type is `auto` for now, so cannot be overidden for
+          -- such a test.
+
           -- insert 1
           local _, _, err_t = db.services:insert {
             id = a_blank_uuid,

@@ -1,6 +1,6 @@
 -- JWT verification module
 -- Adapted version of x25/luajwt for Kong. It provides various improvements and
--- an OOP architecture allowing the JWT to be parsed and verified separatly,
+-- an OOP architecture allowing the JWT to be parsed and verified separately,
 -- avoiding multiple parsings.
 --
 -- @see https://github.com/x25/luajwt
@@ -252,8 +252,8 @@ local _M = {}
 _M.__index = _M
 
 
---- Instanciate a JWT parser
--- Parse a JWT and instanciate a JWT parser for further operations
+--- Instantiate a JWT parser
+-- Parse a JWT and instantiate a JWT parser for further operations
 -- Return errors instead of an instance if any encountered
 -- @param token JWT to parse
 -- @return JWT parser

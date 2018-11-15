@@ -65,7 +65,7 @@ local _M = {
 }
 
 --- Define some default response bodies for some status codes.
--- Some other status codes will have response bodies that cannot be overriden.
+-- Some other status codes will have response bodies that cannot be overridden.
 -- Example: 204 MUST NOT have content, but if 404 has no content then "Not found" will be set.
 -- @field status_codes.HTTP_UNAUTHORIZED Default: Unauthorized
 -- @field status_codes.HTTP_NO_CONTENT Always empty.

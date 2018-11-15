@@ -46,7 +46,7 @@ describe("api_helpers", function()
       }, norm {
         foo = "bar",
         number = 10,
-        ["config.nested"] = {["1"]="hello", ["2"]="world"}
+        ["config.nested"] = {["1"] = "hello", ["2"] = "world"}
       })
     end)
     it("complete use case", function()

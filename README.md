@@ -1,6 +1,7 @@
 [![][kong-logo]][kong-url]
 
 [![Build Status][badge-travis-image]][badge-travis-url]
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://github.com/Kong/kong/blob/master/LICENSE)
 
 Kong is a cloud-native, fast, scalable, and distributed Microservice
 Abstraction Layer *(also known as an API Gateway, API Middleware or in some
@@ -28,9 +29,9 @@ IRC (freenode): [#kong](https://webchat.freenode.net/?channels=kong) |
 
 ## Why Kong?
 
-If you are building for web, mobile or IoT (Internet of Things) you will likely
-end up needing common functionality to run your actual software. Kong can
-help by acting as a gateway (or a sidecar) for microservices requests while
+If you are building for the web, mobile, or IoT (Internet of Things) you will
+likely end up needing common functionality to run your actual software. Kong
+can help by acting as a gateway (or a sidecar) for microservices requests while
 providing load balancing, logging, authentication, rate-limiting,
 transformations, and more through plugins.
 

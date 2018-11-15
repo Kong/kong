@@ -579,9 +579,6 @@ function _M.new(routes)
                 wildcard_hosts)
   end
 
-  sort(prefix_uris, function(p1, p2)
-    return #p1 > #p2
-  end)
 
   sort(prefix_uris, function(p1, p2)
     return #p1.value > #p2.value
