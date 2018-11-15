@@ -989,6 +989,37 @@ luassert:register("assertion", "formparam", req_form_param,
                   "assertion.req_form_param.negative",
                   "assertion.req_form_param.positive")
 
+--- Assertion to check whether a CN is matched in an SSL cert.
+-- @param expected The CN value
+-- @param cert The cert
+-- @return boolean
+-- @usage
+-- assert.cn("ssl-example.com", cert)
+local function assert_cn(state, args)
+  local expected, cert = unpack(args)
+  local cn = string.match(cert, "CN%s*=%s*([^%s,]+)")
+  args[2] = cn or "(CN not found in certificate)"
+  args.n = 2
+  return cn == expected
+end
+say:set("assertion.cn.negative", [[
+Expected certificate to have the given CN value.
+Expected CN:
+%s
+Got instead:
+%s
+]])
+say:set("assertion.contains.positive", [[
+Expected certificate to not have the given CN value.
+Expected CN to not be:
+%s
+Got instead:
+%s
+]])
+luassert:register("assertion", "cn", assert_cn,
+                  "assertion.cn.negative",
+                  "assertion.cn.positive")
+
 ----------------
 -- Shell helpers
 -- @section Shell-helpers
