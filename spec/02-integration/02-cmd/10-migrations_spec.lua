@@ -115,7 +115,7 @@ for _, strategy in helpers.each_strategy() do
         assert.match("database already bootstrapped", stdout, 1, true)
       end)
 
-      it("-q supresses all output", function()
+      pending("-q suppresses all output", function()
         local code, stdout, stderr = run_kong("migrations bootstrap -q")
         assert.same(0, code)
         assert.same(0, #stdout)
@@ -165,7 +165,7 @@ for _, strategy in helpers.each_strategy() do
                      stdout, 1, true)
       end)
 
-      it("-q supresses all output", function()
+      pending("-q suppresses all output", function()
         local code, stdout, stderr = run_kong("migrations list -q")
         assert.same(0, code)
         assert.same(0, #stdout)
@@ -206,7 +206,7 @@ for _, strategy in helpers.each_strategy() do
         assert.same(1, pending)
       end)
 
-      it("-q supresses all output", function()
+      pending("-q suppresses all output", function()
         local code, stdout, stderr = run_kong("migrations up -q")
         assert.same(0, code)
         assert.same(0, #stdout)
@@ -250,7 +250,7 @@ for _, strategy in helpers.each_strategy() do
         assert.same(0, pending)
       end)
 
-      it("-q supresses all output", function()
+      pending("-q suppresses all output", function()
         local code, stdout, stderr = run_kong("migrations finish -q")
         assert.same(0, code)
         assert.same(0, #stdout)
