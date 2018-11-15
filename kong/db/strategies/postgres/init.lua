@@ -862,6 +862,11 @@ function _mt:page(size, token, options)
 end
 
 
+function _mt:escape_literal(literal, field_name)
+  return escape_literal(self.connector, literal, self.fields[field_name])
+end
+
+
 local _M  = {
   CUSTOM_STRATEGIES = {
     plugins = require("kong.db.strategies.postgres.plugins"),
