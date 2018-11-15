@@ -30,7 +30,7 @@ describe("kong migrations", function()
 
         local ok, _, stdout, stderr = pl_utils.executeex(cmd)
         assert.is_true(ok)
-        assert.equal("", stderr)
+        assert.not_matches("error", stderr, nil, true)
         assert.matches("Are you sure? This operation is irreversible. [Y/n]",
                        stdout, nil, true)
         assert.matches("Schema successfully reset", stdout, nil, true)
@@ -52,7 +52,7 @@ describe("kong migrations", function()
         ]], answer, helpers.bin_path, helpers.test_conf_path)
         local ok, _, stdout, stderr = pl_utils.executeex(cmd)
         assert.is_true(ok)
-        assert.equal("", stderr)
+        assert.not_matches("error", stderr, nil, true)
         assert.matches("Are you sure? This operation is irreversible. [Y/n]",
                        stdout, nil, true)
         assert.matches("Canceled", stdout, nil, true)
@@ -63,7 +63,7 @@ describe("kong migrations", function()
       local ok, stderr, stdout = helpers.kong_exec("migrations reset --yes -c " ..
                                                    helpers.test_conf_path)
       assert.is_true(ok)
-      assert.is_equal("", stderr)
+      assert.not_matches("error", stderr, nil, true)
       assert.not_matches("Are you sure? This operation is irreversible. [Y/n]",
                          stdout, nil, true)
       assert.matches("Schema successfully reset", stdout, nil, true)
@@ -73,7 +73,7 @@ describe("kong migrations", function()
       local ok, stderr, stdout = helpers.kong_exec("migrations reset -y -c " ..
                                                    helpers.test_conf_path)
       assert.is_true(ok)
-      assert.is_equal("", stderr)
+      assert.not_matches("error", stderr, nil, true)
       assert.not_matches("Are you sure? This operation is irreversible. [Y/n]",
                          stdout, nil, true)
       assert.matches("Schema successfully reset", stdout, nil, true)
