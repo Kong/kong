@@ -212,6 +212,8 @@ local CONF_SENSITIVE = {
   pg_password = true,
   cassandra_password = true,
   smtp_password = true,
+  admin_gui_auth_conf = true,
+  portal_auth_conf = true,
 }
 
 local CONF_SENSITIVE_PLACEHOLDER = "******"
