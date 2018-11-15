@@ -1299,6 +1299,10 @@ function _M.new(connector, schema, errors)
     insert_expressions = concat(insert_expressions,  ", ")
     insert_columns = concat(insert_columns, ", ")
 
+    update_expressions = concat(update_expressions, ", ")
+
+    upsert_expressions = concat(upsert_expressions, ", ")
+
     create_statement = concat {
       "CREATE TABLE IF NOT EXISTS ", table_name_escaped, " (\n",
       "  ",   concat(create_expressions, ",\n  "), "\n",
@@ -1316,13 +1320,13 @@ function _M.new(connector, schema, errors)
       "INSERT INTO ",  table_name_escaped, " (", insert_columns, ")\n",
       "     VALUES (", insert_expressions, ")\n",
       "ON CONFLICT (", pk_escaped, ") DO UPDATE\n",
-      "        SET ",  concat(upsert_expressions, ", "), "\n",
+      "        SET ",  upsert_expressions, "\n",
       "  RETURNING ",  select_expressions, ";",
     }
 
     update_statement = concat {
       "   UPDATE ",  table_name_escaped, "\n",
-      "      SET ",  concat(update_expressions, ", "), "\n",
+      "      SET ",  update_expressions, "\n",
       "    WHERE (", pk_escaped, ") = (", update_placeholders, ")\n",
       "      AND (", ttl_escaped, " IS NULL OR ", ttl_escaped, " >= CURRENT_TIMESTAMP AT TIME ZONE 'UTC')\n",
       "RETURNING ",  select_expressions , ";"
@@ -1386,6 +1390,10 @@ function _M.new(connector, schema, errors)
     insert_expressions = concat(insert_expressions,  ", ")
     insert_columns = concat(insert_columns, ", ")
 
+    update_expressions = concat(update_expressions, ", ")
+
+    upsert_expressions = concat(upsert_expressions, ", ")
+
     create_statement = concat {
       "CREATE TABLE IF NOT EXISTS ", table_name_escaped, " (\n",
       "  ",   concat(create_expressions, ",\n  "), "\n",
@@ -1402,13 +1410,13 @@ function _M.new(connector, schema, errors)
       "INSERT INTO ",  table_name_escaped, " (", insert_columns, ")\n",
       "     VALUES (", insert_expressions, ")\n",
       "ON CONFLICT (", pk_escaped, ") DO UPDATE\n",
-      "        SET ",  concat(upsert_expressions, ", "), "\n",
+      "        SET ",  upsert_expressions, "\n",
       "  RETURNING ",  select_expressions, ";",
     }
 
     update_statement = concat {
       "   UPDATE ",  table_name_escaped, "\n",
-      "      SET ",  concat(update_expressions, ", "), "\n",
+      "      SET ",  update_expressions, "\n",
       "    WHERE (", pk_escaped, ") = (", update_placeholders, ")\n",
       "RETURNING ",  select_expressions , ";"
     }
@@ -1500,12 +1508,15 @@ function _M.new(connector, schema, errors)
         make           = compile(table_name .. "_insert", insert_statement),
       },
       upsert           = {
+        expr           = upsert_expressions,
         argn           = insert_names,
         argc           = insert_count,
         argv           = insert_args,
         make           = compile(table_name .. "_upsert", upsert_statement),
       },
       update           = {
+        expr           = update_expressions,
+        placeholders   = update_placeholders,
         argn           = update_args_names,
         argc           = update_args_count,
         argv           = update_args,
@@ -1518,6 +1529,7 @@ function _M.new(connector, schema, errors)
         make           = compile(table_name .. "_delete", delete_statement),
       },
       select           = {
+        expr           = select_expressions,
         argn           = primary_key_names,
         argc           = primary_key_count,
         argv           = primary_key_args,
@@ -1688,7 +1700,7 @@ function _M.new(connector, schema, errors)
       if ttl then
         update_by_statement = concat {
           "   UPDATE ",  table_name_escaped, "\n",
-          "      SET ",  concat(update_expressions, ", "), "\n",
+          "      SET ",  update_expressions, "\n",
           "    WHERE ",  unique_escaped, " = $", update_by_args_count, "\n",
           "      AND (", ttl_escaped, " IS NULL OR ", ttl_escaped, " >= CURRENT_TIMESTAMP AT TIME ZONE 'UTC')\n",
           "RETURNING ",  select_expressions , ";"
@@ -1697,7 +1709,7 @@ function _M.new(connector, schema, errors)
       else
         update_by_statement = concat {
           "   UPDATE ", table_name_escaped, "\n",
-          "      SET ", concat(update_expressions, ", "), "\n",
+          "      SET ", update_expressions, "\n",
           "    WHERE ", unique_escaped, " = $", update_by_args_count, "\n",
           "RETURNING ", select_expressions , ";"
         }
@@ -1725,7 +1737,7 @@ function _M.new(connector, schema, errors)
         "INSERT INTO ",  table_name_escaped, " (", insert_columns, ")\n",
         "     VALUES (", insert_expressions, ")\n",
         "ON CONFLICT (", conflict_key, ") DO UPDATE\n",
-        "        SET ",  concat(upsert_expressions, ", "), "\n",
+        "        SET ",  upsert_expressions, "\n",
         "  RETURNING ",  select_expressions, ";",
       }
 
