@@ -27,8 +27,7 @@ local span_kind_map = {
 }
 function zipkin_reporter_methods:report(span)
 	local span_context = span:context()
-	local span_kind = span:get_tag "span.kind"
-	local port = span:get_tag "peer.port"
+
 	local zipkin_tags = {}
 	for k, v in span:each_tag() do
 		-- Zipkin tag values should be strings
@@ -36,11 +35,16 @@ function zipkin_reporter_methods:report(span)
 		-- and https://github.com/Kong/kong-plugin-zipkin/pull/13#issuecomment-402389342
 		zipkin_tags[k] = tostring(v)
 	end
+
+	local span_kind = zipkin_tags["span.kind"]
+	zipkin_tags["span.kind"] = nil
+
 	local localEndpoint do
-		local service = ngx.ctx.service
-		if service and service.name and service.name ~= ngx.null then
+		local serviceName = zipkin_tags["peer.service"]
+		if serviceName then
+			zipkin_tags["peer.service"] = nil
 			localEndpoint = {
-				serviceName = service.name;
+				serviceName = serviceName;
 				-- TODO: ip/port from ngx.var.server_name/ngx.var.server_port?
 			}
 		else
@@ -48,6 +52,23 @@ function zipkin_reporter_methods:report(span)
 			localEndpoint = cjson.null
 		end
 	end
+
+	local remoteEndpoint do
+		local peer_port = span:get_tag "peer.port" -- get as number
+		if peer_port then
+			zipkin_tags["peer.port"] = nil
+			remoteEndpoint = {
+				ipv4 = zipkin_tags["peer.ipv4"];
+				ipv6 = zipkin_tags["peer.ipv6"];
+				port = peer_port; -- port is *not* optional
+			}
+			zipkin_tags["peer.ipv4"] = nil
+			zipkin_tags["peer.ipv6"] = nil
+		else
+			remoteEndpoint = cjson.null
+		end
+	end
+
 	local zipkin_span = {
 		traceId = to_hex(span_context.trace_id);
 		name = span.name;
@@ -59,11 +80,7 @@ function zipkin_reporter_methods:report(span)
 		-- shared = nil; -- We don't use shared spans (server reuses client generated spanId)
 		-- TODO: debug?
 		localEndpoint = localEndpoint;
-		remoteEndpoint = port and {
-			ipv4 = span:get_tag "peer.ipv4";
-			ipv6 = span:get_tag "peer.ipv6";
-			port = port; -- port is *not* optional
-		} or cjson.null;
+		remoteEndpoint = remoteEndpoint;
 		tags = zipkin_tags;
 		annotations = span.logs -- XXX: not guaranteed by documented opentracing-lua API to be in correct format
 	}
