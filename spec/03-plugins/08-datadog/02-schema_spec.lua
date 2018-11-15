@@ -96,7 +96,7 @@ describe("Plugin: datadog (schema)", function()
     }
     local _, err = v({ metrics = metrics_input }, schema_def)
     assert.not_nil(err)
-    assert.equal("value must be counter", err.config.metrics.stat_type)
+    assert.equal("value must be set", err.config.metrics.stat_type)
     metrics_input = {
       {
         name = "status_count",
@@ -106,7 +106,7 @@ describe("Plugin: datadog (schema)", function()
     }
     _, err = v({ metrics = metrics_input }, schema_def)
     assert.not_nil(err)
-    assert.equal("value must be set", err.config.metrics.stat_type)
+    assert.equal("value must be counter", err.config.metrics.stat_type)
   end)
   it("rejects if tags malformed", function()
     local metrics_input = {

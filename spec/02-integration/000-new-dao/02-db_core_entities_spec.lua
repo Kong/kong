@@ -987,7 +987,7 @@ for _, strategy in helpers.each_strategy() do
         it("cannot create a Service with an existing name", function()
           -- insert 1
           local _, _, err_t = db.services:insert {
-            name = "my_service",
+            name = "my_service_name",
             protocol = "http",
             host = "example.com",
           }
@@ -995,7 +995,7 @@ for _, strategy in helpers.each_strategy() do
 
           -- insert 2
           local service, _, err_t = db.services:insert {
-            name = "my_service",
+            name = "my_service_name",
             protocol = "http",
             host = "other-example.com",
           }
@@ -1003,10 +1003,10 @@ for _, strategy in helpers.each_strategy() do
           assert.same({
             code     = Errors.codes.UNIQUE_VIOLATION,
             name     = "unique constraint violation",
-            message  = "UNIQUE violation detected on '{name=\"my_service\"}'",
+            message  = "UNIQUE violation detected on '{name=\"my_service_name\"}'",
             strategy = strategy,
             fields   = {
-              name = "my_service",
+              name = "my_service_name",
             }
           }, err_t)
         end)
