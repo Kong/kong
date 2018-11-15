@@ -663,4 +663,57 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
   end)
+
+  -- This test is for cases when ngx.ctx.workspaces is not set correctly
+  -- when serving requests like "GET /userinfo" or "GET /default/kong".
+  describe("audit_log with rbac and admin_gui_auth" .. strategy, function()
+    local dao, admin_client, proxy_client
+
+    setup(function()
+      dao = select(3, helpers.get_db_utils(strategy))
+
+      assert(helpers.start_kong({
+        database   = strategy,
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+        audit_log  = "on",
+        admin_gui_auth = "basic-auth",
+        enforce_rbac = "on",
+        admin_gui_listen = "0.0.0.0:8002",
+      }))
+
+      dao.audit_requests:truncate()
+      dao.audit_objects:truncate()
+    end)
+
+    teardown(function()
+      helpers.stop_kong(nil, true)
+    end)
+
+    before_each(function()
+      admin_client = helpers.admin_client()
+      proxy_client = helpers.proxy_client()
+    end)
+
+    after_each(function()
+      admin_client:close()
+      proxy_client:close()
+    end)
+
+    local function delay()
+      ngx.sleep(strategy == "cassandra" and 1 or 0.3)
+    end
+
+    describe("audit log", function()
+      it("creates an audit_request entry", function()
+        local res = assert(admin_client:send({
+          path = "/default/kong",
+        }))
+        assert.res_status(401, res)
+
+        delay()
+
+        assert.same(1, dao.audit_requests:count())
+      end)
+    end)
+  end)
 end
