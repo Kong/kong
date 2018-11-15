@@ -6,6 +6,9 @@ local pl_file = require "pl.file"
 local pl_stringx = require "pl.stringx"
 
 
+local LOG_WAIT_TIMEOUT = 10
+
+
 for _, strategy in helpers.each_strategy() do
 
   describe("Plugins triggering [#" .. strategy .. "]", function()
@@ -347,7 +350,7 @@ for _, strategy in helpers.each_strategy() do
 
         helpers.wait_until(function()
           return pl_path.exists(FILE_LOG_PATH) and pl_path.getsize(FILE_LOG_PATH) > 0
-        end, 3)
+        end, LOG_WAIT_TIMEOUT)
 
         local log = pl_file.read(FILE_LOG_PATH)
         local log_message = cjson.decode(pl_stringx.strip(log))
@@ -416,7 +419,7 @@ for _, strategy in helpers.each_strategy() do
         -- access phase got a chance to inject the logging plugin
         helpers.wait_until(function()
           return pl_path.exists(FILE_LOG_PATH) and pl_path.getsize(FILE_LOG_PATH) > 0
-        end, 3)
+        end, LOG_WAIT_TIMEOUT)
 
         local log = pl_file.read(FILE_LOG_PATH)
         local log_message = cjson.decode(pl_stringx.strip(log))
@@ -673,7 +676,7 @@ for _, strategy in helpers.each_strategy() do
         helpers.wait_until(function()
           return pl_path.exists(FILE_LOG_PATH)
                  and pl_path.getsize(FILE_LOG_PATH) > 0
-        end, 3)
+        end, LOG_WAIT_TIMEOUT)
 
         local log = pl_file.read(FILE_LOG_PATH)
         local log_message = cjson.decode(pl_stringx.strip(log))
@@ -709,7 +712,7 @@ for _, strategy in helpers.each_strategy() do
         helpers.wait_until(function()
           return pl_path.exists(FILE_LOG_PATH)
                  and pl_path.getsize(FILE_LOG_PATH) > 0
-        end, 3)
+        end, LOG_WAIT_TIMEOUT)
 
         local log = pl_file.read(FILE_LOG_PATH)
         local log_message = cjson.decode(pl_stringx.strip(log))
@@ -741,7 +744,7 @@ for _, strategy in helpers.each_strategy() do
         helpers.wait_until(function()
           return pl_path.exists(FILE_LOG_PATH)
                  and pl_path.getsize(FILE_LOG_PATH) > 0
-        end, 3)
+        end, LOG_WAIT_TIMEOUT)
 
         local log = pl_file.read(FILE_LOG_PATH)
         local log_message = cjson.decode(pl_stringx.strip(log))
@@ -770,7 +773,7 @@ for _, strategy in helpers.each_strategy() do
         helpers.wait_until(function()
           return pl_path.exists(FILE_LOG_PATH)
                  and pl_path.getsize(FILE_LOG_PATH) > 0
-        end, 3)
+        end, LOG_WAIT_TIMEOUT)
 
         local log = pl_file.read(FILE_LOG_PATH)
         local log_message = cjson.decode(pl_stringx.strip(log))
@@ -804,7 +807,7 @@ for _, strategy in helpers.each_strategy() do
         helpers.wait_until(function()
           return pl_path.exists(FILE_LOG_PATH)
                  and pl_path.getsize(FILE_LOG_PATH) > 0
-        end, 3)
+        end, LOG_WAIT_TIMEOUT)
 
         local log = pl_file.read(FILE_LOG_PATH)
         local log_message = cjson.decode(pl_stringx.strip(log))
@@ -837,7 +840,7 @@ for _, strategy in helpers.each_strategy() do
         helpers.wait_until(function()
           return pl_path.exists(FILE_LOG_PATH)
                  and pl_path.getsize(FILE_LOG_PATH) > 0
-        end, 10)
+        end, LOG_WAIT_TIMEOUT)
 
         local log = pl_file.read(FILE_LOG_PATH)
         local log_message = cjson.decode(pl_stringx.strip(log))
@@ -875,7 +878,7 @@ for _, strategy in helpers.each_strategy() do
         helpers.wait_until(function()
           return pl_path.exists(FILE_LOG_PATH)
                  and pl_path.getsize(FILE_LOG_PATH) > 0
-        end, 10)
+        end, LOG_WAIT_TIMEOUT)
 
         local log = pl_file.read(FILE_LOG_PATH)
         local log_message = cjson.decode(pl_stringx.strip(log))
@@ -907,7 +910,7 @@ for _, strategy in helpers.each_strategy() do
         helpers.wait_until(function()
           return pl_path.exists(FILE_LOG_PATH)
                  and pl_path.getsize(FILE_LOG_PATH) > 0
-        end, 10)
+        end, LOG_WAIT_TIMEOUT)
 
         local log = pl_file.read(FILE_LOG_PATH)
         local log_message = cjson.decode(pl_stringx.strip(log))
@@ -944,7 +947,7 @@ for _, strategy in helpers.each_strategy() do
         helpers.wait_until(function()
           return pl_path.exists(FILE_LOG_PATH)
                  and pl_path.getsize(FILE_LOG_PATH) > 0
-        end, 10)
+        end, LOG_WAIT_TIMEOUT)
 
         local log = pl_file.read(FILE_LOG_PATH)
         local log_message = cjson.decode(pl_stringx.strip(log))
