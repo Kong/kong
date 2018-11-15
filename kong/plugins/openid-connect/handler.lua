@@ -19,7 +19,6 @@ local time            = ngx.time
 local null            = ngx.null
 local header          = ngx.header
 local set_header      = ngx.req.set_header
-local get_headers     = ngx.req.get_headers
 local escape_uri      = ngx.escape_uri
 local tonumber        = tonumber
 local tostring        = tostring
