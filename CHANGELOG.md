@@ -1,3 +1,7 @@
+## v0.2.4
+
+- Fix a bug that prevented `sub-plugins` from loading the `issuer` data.
+
 ## v0.2.3
 
 - Add support for `X-Forwarded-*` headers in automatic `config.redirect_uri` generation

@@ -104,6 +104,8 @@ end
 
 
 local function discover(issuer, opts, now)
+  opts = opts or {}
+
   log.notice("loading configuration for ", issuer, " using discovery")
   local claims, err = configuration.load(issuer, opts)
   if not claims then
@@ -209,6 +211,8 @@ local issuers = {}
 
 
 function issuers.rediscover(issuer, opts)
+  opts = opts or {}
+
   issuer = normalize_issuer(issuer)
 
   local discovery = singletons.dao.oic_issuers:find_all { issuer = issuer }
@@ -782,5 +786,5 @@ return {
   tokens         = tokens,
   token_exchange = token_exchange,
   userinfo       = userinfo,
-  version        = "0.2.3",
+  version        = "0.2.4",
 }
