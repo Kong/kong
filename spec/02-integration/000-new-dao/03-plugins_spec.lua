@@ -36,6 +36,7 @@ for _, strategy in helpers.each_strategy() do
               key_in_body = false,
               key_names = { "apikey" },
             },
+            run_on = "first",
             enabled = true,
             name = "key-auth",
             route = {
@@ -80,6 +81,7 @@ for _, strategy in helpers.each_strategy() do
               key_in_body = false,
               key_names = { "apikey" },
             },
+            run_on = "first",
             enabled = true,
             name = "key-auth",
             route = {
