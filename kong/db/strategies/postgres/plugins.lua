@@ -15,9 +15,12 @@ local Plugins = {}
 function Plugins:select_by_cache_key_migrating(key)
   -- unpack cache_key
   local parts = split(key, ":")
-
   -- build query and args
-  local qbuild = { "SELECT * FROM plugins WHERE name = '" .. parts[2] .. "'" }
+
+  local qbuild = { "SELECT " ..
+                   self.statements.select.expr ..
+                   " FROM plugins WHERE name = " ..
+                   self:escape_literal(parts[2]) }
   for i, field in ipairs({
     "route_id",
     "service_id",
@@ -37,7 +40,7 @@ function Plugins:select_by_cache_key_migrating(key)
   local res, err = self.connector:query(query)
   if res and res[1] then
     res[1].cache_key = nil
-    return res[1]
+    return self.expand(res[1]), nil
   end
 
   -- not found
