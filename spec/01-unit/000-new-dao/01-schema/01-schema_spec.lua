@@ -1272,6 +1272,19 @@ describe("schema", function()
           assert.truthy(ok)
         end)
 
+        it("works on updates", function()
+          assert.truthy(Test:validate_insert({ }))
+
+          -- Can update to whole valid record
+          assert.truthy(Test:validate_update({ a = 123, b = "foo" }))
+
+          -- Empty update works
+          assert.truthy(Test:validate_update({ }))
+
+          -- Can update if_field without respecifying other fields
+          assert.truthy(Test:validate_update({ a = 123 }))
+        end)
+
         it("supports an 'else' clause", function()
           local Test = Schema.new({
             fields = {
