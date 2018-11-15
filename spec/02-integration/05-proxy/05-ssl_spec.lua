@@ -125,15 +125,15 @@ for _, strategy in helpers.each_strategy() do
     describe("handshake", function()
       it("sets the default fallback SSL certificate if no SNI match", function()
         local cert = get_cert("test.com")
-        assert.matches("CN=localhost", cert, nil, true)
+        assert.cn("localhost", cert)
       end)
 
       it("sets the configured SSL certificate if SNI match", function()
         local cert = get_cert("ssl1.com")
-        assert.matches("CN=ssl-example.com", cert, nil, true)
+        assert.cn("ssl-example.com", cert)
 
         cert = get_cert("example.com")
-        assert.matches("CN=ssl-example.com", cert, nil, true)
+        assert.cn("ssl-example.com", cert)
       end)
     end)
 
