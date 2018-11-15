@@ -57,9 +57,6 @@ do
 end
 
 
-local PRIVATE = {}
-
-
 local function noop(...)
   return ...
 end
@@ -488,13 +485,12 @@ end
 
 local function execute(strategy, statement_name, attributes, options)
   local connector = strategy.connector
-  local internal  = strategy[PRIVATE]
-  local statement = internal.statements[statement_name]
+  local statement = strategy.statements[statement_name]
   if not attributes then
     return connector:query(statement)
   end
 
-  local fields = internal.fields
+  local fields = strategy.fields
   local argn   = statement.argn
   local argv   = statement.argv
   local argc   = statement.argc
@@ -1489,61 +1485,61 @@ function _M.new(connector, schema, errors)
                          expand(table_name .. "_expand", foreign_key_list) or
                          noop,
     collapse           = collapse(table_name .. "_collapse", foreign_key_list),
-    [PRIVATE]          = {
-      fields           = fields_hash,
-      statements       = {
-        create         = create_statement,
-        truncate       = truncate_statement,
-        count          = count_statement,
-        drop           = drop_statement,
-        insert         = {
-          argn         = insert_names,
-          argc         = insert_count,
-          argv         = insert_args,
-          make         = compile(table_name .. "_insert", insert_statement),
-        },
-        upsert         = {
-          argn         = insert_names,
-          argc         = insert_count,
-          argv         = insert_args,
-          make         = compile(table_name .. "_upsert", upsert_statement),
-        },
-        update         = {
-          argn         = update_args_names,
-          argc         = update_args_count,
-          argv         = update_args,
-          make         = compile(table_name .. "_update", update_statement),
-        },
-        delete         = {
-          argn         = primary_key_names,
-          argc         = primary_key_count,
-          argv         = primary_key_args,
-          make         = compile(table_name .. "_delete", delete_statement),
-        },
-        select         = {
-          argn         = primary_key_names,
-          argc         = primary_key_count,
-          argv         = primary_key_args,
-          make         = compile(table_name .. "_select" , select_statement),
-        },
-        page_first     = {
-          argn         = { LIMIT },
-          argc         = 1,
-          argv         = single_args,
-          make         = compile(table_name .. "_first" , page_first_statement),
-        },
-        page_next      = {
-          argn         = page_next_names,
-          argc         = page_next_count,
-          argv         = page_next_args,
-          make         = compile(table_name .. "_next" , page_next_statement),
-        },
+    fields             = fields_hash,
+    statements         = {
+      create           = create_statement,
+      truncate         = truncate_statement,
+      count            = count_statement,
+      drop             = drop_statement,
+      insert           = {
+        expr           = insert_expressions,
+        cols           = insert_columns,
+        argn           = insert_names,
+        argc           = insert_count,
+        argv           = insert_args,
+        make           = compile(table_name .. "_insert", insert_statement),
       },
-    }
+      upsert           = {
+        argn           = insert_names,
+        argc           = insert_count,
+        argv           = insert_args,
+        make           = compile(table_name .. "_upsert", upsert_statement),
+      },
+      update           = {
+        argn           = update_args_names,
+        argc           = update_args_count,
+        argv           = update_args,
+        make           = compile(table_name .. "_update", update_statement),
+      },
+      delete           = {
+        argn           = primary_key_names,
+        argc           = primary_key_count,
+        argv           = primary_key_args,
+        make           = compile(table_name .. "_delete", delete_statement),
+      },
+      select           = {
+        argn           = primary_key_names,
+        argc           = primary_key_count,
+        argv           = primary_key_args,
+        make           = compile(table_name .. "_select" , select_statement),
+      },
+      page_first       = {
+        argn           = { LIMIT },
+        argc           = 1,
+        argv           = single_args,
+        make           = compile(table_name .. "_first" , page_first_statement),
+      },
+      page_next        = {
+        argn           = page_next_names,
+        argc           = page_next_count,
+        argv           = page_next_args,
+        make           = compile(table_name .. "_next" , page_next_statement),
+      },
+    },
   }, _mt)
 
   if foreign_key_count > 0 then
-    local statements = self[PRIVATE].statements
+    local statements = self.statements
 
     for foreign_entity_name, foreign_key in pairs(foreign_keys) do
       local fk_names   = foreign_key.names
@@ -1650,7 +1646,7 @@ function _M.new(connector, schema, errors)
   if unique_fields_count > 0 then
     local update_by_args_count = update_fields_count + 1
     local update_by_args = new_tab(update_by_args_count, 0)
-    local statements = self[PRIVATE].statements
+    local statements = self.statements
 
     for i = 1, unique_fields_count do
       local unique_field   = unique_fields[i]
