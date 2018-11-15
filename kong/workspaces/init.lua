@@ -689,7 +689,7 @@ local function validate_route_for_ws(router, method, uri, host, ws)
   elseif is_blank(selected_route.api.hosts) or
          ngx_null == selected_route.api.hosts then -- we match from a no-host route
     ngx_log(DEBUG, "selected_route has no host restriction")
-    return true
+    return false
 
   elseif is_wildcard_route(selected_route.api) then -- has host & it's wildcard
 

@@ -18,8 +18,19 @@ local pl_split     = pl_stringx.split
 local pl_pairmap   = pl_tablex.pairmap
 local tonumber     = tonumber
 
+local core_handler = require "kong.core.handler"
+local uuid         = require("kong.tools.utils").uuid
+
 
 local _M = {}
+
+
+local function rebuild_routes()
+  local old_wss = ngx.ctx.workspaces
+  ngx.ctx.workspaces = {}
+  core_handler.build_router(singletons.db, uuid())
+  ngx.ctx.workspaces = old_wss
+end
 
 
 function _M.post_auto_config(spec_str)
@@ -81,6 +92,8 @@ function _M.patch_auto_config(spec_str, recreate_routes)
     if err then
       return nil, err
     end
+
+    rebuild_routes()
 
     routes, err = _M.create_routes(spec, services)
     if err then

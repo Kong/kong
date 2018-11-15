@@ -848,6 +848,45 @@ describe("Admin API #" .. kong_config.database, function()
           })
           assert.res_status(201, res)
       end)
+      it("does not allow creating routes that collide in path and have no host", function()
+        local wsname = utils.uuid()
+        local res = client:send {
+          method = "POST",
+          path = "/workspaces",
+          body = {
+            name = wsname,
+          },
+          headers = {["Content-Type"] = "application/json"}
+        }
+        assert.res_status(201, res)
+
+        res = client:send {
+          method = "POST",
+          path = "/apis",
+          body = {
+            uris = "/",
+            methods = "GET",
+            name = "my-api",
+            upstream_url = "http://api.com",
+          },
+          headers = {["Content-Type"] = "application/json"}
+        }
+        assert.res_status(201, res)
+
+        res = assert(client:send {
+          method = "POST",
+          path = "/".. wsname .. "/apis",
+          body = {
+            uris = "/",
+            methods = "GET",
+            name = "my-api2",
+            upstream_url = "http://api.com"
+          },
+          headers = {["Content-Type"] = "application/json"}
+        })
+        assert.res_status(409, res)
+      end)
+
       it("modifies an api via PUT /apis", function()
           local res = assert(client:send {
             method = "POST",

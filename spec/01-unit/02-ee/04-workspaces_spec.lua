@@ -250,8 +250,6 @@ describe("workspaces", function()
       local Router = require "kong.core.api_router"
       local r = Router.new(apis)
       assert.equal("api-2", workspaces.match_route(r, "GET", "/my-api2", "h1").api.name)
-      assert.truthy(workspaces.validate_route_for_ws(r, "GET", "/my-api2", "bla", {}))
-      -- TODO: Investigate if this last test should be true or false.
     end)
 
     it("adds root route to an empty router", function()
@@ -263,19 +261,13 @@ describe("workspaces", function()
     it("adds route in the same ws", function()
       local Router = require "kong.core.api_router"
       local r = Router.new(apis)
-      assert.truthy(workspaces.validate_route_for_ws(r, "GET", "/my-api4", "my-api4", "w4"))
+      assert.truthy(workspaces.validate_route_for_ws(r, "GET", "/api4", "host4", {id = "ws4"}))
     end)
 
     it("ADD route in different ws, no host in existing one", function()
       local Router = require "kong.core.api_router"
       local r = Router.new(apis)
-      assert.truthy(workspaces.validate_route_for_ws(r, "GET", "/my-api2", "h1", "w2"))
-    end)
-
-    it("ADD route in different ws, no host in existing one", function()
-      local Router = require "kong.core.api_router"
-      local r = Router.new(apis)
-      assert.truthy(workspaces.validate_route_for_ws(r, "GET", "/my-api5", "h1", "w2"))
+      assert.falsy(workspaces.validate_route_for_ws(r, "GET", "/my-api2", "hi", {id = "ws3"}))
     end)
 
     it("NOT add route in different ws, with same wildcard host", function()
@@ -284,21 +276,21 @@ describe("workspaces", function()
       assert.equal("api-3", workspaces.match_route(r, "GET", "/my-api3",
                                                    "h*").api.name)
       assert.falsy(
-        workspaces.validate_route_for_ws(r, "GET", "/my-api3", "*", "w4"))
+        workspaces.validate_route_for_ws(r, "GET", "/my-api3", "*", {id = "ws4"}))
     end)
 
     it("ADD route in different ws, with different wildcard host", function()
       local Router = require "kong.core.api_router"
       local r = Router.new(apis)
       assert.equal("api-3", workspaces.match_route(r, "GET", "/my-api3", "h*").api.name)
-      assert.truthy(workspaces.validate_route_for_ws(r, "GET", "/my-api3", "*.foo.com", "w4"))
+      assert.truthy(workspaces.validate_route_for_ws(r, "GET", "/my-api3", "*.foo.com", {id = "ws4"}))
     end)
 
     it("NOT add route in different ws, with full host in the conflicting route", function()
       local Router = require "kong.core.api_router"
       local r = Router.new(apis)
       assert.equal("api-4", workspaces.match_route(r, "GET", "/api4", "host4").api.name)
-      assert.falsy(workspaces.validate_route_for_ws(r, "GET", "/api4", "host4", "w4"))
+      assert.falsy(workspaces.validate_route_for_ws(r, "GET", "/api4", "host4", {id = "different"}))
     end)
 
   end)
