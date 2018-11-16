@@ -23,7 +23,6 @@ release:
 	cd kong-build-tools; \
 	make setup_tests && \
 	export KONG_SOURCE_LOCATION=`pwd`/../ && \
-	export KONG_VERSION=1.2.3 && \
 	make package-kong && \
 	make release-kong
 
