@@ -1,6 +1,12 @@
+## v0.2.5
+
+- Add `sub-plugins` back to `.rockspec` too, :-/.
+
+
 ## v0.2.4
 
 - Fix a bug that prevented `sub-plugins` from loading the `issuer` data.
+
 
 ## v0.2.3
 
