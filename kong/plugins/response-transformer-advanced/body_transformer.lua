@@ -1,6 +1,11 @@
+local transform_utils = require "kong.plugins.response-transformer-advanced.transform_utils"
+local utils = require "kong.tools.utils"
+
 local cjson_decode = require("cjson").decode
 local cjson_encode = require("cjson").encode
 
+local skip_transform = transform_utils.skip_transform
+local table_contains = utils.table_contains
 local table_insert = table.insert
 local pcall = pcall
 local find = string.find
@@ -55,49 +60,57 @@ function _M.is_json_body(content_type)
   return content_type and find(lower(content_type), "application/json", nil, true)
 end
 
-function _M.transform_json_body(conf, buffered_data)
+function _M.transform_json_body(conf, buffered_data, resp_code)
   local json_body = read_json_body(buffered_data)
   if json_body == nil then
     return
   end
 
   -- remove key:value to body
-  for _, name in iter(conf.remove.json) do
-    json_body[name] = nil
+  if not skip_transform(resp_code, conf.remove.if_status) then
+    for _, name in iter(conf.remove.json) do
+      json_body[name] = nil
+    end
   end
 
   -- replace key:value to body
-  for _, name, value in iter(conf.replace.json) do
-    local v = cjson_encode(value)
-    if sub(v, 1, 1) == [["]] and sub(v, -1, -1) == [["]] then
-      v = gsub(sub(v, 2, -2), [[\"]], [["]]) -- To prevent having double encoded quotes
-    end
-    v = gsub(v, [[\/]], [[/]]) -- To prevent having double encoded slashes
-    if json_body[name] then
-      json_body[name] = v
+  if not skip_transform(resp_code, conf.replace.if_status) then
+    for _, name, value in iter(conf.replace.json) do
+      local v = cjson_encode(value)
+      if sub(v, 1, 1) == [["]] and sub(v, -1, -1) == [["]] then
+        v = gsub(sub(v, 2, -2), [[\"]], [["]]) -- To prevent having double encoded quotes
+      end
+      v = gsub(v, [[\/]], [[/]]) -- To prevent having double encoded slashes
+      if json_body[name] then
+        json_body[name] = v
+      end
     end
   end
 
   -- add new key:value to body
-  for _, name, value in iter(conf.add.json) do
-    local v = cjson_encode(value)
-    if sub(v, 1, 1) == [["]] and sub(v, -1, -1) == [["]] then
-      v = gsub(sub(v, 2, -2), [[\"]], [["]]) -- To prevent having double encoded quotes
-    end
-    v = gsub(v, [[\/]], [[/]]) -- To prevent having double encoded slashes
-    if not json_body[name] then
-      json_body[name] = v
+  if not skip_transform(resp_code, conf.add.if_status) then
+    for _, name, value in iter(conf.add.json) do
+      local v = cjson_encode(value)
+      if sub(v, 1, 1) == [["]] and sub(v, -1, -1) == [["]] then
+        v = gsub(sub(v, 2, -2), [[\"]], [["]]) -- To prevent having double encoded quotes
+      end
+      v = gsub(v, [[\/]], [[/]]) -- To prevent having double encoded slashes
+      if not json_body[name] then
+        json_body[name] = v
+      end
     end
   end
 
   -- append new key:value or value to existing key
-  for _, name, value in iter(conf.append.json) do
-    local v = cjson_encode(value)
-    if sub(v, 1, 1) == [["]] and sub(v, -1, -1) == [["]] then
-      v = gsub(sub(v, 2, -2), [[\"]], [["]]) -- To prevent having double encoded quotes
+  if not skip_transform(resp_code, conf.append.if_status) then
+    for _, name, value in iter(conf.append.json) do
+      local v = cjson_encode(value)
+      if sub(v, 1, 1) == [["]] and sub(v, -1, -1) == [["]] then
+        v = gsub(sub(v, 2, -2), [[\"]], [["]]) -- To prevent having double encoded quotes
+      end
+      v = gsub(v, [[\/]], [[/]]) -- To prevent having double encoded slashes
+      json_body[name] = append_value(json_body[name],v)
     end
-    v = gsub(v, [[\/]], [[/]]) -- To prevent having double encoded slashes
-    json_body[name] = append_value(json_body[name],v)
   end
 
   return cjson_encode(json_body)

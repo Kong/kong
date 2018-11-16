@@ -1,3 +1,6 @@
+local transform_utils = require "kong.plugins.response-transformer-advanced.transform_utils"
+
+local skip_transform = transform_utils.skip_transform
 local insert = table.insert
 local type = type
 local find = string.find
@@ -55,29 +58,37 @@ _M.is_body_transform_set = is_body_transform_set
 -- @param[type=table] conf Plugin configuration.
 -- @param[type=table] ngx_headers Table of headers, that should be `ngx.headers`
 -- @return table A table containing the new headers.
-function _M.transform_headers(conf, ngx_headers)
+function _M.transform_headers(conf, ngx_headers, resp_code)
   -- remove headers
-  for _, header_name, header_value in iter(conf.remove.headers) do
-      ngx_headers[header_name] = nil
+  if not skip_transform(resp_code, conf.remove.if_status) then
+    for _, header_name, header_value in iter(conf.remove.headers) do
+        ngx_headers[header_name] = nil
+    end
   end
 
   -- replace headers
-  for _, header_name, header_value in iter(conf.replace.headers) do
-    if ngx_headers[header_name] ~= nil then
-      ngx_headers[header_name] = header_value
+  if not skip_transform(resp_code, conf.replace.if_status) then
+    for _, header_name, header_value in iter(conf.replace.headers) do
+      if ngx_headers[header_name] ~= nil then
+        ngx_headers[header_name] = header_value
+      end
     end
   end
 
   -- add headers
-  for _, header_name, header_value in iter(conf.add.headers) do
-    if ngx_headers[header_name] == nil then
-      ngx_headers[header_name] = header_value
+  if not skip_transform(resp_code, conf.add.if_status) then
+    for _, header_name, header_value in iter(conf.add.headers) do
+      if ngx_headers[header_name] == nil then
+        ngx_headers[header_name] = header_value
+      end
     end
   end
 
   -- append headers
-  for _, header_name, header_value in iter(conf.append.headers) do
-    ngx_headers[header_name] = append_value(ngx_headers[header_name], header_value)
+  if not skip_transform(resp_code, conf.append.if_status) then
+    for _, header_name, header_value in iter(conf.append.headers) do
+      ngx_headers[header_name] = append_value(ngx_headers[header_name], header_value)
+    end
   end
 
   -- Removing the content-length header because the body is going to change

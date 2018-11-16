@@ -18,7 +18,8 @@ return {
       schema = {
         fields = {
           json = {type = "array", default = {}}, -- does not need colons
-          headers = {type = "array", default = {}} -- does not need colons
+          headers = {type = "array", default = {}}, -- does not need colons
+          if_status = {type = "array", default = {}},
         }
       }
     },
@@ -27,7 +28,8 @@ return {
       schema = {
         fields = {
           json = {type = "array", default = {}, func = check_for_value},
-          headers = {type = "array", default = {}, func = check_for_value}
+          headers = {type = "array", default = {}, func = check_for_value},
+          if_status = {type = "array", default = {}},
         }
       }
     },
@@ -36,7 +38,8 @@ return {
       schema = {
         fields = {
           json = {type = "array", default = {}, func = check_for_value},
-          headers = {type = "array", default = {}, func = check_for_value}
+          headers = {type = "array", default = {}, func = check_for_value},
+          if_status = {type = "array", default = {}},
         }
       }
     },
@@ -45,7 +48,8 @@ return {
       schema = {
         fields = {
           json = {type = "array", default = {}, func = check_for_value},
-          headers = {type = "array", default = {}, func = check_for_value}
+          headers = {type = "array", default = {}, func = check_for_value},
+          if_status = {type = "array", default = {}},
         }
       }
     }
