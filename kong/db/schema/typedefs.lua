@@ -254,12 +254,14 @@ typedefs.key = Schema.define {
 
 typedefs.run_on = Schema.define {
   type = "string",
+  required = true,
   default = "first",
   one_of = { "first", "second", "all" },
 }
 
 typedefs.run_on_first = Schema.define {
   type = "string",
+  required = true,
   default = "first",
   one_of = { "first" },
 }
