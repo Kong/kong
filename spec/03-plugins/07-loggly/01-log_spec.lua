@@ -9,7 +9,7 @@ for _, strategy in helpers.each_strategy() do
   describe("Plugin: loggly (log) [#" .. strategy .. "]", function()
     local proxy_client
 
-    setup(function()
+    lazy_setup(function()
       local bp = helpers.get_db_utils(strategy)
 
       local route1 = bp.routes:insert {
@@ -82,7 +82,7 @@ for _, strategy in helpers.each_strategy() do
       }))
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       helpers.stop_kong()
     end)
 

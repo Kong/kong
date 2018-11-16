@@ -16,7 +16,7 @@ describe("DAO propagates CRUD events with DB: #" .. kong_conf.database, function
   local dao
   local mock_ipc
 
-  teardown(function()
+  lazy_teardown(function()
     dao:truncate_table("apis")
   end)
 

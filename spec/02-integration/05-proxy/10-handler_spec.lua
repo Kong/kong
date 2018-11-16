@@ -7,7 +7,7 @@ for _, strategy in helpers.each_strategy() do
         local admin_client
         local proxy_client
 
-        setup(function()
+        lazy_setup(function()
           local bp = helpers.get_db_utils(strategy, {
             "apis",
             "routes",
@@ -42,7 +42,7 @@ for _, strategy in helpers.each_strategy() do
           proxy_client = helpers.proxy_client()
         end)
 
-        teardown(function()
+        lazy_teardown(function()
           if admin_client then admin_client:close() end
           helpers.stop_kong(nil, true)
         end)
@@ -65,7 +65,7 @@ for _, strategy in helpers.each_strategy() do
         local admin_client
         local proxy_client
 
-        setup(function()
+        lazy_setup(function()
           local bp = helpers.get_db_utils(strategy, {
             "apis",
             "routes",
@@ -101,7 +101,7 @@ for _, strategy in helpers.each_strategy() do
           proxy_client = helpers.proxy_client()
         end)
 
-        teardown(function()
+        lazy_teardown(function()
           if admin_client then admin_client:close() end
           helpers.stop_kong(nil, true)
         end)
@@ -123,7 +123,7 @@ for _, strategy in helpers.each_strategy() do
         local admin_client
         local proxy_client
 
-        setup(function()
+        lazy_setup(function()
           local bp = helpers.get_db_utils(strategy, {
             "apis",
             "routes",
@@ -176,7 +176,7 @@ for _, strategy in helpers.each_strategy() do
           proxy_client = helpers.proxy_client()
         end)
 
-        teardown(function()
+        lazy_teardown(function()
           if admin_client then admin_client:close() end
           helpers.stop_kong(nil, true)
         end)

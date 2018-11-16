@@ -8,7 +8,7 @@ for _, strategy in helpers.each_strategy() do
   describe("kong.db [#" .. strategy .. "]", function()
     local db, bp
 
-    setup(function()
+    lazy_setup(function()
       bp, db = helpers.get_db_utils(strategy)
     end)
 

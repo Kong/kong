@@ -7,7 +7,7 @@ local fmt = string.format
 describe("Plugins", function()
   local plugins
 
-  setup(function()
+  lazy_setup(function()
     local conf = assert(conf_loader(nil, {
       -- ensure we test the galileo priority even if galileo isn't enabled by
       -- default anymore

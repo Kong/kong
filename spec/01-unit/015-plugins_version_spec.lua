@@ -4,7 +4,7 @@ local conf_loader = require "kong.conf_loader"
 describe("Plugins", function()
   local plugins
 
-  setup(function()
+  lazy_setup(function()
     local conf = assert(conf_loader())
 
     plugins = {}

@@ -5,7 +5,7 @@ for _, strategy in helpers.each_strategy() do
   describe("URI encoding [#" ..  strategy .. "]", function()
     local proxy_client
 
-    setup(function()
+    lazy_setup(function()
       local bp = helpers.get_db_utils(strategy)
 
       bp.routes:insert {
@@ -36,7 +36,7 @@ for _, strategy in helpers.each_strategy() do
       proxy_client = helpers.proxy_client()
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       helpers.stop_kong()
     end)
 

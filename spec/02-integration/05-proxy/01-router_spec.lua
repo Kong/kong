@@ -50,7 +50,7 @@ for _, strategy in helpers.each_strategy() do
       return routes
     end
 
-    setup(function()
+    lazy_setup(function()
       bp, db, dao = helpers.get_db_utils(strategy)
     end)
 
@@ -65,7 +65,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("no routes match", function()
-      setup(function()
+      lazy_setup(function()
         assert(db:truncate("routes"))
         assert(db:truncate("services"))
         dao:truncate_table("apis")
@@ -76,7 +76,7 @@ for _, strategy in helpers.each_strategy() do
         }))
       end)
 
-      teardown(function()
+      lazy_teardown(function()
         helpers.stop_kong()
       end)
 
@@ -98,7 +98,7 @@ for _, strategy in helpers.each_strategy() do
     describe("use-cases", function()
       local routes
 
-      setup(function()
+      lazy_setup(function()
         assert(db:truncate("routes"))
         assert(db:truncate("services"))
         dao:truncate_table("apis")
@@ -147,7 +147,7 @@ for _, strategy in helpers.each_strategy() do
         }))
       end)
 
-      teardown(function()
+      lazy_teardown(function()
         helpers.stop_kong()
       end)
 
@@ -302,7 +302,7 @@ for _, strategy in helpers.each_strategy() do
     describe("URI regexes order of evaluation with created_at", function()
       local routes1, routes2
 
-      setup(function()
+      lazy_setup(function()
         assert(db:truncate("routes"))
         assert(db:truncate("services"))
         dao:truncate_table("apis")
@@ -350,7 +350,7 @@ for _, strategy in helpers.each_strategy() do
         }))
       end)
 
-      teardown(function()
+      lazy_teardown(function()
         helpers.stop_kong()
       end)
 
@@ -380,7 +380,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("URI regexes order of evaluation with regex_priority", function()
-      setup(function()
+      lazy_setup(function()
         assert(db:truncate("routes"))
         assert(db:truncate("services"))
         dao:truncate_table("apis")
@@ -445,7 +445,7 @@ for _, strategy in helpers.each_strategy() do
         }))
       end)
 
-      teardown(function()
+      lazy_teardown(function()
         helpers.stop_kong()
       end)
 
@@ -472,7 +472,7 @@ for _, strategy in helpers.each_strategy() do
 
     describe("URI arguments (querystring)", function()
 
-      setup(function()
+      lazy_setup(function()
         assert(db:truncate("routes"))
         assert(db:truncate("services"))
         dao:truncate_table("apis")
@@ -489,7 +489,7 @@ for _, strategy in helpers.each_strategy() do
         }))
       end)
 
-      teardown(function()
+      lazy_teardown(function()
         helpers.stop_kong()
       end)
 
@@ -544,7 +544,7 @@ for _, strategy in helpers.each_strategy() do
     describe("percent-encoded URIs", function()
       local routes
 
-      setup(function()
+      lazy_setup(function()
         assert(db:truncate("routes"))
         assert(db:truncate("services"))
         dao:truncate_table("apis")
@@ -566,7 +566,7 @@ for _, strategy in helpers.each_strategy() do
         }))
       end)
 
-      teardown(function()
+      lazy_teardown(function()
         helpers.stop_kong()
       end)
 
@@ -601,7 +601,7 @@ for _, strategy in helpers.each_strategy() do
 
     describe("strip_path", function()
 
-      setup(function()
+      lazy_setup(function()
         assert(db:truncate("routes"))
         assert(db:truncate("services"))
         dao:truncate_table("apis")
@@ -619,7 +619,7 @@ for _, strategy in helpers.each_strategy() do
         }))
       end)
 
-      teardown(function()
+      lazy_teardown(function()
         helpers.stop_kong()
       end)
 
@@ -670,7 +670,7 @@ for _, strategy in helpers.each_strategy() do
 
     describe("preserve_host", function()
 
-      setup(function()
+      lazy_setup(function()
         assert(db:truncate("routes"))
         assert(db:truncate("services"))
         dao:truncate_table("apis")
@@ -703,7 +703,7 @@ for _, strategy in helpers.each_strategy() do
         }))
       end)
 
-      teardown(function()
+      lazy_teardown(function()
         helpers.stop_kong()
       end)
 
@@ -789,7 +789,7 @@ for _, strategy in helpers.each_strategy() do
     describe("edge-cases", function()
       local routes
 
-      setup(function()
+      lazy_setup(function()
         assert(db:truncate("routes"))
         assert(db:truncate("services"))
         dao:truncate_table("apis")
@@ -811,7 +811,7 @@ for _, strategy in helpers.each_strategy() do
         }))
       end)
 
-      teardown(function()
+      lazy_teardown(function()
         helpers.stop_kong()
       end)
 
@@ -845,7 +845,7 @@ for _, strategy in helpers.each_strategy() do
     describe("[paths] + [methods]", function()
       local routes
 
-      setup(function()
+      lazy_setup(function()
         assert(db:truncate("routes"))
         assert(db:truncate("services"))
         dao:truncate_table("apis")
@@ -869,7 +869,7 @@ for _, strategy in helpers.each_strategy() do
         }))
       end)
 
-      teardown(function()
+      lazy_teardown(function()
         helpers.stop_kong()
       end)
 
@@ -893,7 +893,7 @@ for _, strategy in helpers.each_strategy() do
     describe("[paths] + [hosts]", function()
       local routes
 
-      setup(function()
+      lazy_setup(function()
         assert(db:truncate("routes"))
         assert(db:truncate("services"))
         dao:truncate_table("apis")
@@ -917,7 +917,7 @@ for _, strategy in helpers.each_strategy() do
         }))
       end)
 
-      teardown(function()
+      lazy_teardown(function()
         helpers.stop_kong()
       end)
 
@@ -1027,7 +1027,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       describe("(plain)", function()
-        setup(function()
+        lazy_setup(function()
           assert(db:truncate("routes"))
           assert(db:truncate("services"))
           dao:truncate_table("apis")
@@ -1056,7 +1056,7 @@ for _, strategy in helpers.each_strategy() do
           }))
         end)
 
-        teardown(function()
+        lazy_teardown(function()
           helpers.stop_kong()
         end)
 
@@ -1095,7 +1095,7 @@ for _, strategy in helpers.each_strategy() do
           return "/[0]?" .. path:sub(2, -1)
         end
 
-        setup(function()
+        lazy_setup(function()
           assert(db:truncate("routes"))
           assert(db:truncate("services"))
           dao:truncate_table("apis")
@@ -1124,7 +1124,7 @@ for _, strategy in helpers.each_strategy() do
           }))
         end)
 
-        teardown(function()
+        lazy_teardown(function()
           helpers.stop_kong()
         end)
 

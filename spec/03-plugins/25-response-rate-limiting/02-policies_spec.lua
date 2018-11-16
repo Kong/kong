@@ -14,7 +14,7 @@ for _, strategy in helpers.each_strategy() do
 
       local dao
 
-      setup(function()
+      lazy_setup(function()
         local _, db
         _, db, dao = helpers.get_db_utils(strategy, {})
         _G.kong = _G.kong or { db = db }

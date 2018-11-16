@@ -8,7 +8,7 @@ for _, strategy in helpers.each_strategy() do
     local plugin_fixture
     local db
 
-    setup(function()
+    lazy_setup(function()
       _, db = helpers.get_db_utils(strategy)
     end)
 

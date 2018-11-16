@@ -10,12 +10,12 @@ describe("Balancer", function()
   local upstream_ph
   local upstream_ote
 
-  teardown(function()
+  lazy_teardown(function()
     ngx.log:revert()
   end)
 
 
-  setup(function()
+  lazy_setup(function()
     stub(ngx, "log")
 
     balancer = require "kong.runloop.balancer"
@@ -310,7 +310,7 @@ describe("Balancer", function()
     local dns_client = require("resty.dns.client")
     dns_client.init()
 
-    setup(function()
+    lazy_setup(function()
       -- In these tests, we pass `true` to get_balancer
       -- to ensure that the upstream was created by `balancer.init()`
       balancer.init()
@@ -351,7 +351,7 @@ describe("Balancer", function()
 
   describe("load_upstreams_dict_into_memory()", function()
     local upstreams_dict
-    setup(function()
+    lazy_setup(function()
       upstreams_dict = balancer._load_upstreams_dict_into_memory()
     end)
 
@@ -390,7 +390,7 @@ describe("Balancer", function()
   describe("load_targets_into_memory()", function()
     local targets
     local upstream
-    setup(function()
+    lazy_setup(function()
       upstream = "a"
       targets = balancer._load_targets_into_memory(upstream)
     end)
@@ -405,7 +405,7 @@ describe("Balancer", function()
   end)
 
   describe("on_target_event()", function()
-    setup(function()
+    lazy_setup(function()
       balancer._load_targets_into_memory("ote")
     end)
 
@@ -432,12 +432,12 @@ describe("Balancer", function()
   describe("post_health()", function()
     local hc, my_balancer
 
-    setup(function()
+    lazy_setup(function()
       my_balancer = assert(balancer._create_balancer(upstream_ph))
       hc = assert(balancer._get_healthchecker(my_balancer))
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       if hc then
         hc:stop()
       end

@@ -12,7 +12,7 @@ for _, strategy in helpers.each_strategy() do
   describe(string.format("blueprints db [#%s]", strategy), function()
 
     local bp
-    setup(function()
+    lazy_setup(function()
       local db = assert(DB.new(helpers.test_conf, strategy))
       assert(db:init_connector())
       assert(db.plugins:load_plugin_schemas(helpers.test_conf.loaded_plugins))
@@ -74,7 +74,7 @@ end
 dao_helpers.for_each_dao(function(kong_config)
   local bp, dao, db
 
-  setup(function()
+  lazy_setup(function()
     db = assert(DB.new(helpers.test_conf, kong_config.database))
     assert(db:init_connector())
     assert(db.plugins:load_plugin_schemas(helpers.test_conf.loaded_plugins))
@@ -82,7 +82,7 @@ dao_helpers.for_each_dao(function(kong_config)
     bp  = assert(Blueprints.new(dao, db))
   end)
 
-  teardown(function()
+  lazy_teardown(function()
     if dao then
       dao:truncate_tables()
     end

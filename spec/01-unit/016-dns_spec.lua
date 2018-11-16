@@ -8,7 +8,7 @@ describe("DNS", function()
   local balancer, resolver, query_func, old_new
   local mock_records, singletons, client
 
-  setup(function()
+  lazy_setup(function()
     stub(ngx, "log")
     singletons = require "kong.singletons"
 
@@ -30,7 +30,7 @@ describe("DNS", function()
     client = require "resty.dns.client"
   end)
 
-  teardown(function()
+  lazy_teardown(function()
     if type(ngx.log) == "table" then
       ngx.log:revert()
     end

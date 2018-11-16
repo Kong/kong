@@ -7,7 +7,7 @@ for _, strategy in helpers.each_strategy() do
     local db
     local client
 
-    setup(function()
+    lazy_setup(function()
       _, db = helpers.get_db_utils(strategy, {
         "services",
         "routes",
@@ -21,7 +21,7 @@ for _, strategy in helpers.each_strategy() do
       }))
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       helpers.stop_kong(nil, true)
     end)
 
@@ -52,7 +52,7 @@ for _, strategy in helpers.each_strategy() do
       local services = {}
       local plugins = {}
 
-      setup(function()
+      lazy_setup(function()
         for i = 1, 3 do
           local service, err, err_t = db.services:insert {
             name = "service-" .. i,

@@ -11,7 +11,7 @@ for _, strategy in helpers.each_strategy() do
   describe("Plugin: statsd (log) [#" .. strategy .. "]", function()
     local proxy_client
 
-    setup(function()
+    lazy_setup(function()
       local bp = helpers.get_db_utils(strategy)
 
       local consumer = bp.consumers:insert {
@@ -237,7 +237,7 @@ for _, strategy in helpers.each_strategy() do
       proxy_client = helpers.proxy_client()
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       if proxy_client then
         proxy_client:close()
       end

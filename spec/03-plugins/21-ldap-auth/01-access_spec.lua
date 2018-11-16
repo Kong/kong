@@ -30,7 +30,7 @@ for _, strategy in helpers.each_strategy() do
     local route2
     local plugin2
 
-    setup(function()
+    lazy_setup(function()
       local bp = helpers.get_db_utils(strategy)
 
       local route1 = bp.routes:insert {
@@ -144,7 +144,7 @@ for _, strategy in helpers.each_strategy() do
       }))
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       helpers.stop_kong()
     end)
 
@@ -487,7 +487,7 @@ for _, strategy in helpers.each_strategy() do
     local user
     local anonymous
 
-    setup(function()
+    lazy_setup(function()
       local bp = helpers.get_db_utils(strategy)
 
       local service1 = bp.services:insert({
@@ -568,7 +568,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
 
-    teardown(function()
+    lazy_teardown(function()
       if proxy_client then
         proxy_client:close()
       end

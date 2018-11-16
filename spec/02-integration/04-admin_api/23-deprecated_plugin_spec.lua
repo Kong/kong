@@ -9,7 +9,7 @@ describe("Deprecated plugin API #" .. strategy, function()
   local db
 
   describe("deprecated not enabled plugins" , function()
-    setup(function()
+    lazy_setup(function()
       local _
       _, db = helpers.get_db_utils(strategy, {
         "plugins",
@@ -23,7 +23,7 @@ describe("Deprecated plugin API #" .. strategy, function()
       client = helpers.admin_client()
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       if client then
         client:close()
       end
@@ -56,7 +56,7 @@ describe("Deprecated plugin API #" .. strategy, function()
   end)
 
   describe("deprecated enabled plugins" , function()
-    setup(function()
+    lazy_setup(function()
       assert(helpers.start_kong({
         database = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
@@ -64,7 +64,7 @@ describe("Deprecated plugin API #" .. strategy, function()
       }))
       client = helpers.admin_client()
     end)
-    teardown(function()
+    lazy_teardown(function()
       if client then
         client:close()
       end

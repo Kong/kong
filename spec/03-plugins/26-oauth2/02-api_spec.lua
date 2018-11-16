@@ -10,7 +10,7 @@ for _, strategy in helpers.each_strategy() do
     local db
     local bp
 
-    setup(function()
+    lazy_setup(function()
       bp, db = helpers.get_db_utils(strategy)
 
       assert(db:truncate("routes"))
@@ -30,14 +30,14 @@ for _, strategy in helpers.each_strategy() do
 
       admin_client = helpers.admin_client()
     end)
-    teardown(function()
+    lazy_teardown(function()
       if admin_client then admin_client:close() end
       assert(helpers.stop_kong())
       helpers.clean_prefix()
     end)
 
     describe("/consumers/:consumer/oauth2/", function()
-      setup(function()
+      lazy_setup(function()
         service = bp.services:insert({ host = "oauth2_token.com" })
         consumer = bp.consumers:insert({ username = "bob" })
         bp.consumers:insert({ username = "sally" })
@@ -225,7 +225,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       describe("GET", function()
-        setup(function()
+        lazy_setup(function()
           for i = 1, 3 do
             bp.oauth2_credentials:insert {
               name          = "app" .. i,
@@ -234,7 +234,7 @@ for _, strategy in helpers.each_strategy() do
             }
           end
         end)
-        teardown(function()
+        lazy_teardown(function()
           assert(db:truncate("oauth2_credentials"))
         end)
         it("retrieves the first page", function()
@@ -400,7 +400,7 @@ for _, strategy in helpers.each_strategy() do
 
     describe("/oauth2_tokens/", function()
       local oauth2_credential
-      setup(function()
+      lazy_setup(function()
         oauth2_credential = bp.oauth2_credentials:insert {
           name          = "Test APP",
           redirect_uris = { helpers.mock_upstream_ssl_url },
@@ -451,7 +451,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       describe("GET", function()
-        setup(function()
+        lazy_setup(function()
           for _ = 1, 3 do
             bp.oauth2_tokens:insert {
               credential = { id = oauth2_credential.id },
@@ -460,7 +460,7 @@ for _, strategy in helpers.each_strategy() do
             }
           end
         end)
-        teardown(function()
+        lazy_teardown(function()
           assert(db:truncate("oauth2_tokens"))
         end)
         it("retrieves the first page", function()

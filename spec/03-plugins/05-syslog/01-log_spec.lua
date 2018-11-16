@@ -9,7 +9,7 @@ for _, strategy in helpers.each_strategy() do
     local proxy_client
     local platform
 
-    setup(function()
+    lazy_setup(function()
       local bp = helpers.get_db_utils(strategy)
 
       local route1 = bp.routes:insert {
@@ -66,7 +66,7 @@ for _, strategy in helpers.each_strategy() do
         nginx_conf = "spec/fixtures/custom_nginx.template",
       }))
     end)
-    teardown(function()
+    lazy_teardown(function()
       helpers.stop_kong()
     end)
 

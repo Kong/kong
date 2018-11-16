@@ -11,7 +11,7 @@ for _, strategy in helpers.each_strategy() do
     local proxy_client
     local admin_client
 
-    setup(function()
+    lazy_setup(function()
       local bp = helpers.get_db_utils(strategy)
 
       local route1 = bp.routes:insert({
@@ -97,7 +97,7 @@ for _, strategy in helpers.each_strategy() do
       admin_client = helpers.admin_client()
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       if proxy_client and admin_client then
         proxy_client:close()
         admin_client:close()

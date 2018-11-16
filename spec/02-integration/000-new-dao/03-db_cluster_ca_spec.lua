@@ -13,7 +13,7 @@ for _, strategy in helpers.each_strategy() do
       local ca_key
       local ca_cert
 
-      setup(function()
+      lazy_setup(function()
         local _
         _, db = helpers.get_db_utils(strategy, {
           "cluster_ca",

@@ -50,7 +50,7 @@ describe("Utils", function()
     local old_ngx
     local headers = {}
 
-    setup(function()
+    lazy_setup(function()
       old_ngx = ngx
       _G.ngx = {
         var = {
@@ -62,12 +62,12 @@ describe("Utils", function()
       }
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       _G.ngx = old_ngx
     end)
 
     describe("without X-Forwarded-Proto header", function()
-      setup(function()
+      lazy_setup(function()
         headers["x-forwarded-proto"] = nil
       end)
 
@@ -91,7 +91,7 @@ describe("Utils", function()
 
     describe("with X-Forwarded-Proto header", function()
 
-      teardown(function()
+      lazy_teardown(function()
         headers["x-forwarded-proto"] = nil
       end)
 

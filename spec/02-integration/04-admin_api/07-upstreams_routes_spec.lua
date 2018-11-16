@@ -21,7 +21,7 @@ describe("Admin API: #" .. kong_config.database, function()
   local bp
   local db
 
-  setup(function()
+  lazy_setup(function()
 
     bp, db = helpers.get_db_utils(kong_config.database, {})
 
@@ -31,7 +31,7 @@ describe("Admin API: #" .. kong_config.database, function()
     client = assert(helpers.admin_client())
   end)
 
-  teardown(function()
+  lazy_teardown(function()
     if client then client:close() end
     helpers.stop_kong()
   end)
@@ -555,11 +555,11 @@ describe("Admin API: #" .. kong_config.database, function()
     end)
 
     describe("GET", function()
-      setup(function()
+      lazy_setup(function()
         assert(db:truncate("upstreams"))
         bp.upstreams:insert_n(10)
       end)
-      teardown(function()
+      lazy_teardown(function()
         assert(db:truncate("upstreams"))
       end)
 
@@ -621,7 +621,7 @@ describe("Admin API: #" .. kong_config.database, function()
       end)
 
       describe("empty results", function()
-        setup(function()
+        lazy_setup(function()
           assert(db:truncate("upstreams"))
         end)
 

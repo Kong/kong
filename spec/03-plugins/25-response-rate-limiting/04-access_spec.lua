@@ -94,7 +94,7 @@ for _, policy in ipairs({"local", "cluster", "redis"}) do
 
 describe(fmt("#flaky Plugin: response-ratelimiting (access) with policy: #%s [#%s]", policy, strategy), function()
 
-  setup(function()
+  lazy_setup(function()
     local bp = init_db(strategy, policy)
 
     if policy == "local" then
@@ -304,7 +304,7 @@ describe(fmt("#flaky Plugin: response-ratelimiting (access) with policy: #%s [#%
     }))
   end)
 
-  teardown(function()
+  lazy_teardown(function()
     helpers.stop_kong(nil, true)
   end)
 
@@ -497,7 +497,7 @@ end)
 
 describe(fmt("#flaky Plugin: response-ratelimiting (expirations) with policy: #%s [#%s]", policy, strategy), function()
 
-  setup(function()
+  lazy_setup(function()
     local bp = init_db(strategy, policy)
 
     local route = bp.routes:insert {
@@ -523,7 +523,7 @@ describe(fmt("#flaky Plugin: response-ratelimiting (expirations) with policy: #%
     }))
   end)
 
-  teardown(function()
+  lazy_teardown(function()
     helpers.stop_kong(nil, true)
   end)
 
@@ -556,7 +556,7 @@ end)
 
 describe(fmt("#flaky Plugin: response-ratelimiting (access - global for single consumer) with policy: #%s [#%s]", policy, strategy), function()
 
-  setup(function()
+  lazy_setup(function()
     local bp = init_db(strategy, policy)
 
     local consumer = bp.consumers:insert {
@@ -594,7 +594,7 @@ describe(fmt("#flaky Plugin: response-ratelimiting (access - global for single c
     }))
   end)
 
-  teardown(function()
+  lazy_teardown(function()
     helpers.stop_kong(nil, true)
   end)
 
@@ -605,7 +605,7 @@ end)
 
 describe(fmt("#flaky Plugin: response-ratelimiting (access - global) with policy: #%s [#%s]", policy, strategy), function()
 
-  setup(function()
+  lazy_setup(function()
     local bp = init_db(strategy, policy)
 
     -- global plugin (not attached to route, service or consumer)
@@ -631,7 +631,7 @@ describe(fmt("#flaky Plugin: response-ratelimiting (access - global) with policy
     }))
   end)
 
-  teardown(function()
+  lazy_teardown(function()
     helpers.stop_kong(nil, true)
   end)
 

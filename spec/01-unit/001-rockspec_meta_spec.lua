@@ -7,7 +7,7 @@ describe("rockspec/meta", function()
   local rock, lua_srcs = {}
   local rock_filename
 
-  setup(function()
+  lazy_setup(function()
     lua_srcs = pl_dir.getallfiles("./kong", "*.lua")
     assert.True(#lua_srcs > 0)
 

@@ -78,7 +78,7 @@ for _, strategy in helpers.each_strategy() do
       local db
       local dao
 
-      setup(function()
+      lazy_setup(function()
         helpers.kill_all()
         flush_redis()
 
@@ -249,7 +249,7 @@ for _, strategy in helpers.each_strategy() do
         }))
       end)
 
-      teardown(function()
+      lazy_teardown(function()
         helpers.stop_kong()
         assert(db:truncate())
       end)
@@ -445,7 +445,7 @@ for _, strategy in helpers.each_strategy() do
             }))
           end)
 
-          teardown(function()
+          lazy_teardown(function()
             helpers.kill_all()
             assert(db:truncate())
           end)
@@ -538,7 +538,7 @@ for _, strategy in helpers.each_strategy() do
             }))
           end)
 
-          teardown(function()
+          lazy_teardown(function()
             helpers.kill_all()
             assert(db:truncate())
           end)
@@ -566,7 +566,7 @@ for _, strategy in helpers.each_strategy() do
       describe("Expirations", function()
         local route
 
-        setup(function()
+        lazy_setup(function()
           helpers.stop_kong()
 
           local bp = helpers.get_db_utils(strategy)
@@ -618,7 +618,7 @@ for _, strategy in helpers.each_strategy() do
       local bp
       local db
 
-      setup(function()
+      lazy_setup(function()
         helpers.kill_all()
         flush_redis()
         bp, db = helpers.get_db_utils(strategy)
@@ -659,7 +659,7 @@ for _, strategy in helpers.each_strategy() do
         }))
       end)
 
-      teardown(function()
+      lazy_teardown(function()
         helpers.kill_all()
         assert(db:truncate())
       end)
@@ -688,7 +688,7 @@ for _, strategy in helpers.each_strategy() do
       local bp
       local db
 
-      setup(function()
+      lazy_setup(function()
         helpers.kill_all()
         flush_redis()
         bp, db = helpers.get_db_utils(strategy)
@@ -716,7 +716,7 @@ for _, strategy in helpers.each_strategy() do
         }))
       end)
 
-      teardown(function()
+      lazy_teardown(function()
         helpers.kill_all()
         assert(db:truncate())
       end)

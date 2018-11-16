@@ -25,7 +25,7 @@ for _, strategy in helpers.each_strategy() do
     local dao
     local client
 
-    setup(function()
+    lazy_setup(function()
       bp, db, dao = helpers.get_db_utils(strategy, {
         "routes",
         "services",
@@ -35,7 +35,7 @@ for _, strategy in helpers.each_strategy() do
       }))
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       helpers.stop_kong(nil, true)
     end)
 
@@ -153,7 +153,7 @@ for _, strategy in helpers.each_strategy() do
 
       describe("GET", function()
         describe("with data", function()
-          setup(function()
+          lazy_setup(function()
             db:truncate("services")
             for _ = 1, 10 do
               assert(bp.named_services:insert())
@@ -195,7 +195,7 @@ for _, strategy in helpers.each_strategy() do
         end)
 
         describe("with no data", function()
-          setup(function()
+          lazy_setup(function()
             db:truncate("services")
           end)
           it("data property is an empty array and not an empty hash", function()

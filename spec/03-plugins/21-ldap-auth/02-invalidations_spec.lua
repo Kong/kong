@@ -11,7 +11,7 @@ for _, strategy in helpers.each_strategy() do
     local proxy_client
     local plugin
 
-    setup(function()
+    lazy_setup(function()
       local bp
       bp = helpers.get_db_utils(strategy)
 
@@ -52,7 +52,7 @@ for _, strategy in helpers.each_strategy() do
       end
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       helpers.stop_kong(nil, true)
     end)
 

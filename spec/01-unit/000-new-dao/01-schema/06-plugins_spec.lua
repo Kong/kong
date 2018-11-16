@@ -13,7 +13,7 @@ describe("plugins", function()
   local Plugins
   local db
 
-  setup(function()
+  lazy_setup(function()
     assert(Entity.new(consumers_definition))
     assert(Entity.new(services_definition))
     assert(Entity.new(routes_definition))
