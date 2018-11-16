@@ -53,10 +53,23 @@ for _, strategy in helpers.each_strategy() do
         db_update_propagation = db_update_propagation,
       })
 
-      admin_client_1 = helpers.http_client("127.0.0.1", 8001)
-      admin_client_2 = helpers.http_client("127.0.0.1", 9001)
-      proxy_client_1 = helpers.http_client("127.0.0.1", 8000)
-      proxy_client_2 = helpers.http_client("127.0.0.1", 9000)
+      local admin_client = helpers.http_client("127.0.0.1", 8001)
+      local admin_res = assert(admin_client:send {
+        method  = "POST",
+        path    = "/routes",
+        body    = {
+          protocols = { "http" },
+          hosts     = { "dummy.com" },
+          service   = {
+            id = service_fixture.id,
+          }
+        },
+        headers = {
+          ["Content-Type"] = "application/json",
+        },
+      })
+      assert.res_status(201, admin_res)
+      admin_client:close()
 
       wait_for_propagation = function()
         ngx.sleep(POLL_INTERVAL * 2 + db_update_propagation * 2)
@@ -136,22 +149,6 @@ for _, strategy in helpers.each_strategy() do
         })
         assert.res_status(404, admin_res_2)
       end)
-
-      local admin_res = assert(admin_client_1:send {
-        method  = "POST",
-        path    = "/routes",
-        body    = {
-          protocols = { "http" },
-          hosts     = { "dummy.com" },
-          service   = {
-            id = service_fixture.id,
-          }
-        },
-        headers = {
-          ["Content-Type"] = "application/json",
-        },
-      })
-      assert.res_status(201, admin_res)
 
       it("is created on proxied request", function()
         local res_1 = assert(proxy_client_1:send {
