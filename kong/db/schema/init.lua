@@ -77,7 +77,6 @@ local validation_errors = {
   UUID                      = "expected a valid UUID",
   VALIDATION                = "failed validating: %s",
   -- field presence
-  NOT_NULLABLE              = "field is not nullable",
   BAD_INPUT                 = "expected an input table",
   REQUIRED                  = "required field missing",
   NO_FOREIGN_DEFAULT        = "will not generate a default value for a foreign field",
@@ -627,8 +626,8 @@ function Schema:validate_field(field, value)
     if field.eq ~= nil and field.eq ~= null then
       return nil, validation_errors.EQ:format(tostring(field.eq))
     end
-    if field.nullable == false then
-      return nil, validation_errors.NOT_NULLABLE
+    if field.required then
+      return nil, validation_errors.REQUIRED
     end
     return true
   end
@@ -645,7 +644,7 @@ function Schema:validate_field(field, value)
       return nil, validation_errors.SCHEMA_MISSING_ATTRIBUTE:format("elements")
     end
 
-    field.elements.nullable = false
+    field.elements.required = true
     for _, v in ipairs(value) do
       local ok, err = self:validate_field(field.elements, v)
       if not ok then
@@ -667,7 +666,7 @@ function Schema:validate_field(field, value)
       return nil, validation_errors.SCHEMA_MISSING_ATTRIBUTE:format("elements")
     end
 
-    field.elements.nullable = false
+    field.elements.required = true
     local set = {}
     for _, v in ipairs(value) do
       if not set[v] then
@@ -690,8 +689,8 @@ function Schema:validate_field(field, value)
       return nil, validation_errors.SCHEMA_MISSING_ATTRIBUTE:format("values")
     end
 
-    field.keys.nullable = false
-    field.values.nullable = false
+    field.keys.required = true
+    field.values.required = true
     for k, v in pairs(value) do
       local ok, err
       ok, err = self:validate_field(field.keys, k)
@@ -778,40 +777,6 @@ function Schema:validate_field(field, value)
 end
 
 
---- Produce a default value for a given field.
--- @param field The field definition table.
--- @return A default value. All fields are nullable by default and return
--- `ngx.null`, unless explicitly configured not to with `nullable = false`,
--- in which case they return a type-specific default.
--- If a default value cannot be produced (due to circumstances that
--- will produce errors later on validation), it simply returns `nil`.
-local function default_value(field)
-  if field.abstract then
-    return nil
-  end
-
-  if field.nullable ~= false then
-    return null
-  end
-
-  if field.type == "record" then
-    local field_schema = get_field_schema(field)
-    return field_schema:process_auto_fields({}, "insert")
-  elseif field.type == "array" or field.type == "set"
-     or field.type == "map" then
-    return {}
-  elseif field.type == "number" or field.type == "integer" then
-    return 0
-  elseif field.type == "boolean" then
-    return false
-  elseif field.type == "string" then
-    return ""
-  end
-  -- For cases that will produce a validation error, just return nil
-  return nil
-end
-
-
 --- Given missing field named `k`, with definition `field`,
 -- fill its slot in `entity` with an appropriate default value,
 -- if possible.
@@ -821,13 +786,29 @@ local function handle_missing_field(field, value)
     return tablex.deepcopy(field.default)
   end
 
-  -- If `required`, it will fail later.
   -- If `nilable` (metaschema only), a default value is not necessary.
-  if field.required or field.nilable then
+  if field.nilable then
     return value
   end
 
-  return default_value(field)
+  -- If not `required`, it is nullable.
+  if field.required ~= true then
+    return null
+  end
+
+  if field.abstract then
+    return nil
+  end
+
+  -- if the missing field is a record, expand its structure
+  -- to obtain any nested defaults
+  if field.type == "record" then
+    local field_schema = get_field_schema(field)
+    return field_schema:process_auto_fields({}, "insert")
+  end
+
+  -- If `required`, it will fail later.
+  return nil
 end
 
 
@@ -1219,7 +1200,7 @@ end
 
 
 local function adjust_field_for_context(field, value, context, nulls)
-  if context ~= "update" and value == null and field.nullable == false then
+  if context == "select" and value == null and field.required == true then
     return handle_missing_field(field, value)
   end
   if field.type == "record" and not field.abstract then
@@ -1229,7 +1210,7 @@ local function adjust_field_for_context(field, value, context, nulls)
       should_recurse = (value ~= null and value ~= nil)
     else
       should_recurse = (value ~= null and
-                        (value ~= nil or field.nullable == false))
+                        (value ~= nil or field.required == true))
     end
     if should_recurse then
       local field_schema = get_field_schema(field)
@@ -1266,7 +1247,7 @@ end
 -- for value creation and update.
 -- @param input The table containing data to be processed.
 -- @param context a string describing the CRUD context:
--- valid values are: "insert", "update", "upsert"
+-- valid values are: "insert", "update", "upsert", "select"
 -- @param nulls boolean: return nulls as explicit ngx.null values
 -- @return A new table, with the auto fields containing
 -- appropriate updated values.

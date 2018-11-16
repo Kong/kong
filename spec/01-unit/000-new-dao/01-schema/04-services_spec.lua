@@ -28,12 +28,22 @@ describe("services", function()
     assert.truthy(Services:validate(service))
   end)
 
-  it("missing protocol produces error", function()
+  it("null protocol produces error", function()
     local service = {
       protocol = ngx.null,
     }
     service = Services:process_auto_fields(service, "insert")
     local ok, errs = Services:validate(service)
+    assert.falsy(ok)
+    assert.truthy(errs["protocol"])
+  end)
+
+  it("null protocol produces error on update", function()
+    local service = {
+      protocol = ngx.null,
+    }
+    service = Services:process_auto_fields(service, "update")
+    local ok, errs = Services:validate_update(service)
     assert.falsy(ok)
     assert.truthy(errs["protocol"])
   end)

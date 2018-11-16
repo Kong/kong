@@ -73,7 +73,7 @@ local function convert_legacy_schema(name, old_schema)
     fields = {
       config = {
         type = "record",
-        nullable = false,
+        required = true,
         fields = {}
       }
     },
@@ -95,7 +95,7 @@ local function convert_legacy_schema(name, old_schema)
             new_fdata.type = "map"
           else
             new_fdata.type = "record"
-            new_fdata.nullable = false
+            new_fdata.required = true
           end
 
         elseif v == "array" then
@@ -129,7 +129,7 @@ local function convert_legacy_schema(name, old_schema)
           new_fdata.keys = { type = "string" }
           new_fdata.values = {
             type = "record",
-            nullable = false,
+            required = true,
             fields = rfields,
           }
         else

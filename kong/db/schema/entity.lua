@@ -18,15 +18,15 @@ local base_types = {
   integer = true,
 }
 
--- Make records in Entities non-nullable by default,
+-- Make records in Entities required by default,
 -- so that they return their full structure on API queries.
-local function make_records_non_nullable(field)
-  if field.nullable == nil then
-    field.nullable = false
+local function make_records_required(field)
+  if field.required == nil then
+    field.required = true
   end
   for _, f in Schema.each_field(field) do
     if f.type == "record" then
-      make_records_non_nullable(f)
+      make_records_required(f)
     end
   end
 end
@@ -61,7 +61,7 @@ function Entity.new(definition)
       end
 
     elseif field.type == "record" then
-      make_records_non_nullable(field)
+      make_records_required(field)
 
     elseif field.type == "function" then
       return nil, entity_errors.NO_FUNCTIONS:format(name)
@@ -75,8 +75,8 @@ end
 
 
 function Entity.new_subschema(schema, key, definition)
-  make_records_non_nullable(definition)
-  definition.nullable = nil
+  make_records_required(definition)
+  definition.required = nil
   return Schema.new_subschema(schema, key, definition)
 end
 
