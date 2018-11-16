@@ -9,7 +9,7 @@ for _, strategy in helpers.each_strategy() do
   describe("Plugin: bot-detection (access) [#" .. strategy .. "]", function()
     local proxy_client
 
-    setup(function()
+    lazy_setup(function()
       local bp = helpers.get_db_utils(strategy, {
         "plugins",
         "routes",
@@ -56,7 +56,7 @@ for _, strategy in helpers.each_strategy() do
       }))
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       helpers.stop_kong()
     end)
 
@@ -160,7 +160,7 @@ for _, strategy in helpers.each_strategy() do
   describe("Plugin: bot-detection configured global (access) [#" .. strategy .. "]", function()
     local proxy_client
 
-    setup(function()
+    lazy_setup(function()
       local bp = helpers.get_db_utils(strategy, {
         "plugins",
         "routes",
@@ -183,7 +183,7 @@ for _, strategy in helpers.each_strategy() do
       }))
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       helpers.stop_kong()
     end)
 

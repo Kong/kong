@@ -10,7 +10,7 @@ for _, strategy in helpers.each_strategy() do
     local bp
     local db
 
-    setup(function()
+    lazy_setup(function()
       bp, db = helpers.get_db_utils(strategy)
 
       assert(helpers.start_kong({
@@ -20,7 +20,7 @@ for _, strategy in helpers.each_strategy() do
       admin_client = helpers.admin_client()
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       if admin_client then
         admin_client:close()
       end
@@ -266,7 +266,7 @@ for _, strategy in helpers.each_strategy() do
     describe("/hmac-auths", function()
       local consumer2
       describe("GET", function()
-        setup(function()
+        lazy_setup(function()
           db:truncate("hmacauth_credentials")
           bp.hmacauth_credentials:insert {
             consumer = { id = consumer.id },
@@ -334,7 +334,7 @@ for _, strategy in helpers.each_strategy() do
     describe("/hmac-auths/:hmac_username_or_id/consumer", function()
       describe("GET", function()
         local credential
-        setup(function()
+        lazy_setup(function()
           db:truncate("hmacauth_credentials")
           credential = bp.hmacauth_credentials:insert({
             consumer = { id = consumer.id },

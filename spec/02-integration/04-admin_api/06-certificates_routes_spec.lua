@@ -54,7 +54,7 @@ describe("Admin API: #" .. strategy, function()
     end
   end)
 
-  setup(function()
+  lazy_setup(function()
     bp, db = helpers.get_db_utils(strategy, {})
 
     assert(helpers.start_kong({
@@ -62,7 +62,7 @@ describe("Admin API: #" .. strategy, function()
     }))
   end)
 
-  teardown(function()
+  lazy_teardown(function()
     helpers.stop_kong()
   end)
 

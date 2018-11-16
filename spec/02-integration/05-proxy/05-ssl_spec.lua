@@ -18,7 +18,7 @@ for _, strategy in helpers.each_strategy() do
     local proxy_client
     local https_client
 
-    setup(function()
+    lazy_setup(function()
       local bp = helpers.get_db_utils(strategy)
 
       local service = bp.services:insert {
@@ -105,7 +105,7 @@ for _, strategy in helpers.each_strategy() do
       })
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       helpers.stop_kong()
     end)
 
@@ -155,7 +155,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       describe("from not trusted_ip", function()
-        setup(function()
+        lazy_setup(function()
           helpers.stop_kong(nil, nil, true)
 
           assert(helpers.start_kong {
@@ -181,7 +181,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       describe("from trusted_ip", function()
-        setup(function()
+        lazy_setup(function()
           helpers.stop_kong(nil, nil, true)
 
           assert(helpers.start_kong {
@@ -223,7 +223,7 @@ for _, strategy in helpers.each_strategy() do
 
         -- restart kong and use a new client to simulate a connection from an
         -- untrusted ip
-        setup(function()
+        lazy_setup(function()
           assert(helpers.kong_exec("restart -c " .. helpers.test_conf_path, {
             database = strategy,
             trusted_ips = "1.2.3.4", -- explicitly trust an IP that is not us

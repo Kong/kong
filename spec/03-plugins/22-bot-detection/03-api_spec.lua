@@ -11,7 +11,7 @@ for _, strategy in helpers.each_strategy() do
     local route1
     local route2
 
-    setup(function()
+    lazy_setup(function()
       local bp = helpers.get_db_utils(strategy)
 
       route1 = bp.routes:insert {
@@ -28,7 +28,7 @@ for _, strategy in helpers.each_strategy() do
       }))
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       helpers.stop_kong()
     end)
 

@@ -36,7 +36,7 @@ local api_tbl = {
 helpers.for_each_dao(function(kong_config)
   describe("Model (CRUD) with DB: #" .. kong_config.database, function()
     local factory, apis
-    setup(function()
+    lazy_setup(function()
       local db = DB.new(kong_config)
       assert(db:init_connector())
 
@@ -46,7 +46,7 @@ helpers.for_each_dao(function(kong_config)
       assert(factory:init())
       apis = factory.apis
     end)
-    teardown(function()
+    lazy_teardown(function()
       factory:truncate_table("apis")
       ngx.shared.kong_cassandra:flush_expired()
     end)
@@ -195,7 +195,7 @@ helpers.for_each_dao(function(kong_config)
     end)
 
     describe("find_all()", function()
-      setup(function()
+      lazy_setup(function()
         factory:truncate_table("apis")
 
         for i = 1, 100 do
@@ -208,7 +208,7 @@ helpers.for_each_dao(function(kong_config)
           assert.truthy(api)
         end
       end)
-      teardown(function()
+      lazy_teardown(function()
         factory:truncate_table("apis")
       end)
 
@@ -282,7 +282,7 @@ helpers.for_each_dao(function(kong_config)
     end)
 
     describe("find_page()", function()
-      setup(function()
+      lazy_setup(function()
         factory:truncate_table("apis")
 
         for i = 1, 100 do
@@ -296,7 +296,7 @@ helpers.for_each_dao(function(kong_config)
           assert.truthy(api)
         end
       end)
-      teardown(function()
+      lazy_teardown(function()
         factory:truncate_table("apis")
       end)
 
@@ -453,7 +453,7 @@ helpers.for_each_dao(function(kong_config)
     end)
 
     describe("count()", function()
-      setup(function()
+      lazy_setup(function()
         factory:truncate_table("apis")
 
         for i = 1, 100 do
@@ -467,7 +467,7 @@ helpers.for_each_dao(function(kong_config)
         end
       end)
 
-      teardown(function()
+      lazy_teardown(function()
         factory:truncate_table("apis")
       end)
 

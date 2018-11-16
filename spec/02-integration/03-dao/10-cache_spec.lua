@@ -29,7 +29,7 @@ describe("dao in-memory cache", function()
 
   local cache, key
 
-  setup(function()
+  lazy_setup(function()
     assert(worker_events.configure {
       shm = "kong_process_events",
     })

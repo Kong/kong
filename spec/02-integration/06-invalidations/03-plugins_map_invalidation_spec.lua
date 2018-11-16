@@ -18,7 +18,7 @@ for _, strategy in helpers.each_strategy() do
 
     local service_fixture
 
-    setup(function()
+    lazy_setup(function()
       local bp = helpers.get_db_utils(strategy, {
         "apis",
         "routes",
@@ -76,7 +76,7 @@ for _, strategy in helpers.each_strategy() do
       end
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       helpers.stop_kong("servroot1")
       helpers.stop_kong("servroot2")
     end)

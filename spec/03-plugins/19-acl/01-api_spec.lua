@@ -9,7 +9,7 @@ for _, strategy in helpers.each_strategy() do
     local bp
     local db
 
-    setup(function()
+    lazy_setup(function()
       bp, db = helpers.get_db_utils(strategy)
 
       assert(helpers.start_kong({
@@ -19,7 +19,7 @@ for _, strategy in helpers.each_strategy() do
       admin_client = helpers.admin_client()
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       if admin_client then
         admin_client:close()
       end
@@ -28,7 +28,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("/consumers/:consumer/acls/", function()
-      setup(function()
+      lazy_setup(function()
         db:truncate()
         consumer = bp.consumers:insert {
           username = "bob"
@@ -73,7 +73,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       describe("GET", function()
-        teardown(function()
+        lazy_teardown(function()
           db:truncate("acls")
         end)
         it("retrieves the first page", function()
@@ -281,7 +281,7 @@ for _, strategy in helpers.each_strategy() do
       local consumer2
 
       describe("GET", function()
-        setup(function()
+        lazy_setup(function()
           db:truncate("acls")
 
           for i = 1, 3 do
@@ -359,7 +359,7 @@ for _, strategy in helpers.each_strategy() do
       describe("GET", function()
         local credential
 
-        setup(function()
+        lazy_setup(function()
           db:truncate("acls")
           credential = db.acls:insert {
             group = "foo-group",

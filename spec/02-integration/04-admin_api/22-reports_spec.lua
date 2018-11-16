@@ -95,14 +95,14 @@ for _, strategy in helpers.each_strategy() do
     local dns_hostsfile
     local reports_server
 
-    setup(function()
+    lazy_setup(function()
       dns_hostsfile = assert(os.tmpname())
       local fd = assert(io.open(dns_hostsfile, "w"))
       assert(fd:write("127.0.0.1 " .. constants.REPORTS.ADDRESS))
       assert(fd:close())
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       os.remove(dns_hostsfile)
     end)
 

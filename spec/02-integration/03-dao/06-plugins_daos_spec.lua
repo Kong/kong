@@ -13,7 +13,7 @@ helpers.for_each_dao(function(kong_config)
 
     describe("plugins migrations", function()
       local factory
-      setup(function()
+      lazy_setup(function()
         local db = DB.new(kong_config)
         assert(db:init_connector())
         factory = assert(Factory.new(kong_config, db))

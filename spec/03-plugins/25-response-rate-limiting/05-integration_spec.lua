@@ -25,7 +25,7 @@ describe("Plugin: rate-limiting (integration)", function()
   local client
   local bp
 
-  setup(function()
+  lazy_setup(function()
     -- only to run migrations
     bp = helpers.get_db_utils(nil, {
       "routes",
@@ -36,7 +36,7 @@ describe("Plugin: rate-limiting (integration)", function()
     })
   end)
 
-  teardown(function()
+  lazy_teardown(function()
     if client then
       client:close()
     end
@@ -48,7 +48,7 @@ describe("Plugin: rate-limiting (integration)", function()
     -- Regression test for the following issue:
     -- https://github.com/Kong/kong/issues/3292
 
-    setup(function()
+    lazy_setup(function()
       flush_redis(REDIS_DB_1)
       flush_redis(REDIS_DB_2)
 

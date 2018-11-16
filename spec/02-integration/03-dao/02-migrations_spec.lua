@@ -9,7 +9,7 @@ helpers.for_each_dao(function(kong_config)
   -- avoid potential corruptions of the test database
   pending("Model migrations with DB: #" .. kong_config.database, function()
     local factory
-    setup(function()
+    lazy_setup(function()
       -- some `setup` functions also use `factory` and they run before the `before_each` chain
       -- hence we need to set it here, and again in `before_each`.
       local db = assert(DB.new(kong_config))
@@ -18,7 +18,7 @@ helpers.for_each_dao(function(kong_config)
       factory:drop_schema()
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       ngx.shared.kong_cassandra:flush_expired()
     end)
 
@@ -63,7 +63,7 @@ helpers.for_each_dao(function(kong_config)
     describe("[INTEGRATION]", function()
       local n_ids = 0
       local flatten_migrations = {}
-      setup(function()
+      lazy_setup(function()
         factory:drop_schema()
         for identifier, migs in pairs(factory:migrations_modules()) do
           n_ids = n_ids + 1

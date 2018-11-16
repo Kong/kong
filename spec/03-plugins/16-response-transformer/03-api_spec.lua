@@ -5,7 +5,7 @@ for _, strategy in helpers.each_strategy() do
   describe("Plugin: response-transformer (API) [#" .. strategy .. "]", function()
     local admin_client
 
-    teardown(function()
+    lazy_teardown(function()
       if admin_client then
         admin_client:close()
       end
@@ -13,7 +13,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("POST", function()
-      setup(function()
+      lazy_setup(function()
         helpers.get_db_utils(strategy, {
           "plugins"
         })

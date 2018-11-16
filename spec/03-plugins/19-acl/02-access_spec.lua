@@ -9,7 +9,7 @@ for _, strategy in helpers.each_strategy() do
     local bp
     local db
 
-    setup(function()
+    lazy_setup(function()
       bp, db = helpers.get_db_utils(strategy)
 
       local consumer1 = bp.consumers:insert {
@@ -275,7 +275,7 @@ for _, strategy in helpers.each_strategy() do
       admin_client:close()
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       helpers.stop_kong()
     end)
 

@@ -19,7 +19,7 @@ describe("Admin API post-processing #" .. strategy, function()
   local plugin
   local db
 
-  setup(function()
+  lazy_setup(function()
     local _
     _, db = helpers.get_db_utils(strategy, {
       "plugins",
@@ -36,7 +36,7 @@ describe("Admin API post-processing #" .. strategy, function()
     client = assert(helpers.admin_client())
   end)
 
-  teardown(function()
+  lazy_teardown(function()
     if client then
       client:close()
     end

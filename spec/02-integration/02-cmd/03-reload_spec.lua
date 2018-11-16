@@ -1,11 +1,11 @@
 local helpers = require "spec.helpers"
 
 describe("kong reload", function()
-  setup(function()
+  lazy_setup(function()
     helpers.get_db_utils() -- runs migrations
     helpers.prepare_prefix()
   end)
-  teardown(function()
+  lazy_teardown(function()
     helpers.clean_prefix()
   end)
   after_each(function()

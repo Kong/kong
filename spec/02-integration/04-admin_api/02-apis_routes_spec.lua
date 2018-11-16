@@ -21,7 +21,7 @@ pending("Admin API #" .. kong_config.database, function()
   local dao
   local db
 
-  setup(function()
+  lazy_setup(function()
     local _
     _, db, dao = helpers.get_db_utils(kong_config.database, {})
 
@@ -30,7 +30,7 @@ pending("Admin API #" .. kong_config.database, function()
     })
   end)
 
-  teardown(function()
+  lazy_teardown(function()
     helpers.stop_kong()
     dao:truncate_table("apis")
     db:truncate("plugins")
@@ -1252,7 +1252,7 @@ end)
 describe("Admin API request size", function()
   local client
 
-  setup(function()
+  lazy_setup(function()
     assert(helpers.get_db_utils(kong_config.database, {
       "apis",
       "plugins",
@@ -1264,7 +1264,7 @@ describe("Admin API request size", function()
     })
   end)
 
-  teardown(function()
+  lazy_teardown(function()
     helpers.stop_kong()
   end)
 

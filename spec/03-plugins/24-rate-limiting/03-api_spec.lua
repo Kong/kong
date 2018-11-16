@@ -10,7 +10,7 @@ for _, strategy in helpers.each_strategy() do
     local admin_client
     local bp
 
-    setup(function()
+    lazy_setup(function()
       bp = helpers.get_db_utils(strategy, {
         "routes",
         "services",
@@ -18,7 +18,7 @@ for _, strategy in helpers.each_strategy() do
       })
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       if admin_client then
         admin_client:close()
       end
@@ -29,7 +29,7 @@ for _, strategy in helpers.each_strategy() do
     describe("POST", function()
       local route
 
-      setup(function()
+      lazy_setup(function()
         local service = bp.services:insert()
 
         route = bp.routes:insert {

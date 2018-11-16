@@ -7,14 +7,14 @@ describe("Plugins conf property" , function()
 
   describe("with 'plugins=bundled'", function()
     local client
-    setup(function()
+    lazy_setup(function()
       helpers.get_db_utils()
       assert(helpers.start_kong({
         plugins = "bundled",
       }))
       client = helpers.admin_client()
     end)
-    teardown(function()
+    lazy_teardown(function()
       if client then
         client:close()
       end
@@ -35,14 +35,14 @@ describe("Plugins conf property" , function()
 
   describe("with 'plugins=off'", function()
     local client
-    setup(function()
+    lazy_setup(function()
       helpers.get_db_utils()
       assert(helpers.start_kong({
         plugins = "off",
       }))
       client = helpers.admin_client()
     end)
-    teardown(function()
+    lazy_teardown(function()
       if client then
         client:close()
       end
@@ -61,13 +61,13 @@ describe("Plugins conf property" , function()
 
   describe("with 'plugins=off, key-auth'", function()
     local client
-    setup(function()
+    lazy_setup(function()
       assert(helpers.start_kong({
         plugins = "off, key-auth",
       }))
       client = helpers.admin_client()
     end)
-    teardown(function()
+    lazy_teardown(function()
       if client then
         client:close()
       end
@@ -86,13 +86,13 @@ describe("Plugins conf property" , function()
 
   describe("with plugins='key-auth, off, basic-auth", function()
     local client
-    setup(function()
+    lazy_setup(function()
       assert(helpers.start_kong({
         plugins = "key-auth, off, basic-auth",
       }))
       client = helpers.admin_client()
     end)
-    teardown(function()
+    lazy_teardown(function()
       if client then
         client:close()
       end
@@ -113,13 +113,13 @@ describe("Plugins conf property" , function()
 
   describe("with a plugin list in conf, admin API" , function()
     local client
-    setup(function()
+    lazy_setup(function()
       assert(helpers.start_kong({
         plugins = "key-auth, basic-auth"
       }))
       client = helpers.admin_client()
     end)
-    teardown(function()
+    lazy_teardown(function()
       if client then
         client:close()
       end

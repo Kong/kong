@@ -8,7 +8,7 @@ for _, strategy in helpers.each_strategy() do
   describe("Plugin: basic-auth (access) [#" .. strategy .. "]", function()
     local proxy_client
 
-    setup(function()
+    lazy_setup(function()
       local bp = helpers.get_db_utils(strategy)
 
       local consumer = bp.consumers:insert {
@@ -91,7 +91,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
 
-    teardown(function()
+    lazy_teardown(function()
       if proxy_client then
         proxy_client:close()
       end
@@ -354,7 +354,7 @@ for _, strategy in helpers.each_strategy() do
     local user2
     local anonymous
 
-    setup(function()
+    lazy_setup(function()
       local bp = helpers.get_db_utils(strategy)
 
       anonymous = bp.consumers:insert {
@@ -432,7 +432,7 @@ for _, strategy in helpers.each_strategy() do
       proxy_client = helpers.proxy_client()
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       if proxy_client then
         proxy_client:close()
       end

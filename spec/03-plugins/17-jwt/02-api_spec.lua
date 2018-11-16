@@ -10,7 +10,7 @@ for _, strategy in helpers.each_strategy() do
     local db
     local bp
 
-    setup(function()
+    lazy_setup(function()
       bp, db = helpers.get_db_utils(strategy)
       db:truncate()
 
@@ -24,7 +24,7 @@ for _, strategy in helpers.each_strategy() do
         username = "bob"
       }
     end)
-    teardown(function()
+    lazy_teardown(function()
       if admin_client then
         admin_client:close()
       end
@@ -33,7 +33,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("/consumers/:consumer/jwt/", function()
-      setup(function()
+      lazy_setup(function()
         bp.consumers:insert {
           username = "alice"
         }
@@ -41,7 +41,7 @@ for _, strategy in helpers.each_strategy() do
 
       describe("POST", function()
         local jwt1, jwt2
-        teardown(function()
+        lazy_teardown(function()
           if jwt1 == nil then return end
           db.jwt_secrets:delete(jwt1)
           if jwt2 == nil then return end
@@ -348,7 +348,7 @@ for _, strategy in helpers.each_strategy() do
     describe("/jwts", function()
       local consumer2
       describe("GET", function()
-        setup(function()
+        lazy_setup(function()
           consumer2 = bp.consumers:insert {
             username = "bob-the-buidler"
           }

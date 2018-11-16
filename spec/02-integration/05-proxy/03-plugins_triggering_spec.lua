@@ -17,7 +17,7 @@ for _, strategy in helpers.each_strategy() do
     local dao
     local bp
 
-    setup(function()
+    lazy_setup(function()
       bp, db, dao = helpers.get_db_utils(strategy, {
         "apis",
         "routes",
@@ -159,7 +159,7 @@ for _, strategy in helpers.each_strategy() do
       proxy_client = helpers.proxy_client()
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       if proxy_client then proxy_client:close() end
       helpers.stop_kong()
     end)
@@ -226,7 +226,7 @@ for _, strategy in helpers.each_strategy() do
     describe("short-circuited requests", function()
       local FILE_LOG_PATH = os.tmpname()
 
-      setup(function()
+      lazy_setup(function()
         if proxy_client then
           proxy_client:close()
         end
@@ -317,7 +317,7 @@ for _, strategy in helpers.each_strategy() do
         proxy_client = helpers.proxy_client()
       end)
 
-      teardown(function()
+      lazy_teardown(function()
         if proxy_client then
           proxy_client:close()
         end
@@ -443,7 +443,7 @@ for _, strategy in helpers.each_strategy() do
       -- tries to evaluate is the `schema.no_consumer` flag is set.
       -- Since the reports plugin has no `schema`, this indexing fails.
 
-      setup(function()
+      lazy_setup(function()
         if proxy_client then
           proxy_client:close()
         end
@@ -490,7 +490,7 @@ for _, strategy in helpers.each_strategy() do
         proxy_client = helpers.proxy_client()
       end)
 
-      teardown(function()
+      lazy_teardown(function()
         if proxy_client then
           proxy_client:close()
         end
@@ -524,7 +524,7 @@ for _, strategy in helpers.each_strategy() do
       local FILE_LOG_PATH = os.tmpname()
 
 
-      setup(function()
+      lazy_setup(function()
         db:truncate("routes")
         db:truncate("services")
         db:truncate("consumers")
@@ -636,7 +636,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
 
-      teardown(function()
+      lazy_teardown(function()
         helpers.stop_kong("servroot2")
         helpers.stop_kong()
       end)

@@ -14,7 +14,7 @@ for _, strategy in helpers.each_strategy() do
   describe("kong.db [#" .. strategy .. "]", function()
     local db, bp
 
-    setup(function()
+    lazy_setup(function()
       bp, db = helpers.get_db_utils(strategy, {
         "routes",
         "services",
@@ -602,7 +602,7 @@ for _, strategy in helpers.each_strategy() do
         end)
 
         describe("page size", function()
-          setup(function()
+          lazy_setup(function()
             assert(db:truncate("routes"))
 
             for i = 1, 202 do
@@ -620,7 +620,7 @@ for _, strategy in helpers.each_strategy() do
         end)
 
         describe("page offset", function()
-          setup(function()
+          lazy_setup(function()
             assert(db:truncate("routes"))
 
             for i = 1, 10 do
@@ -774,7 +774,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       describe(":each()", function()
-        setup(function()
+        lazy_setup(function()
           assert(db:truncate("routes"))
 
           for i = 1, 100 do
@@ -1045,7 +1045,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       describe(":select_by_name()", function()
-        setup(function()
+        lazy_setup(function()
           assert(db:truncate("services"))
 
           for i = 1, 5 do
@@ -1327,7 +1327,7 @@ for _, strategy in helpers.each_strategy() do
       describe(":delete_by_name()", function()
         local service
 
-        setup(function()
+        lazy_setup(function()
           assert(db:truncate("services"))
 
           service = assert(db.services:insert({
@@ -1588,7 +1588,7 @@ for _, strategy in helpers.each_strategy() do
           local service
 
           describe("page size", function()
-            setup(function()
+            lazy_setup(function()
               assert(db:truncate("services"))
 
               service = bp.services:insert()
@@ -1624,7 +1624,7 @@ for _, strategy in helpers.each_strategy() do
           end)
 
           describe("page offset", function()
-            setup(function()
+            lazy_setup(function()
               assert(db:truncate("services"))
 
               service = bp.services:insert()

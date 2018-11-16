@@ -71,7 +71,7 @@ for _, strategy in helpers.each_strategy() do
     local db
     local bp
 
-    setup(function()
+    lazy_setup(function()
       bp, db = helpers.get_db_utils(strategy)
 
       local consumer = bp.consumers:insert {
@@ -321,7 +321,7 @@ for _, strategy in helpers.each_strategy() do
       proxy_ssl_client = helpers.proxy_ssl_client()
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       if proxy_client and proxy_ssl_client then
         proxy_client:close()
         proxy_ssl_client:close()
@@ -2350,7 +2350,7 @@ for _, strategy in helpers.each_strategy() do
     local db
     local bp
 
-    setup(function()
+    lazy_setup(function()
       bp, db = helpers.get_db_utils(strategy)
 
       local service1 = bp.services:insert({
@@ -2433,7 +2433,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
 
-    teardown(function()
+    lazy_teardown(function()
       if proxy_client then proxy_client:close() end
       helpers.stop_kong()
     end)
@@ -2573,7 +2573,7 @@ for _, strategy in helpers.each_strategy() do
     local db
     local bp
 
-    setup(function()
+    lazy_setup(function()
       bp, db = helpers.get_db_utils(strategy)
 
       local route11 = assert(db.routes:insert({
@@ -2631,7 +2631,7 @@ for _, strategy in helpers.each_strategy() do
       }))
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       helpers.stop_kong()
     end)
 

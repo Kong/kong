@@ -10,14 +10,14 @@ for _, strategy in helpers.each_strategy() do
     local bp
     local db
 
-    setup(function()
+    lazy_setup(function()
       bp, db = helpers.get_db_utils(strategy)
 
       assert(helpers.start_kong({
         database = strategy,
       }))
     end)
-    teardown(function()
+    lazy_teardown(function()
       helpers.stop_kong()
     end)
 
@@ -30,7 +30,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("/consumers/:consumer/basic-auth/", function()
-      setup(function()
+      lazy_setup(function()
         consumer = bp.consumers:insert {
           username = "bob"
         }
@@ -145,7 +145,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       describe("GET", function()
-        setup(function()
+        lazy_setup(function()
           for i = 1, 3 do
             bp.basicauth_credentials:insert {
               username = "bob" .. i,
@@ -154,7 +154,7 @@ for _, strategy in helpers.each_strategy() do
             }
           end
         end)
-        teardown(function()
+        lazy_teardown(function()
           db:truncate("basicauth_credentials")
         end)
         it("retrieves the first page", function()
@@ -337,7 +337,7 @@ for _, strategy in helpers.each_strategy() do
     describe("/basic-auths", function()
       local consumer2
       describe("GET", function()
-        setup(function()
+        lazy_setup(function()
           db:truncate("basicauth_credentials")
           bp.basicauth_credentials:insert {
             consumer = { id = consumer.id },
@@ -405,7 +405,7 @@ for _, strategy in helpers.each_strategy() do
     describe("/basic-auths/:credential_username_or_id/consumer", function()
       describe("GET", function()
         local credential
-        setup(function()
+        lazy_setup(function()
           db:truncate("basicauth_credentials")
           credential = bp.basicauth_credentials:insert {
             consumer = { id = consumer.id },

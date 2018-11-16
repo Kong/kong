@@ -12,7 +12,7 @@ for _, strategy in helpers.each_strategy() do
     local route1
     local route2
 
-    setup(function()
+    lazy_setup(function()
       bp, db = helpers.get_db_utils(strategy)
 
       route1 = bp.routes:insert {
@@ -34,7 +34,7 @@ for _, strategy in helpers.each_strategy() do
 
       admin_client = helpers.admin_client()
     end)
-    teardown(function()
+    lazy_teardown(function()
       if admin_client then
         admin_client:close()
       end
@@ -98,14 +98,14 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       describe("GET", function()
-        setup(function()
+        lazy_setup(function()
           for i = 1, 3 do
             assert(bp.keyauth_credentials:insert {
               consumer = { id = consumer.id }
             })
           end
         end)
-        teardown(function()
+        lazy_teardown(function()
           db:truncate("keyauth_credentials")
         end)
         it("retrieves the first page", function()
@@ -318,7 +318,7 @@ for _, strategy in helpers.each_strategy() do
       local consumer2
 
       describe("GET", function()
-        setup(function()
+        lazy_setup(function()
           db:truncate("keyauth_credentials")
 
           for i = 1, 3 do
@@ -394,7 +394,7 @@ for _, strategy in helpers.each_strategy() do
       describe("GET", function()
         local credential
 
-        setup(function()
+        lazy_setup(function()
           db:truncate("keyauth_credentials")
           credential = bp.keyauth_credentials:insert {
             consumer = { id = consumer.id },

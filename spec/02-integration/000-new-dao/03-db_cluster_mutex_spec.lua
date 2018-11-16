@@ -6,7 +6,7 @@ for _, strategy in helpers.each_strategy() do
     local db
 
 
-    setup(function()
+    lazy_setup(function()
       local _
       _, db, _ = helpers.get_db_utils(strategy)
 

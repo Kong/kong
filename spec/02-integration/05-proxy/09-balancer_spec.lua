@@ -550,7 +550,7 @@ for _, strategy in helpers.each_strategy() do
 
   describe("Ring-balancer #" .. strategy, function()
 
-    setup(function()
+    lazy_setup(function()
       local _, db, dao = helpers.get_db_utils(strategy, {})
 
       truncate_relevant_tables(db, dao)
@@ -562,7 +562,7 @@ for _, strategy in helpers.each_strategy() do
       })
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       helpers.stop_kong()
     end)
 
@@ -574,7 +574,7 @@ for _, strategy in helpers.each_strategy() do
       local proxy_port_2 = 9010
       local admin_port_2 = 9011
 
-      setup(function()
+      lazy_setup(function()
         -- start a second Kong instance
         helpers.start_kong({
           database   = strategy,
@@ -586,7 +586,7 @@ for _, strategy in helpers.each_strategy() do
         })
       end)
 
-      teardown(function()
+      lazy_teardown(function()
         helpers.stop_kong("servroot2", true, true)
       end)
 

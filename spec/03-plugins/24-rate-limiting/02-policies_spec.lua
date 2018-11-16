@@ -13,7 +13,7 @@ for _, strategy in helpers.each_strategy() do
       local dao
       local policies
 
-      setup(function()
+      lazy_setup(function()
         local _
         _, db, dao = helpers.get_db_utils(strategy)
 

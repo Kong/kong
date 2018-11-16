@@ -5,7 +5,7 @@ for _, strategy in helpers.each_strategy() do
   describe("use-cases with DB: #" .. strategy, function()
     local bp, db
 
-    setup(function()
+    lazy_setup(function()
       bp, db = helpers.get_db_utils(strategy)
     end)
 

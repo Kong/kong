@@ -32,7 +32,7 @@ describe("Admin API (#" .. strategy .. "): ", function()
   local db
   local client
 
-  setup(function()
+  lazy_setup(function()
     bp, db = helpers.get_db_utils(strategy, {
       "consumers",
       "plugins",
@@ -45,7 +45,7 @@ describe("Admin API (#" .. strategy .. "): ", function()
     }))
   end)
 
-  teardown(function()
+  lazy_teardown(function()
     helpers.stop_kong(nil, true)
   end)
 
@@ -205,7 +205,7 @@ describe("Admin API (#" .. strategy .. "): ", function()
         assert(db:truncate("consumers"))
         bp.consumers:insert_n(10)
       end)
-      teardown(function()
+      lazy_teardown(function()
         assert(db:truncate("consumers"))
         db:truncate("plugins")
       end)

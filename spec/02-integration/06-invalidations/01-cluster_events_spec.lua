@@ -9,12 +9,12 @@ for _, strategy in helpers.each_strategy() do
   describe("cluster_events with db [#" .. strategy .. "]", function()
     local db
 
-    setup(function()
+    lazy_setup(function()
       local _
       _, db = helpers.get_db_utils(strategy)
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       local cluster_events = assert(kong_cluster_events.new { db = db })
       cluster_events.strategy:truncate_events()
     end)

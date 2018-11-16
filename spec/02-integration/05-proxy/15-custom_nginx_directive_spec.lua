@@ -18,7 +18,7 @@ describe("Custom NGINX directives", function()
     end
   end
 
-  setup(function()
+  lazy_setup(function()
     bp = helpers.get_db_utils()
   end)
 
@@ -34,11 +34,11 @@ describe("Custom NGINX directives", function()
 
   describe("with config value 'nginx_proxy_add_header=foo-header bar-value'", function()
 
-    setup(start {
+    lazy_setup(start {
       ["nginx_proxy_add_header"] = "foo-header bar-value"
     })
 
-    teardown(helpers.stop_kong)
+    lazy_teardown(helpers.stop_kong)
 
     it("should insert 'foo-header' header", function()
       local res = assert(proxy_client:send {

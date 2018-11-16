@@ -40,7 +40,7 @@ for _, strategy in helpers.each_strategy() do
 
   describe("kong migrations #" .. strategy, function()
 
-    teardown(function()
+    lazy_teardown(function()
       run_kong("migrations reset --yes")
     end)
 

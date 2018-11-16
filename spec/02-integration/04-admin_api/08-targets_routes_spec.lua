@@ -28,7 +28,7 @@ describe("Admin API #" .. strategy, function()
   local weight_default, weight_min, weight_max = 100, 0, 1000
   local default_port = 8000
 
-  setup(function()
+  lazy_setup(function()
     bp, db = helpers.get_db_utils(strategy, {
       "upstreams",
       "targets",
@@ -39,7 +39,7 @@ describe("Admin API #" .. strategy, function()
     }))
   end)
 
-  teardown(function()
+  lazy_teardown(function()
     assert(helpers.stop_kong())
   end)
 
@@ -319,7 +319,7 @@ describe("Admin API #" .. strategy, function()
         end
       end
 
-      setup(function()
+      lazy_setup(function()
         local status, body = client_send({
           method = "GET",
           path = "/",
