@@ -1,6 +1,5 @@
 local cassandra = require "cassandra"
 local split = require("pl.stringx").split
-local cjson = require("cjson")
 
 
 local insert = table.insert
@@ -68,9 +67,8 @@ function Plugins:select_by_cache_key_migrating(key)
              row.service_id == parts[4] and
              row.consumer_id == parts[5] and
              row.api_id == parts[6] then
-            row.config = cjson.decode(row.config)
             row.cache_key = nil
-            return row
+            return self:deserialize_row(row)
           end
         end
       end
