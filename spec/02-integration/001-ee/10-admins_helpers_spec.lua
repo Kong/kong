@@ -6,7 +6,7 @@ local workspaces = require "kong.workspaces"
 
 for _, strategy in helpers.each_strategy() do
 
-  describe("admin_helpers", function()
+  describe("admin_helpers with #" .. strategy, function()
     local dao
     local default_ws, another_ws
     local admins = {}
@@ -19,14 +19,17 @@ for _, strategy in helpers.each_strategy() do
       another_ws = assert(dao.workspaces:insert({ name = "ws1" }))
 
       for i = 1, 4 do
+        -- half the admins are in each workspace,
+        -- and half have a null custom_id
         local ws_to_use = i % 2 == 0 and another_ws or default_ws
+        local custom_id = i % 2 == 0 and ("admin-" .. i) or ngx.null
 
         local cons = assert(dao.consumers:run_with_ws_scope (
           { ws_to_use },
           dao.consumers.insert,
           {
             username = "admin-" .. i,
-            custom_id = "admin-" .. i,
+            custom_id = custom_id,
             email = "admin-" .. i .. "@test.com",
             type = enums.CONSUMERS.TYPE.ADMIN,
           })
@@ -76,6 +79,21 @@ for _, strategy in helpers.each_strategy() do
         assert.is_false(res)
       end)
 
+      it ("doesn't consider null consumer.custom_ids to match", function()
+        -- admins 1 and 3 have null custom_id. Is admin-99 considered valid?
+        local params = {
+          username = "admin-99",
+          custom_id = ngx.null,
+          email = "admin-99@test.com",
+        }
+
+        local res, match, err = admins_helpers.validate(params, dao, "POST")
+
+        assert.is_nil(err)
+        assert.is_nil(match)
+        assert.is_true(res)
+      end)
+
       it("requires unique consumer.email", function()
         local params = {
           username = "i-am-unique",
@@ -106,6 +124,34 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("update", function()
+      local admin
+
+      setup(function()
+        admin = assert(dao.consumers:run_with_ws_scope (
+          { default_ws },
+          dao.consumers.insert,
+          {
+            username = "admin",
+            custom_id = ngx.null,
+            email = "admin@test.com",
+            type = enums.CONSUMERS.TYPE.ADMIN,
+          })
+        )
+
+        local user = assert(dao.rbac_users:insert {
+          name = admin.username,
+          user_token = utils.uuid(),
+          enabled = true,
+        })
+
+        dao.consumers_rbac_users_map:insert {
+          consumer_id = admin.id,
+          user_id = user.id,
+        }
+
+        admin.rbac_user = user
+      end)
+
       it("doesn't fail when admin doesn't have a credential", function()
         local res = admins_helpers.update({ custom_id = "foo" }, admins[3], admins[3].rbac_user)
 
@@ -114,6 +160,29 @@ for _, strategy in helpers.each_strategy() do
         expected.custom_id = "foo"
 
         assert.same({ code = 200, body = expected }, res)
+      end)
+
+      it("updates a null field to a non-null one", function()
+        local new_custom_id = "admin-custom-id"
+        local params = {
+          username = admin.username,
+          custom_id = new_custom_id,
+          email = admin.email,
+        }
+
+        local res = admins_helpers.update(params, admin, admin.rbac_user)
+        assert.same(new_custom_id, res.body.custom_id)
+      end)
+
+      it("updates a non-null field to null", function()
+        local params = {
+          username = admin.username,
+          custom_id = ngx.null,
+          email = admin.email,
+        }
+
+        local res = admins_helpers.update(params, admin, admin.rbac_user)
+        assert.same(nil, res.body.custom_id)
       end)
     end)
 
