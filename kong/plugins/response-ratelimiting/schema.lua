@@ -54,7 +54,7 @@ return {
               keys = { type = "string" },
               values = {
                 type = "record",
-                nullable = false,
+                required = true,
                 fields = {
                   { second = { type = "number", gt = 0 }, },
                   { minute = { type = "number", gt = 0 }, },

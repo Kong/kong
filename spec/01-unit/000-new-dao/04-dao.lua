@@ -14,7 +14,7 @@ local nullable_schema_definition = {
     { b = { type = "string", default = "hello" }, },
     { u = { type = "string" }, },
     { r = { type = "record",
-            nullable = true,
+            required = false,
             fields = {
               { f1 = { type = "number" } },
               { f2 = { type = "string", default = "world" } },
@@ -27,12 +27,12 @@ local non_nullable_schema_definition = {
   primary_key = { "a" },
   fields = {
     { a = { type = "number" }, },
-    { b = { type = "string", default = "hello", nullable = false }, },
+    { b = { type = "string", default = "hello", required = true }, },
     { u = { type = "string" }, },
     { r = { type = "record",
             fields = {
               { f1 = { type = "number" } },
-              { f2 = { type = "string", default = "world", nullable = false } },
+              { f2 = { type = "string", default = "world", required = true } },
             } } },
   }
 }

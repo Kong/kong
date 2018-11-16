@@ -1851,16 +1851,16 @@ describe("schema", function()
       assert.same({ r = { a = "nr", b = 123, }}, data.nested_record)
     end)
 
-    it("nested defaults in non-nullable records produce a default record", function()
+    it("nested defaults in required records produce a default record", function()
       local Test = Schema.new({
         fields = {
           { nested_record = {
               type = "record",
-              nullable = false,
+              required = true,
               fields = {
                 { r = {
                     type = "record",
-                    nullable = false,
+                    required = true,
                     fields = {
                       { a = { type = "string", default = "nr", } },
                       { b = { type = "number", default = 123, } }
@@ -1872,6 +1872,42 @@ describe("schema", function()
       })
       local data = Test:process_auto_fields({})
       assert.same({ r = { a = "nr", b = 123, }}, data.nested_record)
+    end)
+
+    it("null in required records only produces a default record on select", function()
+      local Test = Schema.new({
+        fields = {
+          { nested_record = {
+              type = "record",
+              required = true,
+              fields = {
+                { r = {
+                    type = "record",
+                    required = true,
+                    fields = {
+                      { a = { type = "string", default = "nr", } },
+                      { b = { type = "number", default = 123, } }
+                    }
+                } }
+              }
+          } }
+        }
+      })
+      local data = Test:process_auto_fields({ nested_record = ngx.null }, "insert")
+      assert.same(ngx.null, data.nested_record)
+      assert.falsy(Test:validate(data))
+
+      data = Test:process_auto_fields({ nested_record = ngx.null }, "update")
+      assert.same(ngx.null, data.nested_record)
+      assert.falsy(Test:validate_update(data))
+
+      data = Test:process_auto_fields({ nested_record = ngx.null }, "upsert")
+      assert.same(ngx.null, data.nested_record)
+      assert.falsy(Test:validate_update(data))
+
+      data = Test:process_auto_fields({ nested_record = ngx.null }, "select")
+      assert.same({ r = { a = "nr", b = 123, }}, data.nested_record)
+      assert.truthy(Test:validate(data))
     end)
 
     it("honors 'false' as a default", function()
