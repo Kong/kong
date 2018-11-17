@@ -22,6 +22,7 @@ for _, strategy in helpers.each_strategy() do
         "routes",
         "services",
         "certificates",
+        "snis",
       })
 
       local service = bp.services:insert {
@@ -101,6 +102,45 @@ for _, strategy in helpers.each_strategy() do
         certificate = cert,
       }
 
+      -- wildcard tests
+
+      local certificate_alt = bp.certificates:insert {
+        cert = ssl_fixtures.cert_alt,
+        key = ssl_fixtures.key_alt,
+      }
+
+      local certificate_alt_alt = bp.certificates:insert {
+        cert = ssl_fixtures.cert_alt_alt,
+        key = ssl_fixtures.key_alt_alt,
+      }
+
+      bp.snis:insert {
+        name = "*.wildcard.com",
+        certificate = certificate_alt,
+      }
+
+      bp.snis:insert {
+        name = "wildcard.*",
+        certificate = certificate_alt,
+      }
+
+      bp.snis:insert {
+        name = "wildcard.org",
+        certificate = certificate_alt_alt,
+      }
+
+      bp.snis:insert {
+        name = "test.wildcard.*",
+        certificate = certificate_alt_alt,
+      }
+
+      bp.snis:insert {
+        name = "*.www.wildcard.com",
+        certificate = certificate_alt_alt,
+      }
+
+      -- /wildcard tests
+
       assert(helpers.start_kong {
         database    = strategy,
         nginx_conf  = "spec/fixtures/custom_nginx.template",
@@ -140,6 +180,38 @@ for _, strategy in helpers.each_strategy() do
 
         cert = get_cert("example.com")
         assert.cn("ssl-example.com", cert)
+      end)
+
+      describe("wildcard sni", function()
+        it("matches *.wildcard.com (prefix)", function()
+          local cert = get_cert("test.wildcard.com")
+          assert.matches("CN%s*=%s*ssl%-alt%.com", cert)
+        end)
+
+        it("matches wildcard.* (suffix)", function()
+          local cert = get_cert("wildcard.eu")
+          assert.matches("CN%s*=%s*ssl%-alt%.com", cert)
+        end)
+
+        it("respects matching priorities (exact first)", function()
+          local cert = get_cert("wildcard.org")
+          assert.matches("CN%s*=%s*ssl%-alt%-alt%.com", cert)
+        end)
+
+        it("respects matching priorities (prefix second)", function()
+          local cert = get_cert("test.wildcard.com")
+          assert.matches("CN%s*=%s*ssl%-alt%.com", cert)
+        end)
+
+        it("respects matching priorities (suffix third)", function()
+          local cert = get_cert("test.wildcard.org")
+          assert.matches("CN%s*=%s*ssl%-alt%-alt%.com", cert)
+        end)
+
+        it("matches *.www.wildcard.com", function()
+          local cert = get_cert("test.www.wildcard.com")
+          assert.matches("CN%s*=%s*ssl%-alt%-alt%.com", cert)
+        end)
       end)
     end)
 

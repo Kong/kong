@@ -423,9 +423,17 @@ return {
 
       worker_events.register(function(data)
         log(DEBUG, "[events] SNI updated, invalidating cached certificates")
-        local sn = data.entity
+        local sni = data.old_entity or data.entity
+        local sni_wild_pref, sni_wild_suf = certificate.produce_wild_snis(sni.name)
+        cache:invalidate("snis:" .. sni.name)
 
-        cache:invalidate("certificates:" .. sn.name)
+        if sni_wild_pref then
+          cache:invalidate("snis:" .. sni_wild_pref)
+        end
+
+        if sni_wild_suf then
+          cache:invalidate("snis:" .. sni_wild_suf)
+        end
       end, "crud", "snis")
 
 
@@ -433,14 +441,15 @@ return {
         log(DEBUG, "[events] SSL cert updated, invalidating cached certificates")
         local certificate = data.entity
 
-        for sn, err in db.snis:each_for_certificate({ id = certificate.id }, 1000) do
+        for sni, err in db.snis:each_for_certificate({ id = certificate.id }, 1000) do
           if err then
             log(ERR, "[events] could not find associated snis for certificate: ",
                      err)
             break
           end
 
-          cache:invalidate("certificates:" .. sn.name)
+          local cache_key = "certificates:" .. sni.certificate.id
+          cache:invalidate(cache_key)
         end
       end, "crud", "certificates")
 
