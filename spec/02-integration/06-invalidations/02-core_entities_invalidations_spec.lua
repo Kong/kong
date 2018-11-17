@@ -25,6 +25,7 @@ for _, strategy in helpers.each_strategy() do
         "routes",
         "services",
         "plugins",
+        "snis",
         "certificates",
         "snis",
       })
@@ -398,15 +399,22 @@ for _, strategy in helpers.each_strategy() do
       end
 
       lazy_setup(function()
-        -- populate cache with a miss on
-        -- both nodes
+        -- populate cache with misses on both nodes
         local cert_1 = get_cert(8443, "ssl-example.com")
         local cert_2 = get_cert(9443, "ssl-example.com")
+        local cert_wildcard_1 = get_cert(8443, "test.wildcard.com")
+        local cert_wildcard_2 = get_cert(9443, "test.wildcard.com")
+        local cert_wildcard_3 = get_cert(8443, "wildcard.org")
+        local cert_wildcard_4 = get_cert(9443, "wildcard.org")
 
         -- if you get an error when running these, you likely have an outdated version of openssl installed
         -- to update in osx: https://github.com/Kong/kong/pull/2776#issuecomment-320275043
         assert.cn("localhost", cert_1)
         assert.cn("localhost", cert_2)
+        assert.cn("localhost", cert_wildcard_1)
+        assert.cn("localhost", cert_wildcard_2)
+        assert.cn("localhost", cert_wildcard_3)
+        assert.cn("localhost", cert_wildcard_4)
       end)
 
       it("on certificate+sni create", function()
@@ -563,6 +571,169 @@ for _, strategy in helpers.each_strategy() do
 
         local cert_2 = get_cert(9443, "updated-sn.com")
         assert.cn("localhost", cert_2)
+      end)
+
+      describe("wildcard snis", function()
+        it("on create", function()
+          local admin_res = admin_client_1:post("/certificates", {
+            body   = {
+              cert = ssl_fixtures.cert_alt,
+              key  = ssl_fixtures.key_alt,
+              snis = { "*.wildcard.com" },
+            },
+            headers = { ["Content-Type"] = "application/json" }
+          })
+          assert.res_status(201, admin_res)
+
+          local admin_res = admin_client_1:post("/certificates", {
+            body   = {
+              cert = ssl_fixtures.cert_alt_alt,
+              key  = ssl_fixtures.key_alt_alt,
+              snis = { "wildcard.*" },
+            },
+            headers = { ["Content-Type"] = "application/json" }
+          })
+          assert.res_status(201, admin_res)
+
+          -- no need to wait for workers propagation (lua-resty-worker-events)
+          -- because our test instance only has 1 worker
+
+          local cert = get_cert(8443, "test.wildcard.com")
+          assert.cn("ssl-alt.com", cert)
+          cert = get_cert(8443, "test2.wildcard.com")
+          assert.cn("ssl-alt.com", cert)
+
+          wait_for_propagation()
+
+          cert = get_cert(9443, "test.wildcard.com")
+          assert.cn("ssl-alt.com", cert)
+          cert = get_cert(9443, "test2.wildcard.com")
+          assert.cn("ssl-alt.com", cert)
+
+          cert = get_cert(8443, "wildcard.org")
+          assert.cn("ssl-alt-alt.com", cert)
+          cert = get_cert(8443, "wildcard.com")
+          assert.cn("ssl-alt-alt.com", cert)
+        end)
+
+        it("on certificate update", function()
+          -- update our certificate *without* updating the
+          -- attached sni
+
+          local admin_res = assert(admin_client_1:send {
+            method = "PATCH",
+            path   = "/certificates/%2A.wildcard.com",
+            body   = {
+              cert = ssl_fixtures.cert_alt_alt,
+              key  = ssl_fixtures.key_alt_alt,
+            },
+            headers = {
+              ["Content-Type"] = "application/json",
+            },
+          })
+          assert.res_status(200, admin_res)
+
+          -- no need to wait for workers propagation (lua-resty-worker-events)
+          -- because our test instance only has 1 worker
+
+          local cert = get_cert(8443, "test.wildcard.com")
+          assert.cn("ssl-alt-alt.com", cert)
+          cert = get_cert(8443, "test2.wildcard.com")
+          assert.cn("ssl-alt-alt.com", cert)
+
+          wait_for_propagation()
+
+          local cert = get_cert(9443, "test.wildcard.com")
+          assert.cn("ssl-alt-alt.com", cert)
+          cert = get_cert(9443, "test2.wildcard.com")
+          assert.cn("ssl-alt-alt.com", cert)
+        end)
+
+        it("on sni update via id", function()
+          local admin_res = admin_client_1:get("/snis/%2A.wildcard.com")
+          local body = assert.res_status(200, admin_res)
+          local sni = assert(cjson.decode(body))
+
+          local admin_res = admin_client_1:patch("/snis/" .. sni.id, {
+            body    = { name = "*.wildcard_updated.com" },
+            headers = { ["Content-Type"] = "application/json" },
+          })
+          assert.res_status(200, admin_res)
+
+          local cert_1_old = get_cert(8443, "test.wildcard.com")
+          assert.cn("localhost", cert_1_old)
+          cert_1_old = get_cert(8443, "test2.wildcard.com")
+          assert.cn("localhost", cert_1_old)
+
+          local cert_1_new = get_cert(8443, "test.wildcard_updated.com")
+          assert.cn("ssl-alt-alt.com", cert_1_new)
+          cert_1_new = get_cert(8443, "test2.wildcard_updated.com")
+          assert.cn("ssl-alt-alt.com", cert_1_new)
+
+          wait_for_propagation()
+
+          local cert_2_old = get_cert(9443, "test.wildcard.com")
+          assert.cn("localhost", cert_2_old)
+          cert_2_old = get_cert(9443, "test2.wildcard.com")
+          assert.cn("localhost", cert_2_old)
+
+          local cert_2_new = get_cert(9443, "test.wildcard_updated.com")
+          assert.cn("ssl-alt-alt.com", cert_2_new)
+          cert_2_new = get_cert(9443, "test2.wildcard_updated.com")
+          assert.cn("ssl-alt-alt.com", cert_2_new)
+        end)
+
+        it("on sni update via name", function()
+          local admin_res = admin_client_1:patch("/snis/%2A.wildcard_updated.com", {
+            body    = { name = "*.wildcard.org" },
+            headers = { ["Content-Type"] = "application/json" },
+          })
+          assert.res_status(200, admin_res)
+
+          local cert_1_old = get_cert(8443, "test.wildcard_updated.com")
+          assert.cn("localhost", cert_1_old)
+          cert_1_old = get_cert(8443, "test2.wildcard_updated.com")
+          assert.cn("localhost", cert_1_old)
+
+          local cert_1_new = get_cert(8443, "test.wildcard.org")
+          assert.cn("ssl-alt-alt.com", cert_1_new)
+          cert_1_new = get_cert(8443, "test2.wildcard.org")
+          assert.cn("ssl-alt-alt.com", cert_1_new)
+
+          wait_for_propagation()
+
+          local cert_2_old = get_cert(9443, "test.wildcard_updated.com")
+          assert.cn("localhost", cert_2_old)
+          cert_2_old = get_cert(9443, "test2.wildcard_updated.com")
+          assert.cn("localhost", cert_2_old)
+
+          local cert_2_new = get_cert(9443, "test.wildcard.org")
+          assert.cn("ssl-alt-alt.com", cert_2_new)
+          cert_2_new = get_cert(9443, "test2.wildcard.org")
+          assert.cn("ssl-alt-alt.com", cert_2_new)
+        end)
+
+        it("on certificate delete", function()
+          -- delete our certificate
+
+          local admin_res = admin_client_1:delete("/certificates/%2A.wildcard.org")
+          assert.res_status(204, admin_res)
+
+          -- no need to wait for workers propagation (lua-resty-worker-events)
+          -- because our test instance only has 1 worker
+
+          local cert_1 = get_cert(8443, "test.wildcard.org")
+          assert.cn("localhost", cert_1)
+          cert_1 = get_cert(8443, "test2.wildcard.org")
+          assert.cn("localhost", cert_1)
+
+          wait_for_propagation()
+
+          local cert_2 = get_cert(9443, "test.wildcard.org")
+          assert.cn("localhost", cert_2)
+          cert_2 = get_cert(9443, "test2.wildcard.org")
+          assert.cn("localhost", cert_2)
+        end)
       end)
     end)
 
