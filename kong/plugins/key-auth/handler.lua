@@ -41,23 +41,22 @@ end
 local function set_consumer(consumer, credential)
   local const = constants.HEADERS
 
-  local new_headers = {
-    [const.CONSUMER_ID]        = consumer.id,
-    [const.CONSUMER_CUSTOM_ID] = tostring(consumer.custom_id),
-    [const.CONSUMER_USERNAME]  = consumer.username,
-  }
-
   kong.client.authenticate(consumer, credential)
 
+  kong.service.request.set_header(const.CONSUMER_ID, consumer.id)
+  kong.service.request.set_header(const.CONSUMER_CUSTOM_ID, tostring(consumer.custom_id))
+  kong.service.request.set_header(const.CONSUMER_USERNAME, consumer.username)
+
   if credential then
-    new_headers[const.CREDENTIAL_USERNAME] = credential.username
+    if credential.username then
+      kong.service.request.set_header(const.CREDENTIAL_USERNAME, credential.username)
+    end
+
     kong.service.request.clear_header(const.ANONYMOUS) -- in case of auth plugins concatenation
 
   else
-    new_headers[const.ANONYMOUS] = true
+    kong.service.request.set_header(const.ANONYMOUS, true)
   end
-
-  kong.service.request.set_headers(new_headers)
 end
 
 
