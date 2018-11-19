@@ -1,11 +1,9 @@
 local transform_utils = require "kong.plugins.response-transformer-advanced.transform_utils"
-local utils = require "kong.tools.utils"
 
 local cjson_decode = require("cjson").decode
 local cjson_encode = require("cjson").encode
 
 local skip_transform = transform_utils.skip_transform
-local table_contains = utils.table_contains
 local table_insert = table.insert
 local pcall = pcall
 local find = string.find
