@@ -735,13 +735,9 @@ end)
 dao_helpers.for_each_dao(function(kong_config)
 describe("Admin API #" .. kong_config.database, function()
   local client
-  local dao
+  local db, _
   setup(function()
-    dao = assert(DAOFactory.new(kong_config))
-    singletons.dao = dao
-
-    dao:truncate_tables()
-    dao:run_migrations()
+    _, db, _ = helpers.get_db_utils(kong_config.database)
 
     assert(helpers.start_kong{
       database = kong_config.database
@@ -755,99 +751,89 @@ describe("Admin API #" .. kong_config.database, function()
     describe("Refresh the router", function()
       before_each(function()
         ngx.ctx.workspaces = nil
-        dao:truncate_tables()
+        db:truncate("services")
+        db:truncate("routes")
         client = assert(helpers.admin_client())
       end)
       after_each(function()
         if client then client:close() end
       end)
-      it("doesn't create an API when it conflicts", function()
-          local res = assert(client:send {
-            method = "POST",
-            path = "/apis",
-            body = {
-              uris = "/my-uri",
-              name = "my-api",
-              methods = "GET",
-              hosts = "my.api.com",
-              upstream_url = "http://api.com"
-            },
-            headers = {["Content-Type"] = "application/json"}
-          })
-          local body = assert.res_status(201, res)
-          local json = cjson.decode(body)
 
-          res = assert(client:send {
-                         method = "POST",
-                         path = "/workspaces",
-                         body = {
-                           name = "foo",
-                         },
-                         headers = {["Content-Type"] = "application/json"}
-          })
+      it("doesnt create a route when it conflicts", function()
+        local res = client:post("/workspaces", {
+          body = {
+            name = "w1"
+          },
+          headers = { ["Content-Type"] = "application/json"},
+        })
+        assert.res_status(201, res)
 
-          assert.res_status(201, res)
+        res = client:post("/default/services", {
+          body = {
+            name = "demo-ip",
+            url = "http://httpbin.org/ip",
+          },
+          headers = { ["Content-Type"] = "application/json"},
+        })
+        assert.res_status(201, res)
 
-          -- route collides in different WS
-          res = assert(client:send {
-                         method = "POST",
-                         path = "/foo/apis",
-                         body = {
-                           uris = "/my-uri",
-                           name = "my-api",
-                           methods = "GET",
-                           hosts = "my.api.com",
-                           upstream_url = "http://api.com"
-                         },
-                         headers = {["Content-Type"] = "application/json"}
-          })
-          assert.res_status(409, res)
+        res = client:post("/default/services", {
+          body = {
+            name = "demo-default",
+            url = "http://httpbin.org/default",
+          },
+          headers = { ["Content-Type"] = "application/json"},
+        })
+        assert.res_status(201, res)
 
-          -- colliding in same WS, no problemo
-          res = assert(client:send {
-                         method = "POST",
-                         path = "/apis",
-                         body = {
-                           uris = "/my-uri",
-                           name = "my-api2",
-                           methods = "GET,POST",
-                           hosts = "my.api.com",
-                           upstream_url = "http://api.com"
-                         },
-                         headers = {["Content-Type"] = "application/json"}
-          })
-          res = cjson.decode(assert.res_status(201, res))
+        res = client:post("/w1/services/", {
+          body = {
+            name = "demo-anything",
+            url = "http://httpbin.org/anything",
+          },
+          headers = { ["Content-Type"] = "application/json"},
+        })
+        assert.res_status(201, res)
+
+        res = client:post("/default/services/demo-ip/routes", {
+          body = {
+            hosts = {"my.api.com" },
+            paths = { "/my-uri" },
+            methods = { "GET" },
+          },
+          headers = { ["Content-Type"] = "application/json"},
+        })
+        assert.res_status(201, res)
+
+        -- route collides in different WS
+        res = client:post("/w1/services/demo-anything/routes", {
+          body = {
+            hosts = {"my.api.com" },
+            paths = { "/my-uri" },
+            methods = { "GET" },
+          },
+          headers = {["Content-Type"] = "application/json"},
+        })
+        assert.res_status(409, res)
+
+        -- colliding in same WS, no problemo
+        res = client:post("/default/services/demo-default/routes", {
+          body = {
+            methods = { "GET" },
+            hosts = {"my.api.com"},
+            paths = { "/my-uri" },
+          },
+          headers = {["Content-Type"] = "application/json"}
+        })
+        res = cjson.decode(assert.res_status(201, res))
 
           -- Delete the existing ones
-          res = assert(client:send {
-                         method = "DELETE",
-                         path = "/apis/" .. res.id,
-                         headers = {["Content-Type"] = "application/json"}
+        res = client:delete("/default/routes/" .. res.id, {
+            headers = {["Content-Type"] = "application/json"},
           })
           assert.res_status(204, res)
-
-          res = assert(client:send {
-                         method = "DELETE",
-                         path = "/apis/" .. json.id,
-                         headers = {["Content-Type"] = "application/json"}
-          })
-          assert.res_status(204, res)
-
-          -- Now we can create it
-          res = assert(client:send {
-                         method = "POST",
-                         path = "/foo/apis",
-                         body = {
-                           uris = "/my-uri",
-                           name = "my-api",
-                           methods = "GET",
-                           hosts = "my.api.com",
-                           upstream_url = "http://api.com"
-                         },
-                         headers = {["Content-Type"] = "application/json"}
-          })
-          assert.res_status(201, res)
       end)
+
       it("does not allow creating routes that collide in path and have no host", function()
         local wsname = utils.uuid()
         local res = client:send {
@@ -887,181 +873,65 @@ describe("Admin API #" .. kong_config.database, function()
         assert.res_status(409, res)
       end)
 
-      it("modifies an api via PUT /apis", function()
-          local res = assert(client:send {
-            method = "POST",
-            path = "/apis",
-            body = {
-              uris = "/my-uri",
-              name = "my-api",
-              methods = "GET",
-              hosts = "my.api.com",
-              upstream_url = "http://api.com"
-            },
-            headers = {["Content-Type"] = "application/json"}
-          })
-          local body = assert.res_status(201, res)
-          local json = cjson.decode(body)
+      it("route PATCH checks collision", function()
+        local ws_name = utils.uuid()
+        local res = client:post("/workspaces", {
+          body = {
+            name = ws_name,
+          },
+          headers = { ["Content-Type"] = "application/json"},
+        })
+        assert.res_status(201, res)
 
-          res = assert(client:send {
-                         method = "POST",
-                         path = "/workspaces",
-                         body = {
-                           name = "foo",
-                         },
-                         headers = {["Content-Type"] = "application/json"}
-          })
+        res = client:post("/default/services", {
+          body = {
+            name = "demo-ip",
+            url = "http://httpbin.org/".. utils.uuid(),
+          },
+          headers = { ["Content-Type"] = "application/json"},
+        })
+        assert.res_status(201, res)
 
-          assert.res_status(201, res)
+        res = client:post("/" .. ws_name .. "/services/", {
+          body = {
+            name = "demo-anything",
+            url = "http://httpbin.org/anything",
+          },
+          headers = { ["Content-Type"] = "application/json"},
+        })
+        assert.res_status(201, res)
 
-          -- modified ok
-          res = assert(client:send {
-            method = "PUT",
-            path = "/apis",
-            body = {
-              id = json.id,
-              uris = "/my-uri",
-              name = "my-api",
-              methods = "GET",
-              hosts = "my.api.com",
-              created_at = json.created_at,
-              upstream_url = "http://api.com",
-            },
-            headers = {["Content-Type"] = "application/json"}
-          })
-          assert.res_status(200, res)
+        res = client:post("/default/services/demo-ip/routes", {
+          body = {
+            hosts = {"my.api.com" },
+            paths = { "/my-uri" },
+            methods = { "GET" },
+          },
+          headers = { ["Content-Type"] = "application/json"},
+        })
+        assert.res_status(201, res)
 
-          --  create ok in different WS
-          res = assert(client:send {
-                         method = "POST",
-                         path = "/foo/apis",
-                         body = {
-                           uris = "/my-uri",
-                           name = "my-api",
-                           methods = "GET",
-                           hosts = "another",
-                           upstream_url = "http://api.com"
-                         },
-                         headers = {["Content-Type"] = "application/json"}
-          })
-          body = assert.res_status(201, res)
-          json = cjson.decode(body)
+        res = client:post("/" .. ws_name .. "/services/demo-anything/routes", {
+          body = {
+            hosts = {"my.api.com2" },
+            paths = { "/my-uri" },
+            methods = { "GET" },
+          },
+          headers = {["Content-Type"] = "application/json"},
+        })
+        res = cjson.decode(assert.res_status(201, res))
 
-          --  can't modify it if it collides
-          res = assert(client:send {
-                         method = "PUT",
-                         path = "/foo/apis",
-                         body = {
-                           id = json.id,
-                           uris = "/my-uri",
-                           name = "my-api",
-                           methods = "GET",
-                           hosts = "my.api.com",
-                           upstream_url = "http://api.com"
-                         },
-                         headers = {["Content-Type"] = "application/json"}
-          })
-          assert.res_status(409, res)
+        -- route collides in different WS
+        res = client:patch("/" .. ws_name .. "/routes/".. res.id, {
+          body = {
+            hosts = {"my.api.com" },
+            paths = { "/my-uri" },
+            methods = { "GET" },
+          },
+          headers = {["Content-Type"] = "application/json"},
+        })
+        assert.res_status(409, res)
         end)
-      it("creates with PUT /apis without id", function()
-        local res = assert(client:send {
-                             method = "POST",
-                             path = "/apis",
-                             body = {
-                               uris = "/my-uri",
-                               name = "my-api",
-                               methods = "GET",
-                               hosts = "my.api.com",
-                               upstream_url = "http://api.com"
-                             },
-                             headers = {["Content-Type"] = "application/json"}
-        })
-        assert.res_status(201, res)
-
-        res = assert(client:send {
-                       method = "POST",
-                       path = "/workspaces",
-                       body = {
-                         name = "foo",
-                       },
-                       headers = {["Content-Type"] = "application/json"}
-        })
-
-        assert.res_status(201, res)
-
-        -- creates in different ws an API that would swallow traffic
-        res = assert(client:send {
-                       method = "PUT",
-                       path = "/foo/apis",
-                       body = {
-                         uris = "/my-uri",
-                         name = "my-api",
-                         methods = "GET",
-                         hosts = "my.api.com",
-                         upstream_url = "http://api.com"
-                       },
-                       headers = {["Content-Type"] = "application/json"}
-        })
-        assert.res_status(409, res)
-
-      end)
-
-      it("PATCH /apis/:name_or_id checks urls", function()
-
-        local res = assert(client:send {
-                             method = "POST",
-                             path = "/apis",
-                             body = {
-                               uris = "/my-uri",
-                               name = "my-api",
-                               methods = "GET",
-                               hosts = "my.api.com",
-                               upstream_url = "http://api.com"
-                             },
-                             headers = {["Content-Type"] = "application/json"}
-        })
-        assert.res_status(201, res)
-
-        res = assert(client:send {
-                       method = "POST",
-                       path = "/workspaces",
-                       body = {
-                         name = "foo",
-                       },
-                       headers = {["Content-Type"] = "application/json"}
-        })
-
-        assert.res_status(201, res)
-
-        -- creates in different ws an API that would swallow traffic
-        res = assert(client:send {
-                       method = "POST",
-                       path = "/foo/apis",
-                       body = {
-                         uris = "/my-uri",
-                         name = "my-api",
-                         methods = "GET",
-                         hosts = "another",
-                         upstream_url = "http://api.com"
-                       },
-                       headers = {["Content-Type"] = "application/json"}
-        })
-        local body = assert.res_status(201, res)
-
-        res = assert(client:send {
-                       method = "PATCH",
-                       path = "/foo/apis/" .. cjson.decode(body).id,
-                       body = {
-                         uris = "/my-uri",
-                         name = "my-api",
-                         methods = "GET",
-                         hosts = "my.api.com",
-                         upstream_url = "http://api.com"
-                       },
-                       headers = {["Content-Type"] = "application/json"}
-        })
-        assert.res_status(409, res)
-      end)
     end)
   end)
 end)
