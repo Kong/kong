@@ -203,7 +203,7 @@ local closure_cache = {}
 -- @see ngx.say
 -- @see ngx.exit
 -- @param[type=number] status_code HTTP status code to send
--- @param body A string or table which will be the body of the sent response. If table, the response will be encoded as a JSON object. If string, the response will be a JSON object and the string will be contained in the `message` property.
+-- @param body_raw A string or table which will be the body of the sent response. If table, the response will be encoded as a JSON object. If string, the response will be a JSON object and the string will be contained in the `message` property.
 -- @param[type=table] headers Response headers to send.
 -- @return ngx.exit (Exit current context)
 function _M.send(status_code, body, headers)
