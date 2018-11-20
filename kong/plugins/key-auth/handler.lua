@@ -1,14 +1,19 @@
 local constants = require "kong.constants"
 local BasePlugin = require "kong.plugins.base_plugin"
 
+
+local kong = kong
 local type = type
+
 
 local _realm = 'Key realm="' .. _KONG._NAME .. '"'
 
+
 local KeyAuthHandler = BasePlugin:extend()
 
+
 KeyAuthHandler.PRIORITY = 1003
-KeyAuthHandler.VERSION = "0.2.0"
+KeyAuthHandler.VERSION = "1.0.0"
 
 
 function KeyAuthHandler:new()
@@ -38,26 +43,44 @@ local function load_consumer(consumer_id, anonymous)
   return result
 end
 
-local function set_consumer(consumer, credential)
-  local const = constants.HEADERS
 
-  local new_headers = {
-    [const.CONSUMER_ID]        = consumer.id,
-    [const.CONSUMER_CUSTOM_ID] = tostring(consumer.custom_id),
-    [const.CONSUMER_USERNAME]  = consumer.username,
-  }
+local function set_consumer(consumer, credential)
+  local set_header = kong.service.request.set_header
+  local clear_header = kong.service.request.clear_header
+
+  if consumer and consumer.id then
+    set_header(constants.HEADERS.CONSUMER_ID, consumer.id)
+  else
+    clear_header(constants.HEADERS.CONSUMER_ID)
+  end
+
+  if consumer and consumer.custom_id then
+    set_header(constants.HEADERS.CONSUMER_CUSTOM_ID, consumer.custom_id)
+  else
+    clear_header(constants.HEADERS.CONSUMER_CUSTOM_ID)
+  end
+
+  if consumer and consumer.username then
+    set_header(constants.HEADERS.CONSUMER_USERNAME, consumer.username)
+  else
+    clear_header(constants.HEADERS.CONSUMER_USERNAME)
+  end
 
   kong.client.authenticate(consumer, credential)
 
   if credential then
-    new_headers[const.CREDENTIAL_USERNAME] = credential.username
-    kong.service.request.clear_header(const.ANONYMOUS) -- in case of auth plugins concatenation
+    if credential.username then
+      set_header(constants.HEADERS.CREDENTIAL_USERNAME, credential.username)
+    else
+      clear_header(constants.HEADERS.CREDENTIAL_USERNAME)
+    end
+
+    clear_header(constants.HEADERS.ANONYMOUS)
 
   else
-    new_headers[const.ANONYMOUS] = true
+    clear_header(constants.HEADERS.CREDENTIAL_USERNAME)
+    set_header(constants.HEADERS.ANONYMOUS, true)
   end
-
-  kong.service.request.set_headers(new_headers)
 end
 
 
