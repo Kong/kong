@@ -40,6 +40,8 @@ env:
     - TEST_SUITE=pdk
 
 before_install:
+  - sudo iptables -P FORWARD ACCEPT
+  - echo -e "machine github.com\n  login $CI_USER_TOKEN" > ~/.netrc
   - source .ci/setup_env.sh
 
 install:
@@ -73,12 +75,11 @@ jobs:
     - stage: deploy daily build
       if: branch=feat/kong-build-tools
       install: skip
-      before_install: skip
-      env: RESTY_IMAGE_BASE=ubuntu RESTY_IMAGE_TAG=trusty KONG_PACKAGE_NAME=kong-private KONG_VERSION=`date +%Y-%m-%d`
-      script:
-        - sudo iptables -P FORWARD ACCEPT
-        - echo -e "machine github.com\n  login $CI_USER_TOKEN" > ~/.netrc
-        - make release
+      env: KONG_PACKAGE_NAME=kong-private KONG_VERSION=`date +%Y-%m-%d`
+    - script: RESTY_IMAGE_BASE=ubuntu RESTY_IMAGE_TAG=trusty make release
+    - script: RESTY_IMAGE_BASE=ubuntu RESTY_IMAGE_TAG=xenial make release
+    - script: RESTY_IMAGE_BASE=centos RESTY_IMAGE_TAG=6 make release
+    - script: RESTY_IMAGE_BASE=centos RESTY_IMAGE_TAG=7 make release
 
 script:
   - .ci/run_tests.sh
