@@ -60,6 +60,15 @@ function _M.is_json_body(content_type)
   return content_type and find(lower(content_type), "application/json", nil, true)
 end
 
+-- if resp_code is in allowed response codes (conf.replace.if_status),
+-- return string specified in conf.replace.body; otherwise, return nil
+function _M.replace_body(conf, resp_body, resp_code)
+  local allowed_codes = conf.replace.if_status
+  if not skip_transform(resp_code, allowed_codes) and conf.replace.body then
+    return conf.replace.body
+  end
+end
+
 function _M.transform_json_body(conf, buffered_data, resp_code)
   local json_body = read_json_body(buffered_data)
   if json_body == nil then

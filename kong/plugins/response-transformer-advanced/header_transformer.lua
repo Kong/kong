@@ -44,7 +44,8 @@ local function is_json_body(content_type)
 end
 
 local function is_body_transform_set(conf)
-  return #conf.add.json > 0  or #conf.remove.json > 0 or #conf.replace.json > 0 or #conf.append.json > 0
+  return #conf.add.json > 0  or #conf.remove.json > 0 or #conf.replace.json > 0
+    or conf.replace.body or #conf.append.json > 0
 end
 
 -- export utility functions
@@ -91,8 +92,12 @@ function _M.transform_headers(conf, ngx_headers, resp_code)
     end
   end
 
-  -- Removing the content-length header because the body is going to change
-  if is_body_transform_set(conf) and is_json_body(ngx_headers["content-type"]) then
+  -- Removing the content-length header if the body is going to change:
+  -- - Body transform is set, it's full body (no matter what content-type) or
+  -- - Body transform is set, it's not full body, but is JSON (only content-type
+  --   supported for non-full body transforms)
+  if is_body_transform_set(conf) and (conf.replace.body or
+    is_json_body(ngx_headers["content-type"])) then
     ngx_headers["content-length"] = nil
   end
 end

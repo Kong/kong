@@ -27,6 +27,7 @@ return {
       type = "table",
       schema = {
         fields = {
+          body = {type = "string"},
           json = {type = "array", default = {}, func = check_for_value},
           headers = {type = "array", default = {}, func = check_for_value},
           if_status = {type = "array", default = {}},
