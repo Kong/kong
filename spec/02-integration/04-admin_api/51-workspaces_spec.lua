@@ -735,9 +735,9 @@ end)
 dao_helpers.for_each_dao(function(kong_config)
 describe("Admin API #" .. kong_config.database, function()
   local client
-  local db, _
+  local bp, db, _
   setup(function()
-    _, db, _ = helpers.get_db_utils(kong_config.database)
+    bp, db, _ = helpers.get_db_utils(kong_config.database)
 
     assert(helpers.start_kong{
       database = kong_config.database
@@ -747,7 +747,7 @@ describe("Admin API #" .. kong_config.database, function()
     helpers.stop_kong()
   end)
 
-  describe("POST /apis", function()
+  describe("POST /routes", function()
     describe("Refresh the router", function()
       before_each(function()
         ngx.ctx.workspaces = nil
@@ -760,53 +760,40 @@ describe("Admin API #" .. kong_config.database, function()
       end)
 
       it("doesnt create a route when it conflicts", function()
-        local res = client:post("/workspaces", {
-          body = {
-            name = "w1"
-          },
-          headers = { ["Content-Type"] = "application/json"},
-        })
-        assert.res_status(201, res)
+        local ws = bp.workspaces:insert {
+          name = "w1"
+        }
 
-        res = client:post("/default/services", {
-          body = {
-            name = "demo-ip",
-            url = "http://httpbin.org/ip",
-          },
-          headers = { ["Content-Type"] = "application/json"},
-        })
-        assert.res_status(201, res)
+        local demo_ip_service = bp.services:insert {
+          name = "demo-ip",
+          protocol = "http",
+          host = "httpbin.org",
+          path = "/ip",
+        }
 
-        res = client:post("/default/services", {
-          body = {
-            name = "demo-default",
-            url = "http://httpbin.org/default",
-          },
-          headers = { ["Content-Type"] = "application/json"},
-        })
-        assert.res_status(201, res)
+        bp.services:insert {
+          name = "demo-default",
+          protocol = "http",
+          host = "httpbin.org",
+          path = "/default",
+        }
 
-        res = client:post("/w1/services/", {
-          body = {
-            name = "demo-anything",
-            url = "http://httpbin.org/anything",
-          },
-          headers = { ["Content-Type"] = "application/json"},
-        })
-        assert.res_status(201, res)
+        bp.services:insert_ws ({
+          name = "demo-anything",
+          protocol = "http",
+          host = "httpbin.org",
+          path = "/anything",
+        }, ws)
 
-        res = client:post("/default/services/demo-ip/routes", {
-          body = {
-            hosts = {"my.api.com" },
-            paths = { "/my-uri" },
-            methods = { "GET" },
-          },
-          headers = { ["Content-Type"] = "application/json"},
-        })
-        assert.res_status(201, res)
+        bp.routes:insert{
+          hosts = {"my.api.com" },
+          paths = { "/my-uri" },
+          methods = { "GET" },
+          service = demo_ip_service,
+        }
 
         -- route collides in different WS
-        res = client:post("/w1/services/demo-anything/routes", {
+        local res = client:post("/w1/services/demo-anything/routes", {
           body = {
             hosts = {"my.api.com" },
             paths = { "/my-uri" },
@@ -875,33 +862,25 @@ describe("Admin API #" .. kong_config.database, function()
 
       it("route PATCH checks collision", function()
         local ws_name = utils.uuid()
-        local res = client:post("/workspaces", {
-          body = {
-            name = ws_name,
-          },
-          headers = { ["Content-Type"] = "application/json"},
-        })
-        assert.res_status(201, res)
+        local ws = bp.workspaces:insert {
+          name = ws_name
+        }
 
-        res = client:post("/default/services", {
-          body = {
-            name = "demo-ip",
-            url = "http://httpbin.org/".. utils.uuid(),
-          },
-          headers = { ["Content-Type"] = "application/json"},
-        })
-        assert.res_status(201, res)
+        bp.services:insert {
+          name = "demo-ip",
+          protocol = "http",
+          host = "httpbin.org",
+          path = "/ip",
+        }
 
-        res = client:post("/" .. ws_name .. "/services/", {
-          body = {
-            name = "demo-anything",
-            url = "http://httpbin.org/anything",
-          },
-          headers = { ["Content-Type"] = "application/json"},
-        })
-        assert.res_status(201, res)
+        bp.services:insert_ws ({
+          name = "demo-anything",
+          protocol = "http",
+          host = "httpbin.org",
+          path = "/anything",
+        }, ws)
 
-        res = client:post("/default/services/demo-ip/routes", {
+        local res = client:post("/default/services/demo-ip/routes", {
           body = {
             hosts = {"my.api.com" },
             paths = { "/my-uri" },
