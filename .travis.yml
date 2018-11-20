@@ -74,7 +74,6 @@ jobs:
       env: KONG_DATABASE=none
     - stage: deploy daily build
       install: skip
-      if: branch=feat/kong-build-tools
       script: make release
       env: RESTY_IMAGE_BASE=ubuntu RESTY_IMAGE_TAG=trusty KONG_PACKAGE_NAME=kong-private KONG_VERSION=`date +%Y-%m-%d`
       if: branch=feat/kong-build-tools
@@ -89,6 +88,7 @@ jobs:
       if: branch=feat/kong-build-tools
     - script: make release
       env: RESTY_IMAGE_BASE=alpine RESTY_IMAGE_TAG=latest KONG_PACKAGE_NAME=kong-private KONG_VERSION=`date +%Y-%m-%d`
+      if: branch=feat/kong-build-tools
 
 script:
   - .ci/run_tests.sh
