@@ -290,7 +290,11 @@ function _mt:init_worker(strategies)
       "COMMIT;"
     }, "\n")
 
-    return timer_every(60, function()
+    return timer_every(60, function(premature)
+      if premature then
+        return
+      end
+
       local ok, err = self:query(cleanup_statement)
       if not ok then
         if err then
