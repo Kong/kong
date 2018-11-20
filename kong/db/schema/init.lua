@@ -1410,7 +1410,10 @@ function Schema:process_auto_fields(input, context, nulls)
     -- If we're resetting the value of a composite cache key,
     -- we to do a read-before-write to get the rest of the cache key
     -- and be able to properly update it.
-    or cache_key_modified)
+    or cache_key_modified
+    -- Entity checks validate across fields, and the field
+    -- that is necessary for validating may not be present.
+    or self.entity_checks)
   then
     read_before_write = true
   end
