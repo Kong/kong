@@ -49,59 +49,59 @@ pipeline {
       steps {
         parallel (
           centos6: {
-            sh './package.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p centos:6 --ee $BUILD_ARG'
+            sh './package.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p centos:6 --ee $BUILD_ARG -V'
             sh './release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p centos:6 -e $BUILD_ARG'
           },
           centos7: {
-            sh './package.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p centos:7 --ee $BUILD_ARG'
+            sh './package.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p centos:7 --ee $BUILD_ARG -V'
             sh './release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p centos:7 -e $BUILD_ARG'
           },
           debian7: {
-            sh './package.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p debian:7 --ee $BUILD_ARG'
+            sh './package.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p debian:7 --ee $BUILD_ARG -V'
             sh './release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p debian:7 -e $BUILD_ARG'
           },
           debian8: {
-            sh './package.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p debian:8 --ee $BUILD_ARG'
+            sh './package.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p debian:8 --ee $BUILD_ARG -V'
             sh './release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p debian:8 -e $BUILD_ARG'
           },
           debian9: {
-            sh './package.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p debian:9 --ee $BUILD_ARG'
+            sh './package.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p debian:9 --ee $BUILD_ARG -V'
             sh './release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p debian:9 -e $BUILD_ARG'
           },
           ubuntu1204: {
-            sh './package.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p ubuntu:12.04.5 --ee $BUILD_ARG'
+            sh './package.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p ubuntu:12.04.5 --ee $BUILD_ARG -V'
             sh './release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p ubuntu:12.04.5 -e $BUILD_ARG'
           },
           ubuntu1404: {
-            sh './package.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p ubuntu:14.04.2 --ee $BUILD_ARG'
+            sh './package.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p ubuntu:14.04.2 --ee $BUILD_ARG -V'
             sh './release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p ubuntu:14.04.2 -e $BUILD_ARG'
           },
           ubuntu1604: {
-            sh './package.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p ubuntu:16.04 --ee $BUILD_ARG'
+            sh './package.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p ubuntu:16.04 --ee $BUILD_ARG -V'
             sh './release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p ubuntu:16.04 -e $BUILD_ARG'
           },
           ubuntu1704: {
-            sh './package.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p ubuntu:17.04 --ee $BUILD_ARG'
+            sh './package.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p ubuntu:17.04 --ee $BUILD_ARG -V'
             sh './release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p ubuntu:17.04 -e $BUILD_ARG'
           },
           ubuntu1804: {
-            sh './package.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p ubuntu:18.04 --ee $BUILD_ARG'
+            sh './package.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p ubuntu:18.04 --ee $BUILD_ARG -V'
             sh './release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p ubuntu:18.04 -e $BUILD_ARG'
           },
           amazonlinux: {
-            sh './package.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p amazonlinux --ee $BUILD_ARG'
+            sh './package.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p amazonlinux --ee $BUILD_ARG -V'
             sh './release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p amazonlinux -e $BUILD_ARG'
           },
           alpine: {
-            sh './package.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p alpine --ee $BUILD_ARG'
+            sh './package.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p alpine --ee $BUILD_ARG -V'
             sh './release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p alpine -e $BUILD_ARG'
           },
           rhel6: {
-            sh './package.sh -u $BINTRAY_USR -k $BINTRAY_PSW --redhat-username $REDHAT_USR --redhat-password $REDHAT_PSW -p rhel:6 --ee $BUILD_ARG'
+            sh './package.sh -u $BINTRAY_USR -k $BINTRAY_PSW --redhat-username $REDHAT_USR --redhat-password $REDHAT_PSW -p rhel:6 --ee $BUILD_ARG -V'
             sh './release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p rhel:6 -e $BUILD_ARG'
           },
           rhel7: {
-            sh './package.sh -u $BINTRAY_USR -k $BINTRAY_PSW --redhat-username $REDHAT_USR --redhat-password $REDHAT_PSW -p rhel:7 --ee $BUILD_ARG'
+            sh './package.sh -u $BINTRAY_USR -k $BINTRAY_PSW --redhat-username $REDHAT_USR --redhat-password $REDHAT_PSW -p rhel:7 --ee $BUILD_ARG -V'
             sh './release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p rhel:7 -e $BUILD_ARG'
           },
         )
