@@ -619,4 +619,254 @@ describe("routes schema", function()
       end
     end)
   end)
+
+  describe("#stream context", function()
+    it("'protocol' accepts 'tcp'", function()
+      local s = { id = "a4fbd24e-6a52-4937-bd78-2536713072d2" }
+
+      local route = Routes:process_auto_fields({
+        protocols = { "tcp" },
+        sources = {{ ip = "127.0.0.1" }},
+        service = s,
+      }, "insert")
+      local ok, errs = Routes:validate(route)
+      assert.is_nil(errs)
+      assert.truthy(ok)
+      assert.same({ "tcp" }, route.protocols)
+    end)
+
+    it("'protocol' accepts 'tls'", function()
+      local s = { id = "a4fbd24e-6a52-4937-bd78-2536713072d2" }
+      local route = Routes:process_auto_fields({
+        protocols = { "tls" },
+        sources = {{ ip = "127.0.0.1" }},
+        service = s,
+      }, "insert")
+      local ok, errs = Routes:validate(route)
+      assert.is_nil(errs)
+      assert.truthy(ok)
+      assert.same({ "tls" }, route.protocols)
+    end)
+
+    it("if 'protocol = tcp/tls', then 'paths' is empty", function()
+      local s = { id = "a4fbd24e-6a52-4937-bd78-2536713072d2" }
+      for _, v in ipairs({ "tcp", "tls" }) do
+        local route = Routes:process_auto_fields({
+          protocols = { v },
+          sources = {{ ip = "127.0.0.1" }},
+          paths = { "/" },
+          service = s,
+        }, "insert")
+        local ok, errs = Routes:validate(route)
+        assert.falsy(ok)
+        assert.same({
+          ["@entity"] = { "cannot set 'paths' when 'protocols' is 'tcp' or 'tls'" },
+          paths = "length must be 0",
+        }, errs)
+      end
+    end)
+
+    it("if 'protocol = tcp/tls', then 'methods' is empty", function()
+      local s = { id = "a4fbd24e-6a52-4937-bd78-2536713072d2" }
+      for _, v in ipairs({ "tcp", "tls" }) do
+        local route = Routes:process_auto_fields({
+          protocols = { v },
+          sources = {{ ip = "127.0.0.1" }},
+          methods = { "GET" },
+          service = s,
+        }, "insert")
+        local ok, errs = Routes:validate(route)
+        assert.falsy(ok)
+        assert.same({
+          ["@entity"] = { "cannot set 'methods' when 'protocols' is 'tcp' or 'tls'" },
+          methods = "length must be 0",
+        }, errs)
+      end
+    end)
+
+    describe("'sources' and 'destinations' matching attributes", function()
+      local s = { id = "a4fbd24e-6a52-4937-bd78-2536713072d2" }
+      for _, v in ipairs({
+        "sources",
+        "destinations"
+      }) do
+        it("'" .. v .. "' accepts valid IPs and ports", function()
+          for _, protocol in ipairs({ "tcp", "tls" }) do
+            local route = Routes:process_auto_fields({
+              protocols = { protocol },
+              [v] = {
+                { ip = "127.75.78.72", port = 8000 },
+              },
+              service = s,
+            }, "insert")
+            local ok, errs = Routes:validate(route)
+            assert.is_nil(errs)
+            assert.truthy(ok)
+            assert.same({ protocol }, route.protocols)
+            assert.same({ ip = "127.75.78.72", port = 8000 }, route[v][1])
+          end
+        end)
+
+        it("'" .. v .. "' accepts valid IPs (no port)", function()
+          for _, protocol in ipairs({ "tcp", "tls" }) do
+            local route = Routes:process_auto_fields({
+              protocols = { protocol },
+              [v] = {
+                { ip = "127.0.0.1" },
+                { ip = "127.75.78.72", port = 8000 },
+              },
+              service = s,
+            }, "insert")
+            local ok, errs = Routes:validate(route)
+            assert.is_nil(errs)
+            assert.truthy(ok)
+            assert.same({ protocol }, route.protocols)
+            assert.same({ ip = "127.0.0.1" }, route[v][1])
+          end
+        end)
+
+        it("'" .. v .. "' accepts valid ports (no IP)", function()
+          for _, protocol in ipairs({ "tcp", "tls" }) do
+            local route = Routes:process_auto_fields({
+              protocols = { protocol },
+              [v] = {
+                { port = 8000 },
+                { ip = "127.75.78.72", port = 8000 },
+              },
+              service = s,
+            }, "insert")
+            local ok, errs = Routes:validate(route)
+            assert.is_nil(errs)
+            assert.truthy(ok)
+            assert.same({ protocol }, route.protocols)
+            assert.same({ port = 8000 }, route[v][1])
+          end
+        end)
+
+        it("'" .. v .. "' rejects invalid 'port' values", function()
+          for _, protocol in ipairs({ "tcp", "tls" }) do
+            local route = Routes:process_auto_fields({
+              protocols = { protocol },
+              [v] = {
+                { ip = "127.0.0.1" },
+                { ip = "127.75.78.72", port = 65536 },
+              },
+              service = s,
+            }, "insert")
+            local ok, errs = Routes:validate(route)
+            assert.falsy(ok)
+            assert.same({
+              [v] = { port = "value should be between 0 and 65535" },
+            }, errs)
+          end
+        end)
+
+        it("'" .. v .. "' rejects invalid 'ip' values", function()
+          -- invalid IPs
+          for _, ip_val in ipairs({ "127.", ":::1", "1" }) do
+            for _, protocol in ipairs({ "tcp", "tls" }) do
+              local route = Routes:process_auto_fields({
+                protocols = { protocol },
+                [v] = {
+                  { ip = ip_val },
+                  { ip = "127.75.78.72", port = 8000 },
+                },
+                service = s,
+              }, "insert")
+              local ok, errs = Routes:validate(route)
+              assert.falsy(ok, "ip test value was valid: " .. ip_val)
+              assert.matches("invalid cidr range: Invalid IP", errs[v].ip)
+            end
+          end
+
+          -- hostnames
+          for _, ip_val in ipairs({ "f", "example.org" }) do
+            for _, protocol in ipairs({ "tcp", "tls" }) do
+              local route = Routes:process_auto_fields({
+                protocols = { protocol },
+                [v] = {
+                  { ip = ip_val },
+                  { ip = "127.75.78.72", port = 8000 },
+                },
+                service = s,
+              }, "insert")
+              local ok, errs = Routes:validate(route)
+              assert.falsy(ok, "ip test value was valid: " .. ip_val)
+              assert.matches("invalid cidr range: Invalid IP", errs[v].ip)
+            end
+          end
+        end)
+      end
+    end)
+
+    describe("'snis' matching attribute", function()
+      local s = { id = "a4fbd24e-6a52-4937-bd78-2536713072d2" }
+
+      it("accepts valid SNIs", function()
+        for _, sni in ipairs({ "example.org", "www.example.org" }) do
+          local route = Routes:process_auto_fields({
+            protocols = { "tcp", "tls" },
+            snis = { sni },
+            service = s,
+          }, "insert")
+          local ok, errs = Routes:validate(route)
+          assert.is_nil(errs)
+          assert.truthy(ok)
+        end
+      end)
+
+      it("rejects invalid SNIs", function()
+        for _, sni in ipairs({ "127.0.0.1", "example.org:80" }) do
+          local route = Routes:process_auto_fields({
+            protocols = { "tcp", "tls" },
+            snis = { sni },
+            service = s,
+          }, "insert")
+          local ok, errs = Routes:validate(route)
+          assert.falsy(ok, "sni test value was valid: " .. sni)
+          if not pcall(function()
+                         assert.matches("must not be an IP", errs.snis, nil,
+                                        true)
+                       end)
+          then
+            assert.matches("must not have a port", errs.snis, nil, true)
+          end
+        end
+      end)
+    end)
+
+    it("errors if no L4 matching attribute set", function()
+      local s = { id = "a4fbd24e-6a52-4937-bd78-2536713072d2" }
+      for _, v in ipairs({ "tcp", "tls" }) do
+        local route = Routes:process_auto_fields({
+          protocols = { v },
+          service = s,
+        }, "insert")
+        local ok, errs = Routes:validate(route)
+        assert.falsy(ok)
+        assert.same({
+          ["@entity"] = {
+            "must set one of 'sources', 'destinations', 'snis' when 'protocols' is 'tcp' or 'tls'"
+          }
+        }, errs)
+      end
+    end)
+  end)
+
+  it("errors if no L7 matching attribute set", function()
+    local s = { id = "a4fbd24e-6a52-4937-bd78-2536713072d2" }
+      for _, v in ipairs({ "http", "https" }) do
+        local route = Routes:process_auto_fields({
+          protocols = { v },
+          service = s,
+        }, "insert")
+        local ok, errs = Routes:validate(route)
+        assert.falsy(ok)
+        assert.same({
+          ["@entity"] = {
+            "must set one of 'methods', 'hosts', 'paths' when 'protocols' is 'http' or 'https'"
+          }
+        }, errs)
+      end
+  end)
 end)

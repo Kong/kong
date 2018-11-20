@@ -160,6 +160,8 @@ typedefs.protocol = Schema.define {
   one_of = {
     "http",
     "https",
+    "tcp",
+    "tls",
   }
 }
 
