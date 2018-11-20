@@ -75,11 +75,14 @@ jobs:
     - stage: deploy daily build
       if: branch=feat/kong-build-tools
       install: skip
-      env: KONG_PACKAGE_NAME=kong-private KONG_VERSION=`date +%Y-%m-%d`
-    - script: RESTY_IMAGE_BASE=ubuntu RESTY_IMAGE_TAG=trusty make release
-    - script: RESTY_IMAGE_BASE=ubuntu RESTY_IMAGE_TAG=xenial make release
-    - script: RESTY_IMAGE_BASE=centos RESTY_IMAGE_TAG=6 make release
-    - script: RESTY_IMAGE_BASE=centos RESTY_IMAGE_TAG=7 make release
+      env: RESTY_IMAGE_BASE=ubuntu RESTY_IMAGE_TAG=trusty KONG_PACKAGE_NAME=kong-private KONG_VERSION=`date +%Y-%m-%d`
+    - script: make release
+      env: RESTY_IMAGE_BASE=ubuntu RESTY_IMAGE_TAG=xenial KONG_PACKAGE_NAME=kong-private KONG_VERSION=`date +%Y-%m-%d`
+    - script: make release
+      env: RESTY_IMAGE_BASE=centos RESTY_IMAGE_TAG=6 KONG_PACKAGE_NAME=kong-private KONG_VERSION=`date +%Y-%m-%d`
+    - script: make release
+      env: RESTY_IMAGE_BASE=centos RESTY_IMAGE_TAG=7 KONG_PACKAGE_NAME=kong-private KONG_VERSION=`date +%Y-%m-%d`
+    - script: make release
 
 script:
   - .ci/run_tests.sh
