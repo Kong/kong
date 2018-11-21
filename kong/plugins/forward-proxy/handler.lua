@@ -2,7 +2,7 @@ local BasePlugin = require "kong.plugins.base_plugin"
 local responses  = require "kong.tools.responses"
 local meta       = require "kong.meta"
 local http       = require "resty.http"
-local handler    = require "kong.core.handler"
+local ee         = require "kong.enterprise_edition"
 
 
 local ngx                 = ngx
@@ -10,6 +10,7 @@ local ERR                 = ngx.ERR
 local log                 = ngx.log
 local ngx_req_get_headers = ngx.req.get_headers
 local ngx_req_get_method  = ngx.req.get_method
+local ngx_now             = ngx.now
 
 
 local _prefix_log = "[forward-proxy] "
@@ -28,6 +29,45 @@ function ForwardProxyHandler:new()
 end
 
 
+local function get_now()
+  return ngx_now() * 1000 -- time is kept in seconds with millisecond resolution.
+end
+
+
+-- Plugins that generate content need to set latency headers and run
+-- vitals methods. This function centralizes this cleanups so that
+-- plugins can call it.
+local function simulate_access_after(ctx)
+  local var = ngx.var
+
+  do
+    -- Nginx's behavior when proxying a request with an empty querystring
+    -- `/foo?` is to keep `$is_args` an empty string, hence effectively
+    -- stripping the empty querystring.
+    -- We overcome this behavior with our own logic, to preserve user
+    -- desired semantics.
+    local upstream_uri = var.upstream_uri
+
+    if var.is_args == "?" or string.sub(var.request_uri, -1) == "?" then
+      var.upstream_uri = upstream_uri .. "?" .. (var.args or "")
+    end
+  end
+
+  local now = get_now()
+
+  ctx.KONG_ACCESS_TIME = now - ctx.KONG_ACCESS_START
+  ctx.KONG_ACCESS_ENDED_AT = now
+
+  local proxy_latency = now - ngx.req.start_time() * 1000
+
+  ctx.KONG_PROXY_LATENCY = proxy_latency
+
+  ctx.KONG_PROXIED = true
+
+  ee.handlers.access.after(ctx)
+end
+
+
 function ForwardProxyHandler:access(conf)
   ForwardProxyHandler.super.access(self)
 
@@ -37,8 +77,8 @@ function ForwardProxyHandler:access(conf)
   local ctx = ngx.ctx
   local var = ngx.var
 
-  -- ... yep, this does exactly what you think it would
-  handler.access.after(ctx)
+  simulate_access_after(ctx)
+
   local addr = ctx.balancer_address
 
   httpc:set_timeout(addr.connect_timeout)
