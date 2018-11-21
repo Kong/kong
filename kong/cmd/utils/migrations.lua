@@ -88,7 +88,7 @@ local function up(schema_state, db, opts)
       if schema_state.legacy_missing_component then
         error(fmt("Migration to 1.0 can only be performed from a 0.14 %s " ..
                   "%s, but the current one seems to be older (missing "    ..
-                  "migrations for '%s'). Migrate to 0.14 0.14 first, or "  ..
+                  "migrations for '%s'). Migrate to 0.14 first, or "  ..
                   "install 1.0 on a fresh %s.", db.strategy, db.infos.db_desc,
                   schema_state.legacy_missing_component, db.infos.db_desc))
       end
