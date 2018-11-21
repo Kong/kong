@@ -17,14 +17,14 @@ describe("Admin API #" .. kong_config.database, function()
   local client
   local dao, db, _
 
-  setup(function()
+  lazy_setup(function()
     _, db, dao = helpers.get_db_utils(kong_config.database)
 
     assert(helpers.start_kong{
       database = kong_config.database
     })
   end)
-  teardown(function()
+  lazy_teardown(function()
     helpers.stop_kong()
   end)
 
@@ -344,7 +344,7 @@ describe("Admin API #" .. kong_config.database, function()
     end)
 
     describe("GET", function()
-      setup(function()
+      lazy_setup(function()
         dao:truncate_table("apis")
         db:truncate("plugins")
 
@@ -356,7 +356,7 @@ describe("Admin API #" .. kong_config.database, function()
           })
         end
       end)
-      teardown(function()
+      lazy_teardown(function()
         dao:truncate_table("apis")
         db:truncate("plugins")
       end)
@@ -429,7 +429,7 @@ describe("Admin API #" .. kong_config.database, function()
       end)
 
       describe("empty results", function()
-        setup(function()
+        lazy_setup(function()
           dao:truncate_table("apis")
           db:truncate("plugins")
         end)
@@ -475,7 +475,7 @@ describe("Admin API #" .. kong_config.database, function()
 
   describe("/apis/{api}", function()
     local api
-    setup(function()
+    lazy_setup(function()
       dao:truncate_table("apis")
       db:truncate("plugins")
     end)
@@ -737,7 +737,7 @@ describe("Admin API #" .. kong_config.database, function()
 
   describe("/apis/{api}/plugins", function()
     local api
-    setup(function()
+    lazy_setup(function()
       dao:truncate_table("apis")
       db:truncate("plugins")
 
@@ -1150,7 +1150,7 @@ end)
 
 describe("Admin API request size", function()
   local client
-  setup(function()
+  lazy_setup(function()
     local dao = select(3, helpers.get_db_utils())
 
     assert(dao.apis:insert {
@@ -1162,7 +1162,7 @@ describe("Admin API request size", function()
     assert(helpers.start_kong())
     client = assert(helpers.admin_client())
   end)
-  teardown(function()
+  lazy_teardown(function()
     if client then client:close() end
     helpers.stop_kong()
   end)

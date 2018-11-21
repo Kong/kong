@@ -5,17 +5,17 @@ describe("Plugin: rate-limiting (API)", function()
   local admin_client
   local dao
 
-  setup(function()
+  lazy_setup(function()
     dao = select(3, helpers.get_db_utils())
   end)
 
-  teardown(function()
+  lazy_teardown(function()
     if admin_client then admin_client:close() end
     helpers.stop_kong()
   end)
 
   describe("POST", function()
-    setup(function()
+    lazy_setup(function()
 
       assert(dao.apis:insert {
         name         = "test",

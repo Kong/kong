@@ -13,7 +13,7 @@ local SIGNATURE_NOT_VALID = "HMAC signature cannot be verified"
 describe("Plugin: hmac-auth (access)", function()
   local client, consumer, credential
 
-  setup(function()
+  lazy_setup(function()
     local bp, db, dao = helpers.get_db_utils()
 
     local api1 = assert(dao.apis:insert {
@@ -124,7 +124,7 @@ describe("Plugin: hmac-auth (access)", function()
     client = helpers.proxy_client()
   end)
 
-  teardown(function()
+  lazy_teardown(function()
     if client then client:close() end
     helpers.stop_kong()
   end)
@@ -1203,7 +1203,7 @@ describe("Plugin: hmac-auth (access)", function()
 
   local client, user1, user2, anonymous, hmacAuth, hmacDate
 
-  setup(function()
+  lazy_setup(function()
     local bp, db, dao = helpers.get_db_utils()
 
     local api1 = assert(dao.apis:insert {
@@ -1271,7 +1271,7 @@ describe("Plugin: hmac-auth (access)", function()
   end)
 
 
-  teardown(function()
+  lazy_teardown(function()
     if client then client:close() end
     helpers.stop_kong()
   end)

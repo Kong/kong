@@ -5,7 +5,7 @@ local BAD_REGEX = [[(https?:\/\/.*]]  -- illegal regex, errors out
 describe("Plugin: bot-detection (API)", function()
   local client
 
-  setup(function()
+  lazy_setup(function()
     local dao = select(3, helpers.get_db_utils())
 
     assert(dao.apis:insert {
@@ -24,7 +24,7 @@ describe("Plugin: bot-detection (API)", function()
     }))
   end)
 
-  teardown(function()
+  lazy_teardown(function()
     helpers.stop_kong()
   end)
 

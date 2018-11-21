@@ -4,7 +4,7 @@ local helpers = require "spec.helpers"
 describe("URI encoding", function()
   local client
 
-  setup(function()
+  lazy_setup(function()
     helpers.get_db_utils()
 
     assert(helpers.dao.apis:insert {
@@ -39,7 +39,7 @@ describe("URI encoding", function()
     client = helpers.proxy_client()
   end)
 
-  teardown(function()
+  lazy_teardown(function()
     helpers.stop_kong()
   end)
 

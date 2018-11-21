@@ -9,7 +9,7 @@ local RESPONSE_MESSAGE = "The upstream server is timing out"
 describe("Proxy errors Content-Type", function()
   local client
 
-  setup(function()
+  lazy_setup(function()
     helpers.dao:truncate_table("apis")
 
     assert(helpers.dao.apis:insert {
@@ -26,7 +26,7 @@ describe("Proxy errors Content-Type", function()
     })
   end)
 
-  teardown(function()
+  lazy_teardown(function()
     helpers.stop_kong()
   end)
 
@@ -58,7 +58,7 @@ describe("Proxy errors Content-Type", function()
   end)
 
   describe("", function()
-    setup(function()
+    lazy_setup(function()
       assert(helpers.kong_exec(("restart --conf %s --nginx-conf %s"):format(
                                helpers.test_conf_path,
                                "spec/fixtures/custom_nginx.template")))

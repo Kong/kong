@@ -68,7 +68,7 @@ describe("Plugin: oauth2 (access)", function()
   local bp
   local db
   local dao
-  setup(function()
+  lazy_setup(function()
     bp, db, dao = helpers.get_db_utils()
 
     local consumer = bp.consumers:insert {
@@ -364,7 +364,7 @@ describe("Plugin: oauth2 (access)", function()
     proxy_client    = helpers.proxy_client()
     proxy_ssl_client = helpers.proxy_ssl_client()
   end)
-  teardown(function()
+  lazy_teardown(function()
     if proxy_client and proxy_ssl_client then
       proxy_client:close()
       proxy_ssl_client:close()
@@ -2348,7 +2348,7 @@ describe("Plugin: oauth2 (access)", function()
   local bp
   local db
 
-  setup(function()
+  lazy_setup(function()
     bp, db, dao = helpers.get_db_utils()
 
     local api1 = assert(dao.apis:insert {
@@ -2431,7 +2431,7 @@ describe("Plugin: oauth2 (access)", function()
   end)
 
 
-  teardown(function()
+  lazy_teardown(function()
     if client then client:close() end
     helpers.stop_kong()
   end)
@@ -2577,7 +2577,7 @@ for _, strategy in helpers.each_strategy() do
     local bp
     local db
 
-    setup(function()
+    lazy_setup(function()
       bp, db, dao = helpers.get_db_utils(strategy)
 
       local api11 = assert(dao.apis:insert {
@@ -2636,7 +2636,7 @@ for _, strategy in helpers.each_strategy() do
       client = helpers.proxy_client()
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       if client then client:close() end
       helpers.stop_kong()
     end)

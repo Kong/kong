@@ -6,7 +6,7 @@ describe("Plugins triggering #" .. strategy, function()
   local client
   local bp, db, dao
 
-  setup(function()
+  lazy_setup(function()
     bp, db, dao = helpers.get_db_utils(strategy, {
       "consumers",
       "apis",
@@ -119,7 +119,7 @@ describe("Plugins triggering #" .. strategy, function()
     client = helpers.proxy_client()
   end)
 
-  teardown(function()
+  lazy_teardown(function()
     if client then client:close() end
     helpers.stop_kong(nil, true)
   end)
@@ -181,7 +181,7 @@ describe("Plugins triggering #" .. strategy, function()
   describe("short-circuited requests", function()
     local FILE_LOG_PATH = os.tmpname()
 
-    setup(function()
+    lazy_setup(function()
       if client then
         client:close()
       end
@@ -261,7 +261,7 @@ describe("Plugins triggering #" .. strategy, function()
       client = helpers.proxy_client()
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       if client then
         client:close()
       end
@@ -398,7 +398,7 @@ describe("Plugins triggering #" .. strategy, function()
     -- tries to evaluate is the `schema.no_consumer` flag is set.
     -- Since the reports plugin has no `schema`, this indexing fails.
 
-    setup(function()
+    lazy_setup(function()
       if client then
         client:close()
       end
@@ -438,7 +438,7 @@ describe("Plugins triggering #" .. strategy, function()
       client = helpers.proxy_client()
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       if client then
         client:close()
       end

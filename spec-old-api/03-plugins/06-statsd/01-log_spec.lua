@@ -3,7 +3,7 @@ local UDP_PORT = 20000
 
 describe("Plugin: statsd (log)", function()
   local client
-  setup(function()
+  lazy_setup(function()
     local bp, db, dao = helpers.get_db_utils()
 
     local consumer1 = bp.consumers:insert {
@@ -274,7 +274,7 @@ describe("Plugin: statsd (log)", function()
     client = helpers.proxy_client()
   end)
 
-  teardown(function()
+  lazy_teardown(function()
     if client then client:close() end
     helpers.stop_kong()
   end)

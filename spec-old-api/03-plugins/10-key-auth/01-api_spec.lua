@@ -10,7 +10,7 @@ describe("Plugin: key-auth (API)", function()
   local bp
   local db
 
-  setup(function()
+  lazy_setup(function()
     bp, db, dao = helpers.get_db_utils()
 
     assert(dao.apis:insert {
@@ -37,7 +37,7 @@ describe("Plugin: key-auth (API)", function()
 
     admin_client = helpers.admin_client()
   end)
-  teardown(function()
+  lazy_teardown(function()
     if admin_client then admin_client:close() end
     helpers.stop_kong()
   end)
@@ -99,14 +99,14 @@ describe("Plugin: key-auth (API)", function()
 
 
     describe("GET", function()
-      setup(function()
+      lazy_setup(function()
         for i = 1, 3 do
           bp.keyauth_credentials:insert {
             consumer = { id = consumer.id },
           }
         end
       end)
-      teardown(function()
+      lazy_teardown(function()
         db:truncate("keyauth_credentials")
       end)
       it("retrieves the first page", function()
@@ -321,7 +321,7 @@ describe("Plugin: key-auth (API)", function()
     local consumer2
 
     describe("GET", function()
-      setup(function()
+      lazy_setup(function()
         db:truncate("keyauth_credentials")
 
         for i = 1, 3 do
@@ -397,7 +397,7 @@ describe("Plugin: key-auth (API)", function()
     describe("GET", function()
       local credential
 
-      setup(function()
+      lazy_setup(function()
         db:truncate("keyauth_credentials")
         credential = bp.keyauth_credentials:insert {
           consumer = { id = consumer.id },

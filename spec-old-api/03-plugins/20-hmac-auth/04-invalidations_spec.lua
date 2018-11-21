@@ -9,7 +9,7 @@ describe("Plugin: hmac-auth (invalidations)", function()
   local bp
   local db
 
-  setup(function()
+  lazy_setup(function()
     bp, db, dao = helpers.get_db_utils()
 
     local api = assert(dao.apis:insert {
@@ -42,7 +42,7 @@ describe("Plugin: hmac-auth (invalidations)", function()
     client_admin = helpers.admin_client()
   end)
 
-   teardown(function()
+   lazy_teardown(function()
     if client_proxy and client_admin then
       client_proxy:close()
       client_admin:close()

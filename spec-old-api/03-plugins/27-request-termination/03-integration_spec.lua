@@ -4,7 +4,7 @@ describe("Plugin: request-termination (integration)", function()
   local client, admin_client
   local consumer1
 
-  setup(function()
+  lazy_setup(function()
     local bp, db, dao = helpers.get_db_utils()
 
     assert(dao.apis:insert {
@@ -30,7 +30,7 @@ describe("Plugin: request-termination (integration)", function()
     admin_client = helpers.admin_client()
   end)
 
-  teardown(function()
+  lazy_teardown(function()
     if client and admin_client then
       client:close()
       admin_client:close()

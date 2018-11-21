@@ -6,7 +6,7 @@ local helpers = require "spec.helpers"
 for _, strategy in helpers.each_strategy() do
   describe("Real use-cases with DB: #" .. strategy, function()
     local bp, db, dao
-    setup(function()
+    lazy_setup(function()
       bp, db, dao = helpers.get_db_utils(strategy)
     end)
 

@@ -4,7 +4,7 @@ local cjson = require "cjson"
 describe("Plugin: request-termination (access)", function()
   local client, admin_client
 
-  setup(function()
+  lazy_setup(function()
     local _, db, dao = helpers.get_db_utils()
 
     local api1 = assert(dao.apis:insert {
@@ -89,7 +89,7 @@ describe("Plugin: request-termination (access)", function()
     admin_client = helpers.admin_client()
   end)
 
-  teardown(function()
+  lazy_teardown(function()
     if client and admin_client then
       client:close()
       admin_client:close()

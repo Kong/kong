@@ -67,12 +67,12 @@ describe("Upstream header(s)", function()
 
   describe("(using the default configuration values)", function()
 
-    setup(start_kong {
+    lazy_setup(start_kong {
         nginx_conf       = "spec/fixtures/custom_nginx.template",
         lua_package_path = "?/init.lua;./kong/?.lua;./spec-old-api/fixtures/?.lua",
     })
 
-    teardown(stop_kong)
+    lazy_teardown(stop_kong)
 
     describe("X-Real-IP", function()
       it("should be added if not present in request", function()
@@ -243,13 +243,13 @@ describe("Upstream header(s)", function()
 
   describe("(using the trusted configuration values)", function()
 
-    setup(start_kong {
+    lazy_setup(start_kong {
         trusted_ips      = "127.0.0.1",
         nginx_conf       = "spec/fixtures/custom_nginx.template",
         lua_package_path = "?/init.lua;./kong/?.lua;./spec-old-api/fixtures/?.lua",
     })
 
-    teardown(stop_kong)
+    lazy_teardown(stop_kong)
 
     describe("X-Real-IP", function()
       it("should be added if not present in request", function()
@@ -353,13 +353,13 @@ describe("Upstream header(s)", function()
 
   describe("(using the non-trusted configuration values)", function()
 
-    setup(start_kong {
+    lazy_setup(start_kong {
         trusted_ips      = "10.0.0.1",
         nginx_conf       = "spec/fixtures/custom_nginx.template",
         lua_package_path = "?/init.lua;./kong/?.lua;./spec-old-api/fixtures/?.lua",
     })
 
-    teardown(stop_kong)
+    lazy_teardown(stop_kong)
 
     describe("X-Real-IP", function()
       it("should be added if not present in request", function()
@@ -461,7 +461,7 @@ describe("Upstream header(s)", function()
 
   describe("(using the recursive trusted configuration values)", function()
 
-    setup(start_kong {
+    lazy_setup(start_kong {
         real_ip_header    = "X-Forwarded-For",
         real_ip_recursive = "on",
         trusted_ips       = "127.0.0.1,172.16.0.1,192.168.0.1",
@@ -469,7 +469,7 @@ describe("Upstream header(s)", function()
         lua_package_path  = "?/init.lua;./kong/?.lua;./spec-old-api/fixtures/?.lua",
     })
 
-    teardown(stop_kong)
+    lazy_teardown(stop_kong)
 
     describe("X-Real-IP and X-Forwarded-For", function()
       it("should be added if not present in request", function()
@@ -522,7 +522,7 @@ describe("Upstream header(s)", function()
   end)
 
   describe("(using the recursive non-trusted configuration values)", function()
-    setup(start_kong {
+    lazy_setup(start_kong {
         real_ip_header    = "X-Forwarded-For",
         real_ip_recursive = "on",
         trusted_ips       = "10.0.0.1,172.16.0.1,192.168.0.1",
@@ -530,7 +530,7 @@ describe("Upstream header(s)", function()
         lua_package_path  = "?/init.lua;./kong/?.lua;./spec-old-api/fixtures/?.lua",
     })
 
-    teardown(stop_kong)
+    lazy_teardown(stop_kong)
 
     describe("X-Real-IP and X-Forwarded-For", function()
       it("should be added if not present in request", function()
@@ -587,7 +587,7 @@ describe("Upstream header(s)", function()
     local proxy_ip = helpers.get_proxy_ip(false)
     local proxy_port = helpers.get_proxy_port(false)
 
-    setup(start_kong {
+    lazy_setup(start_kong {
       proxy_listen      = proxy_ip .. ":" .. proxy_port .. " proxy_protocol",
       real_ip_header    = "proxy_protocol",
       real_ip_recursive = "on",
@@ -596,7 +596,7 @@ describe("Upstream header(s)", function()
       lua_package_path  = "?/init.lua;./kong/?.lua;./spec-old-api/fixtures/?.lua",
     })
 
-    teardown(stop_kong)
+    lazy_teardown(stop_kong)
 
     describe("X-Real-IP, X-Forwarded-For and X-Forwarded-Port", function()
       it("should be added if not present in request", function()
@@ -692,7 +692,7 @@ describe("Upstream header(s)", function()
     local proxy_ip = helpers.get_proxy_ip(false)
     local proxy_port = helpers.get_proxy_port(false)
 
-    setup(start_kong {
+    lazy_setup(start_kong {
       proxy_listen      = proxy_ip .. ":" .. proxy_port .. " proxy_protocol",
       real_ip_header    = "proxy_protocol",
       real_ip_recursive = "on",
@@ -701,7 +701,7 @@ describe("Upstream header(s)", function()
       lua_package_path  = "?/init.lua;./kong/?.lua;./spec-old-api/fixtures/?.lua",
     })
 
-    teardown(stop_kong)
+    lazy_teardown(stop_kong)
 
     describe("X-Real-IP, X-Forwarded-For and X-Forwarded-Port", function()
       it("should be added if not present in request", function()

@@ -4,7 +4,7 @@ local cjson = require "cjson"
 describe("Plugin: response-transformer (API)", function()
   local admin_client
 
-  teardown(function()
+  lazy_teardown(function()
     if admin_client then
       admin_client:close()
     end
@@ -12,7 +12,7 @@ describe("Plugin: response-transformer (API)", function()
   end)
 
   describe("POST", function()
-    setup(function()
+    lazy_setup(function()
       local dao = select(3, helpers.get_db_utils())
 
       assert(dao.apis:insert {

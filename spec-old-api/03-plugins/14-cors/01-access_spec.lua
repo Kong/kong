@@ -4,7 +4,7 @@ local cjson = require "cjson"
 describe("Plugin: cors (access)", function()
   local client
 
-  setup(function()
+  lazy_setup(function()
     local _, db, dao = helpers.get_db_utils()
 
     local api1 = assert(dao.apis:insert {
@@ -147,7 +147,7 @@ describe("Plugin: cors (access)", function()
     client = helpers.proxy_client()
   end)
 
-  teardown(function()
+  lazy_teardown(function()
     if client then client:close() end
     helpers.stop_kong()
   end)

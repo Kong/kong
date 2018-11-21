@@ -10,7 +10,7 @@ describe("Plugin: oauth (API)", function()
   local bp
   local dao
 
-  setup(function()
+  lazy_setup(function()
     bp, db, dao = helpers.get_db_utils(strategy)
 
     assert(db:truncate("routes"))
@@ -30,14 +30,14 @@ describe("Plugin: oauth (API)", function()
 
     admin_client = helpers.admin_client()
   end)
-  teardown(function()
+  lazy_teardown(function()
     if admin_client then admin_client:close() end
     assert(helpers.stop_kong())
     helpers.clean_prefix()
   end)
 
   describe("/consumers/:consumer/oauth2/", function()
-    setup(function()
+    lazy_setup(function()
       api = dao.apis:insert {
         name         = "oauth2_token.com",
         hosts        = { "oauth2_token.com" },
@@ -195,7 +195,7 @@ describe("Plugin: oauth (API)", function()
 
 
     describe("GET", function()
-      setup(function()
+      lazy_setup(function()
         for i = 1, 3 do
           bp.oauth2_credentials:insert {
             name          = "app" .. i,
@@ -204,7 +204,7 @@ describe("Plugin: oauth (API)", function()
           }
         end
       end)
-      teardown(function()
+      lazy_teardown(function()
         assert(db:truncate("oauth2_credentials"))
       end)
       it("retrieves the first page", function()
@@ -399,7 +399,7 @@ describe("Plugin: oauth (API)", function()
 
   describe("/oauth2_tokens/", function()
     local oauth2_credential
-    setup(function()
+    lazy_setup(function()
       oauth2_credential = bp.oauth2_credentials:insert {
         name          = "Test APP",
         redirect_uris = { helpers.mock_upstream_ssl_url },
@@ -450,7 +450,7 @@ describe("Plugin: oauth (API)", function()
     end)
 
     describe("GET", function()
-      setup(function()
+      lazy_setup(function()
         for _ = 1, 3 do
           bp.oauth2_tokens:insert {
             credential = { id = oauth2_credential.id },
@@ -459,7 +459,7 @@ describe("Plugin: oauth (API)", function()
           }
         end
       end)
-      teardown(function()
+      lazy_teardown(function()
         assert(db:truncate("oauth2_tokens"))
       end)
       it("retrieves the first page", function()

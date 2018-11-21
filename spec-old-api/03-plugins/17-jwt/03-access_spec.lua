@@ -15,7 +15,7 @@ describe("Plugin: jwt (access)", function()
   local jwt_secret, base64_jwt_secret, rsa_jwt_secret_1, rsa_jwt_secret_2, rsa_jwt_secret_3
   local proxy_client, admin_client
 
-  setup(function()
+  lazy_setup(function()
     local bp, db, dao = helpers.get_db_utils()
 
     local apis = {}
@@ -102,7 +102,7 @@ describe("Plugin: jwt (access)", function()
     admin_client = helpers.admin_client()
   end)
 
-  teardown(function()
+  lazy_teardown(function()
     if proxy_client then proxy_client:close() end
     if admin_client then admin_client:close() end
     helpers.stop_kong()
@@ -542,7 +542,7 @@ describe("Plugin: jwt (access)", function()
 
   local client, user1, user2, anonymous, jwt_token
 
-  setup(function()
+  lazy_setup(function()
     local bp, db, dao = helpers.get_db_utils()
 
     local api1 = assert(dao.apis:insert {
@@ -607,7 +607,7 @@ describe("Plugin: jwt (access)", function()
   end)
 
 
-  teardown(function()
+  lazy_teardown(function()
     if client then client:close() end
     helpers.stop_kong()
   end)

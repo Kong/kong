@@ -5,7 +5,7 @@ local FACEBOOK = "facebookexternalhit/1.1"  -- matches a known bot in `rules.lua
 
 describe("Plugin: bot-detection (access)", function()
   local client
-  setup(function()
+  lazy_setup(function()
     local _, db, dao = helpers.get_db_utils()
 
     local api1 = assert(dao.apis:insert {
@@ -52,7 +52,7 @@ describe("Plugin: bot-detection (access)", function()
     }))
   end)
 
-  teardown(function()
+  lazy_teardown(function()
     helpers.stop_kong()
   end)
 
@@ -153,7 +153,7 @@ end)
 
 describe("Plugin: bot-detection configured global (access)", function()
   local client
-  setup(function()
+  lazy_setup(function()
     local _, db, dao = helpers.get_db_utils()
 
     assert(dao.apis:insert {
@@ -174,7 +174,7 @@ describe("Plugin: bot-detection configured global (access)", function()
     }))
   end)
 
-  teardown(function()
+  lazy_teardown(function()
     helpers.stop_kong()
   end)
 
