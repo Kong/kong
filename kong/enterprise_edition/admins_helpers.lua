@@ -189,7 +189,7 @@ function _M.link_to_workspace(consumer_or_user, dao, workspace, plugin)
   if not maps[1] then
     -- the consumer or rbac_user passed in is not an admin
     -- so nothing to link, but also not a runtime error.
-    -- returning explicit nulls here to express that.
+    -- returning explicit nils here to express that.
     return nil, nil
   end
 
