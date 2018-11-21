@@ -10,6 +10,9 @@ for details on installation and usage.
 
 # History
 
+0.3.0
+- Restrict the `config.run_on` field to `first`
+
 0.2.0
 - Use of new db & PDK functions
 - kong version compatibility bumped to >= 0.15.0
