@@ -263,11 +263,11 @@ return {
       clean_history(self.upstream.id, dao_factory)
 
       -- this is just a wrapper around POSTing a new target with weight=0
-      local _, err = dao_factory.targets:insert({
+      local _, err = dao_factory.targets:update({
         target      = self.target.target,
         upstream_id = self.upstream.id,
         weight      = 0,
-      })
+      }, { id = self.target.id})
       if err then
         return app_helpers.yield_error(err)
       end
