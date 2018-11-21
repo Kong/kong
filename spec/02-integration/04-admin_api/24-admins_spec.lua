@@ -179,6 +179,30 @@ for _, strategy in helpers.each_strategy() do
           })
           assert.res_status(200, res)
         end)
+
+        it("returns 409 when rbac_user with same name already exists", function()
+          -- rbac_user who is not part of an admin record
+          local user = assert(dao.rbac_users:insert {
+            name = "vanilla-rbac-user",
+            user_token = utils.uuid(),
+            enabled = true,
+          })
+
+          local res = assert(client:send {
+            method = "POST",
+            path  = "/admins",
+            headers = {
+              ["Kong-Admin-Token"] = "letmein",
+              ["Content-Type"]     = "application/json",
+            },
+            body  = {
+              custom_id = user.name,
+              username  = user.name,
+              email = "gruce@konghq.com",
+            },
+          })
+          assert.res_status(409, res)
+        end)
       end)
     end)
 

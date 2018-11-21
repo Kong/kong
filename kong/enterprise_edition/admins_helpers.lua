@@ -187,10 +187,10 @@ function _M.link_to_workspace(consumer_or_user, dao, workspace, plugin)
   end
 
   if not maps[1] then
-    local m = consumer.id and ("consumer " .. consumer.id)
-              or ("rbac_user " .. rbac_user.id)
-
-    return nil, "no map found for " .. m
+    -- the consumer or rbac_user passed in is not an admin
+    -- so nothing to link, but also not a runtime error.
+    -- returning explicit nulls here to express that.
+    return nil, nil
   end
 
   if not consumer then

@@ -217,6 +217,22 @@ for _, strategy in helpers.each_strategy() do
         assert.not_nil(ws_list)
         assert.same(ws_list[1].workspace_id, another_ws.id)
       end)
+
+      it("returns nil when the object to link is not a valid admin", function()
+        -- this happens when the consumer or the rbac user that is passed in
+        -- is not part of an admin object; e.g., a stand-alone rbac user
+        local user = assert(dao.rbac_users:insert {
+          name = "vanilla-rbac-user",
+          user_token = utils.uuid(),
+          enabled = true,
+        })
+
+        local admin, err = admins_helpers.link_to_workspace(
+                           { rbac_user = user }, dao, another_ws)
+
+        assert.is_nil(err)
+        assert.is_nil(admin)
+      end)
     end)
   end)
 end
