@@ -7,7 +7,7 @@ local MB = 2^20
 describe("Plugin: request-size-limiting (access)", function()
   local client
 
-  setup(function()
+  lazy_setup(function()
     local _, db, dao = helpers.get_db_utils()
 
     local api = assert(dao.apis:insert {
@@ -29,7 +29,7 @@ describe("Plugin: request-size-limiting (access)", function()
     client = helpers.proxy_client()
   end)
 
-  teardown(function()
+  lazy_teardown(function()
     if client then client:close() end
     helpers.stop_kong()
   end)

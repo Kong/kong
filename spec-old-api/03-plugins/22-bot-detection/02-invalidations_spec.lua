@@ -3,7 +3,7 @@ local helpers = require "spec.helpers"
 describe("Plugin: bot-detection (hooks)", function()
   local plugin, proxy_client, admin_client
 
-  setup(function()
+  lazy_setup(function()
     local _, db, dao = helpers.get_db_utils()
 
     local api1 = assert(dao.apis:insert {
@@ -22,7 +22,7 @@ describe("Plugin: bot-detection (hooks)", function()
     }))
   end)
 
-  teardown(function()
+  lazy_teardown(function()
     helpers.stop_kong()
   end)
 

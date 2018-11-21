@@ -12,7 +12,7 @@ describe("Plugin: response-ratelimiting (policies)", function()
     local identifier = uuid()
     local dao
 
-    setup(function()
+    lazy_setup(function()
       local _, db
       _, db, dao = helpers.get_db_utils()
 

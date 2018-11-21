@@ -7,7 +7,7 @@ describe("Admin API /cache", function()
   local proxy_client
   local admin_client
 
-  setup(function()
+  lazy_setup(function()
     local _, _, dao = helpers.get_db_utils(strategy, {
       "apis",
       "plugins",
@@ -33,7 +33,7 @@ describe("Admin API /cache", function()
   end)
 
 
-  teardown(function()
+  lazy_teardown(function()
     if admin_client then
       admin_client:close()
     end

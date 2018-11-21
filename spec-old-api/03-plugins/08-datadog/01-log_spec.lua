@@ -3,7 +3,7 @@ local pl_file = require "pl.file"
 
 describe("Plugin: datadog (log)", function()
   local client
-  setup(function()
+  lazy_setup(function()
     local bp, db, dao = helpers.get_db_utils()
 
     local consumer1 = bp.consumers:insert {
@@ -114,7 +114,7 @@ describe("Plugin: datadog (log)", function()
     }))
     client = helpers.proxy_client()
   end)
-  teardown(function()
+  lazy_teardown(function()
     if client then client:close() end
     helpers.stop_kong()
   end)

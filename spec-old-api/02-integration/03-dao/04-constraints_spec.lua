@@ -18,7 +18,7 @@ for _, strategy in helpers.each_strategy() do
     local plugin_fixture, api_fixture
     local apis, plugins
     local bp, db, dao
-    setup(function()
+    lazy_setup(function()
       bp, db, dao = helpers.get_db_utils(strategy)
       apis = dao.apis
       plugins = db.plugins

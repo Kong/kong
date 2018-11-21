@@ -48,7 +48,7 @@ end
 
 for i, policy in ipairs({"local", "cluster", "redis"}) do
   describe("#flaky Plugin: rate-limiting (access) with policy: " .. policy, function()
-    setup(function()
+    lazy_setup(function()
       helpers.kill_all()
       flush_redis()
       helpers.dao:drop_schema()
@@ -200,7 +200,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
       }))
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       helpers.stop_kong()
     end)
 
@@ -438,7 +438,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
           }))
         end)
 
-        teardown(function()
+        lazy_teardown(function()
           helpers.kill_all()
           helpers.dao:drop_schema()
           helpers.run_migrations()
@@ -564,7 +564,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
 
     describe("Expirations", function()
       local api
-      setup(function()
+      lazy_setup(function()
         helpers.stop_kong()
         helpers.dao:drop_schema()
         helpers.run_migrations()

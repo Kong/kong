@@ -9,7 +9,7 @@ local FILE_LOG_PATH = os.tmpname()
 
 describe("Plugin: file-log (log)", function()
   local client
-  setup(function()
+  lazy_setup(function()
     local _, db, dao = helpers.get_db_utils()
 
     local api1 = assert(dao.apis:insert {
@@ -31,7 +31,7 @@ describe("Plugin: file-log (log)", function()
       nginx_conf = "spec/fixtures/custom_nginx.template",
     }))
   end)
-  teardown(function()
+  lazy_teardown(function()
     helpers.stop_kong()
   end)
 

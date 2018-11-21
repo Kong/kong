@@ -8,7 +8,7 @@ describe("Plugin: oauth2 (invalidations)", function()
   local dao
   local bp
 
-  setup(function()
+  lazy_setup(function()
     bp, db, dao = helpers.get_db_utils(strategy)
   end)
 

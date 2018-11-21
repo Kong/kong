@@ -10,7 +10,7 @@ describe("Plugin: jwt (API) [#" .. strategy .. "]", function()
   local bp
   local db
 
-  setup(function()
+  lazy_setup(function()
     bp, db = helpers.get_db_utils(strategy)
 
     assert(helpers.start_kong({
@@ -22,7 +22,7 @@ describe("Plugin: jwt (API) [#" .. strategy .. "]", function()
       username = "bob"
     }
   end)
-  teardown(function()
+  lazy_teardown(function()
     if admin_client then
       admin_client:close()
     end
@@ -30,7 +30,7 @@ describe("Plugin: jwt (API) [#" .. strategy .. "]", function()
   end)
 
   describe("/consumers/:consumer/jwt/", function()
-    setup(function()
+    lazy_setup(function()
       bp.consumers:insert {
         username = "alice"
       }
@@ -38,7 +38,7 @@ describe("Plugin: jwt (API) [#" .. strategy .. "]", function()
 
     describe("POST", function()
       local jwt1, jwt2
-      teardown(function()
+      lazy_teardown(function()
         if jwt1 == nil then return end
         db.jwt_secrets:delete(jwt1)
         if jwt2 == nil then return end
@@ -342,7 +342,7 @@ describe("Plugin: jwt (API) [#" .. strategy .. "]", function()
   describe("/jwts", function()
     local consumer2
     describe("GET", function()
-      setup(function()
+      lazy_setup(function()
         consumer2 = bp.consumers:insert {
           username = "bob-the-buidler"
         }

@@ -10,7 +10,7 @@ describe("Plugin: rate-limiting (policies)", function()
     local dao
     local policies
 
-    setup(function()
+    lazy_setup(function()
       local _, db
       _, db, dao = helpers.get_db_utils()
 

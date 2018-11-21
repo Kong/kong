@@ -41,11 +41,11 @@ describe("Server Tokens", function()
 
   describe("(with default configration values)", function()
 
-    setup(start {
+    lazy_setup(start {
       nginx_conf = "spec/fixtures/custom_nginx.template",
     })
 
-    teardown(helpers.stop_kong)
+    lazy_teardown(helpers.stop_kong)
 
     it("should return Kong 'Via' header but not change the 'Server' header when request was proxied", function()
       local res = assert(client:send {
@@ -79,12 +79,12 @@ describe("Server Tokens", function()
 
   describe("(with server_tokens = on)", function()
 
-    setup(start {
+    lazy_setup(start {
       nginx_conf    = "spec/fixtures/custom_nginx.template",
       headers = "server_tokens",
     })
 
-    teardown(helpers.stop_kong)
+    lazy_teardown(helpers.stop_kong)
 
     it("should return Kong 'Via' header but not change the 'Server' header when request was proxied", function()
       local res = assert(client:send {
@@ -118,12 +118,12 @@ describe("Server Tokens", function()
 
   describe("(with server_tokens = off)", function()
 
-    setup(start {
+    lazy_setup(start {
       nginx_conf    = "spec/fixtures/custom_nginx.template",
       headers = "off",
     })
 
-    teardown(helpers.stop_kong)
+    lazy_teardown(helpers.stop_kong)
 
     it("should not return Kong 'Via' header but it should forward the 'Server' header when request was proxied", function()
       local res = assert(client:send {
@@ -173,11 +173,11 @@ describe("Latency Tokens", function()
 
   describe("(with default configration values)", function()
 
-    setup(start {
+    lazy_setup(start {
       nginx_conf = "spec/fixtures/custom_nginx.template",
     })
 
-    teardown(helpers.stop_kong)
+    lazy_teardown(helpers.stop_kong)
 
     it("should be returned when request was proxied", function()
       local res = assert(client:send {
@@ -211,12 +211,12 @@ describe("Latency Tokens", function()
 
   describe("(with latency_tokens = on)", function()
 
-    setup(start {
+    lazy_setup(start {
       nginx_conf = "spec/fixtures/custom_nginx.template",
       headers = "latency_tokens",
     })
 
-    teardown(helpers.stop_kong)
+    lazy_teardown(helpers.stop_kong)
 
     it("should be returned when request was proxied", function()
       local res = assert(client:send {
@@ -250,12 +250,12 @@ describe("Latency Tokens", function()
 
   describe("(with latency_tokens = off)", function()
 
-    setup(start {
+    lazy_setup(start {
       nginx_conf     = "spec/fixtures/custom_nginx.template",
       headers = "off",
     })
 
-    teardown(function()
+    lazy_teardown(function()
       helpers.stop_kong()
     end)
 

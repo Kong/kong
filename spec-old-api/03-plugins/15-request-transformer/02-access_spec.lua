@@ -4,7 +4,7 @@ local cjson   = require "cjson"
 describe("Plugin: request-transformer (access)", function()
   local client
 
-  setup(function()
+  lazy_setup(function()
     local _, db, dao = helpers.get_db_utils()
 
     local api1 = assert(dao.apis:insert { name = "api-1", hosts = { "test1.com" }, upstream_url = helpers.mock_upstream_url})
@@ -125,7 +125,7 @@ describe("Plugin: request-transformer (access)", function()
     }))
   end)
 
-  teardown(function()
+  lazy_teardown(function()
     helpers.stop_kong()
   end)
 

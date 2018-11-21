@@ -8,7 +8,7 @@ for _, strategy in helpers.each_strategy() do
     local db
     local client
 
-    setup(function()
+    lazy_setup(function()
       _, db, dao = helpers.get_db_utils(strategy, {
         "apis",
         "plugins",
@@ -21,7 +21,7 @@ for _, strategy in helpers.each_strategy() do
       }))
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       helpers.stop_kong(nil, true)
     end)
 
@@ -51,7 +51,7 @@ for _, strategy in helpers.each_strategy() do
     describe("/plugins", function()
       local plugins = {}
 
-      setup(function()
+      lazy_setup(function()
         for i = 1, 3 do
           local api = assert(dao.apis:insert {
             name         = "api-" .. i,

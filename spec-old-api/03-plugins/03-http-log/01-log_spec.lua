@@ -28,7 +28,7 @@ pending("Plugin: http-log (log)", function()
   -- Pending: at the time of this change, mockbin.com's behavior with bins
   -- seems to be broken.
   local client
-  setup(function()
+  lazy_setup(function()
     helpers.run_migrations()
 
     local api1 = assert(helpers.dao.apis:insert {
@@ -75,7 +75,7 @@ pending("Plugin: http-log (log)", function()
     assert(helpers.start_kong())
 
   end)
-  teardown(function()
+  lazy_teardown(function()
     helpers.stop_kong()
   end)
 

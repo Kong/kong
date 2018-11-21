@@ -24,7 +24,7 @@ local ldap_host_aws = "ec2-54-172-82-117.compute-1.amazonaws.com"
 describe("Plugin: ldap-auth (access)", function()
   local client, client_admin, api2, plugin2
 
-  setup(function()
+  lazy_setup(function()
     local bp, db, dao = helpers.get_db_utils()
 
     local api1 = assert(dao.apis:insert {
@@ -140,7 +140,7 @@ describe("Plugin: ldap-auth (access)", function()
     }))
   end)
 
-  teardown(function()
+  lazy_teardown(function()
     helpers.stop_kong()
   end)
 
@@ -452,7 +452,7 @@ describe("Plugin: ldap-auth (access)", function()
 
   local client, user1, anonymous
 
-  setup(function()
+  lazy_setup(function()
     local bp, db, dao = helpers.get_db_utils()
 
     local api1 = assert(dao.apis:insert {
@@ -520,7 +520,7 @@ describe("Plugin: ldap-auth (access)", function()
   end)
 
 
-  teardown(function()
+  lazy_teardown(function()
     if client then client:close() end
     helpers.stop_kong()
   end)

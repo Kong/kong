@@ -4,7 +4,7 @@ local cjson = require "cjson"
 describe("Plugin: response-rate-limiting (API)", function()
   local admin_client
 
-  teardown(function()
+  lazy_teardown(function()
     if admin_client then
       admin_client:close()
     end
@@ -12,7 +12,7 @@ describe("Plugin: response-rate-limiting (API)", function()
   end)
 
   describe("POST", function()
-    setup(function()
+    lazy_setup(function()
       helpers.dao.apis:truncate()
       helpers.db.plugins:truncate()
       assert(helpers.dao.apis:insert {

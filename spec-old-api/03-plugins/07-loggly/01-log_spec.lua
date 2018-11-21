@@ -5,7 +5,7 @@ local UDP_PORT = 20000
 
 describe("Plugin: loggly (log)", function()
   local client
-  setup(function()
+  lazy_setup(function()
     local _, db, dao = helpers.get_db_utils()
 
     local api1 = assert(dao.apis:insert {
@@ -79,7 +79,7 @@ describe("Plugin: loggly (log)", function()
       nginx_conf = "spec/fixtures/custom_nginx.template",
     }))
   end)
-  teardown(function()
+  lazy_teardown(function()
     helpers.stop_kong()
   end)
 

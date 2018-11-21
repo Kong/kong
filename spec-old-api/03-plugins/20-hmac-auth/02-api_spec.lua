@@ -8,7 +8,7 @@ describe("Plugin: hmac-auth (API)", function()
   local db
   local dao
 
-  setup(function()
+  lazy_setup(function()
     bp, db, dao = helpers.get_db_utils()
 
     helpers.prepare_prefix()
@@ -16,7 +16,7 @@ describe("Plugin: hmac-auth (API)", function()
     client = helpers.admin_client()
   end)
 
-  teardown(function()
+  lazy_teardown(function()
     if client then client:close() end
     assert(helpers.stop_kong())
     helpers.clean_prefix()
@@ -229,7 +229,7 @@ describe("Plugin: hmac-auth (API)", function()
   describe("/hmac-auths", function()
     local consumer2
     describe("GET", function()
-      setup(function()
+      lazy_setup(function()
         db:truncate("hmacauth_credentials")
         bp.hmacauth_credentials:insert({
           consumer = { id = consumer.id },
@@ -297,7 +297,7 @@ describe("Plugin: hmac-auth (API)", function()
   describe("/hmac-auths/:hmac_username_or_id/consumer", function()
     describe("GET", function()
       local credential
-      setup(function()
+      lazy_setup(function()
         db:truncate("hmacauth_credentials")
         credential = bp.hmacauth_credentials:insert({
           consumer = { id = consumer.id },

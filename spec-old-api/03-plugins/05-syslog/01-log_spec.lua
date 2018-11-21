@@ -5,7 +5,7 @@ local pl_stringx = require "pl.stringx"
 
 describe("#flaky Plugin: syslog (log)", function()
   local client, platform
-  setup(function()
+  lazy_setup(function()
     helpers.run_migrations()
 
     local api1 = assert(helpers.dao.apis:insert {
@@ -63,7 +63,7 @@ describe("#flaky Plugin: syslog (log)", function()
       nginx_conf = "spec/fixtures/custom_nginx.template",
     }))
   end)
-  teardown(function()
+  lazy_teardown(function()
     helpers.stop_kong()
   end)
 

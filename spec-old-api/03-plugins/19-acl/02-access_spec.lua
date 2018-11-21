@@ -5,7 +5,7 @@ describe("Plugin: ACL (access)", function()
   local client, api_client
   local bp, db, dao
 
-  setup(function()
+  lazy_setup(function()
     bp, db, dao = helpers.get_db_utils()
 
     local consumer1 = bp.consumers:insert {
@@ -227,7 +227,7 @@ describe("Plugin: ACL (access)", function()
     api_client:close()
   end)
 
-  teardown(function()
+  lazy_teardown(function()
     helpers.stop_kong()
   end)
 

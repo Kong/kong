@@ -17,7 +17,7 @@ describe("core entities are invalidated with db: #" .. strategy, function()
 
   local wait_for_propagation
 
-  setup(function()
+  lazy_setup(function()
     helpers.get_db_utils(strategy)
 
     local db_update_propagation = strategy == "cassandra" and 3 or 0
@@ -53,7 +53,7 @@ describe("core entities are invalidated with db: #" .. strategy, function()
     end
   end)
 
-  teardown(function()
+  lazy_teardown(function()
     helpers.stop_kong("servroot1")
     helpers.stop_kong("servroot2")
   end)
@@ -78,7 +78,7 @@ describe("core entities are invalidated with db: #" .. strategy, function()
 
   describe("APIs (router)", function()
 
-    setup(function()
+    lazy_setup(function()
       -- populate cache with a miss on
       -- both nodes
 
@@ -232,7 +232,7 @@ describe("core entities are invalidated with db: #" .. strategy, function()
       return stderr
     end
 
-    setup(function()
+    lazy_setup(function()
       -- populate cache with a miss on
       -- both nodes
       local cert_1 = get_cert(8443, "ssl-example.com")

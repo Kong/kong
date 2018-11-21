@@ -3,7 +3,7 @@ local helpers = require "spec.helpers"
 describe("Plugin: AWS Lambda (access)", function()
   local client, api_client
 
-  setup(function()
+  lazy_setup(function()
     local _, db, dao = helpers.get_db_utils()
 
     local api1 = assert(dao.apis:insert {
@@ -214,7 +214,7 @@ describe("Plugin: AWS Lambda (access)", function()
     api_client:close()
   end)
 
-  teardown(function()
+  lazy_teardown(function()
     helpers.stop_kong()
   end)
 

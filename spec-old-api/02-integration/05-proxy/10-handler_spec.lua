@@ -5,7 +5,7 @@ describe("OpenResty phases", function()
     describe("enabled on all APIs", function()
       local api_client, proxy_client
 
-      setup(function()
+      lazy_setup(function()
         local dao = select(3, helpers.get_db_utils())
 
         -- insert plugin-less api and a global plugin
@@ -29,7 +29,7 @@ describe("OpenResty phases", function()
         proxy_client = helpers.proxy_client()
       end)
 
-      teardown(function()
+      lazy_teardown(function()
         if api_client then api_client:close() end
         helpers.stop_kong()
       end)
@@ -51,7 +51,7 @@ describe("OpenResty phases", function()
     describe("enabled on a specific APIs", function()
       local api_client, proxy_client
 
-      setup(function()
+      lazy_setup(function()
         local dao = select(3, helpers.get_db_utils())
 
         -- api specific plugin
@@ -76,7 +76,7 @@ describe("OpenResty phases", function()
         proxy_client = helpers.proxy_client()
       end)
 
-      teardown(function()
+      lazy_teardown(function()
         if api_client then api_client:close() end
         helpers.stop_kong()
       end)
@@ -97,7 +97,7 @@ describe("OpenResty phases", function()
     describe("enabled on a specific Consumers", function()
       local api_client, proxy_client
 
-      setup(function()
+      lazy_setup(function()
         local bp, _, dao = helpers.get_db_utils()
 
         -- consumer specific plugin
@@ -133,7 +133,7 @@ describe("OpenResty phases", function()
         proxy_client = helpers.proxy_client()
       end)
 
-      teardown(function()
+      lazy_teardown(function()
         if api_client then api_client:close() end
         helpers.stop_kong()
       end)

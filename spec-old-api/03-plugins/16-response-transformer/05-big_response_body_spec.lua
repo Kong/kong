@@ -11,7 +11,7 @@ end
 describe("Plugin: response-transformer", function()
   local client
 
-  setup(function()
+  lazy_setup(function()
     local _, db, dao = helpers.get_db_utils()
 
     local api = assert(dao.apis:insert {
@@ -38,7 +38,7 @@ describe("Plugin: response-transformer", function()
   end)
 
 
-  teardown(function()
+  lazy_teardown(function()
     helpers.stop_kong()
   end)
 
