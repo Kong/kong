@@ -57,13 +57,13 @@ for _, strategy in helpers.each_strategy() do
             strategy = strategy,
             message  = unindent([[
               2 schema violations
-              (at least one of these fields must be non-empty: 'methods', 'hosts', 'paths';
+              (must set one of 'methods', 'hosts', 'paths' when 'protocols' is 'http' or 'https';
               service: required field missing)
             ]], true, true),
             fields   = {
               service     = "required field missing",
               ["@entity"] = {
-                "at least one of these fields must be non-empty: 'methods', 'hosts', 'paths'",
+                "must set one of 'methods', 'hosts', 'paths' when 'protocols' is 'http' or 'https'",
               }
             },
 
@@ -191,6 +191,9 @@ for _, strategy in helpers.each_strategy() do
             methods         = ngx.null,
             hosts           = { "example.com" },
             paths           = ngx.null,
+            snis            = ngx.null,
+            sources         = ngx.null,
+            destinations    = ngx.null,
             regex_priority  = 0,
             preserve_host   = false,
             strip_path      = true,
@@ -224,6 +227,9 @@ for _, strategy in helpers.each_strategy() do
             methods         = ngx.null,
             hosts           = { "example.com" },
             paths           = { "/example" },
+            snis            = ngx.null,
+            sources         = ngx.null,
+            destinations    = ngx.null,
             regex_priority  = 3,
             strip_path      = true,
             preserve_host   = false,
@@ -261,6 +267,37 @@ for _, strategy in helpers.each_strategy() do
           assert.not_equal(0, route.updated_at)
         end)
 
+        describe("#stream context", function()
+          it("creates a Route with 'snis'", function()
+            local route, err, err_t = db.routes:insert({
+              protocols = { "tcp" },
+              snis      = { "example.com" },
+              service   = bp.services:insert(),
+            })
+            assert.is_nil(err_t)
+            assert.is_nil(err)
+            assert.is_table(route)
+          end)
+
+          it("creates a Route with 'sources' and 'destinations'", function()
+            local route, err, err_t = db.routes:insert({
+              protocols  = { "tcp" },
+              sources    = {
+                { ip = "127.0.0.1" },
+                { ip = "127.75.78.72", port = 8000 },
+              },
+              destinations = {
+                { ip = "127.0.0.1" },
+                { ip = "127.75.78.72", port = 8000 },
+              },
+              service = bp.services:insert(),
+            })
+            assert.is_nil(err_t)
+            assert.is_nil(err)
+            assert.is_table(route)
+          end)
+        end)
+
         pending("cannot create a Route with an existing PK", function()
           -- TODO: the uuid type is `auto` for now, so cannot be overidden for
           -- such a test.
@@ -294,6 +331,31 @@ for _, strategy in helpers.each_strategy() do
           assert.is_nil(err)
           assert.same(route_inserted, route)
         end)
+
+        describe("#stream context", function()
+          it("returns a Route with L4 matching properties", function()
+            local route_inserted, err = db.routes:insert({
+              protocols  = { "tcp" },
+              snis       = { "example.com" },
+              sources    = {
+                { ip = "127.0.0.1" },
+                { ip = "127.75.78.72", port = 8000 },
+              },
+              destinations = {
+                { ip = "127.0.0.1" },
+                { ip = "127.75.78.72", port = 8000 },
+              },
+              service = bp.services:insert(),
+            })
+            assert.is_nil(err)
+            local route, err, err_t = db.routes:select({
+              id = route_inserted.id
+            })
+            assert.is_nil(err_t)
+            assert.is_nil(err)
+            assert.same(route_inserted, route)
+          end)
+        end)
       end)
 
       describe(":update()", function()
@@ -305,7 +367,8 @@ for _, strategy in helpers.each_strategy() do
         end)
 
         it("errors on invalid values", function()
-          local pk = { id = utils.uuid() }
+          local route = bp.routes:insert({ hosts = { "example.com" } })
+          local pk = { id = route.id }
           local new_route, err, err_t = db.routes:update(pk, {
             protocols = { 123 },
           })
@@ -327,7 +390,8 @@ for _, strategy in helpers.each_strategy() do
         it("returns not found error", function()
           local pk = { id = utils.uuid() }
           local new_route, err, err_t = db.routes:update(pk, {
-            protocols = { "https" }
+            protocols = { "https" },
+            hosts = { "example.com" },
           })
           assert.is_nil(new_route)
           local message = fmt(
@@ -355,6 +419,7 @@ for _, strategy in helpers.each_strategy() do
 
           local new_route, err, err_t = db.routes:update({ id = route.id }, {
             protocols = { "https" },
+            hosts = { "example.com" },
             regex_priority = 5,
           })
           assert.is_nil(err_t)
@@ -395,7 +460,7 @@ for _, strategy in helpers.each_strategy() do
         end)
 
         describe("unsetting with ngx.null", function()
-          it("fails if all routing criteria explicitely given are null", function()
+          it("succeeds if all routing criteria explicitely given are null", function()
             local route = bp.routes:insert({
               hosts   = { "example.com" },
               methods = { "GET" },
@@ -404,23 +469,19 @@ for _, strategy in helpers.each_strategy() do
             local new_route, err, err_t = db.routes:update({ id = route.id }, {
               methods = ngx.null
             })
-            assert.is_nil(new_route)
-            local message = unindent([[
-              schema violation
-              (when updating, at least one of these fields must be non-empty: 'methods', 'hosts', 'paths')
-            ]], true, true)
-            assert.equal(fmt("[%s] %s", strategy, message), err)
+            assert.is_nil(err_t)
+            assert.is_nil(err)
             assert.same({
-              code        = Errors.codes.SCHEMA_VIOLATION,
-              name        = "schema violation",
-              strategy    = strategy,
-              message     = message,
-              fields      = {
-                ["@entity"] = {
-                  "when updating, at least one of these fields must be non-empty: 'methods', 'hosts', 'paths'",
-                }
-              }
-            }, err_t)
+              id              = route.id,
+              created_at      = route.created_at,
+              updated_at      = new_route.updated_at,
+              protocols       = route.protocols,
+              hosts           = route.hosts,
+              regex_priority  = route.regex_priority,
+              strip_path      = route.strip_path,
+              preserve_host   = route.preserve_host,
+              service         = route.service,
+            }, new_route)
           end)
 
           it("fails if all routing criteria would be null", function()
@@ -440,11 +501,11 @@ for _, strategy in helpers.each_strategy() do
               strategy    = strategy,
               message  = unindent([[
                 schema violation
-                (when updating, at least one of these fields must be non-empty: 'methods', 'hosts', 'paths')
+                (must set one of 'methods', 'hosts', 'paths' when 'protocols' is 'http' or 'https')
               ]], true, true),
               fields   = {
                 ["@entity"] = {
-                  "when updating, at least one of these fields must be non-empty: 'methods', 'hosts', 'paths'",
+                  "must set one of 'methods', 'hosts', 'paths' when 'protocols' is 'http' or 'https'",
                 }
               },
             }, err_t)
@@ -468,6 +529,8 @@ for _, strategy in helpers.each_strategy() do
             assert.same(ngx.null, route.paths)
             route.hosts     = nil
             new_route.hosts = nil
+            assert(new_route.updated_at >= new_route.updated_at)
+            route.updated_at = new_route.updated_at
             assert.same(route, new_route)
           end)
 
@@ -488,11 +551,11 @@ for _, strategy in helpers.each_strategy() do
               strategy    = strategy,
               message  = unindent([[
                 schema violation
-                (when updating, at least one of these fields must be non-empty: 'methods', 'hosts', 'paths')
+                (must set one of 'methods', 'hosts', 'paths' when 'protocols' is 'http' or 'https')
               ]], true, true),
               fields   = {
                 ["@entity"] = {
-                  "when updating, at least one of these fields must be non-empty: 'methods', 'hosts', 'paths'",
+                  "must set one of 'methods', 'hosts', 'paths' when 'protocols' is 'http' or 'https'",
                 }
               },
             }, err_t)
@@ -1090,7 +1153,8 @@ for _, strategy in helpers.each_strategy() do
         end)
 
         it("errors on invalid values", function()
-          local pk = { id = utils.uuid() }
+          local service = assert(db.services:insert({ host = "service.test" }))
+          local pk = { id = service.id }
           local new_service, err, err_t = db.services:update(pk, { protocol = 123 })
           assert.is_nil(new_service)
           local message = "schema violation (protocol: expected a string)"
@@ -1395,6 +1459,9 @@ for _, strategy in helpers.each_strategy() do
           methods          = ngx.null,
           hosts            = { "example.com" },
           paths            = ngx.null,
+          snis             = ngx.null,
+          sources          = ngx.null,
+          destinations     = ngx.null,
           regex_priority   = 0,
           strip_path       = true,
           preserve_host    = false,

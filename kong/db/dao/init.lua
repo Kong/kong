@@ -169,11 +169,18 @@ local function check_update(self, key, entity, options, name)
     else
        rbw_entity, err, err_t = self.strategy:select(key, options)
     end
-    if not rbw_entity then
+    if err then
       return nil, nil, err, err_t
     end
 
-    entity_to_update = self.schema:merge_values(entity_to_update, rbw_entity)
+    if rbw_entity then
+      entity_to_update = self.schema:merge_values(entity_to_update, rbw_entity)
+    else
+      local err_t = name
+                    and self.errors:not_found_by_field({ [name] = key })
+                    or  self.errors:not_found(key)
+      return nil, nil, tostring(err_t), err_t
+    end
   end
 
   local ok, errors = self.schema:validate_update(entity_to_update)

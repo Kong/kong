@@ -18,6 +18,7 @@ local PHASES = {
   body_filter   = 0x00000400,
   --timer       = 0x00001000,
   log           = 0x00002000,
+  preread       = 0x00004000,
   admin_api     = 0x10000000,
 }
 

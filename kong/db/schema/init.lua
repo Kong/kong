@@ -88,6 +88,7 @@ local validation_errors = {
   CHECK                     = "entity check failed",
   CONDITIONAL               = "failed conditional validation given value of field '%s'",
   AT_LEAST_ONE_OF           = "at least one of these fields must be non-empty: %s",
+  CONDITIONAL_AT_LEAST_ONE_OF = "at least one of these fields must be non-empty: %s",
   ONLY_ONE_OF               = "only one of these fields must be non-empty: %s",
   DISTINCT                  = "values of these fields must be distinct: %s",
   -- schema error
@@ -487,6 +488,71 @@ Schema.entity_checkers = {
     end,
   },
 
+  conditional_at_least_one_of = {
+    run_with_missing_fields = true,
+    run_with_invalid_fields = true,
+    field_sources = {
+      "if_field",
+      "then_at_least_one_of",
+      "else_then_at_least_one_of",
+    },
+    required_fields = { "if_field" },
+    fn = function(entity, arg, schema)
+      local if_value = get_field(entity, arg.if_field)
+      if if_value == nil then
+        return true
+      end
+
+      local arg_mt = {
+        __index = get_schema_field(schema, arg.if_field),
+      }
+
+      setmetatable(arg.if_match, arg_mt)
+      local ok, _ = Schema.validate_field(schema, arg.if_match, if_value)
+      if not ok then
+        if arg.else_match == nil then
+          return true
+        end
+
+        -- run 'else'
+        setmetatable(arg.else_match, arg_mt)
+        local ok, _ = Schema.validate_field(schema, arg.else_match, if_value)
+        if not ok then
+          return true
+        end
+
+        for _, name in ipairs(arg.else_then_at_least_one_of) do
+          if is_nonempty(get_field(entity, name)) then
+            return true
+          end
+        end
+
+        local list = quoted_list(arg.else_then_at_least_one_of)
+        local else_then_err
+        if arg.else_then_err then
+          else_then_err = arg.else_then_err:format(list)
+        end
+
+        return nil, list, else_then_err
+      end
+
+      -- run 'if'
+      for _, name in ipairs(arg.then_at_least_one_of) do
+        if is_nonempty(get_field(entity, name)) then
+          return true
+        end
+      end
+
+      local list = quoted_list(arg.then_at_least_one_of)
+      local then_err
+      if arg.then_err then
+        then_err = arg.then_err:format(list)
+      end
+
+      return nil, list, then_err
+    end,
+  },
+
   only_one_of = {
     run_with_missing_fields = false,
     run_with_invalid_fields = true,
@@ -568,7 +634,13 @@ Schema.entity_checkers = {
       ok, err = Schema.validate_field(schema, arg.then_match, then_value)
       if not ok then
         set_field(errors, arg.then_field, err)
-        return nil, arg.if_field
+
+        local then_err
+        if arg.then_err then
+          then_err = arg.then_err:format(arg.if_field)
+        end
+
+        return nil, arg.if_field, then_err
       end
 
       return true
@@ -984,19 +1056,25 @@ local function run_entity_check(self, name, input, arg, full_check, errors)
     return
   end
 
-  local ok, err = checker.fn(check_input, arg, self, errors)
+  local ok, err, err2 = checker.fn(check_input, arg, self, errors)
   if ok then
     return
   end
 
-  local error_fmt = validation_errors[name:upper()]
-  err = error_fmt and error_fmt:format(err) or err
-  if not err then
-    local data = pretty.write({ name = arg }):gsub("%s+", " ")
-    err = validation_errors.ENTITY_CHECK:format(name, data)
-  end
+  if err2 then
+    -- user provided custom error for this entity checker
+    insert_entity_error(errors, err2)
 
-  insert_entity_error(errors, err)
+  else
+    local error_fmt = validation_errors[name:upper()]
+    err = error_fmt and error_fmt:format(err) or err
+    if not err then
+      local data = pretty.write({ name = arg }):gsub("%s+", " ")
+      err = validation_errors.ENTITY_CHECK:format(name, data)
+    end
+
+    insert_entity_error(errors, err)
+  end
 end
 
 
@@ -1332,7 +1410,10 @@ function Schema:process_auto_fields(input, context, nulls)
     -- If we're resetting the value of a composite cache key,
     -- we to do a read-before-write to get the rest of the cache key
     -- and be able to properly update it.
-    or cache_key_modified)
+    or cache_key_modified
+    -- Entity checks validate across fields, and the field
+    -- that is necessary for validating may not be present.
+    or self.entity_checks)
   then
     read_before_write = true
   end
@@ -1486,14 +1567,17 @@ function Schema:validate_update(input)
   -- defeat the whole purpose of the mechanism).
   local rfec = validation_errors.REQUIRED_FOR_ENTITY_CHECK
   local aloo = validation_errors.AT_LEAST_ONE_OF
+  local caloo = validation_errors.CONDITIONAL_AT_LEAST_ONE_OF
   validation_errors.REQUIRED_FOR_ENTITY_CHECK = rfec .. " when updating"
   validation_errors.AT_LEAST_ONE_OF = "when updating, " .. aloo
+  validation_errors.CONDITIONAL_AT_LEAST_ONE_OF = "when updating, " .. caloo
 
   local ok, errors = self:validate(input, false)
 
   -- Restore the original error messages
   validation_errors.REQUIRED_FOR_ENTITY_CHECK = rfec
   validation_errors.AT_LEAST_ONE_OF = aloo
+  validation_errors.CONDITIONAL_AT_LEAST_ONE_OF = caloo
 
   return ok, errors
 end

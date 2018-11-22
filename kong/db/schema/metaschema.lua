@@ -95,13 +95,31 @@ table.insert(field_schema, { keys     = { type = "record", fields = field_schema
 table.insert(field_schema, { values   = { type = "record", fields = field_schema } })
 table.insert(field_schema, { fields   = fields_array })
 
-local conditional_validators = { required = { type = "boolean" } }
+local conditional_validators = {
+  { required = { type = "boolean" } },
+  { elements = { type = "record", fields = field_schema } },
+  { keys     = { type = "record", fields = field_schema } },
+  { values   = { type = "record", fields = field_schema } },
+}
 for _, field in ipairs(validators) do
   table.insert(conditional_validators, field)
 end
 
 local entity_checkers = {
   { at_least_one_of = { type = "array", elements = { type = "string" } } },
+  { conditional_at_least_one_of = {
+      type = "record",
+      fields = {
+        { if_field = { type = "string" } },
+        { if_match = { type = "record", fields = conditional_validators } },
+        { then_at_least_one_of = { type = "array", elements = { type = "string" } } },
+        { then_err = { type = "string" } },
+        { else_match = { type = "record", fields = conditional_validators } },
+        { else_then_at_least_one_of = { type = "array", elements = { type = "string" } } },
+        { else_then_err = { type = "string" } },
+      },
+    },
+  },
   { only_one_of     = { type = "array", elements = { type = "string" } } },
   { distinct        = { type = "array", elements = { type = "string" } }, },
   { conditional     = {
@@ -111,6 +129,7 @@ local entity_checkers = {
         { if_match = { type = "record", fields = conditional_validators } },
         { then_field = { type = "string" } },
         { then_match = { type = "record", fields = conditional_validators } },
+        { then_err = { type = "string" } },
       },
     },
   },

@@ -4,6 +4,9 @@ return {
       DO $$
       BEGIN
         ALTER TABLE IF EXISTS ONLY "routes" ADD "name" TEXT UNIQUE;
+        ALTER TABLE IF EXISTS ONLY "routes" ADD "snis" TEXT[];
+        ALTER TABLE IF EXISTS ONLY "routes" ADD "sources" JSONB[];
+        ALTER TABLE IF EXISTS ONLY "routes" ADD "destinations" JSONB[];
       EXCEPTION WHEN DUPLICATE_COLUMN THEN
         -- Do nothing, accept existing state
       END;
@@ -196,6 +199,9 @@ return {
   cassandra = {
     up = [[
       ALTER TABLE routes ADD name text;
+      ALTER TABLE routes ADD snis set<text>;
+      ALTER TABLE routes ADD sources set<text>;
+      ALTER TABLE routes ADD destinations set<text>;
       CREATE INDEX IF NOT EXISTS routes_name_idx ON routes(name);
 
 

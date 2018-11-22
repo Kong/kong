@@ -1,5 +1,8 @@
 local singletons = require "kong.singletons"
 local ngx_ssl = require "ngx.ssl"
+local http_tls = require "http.tls"
+local openssl_pkey = require "openssl.pkey"
+local openssl_x509 = require "openssl.x509"
 local pl_utils = require "pl.utils"
 
 
@@ -43,7 +46,7 @@ local function fetch_certificate(sni_name)
 end
 
 
-local function parse_key_and_cert(row)
+local function ngx_parse_key_and_cert(row)
   if row == true then
     return default_cert_and_key
   end
@@ -64,6 +67,27 @@ local function parse_key_and_cert(row)
     cert = cert,
     key = key,
   }
+end
+
+
+local function luaossl_parse_key_and_cert(row)
+  if row == true then
+    return default_cert_and_key
+  end
+
+  local ssl_termination_ctx = http_tls.new_server_context()
+  ssl_termination_ctx:setCertificate(openssl_x509.new(row.cert))
+  ssl_termination_ctx:setPrivateKey(openssl_pkey.new(row.key))
+
+  return ssl_termination_ctx
+end
+
+
+local parse_key_and_cert
+if ngx.config.subsystem == "http" then
+  parse_key_and_cert = ngx_parse_key_and_cert
+else
+  parse_key_and_cert = luaossl_parse_key_and_cert
 end
 
 

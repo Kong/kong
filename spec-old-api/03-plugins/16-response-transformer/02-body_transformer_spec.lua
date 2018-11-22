@@ -171,6 +171,9 @@ describe("Plugin: response-transformer", function()
       old_ngx = ngx
       _G.ngx = {       -- busted requires explicit _G to access the global environment
         log = function() end,
+        config = {
+          subsystem = "http",
+        },
         header = {
             ["content-type"] = "application/json",
           },

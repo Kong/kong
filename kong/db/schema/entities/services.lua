@@ -22,4 +22,11 @@ return {
     { read_timeout    = typedefs.timeout { default = 60000 }, },
     -- { load_balancer = { type = "foreign", reference = "load_balancers" } },
   },
+
+  entity_checks = {
+    { conditional = { if_field = "protocol",
+                      if_match = { one_of = { "tcp", "tls" }},
+                      then_field = "path",
+                      then_match = { eq = ngx.null }}},
+  },
 }

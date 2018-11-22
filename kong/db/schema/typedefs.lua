@@ -3,7 +3,7 @@
 local utils = require "kong.tools.utils"
 local openssl_pkey = require "openssl.pkey"
 local openssl_x509 = require "openssl.x509"
-
+local iputils = require "resty.iputils"
 local Schema = require("kong.db.schema")
 local socket_url = require("socket.url")
 
@@ -22,6 +22,32 @@ local function validate_host(host)
 
   if err_or_port == "invalid port number" or type(res.port) == "number" then
     return nil, "must not have a port"
+  end
+
+  return true
+end
+
+
+local function validate_ip(ip)
+  local res, err = utils.normalize_ip(ip)
+  if not res then
+    return nil, err
+  end
+
+  if res.type == "name" then
+    return nil, "not an ip address: " .. ip
+  end
+
+  return true
+end
+
+
+local function validate_cidr(ip)
+  local _, err = iputils.parse_cidr(ip)
+
+  -- It's an error only if the second variable is a string
+  if type(err) == "string" then
+    return nil, "invalid cidr range: " .. err
   end
 
   return true
@@ -134,6 +160,8 @@ typedefs.protocol = Schema.define {
   one_of = {
     "http",
     "https",
+    "tcp",
+    "tls",
   }
 }
 
@@ -141,6 +169,18 @@ typedefs.protocol = Schema.define {
 typedefs.host = Schema.define {
   type = "string",
   custom_validator = validate_host,
+}
+
+
+typedefs.ip = Schema.define {
+  type = "string",
+  custom_validator = validate_ip,
+}
+
+
+typedefs.cidr = Schema.define {
+  type = "string",
+  custom_validator = validate_cidr,
 }
 
 

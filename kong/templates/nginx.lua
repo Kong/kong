@@ -22,4 +22,10 @@ events {
 http {
     include 'nginx-kong.conf';
 }
+
+> if #stream_listeners > 0 then
+stream {
+    include 'nginx-kong-stream.conf';
+}
+> end
 ]]

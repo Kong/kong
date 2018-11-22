@@ -1,18 +1,4 @@
-local iputils = require "resty.iputils"
 local typedefs = require "kong.db.schema.typedefs"
-
-
-local function validate_ip(ip)
-  local _, err = iputils.parse_cidr(ip)
-  -- It's an error only if the second variable is a string
-  if type(err) == "string" then
-    return false, "cannot parse '" .. ip .. "': " .. err
-  end
-  return true
-end
-
-
-local ip = { type = "string", custom_validator = validate_ip }
 
 
 return {
@@ -22,8 +8,8 @@ return {
     { config = {
         type = "record",
         fields = {
-          { whitelist = { type = "array", elements = ip, }, },
-          { blacklist = { type = "array", elements = ip, }, },
+          { whitelist = { type = "array", elements = typedefs.cidr, }, },
+          { blacklist = { type = "array", elements = typedefs.cidr, }, },
         },
       },
     },

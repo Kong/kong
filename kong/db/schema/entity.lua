@@ -7,16 +7,8 @@ local entity_errors = {
   NO_NILABLE = "%s: Entities cannot have nilable types.",
   NO_FUNCTIONS = "%s: Entities cannot have function types.",
   MAP_KEY_STRINGS_ONLY = "%s: Entities map keys must be strings.",
-  AGGREGATE_ON_BASE_TYPES_ONLY = "%s: Entities aggregates are only allowed on base types.",
 }
 
-
-local base_types = {
-  string = true,
-  number = true,
-  boolean = true,
-  integer = true,
-}
 
 -- Make records in Entities required by default,
 -- so that they return their full structure on API queries.
@@ -50,14 +42,6 @@ function Entity.new(definition)
     if field.type == "map" then
       if field.keys.type ~= "string" then
         return nil, entity_errors.MAP_KEY_STRINGS_ONLY:format(name)
-      end
-      if not base_types[field.values.type] then
-        return nil, entity_errors.AGGREGATE_ON_BASE_TYPES_ONLY:format(name)
-      end
-
-    elseif field.type == "array" or field.type == "set" then
-      if not base_types[field.elements.type] then
-        return nil, entity_errors.AGGREGATE_ON_BASE_TYPES_ONLY:format(name)
       end
 
     elseif field.type == "record" then

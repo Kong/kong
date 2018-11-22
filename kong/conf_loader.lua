@@ -50,6 +50,7 @@ local PREFIX_PATHS = {
   admin_acc_logs = {"logs", "admin_access.log"},
   nginx_conf = {"nginx.conf"},
   nginx_kong_conf = {"nginx-kong.conf"},
+  nginx_kong_stream_conf = {"nginx-kong-stream.conf"},
 
   kong_env = {".kong_env"},
 
@@ -80,6 +81,7 @@ local CONF_INFERENCES = {
   -- forced string inferences (or else are retrieved as numbers)
   proxy_listen = { typ = "array" },
   admin_listen = { typ = "array" },
+  stream_listen = { typ = "array" },
   origins = { typ = "array" },
   db_update_frequency = {  typ = "number"  },
   db_update_propagation = {  typ = "number"  },
@@ -537,15 +539,19 @@ end
 
 
 -- Parses a listener address line.
--- Supports multiple (comma separated) addresses, with 'ssl' and 'http2' flags.
+-- Supports multiple (comma separated) addresses, with flags such as
+-- 'ssl' and 'http2' added to the end.
 -- Pre- and postfixed whitespace as well as comma's are allowed.
 -- "off" as a first entry will return empty tables.
--- @value list of entries (strings)
--- @return list of parsed entries, each entry having fields `ip` (normalized string)
--- `port` (number), `ssl` (bool), `http2` (bool), `listener` (string, full listener)
-local function parse_listeners(values)
+-- @param values list of entries (strings)
+-- @param flags array of strings listing accepted flags.
+-- @return list of parsed entries, each entry having fields
+-- `listener` (string, full listener), `ip` (normalized string)
+-- `port` (number), and a boolean entry for each flag added to the entry
+-- (e.g. `ssl`).
+local function parse_listeners(values, flags)
+  assert(type(flags) == "table")
   local list = {}
-  local flags = { "ssl", "http2", "proxy_protocol", "transparent" }
   local usage = "must be of form: [off] | <ip>:<port> [" ..
                 concat(flags, "] [") .. "], [... next entry ...]"
 
@@ -844,8 +850,11 @@ local function load(path, custom_conf)
   end
 
   do
+    local http_flags = { "ssl", "http2", "proxy_protocol", "transparent" }
+    local stream_flags = { "proxy_protocol", "transparent" }
+
     -- extract ports/listen ips
-    conf.proxy_listeners, err = parse_listeners(conf.proxy_listen)
+    conf.proxy_listeners, err = parse_listeners(conf.proxy_listen, http_flags)
     if err then
       return nil, "proxy_listen " .. err
     end
@@ -860,7 +869,14 @@ local function load(path, custom_conf)
       end
     end
 
-    conf.admin_listeners, err = parse_listeners(conf.admin_listen)
+    conf.stream_listeners, err = parse_listeners(conf.stream_listen, stream_flags)
+    if err then
+      return nil, "stream_listen " .. err
+    end
+
+    setmetatable(conf.stream_listeners, _nop_tostring_mt)
+
+    conf.admin_listeners, err = parse_listeners(conf.admin_listen, http_flags)
     if err then
       return nil, "admin_listen " .. err
     end

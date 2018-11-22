@@ -256,25 +256,31 @@ local function serialize_arg(field, arg)
     serialized_arg = cassandra.text(arg)
 
   elseif field.type == "array" then
-    serialized_arg = cassandra.list(arg)
+    local t = {}
 
     for i = 1, #arg do
-      serialized_arg[i] = serialize_arg(field.elements, arg[i])
+      t[i] = serialize_arg(field.elements, arg[i])
     end
+
+    serialized_arg = cassandra.list(t)
 
   elseif field.type == "set" then
-    serialized_arg = cassandra.list(arg)
+    local t = {}
 
     for i = 1, #arg do
-      serialized_arg[i] = serialize_arg(field.elements, arg[i])
+      t[i] = serialize_arg(field.elements, arg[i])
     end
+
+    serialized_arg = cassandra.set(t)
 
   elseif field.type == "map" then
-    serialized_arg = cassandra.map(arg)
+    local t = {}
 
     for k, v in pairs(arg) do
-      serialized_arg[k] = serialize_arg(field.elements, arg[k])
+      t[k] = serialize_arg(field.elements, arg[k])
     end
+
+    serialized_arg = cassandra.map(t)
 
   elseif field.type == "record" then
     serialized_arg = cassandra.text(cjson.encode(arg))
@@ -449,6 +455,28 @@ function _M.new(connector, schema, errors)
 end
 
 
+local function deserialize_aggregates(value, field)
+  if field.type == "record" then
+    if type(value) == "string" then
+      value = cjson.decode(value)
+    end
+
+  elseif field.type == "set" then
+    if type(value) == "table" then
+      for i = 1, #value do
+        value[i] = deserialize_aggregates(value[i], field.elements)
+      end
+    end
+  end
+
+  if value == nil then
+    return null
+  end
+
+  return value
+end
+
+
 function _mt:deserialize_row(row)
   if not row then
     error("row must be a table", 2)
@@ -478,20 +506,14 @@ function _mt:deserialize_row(row)
       end
 
       if not has_fk then
-        row[field_name] = nil
+        row[field_name] = null
       end
 
     elseif field.timestamp and row[field_name] ~= nil then
       row[field_name] = row[field_name] / 1000
 
-    elseif field.type == "record" then
-      if type(row[field_name]) == "string" then
-        row[field_name] = cjson.decode(row[field_name])
-      end
-    end
-
-    if row[field_name] == nil then
-      row[field_name] = null
+    else
+      row[field_name] = deserialize_aggregates(row[field_name], field)
     end
   end
 

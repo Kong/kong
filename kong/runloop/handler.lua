@@ -14,6 +14,7 @@ local Router      = require "kong.router"
 local ApiRouter   = require "kong.api_router"
 local reports     = require "kong.reports"
 local balancer    = require "kong.runloop.balancer"
+local mesh        = require "kong.runloop.mesh"
 local constants   = require "kong.constants"
 local semaphore   = require "ngx.semaphore"
 local responses   = require "kong.tools.responses"
@@ -32,6 +33,7 @@ local ngx         = ngx
 local log         = ngx.log
 local ngx_now     = ngx.now
 local update_time = ngx.update_time
+local subsystem   = ngx.config.subsystem
 local unpack      = unpack
 
 
@@ -43,7 +45,7 @@ local CACHE_ROUTER_OPTS = { ttl = 0 }
 local EMPTY_T = {}
 
 
-local router, router_version, router_err
+local get_router, build_router
 local api_router, api_router_version, api_router_err
 local server_header = meta._SERVER_TOKENS
 
@@ -87,66 +89,145 @@ local function build_api_router(dao, version)
   return true
 end
 
+do
+  -- Given a protocol, return the subsystem that handles it
+  local protocol_subsystem = {
+    http = "http",
+    https = "http",
+    tcp = "stream",
+    tls = "stream",
+  }
 
-local function build_router(db, version)
-  local routes, i = {}, 0
+  local router
+  local router_version
 
-  for route, err in db.routes:each() do
+
+  build_router = function(db, version)
+    local routes, i = {}, 0
+
+    for route, err in db.routes:each() do
+      if err then
+        return nil, "could not load routes: " .. err
+      end
+
+      local service_pk = route.service
+
+      if not service_pk then
+        return nil, "route (" .. route.id .. ") is not associated with service"
+      end
+
+      local service, err = db.services:select(service_pk)
+      if not service then
+        return nil, "could not find service for route (" .. route.id .. "): " ..
+                    err
+      end
+
+      local stype = protocol_subsystem[service.protocol]
+      if subsystem == stype then
+        local r = {
+          route   = route,
+          service = service,
+        }
+
+        if stype == "http" and route.hosts then
+          -- TODO: headers should probably be moved to route
+          r.headers = {
+            host = route.hosts,
+          }
+        end
+
+        i = i + 1
+        routes[i] = r
+      end
+    end
+
+    sort(routes, function(r1, r2)
+      r1, r2 = r1.route, r2.route
+      if r1.regex_priority == r2.regex_priority then
+        return r1.created_at < r2.created_at
+      end
+      return r1.regex_priority > r2.regex_priority
+    end)
+
+    local err
+    router, err = Router.new(routes)
+    if not router then
+      return nil, "could not create router: " .. err
+    end
+
+    if version then
+      router_version = version
+    end
+
+    singletons.router = router
+
+    return true
+  end
+
+
+  get_router = function()
+    local cache = singletons.cache
+
+    local version, err = cache:get("router:version", CACHE_ROUTER_OPTS,
+                                   utils.uuid)
     if err then
-      return nil, "could not load routes: " .. err
+      log(ngx.CRIT, "could not ensure router is up to date: ", err)
+      return nil, err
     end
 
-    local service_pk = route.service
-
-    if not service_pk then
-      return nil, "route (" .. route.id .. ") is not associated with service"
+    if version == router_version then
+      return router
     end
 
-    local service
+    -- wrap router rebuilds in a per-worker mutex (via ngx.semaphore)
+    -- this prevents dogpiling the database during rebuilds in
+    -- high-concurrency traffic patterns
+    -- requests that arrive on this process during a router rebuild will be
+    -- queued. once the semaphore resource is acquired we re-check the
+    -- router version again to prevent unnecessary subsequent rebuilds
 
-    -- TODO: db requests in loop, problem or not
-    service, err = db.services:select(service_pk)
-    if not service then
-      return nil, "could not find service for route (" .. route.id .. "): " .. err
+    local timeout = 60
+    if singletons.configuration.database == "cassandra" then
+      -- cassandra_timeout is defined in ms
+      timeout = singletons.configuration.cassandra_timeout / 1000
+
+    elseif singletons.configuration.database == "postgres" then
+      -- pg_timeout is defined in ms
+      timeout = singletons.configuration.pg_timeout / 1000
     end
 
-    local r = {
-      route   = route,
-      service = service,
-    }
-
-    if route.hosts then
-      -- TODO: headers should probably be moved to route
-      r.headers = {
-        host = route.hosts,
-      }
+    local ok, err = build_router_semaphore:wait(timeout)
+    if not ok then
+      return nil, "error attempting to acquire build_router lock: " .. err
     end
 
-    i = i + 1
-    routes[i] = r
+    -- lock acquired but we might not need to rebuild the router (if we
+    -- were not the first request in this process to enter this code path)
+    -- check again and rebuild if necessary
+
+    version, err = cache:get("router:version", CACHE_ROUTER_OPTS, utils.uuid)
+    if err then
+      log(ngx.CRIT, "could not ensure router is up to date: ", err)
+      return nil, err
+    end
+
+    if version == router_version then
+      return router
+    end
+
+    -- router needs to be rebuilt in this worker
+    log(DEBUG, "rebuilding router")
+
+    local ok, err = build_router(singletons.db, version)
+    if not ok then
+      log(ngx.CRIT, "could not rebuild router: ", err)
+      return nil, err
+    end
+
+    build_router_semaphore:post(1)
+
+    return router
   end
-
-  sort(routes, function(r1, r2)
-    r1, r2 = r1.route, r2.route
-    if r1.regex_priority == r2.regex_priority then
-      return r1.created_at < r2.created_at
-    end
-    return r1.regex_priority > r2.regex_priority
-  end)
-
-  local err
-  router, err = Router.new(routes)
-  if not router then
-    return nil, "could not create router: " .. err
-  end
-
-  if version then
-    router_version = version
-  end
-
-  singletons.router = router
-
-  return true
 end
 
 
@@ -531,15 +612,99 @@ return {
   },
   certificate = {
     before = function(_)
+      mesh.certificate()
       certificate.execute()
     end
   },
   rewrite = {
     before = function(ctx)
       ctx.KONG_REWRITE_START = get_now()
+      mesh.rewrite()
     end,
     after = function (ctx)
       ctx.KONG_REWRITE_TIME = get_now() - ctx.KONG_REWRITE_START -- time spent in Kong's rewrite_by_lua
+    end
+  },
+  preread = {
+    before = function(ctx)
+      local router, err = get_router()
+      if not router then
+        log(ERR, "no router to route connection (reason: " .. err .. ")")
+        return ngx.exit(500)
+      end
+
+      local match_t = router.exec(ngx)
+      if not match_t then
+        log(ERR, "no Route found with those values")
+        return ngx.exit(500)
+      end
+
+      local var = ngx.var
+
+      local ssl_termination_ctx -- OpenSSL SSL_CTX to use for termination
+
+      local ssl_preread_alpn_protocols = var.ssl_preread_alpn_protocols
+      -- ssl_preread_alpn_protocols is a comma separated list
+      -- see https://trac.nginx.org/nginx/ticket/1616
+      if ssl_preread_alpn_protocols and
+         ssl_preread_alpn_protocols:find(mesh.get_mesh_alpn(), 1, true) then
+        -- Is probably an incoming service mesh connection
+        -- terminate service-mesh Mutual TLS
+        ssl_termination_ctx = mesh.mesh_server_ssl_ctx
+      else
+        -- TODO: stream router should decide if TLS is terminated or not
+        -- XXX: for now, use presence of SNI to terminate.
+        local sni = var.ssl_preread_server_name
+        if sni then
+          ngx.log(ngx.DEBUG, "SNI: ", sni)
+
+          local err
+          ssl_termination_ctx, err = certificate.find_certificate(sni)
+          if not ssl_termination_ctx then
+            ngx.log(ngx.ERR, err)
+            return ngx.exit(ngx.ERROR)
+          end
+
+          -- TODO Fake certificate phase?
+
+          ngx.log(ngx.INFO, "attempting to terminate TLS")
+        end
+      end
+
+      -- Terminate TLS
+      if ssl_termination_ctx and not ngx.req.starttls(ssl_termination_ctx) then -- luacheck: ignore
+        -- errors are logged by nginx core
+        return ngx.exit(ngx.ERROR)
+      end
+
+      ctx.KONG_PREREAD_START = get_now()
+
+      local api = match_t.api or EMPTY_T
+      local route = match_t.route or EMPTY_T
+      local service = match_t.service or EMPTY_T
+      local upstream_url_t = match_t.upstream_url_t
+
+      balancer_setup_stage1(ctx, match_t.upstream_scheme,
+                            upstream_url_t.type,
+                            upstream_url_t.host,
+                            upstream_url_t.port,
+                            service, route, api)
+    end,
+    after = function(ctx)
+      local ok, err, errcode = balancer_setup_stage2(ctx)
+      if not ok then
+        return responses.send(errcode, err)
+      end
+
+      local now = get_now()
+
+      -- time spent in Kong's preread_by_lua
+      ctx.KONG_PREREAD_TIME     = now - ctx.KONG_PREREAD_START
+      ctx.KONG_PREREAD_ENDED_AT = now
+      -- time spent in Kong before sending the request to upstream
+      -- ngx.req.start_time() is kept in seconds with millisecond resolution.
+      ctx.KONG_PROXY_LATENCY   = now - ngx.req.start_time() * 1000
+      ctx.KONG_PROXIED         = true
     end
   },
   access = {
@@ -607,60 +772,10 @@ return {
 
       -- router for Routes/Services
 
-      local version, err = cache:get("router:version", CACHE_ROUTER_OPTS, utils.uuid)
-      if err then
-        log(ngx.CRIT, "could not ensure router is up to date: ", err)
-
-      elseif router_version ~= version then
-        -- wrap router rebuilds in a per-worker mutex (via ngx.semaphore)
-        -- this prevents dogpiling the database during rebuilds in
-        -- high-concurrency traffic patterns
-        -- requests that arrive on this process during a router rebuild will be
-        -- queued. once the semaphore resource is acquired we re-check the
-        -- router version again to prevent unnecessary subsequent rebuilds
-
-        local timeout = 60
-        if singletons.configuration.database == "cassandra" then
-          -- cassandra_timeout is defined in ms
-          timeout = singletons.configuration.cassandra_timeout / 1000
-
-        elseif singletons.configuration.database == "postgres" then
-          -- pg_timeout is defined in ms
-          timeout = singletons.configuration.pg_timeout / 1000
-        end
-
-        local ok, err = build_router_semaphore:wait(timeout)
-        if not ok then
-          return responses.send_HTTP_INTERNAL_SERVER_ERROR(
-            "error attempting to acquire build_router lock: " .. err
-          )
-        end
-
-        -- lock acquired but we might not need to rebuild the router (if we
-        -- were not the first request in this process to enter this code path)
-        -- check again and rebuild if necessary
-
-        version, err = cache:get("router:version", CACHE_ROUTER_OPTS, utils.uuid)
-        if err then
-          log(ngx.CRIT, "could not ensure router is up to date: ", err)
-
-        elseif router_version ~= version then
-          -- router needs to be rebuilt in this worker
-          log(DEBUG, "rebuilding router")
-
-          local ok, err = build_router(singletons.db, version)
-          if not ok then
-            router_err = err
-            log(ngx.CRIT, "could not rebuild router: ", err)
-          end
-        end
-
-        build_router_semaphore:post(1)
-      end
-
+      local router, err = get_router()
       if not router then
-        return responses.send_HTTP_INTERNAL_SERVER_ERROR("no router to " ..
-                  "route request (reason: " .. tostring(router_err) .. ")")
+        return responses.send_HTTP_INTERNAL_SERVER_ERROR(
+          "no router to route request (reason: " .. err ..  ")")
       end
 
       -- routing request
