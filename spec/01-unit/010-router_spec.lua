@@ -501,7 +501,7 @@ describe("Router", function()
       local router = assert(Router.new(use_case))
 
       it("matches leftmost wildcards", function()
-        local match_t = router.select("GET", "/", "foo.route.com", "domain.org")
+        local match_t = router.select("GET", "/", "foo.route.com")
         assert.truthy(match_t)
         assert.same(use_case[1].route, match_t.route)
         assert.same(match_t.matches.host, use_case[1].headers.host[1])
