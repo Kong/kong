@@ -312,4 +312,82 @@ for _, strategy in helpers.each_strategy() do
       end, 10)
     end)
   end)
+
+  describe("enabled globally", function()
+    local proxy_client
+
+    lazy_setup(function()
+      local bp = helpers.get_db_utils(strategy)
+
+      bp.plugins:insert {
+        name     = "http-log",
+        config   = {
+          http_endpoint = "http://" .. helpers.mock_upstream_host
+                                    .. ":"
+                                    .. helpers.mock_upstream_port
+                                    .. "/post_log/http"
+        }
+      }
+
+      assert(helpers.start_kong({
+        database = strategy,
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+      }))
+    end)
+
+    lazy_teardown(function()
+      helpers.stop_kong()
+    end)
+
+    before_each(function()
+      proxy_client = helpers.proxy_client()
+    end)
+
+    after_each(function()
+      if proxy_client then
+        proxy_client:close()
+      end
+    end)
+
+    it("executes successfully when route does not exist", function()
+      local res = assert(proxy_client:send({
+        method  = "GET",
+        path    = "/nonexistant/proxy/path",
+        headers = {
+          ["Host"] = "http_no_exist.test"
+        }
+      }))
+      assert.res_status(404, res)
+      
+      --Assert that the plugin executed and has 1 log entry
+      helpers.wait_until(function()
+        local client = assert(helpers.http_client(helpers.mock_upstream_host, helpers.mock_upstream_port))
+        local res = assert(client:send {
+          method  = "GET",
+          path    = "/read_log/http",
+          headers = {
+            Accept = "application/json"
+          }
+        })
+        local raw = assert.res_status(200, res)
+        local body = cjson.decode(raw)
+        if #body.log.entries == 1 then
+          local log_message = cjson.decode(body.log.entries[1].request.postData.text)
+          assert.same("127.0.0.1", log_message.client_ip)
+          return true
+        end
+      end, 10)
+
+      -- Assertion: there should be no [error], including no error
+      -- resulting from attempting to reference the id on
+      -- a route when no such value exists after http-log execution
+
+      local pl_file = require "pl.file"
+      local logs = pl_file.read(helpers.test_conf.nginx_err_logs)
+
+      for line in logs:gmatch("[^\r\n]+") do
+        assert.not_match("[error]", line, nil, true)
+      end
+    end)
+  end)
 end
