@@ -2,7 +2,7 @@ local version = setmetatable({
   major = 1,
   minor = 0,
   patch = 0,
-  suffix = "rc2"
+  suffix = "rc3"
 }, {
   __tostring = function(t)
     return string.format("%d.%d.%d%s", t.major, t.minor, t.patch,
