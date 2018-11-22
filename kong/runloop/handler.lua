@@ -53,6 +53,22 @@ local function get_now()
 end
 
 
+-- Plugins that generate content need to set latency headers. This
+-- function centralizes these cleanups so that plugins can call it.
+local function simulate_access_after(ctx)
+  local now = get_now()
+
+  ctx.KONG_ACCESS_TIME = now - ctx.KONG_ACCESS_START
+  ctx.KONG_ACCESS_ENDED_AT = now
+
+  local proxy_latency = now - ngx.req.start_time() * 1000
+
+  ctx.KONG_PROXY_LATENCY = proxy_latency
+
+  ctx.KONG_PROXIED = true
+end
+
+
 local function build_api_router(dao, version)
   local apis, err = dao.apis:find_all()
   if err then
@@ -153,6 +169,7 @@ end
 return {
   build_router     = build_router,
   build_api_router = build_api_router,
+  simulate_access_after = simulate_access_after,
 
   init_worker = {
     before = function()
