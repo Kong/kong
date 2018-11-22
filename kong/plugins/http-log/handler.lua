@@ -47,7 +47,7 @@ end
 function HttpLogHandler:log(conf)
   HttpLogHandler.super.log(self)
 
-  local route_id = conf.route_id or conf.api_id
+  local route_id = conf.route_id or conf.api_id or "global"
   local buf = buffers[route_id]
   if not buf then
 
