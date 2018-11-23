@@ -1,10 +1,80 @@
 local Buffer
 
+local pl_utils = require "pl.utils"
+
+
+-- test fixtures. we have to load them before requiring the
+-- ALF serializer, since it caches those functions at the
+-- module chunk level.
+local _ngx = {
+  encode_base64 = function(str)
+    return string.format("base64_%s", str)
+  end,
+  req = {
+    start_time = function() return 1432844571.623 end,
+    get_method = function() return "GET" end,
+    http_version = function() return 1.1 end,
+    raw_header = function ()
+      return "GET /request/path HTTP/1.1\r\n"..
+             "Host: example.com\r\n"..
+             "Accept: application/json\r\n"..
+             "Accept: application/x-www-form-urlencoded\r\n\r\n"
+    end,
+    get_headers = function()
+      return {
+        accept = {"application/json", "application/x-www-form-urlencoded"},
+        host = "example.com"
+      }
+    end,
+    get_uri_args = function()
+      return {
+        hello = "world",
+        foobar = "baz"
+      }
+    end,
+  },
+  resp = {
+    get_headers = function()
+      return {
+        connection = "close",
+        ["content-type"] = {"application/json", "application/x-www-form-urlencoded"},
+        ["content-length"] = "934"
+      }
+    end
+  },
+
+  -- ALF buffer stubs
+  -- TODO: to be removed once we use resty-cli to run our tests.
+  now = function()
+    return os.time() * 1000  -- adding ngx.time()'s ms resolution
+  end,
+  log = function(...)
+    local t = {...}
+    table.remove(t, 1)
+    return t
+  end,
+  sleep = function(t)
+    pl_utils.execute("sleep " .. t/1000)
+  end,
+  timer = {
+    at = function() end
+  },
+
+  -- lua-resty-http stubs
+  socket = {
+    tcp = function() end
+  },
+  re = {},
+  config = {
+    ngx_lua_version = ""
+  }
+}
+
 local function reload_buffer()
-  package.loaded["spec.03-plugins.09-brain.ngx"] = nil
+  package.loaded["spec.ngx"] = nil
   package.loaded["kong.plugins.brain.buffer"] = nil
 
-  _G.ngx = require "spec.03-plugins.09-brain.ngx"
+  _G.ngx = _ngx
   Buffer = require "kong.plugins.brain.buffer"
 end
 
@@ -22,7 +92,7 @@ describe("ALF Buffer", function()
       connection_timeout = 30,
       flush_timeout      = 2,
       queue_size         = 1000,
-      host               = "collector.brain.mashape.com",
+      host               = "brain.kong.com",
       port               = 443,
     }
 
