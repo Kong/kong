@@ -1,57 +1,92 @@
 local helpers = require "spec.helpers"
+local admin_api = require "spec.fixtures.admin_api"
 local cjson   = require "cjson"
+
+
+local function next_second()
+  ngx.update_time()
+  local now = ngx.now()
+  ngx.sleep(1 - (now - math.floor(now)))
+end
+
+
+local function insert_routes(routes)
+  if type(routes) ~= "table" then
+    return error("expected arg #1 to be a table", 2)
+  end
+
+  for i = 1, #routes do
+    local route = routes[i]
+    local service = route.service or {}
+
+    if not service.host then
+      service.host = helpers.mock_upstream_host
+    end
+
+    if not service.port then
+      service.port = helpers.mock_upstream_port
+    end
+
+    if not service.protocol then
+      service.protocol = helpers.mock_upstream_protocol
+    end
+
+    service = admin_api.named_services:insert(service)
+    route.service = service
+
+    if not route.protocol then
+      route.protocols = { "http" }
+    end
+
+    route.service = service
+    route = admin_api.routes:insert(route)
+    route.service = service
+
+    routes[i] = route
+  end
+
+  return routes
+end
+
+local function remove_routes(routes)
+  local services = {}
+
+  for _, route in ipairs(routes) do
+    local sid = route.service.id
+    if not services[sid] then
+      services[sid] = route.service
+      table.insert(services, services[sid])
+    end
+  end
+
+  for _, route in ipairs(routes) do
+    admin_api.routes:remove({ id = route.id })
+  end
+
+  for _, service in ipairs(services) do
+    admin_api.services:remove(service)
+  end
+end
 
 for _, strategy in helpers.each_strategy() do
   describe("Router [#" .. strategy .. "]" , function()
     local proxy_client
-    local bp
-    local db
-    local dao
-
-    local function insert_routes(routes)
-      if type(routes) ~= "table" then
-        return error("expected arg #1 to be a table", 2)
-      end
-
-      for i = 1, #routes do
-        local route = routes[i]
-        local service = route.service or {}
-
-        if not service.name then
-          service.name = "service-" .. i
-        end
-
-        if not service.host then
-          service.host = helpers.mock_upstream_host
-        end
-
-        if not service.port then
-          service.port = helpers.mock_upstream_port
-        end
-
-        if not service.protocol then
-          service.protocol = helpers.mock_upstream_protocol
-        end
-
-        service = bp.services:insert(service)
-        route.service = service
-
-        if not route.protocol then
-          route.protocols = { "http" }
-        end
-
-        route = bp.routes:insert(route)
-        route.service = service
-
-
-        routes[i] = route
-      end
-
-      return routes
-    end
 
     lazy_setup(function()
-      bp, db, dao = helpers.get_db_utils(strategy)
+      helpers.get_db_utils(strategy, {
+        "routes",
+        "services",
+        "apis",
+      })
+
+      assert(helpers.start_kong({
+        database = strategy,
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+      }))
+    end)
+
+    lazy_teardown(function()
+      helpers.stop_kong()
     end)
 
     before_each(function()
@@ -65,20 +100,6 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("no routes match", function()
-      lazy_setup(function()
-        assert(db:truncate("routes"))
-        assert(db:truncate("services"))
-        dao:truncate_table("apis")
-
-        assert(helpers.start_kong({
-          database = strategy,
-          nginx_conf = "spec/fixtures/custom_nginx.template",
-        }))
-      end)
-
-      lazy_teardown(function()
-        helpers.stop_kong()
-      end)
 
       it("responds 404 if no route matches", function()
         local res = assert(proxy_client:send {
@@ -97,25 +118,22 @@ for _, strategy in helpers.each_strategy() do
 
     describe("use-cases", function()
       local routes
+      local first_service_name
 
       lazy_setup(function()
-        assert(db:truncate("routes"))
-        assert(db:truncate("services"))
-        dao:truncate_table("apis")
-
         routes = insert_routes {
-          { -- service-1
+          {
             methods    = { "GET" },
             protocols  = { "http" },
             strip_path = false,
           },
-          { -- service-2
+          {
             methods    = { "POST", "PUT" },
             paths      = { "/post", "/put" },
             protocols  = { "http" },
             strip_path = false,
           },
-          { -- service-3
+          {
             paths      = { "/mock_upstream" },
             protocols  = { "http" },
             strip_path = true,
@@ -123,7 +141,7 @@ for _, strategy in helpers.each_strategy() do
               path     = "/status",
             },
           },
-          { -- service-4
+          {
             paths      = { "/private" },
             protocols  = { "http" },
             strip_path = false,
@@ -131,7 +149,7 @@ for _, strategy in helpers.each_strategy() do
               path     = "/basic-auth/",
             },
           },
-          { -- service-5
+          {
             paths      = { [[/users/\d+/profile]] },
             protocols  = { "http" },
             strip_path = true,
@@ -140,15 +158,11 @@ for _, strategy in helpers.each_strategy() do
             },
           },
         }
-
-        assert(helpers.start_kong({
-          database   = strategy,
-          nginx_conf = "spec/fixtures/custom_nginx.template",
-        }))
+        first_service_name = routes[1].service.name
       end)
 
       lazy_teardown(function()
-        helpers.stop_kong()
+        remove_routes(routes)
       end)
 
       it("restricts an route to its methods if specified", function()
@@ -216,7 +230,7 @@ for _, strategy in helpers.each_strategy() do
 
           -- TEST: we matched an API that had no Host header defined
           local remainder = assert(sock:receive("*a"))
-          assert.matches("kong-service-name: service-1",
+          assert.matches("kong-service-name: " .. first_service_name,
                          string.lower(remainder), nil, true)
         end)
 
@@ -300,58 +314,51 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("URI regexes order of evaluation with created_at", function()
-      local routes1, routes2
+      local routes1, routes2, routes3
 
       lazy_setup(function()
-        assert(db:truncate("routes"))
-        assert(db:truncate("services"))
-        dao:truncate_table("apis")
-
         routes1 = insert_routes {
           {
             strip_path = true,
             paths      = { "/status/(re)" },
             service    = {
-              name     = "service-1",
+              name     = "regex_1",
               path     = "/status/200",
             },
           },
         }
 
-        ngx.sleep(1)
+        next_second()
 
         routes2 = insert_routes {
           {
             strip_path = true,
             paths      = { "/status/(r)" },
             service    = {
-              name     = "service-2",
+              name     = "regex_2",
               path     = "/status/200",
             },
           }
         }
 
-        ngx.sleep(1)
+        next_second()
 
-        insert_routes {
+        routes3 = insert_routes {
           {
             strip_path = true,
             paths      = { "/status" },
             service    = {
-              name     = "service-3",
+              name     = "regex_3",
               path     = "/status/200",
             },
           }
         }
-
-        assert(helpers.start_kong({
-          database   = strategy,
-          nginx_conf = "spec/fixtures/custom_nginx.template",
-        }))
       end)
 
       lazy_teardown(function()
-        helpers.stop_kong()
+        remove_routes(routes1)
+        remove_routes(routes2)
+        remove_routes(routes3)
       end)
 
       it("depends on created_at field", function()
@@ -380,73 +387,68 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("URI regexes order of evaluation with regex_priority", function()
+      local routes = {}
       lazy_setup(function()
-        assert(db:truncate("routes"))
-        assert(db:truncate("services"))
-        dao:truncate_table("apis")
 
         -- TEST 1 (regex_priority)
 
-        insert_routes {
+        routes[1] = insert_routes {
           {
             strip_path = true,
             paths      = { "/status/(?<foo>re)" },
             service    = {
-              name     = "service-1",
+              name     = "regex_1",
               path     = "/status/200",
             },
             regex_priority = 0,
           }
         }
 
-        insert_routes {
+        routes[2] = insert_routes {
           {
             strip_path = true,
             paths      = { "/status/(re)" },
             service    = {
-              name     = "service-2",
+              name     = "regex_2",
               path     = "/status/200",
             },
-            regex_priority = 4, -- shadows service-4 (which is created before and is shorter)
+            regex_priority = 4, -- shadows service which is created before and is shorter
           },
         }
 
         -- TEST 2 (tie breaker by created_at)
 
-        insert_routes {
+        routes[3] = insert_routes {
           {
             strip_path = true,
             paths      = { "/status/(ab)" },
             service    = {
-              name     = "service-3",
+              name     = "regex_3",
               path     = "/status/200",
             },
             regex_priority = 0,
           }
         }
 
-        ngx.sleep(1)
+        next_second()
 
-        insert_routes {
+        routes[4] = insert_routes {
           {
             strip_path = true,
             paths      = { "/status/(ab)c?" },
             service    = {
-              name     = "service-4",
+              name     = "regex_4",
               path     = "/status/200",
             },
             regex_priority = 0,
           },
         }
-
-        assert(helpers.start_kong({
-          database   = strategy,
-          nginx_conf = "spec/fixtures/custom_nginx.template",
-        }))
       end)
 
       lazy_teardown(function()
-        helpers.stop_kong()
+        for _, r in ipairs(routes) do
+          remove_routes(r)
+        end
       end)
 
       it("depends on the regex_priority field", function()
@@ -456,7 +458,7 @@ for _, strategy in helpers.each_strategy() do
           headers = { ["kong-debug"] = 1 },
         })
         assert.res_status(200, res)
-        assert.equal("service-2", res.headers["kong-service-name"])
+        assert.equal("regex_2", res.headers["kong-service-name"])
       end)
 
       it("depends on created_at if regex_priority is tie", function()
@@ -466,31 +468,23 @@ for _, strategy in helpers.each_strategy() do
           headers = { ["kong-debug"] = 1 },
         })
         assert.res_status(200, res)
-        assert.equal("service-3", res.headers["kong-service-name"])
+        assert.equal("regex_3", res.headers["kong-service-name"])
       end)
     end)
 
     describe("URI arguments (querystring)", function()
+      local routes
 
       lazy_setup(function()
-        assert(db:truncate("routes"))
-        assert(db:truncate("services"))
-        dao:truncate_table("apis")
-
-        insert_routes {
+        routes = insert_routes {
           {
             hosts = { "mock_upstream" },
           },
         }
-
-        assert(helpers.start_kong({
-          database   = strategy,
-          nginx_conf = "spec/fixtures/custom_nginx.template",
-        }))
       end)
 
       lazy_teardown(function()
-        helpers.stop_kong()
+        remove_routes(routes)
       end)
 
       it("preserves URI arguments", function()
@@ -545,10 +539,6 @@ for _, strategy in helpers.each_strategy() do
       local routes
 
       lazy_setup(function()
-        assert(db:truncate("routes"))
-        assert(db:truncate("services"))
-        dao:truncate_table("apis")
-
         routes = insert_routes {
           {
             strip_path = true,
@@ -559,15 +549,10 @@ for _, strategy in helpers.each_strategy() do
             paths      = { "/foo/../bar" },
           },
         }
-
-        assert(helpers.start_kong({
-          database   = strategy,
-          nginx_conf = "spec/fixtures/custom_nginx.template",
-        }))
       end)
 
       lazy_teardown(function()
-        helpers.stop_kong()
+        remove_routes(routes)
       end)
 
       it("routes when [paths] is percent-encoded", function()
@@ -600,27 +585,19 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("strip_path", function()
+      local routes
 
       lazy_setup(function()
-        assert(db:truncate("routes"))
-        assert(db:truncate("services"))
-        dao:truncate_table("apis")
-
-        insert_routes {
+        routes = insert_routes {
           {
             paths      = { "/x/y/z", "/z/y/x" },
             strip_path = true,
           },
         }
-
-        assert(helpers.start_kong({
-          database   = strategy,
-          nginx_conf = "spec/fixtures/custom_nginx.template",
-        }))
       end)
 
       lazy_teardown(function()
-        helpers.stop_kong()
+        remove_routes(routes)
       end)
 
       describe("= true", function()
@@ -669,13 +646,10 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("preserve_host", function()
+      local routes
 
       lazy_setup(function()
-        assert(db:truncate("routes"))
-        assert(db:truncate("services"))
-        dao:truncate_table("apis")
-
-        insert_routes {
+        routes = insert_routes {
           {
             preserve_host = true,
             hosts         = { "preserved.com" },
@@ -697,14 +671,10 @@ for _, strategy in helpers.each_strategy() do
           }
         }
 
-        assert(helpers.start_kong({
-          database   = strategy,
-          nginx_conf = "spec/fixtures/custom_nginx.template",
-        }))
       end)
 
       lazy_teardown(function()
-        helpers.stop_kong()
+        remove_routes(routes)
       end)
 
       describe("x = false (default)", function()
@@ -790,10 +760,6 @@ for _, strategy in helpers.each_strategy() do
       local routes
 
       lazy_setup(function()
-        assert(db:truncate("routes"))
-        assert(db:truncate("services"))
-        dao:truncate_table("apis")
-
         routes = insert_routes {
           {
             strip_path = true,
@@ -804,15 +770,10 @@ for _, strategy in helpers.each_strategy() do
             paths      = { "/foobar" },
           },
         }
-
-        assert(helpers.start_kong({
-          database   = strategy,
-          nginx_conf = "spec/fixtures/custom_nginx.template",
-        }))
       end)
 
       lazy_teardown(function()
-        helpers.stop_kong()
+        remove_routes(routes)
       end)
 
       it("root / [uri] for a catch-all rule", function()
@@ -846,10 +807,6 @@ for _, strategy in helpers.each_strategy() do
       local routes
 
       lazy_setup(function()
-        assert(db:truncate("routes"))
-        assert(db:truncate("services"))
-        dao:truncate_table("apis")
-
         routes = insert_routes {
           {
             strip_path = true,
@@ -862,15 +819,10 @@ for _, strategy in helpers.each_strategy() do
             paths      = { "/root/fixture" },
           },
         }
-
-        assert(helpers.start_kong({
-          database   = strategy,
-          nginx_conf = "spec/fixtures/custom_nginx.template",
-        }))
       end)
 
       lazy_teardown(function()
-        helpers.stop_kong()
+        remove_routes(routes)
       end)
 
       it("prioritizes longer URIs", function()
@@ -894,10 +846,6 @@ for _, strategy in helpers.each_strategy() do
       local routes
 
       lazy_setup(function()
-        assert(db:truncate("routes"))
-        assert(db:truncate("services"))
-        dao:truncate_table("apis")
-
         routes = insert_routes {
           {
             strip_path = true,
@@ -910,15 +858,10 @@ for _, strategy in helpers.each_strategy() do
             paths      = { "/root/fixture" },
           },
         }
-
-        assert(helpers.start_kong({
-          database   = strategy,
-          nginx_conf = "spec/fixtures/custom_nginx.template",
-        }))
       end)
 
       lazy_teardown(function()
-        helpers.stop_kong()
+        remove_routes(routes)
       end)
 
       it("prioritizes longer URIs", function()
@@ -1027,13 +970,11 @@ for _, strategy in helpers.each_strategy() do
       }
 
       describe("(plain)", function()
+        local routes = {}
         lazy_setup(function()
-          assert(db:truncate("routes"))
-          assert(db:truncate("services"))
-          dao:truncate_table("apis")
 
           for i, args in ipairs(checks) do
-            assert(insert_routes {
+            routes[i] = insert_routes {
               {
                 strip_path   = args[5],
                 paths        = args[2] and {
@@ -1043,21 +984,18 @@ for _, strategy in helpers.each_strategy() do
                   "localbin-" .. i .. ".com",
                 },
                 service = {
-                  name = "service-" .. i,
+                  name = "plain_" .. i,
                   path = args[1]
                 }
               }
-            })
+            }
           end
-
-          assert(helpers.start_kong({
-            database   = strategy,
-            nginx_conf = "spec/fixtures/custom_nginx.template",
-          }))
         end)
 
         lazy_teardown(function()
-          helpers.stop_kong()
+          for _, r in ipairs(routes) do
+            remove_routes(r)
+          end
         end)
 
         local function check(i, request_uri, expected_uri)
@@ -1095,13 +1033,11 @@ for _, strategy in helpers.each_strategy() do
           return "/[0]?" .. path:sub(2, -1)
         end
 
-        lazy_setup(function()
-          assert(db:truncate("routes"))
-          assert(db:truncate("services"))
-          dao:truncate_table("apis")
+        local routes = {}
 
+        lazy_setup(function()
           for i, args in ipairs(checks) do
-            assert(insert_routes {
+            routes[i] = assert(insert_routes {
               {
                 strip_path   = args[5],
                 paths        = args[2] and {
@@ -1111,21 +1047,18 @@ for _, strategy in helpers.each_strategy() do
                   "localbin-" .. i .. ".com",
                 },
                 service = {
-                  name = "service-" .. i,
+                  name = "make_regex_" .. i,
                   path = args[1]
                 }
               }
             })
           end
-
-          assert(helpers.start_kong({
-            database   = strategy,
-            nginx_conf = "spec/fixtures/custom_nginx.template",
-          }))
         end)
 
         lazy_teardown(function()
-          helpers.stop_kong()
+          for _, r in ipairs(routes) do
+            remove_routes(r)
+          end
         end)
 
         local function check(i, request_uri, expected_uri)
