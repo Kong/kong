@@ -1,5 +1,14 @@
 local helpers = require "spec.helpers"
 
+local function wait_for_pid()
+  local pid
+  helpers.wait_until(function()
+    pid = helpers.file.read(helpers.test_conf.nginx_pid)
+    return pid
+  end)
+  return pid
+end
+
 describe("kong restart", function()
   lazy_setup(function()
     helpers.get_db_utils() -- runs migrations
@@ -21,12 +30,11 @@ describe("kong restart", function()
   end)
   it("restarts if already running from --conf", function()
     assert(helpers.kong_exec("start --conf " .. helpers.test_conf_path, {}))
-    ngx.sleep(2)
-    local nginx_pid = assert(helpers.file.read(helpers.test_conf.nginx_pid))
+    local nginx_pid = wait_for_pid()
 
     assert(helpers.kong_exec("restart --conf " .. helpers.test_conf_path, {}))
-    ngx.sleep(2)
-    assert.is_not.equal(assert(helpers.file.read(helpers.test_conf.nginx_pid)), nginx_pid)
+    local new_pid = wait_for_pid()
+    assert.is_not.equal(new_pid, nginx_pid)
   end)
   it("restarts if already running from --prefix", function()
     local env = {
@@ -35,12 +43,11 @@ describe("kong restart", function()
     }
 
     assert(helpers.kong_exec("start --conf " .. helpers.test_conf_path, env))
-    ngx.sleep(2)
-    local nginx_pid = assert(helpers.file.read(helpers.test_conf.nginx_pid))
+    local nginx_pid = wait_for_pid()
 
     assert(helpers.kong_exec("restart --prefix " .. helpers.test_conf.prefix, env))
-    ngx.sleep(2)
-    assert.is_not.equal(assert(helpers.file.read(helpers.test_conf.nginx_pid)), nginx_pid)
+    local new_pid = wait_for_pid()
+    assert.is_not.equal(new_pid, nginx_pid)
   end)
   it("accepts a custom nginx template", function()
     local env = {
@@ -49,11 +56,11 @@ describe("kong restart", function()
     }
 
     assert(helpers.kong_exec("start --conf " .. helpers.test_conf_path, env))
-    ngx.sleep(2)
+    wait_for_pid()
 
     assert(helpers.kong_exec("restart --prefix " .. helpers.test_conf.prefix
            .. " --nginx-conf spec/fixtures/custom_nginx.template", env))
-    ngx.sleep(2)
+    wait_for_pid()
 
     -- new server
     local client = helpers.http_client(helpers.mock_upstream_host,
