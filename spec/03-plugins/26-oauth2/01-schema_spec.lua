@@ -8,7 +8,15 @@ local fmt = string.format
 for _, strategy in helpers.each_strategy() do
 
   describe(fmt("Plugin: oauth2 [#%s] (schema)", strategy), function()
-    local bp, db = helpers.get_db_utils(strategy)
+    local bp, db = helpers.get_db_utils(strategy, {
+      "routes",
+      "services",
+      "consumers",
+      "plugins",
+      "oauth2_tokens",
+      "oauth2_authorization_codes",
+      "oauth2_credentials",
+    })
 
     local oauth2_authorization_codes_schema = db.oauth2_authorization_codes.schema
     local oauth2_tokens_schema = db.oauth2_tokens.schema

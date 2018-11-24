@@ -7,19 +7,18 @@ for _, strategy in helpers.each_strategy() do
     local consumer
     local service
     local admin_client
-    local db
-    local bp
+    local bp, db
 
     lazy_setup(function()
-      bp, db = helpers.get_db_utils(strategy)
-
-      assert(db:truncate("routes"))
-      assert(db:truncate("services"))
-      assert(db:truncate("consumers"))
-      assert(db:truncate("oauth2_tokens"))
-      assert(db:truncate("oauth2_authorization_codes"))
-      assert(db:truncate("oauth2_credentials"))
-      assert(db:truncate("plugins"))
+      bp, db = helpers.get_db_utils(strategy, {
+        "routes",
+        "services",
+        "consumers",
+        "plugins",
+        "oauth2_tokens",
+        "oauth2_authorization_codes",
+        "oauth2_credentials",
+      })
 
       helpers.prepare_prefix()
 
@@ -30,6 +29,7 @@ for _, strategy in helpers.each_strategy() do
 
       admin_client = helpers.admin_client()
     end)
+
     lazy_teardown(function()
       if admin_client then admin_client:close() end
       assert(helpers.stop_kong())
@@ -252,14 +252,18 @@ for _, strategy in helpers.each_strategy() do
 
     describe("/consumers/:consumer/oauth2/:id", function()
       local credential
-      before_each(function()
-        assert(db:truncate("oauth2_credentials"))
+
+      lazy_setup(function()
         assert(db:truncate("routes"))
         assert(db:truncate("services"))
         assert(db:truncate("consumers"))
-
         service = bp.services:insert({ host = "oauth2_token.com" })
         consumer = bp.consumers:insert({ username = "bob" })
+      end)
+
+      before_each(function()
+        assert(db:truncate("oauth2_credentials"))
+
         credential = bp.oauth2_credentials:insert {
           name          = "test app",
           redirect_uris = { helpers.mock_upstream_ssl_url },

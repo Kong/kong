@@ -1,50 +1,30 @@
 local helpers = require "spec.helpers"
+local admin_api = require "spec.fixtures.admin_api"
 local cjson = require "cjson"
 
 for _, strategy in helpers.each_strategy() do
   describe("Plugin: basic-auth (invalidations) [#" .. strategy .. "]", function()
     local admin_client
     local proxy_client
-    local bp
     local db
 
     lazy_setup(function()
-      bp, db = helpers.get_db_utils(strategy)
-    end)
-
-    before_each(function()
-      assert(db:truncate("routes"))
-      assert(db:truncate("services"))
-      assert(db:truncate("consumers"))
-      assert(db:truncate("plugins"))
-      assert(db:truncate("basicauth_credentials"))
-
-      local route = bp.routes:insert {
-        hosts = { "basic-auth.com" },
-      }
-
-      bp.plugins:insert {
-        name     = "basic-auth",
-        route = { id = route.id },
-      }
-
-      local consumer = bp.consumers:insert {
-        username = "bob",
-      }
-
-      bp.basicauth_credentials:insert {
-        username = "bob",
-        password = "kong",
-        consumer = { id = consumer.id },
-      }
+      _, db = helpers.get_db_utils(strategy, {
+        "routes",
+        "services",
+        "consumers",
+        "plugins",
+        "basicauth_credentials",
+      })
 
       assert(helpers.start_kong({
         database   = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
       }))
+    end)
 
-      proxy_client = helpers.proxy_client()
-      admin_client = helpers.admin_client()
+    lazy_teardown(function()
+      helpers.stop_kong()
     end)
 
     after_each(function()
@@ -52,8 +32,43 @@ for _, strategy in helpers.each_strategy() do
         admin_client:close()
         proxy_client:close()
       end
+    end)
 
-      helpers.stop_kong()
+    local route
+    local plugin
+    local consumer
+    local credential
+
+    before_each(function()
+      proxy_client = helpers.proxy_client()
+      admin_client = helpers.admin_client()
+
+      if not route then
+        route = admin_api.routes:insert {
+          hosts = { "basic-auth.com" },
+        }
+      end
+
+      if not plugin then
+        plugin = admin_api.plugins:insert {
+          name = "basic-auth",
+          route = { id = route.id },
+        }
+      end
+
+      if not consumer then
+        consumer = admin_api.consumers:insert {
+          username = "bob",
+        }
+      end
+
+      if not credential then
+        credential = admin_api.basicauth_credentials:insert {
+          username = "bob",
+          password = "kong",
+          consumer = { id = consumer.id },
+        }
+      end
     end)
 
     it("#invalidates credentials when the Consumer is deleted", function()
@@ -82,6 +97,8 @@ for _, strategy in helpers.each_strategy() do
         path   = "/consumers/bob"
       })
       assert.res_status(204, res)
+      consumer = nil
+      credential = nil
 
       -- ensure cache is invalidated
       helpers.wait_until(function()
@@ -123,14 +140,15 @@ for _, strategy in helpers.each_strategy() do
         path   = "/cache/" .. cache_key
       })
       local body = assert.res_status(200, res)
-      local credential = cjson.decode(body)
+      local cred = cjson.decode(body)
 
       -- delete credential entity
       res = assert(admin_client:send {
         method = "DELETE",
-        path   = "/consumers/bob/basic-auth/" .. credential.id
+        path   = "/consumers/bob/basic-auth/" .. cred.id
       })
       assert.res_status(204, res)
+      credential = nil
 
       -- ensure cache is invalidated
       helpers.wait_until(function()
@@ -172,12 +190,12 @@ for _, strategy in helpers.each_strategy() do
         path   = "/cache/" .. cache_key
       })
       local body = assert.res_status(200, res)
-      local credential = cjson.decode(body)
+      local cred = cjson.decode(body)
 
       -- delete credential entity
       res = assert(admin_client:send {
         method     = "PATCH",
-        path       = "/consumers/bob/basic-auth/" .. credential.id,
+        path       = "/consumers/bob/basic-auth/" .. cred.id,
         body       = {
           username = "bob",
           password = "kong-updated"
@@ -187,6 +205,7 @@ for _, strategy in helpers.each_strategy() do
         }
       })
       assert.res_status(200, res)
+      credential = nil
 
       -- ensure cache is invalidated
       helpers.wait_until(function()

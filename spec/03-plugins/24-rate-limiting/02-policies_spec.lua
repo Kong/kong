@@ -10,12 +10,11 @@ for _, strategy in helpers.each_strategy() do
       local conf       = { route = { id = uuid() }, service = { id = uuid() } }
 
       local db
-      local dao
       local policies
 
       lazy_setup(function()
         local _
-        _, db, dao = helpers.get_db_utils(strategy)
+        _, db = helpers.get_db_utils(strategy, {})
 
         if _G.kong then
           _G.kong.db = db
@@ -27,9 +26,8 @@ for _, strategy in helpers.each_strategy() do
         policies = require "kong.plugins.rate-limiting.policies"
       end)
 
-      after_each(function()
-        assert(db:truncate())
-        dao:truncate_tables()
+      before_each(function()
+        assert(db:truncate("ratelimiting_metrics"))
       end)
 
       it("returns 0 when rate-limiting metrics don't exist yet", function()

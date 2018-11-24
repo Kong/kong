@@ -31,7 +31,12 @@ for _, strategy in helpers.each_strategy() do
     local plugin2
 
     lazy_setup(function()
-      local bp = helpers.get_db_utils(strategy)
+      local bp = helpers.get_db_utils(strategy, {
+        "routes",
+        "services",
+        "plugins",
+        "consumers",
+      })
 
       local route1 = bp.routes:insert {
         hosts = { "ldap.com" },
@@ -488,7 +493,13 @@ for _, strategy in helpers.each_strategy() do
     local anonymous
 
     lazy_setup(function()
-      local bp = helpers.get_db_utils(strategy)
+      local bp = helpers.get_db_utils(strategy, {
+        "routes",
+        "services",
+        "plugins",
+        "consumers",
+        "keyauth_credentials",
+      })
 
       local service1 = bp.services:insert({
         path = "/request"

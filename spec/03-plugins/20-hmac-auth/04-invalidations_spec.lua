@@ -12,7 +12,13 @@ for _, strategy in helpers.each_strategy() do
 
     lazy_setup(function()
       local bp
-      bp, db = helpers.get_db_utils(strategy)
+      bp, db = helpers.get_db_utils(strategy, {
+        "routes",
+        "services",
+        "plugins",
+        "consumers",
+        "hmacauth_credentials",
+      })
 
       local route = bp.routes:insert {
         hosts = { "hmacauth.com" },

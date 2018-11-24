@@ -22,7 +22,13 @@ for _, strategy in helpers.each_strategy() do
     local credential
 
     lazy_setup(function()
-      local bp = helpers.get_db_utils(strategy)
+      local bp = helpers.get_db_utils(strategy, {
+        "routes",
+        "services",
+        "consumers",
+        "plugins",
+        "hmacauth_credentials",
+      })
 
       local route1 = bp.routes:insert {
         hosts = { "hmacauth.com" },
@@ -1521,7 +1527,14 @@ for _, strategy in helpers.each_strategy() do
     local hmacDate
 
     lazy_setup(function()
-      local bp = helpers.get_db_utils(strategy)
+      local bp = helpers.get_db_utils(strategy, {
+        "routes",
+        "services",
+        "consumers",
+        "plugins",
+        "hmacauth_credentials",
+        "keyauth_credentials",
+      })
 
       local service1 = bp.services:insert({
         path = "/request"

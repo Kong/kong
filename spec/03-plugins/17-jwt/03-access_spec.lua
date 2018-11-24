@@ -26,7 +26,15 @@ for _, strategy in helpers.each_strategy() do
     local admin_client
 
     lazy_setup(function()
-      local bp = helpers.get_db_utils(strategy, nil, { "ctx-checker" })
+      local bp = helpers.get_db_utils(strategy, {
+        "routes",
+        "services",
+        "plugins",
+        "consumers",
+        "jwt_secrets",
+      }, {
+        "ctx-checker",
+      })
 
       local routes = {}
 
@@ -726,7 +734,14 @@ for _, strategy in helpers.each_strategy() do
     local jwt_token
 
     lazy_setup(function()
-      local bp = helpers.get_db_utils(strategy)
+      local bp = helpers.get_db_utils(strategy, {
+        "routes",
+        "services",
+        "plugins",
+        "consumers",
+        "jwt_secrets",
+        "keyauth_credentials",
+      })
 
       local service1 = bp.services:insert({
         path = "/request"

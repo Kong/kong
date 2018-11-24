@@ -16,7 +16,9 @@ for _, strategy in helpers.each_strategy() do
 
     describe("POST", function()
       lazy_setup(function()
-        helpers.get_db_utils(strategy)
+        helpers.get_db_utils(strategy, {
+          "plugins",
+        })
 
         assert(helpers.start_kong({
           database   = strategy,

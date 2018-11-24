@@ -38,14 +38,23 @@ local admin_api_as_db = {}
 for name, _ in pairs(helpers.db.daos) do
   admin_api_as_db[name] = {
     insert = function(_, tbl)
-      local ok, err = api_send("POST", "/" .. name, tbl)
-      return ok, err
+      return api_send("POST", "/" .. name, tbl)
     end,
     remove = function(_, tbl)
       return api_send("DELETE", "/" .. name .. "/" .. tbl.id)
     end,
   }
 end
+
+
+admin_api_as_db["basicauth_credentials"] = {
+  insert = function(_, tbl)
+    return api_send("POST", "/consumers/" .. tbl.consumer.id .. "/basic-auth", tbl)
+  end,
+  remove = function(_, tbl)
+    return api_send("DELETE", "/consumers/" .. tbl.consumer.id .. "/basic-auth/" .. tbl.id)
+  end,
+}
 
 
 return blueprints.new(nil, admin_api_as_db)

@@ -9,7 +9,13 @@ for _, strategy in helpers.each_strategy() do
     local proxy_client
 
     lazy_setup(function()
-      local bp = helpers.get_db_utils(strategy)
+      local bp = helpers.get_db_utils(strategy, {
+        "routes",
+        "services",
+        "plugins",
+        "consumers",
+        "basicauth_credentials",
+      })
 
       local consumer = bp.consumers:insert {
         username = "bob",
@@ -355,7 +361,13 @@ for _, strategy in helpers.each_strategy() do
     local anonymous
 
     lazy_setup(function()
-      local bp = helpers.get_db_utils(strategy)
+      local bp = helpers.get_db_utils(strategy, {
+        "routes",
+        "services",
+        "plugins",
+        "consumers",
+        "basicauth_credentials",
+      })
 
       anonymous = bp.consumers:insert {
         username = "Anonymous",
