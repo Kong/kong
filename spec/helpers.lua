@@ -106,6 +106,7 @@ local conf = assert(conf_loader(TEST_CONF_PATH))
 local db = assert(DB.new(conf))
 assert(db:init_connector())
 local dao = assert(DAOFactory.new(conf, db))
+db.plugins:load_plugin_schemas(conf.loaded_plugins)
 db.old_dao = dao
 local blueprints = assert(Blueprints.new(dao, db))
 

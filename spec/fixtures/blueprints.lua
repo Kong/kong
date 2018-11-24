@@ -24,6 +24,15 @@ function Blueprint:insert(overrides, options)
 end
 
 
+function Blueprint:remove(overrides, options)
+  local entity, err = self.dao:remove({ id = overrides.id }, options)
+  if err then
+    error(err, 2)
+  end
+  return entity
+end
+
+
 function Blueprint:insert_n(n, overrides, options)
   local res = {}
   for i=1,n do
