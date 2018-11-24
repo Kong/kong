@@ -8,7 +8,7 @@ for _, strategy in helpers.each_strategy() do
 
     lazy_setup(function()
       local _
-      _, db, _ = helpers.get_db_utils(strategy)
+      _, db, _ = helpers.get_db_utils(strategy, {})
 
       assert(db.connector:setup_locks(60))
     end)

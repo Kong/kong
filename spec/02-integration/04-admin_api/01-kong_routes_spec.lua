@@ -11,7 +11,7 @@ describe("Admin API - Kong routes", function()
     local client
 
     lazy_setup(function()
-      helpers.get_db_utils() -- runs migrations
+      helpers.get_db_utils(nil, {}) -- runs migrations
       assert(helpers.start_kong {
         pg_password = "hide_me"
       })

@@ -12,7 +12,7 @@ for _, strategy in helpers.each_strategy() do
     local dao
 
     lazy_setup(function()
-      _, _, dao = helpers.get_db_utils(strategy)
+      _, _, dao = helpers.get_db_utils(strategy, {})
     end)
 
     before_each(function()

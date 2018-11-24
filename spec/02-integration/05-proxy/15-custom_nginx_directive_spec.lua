@@ -19,7 +19,10 @@ describe("Custom NGINX directives", function()
   end
 
   lazy_setup(function()
-    bp = helpers.get_db_utils()
+    bp = helpers.get_db_utils(nil, {
+      "routes",
+      "services",
+    })
   end)
 
   before_each(function()

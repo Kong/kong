@@ -5,7 +5,10 @@ local cjson = require "cjson"
 for _, strategy in helpers.each_strategy() do
   describe("Websockets [#" .. strategy .. "]", function()
     lazy_setup(function()
-      local bp = helpers.get_db_utils(strategy)
+      local bp = helpers.get_db_utils(strategy, {
+        "routes",
+        "services",
+      })
 
       local service = bp.services:insert {
         name = "ws",

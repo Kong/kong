@@ -9,7 +9,7 @@ for _, strategy in helpers.each_strategy() do
     local db
 
     lazy_setup(function()
-      _, db = helpers.get_db_utils(strategy)
+      _, db = helpers.get_db_utils(strategy, {})
     end)
 
     before_each(function()

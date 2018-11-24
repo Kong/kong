@@ -58,7 +58,10 @@ for _, strategy in helpers.each_strategy() do
     end
 
     lazy_setup(function()
-      bp, db = helpers.get_db_utils(strategy)
+      bp, db = helpers.get_db_utils(strategy, {
+        "routes",
+        "services",
+      })
     end)
 
     before_each(function()
