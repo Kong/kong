@@ -6,7 +6,13 @@ for _, strategy in helpers.each_strategy() do
     local bp, db
 
     lazy_setup(function()
-      bp, db = helpers.get_db_utils(strategy)
+      bp, db = helpers.get_db_utils(strategy, {
+        "routes",
+        "services",
+        "consumers",
+        "plugins",
+        "keyauth_credentials",
+      })
     end)
 
     it("retrieves plugins for plugins_iterator", function()

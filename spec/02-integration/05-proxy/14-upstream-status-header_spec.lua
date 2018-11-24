@@ -3,7 +3,12 @@ local constants = require "kong.constants"
 
 
 local function setup_db()
-  local bp = helpers.get_db_utils()
+  local bp = helpers.get_db_utils(nil, {
+    "routes",
+    "services",
+    "plugins",
+    "keyauth_credentials",
+  })
 
   local service = bp.services:insert {
     host = helpers.mock_upstream_host,

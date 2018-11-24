@@ -9,7 +9,11 @@ for _, strategy in helpers.each_strategy() do
     local db, bp
 
     lazy_setup(function()
-      bp, db = helpers.get_db_utils(strategy)
+      bp, db = helpers.get_db_utils(strategy, {
+        "routes",
+        "services",
+        "plugins",
+      })
     end)
 
     describe("Plugins #plugins", function()

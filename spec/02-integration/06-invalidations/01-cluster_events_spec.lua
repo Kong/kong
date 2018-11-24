@@ -11,7 +11,7 @@ for _, strategy in helpers.each_strategy() do
 
     lazy_setup(function()
       local _
-      _, db = helpers.get_db_utils(strategy)
+      _, db = helpers.get_db_utils(strategy, {})
     end)
 
     lazy_teardown(function()

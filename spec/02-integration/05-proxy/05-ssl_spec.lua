@@ -19,7 +19,11 @@ for _, strategy in helpers.each_strategy() do
     local https_client
 
     lazy_setup(function()
-      local bp = helpers.get_db_utils(strategy)
+      local bp = helpers.get_db_utils(strategy, {
+        "routes",
+        "services",
+        "certificates",
+      })
 
       local service = bp.services:insert {
         name = "global-cert",

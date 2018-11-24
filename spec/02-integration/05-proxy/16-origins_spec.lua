@@ -5,7 +5,10 @@ describe("origins config option", function()
   local bp
 
   before_each(function()
-    bp = helpers.get_db_utils()
+    bp = helpers.get_db_utils(nil, {
+      "routes",
+      "services",
+    })
   end)
 
   after_each(function()

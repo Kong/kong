@@ -29,7 +29,10 @@ describe("headers [#" .. strategy .. "]", function()
     end
 
     lazy_setup(function()
-      bp = helpers.get_db_utils(strategy)
+      bp = helpers.get_db_utils(strategy, {
+        "routes",
+        "services",
+      })
     end)
 
     before_each(function()
@@ -252,7 +255,10 @@ describe("headers [#" .. strategy .. "]", function()
     end
 
     lazy_setup(function()
-      bp = helpers.get_db_utils(strategy)
+      bp = helpers.get_db_utils(strategy, {
+        "routes",
+        "services",
+      })
     end)
 
 
@@ -575,7 +581,10 @@ describe("headers [#" .. strategy .. "]", function()
     end
 
     lazy_setup(function()
-      bp = helpers.get_db_utils(strategy)
+      bp = helpers.get_db_utils(strategy, {
+        "routes",
+        "services",
+      })
     end)
 
     before_each(function()

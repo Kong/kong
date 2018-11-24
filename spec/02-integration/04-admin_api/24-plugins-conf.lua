@@ -8,7 +8,7 @@ describe("Plugins conf property" , function()
   describe("with 'plugins=bundled'", function()
     local client
     lazy_setup(function()
-      helpers.get_db_utils()
+      helpers.get_db_utils(nil, {}) -- runs migrations
       assert(helpers.start_kong({
         plugins = "bundled",
       }))
@@ -36,7 +36,6 @@ describe("Plugins conf property" , function()
   describe("with 'plugins=off'", function()
     local client
     lazy_setup(function()
-      helpers.get_db_utils()
       assert(helpers.start_kong({
         plugins = "off",
       }))
