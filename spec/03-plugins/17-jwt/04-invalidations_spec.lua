@@ -13,7 +13,13 @@ for _, strategy in helpers.each_strategy() do
 
     before_each(function()
       local bp
-      bp, db = helpers.get_db_utils(strategy)
+      bp, db = helpers.get_db_utils(strategy, {
+        "routes",
+        "services",
+        "plugins",
+        "consumers",
+        "jwt_secrets",
+      })
 
       route = bp.routes:insert {
         hosts = { "jwt.com" },

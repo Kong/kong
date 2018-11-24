@@ -10,7 +10,14 @@ for _, strategy in helpers.each_strategy() do
     local db
 
     lazy_setup(function()
-      bp, db = helpers.get_db_utils(strategy)
+      bp, db = helpers.get_db_utils(strategy, {
+        "routes",
+        "services",
+        "plugins",
+        "consumers",
+        "acls",
+        "keyauth_credentials",
+      })
 
       local consumer1 = bp.consumers:insert {
         username = "consumer1"

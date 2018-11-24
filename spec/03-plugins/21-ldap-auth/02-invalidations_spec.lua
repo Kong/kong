@@ -12,8 +12,11 @@ for _, strategy in helpers.each_strategy() do
     local plugin
 
     lazy_setup(function()
-      local bp
-      bp = helpers.get_db_utils(strategy)
+      local bp = helpers.get_db_utils(strategy, {
+        "routes",
+        "services",
+        "plugins",
+      })
 
       local route = bp.routes:insert {
         hosts = { "ldapauth.com" },

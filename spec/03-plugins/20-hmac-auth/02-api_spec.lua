@@ -11,7 +11,13 @@ for _, strategy in helpers.each_strategy() do
     local db
 
     lazy_setup(function()
-      bp, db = helpers.get_db_utils(strategy)
+      bp, db = helpers.get_db_utils(strategy, {
+        "routes",
+        "services",
+        "consumers",
+        "plugins",
+        "hmacauth_credentials",
+      })
 
       assert(helpers.start_kong({
         database = strategy,

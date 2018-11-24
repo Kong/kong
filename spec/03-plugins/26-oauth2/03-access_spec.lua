@@ -1,6 +1,7 @@
 local cjson   = require "cjson"
 local helpers = require "spec.helpers"
 local utils   = require "kong.tools.utils"
+local admin_api = require "spec.fixtures.admin_api"
 
 
 local kong = {
@@ -64,25 +65,50 @@ end
 
 
 for _, strategy in helpers.each_strategy() do
-  describe("Plugin: oauth2 (access) [#" .. strategy .. "]", function()
+
+describe("Plugin: oauth2 [#" .. strategy .. "]", function()
+  local db
+
+  lazy_setup(function()
+    local _
+    _, db = helpers.get_db_utils(strategy, {
+      "routes",
+      "services",
+      "consumers",
+      "plugins",
+      "keyauth_credentials",
+      "oauth2_credentials",
+      "oauth2_authorization_codes",
+      "oauth2_tokens",
+    })
+
+    assert(helpers.start_kong({
+      database    = strategy,
+      trusted_ips = "127.0.0.1",
+      nginx_conf  = "spec/fixtures/custom_nginx.template",
+    }))
+  end)
+
+  lazy_teardown(function()
+    helpers.stop_kong()
+  end)
+
+  describe("access", function()
     local proxy_ssl_client
     local proxy_client
     local client1
-    local db
-    local bp
 
     lazy_setup(function()
-      bp, db = helpers.get_db_utils(strategy)
 
-      local consumer = bp.consumers:insert {
+      local consumer = admin_api.consumers:insert {
         username = "bob"
       }
 
-      local anonymous_user = bp.consumers:insert {
+      local anonymous_user = admin_api.consumers:insert {
         username = "no-body"
       }
 
-      client1 = bp.oauth2_credentials:insert {
+      client1 = admin_api.oauth2_credentials:insert {
         client_id      = "clientid123",
         client_secret  = "secret123",
         redirect_uris  = { "http://google.com/kong" },
@@ -90,7 +116,7 @@ for _, strategy in helpers.each_strategy() do
         consumer       = { id = consumer.id },
       }
 
-      bp.oauth2_credentials:insert {
+      admin_api.oauth2_credentials:insert {
         client_id      = "clientid789",
         client_secret  = "secret789",
         redirect_uris  = { "http://google.com/kong?foo=bar&code=123" },
@@ -98,7 +124,7 @@ for _, strategy in helpers.each_strategy() do
         consumer       = { id = consumer.id },
       }
 
-      bp.oauth2_credentials:insert {
+      admin_api.oauth2_credentials:insert {
         client_id     = "clientid333",
         client_secret = "secret333",
         redirect_uris = { "http://google.com/kong" },
@@ -106,7 +132,7 @@ for _, strategy in helpers.each_strategy() do
         consumer      = { id = consumer.id },
       }
 
-      bp.oauth2_credentials:insert {
+      admin_api.oauth2_credentials:insert {
         client_id     = "clientid456",
         client_secret = "secret456",
         redirect_uris = { "http://one.com/one/", "http://two.com/two" },
@@ -114,7 +140,7 @@ for _, strategy in helpers.each_strategy() do
         consumer      = { id = consumer.id },
       }
 
-      bp.oauth2_credentials:insert {
+      admin_api.oauth2_credentials:insert {
         client_id     = "clientid1011",
         client_secret = "secret1011",
         redirect_uris = { "http://google.com/kong", },
@@ -122,117 +148,117 @@ for _, strategy in helpers.each_strategy() do
         consumer      = { id = consumer.id },
       }
 
-      local service1    = bp.services:insert()
-      local service2    = bp.services:insert()
-      local service2bis = bp.services:insert()
-      local service3    = bp.services:insert()
-      local service4    = bp.services:insert()
-      local service5    = bp.services:insert()
-      local service6    = bp.services:insert()
-      local service7    = bp.services:insert()
-      local service8    = bp.services:insert()
-      local service9    = bp.services:insert()
-      local service10   = bp.services:insert()
-      local service11   = bp.services:insert()
-      local service12   = bp.services:insert()
+      local service1    = admin_api.services:insert()
+      local service2    = admin_api.services:insert()
+      local service2bis = admin_api.services:insert()
+      local service3    = admin_api.services:insert()
+      local service4    = admin_api.services:insert()
+      local service5    = admin_api.services:insert()
+      local service6    = admin_api.services:insert()
+      local service7    = admin_api.services:insert()
+      local service8    = admin_api.services:insert()
+      local service9    = admin_api.services:insert()
+      local service10   = admin_api.services:insert()
+      local service11   = admin_api.services:insert()
+      local service12   = admin_api.services:insert()
 
-      local route1 = assert(db.routes:insert({
+      local route1 = assert(admin_api.routes:insert({
         hosts     = { "oauth2.com" },
         protocols = { "http", "https" },
         service   = service1,
       }))
 
-      local route2 = assert(db.routes:insert({
+      local route2 = assert(admin_api.routes:insert({
         hosts      = { "example-path.com" },
         protocols  = { "http", "https" },
         service    = service2,
       }))
 
-      local route2bis = assert(db.routes:insert({
+      local route2bis = assert(admin_api.routes:insert({
         paths     = { "/somepath" },
         protocols = { "http", "https" },
         service   = service2bis,
       }))
 
-      local route3 = assert(db.routes:insert({
+      local route3 = assert(admin_api.routes:insert({
         hosts      = { "oauth2_3.com" },
         protocols  = { "http", "https" },
         service    = service3,
       }))
 
-      local route4 = assert(db.routes:insert({
+      local route4 = assert(admin_api.routes:insert({
         hosts      = { "oauth2_4.com" },
         protocols  = { "http", "https" },
         service    = service4,
       }))
 
-      local route5 = assert(db.routes:insert({
+      local route5 = assert(admin_api.routes:insert({
         hosts      = { "oauth2_5.com" },
         protocols  = { "http", "https" },
         service    = service5,
       }))
 
-      local route6 = assert(db.routes:insert({
+      local route6 = assert(admin_api.routes:insert({
         hosts      = { "oauth2_6.com" },
         protocols  = { "http", "https" },
         service    = service6,
       }))
 
-      local route7 = assert(db.routes:insert({
+      local route7 = assert(admin_api.routes:insert({
         hosts      = { "oauth2_7.com" },
         protocols  = { "http", "https" },
         service    = service7,
       }))
 
-      local route8 = assert(db.routes:insert({
+      local route8 = assert(admin_api.routes:insert({
         hosts      = { "oauth2_8.com" },
         protocols  = { "http", "https" },
         service    = service8,
       }))
 
-      local route9 = assert(db.routes:insert({
+      local route9 = assert(admin_api.routes:insert({
         hosts      = { "oauth2_9.com" },
         protocols  = { "http", "https" },
         service    = service9,
       }))
 
-      local route10 = assert(db.routes:insert({
+      local route10 = assert(admin_api.routes:insert({
         hosts       = { "oauth2_10.com" },
         protocols   = { "http", "https" },
         service     = service10,
       }))
 
-      local route11 = assert(db.routes:insert({
+      local route11 = assert(admin_api.routes:insert({
         hosts       = { "oauth2_11.com" },
         protocols   = { "http", "https" },
         service     = service11,
       }))
 
-      local route12 = assert(db.routes:insert({
+      local route12 = assert(admin_api.routes:insert({
         hosts       = { "oauth2_12.com" },
         protocols   = { "http", "https" },
         service     = service12,
       }))
 
-      bp.oauth2_plugins:insert({
+      admin_api.oauth2_plugins:insert({
         route = { id = route1.id },
         config   = { scopes = { "email", "profile", "user.email" } },
       })
 
-      bp.oauth2_plugins:insert({
+      admin_api.oauth2_plugins:insert({
         route = { id = route2.id }
       })
 
-      bp.oauth2_plugins:insert({
+      admin_api.oauth2_plugins:insert({
         route = { id = route2bis.id }
       })
 
-      bp.oauth2_plugins:insert({
+      admin_api.oauth2_plugins:insert({
         route = { id = route3.id },
         config   = { hide_credentials = true },
       })
 
-      bp.oauth2_plugins:insert({
+      admin_api.oauth2_plugins:insert({
         route = { id = route4.id },
         config   = {
           enable_client_credentials = true,
@@ -240,7 +266,7 @@ for _, strategy in helpers.each_strategy() do
         },
       })
 
-      bp.oauth2_plugins:insert({
+      admin_api.oauth2_plugins:insert({
         route = { id = route5.id },
         config   = {
           enable_password_grant     = true,
@@ -248,7 +274,7 @@ for _, strategy in helpers.each_strategy() do
         },
       })
 
-      bp.oauth2_plugins:insert({
+      admin_api.oauth2_plugins:insert({
         route = { id = route6.id },
         config   = {
           scopes                            = { "email", "profile", "user.email" },
@@ -257,7 +283,7 @@ for _, strategy in helpers.each_strategy() do
         },
       })
 
-      bp.oauth2_plugins:insert({
+      admin_api.oauth2_plugins:insert({
         route = { id = route7.id },
         config   = {
           scopes    = { "email", "profile", "user.email" },
@@ -265,7 +291,7 @@ for _, strategy in helpers.each_strategy() do
         },
       })
 
-      bp.oauth2_plugins:insert({
+      admin_api.oauth2_plugins:insert({
         route = { id = route8.id },
         config   = {
           scopes             = { "email", "profile", "user.email" },
@@ -274,7 +300,7 @@ for _, strategy in helpers.each_strategy() do
       })
 
 
-      bp.oauth2_plugins:insert({
+      admin_api.oauth2_plugins:insert({
         route = { id = route9.id },
         config   = {
           scopes             = { "email", "profile", "user.email" },
@@ -282,7 +308,7 @@ for _, strategy in helpers.each_strategy() do
         },
       })
 
-      bp.oauth2_plugins:insert({
+      admin_api.oauth2_plugins:insert({
         route = { id = route10.id },
         config   = {
           scopes             = { "email", "profile", "user.email" },
@@ -291,7 +317,7 @@ for _, strategy in helpers.each_strategy() do
         },
       })
 
-      bp.oauth2_plugins:insert({
+      admin_api.oauth2_plugins:insert({
         route = { id = route11.id },
         config   = {
           scopes             = { "email", "profile", "user.email" },
@@ -301,7 +327,7 @@ for _, strategy in helpers.each_strategy() do
         },
       })
 
-      bp.oauth2_plugins:insert({
+      admin_api.oauth2_plugins:insert({
         route = { id = route12.id },
         config   = {
           scopes             = { "email", "profile", "user.email" },
@@ -310,12 +336,6 @@ for _, strategy in helpers.each_strategy() do
           hide_credentials   = true,
         },
       })
-
-      assert(helpers.start_kong({
-        database    = strategy,
-        trusted_ips = "127.0.0.1",
-        nginx_conf  = "spec/fixtures/custom_nginx.template",
-      }))
 
       proxy_client     = helpers.proxy_client()
       proxy_ssl_client = helpers.proxy_ssl_client()
@@ -326,8 +346,6 @@ for _, strategy in helpers.each_strategy() do
         proxy_client:close()
         proxy_ssl_client:close()
       end
-
-      helpers.stop_kong()
     end)
 
     describe("OAuth2 Authorization", function()
@@ -2067,21 +2085,27 @@ for _, strategy in helpers.each_strategy() do
       it("returns 401 Unauthorized when token has expired", function()
         local token = provision_token()
 
-        -- Token expires in (5 seconds)
-        ngx.sleep(7)
-
-        local res = assert(proxy_ssl_client:send {
-          method  = "POST",
-          path    = "/request",
-          headers = {
-            ["Host"]      = "oauth2.com",
-            Authorization = "bearer " .. token.access_token
-          }
-        })
-        local body = assert.res_status(401, res)
-        local json = cjson.decode(body)
+        -- Token expires in 5 seconds
+        local status, json, headers
+        helpers.wait_until(function()
+          local client = helpers.proxy_ssl_client()
+          local res = assert(client:send {
+            method  = "POST",
+            path    = "/request",
+            headers = {
+              ["Host"]      = "oauth2.com",
+              Authorization = "bearer " .. token.access_token
+            }
+          })
+          local body = res:read_body()
+          status = res.status
+          headers = res.headers
+          json = cjson.decode(body)
+          client:close()
+          return status == 401
+        end, 7)
         assert.same({ error_description = "The access token is invalid or has expired", error = "invalid_token" }, json)
-        assert.are.equal('Bearer realm="service" error="invalid_token" error_description="The access token is invalid or has expired"', res.headers['www-authenticate'])
+        assert.are.equal('Bearer realm="service" error="invalid_token" error_description="The access token is invalid or has expired"', headers['www-authenticate'])
       end)
     end)
 
@@ -2165,18 +2189,22 @@ for _, strategy in helpers.each_strategy() do
         assert.truthy(db.oauth2_tokens:select({ id = id }))
 
         -- But waiting after the cache expiration (5 seconds) should block the request
-        ngx.sleep(7)
-
-        local res = assert(proxy_client:send {
-          method  = "POST",
-          path    = "/request",
-          headers = {
-            ["Host"]      = "oauth2.com",
-            authorization = "bearer " .. token.access_token
-          }
-        })
-        local body = assert.res_status(401, res)
-        local json = cjson.decode(body)
+        local status, json
+        helpers.wait_until(function()
+          local client = helpers.proxy_client()
+          local res = assert(client:send {
+            method  = "POST",
+            path    = "/request",
+            headers = {
+              ["Host"]      = "oauth2.com",
+              authorization = "bearer " .. token.access_token
+            }
+          })
+          status = res.status
+          local body = res:read_body()
+          json = body and cjson.decode(body)
+          return status == 401
+        end, 7)
         assert.same({ error_description = "The access token is invalid or has expired", error = "invalid_token" }, json)
 
         -- Refreshing the token
@@ -2347,55 +2375,51 @@ for _, strategy in helpers.each_strategy() do
     local user1
     local user2
     local anonymous
-    local db
-    local bp
 
     lazy_setup(function()
-      bp, db = helpers.get_db_utils(strategy)
-
-      local service1 = bp.services:insert({
+      local service1 = admin_api.services:insert({
         path = "/request"
       })
 
-      local route1 = assert(db.routes:insert({
+      local route1 = assert(admin_api.routes:insert({
         hosts      = { "logical-and.com" },
         protocols  = { "http", "https" },
         service    = service1
       }))
 
-      bp.oauth2_plugins:insert({
+      admin_api.oauth2_plugins:insert({
         route = { id = route1.id },
         config   = { scopes = { "email", "profile", "user.email" } },
       })
 
-      bp.plugins:insert {
+      admin_api.plugins:insert {
         name     = "key-auth",
         route = { id = route1.id },
       }
 
-      anonymous = bp.consumers:insert {
+      anonymous = admin_api.consumers:insert {
         username = "Anonymous",
       }
 
-      user1 = bp.consumers:insert {
+      user1 = admin_api.consumers:insert {
         username = "Mickey",
       }
 
-      user2 = bp.consumers:insert {
+      user2 = admin_api.consumers:insert {
         username = "Aladdin",
       }
 
-      local service2 = bp.services:insert({
+      local service2 = admin_api.services:insert({
         path = "/request"
       })
 
-      local route2 = assert(db.routes:insert({
+      local route2 = assert(admin_api.routes:insert({
         hosts      = { "logical-or.com" },
         protocols  = { "http", "https" },
         service    = service2
       }))
 
-      bp.oauth2_plugins:insert({
+      admin_api.oauth2_plugins:insert({
         route = { id = route2.id },
         config   = {
           scopes    = { "email", "profile", "user.email" },
@@ -2403,7 +2427,7 @@ for _, strategy in helpers.each_strategy() do
         },
       })
 
-      bp.plugins:insert {
+      admin_api.plugins:insert {
         name     = "key-auth",
         route = { id = route2.id },
         config   = {
@@ -2411,23 +2435,18 @@ for _, strategy in helpers.each_strategy() do
         },
       }
 
-      bp.keyauth_credentials:insert({
+      admin_api.keyauth_credentials:insert({
         key      = "Mouse",
         consumer = { id = user1.id },
       })
 
-      bp.oauth2_credentials:insert {
-        client_id      = "clientid123",
-        client_secret  = "secret123",
+      admin_api.oauth2_credentials:insert {
+        client_id      = "clientid4567",
+        client_secret  = "secret4567",
         redirect_uris  = { "http://google.com/kong" },
         name           = "testapp",
         consumer       = { id = user2.id },
       }
-
-      assert(helpers.start_kong({
-        database   = strategy,
-        nginx_conf = "spec/fixtures/custom_nginx.template",
-      }))
 
       proxy_client = helpers.proxy_client()
     end)
@@ -2435,12 +2454,13 @@ for _, strategy in helpers.each_strategy() do
 
     lazy_teardown(function()
       if proxy_client then proxy_client:close() end
-      helpers.stop_kong()
     end)
 
     describe("multiple auth without anonymous, logical AND", function()
 
       it("passes with all credentials provided", function()
+        local token = provision_token("logical-and.com",
+          { ["apikey"] = "Mouse"}, "clientid4567", "secret4567").access_token
         local res = assert(proxy_client:send {
           method  = "GET",
           path    = "/request",
@@ -2450,8 +2470,7 @@ for _, strategy in helpers.each_strategy() do
             -- we must provide the apikey again in the extra_headers, for the
             -- token endpoint, because that endpoint is also protected by the
             -- key-auth plugin. Otherwise getting the token simply fails.
-            ["Authorization"] = "bearer " .. provision_token("logical-and.com",
-                 { ["apikey"] = "Mouse"} ).access_token,
+            ["Authorization"] = "bearer " .. token,
           }
         })
         assert.response(res).has.status(200)
@@ -2505,13 +2524,15 @@ for _, strategy in helpers.each_strategy() do
     describe("multiple auth with anonymous, logical OR", function()
 
       it("passes with all credentials provided", function()
+        local token = provision_token("logical-or.com", nil,
+                                      "clientid4567", "secret4567").access_token
         local res = assert(proxy_client:send {
           method  = "GET",
           path    = "/request",
           headers = {
             ["Host"]          = "logical-or.com",
             ["apikey"]        = "Mouse",
-            ["Authorization"] = "bearer " .. provision_token("logical-or.com").access_token,
+            ["Authorization"] = "bearer " .. token,
           }
         })
         assert.response(res).has.status(200)
@@ -2538,12 +2559,14 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("passes with only the second credential provided", function()
+        local token = provision_token("logical-or.com", nil,
+                                      "clientid4567", "secret4567").access_token
         local res = assert(proxy_client:send {
           method  = "GET",
           path    = "/request",
           headers = {
             ["Host"]          = "logical-or.com",
-            ["Authorization"] = "bearer " .. provision_token("logical-or.com").access_token,
+            ["Authorization"] = "bearer " .. token,
           }
         })
         assert.response(res).has.status(200)
@@ -2570,19 +2593,14 @@ for _, strategy in helpers.each_strategy() do
   end)
 
   describe("Plugin: oauth2 (ttl) with #"..strategy, function()
-    local db
-    local bp
-
     lazy_setup(function()
-      bp, db = helpers.get_db_utils(strategy)
-
-      local route11 = assert(db.routes:insert({
-        hosts     = { "oauth2_11.com" },
+      local route11 = assert(admin_api.routes:insert({
+        hosts     = { "oauth2_21.com" },
         protocols = { "http", "https" },
-        service   = bp.services:insert(),
+        service   = admin_api.services:insert(),
       }))
 
-      db.plugins:insert {
+      admin_api.plugins:insert {
         name = "oauth2",
         route = { id = route11.id },
         config = {
@@ -2595,13 +2613,13 @@ for _, strategy in helpers.each_strategy() do
         }
       }
 
-      local route12 = assert(db.routes:insert({
-        hosts     = { "oauth2_12.com" },
+      local route12 = assert(admin_api.routes:insert({
+        hosts     = { "oauth2_22.com" },
         protocols = { "http", "https" },
-        service   = bp.services:insert(),
+        service   = admin_api.services:insert(),
       }))
 
-      db.plugins:insert {
+      admin_api.plugins:insert {
         name = "oauth2",
         route = { id = route12.id },
         config = {
@@ -2614,51 +2632,44 @@ for _, strategy in helpers.each_strategy() do
         }
       }
 
-      local consumer = bp.consumers:insert {
-        username = "bob"
+      local consumer = admin_api.consumers:insert {
+        username = "bobo"
       }
-      db.oauth2_credentials:insert {
-        client_id = "clientid123",
-        client_secret = "secret123",
+      admin_api.oauth2_credentials:insert {
+        client_id = "clientid7890",
+        client_secret = "secret7890",
         redirect_uris = { "http://google.com/kong" },
         name = "testapp",
         consumer = { id = consumer.id },
       }
-      assert(helpers.start_kong({
-        database    = strategy,
-        trusted_ips = "127.0.0.1",
-        nginx_conf  = "spec/fixtures/custom_nginx.template",
-      }))
-    end)
-
-    lazy_teardown(function()
-      helpers.stop_kong()
     end)
 
     describe("refresh token", function()
       it("is deleted after defined TTL", function()
-        local token = provision_token("oauth2_11.com")
+        local token = provision_token("oauth2_21.com", nil, "clientid7890", "secret7890")
         local token_entity = db.oauth2_tokens:select_by_access_token(token.access_token)
         assert.is_table(token_entity)
 
-        ngx.sleep(3)
-
         local err
-        token_entity, err = db.oauth2_tokens:select_by_access_token(token.access_token)
-        assert.is_nil(token_entity)
-        assert.is_nil(err)
+        helpers.wait_until(function()
+          token_entity, err = db.oauth2_tokens:select_by_access_token(token.access_token)
+          return token_entity == nil and err == nil
+        end, 3)
       end)
 
       it("is not deleted when when TTL is 0 == never", function()
-        local token = provision_token("oauth2_12.com")
+        local token = provision_token("oauth2_22.com", nil, "clientid7890", "secret7890")
         local token_entity = db.oauth2_tokens:select_by_access_token(token.access_token)
         assert.is_table(token_entity)
 
-        ngx.sleep(3)
+        ngx.sleep(2.2)
 
         token_entity = db.oauth2_tokens:select_by_access_token(token.access_token)
         assert.is_table(token_entity)
       end)
     end)
   end)
+
+end)
+
 end

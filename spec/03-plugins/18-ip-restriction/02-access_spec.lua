@@ -11,7 +11,11 @@ for _, strategy in helpers.each_strategy() do
 
     lazy_setup(function()
       local bp
-      bp, db = helpers.get_db_utils(strategy)
+      bp, db = helpers.get_db_utils(strategy, {
+        "routes",
+        "services",
+        "plugins",
+      })
 
       local route1 = bp.routes:insert {
         hosts = { "ip-restriction1.com" },

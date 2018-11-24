@@ -13,7 +13,13 @@ for _, strategy in helpers.each_strategy() do
     local route2
 
     lazy_setup(function()
-      bp, db = helpers.get_db_utils(strategy)
+      bp, db = helpers.get_db_utils(strategy, {
+        "routes",
+        "services",
+        "plugins",
+        "consumers",
+        "keyauth_credentials",
+      })
 
       route1 = bp.routes:insert {
         hosts = { "keyauth1.test" },

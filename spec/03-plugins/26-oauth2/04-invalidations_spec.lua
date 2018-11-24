@@ -10,7 +10,15 @@ for _, strategy in helpers.each_strategy() do
     local bp
 
     lazy_setup(function()
-      bp, db = helpers.get_db_utils(strategy)
+      bp, db = helpers.get_db_utils(strategy, {
+        "routes",
+        "services",
+        "consumers",
+        "plugins",
+        "oauth2_tokens",
+        "oauth2_credentials",
+        "oauth2_authorization_codes",
+      })
     end)
 
     before_each(function()
