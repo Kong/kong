@@ -365,6 +365,7 @@ local get_router_version
 local add_target
 local add_api
 local patch_api
+local delete_api
 local add_plugin
 local delete_plugin
 local gen_port
@@ -455,22 +456,26 @@ do
     return port
   end
 
-  add_api = function(upstream_name, read_timeout, write_timeout, connect_timeout, retries)
+  add_api = function(upstream_name, read_timeout, write_timeout, connect_timeout, retries, protocol)
     local service_name = gen_sym("service")
     local route_host = gen_sym("host")
     assert.same(201, api_send("POST", "/services", {
       name = service_name,
-      url = "http://" .. upstream_name,
+      url = (protocol or "http") .. "://" .. upstream_name .. ":" .. (protocol == "tcp" and 9100 or 80),
       read_timeout = read_timeout,
       write_timeout = write_timeout,
       connect_timeout = connect_timeout,
       retries = retries,
+      protocol = protocol,
     }))
     local path = "/services/" .. service_name .. "/routes"
-    assert.same(201, api_send("POST", path, {
-      hosts = { route_host },
-    }))
-    return route_host, service_name
+    local status, res = api_send("POST", path, {
+      protocols = { protocol or "http" },
+      hosts = protocol ~= "tcp" and { route_host } or nil,
+      destinations = (protocol == "tcp") and {{ port = 9100 }} or nil,
+    })
+    assert.same(201, status)
+    return route_host, service_name, res.id
   end
 
   patch_api = function(service_name, new_upstream, read_timeout)
@@ -489,6 +494,13 @@ do
 
   delete_plugin = function(service_name, plugin_id)
     local path = "/plugins/" .. plugin_id
+    assert.same(204, api_send("DELETE", path, {}))
+  end
+
+  delete_api = function(service_name, route_id)
+    local path = "/routes/" .. route_id
+    assert.same(204, api_send("DELETE", path, {}))
+    path = "/services/" .. service_name
     assert.same(204, api_send("DELETE", path, {}))
   end
 end
@@ -558,6 +570,7 @@ for _, strategy in helpers.each_strategy() do
         database   = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
         lua_ssl_trusted_certificate = "../spec/fixtures/kong_spec.crt",
+        stream_listen = "0.0.0.0:9100",
         db_update_frequency = 0.1,
       })
     end)
@@ -580,6 +593,7 @@ for _, strategy in helpers.each_strategy() do
           database   = strategy,
           admin_listen = "127.0.0.1:" .. admin_port_2,
           proxy_listen = "127.0.0.1:" .. proxy_port_2,
+          stream_listen = "off",
           prefix = "servroot2",
           log_level = "debug",
           db_update_frequency = 0.1,
@@ -1143,6 +1157,7 @@ for _, strategy in helpers.each_strategy() do
               nginx_conf = "spec/fixtures/custom_nginx.template",
               lua_ssl_trusted_certificate = "../spec/fixtures/kong_spec.crt",
               db_update_frequency = 0.1,
+              stream_listen = "0.0.0.0:9100",
             })
 
             -- Give time for healthchecker to detect
@@ -1350,6 +1365,71 @@ for _, strategy in helpers.each_strategy() do
             assert.are.equal(1, fail2)
 
             assert.are.equal(SLOTS * 2, oks)
+            assert.are.equal(0, fails)
+          end)
+
+          local stream_it = (mode == "ipv6") and pending or it
+          stream_it("perform passive health checks -- #stream connection failure", function()
+
+            -- configure healthchecks
+            local upstream_name = add_upstream({
+              healthchecks = healthchecks_config {
+                passive = {
+                  unhealthy = {
+                    tcp_failures = 1,
+                  }
+                }
+              }
+            })
+            local port1 = add_target(upstream_name, localhost)
+            local port2 = add_target(upstream_name, localhost)
+            local _, service_name, route_id = add_api(upstream_name, 50, 50, nil, nil, "tcp")
+            finally(function()
+              delete_api(service_name, route_id)
+            end)
+
+            -- setup target servers:
+            -- server2 will only respond for half of the test and will shutdown.
+            -- Then server1 will take over.
+            local server1_oks = SLOTS * 1.5
+            local server2_oks = SLOTS / 2
+            local server1 = helpers.tcp_server(port1, {
+              requests = server1_oks,
+              prefix = "1 ",
+            })
+            local server2 = helpers.tcp_server(port2, {
+              requests = server2_oks,
+              prefix = "2 ",
+            })
+            ngx.sleep(1)
+
+            -- server1 and server2 take requests
+            -- server1 takes all requests once server2 fails
+            local ok1 = 0
+            local ok2 = 0
+            local fails = 0
+            for _ = 1, SLOTS * 2 do
+              local sock = ngx.socket.tcp()
+              assert(sock:connect(localhost, 9100))
+              assert(sock:send("hello\n"))
+              local response, err = sock:receive()
+              if err then
+                fails = fails + 1
+                print(err)
+              elseif response:match("^1 ") then
+                ok1 = ok1 + 1
+              elseif response:match("^2 ") then
+                ok2 = ok2 + 1
+              end
+            end
+
+            -- finish up TCP server threads
+            server1:join()
+            server2:join()
+
+            -- verify
+            assert.are.equal(server1_oks, ok1)
+            assert.are.equal(server2_oks, ok2)
             assert.are.equal(0, fails)
           end)
 
