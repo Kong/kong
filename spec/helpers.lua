@@ -506,8 +506,9 @@ end
 -- @section servers
 
 --- Starts a TCP server.
--- Accepts a single connection and then closes, echoing what was received
--- (single read).
+-- Accepts a single connection (or multiple, if given opts.requests)
+-- and then closes, echoing what was received (last read, in case
+-- of multiple requests).
 -- @name tcp_server
 -- @param `port`    The port where the server will be listening to
 -- @param `opts     A table of options defining the server's behavior
@@ -523,24 +524,27 @@ local function tcp_server(port, opts, ...)
       assert(server:setoption('reuseaddr', true))
       assert(server:bind("*", port))
       assert(server:listen())
-      local client = assert(server:accept())
+      local line
+      for _ = 1, (opts.requests or 1) do
+        local client = assert(server:accept())
 
-      if opts.tls then
-        local ssl = require "ssl"
-        local params = {
-          mode = "server",
-          protocol = "any",
-          key = "spec/fixtures/kong_spec.key",
-          certificate = "spec/fixtures/kong_spec.crt",
-        }
+        if opts.tls then
+          local ssl = require "ssl"
+          local params = {
+            mode = "server",
+            protocol = "any",
+            key = "spec/fixtures/kong_spec.key",
+            certificate = "spec/fixtures/kong_spec.crt",
+          }
 
-        client = ssl.wrap(client, params)
-        client:dohandshake()
+          client = ssl.wrap(client, params)
+          client:dohandshake()
+        end
+
+        line = assert(client:receive())
+        client:send((opts.prefix or "") .. line .. "\n")
+        client:close()
       end
-
-      local line = assert(client:receive())
-      client:send(line .. "\n")
-      client:close()
       server:close()
       return line
     end
