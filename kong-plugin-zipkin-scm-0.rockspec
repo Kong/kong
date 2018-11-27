@@ -15,7 +15,7 @@ dependencies = {
 	"lua >= 5.1";
 	"lua-cjson";
 	"lua-resty-http >= 0.11";
-	"kong >= 0.14";
+	"kong >= 0.15";
 	"opentracing >= 0.0.2";
 }
 
