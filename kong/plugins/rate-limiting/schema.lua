@@ -10,7 +10,7 @@ return {
     day = { type = "number" },
     month = { type = "number" },
     year = { type = "number" },
-    limit_by = { type = "string", enum = {"consumer", "credential", "ip"}, default = "consumer" },
+    limit_by = { type = "string", enum = {"consumer", "credential", "ip", "global"}, default = "global" },
     policy = { type = "string", enum = {"local", "cluster", REDIS}, default = "cluster" },
     fault_tolerant = { type = "boolean", default = true },
     redis_host = { type = "string" },

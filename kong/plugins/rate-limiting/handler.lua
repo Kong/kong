@@ -29,10 +29,12 @@ local function get_identifier(conf)
     end
   elseif conf.limit_by == "credential" then
     identifier = ngx.ctx.authenticated_credential and ngx.ctx.authenticated_credential.id
+  elseif conf.limit_by == "ip" then
+    identifier = ngx.var.remote_addr
   end
 
   if not identifier then
-    identifier = ngx.var.remote_addr
+    identifier = ngx.var.server_addr .. "-" .. ngx.var.server_name .. ngx.var.pid .. "-" .."-global"
   end
 
   return identifier
