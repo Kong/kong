@@ -2,6 +2,7 @@
 
   - Add `run_on` field to the plugin's config
 
+
 0.1.0 - 2018-10-18
 
   - Start using the new DB & PDK modules (compatibility with Kong >= 0.15.0)
