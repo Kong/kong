@@ -137,6 +137,8 @@ function CorsHandler:access(conf)
     set_header("Access-Control-Max-Age", tostring(conf.max_age))
   end
 
+  set_header("Content-Length", "0")
+
   return kong.response.exit(HTTP_OK)
 end
 
