@@ -5,7 +5,10 @@ local ee_crud    = require "kong.enterprise_edition.crud_helpers"
 return {
   ["/consumers/"] = {
     before = function(self, dao_factory, helpers)
-      self.params.type = enums.CONSUMERS.TYPE.PROXY
+      -- prevent users from changing consumer type
+      if self.params.type and tostring(self.params.type) ~= tostring(enums.CONSUMERS.TYPE.PROXY) then
+        helpers.responses.send_HTTP_BAD_REQUEST("type is invalid")
+      end
     end,
 
     GET = function(self, dao_factory)
@@ -14,10 +17,12 @@ return {
     end,
 
     PUT = function(self, dao_factory)
+      self.params.type = enums.CONSUMERS.TYPE.PROXY
       crud.put(self.params, dao_factory.consumers)
     end,
 
     POST = function(self, dao_factory)
+      self.params.type = enums.CONSUMERS.TYPE.PROXY
       crud.post(self.params, dao_factory.consumers)
     end
   },

@@ -1,6 +1,6 @@
-local enums = require "kong.enterprise_edition.dao.enums"
+local cjson = require "cjson.safe"
 local helpers = require "spec.helpers"
-
+local enums = require "kong.enterprise_edition.dao.enums"
 
 for _, strategy in helpers.each_strategy() do
 
@@ -33,6 +33,63 @@ for _, strategy in helpers.each_strategy() do
     teardown(function()
       if client then client:close() end
       helpers.stop_kong()
+    end)
+
+    describe("/consumers", function()
+      describe("POST", function()
+        it("returns 400 when trying to create consumer of type=admin", function()
+          local res = assert(client:send {
+            method = "POST",
+            path = "/consumers",
+            body = {
+              username = "the_dood",
+              type = enums.CONSUMERS.TYPE.ADMIN
+            },
+            headers = {
+              ["Content-Type"] = "application/json"
+            }
+          })
+          local body = assert.res_status(400, res)
+          assert.equal("type is invalid", cjson.decode(body).message)
+        end)
+
+        it("returns 400 when trying to create consumer of type=developer", function()
+          local res = assert(client:send {
+            method = "POST",
+            path = "/consumers",
+            body = {
+              username = "the_doodette",
+              type = enums.CONSUMERS.TYPE.DEVELOPER
+            },
+            headers = {
+              ["Content-Type"] = "application/json"
+            }
+          })
+
+          local body = assert.res_status(400, res)
+          assert.equal("type is invalid", cjson.decode(body).message)
+        end)
+      end)
+
+      describe("PUT", function()
+        it("returns 409 when trying to change consumer type to proxy", function()
+          local res = assert(client:send {
+            method = "PUT",
+            path = "/consumers",
+            body = {
+              username = "adminbob",
+              type = enums.CONSUMERS.TYPE.PROXY
+            },
+            headers = {
+              ["Content-Type"] = "application/json"
+            }
+          })
+
+          local body = assert.res_status(409, res)
+          assert.equal("already exists with value 'adminbob'",
+                       cjson.decode(body).username)
+        end)
+      end)
     end)
 
     describe("/consumers/:username_or_id", function()
