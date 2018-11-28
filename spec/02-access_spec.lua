@@ -82,7 +82,7 @@ for _, strategy in helpers.each_strategy() do
       end
     end)
 
-    it("redirects a request, with service", function()
+    it("redirects a request", function()
       local res = assert(client:send {
         method  = "GET",
         path    = "/get",
@@ -94,7 +94,7 @@ for _, strategy in helpers.each_strategy() do
       assert.res_status(200, res)
     end)
 
-    it("writes an absolute request URI to the proxy, with service", function()
+    it("writes an absolute request URI to the proxy", function()
       local res = assert(client:send {
         method  = "GET",
         path    = "/get",
@@ -110,7 +110,7 @@ for _, strategy in helpers.each_strategy() do
         json.vars.request, nil, true)
     end)
 
-    it("sends the lua-resty-http UA by default, with service", function()
+    it("sends the lua-resty-http UA by default", function()
       local res = assert(client:send {
         method  = "GET",
         path    = "/get",
@@ -125,7 +125,7 @@ for _, strategy in helpers.each_strategy() do
       assert.matches("lua-resty-http", json.headers["user-agent"], nil, true)
     end)
 
-    it("forwards query params and request body data, with service", function()
+    it("forwards query params and request body data", function()
       local res = assert(client:send {
         method  = "POST",
         path    = "/post?baz=bat",
@@ -145,7 +145,7 @@ for _, strategy in helpers.each_strategy() do
       assert.same(json.post_data.params, { foo = "bar" })
     end)
 
-    it("errors on connection failure, with service", function()
+    it("errors on connection failure", function()
       local res = assert(client:send {
         method  = "GET",
         path    = "/get",
@@ -164,7 +164,7 @@ for _, strategy in helpers.each_strategy() do
       for _, s in ipairs({ "Proxy", "Upstream" }) do
         local name = string.format("X-Kong-%s-Latency", s)
 
-        it(name .. ", with service", function()
+        it(name, function()
           local res = assert(client:send {
             method  = "GET",
             path    = "/get",
@@ -179,7 +179,7 @@ for _, strategy in helpers.each_strategy() do
       end
     end)
 
-    it("returns server tokens with Via header, with service", function()
+    it("returns server tokens with Via header", function()
       local res = assert(client:send {
         method  = "GET",
         path    = "/get",
