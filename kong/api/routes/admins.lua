@@ -282,18 +282,19 @@ return {
     GET = function(self, dao_factory, helpers)
       set_rbac_user(self, dao_factory, helpers)
 
-      -- if this user is still in an INVITED state, issue another invite
-      -- so the admin user can give it to them.
-      if self.consumer.status == enums.CONSUMERS.STATUS.INVITED and not self.token_optional then
+      -- invited user with credentials to be stored in db, and for
+      -- whom the caller wants to generate another registration URL
+      if self.consumer.status == enums.CONSUMERS.STATUS.INVITED and
+         not self.token_optional and self.params.generate_register_url
+      then
         local expiry = singletons.configuration.admin_invitation_expiry
-
         local jwt, err = secrets.create(self.consumer, ngx.var.remote_addr, expiry)
-
         if err then
           return helpers.yield_error(err)
         end
 
         self.consumer.register_url = emails:register_url(self.consumer.email, jwt)
+        self.consumer.token = jwt
       end
 
       return helpers.responses.send_HTTP_OK(self.consumer)

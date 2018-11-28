@@ -3,6 +3,7 @@ local cjson      = require "cjson"
 local enums      = require "kong.enterprise_edition.dao.enums"
 local utils      = require "kong.tools.utils"
 local ee_jwt     = require "kong.enterprise_edition.jwt"
+local ee_utils   = require "kong.enterprise_edition.utils"
 local ee_helpers = require "spec.ee_helpers"
 local escape = require("socket.url").escape
 
@@ -755,6 +756,95 @@ for _, strategy in helpers.each_strategy() do
 
       local updated_consumers = dao.consumers:find_all { id = consumer.id }
       assert.same(enums.CONSUMERS.STATUS.APPROVED, updated_consumers[1].status)
+    end)
+  end)
+
+  describe("Admin API - secret token generation #" .. strategy, function()
+    local client
+    local dao
+    local consumer
+
+    before_each(function()
+      _, _, dao = helpers.get_db_utils(strategy)
+      assert(helpers.start_kong({
+        database = strategy,
+        admin_gui_url = "http://manager.konghq.com",
+        admin_gui_auth = 'basic-auth',
+        enforce_rbac = "on",
+      }))
+      ee_helpers.register_rbac_resources(dao)
+      ee_helpers.register_token_statuses(dao)
+      client = assert(helpers.admin_client())
+    end)
+
+    after_each(function()
+      if client then client:close() end
+      assert(helpers.stop_kong())
+    end)
+
+    it("generates a token and register_url for an invited admin", function()
+      -- create an admin who is pending
+      local res = assert(client:send {
+        method = "POST",
+        path  = "/admins",
+        headers = {
+          ["Kong-Admin-Token"] = "letmein",
+          ["Content-Type"] = "application/json",
+        },
+        body  = {
+          custom_id = "gruce",
+          username = "gruce@konghq.com",
+          email = "gruce@konghq.com",
+        },
+      })
+      res = assert.res_status(200, res)
+      local json = cjson.decode(res)
+      consumer = json.consumer
+
+      assert.same(enums.CONSUMERS.STATUS.INVITED, consumer.status)
+
+      res = assert(client:send{
+        method = "GET",
+        path = "/admins/" .. consumer.id,
+        headers = {
+          ["Kong-Admin-Token"] = "letmein"
+        }
+      })
+
+      local body = assert.res_status(200, res)
+      local json = cjson.decode(body)
+      assert.is_nil(json.token)
+      assert.is_nil(json.register_url)
+
+      res = assert(client:send{
+        method = "GET",
+        path = "/admins/" .. consumer.id .. "?generate_register_url=true",
+        headers = {
+          ["Kong-Admin-Token"] = "letmein"
+        }
+      })
+
+      body = assert.res_status(200, res)
+      json = cjson.decode(body)
+
+      local jwt, err = ee_utils.validate_reset_jwt(json.token)
+      assert.is_nil(err)
+
+      -- Look up the secret by consumer id and pending status
+      local secrets, err = dao.consumer_reset_secrets:find_all({
+        consumer_id = jwt.claims.id,
+        status = enums.TOKENS.STATUS.PENDING,
+      })
+      assert.is_nil(err)
+
+      assert.truthy(ee_jwt.verify_signature(jwt, secrets[1].secret))
+
+      local url = ngx.unescape_uri(json.register_url)
+
+      assert.truthy(string.match(url, "http://manager.konghq.com"))
+      assert.truthy(string.match(url, consumer.username))
+      assert.truthy(string.match(url, consumer.email))
+      assert.truthy(string.match(url:gsub("%-", ""), json.token:gsub("%-", "")))
     end)
   end)
 
