@@ -13,37 +13,6 @@ for _, strategy in helpers.each_strategy() do
     setup(function()
       bp, db, dao = helpers.get_db_utils(strategy)
 
-      local api1 = assert(dao.apis:insert {
-        name         = "api-1",
-        hosts        = { "api-1.com" },
-        upstream_url = "http://example.com",
-        upstream_connect_timeout = 20000
-      })
-
-      local api2 = assert(dao.apis:insert {
-        name         = "api-2",
-        hosts        = { "api-2.com" },
-        upstream_url = "http://dne.com",
-      })
-
-      assert(dao.plugins:insert {
-        name   = "forward-proxy",
-        api_id = api1.id,
-        config = {
-          proxy_host = helpers.mock_upstream_host,
-          proxy_port = helpers.mock_upstream_port,
-        },
-      })
-
-      assert(dao.plugins:insert {
-        name   = "forward-proxy",
-        api_id = api2.id,
-        config = {
-          proxy_host = helpers.mock_upstream_host,
-          proxy_port = helpers.mock_upstream_port - 1,
-        },
-      })
-
       local service = db.services:insert {
         name = "service-1",
         host = "example.com",
@@ -62,6 +31,27 @@ for _, strategy in helpers.each_strategy() do
         config = {
           proxy_host = helpers.mock_upstream_host,
           proxy_port = helpers.mock_upstream_port,
+        },
+      }
+
+      local service2 = db.services:insert {
+        name = "service-2",
+        host = "dne.com",
+        protocol = "http",
+        port = 80,
+      }
+
+      local route2 = db.routes:insert {
+        hosts = { "service-2.com" },
+        service   = service2,
+      }
+
+      bp.plugins:insert {
+        route_id = route2.id,
+        name   = "forward-proxy",
+        config = {
+          proxy_host = helpers.mock_upstream_host,
+          proxy_port = helpers.mock_upstream_port -1,
         },
       }
 
@@ -104,34 +94,6 @@ for _, strategy in helpers.each_strategy() do
       assert.res_status(200, res)
     end)
 
-    it("redirects a request", function()
-      local res = assert(client:send {
-        method  = "GET",
-        path    = "/get",
-        headers = {
-          host = "api-1.com",
-        },
-      })
-
-      assert.res_status(200, res)
-    end)
-
-    it("writes an absolute request URI to the proxy", function()
-      local res = assert(client:send {
-        method  = "GET",
-        path    = "/get",
-        headers = {
-          host = "api-1.com",
-        },
-      })
-
-      local body = assert.res_status(200, res)
-      local json = cjson.decode(body)
-
-      assert.same("GET http://example.com/get HTTP/1.1",
-                  json.vars.request, nil, true)
-    end)
-
     it("writes an absolute request URI to the proxy, with service", function()
       local res = assert(client:send {
         method  = "GET",
@@ -148,12 +110,12 @@ for _, strategy in helpers.each_strategy() do
         json.vars.request, nil, true)
     end)
 
-    it("sends the lua-resty-http UA by default", function()
+    it("sends the lua-resty-http UA by default, with service", function()
       local res = assert(client:send {
         method  = "GET",
         path    = "/get",
         headers = {
-          host = "api-1.com",
+          host = "service-1.com",
         },
       })
 
@@ -161,26 +123,6 @@ for _, strategy in helpers.each_strategy() do
       local json = cjson.decode(body)
 
       assert.matches("lua-resty-http", json.headers["user-agent"], nil, true)
-    end)
-
-    it("forwards query params and request body data", function()
-      local res = assert(client:send {
-        method  = "POST",
-        path    = "/post?baz=bat",
-        headers = {
-          host = "api-1.com",
-          ["Content-Type"] = "application/json",
-        },
-        body = {
-          foo = "bar"
-        },
-      })
-
-      local body = assert.res_status(200, res)
-      local json = cjson.decode(body)
-
-      assert.same(json.uri_args, { baz = "bat" })
-      assert.same(json.post_data.params, { foo = "bar" })
     end)
 
     it("forwards query params and request body data, with service", function()
@@ -203,12 +145,12 @@ for _, strategy in helpers.each_strategy() do
       assert.same(json.post_data.params, { foo = "bar" })
     end)
 
-    it("errors on connection failure", function()
+    it("errors on connection failure, with service", function()
       local res = assert(client:send {
         method  = "GET",
         path    = "/get",
         headers = {
-          host = "api-2.com",
+          host = "service-2.com",
         },
       })
 
@@ -221,19 +163,6 @@ for _, strategy in helpers.each_strategy() do
     describe("displays Kong core headers:", function()
       for _, s in ipairs({ "Proxy", "Upstream" }) do
         local name = string.format("X-Kong-%s-Latency", s)
-
-        it(name, function()
-          local res = assert(client:send {
-            method  = "GET",
-            path    = "/get",
-            headers = {
-              host = "api-1.com",
-            },
-          })
-
-          assert.res_status(200, res)
-          assert.matches("^%d+$", res.headers[name])
-        end)
 
         it(name .. ", with service", function()
           local res = assert(client:send {
@@ -248,18 +177,6 @@ for _, strategy in helpers.each_strategy() do
           assert.matches("^%d+$", res.headers[name])
         end)
       end
-    end)
-
-    it("returns server tokens with Via header", function()
-      local res = assert(client:send {
-        method  = "GET",
-        path    = "/get",
-        headers = {
-          host = "api-1.com",
-        },
-      })
-
-      assert.equal(server_header, res.headers["Via"])
     end)
 
     it("returns server tokens with Via header, with service", function()
