@@ -234,6 +234,7 @@ server {
 
     client_max_body_size 10m;
     client_body_buffer_size 10m;
+    log_not_found off;
 
     types {
       text/html                             html htm shtml;
