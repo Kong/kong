@@ -2,13 +2,17 @@
 local BasePlugin  = require "kong.plugins.base_plugin"
 local groups = require "kong.plugins.canary.groups"
 
+local balancer    = require "kong.core.balancer"
+local utils       = require "kong.tools.utils"
 local math_random = math.random
 local math_floor  = math.floor
 local math_fmod   = math.fmod
 local crc32       = ngx.crc32_short
 local time_now    = ngx.now
 
+local hostname_type = utils.hostname_type
 local get_consumer_id = groups.get_current_consumer_id
+local NGX_DEBUG = ngx.DEBUG
 
 
 local log_prefix = "[canary] "
@@ -142,8 +146,25 @@ local function list_based(conf)
 end
 
 
+local function upstream_healthy(host, port)
+  local ok, _, errcode = balancer.execute {
+    type = hostname_type(host),
+    host = host,
+    port = port,
+    try_count = 0,
+    tries = {},
+  }
+  return not (not ok and errcode >= 500)
+end
+
 function Canary:access(conf)
   Canary.super.access(self)
+
+  if conf.upstream_fallback and not upstream_healthy(conf.upstream_host,
+                                                     conf.upstream_port) then
+    ngx.log(NGX_DEBUG, log_prefix, "canary upstream is unhealthy, not switching to it")
+    return
+  end
 
   local exec = conf_cache[conf]
   if not exec then

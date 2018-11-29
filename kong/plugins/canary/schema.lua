@@ -103,6 +103,11 @@ return {
       type = "string",
       func = check_upstream_uri
     },
+    upstream_fallback = {
+      type = "boolean",
+      default = false,
+      required = true,
+    },
     groups = {  -- white- or blacklists
       type = "array",
     },
@@ -110,6 +115,10 @@ return {
   self_check = function(_, conf, _, is_update)
     if not is_update and not conf.upstream_uri and not conf.upstream_host and not conf.upstream_port then
       return false, Errors.schema "either 'upstream_uri', 'upstream_host', or 'upstream_port' must be provided"
+    end
+
+    if not conf.upstream_host and conf.upstream_fallback then
+      return false, Errors.schema "'upstream_fallback' requires 'upstream_host'"
     end
 
     if conf.hash ~= "whitelist" and conf.hash ~= "blacklist" then

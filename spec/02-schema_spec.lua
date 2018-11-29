@@ -99,6 +99,13 @@ describe("canary schema", function()
     assert.is_same("either 'upstream_uri', 'upstream_host', or 'upstream_port' must be provided",
                    schema.message)
   end)
+  it("upstream_fallback requires upstream_host", function()
+    local ok, _, schema = validate_entity({upstream_fallback = true, upstream_port = 8080}, canary_schema)
+
+    assert.False(ok)
+    assert.is_same("'upstream_fallback' requires 'upstream_host'",
+                   schema.message)
+  end)
   it("start or percentage must be provided", function()
     local ok, _, schema = validate_entity({ upstream_uri = "/" }, canary_schema)
 
