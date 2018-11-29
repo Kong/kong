@@ -27,6 +27,7 @@ for _, strategy in helpers.each_strategy() do
         "keyauth_credentials",
       }, {
         "error-handler-log",
+        "error-generator-pre",
       })
 
       local consumer1 = bp.consumers:insert {
@@ -998,6 +999,124 @@ for _, strategy in helpers.each_strategy() do
         })
         assert.res_status(504, res) -- Gateway Timeout
         assert.equal("timeout", res.headers["Log-Plugin-Service-Matched"])
+      end)
+    end)
+
+    describe("plugin with run_on", function()
+      lazy_setup(function()
+        if proxy_client then
+          proxy_client:close()
+        end
+
+        helpers.stop_kong()
+
+        db:truncate("routes")
+        db:truncate("services")
+        db:truncate("plugins")
+
+        do
+          local service = assert(bp.services:insert {
+            name = "example",
+            host = helpers.mock_upstream_host,
+            port = helpers.mock_upstream_port,
+          })
+
+          local route1 = assert(db.routes:insert {
+            hosts     = { "run-on-first.org" },
+            protocols = { "http" },
+            service   = service,
+          })
+
+          assert(bp.plugins:insert {
+            name = "error-generator-pre",
+            route = { id = route1.id },
+            config = {
+              access = true,
+            },
+            run_on = "first",
+          })
+
+          local route2 = assert(db.routes:insert {
+            hosts     = { "run-on-second.org" },
+            protocols = { "http" },
+            service   = service,
+          })
+
+          assert(bp.plugins:insert {
+            name = "error-generator-pre",
+            route = { id = route2.id },
+            config = {
+              access = true,
+            },
+            run_on = "second",
+          })
+
+          local route3 = assert(db.routes:insert {
+            hosts     = { "run-on-all.org" },
+            protocols = { "http" },
+            service   = service,
+          })
+
+          assert(bp.plugins:insert {
+            name = "error-generator-pre",
+            route = { id = route3.id },
+            config = {
+              access = true,
+            },
+            run_on = "all",
+          })
+        end
+
+        assert(helpers.start_kong {
+          database = strategy,
+          nginx_conf = "spec/fixtures/custom_nginx.template",
+        })
+
+        proxy_client = helpers.proxy_client()
+      end)
+
+      lazy_teardown(function()
+        if proxy_client then
+          proxy_client:close()
+        end
+
+        helpers.stop_kong()
+      end)
+
+      it("= first does get executed when running on first", function()
+        local res = assert(proxy_client:send {
+          method = "GET",
+          path = "/status/200",
+          headers = {
+            ["Host"] = "run-on-first.org",
+          }
+        })
+
+        assert.res_status(500, res)
+      end)
+
+      it("= second does not get executed when running on first", function()
+        local res = assert(proxy_client:send {
+          method = "GET",
+          path = "/status/200",
+          headers = {
+            ["Host"] = "run-on-second.org",
+          }
+        })
+
+        assert.res_status(200, res)
+      end)
+
+      it("= all does get executed when running on first", function()
+        local res = assert(proxy_client:send {
+          method = "GET",
+          path = "/status/200",
+          headers = {
+            ["Host"] = "run-on-all.org",
+          }
+        })
+
+        assert.res_status(500, res)
       end)
     end)
   end)
