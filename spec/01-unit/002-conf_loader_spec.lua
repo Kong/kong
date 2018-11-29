@@ -291,6 +291,33 @@ describe("Configuration loader", function()
     end)
   end)
 
+  describe("#stream ssl_preread", function()
+    it("is injected if enabled in nginx configuration", function()
+      local save_nginx_configure = ngx.config.nginx_configure
+      finally(function()
+        ngx.config.nginx_configure = save_nginx_configure -- luacheck: ignore
+      end)
+
+      ngx.config.nginx_configure = function() -- luacheck: ignore
+        return "configure arguments: --with-stream_ssl_preread_module --with-stream"
+      end
+      local conf = assert(conf_loader())
+      assert.True(conf.ssl_preread_enabled)
+    end)
+    it("is not injected if not enabled in nginx configuration", function()
+      local save_nginx_configure = ngx.config.nginx_configure
+      finally(function()
+        ngx.config.nginx_configure = save_nginx_configure -- luacheck: ignore
+      end)
+
+      ngx.config.nginx_configure = function() -- luacheck: ignore
+        return "configure arguments: --with-stream"
+      end
+      local conf = assert(conf_loader())
+      assert.False(conf.ssl_preread_enabled)
+    end)
+  end)
+
   describe("nginx_user", function()
     it("is nil by default", function()
       local conf = assert(conf_loader(helpers.test_conf_path))

@@ -53,7 +53,9 @@ server {
     access_log ${{PROXY_ACCESS_LOG}} basic;
     error_log ${{PROXY_ERROR_LOG}} ${{LOG_LEVEL}};
 
+> if ssl_preread_enabled then
     ssl_preread on;
+> end
     preread_by_lua_block {
         Kong.preread()
     }
