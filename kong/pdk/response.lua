@@ -529,7 +529,7 @@ local function new(self, major_version)
   -- Unless manually specified, this method will automatically set the
   -- Content-Length header in the produced response for convenience.
   -- @function kong.response.exit
-  -- @phases rewrite, access, admin_api
+  -- @phases rewrite, access, admin_api, header_filter (only if `body` is nil)
   -- @tparam number status The status to be used
   -- @tparam[opt] table|string body The body to be used
   -- @tparam[opt] table headers The headers to be used
@@ -553,7 +553,11 @@ local function new(self, major_version)
   --   ["WWW-Authenticate"] = "Basic"
   -- })
   function _RESPONSE.exit(status, body, headers)
-    check_phase(rewrite_access)
+    if body == nil then
+      check_phase(rewrite_access_header)
+    else
+      check_phase(rewrite_access)
+    end
 
     if ngx.headers_sent then
       error("headers have already been sent", 2)
