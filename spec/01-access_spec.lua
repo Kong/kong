@@ -1,52 +1,106 @@
+local utils = require "kong.tools.utils"
 local helpers = require "spec.helpers"
 
-describe("Session Plugin: session (access)", function()
-  local client
+for _, strategy in helpers.each_strategy() do
+  describe("Plugin: Session (access) [#" .. strategy .. "]", function()
+    local client
 
-  setup(function()
-    local api1 = assert(helpers.dao.apis:insert { 
-        name = "api-1", 
-        hosts = { "test1.com" }, 
-        upstream_url = "http://mockbin.com",
-    })
+    setup(function()
+      local bp = helpers.get_db_utils(strategy)
 
-    assert(helpers.dao.plugins:insert {
-      api_id = api1.id,
-      name = "myplugin",
-    })
+      local service = assert(bp.services:insert {
+        path = "/",
+        protocol = "http",
+        host = "httpbin.org",
+      })
 
-    -- start kong, while setting the config item `custom_plugins` to make sure our
-    -- plugin gets loaded
-    assert(helpers.start_kong {custom_plugins = "myplugin"})
-  end)
+      local route1 = bp.routes:insert {
+        paths    = {"/test1"},
+        service = service1,
+      }
 
-  teardown(function()
-    helpers.stop_kong()
-  end)
+      local route2 = bp.routes:insert {
+        paths    = {"/test2"},
+        service = service1,
+      }
 
-  before_each(function()
-    client = helpers.proxy_client()
-  end)
+      assert(bp.plugins:insert {
+        name = "session",
+        route_id = route1.id,
+      })
 
-  after_each(function()
-    if client then client:close() end
-  end)
-
-  describe("request", function()
-    it("test", function()
-      local r = assert(client:send {
-        method = "GET",
-        path = "/request",  -- makes mockbin return the entire request
-        headers = {
-          host = "test1.com"
+      assert(bp.plugins:insert {
+        name = "session",
+        route_id = route2.id,
+        config = {
+          cookie_name = "da_cookie",
+          cookie_samesite = "Lax",
+          cookie_httponly = false,
+          cookie_secure = false,
         }
       })
-      -- validate that the request succeeded, response status 200
-      assert.response(r).has.status(200)
-      -- now check the request (as echoed by mockbin) to have the header
-      local header_value = assert.request(r).has.header("hello-world")
-      -- validate the value of that header
-      assert.equal("this is on a request", header_value)
+
+      assert(helpers.start_kong {
+        custom_plugins = "session",
+        database   = strategy,
+        nginx_conf = "spec/fixtures/custom_nginx.template",        
+      })
+    end)
+
+    teardown(function()
+      helpers.stop_kong(nil, true)
+    end)
+
+    before_each(function()
+      client = helpers.proxy_ssl_client()
+    end)
+
+    after_each(function()
+      if client then client:close() end
+    end)
+
+    describe("request", function()
+      it("plugin attaches Set-Cookie and cookie response headers", function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/test1/status/200",
+          headers = {
+            host = "httpbin.org"
+          }
+        })
+
+        assert.response(res).has.status(200)
+
+        local cookie = assert.response(res).has.header("Set-Cookie")
+        local cookie_name = utils.split(cookie, "=")[1]
+        assert.equal("session", cookie_name)
+        
+        local cookie_parts = utils.split(cookie, "; ")
+        assert.equal("SameSite=Strict", cookie_parts[3])
+        assert.equal("Secure", cookie_parts[4])
+        assert.equal("HttpOnly", cookie_parts[5])
+      end)
+
+      it("plugin attaches cookie from configs", function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/test2/status/200",
+          headers = {
+            host = "httpbin.org"
+          }
+        })
+
+        assert.response(res).has.status(200)
+        
+        local cookie = assert.response(res).has.header("Set-Cookie")
+        local cookie_name = utils.split(cookie, "=")[1]
+        assert.equal("da_cookie", cookie_name)
+        
+        local cookie_parts = utils.split(cookie, "; ")
+        assert.equal("SameSite=Lax", cookie_parts[3])
+        assert.equal(nil, cookie_parts[4])
+        assert.equal(nil, cookie_parts[5])
+      end)
     end)
   end)
-end)
+end

@@ -7,16 +7,17 @@ local plugin_name = ({...})[1]:match("^kong%.plugins%.([^%.]+)")
 
 local KongSessionHandler = BasePlugin:extend()
 
+-- TODO: determine best priority
 KongSessionHandler.PRIORITY = 3000
 
 function KongSessionHandler:new()
   KongSessionHandler.super.new(self, plugin_name)
 end
 
-function KongSessionHandler:access(plugin_conf)
+function KongSessionHandler:access(conf)
   KongSessionHandler.super.access(self)
-  
-  access.execute(plugin_conf)
+  access.execute(conf)
 end
+
 
 return KongSessionHandler

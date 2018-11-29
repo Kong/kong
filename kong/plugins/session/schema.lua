@@ -6,7 +6,11 @@ return {
     cookie_lifetime = { type = "number", default = 3600 },
     cookie_path = { type = "string", default = "/" },
     cookie_domain = { type = "string" },
-    cookie_samesite = { type = "string", default = "Strict" },
+    cookie_samesite = { 
+      type = "string", 
+      default = "Strict", 
+      one_of = { "Strict", "Lax", "off" }
+    },
     cookie_httponly = { type = "boolean", default = true },
     cookie_secure = { type = "boolean", default = true },
   }
