@@ -52,6 +52,35 @@ describe("NGINX conf compiler", function()
     end)
   end)
 
+  describe("#stream compile_kong_stream_conf()", function()
+    it("enables ssl_preread conditionally", function()
+      local save_nginx_configure = ngx.config.nginx_configure -- luacheck: ignore
+      finally(function()
+        ngx.config.nginx_configure = save_nginx_configure -- luacheck: ignore
+      end)
+
+      -- with ssl_preread enabled
+      ngx.config.nginx_configure = function() -- luacheck: ignore
+        return "--with-foo --with-stream_ssl_preread_module --with-bar"
+      end
+      local conf = assert(conf_loader(helpers.test_conf_path, {
+        stream_listen = "0.0.0.0:9100",
+      }))
+      local kong_nginx_stream_conf = prefix_handler.compile_kong_stream_conf(conf)
+      assert.matches("ssl_preread on", kong_nginx_stream_conf, nil, true)
+
+      -- without ssl_preread enabled
+      ngx.config.nginx_configure = function() -- luacheck: ignore
+        return " --with-foo --with-bar"
+      end
+      conf = assert(conf_loader(helpers.test_conf_path, {
+        stream_listen = "0.0.0.0:9100",
+      }))
+      kong_nginx_stream_conf = prefix_handler.compile_kong_stream_conf(conf)
+      assert.not_matches("ssl_preread on", kong_nginx_stream_conf, nil, true)
+    end)
+  end)
+
   describe("compile_kong_conf()", function()
     it("compiles the Kong NGINX conf chunk", function()
       local kong_nginx_conf = prefix_handler.compile_kong_conf(helpers.test_conf)

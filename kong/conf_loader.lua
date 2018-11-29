@@ -893,6 +893,15 @@ local function load(path, custom_conf)
   end
 
   do
+    -- is ssl_preread compiled in OpenResty?
+    conf.ssl_preread_enabled = false
+    local nginx_configuration = ngx.config.nginx_configure()
+    if nginx_configuration:find("with-stream_ssl_preread_module", 1, true) then
+      conf.ssl_preread_enabled = true
+    end
+  end
+
+  do
     -- load headers configuration
     local enabled_headers = {}
 
