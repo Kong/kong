@@ -45,16 +45,31 @@ local function load_plugin_configuration(ctx,
     return ngx.exit(ngx.ERROR)
   end
 
-  if plugin ~= nil and plugin.enabled then
-    local cfg = plugin.config or {}
-
-    cfg.api_id      = plugin.api and plugin.api.id
-    cfg.route_id    = plugin.route and plugin.route.id
-    cfg.service_id  = plugin.service and plugin.service.id
-    cfg.consumer_id = plugin.consumer and plugin.consumer.id
-
-    return cfg
+  if not plugin or not plugin.enabled then
+    return
   end
+
+  if plugin.run_on ~= "all" then
+    if ctx.is_service_mesh_request then
+      if plugin.run_on == "first" then
+        return
+      end
+
+    else
+      if plugin.run_on == "second" then
+        return
+      end
+    end
+  end
+
+  local cfg = plugin.config or {}
+
+  cfg.api_id      = plugin.api and plugin.api.id
+  cfg.route_id    = plugin.route and plugin.route.id
+  cfg.service_id  = plugin.service and plugin.service.id
+  cfg.consumer_id = plugin.consumer and plugin.consumer.id
+
+  return cfg
 end
 
 
