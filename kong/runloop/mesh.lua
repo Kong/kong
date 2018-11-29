@@ -192,16 +192,16 @@ local function certificate()
 end
 
 
-local function rewrite()
+local function rewrite(ctx)
   local ssl = getssl()
   if ssl and ssl:getAlpnSelected() == mesh_alpn then
-    if ngx.ctx.is_service_mesh_request then
+    if ctx.is_service_mesh_request then
       ngx.log(ngx.ERR, "already service mesh; circular routing?")
       return ngx.exit(500)
     end
 
     -- Assume OpenSSL verification worked
-    ngx.ctx.is_service_mesh_request = true
+    ctx.is_service_mesh_request = true
 
     -- Fixup Host
     -- Unless the route had preserve_host set then the host on the request has
