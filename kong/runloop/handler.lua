@@ -621,7 +621,7 @@ return {
       ctx.KONG_REWRITE_START = get_now()
       mesh.rewrite()
     end,
-    after = function (ctx)
+    after = function(ctx)
       ctx.KONG_REWRITE_TIME = get_now() - ctx.KONG_REWRITE_START -- time spent in Kong's rewrite_by_lua
     end
   },
