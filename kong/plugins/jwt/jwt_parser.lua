@@ -48,6 +48,28 @@ local alg_sign = {
     assert(#r == 32)
     assert(#s == 32)
     return r .. s
+  end,
+  ES384 = function(data, key)
+    local pkey = openssl_pkey.new(key)
+    local signature = pkey:sign(openssl_digest.new("sha384"):update(data))
+
+    local derSequence = asn_sequence.parse_simple_sequence(signature)
+    local r = asn_sequence.unsign_integer(derSequence[1], 48)
+    local s = asn_sequence.unsign_integer(derSequence[2], 48)
+    assert(#r == 48)
+    assert(#s == 48)
+    return r .. s
+  end,
+  ES512 = function(data, key)
+    local pkey = openssl_pkey.new(key)
+    local signature = pkey:sign(openssl_digest.new("sha512"):update(data))
+
+    local derSequence = asn_sequence.parse_simple_sequence(signature)
+    local r = asn_sequence.unsign_integer(derSequence[1], 64)
+    local s = asn_sequence.unsign_integer(derSequence[2], 64)
+    assert(#r == 64)
+    assert(#s == 64)
+    return r .. s
   end
 }
 
@@ -78,6 +100,28 @@ local alg_verify = {
     asn[2] = asn_sequence.resign_integer(sub(signature, 33, 64))
     local signatureAsn = asn_sequence.create_simple_sequence(asn)
     local digest = openssl_digest.new("sha256"):update(data)
+    return pkey:verify(signatureAsn, digest)
+  end,
+  ES384 = function(data, signature, key)
+    local pkey_ok, pkey = pcall(openssl_pkey.new, key)
+    assert(pkey_ok, "Consumer Public Key is Invalid")
+    assert(#signature == 96, "Signature must be 96 bytes.")
+    local asn = {}
+    asn[1] = asn_sequence.resign_integer(sub(signature, 1, 48))
+    asn[2] = asn_sequence.resign_integer(sub(signature, 49, 96))
+    local signatureAsn = asn_sequence.create_simple_sequence(asn)
+    local digest = openssl_digest.new("sha384"):update(data)
+    return pkey:verify(signatureAsn, digest)
+  end,
+  ES512 = function(data, signature, key)
+    local pkey_ok, pkey = pcall(openssl_pkey.new, key)
+    assert(pkey_ok, "Consumer Public Key is Invalid")
+    assert(#signature == 128, "Signature must be 128 bytes.")
+    local asn = {}
+    asn[1] = asn_sequence.resign_integer(sub(signature, 1, 64))
+    asn[2] = asn_sequence.resign_integer(sub(signature, 65, 128))
+    local signatureAsn = asn_sequence.create_simple_sequence(asn)
+    local digest = openssl_digest.new("sha512"):update(data)
     return pkey:verify(signatureAsn, digest)
   end
 }
