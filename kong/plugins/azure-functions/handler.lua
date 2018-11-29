@@ -32,6 +32,7 @@ end
 
 function azure:access(config)
   azure.super.access(self)
+  local var = ngx.var
 
   -- prepare and store updated config in cache
   local conf = conf_cache[config]
@@ -75,7 +76,7 @@ function azure:access(config)
     end
   end
 
-  local upstream_uri = ngx.var.upstream_uri
+  local upstream_uri = var.upstream_uri
   local path = conf.path
   local end1 = path:sub(-1, -1)
   local start2 = upstream_uri:sub(1, 1)
@@ -117,6 +118,14 @@ function azure:access(config)
   local response_headers = res.headers
   local response_status = res.status
   local response_content = res:read_body()
+
+  if var.http2 then
+    response_headers["Connection"] = nil
+    response_headers["Keep-Alive"] = nil
+    response_headers["Proxy-Connection"] = nil
+    response_headers["Upgrade"] = nil
+    response_headers["Transfer-Encoding"] = nil
+  end
 
   ok, err = client:set_keepalive(config.keepalive)
   if not ok then
