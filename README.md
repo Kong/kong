@@ -75,7 +75,7 @@ transformations, and more through plugins.
   updated across nodes.
 - **Scalability**: Distributed by nature, Kong scales horizontally by simply
   adding nodes.
-- **Performance**: Kong handles load with ease by scaling and using NGINX at
+- **Performance**: Kong handles the load with ease by scaling and using NGINX at
   the core.
 - **Plugins**: Extendable architecture for adding functionality to Kong and
   APIs.
