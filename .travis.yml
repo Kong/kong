@@ -66,12 +66,6 @@ jobs:
         - KONG_DATABASE=none
     - stage: test
       script: .ci/run_tests.sh
-    - stage: deploy
-      if: tag =~ 0.
-      install: skip
-      before_install: skip
-      script: .ci/trigger-travis.sh $TRAVIS_ACCESS_TOKEN
-      env: KONG_DATABASE=none
     - stage: deploy daily build
       install: skip
       script: make release
