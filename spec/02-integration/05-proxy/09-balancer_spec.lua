@@ -970,6 +970,38 @@ for _, strategy in helpers.each_strategy() do
             end
           end)
 
+          it("#stream and http modules do not duplicate active health checks", function()
+
+            local port1 = gen_port()
+
+            local server1 = http_server(localhost, port1, { 1 })
+
+            -- configure healthchecks
+            local upstream_name = add_upstream({
+              healthchecks = healthchecks_config {
+                active = {
+                  http_path = "/status",
+                  healthy = {
+                    interval = HEALTHCHECK_INTERVAL,
+                    successes = 1,
+                  },
+                  unhealthy = {
+                    interval = HEALTHCHECK_INTERVAL,
+                    http_failures = 1,
+                  },
+                }
+              }
+            })
+            add_target(upstream_name, localhost, port1)
+
+            ngx.sleep(HEALTHCHECK_INTERVAL * 5)
+
+            -- collect server results; hitcount
+            local _, _, _, hcs1 = server1:done()
+
+            assert(hcs1 < 8)
+          end)
+
           it("perform active health checks -- up then down", function()
 
             for nfails = 1, 3 do
