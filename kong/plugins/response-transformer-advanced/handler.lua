@@ -36,7 +36,7 @@ function ResponseTransformerHandler:header_filter(conf)
     return
   end
 
-  header_filter.transform_headers(conf, ngx.header)
+  header_filter.transform_headers(conf, ngx.header, ngx.status)
 end
 
 function ResponseTransformerHandler:body_filter(conf)
