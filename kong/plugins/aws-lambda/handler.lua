@@ -232,11 +232,11 @@ function AWSLambdaHandler:access(conf)
   local headers = res.headers
 
   if var.http2 then
-    headers["Connection"] = ""
-    headers["Keep-Alive"] = ""
-    headers["Proxy-Connection"] = ""
-    headers["Upgrade"] = ""
-    headers["Transfer-Encoding"] = ""
+    headers["Connection"] = nil
+    headers["Keep-Alive"] = nil
+    headers["Proxy-Connection"] = nil
+    headers["Upgrade"] = nil
+    headers["Transfer-Encoding"] = nil
   end
 
   local ok, err = client:set_keepalive(conf.keepalive)
