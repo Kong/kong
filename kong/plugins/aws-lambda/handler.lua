@@ -135,7 +135,6 @@ function AWSLambdaHandler:access(conf)
     or conf.forward_request_method or conf.forward_request_uri
   then
     -- new behavior to forward request method, body, uri and their args
-    local var = ngx.var
 
     if conf.forward_request_method then
       upstream_body.request_method = var.request_method
