@@ -160,7 +160,8 @@ describe("Plugin: cors (access)", function()
           ["Host"] = "cors1.com"
         }
       })
-      assert.res_status(204, res)
+      assert.res_status(200, res)
+      assert.equal("0", res.headers["Content-Length"])
       assert.equal("GET,HEAD,PUT,PATCH,POST,DELETE", res.headers["Access-Control-Allow-Methods"])
       assert.equal("*", res.headers["Access-Control-Allow-Origin"])
       assert.is_nil(res.headers["Access-Control-Allow-Headers"])
@@ -182,7 +183,8 @@ describe("Plugin: cors (access)", function()
           ["Host"] = "cors-empty-origins.com",
         }
       })
-      assert.res_status(204, res)
+      assert.res_status(200, res)
+      assert.equal("0", res.headers["Content-Length"])
       assert.equal("GET,HEAD,PUT,PATCH,POST,DELETE", res.headers["Access-Control-Allow-Methods"])
       assert.equal("*", res.headers["Access-Control-Allow-Origin"])
       assert.is_nil(res.headers["Access-Control-Allow-Headers"])
@@ -198,7 +200,8 @@ describe("Plugin: cors (access)", function()
           ["Host"] = "cors5.com"
         }
       })
-      assert.res_status(204, res)
+      assert.res_status(200, res)
+      assert.equal("0", res.headers["Content-Length"])
       assert.equal("GET,HEAD,PUT,PATCH,POST,DELETE", res.headers["Access-Control-Allow-Methods"])
       assert.equal("*", res.headers["Access-Control-Allow-Origin"])
       assert.is_nil(res.headers["Access-Control-Allow-Headers"])
@@ -214,7 +217,8 @@ describe("Plugin: cors (access)", function()
           ["Host"] = "cors2.com"
         }
       })
-      assert.res_status(204, res)
+      assert.res_status(200, res)
+      assert.equal("0", res.headers["Content-Length"])
       assert.equal("GET", res.headers["Access-Control-Allow-Methods"])
       assert.equal("example.com", res.headers["Access-Control-Allow-Origin"])
       assert.equal("23", res.headers["Access-Control-Max-Age"])
@@ -245,7 +249,8 @@ describe("Plugin: cors (access)", function()
         }
       })
 
-      assert.res_status(204, res)
+      assert.res_status(200, res)
+      assert.equal("0", res.headers["Content-Length"])
       assert.equal("origin,accepts", res.headers["Access-Control-Allow-Headers"])
     end)
   end)
