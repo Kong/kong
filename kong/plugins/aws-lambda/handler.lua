@@ -236,9 +236,7 @@ function AWSLambdaHandler:access(conf)
     headers["Keep-Alive"] = ""
     headers["Proxy-Connection"] = ""
     headers["Upgrade"] = ""
-    if headers["Transfer-Encoding"] ~= "trailers" then
-      headers["Transfer-Encoding"] = ""
-    end
+    headers["Transfer-Encoding"] = ""
   end
 
   local ok, err = client:set_keepalive(conf.keepalive)
