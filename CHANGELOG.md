@@ -1,3 +1,9 @@
+## Unreleased
+
+### Fixes
+
+* Fix an issue leading the plugin to perform an unnecessary DNS query in the access phase
+
 ## 0.0.4
 
 ### Added
@@ -15,4 +21,3 @@ to start SSL(HTTPS) communication with remote host
 
 * Add support for delayed response
 * Add `Via` header
-
