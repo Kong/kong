@@ -18,7 +18,7 @@ docker run -it --rm \
   -v /tmp:/tmp \
   -v /var/run/docker.sock:/var/run/docker.sock \
   -e NPM_TOKEN=$NPM_TOKEN \
-  mashape/docker-packer /src/package.sh -p alpine -u "$BINTRAY_USER" -k "$BINTRAY_API_KEY" --ee --dev
+  mashape/docker-packer /src/package.sh -p alpine -u "$BINTRAY_USER" -k "$BINTRAY_API_KEY" --ee --dev --verbose
 
 docker run -it --rm \
   -v $PWD:/src \
@@ -26,7 +26,7 @@ docker run -it --rm \
   -v /var/run/docker.sock:/var/run/docker.sock \
   -e NPM_TOKEN=$NPM_TOKEN \
   -e TRAVIS_BUILD_NUMBER=$TRAVIS_BUILD_NUMBER \
-  mashape/docker-packer /src/package.sh -p ubuntu:16.04 -u "$BINTRAY_USER" -k "$BINTRAY_API_KEY" --ee --dev
+  mashape/docker-packer /src/package.sh -p ubuntu:16.04 -u "$BINTRAY_USER" -k "$BINTRAY_API_KEY" --ee --dev --verbose
 
 VERSION=`dpkg-deb -f output/kong-enterprise-edition-*.xenial.all.deb Version`
 ./release.sh -u $BINTRAY_USER -k $BINTRAY_API_KEY -v ${VERSION} -p ubuntu:16.04 -c
