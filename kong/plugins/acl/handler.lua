@@ -39,6 +39,7 @@ function ACLHandler:access(conf)
     config.type = (conf.blacklist or EMPTY)[1] and BLACK or WHITE
     config.groups = config.type == BLACK and conf.blacklist or conf.whitelist
     config.cache = setmetatable({}, mt_cache)
+    config_cache[conf] = config
   end
 
   -- get the consumer/credentials
