@@ -4,6 +4,8 @@
 - Add `config.http_proxy_authorization`
 - Add `config.https_proxy_authorization`
 - Add `config.no_proxy`
+- Add `config.logout_revoke_access_token`
+- Add `config.logout_revoke_refresh_token`
 
 
 ## v0.2.5

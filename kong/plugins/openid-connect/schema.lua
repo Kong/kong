@@ -632,6 +632,16 @@ return {
       type                             = "boolean",
       default                          = false,
     },
+    logout_revoke_access_token         = {
+      required                         = false,
+      type                             = "boolean",
+      default                          = true,
+    },
+    logout_revoke_refresh_token        = {
+      required                         = false,
+      type                             = "boolean",
+      default                          = false,
+    },
     revocation_endpoint                = {
       required                         = false,
       type                             = "url",

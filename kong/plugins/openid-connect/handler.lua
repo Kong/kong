@@ -1050,14 +1050,40 @@ function OICHandler:access(conf)
           if session_data.tokens then
             id_token = session_data.tokens.id_token
 
-            if session_data.tokens.access_token then
-              if args.get_conf_arg("logout_revoke", false) then
-                log("revoking access token")
-                ok, err = oic.token:revoke(session_data.tokens.access_token, "access_token", {
-                  revocation_endpoint = args.get_conf_arg("revocation_endpoint")
-                })
-                if not ok and err then
-                  log("revoking access token failed: ", err)
+            if args.get_conf_arg("logout_revoke", false) then
+              local revocation_endpoint = args.get_conf_arg("revocation_endpoint")
+
+              if session_data.tokens.refresh_token and args.get_conf_arg("logout_revoke_refresh_token", false) then
+                if not revocation_endpoint then
+                  revocation_endpoint = revocation_endpoint
+                end
+
+                if revocation_endpoint then
+                  log("revoking refresh token")
+                  ok, err = oic.token:revoke(session_data.tokens.refresh_token, "refresh_token", {
+                    revocation_endpoint = revocation_endpoint,
+                  })
+                  if not ok and err then
+                    log("revoking refresh token failed: ", err)
+                  end
+
+                else
+                  log("unable to revoke refresh token, because revocation endpoint was not specified")
+                end
+              end
+
+              if session_data.tokens.access_token and args.get_conf_arg("logout_revoke_access_token", true) then
+                if revocation_endpoint then
+                  log("revoking access token")
+                  ok, err = oic.token:revoke(session_data.tokens.access_token, "access_token", {
+                    revocation_endpoint = revocation_endpoint,
+                  })
+                  if not ok and err then
+                    log("revoking access token failed: ", err)
+                  end
+
+                else
+                  log("unable to revoke access token, because revocation endpoint was not specified")
                 end
               end
             end
