@@ -2,7 +2,7 @@ local utils = require "kong.tools.utils"
 local helpers = require "spec.helpers"
 
 
-for _, strategy in helpers.each_strategy('postgres') do
+for _, strategy in helpers.each_strategy() do
   describe("Plugin: Session (kong storage adapter) [#" .. strategy .. "]", function()
     local client, bp
 
@@ -68,7 +68,7 @@ for _, strategy in helpers.each_strategy('postgres') do
     end)
 
     teardown(function()
-      helpers.stop_kong(nil, true)
+      helpers.stop_kong()
     end)
 
     before_each(function()
