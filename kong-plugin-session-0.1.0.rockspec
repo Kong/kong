@@ -24,8 +24,9 @@ build = {
   type = "builtin",
   modules = {
     ["kong.plugins.session.handler"] = "kong/plugins/session/handler.lua",
-    ["kong.plugins.session.schema"] = "kong/plugins/session/schema.lua"
-    ["kong.plugins.session.access"] = "kong/plugins/session/access.lua"
-    ["kong.plugins.session.session"] = "kong/plugins/session/session.lua"
+    ["kong.plugins.session.schema"] = "kong/plugins/session/schema.lua",
+    ["kong.plugins.session.access"] = "kong/plugins/session/access.lua",
+    ["kong.plugins.session.session"] = "kong/plugins/session/session.lua",
+    ['kong.plugins.session.daos'] = "kong/plugins/session/daos.lua",
   }
 }

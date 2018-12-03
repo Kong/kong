@@ -1,7 +1,6 @@
 return {
   no_consumer = true,
   fields = {
-    storage = { type = "string", default = "cookie" },
     cookie_name = { type = "string", default = "session" },
     cookie_lifetime = { type = "number", default = 3600 },
     cookie_path = { type = "string", default = "/" },
@@ -13,5 +12,14 @@ return {
     },
     cookie_httponly = { type = "boolean", default = true },
     cookie_secure = { type = "boolean", default = true },
+    storage = {
+      required = false,
+      type = "string",
+      enum = { 
+        "cookie", 
+        "kong",
+      },
+      default = "cookie",
+    },
   }
 }

@@ -1,6 +1,6 @@
 local utils = require "kong.tools.utils"
 local helpers = require "spec.helpers"
-local cjson = require "cjson.safe"
+
 
 for _, strategy in helpers.each_strategy() do
   describe("Plugin: Session (access) [#" .. strategy .. "]", function()
@@ -9,25 +9,24 @@ for _, strategy in helpers.each_strategy() do
     setup(function()
       local bp = helpers.get_db_utils(strategy)
 
-      local service = assert(bp.services:insert {
-        path = "/",
-        protocol = "http",
-        host = "httpbin.org",
-      })
-
       local route1 = bp.routes:insert {
         paths    = {"/test1"},
-        service = service1,
+        hosts = {"httpbin.org"},
       }
 
       local route2 = bp.routes:insert {
         paths    = {"/test2"},
-        service = service1,
+        hosts = {"httpbin.org"},
       }
 
       local route3 = bp.routes:insert {
         paths    = {"/test3"},
-        service = service1,
+        hosts = {"httpbin.org"},
+      }
+
+      local route4 = bp.routes:insert {
+        paths    = {"/test4"},
+        hosts = {"httpbin.org"},
       }
 
       assert(bp.plugins:insert {
@@ -51,6 +50,14 @@ for _, strategy in helpers.each_strategy() do
         route_id = route3.id,
       })
 
+      assert(bp.plugins:insert {
+        name = "session",
+        route_id = route4.id,
+        config = {
+          storage = "kong",
+        }
+      })
+
       assert(helpers.start_kong {
         custom_plugins = "session",
         database   = strategy,
@@ -59,7 +66,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     teardown(function()
-      helpers.stop_kong(nil, true)
+      helpers.stop_kong()
     end)
 
     before_each(function()
@@ -135,17 +142,19 @@ for _, strategy in helpers.each_strategy() do
         local cookie_val = utils.split(utils.split(cookie, "=")[2], ";")[1]
         assert.equal("session", cookie_name)
   
+        -- now use the cookie
         res = assert(client:send {
           method = "GET",
           path = "/test3/status/201",
           headers = {
             host = "httpbin.org",
+            cookie = cookie,
           },
         })
   
         assert.response(res).has.status(201)
         local cookie2 = assert.response(res).has.header("Set-Cookie")
-        local cookie_val2 = utils.split(utils.split(cookie, "=")[2], ";")[1]
+        local cookie_val2 = utils.split(utils.split(cookie2, "=")[2], ";")[1]
         assert.equal(cookie_val, cookie_val2)
       end)
     end)
@@ -157,16 +166,9 @@ for _, strategy in helpers.each_strategy() do
     setup(function()
       local bp = helpers.get_db_utils(strategy)
 
-      local service = assert(bp.services:insert {
-        path = "/",
-        protocol = "http",
-        host = "httpbin.org",
-      })
-
       local route1 = bp.routes:insert {
         paths    = {"/status/200"},
-        service = service1,
-        strip_path = false,
+        hosts = {"httpbin.org"}
       }
 
       assert(bp.plugins:insert {
@@ -209,7 +211,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     teardown(function()
-      helpers.stop_kong(nil, true)
+      helpers.stop_kong()
     end)
 
     before_each(function()
@@ -222,24 +224,24 @@ for _, strategy in helpers.each_strategy() do
 
     describe("request", function()
       it("cookie works as authentication after initial auth plugin", function()
-        local res, body, cookie
+        local res, cookie
         local request = {
           method = "GET",
           path = "/status/200",
           headers = { host = "httpbin.org", },
         }
 
-        -- make sure anonymous consumers can't get in
+        -- make sure the anonymous consumer can't get in (request termination)
         res = assert(client:send(request))
         assert.response(res).has.status(403)
 
         -- make a request with a valid key, grab the cookie for later
         request.headers.apikey = "kong"
         res = assert(client:send(request))
-        body = assert.response(res).has.status(200)
+        assert.response(res).has.status(200)
         cookie = assert.response(res).has.header("Set-Cookie")
 
-        -- use the cookie without the key
+        -- use the cookie without the key to ensure cookie still lets them in
         request.headers.apikey = nil
         request.headers.cookie = cookie
         res = assert(client:send(request))

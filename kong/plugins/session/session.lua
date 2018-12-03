@@ -3,10 +3,10 @@ local session = require "resty.session"
 local _M = {}
 
 
-function get_opts(conf)
+local function get_opts(conf)
   return {
-    name = conf.cookie_name or "session",
-    random = { random = { length = 32 } },
+    name = conf.cookie_name,
+    storage = conf.storage,
     cookie = {
       lifetime = conf.cookie_lifetime,
       path     = conf.cookie_path,
@@ -14,26 +14,24 @@ function get_opts(conf)
       samesite = conf.cookie_samesite,
       httponly = conf.cookie_httponly,
       secure   = conf.cookie_secure,
-    },
+    }
   }
 end
 
 
 function _M.open_session(conf)
   local opts = get_opts(conf)
-  local sesh = session.open(opts)
+  local s = session.open(opts)
 
-  if sesh.present then
-    return sesh
+  if s.present then
+    return s
   end
 
-  if not sesh.started then
-    sesh:start()
+  if not s.started then
+    s:start()
   end
 
-  sesh:save()
-
-  return sesh
+  return s
 end
 
 
