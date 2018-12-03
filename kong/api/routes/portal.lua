@@ -134,7 +134,7 @@ return {
         local res = {consumer = consumer}
 
         if consumer.status == enums.CONSUMERS.STATUS.APPROVED and
-           consumer.status ~= previous_status then
+           consumer.status ~= previous_status and previous_status ~= enums.CONSUMERS.STATUS.REVOKED then
           local portal_emails = portal_smtp_client.new()
           local email_res, err = portal_emails:approved(consumer.email)
           if err then
