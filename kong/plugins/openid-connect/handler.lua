@@ -92,12 +92,15 @@ end
 local function create_get_http_opts(args)
   return function(options)
     options = options or {}
-    options.http_version = args.get_conf_arg("http_version", 1.1)
-    options.http_proxy   = args.get_conf_arg("http_proxy")
-    options.https_proxy  = args.get_conf_arg("https_proxy")
-    options.keepalive    = args.get_conf_arg("keepalive", true)
-    options.ssl_verify   = args.get_conf_arg("ssl_verify", true)
-    options.timeout      = args.get_conf_arg("timeout", 10000)
+    options.http_version              = args.get_conf_arg("http_version", 1.1)
+    options.http_proxy                = args.get_conf_arg("http_proxy")
+    options.http_proxy_authorization  = args.get_conf_arg("http_proxy_authorization")
+    options.https_proxy               = args.get_conf_arg("https_proxy")
+    options.https_proxy_authorization = args.get_conf_arg("https_proxy_authorization")
+    options.no_proxy                  = args.get_conf_arg("no_proxy")
+    options.keepalive                 = args.get_conf_arg("keepalive", true)
+    options.ssl_verify                = args.get_conf_arg("ssl_verify", true)
+    options.timeout                   = args.get_conf_arg("timeout", 10000)
     return options
   end
 end
@@ -917,26 +920,29 @@ function OICHandler:access(conf)
     end
 
     options = {
-      client_id         = trusted_client.id,
-      client_secret     = trusted_client.secret,
-      redirect_uri      = trusted_client.redirect_uri,
-      scope             = args.get_conf_arg("scopes", {}),
-      response_mode     = args.get_conf_arg("response_mode"),
-      audience          = args.get_conf_arg("audience"),
-      domains           = args.get_conf_arg("domains"),
-      max_age           = args.get_conf_arg("max_age"),
-      timeout           = args.get_conf_arg("timeout", 10000),
-      leeway            = args.get_conf_arg("leeway", 0),
-      http_version      = args.get_conf_arg("http_version", 1.1),
-      http_proxy        = args.get_conf_arg("http_proxy"),
-      https_proxy       = args.get_conf_arg("https_proxy"),
-      keepalive         = args.get_conf_arg("keepalive", true),
-      ssl_verify        = args.get_conf_arg("ssl_verify", true),
-      verify_parameters = args.get_conf_arg("verify_parameters"),
-      verify_nonce      = args.get_conf_arg("verify_nonce"),
-      verify_signature  = args.get_conf_arg("verify_signature"),
-      verify_claims     = args.get_conf_arg("verify_claims"),
-      rediscover_keys   = rediscover_keys(issuer_uri, discovery_options),
+      client_id                 = trusted_client.id,
+      client_secret             = trusted_client.secret,
+      redirect_uri              = trusted_client.redirect_uri,
+      scope                     = args.get_conf_arg("scopes", {}),
+      response_mode             = args.get_conf_arg("response_mode"),
+      audience                  = args.get_conf_arg("audience"),
+      domains                   = args.get_conf_arg("domains"),
+      max_age                   = args.get_conf_arg("max_age"),
+      timeout                   = args.get_conf_arg("timeout", 10000),
+      leeway                    = args.get_conf_arg("leeway", 0),
+      http_version              = args.get_conf_arg("http_version", 1.1),
+      http_proxy                = args.get_conf_arg("http_proxy"),
+      http_proxy_authorization  = args.get_conf_arg("http_proxy_authorization"),
+      https_proxy               = args.get_conf_arg("https_proxy"),
+      https_proxy_authorization = args.get_conf_arg("http_proxy_authorization"),
+      no_proxy                  = args.get_conf_arg("no_proxy"),
+      keepalive                 = args.get_conf_arg("keepalive", true),
+      ssl_verify                = args.get_conf_arg("ssl_verify", true),
+      verify_parameters         = args.get_conf_arg("verify_parameters"),
+      verify_nonce              = args.get_conf_arg("verify_nonce"),
+      verify_signature          = args.get_conf_arg("verify_signature"),
+      verify_claims             = args.get_conf_arg("verify_claims"),
+      rediscover_keys           = rediscover_keys(issuer_uri, discovery_options),
     }
 
     log("initializing library")

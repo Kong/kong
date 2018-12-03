@@ -675,12 +675,13 @@ local function token_exchange_load(endpoint, opts)
   end
 
   if httpc.set_proxy_options and (opts.http_proxy  or
-                                  opts.https_proxy or
-                                  opts.no_proxy) then
+                                  opts.https_proxy) then
     httpc:set_proxy_options({
-      http_proxy  = opts.http_proxy,
-      https_proxy = opts.https_proxy,
-      no_proxy    = opts.no_proxy,
+      http_proxy                = opts.http_proxy,
+      http_proxy_authorization  = opts.http_proxy_authorization,
+      https_proxy               = opts.https_proxy,
+      https_proxy_authorization = opts.https_proxy_authorization,
+      no_proxy                  = opts.no_proxy,
     })
   end
 
@@ -786,5 +787,5 @@ return {
   tokens         = tokens,
   token_exchange = token_exchange,
   userinfo       = userinfo,
-  version        = "0.2.5",
+  version        = "0.2.6",
 }

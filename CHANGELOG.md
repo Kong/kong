@@ -1,3 +1,11 @@
+## v0.2.6
+
+- Fix schema `self_check` to verify `issuer` only when given (e.g. when `PATCH`ing).
+- Add `config.http_proxy_authorization`
+- Add `config.https_proxy_authorization`
+- Add `config.no_proxy`
+
+
 ## v0.2.5
 
 - Add `sub-plugins` back to `.rockspec` too, :-/.

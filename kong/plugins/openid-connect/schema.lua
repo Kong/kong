@@ -18,29 +18,34 @@ end
 
 local function self_check(_, conf)
   local phase = get_phase()
-  if phase == "access" or phase == "content" then
-    local args = arguments(conf)
+  if phase ~= "access" and phase ~= "content" then
+    return true
+  end
 
-    local issuer_uri = args.get_conf_arg("issuer")
-    if not issuer_uri then
-      return false, "issuer was not specified"
-    end
+  local args = arguments(conf)
 
-    local options = {
-      http_version    = args.get_conf_arg("http_version", 1.1),
-      http_proxy      = args.get_conf_arg("http_proxy"),
-      https_proxy     = args.get_conf_arg("https_proxy"),
-      keepalive       = args.get_conf_arg("keepalive", true),
-      ssl_verify      = args.get_conf_arg("ssl_verify", true),
-      timeout         = args.get_conf_arg("timeout", 10000),
-      extra_jwks_uris = args.get_conf_arg("extra_jwks_uris"),
-      headers         = args.get_conf_args("discovery_headers_names", "discovery_headers_values"),
-    }
+  local issuer_uri = args.get_conf_arg("issuer")
+  if not issuer_uri then
+    return true
+  end
 
-    local issuer = cache.issuers.load(issuer_uri, options)
-    if not issuer then
-      return false, Errors.schema("openid connect discovery failed")
-    end
+  local options = {
+    http_version              = args.get_conf_arg("http_version", 1.1),
+    http_proxy                = args.get_conf_arg("http_proxy"),
+    http_proxy_authorization  = args.get_conf_arg("http_proxy_authorization"),
+    https_proxy               = args.get_conf_arg("https_proxy"),
+    https_proxy_authorization = args.get_conf_arg("https_proxy_authorization"),
+    no_proxy                  = args.get_conf_arg("no_proxy"),
+    keepalive                 = args.get_conf_arg("keepalive", true),
+    ssl_verify                = args.get_conf_arg("ssl_verify", true),
+    timeout                   = args.get_conf_arg("timeout", 10000),
+    extra_jwks_uris           = args.get_conf_arg("extra_jwks_uris"),
+    headers                   = args.get_conf_args("discovery_headers_names", "discovery_headers_values"),
+  }
+
+  local issuer = cache.issuers.load(issuer_uri, options)
+  if not issuer then
+    return false, Errors.schema("openid connect discovery failed")
   end
 
   return true
@@ -746,9 +751,21 @@ return {
       required                         = false,
       type                             = "url",
     },
+    http_proxy_authorization           = {
+      required                         = false,
+      type                             = "string",
+    },
     https_proxy                        = {
       required                         = false,
       type                             = "url",
+    },
+    https_proxy_authorization          = {
+      required                         = false,
+      type                             = "string",
+    },
+    no_proxy                           = {
+      required                         = false,
+      type                             = "string",
     },
     keepalive                          = {
       required                         = false,
