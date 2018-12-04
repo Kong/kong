@@ -214,7 +214,7 @@ function _TARGETS:page_for_upstream(upstream_pk, size, offset, options)
 
   local next_offset
   if all_active_targets[size + offset + 1] then
-    next_offset = size + offset
+    next_offset = tostring(size + offset)
   end
 
   return page, nil, nil, next_offset
