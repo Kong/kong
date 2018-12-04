@@ -2297,7 +2297,7 @@ This release includes support for PostgreSQL as Kong's primary datastore!
 
 > **internal**
 > - replace globals with singleton pattern thanks to [@mars](https://github.com/mars).
-> - fixed resolution mismatches when using deep paths in the path resolver thanks to [siddharthkchatterjee](https://github.com/siddharthkchatterjee)
+> - fixed resolution mismatches when using deep paths in the path resolver
 
 [Back to TOC](#table-of-contents)
 
@@ -2366,7 +2366,7 @@ This release contains tiny bug fixes that were especially annoying for complex C
 
  We would recommended to consult the suggested [0.6 upgrade path](https://github.com/Kong/kong/blob/master/UPGRADE.md#upgrade-to-06x) for this release.
 
-- [Serf](https://www.serfdom.io) is now a Kong dependency. It allows Kong nodes to communicate between each other opening the way to many features and improvements.
+- [Serf](https://www.serf.io/) is now a Kong dependency. It allows Kong nodes to communicate between each other opening the way to many features and improvements.
 - The configuration file changed. Some properties were renamed, others were moved, and some are new. We would recommend checking out the new default configuration file.
 - Drop the Lua 5.1 dependency which was only used by the CLI. The CLI now runs with LuaJIT, which is consistent with other Kong components (Luarocks and OpenResty) already relying on LuaJIT. Make sure the LuaJIT interpreter is included in your `$PATH`. [#799](https://github.com/Kong/kong/pull/799)
 
@@ -2443,7 +2443,7 @@ Other additions include:
 
 > ***internal***
 > - Event bus for local and cluster-wide events propagation. Plans for this event bus is to be widely used among Kong in the future.
-> - The Kong Public Lua API (Lua helpers integrated in Kong such as DAO and Admin API helpers) is now documented with [ldoc](http://stevedonovan.github.io/ldoc/) format and published on [the online documentation](https://getkong.org/docs/latest/lua-reference/).
+> - The Kong Public Lua API (Lua helpers integrated in Kong such as DAO and Admin API helpers) is now documented with [ldoc](http://stevedonovan.github.io/ldoc/) format
 > - Work has been done to restore the reliability of the CI platforms.
 > - Migrations can now execute DML queries (instead of DDL queries only). Handy for migrations implying plugin configuration changes, plugins renamings etc... [#770](https://github.com/Kong/kong/pull/770)
 
@@ -2519,8 +2519,7 @@ With new plugins, many improvements and bug fixes, this release comes with break
 
 ### Breaking changes
 
-Several breaking changes are introduced. You will have to slightly change your configuration file and a migration script will take care of updating your database cluster. **Please follow the instructions in [UPDATE.md](/UPDATE.md#update-to-kong-050) for an update without downtime**.
-
+Several breaking changes are introduced. You will have to slightly change your configuration file and a migration script will take care of updating your database cluster. 
 - Many plugins were renamed due to new naming conventions for consistency. [#480](https://github.com/Kong/kong/issues/480)
 - In the configuration file, the Cassandra `hosts` property was renamed to `contact_points`. [#513](https://github.com/Kong/kong/issues/513)
 - Properties belonging to APIs entities have been renamed for clarity. [#513](https://github.com/Kong/kong/issues/513)
