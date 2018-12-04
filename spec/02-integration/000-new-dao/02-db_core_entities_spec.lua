@@ -19,6 +19,8 @@ for _, strategy in helpers.each_strategy() do
         "routes",
         "services",
         "basicauth_credentials",
+        "upstreams",
+        "targets",
       })
     end)
 
@@ -1849,5 +1851,26 @@ for _, strategy in helpers.each_strategy() do
         end) -- paginates
       end) -- routes:page_for_service()
     end) -- Services and Routes association
+    describe("Targets", function()
+      local upstream
+
+      lazy_setup(function()
+        upstream = bp.upstreams:insert()
+        for i = 1, 2 do
+          bp.targets:insert({
+            upstream = upstream,
+            target = "target" .. i,
+          })
+        end
+      end)
+
+      it("offset is a string", function()
+        local page, _, _, offset = db.targets:page_for_upstream({
+          id = upstream.id,
+        }, 1)
+        assert.not_nil(page)
+        assert.is_string(offset)
+      end)
+    end)
   end) -- kong.db [strategy]
 end
