@@ -239,12 +239,12 @@ local function new(self, major_version)
       return "error"
     end
 
-    if ctx.KONG_PROXIED then
-      return "service"
-    end
-
     if ctx.KONG_EXITED then
       return "exit"
+    end
+
+    if ctx.KONG_PROXIED then
+      return "service"
     end
 
     return "error"
