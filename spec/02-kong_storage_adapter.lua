@@ -1,4 +1,3 @@
-local utils = require "kong.tools.utils"
 local helpers = require "spec.helpers"
 
 
@@ -80,37 +79,6 @@ for _, strategy in helpers.each_strategy() do
     end)      
 
     describe("kong adapter - ", function()
-      it("uses kong adapter successfully", function()
-        local res = assert(client:send {
-          method = "GET",
-          path = "/test1/status/200",
-          headers = {
-            host = "httpbin.org",
-          },
-        })
-  
-        assert.response(res).has.status(200)
-  
-        local cookie = assert.response(res).has.header("Set-Cookie")
-        local cookie_name = utils.split(cookie, "=")[1]
-        local cookie_val = utils.split(utils.split(cookie, "=")[2], ";")[1]
-        assert.equal("session", cookie_name)
-  
-        res = assert(client:send {
-          method = "GET",
-          path = "/test1/status/200",
-          headers = {
-            host = "httpbin.org",
-            cookie = cookie,
-          },
-        })
-  
-        assert.response(res).has.status(200)
-        local cookie2 = assert.response(res).has.header("Set-Cookie")
-        local cookie_val2 = utils.split(utils.split(cookie2, "=")[2], ";")[1]
-        assert.equal(cookie_val, cookie_val2)
-      end)
-
       it("kong adapter stores consumer", function()  
         local res, cookie
         local request = {

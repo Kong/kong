@@ -21,5 +21,20 @@ return {
       },
       default = "cookie",
     },
+    logout_methods = {
+      type = "array",
+      enum = { "POST", "GET", "DELETE" },
+      default = { "POST", "DELETE" }
+    },
+    logout_query_arg = { 
+      required = false,
+      type = "string",
+      default = "session_logout",
+    },
+    logout_post_arg = { 
+      required = false, 
+      type = "string",
+      default = "session_logout",
+    },
   }
 }

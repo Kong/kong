@@ -16,12 +16,22 @@ end
 
 function KongSessionHandler:header_filter(conf)
   KongSessionHandler.super.header_filter(self)
-  
-  local s = session.open_session(conf)
+  local ctx = ngx.ctx
 
-  s.data.authenticated_credential = ngx.ctx.authenticated_credential
-  s.data.authenticated_consumer = ngx.ctx.authenticated_consumer
-  s:save()
+  local credential_id = ctx.authenticated_credential and ctx.authenticated_credential.id
+  local consumer_id = ctx.authenticated_consumer and ctx.authenticated_consumer.id
+
+  -- save the session if we find ctx.authenticated_ variables
+  if consumer_id then
+    if not credential_id then
+      credential_id = consumer_id
+    end
+
+    local s = session.open_session(conf)
+    s.data.authenticated_credential = credential_id
+    s.data.authenticated_consumer = consumer_id
+    s:save()
+  end
 end
 
 

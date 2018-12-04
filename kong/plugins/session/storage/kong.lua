@@ -2,6 +2,8 @@ local singletons   = require "kong.singletons"
 local concat       = table.concat
 local tonumber     = tonumber
 local setmetatable = setmetatable
+local floor        = math.floor
+local now          = ngx.now
 
 local kong_storage = {}
 
@@ -59,7 +61,7 @@ function kong_storage:cookie(c)
 end
 
 
-function kong_storage:open(cookie)
+function kong_storage:open(cookie, lifetime)
   local c = self:cookie(cookie)
 
   if c and c[1] and c[2] and c[3] and c[4] then
@@ -70,7 +72,17 @@ function kong_storage:open(cookie)
 
     if ngx.get_phase() ~= 'header_filter' then
       local db_s = self:get(key)
-      data = (db_s and self.decode(db_s.data)) or d
+      if db_s then
+        local _, err = self.dao.sessions:update({ id = db_s.id }, {
+          expires = floor(lifetime),
+        })
+
+        if err then
+          ngx.log(ngx.ERR, "Error update expiry of session: ", err)
+        end
+
+        data = self.decode(db_s.data)
+      end
     end
     
     return id, expires, data, hmac
@@ -81,33 +93,37 @@ end
 
 
 function kong_storage:save(id, expires, data, hmac)
-  local value = concat({self:key(id), expires, self.encode(data),
+  local life, key = floor(expires - now()), self:key(id)
+  local value = concat({key, expires, self.encode(data),
                         self.encode(hmac)}, self.delimiter)
   
-  ngx.timer.at(0, function()
-    local key = self:key(id)
-    local s = self:get(key)
-    local err, _
-    
-    if s then
-      _, err = self.dao.sessions:update({ id = s.id, }, {
-        data = self.encode(data),
-        expires = expires,
-      })
-    else
-      _, err = self.dao.sessions:insert({
-        sid = self:key(id),
-        data = self.encode(data),
-        expires = expires,
-      })
-    end
+  if life > 0 then
+    ngx.timer.at(0, function()
+      local s = self:get(key)
+      local err, _
+      
+      if s then
+        _, err = self.dao.sessions:update({ id = s.id }, {
+          data = self.encode(data),
+          expires = expires,
+        })
+      else
+        _, err = self.dao.sessions:insert({
+          sid = self:key(id),
+          data = self.encode(data),
+          expires = expires,
+        })
+      end
 
-    if err then
-      ngx.log(ngx.ERR, "Error inserting session: ", err)
-    end
-  end)
+      if err then
+        ngx.log(ngx.ERR, "Error inserting session: ", err)
+      end
+    end)
 
-  return value
+    return value
+  end
+  
+  return nil, "expired" 
 end
 
 
