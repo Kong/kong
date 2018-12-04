@@ -6,6 +6,9 @@
 - Add `config.no_proxy`
 - Add `config.logout_revoke_access_token`
 - Add `config.logout_revoke_refresh_token`
+- Add `config.refresh_token_param_name`
+- Add `config.refresh_token_param_type`
+- Add `config.refresh_tokens`
 
 
 ## v0.2.5

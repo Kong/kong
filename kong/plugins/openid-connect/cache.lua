@@ -601,7 +601,18 @@ function tokens.load(oic, args, ttl, use_cache, flush)
   local err
 
   if use_cache or flush then
-    if args.grant_type == "password" then
+    if args.grant_type == "refresh_token" then
+      if not args.refresh_token then
+        return nil, "no credentials given for refresh token grant"
+      end
+
+      key = cache_key(base64.encode(hash.S256(concat {
+        iss,
+        "#grant_type=refresh_token&",
+        args.refresh_token,
+      })))
+
+    elseif args.grant_type == "password" then
       if not args.username or not args.password then
         return nil, "no credentials given for password grant"
       end
@@ -611,7 +622,7 @@ function tokens.load(oic, args, ttl, use_cache, flush)
         "#grant_type=password&",
         args.username,
         "&",
-        args.password
+        args.password,
       })))
 
     elseif args.grant_type == "client_credentials" then
@@ -624,7 +635,7 @@ function tokens.load(oic, args, ttl, use_cache, flush)
         "#grant_type=client_credentials&",
         args.client_id,
         "&",
-        args.client_secret
+        args.client_secret,
       })))
     end
 

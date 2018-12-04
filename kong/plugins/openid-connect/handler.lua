@@ -765,7 +765,7 @@ local function get_credentials(args, auth_methods, credential_type, usr_arg, pwd
         local username = args.get_uri_arg(usr_arg)
         local password = args.get_uri_arg(pwd_arg)
         if username and password then
-          return username, password, "uri"
+          return username, password, "query"
         end
       end
 
@@ -1134,7 +1134,8 @@ function OICHandler:access(conf)
   end
 
   -- find credentials
-  local token_endpoint_args, bearer_token
+  local bearer_token
+  local token_endpoint_args
   if not session_present then
     local hide_credentials = args.get_conf_arg("hide_credentials", false)
 
@@ -1223,7 +1224,7 @@ function OICHandler:access(conf)
               if loc == "header" then
                 args.clear_header(id_token_param_name, "X")
 
-              elseif loc == "uri" then
+              elseif loc == "query" then
                 args.clear_uri_arg(id_token_param_name)
 
               elseif loc == "post" then
@@ -1247,7 +1248,48 @@ function OICHandler:access(conf)
     end
 
     if not bearer_token then
-      do
+      if auth_methods.refresh_token then
+        local refresh_token_param_name = args.get_conf_arg("refresh_token_param_name")
+        if refresh_token_param_name then
+          log("trying to find refresh token")
+
+          local refresh_token, loc = args.get_req_arg(
+            refresh_token_param_name,
+            args.get_conf_arg("refresh_token_param_type", PARAM_TYPES_ALL)
+          )
+
+          if refresh_token then
+            log("found refresh token")
+            if hide_credentials then
+              log("hiding credentials from ", loc)
+              if loc == "header" then
+                args.clear_header(refresh_token_param_name, "X")
+
+              elseif loc == "query" then
+                args.clear_uri_arg(refresh_token_param_name)
+
+              elseif loc == "post" then
+                args.clear_post_arg(refresh_token_param_name)
+
+              elseif loc == "json" then
+                args.clear_json_arg(refresh_token_param_name)
+              end
+            end
+
+            token_endpoint_args = {
+              {
+                refresh_token = refresh_token,
+                grant_type    = "refresh_token",
+              },
+            }
+
+          else
+            log("refresh token was not found")
+          end
+        end
+      end
+
+      if not token_endpoint_args then
         log("trying to find credentials for client credentials or password grants")
 
         local usr, pwd, loc1 = get_credentials(args, auth_methods, "password",           "username",  "password")
@@ -1302,7 +1344,7 @@ function OICHandler:access(conf)
           end
 
           if loc1 then
-            if loc1 == "uri" then
+            if loc1 == "query" then
               args.clear_uri_arg("username", "password", "grant_type")
 
             elseif loc1 == "post" then
@@ -1314,7 +1356,7 @@ function OICHandler:access(conf)
           end
 
           if loc2 then
-            if loc2 == "uri" then
+            if loc2 == "query" then
               args.clear_uri_arg("client_id", "client_secret", "grant_type")
 
             elseif loc2 == "post" then
@@ -1647,7 +1689,7 @@ function OICHandler:access(conf)
 
   elseif not tokens_encoded then
     -- let's try to retrieve tokens when using authorization code flow,
-    -- password credentials or client credentials
+    -- password credentials, client credentials or refresh_token
     if token_endpoint_args then
       for _, arg in ipairs(token_endpoint_args) do
         arg.args = args.get_conf_args("token_post_args_names", "token_post_args_values")
@@ -1679,7 +1721,8 @@ function OICHandler:access(conf)
           log("trying to exchange credentials using token endpoint with caching enabled")
           tokens_encoded, err, downstream_headers = cache.tokens.load(oic, arg, ttl_default, true)
 
-          if tokens_encoded and (arg.grant_type == "password" or
+          if tokens_encoded and (arg.grant_type == "refresh_token" or
+                                 arg.grant_type == "password" or
                                  arg.grant_type == "client_credentials") then
 
             log("verifying tokens")
@@ -1761,7 +1804,8 @@ function OICHandler:access(conf)
     log("found access token")
   end
 
-  if auth_methods.refresh_token and tokens_encoded.refresh_token then
+  local refresh_tokens = args.get_conf_arg("refresh_tokens", true)
+  if refresh_tokens and tokens_encoded.refresh_token then
     exp = (exp or lwy) - lwy
   else
     exp = (exp or lwy) + lwy
@@ -1799,7 +1843,7 @@ function OICHandler:access(conf)
   else
     log("access token has expired")
 
-    if auth_methods.refresh_token then
+    if refresh_tokens then
       -- access token has expired, try to refresh the access token before proxying
       if not tokens_encoded.refresh_token then
         return unauthorized(ctx,

@@ -356,6 +356,29 @@ return {
         "body",
       },
     },
+    refresh_token_param_name           = {
+      required                         = false,
+      type                             = "string",
+    },
+    refresh_token_param_type           = {
+      required                         = false,
+      type                             = "array",
+      enum                             = {
+        "header",
+        "query",
+        "body",
+      },
+      default                          = {
+        "header",
+        "query",
+        "body",
+      },
+    },
+    refresh_tokens                     = {
+      required                         = false,
+      type                             = "boolean",
+      default                          = true,
+    },
     client_credentials_param_type      = {
       required                         = false,
       type                             = "array",

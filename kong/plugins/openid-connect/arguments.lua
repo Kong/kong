@@ -368,7 +368,7 @@ local function create_get_req_arg(get_header, get_uri_arg, get_body_arg)
 
       arg = get_uri_arg(name)
       if arg then
-        return arg, "uri"
+        return arg, "query"
       end
 
       return get_body_arg(name)
@@ -378,7 +378,7 @@ local function create_get_req_arg(get_header, get_uri_arg, get_body_arg)
       if location == "header" then
         local arg = get_header(name)
         if arg then
-          return arg, "uri"
+          return arg, "header"
         end
 
       elseif location == "query" then
