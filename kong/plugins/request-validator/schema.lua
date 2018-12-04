@@ -1,5 +1,5 @@
 local Errors = require "kong.dao.errors"
-local metaschema = require "kong.db.schema.metaschema"
+local metaschema = require "kong.plugins.request-validator.metaschema"
 local utils = require "kong.plugins.request-validator.utils"
 
 
