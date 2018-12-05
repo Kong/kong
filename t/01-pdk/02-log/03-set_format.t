@@ -353,7 +353,7 @@ GET /t
 --- request
 GET /t
 --- no_response_body
---- error_log
-[kong] [%%namespace: my_namespace | my_namespace, %%file_src: content_by_lua(nginx.conf:192) | content_by_lua(nginx.conf:192), %%line_src: 14 | 14, %%func_name my_func | my_func, %%message hello world | hello world]
+--- error_log eval
+qr/\[kong\] \[%%namespace: my_namespace \| my_namespace, %%file_src: content_by_lua\(nginx.conf:\d+\) \| content_by_lua\(nginx.conf:\d+\), %%line_src: 14 \| 14, %%func_name my_func \| my_func, %%message hello world \| hello world\]/
 --- no_error_log
 [error]
