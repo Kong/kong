@@ -19,7 +19,7 @@ for _, strategy in helpers.each_strategy() do
 
     local service_fixture
 
-    lazy_setup(function()
+    setup(function()
       local bp = helpers.get_db_utils(strategy, {
         "apis",
         "routes",
@@ -64,7 +64,7 @@ for _, strategy in helpers.each_strategy() do
       end
     end)
 
-    lazy_teardown(function()
+    teardown(function()
       helpers.stop_kong("servroot1", true)
       helpers.stop_kong("servroot2", true)
     end)
@@ -89,7 +89,7 @@ for _, strategy in helpers.each_strategy() do
 
 
     describe("Routes (router)", function()
-      lazy_setup(function()
+      setup(function()
         -- populate cache with a miss on
         -- both nodes
 
@@ -396,7 +396,7 @@ for _, strategy in helpers.each_strategy() do
         return stderr
       end
 
-      lazy_setup(function()
+      setup(function()
         -- populate cache with a miss on
         -- both nodes
         local cert_1 = get_cert(8443, "ssl-example.com")
