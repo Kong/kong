@@ -4,6 +4,8 @@ local utils      = require "kong.tools.utils"
 local tablex = require "pl.tablex"
 local cjson = require "cjson"
 
+local enums = require "kong.enterprise_edition.dao.enums"
+
 
 local find    = string.find
 local format  = string.format
@@ -538,7 +540,7 @@ function _M.add_entity_relation(table_name, entity, workspace)
     end
   end
 
-  inc_counter(singletons.dao, workspace.id, table_name, 1);
+  inc_counter(singletons.dao, workspace.id, table_name, entity, 1);
   local _, err = add_entity_relation_db(singletons.dao.workspace_entities, workspace,
                                         entity[constraints.primary_key],
                                         table_name, constraints.primary_key,
@@ -578,7 +580,7 @@ function _M.delete_entity_relation(table_name, entity)
     end
 
     if not seen[row.workspace_id] then
-      inc_counter(singletons.dao, row.workspace_id, table_name, -1);
+      inc_counter(singletons.dao, row.workspace_id, table_name, entity, -1);
       seen[row.workspace_id] = true
     end
   end
@@ -969,7 +971,7 @@ local function load_entity_map(ws_scope, table_name)
   return ws_entities_map
 end
 
--- cache enmities map in memory for current request
+-- cache entities map in memory for current request
 -- ws_scope table has a life of current proxy request only
 local entity_map_cache = setmetatable({}, { __mode = "k" })
 local function workspace_entities_map(ws_scope, table_name)
@@ -1122,7 +1124,43 @@ end
 _M.counts = counts
 
 
-inc_counter = function (dao, ws, entity_type, count)
+-- Return if entity is relevant to entity counts per workspace. Only
+-- non-proxy consumers should not be counted.
+local function should_be_counted(dao, entity_type, entity)
+  if entity_type ~= "consumers" then
+    return true
+  end
+
+  -- some call sites do not provide the consumer.type and only pass
+  -- the id of the entity. In that case, we have to first fetch the
+  -- complete entity object
+  if not entity.type then
+    local err
+    entity, err = dao[entity_type]:find({id = entity.id})
+    if err then
+      return nil, err
+    end
+    if not entity then
+      -- The entity is not in the DB. We might be in the middle of the
+      -- callback.
+      return false
+    end
+  end
+
+  if entity.type ~= enums.CONSUMERS.TYPE.PROXY then
+    return false
+  end
+
+  return true
+end
+
+
+inc_counter = function(dao, ws, entity_type, entity, count)
+
+  if not should_be_counted(dao, entity_type, entity) then
+    return
+  end
+
   if dao.db_type == "cassandra" then
 
     local _, err = dao.db.cluster:execute([[

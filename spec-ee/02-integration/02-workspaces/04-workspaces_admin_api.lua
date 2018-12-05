@@ -1144,7 +1144,9 @@ dao_helpers.for_each_dao(function(kong_config)
       helpers.get_db_utils(kong_config.database)
 
       assert(helpers.start_kong{
-        database = kong_config.database
+        database = kong_config.database,
+        portal_auth = "basic-auth",  -- useful only for admin test
+        mock_smtp = true,
       })
       client = assert(helpers.admin_client())
     end)
@@ -1238,6 +1240,19 @@ dao_helpers.for_each_dao(function(kong_config)
         path   = "/ws1/workspaces/default/meta",
       })
       assert.res_status(404, res)
+    end)
+
+    it("admins nor developers do not modify consumers' counters", function()
+      local before = get("/workspaces/default/meta").consumers
+      post("/admins", {username = "foo", email = "email@email.com"}, nil, 200)
+      post("/portal/developers", {username = "bar", email = "email@email2.com"})
+      local after = get("/workspaces/default/meta").consumers
+      assert.is_equal(before, after)
+
+      delete("/admins/foo")
+      delete("/portal/developers/email@email2.com")
+      after = get("/workspaces/default/meta").consumers
+      assert.is_equal(before, after)
     end)
 
   end)

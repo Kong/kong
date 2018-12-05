@@ -240,7 +240,7 @@ return {
           end
         end
 
-        workspaces.inc_counter(dao_factory, self.workspace.id, ws_e[1].entity_type, -1)
+        workspaces.inc_counter(dao_factory, self.workspace.id, ws_e[1].entity_type, { id = e }, -1)
 
         -- find out if the entity is still in any workspace
         local rows
