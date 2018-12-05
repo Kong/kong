@@ -51,6 +51,9 @@ local get_local_key = function(conf, identifier, period_date, name)
 end
 
 
+local sock_opts = {}
+
+
 local EXPIRATIONS = {
   second = 1,
   minute = 60,
@@ -136,7 +139,13 @@ return {
     increment = function(conf, limits, identifier, current_timestamp, value)
       local red = redis:new()
       red:set_timeout(conf.redis_timeout)
-      local ok, err = red:connect(conf.redis_host, conf.redis_port)
+      -- use a special pool name only if redis_database is set to non-zero
+      -- otherwise use the default pool name host:port
+      sock_opts.pool = conf.redis_database and
+                       conf.redis_host .. ":" .. conf.redis_port .. 
+                       ":" .. conf.redis_database
+      local ok, err = red:connect(conf.redis_host, conf.redis_port,
+                                  sock_opts)
       if not ok then
         ngx_log(ngx.ERR, "failed to connect to Redis: ", err)
         return nil, err
@@ -148,27 +157,24 @@ return {
         return nil, err
       end
 
-      if times == 0 and conf.redis_password and conf.redis_password ~= "" then
-        local ok, err = red:auth(conf.redis_password)
-        if not ok then
-          ngx_log(ngx.ERR, "failed to auth Redis: ", err)
-          return nil, err
+      if times == 0 then
+        if conf.redis_password and conf.redis_password ~= "" then
+          local ok, err = red:auth(conf.redis_password)
+          if not ok then
+            ngx_log(ngx.ERR, "failed to auth Redis: ", err)
+            return nil, err
+          end
         end
-      end
 
-      if times ~= 0 or conf.redis_database then
-        -- The connection pool is shared between multiple instances of this
-        -- plugin, and instances of the response-ratelimiting plugin.
-        -- Because there isn't a way for us to know which Redis database a given
-        -- socket is connected to without a roundtrip, we force the retrieved
-        -- socket to select the desired database.
-        -- When the connection is fresh and the database is the default one, we
-        -- can skip this roundtrip.
+        if conf.redis_database ~= 0 then
+          -- Only call select first time, since we know the connection is shared
+          -- between instances that use the same redis database
 
-        local ok, err = red:select(conf.redis_database or 0)
-        if not ok then
-          ngx_log(ngx.ERR, "failed to change Redis database: ", err)
-          return nil, err
+          local ok, err = red:select(conf.redis_database)
+          if not ok then
+            ngx_log(ngx.ERR, "failed to change Redis database: ", err)
+            return nil, err
+          end
         end
       end
 
