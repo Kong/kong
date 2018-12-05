@@ -1,6 +1,6 @@
 local ffi = require "ffi"
-local pushssl = require "openssl.ssl".pushffi -- will define SSL* in ffi
-local get_ssl_pointer = require "ngx.ssl".get_ssl_pointer
+local openssl = require "openssl.ssl"
+local ngx_ssl = require "ngx.ssl"
 
 
 local getssl
@@ -17,12 +17,12 @@ else
   local SSLp = ffi.typeof "SSL*"
 
   function getssl()
-    local ptr, err = get_ssl_pointer()
+    local ptr, err = ngx_ssl.get_ssl_pointer()
     if not ptr then
       return nil, err
     end
     ptr = cast(SSLp, ptr)
-    return pushssl(ptr)
+    return openssl.pushssl(ptr)
   end
 end
 
