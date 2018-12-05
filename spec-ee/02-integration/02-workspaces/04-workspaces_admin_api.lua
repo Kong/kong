@@ -625,6 +625,20 @@ describe("(#" .. kong_config.database .. ") Admin API workspaces", function()
     end)
 
     describe("DELETE", function()
+      it("fails to remove an unexisting entity relationship", function()
+        local res = assert(client:send {
+          method = "DELETE",
+          path = "/workspaces/foo/entities",
+          body = {
+            entities = utils.uuid()
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+        })
+
+        assert.res_status(404, res)
+      end)
       it("removes a relationship", function()
         local n = dao.workspace_entities:find_all({
           workspace_id = dao.workspaces:find_all({ name = "foo" })[1].id
