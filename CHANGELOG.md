@@ -2519,7 +2519,7 @@ With new plugins, many improvements and bug fixes, this release comes with break
 
 ### Breaking changes
 
-Several breaking changes are introduced. You will have to slightly change your configuration file and a migration script will take care of updating your database cluster. 
+Several breaking changes are introduced. You will have to slightly change your configuration file and a migration script will take care of updating your database cluster. Please follow the instructions in [UPGRADE.md](/UPGRADE.md#update-to-kong-050) for an update without downtime.
 - Many plugins were renamed due to new naming conventions for consistency. [#480](https://github.com/Kong/kong/issues/480)
 - In the configuration file, the Cassandra `hosts` property was renamed to `contact_points`. [#513](https://github.com/Kong/kong/issues/513)
 - Properties belonging to APIs entities have been renamed for clarity. [#513](https://github.com/Kong/kong/issues/513)
