@@ -88,7 +88,7 @@ http {
         listen ${{PROXY_LISTEN_SSL}} ssl${{HTTP2}}${{PROXY_PROTOCOL}};
         ssl_certificate ${{SSL_CERT}};
         ssl_certificate_key ${{SSL_CERT_KEY}};
-        ssl_protocols TLSv1.1 TLSv1.2;
+        ssl_protocols TLSv1.1 TLSv1.2 TLSv1.3;
         ssl_certificate_by_lua_block {
             Kong.ssl_certificate()
         }
@@ -168,7 +168,7 @@ http {
         listen ${{ADMIN_LISTEN_SSL}} ssl${{ADMIN_HTTP2}};
         ssl_certificate ${{ADMIN_SSL_CERT}};
         ssl_certificate_key ${{ADMIN_SSL_CERT_KEY}};
-        ssl_protocols TLSv1.1 TLSv1.2;
+        ssl_protocols TLSv1.1 TLSv1.2 TLSv1.3;
 > end
 
         location / {
@@ -195,7 +195,7 @@ http {
 
         ssl_certificate ${{SSL_CERT}};
         ssl_certificate_key ${{SSL_CERT_KEY}};
-        ssl_protocols TLSv1.1 TLSv1.2;
+        ssl_protocols TLSv1.1 TLSv1.2 TLSv1.3;
 
         location ~ "/2015-03-31/functions/(?:[^/])*/invocations" {
             content_by_lua_block {
@@ -245,7 +245,7 @@ http {
 
         ssl_certificate ${{SSL_CERT}};
         ssl_certificate_key ${{SSL_CERT_KEY}};
-        ssl_protocols TLSv1.1 TLSv1.2;
+        ssl_protocols TLSv1.1 TLSv1.2 TLSv1.3;
 
         set_real_ip_from 127.0.0.1;
 
