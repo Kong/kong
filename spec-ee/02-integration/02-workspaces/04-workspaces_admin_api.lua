@@ -1234,12 +1234,7 @@ dao_helpers.for_each_dao(function(kong_config)
 
     it("returns 404 if we call from another workspace", function()
       post("/workspaces", {name = "ws1"})
-
-      local res = assert(client:send {
-        method = "GET",
-        path   = "/ws1/workspaces/default/meta",
-      })
-      assert.res_status(404, res)
+      get("/ws1/workspaces/default/meta", nil, 404)
     end)
 
     it("admins nor developers do not modify consumers' counters", function()
