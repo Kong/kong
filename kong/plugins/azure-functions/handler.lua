@@ -54,11 +54,10 @@ function azure:access(config)
   config = conf
 
   local client = http.new()
-  local request_method = get_method()
-  read_body()
-  local request_body = get_body_data()
-  local request_headers = get_headers()
-  local request_args = get_uri_args()
+  local request_method = kong.request.get_method()
+  local request_body = kong.request.get_raw_body()
+  local request_headers = kong.request.get_headers()
+  local request_args = kong.request.get_query()
 
   client:set_timeout(config.timeout)
 
@@ -69,14 +68,14 @@ function azure:access(config)
   end
 
   if config.https then
-    local ok, err = client:ssl_handshake(false, config.host, config.https_verify)
-    if not ok then
-      kong.log.err("could not perform SSL handshake : ", err)
+    local ok2, err2 = client:ssl_handshake(false, config.host, config.https_verify)
+    if not ok2 then
+      kong.log.err("could not perform SSL handshake : ", err2)
       return kong.response.exit(500, { message = "An unexpected error ocurred" })
     end
   end
 
-  local upstream_uri = var.upstream_uri
+  local upstream_uri = ngx.var.upstream_uri
   local path = conf.path
   local end1 = path:sub(-1, -1)
   local start2 = upstream_uri:sub(1, 1)
