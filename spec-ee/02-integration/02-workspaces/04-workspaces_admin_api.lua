@@ -6,21 +6,27 @@ local utils       = require "kong.tools.utils"
 local workspaces  = require "kong.workspaces"
 local singletons  = require "kong.singletons"
 local init_files  = require "kong.portal.migrations.01_initial_files"
+local DB = require "kong.db"
 
 
 dao_helpers.for_each_dao(function(kong_config)
 
 describe("(#" .. kong_config.database .. ") Admin API workspaces", function()
-  local client, dao
+  local client, dao, db
 
   setup(function()
     dao = assert(DAOFactory.new(kong_config))
+    db = assert(DB.new(kong_config, kong_config.database))
     singletons.dao = dao
-
     dao:truncate_tables()
+
+    local portal_helper = require "kong.portal.dao_helpers"
+    portal_helper.register_resources(dao)
+
     helpers.dao:run_migrations()
     assert(helpers.start_kong({
-      database = kong_config.database
+      database = kong_config.database,
+      nginx_conf = "spec/fixtures/custom_nginx.template",
     }))
     ngx.ctx.workspaces = nil
     client = assert(helpers.admin_client())
@@ -423,14 +429,14 @@ describe("(#" .. kong_config.database .. ") Admin API workspaces", function()
         workspace_name = "foo",
         entity_id = uuid1,
         unique_field_name = "name",
-        entity_type = "foo",
+        entity_type = "consumers",
       }))
       assert(dao.workspace_entities:insert({
         workspace_id = w,
         workspace_name = "bar",
         entity_id = uuid2,
         unique_field_name = "name",
-        entity_type = "foo",
+        entity_type = "consumers",
       }))
     end)
 
@@ -639,6 +645,158 @@ describe("(#" .. kong_config.database .. ") Admin API workspaces", function()
 
         assert.res_status(404, res)
       end)
+      it("does not leave dangling entities (old dao)", function()
+        -- add consumer to default workspace
+        local res = assert(client:send {
+          method = "POST",
+          path = "/consumers",
+          body = {
+            username = "foosumer"
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+        })
+        assert.res_status(201, res)
+        local json = assert.response(res).has.jsonbody()
+
+        -- share foosumer with workspace foo
+        res = assert(client:send {
+          method = "POST",
+          path = "/workspaces/foo/entities",
+          body = {
+            entities = json.id
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+        })
+        assert.res_status(201, res)
+
+        -- now, delete the entity from foo
+        -- share foosumer with workspace foo
+        res = assert(client:send {
+          method = "DELETE",
+          path = "/workspaces/foo/entities",
+          body = {
+            entities = json.id
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+        })
+        assert.res_status(204, res)
+
+        -- and delete it from default, too
+        res = assert(client:send {
+          method = "DELETE",
+          path = "/workspaces/default/entities",
+          body = {
+            entities = json.id
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+        })
+        assert.res_status(204, res)
+
+        -- the entity must be gone from the main entities table as well
+        local res, err = dao.consumers:find({
+          id = json.id
+        })
+        assert.is_nil(err)
+        assert.is_nil(res)
+
+        -- and we must be able to create an entity with that same name again
+        res = assert(client:send {
+          method = "POST",
+          path = "/consumers",
+          body = {
+            username = "foosumer"
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+        })
+        assert.res_status(201, res)
+      end)
+      it("does not leave dangling entities (new dao)", function()
+        -- add consumer to default workspace
+        local res = assert(client:send {
+          method = "POST",
+          path = "/services",
+          body = {
+            name = "foos",
+            url = helpers.mock_upstream_url,
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+        })
+        assert.res_status(201, res)
+        local json = assert.response(res).has.jsonbody()
+
+        -- share foosumer with workspace foo
+        res = assert(client:send {
+          method = "POST",
+          path = "/workspaces/foo/entities",
+          body = {
+            entities = json.id
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+        })
+        assert.res_status(201, res)
+
+        -- now, delete the entity from foo
+        -- share foosumer with workspace foo
+        res = assert(client:send {
+          method = "DELETE",
+          path = "/workspaces/foo/entities",
+          body = {
+            entities = json.id
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+        })
+        assert.res_status(204, res)
+
+        -- and delete it from default, too
+        res = assert(client:send {
+          method = "DELETE",
+          path = "/workspaces/default/entities",
+          body = {
+            entities = json.id
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+        })
+        assert.res_status(204, res)
+
+        -- the entity must be gone from the main entities table as well
+        local res, err = db.daos.services:select({
+          id = json.id
+        })
+        assert.is_nil(err)
+        assert.is_nil(res)
+
+        -- and we must be able to create an entity with that same name again
+        res = assert(client:send {
+          method = "POST",
+          path = "/services",
+          body = {
+            name = "foos",
+            url = helpers.mock_upstream_url,
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+        })
+        assert.res_status(201, res)
+      end)
       it("removes a relationship", function()
         local n = dao.workspace_entities:find_all({
           workspace_id = dao.workspaces:find_all({ name = "foo" })[1].id
@@ -694,7 +852,7 @@ describe("(#" .. kong_config.database .. ") Admin API workspaces", function()
         workspace_name = "foo",
         entity_id = e_id,
         unique_field_name = "name",
-        entity_type = "foo",
+        entity_type = "consumers",
       }))
     end)
 
@@ -710,7 +868,7 @@ describe("(#" .. kong_config.database .. ") Admin API workspaces", function()
 
         assert.equals(json.workspace_id, w_id)
         assert.equals(json.entity_id, e_id)
-        assert.equals(json.entity_type, "foo")
+        assert.equals(json.entity_type, "consumers")
       end)
 
       it("sends the appropriate status on an invalid entity", function()

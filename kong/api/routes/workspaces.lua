@@ -3,6 +3,7 @@ local crud  = require "kong.api.crud_helpers"
 local utils = require "kong.tools.utils"
 local rbac  = require "kong.rbac"
 local workspaces = require "kong.workspaces"
+local singletons = require "kong.singletons"
 
 -- FT-258: To block some endpoints of being wrongly called from a
 -- workspace namespace, we enforce that some workspace endpoints are
@@ -240,6 +241,34 @@ return {
         end
 
         workspaces.inc_counter(dao_factory, self.workspace.id, ws_e[1].entity_type, -1)
+
+        -- find out if the entity is still in any workspace
+        local rows
+        rows, err = dao_factory.workspace_entities:find_all({
+          entity_id = e, -- get the first result's entity_type;
+                                           -- we can do that given the result in
+                                           -- ws_e is for the same entity_id
+          entity_type = ws_e[1].entity_type,
+        })
+        if err then
+          return helpers.yield_error(err)
+        end
+
+        -- if entity_id is not part of any other workspaces, that means it's
+        -- unreachable/dangling, so delete it
+        if #rows == 0 then
+          local entity_type = ws_e[1].entity_type
+
+          -- which dao is that entity part of?
+          local dao = dao_factory[entity_type] or singletons.db.daos[entity_type]
+
+          local _, err = workspaces.run_with_ws_scope({}, dao.delete, dao, {
+            id = e,
+          }, {skip_rbac = true})
+          if err then
+            return helpers.yield_error(err)
+          end
+        end
       end
 
       return helpers.responses.send_HTTP_NO_CONTENT()
