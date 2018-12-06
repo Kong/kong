@@ -10,6 +10,7 @@ local _M = {}
 local function get_opts(conf)
   return {
     name = conf.cookie_name,
+    secret = conf.secret, 
     cookie = {
       lifetime = conf.cookie_lifetime,
       path     = conf.cookie_path,
@@ -28,6 +29,7 @@ function _M.open_session(conf)
   if conf.storage == 'kong' then
     s = session.new(opts)
     s.storage = require("kong.plugins.session.storage.kong").new(s)
+    s.identifier = require("kong.plugins.session.identifiers.uuid")
     s:open()
   else
     opts.storage = conf.storage

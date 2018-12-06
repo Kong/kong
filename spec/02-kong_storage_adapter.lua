@@ -102,6 +102,10 @@ for _, strategy in helpers.each_strategy() do
         request.headers.cookie = cookie
         res = assert(client:send(request))
         assert.response(res).has.status(200)
+
+        -- one more time to ensure session was not destroyed or errored out
+        res = assert(client:send(request))
+        assert.response(res).has.status(200)
       end)
     end)  
   end)

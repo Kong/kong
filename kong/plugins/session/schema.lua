@@ -1,6 +1,14 @@
+local utils = require("kong.tools.utils")
+
+
 return {
   no_consumer = true,
   fields = {
+    secret = { 
+      type = "string", 
+      required = false, 
+      default = utils.random_string,
+    },
     cookie_name = { type = "string", default = "session" },
     cookie_lifetime = { type = "number", default = 3600 },
     cookie_path = { type = "string", default = "/" },

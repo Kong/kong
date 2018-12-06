@@ -20,25 +20,14 @@ function kong_storage.new(config)
 end
 
 
-function kong_storage:key(id)
-  return self.encode(id)
-end
-
-
 function kong_storage:get(k)
-  local sessions, err = self.dao.sessions:find_all({
-    sid = k,
-  })
+  local s, err = self.dao.sessions:find({ id = k })
 
   if err then
     ngx.log(ngx.ERR, "Error finding session:", err)
   end
 
-  if not next(sessions) then
-    return nil, err
-  end
-
-  return sessions[1]
+  return s, err
 end
 
 
@@ -67,18 +56,17 @@ function kong_storage:open(cookie, lifetime)
   if c and c[1] and c[2] and c[3] and c[4] then
     local id, expires, d, hmac = self.decode(c[1]), tonumber(c[2]), 
                                  self.decode(c[3]), self.decode(c[4])
-    local key = self:key(id)
     local data = d
 
     if ngx.get_phase() ~= 'header_filter' then
-      local db_s = self:get(key)
+      local db_s = self:get(id)
       if db_s then
         local _, err = self.dao.sessions:update({ id = db_s.id }, {
-          expires = floor(lifetime),
+          expires = floor(now() - lifetime),
         })
 
         if err then
-          ngx.log(ngx.ERR, "Error update expiry of session: ", err)
+          ngx.log(ngx.ERR, "Error updating expiry of session: ", err)
         end
 
         data = self.decode(db_s.data)
@@ -93,23 +81,23 @@ end
 
 
 function kong_storage:save(id, expires, data, hmac)
-  local life, key = floor(expires - now()), self:key(id)
-  local value = concat({key, expires, self.encode(data),
+  local life = floor(expires - now())
+  local value = concat({self.encode(id), expires, self.encode(data),
                         self.encode(hmac)}, self.delimiter)
   
   if life > 0 then
     ngx.timer.at(0, function()
-      local s = self:get(key)
+      local s = self:get(id)
       local err, _
       
       if s then
-        _, err = self.dao.sessions:update({ id = s.id }, {
+        _, err = self.dao.sessions:update({ id = id }, {
           data = self.encode(data),
           expires = expires,
         })
       else
         _, err = self.dao.sessions:insert({
-          sid = self:key(id),
+          id = id,
           data = self.encode(data),
           expires = expires,
         })
@@ -128,7 +116,7 @@ end
 
 
 function kong_storage:destroy(id)
-  local db_s = self:get(self:key(id))
+  local db_s = self:get(id)
 
   if not db_s then
     return
