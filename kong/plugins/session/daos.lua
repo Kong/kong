@@ -4,20 +4,19 @@ return {
     table = "sessions",
     fields = {
       id = {
-        type = "id",
-        dao_insert_value = true
+        type = "text",
       },
       expires = {
-        type = "number"
+        type = "number",
       },
       data = {
-        type = "text"
+        type = "text",
       },
       created_at = {
         type = "timestamp",
         immutable = true,
-        dao_insert_value = true
-      }
+        dao_insert_value = true,
+      },
     }
   }
 }

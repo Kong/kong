@@ -54,12 +54,12 @@ function kong_storage:open(cookie, lifetime)
   local c = self:cookie(cookie)
 
   if c and c[1] and c[2] and c[3] and c[4] then
-    local id, expires, d, hmac = self.decode(c[1]), tonumber(c[2]), 
-                                 self.decode(c[3]), self.decode(c[4])
-    local data = d
+    local id, expires, data, hmac = self.decode(c[1]), tonumber(c[2]), 
+                                    self.decode(c[3]), self.decode(c[4])
 
     if ngx.get_phase() ~= 'header_filter' then
-      local db_s = self:get(id)
+      local key = c[1]
+      local db_s = self:get(key)
       if db_s then
         local _, err = self.dao.sessions:update({ id = db_s.id }, {
           expires = floor(now() - lifetime),
@@ -81,23 +81,24 @@ end
 
 
 function kong_storage:save(id, expires, data, hmac)
-  local life = floor(expires - now())
-  local value = concat({self.encode(id), expires, self.encode(data),
-                        self.encode(hmac)}, self.delimiter)
-  
+  local life, key = floor(expires - now()), self.encode(id)
+  local value = concat({key, expires, self.encode(data),
+                       self.encode(hmac)}, self.delimiter)
+
   if life > 0 then
     ngx.timer.at(0, function()
-      local s = self:get(id)
+      local s = self:get(key)
+      
       local err, _
       
       if s then
-        _, err = self.dao.sessions:update({ id = id }, {
+        _, err = self.dao.sessions:update({ id = s.id }, {
           data = self.encode(data),
           expires = expires,
         })
       else
         _, err = self.dao.sessions:insert({
-          id = id,
+          id = key,
           data = self.encode(data),
           expires = expires,
         })
@@ -116,6 +117,7 @@ end
 
 
 function kong_storage:destroy(id)
+  print(require("pl.pretty").write(id))
   local db_s = self:get(id)
 
   if not db_s then

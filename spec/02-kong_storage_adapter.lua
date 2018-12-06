@@ -96,14 +96,24 @@ for _, strategy in helpers.each_strategy() do
         res = assert(client:send(request))
         assert.response(res).has.status(200)
         cookie = assert.response(res).has.header("Set-Cookie")
-  
+        
+        -- TODO: session locking
+        ngx.sleep(1)
+
         -- use the cookie without the key to ensure cookie still lets them in
         request.headers.apikey = nil
         request.headers.cookie = cookie
         res = assert(client:send(request))
         assert.response(res).has.status(200)
+        cookie = assert.response(res).has.header("Set-Cookie")
+
+        -- TODO: session locking
+        if strategy == 'cassandra' then
+          ngx.sleep(5)
+        end
 
         -- one more time to ensure session was not destroyed or errored out
+        request.headers.cookie = cookie
         res = assert(client:send(request))
         assert.response(res).has.status(200)
       end)
