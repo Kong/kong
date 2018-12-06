@@ -1,5 +1,6 @@
 local utils = require "kong.tools.utils"
 local enums = require "kong.enterprise_edition.dao.enums"
+local ee_utils = require "kong.enterprise_edition.utils"
 
 local function check_custom_id_and_username(value, consumer_t)
   local username = type(consumer_t.username) == "string" and utils.strip(consumer_t.username) or ""
@@ -23,7 +24,7 @@ return {
     custom_id = {type = "string", unique = true, func = check_custom_id_and_username},
     username = {type = "string", unique = true, func = check_custom_id_and_username},
     type = { type = "integer", required = true, default = enums.CONSUMERS.TYPE.PROXY },
-    email = { type = "string" },
+    email = { type = "string", func = ee_utils.check_case },
     status = { type = "integer" },
     meta = { type = "string" },
   },

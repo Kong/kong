@@ -101,7 +101,7 @@ for _, strategy in helpers.each_strategy() do
         it("retrieves list of admins only", function()
           local res = assert(client:send {
             method = "GET",
-            path = "/admins",
+            path = "/admins?type=2",
             headers = {
               ["Kong-Admin-Token"] = "letmein",
             },
@@ -126,7 +126,7 @@ for _, strategy in helpers.each_strategy() do
             body  = {
               custom_id = "cooper",
               username  = "dale",
-              email = "twinpeaks@konghq.com",
+              email = "Twinpeaks@KongHQ.com",
             },
           })
           res = assert.res_status(200, res)
@@ -204,6 +204,40 @@ for _, strategy in helpers.each_strategy() do
           })
           assert.res_status(409, res)
         end)
+
+        it("returns 400 when trying to create with type = proxy", function()
+          local res = assert(client:send {
+            method = "POST",
+            path = "/admins",
+            body = {
+              username = "foo",
+              type = enums.CONSUMERS.TYPE.PROXY,
+            },
+            headers = {
+              ["Kong-Admin-Token"] = "letmein",
+              ["Content-Type"] = "application/json"
+            }
+          })
+          local body = assert.res_status(400, res)
+          assert.equal("type is invalid", cjson.decode(body).message)
+        end)
+
+        it("returns 400 when trying to create with type = developer", function()
+          local res = assert(client:send {
+            method = "POST",
+            path = "/admins",
+            body = {
+              username = "foo",
+              type = enums.CONSUMERS.TYPE.DEVELOPER,
+            },
+            headers = {
+              ["Kong-Admin-Token"] = "letmein",
+              ["Content-Type"] = "application/json"
+            }
+          })
+          local body = assert.res_status(400, res)
+          assert.equal("type is invalid", cjson.decode(body).message)
+        end)
       end)
     end)
 
@@ -253,22 +287,41 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       describe("PATCH", function()
+        it("returns 400 when trying to change consumer type", function()
+          local res = assert(client:send {
+            method = "PATCH",
+            path = "/admins/" .. admin.id,
+            body = {
+              type = enums.CONSUMERS.TYPE.PROXY,
+            },
+            headers = {
+              ["Kong-Admin-Token"] = "letmein",
+              ["Content-Type"] = "application/json",
+            },
+          })
+
+          local body = cjson.decode(assert.res_status(400, res))
+          assert.same("type is invalid", body.message)
+        end)
+
         it("updates by id", function()
           return function()
             local res = assert(client:send {
               method = "PATCH",
               path = "/admins/" .. admin.id,
               body = {
-                username = "alice"
+                username = "alice",
+                email = "ALICE@kongHQ.com",
               },
               headers = {
                 ["Kong-Admin-Token"] = "letmein",
                 ["Content-Type"]     = "application/json",
               },
             })
-            local body = assert.res_status(200, res)
-            local json = cjson.decode(body)
+
+            local json = cjson.decode(assert.res_status(200, res))
             assert.equal("alice", json.username)
+            assert.equal("alice@konghq.com", json.email)
             assert.equal(admin.id, json.id)
 
             local in_db = assert(bp.consumers:find {id = admin.id})

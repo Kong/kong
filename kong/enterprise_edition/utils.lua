@@ -1,5 +1,7 @@
 local ee_jwt = require "kong.enterprise_edition.jwt"
+local enums = require "kong.enterprise_edition.dao.enums"
 
+local lower = string.lower
 local time = ngx.time
 
 
@@ -78,6 +80,23 @@ _M.validate_email = function(str)
     return true
 end
 
+
+_M.check_case = function(value, consumer_t)
+  -- for now, only applies to admins
+  if consumer_t.type ~= enums.CONSUMERS.TYPE.ADMIN then
+    return true
+  end
+
+  -- email must be case-insensitive, so we store it in a predictable case
+  -- for querying. The /admins and /developers endpoints are responsible
+  -- for converting user-entered data to lower-case. This is just a final
+  -- check to make sure mixed-case doesn't make it into the db.
+  if consumer_t.email and consumer_t.email ~= lower(consumer_t.email) then
+    return false, "'email' must be lower case"
+  end
+
+  return true
+end
 
 _M.validate_reset_jwt = function(token_param)
   -- Decode jwt

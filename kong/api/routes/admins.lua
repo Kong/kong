@@ -16,6 +16,8 @@ local cjson = require "cjson"
 
 local emails = singletons.admin_emails
 
+local lower = string.lower
+
 local log = ngx.log
 local ERR = ngx.ERR
 local DEBUG = ngx.DEBUG
@@ -161,14 +163,28 @@ return {
   ["/admins"] = {
     before = function(self, dao_factory, helpers)
       validate_auth_plugin(self, dao_factory, helpers)
-      self.params.type = enums.CONSUMERS.TYPE.ADMIN
+
+      -- you can only manage admins through this endpoint
+      if self.params.type
+         and tostring(self.params.type) ~= tostring(enums.CONSUMERS.TYPE.ADMIN)
+      then
+        helpers.responses.send_HTTP_BAD_REQUEST("type is invalid")
+      end
     end,
 
     GET = function(self, dao_factory)
+      self.params.type = enums.CONSUMERS.TYPE.ADMIN
       crud.paginated_set(self, dao_factory.consumers)
     end,
 
     POST = function(self, dao_factory, helpers)
+      self.params.type = enums.CONSUMERS.TYPE.ADMIN
+
+      if self.params.email then
+        -- store email in lower case
+        self.params.email = lower(self.params.email)
+      end
+
       local ok, err = ee_utils.validate_email(self.params.email)
       if not ok then
         return helpers.responses.send_HTTP_BAD_REQUEST("Invalid email: " .. err)
@@ -302,6 +318,16 @@ return {
 
     PATCH = function(self, dao_factory, helpers)
       set_rbac_user(self, dao_factory, helpers)
+
+      -- you can only manage admins through this endpoint
+      if self.params.type and self.params.type ~= enums.CONSUMERS.TYPE.ADMIN then
+        helpers.responses.send_HTTP_BAD_REQUEST("type is invalid")
+      end
+
+      if self.params.email then
+        -- store email in lower case
+        self.params.email = lower(self.params.email)
+      end
 
       local _, msg, err = admins.validate(self.params, dao_factory, "PATCH")
 

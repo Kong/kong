@@ -794,4 +794,12 @@ return {
        WHERE type = 2
     ]]
   },
+  {
+    name = "2018-11-30-000000_case_insensitive_email",
+    up = [[
+      UPDATE consumers
+         SET email = LOWER(email)
+       WHERE type = 2
+    ]]
+  },
 }
