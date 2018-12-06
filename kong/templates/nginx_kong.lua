@@ -256,22 +256,12 @@ server {
     gzip on;
     gzip_types text/plain text/css application/json application/javascript;
 
-    location ~* \.(jpg|jpeg|png|gif|ico|css|ttf)$ {
+    location ~* \.(jpg|jpeg|png|gif|ico|css|ttf|js)$ {
         root portal;
-
+        
         expires 90d;
         add_header Cache-Control 'public';
         etag off;
-    }
-
-    location ~* \.(js)$ {
-        root portal;
-
-        add_header Cache-Control 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0';
-        etag off;
-
-        access_log logs/portal_gui_access.log;
-        error_log logs/portal_gui_error.log;
     }
 
 
