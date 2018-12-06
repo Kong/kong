@@ -102,7 +102,8 @@ fi
 
 export OPENSSL_DIR=$OPENSSL_INSTALL # for LuaSec install
 
-export PATH=$PATH:$OPENRESTY_INSTALL/nginx/sbin:$OPENRESTY_INSTALL/bin:$LUAROCKS_INSTALL/bin:$CPAN_DOWNLOAD
+export PATH=$OPENSSL_INSTALL/bin:$OPENRESTY_INSTALL/nginx/sbin:$OPENRESTY_INSTALL/bin:$LUAROCKS_INSTALL/bin:$CPAN_DOWNLOAD:$PATH
+export LD_LIBRARY_PATH=$OPENSSL_INSTALL/lib:$LD_LIBRARY_PATH # for openssl's CLI invoked in the test suite
 
 eval `luarocks path`
 
@@ -128,3 +129,4 @@ fi
 nginx -V
 resty -V
 luarocks --version
+openssl version

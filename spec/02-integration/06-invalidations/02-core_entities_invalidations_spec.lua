@@ -26,6 +26,7 @@ for _, strategy in helpers.each_strategy() do
         "services",
         "plugins",
         "certificates",
+        "snis",
       })
 
       -- insert single fixture Service
@@ -490,12 +491,12 @@ for _, strategy in helpers.each_strategy() do
         -- because our test instance only has 1 worker
 
         local cert_1 = get_cert(8443, "new-ssl-example.com")
-        assert.cn("ssl-alt.com", cert_1, nil, true)
+        assert.cn("ssl-alt.com", cert_1)
 
         wait_for_propagation()
 
         local cert_2 = get_cert(9443, "new-ssl-example.com")
-        assert.cn("ssl-alt.com", cert_2, nil, true)
+        assert.cn("ssl-alt.com", cert_2)
       end)
 
       it("on sni update via id", function()
@@ -510,18 +511,18 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(200, admin_res)
 
         local cert_1_old = get_cert(8443, "new-ssl-example.com")
-        assert.cn("localhost", cert_1_old, nil, true)
+        assert.cn("localhost", cert_1_old)
 
         local cert_1_new = get_cert(8443, "updated-sn-via-id.com")
-        assert.cn("ssl-alt.com", cert_1_new, nil, true)
+        assert.cn("ssl-alt.com", cert_1_new)
 
         wait_for_propagation()
 
         local cert_2_old = get_cert(9443, "new-ssl-example.com")
-        assert.cn("localhost", cert_2_old, nil, true)
+        assert.cn("localhost", cert_2_old)
 
         local cert_2_new = get_cert(9443, "updated-sn-via-id.com")
-        assert.cn("ssl-alt.com", cert_2_new, nil, true)
+        assert.cn("ssl-alt.com", cert_2_new)
       end)
 
       it("on sni update via name", function()
@@ -532,18 +533,18 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(200, admin_res)
 
         local cert_1_old = get_cert(8443, "updated-sn-via-id.com")
-        assert.cn("localhost", cert_1_old, nil, true)
+        assert.cn("localhost", cert_1_old)
 
         local cert_1_new = get_cert(8443, "updated-sn.com")
-        assert.cn("ssl-alt.com", cert_1_new, nil, true)
+        assert.cn("ssl-alt.com", cert_1_new)
 
         wait_for_propagation()
 
         local cert_2_old = get_cert(9443, "updated-sn-via-id.com")
-        assert.cn("localhost", cert_2_old, nil, true)
+        assert.cn("localhost", cert_2_old)
 
         local cert_2_new = get_cert(9443, "updated-sn.com")
-        assert.cn("ssl-alt.com", cert_2_new, nil, true)
+        assert.cn("ssl-alt.com", cert_2_new)
       end)
 
       it("on certificate delete", function()
@@ -556,12 +557,12 @@ for _, strategy in helpers.each_strategy() do
         -- because our test instance only has 1 worker
 
         local cert_1 = get_cert(8443, "updated-sn.com")
-        assert.cn("localhost", cert_1, nil, true)
+        assert.cn("localhost", cert_1)
 
         wait_for_propagation()
 
         local cert_2 = get_cert(9443, "updated-sn.com")
-        assert.cn("localhost", cert_2, nil, true)
+        assert.cn("localhost", cert_2)
       end)
     end)
 

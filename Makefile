@@ -24,7 +24,7 @@ dev:
 	    echo $$rock already installed, skipping ; \
 	  else \
 	    echo $$rock not found, installing via luarocks... ; \
-	    luarocks install $$rock ; \
+	    luarocks install $$rock OPENSSL_DIR=$(OPENSSL_DIR) CRYPTO_DIR=$(OPENSSL_DIR); \
 	  fi \
 	done;
 
