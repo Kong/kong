@@ -176,7 +176,7 @@ function _TARGETS:page_for_upstream(upstream_pk, size, offset, options)
     return nil, err, err_t
   end
 
-  local all_active_targets = setmetatable({}, cjson.empty_array_mt)
+  local all_active_targets = {}
   local seen = {}
   local len = 0
 
@@ -201,7 +201,7 @@ function _TARGETS:page_for_upstream(upstream_pk, size, offset, options)
   end
 
   -- Extract the requested page
-  local page = {}
+  local page = setmetatable({}, cjson.empty_array_mt)
   size = math.min(size or 100, 1000)
   offset = offset or 0
   for i = 1 + offset, size + offset do
