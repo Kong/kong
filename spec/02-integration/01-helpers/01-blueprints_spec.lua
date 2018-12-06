@@ -1,7 +1,6 @@
 local DB = require "kong.db"
 local helpers = require "spec.helpers"
 local Blueprints = require "spec.fixtures.blueprints"
-local dao_helpers = require "spec.02-integration.03-dao.helpers"
 
 
 local UUID_PATTERN = "%x%x%x%x%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%x%x%x%x%x%x%x%x"
@@ -70,11 +69,11 @@ for _, strategy in helpers.each_strategy() do
   end)
 end
 
-dao_helpers.for_each_dao(function(kong_config)
+for _, strategy in helpers.each_strategy() do
   local bp, db
 
   lazy_setup(function()
-    db = assert(DB.new(helpers.test_conf, kong_config.database))
+    db = assert(DB.new(helpers.test_conf, strategy))
     assert(db:init_connector())
     assert(db.plugins:load_plugin_schemas(helpers.test_conf.loaded_plugins))
     bp  = assert(Blueprints.new(db))
@@ -84,7 +83,7 @@ dao_helpers.for_each_dao(function(kong_config)
     ngx.shared.kong_cassandra:flush_expired()
   end)
 
-  describe(string.format("blueprints for #%s", kong_config.database), function()
+  describe(string.format("blueprints for #%s", strategy), function()
     pending("inserts apis", function()
       -- TODO: remove this test when APIs are removed
       local a = bp.apis:insert({ hosts = { "localhost" } })
@@ -260,5 +259,5 @@ dao_helpers.for_each_dao(function(kong_config)
     end)
 
   end)
-end)
+end
 

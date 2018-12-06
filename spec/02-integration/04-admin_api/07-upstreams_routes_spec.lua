@@ -1,5 +1,4 @@
 local helpers = require "spec.helpers"
-local dao_helpers = require "spec.02-integration.03-dao.helpers"
 local cjson = require "cjson"
 
 local slots_default, slots_max = 10000, 2^16
@@ -14,19 +13,19 @@ local function it_content_types(title, fn)
   it(title .. " with application/json", test_json)
 end
 
-dao_helpers.for_each_dao(function(kong_config)
+for _, strategy in helpers.each_strategy() do
 
-describe("Admin API: #" .. kong_config.database, function()
+describe("Admin API: #" .. strategy, function()
   local client
   local bp
   local db
 
   lazy_setup(function()
 
-    bp, db = helpers.get_db_utils(kong_config.database, {})
+    bp, db = helpers.get_db_utils(strategy, {})
 
     assert(helpers.start_kong{
-      database = kong_config.database
+      database = strategy
     })
     client = assert(helpers.admin_client())
   end)
@@ -36,7 +35,7 @@ describe("Admin API: #" .. kong_config.database, function()
     helpers.stop_kong()
   end)
 
-  describe("/upstreams #" .. kong_config.database, function()
+  describe("/upstreams #" .. strategy, function()
     describe("POST", function()
       before_each(function()
         assert(db:truncate("upstreams"))
@@ -697,4 +696,4 @@ describe("Admin API: #" .. kong_config.database, function()
   end)
 end)
 
-end)
+end

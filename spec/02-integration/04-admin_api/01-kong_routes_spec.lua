@@ -1,8 +1,6 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
 
-local dao_helpers = require "spec.02-integration.03-dao.helpers"
-
 local UUID_PATTERN = "%x%x%x%x%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%x%x%x%x%x%x%x%x"
 
 describe("Admin API - Kong routes", function()
@@ -107,15 +105,15 @@ describe("Admin API - Kong routes", function()
     end)
   end)
 
-  dao_helpers.for_each_dao(function(kong_conf)
-    describe("/status with DB: #" .. kong_conf.database, function()
+  for _, strategy in helpers.each_strategy() do
+    describe("/status with DB: #" .. strategy, function()
       local client
 
       lazy_setup(function()
-        helpers.get_db_utils(kong_conf.database)
+        helpers.get_db_utils(strategy)
 
         assert(helpers.start_kong {
-          database = kong_conf.database,
+          database = strategy,
         })
         client = helpers.admin_client(10000)
       end)
@@ -164,5 +162,5 @@ describe("Admin API - Kong routes", function()
         assert.is_true(json.database.reachable)
       end)
     end)
-  end)
+  end
 end)

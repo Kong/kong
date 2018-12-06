@@ -10,12 +10,11 @@ for _, strategy in helpers.each_strategy() do
       local conf       = { route = { id = uuid() }, service = { id = uuid() } }
 
       local db
-      local dao
       local policies
 
       lazy_setup(function()
         local _
-        _, db, dao = helpers.get_db_utils(strategy)
+        _, db = helpers.get_db_utils(strategy)
 
         if _G.kong then
           _G.kong.db = db
@@ -29,7 +28,6 @@ for _, strategy in helpers.each_strategy() do
 
       before_each(function()
         db:truncate()
-        dao:truncate_tables()
       end)
 
       it("should return 0 when ratelimiting metrics are not existing", function()

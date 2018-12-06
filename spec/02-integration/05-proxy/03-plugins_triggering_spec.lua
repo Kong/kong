@@ -14,11 +14,10 @@ for _, strategy in helpers.each_strategy() do
   describe("Plugins triggering [#" .. strategy .. "]", function()
     local proxy_client
     local db
-    local dao
     local bp
 
     lazy_setup(function()
-      bp, db, dao = helpers.get_db_utils(strategy, {
+      bp, db = helpers.get_db_utils(strategy, {
         "apis",
         "routes",
         "services",
@@ -253,13 +252,13 @@ for _, strategy in helpers.each_strategy() do
           })
 
           -- plugin able to short-circuit a request
-          assert(dao.plugins:insert {
+          assert(db.plugins:insert {
             name  = "key-auth",
             route = { id = route.id },
           })
 
           -- response/body filter plugin
-          assert(dao.plugins:insert {
+          assert(db.plugins:insert {
             name   = "dummy",
             route  = { id = route.id },
             config = {
@@ -268,7 +267,7 @@ for _, strategy in helpers.each_strategy() do
           })
 
           -- log phase plugin
-          assert(dao.plugins:insert {
+          assert(db.plugins:insert {
             name   = "file-log",
             route  = { id = route.id },
             config = {
@@ -292,7 +291,7 @@ for _, strategy in helpers.each_strategy() do
           })
 
           -- plugin that produces an error
-          assert(dao.plugins:insert {
+          assert(db.plugins:insert {
             name   = "dummy",
             route  = { id = route.id },
             config = {
@@ -301,7 +300,7 @@ for _, strategy in helpers.each_strategy() do
           })
 
           -- log phase plugin
-          assert(dao.plugins:insert {
+          assert(db.plugins:insert {
             name   = "file-log",
             route  = { id = route.id },
             config = {

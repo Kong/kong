@@ -2,7 +2,10 @@ local helpers = require "spec.helpers"
 
 describe("kong start/stop", function()
   lazy_setup(function()
-    helpers.get_db_utils(nil, {}) -- runs migrations
+    helpers.get_db_utils(nil, {
+      "routes",
+      "services",
+    }) -- runs migrations
     helpers.prepare_prefix()
   end)
   after_each(function()
@@ -190,7 +193,7 @@ describe("kong start/stop", function()
           method = "GET",
           path = "/hello",
         })
-        assert.res_status(404, res) -- no API configured
+        assert.res_status(404, res) -- no Route configured
       end
 
       assert(helpers.stop_kong(helpers.test_conf.prefix))

@@ -22,11 +22,10 @@ for _, strategy in helpers.each_strategy() do
   describe("Admin API #" .. strategy, function()
     local bp
     local db
-    local dao
     local client
 
     lazy_setup(function()
-      bp, db, dao = helpers.get_db_utils(strategy, {
+      bp, db = helpers.get_db_utils(strategy, {
         "routes",
         "services",
       })
@@ -1140,7 +1139,6 @@ for _, strategy in helpers.each_strategy() do
                 assert.same({
                   code = 5,
                   fields = {
-                    api = ngx.null,
                     consumer = ngx.null,
                     name = "basic-auth",
                     route = {
@@ -1148,9 +1146,9 @@ for _, strategy in helpers.each_strategy() do
                     },
                     service = ngx.null,
                   },
-                  message = [[UNIQUE violation detected on '{consumer=null,]] ..
-                            [[api=null,service=null,name="basic-auth",route={id="]] ..
-                            route.id .. [["}}']],
+                  message = [[UNIQUE violation detected on '{]] ..
+                            [[service=null,name="basic-auth",route={id="]] ..
+                            route.id .. [["},consumer=null}']],
                   name = "unique constraint violation",
                 }, json)
               end
@@ -1201,7 +1199,7 @@ for _, strategy in helpers.each_strategy() do
         describe("GET", function()
           it("retrieves the first page", function()
             local route = bp.routes:insert({ paths = { "/my-route" } })
-            assert(dao.plugins:insert {
+            assert(db.plugins:insert {
               name = "key-auth",
               route = { id = route.id },
             })
@@ -1216,7 +1214,7 @@ for _, strategy in helpers.each_strategy() do
 
           it("retrieves the first page by name", function()
             local route = bp.routes:insert({ name = "my-plugins-route", paths = { "/my-route" } })
-            assert(dao.plugins:insert {
+            assert(db.plugins:insert {
               name = "key-auth",
               route = { id = route.id },
             })

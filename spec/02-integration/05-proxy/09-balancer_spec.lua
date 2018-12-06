@@ -506,12 +506,11 @@ do
 end
 
 
-local function truncate_relevant_tables(db, dao)
+local function truncate_relevant_tables(db)
   db:truncate("services")
   db:truncate("routes")
   db:truncate("upstreams")
   db:truncate("targets")
-  dao.plugins:truncate()
 end
 
 
@@ -563,9 +562,9 @@ for _, strategy in helpers.each_strategy() do
   describe("Ring-balancer #" .. strategy, function()
 
     lazy_setup(function()
-      local _, db, dao = helpers.get_db_utils(strategy, {})
+      local _, db = helpers.get_db_utils(strategy, {})
 
-      truncate_relevant_tables(db, dao)
+      truncate_relevant_tables(db)
       helpers.start_kong({
         database   = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",

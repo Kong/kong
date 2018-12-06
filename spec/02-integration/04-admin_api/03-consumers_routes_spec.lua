@@ -657,12 +657,11 @@ describe("Admin API (#" .. strategy .. "): ", function()
             assert.same({
               code = Errors.codes.UNIQUE_VIOLATION,
               name = "unique constraint violation",
-              message = [[UNIQUE violation detected on '{consumer={id="]] ..
-                        consumer.id .. [["},api=null,service=null,]] ..
-                        [[name="rewriter",route=null}']],
+              message = [[UNIQUE violation detected on '{service=null,]] ..
+                        [[name="rewriter",route=null,consumer={id="]] ..
+                        consumer.id .. [["}}']],
               fields = {
                 name = "rewriter",
-                api = ngx.null,
                 consumer = {
                   id = consumer.id,
                 },
@@ -810,7 +809,6 @@ describe("Admin API (#" .. strategy .. "): ", function()
             { id = plugin.id },
             {
               name = "rewriter",
-              api = plugin.api,
               route = plugin.route,
               service = plugin.service,
               consumer = plugin.consumer,

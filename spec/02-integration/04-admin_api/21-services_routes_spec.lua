@@ -22,11 +22,10 @@ for _, strategy in helpers.each_strategy() do
   describe("Admin API #" .. strategy, function()
     local bp
     local db
-    local dao
     local client
 
     lazy_setup(function()
-      bp, db, dao = helpers.get_db_utils(strategy, {
+      bp, db = helpers.get_db_utils(strategy, {
         "routes",
         "services",
       })
@@ -517,7 +516,6 @@ for _, strategy in helpers.each_strategy() do
                   code = Errors.codes.UNIQUE_VIOLATION,
                   name = "unique constraint violation",
                   fields = {
-                    api = ngx.null,
                     consumer = ngx.null,
                     name = "basic-auth",
                     route = ngx.null,
@@ -525,10 +523,9 @@ for _, strategy in helpers.each_strategy() do
                       id = service.id,
                     }
                   },
-                  message = [[UNIQUE violation detected on '{consumer=null,]] ..
-                            [[api=null,service={id="]] ..
-                            service.id ..
-                            [["},name="basic-auth",route=null}']],
+                  message = [[UNIQUE violation detected on '{]] ..
+                            [[service={id="]] .. service.id ..
+                            [["},name="basic-auth",route=null,consumer=null}']],
                 }, json)
               end
             end)
@@ -665,7 +662,7 @@ for _, strategy in helpers.each_strategy() do
         describe("GET", function()
           it("retrieves the first page", function()
             local service = bp.services:insert()
-            assert(dao.plugins:insert {
+            assert(db.plugins:insert {
               name = "key-auth",
               service = { id = service.id },
             })

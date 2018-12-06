@@ -56,9 +56,9 @@ for _, strategy in helpers.each_strategy() do
           assert.falsy(plugin)
           assert.match("UNIQUE violation", err)
           assert.same("unique constraint violation", err_t.name)
-          assert.same([[UNIQUE violation detected on '{consumer=null,]] ..
-                      [[api=null,service=null,name="key-auth",route={id="]] ..
-                      route.id .. [["}}']], err_t.message)
+          assert.same([[UNIQUE violation detected on '{service=null,]] ..
+                      [[name="key-auth",route={id="]] .. route.id ..
+                      [["},consumer=null}']], err_t.message)
         end)
       end)
 
@@ -101,9 +101,9 @@ for _, strategy in helpers.each_strategy() do
           assert.falsy(plugin)
           assert.match("UNIQUE violation", err)
           assert.same("unique constraint violation", err_t.name)
-          assert.same([[UNIQUE violation detected on '{consumer=null,]] ..
-                      [[api=null,service=null,name="key-auth",route={id="]] ..
-                      route.id .. [["}}']], err_t.message)
+          assert.same([[UNIQUE violation detected on '{service=null,]] ..
+                      [[name="key-auth",route={id="]] .. route.id ..
+                      [["},consumer=null}']], err_t.message)
         end)
       end)
     end)
