@@ -249,6 +249,18 @@ describe("Admin API #" .. strategy, function()
           assert.equal(apis[2].target, json.data[3].target)
         end
       end)
+
+      describe("empty results", function()
+        it("data property is an empty array", function()
+          local empty_upstream = bp.upstreams:insert {}
+          local res = assert(client:send {
+            method = "GET",
+            path = "/upstreams/" .. empty_upstream.name .. "/targets",
+          })
+          local body = assert.response(res).has.status(200)
+          assert.match('"data":%[%]', body)
+        end)
+      end)
     end)
   end)
 
@@ -532,6 +544,8 @@ describe("Admin API #" .. strategy, function()
             data = {},
             next = ngx.null,
           }, json)
+          -- ensure JSON representation is correct
+          assert.match('"data":%[%]', body)
         end)
       end)
     end)
