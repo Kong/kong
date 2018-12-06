@@ -122,7 +122,7 @@ do
       _system_infos.cores = tonumber(stdout:sub(1, -2))
     end
 
-    ok, _, stdout = pl_utils.executeex("uname -a")
+    ok, _, stdout = pl_utils.executeex("uname -ms")
     if ok then
       _system_infos.uname = stdout:gsub(";", ","):sub(1, -2)
     end
