@@ -399,6 +399,7 @@ local function check_and_infer(conf)
 
   -- portal auth conf json conversion
   if conf.portal_auth and conf.portal_auth_conf then
+    conf.portal_auth_conf = string.gsub(conf.portal_auth_conf, "#", "\\#")
     local json, err = cjson.decode(tostring(conf.portal_auth_conf))
     if json then
       conf.portal_auth_conf = json
