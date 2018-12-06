@@ -10,6 +10,10 @@ for details on installation and usage.
 
 # History
 
+0.3.1
+- Fix invalid references to functions invoked in the handler module
+- Strip connections headers disallowed by HTTP/2
+
 0.3.0
 - Restrict the `config.run_on` field to `first`
 
