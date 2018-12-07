@@ -612,7 +612,6 @@ return {
   },
   certificate = {
     before = function(_)
-      mesh.certificate()
       certificate.execute()
     end
   },

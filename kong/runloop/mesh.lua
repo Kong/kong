@@ -3,6 +3,7 @@ local openssl_pkey = require "openssl.pkey"
 local openssl_ssl = require "openssl.ssl"
 local openssl_store = require "openssl.x509.store"
 local openssl_x509 = require "openssl.x509"
+local resty_config = require "kong.resty.config"
 local getssl = require "kong.resty.getssl".getssl
 local singletons = require "kong.singletons"
 local Errors  = require "kong.db.errors"
@@ -22,10 +23,6 @@ end
 
 
 local function nginx_mesh_alpn_select(ssl, protos, mesh_server_ssl_ctx, mesh_alpn)
-  -- Set verify flags back to nginx defaults
-  -- See note about setting VERIFY_PEER below in certificate phase
-  ssl:setVerify(ssl:getContext():getVerify())
-
   for _, v in ipairs(protos) do
     if v == mesh_alpn then
       -- Swap out the SSL_CTX from the nginx default one.
@@ -155,7 +152,25 @@ local function init()
   mesh_server_ssl_ctx:setCertificate(node_cert)
   mesh_server_ssl_ctx:setStore(ca_store)
   mesh_server_ssl_ctx:setVerify(openssl_ssl.VERIFY_PEER + openssl_ssl.VERIFY_FAIL_IF_NO_PEER_CERT)
-  mesh_server_ssl_ctx:setAlpnSelect(simple_mesh_alpn_select, mesh_alpn)
+  if ngx.config.subsystem == "http" then
+    if resty_config.can_get_server_block then
+      for server_block in resty_config.each_server_block() do
+        if server_block:get_server_name() == "kong" then -- Assume server_name for proxy is "kong"
+          local ssl_ctx = server_block:get_ssl_ctx()
+          if ssl_ctx then
+            ssl_ctx:setAlpnSelect(nginx_mesh_alpn_select, mesh_server_ssl_ctx, mesh_alpn)
+          end
+        end
+      end
+    else
+      ngx.log(ngx.INFO, "Nginx server block API unavailable. mesh will not be"
+                     .. "negotiated for incoming HTTP connections to this node")
+    end
+  else -- stream
+    mesh_server_ssl_ctx:setAlpnSelect(simple_mesh_alpn_select, mesh_alpn)
+  end
+
+  ngx.log(ngx.DEBUG, "SSL_CTX* mesh ALPN selection setup complete")
 end
 
 
@@ -164,31 +179,6 @@ local function get_mesh_alpn()
     error("mesh is not initialised: missing call to runloop.mesh.init()", 2)
   end
   return mesh_alpn
-end
-
-
-local function certificate()
-  local ssl, err = getssl()
-  if not ssl then
-    return nil, err
-  end
-
-  -- Replace the nginx ALPN callback for *all* requests through the current proxy_listener
-  -- this callback is only way we can read the list of client proposed ALPN protocols
-  local ssl_ctx = ssl:getContext()
-  ssl_ctx:setAlpnSelect(nginx_mesh_alpn_select, mesh_server_ssl_ctx, mesh_alpn)
-  if ssl:getVerify() < openssl_ssl.VERIFY_PEER then
-    -- Need to set VERIFY_PEER here; attempting to set from the ALPN callback gives:
-    -- error:14180044:SSL routines:tls_post_process_client_key_exchange:internal error
-    -- We set it back to the old value in the alpn callback, but if the client
-    -- didn't send an ALPN packet then this has the side-effect of allowing a
-    -- client to send a cert even if nginx wasn't configured to allow it.
-    -- OpenSSL will try to verify the unwanted cert; to prevent wasting CPU
-    -- cycles on this unwanted verification, we set the verification depth to 0.
-    ssl:setVerify(openssl_ssl.VERIFY_PEER, 0)
-  end
-
-  return true
 end
 
 
@@ -223,6 +213,5 @@ return {
   get_mesh_alpn = get_mesh_alpn,
   mesh_server_ssl_ctx = mesh_server_ssl_ctx,
 
-  certificate = certificate,
   rewrite = rewrite,
 }
