@@ -67,6 +67,7 @@ build = {
     ["kong.templates.kong_defaults"] = "kong/templates/kong_defaults.lua",
 
     ["kong.resty.ctx"] = "kong/resty/ctx.lua",
+    ["kong.resty.config"] = "kong/resty/config.lua",
     ["kong.resty.getssl"] = "kong/resty/getssl.lua",
     ["kong.vendor.classic"] = "kong/vendor/classic.lua",
 
