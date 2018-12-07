@@ -101,4 +101,8 @@ for _, strategy in helpers.each_strategy() do
   describe(":setkeepalive() [#" .. strategy .. "]", function()
 
   end)
+
+  describe(":close() [#" .. strategy .. "]", function()
+
+  end)
 end
