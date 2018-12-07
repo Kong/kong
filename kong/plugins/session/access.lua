@@ -25,34 +25,29 @@ function _M.execute(conf)
     return s:destroy()
   end
 
-  if s.data and not s.data.authenticated_consumer
-     and not s.data.authenticated_credential
-  then
-    return
-  end
-
-  -- only save when data is available
-  s:save()
-
+  
   local cid = s.data.authenticated_consumer
   local credential = s.data.authenticated_credential
-
+  
   local consumer_cache_key = singletons.dao.consumers:cache_key(cid)
   local consumer, err = singletons.cache:get(consumer_cache_key, nil,
                                              load_consumer, cid)
   
-  -- destroy sessions with invalid consumer_id
-  if not consumer then
-    s:destroy()
-  end
-
   if err then
     ngx.log(ngx.ERR, "Error loading consumer: ", err)
     return
-  end  
-
-  ngx.ctx.authenticated_credential = credential
+  end
+  
+  -- destroy sessions with invalid consumer_id
+  if not consumer then
+    return s:destroy()
+  end
+  
+  s:start()
+  
+  ngx.ctx.authenticated_credential = { id = credential or cid, consumer_id = cid }
   ngx.ctx.authenticated_consumer = consumer
+  ngx.ctx.authenticated_session = s
 end
 
 
