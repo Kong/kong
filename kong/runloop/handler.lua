@@ -651,6 +651,7 @@ return {
         -- Is probably an incoming service mesh connection
         -- terminate service-mesh Mutual TLS
         ssl_termination_ctx = mesh.mesh_server_ssl_ctx
+        ctx.is_service_mesh_request = true
       else
         -- TODO: stream router should decide if TLS is terminated or not
         -- XXX: for now, use presence of SNI to terminate.
