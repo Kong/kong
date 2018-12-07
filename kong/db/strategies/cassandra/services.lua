@@ -138,7 +138,7 @@ local function delete_cascade_ws(connector, table_name, entities, errors, ws)
 end
 
 
-function _Services_ee:delete(primary_key)
+function _Services_ee:delete(primary_key, options)
   local ws = workspaces.get_workspaces()[1]
   local connector  = self.connector
   local service_id = primary_key.id
@@ -154,11 +154,13 @@ function _Services_ee:delete(primary_key)
     return nil, err1 or err2 or err3
   end
 
-  if not rbac.validate_entity_operation(primary_key, self.schema.name) then
-    return nil, self.errors:unauthorized_operation({
-      username = ngx.ctx.rbac.user.name,
-      action = rbac.readable_action(ngx.ctx.rbac.action)
-    })
+  if not options or not options.skip_rbac then
+    if not rbac.validate_entity_operation(primary_key, self.schema.name) then
+      return nil, self.errors:unauthorized_operation({
+        username = ngx.ctx.rbac.user.name,
+        action = rbac.readable_action(ngx.ctx.rbac.action)
+      })
+    end
   end
 
   -- delete parent, also deletes child entities

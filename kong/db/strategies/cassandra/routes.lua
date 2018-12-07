@@ -51,7 +51,7 @@ end
 local _Routes_ee = {}
 
 
-function _Routes_ee:delete(primary_key)
+function _Routes_ee:delete(primary_key, options)
   local plugins = {}
   local connector = self.connector
   local cluster = connector.cluster
@@ -77,11 +77,13 @@ function _Routes_ee:delete(primary_key)
     end
   end
 
-  if not rbac.validate_entity_operation(primary_key, self.schema.name) then
-    return nil, self.errors:unauthorized_operation({
-      username = ngx.ctx.rbac.user.name,
-      action = rbac.readable_action(ngx.ctx.rbac.action)
-    })
+  if not options or not options.skip_rbac then
+    if not rbac.validate_entity_operation(primary_key, self.schema.name) then
+      return nil, self.errors:unauthorized_operation({
+        username = ngx.ctx.rbac.user.name,
+        action = rbac.readable_action(ngx.ctx.rbac.action)
+      })
+    end
   end
 
   local ok, err_t = self.super.delete(self, primary_key)
