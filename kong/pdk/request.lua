@@ -638,7 +638,7 @@ local function new(self)
       cjson.decode_array_with_array_mt(true)
       local json = cjson.decode(body)
       cjson.decode_array_with_array_mt(false)
-      if not json then
+      if type(json) ~= "table" then
         return nil, "invalid json body", CONTENT_TYPE_JSON
       end
 
