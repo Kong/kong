@@ -500,9 +500,6 @@ local function parse_access_token(conf)
   local found_in = {}
   local access_token = kong.request.get_header(conf.auth_header_name)
   if access_token then
-    if type(access_token) == "table" then --Take the first found
-      access_token = access_token[1]
-    end
     local parts = {}
     for v in access_token:gmatch("%S+") do -- Split by space
       table.insert(parts, v)
@@ -513,6 +510,9 @@ local function parse_access_token(conf)
     end
   else
     access_token = retrieve_parameters()[ACCESS_TOKEN]
+    if type(access_token) ~= "string" then
+      return
+    end
   end
 
   if conf.hide_credentials then
