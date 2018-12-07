@@ -186,6 +186,16 @@ function DB:setkeepalive()
 end
 
 
+function DB:close()
+  local ok, err = self.connector:close()
+  if not ok then
+    return nil, prefix_err(self, err)
+  end
+
+  return ok
+end
+
+
 function DB:reset()
   local ok, err = self.connector:reset()
   if not ok then
