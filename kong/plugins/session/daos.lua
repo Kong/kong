@@ -4,7 +4,8 @@ return {
     table = "sessions",
     fields = {
       id = {
-        type = "text",
+        type = "id",
+        dao_insert_value = true
       },
       expires = {
         type = "number",

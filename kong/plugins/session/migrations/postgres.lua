@@ -3,7 +3,7 @@ return {
     name = "2018-11-30-133200_init_session",
     up = [[
       CREATE TABLE IF NOT EXISTS sessions(
-        id            text,
+        id            uuid,
         expires       int,
         data          text,
         created_at    timestamp without time zone default (CURRENT_TIMESTAMP(0) at time zone 'utc'),

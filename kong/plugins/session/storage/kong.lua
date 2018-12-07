@@ -15,7 +15,7 @@ function kong_storage.new(config)
     encode      = config.encoder.encode,
     decode      = config.encoder.decode,
     delimiter   = config.cookie.delimiter,
-    lifetime    = config.cookie_lifetime,
+    lifetime    = config.cookie.lifetime,
   }, kong_storage)
 end
 
@@ -30,6 +30,9 @@ function kong_storage:get(k)
   return s, err
 end
 
+function kong_storage:key(id)	
+  return self.encode(id)	
+end
 
 function kong_storage:cookie(c)
   local r, d = {}, self.delimiter
@@ -58,8 +61,7 @@ function kong_storage:open(cookie, lifetime)
     local data
 
     if ngx.get_phase() ~= 'header_filter' then
-      local key = c[1]
-      local db_s = self:get(key)
+      local db_s = self:get(id)
       if db_s then
         data = self.decode(db_s.data)
       end
@@ -78,8 +80,8 @@ function kong_storage:save(id, expires, data, hmac)
 
   if life > 0 then
     ngx.timer.at(0, function()
-      local s = self:get(key)
-      
+      local s = self:get(id)
+
       local err, _
       
       if s then
@@ -89,7 +91,7 @@ function kong_storage:save(id, expires, data, hmac)
         }, { ttl = self.lifetime })
       else
         _, err = self.dao.sessions:insert({
-          id = key,
+          id = id,
           data = self.encode(data),
           expires = expires,
         }, { ttl = self.lifetime })
