@@ -225,7 +225,7 @@ When developing, you can use the `Makefile` for doing the following operations:
 | `test`             | Run the unit tests suite                               |
 | `test-integration` | Run the integration tests suite                        |
 | `test-plugins`     | Run the plugins test suite                             |
-| `test-all`         | Run all unit + integration + plugins tests at once     |
+| `test-all`         | Run all units + integration + plugins tests at once     |
 
 ## Enterprise Support & Demo
 
