@@ -23,6 +23,7 @@ for _, strategy in helpers.each_strategy() do
         route_id = route1.id,
         config = {
           storage = "kong",
+          secret = "ultra top secret session",
         }
       })
 
@@ -30,6 +31,7 @@ for _, strategy in helpers.each_strategy() do
         name = "session",
         route_id = route2.id,
         config = {
+          secret = "super secret session secret",
           cookie_name = "da_cookie",
           storage = "kong"
         }
@@ -86,7 +88,7 @@ for _, strategy in helpers.each_strategy() do
           path = "/test2/status/200",
           headers = { host = "httpbin.org", },
         }
-  
+
         -- make sure the anonymous consumer can't get in (request termination)
         res = assert(client:send(request))
         assert.response(res).has.status(403)
@@ -96,24 +98,16 @@ for _, strategy in helpers.each_strategy() do
         res = assert(client:send(request))
         assert.response(res).has.status(200)
         cookie = assert.response(res).has.header("Set-Cookie")
-        
-        -- TODO: session locking
-        ngx.sleep(1)
+
+        ngx.sleep(0.1)
 
         -- use the cookie without the key to ensure cookie still lets them in
         request.headers.apikey = nil
         request.headers.cookie = cookie
         res = assert(client:send(request))
         assert.response(res).has.status(200)
-        cookie = assert.response(res).has.header("Set-Cookie")
-
-        -- TODO: session locking
-        if strategy == 'cassandra' then
-          ngx.sleep(5)
-        end
 
         -- one more time to ensure session was not destroyed or errored out
-        request.headers.cookie = cookie
         res = assert(client:send(request))
         assert.response(res).has.status(200)
       end)
