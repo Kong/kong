@@ -509,20 +509,12 @@ describe("Admin API - Developer Portal - " .. strategy, function()
 
         portal.register_resources(dao)
 
-        for i = 1, 10 do
+        for i = 1, 5 do
           assert(dao.consumers:insert {
-            username = "proxy-consumer-" .. i,
-            custom_id = "proxy-consumer-" .. i,
-            type = enums.CONSUMERS.TYPE.PROXY,
+            username = "developer-consumer-" .. i,
+            custom_id = "developer-consumer-" .. i,
+            type = enums.CONSUMERS.TYPE.DEVELOPER
           })
-          -- only insert half as many developers
-          if i % 2 == 0 then
-            assert(dao.consumers:insert {
-              username = "developer-consumer-" .. i,
-              custom_id = "developer-consumer-" .. i,
-              type = enums.CONSUMERS.TYPE.DEVELOPER
-            })
-          end
         end
 
         configure_portal(dao)
@@ -547,9 +539,9 @@ describe("Admin API - Developer Portal - " .. strategy, function()
           methd = "GET",
           path = "/portal/developers?type=0"
         })
-        res = assert.res_status(200, res)
+        res = assert.res_status(400, res)
         local json = cjson.decode(res)
-        assert.equal(5, #json.data)
+        assert.same({ message = "type is invalid" }, json)
       end)
 
       it("filters by developer status", function()

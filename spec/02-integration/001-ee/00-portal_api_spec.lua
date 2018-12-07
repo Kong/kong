@@ -917,7 +917,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             assert.equal("password is required", message)
           end)
 
-          it("should return 200 if called with a valid token", function()
+          it("should return 200 if called with a valid token, ignoring email_or_id param (regression)", function()
             local claims = {id = developer.id, exp = time() + 100000}
             local valid_jwt = ee_jwt.generate_JWT(claims, secret)
 
@@ -925,6 +925,7 @@ for _, strategy in helpers.each_strategy('postgres') do
               method = "POST",
               path = "/reset-password",
               body = {
+                email_or_id = "this_will_be_ignored",
                 token = valid_jwt,
                 password = "derp",
               },

@@ -308,6 +308,7 @@ return {
       -- If we made it this far, the jwt is valid format and properly signed.
       -- Now we will lookup the consumer and credentials we need to update
       -- Lookup consumer by id contained in jwt, if not found, this will 404
+      self.params.email_or_id = self.consumer_id
       ee_crud.find_developer_by_email_or_id(self, dao_factory, helpers, {__skip_rbac = true})
 
       local credentials, err = dao_factory.credentials:find_all({
@@ -633,10 +634,11 @@ return {
     before = function(self, dao_factory, helpers)
       check_portal_status(helpers)
       authenticate(self, dao_factory, helpers)
-      self.params.consumer_id = self.consumer.id
     end,
 
     PATCH = function(self, dao_factory, helpers)
+      self.params.consumer_id = self.consumer.id
+
       if self.params.id == nil then
         return helpers.responses.send_HTTP_BAD_REQUEST(
                                                   "credential id is required")
@@ -647,6 +649,8 @@ return {
     end,
 
     POST = function(self, dao_factory)
+      self.params.consumer_id = self.consumer.id
+
       crud.post(self.params, self.collection,
                 crud.portal_crud.insert_credential(self.plugin.name))
     end,
@@ -659,24 +663,29 @@ return {
 
       local plugin_name = ngx.unescape_uri(self.params.plugin)
       validate_auth_plugin(self, dao_factory, helpers, plugin_name)
-
-      self.params.consumer_id = self.consumer.id
-      self.params.plugin = nil
     end,
 
     GET = function(self, dao_factory, helpers)
       self.params.consumer_type = enums.CONSUMERS.TYPE.PROXY
+      self.params.consumer_id = self.consumer.id
       self.params.plugin = self.plugin.name
+
       crud.paginated_set(self, dao_factory.credentials, nil,
                                                          {__skip_rbac = true})
     end,
 
     POST = function(self, dao_factory, helpers)
+      self.params.consumer_id = self.consumer.id
+      self.params.plugin = nil
+
       crud.post(self.params, self.collection,
                 crud.portal_crud.insert_credential(self.plugin.name))
     end,
 
     PATCH = function(self, dao_factory, helpers)
+      self.params.consumer_id = self.consumer.id
+      self.params.plugin = nil
+
       if self.params.id == nil then
         return helpers.responses.send_HTTP_BAD_REQUEST(
                                                   "credential id is required")
@@ -695,8 +704,6 @@ return {
       local plugin_name = ngx.unescape_uri(self.params.plugin)
       validate_auth_plugin(self, dao_factory, helpers, plugin_name)
 
-      self.params.plugin = nil
-
       local credentials, err = self.collection:find_all({
         __skip_rbac = true,
         consumer_id = self.consumer.id,
@@ -711,7 +718,6 @@ return {
         return helpers.responses.send_HTTP_NOT_FOUND()
       end
 
-      self.params.credential_id = nil
       self.credential = credentials[1]
     end,
 
@@ -720,6 +726,9 @@ return {
     end,
 
     PATCH = function(self, dao_factory)
+      self.params.plugin = nil
+      self.params.credential_id = nil
+
       crud.patch(self.params, self.collection, self.credential,
                  crud.portal_crud.update_credential, {__skip_rbac = true})
     end,

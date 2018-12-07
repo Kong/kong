@@ -423,7 +423,6 @@ function _M.validate_jwt(self, dao_factory, helpers, token_optional)
     return helpers.responses.send_HTTP_UNAUTHORIZED()
   end
 
-  self.params.email_or_id = jwt.claims.id
   self.reset_secret_id = reset_secret.id
   self.consumer_id = jwt.claims.id
 end

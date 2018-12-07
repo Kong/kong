@@ -39,6 +39,15 @@ local function check_portal_status(helpers)
 end
 
 
+local function find_developer(self, dao_factory, helpers)
+  self.params.email_or_id = ngx.unescape_uri(self.params.email_or_id)
+  if self.params.status then
+    self.params.status = tonumber(self.params.status)
+  end
+  ee_crud.find_developer_by_email_or_id(self, dao_factory, helpers)
+end
+
+
 return {
   ["/files"] = {
     before = function(self, dao_factory, helpers)
@@ -69,7 +78,6 @@ return {
       end
 
       -- Since we know both the name and id of files are unique
-      self.params.splat = nil
       self.portal_file = rows[1]
       if not self.portal_file then
         return helpers.responses.send_HTTP_NOT_FOUND(
@@ -84,6 +92,7 @@ return {
     end,
 
     PATCH = function(self, dao_factory)
+      self.params.splat = nil
       crud.patch(self.params, dao_factory.files, self.portal_file)
     end,
 
@@ -97,19 +106,21 @@ return {
   ["/portal/developers"] = {
     before = function(self, dao_factory, helpers)
       check_portal_status(helpers)
-      self.params.type = enums.CONSUMERS.TYPE.DEVELOPER
-      self.params.status = tonumber(self.params.status)
+      -- you can only manage developers through this endpoint
+      if self.params.type and tostring(self.params.type) ~= tostring(enums.CONSUMERS.TYPE.DEVELOPER) then
+        helpers.responses.send_HTTP_BAD_REQUEST("type is invalid")
+      end
     end,
 
     GET = function(self, dao_factory)
+      self.params.type = enums.CONSUMERS.TYPE.DEVELOPER
+      self.params.status = tonumber(self.params.status)
       crud.paginated_set(self, dao_factory.consumers)
     end,
 
-    PATCH = function(self, dao_factory)
-      crud.patch(self.params, dao_factory.consumers)
-    end,
-
     POST = function(self, dao_factory)
+      self.params.type = enums.CONSUMERS.TYPE.DEVELOPER
+      self.params.status = tonumber(self.params.status)
       crud.post(self.params, dao_factory.consumers)
     end
   },
@@ -117,16 +128,21 @@ return {
   ["/portal/developers/:email_or_id"] = {
     before = function(self, dao_factory, helpers)
       check_portal_status(helpers)
-      self.params.email_or_id = ngx.unescape_uri(self.params.email_or_id)
-      self.params.status = tonumber(self.params.status)
-      ee_crud.find_developer_by_email_or_id(self, dao_factory, helpers)
+      -- you can only manage developers through this endpoint
+      if self.params.type and tostring(self.params.type) ~= tostring(enums.CONSUMERS.TYPE.DEVELOPER) then
+        helpers.responses.send_HTTP_BAD_REQUEST("type is invalid")
+      end
     end,
 
     GET = function(self, dao_factory, helpers)
+      find_developer(self, dao_factory, helpers)
+
       return helpers.responses.send_HTTP_OK(self.consumer)
     end,
 
     PATCH = function(self, dao_factory, helpers)
+      find_developer(self, dao_factory, helpers)
+
       -- save the previous status to determine if we should send an approval email
       local previous_status = self.consumer.status
 
@@ -152,7 +168,9 @@ return {
       end)
     end,
 
-    DELETE = function(self, dao_factory)
+    DELETE = function(self, dao_factory, helpers)
+      find_developer(self, dao_factory, helpers)
+
       crud.delete(self.consumer, dao_factory.consumers)
     end
   },
@@ -168,15 +186,16 @@ return {
         return helpers.responses.send_HTTP_NOT_FOUND()
       end
 
-      self.params.email_or_id = ngx.unescape_uri(self.params.email_or_id)
-      ee_crud.find_developer_by_email_or_id(self, dao_factory, helpers)
-
       local plugin = auth_plugins[self.portal_auth]
       if not plugin then
         return helpers.responses.send_HTTP_NOT_FOUND()
       end
 
       self.collection = dao_factory[plugin.dao]
+    end,
+
+    PATCH = function(self, dao_factory, helpers)
+      find_developer(self, dao_factory, helpers)
 
       local credentials, err = dao_factory.credentials:find_all({
         consumer_id = self.consumer.id,
@@ -193,9 +212,7 @@ return {
       end
 
       self.credential = credentials[1]
-    end,
 
-    PATCH = function(self, dao_factory, helpers)
       if not self.params.password then
         return helpers.responses.send_HTTP_BAD_REQUEST("Password is required")
       end
@@ -236,15 +253,16 @@ return {
         return helpers.responses.send_HTTP_NOT_FOUND()
       end
 
-      self.params.email_or_id = ngx.unescape_uri(self.params.email_or_id)
-      ee_crud.find_developer_by_email_or_id(self, dao_factory, helpers)
-
       local plugin = auth_plugins[self.portal_auth]
       if not plugin then
         return helpers.responses.send_HTTP_NOT_FOUND()
       end
 
       self.collection = dao_factory[plugin.dao]
+    end,
+
+    PATCH = function(self, dao_factory, helpers)
+      find_developer(self, dao_factory, helpers)
 
       local credentials, err = dao_factory.credentials:find_all({
         consumer_id = self.consumer.id,
@@ -261,9 +279,7 @@ return {
       end
 
       self.credential = credentials[1]
-    end,
 
-    PATCH = function(self, dao_factory, helpers)
       local ok, err = enterprise_utils.validate_email(self.params.email)
       if not ok then
         return helpers.responses.send_HTTP_BAD_REQUEST("Invalid email: " .. err)
@@ -319,13 +335,11 @@ return {
       if not portal_auth_enabled(self.portal_auth) then
         return helpers.responses.send_HTTP_NOT_FOUND()
       end
-
-      self.params.email_or_id = ngx.unescape_uri(self.params.email_or_id)
-
-      ee_crud.find_developer_by_email_or_id(self, dao_factory, helpers)
     end,
 
     PATCH = function(self, dao_factory, helpers)
+      find_developer(self, dao_factory, helpers)
+
       local meta_params = self.params.meta and cjson.decode(self.params.meta)
 
       if not meta_params then
@@ -368,44 +382,59 @@ return {
   },
 
   ["/portal/developers/:email_or_id/plugins/"] = {
-    before = function(self, dao_factory, helpers)
-      self.params.email_or_id = ngx.unescape_uri(self.params.email_or_id)
-      ee_crud.find_developer_by_email_or_id(self, dao_factory, helpers)
+    GET = function(self, dao_factory, helpers)
+      find_developer(self, dao_factory, helpers)
       self.params.consumer_id = self.consumer.id
-    end,
 
-    GET = function(self, dao_factory)
       crud.paginated_set(self, dao_factory.plugins)
     end,
 
-    POST = function(self, dao_factory)
+    POST = function(self, dao_factory, helpers)
+      find_developer(self, dao_factory, helpers)
+      self.params.consumer_id = self.consumer.id
+
       crud.post(self.params, dao_factory.plugins)
     end,
 
-    PUT = function(self, dao_factory)
+    PUT = function(self, dao_factory, helpers)
+      find_developer(self, dao_factory, helpers)
+      self.params.consumer_id = self.consumer.id
+
       crud.put(self.params, dao_factory.plugins)
     end
   },
 
   ["/portal/developers/:email_or_id/plugins/:id"] = {
-    before = function(self, dao_factory, helpers)
-      self.params.email_or_id = ngx.unescape_uri(self.params.email_or_id)
-      ee_crud.find_developer_by_email_or_id(self, dao_factory, helpers)
+    GET = function(self, dao_factory, helpers)
+      find_developer(self, dao_factory, helpers)
+
       crud.find_plugin_by_filter(self, dao_factory, {
         consumer_id = self.consumer.id,
         id          = self.params.id,
       }, helpers)
-    end,
 
-    GET = function(self, dao_factory, helpers)
       return helpers.responses.send_HTTP_OK(self.plugin)
     end,
 
-    PATCH = function(self, dao_factory)
+    PATCH = function(self, dao_factory, helpers)
+      find_developer(self, dao_factory, helpers)
+
+      crud.find_plugin_by_filter(self, dao_factory, {
+        consumer_id = self.consumer.id,
+        id          = self.params.id,
+      }, helpers)
+
       crud.patch(self.params, dao_factory.plugins, self.plugin)
     end,
 
-    DELETE = function(self, dao_factory)
+    DELETE = function(self, dao_factory, helpers)
+      find_developer(self, dao_factory, helpers)
+
+      crud.find_plugin_by_filter(self, dao_factory, {
+        consumer_id = self.consumer.id,
+        id          = self.params.id,
+      }, helpers)
+
       crud.delete(self.plugin, dao_factory.plugins)
     end
   },
