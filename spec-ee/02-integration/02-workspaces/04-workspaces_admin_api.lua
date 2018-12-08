@@ -12,9 +12,10 @@ local DB = require "kong.db"
 dao_helpers.for_each_dao(function(kong_config)
 
 describe("(#" .. kong_config.database .. ") Admin API workspaces", function()
-  local client, dao, db
+  local client, dao, _, db
 
   setup(function()
+    _, db, dao = helpers.get_db_utils(kong_config.database)
     dao = assert(DAOFactory.new(kong_config))
     db = assert(DB.new(kong_config, kong_config.database))
     singletons.dao = dao
@@ -386,11 +387,10 @@ describe("(#" .. kong_config.database .. ") Admin API workspaces", function()
 
         res = assert(client:send {
           method = "POST",
-          path   = "/" .. name .. "/apis",
+          path   = "/" .. name .. "/services",
           body = {
             name = "foo",
-            hosts = {"api.com"},
-            upstream_url = helpers.mock_upstream_url
+            host = "api.com",
           },
           headers = {
             ["Content-Type"] = "application/json",
@@ -490,12 +490,12 @@ describe("(#" .. kong_config.database .. ") Admin API workspaces", function()
       describe("creates a new relationship", function()
         local entities = {}
         lazy_setup(function()
-          local api1 = assert(dao.apis:insert {
-            name = "api1",
-            uris = "/uri",
-            upstream_url = "http://upstream",
+          local service1 = assert(db.services:insert {
+            name = "service1",
+            host = "s1.com",
           })
-          entities.apis = api1
+          entities.services = service1
+
 
           local plugin1 = assert(dao.plugins:insert {
             name = "key-auth",
@@ -994,42 +994,43 @@ describe("Admin API #" .. kong_config.database, function()
       end)
 
       it("does not allow creating routes that collide in path and have no host", function()
-        local wsname = utils.uuid()
-        local res = client:send {
-          method = "POST",
-          path = "/workspaces",
-          body = {
-            name = wsname,
-          },
-          headers = {["Content-Type"] = "application/json"}
+        local ws_name = utils.uuid()
+        local ws = bp.workspaces:insert {
+          name = ws_name
         }
+
+        bp.services:insert {
+          name = "demo-ip",
+          protocol = "http",
+          host = "httpbin.org",
+          path = "/ip",
+        }
+
+        bp.services:insert_ws ({
+          name = "demo-anything",
+          protocol = "http",
+          host = "httpbin.org",
+          path = "/anything",
+        }, ws)
+
+        local res = client:post("/default/services/demo-ip/routes", {
+          body = {
+            paths = { "/my-uri" },
+            methods = { "GET" },
+          },
+          headers = {["Content-Type"] = "application/json"},
+        })
         assert.res_status(201, res)
 
-        res = client:send {
-          method = "POST",
-          path = "/apis",
+        local res = client:post("/".. ws_name.."/services/demo-anything/routes", {
           body = {
-            uris = "/",
-            methods = "GET",
-            name = "my-api",
-            upstream_url = "http://api.com",
+            paths = { "/my-uri" },
+            methods = { "GET" },
           },
-          headers = {["Content-Type"] = "application/json"}
-        }
-        assert.res_status(201, res)
-
-        res = assert(client:send {
-          method = "POST",
-          path = "/".. wsname .. "/apis",
-          body = {
-            uris = "/",
-            methods = "GET",
-            name = "my-api2",
-            upstream_url = "http://api.com"
-          },
-          headers = {["Content-Type"] = "application/json"}
+          headers = {["Content-Type"] = "application/json"},
         })
         assert.res_status(409, res)
+
       end)
 
       it("route PATCH checks collision", function()
