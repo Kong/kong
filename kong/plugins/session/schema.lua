@@ -32,7 +32,7 @@ return {
     logout_methods = {
       type = "array",
       enum = { "POST", "GET", "DELETE" },
-      default = { "POST", "DELETE" }
+      default = { "GET", "POST", "DELETE" }
     },
     logout_query_arg = { 
       required = false,
