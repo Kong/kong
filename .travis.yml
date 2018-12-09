@@ -38,6 +38,19 @@ env:
     - INSTALL_CACHE=$HOME/install-cache
   matrix:
     - TEST_SUITE=lint
+    # enterprise matrix begin
+    - TEST_SUITE=unit-ee
+    - TEST_SUITE=integration-ee
+      OPENRESTY=$OPENRESTY_LATEST
+    - TEST_SUITE=plugins-ee
+      OPENRESTY=$OPENRESTY_LATEST
+    - TEST_SUITE=integration-ee
+      OPENRESTY=$OPENRESTY_BASE
+      CASSANDRA=2.2.12
+    - TEST_SUITE=plugins-ee
+      OPENRESTY=$OPENRESTY_BASE
+      CASSANDRA=2.2.12
+    # enterprise matrix end
     - TEST_SUITE=unit
     - TEST_SUITE=integration
       OPENRESTY=$OPENRESTY_LATEST
@@ -54,18 +67,6 @@ env:
       OPENRESTY=$OPENRESTY_BASE
     - TEST_SUITE=old-plugins
       OPENRESTY=$OPENRESTY_BASE
-    # enterprise matrix follows
-    - TEST_SUITE=unit-ee
-    - TEST_SUITE=integration-ee
-      OPENRESTY=$OPENRESTY_LATEST
-    - TEST_SUITE=integration-ee
-      OPENRESTY=$OPENRESTY_BASE
-      CASSANDRA=2.2.12
-    - TEST_SUITE=plugins-ee
-      OPENRESTY=$OPENRESTY_LATEST
-    - TEST_SUITE=plugins-ee
-      OPENRESTY=$OPENRESTY_BASE
-      CASSANDRA=2.2.12
 
 before_install:
   - source .ci/setup_env.sh
