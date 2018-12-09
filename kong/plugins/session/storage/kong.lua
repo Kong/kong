@@ -20,8 +20,19 @@ function kong_storage.new(config)
 end
 
 
-function kong_storage:get(k)
-  local s, err = self.dao.sessions:find({ id = k })
+local function load_session(sid)
+  local rows, err = singletons.dao.sessions:find_all { session_id = sid }
+  if not rows then
+    return nil, err
+  end
+
+  return rows[1]
+end
+
+
+function kong_storage:get(sid)
+  local cache_key = self.dao.sessions:cache_key(sid)
+  local s, err = singletons.cache:get(cache_key, nil, load_session, sid)
 
   if err then
     ngx.log(ngx.ERR, "Error finding session:", err)
@@ -30,9 +41,6 @@ function kong_storage:get(k)
   return s, err
 end
 
-function kong_storage:key(id)	
-  return self.encode(id)	
-end
 
 function kong_storage:cookie(c)
   local r, d = {}, self.delimiter
@@ -61,7 +69,7 @@ function kong_storage:open(cookie, lifetime)
     local data
 
     if ngx.get_phase() ~= 'header_filter' then
-      local db_s = self:get(id)
+      local db_s = self:get(c[1])
       if db_s then
         data = self.decode(db_s.data)
       end
@@ -80,10 +88,10 @@ function kong_storage:save(id, expires, data, hmac)
 
   if life > 0 then
     ngx.timer.at(0, function()
-      local s = self:get(id)
+      local s = self:get(key)
 
       local err, _
-      
+
       if s then
         _, err = self.dao.sessions:update({ id = s.id }, {
           data = self.encode(data),
@@ -91,7 +99,7 @@ function kong_storage:save(id, expires, data, hmac)
         }, { ttl = self.lifetime })
       else
         _, err = self.dao.sessions:insert({
-          id = id,
+          session_id = key,
           data = self.encode(data),
           expires = expires,
         }, { ttl = self.lifetime })
