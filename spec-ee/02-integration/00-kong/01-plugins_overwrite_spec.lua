@@ -10,9 +10,9 @@ describe("Plugins overwrite:", function()
     describe("with defaults", function()
 
       setup(function()
+        bp = helpers.get_db_utils()
         assert(helpers.start_kong())
         client = helpers.admin_client()
-        bp = helpers.get_db_utils()
       end)
 
       teardown(helpers.stop_kong)
@@ -83,11 +83,11 @@ describe("Plugins overwrite:", function()
     describe("with feature-flag 'rate_limiting_restrict_redis_only=on',", function()
 
       setup(function()
+        bp = helpers.get_db_utils()
         assert(helpers.start_kong{
           feature_conf_path = "spec-ee/fixtures/feature_rate_limit_plugins.conf",
         })
         client = helpers.admin_client()
-        bp = helpers.get_db_utils()
       end)
 
       teardown(helpers.stop_kong)
@@ -189,9 +189,9 @@ describe("Plugins overwrite:", function()
     describe("with defaults", function()
 
       setup(function()
+        bp = helpers.get_db_utils()
         assert(helpers.start_kong())
         client = helpers.admin_client()
-        bp = helpers.get_db_utils()
       end)
 
       teardown(helpers.stop_kong)
@@ -267,11 +267,11 @@ describe("Plugins overwrite:", function()
     describe("with feature-flag 'response_ratelimiting_restrict_redis_only=on',", function()
 
       setup(function()
+        bp = helpers.get_db_utils()
         assert(helpers.start_kong{
           feature_conf_path = "spec-ee/fixtures/feature_rate_limit_plugins.conf",
         })
         client = helpers.admin_client()
-        bp = helpers.get_db_utils()
       end)
 
       teardown(helpers.stop_kong)
