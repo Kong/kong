@@ -18,6 +18,7 @@ local function get_opts(conf)
       samesite = conf.cookie_samesite,
       httponly = conf.cookie_httponly,
       secure   = conf.cookie_secure,
+      renew    = conf.cookie_renew,
     }
   }
 end
