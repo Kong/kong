@@ -46,6 +46,9 @@ test-integration-ee:
 test-plugins:
 	@$(TEST_CMD) spec/03-plugins
 
+test-plugins-ee:
+	@$(TEST_CMD) spec-ee/03-plugins
+
 test-all:
 	@$(TEST_CMD) spec/
 
