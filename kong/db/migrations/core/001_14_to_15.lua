@@ -4,8 +4,29 @@ return {
       DO $$
       BEGIN
         ALTER TABLE IF EXISTS ONLY "routes" ADD "name" TEXT UNIQUE;
-        ALTER TABLE IF EXISTS ONLY "routes" ADD "snis" TEXT[];
+      EXCEPTION WHEN DUPLICATE_COLUMN THEN
+        -- Do nothing, accept existing state
+      END;
+      $$;
+
+      DO $$
+      BEGIN
+        ALTER TABLE IF EXISTS "routes" ADD "snis" TEXT[];
+      EXCEPTION WHEN DUPLICATE_COLUMN THEN
+        -- Do nothing, accept existing state
+      END;
+      $$;
+
+      DO $$
+      BEGIN
         ALTER TABLE IF EXISTS ONLY "routes" ADD "sources" JSONB[];
+      EXCEPTION WHEN DUPLICATE_COLUMN THEN
+        -- Do nothing, accept existing state
+      END;
+      $$;
+
+      DO $$
+      BEGIN
         ALTER TABLE IF EXISTS ONLY "routes" ADD "destinations" JSONB[];
       EXCEPTION WHEN DUPLICATE_COLUMN THEN
         -- Do nothing, accept existing state
@@ -21,8 +42,24 @@ return {
       DO $$
       BEGIN
         ALTER TABLE IF EXISTS ONLY "plugins"
-          DROP CONSTRAINT IF EXISTS "plugins_pkey",
-          DROP CONSTRAINT IF EXISTS "plugins_id_key",
+          DROP CONSTRAINT IF EXISTS "plugins_pkey";
+      EXCEPTION WHEN DUPLICATE_TABLE OR INVALID_TABLE_DEFINITION THEN
+          -- Do nothing, accept existing state
+      END;
+      $$;
+
+      DO $$
+      BEGIN
+        ALTER TABLE IF EXISTS ONLY "plugins"
+          DROP CONSTRAINT IF EXISTS "plugins_id_key";
+      EXCEPTION WHEN DUPLICATE_TABLE OR INVALID_TABLE_DEFINITION THEN
+          -- Do nothing, accept existing state
+      END;
+      $$;
+
+      DO $$
+      BEGIN
+        ALTER TABLE IF EXISTS ONLY "plugins"
           ADD PRIMARY KEY ("id");
       EXCEPTION WHEN DUPLICATE_TABLE OR INVALID_TABLE_DEFINITION THEN
           -- Do nothing, accept existing state
@@ -196,6 +233,7 @@ return {
       ALTER TABLE routes ADD snis set<text>;
       ALTER TABLE routes ADD sources set<text>;
       ALTER TABLE routes ADD destinations set<text>;
+      ALTER TABLE plugins ADD run_on text;
       CREATE INDEX IF NOT EXISTS routes_name_idx ON routes(name);
 
 
