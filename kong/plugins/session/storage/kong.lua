@@ -72,6 +72,7 @@ function kong_storage:open(cookie, lifetime)
       local db_s = self:get(c[1])
       if db_s then
         data = self.decode(db_s.data)
+        expires = db_s.expires
       end
     end
     
@@ -87,26 +88,27 @@ function kong_storage:save(id, expires, data, hmac)
   local value = concat({key, expires, self.encode(hmac)}, self.delimiter)
 
   if life > 0 then
-    ngx.timer.at(0, function()
+    ngx.timer.at(0, function()  
       local s = self:get(key)
 
       local err, _
-
+      local msg = "update"
       if s then
         _, err = self.dao.sessions:update({ id = s.id }, {
           data = self.encode(data),
           expires = expires,
         }, { ttl = self.lifetime })
       else
+        msg = "insert"
         _, err = self.dao.sessions:insert({
           session_id = key,
           data = self.encode(data),
           expires = expires,
         }, { ttl = self.lifetime })
       end
-
+      
       if err then
-        ngx.log(ngx.ERR, "Error inserting session: ", err)
+        ngx.log(ngx.ERR, "Error trying to ".. msg .. " session: ", err)
       end
     end)
 
