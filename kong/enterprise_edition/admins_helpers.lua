@@ -3,13 +3,85 @@ local enums = require "kong.enterprise_edition.dao.enums"
 local portal_crud = require "kong.portal.crud_helpers"
 local workspaces = require "kong.workspaces"
 local responses = require "kong.tools.responses"
+local utils = require "kong.tools.utils"
+local secrets = require "kong.enterprise_edition.consumer_reset_secret_helpers"
+local rbac = require "kong.rbac"
+local emails = singletons.admin_emails
 
 local log = ngx.log
+local ERR = ngx.ERR
 local DEBUG = ngx.DEBUG
 local _log_prefix = "[admins] "
 
 
 local _M = {}
+
+
+local function delete_rbac_user_roles(rbac_user, dao)
+  local user_roles_map, err = dao.rbac_user_roles:find_all({
+    user_id = rbac_user.id,
+    __skip_rbac = true,
+  })
+  if err then
+    return nil, err
+  end
+
+  for _, map in ipairs(user_roles_map) do
+    local _, err = dao.rbac_user_roles:delete(map)
+    if err then
+      return nil, err
+    end
+
+    local role, err = dao.rbac_roles:find({ id = map.role_id })
+    if err then
+      return nil, err
+    end
+
+    if role.is_default then
+      local _, err = rbac.remove_user_from_default_role(rbac_user, role)
+      if err then
+        return nil, err
+      end
+    end
+  end
+
+  return true
+end
+
+
+local function rollback_on_create(entities, dao)
+  local _, err
+
+  if entities.consumer then
+    _, err = dao.consumers:delete({ id = entities.consumer.id })
+    if err then
+      log(ERR, _log_prefix, err)
+    end
+
+    err = workspaces.delete_entity_relation("consumers", entities.consumer)
+    if err then
+      log(ERR, _log_prefix, err)
+    end
+  end
+
+  if entities.rbac_user then
+    _, err = dao.rbac_users:delete({ id = entities.rbac_user.id })
+    if err then
+      log(ERR, _log_prefix, err)
+    end
+
+    err = workspaces.delete_entity_relation("rbac_users", entities.rbac_user)
+    if err then
+      log(ERR, _log_prefix, err)
+    end
+
+    _, err = delete_rbac_user_roles(entities.rbac_user, dao)
+    if err then
+      log(ERR, _log_prefix, err)
+    end
+  end
+end
+
 
 function _M.validate(params, dao, http_method)
   -- how many rows do we expect to find?
@@ -65,6 +137,110 @@ function _M.validate(params, dao, http_method)
   end
 
   return true
+end
+
+
+function _M.create(opts)
+  local params = opts.params
+  local token_optional = opts.token_optional or false
+  local dao = opts.dao_factory
+
+  local admin_name = params.username or params.custom_id
+
+  -- create rbac_user
+  local rbac_user, err = dao.rbac_users:insert({
+    name = admin_name,
+    user_token = utils.uuid(),
+    comment = "User generated on creation of Admin.",
+  })
+
+  if err then
+    log(ERR, _log_prefix, err)
+
+    return {
+      code = responses.status_codes.HTTP_INTERNAL_SERVER_ERROR,
+      body = { message = "failed to create admin (1)"}
+    }
+  end
+
+  -- create consumer
+  local consumer, err = dao.consumers:insert({
+    username  = params.username,
+    custom_id = params.custom_id,
+    type = params.type,
+    email = params.email,
+    status = enums.CONSUMERS.STATUS.INVITED,
+  })
+
+  if err then
+    rollback_on_create({ rbac_user = rbac_user }, dao)
+    log(ERR, _log_prefix, err)
+
+    return {
+      code = responses.status_codes.HTTP_INTERNAL_SERVER_ERROR,
+      body = { message = "failed to create admin (2)" }
+    }
+  end
+
+  -- create mapping
+  local _, err = dao.consumers_rbac_users_map:insert({
+    consumer_id = consumer.id,
+    user_id = rbac_user.id,
+  })
+
+  if err then
+    rollback_on_create({ rbac_user = rbac_user, consumer = consumer }, dao)
+    log(ERR, _log_prefix, err)
+
+    return {
+      code = responses.status_codes.HTTP_INTERNAL_SERVER_ERROR,
+      body = { message = "failed to create admin (3)" }
+    }
+  end
+
+  local jwt
+  if not token_optional then
+    local expiry = singletons.configuration.admin_invitation_expiry
+
+    jwt, err = secrets.create(consumer, ngx.var.remote_addr, expiry)
+
+    if err then
+      return {
+        code = responses.status_codes.HTTP_OK,
+        body = {
+          message = "User created, but failed to create invitation",
+          consumer = consumer,
+          rbac_user = rbac_user,
+        }
+      }
+    end
+  end
+
+  if emails then
+    local _, err = emails:invite({{ username = admin_name, email = consumer.email }}, jwt)
+    if err then
+      log(ERR, _log_prefix, "error inviting user: ", consumer.email)
+
+      return {
+        code = responses.status_codes.HTTP_OK,
+        body = {
+          message = "User created, but failed to send invitation email",
+          rbac_user = rbac_user,
+          consumer = consumer,
+        },
+      }
+    end
+  else
+    log(ERR, _log_prefix, "No email configuration found.")
+  end
+
+  return {
+    code = responses.status_codes.HTTP_OK,
+    body = {
+      rbac_user = rbac_user,
+      consumer = consumer,
+    }
+  }
 end
 
 

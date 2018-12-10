@@ -217,71 +217,13 @@ return {
         )
       end
 
-      crud.post({
-        username  = self.params.username,
-        custom_id = self.params.custom_id,
-        type      = self.params.type,
-        email     = self.params.email,
-        status    = enums.CONSUMERS.STATUS.INVITED,
-      }, dao_factory.consumers, function(consumer)
-        local name = consumer.username or consumer.custom_id
-        local rbac_user
+      local res = admins.create({
+        params = self.params,
+        token_optional = self.token_optional,
+        dao_factory = dao_factory,
+      })
 
-        crud.post({
-          name = name,
-          user_token = utils.uuid(),
-          comment = "User generated on creation of Admin.",
-        }, dao_factory.rbac_users,
-        function (new_rbac_user)
-          -- don't include token
-          new_rbac_user.user_token = nil
-          rbac_user = new_rbac_user
-          crud.post({
-            consumer_id = consumer.id,
-            user_id = new_rbac_user.id,
-          }, dao_factory.consumers_rbac_users_map,
-          function()
-            local jwt, err
-
-            -- only generate secrets for auth plugins with credentials tables
-            if not self.token_optional then
-              local expiry = singletons.configuration.admin_invitation_expiry
-
-              jwt, err = secrets.create(consumer, ngx.var.remote_addr, expiry)
-
-              if err then
-                return helpers.yield_error(err)
-              end
-            end
-            if emails then
-              local _, err = emails:invite({{ username = name,
-                                              email = consumer.email }}, jwt)
-                if err then
-                  ngx.log(ngx.ERR, "[admins] error inviting user : ",
-                          consumer.email)
-                  return helpers.responses.send_HTTP_OK({
-                    message = "User created, but error sending invitation email"
-                              .. ":" .. consumer.email,
-                    rbac_user = rbac_user,
-                    consumer = consumer
-                  })
-                end
-            else
-              ngx.log(ngx.ERR, "[admins] error. There's no configuration "
-                      .. "for email : ", consumer.email)
-            end
-              return helpers.responses.send_HTTP_OK({
-                rbac_user = rbac_user,
-                consumer = consumer
-              })
-            end)
-            return helpers.responses.send_HTTP_INTERNAL_SERVER_ERROR(
-              "Error creating admin (1)")
-        end)
-      end)
-
-      return helpers.responses.send_HTTP_INTERNAL_SERVER_ERROR("Error "..
-                                                           "creating admin (2)")
+      return helpers.responses.send(res.code, res.body)
     end,
   },
 

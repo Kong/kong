@@ -123,6 +123,81 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
 
+    describe("create", function()
+      local snapshot
+
+      before_each(function()
+        snapshot = assert:snapshot()
+      end)
+
+      after_each(function()
+        snapshot:revert()
+      end)
+
+      it("rolls back the rbac_user if we can't create the consumer", function()
+        local old_map_count = #dao.consumers_rbac_users_map:find_all()
+        local old_ws_entity_count = #dao.workspace_entities:find_all()
+        local old_token_count = #dao.consumer_reset_secrets:find_all()
+
+        stub(dao.consumers, "insert").returns(nil, "failed!")
+
+        local opts = {
+          token_optional = false,
+          dao_factory = dao,
+          params = {
+            username = "gruce1",
+            email = "gruce1@konghq.com",
+            type = enums.CONSUMERS.TYPE.ADMIN,
+          },
+        }
+
+        local res = admins_helpers.create(opts)
+        local expected = {
+          code = 500,
+          body = { message = "failed to create admin (2)" }
+        }
+        assert.same(expected, res)
+
+        -- leave no trace
+        local consumers = assert(dao.consumers:find_all({ username = "gruce"}))
+        assert.same({}, consumers)
+
+        local rbac_users = assert(dao.rbac_users:find_all({ name = "gruce" }))
+        assert.same({}, rbac_users)
+
+        local new_map_count = #dao.consumers_rbac_users_map:find_all()
+        assert.same(old_map_count, new_map_count)
+
+        local new_ws_entity_count = #dao.workspace_entities:find_all()
+        assert.same(old_ws_entity_count, new_ws_entity_count)
+
+        local new_token_count = #dao.consumer_reset_secrets:find_all()
+        assert.same(old_token_count, new_token_count)
+      end)
+
+      it("rolls back the rbac_user and consumer if we can't create the map", function()
+        stub(dao.consumers_rbac_users_map, "insert").returns(nil, "failed!")
+
+        local opts = {
+          token_optional = false,
+          dao_factory = dao,
+          params = {
+            username = "gruce",
+            email = "gruce@konghq.com",
+            type = enums.CONSUMERS.TYPE.ADMIN,
+          },
+        }
+
+        local res = admins_helpers.create(opts)
+        local expected = {
+          code = 500,
+          body = { message = "failed to create admin (3)" }
+        }
+
+        assert.same(expected, res)
+      end)
+    end)
+
     describe("update", function()
       local admin
 
