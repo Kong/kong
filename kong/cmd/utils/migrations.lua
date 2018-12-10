@@ -116,7 +116,7 @@ local function up(schema_state, db, opts)
 
     else
       -- fresh install: must bootstrap (which will run migrations up)
-      error("can't run migrations: database needs bootstrapping; " ..
+      error("cannot run migrations: database needs bootstrapping; " ..
             "run 'kong migrations bootstrap'")
     end
   end
@@ -128,8 +128,19 @@ local function up(schema_state, db, opts)
       error("database has pending migrations; run 'kong migrations finish'")
     end
 
+    if opts.force then
+      log.debug("forcing re-execution of these migrations:\n%s",
+                schema_state.executed_migrations)
+
+      assert(db:run_migrations(schema_state.executed_migrations, {
+        run_up = true,
+      }))
+    end
+
     if not schema_state.new_migrations then
-      log("database is already up-to-date")
+      if not opts.force then
+        log("database is already up-to-date")
+      end
       return
     end
 
@@ -151,16 +162,18 @@ local function up(schema_state, db, opts)
 end
 
 
-local function finish(schema_state, db, ttl)
+local function finish(schema_state, db, opts)
   if schema_state.needs_bootstrap then
-    log("can't run migrations: database not bootstrapped")
+    log("cannot run migrations: database not bootstrapped")
     return
   end
 
-  local opts = {
-    ttl = ttl,
-    no_wait = true, -- exit the mutex if another node acquired it
-  }
+  if opts.force then
+    log("cannot use --force with 'finish'")
+    return
+  end
+
+  opts.no_wait = true -- exit the mutex if another node acquired it
 
   local ok, err = db:cluster_mutex(MIGRATIONS_MUTEX_KEY, opts, function()
     local schema_state = assert(db:schema_state())

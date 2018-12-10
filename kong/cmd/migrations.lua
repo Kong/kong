@@ -29,6 +29,9 @@ Options:
 
  -q,--quiet                         Suppress all output.
 
+ -f,--force                         Run migrations even if database reports
+                                    as already executed.
+
  --db-timeout     (default 60)      Timeout, in seconds, for all database
                                     operations (including schema consensus for
                                     Cassandra).
@@ -131,11 +134,15 @@ local function execute(args)
   elseif args.command == "up" then
     migrations_utils.up(schema_state, db, {
       ttl = args.lock_timeout,
+      force = args.force,
       abort = true, -- exit the mutex if another node acquired it
     })
 
   elseif args.command == "finish" then
-    migrations_utils.finish(schema_state, db, args.lock_timeout)
+    migrations_utils.finish(schema_state, db, {
+      ttl = args.lock_timeout,
+      force = args.force,
+    })
 
   else
     error("unreachable")
