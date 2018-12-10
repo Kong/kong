@@ -274,7 +274,7 @@ return {
       ALTER TABLE apis ADD http_if_terminated boolean;
     ]],
     down = [[
-      DROP INDEX ssl_servers_names_ssl_certificate_idx;
+      DROP INDEX ssl_servers_names_ssl_certificate_id_idx;
 
       DROP TABLE ssl_certificates;
       DROP TABLE ssl_servers_names;
@@ -770,7 +770,7 @@ return {
   },
   { name = "2018-03-27-002500_drop_old_ssl_tables",
     up = [[
-      DROP INDEX ssl_servers_names_ssl_certificate_id_idx;
+      DROP INDEX IF EXISTS ssl_servers_names_ssl_certificate_id_idx;
       DROP TABLE ssl_certificates;
       DROP TABLE ssl_servers_names;
     ]],

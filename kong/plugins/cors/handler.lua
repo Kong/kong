@@ -1,4 +1,6 @@
 local BasePlugin = require "kong.plugins.base_plugin"
+local lrucache   = require "resty.lrucache"
+local url        = require "socket.url"
 
 
 local kong     = kong
@@ -16,6 +18,36 @@ local CorsHandler = BasePlugin:extend()
 
 CorsHandler.PRIORITY = 2000
 CorsHandler.VERSION = "1.0.0"
+
+
+-- per-plugin cache of normalized origins for runtime comparison
+local mt_cache = { __mode = "k" }
+local config_cache = setmetatable({}, mt_cache)
+
+
+-- per-worker cache of parsed requests origins with 1000 slots
+local normalized_req_domains = lrucache.new(10e3)
+
+
+local function normalize_origin(domain)
+  local parsed_obj = assert(url.parse(domain))
+  if not parsed_obj.host then
+    return domain
+  end
+
+  local port = parsed_obj.port
+  if not port and parsed_obj.scheme then
+    if parsed_obj.scheme == "http" then
+      port = 80
+
+    elseif parsed_obj.scheme == "https" then
+      port = 443
+    end
+  end
+
+  return (parsed_obj.scheme and parsed_obj.scheme .. "://" or "") ..
+          parsed_obj.host .. (port and ":" .. port or "")
+end
 
 
 local function configure_origin(conf)
@@ -51,8 +83,26 @@ local function configure_origin(conf)
 
   local req_origin = kong.request.get_header("origin")
   if req_origin then
-    for _, domain in ipairs(conf.origins) do
-      local from, _, err = re_find(req_origin, domain, "jo")
+    local normalized_domains = config_cache[conf]
+    if not normalized_domains then
+      normalized_domains = {}
+
+      for _, domain in ipairs(conf.origins) do
+        table.insert(normalized_domains, normalize_origin(domain))
+      end
+
+      config_cache[conf] = normalized_domains
+    end
+
+    local normalized_req_origin = normalized_req_domains:get(req_origin)
+    if not normalized_req_origin then
+      normalized_req_origin = normalize_origin(req_origin)
+      normalized_req_domains:set(req_origin, normalized_req_origin)
+    end
+
+    for _, normalized_domain in ipairs(normalized_domains) do
+      local from, _, err = re_find(normalized_req_origin,
+                                   normalized_domain .. "$", "ajo")
       if err then
         kong.log.err("could not search for domain: ", err)
       end

@@ -409,15 +409,20 @@
 #cassandra_consistency = ONE     # Consistency setting to use when reading/
                                  # writing to the Cassandra cluster.
 
-#cassandra_lb_policy = RoundRobin  # Load balancing policy to use when
-                                   # distributing queries across your Cassandra
-                                   # cluster.
-                                   # Accepted values are:
-                                   # `RoundRobin`, `RequestRoundRobin`,
-                                   # `DCAwareRoundRobin`, and
-                                   # `RequestDCAwareRoundRobin`.
-                                   # Prefer the later if and only if you are
-                                   # using a multi-datacenter cluster.
+#cassandra_lb_policy = RequestRoundRobin  # Load balancing policy to use when
+                                          # distributing queries across your
+                                          # Cassandra cluster.
+                                          # Accepted values are:
+                                          # `RoundRobin`, `RequestRoundRobin`,
+                                          # `DCAwareRoundRobin`, and
+                                          # `RequestDCAwareRoundRobin`.
+                                          # Policies prefixed with "Request"
+                                          # make efficient use of established
+                                          # connections throughout the same
+                                          # request.
+                                          # Prefer "DCAware" policies if and
+                                          # only if you are using a
+                                          # multi-datacenter cluster.
 
 #cassandra_local_datacenter =    # When using the `DCAwareRoundRobin`
                                  # or `RequestDCAwareRoundRobin` load
