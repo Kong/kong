@@ -599,8 +599,68 @@ describe("Admin API - Developer Portal - " .. strategy, function()
       developer = resp_body_json.consumer
     end)
 
+    describe("GET", function()
+      it("fetches the developer", function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/portal/developers/".. developer.id,
+        })
+
+        local body = assert.res_status(200, res)
+        local resp_body_json = cjson.decode(body)
+
+        assert.same(developer, resp_body_json)
+      end)
+    end)
+
     describe("PATCH", function()
       describe("smtp = on", function()
+        it("it rejects a type other than DEVELOPER", function()
+          local res = assert(client:send {
+            method = "PATCH",
+            body = {
+              type = enums.CONSUMERS.TYPE.ADMIN
+            },
+            path = "/portal/developers/".. developer.id,
+            headers = {["Content-Type"] = "application/json"}
+          })
+
+          local body = assert.res_status(400, res)
+          local resp_body_json = cjson.decode(body)
+          local message = resp_body_json.message
+
+          assert.equal("type is invalid", message)
+
+          local res = assert(client:send {
+            method = "PATCH",
+            body = {
+              type = enums.CONSUMERS.TYPE.PROXY
+            },
+            path = "/portal/developers/".. developer.id,
+            headers = {["Content-Type"] = "application/json"}
+          })
+
+          local body = assert.res_status(400, res)
+          local resp_body_json = cjson.decode(body)
+          local message = resp_body_json.message
+
+          assert.equal("type is invalid", message)
+
+          local res = assert(client:send {
+            method = "PATCH",
+            body = {
+              type = enums.CONSUMERS.TYPE.DEVELOPER
+            },
+            path = "/portal/developers/".. developer.id,
+            headers = {["Content-Type"] = "application/json"}
+          })
+
+          local body = assert.res_status(200, res)
+          local resp_body_json = cjson.decode(body)
+
+          assert.same(developer, resp_body_json.consumer)
+        end)
+
         it("sends an email to the approved developer", function()
           local res = assert(client:send {
             method = "PATCH",
@@ -630,7 +690,7 @@ describe("Admin API - Developer Portal - " .. strategy, function()
           assert.same(expected_email, resp_body_json.email)
         end)
 
-        it("does not send an email if the developer is not approved", function()
+        it("does not send an email if rejected, revoked, or re-approved from revoked", function()
           local res = assert(client:send {
             method = "PATCH",
             body = {
@@ -643,348 +703,136 @@ describe("Admin API - Developer Portal - " .. strategy, function()
           local body = assert.res_status(200, res)
           local resp_body_json = cjson.decode(body)
           assert.is_nil(resp_body_json.email)
+
+          local res = assert(client:send {
+            method = "PATCH",
+            body = {
+              status = 3
+            },
+            path = "/portal/developers/".. developer.id,
+            headers = {["Content-Type"] = "application/json"}
+          })
+
+          local body = assert.res_status(200, res)
+          local resp_body_json = cjson.decode(body)
+          assert.is_nil(resp_body_json.email)
+
+          local res = assert(client:send {
+            method = "PATCH",
+            body = {
+              status = 0
+            },
+            path = "/portal/developers/".. developer.id,
+            headers = {["Content-Type"] = "application/json"}
+          })
+
+          local body = assert.res_status(200, res)
+          local resp_body_json = cjson.decode(body)
+          assert.is_nil(resp_body_json.email)
         end)
-      end)
-    end)
-  end)
 
-  describe("/portal/developers/:email_or_id/password", function()
-    local developer
-    before_each(function()
-      helpers.stop_kong()
-      assert(db:truncate())
-      helpers.register_consumer_relations(dao)
+        it("updates the developer email, username, and login credential", function()
+          -- case insensitive email
+          local res = assert(client:send {
+            method = "PATCH",
+            body = {
+              email = "new_Email@wHodis.com",
+              status = 0,
+            },
+            path = "/portal/developers/".. developer.id,
+            headers = {
+              ["Content-Type"] = "application/json",
+            }
+          })
 
-      assert(helpers.start_kong({
-        database   = strategy,
-        portal     = true,
-        portal_auth = "basic-auth",
-        portal_auth_config = "{ \"hide_credentials\": true }",
-        portal_auto_approve = "on",
-      }))
+          local body = assert.res_status(200, res)
+          local resp_body_json = cjson.decode(body)
+          assert.equals("new_email@whodis.com", resp_body_json.consumer.email)
+          assert.equals("new_email@whodis.com", resp_body_json.consumer.username)
 
-      portal_api_client = assert(ee_helpers.portal_api_client())
-      client = assert(helpers.admin_client())
-      configure_portal(dao)
 
-      local res = assert(portal_api_client:send {
-        method = "POST",
-        path = "/register",
-        body = {
-          email = "gruce@konghq.com",
-          password = "kong",
-          meta = "{\"full_name\":\"I Like Turtles\"}"
-        },
-        headers = {["Content-Type"] = "application/json"}
-      })
+          -- old email fails to access portal api
+          local res = assert(portal_api_client:send {
+            method = "GET",
+            path = "/developer",
+            headers = {
+              ["Content-Type"] = "application/json",
+              ["Authorization"] = "Basic " .. ngx.encode_base64("gruce@konghq.com:kong"),
+            }
+          })
 
-      local body = assert.res_status(201, res)
-      local resp_body_json = cjson.decode(body)
-      developer = resp_body_json.consumer
-    end)
+          assert.res_status(403, res)
 
-    describe("PATCH", function()
-      it("returns 400 if patched with no password", function()
-        local res = assert(client:send {
-          method = "PATCH",
-          body = {},
-          path = "/portal/developers/".. developer.id .."/password",
-          headers = {["Content-Type"] = "application/json"}
-        })
+          -- new email succeeds to access portal api
+          local res = assert(portal_api_client:send {
+            method = "GET",
+            path = "/developer",
+            headers = {
+              ["Content-Type"] = "application/json",
+              ["Authorization"] = "Basic " .. ngx.encode_base64("new_email@whodis.com:kong"),
+            }
+          })
 
-        local body = assert.res_status(400, res)
-        local resp_body_json = cjson.decode(body)
-        local message = resp_body_json.message
 
-        assert.equal("Password is required", message)
-      end)
+          local body = assert.res_status(200, res)
+          local resp_body_json = cjson.decode(body)
+          assert.equal("new_email@whodis.com", resp_body_json.email)
+          assert.equal("new_email@whodis.com", resp_body_json.username)
+        end)
 
-      it("updates the password", function()
-        local res = assert(client:send {
-          method = "PATCH",
-          body = {
-            password = "hunter1"
-          },
-          path = "/portal/developers/".. developer.id .."/password",
-          headers = {["Content-Type"] = "application/json"}
-        })
+        it("returns 400 if patched with an invalid email", function()
+          local res = assert(client:send {
+            method = "PATCH",
+            body = {
+              email = "emailol.com",
+            },
+            path = "/portal/developers/".. developer.id,
+            headers = {
+              ["Content-Type"] = "application/json",
+            }
+          })
 
-        assert.res_status(204, res)
+          local body = assert.res_status(400, res)
+          local resp_body_json = cjson.decode(body)
+          local message = resp_body_json.message
 
-        -- old password fails
-        local res = assert(portal_api_client:send {
-          method = "GET",
-          path = "/developer",
-          headers = {
-            ["Content-Type"] = "application/json",
-            ["Authorization"] = "Basic " .. ngx.encode_base64("gruce@konghq.com:kong"),
-          }
-        })
+          assert.equal("Invalid email: missing '@' symbol", message)
+        end)
 
-        assert.res_status(403, res)
+        it("returns 409 if patched with an email that already exists", function()
 
-        -- new password auths
-        local res = assert(portal_api_client:send {
-          method = "GET",
-          path = "/developer",
-          headers = {
-            ["Content-Type"] = "application/json",
-            ["Authorization"] = "Basic " .. ngx.encode_base64("gruce@konghq.com:hunter1"),
-          }
-        })
+          local res = assert(portal_api_client:send {
+            method = "POST",
+            path = "/register",
+            body = {
+              email = "fancypants@konghq.com",
+              password = "mowmow",
+              meta = "{\"full_name\":\"Old Gregg\"}"
+            },
+            headers = {["Content-Type"] = "application/json"}
+          })
 
-        assert.res_status(200, res)
-      end)
-    end)
-  end)
+          local body = assert.res_status(201, res)
+          local resp_body_json = cjson.decode(body)
+          local developer2 = resp_body_json.consumer
 
-  describe("/portal/developers/:email_or_id/email", function()
-    local developer
-    local developer2
+          local res = assert(client:send {
+            method = "PATCH",
+            body = {
+              email = developer2.email,
+            },
+            path = "/portal/developers/".. developer.id,
+            headers = {
+              ["Content-Type"] = "application/json",
+            }
+          })
 
-    before_each(function()
-      helpers.stop_kong()
-      assert(db:truncate())
-      helpers.register_consumer_relations(dao)
+          local body = assert.res_status(409, res)
+          local resp_body_json = cjson.decode(body)
+          local message = resp_body_json.username
 
-      assert(helpers.start_kong({
-        database   = strategy,
-        portal     = true,
-        portal_auth = "basic-auth",
-        portal_auth_config = "{ \"hide_credentials\": true }",
-        portal_auto_approve = "on",
-      }))
-
-      portal_api_client = assert(ee_helpers.portal_api_client())
-      client = assert(helpers.admin_client())
-      configure_portal(dao)
-
-      local res = assert(portal_api_client:send {
-        method = "POST",
-        path = "/register",
-        body = {
-          email = "gruce@konghq.com",
-          password = "kong",
-          meta = "{\"full_name\":\"I Like Turtles\"}"
-        },
-        headers = {["Content-Type"] = "application/json"}
-      })
-
-      local body = assert.res_status(201, res)
-      local resp_body_json = cjson.decode(body)
-      developer = resp_body_json.consumer
-
-      local res = assert(portal_api_client:send {
-        method = "POST",
-        path = "/register",
-        body = {
-          email = "fancypants@konghq.com",
-          password = "mowmow",
-          meta = "{\"full_name\":\"Old Gregg\"}"
-        },
-        headers = {["Content-Type"] = "application/json"}
-      })
-
-      local body = assert.res_status(201, res)
-      local resp_body_json = cjson.decode(body)
-      developer2 = resp_body_json.consumer
-    end)
-
-    describe("PATCH", function()
-      it("returns 400 if patched with an invalid email", function()
-        local res = assert(client:send {
-          method = "PATCH",
-          body = {
-            email = "emailol.com",
-          },
-          path = "/portal/developers/".. developer.id .."/email",
-          headers = {
-            ["Content-Type"] = "application/json",
-          }
-        })
-
-        local body = assert.res_status(400, res)
-        local resp_body_json = cjson.decode(body)
-        local message = resp_body_json.message
-
-        assert.equal("Invalid email: missing '@' symbol", message)
-      end)
-
-      it("returns 409 if patched with an email that already exists", function()
-        local res = assert(client:send {
-          method = "PATCH",
-          body = {
-            email = developer2.email,
-          },
-          path = "/portal/developers/".. developer.id .."/email",
-          headers = {
-            ["Content-Type"] = "application/json",
-          }
-        })
-
-        local body = assert.res_status(409, res)
-        local resp_body_json = cjson.decode(body)
-        local message = resp_body_json.username
-
-        assert.equal("already exists with value 'fancypants@konghq.com'", message)
-      end)
-
-      it("updates both email and username from passed email", function()
-        local res = assert(client:send {
-          method = "PATCH",
-          body = {
-            email = "new_email@whodis.com",
-          },
-          path = "/portal/developers/".. developer.id .."/email",
-          headers = {
-            ["Content-Type"] = "application/json",
-          }
-        })
-
-        assert.res_status(204, res)
-
-        -- old email fails
-        local res = assert(portal_api_client:send {
-          method = "GET",
-          path = "/developer",
-          headers = {
-            ["Content-Type"] = "application/json",
-            ["Authorization"] = "Basic " .. ngx.encode_base64("gruce@konghq.com:kong"),
-          }
-        })
-
-        assert.res_status(403, res)
-
-        -- new email succeeds
-        local res = assert(portal_api_client:send {
-          method = "GET",
-          path = "/developer",
-          headers = {
-            ["Content-Type"] = "application/json",
-            ["Authorization"] = "Basic " .. ngx.encode_base64("new_email@whodis.com:kong"),
-          }
-        })
-
-        local body = assert.res_status(200, res)
-        local resp_body_json = cjson.decode(body)
-        assert.equal("new_email@whodis.com", resp_body_json.email)
-        assert.equal("new_email@whodis.com", resp_body_json.username)
-      end)
-    end)
-  end)
-
-  describe("/portal/developers/:email_or_id/meta", function()
-    local developer
-
-    before_each(function()
-      helpers.stop_kong()
-      assert(db:truncate())
-      helpers.register_consumer_relations(dao)
-
-      assert(helpers.start_kong({
-        database   = strategy,
-        portal     = true,
-        portal_auth = "basic-auth",
-        portal_auth_config = "{ \"hide_credentials\": true }",
-        portal_auto_approve = "on",
-      }))
-
-      portal_api_client = assert(ee_helpers.portal_api_client())
-      client = assert(helpers.admin_client())
-      configure_portal(dao)
-
-      local res = assert(portal_api_client:send {
-        method = "POST",
-        path = "/register",
-        body = {
-          email = "gruce@konghq.com",
-          password = "kong",
-          meta = "{\"full_name\":\"I Like Turtles\"}"
-        },
-        headers = {["Content-Type"] = "application/json"}
-      })
-
-      local body = assert.res_status(201, res)
-      local resp_body_json = cjson.decode(body)
-      developer = resp_body_json.consumer
-    end)
-
-    describe("PATCH", function()
-      it("updates the meta", function()
-        local new_meta = "{\"full_name\":\"KONG!!!\"}"
-
-        local res = assert(client:send {
-          method = "PATCH",
-          body = {
-            meta = new_meta
-          },
-          path = "/portal/developers/".. developer.id .."/meta",
-          headers = {
-            ["Content-Type"] = "application/json",
-          }
-        })
-
-        assert.res_status(204, res)
-
-        local res = assert(portal_api_client:send {
-          method = "GET",
-          path = "/developer",
-          headers = {
-            ["Content-Type"] = "application/json",
-            ["Authorization"] = "Basic " .. ngx.encode_base64("gruce@konghq.com:kong"),
-          }
-        })
-
-        local body = assert.res_status(200, res)
-        local resp_body_json = cjson.decode(body)
-        local meta = resp_body_json.meta
-
-        assert.equal(meta, new_meta)
-      end)
-
-      it("ignores keys that are not in the current meta", function()
-        local res = assert(portal_api_client:send {
-          method = "GET",
-          path = "/developer",
-          headers = {
-            ["Content-Type"] = "application/json",
-            ["Authorization"] = "Basic " .. ngx.encode_base64("gruce@konghq.com:kong"),
-          }
-        })
-
-        local body = assert.res_status(200, res)
-        local resp_body_json = cjson.decode(body)
-        local current_meta = resp_body_json.meta
-
-        local new_meta = "{\"new_key\":\"not in current meta\"}"
-
-        local res = assert(client:send {
-          method = "PATCH",
-          body = {
-            meta = new_meta
-          },
-          path = "/portal/developers/".. developer.id .."/meta",
-          headers = {
-            ["Content-Type"] = "application/json",
-          }
-        })
-
-        assert.res_status(204, res)
-
-        local res = assert(portal_api_client:send {
-          method = "GET",
-          path = "/developer",
-          headers = {
-            ["Content-Type"] = "application/json",
-            ["Authorization"] = "Basic " .. ngx.encode_base64("gruce@konghq.com:kong"),
-          }
-        })
-
-        local body = assert.res_status(200, res)
-        local resp_body_json = cjson.decode(body)
-        local new_meta = resp_body_json.meta
-
-        assert.equal(new_meta, current_meta)
+          assert.equal("already exists with value 'fancypants@konghq.com'", message)
+        end)
       end)
     end)
   end)

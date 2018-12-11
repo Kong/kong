@@ -1,14 +1,14 @@
 local crud          = require "kong.api.crud_helpers"
 local ee_crud       = require "kong.enterprise_edition.crud_helpers"
-local singletons    = require "kong.singletons"
 local enums         = require "kong.enterprise_edition.dao.enums"
 local enterprise_utils = require "kong.enterprise_edition.utils"
-local cjson         = require "cjson.safe"
 local constants     = require "kong.constants"
 local ws_helper     = require "kong.workspaces.helper"
 local portal_smtp_client = require "kong.portal.emails"
 
 local ws_constants  = constants.WORKSPACE_CONFIG
+
+local lower = string.lower
 
 --- Allowed auth plugins
 -- Table containing allowed auth plugins that the developer portal api
@@ -23,11 +23,6 @@ local auth_plugins = {
   ["jwt"] =        { name = "jwt",        dao = "jwt_secrets" },
   ["key-auth"] =   { name = "key-auth",   dao = "keyauth_credentials" },
 }
-
-
-local function portal_auth_enabled(portal_auth)
-  return portal_auth and portal_auth ~= ""
-end
 
 
 local function check_portal_status(helpers)
@@ -143,6 +138,68 @@ return {
     PATCH = function(self, dao_factory, helpers)
       find_developer(self, dao_factory, helpers)
 
+      -- If email is being updated, we need to sync it with the username
+      -- and update the login credential
+      if self.params.email then
+        -- email and username stored as lowercase
+        self.params.email = lower(self.params.email)
+        self.params.username = self.params.email
+
+        local workspace = ngx.ctx.workspaces and ngx.ctx.workspaces[1] or {}
+
+        self.portal_auth = ws_helper.retrieve_ws_config(ws_constants.PORTAL_AUTH, workspace)
+        if not self.portal_auth or self.portal_auth == "" then
+          return helpers.responses.send_HTTP_BAD_REQUEST("portal_auth must be enabled to change a developer's email")
+        end
+
+        local plugin = auth_plugins[self.portal_auth]
+        if not plugin then
+          return helpers.responses.send_HTTP_NOT_FOUND()
+        end
+
+        self.collection = dao_factory[plugin.dao]
+
+        local credentials, err = dao_factory.credentials:find_all({
+          consumer_id = self.consumer.id,
+          consumer_type = enums.CONSUMERS.TYPE.DEVELOPER,
+          plugin = self.portal_auth,
+        })
+
+        if err then
+          return helpers.yield_error(err)
+        end
+
+        if next(credentials) == nil then
+          return helpers.responses.send_HTTP_NOT_FOUND()
+        end
+
+        self.credential = credentials[1]
+
+        local ok, err = enterprise_utils.validate_email(self.params.email)
+        if not ok then
+          return helpers.responses.send_HTTP_BAD_REQUEST("Invalid email: " .. err)
+        end
+
+        local cred_params = {
+          username = self.params.email,
+        }
+
+        local filter = {
+          consumer_id = self.consumer.id,
+          id = self.credential.id,
+        }
+
+        local ok, err = crud.portal_crud.update_login_credential(cred_params, self.collection, filter)
+
+        if err then
+          return helpers.yield_error(err)
+        end
+
+        if not ok then
+          return helpers.responses.send_HTTP_NOT_FOUND()
+        end
+      end
+
       -- save the previous status to determine if we should send an approval email
       local previous_status = self.consumer.status
 
@@ -173,212 +230,6 @@ return {
 
       crud.delete(self.consumer, dao_factory.consumers)
     end
-  },
-
-  ["/portal/developers/:email_or_id/password"] = {
-    before = function(self, dao_factory, helpers)
-      check_portal_status(helpers)
-      -- auth required
-      local workspace = ngx.ctx.workspaces and ngx.ctx.workspaces[1] or {}
-      self.portal_auth = ws_helper.retrieve_ws_config(ws_constants.PORTAL_AUTH, workspace)
-
-      if not portal_auth_enabled(self.portal_auth) then
-        return helpers.responses.send_HTTP_NOT_FOUND()
-      end
-
-      local plugin = auth_plugins[self.portal_auth]
-      if not plugin then
-        return helpers.responses.send_HTTP_NOT_FOUND()
-      end
-
-      self.collection = dao_factory[plugin.dao]
-    end,
-
-    PATCH = function(self, dao_factory, helpers)
-      find_developer(self, dao_factory, helpers)
-
-      local credentials, err = dao_factory.credentials:find_all({
-        consumer_id = self.consumer.id,
-        consumer_type = enums.CONSUMERS.TYPE.DEVELOPER,
-        plugin = self.portal_auth,
-      })
-
-      if err then
-        return helpers.yield_error(err)
-      end
-
-      if next(credentials) == nil then
-        return helpers.responses.send_HTTP_NOT_FOUND()
-      end
-
-      self.credential = credentials[1]
-
-      if not self.params.password then
-        return helpers.responses.send_HTTP_BAD_REQUEST("Password is required")
-      end
-
-      local cred_params = {
-        password = self.params.password,
-      }
-
-      self.params.password = nil
-
-      local filter = {
-        consumer_id = self.consumer.id,
-        id = self.credential.id,
-      }
-
-      local ok, err = crud.portal_crud.update_login_credential(cred_params, self.collection, filter)
-
-      if err then
-        return helpers.yield_error(err)
-      end
-
-      if not ok then
-        return helpers.responses.send_HTTP_NOT_FOUND()
-      end
-
-      return helpers.responses.send_HTTP_NO_CONTENT()
-    end,
-  },
-
-  ["/portal/developers/:email_or_id/email"] = {
-    before = function(self, dao_factory, helpers)
-      check_portal_status(helpers)
-      -- auth required
-      local workspace = ngx.ctx.workspaces and ngx.ctx.workspaces[1] or {}
-      self.portal_auth = ws_helper.retrieve_ws_config(ws_constants.PORTAL_AUTH, workspace)
-
-      if not portal_auth_enabled(self.portal_auth) then
-        return helpers.responses.send_HTTP_NOT_FOUND()
-      end
-
-      local plugin = auth_plugins[self.portal_auth]
-      if not plugin then
-        return helpers.responses.send_HTTP_NOT_FOUND()
-      end
-
-      self.collection = dao_factory[plugin.dao]
-    end,
-
-    PATCH = function(self, dao_factory, helpers)
-      find_developer(self, dao_factory, helpers)
-
-      local credentials, err = dao_factory.credentials:find_all({
-        consumer_id = self.consumer.id,
-        consumer_type = enums.CONSUMERS.TYPE.DEVELOPER,
-        plugin = self.portal_auth,
-      })
-
-      if err then
-        return helpers.yield_error(err)
-      end
-
-      if next(credentials) == nil then
-        return helpers.responses.send_HTTP_NOT_FOUND()
-      end
-
-      self.credential = credentials[1]
-
-      local ok, err = enterprise_utils.validate_email(self.params.email)
-      if not ok then
-        return helpers.responses.send_HTTP_BAD_REQUEST("Invalid email: " .. err)
-      end
-
-      local cred_params = {
-        username = self.params.email,
-      }
-
-      local filter = {
-        consumer_id = self.consumer.id,
-        id = self.credential.id,
-      }
-
-      local ok, err = crud.portal_crud.update_login_credential(cred_params, self.collection, filter)
-
-      if err then
-        return helpers.yield_error(err)
-      end
-
-      if not ok then
-        return helpers.responses.send_HTTP_NOT_FOUND()
-      end
-
-      local dev_params = {
-        username = self.params.email,
-        email = self.params.email,
-      }
-
-      local ok, err = singletons.dao.consumers:update(dev_params, {
-        id = self.consumer.id,
-      })
-
-      if err then
-        return helpers.yield_error(err)
-      end
-
-      if not ok then
-        return helpers.responses.send_HTTP_NOT_FOUND()
-      end
-
-      return helpers.responses.send_HTTP_NO_CONTENT()
-    end,
-  },
-
-  ["/portal/developers/:email_or_id/meta"] = {
-    before = function(self, dao_factory, helpers)
-      check_portal_status(helpers)
-      -- auth required
-      local workspace = ngx.ctx.workspaces and ngx.ctx.workspaces[1] or {}
-      self.portal_auth = ws_helper.retrieve_ws_config(ws_constants.PORTAL_AUTH, workspace)
-
-      if not portal_auth_enabled(self.portal_auth) then
-        return helpers.responses.send_HTTP_NOT_FOUND()
-      end
-    end,
-
-    PATCH = function(self, dao_factory, helpers)
-      find_developer(self, dao_factory, helpers)
-
-      local meta_params = self.params.meta and cjson.decode(self.params.meta)
-
-      if not meta_params then
-        return helpers.responses.send_HTTP_BAD_REQUEST("meta required")
-      end
-
-      local current_dev_meta = self.consumer.meta and cjson.decode(self.consumer.meta)
-
-      if not current_dev_meta then
-        return helpers.responses.send_HTTP_NOT_FOUND()
-      end
-
-      -- Iterate over meta update params and assign them to current meta
-      for k, v in pairs(meta_params) do
-        -- Only assign values that are already in the current meta
-        if current_dev_meta[k] then
-          current_dev_meta[k] = v
-        end
-      end
-
-      -- Encode full meta (current and new) and assign it to update params
-      local dev_params = {
-        meta = cjson.encode(current_dev_meta),
-      }
-
-      local ok, err = singletons.dao.consumers:update(dev_params, {
-        id = self.consumer.id,
-      })
-
-      if err then
-        return helpers.yield_error(err)
-      end
-
-      if not ok then
-        return helpers.responses.send_HTTP_NOT_FOUND()
-      end
-
-      return helpers.responses.send_HTTP_NO_CONTENT()
-    end,
   },
 
   ["/portal/developers/:email_or_id/plugins/"] = {
