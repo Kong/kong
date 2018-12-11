@@ -163,7 +163,7 @@ local function init()
         end
       end
     else
-      ngx.log(ngx.INFO, "Nginx server block API unavailable. mesh will not be"
+      ngx.log(ngx.INFO, "Nginx server block API unavailable. mesh will not be "
                      .. "negotiated for incoming HTTP connections to this node")
     end
   else -- stream
