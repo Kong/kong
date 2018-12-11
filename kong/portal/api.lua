@@ -21,7 +21,6 @@ local ws_constants = constants.WORKSPACE_CONFIG
 --["<route>"]:     {  name = "<name>",    dao = "<dao_collection>" }
 local auth_plugins = {
   ["basic-auth"] = { name = "basic-auth", dao = "basicauth_credentials", credential_key = "password" },
-  ["acls"] =       { name = "acl",        dao = "acls" },
   ["oauth2"] =     { name = "oauth2",     dao = "oauth2_credentials" },
   ["hmac-auth"] =  { name = "hmac-auth",  dao = "hmacauth_credentials" },
   ["jwt"] =        { name = "jwt",        dao = "jwt_secrets" },
@@ -630,32 +629,6 @@ return {
     end,
   },
 
-  ["/credentials"] = {
-    before = function(self, dao_factory, helpers)
-      check_portal_status(helpers)
-      authenticate(self, dao_factory, helpers)
-    end,
-
-    PATCH = function(self, dao_factory, helpers)
-      self.params.consumer_id = self.consumer.id
-
-      if self.params.id == nil then
-        return helpers.responses.send_HTTP_BAD_REQUEST(
-                                                  "credential id is required")
-      end
-
-      crud.patch(self.params, self.collection, {id = self.params.id}, nil,
-                                                         {__skip_rbac = true})
-    end,
-
-    POST = function(self, dao_factory)
-      self.params.consumer_id = self.consumer.id
-
-      crud.post(self.params, self.collection,
-                crud.portal_crud.insert_credential(self.plugin.name))
-    end,
-  },
-
   ["/credentials/:plugin"] = {
     before = function(self, dao_factory, helpers)
       check_portal_status(helpers)
@@ -680,19 +653,6 @@ return {
 
       crud.post(self.params, self.collection,
                 crud.portal_crud.insert_credential(self.plugin.name))
-    end,
-
-    PATCH = function(self, dao_factory, helpers)
-      self.params.consumer_id = self.consumer.id
-      self.params.plugin = nil
-
-      if self.params.id == nil then
-        return helpers.responses.send_HTTP_BAD_REQUEST(
-                                                  "credential id is required")
-      end
-
-      crud.patch(self.params, self.collection, { id = self.params.id },
-                 crud.portal_crud.update_credential, {__skip_rbac = true})
     end,
   },
 
