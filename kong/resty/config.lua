@@ -1,22 +1,26 @@
 local ffi = require "ffi"
 local openssl_ssl_context = require "openssl.ssl.context"
-
-local has_patch = pcall(ffi.cdef, [[
-  void* ngx_http_lua_get_server_block(uintptr_t);
-  ngx_str_t* ngx_http_lua_server_block_server_name(void*);
-  SSL_CTX* ngx_http_lua_ssl_get_SSL_CTX(void*);
-]])
+require "resty.core.base" -- defines ngx_str_t
 
 
+local has_patch = false
 local ngx_lua_get_server_block
 local ngx_lua_server_block_server_name
 local ngx_lua_get_SSL_CTX
-if has_patch and ngx.config.subsystem == "http" then
-  ngx_lua_get_server_block = ffi.C.ngx_http_lua_get_server_block
-  ngx_lua_server_block_server_name = ffi.C.ngx_http_lua_server_block_server_name
-  ngx_lua_get_SSL_CTX = ffi.C.ngx_http_lua_ssl_get_SSL_CTX
+if ngx.config.subsystem == "http" then
+  ffi.cdef [[
+    void* ngx_http_lua_get_server_block(uintptr_t);
+    ngx_str_t* ngx_http_lua_server_block_server_name(void*);
+    SSL_CTX* ngx_http_lua_ssl_get_SSL_CTX(void*);
+  ]]
 
-else
+  has_patch = pcall(function()
+    ngx_lua_get_server_block = ffi.C.ngx_http_lua_get_server_block
+    ngx_lua_server_block_server_name = ffi.C.ngx_http_lua_server_block_server_name
+    ngx_lua_get_SSL_CTX = ffi.C.ngx_http_lua_ssl_get_SSL_CTX
+  end)
+end
+if not has_patch then
   ngx_lua_get_server_block = function()
     error("could not get server block (missing ffi interfaces from server_conf patch)")
   end
