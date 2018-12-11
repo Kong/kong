@@ -102,15 +102,15 @@ fi
 
 export OPENSSL_DIR=$OPENSSL_INSTALL # for LuaSec install
 
-export PATH=$OPENSSL_INSTALL/bin:$OPENRESTY_INSTALL/nginx/sbin:$OPENRESTY_INSTALL/bin:$LUAROCKS_INSTALL/bin:$CPAN_DOWNLOAD:$PATH
-export LD_LIBRARY_PATH=$OPENSSL_INSTALL/lib:$LD_LIBRARY_PATH # for openssl's CLI invoked in the test suite
+export PATH=$OPENSSL_INSTALL/bin:$OPENRESTY_INSTALL/nginx/sbin:$OPENRESTY_INSTALL/bin:$LUAROCKS_INSTALL/bin:$CPAN_DOWNLOAD${PATH:+:${PATH}}
+export LD_LIBRARY_PATH=$OPENSSL_INSTALL/lib${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}} # for openssl's CLI invoked in the test suite
 
 eval `luarocks path`
 
 # -------------------------------------
 # Install ccm & setup Cassandra cluster
 # -------------------------------------
-if [[ "$KONG_TEST_DATABASE" == "cassandra" ]]; then
+if [[ "${KONG_TEST_DATABASE:-}" == "cassandra" ]]; then
   echo "Setting up Cassandra"
   docker run -d --name=cassandra --rm -p 7199:7199 -p 7000:7000 -p 9160:9160 -p 9042:9042 cassandra:$CASSANDRA
   grep -q 'Created default superuser role' <(docker logs -f cassandra)
@@ -119,7 +119,7 @@ fi
 # -------------------
 # Install Test::Nginx
 # -------------------
-if [[ "$TEST_SUITE" == "pdk" ]]; then
+if [[ "${TEST_SUITE:-}" == "pdk" ]]; then
   echo "Installing CPAN dependencies..."
   chmod +x $CPAN_DOWNLOAD/cpanm
   cpanm --notest Test::Nginx &> build.log || (cat build.log && exit 1)
