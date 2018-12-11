@@ -53,24 +53,14 @@ local function rollback_on_create(entities, dao)
   local _, err
 
   if entities.consumer then
-    _, err = dao.consumers:delete({ id = entities.consumer.id })
-    if err then
-      log(ERR, _log_prefix, err)
-    end
-
-    err = workspaces.delete_entity_relation("consumers", entities.consumer)
+    _, err = dao.consumers:delete(entities.consumer)
     if err then
       log(ERR, _log_prefix, err)
     end
   end
 
   if entities.rbac_user then
-    _, err = dao.rbac_users:delete({ id = entities.rbac_user.id })
-    if err then
-      log(ERR, _log_prefix, err)
-    end
-
-    err = workspaces.delete_entity_relation("rbac_users", entities.rbac_user)
+    _, err = dao.rbac_users:delete(entities.rbac_user)
     if err then
       log(ERR, _log_prefix, err)
     end
