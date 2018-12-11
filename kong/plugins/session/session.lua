@@ -1,9 +1,6 @@
 local session = require "resty.session"
 local var = ngx.var
 local log = ngx.log
-local read_body = ngx.req.read_body
-local get_uri_args = ngx.req.get_uri_args
-local get_post_args = ngx.req.get_post_args
 
 local _M = {}
 
@@ -47,7 +44,7 @@ function _M.logout(conf)
 
   local logout_methods = conf.logout_methods
   if logout_methods then
-    local request_method = var.request_method
+    local request_method = ngx.var.request_method
     for _, logout_method in ipairs(logout_methods) do
       if logout_method == request_method then
         logout = true
@@ -59,7 +56,7 @@ function _M.logout(conf)
 
       local logout_query_arg = conf.logout_query_arg
       if logout_query_arg then
-        local uri_args = get_uri_args()
+        local uri_args = ngx.req.get_uri_args()
         if uri_args[logout_query_arg] then
           logout = true
         end
@@ -70,8 +67,8 @@ function _M.logout(conf)
       else
         local logout_post_arg = conf.logout_post_arg
         if logout_post_arg then
-          read_body()
-          local post_args = get_post_args()
+          ngx.req.read_body()
+          local post_args = ngx.req.get_post_args()
           if post_args[logout_post_arg] then
             logout = true
           end

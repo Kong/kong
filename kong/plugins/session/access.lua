@@ -1,4 +1,5 @@
 local singletons = require "kong.singletons"
+local responses = require "kong.tools.responses"
 local session = require "kong.plugins.session.session"
 
 local _M = {}
@@ -22,7 +23,8 @@ function _M.execute(conf)
 
   -- check if incoming request is trying to logout
   if session.logout(conf) then
-    return s:destroy()
+    s:destroy()
+    return responses.send_HTTP_OK()
   end
 
   
