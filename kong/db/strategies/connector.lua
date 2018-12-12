@@ -16,6 +16,39 @@ function Connector:init_worker()
 end
 
 
+do
+  local past_init
+  local ngx = ngx
+
+
+  function Connector:store_connection(conn)
+    if not past_init and ngx and ngx.get_phase() ~= "init" then
+      past_init = true
+    end
+
+    if ngx and past_init then
+      ngx.ctx.connection = conn
+
+    else
+      self.connection = conn
+    end
+  end
+
+
+  function Connector:get_stored_connection()
+    if not past_init and ngx and ngx.get_phase() ~= "init" then
+      past_init = true
+    end
+
+    if ngx and past_init then
+      return ngx.ctx.connection
+    end
+
+    return self.connection
+  end
+end
+
+
 function Connector:infos()
   error(fmt("infos() not implemented for '%s' strategy", self.database))
 end
