@@ -25,6 +25,8 @@ local function issuer(row)
     end
   end
 
+  row.secret = nil
+
   return row
 end
 
@@ -45,57 +47,6 @@ return {
     end,
     DELETE = function(self, dao)
       crud.delete({ id = self.params.id }, dao.oic_issuers)
-    end
-  },
-  ["/openid-connect/signouts/"] = {
-    resource = "openid-connect",
-
-    GET = function(self, dao)
-      crud.paginated_set(self, dao.oic_signout)
-    end,
-  },
-  ["/openid-connect/signouts/:id"] = {
-    resource = "openid-connect",
-
-    GET = function(self, dao)
-      crud.get({ id = self.params.id }, dao.oic_signout)
-    end,
-    DELETE = function(self, dao)
-      crud.delete({ id = self.params.id }, dao.oic_signout)
-    end
-  },
-  ["/openid-connect/sessions/"] = {
-    resource = "openid-connect",
-
-    GET = function(self, dao)
-      crud.paginated_set(self, dao.oic_session)
-    end,
-  },
-  ["/openid-connect/sessions/:id"] = {
-    resource = "openid-connect",
-
-    GET = function(self, dao)
-      crud.get({ id = self.params.id }, dao.oic_session)
-    end,
-    DELETE = function(self, dao)
-      crud.delete({ id = self.params.id }, dao.oic_session)
-    end
-  },
-  ["/openid-connect/revoked/"] = {
-    resource = "openid-connect",
-
-    GET = function(self, dao)
-      crud.paginated_set(self, dao.oic_revoked)
-    end,
-  },
-  ["/openid-connect/revoked/:id"] = {
-    resource = "openid-connect",
-
-    GET = function(self, dao)
-      crud.get({ id = self.params.id }, dao.oic_revoked)
-    end,
-    DELETE = function(self, dao)
-      crud.delete({ id = self.params.id }, dao.oic_revoked)
     end
   },
 }
