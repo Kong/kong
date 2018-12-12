@@ -101,7 +101,7 @@ local CONF_INFERENCES = {
   cassandra_ssl_verify = {typ = "boolean"},
   cassandra_consistency = {enum = {"ALL", "EACH_QUORUM", "QUORUM", "LOCAL_QUORUM", "ONE",
                                    "TWO", "THREE", "LOCAL_ONE"}}, -- no ANY: this is R/W
-  cassandra_lb_policy = {enum = {"RoundRobin", "DCAwareRoundRobin"}},
+  cassandra_lb_policy = {enum = {"RoundRobin", "RequestRoundRobin", "DCAwareRoundRobin", "RequestDCAwareRoundRobin"}},
   cassandra_local_datacenter = {typ = "string"},
   cassandra_repl_strategy = {enum = {"SimpleStrategy", "NetworkTopologyStrategy"}},
   cassandra_repl_factor = {typ = "number"},

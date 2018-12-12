@@ -374,12 +374,15 @@
 #cassandra_lb_policy = RoundRobin  # Load balancing policy to use when
                                    # distributing queries across your Cassandra
                                    # cluster.
-                                   # Accepted values are `RoundRobin` and
-                                   # `DCAwareRoundRobin`.
+                                   # Accepted values are:
+                                   # `RoundRobin`, `RequestRoundRobin`,
+                                   # `DCAwareRoundRobin`, and
+                                   # `RequestDCAwareRoundRobin`.
                                    # Prefer the later if and only if you are
                                    # using a multi-datacenter cluster.
 
-#cassandra_local_datacenter =    # When using the `DCAwareRoundRobin` load
+#cassandra_local_datacenter =    # When using the `DCAwareRoundRobin`
+                                 # or `RequestDCAwareRoundRobin` load
                                  # balancing policy, you must specify the name
                                  # of the local (closest) datacenter for this
                                  # Kong node.

@@ -91,8 +91,14 @@ function _M.new(kong_config)
   if kong_config.cassandra_lb_policy == "RoundRobin" then
     local policy = require("resty.cassandra.policies.lb.rr")
     cluster_options.lb_policy = policy.new()
+  elseif kong_config.cassandra_lb_policy == "RequestRoundRobin" then
+    local policy = require("resty.cassandra.policies.lb.req_rr")
+    cluster_options.lb_policy = policy.new()
   elseif kong_config.cassandra_lb_policy == "DCAwareRoundRobin" then
     local policy = require("resty.cassandra.policies.lb.dc_rr")
+    cluster_options.lb_policy = policy.new(kong_config.cassandra_local_datacenter)
+  elseif kong_config.cassandra_lb_policy == "RequestDCAwareRoundRobin" then
+    local policy = require("resty.cassandra.policies.lb.req_dc_rr")
     cluster_options.lb_policy = policy.new(kong_config.cassandra_local_datacenter)
   end
 
@@ -502,7 +508,15 @@ function _M:insert(table_name, schema, model, constraints, options)
 
   local primary_keys = model:extract_keys()
 
-  return self:find(table_name, schema, primary_keys)
+  local res, err = self:find(table_name, schema, primary_keys)
+  if not res and not err then
+    res, err = self:find(table_name, schema, primary_keys)
+    if not res and not err then
+      return nil, "failed to fetch inserted entity"
+    end
+  end
+
+  return res, err
 end
 
 function _M:find_all(table_name, tbl, schema)

@@ -44,8 +44,16 @@ function CassandraConnector.new(kong_config)
     local policy = require("resty.cassandra.policies.lb.rr")
     cluster_options.lb_policy = policy.new()
 
+  elseif kong_config.cassandra_lb_policy == "RequestRoundRobin" then
+    local policy = require("resty.cassandra.policies.lb.req_rr")
+    cluster_options.lb_policy = policy.new()
+
   elseif kong_config.cassandra_lb_policy == "DCAwareRoundRobin" then
     local policy = require("resty.cassandra.policies.lb.dc_rr")
+    cluster_options.lb_policy = policy.new(kong_config.cassandra_local_datacenter)
+
+  elseif kong_config.cassandra_lb_policy == "RequestDCAwareRoundRobin" then
+    local policy = require("resty.cassandra.policies.lb.req_dc_rr")
     cluster_options.lb_policy = policy.new(kong_config.cassandra_local_datacenter)
   end
 
