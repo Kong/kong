@@ -103,10 +103,10 @@ local migrations = {
       END$$;
     ]],
     down = [[
-      DROP TABLE oic_issuers;
-      DROP TABLE oic_signout;
-      DROP TABLE oic_session;
-      DROP TABLE oic_revoked;
+      DROP TABLE IF EXISTS oic_issuers CASCADE;
+      DROP TABLE IF EXISTS oic_signout CASCADE;
+      DROP TABLE IF EXISTS oic_session CASCADE;
+      DROP TABLE IF EXISTS oic_revoked CASCADE;
     ]]
   },
   {
@@ -116,6 +116,19 @@ local migrations = {
     ]],
     down = [[
       ALTER TABLE oic_issuers ADD COLUMN secret text;
+    ]],
+  },
+  {
+    name = "2018-12-12-160000-drop-unused",
+    up = [[
+      DROP TABLE IF EXISTS oic_signout CASCADE;
+      DROP TABLE IF EXISTS oic_session CASCADE;
+      DROP TABLE IF EXISTS oic_revoked CASCADE;
+      DROP INDEX IF EXISTS oic_issuers_idx;
+
+      ALTER TABLE IF EXISTS ONLY "oic_issuers"
+        ALTER "created_at" TYPE TIMESTAMP WITH TIME ZONE USING "created_at" AT TIME ZONE 'UTC',
+        ALTER "created_at" SET DEFAULT CURRENT_TIMESTAMP(0) AT TIME ZONE 'UTC';
     ]],
   },
 }

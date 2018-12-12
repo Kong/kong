@@ -53,11 +53,11 @@ local migrations = {
       CREATE INDEX IF NOT EXISTS ON oic_revoked (expires);
     ]],
     down = [[
-      DROP TABLE oic_issuers;
-      DROP TABLE oic_signout;
-      DROP TABLE oic_session;
-      DROP TABLE oic_revoked;
-    ]]
+      DROP TABLE EXISTS oic_issuers;
+      DROP TABLE EXISTS oic_signout;
+      DROP TABLE EXISTS oic_session;
+      DROP TABLE EXISTS oic_revoked;
+    ]],
   },
   {
     name = "2017-08-09-160000-add-secret-used-for-sessions",
@@ -66,7 +66,15 @@ local migrations = {
     ]],
     down = [[
       ALTER TABLE oic_issuers DROP secret;
-    ]]
+    ]],
+  },
+  {
+    name = "2018-12-12-160000-drop-unused",
+    up = [[
+      DROP TABLE IF EXISTS oic_signout;
+      DROP TABLE IF EXISTS oic_session;
+      DROP TABLE IF EXISTS oic_revoked;
+    ]],
   },
 }
 
