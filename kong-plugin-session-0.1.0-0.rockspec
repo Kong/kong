@@ -29,6 +29,5 @@ build = {
     ["kong.plugins.session.session"] = "kong/plugins/session/session.lua",
     ["kong.plugins.session.daos"] = "kong/plugins/session/daos.lua",
     ["kong.plugins.session.storage.kong"] = "kong/plugins/session/storage/kong.lua",
-    ["kong.plugins.session.identifiers.uuid"] = "kong/plugins/session/identifiers/uuid.lua",
   }
 }
