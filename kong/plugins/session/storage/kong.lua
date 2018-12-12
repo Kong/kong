@@ -96,8 +96,8 @@ function kong_storage:insert_session(sid, data, expires)
 end
 
 
-function kong_storage:update_session(sid, options, ttl)
-  local _, err = self.dao.sessions:update({ id = sid }, options, { ttl = ttl })
+function kong_storage:update_session(sid, params, ttl)
+  local _, err = self.dao.sessions:update(params, { id = sid }, { ttl = ttl })
   if err then
     ngx.log(ngx.ERR, "Error updating session: ", err)
   end
