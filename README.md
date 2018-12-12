@@ -1,5 +1,7 @@
 # Kong Session plugin
 
+[![Build Status][badge-travis-image]][badge-travis-url]
+
 A [Kong] plugin to support implementing sessions for 
 Kong authentication [plugins](https://docs.konghq.com/hub/).
 
@@ -245,3 +247,6 @@ _not_ a problem during session renewal period as renew happens in `access` phase
 [multiple authentication]: https://docs.konghq.com/0.14.x/auth/#multiple-authentication
 [key-auth]: https://docs.konghq.com/hub/kong-inc/key-auth/
 [request termination]: https://docs.konghq.com/hub/kong-inc/request-termination/
+
+[badge-travis-url]: https://travis-ci.com/Kong/kong-plugin-session/branches
+[badge-travis-image]: https://travis-ci.com/Kong/kong-plugin-session.svg?token=BfzyBZDa3icGPsKGmBHb&branch=master
