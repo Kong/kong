@@ -17,7 +17,7 @@ description = {
 
 dependencies = {
   "lua >= 5.1",
-  "lua-resty-session == 2.22",
+  "lua-resty-session == 2.23",
 }
 
 build = {
