@@ -1,0 +1,70 @@
+dist: trusty
+sudo: required
+
+language: java
+
+jdk:
+  - oraclejdk8
+
+notifications:
+  email:
+    recipients:
+    - team-interfaces@konghq.com
+    on_success: never
+    on_failure: always
+
+addons:
+  postgresql: "9.5"
+  apt:
+    packages:
+      - net-tools
+      - libpcre3-dev
+      - build-essential
+
+services:
+  - docker
+
+env:
+  global:
+    - LUAROCKS=2.4.3
+    - OPENSSL=1.0.2n
+    - CASSANDRA_BASE=2.2.12
+    - CASSANDRA_LATEST=3.9
+    - OPENRESTY_BASE=1.13.6.2
+    - OPENRESTY_LATEST=1.13.6.2
+    - DOWNLOAD_CACHE=$HOME/download-cache
+    - INSTALL_CACHE=$HOME/install-cache
+    - BUSTED_ARGS="-o gtest -v --exclude-tags=flaky,ipv6"
+    - PLUGIN_NAME=session
+    - KONG_TEST_CUSTOM_PLUGINS=$PLUGIN_NAME
+    - KONG_TEST_LUA_PACKAGE_PATH=";;../spec/fixtures/custom_plugins/?.lua"
+    - KONG_CUSTOM_PLUGINS=$PLUGIN_NAME
+
+  matrix:
+    - OPENRESTY=$OPENRESTY_BASE
+      CASSANDRA=$CASSANDRA_BASE
+    - OPENRESTY=$OPENRESTY_LATEST
+      CASSANDRA=$CASSANDRA_LATEST
+
+before_install:
+  - git clone https://github.com/Kong/kong-ci
+  - source kong-ci/setup_env.sh
+  - git clone https://github.com/Kong/kong-ee.git
+
+install:
+  - luarocks make
+  - cd kong-ee
+  - make dev
+  - createuser --createdb kong
+  - createdb -U kong kong_tests
+
+script:
+  - bin/busted $BUSTED_ARGS ../spec
+
+cache:
+  apt: true
+  pip: true
+  directories:
+    - $DOWNLOAD_CACHE
+    - $INSTALL_CACHE
+    - $HOME/.ccm/repository
