@@ -1,12 +1,12 @@
 local helpers = require "spec.helpers"
-
+local utils = require "kong.tools.utils"
 
 for _, strategy in helpers.each_strategy() do
   describe("Plugin: Session (kong storage adapter) [#" .. strategy .. "]", function()
-    local client, bp
+    local client, bp, dao
 
     setup(function()
-      bp = helpers.get_db_utils(strategy)
+      bp, _, dao = helpers.get_db_utils(strategy)
 
       local route1 = bp.routes:insert {
         paths    = {"/test1"},
@@ -107,7 +107,9 @@ for _, strategy in helpers.each_strategy() do
         res = assert(client:send(request))
         assert.response(res).has.status(200)
         cookie = assert.response(res).has.header("Set-Cookie")
-
+        
+        local cookie_parts = utils.split(cookie, "; ")
+        local sid = utils.split(utils.split(cookie_parts[1], "|")[1], "=")[2]
         ngx.sleep(0.1)
 
         -- use the cookie without the key to ensure cookie still lets them in
@@ -119,6 +121,9 @@ for _, strategy in helpers.each_strategy() do
         -- one more time to ensure session was not destroyed or errored out
         res = assert(client:send(request))
         assert.response(res).has.status(200)
+
+        -- make sure it's in the db
+        assert.equal(sid, dao.sessions:find_all({session_id = sid})[1].session_id)
       end)
 
       it("renews cookie", function()  
