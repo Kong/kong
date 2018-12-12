@@ -1,5 +1,5 @@
 local helpers = require "spec.helpers"
-local new_tab = require "table.new"
+
 
 for _, strategy in helpers.each_strategy() do
   describe("Plugin: Session (kong storage adapter) [#" .. strategy .. "]", function()
@@ -112,7 +112,7 @@ for _, strategy in helpers.each_strategy() do
 
         -- use the cookie without the key to ensure cookie still lets them in
         request.headers.apikey = nil
-        request.headers.cookie = cookie
+        request.headers.cookie = cookie       
         res = assert(client:send(request))
         assert.response(res).has.status(200)
 
@@ -129,10 +129,9 @@ for _, strategy in helpers.each_strategy() do
           headers = { host = "httpbin.org", },
         }
 
-        function send_requests(request, number, step)
+        local function send_requests(request, number, step)
           local cookie = request.headers.cookie
 
-          local t = new_tab(number, 0)
           for i = 1, number do
             request.headers.cookie = cookie
             res = assert(client:send(request))

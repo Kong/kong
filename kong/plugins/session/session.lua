@@ -1,5 +1,4 @@
 local session = require "resty.session"
-local var = ngx.var
 local log = ngx.log
 
 local _M = {}

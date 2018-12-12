@@ -1,4 +1,3 @@
-local helpers = require "spec.helpers"
 local session = require "kong.plugins.session.session"
 
 describe("Plugin: Session - session.lua", function()
@@ -27,7 +26,7 @@ describe("Plugin: Session - session.lua", function()
     end
     ngx.var.request_method = "GET"
 
-    conf = {
+    local conf = {
       logout_methods = {"GET", "POST"},
       logout_query_arg = "session_logout"
     }
@@ -42,7 +41,7 @@ describe("Plugin: Session - session.lua", function()
     ngx.req.read_body = function() end
     ngx.var.request_method = "POST"
 
-    conf = {
+    local conf = {
       logout_methods = {"POST"},
       logout_post_arg = "session_logout"
     }
@@ -57,7 +56,7 @@ describe("Plugin: Session - session.lua", function()
     ngx.req.read_body = function() end
     ngx.var.request_method = "DELETE"
     
-    conf = {
+    local conf = {
       logout_methods = {"DELETE"},
       logout_post_arg = "session_logout"
     }
@@ -71,7 +70,7 @@ describe("Plugin: Session - session.lua", function()
     end
     ngx.var.request_method = "DELETE"
 
-    conf = {
+    local conf = {
       logout_methods = {"DELETE"},
       logout_query_arg = "session_logout"
     }
@@ -85,7 +84,7 @@ describe("Plugin: Session - session.lua", function()
     end
     ngx.var.request_method = "GET"
 
-    conf = {
+    local conf = {
       logout_methods = {"DELETE"},
       logout_query_arg = "session_logout"
     }
@@ -99,7 +98,7 @@ describe("Plugin: Session - session.lua", function()
     end
     ngx.var.request_method = "POST"
 
-    conf = {
+    local conf = {
       logout_methods = {"DELETE"},
       logout_post_arg = "session_logout"
     }
