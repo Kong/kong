@@ -83,22 +83,40 @@ function kong_storage:open(cookie, lifetime)
 end
 
 
+function kong_storage:insert_session(sid, data, expires)
+  local _, err = self.dao.sessions:insert({
+    session_id = sid,
+    data = data,
+    expires = expires,
+  }, { ttl = self.lifetime })
+  
+  if err then
+    ngx.log(ngx.ERR, "Error inserting session: ", err)
+  end
+end
+
+
+function kong_storage:update_session(sid, options, ttl)
+  local _, err = self.dao.sessions:update({ id = sid }, options, { ttl = ttl })
+  if err then
+    ngx.log(ngx.ERR, "Error updating session: ", err)
+  end
+end
+
+
 function kong_storage:save(id, expires, data, hmac)
   local life, key = floor(expires - now()), self.encode(id)
   local value = concat({key, expires, self.encode(hmac)}, self.delimiter)
 
   if life > 0 then
-    ngx.timer.at(0, function()  
-      local err, _ = self.dao.sessions:insert({
-        session_id = key,
-        data = self.encode(data),
-        expires = expires,
-      }, { ttl = self.lifetime })
-      
-      if err then
-        ngx.log(ngx.ERR, "Error inserting session: ", err)
-      end
-    end)
+    
+    if ngx.get_phase() == 'header_filter' then
+      ngx.timer.at(0, function()
+        self:insert_session(key, self.encode(data), expires)
+      end)
+    else
+      self:insert_session(key, self.encode(data), expires)
+    end
 
     return value
   end
@@ -129,11 +147,12 @@ function kong_storage:ttl(id, ttl)
   local s = self:get(self.encode(id))
 
   if s then
-    local _, err = self.dao.sessions:update({ id = s.id }, 
-                                            {session_id = s.session_id}, 
-                                            { ttl = ttl })
-    if err then
-      ngx.log(ngx.ERR, "Error updating session: ", err)
+    if ngx.get_phase() == 'header_filter' then
+      ngx.timer.at(0, function()
+        self:update_session(s.id, {session_id = s.session_id}, ttl)
+      end)
+    else
+      self:update_session(s.id, {session_id = s.session_id}, ttl)
     end
   end
 end
