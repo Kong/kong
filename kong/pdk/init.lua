@@ -14,7 +14,7 @@
 -- `kong.request`, `kong.log`, etc...
 --
 -- @module PDK
--- @release 0.1.0
+-- @release 1.0.0
 
 
 ---
@@ -57,7 +57,7 @@
 -- A human-readable string containing the version number of the current PDK.
 --
 -- @field kong.pdk_version
--- @usage print(kong.pdk_version) -- "0.1.0"
+-- @usage print(kong.pdk_version) -- "1.0.0"
 
 
 ---
@@ -206,7 +206,7 @@ require("resty.core")
 
 local MAJOR_VERSIONS = {
   [1] = {
-    version = "0.1.0",
+    version = "1.0.0",
     modules = {
       "table",
       "node",
