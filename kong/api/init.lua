@@ -44,7 +44,12 @@ local function parse_params(fn)
 
     self.params = api_helpers.normalize_nested_params(self.params)
 
-    return fn(self, ...)
+    local res = fn(self, ...)
+    if res == nil and ngx.status >= 200 then
+      return ngx.exit(0)
+    end
+
+    return res
   end)
 end
 
