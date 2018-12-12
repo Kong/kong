@@ -61,7 +61,7 @@ end
 local FileLogHandler = BasePlugin:extend()
 
 FileLogHandler.PRIORITY = 9
-FileLogHandler.VERSION = "0.1.0"
+FileLogHandler.VERSION = "1.0.0"
 
 function FileLogHandler:new()
   FileLogHandler.super.new(self, "file-log")
