@@ -736,7 +736,7 @@ describe("Admin API - Developer Portal - " .. strategy, function()
           local res = assert(client:send {
             method = "PATCH",
             body = {
-              email = "new_Email@wHodis.com",
+              email = "new_email@whodis.com",
               status = 0,
             },
             path = "/portal/developers/".. developer.id,

@@ -12,7 +12,6 @@ local portal_smtp_client = require "kong.portal.emails"
 
 local ws_constants = constants.WORKSPACE_CONFIG
 
-local lower = string.lower
 local time = ngx.time
 
 --- Allowed auth plugins
@@ -205,9 +204,6 @@ return {
 
       self.params.type = enums.CONSUMERS.TYPE.DEVELOPER
       self.params.status = enums.CONSUMERS.STATUS.PENDING
-
-      -- email and username stored as lowercase
-      self.params.email = lower(self.params.email)
       self.params.username = self.params.email
 
       if self.auto_approve then
@@ -377,9 +373,6 @@ return {
     end,
 
     POST = function(self, dao_factory, helpers)
-      -- email is stored as lowercase
-      self.params.email = lower(self.params.email)
-
       local workspace = ngx.ctx.workspaces and ngx.ctx.workspaces[1] or {}
       local token_ttl = ws_helper.retrieve_ws_config(ws_constants.PORTAL_TOKEN_EXP, workspace)
       local filter = {__skip_rbac = true}
@@ -543,9 +536,6 @@ return {
     end,
 
     PATCH = function(self, dao_factory, helpers)
-      -- email and username stored as lowercase
-      self.params.email = lower(self.params.email)
-
       local workspace = ngx.ctx.workspaces and ngx.ctx.workspaces[1] or {}
       local portal_auth = ws_helper.retrieve_ws_config(ws_constants.PORTAL_AUTH, workspace)
 

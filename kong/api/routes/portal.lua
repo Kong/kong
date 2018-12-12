@@ -8,8 +8,6 @@ local portal_smtp_client = require "kong.portal.emails"
 
 local ws_constants  = constants.WORKSPACE_CONFIG
 
-local lower = string.lower
-
 --- Allowed auth plugins
 -- Table containing allowed auth plugins that the developer portal api
 -- can create credentials for.
@@ -141,8 +139,6 @@ return {
       -- If email is being updated, we need to sync it with the username
       -- and update the login credential
       if self.params.email then
-        -- email and username stored as lowercase
-        self.params.email = lower(self.params.email)
         self.params.username = self.params.email
 
         local workspace = ngx.ctx.workspaces and ngx.ctx.workspaces[1] or {}

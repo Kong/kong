@@ -579,7 +579,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             method = "POST",
             path = "/register",
             body = {
-              email = "Gruce@konghq.com",
+              email = "gruce@konghq.com",
               password = "kong",
               meta = "{\"full_name\":\"I Like Turtles\"}"
             },
@@ -649,7 +649,7 @@ for _, strategy in helpers.each_strategy('postgres') do
               method = "POST",
               path = "/forgot-password",
               body = {
-                email = "gruce@Konghq.com",
+                email = "gruce@konghq.com",
               },
               headers = {["Content-Type"] = "application/json"}
             })
@@ -671,7 +671,7 @@ for _, strategy in helpers.each_strategy('postgres') do
               method = "POST",
               path = "/forgot-password",
               body = {
-                email = "gruce@konghq.Com",
+                email = "gruce@konghq.com",
               },
               headers = {["Content-Type"] = "application/json"}
             })
@@ -689,7 +689,7 @@ for _, strategy in helpers.each_strategy('postgres') do
               method = "POST",
               path = "/forgot-password",
               body = {
-                email = "grUce@konghq.com",
+                email = "gruce@konghq.com",
               },
               headers = {["Content-Type"] = "application/json"}
             })
@@ -750,7 +750,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             method = "POST",
             path = "/register",
             body = {
-              email = "gruce@kOnghq.com",
+              email = "gruce@konghq.com",
               password = "kong",
               meta = "{\"full_name\":\"I Like Turtles\"}"
             },
@@ -766,7 +766,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             method = "POST",
             path = "/forgot-password",
             body = {
-              email = "Gruce@konghq.com",
+              email = "gruce@konghq.com",
             },
             headers = {["Content-Type"] = "application/json"}
           })
@@ -996,7 +996,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             method = "POST",
             path = "/register",
             body = {
-              email = "gruce@konGhq.com",
+              email = "gruce@konghq.com",
               password = "kong",
               meta = "{\"full_name\":\"I Like Turtles\"}"
             },
@@ -1012,7 +1012,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             method = "POST",
             path = "/forgot-password",
             body = {
-              email = "gruCe@konghq.com",
+              email = "gruce@konghq.com",
             },
             headers = {["Content-Type"] = "application/json"}
           })
@@ -1182,7 +1182,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             method = "POST",
             path = "/register",
             body = {
-              email = "grucE@konghq.com",
+              email = "gruce@konghq.com",
               key = "kongstrong",
               meta = "{\"full_name\":\"I Like Turtles\"}"
             },
@@ -1198,7 +1198,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             method = "POST",
             path = "/forgot-password",
             body = {
-              email = "gruce@Konghq.com",
+              email = "gruce@konghq.com",
             },
             headers = {["Content-Type"] = "application/json"}
           })
@@ -1425,7 +1425,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             method = "POST",
             path = "/register",
             body = {
-              email = "gruce@konghQ.com",
+              email = "gruce@konghq.com",
               key = "kongstrong",
               meta = "{\"full_name\":\"I Like Turtles\"}"
             },
@@ -1441,7 +1441,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             method = "POST",
             path = "/forgot-password",
             body = {
-              email = "grucE@konghq.com",
+              email = "gruce@konghq.com",
             },
             headers = {["Content-Type"] = "application/json"}
           })
@@ -1609,7 +1609,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             method = "POST",
             path = "/register",
             body = {
-              email = "gRUce@konghq.com",
+              email = "gruce@konghq.com",
               password = "kong",
               meta = "{\"full_name\":\"I Like Turtles\"}"
             },
@@ -1707,7 +1707,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             method = "POST",
             path = "/register",
             body = {
-              email = "gruce@kongHQ.com",
+              email = "gruce@konghq.com",
               password = "kong",
               meta = "{\"full_name\":\"I Like Turtles\"}"
             },
@@ -1818,7 +1818,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             method = "POST",
             path = "/register",
             body = {
-              email = "gruCE@konghq.com",
+              email = "gruce@konghq.com",
               key = "myKeeeeeey",
               meta = "{\"full_name\":\"I Like Turtles\"}"
             },
@@ -1926,7 +1926,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             method = "POST",
             path = "/register",
             body = {
-              email = "gruce@kONghq.com",
+              email = "gruce@konghq.com",
               password = "kong",
               meta = "{\"full_name\":\"I Like Turtles\"}",
             },
@@ -2013,7 +2013,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             local res = assert(portal_api_client:send {
               method = "PATCH",
               body = {
-                email = "New_EMail@whODis.com",
+                email = "new_email@whodis.com",
               },
               path = "/developer/email",
               headers = {
@@ -2078,7 +2078,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             method = "POST",
             path = "/register",
             body = {
-              email = "gruce@koNGhq.com",
+              email = "gruce@konghq.com",
               key = "kong",
               meta = "{\"full_name\":\"I Like Turtles\"}"
             },
@@ -2091,7 +2091,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             method = "POST",
             path = "/register",
             body = {
-              email = "fancypANts@konghq.com",
+              email = "fancypants@konghq.com",
               key = "mowmow",
               meta = "{\"full_name\":\"Old Gregg\"}"
             },
@@ -2163,7 +2163,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             local res = assert(portal_api_client:send {
               method = "PATCH",
               body = {
-                email = "NEw_email@whodIS.com",
+                email = "new_email@whodis.com",
               },
               path = "/developer/email?apikey=kong",
               headers = {
@@ -2212,7 +2212,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             method = "POST",
             path = "/register",
             body = {
-              email = "GRuce@konghq.com",
+              email = "gruce@konghq.com",
               password = "kong",
               meta = "{\"full_name\":\"I Like Turtles\"}"
             },
