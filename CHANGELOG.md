@@ -1,3 +1,10 @@
+## v0.2.7
+
+- Remove `daos` that were never used
+- Hide `secret` from admin api
+- Bump `lua-resty-session` to `2.23`
+
+
 ## v0.2.6
 
 - Fix schema `self_check` to verify `issuer` only when given (e.g. when `PATCH`ing).
