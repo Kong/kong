@@ -110,7 +110,7 @@ for _, strategy in helpers.each_strategy() do
         
         local cookie_parts = utils.split(cookie, "; ")
         local sid = utils.split(utils.split(cookie_parts[1], "|")[1], "=")[2]
-        ngx.sleep(0.1)
+        ngx.sleep(1)
 
         -- use the cookie without the key to ensure cookie still lets them in
         request.headers.apikey = nil
@@ -156,7 +156,7 @@ for _, strategy in helpers.each_strategy() do
         assert.response(res).has.status(200)
         cookie = assert.response(res).has.header("Set-Cookie")
 
-        ngx.sleep(0.1)
+        ngx.sleep(1)
 
         -- use the cookie without the key to ensure cookie still lets them in
         request.headers.apikey = nil
@@ -166,7 +166,7 @@ for _, strategy in helpers.each_strategy() do
         
         -- renewal period, make sure requests still come through and
         -- if set-cookie header comes through, attach it to subsequent requests
-        send_requests(request, 5, 0.5)
+        send_requests(request, 5, 0.25)
       end)
     end)
   end)
