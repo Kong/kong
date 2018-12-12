@@ -21,6 +21,7 @@ return {
     },
     cookie_httponly = { type = "boolean", default = true },
     cookie_secure = { type = "boolean", default = true },
+    cookie_discard = { type = "number", default = 10 },
     storage = {
       required = false,
       type = "string",
@@ -44,6 +45,6 @@ return {
       required = false, 
       type = "string",
       default = "session_logout",
-    },
+    }, 
   }
 }

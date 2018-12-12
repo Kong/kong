@@ -89,26 +89,14 @@ function kong_storage:save(id, expires, data, hmac)
 
   if life > 0 then
     ngx.timer.at(0, function()  
-      local s = self:get(key)
-
-      local err, _
-      local msg = "update"
-      if s then
-        _, err = self.dao.sessions:update({ id = s.id }, {
-          data = self.encode(data),
-          expires = expires,
-        }, { ttl = self.lifetime })
-      else
-        msg = "insert"
-        _, err = self.dao.sessions:insert({
-          session_id = key,
-          data = self.encode(data),
-          expires = expires,
-        }, { ttl = self.lifetime })
-      end
+      local err, _ = self.dao.sessions:insert({
+        session_id = key,
+        data = self.encode(data),
+        expires = expires,
+      }, { ttl = self.lifetime })
       
       if err then
-        ngx.log(ngx.ERR, "Error trying to ".. msg .. " session: ", err)
+        ngx.log(ngx.ERR, "Error inserting session: ", err)
       end
     end)
 
@@ -132,6 +120,21 @@ function kong_storage:destroy(id)
 
   if err then
     ngx.log(ngx.ERR, "Error deleting session: ", err)
+  end
+end
+
+
+-- used by regenerate strategy to expire old sessions during renewal
+function kong_storage:ttl(id, ttl)
+  local s = self:get(self.encode(id))
+
+  if s then
+    local _, err = self.dao.sessions:update({ id = s.id }, 
+                                            {session_id = s.session_id}, 
+                                            { ttl = ttl })
+    if err then
+      ngx.log(ngx.ERR, "Error updating session: ", err)
+    end
   end
 end
 

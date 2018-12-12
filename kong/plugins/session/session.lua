@@ -7,7 +7,7 @@ local _M = {}
 local function get_opts(conf)
   return {
     name = conf.cookie_name,
-    secret = conf.secret, 
+    secret = conf.secret,
     cookie = {
       lifetime = conf.cookie_lifetime,
       path     = conf.cookie_path,
@@ -16,6 +16,7 @@ local function get_opts(conf)
       httponly = conf.cookie_httponly,
       secure   = conf.cookie_secure,
       renew    = conf.cookie_renew,
+      discard  = conf.cookie_discard,
     }
   }
 end
@@ -25,6 +26,12 @@ function _M.open_session(conf)
   local s
   
   if conf.storage == 'kong' then
+    -- Required strategy for kong adapter which will allow for :regenerate
+    -- method to keep sessions around during renewal period to allow for
+    -- concurrent requests. When client exchanges cookie for new cookie,
+    -- old sessions will have their ttl updated, which will discard the item
+    -- after "cookie_discard" period.
+    opts.strategy = "regenerate"
     s = session.new(opts)
     s.storage = require("kong.plugins.session.storage.kong").new(s)
     s:open()
