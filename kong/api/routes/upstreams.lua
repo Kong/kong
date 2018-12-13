@@ -1,5 +1,4 @@
 local endpoints = require "kong.api.endpoints"
-local responses = require "kong.tools.responses"
 local utils = require "kong.tools.utils"
 local knode = (kong and kong.node) and kong.node or
               require "kong.pdk.node".new()
@@ -39,7 +38,7 @@ local function post_health(self, db, is_healthy)
   end
 
   if not upstream then
-    return responses.send_HTTP_NOT_FOUND()
+    return kong.response.exit(404, { message = "Not found" })
   end
 
   opts = endpoints.extract_options(args, db.targets.schema, "select", opts)
@@ -52,11 +51,12 @@ local function post_health(self, db, is_healthy)
   if target then
     local ok, err = db.targets:post_health(upstream, target, is_healthy)
     if not ok then
-      responses.send_HTTP_BAD_REQUEST(err)
+      local body = utils.get_default_exit_body(400, err)
+      return kong.response.exit(400, body)
     end
   end
 
-  return responses.send_HTTP_NO_CONTENT()
+  return kong.response.exit(204) -- no content
 end
 
 
@@ -72,7 +72,7 @@ return {
       end
 
       if not upstream then
-        return responses.send_HTTP_NOT_FOUND()
+        return kong.response.exit(404, { message = "Not found" })
       end
 
       local upstream_pk = { id = upstream.id }
@@ -98,7 +98,7 @@ return {
         ngx.log(ngx.ERR, "failed getting node id: ", err)
       end
 
-      return responses.send_HTTP_OK({
+      return kong.response.exit(200, {
         data    = targets_with_health,
         offset  = offset,
         next    = next_page,
@@ -118,7 +118,7 @@ return {
       end
 
       if not upstream then
-        return responses.send_HTTP_NOT_FOUND()
+        return kong.response.exit(404, { message = "Not found" })
       end
 
       local upstream_pk = { id = upstream.id }
@@ -140,7 +140,7 @@ return {
                                        escape_uri(upstream.id),
                                        escape_uri(offset)) or null
 
-      return responses.send_HTTP_OK({
+      return kong.response.exit(200, {
         data   = targets,
         offset = offset,
         next   = next_page,
@@ -171,7 +171,7 @@ return {
       end
 
       if not upstream then
-        return responses.send_HTTP_NOT_FOUND()
+        return kong.response.exit(404, { message = "Not found" })
       end
 
       opts = endpoints.extract_options(args, db.targets.schema, "select")
@@ -190,7 +190,7 @@ return {
         end
       end
 
-      return responses.send_HTTP_NO_CONTENT()
+      return kong.response.exit(204) -- no content
     end
   },
 }

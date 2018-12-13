@@ -21,14 +21,14 @@ local function before_plugin_for_entity(entity_name, plugin_field)
   return function(self, db, helpers)
     local entity = endpoints.select_entity(self, db, kong.db[entity_name].schema)
     if not entity then
-      return helpers.responses.send_HTTP_NOT_FOUND()
+      return kong.response.exit(404, { message = "Not found" })
     end
 
     local plugin = db.plugins:select({ id = self.params.id })
     if not plugin
        or type(plugin[plugin_field]) ~= "table"
        or plugin[plugin_field].id ~= entity.id then
-      return helpers.responses.send_HTTP_NOT_FOUND()
+      return kong.response.exit(404, { message = "Not found" })
     end
     self.plugin = plugin
 
@@ -138,7 +138,7 @@ return {
         -- plugin this is and we can't perform *any* validations.
         local plugin = db.plugins:select({ id = self.params.plugins })
         if not plugin then
-          return helpers.responses.send_HTTP_NOT_FOUND()
+          return kong.response.exit(404, { message = "Not found" })
         end
 
         fill_plugin_data(self.args, plugin)
@@ -151,11 +151,11 @@ return {
     GET = function(self, db, helpers)
       local subschema = db.plugins.schema.subschemas[self.params.name]
       if not subschema then
-        return helpers.responses.send_HTTP_NOT_FOUND("No plugin named '" .. self.params.name .. "'")
+        return kong.response.exit(404, { message = "No plugin named '" .. self.params.name .. "'" })
       end
 
       local copy = schema_to_jsonable(subschema.fields.config)
-      return helpers.responses.send_HTTP_OK(copy)
+      return kong.response.exit(200, copy)
     end
   },
 
@@ -165,9 +165,9 @@ return {
       for k in pairs(singletons.configuration.loaded_plugins) do
         enabled_plugins[#enabled_plugins+1] = k
       end
-      return helpers.responses.send_HTTP_OK {
+      return kong.response.exit(200, {
         enabled_plugins = enabled_plugins
-      }
+      })
     end
   },
 
