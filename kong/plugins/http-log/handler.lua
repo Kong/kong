@@ -15,7 +15,7 @@ local HttpLogHandler = BasePlugin:extend()
 
 
 HttpLogHandler.PRIORITY = 12
-HttpLogHandler.VERSION = "0.1.0"
+HttpLogHandler.VERSION = "1.0.0"
 
 
 local buffers = {} -- buffers per-route

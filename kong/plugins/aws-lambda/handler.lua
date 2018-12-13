@@ -250,7 +250,7 @@ end
 
 
 AWSLambdaHandler.PRIORITY = 750
-AWSLambdaHandler.VERSION = "0.1.1"
+AWSLambdaHandler.VERSION = "1.0.0"
 
 
 return AWSLambdaHandler
