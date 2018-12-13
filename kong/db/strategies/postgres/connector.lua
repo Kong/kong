@@ -223,6 +223,14 @@ local _mt = {}
 _mt.__index = _mt
 
 
+function _mt:get_stored_connection()
+  local conn = self.super.get_stored_connection(self)
+  if conn and conn.sock then
+    return conn
+  end
+end
+
+
 function _mt:init()
   local res, err = self:query("SHOW server_version_num;")
   local ver = tonumber(res and res[1] and res[1].server_version_num)
@@ -326,8 +334,9 @@ end
 
 
 function _mt:connect()
-  if self.connection and self.connection.sock then
-    return true
+  local conn = self:get_stored_connection()
+  if conn then
+    return conn
   end
 
   local connection, err = connect(self.config)
@@ -335,32 +344,26 @@ function _mt:connect()
     return nil, err
   end
 
-  self.connection = connection
-
-  return true
-end
-
-
-function _mt:connect_migrations(_)
-  if self.connection and self.connection.sock then
-    return self.connection
-  end
-
-  local connection, err = connect(self.config)
-  if not connection then
-    return nil, err
-  end
-
-  self.connection = connection
+  self:store_connection(connection)
 
   return connection
 end
 
 
-function _mt:close()
-  local ok, err = close(self.connection)
+function _mt:connect_migrations()
+  return self:connect()
+end
 
-  self.connection = nil
+
+function _mt:close()
+  local conn = self:get_stored_connection()
+  if not conn then
+    return true
+  end
+
+  local ok, err = close(conn)
+
+  self:store_connection(nil)
 
   if not ok then
     return nil, err
@@ -371,9 +374,14 @@ end
 
 
 function _mt:setkeepalive()
-  local ok, err = setkeepalive(self.connection)
+  local conn = self:get_stored_connection()
+  if not conn then
+    return true
+  end
 
-  self.connection = nil
+  local ok, err = setkeepalive(conn)
+
+  self:store_connection(nil)
 
   if not ok then
     return nil, err
@@ -386,8 +394,9 @@ end
 function _mt:query(sql)
   local res, err, partial, num_queries
 
-  if self.connection and self.connection.sock then
-    res, err, partial, num_queries = self.connection:query(sql)
+  local conn = self:get_stored_connection()
+  if conn then
+    res, err, partial, num_queries = conn:query(sql)
 
   else
     local connection
@@ -584,7 +593,8 @@ end
 
 
 function _mt:schema_migrations()
-  if not self.connection or not self.connection.sock then
+  local conn = self:get_stored_connection()
+  if not conn then
     error("no connection")
   end
 
@@ -625,7 +635,8 @@ end
 
 
 function _mt:schema_bootstrap(kong_config, default_locks_ttl)
-  if not self.connection or not self.connection.sock then
+  local conn = self:get_stored_connection()
+  if not conn then
     error("no connection")
   end
 
@@ -661,7 +672,8 @@ end
 
 
 function _mt:schema_reset()
-  if not self.connection or not self.connection.sock then
+  local conn = self:get_stored_connection()
+  if not conn then
     error("no connection")
   end
 
@@ -690,7 +702,8 @@ function _mt:run_up_migration(name, up_sql)
     error("up_sql must be a string", 2)
   end
 
-  if not self.connection or not self.connection.sock then
+  local conn = self:get_stored_connection()
+  if not conn then
     error("no connection")
   end
 
@@ -724,7 +737,8 @@ function _mt:record_migration(subsystem, name, state)
     error("name must be a string", 2)
   end
 
-  if not self.connection or not self.connection.sock then
+  local conn = self:get_stored_connection()
+  if not conn then
     error("no connection")
   end
 
