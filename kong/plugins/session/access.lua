@@ -1,6 +1,8 @@
+local constants = require "kong.constants"
 local singletons = require "kong.singletons"
 local responses = require "kong.tools.responses"
 local session = require "kong.plugins.session.session"
+local ngx_set_header = ngx.req.set_header
 
 local _M = {}
 
@@ -11,6 +13,19 @@ local function load_consumer(consumer_id)
     return nil, err
   end
   return result
+end
+
+
+local function set_consumer(consumer, credential_id)
+  ngx_set_header(constants.HEADERS.CONSUMER_ID, consumer.id)
+  ngx_set_header(constants.HEADERS.CONSUMER_CUSTOM_ID, consumer.custom_id)
+  ngx_set_header(constants.HEADERS.CONSUMER_USERNAME, consumer.username)
+  ngx.ctx.authenticated_consumer = consumer
+  if credential_id then
+    ngx.ctx.authenticated_credential = { id = credential_id or consumer.id, 
+                                         consumer_id = consumer.id }
+    ngx_set_header(constants.HEADERS.ANONYMOUS, true)
+  end
 end
 
 
@@ -47,8 +62,7 @@ function _M.execute(conf)
   
   s:start()
   
-  ngx.ctx.authenticated_credential = { id = credential or cid, consumer_id = cid }
-  ngx.ctx.authenticated_consumer = consumer
+  set_consumer(consumer, credential)
   ngx.ctx.authenticated_session = s
 end
 
