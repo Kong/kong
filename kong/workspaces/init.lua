@@ -643,25 +643,25 @@ end
 _M.match_route = match_route
 
 
--- Return sequence of workspace ids an api belongs to
-local function api_workspace_ids(api)
+-- Return sequence of workspace ids an entity belongs to
+local function entity_workspace_ids(entity)
   local old_wss = ngx.ctx.workspaces
   ngx.ctx.workspaces = nil
-  local ws_rels = singletons.dao.workspace_entities:find_all({entity_id = api.id})
+  local ws_rels = singletons.dao.workspace_entities:find_all({entity_id = entity.id})
   ngx.ctx.workspaces = old_wss
   return map(function(x) return x.workspace_id end, ws_rels)
 end
 
 
--- return true if api is in workspace ws
-local function is_api_in_ws(api, ws)
+-- return true if route is in workspace ws
+local function is_route_in_ws(route, ws)
   local ws_ids =
-    api.workspaces and map(function(ws) return ws.id end, api.workspaces)
-      or api_workspace_ids(api)
+    route.workspaces and map(function(ws) return ws.id end, route.workspaces)
+      or entity_workspace_ids(route)
 
   return member(ws.id, ws_ids)
 end
-_M.is_api_in_ws = is_api_in_ws
+_M.is_route_in_ws = is_route_in_ws
 
 
 -- return true if an api with method,uri,host can be added in the
@@ -675,8 +675,8 @@ local function validate_route_for_ws(router, method, uri, host, ws)
   local selected_route = match_route(router, method, uri, host)
 
   -- XXX: Treating routes and apis the same way. See function comment
-  if selected_route and selected_route.route then
-    selected_route.api = selected_route.route
+  if selected_route and selected_route.api then
+    selected_route.route = selected_route.api
   end
 
   ngx_log(DEBUG, "selected route is " .. tostring(selected_route))
@@ -684,19 +684,19 @@ local function validate_route_for_ws(router, method, uri, host, ws)
     ngx_log(DEBUG, "no selected_route")
     return true
 
-  elseif is_api_in_ws(selected_route.api, ws) then -- same workspace
+  elseif is_route_in_ws(selected_route.route, ws) then -- same workspace
     ngx_log(DEBUG, "selected_route in the same ws")
     return true
 
-  elseif is_blank(selected_route.api.hosts) or
-         ngx_null == selected_route.api.hosts then -- we match from a no-host route
+  elseif is_blank(selected_route.route.hosts) or
+    ngx_null == selected_route.route.hosts then -- we match from a no-host route
     ngx_log(DEBUG, "selected_route has no host restriction")
     return false
 
-  elseif is_wildcard_route(selected_route.api) then -- has host & it's wildcard
+  elseif is_wildcard_route(selected_route.route) then -- has host & it's wildcard
 
     -- we try to add a wildcard
-    if host and is_wildcard(host) and member(host, selected_route.api.hosts) then
+    if host and is_wildcard(host) and member(host, selected_route.route.hosts) then
       -- ours is also wildcard
       return false
     else

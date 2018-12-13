@@ -151,27 +151,27 @@ describe("workspaces", function()
 
     matched_route = workspaces.match_route(r, "GET", "/my-api", "")
     assert.truthy(matched_route)
-    assert.truthy(workspaces.is_api_in_ws(matched_route.api, ws1))
+    assert.truthy(workspaces.is_route_in_ws(matched_route.api, ws1))
 
     matched_route = workspaces.match_route(r, "GET", "/my-api2", "")
     assert.truthy(matched_route)
-    assert.truthy(workspaces.is_api_in_ws(matched_route.api, ws2))
-    assert.falsy(workspaces.is_api_in_ws(matched_route.api, ws1))
+    assert.truthy(workspaces.is_route_in_ws(matched_route.api, ws2))
+    assert.falsy(workspaces.is_route_in_ws(matched_route.api, ws1))
   end)
 
-  describe("is_api_in_ws accepts", function()
+  describe("is_route_in_ws accepts", function()
     local single_api, multiple_api
     local ws1 = {id = "ws1"}
     local ws2 = {id = "ws2"}
 
     setup(function()
-      single_api = {
+      single_route = {
         name = "api-2",
         methods = { "POST", "PUT", "GET" },
         uris = { "/my-api2" },
         workspaces = {{id = "ws1"}},
       }
-      multiple_api = {
+      multiple_route = {
         name = "api-2",
         methods = { "POST", "PUT", "GET" },
         uris = { "/my-api2" },
@@ -180,15 +180,15 @@ describe("workspaces", function()
     end)
 
     it("single ws per entity", function()
-      assert.truthy(workspaces.is_api_in_ws(single_api, ws1))
-      assert.falsy(workspaces.is_api_in_ws(single_api, ws2))
-      assert.falsy(workspaces.is_api_in_ws(single_api, {id = "nope"}))
+      assert.truthy(workspaces.is_route_in_ws(single_route, ws1))
+      assert.falsy(workspaces.is_route_in_ws(single_route, ws2))
+      assert.falsy(workspaces.is_route_in_ws(single_route, {id = "nope"}))
     end)
 
     it("multiple ws per entity", function()
-      assert.truthy(workspaces.is_api_in_ws(multiple_api, ws1))
-      assert.truthy(workspaces.is_api_in_ws(multiple_api, ws2))
-      assert.falsy(workspaces.is_api_in_ws(multiple_api, {name = "nope"}))
+      assert.truthy(workspaces.is_route_in_ws(multiple_route, ws1))
+      assert.truthy(workspaces.is_route_in_ws(multiple_route, ws2))
+      assert.falsy(workspaces.is_route_in_ws(multiple_route, {name = "nope"}))
     end)
   end)
 
