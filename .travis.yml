@@ -37,7 +37,6 @@ env:
     - BUSTED_ARGS="-o gtest -v --exclude-tags=flaky,ipv6"
     - PLUGIN_NAME=session
     - KONG_TEST_CUSTOM_PLUGINS=$PLUGIN_NAME
-    - KONG_TEST_LUA_PACKAGE_PATH=";;../spec/fixtures/custom_plugins/?.lua"
     - KONG_CUSTOM_PLUGINS=$PLUGIN_NAME
 
   matrix:
