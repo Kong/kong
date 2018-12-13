@@ -1,6 +1,5 @@
 local BasePlugin = require "kong.plugins.base_plugin"
 local singletons = require "kong.singletons"
-local responses  = require "kong.tools.responses"
 
 
 local CacheHandler = BasePlugin:extend()
@@ -21,17 +20,18 @@ function CacheHandler:access(conf)
 
   local args, err = ngx.req.get_post_args()
   if not args then
-    return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+    kong.log.err(err)
+    return kong.response.exit(500, { message = "An unexpected error occurred" })
   end
 
   local cache_key = args.cache_key
   if not cache_key then
-    return responses.send_HTTP_BAD_REQUEST("missing cache_key")
+    return kong.response.exit(400, { message = "missing cache_key" })
   end
 
   local cache_value = args.cache_value
   if not cache_value then
-    return responses.send_HTTP_BAD_REQUEST("missing cache_value")
+    return kong.response.exit(400, { message = "missing cache_value" })
   end
 
   local function cb()
@@ -40,10 +40,11 @@ function CacheHandler:access(conf)
 
   local value, err = singletons.cache:get(cache_key, nil, cb)
   if err then
-    return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+    kong.log.err(err)
+    return kong.response.exit(500, { message = "An unexpected error occurred" })
   end
 
-  return responses.send_HTTP_OK(value)
+  return kong.response.exit(200, type(value) == "table" and value or { message = value })
 end
 
 

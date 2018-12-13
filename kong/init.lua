@@ -70,7 +70,6 @@ local openssl_pkey = require "openssl.pkey"
 local openssl_x509 = require "openssl.x509"
 local runloop = require "kong.runloop.handler"
 local mesh = require "kong.runloop.mesh"
-local responses = require "kong.tools.responses"
 local semaphore = require "ngx.semaphore"
 local singletons = require "kong.singletons"
 local kong_cache = require "kong.cache"
@@ -634,7 +633,7 @@ function Kong.rewrite()
   local ok, err = plugins_map_wrapper()
   if not ok then
     ngx_log(ngx_CRIT, "could not ensure plugins map is up to date: ", err)
-    return responses.send_HTTP_INTERNAL_SERVER_ERROR()
+    return kong.response.exit(500, { message  = "An unexpected error occurred" })
   end
 
   -- we're just using the iterator, as in this rewrite phase no consumer nor
@@ -700,7 +699,8 @@ function Kong.access()
 
       if err then
         ctx.delay_response = false
-        return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+        kong.log.err(err)
+        return kong.response.exit(500, { message  = "An unexpected error occurred" })
       end
     end
   end

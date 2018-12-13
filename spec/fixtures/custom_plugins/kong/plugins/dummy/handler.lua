@@ -1,5 +1,4 @@
 local BasePlugin = require "kong.plugins.base_plugin"
-local responses = require "kong.tools.responses"
 
 
 local DummyHandler = BasePlugin:extend()
@@ -17,7 +16,7 @@ function DummyHandler:access()
   DummyHandler.super.access(self)
 
   if ngx.req.get_uri_args()["send_error"] then
-    responses.send_HTTP_NOT_FOUND()
+    return kong.response.exit(404, { message = "Not found" })
   end
 
   ngx.header["Dummy-Plugin-Access-Header"] = "dummy"

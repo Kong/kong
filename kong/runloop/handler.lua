@@ -16,7 +16,6 @@ local balancer    = require "kong.runloop.balancer"
 local mesh        = require "kong.runloop.mesh"
 local constants   = require "kong.constants"
 local semaphore   = require "ngx.semaphore"
-local responses   = require "kong.tools.responses"
 local singletons  = require "kong.singletons"
 local certificate = require "kong.runloop.certificate"
 
@@ -631,7 +630,8 @@ return {
     after = function(ctx)
       local ok, err, errcode = balancer_setup_stage2(ctx)
       if not ok then
-        return responses.send(errcode, err)
+        local body = utils.get_default_exit_body(errcode, err)
+        return kong.response.exit(errcode, body)
       end
 
       local now = get_now()
@@ -651,8 +651,8 @@ return {
 
       local router, err = get_router()
       if not router then
-        return responses.send_HTTP_INTERNAL_SERVER_ERROR(
-          "no router to route request (reason: " .. err ..  ")")
+        kong.log.err("no router to route request (reason: " .. tostring(err) ..  ")")
+        return kong.response.exit(500, { message  = "An unexpected error occurred" })
       end
 
       -- routing request
@@ -663,7 +663,7 @@ return {
 
       local match_t = router.exec(ngx)
       if not match_t then
-        return responses.send_HTTP_NOT_FOUND("no Route matched with those values")
+        return kong.response.exit(404, { message = "no Route matched with those values" })
       end
 
       local route              = match_t.route or EMPTY_T
@@ -702,7 +702,7 @@ return {
       then
         ngx.header["connection"] = "Upgrade"
         ngx.header["upgrade"]    = "TLS/1.2, HTTP/1.1"
-        return responses.send(426, "Please use HTTPS protocol")
+        return kong.response.exit(426, { message = "Please use HTTPS protocol" })
       end
 
       balancer_setup_stage1(ctx, match_t.upstream_scheme,
@@ -765,7 +765,8 @@ return {
 
       local ok, err, errcode = balancer_setup_stage2(ctx)
       if not ok then
-        return responses.send(errcode, err)
+        local body = utils.get_default_exit_body(errcode, err)
+        return kong.response.exit(errcode, body)
       end
 
       var.upstream_scheme = balancer_data.scheme

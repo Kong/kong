@@ -26,7 +26,8 @@ return {
         local set = {}
         for row, err in kong.db.plugins:each() do
           if err then
-            return helpers.responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+            kong.log.err(err)
+            return kong.response.exit(500, { message = "An unexpected error happened" })
           end
 
           if not set[row.name] then
@@ -59,7 +60,7 @@ return {
         ngx.log(ngx.ERR, "could not get node id: ", err)
       end
 
-      return helpers.responses.send_HTTP_OK {
+      return kong.response.exit(200, {
         tagline = tagline,
         version = version,
         hostname = utils.get_hostname(),
@@ -75,14 +76,15 @@ return {
         lua_version = lua_version,
         configuration = conf_loader.remove_sensitive(singletons.configuration),
         prng_seeds = prng_seeds,
-      }
+      })
     end
   },
   ["/status"] = {
     GET = function(self, dao, helpers)
       local r = ngx.location.capture "/nginx_status"
       if r.status ~= 200 then
-        return helpers.responses.send_HTTP_INTERNAL_SERVER_ERROR(r.body)
+        kong.log.err(r.body)
+        return kong.response.exit(500, { message = "An unexpected error happened" })
       end
 
       local var = ngx.var
@@ -114,7 +116,7 @@ return {
       -- ignore error
       kong.db:close()
 
-      return helpers.responses.send_HTTP_OK(status_response)
+      return kong.response.exit(200, status_response)
     end
   }
 }
