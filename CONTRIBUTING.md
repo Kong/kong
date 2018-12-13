@@ -130,7 +130,7 @@ reading the [Plugin Development
 Guide](https://docs.konghq.com/latest/plugin-development).
 
 If you already wrote a plugin, and are thinking about making it available to
-the community, we strongly encourage you to host it on a publicly available
+the community we strongly encourage you to host it on a publicly available
 repository (like GitHub), and to distribute it via
 [LuaRocks](https://luarocks.org/search?q=kong). A good resource on how to do
 so is the [Distribution
@@ -221,7 +221,7 @@ logical units of work. You are free to propose a patch with one or many
 commits, as long as their atomicity is respected. This means that no unrelated
 changes should be included in a commit.
 
-For example: you are writing a patch to fix a bug, but in your endeavour, you
+For example you are writing a patch to fix a bug, but in your endeavour, you
 spot another bug. **Do not fix both bugs in the same commit!**. Finish your
 work on the initial bug, propose your patch, and come back to the second bug
 later on. This is also valid for unrelated style fixes, refactorings, etc...
@@ -233,7 +233,7 @@ commit history? Will they find unrelated changes in a particular commit? They
 shouldn't!
 
 Writing meaningful commit messages that follow our commit message format will
-also help you respect this mantra (see the below section).
+also,help you respect this mantra (see the below section).
 
 [Back to TOC](#table-of-contents)
 
@@ -519,7 +519,7 @@ Proudly wear your T-shirt and show it to us by tagging
 
 In order to ensure a healthy and consistent codebase, we ask of you that you
 respect the adopted code style. This section contains a non-exhaustive list
-of preferred styles for writing Lua. It is opinionated, but follows the
+of preferred styles for writing Lua. It is opinionated but follows the
 code styles of OpenResty and, by association, Nginx. OpenResty or Nginx
 contributors should find themselves at ease when contributing to Kong.
 
