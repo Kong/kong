@@ -144,14 +144,16 @@ end
 
 -- used by regenerate strategy to expire old sessions during renewal
 function kong_storage:ttl(id, ttl)
-  local s = self:get(self.encode(id))
-
-  if s then
-    if ngx.get_phase() == 'header_filter' then
-      ngx.timer.at(0, function()
+  if ngx.get_phase() == 'header_filter' then
+    ngx.timer.at(0, function()
+      local s = self:get(self.encode(id))
+      if s then
         self:update_session(s.id, {session_id = s.session_id}, ttl)
-      end)
-    else
+      end
+    end)
+  else
+    local s = self:get(self.encode(id))
+    if s then
       self:update_session(s.id, {session_id = s.session_id}, ttl)
     end
   end
