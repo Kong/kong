@@ -23,6 +23,7 @@ local certificate = require "kong.runloop.certificate"
 
 
 local kong        = kong
+local pcall       = pcall
 local tostring    = tostring
 local tonumber    = tonumber
 local sub         = string.sub
@@ -38,6 +39,7 @@ local unpack      = unpack
 
 
 local ERR         = ngx.ERR
+local CRIT        = ngx.CRIT
 local DEBUG       = ngx.DEBUG
 
 
@@ -45,7 +47,7 @@ local CACHE_ROUTER_OPTS = { ttl = 0 }
 local EMPTY_T = {}
 
 
-local get_router, build_router
+local get_router, build_router, rebuild_router, router_version
 local api_router, api_router_version, api_router_err
 local server_header = meta._SERVER_TOKENS
 
@@ -99,15 +101,47 @@ do
   }
 
   local router
-  local router_version
 
+  build_router = function(version)
+    local cache = singletons.cache
+    if cache then
+      local current_version, err = cache:get("router:version",
+                                             CACHE_ROUTER_OPTS,
+                                             utils.uuid)
+      if err then
+        return nil, err
+      end
 
-  build_router = function(db, version)
-    local routes, i = {}, 0
+      if current_version ~= version then
+        -- router version changed while building a router
+        -- and we need a rebuild, :-(
+        return build_router(current_version)
+      end
+    end
+
+    local db = singletons.db
+    local routes, i, counter = {}, 0, 0
 
     for route, err in db.routes:each(1000) do
+      counter = counter + 1
+
       if err then
         return nil, "could not load routes: " .. err
+      end
+
+      if cache and counter % 1000 == 0 then
+        local current_version, err = cache:get("router:version",
+                                               CACHE_ROUTER_OPTS,
+                                               utils.uuid)
+        if err then
+          return nil, err
+        end
+
+        if current_version ~= version then
+          -- router version changed while building a router
+          -- and we need a rebuild, :-(
+          return build_router(current_version)
+        end
       end
 
       local service_pk = route.service
@@ -141,6 +175,22 @@ do
       end
     end
 
+    if cache then
+      local current_version, err = cache:get("router:version",
+                                             CACHE_ROUTER_OPTS,
+                                             utils.uuid)
+      if err then
+        return nil, err
+      end
+
+      if current_version ~= version then
+        -- router version changed while building a router,
+        -- and we need a rebuild, :-(
+        return build_router(current_version)
+      end
+    end
+
+    -- great, we have a stable snapshot of a database
     sort(routes, function(r1, r2)
       r1, r2 = r1.route, r2.route
       if r1.regex_priority == r2.regex_priority then
@@ -149,48 +199,33 @@ do
       return r1.regex_priority > r2.regex_priority
     end)
 
-    local err
-    router, err = Router.new(routes)
-    if not router then
+    local new_router, err = Router.new(routes)
+    if not new_router then
       return nil, "could not create router: " .. err
     end
 
-    if version then
-      router_version = version
-    end
-
+    router = new_router
+    router_version = version
     singletons.router = router
 
     return true
   end
 
 
-  local function check_router_rebuild()
-    -- we might not need to rebuild the router (if we were not
-    -- the first request in this process to enter this code path)
-    -- check again and rebuild only if necessary
-    local version, err = singletons.cache:get("router:version",
-                                              CACHE_ROUTER_OPTS,
-                                              utils.uuid)
-    if err then
-      log(ngx.CRIT, "could not ensure router is up to date: ", err)
-      return nil, err
+  rebuild_router = function(premature, version)
+    if premature then
+      build_router_semaphore:post()
+      return
     end
-
-    if version == router_version then
-      return true
-    end
-
     -- router needs to be rebuilt in this worker
     log(DEBUG, "rebuilding router")
-
-    local ok, err = build_router(singletons.db, version)
-    if not ok then
-      log(ngx.CRIT, "could not rebuild router: ", err)
-      return nil, err
+    local pok, ok, err = pcall(build_router, version)
+    if not pok or not ok then
+      log(CRIT, "could not rebuild router: ", ok or err)
     end
 
-    return true
+    -- release lock
+    build_router_semaphore:post()
   end
 
 
@@ -198,21 +233,13 @@ do
     local version, err = singletons.cache:get("router:version",
                                               CACHE_ROUTER_OPTS,
                                               utils.uuid)
-    if err then
-      log(ngx.CRIT, "could not ensure router is up to date: ", err)
-      return nil, err
-    end
-
     if version == router_version then
       return router
     end
 
-    -- wrap router rebuilds in a per-worker mutex (via ngx.semaphore)
-    -- this prevents dogpiling the database during rebuilds in
-    -- high-concurrency traffic patterns
-    -- requests that arrive on this process during a router rebuild will be
-    -- queued. once the semaphore resource is acquired we re-check the
-    -- router version again to prevent unnecessary subsequent rebuilds
+    if err then
+      log(ngx.CRIT, "could not ensure router is up to date: ", err)
+    end
 
     local timeout = 60
     if singletons.configuration.database == "cassandra" then
@@ -224,24 +251,24 @@ do
       timeout = singletons.configuration.pg_timeout / 1000
     end
 
-    -- acquire lock
-    local ok, err = build_router_semaphore:wait(timeout)
-    if not ok then
-      return nil, "error attempting to acquire build_router lock: " .. err
-    end
+    if build_router_semaphore:wait(timeout) then
+      version, err = singletons.cache:get("router:version",
+                                          CACHE_ROUTER_OPTS,
+                                          utils.uuid)
+      if version == router_version then
+        build_router_semaphore:post()
+        return router
+      end
 
-    local pok
-    pok, ok, err = pcall(check_router_rebuild)
+      if err then
+        log(ngx.CRIT, "could not ensure router is up to date: ", err)
+      end
 
-    -- release lock
-    build_router_semaphore:post(1)
-
-    if not pok then
-      return nil, ok
-    end
-
-    if not ok then
-      return nil, err
+      local ok, err = ngx.timer.at(0, rebuild_router, version)
+      if not ok then
+        log(CRIT, "unable to create a router build timer: ", err)
+        rebuild_router(false, version)
+      end
     end
 
     return router
@@ -436,6 +463,37 @@ return {
       worker_events.register(function()
         log(DEBUG, "[events] Route updated, invalidating router")
         cache:invalidate("router:version")
+
+        local version, err = singletons.cache:get("router:version",
+                                                  CACHE_ROUTER_OPTS,
+                                                  utils.uuid)
+        if version == router_version then
+          return
+        end
+
+        if err then
+          log(ngx.CRIT, "could not ensure router is up to date: ", err)
+        end
+
+        if build_router_semaphore:wait(0) then
+          version, err = singletons.cache:get("router:version",
+                                              CACHE_ROUTER_OPTS,
+                                              utils.uuid)
+          if version == router_version then
+            build_router_semaphore:post()
+            return
+          end
+
+          if err then
+            log(ngx.CRIT, "could not ensure router is up to date: ", err)
+          end
+
+          local ok, err = ngx.timer.at(0, rebuild_router, version)
+          if not ok then
+            log(CRIT, "unable to create a router build timer: ", err)
+            build_router_semaphore:post()
+          end
+        end
       end, "crud", "routes")
 
 
@@ -614,17 +672,15 @@ return {
 
         build_api_router_semaphore, err = semaphore.new()
         if err then
-          log(ngx.CRIT, "failed to create build_api_router_semaphore: ", err)
+          log(CRIT, "failed to create build_api_router_semaphore: ", err)
         end
 
         build_api_router_semaphore:post(1)
 
         build_router_semaphore, err = semaphore.new()
         if err then
-          log(ngx.CRIT, "failed to create build_router_semaphore: ", err)
+          log(CRIT, "failed to create build_router_semaphore: ", err)
         end
-
-        build_router_semaphore:post(1)
       end
     end
   },
@@ -644,9 +700,9 @@ return {
   },
   preread = {
     before = function(ctx)
-      local router, err = get_router()
+      local router = get_router()
       if not router then
-        log(ERR, "no router to route connection (reason: " .. err .. ")")
+        log(ERR, "no router to route connection")
         return ngx.exit(500)
       end
 
@@ -734,7 +790,7 @@ return {
 
       local version, err = cache:get("api_router:version", CACHE_ROUTER_OPTS, utils.uuid)
       if err then
-        log(ngx.CRIT, "could not ensure API router is up to date: ", err)
+        log(CRIT, "could not ensure API router is up to date: ", err)
 
       elseif api_router_version ~= version then
         -- wrap api_router rebuilds in a per-worker mutex (via ngx.semaphore)
@@ -767,7 +823,7 @@ return {
 
         version, err = cache:get("api_router:version", CACHE_ROUTER_OPTS, utils.uuid)
         if err then
-          log(ngx.CRIT, "could not ensure api_router is up to date: ", err)
+          log(CRIT, "could not ensure api_router is up to date: ", err)
 
         elseif api_router_version ~= version then
           -- api_router needs to be rebuilt in this worker
@@ -776,7 +832,7 @@ return {
           local ok, err = build_api_router(singletons.dao, version)
           if not ok then
             api_router_err = err
-            log(ngx.CRIT, "could not rebuild api_router: ", err)
+            log(CRIT, "could not rebuild api_router: ", err)
           end
         end
 
@@ -790,10 +846,10 @@ return {
 
       -- router for Routes/Services
 
-      local router, err = get_router()
+      local router = get_router()
       if not router then
         return responses.send_HTTP_INTERNAL_SERVER_ERROR(
-          "no router to route request (reason: " .. err ..  ")")
+          "no router to route request")
       end
 
       -- routing request
