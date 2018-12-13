@@ -27,7 +27,7 @@ local function get_cert_id_from_sni(self, db, helpers)
     return
   end
 
-  helpers.responses.send_HTTP_NOT_FOUND("SNI not found")
+  kong.response.exit(404, { message = "SNI not found" })
 end
 
 
@@ -47,10 +47,10 @@ return {
       end
 
       if not cert then
-        return helpers.responses.send_HTTP_NOT_FOUND()
+        kong.response.exit(404, { message = "Not found" })
       end
 
-      return helpers.responses.send_HTTP_OK(cert)
+      return kong.response.exit(200, cert)
     end,
 
     -- override to create a new SNI in the PUT /certificates/foo.com (create) case
@@ -80,10 +80,10 @@ return {
       end
 
       if not cert then
-        return helpers.responses.send_HTTP_NOT_FOUND()
+        kong.response.exit(404, { message = "Not found" })
       end
 
-      return helpers.responses.send_HTTP_OK(cert)
+      return kong.response.exit(200, cert)
     end,
   },
 

@@ -1,6 +1,5 @@
 local cjson         = require "cjson"
 local utils         = require "kong.tools.utils"
-local responses     = require "kong.tools.responses"
 local app_helpers   = require "lapis.application"
 
 
@@ -63,7 +62,7 @@ function _M.find_api_by_name_or_id(self, dao_factory, helpers)
   -- We know name and id are unique for APIs, hence if we have a row, it must be the only one
   self.api = rows[1]
   if not self.api then
-    return helpers.responses.send_HTTP_NOT_FOUND()
+    return kong.response.exit(404, { message = "Not found" })
   end
 end
 
@@ -76,7 +75,7 @@ function _M.find_plugin_by_filter(self, dao_factory, filter, helpers)
   -- We know the id is unique, so if we have a row, it must be the only one
   self.plugin = rows[1]
   if not self.plugin then
-    return helpers.responses.send_HTTP_NOT_FOUND()
+    return kong.response.exit(404, { message = "Not found" })
   end
 end
 
@@ -106,7 +105,7 @@ function _M.find_consumer_by_username_or_id(self, dao_factory, helpers)
   -- We know username and id are unique, so if we have a row, it must be the only one
   self.consumer = consumer
   if not self.consumer then
-    return helpers.responses.send_HTTP_NOT_FOUND()
+    return kong.response.exit(404, { message = "Not found" })
   end
 end
 
@@ -123,7 +122,7 @@ function _M.find_upstream_by_name_or_id(self, dao_factory, helpers)
   -- We know name and id are unique, so if we have a row, it must be the only one
   self.upstream = rows[1]
   if not self.upstream then
-    return helpers.responses.send_HTTP_NOT_FOUND()
+    return kong.response.exit(404, { message = "Not found" })
   end
 end
 
@@ -143,7 +142,7 @@ function _M.find_target_by_target_or_id(self, dao_factory, helpers)
   -- the first
   self.target = rows[1]
   if not self.target then
-    return helpers.responses.send_HTTP_NOT_FOUND()
+    return kong.response.exit(404, { message = "Not found" })
   end
 end
 
@@ -186,12 +185,12 @@ function _M.paginated_set(self, dao_collection, post_process)
     end
   end
 
-  return responses.send_HTTP_OK {
+  return kong.response.exit(200, {
     data     = data,
     total    = total_count,
     offset   = offset,
     ["next"] = next_url
-  }
+  })
 end
 
 -- Retrieval of an entity.
@@ -201,9 +200,9 @@ function _M.get(primary_keys, dao_collection, post_process)
   if err then
     return app_helpers.yield_error(err)
   elseif row == nil then
-    return responses.send_HTTP_NOT_FOUND()
+    return kong.response.exit(404, { message = "Not found" })
   else
-    return responses.send_HTTP_OK(post_process_row(row, post_process))
+    return kong.response.exit(200, post_process_row(row, post_process))
   end
 end
 
@@ -213,7 +212,7 @@ function _M.post(params, dao_collection, post_process)
   if err then
     return app_helpers.yield_error(err)
   else
-    return responses.send_HTTP_CREATED(post_process_row(data, post_process))
+    return kong.response.exit(201, post_process_row(data, post_process))
   end
 end
 
@@ -221,15 +220,15 @@ end
 -- Filter keys must be given to get the row to update.
 function _M.patch(params, dao_collection, filter_keys, post_process)
   if not next(params) then
-    return responses.send_HTTP_BAD_REQUEST("empty body")
+    return kong.response.exit(404, { message = "empty body" })
   end
   local updated_entity, err = dao_collection:update(params, filter_keys)
   if err then
     return app_helpers.yield_error(err)
   elseif updated_entity == nil then
-    return responses.send_HTTP_NOT_FOUND()
+    return kong.response.exit(404, { message = "Not found" })
   else
-    return responses.send_HTTP_OK(post_process_row(updated_entity, post_process))
+    return kong.response.exit(200, post_process_row(updated_entity, post_process))
   end
 end
 
@@ -245,7 +244,7 @@ function _M.put(params, dao_collection, post_process)
     local pk = entity.schema:extract_pk_values(params)
     local new_entity, err = entity:upsert(pk, params)
     if not err then
-      return responses.send_HTTP_OK(post_process_row(new_entity, post_process))
+      return kong.response.exit(200, post_process_row(new_entity, post_process))
     end
     return app_helpers.yield_error(err)
   end
@@ -255,17 +254,17 @@ function _M.put(params, dao_collection, post_process)
     -- If entity body has no primary key, deal with an insert
     new_entity, err = dao_collection:insert(params)
     if not err then
-      return responses.send_HTTP_CREATED(post_process_row(new_entity, post_process))
+      return kong.response.exit(201, post_process_row(new_entity, post_process))
     end
   else
     -- If entity body has primary key, deal with update
     new_entity, err = dao_collection:update(params, params, {full = true})
     if not err then
       if not new_entity then
-        return responses.send_HTTP_NOT_FOUND()
+        return kong.response.exit(404, { message = "Not found" })
       end
 
-      return responses.send_HTTP_OK(post_process_row(new_entity, post_process))
+      return kong.response.exit(200, post_process_row(new_entity, post_process))
     end
   end
 
@@ -282,10 +281,10 @@ function _M.delete(primary_keys, dao_collection)
     if err then
       return app_helpers.yield_error(err)
     else
-      return responses.send_HTTP_NOT_FOUND()
+      return kong.response.exit(404, { message = "Not found" })
     end
   else
-    return responses.send_HTTP_NO_CONTENT()
+    return kong.response.exit(204) -- NO CONTENT
   end
 end
 

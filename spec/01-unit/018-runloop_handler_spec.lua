@@ -43,11 +43,14 @@ describe("runloop handler", function()
       init = function() end
     })
 
-    -- FIXME remove kong.tools.responses {{{
-    mock_module("kong.tools.responses", {
-      send_HTTP_INTERNAL_SERVER_ERROR = function() end,
-    })
-    -- FIXME }}}
+    _G.kong = {
+      log = {
+        err = function() end,
+      },
+      response = {
+        exit = function() end,
+      }
+    }
 
     -- keep track of created semaphores
     local semaphores = {}

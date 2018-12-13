@@ -43,7 +43,7 @@ return {
     end,
 
     GET = function(self, dao_factory, helpers)
-      return helpers.responses.send_HTTP_OK(self.api)
+      return kong.response.exit(200, self.api)
     end,
 
     PATCH = function(self, dao_factory)
