@@ -220,6 +220,20 @@ local function sort_plugins_for_execution(kong_conf, db, plugin_list)
 end
 
 
+local function flush_delayed_response(ctx)
+  ctx.delay_response = false
+
+  if type(ctx.delayed_response_callback) == "function" then
+    ctx.delayed_response_callback(ctx)
+    return -- avoid tail call
+  end
+
+  kong.response.exit(ctx.delayed_response.status_code,
+                     ctx.delayed_response.content,
+                     ctx.delayed_response.headers)
+end
+
+
 function Kong.init()
   -- special math.randomseed from kong.globalpatches not taking any argument.
   -- Must only be called in the init or init_worker phases, to avoid
@@ -692,7 +706,7 @@ function Kong.access()
   end
 
   if ctx.delayed_response then
-    return responses.flush_delayed_response(ctx)
+    return flush_delayed_response(ctx)
   end
 
   ctx.delay_response = false

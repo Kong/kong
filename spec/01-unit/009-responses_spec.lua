@@ -128,90 +128,19 @@ describe("Response helpers", function()
     end)
   end)
 
-  describe("delayed response", function()
-    after_each(function()
-      ngx.ctx.delayed_response = nil
-    end)
-
-    it("yields and does not call ngx.say/ngx.exit if `ctx.delaye_response = true`", function()
-      ngx.ctx.delay_response = true
-
-      local co = coroutine.wrap(responses.send)
-      co(401, "Unauthorized", { ["X-Hello"] = "world" })
-      assert.stub(ngx.say).was_not_called()
-      assert.stub(ngx.exit).was_not_called()
-      assert.not_equal("world", ngx.header["X-Hello"])
-    end)
-
-    it("flush_delayed_response() sends delayed response's status/header/body", function()
-      ngx.ctx.delay_response = true
-
-      responses.send(401, "Unauthorized", { ["X-Hello"] = "world" })
-      responses.flush_delayed_response(ngx.ctx)
-
-      assert.stub(ngx.say).was.called_with("{\"message\":\"Unauthorized\"}")
-      assert.stub(ngx.exit).was.called_with(401)
-      assert.equal("world", ngx.header["X-Hello"])
-      assert.is_false(ngx.ctx.delay_response)
-    end)
-
-    it("delayed response cannot be overriden", function()
-      ngx.ctx.delay_response = true
-
-      responses.send(401, "Unauthorized")
-      responses.send(200, "OK")
-      responses.flush_delayed_response(ngx.ctx)
-
-      assert.stub(ngx.say).was.called_with("{\"message\":\"Unauthorized\"}")
-      assert.stub(ngx.exit).was.called_with(401)
-    end)
-
-    it("flush_delayed_response() use custom callback if set", function()
-      local s = spy.new(function(ctx) end)
-
-      do
-        local old_type = _G.type
-
-        -- luacheck: ignore
-        _G.type = function(v)
-          if v == s then
-            return "function"
-          end
-
-          return old_type(v)
-        end
-
-        finally(function()
-          _G.type = old_type
-        end)
-      end
-
-      package.loaded["kong.tools.responses"] = nil
-      responses = require "kong.tools.responses"
-
-      ngx.ctx.delay_response = true
-      ngx.ctx.delayed_response_callback = s
-
-      responses.send(401, "Unauthorized", { ["X-Hello"] = "world" })
-      responses.flush_delayed_response(ngx.ctx)
-
-      assert.spy(s).was.called_with(ngx.ctx)
-    end)
-  end)
-
   describe("server tokens", function()
     it("are sent by default", function()
       responses.send_HTTP_OK("OK")
       assert.equal(ngx.status, responses.status_codes.HTTP_OK)
       assert.equal(meta._SERVER_TOKENS, ngx.header["Server"])
     end)
-    it("are sent when enabled", function()
+    pending("are sent when enabled", function()
       local singletons = require "kong.singletons"
       singletons.configuration = {
         enabled_headers = {
           ["server_tokens"] = true
         },
-      },
+      }
       responses.send_HTTP_OK("OK")
       assert.equal(ngx.status, responses.status_codes.HTTP_OK)
       assert.equal(meta._SERVER_TOKENS, ngx.header["Server"])
@@ -221,7 +150,7 @@ describe("Response helpers", function()
       singletons.configuration = {
         enabled_headers = {
         },
-      },
+      }
       responses.send_HTTP_OK("OK")
       assert.equal(ngx.status, responses.status_codes.HTTP_OK)
       assert.is_nil(ngx.header["Server"])
