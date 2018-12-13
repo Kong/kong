@@ -34,7 +34,7 @@ for _, strategy in helpers.each_strategy() do
           secret = "super secret session secret",
           storage = "kong",
           cookie_renew = 600,
-          cookie_lifetime = 601,
+          cookie_lifetime = 604,
         }
       })
 
@@ -110,11 +110,12 @@ for _, strategy in helpers.each_strategy() do
         
         local cookie_parts = utils.split(cookie, "; ")
         local sid = utils.split(utils.split(cookie_parts[1], "|")[1], "=")[2]
-        ngx.sleep(1)
+        
+        ngx.sleep(2)
 
         -- use the cookie without the key to ensure cookie still lets them in
         request.headers.apikey = nil
-        request.headers.cookie = cookie       
+        request.headers.cookie = cookie  
         res = assert(client:send(request))
         assert.response(res).has.status(200)
 
@@ -156,7 +157,7 @@ for _, strategy in helpers.each_strategy() do
         assert.response(res).has.status(200)
         cookie = assert.response(res).has.header("Set-Cookie")
 
-        ngx.sleep(1)
+        ngx.sleep(2)
 
         -- use the cookie without the key to ensure cookie still lets them in
         request.headers.apikey = nil
@@ -166,7 +167,7 @@ for _, strategy in helpers.each_strategy() do
         
         -- renewal period, make sure requests still come through and
         -- if set-cookie header comes through, attach it to subsequent requests
-        send_requests(request, 5, 0.25)
+        send_requests(request, 5, 0.5)
       end)
     end)
   end)
