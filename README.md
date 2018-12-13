@@ -5,6 +5,15 @@
 A [Kong] plugin to support implementing sessions for 
 Kong authentication [plugins](https://docs.konghq.com/hub/).
 
+## Description
+
+Kong Session plugin can be used to manage browser sessions for APIs proxied
+through the [Kong] API Gateway. It provides configuration and management for 
+session data storage, encyption, renewal, expiry, and sending browser cookies 🍪.
+
+> For more information on security, configs, and underlying session 
+mechanism, check out [lua-resty-session] docs.
+
 ## Usage
 
 Kong Session plugin can be configured globally or per entity (service, route, etc)
@@ -173,15 +182,6 @@ For usage with [key-auth] plugin
     This request should succeed, and `Set-Cookie` response header will not appear
     until renewal period.
 
-## Description
-
-Kong Session plugin can be used to manage browser sessions for APIs proxied
-through the [Kong] API Gateway. It provides configuration and management for 
-session data storage, encyption, renewal, expiry, and sending browser cookies 🍪.
-
-> For more information on security, configs, and underlying session 
-mechanism, check out [lua-resty-session] docs.
-
 ## Defaults
 
 By default, Kong Session plugin favors security using a `Secure`, `HTTPOnly`, 
@@ -202,7 +202,7 @@ ngx.ctx.authenticated_credential.id
 The plugin also sets a `ctx.authenticated_session` for communication between the
 `access` and `header_filter` phases in the plugin.
 
-## Kong Storage Adapter
+## 🦍 Kong Storage Adapter
 
 Kong Session plugin extends the functionality of [lua-resty-session] with its own
 session data storage adapter when `storage=kong`. This will store encrypted
@@ -214,7 +214,7 @@ specified `cookie_lifetime` unless renewal occurs during normal browser activity
 It is recommended that the application logout via XHR request or similar to 
 manually handle redirects.
 
-### Logging Out
+### 👋🏻 Logging Out
 
 It is typical to provide users the ability to log out, or manually destroy, their
 current session. Logging out is done via either query params or POST params in 
