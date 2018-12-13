@@ -705,7 +705,7 @@ end
 local function check()
   local ok, err = do_thing()
   if not ok then
-    return nil, "could not do thing: " .. err
+    return nil, "could not do thing : " .. err
   end
 
   return true
