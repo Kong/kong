@@ -174,19 +174,6 @@ local function send_response(status_code)
   end
 end
 
-function _M.flush_delayed_response(ctx)
-  ctx.delay_response = false
-
-  if type(ctx.delayed_response_callback) == "function" then
-    ctx.delayed_response_callback(ctx)
-    return -- avoid tail call
-  end
-
-  _M.send(ctx.delayed_response.status_code,
-          ctx.delayed_response.content,
-          ctx.delayed_response.headers)
-end
-
 -- Generate sugar methods (closures) for the most used HTTP status codes.
 for status_code_name, status_code in pairs(_M.status_codes) do
   _M["send_" .. status_code_name] = send_response(status_code)
