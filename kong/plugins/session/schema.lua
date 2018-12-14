@@ -4,9 +4,10 @@ local rand = math.random
 local encode_base64 = ngx.encode_base64
 
 
--- kong.utils.random_string with number of bytes config
-local function random_string(n_bytes)
-  return encode_base64(get_rand_bytes(n_bytes or 32, true))
+--- kong.utils.random_string with 32 bytes instead
+-- @returns random string of length 44
+local function random_string()
+  return encode_base64(utils.get_rand_bytes(32, true))
           :gsub("/", char(rand(48, 57)))  -- 0 - 10
           :gsub("+", char(rand(65, 90)))  -- A - Z
           :gsub("=", char(rand(97, 122))) -- a - z
