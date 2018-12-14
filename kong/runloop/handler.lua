@@ -15,12 +15,13 @@ local reports     = require "kong.reports"
 local balancer    = require "kong.runloop.balancer"
 local mesh        = require "kong.runloop.mesh"
 local constants   = require "kong.constants"
+local semaphore   = require "ngx.semaphore"
 local singletons  = require "kong.singletons"
 local certificate = require "kong.runloop.certificate"
-local concurrency = require "kong.concurrency"
 
 
 local kong        = kong
+local pcall       = pcall
 local tostring    = tostring
 local tonumber    = tonumber
 local sub         = string.sub
@@ -29,6 +30,7 @@ local fmt         = string.format
 local sort        = table.sort
 local ngx         = ngx
 local log         = ngx.log
+local sleep       = ngx.sleep
 local ngx_now     = ngx.now
 local update_time = ngx.update_time
 local subsystem   = ngx.config.subsystem
@@ -36,18 +38,24 @@ local unpack      = unpack
 
 
 local ERR         = ngx.ERR
+local CRIT        = ngx.CRIT
 local DEBUG       = ngx.DEBUG
+local NOTICE      = ngx.NOTICE
 
 
 local CACHE_ROUTER_OPTS = { ttl = 0 }
 local EMPTY_T = {}
 
 
-local get_router, build_router
-local server_header = meta._SERVER_TOKENS
-local _set_check_router_rebuild
+local init_router
+local get_router
+local build_router
+local rebuild_router
+local build_router_semaphore
+local _set_rebuild_router
 
-local build_router_timeout
+
+local server_header = meta._SERVER_TOKENS
 
 
 local function get_now()
@@ -65,25 +73,183 @@ do
     tls = "stream",
   }
 
+  local function cache_services()
+    if not kong.db or not kong.cache then
+      return true
+    end
+
+    for service, err in kong.db.services:each(1000) do
+      if err then
+        return nil, err
+      end
+
+      local cache_key = kong.db.services:cache_key(service.id)
+      service, err = kong.cache:get(cache_key, CACHE_ROUTER_OPTS, function()
+        return service
+      end)
+      if err then
+        return nil, err
+      end
+    end
+
+    return true
+  end
+
+  local function load_service_db(service_pk)
+    local service, err = kong.db.services:select(service_pk)
+    return service, err
+  end
+
+  local function load_service(service_pk)
+    local service, err
+    if kong.cache then
+      local cache_key = kong.db.services:cache_key(service_pk.id)
+      service, err = kong.cache:get(cache_key, CACHE_ROUTER_OPTS,
+                                    load_service_db, service_pk)
+
+    else
+      service, err = load_service_db(service_pk)
+    end
+
+    return service, err
+  end
+
   local router
   local router_version
 
-  build_router = function(db, version)
-    local routes, i = {}, 0
+  local function lock_router(wait)
+    local ok, err = build_router_semaphore:wait(wait or 0)
+    if not ok then
+      if err ~= "timeout" then
+        log(ERR, "error attempting to acquire router lock: " .. err)
+      elseif wait and wait > 0 then
+        log(NOTICE, "timeout attempting to acquire router lock")
+      end
 
-    for route, err in db.routes:each(1000) do
+      return false
+    end
+
+    return true
+  end
+
+  local function unlock_router()
+    build_router_semaphore:post()
+  end
+
+  local function get_router_version()
+    if not kong.cache then
+      return "init"
+    end
+
+    local version, err = kong.cache:get("router:version", CACHE_ROUTER_OPTS, utils.uuid)
+    if err then
+      log(CRIT, "could not ensure router is up to date: ", err)
+      return nil
+    end
+
+    return version
+  end
+
+  init_router = function()
+    local _, err = cache_services()
+    if err then
+      log(ERR, "could not cache services: ", err)
+    end
+
+    build_router_semaphore, err = semaphore.new(1)
+    if err then
+      log(CRIT, "failed to create build router semaphore: ", err)
+    end
+
+    local timeout = kong.configuration.router_timeout
+    if timeout then
+      timeout = timeout / 1000
+    else
+      timeout = 5
+    end
+
+    if timeout < 0 then
+      get_router = function()
+        return router
+      end
+
+    else
+      get_router = function()
+        rebuild_router(timeout)
+        return router
+      end
+    end
+  end
+
+  build_router = function(version, recurse, tries)
+    tries = tries or 1
+
+    local current_version
+    current_version = get_router_version()
+    if version ~= current_version then
+      return build_router(current_version, recurse, tries)
+    end
+
+    local routes, i, counter = {}, 0, 0
+
+    for route, err in kong.db.routes:each(1000) do
       if err then
+        current_version = get_router_version()
+        if version ~= current_version then
+          return build_router(current_version, recurse, tries)
+        end
+
+        if recurse and tries < 6 then
+          kong.db:setkeepalive()
+          log(NOTICE,  "could not load routes: " .. err)
+          sleep(0.01 * tries * tries)
+          kong.db:connect()
+          return build_router(current_version, recurse, tries + 1)
+        end
+
         return nil, "could not load routes: " .. err
       end
 
-      local service_pk = route.service
+      if recurse and counter % 1000 then
+        current_version = get_router_version()
+        if version ~= current_version then
+          return build_router(current_version, recurse, tries)
+        end
+      end
 
+      local service_pk = route.service
       if not service_pk then
+        current_version = get_router_version()
+        if version ~= current_version then
+          return build_router(current_version, recurse, tries)
+        end
+
+        if recurse and tries < 6 then
+          kong.db:setkeepalive()
+          log(NOTICE,  "route (" .. route.id .. ") is not associated with service")
+          sleep(0.01 * tries * tries)
+          kong.db:connect()
+          return build_router(current_version, recurse, tries + 1)
+        end
+
         return nil, "route (" .. route.id .. ") is not associated with service"
       end
 
-      local service, err = db.services:select(service_pk)
+      local service, err = load_service(service_pk)
       if not service then
+        current_version = get_router_version()
+        if version ~= current_version then
+          return build_router(current_version, recurse, tries)
+        end
+
+        if recurse and tries < 6 then
+          kong.db:setkeepalive()
+          log(NOTICE,  "could not find service for route (", route.id, "): ", err)
+          sleep(0.01 * tries * tries)
+          kong.db:connect()
+          return build_router(current_version, recurse, tries + 1)
+        end
+
         return nil, "could not find service for route (" .. route.id .. "): " ..
                     err
       end
@@ -105,6 +271,8 @@ do
         i = i + 1
         routes[i] = r
       end
+
+      counter = counter + 1
     end
 
     sort(routes, function(r1, r2)
@@ -120,89 +288,104 @@ do
       return rp1 > rp2
     end)
 
-    local err
-    router, err = Router.new(routes)
-    if not router then
+    local new_router, err = Router.new(routes)
+    if not new_router then
       return nil, "could not create router: " .. err
     end
 
-    if version then
-      router_version = version
-    end
+    router_version = version
+    router = new_router
 
-    singletons.router = router
+    singletons.router = new_router
+
+    if recurse then
+      current_version = get_router_version()
+      if version ~= current_version then
+        return build_router(current_version, recurse, tries)
+      end
+    end
 
     return true
   end
 
-
-  local function check_router_rebuild()
-    -- we might not need to rebuild the router (if we were not
-    -- the first request in this process to enter this code path)
-    -- check again and rebuild only if necessary
-    local version, err = singletons.cache:get("router:version",
-                                              CACHE_ROUTER_OPTS,
-                                              utils.uuid)
-    if err then
-      log(ngx.CRIT, "could not ensure router is up to date: ", err)
-      return nil, err
+  local function rebuild_router_timer(premature, version)
+    if premature then
+      unlock_router()
+      return
     end
 
+    kong.db:connect()
+
+    local pok, ok, err = pcall(build_router, version, true)
+    if not pok or not ok then
+      log(CRIT, "could not asynchronously rebuild router: ", ok or err)
+    end
+
+    unlock_router()
+
+    kong.db:setkeepalive()
+  end
+
+  local function rebuild_router_sync(version)
+    kong.db:connect()
+
+    local pok, ok, err = pcall(build_router, version)
+    if not pok or not ok then
+      log(CRIT, "could not synchronously rebuild router: ", ok or err)
+    end
+
+    kong.db:setkeepalive()
+  end
+
+  local function rebuild_router_async(version)
+    local ok, err = ngx.timer.at(0, rebuild_router_timer, version)
+    if not ok then
+      log(CRIT, "could not create rebuild router timer: ", err)
+      return false
+    end
+
+    return true
+  end
+
+  rebuild_router = function(wait)
+    local version = get_router_version()
     if version == router_version then
-      return true
+      return
     end
 
-    -- router needs to be rebuilt in this worker
+    local ok = lock_router(wait)
+    if not ok then
+      if wait and wait > 0 then
+        rebuild_router_sync(version)
+      end
+
+      return
+    end
+
+    version = get_router_version()
+    if version == router_version then
+      unlock_router()
+      return
+    end
+
     log(DEBUG, "rebuilding router")
 
-    local ok, err = build_router(singletons.db, version)
-    if not ok then
-      log(ngx.CRIT, "could not rebuild router: ", err)
-      return nil, err
+    if wait and wait > 0 then
+      rebuild_router_sync(version)
+      unlock_router()
+
+    else
+      ok = rebuild_router_async(version)
+      if not ok and wait == 0 then
+        rebuild_router_sync(version)
+        unlock_router()
+      end
     end
-
-    return true
   end
-
 
   -- for unit-testing purposes only
-  _set_check_router_rebuild = function(f)
-    check_router_rebuild = f
-  end
-
-
-  get_router = function()
-    local version, err = singletons.cache:get("router:version",
-                                              CACHE_ROUTER_OPTS,
-                                              utils.uuid)
-    if err then
-      log(ngx.CRIT, "could not ensure router is up to date: ", err)
-      return nil, err
-    end
-
-    if version == router_version then
-      return router
-    end
-
-    -- wrap router rebuilds in a per-worker mutex:
-    -- this prevents dogpiling the database during rebuilds in
-    -- high-concurrency traffic patterns;
-    -- requests that arrive on this process during a router rebuild will be
-    -- queued. once the lock is acquired we re-check the
-    -- router version again to prevent unnecessary subsequent rebuilds
-
-    local opts = {
-      name = "build_router",
-      timeout = build_router_timeout,
-      on_timeout = "run_unlocked",
-    }
-    local ok, err = concurrency.with_coroutine_mutex(opts, check_router_rebuild)
-
-    if not ok then
-      return nil, err
-    end
-
-    return router
+  _set_rebuild_router = function(f)
+    rebuild_router = f
   end
 end
 
@@ -296,17 +479,23 @@ return {
   build_router     = build_router,
 
   -- exported for unit-testing purposes only
-  _set_check_router_rebuild = _set_check_router_rebuild,
+  _set_rebuild_router = _set_rebuild_router,
+
+  init = {
+    after = function()
+      build_router("init")
+    end
+  },
 
   init_worker = {
     before = function()
       reports.init_worker()
 
       -- initialize local local_events hooks
-      local db             = singletons.db
-      local cache          = singletons.cache
-      local worker_events  = singletons.worker_events
-      local cluster_events = singletons.cluster_events
+      local db             = kong.db
+      local cache          = kong.cache
+      local worker_events  = kong.worker_events
+      local cluster_events = kong.cluster_events
 
 
       -- events dispatcher
@@ -545,18 +734,15 @@ return {
         balancer.init()
       end)
 
+      init_router()
 
-      do
-        build_router_timeout = 60
-        if singletons.configuration.database == "cassandra" then
-          -- cassandra_timeout is defined in ms
-          build_router_timeout = kong.configuration.cassandra_timeout / 1000
-
-        elseif singletons.configuration.database == "postgres" then
-          -- pg_timeout is defined in ms
-          build_router_timeout = kong.configuration.pg_timeout / 1000
+      ngx.timer.every(1, function(premature)
+        if premature then
+          return
         end
-      end
+
+        rebuild_router()
+      end)
     end
   },
   certificate = {
@@ -844,7 +1030,7 @@ return {
       ctx.KONG_HEADER_FILTER_STARTED_AT = now
 
       local upstream_status_header = constants.HEADERS.UPSTREAM_STATUS
-      if singletons.configuration.enabled_headers[upstream_status_header] then
+      if kong.configuration.enabled_headers[upstream_status_header] then
         header[upstream_status_header] = tonumber(sub(ngx.var.upstream_status or "", -3))
         if not header[upstream_status_header] then
           log(ERR, "failed to set ", upstream_status_header, " header")
@@ -869,20 +1055,20 @@ return {
       local header = ngx.header
 
       if ctx.KONG_PROXIED then
-        if singletons.configuration.enabled_headers[constants.HEADERS.UPSTREAM_LATENCY] then
+        if kong.configuration.enabled_headers[constants.HEADERS.UPSTREAM_LATENCY] then
           header[constants.HEADERS.UPSTREAM_LATENCY] = ctx.KONG_WAITING_TIME
         end
 
-        if singletons.configuration.enabled_headers[constants.HEADERS.PROXY_LATENCY] then
+        if kong.configuration.enabled_headers[constants.HEADERS.PROXY_LATENCY] then
           header[constants.HEADERS.PROXY_LATENCY] = ctx.KONG_PROXY_LATENCY
         end
 
-        if singletons.configuration.enabled_headers[constants.HEADERS.VIA] then
+        if kong.configuration.enabled_headers[constants.HEADERS.VIA] then
           header[constants.HEADERS.VIA] = server_header
         end
 
       else
-        if singletons.configuration.enabled_headers[constants.HEADERS.SERVER] then
+        if kong.configuration.enabled_headers[constants.HEADERS.SERVER] then
           header[constants.HEADERS.SERVER] = server_header
 
         else

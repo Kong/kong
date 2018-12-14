@@ -643,6 +643,22 @@
                                  # single query.
 
 #------------------------------------------------------------------------------
+# TUNING & BEHAVIOR
+#------------------------------------------------------------------------------
+
+router_timeout = 5000            # Defines, in milliseconds, how long request
+                                 # handler should wait for a new router to be
+                                 # built. If you set this value to a negative
+                                 # number, the router is never rebuilt during
+                                 # the request, but only by a worker background
+                                 # timer. When set to 0, the request can still
+                                 # start rebuilding a new router, but will not
+                                 # wait for it to be built, and instead use the
+                                 # old router. When set to a positive number
+                                 # greater than 0, the new router is built
+                                 # synchronously.
+
+#------------------------------------------------------------------------------
 # DEVELOPMENT & MISCELLANEOUS
 #------------------------------------------------------------------------------
 

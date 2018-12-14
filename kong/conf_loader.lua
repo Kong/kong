@@ -163,6 +163,8 @@ local CONF_INFERENCES = {
   dns_error_ttl = { typ = "number" },
   dns_no_sync = { typ = "boolean" },
 
+  router_timeout = { typ = "number" },
+
   client_ssl = { typ = "boolean" },
 
   proxy_access_log = { typ = "string" },
