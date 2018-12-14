@@ -30,8 +30,8 @@ function KongSessionHandler:header_filter(conf)
   -- if session exists and the data in the session matches the ctx then
   -- don't worry about saving the session data or sending cookie
   if s and s.present then
-    if s.data and s.data.authenticated_credential == credential_id and
-      s.data.authenticated_consumer == consumer_id
+    cid, cred_id = session.retrieve_session_data(s)
+    if cred_id == credential_id and cid == consumer_id
     then
       return
     end
@@ -41,8 +41,7 @@ function KongSessionHandler:header_filter(conf)
   -- create new session and save the data / send the Set-Cookie header
   if consumer_id then
     s = s or session.open_session(conf)
-    s.data.authenticated_credential = credential_id or consumer_id
-    s.data.authenticated_consumer = consumer_id
+    session.store_session_data(s, consumer_id, credential_id or consumer_id)
     s:save()
   end
 end

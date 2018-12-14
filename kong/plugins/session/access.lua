@@ -43,8 +43,7 @@ function _M.execute(conf)
   end
 
   
-  local cid = s.data.authenticated_consumer
-  local credential = s.data.authenticated_credential
+  local cid, credential = session.retrieve_session_data(s)
   
   local consumer_cache_key = singletons.dao.consumers:cache_key(cid)
   local consumer, err = singletons.cache:get(consumer_cache_key, nil,

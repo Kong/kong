@@ -3,6 +3,7 @@ local log = ngx.log
 
 local _M = {}
 
+
 local function get_opts(conf)
   return {
     name = conf.cookie_name,
@@ -20,6 +21,9 @@ local function get_opts(conf)
   }
 end
 
+
+--- Open a session based on plugin config
+-- @returns resty.session session object
 function _M.open_session(conf)
   local opts = get_opts(conf)
   local s
@@ -40,6 +44,34 @@ function _M.open_session(conf)
   end
   
   return s
+end
+
+
+--- Gets consumer id and credential id from the session data
+-- @param s - the session
+-- @returns consumer_id, credential_id
+function _M.retrieve_session_data(s)
+  if not s then return nil, nil end
+
+  if s and not s.data then
+    return nil, nil
+  end
+  
+  return s.data[1], s.data[2]
+end
+
+
+--- Store the session data for usage in kong plugins
+-- @param s - the session
+-- @param consumer - the consumer id
+-- @param credential - the credential id or potentially just the consumer id
+function _M.store_session_data(s, consumer_id, credential_id)
+  if not s then
+    return
+  end
+
+  s.data[1] = consumer_id
+  s.data[2] = credential_id
 end
 
 
