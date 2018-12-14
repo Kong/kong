@@ -1,7 +1,7 @@
 This document guides you through the process of upgrading Kong. First, check if
 a section named "Upgrade to Kong `x.x.x`" exists, with `x.x.x` being the version
 you are planning to upgrade to. If such a section does not exist, the upgrade
-you want to perform does not have any particular instructions, and you can
+you want to perform does not have any particular instructions then you can
 simply consult the [Suggested upgrade path](#suggested-upgrade-path).
 
 ## Suggested upgrade path
