@@ -15,12 +15,15 @@ local reports     = require "kong.reports"
 local balancer    = require "kong.runloop.balancer"
 local mesh        = require "kong.runloop.mesh"
 local constants   = require "kong.constants"
+local semaphore   = require "ngx.semaphore"
 local singletons  = require "kong.singletons"
-local certificate = require "kong.runloop.certificate"
 local concurrency = require "kong.concurrency"
+local declarative = require "kong.db.declarative"
+local certificate = require "kong.runloop.certificate"
 
 
 local kong        = kong
+local pcall       = pcall
 local ipairs      = ipairs
 local tostring    = tostring
 local tonumber    = tonumber
@@ -31,6 +34,7 @@ local fmt         = string.format
 local sort        = table.sort
 local ngx         = ngx
 local log         = ngx.log
+local sleep       = ngx.sleep
 local ngx_now     = ngx.now
 local re_match    = ngx.re.match
 local re_find     = ngx.re.find
@@ -40,21 +44,35 @@ local unpack      = unpack
 
 
 local ERR         = ngx.ERR
+local CRIT        = ngx.CRIT
 local WARN        = ngx.WARN
 local DEBUG       = ngx.DEBUG
+local NOTICE      = ngx.NOTICE
 
 
-local CACHE_ROUTER_OPTS = { ttl = 0 }
+local SERVER_HEADER = meta._SERVER_TOKENS
+local CACHE_OPTS = { ttl = 0 }
 local SUBSYSTEMS = constants.PROTOCOLS_WITH_SUBSYSTEM
 local EMPTY_T = {}
 
 
+local init_router
+local get_router
+local build_router
+local rebuild_router
+local build_router_semaphore
+local _set_rebuild_router
 
-local get_router, build_router
-local server_header = meta._SERVER_TOKENS
-local _set_check_router_rebuild
 
-local build_router_timeout
+local init_plugins_map
+local get_plugins_map
+local build_plugins_map
+local rebuild_plugins_map
+local build_plugins_map_semaphore
+local _set_rebuild_plugins_map
+
+
+local declarative_entities
 
 
 local function get_now()
@@ -63,10 +81,217 @@ local function get_now()
 end
 
 
+local function parse_declarative_config(kong_config)
+  if not kong_config.database == "off" then
+    return {}
+  end
+
+  if not kong_config.declarative_config then
+    return {}
+  end
+
+  local dc = declarative.new_config(kong_config)
+  local entities, err = dc:parse_file(kong_config.declarative_config)
+  if not entities then
+    return nil, "error parsing declarative config file " ..
+      kong_config.declarative_config .. ":\n" .. err
+  end
+
+  return entities
+end
+
+
+local function load_declarative_config(kong_config, entities)
+  if not kong_config.database == "off" then
+    return true
+  end
+
+  if not kong_config.declarative_config then
+    -- no configuration yet, just build empty plugins map
+    build_plugins_map(kong.db, utils.uuid())
+    return true
+  end
+
+  local opts = {
+    name = "declarative_config",
+  }
+  return concurrency.with_worker_mutex(opts, function()
+    local value = ngx.shared.kong:get("declarative_config:loaded")
+    if value then
+      return true
+    end
+
+    local ok, err = declarative.load_into_cache(entities)
+    if not ok then
+      return nil, err
+    end
+
+    kong.log.notice("declarative config loaded from ",
+      kong_config.declarative_config)
+
+    build_plugins_map(kong.db, utils.uuid())
+
+    assert(build_router("init"))
+
+    mesh.init()
+
+    return true
+  end)
+end
+
+
 do
-  -- Given a protocol, return the subsystem that handles it
+  local function cache_services()
+    if not kong.db or not kong.cache then
+      return true
+    end
+
+    for service, err in kong.db.services:each(1000) do
+      if err then
+        return nil, err
+      end
+
+      local cache_key = kong.db.services:cache_key(service.id)
+      service, err = kong.cache:get(cache_key, CACHE_OPTS, function()
+        return service
+      end)
+      if err then
+        return nil, err
+      end
+    end
+
+    return true
+  end
+
   local router
   local router_version
+
+  local plugins_map
+  local plugins_map_version
+
+  local function lock_router(wait)
+    local ok, err = build_router_semaphore:wait(wait or 0)
+    if not ok then
+      if err ~= "timeout" then
+        log(ERR, "error attempting to acquire router lock: " .. err)
+      elseif wait and wait > 0 then
+        log(NOTICE, "timeout attempting to acquire router lock")
+      end
+
+      return false
+    end
+
+    return true
+  end
+
+  local function lock_plugins_map(wait)
+    local ok, err = build_plugins_map_semaphore:wait(wait or 0)
+    if not ok then
+      if err ~= "timeout" then
+        log(ERR, "error attempting to acquire plugins map lock: " .. err)
+      elseif wait and wait > 0 then
+        log(NOTICE, "timeout attempting to acquire plugins map lock")
+      end
+
+      return false
+    end
+
+    return true
+  end
+
+  local function unlock_router()
+    build_router_semaphore:post()
+  end
+
+  local function unlock_plugins_map()
+    build_plugins_map_semaphore:post()
+  end
+
+  local function get_router_version()
+    if not kong.cache then
+      return "init"
+    end
+
+    local version, err = kong.cache:get("router:version", CACHE_OPTS, utils.uuid)
+    if err then
+      log(CRIT, "could not ensure router is up to date: ", err)
+      return nil
+    end
+
+    return version
+  end
+
+  local function get_plugins_map_version()
+    if not kong.cache then
+      return "init"
+    end
+
+    local version, err = kong.cache:get("plugins_map:version", CACHE_OPTS, utils.uuid)
+    if err then
+      log(CRIT, "could not ensure plugins map is up to date: ", err)
+      return nil
+    end
+
+    return version
+  end
+
+  init_router = function()
+    local _, err = cache_services()
+    if err then
+      log(ERR, "could not cache services: ", err)
+    end
+
+    build_router_semaphore, err = semaphore.new(1)
+    if err then
+      log(CRIT, "failed to create build router semaphore: ", err)
+    end
+
+    local timeout = kong.configuration.router_timeout
+    if timeout then
+      timeout = timeout / 1000
+    else
+      timeout = 5
+    end
+
+    if timeout < 0 then
+      get_router = function()
+        return router
+      end
+
+    else
+      get_router = function()
+        rebuild_router(timeout)
+        return router
+      end
+    end
+  end
+
+  init_plugins_map = function()
+    local err
+    build_plugins_map_semaphore, err = semaphore.new(1)
+    if err then
+      log(CRIT, "failed to create build plugins map semaphore: ", err)
+    end
+
+    local timeout = kong.configuration.plugins_map_timeout
+    if timeout then
+      timeout = timeout / 1000
+    else
+      timeout = 5
+    end
+
+    if timeout < 0 then
+      get_plugins_map = function()
+        return plugins_map
+      end
+
+    else
+      get_plugins_map = function()
+        rebuild_plugins_map(timeout)
+        return plugins_map
+      end
+    end
+  end
 
   local function should_process_route(route)
     for _, protocol in ipairs(route.protocols) do
@@ -78,16 +303,39 @@ do
     return false
   end
 
-  local function get_service_for_route(db, route)
+  local function load_service_db(service_pk)
+    local service, err = kong.db.services:select(service_pk)
+    return service, err
+  end
+
+  local function load_service(service_pk)
+    local service, err
+    if kong.cache then
+      local cache_key = kong.db.services:cache_key(service_pk.id)
+      service, err = kong.cache:get(cache_key, CACHE_OPTS,
+        load_service_db, service_pk)
+
+    else
+      service, err = load_service_db(service_pk)
+    end
+
+    return service, err
+  end
+
+  local function get_service_for_route(route)
     local service_pk = route.service
     if not service_pk then
       return nil
     end
 
-    local service, err = db.services:select(service_pk)
+    local service, err = load_service(service_pk)
     if not service then
-      return nil, "could not find service for route (" .. route.id .. "): " ..
-                  err
+      if err then
+        return nil, "could not find service for route (" .. route.id .. "): " ..
+                    err
+      end
+
+      return nil, "could not find service for route (" .. route.id .. ")"
     end
 
     -- TODO: this should not be needed as the schema should check it already
@@ -101,18 +349,60 @@ do
     return service
   end
 
-  build_router = function(db, version)
-    local routes, i = {}, 0
+  build_router = function(version, recurse, tries)
+    tries = tries or 1
 
-    for route, err in db.routes:each(1000) do
+    local current_version
+    current_version = get_router_version()
+    if version ~= current_version then
+      return build_router(current_version, recurse, tries)
+    end
+
+    local routes, i, counter = {}, 0, 0
+
+    for route, err in kong.db.routes:each(1000) do
       if err then
+        current_version = get_router_version()
+        if version ~= current_version then
+          return build_router(current_version, recurse, tries)
+        end
+
+        if recurse and tries < 6 then
+          kong.db:setkeepalive()
+          log(NOTICE,  "could not load routes: " .. err)
+          sleep(0.01 * tries * tries)
+          kong.db:connect()
+          return build_router(current_version, recurse, tries + 1)
+        end
+
         return nil, "could not load routes: " .. err
       end
 
+      if recurse and counter % 1000 then
+        current_version = get_router_version()
+        if version ~= current_version then
+          return build_router(current_version, recurse, tries)
+        end
+      end
+
       if should_process_route(route) then
-        local service, err = get_service_for_route(db, route)
+        local service, err = get_service_for_route(route)
         if err then
-          return nil, err
+          current_version = get_router_version()
+          if version ~= current_version then
+            return build_router(current_version, recurse, tries)
+          end
+
+          if recurse and tries < 6 then
+            kong.db:setkeepalive()
+            log(NOTICE,  "could not find service for route (", route.id, "): ", err)
+            sleep(0.01 * tries * tries)
+            kong.db:connect()
+            return build_router(current_version, recurse, tries + 1)
+          end
+
+          return nil, "could not find service for route (" .. route.id .. "): " ..
+                      err
         end
 
         local r = {
@@ -137,6 +427,8 @@ do
         i = i + 1
         routes[i] = r
       end
+
+      counter = counter + 1
     end
 
     sort(routes, function(r1, r2)
@@ -152,89 +444,236 @@ do
       return rp1 > rp2
     end)
 
-    local err
-    router, err = Router.new(routes)
-    if not router then
+    local new_router, err = Router.new(routes)
+    if not new_router then
       return nil, "could not create router: " .. err
     end
 
-    if version then
-      router_version = version
-    end
+    router_version = version
+    router = new_router
 
-    singletons.router = router
+    singletons.router = new_router
+
+    if recurse then
+      current_version = get_router_version()
+      if version ~= current_version then
+        return build_router(current_version, recurse, tries)
+      end
+    end
 
     return true
   end
 
+  build_plugins_map = function(version, recurse, tries)
+    tries = tries or 1
 
-  local function check_router_rebuild()
-    -- we might not need to rebuild the router (if we were not
-    -- the first request in this process to enter this code path)
-    -- check again and rebuild only if necessary
-    local version, err = singletons.cache:get("router:version",
-                                              CACHE_ROUTER_OPTS,
-                                              utils.uuid)
-    if err then
-      log(ngx.CRIT, "could not ensure router is up to date: ", err)
-      return nil, err
+    local current_version
+    current_version = get_plugins_map_version()
+    if version ~= current_version then
+      return build_plugins_map(current_version)
     end
 
+    local new_plugins_map, counter = {}, 0
+
+    for plugin, err in kong.db.plugins:each(1000) do
+      if err then
+        current_version = get_plugins_map_version()
+        if version ~= current_version then
+          return build_plugins_map(current_version)
+        end
+
+        if recurse and tries < 6 then
+          kong.db:setkeepalive()
+          log(NOTICE,  "could not load plugins: " .. err)
+          sleep(0.01 * tries * tries)
+          kong.db:connect()
+          return build_plugins_map(current_version, recurse, tries + 1)
+        end
+
+        return nil, "could not load plugins: " .. err
+      end
+
+      if recurse and counter % 1000 then
+        current_version = get_plugins_map_version()
+        if version ~= current_version then
+          return build_plugins_map(current_version)
+        end
+      end
+
+      new_plugins_map[plugin.name] = true
+      counter = counter + 1
+    end
+
+    plugins_map_version = version
+    plugins_map = new_plugins_map
+
+    if recurse then
+      current_version = get_plugins_map_version()
+      if version ~= current_version then
+        return build_plugins_map(current_version)
+      end
+    end
+
+    return true
+  end
+
+  local function rebuild_router_timer(premature, version)
+    if premature then
+      unlock_router()
+      return
+    end
+
+    kong.db:connect()
+
+    local pok, ok, err = pcall(build_router, version, true)
+    if not pok or not ok then
+      log(CRIT, "could not asynchronously rebuild router: ", ok or err)
+    end
+
+    unlock_router()
+
+    kong.db:setkeepalive()
+  end
+
+  local function rebuild_plugins_map_timer(premature, version)
+    if premature then
+      unlock_plugins_map()
+      return
+    end
+
+    kong.db:connect()
+
+    local pok, ok, err = pcall(build_plugins_map, version, true)
+    if not pok or not ok then
+      log(CRIT, "could not asynchronously rebuild plugins map: ", ok or err)
+    end
+
+    unlock_plugins_map()
+
+    kong.db:setkeepalive()
+  end
+
+  local function rebuild_router_sync(version)
+    kong.db:connect()
+
+    local pok, ok, err = pcall(build_router, version)
+    if not pok or not ok then
+      log(CRIT, "could not synchronously rebuild router: ", ok or err)
+    end
+
+    kong.db:setkeepalive()
+  end
+
+  local function rebuild_plugins_map_sync(version)
+    kong.db:connect()
+
+    local pok, ok, err = pcall(build_plugins_map, version)
+    if not pok or not ok then
+      log(CRIT, "could not synchronously rebuild plugins map: ", ok or err)
+    end
+
+    kong.db:setkeepalive()
+  end
+
+  local function rebuild_router_async(version)
+    local ok, err = ngx.timer.at(0, rebuild_router_timer, version)
+    if not ok then
+      log(CRIT, "could not create rebuild router timer: ", err)
+      return false
+    end
+
+    return true
+  end
+
+  local function rebuild_plugins_map_async(version)
+    local ok, err = ngx.timer.at(0, rebuild_plugins_map_timer, version)
+    if not ok then
+      log(CRIT, "could not create rebuild plugins map timer: ", err)
+      return false
+    end
+
+    return true
+  end
+
+  rebuild_router = function(wait)
+    local version = get_router_version()
     if version == router_version then
-      return true
+      return
     end
 
-    -- router needs to be rebuilt in this worker
+    local ok = lock_router(wait)
+    if not ok then
+      if wait and wait > 0 then
+        rebuild_router_sync(version)
+      end
+
+      return
+    end
+
+    version = get_router_version()
+    if version == router_version then
+      unlock_router()
+      return
+    end
+
     log(DEBUG, "rebuilding router")
 
-    local ok, err = build_router(singletons.db, version)
-    if not ok then
-      log(ngx.CRIT, "could not rebuild router: ", err)
-      return nil, err
-    end
+    if wait and wait > 0 then
+      rebuild_router_sync(version)
+      unlock_router()
 
-    return true
+    else
+      ok = rebuild_router_async(version)
+      if not ok and wait == 0 then
+        rebuild_router_sync(version)
+        unlock_router()
+      end
+    end
   end
 
+  rebuild_plugins_map = function(wait)
+    local version = get_plugins_map_version()
+    if version == plugins_map_version then
+      return
+    end
+
+    local ok = lock_plugins_map(wait)
+    if not ok then
+      if wait and wait > 0 then
+        rebuild_plugins_map_sync(version)
+      end
+
+      return
+    end
+
+    version = get_plugins_map_version()
+    if version == plugins_map_version then
+      unlock_plugins_map()
+      return
+    end
+
+    log(DEBUG, "rebuilding plugins map")
+
+    if wait and wait > 0 then
+      rebuild_plugins_map_sync(version)
+      unlock_plugins_map()
+
+    else
+      ok = rebuild_plugins_map_async(version)
+      if not ok and wait == 0 then
+        rebuild_plugins_map_sync(version)
+        unlock_plugins_map()
+      end
+    end
+  end
 
   -- for unit-testing purposes only
-  _set_check_router_rebuild = function(f)
-    check_router_rebuild = f
+  _set_rebuild_router = function(f)
+    rebuild_router = f
   end
 
-
-  get_router = function()
-    local version, err = singletons.cache:get("router:version",
-                                              CACHE_ROUTER_OPTS,
-                                              utils.uuid)
-    if err then
-      log(ngx.CRIT, "could not ensure router is up to date: ", err)
-      return nil, err
-    end
-
-    if version == router_version then
-      return router
-    end
-
-    -- wrap router rebuilds in a per-worker mutex:
-    -- this prevents dogpiling the database during rebuilds in
-    -- high-concurrency traffic patterns;
-    -- requests that arrive on this process during a router rebuild will be
-    -- queued. once the lock is acquired we re-check the
-    -- router version again to prevent unnecessary subsequent rebuilds
-
-    local opts = {
-      name = "build_router",
-      timeout = build_router_timeout,
-      on_timeout = "run_unlocked",
-    }
-    local ok, err = concurrency.with_coroutine_mutex(opts, check_router_rebuild)
-
-    if not ok then
-      return nil, err
-    end
-
-    return router
+  _set_rebuild_plugins_map = function(f)
+    rebuild_plugins_map = f
   end
 end
 
@@ -300,20 +739,45 @@ end
 -- in the table below the `before` and `after` is to indicate when they run:
 -- before or after the plugins
 return {
-  build_router = build_router,
+  get_plugins_map = function()
+    return get_plugins_map()
+  end,
 
   -- exported for unit-testing purposes only
-  _set_check_router_rebuild = _set_check_router_rebuild,
+  _set_rebuild_router = _set_rebuild_router,
+  _set_rebuild_plugins_map = _set_rebuild_plugins_map,
+
+  init = {
+    after = function()
+      if kong.configuration.database == "off" then
+        local err
+        declarative_entities, err = parse_declarative_config(kong.configuration)
+        if not declarative_entities then
+          error(err)
+        end
+
+      else
+        build_router("init")
+        build_plugins_map("init")
+      end
+    end
+  },
 
   init_worker = {
     before = function()
+      local ok, err = load_declarative_config(kong.configuration, declarative_entities)
+      if not ok then
+        log(CRIT, "error loading declarative config file: ", err)
+        return
+      end
+
       reports.init_worker()
 
       -- initialize local local_events hooks
-      local db             = singletons.db
-      local cache          = singletons.cache
-      local worker_events  = singletons.worker_events
-      local cluster_events = singletons.cluster_events
+      local db             = kong.db
+      local cache          = kong.cache
+      local worker_events  = kong.worker_events
+      local cluster_events = kong.cluster_events
 
 
       -- events dispatcher
@@ -552,22 +1016,21 @@ return {
         balancer.init()
       end)
 
+      init_router()
+      init_plugins_map()
 
-      do
-        build_router_timeout = 60
-        if singletons.configuration.database == "cassandra" then
-          -- cassandra_timeout is defined in ms
-          build_router_timeout = kong.configuration.cassandra_timeout / 1000
-
-        elseif singletons.configuration.database == "postgres" then
-          -- pg_timeout is defined in ms
-          build_router_timeout = kong.configuration.pg_timeout / 1000
+      ngx.timer.every(1, function(premature)
+        if premature then
+          return
         end
-      end
+
+        rebuild_router()
+        rebuild_plugins_map()
+      end)
     end
   },
   certificate = {
-    before = function(_)
+    before = function(ctx)
       certificate.execute()
     end
   },
@@ -968,7 +1431,7 @@ return {
       ctx.KONG_HEADER_FILTER_STARTED_AT = now
 
       local upstream_status_header = constants.HEADERS.UPSTREAM_STATUS
-      if singletons.configuration.enabled_headers[upstream_status_header] then
+      if kong.configuration.enabled_headers[upstream_status_header] then
         header[upstream_status_header] = tonumber(sub(ngx.var.upstream_status or "", -3))
         if not header[upstream_status_header] then
           log(ERR, "failed to set ", upstream_status_header, " header")
@@ -993,21 +1456,21 @@ return {
       local header = ngx.header
 
       if ctx.KONG_PROXIED then
-        if singletons.configuration.enabled_headers[constants.HEADERS.UPSTREAM_LATENCY] then
+        if kong.configuration.enabled_headers[constants.HEADERS.UPSTREAM_LATENCY] then
           header[constants.HEADERS.UPSTREAM_LATENCY] = ctx.KONG_WAITING_TIME
         end
 
-        if singletons.configuration.enabled_headers[constants.HEADERS.PROXY_LATENCY] then
+        if kong.configuration.enabled_headers[constants.HEADERS.PROXY_LATENCY] then
           header[constants.HEADERS.PROXY_LATENCY] = ctx.KONG_PROXY_LATENCY
         end
 
-        if singletons.configuration.enabled_headers[constants.HEADERS.VIA] then
-          header[constants.HEADERS.VIA] = server_header
+        if kong.configuration.enabled_headers[constants.HEADERS.VIA] then
+          header[constants.HEADERS.VIA] = SERVER_HEADER
         end
 
       else
-        if singletons.configuration.enabled_headers[constants.HEADERS.SERVER] then
-          header[constants.HEADERS.SERVER] = server_header
+        if kong.configuration.enabled_headers[constants.HEADERS.SERVER] then
+          header[constants.HEADERS.SERVER] = SERVER_HEADER
 
         else
           header[constants.HEADERS.SERVER] = nil
