@@ -13,8 +13,7 @@ local mock_fn_two = [[
 ]]
 
 local mock_fn_three = [[
-  local responses = require "kong.tools.responses"
-  return responses.send(406, "Invalid")
+  return kong.response.exit(406, { message = "Invalid" })
 ]]
 
 local mock_fn_four = [[
