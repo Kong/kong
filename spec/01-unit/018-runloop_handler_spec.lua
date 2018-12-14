@@ -6,9 +6,25 @@ describe("runloop handler", function()
       routes = {}
     }
 
+    do
+      local _ngx = _G.ngx
+
+      _G.ngx = setmetatable({
+        log = function()
+          -- avoid stdout output during test
+        end,
+      }, { __index = _ngx })
+
+      finally(function()
+        _G.ngx = _ngx
+      end)
+    end
+
     local function mock_module(name, tbl)
       local old_module = require(name)
-      package.loaded[name] = tbl
+      package.loaded[name] = setmetatable(tbl, {
+        __index = old_module,
+      })
       finally(function()
         package.loaded[name] = old_module
       end)
