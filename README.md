@@ -199,7 +199,7 @@ ngx.ctx.authenticated_consumer.id
 ngx.ctx.authenticated_credential.id
 ```
 
-The plugin also sets a `ctx.authenticated_session` for communication between the
+The plugin also sets a `ngx.ctx.authenticated_session` for communication between the
 `access` and `header_filter` phases in the plugin.
 
 ## 🦍 Kong Storage Adapter
@@ -208,11 +208,11 @@ Kong Session plugin extends the functionality of [lua-resty-session] with its ow
 session data storage adapter when `storage=kong`. This will store encrypted
 session data into the current database strategy (e.g. postgres, cassandra etc.)
 and the cookie will not contain any session data. Data stored in the database is
-encrypted and the cookie will contain only the session id and HMAC signature. 
-Sessions will use built-in Kong DAO ttl mechanism which destroys sessions after 
-specified `cookie_lifetime` unless renewal occurs during normal browser activity.
-It is recommended that the application logout via XHR request or similar to 
-manually handle redirects.
+encrypted and the cookie will contain only the session id, expiration time and 
+HMAC signature. Sessions will use built-in Kong DAO ttl mechanism which destroys 
+sessions after specified `cookie_lifetime` unless renewal occurs during normal 
+browser activity. It is recommended that the application logout via XHR request 
+or similar to manually handle redirects.
 
 ### 👋🏻 Logging Out
 
