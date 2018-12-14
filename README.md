@@ -185,7 +185,7 @@ For usage with [key-auth] plugin
 ## Defaults
 
 By default, Kong Session plugin favors security using a `Secure`, `HTTPOnly`, 
-`Samesite=Strict` cookie. `domain` is automatically set using Nginx variable
+`Samesite=Strict` cookie. `cookie_domain` is automatically set using Nginx variable
 host, but can be overridden.
 
 ## Session Data Storage
