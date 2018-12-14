@@ -162,6 +162,7 @@ local CONF_INFERENCES = {
   dns_not_found_ttl = { typ = "number" },
   dns_error_ttl = { typ = "number" },
   dns_no_sync = { typ = "boolean" },
+  async_rebuilds = { typ = "boolean" },
 
   client_ssl = { typ = "boolean" },
 

@@ -16,6 +16,7 @@ function OffConnector.new(kong_config)
     timeout = 1,
     close = ignore,
     connect = ignore,
+    setkeepalive = ignore,
     truncate_table = ignore,
     truncate = ignore,
     insert_lock = ignore,

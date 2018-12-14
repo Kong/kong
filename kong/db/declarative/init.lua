@@ -6,6 +6,7 @@ local cjson = require "cjson.safe"
 local tablex = require "pl.tablex"
 
 
+local ngx_get_phase = ngx.get_phase
 local deepcopy = tablex.deepcopy
 local null = ngx.null
 
@@ -248,9 +249,11 @@ function declarative.load_into_cache(entities)
   -- FIXME atomicity of cache update
   -- FIXME track evictions (and do something when they happen)
 
-  post_upstream_crud_delete_events()
-
-  kong.cache:purge()
+  local phase = ngx_get_phase()
+  if phase ~= "init_worker" then
+    post_upstream_crud_delete_events()
+    kong.cache:purge()
+  end
 
   -- Array of strings with this format:
   -- "<tag_name>|<entity_name>|<uuid>".
@@ -421,7 +424,10 @@ function declarative.load_into_cache(entities)
     end
   end
 
-  kong.cache:invalidate("router:version")
+  if phase ~= "init_worker" then
+    kong.cache:invalidate("router:version")
+  end
+
   return true
 end
 

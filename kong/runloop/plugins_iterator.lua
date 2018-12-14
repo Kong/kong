@@ -2,27 +2,16 @@ local kong         = kong
 local setmetatable = setmetatable
 
 
--- Loads a plugin config from the datastore.
--- @return plugin config table or an empty sentinel table in case of a db-miss
-local function load_plugin_into_memory(key)
-  local row, err = kong.db.plugins:select_by_cache_key(key)
-  if err then
-    return nil, tostring(err)
-  end
-
-  return row
-end
-
-
 --- Load the configuration for a plugin entry in the DB.
 -- Given a Route, Service, Consumer and a plugin name, retrieve the plugin's
 -- configuration if it exists. Results are cached in ngx.dict
+-- @param[type=table] the iterator object.
 -- @param[type=string] route_id ID of the route being proxied.
 -- @param[type=string] service_id ID of the service being proxied.
 -- @param[type=string] consumer_id ID of the Consumer making the request (if any).
--- @param[type=stirng] plugin_name Name of the plugin being tested for.
+-- @param[type=string] plugin_name Name of the plugin being tested for.
 -- @treturn table Plugin retrieved from the cache or database.
-local function load_plugin_configuration(ctx,
+local function load_plugin_configuration(self,
                                          route_id,
                                          service_id,
                                          consumer_id,
@@ -32,22 +21,13 @@ local function load_plugin_configuration(ctx,
                                         service_id,
                                         consumer_id)
 
-  local plugin, err = kong.cache:get(key,
-                                     nil,
-                                     load_plugin_into_memory,
-                                     key)
-  if err then
-    ctx.delay_response = false
-    ngx.log(ngx.ERR, tostring(err))
-    return ngx.exit(ngx.ERROR)
-  end
-
+  local plugin = self.configured_plugins.cache[key]
   if not plugin or not plugin.enabled then
     return
   end
 
   if plugin.run_on ~= "all" then
-    if ctx.is_service_mesh_request then
+    if self.ctx.is_service_mesh_request then
       if plugin.run_on == "first" then
         return
       end
@@ -79,7 +59,7 @@ local function get_next(self)
 
   self.i = i
 
-  if not self.configured_plugins[plugin.name] then
+  if not self.configured_plugins.map[plugin.name] then
     return get_next(self)
   end
 
@@ -113,55 +93,55 @@ local function get_next(self)
     repeat
 
       if route_id and service_id and consumer_id then
-        plugin_configuration = load_plugin_configuration(ctx, route_id, service_id, consumer_id, plugin_name)
+        plugin_configuration = load_plugin_configuration(self, route_id, service_id, consumer_id, plugin_name)
         if plugin_configuration then
           break
         end
       end
 
       if route_id and consumer_id then
-        plugin_configuration = load_plugin_configuration(ctx, route_id, nil, consumer_id, plugin_name)
+        plugin_configuration = load_plugin_configuration(self, route_id, nil, consumer_id, plugin_name)
         if plugin_configuration then
           break
         end
       end
 
       if service_id and consumer_id then
-        plugin_configuration = load_plugin_configuration(ctx, nil, service_id, consumer_id, plugin_name)
+        plugin_configuration = load_plugin_configuration(self, nil, service_id, consumer_id, plugin_name)
         if plugin_configuration then
           break
         end
       end
 
       if route_id and service_id then
-        plugin_configuration = load_plugin_configuration(ctx, route_id, service_id, nil, plugin_name)
+        plugin_configuration = load_plugin_configuration(self, route_id, service_id, nil, plugin_name)
         if plugin_configuration then
           break
         end
       end
 
       if consumer_id then
-        plugin_configuration = load_plugin_configuration(ctx, nil, nil, consumer_id, plugin_name)
+        plugin_configuration = load_plugin_configuration(self, nil, nil, consumer_id, plugin_name)
         if plugin_configuration then
           break
         end
       end
 
       if route_id then
-        plugin_configuration = load_plugin_configuration(ctx, route_id, nil, nil, plugin_name)
+        plugin_configuration = load_plugin_configuration(self, route_id, nil, nil, plugin_name)
         if plugin_configuration then
           break
         end
       end
 
       if service_id then
-        plugin_configuration = load_plugin_configuration(ctx, nil, service_id, nil, plugin_name)
+        plugin_configuration = load_plugin_configuration(self, nil, service_id, nil, plugin_name)
         if plugin_configuration then
           break
         end
       end
 
-      plugin_configuration = load_plugin_configuration(ctx, nil, nil, nil, plugin_name)
+      plugin_configuration = load_plugin_configuration(self, nil, nil, nil, plugin_name)
 
     until true
 
