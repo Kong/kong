@@ -121,7 +121,6 @@ local function collect()
   end
 
   prometheus:collect()
-  return kong.response.exit(200)
 end
 
 

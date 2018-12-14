@@ -39,7 +39,7 @@ describe("Plugin: prometheus (access)", function()
       proxy_client:close()
     end
     if admin_client then
-      proxy_client:close()
+      admin_client:close()
     end
 
     helpers.stop_kong()
@@ -95,5 +95,36 @@ describe("Plugin: prometheus (access)", function()
     for line in logs:gmatch("[^\r\n]+") do
       assert.not_match("[error]", line, nil, true)
     end
+  end)
+
+  it("does not log error during a scrape", function()
+    -- cleanup logs
+    local test_error_log_path = helpers.test_conf.nginx_err_logs
+    os.execute(":> " .. test_error_log_path)
+
+    local res = assert(admin_client:send {
+      method  = "GET",
+      path    = "/metrics",
+    })
+    assert.res_status(200, res)
+
+    -- make sure no errors
+    local logs = pl_file.read(test_error_log_path)
+    for line in logs:gmatch("[^\r\n]+") do
+      assert.not_match("[error]", line, nil, true)
+    end
+  end)
+
+  it("scrape response has metrics and comments only", function()
+    local res = assert(admin_client:send {
+      method  = "GET",
+      path    = "/metrics",
+    })
+    local body = assert.res_status(200, res)
+
+    for line in body:gmatch("[^\r\n]+") do
+      assert.matches("^[#|kong]", line)
+    end
+
   end)
 end)
