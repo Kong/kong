@@ -11,13 +11,6 @@ return {
         PRIMARY KEY (id)
       );
 
-      DO $$	
-      BEGIN	
-        IF (SELECT to_regclass('session_sessions_session_id_idx')) IS NULL THEN	
-          CREATE INDEX session_sessions_session_id_idx ON sessions (session_id);	
-        END IF;	
-      END$$;
-
       DO $$
       BEGIN
         IF (SELECT to_regclass('session_sessions_expires_idx')) IS NULL THEN
