@@ -38,6 +38,7 @@ local unpack      = unpack
 
 
 local ERR         = ngx.ERR
+local WARN        = ngx.WARN
 local DEBUG       = ngx.DEBUG
 
 
@@ -48,7 +49,7 @@ local EMPTY_T = {}
 local get_router, build_router
 local api_router, api_router_version, api_router_err
 local server_header = meta._SERVER_TOKENS
-
+local _set_check_router_rebuild
 
 local build_router_semaphore
 local build_api_router_semaphore
@@ -194,6 +195,12 @@ do
   end
 
 
+  -- for unit-testing purposes only
+  _set_check_router_rebuild = function(f)
+    check_router_rebuild = f
+  end
+
+
   get_router = function()
     local version, err = singletons.cache:get("router:version",
                                               CACHE_ROUTER_OPTS,
@@ -225,16 +232,21 @@ do
     end
 
     -- acquire lock
-    local ok, err = build_router_semaphore:wait(timeout)
-    if not ok then
-      return nil, "error attempting to acquire build_router lock: " .. err
+    local lok, err = build_router_semaphore:wait(timeout)
+    if not lok then
+      if err ~= "timeout" then
+        return nil, "error attempting to acquire build_router lock: " .. err
+      end
+
+      log(WARN, "bypassing build_router lock: timeout")
     end
 
-    local pok
-    pok, ok, err = pcall(check_router_rebuild)
+    local pok, ok, err = pcall(check_router_rebuild)
 
-    -- release lock
-    build_router_semaphore:post(1)
+    if lok then
+      -- release lock
+      build_router_semaphore:post(1)
+    end
 
     if not pok then
       return nil, ok
@@ -342,6 +354,9 @@ end
 return {
   build_router     = build_router,
   build_api_router = build_api_router,
+
+  -- exported for unit-testing purposes only
+  _set_check_router_rebuild = _set_check_router_rebuild,
 
   init_worker = {
     before = function()
