@@ -215,11 +215,11 @@ do
   -- this serves to attempt to maintain some backward compatibility with the
   -- previous implementation (stripping a UUID of its hyphens), while significantly
   -- expanding the size of the keyspace.
-  local function random_string()
-    -- get 24 bytes, which will return a 32 char string after encoding
-    -- this is done in attempt to maintain backwards compatibility as
+  local function random_string(n_bytes)
+    -- get bytes, which will return a 32 char string with n_bytes = 24 after 
+    -- encoding this is done in attempt to maintain backwards compatibility as
     -- much as possible while improving the strength of this function
-    return encode_base64(get_rand_bytes(24, true))
+    return encode_base64(get_rand_bytes(bytes or 24, true))
            :gsub("/", char(rand(48, 57)))  -- 0 - 10
            :gsub("+", char(rand(65, 90)))  -- A - Z
            :gsub("=", char(rand(97, 122))) -- a - z
