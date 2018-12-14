@@ -115,7 +115,6 @@ build = {
     ["kong.tools.utils"] = "kong/tools/utils.lua",
     ["kong.tools.public"] = "kong/tools/public.lua",
     ["kong.tools.printable"] = "kong/tools/printable.lua",
-    ["kong.tools.responses"] = "kong/tools/responses.lua",
     ["kong.tools.timestamp"] = "kong/tools/timestamp.lua",
 
     ["kong.runloop.handler"] = "kong/runloop/handler.lua",
