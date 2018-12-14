@@ -442,7 +442,7 @@ core and plugins.
 
 ##### Admin API
 
-- Set a Service's `port` to `443` when the `url` convenience parameter uses
+- Set a Service's `port` to `443` when the `URL` convenience parameter uses
   the `https://` scheme.
   [#3358](https://github.com/Kong/kong/pull/3358)
 - Ensure PATCH requests do not return an error when un-setting foreign key
@@ -555,7 +555,7 @@ upgrade your Kong cluster.
 
 ##### Configuration
 
-- :fireworks: Support for **control-plane** and **data-plane** modes. The new
+- :fireworks: Support for **control-plane** and **data-plane** modes. The
   new syntax of `proxy_listen` and `admin_listen` supports `off`, which
   disables either one of those interfaces. It is now simpler than ever to
   make a Kong node "Proxy only" (data-plane) or "Admin only" (control-plane).
@@ -678,7 +678,7 @@ upgrade your Kong cluster.
   [#3187](https://github.com/Kong/kong/pull/3187)
 - Fix incomplete handling of errors when initializing DAO objects.
   [637532e](https://github.com/Kong/kong/commit/637532e05d8ed9a921b5de861cc7f463e96c6e04)
-- Remove bogus errors in the logs provoked by healthcheckers between the time
+- Remove bogus errors in the logs provoked by health checkers between the time
   they are unregistered and the time they are garbage-collected
   ([#3207](https://github.com/Kong/kong/pull/3207)) and when receiving an HTTP
   status not tracked by healthy or unhealthy lists
@@ -721,7 +721,7 @@ is still relevant for upgrading existing clusters to 0.12.1.
 ## [0.12.0] - 2018/01/16
 
 This major release focuses on two new features we are very excited about:
-**health checks** and **hash based load balancing**!
+**health checks** and **hash-based load balancing**!
 
 We also took this as an opportunity to fix a few prominent issues, sometimes
 at the expense of breaking changes but overall improving the flexibility and
@@ -823,7 +823,7 @@ but will be dropped in subsequent ones.
   Upstream Targets can be manually taken up or down via two new Admin API
   endpoints: `/healthy` and `/unhealthy`.
   [#3096](https://github.com/Kong/kong/pull/3096)
-- :fireworks: Support for **hash based load balancing**! Kong now offers
+- :fireworks: Support for **hash-based load balancing**! Kong now offers
   consistent hashing/sticky sessions load balancing capabilities via the new
   `hash_*` attributes of the Upstream entity. Hashes can be based off client
   IPs, request headers, or Consumers!
@@ -1786,7 +1786,7 @@ if you are planning to upgrade a Kong cluster.
   - oauth2: Don't try to remove credential values from request bodies if the
     MIME type is multipart, since such attempts would result in an error.
     [#2176](https://github.com/Kong/kong/pull/2176)
-  - ldap: This plugin should not be applied to a single Consumer, however, this
+  - ldap: This plugin should not be applied to a single consumer; however, this
     was not properly enforced. It is now impossible to apply this plugin to a
     single Consumer (as per all authentication plugin).
     [#2237](https://github.com/Kong/kong/pull/2237)
@@ -2296,7 +2296,7 @@ This release includes support for PostgreSQL as Kong's primary datastore!
     - Make access_tokens correctly expire. [#1089](https://github.com/Kong/kong/issues/1089)
 
 > **internal**
-> - replace globals with singleton pattern thanks to [@mars](https://github.com/mars).
+> - replaced globals with singleton pattern thanks to [@mars](https://github.com/mars).
 > - fixed resolution mismatches when using deep paths in the path resolver.
 
 [Back to TOC](#table-of-contents)
@@ -2307,7 +2307,7 @@ This release includes support for PostgreSQL as Kong's primary datastore!
 
 Due to the NGINX security fixes (CVE-2016-0742, CVE-2016-0746, CVE-2016-0747), OpenResty was bumped to `1.9.7.3` which is not backwards compatible, and thus requires changes to be made to the `nginx` property of Kong's configuration file. See the [0.7 upgrade path](https://github.com/Kong/kong/blob/master/UPGRADE.md#upgrade-to-07x) for instructions.
 
-However by upgrading the underlying OpenResty version, source installations do not have to patch the NGINX core and use the old `ssl-cert-by-lua` branch of ngx_lua anymore. This will make source installations much easier.
+However, by upgrading the underlying OpenResty version, source installations do not have to patch the NGINX core and use the old `ssl-cert-by-lua` branch of ngx_lua anymore. This will make source installations much easier.
 
 ### Added
 
@@ -2364,7 +2364,7 @@ This release contains tiny bug fixes that were especially annoying for complex C
 
 ### Breaking changes
 
- We would recommended to consult the suggested [0.6 upgrade path](https://github.com/Kong/kong/blob/master/UPGRADE.md#upgrade-to-06x) for this release.
+ We would recommend to consult the suggested [0.6 upgrade path](https://github.com/Kong/kong/blob/master/UPGRADE.md#upgrade-to-06x) for this release.
 
 - [Serf](https://www.serf.io/) is now a Kong dependency. It allows Kong nodes to communicate between each other opening the way to many features and improvements.
 - The configuration file changed. Some properties were renamed, others were moved, and some are new. We would recommend checking out the new default configuration file.
@@ -2696,7 +2696,7 @@ The old routes are still maintained but will be removed in upcoming versions. Co
 - Resolver
   - Support resolving APIs by Path as well as by Header. [#192](https://github.com/Kong/kong/pull/192) [#282](https://github.com/Kong/kong/pull/282)
   - Support for `X-Host-Override` as an alternative to `Host` for browsers. [#203](https://github.com/Kong/kong/issues/203) [#246](https://github.com/Kong/kong/pull/246)
-- Auth plugins now send user informations to your upstream services. [#228](https://github.com/Kong/kong/issues/228)
+- Auth plugins now send user information to your upstream services. [#228](https://github.com/Kong/kong/issues/228)
 - Invalid `target_url` value are now being caught when creating an API. [#149](https://github.com/Kong/kong/issues/149)
 
 #### Fixed
@@ -2714,7 +2714,7 @@ The old routes are still maintained but will be removed in upcoming versions. Co
 > - Travis now lints `kong/`.
 > - Way faster Travis setup.
 > - Added a new HTTP client for in-nginx usage, using the cosocket API.
-> - Various refactorings.
+> - Various refactoring.
 > - Fix [#196](https://github.com/Kong/kong/issues/196).
 > - Disabled ipv6 in resolver.
 
@@ -2753,7 +2753,7 @@ Queries effectuated during the downtime will still be lost. [#11](https://github
 > **internal**
 > - Separate Migrations from the DAO factory.
 > - Update dev config + Makefile rules (`run` becomes `start`).
-> - Introducing an `ngx` stub for unit tests and CLI.
+> - Introducing a `ngx` stub for unit tests and CLI.
 > - Switch many PCRE regexes to using patterns.
 
 [Back to TOC](#table-of-contents)
@@ -2784,7 +2784,7 @@ First public release of Kong. This version brings a lot of internal improvements
 > - More tests as always, and they are structured better. The coverage went down mainly because of plugins which will later move to their own repos. We are all eagerly waiting for that!
 > - `src/` was renamed to `kong/` for ease of development
 > - All system dependencies versions for package building and travis-ci are now listed in `versions.sh`
-> - DAO doesn't need to `:prepare()` prior to run queries. Queries can be prepared at runtime. [#146](https://github.com/Kong/kong/issues/146)
+> - DAO doesn't need to`:prepare()` prior to run queries. Queries can be prepared at runtime. [#146](https://github.com/Kong/kong/issues/146)
 
 [Back to TOC](#table-of-contents)
 
@@ -2817,13 +2817,13 @@ First public beta. Includes caching and better usability.
 
 #### Fixed
 - `Server` header now sends Kong. [#57](https://github.com/Kong/kong/issues/57)
-- migrations not being executed in order on Linux. This issue wasn't noticed until unit testing the migrations because for now we only have 1 migration file.
+- migrations not being executed in order on Linux. This issue wasn't noticed until unit testing the migrations because for now, we only have 1 migration file.
 - Admin API: Errors responses are now sent as JSON. [#58](https://github.com/Kong/kong/issues/58)
 
 > **internal**
 > - We now have code linting and coverage.
 > - Faker and Migrations instances don't live in the DAO Factory anymore, they are only used in scripts and tests.
-> - `scripts/config.lua` allows environment based configurations. `make dev` generates a `kong.DEVELOPMENT.yml` and `kong_TEST.yml`. Different keyspaces and ports.
+> - `scripts/config.lua` allows environment-based configurations. `make dev` generates a `kong.DEVELOPMENT.yml` and `kong_TEST.yml`. Different keyspaces and ports.
 > - `spec_helpers.lua` allows tests to not rely on the `Makefile` anymore. Integration tests can run 100% from `busted`.
 > - Switch integration testing from [httpbin.org] to [mockbin.com].
 > - `core` plugin was renamed to `resolver`.
