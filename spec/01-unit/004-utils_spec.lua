@@ -175,6 +175,21 @@ describe("Utils", function()
         local second = utils.random_string()
         assert.not_equal(first, second)
       end)
+
+      it("should return a random string with configurable bytes", function()
+        local first = utils.random_string(32)
+        assert.is_string(first)
+        assert.equals(44, #first) -- extra length from encoding
+
+        -- ensure we don't find anything that isnt alphanumeric
+        assert.not_matches("^[^%a%d]+$", first)
+
+        local second = utils.random_string(32)
+        assert.not_equal(first, second)
+
+        local third = utils.random_string()
+        assert.not_equal(first, third)
+      end)
     end)
 
     describe("encode_args()", function()
