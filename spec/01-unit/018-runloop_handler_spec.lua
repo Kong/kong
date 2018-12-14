@@ -56,12 +56,13 @@ describe("runloop handler", function()
       new = function()
         local s = {
           value = 0,
-          wait = function(self)
+          wait = function(self, timeout)
             self.value = self.value - 1
             return true
           end,
-          post = function(self)
-            self.value = self.value + 1
+          post = function(self, n)
+            n = n or 1
+            self.value = self.value + n
             return true
           end,
         }
