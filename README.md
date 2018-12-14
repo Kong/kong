@@ -191,7 +191,7 @@ host, but can be overridden.
 ## Session Data Storage
 
 The session data can be stored in the cookie itself (encrypted) `storage=cookie`, or 
-inside [Kong](#Kong-Storage-Adapter). The session data stores two context
+inside [Kong](#-kong-storage-adapter). The session data stores two context
 variables:
 
 ```
