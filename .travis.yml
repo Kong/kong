@@ -56,6 +56,10 @@ install:
   - make dev
   - createuser --createdb kong
   - createdb -U kong kong_tests
+  - cd ../
+  - KONG_DATABASE=postgres KONG_PG_DATABASE=kong_tests kong-ee/bin/kong migrations up
+  - KONG_DATABASE=cassandra KONG_CASSANDRA_KEYSPACE=kong_tests kong-ee/bin/kong migrations up
+  - cd kong-ee
 
 script:
   - bin/busted $BUSTED_ARGS ../spec
