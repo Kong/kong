@@ -110,6 +110,17 @@ local function up(schema_state, db, opts)
     end
 
     if schema_state.legacy_is_014 then
+      local present, err = db:are_014_apis_present()
+      if err then
+        error(err)
+      end
+
+      if present then
+        error("cannot run migrations: you have `api` entities in your database; " ..
+              "please convert them to `routes` and `services` prior to " ..
+              "migrating to Kong 1.0.")
+      end
+
       -- legacy: migration from 0.14 to 1.0 can be performed
       log("upgrading from 0.14, bootstrapping database...")
       assert(db:schema_bootstrap())

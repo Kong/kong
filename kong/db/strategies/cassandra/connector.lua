@@ -856,6 +856,61 @@ do
   end
 
 
+  local function does_table_exist(self, table_name)
+    local cql
+
+    -- For now we will assume that a release version number of 3 and greater
+    -- will use the same schema. This is recognized as a hotfix and will be
+    -- revisited for a more considered solution at a later time.
+    if self.major_version >= 3 then
+      cql = [[
+        SELECT COUNT(*) FROM system_schema.tables
+         WHERE keyspace_name = ? AND table_name = ?
+      ]]
+
+    else
+      cql = [[
+        SELECT COUNT(*) FROM system.schema_columnfamilies
+         WHERE keyspace_name = ? AND columnfamily_name = ?
+      ]]
+    end
+
+    local rows, err = self.connection:execute(cql, {
+      self.keyspace,
+      table_name,
+    })
+    if err then
+      return nil, err
+    end
+
+    if not rows or not rows[1] or rows[1].count == 0 then
+      return false
+    end
+
+    return true
+  end
+
+
+  function CassandraConnector:are_014_apis_present()
+    local exists, err = does_table_exist(self, "apis")
+    if err then
+      return nil, err
+    end
+
+    if not exists then
+      return false
+    end
+
+    local rows, err = self:query([[
+      SELECT * FROM ]] .. self.keyspace .. [[.apis LIMIT 1;
+    ]])
+    if err then
+      return nil, err
+    end
+    return rows and #rows > 0 or false
+  end
+
+
   function CassandraConnector:is_014()
     local res = {}
 
@@ -956,33 +1011,12 @@ do
       },
     }
 
-    local cql
-
-    -- For now we will assume that a release version number of 3 and greater
-    -- will use the same schema. This is recognized as a hotfix and will be
-    -- revisited for a more considered solution at a later time.
-    if self.major_version >= 3 then
-      cql = [[
-        SELECT COUNT(*) FROM system_schema.tables
-         WHERE keyspace_name = ? AND table_name = ?
-      ]]
-
-    else
-      cql = [[
-        SELECT COUNT(*) FROM system.schema_columnfamilies
-         WHERE keyspace_name = ? AND columnfamily_name = ?
-      ]]
-    end
-
-    local rows, err = self.connection:execute(cql, {
-      self.keyspace,
-      "schema_migrations",
-    })
+    local exists, err = does_table_exist(self, "schema_migrations")
     if err then
       return nil, err
     end
 
-    if not rows or not rows[1] or rows[1].count == 0 then
+    if not exists then
       -- no trace of legacy migrations: above 0.14
       return res
     end

@@ -774,6 +774,28 @@ function _mt:record_migration(subsystem, name, state)
 end
 
 
+function _mt:are_014_apis_present()
+  local _, err = self:query([[
+    DO $$
+    BEGIN
+      IF EXISTS(SELECT id FROM apis) THEN
+        RAISE EXCEPTION 'there are apis in the db';
+      END IF;
+    EXCEPTION WHEN UNDEFINED_TABLE THEN
+      -- Do nothing, table does not exist
+    END;
+    $$;
+  ]])
+  if err and err:match("there are apis in the db") then
+    return true
+  end
+  if err then
+    return nil, err
+  end
+  return false
+end
+
+
 function _mt:is_014()
   local res = {}
 
