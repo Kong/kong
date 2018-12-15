@@ -30,7 +30,7 @@ function KongSessionHandler:header_filter(conf)
   -- if session exists and the data in the session matches the ctx then
   -- don't worry about saving the session data or sending cookie
   if s and s.present then
-    cid, cred_id = session.retrieve_session_data(s)
+    local cid, cred_id = session.retrieve_session_data(s)
     if cred_id == credential_id and cid == consumer_id
     then
       return
