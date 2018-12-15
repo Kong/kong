@@ -18,18 +18,30 @@ function KongSessionHandler:header_filter(conf)
   KongSessionHandler.super.header_filter(self)
   local ctx = ngx.ctx
 
+  if not ctx.authenticated_credential then
+    -- don't open sessions for anonymous users
+    return
+  end
+
   local credential_id = ctx.authenticated_credential and ctx.authenticated_credential.id
   local consumer_id = ctx.authenticated_consumer and ctx.authenticated_consumer.id
+  local s = ctx.authenticated_session
 
-  -- save the session if we find ctx.authenticated_ variables
-  if consumer_id then
-    if not credential_id then
-      credential_id = consumer_id
+  -- if session exists and the data in the session matches the ctx then
+  -- don't worry about saving the session data or sending cookie
+  if s and s.present then
+    local cid, cred_id = session.retrieve_session_data(s)
+    if cred_id == credential_id and cid == consumer_id
+    then
+      return
     end
+  end
 
-    local s = session.open_session(conf)
-    s.data.authenticated_credential = credential_id
-    s.data.authenticated_consumer = consumer_id
+  -- session is no longer valid
+  -- create new session and save the data / send the Set-Cookie header
+  if consumer_id then
+    s = s or session.open_session(conf)
+    session.store_session_data(s, consumer_id, credential_id or consumer_id)
     s:save()
   end
 end

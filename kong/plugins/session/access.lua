@@ -1,5 +1,8 @@
+local constants = require "kong.constants"
 local singletons = require "kong.singletons"
+local responses = require "kong.tools.responses"
 local session = require "kong.plugins.session.session"
+local ngx_set_header = ngx.req.set_header
 
 local _M = {}
 
@@ -13,6 +16,19 @@ local function load_consumer(consumer_id)
 end
 
 
+local function set_consumer(consumer, credential_id)
+  ngx_set_header(constants.HEADERS.CONSUMER_ID, consumer.id)
+  ngx_set_header(constants.HEADERS.CONSUMER_CUSTOM_ID, consumer.custom_id)
+  ngx_set_header(constants.HEADERS.CONSUMER_USERNAME, consumer.username)
+  ngx.ctx.authenticated_consumer = consumer
+  if credential_id then
+    ngx.ctx.authenticated_credential = { id = credential_id or consumer.id, 
+                                         consumer_id = consumer.id }
+    ngx_set_header(constants.HEADERS.ANONYMOUS, true)
+  end
+end
+
+
 function _M.execute(conf)
   local s = session.open_session(conf)
 
@@ -22,37 +38,31 @@ function _M.execute(conf)
 
   -- check if incoming request is trying to logout
   if session.logout(conf) then
-    return s:destroy()
+    s:destroy()
+    return responses.send_HTTP_OK()
   end
 
-  if s.data and not s.data.authenticated_consumer
-     and not s.data.authenticated_credential
-  then
-    return
-  end
-
-  -- only save when data is available
-  s:save()
-
-  local cid = s.data.authenticated_consumer
-  local credential = s.data.authenticated_credential
-
+  
+  local cid, credential = session.retrieve_session_data(s)
+  
   local consumer_cache_key = singletons.dao.consumers:cache_key(cid)
   local consumer, err = singletons.cache:get(consumer_cache_key, nil,
                                              load_consumer, cid)
   
-  -- destroy sessions with invalid consumer_id
-  if not consumer then
-    s:destroy()
-  end
-
   if err then
     ngx.log(ngx.ERR, "Error loading consumer: ", err)
     return
-  end  
-
-  ngx.ctx.authenticated_credential = credential
-  ngx.ctx.authenticated_consumer = consumer
+  end
+  
+  -- destroy sessions with invalid consumer_id
+  if not consumer then
+    return s:destroy()
+  end
+  
+  s:start()
+  
+  set_consumer(consumer, credential)
+  ngx.ctx.authenticated_session = s
 end
 
 
