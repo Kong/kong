@@ -103,8 +103,35 @@ do
   local router_version
 
 
+  local function gather_services(db)
+    local services_t = {}
+
+    for service, err in db.services:each(1000) do
+      if err then
+        return nil, "could not load services: " .. err
+      end
+
+      if not services_t[service.id] then
+        services_t[service.id] = service
+      end
+    end
+
+    return services_t
+  end
+
+
   build_router = function(db, version)
     local routes, i = {}, 0
+
+    -- trade space for time by pre-fetching services in an efficient
+    -- manner (paging through them, using the same page size as
+    -- as implemented by the Route pager below). this lets us build
+    -- the Route <> Service relationship needed by the router with
+    -- minimal database traffic
+    local services, err = gather_services(db)
+    if err then
+      return nil, err
+    end
 
     for route, err in db.routes:each(1000) do
       if err then
@@ -117,7 +144,8 @@ do
         return nil, "route (" .. route.id .. ") is not associated with service"
       end
 
-      local service, err = db.services:select(service_pk)
+      -- service_pk is a table of { id = <uuid> }
+      local service = services[service_pk.id]
       if not service then
         return nil, "could not find service for route (" .. route.id .. "): " ..
                     err
