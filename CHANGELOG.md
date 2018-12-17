@@ -1,11 +1,18 @@
 # Table of Contents
 
+- [0.3.4](#034---20181217)
 - [0.3.3](#033---20181214)
 - [0.3.2](#032---20181101)
 - [0.3.1](#031---20181017)
 - [0.3.0](#030---20181015)
 - [0.2.0](#020---20180924)
 - [0.1.0](#010---20180615)
+
+##  [0.3.4] - 2018/12/17
+
+- Drop the use of `kong.tools.responses` module for
+  Kong 1.0 compatibility.
+  [#34](https://github.com/Kong/kong-plugin-prometheus/pull/34)
 
 ##  [0.3.3] - 2018/12/14
 
@@ -43,6 +50,7 @@
 
 - Initial release of Prometheus plugin for Kong.
 
+[0.3.4]: https://github.com/Kong/kong-plugin-prometheus/compare/0.3.3...0.3.4
 [0.3.3]: https://github.com/Kong/kong-plugin-prometheus/compare/0.3.2...0.3.3
 [0.3.2]: https://github.com/Kong/kong-plugin-prometheus/compare/0.3.1...0.3.2
 [0.3.1]: https://github.com/Kong/kong-plugin-prometheus/compare/0.3.0...0.3.1
