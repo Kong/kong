@@ -1,6 +1,5 @@
 local lapis = require "lapis"
 local prometheus = require "kong.plugins.prometheus.exporter"
-local responses = require "kong.tools.responses"
 
 
 local app = lapis.Application()
@@ -21,7 +20,11 @@ end
 
 
 app.handle_404 = function(self) -- luacheck: ignore 212
-  return responses.send_HTTP_NOT_FOUND()
+  local body = '{"message":"Not found"}'
+  ngx.status = 404
+  ngx.header["Content-Type"] = "application/json; charset=utf-8"
+  ngx.header["Content-Length"] = #body + 1
+  ngx.say(body)
 end
 
 
