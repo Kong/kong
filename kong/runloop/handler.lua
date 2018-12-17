@@ -69,6 +69,25 @@ do
   local router
   local router_version
 
+  local function load_service_db(service_pk)
+    local service, err = kong.db.services:select(service_pk)
+    return service, err
+  end
+
+  local function load_service(service_pk)
+    local service, err
+    if kong.cache then
+      local cache_key = kong.db.services:cache_key(service_pk.id)
+      service, err = kong.cache:get(cache_key, CACHE_ROUTER_OPTS,
+                                    load_service_db, service_pk)
+
+    else
+      service, err = load_service_db(service_pk)
+    end
+
+    return service, err
+  end
+
   build_router = function(db, version)
     local routes, i = {}, 0
 
@@ -83,7 +102,7 @@ do
         return nil, "route (" .. route.id .. ") is not associated with service"
       end
 
-      local service, err = db.services:select(service_pk)
+      local service, err = load_service(service_pk)
       if not service then
         return nil, "could not find service for route (" .. route.id .. "): " ..
                     err
