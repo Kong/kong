@@ -5,7 +5,7 @@ local basic_serializer = require "kong.plugins.log-serializers.basic"
 
 local PrometheusHandler = BasePlugin:extend()
 PrometheusHandler.PRIORITY = 13
-PrometheusHandler.VERSION = "0.1.0"
+PrometheusHandler.VERSION = "0.3.4"
 
 
 local function log(premature, message)
