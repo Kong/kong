@@ -12,7 +12,7 @@ source = {
 description = {
   summary = "A Kong plugin to support implementing sessions for auth plugins.",
   homepage = "http://konghq.com",
-  license = "MIT"
+  license = "Apache 2.0"
 }
 
 dependencies = {
