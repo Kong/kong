@@ -46,9 +46,9 @@ env:
       CASSANDRA=$CASSANDRA_LATEST
 
 before_install:
-  - git clone https://github.com/Kong/kong-ci
+  - git clone https://$GITHUB_TOKEN:@github.com/Kong/kong-ci.git
   - source kong-ci/setup_env.sh
-  - git clone https://github.com/Kong/kong-ee.git
+  - git clone https://$GITHUB_TOKEN:@github.com/Kong/kong-ee.git kong-ee
 
 install:
   - luarocks make
