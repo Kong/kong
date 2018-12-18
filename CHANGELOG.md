@@ -1,5 +1,6 @@
 # Table of Contents
 
+- [1.0.0](#100)
 - [0.15.0](#0150)
 - [0.14.1](#0141)
 - [0.14.0](#0140---20180705)
@@ -19,34 +20,45 @@
 - [0.10.0](#0100---20170307)
 - [0.9.9 and prior](#099---20170202)
 
-## [0.15.0]
+## [1.0.0]
 
 > Released on: 2018/12/18
 
-This is the last release in the 0.x series, giving users one last chance to
-upgrade while still using some of the options and concepts that were marked as
-deprecated in Kong 0.x and were removed in Kong 1.0.
+This is a major release, introducing new features such as **Service Mesh** and
+**Stream Routing** support, as well as a **New Migrations** framework. It also
+includes version 1.0.0 of the **Plugin Development Kit**. It contains a large
+number of other features and fixes, listed below. Also, all plugins included
+with Kong 1.0 are updated to use version 1.0 of the PDK.
 
-This release includes all new features included in 1.0 (Service Mesh, Stream
-Routes and New Migrations), as well as fixes and several big code
-refactorings. Unlike Kong 1.0, it retains a lot of the deprecated
-functionality, like the **API** entity, around. Still, Kong 0.15 does have a
-number of breaking changes related to functionality that has changed since
-version 0.14.
+As usual, major version upgrades require database migrations and changes to
+the Nginx configuration file (if you customized the default template). Please
+take a few minutes to read the [1.0 Upgrade
+Path](https://github.com/Kong/kong/blob/master/UPGRADE.md) for more details
+regarding breaking changes and migrations before planning to upgrade your Kong
+cluster.
 
-If you are starting with Kong, we recommend you to use 1.0.0 instead of this
-release.
+Being a major version, all entities and concepts that were marked as
+deprecated in Kong 0.x are now removed in Kong 1.0. The deprecated features
+are retained in [Kong 0.15](#0150), the final entry in the Kong 0.x series,
+which is being released simultaneously to Kong 1.0.
 
-If you are already using Kong 0.14, our recommendation is also plan to move to
-1.0 -- see the [1.0 Upgrade
-Path](https://github.com/kong/kong/blob/master/UPGRADE.md) document for
-details. Upgrading to 0.15.0 is only recommended if you can't do away with the
-deprecated features but you need some fixes or new features right now.
 
 ### Breaking changes
 
+Kong 1.0 includes all breaking changes from 0.15, as well as the removal
+of deprecated concepts:
+
 ##### Core
 
+- The **API** entity and related concepts such as the `/apis` endpoint,
+  are removed (deprecated since 0.13.0, March 2018). Use **Routes** and
+  **Services** instead.
+- The **old DAO** implementation is removed, along with the
+  **old schema** validation library (`apis` was the last entity using it).
+  Use the new schema format instead in custom plugins.
+  To ease the transition of plugins, the plugin loader in 1.0 includes
+  a _best-effort_ schema auto-translator, which should be sufficient for many
+  plugins.
 - In the 0.14.x release Upstreams, Targets and Plugins were still
   implemented using the old DAO and Admin API. On 0.15.0 and 1.0.0 all core
   entities use the new `kong.db` DAO, and their endpoints have been upgraded to
@@ -80,15 +92,39 @@ A summary of the changes introduced by the New Admin API:
 For more details about the New Admin API, please visit the official docs:
 https://docs.konghq.com/
 
+##### Configuration
+
+- The `custom_plugins` directive is removed (deprecated since 0.14.0, July 2018).
+  Use `plugins` instead.
+
 ##### Plugins
 
+- The `galileo` plugin is removed (deprecated since 0.13.0)
+- Some internal modules, that were occasionally used by plugin authors
+  before the introduction of the Plugin Development Kit (PDK) in 0.14.0
+  are now removed:
+  - The `kong.tools.ip` module was removed.
+    Use `kong.ip` from the PDK instead.
+  - The `kong.tools.public` module was removed.
+    Use the various equivalent features from the PDK instead.
+  - The `kong.api.crud_helpers` module was removed (deprecated since the
+    introduction of the new DAO  in 0.13.0). Use `kong.api.endpoints` instead if
+    you need to customize the auto-generated endpoints.
+- In plugin schemas, `no_route` & `no_service` & `no_consumer` annotations
+  are made as typedefs for the corresponding field
+  [#3739](https://github.com/Kong/kong/pull/3739); in 0.15
+  they are made available as ad-hoc fields in the `schema.lua` table,
+  in the vein as the old `no_consumer` option.
 - All bundled Plugins' schemas and custom entities have been updated to the new
-  `kong.db`, and their APIs have been updated to the New Admin API.
+  `kong.db`, and their APIs have been updated to the New Admin API and thus
+  have improved, but still different behaviors, as described in the previous
+  section
   [#3766](https://github.com/Kong/kong/pull/3766),
   [#3774](https://github.com/Kong/kong/pull/3774),
   [#3778](https://github.com/Kong/kong/pull/3778),
   [#3839](https://github.com/Kong/kong/pull/3839)
-- All plugin migrations have been converted to the new migration framework
+- All plugin migrations have been converted to the new migration framework.
+  Custom plugins need to use the new migration framework from 0.15 onwards.
 
 ### Additions
 
@@ -145,8 +181,6 @@ https://docs.konghq.com/
 
 ##### Plugins
 
-- New options to plugin schema `no_api`, `no_route` & `no_service` & `no_consumer` to limit
-  where plugins can be attached to [#3646](https://github.com/Kong/kong/pull/3646)
 - The `http-log` plugin now accepts buffered logging [#3604](https://github.com/Kong/kong/pull/3604)
 - Most plugin logic has been rewritten with the PDK instead of using internal
   kong functions or ngx calls [#3845](https://github.com/Kong/kong/pull/3845)
@@ -205,6 +239,80 @@ https://docs.konghq.com/
 - ratelimiting & response-ratelimiting: Fixed a problem where an unnecessary call to `redis:select` could close connections
   (thanks, [@fffonion](https://github.com/fffonion)!) [#3973](https://github.com/Kong/kong/pull/3973)
 
+
+## [0.15.0]
+
+> Released on: 2018/12/18
+
+This is the last release in the 0.x series, giving users one last chance to
+upgrade while still using some of the options and concepts that were marked as
+deprecated in Kong 0.x and were removed in Kong 1.0.
+
+For a list of additions and fixes in Kong 0.15, see the [1.0.0](#100) changelog.
+This release includes all new features included in 1.0 (Service Mesh, Stream
+Routes and New Migrations), but unlike Kong 1.0, it retains a lot of the
+deprecated functionality, like the **API** entity, around. Still, Kong 0.15
+does have a number of breaking changes related to functionality that has
+changed since version 0.14 (see below).
+
+If you are starting with Kong, we recommend you to use 1.0.0 instead of this
+release.
+
+If you are already using Kong 0.14, our recommendation is also plan to move to
+1.0 -- see the [1.0 Upgrade
+Path](https://github.com/kong/kong/blob/master/UPGRADE.md) document for
+details. Upgrading to 0.15.0 is only recommended if you can't do away with the
+deprecated features but you need some fixes or new features right now.
+
+### Breaking changes
+
+##### Core
+
+- In the 0.14.x release Upstreams, Targets and Plugins were still
+  implemented using the old DAO and Admin API. On 0.15.0 and 1.0.0 all core
+  entities use the new `kong.db` DAO, and their endpoints have been upgraded to
+  the new Admin API (see below for details)
+  [#3689](https://github.com/Kong/kong/pull/3689),
+  [#3739](https://github.com/Kong/kong/pull/3739),
+  [#3778](https://github.com/Kong/kong/pull/3778)
+- :fireworks: New migration framework [#3802](https://github.com/Kong/kong/pull/3802)
+- `luaossl` version bumped to 20181207 [#4067](https://github.com/Kong/kong/pull/4067)
+- New `kong.resty.getssl` module [#3681](https://github.com/Kong/kong/pull/3681)
+- Timestamps now allow millisecond precision [#3660](https://github.com/Kong/kong/pull/3660)
+- `OpenSSL` has been bumped to 1.1.1a [#4005](https://github.com/Kong/kong/pull/4005)
+- `luasec` bumped to 0.7
+- The PDK function `kong.request.get_body` will now return `nil, err, mime` when the body is
+  valid JSON but neither an object nor an array [#4063](https://github.com/Kong/kong/pull/4063)
+
+A summary of the changes introduced by the New Admin API:
+
+- Pagination has been included in all "multi-record" endpoints, and pagination
+  control fields are different than in 0.14.x
+- Filtering now happens via URL path changes (`/consumers/x/plugins`) instead
+  of querystring fields (`/plugins?consumer_id=x`)
+- Array values can't be coherced from comma-separated strings. They must be
+  "proper" JSON values on JSON requests, or use a new syntax on form-url-encoded
+  or multipart requests.
+- Error messages have been been reworked from the ground up to be more
+  consistent, precise and informative.
+- The `PUT` method has been reimplemented with idempotent behavior and has
+  been added to some entities that didn't have it.
+
+For more details about the New Admin API, please visit the official docs:
+https://docs.konghq.com/
+
+##### Plugins
+
+- All bundled Plugins' schemas and custom entities have been updated to the new
+  `kong.db`, and their APIs have been updated to the New Admin API and thus
+  have improved, but still different behaviors, as described in the previous
+  section
+  [#3766](https://github.com/Kong/kong/pull/3766),
+  [#3774](https://github.com/Kong/kong/pull/3774),
+  [#3778](https://github.com/Kong/kong/pull/3778),
+  [#3839](https://github.com/Kong/kong/pull/3839)
+- All plugin migrations have been converted to the new migration framework.
+  Custom plugins need to use the new migration framework from 0.15 onwards.
 
 ## [0.14.1]
 
@@ -3033,7 +3141,9 @@ First version running with Cassandra.
 
 [Back to TOC](#table-of-contents)
 
-[0.14.1]: https://github.com/Kong/kong/compare/0.14.0...master
+[1.0.0]: https://github.com/Kong/kong/compare/0.15.0...1.0.0
+[0.15.0]: https://github.com/Kong/kong/compare/0.14.0...0.15.0
+[0.14.1]: https://github.com/Kong/kong/compare/0.14.0...0.14.1
 [0.14.0]: https://github.com/Kong/kong/compare/0.13.1...0.14.0
 [0.13.1]: https://github.com/Kong/kong/compare/0.13.0...0.13.1
 [0.13.0]: https://github.com/Kong/kong/compare/0.12.3...0.13.0
