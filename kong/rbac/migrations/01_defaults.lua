@@ -134,8 +134,7 @@ return {
       end
 
       -- Setup and Admin user by default if ENV var is set
-      local password = os.getenv("KONG_PASSWORD") or
-                 os.getenv("KONG_RBAC_INITIAL_ADMIN_PASS")
+      local password = os.getenv("KONG_PASSWORD")
       if password then
       -- an old migration in 0.32 (the migration is deleted)
       -- could have already created a kong_admin user, do not overwrite
