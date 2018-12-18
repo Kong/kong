@@ -654,7 +654,16 @@ local function load(opts)
 
   elseif options.multipart and find(content_type_lower, "multipart/form-data", 1, true) == 1 then
     if options.request and options.request.params_post then
-      args.post = decode(options.request.params_post, options.schema)
+      local pargs = {}
+      for k, v in pairs(options.request.params_post) do
+        if type(v) == "table" and v.name and v.content then
+          pargs[k] = v.content
+        else
+          pargs[k] = v
+        end
+      end
+
+      args.post = decode(pargs, options.schema)
 
     else
       local pargs, err = parse_multipart(options, content_type)
