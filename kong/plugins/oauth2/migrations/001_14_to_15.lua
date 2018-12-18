@@ -127,19 +127,21 @@ return {
         end
 
         for _, row in ipairs(rows) do
-          local uris = cjson.decode(row.redirect_uri)
-          local buffer = {}
+          if row.redirect_uri then
+            local uris = cjson.decode(row.redirect_uri)
+            local buffer = {}
 
-          for i, uri in ipairs(uris) do
-            buffer[i] = "'" .. uri .. "'"
+            for i, uri in ipairs(uris) do
+              buffer[i] = "'" .. uri .. "'"
+            end
+
+            local q = string.format([[
+                        UPDATE oauth2_credentials
+                        SET redirect_uris = {%s} WHERE id = %s
+                      ]], table.concat(buffer, ","), row.id)
+
+            assert(connector:query(q))
           end
-
-          local q = string.format([[
-                      UPDATE oauth2_credentials
-                      SET redirect_uris = {%s} WHERE id = %s
-                    ]], table.concat(buffer, ","), row.id)
-
-          assert(connector:query(q))
         end
       end
 
