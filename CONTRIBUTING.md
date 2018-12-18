@@ -182,9 +182,10 @@ If you are asked to update your patch by a reviewer, please do so! Remember:
 you are probably the one in need of it. You must be prepared to apply changes
 to it if necessary.
 
-If your Pull Request was accepted, congratulations! You are now an official
-contributor of Kong. Get in touch with us to receive your very own
-[Contributor T-shirt](#contributor-t-shirt)!
+If your Pull Request was accepted and fixes a bug, adds functionality, or
+makes it significantly easier to use or understand Kong, congratulations!
+You are now an official contributor to Kong. Get in touch with us to receive
+your very own [Contributor T-shirt](#contributor-t-shirt)!
 
 Your change will be included in the subsequent release Changelog, and we will
 not forget to include your name if you are an external contributor. :wink:
@@ -502,10 +503,11 @@ language you are using. :smile:
 
 ### Contributor T-shirt
 
-If your Pull Request to [Kong/kong](https://github.com/Kong/kong) was accepted,
-congratulations, you are eligible to receive the very special Contributor
-T-shirt! Go ahead and fill out the [Contributors Submissions
-form](https://goo.gl/forms/5w6mxLaE4tz2YM0L2).
+If your Pull Request to [Kong/kong](https://github.com/Kong/kong) was
+accepted, and it fixes a bug, adds functionality, or makes it significantly
+easier to use or understand Kong, congratulations! You are eligible to
+receive the very special Contributor T-shirt! Go ahead and fill out the
+[Contributors Submissions form](https://goo.gl/forms/5w6mxLaE4tz2YM0L2).
 
 Proudly wear your T-shirt and show it to us by tagging
 [@thekonginc](https://twitter.com/thekonginc) on Twitter!

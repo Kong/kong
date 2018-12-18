@@ -240,7 +240,7 @@ local function post_collection_endpoint(schema, foreign_schema, foreign_field_na
     if post_process then
       entity, _, err_t = post_process(entity)
       if err_t then
-        handle_error(err_t)
+        return handle_error(err_t)
       end
     end
 

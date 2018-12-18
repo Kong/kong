@@ -1196,7 +1196,7 @@ function _M.new(connector, schema, errors)
     update_args_names[i] = update_names[i]
   end
 
-  local create_count = fields_count + 1
+  local create_count = fields_count
 
   local cache_key_escaped
   local cache_key_index
@@ -1215,8 +1215,8 @@ function _M.new(connector, schema, errors)
       field_type_to_postgres_type({ type = "string" }),
     }
 
-    create_expressions[create_count] = concat(create_expression)
     create_count = create_count + 1
+    create_expressions[create_count] = concat(create_expression)
   end
 
   local ttl_escaped
@@ -1236,6 +1236,7 @@ function _M.new(connector, schema, errors)
       field_type_to_postgres_type({ timestamp = true }),
     }
 
+    create_count = create_count + 1
     create_expressions[create_count] = concat(create_expression)
   end
 

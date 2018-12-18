@@ -76,13 +76,12 @@ for _, strategy in helpers.each_strategy() do
     describe(fmt("#flaky Plugin: rate-limiting (access) with policy: %s [#%s]", policy, strategy), function()
       local bp
       local db
-      local dao
 
       lazy_setup(function()
         helpers.kill_all()
         flush_redis()
 
-        bp, db, dao = helpers.get_db_utils(strategy)
+        bp, db = helpers.get_db_utils(strategy)
 
         local consumer1 = bp.consumers:insert {
           custom_id = "provider_123",
@@ -380,6 +379,7 @@ for _, strategy in helpers.each_strategy() do
             local json = cjson.decode(body)
             assert.same({ message = "API rate limit exceeded" }, json)
           end)
+
           it("blocks if the only rate-limiting plugin existing is per consumer and not per API", function()
             for i = 1, 6 do
               local res = GET("/status/200?apikey=apikey122", {
@@ -418,7 +418,6 @@ for _, strategy in helpers.each_strategy() do
             helpers.kill_all()
 
             assert(db:truncate())
-            dao:truncate_tables()
 
             local route1 = bp.routes:insert {
               hosts = { "failtest1.com" },
@@ -459,7 +458,7 @@ for _, strategy in helpers.each_strategy() do
             assert.are.same(5, tonumber(res.headers["x-ratelimit-remaining-minute"]))
 
             -- Simulate an error on the database
-            assert(dao.db:drop_table("ratelimiting_metrics"))
+            assert(db.connector:query("DROP TABLE ratelimiting_metrics"))
 
             -- Make another request
             local _, body = GET("/status/200", {
@@ -470,8 +469,9 @@ for _, strategy in helpers.each_strategy() do
             assert.same({ message = "An unexpected error occurred" }, json)
 
             db:reset()
-            bp, db, dao = helpers.get_db_utils(strategy)
+            bp, db = helpers.get_db_utils(strategy)
           end)
+
           it("keeps working if an error occurs", function()
             local res = GET("/status/200", {
               headers = { Host = "failtest2.com" },
@@ -481,7 +481,7 @@ for _, strategy in helpers.each_strategy() do
             assert.are.same(5, tonumber(res.headers["x-ratelimit-remaining-minute"]))
 
             -- Simulate an error on the database
-            assert(dao.db:drop_table("ratelimiting_metrics"))
+            assert(db.connector:query("DROP TABLE ratelimiting_metrics"))
 
             -- Make another request
             local res = GET("/status/200", {
@@ -492,7 +492,7 @@ for _, strategy in helpers.each_strategy() do
             assert.falsy(res.headers["x-ratelimit-remaining-minute"])
 
             db:reset()
-            bp, db, dao = helpers.get_db_utils(strategy)
+            bp, db = helpers.get_db_utils(strategy)
           end)
         end)
 
@@ -503,7 +503,6 @@ for _, strategy in helpers.each_strategy() do
             helpers.kill_all()
 
             assert(db:truncate())
-            dao:truncate_tables()
 
             local service1 = bp.services:insert()
 
@@ -552,6 +551,7 @@ for _, strategy in helpers.each_strategy() do
             local json = cjson.decode(body)
             assert.same({ message = "An unexpected error occurred" }, json)
           end)
+
           it("keeps working if an error occurs", function()
             local res = GET("/status/200", {
               headers = { Host = "failtest4.com" },
@@ -594,7 +594,7 @@ for _, strategy in helpers.each_strategy() do
           }))
         end)
 
-        describe("expires a counter", function()
+        it("expires a counter", function()
           local res = GET("/status/200", {
             headers = { Host = "expire1.com" },
           }, 200)

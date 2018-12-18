@@ -418,11 +418,7 @@ local function generate_foreign_key_methods(schema)
           return nil, err, err_t
         end
 
-        if rbw_entity then
-          self:post_crud_event("update", rbw_entity)
-        end
-
-        self:post_crud_event("update", row)
+        self:post_crud_event("update", row, rbw_entity)
 
         return row
       end
@@ -758,11 +754,7 @@ function DAO:update(primary_key, entity, options)
     return nil, err, err_t
   end
 
-  if rbw_entity then
-    self:post_crud_event("update", rbw_entity)
-  end
-
-  self:post_crud_event("update", row)
+  self:post_crud_event("update", row, rbw_entity)
 
   return row
 end
@@ -932,12 +924,13 @@ function DAO:row_to_entity(row, options)
 end
 
 
-function DAO:post_crud_event(operation, entity)
+function DAO:post_crud_event(operation, entity, old_entity)
   if self.events then
     local _, err = self.events.post_local("dao:crud", operation, {
-      operation = operation,
-      schema    = self.schema,
-      entity    = entity,
+      operation  = operation,
+      schema     = self.schema,
+      entity     = entity,
+      old_entity = old_entity,
     })
     if err then
       log(ERR, "[db] failed to propagate CRUD operation: ", err)

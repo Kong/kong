@@ -36,6 +36,7 @@ local unpack      = unpack
 
 
 local ERR         = ngx.ERR
+local WARN        = ngx.WARN
 local DEBUG       = ngx.DEBUG
 
 
@@ -45,7 +46,7 @@ local EMPTY_T = {}
 
 local get_router, build_router
 local server_header = meta._SERVER_TOKENS
-
+local _set_check_router_rebuild
 
 local build_router_semaphore
 
@@ -71,7 +72,7 @@ do
   build_router = function(db, version)
     local routes, i = {}, 0
 
-    for route, err in db.routes:each() do
+    for route, err in db.routes:each(1000) do
       if err then
         return nil, "could not load routes: " .. err
       end
@@ -131,11 +132,45 @@ do
   end
 
 
-  get_router = function()
-    local cache = singletons.cache
+  local function check_router_rebuild()
+    -- we might not need to rebuild the router (if we were not
+    -- the first request in this process to enter this code path)
+    -- check again and rebuild only if necessary
+    local version, err = singletons.cache:get("router:version",
+                                              CACHE_ROUTER_OPTS,
+                                              utils.uuid)
+    if err then
+      log(ngx.CRIT, "could not ensure router is up to date: ", err)
+      return nil, err
+    end
 
-    local version, err = cache:get("router:version", CACHE_ROUTER_OPTS,
-                                   utils.uuid)
+    if version == router_version then
+      return true
+    end
+
+    -- router needs to be rebuilt in this worker
+    log(DEBUG, "rebuilding router")
+
+    local ok, err = build_router(singletons.db, version)
+    if not ok then
+      log(ngx.CRIT, "could not rebuild router: ", err)
+      return nil, err
+    end
+
+    return true
+  end
+
+
+  -- for unit-testing purposes only
+  _set_check_router_rebuild = function(f)
+    check_router_rebuild = f
+  end
+
+
+  get_router = function()
+    local version, err = singletons.cache:get("router:version",
+                                              CACHE_ROUTER_OPTS,
+                                              utils.uuid)
     if err then
       log(ngx.CRIT, "could not ensure router is up to date: ", err)
       return nil, err
@@ -162,35 +197,30 @@ do
       timeout = singletons.configuration.pg_timeout / 1000
     end
 
-    local ok, err = build_router_semaphore:wait(timeout)
-    if not ok then
-      return nil, "error attempting to acquire build_router lock: " .. err
+    -- acquire lock
+    local lok, err = build_router_semaphore:wait(timeout)
+    if not lok then
+      if err ~= "timeout" then
+        return nil, "error attempting to acquire build_router lock: " .. err
+      end
+
+      log(WARN, "bypassing build_router lock: timeout")
     end
 
-    -- lock acquired but we might not need to rebuild the router (if we
-    -- were not the first request in this process to enter this code path)
-    -- check again and rebuild if necessary
+    local pok, ok, err = pcall(check_router_rebuild)
 
-    version, err = cache:get("router:version", CACHE_ROUTER_OPTS, utils.uuid)
-    if err then
-      log(ngx.CRIT, "could not ensure router is up to date: ", err)
+    if lok then
+      -- release lock
+      build_router_semaphore:post(1)
+    end
+
+    if not pok then
+      return nil, ok
+    end
+
+    if not ok then
       return nil, err
     end
-
-    if version == router_version then
-      return router
-    end
-
-    -- router needs to be rebuilt in this worker
-    log(DEBUG, "rebuilding router")
-
-    local ok, err = build_router(singletons.db, version)
-    if not ok then
-      log(ngx.CRIT, "could not rebuild router: ", err)
-      return nil, err
-    end
-
-    build_router_semaphore:post(1)
 
     return router
   end
@@ -284,6 +314,9 @@ end
 -- before or after the plugins
 return {
   build_router     = build_router,
+
+  -- exported for unit-testing purposes only
+  _set_check_router_rebuild = _set_check_router_rebuild,
 
   init_worker = {
     before = function()
