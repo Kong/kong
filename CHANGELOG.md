@@ -107,6 +107,9 @@ https://docs.konghq.com/
     Use `kong.ip` from the PDK instead.
   - The `kong.tools.public` module was removed.
     Use the various equivalent features from the PDK instead.
+  - The `kong.tools.responses` module was removed.
+    Please use `kong.response.exit` from the PDK instead. You might
+    want to use `kong.log.err` to log internal server errors as well.
   - The `kong.api.crud_helpers` module was removed (deprecated since the
     introduction of the new DAO  in 0.13.0). Use `kong.api.endpoints` instead if
     you need to customize the auto-generated endpoints.
