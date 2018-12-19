@@ -200,6 +200,14 @@ server {
     gzip on;
     gzip_types text/plain text/css application/json application/javascript;
 
+    location ~* \.(jpg|jpeg|png|gif|ico|css|ttf|js)$ {
+        root gui;
+
+        expires 90d;
+        add_header Cache-Control 'public';
+        etag off;
+    }
+
     location / {
         root gui;
 
@@ -214,6 +222,11 @@ server {
 
     location /robots.txt {
         return 200 'User-agent: *\nDisallow: /';
+    }
+
+    location = /kconfig.js {
+        root gui;
+        expires -1;
     }
 }
 > end
@@ -258,7 +271,7 @@ server {
 
     location ~* \.(jpg|jpeg|png|gif|ico|css|ttf|js)$ {
         root portal;
-        
+
         expires 90d;
         add_header Cache-Control 'public';
         etag off;
