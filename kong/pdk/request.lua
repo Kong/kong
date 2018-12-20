@@ -289,7 +289,7 @@ local function new(self)
   -- Returns the path, including the querystring if any. No
   -- transformations/normalizations are done.
   --
-  -- @function kong.request.get_path_with_query()
+  -- @function kong.request.get_path_with_query
   -- @phases rewrite, access, header_filter, body_filter, log, admin_api
   -- @treturn string the path with the querystring
   -- @usage
