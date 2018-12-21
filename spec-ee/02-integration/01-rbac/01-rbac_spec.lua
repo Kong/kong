@@ -549,32 +549,32 @@ describe("(#" .. kong_conf.database .. ")", function()
           ))
         end)
         it("(hierarchical path)", function()
-          local map = { foo = { ["/apis/test/plugins/"] = 0x1 } }
+          local map = { foo = { ["/services/test/plugins/"] = 0x1 } }
           assert.equals(true, rbac.authorize_request_endpoint(
             map,
             "foo",
-            "/apis/test/plugins/",
-            "_workspace/apis/:api_name/plugins/",
+            "/services/test/plugins/",
+            "_workspace/services/:services_name/plugins/",
             rbac.actions_bitfields.read
           ))
         end)
         it("(hierarchical path with wildcard)", function()
-          local map = { foo = { ["/apis/*/plugins"] = 0x1 } }
+          local map = { foo = { ["/services/*/plugins"] = 0x1 } }
           assert.equals(true, rbac.authorize_request_endpoint(
             map,
             "foo",
-            "/apis/test/plugins",
-            "/apis/:api_name/plugins",
+            "/services/test/plugins",
+            "/services/:service_name/plugins",
             rbac.actions_bitfields.read
           ))
         end)
         pending("(hierarchical path with wildcard ending with slash)", function()
-          local map = { foo = { ["/apis/*/plugins/"] = 0x1 } }
+          local map = { foo = { ["/services/*/plugins/"] = 0x1 } }
           assert.equals(true, rbac.authorize_request_endpoint(
                           map,
                           "foo",
-                          "/apis/test/plugins/",
-                          "/apis/:api_name/plugins",
+                          "/services/test/plugins/",
+                          "/services/:service_name/plugins",
                           rbac.actions_bitfields.read))
         end)
         it("(negative override)", function()
@@ -1089,7 +1089,9 @@ describe("(#" .. kong_conf.database .. ")", function()
       local map = rbac.readable_entities_permissions({
         { id = role_id },
       })
-      assert.same({'create', 'read'}, map[entity_id].actions)
+      local res = map[entity_id].actions
+      table.sort(res)
+      assert.same({'create', 'read'}, res)
     end)
   end)
   describe("readable_endpoint_permissions", function()
@@ -1170,7 +1172,9 @@ describe("(#" .. kong_conf.database .. ")", function()
       local map = rbac.readable_endpoints_permissions({
         { id = role_id },
       })
-      assert.same({'create', 'read'}, map.foo["/foo/bar"].actions)
+      local res = map.foo["/foo/bar"].actions
+      table.sort(res)
+      assert.same({'create', 'read'}, res)
     end)
   end)
 end)
