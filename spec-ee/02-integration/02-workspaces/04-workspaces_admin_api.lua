@@ -1,25 +1,18 @@
 local dao_helpers = require "spec.02-integration.03-dao.helpers"
-local DAOFactory  = require "kong.dao.factory"
 local helpers     = require "spec.helpers"
 local cjson       = require "cjson"
 local utils       = require "kong.tools.utils"
 local workspaces  = require "kong.workspaces"
-local singletons  = require "kong.singletons"
 local init_files  = require "kong.portal.migrations.01_initial_files"
-local DB = require "kong.db"
 
 
 dao_helpers.for_each_dao(function(kong_config)
 
 describe("(#" .. kong_config.database .. ") Admin API workspaces", function()
-  local client, dao, _, db
+  local client, dao, db, bp
 
   setup(function()
-    _, db, dao = helpers.get_db_utils(kong_config.database)
-    dao = assert(DAOFactory.new(kong_config))
-    db = assert(DB.new(kong_config, kong_config.database))
-    singletons.dao = dao
-    dao:truncate_tables()
+    bp, db, dao = helpers.get_db_utils(kong_config.database)
 
     local portal_helper = require "kong.portal.dao_helpers"
     portal_helper.register_resources(dao)
@@ -373,32 +366,12 @@ describe("(#" .. kong_config.database .. ") Admin API workspaces", function()
       end)
 
       it("refuses to delete a non empty workspace", function()
-        local name = "blah"
+
+        local name = utils.uuid()
+        local ws = bp.workspaces:insert({name = name})
+        bp.services:insert_ws({}, ws)
 
         local res = assert(client:send {
-          method = "POST",
-          path = "/workspaces",
-          body = { name = name },
-          headers = {
-            ["Content-Type"] = "application/json",
-          }
-        })
-        assert.res_status(201, res)
-
-        res = assert(client:send {
-          method = "POST",
-          path   = "/" .. name .. "/services",
-          body = {
-            name = "foo",
-            host = "api.com",
-          },
-          headers = {
-            ["Content-Type"] = "application/json",
-          }
-        })
-        assert.res_status(201, res)
-
-        res = assert(client:send {
           method = "DELETE",
           path   = "/workspaces/" .. name,
         })
