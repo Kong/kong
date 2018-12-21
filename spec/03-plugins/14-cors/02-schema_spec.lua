@@ -1,36 +1,36 @@
-local validate_entity = require("kong.dao.schemas_validation").validate_entity
-local cors_schema     = require "kong.plugins.cors.schema"
-
+local schema_def = require "kong.plugins.cors.schema"
+local v = require("spec.helpers").validate_plugin_config_schema
 
 describe("cors schema", function()
   it("validates '*'", function()
-    local ok, err = validate_entity({ origins = { "*" } }, cors_schema)
+    local ok, err = v({ origins = { "*" } }, schema_def)
 
-    assert.True(ok)
-    assert.is_nil(err)
+    assert.truthy(ok)
+    assert.falsy(err)
   end)
 
   it("validates what looks like a domain", function()
-    local ok, err = validate_entity({ origins = { "example.com" } }, cors_schema)
+    local ok, err = v({ origins = { "example.com" } }, schema_def)
 
-    assert.True(ok)
-    assert.is_nil(err)
+    assert.truthy(ok)
+    assert.falsy(err)
   end)
 
   it("validates what looks like a regex", function()
-    local ok, err = validate_entity({ origins = { [[.*\.example(?:-foo)?\.com]] } }, cors_schema)
+    local ok, err = v({ origins = { [[.*\.example(?:-foo)?\.com]] } }, schema_def)
 
-    assert.True(ok)
-    assert.is_nil(err)
+    assert.truthy(ok)
+    assert.falsy(err)
   end)
 
   describe("errors", function()
     it("with invalid regex in origins", function()
       local mock_origins = { [[.*.example.com]], [[invalid_**regex]] }
-      local ok, err = validate_entity({ origins = mock_origins }, cors_schema)
+      local ok, err = v({ origins = mock_origins }, schema_def)
 
-      assert.False(ok)
-      assert.equals("origin '" .. mock_origins[2] .. "' is not a valid regex", err.origins)
+      assert.falsy(ok)
+      assert.equals("'invalid_**regex' is not a valid regex",
+                    err.config.origins)
     end)
   end)
 end)

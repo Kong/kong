@@ -6,24 +6,36 @@ local pl_file = require "pl.file"
 local pl_stringx = require "pl.stringx"
 
 
+local LOG_WAIT_TIMEOUT = 10
+
+
 for _, strategy in helpers.each_strategy() do
 
   describe("Plugins triggering [#" .. strategy .. "]", function()
     local proxy_client
     local db
-    local dao
     local bp
 
-    setup(function()
-      bp, db, dao = helpers.get_db_utils(strategy)
+    lazy_setup(function()
+      bp, db = helpers.get_db_utils(strategy, {
+        "apis",
+        "routes",
+        "services",
+        "plugins",
+        "consumers",
+        "keyauth_credentials",
+      }, {
+        "error-handler-log",
+        "error-generator-pre",
+      })
 
       local consumer1 = bp.consumers:insert {
         username = "consumer1"
       }
 
       bp.keyauth_credentials:insert {
-        key         = "secret1",
-        consumer_id = consumer1.id
+        key      = "secret1",
+        consumer = { id = consumer1.id },
       }
 
       local consumer2 = bp.consumers:insert {
@@ -31,8 +43,8 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.keyauth_credentials:insert {
-        key         = "secret2",
-        consumer_id = consumer2.id
+        key      = "secret2",
+        consumer = { id = consumer2.id },
       }
 
       local consumer3 = bp.consumers:insert {
@@ -72,20 +84,20 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.plugins:insert {
-        name       = "rate-limiting",
-        route_id   = route1.id,
-        service_id = service2.id,
-        config     = {
-          hour     = 2,
+        name    = "rate-limiting",
+        route   = { id = route1.id },
+        service = { id = service2.id },
+        config  = {
+          hour  = 2,
         },
       }
 
       -- Consumer Specific Configuration
       bp.plugins:insert {
-        name        = "rate-limiting",
-        consumer_id = consumer2.id,
-        config      = {
-          hour      = 3,
+        name     = "rate-limiting",
+        consumer = { id = consumer2.id },
+        config   = {
+          hour   = 3,
         },
       }
 
@@ -101,11 +113,11 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.plugins:insert {
-        name        = "rate-limiting",
-        route_id    = route2.id,
-        consumer_id = consumer2.id,
-        config      = {
-          hour      = 4,
+        name     = "rate-limiting",
+        route    = { id = route2.id },
+        consumer = { id = consumer2.id },
+        config   = {
+          hour   = 4,
         },
       }
 
@@ -125,17 +137,17 @@ for _, strategy in helpers.each_strategy() do
         config      = {
           anonymous = consumer3.id,
         },
-        route_id    = route3.id,
-        service_id  = service4.id,
+        route       = { id = route3.id },
+        service     = { id = service4.id },
       }
 
       bp.plugins:insert {
-        name        = "rate-limiting",
-        route_id    = route3.id,
-        service_id  = service4.id,
-        consumer_id = consumer3.id,
-        config      = {
-          hour      = 5,
+        name     = "rate-limiting",
+        route    = { id = route3.id },
+        service  = { id = service4.id },
+        consumer = { id = consumer3.id },
+        config   = {
+          hour   = 5,
         }
       }
 
@@ -147,7 +159,7 @@ for _, strategy in helpers.each_strategy() do
       proxy_client = helpers.proxy_client()
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       if proxy_client then proxy_client:close() end
       helpers.stop_kong()
     end)
@@ -214,7 +226,7 @@ for _, strategy in helpers.each_strategy() do
     describe("short-circuited requests", function()
       local FILE_LOG_PATH = os.tmpname()
 
-      setup(function()
+      lazy_setup(function()
         if proxy_client then
           proxy_client:close()
         end
@@ -223,8 +235,8 @@ for _, strategy in helpers.each_strategy() do
         db:truncate("routes")
         db:truncate("services")
         db:truncate("consumers")
-        dao:truncate_table("plugins")
-        dao:truncate_table("keyauth_credentials")
+        db:truncate("plugins")
+        db:truncate("keyauth_credentials")
 
         do
           local service = assert(bp.services:insert {
@@ -240,24 +252,24 @@ for _, strategy in helpers.each_strategy() do
           })
 
           -- plugin able to short-circuit a request
-          assert(dao.plugins:insert {
-            name   = "key-auth",
-            route_id = route.id,
+          assert(db.plugins:insert {
+            name  = "key-auth",
+            route = { id = route.id },
           })
 
           -- response/body filter plugin
-          assert(dao.plugins:insert {
+          assert(db.plugins:insert {
             name   = "dummy",
-            route_id = route.id,
+            route  = { id = route.id },
             config = {
               append_body = "appended from body filtering",
             }
           })
 
           -- log phase plugin
-          assert(dao.plugins:insert {
-            name = "file-log",
-            route_id = route.id,
+          assert(db.plugins:insert {
+            name   = "file-log",
+            route  = { id = route.id },
             config = {
               path = FILE_LOG_PATH,
             },
@@ -279,18 +291,18 @@ for _, strategy in helpers.each_strategy() do
           })
 
           -- plugin that produces an error
-          assert(dao.plugins:insert {
-            name = "dummy",
-            route_id = route.id,
+          assert(db.plugins:insert {
+            name   = "dummy",
+            route  = { id = route.id },
             config = {
               append_body = "obtained even with error",
             }
           })
 
           -- log phase plugin
-          assert(dao.plugins:insert {
-            name = "file-log",
-            route_id = route.id,
+          assert(db.plugins:insert {
+            name   = "file-log",
+            route  = { id = route.id },
             config = {
               path = FILE_LOG_PATH,
             },
@@ -305,7 +317,7 @@ for _, strategy in helpers.each_strategy() do
         proxy_client = helpers.proxy_client()
       end)
 
-      teardown(function()
+      lazy_teardown(function()
         if proxy_client then
           proxy_client:close()
         end
@@ -338,7 +350,7 @@ for _, strategy in helpers.each_strategy() do
 
         helpers.wait_until(function()
           return pl_path.exists(FILE_LOG_PATH) and pl_path.getsize(FILE_LOG_PATH) > 0
-        end, 3)
+        end, LOG_WAIT_TIMEOUT)
 
         local log = pl_file.read(FILE_LOG_PATH)
         local log_message = cjson.decode(pl_stringx.strip(log))
@@ -407,7 +419,7 @@ for _, strategy in helpers.each_strategy() do
         -- access phase got a chance to inject the logging plugin
         helpers.wait_until(function()
           return pl_path.exists(FILE_LOG_PATH) and pl_path.getsize(FILE_LOG_PATH) > 0
-        end, 3)
+        end, LOG_WAIT_TIMEOUT)
 
         local log = pl_file.read(FILE_LOG_PATH)
         local log_message = cjson.decode(pl_stringx.strip(log))
@@ -431,7 +443,7 @@ for _, strategy in helpers.each_strategy() do
       -- tries to evaluate is the `schema.no_consumer` flag is set.
       -- Since the reports plugin has no `schema`, this indexing fails.
 
-      setup(function()
+      lazy_setup(function()
         if proxy_client then
           proxy_client:close()
         end
@@ -441,8 +453,8 @@ for _, strategy in helpers.each_strategy() do
         db:truncate("routes")
         db:truncate("services")
         db:truncate("consumers")
-        dao:truncate_table("plugins")
-        dao:truncate_table("keyauth_credentials")
+        db:truncate("plugins")
+        db:truncate("keyauth_credentials")
 
         local service = bp.services:insert {
           name = "example",
@@ -455,9 +467,9 @@ for _, strategy in helpers.each_strategy() do
         }
 
         bp.plugins:insert {
-          name       = "key-auth",
-          route_id   = route.id,
-          service_id = service.id,
+          name    = "key-auth",
+          route   = { id = route.id },
+          service = { id = service.id },
         }
 
         local consumer = bp.consumers:insert {
@@ -465,8 +477,8 @@ for _, strategy in helpers.each_strategy() do
         }
 
         bp.keyauth_credentials:insert {
-          key         = "abcd",
-          consumer_id = consumer.id,
+          key      = "abcd",
+          consumer = { id = consumer.id },
         }
 
         assert(helpers.start_kong {
@@ -478,7 +490,7 @@ for _, strategy in helpers.each_strategy() do
         proxy_client = helpers.proxy_client()
       end)
 
-      teardown(function()
+      lazy_teardown(function()
         if proxy_client then
           proxy_client:close()
         end
@@ -512,12 +524,12 @@ for _, strategy in helpers.each_strategy() do
       local FILE_LOG_PATH = os.tmpname()
 
 
-      setup(function()
+      lazy_setup(function()
         db:truncate("routes")
         db:truncate("services")
         db:truncate("consumers")
-        dao:truncate_table("plugins")
-        dao:truncate_table("keyauth_credentials")
+        db:truncate("plugins")
+        db:truncate("keyauth_credentials")
 
         do
           -- service to mock HTTP 502
@@ -534,10 +546,10 @@ for _, strategy in helpers.each_strategy() do
           }
 
           bp.plugins:insert {
-            name = "file-log",
-            service_id = mock_service.id,
-            config = {
-              path = FILE_LOG_PATH,
+            name     = "file-log",
+            service  = { id = mock_service.id },
+            config   = {
+              path   = FILE_LOG_PATH,
               reopen = true,
             }
           }
@@ -556,10 +568,10 @@ for _, strategy in helpers.each_strategy() do
           }
 
           bp.plugins:insert {
-            name = "file-log",
-            service_id = mock_service.id,
-            config = {
-              path = FILE_LOG_PATH,
+            name     = "file-log",
+            service  = { id = mock_service.id },
+            config   = {
+              path   = FILE_LOG_PATH,
               reopen = true,
             }
           }
@@ -580,10 +592,10 @@ for _, strategy in helpers.each_strategy() do
           }
 
           bp.plugins:insert {
-            name = "file-log",
-            service_id = httpbin_service.id,
-            config = {
-              path = FILE_LOG_PATH,
+            name     = "file-log",
+            service  = { id = httpbin_service.id },
+            config   = {
+              path   = FILE_LOG_PATH,
               reopen = true,
             }
           }
@@ -624,7 +636,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
 
-      teardown(function()
+      lazy_teardown(function()
         helpers.stop_kong("servroot2")
         helpers.stop_kong()
       end)
@@ -664,7 +676,7 @@ for _, strategy in helpers.each_strategy() do
         helpers.wait_until(function()
           return pl_path.exists(FILE_LOG_PATH)
                  and pl_path.getsize(FILE_LOG_PATH) > 0
-        end, 3)
+        end, LOG_WAIT_TIMEOUT)
 
         local log = pl_file.read(FILE_LOG_PATH)
         local log_message = cjson.decode(pl_stringx.strip(log))
@@ -700,7 +712,7 @@ for _, strategy in helpers.each_strategy() do
         helpers.wait_until(function()
           return pl_path.exists(FILE_LOG_PATH)
                  and pl_path.getsize(FILE_LOG_PATH) > 0
-        end, 3)
+        end, LOG_WAIT_TIMEOUT)
 
         local log = pl_file.read(FILE_LOG_PATH)
         local log_message = cjson.decode(pl_stringx.strip(log))
@@ -732,7 +744,7 @@ for _, strategy in helpers.each_strategy() do
         helpers.wait_until(function()
           return pl_path.exists(FILE_LOG_PATH)
                  and pl_path.getsize(FILE_LOG_PATH) > 0
-        end, 3)
+        end, LOG_WAIT_TIMEOUT)
 
         local log = pl_file.read(FILE_LOG_PATH)
         local log_message = cjson.decode(pl_stringx.strip(log))
@@ -761,7 +773,7 @@ for _, strategy in helpers.each_strategy() do
         helpers.wait_until(function()
           return pl_path.exists(FILE_LOG_PATH)
                  and pl_path.getsize(FILE_LOG_PATH) > 0
-        end, 3)
+        end, LOG_WAIT_TIMEOUT)
 
         local log = pl_file.read(FILE_LOG_PATH)
         local log_message = cjson.decode(pl_stringx.strip(log))
@@ -795,7 +807,7 @@ for _, strategy in helpers.each_strategy() do
         helpers.wait_until(function()
           return pl_path.exists(FILE_LOG_PATH)
                  and pl_path.getsize(FILE_LOG_PATH) > 0
-        end, 3)
+        end, LOG_WAIT_TIMEOUT)
 
         local log = pl_file.read(FILE_LOG_PATH)
         local log_message = cjson.decode(pl_stringx.strip(log))
@@ -828,7 +840,7 @@ for _, strategy in helpers.each_strategy() do
         helpers.wait_until(function()
           return pl_path.exists(FILE_LOG_PATH)
                  and pl_path.getsize(FILE_LOG_PATH) > 0
-        end, 10)
+        end, LOG_WAIT_TIMEOUT)
 
         local log = pl_file.read(FILE_LOG_PATH)
         local log_message = cjson.decode(pl_stringx.strip(log))
@@ -866,7 +878,7 @@ for _, strategy in helpers.each_strategy() do
         helpers.wait_until(function()
           return pl_path.exists(FILE_LOG_PATH)
                  and pl_path.getsize(FILE_LOG_PATH) > 0
-        end, 10)
+        end, LOG_WAIT_TIMEOUT)
 
         local log = pl_file.read(FILE_LOG_PATH)
         local log_message = cjson.decode(pl_stringx.strip(log))
@@ -898,7 +910,7 @@ for _, strategy in helpers.each_strategy() do
         helpers.wait_until(function()
           return pl_path.exists(FILE_LOG_PATH)
                  and pl_path.getsize(FILE_LOG_PATH) > 0
-        end, 10)
+        end, LOG_WAIT_TIMEOUT)
 
         local log = pl_file.read(FILE_LOG_PATH)
         local log_message = cjson.decode(pl_stringx.strip(log))
@@ -935,7 +947,7 @@ for _, strategy in helpers.each_strategy() do
         helpers.wait_until(function()
           return pl_path.exists(FILE_LOG_PATH)
                  and pl_path.getsize(FILE_LOG_PATH) > 0
-        end, 10)
+        end, LOG_WAIT_TIMEOUT)
 
         local log = pl_file.read(FILE_LOG_PATH)
         local log_message = cjson.decode(pl_stringx.strip(log))
@@ -986,6 +998,124 @@ for _, strategy in helpers.each_strategy() do
         })
         assert.res_status(504, res) -- Gateway Timeout
         assert.equal("timeout", res.headers["Log-Plugin-Service-Matched"])
+      end)
+    end)
+
+    describe("plugin with run_on", function()
+      lazy_setup(function()
+        if proxy_client then
+          proxy_client:close()
+        end
+
+        helpers.stop_kong()
+
+        db:truncate("routes")
+        db:truncate("services")
+        db:truncate("plugins")
+
+        do
+          local service = assert(bp.services:insert {
+            name = "example",
+            host = helpers.mock_upstream_host,
+            port = helpers.mock_upstream_port,
+          })
+
+          local route1 = assert(db.routes:insert {
+            hosts     = { "run-on-first.org" },
+            protocols = { "http" },
+            service   = service,
+          })
+
+          assert(bp.plugins:insert {
+            name = "error-generator-pre",
+            route = { id = route1.id },
+            config = {
+              access = true,
+            },
+            run_on = "first",
+          })
+
+          local route2 = assert(db.routes:insert {
+            hosts     = { "run-on-second.org" },
+            protocols = { "http" },
+            service   = service,
+          })
+
+          assert(bp.plugins:insert {
+            name = "error-generator-pre",
+            route = { id = route2.id },
+            config = {
+              access = true,
+            },
+            run_on = "second",
+          })
+
+          local route3 = assert(db.routes:insert {
+            hosts     = { "run-on-all.org" },
+            protocols = { "http" },
+            service   = service,
+          })
+
+          assert(bp.plugins:insert {
+            name = "error-generator-pre",
+            route = { id = route3.id },
+            config = {
+              access = true,
+            },
+            run_on = "all",
+          })
+        end
+
+        assert(helpers.start_kong {
+          database = strategy,
+          nginx_conf = "spec/fixtures/custom_nginx.template",
+        })
+
+        proxy_client = helpers.proxy_client()
+      end)
+
+      lazy_teardown(function()
+        if proxy_client then
+          proxy_client:close()
+        end
+
+        helpers.stop_kong()
+      end)
+
+      it("= first does get executed when running on first", function()
+        local res = assert(proxy_client:send {
+          method = "GET",
+          path = "/status/200",
+          headers = {
+            ["Host"] = "run-on-first.org",
+          }
+        })
+
+        assert.res_status(500, res)
+      end)
+
+      it("= second does not get executed when running on first", function()
+        local res = assert(proxy_client:send {
+          method = "GET",
+          path = "/status/200",
+          headers = {
+            ["Host"] = "run-on-second.org",
+          }
+        })
+
+        assert.res_status(200, res)
+      end)
+
+      it("= all does get executed when running on first", function()
+        local res = assert(proxy_client:send {
+          method = "GET",
+          path = "/status/200",
+          headers = {
+            ["Host"] = "run-on-all.org",
+          }
+        })
+
+        assert.res_status(500, res)
       end)
     end)
   end)

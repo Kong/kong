@@ -11,7 +11,7 @@ local tablex = require "pl.tablex"
 local utils = require "kong.tools.utils"
 local log = require "kong.cmd.utils.log"
 local env = require "kong.cmd.utils.env"
-local ip = require "kong.tools.ip"
+local ip = require "resty.mediador.ip"
 
 
 local fmt = string.format
@@ -50,6 +50,7 @@ local PREFIX_PATHS = {
   admin_acc_logs = {"logs", "admin_access.log"},
   nginx_conf = {"nginx.conf"},
   nginx_kong_conf = {"nginx-kong.conf"},
+  nginx_kong_stream_conf = {"nginx-kong-stream.conf"},
 
   kong_env = {".kong_env"},
 
@@ -59,11 +60,9 @@ local PREFIX_PATHS = {
 
   client_ssl_cert_default = {"ssl", "kong-default.crt"},
   client_ssl_cert_key_default = {"ssl", "kong-default.key"},
-  client_ssl_cert_csr_default = {"ssl", "kong-default.csr"},
 
   admin_ssl_cert_default = {"ssl", "admin-kong-default.crt"},
   admin_ssl_cert_key_default = {"ssl", "admin-kong-default.key"},
-  admin_ssl_cert_csr_default = {"ssl", "admin-kong-default.csr"},
 }
 
 
@@ -82,6 +81,8 @@ local CONF_INFERENCES = {
   -- forced string inferences (or else are retrieved as numbers)
   proxy_listen = { typ = "array" },
   admin_listen = { typ = "array" },
+  stream_listen = { typ = "array" },
+  origins = { typ = "array" },
   db_update_frequency = {  typ = "number"  },
   db_update_propagation = {  typ = "number"  },
   db_cache_ttl = {  typ = "number"  },
@@ -105,6 +106,7 @@ local CONF_INFERENCES = {
 
   database = { enum = { "postgres", "cassandra" }  },
   pg_port = { typ = "number" },
+  pg_timeout = { typ = "number" },
   pg_password = { typ = "string" },
   pg_ssl = { typ = "boolean" },
   pg_ssl_verify = { typ = "boolean" },
@@ -170,7 +172,6 @@ local CONF_INFERENCES = {
                 }
               },
   plugins = { typ = "array" },
-  custom_plugins = { typ = "array" },
   anonymous_reports = { typ = "boolean" },
   nginx_daemon = { typ = "ngx_boolean" },
   nginx_optimizations = { typ = "boolean" },
@@ -425,6 +426,46 @@ local function check_and_infer(conf)
     end
   end
 
+  -- Validate origins
+  local seen_origins = {}
+
+  for i, v in ipairs(conf.origins) do
+    local from_scheme, from_host_port, to_host_port =
+      v:match("^(%a[%w+.-]*)://([^=]+:[%d]+)=%a[%w+.-]*://([^/]+)$")
+
+    if not from_scheme then
+      errors[#errors + 1] = "an origin must be of the form " ..
+                            "'from_scheme://from_host:from_port=" ..
+                            "to_scheme://to_host:to_port', got '" ..
+                            v .. "'"
+
+    else
+      -- Validate 'from'
+      local from_authority, err =
+        utils.format_host(utils.normalize_ip(from_host_port))
+      if not from_authority then
+        errors[#errors + 1] = "failed to parse authority: " .. err ..
+                              "(" .. from_host_port .. ")"
+
+      else
+        -- Check for duplicates
+        local from_origin = from_scheme:lower() .. "://" .. from_authority
+
+        if seen_origins[from_origin] then
+          errors[#errors + 1] = "duplicate origin (" .. from_origin .. ")"
+        end
+
+        seen_origins[from_origin] = true
+      end
+
+      -- Validate 'to'
+      local to, err = utils.normalize_ip(to_host_port)
+      if not to then
+        errors[#errors + 1] = "failed to parse authority (" .. err .. ")"
+      end
+    end
+  end
+
   return #errors == 0, errors[1], errors
 end
 
@@ -497,15 +538,19 @@ end
 
 
 -- Parses a listener address line.
--- Supports multiple (comma separated) addresses, with 'ssl' and 'http2' flags.
+-- Supports multiple (comma separated) addresses, with flags such as
+-- 'ssl' and 'http2' added to the end.
 -- Pre- and postfixed whitespace as well as comma's are allowed.
 -- "off" as a first entry will return empty tables.
--- @value list of entries (strings)
--- @return list of parsed entries, each entry having fields `ip` (normalized string)
--- `port` (number), `ssl` (bool), `http2` (bool), `listener` (string, full listener)
-local function parse_listeners(values)
+-- @param values list of entries (strings)
+-- @param flags array of strings listing accepted flags.
+-- @return list of parsed entries, each entry having fields
+-- `listener` (string, full listener), `ip` (normalized string)
+-- `port` (number), and a boolean entry for each flag added to the entry
+-- (e.g. `ssl`).
+local function parse_listeners(values, flags)
+  assert(type(flags) == "table")
   local list = {}
-  local flags = { "ssl", "http2", "proxy_protocol" }
   local usage = "must be of form: [off] | <ip>:<port> [" ..
                 concat(flags, "] [") .. "], [... next entry ...]"
 
@@ -749,22 +794,6 @@ local function load(path, custom_conf)
       end
     end
 
-    if conf.custom_plugins and #conf.custom_plugins > 0 then
-      local warned
-
-      for i = 1, #conf.custom_plugins do
-        local plugin_name = pl_stringx.strip(conf.custom_plugins[i])
-
-        if not plugins[plugin_name] and not warned then
-          log.warn("the 'custom_plugins' configuration property is " ..
-                   "deprecated, use 'plugins' instead")
-          warned = true
-        end
-
-        plugins[plugin_name] = true
-      end
-    end
-
     conf.loaded_plugins = setmetatable(plugins, _nop_tostring_mt)
   end
 
@@ -804,8 +833,11 @@ local function load(path, custom_conf)
   end
 
   do
+    local http_flags = { "ssl", "http2", "proxy_protocol", "transparent" }
+    local stream_flags = { "proxy_protocol", "transparent" }
+
     -- extract ports/listen ips
-    conf.proxy_listeners, err = parse_listeners(conf.proxy_listen)
+    conf.proxy_listeners, err = parse_listeners(conf.proxy_listen, http_flags)
     if err then
       return nil, "proxy_listen " .. err
     end
@@ -820,7 +852,14 @@ local function load(path, custom_conf)
       end
     end
 
-    conf.admin_listeners, err = parse_listeners(conf.admin_listen)
+    conf.stream_listeners, err = parse_listeners(conf.stream_listen, stream_flags)
+    if err then
+      return nil, "stream_listen " .. err
+    end
+
+    setmetatable(conf.stream_listeners, _nop_tostring_mt)
+
+    conf.admin_listeners, err = parse_listeners(conf.admin_listen, http_flags)
     if err then
       return nil, "admin_listen " .. err
     end
@@ -833,6 +872,15 @@ local function load(path, custom_conf)
         conf.admin_ssl_enabled = true
         break
       end
+    end
+  end
+
+  do
+    -- is ssl_preread compiled in OpenResty?
+    conf.ssl_preread_enabled = false
+    local nginx_configuration = ngx.config.nginx_configure()
+    if nginx_configuration:find("with-stream_ssl_preread_module", 1, true) then
+      conf.ssl_preread_enabled = true
     end
   end
 

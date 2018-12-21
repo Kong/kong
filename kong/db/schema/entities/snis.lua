@@ -9,7 +9,7 @@ return {
   fields = {
     { id           = typedefs.uuid, },
     { name         = { type = "string", required = true, unique = true }, },
-    { created_at   = { type = "integer", timestamp = true, auto = true }, },
+    { created_at   = typedefs.auto_timestamp_s },
     { certificate  = { type = "foreign", reference = "certificates", required = true }, },
   },
 

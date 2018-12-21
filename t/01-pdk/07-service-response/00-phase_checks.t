@@ -40,6 +40,7 @@ qq{
                 header_filter = true,
                 body_filter   = true,
                 log           = true,
+                admin_api     = "forced false",
             }, {
                 method        = "get_headers",
                 args          = {},
@@ -50,6 +51,7 @@ qq{
                 header_filter = true,
                 body_filter   = true,
                 log           = true,
+                admin_api     = "forced false",
             }, {
                 method        = "get_header",
                 args          = { "Host" },
@@ -60,6 +62,7 @@ qq{
                 header_filter = true,
                 body_filter   = true,
                 log           = true,
+                admin_api     = "forced false",
             }, {
                 -- NYI, let everything pass
                 method        = "get_raw_body",
@@ -71,6 +74,7 @@ qq{
                 header_filter = true,
                 body_filter   = true,
                 log           = true,
+                admin_api     = true,
             }, {
                 -- NYI, let everything pass
                 method        = "get_body",
@@ -82,6 +86,7 @@ qq{
                 header_filter = true,
                 body_filter   = true,
                 log           = true,
+                admin_api     = true,
             },
         }
 
@@ -102,6 +107,7 @@ qq{
 
         access_by_lua_block {
             phase_check_functions(phases.access)
+            phase_check_functions(phases.admin_api)
         }
 
         header_filter_by_lua_block {

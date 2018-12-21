@@ -1,40 +1,42 @@
 local uuid      = require("kong.tools.utils").uuid
 local helpers   = require "spec.helpers"
-local policies  = require "kong.plugins.response-ratelimiting.policies"
 local timestamp = require "kong.tools.timestamp"
 
 
 for _, strategy in helpers.each_strategy() do
   describe("Plugin: response-ratelimiting (policies) [#" .. strategy .. "]", function()
     describe("cluster", function()
-      local cluster_policy = policies.cluster
-
-      local conf = { route_id = uuid(), service_id = uuid() }
       local identifier = uuid()
+      local conf       = { route = { id = uuid() }, service = { id = uuid() } }
 
       local db
-      local dao
+      local policies
 
-      setup(function()
+      lazy_setup(function()
         local _
-        _, db, dao = helpers.get_db_utils(strategy)
+        _, db = helpers.get_db_utils(strategy)
 
-        local singletons = require "kong.singletons"
-        singletons.dao   = dao
+        if _G.kong then
+          _G.kong.db = db
+        else
+          _G.kong = { db = db }
+        end
+
+        package.loaded["kong.plugins.response-ratelimiting.policies"] = nil
+        policies = require "kong.plugins.response-ratelimiting.policies"
       end)
 
-      after_each(function()
-        assert(db:truncate())
-        dao:truncate_tables()
+      before_each(function()
+        db:truncate()
       end)
 
-      it("should return nil when ratelimiting metrics are not existing", function()
+      it("should return 0 when ratelimiting metrics are not existing", function()
         local current_timestamp = 1424217600
         local periods = timestamp.get_timestamps(current_timestamp)
 
         for period in pairs(periods) do
-          local metric = assert(cluster_policy.usage(conf, identifier,
-                                                     current_timestamp, period, "video"))
+          local metric = assert(policies.cluster.usage(conf, identifier, "video",
+                                                       period, current_timestamp))
           assert.equal(0, metric)
         end
       end)
@@ -44,22 +46,22 @@ for _, strategy in helpers.each_strategy() do
         local periods = timestamp.get_timestamps(current_timestamp)
 
         -- First increment
-        assert(cluster_policy.increment(conf, identifier, current_timestamp, 1, "video"))
+        assert(policies.cluster.increment(conf, identifier, "video", current_timestamp, 1))
 
         -- First select
         for period in pairs(periods) do
-          local metric = assert(cluster_policy.usage(conf, identifier,
-                                                     current_timestamp, period, "video"))
+          local metric = assert(policies.cluster.usage(conf, identifier, "video",
+                                                       period, current_timestamp))
           assert.equal(1, metric)
         end
 
         -- Second increment
-        assert(cluster_policy.increment(conf, identifier, current_timestamp, 1, "video"))
+        assert(policies.cluster.increment(conf, identifier, "video", current_timestamp, 1))
 
         -- Second select
         for period in pairs(periods) do
-          local metric = assert(cluster_policy.usage(conf, identifier,
-                                                     current_timestamp, period, "video"))
+          local metric = assert(policies.cluster.usage(conf, identifier, "video",
+                                                       period, current_timestamp))
           assert.equal(2, metric)
         end
 
@@ -68,7 +70,7 @@ for _, strategy in helpers.each_strategy() do
         periods = timestamp.get_timestamps(current_timestamp)
 
         -- Third increment
-        assert(cluster_policy.increment(conf, identifier, current_timestamp, 1, "video"))
+        assert(policies.cluster.increment(conf, identifier, "video", current_timestamp, 1))
 
         -- Third select with 1 second delay
         for period in pairs(periods) do
@@ -79,8 +81,8 @@ for _, strategy in helpers.each_strategy() do
             expected_value = 1
           end
 
-          local metric = assert(cluster_policy.usage(conf, identifier,
-                                                     current_timestamp, period, "video"))
+          local metric = assert(policies.cluster.usage(conf, identifier, "video",
+                                                       period, current_timestamp))
           assert.equal(expected_value, metric)
         end
       end)

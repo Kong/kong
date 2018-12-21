@@ -4,6 +4,7 @@ local pgmoon = require "pgmoon"
 
 local max          = math.max
 local fmt          = string.format
+local null         = ngx.null
 local concat       = table.concat
 local setmetatable = setmetatable
 local new_tab
@@ -36,9 +37,9 @@ local _M = {}
 local mt = { __index = _M }
 
 
-function _M.new(dao_factory, page_size, event_ttl)
+function _M.new(db, page_size, event_ttl)
   local self  = {
-    db        = dao_factory.db,
+    db        = db.connector,
     --page_size = page_size,
     event_ttl = event_ttl,
   }
@@ -102,7 +103,15 @@ function _M:select_interval(channels, min_at, max_at)
       return nil, err
     end
 
-    local page = #res > 0 and 1 or 0
+    local len = #res
+    for i = 1, len do
+      local row = res[i]
+      if row.nbf == null then
+        row.nbf = nil
+      end
+    end
+
+    local page = len > 0 and 1 or 0
 
     ran = true
 

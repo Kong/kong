@@ -13,15 +13,19 @@ for _, strategy in helpers.each_strategy() do
   describe("Plugin: file-log (log) [#" .. strategy .. "]", function()
     local proxy_client
 
-    setup(function()
-      local bp = helpers.get_db_utils(strategy)
+    lazy_setup(function()
+      local bp = helpers.get_db_utils(strategy, {
+        "routes",
+        "services",
+        "plugins",
+      })
 
       local route = bp.routes:insert {
         hosts = { "file_logging.com" },
       }
 
       bp.plugins:insert {
-        route_id = route.id,
+        route = { id = route.id },
         name     = "file-log",
         config   = {
           path   = FILE_LOG_PATH,
@@ -34,7 +38,7 @@ for _, strategy in helpers.each_strategy() do
         nginx_conf = "spec/fixtures/custom_nginx.template",
       }))
     end)
-    teardown(function()
+    lazy_teardown(function()
       helpers.stop_kong()
     end)
 

@@ -23,5 +23,5 @@ SUMMARY_GOES_HERE
 - Kong debug-level startup logs (`$ kong start --vv`)
 - Kong error logs (`<KONG_PREFIX>/logs/error.log`)
 - Kong configuration (the output of a GET request to Kong's Admin port - see
-  https://getkong.org/docs/latest/admin-api/#endpoint)
+  https://docs.konghq.com/latest/admin-api/#retrieve-node-information)
 - Operating system

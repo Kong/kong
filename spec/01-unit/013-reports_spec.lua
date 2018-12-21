@@ -6,7 +6,7 @@ local cjson = require "cjson"
 
 describe("reports", function()
   describe("send()", function()
-    setup(function()
+    lazy_setup(function()
       reports.toggle(true)
     end)
     it("sends report over UDP", function()
@@ -70,11 +70,11 @@ describe("reports", function()
   end)
 
   describe("retrieve_redis_version()", function()
-    setup(function()
+    lazy_setup(function()
       stub(ngx, "log")
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       ngx.log:revert()
     end)
 

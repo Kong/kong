@@ -1,5 +1,7 @@
 # Table of Contents
 
+- [1.0.0](#100)
+- [0.15.0](#0150)
 - [0.14.1](#0141)
 - [0.14.0](#0140---20180705)
 - [0.13.1](#0131---20180423)
@@ -17,6 +19,300 @@
 - [0.10.1](#0101---20170327)
 - [0.10.0](#0100---20170307)
 - [0.9.9 and prior](#099---20170202)
+
+## [1.0.0]
+
+> Released on: 2018/12/18
+
+This is a major release, introducing new features such as **Service Mesh** and
+**Stream Routing** support, as well as a **New Migrations** framework. It also
+includes version 1.0.0 of the **Plugin Development Kit**. It contains a large
+number of other features and fixes, listed below. Also, all plugins included
+with Kong 1.0 are updated to use version 1.0 of the PDK.
+
+As usual, major version upgrades require database migrations and changes to
+the Nginx configuration file (if you customized the default template). Please
+take a few minutes to read the [1.0 Upgrade
+Path](https://github.com/Kong/kong/blob/master/UPGRADE.md) for more details
+regarding breaking changes and migrations before planning to upgrade your Kong
+cluster.
+
+Being a major version, all entities and concepts that were marked as
+deprecated in Kong 0.x are now removed in Kong 1.0. The deprecated features
+are retained in [Kong 0.15](#0150), the final entry in the Kong 0.x series,
+which is being released simultaneously to Kong 1.0.
+
+
+### Breaking changes
+
+Kong 1.0 includes all breaking changes from 0.15, as well as the removal
+of deprecated concepts:
+
+##### Core
+
+- The **API** entity and related concepts such as the `/apis` endpoint,
+  are removed (deprecated since 0.13.0, March 2018). Use **Routes** and
+  **Services** instead.
+- The **old DAO** implementation is removed, along with the
+  **old schema** validation library (`apis` was the last entity using it).
+  Use the new schema format instead in custom plugins.
+  To ease the transition of plugins, the plugin loader in 1.0 includes
+  a _best-effort_ schema auto-translator, which should be sufficient for many
+  plugins.
+- In the 0.14.x release Upstreams, Targets and Plugins were still
+  implemented using the old DAO and Admin API. On 0.15.0 and 1.0.0 all core
+  entities use the new `kong.db` DAO, and their endpoints have been upgraded to
+  the new Admin API (see below for details)
+  [#3689](https://github.com/Kong/kong/pull/3689),
+  [#3739](https://github.com/Kong/kong/pull/3739),
+  [#3778](https://github.com/Kong/kong/pull/3778)
+- :fireworks: New migration framework [#3802](https://github.com/Kong/kong/pull/3802)
+- `luaossl` version bumped to 20181207 [#4067](https://github.com/Kong/kong/pull/4067)
+- New `kong.resty.getssl` module [#3681](https://github.com/Kong/kong/pull/3681)
+- Timestamps now allow millisecond precision [#3660](https://github.com/Kong/kong/pull/3660)
+- `OpenSSL` has been bumped to 1.1.1a [#4005](https://github.com/Kong/kong/pull/4005)
+- `luasec` bumped to 0.7
+- The PDK function `kong.request.get_body` will now return `nil, err, mime` when the body is
+  valid JSON but neither an object nor an array [#4063](https://github.com/Kong/kong/pull/4063)
+
+A summary of the changes introduced by the New Admin API:
+
+- Pagination has been included in all "multi-record" endpoints, and pagination
+  control fields are different than in 0.14.x
+- Filtering now happens via URL path changes (`/consumers/x/plugins`) instead
+  of querystring fields (`/plugins?consumer_id=x`)
+- Array values can't be coherced from comma-separated strings. They must be
+  "proper" JSON values on JSON requests, or use a new syntax on form-url-encoded
+  or multipart requests.
+- Error messages have been been reworked from the ground up to be more
+  consistent, precise and informative.
+- The `PUT` method has been reimplemented with idempotent behavior and has
+  been added to some entities that didn't have it.
+
+For more details about the New Admin API, please visit the official docs:
+https://docs.konghq.com/
+
+##### Configuration
+
+- The `custom_plugins` directive is removed (deprecated since 0.14.0, July 2018).
+  Use `plugins` instead.
+
+##### Plugins
+
+- The `galileo` plugin is removed (deprecated since 0.13.0)
+- Some internal modules, that were occasionally used by plugin authors
+  before the introduction of the Plugin Development Kit (PDK) in 0.14.0
+  are now removed:
+  - The `kong.tools.ip` module was removed.
+    Use `kong.ip` from the PDK instead.
+  - The `kong.tools.public` module was removed.
+    Use the various equivalent features from the PDK instead.
+  - The `kong.api.crud_helpers` module was removed (deprecated since the
+    introduction of the new DAO  in 0.13.0). Use `kong.api.endpoints` instead if
+    you need to customize the auto-generated endpoints.
+- In plugin schemas, `no_route` & `no_service` & `no_consumer` annotations
+  are made as typedefs for the corresponding field
+  [#3739](https://github.com/Kong/kong/pull/3739); in 0.15
+  they are made available as ad-hoc fields in the `schema.lua` table,
+  in the vein as the old `no_consumer` option.
+- All bundled Plugins' schemas and custom entities have been updated to the new
+  `kong.db`, and their APIs have been updated to the New Admin API and thus
+  have improved, but still different behaviors, as described in the previous
+  section
+  [#3766](https://github.com/Kong/kong/pull/3766),
+  [#3774](https://github.com/Kong/kong/pull/3774),
+  [#3778](https://github.com/Kong/kong/pull/3778),
+  [#3839](https://github.com/Kong/kong/pull/3839)
+- All plugin migrations have been converted to the new migration framework.
+  Custom plugins need to use the new migration framework from 0.15 onwards.
+
+### Additions
+
+##### :fireworks: Service Mesh and Stream Routes
+
+- These new features require a patched version of OpenResty, but Kong will still
+  work fine on a non-patched OpenResty for HTTP(S) API Gateway scenarios
+- Support for TCP & TLS Stream Routes via the `stream_listen` config option
+  [#4009](https://github.com/Kong/kong/pull/4009)
+- New `origins` config property allows overriding hosts from kong [#3679](https://github.com/Kong/kong/pull/3679)
+- Kong instances can now create a shared internal Certificate Authority, which is
+  used for Service Mesh SSL traffic [#3906](https://github.com/Kong/kong/pull/3906), [#3861](https://github.com/Kong/kong/pull/3861),
+- `transparent` listeners allow setting up a Service Mesh with `iptables` [#3884](https://github.com/Kong/kong/pull/3884)
+- Plugins' `run_on` field to control how they behave on a Service Mesh
+  environment [#3930](https://github.com/Kong/kong/pull/3930), [#4066](https://github.com/Kong/kong/pull/4066)
+- There is a new phase called `preread`. This is where stream traffic routing is done.
+
+##### Core
+
+- :fireworks: Routes now have a `name` field [#3764](https://github.com/Kong/kong/pull/3764)
+- :fireworks: Implemented TTL support in the new DAO & Admin API. In particular,
+  PostgreSQL gets a new and more efficient TTL implementation [#3603](https://github.com/Kong/kong/pull/3603),
+  [#3638](https://github.com/Kong/kong/pull/3638)
+- :fireworks: improved performance in router rebuild by decreasing amount of database access
+  [#3782](https://github.com/Kong/kong/pull/3782)
+- Schema improvements:
+  - Subschemas [#3630](https://github.com/Kong/kong/pull/3630)
+  - New entity validators: `distinct`, `ne`, `is_regex`, `contains`, `gt`
+  - Entity checks are only run when necessary [#3848](https://github.com/Kong/kong/pull/3848)
+  - Conditional validators can mark fields as `required` [6d1707c4](https://github.com/Kong/kong/commit/6d1707c4)
+  - Partial updates of record fields [05adc40f](https://github.com/Kong/kong/commit/05adc40f)
+  - Adding to a schema a new field which has a default value no longer requires a migration
+    [#3756](https://github.com/Kong/kong/pull/3756)
+- PDK improvements:
+  - New `kong.node` module [#3826](https://github.com/Kong/kong/pulls/3826)
+  - New `kong.response.get_path_with_query` module [#3842](https://github.com/Kong/kong/pull/3842)
+  - PDK getters and setters for Service, Route, Consumer & Credential [#3916](https://github.com/Kong/kong/pull/3916)
+  - `kong.response.get_source` returns `error` on errors [#4006](https://github.com/Kong/kong/pull/4006)
+  - `kong.response.exit` can be used in `header_filter` phase, but only without
+    a body [#4039](https://github.com/Kong/kong/pull/4039)
+
+- Cluster-wide mutex [#3685](https://github.com/Kong/kong/pull/3685)
+- Add multipart support to Admin API: [#3776](https://github.com/Kong/kong/pull/3776)
+- Improved plugins iterator speed [#3794](https://github.com/Kong/kong/pull/3794)
+- Add support for HTTPS in active healthchecks [#3815](https://github.com/Kong/kong/pull/3815)
+
+##### Configuration
+
+- New field: `dns_valid_ttl` [#3730](https://github.com/Kong/kong/pull/3730)
+- New field: `pg_timeout` [#3808](https://github.com/Kong/kong/pull/3808)
+- `upstream_keepalive` can be disabled when set to 0 (thanks,
+  [@pryorda](https://github.com/pryorda)!) [#3716](https://github.com/Kong/kong/pull/3716)
+- The new `transparent` suffix also applies to the `proxy_listen` directive
+
+##### Plugins
+
+- The `http-log` plugin now accepts buffered logging [#3604](https://github.com/Kong/kong/pull/3604)
+- Most plugin logic has been rewritten with the PDK instead of using internal
+  kong functions or ngx calls [#3845](https://github.com/Kong/kong/pull/3845)
+- The new `run_on` option to control where plugins execute in a Service Mesh environment
+  [#3930](https://github.com/Kong/kong/pull/3930), [#4066](https://github.com/Kong/kong/pull/4066)
+- Plugins in general have been made more resilient to failures / unexpected input
+  [#4006](https://github.com/Kong/kong/pull/4006),
+  [#3947](https://github.com/Kong/kong/pull/3947),
+  [#4038](https://github.com/Kong/kong/pull/4038)
+- AWS now supports Lambda Proxy Integration with `is_proxy_integration`
+  [#3427](https://github.com/Kong/kong/pull/3427/).
+  Thanks [@aloisbarreras](https://github.com/aloisbarreras) for the patch!
+
+### Fixes
+
+##### Core
+
+- Nested records are validated by the metaschema [#3588](https://github.com/Kong/kong/pull/3588)
+- `kong.db.errors` receives the name of the current strategy [#3612](https://github.com/Kong/kong/pull/3612)
+- The new DAO has the correct CRUD event [#3659](https://github.com/Kong/kong/pull/3659)
+  and triggers update events only once [#4095](https://github.com/Kong/kong/pull/4095)
+- SNIs are correctly paginated [#3722](https://github.com/Kong/kong/pull/3722)
+- null & default values are handled better
+  [#3772](https://github.com/Kong/kong/pull/3772),
+  [#3710](https://github.com/Kong/kong/pull/3710),
+  [#3910](https://github.com/Kong/kong/pull/3910)
+- Inferring arguments with `application/x-www-form-urlencoded` on the admin API
+  works better [#3770](https://github.com/Kong/kong/pull/3770)
+- `$request_uri` being nil now is handled correctly [#3842](https://github.com/Kong/kong/pull/3842)
+- Primary key violations in Cassandra are detected more accurately [#3865](https://github.com/Kong/kong/pull/3865)
+- Datastax Enterprise 6.X doesn't throw errors (thanks, [@gchristidis](https://github.com/gchristidis)) [#3873](https://github.com/Kong/kong/pull/3873)
+- Conditionals can handle structured data correctly in the schema [#3936](https://github.com/Kong/kong/pull/3936)
+- Recently created upstreams return `[]` instead of `{}` for their initial
+  list of targets [#4058](https://github.com/Kong/kong/pull/4058)
+- The `postgres` strategy creates array index expressions correctly [#4078](https://github.com/Kong/kong/pull/4078)
+- The router no longer injects an extra `/` in certain cases [#3780](https://github.com/kong/kong/pull/3780)
+- Turned on TLSv1.3 in our templates to workaround a bug in OpenSSL [#4046](https://github.com/Kong/kong/pull/4046)
+- Several typos, style and grammar fixes by [@saideepd](https://github.com/saideepd), [@gy741](https://github.com/gy741), [@arpitpandey0209](https://github.com/arpitpandey0209), [@joelvisroman](https://github.com/joealvisroman), [@vkmrishad](https://github.com/vkmrishad), [@mr-yamraj](https://github.com/mr-yamraj), [@geekysrm](https://github.com/geekysrm), [@Mehvix](https://github.com/Mehvix), [@vyaspranjal33](https://github.com/vyaspranjal33), [@iTechTR](https://github.com/iTechTR), [@shyamjalan](https://github.com/shyamjalan), and [@steffinstanly](https://github.com/@steffinstanly).
+
+
+##### Plugins
+
+- Record fields are not nullable in plugin schemas [#3778](https://github.com/Kong/kong/pulls/3778)
+- Fixed an issue where some plugins could include default HTML responses from
+  Lapis [#4077](https://github.com/Kong/kong/pull/4077)
+- cors:
+  - set 'Vary: Origin' when `Access-Control-Allow-Credentials` is
+    enabled (thanks, (@marckhouzam)[https://github.com/marckhouzam]!) [#3675](https://github.com/Kong/kong/pull/3765)
+  - return HTTP 200 instead of 204 for preflight requests (thanks, [@aslafy-z](https://github.com/aslafy-z)!) [#4029](https://github.com/Kong/kong/pull/4029)
+  - flat strings are now validated safely [0eaa9acd](https://github.com/Kong/kong/commit/0eaa9acd)
+- acl:
+  - cache is reset when editing ACLs [#3839](https://github.com/Kong/kong/pull/3839)
+  - cache is used correctly for intermediary [#4040](https://github.com/Kong/kong/pull/4040)
+- correlation-id: Prevent an error to be thrown when the Access phase was skipped [#3924](https://github.com/Kong/kong/issues/3924)
+- aws-lambda: Strip headers disallowed by HTTP/2 [#f2ee98e2](https://github.com/Kong/kong/commit/f2ee98e2)
+- ratelimiting & response-ratelimiting: Fixed a problem where an unnecessary call to `redis:select` could close connections
+  (thanks, [@fffonion](https://github.com/fffonion)!) [#3973](https://github.com/Kong/kong/pull/3973)
+
+
+## [0.15.0]
+
+> Released on: 2018/12/18
+
+This is the last release in the 0.x series, giving users one last chance to
+upgrade while still using some of the options and concepts that were marked as
+deprecated in Kong 0.x and were removed in Kong 1.0.
+
+For a list of additions and fixes in Kong 0.15, see the [1.0.0](#100) changelog.
+This release includes all new features included in 1.0 (Service Mesh, Stream
+Routes and New Migrations), but unlike Kong 1.0, it retains a lot of the
+deprecated functionality, like the **API** entity, around. Still, Kong 0.15
+does have a number of breaking changes related to functionality that has
+changed since version 0.14 (see below).
+
+If you are starting with Kong, we recommend you to use 1.0.0 instead of this
+release.
+
+If you are already using Kong 0.14, our recommendation is also plan to move to
+1.0 -- see the [1.0 Upgrade
+Path](https://github.com/kong/kong/blob/master/UPGRADE.md) document for
+details. Upgrading to 0.15.0 is only recommended if you can't do away with the
+deprecated features but you need some fixes or new features right now.
+
+### Breaking changes
+
+##### Core
+
+- In the 0.14.x release Upstreams, Targets and Plugins were still
+  implemented using the old DAO and Admin API. On 0.15.0 and 1.0.0 all core
+  entities use the new `kong.db` DAO, and their endpoints have been upgraded to
+  the new Admin API (see below for details)
+  [#3689](https://github.com/Kong/kong/pull/3689),
+  [#3739](https://github.com/Kong/kong/pull/3739),
+  [#3778](https://github.com/Kong/kong/pull/3778)
+- :fireworks: New migration framework [#3802](https://github.com/Kong/kong/pull/3802)
+- `luaossl` version bumped to 20181207 [#4067](https://github.com/Kong/kong/pull/4067)
+- New `kong.resty.getssl` module [#3681](https://github.com/Kong/kong/pull/3681)
+- Timestamps now allow millisecond precision [#3660](https://github.com/Kong/kong/pull/3660)
+- `OpenSSL` has been bumped to 1.1.1a [#4005](https://github.com/Kong/kong/pull/4005)
+- `luasec` bumped to 0.7
+- The PDK function `kong.request.get_body` will now return `nil, err, mime` when the body is
+  valid JSON but neither an object nor an array [#4063](https://github.com/Kong/kong/pull/4063)
+
+A summary of the changes introduced by the New Admin API:
+
+- Pagination has been included in all "multi-record" endpoints, and pagination
+  control fields are different than in 0.14.x
+- Filtering now happens via URL path changes (`/consumers/x/plugins`) instead
+  of querystring fields (`/plugins?consumer_id=x`)
+- Array values can't be coherced from comma-separated strings. They must be
+  "proper" JSON values on JSON requests, or use a new syntax on form-url-encoded
+  or multipart requests.
+- Error messages have been been reworked from the ground up to be more
+  consistent, precise and informative.
+- The `PUT` method has been reimplemented with idempotent behavior and has
+  been added to some entities that didn't have it.
+
+For more details about the New Admin API, please visit the official docs:
+https://docs.konghq.com/
+
+##### Plugins
+
+- All bundled Plugins' schemas and custom entities have been updated to the new
+  `kong.db`, and their APIs have been updated to the New Admin API and thus
+  have improved, but still different behaviors, as described in the previous
+  section
+  [#3766](https://github.com/Kong/kong/pull/3766),
+  [#3774](https://github.com/Kong/kong/pull/3774),
+  [#3778](https://github.com/Kong/kong/pull/3778),
+  [#3839](https://github.com/Kong/kong/pull/3839)
+- All plugin migrations have been converted to the new migration framework.
+  Custom plugins need to use the new migration framework from 0.15 onwards.
 
 ## [0.14.1]
 
@@ -2297,7 +2593,7 @@ This release includes support for PostgreSQL as Kong's primary datastore!
 
 > **internal**
 > - replace globals with singleton pattern thanks to [@mars](https://github.com/mars).
-> - fixed resolution mismatches when using deep paths in the path resolver thanks to [siddharthkchatterjee](https://github.com/siddharthkchatterjee)
+> - fixed resolution mismatches when using deep paths in the path resolver.
 
 [Back to TOC](#table-of-contents)
 
@@ -2366,7 +2662,7 @@ This release contains tiny bug fixes that were especially annoying for complex C
 
  We would recommended to consult the suggested [0.6 upgrade path](https://github.com/Kong/kong/blob/master/UPGRADE.md#upgrade-to-06x) for this release.
 
-- [Serf](https://www.serfdom.io) is now a Kong dependency. It allows Kong nodes to communicate between each other opening the way to many features and improvements.
+- [Serf](https://www.serf.io/) is now a Kong dependency. It allows Kong nodes to communicate between each other opening the way to many features and improvements.
 - The configuration file changed. Some properties were renamed, others were moved, and some are new. We would recommend checking out the new default configuration file.
 - Drop the Lua 5.1 dependency which was only used by the CLI. The CLI now runs with LuaJIT, which is consistent with other Kong components (Luarocks and OpenResty) already relying on LuaJIT. Make sure the LuaJIT interpreter is included in your `$PATH`. [#799](https://github.com/Kong/kong/pull/799)
 
@@ -2443,7 +2739,7 @@ Other additions include:
 
 > ***internal***
 > - Event bus for local and cluster-wide events propagation. Plans for this event bus is to be widely used among Kong in the future.
-> - The Kong Public Lua API (Lua helpers integrated in Kong such as DAO and Admin API helpers) is now documented with [ldoc](http://stevedonovan.github.io/ldoc/) format and published on [the online documentation](https://getkong.org/docs/latest/lua-reference/).
+> - The Kong Public Lua API (Lua helpers integrated in Kong such as DAO and Admin API helpers) is now documented with [ldoc](http://stevedonovan.github.io/ldoc/).
 > - Work has been done to restore the reliability of the CI platforms.
 > - Migrations can now execute DML queries (instead of DDL queries only). Handy for migrations implying plugin configuration changes, plugins renamings etc... [#770](https://github.com/Kong/kong/pull/770)
 
@@ -2519,8 +2815,7 @@ With new plugins, many improvements and bug fixes, this release comes with break
 
 ### Breaking changes
 
-Several breaking changes are introduced. You will have to slightly change your configuration file and a migration script will take care of updating your database cluster. **Please follow the instructions in [UPDATE.md](/UPDATE.md#update-to-kong-050) for an update without downtime**.
-
+Several breaking changes are introduced. You will have to slightly change your configuration file and a migration script will take care of updating your database cluster. **Please follow the instructions in [UPGRADE.md](/UPGRADE.md#update-to-kong-050) for an update without downtime.**
 - Many plugins were renamed due to new naming conventions for consistency. [#480](https://github.com/Kong/kong/issues/480)
 - In the configuration file, the Cassandra `hosts` property was renamed to `contact_points`. [#513](https://github.com/Kong/kong/issues/513)
 - Properties belonging to APIs entities have been renamed for clarity. [#513](https://github.com/Kong/kong/issues/513)
@@ -2846,7 +3141,9 @@ First version running with Cassandra.
 
 [Back to TOC](#table-of-contents)
 
-[0.14.1]: https://github.com/Kong/kong/compare/0.14.0...master
+[1.0.0]: https://github.com/Kong/kong/compare/0.15.0...1.0.0
+[0.15.0]: https://github.com/Kong/kong/compare/0.14.0...0.15.0
+[0.14.1]: https://github.com/Kong/kong/compare/0.14.0...0.14.1
 [0.14.0]: https://github.com/Kong/kong/compare/0.13.1...0.14.0
 [0.13.1]: https://github.com/Kong/kong/compare/0.13.0...0.13.1
 [0.13.0]: https://github.com/Kong/kong/compare/0.12.3...0.13.0

@@ -14,7 +14,7 @@
 -- `kong.request`, `kong.log`, etc...
 --
 -- @module PDK
--- @release 0.1.0
+-- @release 1.0.0
 
 
 ---
@@ -57,7 +57,7 @@
 -- A human-readable string containing the version number of the current PDK.
 --
 -- @field kong.pdk_version
--- @usage print(kong.pdk_version) -- "0.1.0"
+-- @usage print(kong.pdk_version) -- "1.0.0"
 
 
 ---
@@ -74,7 +74,7 @@
 -- @usage
 -- print(kong.configuration.prefix) -- "/usr/local/kong"
 -- -- this table is read-only; the following throws an error:
--- kong.configuration.custom_plugins = "foo"
+-- kong.configuration.prefix = "foo"
 
 --
 --- Request/Response
@@ -116,28 +116,21 @@
 -- @redirect kong.response
 
 
+--- Router module
+-- @field kong.router
+-- @redirect kong.router
+
+
 --- Singletons
 -- @section singletons
 
 
 ---
--- Instance of Kong's legacy DAO. This has the same interface as the object
--- returned by `new(config, db)` in the core's `kong.dao.factory` module.
---
--- * [Plugin Development Guide - Accessing the
--- Datastore](https://getkong.org/docs/latest/plugin-development/access-the-datastore/)
--- * Kong legacy DAO: https://github.com/Kong/kong/tree/master/kong/dao
---
--- @field kong.dao
-
-
----
--- Instance of Kong's DAO (the new `kong.db` module). Contains accessor objects
+-- Instance of Kong's DAO (the `kong.db` module). Contains accessor objects
 -- to various entities.
 --
 -- A more thorough documentation of this DAO and new schema definitions is to
--- be made available in the future, once this object will replace the old DAO
--- as the standard interface with which to create custom entities in plugins.
+-- be made available in the future.
 --
 -- @field kong.db
 -- @usage
@@ -193,6 +186,11 @@
 -- @section utilities
 
 
+--- Node-level utilities
+-- @field kong.node
+-- @redirect kong.node
+
+
 --- Utilities for Lua tables
 -- @field kong.table
 -- @redirect kong.table
@@ -208,9 +206,10 @@ require("resty.core")
 
 local MAJOR_VERSIONS = {
   [1] = {
-    version = "0.1.0",
+    version = "1.0.0",
     modules = {
       "table",
+      "node",
       "log",
       "ctx",
       "ip",
@@ -220,6 +219,7 @@ local MAJOR_VERSIONS = {
       "service.request",
       "service.response",
       "response",
+      "router",
     },
   },
 

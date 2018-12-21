@@ -11,20 +11,23 @@ for _, strategy in helpers.each_strategy() do
     local proxy_client
     local plugin
 
-    setup(function()
-      local bp
-      bp = helpers.get_db_utils(strategy)
+    lazy_setup(function()
+      local bp = helpers.get_db_utils(strategy, {
+        "routes",
+        "services",
+        "plugins",
+      })
 
       local route = bp.routes:insert {
         hosts = { "ldapauth.com" },
       }
 
       plugin = bp.plugins:insert {
-        route_id = route.id,
+        route = { id = route.id },
         name     = "ldap-auth",
         config   = {
           ldap_host = ldap_host_aws,
-          ldap_port = "389",
+          ldap_port = 389,
           start_tls = false,
           base_dn   = "ou=scientists,dc=ldap,dc=mashape,dc=com",
           attribute = "uid",
@@ -52,7 +55,7 @@ for _, strategy in helpers.each_strategy() do
       end
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       helpers.stop_kong(nil, true)
     end)
 

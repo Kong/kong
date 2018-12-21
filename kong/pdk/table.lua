@@ -52,10 +52,37 @@ do
 end
 
 
+--- Merges the contents of two tables together, producing a new one.
+-- The entries of both tables are copied non-recursively to the new one.
+-- If both tables have the same key, the second one takes precedence.
+-- @tparam table t1 The first table
+-- @tparam table t2 The second table
+-- @treturn table The (new) merged table
+-- @usage
+-- local t1 = {1, 2, 3, foo = "f"}
+-- local t2 = {4, 5, bar = "b"}
+-- local t3 = kong.table.merge(t1, t2) -- {4, 5, 3, foo = "f", bar = "b"}
+local function merge_tab(t1, t2)
+  local res = {}
+  if t1 then
+    for k,v in pairs(t1) do
+      res[k] = v
+    end
+  end
+  if t2 then
+    for k,v in pairs(t2) do
+      res[k] = v
+    end
+  end
+  return res
+end
+
+
 local function new(self)
   return {
     new = new_tab,
     clear = clear_tab,
+    merge = merge_tab,
   }
 end
 

@@ -1,3 +1,4 @@
+--[[
 local schemas = require "kong.dao.schemas_validation"
 local statsd_schema = require "kong.plugins.statsd.schema"
 local validate_entity = schemas.validate_entity
@@ -112,3 +113,4 @@ pending("Plugin: statsd (schema)", function()
     assert.equal("status_count metric only works with stat_type 'counter'", err.metrics)
   end)
 end)
+--]]

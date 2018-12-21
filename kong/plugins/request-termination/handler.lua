@@ -1,50 +1,28 @@
 local BasePlugin = require "kong.plugins.base_plugin"
 local singletons = require "kong.singletons"
-local responses = require "kong.tools.responses"
 local constants = require "kong.constants"
 local meta = require "kong.meta"
 
 
-local ngx = ngx
-
-
+local kong = kong
 local server_header = meta._SERVER_TOKENS
+
+
+local DEFAULT_RESPONSE = {
+  [401] = "Unauthorized",
+  [404] = "Not found",
+  [405] = "Method not allowed",
+  [500] = "An unexpected error occurred",
+  [502] = "Bad Gateway",
+  [503] = "Service unavailable",
+}
 
 
 local RequestTerminationHandler = BasePlugin:extend()
 
 
 RequestTerminationHandler.PRIORITY = 2
-RequestTerminationHandler.VERSION = "0.1.1"
-
-
-local function flush(ctx)
-  ctx = ctx or ngx.ctx
-
-  local response = ctx.delayed_response
-
-  local status       = response.status_code
-  local content      = response.content
-  local content_type = response.content_type
-  if not content_type then
-    content_type = "application/json; charset=utf-8";
-  end
-
-  ngx.status = status
-
-  if singletons.configuration.enabled_headers[constants.HEADERS.SERVER] then
-    ngx.header[constants.HEADERS.SERVER] = server_header
-
-  else
-    ngx.header[constants.HEADERS.SERVER] = nil
-  end
-
-  ngx.header["Content-Type"]   = content_type
-  ngx.header["Content-Length"] = #content
-  ngx.print(content)
-
-  return ngx.exit(status)
-end
+RequestTerminationHandler.VERSION = "1.0.0"
 
 
 function RequestTerminationHandler:new()
@@ -59,21 +37,18 @@ function RequestTerminationHandler:access(conf)
   local content = conf.body
 
   if content then
-    local ctx = ngx.ctx
-    if ctx.delay_response and not ctx.delayed_response then
-      ctx.delayed_response = {
-        status_code  = status,
-        content      = content,
-        content_type = conf.content_type,
-      }
+    local headers = {
+      ["Content-Type"] = conf.content_type
+    }
 
-      ctx.delayed_response_callback = flush
-
-      return
+    if singletons.configuration.enabled_headers[constants.HEADERS.SERVER] then
+      headers[constants.HEADERS.SERVER] = server_header
     end
+
+    return kong.response.exit(status, content, headers)
   end
 
-  return responses.send(status, conf.message)
+  return kong.response.exit(status, { message = conf.message or DEFAULT_RESPONSE[status] })
 end
 
 

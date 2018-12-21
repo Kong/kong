@@ -19,14 +19,18 @@ end
 
 describe("SDK: kong.log", function()
   local proxy_client
-  local bp, db, dao
+  local bp, db
 
   before_each(function()
-    bp, db, dao = helpers.get_db_utils()
-    assert(db:truncate("routes"))
-    assert(db:truncate("services"))
-    dao:truncate_table("plugins")
-    dao:run_migrations()
+    bp, db = helpers.get_db_utils(nil, {
+      "apis",
+      "routes",
+      "services",
+      "plugins",
+    }, {
+      "logger",
+      "logger-last"
+    })
   end)
 
   after_each(function()
@@ -38,7 +42,7 @@ describe("SDK: kong.log", function()
 
     assert(db:truncate("routes"))
     assert(db:truncate("services"))
-    dao:truncate_table("plugins")
+    db:truncate("plugins")
   end)
 
   it("namespaces the logs with the plugin name inside a plugin", function()
@@ -62,7 +66,7 @@ describe("SDK: kong.log", function()
     })
 
     assert(helpers.start_kong({
-      custom_plugins = "logger,logger-last",
+      plugins = "bundled,logger,logger-last",
       nginx_conf     = "spec/fixtures/custom_nginx.template",
     }))
 

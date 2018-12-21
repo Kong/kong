@@ -1,5 +1,4 @@
 local Errors       = require "kong.db.errors"
-local responses    = require "kong.tools.responses"
 local utils        = require "kong.tools.utils"
 local arguments    = require "kong.api.arguments"
 local app_helpers  = require "lapis.application"
@@ -7,7 +6,9 @@ local app_helpers  = require "lapis.application"
 
 local escape_uri   = ngx.escape_uri
 local unescape_uri = ngx.unescape_uri
+local tonumber     = tonumber
 local null         = ngx.null
+local type         = type
 local fmt          = string.format
 
 
@@ -21,43 +22,88 @@ local ERRORS_HTTP_CODES = {
   [Errors.codes.NOT_FOUND]             = 404,
   [Errors.codes.INVALID_OFFSET]        = 400,
   [Errors.codes.DATABASE_ERROR]        = 500,
+  [Errors.codes.INVALID_SIZE]          = 400,
+  [Errors.codes.INVALID_UNIQUE]        = 400,
+  [Errors.codes.INVALID_OPTIONS]       = 400,
 }
 
 
-local op_nulls = { nulls = true }
-
-
 local function handle_error(err_t)
+  if type(err_t) ~= "table" then
+    kong.log.err(err_t)
+    kong.response.exit(500, { message = "An unexpected error occurred" })
+  end
+
+  if err_t.strategy then
+    err_t.strategy = nil
+  end
+
   local status = ERRORS_HTTP_CODES[err_t.code]
   if not status or status == 500 then
     return app_helpers.yield_error(err_t)
   end
 
-  responses.send(status, err_t)
+  local body = utils.get_default_exit_body(status, err_t)
+  return kong.response.exit(status, body)
 end
 
+
+local function extract_options(args, schema, context)
+  local options = {
+    nulls = true,
+  }
+
+  if args and schema and context then
+    if schema.ttl == true and args.ttl ~= nil and (context == "insert" or
+                                                   context == "update" or
+                                                   context == "upsert") then
+      options.ttl = tonumber(args.ttl) or args.ttl
+      args.ttl = nil
+    end
+  end
+
+  return options
+end
+
+
+local function get_page_size(args)
+  local size = args.size
+  if size ~= nil then
+    size = tonumber(size)
+    if size == nil then
+      return nil, "size must be a number"
+    end
+
+    return size
+  end
+end
 
 
 local function query_entity(context, self, db, schema)
   local dao = db[schema.name]
+
   local args
   if context == "update" or context == "upsert" then
     args = self.args.post
+
+  else
+    args = self.args.uri
   end
+
+  local opts = extract_options(args, schema, context)
 
   local id = unescape_uri(self.params[schema.name])
   if utils.is_valid_uuid(id) then
-    return dao[context](dao, { id = id }, args, op_nulls)
+    return dao[context](dao, { id = id }, args, opts)
   end
 
   if schema.endpoint_key then
     local field = schema.fields[schema.endpoint_key]
     local inferred_value = arguments.infer_value(id, field)
-    return dao[context .. "_by_" .. schema.endpoint_key](dao, inferred_value,
-                                                         args, op_nulls)
+    return dao[context .. "_by_" .. schema.endpoint_key](dao, inferred_value, args, opts)
   end
 
-  return dao[context](dao, { id = id }, op_nulls)
+  return dao[context](dao, { id = id }, opts)
 end
 
 
@@ -93,21 +139,27 @@ end
 -- /services
 local function get_collection_endpoint(schema, foreign_schema, foreign_field_name)
   return not foreign_schema and function(self, db, helpers)
-    local data, _, err_t, offset = db[schema.name]:page(self.args.size,
-                                                        self.args.offset,
-                                                        op_nulls)
+    local args = self.args.uri
+    local opts = extract_options(args, schema, "select")
+    local size, err = get_page_size(args)
+    if err then
+      return handle_error(db[schema.name].errors:invalid_size(err))
+    end
+
+    local data, _, err_t, offset = db[schema.name]:page(size, args.offset, opts)
     if err_t then
       return handle_error(err_t)
     end
 
-    local next_page = offset and fmt("/%s?offset=%s", schema.name,
+    local next_page = offset and fmt("/%s?offset=%s",
+                                     schema.name,
                                      escape_uri(offset)) or null
 
-    return helpers.responses.send_HTTP_OK {
+    return kong.response.exit(200, {
       data   = data,
       offset = offset,
       next   = next_page,
-    }
+    })
   end or function(self, db, helpers)
     local foreign_entity, _, err_t = select_entity(self, db, foreign_schema)
     if err_t then
@@ -115,14 +167,20 @@ local function get_collection_endpoint(schema, foreign_schema, foreign_field_nam
     end
 
     if not foreign_entity then
-      return helpers.responses.send_HTTP_NOT_FOUND()
+      return kong.response.exit(404, { message = "Not found" })
+    end
+
+    local fk = { id = foreign_entity.id }
+    local args = self.args.uri
+    local opts = extract_options(args, schema, "select")
+    local size, err = get_page_size(args)
+    if err then
+      return handle_error(db[schema.name].errors:invalid_size(err))
     end
 
     local dao = db[schema.name]
     local method = "page_for_" .. foreign_field_name
-    local data, _, err_t, offset = dao[method](dao, { id = foreign_entity.id },
-                                               self.args.size, self.args.offset,
-                                               op_nulls)
+    local data, _, err_t, offset = dao[method](dao, fk, size, args.offset, opts)
     if err_t then
       return handle_error(err_t)
     end
@@ -136,11 +194,11 @@ local function get_collection_endpoint(schema, foreign_schema, foreign_field_nam
       next_page = null
     end
 
-    return helpers.responses.send_HTTP_OK {
+    return kong.response.exit(200, {
       data   = data,
       offset = offset,
       next   = next_page,
-    }
+    })
   end
 end
 
@@ -156,7 +214,9 @@ end
 --
 -- /services
 local function post_collection_endpoint(schema, foreign_schema, foreign_field_name)
-  return function(self, db, helpers)
+  return function(self, db, helpers, post_process)
+    local args = self.args.post
+
     if foreign_schema then
       local foreign_entity, _, err_t = select_entity(self, db, foreign_schema)
       if err_t then
@@ -164,18 +224,27 @@ local function post_collection_endpoint(schema, foreign_schema, foreign_field_na
       end
 
       if not foreign_entity then
-        return helpers.responses.send_HTTP_NOT_FOUND()
+        return kong.response.exit(404, { message = "Not found" })
       end
 
-      self.args.post[foreign_field_name] = { id = foreign_entity.id }
+      args[foreign_field_name] = { id = foreign_entity.id }
     end
 
-    local entity, _, err_t = db[schema.name]:insert(self.args.post, op_nulls)
+    local opts = extract_options(args, schema, "insert")
+
+    local entity, _, err_t = db[schema.name]:insert(args, opts)
     if err_t then
       return handle_error(err_t)
     end
 
-    return helpers.responses.send_HTTP_CREATED(entity)
+    if post_process then
+      entity, _, err_t = post_process(entity)
+      if err_t then
+        return handle_error(err_t)
+      end
+    end
+
+    return kong.response.exit(201, entity)
   end
 end
 
@@ -198,26 +267,28 @@ local function get_entity_endpoint(schema, foreign_schema, foreign_field_name)
     end
 
     if not entity then
-      return helpers.responses.send_HTTP_NOT_FOUND()
+      return kong.response.exit(404, { message = "Not found" })
     end
 
     if foreign_schema then
-      local id = entity[foreign_field_name]
-      if not id or id == null then
-        return helpers.responses.send_HTTP_NOT_FOUND()
+      local pk = entity[foreign_field_name]
+      if not pk or pk == null then
+        return kong.response.exit(404, { message = "Not found" })
       end
 
-      entity, _, err_t = db[foreign_schema.name]:select(id, op_nulls)
+      local opts = extract_options(self.args.uri, foreign_schema, "select")
+
+      entity, _, err_t = db[foreign_schema.name]:select(pk, opts)
       if err_t then
         return handle_error(err_t)
       end
 
       if not entity then
-        return helpers.responses.send_HTTP_NOT_FOUND()
+        return kong.response.exit(404, { message = "Not found" })
       end
     end
 
-    return helpers.responses.send_HTTP_OK(entity)
+    return kong.response.exit(200, entity)
   end
 end
 
@@ -240,10 +311,10 @@ local function put_entity_endpoint(schema, foreign_schema, foreign_field_name)
     end
 
     if not entity then
-      return helpers.responses.send_HTTP_NOT_FOUND()
+      return kong.response.exit(404, { message = "Not found" })
     end
 
-    return helpers.responses.send_HTTP_OK(entity)
+    return kong.response.exit(200, entity)
 
   end or function(self, db, helpers)
     local entity, _, err_t = select_entity(self, db, schema)
@@ -252,24 +323,27 @@ local function put_entity_endpoint(schema, foreign_schema, foreign_field_name)
     end
 
     if not entity then
-      return helpers.responses.send_HTTP_NOT_FOUND()
+      return kong.response.exit(404, { message = "Not found" })
     end
 
-    local id = entity[foreign_field_name]
-    if not id or id == null then
-      return helpers.responses.send_HTTP_NOT_FOUND()
+    local pk = entity[foreign_field_name]
+    if not pk or pk == null then
+      return kong.response.exit(404, { message = "Not found" })
     end
 
-    entity, _, err_t = db[foreign_schema.name]:upsert(id, self.args.post, op_nulls)
+    local args = self.args.post
+    local opts = extract_options(args, foreign_schema, "upsert")
+
+    entity, _, err_t = db[foreign_schema.name]:upsert(pk, args, opts)
     if err_t then
       return handle_error(err_t)
     end
 
     if not entity then
-      return helpers.responses.send_HTTP_NOT_FOUND()
+      return kong.response.exit(404, { message = "Not found" })
     end
 
-    return helpers.responses.send_HTTP_OK(entity)
+    return kong.response.exit(200, entity)
   end
 end
 
@@ -292,10 +366,10 @@ local function patch_entity_endpoint(schema, foreign_schema, foreign_field_name)
     end
 
     if not entity then
-      return helpers.responses.send_HTTP_NOT_FOUND()
+      return kong.response.exit(404, { message = "Not found" })
     end
 
-    return helpers.responses.send_HTTP_OK(entity)
+    return kong.response.exit(200, entity)
 
   end or function(self, db, helpers)
     local entity, _, err_t = select_entity(self, db, schema)
@@ -304,24 +378,27 @@ local function patch_entity_endpoint(schema, foreign_schema, foreign_field_name)
     end
 
     if not entity then
-      return helpers.responses.send_HTTP_NOT_FOUND()
+      return kong.response.exit(404, { message = "Not found" })
     end
 
-    local id = entity[foreign_field_name]
-    if not id or id == null then
-      return helpers.responses.send_HTTP_NOT_FOUND()
+    local pk = entity[foreign_field_name]
+    if not pk or pk == null then
+      return kong.response.exit(404, { message = "Not found" })
     end
 
-    entity, _, err_t = db[foreign_schema.name]:update(id, self.args.post, op_nulls)
+    local args = self.args.post
+    local opts = extract_options(args, foreign_schema, "update")
+
+    entity, _, err_t = db[foreign_schema.name]:update(pk, args, opts)
     if err_t then
       return handle_error(err_t)
     end
 
     if not entity then
-      return helpers.responses.send_HTTP_NOT_FOUND()
+      return kong.response.exit(404, { message = "Not found" })
     end
 
-    return helpers.responses.send_HTTP_OK(entity)
+    return kong.response.exit(200, entity)
   end
 end
 
@@ -343,7 +420,7 @@ local function delete_entity_endpoint(schema, foreign_schema, foreign_field_name
       return handle_error(err_t)
     end
 
-    return helpers.responses.send_HTTP_NO_CONTENT()
+    return kong.response.exit(204)
 
   end or function(self, db, helpers)
     local entity, _, err_t = select_entity(self, db, schema)
@@ -353,10 +430,10 @@ local function delete_entity_endpoint(schema, foreign_schema, foreign_field_name
 
     local id = entity and entity[foreign_field_name]
     if not id or id == null then
-      return helpers.responses.send_HTTP_NOT_FOUND()
+      return kong.response.exit(404, { message = "Not found" })
     end
 
-    return helpers.responses.send_HTTP_METHOD_NOT_ALLOWED()
+    return kong.response.exit(405, { message = "Method not allowed" })
   end
 end
 
@@ -430,7 +507,7 @@ local function generate_endpoints(schema, endpoints)
   generate_entity_endpoints(endpoints, schema)
 
   for foreign_field_name, foreign_field in schema:each_field() do
-    if foreign_field.type == "foreign" then
+    if foreign_field.type == "foreign" and not foreign_field.schema.legacy then
       -- e.g. /routes/:routes/service
       generate_entity_endpoints(endpoints, schema, foreign_field.schema, foreign_field_name)
 
@@ -443,7 +520,28 @@ local function generate_endpoints(schema, endpoints)
 end
 
 
-local Endpoints = { handle_error = handle_error }
+-- A reusable handler for endpoints that are deactivated
+-- (e.g. /targets/:targets)
+local not_found = {
+  before = function()
+    return kong.response.exit(404, { message = "Not found" })
+  end
+}
+
+
+local Endpoints = {
+  not_found = not_found,
+  handle_error = handle_error,
+  get_page_size = get_page_size,
+  select_entity = select_entity,
+  extract_options = extract_options,
+  get_entity_endpoint = get_entity_endpoint,
+  put_entity_endpoint = put_entity_endpoint,
+  patch_entity_endpoint = patch_entity_endpoint,
+  delete_entity_endpoint = delete_entity_endpoint,
+  get_collection_endpoint = get_collection_endpoint,
+  post_collection_endpoint = post_collection_endpoint,
+}
 
 
 function Endpoints.new(schema, endpoints)

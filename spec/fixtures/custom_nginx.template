@@ -58,6 +58,8 @@ http {
     lua_ssl_verify_depth ${{LUA_SSL_VERIFY_DEPTH}};
 > end
 
+    lua_shared_dict kong_mock_upstream_loggers 10m;
+
 # injected nginx_http_* directives
 > for _, el in ipairs(nginx_http_directives)  do
     $(el.name) $(el.value);
@@ -78,7 +80,9 @@ http {
         balancer_by_lua_block {
             Kong.balancer()
         }
+> if upstream_keepalive > 0 then
         keepalive ${{UPSTREAM_KEEPALIVE}};
+> end
     }
 
     server {
@@ -96,7 +100,7 @@ http {
 > if proxy_ssl_enabled then
         ssl_certificate ${{SSL_CERT}};
         ssl_certificate_key ${{SSL_CERT_KEY}};
-        ssl_protocols TLSv1.1 TLSv1.2;
+        ssl_protocols TLSv1.1 TLSv1.2 TLSv1.3;
         ssl_certificate_by_lua_block {
             Kong.ssl_certificate()
         }
@@ -200,7 +204,7 @@ http {
 > if admin_ssl_enabled then
         ssl_certificate ${{ADMIN_SSL_CERT}};
         ssl_certificate_key ${{ADMIN_SSL_CERT_KEY}};
-        ssl_protocols TLSv1.1 TLSv1.2;
+        ssl_protocols TLSv1.1 TLSv1.2 TLSv1.3;
 > end
 
     # injected nginx_admin_* directives
@@ -233,7 +237,7 @@ http {
 
         ssl_certificate ${{SSL_CERT}};
         ssl_certificate_key ${{SSL_CERT_KEY}};
-        ssl_protocols TLSv1.1 TLSv1.2;
+        ssl_protocols TLSv1.1 TLSv1.2 TLSv1.3;
 
         location ~ "/2015-03-31/functions/(?:[^/])*/invocations" {
             content_by_lua_block {
@@ -293,7 +297,7 @@ http {
 
         ssl_certificate ${{SSL_CERT}};
         ssl_certificate_key ${{SSL_CERT_KEY}};
-        ssl_protocols TLSv1.1 TLSv1.2;
+        ssl_protocols TLSv1.1 TLSv1.2 TLSv1.3;
 
         set_real_ip_from 127.0.0.1;
 
@@ -423,5 +427,121 @@ http {
                 end
             }
         }
+
+        location ~ "^/post_log/(?<logname>[a-z_]+)$" {
+            content_by_lua_block {
+                local mu = require "spec.fixtures.mock_upstream"
+                return mu.store_log(ngx.var.logname)
+            }
+        }
+
+        location ~ "^/post_auth_log/(?<logname>[a-z_]+)/(?<username>[a-zA-Z0-9_]+)/(?<password>.+)$" {
+            access_by_lua_block {
+                local mu = require "spec.fixtures.mock_upstream"
+                return mu.filter_access_by_basic_auth(ngx.var.username,
+                                                      ngx.var.password)
+            }
+            content_by_lua_block {
+                local mu = require "spec.fixtures.mock_upstream"
+                return mu.store_log(ngx.var.logname)
+            }
+        }
+
+        location ~ "^/read_log/(?<logname>[a-z_]+)$" {
+            content_by_lua_block {
+                local mu = require "spec.fixtures.mock_upstream"
+                return mu.retrieve_log(ngx.var.logname)
+            }
+        }
     }
 }
+
+> if #stream_listeners > 0 then
+stream {
+
+    log_format basic '$remote_addr [$time_local] '
+                     '$protocol $status $bytes_sent $bytes_received '
+                     '$session_time';
+
+    lua_package_path '${{LUA_PACKAGE_PATH}};;';
+    lua_package_cpath '${{LUA_PACKAGE_CPATH}};;';
+    lua_shared_dict stream_kong                5m;
+    lua_shared_dict stream_kong_db_cache       ${{MEM_CACHE_SIZE}};
+    lua_shared_dict stream_kong_db_cache_miss 12m;
+    lua_shared_dict stream_kong_locks          8m;
+    lua_shared_dict stream_kong_process_events 5m;
+    lua_shared_dict stream_kong_cluster_events 5m;
+    lua_shared_dict stream_kong_healthchecks   5m;
+    lua_shared_dict stream_kong_rate_limiting_counters 12m;
+> if database == "cassandra" then
+    lua_shared_dict stream_kong_cassandra      5m;
+> end
+    lua_shared_dict stream_prometheus_metrics  5m;
+
+    upstream kong_upstream {
+        server 0.0.0.1:1;
+        balancer_by_lua_block {
+            Kong.balancer()
+        }
+    }
+
+    init_by_lua_block {
+        -- shared dictionaries conflict between stream/http modules. use a prefix.
+        local shared = ngx.shared
+        ngx.shared = setmetatable({}, {
+            __index = function(t, k)
+                return shared["stream_"..k]
+            end,
+        })
+
+        -- XXX: lua-resty-core doesn't load the ffi regex module in the stream
+        -- subsystem. The code it binds is part of the http module. However
+        -- without it we can't use regex during the init phase.
+        require "resty.core.regex"
+
+        Kong = require 'kong'
+        Kong.init()
+    }
+
+    init_worker_by_lua_block {
+        Kong.init_worker()
+    }
+
+    server {
+> for i = 1, #stream_listeners do
+        listen $(stream_listeners[i].listener);
+> end
+
+        access_log logs/access.log basic;
+        error_log logs/error.log debug;
+
+> if ssl_preread_enabled then
+        ssl_preread on;
+> end
+        preread_by_lua_block {
+            Kong.preread()
+        }
+        proxy_pass kong_upstream;
+
+        log_by_lua_block {
+            Kong.log()
+        }
+    }
+
+    server {
+        listen 15557;
+        listen 15558 ssl;
+
+        ssl_certificate ${{SSL_CERT}};
+        ssl_certificate_key ${{SSL_CERT_KEY}};
+        ssl_protocols TLSv1.1 TLSv1.2;
+
+        content_by_lua_block {
+            local sock = assert(ngx.req.socket(true))
+            local data = sock:receive()  -- read a line from downstream
+            ngx.say(data) -- echo whatever was sent
+        }
+    }
+
+}
+> end

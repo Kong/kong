@@ -56,9 +56,9 @@ describe("arguments.infer_value", function()
 
   it("infers records", function()
     assert.same({ age = "1" }, infer_value({ age = "1" },
-                                           { type = "record", fields = { age = { type = "string" } } }))
+                                           { type = "record", fields = {{ age = { type = "string" } } }}))
     assert.same({ age = 1 },   infer_value({ age = "1" },
-                                           { type = "record", fields = { age = { type = "number" } } }))
+                                           { type = "record", fields = {{ age = { type = "number" } } }}))
   end)
 
   it("returns the provided value when inferring is not possible", function()

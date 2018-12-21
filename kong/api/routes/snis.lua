@@ -1,8 +1,7 @@
+local endpoints = require "kong.api.endpoints"
+
+
 return {
   -- deactivate endpoint (use /certificates/sni instead)
-  ["/snis/:snis/certificate"] = {
-    before = function(self, db, helpers)
-      return helpers.responses.send_HTTP_NOT_FOUND()
-    end
-  },
+  ["/snis/:snis/certificate"] = endpoints.not_found,
 }

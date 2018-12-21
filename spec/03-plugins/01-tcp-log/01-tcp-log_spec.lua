@@ -9,15 +9,19 @@ for _, strategy in helpers.each_strategy() do
   describe("Plugin: tcp-log (log) [#" .. strategy .. "]", function()
     local proxy_client
 
-    setup(function()
-      local bp = helpers.get_db_utils(strategy)
+    lazy_setup(function()
+      local bp = helpers.get_db_utils(strategy, {
+        "routes",
+        "services",
+        "plugins",
+      })
 
       local route = bp.routes:insert {
         hosts = { "tcp_logging.com" },
       }
 
       bp.plugins:insert {
-        route_id = route.id,
+        route = { id = route.id },
         name     = "tcp-log",
         config   = {
           host   = "127.0.0.1",
@@ -30,7 +34,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.plugins:insert {
-        route_id = route2.id,
+        route = { id = route2.id },
         name     = "tcp-log",
         config   = {
           host   = "127.0.0.1",
@@ -47,7 +51,7 @@ for _, strategy in helpers.each_strategy() do
       proxy_client = helpers.proxy_client()
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       if proxy_client then
         proxy_client:close()
       end
@@ -84,7 +88,7 @@ for _, strategy in helpers.each_strategy() do
       -- Making the request
       local r = assert(proxy_client:send {
         method  = "GET",
-        path    = "/delay/2",
+        path    = "/delay/1",
         headers = {
           host  = "tcp_logging.com",
         },

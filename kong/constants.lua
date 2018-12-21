@@ -38,9 +38,7 @@ for i = 1, #plugins do
   plugin_map[plugins[i]] = true
 end
 
-local deprecated_plugins = {
-  "galileo",
-}
+local deprecated_plugins = {} -- no currently deprecated plugin
 
 local deprecated_plugin_map = {}
 for _, plugin in ipairs(deprecated_plugins) do
@@ -80,7 +78,7 @@ return {
     }
   },
   REPORTS = {
-    ADDRESS = "kong-hf.mashape.com",
+    ADDRESS = "kong-hf.konghq.com",
     SYSLOG_PORT = 61828,
     STATS_PORT = 61829
   },

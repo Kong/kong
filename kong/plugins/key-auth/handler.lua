@@ -1,14 +1,19 @@
 local constants = require "kong.constants"
 local BasePlugin = require "kong.plugins.base_plugin"
 
+
+local kong = kong
 local type = type
+
 
 local _realm = 'Key realm="' .. _KONG._NAME .. '"'
 
+
 local KeyAuthHandler = BasePlugin:extend()
 
+
 KeyAuthHandler.PRIORITY = 1003
-KeyAuthHandler.VERSION = "0.2.0"
+KeyAuthHandler.VERSION = "1.0.0"
 
 
 function KeyAuthHandler:new()
@@ -17,13 +22,11 @@ end
 
 
 local function load_credential(key)
-  local creds, err = kong.dao.keyauth_credentials:find_all {
-    key = key
-  }
-  if not creds then
+  local cred, err = kong.db.keyauth_credentials:select_by_key(key)
+  if not cred then
     return nil, err
   end
-  return creds[1]
+  return cred
 end
 
 
@@ -40,29 +43,44 @@ local function load_consumer(consumer_id, anonymous)
   return result
 end
 
+
 local function set_consumer(consumer, credential)
-  local const = constants.HEADERS
+  local set_header = kong.service.request.set_header
+  local clear_header = kong.service.request.clear_header
 
-  local new_headers = {
-    [const.CONSUMER_ID]        = consumer.id,
-    [const.CONSUMER_CUSTOM_ID] = tostring(consumer.custom_id),
-    [const.CONSUMER_USERNAME]  = consumer.username,
-  }
-
-  kong.ctx.shared.authenticated_consumer = consumer -- forward compatibility
-  ngx.ctx.authenticated_consumer = consumer         -- backward compatibility
-
-  if credential then
-    kong.ctx.shared.authenticated_credential = credential -- forward compatibility
-    ngx.ctx.authenticated_credential = credential         -- backward compatibility
-    new_headers[const.CREDENTIAL_USERNAME] = credential.username
-    kong.service.request.clear_header(const.ANONYMOUS) -- in case of auth plugins concatenation
-
+  if consumer and consumer.id then
+    set_header(constants.HEADERS.CONSUMER_ID, consumer.id)
   else
-    new_headers[const.ANONYMOUS] = true
+    clear_header(constants.HEADERS.CONSUMER_ID)
   end
 
-  kong.service.request.set_headers(new_headers)
+  if consumer and consumer.custom_id then
+    set_header(constants.HEADERS.CONSUMER_CUSTOM_ID, consumer.custom_id)
+  else
+    clear_header(constants.HEADERS.CONSUMER_CUSTOM_ID)
+  end
+
+  if consumer and consumer.username then
+    set_header(constants.HEADERS.CONSUMER_USERNAME, consumer.username)
+  else
+    clear_header(constants.HEADERS.CONSUMER_USERNAME)
+  end
+
+  kong.client.authenticate(consumer, credential)
+
+  if credential then
+    if credential.username then
+      set_header(constants.HEADERS.CREDENTIAL_USERNAME, credential.username)
+    else
+      clear_header(constants.HEADERS.CREDENTIAL_USERNAME)
+    end
+
+    clear_header(constants.HEADERS.ANONYMOUS)
+
+  else
+    clear_header(constants.HEADERS.CREDENTIAL_USERNAME)
+    set_header(constants.HEADERS.ANONYMOUS, true)
+  end
 end
 
 
@@ -133,14 +151,13 @@ local function do_authentication(conf)
   -- retrieve our consumer linked to this API key
 
   local cache = kong.cache
-  local dao = kong.dao
 
-  local credential_cache_key = dao.keyauth_credentials:cache_key(key)
+  local credential_cache_key = kong.db.keyauth_credentials:cache_key(key)
   local credential, err = cache:get(credential_cache_key, nil, load_credential,
                                     key)
   if err then
     kong.log.err(err)
-    return kong.response.exit(500, "An unexpected error ocurred")
+    return kong.response.exit(500, "An unexpected error occurred")
   end
 
   -- no credential in DB, for this key, it is invalid, HTTP 403
@@ -153,13 +170,13 @@ local function do_authentication(conf)
   -----------------------------------------
 
   -- retrieve the consumer linked to this API key, to set appropriate headers
-
-  local consumer_cache_key = kong.db.consumers:cache_key(credential.consumer_id)
-  local consumer, err      = cache:get(consumer_cache_key, nil, load_consumer,
-                                       credential.consumer_id)
+  local consumer_cache_key, consumer
+  consumer_cache_key = kong.db.consumers:cache_key(credential.consumer.id)
+  consumer, err      = cache:get(consumer_cache_key, nil, load_consumer,
+                                 credential.consumer.id)
   if err then
     kong.log.err(err)
-    return nil, { status = 500, message = "An unexpected error ocurred" }
+    return nil, { status = 500, message = "An unexpected error occurred" }
   end
 
   set_consumer(consumer, credential)
@@ -176,10 +193,7 @@ function KeyAuthHandler:access(conf)
     return
   end
 
-  -- checking both old and new ctx for backward and forward compatibility
-  local authenticated_credential = kong.ctx.shared.authenticated_credential
-                                   or ngx.ctx.authenticated_credential
-  if authenticated_credential and conf.anonymous ~= "" then
+  if conf.anonymous and kong.client.get_credential() then
     -- we're already authenticated, and we're configured for using anonymous,
     -- hence we're in a logical OR between auth methods and we're already done.
     return
@@ -187,14 +201,14 @@ function KeyAuthHandler:access(conf)
 
   local ok, err = do_authentication(conf)
   if not ok then
-    if conf.anonymous ~= "" then
+    if conf.anonymous then
       -- get anonymous user
       local consumer_cache_key = kong.db.consumers:cache_key(conf.anonymous)
       local consumer, err = kong.cache:get(consumer_cache_key, nil,
                                            load_consumer, conf.anonymous, true)
       if err then
         kong.log.err(err)
-        return kong.response.exit(500, { message = "An unexpected error ocurred" })
+        return kong.response.exit(500, { message = "An unexpected error occurred" })
       end
 
       set_consumer(consumer, nil)

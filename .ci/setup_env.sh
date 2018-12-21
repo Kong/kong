@@ -61,12 +61,12 @@ if [ ! "$(ls -A $OPENRESTY_INSTALL)" ]; then
     "--prefix=$OPENRESTY_INSTALL"
     "--with-cc-opt='-I$OPENSSL_INSTALL/include'"
     "--with-ld-opt='-L$OPENSSL_INSTALL/lib -Wl,-rpath,$OPENSSL_INSTALL/lib'"
-    "--with-ipv6"
     "--with-pcre-jit"
     "--with-http_ssl_module"
     "--with-http_realip_module"
     "--with-http_stub_status_module"
     "--with-http_v2_module"
+    "--with-stream_ssl_preread_module"
   )
 
   pushd $OPENRESTY_DOWNLOAD
@@ -102,7 +102,8 @@ fi
 
 export OPENSSL_DIR=$OPENSSL_INSTALL # for LuaSec install
 
-export PATH=$PATH:$OPENRESTY_INSTALL/nginx/sbin:$OPENRESTY_INSTALL/bin:$LUAROCKS_INSTALL/bin:$CPAN_DOWNLOAD
+export PATH=$OPENSSL_INSTALL/bin:$OPENRESTY_INSTALL/nginx/sbin:$OPENRESTY_INSTALL/bin:$LUAROCKS_INSTALL/bin:$CPAN_DOWNLOAD:$PATH
+export LD_LIBRARY_PATH=$OPENSSL_INSTALL/lib:$LD_LIBRARY_PATH # for openssl's CLI invoked in the test suite
 
 eval `luarocks path`
 
@@ -128,3 +129,4 @@ fi
 nginx -V
 resty -V
 luarocks --version
+openssl version

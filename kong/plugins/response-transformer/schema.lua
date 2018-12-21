@@ -1,53 +1,53 @@
-local find = string.find
--- entries must have colons to set the key and value apart
-local function check_for_value(value)
-  for i, entry in ipairs(value) do
-    local ok = find(entry, ":")
-    if not ok then
-      return false, "key '" .. entry .. "' has no value"
-    end
-  end
-  return true
-end
+local typedefs = require "kong.db.schema.typedefs"
+
+
+local string_array = {
+  type = "array",
+  default = {},
+  elements = { type = "string" },
+}
+
+
+local colon_string_array = {
+  type = "array",
+  default = {},
+  elements = { type = "string", match = "^[^:]+:.*$" },
+}
+
+
+
+local string_record = {
+  type = "record",
+  fields = {
+    { json = string_array },
+    { headers = string_array },
+  },
+}
+
+
+local colon_string_record = {
+  type = "record",
+  fields = {
+    { json = colon_string_array },
+    { headers = colon_string_array },
+  },
+}
+
 
 return {
+  name = "response-transformer",
   fields = {
-    -- add: Add a value (to response headers or response JSON body) only if the key does not already exist.
-    remove = {
-      type = "table",
-      schema = {
+    { run_on = typedefs.run_on_first },
+    { config = {
+        type = "record",
         fields = {
-          json = {type = "array", default = {}}, -- does not need colons
-          headers = {type = "array", default = {}} -- does not need colons
-        }
-      }
+          { remove = string_record },
+          { replace = colon_string_record },
+          { add = colon_string_record },
+          { append = colon_string_record },
+        },
+      },
     },
-    replace = {
-      type = "table",
-      schema = {
-        fields = {
-          json = {type = "array", default = {}, func = check_for_value},
-          headers = {type = "array", default = {}, func = check_for_value}
-        }
-      }
-    },
-    add = {
-      type = "table",
-      schema = {
-        fields = {
-          json = {type = "array", default = {}, func = check_for_value},
-          headers = {type = "array", default = {}, func = check_for_value}
-        }
-      }
-    },
-    append = {
-      type = "table",
-      schema = {
-        fields = {
-          json = {type = "array", default = {}, func = check_for_value},
-          headers = {type = "array", default = {}, func = check_for_value}
-        }
-      }
-    }
-  }
+  },
 }
+

@@ -2,21 +2,27 @@ local helpers = require "spec.helpers"
 local cjson = require "cjson"
 
 for _, strategy in helpers.each_strategy() do
+
   describe("Admin API #" .. strategy, function()
-    local dao
     local db
     local client
 
-    setup(function()
-      _, db, dao = helpers.get_db_utils(strategy)
+    lazy_setup(function()
+      _, db = helpers.get_db_utils(strategy, {
+        "services",
+        "routes",
+        "plugins",
+      }, {
+        "key-auth"
+      })
 
       assert(helpers.start_kong({
         database = strategy,
       }))
     end)
 
-    teardown(function()
-      helpers.stop_kong()
+    lazy_teardown(function()
+      helpers.stop_kong(nil, true)
     end)
 
     before_each(function()
@@ -46,7 +52,7 @@ for _, strategy in helpers.each_strategy() do
       local services = {}
       local plugins = {}
 
-      setup(function()
+      lazy_setup(function()
         for i = 1, 3 do
           local service, err, err_t = db.services:insert {
             name = "service-" .. i,
@@ -59,9 +65,12 @@ for _, strategy in helpers.each_strategy() do
 
           services[i] = service
 
-          plugins[i] = assert(dao.plugins:insert {
+          plugins[i] = assert(db.plugins:insert {
             name = "key-auth",
-            service_id = service.id,
+            service = { id = service.id },
+            config = {
+              key_names = { "testkey" },
+            }
           })
         end
       end)
@@ -74,7 +83,6 @@ for _, strategy in helpers.each_strategy() do
           })
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
-          assert.equal(3, json.total)
           assert.equal(3, #json.data)
         end)
       end)
@@ -126,11 +134,11 @@ for _, strategy in helpers.each_strategy() do
             local json = cjson.decode(body)
             assert.False(json.enabled)
 
-            local in_db = assert(dao.plugins:find(plugins[1]))
+            local in_db = assert(db.plugins:select({ id = plugins[1].id }, { nulls = true }))
             assert.same(json, in_db)
           end)
           it("updates a plugin bis", function()
-            local plugin = assert(dao.plugins:find(plugins[2]))
+            local plugin = assert(db.plugins:select({ id = plugins[2].id }, { nulls = true }))
 
             plugin.enabled = not plugin.enabled
             plugin.created_at = nil
@@ -146,25 +154,47 @@ for _, strategy in helpers.each_strategy() do
             assert.equal(plugin.enabled, json.enabled)
           end)
           it("updates a plugin (removing foreign key reference)", function()
-            assert.equal(services[2].id, plugins[2].service_id)
+            assert.equal(services[2].id, plugins[2].service.id)
 
             local res = assert(client:send {
               method = "PATCH",
               path = "/plugins/" .. plugins[2].id,
               body = {
-                service_id = cjson.null,
+                service = cjson.null,
               },
               headers = { ["Content-Type"] = "application/json" }
             })
             local body = assert.res_status(200, res)
             local json = cjson.decode(body)
-            assert.is_nil(json.service_id)
+            assert.same(ngx.null, json.service)
 
-            local in_db = assert(dao.plugins:find(plugins[2]))
+            local in_db = assert(db.plugins:select({ id = plugins[2].id }, { nulls = true }))
             assert.same(json, in_db)
           end)
 
           describe("errors", function()
+            it("handles invalid input", function()
+              local before = assert(db.plugins:select({ id = plugins[1].id }, { nulls = true }))
+              local res = assert(client:send {
+                method = "PATCH",
+                path = "/plugins/" .. plugins[1].id,
+                body = { foo = "bar" },
+                headers = {["Content-Type"] = "application/json"}
+              })
+              local body = cjson.decode(assert.res_status(400, res))
+              assert.same({
+                message = "schema violation (foo: unknown field)",
+                name = "schema violation",
+                fields = {
+                  foo = "unknown field",
+                },
+                code = 2,
+              }, body)
+
+              local after = assert(db.plugins:select({ id = plugins[1].id }, { nulls = true }))
+              assert.same(before, after)
+              assert.same({"testkey"}, after.config.key_names)
+            end)
             it("returns 404 if not found", function()
               local res = assert(client:send {
                 method = "PATCH",
@@ -186,12 +216,12 @@ for _, strategy in helpers.each_strategy() do
             assert.res_status(204, res)
           end)
           describe("errors", function()
-            it("returns 404 if not found", function()
+            it("returns 204 if not found", function()
               local res = assert(client:send {
                 method = "DELETE",
                 path = "/plugins/f4aecadc-05c7-11e6-8d41-1f3b3d5fa15c"
               })
-              assert.res_status(404, res)
+              assert.res_status(204, res)
             end)
           end)
         end)
@@ -203,7 +233,7 @@ for _, strategy in helpers.each_strategy() do
         it("returns the schema of a plugin config", function()
           local res = assert(client:send {
             method = "GET",
-            path = "/plugins/schema/key-auth",
+            path = "/plugins/schema/request-transformer",
           })
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)

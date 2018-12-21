@@ -167,10 +167,13 @@ describe("Plugin: response-transformer", function()
 
     local old_ngx, handler
 
-    setup(function()
+    lazy_setup(function()
       old_ngx  = ngx
       _G.ngx   = {       -- busted requires explicit _G to access the global environment
         log    = function() end,
+        config = {
+          subsystem = "http",
+        },
         header = {
           ["content-type"] = "application/json",
         },
@@ -183,7 +186,7 @@ describe("Plugin: response-transformer", function()
       handler:new()
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       -- luacheck: globals ngx
       ngx = old_ngx
     end)

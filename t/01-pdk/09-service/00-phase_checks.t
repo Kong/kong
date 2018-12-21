@@ -49,6 +49,7 @@ qq{
                 header_filter = "forced false",
                 body_filter   = "forced false",
                 log           = "forced false",
+                admin_api     = "forced false",
             }, {
                 method        = "set_target",
                 args          = { "example.com", 8000 },
@@ -59,6 +60,7 @@ qq{
                 header_filter = "forced false",
                 body_filter   = "forced false",
                 log           = "forced false",
+                admin_api     = "forced false",
             },
         }
 
@@ -82,6 +84,7 @@ qq{
 
         access_by_lua_block {
             phase_check_functions(phases.access)
+            phase_check_functions(phases.admin_api)
         }
 
         header_filter_by_lua_block {

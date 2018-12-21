@@ -69,8 +69,6 @@ host: example.com
             local PDK = require "kong.pdk"
             local pdk = PDK.new()
 
-            ngx.ctx.balancer_data = 8000
-
             local pok, err = pcall(pdk.service.set_target, "example.com", "foo")
             ngx.say(err)
         }
@@ -91,8 +89,6 @@ port must be an integer
         content_by_lua_block {
             local PDK = require "kong.pdk"
             local pdk = PDK.new()
-
-            ngx.ctx.balancer_data = 8000
 
             local pok, err = pcall(pdk.service.set_target, "example.com", 123.4)
 
@@ -115,8 +111,6 @@ port must be an integer
         content_by_lua_block {
             local PDK = require "kong.pdk"
             local pdk = PDK.new()
-
-            ngx.ctx.balancer_data = 8000
 
             local pok, err = pcall(pdk.service.set_target, "example.com", -1)
             ngx.say(err)

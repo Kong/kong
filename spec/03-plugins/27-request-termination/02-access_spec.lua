@@ -11,8 +11,12 @@ for _, strategy in helpers.each_strategy() do
     local proxy_client
     local admin_client
 
-    setup(function()
-      local bp = helpers.get_db_utils(strategy)
+    lazy_setup(function()
+      local bp = helpers.get_db_utils(strategy, {
+        "routes",
+        "services",
+        "plugins",
+      })
 
       local route1 = bp.routes:insert({
         hosts = { "api1.request-termination.com" },
@@ -40,13 +44,13 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name     = "request-termination",
-        route_id = route1.id,
+        route = { id = route1.id },
         config   = {},
       }
 
       bp.plugins:insert {
         name     = "request-termination",
-        route_id = route2.id,
+        route = { id = route2.id },
         config   = {
           status_code = 404,
         },
@@ -54,7 +58,7 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name     = "request-termination",
-        route_id = route3.id,
+        route = { id = route3.id },
         config   = {
           status_code = 406,
           message     = "Invalid",
@@ -63,7 +67,7 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name     = "request-termination",
-        route_id = route4.id,
+        route = { id = route4.id },
         config   = {
           body = "<html><body><h1>Service is down for maintenance</h1></body></html>",
         },
@@ -71,7 +75,7 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name     = "request-termination",
-        route_id = route5.id,
+        route = { id = route5.id },
         config   = {
           status_code  = 451,
           content_type = "text/html",
@@ -81,7 +85,7 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name     = "request-termination",
-        route_id = route6.id,
+        route = { id = route6.id },
         config   = {
           status_code = 503,
           body        = '{"code": 1, "message": "Service unavailable"}',
@@ -97,7 +101,7 @@ for _, strategy in helpers.each_strategy() do
       admin_client = helpers.admin_client()
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       if proxy_client and admin_client then
         proxy_client:close()
         admin_client:close()

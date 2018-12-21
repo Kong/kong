@@ -9,8 +9,11 @@ for _, strategy in helpers.each_strategy() do
   describe("Proxy errors Content-Type [#" .. strategy .. "]", function()
     local proxy_client
 
-    setup(function()
-      local bp = helpers.get_db_utils(strategy)
+    lazy_setup(function()
+      local bp = helpers.get_db_utils(strategy, {
+        "routes",
+        "services",
+      })
 
       local service = bp.services:insert {
         name            = "api-1",
@@ -33,7 +36,7 @@ for _, strategy in helpers.each_strategy() do
       })
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       helpers.stop_kong()
     end)
 
@@ -75,7 +78,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("", function()
-      setup(function()
+      lazy_setup(function()
         assert(helpers.kong_exec(("restart --conf %s --nginx-conf %s"):format(
                                  helpers.test_conf_path,
                                  "spec/fixtures/custom_nginx.template"), {
