@@ -1,7 +1,6 @@
 local cjson        = require "cjson"
 local helpers      = require "spec.helpers"
 local dao_helpers  = require "spec.02-integration.03-dao.helpers"
-local singletons = require "kong.singletons"
 local rbac_migrations_defaults = require "kong.rbac.migrations.01_defaults"
 
 local POLL_INTERVAL = 0.3
@@ -14,12 +13,11 @@ describe("rbac entities are invalidated with db: " .. kong_conf.database, functi
   local admin_client_1
   local admin_client_2
 
-  local dao
+  local dao, _, bp
   local wait_for_propagation
 
   setup(function()
-    dao = select(3, helpers.get_db_utils(kong_conf.database))
-    singletons.dao = dao
+    bp, _, dao = helpers.get_db_utils(kong_conf.database)
     local db_update_propagation = kong_conf.database == "cassandra" and 3 or 0
 
     assert(helpers.start_kong {
@@ -74,6 +72,7 @@ describe("rbac entities are invalidated with db: " .. kong_conf.database, functi
   end)
 
   describe("RBAC (user_roles)", function()
+    local service
     setup(function()
       local bit   = require "bit"
       local rbac  = require "kong.rbac"
@@ -90,8 +89,11 @@ describe("rbac entities are invalidated with db: " .. kong_conf.database, functi
         action_bits_all = bxor(action_bits_all, rbac.actions_bitfields[k])
       end
 
+      service = bp.services:insert()
+
       rbac_migrations_defaults.up(nil, nil, dao)
       -- a few extra mock entities for our test
+
       dao.rbac_users:insert({
         name = "alice",
         user_token = "alice",
@@ -145,7 +147,7 @@ describe("rbac entities are invalidated with db: " .. kong_conf.database, functi
       -- bob cant see any resources!
       local res = assert(admin_client_1:send {
         method = "GET",
-        path   = "/apis",
+        path   = "/routes",
         headers = {
           ["Kong-Admin-Token"] = "bob",
           ["Content-Type"]     = "application/json",
@@ -155,7 +157,7 @@ describe("rbac entities are invalidated with db: " .. kong_conf.database, functi
 
       res = assert(admin_client_2:send {
         method = "GET",
-        path   = "/apis",
+        path   = "/routes",
         headers = {
           ["Kong-Admin-Token"] = "bob",
           ["Content-Type"]     = "application/json",
@@ -182,7 +184,7 @@ describe("rbac entities are invalidated with db: " .. kong_conf.database, functi
 
       local res_1 = assert(admin_client_1:send {
         method = "GET",
-        path   = "/apis",
+        path   = "/routes",
         headers = {
           ["Kong-Admin-Token"] = "bob",
           ["Content-Type"]     = "application/json",
@@ -194,7 +196,7 @@ describe("rbac entities are invalidated with db: " .. kong_conf.database, functi
 
       local res_2 = assert(admin_client_2:send {
         method = "GET",
-        path   = "/apis",
+        path   = "/routes",
         headers = {
           ["Kong-Admin-Token"] = "bob",
           ["Content-Type"]     = "application/json",
@@ -206,31 +208,42 @@ describe("rbac entities are invalidated with db: " .. kong_conf.database, functi
     it("on update", function()
       -- this is bob
       -- bob can see resources, but he cant create them!
-      local res = assert(admin_client_1:send {
-        method = "POST",
-        path   = "/apis",
+      local res = admin_client_1:post("/routes", {
+        body = {
+          protocols = { "http" },
+          hosts     = { "my.route.com" },
+          service   = service,
+        },
+        headers = {
+          ["Kong-Admin-Token"] = "bob",
+          ["Content-Type"] = "application/json"}
+      })
+      assert.res_status(403, res)
+
+      local res = admin_client_1:post("/services/".. service.id .."/routes", {
         headers = {
           ["Kong-Admin-Token"] = "bob",
           ["Content-Type"]     = "application/json",
         },
         body = {
           name         = "example",
-          hosts        = "example.com",
+          hosts        = { "example.com" },
           upstream_url = helpers.mock_upstream_url,
         },
       })
+
       assert.res_status(403, res)
 
       res = assert(admin_client_2:send {
         method = "POST",
-        path   = "/apis",
+        path   = "/services/".. service.id .."/routes",
         headers = {
           ["Kong-Admin-Token"] = "bob",
           ["Content-Type"]     = "application/json",
         },
         body = {
           name         = "example",
-          hosts        = "example.com",
+          hosts        = {"example.com"},
           upstream_url = helpers.mock_upstream_url,
         },
       })
@@ -253,36 +266,32 @@ describe("rbac entities are invalidated with db: " .. kong_conf.database, functi
       -- no need to wait for workers propagation (lua-resty-worker-events)
       -- because our test instance only has 1 worker
 
-      local res_1 = assert(admin_client_1:send {
-        method = "POST",
-        path   = "/apis",
+      local res_1 = assert(admin_client_1:post("/services/".. service.id .."/routes", {
         headers = {
           ["Kong-Admin-Token"] = "bob",
           ["Content-Type"]     = "application/json",
         },
         body = {
-          name         = "example",
-          hosts        = "example.com",
-          upstream_url = helpers.mock_upstream_url,
+          -- TODO:  add name after 1.0 merge
+          -- name         = "example",
+          hosts        = {"example.com"},
         },
-      })
+      }))
       assert.res_status(201, res_1)
 
       wait_for_propagation()
 
-      local res_2 = assert(admin_client_2:send {
-        method = "POST",
-        path   = "/apis",
+      local res_2 = assert(admin_client_2:post("/services/".. service.id .."/routes", {
         headers = {
           ["Kong-Admin-Token"] = "bob",
           ["Content-Type"]     = "application/json",
         },
         body = {
-          name         = "example2",
-          hosts        = "example.com",
-          upstream_url = helpers.mock_upstream_url,
+          -- TODO:  add name after 1.0 merge
+          -- name         = "example2",
+          hosts        ={"example.com"},
         },
-      })
+      }))
       assert.res_status(201, res_2)
     end)
 
@@ -306,14 +315,14 @@ describe("rbac entities are invalidated with db: " .. kong_conf.database, functi
 
       local res_1 = assert(admin_client_1:send {
         method = "POST",
-        path   = "/apis",
+        path   = "/services/".. service.id .."/routes",
         headers = {
           ["Kong-Admin-Token"] = "bob",
           ["Content-Type"]     = "application/json",
         },
         body = {
           name         = "example",
-          hosts        = "example.com",
+          hosts        = {"example.com"},
           upstream_url = helpers.mock_upstream_url,
         },
       })
@@ -323,14 +332,14 @@ describe("rbac entities are invalidated with db: " .. kong_conf.database, functi
 
       local res_2 = assert(admin_client_2:send {
         method = "POST",
-        path   = "/apis",
+        path   = "/services/".. service.id .."/routes",
         headers = {
           ["Kong-Admin-Token"] = "bob",
           ["Content-Type"]     = "application/json",
         },
         body = {
           name         = "example2",
-          hosts        = "example.com",
+          hosts        = {"example.com"},
           upstream_url = helpers.mock_upstream_url,
         },
       })
