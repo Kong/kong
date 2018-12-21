@@ -67,7 +67,7 @@ For usage with [key-auth] plugin
       --data 'name=key-auth'
     ```
 
-    Be sure to note the created Plugin `id` - it will be needed it in step 5.
+    Be sure to note the created Plugin `id` - it will be needed later.
 
 1. ### Verify that the key-auth plugin is properly configured
 
