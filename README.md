@@ -94,7 +94,7 @@ For usage with [key-auth] plugin
       --data "username=anonymous_users"
     ```
 
-    Be sure to note the Consumer `id` - you'll need it in the next step.
+    Be sure to note the Consumer `id` - you'll need it in a later step.
 
     Now create a consumer that will authenticate via sessions
     ```bash
@@ -163,7 +163,7 @@ For usage with [key-auth] plugin
       --url http://localhost:8000/sessions-test?apikey=open_sesame
     ```
 
-    The response should not have the `Set-Cookie` header. Make sure that this
+    The response should now have the `Set-Cookie` header. Make sure that this
     cookie works.
 
     If cookie looks like this:
