@@ -7,8 +7,8 @@ source = {
 }
 description = {
   summary = "Kong is a scalable and customizable API Management Layer built on top of Nginx.",
-  homepage = "http://getkong.org",
-  license = "MIT"
+  homepage = "https://konghq.com",
+  license = "Apache 2.0"
 }
 dependencies = {
   "inspect == 3.1.1",
