@@ -84,10 +84,10 @@ for _, strategy in helpers.each_strategy() do
     end)
   end)
   describe("Plugin: workspace scope test key-auth (access)", function()
-    local admin_client, proxy_client, api1, plugin_foo, ws_foo, ws_default, dao
+    local admin_client, proxy_client, route1, plugin_foo, ws_foo, ws_default, dao, bp, _, s
     local consumer_default, cred_default
     setup(function()
-      dao = select(3, helpers.get_db_utils(strategy))
+      bp, _, dao = helpers.get_db_utils(strategy)
 
       ws_default = dao.workspaces:find_all({name = "default"})[1]
 
@@ -100,75 +100,31 @@ for _, strategy in helpers.each_strategy() do
       admin_client = helpers.admin_client()
       proxy_client = helpers.proxy_client()
 
-      local res = assert(admin_client:send {
-        method = "POST",
-        path   = "/workspaces",
-        body   = {
-          name = "foo",
-        },
-        headers = {
-          ["Content-Type"] = "application/json",
-        }
-      })
-      assert.res_status(201, res)
-      ws_foo = assert.response(res).has.jsonbody()
+      ws_foo = bp.workspaces:insert({name = "foo"})
+      s = bp.services:insert({name = "s1"})
 
-      local res = assert(admin_client:send {
-        method = "POST",
-        path   = "/workspaces",
-        body   = {
-          name = "bar",
-        },
-        headers = {
-          ["Content-Type"] = "application/json",
-        }
+      local res = admin_client:post("/services/s1/routes",
+        {
+          body   = {
+            hosts = {"route1.com"},
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+        }}
+      )
+      assert.res_status(201, res)
+      route1 = assert.response(res).has.jsonbody()
+
+      res = admin_client:post("/services/s1/plugins", {
+        body = {name = "key-auth"},
+        headers =  {["Content-Type"] = "application/json"},
       })
       assert.res_status(201, res)
 
-      local res = assert(admin_client:send {
-        method = "POST",
-        path   = "/apis",
-        body   = {
-          name = "test",
-          upstream_url = helpers.mock_upstream_url,
-          hosts = "api1.com"
-        },
-        headers = {
-          ["Content-Type"] = "application/json",
-        }
-      })
-      assert.res_status(201, res)
-      api1 = assert.response(res).has.jsonbody()
 
+      consumer_default = bp.consumers:insert({username = "bob"})
 
-      local res = assert(admin_client:send {
-        method = "POST",
-        path   = "/apis/" .. api1.name .. "/plugins" ,
-        body   = {
-          name = "key-auth",
-        },
-        headers = {
-          ["Content-Type"] = "application/json",
-        }
-      })
-      assert.res_status(201, res)
-
-      local res = assert(admin_client:send {
-        method = "POST",
-        path   = "/consumers" ,
-        body   = {
-          username = "bob",
-        },
-        headers = {
-          ["Content-Type"] = "application/json",
-        }
-      })
-      assert.res_status(201, res)
-      consumer_default = assert.response(res).has.jsonbody()
-
-      local res = assert(admin_client:send {
-        method = "POST",
-        path   = "/consumers/" .. consumer_default.username .. "/key-auth"   ,
+      res = admin_client:post("/consumers/" .. consumer_default.username .. "/key-auth", {
         body   = {
           key = "kong",
         },
@@ -178,6 +134,7 @@ for _, strategy in helpers.each_strategy() do
       })
       assert.res_status(201, res)
       cred_default = assert.response(res).has.jsonbody()
+
       admin_client:close()
     end)
     teardown(function()
@@ -194,13 +151,13 @@ for _, strategy in helpers.each_strategy() do
       proxy_client:close()
     end)
 
-    describe("test sharing api1 with foo", function()
-      it("withoud sharing", function()
+    describe("test sharing route1 with foo", function()
+      it("without sharing", function()
         local res = assert(proxy_client:send {
           method = "GET",
           path = "/anything",
           headers = {
-            ["Host"] = "api1.com",
+            ["Host"] = "route1.com",
             ["apikey"] = "kong",
           }
         })
@@ -211,7 +168,7 @@ for _, strategy in helpers.each_strategy() do
           method = "GET",
           path = "/anything",
           headers = {
-            ["Host"] = "api1.com",
+            ["Host"] = "route1.com",
             ["apikey"] = "default:kong",
           }
         })
@@ -221,15 +178,13 @@ for _, strategy in helpers.each_strategy() do
         local cache_key = dao.plugins:cache_key_ws(ws_default,
                                                    "key-auth",
                                                    nil,
+                                                   s.id,
                                                    nil,
-                                                   nil,
-                                                   api1.id)
+                                                   nil)
         local res
         helpers.wait_until(function()
-          res = assert(admin_client:send {
-            method = "GET",
-            path = "/cache/" .. cache_key,
-          })
+          res = admin_client:get("/cache/" .. cache_key)
+          res:read_body()
           return res.status == 200
         end)
 
@@ -239,10 +194,11 @@ for _, strategy in helpers.each_strategy() do
         local cache_key = dao.keyauth_credentials:cache_key(cred_default.key)
         local res
         helpers.wait_until(function()
-          res = assert(admin_client:send {
+          res = admin_client:send {
             method = "GET",
             path = "/cache/" .. cache_key,
-          })
+          }
+          assert(res)
           return res.status == 200
         end)
 
@@ -268,7 +224,7 @@ for _, strategy in helpers.each_strategy() do
                                                    nil,
                                                    nil,
                                                    nil,
-                                                   api1.id)
+                                                   route1.id)
 
         local res
         helpers.wait_until(function()
@@ -281,12 +237,25 @@ for _, strategy in helpers.each_strategy() do
 
         assert.response(res).has.jsonbody()
       end)
-      it("share api with foo", function()
+      it("share service with foo", function()
+
         local res = assert(admin_client:send {
           method = "POST",
           path   = "/workspaces/foo/entities",
           body   = {
-            entities = api1.id,
+            entities = s.id,
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          }
+        })
+        assert.res_status(201, res)
+
+        local res = assert(admin_client:send {
+          method = "POST",
+          path   = "/workspaces/foo/entities",
+          body   = {
+            entities = route1.id,
           },
           headers = {
             ["Content-Type"] = "application/json",
@@ -298,7 +267,7 @@ for _, strategy in helpers.each_strategy() do
           method = "GET",
           path = "/anything",
           headers = {
-            ["Host"] = "api1.com",
+            ["Host"] = "route1.com",
             ["apikey"] = "kong",
           }
         })
@@ -307,7 +276,7 @@ for _, strategy in helpers.each_strategy() do
       it("add request-transformer on foo side", function()
         local res = assert(admin_client:send {
           method = "POST",
-          path   = "/foo/apis/" .. api1.name .. "/plugins" ,
+          path   = "/foo/services/" .. s.name .. "/plugins" ,
           body   = {
             name = "request-transformer",
             config = {
@@ -327,7 +296,7 @@ for _, strategy in helpers.each_strategy() do
           method = "GET",
           path = "/anything",
           headers = {
-            ["Host"] = "api1.com",
+            ["Host"] = "route1.com",
             ["apikey"] = "kong",
           }
         })
@@ -339,9 +308,9 @@ for _, strategy in helpers.each_strategy() do
         local cache_key = dao.plugins:cache_key_ws(ws_foo,
                                                    "request-transformer",
                                                    nil,
+                                                   s.id,
                                                    nil,
-                                                   nil,
-                                                   api1.id)
+                                                   nil)
 
         local res
         helpers.wait_until(function()
@@ -349,6 +318,7 @@ for _, strategy in helpers.each_strategy() do
             method = "GET",
             path = "/cache/" .. cache_key,
           })
+          res:read_body()
           return res.status == 200
         end)
 
@@ -360,9 +330,9 @@ for _, strategy in helpers.each_strategy() do
         local cache_key = dao.plugins:cache_key_ws(ws_default,
                                                    "request-transformer",
                                                    nil,
+                                                   s.id,
                                                    nil,
-                                                   nil,
-                                                   api1.id)
+                                                   nil)
 
         local res
         helpers.wait_until(function()
@@ -387,7 +357,7 @@ for _, strategy in helpers.each_strategy() do
           method = "GET",
           path = "/anything",
           headers = {
-            ["Host"] = "api1.com",
+            ["Host"] = "route1.com",
             ["apikey"] = "kong",
           }
         })
@@ -399,9 +369,9 @@ for _, strategy in helpers.each_strategy() do
         local cache_key = dao.plugins:cache_key_ws(nil,
                                                    "request-transformer",
                                                    nil,
+                                                   s.id,
                                                    nil,
-                                                   nil,
-                                                   api1.id)
+                                                   nil)
 
         local res
         helpers.wait_until(function()
