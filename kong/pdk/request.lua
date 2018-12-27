@@ -295,7 +295,7 @@ local function new(self)
   -- @usage
   -- -- Given a request to https://example.com:1234/v1/movies?movie=foo
   --
-  -- kong.request.get_raw_path_and_query() -- "/v1/movies?movie=foo"
+  -- kong.request.get_path_with_query() -- "/v1/movies?movie=foo"
   function _REQUEST.get_path_with_query()
     check_phase(PHASES.request)
     return ngx.var.request_uri or ""
