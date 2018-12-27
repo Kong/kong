@@ -1,21 +1,27 @@
 local uuid = require("kong.tools.utils").uuid
 local helpers = require "spec.helpers"
-local policies = require "kong.plugins.rate-limiting.policies"
 local timestamp = require "kong.tools.timestamp"
 
 describe("Plugin: rate-limiting (policies)", function()
   describe("cluster", function()
-    local cluster_policy = policies.cluster
-
     local api_id = uuid()
     local conf = { api_id = api_id }
     local identifier = uuid()
     local dao
+    local policies
 
-    setup(function()
-      local singletons = require "kong.singletons"
-      dao = select(3, helpers.get_db_utils())
-      singletons.dao = dao
+    lazy_setup(function()
+      local _, db
+      _, db, dao = helpers.get_db_utils()
+
+      if _G.kong then
+        _G.kong.db = db
+      else
+        _G.kong = { db = db }
+      end
+
+      package.loaded["kong.plugins.rate-limiting.policies"] = nil
+      policies = require "kong.plugins.rate-limiting.policies"
 
       dao:truncate_tables()
     end)
@@ -28,8 +34,8 @@ describe("Plugin: rate-limiting (policies)", function()
       local periods = timestamp.get_timestamps(current_timestamp)
 
       for period, period_date in pairs(periods) do
-        local metric = assert(cluster_policy.usage(conf, identifier,
-                                                   current_timestamp, period))
+        local metric = assert(policies.cluster.usage(conf, identifier, period,
+                                                   current_timestamp))
         assert.equal(0, metric)
       end
     end)
@@ -48,22 +54,22 @@ describe("Plugin: rate-limiting (policies)", function()
       }
 
       -- First increment
-      assert(cluster_policy.increment(conf, limits, identifier, current_timestamp, 1))
+      assert(policies.cluster.increment(conf, limits, identifier, current_timestamp, 1))
 
       -- First select
       for period, period_date in pairs(periods) do
-        local metric = assert(cluster_policy.usage(conf, identifier,
-                                                   current_timestamp, period))
+        local metric = assert(policies.cluster.usage(conf, identifier, period,
+                                                   current_timestamp))
         assert.equal(1, metric)
       end
 
       -- Second increment
-      assert(cluster_policy.increment(conf, limits, identifier, current_timestamp, 1))
+      assert(policies.cluster.increment(conf, limits, identifier, current_timestamp, 1))
 
       -- Second select
       for period, period_date in pairs(periods) do
-        local metric = assert(cluster_policy.usage(conf, identifier,
-                                                   current_timestamp, period))
+        local metric = assert(policies.cluster.usage(conf, identifier, period,
+                                                   current_timestamp))
         assert.equal(2, metric)
       end
 
@@ -72,7 +78,7 @@ describe("Plugin: rate-limiting (policies)", function()
       periods = timestamp.get_timestamps(current_timestamp)
 
       -- Third increment
-      assert(cluster_policy.increment(conf, limits, identifier, current_timestamp, 1))
+      assert(policies.cluster.increment(conf, limits, identifier, current_timestamp, 1))
 
       -- Third select with 1 second delay
       for period, period_date in pairs(periods) do
@@ -81,8 +87,8 @@ describe("Plugin: rate-limiting (policies)", function()
           expected_value = 1
         end
 
-        local metric = assert(cluster_policy.usage(conf, identifier,
-                                                   current_timestamp, period))
+        local metric = assert(policies.cluster.usage(conf, identifier, period,
+                                                   current_timestamp))
         assert.equal(expected_value, metric)
       end
     end)

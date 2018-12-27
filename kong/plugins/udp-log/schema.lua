@@ -1,7 +1,14 @@
+local typedefs = require "kong.db.schema.typedefs"
+
 return {
+  name = "udp-log",
   fields = {
-    host = { required = true, type = "string" },
-    port = { required = true, type = "number" },
-    timeout = { default = 10000, type = "number" }
-  }
+    { config = {
+        type = "record",
+        fields = {
+          { host = typedefs.host({ required = true }) },
+          { port = typedefs.port({ required = true }) },
+          { timeout = { type = "number", default = 10000 }, },
+    }, }, },
+  },
 }

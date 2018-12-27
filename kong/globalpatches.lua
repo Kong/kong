@@ -27,31 +27,6 @@ return function(options)
 
 
 
-  do -- deal with ffi re-loading issues
-
-    if options.rbusted then
-      -- pre-load the ffi module, such that it becomes part of the environment
-      -- and Busted will not try to GC and reload it. The ffi is not suited
-      -- for that and will occasionally segfault if done so.
-      local ffi = require "ffi"
-
-      -- Now patch ffi.cdef to only be called once with each definition
-      local old_cdef = ffi.cdef
-      local exists = {}
-      ffi.cdef = function(def)
-        if exists[def] then
-          return
-        end
-        exists[def] = true
-        return old_cdef(def)
-      end
-
-    end
-
-  end
-
-
-
   do -- implement `sleep` in the `init_worker` context
 
     -- initialization code regularly uses the shm and locks.
@@ -185,7 +160,7 @@ return function(options)
           local shm = rawget(self, key)
           if not shm then
             shm = SharedDict:new()
-            rawset(self, key, SharedDict:new())
+            rawset(self, key, shm)
           end
           return shm
         end
@@ -203,7 +178,7 @@ return function(options)
     -- one. This is to enforce best-practices for seeding in ngx_lua,
     -- and prevents third-party modules from overriding our correct seed
     -- (many modules make a wrong usage of `math.randomseed()` by calling
-    -- it multiple times or by not useing unique seeds for Nginx workers).
+    -- it multiple times or by not using unique seeds for Nginx workers).
     --
     -- This patched method will create a unique seed per worker process,
     -- using a combination of both time and the worker's pid.
@@ -214,9 +189,11 @@ return function(options)
     _G.math.randomseed = function()
       local seed = seeds[ngx.worker.pid()]
       if not seed then
-        if not options.cli and ngx.get_phase() ~= "init_worker" then
+        if not options.cli
+          and (ngx.get_phase() ~= "init_worker" and ngx.get_phase() ~= "init")
+        then
           ngx.log(ngx.WARN, debug.traceback("math.randomseed() must be " ..
-              "called in init_worker context", 2))
+              "called in init or init_worker context", 2))
         end
 
         local bytes, err = util.get_rand_bytes(8)
@@ -288,35 +265,32 @@ return function(options)
     local old_tcp_connect
     local old_udp_setpeername
 
-    local function tcp_resolve_connect(sock, host, port, sock_opts)
-      local target_ip, target_port = toip(host, port)
-      if not target_ip then
-        return nil, "[toip() name lookup failed]: " .. tostring(target_port) -- err
+    -- need to do the extra check here: https://github.com/openresty/lua-nginx-module/issues/860
+    local function strip_nils(first, second)
+      if second then
+        return first, second
+      elseif first then
+        return first
       end
-
-      -- need to do the extra check here: https://github.com/openresty/lua-nginx-module/issues/860
-      if not sock_opts then
-        return old_tcp_connect(sock, target_ip, target_port)
-      end
-
-      return old_tcp_connect(sock, target_ip, target_port, sock_opts)
     end
 
-    local function udp_resolve_setpeername(sock, host, port)
-      local target_ip, target_port
-
-      if sub(host, 1, 5) == "unix:" then
-        target_ip = host -- unix domain socket, so just maintain the named values
-
-      else
-        target_ip, target_port = toip(host, port)
-
-        if not target_ip then
-          return nil, "[toip() name lookup failed]: " .. tostring(target_port) -- err
+    local function resolve_connect(f, sock, host, port, opts)
+      if sub(host, 1, 5) ~= "unix:" then
+        host, port = toip(host, port)
+        if not host then
+          return nil, "[toip() name lookup failed]: " .. tostring(port)
         end
       end
 
-      return old_udp_setpeername(sock, target_ip, target_port)
+      return f(sock, host, strip_nils(port, opts))
+    end
+
+    local function tcp_resolve_connect(sock, host, port, opts)
+      return resolve_connect(old_tcp_connect, sock, host, port, opts)
+    end
+
+    local function udp_resolve_setpeername(sock, host, port)
+      return resolve_connect(old_udp_setpeername, sock, host, port)
     end
 
     -- STEP 4: patch globals

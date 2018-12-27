@@ -181,10 +181,10 @@ describe("ALF serializer", function()
 
     describe("request body", function()
       local get_headers
-      setup(function()
+      lazy_setup(function()
         get_headers = _G.ngx.req.get_headers
       end)
-      teardown(function()
+      lazy_teardown(function()
         _G.ngx.req.get_headers = get_headers
         reload_alf_serializer()
       end)
@@ -318,10 +318,10 @@ describe("ALF serializer", function()
 
     describe("response body", function()
       local get_headers
-      setup(function()
+      lazy_setup(function()
         get_headers = _G.ngx.resp.get_headers
       end)
-      teardown(function()
+      lazy_teardown(function()
         _G.ngx.resp.get_headers = get_headers
         reload_alf_serializer()
       end)

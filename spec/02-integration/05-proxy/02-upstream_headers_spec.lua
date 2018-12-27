@@ -38,7 +38,8 @@ for _, strategy in helpers.each_strategy() do
 
     local function start_kong(config)
       return function()
-        assert(db:truncate())
+        assert(db:truncate("routes"))
+        assert(db:truncate("services"))
 
         insert_routes {
           {
@@ -56,8 +57,11 @@ for _, strategy in helpers.each_strategy() do
       end
     end
 
-    setup(function()
-      bp, db = helpers.get_db_utils(strategy)
+    lazy_setup(function()
+      bp, db = helpers.get_db_utils(strategy, {
+        "routes",
+        "services",
+      })
     end)
 
     before_each(function()
@@ -71,13 +75,13 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("(using the default configuration values)", function()
-      setup(start_kong {
+      lazy_setup(start_kong {
         database         = strategy,
         nginx_conf       = "spec/fixtures/custom_nginx.template",
         lua_package_path = "?/init.lua;./kong/?.lua;./spec/fixtures/?.lua",
       })
 
-      teardown(stop_kong)
+      lazy_teardown(stop_kong)
 
       describe("X-Real-IP", function()
         it("should be added if not present in request", function()
@@ -247,14 +251,14 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("(using the trusted configuration values)", function()
-      setup(start_kong {
+      lazy_setup(start_kong {
         database         = strategy,
         trusted_ips      = "127.0.0.1",
         nginx_conf       = "spec/fixtures/custom_nginx.template",
         lua_package_path = "?/init.lua;./kong/?.lua;./spec/fixtures/?.lua",
       })
 
-      teardown(stop_kong)
+      lazy_teardown(stop_kong)
 
       describe("X-Real-IP", function()
         it("should be added if not present in request", function()
@@ -357,14 +361,14 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("(using the non-trusted configuration values)", function()
-      setup(start_kong {
+      lazy_setup(start_kong {
         database         = strategy,
         trusted_ips      = "10.0.0.1",
         nginx_conf       = "spec/fixtures/custom_nginx.template",
         lua_package_path = "?/init.lua;./kong/?.lua;./spec/fixtures/?.lua",
       })
 
-      teardown(stop_kong)
+      lazy_teardown(stop_kong)
 
       describe("X-Real-IP", function()
         it("should be added if not present in request", function()
@@ -465,7 +469,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("(using the recursive trusted configuration values)", function()
-      setup(start_kong {
+      lazy_setup(start_kong {
         database          = strategy,
         real_ip_header    = "X-Forwarded-For",
         real_ip_recursive = "on",
@@ -474,7 +478,7 @@ for _, strategy in helpers.each_strategy() do
         lua_package_path  = "?/init.lua;./kong/?.lua;./spec/fixtures/?.lua",
       })
 
-      teardown(stop_kong)
+      lazy_teardown(stop_kong)
 
       describe("X-Real-IP and X-Forwarded-For", function()
         it("should be added if not present in request", function()
@@ -527,7 +531,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("(using the recursive non-trusted configuration values)", function()
-      setup(start_kong {
+      lazy_setup(start_kong {
         database          = strategy,
         real_ip_header    = "X-Forwarded-For",
         real_ip_recursive = "on",
@@ -536,7 +540,7 @@ for _, strategy in helpers.each_strategy() do
         lua_package_path  = "?/init.lua;./kong/?.lua;./spec/fixtures/?.lua",
       })
 
-      teardown(stop_kong)
+      lazy_teardown(stop_kong)
 
       describe("X-Real-IP and X-Forwarded-For", function()
         it("should be added if not present in request", function()
@@ -593,7 +597,7 @@ for _, strategy in helpers.each_strategy() do
       local proxy_ip = helpers.get_proxy_ip(false)
       local proxy_port = helpers.get_proxy_port(false)
 
-      setup(start_kong {
+      lazy_setup(start_kong {
         database          = strategy,
         proxy_listen      = proxy_ip .. ":" .. proxy_port .. " proxy_protocol",
         real_ip_header    = "proxy_protocol",
@@ -603,7 +607,7 @@ for _, strategy in helpers.each_strategy() do
         lua_package_path  = "?/init.lua;./kong/?.lua;./spec/fixtures/?.lua",
       })
 
-      teardown(stop_kong)
+      lazy_teardown(stop_kong)
 
       describe("X-Real-IP, X-Forwarded-For and X-Forwarded-Port", function()
         it("should be added if not present in request", function()
@@ -699,7 +703,7 @@ for _, strategy in helpers.each_strategy() do
       local proxy_ip = helpers.get_proxy_ip(false)
       local proxy_port = helpers.get_proxy_port(false)
 
-      setup(start_kong {
+      lazy_setup(start_kong {
         database          = strategy,
         proxy_listen      = "0.0.0.0:" .. proxy_port .. " proxy_protocol",
         real_ip_header    = "proxy_protocol",
@@ -709,7 +713,7 @@ for _, strategy in helpers.each_strategy() do
         lua_package_path  = "?/init.lua;./kong/?.lua;./spec/fixtures/?.lua",
       })
 
-      teardown(stop_kong)
+      lazy_teardown(stop_kong)
 
       describe("X-Real-IP, X-Forwarded-For and X-Forwarded-Port", function()
         it("should be added if not present in request", function()

@@ -5,17 +5,17 @@ describe("Plugin: rate-limiting (API)", function()
   local admin_client
   local dao
 
-  setup(function()
+  lazy_setup(function()
     dao = select(3, helpers.get_db_utils())
   end)
 
-  teardown(function()
+  lazy_teardown(function()
     if admin_client then admin_client:close() end
     helpers.stop_kong()
   end)
 
   describe("POST", function()
-    setup(function()
+    lazy_setup(function()
 
       assert(dao.apis:insert {
         name         = "test",
@@ -42,7 +42,10 @@ describe("Plugin: rate-limiting (API)", function()
       })
       local body = assert.res_status(400, res)
       local json = cjson.decode(body)
-      assert.same({ config = "You need to set at least one limit: second, minute, hour, day, month, year" }, json)
+      assert.same([[at least one of these fields must be non-empty: ]] ..
+                  [['config.second', 'config.minute', 'config.hour', ]] ..
+                  [['config.day', 'config.month', 'config.year']],
+                  json.fields["@entity"][1])
     end)
 
     it("should save with proper config", function()

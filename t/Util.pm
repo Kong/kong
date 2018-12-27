@@ -34,15 +34,42 @@ our $HttpConfig = <<_EOC_;
         local private_phases = require("kong.pdk.private.phases")
         local phases = private_phases.phases
 
+        -- This function executes 1 or more pdk methods twice: the first time with phase
+        -- checking deactivated, and the second time with phase checking activated.
+        -- Params:
+        -- * phase: the phase we want to test, i.e. "access"
+        -- * skip_fnlist controls a check: by default, this method
+        --         will check that the provided list of methods is "complete" - that
+        --         all the methods inside the `mod` (see below) are covered. Setting
+        --         `skip_fnlist` to `true` will skip that test (so the `mod` can have
+        --         methods that go untested)
+        --
+        -- This method also reads from 2 globals:
+        -- * phase_check_module is just a string used to determine the "module"
+        --   For example, if `phase_check_module` is "kong.response", then `mod` is "response"
+        -- * phase_check_data is an array of tables with this format:
+        --    {
+        --      method        = "exit",  -- the method inside mod, `kong.response.exit` for example
+        --      args          = { 200 }, -- passed to the method
+        --      init_worker   = false,     -- expected to always throw an error on init_worker phase
+        --      certificate   = "pending", -- ignored phase
+        --      rewrite       = true,      -- expected to work with and without the phase checker
+        --      access        = true,
+        --      header_filter = "forced false", -- exit will only error with the phase_checks active
+        --      body_filter   = false,
+        --      log           = false,
+        --      admin_api     = true,
+        --    }
+        --
         function phase_check_functions(phase, skip_fnlist)
 
             -- mock balancer structure
-            ngx.ctx.balancer_address = {}
+            ngx.ctx.balancer_data = {}
 
             local mod
             do
                 local PDK = require "kong.pdk"
-                local pdk = PDK.new()
+                local pdk = PDK.new({ enabled_headers = { ["Server"] = true } })
                 mod = pdk
                 for part in phase_check_module:gmatch("[^.]+") do
                     mod = mod[part]

@@ -5,8 +5,8 @@ local FACEBOOK = "facebookexternalhit/1.1"  -- matches a known bot in `rules.lua
 
 describe("Plugin: bot-detection (access)", function()
   local client
-  setup(function()
-    local dao = select(3, helpers.get_db_utils())
+  lazy_setup(function()
+    local _, db, dao = helpers.get_db_utils()
 
     local api1 = assert(dao.apis:insert {
       name         = "api-1",
@@ -25,25 +25,25 @@ describe("Plugin: bot-detection (access)", function()
     })
 
     -- plugin 1
-    assert(dao.plugins:insert {
-      api_id = api1.id,
+    assert(db.plugins:insert {
+      api = { id = api1.id },
       name   = "bot-detection",
       config = {},
     })
     -- plugin 2
-    assert(dao.plugins:insert {
-      api_id = api2.id,
+    assert(db.plugins:insert {
+      api = { id = api2.id },
       name   = "bot-detection",
       config = {
-        blacklist = HELLOWORLD,
+        blacklist = { HELLOWORLD },
       },
     })
     -- plugin 3
-    assert(dao.plugins:insert {
-      api_id = api3.id,
+    assert(db.plugins:insert {
+      api = { id = api3.id },
       name   = "bot-detection",
       config = {
-        whitelist = FACEBOOK,
+        whitelist = { FACEBOOK },
       },
     })
 
@@ -52,7 +52,7 @@ describe("Plugin: bot-detection (access)", function()
     }))
   end)
 
-  teardown(function()
+  lazy_teardown(function()
     helpers.stop_kong()
   end)
 
@@ -153,8 +153,8 @@ end)
 
 describe("Plugin: bot-detection configured global (access)", function()
   local client
-  setup(function()
-    local dao = select(3, helpers.get_db_utils())
+  lazy_setup(function()
+    local _, db, dao = helpers.get_db_utils()
 
     assert(dao.apis:insert {
       name         = "api-1",
@@ -163,8 +163,8 @@ describe("Plugin: bot-detection configured global (access)", function()
     })
 
     -- plugin 1
-    assert(dao.plugins:insert {
-      api_id = nil,  -- apply globally
+    assert(db.plugins:insert {
+      api = ngx.null,  -- apply globally
       name   = "bot-detection",
       config = {},
     })
@@ -174,7 +174,7 @@ describe("Plugin: bot-detection configured global (access)", function()
     }))
   end)
 
-  teardown(function()
+  lazy_teardown(function()
     helpers.stop_kong()
   end)
 

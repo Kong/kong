@@ -3,7 +3,7 @@ use warnings FATAL => 'all';
 use Test::Nginx::Socket::Lua;
 use t::Util;
 
-$ENV{TEST_NGINX_HTML_DIR} ||= html_dir();
+$ENV{TEST_NGINX_NXSOCK} ||= html_dir();
 
 plan tests => repeat_each() * (blocks() * 2);
 
@@ -17,7 +17,7 @@ qq{
     $t::Util::HttpConfig
 
     server {
-        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_NXSOCK}/nginx.sock;
 
         location / {
             return 200;
@@ -40,6 +40,7 @@ qq{
                 header_filter = true,
                 body_filter   = true,
                 log           = true,
+                admin_api     = true,
             }, {
                 method        = "get_forwarded_ip",
                 args          = {},
@@ -50,6 +51,7 @@ qq{
                 header_filter = true,
                 body_filter   = true,
                 log           = true,
+                admin_api     = true,
             }, {
                 method        = "get_port",
                 args          = {},
@@ -60,6 +62,7 @@ qq{
                 header_filter = true,
                 body_filter   = true,
                 log           = true,
+                admin_api     = true,
             }, {
                 method        = "get_forwarded_port",
                 args          = {},
@@ -70,6 +73,40 @@ qq{
                 header_filter = true,
                 body_filter   = true,
                 log           = true,
+                admin_api     = true,
+            }, {
+                method        = "get_credential",
+                args          = {},
+                init_worker   = "forced false",
+                certificate   = "pending",
+                rewrite       = "forced false",
+                access        = true,
+                header_filter = true,
+                body_filter   = true,
+                log           = true,
+                admin_api     = "forced false",
+            }, {
+                method        = "get_consumer",
+                args          = {},
+                init_worker   = "forced false",
+                certificate   = "pending",
+                rewrite       = "forced false",
+                access        = true,
+                header_filter = true,
+                body_filter   = true,
+                log           = true,
+                admin_api     = "forced false",
+            }, {
+                method        = "authenticate",
+                args          = {{}, {}},
+                init_worker   = "forced false",
+                certificate   = "pending",
+                rewrite       = "forced false",
+                access        = true,
+                header_filter = "forced false",
+                body_filter   = "forced false",
+                log           = "forced false",
+                admin_api     = "forced false",
             },
         }
 
@@ -82,7 +119,7 @@ qq{
 }
 --- config
     location /t {
-        proxy_pass http://unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        proxy_pass http://unix:$TEST_NGINX_NXSOCK/nginx.sock;
         set $upstream_uri '/t';
         set $upstream_scheme 'http';
 
@@ -92,6 +129,7 @@ qq{
 
         access_by_lua_block {
             phase_check_functions(phases.access)
+            phase_check_functions(phases.admin_api)
         }
 
         header_filter_by_lua_block {

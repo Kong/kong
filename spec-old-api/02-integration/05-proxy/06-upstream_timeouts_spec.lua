@@ -7,7 +7,7 @@ dao_helpers.for_each_dao(function(kong_config)
   describe("upstream timeouts with DB: #" .. kong_config.database, function()
     local client
 
-    setup(function()
+    lazy_setup(function()
       local _, _, dao = helpers.get_db_utils(kong_config.database)
 
       local apis = {
@@ -40,7 +40,7 @@ dao_helpers.for_each_dao(function(kong_config)
       }))
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       helpers.stop_kong()
     end)
 

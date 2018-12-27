@@ -205,10 +205,8 @@ describe("Configuration loader", function()
     -- ssl default paths
     assert.equal("/usr/local/kong/ssl/kong-default.crt", conf.ssl_cert_default)
     assert.equal("/usr/local/kong/ssl/kong-default.key", conf.ssl_cert_key_default)
-    assert.equal("/usr/local/kong/ssl/kong-default.csr", conf.ssl_cert_csr_default)
     assert.equal("/usr/local/kong/ssl/admin-kong-default.crt", conf.admin_ssl_cert_default)
     assert.equal("/usr/local/kong/ssl/admin-kong-default.key", conf.admin_ssl_cert_key_default)
-    assert.equal("/usr/local/kong/ssl/admin-kong-default.csr", conf.admin_ssl_cert_csr_default)
   end)
   it("strips comments ending settings", function()
     local conf = assert(conf_loader("spec/fixtures/to-strip.conf"))
@@ -290,6 +288,33 @@ describe("Configuration loader", function()
         plugins = "off",
       }))
       assert.is_nil(conf.nginx_http_directives["lua_shared_dict"])
+    end)
+  end)
+
+  describe("#stream ssl_preread", function()
+    it("is injected if enabled in nginx configuration", function()
+      local save_nginx_configure = ngx.config.nginx_configure
+      finally(function()
+        ngx.config.nginx_configure = save_nginx_configure -- luacheck: ignore
+      end)
+
+      ngx.config.nginx_configure = function() -- luacheck: ignore
+        return "configure arguments: --with-stream_ssl_preread_module --with-stream"
+      end
+      local conf = assert(conf_loader())
+      assert.True(conf.ssl_preread_enabled)
+    end)
+    it("is not injected if not enabled in nginx configuration", function()
+      local save_nginx_configure = ngx.config.nginx_configure
+      finally(function()
+        ngx.config.nginx_configure = save_nginx_configure -- luacheck: ignore
+      end)
+
+      ngx.config.nginx_configure = function() -- luacheck: ignore
+        return "configure arguments: --with-stream"
+      end
+      local conf = assert(conf_loader())
+      assert.False(conf.ssl_preread_enabled)
     end)
   end)
 
@@ -407,13 +432,13 @@ describe("Configuration loader", function()
         admin_listen = "127.0.0.1"
       })
       assert.is_nil(conf)
-      assert.equal("admin_listen must be of form: [off] | <ip>:<port> [ssl] [http2] [proxy_protocol], [... next entry ...]", err)
+      assert.equal("admin_listen must be of form: [off] | <ip>:<port> [ssl] [http2] [proxy_protocol] [transparent], [... next entry ...]", err)
 
       conf, err = conf_loader(nil, {
         proxy_listen = "127.0.0.1"
       })
       assert.is_nil(conf)
-      assert.equal("proxy_listen must be of form: [off] | <ip>:<port> [ssl] [http2] [proxy_protocol], [... next entry ...]", err)
+      assert.equal("proxy_listen must be of form: [off] | <ip>:<port> [ssl] [http2] [proxy_protocol] [transparent], [... next entry ...]", err)
     end)
     it("errors when dns_resolver is not a list in ipv4/6[:port] format", function()
       local conf, err = conf_loader(nil, {
@@ -742,6 +767,112 @@ describe("Configuration loader", function()
 
       local conf = assert(conf_loader(helpers.test_conf_path))
       assert.equal("postgres", conf.database)
+    end)
+  end)
+
+  describe("origins config option", function()
+    it("rejects an invalid origins config option", function()
+      local conf, err = conf_loader(nil, {
+        origins = "invalid_origin",
+      })
+      assert.is_nil(conf)
+      assert.equal("an origin must be of the form " ..
+                   "'from_scheme://from_host:from_port=" ..
+                   "to_scheme://to_host:to_port', got 'invalid_origin'",
+                   err)
+    end)
+    it("rejects an invalid origins config option", function()
+      local conf, err = conf_loader(nil, {
+        origins = "http://foo:42=http://",
+      })
+      assert.is_nil(conf)
+      assert.equal("an origin must be of the form " ..
+                   "'from_scheme://from_host:from_port=" ..
+                   "to_scheme://to_host:to_port', got " ..
+                   "'http://foo:42=http://'", err)
+    end)
+    it("rejects invalid schemes", function()
+      for _, bad_origin in ipairs {
+          -- can't start with a number
+          "http://foo:42=0://example.com",
+          "0://foo:42=http://example.com",
+          -- contain non-alphanumeric
+          "invalid%scheme://foo:42=http://example.com",
+          "http://foo:42=invalid%scheme://example.com",
+          -- empty scheme
+          "://foo:42=http://example.com",
+          "http://foo:42=://example.com",
+      } do
+        local conf, err = conf_loader(nil, {
+          origins = bad_origin,
+        })
+        assert.is_nil(conf)
+        assert.equal("an origin must be of the form " ..
+                     "'from_scheme://from_host:from_port=" ..
+                     "to_scheme://to_host:to_port', got '" ..
+                     bad_origin .. "'", err)
+      end
+    end)
+    it("rejects a duplicate", function()
+      local conf, err = conf_loader(nil, {
+        origins = table.concat({
+          "http://src:42=https://foo",
+          "http://src:42=https://bar",
+        }, ",")
+      })
+      assert.is_nil(conf)
+      assert.equal("duplicate origin (http://src:42)", err)
+    end)
+    it("rejects several duplicate", function()
+      local conf, err, errors = conf_loader(nil, {
+        origins = table.concat({
+          "http://src:42=https://foo",
+          "http://src:42=https://bar",
+          "http://src2:42=https://baz",
+          "http://src2:42=https://boo",
+        }, ",")
+      })
+      assert.is_nil(conf)
+      assert.equal("duplicate origin (http://src:42)", err)
+      assert.contains("duplicate origin (http://src:42)", errors)
+      assert.contains("duplicate origin (http://src2:42)", errors)
+    end)
+    it("rejects an invalid 'to' section of an origin", function()
+      local conf, err = conf_loader(nil, {
+        origins = table.concat({
+          "http://src:42=https://foo~",
+        }, ",")
+      })
+      assert.is_nil(conf)
+      assert.equal("failed to parse authority (invalid hostname: foo~)", err)
+    end)
+    it("accepts an authority with no port as destination", function()
+      local value = {
+        "http://foo:42=https://example.com"
+      }
+      local conf, err = conf_loader(nil, {
+        origins = table.concat(value, ","),
+      })
+      assert.is_nil(err)
+      assert.same(value, conf.origins)
+    end)
+    it("accepts both ips and hosts", function()
+      local value = {
+        "http://src1:42=https://dst:55",
+        "http://src2:42=https://127.0.0.1:55",
+        "http://src3:42=https://[::1]:55",
+        "http://127.0.0.1:42=https://dst:55",
+        "http://127.0.0.2:42=https://127.0.0.1:55",
+        "http://127.0.0.3:42=https://[::1]:55",
+        "http://[::1]:42=https://dst:55",
+        "http://[::2]:42=https://127.0.0.1:55",
+        "http://[::3]:42=https://[::1]:55",
+      }
+      local conf, err = conf_loader(nil, {
+        origins = table.concat(value, ","),
+      })
+      assert.is_nil(err)
+      assert.same(value, conf.origins)
     end)
   end)
 

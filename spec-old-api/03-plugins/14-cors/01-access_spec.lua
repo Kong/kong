@@ -4,8 +4,8 @@ local cjson = require "cjson"
 describe("Plugin: cors (access)", function()
   local client
 
-  setup(function()
-    local dao = select(3, helpers.get_db_utils())
+  lazy_setup(function()
+    local _, db, dao = helpers.get_db_utils()
 
     local api1 = assert(dao.apis:insert {
       name         = "api-1",
@@ -54,14 +54,14 @@ describe("Plugin: cors (access)", function()
     })
 
 
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name = "cors",
-      api_id = api1.id
+      api = { id = api1.id }
     })
 
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name = "cors",
-      api_id = api2.id,
+      api = { id = api2.id },
       config = {
         origins = {"example.com"},
         methods = {"GET"},
@@ -72,9 +72,9 @@ describe("Plugin: cors (access)", function()
       }
     })
 
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name = "cors",
-      api_id = api3.id,
+      api = { id = api3.id },
       config = {
         origins = {"example.com"},
         methods = {"GET"},
@@ -85,27 +85,27 @@ describe("Plugin: cors (access)", function()
       }
     })
 
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name = "cors",
-      api_id = api4.id
+      api = { id = api4.id }
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name = "key-auth",
-      api_id = api4.id
+      api = { id = api4.id }
     })
 
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name = "cors",
-      api_id = api5.id,
+      api = { id = api5.id },
       config = {
         origins = { "*" },
         credentials = true
       }
     })
 
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name = "cors",
-      api_id = api6.id,
+      api = { id = api6.id },
       config = {
         origins = {"example.com", "example.org"},
         methods = {"GET"},
@@ -116,26 +116,26 @@ describe("Plugin: cors (access)", function()
       }
     })
 
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name = "cors",
-      api_id = api7.id,
+      api = { id = api7.id },
       config = {
         origins = { "*" },
         credentials = false
       }
     })
 
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name = "cors",
-      api_id = api8.id,
+      api = { id = api8.id },
       config = {
         origins = {},
       }
     })
 
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name = "cors",
-      api_id = api9.id,
+      api = { id = api9.id },
       config = {
         origins = { [[.*\.?example(?:-foo)?.com]] },
       }
@@ -147,7 +147,7 @@ describe("Plugin: cors (access)", function()
     client = helpers.proxy_client()
   end)
 
-  teardown(function()
+  lazy_teardown(function()
     if client then client:close() end
     helpers.stop_kong()
   end)
@@ -160,7 +160,8 @@ describe("Plugin: cors (access)", function()
           ["Host"] = "cors1.com"
         }
       })
-      assert.res_status(204, res)
+      assert.res_status(200, res)
+      assert.equal("0", res.headers["Content-Length"])
       assert.equal("GET,HEAD,PUT,PATCH,POST,DELETE", res.headers["Access-Control-Allow-Methods"])
       assert.equal("*", res.headers["Access-Control-Allow-Origin"])
       assert.is_nil(res.headers["Access-Control-Allow-Headers"])
@@ -182,7 +183,8 @@ describe("Plugin: cors (access)", function()
           ["Host"] = "cors-empty-origins.com",
         }
       })
-      assert.res_status(204, res)
+      assert.res_status(200, res)
+      assert.equal("0", res.headers["Content-Length"])
       assert.equal("GET,HEAD,PUT,PATCH,POST,DELETE", res.headers["Access-Control-Allow-Methods"])
       assert.equal("*", res.headers["Access-Control-Allow-Origin"])
       assert.is_nil(res.headers["Access-Control-Allow-Headers"])
@@ -198,7 +200,8 @@ describe("Plugin: cors (access)", function()
           ["Host"] = "cors5.com"
         }
       })
-      assert.res_status(204, res)
+      assert.res_status(200, res)
+      assert.equal("0", res.headers["Content-Length"])
       assert.equal("GET,HEAD,PUT,PATCH,POST,DELETE", res.headers["Access-Control-Allow-Methods"])
       assert.equal("*", res.headers["Access-Control-Allow-Origin"])
       assert.is_nil(res.headers["Access-Control-Allow-Headers"])
@@ -214,7 +217,8 @@ describe("Plugin: cors (access)", function()
           ["Host"] = "cors2.com"
         }
       })
-      assert.res_status(204, res)
+      assert.res_status(200, res)
+      assert.equal("0", res.headers["Content-Length"])
       assert.equal("GET", res.headers["Access-Control-Allow-Methods"])
       assert.equal("example.com", res.headers["Access-Control-Allow-Origin"])
       assert.equal("23", res.headers["Access-Control-Max-Age"])
@@ -245,7 +249,8 @@ describe("Plugin: cors (access)", function()
         }
       })
 
-      assert.res_status(204, res)
+      assert.res_status(200, res)
+      assert.equal("0", res.headers["Content-Length"])
       assert.equal("origin,accepts", res.headers["Access-Control-Allow-Headers"])
     end)
   end)
@@ -321,11 +326,11 @@ describe("Plugin: cors (access)", function()
         method = "GET",
         headers = {
           ["Host"] = "cors6.com",
-          ["Origin"] = "http://www.example.com"
+          ["Origin"] = "example.com"
         }
       })
       assert.res_status(200, res)
-      assert.equal("http://www.example.com", res.headers["Access-Control-Allow-Origin"])
+      assert.equal("example.com", res.headers["Access-Control-Allow-Origin"])
 
       local domains = {
         ["example.com"] = true,
@@ -354,7 +359,7 @@ describe("Plugin: cors (access)", function()
         method = "GET",
         headers = {
           ["Host"] = "cors6.com",
-          ["Origin"] = "http://www.example.net"
+          ["Origin"] = "example.net"
         }
       })
       assert.res_status(200, res)

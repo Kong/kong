@@ -5,7 +5,7 @@ local TEST_PREFIX = "servroot_prepared_test"
 
 
 describe("kong prepare", function()
-  setup(function()
+  lazy_setup(function()
     pcall(helpers.dir.rmtree, TEST_PREFIX)
   end)
 

@@ -368,7 +368,21 @@ function DAO:delete(tbl, options)
   if self.constraints.cascade ~= nil then
     for f_entity, cascade in pairs(self.constraints.cascade) do
       local f_fetch_keys = {[cascade.f_col] = tbl[cascade.col]}
-      local rows, err = self.db:find_all(cascade.table, f_fetch_keys, cascade.schema)
+      local rows, err
+      if cascade.new_db then
+        local db_entity = cascade.db_entity
+        rows = {}
+        for row, rerr in db_entity["each_for_" .. cascade.f_col](db_entity, primary_keys) do
+          if not row then
+            err = rerr
+            break
+          end
+
+          table.insert(rows, row)
+        end
+      else
+        rows, err = self.db:find_all(cascade.table, f_fetch_keys, cascade.schema)
+      end
       if err then
         return ret_error(self.db.name, nil, err)
       end

@@ -1,9 +1,12 @@
 local cjson   = require "cjson"
 local helpers = require "spec.helpers"
 local utils   = require "kong.tools.utils"
+local admin_api = require "spec.fixtures.admin_api"
 
 
-local fmt = string.format
+local kong = {
+  table = require("kong.pdk.table").new()
+}
 
 
 local function provision_code(host, extra_headers, client_id)
@@ -19,7 +22,7 @@ local function provision_code(host, extra_headers, client_id)
       state = "hello",
       authenticated_userid = "userid123"
     },
-    headers = utils.table_merge({
+    headers = kong.table.merge({
       ["Host"] = host or "oauth2.com",
       ["Content-Type"] = "application/json"
     }, extra_headers)
@@ -48,7 +51,7 @@ local function provision_token(host, extra_headers, client_id, client_secret)
              client_id = client_id or "clientid123",
              client_secret = client_secret or "secret123",
              grant_type = "authorization_code" },
-    headers = utils.table_merge({
+    headers = kong.table.merge({
       ["Host"] = host or "oauth2.com",
       ["Content-Type"] = "application/json"
     }, extra_headers)
@@ -62,193 +65,217 @@ end
 
 
 for _, strategy in helpers.each_strategy() do
-  describe("Plugin: oauth2 (access) [#" .. strategy .. "]", function()
+
+describe("Plugin: oauth2 [#" .. strategy .. "]", function()
+  local db
+
+  lazy_setup(function()
+    local _
+    _, db = helpers.get_db_utils(strategy, {
+      "routes",
+      "services",
+      "consumers",
+      "plugins",
+      "keyauth_credentials",
+      "oauth2_credentials",
+      "oauth2_authorization_codes",
+      "oauth2_tokens",
+    })
+
+    assert(helpers.start_kong({
+      database    = strategy,
+      trusted_ips = "127.0.0.1",
+      nginx_conf  = "spec/fixtures/custom_nginx.template",
+    }))
+  end)
+
+  lazy_teardown(function()
+    helpers.stop_kong()
+  end)
+
+  describe("access", function()
     local proxy_ssl_client
     local proxy_client
     local client1
-    local db
-    local dao
-    local bp
 
-    setup(function()
-      bp, db, dao = helpers.get_db_utils(strategy)
+    lazy_setup(function()
 
-      local consumer = bp.consumers:insert {
+      local consumer = admin_api.consumers:insert {
         username = "bob"
       }
 
-      local anonymous_user = bp.consumers:insert {
+      local anonymous_user = admin_api.consumers:insert {
         username = "no-body"
       }
 
-      client1 = assert(dao.oauth2_credentials:insert {
-        client_id     = "clientid123",
-        client_secret = "secret123",
-        redirect_uri  = "http://google.com/kong",
-        name          = "testapp",
-        consumer_id   = consumer.id
-      })
+      client1 = admin_api.oauth2_credentials:insert {
+        client_id      = "clientid123",
+        client_secret  = "secret123",
+        redirect_uris  = { "http://google.com/kong" },
+        name           = "testapp",
+        consumer       = { id = consumer.id },
+      }
 
-      assert(dao.oauth2_credentials:insert {
-        client_id     = "clientid789",
-        client_secret = "secret789",
-        redirect_uri  = "http://google.com/kong?foo=bar&code=123",
-        name          = "testapp2",
-        consumer_id   = consumer.id
-      })
+      admin_api.oauth2_credentials:insert {
+        client_id      = "clientid789",
+        client_secret  = "secret789",
+        redirect_uris  = { "http://google.com/kong?foo=bar&code=123" },
+        name           = "testapp2",
+        consumer       = { id = consumer.id },
+      }
 
-      assert(dao.oauth2_credentials:insert {
+      admin_api.oauth2_credentials:insert {
         client_id     = "clientid333",
         client_secret = "secret333",
-        redirect_uri  = "http://google.com/kong",
+        redirect_uris = { "http://google.com/kong" },
         name          = "testapp3",
-        consumer_id   = consumer.id
-      })
+        consumer      = { id = consumer.id },
+      }
 
-      assert(dao.oauth2_credentials:insert {
+      admin_api.oauth2_credentials:insert {
         client_id     = "clientid456",
         client_secret = "secret456",
-        redirect_uri  = { "http://one.com/one/", "http://two.com/two" },
+        redirect_uris = { "http://one.com/one/", "http://two.com/two" },
         name          = "testapp3",
-        consumer_id   = consumer.id
-      })
+        consumer      = { id = consumer.id },
+      }
 
-      assert(dao.oauth2_credentials:insert {
+      admin_api.oauth2_credentials:insert {
         client_id     = "clientid1011",
         client_secret = "secret1011",
-        redirect_uri  = { "http://google.com/kong", },
+        redirect_uris = { "http://google.com/kong", },
         name          = "testapp31",
-        consumer_id   = consumer.id
-      })
+        consumer      = { id = consumer.id },
+      }
 
-      local service1    = bp.services:insert()
-      local service2    = bp.services:insert()
-      local service2bis = bp.services:insert()
-      local service3    = bp.services:insert()
-      local service4    = bp.services:insert()
-      local service5    = bp.services:insert()
-      local service6    = bp.services:insert()
-      local service7    = bp.services:insert()
-      local service8    = bp.services:insert()
-      local service9    = bp.services:insert()
-      local service10   = bp.services:insert()
-      local service11   = bp.services:insert()
-      local service12   = bp.services:insert()
+      local service1    = admin_api.services:insert()
+      local service2    = admin_api.services:insert()
+      local service2bis = admin_api.services:insert()
+      local service3    = admin_api.services:insert()
+      local service4    = admin_api.services:insert()
+      local service5    = admin_api.services:insert()
+      local service6    = admin_api.services:insert()
+      local service7    = admin_api.services:insert()
+      local service8    = admin_api.services:insert()
+      local service9    = admin_api.services:insert()
+      local service10   = admin_api.services:insert()
+      local service11   = admin_api.services:insert()
+      local service12   = admin_api.services:insert()
 
-      local route1 = assert(db.routes:insert({
+      local route1 = assert(admin_api.routes:insert({
         hosts     = { "oauth2.com" },
         protocols = { "http", "https" },
         service   = service1,
       }))
 
-      local route2 = assert(db.routes:insert({
+      local route2 = assert(admin_api.routes:insert({
         hosts      = { "example-path.com" },
         protocols  = { "http", "https" },
         service    = service2,
       }))
 
-      local route2bis = assert(db.routes:insert({
+      local route2bis = assert(admin_api.routes:insert({
         paths     = { "/somepath" },
         protocols = { "http", "https" },
         service   = service2bis,
       }))
 
-      local route3 = assert(db.routes:insert({
+      local route3 = assert(admin_api.routes:insert({
         hosts      = { "oauth2_3.com" },
         protocols  = { "http", "https" },
         service    = service3,
       }))
 
-      local route4 = assert(db.routes:insert({
+      local route4 = assert(admin_api.routes:insert({
         hosts      = { "oauth2_4.com" },
         protocols  = { "http", "https" },
         service    = service4,
       }))
 
-      local route5 = assert(db.routes:insert({
+      local route5 = assert(admin_api.routes:insert({
         hosts      = { "oauth2_5.com" },
         protocols  = { "http", "https" },
         service    = service5,
       }))
 
-      local route6 = assert(db.routes:insert({
+      local route6 = assert(admin_api.routes:insert({
         hosts      = { "oauth2_6.com" },
         protocols  = { "http", "https" },
         service    = service6,
       }))
 
-      local route7 = assert(db.routes:insert({
+      local route7 = assert(admin_api.routes:insert({
         hosts      = { "oauth2_7.com" },
         protocols  = { "http", "https" },
         service    = service7,
       }))
 
-      local route8 = assert(db.routes:insert({
+      local route8 = assert(admin_api.routes:insert({
         hosts      = { "oauth2_8.com" },
         protocols  = { "http", "https" },
         service    = service8,
       }))
 
-      local route9 = assert(db.routes:insert({
+      local route9 = assert(admin_api.routes:insert({
         hosts      = { "oauth2_9.com" },
         protocols  = { "http", "https" },
         service    = service9,
       }))
 
-      local route10 = assert(db.routes:insert({
+      local route10 = assert(admin_api.routes:insert({
         hosts       = { "oauth2_10.com" },
         protocols   = { "http", "https" },
         service     = service10,
       }))
 
-      local route11 = assert(db.routes:insert({
+      local route11 = assert(admin_api.routes:insert({
         hosts       = { "oauth2_11.com" },
         protocols   = { "http", "https" },
         service     = service11,
       }))
 
-      local route12 = assert(db.routes:insert({
+      local route12 = assert(admin_api.routes:insert({
         hosts       = { "oauth2_12.com" },
         protocols   = { "http", "https" },
         service     = service12,
       }))
 
-      bp.oauth2_plugins:insert({
-        route_id = route1.id,
+      admin_api.oauth2_plugins:insert({
+        route = { id = route1.id },
         config   = { scopes = { "email", "profile", "user.email" } },
       })
 
-      bp.oauth2_plugins:insert({
-        route_id = route2.id
+      admin_api.oauth2_plugins:insert({
+        route = { id = route2.id }
       })
 
-      bp.oauth2_plugins:insert({
-        route_id = route2bis.id
+      admin_api.oauth2_plugins:insert({
+        route = { id = route2bis.id }
       })
 
-      bp.oauth2_plugins:insert({
-        route_id = route3.id,
+      admin_api.oauth2_plugins:insert({
+        route = { id = route3.id },
         config   = { hide_credentials = true },
       })
 
-      bp.oauth2_plugins:insert({
-        route_id = route4.id,
+      admin_api.oauth2_plugins:insert({
+        route = { id = route4.id },
         config   = {
           enable_client_credentials = true,
           enable_authorization_code = false,
         },
       })
 
-      bp.oauth2_plugins:insert({
-        route_id = route5.id,
+      admin_api.oauth2_plugins:insert({
+        route = { id = route5.id },
         config   = {
           enable_password_grant     = true,
           enable_authorization_code = false,
         },
       })
 
-      bp.oauth2_plugins:insert({
-        route_id = route6.id,
+      admin_api.oauth2_plugins:insert({
+        route = { id = route6.id },
         config   = {
           scopes                            = { "email", "profile", "user.email" },
           provision_key                     = "provision123",
@@ -256,16 +283,16 @@ for _, strategy in helpers.each_strategy() do
         },
       })
 
-      bp.oauth2_plugins:insert({
-        route_id = route7.id,
+      admin_api.oauth2_plugins:insert({
+        route = { id = route7.id },
         config   = {
           scopes    = { "email", "profile", "user.email" },
           anonymous = anonymous_user.id,
         },
       })
 
-      bp.oauth2_plugins:insert({
-        route_id = route8.id,
+      admin_api.oauth2_plugins:insert({
+        route = { id = route8.id },
         config   = {
           scopes             = { "email", "profile", "user.email" },
           global_credentials = true,
@@ -273,16 +300,16 @@ for _, strategy in helpers.each_strategy() do
       })
 
 
-      bp.oauth2_plugins:insert({
-        route_id = route9.id,
+      admin_api.oauth2_plugins:insert({
+        route = { id = route9.id },
         config   = {
           scopes             = { "email", "profile", "user.email" },
           global_credentials = true,
         },
       })
 
-      bp.oauth2_plugins:insert({
-        route_id = route10.id,
+      admin_api.oauth2_plugins:insert({
+        route = { id = route10.id },
         config   = {
           scopes             = { "email", "profile", "user.email" },
           global_credentials = true,
@@ -290,8 +317,8 @@ for _, strategy in helpers.each_strategy() do
         },
       })
 
-      bp.oauth2_plugins:insert({
-        route_id = route11.id,
+      admin_api.oauth2_plugins:insert({
+        route = { id = route11.id },
         config   = {
           scopes             = { "email", "profile", "user.email" },
           global_credentials = true,
@@ -300,8 +327,8 @@ for _, strategy in helpers.each_strategy() do
         },
       })
 
-      bp.oauth2_plugins:insert({
-        route_id = route12.id,
+      admin_api.oauth2_plugins:insert({
+        route = { id = route12.id },
         config   = {
           scopes             = { "email", "profile", "user.email" },
           global_credentials = true,
@@ -310,23 +337,15 @@ for _, strategy in helpers.each_strategy() do
         },
       })
 
-      assert(helpers.start_kong({
-        database    = strategy,
-        trusted_ips = "127.0.0.1",
-        nginx_conf  = "spec/fixtures/custom_nginx.template",
-      }))
-
       proxy_client     = helpers.proxy_client()
       proxy_ssl_client = helpers.proxy_ssl_client()
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       if proxy_client and proxy_ssl_client then
         proxy_client:close()
         proxy_ssl_client:close()
       end
-
-      helpers.stop_kong()
     end)
 
     describe("OAuth2 Authorization", function()
@@ -380,7 +399,7 @@ for _, strategy in helpers.each_strategy() do
           assert.are.equal("no-store", res.headers["cache-control"])
           assert.are.equal("no-cache", res.headers["pragma"])
         end)
-        it("returns an error when only the client_id is being sent", function()
+        it("#returns an error when only the client_id is being sent", function()
           local res = assert(proxy_ssl_client:send {
             method  = "POST",
             path    = "/oauth2/authorize",
@@ -497,7 +516,7 @@ for _, strategy in helpers.each_strategy() do
           local body = cjson.decode(assert.res_status(200, res))
           assert.is_table(ngx.re.match(body.redirect_uri, "^http://google\\.com/kong\\?code=[\\w]{32,32}&foo=bar$"))
         end)
-        it("works with multiple redirect_uri in the application", function()
+        it("works with multiple redirect_uris in the application", function()
           local res = assert(proxy_client:send {
             method  = "POST",
             path    = "/oauth2/authorize",
@@ -706,12 +725,11 @@ for _, strategy in helpers.each_strategy() do
           assert.is_nil(err)
           local m, err = iterator()
           assert.is_nil(err)
-          local data = dao.oauth2_authorization_codes:find_all {code = m[1]}
-          assert.are.equal(1, #data)
-          assert.are.equal(m[1], data[1].code)
-          assert.are.equal("userid123", data[1].authenticated_userid)
-          assert.are.equal("email", data[1].scope)
-          assert.are.equal(client1.id, data[1].credential_id)
+          local data = db.oauth2_authorization_codes:select_by_code(m[1])
+          assert.are.equal(m[1], data.code)
+          assert.are.equal("userid123", data.authenticated_userid)
+          assert.are.equal("email", data.scope)
+          assert.are.equal(client1.id, data.credential.id)
         end)
         it("returns success with a dotted scope and store authenticated user properties", function()
           local res = assert(proxy_ssl_client:send {
@@ -737,11 +755,10 @@ for _, strategy in helpers.each_strategy() do
           assert.is_nil(err)
           local m, err = iterator()
           assert.is_nil(err)
-          local data = dao.oauth2_authorization_codes:find_all {code = m[1]}
-          assert.are.equal(1, #data)
-          assert.are.equal(m[1], data[1].code)
-          assert.are.equal("userid123", data[1].authenticated_userid)
-          assert.are.equal("user.email", data[1].scope)
+          local data = db.oauth2_authorization_codes:select_by_code(m[1])
+          assert.are.equal(m[1], data.code)
+          assert.are.equal("userid123", data.authenticated_userid)
+          assert.are.equal("user.email", data.scope)
         end)
       end)
 
@@ -810,11 +827,10 @@ for _, strategy in helpers.each_strategy() do
           assert.is_nil(err)
           local m, err = iterator()
           assert.is_nil(err)
-          local data = dao.oauth2_tokens:find_all {access_token = m[1]}
-          assert.are.equal(1, #data)
-          assert.are.equal(m[1], data[1].access_token)
-          assert.are.equal(5, data[1].expires_in)
-          assert.falsy(data[1].refresh_token)
+          local data = db.oauth2_tokens:select_by_access_token(m[1])
+          assert.are.equal(m[1], data.access_token)
+          assert.are.equal(5, data.expires_in)
+          assert.falsy(data.refresh_token)
         end)
         it("returns success and store authenticated user properties", function()
           local res = assert(proxy_ssl_client:send {
@@ -839,15 +855,14 @@ for _, strategy in helpers.each_strategy() do
           assert.is_nil(err)
           local m, err = iterator()
           assert.is_nil(err)
-          local data = dao.oauth2_tokens:find_all {access_token = m[1]}
-          assert.are.equal(1, #data)
-          assert.are.equal(m[1], data[1].access_token)
-          assert.are.equal("userid123", data[1].authenticated_userid)
-          assert.are.equal("email profile", data[1].scope)
+          local data = db.oauth2_tokens:select_by_access_token(m[1])
+          assert.are.equal(m[1], data.access_token)
+          assert.are.equal("userid123", data.authenticated_userid)
+          assert.are.equal("email profile", data.scope)
 
           -- Checking that there is no refresh token since it's an implicit grant
-          assert.are.equal(5, data[1].expires_in)
-          assert.falsy(data[1].refresh_token)
+          assert.are.equal(5, data.expires_in)
+          assert.falsy(data.refresh_token)
         end)
         it("returns set the right upstream headers", function()
           local res = assert(proxy_ssl_client:send {
@@ -1718,6 +1733,19 @@ for _, strategy in helpers.each_strategy() do
         })
         assert.res_status(200, res)
       end)
+      it("works when a correct access_token is being sent in duplicate custom headers", function()
+        local token = provision_token("oauth2_11.com",nil,"clientid1011","secret1011")
+
+        local res = assert(proxy_ssl_client:send {
+          method = "GET",
+          path = "/request",
+          headers = {
+            ["Host"] = "oauth2_11.com",
+            ["custom_header_name"] = { "bearer " .. token.access_token, "bearer " .. token.access_token },
+          }
+        })
+        assert.res_status(200, res)
+      end)
       it("fails when a correct access_token is being sent in the wrong header", function()
         local token = provision_token("oauth2_11.com",nil,"clientid1011","secret1011")
 
@@ -1935,11 +1963,10 @@ for _, strategy in helpers.each_strategy() do
         assert.is_nil(err)
         local m, err = iterator()
         assert.is_nil(err)
-        local data = dao.oauth2_tokens:find_all {access_token = m[1]}
-        assert.are.equal(1, #data)
-        assert.are.equal(m[1], data[1].access_token)
-        assert.are.equal(7, data[1].expires_in)
-        assert.falsy(data[1].refresh_token)
+        local data = db.oauth2_tokens:select_by_access_token(m[1])
+        assert.are.equal(m[1], data.access_token)
+        assert.are.equal(7, data.expires_in)
+        assert.falsy(data.refresh_token)
       end)
       describe("Global Credentials", function()
         it("does not access two different APIs that are not sharing global credentials", function()
@@ -2058,21 +2085,27 @@ for _, strategy in helpers.each_strategy() do
       it("returns 401 Unauthorized when token has expired", function()
         local token = provision_token()
 
-        -- Token expires in (5 seconds)
-        ngx.sleep(7)
-
-        local res = assert(proxy_ssl_client:send {
-          method  = "POST",
-          path    = "/request",
-          headers = {
-            ["Host"]      = "oauth2.com",
-            Authorization = "bearer " .. token.access_token
-          }
-        })
-        local body = assert.res_status(401, res)
-        local json = cjson.decode(body)
+        -- Token expires in 5 seconds
+        local status, json, headers
+        helpers.wait_until(function()
+          local client = helpers.proxy_ssl_client()
+          local res = assert(client:send {
+            method  = "POST",
+            path    = "/request",
+            headers = {
+              ["Host"]      = "oauth2.com",
+              Authorization = "bearer " .. token.access_token
+            }
+          })
+          local body = res:read_body()
+          status = res.status
+          headers = res.headers
+          json = cjson.decode(body)
+          client:close()
+          return status == 401
+        end, 7)
         assert.same({ error_description = "The access token is invalid or has expired", error = "invalid_token" }, json)
-        assert.are.equal('Bearer realm="service" error="invalid_token" error_description="The access token is invalid or has expired"', res.headers['www-authenticate'])
+        assert.are.equal('Bearer realm="service" error="invalid_token" error_description="The access token is invalid or has expired"', headers['www-authenticate'])
       end)
     end)
 
@@ -2096,7 +2129,7 @@ for _, strategy in helpers.each_strategy() do
         local json = cjson.decode(body)
         assert.same({ error = "invalid_request", error_description = "Invalid refresh_token" }, json)
       end)
-      it("refreshes an valid access token", function()
+      it("#refreshes an valid access token", function()
         local token = provision_token()
 
         local res = assert(proxy_ssl_client:send {
@@ -2152,22 +2185,26 @@ for _, strategy in helpers.each_strategy() do
         })
         assert.res_status(200, res)
 
-        local id = dao.oauth2_tokens:find_all({access_token = token.access_token })[1].id
-        assert.truthy(dao.oauth2_tokens:find({id=id}))
+        local id = db.oauth2_tokens:select_by_access_token(token.access_token).id
+        assert.truthy(db.oauth2_tokens:select({ id = id }))
 
         -- But waiting after the cache expiration (5 seconds) should block the request
-        ngx.sleep(7)
-
-        local res = assert(proxy_client:send {
-          method  = "POST",
-          path    = "/request",
-          headers = {
-            ["Host"]      = "oauth2.com",
-            authorization = "bearer " .. token.access_token
-          }
-        })
-        local body = assert.res_status(401, res)
-        local json = cjson.decode(body)
+        local status, json
+        helpers.wait_until(function()
+          local client = helpers.proxy_client()
+          local res = assert(client:send {
+            method  = "POST",
+            path    = "/request",
+            headers = {
+              ["Host"]      = "oauth2.com",
+              authorization = "bearer " .. token.access_token
+            }
+          })
+          status = res.status
+          local body = res:read_body()
+          json = body and cjson.decode(body)
+          return status == 401
+        end, 7)
         assert.same({ error_description = "The access token is invalid or has expired", error = "invalid_token" }, json)
 
         -- Refreshing the token
@@ -2192,7 +2229,7 @@ for _, strategy in helpers.each_strategy() do
         assert.falsy(token.access_token  == cjson.decode(body).access_token)
         assert.falsy(token.refresh_token == cjson.decode(body).refresh_token)
 
-        assert.falsy(dao.oauth2_tokens:find({id=id}))
+        assert.falsy(db.oauth2_tokens:select({ id = id }))
       end)
     end)
 
@@ -2338,101 +2375,92 @@ for _, strategy in helpers.each_strategy() do
     local user1
     local user2
     local anonymous
-    local db
-    local dao
-    local bp
 
-    setup(function()
-      bp, db, dao = helpers.get_db_utils(strategy)
-
-      local service1 = bp.services:insert({
+    lazy_setup(function()
+      local service1 = admin_api.services:insert({
         path = "/request"
       })
 
-      local route1 = assert(db.routes:insert({
+      local route1 = assert(admin_api.routes:insert({
         hosts      = { "logical-and.com" },
         protocols  = { "http", "https" },
         service    = service1
       }))
 
-      bp.oauth2_plugins:insert({
-        route_id = route1.id,
+      admin_api.oauth2_plugins:insert({
+        route = { id = route1.id },
         config   = { scopes = { "email", "profile", "user.email" } },
       })
 
-      assert(dao.plugins:insert {
+      admin_api.plugins:insert {
         name     = "key-auth",
-        route_id = route1.id,
-      })
+        route = { id = route1.id },
+      }
 
-      anonymous = bp.consumers:insert {
+      anonymous = admin_api.consumers:insert {
         username = "Anonymous",
       }
 
-      user1 = bp.consumers:insert {
+      user1 = admin_api.consumers:insert {
         username = "Mickey",
       }
 
-      user2 = bp.consumers:insert {
+      user2 = admin_api.consumers:insert {
         username = "Aladdin",
       }
 
-      local service2 = bp.services:insert({
+      local service2 = admin_api.services:insert({
         path = "/request"
       })
 
-      local route2 = assert(db.routes:insert({
+      local route2 = assert(admin_api.routes:insert({
         hosts      = { "logical-or.com" },
         protocols  = { "http", "https" },
         service    = service2
       }))
 
-      bp.oauth2_plugins:insert({
-        route_id = route2.id,
+      admin_api.oauth2_plugins:insert({
+        route = { id = route2.id },
         config   = {
           scopes    = { "email", "profile", "user.email" },
           anonymous = anonymous.id,
         },
       })
 
-      assert(dao.plugins:insert {
+      admin_api.plugins:insert {
         name     = "key-auth",
-        route_id = route2.id,
+        route = { id = route2.id },
         config   = {
           anonymous = anonymous.id,
         },
+      }
+
+      admin_api.keyauth_credentials:insert({
+        key      = "Mouse",
+        consumer = { id = user1.id },
       })
 
-      assert(dao.keyauth_credentials:insert {
-        key         = "Mouse",
-        consumer_id = user1.id,
-      })
-
-      assert(dao.oauth2_credentials:insert {
-        client_id     = "clientid123",
-        client_secret = "secret123",
-        redirect_uri  = "http://google.com/kong",
-        name          = "testapp",
-        consumer_id   = user2.id,
-      })
-
-      assert(helpers.start_kong({
-        database   = strategy,
-        nginx_conf = "spec/fixtures/custom_nginx.template",
-      }))
+      admin_api.oauth2_credentials:insert {
+        client_id      = "clientid4567",
+        client_secret  = "secret4567",
+        redirect_uris  = { "http://google.com/kong" },
+        name           = "testapp",
+        consumer       = { id = user2.id },
+      }
 
       proxy_client = helpers.proxy_client()
     end)
 
 
-    teardown(function()
+    lazy_teardown(function()
       if proxy_client then proxy_client:close() end
-      helpers.stop_kong()
     end)
 
     describe("multiple auth without anonymous, logical AND", function()
 
       it("passes with all credentials provided", function()
+        local token = provision_token("logical-and.com",
+          { ["apikey"] = "Mouse"}, "clientid4567", "secret4567").access_token
         local res = assert(proxy_client:send {
           method  = "GET",
           path    = "/request",
@@ -2442,8 +2470,7 @@ for _, strategy in helpers.each_strategy() do
             -- we must provide the apikey again in the extra_headers, for the
             -- token endpoint, because that endpoint is also protected by the
             -- key-auth plugin. Otherwise getting the token simply fails.
-            ["Authorization"] = "bearer " .. provision_token("logical-and.com",
-                 { ["apikey"] = "Mouse"} ).access_token,
+            ["Authorization"] = "bearer " .. token,
           }
         })
         assert.response(res).has.status(200)
@@ -2497,13 +2524,15 @@ for _, strategy in helpers.each_strategy() do
     describe("multiple auth with anonymous, logical OR", function()
 
       it("passes with all credentials provided", function()
+        local token = provision_token("logical-or.com", nil,
+                                      "clientid4567", "secret4567").access_token
         local res = assert(proxy_client:send {
           method  = "GET",
           path    = "/request",
           headers = {
             ["Host"]          = "logical-or.com",
             ["apikey"]        = "Mouse",
-            ["Authorization"] = "bearer " .. provision_token("logical-or.com").access_token,
+            ["Authorization"] = "bearer " .. token,
           }
         })
         assert.response(res).has.status(200)
@@ -2530,12 +2559,14 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("passes with only the second credential provided", function()
+        local token = provision_token("logical-or.com", nil,
+                                      "clientid4567", "secret4567").access_token
         local res = assert(proxy_client:send {
           method  = "GET",
           path    = "/request",
           headers = {
             ["Host"]          = "logical-or.com",
-            ["Authorization"] = "bearer " .. provision_token("logical-or.com").access_token,
+            ["Authorization"] = "bearer " .. token,
           }
         })
         assert.response(res).has.status(200)
@@ -2562,22 +2593,16 @@ for _, strategy in helpers.each_strategy() do
   end)
 
   describe("Plugin: oauth2 (ttl) with #"..strategy, function()
-    local db
-    local dao
-    local bp
-
-    setup(function()
-      bp, db, dao = helpers.get_db_utils(strategy)
-
-      local route11 = assert(db.routes:insert({
-        hosts     = { "oauth2_11.com" },
+    lazy_setup(function()
+      local route11 = assert(admin_api.routes:insert({
+        hosts     = { "oauth2_21.com" },
         protocols = { "http", "https" },
-        service   = bp.services:insert(),
+        service   = admin_api.services:insert(),
       }))
 
-      assert(dao.plugins:insert {
+      admin_api.plugins:insert {
         name = "oauth2",
-        route_id = route11.id,
+        route = { id = route11.id },
         config = {
           enable_authorization_code = true,
           mandatory_scope = false,
@@ -2586,17 +2611,17 @@ for _, strategy in helpers.each_strategy() do
           global_credentials = false,
           refresh_token_ttl = 2
         }
-      })
+      }
 
-      local route12 = assert(db.routes:insert({
-        hosts     = { "oauth2_12.com" },
+      local route12 = assert(admin_api.routes:insert({
+        hosts     = { "oauth2_22.com" },
         protocols = { "http", "https" },
-        service   = bp.services:insert(),
+        service   = admin_api.services:insert(),
       }))
 
-      assert(dao.plugins:insert {
+      admin_api.plugins:insert {
         name = "oauth2",
-        route_id = route12.id,
+        route = { id = route12.id },
         config = {
           enable_authorization_code = true,
           mandatory_scope = false,
@@ -2605,68 +2630,46 @@ for _, strategy in helpers.each_strategy() do
           global_credentials = false,
           refresh_token_ttl = 0
         }
-      })
-
-      local consumer = bp.consumers:insert {
-        username = "bob"
       }
-      assert(dao.oauth2_credentials:insert {
-        client_id = "clientid123",
-        client_secret = "secret123",
-        redirect_uri = "http://google.com/kong",
+
+      local consumer = admin_api.consumers:insert {
+        username = "bobo"
+      }
+      admin_api.oauth2_credentials:insert {
+        client_id = "clientid7890",
+        client_secret = "secret7890",
+        redirect_uris = { "http://google.com/kong" },
         name = "testapp",
-        consumer_id = consumer.id
-      })
-      assert(helpers.start_kong({
-        database    = strategy,
-        trusted_ips = "127.0.0.1",
-        nginx_conf  = "spec/fixtures/custom_nginx.template",
-      }))
+        consumer = { id = consumer.id },
+      }
     end)
-
-    teardown(function()
-      helpers.stop_kong()
-    end)
-
-    local function assert_ttls_records_for_token(uuid, count)
-      local DB = require "kong.dao.db.postgres"
-      local db = DB.new(helpers.test_conf)
-      local query = fmt("SELECT COUNT(*) FROM ttls where table_name='oauth2_tokens' AND primary_uuid_value = '%s'", tostring(uuid))
-      local result, error = db:query(query)
-      assert.falsy(error)
-      assert.truthy(result[1].count == count)
-    end
 
     describe("refresh token", function()
       it("is deleted after defined TTL", function()
-        local token = provision_token("oauth2_11.com")
-        local token_entity = dao.oauth2_tokens:find_all { access_token = token.access_token }
-        assert.equal(1, #token_entity)
+        local token = provision_token("oauth2_21.com", nil, "clientid7890", "secret7890")
+        local token_entity = db.oauth2_tokens:select_by_access_token(token.access_token)
+        assert.is_table(token_entity)
 
-        if strategy == "postgres" then
-          assert_ttls_records_for_token(token_entity[1].id, 1)
-        end
-
-        ngx.sleep(3)
-
-        token_entity = dao.oauth2_tokens:find_all { access_token = token.access_token }
-        assert.equal(0, #token_entity)
+        local err
+        helpers.wait_until(function()
+          token_entity, err = db.oauth2_tokens:select_by_access_token(token.access_token)
+          return token_entity == nil and err == nil
+        end, 3)
       end)
 
       it("is not deleted when when TTL is 0 == never", function()
-        local token = provision_token("oauth2_12.com")
-        local token_entity = dao.oauth2_tokens:find_all { access_token = token.access_token }
-        assert.equal(1, #token_entity)
+        local token = provision_token("oauth2_22.com", nil, "clientid7890", "secret7890")
+        local token_entity = db.oauth2_tokens:select_by_access_token(token.access_token)
+        assert.is_table(token_entity)
 
-        if strategy == "postgres" then
-          assert_ttls_records_for_token(token_entity[1].id, 0)
-        end
+        ngx.sleep(2.2)
 
-        ngx.sleep(3)
-
-        token_entity = dao.oauth2_tokens:find_all { access_token = token.access_token }
-        assert.equal(1, #token_entity)
+        token_entity = db.oauth2_tokens:select_by_access_token(token.access_token)
+        assert.is_table(token_entity)
       end)
     end)
   end)
+
+end)
+
 end

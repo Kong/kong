@@ -4,11 +4,10 @@ return {
   name         = "consumers",
   primary_key  = { "id" },
   endpoint_key = "username",
-  dao          = "kong.db.dao.consumers",
 
   fields = {
     { id             = typedefs.uuid, },
-    { created_at     = { type = "integer", timestamp = true, auto = true }, },
+    { created_at     = typedefs.auto_timestamp_s },
     { username       = { type = "string",  unique = true }, },
     { custom_id      = { type = "string",  unique = true }, },
   },

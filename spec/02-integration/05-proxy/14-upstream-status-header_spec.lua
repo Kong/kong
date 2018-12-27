@@ -3,7 +3,12 @@ local constants = require "kong.constants"
 
 
 local function setup_db()
-  local bp = helpers.get_db_utils()
+  local bp = helpers.get_db_utils(nil, {
+    "routes",
+    "services",
+    "plugins",
+    "keyauth_credentials",
+  })
 
   local service = bp.services:insert {
     host = helpers.mock_upstream_host,
@@ -25,7 +30,7 @@ local function setup_db()
 
   bp.plugins:insert {
     name = "dummy",
-    route_id = route2.id,
+    route = { id = route2.id },
     config = {
       resp_code = 500,
     }
@@ -39,7 +44,7 @@ local function setup_db()
 
   bp.plugins:insert {
     name = "key-auth",
-    route_id = route3.id,
+    route = { id = route3.id },
   }
 end
 
@@ -48,7 +53,7 @@ describe(constants.HEADERS.UPSTREAM_STATUS .. " header", function()
   local client
 
   describe("should be same as upstream status code", function()
-    setup(function()
+    lazy_setup(function()
       setup_db()
 
       assert(helpers.start_kong {
@@ -60,7 +65,7 @@ describe(constants.HEADERS.UPSTREAM_STATUS .. " header", function()
       client = helpers.proxy_client()
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       if client then
         client:close()
       end
@@ -95,7 +100,7 @@ describe(constants.HEADERS.UPSTREAM_STATUS .. " header", function()
   end)
 
   describe("is not injected with default configuration", function()
-    setup(function()
+    lazy_setup(function()
       setup_db()
 
       assert(helpers.start_kong {
@@ -103,7 +108,7 @@ describe(constants.HEADERS.UPSTREAM_STATUS .. " header", function()
       })
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       if client then
         client:close()
       end
@@ -126,7 +131,7 @@ describe(constants.HEADERS.UPSTREAM_STATUS .. " header", function()
   end)
 
   describe("is injected with configuration [headers=X-Kong-Upstream-Status]", function()
-    setup(function()
+    lazy_setup(function()
       setup_db()
 
       assert(helpers.start_kong {
@@ -135,7 +140,7 @@ describe(constants.HEADERS.UPSTREAM_STATUS .. " header", function()
       })
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       if client then
         client:close()
       end
@@ -158,7 +163,7 @@ describe(constants.HEADERS.UPSTREAM_STATUS .. " header", function()
   end)
 
   describe("short-circuited requests", function()
-    setup(function()
+    lazy_setup(function()
       setup_db()
 
       assert(helpers.start_kong {
@@ -167,7 +172,7 @@ describe(constants.HEADERS.UPSTREAM_STATUS .. " header", function()
       })
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       if client then
         client:close()
       end

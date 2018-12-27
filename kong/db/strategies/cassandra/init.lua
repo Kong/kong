@@ -1,8 +1,15 @@
+local iteration = require "kong.db.iteration"
 local cassandra = require "cassandra"
+local cjson = require "cjson"
 
 
 local fmt           = string.format
 local rep           = string.rep
+local null          = ngx.null
+local type          = type
+local error         = error
+local pairs         = pairs
+local ipairs        = ipairs
 local insert        = table.insert
 local concat        = table.concat
 local setmetatable  = setmetatable
@@ -33,13 +40,13 @@ end
 local APPLIED_COLUMN = "[applied]"
 
 
-local _constraints = {}
+local cache_key_field = { type = "string" }
 
 
 local _M  = {
   CUSTOM_STRATEGIES = {
     services = require("kong.db.strategies.cassandra.services"),
-    routes   = require("kong.db.strategies.cassandra.routes"),
+    plugins = require("kong.db.strategies.cassandra.plugins"),
   }
 }
 
@@ -47,23 +54,11 @@ local _mt = {}
 _mt.__index = _mt
 
 
-local function extract_pk_values(schema, entity)
-  local pk_len = #schema.primary_key
-  local pk_values = new_tab(0, pk_len)
-
-  for i = 1, pk_len do
-    local pk_name = schema.primary_key[i]
-    pk_values[pk_name] = entity[pk_name]
-  end
-
-  return pk_values
-end
-
-
 local function is_partitioned(self)
   local cql
 
-  if self.connector.major_version == 3 then
+  -- Assume a release version number of 3 & greater will use the same schema.
+  if self.connector.major_version >= 3 then
     cql = fmt([[
       SELECT * FROM system_schema.columns
       WHERE keyspace_name = '%s'
@@ -85,7 +80,8 @@ local function is_partitioned(self)
     return nil, err
   end
 
-  if self.connector.major_version == 3 then
+  -- Assume a release version number of 3 & greater will use the same schema.
+  if self.connector.major_version >= 3 then
     return rows[1] and rows[1].kind == "partition_key"
   end
 
@@ -97,27 +93,34 @@ local function build_queries(self)
   local schema   = self.schema
   local n_fields = #schema.fields
   local n_pk     = #schema.primary_key
+  local composite_cache_key = schema.cache_key and #schema.cache_key > 1
 
-  local insert_columns = new_tab(n_fields, 0)
+  local select_columns = new_tab(n_fields, 0)
   for field_name, field in schema:each_field() do
     if field.type == "foreign" then
       local db_columns = self.foreign_keys_db_columns[field_name]
       for i = 1, #db_columns do
-        insert(insert_columns, db_columns[i].col_name)
+        insert(select_columns, db_columns[i].col_name)
       end
     else
-      insert(insert_columns, field_name)
+      insert(select_columns, field_name)
     end
   end
-  insert_columns = concat(insert_columns, ", ")
+  select_columns = concat(select_columns, ", ")
+  local insert_columns = select_columns
+
+  local insert_bind_args = rep("?, ", n_fields):sub(1, -3)
+
+  if composite_cache_key then
+    insert_columns = select_columns .. ", cache_key"
+    insert_bind_args = insert_bind_args .. ", ?"
+  end
 
   local select_bind_args = new_tab(n_pk, 0)
   for _, field_name in self.each_pk_field() do
     insert(select_bind_args, field_name .. " = ?")
   end
   select_bind_args = concat(select_bind_args, " AND ")
-
-  local insert_bind_args = rep("?, ", n_fields):sub(1, -3)
 
   local partitioned, err = is_partitioned(self)
   if err then
@@ -127,28 +130,40 @@ local function build_queries(self)
   if partitioned then
     return {
       insert = fmt([[
-        INSERT INTO %s(partition, %s) VALUES('%s', %s) IF NOT EXISTS
+        INSERT INTO %s (partition, %s) VALUES ('%s', %s) IF NOT EXISTS
       ]], schema.name, insert_columns, schema.name, insert_bind_args),
+
+      insert_ttl = fmt([[
+        INSERT INTO %s (partition, %s) VALUES ('%s', %s) IF NOT EXISTS USING TTL %s
+      ]], schema.name, insert_columns, schema.name, insert_bind_args, "%u"),
 
       select = fmt([[
         SELECT %s FROM %s WHERE partition = '%s' AND %s
-      ]], insert_columns, schema.name, schema.name, select_bind_args),
+      ]], select_columns, schema.name, schema.name, select_bind_args),
 
       select_page = fmt([[
         SELECT %s FROM %s WHERE partition = '%s'
-      ]], insert_columns, schema.name, schema.name),
+      ]], select_columns, schema.name, schema.name),
 
       select_with_filter = fmt([[
         SELECT %s FROM %s WHERE partition = '%s' AND %s
-      ]], insert_columns, schema.name, schema.name, "%s"),
+      ]], select_columns, schema.name, schema.name, "%s"),
 
       update = fmt([[
         UPDATE %s SET %s WHERE partition = '%s' AND %s IF EXISTS
       ]], schema.name, "%s", schema.name, select_bind_args),
 
+      update_ttl = fmt([[
+        UPDATE %s USING TTL %s SET %s WHERE partition = '%s' AND %s IF EXISTS
+      ]], schema.name, "%u", "%s", schema.name, select_bind_args),
+
       upsert = fmt([[
         UPDATE %s SET %s WHERE partition = '%s' AND %s
       ]], schema.name, "%s", schema.name, select_bind_args),
+
+      upsert_ttl = fmt([[
+        UPDATE %s USING TTL %s SET %s WHERE partition = '%s' AND %s
+      ]], schema.name, "%u", "%s", schema.name, select_bind_args),
 
       delete = fmt([[
         DELETE FROM %s WHERE partition = '%s' AND %s
@@ -158,31 +173,43 @@ local function build_queries(self)
 
   return {
     insert = fmt([[
-      INSERT INTO %s(%s) VALUES(%s) IF NOT EXISTS
+      INSERT INTO %s (%s) VALUES (%s) IF NOT EXISTS
     ]], schema.name, insert_columns, insert_bind_args),
+
+    insert_ttl = fmt([[
+      INSERT INTO %s (%s) VALUES (%s) IF NOT EXISTS USING TTL %s
+    ]], schema.name, insert_columns, insert_bind_args, "%u"),
 
     -- might raise a "you must enable ALLOW FILTERING" error
     select = fmt([[
       SELECT %s FROM %s WHERE %s
-    ]], insert_columns, schema.name, select_bind_args),
+    ]], select_columns, schema.name, select_bind_args),
 
     -- might raise a "you must enable ALLOW FILTERING" error
     select_page = fmt([[
       SELECT %s FROM %s
-    ]], insert_columns, schema.name),
+    ]], select_columns, schema.name),
 
     -- might raise a "you must enable ALLOW FILTERING" error
     select_with_filter = fmt([[
       SELECT %s FROM %s WHERE %s
-    ]], insert_columns, schema.name, "%s"),
+    ]], select_columns, schema.name, "%s"),
 
     update = fmt([[
       UPDATE %s SET %s WHERE %s IF EXISTS
     ]], schema.name, "%s", select_bind_args),
 
+    update_ttl = fmt([[
+      UPDATE %s USING TTL %s SET %s WHERE %s IF EXISTS
+    ]], schema.name, "%u", "%s", select_bind_args),
+
     upsert = fmt([[
       UPDATE %s SET %s WHERE %s
     ]], schema.name, "%s", select_bind_args),
+
+    upsert_ttl = fmt([[
+      UPDATE %s USING TTL %s SET %s WHERE %s
+    ]], schema.name, "%u", "%s", select_bind_args),
 
     delete = fmt([[
       DELETE FROM %s WHERE %s
@@ -199,6 +226,7 @@ local function get_query(self, query_name)
       return nil, err
     end
   end
+
   return self.queries[query_name]
 end
 
@@ -206,7 +234,7 @@ end
 local function serialize_arg(field, arg)
   local serialized_arg
 
-  if arg == ngx.null then
+  if arg == null then
     serialized_arg = cassandra.null
 
   elseif field.uuid then
@@ -228,25 +256,34 @@ local function serialize_arg(field, arg)
     serialized_arg = cassandra.text(arg)
 
   elseif field.type == "array" then
-    serialized_arg = cassandra.list(arg)
+    local t = {}
 
     for i = 1, #arg do
-      serialized_arg[i] = serialize_arg(field.elements, arg[i])
+      t[i] = serialize_arg(field.elements, arg[i])
     end
+
+    serialized_arg = cassandra.list(t)
 
   elseif field.type == "set" then
-    serialized_arg = cassandra.list(arg)
+    local t = {}
 
     for i = 1, #arg do
-      serialized_arg[i] = serialize_arg(field.elements, arg[i])
+      t[i] = serialize_arg(field.elements, arg[i])
     end
+
+    serialized_arg = cassandra.set(t)
 
   elseif field.type == "map" then
-    serialized_arg = cassandra.map(arg)
+    local t = {}
 
     for k, v in pairs(arg) do
-      serialized_arg[k] = serialize_arg(field.elements, arg[k])
+      t[k] = serialize_arg(field.elements, arg[k])
     end
+
+    serialized_arg = cassandra.map(t)
+
+  elseif field.type == "record" then
+    serialized_arg = cassandra.text(cjson.encode(arg))
 
   else
     error("[cassandra strategy] don't know how to serialize field")
@@ -260,8 +297,8 @@ local function serialize_foreign_pk(db_columns, args, args_names, foreign_pk)
   for _, db_column in ipairs(db_columns) do
     local to_serialize
 
-    if foreign_pk == ngx.null then
-      to_serialize = ngx.null
+    if foreign_pk == null then
+      to_serialize = null
 
     else
       to_serialize = foreign_pk[db_column.foreign_field_name]
@@ -361,7 +398,7 @@ function _M.new(connector, schema, errors)
     queries                 = nil,
   }
 
-  -- foreign keys constraints and for_ selector methods
+  -- foreign keys constraints and page_for_ selector methods
 
   for field_name, field in schema:each_field() do
     if field.type == "foreign" then
@@ -385,29 +422,22 @@ function _M.new(connector, schema, errors)
       local db_columns_args_names = new_tab(#db_columns, 0)
 
       for i = 1, #db_columns do
-        -- keep args_names for 'for_*' methods
+        -- keep args_names for 'page_for_*' methods
         db_columns_args_names[i] = db_columns[i].col_name .. " = ?"
       end
 
       db_columns.args_names = concat(db_columns_args_names, " AND ")
 
       self.foreign_keys_db_columns[field_name] = db_columns
-
-      -- store in constraints to subsequently retrieve the inverse relation
-
-      _constraints[field.reference] = {
-        schema     = schema,
-        field_name = field_name,
-      }
     end
   end
 
-  -- generate for_ method for inverse selection
-  -- e.g. routes:for_service(service_pk)
+  -- generate page_for_ method for inverse selection
+  -- e.g. routes:page_for_service(service_pk)
   for field_name, field in schema:each_field() do
     if field.type == "foreign" then
 
-      local method_name = "for_" .. field_name
+      local method_name = "page_for_" .. field_name
       local db_columns = self.foreign_keys_db_columns[field_name]
 
       local select_foreign_bind_args = {}
@@ -415,8 +445,8 @@ function _M.new(connector, schema, errors)
         insert(select_foreign_bind_args, foreign_key_column.col_name .. " = ?")
       end
 
-      self[method_name] = function(self, foreign_key, size, offset)
-        return self:page(size, offset, foreign_key, db_columns)
+      self[method_name] = function(self, foreign_key, size, offset, options)
+        return self:page(size, offset, options, foreign_key, db_columns)
       end
     end
   end
@@ -425,7 +455,29 @@ function _M.new(connector, schema, errors)
 end
 
 
-local function deserialize_row(self, row)
+local function deserialize_aggregates(value, field)
+  if field.type == "record" then
+    if type(value) == "string" then
+      value = cjson.decode(value)
+    end
+
+  elseif field.type == "set" then
+    if type(value) == "table" then
+      for i = 1, #value do
+        value[i] = deserialize_aggregates(value[i], field.elements)
+      end
+    end
+  end
+
+  if value == nil then
+    return null
+  end
+
+  return value
+end
+
+
+function _mt:deserialize_row(row)
   if not row then
     error("row must be a table", 2)
   end
@@ -433,7 +485,7 @@ local function deserialize_row(self, row)
   -- deserialize rows
   -- replace `nil` fields with `ngx.null`
   -- replace `foreign_key` with `foreign = { key = "" }`
-  -- give seconds precisions to timestamps instead of ms
+  -- return timestamps in seconds instead of ms
 
   for field_name, field in self.schema:each_field() do
     if field.type == "foreign" then
@@ -454,15 +506,14 @@ local function deserialize_row(self, row)
       end
 
       if not has_fk then
-        row[field_name] = nil
+        row[field_name] = null
       end
 
-    elseif field.timestamp then
+    elseif field.timestamp and row[field_name] ~= nil then
       row[field_name] = row[field_name] / 1000
-    end
 
-    if row[field_name] == nil then
-      row[field_name] = ngx.null
+    else
+      row[field_name] = deserialize_aggregates(row[field_name], field)
     end
   end
 
@@ -485,24 +536,80 @@ local function _select(self, cql, args)
     return nil
   end
 
-  return deserialize_row(self, row)
+  return self:deserialize_row(row)
 end
 
 
-function _mt:insert(entity)
-  local schema = self.schema
-  local args     = new_tab(#schema.fields, 0)
-  local cql, err = get_query(self, "insert")
-  if err then
-    return nil, err
+local function check_unique(self, primary_key, entity, field_name)
+  -- a UNIQUE constaint is set on this field.
+  -- We unfortunately follow a read-before-write pattern in this case,
+  -- but this is made necessary for Kong to behave in a
+  -- database-agnostic fashion between its supported RDBMs and
+  -- Cassandra.
+  local row, err_t = self:select_by_field(field_name, entity[field_name])
+  if err_t then
+    return nil, err_t
   end
+
+  if row then
+    for _, pk_field_name in self.each_pk_field() do
+      if primary_key[pk_field_name] ~= row[pk_field_name] then
+        -- already exists
+        if field_name == "cache_key" then
+          local keys = {}
+          local schema = self.schema
+          for _, k in ipairs(schema.cache_key) do
+            local field = schema.fields[k]
+            if field.type == "foreign" and entity[k] ~= ngx.null then
+              keys[k] = field.schema:extract_pk_values(entity[k])
+            else
+              keys[k] = entity[k]
+            end
+          end
+          return nil, self.errors:unique_violation(keys)
+        end
+
+        return nil, self.errors:unique_violation {
+          [field_name] = entity[field_name],
+        }
+      end
+    end
+  end
+
+  return true
+end
+
+
+function _mt:insert(entity, options)
+  local schema = self.schema
+  local args = new_tab(#schema.fields, 0)
+  local ttl = schema.ttl and options and options.ttl
+  local composite_cache_key = schema.cache_key and #schema.cache_key > 1
+  local primary_key
+
+  local cql, err
+  if ttl then
+    cql, err = get_query(self, "insert_ttl")
+    if err then
+      return nil, err
+    end
+
+    cql = fmt(cql, ttl)
+
+  else
+    cql, err = get_query(self, "insert")
+    if err then
+      return nil, err
+    end
+  end
+
   -- serialize VALUES clause args
 
   for field_name, field in schema:each_field() do
     if field.type == "foreign" then
       local foreign_pk = entity[field_name]
 
-      if foreign_pk ~= ngx.null then
+      if foreign_pk ~= null then
         -- if given, check if this foreign entity exists
         local exists, err_t = foreign_pk_exists(self, field_name, field, foreign_pk)
         if not exists then
@@ -515,28 +622,32 @@ function _mt:insert(entity)
 
     else
       if field.unique
-        and entity[field_name] ~= ngx.null
+        and entity[field_name] ~= null
         and entity[field_name] ~= nil
       then
         -- a UNIQUE constaint is set on this field.
         -- We unfortunately follow a read-before-write pattern in this case,
         -- but this is made necessary for Kong to behave in a database-agnostic
         -- fashion between its supported RDBMs and Cassandra.
-        local row, err_t = self:select_by_field(field_name, entity[field_name])
+        primary_key = primary_key or schema:extract_pk_values(entity)
+        local _, err_t = check_unique(self, primary_key, entity, field_name)
         if err_t then
           return nil, err_t
-        end
-
-        if row then
-          -- already exists
-          return nil, self.errors:unique_violation {
-            [field_name] = entity[field_name],
-          }
         end
       end
 
       insert(args, serialize_arg(field, entity[field_name]))
     end
+  end
+
+  if composite_cache_key then
+    primary_key = primary_key or schema:extract_pk_values(entity)
+    local _, err_t = check_unique(self, primary_key, entity, "cache_key")
+    if err_t then
+      return nil, err_t
+    end
+
+    insert(args, serialize_arg(cache_key_field, entity["cache_key"]))
   end
 
   -- execute query
@@ -549,12 +660,12 @@ function _mt:insert(entity)
 
   -- check for linearizable consistency (Paxos)
 
-  if res[APPLIED_COLUMN] == false then
+  if res[1][APPLIED_COLUMN] == false then
     -- lightweight transaction (IF NOT EXISTS) failed,
     -- retrieve PK values for the PK violation error
-    local pk_values = extract_pk_values(schema, entity)
+    primary_key = primary_key or schema:extract_pk_values(entity)
 
-    return nil, self.errors:primary_key_violation(pk_values)
+    return nil, self.errors:primary_key_violation(primary_key)
   end
 
   -- return foreign key as if they were fetched from :select()
@@ -567,11 +678,11 @@ function _mt:insert(entity)
     local value = entity[field_name]
 
     if field.type == "foreign" then
-      if value ~= ngx.null and value ~= nil then
-        value = extract_pk_values(field.schema, value)
+      if value ~= null and value ~= nil then
+        value = field.schema:extract_pk_values(value)
 
       else
-        value = ngx.null
+        value = null
       end
     end
 
@@ -582,7 +693,7 @@ function _mt:insert(entity)
 end
 
 
-function _mt:select(primary_key)
+function _mt:select(primary_key, options)
   local schema = self.schema
   local cql, err = get_query(self, "select")
   if err then
@@ -602,14 +713,20 @@ function _mt:select(primary_key)
 end
 
 
-function _mt:select_by_field(field_name, field_value)
+function _mt:select_by_field(field_name, field_value, options)
   local cql, err = get_query(self, "select_with_filter")
   if err then
     return nil, err
   end
   local select_cql = fmt(cql, field_name .. " = ?")
   local bind_args = new_tab(1, 0)
-  bind_args[1] = field_value
+  local field = self.schema.fields[field_name]
+
+  if field_name == "cache_key" then
+    field = cache_key_field
+  end
+
+  bind_args[1] = serialize_arg(field, field_value)
 
   return _select(self, select_cql, bind_args)
 end
@@ -619,7 +736,7 @@ do
   local opts = new_tab(0, 2)
 
 
-  function _mt:page(size, offset, foreign_key, foreign_key_db_columns)
+  function _mt:page(size, offset, options, foreign_key, foreign_key_db_columns)
     if offset then
       local offset_decoded = decode_base64(offset)
       if not offset_decoded then
@@ -666,7 +783,7 @@ do
     end
 
     for i = 1, #rows do
-      rows[i] = deserialize_row(self, rows[i])
+      rows[i] = self:deserialize_row(rows[i])
     end
 
     local next_offset
@@ -683,71 +800,23 @@ end
 
 
 do
-  local function iter(self)
-    if not self.rows then
-      local size = self.size
-      local offset = self.offset
-      local strategy = self.strategy
-
-      local rows, err_t, next_offset = strategy:page(size, offset)
-      if not rows then
-        return nil, err_t
-      end
-
-      self.rows = rows
-      self.rows_idx = 0
-      self.offset = next_offset
-      self.page = self.page + 1
-    end
-
-    local rows_idx = self.rows_idx
-    rows_idx = rows_idx + 1
-
-    local row = self.rows[rows_idx]
-    if row then
-      self.rows_idx = rows_idx
-      return row, nil, self.page
-    end
-
-    -- end of page
-
-    if not self.offset then
-      -- end of iteration
-      return nil
-    end
-
-    self.rows = nil
-
-    -- fetch next page
-    return iter(self)
-  end
-
-
-  local iter_mt = { __call = iter }
-
-
-  function _mt:each(size)
-    local iter_ctx = {
-      page         = 0,
-      rows         = nil,
-      rows_idx     = nil,
-      offset       = nil,
-      size         = size,
-      strategy     = self,
-    }
-
-    return setmetatable(iter_ctx, iter_mt)
-  end
-end
-
-
-do
-  local function update(self, primary_key, entity, mode)
+  local function update(self, primary_key, entity, mode, options)
     local schema = self.schema
-    local cql, err = get_query(self, mode)
+    local ttl = schema.ttl and options and options.ttl
+    local composite_cache_key = schema.cache_key and #schema.cache_key > 1
+
+    local query_name
+    if ttl then
+      query_name = mode .. "_ttl"
+    else
+      query_name = mode
+    end
+
+    local cql, err = get_query(self, query_name)
     if err then
       return nil, err
     end
+
     local args = new_tab(#schema.fields, 0)
     local args_names = new_tab(#schema.fields, 0)
 
@@ -758,7 +827,7 @@ do
         if field.type == "foreign" then
           local foreign_pk = entity[field_name]
 
-          if foreign_pk ~= ngx.null then
+          if foreign_pk ~= null then
             -- if given, check if this foreign entity exists
             local exists, err_t = foreign_pk_exists(self, field_name, field, foreign_pk)
             if not exists then
@@ -770,26 +839,10 @@ do
           serialize_foreign_pk(db_columns, args, args_names, foreign_pk)
 
         else
-          if field.unique and entity[field_name] ~= ngx.null then
-            -- a UNIQUE constaint is set on this field.
-            -- We unfortunately follow a read-before-write pattern in this case,
-            -- but this is made necessary for Kong to behave in a
-            -- database-agnostic fashion between its supported RDBMs and
-            -- Cassandra.
-            local row, err_t = self:select_by_field(field_name, entity[field_name])
+          if field.unique and entity[field_name] ~= null then
+            local _, err_t = check_unique(self, primary_key, entity, field_name)
             if err_t then
               return nil, err_t
-            end
-
-            if row then
-              for _, pk_field_name in self.each_pk_field() do
-                if primary_key[pk_field_name] ~= row[pk_field_name] then
-                  -- already exists
-                  return nil, self.errors:unique_violation {
-                    [field_name] = entity[field_name],
-                  }
-                end
-              end
             end
           end
 
@@ -797,6 +850,15 @@ do
           insert(args_names, field_name)
         end
       end
+    end
+
+    if composite_cache_key then
+      local _, err_t = check_unique(self, primary_key, entity, "cache_key")
+      if err_t then
+        return nil, err_t
+      end
+
+      insert(args, serialize_arg(cache_key_field, entity["cache_key"]))
     end
 
     -- serialize WHERE clause args
@@ -814,7 +876,15 @@ do
       update_columns_binds[i] = args_names[i] .. " = ?"
     end
 
-    cql = fmt(cql, concat(update_columns_binds, ", "))
+    if composite_cache_key then
+      insert(update_columns_binds, "cache_key = ?")
+    end
+
+    if ttl then
+      cql = fmt(cql, ttl, concat(update_columns_binds, ", "))
+    else
+      cql = fmt(cql, concat(update_columns_binds, ", "))
+    end
 
     -- execute query
 
@@ -843,7 +913,7 @@ do
   end
 
 
-  local function update_by_field(self, field_name, field_value, entity, mode)
+  local function update_by_field(self, field_name, field_value, entity, mode, options)
     local row, err_t = self:select_by_field(field_name, field_value)
     if err_t then
       return nil, err_t
@@ -861,29 +931,29 @@ do
       end
     end
 
-    local pk = extract_pk_values(self.schema, row)
+    local pk = self.schema:extract_pk_values(row)
 
-    return self[mode](self, pk, entity)
+    return self[mode](self, pk, entity, options)
   end
 
 
-  function _mt:update(primary_key, entity)
-    return update(self, primary_key, entity, "update")
+  function _mt:update(primary_key, entity, options)
+    return update(self, primary_key, entity, "update", options)
   end
 
 
-  function _mt:upsert(primary_key, entity)
-    return update(self, primary_key, entity, "upsert")
+  function _mt:upsert(primary_key, entity, options)
+    return update(self, primary_key, entity, "upsert", options)
   end
 
 
-  function _mt:update_by_field(field_name, field_value, entity)
-    return update_by_field(self, field_name, field_value, entity, "update")
+  function _mt:update_by_field(field_name, field_value, entity, options)
+    return update_by_field(self, field_name, field_value, entity, "update", options)
   end
 
 
-  function _mt:upsert_by_field(field_name, field_value, entity)
-    return update_by_field(self, field_name, field_value, entity, "upsert")
+  function _mt:upsert_by_field(field_name, field_value, entity, options)
+    return update_by_field(self, field_name, field_value, entity, "upsert", options)
   end
 end
 
@@ -915,7 +985,7 @@ do
   end
 
 
-  function _mt:delete(primary_key)
+  function _mt:delete(primary_key, options)
     local schema = self.schema
     local cql, err = get_query(self, "delete")
     if err then
@@ -923,31 +993,61 @@ do
     end
     local args = new_tab(#schema.primary_key, 0)
 
-    local constraint = _constraints[schema.name]
-    if constraint then
+    local constraints = schema:get_constraints()
+    for i = 1, #constraints do
+      local constraint = constraints[i]
       -- foreign keys could be pointing to this entity
       -- this mimics the "ON DELETE" constraint of supported
       -- RDBMs (e.g. PostgreSQL)
       --
       -- The possible behaviors on such a constraint are:
       --  * RESTRICT (default)
-      --  * CASCADE  (NYI)
+      --  * CASCADE  (on_delete = "cascade", NYI)
       --  * SET NULL (NYI)
 
-      local row, err_t = select_by_foreign_key(self,
-                                               constraint.schema,
-                                               constraint.field_name,
-                                               primary_key)
-      if err_t then
-        return nil, err_t
-      end
+      local behavior = constraint.on_delete or "restrict"
 
-      if row then
-        -- a row is referring to this entity, we cannot delete it.
-        -- deleting the parent entity would violate the foreign key
-        -- constraint
-        return nil, self.errors:foreign_key_violation_restricted(schema.name,
-                                                                 constraint.schema.name)
+      if behavior == "restrict" then
+
+        local row, err_t = select_by_foreign_key(self,
+                                                  constraint.schema,
+                                                  constraint.field_name,
+                                                  primary_key)
+        if err_t then
+          return nil, err_t
+        end
+
+        if row then
+          -- a row is referring to this entity, we cannot delete it.
+          -- deleting the parent entity would violate the foreign key
+          -- constraint
+          return nil, self.errors:foreign_key_violation_restricted(schema.name,
+                                                                   constraint.schema.name)
+        end
+
+      elseif behavior == "cascade" then
+
+        local strategy = _M.new(self.connector, constraint.schema, self.errors)
+        local method = "page_for_" .. constraint.field_name
+
+        local pager = function(size, offset)
+          return strategy[method](strategy, primary_key, size, offset)
+        end
+        for row, err in iteration.by_row(self, pager) do
+          if err then
+            return nil, self.errors:database_error("could not gather " ..
+                                                   "associated entities " ..
+                                                   "for delete cascade: ", err)
+          end
+
+          local row_pk = constraint.schema:extract_pk_values(row)
+          local _
+          _, err = strategy:delete(row_pk)
+          if err then
+            return nil, self.errors:database_error("could not cascade " ..
+                                                   "delete entity: ", err)
+          end
+        end
       end
     end
 
@@ -970,7 +1070,7 @@ do
 end
 
 
-function _mt:delete_by_field(field_name, field_value)
+function _mt:delete_by_field(field_name, field_value, options)
   local row, err_t = self:select_by_field(field_name, field_value)
   if err_t then
     return nil, err_t
@@ -980,9 +1080,14 @@ function _mt:delete_by_field(field_name, field_value)
     return true
   end
 
-  local pk = extract_pk_values(self.schema, row)
+  local pk = self.schema:extract_pk_values(row)
 
   return self:delete(pk)
+end
+
+
+function _mt:truncate(options)
+  return self.connector:truncate_table(self.schema.name, options)
 end
 
 

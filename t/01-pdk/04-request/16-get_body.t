@@ -174,7 +174,227 @@ error: invalid json body
 
 
 
-=== TEST 7: request.get_body() content type value is case-insensitive
+=== TEST 7: request.get_body() returns error with null json body
+--- http_config eval: $t::Util::HttpConfig
+--- config
+    location = /t {
+        access_by_lua_block {
+            local PDK = require "kong.pdk"
+            local pdk = PDK.new()
+
+            local json, err = pdk.request.get_body()
+
+            ngx.say("type: ", type(json))
+            ngx.say("error: ", err)
+        }
+    }
+--- request
+POST /t
+null
+--- more_headers
+Content-Type: application/json
+--- response_body
+type: nil
+error: invalid json body
+--- no_error_log
+[error]
+
+
+
+=== TEST 8: request.get_body() returns error with string json body
+--- http_config eval: $t::Util::HttpConfig
+--- config
+    location = /t {
+        access_by_lua_block {
+            local PDK = require "kong.pdk"
+            local pdk = PDK.new()
+
+            local json, err = pdk.request.get_body()
+
+            ngx.say("type: ", type(json))
+            ngx.say("error: ", err)
+        }
+    }
+--- request
+POST /t
+"test"
+--- more_headers
+Content-Type: application/json
+--- response_body
+type: nil
+error: invalid json body
+--- no_error_log
+[error]
+
+
+
+=== TEST 9: request.get_body() returns error with number json body
+--- http_config eval: $t::Util::HttpConfig
+--- config
+    location = /t {
+        access_by_lua_block {
+            local PDK = require "kong.pdk"
+            local pdk = PDK.new()
+
+            local json, err = pdk.request.get_body()
+
+            ngx.say("type: ", type(json))
+            ngx.say("error: ", err)
+        }
+    }
+--- request
+POST /t
+123
+--- more_headers
+Content-Type: application/json
+--- response_body
+type: nil
+error: invalid json body
+--- no_error_log
+[error]
+
+
+
+=== TEST 10: request.get_body() returns error with number (float) json body
+--- http_config eval: $t::Util::HttpConfig
+--- config
+    location = /t {
+        access_by_lua_block {
+            local PDK = require "kong.pdk"
+            local pdk = PDK.new()
+
+            local json, err = pdk.request.get_body()
+
+            ngx.say("type: ", type(json))
+            ngx.say("error: ", err)
+        }
+    }
+--- request
+POST /t
+123.23
+--- more_headers
+Content-Type: application/json
+--- response_body
+type: nil
+error: invalid json body
+--- no_error_log
+[error]
+
+
+
+=== TEST 11: request.get_body() returns error with boolean true json body
+--- http_config eval: $t::Util::HttpConfig
+--- config
+    location = /t {
+        access_by_lua_block {
+            local PDK = require "kong.pdk"
+            local pdk = PDK.new()
+
+            local json, err = pdk.request.get_body()
+
+            ngx.say("type: ", type(json))
+            ngx.say("error: ", err)
+        }
+    }
+--- request
+POST /t
+true
+--- more_headers
+Content-Type: application/json
+--- response_body
+type: nil
+error: invalid json body
+--- no_error_log
+[error]
+
+
+
+=== TEST 12: request.get_body() returns error with boolean false json body
+--- http_config eval: $t::Util::HttpConfig
+--- config
+    location = /t {
+        access_by_lua_block {
+            local PDK = require "kong.pdk"
+            local pdk = PDK.new()
+
+            local json, err = pdk.request.get_body()
+
+            ngx.say("type: ", type(json))
+            ngx.say("error: ", err)
+        }
+    }
+--- request
+POST /t
+false
+--- more_headers
+Content-Type: application/json
+--- response_body
+type: nil
+error: invalid json body
+--- no_error_log
+[error]
+
+
+
+=== TEST 13: request.get_body() returns empty object json body as table without metatable
+--- http_config eval: $t::Util::HttpConfig
+--- config
+    location = /t {
+        access_by_lua_block {
+            local PDK = require "kong.pdk"
+            local pdk = PDK.new()
+
+            local json, err = pdk.request.get_body()
+
+            ngx.say("type: ", type(json))
+            ngx.say("meta: ", type(getmetatable(json)))
+            ngx.say("error: ", type(err))
+        }
+    }
+--- request
+POST /t
+{}
+--- more_headers
+Content-Type: application/json
+--- response_body
+type: table
+meta: nil
+error: nil
+--- no_error_log
+[error]
+
+
+
+=== TEST 14: request.get_body() returns empty array json body as table with metatable
+--- http_config eval: $t::Util::HttpConfig
+--- config
+    location = /t {
+        access_by_lua_block {
+            local PDK = require "kong.pdk"
+            local pdk = PDK.new()
+
+            local json, err = pdk.request.get_body()
+
+            ngx.say("type: ", type(json))
+            ngx.say("meta: ", getmetatable(json) == require "cjson".array_mt and "correct" or "incorrect")
+            ngx.say("error: ", type(err))
+        }
+    }
+--- request
+POST /t
+[]
+--- more_headers
+Content-Type: application/json
+--- response_body
+type: table
+meta: correct
+error: nil
+--- no_error_log
+[error]
+
+
+
+=== TEST 15: request.get_body() content type value is case-insensitive
 --- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
@@ -203,7 +423,7 @@ mime=application/x-www-form-urlencoded
 
 
 
-=== TEST 8: request.get_body() with application/x-www-form-urlencoded returns request post arguments
+=== TEST 16: request.get_body() with application/x-www-form-urlencoded returns request post arguments
 --- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
@@ -231,7 +451,7 @@ Accept: application/json, text/html
 
 
 
-=== TEST 9: request.get_body() with application/x-www-form-urlencoded returns empty table with header Content-Length: 0
+=== TEST 17: request.get_body() with application/x-www-form-urlencoded returns empty table with header Content-Length: 0
 --- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
@@ -255,7 +475,7 @@ next: nil
 
 
 
-=== TEST 10: request.get_body() with application/x-www-form-urlencoded returns request post arguments case-sensitive
+=== TEST 18: request.get_body() with application/x-www-form-urlencoded returns request post arguments case-sensitive
 --- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
@@ -283,7 +503,7 @@ fOO: Too
 
 
 
-=== TEST 11: request.get_body() with application/x-www-form-urlencoded fetches 100 post arguments by default
+=== TEST 19: request.get_body() with application/x-www-form-urlencoded fetches 100 post arguments by default
 --- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
@@ -320,7 +540,7 @@ number of query arguments fetched: 100
 
 
 
-=== TEST 12: request.get_body() with application/x-www-form-urlencoded fetches max_args argument
+=== TEST 20: request.get_body() with application/x-www-form-urlencoded fetches max_args argument
 --- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
@@ -357,7 +577,7 @@ number of query arguments fetched: 60
 
 
 
-=== TEST 13: request.get_body() with application/x-www-form-urlencoded raises error when trying to fetch with max_args invalid value
+=== TEST 21: request.get_body() with application/x-www-form-urlencoded raises error when trying to fetch with max_args invalid value
 --- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
@@ -379,7 +599,7 @@ error: max_args must be a number
 
 
 
-=== TEST 14: request.get_body() with application/x-www-form-urlencoded raises error when trying to fetch with max_args < 1
+=== TEST 22: request.get_body() with application/x-www-form-urlencoded raises error when trying to fetch with max_args < 1
 --- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
@@ -401,7 +621,7 @@ error: max_args must be >= 1
 
 
 
-=== TEST 15: request.get_body() with application/x-www-form-urlencoded raises error when trying to fetch with max_args > 1000
+=== TEST 23: request.get_body() with application/x-www-form-urlencoded raises error when trying to fetch with max_args > 1000
 --- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
@@ -423,7 +643,7 @@ error: max_args must be <= 1000
 
 
 
-=== TEST 16: request.get_body() with application/x-www-form-urlencoded returns nil + error when the body is too big
+=== TEST 24: request.get_body() with application/x-www-form-urlencoded returns nil + error when the body is too big
 --- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {

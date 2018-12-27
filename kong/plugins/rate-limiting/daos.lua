@@ -1,3 +1,5 @@
 return {
-  tables = {"ratelimiting_metrics"}
+  tables = {
+    "ratelimiting_metrics"
+  },
 }

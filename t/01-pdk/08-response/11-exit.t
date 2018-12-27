@@ -3,9 +3,7 @@ use warnings FATAL => 'all';
 use Test::Nginx::Socket::Lua;
 use t::Util;
 
-$ENV{TEST_NGINX_HTML_DIR} ||= html_dir();
-
-plan tests => repeat_each() * (blocks() * 4) + 1;
+plan tests => repeat_each() * (blocks() * 4) - 8;
 
 run_tests();
 
@@ -254,8 +252,6 @@ GET /t
 --- request
 GET /t
 --- error_code: 456
---- response_headers_like
-Server: kong/\d+\.\d+\.\d+(rc\d?)?
 --- response_body chop
 
 --- no_error_log
@@ -263,7 +259,7 @@ Server: kong/\d+\.\d+\.\d+(rc\d?)?
 
 
 
-=== TEST 9: response.exit() adds server header
+=== TEST 9: response.exit() adds Server header if in admin_api phase
 --- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
@@ -271,6 +267,9 @@ Server: kong/\d+\.\d+\.\d+(rc\d?)?
         access_by_lua_block {
             local PDK = require "kong.pdk"
             local pdk = PDK.new()
+            local phases = require("kong.pdk.private.phases")
+            kong = pdk
+            kong.ctx.core.phase = phases.phases.admin_api
 
             pdk.response.exit(ngx.HTTP_NO_CONTENT)
         }
@@ -287,7 +286,31 @@ Server: kong/\d+\.\d+\.\d+(rc\d?)?
 
 
 
-=== TEST 10: response.exit() errors if headers is not a table
+=== TEST 10: response.exit() does not add Server header if not in admin_api phase
+--- http_config eval: $t::Util::HttpConfig
+--- config
+    location = /t {
+        default_type '';
+        access_by_lua_block {
+            local PDK = require "kong.pdk"
+            local pdk = PDK.new()
+
+            pdk.response.exit(ngx.HTTP_NO_CONTENT)
+        }
+    }
+--- request
+GET /t
+--- error_code: 204
+--- response_headers_like
+Server: openresty/.*
+--- response_body chop
+
+--- no_error_log
+[error]
+
+
+
+=== TEST 11: response.exit() errors if headers is not a table
 --- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
@@ -309,7 +332,7 @@ headers must be a nil or table
 
 
 
-=== TEST 11: response.exit() errors if header name is not a string
+=== TEST 12: response.exit() errors if header name is not a string
 --- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
@@ -332,7 +355,7 @@ invalid header name "2": got number, expected string
 
 
 
-=== TEST 12: response.exit() errors if header value is of a bad type
+=== TEST 13: response.exit() errors if header value is of a bad type
 --- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
@@ -354,7 +377,7 @@ invalid header value for "foo": got function, expected string, number, boolean o
 
 
 
-=== TEST 13: response.exit() errors if header value array element is of a bad type
+=== TEST 14: response.exit() errors if header value array element is of a bad type
 --- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
@@ -377,7 +400,7 @@ invalid header value in array "foo": got function, expected string
 
 
 
-=== TEST 14: response.exit() sends "text/plain" response
+=== TEST 15: response.exit() sends "text/plain" response
 --- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
@@ -392,7 +415,6 @@ invalid header value in array "foo": got function, expected string
 GET /t
 --- error_code: 200
 --- response_headers_like
-Server: kong/\d+\.\d+\.\d+(rc\d?)?
 Content-Type: text/plain
 --- response_body chop
 hello
@@ -401,7 +423,7 @@ hello
 
 
 
-=== TEST 15: response.exit() sends no content-type header by default
+=== TEST 16: response.exit() sends no content-type header by default
 --- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
@@ -417,7 +439,6 @@ hello
 GET /t
 --- error_code: 200
 --- response_headers_like
-Server: kong/\d+\.\d+\.\d+(rc\d?)?
 Content-Type: text/test
 --- response_body chop
 hello
@@ -426,7 +447,7 @@ hello
 
 
 
-=== TEST 16: response.exit() sends json response when body is table
+=== TEST 17: response.exit() sends json response when body is table
 --- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
@@ -442,7 +463,6 @@ hello
 GET /t
 --- error_code: 200
 --- response_headers_like
-Server: kong/\d+\.\d+\.\d+(rc\d?)?
 Content-Type: application/json; charset=utf-8
 --- response_body chop
 {"message":"hello"}
@@ -451,7 +471,7 @@ Content-Type: application/json; charset=utf-8
 
 
 
-=== TEST 17: response.exit() sends json response when body is table overrides content-type
+=== TEST 18: response.exit() sends json response when body is table overrides content-type
 --- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
@@ -469,7 +489,6 @@ Content-Type: application/json; charset=utf-8
 GET /t
 --- error_code: 200
 --- response_headers_like
-Server: kong/\d+\.\d+\.\d+(rc\d?)?
 Content-Type: application/json; charset=utf-8
 --- response_body chop
 {"message":"hello"}
@@ -478,7 +497,7 @@ Content-Type: application/json; charset=utf-8
 
 
 
-=== TEST 18: response.exit() sets content-length header
+=== TEST 19: response.exit() sets content-length header
 --- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
@@ -496,7 +515,6 @@ Content-Type: application/json; charset=utf-8
 GET /t
 --- error_code: 200
 --- response_headers_like
-Server: kong/\d+\.\d+\.\d+(rc\d?)?
 Content-Type: text/plain
 Content-Length: 0
 --- response_body chop
@@ -506,7 +524,7 @@ Content-Length: 0
 
 
 
-=== TEST 19: response.exit() sets content-length header even when no body
+=== TEST 20: response.exit() sets content-length header even when no body
 --- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
@@ -525,7 +543,6 @@ Content-Length: 0
 GET /t
 --- error_code: 200
 --- response_headers_like
-Server: kong/\d+\.\d+\.\d+(rc\d?)?
 Content-Type: text/plain
 Content-Length: 0
 --- response_body chop
@@ -535,7 +552,7 @@ Content-Length: 0
 
 
 
-=== TEST 20: response.exit() sets content-length header with text body
+=== TEST 21: response.exit() sets content-length header with text body
 --- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
@@ -554,7 +571,6 @@ Content-Length: 0
 GET /t
 --- error_code: 200
 --- response_headers_like
-Server: kong/\d+\.\d+\.\d+(rc\d?)?
 Content-Type: text/plain
 Content-Length: 1
 --- response_body chop
@@ -564,7 +580,7 @@ a
 
 
 
-=== TEST 21: response.exit() sets content-length header with table body
+=== TEST 22: response.exit() sets content-length header with table body
 --- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
@@ -583,7 +599,6 @@ a
 GET /t
 --- error_code: 200
 --- response_headers_like
-Server: kong/\d+\.\d+\.\d+(rc\d?)?
 Content-Type: application/json; charset=utf-8
 Content-Length: 19
 --- response_body chop

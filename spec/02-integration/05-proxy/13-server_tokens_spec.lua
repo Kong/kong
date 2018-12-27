@@ -28,8 +28,11 @@ describe("headers [#" .. strategy .. "]", function()
       end
     end
 
-    setup(function()
-      bp = helpers.get_db_utils(strategy)
+    lazy_setup(function()
+      bp = helpers.get_db_utils(strategy, {
+        "routes",
+        "services",
+      })
     end)
 
     before_each(function()
@@ -44,9 +47,9 @@ describe("headers [#" .. strategy .. "]", function()
 
     describe("(with default configration values)", function()
 
-      setup(start())
+      lazy_setup(start())
 
-      teardown(helpers.stop_kong)
+      lazy_teardown(helpers.stop_kong)
 
       it("should return Kong 'Via' header but not change the 'Server' header when request was proxied", function()
         local res = assert(proxy_client:send {
@@ -80,11 +83,11 @@ describe("headers [#" .. strategy .. "]", function()
 
     describe("(with headers = Via)", function()
 
-      setup(start {
+      lazy_setup(start {
         headers = "Via",
       })
 
-      teardown(helpers.stop_kong)
+      lazy_teardown(helpers.stop_kong)
 
       it("should return Kong 'Via' header but not touch 'Server' header when request was proxied", function()
         local res = assert(proxy_client:send {
@@ -118,11 +121,11 @@ describe("headers [#" .. strategy .. "]", function()
 
     describe("(with headers = Server)", function()
 
-      setup(start {
+      lazy_setup(start {
         headers = "Server",
       })
 
-      teardown(helpers.stop_kong)
+      lazy_teardown(helpers.stop_kong)
 
       it("should not return Kong 'Via' header but not change the 'Server' header when request was proxied", function()
         local res = assert(proxy_client:send {
@@ -156,11 +159,11 @@ describe("headers [#" .. strategy .. "]", function()
 
     describe("(with headers = server_tokens)", function()
 
-      setup(start {
+      lazy_setup(start {
         headers = "server_tokens",
       })
 
-      teardown(helpers.stop_kong)
+      lazy_teardown(helpers.stop_kong)
 
       it("should return Kong 'Via' header but not change the 'Server' header when request was proxied", function()
         local res = assert(proxy_client:send {
@@ -194,11 +197,11 @@ describe("headers [#" .. strategy .. "]", function()
 
     describe("(with no server_tokens in headers)", function()
 
-      setup(start {
+      lazy_setup(start {
         headers = "off",
       })
 
-      teardown(helpers.stop_kong)
+      lazy_teardown(helpers.stop_kong)
 
       it("should not return Kong 'Via' header but it should forward the 'Server' header when request was proxied", function()
         local res = assert(proxy_client:send {
@@ -251,8 +254,11 @@ describe("headers [#" .. strategy .. "]", function()
       end
     end
 
-    setup(function()
-      bp = helpers.get_db_utils(strategy)
+    lazy_setup(function()
+      bp = helpers.get_db_utils(strategy, {
+        "routes",
+        "services",
+      })
     end)
 
 
@@ -268,9 +274,9 @@ describe("headers [#" .. strategy .. "]", function()
 
     describe("(with default configration values)", function()
 
-      setup(start())
+      lazy_setup(start())
 
-      teardown(helpers.stop_kong)
+      lazy_teardown(helpers.stop_kong)
 
       it("should be returned when request was proxied", function()
         local res = assert(proxy_client:send {
@@ -304,11 +310,11 @@ describe("headers [#" .. strategy .. "]", function()
 
     describe("(with headers = latency_tokens)", function()
 
-      setup(start {
+      lazy_setup(start {
         headers = "latency_tokens",
       })
 
-      teardown(helpers.stop_kong)
+      lazy_teardown(helpers.stop_kong)
 
       it("should be returned when request was proxied", function()
         local res = assert(proxy_client:send {
@@ -342,11 +348,11 @@ describe("headers [#" .. strategy .. "]", function()
 
     describe("(with headers = X-Kong-Upstream-Latency)", function()
 
-      setup(start {
+      lazy_setup(start {
         headers = "X-Kong-Upstream-Latency",
       })
 
-      teardown(helpers.stop_kong)
+      lazy_teardown(helpers.stop_kong)
 
       it("should return 'X-Kong-Upstream-Latency' header but not 'X-Kong-Proxy-Latency' when request was proxied", function()
         local res = assert(proxy_client:send {
@@ -380,11 +386,11 @@ describe("headers [#" .. strategy .. "]", function()
 
     describe("(with headers = X-Kong-Proxy-Latency)", function()
 
-      setup(start {
+      lazy_setup(start {
         headers = "X-Kong-Proxy-Latency",
       })
 
-      teardown(helpers.stop_kong)
+      lazy_teardown(helpers.stop_kong)
 
       it("should return 'X-Kong-Proxy-Latency' header but not 'X-Kong-Upstream-Latency' when request was proxied", function()
         local res = assert(proxy_client:send {
@@ -418,11 +424,11 @@ describe("headers [#" .. strategy .. "]", function()
 
     describe("(with no latency_tokens in headers)", function()
 
-      setup(start {
+      lazy_setup(start {
         headers = "off",
       })
 
-      teardown(function()
+      lazy_teardown(function()
         helpers.stop_kong()
       end)
 
@@ -458,11 +464,11 @@ describe("headers [#" .. strategy .. "]", function()
 
     describe("(with headers='server_tokens, X-Kong-Proxy-Latency')", function()
 
-      setup(start{
+      lazy_setup(start{
         headers = "server_tokens, X-Kong-Proxy-Latency",
       })
 
-      teardown(helpers.stop_kong)
+      lazy_teardown(helpers.stop_kong)
 
       it("should return Kong 'Via' and 'X-Kong-Proxy-Latency' header but not change the 'Server' header when request was proxied", function()
         local res = assert(proxy_client:send {
@@ -517,11 +523,11 @@ describe("headers [#" .. strategy .. "]", function()
 
     describe("(with headers='server_tokens, off, X-Kong-Proxy-Latency')", function()
 
-      setup(start{
+      lazy_setup(start{
         headers = "server_tokens, off, X-Kong-Proxy-Latency",
       })
 
-      teardown(helpers.stop_kong)
+      lazy_teardown(helpers.stop_kong)
 
       it("should return Kong 'Via' and 'X-Kong-Proxy-Latency' header as 'off' will not take effect", function()
         local res = assert(proxy_client:send {
@@ -574,8 +580,11 @@ describe("headers [#" .. strategy .. "]", function()
       end
     end
 
-    setup(function()
-      bp = helpers.get_db_utils(strategy)
+    lazy_setup(function()
+      bp = helpers.get_db_utils(strategy, {
+        "routes",
+        "services",
+      })
     end)
 
     before_each(function()
@@ -590,11 +599,11 @@ describe("headers [#" .. strategy .. "]", function()
 
     describe("are case insensitive", function()
 
-      setup(start{
+      lazy_setup(start{
         headers = "serVer_TokEns, x-kOng-pRoXy-lAtency"
       })
 
-      teardown(helpers.stop_kong)
+      lazy_teardown(helpers.stop_kong)
 
       it("should return Kong 'Via' and 'X-Kong-Proxy-Latency' header", function()
         local res = assert(proxy_client:send {

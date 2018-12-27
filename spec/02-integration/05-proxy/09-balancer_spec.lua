@@ -103,7 +103,7 @@ end
 -- odd entries are 200s, event entries are 500s
 -- @param test_log (optional, default fals) Produce detailed logs
 -- @return Returns the number of succesful and failure responses.
-local function http_server(host, port, counts, test_log)
+local function http_server(host, port, counts, test_log, protocol)
 
   -- This is a "hard limit" for the execution of tests that launch
   -- the custom http_server
@@ -112,10 +112,10 @@ local function http_server(host, port, counts, test_log)
 
   local threads = require "llthreads2.ex"
   local thread = threads.new({
-    function(expire, host, port, counts, TEST_LOG)
-      local TIMEOUT = -1
+    function(expire, host, port, counts, TEST_LOG, protocol) -- luacheck: ignore
+      local TIMEOUT = -1 -- luacheck: ignore
 
-      local function test_log(...)
+      local function test_log(...) -- luacheck: ignore
         if not TEST_LOG then
           return
         end
@@ -127,91 +127,139 @@ local function http_server(host, port, counts, test_log)
         print(table.concat(t))
       end
 
-      local socket = require "socket"
-      local server
-      if host:match(":") then
-        server = assert(socket.tcp6())
-      else
-        server = assert(socket.tcp())
-      end
-      assert(server:setoption('reuseaddr', true))
-      assert(server:bind("*", port))
-      assert(server:listen())
-
-      local handshake_done = false
-
-      assert(server:settimeout(0.5))
-      test_log("started")
-
-      local healthy = true
-      local n_checks = 0
-
-      local ok_responses, fail_responses = 0, 0
       local total_reqs = 0
       for _, c in pairs(counts) do
         total_reqs = total_reqs + (c < 0 and 1 or c)
       end
-      local n_reqs = 0
+
+      local handshake_done = false
+      local fail_responses = 0
+      local ok_responses = 0
       local reply_200 = true
-      while n_reqs < total_reqs + 1 do
-        local client, err
-        client, err = server:accept()
-        if socket.gettime() > expire then
-          client:close()
-          break
+      local healthy = true
+      local n_checks = 0
+      local n_reqs = 0
 
-        elseif not client then
-          if err ~= "timeout" then
-            server:close()
-            error(err)
-          end
-
-        else
-          local lines = {}
-          local line, err
-          while #lines < 7 do
-            line, err = client:receive()
-            if err or #line == 0 then
-              break
-            else
-              table.insert(lines, line)
+      local httpserver, get_path, send_response, sleep, sslctx
+      if protocol == "https" then
+        -- lua-http server for http+https tests
+        local cqueues = require "cqueues"
+        sleep = cqueues.sleep
+        httpserver = require "http.server"
+        local openssl_pkey = require "openssl.pkey"
+        local openssl_x509 = require "openssl.x509"
+        get_path = function(stream)
+          local headers = assert(stream:get_headers(60))
+          return headers:get(":path")
+        end
+        local httpheaders = require "http.headers"
+        send_response = function(stream, response)
+          local rh = httpheaders.new()
+          rh:upsert(":status", tostring(response))
+          rh:upsert("connection", "close")
+          assert(stream:write_headers(rh, false))
+        end
+        sslctx = require("http.tls").new_server_context()
+        local fd = io.open("spec/fixtures/kong_spec.key", "r")
+        local pktext = fd:read("*a")
+        fd:close()
+        local pk = assert(openssl_pkey.new(pktext))
+        assert(sslctx:setPrivateKey(pk))
+        fd = io.open("spec/fixtures/kong_spec.crt", "r")
+        local certtext = fd:read("*a")
+        fd:close()
+        local cert = assert(openssl_x509.new(certtext))
+        assert(sslctx:setCertificate(cert))
+      else
+        -- luasocket-based mock for http-only tests
+        -- not a real HTTP server, but runs faster
+        local socket = require "socket"
+        sleep = socket.sleep
+        httpserver = {
+          listen = function(opts)
+            local server = {}
+            local sskt
+            server.close = function()
+              server.quit = true
             end
-          end
-          if err and err ~= "closed" then
-            client:close()
-            server:close()
-            error(err)
-          end
-          if #lines == 0 then
-            goto continue
-          end
-          local got_handshake = lines[1] and lines[1]:match("/handshake")
-          if got_handshake then
-            client:send("HTTP/1.1 200 OK\r\nConnection: close\r\n\r\n")
+            server.loop = function(self)
+              while not self.quit do
+                local cskt, err = sskt:accept()
+                if socket.gettime() > expire then
+                  cskt:close()
+                  break
+                elseif err ~= "timeout" then
+                  if err then
+                    sskt:close()
+                    error(err)
+                  end
+                  local first, err = cskt:receive("*l")
+                  if first then
+                    opts.onstream(server, {
+                      get_path = function()
+                        return (first:match("(/[^%s]*)"))
+                      end,
+                      send_response = function(_, response)
+                        local r = response == 200 and "OK" or "Internal Server Error"
+                        cskt:send("HTTP/1.1 " .. response .. " " .. r ..
+                                  "\r\nConnection: close\r\n\r\n")
+                      end,
+                    })
+                  end
+                  cskt:close()
+                  if err and err ~= "closed" then
+                    sskt:close()
+                    error(err)
+                  end
+                end
+              end
+              sskt:close()
+            end
+            local socket_fn = host:match(":") and socket.tcp6 or socket.tcp
+            sskt = assert(socket_fn())
+            assert(sskt:settimeout(0.1))
+            assert(sskt:setoption('reuseaddr', true))
+            assert(sskt:bind("*", opts.port))
+            assert(sskt:listen())
+            return server
+          end,
+        }
+        get_path = function(stream)
+          return stream:get_path()
+        end
+        send_response = function(stream, response)
+          return stream:send_response(response)
+        end
+      end
+
+      local server = httpserver.listen({
+        host = host:gsub("[%]%[]", ""),
+        port = port,
+        reuseaddr = true,
+        v6only = host:match(":") ~= nil,
+        ctx = sslctx,
+        onstream = function(self, stream)
+          local path = get_path(stream)
+          local response = 200
+          local shutdown = false
+
+          if path == "/handshake" then
             handshake_done = true
 
-          elseif lines[1]:match("/shutdown") then
-            client:send("HTTP/1.1 200 OK\r\nConnection: close\r\n\r\n")
-            client:close()
-            break
+          elseif path == "/shutdown" then
+            shutdown = true
 
-          elseif lines[1]:match("/status") then
-            if healthy then
-              client:send("HTTP/1.1 200 OK\r\nConnection: close\r\n\r\n")
-            else
-              client:send("HTTP/1.1 500 Internal Server Error\r\nConnection: close\r\n\r\n")
-            end
+          elseif path == "/status" then
+            response = healthy and 200 or 500
             n_checks = n_checks + 1
 
-          elseif lines[1]:match("/healthy") then
+          elseif path == "/healthy" then
             healthy = true
-            client:send("HTTP/1.1 200 OK\r\nConnection: close\r\n\r\n")
 
-          elseif lines[1]:match("/unhealthy") then
+          elseif path == "/unhealthy" then
             healthy = false
-            client:send("HTTP/1.1 200 OK\r\nConnection: close\r\n\r\n")
 
-          elseif handshake_done and not got_handshake then
+          elseif handshake_done then
             n_reqs = n_reqs + 1
             test_log("nreqs ", n_reqs, " of ", total_reqs)
 
@@ -224,41 +272,34 @@ local function http_server(host, port, counts, test_log)
             end
             if counts[1] == TIMEOUT then
               counts[1] = 0
-              socket.sleep(0.2)
+              sleep(0.2)
             elseif counts[1] > 0 then
               counts[1] = counts[1] - 1
             end
-
-            local response
-            if reply_200 then
-              response = "HTTP/1.1 200 OK"
+            response = reply_200 and 200 or 500
+            if response == 200 then
+              ok_responses = ok_responses + 1
             else
-              response = "HTTP/1.1 500 Internal Server Error"
-            end
-            local sent = client:send(response .. "\r\nConnection: close\r\n\r\n")
-            if sent then
-              if reply_200 then
-                ok_responses = ok_responses + 1
-              else
-                fail_responses = fail_responses + 1
-              end
+              fail_responses = fail_responses + 1
             end
 
           else
-            client:close()
-            server:close()
-            error("got a request before the handshake was complete")
+            error("got a request before handshake was complete")
           end
-          client:close()
-          test_log(ok_responses, " oks, ", fail_responses," fails handled")
-        end
-        ::continue::
-      end
-      server:close()
-      test_log("closed")
+
+          send_response(stream, response)
+
+          if shutdown then
+            self:close()
+          end
+        end,
+      })
+      test_log("starting")
+      server:loop()
+      test_log("stopped")
       return ok_responses, fail_responses, n_checks
     end
-  }, expire, host, port, counts, test_log or TEST_LOG)
+  }, expire, host, port, counts, test_log or TEST_LOG, protocol)
 
   local server = thread:start()
 
@@ -295,10 +336,19 @@ local function client_requests(n, host_or_headers, proxy_host, proxy_port)
     }
     if not res then
       fails = fails + 1
+      if TEST_LOG then
+        print("FAIL (no body)")
+      end
     elseif res.status == 200 then
       oks = oks + 1
+      if TEST_LOG then
+        print("OK ", res.status, res:read_body())
+      end
     elseif res.status > 399 then
       fails = fails + 1
+      if TEST_LOG then
+        print("FAIL ", res.status, res:read_body())
+      end
     end
     last_status = res and res.status
     client:close()
@@ -309,11 +359,13 @@ end
 
 local add_upstream
 local patch_upstream
+local get_upstream
 local get_upstream_health
 local get_router_version
 local add_target
 local add_api
 local patch_api
+local delete_api
 local add_plugin
 local delete_plugin
 local gen_port
@@ -346,8 +398,11 @@ do
     return res.status, res_body
   end
 
-  add_upstream = function(data)
-    local upstream_name = gen_sym("upstream")
+  add_upstream = function(data, name)
+    local upstream_name = name or gen_sym("upstream")
+    if TEST_LOG then
+      print("ADDING UPSTREAM ", upstream_name)
+    end
     local req = utils.deep_copy(data) or {}
     req.name = req.name or upstream_name
     req.slots = req.slots or SLOTS
@@ -357,6 +412,14 @@ do
 
   patch_upstream = function(upstream_name, data)
     assert.same(200, api_send("PATCH", "/upstreams/" .. upstream_name, data))
+  end
+
+  get_upstream = function(upstream_name, forced_port)
+    local path = "/upstreams/" .. upstream_name
+    local status, body = api_send("GET", path, nil, forced_port)
+    if status == 200 then
+      return body
+    end
   end
 
   get_upstream_health = function(upstream_name, forced_port)
@@ -393,22 +456,26 @@ do
     return port
   end
 
-  add_api = function(upstream_name, read_timeout, write_timeout, connect_timeout, retries)
+  add_api = function(upstream_name, read_timeout, write_timeout, connect_timeout, retries, protocol)
     local service_name = gen_sym("service")
     local route_host = gen_sym("host")
     assert.same(201, api_send("POST", "/services", {
       name = service_name,
-      url = "http://" .. upstream_name,
+      url = (protocol or "http") .. "://" .. upstream_name .. ":" .. (protocol == "tcp" and 9100 or 80),
       read_timeout = read_timeout,
       write_timeout = write_timeout,
       connect_timeout = connect_timeout,
       retries = retries,
+      protocol = protocol,
     }))
     local path = "/services/" .. service_name .. "/routes"
-    assert.same(201, api_send("POST", path, {
-      hosts = { route_host },
-    }))
-    return route_host, service_name
+    local status, res = api_send("POST", path, {
+      protocols = { protocol or "http" },
+      hosts = protocol ~= "tcp" and { route_host } or nil,
+      destinations = (protocol == "tcp") and {{ port = 9100 }} or nil,
+    })
+    assert.same(201, status)
+    return route_host, service_name, res.id
   end
 
   patch_api = function(service_name, new_upstream, read_timeout)
@@ -429,14 +496,21 @@ do
     local path = "/plugins/" .. plugin_id
     assert.same(204, api_send("DELETE", path, {}))
   end
+
+  delete_api = function(service_name, route_id)
+    local path = "/routes/" .. route_id
+    assert.same(204, api_send("DELETE", path, {}))
+    path = "/services/" .. service_name
+    assert.same(204, api_send("DELETE", path, {}))
+  end
 end
 
 
 local function truncate_relevant_tables(db, dao)
   db:truncate("services")
   db:truncate("routes")
-  dao.upstreams:truncate()
-  dao.targets:truncate()
+  db:truncate("upstreams")
+  db:truncate("targets")
   dao.plugins:truncate()
 end
 
@@ -455,7 +529,7 @@ local function poll_wait_health(upstream_name, host, port, value, admin_port)
     end
     ngx.sleep(0.01) -- poll-wait
   end
-  assert(false, "timed out waiting for " .. host .. ":" .. port " in " ..
+  assert(false, "timed out waiting for " .. host .. ":" .. port .. " in " ..
                 upstream_name .. " to become " .. value)
 end
 
@@ -465,13 +539,13 @@ local function wait_for_router_update(old_rv, localhost, proxy_port, admin_port)
   local dummy_upstream_name = add_upstream()
   local dummy_port = add_target(dummy_upstream_name, localhost)
   local dummy_api_host = add_api(dummy_upstream_name)
-  local dummy_server = http_server(localhost, dummy_port, { math.huge })
+  local dummy_server = http_server(localhost, dummy_port, { 1000 })
 
   helpers.wait_until(function()
     client_requests(1, dummy_api_host, "127.0.0.1", proxy_port)
     local rv = get_router_version(admin_port)
     return rv ~= old_rv
-  end, 10)
+  end, 5)
 
   dummy_server:done()
 end
@@ -488,18 +562,20 @@ for _, strategy in helpers.each_strategy() do
 
   describe("Ring-balancer #" .. strategy, function()
 
-    setup(function()
-      local _, db, dao = helpers.get_db_utils(strategy, true)
+    lazy_setup(function()
+      local _, db, dao = helpers.get_db_utils(strategy, {})
 
       truncate_relevant_tables(db, dao)
       helpers.start_kong({
         database   = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
+        lua_ssl_trusted_certificate = "../spec/fixtures/kong_spec.crt",
+        stream_listen = "0.0.0.0:9100",
         db_update_frequency = 0.1,
       })
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       helpers.stop_kong()
     end)
 
@@ -511,19 +587,20 @@ for _, strategy in helpers.each_strategy() do
       local proxy_port_2 = 9010
       local admin_port_2 = 9011
 
-      setup(function()
+      lazy_setup(function()
         -- start a second Kong instance
         helpers.start_kong({
           database   = strategy,
           admin_listen = "127.0.0.1:" .. admin_port_2,
           proxy_listen = "127.0.0.1:" .. proxy_port_2,
+          stream_listen = "off",
           prefix = "servroot2",
           log_level = "debug",
           db_update_frequency = 0.1,
         })
       end)
 
-      teardown(function()
+      lazy_teardown(function()
         helpers.stop_kong("servroot2", true, true)
       end)
 
@@ -566,7 +643,7 @@ for _, strategy in helpers.each_strategy() do
 
           end)
 
-          it("propagates posted health info", function()
+          it("propagates posted health info #flaky", function()
 
             local old_rv = get_router_version(admin_port_2)
 
@@ -616,6 +693,65 @@ for _, strategy in helpers.each_strategy() do
             local _, server_oks, server_fails = server:done()
             assert.same(1, server_oks)
             assert.same(0, server_fails)
+          end)
+
+          it("can have their config partially updated", function()
+            local upstream_name = add_upstream()
+
+            patch_upstream(upstream_name, {
+              healthchecks = {
+                active = {
+                  http_path = "/status",
+                  healthy = {
+                    interval = 0,
+                    successes = 1,
+                  },
+                  unhealthy = {
+                    interval = 0,
+                    http_failures = 1,
+                  },
+                }
+              }
+            })
+
+            local updated = {
+              active = {
+                type = "http",
+                concurrency = 10,
+                healthy = {
+                  http_statuses = { 200, 302 },
+                  interval = 0,
+                  successes = 1
+                },
+                http_path = "/status",
+                https_verify_certificate = true,
+                timeout = 1,
+                unhealthy = {
+                  http_failures = 1,
+                  http_statuses = { 429, 404, 500, 501, 502, 503, 504, 505 },
+                  interval = 0,
+                  tcp_failures = 0,
+                  timeouts = 0
+                }
+              },
+              passive = {
+                type = "http",
+                healthy = {
+                  http_statuses = { 200, 201, 202, 203, 204, 205, 206, 207, 208, 226,
+                                    300, 301, 302, 303, 304, 305, 306, 307, 308 },
+                  successes = 0
+                },
+                unhealthy = {
+                  http_failures = 0,
+                  http_statuses = { 429, 500, 503 },
+                  tcp_failures = 0,
+                  timeouts = 0
+                }
+              }
+            }
+
+            local upstream_data = get_upstream(upstream_name)
+            assert.same(updated, upstream_data.healthchecks)
           end)
 
           it("can be renamed without producing stale cache", function()
@@ -784,7 +920,7 @@ for _, strategy in helpers.each_strategy() do
 
           end)
 
-          it("perform passive health checks", function()
+          it("#perform passive health checks", function()
 
             for nfails = 1, 3 do
 
@@ -832,6 +968,38 @@ for _, strategy in helpers.each_strategy() do
               assert.are.equal(requests - nfails, client_oks)
               assert.are.equal(nfails, client_fails)
             end
+          end)
+
+          it("#stream and http modules do not duplicate active health checks", function()
+
+            local port1 = gen_port()
+
+            local server1 = http_server(localhost, port1, { 1 })
+
+            -- configure healthchecks
+            local upstream_name = add_upstream({
+              healthchecks = healthchecks_config {
+                active = {
+                  http_path = "/status",
+                  healthy = {
+                    interval = HEALTHCHECK_INTERVAL,
+                    successes = 1,
+                  },
+                  unhealthy = {
+                    interval = HEALTHCHECK_INTERVAL,
+                    http_failures = 1,
+                  },
+                }
+              }
+            })
+            add_target(upstream_name, localhost, port1)
+
+            ngx.sleep(HEALTHCHECK_INTERVAL * 5)
+
+            -- collect server results; hitcount
+            local _, _, _, hcs1 = server1:done()
+
+            assert(hcs1 < 8)
           end)
 
           it("perform active health checks -- up then down", function()
@@ -900,82 +1068,85 @@ for _, strategy in helpers.each_strategy() do
             end
           end)
 
-          it("perform active health checks -- automatic recovery", function()
+          for _, protocol in ipairs({"http", "https"}) do
+            it("perform active health checks -- automatic recovery #" .. protocol, function()
+              for nchecks = 1, 3 do
 
-            for nchecks = 1, 3 do
+                local port1 = gen_port()
+                local port2 = gen_port()
 
-              local port1 = gen_port()
-              local port2 = gen_port()
+                -- setup target servers:
+                -- server2 will only respond for part of the test,
+                -- then server1 will take over.
+                local server1_oks = SLOTS * 2
+                local server2_oks = SLOTS
+                local server1 = http_server(localhost, port1, { server1_oks }, nil, protocol)
+                local server2 = http_server(localhost, port2, { server2_oks }, nil, protocol)
 
-              -- setup target servers:
-              -- server2 will only respond for part of the test,
-              -- then server1 will take over.
-              local server1_oks = SLOTS * 2
-              local server2_oks = SLOTS
-              local server1 = http_server(localhost, port1, { server1_oks })
-              local server2 = http_server(localhost, port2, { server2_oks })
-
-              -- configure healthchecks
-              local upstream_name = add_upstream({
-                healthchecks = healthchecks_config {
-                  active = {
-                    http_path = "/status",
-                    healthy = {
-                      interval = HEALTHCHECK_INTERVAL,
-                      successes = nchecks,
-                    },
-                    unhealthy = {
-                      interval = HEALTHCHECK_INTERVAL,
-                      http_failures = nchecks,
-                    },
+                -- configure healthchecks
+                local upstream_name = add_upstream({
+                  healthchecks = healthchecks_config {
+                    active = {
+                      type = protocol,
+                      http_path = "/status",
+                      https_verify_certificate = (protocol == "https" and localhost == "localhost"),
+                      healthy = {
+                        interval = HEALTHCHECK_INTERVAL,
+                        successes = nchecks,
+                      },
+                      unhealthy = {
+                        interval = HEALTHCHECK_INTERVAL,
+                        http_failures = nchecks,
+                      },
+                    }
                   }
-                }
-              })
-              add_target(upstream_name, localhost, port1)
-              add_target(upstream_name, localhost, port2)
-              local api_host = add_api(upstream_name)
+                })
+                add_target(upstream_name, localhost, port1)
+                add_target(upstream_name, localhost, port2)
+                local api_host = add_api(upstream_name)
 
-              -- 1) server1 and server2 take requests
-              local oks, fails = client_requests(SLOTS, api_host)
+                -- 1) server1 and server2 take requests
+                local oks, fails = client_requests(SLOTS, api_host)
 
-              -- server2 goes unhealthy
-              direct_request(localhost, port2, "/unhealthy")
-              -- Wait until healthchecker detects
-              poll_wait_health(upstream_name, localhost, port2, "UNHEALTHY")
+                -- server2 goes unhealthy
+                direct_request(localhost, port2, "/unhealthy")
+                -- Wait until healthchecker detects
+                poll_wait_health(upstream_name, localhost, port2, "UNHEALTHY")
 
-              -- 2) server1 takes all requests
-              do
-                local o, f = client_requests(SLOTS, api_host)
-                oks = oks + o
-                fails = fails + f
+                -- 2) server1 takes all requests
+                do
+                  local o, f = client_requests(SLOTS, api_host)
+                  oks = oks + o
+                  fails = fails + f
+                end
+
+                -- server2 goes healthy again
+                direct_request(localhost, port2, "/healthy")
+                -- Give time for healthchecker to detect
+                poll_wait_health(upstream_name, localhost, port2, "HEALTHY")
+
+                -- 3) server1 and server2 take requests again
+                do
+                  local o, f = client_requests(SLOTS, api_host)
+                  oks = oks + o
+                  fails = fails + f
+                end
+
+                -- collect server results; hitcount
+                local _, ok1, fail1 = server1:done()
+                local _, ok2, fail2 = server2:done()
+
+                -- verify
+                assert.are.equal(SLOTS * 2, ok1)
+                assert.are.equal(SLOTS, ok2)
+                assert.are.equal(0, fail1)
+                assert.are.equal(0, fail2)
+
+                assert.are.equal(SLOTS * 3, oks)
+                assert.are.equal(0, fails)
               end
-
-              -- server2 goes healthy again
-              direct_request(localhost, port2, "/healthy")
-              -- Give time for healthchecker to detect
-              poll_wait_health(upstream_name, localhost, port2, "HEALTHY")
-
-              -- 3) server1 and server2 take requests again
-              do
-                local o, f = client_requests(SLOTS, api_host)
-                oks = oks + o
-                fails = fails + f
-              end
-
-              -- collect server results; hitcount
-              local _, ok1, fail1 = server1:done()
-              local _, ok2, fail2 = server2:done()
-
-              -- verify
-              assert.are.equal(SLOTS * 2, ok1)
-              assert.are.equal(SLOTS, ok2)
-              assert.are.equal(0, fail1)
-              assert.are.equal(0, fail2)
-
-              assert.are.equal(SLOTS * 3, oks)
-              assert.are.equal(0, fails)
-            end
-          end)
+            end)
+          end
 
           it("perform active health checks -- can detect before any proxy traffic", function()
 
@@ -1016,13 +1187,16 @@ for _, strategy in helpers.each_strategy() do
             helpers.start_kong({
               database   = strategy,
               nginx_conf = "spec/fixtures/custom_nginx.template",
+              lua_ssl_trusted_certificate = "../spec/fixtures/kong_spec.crt",
               db_update_frequency = 0.1,
+              stream_listen = "0.0.0.0:9100",
             })
 
             -- Give time for healthchecker to detect
             poll_wait_health(upstream_name, localhost, port2, "UNHEALTHY")
 
             -- server1 takes all requests
+
             local client_oks, client_fails = client_requests(requests, api_host)
 
             -- collect server results; hitcount
@@ -1223,6 +1397,71 @@ for _, strategy in helpers.each_strategy() do
             assert.are.equal(1, fail2)
 
             assert.are.equal(SLOTS * 2, oks)
+            assert.are.equal(0, fails)
+          end)
+
+          local stream_it = (mode == "ipv6") and pending or it
+          stream_it("perform passive health checks -- #stream connection failure", function()
+
+            -- configure healthchecks
+            local upstream_name = add_upstream({
+              healthchecks = healthchecks_config {
+                passive = {
+                  unhealthy = {
+                    tcp_failures = 1,
+                  }
+                }
+              }
+            })
+            local port1 = add_target(upstream_name, localhost)
+            local port2 = add_target(upstream_name, localhost)
+            local _, service_name, route_id = add_api(upstream_name, 50, 50, nil, nil, "tcp")
+            finally(function()
+              delete_api(service_name, route_id)
+            end)
+
+            -- setup target servers:
+            -- server2 will only respond for half of the test and will shutdown.
+            -- Then server1 will take over.
+            local server1_oks = SLOTS * 1.5
+            local server2_oks = SLOTS / 2
+            local server1 = helpers.tcp_server(port1, {
+              requests = server1_oks,
+              prefix = "1 ",
+            })
+            local server2 = helpers.tcp_server(port2, {
+              requests = server2_oks,
+              prefix = "2 ",
+            })
+            ngx.sleep(1)
+
+            -- server1 and server2 take requests
+            -- server1 takes all requests once server2 fails
+            local ok1 = 0
+            local ok2 = 0
+            local fails = 0
+            for _ = 1, SLOTS * 2 do
+              local sock = ngx.socket.tcp()
+              assert(sock:connect(localhost, 9100))
+              assert(sock:send("hello\n"))
+              local response, err = sock:receive()
+              if err then
+                fails = fails + 1
+                print(err)
+              elseif response:match("^1 ") then
+                ok1 = ok1 + 1
+              elseif response:match("^2 ") then
+                ok2 = ok2 + 1
+              end
+            end
+
+            -- finish up TCP server threads
+            server1:join()
+            server2:join()
+
+            -- verify
+            assert.are.equal(server1_oks, ok1)
+            assert.are.equal(server2_oks, ok2)
             assert.are.equal(0, fails)
           end)
 
@@ -1453,6 +1692,7 @@ for _, strategy in helpers.each_strategy() do
               local requests = SLOTS * 2 -- go round the balancer twice
 
               local upstream_name = add_upstream()
+
               local port1 = add_target(upstream_name, localhost)
               local port2 = add_target(upstream_name, localhost)
               local api_host = add_api(upstream_name)

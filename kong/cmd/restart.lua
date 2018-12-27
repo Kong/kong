@@ -47,6 +47,8 @@ Options:
  -p,--prefix      (optional string)   prefix at which Kong should be running
  --nginx-conf     (optional string)   custom Nginx configuration template
  --run-migrations (optional boolean)  optionally run migrations on the DB
+ --db-timeout     (default 60)
+ --lock-timeout   (default 60)
 ]]
 
 return {

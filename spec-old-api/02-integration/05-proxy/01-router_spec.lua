@@ -6,7 +6,7 @@ local function insert_apis(arr)
     return error("expected arg #1 to be a table", 2)
   end
 
-  helpers.dao:truncate_tables()
+  helpers.dao:truncate_table("apis")
 
   for i = 1, #arr do
     assert(helpers.dao.apis:insert(arr[i]))
@@ -28,13 +28,15 @@ describe("Router", function()
 
   describe("no APIs match", function()
 
-    setup(function()
-      helpers.dao:truncate_tables()
+    lazy_setup(function()
+      helpers.dao:truncate_table("apis")
+      helpers.db:truncate("routes")
+      helpers.db:truncate("services")
       helpers.dao:run_migrations()
       assert(helpers.start_kong())
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       helpers.stop_kong()
     end)
 
@@ -55,7 +57,7 @@ describe("Router", function()
 
   describe("use-cases", function()
 
-    setup(function()
+    lazy_setup(function()
       insert_apis {
         {
           name         = "api-1",
@@ -95,7 +97,7 @@ describe("Router", function()
       }))
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       helpers.stop_kong()
     end)
 
@@ -179,8 +181,8 @@ describe("Router", function()
   end)
 
   describe("URI regexes order of evaluation", function()
-    setup(function()
-      helpers.dao:truncate_tables()
+    lazy_setup(function()
+      helpers.dao:truncate_table("apis")
 
       assert(helpers.dao.apis:insert {
         name = "api-1",
@@ -209,7 +211,7 @@ describe("Router", function()
       }))
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       helpers.stop_kong()
     end)
 
@@ -234,7 +236,7 @@ describe("Router", function()
 
   describe("URI arguments (querystring)", function()
 
-    setup(function()
+    lazy_setup(function()
       insert_apis {
         {
           name         = "api-1",
@@ -249,7 +251,7 @@ describe("Router", function()
       }))
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       helpers.stop_kong()
     end)
 
@@ -303,7 +305,7 @@ describe("Router", function()
 
   describe("percent-encoded URIs", function()
 
-    setup(function()
+    lazy_setup(function()
       insert_apis {
         {
           name         = "api-1",
@@ -323,7 +325,7 @@ describe("Router", function()
       }))
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       helpers.stop_kong()
     end)
 
@@ -352,7 +354,7 @@ describe("Router", function()
 
   describe("strip_uri", function()
 
-    setup(function()
+    lazy_setup(function()
       insert_apis {
         {
           name         = "api-strip-uri",
@@ -368,7 +370,7 @@ describe("Router", function()
       }))
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       helpers.stop_kong()
     end)
 
@@ -419,7 +421,7 @@ describe("Router", function()
 
   describe("preserve_host", function()
 
-    setup(function()
+    lazy_setup(function()
       insert_apis {
         {
           name          = "api-1",
@@ -448,7 +450,7 @@ describe("Router", function()
       }))
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       helpers.stop_kong()
     end)
 
@@ -533,7 +535,7 @@ describe("Router", function()
 
   describe("edge-cases", function()
 
-    setup(function()
+    lazy_setup(function()
       insert_apis {
         {
           name         = "root-uri",
@@ -553,7 +555,7 @@ describe("Router", function()
       }))
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       helpers.stop_kong()
     end)
 
@@ -580,7 +582,7 @@ describe("Router", function()
 
   describe("[uris] + [methods]", function()
 
-    setup(function()
+    lazy_setup(function()
       insert_apis {
         {
           name = "root-api",
@@ -602,7 +604,7 @@ describe("Router", function()
       }))
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       helpers.stop_kong()
     end)
 
@@ -622,7 +624,7 @@ describe("Router", function()
 
   describe("[uris] + [hosts]", function()
 
-    setup(function()
+    lazy_setup(function()
       insert_apis {
         {
           name         = "root-api",
@@ -644,7 +646,7 @@ describe("Router", function()
       }))
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       helpers.stop_kong()
     end)
 
@@ -713,8 +715,8 @@ describe("Router", function()
       {  "/get/bar/",    "/get/bar/",    "/get/bar/",    "/get/bar/get/bar/",    false     },
     }
 
-    setup(function()
-      helpers.dao:truncate_tables()
+    lazy_setup(function()
+      helpers.dao:truncate_table("apis")
 
       for i, args in ipairs(checks) do
         assert(helpers.dao.apis:insert {
@@ -736,7 +738,7 @@ describe("Router", function()
       }))
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       helpers.stop_kong()
     end)
 

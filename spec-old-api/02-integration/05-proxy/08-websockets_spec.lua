@@ -3,7 +3,7 @@ local helpers = require "spec.helpers"
 local cjson = require "cjson"
 
 describe("Websockets", function()
-  setup(function()
+  lazy_setup(function()
     assert(helpers.dao.apis:insert {
       name = "ws",
       uris = { "/up-ws" },
@@ -16,7 +16,7 @@ describe("Websockets", function()
     }))
   end)
 
-  teardown(function()
+  lazy_teardown(function()
     helpers.stop_kong()
   end)
 

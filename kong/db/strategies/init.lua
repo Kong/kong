@@ -31,7 +31,16 @@ function _M.new(kong_config, strategy, schemas, errors)
   do
     local base_connector = require "kong.db.strategies.connector"
     local mt = getmetatable(connector)
-    setmetatable(mt, { __index = base_connector })
+    setmetatable(mt, {
+      __index = function(t, k)
+        -- explicit parent
+        if k == "super" then
+          return base_connector
+        end
+
+        return base_connector[k]
+      end
+    })
   end
 
   local strategies = {}

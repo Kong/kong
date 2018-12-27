@@ -80,7 +80,7 @@ return {
     }
   },
   REPORTS = {
-    ADDRESS = "kong-hf.mashape.com",
+    ADDRESS = "kong-hf.konghq.com",
     SYSLOG_PORT = 61828,
     STATS_PORT = 61829
   },

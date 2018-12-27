@@ -10,15 +10,15 @@ describe("Admin API - Kong routes", function()
     local meta = require "kong.meta"
     local client
 
-    setup(function()
-      assert(helpers.dao:run_migrations())
+    lazy_setup(function()
+      helpers.get_db_utils(nil, {}) -- runs migrations
       assert(helpers.start_kong {
         pg_password = "hide_me"
       })
       client = helpers.admin_client(10000)
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       if client then client:close() end
       helpers.stop_kong()
     end)
@@ -111,7 +111,7 @@ describe("Admin API - Kong routes", function()
     describe("/status with DB: #" .. kong_conf.database, function()
       local client
 
-      setup(function()
+      lazy_setup(function()
         helpers.get_db_utils(kong_conf.database)
 
         assert(helpers.start_kong {
@@ -120,7 +120,7 @@ describe("Admin API - Kong routes", function()
         client = helpers.admin_client(10000)
       end)
 
-      teardown(function()
+      lazy_teardown(function()
         if client then client:close() end
         helpers.stop_kong()
       end)

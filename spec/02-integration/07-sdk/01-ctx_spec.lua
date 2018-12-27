@@ -3,13 +3,17 @@ local helpers = require "spec.helpers"
 
 describe("SDK: kong.ctx", function()
   local proxy_client
-  local bp, db, dao
+  local bp, db
 
   before_each(function()
-    bp, db, dao = helpers.get_db_utils()
-    dao:truncate_tables()
-    assert(db:truncate())
-    dao:run_migrations()
+    bp, db = helpers.get_db_utils(nil, {
+      "apis",
+      "routes",
+      "plugins",
+    }, {
+      "ctx-checker",
+      "ctx-checker-last",
+    })
   end)
 
   after_each(function()
@@ -17,10 +21,10 @@ describe("SDK: kong.ctx", function()
       proxy_client:close()
     end
 
-    dao:truncate_tables()
-    assert(db:truncate())
-
     helpers.stop_kong()
+
+    assert(db:truncate("routes"))
+    db:truncate("plugins")
   end)
 
   it("isolates kong.ctx.plugin per-plugin", function()
@@ -30,7 +34,7 @@ describe("SDK: kong.ctx", function()
 
     bp.plugins:insert({
       name     = "ctx-checker",
-      route_id = route.id,
+      route    = { id = route.id },
       config   = {
         ctx_kind        = "kong.ctx.plugin",
         ctx_set_field   = "secret",
@@ -43,7 +47,7 @@ describe("SDK: kong.ctx", function()
 
     bp.plugins:insert({
       name     = "ctx-checker-last",
-      route_id = route.id,
+      route    = { id = route.id },
       config   = {
         ctx_kind        = "kong.ctx.plugin",
         ctx_set_field   = "secret",
@@ -79,7 +83,7 @@ describe("SDK: kong.ctx", function()
 
     bp.plugins:insert({
       name     = "ctx-checker",
-      route_id = route.id,
+      route    = { id = route.id },
       config   = {
         ctx_kind        = "kong.ctx.shared",
         ctx_set_field   = "shared-field",
@@ -89,7 +93,7 @@ describe("SDK: kong.ctx", function()
 
     bp.plugins:insert({
       name     = "ctx-checker-last",
-      route_id = route.id,
+      route    = { id = route.id },
       config   = {
         ctx_kind        = "kong.ctx.shared",
         ctx_check_field = "shared-field",

@@ -16,8 +16,8 @@ describe("DAO propagates CRUD events with DB: #" .. kong_conf.database, function
   local dao
   local mock_ipc
 
-  teardown(function()
-    dao:truncate_tables()
+  lazy_teardown(function()
+    dao:truncate_table("apis")
   end)
 
   before_each(function()
@@ -28,7 +28,7 @@ describe("DAO propagates CRUD events with DB: #" .. kong_conf.database, function
 
     dao = assert(kong_dao_factory.new(kong_conf, db))
     dao:set_events_handler(mock_ipc)
-    dao:truncate_tables()
+    dao:truncate_table("apis")
   end)
 
   after_each(function()

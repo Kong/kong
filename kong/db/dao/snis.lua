@@ -2,6 +2,12 @@ local cjson = require "cjson"
 local Set   = require "pl.Set"
 
 
+local setmetatable = setmetatable
+local tostring = tostring
+local ipairs = ipairs
+local table = table
+
+
 local function invalidate_cache(self, old_entity, err, err_t)
   if err then
     return nil, err, err_t
@@ -59,7 +65,7 @@ end
 function _SNIs:delete_list(name_list)
   local err_list = {}
   local errors_len = 0
-  local first_err_t = nil
+  local first_err_t
   for i = 1, #name_list do
     local ok, err, err_t = self:delete_by_name(name_list[i])
     if not ok then
@@ -78,17 +84,19 @@ end
 
 
 -- Returns the name list for a given certificate
-function _SNIs:list_for_certificate(cert_pk)
+function _SNIs:list_for_certificate(cert_pk, options)
   local name_list = setmetatable({}, cjson.empty_array_mt)
-  local rows, err, err_t = self:for_certificate(cert_pk)
-  if err then
-    return nil, err, err_t
-  end
-  for i = 1, #rows do
-    name_list[i] = rows[i].name
+
+  for sni, err, err_t in self:each_for_certificate(cert_pk, options) do
+    if err then
+      return nil, err, err_t
+    end
+
+    table.insert(name_list, sni.name)
   end
 
   table.sort(name_list)
+
   return name_list
 end
 
@@ -120,46 +128,46 @@ end
 
 
 -- invalidates the *old* name when updating it to a new name
-function _SNIs:update(pk, entity)
+function _SNIs:update(pk, entity, options)
   local _, err, err_t = invalidate_cache(self, self:select(pk))
   if err then
     return nil, err, err_t
   end
 
-  return self.super.update(self, pk, entity)
+  return self.super.update(self, pk, entity, options)
 end
 
 
 -- invalidates the *old* name when updating it to a new name
-function _SNIs:update_by_name(name, entity)
+function _SNIs:update_by_name(name, entity, options)
   local _, err, err_t = invalidate_cache(self, self:select_by_name(name))
   if err then
     return nil, err, err_t
   end
 
-  return self.super.update_by_name(self, name, entity)
+  return self.super.update_by_name(self, name, entity, options)
 end
 
 
 -- invalidates the *old* name when updating it to a new name
-function _SNIs:upsert(pk, entity)
+function _SNIs:upsert(pk, entity, options)
   local _, err, err_t = invalidate_cache(self, self:select(pk))
   if err then
     return nil, err, err_t
   end
 
-  return self.super.upsert(self, pk, entity)
+  return self.super.upsert(self, pk, entity, options)
 end
 
 
 -- invalidates the *old* name when updating it to a new name
-function _SNIs:upsert_by_name(name, entity)
+function _SNIs:upsert_by_name(name, entity, options)
   local _, err, err_t = invalidate_cache(self, self:select_by_name(name))
   if err then
     return nil, err, err_t
   end
 
-  return self.super.upsert_by_name(self, name, entity)
+  return self.super.upsert_by_name(self, name, entity, options)
 end
 
 

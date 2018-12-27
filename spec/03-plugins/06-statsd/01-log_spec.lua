@@ -11,8 +11,14 @@ for _, strategy in helpers.each_strategy() do
   describe("Plugin: statsd (log) [#" .. strategy .. "]", function()
     local proxy_client
 
-    setup(function()
-      local bp = helpers.get_db_utils(strategy)
+    lazy_setup(function()
+      local bp = helpers.get_db_utils(strategy, {
+        "routes",
+        "services",
+        "plugins",
+        "consumers",
+        "keyauth_credentials",
+      })
 
       local consumer = bp.consumers:insert {
         username  = "bob",
@@ -20,8 +26,8 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.keyauth_credentials:insert {
-        key         = "kong",
-        consumer_id = consumer.id,
+        key      = "kong",
+        consumer = { id = consumer.id },
       }
 
       local routes = {}
@@ -38,10 +44,10 @@ for _, strategy in helpers.each_strategy() do
         }
       end
 
-      bp.key_auth_plugins:insert { route_id = routes[1].id }
+      bp.key_auth_plugins:insert { route = { id = routes[1].id } }
 
       bp.statsd_plugins:insert {
-        route_id   = routes[1].id,
+        route = { id = routes[1].id },
         config     = {
           host     = "127.0.0.1",
           port     = UDP_PORT,
@@ -49,7 +55,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.statsd_plugins:insert {
-        route_id   = routes[2].id,
+        route = { id = routes[2].id },
         config     = {
           host     = "127.0.0.1",
           port     = UDP_PORT,
@@ -63,7 +69,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.statsd_plugins:insert {
-        route_id   = routes[3].id,
+        route = { id = routes[3].id },
         config     = {
           host     = "127.0.0.1",
           port     = UDP_PORT,
@@ -78,7 +84,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.statsd_plugins:insert {
-        route_id   = routes[4].id,
+        route = { id = routes[4].id },
         config     = {
           host     = "127.0.0.1",
           port     = UDP_PORT,
@@ -92,7 +98,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.statsd_plugins:insert {
-        route_id   = routes[5].id,
+        route = { id = routes[5].id },
         config     = {
           host     = "127.0.0.1",
           port     = UDP_PORT,
@@ -107,7 +113,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.statsd_plugins:insert {
-        route_id   = routes[6].id,
+        route = { id = routes[6].id },
         config     = {
           host     = "127.0.0.1",
           port     = UDP_PORT,
@@ -121,7 +127,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.statsd_plugins:insert {
-        route_id   = routes[7].id,
+        route = { id = routes[7].id },
         config     = {
           host     = "127.0.0.1",
           port     = UDP_PORT,
@@ -135,7 +141,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.statsd_plugins:insert {
-        route_id   = routes[8].id,
+        route = { id = routes[8].id },
         config     = {
           host     = "127.0.0.1",
           port     = UDP_PORT,
@@ -148,10 +154,10 @@ for _, strategy in helpers.each_strategy() do
         }
       }
 
-      bp.key_auth_plugins:insert { route_id = routes[9].id }
+      bp.key_auth_plugins:insert { route = { id = routes[9].id } }
 
       bp.statsd_plugins:insert {
-        route_id   = routes[9].id,
+        route = { id = routes[9].id },
         config     = {
           host     = "127.0.0.1",
           port     = UDP_PORT,
@@ -165,10 +171,10 @@ for _, strategy in helpers.each_strategy() do
         },
       }
 
-      bp.key_auth_plugins:insert { route_id = routes[10].id }
+      bp.key_auth_plugins:insert { route = { id = routes[10].id } }
 
       bp.statsd_plugins:insert {
-        route_id   = routes[10].id,
+        route = { id = routes[10].id },
         config     = {
           host     = "127.0.0.1",
           port     = UDP_PORT,
@@ -183,10 +189,10 @@ for _, strategy in helpers.each_strategy() do
         },
       }
 
-      bp.key_auth_plugins:insert { route_id = routes[11].id }
+      bp.key_auth_plugins:insert { route = { id = routes[11].id } }
 
       bp.statsd_plugins:insert {
-        route_id   = routes[11].id,
+        route = { id = routes[11].id },
         config     = {
           host     = "127.0.0.1",
           port     = UDP_PORT,
@@ -201,10 +207,10 @@ for _, strategy in helpers.each_strategy() do
         },
       }
 
-      bp.key_auth_plugins:insert { route_id = routes[12].id }
+      bp.key_auth_plugins:insert { route = { id = routes[12].id } }
 
       bp.statsd_plugins:insert {
-        route_id   = routes[12].id,
+        route = { id = routes[12].id },
         config     = {
           host     = "127.0.0.1",
           port     = UDP_PORT,
@@ -218,10 +224,10 @@ for _, strategy in helpers.each_strategy() do
         },
       }
 
-      bp.key_auth_plugins:insert { route_id = routes[13].id }
+      bp.key_auth_plugins:insert { route = { id = routes[13].id } }
 
       bp.statsd_plugins:insert {
-        route_id   = routes[13].id,
+        route = { id = routes[13].id },
         config     = {
           host     = "127.0.0.1",
           port     = UDP_PORT,
@@ -237,7 +243,7 @@ for _, strategy in helpers.each_strategy() do
       proxy_client = helpers.proxy_client()
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       if proxy_client then
         proxy_client:close()
       end

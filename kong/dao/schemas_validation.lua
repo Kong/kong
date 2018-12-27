@@ -127,7 +127,9 @@ function _M.validate_entity(tbl, schema, options)
           local is_valid_type
           -- ALIASES: number, timestamp, boolean and array can be passed as strings and will be converted
           if type(t[column]) == "string" then
-            t[column] = utils.strip(t[column])
+            if schema.fields[column].trim_whitespace ~= false then
+              t[column] = utils.strip(t[column])
+            end
             if v.type == "boolean" then
               local bool = t[column]:lower()
               is_valid_type = bool == "true" or bool == "false"

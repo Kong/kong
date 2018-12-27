@@ -20,7 +20,7 @@ local ip = require "resty.mediador.ip"
 -- Both ipv4 and ipv6 are supported.
 --
 -- @function kong.ip.is_trusted
--- @phases
+-- @phases init_worker, certificate, rewrite, access, header_filter, body_filter, log
 -- @tparam string address A string representing an IP address
 -- @treturn boolean `true` if the IP is trusted, `false` otherwise
 -- @usage

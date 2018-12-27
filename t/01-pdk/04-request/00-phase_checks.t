@@ -3,7 +3,7 @@ use warnings FATAL => 'all';
 use Test::Nginx::Socket::Lua;
 use t::Util;
 
-$ENV{TEST_NGINX_HTML_DIR} ||= html_dir();
+$ENV{TEST_NGINX_NXSOCK} ||= html_dir();
 
 plan tests => repeat_each() * (blocks() * 2);
 
@@ -17,7 +17,7 @@ qq{
     $t::Util::HttpConfig
 
     server {
-        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_NXSOCK}/nginx.sock;
 
         location / {
             return 200;
@@ -40,6 +40,7 @@ qq{
                 header_filter = true,
                 body_filter   = true,
                 log           = true,
+                admin_api     = true,
             }, {
                 method        = "get_host",
                 args          = {},
@@ -50,6 +51,7 @@ qq{
                 header_filter = true,
                 body_filter   = true,
                 log           = true,
+                admin_api     = true,
             }, {
                 method        = "get_port",
                 args          = {},
@@ -60,6 +62,7 @@ qq{
                 header_filter = true,
                 body_filter   = true,
                 log           = true,
+                admin_api     = true,
             }, {
                 method        = "get_forwarded_scheme",
                 args          = {},
@@ -70,6 +73,7 @@ qq{
                 header_filter = true,
                 body_filter   = true,
                 log           = true,
+                admin_api     = true,
             }, {
                 method        = "get_forwarded_host",
                 args          = {},
@@ -80,6 +84,7 @@ qq{
                 header_filter = true,
                 body_filter   = true,
                 log           = true,
+                admin_api     = true,
             }, {
                 method        = "get_forwarded_port",
                 args          = {},
@@ -90,6 +95,7 @@ qq{
                 header_filter = true,
                 body_filter   = true,
                 log           = true,
+                admin_api     = true,
             }, {
                 method        = "get_http_version",
                 args          = {},
@@ -100,6 +106,7 @@ qq{
                 header_filter = true,
                 body_filter   = true,
                 log           = true,
+                admin_api     = true,
             }, {
                 method        = "get_method",
                 args          = {},
@@ -110,6 +117,7 @@ qq{
                 header_filter = true,
                 body_filter   = true,
                 log           = true,
+                admin_api     = true,
             }, {
                 method        = "get_path",
                 args          = {},
@@ -120,6 +128,18 @@ qq{
                 header_filter = true,
                 body_filter   = true,
                 log           = true,
+                admin_api     = true,
+            }, {
+                method        = "get_path_with_query",
+                args          = {},
+                init_worker   = false,
+                certificate   = "pending",
+                rewrite       = true,
+                access        = true,
+                header_filter = true,
+                body_filter   = true,
+                log           = true,
+                admin_api     = true,
             }, {
                 method        = "get_raw_query",
                 args          = {},
@@ -130,6 +150,7 @@ qq{
                 header_filter = true,
                 body_filter   = true,
                 log           = true,
+                admin_api     = true,
             }, {
                 method        = "get_query_arg",
                 args          = { "foo" },
@@ -140,6 +161,7 @@ qq{
                 header_filter = true,
                 body_filter   = true,
                 log           = true,
+                admin_api     = true,
             }, {
                 method        = "get_query",
                 args          = {},
@@ -150,6 +172,7 @@ qq{
                 header_filter = true,
                 body_filter   = true,
                 log           = true,
+                admin_api     = true,
             }, {
                 method        = "get_query",
                 args          = { 100 },
@@ -160,6 +183,7 @@ qq{
                 header_filter = true,
                 body_filter   = true,
                 log           = true,
+                admin_api     = true,
             }, {
                 method        = "get_header",
                 args          = { "Host" },
@@ -170,6 +194,7 @@ qq{
                 header_filter = true,
                 body_filter   = true,
                 log           = true,
+                admin_api     = true,
             }, {
                 method        = "get_headers",
                 args          = {},
@@ -180,6 +205,7 @@ qq{
                 header_filter = true,
                 body_filter   = true,
                 log           = true,
+                admin_api     = true,
             }, {
                 method        = "get_headers",
                 args          = { 100 },
@@ -190,6 +216,7 @@ qq{
                 header_filter = true,
                 body_filter   = true,
                 log           = true,
+                admin_api     = true,
             }, {
                 method        = "get_raw_body",
                 args          = {},
@@ -200,6 +227,7 @@ qq{
                 header_filter = false,
                 body_filter   = false,
                 log           = false,
+                admin_api     = true,
             }, {
                 method        = "get_body",
                 args          = { "application/json" },
@@ -210,6 +238,7 @@ qq{
                 header_filter = false,
                 body_filter   = false,
                 log           = false,
+                admin_api     = true,
             }, {
                 method        = "get_body",
                 args          = { "application/x-www-form-urlencoded" },
@@ -220,6 +249,7 @@ qq{
                 header_filter = false,
                 body_filter   = false,
                 log           = false,
+                admin_api     = true,
             },
         }
 
@@ -232,7 +262,7 @@ qq{
 }
 --- config
     location /t {
-        proxy_pass http://unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        proxy_pass http://unix:$TEST_NGINX_NXSOCK/nginx.sock;
         set $upstream_uri '/t';
         set $upstream_scheme 'http';
 
@@ -242,6 +272,7 @@ qq{
 
         access_by_lua_block {
             phase_check_functions(phases.access)
+            phase_check_functions(phases.admin_api)
         }
 
         header_filter_by_lua_block {

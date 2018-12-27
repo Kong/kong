@@ -13,6 +13,7 @@ local pairs         = pairs
 local lower         = string.lower
 local find          = string.find
 local sub           = string.sub
+local next          = next
 local type          = type
 local ngx           = ngx
 local req           = ngx.req
@@ -210,10 +211,19 @@ local function infer_value(value, field)
       end
     end
 
-  elseif field.type == "record" then
+  elseif field.type == "record" and not field.abstract then
     if type(value) == "table" then
       for k, v in pairs(value) do
-        value[k] = infer_value(v, field.fields[k])
+        for i in ipairs(field.fields) do
+          local item = field.fields[i]
+          if item then
+            local key = next(item)
+            local fld = item[key]
+            if k == key then
+              value[k] = infer_value(v, fld)
+            end
+          end
+        end
       end
     end
   end
@@ -231,7 +241,7 @@ infer = function(args, schema)
     return args
   end
 
-  for field_name, field in schema:each_field() do
+  for field_name, field in schema:each_field(args) do
     local value = args[field_name]
     if value then
       args[field_name] = infer_value(value, field)
@@ -643,17 +653,31 @@ local function load(opts)
     end
 
   elseif options.multipart and find(content_type_lower, "multipart/form-data", 1, true) == 1 then
-    local pargs, err = parse_multipart(options, content_type)
-    if pargs then
-      if options.decode then
-        args.post = decode(pargs, options.schema)
-
-      else
-        args.post = pargs
+    if options.request and options.request.params_post then
+      local pargs = {}
+      for k, v in pairs(options.request.params_post) do
+        if type(v) == "table" and v.name and v.content then
+          pargs[k] = v.content
+        else
+          pargs[k] = v
+        end
       end
 
-    elseif err then
-      log(NOTICE, err)
+      args.post = decode(pargs, options.schema)
+
+    else
+      local pargs, err = parse_multipart(options, content_type)
+      if pargs then
+        if options.decode then
+          args.post = decode(pargs, options.schema)
+
+        else
+          args.post = pargs
+        end
+
+      elseif err then
+        log(NOTICE, err)
+      end
     end
 
   else

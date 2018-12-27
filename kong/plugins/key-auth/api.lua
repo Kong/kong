@@ -1,85 +1,72 @@
-local crud = require "kong.api.crud_helpers"
+local endpoints = require "kong.api.endpoints"
+
+
+local credentials_schema = kong.db.keyauth_credentials.schema
+local consumers_schema   = kong.db.consumers.schema
+
+
+local HTTP_NOT_FOUND = 404
+
 
 return {
-  ["/consumers/:username_or_id/key-auth/"] = {
-    before = function(self, dao_factory, helpers)
-      crud.find_consumer_by_username_or_id(self, dao_factory, helpers)
-      self.params.consumer_id = self.consumer.id
-    end,
+  ["/consumers/:consumers/key-auth"] = {
+    schema = credentials_schema,
+    methods = {
+      GET = endpoints.get_collection_endpoint(
+              credentials_schema, consumers_schema, "consumer"),
 
-    GET = function(self, dao_factory)
-      crud.paginated_set(self, dao_factory.keyauth_credentials)
-    end,
-
-    PUT = function(self, dao_factory)
-      crud.put(self.params, dao_factory.keyauth_credentials)
-    end,
-
-    POST = function(self, dao_factory)
-      crud.post(self.params, dao_factory.keyauth_credentials)
-    end
+      POST = endpoints.post_collection_endpoint(
+              credentials_schema, consumers_schema, "consumer"),
+    },
   },
-  ["/consumers/:username_or_id/key-auth/:credential_key_or_id"] = {
-    before = function(self, dao_factory, helpers)
-      crud.find_consumer_by_username_or_id(self, dao_factory, helpers)
-      self.params.consumer_id = self.consumer.id
+  ["/consumers/:consumers/key-auth/:keyauth_credentials"] = {
+    schema = credentials_schema,
+    methods = {
+      before = function(self, db, helpers)
+        local consumer, _, err_t = endpoints.select_entity(self, db, consumers_schema)
+        if err_t then
+          return endpoints.handle_error(err_t)
+        end
+        if not consumer then
+          return kong.response.exit(HTTP_NOT_FOUND, { message = "Not found" })
+        end
 
-      local credentials, err = crud.find_by_id_or_field(
-        dao_factory.keyauth_credentials,
-        { consumer_id = self.params.consumer_id },
-        ngx.unescape_uri(self.params.credential_key_or_id),
-        "key"
-      )
+        self.consumer = consumer
 
-      if err then
-        return helpers.yield_error(err)
-      elseif next(credentials) == nil then
-        return helpers.responses.send_HTTP_NOT_FOUND()
-      end
-      self.params.credential_key_or_id = nil
+        local cred, _, err_t = endpoints.select_entity(self, db, credentials_schema)
+        if err_t then
+          return endpoints.handle_error(err_t)
+        end
 
-      self.keyauth_credential = credentials[1]
-    end,
+        if self.req.cmd_mth ~= "PUT" then
+          if not cred or cred.consumer.id ~= consumer.id then
+            return kong.response.exit(HTTP_NOT_FOUND, { message = "Not found" })
+          end
+          self.keyauth_credential = cred
+          self.params.keyauth_credentials = cred.id
+        end
+      end,
 
-    GET = function(self, dao_factory, helpers)
-      return helpers.responses.send_HTTP_OK(self.keyauth_credential)
-    end,
-
-    PATCH = function(self, dao_factory)
-      crud.patch(self.params, dao_factory.keyauth_credentials, self.keyauth_credential)
-    end,
-
-    DELETE = function(self, dao_factory)
-      crud.delete(self.keyauth_credential, dao_factory.keyauth_credentials)
-    end
+      GET  = endpoints.get_entity_endpoint(credentials_schema),
+      PUT  = function(self, db, helpers)
+        self.args.post.consumer = { id = self.consumer.id }
+        return endpoints.put_entity_endpoint(credentials_schema)(self, db, helpers)
+      end,
+      PATCH  = endpoints.patch_entity_endpoint(credentials_schema),
+      DELETE = endpoints.delete_entity_endpoint(credentials_schema),
+    },
   },
-  ["/key-auths/"] = {
-    GET = function(self, dao_factory)
-      crud.paginated_set(self, dao_factory.keyauth_credentials)
-    end
+  ["/key-auths"] = {
+    schema = credentials_schema,
+    methods = {
+      GET = endpoints.get_collection_endpoint(credentials_schema),
+    }
   },
-  ["/key-auths/:credential_key_or_id/consumer"] = {
-    before = function(self, dao_factory, helpers)
-      local credentials, err = crud.find_by_id_or_field(
-        dao_factory.keyauth_credentials,
-        {},
-        ngx.unescape_uri(self.params.credential_key_or_id),
-        "key"
-      )
-
-      if err then
-        return helpers.yield_error(err)
-      elseif next(credentials) == nil then
-        return helpers.responses.send_HTTP_NOT_FOUND()
-      end
-
-      self.params.credential_key_or_id = nil
-      self.params.username_or_id = credentials[1].consumer_id
-      crud.find_consumer_by_username_or_id(self, dao_factory, helpers)
-    end,
-
-    GET = function(self, dao_factory,helpers)
-      return helpers.responses.send_HTTP_OK(self.consumer)
-    end
-  }
+  ["/key-auths/:keyauth_credentials/consumer"] = {
+    schema = consumers_schema,
+    methods = {
+      GET = endpoints.get_entity_endpoint(
+              credentials_schema, consumers_schema, "consumer"),
+    }
+  },
 }

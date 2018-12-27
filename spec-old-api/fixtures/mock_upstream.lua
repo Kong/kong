@@ -5,6 +5,11 @@ local ws_server  = require "resty.websocket.server"
 local pl_stringx = require "pl.stringx"
 
 
+local kong = {
+  table = require("kong.pdk.table").new()
+}
+
+
 local function parse_multipart_form_params(body, content_type)
   if not content_type then
     return nil, 'missing content-type'
@@ -231,7 +236,7 @@ end
 
 
 local function send_default_json_response(extra_fields, response_headers)
-  local tbl = utils.table_merge(get_default_json_response(), extra_fields)
+  local tbl = kong.table.merge(get_default_json_response(), extra_fields)
   return send_text_response(cjson.encode(tbl),
                             "application/json", response_headers)
 end

@@ -1,33 +1,24 @@
-local metrics = {
-  ["request_count"]         = true,
-  ["latency"]               = true,
-  ["request_size"]          = true,
-  ["status_count"]          = true,
-  ["response_size"]         = true,
-  ["unique_users"]          = true,
-  ["request_per_user"]      = true,
-  ["upstream_latency"]      = true,
-  ["kong_latency"]          = true,
-  ["status_count_per_user"] = true,
+local typedefs = require "kong.db.schema.typedefs"
+
+
+local METRIC_NAMES = {
+  "kong_latency", "latency", "request_count", "request_per_user",
+  "request_size", "response_size", "status_count", "status_count_per_user",
+  "unique_users", "upstream_latency",
 }
 
 
-local stat_types = {
-  ["gauge"]     = true,
-  ["timer"]     = true,
-  ["counter"]   = true,
-  ["histogram"] = true,
-  ["meter"]     = true,
-  ["set"]       = true,
+local STAT_TYPES = {
+  "counter", "gauge", "histogram", "meter", "set", "timer",
 }
 
-local consumer_identifiers = {
-  ["consumer_id"] = true,
-  ["custom_id"]   = true,
-  ["username"]    = true,
+
+local CONSUMER_IDENTIFIERS = {
+  "consumer_id", "custom_id", "username",
 }
 
-local default_metrics = {
+
+local DEFAULT_METRICS = {
   {
     name        = "request_count",
     stat_type   = "counter",
@@ -78,84 +69,60 @@ local default_metrics = {
 }
 
 
-local function check_schema(value)
-  for _, entry in ipairs(value) do
-
-    if not entry.name or not entry.stat_type then
-      return false, "name and stat_type must be defined for all stats"
-    end
-
-    if not metrics[entry.name] then
-      return false, "unrecognized metric name: " .. entry.name
-    end
-
-    if not stat_types[entry.stat_type] then
-      return false, "unrecognized stat_type: " .. entry.stat_type
-    end
-
-    if entry.name == "unique_users" and entry.stat_type ~= "set" then
-      return false, "unique_users metric only works with stat_type 'set'"
-    end
-
-    if (entry.stat_type == "counter" or entry.stat_type == "gauge")
-        and ((not entry.sample_rate) or (entry.sample_rate
-        and type(entry.sample_rate) ~= "number")
-        or (entry.sample_rate and entry.sample_rate < 1)) then
-
-      return false, "sample rate must be defined for counters and gauges."
-    end
-
-    if (entry.name == "status_count_per_user"
-        or entry.name == "request_per_user" or entry.name == "unique_users")
-        and not entry.consumer_identifier then
-
-      return false, "consumer_identifier must be defined for metric " ..
-             entry.name
-    end
-
-    if (entry.name == "status_count_per_user"
-       or entry.name == "request_per_user"
-       or entry.name == "unique_users")
-       and entry.consumer_identifier
-       and not consumer_identifiers[entry.consumer_identifier] then
-
-        return false, "invalid consumer_identifier for metric '" ..
-               entry.name ..
-               "'. Choices are consumer_id, custom_id, and username"
-    end
-
-    if (entry.name == "status_count"
-       or entry.name == "status_count_per_user"
-       or entry.name == "request_per_user")
-       and entry.stat_type ~= "counter" then
-
-      return false, entry.name .. " metric only works with stat_type 'counter'"
-    end
-  end
-
-  return true
-end
-
-
 return {
+  name = "statsd",
   fields = {
-    host    = {
-      type     = "string",
-      default  = "localhost",
+    { config = {
+        type = "record",
+        fields = {
+          { host = typedefs.host({ default = "localhost" }), },
+          { port = typedefs.port({ default = 8125 }), },
+          { prefix = { type = "string", default = "kong" }, },
+          { metrics = {
+              type = "array",
+              default = DEFAULT_METRICS,
+              elements = {
+                type = "record",
+                fields = {
+                  { name = { type = "string", required = true, one_of = METRIC_NAMES }, },
+                  { stat_type = { type = "string", required = true, one_of = STAT_TYPES }, },
+                  { sample_rate = { type = "number", gt = 0 }, },
+                  { consumer_identifier = { type = "string", one_of = CONSUMER_IDENTIFIERS }, },
+                },
+                entity_checks = {
+                  { conditional = {
+                      if_field = "name",
+                      if_match = { eq = "unique_users" },
+                      then_field = "stat_type",
+                      then_match = { eq = "set" },
+                  }, },
+
+                  { conditional = {
+                      if_field = "stat_type",
+                      if_match = { one_of = { "counter", "gauge" }, },
+                      then_field = "sample_rate",
+                      then_match = { required = true },
+                  }, },
+
+                  { conditional = {
+                      if_field = "name",
+                      if_match = { one_of = { "status_count_per_user", "request_per_user", "unique_users" }, },
+                      then_field = "consumer_identifier",
+                      then_match = { required = true },
+                  }, },
+
+                  { conditional = {
+                      if_field = "name",
+                      if_match = { one_of = { "status_count", "status_count_per_user", "request_per_user" }, },
+                      then_field = "stat_type",
+                      then_match = { eq = "counter" },
+                  }, },
+                },
+              },
+            },
+          },
+        },
+      },
     },
-    port    = {
-      type     = "number",
-      default  = 8125,
-    },
-    metrics = {
-      type     = "array",
-      default  = default_metrics,
-      func     = check_schema,
-    },
-    prefix =
-    {
-      type     = "string",
-      default  = "kong",
-    },
-  }
+  },
 }

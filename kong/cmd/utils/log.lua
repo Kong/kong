@@ -49,6 +49,11 @@ end
 function _M.log(lvl, ...)
   local format
   local args = {...}
+
+  for i = 1, #args do
+    args[i] = tostring(args[i])
+  end
+
   if lvl >= log_lvl then
     format = table.remove(args, 1)
     if type(format) ~= "string" then

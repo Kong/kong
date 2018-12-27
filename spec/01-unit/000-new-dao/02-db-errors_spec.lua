@@ -252,7 +252,7 @@ describe("DB Errors", function()
           code = Errors.codes.INVALID_OFFSET,
           name = "invalid offset",
           strategy = "some_strategy",
-          message = "'bad offset' is not a valid offset for this strategy: decoding error",
+          message = "'bad offset' is not a valid offset: decoding error",
         }, err_t)
       end)
 
@@ -286,6 +286,92 @@ describe("DB Errors", function()
           message = "timeout",
         }, err_t)
 
+        local s = fmt("[%s] %s", err_t.strategy, err_t.message)
+        assert.equals(s, tostring(err_t))
+      end)
+    end)
+
+
+    describe("INVALID_SIZE", function()
+      local err_t = e:invalid_size("size must be an integer between 1 and 1000")
+
+      it("creates", function()
+        assert.same({
+          code = Errors.codes.INVALID_SIZE,
+          name = "invalid size",
+          strategy = "some_strategy",
+          message = "size must be an integer between 1 and 1000",
+        }, err_t)
+      end)
+
+      it("__tostring", function()
+        local s = fmt("[%s] %s", err_t.strategy, err_t.message)
+        assert.equals(s, tostring(err_t))
+      end)
+    end)
+
+    describe("INVALID_UNIQUE", function()
+      local err_t = e:invalid_unique("name", "name must be a string")
+
+      it("creates", function()
+        assert.same({
+          code = Errors.codes.INVALID_UNIQUE,
+          name = "invalid unique name",
+          strategy = "some_strategy",
+          message = "name must be a string",
+        }, err_t)
+      end)
+
+      it("__tostring", function()
+        local s = fmt("[%s] %s", err_t.strategy, err_t.message)
+        assert.equals(s, tostring(err_t))
+      end)
+    end)
+
+
+    describe("INVALID_OPTIONS", function()
+      local options_errors = {
+        ttl = "option can only be used with inserts, updates and upserts, not with 'deletes'",
+        bar = {
+          "must be a string",
+          "must contain 'foo'"
+        }
+      }
+
+      local err_t = e:invalid_options(options_errors)
+
+      it("creates with multiple errors", function()
+        assert.same({
+          code = Errors.codes.INVALID_OPTIONS,
+          name = "invalid options",
+          strategy = "some_strategy",
+          message = unindent([[
+            3 option violations
+            (bar.1: must be a string;
+            bar.2: must contain 'foo';
+            ttl: option can only be used with inserts, updates and upserts, not with 'deletes')
+          ]], true, true),
+          options = options_errors,
+        }, err_t)
+      end)
+
+      it("creates with a single error", function()
+        local options_errors = {
+          ttl = "option can only be used with inserts, updates and upserts, not with 'deletes'",
+        }
+
+        local err_t = e:invalid_options(options_errors)
+
+        assert.same({
+          code = Errors.codes.INVALID_OPTIONS,
+          name = "invalid options",
+          strategy = "some_strategy",
+          message = "invalid option (ttl: option can only be used with inserts, updates and upserts, not with 'deletes')",
+          options = options_errors,
+        }, err_t)
+      end)
+
+      it("__tostring", function()
         local s = fmt("[%s] %s", err_t.strategy, err_t.message)
         assert.equals(s, tostring(err_t))
       end)

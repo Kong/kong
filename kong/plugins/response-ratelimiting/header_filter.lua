@@ -1,5 +1,4 @@
 local utils = require "kong.tools.utils"
-local responses = require "kong.tools.responses"
 
 local pairs = pairs
 local ipairs = ipairs
@@ -34,17 +33,17 @@ local function parse_header(header_value, limits)
 end
 
 function _M.execute(conf)
-  ngx.ctx.increments = {}
+  kong.ctx.plugin.increments = {}
 
   if not next(conf.limits) then
     return
   end
 
   -- Parse header
-  local increments = parse_header(ngx.header[conf.header_name], conf.limits)
-  ngx.ctx.increments = increments
+  local increments = parse_header(kong.service.response.get_header(conf.header_name), conf.limits)
+  kong.ctx.plugin.increments = increments
 
-  local usage = ngx.ctx.usage -- Load current usage
+  local usage = kong.ctx.plugin.usage -- Load current usage
   if not usage then
     return
   end
@@ -53,8 +52,14 @@ function _M.execute(conf)
   for limit_name in pairs(usage) do
     for period_name, lv in pairs(usage[limit_name]) do
       if not conf.hide_client_headers then
-        ngx.header[RATELIMIT_LIMIT .. "-" .. limit_name .. "-" .. period_name] = lv.limit
-        ngx.header[RATELIMIT_REMAINING .. "-" .. limit_name .. "-" .. period_name] = math_max(0, lv.remaining - (increments[limit_name] and increments[limit_name] or 0)) -- increment_value for this current request
+
+        -- increment_value for this current request
+        local remain = math_max(0, lv.remaining - (increments[limit_name] and increments[limit_name] or 0))
+
+        local limit_hdr  = RATELIMIT_LIMIT .. "-" .. limit_name .. "-" .. period_name
+        local remain_hdr = RATELIMIT_REMAINING .. "-" .. limit_name .. "-" .. period_name
+        kong.response.set_header(limit_hdr, lv.limit)
+        kong.response.set_header(remain_hdr, remain)
       end
 
       if increments[limit_name] and increments[limit_name] > 0 and lv.remaining <= 0 then
@@ -63,13 +68,12 @@ function _M.execute(conf)
     end
   end
 
-  -- Remove header
-  ngx.header[conf.header_name] = nil
+  kong.response.clear_header(conf.header_name)
 
   -- If limit is exceeded, terminate the request
   if stop then
-    ngx.ctx.stop_log = true
-    return responses.send(429) -- Don't set a body
+    kong.ctx.plugin.stop_log = true
+    return kong.response.exit(429) -- Don't set a body
   end
 end
 

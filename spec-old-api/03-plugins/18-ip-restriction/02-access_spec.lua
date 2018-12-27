@@ -4,19 +4,19 @@ local cjson = require "cjson"
 describe("Plugin: ip-restriction (access)", function()
   local plugin_config
   local client, admin_client
-  local dao
+  local dao, db, _
 
-  setup(function()
-    dao = select(3, helpers.get_db_utils())
+  lazy_setup(function()
+    _, db, dao = helpers.get_db_utils()
 
     local api1 = assert(dao.apis:insert {
       name         = "api-1",
       hosts        = { "ip-restriction1.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name   = "ip-restriction",
-      api_id = api1.id,
+      api = { id = api1.id },
       config = {
         blacklist = {"127.0.0.1", "127.0.0.2"}
       },
@@ -27,9 +27,9 @@ describe("Plugin: ip-restriction (access)", function()
       hosts        = { "ip-restriction2.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    plugin_config = assert(dao.plugins:insert {
+    plugin_config = assert(db.plugins:insert {
       name   = "ip-restriction",
-      api_id = api2.id,
+      api = { id = api2.id },
       config = {
         blacklist = {"127.0.0.2"},
       },
@@ -40,9 +40,9 @@ describe("Plugin: ip-restriction (access)", function()
       hosts        = { "ip-restriction3.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name   = "ip-restriction",
-      api_id = api3.id,
+      api = { id = api3.id },
       config = {
         whitelist = {"127.0.0.2"},
       },
@@ -52,9 +52,9 @@ describe("Plugin: ip-restriction (access)", function()
       hosts        = { "ip-restriction4.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name   = "ip-restriction",
-      api_id = api4.id,
+      api = { id = api4.id },
       config = {
         whitelist = {"127.0.0.1"},
       },
@@ -65,9 +65,9 @@ describe("Plugin: ip-restriction (access)", function()
       hosts        = { "ip-restriction5.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name   = "ip-restriction",
-      api_id = api5.id,
+      api = { id = api5.id },
       config = {
         blacklist = {"127.0.0.0/24"},
       },
@@ -78,9 +78,9 @@ describe("Plugin: ip-restriction (access)", function()
       hosts        = { "ip-restriction6.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name   = "ip-restriction",
-      api_id = api6.id,
+      api = { id = api6.id },
       config = {
         whitelist = {"127.0.0.4"},
       },
@@ -91,9 +91,9 @@ describe("Plugin: ip-restriction (access)", function()
       hosts        = { "ip-restriction7.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name   = "ip-restriction",
-      api_id = api7.id,
+      api = { id = api7.id },
       config = {
         blacklist = {"127.0.0.4"},
       },
@@ -104,9 +104,9 @@ describe("Plugin: ip-restriction (access)", function()
       hosts        = { "ip-restriction8.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name   = "ip-restriction",
-      api_id = api8.id,
+      api = { id = api8.id },
       config = {
         whitelist = { "0.0.0.0/0" },
       },
@@ -122,7 +122,7 @@ describe("Plugin: ip-restriction (access)", function()
     admin_client = helpers.admin_client()
   end)
 
-  teardown(function()
+  lazy_teardown(function()
     if client and admin_client then
       client:close()
       admin_client:close()
@@ -299,7 +299,7 @@ describe("Plugin: ip-restriction (access)", function()
       method = "PATCH",
       path = "/apis/api-2/plugins/" .. plugin_config.id,
       body = {
-        ["config.blacklist"] = "127.0.0.1,127.0.0.2"
+        ["config.blacklist"] = { "127.0.0.1", "127.0.0.2" }
       },
       headers = {
         ["Content-Type"] = "application/json"
@@ -307,9 +307,10 @@ describe("Plugin: ip-restriction (access)", function()
     })
     assert.res_status(200, res)
 
-    local cache_key = dao.plugins:cache_key(plugin_config.name,
-                                            plugin_config.api_id,
-                                            plugin_config.consumer_id)
+    local cache_key = db.plugins:cache_key(plugin_config.name,
+                                           nil, nil,
+                                           plugin_config.api.id,
+                                           nil)
 
     helpers.wait_until(function()
       res = assert(admin_client:send {

@@ -1,5 +1,6 @@
 local lrucache      = require "resty.lrucache"
 local utils         = require "kong.tools.utils"
+local px            = require "resty.mediador.proxy"
 local bit           = require "bit"
 
 
@@ -12,7 +13,6 @@ local sort          = table.sort
 local upper         = string.upper
 local lower         = string.lower
 local find          = string.find
-local fmt           = string.format
 local sub           = string.sub
 local ipairs        = ipairs
 local pairs         = pairs
@@ -59,27 +59,13 @@ local MATCH_LRUCACHE_SIZE = 5e3
 
 
 local MATCH_RULES = {
-  HOST            = 0x01,
-  URI             = 0x02,
-  METHOD          = 0x04,
+  HOST            = 0x00000020,
+  URI             = 0x00000010,
+  METHOD          = 0x00000008,
+  SNI             = 0x00000004,
+  SRC             = 0x00000002,
+  DST             = 0x00000001,
 }
-
-local CATEGORIES = {
-  bor(MATCH_RULES.HOST,   MATCH_RULES.URI,     MATCH_RULES.METHOD),
-  bor(MATCH_RULES.HOST,   MATCH_RULES.URI),
-  bor(MATCH_RULES.HOST,   MATCH_RULES.METHOD),
-  bor(MATCH_RULES.METHOD, MATCH_RULES.URI),
-      MATCH_RULES.HOST,
-      MATCH_RULES.URI,
-      MATCH_RULES.METHOD,
-}
-
-local categories_len = #CATEGORIES
-
-local CATEGORIES_LOOKUP = {}
-for i = 1, categories_len do
-  CATEGORIES_LOOKUP[CATEGORIES[i]] = i
-end
 
 
 local match_route
@@ -95,6 +81,13 @@ local function has_capturing_groups(subj)
 end
 
 
+local protocol_subsystem = {
+  http = "http",
+  https = "http",
+  tcp = "stream",
+  tls = "stream",
+}
+
 local function marshall_route(r)
   local route    = r.route          or null
   local service  = r.service        or null
@@ -102,20 +95,29 @@ local function marshall_route(r)
   local paths    = route.paths      or null
   local methods  = route.methods    or null
   local protocol = service.protocol or null
+  local sources  = route.sources  or null
+  local destinations = route.destinations or null
+  local snis     = route.snis or null
 
-  if not (headers ~= null or methods ~= null or paths ~= null) then
+  if not (headers ~= null or methods ~= null or paths ~= null or
+          sources ~= null or destinations ~= null or snis ~= null) then
     return nil, "could not categorize route"
   end
 
   local route_t    = {
+    type           = protocol_subsystem[protocol],
     route          = route,
     service        = service,
     strip_uri      = route.strip_path    == true,
     preserve_host  = route.preserve_host == true,
     match_rules    = 0x00,
+    match_weight   = 0,
     hosts          = {},
     uris           = {},
     methods        = {},
+    sources        = {},
+    destinations   = {},
+    snis           = {},
     upstream_url_t = {},
   }
 
@@ -144,6 +146,7 @@ local function marshall_route(r)
 
     if #host_values > 0 then
       route_t.match_rules = bor(route_t.match_rules, MATCH_RULES.HOST)
+      route_t.match_weight = route_t.match_weight + 1
 
       for _, host_value in ipairs(host_values) do
         if find(host_value, "*", nil, true) then
@@ -178,6 +181,7 @@ local function marshall_route(r)
 
     if #paths > 0 then
       route_t.match_rules = bor(route_t.match_rules, MATCH_RULES.URI)
+      route_t.match_weight = route_t.match_weight + 1
 
       for _, path in ipairs(paths) do
         if re_find(path, [[^[a-zA-Z0-9\.\-_~/%]*$]]) then
@@ -193,7 +197,7 @@ local function marshall_route(r)
 
         else
           -- regex URI
-          local strip_regex  = path .. [[/?(?<stripped_uri>.*)]]
+          local strip_regex  = path .. [[(?<uri_postfix>.*)]]
           local has_captures = has_capturing_groups(path)
 
           local uri_t    = {
@@ -222,6 +226,7 @@ local function marshall_route(r)
 
     if #methods > 0 then
       route_t.match_rules = bor(route_t.match_rules, MATCH_RULES.METHOD)
+      route_t.match_weight = route_t.match_weight + 1
 
       for _, method in ipairs(methods) do
         route_t.methods[upper(method)] = true
@@ -230,11 +235,101 @@ local function marshall_route(r)
   end
 
 
-  -- upstream_url parsing
+  -- sources
+
+
+  if sources ~= null then
+    if type(sources) ~= "table" then
+      return nil, "sources field must be a table"
+    end
+
+    if #sources > 0 then
+      route_t.match_rules = bor(route_t.match_rules, MATCH_RULES.SRC)
+      route_t.match_weight = route_t.match_weight + 1
+
+      for _, source in ipairs(sources) do
+        if type(source) ~= "table" then
+          return nil, "sources elements must be tables"
+        end
+
+        local range_f
+
+        if source.ip and find(source.ip, "/", nil, true) then
+          range_f = px.compile(source.ip)
+        end
+
+        insert(route_t.sources, {
+          ip = source.ip,
+          port = source.port,
+          range_f = range_f,
+        })
+      end
+    end
+  end
+
+
+  -- destinations
+
+
+  if destinations ~= null then
+    if type(destinations) ~= "table" then
+      return nil, "destinations field must be a table"
+    end
+
+    if #destinations > 0 then
+      route_t.match_rules = bor(route_t.match_rules, MATCH_RULES.DST)
+      route_t.match_weight = route_t.match_weight + 1
+
+      for _, destination in ipairs(destinations) do
+        if type(destination) ~= "table" then
+          return nil, "destinations elements must be tables"
+        end
+
+        local range_f
+
+        if destination.ip and find(destination.ip, "/", nil, true) then
+          range_f = px.compile(destination.ip)
+        end
+
+        insert(route_t.destinations, {
+          ip = destination.ip,
+          port = destination.port,
+          range_f = range_f,
+        })
+      end
+    end
+  end
+
+
+  -- snis
+
+
+  if snis ~= null then
+    if type(snis) ~= "table" then
+      return nil, "snis field must be a table"
+    end
+
+    if #snis > 0 then
+      for _, sni in ipairs(snis) do
+        if type(sni) ~= "string" then
+          return nil, "sni elements must be strings"
+        end
+
+        route_t.match_rules = bor(route_t.match_rules, MATCH_RULES.SNI)
+        route_t.match_weight = route_t.match_weight + 1
+        route_t.snis[sni] = sni
+      end
+    end
+  end
+
 
   if protocol ~= null then
     route_t.upstream_url_t.scheme = protocol
   end
+
+
+  -- upstream_url parsing
+
 
   local host = service.host or null
   if host ~= null then
@@ -253,33 +348,21 @@ local function marshall_route(r)
     if protocol == "https" then
       route_t.upstream_url_t.port = 443
 
-    else
+    elseif protocol == "http" then
       route_t.upstream_url_t.port = 80
     end
   end
 
-  -- TODO: service.path is not supported in new model
-  local path = service.path or null
-  local file = path
-  if path ~= null then
-    if sub(path, -1) == "/" and path ~= "/" then
-      file = sub(path,  1, -2)
-    end
-
-  else
-    path = "/"
-    file = "/"
+  if route_t.type == "http" then
+    route_t.upstream_url_t.path = service.path or "/"
   end
-
-  route_t.upstream_url_t.path = path
-  route_t.upstream_url_t.file = file
 
   return route_t
 end
 
 
 local function index_route_t(route_t, plain_indexes, prefix_uris, regex_uris,
-                             wildcard_hosts)
+                             wildcard_hosts, src_trust_funcs, dst_trust_funcs)
   for _, host_t in ipairs(route_t.hosts) do
     if host_t.wildcard then
       insert(wildcard_hosts, host_t)
@@ -302,17 +385,53 @@ local function index_route_t(route_t, plain_indexes, prefix_uris, regex_uris,
   for method in pairs(route_t.methods) do
     plain_indexes.methods[method] = true
   end
+
+  for _, src_t in ipairs(route_t.sources) do
+    if src_t.ip then
+      plain_indexes.sources[src_t.ip] = true
+
+      if src_t.range_f then
+        insert(src_trust_funcs, src_t.range_f)
+      end
+    end
+
+    if src_t.port then
+      plain_indexes.sources[src_t.port] = true
+    end
+  end
+
+  for _, dst_t in ipairs(route_t.destinations) do
+    if dst_t.ip then
+      plain_indexes.destinations[dst_t.ip] = true
+
+      if dst_t.range_f then
+        insert(dst_trust_funcs, dst_t.range_f)
+      end
+    end
+
+    if dst_t.port then
+      plain_indexes.destinations[dst_t.port] = true
+    end
+  end
+
+  for sni in pairs(route_t.snis) do
+    plain_indexes.snis[sni] = true
+  end
 end
 
 
 local function categorize_route_t(route_t, bit_category, categories)
   local category = categories[bit_category]
   if not category then
-    category            = {
-      routes_by_hosts   = {},
-      routes_by_uris    = {},
-      routes_by_methods = {},
-      all               = {},
+    category                 = {
+      match_weight           = route_t.match_weight,
+      routes_by_hosts        = {},
+      routes_by_uris         = {},
+      routes_by_methods      = {},
+      routes_by_sources      = {},
+      routes_by_destinations = {},
+      routes_by_sni          = {},
+      all                    = {},
     }
 
     categories[bit_category] = category
@@ -343,6 +462,50 @@ local function categorize_route_t(route_t, bit_category, categories)
 
     insert(category.routes_by_methods[method], route_t)
   end
+
+  for _, src_t in ipairs(route_t.sources) do
+    if src_t.ip then
+      if not category.routes_by_sources[src_t.ip] then
+        category.routes_by_sources[src_t.ip] = {}
+      end
+
+      insert(category.routes_by_sources[src_t.ip], route_t)
+    end
+
+    if src_t.port then
+      if not category.routes_by_sources[src_t.port] then
+        category.routes_by_sources[src_t.port] = {}
+      end
+
+      insert(category.routes_by_sources[src_t.port], route_t)
+    end
+  end
+
+  for _, dst_t in ipairs(route_t.destinations) do
+    if dst_t.ip then
+      if not category.routes_by_destinations[dst_t.ip] then
+        category.routes_by_destinations[dst_t.ip] = {}
+      end
+
+      insert(category.routes_by_destinations[dst_t.ip], route_t)
+    end
+
+    if dst_t.port then
+      if not category.routes_by_destinations[dst_t.port] then
+        category.routes_by_destinations[dst_t.port] = {}
+      end
+
+      insert(category.routes_by_destinations[dst_t.port], route_t)
+    end
+  end
+
+  for sni in pairs(route_t.snis) do
+    if not category.routes_by_sni[sni] then
+      category.routes_by_sni[sni] = {}
+    end
+
+    insert(category.routes_by_sni[sni], route_t)
+  end
 end
 
 
@@ -370,33 +533,25 @@ do
             end
 
             if m then
-              if m.stripped_uri then
-                ctx.matches.stripped_uri = "/" .. m.stripped_uri
-                -- remove the stripped_uri group
+              ctx.matches.uri_postfix = m.uri_postfix
+              ctx.matches.uri = uri_t.value
+
+              if m.uri_postfix then
+                -- remove the uri_postfix group
                 m[#m]          = nil
-                m.stripped_uri = nil
+                m.uri_postfix = nil
               end
 
               if uri_t.has_captures then
                 ctx.matches.uri_captures = m
               end
 
-              ctx.matches.uri = uri_t.value
-
               return true
             end
           end
 
           -- plain or prefix match from the index
-          if route_t.strip_uri then
-            local stripped_uri = sub(ctx.req_uri, #uri_t.value + 1)
-            if sub(stripped_uri, 1, 1) ~= "/" then
-              stripped_uri = "/" .. stripped_uri
-            end
-
-            ctx.matches.stripped_uri = stripped_uri
-          end
-
+          ctx.matches.uri_postfix = sub(ctx.req_uri, #uri_t.value + 1)
           ctx.matches.uri = uri_t.value
 
           return true
@@ -414,18 +569,18 @@ do
           end
 
           if m then
-            if m.stripped_uri then
-              ctx.matches.stripped_uri = "/" .. m.stripped_uri
-              -- remove the stripped_uri group
+            ctx.matches.uri_postfix = m.uri_postfix
+            ctx.matches.uri = uri_t.value
+
+            if m.uri_postfix then
+              -- remove the uri_postfix group
               m[#m]          = nil
-              m.stripped_uri = nil
+              m.uri_postfix = nil
             end
 
             if uri_t.has_captures then
               ctx.matches.uri_captures = m
             end
-
-            ctx.matches.uri = uri_t.value
 
             return true
           end
@@ -434,17 +589,7 @@ do
           -- plain or prefix match (not from the index)
           local from, to = find(ctx.req_uri, uri_t.value, nil, true)
           if from == 1 then
-            ctx.matches.uri = sub(ctx.req_uri, 1, to)
-
-            if route_t.strip_uri then
-              local stripped_uri = sub(ctx.req_uri, to + 1)
-              if sub(stripped_uri, 1, 1) ~= "/" then
-                stripped_uri = "/" .. stripped_uri
-              end
-
-              ctx.matches.stripped_uri = stripped_uri
-            end
-
+            ctx.matches.uri_postfix = sub(ctx.req_uri, to + 1)
             ctx.matches.uri = uri_t.value
 
             return true
@@ -460,7 +605,65 @@ do
 
         return true
       end
-    end
+    end,
+
+    [MATCH_RULES.SRC] = function(route_t, ctx)
+      for _, src_t in ipairs(route_t.sources) do
+        local ip_ok
+        local port_ok
+
+        if not src_t.ip then
+          ip_ok = true
+        elseif src_t.range_f then
+          ip_ok = src_t.range_f(ctx.src_ip)
+        else
+          ip_ok = src_t.ip == ctx.src_ip
+        end
+
+        if not src_t.port or (src_t.port == ctx.src_port) then
+          port_ok = true
+        end
+
+        if ip_ok and port_ok then
+          ctx.matches.src_ip = src_t.ip
+          ctx.matches.src_port = src_t.port
+          return true
+        end
+      end
+    end,
+
+    [MATCH_RULES.DST] = function(route_t, ctx)
+      for _, dst_t in ipairs(route_t.destinations) do
+        local ip_ok
+        local port_ok
+
+        if not dst_t.ip then
+          ip_ok = true
+        elseif dst_t.range_f then
+          ip_ok = dst_t.range_f(ctx.dst_ip)
+        else
+          ip_ok = dst_t.ip == ctx.dst_ip
+        end
+
+        if not dst_t.port or (dst_t.port == ctx.dst_port) then
+          port_ok = true
+        end
+
+        if ip_ok and port_ok then
+          ctx.matches.dst_ip = dst_t.ip
+          ctx.matches.dst_port = dst_t.port
+          return true
+        end
+      end
+    end,
+
+    [MATCH_RULES.SNI] = function(route_t, ctx)
+      local sni = route_t.snis[ctx.sni]
+      if sni then
+        ctx.matches.sni = ctx.sni
+        return true
+      end
+    end,
   }
 
 
@@ -511,6 +714,34 @@ do
 
     [MATCH_RULES.METHOD] = function(category, ctx)
       return category.routes_by_methods[ctx.req_method]
+    end,
+
+    [MATCH_RULES.SRC] = function(category, ctx)
+      local routes = category.routes_by_sources[ctx.src_ip]
+      if routes then
+        return routes
+      end
+
+      routes = category.routes_by_sources[ctx.src_port]
+      if routes then
+        return routes
+      end
+    end,
+
+    [MATCH_RULES.DST] = function(category, ctx)
+      local routes = category.routes_by_destinations[ctx.dst_ip]
+      if routes then
+        return routes
+      end
+
+      routes = category.routes_by_destinations[ctx.dst_port]
+      if routes then
+        return routes
+      end
+    end,
+
+    [MATCH_RULES.SNI] = function(category, ctx)
+      return category.routes_by_sni[ctx.sni]
     end,
   }
 
@@ -573,20 +804,26 @@ function _M.new(routes)
   }
 
 
-  -- hash table for fast lookup of plain hosts, uris
-  -- and methods from incoming requests
+  -- hash table for fast lookup of plain properties
+  -- incoming requests/connections
   local plain_indexes = {
     hosts             = {},
     uris              = {},
     methods           = {},
+    sources           = {},
+    destinations      = {},
+    snis              = {},
   }
 
 
   -- when hash lookup in plain_indexes fails, those are arrays
   -- of regexes for `uris` as prefixes and `hosts` as wildcards
+  -- or IP ranges comparison functions
   local prefix_uris    = {} -- will be sorted by length
   local regex_uris     = {}
   local wildcard_hosts = {}
+  local src_trust_funcs = {}
+  local dst_trust_funcs = {}
 
 
   -- all routes grouped by the category they belong to, to reduce
@@ -608,32 +845,114 @@ function _M.new(routes)
 
     categorize_route_t(route_t, route_t.match_rules, categories)
     index_route_t(route_t, plain_indexes, prefix_uris, regex_uris,
-                wildcard_hosts)
+                  wildcard_hosts, src_trust_funcs, dst_trust_funcs)
   end
 
-  sort(prefix_uris, function(p1, p2)
-    return #p1 > #p2
+
+  -- a sorted array of all categories bits (from the most significant
+  -- matching-wise, to the least significant)
+  local categories_weight_sorted = {}
+
+
+  -- a lookup array to get the category_idx from a category_bit. The
+  -- idx will be a categories_weight_sorted index
+  local categories_lookup = {}
+
+
+  for category_bit, category in pairs(categories) do
+    insert(categories_weight_sorted, {
+      category_bit = category_bit,
+      match_weight = category.match_weight,
+    })
+  end
+
+  sort(categories_weight_sorted, function(c1, c2)
+    if c1.match_weight ~= c2.match_weight then
+      return c1.match_weight > c2.match_weight
+    end
+
+    return c1.category_bit > c2.category_bit
   end)
+
+  for i, c in ipairs(categories_weight_sorted) do
+    categories_lookup[c.category_bit] = i
+  end
+
+  -- the number of categories to iterate on for this instance of the router
+  local categories_len = #categories_weight_sorted
 
   sort(prefix_uris, function(p1, p2)
     return #p1.value > #p2.value
   end)
 
+  for _, category in pairs(categories) do
+    for _, routes in pairs(category.routes_by_sources) do
+      sort(routes, function(r1, r2)
+        for _, source in ipairs(r1.sources) do
+          if source.ip and source.port then
+            return true
+          end
+        end
+      end)
+    end
 
-  local function find_route(req_method, req_uri, req_host, ngx)
-    if type(req_method) ~= "string" then
-      return error("arg #1 method must be a string")
+    for _, routes in pairs(category.routes_by_destinations) do
+      sort(routes, function(r1, r2)
+        for _, destination in ipairs(r1.destinations) do
+          if destination.ip and destination.port then
+            return true
+          end
+        end
+      end)
     end
-    if type(req_uri) ~= "string" then
-      return error("arg #2 uri must be a string")
+  end
+
+  local function find_route(req_method, req_uri, req_host, ngx,
+                            src_ip, src_port, dst_ip, dst_port, sni)
+    if req_method and type(req_method) ~= "string" then
+      error("method must be a string", 2)
     end
-    if type(req_host) ~= "string" then
-      return error("arg #3 host must be a string")
+    if req_uri and type(req_uri) ~= "string" then
+      error("uri must be a string", 2)
     end
+    if req_host and type(req_host) ~= "string" then
+      error("host must be a string", 2)
+    end
+    if src_ip and type(src_ip) ~= "string" then
+      error("src_ip must be a string", 2)
+    end
+    if src_port and type(src_port) ~= "number" then
+      error("src_port must be a number", 2)
+    end
+    if dst_ip and type(dst_ip) ~= "string" then
+      error("dst_ip must be a string", 2)
+    end
+    if dst_port and type(dst_port) ~= "number" then
+      error("dst_port must be a number", 2)
+    end
+    if sni and type(sni) ~= "string" then
+      error("sni must be a string", 2)
+    end
+
+    req_method = req_method or ""
+    req_uri = req_uri or ""
+    req_host = req_host or ""
+
+    ctx.req_method     = req_method
+    ctx.req_uri        = req_uri
+    ctx.req_host       = req_host
+    ctx.src_ip         = src_ip or ""
+    ctx.src_port       = src_port or ""
+    ctx.dst_ip         = dst_ip or ""
+    ctx.dst_port       = dst_port or ""
+    ctx.sni            = sni or ""
 
     -- cache lookup
 
-    local cache_key = fmt("%s:%s:%s", req_method, req_uri, req_host)
+    local cache_key = req_method .. ":" .. req_uri .. ":" .. req_host ..
+                      ":" .. ctx.src_ip .. ":" .. ctx.src_port ..
+                      ":" .. ctx.dst_ip .. ":" .. ctx.dst_port ..
+                      ":" .. ctx.sni
 
     do
       local match_t = cache:get(cache_key)
@@ -648,20 +967,16 @@ function _M.new(routes)
 
     req_method = upper(req_method)
 
-    if req_host then
+    if req_host ~= "" then
       -- strip port number if given because matching ignores ports
       local idx = find(req_host, ":", 2, true)
       if idx then
-        req_host = sub(req_host, 1, idx - 1)
+        ctx.req_host = sub(req_host, 1, idx - 1)
       end
     end
 
     local hits         = ctx.hits
     local req_category = 0x00
-
-    ctx.req_method = req_method
-    ctx.req_uri    = req_uri
-    ctx.req_host   = req_host
 
     clear_tab(hits)
 
@@ -671,12 +986,12 @@ function _M.new(routes)
 
     -- host match
 
-    if plain_indexes.hosts[req_host] then
+    if plain_indexes.hosts[ctx.req_host] then
       req_category = bor(req_category, MATCH_RULES.HOST)
 
-    elseif req_host then
+    elseif ctx.req_host then
       for i = 1, #wildcard_hosts do
-        local from, _, err = re_find(req_host, wildcard_hosts[i].regex, "ajo")
+        local from, _, err = re_find(ctx.req_host, wildcard_hosts[i].regex, "ajo")
         if err then
           log(ERR, "could not match wildcard host: ", err)
           return
@@ -725,17 +1040,57 @@ function _M.new(routes)
       req_category = bor(req_category, MATCH_RULES.METHOD)
     end
 
+    -- src match
+
+    if plain_indexes.sources[ctx.src_ip] then
+      req_category = bor(req_category, MATCH_RULES.SRC)
+
+    elseif plain_indexes.sources[ctx.src_port] then
+      req_category = bor(req_category, MATCH_RULES.SRC)
+
+    else
+      for i = 1, #src_trust_funcs do
+        if src_trust_funcs[i](ctx.src_ip) then
+          req_category = bor(req_category, MATCH_RULES.SRC)
+          break
+        end
+      end
+    end
+
+    -- dst match
+
+    if plain_indexes.destinations[ctx.dst_ip] then
+      req_category = bor(req_category, MATCH_RULES.DST)
+
+    elseif plain_indexes.destinations[ctx.dst_port] then
+      req_category = bor(req_category, MATCH_RULES.DST)
+
+    else
+      for i = 1, #dst_trust_funcs do
+        if dst_trust_funcs[i](ctx.dst_ip) then
+          req_category = bor(req_category, MATCH_RULES.DST)
+          break
+        end
+      end
+    end
+
+    -- sni match
+
+    if plain_indexes.snis[ctx.sni] then
+      req_category = bor(req_category, MATCH_RULES.SNI)
+    end
+
     --print("highest potential category: ", req_category)
 
     -- iterate from the highest matching to the lowest category to
     -- find our route
 
     if req_category ~= 0x00 then
-      local category_idx = CATEGORIES_LOOKUP[req_category]
+      local category_idx = categories_lookup[req_category] or 1
       local matched_route
 
       while category_idx <= categories_len do
-        local bit_category = CATEGORIES[category_idx]
+        local bit_category = categories_weight_sorted[category_idx].category_bit
         local category     = categories[bit_category]
 
         if category then
@@ -768,53 +1123,41 @@ function _M.new(routes)
 
           if matched_route then
             local upstream_host
-            local upstream_uri   = req_uri
+            local upstream_uri
             local upstream_url_t = matched_route.upstream_url_t
             local matches        = ctx.matches
 
-            -- URI stripping logic
 
-            local uri_root = req_uri == "/"
+            -- Path construction
 
-            if not uri_root and matched_route.strip_uri
-               and matches.stripped_uri
-            then
-              upstream_uri = matches.stripped_uri
-            end
+            if matched_route.type == "http" then
+              -- if we do not have a path-match, then the postfix is simply the
+              -- incoming path, without the initial slash
+              local request_postfix = matches.uri_postfix or sub(req_uri, 2, -1)
+              local upstream_base = upstream_url_t.path
 
-            -- uri trailing slash logic
-
-            local upstream_url_path = upstream_url_t.path
-            local upstream_url_file = upstream_url_t.file
-
-            if upstream_url_path and upstream_url_path ~= "/" then
-              if upstream_uri ~= "/" then
-                upstream_uri = upstream_url_file .. upstream_uri
-
-              else
-                if upstream_url_path ~= upstream_url_file then
-                  if uri_root or sub(req_uri, -1) == "/" then
-                    upstream_uri = upstream_url_path
-
-                  else
-                    upstream_uri = upstream_url_file
-                  end
+              if matched_route.strip_uri then
+                -- we drop the matched part, replacing it with the upstream path
+                if sub(upstream_base, -1, -1) == "/" and
+                   sub(request_postfix, 1, 1) == "/" then
+                  -- double "/", so drop the first
+                  upstream_uri = sub(upstream_base, 1, -2) .. request_postfix
 
                 else
-                  if uri_root or sub(req_uri, -1) ~= "/" then
-                    upstream_uri = upstream_url_file
-
-                  else
-                    upstream_uri = upstream_url_file .. upstream_uri
-                  end
+                  upstream_uri = upstream_base .. request_postfix
                 end
+
+              else
+                -- we retain the incoming path, just prefix it with the upstream
+                -- path, but skip the initial slash
+                upstream_uri = upstream_base .. sub(req_uri, 2, -1)
               end
-            end
 
-            -- preserve_host header logic
+              -- preserve_host header logic
 
-            if matched_route.preserve_host then
-              upstream_host = raw_req_host or ngx.var.http_host
+              if matched_route.preserve_host then
+                upstream_host = raw_req_host or ngx.var.http_host
+              end
             end
 
             local match_t     = {
@@ -830,6 +1173,11 @@ function _M.new(routes)
                 uri           = matches.uri,
                 host          = matches.host,
                 method        = matches.method,
+                src_ip        = matches.src_ip,
+                src_port      = matches.src_port,
+                dst_ip        = matches.dst_ip,
+                dst_port      = matches.dst_port,
+                sni           = matches.sni,
               }
             }
 
@@ -850,38 +1198,60 @@ function _M.new(routes)
 
   self.select = find_route
 
+  if ngx.config.subsystem == "http" then
+    function self.exec(ngx)
+      local var = ngx.var
 
-  function self.exec(ngx)
-    local req_method = ngx.req.get_method()
-    local req_uri    = ngx.var.request_uri
-    local req_host   = ngx.var.http_host or ""
+      local req_method = ngx.req.get_method()
+      local req_uri = var.request_uri
+      local req_host = var.http_host or ""
+      local src_ip = var.remote_addr
+      local src_port = tonumber(var.remote_port, 10)
+      local dst_ip = var.server_addr
+      local dst_port = tonumber(var.server_port, 10)
+      local sni = var.ssl_server_name
 
-    do
-      local idx = find(req_uri, "?", 2, true)
-      if idx then
-        req_uri = sub(req_uri, 1, idx - 1)
+      do
+        local idx = find(req_uri, "?", 2, true)
+        if idx then
+          req_uri = sub(req_uri, 1, idx - 1)
+        end
       end
-    end
 
-    local match_t = find_route(req_method, req_uri, req_host, ngx)
-    if not match_t then
-      return nil
-    end
-
-    -- debug HTTP request header logic
-
-    if ngx.var.http_kong_debug then
-      ngx.header["Kong-Route-Id"]   = match_t.route.id
-      ngx.header["Kong-Service-Id"] = match_t.service.id
-
-      if match_t.service.name then
-        ngx.header["Kong-Service-Name"] = match_t.service.name
+      local match_t = find_route(req_method, req_uri, req_host, ngx,
+                                 src_ip, src_port, dst_ip, dst_port, sni)
+      if not match_t then
+        return nil
       end
+
+      -- debug HTTP request header logic
+
+      if ngx.var.http_kong_debug then
+        ngx.header["Kong-Route-Id"]   = match_t.route.id
+        ngx.header["Kong-Service-Id"] = match_t.service.id
+
+        if match_t.service.name then
+          ngx.header["Kong-Service-Name"] = match_t.service.name
+        end
+      end
+
+      return match_t
     end
 
-    return match_t
+  else -- stream
+    function self.exec(ngx)
+      local var = ngx.var
+
+      local src_ip = var.remote_addr
+      local src_port = tonumber(var.remote_port, 10)
+      local dst_ip = var.server_addr
+      local dst_port = tonumber(var.server_port, 10)
+      local sni = var.ssl_preread_server_name
+
+      return find_route(nil, nil, nil, ngx,
+                        src_ip, src_port, dst_ip, dst_port, sni)
+    end
   end
-
 
   return self
 end

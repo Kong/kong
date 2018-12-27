@@ -1,14 +1,14 @@
 local helpers = require "spec.helpers"
 
 describe("kong quit", function()
-  setup(function()
-    assert(helpers.dao:run_migrations())
+  lazy_setup(function()
+    helpers.get_db_utils(nil, {}) -- runs migrations
     helpers.prepare_prefix()
   end)
   after_each(function()
     helpers.kill_all()
   end)
-  teardown(function()
+  lazy_teardown(function()
     helpers.clean_prefix()
   end)
 

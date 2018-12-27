@@ -3,7 +3,7 @@ use warnings FATAL => 'all';
 use Test::Nginx::Socket::Lua;
 use t::Util;
 
-$ENV{TEST_NGINX_HTML_DIR} ||= html_dir();
+$ENV{TEST_NGINX_NXSOCK} ||= html_dir();
 
 plan tests => repeat_each() * (blocks() * 2);
 
@@ -17,7 +17,7 @@ qq{
     $t::Util::HttpConfig
 
     server {
-        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_NXSOCK}/nginx.sock;
 
         location / {
             return 200;
@@ -49,6 +49,7 @@ qq{
                 header_filter = "forced false",
                 body_filter   = "forced false",
                 log           = "forced false",
+                admin_api     = "forced false",
             }, {
                 method        = "set_target",
                 args          = { "example.com", 8000 },
@@ -59,6 +60,7 @@ qq{
                 header_filter = "forced false",
                 body_filter   = "forced false",
                 log           = "forced false",
+                admin_api     = "forced false",
             },
         }
 
@@ -71,7 +73,7 @@ qq{
 }
 --- config
     location /t {
-        proxy_pass http://unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        proxy_pass http://unix:$TEST_NGINX_NXSOCK/nginx.sock;
         set $upstream_host 'example.com';
         set $upstream_uri '/t';
         set $upstream_scheme 'http';
@@ -82,6 +84,7 @@ qq{
 
         access_by_lua_block {
             phase_check_functions(phases.access)
+            phase_check_functions(phases.admin_api)
         }
 
         header_filter_by_lua_block {

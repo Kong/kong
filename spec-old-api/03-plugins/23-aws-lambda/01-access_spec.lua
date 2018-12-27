@@ -3,8 +3,8 @@ local helpers = require "spec.helpers"
 describe("Plugin: AWS Lambda (access)", function()
   local client, api_client
 
-  setup(function()
-    local dao = select(3, helpers.get_db_utils())
+  lazy_setup(function()
+    local _, db, dao = helpers.get_db_utils()
 
     local api1 = assert(dao.apis:insert {
       name         = "lambda.com",
@@ -66,9 +66,9 @@ describe("Plugin: AWS Lambda (access)", function()
       upstream_url = "http://httpbin.org"
     })
 
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name   = "aws-lambda",
-      api_id = api1.id,
+      api = { id = api1.id },
       config = {
         port          = 10001,
         aws_key       = "mock-key",
@@ -78,9 +78,9 @@ describe("Plugin: AWS Lambda (access)", function()
       },
     })
 
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name   = "aws-lambda",
-      api_id = api2.id,
+      api = { id = api2.id },
       config = {
         port            = 10001,
         aws_key         = "mock-key",
@@ -91,9 +91,9 @@ describe("Plugin: AWS Lambda (access)", function()
       },
     })
 
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name   = "aws-lambda",
-      api_id = api3.id,
+      api = { id = api3.id },
       config = {
         port            = 10001,
         aws_key         = "mock-key",
@@ -104,9 +104,9 @@ describe("Plugin: AWS Lambda (access)", function()
       },
     })
 
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name   = "aws-lambda",
-      api_id = api4.id,
+      api = { id = api4.id },
       config = {
         port = 10001,
         aws_key       = "mock-key",
@@ -117,9 +117,9 @@ describe("Plugin: AWS Lambda (access)", function()
       },
     })
 
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name   = "aws-lambda",
-      api_id = api5.id,
+      api = { id = api5.id },
       config = {
         port          = 10001,
         aws_key       = "mock-key",
@@ -129,9 +129,9 @@ describe("Plugin: AWS Lambda (access)", function()
       },
     })
 
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name   = "aws-lambda",
-      api_id = api6.id,
+      api = { id = api6.id },
       config = {
         port            = 10001,
         aws_key         = "mock-key",
@@ -142,9 +142,9 @@ describe("Plugin: AWS Lambda (access)", function()
       },
     })
 
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name   = "aws-lambda",
-      api_id = api7.id,
+      api = { id = api7.id },
       config = {
         port = 10001,
         aws_key         = "mock-key",
@@ -155,9 +155,9 @@ describe("Plugin: AWS Lambda (access)", function()
       },
     })
 
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name   = "aws-lambda",
-      api_id = api8.id,
+      api = { id = api8.id },
       config = {
         port             = 10001,
         aws_key          = "mock-key",
@@ -167,9 +167,9 @@ describe("Plugin: AWS Lambda (access)", function()
         unhandled_status = 412,
       },
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name = "aws-lambda",
-      api_id = api9.id,
+      api = { id = api9.id },
       config = {
         port = 10001,
         aws_key = "mock-key",
@@ -183,9 +183,9 @@ describe("Plugin: AWS Lambda (access)", function()
       }
     })
 
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name = "aws-lambda",
-      api_id = api10.id,
+      api = { id = api10.id },
       config = {
         port = 10001,
         aws_key = "mock-key",
@@ -214,7 +214,7 @@ describe("Plugin: AWS Lambda (access)", function()
     api_client:close()
   end)
 
-  teardown(function()
+  lazy_teardown(function()
     helpers.stop_kong()
   end)
 

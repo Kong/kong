@@ -1,5 +1,9 @@
-local ssl        = require "ngx.ssl"
 local singletons = require "kong.singletons"
+local ngx_ssl = require "ngx.ssl"
+local http_tls = require "http.tls"
+local openssl_pkey = require "openssl.pkey"
+local openssl_x509 = require "openssl.x509"
+local pl_utils = require "pl.utils"
 
 
 local ngx_log = ngx.log
@@ -7,15 +11,15 @@ local ERR     = ngx.ERR
 local DEBUG   = ngx.DEBUG
 
 
+local default_cert_and_key
+
+
 local function log(lvl, ...)
   ngx_log(lvl, "[ssl] ", ...)
 end
 
 
-local _M = {}
-
-
-local function find_certificate(sni_name)
+local function fetch_certificate(sni_name)
   local row, err = singletons.db.snis:select_by_name(sni_name)
   if err then
     return nil, err
@@ -38,82 +42,111 @@ local function find_certificate(sni_name)
     return nil, "no SSL certificate configured for sni: " .. sni_name
   end
 
+  return certificate
+end
+
+
+local function ngx_parse_key_and_cert(row)
+  if row == true then
+    return default_cert_and_key
+  end
+
+  -- parse cert and priv key for later usage by ngx.ssl
+
+  local cert, err = ngx_ssl.parse_pem_cert(row.cert)
+  if not cert then
+    return nil, "could not parse PEM certificate: " .. err
+  end
+
+  local key, err = ngx_ssl.parse_pem_priv_key(row.key)
+  if not key then
+    return nil, "could not parse PEM private key: " .. err
+  end
+
   return {
-    cert = certificate.cert,
-    key  = certificate.key,
+    cert = cert,
+    key = key,
   }
 end
 
 
-function _M.execute()
-  -- retrieve sni or raw server IP
+local function luaossl_parse_key_and_cert(row)
+  if row == true then
+    return default_cert_and_key
+  end
 
-  local sn, err = ssl.server_name()
+  local ssl_termination_ctx = http_tls.new_server_context()
+  ssl_termination_ctx:setCertificate(openssl_x509.new(row.cert))
+  ssl_termination_ctx:setPrivateKey(openssl_pkey.new(row.key))
+
+  return ssl_termination_ctx
+end
+
+
+local parse_key_and_cert
+if ngx.config.subsystem == "http" then
+  parse_key_and_cert = ngx_parse_key_and_cert
+else
+  parse_key_and_cert = luaossl_parse_key_and_cert
+end
+
+
+local function init()
+  default_cert_and_key = parse_key_and_cert {
+    cert = assert(pl_utils.readfile(singletons.configuration.ssl_cert)),
+    key = assert(pl_utils.readfile(singletons.configuration.ssl_cert_key)),
+  }
+end
+
+
+local get_opts = {
+  l1_serializer = parse_key_and_cert,
+}
+local function find_certificate(sn)
+  if not sn then
+    log(DEBUG, "no SNI provided by client, serving default SSL certificate")
+    return default_cert_and_key
+  end
+
+  local cache_key = "certificates:" .. sn
+
+  return singletons.cache:get(cache_key, get_opts, fetch_certificate, sn)
+end
+
+
+local function execute()
+  local sn, err = ngx_ssl.server_name()
   if err then
     log(ERR, "could not retrieve SNI: ", err)
     return ngx.exit(ngx.ERROR)
   end
 
-  if not sn then
-    log(DEBUG, "no SNI provided by client, serving ",
-               "default proxy SSL certificate")
-    -- use fallback certificate
-    return
-  end
-
-  local lru              = singletons.cache.mlcache.lru
-  local pem_cache_key    = "pem_ssl_certificates:" .. sn
-  local parsed_cache_key = "parsed_ssl_certificates:" .. sn
-
-  local pem_cert_and_key, err = singletons.cache:get(pem_cache_key, nil,
-                                                     find_certificate, sn)
-  if not pem_cert_and_key then
+  local cert_and_key, err = find_certificate(sn)
+  if err then
     log(ERR, err)
     return ngx.exit(ngx.ERROR)
   end
 
-  if pem_cert_and_key == true then
-    -- use fallback certificate
+  if cert_and_key == default_cert_and_key then
+    -- use (already set) fallback certificate
     return
-  end
-
-  local cert_and_key = lru:get(parsed_cache_key)
-  if not cert_and_key then
-    -- parse cert and priv key for later usage by ngx.ssl
-
-    local cert, err = ssl.parse_pem_cert(pem_cert_and_key.cert)
-    if not cert then
-      return nil, "could not parse PEM certificate: " .. err
-    end
-
-    local key, err = ssl.parse_pem_priv_key(pem_cert_and_key.key)
-    if not key then
-      return nil, "could not parse PEM private key: " .. err
-    end
-
-    cert_and_key = {
-      cert = cert,
-      key = key,
-    }
-
-    lru:set(parsed_cache_key, cert_and_key)
   end
 
   -- set the certificate for this connection
 
-  local ok, err = ssl.clear_certs()
+  local ok, err = ngx_ssl.clear_certs()
   if not ok then
     log(ERR, "could not clear existing (default) certificates: ", err)
     return ngx.exit(ngx.ERROR)
   end
 
-  ok, err = ssl.set_cert(cert_and_key.cert)
+  ok, err = ngx_ssl.set_cert(cert_and_key.cert)
   if not ok then
     log(ERR, "could not set configured certificate: ", err)
     return ngx.exit(ngx.ERROR)
   end
 
-  ok, err = ssl.set_priv_key(cert_and_key.key)
+  ok, err = ngx_ssl.set_priv_key(cert_and_key.key)
   if not ok then
     log(ERR, "could not set configured private key: ", err)
     return ngx.exit(ngx.ERROR)
@@ -121,4 +154,8 @@ function _M.execute()
 end
 
 
-return _M
+return {
+  init = init,
+  find_certificate = find_certificate,
+  execute = execute,
+}

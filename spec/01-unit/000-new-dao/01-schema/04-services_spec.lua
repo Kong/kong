@@ -28,12 +28,22 @@ describe("services", function()
     assert.truthy(Services:validate(service))
   end)
 
-  it("missing protocol produces error", function()
+  it("null protocol produces error", function()
     local service = {
       protocol = ngx.null,
     }
     service = Services:process_auto_fields(service, "insert")
     local ok, errs = Services:validate(service)
+    assert.falsy(ok)
+    assert.truthy(errs["protocol"])
+  end)
+
+  it("null protocol produces error on update", function()
+    local service = {
+      protocol = ngx.null,
+    }
+    service = Services:process_auto_fields(service, "update")
+    local ok, errs = Services:validate_update(service)
     assert.falsy(ok)
     assert.truthy(errs["protocol"])
   end)
@@ -421,6 +431,47 @@ describe("services", function()
         local ok, err = Services:validate(service)
         assert.is_nil(err)
         assert.is_true(ok)
+      end
+    end)
+  end)
+
+  describe("stream context", function()
+    it("'protocol' accepts 'tcp'", function()
+      local service = {
+        protocol = "tcp",
+        host = "x.y",
+        port = 80,
+      }
+
+      local ok, err = Services:validate(service)
+      assert.is_nil(err)
+      assert.is_true(ok)
+    end)
+
+    it("'protocol' accepts 'tls'", function()
+      local service = {
+        protocol = "tls",
+        host = "x.y",
+        port = 80,
+      }
+
+      local ok, err = Services:validate(service)
+      assert.is_nil(err)
+      assert.is_true(ok)
+    end)
+
+    it("if 'protocol = tcp/tls', then 'path' is empty", function()
+      for _, v in ipairs({ "tcp", "tls" }) do
+        local service = {
+          protocol = v,
+          host = "x.y",
+          port = 80,
+          path = "/",
+        }
+
+        local ok, errs = Services:validate(service)
+        assert.falsy(ok)
+        assert.equal("value must be null", errs.path)
       end
     end)
   end)

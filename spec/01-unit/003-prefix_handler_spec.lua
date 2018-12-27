@@ -52,6 +52,35 @@ describe("NGINX conf compiler", function()
     end)
   end)
 
+  describe("#stream compile_kong_stream_conf()", function()
+    it("enables ssl_preread conditionally", function()
+      local save_nginx_configure = ngx.config.nginx_configure -- luacheck: ignore
+      finally(function()
+        ngx.config.nginx_configure = save_nginx_configure -- luacheck: ignore
+      end)
+
+      -- with ssl_preread enabled
+      ngx.config.nginx_configure = function() -- luacheck: ignore
+        return "--with-foo --with-stream_ssl_preread_module --with-bar"
+      end
+      local conf = assert(conf_loader(helpers.test_conf_path, {
+        stream_listen = "0.0.0.0:9100",
+      }))
+      local kong_nginx_stream_conf = prefix_handler.compile_kong_stream_conf(conf)
+      assert.matches("ssl_preread on", kong_nginx_stream_conf, nil, true)
+
+      -- without ssl_preread enabled
+      ngx.config.nginx_configure = function() -- luacheck: ignore
+        return " --with-foo --with-bar"
+      end
+      conf = assert(conf_loader(helpers.test_conf_path, {
+        stream_listen = "0.0.0.0:9100",
+      }))
+      kong_nginx_stream_conf = prefix_handler.compile_kong_stream_conf(conf)
+      assert.not_matches("ssl_preread on", kong_nginx_stream_conf, nil, true)
+    end)
+  end)
+
   describe("compile_kong_conf()", function()
     it("compiles the Kong NGINX conf chunk", function()
       local kong_nginx_conf = prefix_handler.compile_kong_conf(helpers.test_conf)
@@ -103,6 +132,13 @@ describe("NGINX conf compiler", function()
       assert.matches("listen 0.0.0.0:9443 ssl;", kong_nginx_conf, nil, true)
       assert.matches("listen 127.0.0.1:9001;", kong_nginx_conf, nil, true)
       assert.matches("listen 127.0.0.1:8444 ssl http2;", kong_nginx_conf, nil, true)
+    end)
+    it("disables upstream keepalive", function()
+      local conf = assert(conf_loader(helpers.test_conf_path, {
+        upstream_keepalive = 0,
+      }))
+      local kong_nginx_conf = prefix_handler.compile_kong_conf(conf)
+      assert.not_matches("keepalive %d+;", kong_nginx_conf)
     end)
     it("enables proxy_protocol", function()
       local conf = assert(conf_loader(helpers.test_conf_path, {
@@ -422,7 +458,10 @@ describe("NGINX conf compiler", function()
       }))
       assert.equal("foobar", conf.pg_database)
       assert(prefix_handler.prepare_prefix(conf))
-      local in_prefix_kong_conf = assert(conf_loader(tmp_config.kong_env))
+      local in_prefix_kong_conf = assert(conf_loader(tmp_config.kong_env, {
+        pg_database = "foobar",
+        prefix = tmp_config.prefix,
+      }))
       assert.same(conf, in_prefix_kong_conf)
     end)
     it("writes custom plugins in Kong conf", function()

@@ -15,8 +15,8 @@ function Blueprint:build(overrides)
 end
 
 
-function Blueprint:insert(overrides)
-  local entity, err = self.dao:insert(self:build(overrides))
+function Blueprint:insert(overrides, options)
+  local entity, err = self.dao:insert(self:build(overrides), options)
   if err then
     error(err, 2)
   end
@@ -24,10 +24,19 @@ function Blueprint:insert(overrides)
 end
 
 
-function Blueprint:insert_n(n, overrides)
+function Blueprint:remove(overrides, options)
+  local entity, err = self.dao:remove({ id = overrides.id }, options)
+  if err then
+    error(err, 2)
+  end
+  return entity
+end
+
+
+function Blueprint:insert_n(n, overrides, options)
   local res = {}
   for i=1,n do
-    res[i] = self:insert(overrides)
+    res[i] = self:insert(overrides, options)
   end
   return res
 end
@@ -81,7 +90,7 @@ function _M.new(dao, db)
   end)
 
   local upstream_name_seq = new_sequence("upstream-%d")
-  res.upstreams = new_blueprint(dao.upstreams, function(overrides)
+  res.upstreams = new_blueprint(db.upstreams, function(overrides)
     local slots = overrides.slots or 100
 
     return {
@@ -99,13 +108,14 @@ function _M.new(dao, db)
     }
   end)
 
-  res.targets = new_blueprint(dao.targets, function()
+  res.targets = new_blueprint(db.targets, function(overrides)
     return {
       weight = 10,
+      upstream = overrides.upstream or res.upstreams:insert(),
     }
   end)
 
-  res.plugins = new_blueprint(dao.plugins, function()
+  res.plugins = new_blueprint(db.plugins, function()
     return {}
   end)
 
@@ -123,18 +133,42 @@ function _M.new(dao, db)
     }
   end)
 
-  res.acl_plugins = new_blueprint(dao.plugins, function()
+  local named_service_name_seq = new_sequence("service-name-%d")
+  local named_service_host_seq = new_sequence("service-host-%d.test")
+  res.named_services = new_blueprint(db.services, function()
+    return {
+      protocol = "http",
+      name = named_service_name_seq:next(),
+      host = named_service_host_seq:next(),
+      port = 15555,
+    }
+  end)
+
+  local named_route_name_seq = new_sequence("route-name-%d")
+  local named_route_host_seq = new_sequence("route-host-%d.test")
+  res.named_routes = new_blueprint(db.routes, function(overrides)
+    return {
+      name = named_route_name_seq:next(),
+      hosts = { named_route_host_seq:next() },
+      service = overrides.service or res.services:insert(),
+    }
+  end)
+
+  res.acl_plugins = new_blueprint(db.plugins, function()
     return {
       name   = "acl",
       config = {},
     }
   end)
 
-  res.acls = new_blueprint(dao.acls, function()
-    return {}
+  local acl_group_seq = new_sequence("acl-group-%d")
+  res.acls = new_blueprint(db.acls, function()
+    return {
+      group = acl_group_seq:next(),
+    }
   end)
 
-  res.cors_plugins = new_blueprint(dao.plugins, function()
+  res.cors_plugins = new_blueprint(db.plugins, function()
     return {
       name   = "cors",
       config = {
@@ -148,14 +182,14 @@ function _M.new(dao, db)
     }
   end)
 
-  res.loggly_plugins = new_blueprint(dao.plugins, function()
+  res.loggly_plugins = new_blueprint(db.plugins, function()
     return {
       name   = "loggly",
       config = {}, -- all fields have default values already
     }
   end)
 
-  res.tcp_log_plugins = new_blueprint(dao.plugins, function()
+  res.tcp_log_plugins = new_blueprint(db.plugins, function()
     return {
       name   = "tcp-log",
       config = {
@@ -165,7 +199,7 @@ function _M.new(dao, db)
     }
   end)
 
-  res.udp_log_plugins = new_blueprint(dao.plugins, function()
+  res.udp_log_plugins = new_blueprint(db.plugins, function()
     return {
       name   = "udp-log",
       config = {
@@ -175,7 +209,7 @@ function _M.new(dao, db)
     }
   end)
 
-  res.galileo_plugins = new_blueprint(dao.plugins, function()
+  res.galileo_plugins = new_blueprint(db.plugins, function()
     return {
       name   = "galileo",
       config = {
@@ -184,7 +218,7 @@ function _M.new(dao, db)
     }
   end)
 
-  res.jwt_plugins = new_blueprint(dao.plugins, function()
+  res.jwt_plugins = new_blueprint(db.plugins, function()
     return {
       name   = "jwt",
       config = {},
@@ -192,15 +226,14 @@ function _M.new(dao, db)
   end)
 
   local jwt_key_seq = new_sequence("jwt-key-%d")
-  res.jwt_secrets = new_blueprint(dao.jwt_secrets, function()
+  res.jwt_secrets = new_blueprint(db.jwt_secrets, function()
     return {
       key       = jwt_key_seq:next(),
       secret    = "secret",
-      algorithm = "HS256",
     }
   end)
 
-  res.oauth2_plugins = new_blueprint(dao.plugins, function()
+  res.oauth2_plugins = new_blueprint(db.plugins, function()
     return {
       name   = "oauth2",
       config = {
@@ -214,7 +247,7 @@ function _M.new(dao, db)
     }
   end)
 
-  res.oauth2_credentials = new_blueprint(dao.oauth2_credentials, function()
+  res.oauth2_credentials = new_blueprint(db.oauth2_credentials, function()
     return {
       name          = "oauth2 credential",
       client_secret = "secret",
@@ -222,14 +255,14 @@ function _M.new(dao, db)
   end)
 
   local oauth_code_seq = new_sequence("oauth-code-%d")
-  res.oauth2_authorization_codes = new_blueprint(dao.oauth2_authorization_codes, function()
+  res.oauth2_authorization_codes = new_blueprint(db.oauth2_authorization_codes, function()
     return {
       code  = oauth_code_seq:next(),
       scope = "default",
     }
   end)
 
-  res.oauth2_tokens = new_blueprint(dao.oauth2_tokens, function()
+  res.oauth2_tokens = new_blueprint(db.oauth2_tokens, function()
     return {
       token_type = "bearer",
       expires_in = 1000000000,
@@ -237,7 +270,7 @@ function _M.new(dao, db)
     }
   end)
 
-  res.key_auth_plugins = new_blueprint(dao.plugins, function()
+  res.key_auth_plugins = new_blueprint(db.plugins, function()
     return {
       name   = "key-auth",
       config = {},
@@ -245,17 +278,17 @@ function _M.new(dao, db)
   end)
 
   local keyauth_key_seq = new_sequence("keyauth-key-%d")
-  res.keyauth_credentials = new_blueprint(dao.keyauth_credentials, function()
+  res.keyauth_credentials = new_blueprint(db.keyauth_credentials, function()
     return {
       key = keyauth_key_seq:next(),
     }
   end)
 
-  res.basicauth_credentials = new_blueprint(dao.basicauth_credentials, function()
+  res.basicauth_credentials = new_blueprint(db.basicauth_credentials, function()
     return {}
   end)
 
-  res.hmac_auth_plugins = new_blueprint(dao.plugins, function()
+  res.hmac_auth_plugins = new_blueprint(db.plugins, function()
     return {
       name   = "hmac-auth",
       config = {},
@@ -263,37 +296,44 @@ function _M.new(dao, db)
   end)
 
   local hmac_username_seq = new_sequence("hmac-username-%d")
-  res.hmacauth_credentials = new_blueprint(dao.hmacauth_credentials, function()
+  res.hmacauth_credentials = new_blueprint(db.hmacauth_credentials, function()
     return {
       username = hmac_username_seq:next(),
       secret   = "secret",
     }
   end)
 
-  res.rate_limiting_plugins = new_blueprint(dao.plugins, function()
+  res.rate_limiting_plugins = new_blueprint(db.plugins, function()
     return {
       name   = "rate-limiting",
       config = {},
     }
   end)
 
-  res.response_ratelimiting_plugins = new_blueprint(dao.plugins, function()
+  res.response_ratelimiting_plugins = new_blueprint(db.plugins, function()
     return {
       name   = "response-ratelimiting",
       config = {},
     }
   end)
 
-  res.datadog_plugins = new_blueprint(dao.plugins, function()
+  res.datadog_plugins = new_blueprint(db.plugins, function()
     return {
       name   = "datadog",
       config = {},
     }
   end)
 
-  res.statsd_plugins = new_blueprint(dao.plugins, function()
+  res.statsd_plugins = new_blueprint(db.plugins, function()
     return {
       name   = "statsd",
+      config = {},
+    }
+  end)
+
+  res.rewriter_plugins = new_blueprint(db.plugins, function()
+    return {
+      name   = "rewriter",
       config = {},
     }
   end)

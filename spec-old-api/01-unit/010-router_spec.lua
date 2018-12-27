@@ -617,14 +617,14 @@ describe("Router", function()
       end)
 
       describe("root / [uri]", function()
-        setup(function()
+        lazy_setup(function()
           table.insert(use_case, 1, {
             name = "api-root-uri",
             uris = {"/"},
           })
         end)
 
-        teardown(function()
+        lazy_teardown(function()
           table.remove(use_case, 1)
         end)
 
@@ -660,7 +660,7 @@ describe("Router", function()
 
         local n = 6
 
-        setup(function()
+        lazy_setup(function()
           -- all those APIs are of the same category:
           -- [host + uri]
           for _ = 1, n - 1 do
@@ -682,7 +682,7 @@ describe("Router", function()
           })
         end)
 
-        teardown(function()
+        lazy_teardown(function()
           for _ = 1, n do
             table.remove(use_case)
           end
@@ -761,7 +761,7 @@ describe("Router", function()
         local target_domain
         local benchmark_use_cases = {}
 
-        setup(function()
+        lazy_setup(function()
           for i = 1, 10^5 do
             benchmark_use_cases[i] = {
               name = "api-" .. i,
@@ -788,7 +788,7 @@ describe("Router", function()
         local target_domain
         local benchmark_use_cases = {}
 
-        setup(function()
+        lazy_setup(function()
           local n = 10^5
 
           for i = 1, n - 1 do
@@ -833,7 +833,7 @@ describe("Router", function()
         local target_domain
         local benchmark_use_cases = {}
 
-        setup(function()
+        lazy_setup(function()
           local n = 10^5
 
           for i = 1, n - 1 do
@@ -1206,7 +1206,7 @@ describe("Router", function()
         },
       }
 
-      setup(function()
+      lazy_setup(function()
         router = assert(Router.new(use_case_apis))
       end)
 
@@ -1365,7 +1365,7 @@ describe("Router", function()
         },
       }
 
-      setup(function()
+      lazy_setup(function()
         router = assert(Router.new(use_case_apis))
       end)
 

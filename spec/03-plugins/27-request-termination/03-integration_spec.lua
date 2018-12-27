@@ -7,8 +7,14 @@ for _, strategy in helpers.each_strategy() do
     local admin_client
     local consumer
 
-    setup(function()
-      local bp = helpers.get_db_utils(strategy)
+    lazy_setup(function()
+      local bp = helpers.get_db_utils(strategy, {
+        "routes",
+        "services",
+        "plugins",
+        "consumers",
+        "keyauth_credentials",
+      })
 
       bp.routes:insert({
         hosts = { "api1.request-termination.com" },
@@ -23,8 +29,8 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.keyauth_credentials:insert {
-        key         = "kong",
-        consumer_id = consumer.id,
+        key      = "kong",
+        consumer = { id = consumer.id },
       }
 
       assert(helpers.start_kong({
@@ -36,7 +42,7 @@ for _, strategy in helpers.each_strategy() do
       admin_client = helpers.admin_client()
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       if proxy_client and admin_client then
         proxy_client:close()
         admin_client:close()
@@ -54,7 +60,7 @@ for _, strategy in helpers.each_strategy() do
         },
         body    = {
           name        = "request-termination",
-          consumer_id = consumer.id,
+          consumer = { id = consumer.id },
         },
       })
       assert.response(res).has.status(201)

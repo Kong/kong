@@ -4,7 +4,7 @@ local cjson = require "cjson"
 describe("Plugin: response-rate-limiting (API)", function()
   local admin_client
 
-  teardown(function()
+  lazy_teardown(function()
     if admin_client then
       admin_client:close()
     end
@@ -12,7 +12,9 @@ describe("Plugin: response-rate-limiting (API)", function()
   end)
 
   describe("POST", function()
-    setup(function()
+    lazy_setup(function()
+      helpers.dao.apis:truncate()
+      helpers.db.plugins:truncate()
       assert(helpers.dao.apis:insert {
         name         = "test",
         hosts        = { "test1.com" },
@@ -38,7 +40,7 @@ describe("Plugin: response-rate-limiting (API)", function()
       })
       local body = assert.res_status(400, res)
       local json = cjson.decode(body)
-      assert.same({ config = "You need to set at least one limit name" }, json)
+      assert.same("required field missing", json.fields.config.limits)
     end)
     it("accepts proper config", function()
       local res = assert(admin_client:send {

@@ -4,38 +4,61 @@ local cjson   = require "cjson"
 
 local function it_content_types(title, fn)
   local test_form_encoded = fn("application/x-www-form-urlencoded")
+  local test_multipart = fn("multipart/form-data")
   local test_json = fn("application/json")
+
   it(title .. " with application/www-form-urlencoded", test_form_encoded)
+  it(title .. " with multipart/form-data", test_multipart)
   it(title .. " with application/json", test_json)
 end
 
+for _, strategy in helpers.each_strategy() do
 
-describe("Admin API post-processing", function()
+describe("Admin API post-processing #" .. strategy, function()
   local client
   local plugin
+  local db
 
-  setup(function()
-    assert(helpers.dao:run_migrations())
+  lazy_setup(function()
+    local _
+    _, db = helpers.get_db_utils(strategy, {
+      "plugins",
+    }, {
+      "admin-api-post-process"
+    })
+
     assert(helpers.start_kong {
+      database = strategy,
+      nginx_conf = "spec/fixtures/custom_nginx.template",
       plugins = "bundled, admin-api-post-process, dummy"
     })
 
     client = assert(helpers.admin_client())
   end)
 
-  teardown(function()
+  lazy_teardown(function()
     if client then
       client:close()
     end
 
     helpers.stop_kong()
+    db.plugins:truncate()
   end)
 
   before_each(function()
-    helpers.dao:truncate_tables()
-    plugin =  helpers.dao.plugins:insert({
-      name = "admin-api-post-process",
+    db:truncate("plugins")
+    local client = helpers.admin_client()
+    local res = assert(client:send {
+      method = "POST",
+      path = "/plugins",
+      body = {
+        name = "admin-api-post-process",
+      },
+      headers = { ["Content-Type"] = "application/json" },
     })
+    local body = assert.res_status(201, res)
+    plugin = cjson.decode(body)
+    assert(client:close())
   end)
 
   it_content_types("post-processes paginated sets", function(content_type)
@@ -82,10 +105,20 @@ describe("Admin API post-processing", function()
 
   it_content_types("post-processes crud.patch", function(content_type)
     return function()
+      if content_type == "multipart/form-data" then
+        -- the client doesn't play well with this
+        return
+      end
+
       local res = assert(client:send {
         method = "PATCH",
         path = "/plugins/" .. plugin.id .. "/post_processed",
         body = {
+          name = "admin-api-post-process",
+          api = ngx.null,
+          route = ngx.null,
+          service = ngx.null,
+          consumer = ngx.null,
           config = {
             foo = "potato"
           }
@@ -100,6 +133,11 @@ describe("Admin API post-processing", function()
 
   it_content_types("post-processes crud.put", function(content_type)
     return function()
+      if content_type == "multipart/form-data" then
+        -- the client doesn't play well with this
+        return
+      end
+
       local res = assert(client:send {
         method = "PUT",
         path = "/plugins/" .. plugin.id .. "/post_processed",
@@ -118,3 +156,5 @@ describe("Admin API post-processing", function()
     end
   end)
 end)
+
+end

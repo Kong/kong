@@ -4,7 +4,7 @@ local cjson = require "cjson"
 describe("Plugin: request-transformer (API)", function()
   local admin_client
 
-  teardown(function()
+  lazy_teardown(function()
     if admin_client then
       admin_client:close()
     end
@@ -13,7 +13,7 @@ describe("Plugin: request-transformer (API)", function()
   end)
 
   describe("POST", function()
-    setup(function()
+    lazy_setup(function()
       local dao = select(3, helpers.get_db_utils())
 
       assert(dao.apis:insert {
@@ -37,9 +37,9 @@ describe("Plugin: request-transformer (API)", function()
             name = "request-transformer",
             config = {
               remove = {
-                headers = "just_a_key",
-                body = "just_a_key",
-                querystring = "just_a_key",
+                headers = { "just_a_key" },
+                body = { "just_a_key" },
+                querystring = { "just_a_key" },
               },
             },
           },
@@ -61,7 +61,7 @@ describe("Plugin: request-transformer (API)", function()
             name = "request-transformer",
             config = {
               add = {
-                headers = "just_a_key",
+                headers = { "just_a_key" },
               },
             },
           },
@@ -71,7 +71,7 @@ describe("Plugin: request-transformer (API)", function()
         })
         local body = assert.response(res).has.status(400)
         local json = cjson.decode(body)
-        assert.same({ ["config.add.headers"] = "key 'just_a_key' has no value" }, json)
+        assert.same("invalid value: just_a_key", json.fields.config.add.headers)
       end)
       it("replace fails with missing colons for key/value separation", function()
         local res = assert(admin_client:send {
@@ -81,7 +81,7 @@ describe("Plugin: request-transformer (API)", function()
             name = "request-transformer",
             config = {
               replace = {
-                headers = "just_a_key",
+                headers = { "just_a_key" },
               },
             },
           },
@@ -91,7 +91,7 @@ describe("Plugin: request-transformer (API)", function()
         })
         local body = assert.response(res).has.status(400)
         local json = cjson.decode(body)
-        assert.same({ ["config.replace.headers"]  = "key 'just_a_key' has no value" }, json)
+        assert.same("invalid value: just_a_key", json.fields.config.replace.headers)
       end)
       it("append fails with missing colons for key/value separation", function()
         local res = assert(admin_client:send {
@@ -101,7 +101,7 @@ describe("Plugin: request-transformer (API)", function()
             name = "request-transformer",
             config = {
               append = {
-                headers = "just_a_key",
+                headers = { "just_a_key" },
               },
             },
           },
@@ -111,7 +111,7 @@ describe("Plugin: request-transformer (API)", function()
         })
         local body = assert.response(res).has.status(400)
         local json = cjson.decode(body)
-        assert.same({ ["config.append.headers"]  = "key 'just_a_key' has no value" }, json)
+        assert.same("invalid value: just_a_key", json.fields.config.append.headers)
       end)
     end)
   end)

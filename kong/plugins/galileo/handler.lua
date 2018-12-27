@@ -5,8 +5,11 @@
 -- Maintains one ALF Buffer per galileo plugin per worker.
 
 local BasePlugin = require "kong.plugins.base_plugin"
-local Buffer = require "kong.plugins.galileo.buffer"
+local Buffer = require "kong.plugins.log-buffering.buffer"
+local Producer = require "kong.plugins.galileo.producer"
+local Sender = require "kong.plugins.galileo.sender"
 
+local ngx_log = ngx.log
 local read_body = ngx.req.read_body
 local get_body_data = ngx.req.get_body_data
 
@@ -17,6 +20,12 @@ local GalileoHandler = BasePlugin:extend()
 
 GalileoHandler.PRIORITY = 3
 GalileoHandler.VERSION = "0.1.0"
+
+
+local function log(lvl, ...)
+  ngx_log(lvl, "[galileo] ", ...)
+end
+
 
 function GalileoHandler:new()
   GalileoHandler.super.new(self, "galileo")
@@ -50,16 +59,15 @@ end
 function GalileoHandler:log(conf)
   GalileoHandler.super.log(self)
 
-
   local route_id = conf.route_id or conf.api_id
 
   local buf = _alf_buffers[route_id]
   if not buf then
     local err
     conf.server_addr = _server_addr
-    buf, err = Buffer.new(conf)
+    buf, err = Buffer.new("galileo", conf, Producer.new(conf), Sender.new(conf), log)
     if not buf then
-      ngx.log(ngx.ERR, "could not create ALF buffer: ", err)
+      log(ngx.ERR, "could not create ALF buffer: ", err)
       return
     end
     _alf_buffers[route_id] = buf

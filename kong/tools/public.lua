@@ -8,7 +8,9 @@ local _M = {}
 
 do
   local multipart = require "multipart"
-  local cjson     = require "cjson.safe"
+  local cjson     = (require "cjson.safe").new()
+  cjson.decode_array_with_array_mt(true)
+
   local utils     = require "kong.tools.utils"
 
 
@@ -173,10 +175,6 @@ do
     function _M.get_node_id()
       if node_id then
         return node_id
-      end
-
-      if ngx.get_phase() == "init" then
-        error("API disabled in the context of init_by_lua", 2)
       end
 
       local shm = ngx.shared.kong

@@ -52,20 +52,21 @@ if [ ! "$(ls -A $OPENSSL_INSTALL)" ]; then
     echo "Installing OpenSSL $OPENSSL..."
     ./config shared --prefix=$OPENSSL_INSTALL &> build.log || (cat build.log && exit 1)
     make &> build.log || (cat build.log && exit 1)
-    make install &> build.log || (cat build.log && exit 1)
+    make install_sw &> build.log || (cat build.log && exit 1)
   popd
 fi
 
 if [ ! "$(ls -A $OPENRESTY_INSTALL)" ]; then
   OPENRESTY_OPTS=(
     "--prefix=$OPENRESTY_INSTALL"
-    "--with-openssl=$OPENSSL_DOWNLOAD"
-    "--with-ipv6"
+    "--with-cc-opt='-I$OPENSSL_INSTALL/include'"
+    "--with-ld-opt='-L$OPENSSL_INSTALL/lib -Wl,-rpath,$OPENSSL_INSTALL/lib'"
     "--with-pcre-jit"
     "--with-http_ssl_module"
     "--with-http_realip_module"
     "--with-http_stub_status_module"
     "--with-http_v2_module"
+    "--with-stream_ssl_preread_module"
   )
 
   pushd $OPENRESTY_DOWNLOAD
@@ -78,7 +79,7 @@ if [ ! "$(ls -A $OPENRESTY_INSTALL)" ]; then
       popd
     fi
     echo "Installing OpenResty $OPENRESTY..."
-    ./configure ${OPENRESTY_OPTS[*]} &> build.log || (cat build.log && exit 1)
+    eval ./configure ${OPENRESTY_OPTS[*]} &> build.log || (cat build.log && exit 1)
     make &> build.log || (cat build.log && exit 1)
     make install &> build.log || (cat build.log && exit 1)
   popd
@@ -101,29 +102,31 @@ fi
 
 export OPENSSL_DIR=$OPENSSL_INSTALL # for LuaSec install
 
-export PATH=$PATH:$OPENRESTY_INSTALL/nginx/sbin:$OPENRESTY_INSTALL/bin:$LUAROCKS_INSTALL/bin:$CPAN_DOWNLOAD
+export PATH=$OPENSSL_INSTALL/bin:$OPENRESTY_INSTALL/nginx/sbin:$OPENRESTY_INSTALL/bin:$LUAROCKS_INSTALL/bin:$CPAN_DOWNLOAD:$PATH
+export LD_LIBRARY_PATH=$OPENSSL_INSTALL/lib:$LD_LIBRARY_PATH # for openssl's CLI invoked in the test suite
 
 eval `luarocks path`
 
 # -------------------------------------
 # Install ccm & setup Cassandra cluster
 # -------------------------------------
-if [[ "$TEST_SUITE" != "unit" ]] && [[ "$TEST_SUITE" != "lint" ]]; then
-  echo "Installing ccm and setting up Cassandra cluster..."
-  pip install --user PyYAML six ccm &> build.log || (cat build.log && exit 1)
-  ccm create test -v $CASSANDRA -n 1 -d
-  ccm start -v
-  ccm status
+if [[ "$KONG_TEST_DATABASE" == "cassandra" ]]; then
+  echo "Setting up Cassandra"
+  docker run -d --name=cassandra --rm -p 7199:7199 -p 7000:7000 -p 9160:9160 -p 9042:9042 cassandra:$CASSANDRA
+  grep -q 'Created default superuser role' <(docker logs -f cassandra)
 fi
 
 # -------------------
 # Install Test::Nginx
 # -------------------
-echo "Installing CPAN dependencies..."
-chmod +x $CPAN_DOWNLOAD/cpanm
-cpanm --notest Test::Nginx &> build.log || (cat build.log && exit 1)
-cpanm --notest --local-lib=$TRAVIS_BUILD_DIR/perl5 local::lib && eval $(perl -I $TRAVIS_BUILD_DIR/perl5/lib/perl5/ -Mlocal::lib)
+if [[ "$TEST_SUITE" == "pdk" ]]; then
+  echo "Installing CPAN dependencies..."
+  chmod +x $CPAN_DOWNLOAD/cpanm
+  cpanm --notest Test::Nginx &> build.log || (cat build.log && exit 1)
+  cpanm --notest --local-lib=$TRAVIS_BUILD_DIR/perl5 local::lib && eval $(perl -I $TRAVIS_BUILD_DIR/perl5/lib/perl5/ -Mlocal::lib)
+fi
 
 nginx -V
 resty -V
 luarocks --version
+openssl version

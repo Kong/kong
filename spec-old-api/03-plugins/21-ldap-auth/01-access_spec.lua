@@ -7,7 +7,7 @@ local fmt     = string.format
 local md5     = ngx.md5
 
 
-local function cache_key(conf, username)
+local function cache_key(conf, username, password)
   local prefix = md5(fmt("%s:%u:%s:%s:%u",
     lower(conf.ldap_host),
     conf.ldap_port,
@@ -16,7 +16,7 @@ local function cache_key(conf, username)
     conf.cache_ttl
   ))
 
-  return fmt("ldap_auth_cache:%s:%s", prefix, username)
+  return fmt("ldap_auth_cache:%s:%s:%s", prefix, username, password)
 end
 
 local ldap_host_aws = "ec2-54-172-82-117.compute-1.amazonaws.com"
@@ -24,8 +24,8 @@ local ldap_host_aws = "ec2-54-172-82-117.compute-1.amazonaws.com"
 describe("Plugin: ldap-auth (access)", function()
   local client, client_admin, api2, plugin2
 
-  setup(function()
-    local bp, _, dao = helpers.get_db_utils()
+  lazy_setup(function()
+    local bp, db, dao = helpers.get_db_utils()
 
     local api1 = assert(dao.apis:insert {
       name         = "test-ldap",
@@ -62,24 +62,24 @@ describe("Plugin: ldap-auth (access)", function()
       username = "no-body"
     }
 
-    assert(dao.plugins:insert {
-      api_id = api1.id,
+    assert(db.plugins:insert {
+      api = { id = api1.id },
       name = "ldap-auth",
       config = {
         ldap_host = ldap_host_aws,
-        ldap_port = "389",
+        ldap_port = 389,
         start_tls = false,
         base_dn = "ou=scientists,dc=ldap,dc=mashape,dc=com",
         attribute = "uid"
       }
     })
 
-    plugin2 = assert(dao.plugins:insert {
-      api_id = api2.id,
+    plugin2 = assert(db.plugins:insert {
+      api = { id = api2.id },
       name = "ldap-auth",
       config = {
         ldap_host = ldap_host_aws,
-        ldap_port = "389",
+        ldap_port = 389,
         start_tls = false,
         base_dn = "ou=scientists,dc=ldap,dc=mashape,dc=com",
         attribute = "uid",
@@ -87,24 +87,24 @@ describe("Plugin: ldap-auth (access)", function()
         cache_ttl = 2,
       }
     })
-    assert(dao.plugins:insert {
-      api_id = api3.id,
+    assert(db.plugins:insert {
+      api = { id = api3.id },
       name = "ldap-auth",
       config = {
         ldap_host = ldap_host_aws,
-        ldap_port = "389",
+        ldap_port = 389,
         start_tls = false,
         base_dn = "ou=scientists,dc=ldap,dc=mashape,dc=com",
         attribute = "uid",
         anonymous = anonymous_user.id,
       }
     })
-    assert(dao.plugins:insert {
-      api_id = api4.id,
+    assert(db.plugins:insert {
+      api = { id = api4.id },
       name = "ldap-auth",
       config = {
         ldap_host = "ec2-54-210-29-167.compute-1.amazonaws.com",
-        ldap_port = "389",
+        ldap_port = 389,
         start_tls = false,
         base_dn = "ou=scientists,dc=ldap,dc=mashape,dc=com",
         attribute = "uid",
@@ -112,23 +112,23 @@ describe("Plugin: ldap-auth (access)", function()
         anonymous = utils.uuid(), -- non existing consumer
       }
     })
-    assert(dao.plugins:insert {
-      api_id = api5.id,
+    assert(db.plugins:insert {
+      api = { id = api5.id },
       name = "ldap-auth",
       config = {
         ldap_host = ldap_host_aws,
-        ldap_port = "389",
+        ldap_port = 389,
         start_tls = false,
         base_dn = "ou=scientists,dc=ldap,dc=mashape,dc=com",
         attribute = "uid",
         header_type = "basic",
       }
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name = "ldap-auth",
       config = {
         ldap_host = ldap_host_aws,
-        ldap_port = "389",
+        ldap_port = 389,
         start_tls = false,
         base_dn = "ou=scientists,dc=ldap,dc=mashape,dc=com",
         attribute = "uid"
@@ -140,7 +140,7 @@ describe("Plugin: ldap-auth (access)", function()
     }))
   end)
 
-  teardown(function()
+  lazy_teardown(function()
     helpers.stop_kong()
   end)
 
@@ -378,7 +378,7 @@ describe("Plugin: ldap-auth (access)", function()
     assert.response(r).has.status(200)
 
     -- Check that cache is populated
-    local key = cache_key(plugin2.config, "einstein")
+    local key = cache_key(plugin2.config, "einstein", "password")
 
     helpers.wait_until(function()
       local res = assert(client_admin:send {
@@ -452,28 +452,28 @@ describe("Plugin: ldap-auth (access)", function()
 
   local client, user1, anonymous
 
-  setup(function()
-    local bp, _, dao = helpers.get_db_utils()
+  lazy_setup(function()
+    local bp, db, dao = helpers.get_db_utils()
 
     local api1 = assert(dao.apis:insert {
       name         = "api-1",
       hosts        = { "logical-and.com" },
       upstream_url = helpers.mock_upstream_url .. "/request",
     })
-    assert(dao.plugins:insert {
-      api_id = api1.id,
+    assert(db.plugins:insert {
+      api = { id = api1.id },
       name   = "ldap-auth",
       config = {
         ldap_host = ldap_host_aws,
-        ldap_port = "389",
+        ldap_port = 389,
         start_tls = false,
         base_dn   = "ou=scientists,dc=ldap,dc=mashape,dc=com",
         attribute = "uid",
       },
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name   = "key-auth",
-      api_id = api1.id,
+      api = { id = api1.id },
     })
 
     anonymous = bp.consumers:insert {
@@ -488,29 +488,29 @@ describe("Plugin: ldap-auth (access)", function()
       hosts        = { "logical-or.com" },
       upstream_url = helpers.mock_upstream_url .. "/request",
     })
-    assert(dao.plugins:insert {
-      api_id = api2.id,
+    assert(db.plugins:insert {
+      api = { id = api2.id },
       name   = "ldap-auth",
       config = {
         ldap_host = ldap_host_aws,
-        ldap_port = "389",
+        ldap_port = 389,
         start_tls = false,
         base_dn   = "ou=scientists,dc=ldap,dc=mashape,dc=com",
         attribute = "uid",
         anonymous = anonymous.id,
       },
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name   = "key-auth",
-      api_id = api2.id,
+      api = { id = api2.id },
       config = {
         anonymous = anonymous.id,
       },
     })
 
-    assert(dao.keyauth_credentials:insert {
-      key         = "Mouse",
-      consumer_id = user1.id,
+    bp.keyauth_credentials:insert({
+      key      = "Mouse",
+      consumer = { id = user1.id },
     })
 
     assert(helpers.start_kong({
@@ -520,7 +520,7 @@ describe("Plugin: ldap-auth (access)", function()
   end)
 
 
-  teardown(function()
+  lazy_teardown(function()
     if client then client:close() end
     helpers.stop_kong()
   end)

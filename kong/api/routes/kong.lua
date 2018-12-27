@@ -6,9 +6,10 @@ local cjson = require "cjson"
 
 local sub = string.sub
 local find = string.find
-local ipairs = ipairs
 local select = select
 local tonumber = tonumber
+local kong = kong
+
 
 local tagline = "Welcome to " .. _KONG._NAME
 local version = _KONG._VERSION
@@ -21,17 +22,16 @@ return {
       local prng_seeds = {}
 
       do
-        local rows, err = dao.plugins:find_all()
-        if err then
-          return helpers.responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
-        end
-
-        local map = {}
-        for _, row in ipairs(rows) do
-          if not map[row.name] then
-            distinct_plugins[#distinct_plugins+1] = row.name
+        local set = {}
+        for row, err in kong.db.plugins:each() do
+          if err then
+            return helpers.responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
           end
-          map[row.name] = true
+
+          if not set[row.name] then
+            distinct_plugins[#distinct_plugins+1] = row.name
+            set[row.name] = true
+          end
         end
       end
 
@@ -98,18 +98,20 @@ return {
           total_requests = tonumber(total)
         },
         database = {
-          reachable = false,
+          reachable = true,
         },
       }
 
-      local ok, err = dao.db:reachable()
+      -- TODO: no way to bypass connection pool
+      local ok, err = kong.db:connect()
       if not ok then
-        ngx.log(ngx.ERR, "failed to reach database as part of ",
-                         "/status endpoint: ", err)
-
-      else
-        status_response.database.reachable = true
+        ngx.log(ngx.ERR, "failed to connect to ", kong.db.infos.strategy,
+                         " during /status endpoint check: ", err)
+        status_response.database.reachable = false
       end
+
+      -- ignore error
+      kong.db:close()
 
       return helpers.responses.send_HTTP_OK(status_response)
     end

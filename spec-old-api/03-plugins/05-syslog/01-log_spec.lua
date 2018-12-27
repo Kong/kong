@@ -5,7 +5,7 @@ local pl_stringx = require "pl.stringx"
 
 describe("#flaky Plugin: syslog (log)", function()
   local client, platform
-  setup(function()
+  lazy_setup(function()
     helpers.run_migrations()
 
     local api1 = assert(helpers.dao.apis:insert {
@@ -24,8 +24,8 @@ describe("#flaky Plugin: syslog (log)", function()
       upstream_url = helpers.mock_upstream_url,
     })
 
-    assert(helpers.dao.plugins:insert {
-      api_id = api1.id,
+    assert(helpers.db.plugins:insert {
+      api = { id = api1.id },
       name   = "syslog",
       config = {
         log_level              = "info",
@@ -34,8 +34,8 @@ describe("#flaky Plugin: syslog (log)", function()
         server_errors_severity = "warning",
       },
     })
-    assert(helpers.dao.plugins:insert {
-      api_id = api2.id,
+    assert(helpers.db.plugins:insert {
+      api = { id = api2.id },
       name   = "syslog",
       config = {
         log_level              = "err",
@@ -44,8 +44,8 @@ describe("#flaky Plugin: syslog (log)", function()
         server_errors_severity = "warning",
       },
     })
-    assert(helpers.dao.plugins:insert {
-      api_id = api3.id,
+    assert(helpers.db.plugins:insert {
+      api = { id = api3.id },
       name   = "syslog",
       config = {
         log_level              = "warning",
@@ -63,7 +63,7 @@ describe("#flaky Plugin: syslog (log)", function()
       nginx_conf = "spec/fixtures/custom_nginx.template",
     }))
   end)
-  teardown(function()
+  lazy_teardown(function()
     helpers.stop_kong()
   end)
 
