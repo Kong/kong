@@ -556,7 +556,7 @@ upgrade your Kong cluster.
 ##### Configuration
 
 - :fireworks: Support for **control-plane** and **data-plane** modes. The new
-  new syntax of `proxy_listen` and `admin_listen` supports `off`, which
+   syntax of `proxy_listen` and `admin_listen` supports `off`, which
   disables either one of those interfaces. It is now simpler than ever to
   make a Kong node "Proxy only" (data-plane) or "Admin only" (control-plane).
   [#3147](https://github.com/Kong/kong/pull/3147)
