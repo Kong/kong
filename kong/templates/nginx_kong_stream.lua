@@ -18,6 +18,11 @@ lua_shared_dict stream_kong_cassandra      5m;
 > end
 lua_shared_dict stream_prometheus_metrics  5m;
 
+# injected nginx_stream_* directives
+> for _, el in ipairs(nginx_stream_directives) do
+$(el.name) $(el.value);
+> end
+
 upstream kong_upstream {
     server 0.0.0.1:1;
     balancer_by_lua_block {
@@ -55,12 +60,19 @@ server {
     access_log ${{PROXY_ACCESS_LOG}} basic;
     error_log ${{PROXY_ERROR_LOG}} ${{LOG_LEVEL}};
 
+    # injected nginx_sproxy_* directives
+> for _, el in ipairs(nginx_sproxy_directives) do
+    $(el.name) $(el.value);
+> end
+
 > if ssl_preread_enabled then
     ssl_preread on;
 > end
+
     preread_by_lua_block {
         Kong.preread()
     }
+
     proxy_pass kong_upstream;
 
     log_by_lua_block {
