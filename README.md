@@ -67,8 +67,8 @@ server {
     location / {
         default_type text/plain;
         content_by_lua_block {
-            local serve = require "kong.plugins.prometheus.serve"
-            serve.prometheus_server()
+             local promethus = require "kong.plugins.prometheus.exporter"
+             promethus:collect()
         }
     }
 
@@ -105,10 +105,6 @@ Transfer-Encoding: chunked
 Connection: keep-alive
 Access-Control-Allow-Origin: *
 
-# HELP kong_bandwidth_total Total bandwidth in bytes for all proxied requests in Kong
-# TYPE kong_bandwidth_total counter
-kong_bandwidth_total{type="egress"} 1277
-kong_bandwidth_total{type="ingress"} 254
 # HELP kong_bandwidth Total bandwidth in bytes consumed per service in Kong
 # TYPE kong_bandwidth counter
 kong_bandwidth{type="egress",service="google"} 1277
@@ -116,9 +112,6 @@ kong_bandwidth{type="ingress",service="google"} 254
 # HELP kong_datastore_reachable Datastore reachable from Kong, 0 is unreachable
 # TYPE kong_datastore_reachable gauge
 kong_datastore_reachable 1
-# HELP kong_http_status_total HTTP status codes aggreggated across all services in Kong
-# TYPE kong_http_status_total counter
-kong_http_status_total{code="301"} 2
 # HELP kong_http_status HTTP status codes per service in Kong
 # TYPE kong_http_status counter
 kong_http_status{code="301",service="google"} 2
@@ -146,30 +139,6 @@ kong_latency_count{type="upstream",service="google"} 2
 kong_latency_sum{type="kong",service="google"} 2145
 kong_latency_sum{type="request",service="google"} 2672
 kong_latency_sum{type="upstream",service="google"} 527
-# HELP kong_latency_total Latency added by Kong, total request time and upstream latency aggreggated across all services in Kong
-# TYPE kong_latency_total histogram
-kong_latency_total_bucket{type="kong",le="00001.0"} 1
-kong_latency_total_bucket{type="kong",le="00002.0"} 1
-.
-.
-kong_latency_total_bucket{type="kong",le="+Inf"} 2
-kong_latency_total_bucket{type="request",le="00300.0"} 1
-kong_latency_total_bucket{type="request",le="00400.0"} 1
-.
-.
-kong_latency_total_bucket{type="request",le="+Inf"} 2
-kong_latency_total_bucket{type="upstream",le="00300.0"} 2
-kong_latency_total_bucket{type="upstream",le="00400.0"} 2
-.
-.
-.
-kong_latency_total_bucket{type="upstream",le="+Inf"} 2
-kong_latency_total_count{type="kong"} 2
-kong_latency_total_count{type="request"} 2
-kong_latency_total_count{type="upstream"} 2
-kong_latency_total_sum{type="kong"} 2145
-kong_latency_total_sum{type="request"} 2672
-kong_latency_total_sum{type="upstream"} 527
 # HELP kong_nginx_http_current_connections Number of HTTP connections
 # TYPE kong_nginx_http_current_connections gauge
 kong_nginx_http_current_connections{state="accepted"} 8
