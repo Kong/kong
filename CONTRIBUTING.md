@@ -14,6 +14,7 @@ Consult the Table of Contents below, and jump to the desired section.
   - [Enterprise Edition](#enterprise-edition)
   - [Community Edition](#community-edition)
 - [Where to report bugs?](#where-to-report-bugs)
+- [Where to submit feature requests?](#where-to-submit-feature-requests)
 - [Contributing](#contributing)
   - [Improving the documentation](#improving-the-documentation)
   - [Proposing a new plugin](#proposing-a-new-plugin)
@@ -82,6 +83,17 @@ to respect the GitHub issue template, and include:
 If you wish, you are more than welcome to propose a patch to fix the issue!
 See the [Submit a patch](#submitting-a-patch) section for more information
 on how to best do so.
+
+[Back to TOC](#table-of-contents)
+
+
+## Where to submit feature requests?
+
+You can [submit an issue](https://github.com/Kong/kong/issues/new) for feature
+requests. Please add as much detail as you can when doing so.
+
+You are also welcome to propose patches adding new features. See the section
+on [Submitting a patch](#submitting-a-patch) for details.
 
 [Back to TOC](#table-of-contents)
 
