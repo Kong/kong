@@ -227,9 +227,22 @@ describe("Configuration loader", function()
         plugins = "off",
       }))
       assert.True(search_directive(conf.nginx_http_directives,
-                  "lua_shared_dict", "custom_cache 5m"))
+                                   "variables_hash_bucket_size", [["128"]]))
+      assert.True(search_directive(conf.nginx_stream_directives,
+                                   "variables_hash_bucket_size", [["128"]]))
+
       assert.True(search_directive(conf.nginx_http_directives,
-                  "large_client_header_buffers", "8 24k"))
+                                   "lua_shared_dict", "custom_cache 5m"))
+      assert.True(search_directive(conf.nginx_stream_directives,
+                                   "lua_shared_dict", "custom_cache 5m"))
+
+      assert.True(search_directive(conf.nginx_proxy_directives,
+                                   "proxy_bind", "127.0.0.1 transparent"))
+      assert.True(search_directive(conf.nginx_sproxy_directives,
+                                   "proxy_bind", "127.0.0.1 transparent"))
+
+      assert.True(search_directive(conf.nginx_admin_directives,
+                                   "server_tokens", "off"))
     end)
 
     it("quotes numeric flexible prefix based configs", function()
@@ -244,15 +257,33 @@ describe("Configuration loader", function()
 
     it("accepts flexible config values with precedence", function()
       local conf = assert(conf_loader("spec/fixtures/nginx-directives.conf", {
-        ["nginx_http_large_client_header_buffers"] = "4 16k",
+        ["nginx_http_variables_hash_bucket_size"] = "256",
+        ["nginx_stream_variables_hash_bucket_size"] = "256",
         ["nginx_http_lua_shared_dict"] = "custom_cache 2m",
+        ["nginx_stream_lua_shared_dict"] = "custom_cache 2m",
+        ["nginx_proxy_proxy_bind"] = "127.0.0.2 transparent",
+        ["nginx_sproxy_proxy_bind"] = "127.0.0.2 transparent",
+        ["nginx_admin_server_tokens"] = "build",
         plugins = "off",
       }))
 
       assert.True(search_directive(conf.nginx_http_directives,
-                  "lua_shared_dict", "custom_cache 2m"))
+                                   "variables_hash_bucket_size", [["256"]]))
+      assert.True(search_directive(conf.nginx_stream_directives,
+                                   "variables_hash_bucket_size", [["256"]]))
+
       assert.True(search_directive(conf.nginx_http_directives,
-                  "large_client_header_buffers", "4 16k"))
+                                   "lua_shared_dict", "custom_cache 2m"))
+      assert.True(search_directive(conf.nginx_stream_directives,
+                                   "lua_shared_dict", "custom_cache 2m"))
+
+      assert.True(search_directive(conf.nginx_proxy_directives,
+                                   "proxy_bind", "127.0.0.2 transparent"))
+      assert.True(search_directive(conf.nginx_sproxy_directives,
+                                   "proxy_bind", "127.0.0.2 transparent"))
+
+      assert.True(search_directive(conf.nginx_admin_directives,
+                                   "server_tokens", "build"))
     end)
   end)
 

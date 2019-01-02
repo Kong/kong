@@ -61,7 +61,7 @@ http {
     lua_shared_dict kong_mock_upstream_loggers 10m;
 
 # injected nginx_http_* directives
-> for _, el in ipairs(nginx_http_directives)  do
+> for _, el in ipairs(nginx_http_directives) do
     $(el.name) $(el.value);
 > end
 
@@ -113,7 +113,7 @@ http {
 > end
 
     # injected nginx_proxy_* directives
-> for _, el in ipairs(nginx_proxy_directives)  do
+> for _, el in ipairs(nginx_proxy_directives) do
         $(el.name) $(el.value);
 > end
 
@@ -208,7 +208,7 @@ http {
 > end
 
     # injected nginx_admin_* directives
-> for _, el in ipairs(nginx_admin_directives)  do
+> for _, el in ipairs(nginx_admin_directives) do
         $(el.name) $(el.value);
 > end
 
@@ -478,6 +478,11 @@ stream {
 > end
     lua_shared_dict stream_prometheus_metrics  5m;
 
+    # injected nginx_stream_* directives
+> for _, el in ipairs(nginx_stream_directives) do
+    $(el.name) $(el.value);
+> end
+
     upstream kong_upstream {
         server 0.0.0.1:1;
         balancer_by_lua_block {
@@ -515,12 +520,19 @@ stream {
         access_log logs/access.log basic;
         error_log logs/error.log debug;
 
+        # injected nginx_sproxy_* directives
+> for _, el in ipairs(nginx_sproxy_directives) do
+        $(el.name) $(el.value);
+> end
+
 > if ssl_preread_enabled then
         ssl_preread on;
 > end
+
         preread_by_lua_block {
             Kong.preread()
         }
+
         proxy_pass kong_upstream;
 
         log_by_lua_block {
