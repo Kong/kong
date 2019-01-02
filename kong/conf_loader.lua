@@ -39,6 +39,8 @@ local HEADER_KEY_TO_NAME = {
 local DYNAMIC_KEY_PREFIXES = {
   ["nginx_http_directives"] = "nginx_http_",
   ["nginx_proxy_directives"] = "nginx_proxy_",
+  ["nginx_stream_directives"] = "nginx_stream_",
+  ["nginx_sproxy_directives"] = "nginx_sproxy_",
   ["nginx_admin_directives"] = "nginx_admin_",
 }
 
