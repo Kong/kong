@@ -109,7 +109,7 @@ return {
                   { name = { type = "string", required = true, one_of = STAT_NAMES }, },
                   { stat_type = { type = "string", required = true, one_of = STAT_TYPES }, },
                   { tags = { type = "array", elements = { type = "string", match = "^.*[^:]$" }, }, },
-                  { sample_rate = { type = "number", between = { 1, math.huge }, }, },
+                  { sample_rate = { type = "number", between = { 0, 1 }, }, },
                   { consumer_identifier = { type = "string", one_of = CONSUMER_IDENTIFIERS }, },
                 },
                 entity_checks = {
