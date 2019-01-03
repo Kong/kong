@@ -79,6 +79,17 @@ do
       elseif type(v) == "table" then
         out[k] = fdata_to_jsonable(v)
 
+      elseif type(v) == "number" then
+        if v ~= v then
+          out[k] = "nan"
+        elseif v == math.huge then
+          out[k] = "inf"
+        elseif v == -math.huge then
+          out[k] = "-inf"
+        else
+          out[k] = v
+        end
+
       elseif type(v) ~= "function" then
         out[k] = v
       end
