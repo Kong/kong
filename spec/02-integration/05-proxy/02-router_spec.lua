@@ -882,6 +882,119 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
 
+    describe("path prefixes and regexes", function()
+      local routes
+
+      lazy_setup(function()
+        routes = insert_routes {
+          {
+            strip_path = true,
+            paths      = { "/root/fix" },
+          },
+          {
+            strip_path = true,
+            paths      = { "/root/(fixture)" },
+          },
+          {
+            strip_path = true,
+            paths      = { "/root2/fixture" },
+          },
+          {
+            strip_path = true,
+            paths      = { "/root2/fix" },
+          },
+          {
+            strip_path = true,
+            paths      = { "/root2/(fixture)" },
+          }
+
+        }
+      end)
+
+      lazy_teardown(function()
+        remove_routes(routes)
+      end)
+
+      it("prioritizes regexes over prefixes", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/root/fixture",
+          headers = {
+            ["kong-debug"] = 1,
+          }
+        })
+
+        assert.res_status(200, res)
+
+        assert.equal(routes[2].id,           res.headers["kong-route-id"])
+        assert.equal(routes[2].service.id,   res.headers["kong-service-id"])
+        assert.equal(routes[2].service.name, res.headers["kong-service-name"])
+      end)
+
+      it("prioritizes exact match over regexes and prefixes", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/root2/fixture",
+          headers = {
+            ["kong-debug"] = 1,
+          }
+        })
+
+        assert.res_status(200, res)
+
+        assert.equal(routes[3].id,           res.headers["kong-route-id"])
+        assert.equal(routes[3].service.id,   res.headers["kong-service-id"])
+        assert.equal(routes[3].service.name, res.headers["kong-service-name"])
+      end)
+
+    end)
+
+    describe("[paths]", function()
+      local routes
+
+      lazy_setup(function()
+        routes = insert_routes {
+          {
+            strip_path = true,
+            hosts      = { "route.com" },
+            paths      = { "/pat" },
+          },
+          {
+            strip_path = true,
+            hosts      = { "route.com" },
+            paths      = { "/path" },
+            methods    = { "POST" },
+          },
+          {
+            strip_path = true,
+            hosts      = { "route.com" },
+            paths      = { "/(path)" },
+          },
+        }
+      end)
+
+      lazy_teardown(function()
+        remove_routes(routes)
+      end)
+
+      it("matches regex path even when there is exact and prefix match", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/path",
+          headers = {
+            ["Host"]       = "route.com",
+            ["kong-debug"] = 1,
+          }
+        })
+
+        assert.res_status(200, res)
+
+        assert.equal(routes[3].id,           res.headers["kong-route-id"])
+        assert.equal(routes[3].service.id,   res.headers["kong-service-id"])
+        assert.equal(routes[3].service.name, res.headers["kong-service-name"])
+      end)
+    end)
+
     describe("slash handing", function()
       local checks = {
         -- upstream url    paths           request path    expected path           strip uri
