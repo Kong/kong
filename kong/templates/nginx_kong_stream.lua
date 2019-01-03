@@ -23,13 +23,6 @@ lua_shared_dict stream_prometheus_metrics  5m;
 $(el.name) $(el.value);
 > end
 
-upstream kong_upstream {
-    server 0.0.0.1:1;
-    balancer_by_lua_block {
-        Kong.balancer()
-    }
-}
-
 init_by_lua_block {
     -- shared dictionaries conflict between stream/http modules. use a prefix.
     local shared = ngx.shared
@@ -52,6 +45,13 @@ init_worker_by_lua_block {
     Kong.init_worker()
 }
 
+upstream kong_upstream {
+    server 0.0.0.1:1;
+    balancer_by_lua_block {
+        Kong.balancer()
+    }
+}
+
 server {
 > for i = 1, #stream_listeners do
     listen $(stream_listeners[i].listener);
@@ -59,6 +59,10 @@ server {
 
     access_log ${{PROXY_ACCESS_LOG}} basic;
     error_log ${{PROXY_ERROR_LOG}} ${{LOG_LEVEL}};
+
+> for i = 1, #trusted_ips do
+    set_real_ip_from   $(trusted_ips[i]);
+> end
 
     # injected nginx_sproxy_* directives
 > for _, el in ipairs(nginx_sproxy_directives) do
