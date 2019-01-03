@@ -12,6 +12,7 @@ error_log logs/error.log ${{LOG_LEVEL}};
 events {}
 
 http {
+> if #proxy_listeners > 0 or #admin_listeners > 0 then
     charset UTF-8;
 
     error_log logs/error.log ${{LOG_LEVEL}};
@@ -454,11 +455,11 @@ http {
             }
         }
     }
+> end
 }
 
 > if #stream_listeners > 0 then
 stream {
-
     log_format basic '$remote_addr [$time_local] '
                      '$protocol $status $bytes_sent $bytes_received '
                      '$session_time';
@@ -483,13 +484,6 @@ stream {
     $(el.name) $(el.value);
 > end
 
-    upstream kong_upstream {
-        server 0.0.0.1:1;
-        balancer_by_lua_block {
-            Kong.balancer()
-        }
-    }
-
     init_by_lua_block {
         -- shared dictionaries conflict between stream/http modules. use a prefix.
         local shared = ngx.shared
@@ -512,6 +506,13 @@ stream {
         Kong.init_worker()
     }
 
+    upstream kong_upstream {
+        server 0.0.0.1:1;
+        balancer_by_lua_block {
+            Kong.balancer()
+        }
+    }
+
     server {
 > for i = 1, #stream_listeners do
         listen $(stream_listeners[i].listener);
@@ -519,6 +520,10 @@ stream {
 
         access_log logs/access.log basic;
         error_log logs/error.log debug;
+
+> for i = 1, #trusted_ips do
+        set_real_ip_from   $(trusted_ips[i]);
+> end
 
         # injected nginx_sproxy_* directives
 > for _, el in ipairs(nginx_sproxy_directives) do
@@ -554,6 +559,5 @@ stream {
             ngx.say(data) -- echo whatever was sent
         }
     }
-
 }
 > end
