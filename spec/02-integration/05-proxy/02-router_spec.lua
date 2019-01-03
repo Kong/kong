@@ -882,6 +882,63 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
 
+    describe("[paths] + [hosts] (plain and wildcard)", function()
+      local routes
+
+      lazy_setup(function()
+        routes = insert_routes {
+          {
+            strip_path = true,
+            hosts      = { "*.route.com" },
+            paths      = { "/path1" },
+          },
+          {
+            strip_path = true,
+            hosts      = { "plain.route.com" },
+            paths      = { "/path2" },
+          },
+        }
+      end)
+
+      lazy_teardown(function()
+        remove_routes(routes)
+      end)
+
+      it("matches wildcard host even when there is plain host", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/path1",
+          headers = {
+            ["Host"]       = "plain.route.com",
+            ["kong-debug"] = 1,
+          }
+        })
+
+        assert.res_status(200, res)
+
+        assert.equal(routes[1].id,           res.headers["kong-route-id"])
+        assert.equal(routes[1].service.id,   res.headers["kong-service-id"])
+        assert.equal(routes[1].service.name, res.headers["kong-service-name"])
+      end)
+
+      it("matches plain host even when there is wildcard host", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/path2",
+          headers = {
+            ["Host"]       = "plain.route.com",
+            ["kong-debug"] = 1,
+          }
+        })
+
+        assert.res_status(200, res)
+
+        assert.equal(routes[2].id,           res.headers["kong-route-id"])
+        assert.equal(routes[2].service.id,   res.headers["kong-service-id"])
+        assert.equal(routes[2].service.name, res.headers["kong-service-name"])
+      end)
+    end)
+
     describe("slash handing", function()
       local checks = {
         -- upstream url    paths           request path    expected path           strip uri

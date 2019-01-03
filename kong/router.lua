@@ -512,7 +512,8 @@ end
 do
   local matchers = {
     [MATCH_RULES.HOST] = function(route_t, ctx)
-      local host = route_t.hosts[ctx.hits.host or ctx.req_host]
+      local host = route_t.hosts[ctx.req_host] or
+                   route_t.hosts[ctx.hits.host]
       if host then
         ctx.matches.host = host
 
@@ -705,7 +706,8 @@ end
 do
   local reducers = {
     [MATCH_RULES.HOST] = function(category, ctx)
-      return category.routes_by_hosts[ctx.hits.host]
+      return category.routes_by_hosts[ctx.req_host] or
+             category.routes_by_hosts[ctx.hits.host]
     end,
 
     [MATCH_RULES.URI] = function(category, ctx)
@@ -986,22 +988,23 @@ function _M.new(routes)
 
     -- host match
 
-    if plain_indexes.hosts[ctx.req_host] then
-      req_category = bor(req_category, MATCH_RULES.HOST)
-
-    elseif ctx.req_host then
+    do
+      local wildcard_match, _, err
       for i = 1, #wildcard_hosts do
-        local from, _, err = re_find(ctx.req_host, wildcard_hosts[i].regex, "ajo")
+        wildcard_match, _, err = re_find(ctx.req_host, wildcard_hosts[i].regex, "ajo")
         if err then
           log(ERR, "could not match wildcard host: ", err)
           return
         end
 
-        if from then
-          hits.host    = wildcard_hosts[i].value
-          req_category = bor(req_category, MATCH_RULES.HOST)
+        if wildcard_match then
+          hits.host = wildcard_hosts[i].value
           break
         end
+      end
+
+      if wildcard_match or plain_indexes.hosts[ctx.req_host] then
+        req_category = bor(req_category, MATCH_RULES.HOST)
       end
     end
 
