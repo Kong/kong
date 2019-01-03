@@ -379,31 +379,33 @@ local function issue_token(conf)
 
     -- Check client_id and redirect_uri
     local allowed_redirect_uris, client = get_redirect_uris(client_id)
-    if allowed_redirect_uris then
-      local redirect_uri = parameters[REDIRECT_URI] and
-                           parameters[REDIRECT_URI] or
-                           allowed_redirect_uris[1]
+    if not (grant_type == GRANT_CLIENT_CREDENTIALS) then
+      if allowed_redirect_uris then
+        local redirect_uri = parameters[REDIRECT_URI] and
+          parameters[REDIRECT_URI] or
+          allowed_redirect_uris[1]
 
-      if not table_contains(allowed_redirect_uris, redirect_uri) then
+        if not table_contains(allowed_redirect_uris, redirect_uri) then
+          response_params = {
+            [ERROR] = "invalid_request",
+            error_description = "Invalid " .. REDIRECT_URI .. " that does " ..
+              "not match with any redirect_uri created "  ..
+              "with the application"
+          }
+        end
+
+      else
         response_params = {
-          [ERROR] = "invalid_request",
-          error_description = "Invalid " .. REDIRECT_URI .. " that does " ..
-                              "not match with any redirect_uri created "  ..
-                              "with the application"
+          [ERROR] = "invalid_client",
+          error_description = "Invalid client authentication"
         }
-      end
 
-    else
-      response_params = {
-        [ERROR] = "invalid_client",
-        error_description = "Invalid client authentication"
-      }
-
-      if from_authorization_header then
-        invalid_client_properties = {
-          status = 401,
-          www_authenticate = "Basic realm=\"OAuth2.0\""
-        }
+        if from_authorization_header then
+          invalid_client_properties = {
+            status = 401,
+            www_authenticate = "Basic realm=\"OAuth2.0\""
+          }
+        end
       end
     end
 

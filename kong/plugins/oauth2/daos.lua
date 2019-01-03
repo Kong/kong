@@ -29,7 +29,7 @@ local oauth2_credentials = {
     { client_secret = { type = "string", required = false, auto = true }, },
     { redirect_uris = {
       type = "array",
-      required = true,
+      required = false,
       elements = {
         type = "string",
         custom_validator = validate_uri,

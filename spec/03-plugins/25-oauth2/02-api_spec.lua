@@ -64,6 +64,21 @@ for _, strategy in helpers.each_strategy() do
           assert.equal(consumer.id, body.consumer.id)
           assert.equal("Test APP", body.name)
           assert.same({ "http://google.com/" }, body.redirect_uris)
+
+          res = assert(admin_client:send {
+            method = "POST",
+            path   = "/consumers/bob/oauth2",
+            body   = {
+              name          = "Test APP",
+            },
+            headers = {
+              ["Content-Type"] = "application/json"
+            }
+          })
+          local body = cjson.decode(assert.res_status(201, res))
+          assert.equal(consumer.id, body.consumer.id)
+          assert.equal("Test APP", body.name)
+          assert.same(ngx.null, body.redirect_uris)
         end)
         it("creates a oauth2 credential with multiple redirect_uris", function()
           local res = assert(admin_client:send {
@@ -122,7 +137,7 @@ for _, strategy in helpers.each_strategy() do
             })
             local body = assert.res_status(400, res)
             local json = cjson.decode(body)
-            assert.same({ redirect_uris = "required field missing", name = "required field missing" }, json.fields)
+            assert.same({ name = "required field missing" }, json.fields)
           end)
           it("returns bad request with invalid redirect_uris", function()
             local res = assert(admin_client:send {
@@ -206,6 +221,22 @@ for _, strategy in helpers.each_strategy() do
           assert.equal("Test APP", body.name)
           assert.equal("client_one", body.client_id)
           assert.same({ "http://google.com/" }, body.redirect_uris)
+
+          local res = assert(admin_client:send {
+            method  = "PUT",
+            path    = "/consumers/bob/oauth2/client_one",
+            body = {
+              name             = "Test APP",
+            },
+            headers = {
+              ["Content-Type"] = "application/json"
+            }
+          })
+          local body = cjson.decode(assert.res_status(200, res))
+          assert.equal(consumer.id, body.consumer.id)
+          assert.equal("Test APP", body.name)
+          assert.equal("client_one", body.client_id)
+          assert.same(ngx.null, body.redirect_uris)
         end)
         describe("errors", function()
           it("returns bad request", function()
@@ -219,7 +250,7 @@ for _, strategy in helpers.each_strategy() do
             })
             local body = assert.res_status(400, res)
             local json = cjson.decode(body)
-            assert.same({ redirect_uris = "required field missing", name = "required field missing" }, json.fields)
+            assert.same({ name = "required field missing" }, json.fields)
           end)
         end)
       end)

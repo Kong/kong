@@ -148,6 +148,14 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
         consumer      = { id = consumer.id },
       }
 
+      admin_api.oauth2_credentials:insert {
+        client_id     = "clientid10112",
+        client_secret = "secret10112",
+        redirect_uris = ngx.null,
+        name          = "testapp311",
+        consumer      = { id = consumer.id },
+      }
+
       local service1    = admin_api.services:insert()
       local service2    = admin_api.services:insert()
       local service2bis = admin_api.services:insert()
@@ -1057,25 +1065,23 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
           local body = assert.res_status(200, res)
           assert.is_table(ngx.re.match(body, [[^\{"token_type":"bearer","access_token":"[\w]{32,32}","expires_in":5\}$]]))
         end)
-        it("fails with an application that has multiple redirect_uri, and by passing an invalid redirect_uri", function()
+        it("returns success with an application that has not redirect_uri", function()
           local res = assert(proxy_ssl_client:send {
             method  = "POST",
             path    = "/oauth2/token",
             body    = {
-              client_id        = "clientid456",
-              client_secret    = "secret456",
+              client_id        = "clientid10112",
+              client_secret    = "secret10112",
               scope            = "email",
               grant_type       = "client_credentials",
-              redirect_uri     = "http://two.com/two/hello"
             },
             headers = {
               ["Host"]         = "oauth2_4.com",
               ["Content-Type"] = "application/json"
             }
           })
-          local body = assert.res_status(400, res)
-          local json = cjson.decode(body)
-          assert.same({ error = "invalid_request", error_description = "Invalid redirect_uri that does not match with any redirect_uri created with the application" }, json)
+          local body = assert.res_status(200, res)
+          assert.is_table(ngx.re.match(body, [[^\{"token_type":"bearer","access_token":"[\w]{32,32}","expires_in":5\}$]]))
         end)
         it("returns success with authenticated_userid and valid provision_key", function()
           local res = assert(proxy_ssl_client:send {
