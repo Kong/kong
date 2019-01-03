@@ -1208,6 +1208,21 @@ local function get_counts_for_ws(dao, workspace_id)
     end
 
     counts[k] = #res
+
+
+    -- When the migration that initializes the workspace counts runs, check
+    -- if there's only one admin consumer in a given workspace. If so, do not
+    -- count it. This has the effect that new installations do not see
+    -- consumer count =1.
+    -- Only do this check when count is 1 as we accept small divergences for
+    -- bigger numbers.
+    if k == "consumers" and counts[k] == 1 then
+      local consumer, err = dao.consumers:find({id = res[1].unique_field_value})
+      if not err and consumer.type ~= enums.CONSUMERS.TYPE.PROXY then
+        counts[k] = 0
+      end
+    end
+
   end
 
   return counts
