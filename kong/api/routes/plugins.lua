@@ -1,5 +1,4 @@
 local kong = kong
-local null = ngx.null
 local cjson = require "cjson"
 local utils = require "kong.tools.utils"
 local reports = require "kong.reports"
@@ -104,15 +103,25 @@ end
 
 local function post_process(data)
   local r_data = utils.deep_copy(data)
+
   r_data.config = nil
-  if data.service ~= null and data.service.id then
+  r_data.route = nil
+  r_data.service = nil
+  r_data.consumer = nil
+  r_data.enabled = nil
+
+  if type(data.service) == "table" and data.service.id then
     r_data.e = "s"
-  elseif data.route ~= null and data.route.id then
+
+  elseif type(data.route) == "table" and data.route.id then
     r_data.e = "r"
-  elseif data.consumer ~= null and data.consumer.id then
+
+  elseif type(data.consumer) == "table" and data.consumer.id then
     r_data.e = "c"
   end
+
   reports.send("api", r_data)
+
   return data
 end
 
