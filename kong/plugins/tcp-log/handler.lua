@@ -36,7 +36,7 @@ local function log(premature, conf, message)
     end
   end
 
-  ok, err = sock:send(cjson.encode(message) .. "\r\n")
+  ok, err = sock:send(cjson.encode(message) .. "\n")
   if not ok then
     ngx.log(ngx.ERR, "[tcp-log] failed to send data to " .. host .. ":" .. tostring(port) .. ": ", err)
   end
