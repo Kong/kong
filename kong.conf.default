@@ -372,6 +372,10 @@
 #pg_password =                   # The password to authenticate if required.
 #pg_database = kong              # The database name to connect to.
 
+#pg_schema =                     # The database schema to use. If unspecified,
+                                 # Kong will respect the `search_path` value of
+                                 # your PostgreSQL instance.
+
 #pg_ssl = off                    # Toggles client-server TLS connections
                                  # between Kong and PostgreSQL.
 
