@@ -67,6 +67,7 @@ if [ ! "$(ls -A $OPENRESTY_INSTALL)" ]; then
     "--with-http_stub_status_module"
     "--with-http_v2_module"
     "--with-stream_ssl_preread_module"
+    "--with-stream_realip_module"
   )
 
   pushd $OPENRESTY_DOWNLOAD
