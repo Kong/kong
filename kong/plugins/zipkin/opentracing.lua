@@ -199,7 +199,9 @@ function OpenTracingHandler:log(conf)
 			span:finish((try.balancer_start + try.balancer_latency) / 1000)
 		end
 		proxy_span:set_tag("peer.hostname", balancer_data.hostname) -- could be nil
-		proxy_span:set_tag(ip_tag(balancer_data.ip), balancer_data.ip)
+		if balancer_data.ip ~= nil then
+		   proxy_span:set_tag(ip_tag(balancer_data.ip), balancer_data.ip)
+		end
 		proxy_span:set_tag("peer.port", balancer_data.port)
 	end
 

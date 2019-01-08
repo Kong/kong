@@ -1,3 +1,8 @@
+UNRELEASED
+
+  - Fix logging failure when DNS is not resolved
+
+
 0.1.1 - 2018-10-26
 
   - Add `run_on` field to the plugin's config
