@@ -9,7 +9,7 @@ local plugin_name = ({...})[1]:match("^kong%.plugins%.([^%.]+)")
 local KongSessionHandler = BasePlugin:extend()
 
 KongSessionHandler.PRIORITY = 1900
-KongSessionHandler.VERSION = "0.1.0-1"
+KongSessionHandler.VERSION = "0.1.1"
 
 function KongSessionHandler:new()
   KongSessionHandler.super.new(self, plugin_name)
