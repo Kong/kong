@@ -501,6 +501,8 @@ function Kong.init_worker()
     kong_global.set_namespaced_log(kong, plugin.name)
 
     plugin.handler:init_worker()
+
+    kong_global.reset_log(kong)
   end
 end
 

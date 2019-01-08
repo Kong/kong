@@ -230,14 +230,27 @@ for _, strategy in helpers.each_strategy() do
 
     describe("/plugins/schema/{plugin}", function()
       describe("GET", function()
-        it("returns the schema of a plugin config", function()
+        it("returns the schema of all bundled plugins", function()
+          for plugin, _ in pairs(helpers.test_conf.loaded_plugins) do
+            local res = assert(client:send {
+              method = "GET",
+              path = "/plugins/schema/" .. plugin,
+            })
+            local body = assert.res_status(200, res)
+            local json = cjson.decode(body)
+            assert.is_table(json.fields)
+          end
+        end)
+        it("returns nested records and empty array defaults as arrays", function()
           local res = assert(client:send {
             method = "GET",
             path = "/plugins/schema/request-transformer",
           })
           local body = assert.res_status(200, res)
-          local json = cjson.decode(body)
-          assert.is_table(json.fields)
+          assert.match('{"fields":[{', body, 1, true)
+          assert.not_match('"fields":{', body, 1, true)
+          assert.match('"default":[]', body, 1, true)
+          assert.not_match('"default":{}', body, 1, true)
         end)
         it("returns 404 on invalid plugin", function()
           local res = assert(client:send {

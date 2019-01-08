@@ -42,7 +42,13 @@ local function parse_params(fn)
 
     self.params = api_helpers.normalize_nested_params(self.params)
 
-    local res = fn(self, ...)
+    local res, err = fn(self, ...)
+
+    if err then
+      kong.log.err(err)
+      return ngx.exit(500)
+    end
+
     if res == nil and ngx.status >= 200 then
       return ngx.exit(0)
     end

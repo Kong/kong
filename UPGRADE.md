@@ -59,13 +59,12 @@ complete list of changes and new features.
 ##### Dependencies
 
 - The required OpenResty version is 1.13.6.2, but for a full feature set,
-  including stream routing and service mesh abilities with mutual TLS,
-  you need Kong's [openresty-patches](https://github.com/kong/openresty-patches).
-  The minimum required OpenSSL version is 1.1.1. If you are building by
-  hand, make sure all dependencies, including LuaRocks modules, are
-  compiled using the same OpenSSL version.
-  If you are installing Kong from one of our distribution packages, you are not
-  affected by this change.
+  including stream routing and service mesh abilities with mutual TLS, you need
+  Kong's [openresty-patches](https://github.com/kong/openresty-patches).
+- The minimum required OpenSSL version is 1.1.1. If you are building by hand,
+  make sure all dependencies, including LuaRocks modules, are compiled using
+  the same OpenSSL version. If you are installing Kong from one of our
+  distribution packages, you are not affected by this change.
 
 ##### Configuration
 
@@ -176,7 +175,9 @@ plugins is now removed.
   by the PDK in 0.14.0 are now removed:
   - `kong.tools.ip`: use `kong.ip` from the PDK instead.
   - `kong.tools.public`: replaced by various functionalities
-    of the PDK
+    of the PDK.
+  - `kong.tools.responses`: use `kong.response.exit` from the PDK instead. You
+    might want to use `kong.log.err` to log internal server errors as well.
 - The `kong.api.crud_helpers` module was removed.
   Use `kong.api.endpoints` instead if you need to customize
   the auto-generated endpoints.

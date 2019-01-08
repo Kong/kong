@@ -1,5 +1,4 @@
 local kong = kong
-local null = ngx.null
 local cjson = require "cjson"
 local utils = require "kong.tools.utils"
 local reports = require "kong.reports"
@@ -70,33 +69,77 @@ end
 -- cjson can encode the schema.
 local schema_to_jsonable
 do
-  local function fdata_to_jsonable(fdata)
+  local insert = table.insert
+  local ipairs = ipairs
+  local next = next
+
+  local fdata_to_jsonable
+
+
+  local function fields_to_jsonable(fields)
     local out = {}
-    for k, v in pairs(fdata) do
+    for _, field in ipairs(fields) do
+      local fname = next(field)
+      local fdata = field[fname]
+      insert(out, { [fname] = fdata_to_jsonable(fdata, "no") })
+    end
+    setmetatable(out, cjson.array_mt)
+    return out
+  end
+
+
+  -- Convert field data from schemas into something that can be
+  -- passed to a JSON encoder.
+  -- @tparam table fdata A Lua table with field data
+  -- @tparam string is_array A three-state enum: "yes", "no" or "maybe"
+  -- @treturn table A JSON-convertible Lua table
+  fdata_to_jsonable = function(fdata, is_array)
+    local out = {}
+    local iter = is_array == "yes" and ipairs or pairs
+
+    for k, v in iter(fdata) do
+      if is_array == "maybe" and type(k) ~= "number" then
+        is_array = "no"
+      end
+
       if k == "schema" then
         out[k] = schema_to_jsonable(v)
 
       elseif type(v) == "table" then
-        out[k] = fdata_to_jsonable(v)
+        if k == "fields" and fdata.type == "record" then
+          out[k] = fields_to_jsonable(v)
+
+        elseif k == "default" and fdata.type == "array" then
+          out[k] = fdata_to_jsonable(v, "yes")
+
+        else
+          out[k] = fdata_to_jsonable(v, "maybe")
+        end
+
+      elseif type(v) == "number" then
+        if v ~= v then
+          out[k] = "nan"
+        elseif v == math.huge then
+          out[k] = "inf"
+        elseif v == -math.huge then
+          out[k] = "-inf"
+        else
+          out[k] = v
+        end
 
       elseif type(v) ~= "function" then
         out[k] = v
       end
     end
+    if is_array == "yes" or is_array == "maybe" then
+      setmetatable(out, cjson.array_mt)
+    end
     return out
   end
 
-  local insert = table.insert
-  local ipairs = ipairs
-  local next = next
 
   schema_to_jsonable = function(schema)
-    local fields = {}
-    for _, field in ipairs(schema.fields) do
-      local fname = next(field)
-      local fdata = field[fname]
-      insert(fields, { [fname] = fdata_to_jsonable(fdata) })
-    end
+    local fields = fields_to_jsonable(schema.fields)
     return { fields = fields }
   end
 end
@@ -104,15 +147,25 @@ end
 
 local function post_process(data)
   local r_data = utils.deep_copy(data)
+
   r_data.config = nil
-  if data.service ~= null and data.service.id then
+  r_data.route = nil
+  r_data.service = nil
+  r_data.consumer = nil
+  r_data.enabled = nil
+
+  if type(data.service) == "table" and data.service.id then
     r_data.e = "s"
-  elseif data.route ~= null and data.route.id then
+
+  elseif type(data.route) == "table" and data.route.id then
     r_data.e = "r"
-  elseif data.consumer ~= null and data.consumer.id then
+
+  elseif type(data.consumer) == "table" and data.consumer.id then
     r_data.e = "c"
   end
+
   reports.send("api", r_data)
+
   return data
 end
 
@@ -161,7 +214,7 @@ return {
 
   ["/plugins/enabled"] = {
     GET = function(_, _, helpers)
-      local enabled_plugins = setmetatable({}, cjson.empty_array_mt)
+      local enabled_plugins = setmetatable({}, cjson.array_mt)
       for k in pairs(singletons.configuration.loaded_plugins) do
         enabled_plugins[#enabled_plugins+1] = k
       end
