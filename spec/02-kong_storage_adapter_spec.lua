@@ -1,6 +1,13 @@
 local helpers = require "spec.helpers"
 local utils = require "kong.tools.utils"
 
+
+function get_sid_from_cookie(cookie)
+  local cookie_parts = utils.split(cookie, "; ")
+  return utils.split(utils.split(cookie_parts[1], "|")[1], "=")[2]
+end
+
+
 for _, strategy in helpers.each_strategy() do
   describe("Plugin: Session (kong storage adapter) [#" .. strategy .. "]", function()
     local client, bp, dao
@@ -108,9 +115,6 @@ for _, strategy in helpers.each_strategy() do
         assert.response(res).has.status(200)
         cookie = assert.response(res).has.header("Set-Cookie")
         
-        local cookie_parts = utils.split(cookie, "; ")
-        local sid = utils.split(utils.split(cookie_parts[1], "|")[1], "=")[2]
-        
         ngx.sleep(2)
 
         -- use the cookie without the key to ensure cookie still lets them in
@@ -124,6 +128,7 @@ for _, strategy in helpers.each_strategy() do
         assert.response(res).has.status(200)
 
         -- make sure it's in the db
+        local sid = get_sid_from_cookie(cookie)
         assert.equal(sid, dao.sessions:find_all({session_id = sid})[1].session_id)
       end)
 
@@ -149,7 +154,7 @@ for _, strategy in helpers.each_strategy() do
 
         -- make sure the anonymous consumer can't get in (request termination)
         res = assert(client:send(request))
-          assert.response(res).has.status(403)
+        assert.response(res).has.status(403)
   
         -- make a request with a valid key, grab the cookie for later
         request.headers.apikey = "kong"
@@ -168,6 +173,52 @@ for _, strategy in helpers.each_strategy() do
         -- renewal period, make sure requests still come through and
         -- if set-cookie header comes through, attach it to subsequent requests
         send_requests(request, 5, 0.5)
+      end)
+
+      it("destroys session on logout", function()  
+        local res, cookie
+        local request = {
+          method = "GET",
+          path = "/test2/status/200",
+          headers = { host = "httpbin.org", },
+        }
+
+        -- make sure the anonymous consumer can't get in (request termination)
+        res = assert(client:send(request))
+        assert.response(res).has.status(403)
+  
+        -- make a request with a valid key, grab the cookie for later
+        request.headers.apikey = "kong"
+        res = assert(client:send(request))
+        assert.response(res).has.status(200)
+        cookie = assert.response(res).has.header("Set-Cookie")
+
+        ngx.sleep(2)
+
+        -- use the cookie without the key to ensure cookie still lets them in
+        request.headers.apikey = nil
+        request.headers.cookie = cookie
+        res = assert(client:send(request))
+        assert.response(res).has.status(200)
+
+        -- session should be in the table initially
+        local sid = get_sid_from_cookie(cookie)
+        assert.equal(sid, dao.sessions:find_all({session_id = sid})[1].session_id)
+
+        -- logout request
+        res = assert(client:send({
+          method = "DELETE",
+          path = "/test2/status/200?session_logout=true",
+          headers = {
+            cookie = cookie,
+            host = "httpbin.org",
+          }
+        }))
+
+        assert.response(res).has.status(200)
+
+        -- logged out, no sessions should be in the table
+        assert.equal(0, #dao.sessions:find_all({session_id = sid}))
       end)
     end)
   end)
