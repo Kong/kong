@@ -42,8 +42,8 @@ lua_shared_dict kong_cassandra      5m;
 lua_socket_log_errors off;
 > if lua_ssl_trusted_certificate then
 lua_ssl_trusted_certificate '${{LUA_SSL_TRUSTED_CERTIFICATE}}';
-lua_ssl_verify_depth ${{LUA_SSL_VERIFY_DEPTH}};
 > end
+lua_ssl_verify_depth ${{LUA_SSL_VERIFY_DEPTH}};
 
 # injected nginx_http_* directives
 > for _, el in ipairs(nginx_http_directives)  do
