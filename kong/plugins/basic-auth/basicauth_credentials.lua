@@ -2,8 +2,8 @@ local crypto = require "kong.plugins.basic-auth.crypto"
 local utils = require "kong.tools.utils"
 
 
-local encrypt_password = function(self, cred_id_or_username, cred)
-  -- Don't re-encrypt the password digest on update, if the password hasn't changed
+local hash_password = function(self, cred_id_or_username, cred)
+  -- Don't re-hash the password digest on update, if the password hasn't changed
   -- This causes a bug when a new password is effectively equal the to previous digest
   local existing
   if cred_id_or_username then
@@ -27,7 +27,7 @@ local encrypt_password = function(self, cred_id_or_username, cred)
     end
   end
 
-  cred.password = crypto.encrypt(cred.consumer.id, cred.password)
+  cred.password = crypto.hash(cred.consumer.id, cred.password)
 
   return true
 end
@@ -37,7 +37,7 @@ local _BasicauthCredentials = {}
 
 
 function _BasicauthCredentials:insert(cred, options)
-  local ok, err, err_t = encrypt_password(self, cred.id, cred)
+  local ok, err, err_t = hash_password(self, cred.id, cred)
   if not ok then
     return nil, err, err_t
   end
@@ -46,7 +46,7 @@ end
 
 
 function _BasicauthCredentials:update(cred_pk, cred, options)
-  local ok, err, err_t = encrypt_password(self, cred_pk.id, cred)
+  local ok, err, err_t = hash_password(self, cred_pk.id, cred)
   if not ok then
     return nil, err, err_t
   end
@@ -55,7 +55,7 @@ end
 
 
 function _BasicauthCredentials:update_by_username(username, cred, options)
-  local ok, err, err_t = encrypt_password(self, username, cred)
+  local ok, err, err_t = hash_password(self, username, cred)
   if not ok then
     return nil, err, err_t
   end
@@ -64,7 +64,7 @@ end
 
 
 function _BasicauthCredentials:upsert(cred_pk, cred, options)
-  local ok, err, err_t = encrypt_password(self, cred_pk.id, cred)
+  local ok, err, err_t = hash_password(self, cred_pk.id, cred)
   if not ok then
     return nil, err, err_t
   end
@@ -73,7 +73,7 @@ end
 
 
 function _BasicauthCredentials:upsert_by_username(username, cred, options)
-  local ok, err, err_t = encrypt_password(self, username, cred)
+  local ok, err, err_t = hash_password(self, username, cred)
   if not ok then
     return nil, err, err_t
   end
