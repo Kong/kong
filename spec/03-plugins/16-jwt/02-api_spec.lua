@@ -1,6 +1,6 @@
 local helpers  = require "spec.helpers"
 local cjson    = require "cjson"
-local fixtures = require "spec.03-plugins.17-jwt.fixtures"
+local fixtures = require "spec.03-plugins.16-jwt.fixtures"
 local utils    = require "kong.tools.utils"
 
 for _, strategy in helpers.each_strategy() do
