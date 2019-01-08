@@ -10,6 +10,7 @@ local arguments   = require "kong.api.arguments"
 local Errors      = require "kong.db.errors"
 
 
+local kong     = kong
 local ngx      = ngx
 local sub      = string.sub
 local find     = string.find
@@ -44,6 +45,8 @@ local function parse_params(fn)
 
     local res, err = fn(self, ...)
 
+    kong.db:setkeepalive()
+
     if err then
       kong.log.err(err)
       return ngx.exit(500)
@@ -60,6 +63,8 @@ end
 
 -- new DB
 local function new_db_on_error(self)
+  kong.db:setkeepalive()
+
   local err = self.errors[1]
 
   if type(err) ~= "table" then
@@ -96,6 +101,8 @@ end
 
 -- old DAO
 local function on_error(self)
+  kong.db:setkeepalive()
+
   local err = self.errors[1]
 
   if type(err) ~= "table" then
@@ -144,6 +151,8 @@ end
 
 
 app.handle_error = function(self, err, trace)
+  kong.db:setkeepalive()
+
   if err then
     if type(err) ~= "string" then
       err = pl_pretty.write(err)

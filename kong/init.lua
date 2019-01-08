@@ -121,7 +121,7 @@ local schema_state
 local function build_plugins_map(db, version)
   local map = {}
 
-  for plugin, err in db.plugins:each() do
+  for plugin, err in db.plugins:each(1000) do
     if err then
       return nil, err
     end
@@ -289,6 +289,7 @@ function Kong.init()
   end
   --]]
 
+  assert(db:connect())
   assert(db.plugins:check_db_against_config(config.loaded_plugins))
 
   -- LEGACY
@@ -344,12 +345,10 @@ function Kong.init()
   sort_plugins_for_execution(config, db, loaded_plugins)
 
   local err
-  plugins_map_semaphore, err = semaphore.new()
+  plugins_map_semaphore, err = semaphore.new(1) -- one resource, treat this as a mutex
   if not plugins_map_semaphore then
     error("failed to create plugins map semaphore: " .. err)
   end
-
-  plugins_map_semaphore:post(1) -- one resource, treat this as a mutex
 
   local _, err = build_plugins_map(db, "init")
   if err then
@@ -357,6 +356,8 @@ function Kong.init()
   end
 
   assert(runloop.build_router(db, "init"))
+
+  assert(db:close())
 end
 
 
@@ -385,7 +386,6 @@ function Kong.init_worker()
 
   -- init DB
 
-
   local ok, err = kong.db:init_worker()
   if not ok then
     ngx_log(ngx_CRIT, "could not init DB: ", err)
@@ -395,12 +395,12 @@ function Kong.init_worker()
 
   if ngx.worker.id() == 0 then
     if schema_state.missing_migrations then
-      ngx.log(ngx.WARN, "missing migrations: ",
+      ngx_log(ngx.WARN, "missing migrations: ",
               list_migrations(schema_state.missing_migrations))
     end
 
     if schema_state.pending_migrations then
-      ngx.log(ngx.INFO, "starting with pending migrations: ",
+      ngx_log(ngx.INFO, "starting with pending migrations: ",
               list_migrations(schema_state.pending_migrations))
     end
   end
@@ -503,6 +503,13 @@ function Kong.init_worker()
     plugin.handler:init_worker()
 
     kong_global.reset_log(kong)
+  end
+
+
+  local ok, err = kong.db:setkeepalive()
+  if not ok then
+    ngx_log(ngx_CRIT, "could not set DB connection keep-alive: ", err)
+    return
   end
 end
 
@@ -770,6 +777,11 @@ function Kong.log()
   end
 
   runloop.log.after(ctx)
+
+  local ok, err = kong.db:setkeepalive()
+  if not ok then
+    kong.log.notice(err)
+  end
 end
 
 function Kong.handle_error()

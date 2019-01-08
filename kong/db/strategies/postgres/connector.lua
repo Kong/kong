@@ -223,8 +223,8 @@ local _mt = {}
 _mt.__index = _mt
 
 
-function _mt:get_stored_connection()
-  local conn = self.super.get_stored_connection(self)
+function _mt:get_stored_connection(closing)
+  local conn = self.super.get_stored_connection(self, closing)
   if conn and conn.sock then
     return conn
   end
@@ -333,10 +333,12 @@ function _mt:infos()
 end
 
 
-function _mt:connect()
-  local conn = self:get_stored_connection()
-  if conn then
-    return conn
+function _mt:connect(opts)
+  if opts and not opts.reconnect then
+    local conn = self:get_stored_connection()
+    if conn then
+      return conn
+    end
   end
 
   local connection, err = connect(self.config)
@@ -356,7 +358,7 @@ end
 
 
 function _mt:close()
-  local conn = self:get_stored_connection()
+  local conn = self:get_stored_connection(true)
   if not conn then
     return true
   end
@@ -374,7 +376,7 @@ end
 
 
 function _mt:setkeepalive()
-  local conn = self:get_stored_connection()
+  local conn = self:get_stored_connection(true)
   if not conn then
     return true
   end

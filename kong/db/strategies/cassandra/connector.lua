@@ -172,10 +172,12 @@ function CassandraConnector:infos()
 end
 
 
-function CassandraConnector:connect()
-  local conn = self:get_stored_connection()
-  if conn then
-    return conn
+function CassandraConnector:connect(opts)
+  if opts and not opts.reconnect then
+    local conn = self:get_stored_connection()
+    if conn then
+      return conn
+    end
   end
 
   local peer, err = self.cluster:next_coordinator()
@@ -218,9 +220,9 @@ end
 
 
 function CassandraConnector:setkeepalive()
-  local conn = self:get_stored_connection()
+  local conn = self:get_stored_connection(true)
   if not conn then
-    return
+    return true
   end
 
   local ok, err = conn:setkeepalive()
@@ -236,9 +238,9 @@ end
 
 
 function CassandraConnector:close()
-  local conn = self:get_stored_connection()
+  local conn = self:get_stored_connection(true)
   if not conn then
-    return
+    return true
   end
 
   local ok, err = conn:close()

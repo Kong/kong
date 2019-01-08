@@ -1,6 +1,9 @@
 local fmt = string.format
 
 
+local RECONNECT = { reconnect = true }
+
+
 local Connector = {}
 
 
@@ -35,13 +38,22 @@ do
   end
 
 
-  function Connector:get_stored_connection()
+  function Connector:get_stored_connection(closing)
     if not past_init and ngx and ngx.get_phase() ~= "init" then
       past_init = true
     end
 
     if ngx and past_init then
-      return ngx.ctx.connection
+      local connection = ngx.ctx.connection
+      if connection then
+        return connection
+      end
+
+      if closing then
+        return nil
+      end
+
+      return self:connect(RECONNECT)
     end
 
     return self.connection

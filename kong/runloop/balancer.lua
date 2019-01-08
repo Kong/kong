@@ -471,7 +471,7 @@ do
   -- and upstream entity tables as values, or nil+error
   local function load_upstreams_dict_into_memory()
     local upstreams_dict = {}
-    for up in singletons.db.upstreams:each() do
+    for up in singletons.db.upstreams:each(1000) do
     -- build a dictionary, indexed by the upstream name
       upstreams_dict[up.name] = up.id
     end
