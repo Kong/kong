@@ -126,7 +126,7 @@ end
 
 
 function kong_storage:destroy(id)
-  local db_s = self:get(id)
+  local db_s = self:get(self.encode(id))
 
   if not db_s then
     return
