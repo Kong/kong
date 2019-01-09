@@ -289,6 +289,7 @@ function Kong.init()
   end
   --]]
 
+  assert(db:connect())
   assert(db.plugins:check_db_against_config(config.loaded_plugins))
 
   -- LEGACY
@@ -344,12 +345,10 @@ function Kong.init()
   sort_plugins_for_execution(config, db, loaded_plugins)
 
   local err
-  plugins_map_semaphore, err = semaphore.new()
+  plugins_map_semaphore, err = semaphore.new(1) -- 1 = treat this as a mutex
   if not plugins_map_semaphore then
     error("failed to create plugins map semaphore: " .. err)
   end
-
-  plugins_map_semaphore:post(1) -- one resource, treat this as a mutex
 
   local _, err = build_plugins_map(db, "init")
   if err then
@@ -357,6 +356,8 @@ function Kong.init()
   end
 
   assert(runloop.build_router(db, "init"))
+
+  assert(db:close())
 end
 
 
