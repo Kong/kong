@@ -436,7 +436,7 @@ return {
         log(DEBUG, "[events] SSL cert updated, invalidating cached certificates")
         local certificate = data.entity
 
-        for sn, err in db.snis:each_for_certificate({ id = certificate.id }) do
+        for sn, err in db.snis:each_for_certificate({ id = certificate.id }, 1000) do
           if err then
             log(ERR, "[events] could not find associated snis for certificate: ",
                      err)

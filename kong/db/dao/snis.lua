@@ -87,7 +87,7 @@ end
 function _SNIs:list_for_certificate(cert_pk, options)
   local name_list = setmetatable({}, cjson.empty_array_mt)
 
-  for sni, err, err_t in self:each_for_certificate(cert_pk, options) do
+  for sni, err, err_t in self:each_for_certificate(cert_pk, 1000, options) do
     if err then
       return nil, err, err_t
     end

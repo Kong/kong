@@ -121,7 +121,7 @@ local schema_state
 local function build_plugins_map(db, version)
   local map = {}
 
-  for plugin, err in db.plugins:each() do
+  for plugin, err in db.plugins:each(1000) do
     if err then
       return nil, err
     end

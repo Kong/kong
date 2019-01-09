@@ -24,7 +24,7 @@ return {
 
       do
         local set = {}
-        for row, err in kong.db.plugins:each() do
+        for row, err in kong.db.plugins:each(1000) do
           if err then
             kong.log.err(err)
             return kong.response.exit(500, { message = "An unexpected error happened" })
