@@ -116,33 +116,33 @@ end
 
 local serializers = {
   [1] = function(buf, to_string, ...)
-    buf[1] = to_string(select(1, ...))
+    buf[1] = to_string((select(1, ...)))
   end,
 
   [2] = function(buf, to_string, ...)
-    buf[1] = to_string(select(1, ...))
-    buf[2] = to_string(select(2, ...))
+    buf[1] = to_string((select(1, ...)))
+    buf[2] = to_string((select(2, ...)))
   end,
 
   [3] = function(buf, to_string, ...)
-    buf[1] = to_string(select(1, ...))
-    buf[2] = to_string(select(2, ...))
-    buf[3] = to_string(select(3, ...))
+    buf[1] = to_string((select(1, ...)))
+    buf[2] = to_string((select(2, ...)))
+    buf[3] = to_string((select(3, ...)))
   end,
 
   [4] = function(buf, to_string, ...)
-    buf[1] = to_string(select(1, ...))
-    buf[2] = to_string(select(2, ...))
-    buf[3] = to_string(select(3, ...))
-    buf[4] = to_string(select(4, ...))
+    buf[1] = to_string((select(1, ...)))
+    buf[2] = to_string((select(2, ...)))
+    buf[3] = to_string((select(3, ...)))
+    buf[4] = to_string((select(4, ...)))
   end,
 
   [5] = function(buf, to_string, ...)
-    buf[1] = to_string(select(1, ...))
-    buf[2] = to_string(select(2, ...))
-    buf[3] = to_string(select(3, ...))
-    buf[4] = to_string(select(4, ...))
-    buf[5] = to_string(select(5, ...))
+    buf[1] = to_string((select(1, ...)))
+    buf[2] = to_string((select(2, ...)))
+    buf[3] = to_string((select(3, ...)))
+    buf[4] = to_string((select(4, ...)))
+    buf[5] = to_string((select(5, ...)))
   end,
 }
 
@@ -298,7 +298,7 @@ local function gen_log_func(lvl_const, imm_buf, to_string, stack_level, sep)
 
     else
       for i = 1, n do
-        variadic_buf[i] = to_string(select(i, ...))
+        variadic_buf[i] = to_string((select(i, ...)))
       end
     end
 
