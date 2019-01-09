@@ -54,4 +54,3 @@ GET /t
 consumer: nil
 --- no_error_log
 [error]
-
