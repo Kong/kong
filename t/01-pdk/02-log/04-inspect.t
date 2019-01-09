@@ -3,7 +3,7 @@ use warnings FATAL => 'all';
 use Test::Nginx::Socket::Lua;
 use t::Util;
 
-plan tests => repeat_each() * (blocks() * 4);
+plan tests => repeat_each() * (blocks() * 4 + 6);
 
 run_tests();
 
@@ -175,6 +175,36 @@ GET /t
 --- no_response_body
 --- error_log
 "hello" "world"
+--- no_error_log
+my_namespace
+[error]
+
+
+
+=== TEST 8: log.inspect() pretty-prints multiline arguments
+--- http_config eval: $t::Util::HttpConfig
+--- config
+    location /t {
+        content_by_lua_block {
+            local PDK = require "kong.pdk"
+            local pdk = PDK.new()
+
+            local log = pdk.log.new("my_namespace")
+
+            log.inspect({ a = "foo", b = { c = "bar", d = "bla" } })
+        }
+    }
+--- request
+GET /t
+--- no_response_body
+--- error_log
+|  a = "foo",
+|  b = {
+|    c = "bar",
+|    d = "bla"
+|  }
+|}
++------------------------------
 --- no_error_log
 my_namespace
 [error]
