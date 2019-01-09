@@ -171,7 +171,7 @@ function _TARGETS:page_for_upstream(upstream_pk, size, offset, options)
   -- extract the page requested by the user.
 
   -- Read all targets; this returns the target history sorted chronologically
-  local targets, err, err_t = self:select_by_upstream_raw(upstream_pk, nil, options)
+  local targets, err, err_t = self:select_by_upstream_raw(upstream_pk, 1000, options)
   if not targets then
     return nil, err, err_t
   end

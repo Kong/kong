@@ -15,7 +15,7 @@ local function load_groups_into_memory(consumer_pk)
   local groups = {}
   local len    = 0
 
-  for row, err in kong.db.acls:each_for_consumer(consumer_pk) do
+  for row, err in kong.db.acls:each_for_consumer(consumer_pk, 1000) do
     if err then
       return nil, err
     end
