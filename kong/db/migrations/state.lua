@@ -189,6 +189,47 @@ local State = {}
 State.__index = State
 
 
+-- @return nil (no executed migrations for subsystem found) or an array with at
+-- least one element like:
+-- { name = "000_base",
+--   cassandra = { up = string, teardown = function | nil },
+--   postgres = { up = string, teardown = function | nil }
+-- },
+local function get_executed_migrations_for_subsystem(self, subsystem_name)
+  if not self.executed_migrations then
+    return nil
+  end
+
+  for _, subsys in ipairs(self.executed_migrations) do
+    if subsys.subsystem == subsystem_name then
+      return subsys.migrations
+    end
+  end
+end
+
+
+-- @return a table with the following structure:
+-- {
+--   executed_migrations = Subsystem[] | nil
+--   pending_migrations  = Subsystem[] | nil
+--   missing_migrations  = Subsystem[] | nil
+--   new_migrations      = Subsystem[] | nil,
+--   legacy_is_014 = boolean,
+--   needs_bootstrap = boolean,
+-- }
+--
+-- Where Subsystem[] is an array with at least one element like:
+--
+-- { subsystem = "core", -- or some other plugin name, like "acl"
+--   namespace = "kong.db.migrations.core", -- or some other plugin namespace,
+--                                          -- like "kong.plugins.acl.migrations
+--   migrations = { -- an array with at least one element like:
+--     { name = "000_base",
+--       cassandra = { up = string, teardown = function | nil },
+--       postgres = { up = string, teardown = function | nil }
+--    },
+-- }
+--
 function State.load(db)
 
   log.debug("loading subsystems migrations...")
@@ -332,13 +373,14 @@ function State:is_up_to_date()
 end
 
 
-function State:is_migration_executed(subsystem, migration_name)
-  local subsys = self[subsystem]
-  if not subsys or not subsys.executed_migrations then
+function State:is_migration_executed(subsystem_name, migration_name)
+
+  local executed_migrations = get_executed_migrations_for_subsystem(self, subsystem_name)
+  if not executed_migrations then
     return false
   end
 
-  for _, migration in ipairs(subsys.executed_migrations) do
+  for _, migration in ipairs(executed_migrations) do
     if migration.name == migration_name then
       return true
     end
