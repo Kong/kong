@@ -12,6 +12,7 @@
 
 local errlog = require "ngx.errlog"
 local ngx_re = require "ngx.re"
+local inspect = require "inspect"
 
 
 local sub = string.sub
@@ -307,7 +308,42 @@ local function gen_log_func(lvl_const, imm_buf, to_string, stack_level, sep)
       imm_buf[imm_buf.message_idxs[i]] = msg
     end
 
-    errlog.raw_log(lvl_const, concat(imm_buf, nil, 1, imm_buf.n_len))
+    local fullmsg = concat(imm_buf, nil, 1, imm_buf.n_len)
+
+    if to_string == inspect then
+      local fullmsg_len = #fullmsg
+      local WRAP = 120
+
+      if fullmsg:find("\n", 1, true) or fullmsg_len > WRAP then
+        local i = 1
+
+        errlog.raw_log(lvl_const, "+" .. ("-"):rep(WRAP) .. "+")
+
+        while i <= fullmsg_len do
+          local part = string.sub(fullmsg, i, i + WRAP - 1)
+          local nl = part:match("()\n")
+
+          if nl then
+            part = string.sub(fullmsg, i, i + nl - 2)
+            i = i + nl
+
+          else
+            i = i + WRAP
+          end
+
+          part = part .. (" "):rep(WRAP - #part)
+          errlog.raw_log(lvl_const, "|" .. part .. "|")
+
+          if i > fullmsg_len then
+            errlog.raw_log(lvl_const, "+" .. ("-"):rep(WRAP) .. "+")
+          end
+        end
+
+        return
+      end
+    end
+
+    errlog.raw_log(lvl_const, fullmsg)
   end
 end
 
@@ -364,9 +400,6 @@ end
 local new_inspect
 
 do
-  local inspect = require "inspect"
-
-
   local _INSPECT_FORMAT = _PREFIX .. "%file_src:%func_name:%line_src %message"
   local inspect_buf = assert(parse_modifiers(_INSPECT_FORMAT))
   local function nop() end
