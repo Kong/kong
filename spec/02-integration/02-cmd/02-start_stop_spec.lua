@@ -38,6 +38,17 @@ describe("kong start/stop", function()
     assert(helpers.kong_exec("start --conf " .. helpers.test_conf_path))
     assert(helpers.kong_exec("stop --prefix " .. helpers.test_conf.prefix))
   end)
+  it("start/stop Kong with only stream listeners enabled", function()
+    assert(helpers.kong_exec("start ", {
+      prefix = helpers.test_conf.prefix,
+      admin_listen = "off",
+      proxy_listen = "off",
+      stream_listen = "127.0.0.1:9022",
+    }))
+    assert(helpers.kong_exec("stop", {
+      prefix = helpers.test_conf.prefix
+    }))
+  end)
   it("start dumps Kong config in prefix", function()
     assert(helpers.kong_exec("start --conf " .. helpers.test_conf_path))
     assert.truthy(helpers.path.exists(helpers.test_conf.kong_env))
