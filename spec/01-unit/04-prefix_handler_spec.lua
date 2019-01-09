@@ -454,12 +454,15 @@ describe("NGINX conf compiler", function()
     it("dump Kong conf (custom conf)", function()
       local conf = assert(conf_loader(nil, {
         pg_database = "foobar",
+        pg_schema   = "foo",
         prefix = tmp_config.prefix
       }))
       assert.equal("foobar", conf.pg_database)
+      assert.equal("foo", conf.pg_schema)
       assert(prefix_handler.prepare_prefix(conf))
       local in_prefix_kong_conf = assert(conf_loader(tmp_config.kong_env, {
         pg_database = "foobar",
+        pg_schema = "foo",
         prefix = tmp_config.prefix,
       }))
       assert.same(conf, in_prefix_kong_conf)
