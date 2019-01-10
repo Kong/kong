@@ -7,7 +7,6 @@ local sender = {}
 
 local ngx_encode_base64 = ngx.encode_base64
 local ERR = ngx.ERR
-print('1')
 
 
 -- Parse host url.
