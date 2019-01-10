@@ -3,7 +3,7 @@ use warnings FATAL => 'all';
 use Test::Nginx::Socket::Lua;
 use t::Util;
 
-plan tests => repeat_each() * (blocks() * 4);
+plan tests => repeat_each() * (blocks() * 4 + 6);
 
 run_tests();
 
@@ -178,3 +178,62 @@ GET /t
 --- no_error_log
 my_namespace
 [error]
+
+
+
+=== TEST 8: log.inspect() pretty-prints multiline arguments
+--- http_config eval: $t::Util::HttpConfig
+--- config
+    location /t {
+        content_by_lua_block {
+            local PDK = require "kong.pdk"
+            local pdk = PDK.new()
+
+            local log = pdk.log.new("my_namespace")
+
+            log.inspect({ a = "foo", b = { c = "bar", d = "bla" } })
+        }
+    }
+--- request
+GET /t
+--- no_response_body
+--- error_log
+|  a = "foo",
+|  b = {
+|    c = "bar",
+|    d = "bla"
+|  }
+|}
++------------------------------
+--- no_error_log
+my_namespace
+[error]
+
+
+
+=== TEST 9: kong.log.inspect() does not interpret tables as inspect() options
+--- http_config eval: $t::Util::HttpConfig
+--- config
+    location /t {
+        content_by_lua_block {
+            local PDK = require "kong.pdk"
+            local pdk = PDK.new()
+
+            pdk.log.inspect({ hello = "world" })
+            pdk.log.inspect(1, { hello = "world" })
+            pdk.log.inspect(1, 2, { hello = "world" })
+            pdk.log.inspect(1, 2, 3, { hello = "world" })
+            pdk.log.inspect(1, 2, 3, 4, { hello = "world" })
+            pdk.log.inspect(1, 2, 3, 4, 5, { hello = "world" })
+            pdk.log.inspect(1, 2, 3, 4, 5, 6, { hello = "world" })
+            pdk.log.inspect(1, 2, 3, 4, 5, 6, 7, { hello = "world" })
+        }
+    }
+--- request
+GET /t
+--- no_response_body
+--- error_log
+hello = "world"
+--- no_error_log
+[error]
+[warn]
