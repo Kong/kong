@@ -27,6 +27,7 @@ local pl_stringx = require "pl.stringx"
 local pl_utils = require "pl.utils"
 local pl_path = require "pl.path"
 local pl_file = require "pl.file"
+local version = require "version"
 local pl_dir = require "pl.dir"
 local pl_Set = require "pl.Set"
 local Schema = require "kong.db.schema"
@@ -1247,6 +1248,21 @@ local function validate_plugin_config_schema(config, schema_def)
 end
 
 
+--- Return the actual Kong version the tests are running against.
+-- See [version.lua](https://github.com/kong/version.lua) for the format. This is mostly useful for testing plugins
+-- that should work with multiple Kong versions.
+-- @return a `version`
+-- @usage
+-- local version = require 'version'
+-- if helpers.get_version() < version("0.15.0") then
+--   -- do something
+-- end
+local function get_version()
+  return version(select(3, assert(kong_exec("version"))))
+end
+
+
+
 ----------
 -- Exposed
 ----------
@@ -1287,6 +1303,7 @@ return {
   -- Kong testing helpers
   execute = exec,
   kong_exec = kong_exec,
+  get_version = get_version,
   http_client = http_client,
   wait_until = wait_until,
   tcp_server = tcp_server,
