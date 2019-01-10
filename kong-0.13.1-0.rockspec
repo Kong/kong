@@ -36,7 +36,9 @@ dependencies = {
   "lua-resty-mlcache == 2.0.2",
   "lua-resty-rsa == 0.04",
   "lyaml == 6.2.3",
+  "bcrypt == 2.1",
   -- external Kong plugins
+  "kong-plugin-session == 0.1.0-1",
   "kong-plugin-azure-functions == 0.1.0",
   "kong-plugin-zipkin == 0.0.6",
   "kong-plugin-serverless-functions == 0.1.0",
@@ -193,6 +195,7 @@ build = {
     ["kong.rbac.migrations.02_admins"] = "kong/rbac/migrations/02_admins.lua",
     ["kong.rbac.migrations.03_user_default_role"] = "kong/rbac/migrations/03_user_default_role.lua",
     ["kong.rbac.migrations.04_kong_admin_basic_auth"] = "kong/rbac/migrations/04_kong_admin_basic_auth.lua",
+    ["kong.rbac.migrations.05_super_admin"] = "kong/rbac/migrations/05_super_admin.lua",
 
     ["kong.workspaces"] = "kong/workspaces/init.lua",
     ["kong.workspaces.helper"] = "kong/workspaces/helper.lua",

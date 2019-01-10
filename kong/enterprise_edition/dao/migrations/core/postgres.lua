@@ -1,5 +1,6 @@
 local rbac_migrations_defaults = require "kong.rbac.migrations.01_defaults"
 local rbac_migrations_user_default_role = require "kong.rbac.migrations.03_user_default_role"
+local rbac_migrations_super_admin = require "kong.rbac.migrations.05_super_admin"
 local files = require "kong.portal.migrations.01_initial_files"
 local fmt = string.format
 local utils = require "kong.tools.utils"
@@ -801,5 +802,24 @@ return {
          SET email = LOWER(email)
        WHERE type = 2
     ]]
+  },
+  {
+    name = "2018-12-13-100000_rbac_token_hash",
+    up = [[
+      ALTER TABLE rbac_users ADD COLUMN user_token_ident text;
+
+      DO $$
+      BEGIN
+          IF (SELECT to_regclass('idx_rbac_token_ident')) IS NULL THEN
+              CREATE INDEX idx_rbac_token_ident on rbac_users(user_token_ident);
+          END IF;
+      END$$;
+    ]],
+  },
+  {
+    name = "2018-12-23-110000_rbac_user_super_admin",
+    up = function(_, _, dao)
+      return rbac_migrations_super_admin.up(nil, nil, dao)
+    end
   },
 }

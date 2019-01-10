@@ -1,5 +1,6 @@
 local rbac_migrations_defaults = require "kong.rbac.migrations.01_defaults"
 local rbac_migrations_user_default_role = require "kong.rbac.migrations.03_user_default_role"
+local rbac_migrations_super_admin = require "kong.rbac.migrations.05_super_admin"
 local utils = require "kong.tools.utils"
 local timestamp = require "kong.tools.timestamp"
 local portal_files = require "kong.portal.migrations.01_initial_files"
@@ -786,5 +787,19 @@ return {
         end
       end
     end,
+  },
+  {
+    name = "2018-12-13-100000_rbac_token_hash",
+    up = [[
+      ALTER TABLE rbac_users ADD user_token_ident text;
+
+      CREATE INDEX IF NOT EXISTS ON rbac_users(user_token_ident);
+    ]],
+  },
+  {
+    name = "2018-12-23-110000_rbac_user_super_admin",
+    up = function(_, _, dao)
+      return rbac_migrations_super_admin.up(nil, nil, dao)
+    end
   },
 }

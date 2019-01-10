@@ -86,6 +86,7 @@ describe("admin_gui template", function()
       },
       rbac = "off",
       rbac_auth_header = 'Kong-Admin-Token',
+      rbac_user_header = 'Kong-Admin-User',
     }
 
     setup(function()
@@ -113,6 +114,7 @@ describe("admin_gui template", function()
       assert.matches("'ADMIN_API_SSL_PORT': '8444'", admin_idx, nil, true)
       assert.matches("'RBAC_ENFORCED': 'false'", admin_idx, nil, true)
       assert.matches("'RBAC_HEADER': 'Kong-Admin-Token'", admin_idx, nil, true)
+      assert.matches("'RBAC_USER_HEADER': 'Kong-Admin-User'", admin_idx, nil, true)
     end)
 
     it("inserts new values when called again", function()
@@ -123,6 +125,7 @@ describe("admin_gui template", function()
       new_conf.admin_api_uri = 'http://localhost:8001'
       new_conf.proxy_url = 'http://127.0.0.1:8000'
       new_conf.admin_gui_flags = "{ HIDE_VITALS: true }"
+      new_conf.rbac_user_header = 'Kong-Admin-Userz'
 
       -- update template
       ee.prepare_admin(new_conf)
@@ -137,6 +140,7 @@ describe("admin_gui template", function()
       assert.matches("'ADMIN_API_SSL_PORT': '8444'", admin_idx, nil, true)
       assert.matches("'RBAC_ENFORCED': 'false'", admin_idx, nil, true)
       assert.matches("'RBAC_HEADER': 'Kong-Admin-Token'", admin_idx, nil, true)
+      assert.matches("'RBAC_USER_HEADER': 'Kong-Admin-Userz'", admin_idx, nil, true)
       assert.matches("'FEATURE_FLAGS': '{ HIDE_VITALS: true }'", admin_idx, nil, true)
     end)
   end)
@@ -189,6 +193,7 @@ describe("admin_gui template", function()
       },
       rbac = "off",
       rbac_auth_header = 'Kong-Admin-Token',
+      rbac_user_header = 'Kong-Admin-User',
     }
 
     setup(function()
@@ -216,6 +221,7 @@ describe("admin_gui template", function()
       assert.matches("'ADMIN_API_SSL_PORT': '8444'", admin_idx, nil, true)
       assert.matches("'RBAC_ENFORCED': 'false'", admin_idx, nil, true)
       assert.matches("'RBAC_HEADER': 'Kong-Admin-Token'", admin_idx, nil, true)
+      assert.matches("'RBAC_USER_HEADER': 'Kong-Admin-User'", admin_idx, nil, true)
     end)
 
     it("inserts new values when called again", function()
@@ -240,6 +246,7 @@ describe("admin_gui template", function()
       assert.matches("'ADMIN_API_SSL_PORT': '8444'", admin_idx, nil, true)
       assert.matches("'RBAC_ENFORCED': 'false'", admin_idx, nil, true)
       assert.matches("'RBAC_HEADER': 'Kong-Admin-Token'", admin_idx, nil, true)
+      assert.matches("'RBAC_USER_HEADER': 'Kong-Admin-User'", admin_idx, nil, true)
       assert.matches("'FEATURE_FLAGS': '{ HIDE_VITALS: true }'", admin_idx, nil, true)
     end)
   end)

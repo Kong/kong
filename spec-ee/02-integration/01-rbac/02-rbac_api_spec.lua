@@ -155,7 +155,7 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
         local json = cjson.decode(body)
 
         assert.equal("bob", json.name)
-        assert.equal("foo", json.user_token)
+        assert.matches("%$2b%$09%$", json.user_token)
         assert.equal("bar", json.comment)
         assert.is_true(utils.is_valid_uuid(json.id))
         assert.is_true(json.enabled)
@@ -178,7 +178,7 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
         local json = cjson.decode(body)
 
         assert.equal("fubar", json.name)
-        assert.equal("fubarfu", json.user_token)
+        assert.matches("%$2b%$09%$", json.user_token)
 
         -- what I really want to do here is :find_all({ name = "fubar" }),
         -- but that doesn't return any results
@@ -328,7 +328,7 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
         local json = cjson.decode(body)
 
         assert.equal("alice", json.name)
-        assert.equal("foor", json.user_token)
+        assert.matches("%$2b%$09%$", json.user_token)
         assert.is_nil(json.comment)
         assert.is_true(utils.is_valid_uuid(json.id))
         assert.is_false(json.enabled)
@@ -362,7 +362,7 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
             },
           })
 
-          assert.res_status(409, res)
+          assert.res_status(400, res)
         end)
 
         it("with duplicate names", function()
@@ -371,6 +371,7 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
             path = "/rbac/users",
             body = {
               name = "jerry",
+              user_token = "woodohwee",
             },
             headers = {
               ["Content-Type"] = "application/json",
@@ -384,6 +385,7 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
             path = "/rbac/users",
             body = {
               name = "jerry",
+              user_token = "woodohwoo",
             },
             headers = {
               ["Content-Type"] = "application/json",
@@ -1093,6 +1095,7 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
         path = "/rbac/users",
         body = {
           name = "bob",
+          user_token = "valhalla",
         },
         headers = {
           ["Content-Type"] = "application/json",
@@ -1129,6 +1132,7 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
         path = "/rbac/users",
         body = {
           name = "jerry",
+          user_token = "basilexposition",
         },
         headers = {
           ["Content-Type"] = "application/json",
@@ -1165,6 +1169,7 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
         path = "/rbac/users",
         body = {
           name = "alice",
+          user_token = "deliciousmerangue",
         },
         headers = {
           ["Content-Type"] = "application/json",
@@ -1203,6 +1208,7 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
         path = "/rbac/users",
         body = {
           name = "herb",
+          user_token = "expecto patronum",
           enabled = false,
         },
         headers = {
@@ -2298,7 +2304,8 @@ describe("Admin API", function()
   end)
 
   it(".find_all filters non accessible entities", function()
-    local data = get("/apis", {["Kong-Admin-Token"] = "bob"}).data
+    local data = get("/apis", {["Kong-Admin-User"] = "bob",
+                               ["Kong-Admin-Token"] = "bob"}).data
     assert.equal(1, #data)
     assert.equal(apis[2].id, data[1].id)
   end)
@@ -2327,23 +2334,23 @@ describe("Admin API", function()
       id = apis[4].id,
       name = "new-name",
       created_at = "123",
-      upstream_url = helpers.mock_upstream_url},
-  {["Kong-Admin-Token"] = "bob"}, 200)
+      upstream_url = helpers.mock_upstream_url
+    }, {["Kong-Admin-Token"] = "bob"}, 200)
   end)
 
   it(".update checks rbac via patch", function()
-    patch("/apis/".. apis[1].id, {name = "new-name"}, {["Kong-Admin-Token"] = "bob"}, 404)
-    patch("/apis/".. apis[2].id, {name = "new-name"}, {["Kong-Admin-Token"] = "bob"}, 404)
-    patch("/apis/".. apis[3].id, {name = "new-name"}, {["Kong-Admin-Token"] = "bob"}, 404)
-    patch("/apis/".. apis[4].id, {name = "new-name"}, {["Kong-Admin-Token"] = "bob"}, 200)
+    patch("/apis/".. apis[1].id, {name = "new-name"}, {["Kong-Admin-Token"] = "bob" }, 404)
+    patch("/apis/".. apis[2].id, {name = "new-name"}, {["Kong-Admin-Token"] = "bob" }, 404)
+    patch("/apis/".. apis[3].id, {name = "new-name"}, {["Kong-Admin-Token"] = "bob" }, 404)
+    patch("/apis/".. apis[4].id, {name = "new-name"}, {["Kong-Admin-Token"] = "bob" }, 200)
   end)
 
   it(".delete checks rbac", function()
     delete("/apis/" .. apis[1].id, nil, 401)
     delete("/apis/" .. apis[2].id, nil, 401)
-    delete("/apis/" .. apis[1].id, {["Kong-Admin-Token"] = "bob"}, 404)
-    delete("/apis/" .. apis[2].id, {["Kong-Admin-Token"] = "bob"}, 404)
-    delete("/apis/" .. apis[3].id, {["Kong-Admin-Token"] = "bob"}, 204)
+    delete("/apis/" .. apis[1].id, {["Kong-Admin-Token"] = "bob" }, 404)
+    delete("/apis/" .. apis[2].id, {["Kong-Admin-Token"] = "bob" }, 404)
+    delete("/apis/" .. apis[3].id, {["Kong-Admin-Token"] = "bob" }, 204)
   end)
 end)
 

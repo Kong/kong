@@ -250,11 +250,16 @@ function _M.create_admin(email, custom_id, status, bp, dao)
     status = status,
   })
 
+  local user_token = utils.uuid()
   local rbac_user = assert(dao.rbac_users:insert {
     name = email,
-    user_token = utils.uuid(),
+    user_token = user_token,
     enabled = true,
   })
+
+  -- only used for tests so we can reference token
+  -- WARNING: do not do this outside test environment
+  rbac_user.raw_user_token = user_token
 
   assert(dao.consumers_rbac_users_map:insert {
     consumer_id = consumer.id,

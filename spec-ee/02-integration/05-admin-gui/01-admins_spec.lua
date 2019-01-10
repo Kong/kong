@@ -406,14 +406,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       describe("DELETE", function()
-        local admin_id, expected
-
-        before_each(function()
-          dao:truncate_table('rbac_users')
-          dao:truncate_table('rbac_roles')
-          dao:truncate_table('consumers')
-          dao:truncate_table('consumers_rbac_users_map')
-
+        local function createAdmin(name)
           local res = assert(client:send {
             method = "POST",
             path  = "/admins",
@@ -422,20 +415,21 @@ for _, strategy in helpers.each_strategy() do
               ["Content-Type"]     = "application/json",
             },
             body  = {
-              username = "gruce",
-              email = "gruce@konghq.com",
+              username = name,
+              email = name .. "@konghq.com",
             },
           })
 
-          assert.res_status(200, res)
-
-          admin_id = dao.db:query("select * from consumers_rbac_users_map")[1].consumer_id
-        end)
+          local body = assert.res_status(200, res)
+          return cjson.decode(body)
+        end
 
         it("deletes by id", function()
+          local admin = createAdmin("gruce-delete-me")
+
           local res = assert(client:send {
             method = "DELETE",
-            path   = "/admins/" .. admin_id,
+            path   = "/admins/" .. admin.consumer.id,
             headers = {
               ["Kong-Admin-Token"] = "letmein",
               ["Content-Type"]     = "application/json",
@@ -444,27 +438,18 @@ for _, strategy in helpers.each_strategy() do
           local body = assert.res_status(204, res)
           assert.equal("", body)
 
-          if dao.db_type == "postgres" then
-            expected = {}
-          else
-            expected = {
-              meta = {
-                has_more_pages = false
-              },
-              type = "ROWS"
-            }
-          end
-
-          assert.same(dao.db:query("select * from consumers_rbac_users_map"), expected)
-          assert.same(dao.db:query("select * from rbac_users"), expected)
-          assert.same(dao.db:query("select * from consumers"), expected)
-          assert.same(dao.db:query("select * from rbac_roles"), expected)
+          assert.equal(0, #dao.consumers_rbac_users_map:find_all({
+            consumer_id = admin.consumer.id
+          }))
+          assert.equal(0, #dao.rbac_users:find_all({id = admin.rbac_user.id}))
+          assert.equal(0, #dao.consumers:find_all({id = admin.consumer.id}))
         end)
 
         it("deletes by username", function()
+          local admin = createAdmin("gruce-delete-me")
           local res = assert(client:send {
             method = "DELETE",
-            path   = "/admins/gruce",
+            path   = "/admins/" .. admin.consumer.username,
             headers = {
               ["Kong-Admin-Token"] = "letmein",
               ["Content-Type"]     = "application/json",
@@ -473,21 +458,11 @@ for _, strategy in helpers.each_strategy() do
           local body = assert.res_status(204, res)
           assert.equal("", body)
 
-          if dao.db_type == "postgres" then
-            expected = {}
-          else
-            expected = {
-              meta = {
-                has_more_pages = false
-              },
-              type = "ROWS"
-            }
-          end
-
-          assert.same(dao.db:query("select * from consumers_rbac_users_map"), expected)
-          assert.same(dao.db:query("select * from rbac_users"), expected)
-          assert.same(dao.db:query("select * from consumers"), expected)
-          assert.same(dao.db:query("select * from rbac_roles"), expected)
+          assert.equal(0, #dao.consumers_rbac_users_map:find_all({
+            consumer_id = admin.consumer.id
+          }))
+          assert.equal(0, #dao.rbac_users:find_all({id = admin.rbac_user.id}))
+          assert.equal(0, #dao.consumers:find_all({id = admin.consumer.id}))
         end)
 
         it("returns 404 if not found", function()
@@ -514,9 +489,9 @@ for _, strategy in helpers.each_strategy() do
                 ["Content-Type"]     = "application/json",
               },
               body  = {
-                custom_id = "cooper",
-                username  = "dale",
-                email = "twinpeaks@konghq.com",
+                custom_id = "get-cooper",
+                username  = "get-dale",
+                email = "dale-twinpeaks@konghq.com",
               },
             })
 
@@ -861,7 +836,7 @@ for _, strategy in helpers.each_strategy() do
         method = "GET",
         path = "/admins/" .. consumer.id,
         headers = {
-          ["Kong-Admin-Token"] = "letmein"
+          ["Kong-Admin-Token"] = "letmein",
         }
       })
 
@@ -874,7 +849,7 @@ for _, strategy in helpers.each_strategy() do
         method = "GET",
         path = "/admins/" .. consumer.id .. "?generate_register_url=true",
         headers = {
-          ["Kong-Admin-Token"] = "letmein"
+          ["Kong-Admin-Token"] = "letmein",
         }
       })
 

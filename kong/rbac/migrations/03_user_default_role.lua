@@ -5,7 +5,7 @@ return {
   up = function(_, _, dao)
     singletons.dao = dao
 
-    local users, err = dao.rbac_users:find_all()
+    local users, err = dao.db:query("SELECT * FROM rbac_users")
     if err then
       return err
     end

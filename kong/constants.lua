@@ -32,6 +32,7 @@ local plugins = {
   "pre-function",
   "post-function",
   "prometheus",
+  "session",
 }
 
 local plugin_map = {}

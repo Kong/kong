@@ -152,116 +152,117 @@ function _M.authenticate(self, dao_factory, rbac_enabled, gui_auth)
     return
   end
 
+  -- lookup to see if we white listed this route from auth checks
+  local auth_whitelisted = auth_whitelisted_uris[ngx.var.request_uri]
+  if auth_whitelisted then
+    return
+  end
+
   -- only RBAC is on? let the rbac module handle it
   if rbac_enabled and not gui_auth then
     return
   end
 
   -- execute rbac and auth check without a workspace specified
-  if rbac_enabled then
+  local old_ws = ctx.workspaces
+  ctx.workspaces = {}
 
-    local old_ws = ctx.workspaces
-    ctx.workspaces = {}
-
-    local rbac_token = rbac.get_rbac_token()
-
-    if not rbac_token and not gui_auth then
-      return responses.send_HTTP_UNAUTHORIZED("Invalid RBAC credentials")
-    end
-
-    -- if you have the rbac token you can bypass plugin run loop but if
-    -- gui_auth is enabled with no rbac_token, do plugin run loop
-    if not rbac_token and gui_auth then
-      local auth_whitelisted = auth_whitelisted_uris[ngx.var.request_uri]
-      if auth_whitelisted then
-        ctx.workspaces = old_ws
-        return
-      end
-
-      local user_name = ngx.req.get_headers()['Kong-Admin-User']
-
-      if not user_name then
-        return responses.send_HTTP_UNAUTHORIZED("Invalid RBAC credentials. " ..
-                                         "Token or User credentials required")
-      end
-
-      -- in 0.33, the rbac_user created with an admin consumer "foo" was named
-      -- "user-foo". Support both naming conventions.
-      local rbac_user, err
-      for _, nm in ipairs({ user_name, "user-" .. user_name }) do
-        rbac_user, err = rbac.get_user(nm, "name")
-        if err then
-          ngx.log(ngx.ERR, _log_prefix, err)
-          return responses.send_HTTP_INTERNAL_SERVER_ERROR()
-        end
-
-        if rbac_user then
-          break
-        end
-      end
-
-      if not rbac_user then
-        ngx.log(ngx.DEBUG, _log_prefix, "no rbac_user found for name: ", user_name)
-        return responses.send_HTTP_UNAUTHORIZED()
-      end
-
-      rbac_token = rbac_user.user_token
-      _M.attach_consumer_and_workspaces(self, dao_factory, rbac_user.id)
-
-      -- apply auth plugin
-      local auth_conf = utils.deep_copy(singletons.configuration.admin_gui_auth_conf
-                                        or {})
-      local prepared_plugin = _M.prepare_plugin(_M.apis.ADMIN,
-                                                    dao_factory,
-                                                    gui_auth, auth_conf)
-      _M.apply_plugin(prepared_plugin, "access")
-
-      -- Plugin ran but consumer was not created on context
-      if not ctx.authenticated_consumer then
-        ngx.log(ngx.ERR, _log_prefix, "no consumer mapped from plugin", gui_auth)
-
-        return responses.send_HTTP_UNAUTHORIZED()
-      end
-
-      if self.consumer and ctx.authenticated_consumer.id ~= self.consumer.id then
-        ngx.log(ngx.ERR, _log_prefix, "no rbac user mapped with these credentials")
-
-        return responses.send_HTTP_UNAUTHORIZED()
-      end
-
-      self.consumer = ctx.authenticated_consumer
-
-      if self.consumer.type ~= enums.CONSUMERS.TYPE.ADMIN then
-        ngx.log(ngx.ERR, _log_prefix, "consumer ", self.consumer.id, " is not an admin")
-        return responses.send_HTTP_UNAUTHORIZED()
-      end
-
-      -- consumer transitions from INVITED to APPROVED on first successful login
-      if self.consumer.status == enums.CONSUMERS.STATUS.INVITED then
-        self.consumer, err = dao_factory.consumers:update(
-                             { status = enums.CONSUMERS.STATUS.APPROVED },
-                             { id = self.consumer.id})
-
-        if err then
-          ngx.log(ngx.ERR, _log_prefix, "failed to approve consumer: ",
-                  self.consumer.id, ". err: ", err)
-
-          return responses.send_HTTP_INTERNAL_SERVER_ERROR()
-        end
-
-        ctx.authenticated_consumer = self.consumer
-      end
-
-      if self.consumer.status ~= enums.CONSUMERS.STATUS.APPROVED then
-        return responses.send_HTTP_UNAUTHORIZED(_M.get_consumer_status(self.consumer))
-      end
-    end
-
-    ngx.req.set_header(singletons.configuration.rbac_auth_header, rbac_token)
-
-    -- set back workspace context from request
-    ctx.workspaces = old_ws
+  -- Once we get here we know rbac_token and gui_auth are both enabled
+  -- and we need to run authentication checks
+  local rbac_user_header = singletons.configuration.rbac_user_header
+  local user_name = ngx.req.get_headers()[rbac_user_header]
+  if not user_name then
+    return responses.send_HTTP_UNAUTHORIZED("Invalid RBAC credentials. " ..
+                                            "Token or User credentials required")
   end
+
+  -- in 0.33, the rbac_user created with an admin consumer "foo" was named
+  -- "user-foo". Support both naming conventions.
+  local rbac_user, err
+  for _, nm in ipairs({ user_name, "user-" .. user_name }) do
+    rbac_user, err = rbac.get_user(nm, "name")
+    if err then
+      ngx.log(ngx.ERR, _log_prefix, err)
+      return responses.send_HTTP_INTERNAL_SERVER_ERROR()
+    end
+
+    if rbac_user then
+      break
+    end
+  end
+
+  if not rbac_user then
+    ngx.log(ngx.DEBUG, _log_prefix, "no rbac_user found for name: ", user_name)
+    return responses.send_HTTP_UNAUTHORIZED()
+  end
+
+  _M.attach_consumer_and_workspaces(self, dao_factory, rbac_user.id)
+
+  -- apply auth plugin
+  local auth_conf = utils.deep_copy(singletons.configuration.admin_gui_auth_conf
+                                    or {})
+  local session_conf = singletons.configuration.admin_gui_session_conf or {}
+
+  -- run the session plugin access to see if we have a current session
+  -- with a valid authenticated consumer.
+  local prepared_plugin_session = _M.prepare_plugin(_M.apis.ADMIN, dao_factory,
+                                                    "session", session_conf)
+
+  _M.apply_plugin(prepared_plugin_session, "access")
+
+  -- if we don't have a valid session, run the gui authentication plugin
+  if not ngx.ctx.authenticated_consumer then
+    local prepared_plugin = _M.prepare_plugin(_M.apis.ADMIN, dao_factory,
+                                              gui_auth, auth_conf)
+
+    _M.apply_plugin(prepared_plugin, "access")
+  end
+
+  _M.apply_plugin(prepared_plugin_session, "header_filter")
+
+  -- Plugin ran but consumer was not created on context
+  if not ctx.authenticated_consumer then
+    ngx.log(ngx.ERR, _log_prefix, "no consumer mapped from plugin", gui_auth)
+
+    return responses.send_HTTP_UNAUTHORIZED()
+  end
+
+  if self.consumer and ctx.authenticated_consumer.id ~= self.consumer.id then
+    ngx.log(ngx.ERR, _log_prefix, "no rbac user mapped with these credentials")
+
+    return responses.send_HTTP_UNAUTHORIZED()
+  end
+
+  self.consumer = ctx.authenticated_consumer
+
+  if self.consumer.type ~= enums.CONSUMERS.TYPE.ADMIN then
+    ngx.log(ngx.ERR, _log_prefix, "consumer ", self.consumer.id, " is not an admin")
+    return responses.send_HTTP_UNAUTHORIZED()
+  end
+
+  -- consumer transitions from INVITED to APPROVED on first successful login
+  if self.consumer.status == enums.CONSUMERS.STATUS.INVITED then
+    self.consumer, err = dao_factory.consumers:update(
+      { status = enums.CONSUMERS.STATUS.APPROVED },
+      { id = self.consumer.id })
+
+    if err then
+      ngx.log(ngx.ERR, _log_prefix, "failed to approve consumer: ",
+              self.consumer.id, ". err: ", err)
+
+      return responses.send_HTTP_INTERNAL_SERVER_ERROR()
+    end
+
+    ctx.authenticated_consumer = self.consumer
+  end
+
+  if self.consumer.status ~= enums.CONSUMERS.STATUS.APPROVED then
+    return responses.send_HTTP_UNAUTHORIZED(_M.get_consumer_status(self.consumer))
+  end
+
+  self.rbac_user = rbac_user
+  -- set back workspace context from request
+  ctx.workspaces = old_ws
 end
 
 

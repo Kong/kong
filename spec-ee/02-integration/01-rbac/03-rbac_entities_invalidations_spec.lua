@@ -409,8 +409,6 @@ describe("rbac entities are invalidated with db: " .. kong_conf.database, functi
           ["Content-Type"]     = "application/json",
         },
         body = {
-          name = "herb",
-          user_token = "herb",
           enabled = true,
         },
       })

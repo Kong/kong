@@ -465,6 +465,19 @@ return {
         worker_events.register(audit_log.dao_audit_handler, "dao:crud")
       end
 
+      -- rbac token ident cache handling
+      worker_events.register(function(data)
+        singletons.cache:invalidate("rbac_user_token_ident:" ..
+                                    data.entity.user_token_ident)
+
+        -- clear a patched ident range cache, if appropriate
+        -- this might be nil if we in-place upgrade a pt token
+        if data.old_entity and data.old_entity.user_token_ident then
+          singletons.cache:invalidate("rbac_user_token_ident:" ..
+                                      data.old_entity.user_token_ident)
+        end
+      end, "crud", "rbac_users")
+
     end
   },
   certificate = {

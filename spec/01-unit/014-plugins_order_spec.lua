@@ -53,6 +53,7 @@ describe("Plugins", function()
       "zipkin",
       "bot-detection",
       "cors",
+      "session",
       "jwt",
       "oauth2",
       "key-auth",

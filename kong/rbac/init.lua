@@ -6,14 +6,19 @@ local workspaces = require "kong.workspaces"
 local responses  = require "kong.tools.responses"
 local cjson      = require "cjson"
 local tablex     = require "pl.tablex"
+local bcrypt     = require "bcrypt"
 
 local band   = bit.band
 local bor    = bit.bor
 local fmt    = string.format
 local lshift = bit.lshift
 local rshift = bit.rshift
+local find   = string.find
 local setmetatable = setmetatable
 local getmetatable = getmetatable
+
+
+local LOG_ROUNDS = 9
 
 
 local function log(lvl, ...)
@@ -177,13 +182,13 @@ end
 _M.user_can_manage_endpoints_from = user_can_manage_endpoints_from
 
 
-local function retrieve_user(user_token_or_name, key)
+local function retrieve_user(user_name)
   local users, err = singletons.dao.rbac_users:find_all({
-    [key] = user_token_or_name,
+    name = user_name,
     __skip_rbac = true,
   })
   if err then
-    log(ngx.ERR, "error in retrieving user from token: ", err)
+    log(ngx.ERR, "error in retrieving user from name: ", err)
     return nil, err
   end
 
@@ -195,37 +200,12 @@ local function retrieve_user(user_token_or_name, key)
 end
 
 
-local function get_user(user_token_or_name, key)
-  key = key or "user_token"
-
-  if key ~= "name" and key ~= "user_token" then
-    return nil, "key must be 'name' or 'user_token'"
-  end
-
-  local user, err
-
-  -- we're only caching by user token
-  if key == "user_token" then
-    local cache_key = singletons.dao.rbac_users:cache_key(user_token_or_name)
-    user, err = singletons.cache:get(cache_key, nil,
-                                     retrieve_user, user_token_or_name, key)
-
-    if err then
-      return nil, err
-    end
-
-  else
-    -- look up user in db
-    local users, err = singletons.dao.rbac_users:run_with_ws_scope(
-                       {},
-                       singletons.dao.rbac_users.find_all,
-                       { [key] = user_token_or_name })
-
-    if err then
-      return nil, err
-    end
-
-    user = users[1]
+local function get_user(user_name)
+  local cache_key = singletons.dao.rbac_users:cache_key(user_name)
+  local user, err = singletons.cache:get(cache_key, nil,
+                                         retrieve_user, user_name)
+  if err then
+    return nil, err
   end
 
   return user
@@ -390,7 +370,7 @@ end
 _M.resolve_role_entity_permissions = resolve_role_entity_permissions
 
 
-local function get_rbac_user_info()
+local function get_rbac_user_info(rbac_user)
   local guest_user = {
     roles = {},
     user = "guest",
@@ -406,12 +386,14 @@ local function get_rbac_user_info()
 
   local ctx = ngx.ctx
   local old_ws_ctx = ctx.workspaces
-  local user, err =  _M.load_rbac_ctx(singletons.dao, ctx)
+  local user, err = _M.load_rbac_ctx(singletons.dao, ctx, rbac_user)
+
+  ctx.workspaces = old_ws_ctx
+
   if err then
-    ctx.workspaces = old_ws_ctx
     return nil, err
   end
-  ctx.workspaces = old_ws_ctx
+
   return user or guest_user
 end
 _M.get_rbac_user_info = get_rbac_user_info
@@ -658,7 +640,12 @@ function _M.validate_entity_operation(entity, table_name)
     return true
   end
 
-  local rbac_ctx = get_rbac_user_info()
+  local rbac_ctx, err = get_rbac_user_info()
+  if err then
+    ngx.log(ngx.ERR, "[rbac] ", err)
+    return responses.send_HTTP_INTERNAL_SERVER_ERROR()
+  end
+
   if rbac_ctx.user == "guest" then
     return false
   end
@@ -899,37 +886,149 @@ function _M.authorize_request_endpoint(map, workspace, endpoint, route_name, act
 end
 
 
-function _M.load_rbac_ctx(dao_factory, ctx)
-  local rbac_auth_header = singletons.configuration.rbac_auth_header
-  local rbac_token = ngx.req.get_headers()[rbac_auth_header]
-  local http_method = ngx.req.get_method()
-  if type(rbac_token) ~= "string" then
-    -- forbid empty rbac_token and also
-    -- forbid sending rbac_token headers multiple times
-    -- because get_user assume it's a string
-    return false
+-- return the first 5 ascii characters of the hex representation
+-- of the token's sha1
+local function get_token_ident(rbac_token)
+  local str = require "resty.string"
+
+  return string.sub(str.to_hex(ngx.sha1_bin(rbac_token)), 1, 5)
+end
+_M.get_token_ident = get_token_ident
+
+
+local function update_user_token(user)
+  ngx.log(ngx.DEBUG, "updating user token hash for credential ",
+                     user.id)
+
+  local ident  = get_token_ident(user.user_token)
+  local digest = bcrypt.digest(user.user_token, LOG_ROUNDS)
+
+  local _, err = singletons.dao.rbac_users:update(
+    { user_token = digest, user_token_ident = ident },
+    user
+  )
+  if err then
+    ngx.log(ngx.ERR, "error attempting to update user token hash: ", err)
   end
-  local user, err = get_user(rbac_token)
+end
+
+
+-- retrieve a list of all rbac_users from database matching a given ident
+-- this function is run outside of workspace scope to simplify ident
+-- search logic in conjunction with the need to search in multiple
+-- workspaces as introduced in
+-- https://github.com/Kong/kong-ee/commit/53dc9dbdce11f01e1cd155161306572bf21fc9d9
+--
+-- this function is wrapped in an mlcache callback when validating rbac tokens
+-- it is called directly by the rbac_user DAO to validate uniqueness of tokens
+-- or when searching directly for legacy plaintext tokens
+local function retrieve_token_users(ident, k)
+  local token_users, err = singletons.dao.rbac_users:run_with_ws_scope(
+    {},
+    singletons.dao.rbac_users.find_all,
+    { [k] = ident, enabled = true, __skip_rbac = true }
+  )
   if err then
     return nil, err
   end
+
+  return token_users
+end
+_M.retrieve_token_users = retrieve_token_users
+
+
+-- fetch from mlcache a list of rbac_user rows that may be associated with
+-- the request's rbac token, by virtue of the token ident
+local function get_token_users(rbac_token)
+  local ident = get_token_ident(rbac_token)
+
+  local cache_key = "rbac_user_token_ident:" .. ident
+
+  local token_users, err = singletons.cache:get(cache_key,
+                                                nil,
+                                                retrieve_token_users,
+                                                ident,
+                                                "user_token_ident")
+  if err then
+    return nil, err
+  end
+
+  return token_users
+end
+
+
+-- for a list of rbac_users (possible user given the ident),
+-- validate the rbac token digest
+local function validate_rbac_token(token_users, rbac_token)
+  for _, user in ipairs(token_users) do
+    -- fast search to try bcrypt first
+    if find(user.user_token, "$2b$", nil, true) then
+      if bcrypt.verify(rbac_token, user.user_token) then
+        return user
+      end
+
+    else
+      if user.user_token == rbac_token then
+        return user, true -- denote we need to update this value
+      end
+    end
+  end
+end
+_M.validate_rbac_token = validate_rbac_token
+
+
+function _M.load_rbac_ctx(dao_factory, ctx, rbac_user)
+  local user = rbac_user
+
   if not user then
-    local user_ws_scope, err = workspaces.resolve_user_ws_scope(ctx, rbac_token)
+    local rbac_auth_header = singletons.configuration.rbac_auth_header
+    local rbac_token = ngx.req.get_headers()[rbac_auth_header]
+
+    if type(rbac_token) ~= "string" then
+      -- forbid empty rbac_token and also
+      -- forbid sending rbac_token headers multiple times
+      -- because get_user assume it's a string
+      return false
+    end
+
+    -- token_users is an array of rbac_user objects that may be associated
+    -- with the presented token, by virtue of the token's ident
+    local token_users, err = get_token_users(rbac_token)
     if err then
-      return responses.send_HTTP_INTERNAL_SERVER_ERROR()
-    end
-
-    if not user_ws_scope or #user_ws_scope == 0 then
-      return responses.send_HTTP_UNAUTHORIZED("Invalid RBAC credentials")
-    end
-
-    ctx.workspaces = user_ws_scope
-    user, err = get_user(rbac_token)
-    if err or not user then
       return nil, err
+    end
+
+    -- no users found, either the ident isn't found because the token doesn't
+    -- exist or because it hasn't yet been updated. fallback to pt search
+    if not token_users or #token_users == 0 then
+      token_users = retrieve_token_users(rbac_token, "user_token")
+    end
+
+    local must_update
+    user, must_update = validate_rbac_token(token_users, rbac_token)
+    if must_update then
+      local old_ws = ngx.ctx.workspaces
+      ngx.ctx.workspaces = {}
+      update_user_token(user)
+      ngx.ctx.workspaces = old_ws
+    end
+
+    if not user then
+      -- caller assumes this signature means no error and no valid user found
+      return nil, nil
     end
   end
 
+  local user_ws_scope, err = workspaces.resolve_user_ws_scope(ctx, user.name)
+  if err then
+    return responses.send_HTTP_INTERNAL_SERVER_ERROR()
+  end
+
+  if not user_ws_scope or #user_ws_scope == 0 then
+    return responses.send_HTTP_UNAUTHORIZED("Invalid RBAC credentials")
+  end
+
+  ngx.ctx.workspaces = user_ws_scope
   local roles, err = entity_relationships(dao_factory, user, "user", "role")
   if err then
     return nil, err
@@ -944,7 +1043,7 @@ function _M.load_rbac_ctx(dao_factory, ctx)
     end
   end
 
-  local action, err = figure_action(http_method)
+  local action, err = figure_action(ngx.req.get_method())
   if err then
     return nil, err
   end
@@ -972,7 +1071,7 @@ function _M.load_rbac_ctx(dao_factory, ctx)
   return rbac_ctx
 end
 
-function _M.validate_user()
+function _M.validate_user(rbac_user)
   if singletons.configuration.rbac == "off" then
     return
   end
@@ -982,7 +1081,7 @@ function _M.validate_user()
     return true
   end
 
-  local rbac_ctx, err = get_rbac_user_info()
+  local rbac_ctx, err = get_rbac_user_info(rbac_user)
   if err then
     ngx.log(ngx.ERR, "[rbac] ", err)
     return responses.send_HTTP_INTERNAL_SERVER_ERROR()
@@ -994,7 +1093,7 @@ function _M.validate_user()
 end
 
 
-function _M.validate_endpoint(route_name, route)
+function _M.validate_endpoint(route_name, route, rbac_user)
   if route_name == "default_route" then
     return
   end
@@ -1005,7 +1104,7 @@ function _M.validate_endpoint(route_name, route)
     return
   end
 
-  local rbac_ctx, err = get_rbac_user_info()
+  local rbac_ctx, err = get_rbac_user_info(rbac_user)
   if err then
     ngx.log(ngx.ERR, "[rbac] ", err)
     return responses.send_HTTP_INTERNAL_SERVER_ERROR()
@@ -1090,21 +1189,6 @@ function _M.get_consumer_user_map(rbac_user_id)
   end
 
   return user
-end
-
-
-function _M.get_rbac_token()
-  local rbac_auth_header = singletons.configuration.rbac_auth_header
-  local rbac_token = ngx.req.get_headers()[rbac_auth_header]
-
-  if type(rbac_token) ~= "string" then
-    -- forbid empty rbac_token and also
-    -- forbid sending rbac_token headers multiple times
-    -- because get_user assume it's a string
-    return false
-  end
-
-  return rbac_token
 end
 
 

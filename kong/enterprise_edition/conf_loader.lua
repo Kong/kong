@@ -74,6 +74,29 @@ local function validate_admin_gui_authentication(conf, errors)
 end
 
 
+local function validate_admin_gui_session(conf, errors)
+  if conf.admin_gui_session_conf then
+    if not conf.admin_gui_auth or conf.admin_gui_auth == "" then
+      errors[#errors+1] = "admin_gui_auth_conf is set with no admin_gui_auth"
+    end
+
+    local session_config, err = cjson.decode(tostring(conf.admin_gui_session_conf))
+    if err then
+      errors[#errors+1] = "admin_gui_session_conf must be valid json or not set: "
+        .. err .. " - " .. conf.admin_gui_session_conf
+    else
+      conf.admin_gui_session_conf = session_config
+
+      -- used for writing back to prefix/.kong_env
+      setmetatable(conf.admin_gui_session_conf, {
+        __tostring = function (v)
+          return assert(cjson.encode(v))
+        end
+      })
+    end
+  end
+end
+
 local function validate_admin_gui_ssl(conf, errors)
   if (table.concat(conf.admin_gui_listen, ",") .. " "):find("%sssl[%s,]") then
     if conf.admin_gui_ssl_cert and not conf.admin_gui_ssl_cert_key then
@@ -217,6 +240,7 @@ end
 local function validate(conf, errors)
   validate_admin_gui_authentication(conf, errors)
   validate_admin_gui_ssl(conf, errors)
+  validate_admin_gui_session(conf, errors)
 
   if not conf.smtp_mock then
     validate_smtp_config(conf, errors)

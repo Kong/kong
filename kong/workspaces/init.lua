@@ -870,13 +870,13 @@ function _M.resolve_ws_scope(ctx, route)
 end
 
 
-local function load_user_workspace_scope(ctx, token)
+local function load_user_workspace_scope(ctx, name)
   local old_wss = ctx.workspaces
   ctx.workspaces = {}
   local rows, err = singletons.dao.workspace_entities:find_all({
     entity_type  = "rbac_users",
-    unique_field_name = "user_token",
-    unique_field_value = token,
+    unique_field_name = "name",
+    unique_field_value = name,
   })
   ctx.workspaces = old_wss
 
@@ -890,8 +890,8 @@ end
 
 -- Return workspace scope, given api belongs
 -- to, to the the context.
-function _M.resolve_user_ws_scope(ctx, token)
-  return load_user_workspace_scope(ctx, token)
+function _M.resolve_user_ws_scope(ctx, name)
+  return load_user_workspace_scope(ctx, name)
 end
 
 

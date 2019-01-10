@@ -94,7 +94,7 @@ jobs:
     - stage: deploy
       if: tag =~ 0.
       script: .ci/trigger-travis.sh --pro $TRAVIS_ACCESS_TOKEN
-      
+
 
 cache:
   apt: true

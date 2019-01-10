@@ -55,8 +55,6 @@ end
 
 for _, strategy in helpers.each_strategy() do
   describe("Admin API authentication on #" .. strategy, function()
-    local super_admin_rbac_user
-
     setup(function()
       bp, _, dao = helpers.get_db_utils(strategy)
     end)
@@ -87,7 +85,7 @@ for _, strategy in helpers.each_strategy() do
 
         local ws_name = workspaces.DEFAULT_WORKSPACE
 
-        super_admin_rbac_user = setup_ws_defaults(dao, ws_name)
+        setup_ws_defaults(dao, ws_name)
 
         super_admin    = admin(client, ws_name, 'mars',
                                'super-admin','test@konghq.com')
@@ -146,7 +144,7 @@ for _, strategy in helpers.each_strategy() do
             method = "GET",
             path = "/_kong/admin",
             headers = {
-              ['Kong-Admin-Token'] = super_admin_rbac_user.user_token,
+              ['Kong-Admin-Token'] = "letmein",
             },
           })
 
@@ -291,7 +289,7 @@ for _, strategy in helpers.each_strategy() do
             method = "GET",
             path = "/plugins",
             headers = {
-              ['Kong-Admin-Token'] = test_admin.rbac_user.user_token,
+              ['Kong-Admin-Token'] = test_admin.rbac_user.raw_user_token,
             }
           }
 
@@ -308,7 +306,7 @@ for _, strategy in helpers.each_strategy() do
             method = "GET",
             path = "/test-ws/consumers",
             headers = {
-              ['Kong-Admin-Token'] = test_admin.rbac_user.user_token,
+              ['Kong-Admin-Token'] = test_admin.rbac_user.raw_user_token,
             }
           }
           local body = assert.res_status(200, res)
@@ -323,7 +321,7 @@ for _, strategy in helpers.each_strategy() do
             method = "GET",
             path = "/consumers",
             headers = {
-              ['Kong-Admin-Token'] = test_admin.rbac_user.user_token,
+              ['Kong-Admin-Token'] = test_admin.rbac_user.raw_user_token,
             }
           }
 
@@ -348,7 +346,7 @@ for _, strategy in helpers.each_strategy() do
 
         client = assert(helpers.admin_client())
 
-        super_admin_rbac_user = setup_ws_defaults(dao)
+        setup_ws_defaults(dao)
 
         local ws_name = "default"
 

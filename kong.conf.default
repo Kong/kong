@@ -551,9 +551,13 @@
                                  # resource.
 
 
-#rbac_auth_header = Kong-Admin-Token  # Defines the name of the HTTP request
+#rbac_user_header = Kong-Admin-User   # Defines the name of the HTTP request
                                       # header from which the Admin API will
                                       # attempt to identify the RBAC user.
+
+#rbac_auth_header = Kong-Admin-Token  # Defines the name of the HTTP request
+                                      # header from which the Admin API will
+                                      # attempt to authenticate the RBAC user.
 
 #------------------------------------------------------------------------------
 # ADMIN GUI
@@ -652,15 +656,29 @@
                         #
                         #  admin_gui_auth_conf = { "hide_credentials": true }
 
+#admin_gui_session_conf =
+                        # Session Plugin Config (JSON)
+                        #
+                        # Here you may specify the configuration for the
+                        # Session plugin as used by Kong Manager.
+                        #
+                        # For information about Plugin Configuration consult
+                        # the Kong Session Plugin documentation.
+                        #
+                        # Example:
+                        #
+                        # admin_gui_session_conf = { "cookie_name": "kookie", \
+                        #                            "secret": "changeme" }
+
 #------------------------------------------------------------------------------
 # VITALS
 #------------------------------------------------------------------------------
 
 #vitals = on                     # When enabled, Kong will store and report
                                  # metrics about its performance.
-                                 # 
-                                 # When running Kong in a multi-node setup, 
-                                 # `vitals` entails two separate meanings 
+                                 #
+                                 # When running Kong in a multi-node setup,
+                                 # `vitals` entails two separate meanings
                                  # depending on the node.
                                  #
                                  # On a Proxy-only node, `vitals` determines

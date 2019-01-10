@@ -23,7 +23,7 @@ local function teardown()
 end
 
 
-local function migrate(dao)
+local function migrate(dao, password)
   local kong_admins, err = dao.consumers:find_all({
     username = "kong_admin",
     type = enums.CONSUMERS.TYPE.ADMIN,
@@ -50,23 +50,10 @@ local function migrate(dao)
     return
   end
 
-  -- the password is the key of the key_auth credential
-  local credentials, err = dao.keyauth_credentials:find_all({
-    consumer_id = kong_admin.id
-  })
-  if err then
-    return err
-  end
-
-  local keyauth_cred = credentials[1]
-  if not keyauth_cred then
-    return
-  end
-
   local credential, err = dao.basicauth_credentials:insert({
     consumer_id = kong_admin.id,
     username = "kong_admin",
-    password = keyauth_cred.key,
+    password = password,
   })
 
   -- only report error if it's not a "record already exists" one
@@ -74,7 +61,7 @@ local function migrate(dao)
     return err
   end
 
- if credential then
+  if credential then
     -- add creds to the common lookup table
     local _, err = dao.credentials:insert({
       id = credential.id,
@@ -86,7 +73,7 @@ local function migrate(dao)
     if err then
       return err
     end
- end
+  end
 end
 
 
@@ -95,6 +82,12 @@ return {
     {
       name = "2018-11-08-000000_kong_admin_basic_auth",
       up = function (_, _, dao)
+        -- see if there's a password to use
+        local password = os.getenv("KONG_PASSWORD")
+        if not password then
+          return
+        end
+      
         setup(dao)
 
         -- look for kong_admin in default workspace,
@@ -106,7 +99,7 @@ return {
 
         ngx.ctx.workspaces = ws_scope
 
-        local err = migrate(dao)
+        local err = migrate(dao, password)
         teardown()
 
         if err then

@@ -319,6 +319,8 @@ describe("Admin API - ee-specific Kong routes", function()
         local user_workspaces = json.workspaces
         json.workspaces = nil
 
+        local token = rbac_user.raw_user_token
+        rbac_user.raw_user_token = nil
         local expected = {
           consumer = admin,
           rbac_user = rbac_user,
@@ -345,7 +347,7 @@ describe("Admin API - ee-specific Kong routes", function()
           method = "GET",
           path = "/userinfo",
           headers = {
-            ["Kong-Admin-Token"] = rbac_user.user_token,
+            ["Kong-Admin-Token"] = token,
           }
         })
 

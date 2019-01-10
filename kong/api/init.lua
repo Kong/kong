@@ -192,15 +192,19 @@ app:before_filter(function(self)
     ee_api.apply_plugin(prepared_plugin, "access")
     ee_api.apply_plugin(prepared_plugin, "header_filter")
 
-    ee_api.authenticate(self, singletons.dao,
-                              singletons.configuration.enforce_rbac ~= "off",
-                              singletons.configuration.admin_gui_auth)
+    local rbac_auth_header = singletons.configuration.rbac_auth_header
+    local rbac_token = ngx.req.get_headers()[rbac_auth_header]
 
+    if not rbac_token then
+      ee_api.authenticate(self, singletons.dao,
+                          singletons.configuration.enforce_rbac ~= "off",
+                          singletons.configuration.admin_gui_auth)
+    end
     -- ngx.var.uri is used to look for exact matches
     -- self.route_name is used to look for wildcard matches,
     -- by replacing named parameters with *
-    rbac.validate_user()
-    rbac.validate_endpoint(self.route_name, ngx.var.uri)
+    rbac.validate_user(self.rbac_user)
+    rbac.validate_endpoint(self.route_name, ngx.var.uri, self.rbac_user)
   end
 
   if not NEEDS_BODY[ngx.req.get_method()] then

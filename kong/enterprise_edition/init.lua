@@ -170,6 +170,7 @@ function _M.prepare_admin(kong_config)
     RBAC = prepare_variable(kong_config.rbac),
     RBAC_ENFORCED = prepare_variable(rbac_enforced),
     RBAC_HEADER = prepare_variable(kong_config.rbac_auth_header),
+    RBAC_USER_HEADER = prepare_variable(kong_config.rbac_user_header),
     KONG_VERSION = prepare_variable(meta.versions.package),
     FEATURE_FLAGS = prepare_variable(kong_config.admin_gui_flags),
     PORTAL = prepare_variable(kong_config.portal),

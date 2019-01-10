@@ -125,7 +125,7 @@ for _, strategy in helpers.each_strategy() do
             method = "DELETE",
             path   = "/admins/" .. admin.id,
             headers = {
-              ["Kong-Admin-Token"] = superuser.user_token
+              ["Kong-Admin-Token"] = "letmein"
             }
           })
           assert.res_status(204, res)
@@ -136,7 +136,7 @@ for _, strategy in helpers.each_strategy() do
               path   = "/cache/" .. cache_key(admin.rbac_user.id),
               body   = {},
               headers = {
-                ["Kong-Admin-Token"] = superuser.user_token
+                ["Kong-Admin-Token"] = "letmein"
               }
             })
             res:read_body()
