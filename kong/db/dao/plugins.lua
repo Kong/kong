@@ -304,6 +304,15 @@ end
 
 
 function Plugins:select_by_cache_key(key)
+  local schema_state = assert(self.db:last_schema_state())
+
+  -- if migration is complete, disable this translator function
+  -- and use the regular function
+  if schema_state:is_migration_executed("core", "001_14_to_15") then
+    self.select_by_cache_key = self.super.select_by_cache_key
+    Plugins.select_by_cache_key = nil
+    return self.super.select_by_cache_key(self, key)
+  end
 
   -- first try new way
   local entity, new_err = self.super.select_by_cache_key(self, key)
