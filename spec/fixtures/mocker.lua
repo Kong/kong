@@ -49,4 +49,13 @@ function mocker.setup(finally, args)
 end
 
 
+function mocker.table_where_every_key_returns(value)
+  return setmetatable({}, {
+     __index = function()
+                 return value
+               end
+  })
+end
+
+
 return mocker

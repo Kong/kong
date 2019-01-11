@@ -450,8 +450,19 @@ do
   local MigrationHelpers = require "kong.db.migrations.helpers"
   local MigrationsState = require "kong.db.migrations.state"
 
+
+  local last_schema_state
+
+
   function DB:schema_state()
-    return MigrationsState.load(self)
+    local err
+    last_schema_state, err = MigrationsState.load(self)
+    return last_schema_state, err
+  end
+
+
+  function DB:last_schema_state()
+    return last_schema_state or self:schema_state()
   end
 
 
