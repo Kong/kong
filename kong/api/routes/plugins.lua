@@ -9,6 +9,7 @@ local singletons = require "kong.singletons"
 
 local type = type
 local pairs = pairs
+local setmetatable = setmetatable
 
 
 local get_plugin = endpoints.get_entity_endpoint(kong.db.plugins.schema)
@@ -18,20 +19,27 @@ local delete_plugin = endpoints.delete_entity_endpoint(kong.db.plugins.schema)
 
 local function before_plugin_for_entity(entity_name, plugin_field)
   return function(self, db, helpers)
-    local entity = endpoints.select_entity(self, db, kong.db[entity_name].schema)
-    if not entity then
-      return kong.response.exit(404, { message = "Not found" })
+    local entity, _, err_t = endpoints.select_entity(self, db, kong.db[entity_name].schema)
+    if err_t then
+      return endpoints.handle_error(err_t)
     end
 
-    local plugin = db.plugins:select({ id = self.params.id })
+    if not entity then
+      return endpoints.not_found()
+    end
+
+    local plugin, _, err_t = endpoints.select_entity(self, db, db.plugins.schema)
+    if err_t then
+      return endpoints.handle_error(err_t)
+    end
+
     if not plugin
        or type(plugin[plugin_field]) ~= "table"
        or plugin[plugin_field].id ~= entity.id then
-      return kong.response.exit(404, { message = "Not found" })
+      return endpoints.not_found()
     end
-    self.plugin = plugin
 
-    self.params.plugins = self.params.id
+    self.plugin = plugin
   end
 end
 
@@ -189,13 +197,18 @@ return {
 
         -- We need the name, otherwise we don't know what type of
         -- plugin this is and we can't perform *any* validations.
-        local plugin = db.plugins:select({ id = self.params.plugins })
+        local plugin, _, err_t = endpoints.select_entity(self, db, db.plugins.schema)
+        if err_t then
+          return endpoints.handle_error(err_t)
+        end
+
         if not plugin then
-          return kong.response.exit(404, { message = "Not found" })
+          return endpoints.not_found()
         end
 
         fill_plugin_data(self.args, plugin)
       end
+
       return parent()
     end,
   },
@@ -204,11 +217,11 @@ return {
     GET = function(self, db, helpers)
       local subschema = db.plugins.schema.subschemas[self.params.name]
       if not subschema then
-        return kong.response.exit(404, { message = "No plugin named '" .. self.params.name .. "'" })
+        return endpoints.not_found("No plugin named '", self.params.name, "'")
       end
 
       local copy = schema_to_jsonable(subschema.fields.config)
-      return kong.response.exit(200, copy)
+      return endpoints.ok(copy)
     end
   },
 
@@ -218,14 +231,14 @@ return {
       for k in pairs(singletons.configuration.loaded_plugins) do
         enabled_plugins[#enabled_plugins+1] = k
       end
-      return kong.response.exit(200, {
+      return endpoints.ok {
         enabled_plugins = enabled_plugins
-      })
+      }
     end
   },
 
   -- Available for backward compatibility
-  ["/consumers/:consumers/plugins/:id"] = {
+  ["/consumers/:consumers/plugins/:plugins"] = {
     before = before_plugin_for_entity("consumers", "consumer"),
     PATCH = patch_plugin,
     GET = get_plugin,
@@ -234,7 +247,7 @@ return {
   },
 
   -- Available for backward compatibility
-  ["/routes/:routes/plugins/:id"] = {
+  ["/routes/:routes/plugins/:plugins"] = {
     before = before_plugin_for_entity("routes", "route"),
     PATCH = patch_plugin,
     GET = get_plugin,
@@ -243,7 +256,7 @@ return {
   },
 
   -- Available for backward compatibility
-  ["/services/:services/plugins/:id"] = {
+  ["/services/:services/plugins/:plugins"] = {
     before = before_plugin_for_entity("services", "service"),
     PATCH = patch_plugin,
     GET = get_plugin,

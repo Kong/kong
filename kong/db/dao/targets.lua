@@ -7,8 +7,8 @@ local cjson = require "cjson"
 local setmetatable = setmetatable
 local tostring = tostring
 local ipairs = ipairs
-local assert = assert
 local table = table
+local min = math.min
 
 
 local _TARGETS = {}
@@ -31,7 +31,7 @@ local function clean_history(self, upstream_pk)
   local cleanup_factor = 10
 
   --cleaning up history, check if it's necessary...
-  local targets, err, err_t = self:select_by_upstream_raw(upstream_pk)
+  local targets, err, err_t = self:for_upstream(upstream_pk, 1000)
   if not targets then
     return nil, err, err_t
   end
@@ -133,23 +133,12 @@ function _TARGETS:delete_by_target(tgt)
 end
 
 
--- Paginate through the target history for an upstream,
--- including entries that have been since overriden, and those
--- with weight=0 (i.e. the "raw" representation of targets in
--- the database)
-function _TARGETS:page_for_upstream_raw(upstream_pk, ...)
-  return self.super.page_for_upstream(self, upstream_pk, ...)
-end
-
-
 -- Return the entire target history for an upstream,
 -- including entries that have been since overriden, and those
--- with weight=0 (i.e. the "raw" representation of targets in
--- the database)
-function _TARGETS:select_by_upstream_raw(upstream_pk, ...)
+-- with weight=0
+function _TARGETS:for_upstream(upstream_pk, ...)
   local targets = {}
 
-  -- Note that each_for_upstream is not overridden, so it returns "raw".
   for target, err, err_t in self:each_for_upstream(upstream_pk, ...) do
     if not target then
       return nil, err, err_t
@@ -166,12 +155,12 @@ end
 
 -- Paginate through targets for an upstream, returning only the
 -- latest state of each active (weight>0) target.
-function _TARGETS:page_for_upstream(upstream_pk, size, offset, options)
+function _TARGETS:page_for_upstream_without_inactive(upstream_pk, size, offset, options)
   -- We need to read all targets, then filter the history, then
   -- extract the page requested by the user.
 
   -- Read all targets; this returns the target history sorted chronologically
-  local targets, err, err_t = self:select_by_upstream_raw(upstream_pk, 1000, options)
+  local targets, err, err_t = self:for_upstream(upstream_pk, 1000, options)
   if not targets then
     return nil, err, err_t
   end
@@ -201,8 +190,8 @@ function _TARGETS:page_for_upstream(upstream_pk, size, offset, options)
   end
 
   -- Extract the requested page
-  local page = setmetatable({}, cjson.empty_array_mt)
-  size = math.min(size or 100, 1000)
+  local page = {}
+  size = min(size or 100, 1000)
   offset = offset or 0
   for i = 1 + offset, size + offset do
     local target = all_active_targets[i]
@@ -210,6 +199,12 @@ function _TARGETS:page_for_upstream(upstream_pk, size, offset, options)
       break
     end
     table.insert(page, target)
+  end
+
+  if #page > 0 then
+    setmetatable(page, cjson.array_mt)
+  else
+    setmetatable(page, cjson.empty_array_mt)
   end
 
   local next_offset
@@ -225,7 +220,7 @@ end
 -- latest state of each active (weight>0) target, and include
 -- health information to the returned records.
 function _TARGETS:page_for_upstream_with_health(upstream_pk, ...)
-  local targets, err, err_t, next_offset = self:page_for_upstream(upstream_pk, ...)
+  local targets, err, err_t, next_offset = self:page_for_upstream_without_inactive(upstream_pk, ...)
   if not targets then
     return nil, err, err_t
   end
@@ -255,30 +250,17 @@ function _TARGETS:page_for_upstream_with_health(upstream_pk, ...)
 end
 
 
-function _TARGETS:select_by_upstream_filter(upstream_pk, filter, options)
-  assert(filter.id or filter.target)
-
-  local targets, err, err_t = self:select_by_upstream_raw(upstream_pk, nil, options)
+function _TARGETS:select_by_upstream_target(upstream_pk, target, options)
+  local targets, err, err_t = self:for_upstream(upstream_pk, 1000, options)
   if not targets then
     return nil, err, err_t
   end
-  if filter.id then
-    for _, t in ipairs(targets) do
-      if t.id == filter.id then
-        return t
-      end
-    end
-    local err_t = self.errors:not_found(filter.id)
-    return nil, tostring(err_t), err_t
-  end
 
   for _, t in ipairs(targets) do
-    if t.target == filter.target then
+    if t.id == target or t.target == target then
       return t
     end
   end
-  err_t = self.errors:not_found_by_field({ target = filter.target })
-  return nil, tostring(err_t), err_t
 end
 
 

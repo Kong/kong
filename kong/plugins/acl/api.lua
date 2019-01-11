@@ -26,20 +26,21 @@ return {
           return endpoints.handle_error(err_t)
         end
         if not consumer then
-          return kong.response.exit(404, { message = "Not found" })
+          return endpoints.not_found()
         end
 
         self.consumer = consumer
 
-        local acl, _, err_t = endpoints.select_entity(self, db, acls_schema)
-        if err_t then
-          return endpoints.handle_error(err_t)
-        end
-
-        if self.req.cmd_mth ~= "PUT" then
-          if not acl or acl.consumer.id ~= consumer.id then
-            return kong.response.exit(404, { message = "Not found" })
+        if self.req.method ~= "PUT" then
+          local acl, _, err_t = endpoints.select_entity(self, db, acls_schema)
+          if err_t then
+            return endpoints.handle_error(err_t)
           end
+
+          if not acl or acl.consumer.id ~= consumer.id then
+            return endpoints.not_found()
+          end
+
           self.acl = acl
           self.params.acls = acl.id
         end

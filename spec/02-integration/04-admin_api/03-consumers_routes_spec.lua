@@ -27,7 +27,7 @@ end
 
 for _, strategy in helpers.each_strategy() do
 
-describe("Admin API (#" .. strategy .. "): ", function()
+describe("Admin API (#" .. strategy .. "):", function()
   local bp
   local db
   local client
@@ -710,7 +710,7 @@ describe("Admin API (#" .. strategy .. "): ", function()
 
       it("retrieves by id", function()
         local consumer = bp.consumers:insert()
-        local plugin = bp.rewriter_plugins:insert({ consumer = { id = consumer.id }})
+        local plugin = bp.rewriter_plugins:insert({ consumer = { id = consumer.id }}, { nulls = true })
 
         local res = assert(client:send {
           method = "GET",
@@ -722,7 +722,7 @@ describe("Admin API (#" .. strategy .. "): ", function()
       end)
       it("retrieves by consumer id when it has spaces", function()
         local consumer = bp.consumers:insert()
-        local plugin = bp.rewriter_plugins:insert({ consumer = { id = consumer.id }})
+        local plugin = bp.rewriter_plugins:insert({ consumer = { id = consumer.id }}, { nulls = true })
 
         local res = assert(client:send {
           method = "GET",

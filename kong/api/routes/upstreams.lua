@@ -1,151 +1,100 @@
 local endpoints = require "kong.api.endpoints"
 local utils = require "kong.tools.utils"
-local knode = (kong and kong.node) and kong.node or
-              require "kong.pdk.node".new()
 
 
-local unescape_uri = ngx.unescape_uri
+local kong = kong
 local escape_uri = ngx.escape_uri
+local unescape_uri = ngx.unescape_uri
 local null = ngx.null
 local fmt = string.format
 
 
-local function select_upstream(db, upstream_id, opts)
-  local id = unescape_uri(upstream_id)
-  if utils.is_valid_uuid(id) then
-    return db.upstreams:select({ id = id }, opts)
-  end
-
-  return db.upstreams:select_by_name(id, opts)
-end
-
-
-local function select_target(db, upstream, target_id, opts)
-  local id = unescape_uri(target_id)
-  local filter = utils.is_valid_uuid(id) and { id = id } or { target = id }
-
-  return db.targets:select_by_upstream_filter({ id = upstream.id }, filter, opts)
-end
-
-
 local function post_health(self, db, is_healthy)
-  local args = self.args.post
-  local opts = endpoints.extract_options(args, db.upstreams.schema, "select")
-
-  local upstream, _, err_t = select_upstream(db, self.params.upstreams, opts)
+  local upstream, _, err_t = endpoints.select_entity(self, db, db.upstreams.schema)
   if err_t then
     return endpoints.handle_error(err_t)
   end
 
   if not upstream then
-    return kong.response.exit(404, { message = "Not found" })
+    return endpoints.not_found()
   end
 
-  opts = endpoints.extract_options(args, db.targets.schema, "select", opts)
+  local target
+  if utils.is_valid_uuid(unescape_uri(self.params.targets)) then
+    target, _, err_t = endpoints.select_entity(self, db, db.targets.schema)
 
-  local target, _, err_t = select_target(db, upstream, self.params.targets, opts)
+  else
+    local opts = endpoints.extract_options(self.args.uri, db.targets.schema, "select")
+    local upstream_pk = db.upstreams.schema:extract_pk_values(upstream)
+    target, _, err_t = db.targets:select_by_upstream_target(upstream_pk, unescape_uri(self.params.targets), opts)
+  end
+
   if err_t then
     return endpoints.handle_error(err_t)
   end
 
-  if target then
-    local ok, err = db.targets:post_health(upstream, target, is_healthy)
-    if not ok then
-      local body = utils.get_default_exit_body(400, err)
-      return kong.response.exit(400, body)
-    end
+  if not target then
+    return endpoints.not_found()
   end
 
-  return kong.response.exit(204) -- no content
+  local ok, err = db.targets:post_health(upstream, target, is_healthy)
+  if not ok then
+    return endpoints.bad_request(err)
+  end
+
+  return endpoints.no_content()
 end
 
 
 return {
   ["/upstreams/:upstreams/health"] = {
     GET = function(self, db)
-      local args = self.args.uri
-      local opts = endpoints.extract_options(args, db.upstreams.schema, "select")
-
-      local upstream, _, err_t = select_upstream(db, self.params.upstreams, opts)
+      local upstream, _, err_t = endpoints.select_entity(self, db, db.upstreams.schema)
       if err_t then
         return endpoints.handle_error(err_t)
       end
 
       if not upstream then
-        return kong.response.exit(404, { message = "Not found" })
+        return endpoints.not_found()
       end
 
-      local upstream_pk = { id = upstream.id }
-      local size, err = endpoints.get_page_size(args)
-      if err then
-        return endpoints.handle_error(db.targets.errors:invalid_size(err))
-      end
-
-      opts = endpoints.extract_options(args, db.targets.schema, "select")
-
+      self.params.targets = db.upstreams.schema:extract_pk_values(upstream)
       local targets_with_health, _, err_t, offset =
-        db.targets:page_for_upstream_with_health(upstream_pk, size, args.offset, opts)
+        endpoints.page_collection(self, db, db.targets.schema, "page_for_upstream_with_health")
+
       if err_t then
         return endpoints.handle_error(err_t)
       end
 
       local next_page = offset and fmt("/upstreams/%s/health?offset=%s",
-                                       escape_uri(upstream.id),
+                                       self.params.upstreams,
                                        escape_uri(offset)) or null
 
-      local node_id, err = knode.get_id()
+      local node_id, err = kong.node.get_id()
       if err then
-        ngx.log(ngx.ERR, "failed getting node id: ", err)
+        kong.log.err("failed getting node id: ", err)
       end
 
-      return kong.response.exit(200, {
+      return endpoints.ok {
         data    = targets_with_health,
         offset  = offset,
         next    = next_page,
         node_id = node_id,
-      })
+      }
     end
   },
 
+  ["/upstreams/:upstreams/targets"] = {
+    GET = endpoints.get_collection_endpoint(kong.db.targets.schema,
+                                            kong.db.upstreams.schema,
+                                            "upstream",
+                                            "page_for_upstream_without_inactive"),
+  },
+
   ["/upstreams/:upstreams/targets/all"] = {
-    GET = function(self, db)
-      local args = self.args.uri
-      local opts = endpoints.extract_options(args, db.upstreams.schema, "select")
-
-      local upstream, _, err_t = select_upstream(db, self.params.upstreams, opts)
-      if err_t then
-        return endpoints.handle_error(err_t)
-      end
-
-      if not upstream then
-        return kong.response.exit(404, { message = "Not found" })
-      end
-
-      local upstream_pk = { id = upstream.id }
-      local opts = endpoints.extract_options(args, db.targets.schema, "select")
-      local size, err = endpoints.get_page_size(args)
-      if err then
-        return endpoints.handle_error(db.targets.errors:invalid_size(err))
-      end
-
-      local targets, _, err_t, offset = db.targets:page_for_upstream_raw(upstream_pk,
-                                                                         size,
-                                                                         args.offset,
-                                                                         opts)
-      if err_t then
-        return endpoints.handle_error(err_t)
-      end
-
-      local next_page = offset and fmt("/upstreams/%s/targets/all?offset=%s",
-                                       escape_uri(upstream.id),
-                                       escape_uri(offset)) or null
-
-      return kong.response.exit(200, {
-        data   = targets,
-        offset = offset,
-        next   = next_page,
-      })
-    end
+    GET = endpoints.get_collection_endpoint(kong.db.targets.schema,
+                                            kong.db.upstreams.schema,
+                                            "upstream")
   },
 
   ["/upstreams/:upstreams/targets/:targets/healthy"] = {
@@ -162,35 +111,40 @@ return {
 
   ["/upstreams/:upstreams/targets/:targets"] = {
     DELETE = function(self, db)
-      local args = self.args.uri
-      local opts = endpoints.extract_options(args, db.upstreams.schema, "select")
-
-      local upstream, _, err_t = select_upstream(db, self.params.upstreams, opts)
+      local upstream, _, err_t = endpoints.select_entity(self, db, db.upstreams.schema)
       if err_t then
         return endpoints.handle_error(err_t)
       end
 
       if not upstream then
-        return kong.response.exit(404, { message = "Not found" })
+        return endpoints.not_found()
       end
 
-      opts = endpoints.extract_options(args, db.targets.schema, "select")
+      local target
+      if utils.is_valid_uuid(unescape_uri(self.params.targets)) then
+        target, _, err_t = endpoints.select_entity(self, db, db.targets.schema)
 
-      local target, _, err_t = select_target(db, upstream, self.params.targets, opts)
+      else
+        local opts = endpoints.extract_options(self.args.uri, db.targets.schema, "select")
+        local upstream_pk = db.upstreams.schema:extract_pk_values(upstream)
+        target, _, err_t = db.targets:select_by_upstream_target(upstream_pk, unescape_uri(self.params.targets), opts)
+      end
+
       if err_t then
         return endpoints.handle_error(err_t)
       end
 
-      if target then
-        opts = endpoints.extract_options(args, db.targets.schema, "delete")
-
-        local _, _, err_t = db.targets:delete({ id = target.id }, opts)
-        if err_t then
-          return endpoints.handle_error(err_t)
-        end
+      if not target then
+        return endpoints.not_found()
       end
 
-      return kong.response.exit(204) -- no content
+      self.params.targets = db.upstreams.schema:extract_pk_values(target)
+      _, _, err_t = endpoints.delete_entity(self, db, db.targets.schema)
+      if err_t then
+        return endpoints.handle_error(err_t)
+      end
+
+      return endpoints.no_content()
     end
   },
 }

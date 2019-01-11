@@ -65,13 +65,13 @@ for _, strategy in helpers.each_strategy() do
 
           services[i] = service
 
-          plugins[i] = assert(db.plugins:insert {
+          plugins[i] = assert(db.plugins:insert({
             name = "key-auth",
             service = { id = service.id },
             config = {
               key_names = { "testkey" },
             }
-          })
+          }, { nulls = true }))
         end
       end)
 

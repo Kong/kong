@@ -25,20 +25,21 @@ return {
           return endpoints.handle_error(err_t)
         end
         if not consumer then
-          return kong.response.exit(404, { message = "Not found" })
+          return endpoints.not_found()
         end
 
         self.consumer = consumer
 
-        local cred, _, err_t = endpoints.select_entity(self, db, jwt_secrets_schema)
-        if err_t then
-          return endpoints.handle_error(err_t)
-        end
-
-        if self.req.cmd_mth ~= "PUT" then
-          if not cred or cred.consumer.id ~= consumer.id then
-            return kong.response.exit(404, { message = "Not found" })
+        if self.req.method ~= "PUT" then
+          local cred, _, err_t = endpoints.select_entity(self, db, jwt_secrets_schema)
+          if err_t then
+            return endpoints.handle_error(err_t)
           end
+
+          if not cred or cred.consumer.id ~= consumer.id then
+            return endpoints.not_found()
+          end
+
           self.keyauth_credential = cred
           self.params.keyauth_jwt_secrets = cred.id
         end

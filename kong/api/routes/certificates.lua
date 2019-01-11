@@ -22,12 +22,11 @@ local function get_cert_id_from_sni(self, db, helpers)
     return
   end
 
-  if self.req.cmd_mth == "PUT" then
-    self.new_put_sni = id
+  if self.req.method == "PUT" then
     return
   end
 
-  kong.response.exit(404, { message = "SNI not found" })
+  return endpoints.not_found("SNI not found")
 end
 
 
@@ -36,43 +35,21 @@ return {
     before = get_cert_id_from_sni,
 
     -- override to include the snis list when getting an individual certificate
-    GET = function(self, db, helpers)
-      local pk = { id = self.params.certificates }
-
-      local opts = endpoints.extract_options(self.args.uri, db.certificates.schema, "select")
-
-      local cert, _, err_t = db.certificates:select_with_name_list(pk, opts)
-      if err_t then
-        return endpoints.handle_error(err_t)
-      end
-
-      if not cert then
-        kong.response.exit(404, { message = "Not found" })
-      end
-
-      return kong.response.exit(200, cert)
-    end,
+    GET = endpoints.get_entity_endpoint(kong.db.certificates.schema,
+                                        nil, nil, "select_with_name_list"),
 
     -- override to create a new SNI in the PUT /certificates/foo.com (create) case
     PUT = function(self, db, helpers)
-      local args = self.args.post
-
-      local opts = endpoints.extract_options(args, db.certificates.schema, "upsert")
-
       local cert, err_t, _
       local id = unescape_uri(self.params.certificates)
 
       -- cert was found via id or sni inside `before` section
       if utils.is_valid_uuid(id) then
-        cert, _, err_t = db.certificates:upsert({ id = id }, args, opts)
+        cert, _, err_t = endpoints.upsert_entity(self, db, db.certificates.schema)
 
       else -- create a new cert. Add extra sni if provided on url
-        if self.new_put_sni then
-          args.snis = Set.values(Set(args.snis or {}) + self.new_put_sni)
-          self.new_put_sni = nil
-        end
-
-        cert, _, err_t = db.certificates:insert(args, opts)
+        self.args.post.snis = Set.values(Set(self.args.post.snis or {}) + id)
+        cert, _, err_t = endpoints.insert_entity(self, db, db.certificates.schema)
       end
 
       if err_t then
@@ -80,10 +57,10 @@ return {
       end
 
       if not cert then
-        kong.response.exit(404, { message = "Not found" })
+        return endpoints.not_found()
       end
 
-      return kong.response.exit(200, cert)
+      return endpoints.ok(cert)
     end,
   },
 

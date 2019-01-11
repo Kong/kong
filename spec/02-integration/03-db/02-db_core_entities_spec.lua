@@ -1855,7 +1855,7 @@ for _, strategy in helpers.each_strategy() do
     --[[
     -- Targets entity
 
-    db.targets:page_for_upstream(primary_key)
+    db.targets:page_for_upstream_without_inactive(primary_key)
     --]]
 
     describe("Targets", function()
@@ -1872,9 +1872,9 @@ for _, strategy in helpers.each_strategy() do
         end
       end)
 
-      describe(":page_for_upstream()", function()
+      describe(":page_for_upstream_without_inactive()", function()
         it("return value 'offset' is a string", function()
-          local page, _, _, offset = db.targets:page_for_upstream({
+          local page, _, _, offset = db.targets:page_for_upstream_without_inactive({
             id = upstream.id,
           }, 1)
           assert.not_nil(page)

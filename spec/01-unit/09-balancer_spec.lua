@@ -223,7 +223,7 @@ describe("Balancer", function()
     singletons.db = {
       targets = {
         each = each(TARGETS_FIXTURES),
-        select_by_upstream_raw = function(self, upstream_pk)
+        for_upstream = function(self, upstream_pk)
           local upstream_id = upstream_pk.id
           local res, len = {}, 0
           for tgt in self:each() do
