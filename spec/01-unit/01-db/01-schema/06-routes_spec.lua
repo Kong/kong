@@ -199,7 +199,7 @@ describe("routes schema", function()
     end)
 
     it("must dry-run values that are considered regexes", function()
-      local u = require("spec.helpers").unindent
+      local d = require("pl.text").dedent
 
       local invalid_paths = {
         [[/users/(foo/profile]],
@@ -212,7 +212,7 @@ describe("routes schema", function()
 
         local ok, err = Routes:validate(route)
         assert.falsy(ok)
-        assert.equal(u([[invalid regex: '/users/(foo/profile' (PCRE returned:
+        assert.equal(d([[invalid regex: '/users/(foo/profile' (PCRE returned:
                          pcre_compile() failed: missing ) in
                          "/users/(foo/profile")]], true, true), err.paths)
       end

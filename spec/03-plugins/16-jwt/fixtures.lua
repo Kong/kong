@@ -1,5 +1,5 @@
-local helpers = require "spec.helpers"
-local u = helpers.unindent
+local text = require "pl.text"
+local d = text.dedent
 
 return {
 rs256_private_key = [[
@@ -95,7 +95,7 @@ MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEAwTleT8M/rlF8nE/qhY+26axJzFr
 oVz7WciGZYxB1wI/U0jJgyr5PBdQASFywG+QgGP/xD3eEozUnVOX+1z+9g==
 -----END PUBLIC KEY-----
 ]],
-hs384_secret = u([[
+hs384_secret = d([[
 zxhk1H1Y11ax99xO20EGf00FDAOuPb9kEOmOQZMpR1BElx7sWjBIX2okAJiqjulH
 OZpsjcgbzfCq69apm6f2K28PTvIvS8ni_CG46_huUTBqosCmdEr-kZDvKBLsppfG
 2c8q9NXu3Qi_049nCFcIqGLhPgjJDmxElRhyJrtU8PDq2sBurfsIXmRczgG6LzxY
@@ -103,7 +103,7 @@ kuQ3FRny4O4ozT6B8fsId8DZ1tMd8XyKeeEN_zgE2aFipV1ONRpSLKXyHm8Jchzz
 Vu-h84FJkh3CGXdPOYxhn66asmr48rnnV-ISS0rSDe6vCwnurhgKCDHrKcHi_Ksb
 tlasnT8qLZsnxop42uFBjQ
 ]], true),
-hs512_secret = u([[
+hs512_secret = d([[
 eCCyv047A0rmH2-TfDIg89JJ9Kbmo8lp5z4C9LelCV8tPPYqg-22BBtWhairPSWR
 UzlpndVzRqbQMjiBTI69lCaj7zsYopJPZ_i6xVlD_XWmrx-PanZgP-AW0EiSiwqO
 dNl4aNhwMuSOnTAQYrwSZMGM9xnxfo5apkxtUhgcNFzXB8oEZPzRf_xBXHlID3vl

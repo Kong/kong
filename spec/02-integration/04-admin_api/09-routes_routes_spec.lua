@@ -4,7 +4,7 @@ local helpers = require "spec.helpers"
 local Errors  = require "kong.db.errors"
 
 
-local unindent = helpers.unindent
+local dedent = require("pl.text").dedent
 
 
 local function it_content_types(title, fn)
@@ -137,7 +137,7 @@ for _, strategy in helpers.each_strategy() do
               assert.same({
                 code    = Errors.codes.SCHEMA_VIOLATION,
                 name    = "schema violation",
-                message = unindent([[
+                message = dedent([[
                   2 schema violations
                   (must set one of 'methods', 'hosts', 'paths' when 'protocols' is 'http' or 'https';
                   service: required field missing)
@@ -532,7 +532,7 @@ for _, strategy in helpers.each_strategy() do
                 assert.same({
                   code    = Errors.codes.SCHEMA_VIOLATION,
                   name    = "schema violation",
-                  message = unindent([[
+                  message = dedent([[
                   2 schema violations
                   (must set one of 'methods', 'hosts', 'paths' when 'protocols' is 'http' or 'https';
                   service: required field missing)

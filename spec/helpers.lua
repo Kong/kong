@@ -64,41 +64,6 @@ local function openresty_ver_num()
   return tonumber(a .. b .. c .. d)
 end
 
--- Unindent a multi-line string for proper indenting in
--- square brackets.
---
--- Ex:
---   u[[
---       hello world
---       foo bar
---   ]]
---
--- will return: "hello world\nfoo bar"
-local function unindent(str, concat_newlines, spaced_newlines)
-  str = string.match(str, "^%s*(%S.-%S*)%s*$")
-  if not str then
-    return ""
-  end
-
-  local level  = math.huge
-  local prefix = ""
-  local len
-
-  for pref in str:gmatch("\n(%s+)") do
-    len = #prefix
-
-    if len < level then
-      level  = len
-      prefix = pref
-    end
-  end
-
-  local repl = concat_newlines and "" or "\n"
-  repl = spaced_newlines and " " or repl
-
-  return (str:gsub("\n" .. prefix, repl):gsub("\n$", "")):gsub("\\r", "\r")
-end
-
 ---------------
 -- Conf and DAO
 ---------------
@@ -1307,7 +1272,6 @@ return {
   -- miscellaneous
   intercept = intercept,
   openresty_ver_num = openresty_ver_num(),
-  unindent = unindent,
 
   start_kong = function(env, tables)
     if tables ~= nil and type(tables) ~= "table" then

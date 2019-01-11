@@ -3,7 +3,7 @@ local fixtures   = require "spec.03-plugins.16-jwt.fixtures"
 local helpers    = require "spec.helpers"
 
 
-local u          = helpers.unindent
+local d          = require("pl.text").dedent
 
 
 describe("Plugin: jwt (parser)", function()
@@ -16,13 +16,13 @@ describe("Plugin: jwt (parser)", function()
       }, "secret")
 
       if helpers.openresty_ver_num < 11123 then
-        assert.equal(u([[
+        assert.equal(d([[
           eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhZG1pbiI6d
           HJ1ZSwibmFtZSI6IkpvaG4gRG9lIiwic3ViIjoiMTIzNDU2Nzg
           5MCJ9.eNK_fimsCW3Q-meOXyc_dnZHubl2D4eZkIcn6llniCk
         ]], true), token)
       else
-        assert.equal(u([[
+        assert.equal(d([[
           eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoiSm
           9obiBEb2UiLCJhZG1pbiI6dHJ1ZSwic3ViIjoiMTIzNDU2Nzg5M
           CJ9.Nu43HyL_byXrv-QEc96OCNF0KogddZPLsxYBuDnX1rU
@@ -36,7 +36,7 @@ describe("Plugin: jwt (parser)", function()
         sub   = "1234567890"
       }, "secret", "HS384")
 
-      assert.equal(u([[
+      assert.equal(d([[
         eyJhbGciOiJIUzM4NCIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoiS
         m9obiBEb2UiLCJhZG1pbiI6dHJ1ZSwic3ViIjoiMTIzNDU2Nzg
         5MCJ9.4Ok0xhf2eh04vVDC4tPG0vmRwmVYVqUueU8R9sRdQ4_Z
@@ -50,7 +50,7 @@ describe("Plugin: jwt (parser)", function()
         sub   = "1234567890"
       }, "secret", "HS512")
 
-      assert.equal(u([[
+      assert.equal(d([[
         eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoiSm
         9obiBEb2UiLCJhZG1pbiI6dHJ1ZSwic3ViIjoiMTIzNDU2Nzg5M
         CJ9.3xG0Dl5rEokSV9iehelulvP0FhURRt4HlTNUorEPl7gkOR0
@@ -64,7 +64,7 @@ describe("Plugin: jwt (parser)", function()
         admin = true
       }, fixtures.rs256_private_key, "RS256")
 
-      assert.equal(u([[
+      assert.equal(d([[
         eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoiSm9obiBEb2UiLCJhZG1p
         biI6dHJ1ZSwic3ViIjoiMTIzNDU2Nzg5MCJ9.m6E0DvUJrnw5oLYrvIwJ6n_xFFrAsXSL
         zHtDAukzCv6yoDkJkMi37DhHB3EZr_shJFA-41UhdkSXSKg8xvnZ4VpeJcXx7UU4sdOQa
@@ -82,7 +82,7 @@ describe("Plugin: jwt (parser)", function()
       }, fixtures.rs512_private_key, "RS512")
 
       if helpers.openresty_ver_num < 11123 then
-        assert.equal(u([[
+        assert.equal(d([[
           eyJhbGciOiJSUzUxMiIsInR5cCI6IkpXVCJ9.eyJhZG1pbiI6dHJ1ZSwibmFtZSI6Ikpv
           aG4gRG9lIiwic3ViIjoiMTIzNDU2Nzg5MCJ9.VhoFYud-lrxtkbkfMl0Wkr4fERsDNjGf
           vHc2hFEecjLqSJ65_cydJiU011QqAmlMM8oIRCnoGKvA63XeE7M6qPsNkJ_vHMoqO-Hg3
@@ -93,7 +93,7 @@ describe("Plugin: jwt (parser)", function()
         ]], true), token)
 
       else
-        assert.equal(u([[
+        assert.equal(d([[
           eyJhbGciOiJSUzUxMiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoiSm9obiBEb2UiLCJhZG1p
           biI6dHJ1ZSwic3ViIjoiMTIzNDU2Nzg5MCJ9.YgYhC6E8_4V--36yWGSCIvPfL77zibNk
           m6lnM-8u2J39nP3QlQtiEkuY0lWZku_mWggYiL0PycTLHChLqeiL0ElP6IYaL39XrlYES

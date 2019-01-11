@@ -52,7 +52,8 @@ for _, strategy in helpers.each_strategy() do
 
     describe("reset", function()
       it("cannot run non-interactively without --yes", function()
-        local cmd = string.format(helpers.unindent [[
+        local dedent = require("pl.text").dedent
+        local cmd = string.format(dedent [[
           echo y | %s KONG_DATABASE=%s %s migrations reset --v
         ]], lua_path, strategy, helpers.bin_path, helpers.test_conf_path)
         local ok, code, _, stderr = pl_utils.executeex(cmd)

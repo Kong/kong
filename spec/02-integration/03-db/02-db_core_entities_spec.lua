@@ -4,7 +4,7 @@ local helpers = require "spec.helpers"
 local cjson   = require "cjson"
 
 local fmt      = string.format
-local unindent = helpers.unindent
+local dedent   = require("pl.text").dedent
 
 
 local a_blank_uuid = "00000000-0000-0000-0000-000000000000"
@@ -345,7 +345,7 @@ for _, strategy in helpers.each_strategy() do
             code     = Errors.codes.SCHEMA_VIOLATION,
             name     = "schema violation",
             strategy = strategy,
-            message  = unindent([[
+            message  = dedent  ([[
               2 schema violations
               (must set one of 'methods', 'hosts', 'paths' when 'protocols' is 'http' or 'https';
               service: required field missing)
@@ -413,7 +413,7 @@ for _, strategy in helpers.each_strategy() do
             service = service,
           })
           assert.is_nil(route)
-          local message  = fmt(unindent([[
+          local message  = fmt(dedent  ([[
             the foreign key '{id="%s"}' does not reference
             an existing 'services' entity.
           ]], true, true), u)
@@ -450,7 +450,7 @@ for _, strategy in helpers.each_strategy() do
             code     = Errors.codes.INVALID_OPTIONS,
             name     = "invalid options",
             strategy = strategy,
-            message  = unindent([[
+            message  = dedent  ([[
               invalid option (ttl: cannot be used with 'routes')
             ]], true, true),
             options   = {
@@ -789,7 +789,7 @@ for _, strategy in helpers.each_strategy() do
               code        = Errors.codes.SCHEMA_VIOLATION,
               name = "schema violation",
               strategy    = strategy,
-              message  = unindent([[
+              message  = dedent  ([[
                 schema violation
                 (must set one of 'methods', 'hosts', 'paths' when 'protocols' is 'http' or 'https')
               ]], true, true),
@@ -839,7 +839,7 @@ for _, strategy in helpers.each_strategy() do
               code        = Errors.codes.SCHEMA_VIOLATION,
               name = "schema violation",
               strategy    = strategy,
-              message  = unindent([[
+              message  = dedent  ([[
                 schema violation
                 (must set one of 'methods', 'hosts', 'paths' when 'protocols' is 'http' or 'https')
               ]], true, true),
@@ -1502,7 +1502,7 @@ for _, strategy in helpers.each_strategy() do
           service = service
         })
         assert.is_nil(new_route)
-        local message = fmt(unindent([[
+        local message = fmt(dedent  ([[
           the foreign key '{id="%s"}' does not reference an existing
           'services' entity.
         ]], true, true), service.id)

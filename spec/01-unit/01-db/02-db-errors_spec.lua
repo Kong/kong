@@ -1,8 +1,7 @@
-local helpers = require "spec.helpers"
 local Errors = require "kong.db.errors"
 
 local fmt      = string.format
-local unindent = helpers.unindent
+local dedent   = require("pl.text").dedent
 
 
 describe("DB Errors", function()
@@ -86,7 +85,7 @@ describe("DB Errors", function()
           code = Errors.codes.SCHEMA_VIOLATION,
           name = "schema violation",
           strategy = "some_strategy",
-          message = unindent([[
+          message = dedent([[
             7 schema violations
             (at least one of plim or plum is needed;
             the check function errored out;
@@ -168,7 +167,7 @@ describe("DB Errors", function()
           code = Errors.codes.FOREIGN_KEY_VIOLATION,
           name = "foreign key violation",
           strategy = "some_strategy",
-          message = unindent([[
+          message = dedent([[
             the foreign key '{foreign_id="0000-00-00-00000000"}' does not
             reference an existing 'services' entity.
           ]], true, true),
@@ -208,7 +207,7 @@ describe("DB Errors", function()
           code = Errors.codes.NOT_FOUND,
           name = "not found",
           strategy = "some_strategy",
-          message = unindent([[
+          message = dedent([[
             could not find the entity with primary key
             '{id="0000-00-00-00-00000000"}'
           ]], true, true),
@@ -345,7 +344,7 @@ describe("DB Errors", function()
           code = Errors.codes.INVALID_OPTIONS,
           name = "invalid options",
           strategy = "some_strategy",
-          message = unindent([[
+          message = dedent([[
             3 option violations
             (bar.1: must be a string;
             bar.2: must contain 'foo';

@@ -4,7 +4,7 @@ local helpers = require "spec.helpers"
 local Errors  = require "kong.db.errors"
 
 
-local unindent = helpers.unindent
+local dedent  = require("pl.text").dedent
 
 
 local function it_content_types(title, fn)
@@ -741,7 +741,7 @@ for _, strategy in helpers.each_strategy() do
               {
                 name     = "schema violation",
                 code     = Errors.codes.SCHEMA_VIOLATION,
-                message  = unindent([[
+                message  = dedent([[
                   2 schema violations
                   (host: required field missing;
                   path: should start with: /)

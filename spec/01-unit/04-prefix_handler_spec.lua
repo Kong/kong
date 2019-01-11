@@ -543,10 +543,10 @@ describe("NGINX conf compiler", function()
         assert.equal("no such file: spec/fixtures/inexistent.template", err)
       end)
       it("reports Penlight templating errors", function()
-        local u = helpers.unindent
+        local d = require("pl.text").dedent
         local tmp = os.tmpname()
 
-        helpers.file.write(tmp, u[[
+        helpers.file.write(tmp, d[[
           > if t.hello then
 
           > end
