@@ -73,24 +73,27 @@ describe("DB", function()
 
       local last_state = db:last_schema_state()
 
-      -- calling last_schema_state returns the same object
-      assert(state == last_state)
+      assert(state == last_state,
+             "expected that calling last_schema_state returned " ..
+             "the same object as schema_state")
 
       local last_state_2 = db:last_schema_state()
 
-      -- calling it again returns the same object
-      assert(state == last_state_2)
+      assert(state == last_state_2,
+             "expected that calling last_schema_state twice " ..
+             "returns the same object")
 
       local state_2 = db:schema_state()
       assert.is_table(state_2)
 
-      -- schema_state always returns a new object
-      assert(state ~= state_2)
+      assert(state ~= state_2,
+             "expected schema_state to always return a new object")
 
       local last_state_3 = db:last_schema_state()
 
-      -- the latest object created by schema_state is the one cached
-      assert(state_2 == last_state_3)
+      assert(state_2 == last_state_3,
+             "expected the object returned by last_schema_state " ..
+             "to be the latest created by schema_state")
 
     end)
 
