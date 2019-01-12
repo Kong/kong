@@ -2237,8 +2237,8 @@ function OICHandler:access(conf)
         end
 
         if tokens_decoded then
-          if type(tokens_decoded.access_token) == "table" then
-            credential_value = find_claim(tokens_decoded.access_token.payload, credential_claim)
+          if type(tokens_decoded.id_token) == "table" then
+            credential_value = find_claim(tokens_decoded.id_token.payload, credential_claim)
             if credential_value then
               log("credential claim found in jwt token")
 
