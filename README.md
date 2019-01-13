@@ -179,7 +179,7 @@ $ make test
 ```
 
 However, the integration and plugins tests will spawn a Kong instance and
-perform their tests against it. As so, consult/edit the `spec/kong_tests.conf`
+perform their tests against it. As per your requirement, consult/edit the `spec/kong_tests.conf`
 configuration file to make your test instance point to your Postgres/Cassandra
 servers, depending on your needs.
 
