@@ -2240,20 +2240,20 @@ function OICHandler:access(conf)
           if type(tokens_decoded.id_token) == "table" then
             credential_value = find_claim(tokens_decoded.id_token.payload, credential_claim)
             if credential_value then
-              log("credential claim found in jwt token")
+              log("credential claim found in ID token")
 
             else
-              log("credential claim not found in jwt token")
+              log("credential claim not found in ID token")
             end
           end
 
           if type(tokens_decoded.access_token) == "table" and  credential_value == nil then
             credential_value = find_claim(tokens_decoded.access_token.payload, credential_claim)
             if credential_value then
-              log("credential claim found in jwt token")
+              log("credential claim found in access token")
 
             else
-              log("credential claim not found in jwt token")
+              log("credential claim not found in access token")
             end
           end
 
