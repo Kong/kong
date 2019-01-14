@@ -265,7 +265,7 @@ function OpenTracingHandler:log(conf)
 	if ctx.authenticated_consumer then
 		request_span:set_tag("kong.consumer", ctx.authenticated_consumer.id)
 	end
-	if ctx.authenticated_credential then
+	if conf.include_credential and ctx.authenticated_credential then
 		request_span:set_tag("kong.credential", ctx.authenticated_credential.id)
 	end
 	request_span:set_tag("kong.node.id", kong.node.get_id())
