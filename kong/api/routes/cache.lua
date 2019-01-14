@@ -1,6 +1,3 @@
-local endpoints = require "kong.api.endpoints"
-
-
 local kong = kong
 
 
@@ -12,20 +9,20 @@ return {
       local ttl, err, value = kong.cache:probe(self.params.key)
       if err then
         kong.log.err(err)
-        return endpoints.unexpected()
+        return kong.response.exit(500, { message = "An unexpected error happened" })
       end
 
       if ttl then
-        return endpoints.ok(value)
+        return kong.response.exit(200, type(value) == "table" and value or { message = value })
       end
 
-      return endpoints.not_found()
+      return kong.response.exit(404, { message = "Not found" })
     end,
 
     DELETE = function(self)
       kong.cache:invalidate_local(self.params.key)
 
-      return endpoints.no_content()
+      return kong.response.exit(204) -- no content
     end,
   },
 
@@ -33,7 +30,7 @@ return {
     DELETE = function()
       kong.cache:purge()
 
-      return endpoints.no_content()
+      return kong.response.exit(204) -- no content
     end,
   },
 }

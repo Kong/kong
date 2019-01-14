@@ -3,6 +3,7 @@ local reports = require "kong.reports"
 local utils = require "kong.tools.utils"
 
 
+local kong = kong
 local null = ngx.null
 
 
@@ -28,10 +29,10 @@ return {
           return endpoints.handle_error(err_t)
         end
 
-        return endpoints.ok {
+        return kong.response.exit(200, {
           data = { consumer },
           next = null,
-        }
+        })
       end
 
       return parent()

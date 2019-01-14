@@ -1,4 +1,3 @@
-local endpoints = require "kong.api.endpoints"
 local utils = require "kong.tools.utils"
 local singletons = require "kong.singletons"
 local conf_loader = require "kong.conf_loader"
@@ -29,7 +28,7 @@ return {
         for row, err in kong.db.plugins:each(1000) do
           if err then
             kong.log.err(err)
-            return endpoints.unexpected()
+            return kong.response.exit(500, { message = "An unexpected error happened" })
           end
 
           if not set[row.name] then
@@ -62,7 +61,7 @@ return {
         ngx.log(ngx.ERR, "could not get node id: ", err)
       end
 
-      return endpoints.ok {
+      return kong.response.exit(200, {
         tagline = tagline,
         version = version,
         hostname = utils.get_hostname(),
@@ -78,7 +77,7 @@ return {
         lua_version = lua_version,
         configuration = conf_loader.remove_sensitive(singletons.configuration),
         prng_seeds = prng_seeds,
-      }
+      })
     end
   },
   ["/status"] = {
@@ -86,7 +85,7 @@ return {
       local r = ngx.location.capture "/nginx_status"
       if r.status ~= 200 then
         kong.log.err(r.body)
-        return endpoints.unexpected()
+        return kong.response.exit(500, { message = "An unexpected error happened" })
       end
 
       local var = ngx.var
@@ -118,7 +117,7 @@ return {
       -- ignore error
       kong.db:close()
 
-      return endpoints.ok(status_response)
+      return kong.response.exit(200, status_response)
     end
   }
 }

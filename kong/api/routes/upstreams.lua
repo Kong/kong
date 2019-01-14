@@ -16,7 +16,7 @@ local function post_health(self, db, is_healthy)
   end
 
   if not upstream then
-    return endpoints.not_found()
+    return kong.response.exit(404, { message = "Not found" })
   end
 
   local target
@@ -34,15 +34,15 @@ local function post_health(self, db, is_healthy)
   end
 
   if not target then
-    return endpoints.not_found()
+    return kong.response.exit(404, { message = "Not found" })
   end
 
   local ok, err = db.targets:post_health(upstream, target, is_healthy)
   if not ok then
-    return endpoints.bad_request(err)
+    return kong.response.exit(400, { message = err })
   end
 
-  return endpoints.no_content()
+  return kong.response.exit(204)
 end
 
 
@@ -55,7 +55,7 @@ return {
       end
 
       if not upstream then
-        return endpoints.not_found()
+        return kong.response.exit(404, { message = "Not found" })
       end
 
       self.params.targets = db.upstreams.schema:extract_pk_values(upstream)
@@ -75,12 +75,12 @@ return {
         kong.log.err("failed getting node id: ", err)
       end
 
-      return endpoints.ok {
+      return kong.response.exit(200, {
         data    = targets_with_health,
         offset  = offset,
         next    = next_page,
         node_id = node_id,
-      }
+      })
     end
   },
 
@@ -117,7 +117,7 @@ return {
       end
 
       if not upstream then
-        return endpoints.not_found()
+        return kong.response.exit(404, { message = "Not found" })
       end
 
       local target
@@ -135,7 +135,7 @@ return {
       end
 
       if not target then
-        return endpoints.not_found()
+        return kong.response.exit(404, { message = "Not found" })
       end
 
       self.params.targets = db.upstreams.schema:extract_pk_values(target)
@@ -144,7 +144,7 @@ return {
         return endpoints.handle_error(err_t)
       end
 
-      return endpoints.no_content()
+      return kong.response.exit(204)
     end
   },
 }

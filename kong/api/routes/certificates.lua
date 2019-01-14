@@ -3,6 +3,7 @@ local utils       = require "kong.tools.utils"
 local Set         = require "pl.Set"
 
 
+local kong = kong
 local unescape_uri = ngx.unescape_uri
 
 
@@ -26,7 +27,7 @@ local function get_cert_id_from_sni(self, db, helpers)
     return
   end
 
-  return endpoints.not_found("SNI not found")
+  return kong.response.exit(404, { message = "SNI not found" })
 end
 
 
@@ -57,10 +58,10 @@ return {
       end
 
       if not cert then
-        return endpoints.not_found()
+        return kong.response.exit(404, { message = "Not found" })
       end
 
-      return endpoints.ok(cert)
+      return kong.response.exit(200, cert)
     end,
   },
 

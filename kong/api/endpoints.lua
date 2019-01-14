@@ -81,11 +81,6 @@ local function no_content()
 end
 
 
-local function bad_request(...)
-  return kong.response.exit(400, get_message("Bad request", ...))
-end
-
-
 local function not_found(...)
   return kong.response.exit(404, get_message("Not found", ...))
 end
@@ -626,15 +621,7 @@ local disable = {
 
 local Endpoints = {
   disable = disable,
-  ok = ok,
-  created = not_found,
-  no_content = no_content,
-  bad_request = bad_request,
-  not_found = not_found,
-  method_not_allowed = method_not_allowed,
-  unexpected = unexpected,
   handle_error = handle_error,
-  get_page_size = get_page_size,
   extract_options = extract_options,
   select_entity = select_entity,
   update_entity = update_entity,

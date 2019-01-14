@@ -26,7 +26,7 @@ return {
           return endpoints.handle_error(err_t)
         end
         if not consumer then
-          return endpoints.not_found()
+          return kong.response.exit(404, { message = "Not found" })
         end
 
         self.consumer = consumer
@@ -38,7 +38,7 @@ return {
           end
 
           if not acl or acl.consumer.id ~= consumer.id then
-            return endpoints.not_found()
+            return kong.response.exit(404, { message = "Not found" })
           end
 
           self.acl = acl

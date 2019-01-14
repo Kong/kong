@@ -1,4 +1,3 @@
-local kong = kong
 local cjson = require "cjson"
 local utils = require "kong.tools.utils"
 local reports = require "kong.reports"
@@ -7,6 +6,7 @@ local arguments = require "kong.api.arguments"
 local singletons = require "kong.singletons"
 
 
+local kong = kong
 local type = type
 local pairs = pairs
 local setmetatable = setmetatable
@@ -25,7 +25,7 @@ local function before_plugin_for_entity(entity_name, plugin_field)
     end
 
     if not entity then
-      return endpoints.not_found()
+      return kong.response.exit(404, { message = "Not found" })
     end
 
     local plugin, _, err_t = endpoints.select_entity(self, db, db.plugins.schema)
@@ -36,7 +36,7 @@ local function before_plugin_for_entity(entity_name, plugin_field)
     if not plugin
        or type(plugin[plugin_field]) ~= "table"
        or plugin[plugin_field].id ~= entity.id then
-      return endpoints.not_found()
+      return kong.response.exit(404, { message = "Not found" })
     end
 
     self.plugin = plugin
@@ -203,7 +203,7 @@ return {
         end
 
         if not plugin then
-          return endpoints.not_found()
+          return kong.response.exit(404, { message = "Not found" })
         end
 
         fill_plugin_data(self.args, plugin)
@@ -217,11 +217,11 @@ return {
     GET = function(self, db, helpers)
       local subschema = db.plugins.schema.subschemas[self.params.name]
       if not subschema then
-        return endpoints.not_found("No plugin named '", self.params.name, "'")
+        return kong.response.exit(404, { message = "No plugin named '" .. self.params.name .. "'" })
       end
 
       local copy = schema_to_jsonable(subschema.fields.config)
-      return endpoints.ok(copy)
+      return kong.response.exit(200, copy)
     end
   },
 
@@ -231,9 +231,9 @@ return {
       for k in pairs(singletons.configuration.loaded_plugins) do
         enabled_plugins[#enabled_plugins+1] = k
       end
-      return endpoints.ok {
+      return kong.response.exit(200, {
         enabled_plugins = enabled_plugins
-      }
+      })
     end
   },
 

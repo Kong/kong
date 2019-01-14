@@ -53,7 +53,7 @@ return {
           return endpoints.handle_error(err_t)
         end
         if not consumer then
-          return endpoints.not_found()
+          return kong.response.exit(404, { message = "Not found" })
         end
 
         self.consumer = consumer
@@ -65,7 +65,7 @@ return {
           end
 
           if not cred or cred.consumer.id ~= consumer.id then
-            return endpoints.not_found()
+            return kong.response.exit(404, { message = "Not found" })
           end
 
           self.oauth2_credential = cred
