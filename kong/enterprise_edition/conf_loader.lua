@@ -97,6 +97,30 @@ local function validate_admin_gui_session(conf, errors)
   end
 end
 
+
+local function validate_portal_session(conf, errors)
+  if conf.portal_session_conf then
+    if not conf.portal_auth or conf.portal_auth == "" then
+      errors[#errors+1] = "portal_session_conf is set with no portal_auth"
+    end
+
+    local session_config, err = cjson.decode(tostring(conf.portal_session_conf))
+    if err then
+      errors[#errors+1] = "portal_session_conf must be valid json or not set: "
+        .. err .. " - " .. conf.portal_session_conf
+    else
+      conf.portal_session_conf = session_config
+       -- used for writing back to prefix/.kong_env
+      setmetatable(conf.portal_session_conf, {
+        __tostring = function (v)
+          return assert(cjson.encode(v))
+        end
+      })
+    end
+  end
+end
+
+
 local function validate_admin_gui_ssl(conf, errors)
   if (table.concat(conf.admin_gui_listen, ",") .. " "):find("%sssl[%s,]") then
     if conf.admin_gui_ssl_cert and not conf.admin_gui_ssl_cert_key then
@@ -248,6 +272,7 @@ local function validate(conf, errors)
 
   if conf.portal then
     validate_portal_smtp_config(conf, errors)
+    validate_portal_session(conf, errors)
 
     local portal_gui_host = conf.portal_gui_host
     if not portal_gui_host or portal_gui_host == "" then

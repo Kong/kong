@@ -114,5 +114,6 @@ return {
     PORTAL_RESET_SUCCESS_EMAIL = "portal_reset_success_email",
     PORTAL_EMAILS_FROM = "portal_emails_from",
     PORTAL_EMAILS_REPLY_TO = "portal_emails_reply_to",
+    PORTAL_SESSION_CONF = "portal_session_conf",
   }
 }

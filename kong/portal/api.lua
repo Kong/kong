@@ -28,8 +28,13 @@ local auth_plugins = {
   ["openid-connect"] = { name = "openid-connect" },
 }
 
+local function get_workspace()
+  return ngx.ctx.workspaces and ngx.ctx.workspaces[1] or {}
+end
+
+
 local function check_portal_status(helpers)
-  local workspace = ngx.ctx.workspaces and ngx.ctx.workspaces[1] or {}
+  local workspace = get_workspace()
   local portal = ws_helper.retrieve_ws_config(ws_constants.PORTAL, workspace)
   if not portal then
     return helpers.responses.send_HTTP_NOT_FOUND()
@@ -42,17 +47,29 @@ local function portal_auth_enabled(portal_auth)
 end
 
 
-local function validate_auth_plugin(self, dao_factory, helpers, plugin_name)
-  local workspace = ngx.ctx.workspaces and ngx.ctx.workspaces[1] or {}
-  local portal_auth = ws_helper.retrieve_ws_config(ws_constants.PORTAL_AUTH, workspace)
+local function validate_auth_plugin(self, dao_factory, helpers)
+  local workspace = get_workspace()
+  local portal_auth = ws_helper.retrieve_ws_config(ws_constants.PORTAL_AUTH,
+                                                                    workspace)
 
-  plugin_name = plugin_name or portal_auth
-  self.plugin = auth_plugins[plugin_name]
+  self.plugin = auth_plugins[portal_auth]
   if not self.plugin then
     return helpers.responses.send_HTTP_NOT_FOUND()
   end
 
   self.collection = dao_factory[self.plugin.dao]
+end
+
+
+local function validate_credential_plugin(self, dao_factory, helpers)
+  local plugin_name = ngx.unescape_uri(self.params.plugin)
+
+  self.credential_plugin = auth_plugins[plugin_name]
+  if not self.credential_plugin then
+    return helpers.responses.send_HTTP_NOT_FOUND()
+  end
+
+  self.credential_collection = dao_factory[self.credential_plugin.dao]
 end
 
 
@@ -75,24 +92,79 @@ local function find_login_credential(self, dao_factory, helpers)
 end
 
 
-local function authenticate(self, dao_factory, helpers)
-  validate_auth_plugin(self, dao_factory, helpers)
+local function verify_consumer(self, dao_factory, helpers)
+  local status
 
-  -- apply auth plugin
-  local workspace = ngx.ctx.workspaces and ngx.ctx.workspaces[1] or {}
-  local portal_auth_conf = ws_helper.retrieve_ws_config(ws_constants.PORTAL_AUTH_CONF, workspace)
-  local auth_conf = utils.deep_copy(portal_auth_conf or {})
-  local prepared_plugin = ee_api.prepare_plugin(ee_api.apis.PORTAL,
-                                                dao_factory,
-                                                self.plugin.name, auth_conf)
-  ee_api.apply_plugin(prepared_plugin, "access")
-
-  -- Validate status if we have a developer type consumer
   self.consumer = ngx.ctx.authenticated_consumer
-  if self.consumer.status ~= 0 then
-    local msg = ee_api.get_consumer_status(self.consumer)
-    return helpers.responses.send_HTTP_UNAUTHORIZED(msg)
+  if self.consumer then
+    status = ee_api.get_consumer_status(self.consumer)
   end
+
+  -- Validate status - check if we have an approved developer type consumer
+  if not self.consumer or
+    self.consumer.status ~= enums.CONSUMERS.STATUS.APPROVED  or
+    self.consumer.type   ~= enums.CONSUMERS.TYPE.DEVELOPER then
+
+    if ngx.ctx.authenticated_session then
+      ngx.ctx.authenticated_session:destroy()
+    end
+
+    return helpers.responses.send_HTTP_UNAUTHORIZED(status)
+  end
+end
+
+
+local function execute_plugin(plugin_name, dao_factory, conf_key, workspace, phases)
+  local conf = ws_helper.retrieve_ws_config(conf_key, workspace)
+  conf = utils.deep_copy(conf or {})
+  local prepared_plugin = ee_api.prepare_plugin(ee_api.apis.PORTAL,
+                                                dao_factory, plugin_name, conf)
+
+  for _, phase in ipairs(phases) do
+    ee_api.apply_plugin(prepared_plugin, phase)
+  end
+end
+
+
+local function login(self, dao_factory, helpers)
+  validate_auth_plugin(self, dao_factory, helpers)
+  local workspace = get_workspace()
+
+  -- run the auth plugin access phase to verify creds
+  execute_plugin(self.plugin.name, dao_factory,
+                                  ws_constants.PORTAL_AUTH_CONF,
+                                  workspace, {"access"})
+
+  -- if not openid-connect, run session header_filter to attach session to response
+  local portal_auth = ws_helper.retrieve_ws_config(ws_constants.PORTAL_AUTH,
+                                                                     workspace)
+  if portal_auth ~= "openid-connect" then
+    -- run the session header filter to start a new session
+    execute_plugin("session", dao_factory, ws_constants.PORTAL_SESSION_CONF,
+                                                  workspace, {"header_filter"})
+  end
+
+  verify_consumer(self, dao_factory, helpers)
+end
+
+
+local function authenticate_session(self, dao_factory, helpers)
+  validate_auth_plugin(self, dao_factory, helpers)
+  local workspace = get_workspace()
+
+  -- if openid-connect, use the plugin to verify auth
+  local portal_auth = ws_helper.retrieve_ws_config(ws_constants.PORTAL_AUTH,
+                                                                     workspace)
+  if portal_auth == "openid-connect" then
+    execute_plugin(self.plugin.name, dao_factory,
+                          ws_constants.PORTAL_AUTH_CONF, workspace, {"access"})
+  else
+    -- otherwise, verify the session
+    execute_plugin("session", dao_factory, ws_constants.PORTAL_SESSION_CONF,
+                                         workspace, {"access", "header_filter"})
+  end
+
+  verify_consumer(self, dao_factory, helpers)
 end
 
 
@@ -116,7 +188,12 @@ return {
     end,
 
     GET = function(self, dao_factory, helpers)
-      authenticate(self, dao_factory, helpers)
+      login(self, dao_factory, helpers)
+      return helpers.responses.send_HTTP_OK()
+    end,
+
+    DELETE = function(self, dao_factory, helpers)
+      authenticate_session(self, dao_factory, helpers)
       return helpers.responses.send_HTTP_OK()
     end,
   },
@@ -125,12 +202,13 @@ return {
     before = function(self, dao_factory, helpers)
       check_portal_status(helpers)
 
-      local workspace = ngx.ctx.workspaces and ngx.ctx.workspaces[1] or {}
-      local portal_auth = ws_helper.retrieve_ws_config(ws_constants.PORTAL_AUTH, workspace)
+      local workspace = get_workspace()
+      local portal_auth = ws_helper.retrieve_ws_config(
+                                           ws_constants.PORTAL_AUTH, workspace)
 
       -- If auth is enabled, we need to validate consumer/developer
       if portal_auth_enabled(portal_auth) then
-        authenticate(self, dao_factory, helpers)
+        authenticate_session(self, dao_factory, helpers)
       end
     end,
 
@@ -159,7 +237,8 @@ return {
       local identifier = self.params.splat
 
       -- Find a file by id or field "name"
-      local rows, err = crud.find_by_id_or_field(dao, {__skip_rbac = true}, identifier, "name")
+      local rows, err = crud.find_by_id_or_field(dao, {__skip_rbac = true},
+                                                            identifier, "name")
       if err then
         return helpers.yield_error(err)
       end
@@ -182,8 +261,10 @@ return {
   ["/register"] = {
     before = function(self, dao_factory, helpers)
       check_portal_status(helpers)
-      local workspace = ngx.ctx.workspaces and ngx.ctx.workspaces[1] or {}
-      self.auto_approve = ws_helper.retrieve_ws_config(ws_constants.PORTAL_AUTO_APPROVE, workspace)
+      local workspace = get_workspace()
+      self.auto_approve = ws_helper.retrieve_ws_config(
+                                   ws_constants.PORTAL_AUTO_APPROVE, workspace)
+
       ee_api.validate_email(self, dao_factory, helpers)
     end,
 
@@ -199,7 +280,8 @@ return {
 
       local full_name = meta.full_name
       if not full_name or full_name == "" then
-        return helpers.responses.send_HTTP_BAD_REQUEST("meta param missing key: 'full_name'")
+        return helpers.responses.send_HTTP_BAD_REQUEST(
+                                         "meta param missing key: 'full_name'")
       end
 
       self.params.type = enums.CONSUMERS.TYPE.DEVELOPER
@@ -222,8 +304,9 @@ return {
       end
 
       -- omit credential post for oidc
-      local workspace = ngx.ctx.workspaces and ngx.ctx.workspaces[1] or {}
-      local portal_auth = ws_helper.retrieve_ws_config(ws_constants.PORTAL_AUTH, workspace)
+      local workspace = get_workspace()
+      local portal_auth = ws_helper.retrieve_ws_config(
+                                           ws_constants.PORTAL_AUTH, workspace)
 
       if portal_auth == "openid-connect" then
         return helpers.responses.send_HTTP_CREATED({
@@ -267,7 +350,8 @@ return {
 
         if consumer.status == enums.CONSUMERS.STATUS.PENDING then
           local portal_emails = portal_smtp_client.new()
-          local email, err = portal_emails:access_request(consumer.email, full_name)
+          local email, err = portal_emails:access_request(consumer.email,
+                                                                     full_name)
           if err then
             if err.code then
               return helpers.responses.send(err.code, {message = err.message})
@@ -308,7 +392,8 @@ return {
       -- Now we will lookup the consumer and credentials we need to update
       -- Lookup consumer by id contained in jwt, if not found, this will 404
       self.params.email_or_id = self.consumer_id
-      ee_crud.find_developer_by_email_or_id(self, dao_factory, helpers, {__skip_rbac = true})
+      ee_crud.find_developer_by_email_or_id(self, dao_factory, helpers,
+                                                          {__skip_rbac = true})
 
       local credentials, err = dao_factory.credentials:find_all({
         consumer_id = self.consumer.id,
@@ -328,7 +413,8 @@ return {
       -- key or password
       local new_password = self.params[self.plugin.credential_key]
       if not new_password or new_password == "" then
-        return helpers.responses.send_HTTP_BAD_REQUEST(self.plugin.credential_key .. " is required")
+        return helpers.responses.send_HTTP_BAD_REQUEST(
+                                  self.plugin.credential_key .. " is required")
       end
 
       local filter = {consumer_id = self.consumer.id, id = credential.id}
@@ -373,8 +459,10 @@ return {
     end,
 
     POST = function(self, dao_factory, helpers)
-      local workspace = ngx.ctx.workspaces and ngx.ctx.workspaces[1] or {}
-      local token_ttl = ws_helper.retrieve_ws_config(ws_constants.PORTAL_TOKEN_EXP, workspace)
+      local workspace = get_workspace()
+      local token_ttl = ws_helper.retrieve_ws_config(
+                                      ws_constants.PORTAL_TOKEN_EXP, workspace)
+
       local filter = {__skip_rbac = true}
       local rows, err = crud.find_by_id_or_field(dao_factory.consumers, filter,
                                                     self.params.email, "email")
@@ -440,7 +528,7 @@ return {
   ["/config"] = {
     before = function(self, dao_factory, helpers)
       check_portal_status(helpers)
-      authenticate(self, dao_factory, helpers)
+      authenticate_session(self, dao_factory, helpers)
     end,
 
     GET = function(self, dao_factory, helpers)
@@ -459,8 +547,6 @@ return {
           end
           map[row.name] = true
         end
-
-        -- singletons.internal_proxies:add_internal_plugins(distinct_plugins, map)
       end
 
       self.config = {
@@ -476,7 +562,7 @@ return {
   ["/developer"] = {
     before = function(self, dao_factory, helpers)
       check_portal_status(helpers)
-      authenticate(self, dao_factory, helpers)
+      authenticate_session(self, dao_factory, helpers)
     end,
 
     GET = function(self, dao_factory, helpers)
@@ -491,7 +577,7 @@ return {
   ["/developer/password"] = {
     before = function(self, dao_factory, helpers)
       check_portal_status(helpers)
-      authenticate(self, dao_factory, helpers)
+      authenticate_session(self, dao_factory, helpers)
       find_login_credential(self, dao_factory, helpers)
     end,
 
@@ -505,7 +591,8 @@ return {
         cred_params.key = self.params.key
         self.params.key = nil
       else
-        return helpers.responses.send_HTTP_BAD_REQUEST("key or password is required")
+        return helpers.responses.send_HTTP_BAD_REQUEST(
+                                                 "key or password is required")
       end
 
       local filter = {
@@ -513,7 +600,8 @@ return {
         id = self.credential.id,
       }
 
-      local ok, err = crud.portal_crud.update_login_credential(cred_params, self.collection, filter)
+      local ok, err = crud.portal_crud.update_login_credential(cred_params,
+                                                       self.collection, filter)
 
       if err then
         return helpers.yield_error(err)
@@ -530,14 +618,15 @@ return {
   ["/developer/email"] = {
     before = function(self, dao_factory, helpers)
       check_portal_status(helpers)
-      authenticate(self, dao_factory, helpers)
+      authenticate_session(self, dao_factory, helpers)
       find_login_credential(self, dao_factory, helpers)
       ee_api.validate_email(self, dao_factory, helpers)
     end,
 
     PATCH = function(self, dao_factory, helpers)
-      local workspace = ngx.ctx.workspaces and ngx.ctx.workspaces[1] or {}
-      local portal_auth = ws_helper.retrieve_ws_config(ws_constants.PORTAL_AUTH, workspace)
+      local workspace = get_workspace()
+      local portal_auth = ws_helper.retrieve_ws_config(
+                                           ws_constants.PORTAL_AUTH, workspace)
 
       if portal_auth == "basic-auth" then
         local cred_params = {
@@ -549,7 +638,8 @@ return {
           id = self.credential.id,
         }
 
-        local ok, err = crud.portal_crud.update_login_credential(cred_params, self.collection, filter)
+        local ok, err = crud.portal_crud.update_login_credential(cred_params,
+                                                      self.collection, filter)
 
         if err then
           return helpers.yield_error(err)
@@ -584,7 +674,7 @@ return {
   ["/developer/meta"] = {
     before = function(self, dao_factory, helpers)
       check_portal_status(helpers)
-      authenticate(self, dao_factory, helpers)
+      authenticate_session(self, dao_factory, helpers)
     end,
 
     PATCH = function(self, dao_factory, helpers)
@@ -594,7 +684,8 @@ return {
         return helpers.responses.send_HTTP_BAD_REQUEST("meta required")
       end
 
-      local current_dev_meta = self.consumer.meta and cjson.decode(self.consumer.meta)
+      local current_dev_meta = self.consumer.meta and
+                                               cjson.decode(self.consumer.meta)
 
       if not current_dev_meta then
         return helpers.responses.send_HTTP_NOT_FOUND()
@@ -632,16 +723,14 @@ return {
   ["/credentials/:plugin"] = {
     before = function(self, dao_factory, helpers)
       check_portal_status(helpers)
-      authenticate(self, dao_factory, helpers)
-
-      local plugin_name = ngx.unescape_uri(self.params.plugin)
-      validate_auth_plugin(self, dao_factory, helpers, plugin_name)
+      authenticate_session(self, dao_factory, helpers)
+      validate_credential_plugin(self, dao_factory, helpers)
     end,
 
     GET = function(self, dao_factory, helpers)
       self.params.consumer_type = enums.CONSUMERS.TYPE.PROXY
       self.params.consumer_id = self.consumer.id
-      self.params.plugin = self.plugin.name
+      self.params.plugin = self.credential_plugin.name
 
       crud.paginated_set(self, dao_factory.credentials, nil,
                                                          {__skip_rbac = true})
@@ -651,20 +740,18 @@ return {
       self.params.consumer_id = self.consumer.id
       self.params.plugin = nil
 
-      crud.post(self.params, self.collection,
-                crud.portal_crud.insert_credential(self.plugin.name))
+      crud.post(self.params, self.credential_collection,
+               crud.portal_crud.insert_credential(self.credential_plugin.name))
     end,
   },
 
   ["/credentials/:plugin/:credential_id"] = {
     before = function(self, dao_factory, helpers)
       check_portal_status(helpers)
-      authenticate(self, dao_factory, helpers)
+      authenticate_session(self, dao_factory, helpers)
+      validate_credential_plugin(self, dao_factory, helpers)
 
-      local plugin_name = ngx.unescape_uri(self.params.plugin)
-      validate_auth_plugin(self, dao_factory, helpers, plugin_name)
-
-      local credentials, err = self.collection:find_all({
+      local credentials, err = self.credential_collection:find_all({
         __skip_rbac = true,
         consumer_id = self.consumer.id,
         id = self.params.credential_id,
@@ -689,20 +776,21 @@ return {
       self.params.plugin = nil
       self.params.credential_id = nil
 
-      crud.patch(self.params, self.collection, self.credential,
-                 crud.portal_crud.update_credential, {__skip_rbac = true})
+      crud.patch(self.params, self.credential_collection, self.credential,
+                      crud.portal_crud.update_credential, {__skip_rbac = true})
     end,
 
     DELETE = function(self, dao_factory)
       crud.portal_crud.delete_credential(self.credential)
-      crud.delete(self.credential, self.collection, {__skip_rbac = true})
+      crud.delete(self.credential, self.credential_collection,
+                                                          {__skip_rbac = true})
     end,
   },
 
   ["/vitals/status_codes/by_consumer"] = {
     before = function(self, dao_factory, helpers)
       check_portal_status(helpers)
-      authenticate(self, dao_factory, helpers)
+      authenticate_session(self, dao_factory, helpers)
 
       if not singletons.configuration.vitals then
         return helpers.responses.send_HTTP_NOT_FOUND()
@@ -726,7 +814,7 @@ return {
   ["/vitals/status_codes/by_consumer_and_route"] = {
     before = function(self, dao_factory, helpers)
       check_portal_status(helpers)
-      authenticate(self, dao_factory, helpers)
+      authenticate_session(self, dao_factory, helpers)
 
       if not singletons.configuration.vitals then
         return helpers.responses.send_HTTP_NOT_FOUND()
@@ -751,7 +839,7 @@ return {
   ["/vitals/consumers/cluster"] = {
     before = function(self, dao_factory, helpers)
       check_portal_status(helpers)
-      authenticate(self, dao_factory, helpers)
+      authenticate_session(self, dao_factory, helpers)
 
       if not singletons.configuration.vitals then
         return helpers.responses.send_HTTP_NOT_FOUND()

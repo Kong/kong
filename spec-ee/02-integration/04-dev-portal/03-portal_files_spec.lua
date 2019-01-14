@@ -576,6 +576,7 @@ describe("Admin API - Developer Portal - " .. strategy, function()
         portal_auth = "basic-auth",
         portal_auth_config = "{ \"hide_credentials\": true }",
         portal_auto_approve = "off",
+        portal_session_conf = "{ \"cookie_name\": \"portal_session\", \"secret\": \"super-secret\", \"cookie_secure\": false, \"storage\": \"kong\" }",
         admin_gui_url = "http://localhost:8080",
       }))
 
@@ -732,7 +733,6 @@ describe("Admin API - Developer Portal - " .. strategy, function()
         end)
 
         it("updates the developer email, username, and login credential", function()
-          -- case insensitive email
           local res = assert(client:send {
             method = "PATCH",
             body = {
@@ -750,29 +750,41 @@ describe("Admin API - Developer Portal - " .. strategy, function()
           assert.equals("new_email@whodis.com", resp_body_json.consumer.email)
           assert.equals("new_email@whodis.com", resp_body_json.consumer.username)
 
-
           -- old email fails to access portal api
           local res = assert(portal_api_client:send {
             method = "GET",
-            path = "/developer",
+            path = "/auth",
             headers = {
-              ["Content-Type"] = "application/json",
               ["Authorization"] = "Basic " .. ngx.encode_base64("gruce@konghq.com:kong"),
             }
           })
 
-          assert.res_status(403, res)
+          local body = assert.res_status(403, res)
+          local json = cjson.decode(body)
+          assert.equals("Invalid authentication credentials", json.message)
+
+          local cookie = res.headers["Set-Cookie"]
+          assert.is_nil(cookie)
 
           -- new email succeeds to access portal api
           local res = assert(portal_api_client:send {
             method = "GET",
-            path = "/developer",
+            path = "/auth",
             headers = {
-              ["Content-Type"] = "application/json",
               ["Authorization"] = "Basic " .. ngx.encode_base64("new_email@whodis.com:kong"),
             }
           })
 
+          assert.res_status(200, res)
+          cookie = assert.response(res).has.header("Set-Cookie")
+
+          local res = assert(portal_api_client:send {
+            method = "GET",
+            path = "/developer",
+            headers = {
+              ["Cookie"] = cookie
+            },
+          })
 
           local body = assert.res_status(200, res)
           local resp_body_json = cjson.decode(body)

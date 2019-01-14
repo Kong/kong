@@ -38,7 +38,7 @@ dependencies = {
   "lyaml == 6.2.3",
   "bcrypt == 2.1",
   -- external Kong plugins
-  "kong-plugin-session == 0.1.0-1",
+  "kong-plugin-session == 0.1.1-1",
   "kong-plugin-azure-functions == 0.1.0",
   "kong-plugin-zipkin == 0.0.6",
   "kong-plugin-serverless-functions == 0.1.0",

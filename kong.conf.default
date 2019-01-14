@@ -934,6 +934,20 @@
                         #
                         #  portal_auth_conf = { "hide_credentials": true }
 
+#portal_session_conf =  # Portal Session Plugin Config (JSON)
+                        #
+                        # Here you may specify the configuration for the
+                        # Session plugin as used by Kong Portal.
+                        #
+                        # For information about Plugin Configuration consult
+                        # the Kong Session Plugin documentation.
+                        #
+                        # Example:
+                        #
+                        # portal_session_conf = { "cookie_name": "portal_session", \
+                        #                          "secret": "changeme", \
+                                                   "storage": "kong" }
+
 #portal_auto_approve = off
                         # Developer Portal Auto Approve Access
                         #
