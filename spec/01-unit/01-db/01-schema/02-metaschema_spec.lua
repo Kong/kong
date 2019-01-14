@@ -1,4 +1,5 @@
 local Schema = require "kong.db.schema"
+local helpers = require "spec.helpers"
 local MetaSchema = require "kong.db.schema.metaschema"
 
 
@@ -145,6 +146,7 @@ describe("metaschema", function()
         { a = { type = "number" } },
         { b = { type = "number" } },
       },
+      primary_key = { "a" },
       entity_checks = {
         { custom_entity_check = {
             field_sources = { "a" },
@@ -155,9 +157,8 @@ describe("metaschema", function()
         },
       }
     }
-    local ok, errs = MetaSchema:validate(s)
-    assert.falsy(ok)
-    assert.truthy(errs)
+    local ok = MetaSchema:validate(s)
+    assert.truthy(ok)
   end)
 
   it("demands a primary key", function()
@@ -500,4 +501,240 @@ describe("metaschema", function()
     -- does not account for cyclic schemas at this point.
     assert.truthy(MetaSchema:validate(MetaSchema))
   end)
+end)
+
+
+describe("metasubschema", function()
+  it("rejects a bad schema", function()
+    local s = {
+      name = "bad",
+      fields = {
+        { foo = "bar", },
+      },
+      primary_key = { "foo" },
+    }
+    local ok, err = MetaSchema.MetaSubSchema:validate(s)
+    assert.falsy(ok)
+    assert.same({
+      fields = "expected a record",
+      foo = "'foo' must be a table",
+      primary_key = "unknown field"
+    }, err)
+  end)
+
+  it("fields cannot be empty", function()
+    local s = {
+      name = "bad",
+      fields = {
+        {}
+      },
+    }
+    local ok, err = MetaSchema.MetaSubSchema:validate(s)
+    assert.falsy(ok)
+    assert.match("field entry table is empty", err.fields)
+  end)
+
+  it("rejects an invalid entity check", function()
+    local s = {
+      name = "bad",
+      fields = {
+        { foo = { type = "number" }, },
+      },
+      entity_checks = {
+        foo = { "bar" },
+      }
+    }
+    local ok, err = MetaSchema.MetaSubSchema:validate(s)
+    assert.falsy(ok)
+    assert.same({
+      entity_checks = "expected an array",
+    }, err)
+  end)
+
+  it("validates a schema with nested records", function()
+    local s = {
+      name = "hello",
+      fields = {
+        { foo = { type = "number" } },
+        { f = {
+            type = "record",
+            fields = {
+              { r = {
+                  type = "record",
+                  fields = {
+                    { a = { type = "string" }, },
+                    { b = { type = "number" }, } }}}}}}}}
+    assert.truthy(MetaSchema.MetaSubSchema:validate(s))
+  end)
+
+  it("allows only one entity check per array field", function()
+    local s = {
+      name = "bad",
+      fields = {
+        { a = { type = "number" } },
+        { b = { type = "number" } },
+        { c = { type = "number" } },
+        { d = { type = "number" } },
+      },
+      entity_checks = {
+        { only_one_of = { "a", "b" },
+          at_least_one_of = { "c", "d" },
+        },
+      }
+    }
+    local ok, err = MetaSchema.MetaSubSchema:validate(s)
+    assert.falsy(ok)
+    assert.match("only one of these fields must be non-empty",
+                 err.entity_checks["@entity"][1], 1, true)
+  end)
+
+  it("accepts a function in an entity check", function()
+    local s = {
+      name = "bad",
+      fields = {
+        { a = { type = "number" } },
+        { b = { type = "number" } },
+      },
+      entity_checks = {
+        { custom_entity_check = {
+            field_sources = { "a" },
+            fn = function()
+              return true
+            end,
+          }
+        },
+      }
+    }
+    local ok = MetaSchema.MetaSubSchema:validate(s)
+    assert.truthy(ok)
+  end)
+
+  it("rejects a bad schema checking nested error", function()
+    local s = {
+      name = "bad",
+      fields = {
+        {
+          foo = {
+            type = "array",
+            elements = {
+              { foo = "bar", },
+            }
+          }
+        }
+      },
+    }
+    local ok, err = MetaSchema.MetaSubSchema:validate(s)
+    assert.falsy(ok)
+    assert.same({
+      fields = {
+        elements = { "unknown field",
+          type = "required field missing"
+        }
+      },
+      foo = "missing type declaration",
+    }, err)
+  end)
+
+  it("rejects a bad schema matching validators and types", function()
+    local s = {
+      name = "bad",
+      fields = {
+        {
+          foo = {
+            type = "array",
+            -- will cause error because `uuid` must be used with `strings`
+            elements = { type = "number", uuid = true, },
+          }
+        }
+      },
+      primary_key = { "foo" },
+    }
+    local ret, err = MetaSchema.MetaSubSchema:validate(s)
+    assert.falsy(ret)
+    assert.same({
+      foo = "field of type 'number' cannot have attribute 'uuid'",
+      primary_key = "unknown field"
+    }, err)
+  end)
+
+  it("supports all Schema validators", function()
+    local set = MetaSchema.get_supported_validator_set()
+    for name, _ in pairs(Schema.validators) do
+      assert.truthy(set[name], "'" .. name .. "' is missing from MetaSchema")
+    end
+
+    for name, _ in pairs(set) do
+      local err = "'" .. name .. "' in MetaSchema is not a declared validator"
+      assert.truthy(Schema.validators[name], err)
+    end
+  end)
+
+  it("allows specifying an endpoint key with endpoint_key", function()
+    local s = {
+      name = "test",
+      fields = {
+        { str = { type = "string", unique = true } },
+        { num = { type = "number" } },
+      },
+    }
+    assert.truthy(MetaSchema.MetaSubSchema:validate(s))
+  end)
+
+  it("supports the unique attribute in base types", function()
+    local s = {
+      name = "test",
+      fields = {
+        { str = { type = "string", unique = true } },
+        { num = { type = "number", unique = true } },
+        { int = { type = "integer", unique = true } },
+      },
+    }
+    assert.truthy(MetaSchema.MetaSubSchema:validate(s))
+  end)
+
+  it("rejects the unique attribute in composite types", function()
+    local s = {
+      name = "test",
+      fields = {
+        { id  = { type = "string" } },
+        { arr = { type = "array", unique = true } },
+        { map = { type = "map", unique = true } },
+        { rec = { type = "record", unique = true } },
+        { set = { type = "set", unique = true } },
+      },
+    }
+    local ok, err = MetaSchema.MetaSubSchema:validate(s)
+    assert.falsy(ok)
+    assert.match("'array' cannot have attribute 'unique'", err.arr)
+    assert.match("'map' cannot have attribute 'unique'", err.map)
+    assert.match("'record' cannot have attribute 'unique'", err.rec)
+    assert.match("'set' cannot have attribute 'unique'", err.set)
+  end)
+
+  it("a schema cannot have a field of type 'any'", function()
+    local s = {
+      name = "hello",
+      primary_key = { "foo" },
+      fields = {
+        { foo = { type = "any" } } } }
+    local ok, err = MetaSchema.MetaSubSchema:validate(s)
+    assert.falsy(ok)
+    assert.match("expected one of", err.fields.type)
+  end)
+
+  it("validates a value with 'eq'", function()
+    assert.truthy(MetaSchema.MetaSubSchema:validate({
+      name = "test",
+      fields = {
+        { pk = { type = "boolean", default = true, eq = true } },
+      },
+    }))
+  end)
+
+  for plugin, _ in pairs(helpers.test_conf.loaded_plugins) do
+    it("validates plugin subschema for " .. plugin, function()
+      local schema = require("kong.plugins." .. plugin .. ".schema")
+      assert.truthy(MetaSchema.MetaSubSchema:validate(schema))
+    end)
+  end
 end)
