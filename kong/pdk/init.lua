@@ -213,7 +213,7 @@
 -- @redirect kong.log
 
 
-require("resty.core")
+assert(package.loaded["resty.core"])
 
 
 local MAJOR_VERSIONS = {

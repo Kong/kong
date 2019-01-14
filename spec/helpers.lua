@@ -17,6 +17,8 @@ local MOCK_UPSTREAM_SSL_PORT = 15556
 local MOCK_UPSTREAM_STREAM_PORT = 15557
 local MOCK_UPSTREAM_STREAM_SSL_PORT = 15558
 
+require("resty.core")
+
 local consumers_schema_def = require "kong.db.schema.entities.consumers"
 local services_schema_def = require "kong.db.schema.entities.services"
 local plugins_schema_def = require "kong.db.schema.entities.plugins"
@@ -24,6 +26,7 @@ local routes_schema_def = require "kong.db.schema.entities.routes"
 local apis_schema_def = require "kong.db.schema.entities.apis"
 local conf_loader = require "kong.conf_loader"
 local DAOFactory = require "kong.dao.factory"
+local kong_global = require "kong.global"
 local Blueprints = require "spec.fixtures.blueprints"
 local pl_stringx = require "pl.stringx"
 local pl_utils = require "pl.utils"
@@ -41,11 +44,6 @@ local log = require "kong.cmd.utils.log"
 local DB = require "kong.db"
 local singletons = require "kong.singletons"
 
-
-
-local kong = {
-  table = require("kong.pdk.table").new()
-}
 
 
 log.set_lvl(log.levels.quiet) -- disable stdout logs in tests
@@ -108,6 +106,10 @@ end
 -- Conf and DAO
 ---------------
 local conf = assert(conf_loader(TEST_CONF_PATH))
+
+_G.kong = kong_global.new()
+kong_global.init_pdk(_G.kong, conf, nil) -- nil: latest PDK
+
 local db = assert(DB.new(conf))
 assert(db:init_connector())
 local dao = assert(DAOFactory.new(conf, db))
