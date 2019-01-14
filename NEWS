@@ -1,6 +1,7 @@
 UNRELEASED
 
   - Fix logging failure when DNS is not resolved
+  - Avoid sending redundant tags (#28)
 
 
 0.1.1 - 2018-10-26
