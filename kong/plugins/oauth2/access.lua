@@ -50,6 +50,49 @@ local function internal_server_error(err)
   return kong.response.exit(500, { message = "An unexpected error occurred" })
 end
 
+local function load_oauth2_credential_into_memory(credential_id)
+  local result, err = kong.db.oauth2_credentials:select { id = credential_id }
+  if err then
+    return nil, err
+  end
+
+  return result
+end
+
+local function load_consumer_into_memory(consumer_id, anonymous)
+  local result, err = kong.db.consumers:select { id = consumer_id }
+  if not result then
+    if anonymous and not err then
+      err = 'anonymous consumer "' .. consumer_id .. '" not found'
+    end
+
+    return nil, err
+  end
+
+  return result
+end
+
+local function load_credential_and_consumer_into_memory_from_credential(credential)
+  -- Retrieve the credential from the token credentials
+  local credential_cache_key =
+    kong.db.oauth2_credentials:cache_key(credential.id)
+
+  local cred, err = kong.cache:get(credential_cache_key, nil,
+                                   load_oauth2_credential_into_memory,
+                                   credential.id)
+  if err then
+    return nil, nil, err
+  end
+
+  -- Retrieve the consumer from the credential
+  local consumer_cache_key, consumer
+  consumer_cache_key = kong.db.consumers:cache_key(cred.consumer.id)
+  consumer, err      = kong.cache:get(consumer_cache_key, nil,
+                                      load_consumer_into_memory,
+                                      cred.consumer.id)
+                                      
+  return cred, consumer, err
+end
 
 local function generate_token(conf, service, credential, authenticated_userid,
                               scope, state, expiration, disable_refresh)
@@ -83,6 +126,14 @@ local function generate_token(conf, service, credential, authenticated_userid,
     -- permanently deleted after 'refresh_token_ttl' seconds
     ttl = token_expiration > 0 and refresh_token_ttl or nil
   })
+  
+  --Authenticate the consumer and credentials generating the token
+  local cred, consumer, err2 = 
+  load_credential_and_consumer_into_memory_from_credential(credential)
+  
+  if not err2 then
+    kong.client.authenticate(consumer, cred)
+  end
 
   if err then
     return internal_server_error(err)
@@ -649,28 +700,6 @@ local function parse_access_token(conf)
   return access_token
 end
 
-local function load_oauth2_credential_into_memory(credential_id)
-  local result, err = kong.db.oauth2_credentials:select { id = credential_id }
-  if err then
-    return nil, err
-  end
-
-  return result
-end
-
-local function load_consumer_into_memory(consumer_id, anonymous)
-  local result, err = kong.db.consumers:select { id = consumer_id }
-  if not result then
-    if anonymous and not err then
-      err = 'anonymous consumer "' .. consumer_id .. '" not found'
-    end
-
-    return nil, err
-  end
-
-  return result
-end
-
 local function set_consumer(consumer, credential, token)
   local set_header = kong.service.request.set_header
   local clear_header = kong.service.request.clear_header
@@ -786,23 +815,10 @@ local function do_authentication(conf)
     end
   end
 
-  -- Retrieve the credential from the token
-  local credential_cache_key =
-    kong.db.oauth2_credentials:cache_key(token.credential.id)
-
-  local credential, err = kong.cache:get(credential_cache_key, nil,
-                                         load_oauth2_credential_into_memory,
-                                         token.credential.id)
-  if err then
-    return internal_server_error(err)
-  end
-
-  -- Retrieve the consumer from the credential
-  local consumer_cache_key, consumer
-  consumer_cache_key = kong.db.consumers:cache_key(credential.consumer.id)
-  consumer, err      = kong.cache:get(consumer_cache_key, nil,
-                                      load_consumer_into_memory,
-                                      credential.consumer.id)
+  -- Retrieve the credential from the token credential
+  local credential, consumer, err = 
+  load_credential_and_consumer_into_memory_from_credential(token.credential)
+  
   if err then
     return internal_server_error(err)
   end
