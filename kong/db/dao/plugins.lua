@@ -233,7 +233,15 @@ function Plugins:load_plugin_schemas(plugin_set)
 
     local err
 
-    if not schema.name then
+    if schema.name then
+      local err_t
+      ok, err_t = MetaSchema.MetaSubSchema:validate(schema)
+      if not ok then
+        kong.log.warn("schema for plugin '", plugin, "' is invalid: ",
+                      tostring(self.errors:schema_violation(err_t)))
+      end
+
+    else
       schema, err = convert_legacy_schema(plugin, schema)
       if err then
         return nil, "failed converting legacy schema for " ..
