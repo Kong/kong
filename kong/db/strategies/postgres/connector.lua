@@ -30,7 +30,7 @@ local WARN                          = ngx.WARN
 local SQL_INFORMATION_SCHEMA_TABLES = [[
 SELECT table_name
   FROM information_schema.tables
- WHERE table_schema = 'public';
+ WHERE table_schema = CURRENT_SCHEMA;
 ]]
 local PROTECTED_TABLES = {
   schema_migrations = true,
@@ -148,7 +148,19 @@ local function connect(config)
   end
 
   if connection.sock:getreusedtimes() == 0 then
-    ok, err = connection:query("SET TIME ZONE 'UTC';");
+    if config.schema == "" then
+      local res = connection:query("SELECT CURRENT_SCHEMA AS schema")
+      if res and res[1] and res[1].schema and res[1].schema ~= null then
+        config.schema = res[1].schema
+      else
+        config.schema = "public"
+      end
+    end
+
+    ok, err = connection:query(concat {
+      "SET SCHEMA ",    connection:escape_literal(config.schema), ";\n",
+      "SET TIME ZONE ", connection:escape_literal("UTC"), ";",
+    })
     if not ok then
       setkeepalive(connection)
       return nil, err
@@ -441,12 +453,14 @@ end
 
 
 function _mt:reset()
+  local schema = self:escape_identifier(self.config.schema)
   local user = self:escape_identifier(self.config.user)
+
   local ok, err = self:query(concat {
     "BEGIN;\n",
-    "  DROP SCHEMA IF EXISTS public CASCADE;\n",
-    "  CREATE SCHEMA IF NOT EXISTS public AUTHORIZATION ", user, ";\n",
-    "  GRANT ALL ON SCHEMA public TO ", user, ";\n",
+    "  DROP SCHEMA IF EXISTS ", schema ," CASCADE;\n",
+    "  CREATE SCHEMA IF NOT EXISTS ", schema, " AUTHORIZATION ", user, ";\n",
+    "  GRANT ALL ON SCHEMA ", schema ," TO ", user, ";\n",
     "COMMIT;",
   })
 
@@ -677,12 +691,14 @@ function _mt:schema_reset()
     error("no connection")
   end
 
+  local schema = self:escape_identifier(self.config.schema)
   local user = self:escape_identifier(self.config.user)
+
   local ok, err = self:query(concat {
     "BEGIN;\n",
-    "  DROP SCHEMA IF EXISTS public CASCADE;\n",
-    "  CREATE SCHEMA IF NOT EXISTS public AUTHORIZATION ", user, ";\n",
-    "  GRANT ALL ON SCHEMA public TO ", user, ";\n",
+    "  DROP SCHEMA IF EXISTS ", schema, " CASCADE;\n",
+    "  CREATE SCHEMA IF NOT EXISTS ", schema, " AUTHORIZATION ", user, ";\n",
+    "  GRANT ALL ON SCHEMA ", schema ," TO ", user, ";\n",
     "COMMIT;",
   })
 
@@ -995,6 +1011,7 @@ function _M.new(kong_config)
     user       = kong_config.pg_user,
     password   = kong_config.pg_password,
     database   = kong_config.pg_database,
+    schema     = "",
     ssl        = kong_config.pg_ssl,
     ssl_verify = kong_config.pg_ssl_verify,
     cafile     = kong_config.lua_ssl_trusted_certificate,
