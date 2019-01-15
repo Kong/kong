@@ -615,15 +615,13 @@ end
 
 -- A reusable handler for endpoints that are deactivated
 -- (e.g. /targets/:targets)
-local not_found = {
-  before = function()
-    return kong.response.exit(404, { message = "Not found" })
-  end
+local disable = {
+  before = not_found
 }
 
 
 local Endpoints = {
-  not_found = not_found,
+  disable = disable,
   handle_error = handle_error,
   get_page_size = get_page_size,
   extract_options = extract_options,
