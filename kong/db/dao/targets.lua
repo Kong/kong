@@ -260,23 +260,12 @@ function _TARGETS:select_by_upstream_filter(upstream_pk, filter, options)
   if not targets then
     return nil, err, err_t
   end
-  if filter.id then
-    for _, t in ipairs(targets) do
-      if t.id == filter.id then
-        return t
-      end
-    end
-    local err_t = self.errors:not_found(filter.id)
-    return nil, tostring(err_t), err_t
-  end
 
   for _, t in ipairs(targets) do
-    if t.target == filter.target then
+    if t.id == filter.id or t.target == filter.target then
       return t
     end
   end
-  err_t = self.errors:not_found_by_field({ target = filter.target })
-  return nil, tostring(err_t), err_t
 end
 
 
