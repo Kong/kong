@@ -1390,6 +1390,10 @@ function Schema:process_auto_fields(input, context, nulls)
     if context == "select" and output[key] == null and not nulls then
       output[key] = nil
     end
+
+    if context == "select" and field.type == "integer" and type(output[key]) == "number" then
+      output[key] = floor(output[key])
+    end
   end
 
   --[[
