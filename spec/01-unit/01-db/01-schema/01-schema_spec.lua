@@ -2217,6 +2217,20 @@ describe("schema", function()
       assert.same(updated_ts, tbl.updated_at)
     end)
 
+    it("strips down the decimal part on integers when selecting, but not in other contexts", function()
+      local Test = Schema.new({
+        fields = {
+          { fingers = { type = "integer" } }
+        }
+      })
+
+      local tbl = Test:process_auto_fields({ fingers = 5.5 }, "select")
+      assert.equals(5, tbl.fingers)
+
+      local tbl = Test:process_auto_fields({ fingers = 5.5 }, "insert")
+      assert.equals(5.5, tbl.fingers)
+    end)
+
     it("adds cjson.empty_array_mt on empty array and set fields", function()
       local Test = Schema.new({
         fields = {
