@@ -7,7 +7,6 @@ local cjson = require "cjson"
 local setmetatable = setmetatable
 local tostring = tostring
 local ipairs = ipairs
-local assert = assert
 local table = table
 local min = math.min
 
@@ -32,7 +31,7 @@ local function clean_history(self, upstream_pk)
   local cleanup_factor = 10
 
   --cleaning up history, check if it's necessary...
-  local targets, err, err_t = self:select_by_upstream_raw(upstream_pk)
+  local targets, err, err_t = self:select_by_upstream_raw(upstream_pk, 1000)
   if not targets then
     return nil, err, err_t
   end
@@ -257,9 +256,7 @@ end
 
 
 function _TARGETS:select_by_upstream_filter(upstream_pk, filter, options)
-  assert(filter.id or filter.target)
-
-  local targets, err, err_t = self:select_by_upstream_raw(upstream_pk, nil, options)
+  local targets, err, err_t = self:select_by_upstream_raw(upstream_pk, 1000, options)
   if not targets then
     return nil, err, err_t
   end
