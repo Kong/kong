@@ -1,11 +1,10 @@
 local endpoints = require "kong.api.endpoints"
 local utils = require "kong.tools.utils"
-local knode = (kong and kong.node) and kong.node or
-              require "kong.pdk.node".new()
 
 
-local unescape_uri = ngx.unescape_uri
+local kong = kong
 local escape_uri = ngx.escape_uri
+local unescape_uri = ngx.unescape_uri
 local null = ngx.null
 local fmt = string.format
 
@@ -72,9 +71,9 @@ return {
                                        escape_uri(upstream.id),
                                        escape_uri(offset)) or null
 
-      local node_id, err = knode.get_id()
+      local node_id, err = kong.node.get_id()
       if err then
-        ngx.log(ngx.ERR, "failed getting node id: ", err)
+        kong.log.err("failed getting node id: ", err)
       end
 
       return kong.response.exit(200, {
