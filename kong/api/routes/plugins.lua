@@ -1,4 +1,3 @@
-local kong = kong
 local cjson = require "cjson"
 local utils = require "kong.tools.utils"
 local reports = require "kong.reports"
@@ -7,8 +6,10 @@ local arguments = require "kong.api.arguments"
 local singletons = require "kong.singletons"
 
 
+local kong = kong
 local type = type
 local pairs = pairs
+local setmetatable = setmetatable
 
 
 local get_plugin = endpoints.get_entity_endpoint(kong.db.plugins.schema)
@@ -18,20 +19,27 @@ local delete_plugin = endpoints.delete_entity_endpoint(kong.db.plugins.schema)
 
 local function before_plugin_for_entity(entity_name, plugin_field)
   return function(self, db, helpers)
-    local entity = endpoints.select_entity(self, db, kong.db[entity_name].schema)
+    local entity, _, err_t = endpoints.select_entity(self, db, kong.db[entity_name].schema)
+    if err_t then
+      return endpoints.handle_error(err_t)
+    end
+
     if not entity then
       return kong.response.exit(404, { message = "Not found" })
     end
 
-    local plugin = db.plugins:select({ id = self.params.id })
+    local plugin, _, err_t = endpoints.select_entity(self, db, db.plugins.schema)
+    if err_t then
+      return endpoints.handle_error(err_t)
+    end
+
     if not plugin
        or type(plugin[plugin_field]) ~= "table"
        or plugin[plugin_field].id ~= entity.id then
       return kong.response.exit(404, { message = "Not found" })
     end
-    self.plugin = plugin
 
-    self.params.plugins = self.params.id
+    self.plugin = plugin
   end
 end
 
@@ -189,7 +197,11 @@ return {
 
         -- We need the name, otherwise we don't know what type of
         -- plugin this is and we can't perform *any* validations.
-        local plugin = db.plugins:select({ id = self.params.plugins })
+        local plugin, _, err_t = endpoints.select_entity(self, db, db.plugins.schema)
+        if err_t then
+          return endpoints.handle_error(err_t)
+        end
+
         if not plugin then
           return kong.response.exit(404, { message = "Not found" })
         end
@@ -225,7 +237,7 @@ return {
   },
 
   -- Available for backward compatibility
-  ["/consumers/:consumers/plugins/:id"] = {
+  ["/consumers/:consumers/plugins/:plugins"] = {
     before = before_plugin_for_entity("consumers", "consumer"),
     PATCH = patch_plugin,
     GET = get_plugin,
@@ -234,7 +246,7 @@ return {
   },
 
   -- Available for backward compatibility
-  ["/routes/:routes/plugins/:id"] = {
+  ["/routes/:routes/plugins/:plugins"] = {
     before = before_plugin_for_entity("routes", "route"),
     PATCH = patch_plugin,
     GET = get_plugin,
@@ -243,7 +255,7 @@ return {
   },
 
   -- Available for backward compatibility
-  ["/services/:services/plugins/:id"] = {
+  ["/services/:services/plugins/:plugins"] = {
     before = before_plugin_for_entity("services", "service"),
     PATCH = patch_plugin,
     GET = get_plugin,
