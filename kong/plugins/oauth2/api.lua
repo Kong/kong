@@ -61,12 +61,12 @@ return {
 
         self.consumer = consumer
 
-        local cred, _, err_t = endpoints.select_entity(self, db, credentials_schema)
-        if err_t then
-          return endpoints.handle_error(err_t)
-        end
+        if self.req.method ~= "PUT" then
+          local cred, _, err_t = endpoints.select_entity(self, db, credentials_schema)
+          if err_t then
+            return endpoints.handle_error(err_t)
+          end
 
-        if self.req.cmd_mth ~= "PUT" then
           if not cred or cred.consumer.id ~= consumer.id then
             return kong.response.exit(HTTP_NOT_FOUND, { message = "Not Found" })
           end
