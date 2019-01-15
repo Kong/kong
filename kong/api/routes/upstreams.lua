@@ -89,7 +89,7 @@ return {
       end
 
       local next_page = offset and fmt("/upstreams/%s/health?offset=%s",
-                                       escape_uri(upstream.id),
+                                       self.params.upstreams,
                                        escape_uri(offset)) or null
 
       local node_id, err = kong.node.get_id()
