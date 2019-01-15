@@ -3,6 +3,7 @@ local reports = require "kong.reports"
 local utils = require "kong.tools.utils"
 
 
+local kong = kong
 local null = ngx.null
 
 
@@ -10,11 +11,11 @@ return {
   ["/consumers"] = {
     GET = function(self, db, helpers, parent)
       local args = self.args.uri
-      local opts = endpoints.extract_options(args, db.consumers.schema, "select")
 
       -- Search by custom_id: /consumers?custom_id=xxx
       if args.custom_id then
-        local consumer, _, err_t = db.consumers:select_by_custom_id(args.custom_id, opts)
+        self.params.consumers = args.custom_id
+        local consumer, _, err_t = endpoints.select_entity(self, db, db.consumers.schema, "select_by_custom_id")
         if err_t then
           return endpoints.handle_error(err_t)
         end
