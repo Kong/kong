@@ -17,6 +17,21 @@ local function execute(args)
   -- load <PREFIX>/kong.conf containing running node's config
   local conf = assert(conf_loader(default_conf.kong_env))
 
+  -- wait before initiating the shutdown
+  ngx.update_time()
+  local twait = ngx.now() + math.max(args.wait, 0)
+  if twait > ngx.now() then
+    log.verbose("waiting %s seconds before quitting", args.wait)
+    while twait > ngx.now() do
+      ngx.sleep(0.2)
+      if not kill.is_running(conf.nginx_pid) then
+        log.error("Kong stopped while waiting (unexpected)")
+        return
+      end
+    end
+    ngx.update_time()
+  end
+
   -- try graceful shutdown (QUIT)
   assert(nginx_signals.quit(conf))
 
@@ -54,6 +69,7 @@ stopped (SIGTERM).
 Options:
  -p,--prefix      (optional string) prefix Kong is running at
  -t,--timeout     (default 10) timeout before forced shutdown
+ -w,--wait        (default 0) wait time before initiating the shutdown
 ]]
 
 return {
