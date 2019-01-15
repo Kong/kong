@@ -80,30 +80,59 @@ end
 
 
 local function query_entity(context, self, db, schema)
-  local dao = db[schema.name]
+  local is_insert = context == "insert"
+  local is_update = context == "update" or context == "upsert"
 
   local args
-  if context == "update" or context == "upsert" then
+  if is_update or is_insert then
     args = self.args.post
-
   else
     args = self.args.uri
   end
 
   local opts = extract_options(args, schema, context)
+  local dao = db[schema.name]
 
-  local id = unescape_uri(self.params[schema.name])
-  if utils.is_valid_uuid(id) then
-    return dao[context](dao, { id = id }, args, opts)
+  if is_insert then
+    return dao[context](dao, args, opts)
   end
 
-  if schema.endpoint_key then
-    local field = schema.fields[schema.endpoint_key]
-    local inferred_value = arguments.infer_value(id, field)
-    return dao[context .. "_by_" .. schema.endpoint_key](dao, inferred_value, args, opts)
+  if context == "page" then
+    local size, err = get_page_size(args)
+    if err then
+      return nil, err, db[schema.name].errors:invalid_size(err)
+    end
+
+    return dao[context](dao, size, args.offset, opts)
   end
 
-  return dao[context](dao, { id = id }, opts)
+  local key = self.params[schema.name]
+  if type(key) ~= "table" then
+    if type(key) == "string" then
+      key = { id = unescape_uri(key) }
+    else
+      key = { id = key }
+    end
+  end
+
+  if not utils.is_valid_uuid(key.id) then
+    local endpoint_key = schema.endpoint_key
+    if endpoint_key then
+      local field = schema.fields[endpoint_key]
+      local inferred_value = arguments.infer_value(key.id, field)
+      if is_update then
+        return dao[context .. "_by_" .. endpoint_key](dao, inferred_value, args, opts)
+      end
+
+      return dao[context .. "_by_" .. endpoint_key](dao, inferred_value, opts)
+    end
+  end
+
+  if is_update then
+    return dao[context](dao, key, args, opts)
+  end
+
+  return dao[context](dao, key, opts)
 end
 
 

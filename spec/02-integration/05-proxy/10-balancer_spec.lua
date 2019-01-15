@@ -723,6 +723,7 @@ for _, strategy in helpers.each_strategy() do
                   successes = 1
                 },
                 http_path = "/status",
+                https_sni = cjson.null,
                 https_verify_certificate = true,
                 timeout = 1,
                 unhealthy = {
