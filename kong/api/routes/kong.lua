@@ -19,7 +19,7 @@ local lua_version = jit and jit.version or _VERSION
 return {
   ["/"] = {
     GET = function(self, dao, helpers)
-      local distinct_plugins = setmetatable({}, cjson.empty_array_mt)
+      local distinct_plugins = setmetatable({}, cjson.array_mt)
       local prng_seeds = {}
 
       do
