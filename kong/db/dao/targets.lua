@@ -9,6 +9,7 @@ local tostring = tostring
 local ipairs = ipairs
 local assert = assert
 local table = table
+local min = math.min
 
 
 local _TARGETS = {}
@@ -201,8 +202,8 @@ function _TARGETS:page_for_upstream(upstream_pk, size, offset, options)
   end
 
   -- Extract the requested page
-  local page = setmetatable({}, cjson.empty_array_mt)
-  size = math.min(size or 100, 1000)
+  local page = setmetatable({}, cjson.array_mt)
+  size = min(size or 100, 1000)
   offset = offset or 0
   for i = 1 + offset, size + offset do
     local target = all_active_targets[i]
