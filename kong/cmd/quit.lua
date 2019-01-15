@@ -22,12 +22,13 @@ local function execute(args)
 
   log.verbose("waiting for nginx to finish processing requests")
 
-  local tstart = ngx.time()
+  local tstart = ngx.now()
   local texp, running = tstart + math.max(args.timeout, 1) -- min 1s timeout
   repeat
     ngx.sleep(0.2)
     running = kill.is_running(conf.nginx_pid)
-  until not running or ngx.time() >= texp
+    ngx.update_time()
+  until not running or ngx.now() >= texp
 
   if running then
     log.verbose("nginx is still running at %s, forcing shutdown", conf.prefix)
