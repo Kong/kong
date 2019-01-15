@@ -7,6 +7,9 @@ local app_helpers  = require "lapis.application"
 local escape_uri   = ngx.escape_uri
 local unescape_uri = ngx.unescape_uri
 local tonumber     = tonumber
+local tostring     = tostring
+local select       = select
+local concat       = table.concat
 local null         = ngx.null
 local type         = type
 local fmt          = string.format
@@ -28,10 +31,74 @@ local ERRORS_HTTP_CODES = {
 }
 
 
+local function get_message(default, ...)
+  local message
+  local n = select("#", ...)
+  if n > 0 then
+    if n == 1 then
+      local arg = select(1, ...)
+      if type(arg) == "table" then
+        message = arg
+      elseif arg ~= nil then
+        message = tostring(arg)
+      end
+
+    else
+      message = {}
+      for i = 1, n do
+        local arg = select(i, ...)
+        message[i] = tostring(arg)
+      end
+      message = concat(message)
+    end
+  end
+
+  if not message then
+    message = default
+  end
+
+  if type(message) == "string" then
+    message = { message = message }
+  end
+
+  return message
+end
+
+
+local function ok(...)
+  return kong.response.exit(200, get_message(nil, ...))
+end
+
+
+local function created(...)
+  return kong.response.exit(201, get_message(nil, ...))
+end
+
+
+local function no_content()
+  return kong.response.exit(204)
+end
+
+
+local function not_found(...)
+  return kong.response.exit(404, get_message("Not found", ...))
+end
+
+
+local function method_not_allowed(...)
+  return kong.response.exit(405, get_message("Method not allowed", ...))
+end
+
+
+local function unexpected(...)
+  return kong.response.exit(500, get_message("An unexpected error occurred", ...))
+end
+
+
 local function handle_error(err_t)
   if type(err_t) ~= "table" then
     kong.log.err(err_t)
-    kong.response.exit(500, { message = "An unexpected error occurred" })
+    return unexpected()
   end
 
   if err_t.strategy then
@@ -155,11 +222,12 @@ local function get_collection_endpoint(schema, foreign_schema, foreign_field_nam
                                      schema.name,
                                      escape_uri(offset)) or null
 
-    return kong.response.exit(200, {
+    return ok {
       data   = data,
       offset = offset,
       next   = next_page,
-    })
+    }
+
   end or function(self, db, helpers)
     local foreign_entity, _, err_t = select_entity(self, db, foreign_schema)
     if err_t then
@@ -167,7 +235,7 @@ local function get_collection_endpoint(schema, foreign_schema, foreign_field_nam
     end
 
     if not foreign_entity then
-      return kong.response.exit(404, { message = "Not found" })
+      return not_found()
     end
 
     local fk = { id = foreign_entity.id }
@@ -194,11 +262,11 @@ local function get_collection_endpoint(schema, foreign_schema, foreign_field_nam
       next_page = null
     end
 
-    return kong.response.exit(200, {
+    return ok {
       data   = data,
       offset = offset,
       next   = next_page,
-    })
+    }
   end
 end
 
@@ -224,7 +292,7 @@ local function post_collection_endpoint(schema, foreign_schema, foreign_field_na
       end
 
       if not foreign_entity then
-        return kong.response.exit(404, { message = "Not found" })
+        return not_found()
       end
 
       args[foreign_field_name] = { id = foreign_entity.id }
@@ -244,7 +312,7 @@ local function post_collection_endpoint(schema, foreign_schema, foreign_field_na
       end
     end
 
-    return kong.response.exit(201, entity)
+    return created(entity)
   end
 end
 
@@ -267,13 +335,13 @@ local function get_entity_endpoint(schema, foreign_schema, foreign_field_name)
     end
 
     if not entity then
-      return kong.response.exit(404, { message = "Not found" })
+      return not_found()
     end
 
     if foreign_schema then
       local pk = entity[foreign_field_name]
       if not pk or pk == null then
-        return kong.response.exit(404, { message = "Not found" })
+        return not_found()
       end
 
       local opts = extract_options(self.args.uri, foreign_schema, "select")
@@ -284,11 +352,11 @@ local function get_entity_endpoint(schema, foreign_schema, foreign_field_name)
       end
 
       if not entity then
-        return kong.response.exit(404, { message = "Not found" })
+        return not_found()
       end
     end
 
-    return kong.response.exit(200, entity)
+    return ok(entity)
   end
 end
 
@@ -311,10 +379,10 @@ local function put_entity_endpoint(schema, foreign_schema, foreign_field_name)
     end
 
     if not entity then
-      return kong.response.exit(404, { message = "Not found" })
+      return not_found()
     end
 
-    return kong.response.exit(200, entity)
+    return ok(entity)
 
   end or function(self, db, helpers)
     local entity, _, err_t = select_entity(self, db, schema)
@@ -323,12 +391,12 @@ local function put_entity_endpoint(schema, foreign_schema, foreign_field_name)
     end
 
     if not entity then
-      return kong.response.exit(404, { message = "Not found" })
+      return not_found()
     end
 
     local pk = entity[foreign_field_name]
     if not pk or pk == null then
-      return kong.response.exit(404, { message = "Not found" })
+      return not_found()
     end
 
     local args = self.args.post
@@ -340,10 +408,10 @@ local function put_entity_endpoint(schema, foreign_schema, foreign_field_name)
     end
 
     if not entity then
-      return kong.response.exit(404, { message = "Not found" })
+      return not_found()
     end
 
-    return kong.response.exit(200, entity)
+    return ok(entity)
   end
 end
 
@@ -366,10 +434,10 @@ local function patch_entity_endpoint(schema, foreign_schema, foreign_field_name)
     end
 
     if not entity then
-      return kong.response.exit(404, { message = "Not found" })
+      return not_found()
     end
 
-    return kong.response.exit(200, entity)
+    return ok(entity)
 
   end or function(self, db, helpers)
     local entity, _, err_t = select_entity(self, db, schema)
@@ -378,12 +446,12 @@ local function patch_entity_endpoint(schema, foreign_schema, foreign_field_name)
     end
 
     if not entity then
-      return kong.response.exit(404, { message = "Not found" })
+      return not_found()
     end
 
     local pk = entity[foreign_field_name]
     if not pk or pk == null then
-      return kong.response.exit(404, { message = "Not found" })
+      return not_found()
     end
 
     local args = self.args.post
@@ -395,10 +463,10 @@ local function patch_entity_endpoint(schema, foreign_schema, foreign_field_name)
     end
 
     if not entity then
-      return kong.response.exit(404, { message = "Not found" })
+      return not_found()
     end
 
-    return kong.response.exit(200, entity)
+    return ok(entity)
   end
 end
 
@@ -420,7 +488,7 @@ local function delete_entity_endpoint(schema, foreign_schema, foreign_field_name
       return handle_error(err_t)
     end
 
-    return kong.response.exit(204)
+    return no_content()
 
   end or function(self, db, helpers)
     local entity, _, err_t = select_entity(self, db, schema)
@@ -430,10 +498,10 @@ local function delete_entity_endpoint(schema, foreign_schema, foreign_field_name
 
     local id = entity and entity[foreign_field_name]
     if not id or id == null then
-      return kong.response.exit(404, { message = "Not found" })
+      return not_found()
     end
 
-    return kong.response.exit(405, { message = "Method not allowed" })
+    return method_not_allowed()
   end
 end
 
