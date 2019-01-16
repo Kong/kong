@@ -916,7 +916,7 @@ end
 
 
 local function resolve_field(self, k, field, subschema)
-  field = field or self.fields[k]
+  field = field or self.fields[tostring(k)]
   if not field then
     return nil, validation_errors.UNKNOWN
   end
@@ -949,7 +949,7 @@ validate_fields = function(self, input)
 
   for k, v in pairs(input) do
     local err
-    local field = self.fields[k]
+    local field = self.fields[tostring(k)]
     if field and field.type == "self" then
       field = input
     else
