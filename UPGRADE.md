@@ -25,7 +25,7 @@ $ kong migrations up [-c configuration_file]
 
 If the command is successful, and no migration ran
 (no output), then you only have to
-[reload](https://getkong.org/docs/latest/cli/#reload) Kong:
+[reload](https://docs.konghq.com/1.0.x/cli/#kong-reload) Kong:
 
 ```shell
 $ kong reload [-c configuration_file]
@@ -36,9 +36,22 @@ starts new workers, which take over from old workers before those old workers
 are terminated. In this way, Kong will serve new requests via the new
 configuration, without dropping existing in-flight connections.
 
-### Upgrade to `1.0.0`
+### Upgrading `1.0.x` patch releases
 
-This is a major release of Kong, and includes a number of new features
+If you are upgrading from another release in the 1.0.x series (e.g. from 1.0.0
+to 1.0.1), there are no migrations. Simply upgrade your Kong installation and
+[reload](https://docs.konghq.com/1.0.x/cli/#kong-reload) Kong:
+
+```shell
+$ kong reload [-c configuration_file]
+```
+
+If you are upgrading from 0.x, then read the following section for
+detailed migration instructions.
+
+### Upgrade from `0.x` to `1.0.x`
+
+Kong 1.0 is a major upgrade, and includes a number of new features
 as well as breaking changes.
 
 This version introduces **a new schema format for plugins**, **changes in
