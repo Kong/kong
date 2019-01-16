@@ -3,6 +3,7 @@ UNRELEASED
   - Fix logging failure when DNS is not resolved
   - Avoid sending redundant tags (#28)
   - Move `run_on` field to top level plugin schema, not config (#34)
+  - Add support for stream subsystem (#30)
 
 
 0.1.1 - 2018-10-26
