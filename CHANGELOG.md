@@ -1,5 +1,6 @@
 # Table of Contents
 
+- [1.0.1](#101)
 - [1.0.0](#100)
 - [0.15.0](#0150)
 - [0.14.1](#0141)
@@ -19,6 +20,69 @@
 - [0.10.1](#0101---20170327)
 - [0.10.0](#0100---20170307)
 - [0.9.9 and prior](#099---20170202)
+
+## [1.0.1]
+
+> Released on: 2019/01/16
+
+This is a patch release in the 1.0 series. Being a patch release, it strictly
+contains performance improvements and bugfixes. The are no new features or
+breaking changes.
+
+### Changes
+
+##### Core
+
+- :rocket: Assorted changes for warmup time improvements over Kong 1.0.0
+  [#4138](https://github.com/kong/kong/issues/4138),
+  [#4164](https://github.com/kong/kong/issues/4164),
+  [#4178](https://github.com/kong/kong/pull/4178),
+  [#4179](https://github.com/kong/kong/pull/4179),
+  [#4182](https://github.com/kong/kong/pull/4182)
+
+### Fixes
+
+##### Configuration
+
+- Ensure `lua_ssl_verify_depth` works even when `lua_ssl_trusted_certificate`
+  is not set
+  [#4165](https://github.com/kong/kong/pull/4165).
+  Thanks [@rainest](https://github.com/rainest) for the patch.
+- Ensure Kong starts when only a `stream` listener is enabled
+  [#4195](https://github.com/kong/kong/pull/4195)
+- Ensure Postgres works with non-`public` schemas
+  [#4198](https://github.com/kong/kong/pull/4198)
+
+##### Core
+
+- Fix an artifact in upstream migrations where `created_at`
+  timestamps would occasionally display fractional values
+  [#4183](https://github.com/kong/kong/issues/4183),
+  [#4204](https://github.com/kong/kong/pull/4204)
+- Fixed issue with HTTP/2 support advertisement
+  [#4203](https://github.com/kong/kong/pull/4203)
+
+##### Admin API
+
+- Fixed handling of invalid targets in `/upstreams` endpoints
+  for health checks
+  [#4132](https://github.com/kong/kong/issues/4132),
+  [#4205](https://github.com/kong/kong/pull/4205)
+- Fixed the `/plugins/schema/:name` endpoint, as it was failing in
+  some cases (e.g. the `datadog` plugin) and producing incorrect
+  results in others (e.g. `request-transformer`).
+  [#4136](https://github.com/kong/kong/issues/4136),
+  [#4137](https://github.com/kong/kong/issues/4137)
+  [#4151](https://github.com/kong/kong/pull/4151),
+  [#4162](https://github.com/kong/kong/pull/4151)
+
+##### Plugins
+
+- Fix PDK memory leaks in `kong.service.response` and `kong.ctx`
+  [#4143](https://github.com/kong/kong/pull/4143),
+  [#4172](https://github.com/kong/kong/pull/4172)
+
+[Back to TOC](#table-of-contents)
 
 ## [1.0.0]
 
@@ -210,7 +274,7 @@ this changelog.
 - :fireworks: Significant performance improvements in the core's plugins
   runloop. [#3794](https://github.com/Kong/kong/pull/3794)
 - PDK improvements:
-  - New `kong.node` module. [#3826](https://github.com/Kong/kong/pulls/3826)
+  - New `kong.node` module. [#3826](https://github.com/Kong/kong/pull/3826)
   - New functions `kong.response.get_path_with_query()` and
     `kong.request.get_start_time()`.
     [#3842](https://github.com/Kong/kong/pull/3842)
@@ -3243,6 +3307,7 @@ First version running with Cassandra.
 
 [Back to TOC](#table-of-contents)
 
+[1.0.1]: https://github.com/Kong/kong/compare/1.0.0...1.0.1
 [1.0.0]: https://github.com/Kong/kong/compare/0.15.0...1.0.0
 [0.15.0]: https://github.com/Kong/kong/compare/0.14.1...0.15.0
 [0.14.1]: https://github.com/Kong/kong/compare/0.14.0...0.14.1
