@@ -1,5 +1,6 @@
 # Table of Contents
 
+- [1.0.2](#102)
 - [1.0.1](#101)
 - [1.0.0](#100)
 - [0.15.0](#0150)
@@ -20,6 +21,31 @@
 - [0.10.1](#0101---20170327)
 - [0.10.0](#0100---20170307)
 - [0.9.9 and prior](#099---20170202)
+
+## [1.0.2]
+
+> Released on: 2019/01/17
+
+This is a hotfix release fixing an issue when connecting to Cassandra over TLS.
+
+### Fixes
+
+##### Core
+
+- Fix an issue that would prevent Kong from starting when connecting to
+  Cassandra over TLS. [#4214](https://github.com/Kong/kong/pull/4214)
+
+##### Plugins
+
+- zipkin
+  - Fix a logging failure when DNS is not resolved.
+    [kong-plugin-zipkin@a563f51](https://github.com/Kong/kong-plugin-zipkin/commit/a563f513f943ba0a30f3c69373d9092680a8f670)
+  - Avoid sending redundant tags.
+    [kong-plugin-zipkin/pull/28](https://github.com/Kong/kong-plugin-zipkin/pull/28)
+  - Move `run_on` field to top level plugin schema instead of its config.
+    [kong-plugin-zipkin/pull/38](https://github.com/Kong/kong-plugin-zipkin/pull/38)
+
+[Back to TOC](#table-of-contents)
 
 ## [1.0.1]
 
@@ -3307,6 +3333,7 @@ First version running with Cassandra.
 
 [Back to TOC](#table-of-contents)
 
+[1.0.2]: https://github.com/Kong/kong/compare/1.0.1...1.0.2
 [1.0.1]: https://github.com/Kong/kong/compare/1.0.0...1.0.1
 [1.0.0]: https://github.com/Kong/kong/compare/0.15.0...1.0.0
 [0.15.0]: https://github.com/Kong/kong/compare/0.14.1...0.15.0
