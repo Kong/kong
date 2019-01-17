@@ -357,7 +357,7 @@ function Kong.init()
 
   assert(runloop.build_router(db, "init"))
 
-  assert(db:close())
+  db:close()
 end
 
 
