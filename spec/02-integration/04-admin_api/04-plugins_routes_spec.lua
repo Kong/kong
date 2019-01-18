@@ -1,4 +1,6 @@
 local helpers = require "spec.helpers"
+local admin_api = require "spec.fixtures.admin_api"
+local utils = require "kong.tools.utils"
 local cjson = require "cjson"
 
 for _, strategy in helpers.each_strategy() do
@@ -118,6 +120,41 @@ for _, strategy in helpers.each_strategy() do
               path = "/plugins/f4aecadc-05c7-11e6-8d41-1f3b3d5fa15c"
             })
             assert.res_status(404, res)
+          end)
+        end)
+
+
+        describe("PUT", function()
+          -- regression test for #4191
+          it("can create a plugin", function()
+            local service = admin_api.services:insert()
+            admin_api.routes:insert({
+              paths = { "/mypath" },
+              service = { id = service.id },
+            })
+            local res = assert(client:send {
+              method = "PUT",
+              path = "/plugins/" .. utils.uuid(),
+              body = {
+                name = "key-auth",
+                service = {
+                  id = service.id,
+                }
+              },
+              headers = {["Content-Type"] = "application/json"}
+            })
+            assert.res_status(200, res)
+            local proxy_client = assert(helpers.proxy_client())
+            finally(function()
+              if proxy_client then
+                proxy_client:close()
+              end
+            end)
+            res = assert(proxy_client:send {
+              method  = "GET",
+              path    = "/mypath",
+            })
+            assert.res_status(401, res)
           end)
         end)
 
