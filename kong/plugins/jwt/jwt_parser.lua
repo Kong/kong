@@ -154,7 +154,7 @@ local function decode_token(token)
     return nil, "invalid JSON"
   end
 
-  if header.typ and header.typ:upper() ~= "JWT" then
+  if header.typ and (header.typ:upper() ~= "JWT" and header.typ:upper() ~= "JOSE") then
     return nil, "invalid typ"
   end
 
