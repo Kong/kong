@@ -2247,7 +2247,7 @@ function OICHandler:access(conf)
             end
           end
 
-          if type(tokens_decoded.access_token) == "table" and  credential_value == nil then
+          if type(tokens_decoded.access_token) == "table" and credential_value == nil then
             credential_value = find_claim(tokens_decoded.access_token.payload, credential_claim)
             if credential_value then
               log("credential claim found in access token")
@@ -2255,9 +2255,7 @@ function OICHandler:access(conf)
             else
               log("credential claim not found in access token")
             end
-          end
-
-          if credential_value == nil then
+          else
             credential_value = find_claim(token_introspected, credential_claim)
             if credential_value then
               log("credential claim found in introspection results")
