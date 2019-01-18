@@ -171,56 +171,20 @@ local function connect(config)
 end
 
 
-local function close(connection)
-  if not connection or not connection.sock then
-    return nil, "no active connection"
-  end
-
-  local ok, err = connection:disconnect()
-  if not ok then
-    if err then
-      log(WARN, "unable to close postgres connection (", err, ")")
-
-    else
-      log(WARN, "unable to close postgres connection")
-    end
-
-    return nil, err
-  end
-
-  return true
-end
-
-
 setkeepalive = function(connection)
   if not connection or not connection.sock then
-    return nil, "no active connection"
+    return true
   end
 
-  local ok, err
   if connection.sock_type == "luasocket" then
-    ok, err = connection:disconnect()
-    if not ok then
-      if err then
-        log(WARN, "unable to close postgres connection (", err, ")")
-
-      else
-        log(WARN, "unable to close postgres connection")
-      end
-
+    local _, err = connection:disconnect()
+    if err then
       return nil, err
     end
 
   else
-    ok, err = connection:keepalive()
-    if not ok then
-      if err then
-        log(WARN, "unable to set keepalive for postgres connection (", err, ")")
-
-      else
-        log(WARN, "unable to set keepalive for postgres connection")
-      end
-
+    local _, err = connection:keepalive()
+    if err then
       return nil, err
     end
   end
@@ -373,11 +337,11 @@ function _mt:close()
     return true
   end
 
-  local ok, err = close(conn)
+  local _, err = conn:disconnect()
 
   self:store_connection(nil)
 
-  if not ok then
+  if err then
     return nil, err
   end
 
@@ -391,11 +355,11 @@ function _mt:setkeepalive()
     return true
   end
 
-  local ok, err = setkeepalive(conn)
+  local _, err = setkeepalive(conn)
 
   self:store_connection(nil)
 
-  if not ok then
+  if err then
     return nil, err
   end
 

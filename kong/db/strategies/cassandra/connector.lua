@@ -223,11 +223,11 @@ function CassandraConnector:setkeepalive()
     return true
   end
 
-  local ok, err = conn:setkeepalive()
+  local _, err = conn:setkeepalive()
 
   self:store_connection(nil)
 
-  if not ok then
+  if err then
     return nil, err
   end
 
