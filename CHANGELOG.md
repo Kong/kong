@@ -119,7 +119,7 @@ of deprecated concepts.
   applied (those patches are already bundled with our official distribution
   packages). Kong in HTTP(S) Gateway scenarios does not require these patches.
 - Service Mesh abilities require at least OpenSSL version 1.1.1. In our
-  official distribution packages, OpenSSL has been bumped to 1.1.1a.
+  official distribution packages, OpenSSL has been bumped to 1.1.1.
   [#4005](https://github.com/Kong/kong/pull/4005)
 
 ##### Configuration
@@ -403,7 +403,7 @@ deprecated features but you need some fixes or new features right now.
   applied (those patches are already bundled with our official distribution
   packages). Kong in HTTP(S) Gateway scenarios does not require these patches.
 - Service Mesh abilities require at least OpenSSL version 1.1.1. In our
-  official distribution packages, OpenSSL has been bumped to 1.1.1a.
+  official distribution packages, OpenSSL has been bumped to 1.1.1.
   [#4005](https://github.com/Kong/kong/pull/4005)
 
 ##### Configuration
