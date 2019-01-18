@@ -1,5 +1,6 @@
-local cjson        = require "cjson"
-local helpers      = require "spec.helpers"
+local cjson   = require "cjson"
+local helpers = require "spec.helpers"
+local utils   = require "kong.tools.utils"
 
 
 local POLL_INTERVAL = 0.3
@@ -199,7 +200,7 @@ for _, strategy in helpers.each_strategy() do
         assert.not_equal(msg_1.message, msg_2.message)
       end)
 
-      it("is invalidated on plugin update", function()
+      it("is invalidated on plugin PATCH", function()
         local admin_res_plugin = assert(admin_client_1:send {
           method = "PATCH",
           path   = "/plugins/" .. service_plugin_id,
@@ -227,6 +228,36 @@ for _, strategy in helpers.each_strategy() do
           path   = "/plugins/" .. service_plugin_id,
         })
         assert.res_status(204, admin_res_plugin)
+
+        local admin_res_1 = assert(admin_client_1:send {
+          method = "GET",
+          path   = "/cache/plugins_map:version",
+        })
+        assert.res_status(404, admin_res_1)
+
+        wait_for_propagation()
+
+        local admin_res_2 = assert(admin_client_2:send {
+          method = "GET",
+          path   = "/cache/plugins_map:version",
+        })
+        assert.res_status(404, admin_res_2)
+      end)
+
+      it("is invalidated on plugin PUT", function()
+        -- A regression test for https://github.com/Kong/kong/issues/4191
+        local admin_res_plugin = assert(admin_client_1:send {
+          method = "PUT",
+          path   = "/plugins/" .. utils.uuid(),
+          body   = {
+            name    = "dummy",
+            service = { id = service_fixture.id },
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+        })
+        assert.res_status(200, admin_res_plugin)
 
         local admin_res_1 = assert(admin_client_1:send {
           method = "GET",

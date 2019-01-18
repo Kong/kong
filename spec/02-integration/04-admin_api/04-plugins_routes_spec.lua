@@ -125,7 +125,6 @@ for _, strategy in helpers.each_strategy() do
 
 
         describe("PUT", function()
-          -- regression test for #4191
           it("can create a plugin", function()
             local service = admin_api.services:insert()
             admin_api.routes:insert({
@@ -144,17 +143,6 @@ for _, strategy in helpers.each_strategy() do
               headers = {["Content-Type"] = "application/json"}
             })
             assert.res_status(200, res)
-            local proxy_client = assert(helpers.proxy_client())
-            finally(function()
-              if proxy_client then
-                proxy_client:close()
-              end
-            end)
-            res = assert(proxy_client:send {
-              method  = "GET",
-              path    = "/mypath",
-            })
-            assert.res_status(401, res)
           end)
         end)
 
