@@ -4,6 +4,9 @@ local utils   = require "kong.tools.utils"
 
 
 for _, strategy in helpers.each_strategy() do
+  local it_ssl = strategy == "cassandra" and pending or it
+
+
   describe("kong.db.init [#" .. strategy .. "]", function()
     describe(".new()", function()
       it("errors on invalid arg", function()
@@ -145,7 +148,12 @@ for _, strategy in helpers.each_strategy() do
     end
   end)
 
+
   describe(":connect() [#" .. strategy .. "]", function()
+    lazy_setup(function()
+      helpers.get_db_utils(strategy, {})
+    end)
+
     if strategy == "postgres" then
       it("connects to schema configured in postgres by default", function()
         local db, err = DB.new(helpers.test_conf, strategy)
@@ -185,11 +193,399 @@ for _, strategy in helpers.each_strategy() do
         assert(db:close())
       end)
     end
+
+    it("returns opened connection when using cosockets", function()
+      -- bin/busted runs with ngx.IS_CLI = true, which forces luasocket to
+      -- be used in the DB connector (for custom CAs to work)
+      -- Disable this behavior for this test, especially considering we
+      -- are running within resty-cli, and thus within timer_by_lua (which
+      -- can support cosockets).
+      ngx.IS_CLI = false
+
+      local db, err = DB.new(helpers.test_conf, strategy)
+      assert.is_nil(err)
+      assert.is_table(db)
+
+      assert(db:init_connector())
+
+      local conn, err = db:connect()
+      assert.is_nil(err)
+      assert.is_table(conn)
+
+      if strategy == "postgres" then
+        assert.equal("nginx", db.connector:get_stored_connection().sock_type)
+      --elseif strategy == "cassandra" then
+      --TODO: cassandra forces luasocket on timer
+      end
+
+      assert.is_false(db.connector:get_stored_connection().ssl)
+
+      db:close()
+    end)
+
+    it("returns opened connection when using luasocket", function()
+      ngx.IS_CLI = true
+
+      local db, err = DB.new(helpers.test_conf, strategy)
+      assert.is_nil(err)
+      assert.is_table(db)
+
+      assert(db:init_connector())
+
+      local conn, err = db:connect()
+      assert.is_nil(err)
+      assert.is_table(conn)
+
+      if strategy == "postgres" then
+        assert.equal("luasocket",
+                     db.connector:get_stored_connection().sock_type)
+      --elseif strategy == "cassandra" then
+      --TODO: cassandra forces luasocket on timer
+      end
+
+      assert.is_false(db.connector:get_stored_connection().ssl)
+
+      db:close()
+    end)
+
+    it_ssl("returns opened connection with ssl (cosockets)", function()
+      ngx.IS_CLI = false
+
+      local conf = utils.deep_copy(helpers.test_conf)
+
+      conf.pg_ssl = true
+      conf.cassandra_ssl = true
+
+      local db, err = DB.new(conf, strategy)
+      assert.is_nil(err)
+      assert.is_table(db)
+
+      assert(db:init_connector())
+
+      local conn, err = db:connect()
+      assert.is_nil(err)
+      assert.is_table(conn)
+
+      if strategy == "postgres" then
+        assert.equal("nginx", db.connector:get_stored_connection().sock_type)
+      --elseif strategy == "cassandra" then
+      --TODO: cassandra forces luasocket on timer
+      end
+
+      assert.is_true(db.connector:get_stored_connection().ssl)
+
+      db:close()
+    end)
+
+    it_ssl("returns opened connection with ssl (luasocket)", function()
+      ngx.IS_CLI = true
+
+      local conf = utils.deep_copy(helpers.test_conf)
+
+      conf.pg_ssl = true
+      conf.cassandra_ssl = true
+
+      local db, err = DB.new(conf, strategy)
+      assert.is_nil(err)
+      assert.is_table(db)
+
+      assert(db:init_connector())
+
+      local conn, err = db:connect()
+      assert.is_nil(err)
+      assert.is_table(conn)
+
+      if strategy == "postgres" then
+        assert.equal("luasocket",
+                     db.connector:get_stored_connection().sock_type)
+      --elseif strategy == "cassandra" then
+      --TODO: cassandra forces luasocket on timer
+      end
+
+      assert.is_true(db.connector:get_stored_connection().ssl)
+
+      db:close()
+    end)
   end)
+
 
   describe(":setkeepalive() [#" .. strategy .. "]", function()
+    lazy_setup(function()
+      helpers.get_db_utils(strategy, {})
+    end)
+
+    it("returns true when there is a stored connection (cosockets)", function()
+      ngx.IS_CLI = false
+
+      local db, err = DB.new(helpers.test_conf, strategy)
+      assert.is_nil(err)
+      assert.is_table(db)
+
+      assert(db:init_connector())
+
+      local conn, err = db:connect()
+      assert.is_nil(err)
+      assert.is_table(conn)
+
+      if strategy == "postgres" then
+        assert.equal("nginx", db.connector:get_stored_connection().sock_type)
+      --elseif strategy == "cassandra" then
+      --TODO: cassandra forces luasocket on timer
+      end
+
+      assert.is_false(db.connector:get_stored_connection().ssl)
+      assert.is_true(db:setkeepalive())
+
+      db:close()
+    end)
+
+    it("returns true when there is a stored connection (luasocket)", function()
+      ngx.IS_CLI = true
+
+      local db, err = DB.new(helpers.test_conf, strategy)
+      assert.is_nil(err)
+      assert.is_table(db)
+
+      assert(db:init_connector())
+
+      local conn, err = db:connect()
+      assert.is_nil(err)
+      assert.is_table(conn)
+
+      if strategy == "postgres" then
+        assert.equal("luasocket",
+                     db.connector:get_stored_connection().sock_type)
+      --elseif strategy == "cassandra" then
+      --TODO: cassandra forces luasocket on timer
+      end
+
+      assert.is_false(db.connector:get_stored_connection().ssl)
+      assert.is_true(db:setkeepalive())
+
+      db:close()
+    end)
+
+    it_ssl("returns true when there is a stored connection with ssl (cosockets)", function()
+      ngx.IS_CLI = false
+
+      local conf = utils.deep_copy(helpers.test_conf)
+
+      conf.pg_ssl = true
+      conf.cassandra_ssl = true
+
+      local db, err = DB.new(conf, strategy)
+      assert.is_nil(err)
+      assert.is_table(db)
+
+      assert(db:init_connector())
+
+      local conn, err = db:connect()
+      assert.is_nil(err)
+      assert.is_table(conn)
+
+      if strategy == "postgres" then
+        assert.equal("nginx", db.connector:get_stored_connection().sock_type)
+      --elseif strategy == "cassandra" then
+      --TODO: cassandra forces luasocket on timer
+      end
+
+      assert.is_true(db.connector:get_stored_connection().ssl)
+      assert.is_true(db:setkeepalive())
+
+      db:close()
+    end)
+
+    it_ssl("returns true when there is a stored connection with ssl (luasocket)", function()
+      ngx.IS_CLI = true
+
+      local conf = utils.deep_copy(helpers.test_conf)
+
+      conf.pg_ssl = true
+      conf.cassandra_ssl = true
+
+      local db, err = DB.new(conf, strategy)
+      assert.is_nil(err)
+      assert.is_table(db)
+
+      assert(db:init_connector())
+
+      local conn, err = db:connect()
+      assert.is_nil(err)
+      assert.is_table(conn)
+
+      if strategy == "postgres" then
+        assert.equal("luasocket",
+                     db.connector:get_stored_connection().sock_type)
+      --elseif strategy == "cassandra" then
+      --TODO: cassandra forces luasocket on timer
+      end
+
+      assert.is_true(db.connector:get_stored_connection().ssl)
+      assert.is_true(db:setkeepalive())
+
+      db:close()
+    end)
+
+    it("returns true when there is no stored connection (cosockets)", function()
+      ngx.IS_CLI = false
+
+      local db, err = DB.new(helpers.test_conf, strategy)
+      assert.is_nil(err)
+      assert.is_table(db)
+
+      assert(db:init_connector())
+
+      assert.is_nil(db.connector:get_stored_connection())
+      assert.is_true(db:setkeepalive())
+    end)
+
+    it("returns true when there is no stored connection (luasocket)", function()
+      ngx.IS_CLI = true
+
+      local db, err = DB.new(helpers.test_conf, strategy)
+      assert.is_nil(err)
+      assert.is_table(db)
+
+      assert(db:init_connector())
+
+      assert.is_nil(db.connector:get_stored_connection())
+      assert.is_true(db:setkeepalive())
+    end)
   end)
 
+
   describe(":close() [#" .. strategy .. "]", function()
+    lazy_setup(function()
+      helpers.get_db_utils(strategy, {})
+    end)
+
+    it("returns true when there is a stored connection (cosockets)", function()
+      ngx.IS_CLI = false
+
+      local db, err = DB.new(helpers.test_conf, strategy)
+      assert.is_nil(err)
+      assert.is_table(db)
+
+      assert(db:init_connector())
+
+      local conn, err = db:connect()
+      assert.is_nil(err)
+      assert.is_table(conn)
+
+      if strategy == "postgres" then
+        assert.equal("nginx", db.connector:get_stored_connection().sock_type)
+      --elseif strategy == "cassandra" then
+      --TODO: cassandra forces luasocket on timer
+      end
+
+      assert.is_false(db.connector:get_stored_connection().ssl)
+      assert.is_true(db:close())
+    end)
+
+    it("returns true when there is a stored connection (luasocket)", function()
+      ngx.IS_CLI = true
+
+      local db, err = DB.new(helpers.test_conf, strategy)
+      assert.is_nil(err)
+      assert.is_table(db)
+
+      assert(db:init_connector())
+
+      local conn, err = db:connect()
+      assert.is_nil(err)
+      assert.is_table(conn)
+
+      if strategy == "postgres" then
+        assert.equal("luasocket", db.connector:get_stored_connection().sock_type)
+      --elseif strategy == "cassandra" then
+      --TODO: cassandra forces luasocket on timer
+      end
+
+      assert.is_false(db.connector:get_stored_connection().ssl)
+      assert.is_true(db:close())
+    end)
+
+    it_ssl("returns true when there is a stored connection with ssl (cosockets)", function()
+      ngx.IS_CLI = false
+
+      local conf = utils.deep_copy(helpers.test_conf)
+
+      conf.pg_ssl = true
+      conf.cassandra_ssl = true
+
+      local db, err = DB.new(conf, strategy)
+      assert.is_nil(err)
+      assert.is_table(db)
+
+      assert(db:init_connector())
+
+      local conn, err = db:connect()
+      assert.is_nil(err)
+      assert.is_table(conn)
+
+      if strategy == "postgres" then
+        assert.equal("nginx", db.connector:get_stored_connection().sock_type)
+      --elseif strategy == "cassandra" then
+      --TODO: cassandra forces luasocket on timer
+      end
+
+      assert.is_true(db.connector:get_stored_connection().ssl)
+      assert.is_true(db:close())
+    end)
+
+    it_ssl("returns true when there is a stored connection with ssl (luasocket)", function()
+      ngx.IS_CLI = true
+
+      local conf = utils.deep_copy(helpers.test_conf)
+
+      conf.pg_ssl = true
+      conf.cassandra_ssl = true
+
+      local db, err = DB.new(conf, strategy)
+      assert.is_nil(err)
+      assert.is_table(db)
+
+      assert(db:init_connector())
+
+      local conn, err = db:connect()
+      assert.is_nil(err)
+      assert.is_table(conn)
+
+      if strategy == "postgres" then
+        assert.equal("luasocket",
+                     db.connector:get_stored_connection().sock_type)
+      --elseif strategy == "cassandra" then
+      --TODO: cassandra forces luasocket on timer
+      end
+
+      assert.is_true(db.connector:get_stored_connection().ssl)
+      assert.is_true(db:close())
+    end)
+
+    it("returns true when there is no stored connection (cosockets)", function()
+      ngx.IS_CLI = false
+
+      local db, err = DB.new(helpers.test_conf, strategy)
+      assert.is_nil(err)
+      assert.is_table(db)
+
+      assert(db:init_connector())
+
+      assert.is_nil(db.connector:get_stored_connection())
+      assert.is_true(db:close())
+    end)
+
+    it("returns true when there is no stored connection (luasocket)", function()
+      ngx.IS_CLI = true
+
+      local db, err = DB.new(helpers.test_conf, strategy)
+      assert.is_nil(err)
+      assert.is_table(db)
+
+      assert(db:init_connector())
+
+      assert.is_nil(db.connector:get_stored_connection())
+      assert.equal(true, db:close())
+    end)
   end)
 end

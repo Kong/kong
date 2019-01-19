@@ -329,7 +329,7 @@ for _, strategy in helpers.each_strategy() do
       describe("/routes/{route}", function()
         describe("GET", function()
           it("retrieves by id", function()
-            local route = bp.routes:insert({ paths = { "/my-route" } })
+            local route = bp.routes:insert({ paths = { "/my-route" } }, { nulls = true })
             local res  = client:get("/routes/" .. route.id)
             local body = assert.res_status(200, res)
 
@@ -338,7 +338,7 @@ for _, strategy in helpers.each_strategy() do
           end)
 
           it("retrieves by name", function()
-            local route = bp.named_routes:insert()
+            local route = bp.named_routes:insert(nil, { nulls = true })
             local res  = client:get("/routes/" .. route.name)
             local body = assert.res_status(200, res)
 

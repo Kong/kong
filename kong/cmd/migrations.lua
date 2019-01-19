@@ -2,6 +2,7 @@ local DB = require "kong.db"
 local log = require "kong.cmd.utils.log"
 local tty = require "kong.cmd.utils.tty"
 local conf_loader = require "kong.conf_loader"
+local kong_global = require "kong.global"
 local migrations_utils = require "kong.cmd.utils.migrations"
 
 
@@ -82,6 +83,9 @@ local function execute(args)
 
   conf.cassandra_timeout = args.db_timeout -- connect + send + read
   conf.cassandra_schema_consensus_timeout = args.db_timeout
+
+  _G.kong = kong_global.new()
+  kong_global.init_pdk(_G.kong, conf, nil) -- nil: latest PDK
 
   local db = assert(DB.new(conf))
   assert(db:init_connector())

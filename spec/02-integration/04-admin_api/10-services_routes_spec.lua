@@ -230,7 +230,7 @@ for _, strategy in helpers.each_strategy() do
 
         describe("GET", function()
           it("retrieves by id", function()
-            local service = bp.services:insert()
+            local service = bp.services:insert(nil, { nulls = true })
             local res  = client:get("/services/" .. service.id)
             local body = assert.res_status(200, res)
 
@@ -239,7 +239,7 @@ for _, strategy in helpers.each_strategy() do
           end)
 
           it("retrieves by name", function()
-            local service = bp.named_services:insert()
+            local service = bp.named_services:insert(nil, { nulls = true })
             local res  = client:get("/services/" .. service.name)
             local body = assert.res_status(200, res)
 

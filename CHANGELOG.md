@@ -1,5 +1,7 @@
 # Table of Contents
 
+- [1.0.2](#102)
+- [1.0.1](#101)
 - [1.0.0](#100)
 - [0.15.0](#0150)
 - [0.14.1](#0141)
@@ -19,6 +21,103 @@
 - [0.10.1](#0101---20170327)
 - [0.10.0](#0100---20170307)
 - [0.9.9 and prior](#099---20170202)
+
+## [1.0.2]
+
+> Released on: 2019/01/18
+
+This is a hotfix release mainly addressing an issue when connecting to the
+datastore over TLS (Cassandra and PostgreSQL).
+
+### Fixes
+
+##### Core
+
+- Fix an issue that would prevent Kong from starting when connecting to
+  its datastore over TLS. [#4214](https://github.com/Kong/kong/pull/4214)
+  [#4218](https://github.com/Kong/kong/pull/4218)
+- Ensure plugins added via `PUT` get enabled without requiring a restart.
+  [#4220](https://github.com/Kong/kong/pull/4220)
+
+##### Plugins
+
+- zipkin
+  - Fix a logging failure when DNS is not resolved.
+    [kong-plugin-zipkin@a563f51](https://github.com/Kong/kong-plugin-zipkin/commit/a563f513f943ba0a30f3c69373d9092680a8f670)
+  - Avoid sending redundant tags.
+    [kong-plugin-zipkin/pull/28](https://github.com/Kong/kong-plugin-zipkin/pull/28)
+  - Move `run_on` field to top level plugin schema instead of its config.
+    [kong-plugin-zipkin/pull/38](https://github.com/Kong/kong-plugin-zipkin/pull/38)
+
+[Back to TOC](#table-of-contents)
+
+## [1.0.1]
+
+> Released on: 2019/01/16
+
+This is a patch release in the 1.0 series. Being a patch release, it strictly
+contains performance improvements and bugfixes. The are no new features or
+breaking changes.
+
+:red_circle: **Post-release note (as of 2019/01/17)**: A regression has been
+observed with this version, preventing Kong from starting when connecting to
+its datastore over TLS. Installing this version is discouraged; consider
+upgrading to [1.0.2](#102).
+
+### Changes
+
+##### Core
+
+- :rocket: Assorted changes for warmup time improvements over Kong 1.0.0
+  [#4138](https://github.com/kong/kong/issues/4138),
+  [#4164](https://github.com/kong/kong/issues/4164),
+  [#4178](https://github.com/kong/kong/pull/4178),
+  [#4179](https://github.com/kong/kong/pull/4179),
+  [#4182](https://github.com/kong/kong/pull/4182)
+
+### Fixes
+
+##### Configuration
+
+- Ensure `lua_ssl_verify_depth` works even when `lua_ssl_trusted_certificate`
+  is not set
+  [#4165](https://github.com/kong/kong/pull/4165).
+  Thanks [@rainest](https://github.com/rainest) for the patch.
+- Ensure Kong starts when only a `stream` listener is enabled
+  [#4195](https://github.com/kong/kong/pull/4195)
+- Ensure Postgres works with non-`public` schemas
+  [#4198](https://github.com/kong/kong/pull/4198)
+
+##### Core
+
+- Fix an artifact in upstream migrations where `created_at`
+  timestamps would occasionally display fractional values
+  [#4183](https://github.com/kong/kong/issues/4183),
+  [#4204](https://github.com/kong/kong/pull/4204)
+- Fixed issue with HTTP/2 support advertisement
+  [#4203](https://github.com/kong/kong/pull/4203)
+
+##### Admin API
+
+- Fixed handling of invalid targets in `/upstreams` endpoints
+  for health checks
+  [#4132](https://github.com/kong/kong/issues/4132),
+  [#4205](https://github.com/kong/kong/pull/4205)
+- Fixed the `/plugins/schema/:name` endpoint, as it was failing in
+  some cases (e.g. the `datadog` plugin) and producing incorrect
+  results in others (e.g. `request-transformer`).
+  [#4136](https://github.com/kong/kong/issues/4136),
+  [#4137](https://github.com/kong/kong/issues/4137)
+  [#4151](https://github.com/kong/kong/pull/4151),
+  [#4162](https://github.com/kong/kong/pull/4151)
+
+##### Plugins
+
+- Fix PDK memory leaks in `kong.service.response` and `kong.ctx`
+  [#4143](https://github.com/kong/kong/pull/4143),
+  [#4172](https://github.com/kong/kong/pull/4172)
+
+[Back to TOC](#table-of-contents)
 
 ## [1.0.0]
 
@@ -55,7 +154,7 @@ of deprecated concepts.
   applied (those patches are already bundled with our official distribution
   packages). Kong in HTTP(S) Gateway scenarios does not require these patches.
 - Service Mesh abilities require at least OpenSSL version 1.1.1. In our
-  official distribution packages, OpenSSL has been bumped to 1.1.1a.
+  official distribution packages, OpenSSL has been bumped to 1.1.1.
   [#4005](https://github.com/Kong/kong/pull/4005)
 
 ##### Configuration
@@ -210,7 +309,7 @@ this changelog.
 - :fireworks: Significant performance improvements in the core's plugins
   runloop. [#3794](https://github.com/Kong/kong/pull/3794)
 - PDK improvements:
-  - New `kong.node` module. [#3826](https://github.com/Kong/kong/pulls/3826)
+  - New `kong.node` module. [#3826](https://github.com/Kong/kong/pull/3826)
   - New functions `kong.response.get_path_with_query()` and
     `kong.request.get_start_time()`.
     [#3842](https://github.com/Kong/kong/pull/3842)
@@ -339,7 +438,7 @@ deprecated features but you need some fixes or new features right now.
   applied (those patches are already bundled with our official distribution
   packages). Kong in HTTP(S) Gateway scenarios does not require these patches.
 - Service Mesh abilities require at least OpenSSL version 1.1.1. In our
-  official distribution packages, OpenSSL has been bumped to 1.1.1a.
+  official distribution packages, OpenSSL has been bumped to 1.1.1.
   [#4005](https://github.com/Kong/kong/pull/4005)
 
 ##### Configuration
@@ -3243,6 +3342,8 @@ First version running with Cassandra.
 
 [Back to TOC](#table-of-contents)
 
+[1.0.2]: https://github.com/Kong/kong/compare/1.0.1...1.0.2
+[1.0.1]: https://github.com/Kong/kong/compare/1.0.0...1.0.1
 [1.0.0]: https://github.com/Kong/kong/compare/0.15.0...1.0.0
 [0.15.0]: https://github.com/Kong/kong/compare/0.14.1...0.15.0
 [0.14.1]: https://github.com/Kong/kong/compare/0.14.0...0.14.1

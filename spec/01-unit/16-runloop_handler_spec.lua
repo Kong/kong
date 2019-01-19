@@ -1,85 +1,75 @@
+local mocker = require("spec.fixtures.mocker")
+
+
 local function setup_it_block()
-  local mocked_modules = {}
-  local _ngx = _G.ngx
-  local _kong = _G.kong
-
-  local function mock_module(name, tbl)
-    local old_module = require(name)
-    mocked_modules[name] = true
-    package.loaded[name] = setmetatable(tbl or {}, {
-      __index = old_module,
-    })
-  end
-
-  _G.ngx = setmetatable({
-    log = function()
-      -- avoid stdout output during test
-    end,
-  }, { __index = _ngx })
-
-  finally(function()
-    _G.ngx = _ngx
-    _G.kong = _kong
-
-    for k in pairs(mocked_modules) do
-      package.loaded[k] = nil
-    end
-  end)
-
-  mock_module("kong.singletons", {
-    configuration = {
-      database = "dummy",
-    },
-    worker_events = {
-      register = function() end,
-    },
-    cluster_events = {
-      subscribe = function() end,
-    },
-    cache = {
-      get = function()
-        return "1"
-      end
-    }
-  })
-
-  mock_module("kong.runloop.balancer", {
-    init = function() end
-  })
-
-  _G.kong = {
-    log = {
-      err = function() end,
-    },
-    response = {
-      exit = function() end,
-    },
-  }
 
   -- keep track of created semaphores
   local semaphores = {}
 
-  mock_module("ngx.semaphore", {
-    _semaphores = semaphores,
-    new = function()
-      local s = {
-        value = 0,
-        wait = function(self, timeout)
-          self.value = self.value - 1
-          return true
-        end,
-        post = function(self, n)
-          n = n or 1
-          self.value = self.value + n
-          return true
-        end,
-      }
-      table.insert(semaphores, s)
-      return s
-    end,
-  })
+  mocker.setup(finally, {
 
-  mock_module("kong.runloop.handler")
+    ngx = {
+      log = function()
+        -- avoid stdout output during test
+      end,
+    },
+
+    kong = {
+      log = {
+        err = function() end,
+      },
+      response = {
+        exit = function() end,
+      },
+    },
+
+    modules = {
+      { "kong.singletons", {
+        configuration = {
+          database = "dummy",
+        },
+        worker_events = {
+          register = function() end,
+        },
+        cluster_events = {
+          subscribe = function() end,
+        },
+        cache = {
+          get = function()
+            return "1"
+          end
+        }
+      }},
+
+      { "kong.runloop.balancer", {
+        init = function() end
+      }},
+
+      { "ngx.semaphore",  {
+        _semaphores = semaphores,
+        new = function()
+          local s = {
+            value = 0,
+            wait = function(self, timeout)
+              self.value = self.value - 1
+              return true
+            end,
+            post = function(self, n)
+              n = n or 1
+              self.value = self.value + n
+              return true
+            end,
+          }
+          table.insert(semaphores, s)
+          return s
+        end,
+      }},
+
+      { "kong.runloop.handler", {} },
+
+    }
+
+  })
 end
 
 describe("runloop handler", function()

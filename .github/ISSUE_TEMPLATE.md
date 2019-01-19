@@ -1,6 +1,3 @@
-NOTE: GitHub issues are reserved for **bug reports only**. For anything else,
-please join the conversation in Kong Nation https://discuss.konghq.com/.
-
 Please read the CONTRIBUTING.md guidelines to learn on which channels you can
 seek for help and ask general questions:
 
