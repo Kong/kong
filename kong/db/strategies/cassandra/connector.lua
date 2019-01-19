@@ -220,14 +220,14 @@ end
 function CassandraConnector:setkeepalive()
   local conn = self:get_stored_connection()
   if not conn then
-    return
+    return true
   end
 
-  local ok, err = conn:setkeepalive()
+  local _, err = conn:setkeepalive()
 
   self:store_connection(nil)
 
-  if not ok then
+  if err then
     return nil, err
   end
 
@@ -238,14 +238,14 @@ end
 function CassandraConnector:close()
   local conn = self:get_stored_connection()
   if not conn then
-    return
+    return true
   end
 
-  local ok, err = conn:close()
+  local _, err = conn:close()
 
   self:store_connection(nil)
 
-  if not ok then
+  if err then
     return nil, err
   end
 
