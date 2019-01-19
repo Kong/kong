@@ -3,8 +3,9 @@ local helpers = require "spec.helpers"
 local utils   = require "kong.tools.utils"
 
 
-for _, strategy in helpers.each_strategy({ "postgres" }) do
+for _, strategy in helpers.each_strategy() do
   local it_ssl = strategy == "cassandra" and pending or it
+
 
   describe("kong.db.init [#" .. strategy .. "]", function()
     describe(".new()", function()
@@ -91,7 +92,6 @@ for _, strategy in helpers.each_strategy({ "postgres" }) do
         error("unknown database")
       end
     end)
-
   end)
 
 
