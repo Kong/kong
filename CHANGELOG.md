@@ -59,6 +59,11 @@ This is a patch release in the 1.0 series. Being a patch release, it strictly
 contains performance improvements and bugfixes. The are no new features or
 breaking changes.
 
+:red_circle: **Post-release note (as of 2019/01/17)**: A regression has been
+observed with this version, preventing Kong from starting when connecting to
+its datastore over TLS. Installing this version is discouraged; consider
+upgrading to [1.0.2](#102).
+
 ### Changes
 
 ##### Core
