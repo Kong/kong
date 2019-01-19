@@ -453,6 +453,13 @@ http {
                 return mu.retrieve_log(ngx.var.logname)
             }
         }
+
+        location "/mock-hibp/range" {
+            content_by_lua_block {
+                -- thispasswordhasbeenpwnd = f1f34d10ed3559aa88ed4a3129c9bf128bfc773a
+                ngx.say("D10ED3559AA88ED4A3129C9BF128BFC773A:1")
+            }
+        }
     }
 }
 

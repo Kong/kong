@@ -3,6 +3,9 @@ local helpers = require "spec.helpers"
 local utils = require "kong.tools.utils"
 
 
+local PWNED = "thispasswordhasbeenpwnd"
+
+
 for _, strategy in helpers.each_strategy() do
   describe("Plugin: basic-auth (API) [#" .. strategy .. "]", function()
     local consumer
@@ -21,6 +24,8 @@ for _, strategy in helpers.each_strategy() do
 
       assert(helpers.start_kong({
         database = strategy,
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+        lua_package_path = "./spec/fixtures/mocks/?.lua",
       }))
     end)
     lazy_teardown(function()
@@ -104,6 +109,20 @@ for _, strategy in helpers.each_strategy() do
           local crypto = require "kong.plugins.basic-auth.crypto"
           local hash   = crypto.hash(consumer.id, " kong ")
           assert.equal(hash, json.password)
+        end)
+        it("rejects a pwned password", function()
+          local res = assert(admin_client:send {
+            method  = "POST",
+            path    = "/consumers/bob/basic-auth",
+            body    = {
+              username = "pwned",
+              password = PWNED,
+            },
+            headers = {
+              ["Content-Type"] = "application/json"
+            }
+          })
+          assert.res_status(400, res)
         end)
         describe("errors", function()
           it("returns bad request", function()
@@ -241,6 +260,19 @@ for _, strategy in helpers.each_strategy() do
           assert.equal(consumer.id, json.consumer.id)
           assert.equal("robert", json.username)
         end)
+        it("rejects a pwned password", function()
+          local res = assert(admin_client:send {
+            method  = "PUT",
+            path    = "/consumers/bob/basic-auth/robert",
+            body    = {
+              password = PWNED
+            },
+            headers = {
+              ["Content-Type"] = "application/json"
+            }
+          })
+          assert.res_status(400, res)
+        end)
         describe("errors", function()
           it("returns bad request", function()
             local res = assert(admin_client:send {
@@ -294,6 +326,19 @@ for _, strategy in helpers.each_strategy() do
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
           assert.not_equal(previous_hash, json.password)
+        end)
+        it("rejects a pwned password", function()
+          local res = assert(admin_client:send {
+            method  = "PATCH",
+            path    = "/consumers/bob/basic-auth/" .. credential.username,
+            body    = {
+              password = PWNED
+            },
+            headers = {
+              ["Content-Type"] = "application/json"
+            }
+          })
+          assert.res_status(400, res)
         end)
         describe("errors", function()
           it("handles invalid input", function()
