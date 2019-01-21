@@ -1,11 +1,9 @@
 local pl_string = require "pl.stringx"
 local utils = require "kong.tools.utils"
-local url = require "socket.url"
 
 local type = type
 local pairs = pairs
 local remove = table.remove
-local tonumber = tonumber
 
 local _M = {}
 
@@ -66,31 +64,6 @@ function _M.normalize_nested_params(obj)
   end
 
   return new_obj
-end
-
-
-function _M.resolve_url_params(self)
-  local sugar_url = self.args.post.url
-
-  self.args.post.url = nil
-
-  if type(sugar_url) ~= "string" then
-    return
-  end
-
-  local parsed_url = url.parse(sugar_url)
-  if not parsed_url then
-    return
-  end
-
-  self.args.post.protocol = parsed_url.scheme
-  self.args.post.host     = parsed_url.host
-  self.args.post.port     = tonumber(parsed_url.port) or
-                            parsed_url.port or
-                            (parsed_url.scheme == "http" and 80) or
-                            (parsed_url.scheme == "https" and 443) or
-                            nil
-  self.args.post.path     = parsed_url.path
 end
 
 
