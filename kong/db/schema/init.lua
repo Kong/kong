@@ -1349,6 +1349,23 @@ function Schema:process_auto_fields(data, context, nulls)
   end
   --]]
 
+  if self.shorthands then
+    for _, shorthand in ipairs(self.shorthands) do
+      local sname = next(shorthand)
+      local sfunc = shorthand[sname]
+      local value = data[sname]
+      if value ~= nil then
+        data[sname] = nil
+        local new_values = sfunc(value)
+        if new_values then
+          for k, v in pairs(new_values) do
+            data[k] = v
+          end
+        end
+      end
+    end
+  end
+
   for key, field in self:each_field(data) do
 
     if field.legacy and field.uuid and data[key] == "" then
