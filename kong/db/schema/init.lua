@@ -1323,20 +1323,21 @@ end
 -- is "insert".
 -- This function encapsulates various "smart behaviors"
 -- for value creation and update.
--- @param input The table containing data to be processed.
+-- @param data The table containing data to be processed.
 -- @param context a string describing the CRUD context:
 -- valid values are: "insert", "update", "upsert", "select"
 -- @param nulls boolean: return nulls as explicit ngx.null values
 -- @return A new table, with the auto fields containing
 -- appropriate updated values.
-function Schema:process_auto_fields(input, context, nulls)
+function Schema:process_auto_fields(data, context, nulls)
   ngx.update_time()
 
-  local output = tablex.deepcopy(input)
   local now_s  = ngx_time()
   local now_ms = ngx_now()
   local read_before_write = false
   local cache_key_modified = false
+
+  data = tablex.deepcopy(data)
 
   --[[
   if context == "select" and self.translations then
@@ -1348,21 +1349,21 @@ function Schema:process_auto_fields(input, context, nulls)
   end
   --]]
 
-  for key, field in self:each_field(input) do
+  for key, field in self:each_field(data) do
 
-    if field.legacy and field.uuid and output[key] == "" then
-      output[key] = null
+    if field.legacy and field.uuid and data[key] == "" then
+      data[key] = null
     end
 
     if field.auto then
       if field.uuid then
-        if (context == "insert" or context == "upsert") and output[key] == nil then
-          output[key] = utils.uuid()
+        if (context == "insert" or context == "upsert") and data[key] == nil then
+          data[key] = utils.uuid()
         end
 
       elseif field.type == "string" then
-        if (context == "insert" or context == "upsert") and output[key] == nil then
-          output[key] = utils.random_string()
+        if (context == "insert" or context == "upsert") and data[key] == nil then
+          data[key] = utils.random_string()
         end
 
       elseif (key == "created_at" and (context == "insert" or
@@ -1372,27 +1373,27 @@ function Schema:process_auto_fields(input, context, nulls)
                                        context == "update")) then
 
         if field.type == "number" then
-          output[key] = now_ms
+          data[key] = now_ms
         elseif field.type == "integer" then
-          output[key] = now_s
+          data[key] = now_s
         end
       end
     end
 
-    output[key] = adjust_field_for_context(field, output[key], context, nulls)
+    data[key] = adjust_field_for_context(field, data[key], context, nulls)
 
-    if output[key] ~= nil then
+    if data[key] ~= nil then
       if self.cache_key_set and self.cache_key_set[key] then
         cache_key_modified = true
       end
     end
 
-    if context == "select" and output[key] == null and not nulls then
-      output[key] = nil
+    if context == "select" and data[key] == null and not nulls then
+      data[key] = nil
     end
 
-    if context == "select" and field.type == "integer" and type(output[key]) == "number" then
-      output[key] = floor(output[key])
+    if context == "select" and field.type == "integer" and type(data[key]) == "number" then
+      data[key] = floor(data[key])
     end
   end
 
@@ -1400,7 +1401,7 @@ function Schema:process_auto_fields(input, context, nulls)
   if context ~= "select" and self.translations then
     for _, translation in ipairs(self.translations) do
       if type(translation.write) == "function" then
-        output = translation.write(output)
+        data = translation.write(data)
       end
     end
   end
@@ -1410,7 +1411,7 @@ function Schema:process_auto_fields(input, context, nulls)
     -- If a partial update does not provide the subschema key,
     -- we need to do a read-before-write to get it and be
     -- able to properly validate the entity.
-    (self.subschema_key and input[self.subschema_key] == nil)
+    (self.subschema_key and data[self.subschema_key] == nil)
     -- If we're resetting the value of a composite cache key,
     -- we to do a read-before-write to get the rest of the cache key
     -- and be able to properly update it.
@@ -1422,7 +1423,7 @@ function Schema:process_auto_fields(input, context, nulls)
     read_before_write = true
   end
 
-  return output, nil, read_before_write
+  return data, nil, read_before_write
 end
 
 
