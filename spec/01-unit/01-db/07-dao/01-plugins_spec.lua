@@ -13,10 +13,13 @@ describe("kong.db.dao.plugins", function()
     assert(Entity.new(require("kong.db.schema.entities.consumers")))
     local schema = assert(Entity.new(require("kong.db.schema.entities.plugins")))
 
+    local errors = Errors.new("mock")
     self = {
       schema = schema,
-      errors = Errors.new("mock"),
-      db = {},
+      errors = errors,
+      db = {
+        errors = errors,
+      },
     }
   end)
 
