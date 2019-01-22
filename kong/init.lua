@@ -121,6 +121,8 @@ local schema_state
 local function build_plugins_map(db, version)
   local map = {}
 
+  local subsystem = ngx.config.subsystem
+
   for plugin, err in db.plugins:each(1000) do
     if err then
       return nil, err
