@@ -1,3 +1,7 @@
+## 0.3.3
+
+* Set credential id to allow rate limiting based on access token
+
 ## 0.3.2
 
 * Drop old RBAC migrations

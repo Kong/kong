@@ -163,6 +163,9 @@ local function load_credential(conf, access_token)
                  headers = {["WWW-Authenticate"] = 'Bearer realm="service" error="invalid_token" error_description="The access token is invalid or has expired"'}}}
   end
 
+  credential.id = access_token -- Setting an unique ID to the credential that can be
+                               -- used by other plugins
+
   return { res = credential }
 end
 
