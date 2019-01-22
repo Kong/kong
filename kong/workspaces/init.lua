@@ -798,6 +798,13 @@ function _M.is_route_colliding(req, router)
   for perm in permutations(methods and values(methods) or split(ALL_METHODS),
                            uris and values(uris) or {"/"},
                            hosts and values(hosts) or {""}) do
+    if type(perm[1]) ~= "string" or
+       type(perm[2]) ~= "string" or
+       type(perm[3]) ~= "string" then
+         return false -- we can't check for collisions. let the
+                      -- schema validator handle the type error
+    end
+
     if not validate_route_for_ws(router, perm[1], perm[2], perm[3], ws) then
       ngx_log(DEBUG, "route collided")
       return true

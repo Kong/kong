@@ -92,7 +92,7 @@ describe("DB [".. strategy .. "] sharing ", function()
 end)
 
 describe("DB [".. strategy .. "] routes are checked for colisions ", function()
-  local route
+  local route, default_service
   setup(function()
     helpers.get_db_utils(strategy)
 
@@ -104,7 +104,7 @@ describe("DB [".. strategy .. "] routes are checked for colisions ", function()
 
     post("/workspaces", {name = "ws1"})
     post("/workspaces", {name = "ws2"})
-    post("/ws1/services", {name = "default-service", host = "httpbin1.org"})
+    default_service = post("/ws1/services", {name = "default-service", host = "httpbin1.org"})
     post("/ws2/services", {name = "default-service", host = "httpbin2.org"})
     route = post("/ws1/services/default-service/routes", {['hosts[]'] = "example.org"})
   end)
@@ -112,6 +112,16 @@ describe("DB [".. strategy .. "] routes are checked for colisions ", function()
   teardown(function()
     helpers.stop_kong()
     client:close()
+  end)
+
+  it("returns 400 on invalid requests", function()
+    local res = assert(client:send{
+      method = "POST",
+      path = "/ws2/services/default-service/routes",
+      body = '{"protocols":["http"],"methods":["GET"],"hosts":[],"paths":[null],"strip_path":true,"preserve_host":false,"service":{"id":"'.. default_service.id .. '"}}',
+      headers = {["Content-Type"] = "application/json"}
+    })
+    return cjson.decode(assert.res_status(400, res))
   end)
 
   it("collides when 1 route swallows traffic from  different ws", function()
