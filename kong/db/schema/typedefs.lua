@@ -306,6 +306,19 @@ typedefs.run_on_first = Schema.define {
   one_of = { "first" },
 }
 
+typedefs.protocols = Schema.define {
+  type = "set",
+  required = true,
+  default = { "http", "https" },
+  elements = typedefs.protocol,
+}
+
+typedefs.protocols_http = Schema.define {
+  type = "set",
+  required = true,
+  default = { "http", "https" },
+  elements = { type = "string", one_of = { "http", "https" } }
+}
 
 setmetatable(typedefs, {
   __index = function(_, k)
