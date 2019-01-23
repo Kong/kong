@@ -561,7 +561,7 @@ do
           if run_up then
             -- ensure schema consensus is reached before running DML queries
             -- that could span all peers
-            ok, err = self.connector:post_run_up_migrations()
+            ok, err = self.connector:wait_for_schema_consensus()
             if not ok then
               self.connector:close()
               return nil, prefix_err(self, err)
@@ -595,7 +595,7 @@ do
             -- DML queries; if the next migration runs its up step, it will
             -- run DDL queries against the same node, so no need to reach
             -- schema consensus
-            ok, err = self.connector:post_run_teardown_migrations()
+            ok, err = self.connector:wait_for_schema_consensus()
             if not ok then
               self.connector:close()
               return nil, prefix_err(self, err)
@@ -614,7 +614,7 @@ do
         -- wait for schema consensus after the last migration has run
         -- (only if `run_up`, since if not, we just called it from the
         -- teardown step)
-        ok, err = self.connector:post_run_teardown_migrations()
+        ok, err = self.connector:wait_for_schema_consensus()
         if not ok then
           self.connector:close()
           return nil, prefix_err(self, err)

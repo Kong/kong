@@ -8,28 +8,6 @@ local CassandraConnector   = {}
 CassandraConnector.__index = CassandraConnector
 
 
-local function wait_for_schema_consensus(self)
-  local conn = self:get_stored_connection()
-  if not conn then
-    error("no connection")
-  end
-
-  log.verbose("waiting for Cassandra schema consensus (%dms timeout)...",
-              self.cluster.max_schema_consensus_wait)
-
-  local ok, err = self.cluster:wait_schema_consensus(conn)
-
-  log.verbose("Cassandra schema consensus: %s",
-              ok and "reached" or "not reached")
-
-  if err then
-    return nil, "failed to wait for schema consensus: " .. err
-  end
-
-  return true
-end
-
-
 function CassandraConnector.new(kong_config)
   local cluster_options       = {
     shm                       = "kong_cassandra",
@@ -253,6 +231,28 @@ function CassandraConnector:close()
 end
 
 
+function CassandraConnector:wait_for_schema_consensus()
+  local conn = self:get_stored_connection()
+  if not conn then
+    error("no connection")
+  end
+
+  log.verbose("waiting for Cassandra schema consensus (%dms timeout)...",
+              self.cluster.max_schema_consensus_wait)
+
+  local ok, err = self.cluster:wait_schema_consensus(conn)
+
+  log.verbose("Cassandra schema consensus: %s",
+              ok and "reached" or "not reached")
+
+  if err then
+    return nil, "failed to wait for schema consensus: " .. err
+  end
+
+  return true
+end
+
+
 function CassandraConnector:query(query, args, opts, operation)
   if operation ~= nil and operation ~= "read" and operation ~= "write" then
     error("operation must be 'read' or 'write', was: " .. tostring(operation), 2)
@@ -393,7 +393,7 @@ function CassandraConnector:reset()
     end
   end
 
-  ok, err = wait_for_schema_consensus(self)
+  ok, err = self:wait_for_schema_consensus()
   if not ok then
     self:setkeepalive()
     return nil, err
@@ -482,7 +482,7 @@ function CassandraConnector:setup_locks(default_ttl, no_schema_consensus)
   if not no_schema_consensus then
     -- called from tests, ignored when called from bootstrapping, since
     -- we wait for schema consensus as part of bootstrap
-    ok, err = wait_for_schema_consensus(self)
+    ok, err = self:wait_for_schema_consensus()
     if not ok then
       self:setkeepalive()
       return nil, err
@@ -720,7 +720,7 @@ do
       return nil, err
     end
 
-    ok, err = wait_for_schema_consensus(self)
+    ok, err = self:wait_for_schema_consensus()
     if not ok then
       return nil, err
     end
@@ -744,7 +744,7 @@ do
 
     log("dropped '%s' keyspace", self.keyspace)
 
-    ok, err = wait_for_schema_consensus(self)
+    ok, err = self:wait_for_schema_consensus()
     if not ok then
       return nil, err
     end
@@ -844,26 +844,6 @@ do
 
     local res, err = conn:execute(cql, args)
     if not res then
-      return nil, err
-    end
-
-    return true
-  end
-
-
-  function CassandraConnector:post_run_up_migrations()
-    local ok, err = wait_for_schema_consensus(self)
-    if not ok then
-      return nil, err
-    end
-
-    return true
-  end
-
-
-  function CassandraConnector:post_run_teardown_migrations()
-    local ok, err = wait_for_schema_consensus(self)
-    if not ok then
       return nil, err
     end
 
