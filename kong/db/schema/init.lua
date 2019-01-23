@@ -102,9 +102,11 @@ local validation_errors = {
   MISSING_PK                = "missing primary key",
   -- subschemas
   SUBSCHEMA_UNKNOWN         = "unknown type: %s",
-  SUBSCHEMA_BAD_PARENT      = "entities of type '%s' cannot have subschemas",
-  SUBSCHEMA_UNDEFINED_FIELD = "error in schema definition: abstract field was not specialized",
-  SUBSCHEMA_BAD_TYPE        = "error in schema definition: cannot change type in a specialized field",
+  SUBSCHEMA_BAD_PARENT      = "error in definition of '%s': entities of type '%s' cannot have subschemas",
+  SUBSCHEMA_UNDEFINED_FIELD = "error in definition of '%s': %s: abstract field was not specialized",
+  SUBSCHEMA_BAD_TYPE        = "error in definition of '%s': %s: cannot change type in a specialized field",
+  SUBSCHEMA_BAD_FIELD       = "error in definition of '%s': %s: cannot create a new field",
+  SUBSCHEMA_ABSTRACT_FIELD  = "error in schema definition: abstract field was not specialized",
 }
 
 
@@ -724,8 +726,8 @@ function Schema:validate_field(field, value)
     return true
   end
 
-  if field.abstract == true then
-    return nil, validation_errors.SUBSCHEMA_UNDEFINED_FIELD
+  if field.abstract then
+    return nil, validation_errors.SUBSCHEMA_ABSTRACT_FIELD
   end
 
   if field.type == "array" then
@@ -941,9 +943,6 @@ local function resolve_field(self, k, field, subschema)
   if subschema then
     local ss_field = subschema.fields[k]
     if ss_field then
-      if not compatible_fields(field, ss_field) then
-        return nil, validation_errors.SUBSCHEMA_BAD_TYPE
-      end
       field = ss_field
     end
   end
@@ -1851,12 +1850,34 @@ function Schema.new_subschema(self, key, definition)
   assert(type(definition) == "table", "definition must be a table")
 
   if not self.subschema_key then
-    return nil, validation_errors.SUBSCHEMA_BAD_PARENT:format(self.name)
+    return nil, validation_errors.SUBSCHEMA_BAD_PARENT:format(key, self.name)
   end
 
   local subschema, err = Schema.new(definition, true)
   if not subschema then
     return nil, err
+  end
+
+  local parent_by_name = {}
+  for _, f in ipairs(self.fields) do
+    local fname, fdata = next(f)
+    parent_by_name[fname] = fdata
+  end
+
+  for fname, field in subschema:each_field() do
+    local parent_field = parent_by_name[fname]
+    if not parent_field then
+      return nil, validation_errors.SUBSCHEMA_BAD_FIELD:format(key, fname)
+    end
+    if not compatible_fields(parent_field, field) then
+      return nil, validation_errors.SUBSCHEMA_BAD_TYPE:format(key, fname)
+    end
+  end
+
+  for fname, field in pairs(parent_by_name) do
+    if field.abstract and field.required and not subschema.fields[fname] then
+      return nil, validation_errors.SUBSCHEMA_UNDEFINED_FIELD:format(key, fname)
+    end
   end
 
   if not self.subschemas then
