@@ -660,10 +660,10 @@ for _, strategy in helpers.each_strategy() do
           local route = bp.routes:insert({ hosts = { "example.com" } })
           local pk = { id = route.id }
           local new_route, err, err_t = db.routes:update(pk, {
-            protocols = { 123 },
+            protocols = { "http", 123 },
           })
           assert.is_nil(new_route)
-          local message  = "schema violation (protocols: expected a string)"
+          local message  = "schema violation (protocols.2: expected a string)"
           assert.equal(fmt("[%s] %s", strategy, message), err)
           assert.same({
             code        = Errors.codes.SCHEMA_VIOLATION,
@@ -671,7 +671,7 @@ for _, strategy in helpers.each_strategy() do
             message     = message,
             strategy    = strategy,
             fields      = {
-              protocols  = "expected a string",
+              protocols  = { [2] = "expected a string" },
             }
           }, err_t)
         end)

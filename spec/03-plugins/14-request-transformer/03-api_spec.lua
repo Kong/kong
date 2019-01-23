@@ -72,7 +72,7 @@ for _, strategy in helpers.each_strategy() do
           local body = assert.response(res).has.status(400)
           local json = cjson.decode(body)
           assert.same("schema violation", json.name)
-          assert.same("invalid value: just_a_key", json.fields.config.add.headers)
+          assert.same({ "invalid value: just_a_key" }, json.fields.config.add.headers)
         end)
         it("replace fails with missing colons for key/value separation", function()
           local res = assert(admin_client:send {
@@ -93,7 +93,7 @@ for _, strategy in helpers.each_strategy() do
           local body = assert.response(res).has.status(400)
           local json = cjson.decode(body)
           assert.same("schema violation", json.name)
-          assert.same("invalid value: just_a_key", json.fields.config.replace.headers)
+          assert.same({ "invalid value: just_a_key" }, json.fields.config.replace.headers)
         end)
         it("append fails with missing colons for key/value separation", function()
           local res = assert(admin_client:send {
@@ -114,7 +114,7 @@ for _, strategy in helpers.each_strategy() do
           local body = assert.response(res).has.status(400)
           local json = cjson.decode(body)
           assert.same("schema violation", json.name)
-          assert.same("invalid value: just_a_key", json.fields.config.append.headers)
+          assert.same({ "invalid value: just_a_key" }, json.fields.config.append.headers)
         end)
       end)
     end)

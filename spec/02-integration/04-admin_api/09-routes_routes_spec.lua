@@ -163,10 +163,10 @@ for _, strategy in helpers.each_strategy() do
                 code    = Errors.codes.SCHEMA_VIOLATION,
                 name    = "schema violation",
                 message = "2 schema violations " ..
-                          "(protocols: expected one of: http, https, tcp, tls; " ..
+                          "(protocols.1: expected one of: http, https, tcp, tls; " ..
                           "service: required field missing)",
                 fields = {
-                  protocols = "expected one of: http, https, tcp, tls",
+                  protocols = { "expected one of: http, https, tcp, tls" },
                   service   = "required field missing",
                 }
               }, cjson.decode(body))
@@ -558,10 +558,10 @@ for _, strategy in helpers.each_strategy() do
                   code    = Errors.codes.SCHEMA_VIOLATION,
                   name    = "schema violation",
                   message = "2 schema violations " ..
-                    "(protocols: expected one of: http, https, tcp, tls; " ..
+                    "(protocols.1: expected one of: http, https, tcp, tls; " ..
                     "service: required field missing)",
                   fields  = {
-                    protocols = "expected one of: http, https, tcp, tls",
+                    protocols = { "expected one of: http, https, tcp, tls" },
                     service   = "required field missing",
                   }
                 }, cjson.decode(body))

@@ -673,6 +673,26 @@ local function memoize(fn)
 end
 
 
+local function validate_elements(self, field, value)
+  field.elements.required = true
+  local errs = {}
+  local all_ok = true
+  for i, v in ipairs(value) do
+    local ok, err = self:validate_field(field.elements, v)
+    if not ok then
+      errs[i] = err
+      all_ok = false
+    end
+  end
+
+  if all_ok then
+    return true
+  else
+    return nil, errs
+  end
+end
+
+
 local get_field_schema = memoize(function(field)
   return Schema.new(field)
 end)
@@ -716,18 +736,15 @@ function Schema:validate_field(field, value)
       return nil, validation_errors.SCHEMA_MISSING_ATTRIBUTE:format("elements")
     end
 
-    field.elements.required = true
-    for _, v in ipairs(value) do
-      local ok, err = self:validate_field(field.elements, v)
-      if not ok then
-        return nil, err
-      end
-    end
-
     for k, _ in pairs(value) do
       if type(k) ~= "number" then
         return nil, validation_errors.ARRAY
       end
+    end
+
+    local ok, err = validate_elements(self, field, value)
+    if not ok then
+      return nil, err
     end
 
   elseif field.type == "set" then
@@ -739,15 +756,9 @@ function Schema:validate_field(field, value)
     end
 
     field.elements.required = true
-    local set = {}
-    for _, v in ipairs(value) do
-      if not set[v] then
-        local ok, err = self:validate_field(field.elements, v)
-        if not ok then
-          return nil, err
-        end
-        set[v] = true
-      end
+    local ok, err = validate_elements(self, field, value)
+    if not ok then
+      return nil, err
     end
 
   elseif field.type == "map" then
