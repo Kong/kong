@@ -705,6 +705,8 @@ function Kong.access()
         kong.log.err(err)
         return kong.response.exit(500, { message  = "An unexpected error occurred" })
       end
+    else
+      break
     end
   end
 
