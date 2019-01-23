@@ -805,12 +805,11 @@ function Schema:validate_field(field, value)
     end
 
   elseif field.type == "foreign" then
-    local ok, errs = field.schema:validate_primary_key(value, true)
-    if not ok then
-      -- TODO check with GUI team if they need prefer information
-      -- of failed components of a compound foreign key
-      -- as a nested table or just as a flat string.
-      return nil, errs
+    if field.schema and field.schema.validate_primary_key then
+      local ok, errs = field.schema:validate_primary_key(value, true)
+      if not ok then
+        return nil, errs
+      end
     end
 
   elseif field.type == "integer" then
