@@ -45,6 +45,18 @@ for _, plugin in ipairs(deprecated_plugins) do
   deprecated_plugin_map[plugin] = true
 end
 
+local protocols_with_subsystem = {
+  http = "http",
+  https = "http",
+  tcp = "stream",
+  tls = "stream"
+}
+local protocols = {}
+for p,_ in pairs(protocols_with_subsystem) do
+  protocols[#protocols + 1] = p
+end
+table.sort(protocols)
+
 return {
   BUNDLED_PLUGINS = plugin_map,
   DEPRECATED_PLUGINS = deprecated_plugin_map,
@@ -102,5 +114,7 @@ return {
       MIN = "2.2",
       -- also accepts a DEPRECATED key
     }
-  }
+  },
+  PROTOCOLS = protocols,
+  PROTOCOLS_WITH_SUBSYSTEM = protocols_with_subsystem,
 }
