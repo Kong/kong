@@ -63,7 +63,7 @@ local base_conf = {
         Please click the link below to reset your Developer Portal password.
       </p>
       </p>
-        <a href="%s/reset-password?token=%s">%s/reset?token=%s</a>
+        <a href="%s/reset-password?token=%s">%s/reset-password?token=%s</a>
       </p>
       <p>
         This link will expire in %s.
