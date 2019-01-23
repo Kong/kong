@@ -62,7 +62,7 @@ for _, strategy in helpers.each_strategy() do
       local body = assert.response(res).has.status(400)
       local json = cjson.decode(body)
       assert.same("schema violation", json.name)
-      assert.same("not a valid regex: " .. BAD_REGEX, json.fields.config.whitelist)
+      assert.same({ "not a valid regex: " .. BAD_REGEX }, json.fields.config.whitelist)
     end)
 
     it("fails when blacklisting a bad regex", function()

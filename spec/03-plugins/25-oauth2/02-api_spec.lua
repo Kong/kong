@@ -138,7 +138,7 @@ for _, strategy in helpers.each_strategy() do
             })
             local body = assert.res_status(400, res)
             local json = cjson.decode(body)
-            assert.same({ redirect_uris = "cannot parse 'not-valid'" }, json.fields)
+            assert.same({ redirect_uris = { "cannot parse 'not-valid'" } }, json.fields)
 
             local res = assert(admin_client:send {
               method  = "POST",
@@ -153,7 +153,7 @@ for _, strategy in helpers.each_strategy() do
             })
             local body = assert.res_status(400, res)
             local json = cjson.decode(body)
-            assert.same({ redirect_uris = "fragment not allowed in 'http://test.com/#with-fragment'" }, json.fields)
+            assert.same({ redirect_uris = { "fragment not allowed in 'http://test.com/#with-fragment'" } }, json.fields)
 
             local res = assert(admin_client:send {
               method  = "POST",
@@ -168,7 +168,7 @@ for _, strategy in helpers.each_strategy() do
             })
             local body = assert.res_status(400, res)
             local json = cjson.decode(body)
-            assert.same({ redirect_uris = "cannot parse 'not-valid'" }, json.fields)
+            assert.same({ redirect_uris = { ngx.null, "cannot parse 'not-valid'" } }, json.fields)
 
             local res = assert(admin_client:send {
               method  = "POST",
@@ -183,7 +183,10 @@ for _, strategy in helpers.each_strategy() do
             })
             local body = assert.res_status(400, res)
             local json = cjson.decode(body)
-            assert.same({ redirect_uris = "fragment not allowed in 'http://test.com/#with-fragment'" }, json.fields)
+            assert.same({ redirect_uris = {
+                            ngx.null,
+                            "fragment not allowed in 'http://test.com/#with-fragment'"
+                        } }, json.fields)
           end)
         end)
       end)
@@ -370,7 +373,7 @@ for _, strategy in helpers.each_strategy() do
             })
             local body = assert.res_status(400, res)
             local json = cjson.decode(body)
-            assert.same({ redirect_uris = "cannot parse 'not-valid'" }, json.fields)
+            assert.same({ redirect_uris = { "cannot parse 'not-valid'" } }, json.fields)
           end)
         end)
       end)
