@@ -1,166 +1,96 @@
 local BasePlugin = require "kong.plugins.base_plugin"
-local responses = require "kong.tools.responses"
 local constants = require "kong.constants"
-local singletons = require "kong.singletons"
-local pl_tablex = require "pl.tablex"
+local tablex = require "pl.tablex"
+local groups = require "kong.plugins.acl.groups"
 
-local table_concat = table.concat
-local set_header = ngx.req.set_header
-local ngx_error = ngx.ERR
-local ngx_log = ngx.log
-local EMPTY = pl_tablex.readonly {}
+
+local setmetatable = setmetatable
+local concat = table.concat
+local kong = kong
+
+
+local EMPTY = tablex.readonly {}
 local BLACK = "BLACK"
 local WHITE = "WHITE"
 
-local reverse_cache = setmetatable({}, { __mode = "k" })
 
-local new_tab
-do
-  local ok
-  ok, new_tab = pcall(require, "table.new")
-  if not ok then
-    new_tab = function() return {} end
-  end
-end
+local mt_cache = { __mode = "k" }
+local config_cache = setmetatable({}, mt_cache)
 
 
 local ACLHandler = BasePlugin:extend()
 
+
 ACLHandler.PRIORITY = 950
-ACLHandler.VERSION = "0.1.0"
+ACLHandler.VERSION = "1.0.0"
+
 
 function ACLHandler:new()
   ACLHandler.super.new(self, "acl")
 end
 
-local function load_acls_into_memory(consumer_id)
-  local results, err = singletons.dao.acls:find_all {consumer_id = consumer_id}
-  if err then
-    return nil, err
-  end
-  return results
-end
 
 function ACLHandler:access(conf)
   ACLHandler.super.access(self)
 
-  local consumer_id
-  local ctx = ngx.ctx
-
-  local authenticated_consumer = ctx.authenticated_consumer
-  if authenticated_consumer then
-    consumer_id = authenticated_consumer.id
+  -- simplify our plugins 'conf' table
+  local config = config_cache[conf]
+  if not config then
+    config = {}
+    config.type = (conf.blacklist or EMPTY)[1] and BLACK or WHITE
+    config.groups = config.type == BLACK and conf.blacklist or conf.whitelist
+    config.cache = setmetatable({}, mt_cache)
+    config_cache[conf] = config
   end
 
+  -- get the consumer/credentials
+  local consumer_id = groups.get_current_consumer_id()
   if not consumer_id then
-    local authenticated_credential = ctx.authenticated_credential
-    if authenticated_credential then
-      consumer_id = authenticated_credential.consumer_id
-    end
+    kong.log.err("Cannot identify the consumer, add an authentication ",
+                 "plugin to use the ACL plugin")
+    return kong.response.exit(403, { message = "You cannot consume this service" })
   end
 
-  if not consumer_id then
-    ngx_log(ngx_error, "[acl plugin] Cannot identify the consumer, add an ",
-                       "authentication plugin to use the ACL plugin")
-    return responses.send_HTTP_FORBIDDEN("You cannot consume this service")
+  -- get the consumer groups, since we need those as cache-keys to make sure
+  -- we invalidate properly if they change
+  local consumer_groups, err = groups.get_consumer_groups(consumer_id)
+  if not consumer_groups then
+    kong.log.err(err)
+    return kong.response.exit(500, { message = "An unexpected error occurred" })
   end
 
-  -- Retrieve ACL
-  local cache_key = singletons.dao.acls:cache_key(consumer_id)
-  local acls, err = singletons.cache:get(cache_key, nil,
-                                         load_acls_into_memory, consumer_id)
-  if err then
-    return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
-  end
-  if not acls then
-    acls = EMPTY
-  end
-
-  -- build and cache a reverse-lookup table from our plugins 'conf' table
-  local reverse = reverse_cache[conf]
-  if not reverse then
-    local groups = {}
-    reverse = {
-      groups = groups,
-      type = (conf.blacklist or EMPTY)[1] and BLACK or WHITE,
-    }
-
-    -- cache by 'conf', the cache has weak keys, so invalidation of the
-    -- plugin 'conf' will also remove it from our local cache here
-    reverse_cache[conf] = reverse
-    -- build reverse tables for quick lookup
-    if reverse.type == BLACK then
-      for i = 1, #(conf.blacklist or EMPTY) do
-        local groupname = conf.blacklist[i]
-        groups[groupname] = groupname
-      end
-
-    else
-      for i = 1, #(conf.whitelist or EMPTY) do
-        local groupname = conf.whitelist[i]
-        groups[groupname] = groupname
-      end
-    end
-    -- now create another cache inside this cache for the consumer acls so we
-    -- only ever need to evaluate a white/blacklist once.
-    -- The key for this cache will be 'acls' which will be invalidated upon
-    -- changes. The weak key will make sure our local entry get's GC'ed.
-    -- One exception: a blacklist scenario, and a consumer that does
-    -- not have any groups. In that case 'acls == EMPTY' so all those users
-    -- will be indexed by that table, which is ok, as their result is the
-    -- same as well.
-    reverse.consumer_access = setmetatable({}, { __mode = "k" })
-  end
-
-  -- 'cached_block' is either 'true' if it's to be blocked, or the header
+  -- 'to_be_blocked' is either 'true' if it's to be blocked, or the header
   -- value if it is to be passed
-  local cached_block = reverse.consumer_access[acls]
-  if not cached_block then
-    -- nothing cached, so check our lists and groups
-    local block
-    if reverse.type == BLACK then
-      -- check blacklist
-      block = false
-      for i = 1, #acls do
-        if reverse.groups[acls[i].group] then
-          block = true
-          break
-        end
-      end
+  local to_be_blocked = config.cache[consumer_groups]
+  if to_be_blocked == nil then
+    local in_group = groups.consumer_in_groups(config.groups, consumer_groups)
 
+    if config.type == BLACK then
+      to_be_blocked = in_group
     else
-      -- check whitelist
-      block = true
-      for i = 1, #acls do
-        if reverse.groups[acls[i].group] then
-          block = false
-          break
-        end
-      end
+      to_be_blocked = not in_group
     end
 
-    if block then
-      cached_block = true
-
-    else
-      -- allowed, create the header
-      local n = #acls
-      local str_acls = new_tab(n, 0)
-      for i = 1, n do
-        str_acls[i] = acls[i].group
-      end
-      cached_block = table_concat(str_acls, ", ")
+    if to_be_blocked == false then
+      -- we're allowed, convert 'false' to the header value, if needed
+      -- if not needed, set dummy value to save mem for potential long strings
+      to_be_blocked = conf.hide_groups_header and ""
+                      or concat(consumer_groups, ", ")
     end
 
-    -- store the result in the cache
-    reverse.consumer_access[acls] = cached_block
+    -- update cache
+    config.cache[consumer_groups] = to_be_blocked
   end
 
-  if cached_block == true then -- NOTE: we only catch the boolean here!
-    return responses.send_HTTP_FORBIDDEN("You cannot consume this service")
+  if to_be_blocked == true then -- NOTE: we only catch the boolean here!
+    return kong.response.exit(403, { message = "You cannot consume this service" })
   end
 
-  set_header(constants.HEADERS.CONSUMER_GROUPS, cached_block)
+  if not conf.hide_groups_header and to_be_blocked then
+    kong.service.request.set_header(constants.HEADERS.CONSUMER_GROUPS,
+                                    to_be_blocked)
+  end
 end
+
 
 return ACLHandler

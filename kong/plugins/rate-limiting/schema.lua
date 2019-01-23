@@ -1,64 +1,77 @@
-local Errors = require "kong.dao.errors"
+local typedefs = require "kong.db.schema.typedefs"
 
-local REDIS = "redis"
 
-return {
-  fields = {
-    second = { type = "number" },
-    minute = { type = "number" },
-    hour = { type = "number" },
-    day = { type = "number" },
-    month = { type = "number" },
-    year = { type = "number" },
-    limit_by = { type = "string", enum = {"consumer", "credential", "ip"}, default = "consumer" },
-    policy = { type = "string", enum = {"local", "cluster", REDIS}, default = "cluster" },
-    fault_tolerant = { type = "boolean", default = true },
-    redis_host = { type = "string" },
-    redis_port = { type = "number", default = 6379 },
-    redis_password = { type = "string" },
-    redis_timeout = { type = "number", default = 2000 },
-    redis_database = { type = "number", default = 0 },
-    hide_client_headers = { type = "boolean", default = false },
-  },
-  self_check = function(schema, plugin_t, dao, is_update)
-    local ordered_periods = { "second", "minute", "hour", "day", "month", "year"}
-    local has_value
-    local invalid_order
-    local invalid_value
+local ORDERED_PERIODS = { "second", "minute", "hour", "day", "month", "year"}
 
-    for i, v in ipairs(ordered_periods) do
-      if plugin_t[v] then
-        has_value = true
-        if plugin_t[v] <=0 then
-          invalid_value = "Value for " .. v .. " must be greater than zero"
-        else
-          for t = i+1, #ordered_periods do
-            if plugin_t[ordered_periods[t]] and plugin_t[ordered_periods[t]] < plugin_t[v] then
-              invalid_order = "The limit for " .. ordered_periods[t] .. " cannot be lower than the limit for " .. v
-            end
-          end
+
+local function validate_periods_order(config)
+  for i, lower_period in ipairs(ORDERED_PERIODS) do
+    local v1 = config[lower_period]
+    if type(v1) == "number" then
+      for j = i + 1, #ORDERED_PERIODS do
+        local upper_period = ORDERED_PERIODS[j]
+        local v2 = config[upper_period]
+        if type(v2) == "number" and v2 < v1 then
+          return nil, string.format("The limit for %s(%.1f) cannot be lower than the limit for %s(%.1f)",
+                                    upper_period, v2, lower_period, v1)
         end
       end
     end
-
-    if not has_value then
-      return false, Errors.schema "You need to set at least one limit: second, minute, hour, day, month, year"
-    elseif invalid_value then
-      return false, Errors.schema(invalid_value)
-    elseif invalid_order then
-      return false, Errors.schema(invalid_order)
-    end
-
-    if plugin_t.policy == REDIS then
-      if not plugin_t.redis_host then
-        return false, Errors.schema "You need to specify a Redis host"
-      elseif not plugin_t.redis_port then
-        return false, Errors.schema "You need to specify a Redis port"
-      elseif not plugin_t.redis_timeout then
-        return false, Errors.schema "You need to specify a Redis timeout"
-      end
-    end
-
-    return true
   end
+
+  return true
+end
+
+
+return {
+  name = "rate-limiting",
+  fields = {
+    { run_on = typedefs.run_on { one_of = { "first", "second" } } },
+    { config = {
+        type = "record",
+        fields = {
+          { second = { type = "number", gt = 0 }, },
+          { minute = { type = "number", gt = 0 }, },
+          { hour = { type = "number", gt = 0 }, },
+          { day = { type = "number", gt = 0 }, },
+          { month = { type = "number", gt = 0 }, },
+          { year = { type = "number", gt = 0 }, },
+          { limit_by = {
+              type = "string",
+              default = "consumer",
+              one_of = { "consumer", "credential", "ip" },
+          }, },
+          { policy = {
+              type = "string",
+              default = "cluster",
+              len_min = 0,
+              one_of = { "local", "cluster", "redis" },
+          }, },
+          { fault_tolerant = { type = "boolean", default = true }, },
+          { redis_host = typedefs.host },
+          { redis_port = typedefs.port({ default = 6379 }), },
+          { redis_password = { type = "string", len_min = 0 }, },
+          { redis_timeout = { type = "number", default = 2000, }, },
+          { redis_database = { type = "integer", default = 0 }, },
+          { hide_client_headers = { type = "boolean", default = false }, },
+        },
+        custom_validator = validate_periods_order,
+      },
+    },
+  },
+  entity_checks = {
+    { at_least_one_of = { "config.second", "config.minute", "config.hour", "config.day", "config.month", "config.year" } },
+    { conditional = {
+      if_field = "config.policy", if_match = { eq = "redis" },
+      then_field = "config.redis_host", then_match = { required = true },
+    } },
+    { conditional = {
+      if_field = "config.policy", if_match = { eq = "redis" },
+      then_field = "config.redis_port", then_match = { required = true },
+    } },
+    { conditional = {
+      if_field = "config.policy", if_match = { eq = "redis" },
+      then_field = "config.redis_timeout", then_match = { required = true },
+    } },
+  },
 }

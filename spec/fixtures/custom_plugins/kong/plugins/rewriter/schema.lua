@@ -1,9 +1,12 @@
 return {
+  name = "rewriter",
   fields = {
-    value = { typ = "string" },
-    extra = {
-      typ     = "string",
-      default = "extra",
-    }
+    { config = {
+        type = "record",
+        fields = {
+          { value = { type = "string" }, },
+          { extra = { type = "string", default = "extra" }, },
+        },
+    }, },
   }
 }

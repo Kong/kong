@@ -5,7 +5,7 @@ local TEST_PREFIX = "servroot_prepared_test"
 
 
 describe("kong prepare", function()
-  setup(function()
+  lazy_setup(function()
     pcall(helpers.dir.rmtree, TEST_PREFIX)
   end)
 
@@ -44,6 +44,15 @@ describe("kong prepare", function()
       assert.False(ok)
       assert.is_string(stderr)
       assert.matches("Error: no file at: foobar.conf", stderr, nil, true)
+    end)
+
+    it("on invalid nginx directive", function()
+      local ok, stderr = helpers.kong_exec("prepare --conf spec/fixtures/invalid_nginx_directives.conf" ..
+                                           " -p " .. TEST_PREFIX)
+      assert.False(ok)
+      assert.is_string(stderr)
+      assert.matches("[emerg] unknown directive \"random_directive\"", stderr,
+                     nil, true)
     end)
   end)
 end)

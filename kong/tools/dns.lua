@@ -27,6 +27,7 @@ local setup_client = function(conf)
     enable_ipv6 = true,              -- allow for ipv6 nameserver addresses
     retrans = nil,                   -- taken from system resolv.conf; attempts
     timeout = nil,                   -- taken from system resolv.conf; timeout
+    validTtl = conf.dns_valid_ttl,   -- ttl in seconds overriding ttl of valid records
     badTtl = conf.dns_not_found_ttl, -- ttl in seconds for dns error responses (except 3 - name error)
     emptyTtl = conf.dns_error_ttl,   -- ttl in seconds for empty and "(3) name error" dns responses
     staleTtl = conf.dns_stale_ttl,   -- ttl in seconds for records once they become stale

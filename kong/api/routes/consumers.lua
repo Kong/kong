@@ -1,79 +1,45 @@
-local crud = require "kong.api.crud_helpers"
+local endpoints = require "kong.api.endpoints"
+local reports = require "kong.reports"
+local utils = require "kong.tools.utils"
+
+
+local kong = kong
+local null = ngx.null
+
 
 return {
-  ["/consumers/"] = {
-    GET = function(self, dao_factory)
-      crud.paginated_set(self, dao_factory.consumers)
-    end,
+  ["/consumers"] = {
+    GET = function(self, db, helpers, parent)
+      local args = self.args.uri
 
-    PUT = function(self, dao_factory)
-      crud.put(self.params, dao_factory.consumers)
-    end,
+      -- Search by custom_id: /consumers?custom_id=xxx
+      if args.custom_id then
+        self.params.consumers = args.custom_id
+        local consumer, _, err_t = endpoints.select_entity(self, db, db.consumers.schema, "select_by_custom_id")
+        if err_t then
+          return endpoints.handle_error(err_t)
+        end
 
-    POST = function(self, dao_factory)
-      crud.post(self.params, dao_factory.consumers)
-    end
+        return kong.response.exit(200, {
+          data = { consumer },
+          next = null,
+        })
+      end
+
+      return parent()
+    end,
   },
 
-  ["/consumers/:username_or_id"] = {
-    before = function(self, dao_factory, helpers)
-      self.params.username_or_id = ngx.unescape_uri(self.params.username_or_id)
-      crud.find_consumer_by_username_or_id(self, dao_factory, helpers)
+  ["/consumers/:consumers/plugins"] = {
+    POST = function(_, _, _, parent)
+      local post_process = function(data)
+        local r_data = utils.deep_copy(data)
+        r_data.config = nil
+        r_data.e = "c"
+        reports.send("api", r_data)
+        return data
+      end
+      return parent(post_process)
     end,
-
-    GET = function(self, dao_factory, helpers)
-      return helpers.responses.send_HTTP_OK(self.consumer)
-    end,
-
-    PATCH = function(self, dao_factory)
-      crud.patch(self.params, dao_factory.consumers, self.consumer)
-    end,
-
-    DELETE = function(self, dao_factory)
-      crud.delete(self.consumer, dao_factory.consumers)
-    end
-  },
-
-  ["/consumers/:username_or_id/plugins/"] = {
-    before = function(self, dao_factory, helpers)
-      self.params.username_or_id = ngx.unescape_uri(self.params.username_or_id)
-      crud.find_consumer_by_username_or_id(self, dao_factory, helpers)
-      self.params.consumer_id = self.consumer.id
-    end,
-
-    GET = function(self, dao_factory)
-      crud.paginated_set(self, dao_factory.plugins)
-    end,
-
-    POST = function(self, dao_factory)
-      crud.post(self.params, dao_factory.plugins)
-    end,
-
-    PUT = function(self, dao_factory)
-      crud.put(self.params, dao_factory.plugins)
-    end
-  },
-
-  ["/consumers/:username_or_id/plugins/:id"] = {
-    before = function(self, dao_factory, helpers)
-      self.params.username_or_id = ngx.unescape_uri(self.params.username_or_id)
-      crud.find_consumer_by_username_or_id(self, dao_factory, helpers)
-      crud.find_plugin_by_filter(self, dao_factory, {
-        consumer_id = self.consumer.id,
-        id          = self.params.id,
-      }, helpers)
-    end,
-
-    GET = function(self, dao_factory, helpers)
-      return helpers.responses.send_HTTP_OK(self.plugin)
-    end,
-
-    PATCH = function(self, dao_factory)
-      crud.patch(self.params, dao_factory.plugins, self.plugin)
-    end,
-
-    DELETE = function(self, dao_factory)
-      crud.delete(self.plugin, dao_factory.plugins)
-    end
   },
 }

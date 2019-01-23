@@ -1,7 +1,7 @@
 ------------------------------------------------------------------
 -- Collection of utilities to help testing Kong features and plugins.
 --
--- @copyright Copyright 2016-2018 Kong Inc. All rights reserved.
+-- @copyright Copyright 2016-2019 Kong Inc. All rights reserved.
 -- @license [Apache 2.0](https://opensource.org/licenses/Apache-2.0)
 -- @module spec.helpers
 
@@ -14,15 +14,25 @@ local MOCK_UPSTREAM_HOST = "127.0.0.1"
 local MOCK_UPSTREAM_HOSTNAME = "localhost"
 local MOCK_UPSTREAM_PORT = 15555
 local MOCK_UPSTREAM_SSL_PORT = 15556
+local MOCK_UPSTREAM_STREAM_PORT = 15557
+local MOCK_UPSTREAM_STREAM_SSL_PORT = 15558
 
+require("resty.core")
+
+local consumers_schema_def = require "kong.db.schema.entities.consumers"
+local services_schema_def = require "kong.db.schema.entities.services"
+local plugins_schema_def = require "kong.db.schema.entities.plugins"
+local routes_schema_def = require "kong.db.schema.entities.routes"
 local conf_loader = require "kong.conf_loader"
-local DAOFactory = require "kong.dao.factory"
+local kong_global = require "kong.global"
 local Blueprints = require "spec.fixtures.blueprints"
 local pl_stringx = require "pl.stringx"
 local pl_utils = require "pl.utils"
 local pl_path = require "pl.path"
 local pl_file = require "pl.file"
 local pl_dir = require "pl.dir"
+local pl_Set = require "pl.Set"
+local Schema = require "kong.db.schema"
 local cjson = require "cjson.safe"
 local utils = require "kong.tools.utils"
 local http = require "resty.http"
@@ -30,7 +40,6 @@ local nginx_signals = require "kong.cmd.utils.nginx_signals"
 local log = require "kong.cmd.utils.log"
 local DB = require "kong.db"
 
-local table_merge = utils.table_merge
 
 log.set_lvl(log.levels.quiet) -- disable stdout logs in tests
 
@@ -43,12 +52,12 @@ package.path = CUSTOM_PLUGIN_PATH .. ";" .. package.path
 -- Ex: 1.11.2.2 -> 11122
 local function openresty_ver_num()
   local nginx_bin = assert(nginx_signals.find_nginx_bin())
-  local ok, _, _, stderr = pl_utils.executeex(string.format("%s -V", nginx_bin))
-  if not ok then
+  local _, _, _, stderr = pl_utils.executeex(string.format("%s -V", nginx_bin))
+
+  local a, b, c, d = string.match(stderr or "", "openresty/(%d+)%.(%d+)%.(%d+)%.(%d+)")
+  if not a then
     error("could not execute 'nginx -V': " .. stderr)
   end
-
-  local a, b, c, d = string.match(stderr, "openresty/(%d+)%.(%d+)%.(%d+)%.(%d+)")
 
   return tonumber(a .. b .. c .. d)
 end
@@ -92,66 +101,121 @@ end
 -- Conf and DAO
 ---------------
 local conf = assert(conf_loader(TEST_CONF_PATH))
+
+_G.kong = kong_global.new()
+kong_global.init_pdk(_G.kong, conf, nil) -- nil: latest PDK
+
 local db = assert(DB.new(conf))
-local dao = assert(DAOFactory.new(conf, db))
-local blueprints = assert(Blueprints.new(dao, db))
--- make sure migrations are up-to-date
+assert(db:init_connector())
+db.plugins:load_plugin_schemas(conf.loaded_plugins)
+local blueprints = assert(Blueprints.new(db))
 
 local each_strategy
 
 do
-    local default_strategies = { "postgres", "cassandra" }
+  local default_strategies = {"postgres", "cassandra"}
+  local env_var = os.getenv("KONG_DATABASE")
+  if env_var then
+    default_strategies = { env_var }
+  end
+  local available_strategies = pl_Set(default_strategies)
 
-    local function iter(strategies, i)
-      i = i + 1
-      local strategy = strategies[i]
-      if strategy then
-        return i, strategy
-      end
+  local function iter(strategies, i)
+    i = i + 1
+    local strategy = strategies[i]
+    if strategy then
+      return i, strategy
+    end
+  end
+
+  each_strategy = function(strategies)
+    if not strategies then
+      return iter, default_strategies, 0
     end
 
-    each_strategy = function(...)
-      local args = { ... }
-      local strategies = default_strategies
-      if #args > 0 then
-        strategies = args
+    for i = #strategies, 1, -1 do
+      if not available_strategies[strategies[i]] then
+        table.remove(strategies, i)
       end
-
-      return iter, strategies, 0
     end
+    return iter, strategies, 0
+  end
 end
 
-local function get_db_utils(strategy, no_truncate)
+local function truncate_tables(db, tables)
+  if not tables then
+    return
+  end
+
+  for _, t in ipairs(tables) do
+    if db[t] and db[t].schema and not db[t].schema.legacy then
+      db[t]:truncate()
+    end
+  end
+end
+
+local function bootstrap_database(db)
+  local schema_state = assert(db:schema_state())
+  if schema_state.needs_bootstrap then
+    assert(db:schema_bootstrap())
+  end
+
+  if schema_state.new_migrations then
+    assert(db:run_migrations(schema_state.new_migrations, {
+      run_up = true,
+      run_teardown = true,
+    }))
+  end
+end
+
+local function get_db_utils(strategy, tables, plugins)
   strategy = strategy or conf.database
+  if tables ~= nil and type(tables) ~= "table" then
+    error("arg #2 must be a list of tables to truncate", 2)
+  end
+  if plugins ~= nil and type(plugins) ~= "table" then
+    error("arg #3 must be a list of plugins to enable", 2)
+  end
 
-  -- new DAO (DB module)
+  if plugins then
+    for _, plugin in ipairs(plugins) do
+      conf.loaded_plugins[plugin] = true
+    end
+  end
+
+  -- DAO (DB module)
   local db = assert(DB.new(conf, strategy))
+  assert(db:init_connector())
 
-  -- legacy DAO
-  local dao
+  bootstrap_database(db)
 
   do
     local database = conf.database
     conf.database = strategy
-    dao = assert(DAOFactory.new(conf, db))
     conf.database = database
-
-    assert(dao:run_migrations())
-    if not no_truncate then
-      dao:truncate_tables()
-    end
   end
 
+  db:truncate("plugins")
+  assert(db.plugins:load_plugin_schemas(conf.loaded_plugins))
+
   -- cleanup new DB tables
-  assert(db:init_connector())
-  if not no_truncate then
+  if not tables then
     assert(db:truncate())
+
+  else
+    truncate_tables(db, tables)
   end
 
   -- blueprints
-  local bp = assert(Blueprints.new(dao, db))
+  local bp = assert(Blueprints.new(db))
 
-  return bp, db, dao
+  if plugins then
+    for _, plugin in ipairs(plugins) do
+      conf.loaded_plugins[plugin] = false
+    end
+  end
+
+  return bp, db
 end
 
 -----------------
@@ -213,7 +277,7 @@ local function wait_until(f, timeout)
 
   ngx.update_time()
 
-  timeout = timeout or 2
+  timeout = timeout or 5
   local tstart = ngx.time()
   local texp = tstart + timeout
   local ok, res, err
@@ -315,9 +379,9 @@ end
 -- Implements http_client:get("path", [options]), as well as post, put, etc.
 -- These methods are equivalent to calling http_client:send, but are shorter
 -- They also come with a built-in assert
-for method_name in ("get post put patch delete"):gmatch("%w+") do
+for _, method_name in ipairs({"get", "post", "put", "patch", "delete"}) do
   resty_http_proxy_mt[method_name] = function(self, path, options)
-    local full_options = table_merge({ method = method_name:upper(), path = path}, options or {})
+    local full_options = kong.table.merge({ method = method_name:upper(), path = path}, options)
     return assert(self:send(full_options))
   end
 end
@@ -342,7 +406,7 @@ end
 local function http_client(host, port, timeout)
   timeout = timeout or 10000
   local client = assert(http.new())
-  assert(client:connect(host, port))
+  assert(client:connect(host, port), "Could not connect to " .. host .. ":" .. port)
   client:set_timeout(timeout)
   return setmetatable({
     client = client
@@ -395,7 +459,7 @@ end
 
 --- returns a pre-configured `http_client` for the Kong admin port.
 -- @name admin_client
-local function admin_client(timeout)
+local function admin_client(timeout, forced_port)
   local admin_ip, admin_port
   for _, entry in ipairs(conf.admin_listeners) do
     if entry.ssl == false then
@@ -404,7 +468,7 @@ local function admin_client(timeout)
     end
   end
   assert(admin_ip, "No http-admin found in the configuration")
-  return http_client(admin_ip, admin_port, timeout)
+  return http_client(admin_ip, forced_port or admin_port, timeout)
 end
 
 --- returns a pre-configured `http_client` for the Kong admin SSL port.
@@ -429,8 +493,9 @@ end
 -- @section servers
 
 --- Starts a TCP server.
--- Accepts a single connection and then closes, echoing what was received
--- (single read).
+-- Accepts a single connection (or multiple, if given opts.requests)
+-- and then closes, echoing what was received (last read, in case
+-- of multiple requests).
 -- @name tcp_server
 -- @param `port`    The port where the server will be listening to
 -- @param `opts     A table of options defining the server's behavior
@@ -446,30 +511,35 @@ local function tcp_server(port, opts, ...)
       assert(server:setoption('reuseaddr', true))
       assert(server:bind("*", port))
       assert(server:listen())
-      local client = assert(server:accept())
+      local line
+      for _ = 1, (opts.requests or 1) do
+        local client = assert(server:accept())
 
-      if opts.tls then
-        local ssl = require "ssl"
-        local params = {
-          mode = "server",
-          protocol = "any",
-          key = "spec/fixtures/kong_spec.key",
-          certificate = "spec/fixtures/kong_spec.crt",
-        }
+        if opts.tls then
+          local ssl = require "ssl"
+          local params = {
+            mode = "server",
+            protocol = "any",
+            key = "spec/fixtures/kong_spec.key",
+            certificate = "spec/fixtures/kong_spec.crt",
+          }
 
-        client = ssl.wrap(client, params)
-        client:dohandshake()
+          client = ssl.wrap(client, params)
+          client:dohandshake()
+        end
+
+        line = assert(client:receive())
+        client:send((opts.prefix or "") .. line .. "\n")
+        client:close()
       end
-
-      local line = assert(client:receive())
-      client:send(line .. "\n")
-      client:close()
       server:close()
       return line
     end
   }, port, opts)
 
-  return thread:start(...)
+  local thr = thread:start(...)
+  ngx.sleep(0.01)
+  return thr
 end
 
 --- Starts a HTTP server.
@@ -970,6 +1040,37 @@ luassert:register("assertion", "formparam", req_form_param,
                   "assertion.req_form_param.negative",
                   "assertion.req_form_param.positive")
 
+--- Assertion to check whether a CN is matched in an SSL cert.
+-- @param expected The CN value
+-- @param cert The cert
+-- @return boolean
+-- @usage
+-- assert.cn("ssl-example.com", cert)
+local function assert_cn(state, args)
+  local expected, cert = unpack(args)
+  local cn = string.match(cert, "CN%s*=%s*([^%s,]+)")
+  args[2] = cn or "(CN not found in certificate)"
+  args.n = 2
+  return cn == expected
+end
+say:set("assertion.cn.negative", [[
+Expected certificate to have the given CN value.
+Expected CN:
+%s
+Got instead:
+%s
+]])
+say:set("assertion.contains.positive", [[
+Expected certificate to not have the given CN value.
+Expected CN to not be:
+%s
+Got instead:
+%s
+]])
+luassert:register("assertion", "cn", assert_cn,
+                  "assertion.cn.negative",
+                  "assertion.cn.positive")
+
 ----------------
 -- Shell helpers
 -- @section Shell-helpers
@@ -978,10 +1079,17 @@ luassert:register("assertion", "formparam", req_form_param,
 -- Modified version of `pl.utils.executeex()` so the output can directly be
 -- used on an assertion.
 -- @name execute
--- @param ... see penlight documentation
--- @return ok, stderr, stdout; stdout is only included when the result was ok
-local function exec(...)
-  local ok, _, stdout, stderr = pl_utils.executeex(...)
+-- @param cmd command to execute
+-- @param pl_returns (optional) boolean: if true, this function will
+-- return the same values as Penlight's executeex.
+-- @return if pl_returns is true, returns four return values
+-- (ok, code, stdout, stderr); if pl_returns is false,
+-- returns either (false, stderr) or (true, stderr, stdout).
+local function exec(cmd, pl_returns)
+  local ok, code, stdout, stderr = pl_utils.executeex(cmd)
+  if pl_returns then
+    return ok, code, stdout, stderr
+  end
   if not ok then
     stdout = nil -- don't return 3rd value if fail because of busted's `assert`
   end
@@ -994,8 +1102,14 @@ end
 -- @param env (optional) table with kong parameters to set as environment
 -- variables, overriding the test config (each key will automatically be
 -- prefixed with `KONG_` and be converted to uppercase)
--- @return same output as `exec`
-local function kong_exec(cmd, env)
+-- @param pl_returns (optional) boolean: if true, this function will
+-- return the same values as Penlight's executeex.
+-- @param env_vars (optional) a string prepended to the command, so
+-- that arbitrary environment variables may be passed
+-- @return if pl_returns is true, returns four return values
+-- (ok, code, stdout, stderr); if pl_returns is false,
+-- returns either (false, stderr) or (true, stderr, stdout).
+local function kong_exec(cmd, env, pl_returns, env_vars)
   cmd = cmd or ""
   env = env or {}
 
@@ -1009,17 +1123,17 @@ local function kong_exec(cmd, env)
 
   env.lua_package_path = env.lua_package_path .. ";" .. conf.lua_package_path
 
-  if not env.custom_plugins then
-    env.custom_plugins = "dummy,cache,rewriter"
+  if not env.plugins then
+    env.plugins = "bundled,dummy,cache,rewriter,error-handler-log,error-generator-pre,error-generator-post"
   end
 
   -- build Kong environment variables
-  local env_vars = ""
+  env_vars = env_vars or ""
   for k, v in pairs(env) do
     env_vars = string.format("%s KONG_%s='%s'", env_vars, k:upper(), v)
   end
 
-  return exec(env_vars .. " " .. BIN_PATH .. " " .. cmd)
+  return exec(env_vars .. " " .. BIN_PATH .. " " .. cmd, pl_returns)
 end
 
 --- Prepare the Kong environment.
@@ -1108,6 +1222,33 @@ local function get_running_conf(prefix)
   return conf_loader(default_conf.kong_env)
 end
 
+
+-- Prepopulate Schema's cache
+Schema.new(consumers_schema_def)
+Schema.new(services_schema_def)
+Schema.new(routes_schema_def)
+
+local plugins_schema = assert(Schema.new(plugins_schema_def))
+
+local function validate_plugin_config_schema(config, schema_def)
+  assert(plugins_schema:new_subschema(schema_def.name, schema_def))
+  local entity = {
+    id = utils.uuid(),
+    name = schema_def.name,
+    config = config
+  }
+  local entity_to_insert, err = plugins_schema:process_auto_fields(entity, "insert")
+  if err then
+    return nil, err
+  end
+  local _, err = plugins_schema:validate_insert(entity_to_insert)
+  if err then return
+    nil, err
+  end
+  return entity_to_insert
+end
+
+
 ----------
 -- Exposed
 ----------
@@ -1120,10 +1261,10 @@ return {
   utils = pl_utils,
 
   -- Kong testing properties
-  dao = dao,
   db = db,
   blueprints = blueprints,
   get_db_utils = get_db_utils,
+  bootstrap_database = bootstrap_database,
   bin_path = BIN_PATH,
   test_conf = conf,
   test_conf_path = TEST_CONF_PATH,
@@ -1136,10 +1277,14 @@ return {
                            MOCK_UPSTREAM_PORT,
 
   mock_upstream_ssl_protocol = MOCK_UPSTREAM_SSL_PROTOCOL,
+  mock_upstream_ssl_host     = MOCK_UPSTREAM_HOST,
   mock_upstream_ssl_port     = MOCK_UPSTREAM_SSL_PORT,
   mock_upstream_ssl_url      = MOCK_UPSTREAM_SSL_PROTOCOL .. "://" ..
                                MOCK_UPSTREAM_HOST .. ':' ..
                                MOCK_UPSTREAM_SSL_PORT,
+
+  mock_upstream_stream_port     = MOCK_UPSTREAM_STREAM_PORT,
+  mock_upstream_stream_ssl_port = MOCK_UPSTREAM_STREAM_SSL_PORT,
 
   -- Kong testing helpers
   execute = exec,
@@ -1159,16 +1304,22 @@ return {
   clean_prefix = clean_prefix,
   wait_for_invalidation = wait_for_invalidation,
   each_strategy = each_strategy,
+  validate_plugin_config_schema = validate_plugin_config_schema,
 
   -- miscellaneous
   intercept = intercept,
   openresty_ver_num = openresty_ver_num(),
   unindent = unindent,
 
-  start_kong = function(env)
+  start_kong = function(env, tables)
+    if tables ~= nil and type(tables) ~= "table" then
+      error("arg #2 must be a list of tables to truncate")
+    end
     env = env or {}
     local ok, err = prepare_prefix(env.prefix)
     if not ok then return nil, err end
+
+    truncate_tables(db, tables)
 
     local nginx_conf = ""
     if env.nginx_conf then
@@ -1177,7 +1328,7 @@ return {
 
     return kong_exec("start --conf " .. TEST_CONF_PATH .. nginx_conf, env)
   end,
-  stop_kong = function(prefix, preserve_prefix, preserve_tables)
+  stop_kong = function(prefix, preserve_prefix)
     prefix = prefix or conf.prefix
 
     local running_conf = get_running_conf(prefix)
@@ -1186,9 +1337,7 @@ return {
     local ok, err = kong_exec("stop --prefix " .. prefix)
 
     wait_pid(running_conf.nginx_pid)
-    if not preserve_tables then
-      dao:truncate_tables()
-    end
+
     if not preserve_prefix then
       clean_prefix(prefix)
     end
@@ -1197,8 +1346,6 @@ return {
   -- Only use in CLI tests from spec/02-integration/01-cmd
   kill_all = function(prefix, timeout)
     local kill = require "kong.cmd.utils.kill"
-
-    dao:truncate_tables()
 
     local running_conf = get_running_conf(prefix)
     if not running_conf then return end

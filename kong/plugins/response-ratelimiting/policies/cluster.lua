@@ -1,197 +1,123 @@
 local timestamp = require "kong.tools.timestamp"
+local cassandra = require "cassandra"
 
+
+local kong = kong
 local concat = table.concat
 local pairs = pairs
+local floor = math.floor
 local fmt = string.format
-local log = ngx.log
-local ERR = ngx.ERR
-
-
-local NULL_UUID = "00000000-0000-0000-0000-000000000000"
 
 
 return {
-  ["cassandra"] = {
-    increment = function(db, route_id, service_id, identifier, current_timestamp, value, name)
+  cassandra = {
+    increment = function(connector, identifier, name, current_timestamp, service_id, route_id, value)
       local periods = timestamp.get_timestamps(current_timestamp)
 
       for period, period_date in pairs(periods) do
-        local res, err = db:query([[
+        local res, err = connector:query([[
           UPDATE response_ratelimiting_metrics
-          SET value = value + ?
-          WHERE route_id = ?
-            AND service_id = ?
-            AND api_id = ?
-            AND identifier = ?
-            AND period_date = ?
-            AND period = ?
+             SET value = value + ?
+           WHERE identifier = ?
+             AND period = ?
+             AND period_date = ?
+             AND service_id = ?
+             AND route_id = ?
         ]], {
-          db.cassandra.counter(value),
-          db.cassandra.uuid(route_id),
-          db.cassandra.uuid(service_id),
-          db.cassandra.uuid(NULL_UUID),
+          cassandra.counter(value),
           identifier,
-          db.cassandra.timestamp(period_date),
-          name .. "_" .. period
-        })
-
-        if not res then
-          log(ERR, "[response-ratelimiting] cluster policy: could not increment ",
-                   "cassandra counter for period '", period, "': ", err)
-        end
-      end
-
-      return true
-    end,
-    increment_api = function(db, api_id, identifier, current_timestamp, value, name)
-      local periods = timestamp.get_timestamps(current_timestamp)
-
-      for period, period_date in pairs(periods) do
-        local res, err = db:query([[
-          UPDATE response_ratelimiting_metrics
-          SET value = value + ?
-          WHERE api_id = ? AND
-                route_id = ? AND
-                service_id = ? AND
-                identifier = ? AND
-                period_date = ? AND
-                period = ?
-        ]], {
-          db.cassandra.counter(value),
-          db.cassandra.uuid(api_id),
-          db.cassandra.uuid(NULL_UUID),
-          db.cassandra.uuid(NULL_UUID),
-          identifier,
-          db.cassandra.timestamp(period_date),
           name .. "_" .. period,
+          cassandra.timestamp(period_date),
+          cassandra.uuid(service_id),
+          cassandra.uuid(route_id),
         })
         if not res then
-          log(ERR, "[response-ratelimiting] cluster policy: could not increment ",
-            "cassandra counter for period '", period, "': ", err)
+          kong.log.err("cluster policy: could not increment ",
+                       "cassandra counter for period '", period, "': ", err)
         end
       end
 
       return true
     end,
-    find = function(db, route_id, service_id, identifier, current_timestamp, period, name)
+    find = function(connector, identifier, name, period, current_timestamp, service_id, route_id)
       local periods = timestamp.get_timestamps(current_timestamp)
 
-      local rows, err = db:query([[
-        SELECT * FROM response_ratelimiting_metrics
-        WHERE route_id = ?
-          AND service_id = ?
-          AND api_id = ?
-          AND identifier = ?
-          AND period_date = ?
-          AND period = ?
+      local rows, err = connector:query([[
+        SELECT value
+          FROM response_ratelimiting_metrics
+         WHERE identifier = ?
+           AND period = ?
+           AND period_date = ?
+           AND service_id = ?
+           AND route_id = ?
       ]], {
-        db.cassandra.uuid(route_id),
-        db.cassandra.uuid(service_id),
-        db.cassandra.uuid(NULL_UUID),
         identifier,
-        db.cassandra.timestamp(periods[period]),
         name .. "_" .. period,
+        cassandra.timestamp(periods[period]),
+        cassandra.uuid(service_id),
+        cassandra.uuid(route_id),
       })
 
-      if not rows then       return nil, err
-      elseif #rows <= 1 then return rows[1]
-      else                   return nil, "bad rows result" end
-    end,
-    find_api = function(db, api_id, identifier, current_timestamp, period, name)
-      local periods = timestamp.get_timestamps(current_timestamp)
+      if not rows then
+        return nil, err
+      end
 
-      local rows, err = db:query([[
-        SELECT * FROM response_ratelimiting_metrics
-        WHERE api_id = ? AND
-              route_id = ? AND
-              service_id = ? AND
-              identifier = ? AND
-              period_date = ? AND
-              period = ?
-      ]], {
-        db.cassandra.uuid(api_id),
-        db.cassandra.uuid(NULL_UUID),
-        db.cassandra.uuid(NULL_UUID),
-        identifier,
-        db.cassandra.timestamp(periods[period]),
-        name .. "_" .. period,
-      })
-      if not rows then       return nil, err
-      elseif #rows <= 1 then return rows[1]
-      else                   return nil, "bad rows result" end
+      if #rows <= 1 then
+        return rows[1]
+      end
+
+      return nil, "bad rows result"
     end,
   },
-  ["postgres"] = {
-    increment = function(db, route_id, service_id, identifier, current_timestamp, value, name)
-      local buf = {}
+  postgres = {
+    increment = function(connector, identifier, name, current_timestamp, service_id, route_id, value)
+      local buf = { "BEGIN" }
+      local len = 1
       local periods = timestamp.get_timestamps(current_timestamp)
 
       for period, period_date in pairs(periods) do
-        buf[#buf + 1] = fmt([[
-          SELECT increment_response_rate_limits('%s', '%s', '%s', '%s_%s',
-                                                to_timestamp('%s') at time zone 'UTC', %d)
-        ]], route_id, service_id, identifier, name, period, period_date/1000, value)
+        len = len + 1
+        buf[len] = fmt([[
+          INSERT INTO "response_ratelimiting_metrics" ("identifier", "period", "period_date", "service_id", "route_id", "value")
+               VALUES ('%s', '%s_%s', TO_TIMESTAMP('%s') AT TIME ZONE 'UTC', '%s', '%s', %d)
+          ON CONFLICT ("identifier", "period", "period_date", "service_id", "route_id") DO UPDATE
+                  SET "value" = "response_ratelimiting_metrics"."value" + EXCLUDED."value";
+        ]], identifier, name, period, floor(period_date / 1000), service_id, route_id, value)
       end
 
-      local res, err = db:query(concat(buf, ";"))
-      if not res then
-        return nil, err
+      if len > 1 then
+        local sql
+        if len == 2 then
+          sql = buf[2]
+
+        else
+          buf[len + 1] = "COMMIT;"
+          sql = concat(buf, ";\n")
+        end
+
+        local res, err = connector:query(sql)
+        if not res then
+          return nil, err
+        end
       end
 
       return true
     end,
-    increment_api = function(db, api_id, identifier, current_timestamp, value, name)
-      local buf = {}
+    find = function(connector, identifier, name, period, current_timestamp, service_id, route_id)
       local periods = timestamp.get_timestamps(current_timestamp)
 
-      for period, period_date in pairs(periods) do
-        buf[#buf+1] = fmt([[
-          SELECT increment_response_rate_limits_api('%s', '%s', '%s_%s', to_timestamp('%s')
-          at time zone 'UTC', %d)
-        ]], api_id, identifier, name, period, period_date/1000, value)
-      end
+      local q = fmt([[
+        SELECT "value"
+          FROM "response_ratelimiting_metrics"
+         WHERE "identifier" = '%s'
+           AND "period" = '%s_%s'
+           AND "period_date" = TO_TIMESTAMP('%s') AT TIME ZONE 'UTC'
+           AND "service_id" = '%s'
+           AND "route_id" = '%s'
+      ]], identifier, name, period, floor(periods[period] / 1000), service_id, route_id)
 
-      local res, err = db:query(concat(buf, ";"))
+      local res, err = connector:query(q)
       if not res then
-        return nil, err
-      end
-
-      return true
-    end,
-    find = function(db, route_id, service_id, identifier, current_timestamp, period, name)
-      local periods = timestamp.get_timestamps(current_timestamp)
-
-      local q = fmt([[
-        SELECT *, extract(epoch from period_date)*1000 AS period_date
-        FROM response_ratelimiting_metrics
-        WHERE route_id = '%s'
-          AND service_id = '%s'
-          AND identifier = '%s'
-          AND period_date = to_timestamp('%s') at time zone 'UTC'
-          AND period = '%s_%s'
-      ]], route_id, service_id, identifier, periods[period]/1000, name, period)
-
-      local res, err = db:query(q)
-      if not res or err then
-        return nil, err
-      end
-
-      return res[1]
-    end,
-    find_api = function(db, api_id, identifier, current_timestamp, period, name)
-      local periods = timestamp.get_timestamps(current_timestamp)
-
-      local q = fmt([[
-        SELECT *, extract(epoch from period_date)*1000 AS period_date
-        FROM response_ratelimiting_metrics
-        WHERE api_id = '%s' AND
-              identifier = '%s' AND
-              period_date = to_timestamp('%s') at time zone 'UTC' AND
-              period = '%s_%s'
-      ]], api_id, identifier, periods[period]/1000, name, period)
-
-      local res, err = db:query(q)
-      if not res or err then
         return nil, err
       end
 

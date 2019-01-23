@@ -7,21 +7,31 @@ local kong_cluster_events = require "kong.cluster_events"
 
 for _, strategy in helpers.each_strategy() do
   describe("cluster_events with db [#" .. strategy .. "]", function()
-    local dao
+    local db
 
-    setup(function()
+    lazy_setup(function()
       local _
-      _, _, dao = helpers.get_db_utils(strategy)
+      _, db = helpers.get_db_utils(strategy, {})
     end)
 
-    teardown(function()
-      local cluster_events = assert(kong_cluster_events.new { dao = dao })
+    lazy_teardown(function()
+      local cluster_events = assert(kong_cluster_events.new { db = db })
+      cluster_events.strategy:truncate_events()
+    end)
+
+    before_each(function()
+      ngx.shared.kong:flush_all()
+      ngx.shared.kong:flush_expired()
+      ngx.shared.kong_cluster_events:flush_all()
+      ngx.shared.kong_cluster_events:flush_expired()
+
+      local cluster_events = assert(kong_cluster_events.new { db = db })
       cluster_events.strategy:truncate_events()
     end)
 
     describe("new()", function()
       it("creates an instance", function()
-        local cluster_events, err = kong_cluster_events.new { dao = dao }
+        local cluster_events, err = kong_cluster_events.new { db = db }
         assert.is_nil(err)
         assert.is_table(cluster_events)
       end)
@@ -37,20 +47,20 @@ for _, strategy in helpers.each_strategy() do
         package.loaded["kong.cluster_events"] = nil
         kong_cluster_events = require "kong.cluster_events"
 
-        assert(kong_cluster_events.new { dao = dao })
+        assert(kong_cluster_events.new { db = db })
 
         assert.has_error(function()
-          assert(kong_cluster_events.new { dao = dao })
+          assert(kong_cluster_events.new { db = db })
         end, "kong.cluster_events was already instantiated", nil, true)
       end)
 
       it("generates an identical node_id for all instances on a node", function()
         local cluster_events_1 = assert(kong_cluster_events.new {
-          dao = dao,
+          db = db,
         })
 
         local cluster_events_2 = assert(kong_cluster_events.new {
-          dao = dao,
+          db = db,
         })
 
         assert.is_string(cluster_events_1.node_id)
@@ -58,7 +68,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("instantiates but does not start polling", function()
-        local cluster_events = assert(kong_cluster_events.new { dao = dao })
+        local cluster_events = assert(kong_cluster_events.new { db = db })
         assert.is_false(cluster_events.polling)
       end)
     end)
@@ -79,12 +89,12 @@ for _, strategy in helpers.each_strategy() do
         -- nodes must not have the same node_id, to mimic 2 different Kong nodes
         -- on a cluster
         local cluster_events_1 = assert(kong_cluster_events.new {
-          dao     = dao,
+          db = db,
           node_id = uuid_1
         })
 
         local cluster_events_2 = assert(kong_cluster_events.new {
-          dao     = dao,
+          db = db,
           node_id = uuid_2
         })
 
@@ -114,12 +124,12 @@ for _, strategy in helpers.each_strategy() do
         -- nodes must not have the same node_id, to mimic 2 different Kong nodes
         -- on a cluster
         local cluster_events_1 = assert(kong_cluster_events.new {
-          dao     = dao,
+          db = db,
           node_id = uuid_1,
         })
 
         local cluster_events_2 = assert(kong_cluster_events.new {
-          dao     = dao,
+          db = db,
           node_id = uuid_2,
         })
 
@@ -136,12 +146,12 @@ for _, strategy in helpers.each_strategy() do
       it("does not broadcast events on the same node", function()
         -- same node_id
         local cluster_events_1 = assert(kong_cluster_events.new {
-          dao     = dao,
+          db = db,
           node_id = uuid_1,
         })
 
         local cluster_events_2 = assert(kong_cluster_events.new {
-          dao     = dao,
+          db = db,
           node_id = uuid_1,
         })
 
@@ -156,13 +166,13 @@ for _, strategy in helpers.each_strategy() do
 
       it("starts interval polling when subscribing", function()
         local cluster_events_1 = assert(kong_cluster_events.new {
-          dao           = dao,
+          db = db,
           poll_interval = 0.3,
           node_id       = uuid_1
         })
 
         local cluster_events_2 = assert(kong_cluster_events.new {
-          dao     = dao,
+          db = db,
           node_id = uuid_2
         })
 
@@ -190,13 +200,13 @@ for _, strategy in helpers.each_strategy() do
 
       it("applies a poll_offset to lookback potentially missed events", function()
         local cluster_events_1 = assert(kong_cluster_events.new {
-          dao         = dao,
+          db = db,
           node_id     = uuid_1,
           poll_offset = 2,
         })
 
         local cluster_events_2 = assert(kong_cluster_events.new {
-          dao         = dao,
+          db = db,
           node_id     = uuid_2,
           poll_offset = 2,
         })
@@ -231,12 +241,12 @@ for _, strategy in helpers.each_strategy() do
 
       it("handles more than <PAGE_SIZE> events at once", function()
         local cluster_events_1 = assert(kong_cluster_events.new {
-          dao     = dao,
+          db = db,
           node_id = uuid_1,
         })
 
         local cluster_events_2 = assert(kong_cluster_events.new {
-          dao     = dao,
+          db = db,
           node_id = uuid_2,
         })
 
@@ -254,12 +264,12 @@ for _, strategy in helpers.each_strategy() do
 
       it("runs callbacks in protected mode", function()
         local cluster_events_1 = assert(kong_cluster_events.new {
-          dao     = dao,
+          db = db,
           node_id = uuid_1,
         })
 
         local cluster_events_2 = assert(kong_cluster_events.new {
-          dao     = dao,
+          db = db,
           node_id = uuid_2,
         })
 
@@ -276,12 +286,12 @@ for _, strategy in helpers.each_strategy() do
 
       it("broadcasts an event with a `nbf` (not before) field", function()
         local cluster_events_1 = assert(kong_cluster_events.new {
-          dao     = dao,
+          db = db,
           node_id = uuid_1,
         })
 
         local cluster_events_2 = assert(kong_cluster_events.new {
-          dao     = dao,
+          db = db,
           node_id = uuid_2,
         })
 

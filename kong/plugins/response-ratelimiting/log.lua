@@ -1,7 +1,9 @@
 local policies = require "kong.plugins.response-ratelimiting.policies"
 local pairs = pairs
 
+
 local _M = {}
+
 
 local function log(premature, conf, identifier, current_timestamp, increments, usage)
   if premature then
@@ -9,18 +11,20 @@ local function log(premature, conf, identifier, current_timestamp, increments, u
   end
 
   -- Increment metrics for all periods if the request goes through
-  for k, v in pairs(usage) do
+  for k in pairs(usage) do
     if increments[k] and increments[k] ~= 0 then
-      policies[conf.policy].increment(conf, identifier, current_timestamp, increments[k], k)
+      policies[conf.policy].increment(conf, identifier, k, current_timestamp, increments[k])
     end
   end
 end
 
+
 function _M.execute(conf, identifier, current_timestamp, increments, usage)
   local ok, err = ngx.timer.at(0, log, conf, identifier, current_timestamp, increments, usage)
   if not ok then
-    ngx.log(ngx.ERR, "failed to create timer: ", err)
+    kong.log.err("failed to create timer: ", err)
   end
 end
+
 
 return _M

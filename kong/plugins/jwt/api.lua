@@ -1,86 +1,69 @@
-local crud = require "kong.api.crud_helpers"
+local endpoints = require "kong.api.endpoints"
+
+
+local kong = kong
+local jwt_secrets_schema = kong.db.jwt_secrets.schema
+local consumers_schema   = kong.db.consumers.schema
+
 
 return {
-  ["/consumers/:username_or_id/jwt/"] = {
-    before = function(self, dao_factory, helpers)
-      crud.find_consumer_by_username_or_id(self, dao_factory, helpers)
-      self.params.consumer_id = self.consumer.id
-    end,
-
-    GET = function(self, dao_factory)
-      crud.paginated_set(self, dao_factory.jwt_secrets)
-    end,
-
-    PUT = function(self, dao_factory, helpers)
-      crud.put(self.params, dao_factory.jwt_secrets)
-    end,
-
-    POST = function(self, dao_factory, helpers)
-      crud.post(self.params, dao_factory.jwt_secrets)
-    end
+  ["/consumers/:consumers/jwt/"] = {
+    schema = jwt_secrets_schema,
+    methods = {
+      GET = endpoints.get_collection_endpoint(jwt_secrets_schema, consumers_schema,
+                                              "consumer"),
+      POST = endpoints.post_collection_endpoint(jwt_secrets_schema, consumers_schema,
+                                                "consumer"),
+    }
   },
+  ["/consumers/:consumers/jwt/:jwt_secrets"] = {
+    schema = jwt_secrets_schema,
+    methods = {
+      before = function(self, db)
+        local consumer, _, err_t = endpoints.select_entity(self, db, consumers_schema)
+        if err_t then
+          return endpoints.handle_error(err_t)
+        end
+        if not consumer then
+          return kong.response.exit(404, { message = "Not found" })
+        end
 
-  ["/consumers/:username_or_id/jwt/:jwt_key_or_id"] = {
-    before = function(self, dao_factory, helpers)
-      crud.find_consumer_by_username_or_id(self, dao_factory, helpers)
-      self.params.consumer_id = self.consumer.id
+        self.consumer = consumer
 
-      local credentials, err = crud.find_by_id_or_field(
-        dao_factory.jwt_secrets,
-        { consumer_id = self.params.consumer_id },
-        ngx.unescape_uri(self.params.jwt_key_or_id),
-        "key"
-      )
+        if self.req.method ~= "PUT" then
+          local cred, _, err_t = endpoints.select_entity(self, db, jwt_secrets_schema)
+          if err_t then
+            return endpoints.handle_error(err_t)
+          end
 
-      if err then
-        return helpers.yield_error(err)
-      elseif next(credentials) == nil then
-        return helpers.responses.send_HTTP_NOT_FOUND()
-      end
-      self.params.jwt_key_or_id = nil
+          if not cred or cred.consumer.id ~= consumer.id then
+            return kong.response.exit(404, { message = "Not found" })
+          end
 
-      self.jwt_secret = credentials[1]
-    end,
-
-    GET = function(self, dao_factory, helpers)
-      return helpers.responses.send_HTTP_OK(self.jwt_secret)
-    end,
-
-    PATCH = function(self, dao_factory)
-      crud.patch(self.params, dao_factory.jwt_secrets, self.jwt_secret)
-    end,
-
-    DELETE = function(self, dao_factory)
-      crud.delete(self.jwt_secret, dao_factory.jwt_secrets)
-    end
+          self.keyauth_credential = cred
+          self.params.keyauth_jwt_secrets = cred.id
+        end
+      end,
+      GET  = endpoints.get_entity_endpoint(jwt_secrets_schema),
+      PUT  = function(self, ...)
+        self.args.post.consumer = { id = self.consumer.id }
+        return endpoints.put_entity_endpoint(jwt_secrets_schema)(self, ...)
+      end,
+      PATCH  = endpoints.patch_entity_endpoint(jwt_secrets_schema),
+      DELETE = endpoints.delete_entity_endpoint(jwt_secrets_schema),
+    },
   },
   ["/jwts/"] = {
-    GET = function(self, dao_factory)
-      crud.paginated_set(self, dao_factory.jwt_secrets)
-    end
+    schema = jwt_secrets_schema,
+    methods = {
+      GET = endpoints.get_collection_endpoint(jwt_secrets_schema),
+    }
   },
-  ["/jwts/:jwt_key_or_id/consumer"] = {
-    before = function(self, dao_factory, helpers)
-      local credentials, err = crud.find_by_id_or_field(
-        dao_factory.jwt_secrets,
-        nil,
-        ngx.unescape_uri(self.params.jwt_key_or_id),
-        "key"
-      )
-
-      if err then
-        return helpers.yield_error(err)
-      elseif next(credentials) == nil then
-        return helpers.responses.send_HTTP_NOT_FOUND()
-      end
-
-      self.params.jwt_key_or_id = nil
-      self.params.username_or_id = credentials[1].consumer_id
-      crud.find_consumer_by_username_or_id(self, dao_factory, helpers)
-    end,
-
-    GET = function(self, dao_factory,helpers)
-      return helpers.responses.send_HTTP_OK(self.consumer)
-    end
+  ["/jwts/:jwt_secrets/consumer"] = {
+    schema = consumers_schema,
+    methods = {
+      GET = endpoints.get_entity_endpoint(jwt_secrets_schema, consumers_schema,
+                                          "consumer"),
+    }
   }
 }

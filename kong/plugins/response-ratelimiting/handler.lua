@@ -27,14 +27,16 @@ end
 
 
 function ResponseRateLimitingHandler:log(conf)
-  if not ngx.ctx.stop_log and ngx.ctx.usage then
+  local ctx = kong.ctx.plugin
+  if not ctx.stop_log and ctx.usage then
     ResponseRateLimitingHandler.super.log(self)
-    log.execute(conf, ngx.ctx.identifier, ngx.ctx.current_timestamp, ngx.ctx.increments, ngx.ctx.usage)
+    log.execute(conf, ctx.identifier, ctx.current_timestamp, ctx.increments, ctx.usage)
   end
 end
 
 
 ResponseRateLimitingHandler.PRIORITY = 900
-ResponseRateLimitingHandler.VERSION = "0.1.0"
+ResponseRateLimitingHandler.VERSION = "1.0.0"
+
 
 return ResponseRateLimitingHandler

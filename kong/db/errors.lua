@@ -3,10 +3,12 @@ local pl_keys = require("pl.tablex").keys
 
 
 local type         = type
+local null         = ngx.null
 local error        = error
 local upper        = string.upper
 local fmt          = string.format
 local pairs        = pairs
+local ipairs       = ipairs
 local tostring     = tostring
 local setmetatable = setmetatable
 local concat       = table.concat
@@ -24,14 +26,17 @@ end
 
 
 local ERRORS            = {
-  INVALID_PRIMARY_KEY   = 1,
-  SCHEMA_VIOLATION      = 2,
-  PRIMARY_KEY_VIOLATION = 3, -- primary key already exists (HTTP 400)
-  FOREIGN_KEY_VIOLATION = 4, -- foreign entity does not exist (HTTP 400)
-  UNIQUE_VIOLATION      = 5, -- unique key already exists (HTTP 409)
-  NOT_FOUND             = 6, -- WHERE clause leads nowhere (HTTP 404)
-  INVALID_OFFSET        = 7, -- page(size, offset) is invalid
-  DATABASE_ERROR        = 8, -- connection refused or DB error (HTTP 500)
+  INVALID_PRIMARY_KEY   =  1,
+  SCHEMA_VIOLATION      =  2,
+  PRIMARY_KEY_VIOLATION =  3,  -- primary key already exists (HTTP 400)
+  FOREIGN_KEY_VIOLATION =  4,  -- foreign entity does not exist (HTTP 400)
+  UNIQUE_VIOLATION      =  5,  -- unique key already exists (HTTP 409)
+  NOT_FOUND             =  6,  -- WHERE clause leads nowhere (HTTP 404)
+  INVALID_OFFSET        =  7,  -- page(size, offset) is invalid
+  DATABASE_ERROR        =  8,  -- connection refused or DB error (HTTP 500)
+  INVALID_SIZE          =  9,  -- page(size, offset) is invalid
+  INVALID_UNIQUE        =  10, -- unique field value is invalid
+  INVALID_OPTIONS       =  11, -- invalid options given
 }
 
 
@@ -47,6 +52,9 @@ local ERRORS_NAMES               = {
   [ERRORS.NOT_FOUND]             = "not found",
   [ERRORS.INVALID_OFFSET]        = "invalid offset",
   [ERRORS.DATABASE_ERROR]        = "database error",
+  [ERRORS.INVALID_SIZE]          = "invalid size",
+  [ERRORS.INVALID_UNIQUE]        = "invalid unique %s",
+  [ERRORS.INVALID_OPTIONS]       = "invalid options",
 }
 
 
@@ -56,11 +64,15 @@ local ERRORS_NAMES               = {
 local _err_mt = {
   __tostring = function(err_t)
     local message = err_t.message
-    if message == nil or message == ngx.null then
-      message = err_t.name
+    if message == nil or message == null then
+       message = err_t.name
     end
 
-    return fmt("[%s] %s", err_t.strategy, message)
+    if err_t.strategy then
+      return fmt("[%s] %s", err_t.strategy, message)
+    end
+
+    return message
   end,
 
   __concat = function(a, b)
@@ -78,7 +90,11 @@ local _M = {
 }
 
 
-local function new_err_t(self, code, message, errors)
+local function new_err_t(self, code, message, errors, name)
+  if type(message) == "table" and getmetatable(message) == _err_mt then
+    return message
+  end
+
   if not code then
     error("missing code")
   end
@@ -97,8 +113,8 @@ local function new_err_t(self, code, message, errors)
 
   local err_t = {
     code      = code,
-    name      = ERRORS_NAMES[code],
-    message   = message or ngx.null,
+    name      = name or ERRORS_NAMES[code],
+    message   = message or null,
     strategy  = self.strategy,
   }
 
@@ -109,7 +125,11 @@ local function new_err_t(self, code, message, errors)
       fields[k] = v
     end
 
-    err_t.fields = fields
+    if code == ERRORS.INVALID_OPTIONS then
+      err_t.options = fields
+    else
+      err_t.fields = fields
+    end
   end
 
   return setmetatable(err_t, _err_mt)
@@ -179,8 +199,11 @@ function _M:schema_violation(errors)
       if type(field_errors) == "table" then
         for _, sub_field in ipairs(sorted_keys(field_errors)) do
           len = len + 1
-          buf[len] = fmt("%s.%s: %s", field_name, sub_field,
-                         field_errors[sub_field])
+          local value = field_errors[sub_field]
+          if type(value) == "table" then
+            value = pl_pretty(value)
+          end
+          buf[len] = fmt("%s.%s: %s", field_name, sub_field, value)
         end
 
       else
@@ -231,9 +254,8 @@ function _M:foreign_key_violation_invalid_reference(foreign_key,
     error("parent_name must be a string", 2)
   end
 
-  local message = fmt(
-    "the foreign key '%s' does not reference an existing '%s' entity.",
-    pl_pretty(foreign_key, ""), parent_name)
+  local message = fmt("the foreign key '%s' does not reference an existing '%s' entity.",
+                      pl_pretty(foreign_key, ""), parent_name)
 
   return new_err_t(self, ERRORS.FOREIGN_KEY_VIOLATION, message, {
     [foreign_key_field_name] = foreign_key
@@ -251,11 +273,23 @@ function _M:foreign_key_violation_restricted(parent_name, child_name)
   end
 
   local message = fmt("an existing '%s' entity references this '%s' entity",
-                       child_name, parent_name)
+                      child_name, parent_name)
 
   return new_err_t(self, ERRORS.FOREIGN_KEY_VIOLATION, message, {
     ["@referenced_by"] = child_name
   })
+end
+
+
+function _M:unique_violation(unique_key)
+  if type(unique_key) ~= "table" then
+    error("unique_key must be a table", 2)
+  end
+
+  local message = fmt("UNIQUE violation detected on '%s'",
+                      pl_pretty(unique_key, ""):gsub("\"userdata: NULL\"", "null"))
+
+  return new_err_t(self, ERRORS.UNIQUE_VIOLATION, message, unique_key)
 end
 
 
@@ -265,7 +299,7 @@ function _M:not_found(primary_key)
   end
 
   local message = fmt("could not find the entity with primary key '%s'",
-                       pl_pretty(primary_key, ""))
+                      pl_pretty(primary_key, ""))
 
   return new_err_t(self, ERRORS.NOT_FOUND, message, primary_key)
 end
@@ -277,21 +311,9 @@ function _M:not_found_by_field(filter)
   end
 
   local message = fmt("could not find the entity with '%s'",
-                       pl_pretty(filter, ""))
+                      pl_pretty(filter, ""))
 
   return new_err_t(self, ERRORS.NOT_FOUND, message, filter)
-end
-
-
-function _M:unique_violation(unique_key)
-  if type(unique_key) ~= "table" then
-    error("unique_key must be a table", 2)
-  end
-
-  local message = fmt("UNIQUE violation detected on '%s'",
-                      pl_pretty(unique_key, ""))
-
-  return new_err_t(self, ERRORS.UNIQUE_VIOLATION, message, unique_key)
 end
 
 
@@ -304,8 +326,7 @@ function _M:invalid_offset(offset, err)
     error("err must be a string", 2)
   end
 
-  local message = fmt("'%s' is not a valid offset for this strategy: %s",
-                      offset, err)
+  local message = fmt("'%s' is not a valid offset: %s", offset, err)
 
   return new_err_t(self, ERRORS.INVALID_OFFSET, message)
 end
@@ -314,6 +335,62 @@ end
 function _M:database_error(err)
   err = err or ERRORS_NAMES[ERRORS.DATABASE_ERROR]
   return new_err_t(self, ERRORS.DATABASE_ERROR, err)
+end
+
+
+function _M:invalid_size(err)
+  if type(err) ~= "string" then
+    error("err must be a string", 2)
+  end
+
+  return new_err_t(self, ERRORS.INVALID_SIZE, err)
+end
+
+
+function _M:invalid_unique(name, err)
+  if type(err) ~= "string" then
+    error("err must be a string", 2)
+  end
+
+  return new_err_t(self, ERRORS.INVALID_UNIQUE, err, nil,
+                   fmt(ERRORS_NAMES[ERRORS.INVALID_UNIQUE], name))
+end
+
+
+function _M:invalid_options(errors)
+  if type(errors) ~= "table" then
+    error("errors must be a table", 2)
+  end
+
+  local buf = {}
+  local len = 0
+
+  for _, option_name in ipairs(sorted_keys(errors)) do
+    local option_errors = errors[option_name]
+    if type(option_errors) == "table" then
+      for _, sub_option in ipairs(sorted_keys(option_errors)) do
+        len = len + 1
+        buf[len] = fmt("%s.%s: %s", option_name, sub_option,
+                       option_errors[sub_option])
+      end
+
+    else
+      len = len + 1
+      buf[len] = fmt("%s: %s", option_name, option_errors)
+    end
+  end
+
+  local message
+
+  if len == 1 then
+    message = fmt("invalid option (%s)", buf[1])
+
+  else
+    message = fmt("%d option violations (%s)",
+                  len, concat(buf, "; "))
+  end
+
+  return new_err_t(self, ERRORS.INVALID_OPTIONS, message, errors)
 end
 
 

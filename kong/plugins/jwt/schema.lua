@@ -1,22 +1,48 @@
-local utils = require "kong.tools.utils"
+local typedefs = require "kong.db.schema.typedefs"
 
-local function check_user(anonymous)
-  if anonymous == "" or utils.is_valid_uuid(anonymous) then
-    return true
-  end
-
-  return false, "the anonymous user must be empty or a valid uuid"
-end
 
 return {
-  no_consumer = true,
+  name = "jwt",
   fields = {
-    uri_param_names = {type = "array", default = {"jwt"}},
-    cookie_names = {type = "array", default = {}},
-    key_claim_name = {type = "string", default = "iss"},
-    secret_is_base64 = {type = "boolean", default = false},
-    claims_to_verify = {type = "array", enum = {"exp", "nbf"}},
-    anonymous = {type = "string", default = "", func = check_user},
-    run_on_preflight = {type = "boolean", default = true},
+    { run_on = typedefs.run_on_first },
+    { config = {
+        type = "record",
+        fields = {
+          { uri_param_names = {
+              type = "set",
+              elements = { type = "string" },
+              default = { "jwt" },
+          }, },
+          { cookie_names = {
+              type = "set",
+              elements = { type = "string" },
+              default = {}
+          }, },
+          { key_claim_name = { type = "string", default = "iss" }, },
+          { secret_is_base64 = { type = "boolean", default = false }, },
+          { claims_to_verify = {
+              type = "set",
+              elements = {
+                type = "string",
+                one_of = { "exp", "nbf" },
+          }, }, },
+          { anonymous = { type = "string", uuid = true, legacy = true }, },
+          { run_on_preflight = { type = "boolean", default = true }, },
+          { maximum_expiration = {
+            type = "number",
+            default = 0,
+            between = { 0, 31536000 },
+          }, },
+        },
+      },
+    },
+  },
+  entity_checks = {
+    { conditional = {
+        if_field = "config.maximum_expiration",
+        if_match = { gt = 0 },
+        then_field = "config.claims_to_verify",
+        then_match = { contains = "exp" },
+    }, },
   },
 }

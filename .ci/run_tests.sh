@@ -2,23 +2,21 @@
 set -e
 
 export BUSTED_ARGS="-o gtest -v --exclude-tags=flaky,ipv6"
-export TEST_CMD="bin/busted $BUSTED_ARGS"
 
-createuser --createdb kong
-createdb -U kong kong_tests
+if [ "$KONG_TEST_DATABASE" == "postgres" ]; then
+    export TEST_CMD="bin/busted $BUSTED_ARGS,cassandra"
+elif [ "$KONG_TEST_DATABASE" == "cassandra" ]; then
+    export KONG_TEST_CASSANDRA_KEYSPACE=kong_tests
+    export KONG_TEST_DB_UPDATE_PROPAGATION=1
+    export TEST_CMD="bin/busted $BUSTED_ARGS,postgres"
+fi
 
-if [ "$TEST_SUITE" == "lint" ]; then
-    make lint
-elif [ "$TEST_SUITE" == "unit" ]; then
-    make test
-elif [ "$TEST_SUITE" == "integration" ]; then
-    make test-integration
-elif [ "$TEST_SUITE" == "plugins" ]; then
-    make test-plugins
-elif [ "$TEST_SUITE" == "old-unit" ]; then
-    make old-test
-elif [ "$TEST_SUITE" == "old-integration" ]; then
-    make old-test-integration
-elif [ "$TEST_SUITE" == "old-plugins" ]; then
-    make old-test-plugins
+if [ "$TEST_SUITE" == "integration" ]; then
+    eval "$TEST_CMD" spec/02-integration/
+fi
+if [ "$TEST_SUITE" == "plugins" ]; then
+    eval "$TEST_CMD" spec/03-plugins/
+fi
+if [ "$TEST_SUITE" == "pdk" ]; then
+    TEST_NGINX_RANDOMIZE=1 prove -I. -j$JOBS -r t/01-pdk
 fi

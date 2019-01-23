@@ -107,6 +107,26 @@ function _M.start(kong_conf)
   return true
 end
 
+function _M.check_conf(kong_conf)
+  local nginx_bin, err = _M.find_nginx_bin()
+  if not nginx_bin then
+    return nil, err
+  end
+
+  local cmd = fmt("KONG_NGINX_CONF_CHECK=true %s -t -p %s -c %s",
+                  nginx_bin, kong_conf.prefix, "nginx.conf")
+
+  log.debug("testing nginx configuration: %s", cmd)
+
+  local ok, retcode, _, stderr = pl_utils.executeex(cmd)
+  if not ok then
+    return nil, ("nginx configuration is invalid " ..
+                 "(exit code %d):\n%s"):format(retcode, stderr)
+  end
+
+  return true
+end
+
 function _M.stop(kong_conf)
   return send_signal(kong_conf, "TERM")
 end

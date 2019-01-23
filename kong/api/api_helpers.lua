@@ -71,18 +71,26 @@ end
 
 function _M.resolve_url_params(self)
   local sugar_url = self.args.post.url
-  if sugar_url then
-    local parsed_url        = url.parse(sugar_url)
-    self.args.post.protocol = parsed_url.scheme
-    self.args.post.host     = parsed_url.host
-    self.args.post.port     = tonumber(parsed_url.port) or
-                              parsed_url.port or
-                              (parsed_url.scheme == "http" and 80) or
-                              (parsed_url.scheme == "https" and 443) or
-                              nil
-    self.args.post.path     = parsed_url.path
-    self.args.post.url      = nil
+
+  self.args.post.url = nil
+
+  if type(sugar_url) ~= "string" then
+    return
   end
+
+  local parsed_url = url.parse(sugar_url)
+  if not parsed_url then
+    return
+  end
+
+  self.args.post.protocol = parsed_url.scheme
+  self.args.post.host     = parsed_url.host
+  self.args.post.port     = tonumber(parsed_url.port) or
+                            parsed_url.port or
+                            (parsed_url.scheme == "http" and 80) or
+                            (parsed_url.scheme == "https" and 443) or
+                            nil
+  self.args.post.path     = parsed_url.path
 end
 
 
