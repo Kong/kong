@@ -1294,39 +1294,56 @@ local function make_set(set)
 end
 
 
+local function should_recurse_record(context, value, field)
+  if context == "update" then
+    return value ~= null and value ~= nil
+  else
+    return value ~= null and (value ~= nil or field.required == true)
+  end
+end
+
+
 local function adjust_field_for_context(field, value, context, nulls)
   if context == "select" and value == null and field.required == true then
     return handle_missing_field(field, value)
   end
-  if field.type == "record" and not field.abstract then
-    local should_recurse
-    if context == "update" then
-      -- avoid filling defaults in partial updates of records
-      should_recurse = (value ~= null and value ~= nil)
-    else
-      should_recurse = (value ~= null and
-                        (value ~= nil or field.required == true))
-    end
-    if should_recurse then
-      local field_schema = get_field_schema(field)
+
+  if field.abstract then
+    return value
+  end
+
+  if field.type == "record" then
+    if should_recurse_record(context, value, field) then
       value = value or handle_missing_field(field, value)
       if type(value) == "table" then
+        local field_schema = get_field_schema(field)
         return field_schema:process_auto_fields(value, context, nulls)
       end
     end
-  end
-  if value == nil then
-    if context == "update" then
-      return nil
-    else
-      return handle_missing_field(field, value)
+
+  elseif type(value) == "table" then
+    local subfield
+    if field.type == "array" then
+      value = make_array(value)
+      subfield = field.elements
+
+    elseif field.type == "set" then
+      value = make_set(value)
+      subfield = field.elements
+
+    elseif field.type == "map" then
+      subfield = field.values
+    end
+
+    if subfield then
+      for i, e in ipairs(value) do
+        value[i] = adjust_field_for_context(subfield, e, context, nulls)
+      end
     end
   end
-  if field.type == "array" then
-    return make_array(value)
-  end
-  if field.type == "set" then
-    return make_set(value)
+
+  if value == nil and context ~= "update" then
+    return handle_missing_field(field, value)
   end
 
   return value
