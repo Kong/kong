@@ -719,7 +719,7 @@ describe("routes schema", function()
             assert.is_nil(errs)
             assert.truthy(ok)
             assert.same({ protocol }, route.protocols)
-            assert.same({ ip = "127.0.0.1" }, route[v][1])
+            assert.same({ ip = "127.0.0.1", port = ngx.null }, route[v][1])
           end
         end)
 
@@ -737,7 +737,7 @@ describe("routes schema", function()
             assert.is_nil(errs)
             assert.truthy(ok)
             assert.same({ protocol }, route.protocols)
-            assert.same({ port = 8000 }, route[v][1])
+            assert.same({ ip = ngx.null, port = 8000 }, route[v][1])
           end
         end)
 
