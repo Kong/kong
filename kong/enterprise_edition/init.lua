@@ -7,7 +7,6 @@ local singletons = require "kong.singletons"
 local constants  = require "kong.constants"
 local ws_helper  = require "kong.workspaces.helper"
 local feature_flags   = require "kong.enterprise_edition.feature_flags"
-local internal_statsd = require "kong.enterprise_edition.internal_statsd"
 local license_helpers = require "kong.enterprise_edition.license_helpers"
 
 local ws_constants  = constants.WORKSPACE_CONFIG
@@ -52,14 +51,6 @@ function _M.feature_flags_init(config)
       return err
     end
   end
-end
-
-function _M.internal_statsd_init()
-  local _, err = internal_statsd.new()
-  if err then
-    return false, err
-  end
-  return true, nil
 end
 
 _M.read_license_info = license_helpers.read_license_info
