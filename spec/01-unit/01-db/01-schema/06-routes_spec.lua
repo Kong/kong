@@ -157,7 +157,7 @@ describe("routes schema", function()
 
       local ok, err = Routes:validate(route)
       assert.falsy(ok)
-      assert.equal("expected a string", err.paths)
+      assert.equal("expected a string", err.paths[1])
     end)
 
     it("must be a non-empty string", function()
@@ -167,7 +167,7 @@ describe("routes schema", function()
 
       local ok, err = Routes:validate(route)
       assert.falsy(ok)
-      assert.equal("length must be at least 1", err.paths)
+      assert.equal("length must be at least 1", err.paths[1])
     end)
 
     it("must start with /", function()
@@ -177,25 +177,23 @@ describe("routes schema", function()
 
       local ok, err = Routes:validate(route)
       assert.falsy(ok)
-      assert.equal("should start with: /", err.paths)
+      assert.equal("should start with: /", err.paths[1])
     end)
 
     it("must not have empty segments (/foo//bar)", function()
-      local invalid_paths = {
-        "/foo//bar",
-        "/foo/bar//",
-        "//foo/bar",
+      local route = {
+        paths = {
+          "/foo//bar",
+          "/foo/bar//",
+          "//foo/bar",
+        }
       }
 
-      for i = 1, #invalid_paths do
-        local route = {
-          paths = { invalid_paths[i] },
-        }
-
-        local ok, err = Routes:validate(route)
-        assert.falsy(ok)
-        assert.equal("must not have empty segments", err.paths)
-      end
+      local ok, err = Routes:validate(route)
+      assert.falsy(ok)
+      assert.equal("must not have empty segments", err.paths[1])
+      assert.equal("must not have empty segments", err.paths[2])
+      assert.equal("must not have empty segments", err.paths[3])
     end)
 
     it("must dry-run values that are considered regexes", function()
@@ -214,7 +212,7 @@ describe("routes schema", function()
         assert.falsy(ok)
         assert.equal(u([[invalid regex: '/users/(foo/profile' (PCRE returned:
                          pcre_compile() failed: missing ) in
-                         "/users/(foo/profile")]], true, true), err.paths)
+                         "/users/(foo/profile")]], true, true), err.paths[1])
       end
     end)
 
@@ -238,7 +236,7 @@ describe("routes schema", function()
         local ok, err = Routes:validate(route)
         assert.falsy(ok)
         assert.matches("invalid url-encoded value: '" .. errstr[i] .. "'",
-                       err.paths, nil, true)
+                       err.paths[1], nil, true)
       end
     end)
 
@@ -313,7 +311,7 @@ describe("routes schema", function()
 
       local ok, err = Routes:validate(route)
       assert.falsy(ok)
-      assert.equal("expected a string", err.hosts)
+      assert.equal("expected a string", err.hosts[1])
     end)
 
     it("must be a non-empty string", function()
@@ -323,7 +321,7 @@ describe("routes schema", function()
 
       local ok, err = Routes:validate(route)
       assert.falsy(ok)
-      assert.equal("length must be at least 1", err.hosts)
+      assert.equal("length must be at least 1", err.hosts[1])
     end)
 
     it("rejects invalid hostnames", function()
@@ -347,7 +345,7 @@ describe("routes schema", function()
 
         local ok, err = Routes:validate(route)
         assert.falsy(ok)
-        assert.equal("invalid value: " .. invalid_hosts[i], err.hosts)
+        assert.equal("invalid value: " .. invalid_hosts[i], err.hosts[1])
       end
     end)
 
@@ -358,7 +356,7 @@ describe("routes schema", function()
 
       local ok, err = Routes:validate(route)
       assert.falsy(ok)
-      assert.equal("must not have a port", err.hosts)
+      assert.equal("must not have a port", err.hosts[1])
     end)
 
     it("rejects values with an invalid port", function()
@@ -368,7 +366,7 @@ describe("routes schema", function()
 
       local ok, err = Routes:validate(route)
       assert.falsy(ok)
-      assert.equal("must not have a port", err.hosts)
+      assert.equal("must not have a port", err.hosts[1])
     end)
 
     it("rejects invalid wildcard placement", function()
@@ -386,7 +384,7 @@ describe("routes schema", function()
         local ok, err = Routes:validate(route)
         assert.falsy(ok)
         assert.equal("invalid wildcard: must be placed at leftmost or " ..
-                     "rightmost label", err.hosts)
+                     "rightmost label", err.hosts[1])
       end
     end)
 
@@ -405,7 +403,7 @@ describe("routes schema", function()
         local ok, err = Routes:validate(route)
         assert.falsy(ok)
         assert.equal("invalid wildcard: must have at most one wildcard",
-                     err.hosts)
+                     err.hosts[1])
       end
     end)
 
@@ -484,7 +482,7 @@ describe("routes schema", function()
 
       local ok, err = Routes:validate(route)
       assert.falsy(ok)
-      assert.equal("expected a string", err.methods)
+      assert.equal("expected a string", err.methods[1])
     end)
 
     it("must be a non-empty string", function()
@@ -494,7 +492,7 @@ describe("routes schema", function()
 
       local ok, err = Routes:validate(route)
       assert.falsy(ok)
-      assert.equal("length must be at least 1", err.methods)
+      assert.equal("length must be at least 1", err.methods[1])
     end)
 
     it("rejects invalid values", function()
@@ -511,7 +509,7 @@ describe("routes schema", function()
         local ok, err = Routes:validate(route)
         assert.falsy(ok)
         assert.equal("invalid value: " .. invalid_methods[i],
-                     err.methods)
+                     err.methods[1])
       end
     end)
 
@@ -522,7 +520,7 @@ describe("routes schema", function()
 
       local ok, err = Routes:validate(route)
       assert.falsy(ok)
-      assert.equal("invalid value: get", err.methods)
+      assert.equal("invalid value: get", err.methods[1])
     end)
 
     -- acceptance
@@ -756,7 +754,7 @@ describe("routes schema", function()
             local ok, errs = Routes:validate(route)
             assert.falsy(ok)
             assert.same({
-              [v] = { port = "value should be between 0 and 65535" },
+              [v] = { [2] = { port = "value should be between 0 and 65535" } },
             }, errs)
           end
         end)
@@ -775,7 +773,7 @@ describe("routes schema", function()
               }, "insert")
               local ok, errs = Routes:validate(route)
               assert.falsy(ok, "ip test value was valid: " .. ip_val)
-              assert.matches("invalid cidr range: Invalid IP", errs[v].ip)
+              assert.matches("invalid cidr range: Invalid IP", errs[v][1].ip)
             end
           end
 
@@ -792,7 +790,7 @@ describe("routes schema", function()
               }, "insert")
               local ok, errs = Routes:validate(route)
               assert.falsy(ok, "ip test value was valid: " .. ip_val)
-              assert.matches("invalid cidr range: Invalid IP", errs[v].ip)
+              assert.matches("invalid cidr range: Invalid IP", errs[v][1].ip)
             end
           end
         end)
@@ -825,11 +823,11 @@ describe("routes schema", function()
           local ok, errs = Routes:validate(route)
           assert.falsy(ok, "sni test value was valid: " .. sni)
           if not pcall(function()
-                         assert.matches("must not be an IP", errs.snis, nil,
+                         assert.matches("must not be an IP", errs.snis[1], nil,
                                         true)
                        end)
           then
-            assert.matches("must not have a port", errs.snis, nil, true)
+            assert.matches("must not have a port", errs.snis[1], nil, true)
           end
         end
       end)
