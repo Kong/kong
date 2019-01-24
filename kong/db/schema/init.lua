@@ -742,12 +742,6 @@ function Schema:validate_field(field, value)
       return nil, validation_errors.SCHEMA_MISSING_ATTRIBUTE:format("elements")
     end
 
-    for k, _ in pairs(value) do
-      if type(k) ~= "number" then
-        return nil, validation_errors.ARRAY
-      end
-    end
-
     local ok, err = validate_elements(self, field, value)
     if not ok then
       return nil, err
