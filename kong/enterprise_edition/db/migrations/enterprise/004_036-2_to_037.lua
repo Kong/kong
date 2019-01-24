@@ -32,6 +32,15 @@ return {
         workspace_id uuid REFERENCES workspaces (id) ON DELETE CASCADE,
         PRIMARY KEY (group_id, rbac_role_id)
       );
+
+
+      -- Backport keyauth ttl, this will come on 1.4.0
+      DO $$
+      BEGIN
+        ALTER TABLE IF EXISTS ONLY "keyauth_credentials" ADD "ttl" TIMESTAMP WITH TIME ZONE;
+      EXCEPTION WHEN DUPLICATE_COLUMN THEN
+        -- Do nothing, accept existing state
+      END$$;
     ]],
     teardown = function(connector)
       assert(connector:connect_migrations())

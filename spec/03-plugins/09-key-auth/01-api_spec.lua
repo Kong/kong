@@ -101,6 +101,31 @@ for _, strategy in helpers.each_strategy() do
 
           assert.not_equal(first_key, json.key)
         end)
+        it("creates a key-auth credential with a ttl", function()
+          local res = assert(admin_client:send {
+            method  = "POST",
+            path    = "/consumers/bob/key-auth",
+            body    = {
+              ttl = 1,
+            },
+            headers = {
+              ["Content-Type"] = "application/json"
+            }
+          })
+          local body = assert.res_status(201, res)
+          local json = cjson.decode(body)
+          assert.equal(consumer.id, json.consumer.id)
+          assert.is_string(json.key)
+
+          ngx.sleep(3)
+
+          local id = json.consumer.id
+          local res = assert(admin_client:send {
+            method  = "GET",
+            path    = "/consumers/bob/key-auth/" .. id,
+          })
+          assert.res_status(404, res)
+        end)
       end)
 
       describe("GET", function()
