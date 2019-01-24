@@ -77,6 +77,7 @@ build = {
     ["kong.cmd.quit"] = "kong/cmd/quit.lua",
     ["kong.cmd.start"] = "kong/cmd/start.lua",
     ["kong.cmd.check"] = "kong/cmd/check.lua",
+    ["kong.cmd.config"] = "kong/cmd/config.lua",
     ["kong.cmd.reload"] = "kong/cmd/reload.lua",
     ["kong.cmd.restart"] = "kong/cmd/restart.lua",
     ["kong.cmd.prepare"] = "kong/cmd/prepare.lua",
