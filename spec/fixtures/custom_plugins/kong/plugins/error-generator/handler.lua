@@ -38,6 +38,15 @@ function ErrorGeneratorHandler:rewrite(conf)
 end
 
 
+function ErrorGeneratorHandler:preread(conf)
+  ErrorGeneratorHandler.super.preread(self)
+
+  if conf.preread then
+    error("[error-generator] preread")
+  end
+end
+
+
 function ErrorGeneratorHandler:access(conf)
   ErrorGeneratorHandler.super.access(self)
 

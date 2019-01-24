@@ -38,6 +38,16 @@ function ErrorGeneratorLastHandler:rewrite(conf)
 end
 
 
+function ErrorGeneratorLastHandler:preread(conf)
+  ErrorGeneratorLastHandler.super.preread(self)
+
+  if conf.preread then
+    error("[error-generator-last] preread")
+  end
+end
+
+
+
 function ErrorGeneratorLastHandler:access(conf)
   ErrorGeneratorLastHandler.super.access(self)
 
