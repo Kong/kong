@@ -137,6 +137,7 @@ build = {
     ["kong.db.schema.entities.targets"] = "kong/db/schema/entities/targets.lua",
     ["kong.db.schema.entities.plugins"] = "kong/db/schema/entities/plugins.lua",
     ["kong.db.schema.others.migrations"] = "kong/db/schema/others/migrations.lua",
+    ["kong.db.schema.others.declarative_config"] = "kong/db/schema/others/declarative_config.lua",
     ["kong.db.schema.entity"] = "kong/db/schema/entity.lua",
     ["kong.db.schema.metaschema"] = "kong/db/schema/metaschema.lua",
     ["kong.db.schema.typedefs"] = "kong/db/schema/typedefs.lua",
