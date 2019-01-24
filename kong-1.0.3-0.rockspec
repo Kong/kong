@@ -188,6 +188,7 @@ build = {
     ["kong.plugins.key-auth.migrations"] = "kong/plugins/key-auth/migrations/init.lua",
     ["kong.plugins.key-auth.migrations.000_base_key_auth"] = "kong/plugins/key-auth/migrations/000_base_key_auth.lua",
     ["kong.plugins.key-auth.migrations.001_14_to_15"] = "kong/plugins/key-auth/migrations/001_14_to_15.lua",
+    ["kong.plugins.key-auth.migrations.002_100_to_110"] = "kong/plugins/key-auth/migrations/002_100_to_110.lua",
     ["kong.plugins.key-auth.handler"] = "kong/plugins/key-auth/handler.lua",
     ["kong.plugins.key-auth.schema"] = "kong/plugins/key-auth/schema.lua",
     ["kong.plugins.key-auth.api"] = "kong/plugins/key-auth/api.lua",
