@@ -255,7 +255,7 @@ for _, strategy in helpers.each_strategy() do
             ["Host"] = "acl1.com"
           }
         }))
-        assert.res_status(403, res)
+        assert.res_status(401, res)
       end)
     end)
   end)
