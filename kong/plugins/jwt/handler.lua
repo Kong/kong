@@ -171,14 +171,14 @@ local function do_authentication(conf)
   end
 
   if not jwt_secret then
-    return false, { status = 403, message = "No credentials found for given '" .. conf.key_claim_name .. "'" }
+    return false, { status = 401, message = "No credentials found for given '" .. conf.key_claim_name .. "'" }
   end
 
   local algorithm = jwt_secret.algorithm or "HS256"
 
   -- Verify "alg"
   if jwt.header.alg ~= algorithm then
-    return false, {status = 403, message = "Invalid algorithm"}
+    return false, {status = 401, message = "Invalid algorithm"}
   end
 
   local jwt_secret_value = algorithm ~= nil and algorithm:sub(1, 2) == "HS" and
@@ -189,12 +189,12 @@ local function do_authentication(conf)
   end
 
   if not jwt_secret_value then
-    return false, { status = 403, message = "Invalid key/secret" }
+    return false, { status = 401, message = "Invalid key/secret" }
   end
 
   -- Now verify the JWT signature
   if not jwt:verify_signature(jwt_secret_value) then
-    return false, { status = 403, message = "Invalid signature" }
+    return false, { status = 401, message = "Invalid signature" }
   end
 
   -- Verify the JWT registered claims
@@ -207,7 +207,7 @@ local function do_authentication(conf)
   if conf.maximum_expiration ~= nil and conf.maximum_expiration > 0 then
     local ok, errors = jwt:check_maximum_expiration(conf.maximum_expiration)
     if not ok then
-      return false, { status = 403, errors = errors }
+      return false, { status = 401, errors = errors }
     end
   end
 
@@ -224,7 +224,7 @@ local function do_authentication(conf)
   -- However this should not happen
   if not consumer then
     return false, {
-      status = 403,
+      status = 401,
       message = fmt("Could not find consumer for '%s=%s'", conf.key_claim_name, jwt_secret_key)
     }
   end
