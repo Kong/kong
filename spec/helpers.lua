@@ -1124,7 +1124,7 @@ local function kong_exec(cmd, env, pl_returns, env_vars)
   env.lua_package_path = env.lua_package_path .. ";" .. conf.lua_package_path
 
   if not env.plugins then
-    env.plugins = "bundled,dummy,cache,rewriter,error-handler-log,error-generator-pre,error-generator-post"
+    env.plugins = "bundled,dummy,cache,rewriter,error-handler-log,error-generator,error-generator-last"
   end
 
   -- build Kong environment variables
