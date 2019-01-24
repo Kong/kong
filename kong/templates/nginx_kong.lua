@@ -205,6 +205,9 @@ server {
 
         expires 90d;
         add_header Cache-Control 'public';
+        add_header X-Frame-Options 'sameorigin';
+        add_header X-XSS-Protection '1; mode=block';
+        add_header X-Content-Type-Options 'nosniff';
         etag off;
     }
 
@@ -214,6 +217,9 @@ server {
         try_files $uri /index.html;
 
         add_header Cache-Control 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0';
+        add_header X-Frame-Options 'sameorigin';
+        add_header X-XSS-Protection '1; mode=block';
+        add_header X-Content-Type-Options 'nosniff';
         etag off;
 
         access_log ${{ADMIN_GUI_ACCESS_LOG}};
@@ -274,6 +280,9 @@ server {
 
         expires 90d;
         add_header Cache-Control 'public';
+        add_header X-Frame-Options 'sameorigin';
+        add_header X-XSS-Protection '1; mode=block';
+        add_header X-Content-Type-Options 'nosniff';
         etag off;
     }
 
@@ -289,6 +298,9 @@ server {
         }
 
         add_header Cache-Control 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0';
+        add_header X-Frame-Options 'sameorigin';
+        add_header X-XSS-Protection '1; mode=block';
+        add_header X-Content-Type-Options 'nosniff';
         etag off;
 
         access_log logs/portal_gui_access.log;
