@@ -726,6 +726,10 @@ function Schema:validate_field(field, value)
     return true
   end
 
+  if field.eq == null then
+    return nil, validation_errors.EQ:format("null")
+  end
+
   if field.abstract then
     return nil, validation_errors.SUBSCHEMA_ABSTRACT_FIELD
   end
