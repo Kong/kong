@@ -6,7 +6,7 @@ for _, strategy in helpers.each_strategy() do
     local proxy_client
 
     lazy_setup(function()
-      local bp = helpers.get_db_utils(strategy, nil, { "error-generator-post" })
+      local bp = helpers.get_db_utils(strategy, nil, { "error-generator-last" })
 
       local route1 = bp.routes:insert({
         hosts = { "cors1.com" },
@@ -197,7 +197,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.plugins:insert {
-        name = "error-generator-post",
+        name = "error-generator-last",
         route = { id = route_error.id },
         config = {
           access = true,
