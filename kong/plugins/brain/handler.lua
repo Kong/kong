@@ -62,7 +62,7 @@ function BrainHandler:log(conf)
     _server_addr = ctx.proxy_cache_hit.server_addr
   end
 
-  local route_id = conf.route_id or conf.api_id
+  local route_id = conf.route_id or conf.api_id or conf.service_id
 
   local buf = _alf_buffers[route_id]
   if not buf then
