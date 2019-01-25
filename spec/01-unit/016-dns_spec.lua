@@ -23,19 +23,13 @@ describe("DNS", function()
       find_all = function(self) return {} end
     }
 
-<<<<<<< HEAD
     singletons.dao.workspaces = {
       find_all = function() return {} end
     }
 
-    balancer = require "kong.core.balancer"
-||||||| merged common ancestors
-    balancer = require "kong.core.balancer"
-=======
     singletons.origins = {}
 
     balancer = require "kong.runloop.balancer"
->>>>>>> 0.15.0
     balancer.init()
 
     resolver = require "resty.dns.resolver"

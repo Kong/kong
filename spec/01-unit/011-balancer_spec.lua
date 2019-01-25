@@ -23,6 +23,7 @@ describe("Balancer", function()
     singletons = require "kong.singletons"
     singletons.worker_events = require "resty.worker.events"
     singletons.db = {}
+    singletons.dao = {}
 
     singletons.worker_events.configure({
       shm = "kong_process_events", -- defined by "lua_shared_dict"
@@ -73,26 +74,6 @@ describe("Balancer", function()
 
     WORKSPACE_FIXTURES = { {id = "1", name = "default"}}
     UPSTREAMS_FIXTURES = {
-<<<<<<< HEAD
-      [1] = { id = "a", name = "mashape", slots = 10, healthchecks = hc_defaults, ws_id = "1"},
-      [2] = { id = "b", name = "kong",    slots = 10, healthchecks = hc_defaults, ws_id = "1"},
-      [3] = { id = "c", name = "gelato",  slots = 20, healthchecks = hc_defaults, ws_id = "1"},
-      [4] = { id = "d", name = "galileo", slots = 20, healthchecks = hc_defaults, ws_id = "1"},
-      [5] = { id = "e", name = "upstream_e", slots = 10, healthchecks = hc_defaults, ws_id = "1"},
-      [6] = { id = "f", name = "upstream_f", slots = 10, healthchecks = hc_defaults, ws_id = "1"},
-      [7] = { id = "hc", name = "upstream_hc", slots = 10, healthchecks = passive_hc, ws_id = "1"},
-      [8] = { id = "ph", name = "upstream_ph", slots = 10, healthchecks = passive_hc, ws_id = "1"},
-      [9] = { id = "ote", name = "upstream_ote", slots = 10, healthchecks = hc_defaults, ws_id = "1"},
-||||||| merged common ancestors
-      [1] = { id = "a", name = "mashape", slots = 10, healthchecks = hc_defaults },
-      [2] = { id = "b", name = "kong",    slots = 10, healthchecks = hc_defaults },
-      [3] = { id = "c", name = "gelato",  slots = 20, healthchecks = hc_defaults },
-      [4] = { id = "d", name = "galileo", slots = 20, healthchecks = hc_defaults },
-      [5] = { id = "e", name = "upstream_e", slots = 10, healthchecks = hc_defaults },
-      [6] = { id = "f", name = "upstream_f", slots = 10, healthchecks = hc_defaults },
-      [7] = { id = "hc", name = "upstream_hc", slots = 10, healthchecks = passive_hc },
-      [8] = { id = "ph", name = "upstream_ph", slots = 10, healthchecks = passive_hc },
-=======
       [1] = { id = "a", name = "mashape", slots = 10, healthchecks = hc_defaults },
       [2] = { id = "b", name = "kong",    slots = 10, healthchecks = hc_defaults },
       [3] = { id = "c", name = "gelato",  slots = 20, healthchecks = hc_defaults },
@@ -102,7 +83,6 @@ describe("Balancer", function()
       [7] = { id = "hc", name = "upstream_hc", slots = 10, healthchecks = passive_hc },
       [8] = { id = "ph", name = "upstream_ph", slots = 10, healthchecks = passive_hc },
       [9] = { id = "ote", name = "upstream_ote", slots = 10, healthchecks = hc_defaults },
->>>>>>> 0.15.0
     }
     upstream_hc = UPSTREAMS_FIXTURES[7]
     upstream_ph = UPSTREAMS_FIXTURES[8]
@@ -116,7 +96,6 @@ describe("Balancer", function()
         upstream = { id = "a" },
         target = "mashape.com:80",
         weight = 10,
-        ws_id = "1",
       },
       {
         id = "a2",
@@ -124,7 +103,6 @@ describe("Balancer", function()
         upstream = { id = "a" },
         target = "mashape.com:80",
         weight = 10,
-        ws_id = "1",
       },
       {
         id = "a3",
@@ -132,7 +110,6 @@ describe("Balancer", function()
         upstream = { id = "a" },
         target = "mashape.com:80",
         weight = 10,
-        ws_id = "1",
       },
       {
         id = "a4",
@@ -140,7 +117,6 @@ describe("Balancer", function()
         upstream = { id = "a" },
         target = "mashape.com:80",
         weight = 10,
-        ws_id = "1",
       },
       -- 2nd upstream; b
       {
@@ -149,7 +125,6 @@ describe("Balancer", function()
         upstream = { id = "b" },
         target = "mashape.com:80",
         weight = 10,
-        ws_id = "1",
       },
       -- 3rd upstream: e (removed and re-added)
       {
@@ -158,7 +133,6 @@ describe("Balancer", function()
         upstream = { id = "e" },
         target = "127.0.0.1:2112",
         weight = 10,
-        ws_id = "1",
       },
       {
         id = "e2",
@@ -166,7 +140,6 @@ describe("Balancer", function()
         upstream = { id = "e" },
         target = "127.0.0.1:2112",
         weight = 0,
-        ws_id = "1",
       },
       {
         id = "e3",
@@ -174,7 +147,6 @@ describe("Balancer", function()
         upstream = { id = "e" },
         target = "127.0.0.1:2112",
         weight = 10,
-        ws_id = "1",
       },
       -- 4th upstream: f (removed and not re-added)
       {
@@ -183,7 +155,6 @@ describe("Balancer", function()
         upstream = { id = "f" },
         target = "127.0.0.1:5150",
         weight = 10,
-        ws_id = "1",
       },
       {
         id = "f2",
@@ -191,7 +162,6 @@ describe("Balancer", function()
         upstream = { id = "f" },
         target = "127.0.0.1:5150",
         weight = 0,
-        ws_id = "1",
       },
       {
         id = "f3",
@@ -199,7 +169,6 @@ describe("Balancer", function()
         upstream = { id = "f" },
         target = "127.0.0.1:2112",
         weight = 10,
-        ws_id = "1",
       },
       -- upstream_hc
       {
@@ -208,7 +177,6 @@ describe("Balancer", function()
         upstream = { id = "hc" },
         target = "localhost:1111",
         weight = 10,
-        ws_id = "1",
       },
       -- upstream_ph
       {
@@ -217,7 +185,6 @@ describe("Balancer", function()
         upstream = { id = "ph" },
         target = "localhost:1111",
         weight = 10,
-        ws_id = "1",
       },
       {
         id = "ph2",
@@ -225,16 +192,6 @@ describe("Balancer", function()
         upstream = { id = "ph" },
         target = "127.0.0.1:2222",
         weight = 10,
-        ws_id = "1",
-      },
-      -- upstream_ote
-      {
-        id = "ote1",
-        created_at = "001",
-        upstream_id = "ote",
-        target = "localhost:1111",
-        weight = 10,
-        ws_id = "1",
       },
       -- upstream_ote
       {
@@ -246,42 +203,6 @@ describe("Balancer", function()
       },
     }
 
-<<<<<<< HEAD
-    local function find_all_in_fixture_fn(fixture)
-      local function in_ws(ws_id, wss)
-        for _, v in ipairs(wss) do
-          if v.id == ws_id then
-            return true
-          end
-        end
-      end
-
-      return function(self, match_on)
-
-        local ret = {}
-        for _, rec in ipairs(fixture) do
-          for key, val in pairs(match_on or {}) do
-            if rec[key] ~= val then
-              rec = nil
-              break
-            end
-            if ngx.ctx.workspaces ~= nil and #ngx.ctx.workspaces ~= 0 then
-              if not in_ws(rec.ws_id, ngx.ctx.workspaces) then
-                rec = nil
-                break
-              end
-            end
-||||||| merged common ancestors
-    local function find_all_in_fixture_fn(fixture)
-      return function(self, match_on)
-        local ret = {}
-        for _, rec in ipairs(fixture) do
-          for key, val in pairs(match_on or {}) do
-            if rec[key] ~= val then
-              rec = nil
-              break
-            end
-=======
     local function each(fixture)
       return function()
         local i = 0
@@ -297,27 +218,12 @@ describe("Balancer", function()
         for item in self:each() do
           if item.id == pk.id then
             return item
->>>>>>> 0.15.0
           end
         end
       end
     end
 
-<<<<<<< HEAD
-    local function _run_with_ws_scope(self, ws_scope, cb, ...)
-      local old_ws = ngx.ctx.workspaces
-      ngx.ctx.workspaces = ws_scope
-      local res, err = cb(self, ...)
-      ngx.ctx.workspaces = old_ws
-      return res, err
-    end
-
-    singletons.dao = {
-||||||| merged common ancestors
-    singletons.dao = {
-=======
     singletons.db = {
->>>>>>> 0.15.0
       targets = {
         each = each(TARGETS_FIXTURES),
         select_by_upstream_raw = function(self, upstream_pk)
@@ -336,16 +242,13 @@ describe("Balancer", function()
         end
       },
       upstreams = {
-<<<<<<< HEAD
-        find_all = find_all_in_fixture_fn(UPSTREAMS_FIXTURES),
-        run_with_ws_scope = _run_with_ws_scope
-||||||| merged common ancestors
-        find_all = find_all_in_fixture_fn(UPSTREAMS_FIXTURES)
-=======
         each = each(UPSTREAMS_FIXTURES),
         select = select(UPSTREAMS_FIXTURES),
->>>>>>> 0.15.0
       },
+    }
+
+
+    singletons.dao = {
       workspaces = {
         find_all = function() return WORKSPACE_FIXTURES end
       }
@@ -513,35 +416,6 @@ describe("Balancer", function()
     end)
   end)
 
-<<<<<<< HEAD
-  describe("on_target_event()", function()
-    setup(function()
-      balancer._load_targets_into_memory("ote")
-    end)
-
-    it("adding a target does not recreate a balancer", function()
-      local b1 = balancer._create_balancer(upstream_ote)
-      assert.same(1, #(balancer._get_target_history(b1)))
-
-      table.insert(TARGETS_FIXTURES, {
-        id = "ote2",
-        created_at = "002",
-        upstream_id = "ote",
-        target = "localhost:1112",
-        weight = 10,
-        ws_id = "1"
-      })
-      balancer.on_target_event("create", { upstream_id = "ote" })
-
-      local b2 = balancer._create_balancer(upstream_ote)
-      assert.same(2, #(balancer._get_target_history(b2)))
-
-      assert(b1 == b2)
-    end)
-  end)
-
-||||||| merged common ancestors
-=======
   describe("on_target_event()", function()
     lazy_setup(function()
       balancer._load_targets_into_memory("ote")
@@ -567,7 +441,6 @@ describe("Balancer", function()
     end)
   end)
 
->>>>>>> 0.15.0
   describe("post_health()", function()
     local hc, my_balancer
 
