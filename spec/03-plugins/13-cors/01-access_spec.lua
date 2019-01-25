@@ -1,9 +1,233 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
+local inspect = require "inspect"
+local tablex = require "pl.tablex"
+
+
+local function sortedpairs(t)
+  local ks = tablex.keys(t)
+  table.sort(ks)
+  local i = 0
+  return function()
+    i = i + 1
+    return ks[i], t[ks[i]]
+  end
+end
+
 
 for _, strategy in helpers.each_strategy() do
   describe("Plugin: cors (access) [#" .. strategy .. "]", function()
     local proxy_client
+
+    local regex_testcases = {
+      {
+        -- single entry, host only: ignore value, always return configured data
+        origins = { "foo.test" },
+        tests = {
+          ["http://evil.test"]          = "foo.test",
+          ["http://foo.test"]           = "foo.test",
+          ["http://foo.test.evil.test"] = "foo.test",
+          ["http://something.foo.test"] = "foo.test",
+          ["http://evilfoo.test"]       = "foo.test",
+          ["http://foo.test:80"]        = "foo.test",
+          ["http://foo.test:8000"]      = "foo.test",
+          ["https://foo.test:8000"]     = "foo.test",
+          ["http://foo.test:90"]        = "foo.test",
+          ["http://foobtest"]           = "foo.test",
+          ["https://bar.test:1234"]     = "foo.test",
+        },
+      },
+      {
+        -- single entry, full domain (not regex): ignore value, always return configured data
+        origins = { "https://bar.test:1234" },
+        tests = {
+          ["http://evil.test"]          = "https://bar.test:1234",
+          ["http://foo.test"]           = "https://bar.test:1234",
+          ["http://foo.test.evil.test"] = "https://bar.test:1234",
+          ["http://something.foo.test"] = "https://bar.test:1234",
+          ["http://evilfoo.test"]       = "https://bar.test:1234",
+          ["http://foo.test:80"]        = "https://bar.test:1234",
+          ["http://foo.test:8000"]      = "https://bar.test:1234",
+          ["https://foo.test:8000"]     = "https://bar.test:1234",
+          ["http://foo.test:90"]        = "https://bar.test:1234",
+          ["http://foobtest"]           = "https://bar.test:1234",
+          ["https://bar.test:1234"]     = "https://bar.test:1234",
+        },
+      },
+      {
+        -- single entry, simple regex without ":": anchored match on host only
+        origins = { "foo\\.test" },
+        tests = {
+          ["http://evil.test"]          = false,
+          ["http://foo.test"]           = true,
+          ["http://foo.test.evil.test"] = false,
+          ["http://something.foo.test"] = false,
+          ["http://evilfoo.test"]       = false,
+          ["http://foo.test:80"]        = "http://foo.test",
+          ["http://foo.test:8000"]      = true,
+          ["https://foo.test:8000"]     = true,
+          ["http://foo.test:90"]        = true,
+          ["http://foobtest"]           = false,
+          ["https://bar.test:1234"]     = false,
+        },
+      },
+      {
+        -- single entry, subdomain regex without ":": anchored match on host only
+        origins = { "(.*[./])?foo\\.test" },
+        tests = {
+          ["http://evil.test"]          = false,
+          ["http://foo.test"]           = true,
+          ["http://foo.test.evil.test"] = false,
+          ["http://something.foo.test"] = true,
+          ["http://evilfoo.test"]       = false,
+          ["http://foo.test:80"]        = "http://foo.test",
+          ["http://foo.test:8000"]      = true,
+          ["https://foo.test:8000"]     = true,
+          ["http://foo.test:90"]        = true,
+          ["http://foobtest"]           = false,
+          ["https://bar.test:1234"]     = false,
+        },
+      },
+      {
+        -- single entry, any-scheme subdomain regex with port: anchored match with scheme and port
+        origins = { "(.*[./])?foo\\.test:8000" },
+        tests = {
+          ["http://evil.test"]          = false,
+          ["http://foo.test"]           = false,
+          ["http://foo.test.evil.test"] = false,
+          ["http://something.foo.test"] = false,
+          ["http://evilfoo.test"]       = false,
+          ["http://foo.test:80"]        = false,
+          ["http://foo.test:8000"]      = true,
+          ["https://foo.test:8000"]     = true,
+          ["http://foo.test:90"]        = false,
+          ["http://foobtest"]           = false,
+          ["https://bar.test:1234"]     = false,
+        },
+      },
+      {
+        -- single entry, https subdomain regex with port: anchored match with scheme and port
+        origins = { "https://(.*[.])?foo\\.test:8000" },
+        tests = {
+          ["http://evil.test"]          = false,
+          ["http://foo.test"]           = false,
+          ["http://foo.test.evil.test"] = false,
+          ["http://something.foo.test"] = false,
+          ["http://foo.test:80"]        = false,
+          ["http://foo.test:8000"]      = false,
+          ["https://foo.test:8000"]     = true,
+          ["http://foo.test:90"]        = false,
+          ["http://foobtest"]           = false,
+          ["https://bar.test:1234"]     = false,
+        },
+      },
+      {
+        -- single entry, explicitly anchored https subdomain regex with port: anchored match with scheme and port
+        origins = { "^http://(.*[.])?foo\\.test(:(80|90))?$" },
+        tests = {
+          ["http://evil.test"]          = false,
+          ["http://foo.test"]           = true,
+          ["http://foo.test.evil.test"] = false,
+          ["http://something.foo.test"] = true,
+          ["http://foo.test:80"]        = "http://foo.test",
+          ["http://foo.test:8000"]      = false,
+          ["https://foo.test:8000"]     = false,
+          ["http://foo.test:90"]        = true,
+          ["http://foobtest"]           = false,
+          ["https://bar.test:1234"]     = false,
+        },
+      },
+      {
+        -- multiple entries, host only (not regex): match on full normalized domain (i.e. all fail)
+        origins = { "foo.test", "bar.test" },
+        tests = {
+          ["http://evil.test"]          = false,
+          ["http://foo.test"]           = false,
+          ["http://foo.test.evil.test"] = false,
+          ["http://foo.test:80"]        = false,
+          ["http://foo.test:8000"]      = false,
+          ["http://foo.test:90"]        = false,
+          ["http://foobtest"]           = false,
+          ["https://bar.test:1234"]     = false,
+        },
+      },
+      {
+        -- multiple entries, full domain (not regex): match on full normalized domain
+        origins = { "http://foo.test", "https://bar.test:1234" },
+        tests = {
+          ["http://evil.test"]          = false,
+          ["http://foo.test"]           = true,
+          ["http://foo.test.evil.test"] = false,
+          ["http://foo.test:80"]        = "http://foo.test",
+          ["http://foo.test:8000"]      = false,
+          ["http://foo.test:90"]        = false,
+          ["http://foobtest"]           = false,
+          ["https://bar.test:1234"]     = true,
+        },
+      },
+      {
+        -- multiple entries, simple regex without ":": anchored match on host only
+        origins = { "bar.test", "foo\\.test" },
+        tests = {
+          ["http://evil.test"]          = false,
+          ["http://foo.test"]           = true,
+          ["http://foo.test.evil.test"] = false,
+          ["http://something.foo.test"] = false,
+          ["http://foo.test:80"]        = "http://foo.test",
+          ["http://foo.test:8000"]      = true,
+          ["http://foo.test:90"]        = true,
+          ["http://foobtest"]           = false,
+          ["https://bar.test:1234"]     = false,
+        },
+      },
+      {
+        -- multiple entries, subdomain regex without ":": anchored match on host only
+        origins = { "bar.test", "(.*\\.)?foo\\.test" },
+        tests = {
+          ["http://evil.test"]          = false,
+          ["http://foo.test"]           = true,
+          ["http://foo.test.evil.test"] = false,
+          ["http://something.foo.test"] = true,
+          ["http://foo.test:80"]        = "http://foo.test",
+          ["http://foo.test:8000"]      = true,
+          ["http://foo.test:90"]        = true,
+          ["http://foobtest"]           = false,
+          ["https://bar.test:1234"]     = false,
+        },
+      },
+      {
+        -- multiple entries, any-scheme subdomain regex with ":": anchored match with scheme and port
+        origins = { "bar.test", "(.*[./])?foo\\.test:8000" },
+        tests = {
+          ["http://evil.test"]          = false,
+          ["http://foo.test"]           = false,
+          ["http://foo.test.evil.test"] = false,
+          ["http://something.foo.test"] = false,
+          ["http://foo.test:80"]        = false,
+          ["http://foo.test:8000"]      = true,
+          ["https://foo.test:8000"]     = true,
+          ["http://foo.test:90"]        = false,
+          ["http://foobtest"]           = false,
+          ["https://bar.test:1234"]     = false,
+        },
+      },
+      {
+        -- multiple entries, https subdomain regex with ":": anchored match with scheme and port
+        origins = { "bar.test", "https://(.*\\.)?foo\\.test:8000" },
+        tests = {
+          ["http://evil.test"]          = false,
+          ["http://foo.test"]           = false,
+          ["http://foo.test.evil.test"] = false,
+          ["http://something.foo.test"] = false,
+          ["http://foo.test:80"]        = false,
+          ["http://foo.test:8000"]      = false,
+          ["https://foo.test:8000"]     = true,
+          ["http://foo.test:90"]        = false,
+          ["http://foobtest"]           = false,
+          ["https://bar.test:1234"]     = false,
+        },
+      },
+    }
 
     lazy_setup(function()
       local bp = helpers.get_db_utils(strategy, nil, { "error-generator-last" })
@@ -204,20 +428,73 @@ for _, strategy in helpers.each_strategy() do
         },
       }
 
+      for i, testcase in ipairs(regex_testcases) do
+        local route = bp.routes:insert({
+          hosts = { "cors-regex-" .. i .. ".test" },
+        })
+
+        bp.plugins:insert {
+          name = "cors",
+          route = { id = route.id },
+          config = {
+            origins = testcase.origins,
+          }
+        }
+      end
+
       assert(helpers.start_kong({
         database   = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
       }))
 
-      proxy_client = helpers.proxy_client()
     end)
 
     lazy_teardown(function()
-      if proxy_client then proxy_client:close() end
       helpers.stop_kong()
     end)
 
+    before_each(function()
+      proxy_client = helpers.proxy_client()
+    end)
+
+    after_each(function()
+      if proxy_client then proxy_client:close() end
+    end)
+
     describe("HTTP method: OPTIONS", function()
+
+      for i, testcase in ipairs(regex_testcases) do
+        local host = "cors-regex-" .. i .. ".test"
+        for origin, accept in sortedpairs(testcase.tests) do
+          it("given " .. origin .. ", " ..
+             inspect(testcase.origins) .. " will " ..
+             (accept and "accept" or "reject"), function()
+
+            local res = assert(proxy_client:send {
+              method  = "OPTIONS",
+              headers = {
+                ["Host"] = host,
+                ["Origin"] = origin,
+              }
+            })
+
+            assert.res_status(200, res)
+
+            if accept then
+              assert.equal("GET,HEAD,PUT,PATCH,POST,DELETE", res.headers["Access-Control-Allow-Methods"])
+              assert.equal(accept == true and origin or accept, res.headers["Access-Control-Allow-Origin"])
+              assert.is_nil(res.headers["Access-Control-Allow-Headers"])
+              assert.is_nil(res.headers["Access-Control-Expose-Headers"])
+              assert.is_nil(res.headers["Access-Control-Allow-Credentials"])
+              assert.is_nil(res.headers["Access-Control-Max-Age"])
+
+            else
+              assert.is_nil(res.headers["Access-Control-Allow-Origin"])
+            end
+          end)
+        end
+      end
+
       it("gives appropriate defaults", function()
         local res = assert(proxy_client:send {
           method  = "OPTIONS",
@@ -543,7 +820,7 @@ for _, strategy in helpers.each_strategy() do
           }
         })
         assert.res_status(200, res)
-        assert.equals("http://my-site.com:80", res.headers["Access-Control-Allow-Origin"])
+        assert.equals("http://my-site.com", res.headers["Access-Control-Allow-Origin"])
 
         local res = assert(proxy_client:send {
           method  = "GET",
