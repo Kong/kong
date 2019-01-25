@@ -62,12 +62,11 @@ function _Services:delete(primary_key)
   local service_id = primary_key.id
   local errors     = self.errors
 
-  local ok1, err1 = delete_cascade(connector, "plugins", service_id, errors)
-  local ok2, err2 = delete_cascade(connector, "oauth2_tokens", service_id, errors)
-  local ok3, err3 = delete_cascade(connector, "oauth2_authorization_codes", service_id, errors)
+  local ok1, err1 = delete_cascade(connector, "oauth2_tokens", service_id, errors)
+  local ok2, err2 = delete_cascade(connector, "oauth2_authorization_codes", service_id, errors)
 
-  return ok1 and ok2 and ok3,
-         err1 or err2 or err3
+  return ok1 and ok2,
+         err1 or err2
 end
 
 local _Services_ee = {}

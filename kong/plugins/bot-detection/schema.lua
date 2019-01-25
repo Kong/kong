@@ -1,21 +1,23 @@
-local re_match = ngx.re.match
-
-local check_regex = function(value)
-  if value then
-    for _, rule in ipairs(value) do
-      local _, err = re_match("just a string to test", rule)
-      if err then
-        return false, "value '" .. rule .. "' is not a valid regex"
-      end
-    end
-  end
-  return true
-end
+local typedefs = require "kong.db.schema.typedefs"
 
 return {
-  no_consumer = true,
+  name = "bot-detection",
   fields = {
-    whitelist = { type = "array", func = check_regex },
-    blacklist = { type = "array", func = check_regex },
-  }
+    { consumer = typedefs.no_consumer },
+    { run_on = typedefs.run_on_first },
+    { config = {
+        type = "record",
+        fields = {
+          { whitelist = {
+              type = "array",
+              elements = { type = "string", is_regex = true },
+              default = {},
+          }, },
+          { blacklist = {
+              type = "array",
+              elements = { type = "string", is_regex = true },
+              default = {},
+          }, },
+    }, }, },
+  },
 }

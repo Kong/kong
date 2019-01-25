@@ -9,34 +9,37 @@ local unindent = helpers.unindent
 
 local function it_content_types(title, fn)
   local test_form_encoded = fn("application/x-www-form-urlencoded")
+  local test_multipart = fn("multipart/form-data")
   local test_json = fn("application/json")
-  it(title .. " with application/json", test_json)
+
   it(title .. " with application/www-form-urlencoded", test_form_encoded)
+  it(title .. " with multipart/form-data", test_multipart)
+  it(title .. " with application/json", test_json)
 end
 
 
-for _, strategy in helpers.each_strategy("postgres") do
+for _, strategy in helpers.each_strategy() do
   describe("Admin API #" .. strategy, function()
     local bp
     local db
     local dao
     local client
 
-    setup(function()
-      bp, db, dao = helpers.get_db_utils(strategy)
-    end)
-
-    teardown(function()
-      helpers.stop_kong()
-    end)
-
-    before_each(function()
-      helpers.stop_kong()
-      assert(db:truncate())
+    lazy_setup(function()
+      bp, db, dao = helpers.get_db_utils(strategy, {
+        "routes",
+        "services",
+      })
       assert(helpers.start_kong({
         database = strategy,
       }))
+    end)
 
+    lazy_teardown(function()
+      helpers.stop_kong(nil, true)
+    end)
+
+    before_each(function()
       client = assert(helpers.admin_client())
     end)
 
@@ -50,6 +53,11 @@ for _, strategy in helpers.each_strategy("postgres") do
       describe("POST", function()
         it_content_types("creates a route", function(content_type)
           return function()
+            if content_type == "multipart/form-data" then
+              -- the client doesn't play well with this
+              return
+            end
+
             local res = client:post("/routes", {
               body = {
                 protocols = { "http" },
@@ -64,6 +72,7 @@ for _, strategy in helpers.each_strategy("postgres") do
             assert.is_number(json.created_at)
             assert.is_number(json.regex_priority)
             assert.is_string(json.id)
+            assert.equals(cjson.null, json.name)
             assert.equals(cjson.null, json.paths)
             assert.False(json.preserve_host)
             assert.True(json.strip_path)
@@ -72,6 +81,11 @@ for _, strategy in helpers.each_strategy("postgres") do
 
         it_content_types("creates a complex route", function(content_type)
           return function()
+            if content_type == "multipart/form-data" then
+              -- the client doesn't play well with this
+              return
+            end
+
             local s = bp.services:insert()
             local res = client:post("/routes", {
               body    = {
@@ -110,6 +124,11 @@ for _, strategy in helpers.each_strategy("postgres") do
 
           it_content_types("handles invalid input", function(content_type)
             return function()
+              if content_type == "multipart/form-data" then
+                -- the client doesn't play well with this
+                return
+              end
+
               -- Missing params
               local res = client:post("/routes", {
                 body = {},
@@ -121,13 +140,13 @@ for _, strategy in helpers.each_strategy("postgres") do
                 name    = "schema violation",
                 message = unindent([[
                   2 schema violations
-                  (at least one of these fields must be non-empty: 'methods', 'hosts', 'paths';
+                  (must set one of 'methods', 'hosts', 'paths' when 'protocols' is 'http' or 'https';
                   service: required field missing)
                 ]], true, true),
-                fields  = {
+                fields = {
                   service   = "required field missing",
                   ["@entity"] = {
-                    "at least one of these fields must be non-empty: 'methods', 'hosts', 'paths'"
+                    "must set one of 'methods', 'hosts', 'paths' when 'protocols' is 'http' or 'https'"
                   }
                 }
               }, cjson.decode(body))
@@ -145,10 +164,10 @@ for _, strategy in helpers.each_strategy("postgres") do
                 code    = Errors.codes.SCHEMA_VIOLATION,
                 name    = "schema violation",
                 message = "2 schema violations " ..
-                          "(protocols: expected one of: http, https; " ..
+                          "(protocols: expected one of: http, https, tcp, tls; " ..
                           "service: required field missing)",
-                fields  = {
-                  protocols = "expected one of: http, https",
+                fields = {
+                  protocols = "expected one of: http, https, tcp, tls",
                   service   = "required field missing",
                 }
               }, cjson.decode(body))
@@ -159,7 +178,8 @@ for _, strategy in helpers.each_strategy("postgres") do
 
       describe("GET", function()
         describe("with data", function()
-          before_each(function()
+          lazy_setup(function()
+            db:truncate("routes")
             for i = 1, 10 do
               bp.routes:insert({ paths = { "/route-" .. i } })
             end
@@ -206,6 +226,9 @@ for _, strategy in helpers.each_strategy("postgres") do
         end)
 
         describe("with no data", function()
+          lazy_setup(function()
+            db:truncate("routes")
+          end)
           it("data property is an empty array and not an empty hash", function()
             local res = assert(client:send {
               method = "GET",
@@ -230,24 +253,45 @@ for _, strategy in helpers.each_strategy("postgres") do
             assert.same({ data = {}, next = cjson.null }, json)
           end)
 
-          it("handles invalid offsets", function()
-            local res  = client:get("/routes", { query = { offset = "x" } })
+          it("handles invalid size", function()
+            local res  = client:get("/routes", { query = { size = "x" } })
             local body = assert.res_status(400, res)
             assert.same({
-              code    = Errors.codes.INVALID_OFFSET,
-              name    = "invalid offset",
-              message = "'x' is not a valid offset for this strategy: bad base64 encoding"
+              code    = Errors.codes.INVALID_SIZE,
+              name    = "invalid size",
+              message = "size must be a number"
             }, cjson.decode(body))
 
-            res  = client:get("/routes", { query = { offset = "potato" } })
+            res  = client:get("/routes", { query = { size = "potato" } })
             body = assert.res_status(400, res)
 
             local json = cjson.decode(body)
             json.message = nil
 
             assert.same({
+              code    = Errors.codes.INVALID_SIZE,
+              name    = "invalid size",
+            }, json)
+          end)
+
+          it("handles invalid offsets", function()
+            local res  = client:get("/routes", { query = { offset = "x" } })
+            local body = assert.res_status(400, res)
+            assert.same({
               code    = Errors.codes.INVALID_OFFSET,
               name    = "invalid offset",
+              message = "'x' is not a valid offset: bad base64 encoding"
+            }, cjson.decode(body))
+
+            res  = client:get("/routes", { query = { offset = "|potato|" } })
+            body = assert.res_status(400, res)
+
+            local json = cjson.decode(body)
+            json.message = nil
+
+            assert.same({
+              code = Errors.codes.INVALID_OFFSET,
+              name = "invalid offset",
             }, json)
           end)
 
@@ -261,18 +305,6 @@ for _, strategy in helpers.each_strategy("postgres") do
               }
             })
             assert.res_status(200, res)
-          end)
-
-          it("validates invalid primary keys", function()
-            local res  = assert(client:get("/routes/foobar"))
-            local body = assert.res_status(400, res)
-            local pk = { id = "expected a valid UUID" }
-            assert.same({
-              code    = Errors.codes.INVALID_PRIMARY_KEY,
-              name    = "invalid primary key",
-              message = [[invalid primary key: '{id="expected a valid UUID"}']],
-              fields  = pk
-            }, cjson.decode(body))
           end)
         end)
       end)
@@ -296,15 +328,19 @@ for _, strategy in helpers.each_strategy("postgres") do
       end)
 
       describe("/routes/{route}", function()
-        local route
-
-        before_each(function()
-          route = bp.routes:insert({ paths = { "/my-route" } })
-        end)
-
         describe("GET", function()
           it("retrieves by id", function()
+            local route = bp.routes:insert({ paths = { "/my-route" } })
             local res  = client:get("/routes/" .. route.id)
+            local body = assert.res_status(200, res)
+
+            local json = cjson.decode(body)
+            assert.same(route, json)
+          end)
+
+          it("retrieves by name", function()
+            local route = bp.named_routes:insert()
+            local res  = client:get("/routes/" .. route.name)
             local body = assert.res_status(200, res)
 
             local json = cjson.decode(body)
@@ -316,8 +352,25 @@ for _, strategy in helpers.each_strategy("postgres") do
             assert.res_status(404, res)
           end)
 
+          it("returns 404 if not found by name", function()
+            local res = client:get("/routes/not-found")
+            assert.res_status(404, res)
+          end)
+
           it("ignores an invalid body", function()
+            local route = bp.routes:insert({ paths = { "/my-route" } })
             local res = client:get("/routes/" .. route.id, {
+              headers = {
+                ["Content-Type"] = "application/json"
+              },
+              body = "this fails if decoded as json",
+            })
+            assert.res_status(200, res)
+          end)
+
+          it("ignores an invalid body by name", function()
+            local route = bp.named_routes:insert()
+            local res = client:get("/routes/" .. route.name, {
               headers = {
                 ["Content-Type"] = "application/json"
               },
@@ -327,9 +380,227 @@ for _, strategy in helpers.each_strategy("postgres") do
           end)
         end)
 
+        describe("PUT", function()
+          it_content_types("creates if not found", function(content_type)
+            return function()
+              if content_type == "multipart/form-data" then
+                -- the client doesn't play well with this
+                return
+              end
+
+              local service = bp.services:insert()
+              local id = utils.uuid()
+              local res = client:put("/routes/" .. id, {
+                headers = {
+                  ["Content-Type"] = content_type
+                },
+                body = {
+                  paths   = { "/updated-paths" },
+                  service = service
+                },
+              })
+              local body = assert.res_status(200, res)
+              local json = cjson.decode(body)
+              assert.same({ "/updated-paths" }, json.paths)
+              assert.same(cjson.null, json.hosts)
+              assert.same(cjson.null, json.methods)
+              assert.equal(id, json.id)
+
+              local in_db = assert(db.routes:select({ id = id }, { nulls = true }))
+              assert.same(json, in_db)
+            end
+          end)
+
+          it_content_types("creates if not found by name", function(content_type)
+            return function()
+              if content_type == "multipart/form-data" then
+                -- the client doesn't play well with this
+                return
+              end
+
+              local service = bp.services:insert()
+              local name = "my-route"
+              local res = client:put("/routes/" .. name, {
+                headers = {
+                  ["Content-Type"] = content_type
+                },
+                body = {
+                  paths   = { "/updated-paths" },
+                  service = service
+                },
+              })
+              local body = assert.res_status(200, res)
+              local json = cjson.decode(body)
+              assert.same({ "/updated-paths" }, json.paths)
+              assert.same(cjson.null, json.hosts)
+              assert.same(cjson.null, json.methods)
+              assert.equal(name, json.name)
+
+              local in_db = assert(db.routes:select_by_name(name, { nulls = true }))
+              assert.same(json, in_db)
+            end
+          end)
+
+          it_content_types("updates if found", function(content_type)
+            return function()
+              if content_type == "multipart/form-data" then
+                -- the client doesn't play well with this
+                return
+              end
+
+              local route = bp.routes:insert({ paths = { "/my-route" } })
+              local res = client:put("/routes/" .. route.id, {
+                headers = {
+                  ["Content-Type"] = content_type
+                },
+                body = {
+                  paths   = { "/updated-paths" },
+                  service = route.service
+                },
+              })
+              local body = assert.res_status(200, res)
+              local json = cjson.decode(body)
+              assert.same({ "/updated-paths" }, json.paths)
+              assert.same(cjson.null, json.hosts)
+              assert.same(cjson.null, json.methods)
+              assert.equal(route.id, json.id)
+
+              local in_db = assert(db.routes:select({ id = route.id }, { nulls = true }))
+              assert.same(json, in_db)
+            end
+          end)
+
+          it_content_types("updates if found by name", function(content_type)
+            return function()
+              if content_type == "multipart/form-data" then
+                -- the client doesn't play well with this
+                return
+              end
+
+              local route = bp.routes:insert({
+                name  = "my-put-route",
+                paths = { "/my-route" }
+              })
+              local res = client:put("/routes/my-put-route", {
+                headers = {
+                  ["Content-Type"] = content_type
+                },
+                body = {
+                  paths   = { "/updated-paths" },
+                  service = route.service
+                },
+              })
+              local body = assert.res_status(200, res)
+              local json = cjson.decode(body)
+              assert.same({ "/updated-paths" }, json.paths)
+              assert.same(cjson.null, json.hosts)
+              assert.same(cjson.null, json.methods)
+              assert.equal(route.id, json.id)
+              assert.equal(route.name, json.name)
+
+              local in_db = assert(db.routes:select_by_name(route.name, { nulls = true }))
+              assert.same(json, in_db)
+
+              db.routes:delete({ id = route.id })
+            end
+          end)
+
+          describe("errors", function()
+            it("handles malformed JSON body", function()
+              local route = bp.routes:insert({ paths = { "/my-route" } })
+              local res = client:put("/routes/" .. route.id, {
+                body    = '{"hello": "world"',
+                headers = { ["Content-Type"] = "application/json" }
+              })
+              local body = assert.res_status(400, res)
+              assert.equal('{"message":"Cannot parse JSON body"}', body)
+            end)
+
+
+            it_content_types("handles invalid input", function(content_type)
+              return function()
+                if content_type == "multipart/form-data" then
+                  -- the client doesn't play well with this
+                  return
+                end
+
+                -- Missing params
+                local res = client:put("/routes/" .. utils.uuid(), {
+                  body = {},
+                  headers = { ["Content-Type"] = content_type }
+                })
+                local body = assert.res_status(400, res)
+                assert.same({
+                  code    = Errors.codes.SCHEMA_VIOLATION,
+                  name    = "schema violation",
+                  message = unindent([[
+                  2 schema violations
+                  (must set one of 'methods', 'hosts', 'paths' when 'protocols' is 'http' or 'https';
+                  service: required field missing)
+                ]], true, true),
+                  fields  = {
+                    service   = "required field missing",
+                    ["@entity"] = {
+                      "must set one of 'methods', 'hosts', 'paths' when 'protocols' is 'http' or 'https'"
+                    }
+                  }
+                }, cjson.decode(body))
+
+                -- Invalid parameter
+                res = client:put("/routes/" .. utils.uuid(), {
+                  body = {
+                    methods   = { "GET" },
+                    protocols = { "foo" },
+                  },
+                  headers = { ["Content-Type"] = content_type }
+                })
+                body = assert.res_status(400, res)
+                assert.same({
+                  code    = Errors.codes.SCHEMA_VIOLATION,
+                  name    = "schema violation",
+                  message = "2 schema violations " ..
+                    "(protocols: expected one of: http, https, tcp, tls; " ..
+                    "service: required field missing)",
+                  fields  = {
+                    protocols = "expected one of: http, https, tcp, tls",
+                    service   = "required field missing",
+                  }
+                }, cjson.decode(body))
+
+                local route = bp.routes:insert({ paths = { "/my-route" } })
+                local res = client:put("/routes/" .. route.id, {
+                  headers = {
+                    ["Content-Type"] = content_type
+                  },
+                  body = {
+                    service        = route.service,
+                    paths          = { "/" },
+                    regex_priority = "foobar",
+                  },
+                })
+                local body = assert.res_status(400, res)
+                assert.same({
+                  code    = Errors.codes.SCHEMA_VIOLATION,
+                  name    = "schema violation",
+                  message = "schema violation (regex_priority: expected an integer)",
+                  fields  = {
+                    regex_priority = "expected an integer"
+                  },
+                }, cjson.decode(body))
+              end
+            end)
+          end)
+        end)
+
         describe("PATCH", function()
           it_content_types("updates if found", function(content_type)
             return function()
+              if content_type == "multipart/form-data" then
+                -- the client doesn't play well with this
+                return
+              end
+
+              local route = bp.routes:insert({ paths = { "/my-route" } })
               local res = client:patch("/routes/" .. route.id, {
                 headers = {
                   ["Content-Type"] = content_type
@@ -347,13 +618,49 @@ for _, strategy in helpers.each_strategy("postgres") do
               assert.same(cjson.null, json.methods)
               assert.equal(route.id, json.id)
 
-              local in_db = assert(db.routes:select({ id = route.id }))
+              local in_db = assert(db.routes:select({ id = route.id }, { nulls = true }))
               assert.same(json, in_db)
+            end
+          end)
+
+          it_content_types("updates if found by name", function(content_type)
+            return function()
+              if content_type == "multipart/form-data" then
+                -- the client doesn't play well with this
+                return
+              end
+
+              local route = bp.routes:insert({
+                name  = "my-patch-route",
+                paths = { "/my-route" },
+              })
+              local res = client:patch("/routes/my-patch-route", {
+                headers = {
+                  ["Content-Type"] = content_type
+                },
+                body = {
+                  methods = cjson.null,
+                  hosts   = cjson.null,
+                  paths   = { "/updated-paths" },
+                },
+              })
+              local body = assert.res_status(200, res)
+              local json = cjson.decode(body)
+              assert.same({ "/updated-paths" }, json.paths)
+              assert.same(cjson.null, json.hosts)
+              assert.same(cjson.null, json.methods)
+              assert.equal(route.id, json.id)
+
+              local in_db = assert(db.routes:select({ id = route.id }, { nulls = true }))
+              assert.same(json, in_db)
+
+              db.routes:delete({ id = route.id })
             end
           end)
 
           it_content_types("updates strip_path if not previously set", function(content_type)
             return function()
+              local route = bp.routes:insert({ paths = { "/my-route" } })
               local res = client:patch("/routes/" .. route.id, {
                 headers = {
                   ["Content-Type"] = content_type
@@ -367,13 +674,19 @@ for _, strategy in helpers.each_strategy("postgres") do
               assert.True(json.strip_path)
               assert.equal(route.id, json.id)
 
-              local in_db = assert(db.routes:select({id = route.id}))
+              local in_db = assert(db.routes:select({id = route.id}, { nulls = true }))
               assert.same(json, in_db)
             end
           end)
 
           it_content_types("updates multiple fields at once", function(content_type)
             return function()
+              if content_type == "multipart/form-data" then
+                -- the client doesn't play well with this
+                return
+              end
+
+              local route = bp.routes:insert({ paths = { "/my-route" } })
               local res = client:patch("/routes/" .. route.id, {
                 headers = {
                   ["Content-Type"] = content_type
@@ -391,12 +704,13 @@ for _, strategy in helpers.each_strategy("postgres") do
               assert.same(cjson.null, json.methods)
               assert.equal(route.id, json.id)
 
-              local in_db = assert(db.routes:select({id = route.id}))
+              local in_db = assert(db.routes:select({id = route.id}, { nulls = true }))
               assert.same(json, in_db)
             end
           end)
 
           it("with application/json removes optional field with ngx.null", function()
+            local route = bp.routes:insert({ paths = { "/my-route" } })
             local res = client:patch("/routes/" .. route.id, {
               headers = {
                 ["Content-Type"] = "application/json"
@@ -414,11 +728,12 @@ for _, strategy in helpers.each_strategy("postgres") do
             assert.same(cjson.null, json.methods)
             assert.equal(route.id, json.id)
 
-            local in_db = assert(db.routes:select({id = route.id}))
+            local in_db = assert(db.routes:select({id = route.id}, { nulls = true }))
             assert.same(json, in_db)
           end)
 
           it("allows updating sets and arrays with en empty array", function()
+            local route = bp.routes:insert({ paths = { "/my-route" } })
             local res = client:patch("/routes/" .. route.id, {
               headers = {
                 ["Content-Type"] = "application/json"
@@ -431,18 +746,31 @@ for _, strategy in helpers.each_strategy("postgres") do
             })
 
             local body = assert.res_status(200, res)
-            assert.matches('"methods":%[%]', body)
-            assert.matches('"paths":%[%]', body)
             local json = cjson.decode(body)
-            assert.same({}, json.paths)
+
+            if strategy == "cassandra" then
+              assert.equals(ngx.null, json.paths)
+              assert.equals(ngx.null, json.methods)
+
+            else
+              assert.matches('"methods":%[%]', body)
+              assert.matches('"paths":%[%]', body)
+              assert.same({}, json.paths)
+              assert.same({}, json.methods)
+            end
+
             assert.same({ "my-updated.tld" }, json.hosts)
-            assert.same({}, json.methods)
             assert.equal(route.id, json.id)
           end)
 
           describe("errors", function()
             it_content_types("returns 404 if not found", function(content_type)
               return function()
+                if content_type == "multipart/form-data" then
+                  -- the client doesn't play well with this
+                  return
+                end
+
                 local res = client:patch("/routes/" .. utils.uuid(), {
                   headers = {
                     ["Content-Type"] = content_type
@@ -459,6 +787,7 @@ for _, strategy in helpers.each_strategy("postgres") do
 
             it_content_types("handles invalid input", function(content_type)
               return function()
+                local route = bp.routes:insert({ paths = { "/my-route" } })
                 local res = client:patch("/routes/" .. route.id, {
                   headers = {
                     ["Content-Type"] = content_type
@@ -483,11 +812,26 @@ for _, strategy in helpers.each_strategy("postgres") do
 
         describe("DELETE", function()
           it("deletes a route", function()
+            local route = bp.routes:insert({ paths = { "/my-route" } })
             local res  = client:delete("/routes/" .. route.id)
             local body = assert.res_status(204, res)
             assert.equal("", body)
 
-            local in_db, err = db.routes:select({id = route.id})
+            local in_db, err = db.routes:select({id = route.id}, { nulls = true })
+            assert.is_nil(err)
+            assert.is_nil(in_db)
+          end)
+
+          it("deletes a route by name", function()
+            local route = bp.routes:insert({
+              name  = "my-delete-route",
+              paths = { "/my-route" }
+            })
+            local res  = client:delete("/routes/my-delete-route")
+            local body = assert.res_status(204, res)
+            assert.equal("", body)
+
+            local in_db, err = db.routes:select({id = route.id}, { nulls = true })
             assert.is_nil(err)
             assert.is_nil(in_db)
           end)
@@ -502,17 +846,24 @@ for _, strategy in helpers.each_strategy("postgres") do
       end)
 
       describe("/routes/{route}/service", function()
-        local service
-        local route
-
-        before_each(function()
-          service = bp.services:insert({ host = "example.com", path = "/" })
-          route   = bp.routes:insert({ paths = { "/my-route" }, service = service })
-        end)
 
         describe("GET", function()
           it("retrieves by id", function()
+            local service = bp.services:insert({ host = "example.com", path = "/" }, { nulls = true })
+            local route = bp.routes:insert({ paths = { "/my-route" }, service = service })
+
             local res  = client:get("/routes/" .. route.id .. "/service")
+            local body = assert.res_status(200, res)
+
+            local json = cjson.decode(body)
+            assert.same(service, json)
+          end)
+
+          it("retrieves by name", function()
+            local service = bp.services:insert({ host = "example.com", path = "/" }, { nulls = true })
+            bp.routes:insert({ name = "my-get-route", paths = { "/my-route" }, service = service })
+
+            local res  = client:get("/routes/my-get-route/service")
             local body = assert.res_status(200, res)
 
             local json = cjson.decode(body)
@@ -524,7 +875,14 @@ for _, strategy in helpers.each_strategy("postgres") do
             assert.res_status(404, res)
           end)
 
+          it("returns 404 if not found by name", function()
+            local res = client:get("/routes/my-in-existent-route/service")
+            assert.res_status(404, res)
+          end)
+
           it("ignores an invalid body", function()
+            local route = bp.routes:insert({ paths = { "/my-route" } })
+
             local res = client:get("/routes/" .. route.id .. "/service", {
               headers = {
                 ["Content-Type"] = "application/json"
@@ -538,30 +896,77 @@ for _, strategy in helpers.each_strategy("postgres") do
         describe("PATCH", function()
           it_content_types("updates if found", function(content_type)
             return function()
+              if content_type == "multipart/form-data" then
+                -- the client doesn't play well with this
+                return
+              end
+
+              local service = bp.named_services:insert({ path = "/" })
+              local route = bp.routes:insert({ paths = { "/my-route" }, service = service })
+              local edited_name = "name-" .. service.name
+              local edited_host = "edited-" .. service.host
               local res = client:patch("/routes/" .. route.id .. "/service", {
                 headers = {
                   ["Content-Type"] = content_type
                 },
                 body = {
-                  name  = "edited",
-                  host  = "edited.com",
+                  name  = edited_name,
+                  host  = edited_host,
                   path  = cjson.null,
                 },
               })
               local body = assert.res_status(200, res)
               local json = cjson.decode(body)
-              assert.equal("edited",     json.name)
-              assert.equal("edited.com", json.host)
-              assert.same(cjson.null,    json.path)
+              assert.equal(edited_name, json.name)
+              assert.equal(edited_host, json.host)
+              assert.same(cjson.null,   json.path)
 
 
-              local in_db = assert(db.services:select({ id = service.id }))
+              local in_db = assert(db.services:select({ id = service.id }, { nulls = true }))
               assert.same(json, in_db)
+            end
+          end)
+
+          it_content_types("updates if found by name", function(content_type)
+            return function()
+              if content_type == "multipart/form-data" then
+                -- the client doesn't play well with this
+                return
+              end
+
+              local service = bp.named_services:insert({ path = "/" })
+              local route = bp.routes:insert({ name = "my-service-patch-route", paths = { "/my-route" }, service = service })
+              local edited_name = "name-" .. service.name
+              local edited_host = "edited-" .. service.host
+              local res = client:patch("/routes/my-service-patch-route/service", {
+                headers = {
+                  ["Content-Type"] = content_type
+                },
+                body = {
+                  name  = edited_name,
+                  host  = edited_host,
+                  path  = cjson.null,
+                },
+              })
+              local body = assert.res_status(200, res)
+              local json = cjson.decode(body)
+              assert.equal(edited_name, json.name)
+              assert.equal(edited_host, json.host)
+              assert.same(cjson.null,   json.path)
+
+
+              local in_db = assert(db.services:select({ id = service.id }, { nulls = true }))
+              assert.same(json, in_db)
+
+              db.routes:delete({ id = route.id })
+              db.services:delete({ id = service.id })
             end
           end)
 
           it_content_types("updates with url", function(content_type)
             return function()
+              local service = bp.services:insert({ host = "example.com", path = "/" })
+              local route = bp.routes:insert({ paths = { "/my-route" }, service = service })
               local res = client:patch("/routes/" .. route.id .. "/service", {
                 headers = {
                   ["Content-Type"] = content_type
@@ -577,7 +982,7 @@ for _, strategy in helpers.each_strategy("postgres") do
               assert.equal("/foo",        json.path)
 
 
-              local in_db = assert(db.services:select({ id = service.id }))
+              local in_db = assert(db.services:select({ id = service.id }, { nulls = true }))
               assert.same(json, in_db)
             end
           end)
@@ -601,6 +1006,8 @@ for _, strategy in helpers.each_strategy("postgres") do
 
             it_content_types("handles invalid input", function(content_type)
               return function()
+                local service = bp.services:insert({ host = "example.com", path = "/" })
+                local route = bp.routes:insert({ paths = { "/my-route" }, service = service })
                 local res = client:patch("/routes/" .. route.id .. "/service", {
                   headers = {
                     ["Content-Type"] = content_type
@@ -626,6 +1033,7 @@ for _, strategy in helpers.each_strategy("postgres") do
         describe("DELETE", function()
           describe("errors", function()
             it("returns HTTP 405 when trying to delete a service that is referenced", function()
+              local route = bp.routes:insert({ paths = { "/my-route" } })
               local res  = client:delete("/routes/" .. route.id .. "/service")
               local body = assert.res_status(405, res)
               assert.same({ message = 'Method not allowed' }, cjson.decode(body))
@@ -635,37 +1043,42 @@ for _, strategy in helpers.each_strategy("postgres") do
               local res = client:delete("/routes/" .. utils.uuid() .. "/service")
               assert.res_status(404, res)
             end)
+
+            it("returns HTTP 404 with non-existing route by name", function()
+              local res = client:delete("/routes/in-existent-route/service")
+              assert.res_status(404, res)
+            end)
           end)
         end)
       end)
 
       describe("/routes/{route}/plugins", function()
-        local service
-        local route
-
-        before_each(function()
-          service = bp.services:insert {
-            name     = "my-service",
-            protocol = "http",
-            host     = "my-service.com",
-          }
-
-          route = bp.routes:insert {
-            hosts    = { "my-route.com" },
-            service  = service
-          }
-        end)
-
         describe("POST", function()
           it_content_types("creates a plugin config on a Route", function(content_type)
             return function()
+              if content_type == "multipart/form-data" then
+                -- the client doesn't play well with this
+                return
+              end
+
+              local route = bp.routes:insert({ paths = { "/my-route" } })
+              local bodies = {
+                ["application/x-www-form-urlencoded"] = {
+                  name = "key-auth",
+                  ["config.key_names[1]"] = "apikey",
+                  ["config.key_names[2]"] = "key",
+                },
+                ["application/json"] = {
+                  name = "key-auth",
+                  config = {
+                    key_names = { "apikey", "key" },
+                  }
+                },
+              }
               local res = assert(client:send {
                 method = "POST",
                 path = "/routes/" .. route.id .. "/plugins",
-                body = {
-                  name = "key-auth",
-                  ["config.key_names"] = "apikey,key"
-                },
+                body = bodies[content_type],
                 headers = { ["Content-Type"] = content_type }
               })
               local body = assert.res_status(201, res)
@@ -678,6 +1091,7 @@ for _, strategy in helpers.each_strategy("postgres") do
           describe("errors", function()
             it_content_types("handles invalid input", function(content_type)
               return function()
+                local route = bp.routes:insert({ paths = { "/my-route" } })
                 local res = assert(client:send {
                   method = "POST",
                   path = "/routes/" .. route.id .. "/plugins",
@@ -686,12 +1100,20 @@ for _, strategy in helpers.each_strategy("postgres") do
                 })
                 local body = assert.res_status(400, res)
                 local json = cjson.decode(body)
-                assert.same({ name = "name is required" }, json)
+                assert.same({
+                  code = 2,
+                  fields = {
+                    name = "required field missing",
+                  },
+                  message = "schema violation (name: required field missing)",
+                  name = "schema violation",
+                }, json)
               end
             end)
 
             it_content_types("returns 409 on conflict (same plugin name)", function(content_type)
               return function()
+                local route = bp.routes:insert({ paths = { "/my-route" } })
                 -- insert initial plugin
                 local res = assert(client:send {
                   method = "POST",
@@ -715,12 +1137,29 @@ for _, strategy in helpers.each_strategy("postgres") do
                 })
                 assert.response(res).has.status(409)
                 local json = assert.response(res).has.jsonbody()
-                assert.same({ name = "already exists with value 'basic-auth'"}, json)
+                assert.same({
+                  code = 5,
+                  fields = {
+                    api = ngx.null,
+                    consumer = ngx.null,
+                    name = "basic-auth",
+                    route = {
+                      id = route.id,
+                    },
+                    service = ngx.null,
+                  },
+                  message = [[UNIQUE violation detected on '{consumer=null,]] ..
+                            [[api=null,service=null,name="basic-auth",route={id="]] ..
+                            route.id .. [["}}']],
+                  name = "unique constraint violation",
+                }, json)
               end
             end)
 
-            it_content_types("returns 409 on id conflict (same plugin id)", function(content_type)
+            -- Cassandra doesn't fail on this because its insert is an upsert
+            pending("returns 409 on id conflict (same plugin id)", function(content_type)
               return function()
+                local route = bp.routes:insert({ paths = { "/my-route" } })
                 -- insert initial plugin
                 local res = assert(client:send {
                   method = "POST",
@@ -732,7 +1171,7 @@ for _, strategy in helpers.each_strategy("postgres") do
                 })
                 local body = assert.res_status(201, res)
                 local plugin = cjson.decode(body)
-
+                ngx.sleep(1)
                 -- do it again, to provoke the error
                 local conflict_res = assert(client:send {
                   method = "POST",
@@ -745,167 +1184,15 @@ for _, strategy in helpers.each_strategy("postgres") do
                 })
                 local conflict_body = assert.res_status(409, conflict_res)
                 local json = cjson.decode(conflict_body)
-                assert.same({ id = "already exists with value '" .. plugin.id .. "'"}, json)
-              end
-            end)
-          end)
-        end)
-
-        describe("PUT", function()
-          it_content_types("creates if not exists", function(content_type)
-            return function()
-              local res = assert(client:send {
-                method = "PUT",
-                path = "/routes/" .. route.id .. "/plugins",
-                body = {
-                  name = "key-auth",
-                  ["config.key_names"] = "apikey,key",
-                  created_at = 1461276890000
-                },
-                headers = { ["Content-Type"] = content_type }
-              })
-              local body = assert.res_status(201, res)
-              local json = cjson.decode(body)
-              assert.equal("key-auth", json.name)
-              assert.same({ "apikey", "key" }, json.config.key_names)
-            end
-          end)
-
-          it_content_types("replaces if exists", function(content_type)
-            return function()
-              local res = assert(client:send {
-                method = "PUT",
-                path = "/routes/" .. route.id .. "/plugins",
-                body = {
-                  name = "key-auth",
-                  ["config.key_names"] = "apikey,key",
-                  created_at = 1461276890000
-                },
-                headers = { ["Content-Type"] = content_type }
-              })
-              local body = assert.res_status(201, res)
-              local json = cjson.decode(body)
-
-              res = assert(client:send {
-                method = "PUT",
-                path = "/routes/" .. route.id .. "/plugins",
-                body = {
-                  id = json.id,
-                  name = "key-auth",
-                  ["config.key_names"] = "key",
-                  created_at = 1461276890000
-                },
-                headers = { ["Content-Type"] = content_type }
-              })
-              body = assert.res_status(200, res)
-              json = cjson.decode(body)
-              assert.equal("key-auth", json.name)
-              assert.same({ "key" }, json.config.key_names)
-            end
-          end)
-
-          it_content_types("perfers default values when replacing", function(content_type)
-            return function()
-              local plugin = assert(dao.plugins:insert {
-                name = "key-auth",
-                route_id = route.id,
-                config = {hide_credentials = true}
-              })
-              assert.True(plugin.config.hide_credentials)
-              assert.same({"apikey"}, plugin.config.key_names)
-
-              local res = assert(client:send {
-                method = "PUT",
-                path = "/routes/" .. route.id .. "/plugins",
-                body = {
-                  id = plugin.id,
-                  name = "key-auth",
-                  ["config.key_names"] = "apikey,key",
-                  created_at = 1461276890000
-                },
-                headers = { ["Content-Type"] = content_type }
-              })
-              local body = assert.res_status(200, res)
-              local json = cjson.decode(body)
-              assert.False(json.config.hide_credentials) -- not true anymore
-
-              plugin = assert(dao.plugins:find {
-                id = plugin.id,
-                name = plugin.name
-              })
-              assert.False(plugin.config.hide_credentials)
-              assert.same({"apikey", "key"}, plugin.config.key_names)
-            end
-          end)
-
-          it_content_types("overrides a plugin previous config if partial", function(content_type)
-            return function()
-              local plugin = assert(dao.plugins:insert {
-                name = "key-auth",
-                route_id = route.id
-              })
-              assert.same({ "apikey" }, plugin.config.key_names)
-
-              local res = assert(client:send {
-                method = "PUT",
-                path = "/routes/" .. route.id .. "/plugins",
-                body = {
-                  id = plugin.id,
-                  name = "key-auth",
-                  ["config.key_names"] = "apikey,key",
-                  created_at = 1461276890000
-                },
-                headers = { ["Content-Type"] = content_type }
-              })
-              local body = assert.res_status(200, res)
-              local json = cjson.decode(body)
-              assert.same({ "apikey", "key" }, json.config.key_names)
-            end
-          end)
-
-          it_content_types("updates the enabled property", function(content_type)
-            return function()
-              local plugin = assert(dao.plugins:insert {
-                name = "key-auth",
-                route_id = route.id
-              })
-              assert.True(plugin.enabled)
-
-              local res = assert(client:send {
-                method = "PUT",
-                path = "/routes/" .. route.id .. "/plugins",
-                body = {
-                  id = plugin.id,
-                  name = "key-auth",
-                  enabled = false,
-                  created_at = 1461276890000
-                },
-                headers = { ["Content-Type"] = content_type }
-              })
-              local body = assert.res_status(200, res)
-              local json = cjson.decode(body)
-              assert.False(json.enabled)
-
-              plugin = assert(dao.plugins:find {
-                id = plugin.id,
-                name = plugin.name
-              })
-              assert.False(plugin.enabled)
-            end
-          end)
-
-          describe("errors", function()
-            it_content_types("handles invalid input", function(content_type)
-              return function()
-                local res = assert(client:send {
-                  method = "PUT",
-                  path = "/routes/" .. route.id .. "/plugins",
-                  body = {},
-                  headers = { ["Content-Type"] = content_type }
-                })
-                local body = assert.res_status(400, res)
-                local json = cjson.decode(body)
-                assert.same({ name = "name is required" }, json)
+                assert.same({
+                  code = Errors.codes.PRIMARY_KEY_VIOLATION,
+                  fields = {
+                    id = plugin.id,
+                  },
+                  message = [[primary key violation on key '{id="]] ..
+                            plugin.id .. [["}']],
+                  name = "primary key violation",
+                }, json)
               end
             end)
           end)
@@ -913,9 +1200,10 @@ for _, strategy in helpers.each_strategy("postgres") do
 
         describe("GET", function()
           it("retrieves the first page", function()
+            local route = bp.routes:insert({ paths = { "/my-route" } })
             assert(dao.plugins:insert {
               name = "key-auth",
-              route_id = route.id
+              route = { id = route.id },
             })
             local res = assert(client:send {
               method = "GET",
@@ -926,7 +1214,25 @@ for _, strategy in helpers.each_strategy("postgres") do
             assert.equal(1, #json.data)
           end)
 
+          it("retrieves the first page by name", function()
+            local route = bp.routes:insert({ name = "my-plugins-route", paths = { "/my-route" } })
+            assert(dao.plugins:insert {
+              name = "key-auth",
+              route = { id = route.id },
+            })
+            local res = assert(client:send {
+              method = "GET",
+              path = "/routes/my-plugins-route/plugins"
+            })
+            local body = assert.res_status(200, res)
+            local json = cjson.decode(body)
+            assert.equal(1, #json.data)
+
+            db.routes:delete({ id = route.id })
+          end)
+
           it("ignores an invalid body", function()
+            local route = bp.routes:insert({ paths = { "/my-route" } })
             local res = assert(client:send {
               method = "GET",
               path = "/routes/" .. route.id .. "/plugins",

@@ -1,12 +1,12 @@
 local meta = require "kong.meta"
 local helpers = require "spec.helpers"
-local reports = require "kong.core.reports"
+local reports = require "kong.reports"
 local cjson = require "cjson"
 
 
 describe("reports", function()
   describe("send()", function()
-    setup(function()
+    lazy_setup(function()
       reports.toggle(true)
     end)
     it("sends report over UDP", function()
@@ -70,17 +70,17 @@ describe("reports", function()
   end)
 
   describe("retrieve_redis_version()", function()
-    setup(function()
+    lazy_setup(function()
       stub(ngx, "log")
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       ngx.log:revert()
     end)
 
     before_each(function()
-      package.loaded["kong.core.reports"] = nil
-      reports = require "kong.core.reports"
+      package.loaded["kong.reports"] = nil
+      reports = require "kong.reports"
       reports.toggle(true)
     end)
 

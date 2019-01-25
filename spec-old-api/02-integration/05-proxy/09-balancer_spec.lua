@@ -302,6 +302,7 @@ end
 local add_upstream
 local patch_upstream
 local get_upstream_health
+local get_router_version
 local add_target
 local add_api
 local patch_api
@@ -318,8 +319,8 @@ do
     end
   end
 
-  local function api_send(method, path, body)
-    local api_client = helpers.admin_client()
+  local function api_send(method, path, body, forced_port)
+    local api_client = helpers.admin_client(nil, forced_port)
     local res, err = api_client:send({
       method = method,
       path = path,
@@ -353,8 +354,17 @@ do
   get_upstream_health = function(upstream_name)
     local path = "/upstreams/" .. upstream_name .."/health"
     local status, body = api_send("GET", path)
-    assert.same(200, status)
-    return body
+    if status == 200 then
+      return body
+    end
+  end
+
+  get_router_version = function(forced_port)
+    local path = "/cache/api_router:version"
+    local status, body = api_send("GET", path, nil, forced_port)
+    if status == 200 then
+      return body.message
+    end
   end
 
   do
@@ -407,9 +417,9 @@ end
 
 
 local function truncate_relevant_tables(db, dao)
+  db:truncate("upstreams")
+  db:truncate("targets")
   dao.apis:truncate()
-  dao.upstreams:truncate()
-  dao.targets:truncate()
   dao.plugins:truncate()
 end
 
@@ -419,9 +429,11 @@ local function poll_wait_health(upstream_name, localhost, port, value)
   local expire = ngx.now() + hard_timeout
   while ngx.now() < expire do
     local health = get_upstream_health(upstream_name)
-    for _, d in ipairs(health.data) do
-      if d.target == localhost .. ":" .. port and d.health == value then
-        return
+    if health then
+      for _, d in ipairs(health.data) do
+        if d.target == localhost .. ":" .. port and d.health == value then
+          return
+        end
       end
     end
     ngx.sleep(0.01) -- poll-wait
@@ -429,16 +441,20 @@ local function poll_wait_health(upstream_name, localhost, port, value)
 end
 
 
-local function file_contains(filename, searched)
-  local fd = assert(io.open(filename, "r"))
-  for line in fd:lines() do
-    if line:find(searched, 1, true) then
-      fd:close()
-      return true
-    end
-  end
-  fd:close()
-  return false
+local function wait_for_router_update(old_rv, localhost, proxy_port, admin_port)
+  -- add dummy upstream just to rebuild router
+  local dummy_upstream_name = add_upstream()
+  local dummy_port = add_target(dummy_upstream_name, localhost)
+  local dummy_api_host = add_api(dummy_upstream_name)
+  local dummy_server = http_server(localhost, dummy_port, { math.huge })
+
+  helpers.wait_until(function()
+    client_requests(1, dummy_api_host, "127.0.0.1", proxy_port)
+    local rv = get_router_version(admin_port)
+    return rv ~= old_rv
+  end, 10)
+
+  dummy_server:done()
 end
 
 
@@ -448,12 +464,13 @@ local localhosts = {
   hostname = "localhost",
 }
 
+
 for _, strategy in helpers.each_strategy() do
 
   describe("Ring-balancer #" .. strategy, function()
 
-    setup(function()
-      local _, db, dao = helpers.get_db_utils(strategy, true)
+    lazy_setup(function()
+      local _, db, dao = helpers.get_db_utils(strategy, {})
 
       truncate_relevant_tables(db, dao)
       helpers.start_kong({
@@ -463,13 +480,13 @@ for _, strategy in helpers.each_strategy() do
       })
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       helpers.stop_kong()
     end)
 
     describe("#healthchecks (#cluster)", function()
 
-      setup(function()
+      lazy_setup(function()
         -- start a second Kong instance (ports are Kong test ports + 10)
         helpers.start_kong({
           database   = strategy,
@@ -483,7 +500,7 @@ for _, strategy in helpers.each_strategy() do
         })
       end)
 
-      teardown(function()
+      lazy_teardown(function()
         helpers.stop_kong("servroot2", true, true)
       end)
 
@@ -494,24 +511,24 @@ for _, strategy in helpers.each_strategy() do
           --XXX EE: flaky
           pending("does not perform health checks when disabled (#3304)", function()
 
-            local upstream_name = add_upstream({})
+            local old_rv = get_router_version(9011)
+
+            local upstream_name = add_upstream()
             local port = add_target(upstream_name, localhost)
             local api_host = add_api(upstream_name)
 
-            helpers.wait_until(function()
-              return file_contains("servroot2/logs/error.log", "balancer:targets")
-            end, 10)
+            wait_for_router_update(old_rv, localhost, 9010, 9011)
 
             -- server responds, then fails, then responds again
             local server = http_server(localhost, port, { 20, 20, 20 })
 
             local seq = {
-              { port = 9000, oks = 10, fails = 0, last_status = 200 },
               { port = 9010, oks = 10, fails = 0, last_status = 200 },
-              { port = 9000, oks = 0, fails = 10, last_status = 500 },
+              { port = 9000, oks = 10, fails = 0, last_status = 200 },
               { port = 9010, oks = 0, fails = 10, last_status = 500 },
-              { port = 9000, oks = 10, fails = 0, last_status = 200 },
+              { port = 9000, oks = 0, fails = 10, last_status = 500 },
               { port = 9010, oks = 10, fails = 0, last_status = 200 },
+              { port = 9000, oks = 10, fails = 0, last_status = 200 },
             }
             for i, test in ipairs(seq) do
               local oks, fails, last_status = client_requests(10, api_host, "127.0.0.1", test.port)

@@ -1,7 +1,12 @@
 local cjson = require "cjson"
 local helpers = require "spec.helpers"
 local utils = require "kong.tools.utils"
-local fmt = string.format
+
+
+local kong = {
+  table = require("kong.pdk.table").new()
+}
+
 
 local function provision_code(host, extra_headers, client_id)
   local request_client = helpers.proxy_ssl_client()
@@ -16,7 +21,7 @@ local function provision_code(host, extra_headers, client_id)
       state = "hello",
       authenticated_userid = "userid123"
     },
-    headers = utils.table_merge({
+    headers = kong.table.merge({
       ["Host"] = host or "oauth2.com",
       ["Content-Type"] = "application/json"
     }, extra_headers)
@@ -44,7 +49,7 @@ local function provision_token(host, extra_headers, client_id, client_secret)
              client_id = client_id or "clientid123",
              client_secret = client_secret or "secret123",
              grant_type = "authorization_code" },
-    headers = utils.table_merge({
+    headers = kong.table.merge({
       ["Host"] = host or "oauth2.com",
       ["Content-Type"] = "application/json"
     }, extra_headers)
@@ -60,60 +65,62 @@ end
 describe("Plugin: oauth2 (access)", function()
   local proxy_ssl_client, proxy_client
   local client1
+  local bp
+  local db
   local dao
-  setup(function()
-    dao = select(3, helpers.get_db_utils())
+  lazy_setup(function()
+    bp, db, dao = helpers.get_db_utils()
 
-    local consumer = assert(dao.consumers:insert {
+    local consumer = bp.consumers:insert {
       username = "bob"
-    })
-    local anonymous_user = assert(dao.consumers:insert {
+    }
+    local anonymous_user = bp.consumers:insert {
       username = "no-body"
-    })
-    client1 = assert(dao.oauth2_credentials:insert {
+    }
+    client1 = bp.oauth2_credentials:insert {
       client_id = "clientid123",
       client_secret = "secret123",
-      redirect_uri = "http://google.com/kong",
+      redirect_uris = { "http://google.com/kong" },
       name = "testapp",
-      consumer_id = consumer.id
-    })
-    assert(dao.oauth2_credentials:insert {
+      consumer = { id = consumer.id },
+    }
+    bp.oauth2_credentials:insert {
       client_id = "clientid789",
       client_secret = "secret789",
-      redirect_uri = "http://google.com/kong?foo=bar&code=123",
+      redirect_uris = { "http://google.com/kong?foo=bar&code=123" },
       name = "testapp2",
-      consumer_id = consumer.id
-    })
-    assert(dao.oauth2_credentials:insert {
+      consumer = { id = consumer.id },
+    }
+    bp.oauth2_credentials:insert {
       client_id = "clientid333",
       client_secret = "secret333",
-      redirect_uri = "http://google.com/kong",
+      redirect_uris = { "http://google.com/kong" },
       name = "testapp3",
-      consumer_id = consumer.id
-    })
-    assert(dao.oauth2_credentials:insert {
+      consumer = { id = consumer.id },
+    }
+    bp.oauth2_credentials:insert {
       client_id = "clientid456",
       client_secret = "secret456",
-      redirect_uri = {"http://one.com/one/", "http://two.com/two"},
+      redirect_uris = { "http://one.com/one/", "http://two.com/two" },
       name = "testapp3",
-      consumer_id = consumer.id
-    })
-    assert(dao.oauth2_credentials:insert {
-          client_id = "clientid1011",
-          client_secret = "secret1011",
-          redirect_uri = "http://google.com/kong",
-          name = "testapp31",
-          consumer_id = consumer.id
-    })
+      consumer = { id = consumer.id },
+    }
+    bp.oauth2_credentials:insert {
+      client_id = "clientid1011",
+      client_secret = "secret1011",
+      redirect_uris = { "http://google.com/kong" },
+      name = "testapp31",
+      consumer = { id = consumer.id },
+    }
 
     local api1 = assert(dao.apis:insert {
       name         = "api-1",
       hosts        = { "oauth2.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name   = "oauth2",
-      api_id = api1.id,
+      api = { id = api1.id },
       config = {
         scopes                    = { "email", "profile", "user.email" },
         enable_authorization_code = true,
@@ -129,9 +136,9 @@ describe("Plugin: oauth2 (access)", function()
       hosts        = { "example-path.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name   = "oauth2",
-      api_id = api2.id,
+      api = { id = api2.id },
       config = {
         scopes                    = { "email", "profile" },
         enable_authorization_code = true,
@@ -147,9 +154,9 @@ describe("Plugin: oauth2 (access)", function()
       uris         = { "/somepath" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name   = "oauth2",
-      api_id = api2bis.id,
+      api = { id = api2bis.id },
       config = {
         scopes                    = { "email", "profile" },
         enable_authorization_code = true,
@@ -165,9 +172,9 @@ describe("Plugin: oauth2 (access)", function()
       hosts        = { "oauth2_3.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name   = "oauth2",
-      api_id = api3.id,
+      api = { id = api3.id },
       config = {
         scopes                    = { "email", "profile" },
         enable_authorization_code = true,
@@ -184,9 +191,9 @@ describe("Plugin: oauth2 (access)", function()
       hosts        = { "oauth2_4.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name   = "oauth2",
-      api_id = api4.id,
+      api = { id = api4.id },
       config = {
         scopes                    = { "email", "profile" },
         mandatory_scope           = true,
@@ -202,9 +209,9 @@ describe("Plugin: oauth2 (access)", function()
       hosts        = { "oauth2_5.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name   = "oauth2",
-      api_id = api5.id,
+      api = { id = api5.id },
       config = {
         scopes                    = { "email", "profile" },
         mandatory_scope           = true,
@@ -220,9 +227,9 @@ describe("Plugin: oauth2 (access)", function()
       hosts        = { "oauth2_6.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name   = "oauth2",
-      api_id = api6.id,
+      api = { id = api6.id },
       config = {
         scopes                            = { "email", "profile", "user.email" },
         enable_authorization_code         = true,
@@ -239,9 +246,9 @@ describe("Plugin: oauth2 (access)", function()
       hosts        = { "oauth2_7.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name   = "oauth2",
-      api_id = api7.id,
+      api = { id = api7.id },
       config = {
         scopes                    = { "email", "profile", "user.email" },
         enable_authorization_code = true,
@@ -259,9 +266,9 @@ describe("Plugin: oauth2 (access)", function()
       hosts        = { "oauth2_8.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name   = "oauth2",
-      api_id = api8.id,
+      api = { id = api8.id },
       config = {
         scopes                    = { "email", "profile", "user.email" },
         enable_authorization_code = true,
@@ -278,9 +285,9 @@ describe("Plugin: oauth2 (access)", function()
       hosts        = { "oauth2_9.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name   = "oauth2",
-      api_id = api9.id,
+      api = { id = api9.id },
       config = {
         scopes                    = { "email", "profile", "user.email" },
         enable_authorization_code = true,
@@ -297,9 +304,9 @@ describe("Plugin: oauth2 (access)", function()
       hosts        = { "oauth2_10.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name   = "oauth2",
-      api_id = api10.id,
+      api = { id = api10.id },
       config = {
         scopes                    = { "email", "profile", "user.email" },
         enable_authorization_code = true,
@@ -316,9 +323,9 @@ describe("Plugin: oauth2 (access)", function()
           hosts        = { "oauth2_11.com" },
           upstream_url = helpers.mock_upstream_url,
         })
-        assert(dao.plugins:insert {
+        assert(db.plugins:insert {
           name   = "oauth2",
-          api_id = api11.id,
+          api = { id = api11.id },
           config = {
             scopes                    = { "email", "profile", "user.email" },
             enable_authorization_code = true,
@@ -335,9 +342,9 @@ describe("Plugin: oauth2 (access)", function()
           hosts        = { "oauth2_12.com" },
           upstream_url = helpers.mock_upstream_url,
         })
-        assert(dao.plugins:insert {
+        assert(db.plugins:insert {
           name   = "oauth2",
-          api_id = api12.id,
+          api = { id = api12.id },
           config = {
             scopes                    = { "email", "profile", "user.email" },
             enable_authorization_code = true,
@@ -357,7 +364,7 @@ describe("Plugin: oauth2 (access)", function()
     proxy_client    = helpers.proxy_client()
     proxy_ssl_client = helpers.proxy_ssl_client()
   end)
-  teardown(function()
+  lazy_teardown(function()
     if proxy_client and proxy_ssl_client then
       proxy_client:close()
       proxy_ssl_client:close()
@@ -742,12 +749,11 @@ describe("Plugin: oauth2 (access)", function()
         assert.is_nil(err)
         local m, err = iterator()
         assert.is_nil(err)
-        local data = dao.oauth2_authorization_codes:find_all {code = m[1]}
-        assert.are.equal(1, #data)
-        assert.are.equal(m[1], data[1].code)
-        assert.are.equal("userid123", data[1].authenticated_userid)
-        assert.are.equal("email", data[1].scope)
-        assert.are.equal(client1.id, data[1].credential_id)
+        local data = db.oauth2_authorization_codes:select_by_code(m[1])
+        assert.are.equal(m[1], data.code)
+        assert.are.equal("userid123", data.authenticated_userid)
+        assert.are.equal("email", data.scope)
+        assert.are.equal(client1.id, data.credential.id)
       end)
       it("returns success with a dotted scope and store authenticated user properties", function()
         local res = assert(proxy_ssl_client:send {
@@ -773,11 +779,10 @@ describe("Plugin: oauth2 (access)", function()
         assert.is_nil(err)
         local m, err = iterator()
         assert.is_nil(err)
-        local data = dao.oauth2_authorization_codes:find_all {code = m[1]}
-        assert.are.equal(1, #data)
-        assert.are.equal(m[1], data[1].code)
-        assert.are.equal("userid123", data[1].authenticated_userid)
-        assert.are.equal("user.email", data[1].scope)
+        local data = db.oauth2_authorization_codes:select_by_code(m[1])
+        assert.are.equal(m[1], data.code)
+        assert.are.equal("userid123", data.authenticated_userid)
+        assert.are.equal("user.email", data.scope)
       end)
     end)
 
@@ -846,11 +851,10 @@ describe("Plugin: oauth2 (access)", function()
         assert.is_nil(err)
         local m, err = iterator()
         assert.is_nil(err)
-        local data = dao.oauth2_tokens:find_all {access_token = m[1]}
-        assert.are.equal(1, #data)
-        assert.are.equal(m[1], data[1].access_token)
-        assert.are.equal(5, data[1].expires_in)
-        assert.falsy(data[1].refresh_token)
+        local data = db.oauth2_tokens:select_by_access_token(m[1])
+        assert.are.equal(m[1], data.access_token)
+        assert.are.equal(5, data.expires_in)
+        assert.falsy(data.refresh_token)
       end)
       it("returns success and the token should have the right expiration when a custom header is passed", function()
               local res = assert(proxy_ssl_client:send {
@@ -875,11 +879,10 @@ describe("Plugin: oauth2 (access)", function()
               assert.is_nil(err)
               local m, err = iterator()
               assert.is_nil(err)
-              local data = dao.oauth2_tokens:find_all {access_token = m[1]}
-              assert.are.equal(1, #data)
-              assert.are.equal(m[1], data[1].access_token)
-              assert.are.equal(7, data[1].expires_in)
-              assert.falsy(data[1].refresh_token)
+              local data = db.oauth2_tokens:select_by_access_token(m[1])
+              assert.are.equal(m[1], data.access_token)
+              assert.are.equal(7, data.expires_in)
+              assert.falsy(data.refresh_token)
       end)
       it("returns success and store authenticated user properties", function()
         local res = assert(proxy_ssl_client:send {
@@ -904,15 +907,14 @@ describe("Plugin: oauth2 (access)", function()
         assert.is_nil(err)
         local m, err = iterator()
         assert.is_nil(err)
-        local data = dao.oauth2_tokens:find_all {access_token = m[1]}
-        assert.are.equal(1, #data)
-        assert.are.equal(m[1], data[1].access_token)
-        assert.are.equal("userid123", data[1].authenticated_userid)
-        assert.are.equal("email profile", data[1].scope)
+        local data = db.oauth2_tokens:select_by_access_token(m[1])
+        assert.are.equal(m[1], data.access_token)
+        assert.are.equal("userid123", data.authenticated_userid)
+        assert.are.equal("email profile", data.scope)
 
         -- Checking that there is no refresh token since it's an implicit grant
-        assert.are.equal(5, data[1].expires_in)
-        assert.falsy(data[1].refresh_token)
+        assert.are.equal(5, data.expires_in)
+        assert.falsy(data.refresh_token)
       end)
       it("returns set the right upstream headers", function()
         local res = assert(proxy_ssl_client:send {
@@ -1890,7 +1892,7 @@ describe("Plugin: oauth2 (access)", function()
       })
       local body = cjson.decode(assert.res_status(200, res))
 
-      local consumer = dao.consumers:find_all({username = "bob"})[1]
+      local consumer = db.consumers:select_by_username("bob")
       assert.are.equal(consumer.id, body.headers["x-consumer-id"])
       assert.are.equal(consumer.username, body.headers["x-consumer-username"])
       assert.are.equal("userid123", body.headers["x-authenticated-userid"])
@@ -1910,7 +1912,7 @@ describe("Plugin: oauth2 (access)", function()
       })
       local body = cjson.decode(assert.res_status(200, res))
 
-      local consumer = dao.consumers:find_all({username = "bob"})[1]
+      local consumer = db.consumers:select_by_username("bob")
       assert.are.equal(consumer.id, body.headers["x-consumer-id"])
       assert.are.equal(consumer.username, body.headers["x-consumer-username"])
       assert.are.equal("userid123", body.headers["x-authenticated-userid"])
@@ -2158,8 +2160,8 @@ describe("Plugin: oauth2 (access)", function()
       })
       assert.res_status(200, res)
 
-      local id = dao.oauth2_tokens:find_all({access_token = token.access_token })[1].id
-      assert.truthy(dao.oauth2_tokens:find({id=id}))
+      local id = db.oauth2_tokens:select_by_access_token(token.access_token).id
+      assert.truthy(db.oauth2_tokens:select({id=id}))
 
       -- But waiting after the cache expiration (5 seconds) should block the request
       ngx.sleep(7)
@@ -2198,7 +2200,7 @@ describe("Plugin: oauth2 (access)", function()
       assert.falsy(token.access_token == cjson.decode(body).access_token)
       assert.falsy(token.refresh_token == cjson.decode(body).refresh_token)
 
-      assert.falsy(dao.oauth2_tokens:find({id=id}))
+      assert.falsy(db.oauth2_tokens:select({ id = id }))
     end)
   end)
 
@@ -2343,18 +2345,20 @@ describe("Plugin: oauth2 (access)", function()
 
   local client, user1, user2, anonymous
   local dao
+  local bp
+  local db
 
-  setup(function()
-    dao = select(3, helpers.get_db_utils())
+  lazy_setup(function()
+    bp, db, dao = helpers.get_db_utils()
 
     local api1 = assert(dao.apis:insert {
       name         = "api-1",
       hosts        = { "logical-and.com" },
       upstream_url = helpers.mock_upstream_url .. "/request",
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name   = "oauth2",
-      api_id = api1.id,
+      api = { id = api1.id },
       config = {
         scopes                    = { "email", "profile", "user.email" },
         enable_authorization_code = true,
@@ -2365,29 +2369,29 @@ describe("Plugin: oauth2 (access)", function()
         global_credentials        = false,
       },
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name   = "key-auth",
-      api_id = api1.id,
+      api = { id = api1.id },
     })
 
-    anonymous = assert(dao.consumers:insert {
+    anonymous = bp.consumers:insert {
       username = "Anonymous",
-    })
-    user1 = assert(dao.consumers:insert {
+    }
+    user1 = bp.consumers:insert {
       username = "Mickey",
-    })
-    user2 = assert(dao.consumers:insert {
+    }
+    user2 = bp.consumers:insert {
       username = "Aladdin",
-    })
+    }
 
     local api2 = assert(dao.apis:insert {
       name         = "api-2",
       hosts        = { "logical-or.com" },
       upstream_url = helpers.mock_upstream_url .. "/request",
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name   = "oauth2",
-      api_id = api2.id,
+      api = { id = api2.id },
       config = {
         scopes                    = { "email", "profile", "user.email" },
         enable_authorization_code = true,
@@ -2399,26 +2403,26 @@ describe("Plugin: oauth2 (access)", function()
         anonymous                 = anonymous.id,
       },
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name   = "key-auth",
-      api_id = api2.id,
+      api = { id = api2.id },
       config = {
         anonymous = anonymous.id,
       },
     })
 
-    assert(dao.keyauth_credentials:insert {
-      key         = "Mouse",
-      consumer_id = user1.id,
-    })
+    bp.keyauth_credentials:insert {
+      key      = "Mouse",
+      consumer = { id = user1.id },
+    }
 
-    assert(dao.oauth2_credentials:insert {
-      client_id     = "clientid123",
-      client_secret = "secret123",
-      redirect_uri  = "http://google.com/kong",
-      name          = "testapp",
-      consumer_id   = user2.id,
-    })
+    bp.oauth2_credentials:insert {
+      client_id      = "clientid123",
+      client_secret  = "secret123",
+      redirect_uris  = { "http://google.com/kong" },
+      name           = "testapp",
+      consumer       = { id = user2.id },
+    }
 
     assert(helpers.start_kong({
       nginx_conf = "spec/fixtures/custom_nginx.template",
@@ -2427,7 +2431,7 @@ describe("Plugin: oauth2 (access)", function()
   end)
 
 
-  teardown(function()
+  lazy_teardown(function()
     if client then client:close() end
     helpers.stop_kong()
   end)
@@ -2570,9 +2574,11 @@ for _, strategy in helpers.each_strategy() do
 
     local client
     local dao
+    local bp
+    local db
 
-    setup(function()
-      dao = select(3, helpers.get_db_utils(strategy))
+    lazy_setup(function()
+      bp, db, dao = helpers.get_db_utils(strategy)
 
       local api11 = assert(dao.apis:insert {
         name = "api-11",
@@ -2580,9 +2586,9 @@ for _, strategy in helpers.each_strategy() do
         upstream_url = "http://mockbin.com"
       })
 
-      assert(dao.plugins:insert {
+      assert(db.plugins:insert {
         name = "oauth2",
-        api_id = api11.id,
+        api = { id = api11.id },
         config = {
           enable_authorization_code = true,
           mandatory_scope = false,
@@ -2599,9 +2605,9 @@ for _, strategy in helpers.each_strategy() do
         upstream_url = "http://mockbin.com"
       })
 
-      assert(dao.plugins:insert {
+      assert(db.plugins:insert {
         name = "oauth2",
-        api_id = api12.id,
+        api = { id = api12.id },
         config = {
           enable_authorization_code = true,
           mandatory_scope = false,
@@ -2612,16 +2618,16 @@ for _, strategy in helpers.each_strategy() do
         }
       })
 
-      local consumer = assert(dao.consumers:insert {
+      local consumer = bp.consumers:insert {
         username = "bob"
-      })
-      assert(dao.oauth2_credentials:insert {
+      }
+      bp.oauth2_credentials:insert {
         client_id = "clientid123",
         client_secret = "secret123",
-        redirect_uri = "http://google.com/kong",
+        redirect_uris = { "http://google.com/kong" },
         name = "testapp",
-        consumer_id = consumer.id
-      })
+        consumer = { id = consumer.id },
+      }
       assert(helpers.start_kong({
         database = strategy,
         trusted_ips = "127.0.0.1",
@@ -2630,49 +2636,34 @@ for _, strategy in helpers.each_strategy() do
       client = helpers.proxy_client()
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       if client then client:close() end
       helpers.stop_kong()
     end)
 
-    local function assert_ttls_records_for_token(uuid, count)
-      local DB = require "kong.dao.db.postgres"
-      local _db = DB.new(helpers.test_conf, strategy)
-      local query = fmt("SELECT COUNT(*) FROM ttls where table_name='oauth2_tokens' AND primary_uuid_value = '%s'", tostring(uuid))
-      local result, error = _db:query(query)
-      assert.falsy(error)
-      assert.truthy(result[1].count == count)
-    end
-
     describe("refresh token", function()
       it("is deleted after defined TTL", function()
         local token = provision_token("oauth2_11.com")
-        local token_entity = dao.oauth2_tokens:find_all { access_token = token.access_token }
-        assert.equal(1, #token_entity)
-
-        if strategy == "postgres" then
-          assert_ttls_records_for_token(token_entity[1].id, 1)
-        end
+        local token_entity = db.oauth2_tokens:select_by_access_token(token.access_token)
+        assert.is_table(token_entity)
 
         ngx.sleep(3)
 
-        token_entity = dao.oauth2_tokens:find_all { access_token = token.access_token }
-        assert.equal(0, #token_entity)
+        local err
+        token_entity, err = db.oauth2_tokens:select_by_access_token(token.access_token)
+        assert.is_nil(token_entity)
+        assert.is_nil(err)
       end)
 
       it("is not deleted when when TTL is 0 == never", function()
         local token = provision_token("oauth2_12.com")
-        local token_entity = dao.oauth2_tokens:find_all { access_token = token.access_token }
-        assert.equal(1, #token_entity)
-
-        if strategy == "postgres" then
-          assert_ttls_records_for_token(token_entity[1].id, 0)
-        end
+        local token_entity = db.oauth2_tokens:select_by_access_token(token.access_token)
+        assert.is_table(token_entity)
 
         ngx.sleep(3)
 
-        token_entity = dao.oauth2_tokens:find_all { access_token = token.access_token }
-        assert.equal(1, #token_entity)
+        token_entity = db.oauth2_tokens:select_by_access_token(token.access_token)
+        assert.is_table(token_entity)
       end)
     end)
 

@@ -7,18 +7,22 @@ for _, strategy in helpers.each_strategy() do
     local admin_client
     local proxy_ssl_client
     local db
-    local dao
     local bp
 
-    setup(function()
-      bp, db, dao = helpers.get_db_utils(strategy)
-
-      assert(db:truncate())
-      dao:truncate_tables()
-      assert(dao:run_migrations())
+    lazy_setup(function()
+      bp, db = helpers.get_db_utils(strategy, {
+        "routes",
+        "services",
+        "consumers",
+        "plugins",
+        "oauth2_tokens",
+        "oauth2_credentials",
+        "oauth2_authorization_codes",
+      })
     end)
 
     before_each(function()
+<<<<<<< HEAD
       assert(db:truncate())
       dao:truncate_tables()
       helpers.register_consumer_relations(dao)
@@ -26,6 +30,18 @@ for _, strategy in helpers.each_strategy() do
       -- XXX EE-only
       bp, db, dao = helpers.get_db_utils(strategy)
 
+||||||| merged common ancestors
+      assert(db:truncate())
+      dao:truncate_tables()
+=======
+      assert(db:truncate("routes"))
+      assert(db:truncate("services"))
+      assert(db:truncate("consumers"))
+      assert(db:truncate("plugins"))
+      assert(db:truncate("oauth2_tokens"))
+      assert(db:truncate("oauth2_credentials"))
+      assert(db:truncate("oauth2_authorization_codes"))
+>>>>>>> 0.15.0
 
       local service = bp.services:insert()
 
@@ -35,9 +51,9 @@ for _, strategy in helpers.each_strategy() do
         service   = service,
       })
 
-      assert(dao.plugins:insert {
+      db.plugins:insert {
         name     = "oauth2",
-        route_id = route.id,
+        route = { id = route.id },
         config   = {
           scopes                    = { "email", "profile" },
           enable_authorization_code = true,
@@ -46,19 +62,19 @@ for _, strategy in helpers.each_strategy() do
           token_expiration          = 5,
           enable_implicit_grant     = true,
         },
-      })
+      }
 
-      local consumer = assert(dao.consumers:insert {
+      local consumer = bp.consumers:insert {
         username = "bob",
-      })
+      }
 
-      assert(dao.oauth2_credentials:insert {
-        client_id     = "clientid123",
-        client_secret = "secret123",
-        redirect_uri  = "http://google.com/kong",
-        name          = "testapp",
-        consumer_id   = consumer.id,
-      })
+      db.oauth2_credentials:insert {
+        client_id      = "clientid123",
+        client_secret  = "secret123",
+        redirect_uris  = { "http://google.com/kong" },
+        name           = "testapp",
+        consumer       = { id = consumer.id },
+      }
 
       assert(helpers.start_kong({
         database   = strategy,
@@ -107,7 +123,7 @@ for _, strategy in helpers.each_strategy() do
     end
 
     describe("OAuth2 Credentials entity invalidation", function()
-      it("should invalidate when OAuth2 Credential entity is deleted", function()
+      it("invalidates when OAuth2 Credential entity is deleted", function()
         -- It should properly work
         local code = provision_code("clientid123")
         local res = assert(proxy_ssl_client:send {
@@ -122,7 +138,7 @@ for _, strategy in helpers.each_strategy() do
         assert.response(res).has.status(200)
 
         -- Check that cache is populated
-        local cache_key = dao.oauth2_credentials:cache_key("clientid123")
+        local cache_key = db.oauth2_credentials:cache_key("clientid123")
 
         local res = assert(admin_client:send {
           method  = "GET",
@@ -165,7 +181,7 @@ for _, strategy in helpers.each_strategy() do
         assert.response(res).has.status(400)
       end)
 
-      it("should invalidate when OAuth2 Credential entity is updated", function()
+      it("invalidates when OAuth2 Credential entity is updated", function()
         -- It should properly work
         local code = provision_code("clientid123")
         local res = assert(proxy_ssl_client:send {
@@ -193,7 +209,7 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(400, res)
 
         -- Check that cache is populated
-        local cache_key = dao.oauth2_credentials:cache_key("clientid123")
+        local cache_key = db.oauth2_credentials:cache_key("clientid123")
 
         local res = assert(admin_client:send {
           method  = "GET",
@@ -254,7 +270,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("Consumer entity invalidation", function()
-      it("should invalidate when Consumer entity is deleted", function()
+      it("invalidates when Consumer entity is deleted", function()
         -- It should properly work
         local code = provision_code("clientid123")
         local res = assert(proxy_ssl_client:send {
@@ -269,7 +285,7 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(200, res)
 
         -- Check that cache is populated
-        local cache_key = dao.oauth2_credentials:cache_key("clientid123")
+        local cache_key = db.oauth2_credentials:cache_key("clientid123")
 
         local res = assert(admin_client:send {
           method  = "GET",
@@ -312,7 +328,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("OAuth2 access token entity invalidation", function()
-      it("should invalidate when OAuth2 token entity is deleted", function()
+      it("invalidates when OAuth2 token entity is deleted", function()
         -- It should properly work
         local code = provision_code("clientid123")
         local res = assert(proxy_ssl_client:send {
@@ -338,15 +354,25 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(200, res)
 
         -- Check that cache is populated
-        local cache_key = dao.oauth2_tokens:cache_key(token.access_token)
+        local cache_key = db.oauth2_tokens:cache_key(token.access_token)
         local res = assert(admin_client:send {
           method  = "GET",
           path    = "/cache/" .. cache_key,
           headers = {}
         })
         assert.res_status(200, res)
+<<<<<<< HEAD
         local res = dao.oauth2_tokens:find_all({access_token=token.access_token})
         local token_id = res[1].id
+||||||| merged common ancestors
+
+        local res = dao.oauth2_tokens:find_all({access_token=token.access_token})
+        local token_id = res[1].id
+=======
+
+        local res = db.oauth2_tokens:select_by_access_token(token.access_token)
+        local token_id = res.id
+>>>>>>> 0.15.0
         assert.is_string(token_id)
 
         -- Delete token (which triggers invalidation)
@@ -377,7 +403,7 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(401, res)
       end)
 
-      it("should invalidate when Oauth2 token entity is updated", function()
+      it("invalidates when Oauth2 token entity is updated", function()
         -- It should properly work
         local code = provision_code("clientid123")
         local res = assert(proxy_ssl_client:send {
@@ -403,7 +429,7 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(200, res)
 
         -- Check that cache is populated
-        local cache_key = dao.oauth2_tokens:cache_key(token.access_token)
+        local cache_key = db.oauth2_tokens:cache_key(token.access_token)
 
         local res = assert(admin_client:send {
           method  = "GET",
@@ -412,8 +438,8 @@ for _, strategy in helpers.each_strategy() do
         })
         assert.res_status(200, res)
 
-        local res = dao.oauth2_tokens:find_all({access_token=token.access_token})
-        local token_id = res[1].id
+        local res = db.oauth2_tokens:select_by_access_token(token.access_token)
+        local token_id = res.id
         assert.is_string(token_id)
 
         -- Update OAuth 2 token (which triggers invalidation)
@@ -462,7 +488,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("OAuth2 client entity invalidation", function()
-      it("should invalidate token when OAuth2 client entity is deleted", function()
+      it("invalidates token when OAuth2 client entity is deleted", function()
         -- It should properly work
         local code = provision_code("clientid123")
         local res = assert(proxy_ssl_client:send {
@@ -488,7 +514,7 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(200, res)
 
         -- Check that cache is populated
-        local cache_key = dao.oauth2_tokens:cache_key(token.access_token)
+        local cache_key = db.oauth2_tokens:cache_key(token.access_token)
 
         local res = assert(admin_client:send {
           method  = "GET",
@@ -498,7 +524,7 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(200, res)
 
         -- Retrieve credential ID
-        local cache_key_credential = dao.oauth2_credentials:cache_key("clientid123")
+        local cache_key_credential = db.oauth2_credentials:cache_key("clientid123")
 
         local res = assert(admin_client:send {
           method  = "GET",

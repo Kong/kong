@@ -1,8 +1,8 @@
 return {
   fields = {
-    value = { typ = "string" },
+    value = { type = "string" },
     extra = {
-      typ     = "string",
+      type    = "string",
       default = "extra",
     }
   }

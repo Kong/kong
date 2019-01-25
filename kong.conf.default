@@ -43,8 +43,8 @@
                                           # `prefix` location.
 
 #proxy_error_log = logs/error.log         # Path for proxy port request error
-                                          # logs. Granularity of these logs is
-                                          # adjusted by the `log_level`
+                                          # logs. The granularity of these logs
+                                          # is adjusted by the `log_level`
                                           # directive.
 
 #admin_access_log = logs/admin_access.log # Path for Admin API request access
@@ -55,16 +55,40 @@
                                           # `prefix` location.
 
 #admin_error_log = logs/error.log         # Path for Admin API request error
-                                          # logs. Granularity of these logs is
-                                          # adjusted by the `log_level`
+                                          # logs. The granularity of these logs
+                                          # is adjusted by the `log_level`
                                           # directive.
 
-#custom_plugins =                # Comma-separated list of additional plugins
-                                 # this node should load.
-                                 # Use this property to load custom plugins
-                                 # that are not bundled with Kong.
-                                 # Plugins will be loaded from the
-                                 # `kong.plugins.{name}.*` namespace.
+#plugins = bundled               # Comma-separated list of plugins this node
+                                 # should load. By default, only plugins
+                                 # bundled in official distributions are
+                                 # loaded via the `bundled` keyword.
+                                 #
+                                 # Loading a plugin does not enable it by
+                                 # default, but only instructs Kong to load its
+                                 # source code, and allows to configure the
+                                 # plugin via the various related Admin API
+                                 # endpoints.
+                                 #
+                                 # The specified name(s) will be substituted as
+                                 # such in the Lua namespace:
+                                 # `kong.plugins.{name}.*`.
+                                 #
+                                 # When the `off` keyword is specified as the
+                                 # only value, no plugins will be loaded.
+                                 #
+                                 # `bundled` and plugin names can be mixed
+                                 # together, as the following examples suggest:
+                                 #
+                                 # - plugins = bundled, custom-auth
+                                 #     > will load all bundled plugins and
+                                 #       another plugin `custom-auth`
+                                 #
+                                 # - plugins = key-auth, custom-auth
+                                 #     > will only load these two plugins
+                                 #
+                                 # - plugins = off
+                                 #     > will not load any plugin
 
 #anonymous_reports = on          # Send anonymous usage data such as error
                                  # stack traces to help improve Kong.
@@ -74,26 +98,40 @@
 #------------------------------------------------------------------------------
 
 #proxy_listen = 0.0.0.0:8000, 0.0.0.0:8443 ssl
-                        # Comma-separated list of addresses and ports on
-                        # which the proxy server should listen.
-                        # The proxy server is the public entrypoint of Kong,
-                        # which proxies traffic from your consumers to your
-                        # backend services. This value accepts IPv4, IPv6, and
-                        # hostnames.
-                        # Some suffixes can be specified for each pair:
-                        # - `ssl` will require that all connections made
-                        #   through a particular address/port be made with TLS
-                        #   enabled.
-                        # - `http2` will allow for clients to open HTTP/2
-                        #   connections to Kong's proxy server.
-                        # - Finally, `proxy_protocol` will enable usage of the
-                        #   PROXY protocol for a given address/port.
-                        #
-                        # This value can be set to `off`, thus disabling
-                        # the proxy port for this node, enabling a
-                        # 'control-plane' mode (without traffic proxying
-                        # capabilities) which can configure a cluster of
-                        # nodes connected to the same database.
+                         # Comma-separated list of addresses and ports on
+                         # which the proxy server should listen for
+                         # HTTP/HTTPS traffic.
+                         # The proxy server is the public entry point of Kong,
+                         # which proxies traffic from your consumers to your
+                         # backend services. This value accepts IPv4, IPv6, and
+                         # hostnames.
+                         # Some suffixes can be specified for each pair:
+                         # - `ssl` will require that all connections made
+                         #   through a particular address/port be made with TLS
+                         #   enabled.
+                         # - `http2` will allow for clients to open HTTP/2
+                         #   connections to Kong's proxy server.
+                         # - `proxy_protocol` will enable usage of the
+                         #   PROXY protocol for a given address/port.
+                         # - `transparent` will cause kong to listen to, and
+                         #   respond from, any and all IP addresses and ports
+                         #   you configure in iptables.
+                         #
+                         # This value can be set to `off`, thus disabling
+                         # the HTTP/HTTPS proxy port for this node.
+                         # If stream_listen is also set to `off`, this enables
+                         # 'control-plane' mode for this node
+                         # (in which all traffic proxying capabilities are
+                         # disabled). This node can then be used only to
+                         # configure a cluster of Kong
+                         # nodes connected to the same datastore.
+
+# Note: See http://nginx.org/en/docs/http/ngx_http_core_module.html#listen for
+# a description of the formats that Kong might accept in proxy_listen.
+
+# Note: See https://www.nginx.com/resources/admin-guide/proxy-protocol/
+# for more details about the `proxy_protocol` parameter.
+# Not all *_listen values accept all formats specified in nginx's documentation.
 
 #proxy_url =
                         # Kong Proxy URL
@@ -123,11 +161,30 @@
                         #  the window request host and append the resolved
                         #  listener port depending on the requested protocol.
 
-# Note: see http://nginx.org/en/docs/http/ngx_http_core_module.html#listen for
-# a description of the accepted formats for this and other *_listen values.
+#stream_listen = off
+                         # Comma-separated list of addresses and ports on
+                         # which the stream mode should listen.
+                         # This value accepts IPv4, IPv6, and hostnames.
+                         # Some suffixes can be specified for each pair:
+                         # - `proxy_protocol` will enable usage of the
+                         #   PROXY protocol for a given address/port.
+                         # - `transparent` will cause kong to listen to, and
+                         #   respond from, any and all IP addresses and ports
+                         #   you configure in iptables.
+                         # Note that the `ssl` suffix is not supported,
+                         # and each address/port will accept TCP with or
+                         # without TLS enabled.
+                         #
+                         # Examples:
+                         # `stream_listen = 127.0.0.1:7000`
+                         # `stream_listen = 0.0.0.0:989, 0.0.0.0:20`
+                         # `stream_listen = [::1]:1234`
+                         #
+                         # By default this value is set to `off`, thus
+                         # disabling the stream proxy port for this node.
 
-# Note bis: see https://www.nginx.com/resources/admin-guide/proxy-protocol/
-# for more details about the `proxy_protocol` parameter.
+# Note: See http://nginx.org/en/docs/stream/ngx_stream_core_module.html#listen
+# for a description of the formats that Kong might accept in stream_listen.
 
 #admin_api_uri =         # Hierarchical part of a URI which is composed
                          # optionally of a host, port, and path at which your
@@ -167,7 +224,7 @@
 #nginx_worker_processes = auto   # Determines the number of worker processes
                                  # spawned by Nginx.
 
-#nginx_daemon = on               # Determines wether Nginx will run as a daemon
+#nginx_daemon = on               # Determines whether Nginx will run as a daemon
                                  # or as a foreground process. Mainly useful
                                  # for development or when running Kong inside
                                  # a Docker environment.
@@ -224,16 +281,29 @@
                                  # preserved in the cache of each worker
                                  # process. When this number is exceeded, the
                                  # least recently used connections are closed.
+                                 # A value of `0` will disable this behavior
+                                 # altogether, forcing each upstream request
+                                 # to open a new connection.
 
-#server_tokens = on              # Enables or disables emitting Kong version on
-                                 # error pages and in the "Server" or "Via"
-                                 # (in case the request was proxied) response
-                                 # header field.
-
-#latency_tokens = on             # Enables or disables emitting Kong latency
-                                 # information in the "X-Kong-Proxy-Latency"
-                                 # and "X-Kong-Upstream-Latency" response
-                                 # header fields.
+#headers = server_tokens, latency_tokens
+                                 # Specify Kong-specific headers that should
+                                 # be injected in responses to the client.
+                                 # Acceptable values are:
+                                 # - `server_tokens`: inject 'Via' and 'Server'
+                                 #   headers.
+                                 # - `latency_tokens`: inject
+                                 #   'X-Kong-Proxy-Latency' and
+                                 #   'X-Kong-Upstream-Latency' headers.
+                                 # - `X-Kong-<header-name>`: only inject this
+                                 #   specific the header when applicable.
+                                 #
+                                 # Example:
+                                 #   headers = via, latency_tokens
+                                 #
+                                 # This value can be set to `off`, which
+                                 # prevents Kong from injecting any of these
+                                 # headers. Note that plugins can still inject
+                                 # headers.
 
 #trusted_ips =                   # Defines trusted IP addresses blocks that are
                                  # known to send correct X-Forwarded-* headers.
@@ -317,7 +387,7 @@
 # DATASTORE
 #------------------------------------------------------------------------------
 
-# Kong will store all of its data (such as APIs, consumers and plugins) in
+# Kong will store all of its data (such as APIs, consumers, and plugins) in
 # either Cassandra or PostgreSQL.
 #
 # All Kong nodes belonging to the same cluster must connect themselves to the
@@ -330,6 +400,9 @@
 
 #pg_host = 127.0.0.1             # The PostgreSQL host to connect to.
 #pg_port = 5432                  # The port to connect to.
+#pg_timeout = 5000               # Defines the timeout (in ms), for connecting,
+                                 # reading and writing.
+
 #pg_user = kong                  # The username to authenticate if required.
 #pg_password =                   # The password to authenticate if required.
 #pg_database = kong              # The database name to connect to.
@@ -371,15 +444,20 @@
 #cassandra_consistency = ONE     # Consistency setting to use when reading/
                                  # writing to the Cassandra cluster.
 
-#cassandra_lb_policy = RoundRobin  # Load balancing policy to use when
-                                   # distributing queries across your Cassandra
-                                   # cluster.
-                                   # Accepted values are:
-                                   # `RoundRobin`, `RequestRoundRobin`,
-                                   # `DCAwareRoundRobin`, and
-                                   # `RequestDCAwareRoundRobin`.
-                                   # Prefer the later if and only if you are
-                                   # using a multi-datacenter cluster.
+#cassandra_lb_policy = RequestRoundRobin  # Load balancing policy to use when
+                                          # distributing queries across your
+                                          # Cassandra cluster.
+                                          # Accepted values are:
+                                          # `RoundRobin`, `RequestRoundRobin`,
+                                          # `DCAwareRoundRobin`, and
+                                          # `RequestDCAwareRoundRobin`.
+                                          # Policies prefixed with "Request"
+                                          # make efficient use of established
+                                          # connections throughout the same
+                                          # request.
+                                          # Prefer "DCAware" policies if and
+                                          # only if you are using a
+                                          # multi-datacenter cluster.
 
 #cassandra_local_datacenter =    # When using the `DCAwareRoundRobin`
                                  # or `RequestDCAwareRoundRobin` load
@@ -416,7 +494,7 @@
 # DATASTORE CACHE
 #------------------------------------------------------------------------------
 
-# In order to avoid unecessary communication with the datastore, Kong caches
+# In order to avoid unnecessary communication with the datastore, Kong caches
 # entities (such as APIs, Consumers, Credentials...) for a configurable period
 # of time. It also handles invalidations if such an entity is updated.
 #
@@ -446,12 +524,19 @@
                                  # servers should suffer no such delays, and
                                  # this value can be safely set to 0.
 
-#db_cache_ttl = 3600             # Time-to-live (in seconds) of an entity from
+#db_cache_ttl = 0                # Time-to-live (in seconds) of an entity from
                                  # the datastore when cached by this node.
                                  # Database misses (no entity) are also cached
                                  # according to this setting.
-                                 # If set to 0, such cached entities/misses
-                                 # never expire.
+                                 # If set to 0 (default), such cached entities
+                                 # or misses never expire.
+
+#db_resurrect_ttl = 30           # Time (in seconds) for which stale entities
+                                 # from the datastore should be resurrected for
+                                 # when they cannot be refreshed (e.g., the
+                                 # datastore is unreachable). When this TTL
+                                 # expires, a new attempt to refresh the stale
+                                 # entities will be made.
 
 #------------------------------------------------------------------------------
 # DNS RESOLVER
@@ -480,6 +565,11 @@
                                  # specified name). The format is a (case
                                  # insensitive) comma separated list.
 
+#dns_valid_ttl =                 # By default, DNS records are cached using
+                                 # the TTL value of a response. If this
+                                 # property receives a value (in seconds), it
+                                 # will override the TTL for all records.
+
 #dns_stale_ttl = 4               # Defines, in seconds, how long a record will
                                  # remain in cache past its TTL. This value
                                  # will be used while the new DNS record is
@@ -507,7 +597,7 @@
 # Additional settings inherited from lua-nginx-module allowing for more
 # flexibility and advanced usage.
 #
-# See the lua-nginx-module documentation for more informations:
+# See the lua-nginx-module documentation for more information:
 # https://github.com/openresty/lua-nginx-module
 
 #lua_ssl_trusted_certificate =   # Absolute path to the certificate
@@ -523,10 +613,10 @@
                                  # This includes the certificates configured
                                  # for Kong's database connections.
 
-#lua_package_path =              # Sets the Lua module search path (LUA_PATH).
-                                 # Useful when developing or using custom
-                                 # plugins not stored in the default search
-                                 # path.
+#lua_package_path = ./?.lua;./?/init.lua;  # Sets the Lua module search path
+                                           # (LUA_PATH). Useful when developing
+                                           # or using custom plugins not stored
+                                           # in the default search path.
 
 #lua_package_cpath =             # Sets the Lua C module search path
                                  # (LUA_CPATH).

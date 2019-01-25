@@ -1,5 +1,9 @@
 local log = require "kong.cmd.utils.log"
+local cassandra = require "cassandra"
+local utils = require "kong.tools.utils"
+local cjson = require "cjson"
 
+local migration_helpers = require "kong.dao.migrations.helpers"
 
 return {
   {
@@ -141,17 +145,27 @@ return {
   },
   {
     name = "2016-02-25-160900_remove_null_consumer_id",
-    up = function(_, _, dao)
-      local rows, err = dao.plugins:find_all {consumer_id = "00000000-0000-0000-0000-000000000000"}
-      if err then
-        return err
-      end
+    up = function(db, _, _)
 
-      for _, row in ipairs(rows) do
-        row.consumer_id = nil
-        local _, err = dao.plugins:update(row, row, {full = true})
+      local coordinator = db:get_coordinator()
+      for rows, err in coordinator:iterate([[
+        SELECT *
+        FROM plugins
+        WHERE consumer_id = 00000000-0000-0000-0000-000000000000
+      ]]) do
         if err then
           return err
+        end
+
+        for _, row in ipairs(rows) do
+          local _
+          _, err = db:query([[
+            UPDATE plugins
+            SET consumer_id = NULL
+            WHERE id = ?]], { row.id })
+          if err then
+            return err
+          end
         end
       end
     end
@@ -240,14 +254,14 @@ return {
   {
     name = "2016-12-14-172100_move_ssl_certs_to_core",
     up = [[
-      CREATE TABLE ssl_certificates(
+      CREATE TABLE IF NOT EXISTS ssl_certificates(
         id uuid PRIMARY KEY,
         cert text,
         key text ,
         created_at timestamp
       );
 
-      CREATE TABLE ssl_servers_names(
+      CREATE TABLE IF NOT EXISTS ssl_servers_names(
         name text,
         ssl_certificate_id uuid,
         created_at timestamp,
@@ -260,7 +274,7 @@ return {
       ALTER TABLE apis ADD http_if_terminated boolean;
     ]],
     down = [[
-      DROP INDEX ssl_servers_names_ssl_certificate_idx;
+      DROP INDEX ssl_servers_names_ssl_certificate_id_idx;
 
       DROP TABLE ssl_certificates;
       DROP TABLE ssl_servers_names;
@@ -447,7 +461,7 @@ return {
   {
     name = "2017-03-27-132300_anonymous",
     -- this should have been in 0.10, but instead goes into 0.10.1 as a bugfix
-    up = function(_, _, dao)
+    up = function(db)
       for _, name in ipairs({
         "basic-auth",
         "hmac-auth",
@@ -456,17 +470,29 @@ return {
         "ldap-auth",
         "oauth2",
       }) do
-        local rows, err = dao.plugins:find_all( { name = name } )
-        if err then
-          return err
-        end
+        local coordinator = db:get_coordinator()
+        for rows, err in coordinator:iterate([[
+          SELECT * FROM plugins where name = ?
+        ]], { name }) do
+          if err then
+            return err
+          end
 
-        for _, row in ipairs(rows) do
-          if not row.config.anonymous then
-            row.config.anonymous = ""
-            local _, err = dao.plugins:update(row, { id = row.id })
-            if err then
-              return err
+          for _, row in ipairs(rows) do
+            local config
+            if type(row.config) == "string" then
+              config = cjson.decode(row.config)
+            end
+            if config and not config.anonymous then
+              config.anonymous = ""
+              local _
+              _, err = db:query([[
+                UPDATE plugins
+                SET config = ?
+                WHERE id = ?]], { cjson.encode(config), row.id })
+              if err then
+                return err
+              end
             end
           end
         end
@@ -501,7 +527,8 @@ return {
     up = [[
       ALTER TABLE upstreams DROP orderlist;
     ]],
-    down = function(_, _, dao) end  -- not implemented
+    down = function(_, _, dao) end,  -- not implemented
+    ignore_error = "orderlist was not found"
   },
   {
     name = "2017-11-07-192000_upstream_healthchecks",
@@ -510,7 +537,8 @@ return {
     ]],
     down = [[
       ALTER TABLE upstreams DROP healthchecks;
-    ]]
+    ]],
+    ignore_error = "Invalid column name healthchecks"
   },
   {
     name = "2017-10-27-134100_consistent_hashing_1",
@@ -525,26 +553,27 @@ return {
       ALTER TABLE upstreams DROP hash_fallback;
       ALTER TABLE upstreams DROP hash_on_header;
       ALTER TABLE upstreams DROP hash_fallback_header;
-    ]]
+    ]],
+    ignore_error = "Invalid column name"
   },
   {
     name = "2017-11-07-192100_upstream_healthchecks_2",
-    up = function(_, _, dao)
-      local rows, err = dao.upstreams:find_all()
-      if err then
-        return err
-      end
-
-      local upstreams = require("kong.dao.schemas.upstreams")
-      local default = upstreams.fields.healthchecks.default
-
-      for _, row in ipairs(rows) do
-        if not row.healthchecks then
-          local _, err = dao.upstreams:update({
-            healthchecks = default,
-          }, { id = row.id })
-          if err then
-            return err
+    up = function(db, _, dao)
+      local default = cjson.encode(dao.db.new_db.upstreams.schema.fields.healthchecks.default)
+      local coordinator = dao.db:get_coordinator()
+      for rows, err in coordinator:iterate([[SELECT * FROM upstreams;]]) do
+        if err then
+          return nil, nil, err
+        end
+        for _, row in ipairs(rows) do
+          if not row.healthchecks then
+            local _, err = db:query([[
+              UPDATE upstreams
+              SET healthchecks = ?
+              WHERE id = ?]], { default, row.id })
+            if err then
+              return err
+            end
           end
         end
       end
@@ -553,19 +582,21 @@ return {
   },
   {
     name = "2017-10-27-134100_consistent_hashing_2",
-    up = function(_, _, dao)
-      local rows, err = dao.upstreams:find_all()
-      if err then
-        return err
-      end
-
-      for _, row in ipairs(rows) do
-        if not row.hash_on or not row.hash_fallback then
-          row.hash_on = "none"
-          row.hash_fallback = "none"
-          local _, err = dao.upstreams:update(row, { id = row.id })
-          if err then
-            return err
+    up = function(db, _, dao)
+      local coordinator = dao.db:get_coordinator()
+      for rows, err in coordinator:iterate([[SELECT * FROM upstreams;]]) do
+        if err then
+          return nil, nil, err
+        end
+        for _, row in ipairs(rows) do
+          if not row.hash_on or not row.hash_fallback then
+            local _, err = db:query([[
+              UPDATE upstreams
+              SET hash_on = ?, hash_fallback = ?
+              WHERE id = ?]], { "none", "none", row.id })
+            if err then
+              return err
+            end
           end
         end
       end
@@ -634,5 +665,316 @@ return {
       CREATE INDEX IF NOT EXISTS ON targets(target);
     ]],
     down = nil
-  }
+  },
+  {
+    name = "2018-03-22-141700_create_new_ssl_tables",
+    up = [[
+      CREATE TABLE IF NOT EXISTS certificates(
+        partition text,
+        id uuid,
+        cert text,
+        key text,
+        created_at timestamp,
+        PRIMARY KEY (partition, id)
+      );
+
+      CREATE TABLE IF NOT EXISTS snis(
+        partition text,
+        id uuid,
+        name text,
+        certificate_id uuid,
+        created_at timestamp,
+        PRIMARY KEY (partition, id)
+      );
+
+      CREATE INDEX IF NOT EXISTS snis_name_idx ON snis(name);
+      CREATE INDEX IF NOT EXISTS snis_certificate_id_idx ON snis(certificate_id);
+    ]],
+    down = nil
+  },
+  {
+    name = "2018-03-26-234600_copy_records_to_new_ssl_tables",
+    up = function(_, _, dao)
+      local ssl_certificates_def = {
+        name    = "ssl_certificates",
+        columns = {
+          id         = "uuid",
+          cert       = "text",
+          key        = "text",
+          created_at = "timestamp",
+        },
+        partition_keys = { "id" },
+      }
+
+      local certificates_def = {
+        name    = "certificates",
+        columns = {
+          partition  = "text",
+          id         = "uuid",
+          cert       = "text",
+          key        = "text",
+          created_at = "timestamp",
+        },
+        partition_keys = { "partition", "id" },
+      }
+
+      local _, err = migration_helpers.cassandra.copy_records(dao,
+        ssl_certificates_def,
+        certificates_def, {
+          partition  = function() return cassandra.text("certificates") end,
+          id         = "id",
+          cert       = "cert",
+          key        = "key",
+          created_at = "created_at",
+        })
+      if err then
+        return err
+      end
+
+      local ssl_servers_names_def = {
+        name    = "ssl_servers_names",
+        columns = {
+          name       = "text",
+          ssl_certificate_id = "uuid",
+          created_at = "timestamp",
+        },
+        partition_keys = { "name", "ssl_certificate_id" },
+      }
+
+      local snis_def = {
+        name    = "snis",
+        columns = {
+          partition      = "text",
+          id             = "uuid",
+          name           = "text",
+          certificate_id = "uuid",
+          created_at     = "timestamp",
+        },
+        partition_keys = { "partition", "id" },
+      }
+
+      local _, err = migration_helpers.cassandra.copy_records(dao,
+        ssl_servers_names_def,
+        snis_def, {
+          partition      = function() return cassandra.text("snis") end,
+          id             = function() return cassandra.uuid(utils.uuid()) end,
+          name           = "name",
+          certificate_id = "ssl_certificate_id",
+          created_at     = "created_at",
+        })
+      if err then
+        return err
+      end
+    end,
+    down = nil
+  },
+  { name = "2018-03-27-002500_drop_old_ssl_tables",
+    up = [[
+      DROP INDEX IF EXISTS ssl_servers_names_ssl_certificate_id_idx;
+      DROP TABLE ssl_certificates;
+      DROP TABLE ssl_servers_names;
+    ]],
+    down = nil,
+  },
+  {
+    name = "2018-03-16-160000_index_consumers",
+    up = [[
+      CREATE INDEX IF NOT EXISTS ON consumers(custom_id);
+      CREATE INDEX IF NOT EXISTS ON consumers(username);
+    ]]
+  },
+  {
+    name = "2018-05-17-173100_hash_on_cookie",
+    up = [[
+      ALTER TABLE upstreams ADD hash_on_cookie text;
+      ALTER TABLE upstreams ADD hash_on_cookie_path text;
+    ]],
+    down = [[
+      ALTER TABLE upstreams DROP hash_on_cookie;
+      ALTER TABLE upstreams DROP hash_on_cookie_path;
+    ]],
+    ignore_error = "Invalid column name hash_on_cookie",
+  },
+  {
+    name = "2018-08-06-000001_create_plugins_temp_table",
+    up = [[
+      CREATE TABLE IF NOT EXISTS plugins_temp(
+        id uuid,
+        created_at timestamp,
+        api_id uuid,
+        route_id uuid,
+        service_id uuid,
+        consumer_id uuid,
+        name text,
+        config text, -- serialized plugin configuration
+        enabled boolean,
+        cache_key text,
+        PRIMARY KEY (id)
+      );
+    ]],
+    down = nil
+  },
+  {
+    name = "2018-08-06-000002_copy_records_to_plugins_temp",
+    up = function(_, _, dao)
+      local plugins_def = {
+        name    = "plugins",
+        columns = {
+          id = "uuid",
+          name = "text",
+          config = "text",
+          api_id = "uuid",
+          route_id = "uuid",
+          service_id = "uuid",
+          consumer_id = "uuid",
+          created_at = "timestamp",
+          enabled = "boolean",
+        },
+        partition_keys = {},
+      }
+      local plugins_temp_def = {
+        name    = "plugins_temp",
+        columns = {
+          id = "uuid",
+          name = "text",
+          config = "text",
+          api_id = "uuid",
+          route_id = "uuid",
+          service_id = "uuid",
+          consumer_id = "uuid",
+          created_at = "timestamp",
+          enabled = "boolean",
+          cache_key = "text",
+        },
+        partition_keys = {},
+      }
+      local _, err = migration_helpers.cassandra.copy_records(dao,
+        plugins_def,
+        plugins_temp_def, {
+          id = "id",
+          name = "name",
+          config = "config",
+          api_id = "api_id",
+          route_id = "route_id",
+          service_id = "service_id",
+          consumer_id = "consumer_id",
+          created_at = "created_at",
+          enabled = "enabled",
+          cache_key = function(row)
+            return table.concat({
+              "plugins",
+              row.name,
+              row.route_id or "",
+              row.service_id or "",
+              row.consumer_id or "",
+              row.api_id or ""
+            }, ":")
+          end,
+        })
+      if err then
+        return err
+      end
+    end,
+    down = nil
+  },
+  { name = "2018-08-06-000003_drop_plugins",
+    up = [[
+      DROP INDEX plugins_name_idx;
+      DROP INDEX plugins_api_id_idx;
+      DROP INDEX plugins_route_id_idx;
+      DROP INDEX plugins_service_id_idx;
+      DROP INDEX plugins_consumer_id_idx;
+      DROP TABLE plugins;
+    ]],
+    down = nil,
+  },
+  {
+    name = "2018-08-06-000004_create_plugins_table_with_fixed_pk",
+    up = [[
+      CREATE TABLE IF NOT EXISTS plugins(
+        id uuid,
+        created_at timestamp,
+        api_id uuid,
+        route_id uuid,
+        service_id uuid,
+        consumer_id uuid,
+        name text,
+        config text, -- serialized plugin configuration
+        enabled boolean,
+        cache_key text,
+        PRIMARY KEY (id)
+      );
+
+      CREATE INDEX IF NOT EXISTS ON plugins(name);
+      CREATE INDEX IF NOT EXISTS ON plugins(api_id);
+      CREATE INDEX IF NOT EXISTS ON plugins(route_id);
+      CREATE INDEX IF NOT EXISTS ON plugins(service_id);
+      CREATE INDEX IF NOT EXISTS ON plugins(consumer_id);
+      CREATE INDEX IF NOT EXISTS ON plugins(cache_key);
+    ]],
+    down = nil
+  },
+  {
+    name = "2018-08-06-000005_copy_records_to_plugins_temp",
+    up = function(_, _, dao)
+      local plugins_temp_def = {
+        name    = "plugins_temp",
+        columns = {
+          id = "uuid",
+          name = "text",
+          config = "text",
+          api_id = "uuid",
+          route_id = "uuid",
+          service_id = "uuid",
+          consumer_id = "uuid",
+          created_at = "timestamp",
+          enabled = "boolean",
+          cache_key = "text",
+        },
+        partition_keys = {},
+      }
+      local plugins_def = {
+        name    = "plugins",
+        columns = {
+          id = "uuid",
+          name = "text",
+          config = "text",
+          api_id = "uuid",
+          route_id = "uuid",
+          service_id = "uuid",
+          consumer_id = "uuid",
+          created_at = "timestamp",
+          enabled = "boolean",
+          cache_key = "text",
+        },
+        partition_keys = {},
+      }
+      local _, err = migration_helpers.cassandra.copy_records(dao,
+        plugins_temp_def,
+        plugins_def, {
+          id = "id",
+          name = "name",
+          config = "config",
+          api_id = "api_id",
+          route_id = "route_id",
+          service_id = "service_id",
+          consumer_id = "consumer_id",
+          created_at = "created_at",
+          enabled = "enabled",
+          cache_key = "cache_key",
+        })
+      if err then
+        return err
+      end
+    end,
+    down = nil
+  },
+--  {
+--    name = "2018-09-12-100000_add_name_to_routes",
+--    up = [[
+--      ALTER TABLE routes ADD name text;
+--      CREATE INDEX IF NOT EXISTS routes_name_idx ON routes(name);
+--    ]],
+--    down = nil,
+--  },
 }

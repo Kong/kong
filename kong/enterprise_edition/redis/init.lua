@@ -5,7 +5,7 @@ local redis_connector = require "resty.redis.connector"
 local errors          = require "kong.dao.errors"
 local utils           = require "kong.tools.utils"
 local redis           = require "resty.redis"
-local reports         = require "kong.core.reports"
+local reports         = require "kong.reports"
 
 
 local log = ngx.log

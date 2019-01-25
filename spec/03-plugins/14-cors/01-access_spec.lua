@@ -5,8 +5,8 @@ for _, strategy in helpers.each_strategy() do
   describe("Plugin: cors (access) [#" .. strategy .. "]", function()
     local proxy_client
 
-    setup(function()
-      local bp = helpers.get_db_utils(strategy)
+    lazy_setup(function()
+      local bp = helpers.get_db_utils(strategy, nil, { "error-generator-post" })
 
       local route1 = bp.routes:insert({
         hosts = { "cors1.com" },
@@ -44,15 +44,37 @@ for _, strategy in helpers.each_strategy() do
         hosts = { "cors9.com" },
       })
 
-      bp.plugins:insert {
-        name     = "cors",
-        route_id = route1.id,
+      local route10 = bp.routes:insert({
+        hosts = { "cors10.com" },
+      })
+
+      local route11 = bp.routes:insert({
+        hosts = { "cors11.com" },
+      })
+
+      local mock_service = bp.services:insert {
+        host = "127.0.0.2",
+        port = 26865,
+      }
+
+      local route_timeout = bp.routes:insert {
+        hosts = { "cors-timeout.com" },
+        service = mock_service,
+      }
+
+      local route_error = bp.routes:insert {
+        hosts = { "cors-error.com" },
       }
 
       bp.plugins:insert {
-        name     = "cors",
-        route_id = route2.id,
-        config   = {
+        name = "cors",
+        route = { id = route1.id },
+      }
+
+      bp.plugins:insert {
+        name = "cors",
+        route = { id = route2.id },
+        config = {
           origins         = { "example.com" },
           methods         = { "GET" },
           headers         = { "origin", "type", "accepts" },
@@ -63,9 +85,9 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.plugins:insert {
-        name     = "cors",
-        route_id = route3.id,
-        config   = {
+        name = "cors",
+        route = { id = route3.id },
+        config = {
           origins            = { "example.com" },
           methods            = { "GET" },
           headers            = { "origin", "type", "accepts" },
@@ -76,28 +98,28 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.plugins:insert {
-        name     = "cors",
-        route_id = route4.id,
+        name = "cors",
+        route = { id = route4.id },
       }
 
       bp.plugins:insert {
-        name     = "key-auth",
-        route_id = route4.id
+        name = "key-auth",
+        route = { id = route4.id }
       }
 
       bp.plugins:insert {
-        name     = "cors",
-        route_id = route5.id,
-        config   = {
+        name = "cors",
+        route = { id = route5.id },
+        config = {
           origins     = { "*" },
           credentials = true
         }
       }
 
       bp.plugins:insert {
-        name     = "cors",
-        route_id = route6.id,
-        config   = {
+        name = "cors",
+        route = { id = route6.id },
+        config = {
           origins            = { "example.com", "example.org" },
           methods            = { "GET" },
           headers            = { "origin", "type", "accepts" },
@@ -108,28 +130,78 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.plugins:insert {
-        name     = "cors",
-        route_id = route7.id,
-        config   = {
+        name = "cors",
+        route = { id = route7.id },
+        config = {
           origins     = { "*" },
           credentials = false
         }
       }
 
       bp.plugins:insert {
-        name     = "cors",
-        route_id = route8.id,
-        config   = {
+        name = "cors",
+        route = { id = route8.id },
+        config = {
           origins = {},
         }
       }
 
       bp.plugins:insert {
-        name     = "cors",
-        route_id = route9.id,
-        config   = {
+        name = "cors",
+        route = { id = route9.id },
+        config = {
           origins = { [[.*\.?example(?:-foo)?.com]] },
         }
+      }
+
+      bp.plugins:insert {
+        name = "cors",
+        route = { id = route10.id },
+        config = {
+          origins = { "http://my-site.com", "http://my-other-site.com" },
+        }
+      }
+
+      bp.plugins:insert {
+        name = "cors",
+        route = { id = route11.id },
+        config = {
+          origins = { "http://my-site.com", "https://my-other-site.com:9000" },
+        }
+      }
+
+      bp.plugins:insert {
+        name = "cors",
+        route = { id = route_timeout.id },
+        config = {
+          origins            = { "example.com" },
+          methods            = { "GET" },
+          headers            = { "origin", "type", "accepts" },
+          exposed_headers    = { "x-auth-token" },
+          max_age            = 10,
+          preflight_continue = true
+        }
+      }
+
+      bp.plugins:insert {
+        name = "cors",
+        route = { id = route_error.id },
+        config = {
+          origins            = { "example.com" },
+          methods            = { "GET" },
+          headers            = { "origin", "type", "accepts" },
+          exposed_headers    = { "x-auth-token" },
+          max_age            = 10,
+          preflight_continue = true
+        }
+      }
+
+      bp.plugins:insert {
+        name = "error-generator-post",
+        route = { id = route_error.id },
+        config = {
+          access = true,
+        },
       }
 
       assert(helpers.start_kong({
@@ -140,7 +212,7 @@ for _, strategy in helpers.each_strategy() do
       proxy_client = helpers.proxy_client()
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       if proxy_client then proxy_client:close() end
       helpers.stop_kong()
     end)
@@ -153,13 +225,15 @@ for _, strategy in helpers.each_strategy() do
             ["Host"] = "cors1.com"
           }
         })
-        assert.res_status(204, res)
+        assert.res_status(200, res)
+        assert.equal("0", res.headers["Content-Length"])
         assert.equal("GET,HEAD,PUT,PATCH,POST,DELETE", res.headers["Access-Control-Allow-Methods"])
         assert.equal("*", res.headers["Access-Control-Allow-Origin"])
         assert.is_nil(res.headers["Access-Control-Allow-Headers"])
         assert.is_nil(res.headers["Access-Control-Expose-Headers"])
         assert.is_nil(res.headers["Access-Control-Allow-Credentials"])
         assert.is_nil(res.headers["Access-Control-Max-Age"])
+        assert.is_nil(res.headers["Vary"])
       end)
 
       it("gives * wildcard when origins is empty", function()
@@ -175,13 +249,15 @@ for _, strategy in helpers.each_strategy() do
             ["Host"] = "cors-empty-origins.com",
           }
         })
-        assert.res_status(204, res)
+        assert.res_status(200, res)
+        assert.equal("0", res.headers["Content-Length"])
         assert.equal("GET,HEAD,PUT,PATCH,POST,DELETE", res.headers["Access-Control-Allow-Methods"])
         assert.equal("*", res.headers["Access-Control-Allow-Origin"])
         assert.is_nil(res.headers["Access-Control-Allow-Headers"])
         assert.is_nil(res.headers["Access-Control-Expose-Headers"])
         assert.is_nil(res.headers["Access-Control-Allow-Credentials"])
         assert.is_nil(res.headers["Access-Control-Max-Age"])
+        assert.is_nil(res.headers["Vary"])
       end)
 
       it("gives appropriate defaults when origin is explicitly set to *", function()
@@ -191,13 +267,15 @@ for _, strategy in helpers.each_strategy() do
             ["Host"] = "cors5.com"
           }
         })
-        assert.res_status(204, res)
+        assert.res_status(200, res)
+        assert.equal("0", res.headers["Content-Length"])
         assert.equal("GET,HEAD,PUT,PATCH,POST,DELETE", res.headers["Access-Control-Allow-Methods"])
         assert.equal("*", res.headers["Access-Control-Allow-Origin"])
         assert.is_nil(res.headers["Access-Control-Allow-Headers"])
         assert.is_nil(res.headers["Access-Control-Expose-Headers"])
         assert.is_nil(res.headers["Access-Control-Allow-Credentials"])
         assert.is_nil(res.headers["Access-Control-Max-Age"])
+        assert.is_nil(res.headers["Vary"])
       end)
 
       it("accepts config options", function()
@@ -207,12 +285,14 @@ for _, strategy in helpers.each_strategy() do
             ["Host"] = "cors2.com"
           }
         })
-        assert.res_status(204, res)
+        assert.res_status(200, res)
+        assert.equal("0", res.headers["Content-Length"])
         assert.equal("GET", res.headers["Access-Control-Allow-Methods"])
         assert.equal("example.com", res.headers["Access-Control-Allow-Origin"])
         assert.equal("23", res.headers["Access-Control-Max-Age"])
         assert.equal("true", res.headers["Access-Control-Allow-Credentials"])
         assert.equal("origin,type,accepts", res.headers["Access-Control-Allow-Headers"])
+        assert.equal("Origin", res.headers["Vary"])
         assert.is_nil(res.headers["Access-Control-Expose-Headers"])
       end)
 
@@ -238,8 +318,47 @@ for _, strategy in helpers.each_strategy() do
           }
         })
 
-        assert.res_status(204, res)
+        assert.res_status(200, res)
+        assert.equal("0", res.headers["Content-Length"])
         assert.equal("origin,accepts", res.headers["Access-Control-Allow-Headers"])
+      end)
+
+      it("properly validates flat strings", function()
+        -- Legitimate origins
+        local res = assert(proxy_client:send {
+          method  = "OPTIONS",
+          headers = {
+            ["Host"]   = "cors10.com",
+            ["Origin"] = "http://my-site.com"
+          }
+        })
+
+        assert.res_status(200, res)
+        assert.equal("http://my-site.com", res.headers["Access-Control-Allow-Origin"])
+
+        -- Illegitimate origins
+        res = assert(proxy_client:send {
+          method  = "OPTIONS",
+          headers = {
+            ["Host"]   = "cors10.com",
+            ["Origin"] = "http://bad-guys.com"
+          }
+        })
+
+        assert.res_status(200, res)
+        assert.is_nil(res.headers["Access-Control-Allow-Origin"])
+
+        -- Tricky illegitimate origins
+        res = assert(proxy_client:send {
+          method  = "OPTIONS",
+          headers = {
+            ["Host"]   = "cors10.com",
+            ["Origin"] = "http://my-site.com.bad-guys.com"
+          }
+        })
+
+        assert.res_status(200, res)
+        assert.is_nil(res.headers["Access-Control-Allow-Origin"])
       end)
     end)
 
@@ -258,6 +377,7 @@ for _, strategy in helpers.each_strategy() do
         assert.is_nil(res.headers["Access-Control-Expose-Headers"])
         assert.is_nil(res.headers["Access-Control-Allow-Credentials"])
         assert.is_nil(res.headers["Access-Control-Max-Age"])
+        assert.is_nil(res.headers["Vary"])
       end)
 
       it("accepts config options", function()
@@ -271,6 +391,41 @@ for _, strategy in helpers.each_strategy() do
         assert.equal("example.com", res.headers["Access-Control-Allow-Origin"])
         assert.equal("x-auth-token", res.headers["Access-Control-Expose-Headers"])
         assert.equal("true", res.headers["Access-Control-Allow-Credentials"])
+        assert.equal("Origin", res.headers["Vary"])
+        assert.is_nil(res.headers["Access-Control-Allow-Methods"])
+        assert.is_nil(res.headers["Access-Control-Allow-Headers"])
+        assert.is_nil(res.headers["Access-Control-Max-Age"])
+      end)
+
+      it("works even when upstream timeouts", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          headers = {
+            ["Host"] = "cors-timeout.com"
+          }
+        })
+        assert.res_status(502, res)
+        assert.equal("example.com", res.headers["Access-Control-Allow-Origin"])
+        assert.equal("x-auth-token", res.headers["Access-Control-Expose-Headers"])
+        assert.equal("Origin", res.headers["Vary"])
+        assert.is_nil(res.headers["Access-Control-Allow-Credentials"])
+        assert.is_nil(res.headers["Access-Control-Allow-Methods"])
+        assert.is_nil(res.headers["Access-Control-Allow-Headers"])
+        assert.is_nil(res.headers["Access-Control-Max-Age"])
+      end)
+
+      it("works even when a runtime error occurs", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          headers = {
+            ["Host"] = "cors-error.com"
+          }
+        })
+        assert.res_status(500, res)
+        assert.equal("example.com", res.headers["Access-Control-Allow-Origin"])
+        assert.equal("x-auth-token", res.headers["Access-Control-Expose-Headers"])
+        assert.equal("Origin", res.headers["Vary"])
+        assert.is_nil(res.headers["Access-Control-Allow-Credentials"])
         assert.is_nil(res.headers["Access-Control-Allow-Methods"])
         assert.is_nil(res.headers["Access-Control-Allow-Headers"])
         assert.is_nil(res.headers["Access-Control-Max-Age"])
@@ -291,6 +446,7 @@ for _, strategy in helpers.each_strategy() do
         assert.is_nil(res.headers["Access-Control-Expose-Headers"])
         assert.is_nil(res.headers["Access-Control-Allow-Credentials"])
         assert.is_nil(res.headers["Access-Control-Max-Age"])
+        assert.is_nil(res.headers["Vary"])
       end)
 
       it("works with 40x responses returned by another plugin", function()
@@ -307,6 +463,7 @@ for _, strategy in helpers.each_strategy() do
         assert.is_nil(res.headers["Access-Control-Expose-Headers"])
         assert.is_nil(res.headers["Access-Control-Allow-Credentials"])
         assert.is_nil(res.headers["Access-Control-Max-Age"])
+        assert.is_nil(res.headers["Vary"])
       end)
 
       it("sets CORS orgin based on origin host", function()
@@ -314,11 +471,12 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           headers = {
             ["Host"]   = "cors6.com",
-            ["Origin"] = "http://www.example.com"
+            ["Origin"] = "example.com"
           }
         })
         assert.res_status(200, res)
-        assert.equal("http://www.example.com", res.headers["Access-Control-Allow-Origin"])
+        assert.equal("example.com", res.headers["Access-Control-Allow-Origin"])
+        assert.equal("Origin", res.headers["Vary"])
 
         local domains = {
           ["example.com"]         = true,
@@ -339,7 +497,93 @@ for _, strategy in helpers.each_strategy() do
           assert.res_status(200, res)
           assert.equal(domains[domain] and domain or nil,
                        res.headers["Access-Control-Allow-Origin"])
+          assert.equal("Origin", res.headers["Vary"])
         end
+      end)
+
+      it("does not automatically parse the host", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          headers = {
+            ["Host"]   = "cors6.com",
+            ["Origin"] = "http://example.com"
+          }
+        })
+        assert.res_status(200, res)
+        assert.is_nil(res.headers["Access-Control-Allow-Origin"])
+
+        -- With a different transport too
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          headers = {
+            ["Host"]   = "cors6.com",
+            ["Origin"] = "https://example.com"
+          }
+        })
+        assert.res_status(200, res)
+        assert.is_nil(res.headers["Access-Control-Allow-Origin"])
+      end)
+
+      it("validates scheme and port", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          headers = {
+            ["Host"]   = "cors11.com",
+            ["Origin"] = "http://my-site.com"
+          }
+        })
+        assert.res_status(200, res)
+        assert.equals("http://my-site.com", res.headers["Access-Control-Allow-Origin"])
+
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          headers = {
+            ["Host"]   = "cors11.com",
+            ["Origin"] = "http://my-site.com:80"
+          }
+        })
+        assert.res_status(200, res)
+        assert.equals("http://my-site.com:80", res.headers["Access-Control-Allow-Origin"])
+
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          headers = {
+            ["Host"]   = "cors11.com",
+            ["Origin"] = "http://my-site.com:8000"
+          }
+        })
+        assert.res_status(200, res)
+        assert.is_nil(res.headers["Access-Control-Allow-Origin"])
+
+        res = assert(proxy_client:send {
+          method  = "GET",
+          headers = {
+            ["Host"]   = "cors11.com",
+            ["Origin"] = "https://my-site.com"
+          }
+        })
+        assert.res_status(200, res)
+        assert.is_nil(res.headers["Access-Control-Allow-Origin"])
+
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          headers = {
+            ["Host"]   = "cors11.com",
+            ["Origin"] = "https://my-other-site.com:9000"
+          }
+        })
+        assert.res_status(200, res)
+        assert.equals("https://my-other-site.com:9000", res.headers["Access-Control-Allow-Origin"])
+
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          headers = {
+            ["Host"]   = "cors11.com",
+            ["Origin"] = "https://my-other-site.com:9001"
+          }
+        })
+        assert.res_status(200, res)
+        assert.is_nil(res.headers["Access-Control-Allow-Origin"])
       end)
 
       it("does not sets CORS orgin if origin host is not in origin_domains list", function()
@@ -365,6 +609,7 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(200, res)
         assert.equals("http://www.example.net", res.headers["Access-Control-Allow-Origin"])
         assert.equals("true", res.headers["Access-Control-Allow-Credentials"])
+        assert.equal("Origin", res.headers["Vary"])
       end)
 
       it("responds with the requested Origin (including port) when config.credentials=true", function()
@@ -378,6 +623,7 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(200, res)
         assert.equals("http://www.example.net:3000", res.headers["Access-Control-Allow-Origin"])
         assert.equals("true", res.headers["Access-Control-Allow-Credentials"])
+        assert.equal("Origin", res.headers["Vary"])
       end)
 
       it("responds with * when config.credentials=false", function()
@@ -391,6 +637,7 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(200, res)
         assert.equals("*", res.headers["Access-Control-Allow-Origin"])
         assert.is_nil(res.headers["Access-Control-Allow-Credentials"])
+        assert.is_nil(res.headers["Vary"])
       end)
     end)
   end)

@@ -18,7 +18,7 @@ local pl_split     = pl_stringx.split
 local pl_pairmap   = pl_tablex.pairmap
 local tonumber     = tonumber
 
-local core_handler = require "kong.core.handler"
+local core_handler = require "kong.runloop.handler"
 local uuid         = require("kong.tools.utils").uuid
 
 

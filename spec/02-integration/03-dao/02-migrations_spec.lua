@@ -2,23 +2,30 @@ local helpers = require "spec.02-integration.03-dao.helpers"
 local utils = require "kong.tools.utils"
 
 local Factory = require "kong.dao.factory"
+local DB = require "kong.db"
 
 helpers.for_each_dao(function(kong_config)
-  describe("Model migrations with DB: #" .. kong_config.database, function()
+  -- Disabled since we start running migrations from the new DAO
+  -- avoid potential corruptions of the test database
+  pending("Model migrations with DB: #" .. kong_config.database, function()
     local factory
-    setup(function()
+    lazy_setup(function()
       -- some `setup` functions also use `factory` and they run before the `before_each` chain
       -- hence we need to set it here, and again in `before_each`.
-      factory = assert(Factory.new(kong_config))
+      local db = assert(DB.new(kong_config))
+      assert(db:init_connector())
+      factory = assert(Factory.new(kong_config, db))
       factory:drop_schema()
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       ngx.shared.kong_cassandra:flush_expired()
     end)
 
     before_each(function()
-      factory = assert(Factory.new(kong_config))
+      local db = assert(DB.new(kong_config))
+      assert(db:init_connector())
+      factory = assert(Factory.new(kong_config, db))
     end)
 
     describe("current_migrations()", function()
@@ -32,7 +39,8 @@ helpers.for_each_dao(function(kong_config)
           local invalid_conf = utils.shallow_copy(kong_config)
           invalid_conf.cassandra_keyspace = "_inexistent_"
 
-          local xfactory = assert(Factory.new(invalid_conf))
+          local db = assert(DB.new(kong_config))
+          local xfactory = assert(Factory.new(invalid_conf, db))
           local cur_migrations, err = xfactory:current_migrations()
           assert.is_nil(err)
           assert.same({}, cur_migrations)
@@ -55,7 +63,7 @@ helpers.for_each_dao(function(kong_config)
     describe("[INTEGRATION]", function()
       local n_ids = 0
       local flatten_migrations = {}
-      setup(function()
+      lazy_setup(function()
         factory:drop_schema()
         for identifier, migs in pairs(factory:migrations_modules()) do
           n_ids = n_ids + 1
@@ -130,21 +138,24 @@ helpers.for_each_dao(function(kong_config)
     describe("errors", function()
       it("returns errors prefixed by the DB type in __tostring()", function()
         local pg_port = kong_config.pg_port
+        local pg_timeout = kong_config.pg_timeout
         local cassandra_port = kong_config.cassandra_port
         local cassandra_timeout = kong_config.cassandra_timeout
         finally(function()
           kong_config.pg_port = pg_port
+          kong_config.pg_timeout = pg_timeout
           kong_config.cassandra_port = cassandra_port
           kong_config.cassandra_timeout = cassandra_timeout
           ngx.shared.kong_cassandra:flush_all()
           ngx.shared.kong_cassandra:flush_expired()
         end)
         kong_config.pg_port = 3333
+        kong_config.pg_timeout = 1000
         kong_config.cassandra_port = 3333
         kong_config.cassandra_timeout = 1000
 
         assert.error_matches(function()
-          local fact = assert(Factory.new(kong_config))
+          local fact = assert(Factory.new(kong_config, DB.new(kong_config)))
           assert(fact:run_migrations())
         end, "[" .. kong_config.database .. " error]", nil, true)
       end)

@@ -9,8 +9,14 @@ for _, strategy in helpers.each_strategy() do
     local proxy_client
     local consumer, anonymous_user, route1, route2, route3, route4
 
-    setup(function()
-      local bp, _, dao = helpers.get_db_utils(strategy)
+    lazy_setup(function()
+      local bp = helpers.get_db_utils(strategy, {
+        "routes",
+        "services",
+        "plugins",
+        "consumers",
+        "basicauth_credentials",
+      })
 
       consumer = bp.consumers:insert {
         username = "bob",
@@ -38,38 +44,80 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name     = "basic-auth",
-        route_id = route1.id,
+        route = { id = route1.id },
       }
 
       bp.plugins:insert {
         name     = "basic-auth",
-        route_id = route2.id,
+        route = { id = route2.id },
         config   = {
           hide_credentials = true,
         },
       }
 
+<<<<<<< HEAD
       assert(dao.basicauth_credentials:insert {
                username    = "bob",
                password    = "kong",
                consumer_id = consumer.id,
       })
+||||||| merged common ancestors
+      assert(dao.basicauth_credentials:insert {
+        username    = "bob",
+        password    = "kong",
+        consumer_id = consumer.id,
+      })
+=======
+      bp.basicauth_credentials:insert {
+        username = "bob",
+        password = "kong",
+        consumer = { id = consumer.id },
+      }
+>>>>>>> 0.15.0
 
+<<<<<<< HEAD
       assert(dao.basicauth_credentials:insert {
                username    = "user123",
                password    = "password123",
                consumer_id = consumer.id,
       })
+||||||| merged common ancestors
+      assert(dao.basicauth_credentials:insert {
+        username    = "user123",
+        password    = "password123",
+        consumer_id = consumer.id,
+      })
+=======
+      bp.basicauth_credentials:insert {
+        username = "user123",
+        password = "password123",
+        consumer = { id = consumer.id },
+      }
+>>>>>>> 0.15.0
 
+<<<<<<< HEAD
       assert(dao.basicauth_credentials:insert {
                username    = "user321",
                password    = "password:123",
                consumer_id = consumer.id,
       })
+||||||| merged common ancestors
+      assert(dao.basicauth_credentials:insert {
+        username    = "user321",
+        password    = "password:123",
+        consumer_id = consumer.id,
+      })
+=======
+      bp.basicauth_credentials:insert {
+        username = "user321",
+        password = "password:123",
+        consumer = { id = consumer.id },
+      }
+>>>>>>> 0.15.0
 
       bp.plugins:insert {
         name     = "basic-auth",
-        route_id = route3.id,
+        route = { id = route3.id },
         config   = {
           anonymous = anonymous_user.id,
         },
@@ -77,7 +125,7 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name     = "basic-auth",
-        route_id = route4.id,
+        route = { id = route4.id },
         config   = {
           anonymous = utils.uuid(), -- a non-existing consumer id
         },
@@ -93,7 +141,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
 
-    teardown(function()
+    lazy_teardown(function()
       if proxy_client then
         proxy_client:close()
       end
@@ -357,8 +405,14 @@ for _, strategy in helpers.each_strategy() do
     local anonymous
     local service1, service2, route1, route2
 
-    setup(function()
-      local bp, _, dao = helpers.get_db_utils(strategy)
+    lazy_setup(function()
+      local bp = helpers.get_db_utils(strategy, {
+        "routes",
+        "services",
+        "plugins",
+        "consumers",
+        "basicauth_credentials",
+      })
 
       anonymous = bp.consumers:insert {
         username = "Anonymous",
@@ -392,17 +446,17 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name     = "basic-auth",
-        route_id = route1.id,
+        route = { id = route1.id },
       }
 
       bp.plugins:insert {
         name     = "key-auth",
-        route_id = route1.id,
+        route = { id = route1.id },
       }
 
       bp.plugins:insert {
         name     = "basic-auth",
-        route_id = route2.id,
+        route = { id = route2.id },
         config   = {
           anonymous = anonymous.id,
         },
@@ -410,22 +464,46 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name     = "key-auth",
-        route_id = route2.id,
+        route = { id = route2.id },
         config   = {
           anonymous = anonymous.id,
         },
       }
 
+<<<<<<< HEAD
       assert(dao.keyauth_credentials:insert {
                key         = "Mouse",
                consumer_id = user1.id,
+||||||| merged common ancestors
+      assert(dao.keyauth_credentials:insert {
+        key         = "Mouse",
+        consumer_id = user1.id,
+=======
+      bp.keyauth_credentials:insert({
+        key      = "Mouse",
+        consumer = { id = user1.id },
+>>>>>>> 0.15.0
       })
 
+<<<<<<< HEAD
       assert(dao.basicauth_credentials:insert {
                username    = "Aladdin",
                password    = "OpenSesame",
                consumer_id = user2.id,
       })
+||||||| merged common ancestors
+      assert(dao.basicauth_credentials:insert {
+        username    = "Aladdin",
+        password    = "OpenSesame",
+        consumer_id = user2.id,
+      })
+=======
+      bp.basicauth_credentials:insert {
+        username = "Aladdin",
+        password = "OpenSesame",
+        consumer = { id = user2.id },
+      }
+>>>>>>> 0.15.0
 
       assert(helpers.start_kong({
                  database   = strategy,
@@ -435,7 +513,7 @@ for _, strategy in helpers.each_strategy() do
       proxy_client = helpers.proxy_client()
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       if proxy_client then
         proxy_client:close()
       end

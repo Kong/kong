@@ -1,4 +1,5 @@
 local helpers = require "spec.helpers"
+local admin_api = require "spec.fixtures.admin_api"
 local cjson = require "cjson"
 
 
@@ -7,9 +8,8 @@ for _, strategy in helpers.each_strategy() do
     local admin_client
     local proxy_client
     local db
-    local dao
-    local bp
 
+<<<<<<< HEAD
     setup(function()
       bp, db, dao = helpers.get_db_utils(strategy)
     end)
@@ -36,15 +36,51 @@ for _, strategy in helpers.each_strategy() do
         username    = "bob",
         password    = "kong",
         consumer_id = consumer.id,
+||||||| merged common ancestors
+    setup(function()
+      bp, db, dao = helpers.get_db_utils(strategy)
+    end)
+
+    before_each(function()
+      assert(db:truncate())
+      dao:truncate_tables()
+
+      local route = bp.routes:insert {
+        hosts = { "basic-auth.com" },
+      }
+
+      bp.plugins:insert {
+        name     = "basic-auth",
+        route_id = route.id,
+      }
+
+      local consumer = bp.consumers:insert {
+        username = "bob",
+      }
+
+      assert(dao.basicauth_credentials:insert {
+        username    = "bob",
+        password    = "kong",
+        consumer_id = consumer.id,
+=======
+    lazy_setup(function()
+      _, db = helpers.get_db_utils(strategy, {
+        "routes",
+        "services",
+        "consumers",
+        "plugins",
+        "basicauth_credentials",
+>>>>>>> 0.15.0
       })
 
       assert(helpers.start_kong({
         database   = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
       }))
+    end)
 
-      proxy_client = helpers.proxy_client()
-      admin_client = helpers.admin_client()
+    lazy_teardown(function()
+      helpers.stop_kong()
     end)
 
     after_each(function()
@@ -52,11 +88,46 @@ for _, strategy in helpers.each_strategy() do
         admin_client:close()
         proxy_client:close()
       end
-
-      helpers.stop_kong()
     end)
 
-    it("invalidates credentials when the Consumer is deleted", function()
+    local route
+    local plugin
+    local consumer
+    local credential
+
+    before_each(function()
+      proxy_client = helpers.proxy_client()
+      admin_client = helpers.admin_client()
+
+      if not route then
+        route = admin_api.routes:insert {
+          hosts = { "basic-auth.com" },
+        }
+      end
+
+      if not plugin then
+        plugin = admin_api.plugins:insert {
+          name = "basic-auth",
+          route = { id = route.id },
+        }
+      end
+
+      if not consumer then
+        consumer = admin_api.consumers:insert {
+          username = "bob",
+        }
+      end
+
+      if not credential then
+        credential = admin_api.basicauth_credentials:insert {
+          username = "bob",
+          password = "kong",
+          consumer = { id = consumer.id },
+        }
+      end
+    end)
+
+    it("#invalidates credentials when the Consumer is deleted", function()
       -- populate cache
       local res = assert(proxy_client:send {
         method  = "GET",
@@ -69,7 +140,7 @@ for _, strategy in helpers.each_strategy() do
       assert.res_status(200, res)
 
       -- ensure cache is populated
-      local cache_key = dao.basicauth_credentials:cache_key("bob")
+      local cache_key = db.basicauth_credentials:cache_key("bob")
       res = assert(admin_client:send {
         method = "GET",
         path   = "/cache/" .. cache_key
@@ -82,6 +153,8 @@ for _, strategy in helpers.each_strategy() do
         path   = "/consumers/bob"
       })
       assert.res_status(204, res)
+      consumer = nil
+      credential = nil
 
       -- ensure cache is invalidated
       helpers.wait_until(function()
@@ -117,20 +190,21 @@ for _, strategy in helpers.each_strategy() do
       assert.res_status(200, res)
 
       -- ensure cache is populated
-      local cache_key = dao.basicauth_credentials:cache_key("bob")
+      local cache_key = db.basicauth_credentials:cache_key("bob")
       res = assert(admin_client:send {
         method = "GET",
         path   = "/cache/" .. cache_key
       })
       local body = assert.res_status(200, res)
-      local credential = cjson.decode(body)
+      local cred = cjson.decode(body)
 
       -- delete credential entity
       res = assert(admin_client:send {
         method = "DELETE",
-        path   = "/consumers/bob/basic-auth/" .. credential.id
+        path   = "/consumers/bob/basic-auth/" .. cred.id
       })
       assert.res_status(204, res)
+      credential = nil
 
       -- ensure cache is invalidated
       helpers.wait_until(function()
@@ -166,18 +240,18 @@ for _, strategy in helpers.each_strategy() do
       assert.res_status(200, res)
 
       -- ensure cache is populated
-      local cache_key = dao.basicauth_credentials:cache_key("bob")
+      local cache_key = db.basicauth_credentials:cache_key("bob")
       res = assert(admin_client:send {
         method = "GET",
         path   = "/cache/" .. cache_key
       })
       local body = assert.res_status(200, res)
-      local credential = cjson.decode(body)
+      local cred = cjson.decode(body)
 
       -- delete credential entity
       res = assert(admin_client:send {
         method     = "PATCH",
-        path       = "/consumers/bob/basic-auth/" .. credential.id,
+        path       = "/consumers/bob/basic-auth/" .. cred.id,
         body       = {
           username = "bob",
           password = "kong-updated"
@@ -187,6 +261,7 @@ for _, strategy in helpers.each_strategy() do
         }
       })
       assert.res_status(200, res)
+      credential = nil
 
       -- ensure cache is invalidated
       helpers.wait_until(function()

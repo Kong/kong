@@ -17,14 +17,14 @@
 --
 --    -- Raw send() helper:
 --    return responses.send(418, "This is a teapot")
-
+local singletons = require "kong.singletons"
+local constants = require "kong.constants"
 local cjson = require "cjson.safe"
 local meta = require "kong.meta"
 
 local type = type
 
---local server_header = _KONG._NAME .. "/" .. _KONG._VERSION
-local server_header = meta._NAME .. "/" .. meta._VERSION
+local server_header = meta._SERVER_TOKENS
 
 --- Define the most common HTTP status codes for sugar methods.
 -- Each of those status will generate a helper method (sugar)
@@ -59,12 +59,13 @@ local _M = {
     HTTP_CONFLICT = 409,
     HTTP_UNSUPPORTED_MEDIA_TYPE = 415,
     HTTP_INTERNAL_SERVER_ERROR = 500,
+    HTTP_BAD_GATEWAY = 502,
     HTTP_SERVICE_UNAVAILABLE = 503,
   }
 }
 
 --- Define some default response bodies for some status codes.
--- Some other status codes will have response bodies that cannot be overriden.
+-- Some other status codes will have response bodies that cannot be overridden.
 -- Example: 204 MUST NOT have content, but if 404 has no content then "Not found" will be set.
 -- @field status_codes.HTTP_UNAUTHORIZED Default: Unauthorized
 -- @field status_codes.HTTP_NO_CONTENT Always empty.
@@ -72,6 +73,7 @@ local _M = {
 -- @field status_codes.HTTP_UNAUTHORIZED Default: Unauthorized
 -- @field status_codes.HTTP_INTERNAL_SERVER_ERROR Always "Internal Server Error"
 -- @field status_codes.HTTP_METHOD_NOT_ALLOWED Always "Method not allowed"
+-- @field status_codes.HTTP_BAD_GATEWAY Always: "Bad Gateway"
 -- @field status_codes.HTTP_SERVICE_UNAVAILABLE Default: "Service unavailable"
 local response_default_content = {
   [_M.status_codes.HTTP_UNAUTHORIZED] = function(content)
@@ -88,6 +90,9 @@ local response_default_content = {
   end,
   [_M.status_codes.HTTP_METHOD_NOT_ALLOWED] = function(content)
     return "Method not allowed"
+  end,
+  [_M.status_codes.HTTP_BAD_GATEWAY] = function(content)
+    return "Bad Gateway"
   end,
   [_M.status_codes.HTTP_SERVICE_UNAVAILABLE] = function(content)
     return content or "Service unavailable"
@@ -116,15 +121,26 @@ local function send_response(status_code)
       coroutine.yield()
     end
 
-    if status_code == _M.status_codes.HTTP_INTERNAL_SERVER_ERROR then
-      if content then
-        ngx.log(ngx.ERR, tostring(content))
-      end
+    if (status_code == _M.status_codes.HTTP_INTERNAL_SERVER_ERROR
+       or status_code == _M.status_codes.HTTP_BAD_GATEWAY)
+       and content ~= nil
+    then
+      ngx.log(ngx.ERR, tostring(content))
     end
 
     ngx.status = status_code
-    ngx.header["Content-Type"] = "application/json; charset=utf-8"
-    ngx.header["Server"] = server_header
+
+    if singletons and singletons.configuration then
+      if singletons.configuration.enabled_headers[constants.HEADERS.SERVER] then
+        ngx.header[constants.HEADERS.SERVER] = server_header
+
+      else
+        ngx.header[constants.HEADERS.SERVER] = nil
+      end
+
+    else
+      ngx.header[constants.HEADERS.SERVER] = server_header
+    end
 
     if headers then
       for k, v in pairs(headers) do
@@ -142,9 +158,16 @@ local function send_response(status_code)
                                   {message = content})
       if not encoded then
         ngx.log(ngx.ERR, "[admin] could not encode value: ", err)
+        ngx.header["Content-Length"] = 0
+
+      else
+        ngx.header["Content-Type"] = "application/json; charset=utf-8"
+        ngx.header["Content-Length"] = #encoded + 1
+        ngx.say(encoded)
       end
 
-      ngx.say(encoded)
+    else
+      ngx.header["Content-Length"] = 0
     end
 
     return ngx.exit(status_code)

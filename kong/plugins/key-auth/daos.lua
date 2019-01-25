@@ -1,16 +1,17 @@
-local utils = require "kong.tools.utils"
+local typedefs = require "kong.db.schema.typedefs"
 
-local SCHEMA = {
-  primary_key = {"id"},
-  table = "keyauth_credentials",
-  cache_key = { "key" },
-  workspaceable = true,
-  fields = {
-    id = {type = "id", dao_insert_value = true},
-    created_at = {type = "timestamp", immutable = true, dao_insert_value = true},
-    consumer_id = {type = "id", required = true, foreign = "consumers:id"},
-    key = {type = "string", required = false, unique = true, default = utils.random_string}
+return {
+  keyauth_credentials = {
+    primary_key = { "id" },
+    name = "keyauth_credentials",
+    endpoint_key = "key",
+    cache_key = { "key" },
+    fields = {
+      { id = typedefs.uuid },
+      { created_at = typedefs.auto_timestamp_s },
+      { consumer = { type = "foreign", reference = "consumers", default = ngx.null, on_delete = "cascade", }, },
+      { key = { type = "string", required = false, unique = true, auto = true }, },
+    },
   },
 }
 
-return {keyauth_credentials = SCHEMA}

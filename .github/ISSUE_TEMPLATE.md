@@ -1,4 +1,5 @@
-NOTE: GitHub issues are reserved for bug reports only.
+NOTE: GitHub issues are reserved for **bug reports only**. For anything else,
+please join the conversation in Kong Nation https://discuss.konghq.com/.
 
 Please read the CONTRIBUTING.md guidelines to learn on which channels you can
 seek for help and ask general questions:
@@ -21,5 +22,6 @@ SUMMARY_GOES_HERE
 - Kong version (`$ kong version`)
 - Kong debug-level startup logs (`$ kong start --vv`)
 - Kong error logs (`<KONG_PREFIX>/logs/error.log`)
-- Kong configuration (registered APIs/Plugins & configuration file)
-- Operating System
+- Kong configuration (the output of a GET request to Kong's Admin port - see
+  https://docs.konghq.com/latest/admin-api/#retrieve-node-information)
+- Operating system

@@ -9,8 +9,22 @@ for _, strategy in helpers.each_strategy() do
     local proxy_client
     local platform
 
+<<<<<<< HEAD
     setup(function()
       local bp = helpers.get_db_utils(strategy)
+||||||| merged common ancestors
+    setup(function()
+      local bp = helpers.get_db_utils(strategy)
+
+=======
+    lazy_setup(function()
+      local bp = helpers.get_db_utils(strategy, {
+        "routes",
+        "services",
+        "plugins",
+      })
+
+>>>>>>> 0.15.0
       local route1 = bp.routes:insert {
         hosts = { "logging.com" },
       }
@@ -24,7 +38,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.plugins:insert {
-        route_id = route1.id,
+        route = { id = route1.id },
         name     = "syslog",
         config   = {
           log_level              = "info",
@@ -35,7 +49,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.plugins:insert {
-        route_id = route2.id,
+        route = { id = route2.id },
         name     = "syslog",
         config   = {
           log_level              = "err",
@@ -46,7 +60,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.plugins:insert {
-        route_id = route3.id,
+        route = { id = route3.id },
         name     = "syslog",
         config   = {
           log_level              = "warning",
@@ -65,7 +79,7 @@ for _, strategy in helpers.each_strategy() do
         nginx_conf = "spec/fixtures/custom_nginx.template",
       }))
     end)
-    teardown(function()
+    lazy_teardown(function()
       helpers.stop_kong()
     end)
 

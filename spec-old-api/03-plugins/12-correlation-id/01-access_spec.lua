@@ -7,8 +7,8 @@ local TRACKER_PATTERN = "%d+%.%d+%.%d+%.%d+%-%d+%-%d+%-%d+%-%d+%-%d%d%d%d%d%d%d%
 
 describe("Plugin: correlation-id (access)", function()
   local client
-  setup(function()
-    local dao = select(3, helpers.get_db_utils())
+  lazy_setup(function()
+    local _, db, dao = helpers.get_db_utils()
 
     local api1     = assert(dao.apis:insert {
       name         = "api-1",
@@ -31,28 +31,28 @@ describe("Plugin: correlation-id (access)", function()
       upstream_url = helpers.mock_upstream_url,
     })
 
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name   = "correlation-id",
-      api_id = api1.id,
+      api = { id = api1.id },
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name   = "correlation-id",
-      api_id = api2.id,
+      api = { id = api2.id },
       config = {
         header_name = "Foo-Bar-Id",
       },
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name   = "correlation-id",
-      api_id = api3.id,
+      api = { id = api3.id },
       config = {
         generator       = "uuid",
         echo_downstream = true,
       },
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name   = "correlation-id",
-      api_id = api4.id,
+      api = { id = api4.id },
       config = {
         generator = "tracker",
       },
@@ -64,7 +64,7 @@ describe("Plugin: correlation-id (access)", function()
     client = helpers.proxy_client()
   end)
 
-  teardown(function()
+  lazy_teardown(function()
     if client then client:close() end
     helpers.stop_kong()
   end)

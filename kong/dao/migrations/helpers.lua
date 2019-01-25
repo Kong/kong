@@ -3,11 +3,11 @@ local cassandra = require("cassandra")
 local utils = require "kong.tools.utils"
 
 
-local _M = {}
-
-
 local fmt = string.format
 local table_concat = table.concat
+
+
+local _M = {}
 
 
 -- Iterator to update plugin configurations.
@@ -34,6 +34,8 @@ local table_concat = table.concat
 --      end
 --    end
 function _M.plugin_config_iterator(dao, plugin_name)
+  local db = dao.db.new_db
+
   -- iterates over rows
   local run_rows = function(t)
     for _, row in ipairs(t) do
@@ -52,14 +54,14 @@ function _M.plugin_config_iterator(dao, plugin_name)
         end
         row.created_at = nil
         row.config = updated_config
-        return dao.plugins:update(row, {id = row.id})
+        return db.plugins:update({id = row.id}, row)
       end)
     end
     return true
   end
 
   local coro
-  if dao.db_type == "cassandra" then
+  if db.strategy == "cassandra" then
     coro = coroutine.create(function()
       local coordinator = dao.db:get_coordinator()
       for rows, err in coordinator:iterate([[
@@ -73,7 +75,7 @@ function _M.plugin_config_iterator(dao, plugin_name)
       end
     end)
 
-  elseif dao.db_type == "postgres" then
+  elseif db.strategy == "postgres" then
     coro = coroutine.create(function()
       local rows, err = dao.db:query([[
         SELECT * FROM plugins WHERE name = ']] .. plugin_name .. [[';
@@ -87,7 +89,7 @@ function _M.plugin_config_iterator(dao, plugin_name)
 
   else
     coro = coroutine.create(function()
-      return nil, nil, "unknown database type: " .. tostring(dao.db_type)
+      return nil, nil, "unknown database type: " .. tostring(db.strategy)
     end)
   end
 
@@ -174,11 +176,7 @@ function _M.cassandra.copy_records(dao,
                             dest_column_name, source_table_def[dest_column_name])
           end
 
-          if source_value == nil then
-            source_value = cassandra.unset
-          else
-            source_value = type_converter(source_value)
-          end
+          source_value = type_converter(source_value)
 
         elseif type(source_value) == "function" then
           source_value = source_value(source_row)

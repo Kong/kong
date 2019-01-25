@@ -7,8 +7,14 @@ for _, strategy in helpers.each_strategy() do
   describe("Plugin: key-auth (access) [#" .. strategy .. "]", function()
     local proxy_client
 
-    setup(function()
-      local bp = helpers.get_db_utils(strategy)
+    lazy_setup(function()
+      local bp = helpers.get_db_utils(strategy, {
+        "routes",
+        "services",
+        "plugins",
+        "consumers",
+        "keyauth_credentials",
+      })
 
         local anonymous_user = bp.consumers:insert {
           username = "no-body",
@@ -48,17 +54,48 @@ for _, strategy in helpers.each_strategy() do
           host     = "mockbin.com",
         }
 
+<<<<<<< HEAD
         local route7 = bp.routes:insert {
           hosts      = { "key-auth7.com" },
           service    = service7,
           strip_path = true,
         }
+||||||| merged common ancestors
+      bp.plugins:insert {
+        name     = "key-auth",
+        route_id = route1.id,
+      }
+=======
+      bp.plugins:insert {
+        name     = "key-auth",
+        route = { id = route1.id },
+      }
+>>>>>>> 0.15.0
 
+<<<<<<< HEAD
         bp.plugins:insert {
           name     = "key-auth",
           route_id = route1.id,
         }
+||||||| merged common ancestors
+      bp.plugins:insert {
+        name     = "key-auth",
+        route_id = route2.id,
+        config   = {
+          hide_credentials = true,
+        },
+      }
+=======
+      bp.plugins:insert {
+        name     = "key-auth",
+        route = { id = route2.id },
+        config   = {
+          hide_credentials = true,
+        },
+      }
+>>>>>>> 0.15.0
 
+<<<<<<< HEAD
         bp.plugins:insert {
           name     = "key-auth",
           route_id = route2.id,
@@ -66,12 +103,42 @@ for _, strategy in helpers.each_strategy() do
             hide_credentials = true,
           },
         }
+||||||| merged common ancestors
+      bp.keyauth_credentials:insert {
+        key         = "kong",
+        consumer_id = consumer.id,
+      }
+=======
+      bp.keyauth_credentials:insert {
+        key      = "kong",
+        consumer = { id = consumer.id },
+      }
+>>>>>>> 0.15.0
 
+<<<<<<< HEAD
         bp.keyauth_credentials:insert {
           key         = "kong",
           consumer_id = consumer.id,
         }
+||||||| merged common ancestors
+      bp.plugins:insert {
+        name     = "key-auth",
+        route_id = route3.id,
+        config   = {
+          anonymous = anonymous_user.id,
+        },
+      }
+=======
+      bp.plugins:insert {
+        name     = "key-auth",
+        route = { id = route3.id },
+        config   = {
+          anonymous = anonymous_user.id,
+        },
+      }
+>>>>>>> 0.15.0
 
+<<<<<<< HEAD
         bp.plugins:insert {
           name     = "key-auth",
           route_id = route3.id,
@@ -79,7 +146,25 @@ for _, strategy in helpers.each_strategy() do
             anonymous = anonymous_user.id,
           },
         }
+||||||| merged common ancestors
+      bp.plugins:insert {
+        name     = "key-auth",
+        route_id = route4.id,
+        config   = {
+          anonymous = utils.uuid(),  -- unknown consumer
+        },
+      }
+=======
+      bp.plugins:insert {
+        name     = "key-auth",
+        route = { id = route4.id },
+        config   = {
+          anonymous = utils.uuid(),  -- unknown consumer
+        },
+      }
+>>>>>>> 0.15.0
 
+<<<<<<< HEAD
         bp.plugins:insert {
           name     = "key-auth",
           route_id = route4.id,
@@ -87,7 +172,25 @@ for _, strategy in helpers.each_strategy() do
             anonymous = utils.uuid(),  -- unknown consumer
           },
         }
+||||||| merged common ancestors
+      bp.plugins:insert {
+        name     = "key-auth",
+        route_id = route5.id,
+        config   = {
+          key_in_body = true,
+        },
+      }
+=======
+      bp.plugins:insert {
+        name     = "key-auth",
+        route = { id = route5.id },
+        config   = {
+          key_in_body = true,
+        },
+      }
+>>>>>>> 0.15.0
 
+<<<<<<< HEAD
         bp.plugins:insert {
           name     = "key-auth",
           route_id = route5.id,
@@ -95,7 +198,27 @@ for _, strategy in helpers.each_strategy() do
             key_in_body = true,
           },
         }
+||||||| merged common ancestors
+      bp.plugins:insert {
+        name     = "key-auth",
+        route_id = route6.id,
+        config   = {
+          key_in_body      = true,
+          hide_credentials = true,
+        },
+      }
+=======
+      bp.plugins:insert {
+        name     = "key-auth",
+        route = { id = route6.id },
+        config   = {
+          key_in_body      = true,
+          hide_credentials = true,
+        },
+      }
+>>>>>>> 0.15.0
 
+<<<<<<< HEAD
         bp.plugins:insert {
           name     = "key-auth",
           route_id = route6.id,
@@ -104,6 +227,23 @@ for _, strategy in helpers.each_strategy() do
             hide_credentials = true,
           },
         }
+||||||| merged common ancestors
+      bp.plugins:insert {
+        name     = "key-auth",
+        route_id = route7.id,
+        config   = {
+          run_on_preflight = false,
+        },
+      }
+=======
+      bp.plugins:insert {
+        name     = "key-auth",
+        route = { id = route7.id },
+        config   = {
+          run_on_preflight = false,
+        },
+      }
+>>>>>>> 0.15.0
 
         bp.plugins:insert {
           name     = "key-auth",
@@ -119,7 +259,7 @@ for _, strategy in helpers.each_strategy() do
 
       proxy_client = helpers.proxy_client()
     end)
-    teardown(function()
+    lazy_teardown(function()
       if proxy_client then
         proxy_client:close()
       end
@@ -468,8 +608,14 @@ for _, strategy in helpers.each_strategy() do
     local user2
     local anonymous
 
-    setup(function()
-      local bp = helpers.get_db_utils(strategy)
+    lazy_setup(function()
+      local bp = helpers.get_db_utils(strategy, {
+        "routes",
+        "services",
+        "plugins",
+        "consumers",
+        "keyauth_credentials",
+      })
 
 
       local route1 = bp.routes:insert {
@@ -487,12 +633,12 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name     = "basic-auth",
-        route_id = route1.id,
+        route = { id = route1.id },
       }
 
       bp.plugins:insert {
         name     = "key-auth",
-        route_id = route1.id,
+        route = { id = route1.id },
       }
 
       anonymous = bp.consumers:insert {
@@ -509,7 +655,7 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name     = "basic-auth",
-        route_id = route2.id,
+        route = { id = route2.id },
         config   = {
           anonymous = anonymous.id,
         },
@@ -517,21 +663,21 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name     = "key-auth",
-        route_id = route2.id,
+        route = { id = route2.id },
         config   = {
           anonymous = anonymous.id,
         },
       }
 
       bp.keyauth_credentials:insert {
-        key         = "Mouse",
-        consumer_id = user1.id,
+        key      = "Mouse",
+        consumer = { id = user1.id },
       }
 
       bp.basicauth_credentials:insert {
-        username    = "Aladdin",
-        password    = "OpenSesame",
-        consumer_id = user2.id,
+        username = "Aladdin",
+        password = "OpenSesame",
+        consumer = { id = user2.id },
       }
       assert(helpers.start_kong({
         database   = strategy,
@@ -542,7 +688,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
 
-    teardown(function()
+    lazy_teardown(function()
       if proxy_client then
         proxy_client:close()
       end

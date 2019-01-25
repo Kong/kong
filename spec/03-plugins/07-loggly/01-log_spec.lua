@@ -9,8 +9,12 @@ for _, strategy in helpers.each_strategy() do
   describe("Plugin: loggly (log) [#" .. strategy .. "]", function()
     local proxy_client
 
-    setup(function()
-      local bp = helpers.get_db_utils(strategy)
+    lazy_setup(function()
+      local bp = helpers.get_db_utils(strategy, {
+        "routes",
+        "services",
+        "plugins",
+      })
 
       local route1 = bp.routes:insert {
         hosts = { "logging.com" },
@@ -29,7 +33,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.plugins:insert {
-        route_id = route1.id,
+        route = { id = route1.id },
         name     = "loggly",
         config   = {
           host                = "127.0.0.1",
@@ -41,7 +45,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.plugins:insert {
-        route_id = route2.id,
+        route = { id = route2.id },
         name     = "loggly",
         config   = {
           host                = "127.0.0.1",
@@ -54,7 +58,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.plugins:insert {
-        route_id = route3.id,
+        route = { id = route3.id },
         name     = "loggly",
         config   = {
           host                   = "127.0.0.1",
@@ -67,7 +71,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.plugins:insert {
-        route_id = route4.id,
+        route = { id = route4.id },
         name     = "loggly",
         config   = {
           host = "127.0.0.1",
@@ -82,7 +86,7 @@ for _, strategy in helpers.each_strategy() do
       }))
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       helpers.stop_kong()
     end)
 

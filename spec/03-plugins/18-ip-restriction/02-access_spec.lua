@@ -7,12 +7,30 @@ for _, strategy in helpers.each_strategy() do
     local plugin
     local proxy_client
     local admin_client
+<<<<<<< HEAD
     local dao
     local default_ws
 
     setup(function()
       local bp, _
       bp, _, dao = helpers.get_db_utils(strategy)
+||||||| merged common ancestors
+    local dao
+
+    setup(function()
+      local bp, _
+      bp, _, dao = helpers.get_db_utils(strategy)
+=======
+    local db
+
+    lazy_setup(function()
+      local bp
+      bp, db = helpers.get_db_utils(strategy, {
+        "routes",
+        "services",
+        "plugins",
+      })
+>>>>>>> 0.15.0
 
       local route1 = bp.routes:insert {
         hosts = { "ip-restriction1.com" },
@@ -48,63 +66,63 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name     = "ip-restriction",
-        route_id = route1.id,
+        route = { id = route1.id },
         config   = {
           blacklist = { "127.0.0.1", "127.0.0.2" }
         },
       }
 
-      plugin = assert(dao.plugins:insert {
+      plugin = assert(db.plugins:insert {
         name     = "ip-restriction",
-        route_id = route2.id,
+        route = { id = route2.id },
         config   = {
           blacklist = { "127.0.0.2" },
         },
       })
 
-      assert(dao.plugins:insert {
+      assert(db.plugins:insert {
         name     = "ip-restriction",
-        route_id = route3.id,
+        route = { id = route3.id },
         config   = {
           whitelist = { "127.0.0.2" },
         },
       })
 
-      assert(dao.plugins:insert {
+      assert(db.plugins:insert {
         name     = "ip-restriction",
-        route_id = route4.id,
+        route = { id = route4.id },
         config   = {
           whitelist = { "127.0.0.1" },
         },
       })
 
-      assert(dao.plugins:insert {
+      assert(db.plugins:insert {
         name     = "ip-restriction",
-        route_id = route5.id,
+        route = { id = route5.id },
         config   = {
           blacklist = { "127.0.0.0/24" },
         },
       })
 
-      assert(dao.plugins:insert {
+      assert(db.plugins:insert {
         name     = "ip-restriction",
-        route_id = route6.id,
+        route = { id = route6.id },
         config   = {
           whitelist = { "127.0.0.4" },
         },
       })
 
-      assert(dao.plugins:insert {
+      assert(db.plugins:insert {
         name     = "ip-restriction",
-        route_id = route7.id,
+        route = { id = route7.id },
         config   = {
           blacklist = { "127.0.0.4" },
         },
       })
 
-      assert(dao.plugins:insert {
+      assert(db.plugins:insert {
         name     = "ip-restriction",
-        route_id = route8.id,
+        route = { id = route8.id },
         config   = {
           whitelist = { "0.0.0.0/0" },
         },
@@ -123,7 +141,7 @@ for _, strategy in helpers.each_strategy() do
       admin_client = helpers.admin_client()
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       if proxy_client and admin_client then
         proxy_client:close()
         admin_client:close()
@@ -301,7 +319,7 @@ for _, strategy in helpers.each_strategy() do
         method  = "PATCH",
         path    = "/plugins/" .. plugin.id,
         body    = {
-          ["config.blacklist"] = "127.0.0.1,127.0.0.2"
+          config = { blacklist = { "127.0.0.1", "127.0.0.2" } },
         },
         headers = {
           ["Content-Type"] = "application/json"
@@ -309,10 +327,19 @@ for _, strategy in helpers.each_strategy() do
       })
       assert.res_status(200, res)
 
+<<<<<<< HEAD
       local cache_key = dao.plugins:cache_key(plugin.name,
                                               plugin.route_id,
                                               plugin.service_id,
                                               plugin.consumer_id) .. default_ws
+||||||| merged common ancestors
+      local cache_key = dao.plugins:cache_key(plugin.name,
+                                              plugin.route_id,
+                                              plugin.service_id,
+                                              plugin.consumer_id)
+=======
+      local cache_key = db.plugins:cache_key(plugin)
+>>>>>>> 0.15.0
 
       helpers.wait_until(function()
         res = assert(admin_client:send {

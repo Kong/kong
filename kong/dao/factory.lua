@@ -14,12 +14,6 @@ local fmt = string.format
 
 local CORE_MODELS = {
   "apis",
-  "consumers",
-  "plugins",
-  "ssl_certificates",
-  "ssl_servers_names",
-  "upstreams",
-  "targets",
   "rbac_users",
   "rbac_user_roles",
   "rbac_roles",
@@ -63,7 +57,7 @@ local function build_constraints(schemas)
         if f_entity ~= nil and f_field ~= nil then
           local f_schema = schemas[f_entity]
           constraints.foreign[col] = {
-            table = f_schema.table,
+            table = f_schema and f_schema.table or f_entity,
             schema = f_schema,
             col = f_field,
             f_entity = f_entity
@@ -83,11 +77,17 @@ local function build_constraints(schemas)
   return all_constraints
 end
 
-local function load_daos(self, schemas, constraints)
+local function load_daos(self, schemas, constraints, new_db)
   for m_name, schema in pairs(schemas) do
     if constraints[m_name] ~= nil and constraints[m_name].foreign ~= nil then
       for col, f_constraint in pairs(constraints[m_name].foreign) do
         local parent_name = f_constraint.f_entity
+
+        -- New-DAO parents may not have a `constraints` entry yet
+        if not constraints[parent_name] then
+          constraints[parent_name] = {}
+        end
+
         local parent_constraints = constraints[parent_name]
         if parent_constraints.cascade == nil then
           parent_constraints.cascade = {}
@@ -103,6 +103,18 @@ local function load_daos(self, schemas, constraints)
     end
   end
 
+  -- Hardcode cascade-delete constraint between `apis` and `plugins`.
+  -- This is the only old-DAO to new-DAO constraint,
+  -- once `apis` becomes the last old-DAO entity.
+  local constraints_apis = constraints["apis"]
+  constraints_apis.cascade = constraints_apis.cascade or {}
+  constraints_apis.cascade["plugins"] = {
+    new_db = true,
+    db_entity = new_db.plugins,
+    table = "plugins",
+    f_col = "api",
+  }
+
   for m_name, schema in pairs(schemas) do
     self.daos[m_name] = DAO(self.db, ModelFactory(schema), schema,
                             constraints[m_name])
@@ -115,13 +127,162 @@ local function load_daos(self, schemas, constraints)
   end
 end
 
+
+local function create_legacy_wrappers(self, constraints)
+  local new_db = self.db.new_db
+  local dao_wrappers = {}
+  for name, new_dao in pairs(new_db.daos) do
+    if new_dao.schema.legacy then
+      goto continue
+    end
+
+    dao_wrappers[name] = {
+
+      constraints = constraints[name],
+
+      unwrapped = new_dao,
+
+      cache_key = function(_, a1, a2, a3, a4, a5)
+        return new_dao:cache_key(a1, a2, a3, a4, a5)
+      end,
+
+      entity_cache_key = function(_, entity)
+        log.debug(debug.traceback("[legacy wrapper] using legacy wrapper"))
+        return new_dao:cache_key(entity)
+      end,
+
+      insert = function(_, tbl, opts)
+        log.debug(debug.traceback("[legacy wrapper] using legacy wrapper"))
+        if opts then
+          if opts.quiet then
+            log.warn("[legacy wrapper] quiet is ignored, event always sent")
+          end
+        end
+        local ok, _, err_t = new_dao:insert(tbl, { ttl = opts and opts.ttl })
+        if not ok then
+          return ok, err_t
+        end
+        return ok
+      end,
+
+      find = function(_, args)
+        log.debug(debug.traceback("[legacy wrapper] using legacy wrapper"))
+        local pk = new_dao.schema:extract_pk_values(args)
+        local row, _, err_t = new_dao:select(pk)
+        if not row then
+          return row, err_t
+        end
+        return row
+      end,
+
+      find_all = function(_, filt)
+        local rows = {}
+        local filtering = false
+        if filt and next(filt) then
+          filtering = true
+        end
+        for row, err in new_dao:each() do
+          if err then
+            return nil, err
+          end
+          if filtering then
+            local match = true
+            for k,v in pairs(filt) do
+              local foreign = k:match("^(.*)_id$")
+              if foreign then
+                if (row[foreign] == ngx.null and v ~= ngx.null)
+                or (row[foreign].id ~= v) then
+                  goto continue
+                end
+              else
+                if row[k] ~= v then
+                  goto continue
+                end
+              end
+            end
+            if match then
+              rows[#rows + 1] = row
+            end
+          else
+            rows[#rows + 1] = row
+          end
+          ::continue::
+        end
+        log.debug(debug.traceback("[legacy wrapper] using legacy wrapper"))
+        return rows
+      end,
+
+      count = function(self, filt)
+        log.debug(debug.traceback("[legacy wrapper] using legacy wrapper"))
+        local rows, err, err_t = self:find_all(filt)
+        if err then
+          return nil, err_t
+        end
+        return #rows
+      end,
+
+      find_page = function(_, tbl, page_offset, page_size)
+        log.debug(debug.traceback("[legacy wrapper] using legacy wrapper"))
+        if tbl and next(tbl) then
+          return nil, "[legacy wrapper] filtering is not supported"
+        end
+        return new_dao:page(page_size, page_offset)
+      end,
+
+      update = function(_, tbl, filter_keys, opts)
+        log.debug(debug.traceback("[legacy wrapper] using legacy wrapper"))
+        if opts then
+          if opts.full then
+            log.warn("[legacy wrapper] full is ignored")
+          end
+          if opts.quiet then
+            log.warn("[legacy wrapper] quiet is ignored, event always sent")
+          end
+        end
+        local pk = new_dao.schema:extract_pk_values(filter_keys)
+        local ok, _, err_t = new_dao:update(pk, tbl)
+        if not ok then
+          return ok, err_t
+        end
+        return ok
+      end,
+
+      delete = function(_, tbl, opts)
+        log.debug(debug.traceback("[legacy wrapper] using legacy wrapper"))
+        if opts then
+          if opts.quiet then
+            log.warn("[legacy wrapper] quiet is ignored, event always sent")
+          end
+        end
+        local ok, _, err_t = new_dao:delete(tbl)
+        if not ok then
+          return ok, err_t
+        end
+        return ok
+      end,
+
+      truncate = function(_)
+        log.debug(debug.traceback("[legacy wrapper] using legacy wrapper"))
+        return new_dao:truncate()
+      end,
+    }
+
+    ::continue::
+  end
+
+  -- Make wrappers accessible by keying daos, but do not return
+  -- them when iterating self.daos with pairs()
+  setmetatable(self.daos, { __index = dao_wrappers })
+end
+
+
 function _M.new(kong_config, new_db)
   local self = {
     db_type = kong_config.database,
     daos = {},
     additional_tables = {},
     kong_config = kong_config,
-    plugin_names = kong_config.plugins or {}
+    plugin_names = kong_config.loaded_plugins or {}
   }
 
   local DB = require("kong.dao.db." .. self.db_type)
@@ -151,14 +312,18 @@ function _M.new(kong_config, new_db)
         end
       else
         for k, v in pairs(plugin_schemas) do
-          schemas[k] = v
+          if not v.name then
+            schemas[k] = v
+          end
         end
       end
     end
   end
 
   local constraints = build_constraints(schemas)
-  load_daos(self, schemas, constraints)
+  load_daos(self, schemas, constraints, new_db)
+
+  create_legacy_wrappers(self, constraints)
 
   return setmetatable(self, _M)
 end
@@ -270,7 +435,9 @@ end
 
 function _M:truncate_tables()
   for _, dao in pairs(self.daos) do
-    self.db:truncate_table(dao.table)
+    if dao.table then
+      self.db:truncate_table(dao.table)
+    end
   end
 
   if self.db.additional_tables then
@@ -384,6 +551,14 @@ local function migrate(self, identifier, migrations_modules, cur_migrations, on_
       err = self.db:queries(migration.up)
     elseif mig_type == "function" then
       err = migration.up(self.db, self.kong_config, self)
+    end
+
+    if err and migration.ignore_error then
+      if type(migration.ignore_error) == "boolean" or
+         (type(migration.ignore_error) == "string" and
+          string.find(tostring(err), migration.ignore_error, 1, true)) then
+        err = nil
+      end
     end
 
     if err then

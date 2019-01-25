@@ -1193,7 +1193,7 @@ end
 
 
 do
-  local reports = require "kong.core.reports"
+  local reports = require "kong.reports"
   local rbac_users_count = function()
     local c, err = singletons.dao.rbac_users:count()
     if not c then

@@ -6,8 +6,11 @@ for _, strategy in helpers.each_strategy() do
   describe("helpers [#" .. strategy .. "]: assertions and modifiers", function()
     local proxy_client
 
-    setup(function()
-      local bp = helpers.get_db_utils(strategy)
+    lazy_setup(function()
+      local bp = helpers.get_db_utils(strategy, {
+        "routes",
+        "services",
+      })
 
       local service = bp.services:insert {
         host     = helpers.mock_upstream_host,
@@ -27,7 +30,7 @@ for _, strategy in helpers.each_strategy() do
       }))
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       helpers.stop_kong()
     end)
 

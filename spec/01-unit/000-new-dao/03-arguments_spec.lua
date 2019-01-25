@@ -1,85 +1,156 @@
 local arguments    = require "kong.api.arguments"
+local Schema       = require "kong.db.schema"
+
+local infer_value = arguments.infer_value
+local infer       = arguments.infer
+local decode_arg  = arguments.decode_arg
+local decode      = arguments.decode
+local combine     = arguments.combine
 
 
-local decode_value = arguments.decode_value
-local decode       = arguments.decode
-local tonumber     = tonumber
-local null         = ngx.null
-
-
-describe("arguments.decode_value", function()
-  it("infers empty strings", function()
-    assert.equal(null, decode_value(""))
+describe("arguments.infer_value", function()
+  it("infers numbers", function()
+    assert.equal(2, infer_value("2", { type = "number" }))
+    assert.equal(2, infer_value("2", { type = "integer" }))
+    assert.equal(2.5, infer_value("2.5", { type = "number" }))
+    assert.equal(2.5, infer_value("2.5", { type = "integer" })) -- notice that integers are not rounded
   end)
 
   it("infers booleans", function()
-    assert.equal(true, decode_value("true"))
-    assert.equal(false, decode_value("false"))
+    assert.equal(false, infer_value("false", { type = "boolean" }))
+    assert.equal(true, infer_value("true", { type = "boolean" }))
   end)
 
-  it("infers numbers", function()
-    assert.equal(tonumber("123"), decode_value("123"))
-    assert.equal(tonumber("0.1"), decode_value("0.1"))
+  it("infers arrays and sets", function()
+    assert.same({ "a" }, infer_value("a",   { type = "array", elements = { type = "string" } }))
+    assert.same({ 2 },   infer_value("2",   { type = "array", elements = { type = "number" } }))
+    assert.same({ "a" }, infer_value({"a"}, { type = "array", elements = { type = "string" } }))
+    assert.same({ 2 },   infer_value({"2"}, { type = "array", elements = { type = "number" } }))
+
+    assert.same({ "a" }, infer_value("a",   { type = "set", elements = { type = "string" } }))
+    assert.same({ 2 },   infer_value("2",   { type = "set", elements = { type = "number" } }))
+    assert.same({ "a" }, infer_value({"a"}, { type = "set", elements = { type = "string" } }))
+    assert.same({ 2 },   infer_value({"2"}, { type = "set", elements = { type = "number" } }))
   end)
 
-  it("infers arrays", function()
-    assert.same(
-      { null, true, false, tonumber("123"), tonumber("0.1") },
-      decode_value { "", "true", "false", "123", "0.1" }
-    )
+  it("infers nulls from empty strings", function()
+    assert.equal(ngx.null, infer_value("", { type = "string" }))
+    assert.equal(ngx.null, infer_value("", { type = "array" }))
+    assert.equal(ngx.null, infer_value("", { type = "set" }))
+    assert.equal(ngx.null, infer_value("", { type = "number" }))
+    assert.equal(ngx.null, infer_value("", { type = "integer" }))
+    assert.equal(ngx.null, infer_value("", { type = "boolean" }))
+    assert.equal(ngx.null, infer_value("", { type = "foreign" }))
+    assert.equal(ngx.null, infer_value("", { type = "map" }))
+    assert.equal(ngx.null, infer_value("", { type = "record" }))
+  end)
+
+  it("doesn't infer nulls from empty strings on unknown types", function()
+    assert.equal("", infer_value(""))
+  end)
+
+  it("infers maps", function()
+    assert.same({ x = "1" }, infer_value({ x = "1" }, { type = "map", elements = { type = "string" } }))
+    assert.same({ x = 1 },   infer_value({ x = "1" }, { type = "map", elements = { type = "number" } }))
+  end)
+
+  it("infers records", function()
+    assert.same({ age = "1" }, infer_value({ age = "1" },
+                                           { type = "record", fields = {{ age = { type = "string" } } }}))
+    assert.same({ age = 1 },   infer_value({ age = "1" },
+                                           { type = "record", fields = {{ age = { type = "number" } } }}))
+  end)
+
+  it("returns the provided value when inferring is not possible", function()
+    assert.equal("not number", infer_value("not number", { type = "number" }))
+    assert.equal("not integer", infer_value("not integer", { type = "integer" }))
+    assert.equal("not boolean", infer_value("not boolean", { type = "boolean" }))
   end)
 end)
 
 
-describe("arguments.decode", function()
-  it("decodes empty strings", function()
-    assert.same({ name = decode_value("") }, decode{ name = "" })
+describe("arguments.infer", function()
+  it("returns nil for nil args", function()
+    assert.is_nil(infer())
   end)
 
-  it("decodes booleans", function()
-    assert.same({ name = decode_value("true") }, decode{ name = "true" })
-    assert.same({ name = decode_value("false") }, decode{ name = "false" })
+  it("does no inferring without schema", function()
+    assert.same("args", infer("args"))
   end)
 
-  it("decodes numbers", function()
-    assert.same({ name = decode_value("123") }, decode{ name = "123" })
-    assert.same({ name = decode_value("0.1") }, decode{ name = "0.1" })
+  it("infers every field using the schema", function()
+    local schema = Schema.new({
+      fields = {
+        { name = { type = "string" } },
+        { age  = { type = "number" } },
+        { has_license = { type = "boolean" } },
+        { aliases = { type = "set", elements = { type = { "string" } } } },
+        { comments = { type = "string" } },
+      }
+    })
+
+    local args = { name = "peter",
+                   age = "45",
+                   has_license = "true",
+                   aliases = "peta",
+                   comments = "" }
+    assert.same({
+      name = "peter",
+      age = 45,
+      has_license = true,
+      aliases = { "peta" },
+      comments = ngx.null
+    }, infer(args, schema))
+  end)
+end)
+
+describe("arguments.combine", function()
+  it("merges arguments together, creating arrays when finding repeated names, recursively", function()
+    local monster = {
+      { a = { [99] = "wayne", }, },
+      { a = { "first", }, },
+      { a = { b = { c = { "true", }, }, }, },
+      { a = { "a", "b", "c" }, },
+      { a = { b = { c = { d = "" }, }, }, },
+      { c = "test", },
+      { a = { "1", "2", "3", }, },
+    }
+
+    local combined_monster = {
+      a = {
+        { "first", "a", "1" }, { "b", "2" }, { "c", "3" },
+        [99] = "wayne",
+        b = { c = { "true", d = "", }, }
+      },
+      c = "test",
+    }
+
+    assert.same(combined_monster, combine(monster))
+  end)
+end)
+
+
+describe("arguments.decode_arg", function()
+  it("does not infer numbers, booleans or nulls from strings", function()
+    assert.same({ x = "" }, decode_arg("x", ""))
+    assert.same({ x = "true" }, decode_arg("x", "true"))
+    assert.same({ x = "false" }, decode_arg("x", "false"))
+    assert.same({ x = "10" }, decode_arg("x", "10"))
   end)
 
   it("decodes arrays", function()
-    assert.same(
-      { name = { decode_value(""), decode_value("true"), decode_value("false"), decode_value("123"), decode_value("0.1") }},
-      decode { name = { "", "true", "false", "123", "0.1" } }
-    )
+    assert.same({ x = { "a" } }, decode_arg("x[]", "a"))
+    assert.same({ x = { "a" } }, decode_arg("x[1]", "a"))
+    assert.same({ x = { nil, "a" } }, decode_arg("x[2]", "a"))
   end)
 
-  it("decodes object", function()
-    assert.same({ service = { name = decode_value("") }},              decode{ ["service.name"] = "" })
-    assert.same({ service = { name = decode_value("true") }},          decode{ ["service.name"] = "true" })
-    assert.same({ service = { name = decode_value("false") }},         decode{ ["service.name"] = "false" })
-    assert.same({ service = { name = decode_value("123") }},           decode{ ["service.name"] = "123" })
-    assert.same({ service = { name = decode_value("0.1") }},           decode{ ["service.name"] = "0.1" })
-    assert.same({ service = { name = decode_value("true"),  id = 1 }}, decode{ ["service.name"] = "true",  ["service.id"] = "1" })
-    assert.same({ service = { name = decode_value("false"), id = 1 }}, decode{ ["service.name"] = "false", ["service.id"] = "1" })
-    assert.same({ service = { name = decode_value("123"),   id = 1 }}, decode{ ["service.name"] = "123",   ["service.id"] = "1" })
-    assert.same({ service = { name = decode_value("0.1"),   id = 1 }}, decode{ ["service.name"] = "0.1",   ["service.id"] = "1" })
+  it("decodes nested arrays", function()
+    assert.same({ x = { { "a" } } }, decode_arg("x[1][1]", "a"))
+    assert.same({ x = { nil, { "a" } } }, decode_arg("x[2][1]", "a"))
   end)
+end)
 
-  it("decodes array and object parts", function()
-    assert.same(
-      { service = { name = { decode_value(""), decode_value("true"), decode_value("false"), decode_value("123"), decode_value("0.1") }}},
-      decode { ["service.name"] = { "", "true", "false", "123", "0.1" } }
-    )
-    assert.same(
-      { service = { name = { decode_value(""), decode_value("true"), decode_value("false"), decode_value("123"), decode_value("0.1") }, id = 1 }},
-      decode { ["service.name"] = { "", "true", "false", "123", "0.1" }, ["service.id"] = 1 }
-    )
-
-    assert.same(
-      { service = { decode_value(""), decode_value("true"), decode_value("false"), decode_value("123"), decode_value("0.1"), id = 1 }},
-      decode { ["service[]"] = { "", "true", "false", "123", "0.1" }, ["service.id"] = "1" }
-    )
-  end)
+describe("arguments.decode", function()
 
   it("decodes complex nested parameters", function()
     assert.same({
@@ -88,21 +159,21 @@ describe("arguments.decode", function()
         {
           "first",
           "a",
-          1,
+          "1",
         },
         {
           "b",
-          2,
+          "2",
         },
         {
           "c",
-          3,
+          "3",
         },
         [99] = "wayne",
         b = {
           c = {
-            true,
-            d = null
+            "true",
+            d = ""
           }
         }
       },
@@ -197,38 +268,38 @@ describe("arguments.decode", function()
       ["a[2]"] = { "5", "6" },
     }
 
-    assert.is_table(decoded.a[1])
-    assert.equal(3, #decoded.a[1])
+    assert.same(
+      { a = {
+          { "4", "1", "3" },
+          { "5", "6", "2" },
+        }
+      },
+      decoded
+    )
+  end)
 
-    local f1 = {
-      [1] = false,
-      [3] = false,
-      [4] = false,
-    }
+  it("infers values when provided with a schema", function()
+    local schema = Schema.new({
+      fields = {
+        { name = { type = "string" } },
+        { age  = { type = "number" } },
+        { has_license = { type = "boolean" } },
+        { aliases = { type = "set", elements = { type = { "string" } } } },
+        { comments = { type = "string" } },
+      }
+    })
 
-    for _, v in ipairs(decoded.a[1]) do
-      f1[v] = true
-    end
-
-    for _, ok in pairs(f1) do
-      assert.is_true(ok)
-    end
-
-    local f2 = {
-      [2] = false,
-      [5] = false,
-      [6] = false,
-    }
-
-    for _, v in ipairs(decoded.a[2]) do
-      f2[v] = true
-    end
-
-    for _, ok in pairs(f2) do
-      assert.is_true(ok)
-    end
-
-    assert.is_table(decoded.a[2])
-    assert.equal(3, #decoded.a[2])
+    local args = { name = "peter",
+                   age = "45",
+                   has_license = "true",
+                   ["aliases[]"] = "peta",
+                   comments = "" }
+    assert.same({
+      name = "peter",
+      age = 45,
+      has_license = true,
+      aliases = { "peta" },
+      comments = ngx.null
+    }, decode(args, schema))
   end)
 end)

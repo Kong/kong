@@ -5,29 +5,31 @@ local jwt_encoder = require "kong.plugins.jwt.jwt_parser"
 describe("Plugin: jwt (invalidations)", function()
   local admin_client, proxy_client, consumer1, api1
   local dao
+  local bp
+  local db
 
   before_each(function()
-    dao = select(3, helpers.get_db_utils())
+    bp, db, dao = helpers.get_db_utils()
 
     api1 = assert(dao.apis:insert {
       name         = "api-1",
       hosts        = { "jwt.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    consumer1 = assert(dao.consumers:insert {
+    consumer1 = bp.consumers:insert {
       username = "consumer1",
-    })
+    }
 
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name   = "jwt",
       config = {},
-      api_id = api1.id,
+      api = { id = api1.id },
     })
-    assert(dao.jwt_secrets:insert {
-      key         = "key123",
-      secret      = "secret123",
-      consumer_id = consumer1.id,
-    })
+    bp.jwt_secrets:insert {
+      key      = "key123",
+      secret   = "secret123",
+      consumer = { id = consumer1.id },
+    }
 
     assert(helpers.start_kong({
       nginx_conf = "spec/fixtures/custom_nginx.template",
@@ -71,7 +73,7 @@ describe("Plugin: jwt (invalidations)", function()
       assert.res_status(200, res)
 
       -- Check that cache is populated
-      local cache_key = dao.jwt_secrets:cache_key("key123")
+      local cache_key = db.jwt_secrets:cache_key("key123")
       res = assert(admin_client:send {
         method = "GET",
         path = "/cache/" .. cache_key,
@@ -139,7 +141,7 @@ describe("Plugin: jwt (invalidations)", function()
       assert.res_status(403, res)
 
       -- Check that cache is populated
-      local cache_key = dao.jwt_secrets:cache_key("key123")
+      local cache_key = db.jwt_secrets:cache_key("key123")
       res = assert(admin_client:send {
         method = "GET",
         path = "/cache/" .. cache_key,
@@ -215,7 +217,7 @@ describe("Plugin: jwt (invalidations)", function()
       assert.res_status(200, res)
 
       -- Check that cache is populated
-      local cache_key = dao.jwt_secrets:cache_key("key123")
+      local cache_key = db.jwt_secrets:cache_key("key123")
       res = assert(admin_client:send {
         method = "GET",
         path = "/cache/" .. cache_key,

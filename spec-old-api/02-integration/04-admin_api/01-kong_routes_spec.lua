@@ -1,8 +1,6 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
 
-local DAOFactory = require "kong.dao.factory"
-
 local dao_helpers = require "spec.02-integration.03-dao.helpers"
 
 describe("Admin API - Kong routes", function()
@@ -10,7 +8,7 @@ describe("Admin API - Kong routes", function()
     local meta = require "kong.meta"
     local client
 
-    setup(function()
+    lazy_setup(function()
       helpers.get_db_utils()
       assert(helpers.start_kong {
         pg_password = "hide_me"
@@ -18,7 +16,7 @@ describe("Admin API - Kong routes", function()
       client = helpers.admin_client(10000)
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       if client then client:close() end
       helpers.stop_kong()
     end)
@@ -39,7 +37,7 @@ describe("Admin API - Kong routes", function()
         path = "/"
       })
       assert.res_status(200, res)
-      assert.equal(string.format("%s/%s", meta._NAME, meta._VERSION), res.headers.server)
+      assert.equal(meta._SERVER_TOKENS, res.headers.server)
       assert.is_nil(res.headers.via) -- Via is only set for proxied requests
     end)
     it("returns 405 on invalid method", function()
@@ -101,11 +99,9 @@ describe("Admin API - Kong routes", function()
   dao_helpers.for_each_dao(function(kong_conf)
     describe("/status with DB: #" .. kong_conf.database, function()
       local client
-      local dao
 
-      setup(function()
-        dao = assert(DAOFactory.new(kong_conf))
-        assert(dao:run_migrations())
+      lazy_setup(function()
+        helpers.get_db_utils(kong_conf.database)
 
         assert(helpers.start_kong {
           database = kong_conf.database,
@@ -113,7 +109,7 @@ describe("Admin API - Kong routes", function()
         client = helpers.admin_client(10000)
       end)
 
-      teardown(function()
+      lazy_teardown(function()
         if client then client:close() end
         helpers.stop_kong()
       end)

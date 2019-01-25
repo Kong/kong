@@ -13,6 +13,6 @@ function OAuthHandler:access(conf)
 end
 
 OAuthHandler.PRIORITY = 1004
-OAuthHandler.VERSION = "0.1.0"
+OAuthHandler.VERSION = "1.0.0"
 
 return OAuthHandler

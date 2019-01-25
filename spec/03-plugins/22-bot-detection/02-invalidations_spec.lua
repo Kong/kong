@@ -6,14 +6,28 @@ for _, strategy in helpers.each_strategy() do
     local proxy_client
     local admin_client
 
+<<<<<<< HEAD
     setup(function()
       local bp = helpers.get_db_utils(strategy)
+||||||| merged common ancestors
+    setup(function()
+      local bp = helpers.get_db_utils(strategy)
+
+=======
+    lazy_setup(function()
+      local bp = helpers.get_db_utils(strategy, {
+        "routes",
+        "services",
+        "plugins",
+      })
+
+>>>>>>> 0.15.0
       local route = bp.routes:insert {
         hosts = { "bot.com" },
       }
 
       plugin = bp.plugins:insert {
-        route_id = route.id,
+        route = { id = route.id },
         name     = "bot-detection",
         config   = {},
       }
@@ -23,7 +37,7 @@ for _, strategy in helpers.each_strategy() do
       }))
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       helpers.stop_kong()
     end)
 
@@ -58,7 +72,7 @@ for _, strategy in helpers.each_strategy() do
         method  = "PATCH",
         path    = "/plugins/" .. plugin.id,
         body    = {
-          ["config.blacklist"] = "helloworld"
+          config = { blacklist = { "helloworld" } },
         },
         headers = {
           ["content-type"]     = "application/json"
@@ -97,7 +111,7 @@ for _, strategy in helpers.each_strategy() do
         method  = "PATCH",
         path    = "/plugins/" .. plugin.id,
         body    = {
-          ["config.whitelist"] = "facebookexternalhit/1.1"
+          config = { whitelist = { "facebookexternalhit/1.1" } },
         },
         headers = {
           ["content-type"] = "application/json",

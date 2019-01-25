@@ -21,23 +21,42 @@ for _, strategy in helpers.each_strategy() do
     local rsa_jwt_secret_1
     local rsa_jwt_secret_2
     local rsa_jwt_secret_3
+    local hs_jwt_secret_1
+    local hs_jwt_secret_2
     local proxy_client
     local admin_client
 
+<<<<<<< HEAD
     setup(function()
       local bp, _, dao = helpers.get_db_utils(strategy)
       singletons.dao = dao
+||||||| merged common ancestors
+    setup(function()
+      local bp = helpers.get_db_utils(strategy)
+=======
+    lazy_setup(function()
+      local bp = helpers.get_db_utils(strategy, {
+        "routes",
+        "services",
+        "plugins",
+        "consumers",
+        "jwt_secrets",
+      }, {
+        "ctx-checker",
+      })
+>>>>>>> 0.15.0
 
       local routes = {}
       local consumers, consumer1, consumer2, consumer3
       local consumer4, consumer5, consumer6, anonymous_user, plugins
 
-      for i = 1, 10 do
+      for i = 1, 11 do
         routes[i] = bp.routes:insert {
           hosts = { "jwt" .. i .. ".com" },
         }
       end
 
+<<<<<<< HEAD
       consumers      = bp.consumers
       consumer1      = consumers:insert({ username = "jwt_tests_consumer" })
       consumer2      = consumers:insert({ username = "jwt_tests_base64_consumer" })
@@ -46,101 +65,254 @@ for _, strategy in helpers.each_strategy() do
       consumer5      = consumers:insert({ username = "jwt_tests_rsa_consumer_5" })
       consumer6      = consumers:insert({ username = "jwt_tests_consumer_6" })
       anonymous_user = consumers:insert({ username = "no-body" })
+||||||| merged common ancestors
+      local consumers      = bp.consumers
+      local consumer1      = consumers:insert({ username = "jwt_tests_consumer" })
+      local consumer2      = consumers:insert({ username = "jwt_tests_base64_consumer" })
+      local consumer3      = consumers:insert({ username = "jwt_tests_rsa_consumer_1" })
+      local consumer4      = consumers:insert({ username = "jwt_tests_rsa_consumer_2" })
+      local consumer5      = consumers:insert({ username = "jwt_tests_rsa_consumer_5" })
+      local consumer6      = consumers:insert({ username = "jwt_tests_consumer_6" })
+      local anonymous_user = consumers:insert({ username = "no-body" })
+=======
+      local consumers      = bp.consumers
+      local consumer1      = consumers:insert({ username = "jwt_tests_consumer" })
+      local consumer2      = consumers:insert({ username = "jwt_tests_base64_consumer" })
+      local consumer3      = consumers:insert({ username = "jwt_tests_rsa_consumer_1" })
+      local consumer4      = consumers:insert({ username = "jwt_tests_rsa_consumer_2" })
+      local consumer5      = consumers:insert({ username = "jwt_tests_rsa_consumer_5" })
+      local consumer6      = consumers:insert({ username = "jwt_tests_consumer_6" })
+      local consumer7      = consumers:insert({ username = "jwt_tests_hs_consumer_7" })
+      local consumer8      = consumers:insert({ username = "jwt_tests_hs_consumer_8" })
+      local anonymous_user = consumers:insert({ username = "no-body" })
+>>>>>>> 0.15.0
 
       plugins = bp.plugins
 
       plugins:insert({
+<<<<<<< HEAD
           name     = "jwt",
           route_id = routes[1].id,
           config   = {},
+||||||| merged common ancestors
+        name     = "jwt",
+        route_id = routes[1].id,
+        config   = {},
+=======
+        name     = "jwt",
+        route = { id = routes[1].id },
+        config   = {},
+>>>>>>> 0.15.0
       })
 
       plugins:insert({
+<<<<<<< HEAD
           name     = "jwt",
           route_id = routes[2].id,
           config   = { uri_param_names = { "token", "jwt" } },
+||||||| merged common ancestors
+        name     = "jwt",
+        route_id = routes[2].id,
+        config   = { uri_param_names = { "token", "jwt" } },
+=======
+        name     = "jwt",
+        route = { id = routes[2].id },
+        config   = { uri_param_names = { "token", "jwt" } },
+>>>>>>> 0.15.0
       })
 
       plugins:insert({
+<<<<<<< HEAD
           name     = "jwt",
           route_id = routes[3].id,
           config   = { claims_to_verify = {"nbf", "exp"} },
+||||||| merged common ancestors
+        name     = "jwt",
+        route_id = routes[3].id,
+        config   = { claims_to_verify = {"nbf", "exp"} },
+=======
+        name     = "jwt",
+        route = { id = routes[3].id },
+        config   = { claims_to_verify = {"nbf", "exp"} },
+>>>>>>> 0.15.0
       })
 
       plugins:insert({
+<<<<<<< HEAD
           name     = "jwt",
           route_id = routes[4].id,
           config   = { key_claim_name = "aud" },
+||||||| merged common ancestors
+        name     = "jwt",
+        route_id = routes[4].id,
+        config   = { key_claim_name = "aud" },
+=======
+        name     = "jwt",
+        route = { id = routes[4].id },
+        config   = { key_claim_name = "aud" },
+>>>>>>> 0.15.0
       })
 
       plugins:insert({
+<<<<<<< HEAD
           name     = "jwt",
           route_id = routes[5].id,
           config   = { secret_is_base64 = true },
+||||||| merged common ancestors
+        name     = "jwt",
+        route_id = routes[5].id,
+        config   = { secret_is_base64 = true },
+=======
+        name     = "jwt",
+        route = { id = routes[5].id },
+        config   = { secret_is_base64 = true },
+>>>>>>> 0.15.0
       })
 
       plugins:insert({
+<<<<<<< HEAD
           name     = "jwt",
           route_id = routes[6].id,
           config   = { anonymous = anonymous_user.id },
+||||||| merged common ancestors
+        name     = "jwt",
+        route_id = routes[6].id,
+        config   = { anonymous = anonymous_user.id },
+=======
+        name     = "jwt",
+        route = { id = routes[6].id },
+        config   = { anonymous = anonymous_user.id },
+>>>>>>> 0.15.0
       })
 
       plugins:insert({
+<<<<<<< HEAD
           name     = "jwt",
           route_id = routes[7].id,
           config   = { anonymous = utils.uuid() },
+||||||| merged common ancestors
+        name     = "jwt",
+        route_id = routes[7].id,
+        config   = { anonymous = utils.uuid() },
+=======
+        name     = "jwt",
+        route = { id = routes[7].id },
+        config   = { anonymous = utils.uuid() },
+>>>>>>> 0.15.0
       })
 
       plugins:insert({
+<<<<<<< HEAD
           name     = "jwt",
           route_id = routes[8].id,
           config   = { run_on_preflight = false },
+||||||| merged common ancestors
+        name     = "jwt",
+        route_id = routes[8].id,
+        config   = { run_on_preflight = false },
+=======
+        name     = "jwt",
+        route = { id = routes[8].id },
+        config   = { run_on_preflight = false },
+>>>>>>> 0.15.0
       })
 
       plugins:insert({
+<<<<<<< HEAD
           name     = "jwt",
           route_id = routes[9].id,
           config   = { cookie_names = { "silly", "crumble" } },
+||||||| merged common ancestors
+        name     = "jwt",
+        route_id = routes[9].id,
+        config   = { cookie_names = { "silly", "crumble" } },
+=======
+        name     = "jwt",
+        route = { id = routes[9].id },
+        config   = { cookie_names = { "silly", "crumble" } },
+>>>>>>> 0.15.0
       })
 
       plugins:insert({
+<<<<<<< HEAD
           name     = "jwt",
           route_id = routes[10].id,
           config   = { key_claim_name = "kid" },
+||||||| merged common ancestors
+        name     = "jwt",
+        route_id = routes[10].id,
+        config   = { key_claim_name = "kid" },
+=======
+        name     = "jwt",
+        route = { id = routes[10].id },
+        config   = { key_claim_name = "kid" },
+>>>>>>> 0.15.0
       })
 
       plugins:insert({
+<<<<<<< HEAD
           name     = "ctx-checker",
           route_id = routes[1].id,
           config   = { ctx_field = "authenticated_jwt_token" },
+||||||| merged common ancestors
+        name     = "ctx-checker",
+        route_id = routes[1].id,
+        config   = { ctx_field = "authenticated_jwt_token" },
+=======
+        name     = "jwt",
+        route = { id = routes[11].id },
+        config   = { claims_to_verify = {"nbf", "exp"}, maximum_expiration = 300 },
       })
 
-      jwt_secret        = bp.jwt_secrets:insert { consumer_id = consumer1.id }
-      jwt_secret_2      = bp.jwt_secrets:insert { consumer_id = consumer6.id }
-      base64_jwt_secret = bp.jwt_secrets:insert { consumer_id = consumer2.id }
+      plugins:insert({
+        name     = "ctx-checker",
+        route = { id = routes[1].id },
+        config   = { ctx_check_field = "authenticated_jwt_token" },
+>>>>>>> 0.15.0
+      })
+
+      jwt_secret        = bp.jwt_secrets:insert { consumer = { id = consumer1.id } }
+      jwt_secret_2      = bp.jwt_secrets:insert { consumer = { id = consumer6.id } }
+      base64_jwt_secret = bp.jwt_secrets:insert { consumer = { id = consumer2.id } }
 
       rsa_jwt_secret_1 = bp.jwt_secrets:insert {
-        consumer_id    = consumer3.id,
+        consumer       = { id = consumer3.id },
         algorithm      = "RS256",
         rsa_public_key = fixtures.rs256_public_key
       }
 
       rsa_jwt_secret_2 = bp.jwt_secrets:insert {
-        consumer_id    = consumer4.id,
+        consumer       = { id = consumer4.id },
         algorithm      = "RS256",
         rsa_public_key = fixtures.rs256_public_key
       }
 
       rsa_jwt_secret_3 = bp.jwt_secrets:insert {
-        consumer_id    = consumer5.id,
+        consumer       = { id = consumer5.id },
         algorithm      = "RS512",
         rsa_public_key = fixtures.rs512_public_key
       }
 
+<<<<<<< HEAD
 
+||||||| merged common ancestors
+=======
+      hs_jwt_secret_1 = bp.jwt_secrets:insert {
+        consumer       = { id = consumer7.id },
+        algorithm     = "HS384",
+        secret        = fixtures.hs384_secret
+      }
+
+      hs_jwt_secret_2 = bp.jwt_secrets:insert {
+        consumer       = { id = consumer8.id },
+        algorithm     = "HS512",
+        secret        = fixtures.hs512_secret
+      }
+
+>>>>>>> 0.15.0
       assert(helpers.start_kong {
         database          = strategy,
-        custom_plugins    = "ctx-checker",
+        plugins           = "bundled, ctx-checker",
         real_ip_header    = "X-Forwarded-For",
         real_ip_recursive = "on",
         trusted_ips       = "0.0.0.0/0, ::/0",
@@ -151,7 +323,7 @@ for _, strategy in helpers.each_strategy() do
       admin_client = helpers.admin_client()
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       if proxy_client then
         proxy_client:close()
       end
@@ -258,6 +430,39 @@ for _, strategy in helpers.each_strategy() do
         })
         local body = assert.res_status(401, res)
         assert.equal([[{"message":"Unauthorized"}]], body)
+      end)
+      it("returns 403 if the token exceeds the maximum allowed expiration limit", function()
+        local payload = {
+          iss = jwt_secret.key,
+          exp = os.time() + 3600,
+          nbf = os.time() - 30
+        }
+        local jwt = jwt_encoder.encode(payload, jwt_secret.secret)
+        local res = assert(proxy_client:send {
+          method = "GET",
+          path = "/request/?jwt=" .. jwt,
+          headers = {
+            ["Host"] = "jwt11.com"
+          }
+        })
+        local body = assert.res_status(403, res)
+        assert.equal('{"exp":"exceeds maximum allowed expiration"}', body)
+      end)
+      it("accepts a JWT token within the maximum allowed expiration limit", function()
+        local payload = {
+          iss = jwt_secret.key,
+          exp = os.time() + 270,
+          nbf = os.time() - 30
+        }
+        local jwt = jwt_encoder.encode(payload, jwt_secret.secret)
+        local res = assert(proxy_client:send {
+          method = "GET",
+          path = "/request/?jwt=" .. jwt,
+          headers = {
+            ["Host"] = "jwt11.com"
+          }
+        })
+        assert.res_status(200, res)
       end)
     end)
 
@@ -513,6 +718,46 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
 
+    describe("HS386", function()
+      it("proxies the request with token and consumer headers if it was verified", function()
+        PAYLOAD.iss = hs_jwt_secret_1.key
+        local jwt = jwt_encoder.encode(PAYLOAD, hs_jwt_secret_1.secret, "HS384")
+        local authorization = "Bearer " .. jwt
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/request",
+          headers = {
+            ["Authorization"] = authorization,
+            ["Host"]          = "jwt1.com",
+          }
+        })
+        local body = cjson.decode(assert.res_status(200, res))
+        assert.equal(authorization, body.headers.authorization)
+        assert.equal("jwt_tests_hs_consumer_7", body.headers["x-consumer-username"])
+        assert.is_nil(body.headers["x-anonymous-consumer"])
+      end)
+    end)
+
+    describe("HS512", function()
+      it("proxies the request with token and consumer headers if it was verified", function()
+        PAYLOAD.iss = hs_jwt_secret_2.key
+        local jwt = jwt_encoder.encode(PAYLOAD, hs_jwt_secret_2.secret, "HS512")
+        local authorization = "Bearer " .. jwt
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/request",
+          headers = {
+            ["Authorization"] = authorization,
+            ["Host"]          = "jwt1.com",
+          }
+        })
+        local body = cjson.decode(assert.res_status(200, res))
+        assert.equal(authorization, body.headers.authorization)
+        assert.equal("jwt_tests_hs_consumer_8", body.headers["x-consumer-username"])
+        assert.is_nil(body.headers["x-anonymous-consumer"])
+      end)
+    end)
+
     describe("JWT private claims checks", function()
       it("requires the checked fields to be in the claims", function()
         local payload = {
@@ -578,8 +823,9 @@ for _, strategy in helpers.each_strategy() do
             ["Host"]          = "jwt1.com",
           }
         })
-        local body = cjson.decode(assert.res_status(200, res))
-        assert.equal(body.headers["ctx-checker-plugin-field"], jwt)
+        assert.res_status(200, res)
+        local header = assert.header("ctx-checker-authenticated-jwt-token", res)
+        assert.equal(jwt, header)
       end)
     end)
 
@@ -634,8 +880,15 @@ for _, strategy in helpers.each_strategy() do
     local anonymous
     local jwt_token
 
-    setup(function()
-      local bp = helpers.get_db_utils(strategy)
+    lazy_setup(function()
+      local bp = helpers.get_db_utils(strategy, {
+        "routes",
+        "services",
+        "plugins",
+        "consumers",
+        "jwt_secrets",
+        "keyauth_credentials",
+      })
 
       local jwt_secret, route2, service2, route1, service1
 
@@ -650,12 +903,12 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name     = "jwt",
-        route_id = route1.id,
+        route = { id = route1.id },
       }
 
       bp.plugins:insert {
         name     = "key-auth",
-        route_id = route1.id,
+        route = { id = route1.id },
       }
 
       anonymous = bp.consumers:insert {
@@ -681,7 +934,7 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name     = "jwt",
-        route_id = route2.id,
+        route = { id = route2.id },
         config   = {
           anonymous = anonymous.id,
         },
@@ -689,19 +942,27 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name     = "key-auth",
-        route_id = route2.id,
+        route = { id = route2.id },
         config   = {
           anonymous = anonymous.id,
         },
       }
 
       bp.keyauth_credentials:insert {
-        key         = "Mouse",
-        consumer_id = user1.id,
+        key      = "Mouse",
+        consumer = { id = user1.id },
       }
 
+<<<<<<< HEAD
       jwt_secret = bp.jwt_secrets:insert {
         consumer_id = user2.id,
+||||||| merged common ancestors
+      local jwt_secret = bp.jwt_secrets:insert {
+        consumer_id = user2.id,
+=======
+      local jwt_secret = bp.jwt_secrets:insert {
+        consumer = { id = user2.id },
+>>>>>>> 0.15.0
       }
 
       PAYLOAD.iss = jwt_secret.key
@@ -715,7 +976,7 @@ for _, strategy in helpers.each_strategy() do
       client = helpers.proxy_client()
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       if client then
         client:close()
       end

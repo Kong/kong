@@ -15,8 +15,8 @@ describe("Plugin: jwt (access)", function()
   local jwt_secret, base64_jwt_secret, rsa_jwt_secret_1, rsa_jwt_secret_2, rsa_jwt_secret_3
   local proxy_client, admin_client
 
-  setup(function()
-    local dao = select(3, helpers.get_db_utils())
+  lazy_setup(function()
+    local bp, db, dao = helpers.get_db_utils()
 
     local apis = {}
 
@@ -28,69 +28,69 @@ describe("Plugin: jwt (access)", function()
       }))
     end
 
-    local cdao = dao.consumers
-    local consumer1 = assert(cdao:insert({ username = "jwt_tests_consumer" }))
-    local consumer2 = assert(cdao:insert({ username = "jwt_tests_base64_consumer" }))
-    local consumer3 = assert(cdao:insert({ username = "jwt_tests_rsa_consumer_1" }))
-    local consumer4 = assert(cdao:insert({ username = "jwt_tests_rsa_consumer_2" }))
-    local consumer5 = assert(cdao:insert({ username = "jwt_tests_rsa_consumer_5" }))
-    local anonymous_user = assert(cdao:insert({ username = "no-body" }))
+    local cdao = bp.consumers
+    local consumer1 = cdao:insert({ username = "jwt_tests_consumer" })
+    local consumer2 = cdao:insert({ username = "jwt_tests_base64_consumer" })
+    local consumer3 = cdao:insert({ username = "jwt_tests_rsa_consumer_1" })
+    local consumer4 = cdao:insert({ username = "jwt_tests_rsa_consumer_2" })
+    local consumer5 = cdao:insert({ username = "jwt_tests_rsa_consumer_5" })
+    local anonymous_user = cdao:insert({ username = "no-body" })
 
-    local pdao = dao.plugins
+    local pdao = db.plugins
     assert(pdao:insert({ name   = "jwt",
-                         api_id = apis[1].id,
+                         api = { id = apis[1].id },
                          config = {},
                        }))
     assert(pdao:insert({ name   = "jwt",
-                         api_id = apis[2].id,
+                         api = { id = apis[2].id },
                          config = { uri_param_names = { "token", "jwt" } },
                        }))
     assert(pdao:insert({ name   = "jwt",
-                         api_id = apis[3].id,
+                         api = { id = apis[3].id },
                          config = { claims_to_verify = {"nbf", "exp"} },
                        }))
     assert(pdao:insert({ name   = "jwt",
-                         api_id = apis[4].id,
+                         api = { id = apis[4].id },
                          config = { key_claim_name = "aud" },
                        }))
     assert(pdao:insert({ name   = "jwt",
-                         api_id = apis[5].id,
+                         api = { id = apis[5].id },
                          config = { secret_is_base64 = true },
                        }))
     assert(pdao:insert({ name   = "jwt",
-                         api_id = apis[6].id,
+                         api = { id = apis[6].id },
                          config = { anonymous = anonymous_user.id },
                        }))
     assert(pdao:insert({ name   = "jwt",
-                         api_id = apis[7].id,
+                         api = { id = apis[7].id },
                          config = { anonymous = utils.uuid() },
                        }))
     assert(pdao:insert({ name   = "jwt",
-                         api_id = apis[8].id,
+                         api = { id = apis[8].id },
                          config = { run_on_preflight = false },
                        }))
     assert(pdao:insert({ name   = "jwt",
-                         api_id = apis[9].id,
+                         api = { id = apis[9].id },
                          config = { cookie_names = { "silly", "crumble" } },
                        }))
 
-    jwt_secret = assert(dao.jwt_secrets:insert {consumer_id = consumer1.id})
-    base64_jwt_secret = assert(dao.jwt_secrets:insert {consumer_id = consumer2.id})
-    rsa_jwt_secret_1 = assert(dao.jwt_secrets:insert {
-      consumer_id = consumer3.id,
+    jwt_secret = bp.jwt_secrets:insert { consumer = { id = consumer1.id } }
+    base64_jwt_secret = bp.jwt_secrets:insert { consumer = { id = consumer2.id } }
+    rsa_jwt_secret_1 = bp.jwt_secrets:insert {
+      consumer = { id = consumer3.id },
       algorithm = "RS256",
       rsa_public_key = fixtures.rs256_public_key
-    })
-    rsa_jwt_secret_2 = assert(dao.jwt_secrets:insert {
-      consumer_id = consumer4.id,
+    }
+    rsa_jwt_secret_2 = bp.jwt_secrets:insert {
+      consumer = { id = consumer4.id },
       algorithm = "RS256",
       rsa_public_key = fixtures.rs256_public_key
-    })
-    rsa_jwt_secret_3 = assert(dao.jwt_secrets:insert {
-      consumer_id = consumer5.id,
+    }
+    rsa_jwt_secret_3 = bp.jwt_secrets:insert {
+      consumer = { id = consumer5.id },
       algorithm = "RS512",
       rsa_public_key = fixtures.rs512_public_key
-    })
+    }
 
     assert(helpers.start_kong {
       real_ip_header    = "X-Forwarded-For",
@@ -102,7 +102,7 @@ describe("Plugin: jwt (access)", function()
     admin_client = helpers.admin_client()
   end)
 
-  teardown(function()
+  lazy_teardown(function()
     if proxy_client then proxy_client:close() end
     if admin_client then admin_client:close() end
     helpers.stop_kong()
@@ -542,61 +542,61 @@ describe("Plugin: jwt (access)", function()
 
   local client, user1, user2, anonymous, jwt_token
 
-  setup(function()
-    local dao = select(3, helpers.get_db_utils())
+  lazy_setup(function()
+    local bp, db, dao = helpers.get_db_utils()
 
     local api1 = assert(dao.apis:insert {
       name         = "api-1",
       hosts        = { "logical-and.com" },
       upstream_url = helpers.mock_upstream_url .. "/request",
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name   = "jwt",
-      api_id = api1.id,
+      api = { id = api1.id },
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name   = "key-auth",
-      api_id = api1.id,
+      api = { id = api1.id },
     })
 
-    anonymous = assert(dao.consumers:insert {
+    anonymous = bp.consumers:insert {
       username = "Anonymous",
-    })
-    user1 = assert(dao.consumers:insert {
+    }
+    user1 = bp.consumers:insert {
       username = "Mickey",
-    })
-    user2 = assert(dao.consumers:insert {
+    }
+    user2 = bp.consumers:insert {
       username = "Aladdin",
-    })
+    }
 
     local api2 = assert(dao.apis:insert {
       name         = "api-2",
       hosts        = { "logical-or.com" },
       upstream_url = helpers.mock_upstream_url .. "/request",
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name   = "jwt",
-      api_id = api2.id,
+      api = { id = api2.id },
       config = {
         anonymous = anonymous.id,
       },
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name   = "key-auth",
-      api_id = api2.id,
+      api = { id = api2.id },
       config = {
         anonymous = anonymous.id,
       },
     })
 
-    assert(dao.keyauth_credentials:insert {
-      key         = "Mouse",
-      consumer_id = user1.id,
-    })
+    bp.keyauth_credentials:insert {
+      key      = "Mouse",
+      consumer = { id = user1.id },
+    }
 
-    local jwt_secret = assert(dao.jwt_secrets:insert {
-      consumer_id = user2.id,
-    })
+    local jwt_secret = bp.jwt_secrets:insert {
+      consumer = { id = user2.id },
+    }
     PAYLOAD.iss = jwt_secret.key
     jwt_token   = "Bearer " .. jwt_encoder.encode(PAYLOAD, jwt_secret.secret)
 
@@ -607,7 +607,7 @@ describe("Plugin: jwt (access)", function()
   end)
 
 
-  teardown(function()
+  lazy_teardown(function()
     if client then client:close() end
     helpers.stop_kong()
   end)

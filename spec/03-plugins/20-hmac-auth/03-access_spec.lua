@@ -21,8 +21,14 @@ for _, strategy in helpers.each_strategy() do
     local consumer
     local credential
 
-    setup(function()
-      local bp = helpers.get_db_utils(strategy)
+    lazy_setup(function()
+      local bp = helpers.get_db_utils(strategy, {
+        "routes",
+        "services",
+        "consumers",
+        "plugins",
+        "hmacauth_credentials",
+      })
 
       local route1 = bp.routes:insert {
         hosts = { "hmacauth.com" },
@@ -30,7 +36,7 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name     = "hmac-auth",
-        route_id = route1.id,
+        route = { id = route1.id },
         config   = {
           clock_skew = 3000
         }
@@ -42,9 +48,9 @@ for _, strategy in helpers.each_strategy() do
       }
 
       credential = bp.hmacauth_credentials:insert {
-        username    = "bob",
-        secret      = "secret",
-        consumer_id = consumer.id
+        username = "bob",
+        secret   = "secret",
+        consumer = { id = consumer.id },
       }
 
       local anonymous_user = bp.consumers:insert {
@@ -57,7 +63,7 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name     = "hmac-auth",
-        route_id = route2.id,
+        route = { id = route2.id },
         config   = {
           anonymous  = anonymous_user.id,
           clock_skew = 3000
@@ -70,7 +76,7 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name     = "hmac-auth",
-        route_id = route3.id,
+        route = { id = route3.id },
         config   = {
           anonymous  = utils.uuid(),  -- non existing consumer
           clock_skew = 3000
@@ -83,7 +89,7 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name     = "hmac-auth",
-        route_id = route4.id,
+        route = { id = route4.id },
         config   = {
           clock_skew            = 3000,
           validate_request_body = true
@@ -96,7 +102,7 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name     = "hmac-auth",
-        route_id = route5.id,
+        route = { id = route5.id },
         config   = {
           clock_skew            = 3000,
           enforce_headers       = {"date", "request-line"},
@@ -110,7 +116,7 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name     = "hmac-auth",
-        route_id = route6.id,
+        route = { id = route6.id },
         config   = {
           clock_skew            = 3000,
           enforce_headers       = {"date", "request-line"},
@@ -130,7 +136,7 @@ for _, strategy in helpers.each_strategy() do
       proxy_client = helpers.proxy_client()
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       if proxy_client then
         proxy_client:close()
       end
@@ -1521,8 +1527,15 @@ for _, strategy in helpers.each_strategy() do
     local hmacDate
     local credential
 
-    setup(function()
-      local bp = helpers.get_db_utils(strategy)
+    lazy_setup(function()
+      local bp = helpers.get_db_utils(strategy, {
+        "routes",
+        "services",
+        "consumers",
+        "plugins",
+        "hmacauth_credentials",
+        "keyauth_credentials",
+      })
 
       local service1 = bp.services:insert({
         path = "/request"
@@ -1536,12 +1549,12 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name     = "hmac-auth",
-        route_id = route1.id
+        route = { id = route1.id }
       }
 
       bp.plugins:insert {
         name     = "key-auth",
-        route_id = route1.id
+        route = { id = route1.id }
       }
 
       anonymous = bp.consumers:insert {
@@ -1568,7 +1581,7 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name     = "hmac-auth",
-        route_id = route2.id,
+        route = { id = route2.id },
         config   = {
           anonymous = anonymous.id
         }
@@ -1576,21 +1589,33 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name     = "key-auth",
-        route_id = route2.id,
+        route = { id = route2.id },
         config   = {
           anonymous = anonymous.id
         }
       }
 
       bp.keyauth_credentials:insert {
-        key         = "Mouse",
-        consumer_id = user1.id
+        key      = "Mouse",
+        consumer = { id = user1.id },
       }
 
+<<<<<<< HEAD
       credential = bp.hmacauth_credentials:insert {
         username    = "Aladdin",
         secret      = "OpenSesame",
         consumer_id = user2.id
+||||||| merged common ancestors
+      local credential = bp.hmacauth_credentials:insert {
+        username    = "Aladdin",
+        secret      = "OpenSesame",
+        consumer_id = user2.id
+=======
+      local credential = bp.hmacauth_credentials:insert {
+        username = "Aladdin",
+        secret   = "OpenSesame",
+        consumer = { id = user2.id },
+>>>>>>> 0.15.0
       }
 
       hmacDate = os.date("!%a, %d %b %Y %H:%M:%S GMT")
@@ -1606,7 +1631,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
 
-    teardown(function()
+    lazy_teardown(function()
       if proxy_client then proxy_client:close() end
       helpers.stop_kong()
     end)

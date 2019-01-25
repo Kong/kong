@@ -24,6 +24,7 @@ Consult the Table of Contents below, and jump to the desired section.
     - [Static linting](#static-linting)
     - [Writing tests](#writing-tests)
     - [Writing performant code](#writing-performant-code)
+  - [Contributor T-shirt](#contributor-t-shirt)
 - [Code style](#code-style)
 
 
@@ -51,13 +52,14 @@ https://konghq.com/kong-enterprise-edition/ or contact us at
 There are several channels where you can get answers from the community
 or the maintainers of this project:
 
-- Our public forum, [Kong Nation](https://discuss.konghq.com/), for
-  asynchronous and lengthy chatter and staying up-to-date with the latest
-  announcements or usage tips
-- Gitter, for faster, but more ephemeral conversations. The room is
-  hosted at https://gitter.im/Mashape/kong
-- The IRC channel, registered on freenode as [#kong
-  ](https://webchat.freenode.net/?channels=kong)
+- Our public forum, [Kong Nation](https://discuss.konghq.com), is great for
+  asking questions, giving advice, and staying up-to-date with the latest
+  announcements. Kong Nation is frequented by Kong maintainers.
+- Two chat channels are used by the community, but are rarely visited by Kong
+  maintainers:
+  - [Gitter](https://gitter.im/Kong/kong)
+  - IRC, registered on freenode as
+    [#kong](https://webchat.freenode.net/?channels=kong)
 
 **Please avoid opening GitHub issues for general questions or help**, as those
 should be reserved for actual bug reports. The Kong community is welcoming and
@@ -93,7 +95,7 @@ make without coding:
 - Reporting a bug (see the [report bugs](#where-to-report-bugs) section)
 - Helping other members of the community on the support channels
 - Fixing a typo in the code
-- Fixing a typo in the documentation at https://getkong.org (see
+- Fixing a typo in the documentation at https://docs.konghq.com (see
   the [documentation contribution](#improving-the-documentation) section)
 - Providing your feedback on the proposed features and designs
 - Reviewing Pull Requests
@@ -106,28 +108,13 @@ patch](#submitting-a-patch) section.
 
 ### Improving the documentation
 
-The documentation hosted at https://getkong.org is open source and built with
-[Jekyll](https://jekyllrb.com/). You are welcome to propose changes to it
-(correct typos, add examples or clarifications...)!
+The documentation hosted at https://docs.konghq.com is open source and built
+with [Jekyll](https://jekyllrb.com/). You are welcome to propose changes to it
+(correct typos, add examples or clarifications...) and contribute to the
+[Kong Hub](https://docs.konghq.com/hub/)!
 
 The repository is also hosted on GitHub at:
-https://github.com/Kong/getkong.org/
-
-To run and test your changes locally, follow the installation instructions in
-its README.md. You will need Ruby, Node.js (for npm), and Python 2.7 on your
-system.
-
-When contributing, be weary of a few things:
-
-- The plugins documentation lives in the `app/plugins` directory. **This part
-  of the documentation is not versioned**, which means that the plugins
-  documentation is always reflecting the state of their latest release. This is
-  something we will be improving in the future.
-- The core documentation lives in `app/docs/x.x.x`. **This part is versioned**.
-  When proposing a change in this part of the documentation, consider proposing
-  it for older versions as well.
-  Example: if you fix a typo in `app/docs/0.10.x/configuration.md`, this typo
-  may also be present in `app/docs/0.9.x/configuration.md`.
+https://github.com/Kong/docs.konghq.com/
 
 [Back to TOC](#table-of-contents)
 
@@ -140,22 +127,23 @@ will be pushed into separate repositories in the foreseeable future.
 
 If you wish to write a new plugin for your own needs, you should start by
 reading the [Plugin Development
-Guide](https://getkong.org/docs/latest/plugin-development).
+Guide](https://docs.konghq.com/latest/plugin-development).
 
 If you already wrote a plugin, and are thinking about making it available to
 the community, we strongly encourage you to host it on a publicly available
-repository (like GitHub), and to distribute it via LuaRocks. A good resource on
-how to do so is the [Distribution
-Section](https://getkong.org/docs/latest/plugin-development/distribution/#distribute-your-plugin)
+repository (like GitHub), and to distribute it via
+[LuaRocks](https://luarocks.org/search?q=kong). A good resource on how to do
+so is the [Distribution
+Section](https://docs.konghq.com/latest/plugin-development/distribution/#distributing-your-plugin)
 of the Plugin Development Guide.
 
-To give visibility to your plugin, we advise that you create a post in the
-Announcements category of [Kong Nation](https://discuss.konghq.com/)!
+To give visibility to your plugin, we advise that you:
 
-In the foreseeable future, we will also include a "Community Plugins" section
-to the online [Plugins Gallery](https://getkong.org/plugins/), and we will
-improve how plugins are distributed and installed on Kong nodes. Stay tuned!
-:wink:
+1. [Add your
+   plugin](https://github.com/Kong/docs.konghq.com/blob/master/CONTRIBUTING.md#contributing-to-kong-documentation-and-the-kong-hub)
+   to the [Kong Hub](https://docs.konghq.com/hub/)
+2. Create a post in the [Announcements category of Kong
+   Nation](https://discuss.konghq.com/c/announcements)
 
 [Back to TOC](#table-of-contents)
 
@@ -194,10 +182,13 @@ If you are asked to update your patch by a reviewer, please do so! Remember:
 you are probably the one in need of it. You must be prepared to apply changes
 to it if necessary.
 
-If your Pull Request was accepted, congratulations! You are now an official
-contributor of Kong. Your change will be included in the subsequent release
-Changelog, and we will not forget to include your name if you are an external
-contributor. :wink:
+If your Pull Request was accepted and fixes a bug, adds functionality, or
+makes it significantly easier to use or understand Kong, congratulations!
+You are now an official contributor to Kong. Get in touch with us to receive
+your very own [Contributor T-shirt](#contributor-t-shirt)!
+
+Your change will be included in the subsequent release Changelog, and we will
+not forget to include your name if you are an external contributor. :wink:
 
 [Back to TOC](#table-of-contents)
 
@@ -236,7 +227,7 @@ spot another bug. **Do not fix both bugs in the same commit!**. Finish your
 work on the initial bug, propose your patch, and come back to the second bug
 later on. This is also valid for unrelated style fixes, refactorings, etc...
 
-You should use your best judgement when facing such decisions. A good approach
+You should use your best judgment when facing such decisions. A good approach
 for this is to put yourself in the shoes of the person who will review your
 patch: will they understand your changes and reasoning just by reading your
 commit history? Will they find unrelated changes in a particular commit? They
@@ -521,10 +512,26 @@ practices:
   end
   ```
 
-And finally, most importantly: use your best judgement to design an
+And finally, most importantly: use your best judgment to design an
 efficient algorithm. Doing so will always be more performant than a
 poorly-designed algorithm, even following all the performance tricks of the
 language you are using. :smile:
+
+[Back to TOC](#table-of-contents)
+
+
+### Contributor T-shirt
+
+If your Pull Request to [Kong/kong](https://github.com/Kong/kong) was
+accepted, and it fixes a bug, adds functionality, or makes it significantly
+easier to use or understand Kong, congratulations! You are eligible to
+receive the very special Contributor T-shirt! Go ahead and fill out the
+[Contributors Submissions form](https://goo.gl/forms/5w6mxLaE4tz2YM0L2).
+
+Proudly wear your T-shirt and show it to us by tagging
+[@thekonginc](https://twitter.com/thekonginc) on Twitter!
+
+![Kong Contributor T-shirt](https://konghq.com/wp-content/uploads/2018/04/100-contributor-t-shirt-1024x768.jpg)
 
 [Back to TOC](#table-of-contents)
 
@@ -541,7 +548,7 @@ contributors should find themselves at ease when contributing to Kong.
 - Indentation should consist of 2 spaces
 
 When you are unsure about the style to adopt, please browse other parts of the
-code base to find a similar case, and stay consistent with it.
+codebase to find a similar case, and stay consistent with it.
 
 You might also notice places in the code base where the described style is not
 respected. This is due to legacy code. **Contributions to update the code to
@@ -868,5 +875,3 @@ end
 ```
 
 [Back to code style TOC](#table-of-contents---code-style)
-
-

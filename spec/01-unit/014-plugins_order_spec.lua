@@ -7,16 +7,16 @@ local fmt = string.format
 describe("Plugins", function()
   local plugins
 
-  setup(function()
+  lazy_setup(function()
     local conf = assert(conf_loader(nil, {
       -- ensure we test the galileo priority even if galileo isn't enabled by
       -- default anymore
-      custom_plugins = "galileo",
+      plugins = "bundled, galileo",
     }))
 
     plugins = {}
 
-    for plugin in pairs(conf.plugins) do
+    for plugin in pairs(conf.loaded_plugins) do
       local handler = require("kong.plugins." .. plugin .. ".handler")
       table.insert(plugins, {
         name    = plugin,
@@ -53,7 +53,8 @@ describe("Plugins", function()
       "zipkin",
       "bot-detection",
       "cors",
-      "session",
+      -- EE merge - session needs to have its schema adapted before it's enabled
+      -- "session",
       "jwt",
       "oauth2",
       "key-auth",
@@ -77,7 +78,6 @@ describe("Plugins", function()
       "udp-log",
       "tcp-log",
       "loggly",
-      "runscope",
       "syslog",
       "galileo",
       "request-termination",

@@ -4,13 +4,13 @@ local helpers = require "spec.helpers"
 describe("Proxy error handlers", function()
   local proxy_client
 
-  setup(function()
+  lazy_setup(function()
     assert(helpers.start_kong {
       nginx_conf = "spec/fixtures/custom_nginx.template",
     })
   end)
 
-  teardown(function()
+  lazy_teardown(function()
     helpers.stop_kong()
   end)
 

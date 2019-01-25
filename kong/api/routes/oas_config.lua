@@ -1,6 +1,6 @@
 local oas_config   = require "kong.enterprise_edition.oas_config"
 local endpoints    = require "kong.api.endpoints"
-local core_handler = require "kong.core.handler"
+local core_handler = require "kong.runloop.handler"
 local singletons   = require "kong.singletons"
 local uuid         = require("kong.tools.utils").uuid
 

@@ -23,9 +23,9 @@ local _M = {}
 local mt = { __index = _M }
 
 
-function _M.new(dao_factory, page_size, event_ttl)
+function _M.new(db, page_size, event_ttl)
   local self  = {
-    cluster   = dao_factory.db.cluster,
+    cluster   = db.connector.cluster,
     page_size = page_size or 100,
     event_ttl = event_ttl,
   }

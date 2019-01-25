@@ -1,10 +1,10 @@
 local helpers = require "spec.helpers"
 
 describe("kong health", function()
-  setup(function()
+  lazy_setup(function()
     helpers.prepare_prefix()
   end)
-  teardown(function()
+  lazy_teardown(function()
     helpers.clean_prefix()
   end)
   after_each(function()

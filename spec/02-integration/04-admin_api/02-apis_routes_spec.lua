@@ -4,13 +4,14 @@ local utils = require "kong.tools.utils"
 local singletons = require "kong.singletons"
 
 local dao_helpers = require "spec.02-integration.03-dao.helpers"
-local DAOFactory = require "kong.dao.factory"
-local DB         = require "kong.db"
 
 local function it_content_types(title, fn)
   local test_form_encoded = fn("application/x-www-form-urlencoded")
+  local test_multipart = fn("multipart/form-data")
   local test_json = fn("application/json")
+
   it(title .. " with application/www-form-urlencoded", test_form_encoded)
+  it(title .. " with multipart/form-data", test_multipart)
   it(title .. " with application/json", test_json)
 end
 
@@ -21,6 +22,7 @@ pending("Admin API #" .. kong_config.database, function()
   local dao
   local db
 
+<<<<<<< HEAD
   setup(function()
     dao = assert(DAOFactory.new(kong_config))
     db = assert(DB.new(kong_config))
@@ -31,24 +33,39 @@ pending("Admin API #" .. kong_config.database, function()
 
     dao:truncate_tables()
     db:truncate()
+||||||| merged common ancestors
+  setup(function()
+    dao = assert(DAOFactory.new(kong_config))
+    db = assert(DB.new(kong_config))
+    assert(db:init_connector())
+    assert(dao:run_migrations())
+
+    dao:truncate_tables()
+    db:truncate()
+=======
+  lazy_setup(function()
+    local _
+    _, db, dao = helpers.get_db_utils(kong_config.database, {})
+>>>>>>> 0.15.0
 
     assert(helpers.start_kong{
       database = kong_config.database
     })
   end)
 
-  teardown(function()
+  lazy_teardown(function()
     helpers.stop_kong()
+    dao:truncate_table("apis")
+    db:truncate("plugins")
+    db:truncate("routes")
+    db:truncate("services")
   end)
 
   before_each(function()
-    dao:truncate_tables()
-    db:truncate()
-  end)
-
-  after_each(function()
-    dao:truncate_tables()
-    db:truncate()
+    dao:truncate_table("apis")
+    db:truncate("plugins")
+    db:truncate("routes")
+    db:truncate("services")
   end)
 
   describe("/apis", function()
@@ -425,7 +442,7 @@ pending("Admin API #" .. kong_config.database, function()
 
       describe("empty results", function()
         it("data property is an empty array", function()
-          dao:truncate_tables()
+          dao:truncate_table("apis")
 
           local res = assert(client:send {
             method = "GET",
@@ -440,7 +457,7 @@ pending("Admin API #" .. kong_config.database, function()
 
     describe("DELETE", function()
       before_each(function()
-        dao:truncate_tables()
+        dao:truncate_table("apis")
         client = assert(helpers.admin_client())
       end)
       after_each(function()
@@ -466,18 +483,14 @@ pending("Admin API #" .. kong_config.database, function()
 
   describe("/apis/{api}", function()
     local api
-    setup(function()
-      dao:truncate_tables()
-    end)
+
     before_each(function()
+      dao:truncate_table("apis")
       api = assert(dao.apis:insert {
         name = "my-api",
         uris = "/my-api",
         upstream_url = "http://my-api.com"
       })
-    end)
-    after_each(function()
-      dao:truncate_tables()
     end)
 
     describe("GET", function()
@@ -746,13 +759,23 @@ pending("Admin API #" .. kong_config.database, function()
 
       it_content_types("creates a plugin config", function(content_type)
         return function()
+          local inputs = {
+            ["application/x-www-form-urlencoded"] = {
+              name = "key-auth",
+              ["config.key_names[1]"] = "apikey",
+              ["config.key_names[2]"] = "key",
+            },
+            ["application/json"] = {
+              name = "key-auth",
+              config = {
+                key_names = { "apikey", "key" },
+              }
+            },
+          }
           local res = assert(client:send {
             method = "POST",
             path = "/apis/" .. api.id .. "/plugins",
-            body = {
-              name = "key-auth",
-              ["config.key_names"] = "apikey,key"
-            },
+            body = inputs[content_type],
             headers = {["Content-Type"] = content_type}
           })
           local body = assert.res_status(201, res)
@@ -920,7 +943,7 @@ pending("Admin API #" .. kong_config.database, function()
         return function()
           local plugin = assert(dao.plugins:insert {
             name = "key-auth",
-            api_id = api.id,
+            api = { id = api.id },
             config = {hide_credentials = true}
           })
           assert.True(plugin.config.hide_credentials)
@@ -953,7 +976,7 @@ pending("Admin API #" .. kong_config.database, function()
         return function()
           local plugin = assert(dao.plugins:insert {
             name = "key-auth",
-            api_id = api.id
+            api = { id = api.id },
           })
           assert.same({"apikey"}, plugin.config.key_names)
 
@@ -977,7 +1000,7 @@ pending("Admin API #" .. kong_config.database, function()
         return function()
           local plugin = assert(dao.plugins:insert {
             name = "key-auth",
-            api_id = api.id
+            api = { id = api.id },
           })
           assert.True(plugin.enabled)
 
@@ -1031,7 +1054,7 @@ pending("Admin API #" .. kong_config.database, function()
       it("retrieves the first page", function()
         assert(dao.plugins:insert {
           name = "key-auth",
-          api_id = api.id
+          api = { id = api.id },
         })
         local res = assert(client:send {
           method = "GET",
@@ -1059,7 +1082,7 @@ pending("Admin API #" .. kong_config.database, function()
       before_each(function()
         plugin = assert(dao.plugins:insert {
           name = "key-auth",
-          api_id = api.id
+          api = { id = api.id },
         })
       end)
 
@@ -1214,7 +1237,7 @@ pending("Admin API #" .. kong_config.database, function()
               })
               local body = assert.res_status(400, res)
               local json = cjson.decode(body)
-              assert.same({ config = "plugin 'foo' not enabled; add it to the 'custom_plugins' configuration property" }, json)
+              assert.same({ config = "plugin 'foo' not enabled; add it to the 'plugins' configuration property" }, json)
             end
           end)
         end)
@@ -1251,20 +1274,40 @@ end)
 
 describe("Admin API request size", function()
   local client
+<<<<<<< HEAD
   setup(function()
     helpers.dao:truncate_tables()
     helpers.db:truncate()
 
     singletons.dao = helpers.dao
+||||||| merged common ancestors
+  setup(function()
+    helpers.dao:truncate_tables()
+    helpers.db:truncate()
+=======
+
+  lazy_setup(function()
+    assert(helpers.get_db_utils(kong_config.database, {
+      "apis",
+      "plugins",
+      "routes",
+      "services",
+    }))
+    assert(helpers.start_kong{
+      database = kong_config.database
+    })
   end)
+
+  lazy_teardown(function()
+    helpers.stop_kong()
+>>>>>>> 0.15.0
+  end)
+
   before_each(function()
-    assert(helpers.dao:run_migrations())
-    assert(helpers.start_kong())
     client = assert(helpers.admin_client())
   end)
   after_each(function()
     if client then client:close() end
-    helpers.stop_kong()
   end)
 
   it("handles req bodies < 10MB", function()

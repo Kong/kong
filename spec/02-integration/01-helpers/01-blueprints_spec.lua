@@ -1,20 +1,21 @@
-local helpers     = require "spec.helpers"
+local DB = require "kong.db"
+local Factory = require "kong.dao.factory"
+local helpers = require "spec.helpers"
+local Blueprints = require "spec.fixtures.blueprints"
 local dao_helpers = require "spec.02-integration.03-dao.helpers"
-local DB          = require "kong.db"
-local Blueprints  = require "spec.fixtures.blueprints"
-local Factory     = require "kong.dao.factory"
 
 
 local UUID_PATTERN = "%x%x%x%x%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%x%x%x%x%x%x%x%x"
 
 
 for _, strategy in helpers.each_strategy() do
-  describe(string.format("blueprints db [%s]", strategy), function()
+  describe(string.format("blueprints db [#%s]", strategy), function()
 
     local bp
-    setup(function()
+    lazy_setup(function()
       local db = assert(DB.new(helpers.test_conf, strategy))
       assert(db:init_connector())
+      assert(db.plugins:load_plugin_schemas(helpers.test_conf.loaded_plugins))
       assert(db:truncate())
       bp = assert(Blueprints.new({}, db))
 
@@ -73,17 +74,17 @@ for _, strategy in helpers.each_strategy() do
 end
 
 dao_helpers.for_each_dao(function(kong_config)
-  local bp, dao
+  local bp, dao, db
 
-  setup(function()
-    local db = assert(DB.new(helpers.test_conf, kong_config.database))
+  lazy_setup(function()
+    db = assert(DB.new(helpers.test_conf, kong_config.database))
     assert(db:init_connector())
-
+    assert(db.plugins:load_plugin_schemas(helpers.test_conf.loaded_plugins))
     dao = assert(Factory.new(kong_config, db))
     bp  = assert(Blueprints.new(dao, db))
   end)
 
-  teardown(function()
+  lazy_teardown(function()
     if dao then
       dao:truncate_tables()
     end
@@ -91,7 +92,7 @@ dao_helpers.for_each_dao(function(kong_config)
     ngx.shared.kong_cassandra:flush_expired()
   end)
 
-  describe(string.format("blueprints for %s", kong_config.database), function()
+  describe(string.format("blueprints for #%s", kong_config.database), function()
     pending("inserts apis", function()
       -- TODO: remove this test when APIs are removed
       local a = bp.apis:insert({ hosts = { "localhost" } })
@@ -102,23 +103,26 @@ dao_helpers.for_each_dao(function(kong_config)
 
     it("inserts oauth2 plugins", function()
       local s = bp.services:insert()
-      local p = bp.oauth2_plugins:insert({ service_id = s.id })
-
+      local p = bp.oauth2_plugins:insert({ service = { id = s.id } })
       assert.equal("oauth2", p.name)
-      assert.equal(s.id, p.service_id)
+      assert.equal(s.id, p.service.id)
       assert.same({ "email", "profile" }, p.config.scopes)
     end)
 
-    it("inserts ssl certificates", function()
-      local c = bp.ssl_certificates:insert()
+    it("inserts certificates", function()
+      local c = bp.certificates:insert()
       assert.equal("string", type(c.cert))
       assert.equal("string", type(c.key))
     end)
 
-    it("inserts ssl server names", function()
-      local c = bp.ssl_certificates:insert()
-      local s = bp.ssl_servers_names:insert({ ssl_certificate_id = c.id })
+    it("inserts snis", function()
+      local c = bp.certificates:insert()
+      local s = bp.snis:insert({ certificate = c })
       assert.equal("string", type(s.name))
+
+      local s2 = bp.snis:insert()
+      assert.equal("string", type(s2.name))
+      assert.equal("string", type(s2.certificate.id))
     end)
 
     it("inserts consumers", function()
@@ -140,7 +144,7 @@ dao_helpers.for_each_dao(function(kong_config)
     end)
 
     it("inserts acl plugins", function()
-      local p = bp.acl_plugins:insert({ config = { whitelist = "admin" } })
+      local p = bp.acl_plugins:insert({ config = { whitelist = {"admin"} } })
       assert.equals("acl", p.name)
       assert.same({"admin"}, p.config.whitelist)
       assert.matches(UUID_PATTERN, p.id)
@@ -175,12 +179,6 @@ dao_helpers.for_each_dao(function(kong_config)
       assert.matches(UUID_PATTERN, p.id)
     end)
 
-    it("inserts galileo plugins", function()
-      local p = bp.galileo_plugins:insert({ config = { service_token = "foobar"} })
-      assert.equals("galileo", p.name)
-      assert.matches(UUID_PATTERN, p.id)
-    end)
-
     it("inserts jwt plugins", function()
       local p = bp.jwt_plugins:insert()
       assert.equals("jwt", p.name)
@@ -189,7 +187,7 @@ dao_helpers.for_each_dao(function(kong_config)
 
     it("inserts jwt secrets", function()
       local c = bp.consumers:insert()
-      local s = bp.jwt_secrets:insert({ consumer_id = c.id })
+      local s = bp.jwt_secrets:insert({ consumer = { id = c.id } })
       assert.equals("secret", s.secret)
       assert.equals("HS256", s.algorithm)
       assert.is_string(s.key)
@@ -199,8 +197,8 @@ dao_helpers.for_each_dao(function(kong_config)
     it("inserts oauth2 credendials", function()
       local co = bp.consumers:insert()
       local c = bp.oauth2_credentials:insert({
-        consumer_id  = co.id,
-        redirect_uri = "http://foo.com",
+        consumer  = { id = co.id },
+        redirect_uris = { "http://foo.com" },
       })
       assert.equals("oauth2 credential", c.name)
       assert.equals("secret", c.client_secret)
@@ -210,10 +208,10 @@ dao_helpers.for_each_dao(function(kong_config)
     it("inserts oauth2 authorization codes", function()
       local co = bp.consumers:insert()
       local cr = bp.oauth2_credentials:insert({
-        consumer_id  = co.id,
-        redirect_uri = "http://foo.com",
+        consumer  = { id = co.id },
+        redirect_uris = { "http://foo.com" },
       })
-      local c = bp.oauth2_authorization_codes:insert({ credential_id = cr.id })
+      local c = bp.oauth2_authorization_codes:insert({ credential = { id = cr.id } })
       assert.is_string(c.code)
       assert.equals("default", c.scope)
       assert.matches(UUID_PATTERN, c.id)
@@ -222,10 +220,10 @@ dao_helpers.for_each_dao(function(kong_config)
     it("inserts oauth2 tokens", function()
       local co = bp.consumers:insert()
       local cr = bp.oauth2_credentials:insert({
-        consumer_id  = co.id,
-        redirect_uri = "http://foo.com",
+        consumer = { id = co.id },
+        redirect_uris = { "http://foo.com" },
       })
-      local t = bp.oauth2_tokens:insert({ credential_id = cr.id })
+      local t = bp.oauth2_tokens:insert({ credential = { id = cr.id } })
       assert.equals("bearer", t.token_type)
       assert.equals("default", t.scope)
       assert.matches(UUID_PATTERN, t.id)
@@ -245,7 +243,7 @@ dao_helpers.for_each_dao(function(kong_config)
 
     it("inserts hmac usernames", function()
       local c = bp.consumers:insert()
-      local u = bp.hmacauth_credentials:insert({ consumer_id = c.id })
+      local u = bp.hmacauth_credentials:insert({ consumer = { id = c.id } })
       assert.is_string(u.username)
       assert.equals("secret", u.secret)
       assert.matches(UUID_PATTERN, u.id)

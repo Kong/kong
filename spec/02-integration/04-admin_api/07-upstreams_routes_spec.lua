@@ -1,14 +1,16 @@
 local helpers = require "spec.helpers"
 local dao_helpers = require "spec.02-integration.03-dao.helpers"
 local cjson = require "cjson"
-local DAOFactory = require "kong.dao.factory"
 
 local slots_default, slots_max = 10000, 2^16
 
 local function it_content_types(title, fn)
   local test_form_encoded = fn("application/x-www-form-urlencoded")
+  local test_multipart = fn("multipart/form-data")
   local test_json = fn("application/json")
+
   it(title .. " with application/www-form-urlencoded", test_form_encoded)
+  it(title .. " with multipart/form-data", test_multipart)
   it(title .. " with application/json", test_json)
 end
 
@@ -16,12 +18,23 @@ dao_helpers.for_each_dao(function(kong_config)
 
 describe("Admin API: #" .. kong_config.database, function()
   local client
-  local dao
+  local bp
+  local db
 
+  lazy_setup(function()
+
+<<<<<<< HEAD
   setup(function()
     dao = assert(DAOFactory.new(kong_config))
     require("kong.singletons").dao = dao
     assert(dao:run_migrations())
+||||||| merged common ancestors
+  setup(function()
+    dao = assert(DAOFactory.new(kong_config))
+    assert(dao:run_migrations())
+=======
+    bp, db = helpers.get_db_utils(kong_config.database, {})
+>>>>>>> 0.15.0
 
     assert(helpers.start_kong{
       database = kong_config.database
@@ -29,7 +42,7 @@ describe("Admin API: #" .. kong_config.database, function()
     client = assert(helpers.admin_client())
   end)
 
-  teardown(function()
+  lazy_teardown(function()
     if client then client:close() end
     helpers.stop_kong()
   end)
@@ -37,16 +50,12 @@ describe("Admin API: #" .. kong_config.database, function()
   describe("/upstreams #" .. kong_config.database, function()
     describe("POST", function()
       before_each(function()
-        dao:truncate_tables()
+        assert(db:truncate("upstreams"))
       end)
       it_content_types("creates an upstream with defaults", function(content_type)
         return function()
-          local res = assert(client:send {
-            method = "POST",
-            path = "/upstreams",
-            body = {
-              name = "my.upstream",
-            },
+          local res = client:post("/upstreams", {
+            body = { name = "my.upstream" },
             headers = {["Content-Type"] = content_type}
           })
           assert.response(res).has.status(201)
@@ -57,8 +66,8 @@ describe("Admin API: #" .. kong_config.database, function()
           assert.are.equal(slots_default, json.slots)
           assert.are.equal("none", json.hash_on)
           assert.are.equal("none", json.hash_fallback)
-          assert.is_nil(json.hash_on_header)
-          assert.is_nil(json.hash_fallback_header)
+          assert.equal(ngx.null, json.hash_on_header)
+          assert.equal(ngx.null, json.hash_fallback_header)
         end
       end)
       it_content_types("creates an upstream without defaults", function(content_type)
@@ -86,6 +95,29 @@ describe("Admin API: #" .. kong_config.database, function()
           assert.are.equal("ip", json.hash_fallback)
           assert.are.equal("HeaderName", json.hash_on_header)
           assert.are.equal("HeaderFallback", json.hash_fallback_header)
+        end
+      end)
+      it_content_types("creates an upstream with hash_on cookie parameters", function(content_type)
+        return function()
+          local res = assert(client:send {
+            method = "POST",
+            path = "/upstreams",
+            body = {
+              name = "my.upstream",
+              hash_on = "cookie",
+              hash_on_cookie = "CookieName1",
+              hash_on_cookie_path = "/foo",
+            },
+            headers = {["Content-Type"] = content_type}
+          })
+          assert.response(res).has.status(201)
+          local json = assert.response(res).has.jsonbody()
+          assert.equal("my.upstream", json.name)
+          assert.is_number(json.created_at)
+          assert.is_string(json.id)
+          assert.are.equal("cookie", json.hash_on)
+          assert.are.equal("CookieName1", json.hash_on_cookie)
+          assert.are.equal("/foo", json.hash_on_cookie_path)
         end
       end)
       it_content_types("creates an upstream with 2 header hashes", function(content_type)
@@ -158,7 +190,8 @@ describe("Admin API: #" .. kong_config.database, function()
             })
             local body = assert.res_status(400, res)
             local json = cjson.decode(body)
-            assert.same({ name = "name is required" }, json)
+            assert.equals("schema violation", json.name)
+            assert.same({ name = "required field missing" }, json.fields)
 
             -- Invalid name parameter
             res = assert(client:send {
@@ -171,7 +204,8 @@ describe("Admin API: #" .. kong_config.database, function()
             })
             body = assert.res_status(400, res)
             local json = cjson.decode(body)
-            assert.same({ message = "Invalid name; must be a valid hostname" }, json)
+            assert.equals("schema violation", json.name)
+            assert.same({ name = "Invalid name; must be a valid hostname" }, json.fields)
 
             -- Invalid slots parameter
             res = assert(client:send {
@@ -185,7 +219,8 @@ describe("Admin API: #" .. kong_config.database, function()
             })
             body = assert.res_status(400, res)
             local json = cjson.decode(body)
-            assert.same({ message = "number of slots must be between 10 and 65536" }, json)
+            assert.equals("schema violation", json.name)
+            assert.same({ slots = "value should be between 10 and 65536" }, json.fields)
 
             -- Invalid hash_on entries
             res = assert(client:send {
@@ -199,7 +234,8 @@ describe("Admin API: #" .. kong_config.database, function()
             })
             body = assert.res_status(400, res)
             local json = cjson.decode(body)
-            assert.same({ hash_on = '"something that is invalid" is not allowed. Allowed values are: "none", "consumer", "ip", "header"' }, json)
+            assert.equals("schema violation", json.name)
+            assert.same({ hash_on = "expected one of: none, consumer, ip, header, cookie" }, json.fields)
 
             -- Invalid hash_fallback entries
             res = assert(client:send {
@@ -214,7 +250,11 @@ describe("Admin API: #" .. kong_config.database, function()
             })
             body = assert.res_status(400, res)
             local json = cjson.decode(body)
-            assert.same({ hash_fallback = '"something that is invalid" is not allowed. Allowed values are: "none", "consumer", "ip", "header"' }, json)
+            assert.equals("schema violation", json.name)
+            assert.same({
+              ["@entity"] = { [[failed conditional validation given value of field 'hash_on']] },
+              hash_fallback = "expected one of: none, ip, header, cookie",
+            }, json.fields)
 
             -- same hash entries
             res = assert(client:send {
@@ -229,7 +269,10 @@ describe("Admin API: #" .. kong_config.database, function()
             })
             body = assert.res_status(400, res)
             local json = cjson.decode(body)
-            assert.same({ message = "Cannot set fallback and primary hashes to the same value" }, json)
+            assert.same({
+              ["@entity"] = { [[failed conditional validation given value of field 'hash_on']] },
+              hash_fallback = "expected one of: none, ip, header, cookie",
+            }, json.fields)
 
             -- Invalid header
             res = assert(client:send {
@@ -245,9 +288,10 @@ describe("Admin API: #" .. kong_config.database, function()
             })
             body = assert.res_status(400, res)
             local json = cjson.decode(body)
-            assert.same({ message = "Header: bad header name 'not a <> valid <> header name', allowed characters are A-Z, a-z, 0-9, '_', and '-'" }, json)
+            assert.equals("bad header name 'not a <> valid <> header name', allowed characters are A-Z, a-z, 0-9, '_', and '-'",
+                          json.fields.hash_on_header)
 
-            -- Invalid header
+            -- Invalid fallback header
             res = assert(client:send {
               method = "POST",
               path = "/upstreams",
@@ -261,7 +305,8 @@ describe("Admin API: #" .. kong_config.database, function()
             })
             body = assert.res_status(400, res)
             local json = cjson.decode(body)
-            assert.same({ message = "Header: bad header name 'not a <> valid <> header name', allowed characters are A-Z, a-z, 0-9, '_', and '-'" }, json)
+            assert.equals("bad header name 'not a <> valid <> header name', allowed characters are A-Z, a-z, 0-9, '_', and '-'",
+                          json.fields.hash_fallback_header)
 
             -- Same headers
             res = assert(client:send {
@@ -272,13 +317,34 @@ describe("Admin API: #" .. kong_config.database, function()
                 hash_on = "header",
                 hash_fallback = "header",
                 hash_on_header = "headername",
-                hash_fallback_header = "HeaderName",  --> validate case insensitivity
+                hash_fallback_header = "headername",
               },
               headers = {["Content-Type"] = content_type}
             })
             body = assert.res_status(400, res)
             local json = cjson.decode(body)
-            assert.same({ message = "Cannot set fallback and primary hashes to the same value" }, json)
+            assert.equal("schema violation", json.name)
+            assert.same({ ["@entity"] = { "values of these fields must be distinct: 'hash_on_header', 'hash_fallback_header'" }, }, json.fields)
+
+            -- Cookie with hash_fallback
+            res = assert(client:send {
+              method = "POST",
+              path = "/upstreams",
+              body = {
+                name = "my.upstream",
+                hash_on = "cookie",
+                hash_on_cookie = "cookiename",
+                hash_fallback = "header",
+                hash_fallback_header = "Cool-Header",
+              },
+              headers = {["Content-Type"] = content_type}
+            })
+            body = assert.res_status(400, res)
+            local json = cjson.decode(body)
+            assert.same({
+              ["@entity"] = { [[failed conditional validation given value of field 'hash_on']] },
+              hash_fallback = "expected one of: none",
+            }, json.fields)
 
             -- No headername provided
             res = assert(client:send {
@@ -295,7 +361,10 @@ describe("Admin API: #" .. kong_config.database, function()
             })
             body = assert.res_status(400, res)
             local json = cjson.decode(body)
-            assert.same({ message = "Hashing on 'header', but no header name provided" }, json)
+            assert.same({
+              ["@entity"] = { [[failed conditional validation given value of field 'hash_on']] },
+              hash_on_header = "required field missing",
+            }, json.fields)
 
             -- No fallback headername provided
             res = assert(client:send {
@@ -310,7 +379,76 @@ describe("Admin API: #" .. kong_config.database, function()
             })
             body = assert.res_status(400, res)
             local json = cjson.decode(body)
-            assert.same({ message = "Hashing on 'header', but no header name provided" }, json)
+            assert.same({
+              ["@entity"] = { [[failed conditional validation given value of field 'hash_fallback']] },
+              hash_fallback_header = "required field missing",
+            }, json.fields)
+
+            -- Invalid cookie
+            res = assert(client:send {
+              method = "POST",
+              path = "/upstreams",
+              body = {
+                name = "my.upstream",
+                hash_on = "cookie",
+                hash_on_cookie = "not a <> valid <> cookie name",
+              },
+              headers = {["Content-Type"] = content_type}
+            })
+            body = assert.res_status(400, res)
+            local json = cjson.decode(body)
+            assert.equals("bad cookie name 'not a <> valid <> cookie name', allowed characters are A-Z, a-z, 0-9, '_', and '-'",
+                          json.fields.hash_on_cookie)
+
+            -- Invalid cookie path
+            res = assert(client:send {
+              method = "POST",
+              path = "/upstreams",
+              body = {
+                name = "my.upstream",
+                hash_on = "cookie",
+                hash_on_cookie = "hashme",
+                hash_on_cookie_path = "not a path",
+              },
+              headers = {["Content-Type"] = content_type}
+            })
+            body = assert.res_status(400, res)
+            local json = cjson.decode(body)
+            assert.same({ hash_on_cookie_path = "should start with: /" }, json.fields)
+
+            -- Invalid cookie in hash fallback
+            res = assert(client:send {
+              method = "POST",
+              path = "/upstreams",
+              body = {
+                name = "my.upstream",
+                hash_on = "consumer",
+                hash_fallback = "cookie",
+                hash_on_cookie = "not a <> valid <> cookie name",
+              },
+              headers = {["Content-Type"] = content_type}
+            })
+            body = assert.res_status(400, res)
+            local json = cjson.decode(body)
+            assert.equals("bad cookie name 'not a <> valid <> cookie name', allowed characters are A-Z, a-z, 0-9, '_', and '-'",
+                          json.fields.hash_on_cookie)
+
+            -- Invalid cookie path in hash fallback
+            res = assert(client:send {
+              method = "POST",
+              path = "/upstreams",
+              body = {
+                name = "my.upstream",
+                hash_on = "consumer",
+                hash_fallback = "cookie",
+                hash_on_cookie = "my-cookie",
+                hash_on_cookie_path = "not a path",
+              },
+              headers = {["Content-Type"] = content_type}
+            })
+            body = assert.res_status(400, res)
+            local json = cjson.decode(body)
+            assert.same({ hash_on_cookie_path = "should start with: /" }, json.fields)
 
           end
         end)
@@ -336,7 +474,8 @@ describe("Admin API: #" .. kong_config.database, function()
             })
             local body = assert.res_status(409, res)
             local json = cjson.decode(body)
-            assert.same({ name = "already exists with value 'my.upstream'" }, json)
+            assert.equal("unique constraint violation", json.name)
+            assert.same({ name = "my.upstream" }, json.fields)
           end
         end)
       end)
@@ -344,21 +483,20 @@ describe("Admin API: #" .. kong_config.database, function()
 
     describe("PUT", function()
       before_each(function()
-        dao:truncate_tables()
+        assert(db:truncate("upstreams"))
       end)
 
       it_content_types("creates if not exists", function(content_type)
         return function()
           local res = assert(client:send {
             method = "PUT",
-            path = "/upstreams",
+            path = "/upstreams/my-upstream",
             body = {
-              name = "my-upstream",
               created_at = 1461276890000
             },
             headers = {["Content-Type"] = content_type}
           })
-          assert.response(res).has.status(201)
+          assert.response(res).has.status(200)
           local json = assert.response(res).has.jsonbody()
           assert.equal("my-upstream", json.name)
           assert.is_number(json.created_at)
@@ -382,9 +520,8 @@ describe("Admin API: #" .. kong_config.database, function()
 
           res = assert(client:send {
             method = "PUT",
-            path = "/upstreams",
+            path = "/upstreams/" .. json.id,
             body = {
-              id = json.id,
               name = "my-new-upstream",
               slots = 123,
               created_at = json.created_at
@@ -404,63 +541,32 @@ describe("Admin API: #" .. kong_config.database, function()
             -- Missing parameter
             local res = assert(client:send {
               method = "PUT",
-              path = "/upstreams",
+              path = "/upstreams/00000000-0000-0000-0000-000000000001",
               body = {},
               headers = {["Content-Type"] = content_type}
             })
             local body = assert.response(res).has.status(400)
             local json = cjson.decode(body)
-            assert.same({ name = "name is required" }, json)
+            assert.same("schema violation (name: required field missing)", json.message)
 
             -- Invalid parameter
-            res = assert(client:send {
+            local res = assert(client:send {
               method = "PUT",
-              path = "/upstreams",
-              body = {
-                name = "1.2.3.4", -- ip is not allowed
-                created_at = 1461276890000
-              },
+              path = "/upstreams/1.2.3.4", -- ip is not allowed
+              body = { created_at = 1461276890000 },
               headers = {["Content-Type"] = content_type}
             })
+
             body = assert.response(res).has.status(400)
             local json = cjson.decode(body)
-            assert.same({ message = "Invalid name; no ip addresses allowed" }, json)
+            assert.same("Invalid name; no ip addresses allowed", json.message)
           end
-        end)
-        it_content_types("returns 409 on conflict", function(content_type)
-          return function()
-            -- @TODO this particular test actually defeats the purpose of PUT.
-            -- It should probably replace the entity
-            local res = assert(client:send {
-                method = "PUT",
-                path = "/upstreams",
-                body = {
-                  name = "my-upstream",
-                  created_at = 1461276890000
-                },
-                headers = {["Content-Type"] = content_type}
-              })
-              assert.response(res).has.status(201)
-              local json = assert.response(res).has.jsonbody()
-
-              res = assert(client:send {
-                method = "PUT",
-                path = "/upstreams",
-                body = {
-                  name = "my-upstream",
-                  created_at = json.created_at
-                },
-                headers = {["Content-Type"] = content_type}
-              })
-              local body = assert.response(res).has.status(409)
-              local json = cjson.decode(body)
-              assert.same({ name = "already exists with value 'my-upstream'" }, json)
-            end
         end)
       end)
     end)
 
     describe("GET", function()
+<<<<<<< HEAD
       setup(function()
         dao:truncate_tables()
         for i = 1, 10 do
@@ -468,20 +574,33 @@ describe("Admin API: #" .. kong_config.database, function()
             name = "upstream-" .. i,
           })
         end
-      end)
-      teardown(function()
+||||||| merged common ancestors
+      setup(function()
         dao:truncate_tables()
+
+        for i = 1, 10 do
+          assert(dao.upstreams:insert {
+            name = "upstream-" .. i,
+          })
+        end
+=======
+      lazy_setup(function()
+        assert(db:truncate("upstreams"))
+        bp.upstreams:insert_n(10)
+>>>>>>> 0.15.0
+      end)
+      lazy_teardown(function()
+        assert(db:truncate("upstreams"))
       end)
 
       it("retrieves the first page", function()
         local res = assert(client:send {
-          methd = "GET",
+          method = "GET",
           path = "/upstreams"
         })
         assert.response(res).has.status(200)
         local json = assert.response(res).has.jsonbody()
         assert.equal(10, #json.data)
-        assert.equal(10, json.total)
       end)
       it("paginates a set", function()
         local pages = {}
@@ -495,7 +614,6 @@ describe("Admin API: #" .. kong_config.database, function()
           })
           assert.response(res).has.status(200)
           local json = assert.response(res).has.jsonbody()
-          assert.equal(10, json.total)
 
           if i < 4 then
             assert.equal(3, #json.data)
@@ -512,19 +630,17 @@ describe("Admin API: #" .. kong_config.database, function()
           pages[i] = json
         end
       end)
-      it("handles invalid filters", function()
-          local res = assert(client:send {
-            method = "GET",
-            path = "/upstreams",
-            query = {foo = "bar"}
-          })
-          local body = assert.res_status(400, res)
-          local json = cjson.decode(body)
-          assert.same({ foo = "unknown field" }, json)
+      it("ignores filters", function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/upstreams",
+          query = {foo = "bar"}
+        })
+        assert.res_status(200, res)
       end)
       it("ignores an invalid body", function()
         local res = assert(client:send {
-          methd = "GET",
+          method = "GET",
           path = "/upstreams",
           body = "this fails if decoded as json",
           headers = {
@@ -535,8 +651,8 @@ describe("Admin API: #" .. kong_config.database, function()
       end)
 
       describe("empty results", function()
-        setup(function()
-          dao:truncate_tables()
+        lazy_setup(function()
+          assert(db:truncate("upstreams"))
         end)
 
         it("data property is an empty array", function()
@@ -546,7 +662,7 @@ describe("Admin API: #" .. kong_config.database, function()
           })
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
-          assert.same({ data = {}, total = 0 }, json)
+          assert.same({ data = {}, next = ngx.null }, json)
         end)
       end)
     end)
@@ -598,22 +714,16 @@ describe("Admin API: #" .. kong_config.database, function()
     end)
 
     it("returns 405 on invalid method", function()
-      local methods = { "DELETE" }
+      local res = assert(client:send {
+        method = "DELETE",
+        path = "/upstreams",
+        headers = { ["Content-Type"] = "application/json" }
+      })
 
-      for i = 1, #methods do
-        local res = assert(client:send {
-          method = methods[i],
-          path = "/upstreams",
-          body = {}, -- tmp: body to allow POST/PUT to work
-          headers = { ["Content-Type"] = "application/json" }
-        })
-
-        local body = assert.response(res).has.status(405)
-        local json = cjson.decode(body)
-        assert.same({ message = "Method not allowed" }, json)
-      end
+      local body = assert.response(res).has.status(405)
+      local json = cjson.decode(body)
+      assert.same({ message = "Method not allowed" }, json)
     end)
-
   end)
 end)
 

@@ -5,7 +5,7 @@ for _, strategy in helpers.each_strategy() do
 describe("helpers [#" .. strategy .. "]: assertions and modifiers", function()
   local client
 
-  setup(function()
+  lazy_setup(function()
     local _, _, dao = helpers.get_db_utils(strategy)
 
     assert(dao.apis:insert {
@@ -19,7 +19,7 @@ describe("helpers [#" .. strategy .. "]: assertions and modifiers", function()
       nginx_conf = "spec/fixtures/custom_nginx.template",
     }))
   end)
-  teardown(function()
+  lazy_teardown(function()
     helpers.stop_kong()
   end)
 

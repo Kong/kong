@@ -4,12 +4,12 @@ local conf_loader = require "kong.conf_loader"
 describe("Plugins", function()
   local plugins
 
-  setup(function()
+  lazy_setup(function()
     local conf = assert(conf_loader())
 
     plugins = {}
 
-    for plugin in pairs(conf.plugins) do
+    for plugin in pairs(conf.loaded_plugins) do
       local handler = require("kong.plugins." .. plugin .. ".handler")
       table.insert(plugins, {
         name    = plugin,
@@ -20,7 +20,9 @@ describe("Plugins", function()
 
   it("contain a VERSION field", function()
     for _, plugin in ipairs(plugins) do
-      assert.not_nil(plugin.handler.VERSION)
+      assert(plugin.handler.VERSION,
+             "Expected a `VERSION` field in `kong.plugins." ..
+             plugin.name .. ".handler.lua`")
     end
   end)
 end)
