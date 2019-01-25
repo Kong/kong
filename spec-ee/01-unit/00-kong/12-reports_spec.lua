@@ -1,5 +1,5 @@
 local helpers = require "spec.helpers"
-local reports = require "kong.core.reports"
+local reports = require "kong.reports"
 
 
 describe("reports", function()
