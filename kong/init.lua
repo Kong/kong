@@ -724,9 +724,8 @@ function Kong.rewrite()
   kong_resty_ctx.stash_ref()
   kong_global.set_phase(kong, PHASES.rewrite)
 
-  ctx.is_proxy_request = true
-
   local ctx = ngx.ctx
+  ctx.is_proxy_request = true
 
   runloop.rewrite.before(ctx)
 
