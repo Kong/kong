@@ -5,6 +5,7 @@ local url        = require "socket.url"
 
 local kong     = kong
 local re_find  = ngx.re.find
+local find     = string.find
 local concat   = table.concat
 local tostring = tostring
 local ipairs   = ipairs
@@ -32,21 +33,18 @@ local normalized_req_domains = lrucache.new(10e3)
 local function normalize_origin(domain)
   local parsed_obj = assert(url.parse(domain))
   if not parsed_obj.host then
-    return domain
+    return { domain = domain, host = domain }
   end
 
   local port = parsed_obj.port
-  if not port and parsed_obj.scheme then
-    if parsed_obj.scheme == "http" then
-      port = 80
-
-    elseif parsed_obj.scheme == "https" then
-      port = 443
-    end
+  if (parsed_obj.scheme == "http" and port == "80")
+     or (parsed_obj.scheme == "https" and port == "443") then
+    port = nil
   end
 
-  return (parsed_obj.scheme and parsed_obj.scheme .. "://" or "") ..
-          parsed_obj.host .. (port and ":" .. port or "")
+  return { domain = (parsed_obj.scheme and parsed_obj.scheme .. "://" or "") ..
+                    parsed_obj.host .. (port and ":" .. port or ""),
+           host = parsed_obj.host }
 end
 
 
@@ -83,15 +81,34 @@ local function configure_origin(conf)
 
   local req_origin = kong.request.get_header("origin")
   if req_origin then
-    local normalized_domains = config_cache[conf]
-    if not normalized_domains then
-      normalized_domains = {}
+    local cached_domains = config_cache[conf]
+    if not cached_domains then
+      cached_domains = {}
 
-      for _, domain in ipairs(conf.origins) do
-        table.insert(normalized_domains, normalize_origin(domain))
+      for _, entry in ipairs(conf.origins) do
+        local maybe_regex = re_find(entry, "[^A-Za-z0-9.:/-]", "jo")
+        local domain
+        if maybe_regex then
+          -- Kong 0.x did not anchor regexes:
+          -- Perform adjustments to support regexes
+          -- explicitly anchored by the user.
+          if entry:sub(-1) ~= "$" then
+            entry = entry .. "$"
+          end
+          if entry:sub(1, 1) == "^" then
+            entry = entry:sub(2)
+          end
+
+          domain = { regex = entry }
+        else
+          domain = normalize_origin(entry)
+        end
+
+        domain.by_host = not find(entry, ":", 1, true)
+        table.insert(cached_domains, domain)
       end
 
-      config_cache[conf] = normalized_domains
+      config_cache[conf] = cached_domains
     end
 
     local normalized_req_origin = normalized_req_domains:get(req_origin)
@@ -100,20 +117,31 @@ local function configure_origin(conf)
       normalized_req_domains:set(req_origin, normalized_req_origin)
     end
 
-    for _, normalized_domain in ipairs(normalized_domains) do
-      local from, _, err = re_find(normalized_req_origin,
-                                   normalized_domain .. "$", "ajo")
-      if err then
-        kong.log.err("could not search for domain: ", err)
+    for _, cached_domain in ipairs(cached_domains) do
+      local _, err
+      local found
+
+      if cached_domain.regex then
+        local given = cached_domain.by_host
+                      and normalized_req_origin.host
+                      or  normalized_req_origin.domain
+        found, _, err = re_find(given, cached_domain.regex, "ajo")
+        if err then
+          kong.log.err("could not search for domain: ", err)
+        end
+
+      else
+        found = (normalized_req_origin.domain == cached_domain.domain)
       end
 
-      if from then
-        set_header("Access-Control-Allow-Origin", req_origin)
+      if found then
+        set_header("Access-Control-Allow-Origin", normalized_req_origin.domain)
         set_header("Vary", "Origin")
         return false
       end
     end
   end
+
   return false
 end
 
