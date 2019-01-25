@@ -15,7 +15,7 @@ local version = setmetatable({
 return {
   _NAME = "kong",
   _VERSION = tostring(ee_meta.versions.package) .. "-enterprise-edition",
-  _VERSION_TABLE = ee_meta.versions.package,
+  _VERSION_TABLE = version,
   _SERVER_TOKENS = "kong/" .. tostring(ee_meta.versions.package) .. "-enterprise-edition",
 
   _CORE_VERSION = tostring(version),
