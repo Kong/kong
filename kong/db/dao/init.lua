@@ -442,6 +442,12 @@ local function generate_foreign_key_methods(schema)
           return nil, tostring(err_t), err_t
         end
 
+        local entity_to_update, rbw_entity, err, err_t = check_update(self, unique_value,
+                                                                      entity, options, name)
+        if not entity_to_update then
+          return nil, err, err_t
+        end
+
         local pk, err_t = ws_helper.resolve_shared_entity_id(self.schema.name,
                                               { [name] = unique_value },
                                               workspaceable[self.schema.name])
@@ -450,12 +456,6 @@ local function generate_foreign_key_methods(schema)
         end
         if pk then
           return self:update(pk, entity_to_update, options)
-        end
-
-        local entity_to_update, rbw_entity, err, err_t = check_update(self, unique_value,
-                                                                      entity, options, name)
-        if not entity_to_update then
-          return nil, err, err_t
         end
 
         local row, err_t = self.strategy:update_by_field(name, unique_value,

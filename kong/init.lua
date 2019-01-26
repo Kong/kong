@@ -27,7 +27,6 @@
 pcall(require, "luarocks.loader")
 require "resty.core"
 local constants = require "kong.constants"
-local plugin_overwrite = require "kong.enterprise_edition.plugin_overwrite"
 
 do
   -- let's ensure the required shared dictionaries are

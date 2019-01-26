@@ -616,7 +616,7 @@ function DAO:delete(tbl, options)
 
   if not options.__skip_rbac and
     (not rbac.validate_entity_operation(primary_keys, self.table) or
-     not rbac.check_cascade(associated_entites, ngx.ctx.rbac))  then
+     not rbac.check_cascade(associated_entities, ngx.ctx.rbac))  then
     return ret_error(self.db.name, nil, Errors.forbidden({
       username = ngx.ctx.rbac.user.name,
       action = rbac.readable_action(ngx.ctx.rbac.action)

@@ -3,7 +3,6 @@ local singletons  = require "kong.singletons"
 local responses   = require "kong.tools.responses"
 local reports     = require "kong.reports"
 local utils       = require "kong.tools.utils"
-local crud        = require "kong.api.crud_helpers"
 local core_handler = require "kong.runloop.handler"
 local uuid = require("kong.tools.utils").uuid
 local workspaces = require "kong.workspaces"

@@ -37,7 +37,7 @@ return {
           end
         end
 
-        singletons.internal_proxies:add_internal_plugins(distinct_plugins, map)
+        singletons.internal_proxies:add_internal_plugins(distinct_plugins, set)
       end
 
       do

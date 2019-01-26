@@ -653,9 +653,7 @@ local function page(self, size, token, foreign_key, foreign_entity_name, options
     end
   end
 
-  local res, err = execute(self, statement_name, self.collapse(attributes), options)
   local res, err = execute(self, statement_name .. (ws_list and "_ws" or ""), self.collapse(attributes), options, ws_list)
-
   if not res then
     return toerror(self, err)
   end
@@ -1740,8 +1738,8 @@ function _M.new(connector, schema, errors)
       -- EE workspaces-related
       select_ws        = {
         argn           = primary_key_names,
-        argc           = primary_key_fields_count,
-        argv           = common_args,
+        argc           = primary_key_count,
+        argv           = primary_key_args,
         make           = compile_ws(table_name .. "_select_ws" , select_statement_ws),
       },
       page_first_ws    = {
