@@ -22,6 +22,96 @@ local ngx_WARN = ngx.WARN
 local ngx_DEBUG = ngx.DEBUG
 
 
+local function has_a_common_protocol_with_route(plugin, route)
+  local plugin_prot = plugin.protocols
+  local route_prot = route.protocols
+  -- plugin.protocols and route.protocols are both sets provided by the schema
+  -- this means that they can be iterated as over an array, and queried as a hash
+  for i = 1, #plugin_prot do
+    if route_prot[plugin_prot[i]] then
+      return true
+    end
+  end
+end
+
+
+local function has_a_compatible_route_in_service(self, plugin, service_pk)
+  for route, err, err_t in self.db.routes:each_for_service(service_pk) do
+    if not route then
+      return nil, err, err_t
+    end
+
+    if has_a_common_protocol_with_route(plugin, route) then
+      return true
+    end
+  end
+end
+
+
+local function check_protocols_match(self, plugin)
+  if type(plugin.protocols) ~= "table" then
+    return true
+  end
+
+  if type(plugin.route) == "table" then
+    local route = self.db.routes:select(plugin.route) -- ignore error
+    if route and not has_a_common_protocol_with_route(plugin, route) then
+      local err_t = self.errors:schema_violation({
+        protocols = "must match the associated route's protocols",
+      })
+      return nil, tostring(err_t), err_t
+    end
+  end
+
+  if type(plugin.service) == "table" then
+    if not has_a_compatible_route_in_service(self, plugin, plugin.service) then
+      local err_t = self.errors:schema_violation({
+        protocols = "must match the protocols of at least one route " ..
+                    "pointing to this Plugin's service",
+      })
+      return nil, tostring(err_t), err_t
+    end
+  end
+
+  return true
+end
+
+
+function Plugins:insert(entity, options)
+  local ok, err, err_t = check_protocols_match(self, entity)
+  if not ok then
+    return nil, err, err_t
+  end
+  return self.super.insert(self, entity, options)
+end
+
+
+function Plugins:update(primary_key, entity, options)
+  local rbw_entity = self.strategy:select(primary_key, options) -- ignore errors
+  if rbw_entity then
+    entity = self.schema:merge_values(entity, rbw_entity)
+  end
+  local ok, err, err_t = check_protocols_match(self, entity)
+  if not ok then
+    return nil, err, err_t
+  end
+
+  return self.super.update(self, primary_key, entity, options)
+end
+
+
+function Plugins:upsert(primary_key, entity, options)
+  local rbw_entity = self.strategy:select(primary_key, options) -- ignore errors
+  if rbw_entity then
+    entity = self.schema:merge_values(entity, rbw_entity)
+  end
+  local ok, err, err_t = check_protocols_match(self, entity)
+  if not ok then
+    return nil, err, err_t
+  end
+  return self.super.upsert(self, primary_key, entity, options)
+end
+
 --- Given a set of plugin names, check if all plugins stored
 -- in the database fall into this set.
 -- @param plugin_set a set of plugin names.

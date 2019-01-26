@@ -6,7 +6,8 @@ local UUID_PATTERN = "%x%x%x%x%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%x
 
 for _, strategy in helpers.each_strategy() do
   describe("kong.db [#" .. strategy .. "]", function()
-    local db, bp
+    local db, bp, service, route
+    local global_plugin
 
     lazy_setup(function()
       bp, db = helpers.get_db_utils(strategy, {
@@ -14,6 +15,19 @@ for _, strategy in helpers.each_strategy() do
         "services",
         "plugins",
       })
+
+      global_plugin = db.plugins:insert({ name = "key-auth",
+                                          protocols = { "http" },
+                                        })
+      assert.truthy(global_plugin)
+
+    end)
+
+    before_each(function()
+      service = bp.services:insert()
+      route = bp.routes:insert({ protocols = { "tcp" },
+                                 sources = { { ip = "127.0.0.1" } },
+                               })
     end)
 
     describe("Plugins #plugins", function()
@@ -60,6 +74,23 @@ for _, strategy in helpers.each_strategy() do
           assert.same([[UNIQUE violation detected on '{service=null,]] ..
                       [[name="key-auth",route={id="]] .. route.id ..
                       [["},consumer=null}']], err_t.message)
+        end)
+
+        it("returns an error when inserting mismatched plugins", function()
+          local plugin, _, err_t = db.plugins:insert({ name = "key-auth",
+                                                       protocols = { "http" },
+                                                       route = { id = route.id },
+                                                     })
+          assert.is_nil(plugin)
+          assert.equals(err_t.fields.protocols, "must match the associated route's protocols")
+
+          local plugin, _, err_t = db.plugins:insert({ name = "key-auth",
+                                                       protocols = { "tcp" },
+                                                       service = { id = service.id },
+                                                     })
+          assert.is_nil(plugin)
+          assert.equals(err_t.fields.protocols,
+                        "must match the protocols of at least one route pointing to this Plugin's service")
         end)
       end)
 
@@ -108,7 +139,36 @@ for _, strategy in helpers.each_strategy() do
                       [["},consumer=null}']], err_t.message)
         end)
       end)
+
+      it("returns an error when updating mismatched plugins", function()
+        local p, _, err_t = db.plugins:update({ id = global_plugin.id },
+                                              { route = { id = route.id } })
+        assert.is_nil(p)
+        assert.equals(err_t.fields.protocols, "must match the associated route's protocols")
+
+
+        local p, _, err_t = db.plugins:update({ id = global_plugin.id },
+                                              { service = { id = service.id } })
+        assert.is_nil(p)
+        assert.equals(err_t.fields.protocols,
+                      "must match the protocols of at least one route pointing to this Plugin's service")
+      end)
     end)
 
+    describe(":upsert()", function()
+      it("returns an error when upserting mismatched plugins", function()
+        local p, _, err_t = db.plugins:upsert({ id = global_plugin.id },
+                                              { route = { id = route.id } })
+        assert.is_nil(p)
+        assert.equals(err_t.fields.protocols, "must match the associated route's protocols")
+
+
+        local p, _, err_t = db.plugins:upsert({ id = global_plugin.id },
+                                              { service = { id = service.id } })
+        assert.is_nil(p)
+        assert.equals(err_t.fields.protocols,
+                      "must match the protocols of at least one route pointing to this Plugin's service")
+      end)
+    end)
   end) -- kong.db [strategy]
 end
