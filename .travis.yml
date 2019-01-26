@@ -38,7 +38,6 @@ env:
   matrix:
     # enterprise matrix begin
     # XXX add extra jobs for different cassandra versions
-    - TEST_SUITE=unit-ee
     - KONG_TEST_DATABASE=postgres TEST_SUITE=integration-ee
     - KONG_TEST_DATABASE=cassandra TEST_SUITE=plugins-ee
     - KONG_TEST_DATABASE=postgres TEST_SUITE=plugins-ee
@@ -82,6 +81,7 @@ jobs:
       - luacheck -q .
       - bin/busted -v -o gtest spec/01-unit
       - bin/busted -v -o gtest spec-old-api/01-unit
+      - bin/busted -v -o gtest spec-ee/01-unit
       env:
         - KONG_DATABASE=none
     - stage: deploy
