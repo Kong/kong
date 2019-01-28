@@ -2,7 +2,6 @@ local Errors  = require "kong.db.errors"
 local utils   = require "kong.tools.utils"
 local helpers = require "spec.helpers"
 local cjson   = require "cjson"
-local singletons = require "kong.singletons"
 
 local fmt      = string.format
 local unindent = helpers.unindent
@@ -13,21 +12,8 @@ local a_blank_uuid = "00000000-0000-0000-0000-000000000000"
 
 for _, strategy in helpers.each_strategy() do
   describe("kong.db [#" .. strategy .. "]", function()
-    local db, bp, dao
+    local db, bp
 
-<<<<<<< HEAD
-    setup(function()
-      ngx.ctx.workspaces = nil
-      bp, db, dao = helpers.get_db_utils(strategy, true)
-      singletons.dao = dao
-    end)
-
-    teardown(function()
-      db:truncate()
-||||||| merged common ancestors
-    setup(function()
-      bp, db = helpers.get_db_utils(strategy)
-=======
     lazy_setup(function()
       bp, db = helpers.get_db_utils(strategy, {
         "routes",
@@ -36,7 +22,6 @@ for _, strategy in helpers.each_strategy() do
         "upstreams",
         "targets",
       })
->>>>>>> 0.15.0
     end)
 
     --[[
@@ -339,12 +324,6 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       describe(":insert()", function()
-        setup(function()
-          assert(db:truncate())
-          ngx.ctx.workspaces = nil
-          ngx.ctx.workspaces = dao.workspaces:find_all({name = "default"})
-        end)
-
         -- no I/O
         it("errors on invalid arg", function()
           assert.has_error(function()
@@ -578,431 +557,12 @@ for _, strategy in helpers.each_strategy() do
           assert.not_equal(0, route.updated_at)
         end)
 
-<<<<<<< HEAD
-        pending("cannot create a Route with an existing PK", function()
-          -- TODO: the uuid type is `auto` for now, so cannot be overidden for
-          -- such a test.
-          -- We need to test that we receive a primary key violation error in
-          -- this case.
-        end)
-      end)
-
-      describe(":select()", function()
-        setup(function()
-          assert(db:truncate())
-          ngx.ctx.workspaces = nil
-          ngx.ctx.workspaces = dao.workspaces:find_all({name = "default"})
-        end)
-
-        -- no I/O
-        it("errors on invalid arg", function()
-          assert.has_error(function()
-            db.routes:select()
-          end, "primary_key must be a table")
-        end)
-
-        -- I/O
-        it("return nothing on non-existing Route", function()
-          local route, err, err_t = db.routes:select({ id = utils.uuid() })
-          assert.is_nil(route)
-          assert.is_nil(err_t)
-          assert.is_nil(err)
-        end)
-
-        it("returns an existing Route", function()
-          local route_inserted = bp.routes:insert({
-            hosts = { "example.com" },
-          })
-          local route, err, err_t = db.routes:select({ id = route_inserted.id })
-          assert.is_nil(err_t)
-          assert.is_nil(err)
-          assert.same(route_inserted, route)
-        end)
-      end)
-
-      describe(":update()", function()
-        setup(function()
-          assert(db:truncate())
-          ngx.ctx.workspaces = nil
-          ngx.ctx.workspaces = dao.workspaces:find_all({name = "default"})
-        end)
-
-        -- no I/O
-        it("errors on invalid arg", function()
-          assert.has_error(function()
-            db.routes:update()
-          end, "primary_key must be a table")
-        end)
-
-        it("errors on invalid values", function()
-          local route_inserted = bp.routes:insert({
-            hosts = { "example.com" },
-          })
-          local pk = { id = route_inserted.id }
-          local new_route, err, err_t = db.routes:update(pk, {
-            protocols = { 123 },
-          })
-          assert.is_nil(new_route)
-          local message  = "schema violation (protocols: expected a string)"
-          assert.equal(fmt("[%s] %s", strategy, message), err)
-          assert.same({
-            code        = Errors.codes.SCHEMA_VIOLATION,
-            name        = "schema violation",
-            message     = message,
-            strategy    = strategy,
-            fields      = {
-              protocols  = "expected a string",
-            }
-          }, err_t)
-        end)
-
-        -- I/O
-        it("returns not found error", function()
-          local pk = { id = utils.uuid() }
-          local new_route, err, err_t = db.routes:update(pk, {
-            protocols = { "https" }
-          })
-          assert.is_nil(new_route)
-          local message = fmt(
-            [[could not find the entity with primary key '{id="%s"}']],
-            pk.id
-          )
-          assert.equal(fmt("[%s] %s", strategy, message), err)
-          assert.same({
-            code        = Errors.codes.NOT_FOUND,
-            name        = "not found",
-            strategy    = strategy,
-            message     = message,
-            fields      = pk,
-          }, err_t)
-          --TODO: enable when done
-          --assert.equal("no such route: id=(" .. u .. ")", tostring(err_t))
-        end)
-
-        it("updates an existing Route", function()
-          local route = bp.routes:insert({
-            hosts = { "example.com" },
-          })
-
-          ngx.sleep(1)
-
-          local new_route, err, err_t = db.routes:update({ id = route.id }, {
-            protocols = { "https" },
-            regex_priority = 5,
-          })
-          assert.is_nil(err_t)
-          assert.is_nil(err)
-          assert.same({
-            id              = route.id,
-            created_at      = route.created_at,
-            updated_at      = new_route.updated_at,
-            protocols       = { "https" },
-            methods         = route.methods,
-            hosts           = route.hosts,
-            paths           = route.paths,
-            regex_priority  = 5,
-            strip_path      = route.strip_path,
-            preserve_host   = route.preserve_host,
-            service         = route.service,
-          }, new_route)
-
-
-          --TODO: enable when it works again
-          --assert.not_equal(new_route.created_at, new_route.updated_at)
-        end)
-
-        pending("created_at/updated_at cannot be overriden", function()
-          local route = bp.routes:insert {
-            hosts = { "example.com" },
-          }
-
-          local new_route, err, err_t = db.routes:update({ id = route.id }, {
-            protocols = { "https" },
-            created_at = 1,
-            updated_at = 1,
-          })
-          assert.is_nil(err_t)
-          assert.is_nil(err)
-          assert.not_equal(1, new_route.created_at)
-          assert.not_equal(1, new_route.updated_at)
-        end)
-
-        describe("unsetting with ngx.null", function()
-          it("fails if all routing criteria explicitely given are null", function()
-            local route = bp.routes:insert({
-              hosts   = { "example.com" },
-              methods = { "GET" },
-            })
-
-            local new_route, err, err_t = db.routes:update({ id = route.id }, {
-              methods = ngx.null
-            })
-            assert.is_nil(new_route)
-            local message = unindent([[
-              schema violation
-              (when updating, at least one of these fields must be non-empty: 'methods', 'hosts', 'paths')
-            ]], true, true)
-            assert.equal(fmt("[%s] %s", strategy, message), err)
-            assert.same({
-              code        = Errors.codes.SCHEMA_VIOLATION,
-              name        = "schema violation",
-              strategy    = strategy,
-              message     = message,
-              fields      = {
-                ["@entity"] = {
-                  "when updating, at least one of these fields must be non-empty: 'methods', 'hosts', 'paths'",
-                }
-              }
-            }, err_t)
-          end)
-
-          it("fails if all routing criteria would be null", function()
-            local route = bp.routes:insert({
-              hosts   = { "example.com" },
-              methods = { "GET" },
-            })
-
-            local new_route, _, err_t = db.routes:update({ id = route.id }, {
-              hosts   = ngx.null,
-              methods = ngx.null,
-            })
-            assert.is_nil(new_route)
-            assert.same({
-              code        = Errors.codes.SCHEMA_VIOLATION,
-              name = "schema violation",
-              strategy    = strategy,
-              message  = unindent([[
-                schema violation
-                (when updating, at least one of these fields must be non-empty: 'methods', 'hosts', 'paths')
-              ]], true, true),
-              fields   = {
-                ["@entity"] = {
-                  "when updating, at least one of these fields must be non-empty: 'methods', 'hosts', 'paths'",
-                }
-              },
-            }, err_t)
-          end)
-
-          it("unsets a non-required field", function()
-            local route = bp.routes:insert({
-              hosts   = { "example.com" },
-              methods = { "GET" },
-              paths   = ngx.null,
-            })
-
-            local new_route, err, err_t = db.routes:update({ id = route.id }, {
-              hosts   = { "example.com" },
-              methods = ngx.null,
-              paths   = ngx.null,
-||||||| merged common ancestors
-        pending("cannot create a Route with an existing PK", function()
-          -- TODO: the uuid type is `auto` for now, so cannot be overidden for
-          -- such a test.
-          -- We need to test that we receive a primary key violation error in
-          -- this case.
-        end)
-      end)
-
-      describe(":select()", function()
-        -- no I/O
-        it("errors on invalid arg", function()
-          assert.has_error(function()
-            db.routes:select()
-          end, "primary_key must be a table")
-        end)
-
-        -- I/O
-        it("return nothing on non-existing Route", function()
-          local route, err, err_t = db.routes:select({ id = utils.uuid() })
-          assert.is_nil(route)
-          assert.is_nil(err_t)
-          assert.is_nil(err)
-        end)
-
-        it("returns an existing Route", function()
-          local route_inserted = bp.routes:insert({
-            hosts = { "example.com" },
-          })
-          local route, err, err_t = db.routes:select({ id = route_inserted.id })
-          assert.is_nil(err_t)
-          assert.is_nil(err)
-          assert.same(route_inserted, route)
-        end)
-      end)
-
-      describe(":update()", function()
-        -- no I/O
-        it("errors on invalid arg", function()
-          assert.has_error(function()
-            db.routes:update()
-          end, "primary_key must be a table")
-        end)
-
-        it("errors on invalid values", function()
-          local pk = { id = utils.uuid() }
-          local new_route, err, err_t = db.routes:update(pk, {
-            protocols = { 123 },
-          })
-          assert.is_nil(new_route)
-          local message  = "schema violation (protocols: expected a string)"
-          assert.equal(fmt("[%s] %s", strategy, message), err)
-          assert.same({
-            code        = Errors.codes.SCHEMA_VIOLATION,
-            name        = "schema violation",
-            message     = message,
-            strategy    = strategy,
-            fields      = {
-              protocols  = "expected a string",
-            }
-          }, err_t)
-        end)
-
-        -- I/O
-        it("returns not found error", function()
-          local pk = { id = utils.uuid() }
-          local new_route, err, err_t = db.routes:update(pk, {
-            protocols = { "https" }
-          })
-          assert.is_nil(new_route)
-          local message = fmt(
-            [[could not find the entity with primary key '{id="%s"}']],
-            pk.id
-          )
-          assert.equal(fmt("[%s] %s", strategy, message), err)
-          assert.same({
-            code        = Errors.codes.NOT_FOUND,
-            name        = "not found",
-            strategy    = strategy,
-            message     = message,
-            fields      = pk,
-          }, err_t)
-          --TODO: enable when done
-          --assert.equal("no such route: id=(" .. u .. ")", tostring(err_t))
-        end)
-
-        it("updates an existing Route", function()
-          local route = bp.routes:insert({
-            hosts = { "example.com" },
-          })
-
-          ngx.sleep(1)
-
-          local new_route, err, err_t = db.routes:update({ id = route.id }, {
-            protocols = { "https" },
-            regex_priority = 5,
-          })
-          assert.is_nil(err_t)
-          assert.is_nil(err)
-          assert.same({
-            id              = route.id,
-            created_at      = route.created_at,
-            updated_at      = new_route.updated_at,
-            protocols       = { "https" },
-            methods         = route.methods,
-            hosts           = route.hosts,
-            paths           = route.paths,
-            regex_priority  = 5,
-            strip_path      = route.strip_path,
-            preserve_host   = route.preserve_host,
-            service         = route.service,
-          }, new_route)
-
-
-          --TODO: enable when it works again
-          --assert.not_equal(new_route.created_at, new_route.updated_at)
-        end)
-
-        pending("created_at/updated_at cannot be overriden", function()
-          local route = bp.routes:insert {
-            hosts = { "example.com" },
-          }
-
-          local new_route, err, err_t = db.routes:update({ id = route.id }, {
-            protocols = { "https" },
-            created_at = 1,
-            updated_at = 1,
-          })
-          assert.is_nil(err_t)
-          assert.is_nil(err)
-          assert.not_equal(1, new_route.created_at)
-          assert.not_equal(1, new_route.updated_at)
-        end)
-
-        describe("unsetting with ngx.null", function()
-          it("fails if all routing criteria explicitely given are null", function()
-            local route = bp.routes:insert({
-              hosts   = { "example.com" },
-              methods = { "GET" },
-            })
-
-            local new_route, err, err_t = db.routes:update({ id = route.id }, {
-              methods = ngx.null
-            })
-            assert.is_nil(new_route)
-            local message = unindent([[
-              schema violation
-              (when updating, at least one of these fields must be non-empty: 'methods', 'hosts', 'paths')
-            ]], true, true)
-            assert.equal(fmt("[%s] %s", strategy, message), err)
-            assert.same({
-              code        = Errors.codes.SCHEMA_VIOLATION,
-              name        = "schema violation",
-              strategy    = strategy,
-              message     = message,
-              fields      = {
-                ["@entity"] = {
-                  "when updating, at least one of these fields must be non-empty: 'methods', 'hosts', 'paths'",
-                }
-              }
-            }, err_t)
-          end)
-
-          it("fails if all routing criteria would be null", function()
-            local route = bp.routes:insert({
-              hosts   = { "example.com" },
-              methods = { "GET" },
-            })
-
-            local new_route, _, err_t = db.routes:update({ id = route.id }, {
-              hosts   = ngx.null,
-              methods = ngx.null,
-            })
-            assert.is_nil(new_route)
-            assert.same({
-              code        = Errors.codes.SCHEMA_VIOLATION,
-              name = "schema violation",
-              strategy    = strategy,
-              message  = unindent([[
-                schema violation
-                (when updating, at least one of these fields must be non-empty: 'methods', 'hosts', 'paths')
-              ]], true, true),
-              fields   = {
-                ["@entity"] = {
-                  "when updating, at least one of these fields must be non-empty: 'methods', 'hosts', 'paths'",
-                }
-              },
-            }, err_t)
-          end)
-
-          it("unsets a non-required field", function()
-            local route = bp.routes:insert({
-              hosts   = { "example.com" },
-              methods = { "GET" },
-              paths   = ngx.null,
-            })
-
-            local new_route, err, err_t = db.routes:update({ id = route.id }, {
-              hosts   = { "example.com" },
-              methods = ngx.null,
-              paths   = ngx.null,
-=======
         describe("#stream context", function()
           it("creates a Route with 'snis'", function()
             local route, err, err_t = db.routes:insert({
               protocols = { "tcp" },
               snis      = { "example.com" },
               service   = bp.services:insert(),
->>>>>>> 0.15.0
             })
             assert.is_nil(err_t)
             assert.is_nil(err)
@@ -1036,19 +596,7 @@ for _, strategy in helpers.each_strategy() do
         end)
       end)
 
-<<<<<<< HEAD
-      describe(":delete()", function()
-        setup(function()
-          assert(db:truncate())
-          ngx.ctx.workspaces = nil
-          ngx.ctx.workspaces = dao.workspaces:find_all({name = "default"})
-        end)
-
-||||||| merged common ancestors
-      describe(":delete()", function()
-=======
       describe(":select()", function()
->>>>>>> 0.15.0
         -- no I/O
         it("errors on invalid arg", function()
           assert.has_error(function()
@@ -1100,19 +648,7 @@ for _, strategy in helpers.each_strategy() do
         end)
       end)
 
-<<<<<<< HEAD
-      describe(":page()", function()
-        setup(function()
-          assert(db:truncate())
-          ngx.ctx.workspaces = nil
-          ngx.ctx.workspaces = dao.workspaces:find_all({name = "default"})
-        end)
-
-||||||| merged common ancestors
-      describe(":page()", function()
-=======
       describe(":update()", function()
->>>>>>> 0.15.0
         -- no I/O
         it("errors on invalid arg", function()
           assert.has_error(function()
@@ -1192,212 +728,6 @@ for _, strategy in helpers.each_strategy() do
             service         = route.service,
           }, new_route)
 
-<<<<<<< HEAD
-          for i = 1, #rows do
-            assert.is_truthy(rows[i].methods.GET)
-          end
-        end)
-
-        describe("page size", function()
-          setup(function()
-            assert(db:truncate())
-            ngx.ctx.workspaces = nil
-            ngx.ctx.workspaces = dao.workspaces:find_all({name = "default"})
-
-            for i = 1, 1002 do
-              bp.routes:insert({ hosts = { "example-" .. i .. ".com" } })
-            end
-          end)
-
-          it("defaults page_size = 100", function()
-            local rows, err, err_t = db.routes:page()
-            assert.is_nil(err_t)
-            assert.is_nil(err)
-            assert.is_table(rows)
-            assert.equal(100, #rows)
-          end)
-
-          it("max page_size = 1000", function()
-            local rows, err, err_t = db.routes:page(1002)
-            assert.is_nil(err_t)
-            assert.is_nil(err)
-            assert.is_table(rows)
-            assert.equal(1000, #rows)
-          end)
-        end)
-
-        describe("page offset", function()
-          setup(function()
-            assert(db:truncate())
-            ngx.ctx.workspaces = nil
-            ngx.ctx.workspaces = dao.workspaces:find_all({name = "default"})
-
-            for i = 1, 10 do
-              bp.routes:insert({
-                hosts = { "example-" .. i .. ".com" },
-                methods = { "GET" },
-              })
-            end
-          end)
-
-          it("fetches all rows in one page", function()
-            local rows, err, err_t, offset = db.routes:page()
-            assert.is_nil(err_t)
-            assert.is_nil(err)
-            assert.is_table(rows)
-            assert.equal(10, #rows)
-            assert.is_nil(offset)
-          end)
-
-          it("fetched rows are returned in a table without hash part", function()
-            local rows, err, err_t = db.routes:page()
-            assert.is_nil(err_t)
-            assert.is_nil(err)
-            assert.is_table(rows)
-
-            local keys = {}
-
-            for k in pairs(rows) do
-              table.insert(keys, k)
-            end
-
-            assert.equal(#rows, #keys) -- no hash part in rows
-          end)
-
-          it("fetches rows always in same order", function()
-            local rows1 = db.routes:page()
-            local rows2 = db.routes:page()
-            assert.is_table(rows1)
-            assert.is_table(rows2)
-            assert.same(rows1, rows2)
-          end)
-
-          it("returns offset when page_size < total", function()
-            local rows, err, err_t, offset = db.routes:page(5)
-            assert.is_nil(err_t)
-            assert.is_nil(err)
-            assert.is_table(rows)
-            assert.equal(5, #rows)
-            assert.is_string(offset)
-          end)
-
-          it("fetches subsequent pages with offset", function()
-            local rows_1, err, err_t, offset = db.routes:page(5)
-            assert.is_nil(err_t)
-            assert.is_nil(err)
-            assert.is_table(rows_1)
-            assert.equal(5, #rows_1)
-            assert.is_string(offset)
-
-            local page_size = 5
-            if strategy == "cassandra" then
-              -- 5 + 1: cassandra only detects the end of a pagination when
-              -- we go past the number of rows in the iteration - it doesn't
-              -- seem to detect the pages ending at the limit
-              page_size = page_size + 1
-            end
-||||||| merged common ancestors
-          for i = 1, #rows do
-            assert.is_truthy(rows[i].methods.GET)
-          end
-        end)
-
-        describe("page size", function()
-          setup(function()
-            assert(db:truncate())
-
-            for i = 1, 1002 do
-              bp.routes:insert({ hosts = { "example-" .. i .. ".com" } })
-            end
-          end)
-
-          it("defaults page_size = 100", function()
-            local rows, err, err_t = db.routes:page()
-            assert.is_nil(err_t)
-            assert.is_nil(err)
-            assert.is_table(rows)
-            assert.equal(100, #rows)
-          end)
-
-          it("max page_size = 1000", function()
-            local rows, err, err_t = db.routes:page(1002)
-            assert.is_nil(err_t)
-            assert.is_nil(err)
-            assert.is_table(rows)
-            assert.equal(1000, #rows)
-          end)
-        end)
-
-        describe("page offset", function()
-          setup(function()
-            assert(db:truncate())
-
-            for i = 1, 10 do
-              bp.routes:insert({
-                hosts = { "example-" .. i .. ".com" },
-                methods = { "GET" },
-              })
-            end
-          end)
-
-          it("fetches all rows in one page", function()
-            local rows, err, err_t, offset = db.routes:page()
-            assert.is_nil(err_t)
-            assert.is_nil(err)
-            assert.is_table(rows)
-            assert.equal(10, #rows)
-            assert.is_nil(offset)
-          end)
-
-          it("fetched rows are returned in a table without hash part", function()
-            local rows, err, err_t = db.routes:page()
-            assert.is_nil(err_t)
-            assert.is_nil(err)
-            assert.is_table(rows)
-
-            local keys = {}
-
-            for k in pairs(rows) do
-              table.insert(keys, k)
-            end
-
-            assert.equal(#rows, #keys) -- no hash part in rows
-          end)
-
-          it("fetches rows always in same order", function()
-            local rows1 = db.routes:page()
-            local rows2 = db.routes:page()
-            assert.is_table(rows1)
-            assert.is_table(rows2)
-            assert.same(rows1, rows2)
-          end)
-
-          it("returns offset when page_size < total", function()
-            local rows, err, err_t, offset = db.routes:page(5)
-            assert.is_nil(err_t)
-            assert.is_nil(err)
-            assert.is_table(rows)
-            assert.equal(5, #rows)
-            assert.is_string(offset)
-          end)
-
-          it("fetches subsequent pages with offset", function()
-            local rows_1, err, err_t, offset = db.routes:page(5)
-            assert.is_nil(err_t)
-            assert.is_nil(err)
-            assert.is_table(rows_1)
-            assert.equal(5, #rows_1)
-            assert.is_string(offset)
-
-            local page_size = 5
-            if strategy == "cassandra" then
-              -- 5 + 1: cassandra only detects the end of a pagination when
-              -- we go past the number of rows in the iteration - it doesn't
-              -- seem to detect the pages ending at the limit
-              page_size = page_size + 1
-            end
-=======
->>>>>>> 0.15.0
 
           --TODO: enable when it works again
           --assert.not_equal(new_route.created_at, new_route.updated_at)
@@ -1523,37 +853,7 @@ for _, strategy in helpers.each_strategy() do
         end)
       end)
 
-<<<<<<< HEAD
-      describe(":each()", function()
-        setup(function()
-          assert(db:truncate())
-          ngx.ctx.workspaces = nil
-          ngx.ctx.workspaces = dao.workspaces:find_all({name = "default"})
-
-          for i = 1, 100 do
-            bp.routes:insert({
-              hosts   = { "example-" .. i .. ".com" },
-              methods = { "GET" }
-            })
-          end
-        end)
-
-||||||| merged common ancestors
-      describe(":each()", function()
-        setup(function()
-          assert(db:truncate())
-
-          for i = 1, 100 do
-            bp.routes:insert({
-              hosts   = { "example-" .. i .. ".com" },
-              methods = { "GET" }
-            })
-          end
-        end)
-
-=======
       describe(":delete()", function()
->>>>>>> 0.15.0
         -- no I/O
         it("errors on invalid arg", function()
           assert.has_error(function()
@@ -1605,16 +905,7 @@ for _, strategy in helpers.each_strategy() do
     --]]
 
     describe("Services", function()
-      setup(function()
-        assert(db:truncate())
-      end)
-
       describe(":insert()", function()
-        setup(function()
-          ngx.ctx.workspaces = nil
-          ngx.ctx.workspaces = dao.workspaces:find_all({name = "default"})
-        end)
-
         -- no I/O
         it("errors on invalid arg", function()
           assert.has_error(function()
@@ -1783,11 +1074,6 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       describe(":select()", function()
-        setup(function()
-          ngx.ctx.workspaces = nil
-          ngx.ctx.workspaces = dao.workspaces:find_all({name = "default"})
-        end)
-
         -- no I/O
         it("errors on invalid arg", function()
           assert.has_error(function()
@@ -1820,19 +1106,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       describe(":select_by_name()", function()
-<<<<<<< HEAD
-        setup(function()
-          assert(db:truncate())
-          ngx.ctx.workspaces = nil
-          ngx.ctx.workspaces = dao.workspaces:find_all({name = "default"})
-
-||||||| merged common ancestors
-        setup(function()
-          assert(db:truncate())
-
-=======
         lazy_setup(function()
->>>>>>> 0.15.0
           for i = 1, 5 do
             assert(db.services:insert({
               name = "service_" .. i,
@@ -1863,11 +1137,6 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       describe(":update()", function()
-        setup(function()
-          ngx.ctx.workspaces = nil
-          ngx.ctx.workspaces = dao.workspaces:find_all({name = "default"})
-        end)
-
         -- no I/O
         it("errors on invalid arg", function()
           assert.has_error(function()
@@ -1880,17 +1149,8 @@ for _, strategy in helpers.each_strategy() do
         end)
 
         it("errors on invalid values", function()
-<<<<<<< HEAD
-          local service_inserted = bp.services:insert({
-            host = "service.com",
-          })
-          local pk = { id = service_inserted.id }
-||||||| merged common ancestors
-          local pk = { id = utils.uuid() }
-=======
           local service = assert(db.services:insert({ host = "service.test" }))
           local pk = { id = service.id }
->>>>>>> 0.15.0
           local new_service, err, err_t = db.services:update(pk, { protocol = 123 })
           assert.is_nil(new_service)
           local message = "schema violation (protocol: expected a string)"
@@ -1976,20 +1236,12 @@ for _, strategy in helpers.each_strategy() do
       describe(":update_by_name()", function()
         local s1, s2
         before_each(function()
-<<<<<<< HEAD
-          assert(db:truncate())
-          ngx.ctx.workspaces = nil
-          ngx.ctx.workspaces = dao.workspaces:find_all({name = "default"})
-||||||| merged common ancestors
-          assert(db:truncate())
-=======
           if s1 then
             assert(db.services:delete({ id = s1.id }))
           end
           if s2 then
             assert(db.services:delete({ id = s2.id }))
           end
->>>>>>> 0.15.0
 
           s1 = assert(db.services:insert({
             name = "update-by-name-service",
@@ -2091,11 +1343,6 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       describe(":delete()", function()
-        setup(function()
-          ngx.ctx.workspaces = nil
-          ngx.ctx.workspaces = dao.workspaces:find_all({name = "default"})
-        end)
-
         -- no I/O
         it("errors on invalid arg", function()
           assert.has_error(function()
@@ -2145,19 +1392,7 @@ for _, strategy in helpers.each_strategy() do
       describe(":delete_by_name()", function()
         local service
 
-<<<<<<< HEAD
-        setup(function()
-          assert(db:truncate())
-          ngx.ctx.workspaces = nil
-          ngx.ctx.workspaces = dao.workspaces:find_all({name = "default"})
-
-||||||| merged common ancestors
-        setup(function()
-          assert(db:truncate())
-
-=======
         lazy_setup(function()
->>>>>>> 0.15.0
           service = assert(db.services:insert({
             name = "delete-by-name-service",
             host = "service1.com",
@@ -2201,12 +1436,6 @@ for _, strategy in helpers.each_strategy() do
     --]]
 
     describe("Services and Routes association", function()
-      setup(function()
-        ngx.ctx.workspaces = nil
-        ngx.ctx.workspaces = dao.workspaces:find_all({name = "default"})
-      end)
-
-
       it(":insert() a Route with a relation to a Service", function()
         local service = assert(db.services:insert({
           protocol = "http",
@@ -2425,19 +1654,7 @@ for _, strategy in helpers.each_strategy() do
           local service
 
           describe("page size", function()
-<<<<<<< HEAD
-            setup(function()
-              assert(db:truncate())
-              ngx.ctx.workspaces = nil
-              ngx.ctx.workspaces = dao.workspaces:find_all({name = "default"})
-
-||||||| merged common ancestors
-            setup(function()
-              assert(db:truncate())
-
-=======
             lazy_setup(function()
->>>>>>> 0.15.0
               service = bp.services:insert()
 
               for i = 1, 102 do

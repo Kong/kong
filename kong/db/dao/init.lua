@@ -311,7 +311,7 @@ local function generate_foreign_key_methods(schema)
           return nil, err, err_t
         end
 
-        if not options.skip_rbac then
+        if options and not options.skip_rbac then
           local table_name = self.schema.name
           entities = rbac.narrow_readable_entities(table_name, entities)
         end
@@ -402,7 +402,7 @@ local function generate_foreign_key_methods(schema)
           return nil
         end
 
-        if not options.skip_rbac then
+        if options and not options.skip_rbac then
           local r = rbac.validate_entity_operation(row, self.schema.name)
           if not r then
             local err_t = self.errors:unauthorized_operation({
@@ -729,7 +729,7 @@ function DAO:page(size, offset, options)
     return nil, err, err_t
   end
 
-  if not options.skip_rbac then
+  if options and not options.skip_rbac then
     local table_name = self.schema.name
     entities = rbac.narrow_readable_entities(table_name, entities)
   end
