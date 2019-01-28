@@ -18,7 +18,6 @@ local _M = {}
 
 
 local CONTENT_TYPE = "Content-Type"
-local HOST = "host"
 local JSON = "json"
 local FORM = "form"
 local MULTIPART = "multipart"
@@ -70,6 +69,7 @@ end
 
 local function append_value(current_value, value)
   local current_value_type = type(current_value)
+
   if current_value_type  == "table" then
     insert(current_value, value)
     return current_value
@@ -109,9 +109,10 @@ local function transform_headers(conf)
   local appended
 
   local headers = kong.request.get_headers()
+  headers.host = nil
 
   if remove then
-    for _, name, value in iter(conf.remove.headers) do
+    for _, name, _ in iter(conf.remove.headers) do
       if headers[name] ~= nil then
         headers[name] = nil
         clear_header(name)
@@ -141,15 +142,11 @@ local function transform_headers(conf)
 
   if replace then
     for _, name, value in iter(conf.replace.headers) do
-      if headers[name] ~= nil then
+      if headers[name] ~= nil or lower(name) == "host" then
         headers[name] = value
 
         if not replaced then
           replaced = true
-        end
-
-        if lower(name) == HOST then -- Host header has a special treatment
-          ngx.var.upstream_host = value
         end
       end
     end
@@ -157,15 +154,11 @@ local function transform_headers(conf)
 
   if add then
     for _, name, value in iter(conf.add.headers) do
-      if headers[name] == nil then
+      if headers[name] == nil and lower(name) ~= "host" then
         headers[name] = value
 
         if not added then
           added = true
-        end
-
-        if lower(name) == HOST then -- Host header has a special treatment
-          ngx.var.upstream_host = value
         end
       end
     end
@@ -173,14 +166,12 @@ local function transform_headers(conf)
 
   if append then
     for _, name, value in iter(conf.append.headers) do
-      headers[name] = append_value(headers[name], value)
+      if lower(name) ~= "host" then
+        headers[name] = append_value(headers[name], value)
 
-      if not appended then
-        appended = true
-      end
-
-      if lower(name) == HOST then -- Host header has a special treatment
-        ngx.var.upstream_host = value
+        if not appended then
+          appended = true
+        end
       end
     end
   end
