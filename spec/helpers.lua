@@ -216,11 +216,6 @@ local function get_db_utils(strategy, tables, plugins)
     singletons.dao = dao
     singletons.db = db
 
-    assert(dao:run_migrations())
-    if not no_truncate then
-      dao:truncate_tables()
-    end
-
     --assert(dao:run_migrations())
   end
 
