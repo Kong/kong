@@ -270,7 +270,7 @@ for _, strategy in helpers.each_strategy() do
         database   = strategy,
         -- this is to ensure we have the right number of shdicts being used so we know
         -- how many udp packets are we expecting below
-        nginx_conf = "spec/fixtures/ee/custom_nginx_statsd_advanced.template", 
+        nginx_conf = "spec/fixtures/custom_nginx_statsd_advanced.template",
         custom_plugins = "statsd-advanced",
         vitals = "off"
       }))
