@@ -53,31 +53,6 @@ for _, strategy in helpers.each_strategy() do
     describe("reset", function()
       it("cannot run non-interactively without --yes", function()
         local cmd = string.format(helpers.unindent [[
-<<<<<<< HEAD
-          echo %s | %s migrations reset -c %s
-        ]], answer, helpers.bin_path, helpers.test_conf_path)
-
-        local ok, _, stdout, stderr = pl_utils.executeex(cmd)
-        assert.is_true(ok)
-        assert.truthy(string.match(stderr, ""))
-        assert.matches("Are you sure? This operation is irreversible. [Y/n]",
-                       stdout, nil, true)
-        assert.matches("Schema successfully reset", stdout, nil, true)
-        assert(dao:run_migrations())
-      end
-||||||| merged common ancestors
-          echo %s | %s migrations reset -c %s
-        ]], answer, helpers.bin_path, helpers.test_conf_path)
-
-        local ok, _, stdout, stderr = pl_utils.executeex(cmd)
-        assert.is_true(ok)
-        assert.equal("", stderr)
-        assert.matches("Are you sure? This operation is irreversible. [Y/n]",
-                       stdout, nil, true)
-        assert.matches("Schema successfully reset", stdout, nil, true)
-        assert(dao:run_migrations())
-      end
-=======
           echo y | %s KONG_DATABASE=%s %s migrations reset --v
         ]], lua_path, strategy, helpers.bin_path, helpers.test_conf_path)
         local ok, code, _, stderr = pl_utils.executeex(cmd)
@@ -119,7 +94,6 @@ for _, strategy in helpers.each_strategy() do
         assert.same(1, code)
         assert.match("nothing to reset", stdout, 1, true)
       end)
->>>>>>> 0.15.0
     end)
 
     describe("bootstrap", function()
@@ -132,31 +106,6 @@ for _, strategy in helpers.each_strategy() do
         assert.match("\ndatabase is up-to-date\n", stdout, 1, true)
       end)
 
-<<<<<<< HEAD
-      for _, answer in ipairs(answers) do
-        local cmd = string.format(helpers.unindent [[
-          echo %s | %s migrations reset -c %s
-        ]], answer, helpers.bin_path, helpers.test_conf_path)
-        local ok, _, stdout, stderr = pl_utils.executeex(cmd)
-        assert.is_true(ok)
-        assert.truthy(string.match(stderr, ""))
-        assert.matches("Are you sure? This operation is irreversible. [Y/n]",
-                       stdout, nil, true)
-        assert.matches("Canceled", stdout, nil, true)
-      end
-||||||| merged common ancestors
-      for _, answer in ipairs(answers) do
-        local cmd = string.format(helpers.unindent [[
-          echo %s | %s migrations reset -c %s
-        ]], answer, helpers.bin_path, helpers.test_conf_path)
-        local ok, _, stdout, stderr = pl_utils.executeex(cmd)
-        assert.is_true(ok)
-        assert.equal("", stderr)
-        assert.matches("Are you sure? This operation is irreversible. [Y/n]",
-                       stdout, nil, true)
-        assert.matches("Canceled", stdout, nil, true)
-      end
-=======
       it("does not bootstrap twice", function()
         local code = run_kong("migrations bootstrap")
         assert.same(0, code)
@@ -172,28 +121,8 @@ for _, strategy in helpers.each_strategy() do
         assert.same(0, #stdout)
         assert.same(0, #stderr)
       end)
->>>>>>> 0.15.0
     end)
 
-<<<<<<< HEAD
-    it("runs non-interactively with --yes", function()
-      local ok, stderr, stdout = helpers.kong_exec("migrations reset --yes -c " ..
-                                                   helpers.test_conf_path)
-      assert.is_true(ok)
-      assert.truthy(string.match(stderr, ""))
-      assert.not_matches("Are you sure? This operation is irreversible. [Y/n]",
-                         stdout, nil, true)
-      assert.matches("Schema successfully reset", stdout, nil, true)
-||||||| merged common ancestors
-    it("runs non-interactively with --yes", function()
-      local ok, stderr, stdout = helpers.kong_exec("migrations reset --yes -c " ..
-                                                   helpers.test_conf_path)
-      assert.is_true(ok)
-      assert.is_equal("", stderr)
-      assert.not_matches("Are you sure? This operation is irreversible. [Y/n]",
-                         stdout, nil, true)
-      assert.matches("Schema successfully reset", stdout, nil, true)
-=======
     describe("list", function()
       it("fails if not bootstrapped", function()
         local code = run_kong("migrations reset --yes")
@@ -283,28 +212,8 @@ for _, strategy in helpers.each_strategy() do
         assert.same(0, #stdout)
         assert.same(0, #stderr)
       end)
->>>>>>> 0.15.0
     end)
 
-<<<<<<< HEAD
-    it("runs non-interactively with -y", function()
-      local ok, stderr, stdout = helpers.kong_exec("migrations reset -y -c " ..
-                                                   helpers.test_conf_path)
-      assert.is_true(ok)
-      assert.truthy(string.match(stderr, ""))
-      assert.not_matches("Are you sure? This operation is irreversible. [Y/n]",
-                         stdout, nil, true)
-      assert.matches("Schema successfully reset", stdout, nil, true)
-||||||| merged common ancestors
-    it("runs non-interactively with -y", function()
-      local ok, stderr, stdout = helpers.kong_exec("migrations reset -y -c " ..
-                                                   helpers.test_conf_path)
-      assert.is_true(ok)
-      assert.is_equal("", stderr)
-      assert.not_matches("Are you sure? This operation is irreversible. [Y/n]",
-                         stdout, nil, true)
-      assert.matches("Schema successfully reset", stdout, nil, true)
-=======
     describe("finish", function()
       it("performs second phase of migration", function()
         run_kong("migrations reset --yes")
@@ -347,7 +256,6 @@ for _, strategy in helpers.each_strategy() do
         assert.same(0, #stdout)
         assert.same(0, #stderr)
       end)
->>>>>>> 0.15.0
     end)
   end)
 end
