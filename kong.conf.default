@@ -228,14 +228,6 @@
                                  # `m`, with a minimum recommended value of
                                  # a few MBs.
 
-#ssl: on                         # Determines if Nginx should be
-                                 # listening for HTTPS traffic on the
-                                 # `proxy_listen_ssl` address. If disabled,
-                                 # Nginx will only bind itself on
-                                 # `proxy_listen`, and all SSL settings
-                                 # will be ignored.
-
-
 #ssl_cipher_suite = modern       # Defines the TLS ciphers served by Nginx.
                                  # Accepted values are `modern`,
                                  # `intermediate`, `old`, or `custom`.
