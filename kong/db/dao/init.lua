@@ -671,7 +671,7 @@ function DAO:select(primary_key, options)
     return nil
   end
 
-  if not options.skip_rbac then
+  if options and not options.skip_rbac then
     local r = rbac.validate_entity_operation(primary_key, self.schema.name)
     if not r then
       local err_t = self.errors:unauthorized_operation({

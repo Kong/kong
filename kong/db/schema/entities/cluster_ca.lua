@@ -10,6 +10,7 @@ return {
   -- Cassandra *requires* a primary key.
   -- To keep it happy we add a superfluous boolean column that is always true.
   primary_key = { "pk" },
+  workspaceable = true,
 
   fields = {
     { pk = { type = "boolean", default = true, eq = true, } },
