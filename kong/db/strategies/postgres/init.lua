@@ -697,6 +697,7 @@ local _M  = {
   CUSTOM_STRATEGIES = {
     services = require("kong.db.strategies.postgres.services"),
     routes   = require("kong.db.strategies.postgres.routes"),
+    plugins = require("kong.db.strategies.postgres.plugins"),
   }
 }
 
@@ -983,13 +984,6 @@ end
 function _mt:escape_literal(literal, field_name)
   return escape_literal(self.connector, literal, self.fields[field_name])
 end
-
-
-local _M  = {
-  CUSTOM_STRATEGIES = {
-    plugins = require("kong.db.strategies.postgres.plugins"),
-  }
-}
 
 
 function _M.new(connector, schema, errors)
