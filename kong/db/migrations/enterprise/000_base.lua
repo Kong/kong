@@ -47,7 +47,7 @@ return {
 
 
 
-      CREATE TABLE vitals_stats_minutes
+      CREATE TABLE IF NOT EXISTS vitals_stats_minutes
       (LIKE vitals_stats_seconds INCLUDING defaults INCLUDING constraints INCLUDING indexes);
 
 
@@ -438,7 +438,7 @@ return {
         PRIMARY KEY((namespace, window_start, window_size), key)
       );
 
-      CREATE TABLE vitals_stats_seconds(
+      CREATE TABLE IF NOT EXISTS vitals_stats_seconds(
         node_id uuid,
         at timestamp,
         l2_hit int,
@@ -455,7 +455,7 @@ return {
         PRIMARY KEY(node_id, at)
       ) WITH CLUSTERING ORDER BY (at DESC);
 
-      CREATE TABLE vitals_stats_minutes(
+      CREATE TABLE IF NOT EXISTS vitals_stats_minutes(
         node_id uuid,
         at timestamp,
         l2_hit int,
