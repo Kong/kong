@@ -805,14 +805,14 @@ function DAO:insert(entity, options)
     entity_to_insert.cache_key = self:cache_key(entity_to_insert)
   end
 
-  local row, err_t = self.strategy:insert(entity_to_insert, options)
-  if not row then
-    return nil, tostring(err_t), err_t
-  end
-
   local workspace, err_t = ws_helper.apply_unique_per_ws(self.schema.name, entity_to_insert,
                                                          workspaceable[self.schema.name])
   if err then
+    return nil, tostring(err_t), err_t
+  end
+
+  local row, err_t = self.strategy:insert(entity_to_insert, options)
+  if not row then
     return nil, tostring(err_t), err_t
   end
 
