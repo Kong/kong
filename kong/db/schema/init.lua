@@ -1222,12 +1222,14 @@ function Schema:validate_primary_key(pk, ignore_others)
 end
 
 
+local as_set = setmetatable({}, { __mode = "k" })
+
+
 local Set_mt = {
-  __index = function(set, key)
-    for i, val in ipairs(set) do
-      if key == val then
-        return i
-      end
+  __index = function(t, key)
+    local set = as_set[t]
+    if set then
+      return set[key]
     end
   end
 }
@@ -1279,6 +1281,8 @@ local function make_set(set)
       s[v] = true
     end
   end
+
+  as_set[o] = s
 
   return setmetatable(o, Set_mt)
 end
