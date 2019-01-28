@@ -429,7 +429,316 @@ return {
   },
   cassandra = {
     up = [[
-      -- TODO
-    ]],
+      CREATE TABLE IF NOT EXISTS rl_counters(
+        namespace    text,
+        window_start timestamp,
+        window_size  int,
+        key          text,
+        count        counter,
+        PRIMARY KEY((namespace, window_start, window_size), key)
+      );
+
+      CREATE TABLE vitals_stats_seconds(
+        node_id uuid,
+        at timestamp,
+        l2_hit int,
+        l2_miss int,
+        plat_min int,
+        plat_max int,
+        ulat_min int,
+        ulat_max int,
+        requests int,
+        plat_count int,
+        plat_total int,
+        ulat_count int,
+        ulat_total int,
+        PRIMARY KEY(node_id, at)
+      ) WITH CLUSTERING ORDER BY (at DESC);
+
+      CREATE TABLE vitals_stats_minutes(
+        node_id uuid,
+        at timestamp,
+        l2_hit int,
+        l2_miss int,
+        plat_min int,
+        plat_max int,
+        ulat_min int,
+        ulat_max int,
+        requests int,
+        plat_count int,
+        plat_total int,
+        ulat_count int,
+        ulat_total int,
+        PRIMARY KEY(node_id, at)
+      ) WITH CLUSTERING ORDER BY (at DESC);
+
+      CREATE TABLE IF NOT EXISTS vitals_node_meta(
+        node_id uuid PRIMARY KEY,
+        first_report timestamp,
+        last_report timestamp,
+        hostname text
+      );
+
+      CREATE TABLE IF NOT EXISTS vitals_consumers(
+        at          timestamp,
+        duration    int,
+        consumer_id uuid,
+        node_id     uuid,
+        count       counter,
+        PRIMARY KEY((consumer_id, duration), at, node_id)
+      );
+
+      CREATE TABLE IF NOT EXISTS workspaces(
+        id uuid PRIMARY KEY,
+        name text,
+        comment text,
+        created_at timestamp,
+        meta text,
+        config text
+      );
+
+      CREATE INDEX IF NOT EXISTS ON workspaces(name);
+
+      CREATE TABLE IF NOT EXISTS workspace_entities(
+        workspace_id uuid,
+        workspace_name text,
+        entity_id text,
+        entity_type text,
+        unique_field_name text,
+        unique_field_value text,
+        PRIMARY KEY(workspace_id, entity_id, unique_field_name)
+      );
+
+      CREATE INDEX IF NOT EXISTS ON workspace_entities(entity_type);
+      CREATE INDEX IF NOT EXISTS ON workspace_entities(unique_field_value);
+
+      CREATE TABLE IF NOT EXISTS rbac_users(
+        id uuid PRIMARY KEY,
+        name text,
+        user_token text,
+        user_token_ident text,
+        comment text,
+        enabled boolean,
+        created_at timestamp
+      );
+
+      CREATE INDEX IF NOT EXISTS ON rbac_users(name);
+      CREATE INDEX IF NOT EXISTS ON rbac_users(user_token);
+      CREATE INDEX IF NOT EXISTS ON rbac_users(user_token_ident);
+
+      CREATE TABLE IF NOT EXISTS rbac_user_roles(
+        user_id uuid,
+        role_id uuid,
+        PRIMARY KEY(user_id, role_id)
+      );
+
+      CREATE TABLE IF NOT EXISTS rbac_roles(
+        id uuid PRIMARY KEY,
+        name text,
+        comment text,
+        created_at timestamp,
+        is_default boolean
+      );
+
+      CREATE INDEX IF NOT EXISTS ON rbac_roles(name);
+      CREATE INDEX IF NOT EXISTS rbac_role_default_idx on rbac_roles(is_default);
+
+      CREATE TABLE IF NOT EXISTS rbac_role_entities(
+        role_id uuid,
+        entity_id text,
+        entity_type text,
+        actions int,
+        negative boolean,
+        comment text,
+        created_at timestamp,
+        PRIMARY KEY(role_id, entity_id)
+      );
+
+      CREATE TABLE IF NOT EXISTS rbac_role_endpoints(
+        role_id uuid,
+        workspace text,
+        endpoint text,
+        actions int,
+        negative boolean,
+        comment text,
+        created_at timestamp,
+        PRIMARY KEY(role_id, workspace, endpoint)
+      );
+
+      CREATE TABLE IF NOT EXISTS files(
+        id uuid,
+        auth boolean,
+        name text,
+        type text,
+        contents text,
+        created_at timestamp,
+        PRIMARY KEY (id, name)
+      );
+
+      CREATE INDEX IF NOT EXISTS ON files(name);
+      CREATE INDEX IF NOT EXISTS ON files(type);
+
+      CREATE TABLE IF NOT EXISTS vitals_code_classes_by_cluster(
+        at timestamp,
+        duration int,
+        code_class int,
+        count counter,
+        PRIMARY KEY((code_class, duration), at)
+      );
+
+      CREATE TABLE IF NOT EXISTS vitals_codes_by_service(
+        service_id uuid,
+        code int,
+        at timestamp,
+        duration int,
+        count counter,
+        PRIMARY KEY ((service_id, duration), at, code)
+      );
+
+      CREATE TABLE IF NOT EXISTS vitals_codes_by_route(
+        route_id uuid,
+        code int,
+        at timestamp,
+        duration int,
+        count counter,
+        PRIMARY KEY ((route_id, duration), at, code)
+      );
+
+      CREATE TABLE IF NOT EXISTS vitals_codes_by_consumer_route(
+        consumer_id uuid,
+        route_id uuid,
+        service_id uuid,
+        code int,
+        at timestamp,
+        duration int,
+        count counter,
+        PRIMARY KEY ((consumer_id, duration), at, code, route_id, service_id)
+      );
+
+      CREATE TABLE IF NOT EXISTS consumer_statuses (
+        id               int PRIMARY KEY,
+        name             text,
+        comment          text,
+        created_at       timestamp
+      );
+
+      CREATE TABLE IF NOT EXISTS consumer_types (
+        id               int PRIMARY KEY,
+        name             text,
+        comment          text,
+        created_at       timestamp
+      );
+
+      CREATE INDEX IF NOT EXISTS consumer_statuses_names_idx ON consumer_statuses(name);
+      CREATE INDEX IF NOT EXISTS consumer_types_name_idx ON consumer_types(name);
+
+      ALTER TABLE consumers ADD type int;
+      ALTER TABLE consumers ADD email text;
+      ALTER TABLE consumers ADD status int;
+      ALTER TABLE consumers ADD meta text;
+
+      CREATE INDEX IF NOT EXISTS consumers_type_idx ON consumers(type);
+      CREATE INDEX IF NOT EXISTS consumers_status_idx ON consumers(status);
+
+      CREATE TABLE IF NOT EXISTS credentials (
+        id                 uuid PRIMARY KEY,
+        consumer_id        uuid,
+        consumer_type      int,
+        plugin             text,
+        credential_data    text,
+        created_at         timestamp
+      );
+
+      CREATE INDEX IF NOT EXISTS credentials_consumer_id ON credentials(consumer_id);
+      CREATE INDEX IF NOT EXISTS credentials_plugin ON credentials(plugin);
+
+      CREATE TABLE IF NOT EXISTS consumers_rbac_users_map(
+        consumer_id uuid,
+        user_id     uuid,
+        created_at  timestamp,
+        PRIMARY KEY(consumer_id, user_id)
+      );
+
+      INSERT INTO consumer_types(id, name, comment, created_at)
+      VALUES (2, 'admin', 'Admin consumer.', dateof(now()));
+
+      CREATE INDEX IF NOT EXISTS ON rbac_role_entities(entity_type);
+
+      CREATE TABLE IF NOT EXISTS token_statuses(
+        id int PRIMARY KEY,
+        name text,
+        created_at timestamp
+      );
+
+      CREATE INDEX IF NOT EXISTS token_statuses_name
+      ON token_statuses (name);
+
+      INSERT INTO token_statuses(id, name, created_at)
+      VALUES (1, 'pending', dateof(now()));
+
+      INSERT INTO token_statuses(id, name, created_at)
+      VALUES (2, 'consumed', dateof(now()));
+
+      INSERT INTO token_statuses(id, name, created_at)
+      VALUES (3, 'invalidated', dateof(now()));
+
+      CREATE TABLE IF NOT EXISTS consumer_reset_secrets(
+        id uuid PRIMARY KEY,
+        consumer_id uuid,
+        secret text,
+        status int,
+        client_addr text,
+        created_at timestamp,
+        updated_at timestamp
+      );
+
+      CREATE INDEX IF NOT EXISTS consumer_reset_secrets_consumer_id ON consumer_reset_secrets (consumer_id);
+      CREATE INDEX IF NOT EXISTS consumer_reset_secrets_status ON consumer_reset_secrets (status);
+
+      CREATE TABLE IF NOT EXISTS vitals_code_classes_by_workspace(
+        workspace_id uuid,
+        at timestamp,
+        duration int,
+        code_class int,
+        count counter,
+        PRIMARY KEY((workspace_id, duration), at, code_class)
+      );
+
+      CREATE TABLE IF NOT EXISTS audit_requests(
+        request_id text,
+        request_timestamp timestamp,
+        client_ip text,
+        path text,
+        method text,
+        payload text,
+        status int,
+        rbac_user_id uuid,
+        workspace uuid,
+        signature text,
+        expire timestamp,
+        PRIMARY KEY (request_id)
+      ) WITH default_time_to_live = 2592000
+         AND comment = 'Kong Admin API request audit log';
+
+      CREATE TABLE IF NOT EXISTS audit_objects(
+        id uuid,
+        request_id text,
+        entity_key uuid,
+        dao_name text,
+        operation text,
+        entity text,
+        rbac_user_id uuid,
+        signature text,
+        PRIMARY KEY (id)
+      ) WITH default_time_to_live = 2592000
+         AND comment = 'Kong database object audit log';
+
+      CREATE TABLE IF NOT EXISTS workspace_entity_counters(
+        workspace_id uuid,
+        entity_type text,
+        count counter,
+        PRIMARY KEY(workspace_id, entity_type)
+      );
+    ]]
   },
 }
