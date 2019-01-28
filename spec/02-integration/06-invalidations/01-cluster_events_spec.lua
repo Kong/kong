@@ -29,16 +29,6 @@ for _, strategy in helpers.each_strategy() do
       cluster_events.strategy:truncate_events()
     end)
 
-    before_each(function()
-      ngx.shared.kong:flush_all()
-      ngx.shared.kong:flush_expired()
-      ngx.shared.kong_cluster_events:flush_all()
-      ngx.shared.kong_cluster_events:flush_expired()
-
-      local cluster_events = assert(kong_cluster_events.new { dao = dao })
-      cluster_events.strategy:truncate_events()
-    end)
-
     describe("new()", function()
       it("creates an instance", function()
         local cluster_events, err = kong_cluster_events.new { db = db }
