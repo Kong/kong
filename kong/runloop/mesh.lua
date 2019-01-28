@@ -97,7 +97,7 @@ local function init()
       ok, err, err_t = singletons.db.cluster_ca:insert(ca_row)
       if not ok then
         ca_row = nil
-        if err_t.code == Errors.code.PRIMARY_KEY_VIOLATION then
+        if err_t.code == Errors.codes.PRIMARY_KEY_VIOLATION then
           -- Another node starting up beat us, redo the query.
           ca_row, err = singletons.db.cluster_ca:select({ pk = true })
         end
