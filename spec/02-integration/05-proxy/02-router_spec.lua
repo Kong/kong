@@ -49,6 +49,10 @@ local function insert_routes(routes)
 end
 
 local function remove_routes(routes)
+  if not routes then
+    return
+  end
+
   local services = {}
 
   for _, route in ipairs(routes) do
@@ -1093,7 +1097,34 @@ for _, strategy in helpers.each_strategy() do
         end
       end)
 
+      describe("router rebuilds", function()
+        local routes
 
+        lazy_teardown(function()
+          remove_routes(routes)
+        end)
+
+        it("when Routes have 'regex_priority = nil'", function()
+          -- Regression test for issue:
+          -- https://github.com/Kong/kong/issues/4254
+          routes = insert_routes {
+            {
+              methods = { "GET" },
+              regex_priority = 1,
+            },
+            {
+              methods = { "POST", "PUT" },
+              regex_priority = ngx.null,
+            },
+          }
+
+          local res = assert(proxy_client:send {
+            method  = "GET",
+          })
+
+          assert.response(res).has_status(200)
+        end)
+      end)
     end)
   end)
 end
