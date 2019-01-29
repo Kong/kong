@@ -16,6 +16,7 @@ local rshift = bit.rshift
 local find   = string.find
 local setmetatable = setmetatable
 local getmetatable = getmetatable
+local kong = kong
 
 
 local LOG_ROUNDS = 9
@@ -581,7 +582,7 @@ local function delete_role_entity_permission(table_name, entity)
     schema = dao[table_name].schema
 
   else -- new dao
-    schema = singletons.db.daos[table_name].schema
+    schema = kong.db[table_name].schema
   end
 
   local entity_id = schema.primary_key[1]

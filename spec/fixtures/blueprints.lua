@@ -343,7 +343,7 @@ function _M.new(dao, db)
     }
   end)
 
-  res.workspaces = new_blueprint(dao.workspaces, function()
+  res.workspaces = new_blueprint(dao and dao.workspaces, function()
     return {}
   end)
 

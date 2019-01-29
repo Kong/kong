@@ -73,11 +73,7 @@ for _, strategy in helpers.each_strategy() do
     local proxy_client
 
     lazy_setup(function()
-      helpers.get_db_utils(strategy, {
-        "routes",
-        "services",
-        "apis",
-      })
+      helpers.get_db_utils(strategy)
 
       assert(helpers.start_kong({
         database = strategy,
