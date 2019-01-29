@@ -224,6 +224,9 @@ local function get_db_utils(strategy, tables, plugins)
 
   -- cleanup new DB tables
   if not tables then
+    tables[#tables + 1] = "workspaces"
+    tables[#tables + 1] = "workspaces_entities"
+
     assert(db:truncate())
     dao:truncate_tables()
 
