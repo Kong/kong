@@ -120,11 +120,6 @@ describe("Plugin: jwt (parser)", function()
         jwt_parser:new()
       end, "Token must be a string, got nil")
     end)
-    it("refuses invalid typ", function()
-      local token = jwt_parser.encode({sub = "1234"}, "secret", nil, {typ = "foo"})
-      local _, err = jwt_parser:new(token)
-      assert.equal("invalid typ", err)
-    end)
     it("refuses invalid alg", function()
       local token = jwt_parser.encode({sub = "1234"}, "secret", nil, {
         typ = "JWT",
