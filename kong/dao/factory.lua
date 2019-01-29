@@ -419,6 +419,11 @@ end
 function _M:truncate_table(dao_name)
   self.db:truncate_table(self.daos[dao_name].table)
 
+  -- If we are truncating workspaces, re-create the default workspace
+  if dao_name == "workspaces" then
+    workspaces.create_default(self)
+  end
+
   local is_workspaceable = workspaces.get_workspaceable_relations()[dao_name]
 
   if is_workspaceable then
@@ -458,6 +463,7 @@ function _M:truncate_tables()
     end
   end
 
+  -- If we are truncating workspaces, re-create the default workspace
   workspaces.create_default(self)
 end
 
