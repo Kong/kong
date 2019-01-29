@@ -6,16 +6,6 @@ describe("Admin API /cache [#" .. strategy .. "]", function()
   local proxy_client
   local admin_client
 
-<<<<<<< HEAD
-  setup(function()
-    ngx.ctx.workspaces = nil
-    local bp, _, dao = helpers.get_db_utils(strategy)
-    require("kong.singletons").dao = dao
-||||||| merged common ancestors
-  setup(function()
-    local bp = helpers.get_db_utils(strategy)
-
-=======
   lazy_setup(function()
     local bp = helpers.get_db_utils(strategy, {
       "routes",
@@ -25,7 +15,6 @@ describe("Admin API /cache [#" .. strategy .. "]", function()
       "cache"
     })
 
->>>>>>> 0.15.0
     local service = bp.services:insert()
 
     bp.routes:insert {
