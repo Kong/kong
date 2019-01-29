@@ -13,6 +13,11 @@ lua_shared_dict stream_kong_process_events 5m;
 lua_shared_dict stream_kong_cluster_events 5m;
 lua_shared_dict stream_kong_healthchecks   5m;
 lua_shared_dict stream_kong_rate_limiting_counters 12m;
+lua_shared_dict stream_kong_vitals_counters 50m;
+lua_shared_dict stream_kong_vitals_lists     1m;
+
+
+
 > if database == "cassandra" then
 lua_shared_dict stream_kong_cassandra      5m;
 > end
