@@ -2004,6 +2004,67 @@ describe("schema", function()
       assert.same({ r = { a = "nr", b = 123, }}, data.nested_record)
     end)
 
+    it("detects an empty Lua table as a default for an set and marks it as a json array", function()
+      local Test = Schema.new({
+        fields = {
+          { s = { type = "set",
+                  elements = { type = "string" },
+                  default = {} }, },
+        }
+      })
+      local data = Test:process_auto_fields({})
+      assert.equals('{"s":[]}', cjson.encode(data))
+    end)
+
+
+    it("detects an empty Lua table as a default for an array and marks it as a json array", function()
+      local Test = Schema.new({
+        fields = {
+          { a = { type = "array",
+                  elements = { type = "string" },
+                  default = {} }, },
+        }
+      })
+      local data = Test:process_auto_fields({})
+      assert.equals('{"a":[]}', cjson.encode(data))
+    end)
+
+    it("accepts cjson.empty_array as a default for an array", function()
+      local Test = Schema.new({
+        fields = {
+          { b = { type = "array",
+                  elements = { type = "string" },
+                  default = cjson.empty_array }, },
+        }
+      })
+      local data = Test:process_auto_fields({})
+      assert.equals('{"b":[]}', cjson.encode(data))
+    end)
+
+    it("accepts a table marked with cjson.empty_array_mt as a default for an array", function()
+      local Test = Schema.new({
+        fields = {
+          { c = { type = "array",
+                  elements = { type = "string" },
+                  default = setmetatable({}, cjson.empty_array_mt) }, },
+        }
+      })
+      local data = Test:process_auto_fields({})
+      assert.equals('{"c":[]}', cjson.encode(data))
+    end)
+
+    it("accepts a table marked with cjson.array_mt as a default for an array", function()
+      local Test = Schema.new({
+        fields = {
+          { d = { type = "array",
+                  elements = { type = "string" },
+                  default = setmetatable({}, cjson.array_mt) }, },
+        }
+      })
+      local data = Test:process_auto_fields({})
+      assert.equals('{"d":[]}', cjson.encode(data))
+    end)
+
     it("nested defaults in required records produce a default record", function()
       local Test = Schema.new({
         fields = {
