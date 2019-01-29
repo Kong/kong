@@ -291,9 +291,11 @@ function _M:unique_violation(unique_key)
 
   -- EE: remove workspace prefix
   for k, v in pairs(unique_key) do
-    local ws_value = utils.split(v , ":")
-    if #ws_value > 1 then
-      unique_key[k] = ws_value[2]
+    if type(v) ~= "userdata" and type(v) ~= "table" then
+      local ws_value = utils.split(v , ":")
+      if #ws_value > 1 then
+        unique_key[k] = ws_value[2]
+      end
     end
   end
 
