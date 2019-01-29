@@ -466,16 +466,8 @@ describe("Admin API #" .. strategy, function()
 
       it("retrieves the first page", function()
         local res = assert(client:send {
-<<<<<<< HEAD
-          method = "GET",
-          path = "/upstreams/" .. upstream_name .. "/targets/all",
-||||||| merged common ancestors
-          methd = "GET",
-          path = "/upstreams/" .. upstream_name .. "/targets/all",
-=======
           method = "GET",
           path = "/upstreams/" .. upstream.name .. "/targets/all",
->>>>>>> 0.15.0
         })
         assert.response(res).has.status(200)
         local json = assert.response(res).has.jsonbody()
