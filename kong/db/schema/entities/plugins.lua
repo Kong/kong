@@ -7,6 +7,7 @@ return {
   primary_key = { "id" },
   cache_key = { "name", "route", "service", "consumer", "api" },
   dao = "kong.db.dao.plugins",
+  workspaceable = true,
 
   subschema_key = "name",
   subschema_error = "plugin '%s' not enabled; add it to the 'plugins' configuration property",
