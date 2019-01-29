@@ -23,18 +23,7 @@ describe("Admin API: #" .. kong_config.database, function()
 
   lazy_setup(function()
 
-<<<<<<< HEAD
-  setup(function()
-    dao = assert(DAOFactory.new(kong_config))
-    require("kong.singletons").dao = dao
-    assert(dao:run_migrations())
-||||||| merged common ancestors
-  setup(function()
-    dao = assert(DAOFactory.new(kong_config))
-    assert(dao:run_migrations())
-=======
     bp, db = helpers.get_db_utils(kong_config.database, {})
->>>>>>> 0.15.0
 
     assert(helpers.start_kong{
       database = kong_config.database
@@ -566,28 +555,9 @@ describe("Admin API: #" .. kong_config.database, function()
     end)
 
     describe("GET", function()
-<<<<<<< HEAD
-      setup(function()
-        dao:truncate_tables()
-        for i = 1, 10 do
-          assert(dao.upstreams:insert {
-            name = "upstream-" .. i,
-          })
-        end
-||||||| merged common ancestors
-      setup(function()
-        dao:truncate_tables()
-
-        for i = 1, 10 do
-          assert(dao.upstreams:insert {
-            name = "upstream-" .. i,
-          })
-        end
-=======
       lazy_setup(function()
         assert(db:truncate("upstreams"))
         bp.upstreams:insert_n(10)
->>>>>>> 0.15.0
       end)
       lazy_teardown(function()
         assert(db:truncate("upstreams"))
@@ -668,6 +638,10 @@ describe("Admin API: #" .. kong_config.database, function()
     end)
 
     describe("DELETE", function()
+      before_each(function()
+        assert(db:truncate("upstreams"))
+      end)
+
       it("by id", function(content_type)
           local res = assert(client:send {
             method = "POST",
