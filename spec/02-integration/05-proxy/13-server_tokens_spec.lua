@@ -30,19 +30,11 @@ describe("headers [#" .. strategy .. "]", function()
       end
     end
 
-<<<<<<< HEAD
-    setup(function()
-      bp, _, dao = helpers.get_db_utils(strategy)
-||||||| merged common ancestors
-    setup(function()
-      bp = helpers.get_db_utils(strategy)
-=======
     lazy_setup(function()
-      bp = helpers.get_db_utils(strategy, {
+      bp, _, dao = helpers.get_db_utils(strategy, {
         "routes",
         "services",
       })
->>>>>>> 0.15.0
     end)
 
     before_each(function()
@@ -266,19 +258,11 @@ describe("headers [#" .. strategy .. "]", function()
       end
     end
 
-<<<<<<< HEAD
-    setup(function()
-      bp, _, dao = helpers.get_db_utils(strategy)
-||||||| merged common ancestors
-    setup(function()
-      bp = helpers.get_db_utils(strategy)
-=======
     lazy_setup(function()
-      bp = helpers.get_db_utils(strategy, {
+      bp, _, dao = helpers.get_db_utils(strategy, {
         "routes",
         "services",
       })
->>>>>>> 0.15.0
     end)
 
 
@@ -601,7 +585,7 @@ describe("headers [#" .. strategy .. "]", function()
     end
 
     lazy_setup(function()
-      bp = helpers.get_db_utils(strategy, {
+      bp, _, dao = helpers.get_db_utils(strategy, {
         "routes",
         "services",
       })
