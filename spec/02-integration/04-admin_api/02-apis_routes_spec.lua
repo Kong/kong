@@ -22,31 +22,9 @@ pending("Admin API #" .. kong_config.database, function()
   local dao
   local db
 
-<<<<<<< HEAD
-  setup(function()
-    dao = assert(DAOFactory.new(kong_config))
-    db = assert(DB.new(kong_config))
-    assert(db:init_connector())
-    assert(dao:run_migrations())
-
-    singletons.dao = dao
-
-    dao:truncate_tables()
-    db:truncate()
-||||||| merged common ancestors
-  setup(function()
-    dao = assert(DAOFactory.new(kong_config))
-    db = assert(DB.new(kong_config))
-    assert(db:init_connector())
-    assert(dao:run_migrations())
-
-    dao:truncate_tables()
-    db:truncate()
-=======
   lazy_setup(function()
     local _
     _, db, dao = helpers.get_db_utils(kong_config.database, {})
->>>>>>> 0.15.0
 
     assert(helpers.start_kong{
       database = kong_config.database
@@ -1274,17 +1252,6 @@ end)
 
 describe("Admin API request size", function()
   local client
-<<<<<<< HEAD
-  setup(function()
-    helpers.dao:truncate_tables()
-    helpers.db:truncate()
-
-    singletons.dao = helpers.dao
-||||||| merged common ancestors
-  setup(function()
-    helpers.dao:truncate_tables()
-    helpers.db:truncate()
-=======
 
   lazy_setup(function()
     assert(helpers.get_db_utils(kong_config.database, {
@@ -1300,7 +1267,6 @@ describe("Admin API request size", function()
 
   lazy_teardown(function()
     helpers.stop_kong()
->>>>>>> 0.15.0
   end)
 
   before_each(function()
