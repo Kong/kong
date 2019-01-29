@@ -855,7 +855,14 @@ end
 -- @param field The field definition table.
 local function handle_missing_field(field, value)
   if field.default ~= nil then
-    return tablex.deepcopy(field.default)
+    local copy = tablex.deepcopy(field.default)
+    if (field.type == "array" or field.type == "set")
+      and type(copy) == "table"
+      and not getmetatable(copy)
+    then
+      setmetatable(copy, cjson.array_mt)
+    end
+    return copy
   end
 
   -- If `nilable` (metaschema only), a default value is not necessary.
