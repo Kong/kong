@@ -576,13 +576,10 @@ _M.add_default_role_entity_permission = add_default_role_entity_permission
 -- remove role-entity permission: remove an entity from the role
 -- should be called when entity is deleted or role is removed
 local function delete_role_entity_permission(table_name, entity)
-  local schema
   local dao = singletons.dao
-  if dao[table_name] then -- old dao
+  local schema = kong.db[table_name] and kong.db[table_name].schema
+  if not schema then -- old dao
     schema = dao[table_name].schema
-
-  else -- new dao
-    schema = kong.db[table_name].schema
   end
 
   local entity_id = schema.primary_key[1]
