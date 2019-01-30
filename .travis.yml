@@ -1,7 +1,7 @@
 dist: xenial
 sudo: false
 
-language: java
+language: generic
 
 jdk:
   - oraclejdk8
