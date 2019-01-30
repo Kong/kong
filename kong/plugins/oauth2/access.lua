@@ -565,11 +565,6 @@ local function issue_token(conf)
 end
 
 local function load_token(conf, service, access_token)
-  local service_id
-  if not conf.global_credentials then
-    service_id = service.id
-  end
-
   local credentials, err =
     kong.db.oauth2_tokens:select_by_access_token(access_token)
 
@@ -577,9 +572,24 @@ local function load_token(conf, service, access_token)
     return nil, err
   end
 
-  if credentials and (service_id and service_id ~= credentials.service.id) then
-    credentials = nil
+  if not credentials then
+    return
   end
+
+  if not conf.global_credentials then
+    if not credentials.service then
+      return kong.response.exit(401, {
+        [ERROR] = "invalid_token",
+        error_description = "The access token is global, but the current " ..
+                            "plugin is configured without 'global_credentials'",
+      })
+    end
+
+    if credentials.service.id ~= service.id then
+      credentials = nil
+    end
+  end
+
   return credentials
 end
 
