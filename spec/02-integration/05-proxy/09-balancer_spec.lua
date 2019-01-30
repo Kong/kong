@@ -334,7 +334,6 @@ local function client_requests(n, host_or_headers, proxy_host, proxy_port)
                 or host_or_headers
                 or {}
     }
-    print(require"inspect"(res))
     if not res then
       fails = fails + 1
       if TEST_LOG then
