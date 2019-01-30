@@ -150,6 +150,7 @@ local r =  {
   name = "upstreams",
   primary_key = { "id" },
   endpoint_key = "name",
+  workspaceable = true,
   fields = {
     { id = typedefs.uuid, },
     { created_at = typedefs.auto_timestamp_s },
