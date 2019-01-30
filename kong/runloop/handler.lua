@@ -413,16 +413,6 @@ return {
           return
         end
 
-        local cache_key = dao[data.schema.table]:entity_cache_key(data.entity)
-        if cache_key then
-          cache:invalidate(cache_key, workspaces)
-        end
-
-        if not data.entity then
-          log(ngx.ERR, "[events] missing entity in crud subscriber")
-          return
-        end
-
         -- invalidate this entity anywhere it is cached if it has a
         -- caching key
 
