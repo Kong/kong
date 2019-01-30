@@ -476,10 +476,14 @@ do
   -- to this function)
   local function load_upstreams_dict_into_memory(workspaces)
     local upstreams_dict = {}
+
+    local old_ws = ngx.ctx.workspaces
+    ngx.ctx.workspaces = workspaces
     for up in singletons.db.upstreams:each() do
     -- build a dictionary, indexed by the upstream name
       upstreams_dict[up.name] = up.id
     end
+    ngx.ctx.workspaces = old_ws
     return upstreams_dict
   end
   _load_upstreams_dict_into_memory = load_upstreams_dict_into_memory

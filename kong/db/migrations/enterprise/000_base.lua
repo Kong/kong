@@ -260,9 +260,9 @@ return {
       ON CONFLICT DO NOTHING;
 
       ALTER TABLE consumers
-        ADD COLUMN type int NOT NULL DEFAULT 0 REFERENCES consumer_types (id),
+        ADD COLUMN type int NOT NULL DEFAULT 0,
         ADD COLUMN email text,
-        ADD COLUMN status integer REFERENCES consumer_statuses (id),
+        ADD COLUMN status integer,
         ADD COLUMN meta text;
 
       ALTER TABLE consumers ADD CONSTRAINT consumers_email_type_key UNIQUE(email, type);

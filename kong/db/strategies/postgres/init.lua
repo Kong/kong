@@ -2,7 +2,7 @@ local arrays        = require "pgmoon.arrays"
 local json          = require "pgmoon.json"
 local cjson         = require "cjson"
 local cjson_safe    = require "cjson.safe"
-local ws_helper  = require "kong.workspaces.helper"
+local ws_helper     = require "kong.workspaces.helper"
 
 
 local encode_base64 = ngx.encode_base64
@@ -831,12 +831,13 @@ end
 
 
 function _mt:select_by_field(field_name, unique_value, options)
+  local ws_list = ws_helper.ws_scope_as_list(self.schema.name)
   local statement_name = "select_by_" .. field_name
   local filter = {
     [field_name] = unique_value,
   }
 
-  local res, err = execute(self, statement_name, self.collapse(filter), options)
+  local res, err = execute(self, statement_name .. (ws_list and "_ws" or ""), self.collapse(filter), options, ws_list)
   if res then
     local row = res[1]
     if row then
@@ -1930,10 +1931,23 @@ function _M.new(connector, schema, errors)
       local select_by_statement_name = "select_by_" .. unique_name
       local select_by_statement
 
+      local select_by_statement_name_ws = "select_by_" .. unique_name .. "_ws"
+      local workspace_select_expression = ", ws_e.workspace_name as workspace_name, ws_e.workspace_id as workspace_id"
+      local select_by_statement_ws
+
       if ttl then
         select_by_statement = concat {
           "SELECT ", select_expressions, "\n",
           "  FROM ", table_name_escaped, "\n",
+          " WHERE ", unique_escaped, " = $1\n",
+          "   AND (", ttl_escaped, " IS NULL OR ", ttl_escaped, " >= CURRENT_TIMESTAMP AT TIME ZONE 'UTC')\n",
+          " LIMIT 1;"
+        }
+
+        select_by_statement_ws = concat {
+          "SELECT ", select_expressions .. workspace_select_expression,  "\n",
+          " FROM workspace_entities ws_e INNER JOIN ", table_name, " ", table_name ,
+          " ON ( unique_field_name = '", primary_key[1] ,  "' AND ws_e.workspace_id in ( $0 ) and ws_e.entity_id = ", table_name, ".id::varchar )\n",
           " WHERE ", unique_escaped, " = $1\n",
           "   AND (", ttl_escaped, " IS NULL OR ", ttl_escaped, " >= CURRENT_TIMESTAMP AT TIME ZONE 'UTC')\n",
           " LIMIT 1;"
@@ -1946,6 +1960,14 @@ function _M.new(connector, schema, errors)
           " WHERE ", unique_escaped, " = $1\n",
           " LIMIT 1;"
         }
+
+        select_by_statement_ws = concat {
+          "SELECT ", select_expressions .. workspace_select_expression,  "\n",
+          " FROM workspace_entities ws_e INNER JOIN ", table_name, " ", table_name ,
+          " ON ( unique_field_name = '", primary_key[1] ,  "' AND ws_e.workspace_id in ( $0 ) and ws_e.entity_id = ", table_name, ".id::varchar )\n",
+          " WHERE ", unique_escaped, " = $1\n",
+          " LIMIT 1;"
+        }
       end
 
       statements[select_by_statement_name] = {
@@ -1953,16 +1975,6 @@ function _M.new(connector, schema, errors)
         argc = 1,
         argv = single_args,
         make = compile(concat({ table_name, select_by_statement_name }, "_"), select_by_statement),
-      }
-
-      -- EE workspaces-related [[
-      local select_by_statement_name_ws = "select_by_" .. unique_name .. "_ws"
-      local select_by_statement_ws = concat {
-        "SELECT ", select_expressions, "\n",
-        " FROM workspace_entities ws_e INNER JOIN ", table_name, " ", table_name ,
-        " ON ( unique_field_name = '", primary_key[1] ,  "' AND ws_e.workspace_id in ( $0 ) and ws_e.entity_id = ", table_name, ".id::varchar )\n",
-        " WHERE ", unique_escaped, " = $1\n",
-        " LIMIT 1;"
       }
 
       statements[select_by_statement_name_ws] = {

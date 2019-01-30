@@ -1,8 +1,4 @@
 local helpers = require "spec.helpers"
-<<<<<<< HEAD
-local singletons = require "kong.singletons"
-||||||| merged common ancestors
-=======
 local utils = require "kong.tools.utils"
 local cjson = require "cjson"
 local pl_path = require "pl.path"
@@ -11,7 +7,6 @@ local pl_stringx = require "pl.stringx"
 
 
 local LOG_WAIT_TIMEOUT = 10
->>>>>>> 0.15.0
 
 
 for _, strategy in helpers.each_strategy() do
@@ -22,15 +17,6 @@ for _, strategy in helpers.each_strategy() do
     local dao
     local bp
 
-<<<<<<< HEAD
-    setup(function()
-      singletons.dao = select(3, helpers.get_db_utils(strategy, true))
-
-      bp, db, dao = helpers.get_db_utils(strategy)
-||||||| merged common ancestors
-    setup(function()
-      bp, db, dao = helpers.get_db_utils(strategy)
-=======
     lazy_setup(function()
       bp, db, dao = helpers.get_db_utils(strategy, {
         "apis",
@@ -43,7 +29,7 @@ for _, strategy in helpers.each_strategy() do
         "error-handler-log",
         "error-generator-pre",
       })
->>>>>>> 0.15.0
+      dao:truncate_tables()
 
       ngx.ctx.workspaces = nil
       ngx.ctx.workspaces = dao.workspaces:find_all({name = "default"})
@@ -251,21 +237,17 @@ for _, strategy in helpers.each_strategy() do
         end
 
         helpers.stop_kong()
-<<<<<<< HEAD
         dao:truncate_tables()
         helpers.register_consumer_relations(dao)
 
-        ngx.ctx.workspaces = nil
-        ngx.ctx.workspaces = dao.workspaces:find_all({name = "default"})
-||||||| merged common ancestors
-        dao:truncate_tables()
-=======
         db:truncate("routes")
         db:truncate("services")
         db:truncate("consumers")
         db:truncate("plugins")
         db:truncate("keyauth_credentials")
->>>>>>> 0.15.0
+
+        ngx.ctx.workspaces = nil
+        ngx.ctx.workspaces = dao.workspaces:find_all({name = "default"})
 
         do
           local service = assert(bp.services:insert {
@@ -479,23 +461,17 @@ for _, strategy in helpers.each_strategy() do
 
         helpers.stop_kong()
 
-<<<<<<< HEAD
-        assert(db:truncate())
         dao:truncate_tables()
         helpers.register_consumer_relations(dao)
 
-        ngx.ctx.workspaces = nil
-        ngx.ctx.workspaces = dao.workspaces:find_all({name = "default"})
-||||||| merged common ancestors
-        assert(db:truncate())
-        dao:truncate_tables()
-=======
         db:truncate("routes")
         db:truncate("services")
         db:truncate("consumers")
         db:truncate("plugins")
         db:truncate("keyauth_credentials")
->>>>>>> 0.15.0
+
+        ngx.ctx.workspaces = nil
+        ngx.ctx.workspaces = dao.workspaces:find_all({name = "default"})
 
         local service = bp.services:insert {
           name = "example",
@@ -566,11 +542,15 @@ for _, strategy in helpers.each_strategy() do
 
 
       lazy_setup(function()
+        dao:truncate_tables()
         db:truncate("routes")
         db:truncate("services")
         db:truncate("consumers")
         db:truncate("plugins")
         db:truncate("keyauth_credentials")
+
+        ngx.ctx.workspaces = nil
+        ngx.ctx.workspaces = dao.workspaces:find_all({name = "default"})
 
         do
           -- service to mock HTTP 502
@@ -1050,9 +1030,12 @@ for _, strategy in helpers.each_strategy() do
 
         helpers.stop_kong()
 
+        dao:truncate_tables()
         db:truncate("routes")
         db:truncate("services")
         db:truncate("plugins")
+        ngx.ctx.workspaces = nil
+        ngx.ctx.workspaces = dao.workspaces:find_all({name = "default"})
 
         do
           local service = assert(bp.services:insert {

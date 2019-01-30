@@ -1,5 +1,6 @@
 local kong         = kong
 local setmetatable = setmetatable
+local singletons   = require "kong.singletons"
 
 
 -- Loads a plugin config from the datastore.
@@ -11,6 +12,103 @@ local function load_plugin_into_memory(key)
   end
 
   return row
+end
+
+
+local function load_plugin_into_memory_ws(ctx,
+                                          route_id,
+                                          service_id,
+                                          consumer_id,
+                                          plugin_name,
+                                          api_id,
+                                          k)
+  local ws_scope = ctx.workspaces or {}
+
+  -- when there is no workspace, like in phase rewrite
+  local key = kong.db.plugins:cache_key(plugin_name,
+                                        route_id,
+                                        service_id,
+                                        consumer_id,
+                                        api_id)
+
+  local plugin, err = kong.cache:get(key,
+                                     nil,
+                                     load_plugin_into_memory,
+                                     key)
+
+  if #ws_scope == 0 then
+    return plugin, err
+  end
+
+  -- check if plugin negatively cached by other phase where workspace not applicable
+  if plugin and plugin.null then
+    return plugin
+  end
+
+  -- check if plugin in cache for each workspace
+  local found
+  for _, ws in ipairs(ws_scope) do
+    local plugin_cache_key = key .. ":" .. ws.id
+
+    plugin = singletons.cache.mlcache.lru:get(plugin_cache_key)
+    if plugin then
+      found = true
+
+      if not plugin.null then
+        return plugin
+      end
+    end
+
+    if not plugin then
+      local ttl
+      ttl, err, plugin = singletons.cache:probe(plugin_cache_key)
+      if err then
+        return nil, err
+      end
+
+      singletons.cache.mlcache.lru:set(plugin_cache_key, plugin)
+
+      if ttl then
+        found = true
+
+        if plugin and not plugin.null then
+          return plugin
+        end
+      end
+    end
+  end
+
+  -- if ttl present, plugin present in negative cache
+  if found then
+    return plugin
+  end
+
+  -- load plugin, here workspace scope can contain more than one workspace
+  -- depending on with how many workspace, api being shared
+  local plugin = load_plugin_into_memory(key)
+
+  -- add positive and negative cache
+  for _, ws in ipairs(ws_scope) do
+    local plugin_cache_key = key .. ":" .. ws.id
+
+    local to_be_cached
+    if plugin and not plugin.null and ws.id == plugin.workspace_id then
+      -- positive cache
+      to_be_cached = plugin
+    else
+      -- negative cache
+      to_be_cached = { null = true }
+    end
+
+    local _, err = singletons.cache:get(plugin_cache_key, nil, function ()
+      return to_be_cached
+    end)
+    if err then
+      return nil, err
+    end
+  end
+
+  return plugin
 end
 
 
@@ -28,7 +126,18 @@ local function load_plugin_configuration(ctx,
                                          service_id,
                                          consumer_id,
                                          plugin_name,
-                                         api_id)
+                                         api_id,
+                                         k)
+
+
+  --[[local plugin, err = load_plugin_into_memory_ws(ctx,
+                                                 route_id,
+                                                 service_id,
+                                                 consumer_id,
+                                                 plugin_name,
+                                                 api_id,
+                                                 k)]]
+
   local key = kong.db.plugins:cache_key(plugin_name,
                                         route_id,
                                         service_id,
@@ -39,6 +148,8 @@ local function load_plugin_configuration(ctx,
                                      nil,
                                      load_plugin_into_memory,
                                      key)
+
+
   if err then
     ctx.delay_response = false
     ngx.log(ngx.ERR, tostring(err))
@@ -46,6 +157,16 @@ local function load_plugin_configuration(ctx,
   end
 
   if not plugin or not plugin.enabled then
+    -- check for internal plugins
+    --[[local cfg = singletons.internal_proxies:get_plugin_config(route_id,
+                                                              service_id,
+                                                              consumer_id,
+                                                              plugin_name,
+                                                              api_id)
+
+    if cfg then
+      return cfg
+    end]]
     return
   end
 
@@ -68,6 +189,13 @@ local function load_plugin_configuration(ctx,
   cfg.route_id    = plugin.route and plugin.route.id
   cfg.service_id  = plugin.service and plugin.service.id
   cfg.consumer_id = plugin.consumer and plugin.consumer.id
+
+  local plugin_ws = {
+    id = plugin.workspace_id,
+    name = plugin.workspace_name
+  }
+
+  ctx.workspaces = { plugin_ws }
 
   return cfg
 end
@@ -122,75 +250,89 @@ local function get_next(self)
     repeat
 
       if route_id and service_id and consumer_id then
-        plugin_configuration = load_plugin_configuration(ctx, route_id, service_id, consumer_id, plugin_name, nil)
+        local k = "plugins:"..plugin_name..":"..route_id..":"..service_id..":"..consumer_id.."::"
+        plugin_configuration = load_plugin_configuration(ctx, route_id, service_id, consumer_id, plugin_name, nil, k)
         if plugin_configuration then
           break
         end
       end
 
       if route_id and consumer_id then
-        plugin_configuration = load_plugin_configuration(ctx, route_id, nil, consumer_id, plugin_name, nil)
+        local k = "plugins:"..plugin_name..":"..route_id.."::"..consumer_id.."::"
+        plugin_configuration = load_plugin_configuration(ctx, route_id, nil, consumer_id, plugin_name, nil, k)
         if plugin_configuration then
           break
         end
       end
 
       if service_id and consumer_id then
-        plugin_configuration = load_plugin_configuration(ctx, nil, service_id, consumer_id, plugin_name, nil)
+        local k = "plugins:"..plugin_name.."::"..service_id..":"..consumer_id.."::"
+        plugin_configuration = load_plugin_configuration(ctx, nil, service_id, consumer_id, plugin_name, nil, k)
         if plugin_configuration then
           break
         end
       end
 
       if api_id and consumer_id then
-        plugin_configuration = load_plugin_configuration(ctx, nil, nil, consumer_id, plugin_name, api_id)
+        local k = "plugins:"..plugin_name..":::"..consumer_id..":"..api_id..":"
+        plugin_configuration = load_plugin_configuration(ctx, nil, nil, consumer_id, plugin_name, api_id, k)
         if plugin_configuration then
           break
         end
       end
 
       if route_id and service_id then
-        plugin_configuration = load_plugin_configuration(ctx, route_id, service_id, nil, plugin_name, nil)
+        local k = "plugins:"..plugin_name..":"..route_id..":"..service_id..":::"
+        plugin_configuration = load_plugin_configuration(ctx, route_id, service_id, nil, plugin_name, nil, k)
         if plugin_configuration then
           break
         end
       end
 
       if consumer_id then
-        plugin_configuration = load_plugin_configuration(ctx, nil, nil, consumer_id, plugin_name, nil)
+        local k = "plugins:"..plugin_name..":::"..consumer_id.."::"
+        plugin_configuration = load_plugin_configuration(ctx, nil, nil, consumer_id, plugin_name, nil, k)
         if plugin_configuration then
           break
         end
       end
 
       if route_id then
-        plugin_configuration = load_plugin_configuration(ctx, route_id, nil, nil, plugin_name, nil)
+        local k = "plugins:"..plugin_name..":"..route_id.."::::"
+        plugin_configuration = load_plugin_configuration(ctx, route_id, nil, nil, plugin_name, nil, k)
         if plugin_configuration then
           break
         end
       end
 
       if service_id then
-        plugin_configuration = load_plugin_configuration(ctx, nil, service_id, nil, plugin_name, nil)
+        local k = "plugins:"..plugin_name.."::"..service_id..":::"
+        plugin_configuration = load_plugin_configuration(ctx, nil, service_id, nil, plugin_name, nil, k)
         if plugin_configuration then
           break
         end
       end
 
       if api_id then
-        plugin_configuration = load_plugin_configuration(ctx, nil, nil, nil, plugin_name, api_id)
+        local k = "plugins:"..plugin_name.."::::"..api_id..":"
+        plugin_configuration = load_plugin_configuration(ctx, nil, nil, nil, plugin_name, api_id, k)
         if plugin_configuration then
           break
         end
       end
 
-      plugin_configuration = load_plugin_configuration(ctx, nil, nil, nil, plugin_name, nil)
+      local k = "plugins:"..plugin_name..":::::"
+      plugin_configuration = load_plugin_configuration(ctx, nil, nil, nil, plugin_name, nil, k)
 
     until true
 
     if plugin_configuration then
       ctx.plugins_for_request[plugin.name] = plugin_configuration
     end
+
+    -- filter non-specific plugins out for internal services
+    ctx.plugins_for_request = singletons.internal_proxies:filter_plugins(
+      service_id, ctx.plugins_for_request)
   end
 
   -- return the plugin configuration
