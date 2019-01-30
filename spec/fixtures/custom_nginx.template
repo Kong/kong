@@ -490,6 +490,9 @@ stream {
     lua_shared_dict stream_kong_cassandra      5m;
 > end
     lua_shared_dict stream_prometheus_metrics  5m;
+    lua_shared_dict stream_kong_vitals_counters 50m;
+    lua_shared_dict stream_kong_vitals_lists     1m;
+
 
     upstream kong_upstream {
         server 0.0.0.1:1;
