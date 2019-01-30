@@ -19,11 +19,15 @@ for _, strategy in helpers.each_strategy() do
     local https_client
 
     lazy_setup(function()
-      local bp = helpers.get_db_utils(strategy, {
+      local bp, _, dao = helpers.get_db_utils(strategy, {
         "routes",
         "services",
         "certificates",
       })
+
+      dao:truncate_tables()
+      ngx.ctx.workspaces = nil
+      ngx.ctx.workspaces = dao.workspaces:find_all({name = "default"})
 
       local service = bp.services:insert {
         name = "global-cert",
