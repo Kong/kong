@@ -37,20 +37,11 @@ for _, strategy in helpers.each_strategy() do
     describe("/consumers/:consumer/hmac-auth/", function()
       describe("POST", function()
         before_each(function()
-<<<<<<< HEAD
-          assert(db:truncate())
-          dao:truncate_tables()
-          helpers.register_consumer_relations(dao)
-||||||| merged common ancestors
-          assert(db:truncate())
-          dao:truncate_tables()
-=======
           assert(db:truncate("routes"))
           assert(db:truncate("services"))
           assert(db:truncate("consumers"))
           db:truncate("plugins")
           db:truncate("hmacauth_credentials")
->>>>>>> 0.15.0
 
           consumer = bp.consumers:insert{
             username  = "bob",

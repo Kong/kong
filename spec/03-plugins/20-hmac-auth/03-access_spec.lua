@@ -1525,7 +1525,6 @@ for _, strategy in helpers.each_strategy() do
     local anonymous
     local hmacAuth
     local hmacDate
-    local credential
 
     lazy_setup(function()
       local bp = helpers.get_db_utils(strategy, {
@@ -1600,22 +1599,10 @@ for _, strategy in helpers.each_strategy() do
         consumer = { id = user1.id },
       }
 
-<<<<<<< HEAD
-      credential = bp.hmacauth_credentials:insert {
-        username    = "Aladdin",
-        secret      = "OpenSesame",
-        consumer_id = user2.id
-||||||| merged common ancestors
-      local credential = bp.hmacauth_credentials:insert {
-        username    = "Aladdin",
-        secret      = "OpenSesame",
-        consumer_id = user2.id
-=======
       local credential = bp.hmacauth_credentials:insert {
         username = "Aladdin",
         secret   = "OpenSesame",
         consumer = { id = user2.id },
->>>>>>> 0.15.0
       }
 
       hmacDate = os.date("!%a, %d %b %Y %H:%M:%S GMT")
