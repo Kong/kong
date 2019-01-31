@@ -2,67 +2,12 @@ local helpers = require "spec.helpers"
 local admin_api = require "spec.fixtures.admin_api"
 local cjson = require "cjson"
 
-
 for _, strategy in helpers.each_strategy() do
   describe("Plugin: basic-auth (invalidations) [#" .. strategy .. "]", function()
     local admin_client
     local proxy_client
     local db
 
-<<<<<<< HEAD
-    setup(function()
-      bp, db, dao = helpers.get_db_utils(strategy)
-    end)
-
-    before_each(function()
-      assert(db:truncate())
-      dao:truncate_tables()
-      helpers.register_consumer_relations(dao)
-
-      local route = bp.routes:insert {
-        hosts = { "basic-auth.com" },
-      }
-
-      bp.plugins:insert {
-        name     = "basic-auth",
-        route_id = route.id,
-      }
-
-      local consumer = bp.consumers:insert {
-        username = "bob",
-      }
-
-      assert(dao.basicauth_credentials:insert {
-        username    = "bob",
-        password    = "kong",
-        consumer_id = consumer.id,
-||||||| merged common ancestors
-    setup(function()
-      bp, db, dao = helpers.get_db_utils(strategy)
-    end)
-
-    before_each(function()
-      assert(db:truncate())
-      dao:truncate_tables()
-
-      local route = bp.routes:insert {
-        hosts = { "basic-auth.com" },
-      }
-
-      bp.plugins:insert {
-        name     = "basic-auth",
-        route_id = route.id,
-      }
-
-      local consumer = bp.consumers:insert {
-        username = "bob",
-      }
-
-      assert(dao.basicauth_credentials:insert {
-        username    = "bob",
-        password    = "kong",
-        consumer_id = consumer.id,
-=======
     lazy_setup(function()
       _, db = helpers.get_db_utils(strategy, {
         "routes",
@@ -70,7 +15,6 @@ for _, strategy in helpers.each_strategy() do
         "consumers",
         "plugins",
         "basicauth_credentials",
->>>>>>> 0.15.0
       })
 
       assert(helpers.start_kong({

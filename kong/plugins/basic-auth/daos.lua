@@ -8,6 +8,7 @@ return {
     primary_key = { "id" },
     cache_key = { "username" },
     endpoint_key = "username",
+    workspaceable = true,
     fields = {
       { id = typedefs.uuid },
       { created_at = typedefs.auto_timestamp_s },

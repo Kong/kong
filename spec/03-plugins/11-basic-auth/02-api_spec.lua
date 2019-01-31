@@ -2,28 +2,14 @@ local cjson   = require "cjson"
 local helpers = require "spec.helpers"
 local utils = require "kong.tools.utils"
 
+
 for _, strategy in helpers.each_strategy() do
   describe("Plugin: basic-auth (API) [#" .. strategy .. "]", function()
     local consumer
     local admin_client
-<<<<<<< HEAD
-    local dao
-||||||| merged common ancestors
-    local bp
-    local dao
-=======
     local bp
     local db
->>>>>>> 0.15.0
 
-<<<<<<< HEAD
-    setup(function()
-      dao = select(3, helpers.get_db_utils(strategy))
-||||||| merged common ancestors
-    setup(function()
-      local _
-      bp, _, dao = helpers.get_db_utils(strategy)
-=======
     lazy_setup(function()
       bp, db = helpers.get_db_utils(strategy, {
         "routes",
@@ -32,7 +18,6 @@ for _, strategy in helpers.each_strategy() do
         "consumers",
         "basicauth_credentials",
       })
->>>>>>> 0.15.0
 
       assert(helpers.start_kong({
         database = strategy,
@@ -51,26 +36,11 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("/consumers/:consumer/basic-auth/", function()
-<<<<<<< HEAD
-      setup(function()
-        consumer = dao.consumers:run_with_ws_scope(
-          dao.workspaces:find_all({name = "default"}),
-          dao.consumers.insert,
-          {username = "bob"}
-        )
-||||||| merged common ancestors
-      setup(function()
-        consumer = bp.consumers:insert {
-          username = "bob"
-        }
-=======
       lazy_setup(function()
         consumer = bp.consumers:insert {
           username = "bob"
         }
->>>>>>> 0.15.0
       end)
-
       after_each(function()
         db:truncate("basicauth_credentials")
       end)
@@ -209,30 +179,12 @@ for _, strategy in helpers.each_strategy() do
     describe("/consumers/:consumer/basic-auth/:id", function()
       local credential
       before_each(function()
-<<<<<<< HEAD
-        dao:truncate_table("basicauth_credentials")
-        credential = dao.basicauth_credentials:run_with_ws_scope(
-          dao.workspaces:find_all({name = "default"}),
-          dao.basicauth_credentials.insert, {
-            username = "bob",
-            password = "kong",
-            consumer_id = consumer.id
-        })
-||||||| merged common ancestors
-        dao:truncate_table("basicauth_credentials")
-        credential = assert(dao.basicauth_credentials:insert {
-          username    = "bob",
-          password    = "kong",
-          consumer_id = consumer.id
-        })
-=======
         db:truncate("basicauth_credentials")
         credential = bp.basicauth_credentials:insert {
           username = "bob",
           password = "kong",
           consumer = { id = consumer.id },
         }
->>>>>>> 0.15.0
       end)
       describe("GET", function()
         it("retrieves basic-auth credential by id", function()
@@ -254,20 +206,9 @@ for _, strategy in helpers.each_strategy() do
           assert.equal(credential.id, json.id)
         end)
         it("retrieves credential by id only if the credential belongs to the specified consumer", function()
-<<<<<<< HEAD
-          assert(dao.consumers:insert {
-                   username = "alice"
-          })
-||||||| merged common ancestors
-          assert(dao.consumers:insert {
-            username = "alice"
-          })
-=======
           bp.consumers:insert {
             username = "alice"
           }
->>>>>>> 0.15.0
-
 
           local res = assert(admin_client:send {
             method  = "GET",
@@ -402,35 +343,6 @@ for _, strategy in helpers.each_strategy() do
     describe("/basic-auths", function()
       local consumer2
       describe("GET", function()
-<<<<<<< HEAD
-        setup(function()
-          dao:truncate_table("basicauth_credentials")
-          assert(dao.basicauth_credentials:insert {
-              consumer_id = consumer.id,
-              username = "bob"
-          })
-          consumer2 = assert(dao.consumers:insert {
-              username = "bob-the-buidler"
-          })
-          assert(dao.basicauth_credentials:insert {
-              consumer_id = consumer2.id,
-              username = "bob-the-buidler"
-          })
-||||||| merged common ancestors
-        setup(function()
-          dao:truncate_table("basicauth_credentials")
-          assert(dao.basicauth_credentials:insert {
-            consumer_id = consumer.id,
-            username = "bob"
-          })
-          consumer2 = assert(dao.consumers:insert {
-            username = "bob-the-buidler"
-          })
-          assert(dao.basicauth_credentials:insert {
-            consumer_id = consumer2.id,
-            username = "bob-the-buidler"
-          })
-=======
         lazy_setup(function()
           db:truncate("basicauth_credentials")
           bp.basicauth_credentials:insert {
@@ -444,7 +356,6 @@ for _, strategy in helpers.each_strategy() do
             consumer = { id = consumer2.id },
             username = "bob-the-buidler"
           }
->>>>>>> 0.15.0
         end)
         it("retrieves all the basic-auths with trailing slash", function()
           local res = assert(admin_client:send {
