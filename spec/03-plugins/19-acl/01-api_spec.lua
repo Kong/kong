@@ -34,20 +34,9 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("/consumers/:consumer/acls/", function()
-<<<<<<< HEAD
-      setup(function()
-        dao:truncate_tables()
-        helpers.register_consumer_relations(dao)
-        consumer = assert(dao.consumers:insert {
-||||||| merged common ancestors
-      setup(function()
-        dao:truncate_tables()
-        consumer = assert(dao.consumers:insert {
-=======
       lazy_setup(function()
         db:truncate()
         consumer = bp.consumers:insert {
->>>>>>> 0.15.0
           username = "bob"
         }
       end)

@@ -521,9 +521,8 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(201, res)
 
         for i = 1, 3 do
-          local service
           -- Create API
-          service = bp.services:insert()
+          local service = bp.services:insert()
 
           local res = assert(admin_client:send {
             method  = "POST",
