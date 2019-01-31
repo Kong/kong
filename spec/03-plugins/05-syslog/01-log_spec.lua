@@ -9,14 +9,6 @@ for _, strategy in helpers.each_strategy() do
     local proxy_client
     local platform
 
-<<<<<<< HEAD
-    setup(function()
-      local bp = helpers.get_db_utils(strategy)
-||||||| merged common ancestors
-    setup(function()
-      local bp = helpers.get_db_utils(strategy)
-
-=======
     lazy_setup(function()
       local bp = helpers.get_db_utils(strategy, {
         "routes",
@@ -24,7 +16,6 @@ for _, strategy in helpers.each_strategy() do
         "plugins",
       })
 
->>>>>>> 0.15.0
       local route1 = bp.routes:insert {
         hosts = { "logging.com" },
       }
