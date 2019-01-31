@@ -13,20 +13,12 @@ for _, strategy in helpers.each_strategy() do
   describe("Plugin: file-log (log) [#" .. strategy .. "]", function()
     local proxy_client
 
-<<<<<<< HEAD
-    setup(function()
-      local bp, _, _ = helpers.get_db_utils(strategy)
-||||||| merged common ancestors
-    setup(function()
-      local bp = helpers.get_db_utils(strategy)
-=======
     lazy_setup(function()
       local bp = helpers.get_db_utils(strategy, {
         "routes",
         "services",
         "plugins",
       })
->>>>>>> 0.15.0
 
       local route = bp.routes:insert {
         hosts = { "file_logging.com" },
