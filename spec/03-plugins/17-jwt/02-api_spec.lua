@@ -2,8 +2,6 @@ local helpers  = require "spec.helpers"
 local cjson    = require "cjson"
 local fixtures = require "spec.03-plugins.17-jwt.fixtures"
 local utils    = require "kong.tools.utils"
-local singletons = require "kong.singletons"
-
 
 for _, strategy in helpers.each_strategy() do
   describe("Plugin: jwt (API) [#" .. strategy .. "]", function()
@@ -12,16 +10,6 @@ for _, strategy in helpers.each_strategy() do
     local db
     local bp
 
-<<<<<<< HEAD
-    setup(function()
-      local _
-      _, _, dao = helpers.get_db_utils(strategy)
-      singletons.dao = dao
-||||||| merged common ancestors
-    setup(function()
-      local _
-      _, _, dao = helpers.get_db_utils(strategy)
-=======
     lazy_setup(function()
       bp, db = helpers.get_db_utils(strategy, {
         "routes",
@@ -30,7 +18,6 @@ for _, strategy in helpers.each_strategy() do
         "consumers",
         "jwt_secrets",
       })
->>>>>>> 0.15.0
 
       assert(helpers.start_kong({
         database = strategy,
@@ -51,26 +38,10 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("/consumers/:consumer/jwt/", function()
-<<<<<<< HEAD
-      setup(function()
-        consumer = assert(dao.consumers:insert {
-          username = "bob"})
-        assert(dao.consumers:insert {
-          username = "alice"})
-||||||| merged common ancestors
-      setup(function()
-        consumer = assert(dao.consumers:insert {
-          username = "bob"
-        })
-        assert(dao.consumers:insert {
-          username = "alice"
-        })
-=======
       lazy_setup(function()
         bp.consumers:insert {
           username = "alice"
         }
->>>>>>> 0.15.0
       end)
 
       describe("POST", function()

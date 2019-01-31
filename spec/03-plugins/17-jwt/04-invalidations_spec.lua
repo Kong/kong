@@ -12,14 +12,6 @@ for _, strategy in helpers.each_strategy() do
     local db
 
     before_each(function()
-<<<<<<< HEAD
-      local bp, _
-      bp, _, dao = helpers.get_db_utils(strategy)
-||||||| merged common ancestors
-      local bp, _
-      bp, _, dao = helpers.get_db_utils(strategy)
-
-=======
       local bp
       bp, db = helpers.get_db_utils(strategy, {
         "routes",
@@ -29,7 +21,6 @@ for _, strategy in helpers.each_strategy() do
         "jwt_secrets",
       })
 
->>>>>>> 0.15.0
       route = bp.routes:insert {
         hosts = { "jwt.com" },
       }
