@@ -16,7 +16,9 @@ local rshift = bit.rshift
 local find   = string.find
 local setmetatable = setmetatable
 local getmetatable = getmetatable
-local kong = kong
+
+local kong = require "kong.global"
+
 
 
 local LOG_ROUNDS = 9
@@ -577,7 +579,9 @@ _M.add_default_role_entity_permission = add_default_role_entity_permission
 -- should be called when entity is deleted or role is removed
 local function delete_role_entity_permission(table_name, entity)
   local dao = singletons.dao
-  local schema = kong.db[table_name] and kong.db[table_name].schema
+  local db = singletons.db
+
+  local schema = db[table_name] and db[table_name].schema
   if not schema then -- old dao
     schema = dao[table_name].schema
   end
