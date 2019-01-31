@@ -361,7 +361,7 @@ function Kong.init()
 
   local _, err = build_plugins_map(db, "init")
   if err then
-    error("error building initial plugins map: ", err)
+    error("error building initial plugins map: " .. err)
   end
 
   assert(runloop.build_router(db, "init"))

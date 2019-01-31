@@ -178,7 +178,7 @@ function plugin_loader.load_subschema(parent_schema, plugin)
   if schema.name then
     local ok, err_t = MetaSchema.MetaSubSchema:validate(schema)
     if not ok then
-      return nil, nil, err_t
+      return schema, nil, err_t
     end
 
   else
