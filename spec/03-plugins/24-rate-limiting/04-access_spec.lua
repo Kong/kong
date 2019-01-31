@@ -1,7 +1,6 @@
 local helpers        = require "spec.helpers"
 local timestamp      = require "kong.tools.timestamp"
 local cjson          = require "cjson"
-local singletons = require "kong.singletons"
 
 
 local REDIS_HOST     = "127.0.0.1"
@@ -77,34 +76,14 @@ for _, strategy in helpers.each_strategy() do
     describe(fmt("#flaky Plugin: rate-limiting (access) with policy: %s [#%s]", policy, strategy), function()
       local bp
       local db
-<<<<<<< HEAD
-      local dao
-      local consumer1, consumer2, route1, route2, route3, route4, route5, service
-||||||| merged common ancestors
-      local dao
-=======
->>>>>>> 0.15.0
 
       lazy_setup(function()
         helpers.kill_all()
         flush_redis()
 
-<<<<<<< HEAD
-        bp, db, dao = helpers.get_db_utils(strategy)
-        singletons.dao = dao
-        assert(db:truncate())
-        dao:truncate_tables()
-        assert(dao:run_migrations())
-||||||| merged common ancestors
-        bp, db, dao = helpers.get_db_utils(strategy)
-        assert(db:truncate())
-        dao:truncate_tables()
-        assert(dao:run_migrations())
-=======
         bp, db = helpers.get_db_utils(strategy)
->>>>>>> 0.15.0
 
-        consumer1 = bp.consumers:insert {
+        local consumer1 = bp.consumers:insert {
           custom_id = "provider_123",
         }
 
@@ -113,7 +92,7 @@ for _, strategy in helpers.each_strategy() do
           consumer = { id = consumer1.id },
         }
 
-        consumer2 = bp.consumers:insert {
+        local consumer2 = bp.consumers:insert {
           custom_id = "provider_124",
         }
 
@@ -127,34 +106,11 @@ for _, strategy in helpers.each_strategy() do
           consumer = { id = consumer2.id },
         }
 
-        route1 = bp.routes:insert {
+        local route1 = bp.routes:insert {
           hosts = { "test1.com" },
         }
 
         bp.rate_limiting_plugins:insert({
-<<<<<<< HEAD
-            route_id = route1.id,
-            config = {
-              policy         = policy,
-              minute         = 6,
-              fault_tolerant = false,
-              redis_host     = REDIS_HOST,
-              redis_port     = REDIS_PORT,
-              redis_password = REDIS_PASSWORD,
-              redis_database = REDIS_DATABASE,
-            }
-||||||| merged common ancestors
-          route_id = route1.id,
-          config = {
-            policy         = policy,
-            minute         = 6,
-            fault_tolerant = false,
-            redis_host     = REDIS_HOST,
-            redis_port     = REDIS_PORT,
-            redis_password = REDIS_PASSWORD,
-            redis_database = REDIS_DATABASE,
-          }
-=======
           route = { id = route1.id },
           config = {
             policy         = policy,
@@ -165,39 +121,13 @@ for _, strategy in helpers.each_strategy() do
             redis_password = REDIS_PASSWORD,
             redis_database = REDIS_DATABASE,
           }
->>>>>>> 0.15.0
         })
 
-        route2 = bp.routes:insert {
+        local route2 = bp.routes:insert {
           hosts      = { "test2.com" },
         }
 
         bp.rate_limiting_plugins:insert({
-<<<<<<< HEAD
-            route_id = route2.id,
-            config = {
-              minute         = 3,
-              hour           = 5,
-              fault_tolerant = false,
-              policy         = policy,
-              redis_host     = REDIS_HOST,
-              redis_port     = REDIS_PORT,
-              redis_password = REDIS_PASSWORD,
-              redis_database = REDIS_DATABASE,
-            }
-||||||| merged common ancestors
-          route_id = route2.id,
-          config = {
-            minute         = 3,
-            hour           = 5,
-            fault_tolerant = false,
-            policy         = policy,
-            redis_host     = REDIS_HOST,
-            redis_port     = REDIS_PORT,
-            redis_password = REDIS_PASSWORD,
-            redis_database = REDIS_DATABASE,
-          }
-=======
           route = { id = route2.id },
           config = {
             minute         = 3,
@@ -209,10 +139,9 @@ for _, strategy in helpers.each_strategy() do
             redis_password = REDIS_PASSWORD,
             redis_database = REDIS_DATABASE,
           }
->>>>>>> 0.15.0
         })
 
-        route3 = bp.routes:insert {
+        local route3 = bp.routes:insert {
           hosts = { "test3.com" },
         }
 
@@ -222,31 +151,6 @@ for _, strategy in helpers.each_strategy() do
         }
 
         bp.rate_limiting_plugins:insert({
-<<<<<<< HEAD
-            route_id = route3.id,
-            config = {
-              minute         = 6,
-              limit_by       = "credential",
-              fault_tolerant = false,
-              policy         = policy,
-              redis_host     = REDIS_HOST,
-              redis_port     = REDIS_PORT,
-              redis_password = REDIS_PASSWORD,
-              redis_database = REDIS_DATABASE,
-            }
-||||||| merged common ancestors
-          route_id = route3.id,
-          config = {
-            minute         = 6,
-            limit_by       = "credential",
-            fault_tolerant = false,
-            policy         = policy,
-            redis_host     = REDIS_HOST,
-            redis_port     = REDIS_PORT,
-            redis_password = REDIS_PASSWORD,
-            redis_database = REDIS_DATABASE,
-          }
-=======
           route = { id = route3.id },
           config = {
             minute         = 6,
@@ -258,35 +162,9 @@ for _, strategy in helpers.each_strategy() do
             redis_password = REDIS_PASSWORD,
             redis_database = REDIS_DATABASE,
           }
->>>>>>> 0.15.0
         })
 
         bp.rate_limiting_plugins:insert({
-<<<<<<< HEAD
-            route_id = route3.id,
-            consumer_id = consumer1.id,
-            config      = {
-              minute         = 8,
-              fault_tolerant = false,
-              policy         = policy,
-              redis_host     = REDIS_HOST,
-              redis_port     = REDIS_PORT,
-              redis_password = REDIS_PASSWORD,
-              redis_database = REDIS_DATABASE
-            }
-||||||| merged common ancestors
-          route_id = route3.id,
-          consumer_id = consumer1.id,
-          config      = {
-            minute         = 8,
-            fault_tolerant = false,
-            policy         = policy,
-            redis_host     = REDIS_HOST,
-            redis_port     = REDIS_PORT,
-            redis_password = REDIS_PASSWORD,
-            redis_database = REDIS_DATABASE
-          }
-=======
           route = { id = route3.id },
           consumer = { id = consumer1.id },
           config      = {
@@ -298,10 +176,9 @@ for _, strategy in helpers.each_strategy() do
             redis_password = REDIS_PASSWORD,
             redis_database = REDIS_DATABASE
           }
->>>>>>> 0.15.0
         })
 
-        route4 = bp.routes:insert {
+        local route4 = bp.routes:insert {
           hosts = { "test4.com" },
         }
 
@@ -311,31 +188,6 @@ for _, strategy in helpers.each_strategy() do
         }
 
         bp.rate_limiting_plugins:insert({
-<<<<<<< HEAD
-            route_id = route4.id,
-            consumer_id = consumer1.id,
-            config           = {
-              minute         = 6,
-              fault_tolerant = true,
-              policy         = policy,
-              redis_host     = REDIS_HOST,
-              redis_port     = REDIS_PORT,
-              redis_password = REDIS_PASSWORD,
-              redis_database = REDIS_DATABASE,
-            },
-||||||| merged common ancestors
-          route_id = route4.id,
-          consumer_id = consumer1.id,
-          config           = {
-            minute         = 6,
-            fault_tolerant = true,
-            policy         = policy,
-            redis_host     = REDIS_HOST,
-            redis_port     = REDIS_PORT,
-            redis_password = REDIS_PASSWORD,
-            redis_database = REDIS_DATABASE,
-          },
-=======
           route = { id = route4.id },
           consumer = { id = consumer1.id },
           config           = {
@@ -347,39 +199,13 @@ for _, strategy in helpers.each_strategy() do
             redis_password = REDIS_PASSWORD,
             redis_database = REDIS_DATABASE,
           },
->>>>>>> 0.15.0
         })
 
-        route5 = bp.routes:insert {
+        local route5 = bp.routes:insert {
           hosts = { "test5.com" },
         }
 
         bp.rate_limiting_plugins:insert({
-<<<<<<< HEAD
-            route_id = route5.id,
-            config = {
-              policy              = policy,
-              minute              = 6,
-              hide_client_headers = true,
-              fault_tolerant      = false,
-              redis_host          = REDIS_HOST,
-              redis_port          = REDIS_PORT,
-              redis_password      = REDIS_PASSWORD,
-              redis_database      = REDIS_DATABASE,
-            },
-||||||| merged common ancestors
-          route_id = route5.id,
-          config = {
-            policy              = policy,
-            minute              = 6,
-            hide_client_headers = true,
-            fault_tolerant      = false,
-            redis_host          = REDIS_HOST,
-            redis_port          = REDIS_PORT,
-            redis_password      = REDIS_PASSWORD,
-            redis_database      = REDIS_DATABASE,
-          },
-=======
           route = { id = route5.id },
           config = {
             policy              = policy,
@@ -391,10 +217,9 @@ for _, strategy in helpers.each_strategy() do
             redis_password      = REDIS_PASSWORD,
             redis_database      = REDIS_DATABASE,
           },
->>>>>>> 0.15.0
         })
 
-        service = bp.services:insert()
+        local service = bp.services:insert()
         bp.routes:insert {
           hosts = { "test-service1.com" },
           service = service,
@@ -405,29 +230,6 @@ for _, strategy in helpers.each_strategy() do
         }
 
         bp.rate_limiting_plugins:insert({
-<<<<<<< HEAD
-            service_id = service.id,
-            config = {
-              policy         = policy,
-              minute         = 6,
-              fault_tolerant = false,
-              redis_host     = REDIS_HOST,
-              redis_port     = REDIS_PORT,
-              redis_password = REDIS_PASSWORD,
-              redis_database = REDIS_DATABASE,
-            }
-||||||| merged common ancestors
-          service_id = service.id,
-          config = {
-            policy         = policy,
-            minute         = 6,
-            fault_tolerant = false,
-            redis_host     = REDIS_HOST,
-            redis_port     = REDIS_PORT,
-            redis_password = REDIS_PASSWORD,
-            redis_database = REDIS_DATABASE,
-          }
-=======
           service = { id = service.id },
           config = {
             policy         = policy,
@@ -438,8 +240,8 @@ for _, strategy in helpers.each_strategy() do
             redis_password = REDIS_PASSWORD,
             redis_database = REDIS_DATABASE,
           }
->>>>>>> 0.15.0
         })
+
         assert(helpers.start_kong({
           database   = strategy,
           nginx_conf = "spec/fixtures/custom_nginx.template",
@@ -699,14 +501,9 @@ for _, strategy in helpers.each_strategy() do
 
           before_each(function()
             helpers.kill_all()
-<<<<<<< HEAD
-||||||| merged common ancestors
-
-=======
 
             assert(db:truncate())
 
->>>>>>> 0.15.0
             local service1 = bp.services:insert()
 
             local route1 = bp.routes:insert {
@@ -824,20 +621,7 @@ for _, strategy in helpers.each_strategy() do
       lazy_setup(function()
         helpers.kill_all()
         flush_redis()
-<<<<<<< HEAD
-        bp, db, dao = helpers.get_db_utils(strategy)
-        singletons.dao = dao
-        assert(db:truncate())
-        dao:truncate_tables()
-        assert(dao:run_migrations())
-||||||| merged common ancestors
-        bp, db, dao = helpers.get_db_utils(strategy)
-        assert(db:truncate())
-        dao:truncate_tables()
-        assert(dao:run_migrations())
-=======
         bp, db = helpers.get_db_utils(strategy)
->>>>>>> 0.15.0
 
         local consumer = bp.consumers:insert {
           custom_id = "provider_125",
@@ -852,31 +636,6 @@ for _, strategy in helpers.each_strategy() do
 
         -- just consumer, no no route or service
         bp.rate_limiting_plugins:insert({
-<<<<<<< HEAD
-            consumer_id = consumer.id,
-            config = {
-              limit_by       = "credential",
-              policy         = policy,
-              minute         = 6,
-              fault_tolerant = false,
-              redis_host     = REDIS_HOST,
-              redis_port     = REDIS_PORT,
-              redis_password = REDIS_PASSWORD,
-              redis_database = REDIS_DATABASE,
-            }
-||||||| merged common ancestors
-          consumer_id = consumer.id,
-          config = {
-            limit_by       = "credential",
-            policy         = policy,
-            minute         = 6,
-            fault_tolerant = false,
-            redis_host     = REDIS_HOST,
-            redis_port     = REDIS_PORT,
-            redis_password = REDIS_PASSWORD,
-            redis_database = REDIS_DATABASE,
-          }
-=======
           consumer = { id = consumer.id },
           config = {
             limit_by       = "credential",
@@ -888,12 +647,12 @@ for _, strategy in helpers.each_strategy() do
             redis_password = REDIS_PASSWORD,
             redis_database = REDIS_DATABASE,
           }
->>>>>>> 0.15.0
         })
 
         for i = 1, 6 do
           bp.routes:insert({ hosts = { fmt("test%d.com", i) } })
         end
+
         assert(helpers.start_kong({
           database   = strategy,
           nginx_conf = "spec/fixtures/custom_nginx.template",

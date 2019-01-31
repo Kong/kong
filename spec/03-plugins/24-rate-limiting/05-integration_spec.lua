@@ -82,7 +82,6 @@ describe("Plugin: rate-limiting (integration)", function()
           fault_tolerant = false,
         }
       })
-
       assert(helpers.start_kong({
         nginx_conf = "spec/fixtures/custom_nginx.template",
       }))
