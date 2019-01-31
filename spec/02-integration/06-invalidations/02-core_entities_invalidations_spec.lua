@@ -19,15 +19,8 @@ for _, strategy in helpers.each_strategy() do
 
     local service_fixture
 
-<<<<<<< HEAD
-    setup(function()
-      local bp, _, dao = helpers.get_db_utils(strategy)
-||||||| merged common ancestors
-    setup(function()
-      local bp = helpers.get_db_utils(strategy)
-=======
     lazy_setup(function()
-      local bp = helpers.get_db_utils(strategy, {
+      local bp, _, dao = helpers.get_db_utils(strategy, {
         "apis",
         "routes",
         "services",
@@ -35,11 +28,10 @@ for _, strategy in helpers.each_strategy() do
         "certificates",
         "snis",
       })
->>>>>>> 0.15.0
 
       -- insert single fixture Service
       helpers.with_current_ws(nil, function()
-        service_fixture = bp.services:insert()
+      service_fixture = bp.services:insert()
       end, dao)
 
       local db_update_propagation = strategy == "cassandra" and 0.1 or 0
@@ -55,7 +47,7 @@ for _, strategy in helpers.each_strategy() do
         nginx_conf            = "spec/fixtures/custom_nginx.template",
       })
 
-      assert(helpers.start_kong {
+      local r, e = helpers.start_kong {
         log_level             = "debug",
         prefix                = "servroot2",
         database              = strategy,
@@ -63,7 +55,7 @@ for _, strategy in helpers.each_strategy() do
         admin_listen          = "0.0.0.0:9001",
         db_update_frequency   = POLL_INTERVAL,
         db_update_propagation = db_update_propagation,
-      })
+      }
 
       admin_client_1 = helpers.http_client("127.0.0.1", 8001)
       admin_client_2 = helpers.http_client("127.0.0.1", 9001)
