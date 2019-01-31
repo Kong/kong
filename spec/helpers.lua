@@ -224,13 +224,17 @@ local function get_db_utils(strategy, tables, plugins)
 
   -- cleanup new DB tables
   if not tables then
-    tables[#tables + 1] = "workspaces"
-    tables[#tables + 1] = "workspaces_entities"
-
     assert(db:truncate())
     dao:truncate_tables()
 
   else
+    -- if specific tables were passed, make sure to truncate
+    -- workspace_entities and rbac_role_entities as well, as
+    -- relationships might end up in an inconsistent state
+    tables[#tables + 1] = "workspaces"
+    tables[#tables + 1] = "workspace_entities"
+    tables[#tables + 1] = "rbac_role_entities"
+
     truncate_tables(db, dao, tables)
   end
 
