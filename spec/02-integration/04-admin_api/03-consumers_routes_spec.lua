@@ -1,17 +1,9 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
 local escape = require("socket.url").escape
-<<<<<<< HEAD
-local utils = require "kong.tools.utils"
-local singletons = require "kong.singletons"
-
-||||||| merged common ancestors
-local utils = require "kong.tools.utils"
-=======
 local Errors  = require "kong.db.errors"
 local utils   = require "kong.tools.utils"
 
->>>>>>> 0.15.0
 
 local function it_content_types(title, fn)
   local test_form_encoded = fn("application/x-www-form-urlencoded")
@@ -38,24 +30,16 @@ for _, strategy in helpers.each_strategy() do
 describe("Admin API (#" .. strategy .. "): ", function()
   local bp
   local db
+  local dao
   local client
 
-<<<<<<< HEAD
-  setup(function()
-    _, _, dao = helpers.get_db_utils(strategy)
-    singletons.dao = dao
-||||||| merged common ancestors
-  setup(function()
-    _, _, dao = helpers.get_db_utils(strategy)
-=======
   lazy_setup(function()
-    bp, db = helpers.get_db_utils(strategy, {
+    bp, db, dao = helpers.get_db_utils(strategy, {
       "consumers",
       "plugins",
     }, {
       "rewriter",
     })
->>>>>>> 0.15.0
     assert(helpers.start_kong({
       database = strategy,
       plugins = "bundled,rewriter",
@@ -68,7 +52,6 @@ describe("Admin API (#" .. strategy .. "): ", function()
   end)
 
   before_each(function()
-<<<<<<< HEAD
     dao:truncate_tables()
     ngx.ctx.workspaces = dao.workspaces:find_all()
     helpers.register_consumer_relations(dao)
@@ -84,22 +67,6 @@ describe("Admin API (#" .. strategy .. "): ", function()
       username = "83825bb5-38c7-4160-8c23-54dd2b007f31",  -- uuid format
       custom_id = "1a2b"
     })
-||||||| merged common ancestors
-    dao:truncate_tables()
-    consumer = assert(dao.consumers:insert {
-      username = "bob",
-      custom_id = "1234"
-    })
-    consumer2 = assert(dao.consumers:insert {
-      username = "bob pop",  -- containing space for urlencoded test
-      custom_id = "abcd"
-    })
-    consumer3 = assert(dao.consumers:insert {
-      username = "83825bb5-38c7-4160-8c23-54dd2b007f31",  -- uuid format
-      custom_id = "1a2b"
-    })
-=======
->>>>>>> 0.15.0
     client = helpers.admin_client()
     ngx.ctx.workspaces = {}
   end)
@@ -148,7 +115,7 @@ describe("Admin API (#" .. strategy .. "): ", function()
         end)
         it_content_types("returns 409 on conflicting username", function(content_type)
           return function()
-            local consumer = bp.consumers:insert()
+            local consumer = bp.consumers:insert_ws({}, dao.workspaces:find_all({name = "default"})[1])
             local res = assert(client:send {
               method = "POST",
               path = "/consumers",
@@ -166,7 +133,7 @@ describe("Admin API (#" .. strategy .. "): ", function()
         end)
         it_content_types("returns 400 on conflicting custom_id", function(content_type)
           return function()
-            local consumer = bp.consumers:insert()
+            local consumer = bp.consumers:insert_ws({}, dao.workspaces:find_all({name = "default"})[1])
             local res = assert(client:send {
               method = "POST",
               path = "/consumers",
@@ -253,28 +220,10 @@ describe("Admin API (#" .. strategy .. "): ", function()
 
     describe("GET", function()
       before_each(function()
-<<<<<<< HEAD
-        dao:truncate_tables()
-        helpers.register_consumer_relations(dao)
-        ngx.ctx.workspaces = dao.workspaces:find_all()
-        for i = 1, 10 do
-          assert(dao.consumers:insert {
-            username = "consumer-" .. i,
-          })
-        end
-        ngx.ctx.workspaces = {}
-||||||| merged common ancestors
-        dao:truncate_tables()
-
-        for i = 1, 10 do
-          assert(dao.consumers:insert {
-            username = "consumer-" .. i,
-          })
-        end
-=======
         assert(db:truncate("consumers"))
+        ngx.ctx.workspaces = dao.workspaces:find_all()
         bp.consumers:insert_n(10)
->>>>>>> 0.15.0
+        ngx.ctx.workspaces = {}
       end)
       lazy_teardown(function()
         assert(db:truncate("consumers"))
@@ -320,7 +269,7 @@ describe("Admin API (#" .. strategy .. "): ", function()
       end)
       it("allows filtering by custom_id", function()
         local custom_id = gensym()
-        local c = bp.consumers:insert({ custom_id = custom_id })
+        local c = bp.consumers:insert_ws({ custom_id = custom_id }, dao.workspaces:find_all({name = "default"})[1])
 
         local res = client:get("/consumers?custom_id=" .. custom_id)
         local body = assert.res_status(200, res)
@@ -348,7 +297,7 @@ describe("Admin API (#" .. strategy .. "): ", function()
     describe("/consumers/{consumer}", function()
       describe("GET", function()
         it("retrieves by id", function()
-          local consumer = bp.consumers:insert()
+          local consumer = bp.consumers:insert_ws({}, dao.workspaces:find_all({name = "default"})[1])
           local res = assert(client:send {
             method = "GET",
             path = "/consumers/" .. consumer.id
@@ -358,7 +307,8 @@ describe("Admin API (#" .. strategy .. "): ", function()
           assert.same(consumer, json)
         end)
         it("retrieves by username", function()
-          local consumer = bp.consumers:insert()
+          local consumer = bp.consumers:insert_ws({}, dao.workspaces:find_all({name = "default"})[1])
+
           local res = assert(client:send {
             method = "GET",
             path = "/consumers/" .. consumer.username
@@ -368,7 +318,8 @@ describe("Admin API (#" .. strategy .. "): ", function()
           assert.same(consumer, json)
         end)
         it("retrieves by urlencoded username", function()
-          local consumer = bp.consumers:insert()
+          local consumer = bp.consumers:insert_ws({}, dao.workspaces:find_all({name = "default"})[1])
+
           local res = assert(client:send {
             method = "GET",
             path = "/consumers/" .. escape(consumer.username)
@@ -389,7 +340,8 @@ describe("Admin API (#" .. strategy .. "): ", function()
       describe("PATCH", function()
         it_content_types("updates by id", function(content_type)
           return function()
-            local consumer = bp.consumers:insert()
+            local consumer = bp.consumers:insert_ws({}, dao.workspaces:find_all({name = "default"})[1])
+
             local new_username = gensym()
             local res = assert(client:send {
               method = "PATCH",
@@ -410,7 +362,8 @@ describe("Admin API (#" .. strategy .. "): ", function()
         end)
         it_content_types("updates by username", function(content_type)
           return function()
-            local consumer = bp.consumers:insert()
+            local consumer = bp.consumers:insert_ws({}, dao.workspaces:find_all({name = "default"})[1])
+
             local new_username = gensym()
             local res = assert(client:send {
               method = "PATCH",
@@ -431,7 +384,8 @@ describe("Admin API (#" .. strategy .. "): ", function()
         end)
         it_content_types("updates by username and custom_id with previous values", function(content_type)
           return function()
-            local consumer = bp.consumers:insert()
+            local consumer = bp.consumers:insert_ws({}, dao.workspaces:find_all({name = "default"})[1])
+
             local res = assert(client:send {
               method = "PATCH",
               path = "/consumers/" .. consumer.username,
@@ -467,7 +421,7 @@ describe("Admin API (#" .. strategy .. "): ", function()
             end
           end)
           it("returns 415 on invalid content-type", function()
-            local consumer = bp.consumers:insert()
+            local consumer = bp.consumers:insert_ws({}, dao.workspaces:find_all({name = "default"})[1])
             local res = assert(client:request {
               method = "PATCH",
               path = "/consumers/" .. consumer.id,
@@ -477,7 +431,7 @@ describe("Admin API (#" .. strategy .. "): ", function()
             assert.res_status(415, res)
           end)
           it("returns 415 on missing content-type with body ", function()
-            local consumer = bp.consumers:insert()
+            local consumer = bp.consumers:insert_ws({}, dao.workspaces:find_all({name = "default"})[1])
             local res = assert(client:request {
               method = "PATCH",
               path = "/consumers/" .. consumer.id,
@@ -486,7 +440,7 @@ describe("Admin API (#" .. strategy .. "): ", function()
             assert.res_status(415, res)
           end)
           it("returns 400 on missing body with application/json", function()
-            local consumer = bp.consumers:insert()
+            local consumer = bp.consumers:insert_ws({}, dao.workspaces:find_all({name = "default"})[1])
             local res = assert(client:request {
               method = "PATCH",
               path = "/consumers/" .. consumer.id,
@@ -531,7 +485,7 @@ describe("Admin API (#" .. strategy .. "): ", function()
 
         it_content_types("replaces if found", function(content_type)
           return function()
-            local consumer = bp.consumers:insert()
+            local consumer = bp.consumers:insert_ws({}, dao.workspaces:find_all({name = "default"})[1])
             local new_username = gensym()
             local res = client:put("/consumers/" .. consumer.id, {
               body    = { username = new_username },
@@ -549,7 +503,7 @@ describe("Admin API (#" .. strategy .. "): ", function()
 
         it_content_types("replaces if found by username", function(content_type)
           return function()
-            local consumer = bp.consumers:insert()
+            local consumer = bp.consumers:insert_ws({}, dao.workspaces:find_all({name = "default"})[1])
             local new_custom_id = gensym()
             local res = client:put("/consumers/" .. consumer.username, {
               body    = { custom_id = new_custom_id },
@@ -575,7 +529,7 @@ describe("Admin API (#" .. strategy .. "): ", function()
 
         describe("errors", function()
           it("handles malformed JSON body", function()
-            local consumer = bp.consumers:insert()
+            local consumer = bp.consumers:insert_ws({}, dao.workspaces:find_all({name = "default"})[1])
             local res = client:put("/consumers/" .. consumer.id, {
               body    = '{"hello": "world"',
               headers = { ["Content-Type"] = "application/json" }
@@ -650,7 +604,7 @@ describe("Admin API (#" .. strategy .. "): ", function()
 
       for content_type, input in pairs(inputs) do
         it("creates a plugin config using a consumer id with " .. content_type, function()
-          local consumer = bp.consumers:insert()
+          local consumer = bp.consumers:insert_ws({}, dao.workspaces:find_all({name = "default"})[1])
           local res = assert(client:send {
             method = "POST",
             path = "/consumers/" .. consumer.id .. "/plugins",
@@ -663,7 +617,7 @@ describe("Admin API (#" .. strategy .. "): ", function()
           assert.same("potato", json.config.value)
         end)
         it("creates a plugin config using a consumer username with " .. content_type, function()
-          local consumer = bp.consumers:insert()
+          local consumer = bp.consumers:insert_ws({}, dao.workspaces:find_all({name = "default"})[1])
           local res = assert(client:send {
             method = "POST",
             path = "/consumers/" .. consumer.username .. "/plugins",
@@ -680,7 +634,7 @@ describe("Admin API (#" .. strategy .. "): ", function()
       describe("errors", function()
         it_content_types("handles invalid input", function(content_type)
           return function()
-            local consumer = bp.consumers:insert()
+            local consumer = bp.consumers:insert_ws({}, dao.workspaces:find_all({name = "default"})[1])
             local res = assert(client:send {
               method = "POST",
               path = "/consumers/" .. consumer.id .. "/plugins",
@@ -701,7 +655,7 @@ describe("Admin API (#" .. strategy .. "): ", function()
         end)
         it_content_types("returns 409 on conflict", function(content_type)
           return function()
-            local consumer = bp.consumers:insert()
+            local consumer = bp.consumers:insert_ws({}, dao.workspaces:find_all({name = "default"})[1])
             -- insert initial plugin
             local res = assert(client:send {
               method = "POST",
@@ -725,333 +679,12 @@ describe("Admin API (#" .. strategy .. "): ", function()
             })
             assert.response(res).has.status(409)
             local json = assert.response(res).has.jsonbody()
-<<<<<<< HEAD
-            assert.same({ name = "already exists with value 'rewriter'"}, json)
-          end
-        end)
-      end)
-    end)
-
-    describe("PUT", function()
-      it_content_types("creates if not exists", function(content_type)
-        return function()
-          local res = assert(client:send {
-            method = "PUT",
-            path = "/consumers/" .. consumer.id .. "/plugins",
-            body = {
-              name = "rewriter",
-              ["config.value"] = "potato",
-            },
-            headers = {["Content-Type"] = content_type}
-          })
-          local body = assert.res_status(201, res)
-          local json = cjson.decode(body)
-          assert.equal("rewriter", json.name)
-          assert.equal("potato", json.config.value)
-        end
-      end)
-      it_content_types("replaces if exists", function(content_type)
-        return function()
-          local res = assert(client:send {
-            method = "PUT",
-            path = "/consumers/" .. consumer.id .. "/plugins",
-            body = {
-              name = "rewriter",
-              ["config.value"] = "potato",
-              created_at = 1461276890000
-            },
-            headers = {["Content-Type"] = content_type}
-          })
-          local body = assert.res_status(201, res)
-          local json = cjson.decode(body)
-
-          res = assert(client:send {
-            method = "PUT",
-            path = "/consumers/" .. consumer.id .. "/plugins",
-            body = {
-              id = json.id,
-              name = "rewriter",
-              ["config.value"] = "carrot",
-              created_at = 1461276890000
-            },
-            headers = {["Content-Type"] = content_type}
-          })
-          body = assert.res_status(200, res)
-          json = cjson.decode(body)
-          assert.equal("rewriter", json.name)
-          assert.equal("carrot", json.config.value)
-        end
-      end)
-      it_content_types("prefers default values when replacing", function(content_type)
-        return function()
-          ngx.ctx.workspaces = dao.workspaces:find_all()
-          local plugin = assert(dao.plugins:insert {
-            name = "rewriter",
-            consumer_id = consumer.id,
-            config = { value = "potato", extra = "super" }
-          })
-          ngx.ctx.workspaces = {}
-          assert.equal("potato", plugin.config.value)
-          assert.equal("super", plugin.config.extra)
-
-          local res = assert(client:send {
-            method = "PUT",
-            path = "/consumers/" .. consumer.id .. "/plugins",
-            body = {
-              id = plugin.id,
-              name = "rewriter",
-              ["config.value"] = "carrot",
-              created_at = 1461276890000
-            },
-            headers = {["Content-Type"] = content_type}
-          })
-          local body = assert.res_status(200, res)
-          local json = cjson.decode(body)
-          assert.equal(json.config.value, "carrot")
-          assert.equal(json.config.extra, "extra") -- changed to the default value
-
-          plugin = assert(dao.plugins:find {
-            id = plugin.id,
-            name = plugin.name
-          })
-          assert.equal(plugin.config.value, "carrot")
-          assert.equal(plugin.config.extra, "extra") -- changed to the default value
-        end
-      end)
-      it_content_types("overrides a plugin previous config if partial", function(content_type)
-        return function()
-          ngx.ctx.workspaces = dao.workspaces:find_all()
-          local plugin = assert(dao.plugins:insert {
-            name = "rewriter",
-            consumer_id = consumer.id
-          })
-          ngx.ctx.workspaces = {}
-          assert.equal("extra", plugin.config.extra)
-
-          local res = assert(client:send {
-            method = "PUT",
-            path = "/consumers/" .. consumer.id .. "/plugins",
-            body = {
-              id = plugin.id,
-              name = "rewriter",
-              ["config.extra"] = "super",
-              created_at = 1461276890000
-            },
-            headers = {["Content-Type"] = content_type}
-          })
-          local body = assert.res_status(200, res)
-          local json = cjson.decode(body)
-          assert.same("super", json.config.extra)
-        end
-      end)
-      it_content_types("updates the enabled property", function(content_type)
-        return function()
-          ngx.ctx.workspaces = dao.workspaces:find_all()
-          local plugin = assert(dao.plugins:insert {
-            name = "rewriter",
-            consumer_id = consumer.id
-          })
-          ngx.ctx.workspaces = {}
-          assert.True(plugin.enabled)
-
-          local res = assert(client:send {
-            method = "PUT",
-            path = "/consumers/" .. consumer.id .. "/plugins",
-            body = {
-              id = plugin.id,
-              name = "rewriter",
-              enabled = false,
-              created_at = 1461276890000
-            },
-            headers = {["Content-Type"] = content_type}
-          })
-          local body = assert.res_status(200, res)
-          local json = cjson.decode(body)
-          assert.False(json.enabled)
-
-          plugin = assert(dao.plugins:find {
-            id = plugin.id,
-            name = plugin.name
-          })
-          assert.False(plugin.enabled)
-        end
-      end)
-      describe("errors", function()
-        it_content_types("handles invalid input", function(content_type)
-          return function()
-            local res = assert(client:send {
-              method = "PUT",
-              path = "/consumers/" .. consumer.id .. "/plugins",
-              body = {},
-              headers = {["Content-Type"] = content_type}
-            })
-            local body = assert.res_status(400, res)
-            local json = cjson.decode(body)
-            assert.same({ name = "name is required" }, json)
-||||||| merged common ancestors
-            assert.same({ name = "already exists with value 'rewriter'"}, json)
-          end
-        end)
-      end)
-    end)
-
-    describe("PUT", function()
-      it_content_types("creates if not exists", function(content_type)
-        return function()
-          local res = assert(client:send {
-            method = "PUT",
-            path = "/consumers/" .. consumer.id .. "/plugins",
-            body = {
-              name = "rewriter",
-              ["config.value"] = "potato",
-            },
-            headers = {["Content-Type"] = content_type}
-          })
-          local body = assert.res_status(201, res)
-          local json = cjson.decode(body)
-          assert.equal("rewriter", json.name)
-          assert.equal("potato", json.config.value)
-        end
-      end)
-      it_content_types("replaces if exists", function(content_type)
-        return function()
-          local res = assert(client:send {
-            method = "PUT",
-            path = "/consumers/" .. consumer.id .. "/plugins",
-            body = {
-              name = "rewriter",
-              ["config.value"] = "potato",
-              created_at = 1461276890000
-            },
-            headers = {["Content-Type"] = content_type}
-          })
-          local body = assert.res_status(201, res)
-          local json = cjson.decode(body)
-
-          res = assert(client:send {
-            method = "PUT",
-            path = "/consumers/" .. consumer.id .. "/plugins",
-            body = {
-              id = json.id,
-              name = "rewriter",
-              ["config.value"] = "carrot",
-              created_at = 1461276890000
-            },
-            headers = {["Content-Type"] = content_type}
-          })
-          body = assert.res_status(200, res)
-          json = cjson.decode(body)
-          assert.equal("rewriter", json.name)
-          assert.equal("carrot", json.config.value)
-        end
-      end)
-      it_content_types("prefers default values when replacing", function(content_type)
-        return function()
-          local plugin = assert(dao.plugins:insert {
-            name = "rewriter",
-            consumer_id = consumer.id,
-            config = { value = "potato", extra = "super" }
-          })
-          assert.equal("potato", plugin.config.value)
-          assert.equal("super", plugin.config.extra)
-
-          local res = assert(client:send {
-            method = "PUT",
-            path = "/consumers/" .. consumer.id .. "/plugins",
-            body = {
-              id = plugin.id,
-              name = "rewriter",
-              ["config.value"] = "carrot",
-              created_at = 1461276890000
-            },
-            headers = {["Content-Type"] = content_type}
-          })
-          local body = assert.res_status(200, res)
-          local json = cjson.decode(body)
-          assert.equal(json.config.value, "carrot")
-          assert.equal(json.config.extra, "extra") -- changed to the default value
-
-          plugin = assert(dao.plugins:find {
-            id = plugin.id,
-            name = plugin.name
-          })
-          assert.equal(plugin.config.value, "carrot")
-          assert.equal(plugin.config.extra, "extra") -- changed to the default value
-        end
-      end)
-      it_content_types("overrides a plugin previous config if partial", function(content_type)
-        return function()
-          local plugin = assert(dao.plugins:insert {
-            name = "rewriter",
-            consumer_id = consumer.id
-          })
-          assert.equal("extra", plugin.config.extra)
-
-          local res = assert(client:send {
-            method = "PUT",
-            path = "/consumers/" .. consumer.id .. "/plugins",
-            body = {
-              id = plugin.id,
-              name = "rewriter",
-              ["config.extra"] = "super",
-              created_at = 1461276890000
-            },
-            headers = {["Content-Type"] = content_type}
-          })
-          local body = assert.res_status(200, res)
-          local json = cjson.decode(body)
-          assert.same("super", json.config.extra)
-        end
-      end)
-      it_content_types("updates the enabled property", function(content_type)
-        return function()
-          local plugin = assert(dao.plugins:insert {
-            name = "rewriter",
-            consumer_id = consumer.id
-          })
-          assert.True(plugin.enabled)
-
-          local res = assert(client:send {
-            method = "PUT",
-            path = "/consumers/" .. consumer.id .. "/plugins",
-            body = {
-              id = plugin.id,
-              name = "rewriter",
-              enabled = false,
-              created_at = 1461276890000
-            },
-            headers = {["Content-Type"] = content_type}
-          })
-          local body = assert.res_status(200, res)
-          local json = cjson.decode(body)
-          assert.False(json.enabled)
-
-          plugin = assert(dao.plugins:find {
-            id = plugin.id,
-            name = plugin.name
-          })
-          assert.False(plugin.enabled)
-        end
-      end)
-      describe("errors", function()
-        it_content_types("handles invalid input", function(content_type)
-          return function()
-            local res = assert(client:send {
-              method = "PUT",
-              path = "/consumers/" .. consumer.id .. "/plugins",
-              body = {},
-              headers = {["Content-Type"] = content_type}
-            })
-            local body = assert.res_status(400, res)
-            local json = cjson.decode(body)
-            assert.same({ name = "name is required" }, json)
-=======
             assert.same({
               code = Errors.codes.UNIQUE_VIOLATION,
               name = "unique constraint violation",
               message = [[UNIQUE violation detected on '{consumer={id="]] ..
-                        consumer.id .. [["},api=null,service=null,]] ..
-                        [[name="rewriter",route=null}']],
+                consumer.id .. [["},api=null,service=null,]] ..
+                [[name="rewriter",route=null}']],
               fields = {
                 name = "rewriter",
                 api = ngx.null,
@@ -1061,8 +694,168 @@ describe("Admin API (#" .. strategy .. "): ", function()
                 route = ngx.null,
                 service = ngx.null,
               },
-            }, json)
->>>>>>> 0.15.0
+                        }, json)
+          end
+        end)
+      end)
+    end)
+
+    describe("PUT", function()
+      it_content_types("creates if not exists", function(content_type)
+        return function()
+          local res = assert(client:send {
+            method = "PUT",
+            path = "/consumers/" .. consumer.id .. "/plugins",
+            body = {
+              name = "rewriter",
+              ["config.value"] = "potato",
+            },
+            headers = {["Content-Type"] = content_type}
+          })
+          local body = assert.res_status(201, res)
+          local json = cjson.decode(body)
+          assert.equal("rewriter", json.name)
+          assert.equal("potato", json.config.value)
+        end
+      end)
+      it_content_types("replaces if exists", function(content_type)
+        return function()
+          local res = assert(client:send {
+            method = "PUT",
+            path = "/consumers/" .. consumer.id .. "/plugins",
+            body = {
+              name = "rewriter",
+              ["config.value"] = "potato",
+              created_at = 1461276890000
+            },
+            headers = {["Content-Type"] = content_type}
+          })
+          local body = assert.res_status(201, res)
+          local json = cjson.decode(body)
+
+          res = assert(client:send {
+            method = "PUT",
+            path = "/consumers/" .. consumer.id .. "/plugins",
+            body = {
+              id = json.id,
+              name = "rewriter",
+              ["config.value"] = "carrot",
+              created_at = 1461276890000
+            },
+            headers = {["Content-Type"] = content_type}
+          })
+          body = assert.res_status(200, res)
+          json = cjson.decode(body)
+          assert.equal("rewriter", json.name)
+          assert.equal("carrot", json.config.value)
+        end
+      end)
+      it_content_types("prefers default values when replacing", function(content_type)
+        return function()
+          ngx.ctx.workspaces = dao.workspaces:find_all()
+          local plugin = assert(dao.plugins:insert {
+            name = "rewriter",
+            consumer_id = consumer.id,
+            config = { value = "potato", extra = "super" }
+          })
+          ngx.ctx.workspaces = {}
+          assert.equal("potato", plugin.config.value)
+          assert.equal("super", plugin.config.extra)
+
+          local res = assert(client:send {
+            method = "PUT",
+            path = "/consumers/" .. consumer.id .. "/plugins",
+            body = {
+              id = plugin.id,
+              name = "rewriter",
+              ["config.value"] = "carrot",
+              created_at = 1461276890000
+            },
+            headers = {["Content-Type"] = content_type}
+          })
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+          assert.equal(json.config.value, "carrot")
+          assert.equal(json.config.extra, "extra") -- changed to the default value
+
+          plugin = assert(dao.plugins:find {
+            id = plugin.id,
+            name = plugin.name
+          })
+          assert.equal(plugin.config.value, "carrot")
+          assert.equal(plugin.config.extra, "extra") -- changed to the default value
+        end
+      end)
+      it_content_types("overrides a plugin previous config if partial", function(content_type)
+        return function()
+          ngx.ctx.workspaces = dao.workspaces:find_all()
+          local plugin = assert(dao.plugins:insert {
+            name = "rewriter",
+            consumer_id = consumer.id
+          })
+          ngx.ctx.workspaces = {}
+          assert.equal("extra", plugin.config.extra)
+
+          local res = assert(client:send {
+            method = "PUT",
+            path = "/consumers/" .. consumer.id .. "/plugins",
+            body = {
+              id = plugin.id,
+              name = "rewriter",
+              ["config.extra"] = "super",
+              created_at = 1461276890000
+            },
+            headers = {["Content-Type"] = content_type}
+          })
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+          assert.same("super", json.config.extra)
+        end
+      end)
+      it_content_types("updates the enabled property", function(content_type)
+        return function()
+          ngx.ctx.workspaces = dao.workspaces:find_all()
+          local plugin = assert(dao.plugins:insert {
+            name = "rewriter",
+            consumer_id = consumer.id
+          })
+          ngx.ctx.workspaces = {}
+          assert.True(plugin.enabled)
+
+          local res = assert(client:send {
+            method = "PUT",
+            path = "/consumers/" .. consumer.id .. "/plugins",
+            body = {
+              id = plugin.id,
+              name = "rewriter",
+              enabled = false,
+              created_at = 1461276890000
+            },
+            headers = {["Content-Type"] = content_type}
+          })
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+          assert.False(json.enabled)
+
+          plugin = assert(dao.plugins:find {
+            id = plugin.id,
+            name = plugin.name
+          })
+          assert.False(plugin.enabled)
+        end
+      end)
+      describe("errors", function()
+        it_content_types("handles invalid input", function(content_type)
+          return function()
+            local res = assert(client:send {
+              method = "PUT",
+              path = "/consumers/" .. consumer.id .. "/plugins",
+              body = {},
+              headers = {["Content-Type"] = content_type}
+            })
+            local body = assert.res_status(400, res)
+            local json = cjson.decode(body)
+            assert.same({ name = "name is required" }, json)
           end
         end)
       end)
@@ -1070,23 +863,9 @@ describe("Admin API (#" .. strategy .. "): ", function()
 
     describe("GET", function()
       it("retrieves the first page", function()
-<<<<<<< HEAD
-        ngx.ctx.workspaces = dao.workspaces:find_all()
-        assert(dao.plugins:insert {
-          name = "rewriter",
-          consumer_id = consumer.id
-        })
-        ngx.ctx.workspaces = {}
-||||||| merged common ancestors
-        assert(dao.plugins:insert {
-          name = "rewriter",
-          consumer_id = consumer.id
-        })
-=======
-        local consumer = bp.consumers:insert()
+        local consumer = bp.consumers:insert_ws({}, dao.workspaces:find_all({name = "default"})[1])
         bp.rewriter_plugins:insert({ consumer = { id = consumer.id }})
 
->>>>>>> 0.15.0
         local res = assert(client:send {
           method = "GET",
           path = "/consumers/" .. consumer.id .. "/plugins"
@@ -1096,7 +875,7 @@ describe("Admin API (#" .. strategy .. "): ", function()
         assert.equal(1, #json.data)
       end)
       it("ignores an invalid body", function()
-        local consumer = bp.consumers:insert()
+        local consumer = bp.consumers:insert_ws({}, dao.workspaces:find_all({name = "default"})[1])
         local res = assert(client:send {
           method = "GET",
           path = "/consumers/" .. consumer.id .. "/plugins",
@@ -1113,40 +892,25 @@ describe("Admin API (#" .. strategy .. "): ", function()
 
 
   describe("/consumers/{username_or_id}/plugins/{plugin}", function()
-<<<<<<< HEAD
     local plugin, plugin2
-    before_each(function()
-      ngx.ctx.workspaces = dao.workspaces:find_all()
-      plugin = assert(dao.plugins:insert {
-        name = "rewriter",
-        consumer_id = consumer.id
-      })
-      plugin2 = assert(dao.plugins:insert {
-        name = "rewriter",
-        consumer_id = consumer2.id
-      })
-      ngx.ctx.workspaces = {}
-    end)
-||||||| merged common ancestors
-    local plugin, plugin2
-    before_each(function()
-      plugin = assert(dao.plugins:insert {
-        name = "rewriter",
-        consumer_id = consumer.id
-      })
-      plugin2 = assert(dao.plugins:insert {
-        name = "rewriter",
-        consumer_id = consumer2.id
-      })
-    end)
-=======
->>>>>>> 0.15.0
+    -- before_each(function()
+    --   ngx.ctx.workspaces = dao.workspaces:find_all()
+    --   plugin = assert(dao.plugins:insert {
+    --     name = "rewriter",
+    --     consumer_id = consumer.id
+    --   })
+    --   plugin2 = assert(dao.plugins:insert {
+    --     name = "rewriter",
+    --     consumer_id = consumer2.id
+    --   })
+    --   ngx.ctx.workspaces = {}
+    -- end)
 
     describe("GET", function()
 
       it("retrieves by id", function()
-        local consumer = bp.consumers:insert()
-        local plugin = bp.rewriter_plugins:insert({ consumer = { id = consumer.id }})
+        local consumer = bp.consumers:insert_ws({}, dao.workspaces:find_all({name = "default"})[1])
+        local plugin = bp.rewriter_plugins:insert_ws({ consumer = { id = consumer.id }}, dao.workspaces:find_all({name = "default"})[1])
 
         local res = assert(client:send {
           method = "GET",
@@ -1157,8 +921,8 @@ describe("Admin API (#" .. strategy .. "): ", function()
         assert.same(plugin, json)
       end)
       it("retrieves by consumer id when it has spaces", function()
-        local consumer = bp.consumers:insert()
-        local plugin = bp.rewriter_plugins:insert({ consumer = { id = consumer.id }})
+        local consumer = bp.consumers:insert_ws({}, dao.workspaces:find_all({name = "default"})[1])
+        local plugin = bp.rewriter_plugins:insert_ws({ consumer = { id = consumer.id }}, dao.workspaces:find_all({name = "default"})[1])
 
         local res = assert(client:send {
           method = "GET",
@@ -1169,30 +933,16 @@ describe("Admin API (#" .. strategy .. "): ", function()
         assert.same(plugin, json)
       end)
       it("only retrieves if associated to the correct consumer", function()
-        local consumer = bp.consumers:insert()
-        local plugin = bp.rewriter_plugins:insert({ consumer = { id = consumer.id }})
+        local consumer = bp.consumers:insert_ws({}, dao.workspaces:find_all({name = "default"})[1])
+        local plugin = bp.rewriter_plugins:insert_ws({ consumer = { id = consumer.id }}, dao.workspaces:find_all({name = "default"})[1])
 
         -- Create an consumer and try to query our plugin through it
-<<<<<<< HEAD
         ngx.ctx.workspaces = dao.workspaces:find_all()
-        local w_consumer = assert(dao.consumers:insert {
-||||||| merged common ancestors
-        local w_consumer = assert(dao.consumers:insert {
-=======
         local w_consumer = bp.consumers:insert {
->>>>>>> 0.15.0
           custom_id = "wc",
           username = "wrong-consumer"
-<<<<<<< HEAD
-        })
-        ngx.ctx.workspaces = {}
-||||||| merged common ancestors
-        })
-
-=======
         }
-
->>>>>>> 0.15.0
+        ngx.ctx.workspaces = {}
         -- Try to request the plugin through it (belongs to the fixture consumer instead)
         local res = assert(client:send {
           method = "GET",
@@ -1201,8 +951,8 @@ describe("Admin API (#" .. strategy .. "): ", function()
         assert.res_status(404, res)
       end)
       it("ignores an invalid body", function()
-        local consumer = bp.consumers:insert()
-        local plugin = bp.rewriter_plugins:insert({ consumer = { id = consumer.id }})
+        local consumer = bp.consumers:insert_ws({}, dao.workspaces:find_all({name = "default"})[1])
+        local plugin = bp.rewriter_plugins:insert_ws({ consumer = { id = consumer.id }}, dao.workspaces:find_all({name = "default"})[1])
 
         local res = assert(client:send {
           method = "GET",

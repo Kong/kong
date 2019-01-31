@@ -256,7 +256,9 @@ return {
           ON consumer_types (name);
 
       INSERT INTO consumer_types(id, name, comment)
-      VALUES (2, 'admin', 'Admin consumer.')
+      VALUES (0, 'proxy', 'Default consumer, used for proxy.'),
+             (1, 'developer', 'Kong Developer Portal consumer.'),
+             (2, 'admin', 'Admin consumer.')
       ON CONFLICT DO NOTHING;
 
       ALTER TABLE consumers
