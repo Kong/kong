@@ -68,7 +68,7 @@ describe("Admin API (#" .. strategy .. "): ", function()
       custom_id = "1a2b"
     })
     client = helpers.admin_client()
-    ngx.ctx.workspaces = {}
+    ngx.ctx.workspaces = dao.workspaces:find_all({name = "default"})
   end)
 
   after_each(function()
@@ -115,7 +115,7 @@ describe("Admin API (#" .. strategy .. "): ", function()
         end)
         it_content_types("returns 409 on conflicting username", function(content_type)
           return function()
-            local consumer = bp.consumers:insert_ws({}, dao.workspaces:find_all({name = "default"})[1])
+            local consumer = bp.consumers:insert()
             local res = assert(client:send {
               method = "POST",
               path = "/consumers",
@@ -133,7 +133,7 @@ describe("Admin API (#" .. strategy .. "): ", function()
         end)
         it_content_types("returns 400 on conflicting custom_id", function(content_type)
           return function()
-            local consumer = bp.consumers:insert_ws({}, dao.workspaces:find_all({name = "default"})[1])
+            local consumer = bp.consumers:insert()
             local res = assert(client:send {
               method = "POST",
               path = "/consumers",
@@ -221,9 +221,7 @@ describe("Admin API (#" .. strategy .. "): ", function()
     describe("GET", function()
       before_each(function()
         assert(db:truncate("consumers"))
-        ngx.ctx.workspaces = dao.workspaces:find_all()
         bp.consumers:insert_n(10)
-        ngx.ctx.workspaces = {}
       end)
       lazy_teardown(function()
         assert(db:truncate("consumers"))
@@ -269,7 +267,7 @@ describe("Admin API (#" .. strategy .. "): ", function()
       end)
       it("allows filtering by custom_id", function()
         local custom_id = gensym()
-        local c = bp.consumers:insert_ws({ custom_id = custom_id }, dao.workspaces:find_all({name = "default"})[1])
+        local c = bp.consumers:insert({ custom_id = custom_id })
 
         local res = client:get("/consumers?custom_id=" .. custom_id)
         local body = assert.res_status(200, res)
@@ -297,7 +295,7 @@ describe("Admin API (#" .. strategy .. "): ", function()
     describe("/consumers/{consumer}", function()
       describe("GET", function()
         it("retrieves by id", function()
-          local consumer = bp.consumers:insert_ws({}, dao.workspaces:find_all({name = "default"})[1])
+          local consumer = bp.consumers:insert()
           local res = assert(client:send {
             method = "GET",
             path = "/consumers/" .. consumer.id
@@ -307,7 +305,7 @@ describe("Admin API (#" .. strategy .. "): ", function()
           assert.same(consumer, json)
         end)
         it("retrieves by username", function()
-          local consumer = bp.consumers:insert_ws({}, dao.workspaces:find_all({name = "default"})[1])
+          local consumer = bp.consumers:insert()
 
           local res = assert(client:send {
             method = "GET",
@@ -318,7 +316,7 @@ describe("Admin API (#" .. strategy .. "): ", function()
           assert.same(consumer, json)
         end)
         it("retrieves by urlencoded username", function()
-          local consumer = bp.consumers:insert_ws({}, dao.workspaces:find_all({name = "default"})[1])
+          local consumer = bp.consumers:insert()
 
           local res = assert(client:send {
             method = "GET",
@@ -340,7 +338,7 @@ describe("Admin API (#" .. strategy .. "): ", function()
       describe("PATCH", function()
         it_content_types("updates by id", function(content_type)
           return function()
-            local consumer = bp.consumers:insert_ws({}, dao.workspaces:find_all({name = "default"})[1])
+            local consumer = bp.consumers:insert()
 
             local new_username = gensym()
             local res = assert(client:send {
@@ -362,7 +360,7 @@ describe("Admin API (#" .. strategy .. "): ", function()
         end)
         it_content_types("updates by username", function(content_type)
           return function()
-            local consumer = bp.consumers:insert_ws({}, dao.workspaces:find_all({name = "default"})[1])
+            local consumer = bp.consumers:insert()
 
             local new_username = gensym()
             local res = assert(client:send {
@@ -384,7 +382,7 @@ describe("Admin API (#" .. strategy .. "): ", function()
         end)
         it_content_types("updates by username and custom_id with previous values", function(content_type)
           return function()
-            local consumer = bp.consumers:insert_ws({}, dao.workspaces:find_all({name = "default"})[1])
+            local consumer = bp.consumers:insert()
 
             local res = assert(client:send {
               method = "PATCH",
@@ -421,7 +419,7 @@ describe("Admin API (#" .. strategy .. "): ", function()
             end
           end)
           it("returns 415 on invalid content-type", function()
-            local consumer = bp.consumers:insert_ws({}, dao.workspaces:find_all({name = "default"})[1])
+            local consumer = bp.consumers:insert()
             local res = assert(client:request {
               method = "PATCH",
               path = "/consumers/" .. consumer.id,
@@ -431,7 +429,7 @@ describe("Admin API (#" .. strategy .. "): ", function()
             assert.res_status(415, res)
           end)
           it("returns 415 on missing content-type with body ", function()
-            local consumer = bp.consumers:insert_ws({}, dao.workspaces:find_all({name = "default"})[1])
+            local consumer = bp.consumers:insert()
             local res = assert(client:request {
               method = "PATCH",
               path = "/consumers/" .. consumer.id,
@@ -440,7 +438,7 @@ describe("Admin API (#" .. strategy .. "): ", function()
             assert.res_status(415, res)
           end)
           it("returns 400 on missing body with application/json", function()
-            local consumer = bp.consumers:insert_ws({}, dao.workspaces:find_all({name = "default"})[1])
+            local consumer = bp.consumers:insert()
             local res = assert(client:request {
               method = "PATCH",
               path = "/consumers/" .. consumer.id,
@@ -485,7 +483,7 @@ describe("Admin API (#" .. strategy .. "): ", function()
 
         it_content_types("replaces if found", function(content_type)
           return function()
-            local consumer = bp.consumers:insert_ws({}, dao.workspaces:find_all({name = "default"})[1])
+            local consumer = bp.consumers:insert()
             local new_username = gensym()
             local res = client:put("/consumers/" .. consumer.id, {
               body    = { username = new_username },
@@ -503,7 +501,7 @@ describe("Admin API (#" .. strategy .. "): ", function()
 
         it_content_types("replaces if found by username", function(content_type)
           return function()
-            local consumer = bp.consumers:insert_ws({}, dao.workspaces:find_all({name = "default"})[1])
+            local consumer = bp.consumers:insert()
             local new_custom_id = gensym()
             local res = client:put("/consumers/" .. consumer.username, {
               body    = { custom_id = new_custom_id },
@@ -529,7 +527,7 @@ describe("Admin API (#" .. strategy .. "): ", function()
 
         describe("errors", function()
           it("handles malformed JSON body", function()
-            local consumer = bp.consumers:insert_ws({}, dao.workspaces:find_all({name = "default"})[1])
+            local consumer = bp.consumers:insert()
             local res = client:put("/consumers/" .. consumer.id, {
               body    = '{"hello": "world"',
               headers = { ["Content-Type"] = "application/json" }
@@ -604,7 +602,7 @@ describe("Admin API (#" .. strategy .. "): ", function()
 
       for content_type, input in pairs(inputs) do
         it("creates a plugin config using a consumer id with " .. content_type, function()
-          local consumer = bp.consumers:insert_ws({}, dao.workspaces:find_all({name = "default"})[1])
+          local consumer = bp.consumers:insert()
           local res = assert(client:send {
             method = "POST",
             path = "/consumers/" .. consumer.id .. "/plugins",
@@ -617,7 +615,7 @@ describe("Admin API (#" .. strategy .. "): ", function()
           assert.same("potato", json.config.value)
         end)
         it("creates a plugin config using a consumer username with " .. content_type, function()
-          local consumer = bp.consumers:insert_ws({}, dao.workspaces:find_all({name = "default"})[1])
+          local consumer = bp.consumers:insert()
           local res = assert(client:send {
             method = "POST",
             path = "/consumers/" .. consumer.username .. "/plugins",
@@ -634,7 +632,7 @@ describe("Admin API (#" .. strategy .. "): ", function()
       describe("errors", function()
         it_content_types("handles invalid input", function(content_type)
           return function()
-            local consumer = bp.consumers:insert_ws({}, dao.workspaces:find_all({name = "default"})[1])
+            local consumer = bp.consumers:insert()
             local res = assert(client:send {
               method = "POST",
               path = "/consumers/" .. consumer.id .. "/plugins",
@@ -655,7 +653,7 @@ describe("Admin API (#" .. strategy .. "): ", function()
         end)
         it_content_types("returns 409 on conflict", function(content_type)
           return function()
-            local consumer = bp.consumers:insert_ws({}, dao.workspaces:find_all({name = "default"})[1])
+            local consumer = bp.consumers:insert()
             -- insert initial plugin
             local res = assert(client:send {
               method = "POST",
@@ -700,9 +698,9 @@ describe("Admin API (#" .. strategy .. "): ", function()
       end)
     end)
     describe("GET", function()
-      it("retrieves the first page", function()
-        local consumer = bp.consumers:insert_ws({}, dao.workspaces:find_all({name = "default"})[1])
-        bp.rewriter_plugins:insert_ws({ consumer = { id = consumer.id }},dao.workspaces:find_all({name = "default"})[1])
+      it("retrieves the first page blab", function()
+        local consumer = bp.consumers:insert()
+        bp.rewriter_plugins:insert({ consumer = { id = consumer.id }})
 
         local res = assert(client:send {
           method = "GET",
@@ -713,7 +711,7 @@ describe("Admin API (#" .. strategy .. "): ", function()
         assert.equal(1, #json.data)
       end)
       it("ignores an invalid body", function()
-        local consumer = bp.consumers:insert_ws({}, dao.workspaces:find_all({name = "default"})[1])
+        local consumer = bp.consumers:insert()
         local res = assert(client:send {
           method = "GET",
           path = "/consumers/" .. consumer.id .. "/plugins",
@@ -747,8 +745,8 @@ describe("Admin API (#" .. strategy .. "): ", function()
     describe("GET", function()
 
       it("retrieves by id", function()
-        local consumer = bp.consumers:insert_ws({}, dao.workspaces:find_all({name = "default"})[1])
-        local plugin = bp.rewriter_plugins:insert_ws({ consumer = { id = consumer.id }}, dao.workspaces:find_all({name = "default"})[1])
+        local consumer = bp.consumers:insert()
+        local plugin = bp.rewriter_plugins:insert({ consumer = { id = consumer.id }})
 
         local res = assert(client:send {
           method = "GET",
@@ -759,8 +757,8 @@ describe("Admin API (#" .. strategy .. "): ", function()
         assert.same(plugin, json)
       end)
       it("retrieves by consumer id when it has spaces", function()
-        local consumer = bp.consumers:insert_ws({}, dao.workspaces:find_all({name = "default"})[1])
-        local plugin = bp.rewriter_plugins:insert_ws({ consumer = { id = consumer.id }}, dao.workspaces:find_all({name = "default"})[1])
+        local consumer = bp.consumers:insert()
+        local plugin = bp.rewriter_plugins:insert({ consumer = { id = consumer.id }})
 
         local res = assert(client:send {
           method = "GET",
@@ -771,8 +769,8 @@ describe("Admin API (#" .. strategy .. "): ", function()
         assert.same(plugin, json)
       end)
       it("only retrieves if associated to the correct consumer", function()
-        local consumer = bp.consumers:insert_ws({}, dao.workspaces:find_all({name = "default"})[1])
-        local plugin = bp.rewriter_plugins:insert_ws({ consumer = { id = consumer.id }}, dao.workspaces:find_all({name = "default"})[1])
+        local consumer = bp.consumers:insert()
+        local plugin = bp.rewriter_plugins:insert({ consumer = { id = consumer.id }})
 
         -- Create an consumer and try to query our plugin through it
         ngx.ctx.workspaces = dao.workspaces:find_all()
@@ -789,8 +787,8 @@ describe("Admin API (#" .. strategy .. "): ", function()
         assert.res_status(404, res)
       end)
       it("ignores an invalid body", function()
-        local consumer = bp.consumers:insert_ws({}, dao.workspaces:find_all({name = "default"})[1])
-        local plugin = bp.rewriter_plugins:insert_ws({ consumer = { id = consumer.id }}, dao.workspaces:find_all({name = "default"})[1])
+        local consumer = bp.consumers:insert()
+        local plugin = bp.rewriter_plugins:insert({ consumer = { id = consumer.id }})
 
         local res = assert(client:send {
           method = "GET",
