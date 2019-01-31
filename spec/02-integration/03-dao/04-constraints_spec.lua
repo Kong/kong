@@ -1,14 +1,6 @@
 local utils = require "kong.tools.utils"
-<<<<<<< HEAD
-local DB = require "kong.db"
-local helper = require "spec.helpers"
-local singletons = require "kong.singletons"
-||||||| merged common ancestors
-local DB = require "kong.db"
-=======
 local errors = require "kong.db.errors"
 local helpers = require "spec.helpers"
->>>>>>> 0.15.0
 
 for _, strategy in helpers.each_strategy() do
   describe("Model (Constraints) with DB: #" .. strategy, function()
@@ -16,44 +8,15 @@ for _, strategy in helpers.each_strategy() do
     local plugin_fixture
     local db
 
-<<<<<<< HEAD
-    setup(function()
-      db = assert(DB.new(kong_config, kong_config.database))
-      assert(db:init_connector())
-
-      dao = assert(Factory.new(kong_config, db))
-      assert(dao:run_migrations())
-
-      singletons.dao = dao
-      singletons.db = db
-||||||| merged common ancestors
-    setup(function()
-      db = assert(DB.new(kong_config, kong_config.database))
-      assert(db:init_connector())
-
-      dao = assert(Factory.new(kong_config, db))
-      assert(dao:run_migrations())
-=======
     lazy_setup(function()
       _, db = helpers.get_db_utils(strategy, {})
->>>>>>> 0.15.0
     end)
 
     before_each(function()
-<<<<<<< HEAD
-      dao:truncate_tables()
-      assert(db:truncate())
-      helper.register_consumer_relations(dao)
-      ngx.ctx.workspaces = dao.workspaces:find_all({ name = "default" })
-||||||| merged common ancestors
-      dao:truncate_tables()
-      assert(db:truncate())
-=======
       assert(db:truncate("plugins"))
       assert(db:truncate("consumers"))
       assert(db:truncate("routes"))
       assert(db:truncate("services"))
->>>>>>> 0.15.0
 
       local service, _, err_t = db.services:insert({
         protocol = "http",
