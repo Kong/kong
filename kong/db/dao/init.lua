@@ -172,7 +172,12 @@ local function check_update(self, key, entity, options, name)
   if read_before_write then
     local err, err_t
     if name then
-       rbw_entity, err, err_t = self.strategy:select_by_field(name, key, options)
+      -- XXX EE: This changes the behavior of finding entities by a
+      -- field from ce to EE. For EE, call resolve_shared_entity_id
+      -- that pivots through workspace_entities
+      rbw_entity, err = ws_helper.resolve_shared_entity_id(self.table_name,
+        {[name] = key}, workspaceable[self.schema.name])
+      -- rbw_entity, err, err_t = self.strategy:select_by_field(name, key, options)
     else
        rbw_entity, err, err_t = self.strategy:select(key, options)
     end
@@ -448,15 +453,25 @@ local function generate_foreign_key_methods(schema)
           return nil, err, err_t
         end
 
-        local pk, err_t = ws_helper.resolve_shared_entity_id(self.schema.name,
-                                              { [name] = unique_value },
-                                              workspaceable[self.schema.name])
         if err_t then
           return nil, tostring(err_t), err_t
         end
-        if pk then
-          return self:update(pk, entity_to_update, options)
+
+        -- XXX EE: This changes the behavior of finding entities by a
+        -- field from ce to EE. For EE, call resolve_shared_entity_id
+        -- that pivots through workspace_entities
+        do
+          return self:update({id = entity_to_update.id}, entity_to_update, options)
         end
+
+        -- local pk, err_t = ws_helper.resolve_shared_entity_id(self.schema.name,
+        --                                       { [name] = unique_value },
+        --                                       workspaceable[self.schema.name])
+
+        -- ngx.log(ngx.ERR, [[update_by_]], name,": " , require("inspect")({
+        --   entity_to_update, rbw_entity, err, err_t
+        -- }))
+
 
         local row, err_t = self.strategy:update_by_field(name, unique_value,
                                                          entity_to_update, options)

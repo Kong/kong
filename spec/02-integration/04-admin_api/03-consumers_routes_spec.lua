@@ -702,7 +702,7 @@ describe("Admin API (#" .. strategy .. "): ", function()
     describe("GET", function()
       it("retrieves the first page", function()
         local consumer = bp.consumers:insert_ws({}, dao.workspaces:find_all({name = "default"})[1])
-        bp.rewriter_plugins:insert({ consumer = { id = consumer.id }})
+        bp.rewriter_plugins:insert_ws({ consumer = { id = consumer.id }},dao.workspaces:find_all({name = "default"})[1])
 
         local res = assert(client:send {
           method = "GET",
