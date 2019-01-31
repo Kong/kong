@@ -7,6 +7,7 @@ return {
     primary_key = { "id" },
     endpoint_key = "group",
     cache_key = { "consumer", "group" },
+    workspaceable = true,
     fields = {
       { id = typedefs.uuid },
       { created_at = typedefs.auto_timestamp_s },
