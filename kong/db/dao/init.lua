@@ -547,10 +547,10 @@ local function generate_foreign_key_methods(schema)
 
         -- if workspace present and pk is nil
         -- entity not found, return
-        local ws_scope = workspaces.get_workspaces()
-        if #ws_scope > 0 then
-          return true
-        end
+        --local ws_scope = workspaces.get_workspaces()
+        --if #ws_scope > 0 then
+        --  return true
+        --end
 
         if options ~= nil then
           validate_options_type(options)
@@ -658,9 +658,9 @@ function DAO:select(primary_key, options)
     return nil, tostring(err_t), err_t
   end
 
-  if not ok then
-    return nil
-  end
+  --if not ok then
+  --  return nil
+  --end
 
   local row, err_t = self.strategy:select(primary_key, options)
   if err_t then
@@ -869,10 +869,10 @@ function DAO:update(primary_key, entity, options)
     return nil, tostring(err_t), err_t
   end
 
-  if not ok then
-    local err_t = self.errors:not_found(primary_key)
-    return nil, tostring(err_t), err_t
-  end
+  --if not ok then
+ --   local err_t = self.errors:not_found(primary_key)
+ --   return nil, tostring(err_t), err_t
+ -- end
 
   local entity_to_update, rbw_entity, err, err_t = check_update(self,
                                                                 primary_key,
@@ -889,7 +889,7 @@ function DAO:update(primary_key, entity, options)
     })
     return nil, tostring(err_t), err_t
   end
-  ws_helper.apply_unique_per_ws(self.schema.name, entity_to_update, constraints)
+  --ws_helper.apply_unique_per_ws(self.schema.name, entity_to_update, constraints)
 
   local row, err_t = self.strategy:update(primary_key, entity_to_update, options)
   if not row then
