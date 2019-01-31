@@ -6,14 +6,6 @@ for _, strategy in helpers.each_strategy() do
     local proxy_client
     local admin_client
 
-<<<<<<< HEAD
-    setup(function()
-      local bp = helpers.get_db_utils(strategy)
-||||||| merged common ancestors
-    setup(function()
-      local bp = helpers.get_db_utils(strategy)
-
-=======
     lazy_setup(function()
       local bp = helpers.get_db_utils(strategy, {
         "routes",
@@ -21,7 +13,6 @@ for _, strategy in helpers.each_strategy() do
         "plugins",
       })
 
->>>>>>> 0.15.0
       local route = bp.routes:insert {
         hosts = { "bot.com" },
       }
@@ -31,6 +22,7 @@ for _, strategy in helpers.each_strategy() do
         name     = "bot-detection",
         config   = {},
       }
+
       assert(helpers.start_kong({
         database   = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
