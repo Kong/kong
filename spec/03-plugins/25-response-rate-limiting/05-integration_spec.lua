@@ -27,11 +27,6 @@ describe("Plugin: rate-limiting (integration)", function()
 
   lazy_setup(function()
     -- only to run migrations
-<<<<<<< HEAD
-    select(3, helpers.get_db_utils())
-||||||| merged common ancestors
-    helpers.get_db_utils()
-=======
     bp = helpers.get_db_utils(nil, {
       "routes",
       "services",
@@ -39,7 +34,6 @@ describe("Plugin: rate-limiting (integration)", function()
     }, {
       "response-ratelimiting",
     })
->>>>>>> 0.15.0
   end)
 
   lazy_teardown(function()
