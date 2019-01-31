@@ -1,4 +1,5 @@
 local MetaSchema = require "kong.db.schema.metaschema"
+local socket_url = require "socket.url"
 local typedefs = require "kong.db.schema.typedefs"
 local Entity = require "kong.db.schema.entity"
 local utils = require "kong.tools.utils"
@@ -19,7 +20,7 @@ local ipairs = ipairs
 -- @return boolean indicating whether string is an URL.
 local function validate_url(v)
   if v and type(v) == "string" then
-    local url = require("socket.url").parse(v)
+    local url = socket_url.parse(v)
     if url and not url.path then
       url.path = "/"
     end
