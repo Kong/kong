@@ -7,20 +7,6 @@ for _, strategy in helpers.each_strategy() do
     local plugin
     local proxy_client
     local admin_client
-<<<<<<< HEAD
-    local dao
-    local default_ws
-
-    setup(function()
-      local bp, _
-      bp, _, dao = helpers.get_db_utils(strategy)
-||||||| merged common ancestors
-    local dao
-
-    setup(function()
-      local bp, _
-      bp, _, dao = helpers.get_db_utils(strategy)
-=======
     local db
 
     lazy_setup(function()
@@ -30,7 +16,6 @@ for _, strategy in helpers.each_strategy() do
         "services",
         "plugins",
       })
->>>>>>> 0.15.0
 
       local route1 = bp.routes:insert {
         hosts = { "ip-restriction1.com" },
@@ -127,7 +112,6 @@ for _, strategy in helpers.each_strategy() do
           whitelist = { "0.0.0.0/0" },
         },
       })
-      default_ws = dao.workspaces:find_all({name = "default"})[1].id
 
       assert(helpers.start_kong {
         database          = strategy,
@@ -327,19 +311,7 @@ for _, strategy in helpers.each_strategy() do
       })
       assert.res_status(200, res)
 
-<<<<<<< HEAD
-      local cache_key = dao.plugins:cache_key(plugin.name,
-                                              plugin.route_id,
-                                              plugin.service_id,
-                                              plugin.consumer_id) .. default_ws
-||||||| merged common ancestors
-      local cache_key = dao.plugins:cache_key(plugin.name,
-                                              plugin.route_id,
-                                              plugin.service_id,
-                                              plugin.consumer_id)
-=======
       local cache_key = db.plugins:cache_key(plugin)
->>>>>>> 0.15.0
 
       helpers.wait_until(function()
         res = assert(admin_client:send {
