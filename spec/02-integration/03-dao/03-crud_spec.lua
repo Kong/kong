@@ -768,7 +768,7 @@ helpers.for_each_dao(function(kong_config)
       end)
     end)
 
-    describe("errors", function()
+    describe("#flaky errors", function()
       it("returns errors prefixed by the DB type in __tostring()", function()
         local pg_port = kong_config.pg_port
         local pg_timeout = kong_config.pg_timeout
