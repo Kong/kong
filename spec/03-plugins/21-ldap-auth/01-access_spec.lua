@@ -30,13 +30,6 @@ for _, strategy in helpers.each_strategy() do
     local route2
     local plugin2
 
-<<<<<<< HEAD
-    setup(function()
-      local bp, _, _ = helpers.get_db_utils(strategy)
-||||||| merged common ancestors
-    setup(function()
-      local bp = helpers.get_db_utils(strategy)
-=======
     lazy_setup(function()
       local bp = helpers.get_db_utils(strategy, {
         "routes",
@@ -44,7 +37,6 @@ for _, strategy in helpers.each_strategy() do
         "plugins",
         "consumers",
       })
->>>>>>> 0.15.0
 
       local route1 = bp.routes:insert {
         hosts = { "ldap.com" },
@@ -150,6 +142,7 @@ for _, strategy in helpers.each_strategy() do
           attribute = "uid"
         }
       }
+
       assert(helpers.start_kong({
         database   = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
@@ -499,14 +492,6 @@ for _, strategy in helpers.each_strategy() do
     local user
     local anonymous
 
-<<<<<<< HEAD
-    setup(function()
-      local bp, _, _ = helpers.get_db_utils(strategy)
-||||||| merged common ancestors
-    setup(function()
-      local bp = helpers.get_db_utils(strategy)
-
-=======
     lazy_setup(function()
       local bp = helpers.get_db_utils(strategy, {
         "routes",
@@ -516,7 +501,6 @@ for _, strategy in helpers.each_strategy() do
         "keyauth_credentials",
       })
 
->>>>>>> 0.15.0
       local service1 = bp.services:insert({
         path = "/request"
       })
