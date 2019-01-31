@@ -20,7 +20,6 @@ for _, strategy in helpers.each_strategy() do
         "oauth2_credentials",
       })
 
-      helpers.register_consumer_relations(dao)
       helpers.prepare_prefix()
 
       assert(helpers.start_kong({
@@ -253,25 +252,11 @@ for _, strategy in helpers.each_strategy() do
 
     describe("/consumers/:consumer/oauth2/:id", function()
       local credential
-<<<<<<< HEAD
-      before_each(function()
-        dao:truncate_table("oauth2_credentials")
-        dao:truncate_table("consumers")
-        db:truncate("services")
-        helpers.register_consumer_relations(dao)
-||||||| merged common ancestors
-      before_each(function()
-        dao:truncate_table("oauth2_credentials")
-        dao:truncate_table("consumers")
-        db:truncate("services")
-
-=======
 
       lazy_setup(function()
         assert(db:truncate("routes"))
         assert(db:truncate("services"))
         assert(db:truncate("consumers"))
->>>>>>> 0.15.0
         service = bp.services:insert({ host = "oauth2_token.com" })
         consumer = bp.consumers:insert({ username = "bob" })
       end)
@@ -307,14 +292,7 @@ for _, strategy in helpers.each_strategy() do
         it("retrieves credential by id only if the credential belongs to the specified consumer", function()
           bp.consumers:insert {
             username = "alice"
-<<<<<<< HEAD
-					})
-
-||||||| merged common ancestors
-          })
-=======
           }
->>>>>>> 0.15.0
 
           local res = assert(admin_client:send {
             method  = "GET",

@@ -100,14 +100,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
 
     lazy_setup(function()
 
-<<<<<<< HEAD
-
-      local consumer = assert(dao.consumers:insert {
-||||||| merged common ancestors
-      local consumer = assert(dao.consumers:insert {
-=======
       local consumer = admin_api.consumers:insert {
->>>>>>> 0.15.0
         username = "bob"
       }
 
@@ -344,23 +337,6 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
         },
       })
 
-<<<<<<< HEAD
-
-      assert(helpers.start_kong({
-        database    = strategy,
-        trusted_ips = "127.0.0.1",
-        nginx_conf  = "spec/fixtures/custom_nginx.template",
-      }))
-
-||||||| merged common ancestors
-      assert(helpers.start_kong({
-        database    = strategy,
-        trusted_ips = "127.0.0.1",
-        nginx_conf  = "spec/fixtures/custom_nginx.template",
-      }))
-
-=======
->>>>>>> 0.15.0
       proxy_client     = helpers.proxy_client()
       proxy_ssl_client = helpers.proxy_ssl_client()
     end)
@@ -1875,15 +1851,8 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
           }
         })
         local body = cjson.decode(assert.res_status(200, res))
-<<<<<<< HEAD
-        local consumer = dao.consumers:find_all({username = "bob"})[1]
-||||||| merged common ancestors
-
-        local consumer = dao.consumers:find_all({username = "bob"})[1]
-=======
 
         local consumer = db.consumers:select_by_username("bob")
->>>>>>> 0.15.0
         assert.are.equal(consumer.id, body.headers["x-consumer-id"])
         assert.are.equal(consumer.username, body.headers["x-consumer-username"])
         assert.are.equal("userid123", body.headers["x-authenticated-userid"])
@@ -2116,35 +2085,6 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
       it("returns 401 Unauthorized when token has expired", function()
         local token = provision_token()
 
-<<<<<<< HEAD
-        -- Token expires in (5 seconds)
-        ngx.sleep(10)
-
-        local res = assert(proxy_ssl_client:send {
-          method  = "POST",
-          path    = "/request",
-          headers = {
-            ["Host"]      = "oauth2.com",
-            Authorization = "bearer " .. token.access_token
-          }
-        })
-        local body = assert.res_status(401, res)
-        local json = cjson.decode(body)
-||||||| merged common ancestors
-        -- Token expires in (5 seconds)
-        ngx.sleep(7)
-
-        local res = assert(proxy_ssl_client:send {
-          method  = "POST",
-          path    = "/request",
-          headers = {
-            ["Host"]      = "oauth2.com",
-            Authorization = "bearer " .. token.access_token
-          }
-        })
-        local body = assert.res_status(401, res)
-        local json = cjson.decode(body)
-=======
         -- Token expires in 5 seconds
         local status, json, headers
         helpers.wait_until(function()
@@ -2164,7 +2104,6 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
           client:close()
           return status == 401
         end, 7)
->>>>>>> 0.15.0
         assert.same({ error_description = "The access token is invalid or has expired", error = "invalid_token" }, json)
         assert.are.equal('Bearer realm="service" error="invalid_token" error_description="The access token is invalid or has expired"', headers['www-authenticate'])
       end)
@@ -2233,7 +2172,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
         assert.are.equal("no-store", res.headers["cache-control"])
         assert.are.equal("no-cache", res.headers["pragma"])
       end)
-      pending("expires after 5 seconds", function()
+      it("expires after 5 seconds", function()
         local token = provision_token()
 
         local res = assert(proxy_client:send {
@@ -2245,48 +2184,11 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
           }
         })
         assert.res_status(200, res)
-<<<<<<< HEAD
-        local id = dao.oauth2_tokens:find_all({access_token = token.access_token })[1].id
-        assert.truthy(dao.oauth2_tokens:find({id=id}))
-||||||| merged common ancestors
-
-        local id = dao.oauth2_tokens:find_all({access_token = token.access_token })[1].id
-        assert.truthy(dao.oauth2_tokens:find({id=id}))
-
-=======
 
         local id = db.oauth2_tokens:select_by_access_token(token.access_token).id
         assert.truthy(db.oauth2_tokens:select({ id = id }))
 
->>>>>>> 0.15.0
         -- But waiting after the cache expiration (5 seconds) should block the request
-<<<<<<< HEAD
-        ngx.sleep(5)
-
-        local res = assert(proxy_client:send {
-          method  = "POST",
-          path    = "/request",
-          headers = {
-            ["Host"]      = "oauth2.com",
-            authorization = "bearer " .. token.access_token
-          }
-        })
-        local body = assert.res_status(401, res)
-        local json = cjson.decode(body)
-||||||| merged common ancestors
-        ngx.sleep(7)
-
-        local res = assert(proxy_client:send {
-          method  = "POST",
-          path    = "/request",
-          headers = {
-            ["Host"]      = "oauth2.com",
-            authorization = "bearer " .. token.access_token
-          }
-        })
-        local body = assert.res_status(401, res)
-        local json = cjson.decode(body)
-=======
         local status, json
         helpers.wait_until(function()
           local client = helpers.proxy_client()
@@ -2303,7 +2205,6 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
           json = body and cjson.decode(body)
           return status == 401
         end, 7)
->>>>>>> 0.15.0
         assert.same({ error_description = "The access token is invalid or has expired", error = "invalid_token" }, json)
 
         -- Refreshing the token
@@ -2475,19 +2376,8 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
     local user2
     local anonymous
 
-<<<<<<< HEAD
-    setup(function()
-      bp, db, dao = helpers.get_db_utils(strategy)
-      local service1 = bp.services:insert({
-||||||| merged common ancestors
-    setup(function()
-      bp, db, dao = helpers.get_db_utils(strategy)
-
-      local service1 = bp.services:insert({
-=======
     lazy_setup(function()
       local service1 = admin_api.services:insert({
->>>>>>> 0.15.0
         path = "/request"
       })
 
@@ -2550,32 +2440,6 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
         consumer = { id = user1.id },
       })
 
-<<<<<<< HEAD
-      assert(dao.oauth2_credentials:insert {
-        client_id     = "clientid123",
-        client_secret = "secret123",
-        redirect_uri  = "http://google.com/kong",
-        name          = "testapp",
-        consumer_id   = user2.id,
-      })
-      assert(helpers.start_kong({
-        database   = strategy,
-        nginx_conf = "spec/fixtures/custom_nginx.template",
-      }))
-||||||| merged common ancestors
-      assert(dao.oauth2_credentials:insert {
-        client_id     = "clientid123",
-        client_secret = "secret123",
-        redirect_uri  = "http://google.com/kong",
-        name          = "testapp",
-        consumer_id   = user2.id,
-      })
-
-      assert(helpers.start_kong({
-        database   = strategy,
-        nginx_conf = "spec/fixtures/custom_nginx.template",
-      }))
-=======
       admin_api.oauth2_credentials:insert {
         client_id      = "clientid4567",
         client_secret  = "secret4567",
@@ -2583,7 +2447,6 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
         name           = "testapp",
         consumer       = { id = user2.id },
       }
->>>>>>> 0.15.0
 
       proxy_client = helpers.proxy_client()
     end)

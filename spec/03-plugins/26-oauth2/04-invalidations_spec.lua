@@ -22,18 +22,6 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     before_each(function()
-<<<<<<< HEAD
-      assert(db:truncate())
-      dao:truncate_tables()
-      helpers.register_consumer_relations(dao)
-
-      -- XXX EE-only
-      bp, db, dao = helpers.get_db_utils(strategy)
-
-||||||| merged common ancestors
-      assert(db:truncate())
-      dao:truncate_tables()
-=======
       assert(db:truncate("routes"))
       assert(db:truncate("services"))
       assert(db:truncate("consumers"))
@@ -41,7 +29,6 @@ for _, strategy in helpers.each_strategy() do
       assert(db:truncate("oauth2_tokens"))
       assert(db:truncate("oauth2_credentials"))
       assert(db:truncate("oauth2_authorization_codes"))
->>>>>>> 0.15.0
 
       local service = bp.services:insert()
 
@@ -361,18 +348,9 @@ for _, strategy in helpers.each_strategy() do
           headers = {}
         })
         assert.res_status(200, res)
-<<<<<<< HEAD
-        local res = dao.oauth2_tokens:find_all({access_token=token.access_token})
-        local token_id = res[1].id
-||||||| merged common ancestors
-
-        local res = dao.oauth2_tokens:find_all({access_token=token.access_token})
-        local token_id = res[1].id
-=======
 
         local res = db.oauth2_tokens:select_by_access_token(token.access_token)
         local token_id = res.id
->>>>>>> 0.15.0
         assert.is_string(token_id)
 
         -- Delete token (which triggers invalidation)
@@ -382,6 +360,7 @@ for _, strategy in helpers.each_strategy() do
           headers = {}
         })
         assert.res_status(204, res)
+
         -- ensure cache is invalidated
         helpers.wait_until(function()
           local res = assert(admin_client:send {
