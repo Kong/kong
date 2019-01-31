@@ -235,10 +235,6 @@ for _, strategy in helpers.each_strategy() do
           forward_request_body    = true,
         }
       }
-<<<<<<< HEAD
-||||||| merged common ancestors
-
-=======
 
       bp.plugins:insert {
         name     = "aws-lambda",
@@ -279,7 +275,6 @@ for _, strategy in helpers.each_strategy() do
         }
       }
 
->>>>>>> 0.15.0
       assert(helpers.start_kong{
         database   = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
