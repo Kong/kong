@@ -6,6 +6,7 @@ return {
     name = "keyauth_credentials",
     endpoint_key = "key",
     cache_key = { "key" },
+    workspaceable = true,
     fields = {
       { id = typedefs.uuid },
       { created_at = typedefs.auto_timestamp_s },
