@@ -399,7 +399,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
           assert.are.equal("no-store", res.headers["cache-control"])
           assert.are.equal("no-cache", res.headers["pragma"])
         end)
-        it("#returns an error when only the client_id is being sent", function()
+        it("returns an error when only the client_id is being sent", function()
           local res = assert(proxy_ssl_client:send {
             method  = "POST",
             path    = "/oauth2/authorize",
@@ -2129,7 +2129,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
         local json = cjson.decode(body)
         assert.same({ error = "invalid_request", error_description = "Invalid refresh_token" }, json)
       end)
-      it("#refreshes an valid access token", function()
+      it("refreshes an valid access token", function()
         local token = provision_token()
 
         local res = assert(proxy_ssl_client:send {
@@ -2670,6 +2670,84 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
     end)
   end)
 
+  describe("Plugin: oauth2 regressions", function()
+    it("responds 401 when using global token against non-global plugin", function()
+      -- Regression test for issue:
+      -- https://github.com/Kong/kong/issues/4232
+
+      -- setup
+
+      local route_token = assert(admin_api.routes:insert({
+        hosts     = { "oauth2_regression_4232.com" },
+        protocols = { "http", "https" },
+        service   = admin_api.services:insert(),
+      }))
+
+      admin_api.plugins:insert {
+        name = "oauth2",
+        route = { id = route_token.id },
+        config = {
+          provision_key = "provision123",
+          enable_authorization_code = true,
+          global_credentials = true,
+        }
+      }
+
+      local route_test = assert(admin_api.routes:insert({
+        hosts     = { "oauth2_regression_4232_test.com" },
+        protocols = { "http", "https" },
+        service   = admin_api.services:insert(),
+      }))
+
+      admin_api.plugins:insert {
+        name = "oauth2",
+        route = { id = route_test.id },
+        config = {
+          enable_client_credentials = true,
+          global_credentials = false,
+        }
+      }
+
+      local consumer = admin_api.consumers:insert {
+        username = "4232",
+      }
+
+      admin_api.oauth2_credentials:insert {
+        client_id = "clientid_4232",
+        client_secret = "secret_4232",
+        redirect_uris = { "http://google.com/kong" },
+        name = "4232_app",
+        consumer = { id = consumer.id },
+      }
+
+      -- /setup
+
+      local token = provision_token("oauth2_regression_4232.com", nil,
+                                    "clientid_4232",
+                                    "secret_4232")
+
+      local proxy_ssl_client = helpers.proxy_ssl_client()
+
+      local res = assert(proxy_ssl_client:send {
+        method  = "POST",
+        path    = "/anything",
+        body    = {
+          access_token = token.access_token
+        },
+        headers = {
+          ["Host"]         = "oauth2_regression_4232_test.com",
+          ["Content-Type"] = "application/json"
+        }
+      })
+      local body = assert.res_status(401, res)
+      local json = cjson.decode(body)
+      assert.same({
+        error_description = "The access token is global, but the current " ..
+                            "plugin is configured without 'global_credentials'",
+        error = "invalid_token",
+      }, json)
+    end)
+  end)
 end)
 
 end

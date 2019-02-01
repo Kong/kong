@@ -123,7 +123,10 @@ local setkeepalive
 
 local function connect(config)
   local phase  = get_phase()
-  if phase == "init" or phase == "init_worker" or ngx.IS_CLI then
+  -- TODO: remove preread from here when the issue with starttls has been fixed
+  -- TODO: make also sure that Cassandra doesn't use LuaSockets on preread after
+  --       starttls has been fixed
+  if phase == "preread" or phase == "init" or phase == "init_worker" or ngx.IS_CLI then
     -- Force LuaSocket usage in the CLI in order to allow for self-signed
     -- certificates to be trusted (via opts.cafile) in the resty-cli
     -- interpreter (no way to set lua_ssl_trusted_certificate).

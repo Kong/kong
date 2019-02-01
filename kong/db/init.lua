@@ -508,7 +508,7 @@ do
     local n_migrations = 0
     local n_pending = 0
 
-    for _, t in ipairs(migrations) do
+    for i, t in ipairs(migrations) do
       log("migrating %s on %s '%s'...", t.subsystem, self.infos.db_desc,
           self.infos.db_name)
 
@@ -558,6 +558,16 @@ do
         end
 
         if run_teardown and strategy_migration.teardown then
+          if run_up then
+            -- ensure schema consensus is reached before running DML queries
+            -- that could span all peers
+            ok, err = self.connector:wait_for_schema_consensus()
+            if not ok then
+              self.connector:close()
+              return nil, prefix_err(self, err)
+            end
+          end
+
           -- kong migrations teardown
           local f = strategy_migration.teardown
 
@@ -578,6 +588,19 @@ do
           end
 
           n_pending = math.max(n_pending - 1, 0)
+
+          if not run_up then
+            -- ensure schema consensus is reached when the next migration to
+            -- run will execute its teardown step, since it may make further
+            -- DML queries; if the next migration runs its up step, it will
+            -- run DDL queries against the same node, so no need to reach
+            -- schema consensus
+            ok, err = self.connector:wait_for_schema_consensus()
+            if not ok then
+              self.connector:close()
+              return nil, prefix_err(self, err)
+            end
+          end
         end
 
         log("%s migrated up to: %s %s", t.subsystem, mig.name,
@@ -585,6 +608,17 @@ do
             and not run_teardown and "(pending)" or "(executed)")
 
         n_migrations = n_migrations + 1
+      end
+
+      if run_up and i == #migrations then
+        -- wait for schema consensus after the last migration has run
+        -- (only if `run_up`, since if not, we just called it from the
+        -- teardown step)
+        ok, err = self.connector:wait_for_schema_consensus()
+        if not ok then
+          self.connector:close()
+          return nil, prefix_err(self, err)
+        end
       end
     end
 
@@ -599,21 +633,6 @@ do
 
     if n_pending > 0 then
       log("%d pending", n_pending)
-    end
-
-    if run_up then
-      ok, err = self.connector:post_run_up_migrations()
-      if not ok then
-        self.connector:close()
-        return nil, prefix_err(self, err)
-      end
-
-    elseif run_teardown then -- do not run if 'run_up' is already 'true'
-      ok, err = self.connector:post_run_teardown_migrations()
-      if not ok then
-        self.connector:close()
-        return nil, prefix_err(self, err)
-      end
     end
 
     self.connector:close()

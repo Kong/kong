@@ -5,6 +5,7 @@ local cjson   = require "cjson"
 for _, strategy in helpers.each_strategy() do
   describe("Plugin: request-transformer (access) [#" .. strategy .. "]", function()
     local proxy_client
+    local upstream_host = helpers.mock_upstream_host .. ':' .. helpers.mock_upstream_port
 
     lazy_setup(function()
       local bp = helpers.get_db_utils(strategy, {
@@ -17,8 +18,44 @@ for _, strategy in helpers.each_strategy() do
         hosts = { "test1.com" },
       })
 
-      local route2 = bp.routes:insert({
-        hosts = { "test2.com" },
+      local route_nph = bp.routes:insert({
+        hosts = { "no-preserve-host.test" },
+        preserve_host = false,
+      })
+
+      local route_ph = bp.routes:insert({
+        hosts = { "preserve-host.test" },
+        preserve_host = true,
+      })
+
+      local route_ph_ah = bp.routes:insert({
+        hosts = { "preserve-host-add-host.test" },
+        preserve_host = true,
+      })
+
+      local route_nph_ah = bp.routes:insert({
+        hosts = { "no-preserve-host-add-host.test" },
+        preserve_host = false,
+      })
+
+      local route_ph_rh = bp.routes:insert({
+        hosts = { "preserve-host-replace-host.test" },
+        preserve_host = true,
+      })
+
+      local route_nph_rh = bp.routes:insert({
+        hosts = { "no-preserve-host-replace-host.test" },
+        preserve_host = false,
+      })
+
+      local route_rename_host = bp.routes:insert({
+        hosts = { "rename-host.test" },
+        preserve_host = false,
+      })
+
+      local route_append_host = bp.routes:insert({
+        hosts = { "append-host.test" },
+        preserve_host = false,
       })
 
       local route3 = bp.routes:insert({
@@ -62,11 +99,81 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.plugins:insert {
-        route = { id = route2.id },
+        route = { id = route_nph.id },
         name     = "request-transformer",
         config   = {
-          add    = {
-            headers = {"host:mark"}
+          add = {
+            headers = {"x-foo:bar"}
+          }
+        }
+      }
+
+      bp.plugins:insert {
+        route = { id = route_ph.id },
+        name     = "request-transformer",
+        config   = {
+          add = {
+            headers = {"x-foo:bar"}
+          }
+        }
+      }
+
+      bp.plugins:insert {
+        route = { id = route_nph_ah.id },
+        name     = "request-transformer",
+        config   = {
+          add = {
+            headers = {"host:added"}
+          }
+        }
+      }
+
+      bp.plugins:insert {
+        route = { id = route_ph_ah.id },
+        name     = "request-transformer",
+        config   = {
+          add = {
+            headers = {"host:added"}
+          }
+        }
+      }
+
+      bp.plugins:insert {
+        route = { id = route_nph_rh.id },
+        name     = "request-transformer",
+        config   = {
+          replace = {
+            headers = {"host:replaced"}
+          }
+        }
+      }
+
+      bp.plugins:insert {
+        route = { id = route_ph_rh.id },
+        name     = "request-transformer",
+        config   = {
+          replace = {
+            headers = {"host:replaced"}
+          }
+        }
+      }
+
+      bp.plugins:insert {
+        route = { id = route_rename_host.id },
+        name     = "request-transformer",
+        config   = {
+          rename = {
+            headers = {"host:foo"}
+          }
+        }
+      }
+
+      bp.plugins:insert {
+        route = { id = route_append_host.id },
+        name     = "request-transformer",
+        config   = {
+          append = {
+            headers = {"host:appended"}
           }
         }
       }
@@ -357,6 +464,24 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("rename", function()
+
+      describe("Host header", function()
+        it("rename is no-op for Host", function()
+          local res = assert(proxy_client:send {
+            method  = "GET",
+            path    = "/get",
+            headers = {
+              ["Content-Type"] = "application/json",
+              host             = "rename-host.test"
+            }
+          })
+          assert.response(res).has.status(200)
+          local json = assert.response(res).has.jsonbody()
+          local value = assert.has.header("host", json)
+          assert.equals(upstream_host, value)
+        end)
+      end)
+
       it("specified header", function()
         local res = assert(proxy_client:send {
           method  = "GET",
@@ -653,6 +778,39 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("replace", function()
+
+      describe("Host header", function()
+        it("preserve_host = true, host change in plugin: transformed host", function()
+          local res = assert(proxy_client:send {
+            method  = "GET",
+            path    = "/get",
+            headers = {
+              ["Content-Type"] = "application/json",
+              host             = "preserve-host-replace-host.test"
+            }
+          })
+          assert.response(res).has.status(200)
+          local json = assert.response(res).has.jsonbody()
+          local value = assert.has.header("host", json)
+          assert.equals("replaced", value)
+        end)
+
+        it("preserve_host = false, host change in plugin: transformed host", function()
+          local res = assert(proxy_client:send {
+            method  = "GET",
+            path    = "/get",
+            headers = {
+              ["Content-Type"] = "application/json",
+              host             = "no-preserve-host-replace-host.test"
+            }
+          })
+          assert.response(res).has.status(200)
+          local json = assert.response(res).has.jsonbody()
+          local value = assert.has.header("host", json)
+          assert.equals("replaced", value)
+        end)
+      end)
+
       it("specified header if it exist", function()
         local res = assert( proxy_client:send {
           method  = "GET",
@@ -858,6 +1016,69 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("add", function()
+
+      describe("Host header", function()
+        it("preserve_host = true, no host change in plugin: preserved host", function()
+          local res = assert(proxy_client:send {
+            method  = "GET",
+            path    = "/get",
+            headers = {
+              ["Content-Type"] = "application/json",
+              host             = "preserve-host.test"
+            }
+          })
+          assert.response(res).has.status(200)
+          local json = assert.response(res).has.jsonbody()
+          local value = assert.has.header("host", json)
+          assert.equals("preserve-host.test", value)
+        end)
+
+        it("preserve_host = false, no host change in plugin: upstream host", function()
+          local res = assert(proxy_client:send {
+            method  = "GET",
+            path    = "/get",
+            headers = {
+              ["Content-Type"] = "application/json",
+              host             = "no-preserve-host.test"
+            }
+          })
+          assert.response(res).has.status(200)
+          local json = assert.response(res).has.jsonbody()
+          local value = assert.has.header("host", json)
+          assert.equals(upstream_host, value)
+        end)
+
+        it("preserve_host = true, is no-op for Host: preserved host", function()
+          local res = assert(proxy_client:send {
+            method  = "GET",
+            path    = "/get",
+            headers = {
+              ["Content-Type"] = "application/json",
+              host             = "preserve-host-add-host.test"
+            }
+          })
+          assert.response(res).has.status(200)
+          local json = assert.response(res).has.jsonbody()
+          local value = assert.has.header("host", json)
+          assert.equals("preserve-host-add-host.test", value)
+        end)
+
+        it("preserve_host = false, is no-op for Host: upstream host", function()
+          local res = assert(proxy_client:send {
+            method  = "GET",
+            path    = "/get",
+            headers = {
+              ["Content-Type"] = "application/json",
+              host             = "no-preserve-host-add-host.test"
+            }
+          })
+          assert.response(res).has.status(200)
+          local json = assert.response(res).has.jsonbody()
+          local value = assert.has.header("host", json)
+          assert.equals(upstream_host, value)
+        end)
+      end)
+
       it("new headers", function()
         local res = assert(proxy_client:send {
           method  = "GET",
@@ -1030,6 +1251,7 @@ for _, strategy in helpers.each_strategy() do
         local value = assert.request(res).has.queryparam("q1")
         assert.equals("v1", value)
       end)
+
       it("does not change or append value to querystring on GET if querystring exists", function()
         local res = assert(proxy_client:send {
           method  = "GET",
@@ -1046,23 +1268,27 @@ for _, strategy in helpers.each_strategy() do
         local value = assert.request(res).has.queryparam("q1")
         assert.equals("v2", value)
       end)
-      it("should not change the host header", function()
-        local res = assert(proxy_client:send {
-          method  = "GET",
-          path    = "/get",
-          headers = {
-            ["Content-Type"] = "application/json",
-            host             = "test2.com"
-          }
-        })
-        assert.response(res).has.status(200)
-        local json = assert.response(res).has.jsonbody()
-        local value = assert.has.header("host", json)
-        assert.equals(helpers.mock_upstream_host .. ':' .. helpers.mock_upstream_port, value)
-      end)
     end)
 
-    describe("append ", function()
+    describe("append", function()
+
+      describe("Host header", function()
+        it("append is no-op for Host", function()
+          local res = assert(proxy_client:send {
+            method  = "GET",
+            path    = "/get",
+            headers = {
+              ["Content-Type"] = "application/json",
+              host             = "append-host.test"
+            }
+          })
+          assert.response(res).has.status(200)
+          local json = assert.response(res).has.jsonbody()
+          local value = assert.has.header("host", json)
+          assert.equals(upstream_host, value)
+        end)
+      end)
+
       it("new header if header does not exists", function()
         local res = assert(proxy_client:send {
           method  = "GET",

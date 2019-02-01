@@ -1,5 +1,6 @@
 # Table of Contents
 
+- [1.0.3](#103)
 - [1.0.2](#102)
 - [1.0.1](#101)
 - [1.0.0](#100)
@@ -21,6 +22,52 @@
 - [0.10.1](#0101---20170327)
 - [0.10.0](#0100---20170307)
 - [0.9.9 and prior](#099---20170202)
+
+## [1.0.3]
+
+> Released on: 2019/01/31
+
+This is a patch release addressing several regressions introduced some plugins,
+and improving the robustness of our migrations and core components.
+
+### Core
+
+- Improve Cassandra schema consensus logic when running migrations.
+  [#4233](https://github.com/Kong/kong/pull/4233)
+- Ensure Routes that don't have a `regex_priority` (e.g. if it was removed as
+  part of a `PATCH`) don't prevent the router from being built.
+  [#4255](https://github.com/Kong/kong/pull/4255)
+- Reduce rebuild time of the load balancer by retrieving larger sized pages of
+  Target entities.
+  [#4206](https://github.com/Kong/kong/pull/4206)
+- Ensure schema definitions of Arrays and Sets with `default = {}` are
+  JSON-encoded as `[]`.
+  [#4257](https://github.com/Kong/kong/pull/4257)
+
+##### Plugins
+
+- request-transformer: fix a regression causing the upstream Host header to be
+  unconditionally set to that of the client request (effectively, as if the
+  Route had `preserve_host` enabled).
+  [#4253](https://github.com/Kong/kong/pull/4253)
+- cors: fix a regression that prevented regex origins from being matched.
+  Regexes such as `(.*[.])?example\.org` can now be used to match all
+  sub-domains, while regexes containing `:` will be evaluated against the
+  scheme and port of an origin (i.e.
+  `^https?://(.*[.])?example\.org(:8000)?$`).
+  [#4261](https://github.com/Kong/kong/pull/4261)
+- oauth2: fix a runtime error when using a global token against a plugin
+  not configured as global (i.e. with `global_credentials = false`).
+  [#4262](https://github.com/Kong/kong/pull/4262)
+
+##### Admin API
+
+- Improve performance of the `PUT` method in auth plugins endpoints (e.g.
+  `/consumers/:consumers/basic-auth/:basicauth_credentials`) by preventing
+  a unnecessary read-before-write.
+  [#4206](https://github.com/Kong/kong/pull/4206)
+
+[Back to TOC](#table-of-contents)
 
 ## [1.0.2]
 
@@ -3342,6 +3389,7 @@ First version running with Cassandra.
 
 [Back to TOC](#table-of-contents)
 
+[1.0.3]: https://github.com/Kong/kong/compare/1.0.2...1.0.3
 [1.0.2]: https://github.com/Kong/kong/compare/1.0.1...1.0.2
 [1.0.1]: https://github.com/Kong/kong/compare/1.0.0...1.0.1
 [1.0.0]: https://github.com/Kong/kong/compare/0.15.0...1.0.0

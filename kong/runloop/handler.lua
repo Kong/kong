@@ -110,10 +110,15 @@ do
 
     sort(routes, function(r1, r2)
       r1, r2 = r1.route, r2.route
-      if r1.regex_priority == r2.regex_priority then
+
+      local rp1 = r1.regex_priority or 0
+      local rp2 = r2.regex_priority or 0
+
+      if rp1 == rp2 then
         return r1.created_at < r2.created_at
       end
-      return r1.regex_priority > r2.regex_priority
+
+      return rp1 > rp2
     end)
 
     local err
@@ -585,7 +590,7 @@ return {
   rewrite = {
     before = function(ctx)
       ctx.KONG_REWRITE_START = get_now()
-      mesh.rewrite()
+      mesh.rewrite(ctx)
     end,
     after = function(ctx)
       ctx.KONG_REWRITE_TIME = get_now() - ctx.KONG_REWRITE_START -- time spent in Kong's rewrite_by_lua

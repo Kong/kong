@@ -635,7 +635,10 @@ local function load(path, custom_conf)
 
   -- load defaults, they are our mandatory base
   local s = pl_stringio.open(kong_default_conf)
-  local defaults, err = pl_config.read(s)
+  local defaults, err = pl_config.read(s, {
+    smart = false,
+    list_delim = "_blank_" -- mandatory but we want to ignore it
+  })
   s:close()
   if not defaults then
     return nil, "could not load default conf: " .. err
