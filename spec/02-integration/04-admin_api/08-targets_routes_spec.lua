@@ -24,12 +24,13 @@ for _, strategy in helpers.each_strategy() do
 describe("Admin API #" .. strategy, function()
   local bp
   local db
+  local dao
   local client
   local weight_default, weight_min, weight_max = 100, 0, 1000
   local default_port = 8000
 
   lazy_setup(function()
-    bp, db = helpers.get_db_utils(strategy, {
+    bp, db, dao = helpers.get_db_utils(strategy, {
       "upstreams",
       "targets",
     })
@@ -45,6 +46,7 @@ describe("Admin API #" .. strategy, function()
 
   before_each(function()
     client = assert(helpers.admin_client())
+    ngx.ctx.workspaces = dao.workspaces:find_all({name = "default"})
   end)
 
   after_each(function()
@@ -393,6 +395,8 @@ describe("Admin API #" .. strategy, function()
                   },
                 }
               }
+              },
+              name = upstream.name
             }
           })
           assert.same(200, status)
