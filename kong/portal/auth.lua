@@ -20,7 +20,6 @@ local auth_plugins = {
 
 local function execute_plugin(plugin_name, dao_factory, conf_key, workspace, phases)
   local conf = ws_helper.retrieve_ws_config(conf_key, workspace)
-  conf = utils.deep_copy(conf or {})
   local prepared_plugin = ee_api.prepare_plugin(ee_api.apis.PORTAL,
                                                 dao_factory, plugin_name, conf)
 
@@ -139,7 +138,7 @@ function _M.authenticate_api_session(self, dao_factory, helpers)
     execute_plugin("session", dao_factory, ws_constants.PORTAL_SESSION_CONF,
                                          workspace, {"access", "header_filter"})
   end
-  
+
   verify_consumer(self, dao_factory, helpers)
 
   if self.consumer then
@@ -156,18 +155,18 @@ function _M.authenticate_gui_session(self, dao_factory, helpers)
   local workspace = ws_helper.get_workspace()
   local portal_auth = ws_helper.retrieve_ws_config(ws_constants.PORTAL_AUTH,
                                                                     workspace)
-  
+
   if portal_auth == nil or portal_auth == '' then
     self.is_authenticated = true
     return
   end
-      
+
   _M.validate_auth_plugin(self, dao_factory, helpers)
 
   if portal_auth == "openid-connect" then
     -- check if user has valid session
     local has_session = check_oidc_session()
-    
+
     -- assume unauthenticated if no session
     if not has_session then
       self.is_authenticated = false
