@@ -773,6 +773,19 @@ describe("Admin API #" .. kong_config.database, function()
         },
       }
 
+      local inputs_hmac = {
+        ["application/x-www-form-urlencoded"] = {
+          name = "hmac-auth",
+          ["config.clock_skew"] = "600",
+        },
+        ["application/json"] = {
+          name = "hmac-auth",
+          config = {
+            clock_skew = 600,
+          }
+        },
+      }
+
       it_content_types("creates a plugin config", function(content_type)
         return function()
           local res = assert(client:send {
@@ -785,6 +798,20 @@ describe("Admin API #" .. kong_config.database, function()
           local json = cjson.decode(body)
           assert.equal("key-auth", json.name)
           assert.same({"apikey", "key"}, json.config.key_names)
+        end
+      end)
+      it_content_types("creates a plugin config using type inference", function(content_type)
+        return function()
+          local res = assert(client:send {
+            method = "POST",
+            path = "/apis/" .. api.id .. "/plugins",
+            body = inputs_hmac[content_type],
+            headers = {["Content-Type"] = content_type}
+          })
+          local body = assert.res_status(201, res)
+          local json = cjson.decode(body)
+          assert.equal("hmac-auth", json.name)
+          assert.same(600, json.config.clock_skew)
         end
       end)
       it_content_types("references API by name too", function(content_type)

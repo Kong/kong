@@ -3,6 +3,7 @@ local crud = require "kong.api.crud_helpers"
 local utils = require "kong.tools.utils"
 local reports = require "kong.reports"
 local endpoints = require "kong.api.endpoints"
+local arguments = require "kong.api.arguments"
 
 
 local get_api_plugin = endpoints.get_collection_endpoint(kong.db.plugins.schema,
@@ -61,6 +62,10 @@ return {
     end,
 
     POST = function(self, dao, helpers)
+      self.args = arguments.load({
+        schema  = kong.db.plugins.schema,
+        request = self.req,
+      })
       return post_api_plugin(self, dao.db.new_db, helpers, post_process)
     end
   },
