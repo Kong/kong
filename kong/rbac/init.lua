@@ -17,9 +17,6 @@ local find   = string.find
 local setmetatable = setmetatable
 local getmetatable = getmetatable
 
-local kong = require "kong.global"
-
-
 
 local LOG_ROUNDS = 9
 
