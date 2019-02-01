@@ -54,6 +54,7 @@ local cache_key_field = { type = "string" }
 local _M  = {
   CUSTOM_STRATEGIES = {
     services = require("kong.db.strategies.cassandra.services"),
+    routes   = require("kong.db.strategies.cassandra.routes"),
     plugins = require("kong.db.strategies.cassandra.plugins"),
   }
 }
@@ -176,7 +177,7 @@ local function build_queries(self)
       delete = fmt([[
         DELETE FROM %s WHERE partition = '%s' AND %s
       ]], schema.name, schema.name, select_bind_args),
-    }
+    }, nil, true
   end
 
   return {
@@ -227,15 +228,16 @@ end
 
 
 local function get_query(self, query_name)
+  local is_partioned = false
   if not self.queries then
     local err
-    self.queries, err = build_queries(self)
+    self.queries, err, is_partioned = build_queries(self)
     if err then
       return nil, err
     end
   end
 
-  return self.queries[query_name]
+  return self.queries[query_name], nil, is_partioned
 end
 
 
@@ -756,7 +758,7 @@ end
 
 do
 
-  local function select_query_page(cql, table_name, primary_key, token, page_size, args)
+  local function select_query_page(cql, table_name, primary_key, token, page_size, args, is_partitioned)
     local token_template
     local args_t
     if token then
@@ -769,12 +771,14 @@ do
         insert(args_t, cassandra.text(token))
       end
     end
-    return fmt("%s %s", cql, token and " AND " ..
+
+    local seperator = is_partitioned and " AND " or " WHERE"
+    return fmt("%s %s", cql, token and seperator ..
                token_template or ""), args_t
   end
 
 
-  function _mt:page_ws(ws_scope, size, offset, cql, args)
+  function _mt:page_ws(ws_scope, size, offset, cql, args, is_partitioned)
     local table_name = self.schema.name
 
     local primary_key = workspaceable[table_name].primary_key
@@ -787,8 +791,9 @@ do
 
     local token = offset
     while(true) do
-      local cql, args_t = select_query_page(cql, table_name,  primary_key, token, size, args)
-      local rows, err = self.connector:query(cql, args_t or args, {}, "read")
+      local _cql, args_t = select_query_page(cql, table_name,  primary_key, token, size, args, is_partitioned)
+      _cql = _cql  .. (token and " ALLOW FILTERING" or "")
+      local rows, err = self.connector:query(_cql, args_t or args, {}, "read")
       if not rows then
         return nil, self.errors:database_error("could not execute page query: "
                                                .. err)
@@ -806,7 +811,7 @@ do
         token = row[primary_key]
       end
 
-      if #rows == 0 then
+      if #rows == 0 or #rows < size then
         break
       end
     end
@@ -833,15 +838,16 @@ do
     local args
     local err
 
+    local is_partitioned = false
     if not foreign_key then
-      cql, err = get_query(self, "select_page")
+      cql, err, is_partitioned = get_query(self, "select_page")
       if err then
         return nil, err
       end
 
     elseif foreign_key and foreign_key_db_columns then
       args = new_tab(#foreign_key_db_columns, 0)
-      cql, err = get_query(self, "select_with_filter")
+      cql, err, is_partitioned = get_query(self, "select_with_filter")
       if err then
         return nil, err
       end
@@ -855,7 +861,7 @@ do
 
     local ws_scope = get_workspaces()
     if #ws_scope > 0 and workspaceable[self.schema.name]  then
-      return self:page_ws(ws_scope, size, offset, cql, args)
+      return self:page_ws(ws_scope, size, offset, cql, args, is_partitioned)
     end
 
     opts.page_size = size

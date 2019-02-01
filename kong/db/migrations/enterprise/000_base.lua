@@ -501,6 +501,9 @@ return {
 
       CREATE INDEX IF NOT EXISTS ON workspaces(name);
 
+      INSERT INTO workspaces(id, name)
+      VALUES (00000000-0000-0000-0000-000000000000, 'default');
+
       CREATE TABLE IF NOT EXISTS workspace_entities(
         workspace_id uuid,
         workspace_name text,
