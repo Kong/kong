@@ -186,6 +186,11 @@ function _M.ws_scope_as_list(table_name)
 end
 
 
+function _M.get_workspace()
+  return ngx.ctx.workspaces and ngx.ctx.workspaces[1] or {}
+end
+
+
 -- used to retrieve workspace specific configuration values.
 -- * config must exist in default configuration or will result
 --   in an error.

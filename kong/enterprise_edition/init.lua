@@ -172,9 +172,9 @@ function _M.prepare_admin(kong_config)
 end
 
 
-function _M.prepare_portal(kong_config, self)
-  local workspace = self.workspace
-
+function _M.prepare_portal(self, kong_config)
+  local workspace = ws_helper.get_workspace()
+  local is_authenticated = self.is_authenticated or false
   local portal_gui_listener = select_listener(kong_config.portal_gui_listeners,
                                               {ssl = false})
   local portal_gui_ssl_listener = select_listener(kong_config.portal_gui_listeners,
@@ -201,11 +201,12 @@ function _M.prepare_portal(kong_config, self)
     PORTAL_GUI_URL = prepare_variable(portal_gui_url),
     PORTAL_GUI_PORT = prepare_variable(portal_gui_port),
     PORTAL_GUI_SSL_PORT = prepare_variable(portal_gui_ssl_port),
+    PORTAL_IS_AUTHENTICATED = prepare_variable(is_authenticated),
+    PORTAL_GUI_USE_SUBDOMAINS = prepare_variable(kong_config.portal_gui_use_subdomains),
     RBAC_ENFORCED = prepare_variable(rbac_enforced),
     RBAC_HEADER = prepare_variable(kong_config.rbac_auth_header),
     KONG_VERSION = prepare_variable(meta.versions.package),
-    WORKSPACE = prepare_variable(workspace.name),
-    PORTAL_GUI_USE_SUBDOMAINS = prepare_variable(kong_config.portal_gui_use_subdomains)
+    WORKSPACE = prepare_variable(workspace.name)
   }
 end
 
