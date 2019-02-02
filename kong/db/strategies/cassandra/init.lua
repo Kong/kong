@@ -231,13 +231,13 @@ local function get_query(self, query_name)
   local is_partioned = false
   if not self.queries then
     local err
-    self.queries, err, is_partioned = build_queries(self)
+    self.queries, err, self.is_partioned = build_queries(self)
     if err then
       return nil, err
     end
   end
 
-  return self.queries[query_name], nil, is_partioned
+  return self.queries[query_name], nil, self.is_partioned
 end
 
 
@@ -761,6 +761,7 @@ do
   local function select_query_page(cql, table_name, primary_key, token, page_size, args, is_partitioned)
     local token_template
     local args_t
+
     if token then
       args_t = utils.deep_copy(args or {})
       token_template = fmt(" %s > ? LIMIT %s", primary_key, page_size)
