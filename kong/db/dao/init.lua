@@ -185,6 +185,7 @@ local function check_update(self, key, entity, options, name)
       return nil, nil, err, err_t
     end
 
+    ws_helper.remove_ws_prefix(self.schema.name, rbw_entity)
     if rbw_entity then
       entity_to_update = self.schema:merge_values(entity_to_update, rbw_entity)
     else
@@ -904,7 +905,8 @@ function DAO:update(primary_key, entity, options)
     })
     return nil, tostring(err_t), err_t
   end
-  --ws_helper.apply_unique_per_ws(self.schema.name, entity_to_update, constraints)
+
+  ws_helper.apply_unique_per_ws(self.schema.name, entity_to_update, constraints)
 
   local row, err_t = self.strategy:update(primary_key, entity_to_update, options)
   if not row then
