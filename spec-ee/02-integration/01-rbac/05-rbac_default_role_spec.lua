@@ -1,6 +1,7 @@
 local helpers    = require "spec.helpers"
 local cjson      = require "cjson"
 local ee_helpers = require "spec-ee.helpers"
+local ssl_fixtures = require "spec.fixtures.ssl"
 
 
 for _, strategy in helpers.each_strategy() do
@@ -144,8 +145,8 @@ for _, strategy in helpers.each_strategy() do
               ["Content-Type"]     = "application/json",
             },
             body  = {
-              cert="-----CERTIFICATE-----",
-              key="-----CERTIFICATE-----",
+              cert=ssl_fixtures.cert,
+              key=ssl_fixtures.key,
             },
           })
 
@@ -164,8 +165,8 @@ for _, strategy in helpers.each_strategy() do
               ["Content-Type"]     = "application/json",
             },
             body  = {
-              cert="-----CERTIFICATE-----",
-              key="-----CERTIFICATE-----",
+              cert=ssl_fixtures.cert,
+              key=ssl_fixtures.key,
             },
           })
 
@@ -198,8 +199,8 @@ for _, strategy in helpers.each_strategy() do
               ["Content-Type"]     = "application/json",
             },
             body  = {
-              cert="-----CERTIFICATE-----",
-              key="-----CERTIFICATE-----",
+              cert=ssl_fixtures.cert,
+              key=ssl_fixtures.key,
               snis="bar.com"
             },
           })
@@ -228,8 +229,8 @@ for _, strategy in helpers.each_strategy() do
               ["Content-Type"]     = "application/json",
             },
             body  = {
-              cert="-----CERTIFICATE-----",
-              key="-----CERTIFICATE-----",
+              cert=ssl_fixtures.cert,
+              key=ssl_fixtures.key,
               snis="foobar.com"
             },
           })
