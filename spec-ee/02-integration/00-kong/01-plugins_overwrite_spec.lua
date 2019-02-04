@@ -2,7 +2,7 @@ local helpers = require "spec.helpers"
 local cjson = require "cjson"
 
 
-describe("Plugins overwrite:", function()
+describe("#flaky Plugins overwrite:", function()
   local bp
   local client
 
