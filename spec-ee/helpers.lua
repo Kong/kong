@@ -273,7 +273,8 @@ function _M.create_admin(email, custom_id, status, bp, dao)
 end
 
 
-_M.portal_api_listeners = conf_loader.parse_listeners(helpers.test_conf.portal_api_listen)
-_M.portal_gui_listeners = conf_loader.parse_listeners(helpers.test_conf.portal_gui_listen)
+local http_flags = { "ssl", "http2", "proxy_protocol", "transparent" }
+_M.portal_api_listeners = conf_loader.parse_listeners(helpers.test_conf.portal_api_listen, http_flags)
+_M.portal_gui_listeners = conf_loader.parse_listeners(helpers.test_conf.portal_gui_listen, http_flags)
 
 return _M
