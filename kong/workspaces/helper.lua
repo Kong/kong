@@ -54,8 +54,9 @@ function _M.apply_unique_per_ws(table_name, params, constraints)
 end
 
 
--- If entity has a unique key it will have workspace_name prefix so we
--- have to search first in the relationship table
+-- If an entity has a unique key, that unique key will have workspace
+-- name prefix. This function searches for that entity in the workspace-
+-- entities table
 function _M.resolve_shared_entity_id(table_name, params, constraints)
   if not constraints or not constraints.unique_keys then
     return
@@ -96,7 +97,7 @@ end
 -- validates that given primary_key belongs to current ws scope
 function _M.validate_pk_exist(table_name, params, constraints)
   if not constraints or not constraints.primary_key then
-    return
+    return true
   end
 
   local ws_scope = get_workspaces()

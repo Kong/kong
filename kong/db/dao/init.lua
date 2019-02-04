@@ -558,17 +558,9 @@ local function generate_foreign_key_methods(schema)
         if err_t then
           return nil, tostring(err_t), err_t
         end
-
         if pk then
           return self:delete(pk)
         end
-
-        -- if workspace present and pk is nil
-        -- entity not found, return
-        --local ws_scope = workspaces.get_workspaces()
-        --if #ws_scope > 0 then
-        --  return true
-        --end
 
         if options ~= nil then
           validate_options_type(options)
@@ -667,18 +659,17 @@ function DAO:select(primary_key, options)
     end
   end
 
-  -- FIXME EE: there's bug - we can't query workspaces with id
   local table_name = self.schema.name
   local constraints = workspaceable[table_name]
+
   local ok, err = ws_helper.validate_pk_exist(table_name, primary_key, constraints)
   if err then
     local err_t = self.errors:database_error(err)
     return nil, tostring(err_t), err_t
   end
-
-  --if not ok then
-  --  return nil
-  --end
+  if not ok then
+    return nil
+  end
 
   local row, err_t = self.strategy:select(primary_key, options)
   if err_t then
@@ -887,10 +878,10 @@ function DAO:update(primary_key, entity, options)
     return nil, tostring(err_t), err_t
   end
 
-  --if not ok then
- --   local err_t = self.errors:not_found(primary_key)
- --   return nil, tostring(err_t), err_t
- -- end
+  if not ok then
+    local err_t = self.errors:not_found(primary_key)
+    return nil, tostring(err_t), err_t
+  end
 
   local entity_to_update, rbw_entity, err, err_t = check_update(self,
                                                                 primary_key,
