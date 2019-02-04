@@ -118,12 +118,11 @@ end
 
 function _M.delete_existing_routes(services)
   for _, service in ipairs(services) do
-    local existing_routes, err = singletons.db.routes:for_service({ id = service.id })
-    if err then
-      return nil, err
-    end
+    for route, err in singletons.db.routes:each_for_service({ id = service.id }) do
+      if err then
+        return nil, err
+      end
 
-    for _, route in ipairs(existing_routes) do
       local _, _, err_t = singletons.db.routes:delete({ id = route.id })
       if err_t then
         return nil, err_t
