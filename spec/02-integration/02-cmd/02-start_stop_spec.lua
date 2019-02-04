@@ -1,6 +1,10 @@
 local helpers = require "spec.helpers"
 
-describe("kong start/stop", function()
+
+
+for _, strategy in helpers.each_strategy() do
+
+describe("kong start/stop #" .. strategy, function()
   lazy_setup(function()
     helpers.get_db_utils(nil, {
       "routes",
@@ -287,5 +291,47 @@ describe("kong start/stop", function()
           dict .. " [SIZE];' directive is defined.", err, nil, true)
       end
     end)
+
+    if strategy == "off" then
+      it("#off does not start with an invalid declarative config file", function()
+        local yaml_file = helpers.make_yaml_file [[
+          _format_version: "1.1"
+          services:
+          - name: "@gobo"
+            url: http://mockbin.org
+          - name: my-service
+            url: http://mockbin.org
+            routes:
+            - name: example-route
+              hosts:
+              - example.test
+              - \\99
+        ]]
+
+        finally(function()
+          os.remove(yaml_file)
+          helpers.stop_kong()
+        end)
+
+        local ok, err = helpers.start_kong({
+          database = "off",
+          declarative_config = yaml_file,
+        })
+        assert.falsy(ok)
+        assert.matches(helpers.unindent[[
+          in 'services':
+            - in entry 1 of 'services':
+              in 'name': invalid value '@gobo': it must only contain alphanumeric and '., -, _, ~' characters
+            - in entry 2 of 'services':
+              in 'routes':
+                - in entry 1 of 'routes':
+                  in 'hosts':
+                    - in entry 2 of 'hosts': invalid value: \\990
+        ]], err, nil, true)
+      end)
+    end
+
   end)
 end)
+
+end
