@@ -23,6 +23,8 @@ local consumers_schema_def = require "kong.db.schema.entities.consumers"
 local services_schema_def = require "kong.db.schema.entities.services"
 local plugins_schema_def = require "kong.db.schema.entities.plugins"
 local routes_schema_def = require "kong.db.schema.entities.routes"
+local dc_blueprints = require "spec.fixtures.dc_blueprints"
+local declarative = require "kong.db.declarative"
 local conf_loader = require "kong.conf_loader"
 local kong_global = require "kong.global"
 local Blueprints = require "spec.fixtures.blueprints"
@@ -110,6 +112,8 @@ local db = assert(DB.new(conf))
 assert(db:init_connector())
 db.plugins:load_plugin_schemas(conf.loaded_plugins)
 local blueprints = assert(Blueprints.new(db))
+local dcbp
+local config_yml
 
 local each_strategy
 
@@ -212,7 +216,15 @@ local function get_db_utils(strategy, tables, plugins)
   end
 
   -- blueprints
-  local bp = assert(Blueprints.new(db))
+  local bp
+  if strategy ~= "off" then
+    bp = assert(Blueprints.new(db))
+    dcbp = nil
+  else
+    bp = assert(dc_blueprints.new(db))
+    bp.cluster_ca:insert()
+    dcbp = bp
+  end
 
   if plugins then
     for _, plugin in ipairs(plugins) do
@@ -1339,7 +1351,8 @@ return {
       error("arg #2 must be a list of tables to truncate")
     end
     env = env or {}
-    local ok, err = prepare_prefix(env.prefix)
+    local prefix = env.prefix or conf.prefix
+    local ok, err = prepare_prefix(prefix)
     if not ok then return nil, err end
 
     truncate_tables(db, tables)
@@ -1347,6 +1360,18 @@ return {
     local nginx_conf = ""
     if env.nginx_conf then
       nginx_conf = " --nginx-conf " .. env.nginx_conf
+    end
+
+    if dcbp then
+      if not config_yml then
+        config_yml = prefix .. "/config.yml"
+        local cfg = dcbp.done()
+        local ok, err = declarative.to_yaml_file(cfg, config_yml)
+        if not ok then
+          return nil, err
+        end
+      end
+      env.declarative_config = config_yml
     end
 
     return kong_exec("start --conf " .. TEST_CONF_PATH .. nginx_conf, env)
@@ -1364,6 +1389,9 @@ return {
     if not preserve_prefix then
       clean_prefix(prefix)
     end
+
+    config_yml = nil
+
     return ok, err
   end,
   -- Only use in CLI tests from spec/02-integration/01-cmd
