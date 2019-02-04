@@ -228,7 +228,6 @@ end
 
 
 local function get_query(self, query_name)
-  local is_partioned = false
   if not self.queries then
     local err
     self.queries, err, self.is_partioned = build_queries(self)

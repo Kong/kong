@@ -448,6 +448,8 @@ local function generate_foreign_key_methods(schema)
           return nil, tostring(err_t), err_t
         end
 
+        -- luacheck: ignore
+
         local entity_to_update, rbw_entity, err, err_t = check_update(self, unique_value,
                                                                       entity, options, name)
         if not entity_to_update then

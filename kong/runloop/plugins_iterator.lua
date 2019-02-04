@@ -15,6 +15,7 @@ local function load_plugin_into_memory(key)
 end
 
 
+-- luacheck: ignore
 local function load_plugin_into_memory_ws(ctx,
                                           route_id,
                                           service_id,
