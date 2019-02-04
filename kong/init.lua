@@ -72,6 +72,7 @@ local runloop = require "kong.runloop.handler"
 local mesh = require "kong.runloop.mesh"
 local singletons = require "kong.singletons"
 local kong_cache = require "kong.cache"
+local declarative = require "kong.db.declarative"
 local ngx_balancer = require "ngx.balancer"
 local kong_resty_ctx = require "kong.resty.ctx"
 local certificate = require "kong.runloop.certificate"
@@ -232,6 +233,45 @@ local function flush_delayed_response(ctx)
 end
 
 
+local function load_declarative_config(config)
+  if not config.database == "off" then
+    return true
+  end
+
+  if not config.declarative_config then
+    -- no configuration yet, just build empty plugins map
+    build_plugins_map(kong.db, utils.uuid())
+    return true
+  end
+
+  local opts = {
+    name = "declarative_config",
+    timeout = 3600,
+  }
+  return concurrency.with_worker_mutex(opts, function()
+    local _, _, value = kong.cache:probe("declarative_config:loaded")
+    if value then
+      return true
+    end
+
+    local dc = declarative.init(config)
+    local entities, err = dc:parse_file(config.declarative_config)
+    if not entities then
+      return nil, config.declarative_config .. ": " .. require"inspect"(err)
+    end
+
+    declarative.load_into_cache(entities)
+    kong.log.notice("declarative config loaded from ", config.declarative_config)
+
+    build_plugins_map(kong.db, utils.uuid())
+
+    mesh.init()
+
+    return true
+  end)
+end
+
+
 function Kong.init()
   -- special math.randomseed from kong.globalpatches not taking any argument.
   -- Must only be called in the init or init_worker phases, to avoid
@@ -337,7 +377,9 @@ function Kong.init()
     certificate.init()
   end
 
-  mesh.init()
+  if kong.configuration.database ~= "off" then
+    mesh.init()
+  end
 
   -- Load plugins as late as possible so that everything is set up
   loaded_plugins = assert(db.plugins:load_plugin_schemas(config.loaded_plugins))
@@ -359,9 +401,11 @@ function Kong.init()
     }
   end
 
-  local _, err = build_plugins_map(db, "init")
-  if err then
-    error("error building initial plugins map: " .. err)
+  if kong.configuration.database ~= "off" then
+    local _, err = build_plugins_map(db, "init")
+    if err then
+      error("error building initial plugins map: " .. err)
+    end
   end
 
   assert(runloop.build_router(db, "init"))
@@ -453,12 +497,17 @@ function Kong.init_worker()
   -- init cache
 
 
+  local db_cache_ttl = kong.configuration.db_cache_ttl
+  if kong.configuration.database == "off" then
+    db_cache_ttl = 0
+  end
+
   local cache, err = kong_cache.new {
     cluster_events    = cluster_events,
     worker_events     = worker_events,
     propagation_delay = kong.configuration.db_update_propagation,
-    ttl               = kong.configuration.db_cache_ttl,
-    neg_ttl           = kong.configuration.db_cache_ttl,
+    ttl               = db_cache_ttl,
+    neg_ttl           = db_cache_ttl,
     resurrect_ttl     = kong.configuration.resurrect_ttl,
     resty_lock_opts   = {
       exptime = 10,
@@ -499,6 +548,11 @@ function Kong.init_worker()
   kong.cluster_events = cluster_events
 
   kong.db:set_events_handler(worker_events)
+
+  ok, err = load_declarative_config(kong.configuration)
+  if not ok then
+    kong.log.err("error loading declarative config file ", err)
+  end
 
 
   runloop.init_worker.before()
