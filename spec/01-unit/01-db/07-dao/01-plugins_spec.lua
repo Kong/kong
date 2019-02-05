@@ -45,32 +45,14 @@ describe("kong.db.dao.plugins", function()
       }, schemas)
     end)
 
-    it("reports invalid plugin schemas", function()
-      local s = spy.on(kong.log, "warn")
-
+    it("fails on invalid plugin schemas", function()
       local schemas, err = Plugins.load_plugin_schemas(self, {
         ["key-auth"] = true,
         ["invalid-schema"] = true,
       })
 
-      assert.spy(s).was_called(1)
-      mock.revert(kong.log)
-
-      table.sort(schemas, function(a, b)
-        return a.name < b.name
-      end)
-
-      assert.is_nil(err)
-      assert.same({
-        {
-          handler = { _name = "invalid-schema" },
-          name = "invalid-schema",
-        },
-        {
-          handler = { _name = "key-auth" },
-          name = "key-auth",
-        },
-      }, schemas)
+      assert.is_nil(schemas)
+      assert.match("error loading plugin schemas: on plugin 'invalid-schema'", err, 1, true)
     end)
 
   end)
