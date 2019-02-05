@@ -8,9 +8,10 @@ for _, strategy in helpers.each_strategy() do
     local proxy_ssl_client
     local db
     local bp
+    local dao
 
     lazy_setup(function()
-      bp, db = helpers.get_db_utils(strategy, {
+      bp, db, dao = helpers.get_db_utils(strategy, {
         "routes",
         "services",
         "consumers",
@@ -29,6 +30,7 @@ for _, strategy in helpers.each_strategy() do
       assert(db:truncate("oauth2_tokens"))
       assert(db:truncate("oauth2_credentials"))
       assert(db:truncate("oauth2_authorization_codes"))
+      dao:truncate_tables()
 
       local service = bp.services:insert()
 
