@@ -495,7 +495,7 @@ for _, strategy in helpers.each_strategy() do
       ngx.sleep(strategy == "cassandra" and 1 or 0.3)
     end
 
-    describe("for an ignored table", function()
+    describe("#flaky for an ignored table", function()
       it("does not generate an audit log entry", function()
         local res = assert(admin_client:send({
           method = "POST",
