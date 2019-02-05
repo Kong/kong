@@ -179,6 +179,57 @@ local function plugin_entity_loader(db)
 end
 
 
+local function load_plugin(self, plugin, plugin_list)
+  local db = self.db
+
+  if constants.DEPRECATED_PLUGINS[plugin] then
+    ngx_log(ngx_WARN, "plugin '", plugin, "' has been deprecated")
+  end
+
+  local handler, err = load_plugin_handler(plugin)
+  if not handler then
+    return nil, err
+  end
+
+  local schema, err, err_t = plugin_loader.load_subschema(self.schema, plugin)
+  if err_t then
+    local err = tostring(self.errors:schema_violation(err_t))
+    return nil, err
+  end
+  if err then
+    return nil, err
+  end
+
+  if schema.fields.consumer and schema.fields.consumer.eq == null then
+    plugin.no_consumer = true
+  end
+  if schema.fields.route and schema.fields.route.eq == null then
+    plugin.no_route = true
+  end
+  if schema.fields.service and schema.fields.service.eq == null then
+    plugin.no_service = true
+  end
+
+  ngx_log(ngx_DEBUG, "Loading plugin: " .. plugin)
+
+  plugin_list[#plugin_list+1] = {
+    name = plugin,
+    handler = handler(),
+  }
+
+  if db.strategy then -- skip during tests
+    local _, err, err_t = plugin_loader.load_entities(plugin, plugin_entity_loader(db))
+    if err_t then
+      return nil, fmt("%s: %s", err, tostring(db.errors:schema_violation(err_t)))
+    elseif err then
+      return nil, err
+    end
+  end
+
+  return true
+end
+
+
 --- Load subschemas for all configured plugins into the Plugins
 -- entity, and produce a list of these plugins with their names
 -- and initialized handlers.
@@ -186,53 +237,19 @@ end
 -- @return an array of tables, or nil and an error message.
 function Plugins:load_plugin_schemas(plugin_set)
   local plugin_list = {}
-  local db = self.db
+  local errs
 
   -- load installed plugins
   for plugin in pairs(plugin_set) do
-    if constants.DEPRECATED_PLUGINS[plugin] then
-      ngx_log(ngx_WARN, "plugin '", plugin, "' has been deprecated")
+    local ok, err = load_plugin(self, plugin, plugin_list)
+    if not ok then
+      errs = errs or {}
+      table.insert(errs, "on plugin '" .. plugin .. "': " .. err)
     end
+  end
 
-    local handler, err = load_plugin_handler(plugin)
-    if not handler then
-      return nil, err
-    end
-
-    local schema, err, err_t = plugin_loader.load_subschema(self.schema, plugin)
-    if err_t then
-      kong.log.warn("schema for plugin '", plugin, "' is invalid: ",
-                    tostring(self.errors:schema_violation(err_t)))
-    end
-    if err then
-      return nil, err
-    end
-
-    if schema.fields.consumer and schema.fields.consumer.eq == null then
-      plugin.no_consumer = true
-    end
-    if schema.fields.route and schema.fields.route.eq == null then
-      plugin.no_route = true
-    end
-    if schema.fields.service and schema.fields.service.eq == null then
-      plugin.no_service = true
-    end
-
-    ngx_log(ngx_DEBUG, "Loading plugin: " .. plugin)
-
-    plugin_list[#plugin_list+1] = {
-      name = plugin,
-      handler = handler(),
-    }
-
-    if db.strategy then -- skip during tests
-      local _, err, err_t = plugin_loader.load_entities(plugin, plugin_entity_loader(db))
-      if err_t then
-        return nil, fmt("%s: %s", err, tostring(db.errors:schema_violation(err_t)))
-      elseif err then
-        return nil, err
-      end
-    end
+  if errs then
+    return nil, "error loading plugin schemas: " .. table.concat(errs, "; ")
   end
 
   return plugin_list
