@@ -786,6 +786,19 @@ describe("Admin API #" .. kong_config.database, function()
         },
       }
 
+      local inputs_oauth2 = {
+        ["application/x-www-form-urlencoded"] = {
+          name = "oauth2",
+          ["config.enable_client_credentials"] = "true",
+        },
+        ["application/json"] = {
+          name = "oauth2",
+          config = {
+            enable_client_credentials = true,
+          }
+        },
+      }
+
       it_content_types("creates a plugin config", function(content_type)
         return function()
           local res = assert(client:send {
@@ -812,6 +825,17 @@ describe("Admin API #" .. kong_config.database, function()
           local json = cjson.decode(body)
           assert.equal("hmac-auth", json.name)
           assert.same(600, json.config.clock_skew)
+
+          local res = assert(client:send {
+            method = "POST",
+            path = "/apis/" .. api.id .. "/plugins",
+            body = inputs_oauth2[content_type],
+            headers = {["Content-Type"] = content_type}
+          })
+          local body = assert.res_status(201, res)
+          local json = cjson.decode(body)
+          assert.equal("oauth2", json.name)
+          assert.same(true, json.config.enable_client_credentials)
         end
       end)
       it_content_types("references API by name too", function(content_type)
@@ -1023,7 +1047,7 @@ describe("Admin API #" .. kong_config.database, function()
           if client then client:close() end
         end)
 
-        it_content_types("#only updates if found", function(content_type)
+        it_content_types("updates if found", function(content_type)
           return function()
             local bodies = {
               ["application/json"] = {
