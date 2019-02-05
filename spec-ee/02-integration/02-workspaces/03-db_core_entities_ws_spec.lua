@@ -62,9 +62,7 @@ for _, strategy in helpers.each_strategy() do
             created_at      = route.created_at,
             updated_at      = route.updated_at,
             protocols       = { "http" },
-            methods         = ngx.null,
             hosts           = { "example.com" },
-            paths           = ngx.null,
             regex_priority  = 0,
             preserve_host   = false,
             strip_path      = true,
@@ -116,9 +114,7 @@ for _, strategy in helpers.each_strategy() do
               created_at      = route.created_at,
               updated_at      = route.updated_at,
               protocols       = { "http" },
-              methods         = ngx.null,
               hosts           = { "example.com" },
-              paths           = ngx.null,
               regex_priority  = 0,
               preserve_host   = false,
               strip_path      = true,
@@ -398,10 +394,11 @@ for _, strategy in helpers.each_strategy() do
           it("max page_size = 1000", function()
             with_current_ws( {foo_ws},function()
               local rows, err, err_t = db.routes:page(1002)
-              assert.is_nil(err_t)
-              assert.is_nil(err)
-              assert.is_table(rows)
-              assert.equal(1000, #rows)
+              assert.is_nil(rows)
+              assert.not_nil(err_t)
+              assert.not_nil(err)
+              assert.equal("size must be an integer between 1 and 1000",
+                err_t.message)
             end, dao)
           end)
         end)
@@ -555,7 +552,7 @@ for _, strategy in helpers.each_strategy() do
             with_current_ws( {foo_ws},function()
               local rows, err, err_t = db.routes:page(3, "hello")
               assert.is_nil(rows)
-              local message  = "'hello' is not a valid offset for this strategy: bad base64 encoding"
+              local message  = "'hello' is not a valid offset: bad base64 encoding"
               assert.equal(fmt("[%s] %s", strategy, message), err)
               assert.same({
                 code     = Errors.codes.INVALID_OFFSET,
@@ -1000,9 +997,7 @@ for _, strategy in helpers.each_strategy() do
             created_at       = route.created_at,
             updated_at       = route.updated_at,
             protocols        = { "http" },
-            methods          = ngx.null,
             hosts            = { "example.com" },
-            paths            = ngx.null,
             regex_priority   = 0,
             strip_path       = true,
             preserve_host    = false,
@@ -1080,15 +1075,17 @@ for _, strategy in helpers.each_strategy() do
         end, dao)
       end)
 
-      describe("routes:for_service()", function()
+      describe("routes:each_for_service()", function()
         -- I/O
         it("lists no Routes associated to an inexsistent Service", function()
           with_current_ws( {foo_ws},function()
-            local rows, err, err_t = db.routes:for_service {
+            local rows = {}
+            for row, err in db.routes:each_for_service({
               id = a_blank_uuid,
-            }
-            assert.is_nil(err_t)
-            assert.is_nil(err)
+            }) do
+              rows[rows+1] = row
+              assert.is_nil(err)
+            end
             assert.same({}, rows)
           end, dao)
         end)
@@ -1107,11 +1104,13 @@ for _, strategy in helpers.each_strategy() do
               -- different service
             }
 
-            local rows, err, err_t = db.routes:for_service {
+            local rows = {}
+            for row, err in db.routes:each_for_service {
               id = service.id,
-            }
-            assert.is_nil(err_t)
-            assert.is_nil(err)
+            } do
+              rows[#rows+1] = row
+              assert.is_nil(err)
+            end
             assert.same({ route1 }, rows)
             ngx.sleep(50)
           end, dao)
@@ -1128,11 +1127,13 @@ for _, strategy in helpers.each_strategy() do
               methods = { "GET" },
             }
 
-            local rows, err, err_t = db.routes:for_service {
+            local rows = {}
+            for row, err in db.routes:each_for_service {
               id = service.id,
-            }
-            assert.is_nil(err_t)
-            assert.is_nil(err)
+            } do
+              rows[#rows+1] = row
+              assert.is_nil(err)
+            end
 
             if #rows ~= 1 then
               error("should have returned exactly 1 row")
@@ -1144,7 +1145,7 @@ for _, strategy in helpers.each_strategy() do
             assert.is_truthy(rows[1].methods.GET)
           end, dao)
         end)
-      end) -- routes:for_service()
+      end) -- routes:each_for_service()
     end) -- Services and Routes association
   end) -- kong.db [strategy]
 end
