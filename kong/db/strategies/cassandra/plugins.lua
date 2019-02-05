@@ -1,6 +1,10 @@
 local cassandra = require "cassandra"
 local split = require("pl.stringx").split
 
+local workspaces = require "kong.workspaces"
+local get_workspaces = workspaces.get_workspaces
+local workspace_entities_map = workspaces.workspace_entities_map
+
 
 local insert = table.insert
 local fmt = string.format
@@ -50,6 +54,13 @@ function Plugins:select_by_cache_key_migrating(key)
   -- perform query, trying both temp and old table
   local errs = 0
   local last_err
+
+  local ws_scope = get_workspaces()
+  local ws_entities_map
+  if ws_scope then
+    ws_entities_map, err = workspace_entities_map(ws_scope, "plugins")
+  end
+
   for _, tbl in ipairs({ "plugins_temp", "plugins" }) do
     for rows, err in self.connector.cluster:iterate(fmt(query, tbl), args) do
       if err then
@@ -67,7 +78,17 @@ function Plugins:select_by_cache_key_migrating(key)
              row.service_id == parts[4] and
              row.consumer_id == parts[5] and
              row.api_id == parts[6] then
-            row.cache_key = nil
+             row.cache_key = nil
+
+            if ws_scope then
+              local ws_entity = ws_entities_map[row.id]
+              if ws_entity then
+                row.workspace_id = ws_entity.workspace_id
+                return self:deserialize_row(row)
+              end
+
+              return nil
+            end
             return self:deserialize_row(row)
           end
         end

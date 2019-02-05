@@ -172,24 +172,6 @@ function _M.create_default(dao)
   end
 
   dao.workspace_entities:truncate()
-  dao.workspace_entities:insert({
-    workspace_id = res.id,
-    workspace_name = res.name,
-    entity_id = res.id,
-    entity_type = "workspaces",
-    unique_field_name = "id",
-    unique_field_value = res.id,
-  }, { quiet = true })
-
-  dao.workspace_entities:insert({
-    workspace_id = res.id,
-    workspace_name = res.name,
-    entity_id = res.id,
-    entity_type = "workspaces",
-    unique_field_name = "name",
-    unique_field_value = res.name,
-  }, { quiet = true })
-
   ngx.ctx.workspaces = {res}
 
   return res

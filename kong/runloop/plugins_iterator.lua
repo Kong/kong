@@ -6,7 +6,7 @@ local singletons   = require "kong.singletons"
 -- Loads a plugin config from the datastore.
 -- @return plugin config table or an empty sentinel table in case of a db-miss
 local function load_plugin_into_memory(key)
-  local row, err = kong.db.plugins:select_by_cache_key(key)
+  local row, err = kong.db.plugins:select_by_cache_key(key, {include_ws = true})
   if err then
     return nil, tostring(err)
   end
@@ -15,73 +15,31 @@ local function load_plugin_into_memory(key)
 end
 
 
--- luacheck: ignore
-local function load_plugin_into_memory_ws(ctx,
-                                          route_id,
-                                          service_id,
-                                          consumer_id,
-                                          plugin_name,
-                                          api_id,
-                                          k)
+local function load_plugin_into_memory_ws(ctx, key)
   local ws_scope = ctx.workspaces or {}
 
   -- when there is no workspace, like in phase rewrite
-  local key = kong.db.plugins:cache_key(plugin_name,
-                                        route_id,
-                                        service_id,
-                                        consumer_id,
-                                        api_id)
-
-  local plugin, err = kong.cache:get(key,
-                                     nil,
-                                     load_plugin_into_memory,
-                                     key)
-
   if #ws_scope == 0 then
+
+    local plugin, err  = kong.cache:get(key,
+                                        nil,
+                                        load_plugin_into_memory,
+                                        key)
     return plugin, err
   end
 
-  -- check if plugin negatively cached by other phase where workspace not applicable
-  if plugin and plugin.null then
-    return plugin
-  end
-
   -- check if plugin in cache for each workspace
-  local found
   for _, ws in ipairs(ws_scope) do
     local plugin_cache_key = key .. ":" .. ws.id
 
-    plugin = singletons.cache.mlcache.lru:get(plugin_cache_key)
+    local ttl, err, plugin = singletons.cache:probe(plugin_cache_key)
+    if err then
+      return nil, err
+    end
+
     if plugin then
-      found = true
-
-      if not plugin.null then
-        return plugin
-      end
+      return plugin
     end
-
-    if not plugin then
-      local ttl
-      ttl, err, plugin = singletons.cache:probe(plugin_cache_key)
-      if err then
-        return nil, err
-      end
-
-      singletons.cache.mlcache.lru:set(plugin_cache_key, plugin)
-
-      if ttl then
-        found = true
-
-        if plugin and not plugin.null then
-          return plugin
-        end
-      end
-    end
-  end
-
-  -- if ttl present, plugin present in negative cache
-  if found then
-    return plugin
   end
 
   -- load plugin, here workspace scope can contain more than one workspace
@@ -93,14 +51,10 @@ local function load_plugin_into_memory_ws(ctx,
     local plugin_cache_key = key .. ":" .. ws.id
 
     local to_be_cached
-    if plugin and not plugin.null and ws.id == plugin.workspace_id then
+    if plugin and ws.id == plugin.workspace_id then
       -- positive cache
       to_be_cached = plugin
-    else
-      -- negative cache
-      to_be_cached = { null = true }
     end
-
     local _, err = singletons.cache:get(plugin_cache_key, nil, function ()
       return to_be_cached
     end)
@@ -127,29 +81,14 @@ local function load_plugin_configuration(ctx,
                                          service_id,
                                          consumer_id,
                                          plugin_name,
-                                         api_id,
-                                         k)
-
-
-  --[[local plugin, err = load_plugin_into_memory_ws(ctx,
-                                                 route_id,
-                                                 service_id,
-                                                 consumer_id,
-                                                 plugin_name,
-                                                 api_id,
-                                                 k)]]
+                                         api_id)
 
   local key = kong.db.plugins:cache_key(plugin_name,
                                         route_id,
                                         service_id,
                                         consumer_id,
                                         api_id)
-
-  local plugin, err = kong.cache:get(key,
-                                     nil,
-                                     load_plugin_into_memory,
-                                     key)
-
+  local plugin, err = load_plugin_into_memory_ws(ctx, key)
 
   if err then
     ctx.delay_response = false
@@ -332,8 +271,7 @@ local function get_next(self)
     end
 
     -- filter non-specific plugins out for internal services
-    ctx.plugins_for_request = singletons.internal_proxies:filter_plugins(
-      service_id, ctx.plugins_for_request)
+    --ctx.plugins_for_request = singletons.internal_proxies:filter_pluginsservice_id, ctx.plugins_for_request)
   end
 
   -- return the plugin configuration

@@ -309,10 +309,10 @@ function Plugins:load_plugin_schemas(plugin_set)
 end
 
 
-function Plugins:select_by_cache_key(key)
+function Plugins:select_by_cache_key(key, options)
 
   -- first try new way
-  local entity, new_err = self.super.select_by_cache_key(self, key)
+  local entity, new_err = self.super.select_by_cache_key(self, key, options)
 
   if not new_err then -- the step above didn't fail
     -- we still need to check whether the migration is done,
@@ -331,7 +331,7 @@ function Plugins:select_by_cache_key(key)
   -- do things "the old way" in both cases
   local row, old_err = self.strategy:select_by_cache_key_migrating(key)
   if row then
-    return self:row_to_entity(row)
+    return self:row_to_entity(row, {include_ws = true})
   end
 
   -- when both ways have failed, return the "new" error message.

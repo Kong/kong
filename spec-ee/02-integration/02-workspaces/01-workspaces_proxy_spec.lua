@@ -1,7 +1,7 @@
 local helpers = require "spec.helpers"
 
 for _, strategy in helpers.each_strategy() do
-  describe("Plugin execution is restricted to correct workspace", function()
+  describe("Plugin execution is restricted to correct workspace #" .. strategy, function()
     local proxy_client
 
     setup(function()
@@ -23,7 +23,7 @@ for _, strategy in helpers.each_strategy() do
 
       bp.keyauth_credentials:insert {
         key = "c1key",
-        consumer_id = c1.id,
+        consumer = { id = c1.id },
       }
 
       -- create a route in a different workspace [[
@@ -83,11 +83,11 @@ for _, strategy in helpers.each_strategy() do
       assert.res_status(200, res)
     end)
   end)
-  describe("Plugin: workspace scope test key-auth (access)", function()
-    local admin_client, proxy_client, route1, plugin_foo, ws_foo, ws_default, dao, bp, _, s
+  describe("Plugin: workspace scope test key-auth (access) #" .. strategy, function()
+    local admin_client, proxy_client, route1, plugin_foo, ws_foo, ws_default, dao, db, bp, _, s
     local consumer_default, cred_default
     setup(function()
-      bp, _, dao = helpers.get_db_utils(strategy)
+      bp, db, dao = helpers.get_db_utils(strategy)
 
       ws_default = dao.workspaces:find_all({name = "default"})[1]
 
@@ -175,7 +175,7 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(403, res)
       end)
       it("cache added for plugin in default workspace", function()
-        local cache_key = dao.plugins:cache_key_ws(ws_default,
+        local cache_key = db.plugins:cache_key_ws(ws_default,
                                                    "key-auth",
                                                    nil,
                                                    s.id,
@@ -205,7 +205,7 @@ for _, strategy in helpers.each_strategy() do
         local body = assert.response(res).has.jsonbody()
         assert.is_equal(cred_default.id, body.id)
 
-        local cache_key = dao.consumers:cache_key(consumer_default.id)
+        local cache_key = db.consumers:cache_key(consumer_default.id)
         local res
         helpers.wait_until(function()
           res = assert(admin_client:send {
@@ -327,7 +327,7 @@ for _, strategy in helpers.each_strategy() do
 
       end)
       it("negative cache added for non enabled plugin in default workspace", function()
-        local cache_key = dao.plugins:cache_key_ws(ws_default,
+        local cache_key = db.plugins:cache_key_ws(ws_default,
                                                    "request-transformer",
                                                    nil,
                                                    s.id,
@@ -366,7 +366,7 @@ for _, strategy in helpers.each_strategy() do
         assert.is_nil(body.headers["x-test"])
       end)
       it("cache not added for plugin in foo workspace", function()
-        local cache_key = dao.plugins:cache_key_ws(nil,
+        local cache_key = db.plugins:cache_key_ws(nil,
                                                    "request-transformer",
                                                    nil,
                                                    s.id,

@@ -1171,6 +1171,17 @@ function DAO:cache_key(key, arg2, arg3, arg4, arg5)
 end
 
 
+function DAO:cache_key_ws(workspace, arg1, arg2, arg3, arg4, arg5)
+  return fmt("%s:%s:%s:%s:%s:%s:%s", self.table,
+    arg1 == nil and "" or arg1,
+    arg2 == nil and "" or arg2,
+    arg3 == nil and "" or arg3,
+    arg4 == nil and "" or arg4,
+    arg5 == nil and "" or arg5,
+    workspace == nil and "" or workspace.id)
+end
+
+
 --[[
 function DAO:load_translations(t)
   self.schema:load_translations(t)

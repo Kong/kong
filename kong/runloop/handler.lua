@@ -419,7 +419,7 @@ return {
         local cache_key = get_cache_key(data, data.entity)
 
         if cache_key then
-          cache:invalidate(cache_key, workspaces)
+          cache:invalidate(cache_key, workspaces, data.schema.table)
         end
 
         -- if we had an update, but the cache key was part of what was updated,
@@ -428,7 +428,7 @@ return {
         if data.old_entity then
           cache_key = get_cache_key(data, data.old_entity)
           if cache_key then
-            cache:invalidate(cache_key, workspaces)
+            cache:invalidate(cache_key, workspaces, data.schema.table)
           end
         end
 
