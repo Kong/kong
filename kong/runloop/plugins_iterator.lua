@@ -32,7 +32,7 @@ local function load_plugin_into_memory_ws(ctx, key)
   for _, ws in ipairs(ws_scope) do
     local plugin_cache_key = key .. ":" .. ws.id
 
-    local ttl, err, plugin = singletons.cache:probe(plugin_cache_key)
+    local _, err, plugin = singletons.cache:probe(plugin_cache_key)
     if err then
       return nil, err
     end

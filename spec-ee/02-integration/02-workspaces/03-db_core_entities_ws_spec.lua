@@ -150,7 +150,6 @@ for _, strategy in helpers.each_strategy() do
 
           end, dao)
           local foo_ws = add_ws(dao, "foo")
-
           with_current_ws({ foo_ws }, function ()
             -- add route in foo workspace
             local route, err_t, err = db.routes:insert({

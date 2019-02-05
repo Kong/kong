@@ -58,7 +58,7 @@ function Plugins:select_by_cache_key_migrating(key)
   local ws_scope = get_workspaces()
   local ws_entities_map
   if ws_scope then
-    ws_entities_map, err = workspace_entities_map(ws_scope, "plugins")
+    ws_entities_map = workspace_entities_map(ws_scope, "plugins")
   end
 
   for _, tbl in ipairs({ "plugins_temp", "plugins" }) do

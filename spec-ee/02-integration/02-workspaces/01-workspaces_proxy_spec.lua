@@ -84,7 +84,7 @@ for _, strategy in helpers.each_strategy() do
     end)
   end)
   describe("Plugin: workspace scope test key-auth (access) #" .. strategy, function()
-    local admin_client, proxy_client, route1, plugin_foo, ws_foo, ws_default, dao, db, bp, _, s
+    local admin_client, proxy_client, route1, plugin_foo, ws_foo, ws_default, dao, db, bp, s
     local consumer_default, cred_default
     setup(function()
       bp, db, dao = helpers.get_db_utils(strategy)
