@@ -103,7 +103,6 @@ for _, strategy in helpers.each_strategy() do
             local res = client:get("/foo/services")
             local res = assert.res_status(200, res)
             local json = cjson.decode(res)
-            ngx.sleep(50)
             assert.equal(10, #json.data)
           end)
 
