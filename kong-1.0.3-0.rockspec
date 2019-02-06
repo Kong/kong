@@ -148,6 +148,7 @@ build = {
     ["kong.db.schema.metaschema"] = "kong/db/schema/metaschema.lua",
     ["kong.db.schema.typedefs"] = "kong/db/schema/typedefs.lua",
     ["kong.db.schema.plugin_loader"] = "kong/db/schema/plugin_loader.lua",
+    ["kong.db.schema.topological_sort"] = "kong/db/schema/topological_sort.lua",
     ["kong.db.strategies"] = "kong/db/strategies/init.lua",
     ["kong.db.strategies.connector"] = "kong/db/strategies/connector.lua",
     ["kong.db.strategies.cassandra"] = "kong/db/strategies/cassandra/init.lua",
