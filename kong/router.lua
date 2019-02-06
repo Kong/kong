@@ -7,7 +7,6 @@ local bit           = require "bit"
 local hostname_type = utils.hostname_type
 local re_match      = ngx.re.match
 local re_find       = ngx.re.find
-local null          = ngx.null
 local insert        = table.insert
 local sort          = table.sort
 local upper         = string.upper
@@ -89,18 +88,22 @@ local protocol_subsystem = {
 }
 
 local function marshall_route(r)
-  local route    = r.route          or null
-  local service  = r.service        or null
-  local headers  = r.headers        or null
-  local paths    = route.paths      or null
-  local methods  = route.methods    or null
-  local protocol = service.protocol or null
-  local sources  = route.sources  or null
-  local destinations = route.destinations or null
-  local snis     = route.snis or null
+  local route        = r.route
+  local service      = r.service
+  local headers      = r.headers
+  local paths        = route.paths
+  local methods      = route.methods
+  local snis         = route.snis
+  local sources      = route.sources
+  local destinations = route.destinations
 
-  if not (headers ~= null or methods ~= null or paths ~= null or
-          sources ~= null or destinations ~= null or snis ~= null) then
+
+  local protocol
+  if service then
+    protocol = service.protocol
+  end
+
+  if not (headers or methods or paths or snis or sources or destinations) then
     return nil, "could not categorize route"
   end
 
@@ -125,7 +128,7 @@ local function marshall_route(r)
   -- headers
 
 
-  if headers ~= null then
+  if headers then
     if type(headers) ~= "table" then
       return nil, "headers field must be a table"
     end
@@ -174,7 +177,7 @@ local function marshall_route(r)
   -- paths
 
 
-  if paths ~= null then
+  if paths then
     if type(paths) ~= "table" then
       return nil, "paths field must be a table"
     end
@@ -219,7 +222,7 @@ local function marshall_route(r)
   -- methods
 
 
-  if methods ~= null then
+  if methods then
     if type(methods) ~= "table" then
       return nil, "methods field must be a table"
     end
@@ -238,7 +241,7 @@ local function marshall_route(r)
   -- sources
 
 
-  if sources ~= null then
+  if sources then
     if type(sources) ~= "table" then
       return nil, "sources field must be a table"
     end
@@ -271,7 +274,7 @@ local function marshall_route(r)
   -- destinations
 
 
-  if destinations ~= null then
+  if destinations then
     if type(destinations) ~= "table" then
       return nil, "destinations field must be a table"
     end
@@ -304,7 +307,7 @@ local function marshall_route(r)
   -- snis
 
 
-  if snis ~= null then
+  if snis then
     if type(snis) ~= "table" then
       return nil, "snis field must be a table"
     end
@@ -323,16 +326,15 @@ local function marshall_route(r)
   end
 
 
-  if protocol ~= null then
-    route_t.upstream_url_t.scheme = protocol
-  end
-
-
   -- upstream_url parsing
 
 
-  local host = service.host or null
-  if host ~= null then
+  if protocol then
+    route_t.upstream_url_t.scheme = protocol
+  end
+
+  local host = service.host
+  if host then
     route_t.upstream_url_t.host = host
     route_t.upstream_url_t.type = hostname_type(host)
 
@@ -340,8 +342,8 @@ local function marshall_route(r)
     route_t.upstream_url_t.type = hostname_type("")
   end
 
-  local port = service.port or null
-  if port ~= null then
+  local port = service.port
+  if port then
     route_t.upstream_url_t.port = port
 
   else
