@@ -464,16 +464,19 @@ local function generate_foreign_key_methods(schema)
         -- field from ce to EE. For EE, call resolve_shared_entity_id
         -- that pivots through workspace_entities
         do
-          return self:update({id = entity_to_update.id}, entity_to_update, options)
+          local row, err = self:update({id = entity_to_update.id}, entity_to_update, options)
+          if not err then
+            return nil, tostring(err)
+          end
+
+          row, err, err_t = self:row_to_entity(row, options)
+          if not row then
+            return nil, err, err_t
+          end
+
+          self:post_crud_event("update", row, rbw_entity)
+          return row
         end
-
-        -- local pk, err_t = ws_helper.resolve_shared_entity_id(self.schema.name,
-        --                                       { [name] = unique_value },
-        --                                       workspaceable[self.schema.name])
-
-        -- ngx.log(ngx.ERR, [[update_by_]], name,": " , require("inspect")({
-        --   entity_to_update, rbw_entity, err, err_t
-        -- }))
 
 
         local row, err_t = self.strategy:update_by_field(name, unique_value,
