@@ -504,6 +504,17 @@ local function generate_foreign_key_methods(schema)
           validate_options_type(options)
         end
 
+        local pk, err_t = ws_helper.resolve_shared_entity_id(self.schema.name,
+          { [name] = unique_value },
+          workspaceable[self.schema.name])
+
+        if err_t then
+          return nil, tostring(err_t), err_t
+        end
+        if pk then
+          return self:upsert(pk)
+        end
+
         local ok, err = schema:validate_field(field, unique_value)
         if not ok then
           local err_t = self.errors:invalid_unique(name, err)
@@ -536,7 +547,23 @@ local function generate_foreign_key_methods(schema)
           end
         end
 
-        local row, err_t = self.strategy:upsert_by_field(name, unique_value,
+        if not rbac.validate_entity_operation(entity_to_upsert, self.schema.name) then
+          local err_t = self.errors:unauthorized_operation({
+            username = ngx.ctx.rbac.user.name,
+            action = rbac.readable_action(ngx.ctx.rbac.action)
+          })
+          return nil, tostring(err_t), err_t
+        end
+
+        local constraints = workspaceable[self.schema.name]
+        local params = {[name] = unique_value}
+
+        local workspace, err_t = ws_helper.apply_unique_per_ws(self.schema.name, params, constraints)
+        if err then
+          return nil, tostring(err_t), err_t
+        end
+
+        local row, err_t = self.strategy:upsert_by_field(name, params[name],
                                                          entity_to_upsert, options)
         if not row then
           return nil, tostring(err_t), err_t
@@ -545,6 +572,26 @@ local function generate_foreign_key_methods(schema)
         row, err, err_t = self:row_to_entity(row, options)
         if not row then
           return nil, err, err_t
+        end
+
+        if not err and workspace then
+          local err_rel = workspaces.add_entity_relation(self.schema.name, row, workspace)
+          if err_rel then
+            local _, err_t = self:delete(row)
+            if err then
+              return nil, tostring(err_t), err_t
+            end
+            return nil, tostring(err_rel), err_rel
+          end
+
+          -- if entity was created, insert it in the user's default role
+          if row then
+            local _, err = rbac.add_default_role_entity_permission(row, self.schema.name)
+            if err then
+              local err_t = self.errors:database_error("failed to add entity permissions to current user")
+              return nil, tostring(err_t), err_t
+            end
+          end
         end
 
         self:post_crud_event("update", row)
@@ -556,8 +603,8 @@ local function generate_foreign_key_methods(schema)
         validate_unique_type(unique_value, name, field)
 
         local pk, err_t = ws_helper.resolve_shared_entity_id(self.schema.name,
-                                              { [name] = unique_value },
-                                              workspaceable[self.schema.name])
+                                                    { [name] = unique_value },
+                                                            workspaceable[self.schema.name])
         if err_t then
           return nil, tostring(err_t), err_t
         end
@@ -942,6 +989,14 @@ function DAO:upsert(primary_key, entity, options)
     return nil, tostring(err_t), err_t
   end
 
+  local constraints = workspaceable[self.schema.name]
+  local ok, err = ws_helper.validate_pk_exist(self.schema.name,
+                                              primary_key, constraints)
+  if err then
+    local err_t = self.errors:database_error(err)
+    return nil, tostring(err_t), err_t
+  end
+
   local entity_to_upsert, err = self.schema:process_auto_fields(entity, "upsert")
   if not entity_to_upsert then
     local err_t = self.errors:schema_violation(err)
@@ -966,6 +1021,16 @@ function DAO:upsert(primary_key, entity, options)
     entity_to_upsert.cache_key = self:cache_key(entity_to_upsert)
   end
 
+  if not rbac.validate_entity_operation(primary_key, self.schema.name) then
+    local err_t = self.errors:unauthorized_operation({
+      username = ngx.ctx.rbac.user.name,
+      action = rbac.readable_action(ngx.ctx.rbac.action)
+    })
+    return nil, tostring(err_t), err_t
+  end
+
+  ws_helper.apply_unique_per_ws(self.schema.name, entity_to_upsert, constraints)
+
   local row, err_t = self.strategy:upsert(primary_key, entity_to_upsert, options)
   if not row then
     return nil, tostring(err_t), err_t
@@ -974,6 +1039,13 @@ function DAO:upsert(primary_key, entity, options)
   row, err, err_t = self:row_to_entity(row, options)
   if not row then
     return nil, err, err_t
+  end
+
+  if not err then
+    local err_rel = workspaces.update_entity_relation(self.schema.name, row)
+    if err_rel then
+      return nil, tostring(err_rel), err_rel
+    end
   end
 
   self:post_crud_event("update", row)

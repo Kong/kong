@@ -4,6 +4,7 @@ local utils = require "kong.tools.utils"
 local Entity = require "kong.db.schema.entity"
 local DAO = require "kong.db.dao"
 local MetaSchema = require "kong.db.schema.metaschema"
+local wokspaces = require "kong.workspaces"
 
 
 local Plugins = {}
@@ -299,6 +300,15 @@ function Plugins:load_plugin_schemas(plugin_set)
               return nil, err
             end
             db.daos[schema.name] = dao
+            if schema_def.workspaceable then
+              local unique_keys = {}
+              for field_name, field_schema in schema:each_field() do
+                if field_schema.unique then
+                  unique_keys[field_name] = field_schema
+                end
+              end
+              wokspaces.register_workspaceable_relation(schema.name, schema.primary_key, unique_keys)
+            end
           end
         end
       end
