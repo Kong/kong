@@ -196,6 +196,7 @@ for _, strategy in helpers.each_strategy() do
 
               with_current_ws({ foo_ws }, function ()
                 local in_db = assert(db.services:select({ id = service.id }))
+                json.name = nil
                 assert.same(json, in_db)
               end, dao)
             end
@@ -333,15 +334,26 @@ for _, strategy in helpers.each_strategy() do
         end)
 
         describe("POST", function()
+          local inputs = {
+            ["application/x-www-form-urlencoded"] = {
+              name = "key-auth",
+              ["config.key_names[1]"] = "apikey",
+              ["config.key_names[2]"] = "key",
+            },
+            ["application/json"] = {
+              name = "key-auth",
+              config = {
+                key_names = {"apikey", "key"}
+              },
+            },
+          }
+
           it_content_types("creates a plugin config for a Service", function(content_type)
             return function()
               local res = assert(client:send {
                 method = "POST",
                 path = "/foo/services/" .. service.id .. "/plugins",
-                body = {
-                  name = "key-auth",
-                  ["config.key_names"] = "apikey,key"
-                },
+                body = inputs[content_type],
                 headers = { ["Content-Type"] = content_type }
               })
               local body = assert.res_status(201, res)
@@ -356,10 +368,7 @@ for _, strategy in helpers.each_strategy() do
               local res = assert(client:send {
                 method = "POST",
                 path = "/foo/services/" .. service.name .. "/plugins",
-                body = {
-                  name = "key-auth",
-                  ["config.key_names"] = "apikey,key"
-                },
+                body = inputs[content_type],
                 headers = { ["Content-Type"] = content_type }
               })
               local body = assert.res_status(201, res)
@@ -380,7 +389,7 @@ for _, strategy in helpers.each_strategy() do
                 })
                 local body = assert.res_status(400, res)
                 local json = cjson.decode(body)
-                assert.same({ name = "name is required" }, json)
+                assert.same("schema violation", json.name)
               end
             end)
 
@@ -409,7 +418,7 @@ for _, strategy in helpers.each_strategy() do
                 })
                 assert.response(res).has.status(409)
                 local json = assert.response(res).has.jsonbody()
-                assert.same({ name = "already exists with value 'basic-auth'"}, json)
+                assert.same("unique constraint violation", json.name)
               end
             end)
 
@@ -437,25 +446,37 @@ for _, strategy in helpers.each_strategy() do
                   },
                   headers = { ["Content-Type"] = content_type }
                 })
-                local conflict_body = assert.res_status(409, conflict_res)
+                local conflict_body = assert.res_status(400, conflict_res)
                 local json = cjson.decode(conflict_body)
-                assert.same({ id = "already exists with value '" .. plugin.id .. "'"}, json)
+                assert.same("primary key violation", json.name)
               end
             end)
           end)
         end)
 
         describe("PUT", function()
+          local inputs = {
+            ["application/x-www-form-urlencoded"] = {
+              name = "key-auth",
+              ["config.key_names[1]"] = "apikey",
+              ["config.key_names[2]"] = "key",
+              created_at = 1461276890000
+            },
+            ["application/json"] = {
+              name = "key-auth",
+              config = {
+                key_names = {"apikey", "key"}
+              },
+              created_at = 1461276890000
+            },
+          }
+
           it_content_types("creates if not exists", function(content_type)
             return function()
               local res = assert(client:send {
                 method = "PUT",
-                path = "/foo/services/" .. service.id .. "/plugins",
-                body = {
-                  name = "key-auth",
-                  ["config.key_names"] = "apikey,key",
-                  created_at = 1461276890000
-                },
+                path = "/foo/services/" .. service.id .. "/plugins/" .. utils.uuid(),
+                body = inputs[content_type],
                 headers = { ["Content-Type"] = content_type }
               })
               local body = assert.res_status(201, res)
@@ -469,12 +490,8 @@ for _, strategy in helpers.each_strategy() do
             return function()
               local res = assert(client:send {
                 method = "PUT",
-                path = "/foo/services/" .. service.id .. "/plugins",
-                body = {
-                  name = "key-auth",
-                  ["config.key_names"] = "apikey,key",
-                  created_at = 1461276890000
-                },
+                path = "/foo/services/" .. service.id .. "/plugins/" .. utils.uuid(),
+                body = inputs[content_type],
                 headers = { ["Content-Type"] = content_type }
               })
               local body = assert.res_status(201, res)
@@ -482,13 +499,8 @@ for _, strategy in helpers.each_strategy() do
 
               res = assert(client:send {
                 method = "PUT",
-                path = "/foo/services/" .. service.id .. "/plugins",
-                body = {
-                  id = json.id,
-                  name = "key-auth",
-                  ["config.key_names"] = "key",
-                  created_at = 1461276890000
-                },
+                path = "/foo/services/" .. service.id .. "/plugins/" .. json.id,
+                body = inputs[content_type],
                 headers = { ["Content-Type"] = content_type }
               })
               body = assert.res_status(200, res)
@@ -504,7 +516,9 @@ for _, strategy in helpers.each_strategy() do
               with_current_ws({ foo_ws }, function ()
                 plugin = assert(dao.plugins:insert {
                   name = "key-auth",
-                  service_id = service.id,
+                  service = {
+                    id = service.id,
+                  },
                   config = { hide_credentials = true }
                 })
                 assert.True(plugin.config.hide_credentials)
@@ -513,13 +527,8 @@ for _, strategy in helpers.each_strategy() do
 
               local res = assert(client:send {
                 method = "PUT",
-                path = "/foo/services/" .. service.id .. "/plugins",
-                body = {
-                  id = plugin.id,
-                  name = "key-auth",
-                  ["config.key_names"] = "apikey,key",
-                  created_at = 1461276890000
-                },
+                path = "/foo/services/" .. service.id .. "/plugins/" .. plugin.id,
+                body = inputs[content_type],
                 headers = { ["Content-Type"] = content_type }
               })
               local body = assert.res_status(200, res)
@@ -541,20 +550,17 @@ for _, strategy in helpers.each_strategy() do
               with_current_ws({ foo_ws }, function ()
                 plugin = assert(dao.plugins:insert {
                   name = "key-auth",
-                  service_id = service.id
+                  service = {
+                    id = service.id,
+                  },
                 })
                 assert.same({ "apikey" }, plugin.config.key_names)
               end, dao)
 
               local res = assert(client:send {
                 method = "PUT",
-                path = "/foo/services/" .. service.id .. "/plugins",
-                body = {
-                  id = plugin.id,
-                  name = "key-auth",
-                  ["config.key_names"] = "apikey,key",
-                  created_at = 1461276890000
-                },
+                path = "/foo/services/" .. service.id .. "/plugins/" .. plugin.id,
+                body = inputs[content_type],
                 headers = { ["Content-Type"] = content_type }
               })
               local body = assert.res_status(200, res)
@@ -569,20 +575,18 @@ for _, strategy in helpers.each_strategy() do
               with_current_ws({ foo_ws }, function ()
                 plugin = assert(dao.plugins:insert {
                   name = "key-auth",
-                  service_id = service.id
+                  service = {
+                    id = service.id,
+                  },
                 })
                 assert.True(plugin.enabled)
               end, dao)
 
+              inputs[content_type].enabled = false
               local res = assert(client:send {
                 method = "PUT",
-                path = "/foo/services/" .. service.id .. "/plugins",
-                body = {
-                  id = plugin.id,
-                  name = "key-auth",
-                  enabled = false,
-                  created_at = 1461276890000
-                },
+                path = "/foo/services/" .. service.id .. "/plugins/" .. plugin.id,
+                body = inputs[content_type],
                 headers = { ["Content-Type"] = content_type }
               })
               local body = assert.res_status(200, res)
@@ -603,7 +607,9 @@ for _, strategy in helpers.each_strategy() do
             with_current_ws({ foo_ws }, function ()
               assert(dao.plugins:insert {
                 name = "key-auth",
-                service_id = service.id
+                service = {
+                  id = service.id,
+                },
               })
             end, dao)
             local res = assert(client:send {
@@ -662,7 +668,7 @@ for _, strategy in helpers.each_strategy() do
               })
             body = assert.res_status(400, res)
             json = cjson.decode(body)
-            assert.same({ protocol = "expected one of: http, https" }, json.fields)
+            assert.same({ protocol = "expected one of: http, https, tcp, tls" }, json.fields)
           end
         end)
 
