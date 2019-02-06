@@ -558,6 +558,15 @@ local function end_testcase_setup(strategy, bp)
 end
 
 
+local function get_db_utils_for_dc_and_admin_api(strategy, tables)
+  local bp = assert(helpers.get_db_utils(strategy, tables))
+  if strategy ~= "off" then
+    bp = require("spec.fixtures.admin_api")
+  end
+  return bp
+end
+
+
 local localhosts = {
   ipv4 = "127.0.0.1",
   ipv6 = "[0000:0000:0000:0000:0000:0000:0000:0001]",
@@ -569,18 +578,127 @@ for _, strategy in helpers.each_strategy() do
 
   local bp
 
+  describe("Ring-balancer resolution #" .. strategy, function()
+
+    local dns_mock_filename = helpers.test_conf.prefix .. "/dns_mock_records.lua"
+
+    lazy_setup(function()
+      bp = get_db_utils_for_dc_and_admin_api(strategy, {
+        "routes",
+        "services",
+        "plugins",
+        "upstreams",
+        "targets",
+      })
+
+      assert(helpers.start_kong({
+        database   = strategy,
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+        db_update_frequency = 0.1,
+        -- inject path to mock-resolver to make Kong load that module
+        lua_package_path = "spec/fixtures/mocks/lua-resty-dns/?.lua;" .. package.path,
+      }))
+
+      -- write the mock dns file AFTER kong starts, or it will be erased again
+      assert(require("pl.utils").writefile(dns_mock_filename,[[
+        local TYPE_A, TYPE_AAAA, TYPE_CNAME, TYPE_SRV = 1, 28, 5, 33
+        return {
+          [TYPE_SRV] = {
+            ["my.srv.test.com"] = {
+              {
+                type     = TYPE_SRV,
+                name     = "my.srv.test.com",
+                target   = "a.my.srv.test.com",
+                port     = 80,  -- this port should FAIL to connect
+                weight   = 10,
+                ttl      = 600,
+                priority = 20,
+                class    = 1,
+              },
+            },
+          },
+
+          [TYPE_A] = {
+            ["a.my.srv.test.com"] = {
+              {
+                type     = TYPE_A,
+                name     = "a.my.srv.test.com",
+                address  = "127.0.0.1",
+                ttl      = 600,
+                class    = 1,
+              },
+            },
+          },
+
+          [TYPE_AAAA] = {
+          },
+
+          [TYPE_CNAME] = {
+          },
+        }
+      ]]))
+
+    end)
+
+    lazy_teardown(function()
+      os.remove(dns_mock_filename)
+      helpers.stop_kong()
+    end)
+
+    it("2-level dns sets the proper health-check", function()
+
+      -- Issue is that 2 level dns hits a mismatch between a name
+      -- in the second level, and the IP address that failed.
+      -- Typically an SRV pointing to an A record will result in a
+      -- internal balancer structure Address that hold a name rather
+      -- than an IP. So when Kong reports IP xyz failed to connect,
+      -- and the healthchecker marks it as down. That IP will not be
+      -- found in the balancer (since its only known by name), and hence
+      -- and error is returned that the target could not be disabled.
+
+      -- configure healthchecks
+      begin_testcase_setup(strategy, bp)
+      local upstream_name, upstream_id = add_upstream(bp, {
+        healthchecks = healthchecks_config {
+          passive = {
+            unhealthy = {
+              tcp_failures = 1,
+            }
+          }
+        }
+      })
+      -- the following port will not be used, will be overwritten by
+      -- the mocked SRV record.
+      add_target(bp, upstream_id, "my.srv.test.com", 80)
+      local api_host = add_api(bp, upstream_name)
+      end_testcase_setup(strategy, bp)
+
+      -- we do not set up servers, since we want the connection to get refused
+      -- Go hit the api with requests, 1x round the balancer
+      local oks, fails, last_status = client_requests(SLOTS, api_host)
+      assert.same(0, oks)
+      assert.same(10, fails)
+      assert.same(503, last_status)
+
+      local health = get_upstream_health(upstream_name)
+      assert.is.table(health)
+      assert.is.table(health.data)
+      assert.is.table(health.data[1])
+      assert.equals("UNHEALTHY", health.data[1].health)
+    end)
+
+  end)
+
   describe("Ring-balancer #" .. strategy, function()
 
     lazy_setup(function()
-      bp = helpers.get_db_utils(strategy, {
+      bp = get_db_utils_for_dc_and_admin_api(strategy, {
         "services",
         "routes",
         "upstreams",
         "targets",
       })
-      if strategy ~= "off" then
-        bp = require("spec.fixtures.admin_api")
-      end
+
       assert(helpers.start_kong({
         database   = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
@@ -592,7 +710,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     lazy_teardown(function()
-      helpers.stop_kong(nil, true)
+      helpers.stop_kong()
     end)
 
     describe("#healthchecks (#cluster #db)", function()
@@ -617,7 +735,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       lazy_teardown(function()
-        helpers.stop_kong("servroot2", true)
+        helpers.stop_kong("servroot2")
       end)
 
       for mode, localhost in pairs(localhosts) do
