@@ -7,7 +7,7 @@ local workspaces = require "kong.workspaces"
 local ee_helpers = require "spec-ee.helpers"
 
 
-describe("Admin API - ee-specific Kong routes", function()
+describe("#flaky Admin API - ee-specific Kong routes", function()
   dao_helpers.for_each_dao(function(kong_conf)
     describe("/userinfo with db " .. kong_conf.database, function()
 
