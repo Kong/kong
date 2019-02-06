@@ -1,7 +1,12 @@
 local declarative_config = require "kong.db.schema.others.declarative_config"
+local topological_sort = require "kong.db.schema.topological_sort"
 local pl_file = require "pl.file"
 local lyaml = require "lyaml"
 local cjson = require "cjson.safe"
+local tablex = require "pl.tablex"
+
+
+local deepcopy = tablex.deepcopy
 
 
 local declarative = {}
@@ -122,6 +127,38 @@ function Config:parse_string(contents, filename, accept)
   end
 
   return entities
+end
+
+
+function declarative.load_into_db(dc_table)
+  assert(type(dc_table) == "table")
+
+  local schemas = {}
+  for entity_name, _ in pairs(dc_table) do
+    table.insert(schemas, kong.db[entity_name].schema)
+  end
+  local sorted_schemas, err = topological_sort(schemas)
+  if not sorted_schemas then
+    return nil, err
+  end
+
+  local schema, primary_key, ok, err, err_t
+  for i = 1, #sorted_schemas do
+    schema = sorted_schemas[i]
+    for _, entity in pairs(dc_table[schema.name]) do
+      entity = deepcopy(entity)
+      entity._tags = nil
+
+      primary_key = schema:extract_pk_values(entity)
+
+      ok, err, err_t = kong.db[schema.name]:upsert(primary_key, entity)
+      if not ok then
+        return nil, err, err_t
+      end
+    end
+  end
+
+  return true
 end
 
 

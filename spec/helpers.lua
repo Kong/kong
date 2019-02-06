@@ -1272,6 +1272,18 @@ end
 
 
 
+local function make_yaml_file(content)
+  local filename = os.tmpname()
+  os.rename(filename, filename .. ".yml")
+  filename = filename .. ".yml"
+  local fd = assert(io.open(filename, "w"))
+  assert(fd:write(unindent(content)))
+  assert(fd:write("\n")) -- ensure last line ends in newline
+  assert(fd:close())
+  return filename
+end
+
+
 ----------
 -- Exposed
 ----------
@@ -1380,5 +1392,7 @@ return {
       kill.kill(pid_path, "-TERM")
       wait_pid(pid_path, timeout)
     end
-end
+  end,
+
+  make_yaml_file = make_yaml_file,
 }
