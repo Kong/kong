@@ -216,6 +216,189 @@ for _, strategy in helpers.each_strategy() do
         end)
       end
 
+      describe("CORS", function()
+        setup(function()
+          helpers.stop_kong()
+          dao:truncate_tables()
+
+          insert_files(dao)
+          configure_portal(dao)
+
+          helpers.register_consumer_relations(dao)
+        end)
+
+         after_each(function()
+          close_clients(portal_api_client)
+          helpers.stop_kong()
+        end)
+
+         describe("single portal_cors_origins", function()
+          setup(function()
+            assert(helpers.start_kong({
+              database   = strategy,
+              portal     = true,
+              enforce_rbac = rbac,
+              portal_cors_origins = "http://foo.example"
+            }))
+
+             portal_api_client = assert(ee_helpers.portal_api_client())
+          end)
+
+           it("sets the correct Access-Control-Allow-Origin header", function()
+            local res = assert(portal_api_client:send {
+              method = "GET",
+              path = "/files",
+            })
+
+             local origin = assert.response(res).has.header("Access-Control-Allow-Origin")
+            assert.equals("http://foo.example", origin)
+          end)
+        end)
+
+        describe("multiple portal_cors_origins", function()
+          setup(function()
+            assert(helpers.start_kong({
+              database   = strategy,
+              portal     = true,
+              enforce_rbac = rbac,
+              portal_cors_origins = "http://foo.example, http://bar.example"
+            }))
+
+             portal_api_client = assert(ee_helpers.portal_api_client())
+          end)
+
+           it("sets the correct Access-Control-Allow-Origin header", function()
+            local res = assert(portal_api_client:send {
+              method = "GET",
+              path = "/files",
+              headers = {
+                ['Origin'] = "http://bar.example",
+              },
+            })
+
+             local origin = assert.response(res).has.header("Access-Control-Allow-Origin")
+            assert.equals("http://bar.example", origin)
+          end)
+        end)
+
+         describe("portal_cors_origins *", function()
+          setup(function()
+            assert(helpers.start_kong({
+              database   = strategy,
+              portal     = true,
+              enforce_rbac = rbac,
+              portal_cors_origins = "*"
+            }))
+
+             portal_api_client = assert(ee_helpers.portal_api_client())
+          end)
+
+           it("sets the correct Access-Control-Allow-Origin header", function()
+            local res = assert(portal_api_client:send {
+              method = "GET",
+              path = "/files",
+            })
+
+             local origin = assert.response(res).has.header("Access-Control-Allow-Origin")
+            assert.equals("*", origin)
+          end)
+        end)
+
+         describe("portal_cors_origins nil, portal_gui_protocol and portal_gui_host default", function()
+          setup(function()
+            assert(helpers.start_kong({
+              database   = strategy,
+              portal     = true,
+              enforce_rbac = rbac,
+            }))
+
+             portal_api_client = assert(ee_helpers.portal_api_client())
+          end)
+
+           it("sets the correct Access-Control-Allow-Origin header", function()
+            local res = assert(portal_api_client:send {
+              method = "GET",
+              path = "/files",
+            })
+
+             local origin = assert.response(res).has.header("Access-Control-Allow-Origin")
+            assert.equals(helpers.test_conf.portal_gui_protocol .. "://" .. helpers.test_conf.portal_gui_host, origin)
+          end)
+        end)
+
+         describe("portal_cors_origins nil, portal_gui_protocol and portal_gui_host set", function()
+          setup(function()
+            assert(helpers.start_kong({
+              database   = strategy,
+              portal     = true,
+              enforce_rbac = rbac,
+              portal_gui_protocol = "http",
+              portal_gui_host = "example.foo"
+            }))
+
+             portal_api_client = assert(ee_helpers.portal_api_client())
+          end)
+
+           it("sets the correct Access-Control-Allow-Origin header", function()
+            local res = assert(portal_api_client:send {
+              method = "GET",
+              path = "/files",
+            })
+
+             local origin = assert.response(res).has.header("Access-Control-Allow-Origin")
+            assert.equals("http://example.foo", origin)
+          end)
+        end)
+
+         describe("portal_cors_origins nil, portal_gui_protocol and portal_gui_host set, portal_gui_use_subdomains true", function()
+          setup(function()
+            assert(helpers.start_kong({
+              database   = strategy,
+              portal     = true,
+              enforce_rbac = rbac,
+              portal_gui_protocol = "http",
+              portal_gui_host = "example.foo",
+              portal_gui_use_subdomains = true,
+            }))
+
+             portal_api_client = assert(ee_helpers.portal_api_client())
+          end)
+
+           it("sets the correct Access-Control-Allow-Origin header", function()
+            local res = assert(portal_api_client:send {
+              method = "GET",
+              path = "/files",
+            })
+
+             local origin = assert.response(res).has.header("Access-Control-Allow-Origin")
+            assert.equals("http://default.example.foo", origin)
+          end)
+        end)
+
+         describe("portal_cors_origins nil, portal_gui_protocol and portal_gui_host default, portal_gui_use_subdomains true", function()
+          setup(function()
+            assert(helpers.start_kong({
+              database   = strategy,
+              portal     = true,
+              enforce_rbac = rbac,
+              portal_gui_use_subdomains = true,
+            }))
+
+             portal_api_client = assert(ee_helpers.portal_api_client())
+          end)
+
+           it("sets the correct Access-Control-Allow-Origin header", function()
+            local res = assert(portal_api_client:send {
+              method = "GET",
+              path = "/files",
+            })
+
+             local origin = assert.response(res).has.header("Access-Control-Allow-Origin")
+            assert.equals(helpers.test_conf.portal_gui_protocol .. "://default." .. helpers.test_conf.portal_gui_host, origin)
+          end)
+        end)
+      end)
+
       describe("/files without auth", function()
         setup(function()
           helpers.stop_kong()

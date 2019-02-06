@@ -237,4 +237,25 @@ function _M.build_ws_portal_gui_url(config, workspace)
 end
 
 
+function _M.build_ws_portal_cors_origins(workspace)
+  -- portal_cors_origins takes precedence
+  local portal_cors_origins = _M.retrieve_ws_config("portal_cors_origins", workspace)
+  if portal_cors_origins and #portal_cors_origins > 0 then
+    return portal_cors_origins
+  end
+
+   -- otherwise build origin from protocol, host and subdomain, if applicable
+  local subdomain = ""
+  local portal_gui_use_subdomains = _M.retrieve_ws_config("portal_gui_use_subdomains", workspace)
+  if portal_gui_use_subdomains then
+    subdomain = workspace.name .. "."
+  end
+
+  local portal_gui_protocol = _M.retrieve_ws_config("portal_gui_protocol", workspace)
+  local portal_gui_host = _M.retrieve_ws_config("portal_gui_host", workspace)
+
+  return { portal_gui_protocol .. "://" .. subdomain .. portal_gui_host }
+end
+
+
 return _M

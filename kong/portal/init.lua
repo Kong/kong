@@ -5,6 +5,7 @@ local singletons   = require "kong.singletons"
 local responses    = require "kong.tools.responses"
 local workspaces   = require "kong.workspaces"
 local ee_api       = require "kong.enterprise_edition.api_helpers"
+local ws_helper    = require "kong.workspaces.helper"
 
 
 local fmt = string.format
@@ -14,20 +15,13 @@ local _M = {}
 _M.app = lapis.Application()
 
 
-local get_portal_gui_url = function()
-  if singletons.configuration.portal_gui_use_subdomains then
-    return singletons.configuration.portal_gui_protocol .. '://' .. ngx.ctx.workspaces[1].name .. '.' .. singletons.configuration.portal_gui_host
-  end
-
-  return singletons.configuration.portal_gui_protocol .. '://' .. singletons.configuration.portal_gui_host
-end
-
-
 _M.app:before_filter(function(self)
+  local ctx = ngx.ctx
+
   -- in case of endpoint with missing `/`, this block is executed twice.
   -- So previous workspace should be dropped
-  ngx.ctx.admin_api_request = true
-  ngx.ctx.workspaces = nil
+  ctx.admin_api_request = true
+  ctx.workspaces = nil
 
   local ws_name = self.params.workspace_name or workspaces.DEFAULT_WORKSPACE
   local workspaces = workspaces.get_req_workspace(ws_name)
@@ -37,20 +31,11 @@ _M.app:before_filter(function(self)
 
   -- save workspace name in the context; if not passed, default workspace is
   -- 'default'
-  ngx.ctx.workspaces = workspaces
+  ctx.workspaces = workspaces
   self.params.workspace_name = nil
 
-  -- manually apply cors plugin to this request
-  local portal_gui_match = "*"
-
-  if singletons.configuration.portal_gui_protocol
-  and singletons.configuration.portal_gui_host
-  and ngx.ctx.workspaces[1] then
-    portal_gui_match = get_portal_gui_url()
-  end
-
   local cors_conf = {
-    origins = portal_gui_match,
+    origins = ws_helper.build_ws_portal_cors_origins(workspaces[1]),
     methods = { "GET", "PATCH", "DELETE", "POST" },
     credentials = true,
   }

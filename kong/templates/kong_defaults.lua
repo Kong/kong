@@ -27,6 +27,7 @@ portal = off
 portal_gui_listen = 0.0.0.0:8003, 0.0.0.0:8446 ssl
 portal_gui_protocol = http
 portal_gui_host = 127.0.0.1:8003
+portal_cors_origins = NONE
 portal_gui_use_subdomains = off
 portal_gui_ssl_cert = NONE
 portal_gui_ssl_cert_key = NONE

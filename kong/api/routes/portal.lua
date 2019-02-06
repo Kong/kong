@@ -6,7 +6,7 @@ local constants     = require "kong.constants"
 local ws_helper     = require "kong.workspaces.helper"
 local portal_smtp_client = require "kong.portal.emails"
 
-local ws_constants  = constants.WORKSPACE_CONFIG
+local ws_constants = constants.WORKSPACE_CONFIG
 
 --- Allowed auth plugins
 -- Table containing allowed auth plugins that the developer portal api

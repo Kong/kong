@@ -787,6 +787,25 @@
                         #   - <HOSTNAME>/<PATH>
                         #     portal_gui_host = dev-machine/dev-285
 
+#portal_cors_origins =  # Developer Portal CORS Origins
+                        #
+                        # A comma separated list of allowed domains for
+                        # `Access-Control-Allow-Origin` header. This can be used to
+                        # resolve CORS issues in custom networking environments.
+                        #
+                        # Examples:
+                        #   - list of domains:
+                        #     portal_cors_origins = http://localhost:8003, https://localhost:8004
+                        #   - single domain:
+                        #     portal_cors_origins = http://localhost:8003
+                        #   - all domains:
+                        #     portal_cors_origins = *
+                        #
+                        # NOTE: In most cases, the Developer Portal is able to derive
+                        # valid CORS origins by using portal_gui_protocol, portal_gui_host,
+                        # and if applicable, portal_gui_use_subdomains. In these cases,
+                        # portal_cors_origins is not needed and can remain unset.
+
 #portal_gui_use_subdomains = off
                         # Developer Portal GUI subdomain toggle
                         #
