@@ -422,8 +422,12 @@ describe("(#" .. kong_config.database .. ") Admin API workspaces", function()
 
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
-        -- default, foo, blah
-        assert.equals(2, #json.data)
+
+        -- no entity associated with it by default
+        -- previously, when workspaces were workspaceable, the count was 2,
+        -- given default was in default, and each entity adds two rows in
+        -- workspace_entities
+        assert.equals(0, #json.data)
       end)
       it("returns a list of entities associated with the workspace", function()
         local res = assert(client:send {
@@ -895,7 +899,6 @@ describe("Admin API #" .. kong_config.database, function()
   describe("POST /routes", function()
     describe("Refresh the router", function()
       before_each(function()
-        ngx.ctx.workspaces = nil
         db:truncate("services")
         db:truncate("routes")
         client = assert(helpers.admin_client())
@@ -930,12 +933,12 @@ describe("Admin API #" .. kong_config.database, function()
           path = "/anything",
         }, ws)
 
-        bp.routes:insert{
+        bp.routes:insert({
           hosts = {"my.api.com" },
           paths = { "/my-uri" },
           methods = { "GET" },
           service = demo_ip_service,
-        }
+        })
 
         -- route collides in different WS
         local res = client:post("/w1/services/demo-anything/routes", {
@@ -1129,7 +1132,7 @@ dao_helpers.for_each_dao(function(kong_config)
       helpers.stop_kong()
     end)
 
-    it("increments counter on entity_type and workspace", function()
+    it("#flaky increments counter on entity_type and workspace", function()
       local res
 
       -- 2 workspaces (default and ws1), each with 1 consumer
@@ -1175,7 +1178,7 @@ dao_helpers.for_each_dao(function(kong_config)
       get("/workspaces/ws1/meta", nil, 404)
     end)
 
-    it("unshare decrements counts", function()
+    it("#flaky unshare decrements counts", function()
       post("/workspaces", {name = "ws1"})
       local c1 = post("/consumers", {username = "first"})
       -- share c1 with ws1
@@ -1194,7 +1197,7 @@ dao_helpers.for_each_dao(function(kong_config)
       delete("/workspaces/ws1") --cleanup
     end)
 
-    it("increments counters from new dao entities", function()
+    it("#flaky increments counters from new dao entities", function()
       post("/workspaces", {name = "ws1"})
       post("/ws1/services", {name = "s1", host = "s1.com"})
       local res = get("/workspaces/ws1/meta")
@@ -1211,7 +1214,7 @@ dao_helpers.for_each_dao(function(kong_config)
       get("/ws1/workspaces/default/meta", nil, 404)
     end)
 
-    it("admins nor developers do not modify consumers' counters", function()
+    it("#flaky admins nor developers do not modify consumers' counters", function()
       local before = get("/workspaces/default/meta").consumers
       post("/admins", {username = "foo", email = "email@email.com"}, nil, 200)
       post("/portal/developers", {username = "bar", email = "email@email2.com"})
@@ -1223,6 +1226,5 @@ dao_helpers.for_each_dao(function(kong_config)
       after = get("/workspaces/default/meta").consumers
       assert.is_equal(before, after)
     end)
-
   end)
 end)
