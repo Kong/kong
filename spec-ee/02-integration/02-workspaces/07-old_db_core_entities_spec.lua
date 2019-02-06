@@ -22,7 +22,6 @@ for _, strategy in helpers.each_strategy() do
         local consumer_create, err, err_t = dao.consumers:insert {
           username = "bob",
           custom_id = ngx.null,
-          type = enums.CONSUMERS.TYPE.DEVELOPER
         }
         assert.is_nil(err_t)
         assert.is_nil(err)
