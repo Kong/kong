@@ -471,7 +471,7 @@ for _, strategy in helpers.each_strategy() do
             },
           }
 
-          it_content_types("creates if not exists", function(content_type)
+          it_content_types("#flaky creates if not exists", function(content_type)
             return function()
               local res = assert(client:send {
                 method = "PUT",
@@ -486,7 +486,7 @@ for _, strategy in helpers.each_strategy() do
             end
           end)
 
-          it_content_types("replaces if exists", function(content_type)
+          it_content_types("#flaky replaces if exists", function(content_type)
             return function()
               local res = assert(client:send {
                 method = "PUT",
