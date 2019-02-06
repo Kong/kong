@@ -405,6 +405,17 @@ local function generate_foreign_key_methods(schema)
         end
 
         if not row then
+          local pk, err_t = ws_helper.resolve_shared_entity_id(self.schema.name,
+                                                              { [name] = unique_value },
+                                                               workspaceable[self.schema.name])
+          if err_t then
+            return nil, tostring(err_t), err_t
+          end
+
+          if pk then
+            return self:select(pk, options)
+          end
+
           return nil
         end
 
@@ -421,16 +432,6 @@ local function generate_foreign_key_methods(schema)
 
         if row then
           return self:row_to_entity(row, options)
-        end
-        local pk, err_t = ws_helper.resolve_shared_entity_id(self.schema.name,
-                                                { [name] = unique_value },
-                                                workspaceable[self.schema.name])
-        if err_t then
-          return nil, tostring(err_t), err_t
-        end
-
-        if pk then
-          return self:select(pk, options)
         end
       end
 
@@ -505,8 +506,8 @@ local function generate_foreign_key_methods(schema)
         end
 
         local pk, err_t = ws_helper.resolve_shared_entity_id(self.schema.name,
-          { [name] = unique_value },
-          workspaceable[self.schema.name])
+                                                            { [name] = unique_value },
+                                                             workspaceable[self.schema.name])
 
         if err_t then
           return nil, tostring(err_t), err_t
@@ -603,7 +604,7 @@ local function generate_foreign_key_methods(schema)
         validate_unique_type(unique_value, name, field)
 
         local pk, err_t = ws_helper.resolve_shared_entity_id(self.schema.name,
-                                                    { [name] = unique_value },
+                                                            { [name] = unique_value },
                                                             workspaceable[self.schema.name])
         if err_t then
           return nil, tostring(err_t), err_t
