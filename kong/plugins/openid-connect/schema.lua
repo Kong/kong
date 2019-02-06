@@ -578,6 +578,14 @@ return {
       required                         = false,
       type                             = "array",
     },
+    introspection_post_args_names      = {
+      required                         = false,
+      type                             = "array",
+    },
+    introspection_post_args_values     = {
+      required                         = false,
+      type                             = "array",
+    },
     login_methods                      = {
       required                         = false,
       type                             = "array",

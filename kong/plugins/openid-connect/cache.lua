@@ -496,11 +496,12 @@ end
 local introspection = {}
 
 
-local function introspection_load(oic, access_token, endpoint, hint, headers, now)
+local function introspection_load(oic, access_token, endpoint, hint, headers, args, now)
   log.notice("introspecting access token with identity provider")
   local token, err = oic.token:introspect(access_token, hint or "access_token", {
     introspection_endpoint = endpoint,
     headers                = headers,
+    args                   = args,
   })
   if not token then
     return nil, err or "unable to introspect token"
@@ -525,7 +526,7 @@ local function introspection_load(oic, access_token, endpoint, hint, headers, no
 end
 
 
-function introspection.load(oic, access_token, endpoint, hint, headers, ttl, use_cache)
+function introspection.load(oic, access_token, endpoint, hint, headers, args, ttl, use_cache)
   if not access_token then
     return nil, "no access token given for token introspection"
   end
@@ -540,7 +541,7 @@ function introspection.load(oic, access_token, endpoint, hint, headers, ttl, use
   local err
 
   if use_cache and key then
-    res, err = cache_get("oic:" .. key, ttl, introspection_load, oic, access_token, endpoint, hint, headers, now)
+    res, err = cache_get("oic:" .. key, ttl, introspection_load, oic, access_token, endpoint, hint, headers, args, now)
     if not res then
       return nil, err or "unable to introspect token"
     end
@@ -548,11 +549,11 @@ function introspection.load(oic, access_token, endpoint, hint, headers, ttl, use
     local exp = res[1]
     if now > exp then
       cache_invalidate("oic:" .. key)
-      res, err = introspection_load(oic, access_token, endpoint, hint, headers, now)
+      res, err = introspection_load(oic, access_token, endpoint, hint, headers, args, now)
     end
 
   else
-    res, err = introspection_load(oic, access_token, endpoint, hint, headers, now)
+    res, err = introspection_load(oic, access_token, endpoint, hint, headers, args, now)
   end
 
   if not res then
@@ -798,5 +799,5 @@ return {
   tokens         = tokens,
   token_exchange = token_exchange,
   userinfo       = userinfo,
-  version        = "0.2.6",
+  version        = "0.2.8",
 }

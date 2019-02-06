@@ -110,17 +110,19 @@ local function create_introspect_token(args, oic)
   local endpoint = args.get_conf_arg("introspection_endpoint")
   local hint     = args.get_conf_arg("introspection_hint", "access_token")
   local headers  = args.get_conf_args("introspection_headers_names", "introspection_headers_values")
+  local pargs    = args.get_conf_args("introspection_post_args_names", "introspection_post_args_values")
+
 
   if args.get_conf_arg("cache_introspection") then
     return function(access_token, ttl)
         log("introspecting token with caching enabled")
-        return cache.introspection.load(oic, access_token, endpoint, hint, headers, ttl, true)
+        return cache.introspection.load(oic, access_token, endpoint, hint, headers, pargs, ttl, true)
     end
   end
 
   return function(access_token, ttl)
     log("introspecting token")
-    return cache.introspection.load(oic, access_token, endpoint, hint, headers, ttl, false)
+    return cache.introspection.load(oic, access_token, endpoint, hint, headers, pargs, ttl, false)
   end
 end
 
@@ -2004,10 +2006,10 @@ function OICHandler:access(conf)
           if type(tokens_decoded.access_token) == "table" then
             access_token_scopes = find_claim(tokens_decoded.access_token.payload, scopes_claim)
             if access_token_scopes then
-              log("scopes found in jwt token")
+              log("scopes found in access token")
 
             else
-              log("scopes not found in jwt token")
+              log("scopes not found in access token")
             end
 
           else
@@ -2082,10 +2084,10 @@ function OICHandler:access(conf)
           if type(tokens_decoded.access_token) == "table" then
             access_token_audience = find_claim(tokens_decoded.access_token.payload, audience_claim)
             if access_token_audience then
-              log("audience found in jwt token")
+              log("audience found in access token")
 
             else
-              log("audience not found in jwt token")
+              log("audience not found in access token")
             end
 
           else
@@ -2240,14 +2242,14 @@ function OICHandler:access(conf)
           if type(tokens_decoded.id_token) == "table" then
             credential_value = find_claim(tokens_decoded.id_token.payload, credential_claim)
             if credential_value then
-              log("credential claim found in ID token")
+              log("credential claim found in id token")
 
             else
-              log("credential claim not found in ID token")
+              log("credential claim not found in id token")
             end
           end
 
-          if type(tokens_decoded.access_token) == "table" and credential_value == nil then
+          if credential_value == nil and type(tokens_decoded.access_token) == "table" then
             credential_value = find_claim(tokens_decoded.access_token.payload, credential_claim)
             if credential_value then
               log("credential claim found in access token")
@@ -2255,6 +2257,7 @@ function OICHandler:access(conf)
             else
               log("credential claim not found in access token")
             end
+
           else
             credential_value = find_claim(token_introspected, credential_claim)
             if credential_value then
@@ -2302,13 +2305,23 @@ function OICHandler:access(conf)
         end
 
         if tokens_decoded then
-          if type(tokens_decoded.access_token) == "table" then
-            authenticated_groups = find_claim(tokens_decoded.access_token.payload, authenticated_groups_claim)
+          if type(tokens_decoded.id_token) == "table" then
+            authenticated_groups = find_claim(tokens_decoded.id_token.payload, authenticated_groups_claim)
             if authenticated_groups then
-              log("authenticated groups claim found in jwt token")
+              log("authenticated groups found in id token")
 
             else
-              log("authenticated groups claim not found in jwt token")
+              log("authenticated groups not found in id token")
+            end
+          end
+
+          if authenticated_groups == nil and type(tokens_decoded.access_token) == "table" then
+            authenticated_groups = find_claim(tokens_decoded.access_token.payload, authenticated_groups_claim)
+            if authenticated_groups then
+              log("authenticated groups claim found in access token")
+
+            else
+              log("authenticated groups claim not found in access token")
             end
 
           else

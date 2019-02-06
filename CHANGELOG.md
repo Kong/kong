@@ -1,3 +1,11 @@
+## v0.2.8 (upcoming)
+
+- `config.credential_claim` is searched from `id token` as well
+- `config.authenticated_groups_claim` is searched from `id token` as well
+- Add `config.introspection_post_args_names`
+- Add `config.introspection_post_args_values`
+
+
 ## v0.2.7
 
 - Remove `daos` that were never used
