@@ -445,6 +445,14 @@ return {
       required                         = false,
       type                             = "array",
     },
+    token_headers_names        = {
+      required                         = false,
+      type                             = "array",
+    },
+    token_headers_values       = {
+      required                         = false,
+      type                             = "array",
+    },
     token_post_args_names              = {
       required                         = false,
       type                             = "array",

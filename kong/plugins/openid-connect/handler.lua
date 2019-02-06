@@ -1696,22 +1696,25 @@ function OICHandler:access(conf)
       for _, arg in ipairs(token_endpoint_args) do
         arg.args = args.get_conf_args("token_post_args_names", "token_post_args_values")
 
+        local token_headers = args.get_conf_args("token_headers_names", "token_headers_values")
         local token_headers_client = args.get_conf_arg("token_headers_client")
         if token_headers_client then
-          log("parsing client header for token request")
-          local token_headers = {}
-          local has_headers
+          log("parsing client headers for token request")
           for _, token_header_name in ipairs(token_headers_client) do
             local token_header_value = args.get_header(token_header_name)
             if token_header_value then
+              if not token_headers then
+                token_headers = {}
+              end
+
               token_headers[token_header_name] = token_header_value
-              has_headers = true
             end
           end
-          if has_headers then
-            log("injecting client headers to token request")
-            arg.headers = token_headers
-          end
+        end
+
+        if token_headers then
+          log("injecting token headers to token request")
+          arg.headers = token_headers
         end
 
         local token_endpoint_auth_method = args.get_conf_arg("token_endpoint_auth_method")

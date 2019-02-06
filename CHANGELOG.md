@@ -2,6 +2,8 @@
 
 - `config.credential_claim` is searched from `id token` as well
 - `config.authenticated_groups_claim` is searched from `id token` as well
+- Add `config.token_headers_names`
+- Add `config.token_headers_values`
 - Add `config.introspection_post_args_names`
 - Add `config.introspection_post_args_values`
 
