@@ -346,12 +346,10 @@ for _, strategy in helpers.each_strategy() do
             name     = "schema violation",
             strategy = strategy,
             message  = unindent([[
-              2 schema violations
-              (must set one of 'methods', 'hosts', 'paths' when 'protocols' is 'http' or 'https';
-              service: required field missing)
+              schema violation
+              (must set one of 'methods', 'hosts', 'paths' when 'protocols' is 'http' or 'https')
             ]], true, true),
             fields   = {
-              service     = "required field missing",
               ["@entity"] = {
                 "must set one of 'methods', 'hosts', 'paths' when 'protocols' is 'http' or 'https'",
               }
@@ -526,6 +524,42 @@ for _, strategy in helpers.each_strategy() do
             tags            = ngx.null,
             preserve_host   = false,
             service         = route.service,
+          }, route)
+        end)
+
+        it("creates a Route without a service", function()
+          local route, err, err_t = db.routes:insert({
+            protocols       = { "http" },
+            hosts           = { "example.com" },
+            paths           = { "/example" },
+            regex_priority  = 3,
+            strip_path      = true,
+          }, { nulls = true })
+          assert.is_nil(err_t)
+          assert.is_nil(err)
+
+          assert.is_table(route)
+          assert.is_number(route.created_at)
+          assert.is_number(route.updated_at)
+          assert.is_true(utils.is_valid_uuid(route.id))
+
+          assert.same({
+            id              = route.id,
+            created_at      = route.created_at,
+            updated_at      = route.updated_at,
+            protocols       = { "http" },
+            name            = ngx.null,
+            methods         = ngx.null,
+            hosts           = { "example.com" },
+            paths           = { "/example" },
+            snis            = ngx.null,
+            sources         = ngx.null,
+            destinations    = ngx.null,
+            tags            = ngx.null,
+            regex_priority  = 3,
+            strip_path      = true,
+            preserve_host   = false,
+            service         = ngx.null,
           }, route)
         end)
 
@@ -1445,6 +1479,20 @@ for _, strategy in helpers.each_strategy() do
         assert.is_nil(err_t)
         assert.is_nil(err)
         assert.same(new_route.service, { id = service2.id })
+      end)
+
+      it(":update() detaches a Route from an existing Service", function()
+        local service1 = bp.services:insert({ host = "service1.com" })
+        local route = bp.routes:insert({ service = service1, methods = { "GET" } })
+        local new_route, err, err_t = db.routes:update({ id = route.id }, {
+          service = ngx.null
+        })
+        assert.is_nil(err_t)
+        assert.is_nil(err)
+        route.service = nil
+        route.updated_at = nil
+        new_route.updated_at = nil
+        assert.same(route, new_route)
       end)
 
       it(":update() cannot attach a Route to a non-existing Service", function()

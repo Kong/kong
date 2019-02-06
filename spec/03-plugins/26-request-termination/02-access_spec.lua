@@ -12,7 +12,7 @@ for _, strategy in helpers.each_strategy() do
     local admin_client
 
     lazy_setup(function()
-      local bp = helpers.get_db_utils(strategy, {
+      local bp, db = helpers.get_db_utils(strategy, {
         "routes",
         "services",
         "plugins",
@@ -42,41 +42,45 @@ for _, strategy in helpers.each_strategy() do
         hosts = { "api6.request-termination.com" },
       })
 
+      local route7 = db.routes:insert({
+        hosts = { "api7.request-termination.com" },
+      })
+
       bp.plugins:insert {
-        name     = "request-termination",
-        route = { id = route1.id },
-        config   = {},
+        name   = "request-termination",
+        route  = { id = route1.id },
+        config = {},
       }
 
       bp.plugins:insert {
-        name     = "request-termination",
-        route = { id = route2.id },
-        config   = {
+        name   = "request-termination",
+        route  = { id = route2.id },
+        config = {
           status_code = 404,
         },
       }
 
       bp.plugins:insert {
-        name     = "request-termination",
-        route = { id = route3.id },
-        config   = {
+        name   = "request-termination",
+        route  = { id = route3.id },
+        config = {
           status_code = 406,
           message     = "Invalid",
         },
       }
 
       bp.plugins:insert {
-        name     = "request-termination",
-        route = { id = route4.id },
-        config   = {
+        name   = "request-termination",
+        route  = { id = route4.id },
+        config = {
           body = "<html><body><h1>Service is down for maintenance</h1></body></html>",
         },
       }
 
       bp.plugins:insert {
-        name     = "request-termination",
-        route = { id = route5.id },
-        config   = {
+        name   = "request-termination",
+        route  = { id = route5.id },
+        config = {
           status_code  = 451,
           content_type = "text/html",
           body         = "<html><body><h1>Service is down due to content infringement</h1></body></html>",
@@ -84,12 +88,18 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.plugins:insert {
-        name     = "request-termination",
-        route = { id = route6.id },
-        config   = {
+        name   = "request-termination",
+        route  = { id = route6.id },
+        config = {
           status_code = 503,
           body        = '{"code": 1, "message": "Service unavailable"}',
         },
+      }
+
+      bp.plugins:insert {
+        name   = "request-termination",
+        route  = { id = route7.id },
+        config = {},
       }
 
       assert(helpers.start_kong({
@@ -117,6 +127,19 @@ for _, strategy in helpers.each_strategy() do
           path = "/status/200",
           headers = {
             ["Host"] = "api1.request-termination.com"
+          }
+        })
+        local body = assert.res_status(503, res)
+        local json = cjson.decode(body)
+        assert.same({ message = "Service unavailable" }, json)
+      end)
+
+      it("default status code and message with serviceless route", function()
+        local res = assert(proxy_client:send {
+          method = "GET",
+          path = "/status/200",
+          headers = {
+            ["Host"] = "api7.request-termination.com"
           }
         })
         local body = assert.res_status(503, res)

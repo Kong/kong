@@ -16,7 +16,7 @@ for _, strategy in helpers.each_strategy() do
 
     -- Note by default the page size is 100, we should keep this number
     -- less than 100/(tags_per_entity)
-    -- otherwise the 'limits maximum queries in single request' tests 
+    -- otherwise the 'limits maximum queries in single request' tests
     -- for Cassandra might fail
     local test_entity_count = 10
 
@@ -87,9 +87,9 @@ for _, strategy in helpers.each_strategy() do
       -- due to the different sql in postgres stragey
       -- we need to test these two methods seperately
       local scenarios = {
-        { "update", { id = service1.id }, "service1", }, 
+        { "update", { id = service1.id }, "service1", },
         { "update_by_name", "service2", "service2"},
-        { "upsert", { id = service3.id }, "service3" }, 
+        { "upsert", { id = service3.id }, "service3" },
         { "upsert_by_name", "service4", "service4"},
       }
       for _, scenario in pairs(scenarios) do
@@ -140,7 +140,7 @@ for _, strategy in helpers.each_strategy() do
       -- due to the different sql in postgres stragey
       -- we need to test these two methods seperately
       local scenarios = {
-        { "delete", { id = service5.id }, "service5" }, 
+        { "delete", { id = service5.id }, "service5" },
         { "delete_by_name", "service6", "service6" },
       }
       for i, scenario in pairs(scenarios) do
@@ -179,7 +179,7 @@ for _, strategy in helpers.each_strategy() do
       -- note this is different from test "update row in tags table with"
       -- as this test actually creats new records
       local scenarios = {
-        { "upsert", { id = require("kong.tools.utils").uuid() }, { "service-upsert-1" } }, 
+        { "upsert", { id = require("kong.tools.utils").uuid() }, { "service-upsert-1" } },
         { "upsert_by_name", "service-upsert-2", { "service-upsert-2" } },
       }
       for _, scenario in pairs(scenarios) do
@@ -232,7 +232,7 @@ for _, strategy in helpers.each_strategy() do
         {
           { { "team_paging_1", "team_paging_2" }, "or" },
           total_entities_count/single_tag_count*2,
-        }, 
+        },
         {
           { { "paging", "team_paging_1" }, "and" },
           total_entities_count/single_tag_count,
@@ -297,7 +297,7 @@ for _, strategy in helpers.each_strategy() do
         it("and exits early if PAGING_MAX_QUERY_ROUNDS exceeded", function()
           stub(ngx, "log")
 
-          local rows, err, err_t, offset = db.services:page(2, nil, 
+          local rows, err, err_t, offset = db.services:page(2, nil,
             { tags = { "paging", "tag_notexist" }, tags_cond = 'and' })
           assert(is_valid_page(rows, err, err_t))
           assert.is_not_nil(offset)
@@ -325,7 +325,7 @@ for _, strategy in helpers.each_strategy() do
           assert.stub(ngx.log).was_not_called()
         end)
 
-        it("and returns as normal if page size is large enough", function()
+        it("#flaky and returns as normal if page size is large enough", function()
           stub(ngx, "log")
 
           local rows, err, err_t, offset = db.services:page(enough_page_size, nil,
