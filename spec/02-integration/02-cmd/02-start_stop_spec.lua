@@ -61,11 +61,14 @@ describe("kong start/stop #" .. strategy, function()
   if strategy == "cassandra" then
     it("start resolves cassandra contact points", function()
       assert(helpers.kong_exec("start", {
+        prefix = helpers.test_conf.prefix,
         database = strategy,
         cassandra_contact_points = "localhost",
         cassandra_keyspace = helpers.test_conf.cassandra_keyspace,
       }))
-      assert(helpers.kong_exec("stop"))
+      assert(helpers.kong_exec("stop", {
+        prefix = helpers.test_conf.prefix,
+      }))
     end)
   end
 
@@ -356,7 +359,7 @@ describe("kong start/stop #" .. strategy, function()
 
     if strategy == "cassandra" then
       it("errors when cassandra contact points cannot be resolved", function()
-        local ok, stderr = helpers.kong_exec("start --prefix " .. helpers.test_conf.prefix, {
+        local ok, stderr = helpers.start_kong({
           database = strategy,
           cassandra_contact_points = "invalid.inexistent.host",
           cassandra_keyspace = helpers.test_conf.cassandra_keyspace,
@@ -367,6 +370,7 @@ describe("kong start/stop #" .. strategy, function()
                        "(cassandra_contact_points = 'invalid.inexistent.host')", stderr, nil, true)
 
         finally(function()
+          helpers.stop_kong()
           helpers.kill_all()
           pcall(helpers.dir.rmtree)
         end)

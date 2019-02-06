@@ -78,6 +78,34 @@ for _, strategy in helpers.each_strategy() do
           end
         end)
 
+        it_content_types("creates a route without service", function(content_type)
+          return function()
+            if content_type == "multipart/form-data" then
+              -- the client doesn't play well with this
+              return
+            end
+
+            local res = client:post("/routes", {
+              body = {
+                protocols = { "http" },
+                hosts     = { "my.route.com" },
+              },
+              headers = { ["Content-Type"] = content_type }
+            })
+            local body = assert.res_status(201, res)
+            local json = cjson.decode(body)
+            assert.same({ "my.route.com" }, json.hosts)
+            assert.is_number(json.created_at)
+            assert.is_number(json.regex_priority)
+            assert.is_string(json.id)
+            assert.equals(cjson.null, json.name)
+            assert.equals(cjson.null, json.paths)
+            assert.equals(cjson.null, json.service)
+            assert.False(json.preserve_host)
+            assert.True(json.strip_path)
+          end
+        end)
+
         it_content_types("creates a complex route", function(content_type)
           return function()
             if content_type == "multipart/form-data" then
@@ -138,12 +166,10 @@ for _, strategy in helpers.each_strategy() do
                 code    = Errors.codes.SCHEMA_VIOLATION,
                 name    = "schema violation",
                 message = unindent([[
-                  2 schema violations
-                  (must set one of 'methods', 'hosts', 'paths' when 'protocols' is 'http' or 'https';
-                  service: required field missing)
+                  schema violation
+                  (must set one of 'methods', 'hosts', 'paths' when 'protocols' is 'http' or 'https')
                 ]], true, true),
                 fields = {
-                  service   = "required field missing",
                   ["@entity"] = {
                     "must set one of 'methods', 'hosts', 'paths' when 'protocols' is 'http' or 'https'"
                   }
@@ -162,12 +188,10 @@ for _, strategy in helpers.each_strategy() do
               assert.same({
                 code    = Errors.codes.SCHEMA_VIOLATION,
                 name    = "schema violation",
-                message = "2 schema violations " ..
-                          "(protocols.1: expected one of: http, https, tcp, tls; " ..
-                          "service: required field missing)",
+                message = "schema violation " ..
+                          "(protocols.1: expected one of: http, https, tcp, tls)",
                 fields = {
                   protocols = { "expected one of: http, https, tcp, tls" },
-                  service   = "required field missing",
                 }
               }, cjson.decode(body))
             end
@@ -410,6 +434,35 @@ for _, strategy in helpers.each_strategy() do
             end
           end)
 
+          it_content_types("creates without service if not found", function(content_type)
+            return function()
+              if content_type == "multipart/form-data" then
+                -- the client doesn't play well with this
+                return
+              end
+
+              local id = utils.uuid()
+              local res = client:put("/routes/" .. id, {
+                headers = {
+                  ["Content-Type"] = content_type
+                },
+                body = {
+                  paths   = { "/updated-paths" },
+                },
+              })
+              local body = assert.res_status(200, res)
+              local json = cjson.decode(body)
+              assert.same({ "/updated-paths" }, json.paths)
+              assert.same(cjson.null, json.hosts)
+              assert.same(cjson.null, json.methods)
+              assert.same(cjson.null, json.service)
+              assert.equal(id, json.id)
+
+              local in_db = assert(db.routes:select({ id = id }, { nulls = true }))
+              assert.same(json, in_db)
+            end
+          end)
+
           it_content_types("creates if not found by name", function(content_type)
             return function()
               if content_type == "multipart/form-data" then
@@ -533,12 +586,10 @@ for _, strategy in helpers.each_strategy() do
                   code    = Errors.codes.SCHEMA_VIOLATION,
                   name    = "schema violation",
                   message = unindent([[
-                  2 schema violations
-                  (must set one of 'methods', 'hosts', 'paths' when 'protocols' is 'http' or 'https';
-                  service: required field missing)
+                  schema violation
+                  (must set one of 'methods', 'hosts', 'paths' when 'protocols' is 'http' or 'https')
                 ]], true, true),
                   fields  = {
-                    service   = "required field missing",
                     ["@entity"] = {
                       "must set one of 'methods', 'hosts', 'paths' when 'protocols' is 'http' or 'https'"
                     }
@@ -557,12 +608,10 @@ for _, strategy in helpers.each_strategy() do
                 assert.same({
                   code    = Errors.codes.SCHEMA_VIOLATION,
                   name    = "schema violation",
-                  message = "2 schema violations " ..
-                    "(protocols.1: expected one of: http, https, tcp, tls; " ..
-                    "service: required field missing)",
+                  message = "schema violation " ..
+                    "(protocols.1: expected one of: http, https, tcp, tls)",
                   fields  = {
                     protocols = { "expected one of: http, https, tcp, tls" },
-                    service   = "required field missing",
                   }
                 }, cjson.decode(body))
 
@@ -760,6 +809,43 @@ for _, strategy in helpers.each_strategy() do
 
             assert.same({ "my-updated.tld" }, json.hosts)
             assert.equal(route.id, json.id)
+          end)
+
+          it_content_types("removes service association", function(content_type)
+            return function()
+              if content_type == "multipart/form-data" then
+                -- the client doesn't play well with this
+                return
+              end
+
+              local route = bp.routes:insert({
+                name  = "my-patch-route",
+                paths = { "/my-route" },
+              })
+              local res = client:patch("/routes/my-patch-route", {
+                headers = {
+                  ["Content-Type"] = content_type
+                },
+                body = {
+                  methods = cjson.null,
+                  hosts   = cjson.null,
+                  service = cjson.null,
+                  paths   = { "/updated-paths" },
+                },
+              })
+              local body = assert.res_status(200, res)
+              local json = cjson.decode(body)
+              assert.same({ "/updated-paths" }, json.paths)
+              assert.same(cjson.null, json.hosts)
+              assert.same(cjson.null, json.methods)
+              assert.same(cjson.null, json.service)
+              assert.equal(route.id, json.id)
+
+              local in_db = assert(db.routes:select({ id = route.id }, { nulls = true }))
+              assert.same(json, in_db)
+
+              db.routes:delete({ id = route.id })
+            end
           end)
 
           describe("errors", function()

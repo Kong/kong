@@ -102,6 +102,12 @@ for _, strategy in helpers.each_strategy() do
         service     = service12,
       }
 
+      local route14 = bp.routes:insert {
+        hosts       = { "lambda14.com" },
+        protocols   = { "http", "https" },
+        service     = ngx.null,
+      }
+
       bp.plugins:insert {
         name     = "aws-lambda",
         route = { id = route1.id },
@@ -273,6 +279,18 @@ for _, strategy in helpers.each_strategy() do
           function_name        = "functionWithNoResponse",
           is_proxy_integration = true,
         }
+      }
+
+      bp.plugins:insert {
+        name     = "aws-lambda",
+        route = { id = route14.id },
+        config   = {
+          port          = 10001,
+          aws_key       = "mock-key",
+          aws_secret    = "mock-secret",
+          aws_region    = "us-east-1",
+          function_name = "kongLambdaTest",
+        },
       }
 
       assert(helpers.start_kong{
@@ -770,6 +788,21 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(502, res)
         local b = assert.response(res).has.jsonbody()
         assert.equal("Bad Gateway", b.message)
+      end)
+
+      it("invokes a Lambda function with GET using serviceless route", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/get?key1=some_value1&key2=some_value2&key3=some_value3",
+          headers = {
+            ["Host"] = "lambda14.com"
+          }
+        })
+        assert.res_status(200, res)
+        local body = assert.response(res).has.jsonbody()
+        assert.is_string(res.headers["x-amzn-RequestId"])
+        assert.equal("some_value1", body.key1)
+        assert.is_nil(res.headers["X-Amz-Function-Error"])
       end)
     end)
   end)

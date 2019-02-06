@@ -104,7 +104,7 @@ return {
                        },
                      }, },
     { tags             = typedefs.tags },
-    { service = { type = "foreign", reference = "services", required = true }, },
+    { service = { type = "foreign", reference = "services" }, },
   },
 
   entity_checks = {
