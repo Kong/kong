@@ -956,6 +956,7 @@ function DAO:update(primary_key, entity, options)
     end
   end
 
+  ws_helper.remove_ws_prefix(self.schema.name, rbw_entity)
   self:post_crud_event("update", row, rbw_entity)
 
   return row

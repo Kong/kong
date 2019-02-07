@@ -84,6 +84,7 @@ function Plugins:select_by_cache_key_migrating(key)
               local ws_entity = ws_entities_map[row.id]
               if ws_entity then
                 row.workspace_id = ws_entity.workspace_id
+                row.workspace_name = ws_entity.workspace_name
                 return self:deserialize_row(row)
               end
 

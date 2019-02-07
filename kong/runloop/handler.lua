@@ -428,7 +428,7 @@ return {
         if data.old_entity then
           cache_key = get_cache_key(data, data.old_entity)
           if cache_key then
-            cache:invalidate(cache_key, workspaces, data.schema.table)
+            cache:invalidate(cache_key, workspaces)
           end
         end
 

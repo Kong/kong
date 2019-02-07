@@ -803,6 +803,7 @@ do
         local ws_entity = ws_entities_map[row[primary_key]]
         if ws_entity then
           row.workspace_id = ws_entity.workspace_id
+          row.workspace_name = ws_entity.workspace_name
           res_rows[#res_rows+1] = self:deserialize_row(row)
           if #res_rows == size then
             return res_rows, nil, encode_base64(row[primary_key])
