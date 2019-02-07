@@ -215,25 +215,13 @@ end
 
 
 do
-  local resty_lock = require "resty.lock"
+  local concurrency = require "kong.concurrency"
+
   local knode = (kong and kong.node) and kong.node or
                 require "kong.pdk.node".new()
 
 
   local MAX_LOCK_WAIT_STEP = 2 -- seconds
-
-
-  local function release_rlock_and_ret(self, rlock, ...)
-    rlock:unlock()
-
-    local args = { ... }
-
-    if type(args[2]) == "string" then
-      args[2] = prefix_err(self, args[2])
-    end
-
-    return unpack(args)
-  end
 
 
   function DB:cluster_mutex(key, opts, cb)
@@ -300,90 +288,74 @@ do
       ttl = DEFAULT_LOCKS_TTL
     end
 
-    local rlock, err = resty_lock:new("kong_locks", {
-      exptime = ttl,
+    local mutex_opts = {
+      name = key,
       timeout = ttl,
-    })
-    if not rlock then
-      return nil, prefix_err(self, "failed to create worker lock: " .. err)
-    end
-
-    -- acquire a single worker
-
-    local elapsed, err = rlock:lock(key)
-    if not elapsed then
-      if err == "timeout" then
-        return nil, prefix_err(self, err)
+    }
+    return concurrency.with_worker_mutex(mutex_opts, function(elapsed)
+      if elapsed ~= 0 then
+        -- we did not acquire the worker lock, but it was released
+        return false
       end
 
-      return nil, prefix_err(self, "failed to acquire worker lock: " .. err)
-    end
+      -- worker lock acquired, other workers are waiting on it
+      -- now acquire cluster lock via strategy-specific connector
 
-    if elapsed ~= 0 then
-      -- we did not acquire the worker lock, but it was released
-      return false
-    end
-
-    -- worker lock acquired, other workers are waiting on it
-    -- now acquire cluster lock via strategy-specific connector
-
-    local ok, err = self.connector:insert_lock(key, ttl, owner)
-    if err then
-      return release_rlock_and_ret(self, rlock, nil,
-                                   "failed to insert cluster lock: " .. err)
-    end
-
-    if not ok then
-      if no_wait then
-        -- don't wait on cluster locked
-        return release_rlock_and_ret(self, rlock, false)
+      local ok, err = self.connector:insert_lock(key, ttl, owner)
+      if err then
+        return nil, prefix_err(self, "failed to insert cluster lock: " .. err)
       end
 
-      -- waiting on cluster lock
-      local step = 0.1
-      local cluster_elapsed = 0
-
-      while cluster_elapsed < ttl do
-        ngx.sleep(step)
-        cluster_elapsed = cluster_elapsed + step
-
-        if cluster_elapsed >= ttl then
-          break
+      if not ok then
+        if no_wait then
+          -- don't wait on cluster locked
+          return false
         end
 
-        local locked, err = self.connector:read_lock(key)
-        if err then
-          return release_rlock_and_ret(self, rlock, nil,
-                                       "failed to read cluster lock: " .. err)
+        -- waiting on cluster lock
+        local step = 0.1
+        local cluster_elapsed = 0
+
+        while cluster_elapsed < ttl do
+          ngx.sleep(step)
+          cluster_elapsed = cluster_elapsed + step
+
+          if cluster_elapsed >= ttl then
+            break
+          end
+
+          local locked, err = self.connector:read_lock(key)
+          if err then
+            return nil, prefix_err(self, "failed to read cluster lock: " .. err)
+          end
+
+          if not locked then
+            -- the cluster lock was released
+            return false
+          end
+
+          step = math.min(step * 3, MAX_LOCK_WAIT_STEP)
         end
 
-        if not locked then
-          -- the cluster lock was released
-          return release_rlock_and_ret(self, rlock, false)
-        end
-
-        step = math.min(step * 3, MAX_LOCK_WAIT_STEP)
+        return nil, prefix_err(self, "timeout")
       end
 
-      return release_rlock_and_ret(self, rlock, nil, "timeout")
-    end
+      -- cluster lock acquired, run callback
 
-    -- cluster lock acquired, run callback
+      local pok, perr = xpcall(cb, debug.traceback)
+      if not pok then
+        self.connector:remove_lock(key, owner)
 
-    local pok, perr = xpcall(cb, debug.traceback)
-    if not pok then
-      self.connector:remove_lock(key, owner)
+        return nil, prefix_err(self, "cluster_mutex callback threw an error: "
+                                     .. perr)
+      end
 
-      return release_rlock_and_ret(self, rlock, nil,
-                                   "cluster_mutex callback threw an error: "
-                                   .. perr)
-    end
+      if not no_cleanup then
+        self.connector:remove_lock(key, owner)
+      end
 
-    if not no_cleanup then
-      self.connector:remove_lock(key, owner)
-    end
-
-    return release_rlock_and_ret(self, rlock, true)
+      return true
+    end)
   end
 end
 

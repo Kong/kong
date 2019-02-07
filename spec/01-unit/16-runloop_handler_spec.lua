@@ -17,6 +17,7 @@ local function setup_it_block()
     kong = {
       log = {
         err = function() end,
+        warn = function() end,
       },
       response = {
         exit = function() end,
@@ -65,6 +66,8 @@ local function setup_it_block()
         end,
       }},
 
+      { "kong.concurrency", {} },
+
       { "kong.runloop.handler", {} },
 
     }
@@ -87,11 +90,6 @@ describe("runloop handler", function()
 
       handler._set_check_router_rebuild(check_router_rebuild_spy)
 
-      handler.init_worker.before()
-
-      -- check semaphore
-      assert.equal(1, semaphores[1].value)
-
       handler.access.before({})
 
       assert.spy(check_router_rebuild_spy).was_called(1)
@@ -112,20 +110,23 @@ describe("runloop handler", function()
 
       handler._set_check_router_rebuild(check_router_rebuild_spy)
 
-      handler.init_worker.before()
+      handler.access.before({})
+
+      -- check semaphore
+      assert.equal(1, semaphores[1].value)
+
+      -- was called even if semaphore timed out on acquisition
+      assert.spy(check_router_rebuild_spy).was_called(1)
 
       -- cause failure to acquire semaphore
       semaphores[1].wait = function()
         return nil, "timeout"
       end
 
-      -- check semaphore
-      assert.equal(1, semaphores[1].value)
-
       handler.access.before({})
 
       -- was called even if semaphore timed out on acquisition
-      assert.spy(check_router_rebuild_spy).was_called(1)
+      assert.spy(check_router_rebuild_spy).was_called(2)
 
       -- check semaphore
       assert.equal(1, semaphores[1].value)
