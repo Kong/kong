@@ -1,6 +1,7 @@
 local cassandra_strategy = require "kong.tools.public.rate-limiting.strategies.cassandra"
 local dao_helpers        = require "spec.02-integration.03-dao.helpers"
 local dao_factory        = require "kong.dao.factory"
+local DB                 = require "kong.db"
 
 local function window_floor(size, time)
   return math.floor(time / size) * size
@@ -51,7 +52,10 @@ describe("rate-limiting: Cassadra strategy", function()
   local cluster
 
   setup(function()
-    dao      = assert(dao_factory.new(kong_conf))
+    local new_db = assert(DB.new(kong_conf))
+    assert(new_db:init_connector())
+
+    dao      = assert(dao_factory.new(kong_conf, new_db))
     strategy = cassandra_strategy.new(dao)
     cluster  = dao.db.cluster
   end)

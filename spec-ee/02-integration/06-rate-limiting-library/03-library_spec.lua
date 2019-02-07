@@ -2,6 +2,7 @@ local ratelimit   = require "kong.tools.public.rate-limiting"
 local spec_helpers = require "spec.helpers"
 local conf_loader = require "kong.conf_loader"
 local dao_factory = require "kong.dao.factory"
+local DB          = require "kong.db"
 
 local function window_floor(size, time)
   return math.floor(time / size) * size
@@ -9,7 +10,11 @@ end
 
 describe("rate-limiting", function()
   local kong_conf = assert(conf_loader(spec_helpers.test_conf_path))
-  local dao = assert(dao_factory.new(kong_conf))
+
+  local new_db = assert(DB.new(kong_conf))
+  assert(new_db:init_connector())
+
+  local dao = assert(dao_factory.new(kong_conf, new_db))
 
   setup(function()
     assert(dao.db:query("TRUNCATE TABLE rl_counters"))

@@ -1,6 +1,8 @@
 local redis_strategy = require "kong.tools.public.rate-limiting.strategies.redis"
 local redis = require "resty.redis"
 
+require"resty.dns.client".init(nil)
+
 local function window_floor(size, time)
   return math.floor(time / size) * size
 end
