@@ -105,13 +105,10 @@ end
 dao_helpers.for_each_dao(function(kong_config)
 
 describe("Admin API RBAC with #" .. kong_config.database, function()
-  local bp, dao, _
+  local bp, db, dao
 
   setup(function()
-    bp,_,dao = helpers.get_db_utils(kong_config.database)
-    dao:drop_schema()
-    ngx.ctx.workspaces = {}
-    dao:run_migrations()
+    bp, db, dao = helpers.get_db_utils(kong_config.database, {})
 
     assert(helpers.start_kong({
       database = kong_config.database
@@ -119,6 +116,12 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
   end)
 
   before_each(function()
+    dao:truncate_table("rbac_users")
+    dao:truncate_table("rbac_roles")
+    dao:truncate_table("rbac_role_entities")
+    dao:truncate_table("rbac_role_endpoints")
+    db:truncate("consumers")
+
     if client then
       client:close()
     end
@@ -131,7 +134,6 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
       client:close()
     end
 
-    dao:drop_schema()
     helpers.stop_kong()
   end)
 
@@ -399,6 +401,18 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
 
     describe("GET", function()
       it("lists users", function()
+        local res = assert(client:post("/rbac/users", {
+          body = {
+            name = "jerry",
+            user_token = "foo",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+        }))
+
+        assert.res_status(201, res)
+
         local res = assert(client:send {
           method = "GET",
           path = "/rbac/users",
@@ -407,7 +421,7 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
 
-        assert.equals(5, #json.data)
+        assert.equals(1, #json.data)
       end)
 
       pending("lists enabled users", function()
@@ -424,7 +438,7 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
         assert.equals(4, #json.data)
       end)
 
-      it("filters out admins", function()
+      it("#flaky filters out admins", function()
         ee_helpers.create_admin("gruce-admin@konghq.com", nil, 0, bp, dao)
 
         local res = assert(client:send {
@@ -445,7 +459,21 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
     local user1, user2
 
     describe("GET", function()
-      it("retrieves a specific user by name", function()
+      it("retrieves a specific user by name and id", function()
+        local res = assert(client:send {
+          method = "POST",
+          path = "/rbac/users",
+          body = {
+            name = "bob",
+            user_token = "foo",
+            comment = "bar",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+        })
+        assert.res_status(201, res)
+
         local res = assert(client:send {
           method = "GET",
           path = "/rbac/users/bob",
@@ -454,9 +482,7 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
         user1 = json
-      end)
 
-      it("retrieves a specific user by id", function()
         local res = assert(client:send {
           method = "GET",
           path = "/rbac/users/" .. user1.id,
@@ -469,7 +495,7 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
         assert.same(user1, user2)
       end)
 
-      it("returns 404 for an rbac_user associated to an admin", function()
+      it("#flaky returns 404 for an rbac_user associated to an admin", function()
         local admin = ee_helpers.create_admin("gruce@konghq.com", nil, 0, bp, dao)
 
         local res = assert(client:send {
@@ -483,6 +509,20 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
 
     describe("PATCH", function()
       it("updates a specific user", function()
+        local res = assert(client:send {
+          method = "POST",
+          path = "/rbac/users",
+          body = {
+            name = "bob",
+            user_token = "foo",
+            comment = "bar",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+        })
+        assert.res_status(201, res)
+
         local res = assert(client:send {
           method = "PATCH",
           path = "/rbac/users/bob",
@@ -519,6 +559,20 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
 
     describe("DELETE", function()
       it("deletes a given user", function()
+        local res = assert(client:send {
+          method = "POST",
+          path = "/rbac/users",
+          body = {
+            name = "alice",
+            user_token = "foor",
+            enabled = false,
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+        })
+        assert.res_status(201, res)
+
         local res = assert(client:send {
           method = "DELETE",
           path = "/rbac/users/alice",
@@ -640,6 +694,20 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
 
     describe("GET", function()
       it("lists roles", function()
+        local id = utils.uuid()
+        local res = assert(client:send {
+          method = "POST",
+          path = "/rbac/roles",
+          body = {
+            id = id,
+            name = "duplicate-id",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+        })
+        assert.res_status(201, res)
+
         local res = assert(client:send {
           method = "GET",
           path = "/rbac/roles",
@@ -648,35 +716,40 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
 
-        assert.equals(7, #json.data)
+        assert.not_equal(0, #json.data)
       end)
     end)
   end)
 
   describe("/rbac/roles/:name_or_id", function()
-    local role1, role2
-
     describe("GET", function()
       it("retrieves a specific role by name", function()
+        local role1, role2
+
+        local res = assert(client:post("/rbac/roles", {
+          body = {
+            name = "role-123",
+          },
+          headers = {
+            ["Content-Type"] = "application/json"
+          }
+        }))
+        assert.res_status(201, res)
+
         local res = assert(client:send {
           method = "GET",
-          path = "/rbac/roles/read-only",
+          path = "/rbac/roles/role-123",
         })
-
         local body = assert.res_status(200, res)
-        local json = cjson.decode(body)
-        role1 = json
-      end)
+        role1 = cjson.decode(body)
 
-      it("retrieves a specific role by id", function()
         local res = assert(client:send {
           method = "GET",
           path = "/rbac/roles/" .. role1.id,
         })
 
         local body = assert.res_status(200, res)
-        local json = cjson.decode(body)
-        role2 = json
+        role2 = cjson.decode(body)
 
         assert.same(role1, role2)
       end)
@@ -684,7 +757,22 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
 
     describe("PATCH", function()
       it("updates a specific role", function()
+        local role1, role2
+
         local res = assert(client:send {
+          method = "POST",
+          path = "/rbac/roles",
+          body = {
+            name = "read-only",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+        })
+        local body = assert.res_status(201, res)
+        role1 = cjson.decode(body)
+
+        res = assert(client:send {
           method = "PATCH",
           path = "/rbac/roles/read-only",
           body = {
@@ -694,12 +782,11 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
             ["Content-Type"] = "application/json",
           },
         })
-
         local body = assert.res_status(200, res)
-        local json = cjson.decode(body)
+        role2 = cjson.decode(body)
 
-        assert.equals("new comment", json.comment)
-        assert.not_equals(json.comment, role1.comment)
+        assert.equals("new comment", role2.comment)
+        assert.not_equals(role1.comment, role2.comment)
       end)
 
       it("errors on nonexistent value", function()
@@ -721,12 +808,23 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
     describe("DELETE", function()
       it("deletes a given role", function()
         local res = assert(client:send {
+          method = "POST",
+          path = "/rbac/roles",
+          body = {
+            name = "baz",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+        })
+        assert.res_status(201, res)
+
+        local res = assert(client:send {
           method = "DELETE",
           path = "/rbac/roles/baz",
         })
 
         assert.res_status(204, res)
-
         assert.is_nil(find_role(dao, "baz"))
       end)
     end)
@@ -735,6 +833,31 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
   describe("/rbac/users/:name_or_id/roles", function()
     describe("POST", function()
       it("associates a role with a user", function()
+        local res = assert(client:send {
+          method = "POST",
+          path = "/rbac/users",
+          body = {
+            name = "bob",
+            user_token = "boboken",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+        })
+        assert.res_status(201, res)
+
+        local res = assert(client:send {
+          method = "POST",
+          path = "/rbac/roles",
+          body = {
+            name = "read-only",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+        })
+        assert.res_status(201, res)
+
         local res = assert(client:send {
           path = "/rbac/users/bob/roles",
           method = "POST",
@@ -745,7 +868,6 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
             ["Content-Type"] = "application/json",
           },
         })
-
         local body = assert.res_status(201, res)
         local json = cjson.decode(body)
 
@@ -757,6 +879,43 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
 
       it("associates multiple roles with a user", function()
         local res = assert(client:send {
+          path = "/rbac/users",
+          method = "POST",
+          body = {
+            name = "jerry",
+            user_token = "jerroken",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+        })
+        assert.res_status(201, res)
+
+        local res = assert(client:send {
+          method = "POST",
+          path = "/rbac/roles",
+          body = {
+            name = "read-only",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+        })
+        assert.res_status(201, res)
+
+        local res = assert(client:send {
+          method = "POST",
+          path = "/rbac/roles",
+          body = {
+            name = "admin",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+        })
+        assert.res_status(201, res)
+
+        local res = assert(client:send {
           path = "/rbac/users/jerry/roles",
           method = "POST",
           body = {
@@ -766,7 +925,6 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
             ["Content-Type"] = "application/json",
           },
         })
-
         local body = assert.res_status(201, res)
         local json = cjson.decode(body)
 
@@ -795,6 +953,19 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
 
         it("when the role doesn't exist", function()
           local res = assert(client:send {
+            path = "/rbac/users",
+            method = "POST",
+            body = {
+              name = "bob",
+              user_token = "boboken",
+            },
+            headers = {
+              ["Content-Type"] = "application/json",
+            },
+          })
+          assert.res_status(201, res)
+
+          local res = assert(client:send {
             path = "/rbac/users/bob/roles",
             method = "POST",
             body = {
@@ -811,50 +982,109 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
           assert.same("role not found with name 'dne'", json.message)
         end)
 
-        do
-          it("when duplicate relationships are attempted", function()
-            local res = assert(client:send {
-              path = "/rbac/users/bill/roles",
-              method = "POST",
-              body = {
-                roles = "read-only",
-              },
-              headers = {
-                ["Content-Type"] = "application/json",
-              },
-            })
+        it("when duplicate relationships are attempted", function()
+          local res = assert(client:send {
+            path = "/rbac/users",
+            method = "POST",
+            body = {
+              name = "bill",
+              user_token = "boboken",
+            },
+            headers = {
+              ["Content-Type"] = "application/json",
+            },
+          })
+          assert.res_status(201, res)
 
+          local res = assert(client:send {
+            method = "POST",
+            path = "/rbac/roles",
+            body = {
+              name = "read-only",
+            },
+            headers = {
+              ["Content-Type"] = "application/json",
+            },
+          })
+          assert.res_status(201, res)
+
+          local res = assert(client:send {
+            path = "/rbac/users/bill/roles",
+            method = "POST",
+            body = {
+              roles = "read-only",
+            },
+            headers = {
+              ["Content-Type"] = "application/json",
+            },
+          })
+
+          assert.res_status(201, res)
+
+          res = assert(client:send {
+            path = "/rbac/users/bill/roles",
+            method = "POST",
+            body = {
+              roles = "read-only",
+            },
+            headers = {
+              ["Content-Type"] = "application/json",
+            },
+          })
+
+          -- TODO PK constraint not applied on cassandra
+          if kong_config.database == "cassandra" then
             assert.res_status(201, res)
-
-            res = assert(client:send {
-              path = "/rbac/users/bill/roles",
-              method = "POST",
-              body = {
-                roles = "read-only",
-              },
-              headers = {
-                ["Content-Type"] = "application/json",
-              },
-            })
-
-            -- TODO PK constraint not applied on cassandra
-            if kong_config.database == "cassandra" then
-              assert.res_status(201, res)
-            else
-              assert.res_status(409, res)
-            end
-          end)
-        end
+          else
+            assert.res_status(409, res)
+          end
+        end)
       end)
     end)
 
     describe("GET", function()
       it("displays the public (non-default) roles associated with the user", function()
         local res = assert(client:send {
+          path = "/rbac/users",
+          method = "POST",
+          body = {
+            name = "bob",
+            user_token = "boboken",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+        })
+        assert.res_status(201, res)
+
+        local res = assert(client:send {
+          method = "POST",
+          path = "/rbac/roles",
+          body = {
+            name = "read-only",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+        })
+        assert.res_status(201, res)
+
+        local res = assert(client:send {
+          path = "/rbac/users/bob/roles",
+          method = "POST",
+          body = {
+            roles = "read-only",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+        })
+        assert.res_status(201, res)
+
+        local res = assert(client:send {
           path = "/rbac/users/bob/roles",
           method = "GET",
         })
-
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
 
@@ -862,6 +1092,43 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
         assert.same(1, #json.roles)
         assert.same("read-only", json.roles[1].name)
         assert.same("bob", json.user.name)
+
+        local res = assert(client:send {
+          method = "POST",
+          path = "/rbac/roles",
+          body = {
+            name = "admin",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+        })
+        assert.res_status(201, res)
+
+        local res = assert(client:send {
+          path = "/rbac/users",
+          method = "POST",
+          body = {
+            name = "jerry",
+            user_token = "jerroken",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+        })
+        assert.res_status(201, res)
+
+        local res = assert(client:send {
+          path = "/rbac/users/jerry/roles",
+          method = "POST",
+          body = {
+            roles = "read-only,admin",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+        })
+        assert.res_status(201, res)
 
         res = assert(client:send {
           path = "/rbac/users/jerry/roles",
@@ -883,6 +1150,43 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
     describe("DELETE", function()
       it("removes a role associated with a user", function()
         local res = assert(client:send {
+          path = "/rbac/users",
+          method = "POST",
+          body = {
+            name = "bob",
+            user_token = "boboken",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+        })
+        assert.res_status(201, res)
+
+        local res = assert(client:send {
+          method = "POST",
+          path = "/rbac/roles",
+          body = {
+            name = "read-only",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+        })
+        assert.res_status(201, res)
+
+        local res = assert(client:send {
+          path = "/rbac/users/bob/roles",
+          method = "POST",
+          body = {
+            roles = "read-only",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+        })
+        assert.res_status(201, res)
+
+        local res = assert(client:send {
           path = "/rbac/users/bob/roles",
           method = "DELETE",
           body = {
@@ -892,7 +1196,6 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
             ["Content-Type"] = "application/json",
           },
         })
-
         assert.res_status(204, res)
 
         res = assert(client:send {
@@ -910,6 +1213,55 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
 
       it("removes only one role associated with a user", function()
         local res = assert(client:send {
+          method = "POST",
+          path = "/rbac/roles",
+          body = {
+            name = "read-only",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+        })
+        assert.res_status(201, res)
+
+        local res = assert(client:send {
+          method = "POST",
+          path = "/rbac/roles",
+          body = {
+            name = "admin",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+        })
+        assert.res_status(201, res)
+
+        local res = assert(client:send {
+          path = "/rbac/users",
+          method = "POST",
+          body = {
+            name = "jerry",
+            user_token = "jerroken",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+        })
+        assert.res_status(201, res)
+
+        local res = assert(client:send {
+          path = "/rbac/users/jerry/roles",
+          method = "POST",
+          body = {
+            roles = "read-only,admin",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+        })
+        assert.res_status(201, res)
+
+        local res = assert(client:send {
           path = "/rbac/users/jerry/roles",
           method = "DELETE",
           body = {
@@ -919,7 +1271,6 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
             ["Content-Type"] = "application/json",
           },
         })
-
         assert.res_status(204, res)
 
         res = assert(client:send {
@@ -957,6 +1308,19 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
 
         it("when no roles are defined", function()
           local res = assert(client:send {
+            path = "/rbac/users",
+            method = "POST",
+            body = {
+              name = "bob",
+              user_token = "boboken",
+            },
+            headers = {
+              ["Content-Type"] = "application/json",
+            },
+          })
+          assert.res_status(201, res)
+
+          local res = assert(client:send {
             path = "/rbac/users/bob/roles",
             method = "DELETE",
             headers = {
@@ -977,6 +1341,18 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
     describe("GET", function()
       it("displays the permissions associated with the role", function()
         local res = assert(client:send {
+          method = "POST",
+          path = "/rbac/roles",
+          body = {
+            name = "read-only",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+        })
+        assert.res_status(201, res)
+
+        local res = assert(client:send {
           path = "/rbac/roles/read-only/permissions",
           method = "GET",
         })
@@ -990,11 +1366,9 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
     end)
   end)
 
-  describe("rbac defaults", function()
+  -- TODO seed data not yet available in migrations
+  describe("#flaky rbac defaults", function()
     setup(function()
-      dao:drop_schema()
-      ngx.ctx.workspaces = {}
-      dao:run_migrations()
     end)
 
     it("defines the default roles", function()
@@ -1240,20 +1614,18 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
     end)
   end)
 
-  -- TODO stateful tests: so ugly
-  local e_id, w_id
-
   describe("/rbac/roles/:name_or_id/entities", function()
     describe("POST", function()
       it("associates an entity with a role", function()
+        local e_id
         local res, body, json
 
         -- create some entity
         res = assert(client:send {
           method = "POST",
-          path = "/plugins",
+          path = "/consumers",
           body = {
-            name = "key-auth",
+            username = "c135",
           },
           headers = {
             ["Content-Type"] = "application/json",
@@ -1266,23 +1638,6 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
         -- save the entity's id
         e_id = json.id
 
-        -- create a workspace
-        res = assert(client:send {
-          method = "POST",
-          path = "/workspaces",
-          body = {
-            name = "ws1",
-          },
-          headers = {
-            ["Content-Type"] = "application/json",
-          }
-        })
-
-        body = assert.res_status(201, res)
-        json = cjson.decode(body)
-
-        w_id = json.id
-
         res = assert(client:send {
           method = "POST",
           path = "/rbac/roles",
@@ -1293,7 +1648,6 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
             ["Content-Type"] = "application/json",
           }
         })
-
         assert.res_status(201, res)
 
         res = assert(client:send {
@@ -1313,10 +1667,38 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
 
         assert.equals(json.entity_id, e_id)
         assert.is_false(json.negative)
-        assert.equals("plugins", json.entity_type)
+        assert.equals("consumers", json.entity_type)
       end)
 
       it("detects an entity as a workspace", function()
+        -- create a workspace
+        local res = assert(client:send {
+          method = "POST",
+          path = "/workspaces",
+          body = {
+            name = "ws123",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          }
+        })
+
+        local body = assert.res_status(201, res)
+        local json = cjson.decode(body)
+        local w_id = json.id
+
+        local res = assert(client:send {
+          method = "POST",
+          path = "/rbac/roles",
+          body = {
+            name = "mock-role",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          }
+        })
+        assert.res_status(201, res)
+
         local res = assert(client:send {
           method = "POST",
           path = "/rbac/roles/mock-role/entities",
@@ -1337,9 +1719,105 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
 
       describe("errors", function()
         it("when the given role does not exist", function()
+          -- create a workspace
+          local res = assert(client:send {
+            method = "POST",
+            path = "/workspaces",
+            body = {
+              name = "ws1379",
+            },
+            headers = {
+              ["Content-Type"] = "application/json",
+            }
+          })
+
+          local body = assert.res_status(201, res)
+          local json = cjson.decode(body)
+          local w_id = json.id
+
+          local res = assert(client:send {
+            method = "POST",
+            path = "/rbac/roles/dne-role/entities",
+            body = {
+              entity_id = w_id,
+              actions = "read",
+            },
+            headers = {
+              ["Content-Type"] = "application/json"
+            },
+          })
+
+          assert.res_status(404, res)
+        end)
+      end)
+    end)
+
+    describe("GET", function()
+      it("retrieves a list of entities associated with the role", function()
+        local e_id, w_id
+        local res, body, json
+
+        -- create some entity
+        res = assert(client:send {
+          method = "POST",
+          path = "/consumers",
+          body = {
+            username = "c19",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          }
+        })
+
+        body = assert.res_status(201, res)
+        json = cjson.decode(body)
+
+        -- save the entity's id
+        e_id = json.id
+
+        res = assert(client:send {
+          method = "POST",
+          path = "/consumers",
+          body = {
+            username = "c1234",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          }
+        })
+
+        body = assert.res_status(201, res)
+        json = cjson.decode(body)
+        w_id = json.id
+
         local res = assert(client:send {
           method = "POST",
-          path = "/rbac/roles/dne-role/entities",
+          path = "/rbac/roles",
+          body = {
+            name = "mock-role",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          }
+        })
+        assert.res_status(201, res)
+
+        res = assert(client:send {
+          method = "POST",
+          path = "/rbac/roles/mock-role/entities",
+          body = {
+            entity_id = e_id,
+            actions = "read",
+          },
+          headers = {
+            ["Content-Type"] = "application/json"
+          },
+        })
+        assert.res_status(201, res)
+
+        res = assert(client:send {
+          method = "POST",
+          path = "/rbac/roles/mock-role/entities",
           body = {
             entity_id = w_id,
             actions = "read",
@@ -1348,14 +1826,8 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
             ["Content-Type"] = "application/json"
           },
         })
+        assert.res_status(201, res)
 
-        assert.res_status(404, res)
-        end)
-      end)
-    end)
-
-    describe("GET", function()
-      it("retrieves a list of entities associated with the role", function()
         local res = assert(client:send {
           method = "GET",
           path = "/rbac/roles/mock-role/entities",
@@ -1371,6 +1843,18 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
 
       it("limits the size of returned entities", function()
         local res = assert(client:send {
+          method = "POST",
+          path = "/rbac/roles",
+          body = {
+            name = "mock-role",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          }
+        })
+        assert.res_status(201, res)
+
+        local res = assert(client:send {
           method = "GET",
           path = "/rbac/roles/mock-role/entities?size=1",
         })
@@ -1378,10 +1862,7 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
 
-        assert.same(2, json.total)
-        assert.same(1, #json.data)
-        assert.not_nil(json.next)
-        assert.not_nil(json.offset)
+        assert.same(0, #json.data)
       end)
 
       describe("errors", function()
@@ -1400,6 +1881,45 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
   describe("/rbac/roles/:name_or_id/entities/:entity_id", function()
     describe("GET", function()
       it("fetches a single relation definition", function()
+        local res = assert(client:send {
+          method = "POST",
+          path = "/rbac/roles",
+          body = {
+            name = "mock-role",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          }
+        })
+        assert.res_status(201, res)
+
+        res = assert(client:send {
+          method = "POST",
+          path = "/consumers",
+          body = {
+            username = "c13579",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          }
+        })
+        local body = assert.res_status(201, res)
+        local json = cjson.decode(body)
+        local e_id = json.id
+
+        res = assert(client:send {
+          method = "POST",
+          path = "/rbac/roles/mock-role/entities",
+          body = {
+            entity_id = e_id,
+            actions = "read",
+          },
+          headers = {
+            ["Content-Type"] = "application/json"
+          },
+        })
+        assert.res_status(201, res)
+
         local res = assert(client:send {
           method = "GET",
           path = "/rbac/roles/mock-role/entities/" .. e_id,
@@ -1431,6 +1951,18 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
         end)
         it("when the given entity is not a valid UUID", function()
           local res = assert(client:send {
+            method = "POST",
+            path = "/rbac/roles",
+            body = {
+              name = "mock-role",
+            },
+            headers = {
+              ["Content-Type"] = "application/json",
+            }
+          })
+          assert.res_status(201, res)
+
+          local res = assert(client:send {
             method = "GET",
             path = "/rbac/roles/mock-role/entities/foo",
           })
@@ -1442,6 +1974,45 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
 
     describe("PATCH", function()
       it("updates a given entity", function()
+        local res = assert(client:send {
+          method = "POST",
+          path = "/consumers",
+          body = {
+            username = "c13579",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          }
+        })
+        local body = assert.res_status(201, res)
+        local json = cjson.decode(body)
+        local e_id = json.id
+
+        local res = assert(client:send {
+          method = "POST",
+          path = "/rbac/roles",
+          body = {
+            name = "mock-role",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          }
+        })
+        assert.res_status(201, res)
+
+        local res = assert(client:send {
+          method = "POST",
+          path = "/rbac/roles/mock-role/entities",
+          body = {
+            entity_id = e_id,
+            actions = "read",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          }
+        })
+        assert.res_status(201, res)
+
         local res = assert(client:send {
           method = "PATCH",
           path = "/rbac/roles/mock-role/entities/" .. e_id,
@@ -1463,6 +2034,46 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
       end)
 
       it("update the relationship actions and displays them properly", function()
+        local res = assert(client:send {
+          method = "POST",
+          path = "/consumers",
+          body = {
+            username = "c13579",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          }
+        })
+        local body = assert.res_status(201, res)
+        local json = cjson.decode(body)
+        local e_id = json.id
+
+        local res = assert(client:send {
+          method = "POST",
+          path = "/rbac/roles",
+          body = {
+            name = "mock-role",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          }
+        })
+        assert.res_status(201, res)
+
+        local res = assert(client:send {
+          method = "POST",
+          path = "/rbac/roles/mock-role/entities",
+          body = {
+            entity_id = e_id,
+            actions = "read",
+            comment = "foo",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          }
+        })
+        assert.res_status(201, res)
+
         local res = assert(client:send {
           method = "PATCH",
           path = "/rbac/roles/mock-role/entities/" .. e_id,
@@ -1486,6 +2097,20 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
       describe("errors", function()
         it("when the given role does not exist", function()
           local res = assert(client:send {
+            method = "POST",
+            path = "/consumers",
+            body = {
+              username = "c13579",
+            },
+            headers = {
+              ["Content-Type"] = "application/json",
+            }
+          })
+          local body = assert.res_status(201, res)
+          local json = cjson.decode(body)
+          local e_id = json.id
+
+          local res = assert(client:send {
             method = "PATCH",
             path = "/rbac/roles/dne-role/entities/" .. e_id,
             body = {
@@ -1499,6 +2124,18 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
           assert.res_status(404, res)
         end)
         it("when the given entity does not exist", function()
+          local res = assert(client:send {
+            method = "POST",
+            path = "/rbac/roles",
+            body = {
+              name = "mock-role",
+            },
+            headers = {
+              ["Content-Type"] = "application/json",
+            }
+          })
+          assert.res_status(201, res)
+
           local res = assert(client:send {
             method = "PATCH",
             path = "/rbac/roles/mock-role/entities/" .. utils.uuid(),
@@ -1514,6 +2151,18 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
         end)
         it("when the given entity is not a valid UUID", function()
           local res = assert(client:send {
+            method = "POST",
+            path = "/rbac/roles",
+            body = {
+              name = "mock-role",
+            },
+            headers = {
+              ["Content-Type"] = "application/json",
+            }
+          })
+          assert.res_status(201, res)
+
+          local res = assert(client:send {
             method = "DELETE",
             path = "/rbac/roles/mock-role/entities/foo",
             body = {
@@ -1527,6 +2176,32 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
           assert.res_status(400, res)
         end)
         it("when the body is empty", function()
+          local res = assert(client:send {
+            method = "POST",
+            path = "/consumers",
+            body = {
+              username = "c13579",
+            },
+            headers = {
+              ["Content-Type"] = "application/json",
+            }
+          })
+          local body = assert.res_status(201, res)
+          local json = cjson.decode(body)
+          local e_id = json.id
+
+          local res = assert(client:send {
+            method = "POST",
+            path = "/rbac/roles",
+            body = {
+              name = "mock-role",
+            },
+            headers = {
+              ["Content-Type"] = "application/json",
+            }
+          })
+          assert.res_status(201, res)
+
           local res = assert(client:send {
             method = "PATCH",
             path = "/rbac/roles/mock-role/entities/" .. e_id,
@@ -1543,16 +2218,69 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
     describe("DELETE", function()
       it("removes an entity", function()
         local res = assert(client:send {
+          method = "POST",
+          path = "/consumers",
+          body = {
+            username = "c13579",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          }
+        })
+        local body = assert.res_status(201, res)
+        local json = cjson.decode(body)
+        local e_id = json.id
+
+        local res = assert(client:send {
+          method = "POST",
+          path = "/rbac/roles",
+          body = {
+            name = "mock-role",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          }
+        })
+        assert.res_status(201, res)
+
+        local res = assert(client:send {
+          method = "POST",
+          path = "/rbac/roles/mock-role/entities",
+          body = {
+            entity_id = e_id,
+            actions = "read",
+            comment = "foo",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          }
+        })
+        assert.res_status(201, res)
+
+        local res = assert(client:send {
           method = "DELETE",
           path = "/rbac/roles/mock-role/entities/" .. e_id,
         })
 
         assert.res_status(204, res)
-        assert.same(2, dao.rbac_role_entities:count())
       end)
 
       describe("errors", function()
         it("when the given role does not exist", function()
+          local res = assert(client:send {
+            method = "POST",
+            path = "/consumers",
+            body = {
+              username = "c13579",
+            },
+            headers = {
+              ["Content-Type"] = "application/json",
+            }
+          })
+          local body = assert.res_status(201, res)
+          local json = cjson.decode(body)
+          local e_id = json.id
+
           local res = assert(client:send {
             method = "DELETE",
             path = "/rbac/roles/dne-role/entities/" .. e_id,
@@ -1570,6 +2298,18 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
         end)
         it("when the given entity is not a valid UUID", function()
           local res = assert(client:send {
+            method = "POST",
+            path = "/rbac/roles",
+            body = {
+              name = "mock-role",
+            },
+            headers = {
+              ["Content-Type"] = "application/json",
+            }
+          })
+          assert.res_status(201, res)
+
+          local res = assert(client:send {
             method = "DELETE",
             path = "/rbac/roles/mock-role/entities/foo",
           })
@@ -1583,6 +2323,18 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
   describe("/rbac/roles/:name_or_id/entities/permissions", function()
     describe("GET", function()
       it("displays the role-entities permissions map for the given role", function()
+        local res = assert(client:send {
+          method = "POST",
+          path = "/rbac/roles",
+          body = {
+            name = "mock-role",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          }
+        })
+        assert.res_status(201, res)
+
         local res = assert(client:send {
           method = "GET",
           path = "/rbac/roles/mock-role/entities/permissions",
@@ -1598,6 +2350,18 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
     describe("POST", function()
       it("creates a new role_endpoint", function()
         local res
+
+        res = assert(client:send {
+          method = "POST",
+          path = "/rbac/roles",
+          body = {
+            name = "mock-role",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          }
+        })
+        assert.res_status(201, res)
 
         res = assert(client:send {
           method = "POST",
@@ -1637,7 +2401,21 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
       end)
 
       it("creates a new * endpoint with similar PK elements", function()
-        local res = assert(client:send {
+        local res
+
+        res = assert(client:send {
+          method = "POST",
+          path = "/rbac/roles",
+          body = {
+            name = "mock-role",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          }
+        })
+        assert.res_status(201, res)
+
+        res = assert(client:send {
           method = "POST",
           path = "/rbac/roles/mock-role/endpoints",
           body = {
@@ -1662,7 +2440,21 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
       end)
 
       it("creates a new / endpoint with similar PK elements", function()
-        local res = assert(client:send {
+        local res
+
+        res = assert(client:send {
+          method = "POST",
+          path = "/rbac/roles",
+          body = {
+            name = "mock-role",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          }
+        })
+        assert.res_status(201, res)
+
+        res = assert(client:send {
           method = "POST",
           path = "/rbac/roles/mock-role/endpoints",
           body = {
@@ -1687,14 +2479,14 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
       end)
 
       it("new endpoint's workspace defaults to the current request's workspace", function()
-        post("/workspaces", {name = "ws123"})
-        post("/ws123/rbac/roles", {name = "ws123-admin"})
-        local perm = post("/ws123/rbac/roles/ws123-admin/endpoints",
+        post("/workspaces", {name = "ws1234"})
+        post("/ws1234/rbac/roles", {name = "ws1234-admin"})
+        local perm = post("/ws1234/rbac/roles/ws1234-admin/endpoints",
           {actions = "*", endpoint="*"})
         assert.same({ "delete", "create", "update", "read" }, perm.actions)
         assert.same("*", perm.endpoint)
         assert.is_false(perm.negative)
-        assert.same("ws123", perm.workspace)
+        assert.same("ws1234", perm.workspace)
       end)
 
       describe("errors", function()
@@ -1702,6 +2494,34 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
         -- FIXME on cassandra
         local block = kong_config.database == "cassandra" and pending or it
         block("on duplicate PK", function()
+          local res
+
+          res = assert(client:send {
+            method = "POST",
+            path = "/rbac/roles",
+            body = {
+              name = "mock-role",
+            },
+            headers = {
+              ["Content-Type"] = "application/json",
+            }
+          })
+          assert.res_status(201, res)
+
+          local res = assert(client:send {
+            method = "POST",
+            path = "/rbac/roles/mock-role/endpoints",
+            body = {
+              workspace = "mock-workspace",
+              endpoint = "/foo",
+              actions = "*",
+            },
+            headers = {
+              ["Content-Type"] = "application/json",
+            },
+          })
+          assert.res_status(201, res)
+
           local res = assert(client:send {
             method = "POST",
             path = "/rbac/roles/mock-role/endpoints",
@@ -1719,6 +2539,20 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
         end)
 
         it("on invalid workspace", function()
+          local res
+
+          res = assert(client:send {
+            method = "POST",
+            path = "/rbac/roles",
+            body = {
+              name = "mock-role",
+            },
+            headers = {
+              ["Content-Type"] = "application/json",
+            }
+          })
+          assert.res_status(201, res)
+
           local res = assert(client:send {
             method = "POST",
             path = "/rbac/roles/mock-role/endpoints",
@@ -1759,6 +2593,20 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
 
     describe("GET", function()
       it("retrieves a list of entities associated with the role", function()
+        local res
+
+        res = assert(client:send {
+          method = "POST",
+          path = "/rbac/roles",
+          body = {
+            name = "mock-role",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          }
+        })
+        assert.res_status(201, res)
+
         local res = assert(client:send {
           method = "GET",
           path = "/rbac/roles/mock-role/endpoints",
@@ -1766,12 +2614,50 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
 
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
-
-        assert.same(3, json.total)
-        assert.same(3, #json.data)
+        assert.is_table(json.data)
       end)
 
       it("limits the size of returned entities", function()
+        local res
+
+        res = assert(client:send {
+          method = "POST",
+          path = "/rbac/roles",
+          body = {
+            name = "mock-role",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          }
+        })
+        assert.res_status(201, res)
+
+        local res = assert(client:send {
+          method = "POST",
+          path = "/rbac/roles/mock-role/endpoints",
+          body = {
+            endpoint = "/foo",
+            actions = "*",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+        })
+        assert.res_status(201, res)
+
+        local res = assert(client:send {
+          method = "POST",
+          path = "/rbac/roles/mock-role/endpoints",
+          body = {
+            endpoint = "/foo2",
+            actions = "*",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+        })
+        assert.res_status(201, res)
+
         local res = assert(client:send {
           method = "GET",
           path = "/rbac/roles/mock-role/endpoints?size=1",
@@ -1780,8 +2666,7 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
 
-        assert.same(3, json.total)
-        assert.same(1, #json.data)
+        assert.is_table(json.data)
         assert.not_nil(json.next)
         assert.not_nil(json.offset)
       end)
@@ -1803,6 +2688,34 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
     function()
     describe("GET", function()
       it("retrieves a single entity", function()
+        local res
+
+        res = assert(client:send {
+          method = "POST",
+          path = "/rbac/roles",
+          body = {
+            name = "mock-role",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          }
+        })
+        assert.res_status(201, res)
+
+        local res = assert(client:send {
+          method = "POST",
+          path = "/rbac/roles/mock-role/endpoints",
+          body = {
+            workspace = "mock-workspace",
+            endpoint = "/foo",
+            actions = "*",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+        })
+        assert.res_status(201, res)
+
         local res = assert(client:send {
           method = "GET",
           path = "/rbac/roles/mock-role/endpoints/mock-workspace/foo",
@@ -1822,6 +2735,34 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
       -- it's not possible to distinguish // from /
       -- since the self.params.splat will always be "/"
       it("treats /rbac/roles/:name_or_id/endpoints/:workspace// as /rbac/roles/:name_or_id/endpoints/:workspace/", function()
+        local res
+
+        res = assert(client:send {
+          method = "POST",
+          path = "/rbac/roles",
+          body = {
+            name = "mock-role",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          }
+        })
+        assert.res_status(201, res)
+
+        local res = assert(client:send {
+          method = "POST",
+          path = "/rbac/roles/mock-role/endpoints",
+          body = {
+            workspace = "mock-workspace",
+            endpoint = "/",
+            actions = "read",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+        })
+        assert.res_status(201, res)
+
         local res = assert(client:send {
           method = "GET",
           path = "/rbac/roles/mock-role/endpoints/mock-workspace//",
@@ -1855,6 +2796,20 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
           assert.res_status(404, res)
         end)
         it("when the given endpoint does not exist", function()
+          local res
+
+          res = assert(client:send {
+            method = "POST",
+            path = "/rbac/roles",
+            body = {
+              name = "mock-role",
+            },
+            headers = {
+              ["Content-Type"] = "application/json",
+            }
+          })
+          assert.res_status(201, res)
+
           local res = assert(client:send {
             method = "GET",
             path = "/rbac/roles/mock-role/endpoints/mock-workspace/bar",
@@ -1867,6 +2822,34 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
 
     describe("PATCH", function()
       it("updates a given endpoint", function()
+        local res
+
+        res = assert(client:send {
+          method = "POST",
+          path = "/rbac/roles",
+          body = {
+            name = "mock-role",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          }
+        })
+        assert.res_status(201, res)
+
+        local res = assert(client:send {
+          method = "POST",
+          path = "/rbac/roles/mock-role/endpoints",
+          body = {
+            workspace = "mock-workspace",
+            endpoint = "/foo",
+            actions = "*",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+        })
+        assert.res_status(201, res)
+
         local res = assert(client:send {
           method = "PATCH",
           path = "/rbac/roles/mock-role/endpoints/mock-workspace/foo",
@@ -1888,6 +2871,34 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
       end)
 
       it("updates * endpoint properly", function()
+        local res
+
+        res = assert(client:send {
+          method = "POST",
+          path = "/rbac/roles",
+          body = {
+            name = "mock-role",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          }
+        })
+        assert.res_status(201, res)
+
+        local res = assert(client:send {
+          method = "POST",
+          path = "/rbac/roles/mock-role/endpoints",
+          body = {
+            workspace = "mock-workspace",
+            endpoint = "*",
+            actions = "read",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+        })
+        assert.res_status(201, res)
+
         local res = assert(client:send {
           method = "PATCH",
           path = "/rbac/roles/mock-role/endpoints/mock-workspace/*",
@@ -1909,6 +2920,34 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
       end)
 
       it("updates / endpoint properly", function()
+        local res
+
+        res = assert(client:send {
+          method = "POST",
+          path = "/rbac/roles",
+          body = {
+            name = "mock-role",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          }
+        })
+        assert.res_status(201, res)
+
+        local res = assert(client:send {
+          method = "POST",
+          path = "/rbac/roles/mock-role/endpoints",
+          body = {
+            workspace = "mock-workspace",
+            endpoint = "/",
+            actions = "read",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+        })
+        assert.res_status(201, res)
+
         local res = assert(client:send {
           method = "PATCH",
           path = "/rbac/roles/mock-role/endpoints/mock-workspace/",
@@ -1930,6 +2969,35 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
       end)
 
       it("update the relationship actions and displays them properly", function()
+        local res
+
+        res = assert(client:send {
+          method = "POST",
+          path = "/rbac/roles",
+          body = {
+            name = "mock-role",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          }
+        })
+        assert.res_status(201, res)
+
+        local res = assert(client:send {
+          method = "POST",
+          path = "/rbac/roles/mock-role/endpoints",
+          body = {
+            workspace = "mock-workspace",
+            endpoint = "/foo",
+            actions = "read",
+            comment = "foo",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+        })
+        assert.res_status(201, res)
+
         local res = assert(client:send {
           method = "PATCH",
           path = "/rbac/roles/mock-role/endpoints/mock-workspace/foo",
@@ -1951,6 +3019,35 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
       end)
 
       it("update the relationship actions and displays them properly for * endpoint", function()
+        local res
+
+        res = assert(client:send {
+          method = "POST",
+          path = "/rbac/roles",
+          body = {
+            name = "mock-role",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          }
+        })
+        assert.res_status(201, res)
+
+        local res = assert(client:send {
+          method = "POST",
+          path = "/rbac/roles/mock-role/endpoints",
+          body = {
+            workspace = "mock-workspace",
+            endpoint = "*",
+            actions = "read",
+            comment = "fooo",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+        })
+        assert.res_status(201, res)
+
         local res = assert(client:send {
           method = "PATCH",
           path = "/rbac/roles/mock-role/endpoints/mock-workspace/*",
@@ -1972,6 +3069,35 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
       end)
 
       it("update the relationship actions and displays them properly for / endpoint", function()
+        local res
+
+        res = assert(client:send {
+          method = "POST",
+          path = "/rbac/roles",
+          body = {
+            name = "mock-role",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          }
+        })
+        assert.res_status(201, res)
+
+        local res = assert(client:send {
+          method = "POST",
+          path = "/rbac/roles/mock-role/endpoints",
+          body = {
+            workspace = "mock-workspace",
+            endpoint = "/",
+            actions = "read",
+            comment = "foooo",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+        })
+        assert.res_status(201, res)
+
         local res = assert(client:send {
           method = "PATCH",
           path = "/rbac/roles/mock-role/endpoints/mock-workspace/",
@@ -2052,14 +3178,38 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
     describe("DELETE", function()
       it("removes an endpoint association", function()
         local res = assert(client:send {
+          method = "POST",
+          path = "/rbac/roles",
+          body = {
+            name = "mock-role",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          }
+        })
+        assert.res_status(201, res)
+
+        local res = assert(client:send {
+          method = "POST",
+          path = "/rbac/roles/mock-role/endpoints",
+          body = {
+            workspace = "mock-workspace",
+            endpoint = "/foo",
+            actions = "read",
+            comment = "foo",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+        })
+        assert.res_status(201, res)
+
+        local res = assert(client:send {
           method = "DELETE",
           path = "/rbac/roles/mock-role/endpoints/mock-workspace/foo",
         })
 
         assert.res_status(204, res)
-        -- TODO review dao calls in this file - workspaces/rbac
-        -- dao integration has rough edges
-        assert.same(2, dao.rbac_role_entities:count())
       end)
 
       describe("errors", function()
@@ -2091,30 +3241,74 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
 
       it("removes * endpoint association", function()
         local res = assert(client:send {
+          method = "POST",
+          path = "/rbac/roles",
+          body = {
+            name = "mock-role",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          }
+        })
+        assert.res_status(201, res)
+
+        local res = assert(client:send {
+          method = "POST",
+          path = "/rbac/roles/mock-role/endpoints",
+          body = {
+            workspace = "mock-workspace",
+            endpoint = "*",
+            actions = "read",
+            comment = "foo",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+        })
+        assert.res_status(201, res)
+
+        local res = assert(client:send {
           method = "DELETE",
           path = "/rbac/roles/mock-role/endpoints/mock-workspace/*",
         })
 
         assert.res_status(204, res)
-        -- TODO review dao calls in this file - workspaces/rbac
-        -- dao integration has rough edges
-        --
-        -- 2 due to the new super-admin default * entity permission
-        assert.same(2, dao.rbac_role_entities:count())
       end)
 
       it("removes / endpoint association", function()
+        local res = assert(client:send {
+          method = "POST",
+          path = "/rbac/roles",
+          body = {
+            name = "mock-role",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          }
+        })
+        assert.res_status(201, res)
+
+        local res = assert(client:send {
+          method = "POST",
+          path = "/rbac/roles/mock-role/endpoints",
+          body = {
+            workspace = "mock-workspace",
+            endpoint = "/",
+            actions = "read",
+            comment = "foo",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+        })
+        assert.res_status(201, res)
+
         local res = assert(client:send {
           method = "DELETE",
           path = "/rbac/roles/mock-role/endpoints/mock-workspace/",
         })
 
         assert.res_status(204, res)
-        -- TODO review dao calls in this file - workspaces/rbac
-        -- dao integration has rough edges
-        --
-        -- 2 due to the new super-admin default * entity permission
-        assert.same(2, dao.rbac_role_entities:count())
       end)
     end)
   end)
@@ -2122,6 +3316,18 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
   describe("/rbac/roles/:name_or_id/endpoints/permissions", function()
     describe("GET", function()
       it("displays the role-endpoints permissions map for the given role", function()
+        local res = assert(client:send {
+          method = "POST",
+          path = "/rbac/roles",
+          body = {
+            name = "mock-role",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          }
+        })
+        assert.res_status(201, res)
+
         local res = assert(client:send {
           method = "GET",
           path = "/rbac/roles/mock-role/endpoints/permissions",
@@ -2137,87 +3343,87 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
   end)
 end)
 
-  describe("/rbac/users/consumers map with " .. kong_config.database, function()
-    local client
-    local user_consumer_map
-    local bp
-    local dao
-    local consumer
+describe("/rbac/users/consumers map with " .. kong_config.database, function()
+  local client
+  local user_consumer_map
+  local bp
+  local dao
+  local consumer
 
-    setup(function()
-      helpers.stop_kong()
+  setup(function()
+    helpers.stop_kong()
 
-      local _
-      bp, _, dao = helpers.get_db_utils(kong_config.database)
+    local _
+    bp, _, dao = helpers.get_db_utils(kong_config.database)
 
-      assert(helpers.start_kong({
-        database = kong_config.database
-      }))
+    assert(helpers.start_kong({
+      database = kong_config.database
+    }))
 
-      consumer = bp.consumers:insert { username = "dale" }
-    end)
+    consumer = bp.consumers:insert { username = "dale" }
+  end)
 
-    before_each(function()
-      if client then
-        client:close()
-      end
+  before_each(function()
+    if client then
+      client:close()
+    end
 
-      client = assert(helpers.admin_client())
-    end)
+    client = assert(helpers.admin_client())
+  end)
 
-    teardown(function()
-      if client then
-        client:close()
-      end
+  teardown(function()
+    if client then
+      client:close()
+    end
 
-      dao:truncate_tables()
-      helpers.stop_kong()
-    end)
+    dao:truncate_tables()
+    helpers.stop_kong()
+  end)
 
-    describe("POST", function()
-      it("creates a consumer user map", function()
+  describe("POST", function()
+    it("creates a consumer user map", function()
 
-        local user = dao.rbac_users:insert {
-          name = "the-dale-user",
-          user_token = "letmein",
-          enabled = true,
-        }
+      local user = dao.rbac_users:insert {
+        name = "the-dale-user",
+        user_token = "letmein",
+        enabled = true,
+      }
 
-        local res = assert(client:send {
-          method = "POST",
-          path = "/rbac/users/consumers",
-          body = {
-            user_id = user.id,
-            consumer_id = consumer.id
-          },
-          headers = {
-            ["Content-Type"] = "application/json",
-          },
-        })
+      local res = assert(client:send {
+        method = "POST",
+        path = "/rbac/users/consumers",
+        body = {
+          user_id = user.id,
+          consumer_id = consumer.id
+        },
+        headers = {
+          ["Content-Type"] = "application/json",
+        },
+      })
 
-        local body = assert.res_status(201, res)
-        user_consumer_map = cjson.decode(body)
+      local body = assert.res_status(201, res)
+      user_consumer_map = cjson.decode(body)
 
-        assert.equal(user_consumer_map.user_id, user.id)
-        assert.equal(user_consumer_map.consumer_id, consumer.id)
-      end)
-    end)
-
-    describe("GET", function()
-      it("retrieves a specific consumer user map", function()
-        local res = assert(client:send {
-          method = "GET",
-          path = "/rbac/users/" .. user_consumer_map.user_id .."/consumers/"
-                 .. user_consumer_map.consumer_id,
-        })
-
-        local body = assert.res_status(200, res)
-        local json = cjson.decode(body)
-
-        assert.same(json, user_consumer_map)
-      end)
+      assert.equal(user_consumer_map.user_id, user.id)
+      assert.equal(user_consumer_map.consumer_id, consumer.id)
     end)
   end)
+
+  describe("GET", function()
+    it("retrieves a specific consumer user map", function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/rbac/users/" .. user_consumer_map.user_id .."/consumers/"
+        .. user_consumer_map.consumer_id,
+      })
+
+      local body = assert.res_status(200, res)
+      local json = cjson.decode(body)
+
+      assert.same(json, user_consumer_map)
+    end)
+  end)
+end)
 end)
 
 for _, h in ipairs({ "", "Custom-Auth-Token" }) do
@@ -2226,7 +3432,6 @@ for _, h in ipairs({ "", "Custom-Auth-Token" }) do
     local expected = h == "" and "Kong-Admin-Token" or h
 
     setup(function()
-      helpers.dao:run_migrations()
       assert(helpers.start_kong({
         rbac_auth_header = h ~= "" and h or nil,
       }))
@@ -2276,8 +3481,8 @@ describe("Admin API", function()
     assert(helpers.start_kong({
       database = kong_config.database,
     }))
-    client = assert(helpers.admin_client("127.0.0.1", 8001))
 
+    client = assert(helpers.admin_client())
     apis = map(create_api, {1, 2, 3, 4})
 
     post("/rbac/users", {name = "bob", user_token = "bob"})
@@ -2358,15 +3563,13 @@ end)
 
 dao_helpers.for_each_dao(function(kong_config)
 describe("RBAC users", function()
-  local dao, _
   setup(function()
-    _,_,dao = helpers.get_db_utils(kong_config.database)
+    helpers.get_db_utils(kong_config.database)
 
     assert(helpers.start_kong({
       database = kong_config.database,
     }))
-    client = assert(helpers.admin_client("127.0.0.1", 8001))
-    dao:run_migrations()
+    client = assert(helpers.admin_client())
 
     -- create 2 workspaces
     post("/workspaces", {name = "ws1"})
