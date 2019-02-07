@@ -1732,6 +1732,7 @@ function _M.new(connector, schema, errors)
       },
       -- EE workspaces-related
       select_ws        = {
+        expr           = select_expressions,
         argn           = primary_key_names,
         argc           = primary_key_count,
         argv           = primary_key_args,

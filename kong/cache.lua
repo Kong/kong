@@ -166,7 +166,7 @@ function _M:invalidate_local(key)
 end
 
 
-function _M:invalidate(key, workspaces, is_old_dao)
+function _M:invalidate(key, workspaces)
   if type(key) ~= "string" then
     return error("key must be a string")
   end
@@ -190,7 +190,7 @@ function _M:invalidate(key, workspaces, is_old_dao)
   workspaces = workspaces or {}
   for _, ws in ipairs(workspaces) do
     if not seen_workspaces[ws.workspace_id] then
-      local key_ws = key .. (is_old_dao and "" or ":") .. ws.workspace_id
+      local key_ws = key .. ws.workspace_id
       self:invalidate_local(key_ws)
 
       log(DEBUG, "broadcasting (cluster) invalidation for key: '", key_ws, "' ",

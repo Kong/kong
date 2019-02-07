@@ -172,12 +172,7 @@ local function check_update(self, key, entity, options, name)
   if read_before_write then
     local err, err_t
     if name then
-      -- XXX EE: This changes the behavior of finding entities by a
-      -- field from ce to EE. For EE, call resolve_shared_entity_id
-      -- that pivots through workspace_entities
-      rbw_entity, err = ws_helper.resolve_shared_entity_id(self.table_name,
-        {[name] = key}, workspaceable[self.schema.name])
-      -- rbw_entity, err, err_t = self.strategy:select_by_field(name, key, options)
+       rbw_entity, err, err_t = self.strategy:select_by_field(name, key, options)
     else
        rbw_entity, err, err_t = self.strategy:select(key, options)
     end
@@ -185,7 +180,6 @@ local function check_update(self, key, entity, options, name)
       return nil, nil, err, err_t
     end
 
-    ws_helper.remove_ws_prefix(self.schema.name, rbw_entity)
     if rbw_entity then
       entity_to_update = self.schema:merge_values(entity_to_update, rbw_entity)
     else
@@ -195,6 +189,9 @@ local function check_update(self, key, entity, options, name)
       return nil, nil, tostring(err_t), err_t
     end
   end
+
+
+  ws_helper.remove_ws_prefix(self.schema.name, entity_to_update)
 
   local ok, errors = self.schema:validate_update(entity_to_update)
   if not ok then
@@ -449,34 +446,24 @@ local function generate_foreign_key_methods(schema)
           return nil, tostring(err_t), err_t
         end
 
+
+        local pk, err_t = ws_helper.resolve_shared_entity_id(self.schema.name,
+          { [name] = unique_value },
+          workspaceable[self.schema.name])
+        if err_t then
+          return nil, tostring(err_t), err_t
+        end
+        if pk then
+          return self:update(pk, entity, options)
+        end
+
+        ws_helper.remove_ws_prefix(self.schema.name, entity)
         -- luacheck: ignore
 
         local entity_to_update, rbw_entity, err, err_t = check_update(self, unique_value,
                                                                       entity, options, name)
         if not entity_to_update then
           return nil, err, err_t
-        end
-
-        if err_t then
-          return nil, tostring(err_t), err_t
-        end
-
-        -- XXX EE: This changes the behavior of finding entities by a
-        -- field from ce to EE. For EE, call resolve_shared_entity_id
-        -- that pivots through workspace_entities
-        do
-          local row, err = self:update({id = entity_to_update.id}, entity_to_update, options)
-          if not err then
-            return nil, tostring(err)
-          end
-
-          row, err, err_t = self:row_to_entity(row, options)
-          if not row then
-            return nil, err, err_t
-          end
-
-          self:post_crud_event("update", row, rbw_entity)
-          return row
         end
 
 
@@ -1203,14 +1190,20 @@ function DAO:cache_key(key, arg2, arg3, arg4, arg5)
   -- order as arguments, this produces the same result as
   -- the generic code below, but building the cache key
   -- becomes a single string.format operation
+  local workspace = workspaces.get_workspaces()[1]
+  local workspaceable = self.schema.workspaceable
+  if not workspaceable then
+    workspace = nil
+  end
 
   if type(key) == "string" then
-    return fmt("%s:%s:%s:%s:%s:%s", self.schema.name,
+    return fmt("%s:%s:%s:%s:%s:%s:%s", self.schema.name,
                key == nil and "" or key,
                arg2 == nil and "" or arg2,
                arg3 == nil and "" or arg3,
                arg4 == nil and "" or arg4,
-               arg5 == nil and "" or arg5)
+               arg5 == nil and "" or arg5,
+               workspace == nil and "" or workspace.id)
   end
 
   -- Generic path: build the cache key from the fields
@@ -1241,6 +1234,11 @@ function DAO:cache_key(key, arg2, arg3, arg4, arg5)
   end
   for n = i, 6 do
     values[n] = ""
+  end
+
+  values[7] = ""
+  if workspace then
+    values[7] = workspace.id
   end
 
   return concat(values, ":")
