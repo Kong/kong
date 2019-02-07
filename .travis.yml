@@ -1,7 +1,7 @@
-dist: trusty
+dist: xenial
 sudo: false
 
-language: java
+language: generic
 
 jdk:
   - oraclejdk8
@@ -58,10 +58,8 @@ cache:
 
 stages:
   - lint and unit
-  - pdk tests
   - test
-  - name: deploy
-    if: tag =~ 0. || type == cron
+  - Deploy daily build
 
 jobs:
   include:
@@ -71,12 +69,25 @@ jobs:
       - bin/busted -v -o gtest spec/01-unit
       env:
         - KONG_DATABASE=none
-    - stage: deploy
+    - stage: test
+      script: .ci/run_tests.sh
+    - stage: deploy daily build
       install: skip
-      before_install: skip
-      script: .ci/trigger-travis.sh $TRAVIS_ACCESS_TOKEN
-      env:
-        - KONG_DATABASE=none
+      script: make release
+      env: RESTY_IMAGE_BASE=ubuntu RESTY_IMAGE_TAG=trusty KONG_PACKAGE_NAME=${PWD##*/} KONG_VERSION=`date +%Y-%m-%d` REPOSITORY_NAME=${PWD##*/}-nightly REPOSITORY_OS_NAME=$TRAVIS_BRANCH
+      if: type=cron
+    - script: make release
+      env: RESTY_IMAGE_BASE=ubuntu RESTY_IMAGE_TAG=xenial KONG_PACKAGE_NAME=${PWD##*/} KONG_VERSION=`date +%Y-%m-%d` REPOSITORY_NAME=${PWD##*/}-nightly REPOSITORY_OS_NAME=$TRAVIS_BRANCH
+      if: type=cron
+    - script: make release
+      env: RESTY_IMAGE_BASE=centos RESTY_IMAGE_TAG=6 KONG_PACKAGE_NAME=${PWD##*/} KONG_VERSION=`date +%Y-%m-%d` REPOSITORY_NAME=${PWD##*/}-nightly REPOSITORY_OS_NAME=$TRAVIS_BRANCH
+      if: type=cron
+    - script: make release
+      env: RESTY_IMAGE_BASE=centos RESTY_IMAGE_TAG=7 KONG_PACKAGE_NAME=${PWD##*/} KONG_VERSION=`date +%Y-%m-%d` REPOSITORY_NAME=${PWD##*/}-nightly REPOSITORY_OS_NAME=$TRAVIS_BRANCH
+      if: type=cron
+    - script: make release
+      env: RESTY_IMAGE_BASE=alpine RESTY_IMAGE_TAG=latest KONG_PACKAGE_NAME=${PWD##*/} KONG_VERSION=`date +%Y-%m-%d` REPOSITORY_NAME=${PWD##*/}-nightly REPOSITORY_OS_NAME=$TRAVIS_BRANCH
+      if: type=cron
 
 script:
   - .ci/run_tests.sh
