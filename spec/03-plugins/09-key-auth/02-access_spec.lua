@@ -622,6 +622,7 @@ for _, strategy in helpers.each_strategy() do
         "plugins",
         "consumers",
         "keyauth_credentials",
+        "basicauth_credentials",
       })
 
       local route1 = bp.routes:insert {
@@ -822,6 +823,84 @@ for _, strategy in helpers.each_strategy() do
         assert.equal(id, anonymous.id)
       end)
 
+    end)
+
+    describe("auto-expiring keys", function()
+      local ttl = 3
+      local inserted_at
+
+      lazy_setup(function()
+        helpers.stop_kong()
+
+        local bp = helpers.get_db_utils(strategy, {
+          "routes",
+          "services",
+          "plugins",
+          "consumers",
+          "keyauth_credentials",
+        })
+
+        local r = bp.routes:insert {
+          hosts = { "key-ttl.com" },
+        }
+
+        bp.plugins:insert {
+          name = "key-auth",
+          route = { id = r.id },
+        }
+
+        local user_jafar = bp.consumers:insert {
+          username = "Jafar",
+        }
+
+        bp.keyauth_credentials:insert({
+          key = "kong",
+          consumer = { id = user_jafar.id },
+        }, { ttl = ttl })
+
+        inserted_at = ngx.now()
+
+        assert(helpers.start_kong({
+          database   = strategy,
+          nginx_conf = "spec/fixtures/custom_nginx.template",
+        }))
+
+        proxy_client = helpers.proxy_client()
+      end)
+
+      lazy_teardown(function()
+        if proxy_client then
+          proxy_client:close()
+        end
+
+        helpers.stop_kong()
+      end)
+
+      it("authenticate for up to 'ttl'", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/status/200",
+          headers = {
+            ["Host"] = "key-ttl.com",
+            ["apikey"] = "kong",
+          }
+        })
+        assert.res_status(200, res)
+
+        ngx.update_time()
+        local elapsed = ngx.now() - inserted_at
+        ngx.sleep(ttl - elapsed + 0.5) -- 0.5: jitter
+
+        res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/status/200",
+          headers = {
+            ["Host"] = "key-ttl.com",
+            ["apikey"] = "kong",
+          }
+        })
+        assert.res_status(401, res)
+      end)
     end)
   end)
 end
