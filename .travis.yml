@@ -56,6 +56,11 @@ cache:
     - $INSTALL_CACHE
     - $HOME/.ccm/repository
 
+stages:
+  - lint and unit
+  - test
+  - Deploy daily build
+
 jobs:
   include:
     - stage: lint and unit
