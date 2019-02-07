@@ -979,7 +979,7 @@ function DAO:upsert(primary_key, entity, options)
   end
 
   local constraints = workspaceable[self.schema.name]
-  local ok, err = ws_helper.validate_pk_exist(self.schema.name,
+  local _, err = ws_helper.validate_pk_exist(self.schema.name,
                                               primary_key, constraints)
   if err then
     local err_t = self.errors:database_error(err)
