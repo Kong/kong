@@ -11,6 +11,7 @@ return {
     { created_at     = typedefs.auto_timestamp_s },
     { username       = { type = "string",  unique = true }, },
     { custom_id      = { type = "string",  unique = true }, },
+    { type           = { type = "integer", default = 0   }, },
   },
 
   entity_checks = {

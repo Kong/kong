@@ -1125,7 +1125,10 @@ local function should_be_counted(dao, entity_type, entity)
   -- complete entity object
   if not entity.type then
     local err
-    entity, err = dao[entity_type]:find({id = entity.id})
+
+    local consumers = dao.db.new_db.daos.consumers
+    entity, err = consumers:select({id = entity.id})
+
     if err then
       return nil, err
     end

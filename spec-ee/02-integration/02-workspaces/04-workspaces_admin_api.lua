@@ -1132,7 +1132,7 @@ dao_helpers.for_each_dao(function(kong_config)
       helpers.stop_kong()
     end)
 
-    it("#flaky increments counter on entity_type and workspace", function()
+    it("increments counter on entity_type and workspace", function()
       local res
 
       -- 2 workspaces (default and ws1), each with 1 consumer
@@ -1178,7 +1178,7 @@ dao_helpers.for_each_dao(function(kong_config)
       get("/workspaces/ws1/meta", nil, 404)
     end)
 
-    it("#flaky unshare decrements counts", function()
+    it("unshare decrements counts", function()
       post("/workspaces", {name = "ws1"})
       local c1 = post("/consumers", {username = "first"})
       -- share c1 with ws1
@@ -1197,7 +1197,7 @@ dao_helpers.for_each_dao(function(kong_config)
       delete("/workspaces/ws1") --cleanup
     end)
 
-    it("#flaky increments counters from new dao entities", function()
+    it("increments counters from new dao entities", function()
       post("/workspaces", {name = "ws1"})
       post("/ws1/services", {name = "s1", host = "s1.com"})
       local res = get("/workspaces/ws1/meta")
