@@ -12,7 +12,7 @@ end
 
 
 for _, strategy in helpers.each_strategy() do
-  describe("consumers_rbac_users_mapping invalidations #" .. strategy, function()
+  describe("#flaky consumers_rbac_users_mapping invalidations #" .. strategy, function()
     local bp
     local dao
 
