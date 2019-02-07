@@ -167,7 +167,7 @@ for _, strategy in helpers.each_strategy() do
         })
         local body = assert.res_status(200, res)
         local plugin = cjson.decode(body)
-        assert.is_nil(plugin.config.message)
+        assert.equal(ngx.null, plugin.config.message)
         local res = assert(proxy_client:send {
           method = "GET",
           path = "/status/200",
@@ -236,7 +236,7 @@ for _, strategy in helpers.each_strategy() do
         })
         local body = assert.res_status(200, res)
         local plugin = cjson.decode(body)
-        assert.is_nil(plugin.config.body)
+        assert.equal(ngx.null, plugin.config.body)
         local res = assert(proxy_client:send {
           method = "GET",
           path = "/status/200",
