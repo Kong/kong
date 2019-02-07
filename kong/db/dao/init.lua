@@ -500,7 +500,7 @@ local function generate_foreign_key_methods(schema)
           return nil, tostring(err_t), err_t
         end
         if pk then
-          return self:upsert(pk)
+          return self:upsert(pk, entity, options)
         end
 
         local ok, err = schema:validate_field(field, unique_value)
