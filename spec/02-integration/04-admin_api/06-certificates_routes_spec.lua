@@ -2,12 +2,7 @@ local ssl_fixtures = require "spec.fixtures.ssl"
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
 local utils = require "kong.tools.utils"
-<<<<<<< HEAD
-local singletons = require "kong.singletons"
-||||||| merged common ancestors
-=======
 local Errors  = require "kong.db.errors"
->>>>>>> 0.15.0
 
 
 local function it_content_types(title, fn)
@@ -62,8 +57,6 @@ describe("Admin API: #" .. strategy, function()
   lazy_setup(function()
     bp, db = helpers.get_db_utils(strategy, {})
 
-    singletons.dao = dao
-
     assert(helpers.start_kong({
       database = strategy,
     }))
@@ -95,49 +88,26 @@ describe("Admin API: #" .. strategy, function()
           },
           headers = { ["Content-Type"] = "application/json" },
         })
-<<<<<<< HEAD
-||||||| merged common ancestors
-
-=======
         assert.res_status(201, res)
 
         local res  = client:get("/certificates")
->>>>>>> 0.15.0
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
         assert.equal(1, #json.data)
         assert.is_string(json.data[1].cert)
         assert.is_string(json.data[1].key)
-<<<<<<< HEAD
         assert.contains("foo.com", json.data[1].snis)
         assert.contains("bar.com", json.data[1].snis)
-||||||| merged common ancestors
-        assert.same({ "foo.com", "bar.com" }, json.data[1].snis)
-=======
-        assert.same(my_snis, json.data[1].snis)
->>>>>>> 0.15.0
       end)
     end)
 
     describe("POST", function()
-<<<<<<< HEAD
-      it("returns a conflict when duplicates snis are present in the request#t", function()
-        local res = assert(client:send {
-          method  = "POST",
-          path    = "/certificates",
-||||||| merged common ancestors
-      it("returns a conflict when duplicates snis are present in the request", function()
-        local res = assert(client:send {
-          method  = "POST",
-          path    = "/certificates",
-=======
 
       before_each(function()
         assert(db:truncate("certificates"))
         assert(db:truncate("snis"))
 
         local res = client:post("/certificates", {
->>>>>>> 0.15.0
           body    = {
             cert  = ssl_fixtures.cert,
             key   = ssl_fixtures.key,
@@ -180,72 +150,17 @@ describe("Admin API: #" .. strategy, function()
         })
         local body = assert.res_status(400, res)
         local json = cjson.decode(body)
-<<<<<<< HEAD
-        assert.equals("SNI already exists: foo.com", json.message)
-
-        -- make sure we only have two snis
-        res = assert(client:send {
-          method  = "GET",
-          path    = "/snis",
-        })
-
-        body = assert.res_status(200, res)
-        json = cjson.decode(body)
-        assert.equal(2, #json.data)
-        assert.equal(2, json.total)
-        local sni_names = {}
-        table.insert(sni_names, json.data[1].name)
-        table.insert(sni_names, json.data[2].name)
-        assert.contains("foo.com", sni_names)
-        assert.contains("bar.com", sni_names)
-
-        -- make sure we only have one certificate
-        res = assert(client:send {
-          method = "GET",
-          path = "/certificates",
-        })
-||||||| merged common ancestors
-        assert.equals("SNI already exists: foo.com", json.message)
-
-        -- make sure we only have two snis
-        res = assert(client:send {
-          method  = "GET",
-          path    = "/snis",
-        })
-
-        body = assert.res_status(200, res)
-        json = cjson.decode(body)
-        assert.equal(2, #json.data)
-        assert.equal(2, json.total)
-        assert.equal("foo.com", json.data[1].name)
-        assert.equal("bar.com", json.data[2].name)
-
-        -- make sure we only have one certificate
-        res = assert(client:send {
-          method = "GET",
-          path = "/certificates",
-        })
-=======
         assert.matches("snis: foo.com already associated with existing certificate", json.message)
->>>>>>> 0.15.0
 
         -- make sure we only have one certificate, with two snis
         res  = client:get("/certificates")
         body = assert.res_status(200, res)
         json = cjson.decode(body)
         assert.equal(1, #json.data)
-<<<<<<< HEAD
         assert.is_string(json.data[1].cert)
         assert.is_string(json.data[1].key)
         assert.contains("bar.com", json.data[1].snis)
         assert.contains("foo.com", json.data[1].snis)
-||||||| merged common ancestors
-        assert.is_string(json.data[1].cert)
-        assert.is_string(json.data[1].key)
-        assert.same({ "foo.com", "bar.com" }, json.data[1].snis)
-=======
-        assert.same({ "bar.com", "foo.com" }, json.data[1].snis)
->>>>>>> 0.15.0
       end)
 
       it_content_types("creates a certificate and returns it with the snis pseudo-property", function(content_type)
@@ -366,98 +281,9 @@ describe("Admin API: #" .. strategy, function()
         assert.res_status(404, res)
       end)
 
-<<<<<<< HEAD
-      it("updates snis associated with a certificate", function()
-        local res = assert(client:send {
-          method  = "PUT",
-          path    = "/certificates",
-          body    = {
-            id = cert_foo.id,
-            snis  = "baz.com",
-          },
-          headers = { ["Content-Type"] = "application/x-www-form-urlencoded" },
-        })
-
-        local body = assert.res_status(200, res)
-        local json = cjson.decode(body)
-
-        assert.same({ "baz.com" }, json.snis)
-
-        -- make sure number of snis don't change
-        -- since we delete foo.com and added baz.com
-        res = assert(client:send {
-          method = "GET",
-          path   = "/snis",
-        })
-
-        body = assert.res_status(200, res)
-        json = cjson.decode(body)
-        assert.equal(2, #json.data)
-        assert.equal(2, json.total)
-        local sni_names = {}
-        table.insert(sni_names, json.data[1].name)
-        table.insert(sni_names, json.data[2].name)
-        assert.contains("baz.com", sni_names)
-        assert.contains("bar.com", sni_names)
-
-        -- make sure we did not add any certificate
-        res = assert(client:send {
-          method = "GET",
-          path = "/certificates",
-        })
-
-        body = assert.res_status(200, res)
-        json = cjson.decode(body)
-        assert.equal(2, json.total)
-        assert.equal(2, #json.data)
-||||||| merged common ancestors
-      it("updates snis associated with a certificate", function()
-        local res = assert(client:send {
-          method  = "PUT",
-          path    = "/certificates",
-          body    = {
-            id = cert_foo.id,
-            snis  = "baz.com",
-          },
-          headers = { ["Content-Type"] = "application/x-www-form-urlencoded" },
-        })
-
-        local body = assert.res_status(200, res)
-        local json = cjson.decode(body)
-
-        assert.same({ "baz.com" }, json.snis)
-
-        -- make sure number of snis don't change
-        -- since we delete foo.com and added baz.com
-        res = assert(client:send {
-          method = "GET",
-          path   = "/snis",
-        })
-
-        body = assert.res_status(200, res)
-        json = cjson.decode(body)
-        assert.equal(2, #json.data)
-        assert.equal(2, json.total)
-        local sni_names = {}
-        table.insert(sni_names, json.data[1].name)
-        table.insert(sni_names, json.data[2].name)
-        assert.are.same({ "baz.com", "bar.com" }, sni_names)
-
-        -- make sure we did not add any certificate
-        res = assert(client:send {
-          method = "GET",
-          path = "/certificates",
-        })
-
-        body = assert.res_status(200, res)
-        json = cjson.decode(body)
-        assert.equal(2, json.total)
-        assert.equal(2, #json.data)
-=======
       it("returns 404 for a random non-existing sni", function()
         local res = client:get("/certificates/doesntexist.com")
         assert.res_status(404, res)
->>>>>>> 0.15.0
       end)
     end)
 
@@ -516,22 +342,12 @@ describe("Admin API: #" .. strategy, function()
         assert.same(ssl_fixtures.key_alt, json.key)
         assert.same({"bar.com", "foo.com"}, json.snis)
 
-<<<<<<< HEAD
         assert.is_string(json1.cert)
         assert.is_string(json1.key)
         assert.contains("foo.com", json1.snis)
         assert.contains("bar.com", json1.snis)
         assert.same(json1, json2)
       end)
-||||||| merged common ancestors
-        assert.is_string(json1.cert)
-        assert.is_string(json1.key)
-        assert.same({ "foo.com", "bar.com" }, json1.snis)
-        assert.same(json1, json2)
-      end)
-=======
-        json.snis = nil
->>>>>>> 0.15.0
 
         local in_db = assert(db.certificates:select({ id = certificate.id }))
         assert.same(json, in_db)
@@ -573,7 +389,6 @@ describe("Admin API: #" .. strategy, function()
           }
         }, cjson.decode(body))
       end)
-    end)
 
     describe("PATCH", function()
       local cert_foo
@@ -690,58 +505,9 @@ describe("Admin API: #" .. strategy, function()
         local json = cjson.decode(body)
         assert.same({ "baz.com" }, json.snis)
 
-<<<<<<< HEAD
-        -- make sure number of snis don't change
-        -- since we delete foo.com and added baz.com
-        res = assert(client:send {
-          method  = "GET",
-          path    = "/snis",
-        })
-
-        body = assert.res_status(200, res)
-        json = cjson.decode(body)
-        assert.equal(2, #json.data)
-        assert.equal(2, json.total)
-        local sni_names = {}
-        table.insert(sni_names, json.data[1].name)
-        table.insert(sni_names, json.data[2].name)
-        assert.contains("baz.com", sni_names)
-        assert.contains("bar.com", sni_names)
-
-        -- make sure we did not add any certificate
-        res = assert(client:send {
-          method = "GET",
-          path = "/certificates",
-        })
-
-||||||| merged common ancestors
-        -- make sure number of snis don't change
-        -- since we delete foo.com and added baz.com
-        res = assert(client:send {
-          method  = "GET",
-          path    = "/snis",
-        })
-
-        body = assert.res_status(200, res)
-        json = cjson.decode(body)
-        assert.equal(2, #json.data)
-        assert.equal(2, json.total)
-        local sni_names = {}
-        table.insert(sni_names, json.data[1].name)
-        table.insert(sni_names, json.data[2].name)
-        assert.are.same( { "baz.com", "bar.com" } , sni_names)
-
-        -- make sure we did not add any certificate
-        res = assert(client:send {
-          method = "GET",
-          path = "/certificates",
-        })
-
-=======
         -- make sure we did not add any certificate, and that the snis
         -- are correct
         res  = client:get("/certificates")
->>>>>>> 0.15.0
         body = assert.res_status(200, res)
         json = cjson.decode(body)
         assert.equal(2, #json.data)
@@ -883,64 +649,11 @@ describe("Admin API: #" .. strategy, function()
   end)
 
 
-<<<<<<< HEAD
-  describe("/snis", function()
-    local ssl_certificate
-
-    before_each(function()
-      dao:truncate_tables()
-      ssl_certificate = dao.ssl_certificates:run_with_ws_scope(
-        dao.workspaces:find_all({name = "default"}),
-        dao.ssl_certificates.insert, {
-          cert = ssl_fixtures.cert,
-          key = ssl_fixtures.key,
-      })
-
-      assert(dao.ssl_servers_names:run_with_ws_scope(
-               dao.workspaces:find_all({name = "default"}),
-               dao.ssl_servers_names.insert, {
-                 name               = "foo.com",
-                 ssl_certificate_id = ssl_certificate.id,
-      }))
-    end)
-
-||||||| merged common ancestors
-  describe("/snis", function()
-    local ssl_certificate
-
-    before_each(function()
-      dao:truncate_tables()
-      ssl_certificate = assert(dao.ssl_certificates:insert {
-        cert = ssl_fixtures.cert,
-        key = ssl_fixtures.key,
-      })
-      assert(dao.ssl_servers_names:insert {
-          name               = "foo.com",
-          ssl_certificate_id = ssl_certificate.id,
-      })
-    end)
-
-=======
   describe("/certificates/:certificate/snis", function()
->>>>>>> 0.15.0
     describe("POST", function()
 
       local certificate
       before_each(function()
-<<<<<<< HEAD
-        dao:truncate_tables()
-        ssl_certificate = dao.ssl_certificates:run_with_ws_scope(
-          dao.workspaces:find_all({name = "default"}),
-          dao.ssl_certificates.insert, {
-            cert = ssl_fixtures.cert,
-            key = ssl_fixtures.key,
-||||||| merged common ancestors
-        dao:truncate_tables()
-
-        ssl_certificate = assert(dao.ssl_certificates:insert {
-          cert = ssl_fixtures.cert,
-          key = ssl_fixtures.key,
-=======
         assert(db:truncate("certificates"))
         assert(db:truncate("snis"))
 
@@ -948,7 +661,6 @@ describe("Admin API: #" .. strategy, function()
         bp.snis:insert({
           name = "ttt.com",
           certificate = { id = certificate.id }
->>>>>>> 0.15.0
         })
       end)
 
@@ -983,41 +695,11 @@ describe("Admin API: #" .. strategy, function()
         end
       end)
 
-<<<<<<< HEAD
-      it("returns a conflict when an SNI already exists", function()
-        assert(dao.ssl_servers_names:run_with_ws_scope(
-                 dao.workspaces:find_all({name = "default"}),
-                 dao.ssl_servers_names.insert, {
-                   name               = "foo.com",
-                   ssl_certificate_id = ssl_certificate.id,
-        }))
-
-          local res = assert(client:send {
-            method  = "POST",
-            path    = "/snis",
-            body    = {
-              name               = "foo.com",
-              ssl_certificate_id = ssl_certificate.id,
-||||||| merged common ancestors
-      it("returns a conflict when an SNI already exists", function()
-          assert(dao.ssl_servers_names:insert {
-            name = "foo.com",
-            ssl_certificate_id = ssl_certificate.id,
-          })
-
-          local res = assert(client:send {
-            method  = "POST",
-            path    = "/snis",
-            body    = {
-              name               = "foo.com",
-              ssl_certificate_id = ssl_certificate.id,
-=======
       it_content_types("creates a sni using a sni to id the certificate", function(content_type)
         return function()
           local res = client:post("/certificates/ttt.com/snis", {
             body = {
               name = "foo.com",
->>>>>>> 0.15.0
             },
             headers = { ["Content-Type"] = content_type },
           })
@@ -1070,35 +752,10 @@ describe("Admin API: #" .. strategy, function()
   end)
 
   describe("/snis/:name", function()
+
     local certificate, sni
 
     before_each(function()
-<<<<<<< HEAD
-      dao:truncate_tables()
-      ssl_certificate = assert(dao.ssl_certificates:run_with_ws_scope(
-                                 dao.workspaces:find_all({name = "default"}),
-                                 dao.ssl_certificates.insert, {
-                                   cert = ssl_fixtures.cert,
-                                   key = ssl_fixtures.key,
-      }))
-
-      assert(dao.ssl_servers_names:run_with_ws_scope(
-               dao.workspaces:find_all({name = "default"}),
-               dao.ssl_servers_names.insert, {
-                 name = "foo.com",
-                 ssl_certificate_id = ssl_certificate.id,
-      }))
-||||||| merged common ancestors
-      dao:truncate_tables()
-      ssl_certificate = assert(dao.ssl_certificates:insert {
-        cert = ssl_fixtures.cert,
-        key = ssl_fixtures.key,
-      })
-      assert(dao.ssl_servers_names:insert {
-          name               = "foo.com",
-          ssl_certificate_id = ssl_certificate.id,
-      })
-=======
       assert(db:truncate("certificates"))
       assert(db:truncate("snis"))
 
@@ -1107,7 +764,6 @@ describe("Admin API: #" .. strategy, function()
         name        = "foo.com",
         certificate = certificate,
       }
->>>>>>> 0.15.0
     end)
 
     describe("GET", function()
@@ -1188,40 +844,12 @@ describe("Admin API: #" .. strategy, function()
           key = ssl_fixtures.key_alt,
         }
 
-<<<<<<< HEAD
-        test("updates a SNI", function()
-          -- SKIP: this test fails with Cassandra because the PRIMARY KEY
-          -- used by the C* table is a composite of (name,
-          -- ssl_certificate_id), and hence, we cannot update the
-          -- ssl_certificate_id field because it is in the `SET` part of the
-          -- query built by the DAO, but in C*, one cannot change a value
-          -- from the clustering key.
-
-          local ssl_certificate_2 = dao.ssl_certificates:run_with_ws_scope(
-            dao.workspaces:find_all({name = "default"}), dao.ssl_certificates.insert, {
-              cert = "foo",
-              key = "bar",
-          })
-||||||| merged common ancestors
-        test("updates a SNI", function()
-          -- SKIP: this test fails with Cassandra because the PRIMARY KEY
-          -- used by the C* table is a composite of (name,
-          -- ssl_certificate_id), and hence, we cannot update the
-          -- ssl_certificate_id field because it is in the `SET` part of the
-          -- query built by the DAO, but in C*, one cannot change a value
-          -- from the clustering key.
-          local ssl_certificate_2 = assert(dao.ssl_certificates:insert {
-            cert = "foo",
-            key = "bar",
-          })
-=======
         local res = client:patch("/snis/foo.com", {
           body = {
             certificate = { id = certificate_2.id },
           },
           headers = { ["Content-Type"] = "application/json" },
         })
->>>>>>> 0.15.0
 
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
