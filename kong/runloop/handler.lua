@@ -15,9 +15,9 @@ local reports     = require "kong.reports"
 local balancer    = require "kong.runloop.balancer"
 local mesh        = require "kong.runloop.mesh"
 local constants   = require "kong.constants"
-local semaphore   = require "ngx.semaphore"
 local singletons  = require "kong.singletons"
 local certificate = require "kong.runloop.certificate"
+local concurrency = require "kong.concurrency"
 
 
 local kong        = kong
@@ -36,7 +36,6 @@ local unpack      = unpack
 
 
 local ERR         = ngx.ERR
-local WARN        = ngx.WARN
 local DEBUG       = ngx.DEBUG
 
 
@@ -48,7 +47,7 @@ local get_router, build_router
 local server_header = meta._SERVER_TOKENS
 local _set_check_router_rebuild
 
-local build_router_semaphore
+local build_router_timeout
 
 
 local function get_now()
@@ -185,43 +184,19 @@ do
       return router
     end
 
-    -- wrap router rebuilds in a per-worker mutex (via ngx.semaphore)
+    -- wrap router rebuilds in a per-worker mutex:
     -- this prevents dogpiling the database during rebuilds in
-    -- high-concurrency traffic patterns
+    -- high-concurrency traffic patterns;
     -- requests that arrive on this process during a router rebuild will be
-    -- queued. once the semaphore resource is acquired we re-check the
+    -- queued. once the lock is acquired we re-check the
     -- router version again to prevent unnecessary subsequent rebuilds
 
-    local timeout = 60
-    if singletons.configuration.database == "cassandra" then
-      -- cassandra_timeout is defined in ms
-      timeout = singletons.configuration.cassandra_timeout / 1000
-
-    elseif singletons.configuration.database == "postgres" then
-      -- pg_timeout is defined in ms
-      timeout = singletons.configuration.pg_timeout / 1000
-    end
-
-    -- acquire lock
-    local lok, err = build_router_semaphore:wait(timeout)
-    if not lok then
-      if err ~= "timeout" then
-        return nil, "error attempting to acquire build_router lock: " .. err
-      end
-
-      log(WARN, "bypassing build_router lock: timeout")
-    end
-
-    local pok, ok, err = pcall(check_router_rebuild)
-
-    if lok then
-      -- release lock
-      build_router_semaphore:post(1)
-    end
-
-    if not pok then
-      return nil, ok
-    end
+    local opts = {
+      name = "build_router",
+      timeout = build_router_timeout,
+      on_timeout = "run_unlocked",
+    }
+    local ok, err = concurrency.with_coroutine_mutex(opts, check_router_rebuild)
 
     if not ok then
       return nil, err
@@ -570,15 +545,17 @@ return {
         balancer.init()
       end)
 
+
       do
-        local err
+        build_router_timeout = 60
+        if singletons.configuration.database == "cassandra" then
+          -- cassandra_timeout is defined in ms
+          build_router_timeout = kong.configuration.cassandra_timeout / 1000
 
-        build_router_semaphore, err = semaphore.new()
-        if err then
-          log(ngx.CRIT, "failed to create build_router_semaphore: ", err)
+        elseif singletons.configuration.database == "postgres" then
+          -- pg_timeout is defined in ms
+          build_router_timeout = kong.configuration.pg_timeout / 1000
         end
-
-        build_router_semaphore:post(1)
       end
     end
   },
