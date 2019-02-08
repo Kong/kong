@@ -18,10 +18,10 @@ describe("Admin API post-processing #" .. strategy, function()
   local client
   local plugin
   local db
+  local bp
 
   lazy_setup(function()
-    local _
-    _, db = helpers.get_db_utils(strategy, {
+    bp, db = helpers.get_db_utils(strategy, {
       "plugins",
     }, {
       "admin-api-post-process"
@@ -46,23 +46,8 @@ describe("Admin API post-processing #" .. strategy, function()
   end)
 
   before_each(function()
-<<<<<<< HEAD
-    helpers.dao:truncate_tables()
-
-    helpers.register_consumer_relations(helpers.dao)
-
-    assert(helpers.dao.consumers:insert({
-      username = "michael",
-      custom_id = "landon",
-    }))
-||||||| merged common ancestors
-    helpers.dao:truncate_tables()
-    assert(helpers.dao.consumers:insert({
-      username = "michael",
-      custom_id = "landon",
-    }))
-=======
     db:truncate("plugins")
+    db:truncate("consumers")
     local client = helpers.admin_client()
     local res = assert(client:send {
       method = "POST",
@@ -72,10 +57,15 @@ describe("Admin API post-processing #" .. strategy, function()
       },
       headers = { ["Content-Type"] = "application/json" },
     })
+
+    helpers.register_consumer_relations(helpers.dao)
+    bp.consumers:insert({
+      username = "michael",
+      custom_id = "landon",
+    })
     local body = assert.res_status(201, res)
     plugin = cjson.decode(body)
     assert(client:close())
->>>>>>> 0.15.0
   end)
 
   it_content_types("post-processes paginated sets", function(content_type)
