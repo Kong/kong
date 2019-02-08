@@ -899,7 +899,7 @@ function _M.resolve_entity_type(entity_id)
 
   local entity_type = rows[1].entity_type
 
-  if rawget(singletons.dao, entity_type) then
+  if rawget(singletons.dao.daos, entity_type) then
     rows, err = singletons.dao[entity_type]:find_all({
       [workspaceable_relations[entity_type].primary_key] = entity_id,
       __skip_rbac = true,

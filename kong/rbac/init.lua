@@ -552,8 +552,10 @@ local function add_default_role_entity_permission(entity, table_name)
   end
 
   local schema
-  if singletons.dao[table_name] then -- old dao
-    schema = singletons.dao[table_name].schema
+  local entity_dao = rawget(singletons.dao.daos, table_name)
+
+  if entity_dao then -- old dao
+    schema = entity_dao.schema
 
   else -- new dao
     schema = singletons.db.daos[table_name].schema
@@ -653,8 +655,10 @@ function _M.validate_entity_operation(entity, table_name)
   local action = rbac_ctx.action
 
   local schema
-  if singletons.dao[table_name] then -- old dao
-    schema = singletons.dao[table_name].schema
+  local entity_dao = rawget(singletons.dao.daos, table_name)
+
+  if entity_dao then -- old dao
+    schema = entity_dao.schema
 
   else -- new dao
     schema = singletons.db.daos[table_name].schema
