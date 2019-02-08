@@ -26,14 +26,6 @@ for _, strategy in helpers.each_strategy() do
     local dao
     local client
 
-<<<<<<< HEAD
-    setup(function()
-      ngx.ctx.workspaces = nil
-      bp, db, dao = helpers.get_db_utils(strategy)
-||||||| merged common ancestors
-    setup(function()
-      bp, db, dao = helpers.get_db_utils(strategy)
-=======
     lazy_setup(function()
       bp, db, dao = helpers.get_db_utils(strategy, {
         "routes",
@@ -42,7 +34,6 @@ for _, strategy in helpers.each_strategy() do
       assert(helpers.start_kong({
         database = strategy,
       }))
->>>>>>> 0.15.0
     end)
 
     lazy_teardown(function()
@@ -50,23 +41,6 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     before_each(function()
-<<<<<<< HEAD
-      helpers.stop_kong()
-      assert(db:truncate())
-      ngx.ctx.workspaces = nil
-      assert(helpers.start_kong({
-        database = strategy,
-      }))
-
-||||||| merged common ancestors
-      helpers.stop_kong()
-      assert(db:truncate())
-      assert(helpers.start_kong({
-        database = strategy,
-      }))
-
-=======
->>>>>>> 0.15.0
       client = assert(helpers.admin_client())
     end)
 
@@ -180,36 +154,17 @@ for _, strategy in helpers.each_strategy() do
 
       describe("GET", function()
         describe("with data", function()
-<<<<<<< HEAD
-          before_each(function()
-            with_current_ws(nil, function()
-              for i = 1, 10 do
-                assert(db.services:insert {
-                  host = ("example%d.com"):format(i)
-                })
-              end
-            end, dao)
-||||||| merged common ancestors
-          before_each(function()
-            for i = 1, 10 do
-              assert(db.services:insert {
-                host = ("example%d.com"):format(i)
-              })
-            end
-=======
-          lazy_setup(function()
+          setup(function()
             db:truncate("services")
             for _ = 1, 10 do
               assert(bp.named_services:insert())
             end
->>>>>>> 0.15.0
           end)
 
           it("retrieves the first page", function()
             local res = client:get("/services")
             local res = assert.res_status(200, res)
             local json = cjson.decode(res)
-            ngx.sleep(50)
             assert.equal(10, #json.data)
           end)
 
@@ -274,23 +229,12 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       describe("/services/{service}", function()
-<<<<<<< HEAD
         local service
 
         before_each(function()
-          with_current_ws(nil, function ()
-            service = bp.services:insert({ name = "my-service", protocol = "http", host="example.com", path="/path" })
-          end, dao)
-
-        end)
-||||||| merged common ancestors
-        local service
-
-        before_each(function()
+          db:truncate("services")
           service = bp.services:insert({ name = "my-service", protocol = "http", host="example.com", path="/path" })
         end)
-=======
->>>>>>> 0.15.0
 
         describe("GET", function()
           it("retrieves by id", function()
@@ -368,18 +312,8 @@ for _, strategy in helpers.each_strategy() do
               assert.equal("https",    json.protocol)
               assert.equal(service.id, json.id)
 
-<<<<<<< HEAD
-              with_current_ws(nil, function ()
-                local in_db = assert(db.services:select({ id = service.id }))
-                assert.same(json, in_db)
-              end, dao)
-||||||| merged common ancestors
               local in_db = assert(db.services:select({ id = service.id }))
               assert.same(json, in_db)
-=======
-              local in_db = assert(db.services:select({ id = service.id }, { nulls = true }))
-              assert.same(json, in_db)
->>>>>>> 0.15.0
             end
           end)
 
@@ -399,43 +333,12 @@ for _, strategy in helpers.each_strategy() do
               assert.equal("https",      json.protocol)
               assert.equal(service.id,   json.id)
               assert.equal(service.name, json.name)
-<<<<<<< HEAD
-              with_current_ws(nil, function ()
-                local in_db = assert(db.services:select_by_name(service.name))
-                assert.same(json, in_db)
-              end, dao)
-||||||| merged common ancestors
-
-              local in_db = assert(db.services:select_by_name(service.name))
-              assert.same(json, in_db)
-=======
 
               local in_db = assert(db.services:select_by_name(service.name, { nulls = true }))
               assert.same(json, in_db)
->>>>>>> 0.15.0
             end
           end)
 
-          it_content_types("updates service by name with existing name", function(content_type)
-            return function()
-              local res = client:patch("/services/" .. service.name, {
-                headers = {
-                  ["Content-Type"] = content_type
-                },
-                body = {
-                  name = service.name
-                },
-              })
-              local body = assert.res_status(200, res)
-              local json = cjson.decode(body)
-              assert.equal(service.id,   json.id)
-              assert.equal(service.name, json.name)
-              with_current_ws(nil, function ()
-                local in_db = assert(db.services:select_by_name(service.name))
-                assert.same(json, in_db)
-              end, dao)
-            end
-          end)
         end)
 
         describe("DELETE", function()
@@ -511,29 +414,6 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       describe("/services/{service}/plugins", function()
-<<<<<<< HEAD
-        local service
-
-        before_each(function()
-          with_current_ws(nil, function ()
-            service = bp.services:insert {
-              name     = "my-service",
-              protocol = "http",
-              host     = "my-service.com",
-            }
-          end, dao)
-        end)
-||||||| merged common ancestors
-        local service
-
-        before_each(function()
-          service = bp.services:insert {
-            name     = "my-service",
-            protocol = "http",
-            host     = "my-service.com",
-          }
-        end)
-=======
 
 --local service = bp.named_services:insert()
 
@@ -550,7 +430,6 @@ for _, strategy in helpers.each_strategy() do
             },
           },
         }
->>>>>>> 0.15.0
 
         describe("POST", function()
           it_content_types("creates a plugin config for a Service", function(content_type)
@@ -719,63 +598,8 @@ for _, strategy in helpers.each_strategy() do
             local service = bp.services:insert()
             local plugin = bp.key_auth_plugins:insert({ service = service })
 
-<<<<<<< HEAD
-          it_content_types("perfers default values when replacing", function(content_type)
-            return function()
-              local plugin
-              with_current_ws(nil, function ()
-                plugin = assert(dao.plugins:insert {
-                  name = "key-auth",
-                  service_id = service.id,
-                  config = { hide_credentials = true }
-                })
-                assert.True(plugin.config.hide_credentials)
-                assert.same({ "apikey" }, plugin.config.key_names)
-              end, dao)
-
-              local res = assert(client:send {
-                method = "PUT",
-                path = "/services/" .. service.id .. "/plugins",
-                body = {
-                  id = plugin.id,
-                  name = "key-auth",
-                  ["config.key_names"] = "apikey,key",
-                  created_at = 1461276890000
-                },
-                headers = { ["Content-Type"] = content_type }
-              })
-              local body = assert.res_status(200, res)
-              local json = cjson.decode(body)
-              assert.False(json.config.hide_credentials) -- not true anymore
-||||||| merged common ancestors
-          it_content_types("perfers default values when replacing", function(content_type)
-            return function()
-              local plugin = assert(dao.plugins:insert {
-                name = "key-auth",
-                service_id = service.id,
-                config = { hide_credentials = true }
-              })
-              assert.True(plugin.config.hide_credentials)
-              assert.same({ "apikey" }, plugin.config.key_names)
-
-              local res = assert(client:send {
-                method = "PUT",
-                path = "/services/" .. service.id .. "/plugins",
-                body = {
-                  id = plugin.id,
-                  name = "key-auth",
-                  ["config.key_names"] = "apikey,key",
-                  created_at = 1461276890000
-                },
-                headers = { ["Content-Type"] = content_type }
-              })
-              local body = assert.res_status(200, res)
-              local json = cjson.decode(body)
-              assert.False(json.config.hide_credentials) -- not true anymore
-=======
             plugin.enabled = not plugin.enabled
             plugin.created_at = nil
->>>>>>> 0.15.0
 
             local res = assert(client:send {
               method = "PATCH",
@@ -791,26 +615,6 @@ for _, strategy in helpers.each_strategy() do
             local service = bp.services:insert()
             local plugin = bp.key_auth_plugins:insert({ service = service })
 
-<<<<<<< HEAD
-          it_content_types("overrides a plugin previous config if partial", function(content_type)
-            return function()
-              local plugin
-              with_current_ws(nil, function ()
-                plugin = assert(dao.plugins:insert {
-                  name = "key-auth",
-                  service_id = service.id
-                })
-                assert.same({ "apikey" }, plugin.config.key_names)
-              end, dao)
-||||||| merged common ancestors
-          it_content_types("overrides a plugin previous config if partial", function(content_type)
-            return function()
-              local plugin = assert(dao.plugins:insert {
-                name = "key-auth",
-                service_id = service.id
-              })
-              assert.same({ "apikey" }, plugin.config.key_names)
-=======
             local res = assert(client:send {
               method = "PATCH",
               path = "/services/" .. service.id .. "/plugins/" .. plugin.id,
@@ -822,32 +626,11 @@ for _, strategy in helpers.each_strategy() do
             local body = assert.res_status(200, res)
             local json = cjson.decode(body)
             assert.same(ngx.null, json.service)
->>>>>>> 0.15.0
 
             local in_db = assert(db.plugins:select({ id = plugin.id }, { nulls = true }))
             assert.same(json, in_db)
           end)
 
-<<<<<<< HEAD
-          it_content_types("updates the enabled property", function(content_type)
-            local plugin
-            return function()
-              with_current_ws(nil, function ()
-                plugin = assert(dao.plugins:insert {
-                  name = "key-auth",
-                  service_id = service.id
-                })
-                assert.True(plugin.enabled)
-              end, dao)
-||||||| merged common ancestors
-          it_content_types("updates the enabled property", function(content_type)
-            return function()
-              local plugin = assert(dao.plugins:insert {
-                name = "key-auth",
-                service_id = service.id
-              })
-              assert.True(plugin.enabled)
-=======
           describe("errors", function()
             it("handles invalid input", function()
               local service = bp.services:insert()
@@ -855,7 +638,6 @@ for _, strategy in helpers.each_strategy() do
                 service = service,
                 config = { key_names = { "testkey" } },
               })
->>>>>>> 0.15.0
 
               local before = assert(db.plugins:select({ id = plugin.id }, { nulls = true }))
               local res = assert(client:send {
@@ -892,25 +674,11 @@ for _, strategy in helpers.each_strategy() do
 
         describe("GET", function()
           it("retrieves the first page", function()
-<<<<<<< HEAD
-            with_current_ws(nil, function ()
-              assert(dao.plugins:insert {
-                name = "key-auth",
-                service_id = service.id
-              })
-            end, dao)
-||||||| merged common ancestors
-            assert(dao.plugins:insert {
-              name = "key-auth",
-              service_id = service.id
-            })
-=======
             local service = bp.services:insert()
             assert(dao.plugins:insert {
               name = "key-auth",
               service = { id = service.id },
             })
->>>>>>> 0.15.0
             local res = assert(client:send {
               method = "GET",
               path = "/services/" .. service.id .. "/plugins"
