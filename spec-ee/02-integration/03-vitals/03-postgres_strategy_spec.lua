@@ -1,5 +1,4 @@
 local pg_strategy = require "kong.vitals.postgres.strategy"
-local dao_factory = require "kong.dao.factory"
 local dao_helpers = require "spec.02-integration.03-dao.helpers"
 local utils       = require "kong.tools.utils"
 local helpers     = require "spec.helpers"
