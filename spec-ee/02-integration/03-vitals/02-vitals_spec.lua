@@ -10,7 +10,7 @@ local fmt          = string.format
 
 
 dao_helpers.for_each_dao(function(kong_conf)
-  describe("vitals with db: " .. kong_conf.database, function()
+  describe("#flaky vitals with db: " .. kong_conf.database, function()
     local vitals
     local dao
     local snapshot
