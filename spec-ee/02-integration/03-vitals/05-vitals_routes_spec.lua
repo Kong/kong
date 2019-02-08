@@ -8,7 +8,7 @@ local time        = ngx.time
 local fmt         = string.format
 
 dao_helpers.for_each_dao(function(kong_conf)
-  describe("Admin API Vitals with " .. kong_conf.database, function()
+  describe("#flaky Admin API Vitals with " .. kong_conf.database, function()
     local client, dao, strategy, bp, _
 
     local minute_start_at = time() - ( time() % 60 )
