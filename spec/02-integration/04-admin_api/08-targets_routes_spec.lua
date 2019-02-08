@@ -396,9 +396,8 @@ describe("Admin API #" .. strategy, function()
                 }
               }
               },
-              name = upstream.name
             }
-          })
+          )
           assert.same(200, status)
         end)
 
