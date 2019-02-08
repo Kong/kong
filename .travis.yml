@@ -39,11 +39,11 @@ env:
     # enterprise matrix begin
     # XXX add extra jobs for different cassandra versions
     - KONG_TEST_DATABASE=postgres TEST_SUITE=integration-ee
+    - KONG_TEST_DATABASE=cassandra CASSANDRA=2.2 TEST_SUITE=integration-ee
+    - KONG_TEST_DATABASE=cassandra CASSANDRA=3.9 TEST_SUITE=integration-ee
     - KONG_TEST_DATABASE=cassandra CASSANDRA=2.2 TEST_SUITE=plugins-ee
     - KONG_TEST_DATABASE=cassandra CASSANDRA=3.9 TEST_SUITE=plugins-ee
     - KONG_TEST_DATABASE=postgres TEST_SUITE=plugins-ee
-    - KONG_TEST_DATABASE=cassandra CASSANDRA=2.2 TEST_SUITE=integration-ee
-    - KONG_TEST_DATABASE=cassandra CASSANDRA=3.9 TEST_SUITE=integration-ee
     # enterprise matrix end
     - KONG_TEST_DATABASE=postgres TEST_SUITE=integration
     - KONG_TEST_DATABASE=cassandra CASSANDRA=2.2 TEST_SUITE=integration
