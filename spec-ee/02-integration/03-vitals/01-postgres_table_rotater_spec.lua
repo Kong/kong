@@ -1,6 +1,7 @@
 local table_rotater = require "kong.vitals.postgres.table_rotater"
 local dao_factory   = require "kong.dao.factory"
 local dao_helpers   = require "spec.02-integration.03-dao.helpers"
+local helpers       = require "spec.helpers"
 local ngx_time      = ngx.time
 local fmt           = string.format
 
@@ -33,7 +34,7 @@ dao_helpers.for_each_dao(function(kong_conf)
 
 
     setup(function()
-      dao = assert(dao_factory.new(kong_conf))
+      dao = select(3, helpers.get_db_utils(kong_conf.database))
       db  = dao.db
 
 
