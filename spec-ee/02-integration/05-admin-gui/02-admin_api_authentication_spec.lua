@@ -54,7 +54,7 @@ end
 
 
 for _, strategy in helpers.each_strategy() do
-  describe("Admin API authentication on #" .. strategy, function()
+  describe("#flaky Admin API authentication on #" .. strategy, function()
     setup(function()
       bp, _, dao = helpers.get_db_utils(strategy)
     end)

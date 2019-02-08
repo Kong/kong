@@ -6,7 +6,7 @@ local workspaces = require "kong.workspaces"
 
 for _, strategy in helpers.each_strategy() do
 
-  describe("admin_helpers with #" .. strategy, function()
+  describe("#flaky admin_helpers with #" .. strategy, function()
     local dao
     local default_ws, another_ws
     local admins = {}
