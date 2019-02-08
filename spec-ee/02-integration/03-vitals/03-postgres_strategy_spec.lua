@@ -2,6 +2,7 @@ local pg_strategy = require "kong.vitals.postgres.strategy"
 local dao_factory = require "kong.dao.factory"
 local dao_helpers = require "spec.02-integration.03-dao.helpers"
 local utils       = require "kong.tools.utils"
+local helpers     = require "spec.helpers"
 local fmt         = string.format
 local time        = ngx.time
 
@@ -26,9 +27,7 @@ dao_helpers.for_each_dao(function(kong_conf)
         delete_interval = 90000,
       }
 
-      dao = assert(dao_factory.new(kong_conf))
-      dao:run_migrations()
-
+      dao = select(3, helpers.get_db_utils(kong_conf.database))
       strategy = pg_strategy.new(dao, opts)
 
       db  = dao.db
