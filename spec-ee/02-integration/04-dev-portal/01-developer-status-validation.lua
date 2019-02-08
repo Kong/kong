@@ -4,7 +4,7 @@ local enums   = require "kong.enterprise_edition.dao.enums"
 
 
 for _, strategy in helpers.each_strategy('postgres') do
-  describe("Developer status validation [#" .. strategy .. "]", function()
+  describe("#flaky Developer status validation [#" .. strategy .. "]", function()
     local proxy_client
     local bp, dao
     local proxy_consumer, approved_developer, pending_developer

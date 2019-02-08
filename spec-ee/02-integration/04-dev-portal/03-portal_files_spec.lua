@@ -25,7 +25,7 @@ local function configure_portal(dao)
 end
 
 for _, strategy in helpers.each_strategy() do
-describe("Admin API - Developer Portal - " .. strategy, function()
+describe("#flaky Admin API - Developer Portal - " .. strategy, function()
   local client
   local portal_api_client
   local db

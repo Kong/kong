@@ -4,7 +4,7 @@ local enums = require "kong.enterprise_edition.dao.enums"
 
 for _, strategy in helpers.each_strategy() do
 
-  describe("Admin API", function()
+  describe("#flaky Admin API", function()
     local bp, dao
     local client
     local admin, developer

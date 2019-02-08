@@ -25,8 +25,8 @@ end
 
 
 -- TODO: Cassandra
-for _, strategy in helpers.each_strategy('postgres') do
-  describe("portal index", function()
+for _, strategy in helpers.each_strategy({'postgres'}) do
+  describe("#flaky portal index", function()
     local dao
     local client
 
