@@ -96,8 +96,7 @@ describe("Admin API: #" .. strategy, function()
         assert.equal(1, #json.data)
         assert.is_string(json.data[1].cert)
         assert.is_string(json.data[1].key)
-        assert.contains("foo.com", json.data[1].snis)
-        assert.contains("bar.com", json.data[1].snis)
+        assert.same(my_snis, json.data[1].snis)
       end)
     end)
 
@@ -342,13 +341,6 @@ describe("Admin API: #" .. strategy, function()
         assert.same(ssl_fixtures.key_alt, json.key)
         assert.same({"bar.com", "foo.com"}, json.snis)
 
-        assert.is_string(json1.cert)
-        assert.is_string(json1.key)
-        assert.contains("foo.com", json1.snis)
-        assert.contains("bar.com", json1.snis)
-        assert.same(json1, json2)
-      end)
-
         local in_db = assert(db.certificates:select({ id = certificate.id }))
         assert.same(json, in_db)
       end)
@@ -389,6 +381,7 @@ describe("Admin API: #" .. strategy, function()
           }
         }, cjson.decode(body))
       end)
+    end)
 
     describe("PATCH", function()
       local cert_foo
