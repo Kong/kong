@@ -391,7 +391,7 @@ return {
         if data.schema.table then
           return dao[data.schema.table]:entity_cache_key(entity)
         else
-          return db[data.schema.name]:cache_key(entity)
+          return db[data.schema.name]:entity_cache_key(entity)
         end
       end
 

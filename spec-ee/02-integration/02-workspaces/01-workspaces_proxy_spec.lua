@@ -191,7 +191,7 @@ for _, strategy in helpers.each_strategy() do
         local body = assert.response(res).has.jsonbody()
         assert.is_equal(ws_default.id, body.workspace_id)
 
-        local cache_key = dao.keyauth_credentials:cache_key(cred_default.key)
+        local cache_key = db.keyauth_credentials:cache_key(cred_default.key)
         local res
         helpers.wait_until(function()
           res = admin_client:send {
@@ -216,10 +216,10 @@ for _, strategy in helpers.each_strategy() do
         end)
 
         local body = assert.response(res).has.jsonbody()
-        assert.is_equal(cred_default.consumer_id, body.id)
+        assert.is_equal(cred_default.consumer.id, body.id)
       end)
       it("negative cache not added for non enabled plugin", function()
-        local cache_key = dao.plugins:cache_key_ws(nil,
+        local cache_key = db.plugins:cache_key_ws(nil,
                                                    "request-transformer",
                                                    nil,
                                                    nil,
@@ -281,7 +281,7 @@ for _, strategy in helpers.each_strategy() do
             name = "request-transformer",
             config = {
               add = {
-                headers = "X-TEST:ok"
+                headers = {"X-TEST:ok"}
               }
             }
           },
@@ -305,7 +305,7 @@ for _, strategy in helpers.each_strategy() do
         assert.equals("ok", body.headers["x-test"])
       end)
       it("cache added for plugin in foo workspace", function()
-        local cache_key = dao.plugins:cache_key_ws(ws_foo,
+        local cache_key = db.plugins:cache_key_ws(ws_foo,
                                                    "request-transformer",
                                                    nil,
                                                    s.id,
@@ -343,8 +343,8 @@ for _, strategy in helpers.each_strategy() do
           return res.status == 200
         end, 7)
 
-        local body = assert.response(res).has.jsonbody()
-        assert.is_equal(true, body.null)
+        local content = res:read_body()
+        assert.is_equal("", content)
       end)
       it("delete plugin on foo side", function()
         local res = assert(admin_client:send {

@@ -19,7 +19,7 @@ local function load_plugin_into_memory_ws(ctx, key)
   local ws_scope = ctx.workspaces or {}
 
   -- when there is no workspace, like in phase rewrite
-  if #ws_scope == 0 then
+  if not ws_scope or #ws_scope == 0 then
 
     local plugin, err  = kong.cache:get(key,
                                         nil,
@@ -55,9 +55,9 @@ local function load_plugin_into_memory_ws(ctx, key)
       -- positive cache
       to_be_cached = plugin
     end
-    local _, err = singletons.cache:get(plugin_cache_key, nil, function ()
+    local _, err = kong.cache:get(plugin_cache_key, nil, function ()
       return to_be_cached
-    end)
+    end, plugin_cache_key)
     if err then
       return nil, err
     end
@@ -83,11 +83,11 @@ local function load_plugin_configuration(ctx,
                                          plugin_name,
                                          api_id)
 
-  local key = kong.db.plugins:cache_key(plugin_name,
-                                        route_id,
-                                        service_id,
-                                        consumer_id,
-                                        api_id)
+  local key = kong.db.plugins:entity_cache_key(plugin_name,
+                                               route_id,
+                                               service_id,
+                                               consumer_id,
+                                               api_id)
   local plugin, err = load_plugin_into_memory_ws(ctx, key)
 
   if err then
