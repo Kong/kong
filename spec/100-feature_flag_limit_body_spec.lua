@@ -39,7 +39,7 @@ for _, strategy in helpers.each_strategy() do
       assert(helpers.start_kong({
         database          = strategy,
         nginx_conf        = "spec/fixtures/custom_nginx.template",
-        feature_conf_path = "spec/fixtures/ee/response_transformer/feature_response_transformer_limit_body.conf",
+        feature_conf_path = "spec-ee/fixtures/response_transformer/feature_response_transformer_limit_body.conf",
         custom_plugins    = "response-transformer-advanced",
       }))
     end)
@@ -131,7 +131,7 @@ for _, strategy in helpers.each_strategy() do
       assert(helpers.start_kong({
         database          = strategy,
         nginx_conf        = "spec/fixtures/custom_nginx.template",
-        feature_conf_path = "spec/fixtures/ee/response_transformer/feature_response_transformer_limit_body_chunked.conf",
+        feature_conf_path = "spec-ee/fixtures/response_transformer/feature_response_transformer_limit_body_chunked.conf",
         custom_plugins    = "response-transformer-advanced",
       }))
     end)
@@ -187,7 +187,7 @@ for _, strategy in helpers.each_strategy() do
       assert(helpers.start_kong({
         database          = strategy,
         nginx_conf        = "spec/fixtures/custom_nginx.template",
-        feature_conf_path = "spec/fixtures/ee/response_transformer/feature_response_transformer_limit_body-body_size_not_defined.conf",
+        feature_conf_path = "spec-ee/fixtures/response_transformer/feature_response_transformer_limit_body-body_size_not_defined.conf",
         custom_plugins    = "response-transformer-advanced",
       }))
     end)
@@ -249,7 +249,7 @@ for _, strategy in helpers.each_strategy() do
       assert(helpers.start_kong({
         database          = strategy,
         nginx_conf        = "spec/fixtures/custom_nginx.template",
-        feature_conf_path = "spec/fixtures/ee/response_transformer/feature_response_transformer_limit_body-body_size_invalid.conf",
+        feature_conf_path = "spec-ee/fixtures/response_transformer/feature_response_transformer_limit_body-body_size_invalid.conf",
         custom_plugins    = "response-transformer-advanced",
       }))
     end)

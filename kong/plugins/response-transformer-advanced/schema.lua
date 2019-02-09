@@ -1,10 +1,28 @@
 local find = string.find
+local match = string.match
+
+local REGEX_SINGLE_STATUS_CODE  = "^%d%d%d$"
+local REGEX_STATUS_CODE_RANGE   = "^%d%d%d%-%d%d%d$"
+
 -- entries must have colons to set the key and value apart
 local function check_for_value(value)
   for i, entry in ipairs(value) do
     local ok = find(entry, ":")
     if not ok then
       return false, "key '" .. entry .. "' has no value"
+    end
+  end
+  return true
+end
+
+-- checks if status code entries follow status code or status code range pattern (xxx or xxx-xxx)
+local function check_status_code_format(status_codes)
+  for _, entry in pairs(status_codes) do
+    single_code = match(entry, REGEX_SINGLE_STATUS_CODE)
+    range = match(entry, REGEX_STATUS_CODE_RANGE)
+
+    if not single_code and not range then
+      return false, "value '" .. entry .. "' is neither status code nor status code range"
     end
   end
   return true
@@ -19,7 +37,7 @@ return {
         fields = {
           json = {type = "array", default = {}}, -- does not need colons
           headers = {type = "array", default = {}}, -- does not need colons
-          if_status = {type = "array", default = {}},
+          if_status = {type = "array", default = {}, func = check_status_code_format},
         }
       }
     },
@@ -30,7 +48,7 @@ return {
           body = {type = "string"},
           json = {type = "array", default = {}, func = check_for_value},
           headers = {type = "array", default = {}, func = check_for_value},
-          if_status = {type = "array", default = {}},
+          if_status = {type = "array", default = {}, func = check_status_code_format},
         }
       }
     },
@@ -40,7 +58,7 @@ return {
         fields = {
           json = {type = "array", default = {}, func = check_for_value},
           headers = {type = "array", default = {}, func = check_for_value},
-          if_status = {type = "array", default = {}},
+          if_status = {type = "array", default = {}, func = check_status_code_format},
         }
       }
     },
@@ -50,7 +68,7 @@ return {
         fields = {
           json = {type = "array", default = {}, func = check_for_value},
           headers = {type = "array", default = {}, func = check_for_value},
-          if_status = {type = "array", default = {}},
+          if_status = {type = "array", default = {}, func = check_status_code_format},
         }
       }
     }
