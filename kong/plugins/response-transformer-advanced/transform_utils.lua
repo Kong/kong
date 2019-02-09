@@ -11,7 +11,7 @@ local match = string.match
 local _M = {}
 
 -- Extracts status codes from the given list by types (singles and ranges)
-function extract_status_codes(status_codes)
+local function extract_status_codes(status_codes)
   local singles = {}
   local ranges = {}
 
@@ -28,7 +28,7 @@ function extract_status_codes(status_codes)
 end
 
 -- check if the status code is in given status code ranges
-function is_in_range(ranges, status_code)
+local function is_in_range(ranges, status_code)
   for _, range in pairs(ranges) do
       status_code = tonumber(status_code)
       local start_r, end_r = match(range, REGEX_SPLIT_RANGE)
@@ -43,7 +43,7 @@ end
 
 -- true iff resp_code is in allowed_codes
 function _M.skip_transform(resp_code, allowed_codes)
-  singles, ranges = extract_status_codes(allowed_codes)
+  local singles, ranges = extract_status_codes(allowed_codes)
 
   resp_code = tostring(resp_code)
   return resp_code and allowed_codes and #allowed_codes > 0

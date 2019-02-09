@@ -18,8 +18,8 @@ end
 -- checks if status code entries follow status code or status code range pattern (xxx or xxx-xxx)
 local function check_status_code_format(status_codes)
   for _, entry in pairs(status_codes) do
-    single_code = match(entry, REGEX_SINGLE_STATUS_CODE)
-    range = match(entry, REGEX_STATUS_CODE_RANGE)
+    local single_code = match(entry, REGEX_SINGLE_STATUS_CODE)
+    local range = match(entry, REGEX_STATUS_CODE_RANGE)
 
     if not single_code and not range then
       return false, "value '" .. entry .. "' is neither status code nor status code range"
