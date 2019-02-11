@@ -686,14 +686,6 @@ function DAO:delete(tbl, options)
   return ret_error(self.db.name, row, err)
 end
 
-function DAO:run_with_ws_scope(ws_scope, cb, ...)
-  local old_ws = ngx.ctx.workspaces
-  ngx.ctx.workspaces = ws_scope
-  local res, err = cb(self, ...)
-  ngx.ctx.workspaces = old_ws
-  return res, err
-end
-
 function DAO:truncate()
   return ret_error(self.db.name, self.db:truncate_table(self.table))
 end

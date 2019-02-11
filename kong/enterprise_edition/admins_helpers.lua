@@ -78,8 +78,9 @@ function _M.validate(params, dao, http_method)
   local max_count = http_method == "POST" and 0 or 1
 
   -- get all rbac users
-  local rbac_users, err = dao.rbac_users:run_with_ws_scope({},
-      dao.rbac_users.find_all)
+  local rbac_users, err = workspaces.run_with_ws_scope({},
+    dao.rbac_users.find_all,
+    dao.rbac_users)
 
   if err then
     -- unable to complete validation, so no success and no validation messages
@@ -103,8 +104,8 @@ function _M.validate(params, dao, http_method)
   end
 
   -- now check admin consumers
-  local admins, err = dao.consumers:run_with_ws_scope({},
-      dao.consumers.find_all, { type =  enums.CONSUMERS.TYPE.ADMIN })
+  local admins, err = workspaces.run_with_ws_scope({},
+      dao.consumers.find_all, dao.consumers, { type =  enums.CONSUMERS.TYPE.ADMIN })
 
   if err then
     -- unable to complete validation, so no success and no validation messages
@@ -268,16 +269,18 @@ function _M.update(params, consumer, rbac_user)
   end
 
   -- update any basic-auth credential for this user. Have to find it first.
-  local creds, err = singletons.dao.basicauth_credentials:run_with_ws_scope({},
+  local creds, err = workspaces.run_with_ws_scope({},
                     singletons.dao.basicauth_credentials.find_all,
+                    singletons.dao.basicauth_credentials,
                     { consumer_id = admin.id })
   if err then
     return nil, err
   end
 
   if creds[1] then
-    local _, err = singletons.dao.basicauth_credentials:run_with_ws_scope({},
+    local _, err = workspaces.run_with_ws_scope({},
                    singletons.dao.basicauth_credentials.update,
+                   singletons.dao.basicauth_credentials,
                    { username = admin.username },
                    { id = creds[1].id })
     if err then
@@ -293,8 +296,9 @@ end
 
 function _M.find_by_username_or_id(username_or_id)
   local dao = singletons.dao
-  local admins, err = dao.consumers:run_with_ws_scope({},
+  local admins, err = workspaces.run_with_ws_scope({},
                       dao.consumers.find_all,
+                      dao.consumers,
                       { type =  enums.CONSUMERS.TYPE.ADMIN })
   if err then
     return nil, err
@@ -316,8 +320,9 @@ function _M.find_by_email(email)
   end
 
   local dao = singletons.dao
-  local admins, err = dao.consumers:run_with_ws_scope({},
+  local admins, err = workspaces.run_with_ws_scope({},
                       dao.consumers.find_all,
+                      dao.consumers,
                       { type = enums.CONSUMERS.TYPE.ADMIN, email = email })
   if err then
     return nil, err
@@ -345,8 +350,10 @@ function _M.link_to_workspace(consumer_or_user, dao, workspace, plugin)
 
   end
 
-  local maps, err = dao.consumers_rbac_users_map:run_with_ws_scope({},
-                    dao.consumers_rbac_users_map.find_all, map_filter)
+  local maps, err = workspaces.run_with_ws_scope({},
+    dao.consumers_rbac_users_map.find_all,
+    dao.consumers_rbac_users_map,
+    map_filter)
 
   if err then
     return nil, err
@@ -360,8 +367,10 @@ function _M.link_to_workspace(consumer_or_user, dao, workspace, plugin)
   end
 
   if not consumer then
-    local res, err = dao.consumers:run_with_ws_scope({},
-                     dao.consumers.find_all, { id = maps[1].consumer_id })
+    local res, err = workspaces.run_with_ws_scope({},
+      dao.consumers.find_all,
+      dao.consumers,
+      { id = maps[1].consumer_id })
 
     if err then
       return nil, err
@@ -375,8 +384,10 @@ function _M.link_to_workspace(consumer_or_user, dao, workspace, plugin)
   end
 
   if not rbac_user then
-    local res, err = dao.rbac_users:run_with_ws_scope({},
-                     dao.rbac_users.find_all, { id = maps[1].user_id })
+    local res, err = workspaces.run_with_ws_scope({},
+      dao.rbac_users.find_all,
+      dao.rbac_users,
+      { id = maps[1].user_id })
 
     if err then
       return nil, err
@@ -427,8 +438,9 @@ end
 
 function _M.reset_password(plugin, collection, consumer, new_password, secret_id)
   log(DEBUG, _log_prefix, "searching ", plugin.name, "creds for consumer ", consumer.id)
-  local credentials, err = singletons.dao.credentials:run_with_ws_scope({},
+  local credentials, err = workspaces.run_with_ws_scope({},
     singletons.dao.credentials.find_all,
+    singletons.dao.credentials,
     {
       consumer_id = consumer.id,
       plugin = plugin.name,

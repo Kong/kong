@@ -24,9 +24,10 @@ for _, strategy in helpers.each_strategy() do
         local ws_to_use = i % 2 == 0 and another_ws or default_ws
         local custom_id = i % 2 == 0 and ("admin-" .. i) or ngx.null
 
-        local cons = assert(dao.consumers:run_with_ws_scope (
+        local cons = assert(workspaces.run_with_ws_scope (
           { ws_to_use },
           dao.consumers.insert,
+          dao.consumers,
           {
             username = "admin-" .. i,
             custom_id = custom_id,
@@ -202,9 +203,10 @@ for _, strategy in helpers.each_strategy() do
       local admin
 
       setup(function()
-        admin = assert(dao.consumers:run_with_ws_scope (
+        admin = assert(workspaces.run_with_ws_scope (
           { default_ws },
           dao.consumers.insert,
+          dao.consumers,
           {
             username = "admin",
             custom_id = ngx.null,

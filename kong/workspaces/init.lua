@@ -152,7 +152,9 @@ end
 function _M.create_default(dao)
   dao = dao or singletons.dao
 
-  local res, err = dao.workspaces:run_with_ws_scope({}, dao.workspaces.find_all, {
+  local res, err = _M.run_with_ws_scope({},
+    dao.workspaces.find_all,
+    dao.workspaces, {
     name = default_workspace,
   })
   if err then
@@ -501,8 +503,8 @@ function _M.get_req_workspace(ws_name)
     filter = { name = ws_name }
   end
 
-  return singletons.dao.workspaces:run_with_ws_scope({},
-    singletons.dao.workspaces.find_all, filter)
+  return _M.run_with_ws_scope({},
+    singletons.dao.workspaces.find_all, singletons.dao.workspaces, filter)
 end
 
 local inc_counter
@@ -1086,13 +1088,14 @@ function _M.remove_ws_prefix(table_name, row, include_ws)
 end
 
 
-function _M.run_with_ws_scope(ws_scope, cb, ...)
+local function run_with_ws_scope(ws_scope, cb, ...)
   local old_ws = ngx.ctx.workspaces
   ngx.ctx.workspaces = ws_scope
   local res, err = cb(...)
   ngx.ctx.workspaces = old_ws
   return res, err
 end
+_M.run_with_ws_scope = run_with_ws_scope
 
 
 -- Entity count management

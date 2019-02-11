@@ -3,6 +3,7 @@ local cjson       = require "cjson"
 local app_helpers = require "lapis.application"
 local singletons  = require "kong.singletons"
 local files       = require "kong.portal.migrations.01_initial_files"
+local workspaces  = require "kong.workspaces"
 
 
 local _M = {}
@@ -77,7 +78,7 @@ function _M.check_initialized(workspace, dao)
     return workspace
   end
 
-  local count, err = dao.files:run_with_ws_scope({workspace}, dao.files.count)
+  local count, err = workspaces.run_with_ws_scope({workspace}, dao.files.count, dao.files)
   if not count then
     return nil, err
   end
@@ -89,7 +90,7 @@ function _M.check_initialized(workspace, dao)
 
   -- if no files for this workspace, create them!
   for _, file in ipairs(files) do
-    local ok, err = dao.files:run_with_ws_scope({workspace}, dao.files.insert, {
+    local ok, err = workspaces.run_with_ws_scope({workspace}, dao.files.insert, dao.files, {
       auth = file.auth,
       name = file.name,
       type = file.type,

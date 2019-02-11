@@ -8,6 +8,8 @@ local new_tab   = require "table.new"
 local singletons = require "kong.singletons"
 local tablex     = require "pl.tablex"
 local api_helpers = require "kong.enterprise_edition.api_helpers"
+local workspaces = require "kong.workspaces"
+
 
 local band  = bit.band
 local bxor  = bit.bxor
@@ -518,7 +520,7 @@ return {
       local ws_name = self.params.workspace
 
       if ws_name ~= "*" then
-        local w, err = dao_factory.workspaces:run_with_ws_scope({}, dao_factory.workspaces.find_all, {
+        local w, err = workspaces.run_with_ws_scope({}, dao_factory.workspaces.find_all, dao_factory.workspaces, {
           name = ws_name
         })
         if err then

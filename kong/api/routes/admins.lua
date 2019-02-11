@@ -579,8 +579,9 @@ return {
         return helpers.responses.send_HTTP_UNAUTHORIZED()
       end
 
-      local rows, err = dao_factory.consumers:run_with_ws_scope({},
+      local rows, err = workspaces.run_with_ws_scope({},
                                     dao_factory.consumers.find_all,
+                                    dao_factory.consumers,
                                     {
                                       id = self.consumer_id,
                                     })

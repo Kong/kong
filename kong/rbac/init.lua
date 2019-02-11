@@ -926,9 +926,10 @@ end
 -- it is called directly by the rbac_user DAO to validate uniqueness of tokens
 -- or when searching directly for legacy plaintext tokens
 local function retrieve_token_users(ident, k)
-  local token_users, err = singletons.dao.rbac_users:run_with_ws_scope(
+  local token_users, err = workspaces.run_with_ws_scope(
     {},
     singletons.dao.rbac_users.find_all,
+    singletons.dao.rbac_users,
     { [k] = ident, enabled = true, __skip_rbac = true }
   )
   if err then
