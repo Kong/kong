@@ -80,7 +80,8 @@ function Plugins:select_by_cache_key_migrating(key)
              row.api_id == parts[6] then
              row.cache_key = nil
 
-            if ws_scope then
+            -- if workspace scope isn't empty,
+            if ws_scope and ws_scope[1] then
               local ws_entity = ws_entities_map[row.id]
               if ws_entity then
                 row.workspace_id = ws_entity.workspace_id
