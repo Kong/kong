@@ -98,8 +98,6 @@ code, other repos are also under active development:
   for Kong.
 - [Kong CloudFormation](https://github.com/Kong/kong-dist-cloudformation):
   Kong in a 1-click deployment for AWS EC2
-- [Kong AWS AMI](https://aws.amazon.com/marketplace/pp/B014GHERVU): Kong AMI on
-  the AWS Marketplace.
 - [Kong on Microsoft Azure](https://github.com/Kong/kong-dist-azure): Run Kong
   using Azure Resource Manager.
 - [Kong on Heroku](https://github.com/heroku/heroku-kong): Deploy Kong on
