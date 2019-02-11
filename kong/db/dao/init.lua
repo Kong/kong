@@ -500,6 +500,7 @@ local function generate_foreign_key_methods(schema)
           return nil, tostring(err_t), err_t
         end
         if pk then
+          entity[name] = unique_value
           return self:upsert(pk, entity, options)
         end
 
@@ -546,10 +547,7 @@ local function generate_foreign_key_methods(schema)
         local constraints = workspaceable[self.schema.name]
         local params = {[name] = unique_value}
 
-        local workspace, err_t = ws_helper.apply_unique_per_ws(self.schema.name, params, constraints)
-        if err then
-          return nil, tostring(err_t), err_t
-        end
+        local workspace = ws_helper.apply_unique_per_ws(self.schema.name, params, constraints)
 
         local row, err_t = self.strategy:upsert_by_field(name, params[name],
                                                          entity_to_upsert, options)
@@ -979,8 +977,10 @@ function DAO:upsert(primary_key, entity, options)
   end
 
   local constraints = workspaceable[self.schema.name]
-  local _, err = ws_helper.validate_pk_exist(self.schema.name,
-                                              primary_key, constraints)
+  local is_update, err = ws_helper.validate_pk_exist(self.schema.name,
+                                                 primary_key, constraints)
+
+
   if err then
     local err_t = self.errors:database_error(err)
     return nil, tostring(err_t), err_t
@@ -1018,7 +1018,7 @@ function DAO:upsert(primary_key, entity, options)
     return nil, tostring(err_t), err_t
   end
 
-  ws_helper.apply_unique_per_ws(self.schema.name, entity_to_upsert, constraints)
+  local workspace = ws_helper.apply_unique_per_ws(self.schema.name, entity_to_upsert, constraints)
 
   local row, err_t = self.strategy:upsert(primary_key, entity_to_upsert, options)
   if not row then
@@ -1031,9 +1031,20 @@ function DAO:upsert(primary_key, entity, options)
   end
 
   if not err then
-    local err_rel = workspaces.update_entity_relation(self.schema.name, row)
-    if err_rel then
-      return nil, tostring(err_rel), err_rel
+    if is_update then
+      local err_rel = workspaces.update_entity_relation(self.schema.name, row)
+      if err_rel then
+        return nil, tostring(err_rel), err_rel
+      end
+    else
+      local err_rel = workspaces.add_entity_relation(self.schema.name, row, workspace)
+      if err_rel then
+        local _, err_t = self:delete(row)
+        if err then
+          return nil, tostring(err_t), err_t
+        end
+        return nil, tostring(err_rel), err_rel
+      end
     end
   end
 
