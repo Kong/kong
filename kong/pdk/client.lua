@@ -199,6 +199,22 @@ local function new(self)
   end
 
 
+  ---
+  -- Returns the Nginx subsystem used by the client. It can be
+  -- "http" or "stream"
+  --
+  -- @function kong.client.get_subsystem
+  -- @phases access, header_filter, body_filter, log
+  -- @treturn string a string with either `"http"` or `"stream"`
+  -- @usage
+  -- kong.client.get_subsystem() -- "http"
+  function _CLIENT.get_subsystem()
+    check_phase(AUTH_AND_LATER)
+
+    return ngx.config.subsystem
+  end
+
+
   return _CLIENT
 end
 
