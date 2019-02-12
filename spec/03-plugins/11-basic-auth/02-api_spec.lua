@@ -9,16 +9,9 @@ for _, strategy in helpers.each_strategy() do
     local admin_client
     local bp
     local db
-    local dao
 
     lazy_setup(function()
-      bp, db, dao = helpers.get_db_utils(strategy, {
-        "routes",
-        "services",
-        "plugins",
-        "consumers",
-        "basicauth_credentials",
-      })
+      bp, db = helpers.get_db_utils(strategy)
 
       assert(helpers.start_kong({
         database = strategy,
@@ -341,15 +334,11 @@ for _, strategy in helpers.each_strategy() do
         end)
       end)
     end)
-    describe("/basic-auths #t", function()
+    describe("/basic-auths", function()
       local consumer2
       describe("GET", function()
         lazy_setup(function()
           db:truncate("basicauth_credentials")
-          dao:truncate_tables()
-          consumer = bp.consumers:insert {
-            username = "bob"
-          }
           bp.basicauth_credentials:insert {
             consumer = { id = consumer.id },
             username = "bob"
