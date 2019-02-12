@@ -403,7 +403,7 @@ for _, strategy in helpers.each_strategy() do
           name = "service-invalid-tag",
           tags = { "invalid tag" }
         })
-      end, string.format('[%s] schema violation (tags: invalid value: invalid tag)', strategy))
+      end, string.format('[%s] schema violation (tags.1: invalid value: invalid tag)', strategy))
 
       assert.has_error(function()
         bp.services:insert({
@@ -411,7 +411,7 @@ for _, strategy in helpers.each_strategy() do
           name = "service-invalid-tag",
           tags = { "foo,bar" }
         })
-      end, string.format('[%s] schema violation (tags: invalid value: foo,bar)', strategy))
+      end, string.format('[%s] schema violation (tags.1: invalid value: foo,bar)', strategy))
     end)
 
 

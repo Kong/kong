@@ -293,7 +293,7 @@ describe("kong start/stop #" .. strategy, function()
     end)
 
     if strategy == "off" then
-      it("#off does not start with an invalid declarative config file", function()
+      it("does not start with an invalid declarative config file", function()
         local yaml_file = helpers.make_yaml_file [[
           _format_version: "1.1"
           services:
@@ -326,7 +326,7 @@ describe("kong start/stop #" .. strategy, function()
               in 'routes':
                 - in entry 1 of 'routes':
                   in 'hosts':
-                    - in entry 2 of 'hosts': invalid value: \\990
+                    - in entry 2 of 'hosts': invalid value: \\99
         ]], err, nil, true)
       end)
     end

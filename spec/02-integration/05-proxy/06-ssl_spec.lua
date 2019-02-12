@@ -14,7 +14,6 @@ end
 
 for _, strategy in helpers.each_strategy() do
   describe("SSL [#" .. strategy .. "]", function()
-    local admin_client
     local proxy_client
     local https_client
 
@@ -87,26 +86,29 @@ for _, strategy in helpers.each_strategy() do
         preserve_host = false,
       }
 
+      local cert = bp.certificates:insert {
+        cert  = ssl_fixtures.cert,
+        key   = ssl_fixtures.key,
+      }
+
+      bp.snis:insert {
+        name = "example.com",
+        certificate = cert,
+      }
+
+      bp.snis:insert {
+        name = "ssl1.com",
+        certificate = cert,
+      }
+
       assert(helpers.start_kong {
         database    = strategy,
         nginx_conf  = "spec/fixtures/custom_nginx.template",
         trusted_ips = "127.0.0.1",
       })
 
-      admin_client = helpers.admin_client()
       proxy_client = helpers.proxy_client()
       https_client = helpers.proxy_ssl_client()
-
-      assert(admin_client:send {
-        method  = "POST",
-        path    = "/certificates",
-        body    = {
-          cert  = ssl_fixtures.cert,
-          key   = ssl_fixtures.key,
-          snis  = { "example.com", "ssl1.com" },
-        },
-        headers = { ["Content-Type"] = "application/json" },
-      })
     end)
 
     lazy_teardown(function()
@@ -160,9 +162,7 @@ for _, strategy in helpers.each_strategy() do
 
       describe("from not trusted_ip", function()
         lazy_setup(function()
-          helpers.stop_kong(nil, nil, true)
-
-          assert(helpers.start_kong {
+          assert(helpers.restart_kong {
             database    = strategy,
             nginx_conf  = "spec/fixtures/custom_nginx.template",
             trusted_ips = nil,
@@ -186,9 +186,7 @@ for _, strategy in helpers.each_strategy() do
 
       describe("from trusted_ip", function()
         lazy_setup(function()
-          helpers.stop_kong(nil, nil, true)
-
-          assert(helpers.start_kong {
+          assert(helpers.restart_kong {
             database    = strategy,
             nginx_conf  = "spec/fixtures/custom_nginx.template",
             trusted_ips = "127.0.0.1",
@@ -228,10 +226,11 @@ for _, strategy in helpers.each_strategy() do
         -- restart kong and use a new client to simulate a connection from an
         -- untrusted ip
         lazy_setup(function()
-          assert(helpers.kong_exec("restart -c " .. helpers.test_conf_path, {
+          assert(helpers.restart_kong {
             database = strategy,
+            nginx_conf  = "spec/fixtures/custom_nginx.template",
             trusted_ips = "1.2.3.4", -- explicitly trust an IP that is not us
-          }))
+          })
 
           client = helpers.proxy_client()
         end)
@@ -255,10 +254,10 @@ for _, strategy in helpers.each_strategy() do
       local https_client_sni
 
       before_each(function()
-        assert(helpers.kong_exec("restart --conf " .. helpers.test_conf_path ..
-                                 " --nginx-conf spec/fixtures/custom_nginx.template", {
+        assert(helpers.restart_kong {
           database = strategy,
-        }))
+          nginx_conf  = "spec/fixtures/custom_nginx.template",
+        })
 
         https_client_sni = helpers.proxy_ssl_client()
       end)

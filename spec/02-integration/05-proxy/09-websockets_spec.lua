@@ -29,7 +29,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     lazy_teardown(function()
-      helpers.stop_kong()
+      helpers.stop_kong(nil, true)
     end)
 
     local function open_socket(uri)

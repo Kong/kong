@@ -26,9 +26,9 @@ describe("kong reload", function()
     assert.equal(nginx_pid, helpers.file.read(helpers.test_conf.nginx_pid))
   end)
   it("reloads from a --conf argument", function()
-    assert(helpers.start_kong {
+    assert(helpers.start_kong({
       proxy_listen = "0.0.0.0:9002"
-    })
+    }, nil, true))
 
     -- http_client errors out if cannot connect
     local client = helpers.http_client("0.0.0.0", 9002, 5000)
@@ -53,9 +53,9 @@ describe("kong reload", function()
     client:close()
   end)
   it("accepts a custom nginx template", function()
-    assert(helpers.start_kong {
+    assert(helpers.start_kong({
       proxy_listen = "0.0.0.0:9002"
-    })
+    }, nil, true))
 
     -- http_client errors out if cannot connect
     local client = helpers.http_client("0.0.0.0", 9002, 5000)
