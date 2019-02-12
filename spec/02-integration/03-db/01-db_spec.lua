@@ -4,7 +4,7 @@ local utils   = require "kong.tools.utils"
 
 
 for _, strategy in helpers.each_strategy() do
-  local it_ssl = strategy == "cassandra" and pending or it
+  local postgres_only = strategy == "postgres" and it or pending
 
 
   describe("kong.db.init [#" .. strategy .. "]", function()
@@ -154,7 +154,7 @@ for _, strategy in helpers.each_strategy() do
       db:close()
     end)
 
-    it_ssl("returns opened connection with ssl (cosockets)", function()
+    postgres_only("returns opened connection with ssl (cosockets)", function()
       ngx.IS_CLI = false
 
       local conf = utils.deep_copy(helpers.test_conf)
@@ -183,7 +183,7 @@ for _, strategy in helpers.each_strategy() do
       db:close()
     end)
 
-    it_ssl("returns opened connection with ssl (luasocket)", function()
+    postgres_only("returns opened connection with ssl (luasocket)", function()
       ngx.IS_CLI = true
 
       local conf = utils.deep_copy(helpers.test_conf)
@@ -271,7 +271,7 @@ for _, strategy in helpers.each_strategy() do
       db:close()
     end)
 
-    it_ssl("returns true when there is a stored connection with ssl (cosockets)", function()
+    postgres_only("returns true when there is a stored connection with ssl (cosockets)", function()
       ngx.IS_CLI = false
 
       local conf = utils.deep_copy(helpers.test_conf)
@@ -301,7 +301,7 @@ for _, strategy in helpers.each_strategy() do
       db:close()
     end)
 
-    it_ssl("returns true when there is a stored connection with ssl (luasocket)", function()
+    postgres_only("returns true when there is a stored connection with ssl (luasocket)", function()
       ngx.IS_CLI = true
 
       local conf = utils.deep_copy(helpers.test_conf)
@@ -411,7 +411,7 @@ for _, strategy in helpers.each_strategy() do
       assert.is_true(db:close())
     end)
 
-    it_ssl("returns true when there is a stored connection with ssl (cosockets)", function()
+    postgres_only("returns true when there is a stored connection with ssl (cosockets)", function()
       ngx.IS_CLI = false
 
       local conf = utils.deep_copy(helpers.test_conf)
@@ -439,7 +439,7 @@ for _, strategy in helpers.each_strategy() do
       assert.is_true(db:close())
     end)
 
-    it_ssl("returns true when there is a stored connection with ssl (luasocket)", function()
+    postgres_only("returns true when there is a stored connection with ssl (luasocket)", function()
       ngx.IS_CLI = true
 
       local conf = utils.deep_copy(helpers.test_conf)
