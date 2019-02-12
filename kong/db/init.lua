@@ -30,6 +30,7 @@ local CORE_ENTITIES = {
   "targets",
   "plugins",
   "cluster_ca",
+  "tags",
 }
 
 
