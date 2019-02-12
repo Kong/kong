@@ -560,7 +560,7 @@ local function generate_foreign_key_methods(schema)
           return nil, err, err_t
         end
 
-        if not err and workspace then
+        if workspace then
           local err_rel = workspaces.add_entity_relation(self.schema.name, row, workspace)
           if err_rel then
             local _, err_t = self:delete(row)
@@ -569,15 +569,13 @@ local function generate_foreign_key_methods(schema)
             end
             return nil, tostring(err_rel), err_rel
           end
+        end
 
-          -- if entity was created, insert it in the user's default role
-          if row then
-            local _, err = rbac.add_default_role_entity_permission(row, self.schema.name)
-            if err then
-              local err_t = self.errors:database_error("failed to add entity permissions to current user")
-              return nil, tostring(err_t), err_t
-            end
-          end
+        -- if entity was created, insert it in the user's default role
+        local _, err = rbac.add_default_role_entity_permission(row, self.schema.name)
+        if err then
+          local err_t = self.errors:database_error("failed to add entity permissions to current user")
+          return nil, tostring(err_t), err_t
         end
 
         self:post_crud_event("update", row)
@@ -977,8 +975,11 @@ function DAO:upsert(primary_key, entity, options)
   end
 
   local constraints = workspaceable[self.schema.name]
+  -- Check entity is already in workspace, if yes update workspace_entity
+  -- relation else add relation
+  -- FIXME try upsert to workspace_entity
   local is_update, err = ws_helper.validate_pk_exist(self.schema.name,
-                                                 primary_key, constraints)
+                                                     primary_key, constraints)
 
 
   if err then
@@ -1030,7 +1031,7 @@ function DAO:upsert(primary_key, entity, options)
     return nil, err, err_t
   end
 
-  if not err then
+  if workspace then
     if is_update then
       local err_rel = workspaces.update_entity_relation(self.schema.name, row)
       if err_rel then
@@ -1045,6 +1046,15 @@ function DAO:upsert(primary_key, entity, options)
         end
         return nil, tostring(err_rel), err_rel
       end
+    end
+  end
+
+  if not is_update then
+    -- if entity was created, insert it in the user's default role
+    local _, err = rbac.add_default_role_entity_permission(row, self.schema.name)
+    if err then
+      local err_t = self.errors:database_error("failed to add entity permissions to current user")
+      return nil, tostring(err_t), err_t
     end
   end
 
