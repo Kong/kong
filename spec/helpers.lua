@@ -199,6 +199,10 @@ local function get_db_utils(strategy, tables, plugins)
   db:truncate("plugins")
   assert(db.plugins:load_plugin_schemas(conf.loaded_plugins))
 
+  -- cleanup the tags table, since it will be hacky and
+  -- not necessary to implement "truncate trigger" in Cassandra
+  db:truncate("tags")
+
   -- cleanup new DB tables
   if not tables then
     assert(db:truncate())

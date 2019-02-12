@@ -487,6 +487,7 @@ for _, strategy in helpers.each_strategy() do
             regex_priority  = 0,
             preserve_host   = false,
             strip_path      = true,
+            tags            = ngx.null,
             service         = route.service,
           }, route)
         end)
@@ -522,6 +523,7 @@ for _, strategy in helpers.each_strategy() do
             destinations    = ngx.null,
             regex_priority  = 3,
             strip_path      = true,
+            tags            = ngx.null,
             preserve_host   = false,
             service         = route.service,
           }, route)
@@ -725,6 +727,7 @@ for _, strategy in helpers.each_strategy() do
             regex_priority  = 5,
             strip_path      = route.strip_path,
             preserve_host   = route.preserve_host,
+            tags            = route.tags,
             service         = route.service,
           }, new_route)
 
@@ -770,6 +773,7 @@ for _, strategy in helpers.each_strategy() do
               regex_priority  = route.regex_priority,
               strip_path      = route.strip_path,
               preserve_host   = route.preserve_host,
+              tags            = route.tags,
               service         = route.service,
             }, new_route)
           end)
@@ -956,6 +960,7 @@ for _, strategy in helpers.each_strategy() do
             write_timeout   = 60000,
             read_timeout    = 60000,
             retries         = 5,
+            tags            = ngx.null,
           }, service)
         end)
 
@@ -1464,6 +1469,7 @@ for _, strategy in helpers.each_strategy() do
           regex_priority   = 0,
           strip_path       = true,
           preserve_host    = false,
+          tags             = ngx.null,
           service          = {
             id = service.id
           },

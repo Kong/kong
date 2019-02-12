@@ -249,7 +249,7 @@ describe("Admin API (#" .. strategy .. "): ", function()
       end)
       it("allows filtering by custom_id", function()
         local custom_id = gensym()
-        local c = bp.consumers:insert({ custom_id = custom_id })
+        local c = bp.consumers:insert({ custom_id = custom_id }, { nulls = true })
 
         local res = client:get("/consumers?custom_id=" .. custom_id)
         local body = assert.res_status(200, res)
@@ -277,7 +277,7 @@ describe("Admin API (#" .. strategy .. "): ", function()
     describe("/consumers/{consumer}", function()
       describe("GET", function()
         it("retrieves by id", function()
-          local consumer = bp.consumers:insert()
+          local consumer = bp.consumers:insert(nil, { nulls = true })
           local res = assert(client:send {
             method = "GET",
             path = "/consumers/" .. consumer.id
@@ -287,7 +287,7 @@ describe("Admin API (#" .. strategy .. "): ", function()
           assert.same(consumer, json)
         end)
         it("retrieves by username", function()
-          local consumer = bp.consumers:insert()
+          local consumer = bp.consumers:insert(nil, { nulls = true })
           local res = assert(client:send {
             method = "GET",
             path = "/consumers/" .. consumer.username
@@ -297,7 +297,7 @@ describe("Admin API (#" .. strategy .. "): ", function()
           assert.same(consumer, json)
         end)
         it("retrieves by urlencoded username", function()
-          local consumer = bp.consumers:insert()
+          local consumer = bp.consumers:insert(nil, { nulls = true })
           local res = assert(client:send {
             method = "GET",
             path = "/consumers/" .. escape(consumer.username)
@@ -333,7 +333,7 @@ describe("Admin API (#" .. strategy .. "): ", function()
             assert.equal(new_username, json.username)
             assert.equal(consumer.id, json.id)
 
-            local in_db = assert(db.consumers:select {id = consumer.id})
+            local in_db = assert(db.consumers:select({ id = consumer.id }, { nulls = true }))
             assert.same(json, in_db)
           end
         end)
@@ -354,7 +354,7 @@ describe("Admin API (#" .. strategy .. "): ", function()
             assert.equal(new_username, json.username)
             assert.equal(consumer.id, json.id)
 
-            local in_db = assert(db.consumers:select {id = consumer.id})
+            local in_db = assert(db.consumers:select({ id = consumer.id }, { nulls = true }))
             assert.same(json, in_db)
           end
         end)
@@ -376,7 +376,7 @@ describe("Admin API (#" .. strategy .. "): ", function()
             assert.equal(consumer.custom_id, json.custom_id)
             assert.equal(consumer.id, json.id)
 
-            local in_db = assert(db.consumers:select {id = consumer.id})
+            local in_db = assert(db.consumers:select({ id = consumer.id }, { nulls = true }))
             assert.same(json, in_db)
           end
         end)
