@@ -5,6 +5,7 @@ local utils   = require "kong.tools.utils"
 
 for _, strategy in helpers.each_strategy() do
   local postgres_only = strategy == "postgres" and it or pending
+  local cassandra_only = strategy == "cassandra" and it or pending
 
 
   describe("kong.db.init [#" .. strategy .. "]", function()
@@ -53,6 +54,19 @@ for _, strategy in helpers.each_strategy() do
           error("unknown database")
         end
       end)
+
+      cassandra_only("errors when provided Cassandra contact points do not resolve DNS", function()
+        local conf = utils.deep_copy(helpers.test_conf)
+
+        conf.cassandra_contact_points = { "unknown", "unknown2" }
+
+        local db, err = DB.new(conf, strategy)
+        assert.is_nil(db)
+        assert.equal(helpers.unindent([[
+          could not resolve any of the provided Cassandra contact points
+          (cassandra_contact_points = 'unknown, unknown2')
+        ]], true, true), err)
+      end)
     end)
   end)
 
@@ -98,6 +112,22 @@ for _, strategy in helpers.each_strategy() do
   describe(":connect() [#" .. strategy .. "]", function()
     lazy_setup(function()
       helpers.get_db_utils(strategy, {})
+    end)
+
+    cassandra_only("provided Cassandra contact points resolve DNS", function()
+      local conf = utils.deep_copy(helpers.test_conf)
+
+      conf.cassandra_contact_points = { "localhost" }
+
+      local db, err = DB.new(conf, strategy)
+      assert.is_nil(err)
+      assert.is_table(db)
+
+      assert(db:init_connector())
+
+      local conn, err = db:connect()
+      assert.is_nil(err)
+      assert.is_table(conn)
     end)
 
     it("returns opened connection when using cosockets", function()
