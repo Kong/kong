@@ -466,15 +466,15 @@ end
 
 local get_all_upstreams
 do
-  ------------------------------------------------------------------------------
-  -- Implements a simple dictionary with all upstream-ids indexed
-  -- by their name.
-  -- @return The upstreams dictionary, a map with upstream names as string keys
-  -- and upstream entity tables as values, or nil+error
   local function load_upstreams_dict_into_memory()
     local upstreams_dict = {}
-    for up in singletons.db.upstreams:each(1000) do
     -- build a dictionary, indexed by the upstream name
+    for up, err in singletons.db.upstreams:each(1000) do
+      if err then
+        log(CRIT, "could not obtain list of upstreams: ", err)
+        return nil
+      end
+
       upstreams_dict[up.name] = up.id
     end
     return upstreams_dict
@@ -482,19 +482,22 @@ do
   _load_upstreams_dict_into_memory = load_upstreams_dict_into_memory
 
 
+  local opts = { neg_ttl = 10 }
+
+
   ------------------------------------------------------------------------------
-  -- Finds and returns an upstream entity. This function covers
-  -- caching, invalidation, db access, et al.
-  -- @param upstream_name string.
-  -- @return upstream table, or `false` if not found, or nil+error
+  -- Implements a simple dictionary with all upstream-ids indexed
+  -- by their name.
+  -- @return The upstreams dictionary (a map with upstream names as string keys
+  -- and upstream entity tables as values), or nil+error
   get_all_upstreams = function()
-    local upstreams_dict, err = singletons.cache:get("balancer:upstreams", nil,
+    local upstreams_dict, err = singletons.cache:get("balancer:upstreams", opts,
                                                 load_upstreams_dict_into_memory)
     if err then
       return nil, err
     end
 
-    return upstreams_dict
+    return upstreams_dict or {}
   end
 end
 
@@ -718,7 +721,7 @@ local function init()
 
   local upstreams, err = get_all_upstreams()
   if not upstreams then
-    log(CRIT, "failed loading initial list of upstreams: " .. err)
+    log(CRIT, "failed loading initial list of upstreams: ", err)
     return
   end
 
