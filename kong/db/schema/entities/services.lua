@@ -20,6 +20,7 @@ return {
     { connect_timeout = typedefs.timeout { default = 60000 }, },
     { write_timeout   = typedefs.timeout { default = 60000 }, },
     { read_timeout    = typedefs.timeout { default = 60000 }, },
+    { tags            = typedefs.tags },
     -- { load_balancer = { type = "foreign", reference = "load_balancers" } },
   },
 

@@ -10,6 +10,7 @@ return {
     { id           = typedefs.uuid, },
     { name         = { type = "string", required = true, unique = true }, },
     { created_at   = typedefs.auto_timestamp_s },
+    { tags         = typedefs.tags },
     { certificate  = { type = "foreign", reference = "certificates", required = true }, },
   },
 
