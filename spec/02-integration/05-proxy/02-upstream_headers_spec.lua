@@ -9,18 +9,20 @@ for _, strategy in helpers.each_strategy() do
   describe("Upstream header(s) [#" .. strategy .. "]", function()
 
     local proxy_client
-    local bp, db
+    local bp, db, dao
 
     local function insert_routes(arr)
       if type(arr) ~= "table" then
         return error("expected arg #1 to be a table", 2)
       end
 
+      local default = dao.workspaces:find_all({name = "default"})[1]
+
       for i = 1, #arr do
-        local service = assert(bp.services:insert())
+        local service = assert(bp.services:insert_ws(nil, default))
         local route   = arr[i]
         route.service = service
-        bp.routes:insert(route)
+        bp.routes:insert_ws(route, default)
       end
     end
 
@@ -58,10 +60,7 @@ for _, strategy in helpers.each_strategy() do
     end
 
     lazy_setup(function()
-      bp, db = helpers.get_db_utils(strategy, {
-        "routes",
-        "services",
-      })
+      bp, db, dao = helpers.get_db_utils(strategy)
     end)
 
     before_each(function()
