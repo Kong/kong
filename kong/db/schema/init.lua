@@ -1418,12 +1418,18 @@ function Schema:process_auto_fields(data, context, nulls)
           data[key] = utils.random_string()
         end
 
-      elseif (key == "created_at" and (context == "insert" or
-                                       context == "upsert")) or
-             (key == "updated_at" and (context == "insert" or
-                                       context == "upsert" or
-                                       context == "update")) then
+      elseif key == "created_at"
+             and (context == "insert" or context == "upsert")
+             and (data[key] == null or data[key] == nil) then
+        if field.type == "number" then
+          data[key] = now_ms
+        elseif field.type == "integer" then
+          data[key] = now_s
+        end
 
+      elseif key == "updated_at" and (context == "insert" or
+                                      context == "upsert" or
+                                      context == "update") then
         if field.type == "number" then
           data[key] = now_ms
         elseif field.type == "integer" then
