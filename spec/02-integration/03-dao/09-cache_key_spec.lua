@@ -10,11 +10,11 @@ describe("<dao>:cache_key()", function()
       -- raw string is a backwards-compatible alternative for entities
       -- with an `id` as their primary key
       local cache_key = helpers.db.consumers:cache_key(consumer_id)
-      assert.equal("consumers:" .. consumer_id .. "::::", cache_key)
+      assert.equal("consumers:" .. consumer_id .. ":::::", cache_key)
 
       -- primary key in table form works the same
       cache_key = helpers.db.consumers:cache_key({ id = consumer_id })
-      assert.equal("consumers:" .. consumer_id .. "::::", cache_key)
+      assert.equal("consumers:" .. consumer_id .. ":::::", cache_key)
     end)
 
     it("(Plugins)", function()
@@ -25,29 +25,29 @@ describe("<dao>:cache_key()", function()
 
       -- raw string
       local cache_key = helpers.db.plugins:cache_key(name)
-      assert.equal("plugins:" .. name .. "::::", cache_key)
+      assert.equal("plugins:" .. name .. ":::::", cache_key)
 
       -- various cache key tables:
 
       cache_key = helpers.db.plugins:cache_key({ name = name })
-      assert.equal("plugins:" .. name .. "::::", cache_key)
+      assert.equal("plugins:" .. name .. ":::::", cache_key)
 
       cache_key = helpers.db.plugins:cache_key({ name = name, route = route })
-      assert.equal("plugins:" .. name .. ":" .. route.id .. ":::", cache_key)
+      assert.equal("plugins:" .. name .. ":" .. route.id .. "::::", cache_key)
 
       cache_key = helpers.db.plugins:cache_key({ name = name, route = route, service = service })
       assert.equal("plugins:" .. name .. ":" .. route.id .. ":" ..
-                   service.id .. "::", cache_key)
+                   service.id .. ":::", cache_key)
 
       cache_key = helpers.db.plugins:cache_key({ name = name, route = route, service = service, consumer = consumer })
       assert.equal("plugins:" .. name .. ":" .. route.id .. ":" ..
-                   service.id .. ":" .. consumer.id .. ":", cache_key)
+                   service.id .. ":" .. consumer.id .. "::", cache_key)
 
       cache_key = helpers.db.plugins:cache_key({ name = name, service = service })
-      assert.equal("plugins:" .. name .. "::" .. service.id .. "::", cache_key)
+      assert.equal("plugins:" .. name .. "::" .. service.id .. ":::", cache_key)
 
       cache_key = helpers.db.plugins:cache_key({ name = name, consumer = consumer })
-      assert.equal("plugins:" .. name .. ":::" .. consumer.id .. ":", cache_key)
+      assert.equal("plugins:" .. name .. ":::" .. consumer.id .. "::", cache_key)
     end)
   end)
 end)
