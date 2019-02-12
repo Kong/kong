@@ -6,9 +6,13 @@ local tablex = require "pl.tablex"
 
 
 local deepcopy = tablex.deepcopy
+local null = ngx.null
 
 
 local declarative = {}
+
+
+local Declarative = {}
 
 
 function declarative.init(conf)
@@ -20,12 +24,12 @@ function declarative.init(conf)
   local self = {
     schema = schema
   }
-  setmetatable(self, { __index = declarative })
+  setmetatable(self, { __index = Declarative })
   return self
 end
 
 
-function declarative.parse_file(self, filename, accept)
+function Declarative:parse_file(filename, accept)
   assert(type(filename) == "string")
 
   local fd, err = io.open(filename)
@@ -42,11 +46,11 @@ function declarative.parse_file(self, filename, accept)
 
   assert(fd:close())
 
-  return declarative.parse_string(self, contents, filename, accept)
+  return self:parse_string(contents, filename, accept)
 end
 
 
-function declarative.parse_string(self, contents, filename, accept)
+function Declarative:parse_string(contents, filename, accept)
 
   -- do not accept Lua by default
   accept = accept or { yaml = true, json = true }
@@ -95,12 +99,47 @@ function declarative.parse_string(self, contents, filename, accept)
     return nil, err
   end
 
-  local entries, err = self.schema:flatten(dc_table)
+  local entities, err = self.schema:flatten(dc_table)
   if err then
     return nil, err
   end
 
-  return entries
+  return entities
+end
+
+
+function declarative.to_yaml_string(entities)
+  local pok, yaml, err = pcall(lyaml.dump, {entities})
+  if not pok then
+    return nil, yaml
+  end
+  if not yaml then
+    return nil, err
+  end
+
+  return yaml
+end
+
+
+function declarative.to_yaml_file(entities, filename)
+  local yaml, err = declarative.to_yaml_string(entities)
+  if not yaml then
+    return nil, err
+  end
+
+  local fd, err = io.open(filename, "w")
+  if not fd then
+    return nil, err
+  end
+
+  local ok, err = fd:write(yaml)
+  if not ok then
+    return nil, err
+  end
+
+  fd:close()
+
+  return true
 end
 
 
@@ -133,6 +172,99 @@ function declarative.load_into_db(dc_table)
   end
 
   return true
+end
+
+
+local function remove_nulls(tbl)
+  for k,v in pairs(tbl) do
+    if v == null then
+      tbl[k] = nil
+    elseif type(v) == "table" then
+      tbl[k] = remove_nulls(v)
+    end
+  end
+  return tbl
+end
+
+
+function declarative.load_into_cache(entities)
+
+  -- FIXME atomicity of cache update
+  kong.cache:purge()
+
+  for entity_name, items in pairs(entities) do
+    local dao = kong.db[entity_name]
+    local schema = dao.schema
+
+    local uniques = {}
+    local page_for = {}
+    local foreign_fields = {}
+    for fname, fdata in schema:each_field() do
+      if fdata.unique then
+        table.insert(uniques, fname)
+      end
+      if fdata.type == "foreign" then
+        page_for[fdata.reference] = {}
+        foreign_fields[fname] = fdata.reference
+      end
+    end
+
+    local ids = {}
+    for id, item in pairs(items) do
+      table.insert(ids, id)
+
+      local cache_key = dao:cache_key(id)
+      item = remove_nulls(item)
+      kong.cache:get(cache_key, nil, function()
+        return item
+      end)
+
+      if schema.cache_key then
+        local cache_key = dao:cache_key(item)
+        kong.cache:get(cache_key, nil, function()
+          return item
+        end)
+      end
+
+      for _, unique in ipairs(uniques) do
+        if item[unique] then
+          local cache_key = entity_name .. "|" .. unique .. ":" .. item[unique]
+          kong.cache:get(cache_key, nil, function()
+            return item
+          end)
+        end
+      end
+
+      for fname, ref in pairs(foreign_fields) do
+        if item[fname] then
+          local fschema = kong.db[ref].schema
+
+          local fid = declarative_config.pk_string(fschema, item[fname])
+          page_for[ref][fid] = page_for[ref][fid] or {}
+          table.insert(page_for[ref][fid], id)
+        end
+      end
+    end
+
+    kong.cache:get(entity_name .. "|list", nil, function()
+      return ids
+    end)
+
+    for ref, fids in pairs(page_for) do
+      for fid, entries in pairs(fids) do
+        kong.cache:get(entity_name .. "|" .. ref .. "|" .. fid .. "|list", nil, function()
+          return entries
+        end)
+      end
+    end
+
+  end
+
+  kong.cache:get("declarative_config:loaded", nil, function()
+    return true
+  end)
+
+  kong.cache:invalidate("router:version")
 end
 
 
