@@ -24,6 +24,7 @@ local spec_helpers = require "spec.helpers"
 local Factory = require "kong.dao.factory"
 local DB = require "kong.db"
 local version = require "version"
+local singletons = require "kong.singletons"
 
 local api_tbl = {
   name = "example",
@@ -45,6 +46,9 @@ helpers.for_each_dao(function(kong_config)
       factory = assert(Factory.new(kong_config, db))
       assert(factory:init())
       apis = factory.apis
+
+      singletons.db = db
+      singletons.dao = factory
     end)
     lazy_teardown(function()
       factory:truncate_table("apis")
