@@ -7,6 +7,7 @@ local tablex = require "pl.tablex"
 
 
 local deepcopy = tablex.deepcopy
+local null = ngx.null
 
 
 local declarative = {}
@@ -130,6 +131,42 @@ function Config:parse_string(contents, filename, accept)
 end
 
 
+function declarative.to_yaml_string(entities)
+  local pok, yaml, err = pcall(lyaml.dump, {entities})
+  if not pok then
+    return nil, yaml
+  end
+  if not yaml then
+    return nil, err
+  end
+
+  -- drop the multi-document "---\n" header and "\n..." trailer
+  return yaml:sub(5, -5)
+end
+
+
+function declarative.to_yaml_file(entities, filename)
+  local yaml, err = declarative.to_yaml_string(entities)
+  if not yaml then
+    return nil, err
+  end
+
+  local fd, err = io.open(filename, "w")
+  if not fd then
+    return nil, err
+  end
+
+  local ok, err = fd:write(yaml)
+  if not ok then
+    return nil, err
+  end
+
+  fd:close()
+
+  return true
+end
+
+
 function declarative.load_into_db(dc_table)
   assert(type(dc_table) == "table")
 
@@ -157,6 +194,120 @@ function declarative.load_into_db(dc_table)
       end
     end
   end
+
+  return true
+end
+
+
+local function remove_nulls(tbl)
+  for k,v in pairs(tbl) do
+    if v == null then
+      tbl[k] = nil
+    elseif type(v) == "table" then
+      tbl[k] = remove_nulls(v)
+    end
+  end
+  return tbl
+end
+
+
+function declarative.load_into_cache(entities)
+
+  -- FIXME atomicity of cache update
+  -- FIXME track evictions (and do something when they happen)
+
+  kong.cache:purge(true)
+
+  for entity_name, items in pairs(entities) do
+    local dao = kong.db[entity_name]
+    local schema = dao.schema
+
+    local uniques = {}
+    local page_for = {}
+    local foreign_fields = {}
+    for fname, fdata in schema:each_field() do
+      if fdata.unique then
+        table.insert(uniques, fname)
+      end
+      if fdata.type == "foreign" then
+        page_for[fdata.reference] = {}
+        foreign_fields[fname] = fdata.reference
+      end
+    end
+
+    local ids = {}
+    for id, item in pairs(items) do
+      table.insert(ids, id)
+
+      local cache_key = dao:cache_key(id)
+      item = remove_nulls(item)
+      local ok, err = kong.cache:get(cache_key, nil, function()
+        return item
+      end)
+      if not ok then
+        return nil, err
+      end
+
+      if schema.cache_key then
+        local cache_key = dao:cache_key(item)
+        ok, err = kong.cache:get(cache_key, nil, function()
+          return item
+        end)
+        if not ok then
+          return nil, err
+        end
+      end
+
+      for _, unique in ipairs(uniques) do
+        if item[unique] then
+          local cache_key = entity_name .. "|" .. unique .. ":" .. item[unique]
+          ok, err = kong.cache:get(cache_key, nil, function()
+            return item
+          end)
+          if not ok then
+            return nil, err
+          end
+        end
+      end
+
+      for fname, ref in pairs(foreign_fields) do
+        if item[fname] then
+          local fschema = kong.db[ref].schema
+
+          local fid = declarative_config.pk_string(fschema, item[fname])
+          page_for[ref][fid] = page_for[ref][fid] or {}
+          table.insert(page_for[ref][fid], id)
+        end
+      end
+    end
+
+    local ok, err = kong.cache:get(entity_name .. "|list", nil, function()
+      return ids
+    end)
+    if not ok then
+      return nil, err
+    end
+
+    for ref, fids in pairs(page_for) do
+      for fid, entries in pairs(fids) do
+        local key = entity_name .. "|" .. ref .. "|" .. fid .. "|list"
+        ok, err = kong.cache:get(key, nil, function()
+          return entries
+        end)
+        if not ok then
+          return nil, err
+        end
+      end
+    end
+
+  end
+
+  local ok, err = ngx.shared.kong:safe_add("declarative_config:loaded", true)
+  if not ok and err ~= "exists" then
+    return nil, "failed to set declarative_config:loaded in shm: " .. err
+  end
+
+  kong.cache:invalidate("router:version")
 
   return true
 end
