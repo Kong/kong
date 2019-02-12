@@ -433,6 +433,14 @@
 
 #cassandra_contact_points = 127.0.0.1  # A comma-separated list of contact
                                        # points to your cluster.
+                                       # You may specify IP addresses or
+                                       # hostnames. Note that the port
+                                       # component of SRV records will be
+                                       # ignored in favor of `cassandra_port`.
+                                       # When connecting to a multi-DC cluster,
+                                       # ensure that contact points from the
+                                       # local datacenter are specified first
+                                       # in this list.
 
 #cassandra_port = 9042           # The port on which your nodes are listening
                                  # on. All your nodes and contact points must
