@@ -21,14 +21,24 @@ RESTY_PCRE_VERSION ?= `grep RESTY_PCRE_VERSION .requirements | awk -F"=" '{print
 KONG_BUILD_TOOLS ?= `grep KONG_BUILD_TOOLS .requirements | awk -F"=" '{print $$2}'`
 KONG_VERSION ?= `cat kong-*.rockspec | grep tag | awk '{print $$3}' | sed 's/"//g'`
 
-release:
+setup-release:
 	if cd kong-build-tools; \
 	then git pull; \
 	else git clone https://github.com/Kong/kong-build-tools.git; fi
 	cd kong-build-tools; \
 	git reset --hard $$KONG_BUILD_TOOLS;
 	cd kong-build-tools; \
-	make setup_tests && \
+	make setup_tests
+
+nightly-release: setup-release
+	sed -i -e '/return string\.format/,/\"\")/c\return "$(KONG_VERSION)\"' kong/meta.lua && \
+	cd kong-build-tools; \
+	export KONG_SOURCE_LOCATION=`pwd`/../ && \
+	make package-kong && \
+	make release-kong
+
+release: setup-release
+	cd kong-build-tools; \
 	export KONG_SOURCE_LOCATION=`pwd`/../ && \
 	make package-kong && \
 	make release-kong
