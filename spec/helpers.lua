@@ -1282,6 +1282,68 @@ local function get_version()
 end
 
 
+local function start_kong(env, tables, preserve_prefix)
+  if tables ~= nil and type(tables) ~= "table" then
+    error("arg #2 must be a list of tables to truncate")
+  end
+  env = env or {}
+  local prefix = env.prefix or conf.prefix
+  if not preserve_prefix then
+    local ok, err = prepare_prefix(prefix)
+    if not ok then return nil, err end
+  end
+
+  truncate_tables(db, tables)
+
+  local nginx_conf = ""
+  if env.nginx_conf then
+    nginx_conf = " --nginx-conf " .. env.nginx_conf
+  end
+
+  if dcbp then
+    if not config_yml then
+      config_yml = prefix .. "/config.yml"
+      local cfg = dcbp.done()
+      local ok, err = declarative.to_yaml_file(cfg, config_yml)
+      if not ok then
+        return nil, err
+      end
+    end
+    env.declarative_config = config_yml
+  end
+
+  return kong_exec("start --conf " .. TEST_CONF_PATH .. nginx_conf, env)
+end
+
+
+local function stop_kong(prefix, preserve_prefix, preserve_dc)
+  prefix = prefix or conf.prefix
+
+  local running_conf = get_running_conf(prefix)
+  if not running_conf then return end
+
+  local ok, err = kong_exec("stop --prefix " .. prefix)
+
+  wait_pid(running_conf.nginx_pid)
+
+  if not preserve_prefix then
+    clean_prefix(prefix)
+  end
+
+  if not preserve_dc then
+    config_yml = nil
+  end
+
+  return ok, err
+end
+
+
+-- Restart Kong, reusing declarative config when using database=off
+local function restart_kong(env, tables)
+  stop_kong(env.prefix, true, true)
+  return start_kong(env, tables, true)
+end
+
 
 ----------
 -- Exposed
@@ -1346,54 +1408,11 @@ return {
   openresty_ver_num = openresty_ver_num(),
   unindent = unindent,
 
-  start_kong = function(env, tables)
-    if tables ~= nil and type(tables) ~= "table" then
-      error("arg #2 must be a list of tables to truncate")
-    end
-    env = env or {}
-    local prefix = env.prefix or conf.prefix
-    local ok, err = prepare_prefix(prefix)
-    if not ok then return nil, err end
+  -- launching Kong subprocesses
+  start_kong = start_kong,
+  stop_kong = stop_kong,
+  restart_kong = restart_kong,
 
-    truncate_tables(db, tables)
-
-    local nginx_conf = ""
-    if env.nginx_conf then
-      nginx_conf = " --nginx-conf " .. env.nginx_conf
-    end
-
-    if dcbp then
-      if not config_yml then
-        config_yml = prefix .. "/config.yml"
-        local cfg = dcbp.done()
-        local ok, err = declarative.to_yaml_file(cfg, config_yml)
-        if not ok then
-          return nil, err
-        end
-      end
-      env.declarative_config = config_yml
-    end
-
-    return kong_exec("start --conf " .. TEST_CONF_PATH .. nginx_conf, env)
-  end,
-  stop_kong = function(prefix, preserve_prefix)
-    prefix = prefix or conf.prefix
-
-    local running_conf = get_running_conf(prefix)
-    if not running_conf then return end
-
-    local ok, err = kong_exec("stop --prefix " .. prefix)
-
-    wait_pid(running_conf.nginx_pid)
-
-    if not preserve_prefix then
-      clean_prefix(prefix)
-    end
-
-    config_yml = nil
-
-    return ok, err
-  end,
   -- Only use in CLI tests from spec/02-integration/01-cmd
   kill_all = function(prefix, timeout)
     local kill = require "kong.cmd.utils.kill"
