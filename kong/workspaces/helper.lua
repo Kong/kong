@@ -138,7 +138,8 @@ function _M.remove_ws_prefix(table_name, row, include_ws)
     -- skip if no unique key or it's also a primary, field
     -- is not set or has null value
     if row[field_name] and constraints.primary_key ~= field_name and
-      field_schema.type ~= "id" and row[field_name] ~= ngx_null then
+      field_schema.type ~= "id" and row[field_name] ~= ngx_null
+      and type(row[field_name]) == "string" then
       local names = utils_split(row[field_name], workspace_delimiter)
       if #names > 1 then
         row[field_name] = names[2]
