@@ -557,7 +557,7 @@ local localhosts = {
 }
 
 
-for _, strategy in helpers.each_strategy() do
+for _, strategy in helpers.each_strategy({"postgres", "cassandra"}) do
 
   describe("Ring-balancer #" .. strategy, function()
 
