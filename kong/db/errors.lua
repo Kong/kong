@@ -11,6 +11,7 @@ local pairs        = pairs
 local ipairs       = ipairs
 local tostring     = tostring
 local setmetatable = setmetatable
+local getmetatable = getmetatable
 local concat       = table.concat
 local sort         = table.sort
 
@@ -25,38 +26,40 @@ end
 -- error codes
 
 
-local ERRORS            = {
-  INVALID_PRIMARY_KEY   =  1,
-  SCHEMA_VIOLATION      =  2,
-  PRIMARY_KEY_VIOLATION =  3,  -- primary key already exists (HTTP 400)
-  FOREIGN_KEY_VIOLATION =  4,  -- foreign entity does not exist (HTTP 400)
-  UNIQUE_VIOLATION      =  5,  -- unique key already exists (HTTP 409)
-  NOT_FOUND             =  6,  -- WHERE clause leads nowhere (HTTP 404)
-  INVALID_OFFSET        =  7,  -- page(size, offset) is invalid
-  DATABASE_ERROR        =  8,  -- connection refused or DB error (HTTP 500)
-  INVALID_SIZE          =  9,  -- page(size, offset) is invalid
-  INVALID_UNIQUE        =  10, -- unique field value is invalid
-  INVALID_OPTIONS       =  11, -- invalid options given
-  OPERATION_UNSUPPORTED =  12, -- operation is not supported with this strategy
+local ERRORS              = {
+  INVALID_PRIMARY_KEY     = 1,
+  SCHEMA_VIOLATION        = 2,
+  PRIMARY_KEY_VIOLATION   = 3,  -- primary key already exists (HTTP 400)
+  FOREIGN_KEY_VIOLATION   = 4,  -- foreign entity does not exist (HTTP 400)
+  UNIQUE_VIOLATION        = 5,  -- unique key already exists (HTTP 409)
+  NOT_FOUND               = 6,  -- WHERE clause leads nowhere (HTTP 404)
+  INVALID_OFFSET          = 7,  -- page(size, offset) is invalid
+  DATABASE_ERROR          = 8,  -- connection refused or DB error (HTTP 500)
+  INVALID_SIZE            = 9,  -- page(size, offset) is invalid
+  INVALID_UNIQUE          = 10, -- unique field value is invalid
+  INVALID_OPTIONS         = 11, -- invalid options given
+  OPERATION_UNSUPPORTED   = 12, -- operation is not supported with this strategy
+  FOREIGN_KEYS_UNRESOLVED = 13, -- foreign key(s) could not be resolved
 }
 
 
 -- error codes messages
 
 
-local ERRORS_NAMES               = {
-  [ERRORS.INVALID_PRIMARY_KEY]   = "invalid primary key",
-  [ERRORS.SCHEMA_VIOLATION]      = "schema violation",
-  [ERRORS.PRIMARY_KEY_VIOLATION] = "primary key violation",
-  [ERRORS.FOREIGN_KEY_VIOLATION] = "foreign key violation",
-  [ERRORS.UNIQUE_VIOLATION]      = "unique constraint violation",
-  [ERRORS.NOT_FOUND]             = "not found",
-  [ERRORS.INVALID_OFFSET]        = "invalid offset",
-  [ERRORS.DATABASE_ERROR]        = "database error",
-  [ERRORS.INVALID_SIZE]          = "invalid size",
-  [ERRORS.INVALID_UNIQUE]        = "invalid unique %s",
-  [ERRORS.INVALID_OPTIONS]       = "invalid options",
-  [ERRORS.OPERATION_UNSUPPORTED] = "operation unsupported",
+local ERRORS_NAMES                 = {
+  [ERRORS.INVALID_PRIMARY_KEY]     = "invalid primary key",
+  [ERRORS.SCHEMA_VIOLATION]        = "schema violation",
+  [ERRORS.PRIMARY_KEY_VIOLATION]   = "primary key violation",
+  [ERRORS.FOREIGN_KEY_VIOLATION]   = "foreign key violation",
+  [ERRORS.UNIQUE_VIOLATION]        = "unique constraint violation",
+  [ERRORS.NOT_FOUND]               = "not found",
+  [ERRORS.INVALID_OFFSET]          = "invalid offset",
+  [ERRORS.DATABASE_ERROR]          = "database error",
+  [ERRORS.INVALID_SIZE]            = "invalid size",
+  [ERRORS.INVALID_UNIQUE]          = "invalid unique %s",
+  [ERRORS.INVALID_OPTIONS]         = "invalid options",
+  [ERRORS.OPERATION_UNSUPPORTED]   = "operation unsupported",
+  [ERRORS.FOREIGN_KEYS_UNRESOLVED] = "foreign keys unresolved",
 }
 
 
@@ -280,6 +283,48 @@ function _M:foreign_key_violation_restricted(parent_name, child_name)
   return new_err_t(self, ERRORS.FOREIGN_KEY_VIOLATION, message, {
     ["@referenced_by"] = child_name
   })
+end
+
+
+function _M:foreign_keys_unresolved(errors)
+  if type(errors) ~= "table" then
+    error("errors must be a table", 2)
+  end
+
+  local buf = {}
+  local len = 0
+
+  for _, field_name in ipairs(sorted_keys(errors)) do
+    local field_errors = errors[field_name]
+    if type(field_errors) == "table" then
+      for _, sub_field in ipairs(sorted_keys(field_errors)) do
+        len = len + 1
+        local value = field_errors[sub_field]
+        if type(value) == "table" then
+          value = fmt("the foreign key cannot be resolved with '%s' for an existing '%s' entity",
+                      pl_pretty({ [value.name] = value.value }, ""), value.parent)
+        end
+        field_errors[sub_field] = value
+        buf[len] = fmt("%s.%s: %s", field_name, sub_field, value)
+      end
+
+    else
+      len = len + 1
+      buf[len] = fmt("%s: %s", field_name, field_errors)
+    end
+  end
+
+  local message
+
+  if len == 1 then
+    message = fmt("foreign key unresolved (%s)", buf[1])
+
+  else
+    message = fmt("%d foreign keys unresolved (%s)",
+      len, concat(buf, "; "))
+  end
+
+  return new_err_t(self, ERRORS.FOREIGN_KEYS_UNRESOLVED, message, errors)
 end
 
 
