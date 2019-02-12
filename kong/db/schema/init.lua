@@ -842,7 +842,14 @@ function Schema:validate_field(field, value)
     if field.schema and field.schema.validate_primary_key then
       local ok, errs = field.schema:validate_primary_key(value, true)
       if not ok then
-        return nil, errs
+        if type(value) == "table" and field.schema.validate then
+          local foreign_ok, foreign_errs = field.schema:validate(value, false)
+          if not foreign_ok then
+            return nil, foreign_errs
+          end
+        end
+
+        return ok, errs
       end
     end
 
