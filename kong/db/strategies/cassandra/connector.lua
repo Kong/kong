@@ -314,6 +314,51 @@ function CassandraConnector:query(query, args, opts, operation)
   return res
 end
 
+function CassandraConnector:batch(query_args, opts, operation, logged)
+  if operation ~= nil and operation ~= "read" and operation ~= "write" then
+    error("operation must be 'read' or 'write', was: " .. tostring(operation), 2)
+  end
+
+  if not opts then
+    opts = {}
+  end
+
+  if operation == "write" then
+    opts.consistency = self.opts.write_consistency
+
+  else
+    opts.consistency = self.opts.read_consistency
+  end
+
+  opts.serial_consistency = self.opts.serial_consistency
+
+  opts.logged = logged
+
+  local conn = self:get_stored_connection()
+
+  local coordinator = conn
+
+  if not conn then
+    local err
+    coordinator, err = self.cluster:next_coordinator()
+    if not coordinator then
+      return nil, err
+    end
+  end
+
+  local res, err = coordinator:batch(query_args, opts)
+
+  if not conn then
+    coordinator:setkeepalive()
+  end
+
+  if err then
+    return nil, err
+  end
+
+  return res
+end
+
 
 local function select_keyspaces(self)
   local conn = self:get_stored_connection()

@@ -575,6 +575,14 @@ local function page(self, size, token, foreign_key, foreign_entity_name, options
         [LIMIT]               = limit,
       }
 
+    elseif options and options.tags then
+      statement_name = options.tags_cond == "or" and 
+                      "page_by_tags_or_next" or
+                      "page_by_tags_and_next"
+      attributes     = {
+        tags    = options.tags,
+        [LIMIT] = limit,
+      }
     else
       statement_name = "page_next"
       attributes     = {
@@ -603,7 +611,14 @@ local function page(self, size, token, foreign_key, foreign_entity_name, options
         [foreign_entity_name] = foreign_key,
         [LIMIT]               = limit,
       }
-
+    elseif options and options.tags then
+      statement_name = options.tags_cond == "or" and 
+                      "page_by_tags_or_first" or
+                      "page_by_tags_and_first"
+      attributes     = {
+        tags    = options.tags,
+        [LIMIT] = limit,
+      }
     else
       statement_name = "page_first"
       attributes     = {
@@ -870,6 +885,7 @@ end
 local _M  = {
   CUSTOM_STRATEGIES = {
     plugins = require("kong.db.strategies.postgres.plugins"),
+    tags = require("kong.db.strategies.postgres.tags"),
   }
 }
 
@@ -885,6 +901,7 @@ function _M.new(connector, schema, errors)
   end
 
   local ttl                           = schema.ttl == true
+  local tags                          = schema.fields.tags ~= nil
   local composite_cache_key           = schema.cache_key and #schema.cache_key > 1
   local max_name_length               = ttl and 3  or 1
   local max_type_length               = ttl and 24 or 1
@@ -905,6 +922,7 @@ function _M.new(connector, schema, errors)
 
   local unique_fields_count           = 0
   local unique_fields                 = {}
+
 
   for field_name, field in schema:each_field() do
     if field.type == "foreign" then
@@ -1330,12 +1348,13 @@ function _M.new(connector, schema, errors)
       "  RETURNING ",  select_expressions, ";",
     }
 
+
     update_statement = concat {
       "   UPDATE ",  table_name_escaped, "\n",
       "      SET ",  update_expressions, "\n",
       "    WHERE (", pk_escaped, ") = (", update_placeholders, ")\n",
       "      AND (", ttl_escaped, " IS NULL OR ", ttl_escaped, " >= CURRENT_TIMESTAMP AT TIME ZONE 'UTC')\n",
-      "RETURNING ",  select_expressions , ";"
+      "RETURNING ",  select_expressions, ";",
     }
 
     select_statement = concat {
@@ -1409,7 +1428,7 @@ function _M.new(connector, schema, errors)
     insert_statement = concat {
       "INSERT INTO ",  table_name_escaped, " (", insert_columns, ")\n",
       "     VALUES (", insert_expressions, ")\n",
-      "  RETURNING ",  select_expressions, ";",
+      "  RETURNING ", select_expressions, ";",
     }
 
     upsert_statement = concat {
@@ -1417,14 +1436,14 @@ function _M.new(connector, schema, errors)
       "     VALUES (", insert_expressions, ")\n",
       "ON CONFLICT (", pk_escaped, ") DO UPDATE\n",
       "        SET ",  upsert_expressions, "\n",
-      "  RETURNING ",  select_expressions, ";",
+      "  RETURNING ", select_expressions, ";",
     }
 
     update_statement = concat {
       "   UPDATE ",  table_name_escaped, "\n",
       "      SET ",  update_expressions, "\n",
       "    WHERE (", pk_escaped, ") = (", update_placeholders, ")\n",
-      "RETURNING ",  select_expressions , ";"
+      "RETURNING ", select_expressions, ";",
     }
 
     select_statement = concat {
@@ -1653,6 +1672,91 @@ function _M.new(connector, schema, errors)
     end
   end
 
+  if tags then
+    local statements = self.statements
+    local pk_placeholders = {}
+
+    local argc_first = 2
+    local argv_first = new_tab(argc_first, 0)
+    local argn_first = new_tab(argc_first, 0)
+    local argc_next  = argc_first + primary_key_count
+    local argv_next  = new_tab(argc_next, 0)
+    local argn_next  = new_tab(argc_next, 0)
+
+    for i = 1, primary_key_count do
+      local index = i + 1
+      argn_next[index]   = primary_key_names[i]
+      pk_placeholders[i] = "$" .. index
+    end
+
+    pk_placeholders = concat(pk_placeholders, ", ")
+
+    argn_first[1] = "tags"
+    argn_first[argc_first] = LIMIT
+    argn_next[1] = "tags"
+    argn_next[argc_next] = LIMIT
+
+    local page_first_by_tags_statement
+    local page_next_by_tags_statement
+
+    for cond, op in pairs({["_and"] = "@>", ["_or"] = "&&"}) do
+
+      if ttl then
+        page_first_by_tags_statement = concat {
+          "  SELECT ",  select_expressions, "\n",
+          "    FROM ",  table_name_escaped, "\n",
+          "   WHERE tags ", op, " $1\n",
+          "     AND (", ttl_escaped, " IS NULL OR ", ttl_escaped, " >= CURRENT_TIMESTAMP AT TIME ZONE 'UTC')\n",
+          "ORDER BY ",  pk_escaped, "\n",
+          "   LIMIT $2;";
+        }
+  
+        page_next_by_tags_statement = concat {
+          "  SELECT ",  select_expressions, "\n",
+          "    FROM ",  table_name_escaped, "\n",
+          "   WHERE tags ", op, " $1\n",
+          "     AND (", pk_escaped, ") > (", pk_placeholders, ")\n",
+          "     AND (", ttl_escaped, " IS NULL OR ", ttl_escaped, " >= CURRENT_TIMESTAMP AT TIME ZONE 'UTC')\n",
+          "ORDER BY ",  pk_escaped, "\n",
+          "   LIMIT $", argc_next, ";"
+        }
+      else
+        page_first_by_tags_statement = concat {
+          "  SELECT ",  select_expressions, "\n",
+          "    FROM ",  table_name_escaped, "\n",
+          "   WHERE tags ", op, " $1\n",
+          "ORDER BY ",  pk_escaped, "\n",
+          "   LIMIT $2;";
+        }
+  
+        page_next_by_tags_statement = concat {
+          "  SELECT ",  select_expressions, "\n",
+          "    FROM ",  table_name_escaped, "\n",
+          "   WHERE tags ", op, " $1\n",
+          "     AND (", pk_escaped, ") > (", pk_placeholders, ")\n",
+          "ORDER BY ",  pk_escaped, "\n",
+          "   LIMIT $", argc_next, ";"
+        }
+      end
+
+      local statement_name = "page_by_tags"
+
+      statements[statement_name .. cond .. "_first"] = {
+        argn = argn_first,
+        argc = argc_first,
+        argv = argv_first,
+        make = compile(concat({ table_name, statement_name, "first" }, "_"), page_first_by_tags_statement),
+      }
+
+      statements[statement_name .. cond .. "_next"] = {
+        argn = argn_next,
+        argc = argc_next,
+        argv = argv_next,
+        make = compile(concat({ table_name, statement_name, "next" }, "_"), page_next_by_tags_statement)
+      }
+    end
+  end
+
   if composite_cache_key then
     unique_fields_count = unique_fields_count + 1
     insert(unique_fields, {
@@ -1709,15 +1813,14 @@ function _M.new(connector, schema, errors)
           "      SET ",  update_expressions, "\n",
           "    WHERE ",  unique_escaped, " = $", update_by_args_count, "\n",
           "      AND (", ttl_escaped, " IS NULL OR ", ttl_escaped, " >= CURRENT_TIMESTAMP AT TIME ZONE 'UTC')\n",
-          "RETURNING ",  select_expressions , ";"
+          "RETURNING ", select_expressions, ";",
         }
-
       else
         update_by_statement = concat {
           "   UPDATE ", table_name_escaped, "\n",
           "      SET ", update_expressions, "\n",
           "    WHERE ", unique_escaped, " = $", update_by_args_count, "\n",
-          "RETURNING ", select_expressions , ";"
+          "RETURNING ", select_expressions, ";",
         }
       end
 
@@ -1746,6 +1849,7 @@ function _M.new(connector, schema, errors)
         "        SET ",  upsert_expressions, "\n",
         "  RETURNING ",  select_expressions, ";",
       }
+
 
       statements[upsert_by_statement_name] = {
         argn = insert_names,
