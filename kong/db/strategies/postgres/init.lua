@@ -867,11 +867,7 @@ function _mt:escape_literal(literal, field_name)
 end
 
 
-local _M  = {
-  CUSTOM_STRATEGIES = {
-    plugins = require("kong.db.strategies.postgres.plugins"),
-  }
-}
+local _M  = {}
 
 
 function _M.new(connector, schema, errors)

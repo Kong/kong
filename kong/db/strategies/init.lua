@@ -1,3 +1,6 @@
+local utils = require("kong.tools.utils")
+
+
 local fmt = string.format
 
 
@@ -51,31 +54,29 @@ function _M.new(kong_config, strategy, schemas, errors)
       return nil, nil, err
     end
 
-    if Strategy.CUSTOM_STRATEGIES then
-      local custom_strategy = Strategy.CUSTOM_STRATEGIES[schema.name]
-
-      if custom_strategy then
-        local parent_mt = getmetatable(strategy)
-        local mt = {
-          __index = function(t, k)
-            -- explicit parent
-            if k == "super" then
-              return parent_mt
-            end
-
-            -- override
-            local f = custom_strategy[k]
-            if f then
-              return f
-            end
-
-            -- parent fallback
-            return parent_mt[k]
+    local custom_strat = fmt("kong.db.strategies.%s.%s", strategy, schema.name)
+    local exists, mod = utils.load_module_if_exists(custom_strat)
+    if exists and mod then
+      local parent_mt = getmetatable(strategy)
+      local mt = {
+        __index = function(t, k)
+          -- explicit parent
+          if k == "super" then
+            return parent_mt
           end
-        }
 
-        setmetatable(strategy, mt)
-      end
+          -- override
+          local f = mod[k]
+          if f then
+            return f
+          end
+
+          -- parent fallback
+          return parent_mt[k]
+        end
+      }
+
+      setmetatable(strategy, mt)
     end
 
     strategies[schema.name] = strategy
