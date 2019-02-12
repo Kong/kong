@@ -43,12 +43,7 @@ local APPLIED_COLUMN = "[applied]"
 local cache_key_field = { type = "string" }
 
 
-local _M  = {
-  CUSTOM_STRATEGIES = {
-    services = require("kong.db.strategies.cassandra.services"),
-    plugins = require("kong.db.strategies.cassandra.plugins"),
-  }
-}
+local _M  = {}
 
 local _mt = {}
 _mt.__index = _mt
