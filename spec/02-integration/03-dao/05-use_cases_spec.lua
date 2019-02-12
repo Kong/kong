@@ -53,12 +53,22 @@ for _, strategy in helpers.each_strategy() do
       local key = db.plugins:cache_key("key-auth", nil, service.id, nil, nil)
       local row, err = db.plugins:select_by_cache_key(key)
       assert.is_nil(err)
+
+      -- EE: remove workspaces fields
+      row.workspace_id = nil
+      row.workspace_name = nil
+
       assert.same(key_auth, row)
 
       -- TEST 2: retrieve rate-limiting plugin for Service
 
       key = db.plugins:cache_key("rate-limiting", nil, service.id, nil, nil)
       row, err = db.plugins:select_by_cache_key(key)
+
+      -- EE: remove workspaces fields
+      row.workspace_id = nil
+      row.workspace_name = nil
+
       assert.is_nil(err)
       assert.same(rate_limiting_for_service, row)
 
@@ -66,6 +76,11 @@ for _, strategy in helpers.each_strategy() do
 
       key = db.plugins:cache_key("rate-limiting", nil, service.id, consumer.id, nil)
       row, err = db.plugins:select_by_cache_key(key)
+
+      -- EE: remove workspaces fields
+      row.workspace_id = nil
+      row.workspace_name = nil
+
       assert.is_nil(err)
       assert.same(rate_limiting_for_consumer, row)
     end)
