@@ -1182,7 +1182,7 @@ end
 
 
 function _mt:truncate(options)
-  local _, err_t self.connector:query(fmt("DELETE * from workspace_entities where entity_type = '%s'",
+  local _, err_t = self.connector:query(fmt("DELETE * from workspace_entities where entity_type = '%s'",
                                       self.schema.name), nil, nil, "write")
   if err_t then
     return nil, err_t
