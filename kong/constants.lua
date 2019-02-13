@@ -27,6 +27,7 @@ local plugins = {
   "request-termination",
   -- external plugins
   "azure-functions",
+  "kubernetes-sidecar-injector",
   "zipkin",
   "pre-function",
   "post-function",
