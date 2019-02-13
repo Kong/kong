@@ -1404,7 +1404,7 @@ for _, strategy in helpers.each_strategy() do
           end)
 
           local stream_it = (mode == "ipv6") and pending or it
-          stream_it("perform passive health checks -- #stream connection failure", function()
+          stream_it("#flaky perform passive health checks -- #stream connection failure", function()
 
             -- configure healthchecks
             local upstream_name = add_upstream({
