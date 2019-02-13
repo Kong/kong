@@ -757,7 +757,7 @@ end
 
 do
 
-  local function select_query_page(cql, table_name, primary_key, token, page_size, args, is_partitioned)
+  local function select_query_page(cql, table_name, primary_key, token, page_size, args, is_partitioned, foreign_key)
     local token_template
     local args_t
 
@@ -778,13 +778,13 @@ do
       end
     end
 
-    local seperator = is_partitioned and " AND " or " WHERE"
+    local seperator = (is_partitioned or foreign_key) and " AND " or " WHERE"
     return fmt("%s %s", cql, token and seperator ..
                token_template or ""), args_t
   end
 
 
-  function _mt:page_ws(ws_scope, size, offset, cql, args, is_partitioned)
+  function _mt:page_ws(ws_scope, size, offset, cql, args, is_partitioned, foreign_key)
     local table_name = self.schema.name
 
     local primary_key = workspaceable[table_name].primary_key
@@ -797,8 +797,9 @@ do
 
     local token = offset
     while(true) do
-      local _cql, args_t = select_query_page(cql, table_name,  primary_key, token, size, args, is_partitioned)
+      local _cql, args_t = select_query_page(cql, table_name,  primary_key, token, size, args, is_partitioned, foreign_key)
       _cql = _cql  .. (token and " ALLOW FILTERING" or "")
+
       local rows, err = self.connector:query(_cql, args_t or args, {}, "read")
       if not rows then
         return nil, self.errors:database_error("could not execute page query: "
@@ -868,7 +869,7 @@ do
 
     local ws_scope = get_workspaces()
     if #ws_scope > 0 and workspaceable[self.schema.name]  then
-      return self:page_ws(ws_scope, size, offset, cql, args, is_partitioned)
+      return self:page_ws(ws_scope, size, offset, cql, args, is_partitioned, foreign_key)
     end
 
     opts.page_size = size
