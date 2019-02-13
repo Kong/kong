@@ -189,6 +189,8 @@ describe("workspace config", function()
       assert.equal(ws_conf_item, singletons.configuration.portal_emails_from)
       ws_conf_item = ws_helper.retrieve_ws_config(ws_constants.PORTAL_EMAILS_REPLY_TO, workspace)
       assert.equal(ws_conf_item, singletons.configuration.portal_emails_reply_to)
+      ws_conf_item = ws_helper.retrieve_ws_config(ws_constants.PORTAL_CORS_ORIGINS, workspace)
+      assert.equal(ws_conf_item, singletons.configuration.portal_cors_origins)
     end)
 
     it("should overwrite default config value when present in db", function()
@@ -207,6 +209,7 @@ describe("workspace config", function()
           portal_emails_from = "hugo@konghq.com",
           portal_emails_reply_to = "bobby@konghq.com",
           smtp_admin_emails = {"carl@example.com"},
+          portal_cors_origins = {"http://foo.example", "http://bar.example"}
         }
       }
 
@@ -232,6 +235,8 @@ describe("workspace config", function()
       assert.equal(ws_conf_item, workspace.config.portal_emails_from)
       ws_conf_item = ws_helper.retrieve_ws_config(ws_constants.PORTAL_EMAILS_REPLY_TO, workspace)
       assert.equal(ws_conf_item, workspace.config.portal_emails_reply_to)
+      ws_conf_item = ws_helper.retrieve_ws_config(ws_constants.PORTAL_CORS_ORIGINS, workspace)
+      assert.same(ws_conf_item, workspace.config.portal_cors_origins)
     end)
 
     it("should defer to default portal-auth when set to 'nil'", function()
@@ -368,5 +373,59 @@ describe("build_ws_admin_gui_url", function()
     local expected_url = 'http://admins-are-fun.org/test_workspace'
     local admin_gui_url = ws_helper.build_ws_admin_gui_url(config, workspace)
     assert.equal(admin_gui_url, expected_url)
+  end)
+end)
+
+describe("build_ws_portal_cors_origins", function()
+  it("should return portal_cors_origins if set", function()
+    local workspace = {
+      config = {
+        portal_cors_origins = { "wow" },
+        portal_gui_protocol = "http",
+        portal_gui_host = "www.example.com",
+      }
+    }
+
+    local origins = ws_helper.build_ws_portal_cors_origins(workspace)
+    assert.same({ "wow" }, origins)
+  end)
+
+  it("should derive origin from portal_gui_protocol and portal_gui_host if portal_cors_origins is empty", function()
+    local workspace = {
+      config = {
+        portal_cors_origins = {},
+        portal_gui_protocol = "http",
+        portal_gui_host = "example.com",
+      }
+    }
+
+    local origins = ws_helper.build_ws_portal_cors_origins(workspace)
+    assert.same({ "http://example.com" }, origins)
+  end)
+
+  it("should derive origin from portal_gui_protocol and portal_gui_host if portal_cors_origins is nil", function()
+    local workspace = {
+      config = {
+        portal_gui_protocol = "http",
+        portal_gui_host = "example.com",
+      }
+    }
+
+    local origins = ws_helper.build_ws_portal_cors_origins(workspace)
+    assert.same({ "http://example.com" }, origins)
+  end)
+
+  it("should derive origin from subdoportal_gui_use_subdomains, portal_gui_protocol, and portal_gui_host if portal_cors_origins is nil", function()
+    local workspace = {
+      name = "wooo",
+      config = {
+        portal_gui_protocol = "http",
+        portal_gui_host = "example.com",
+        portal_gui_use_subdomains = true,
+      }
+    }
+
+    local origins = ws_helper.build_ws_portal_cors_origins(workspace)
+    assert.same({ "http://wooo.example.com" }, origins)
   end)
 end)

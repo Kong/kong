@@ -2,6 +2,7 @@ local cjson        = require "cjson.safe"
 local pl_path      = require "pl.path"
 local pl_stringx   = require "pl.stringx"
 local enterprise_utils = require "kong.enterprise_edition.utils"
+local re_match = ngx.re.match
 
 
 -- @param value The options string to check for flags (whitespace separated)
@@ -93,6 +94,20 @@ local function validate_admin_gui_session(conf, errors)
           return assert(cjson.encode(v))
         end
       })
+    end
+  end
+end
+
+
+-- Modified from kong.plugins.cors.schema check_regex func
+-- TODO: use `is_regex` validator from core when 1.0 is merged
+local function validate_portal_cors_origins(conf, errors)
+  for _, origin in ipairs(conf.portal_cors_origins) do
+    if origin ~= "*" then
+      local _, err = re_match("any string", origin)
+      if err then
+        errors[#errors+1] = "portal_cors_origins: '" .. origin .. "' is not a valid regex"
+      end
     end
   end
 end
@@ -283,6 +298,8 @@ local function validate(conf, errors)
     if not portal_gui_protocol or portal_gui_protocol == "" then
       errors[#errors+1] = "portal_gui_protocol is required for portal"
     end
+
+    validate_portal_cors_origins(conf, errors)
   end
 
   validate_vitals_tsdb(conf, errors)
@@ -296,4 +313,5 @@ return {
   validate_admin_gui_ssl = validate_admin_gui_ssl,
   validate_smtp_config = validate_smtp_config,
   validate_portal_smtp_config = validate_portal_smtp_config,
+  validate_portal_cors_origins = validate_portal_cors_origins,
 }

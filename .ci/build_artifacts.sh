@@ -11,6 +11,8 @@ git clone https://github.com/Kong/docker-kong.git
 git clone -b release/0.35 https://"$GITHUB_TOKEN"@github.com/Kong/kong-distributions.git
 pushd kong-distributions
 sed -i -e "s/^\([[:blank:]]*\)version.*$/\1version: master/" kong-images/build.yml
+nightly="\   \ version: nightly"
+sed -i -e "/gui/!b;n;c${nightly}" kong-images/build.yml
 docker pull mashape/docker-packer
 
 docker run -it --rm \

@@ -9,6 +9,10 @@ local DEBUG      = ngx.DEBUG
 local WARN       = ngx.WARN
 
 
+local singletons = require "kong.singletons"
+local pl_stringx   = require "pl.stringx"
+local statsd_handler = require "kong.vitals.prometheus.statsd.handler"
+
 local http = require "resty.http"
 local cjson = require "cjson.safe"
 local null = cjson.null -- or ngx.null
@@ -49,6 +53,36 @@ end
 
 function _M.node_exists()
   return true, nil
+end
+
+-- @param value The options string to check for flags (whitespace separated)
+-- @param flags List of boolean flags to check for.
+-- @returns 1) remainder string after all flags removed, 2) table with flag
+-- booleans, 3) sanitized flags string
+local function parse_option_flags(value, flags)
+  assert(type(value) == "string")
+
+  value = " " .. value .. " "
+
+  local sanitized = ""
+  local result = {}
+
+  for _, flag in ipairs(flags) do
+    local count
+    local patt = "%s" .. flag .. "%s"
+
+    value, count = value:gsub(patt, " ")
+
+    if count > 0 then
+      result[flag] = true
+      sanitized = sanitized .. " " .. flag
+
+    else
+      result[flag] = false
+    end
+  end
+
+  return pl_stringx.strip(value), result, pl_stringx.strip(sanitized)
 end
 
 
@@ -101,12 +135,58 @@ function _M.new(_, opts)
     common_stats_metrics = common_stats_metrics,
     headers              = { Authorization = opts.auth_header },
     cluster_level        = opts.cluster_level or false,
+    statsd_config        = { },
   }
 
   return setmetatable(self, mt)
 end
 
-function _M.init()
+function _M:init()
+  local conf = singletons.configuration
+
+  local host, port, use_tcp
+  local remainder, _, protocol = parse_option_flags(conf.vitals_statsd_address, { "udp", "tcp" })
+  if remainder then
+    host, port = remainder:match("(.+):([%d]+)$")
+    port = tonumber(port)
+    if not host or not port then
+      host = remainder:match("(unix:/.+)$")
+      port = nil
+    end
+  end
+  use_tcp = protocol == "tcp"
+
+  local statsd_config = {
+    host = host,
+    port = port,
+    prefix = conf.vitals_statsd_prefix,
+    use_tcp = use_tcp,
+    udp_packet_size = conf.vitals_statsd_udp_packet_size or 0,
+    metrics = {
+      { name = "request_count", sample_rate = 1, stat_type = "counter", service_identifier = "service_id" },
+      { name = "status_count", sample_rate = 1, stat_type = "counter", service_identifier = "service_id" },
+      { name = "upstream_latency", stat_type = "timer", service_identifier = "service_id" },
+      { name = "kong_latency", stat_type = "timer", service_identifier = "service_id" },
+      { name = "status_count_per_user", sample_rate = 1, consumer_identifier = "consumer_id",
+        stat_type = "counter", service_identifier = "service_id" },
+      { name = "status_count_per_workspace", sample_rate = 1, stat_type = "counter",
+        workspace_identifier = "workspace_id", service_identifier = "service_id" },
+      { name = "status_count_per_user_per_route", sample_rate = 1, consumer_identifier = "consumer_id",
+        stat_type = "counter", service_identifier = "service_id" },
+      { name = "cache_datastore_misses_total", sample_rate = 1, stat_type = "counter",
+        service_identifier = "service_id" },
+      { name = "cache_datastore_hits_total", sample_rate = 1, stat_type = "counter",
+        service_identifier = "service_id" },
+      { name = "shdict_usage", sample_rate = 1, stat_type = "gauge", service_identifier = "service_id" },
+    },
+  }
+
+  local handler, err = statsd_handler.new(statsd_config)
+  if err then
+    return false, err
+  end
+
+  self.statsd_handler = handler
   return true, nil
 end
 
@@ -629,6 +709,10 @@ function _M:select_consumer_stats(opts)
   else
     return res, err
   end
+end
+
+function _M:log()
+  self.statsd_handler:log()
 end
 
 

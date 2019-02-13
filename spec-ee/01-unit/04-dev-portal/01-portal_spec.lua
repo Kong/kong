@@ -4,6 +4,7 @@ local conf_loader    = require "kong.conf_loader"
 local ee             = require "kong.enterprise_edition"
 local meta           = require "kong.enterprise_edition.meta"
 local singletons     = require "kong.singletons"
+local ws_helper      = require "kong.workspaces.helper"
 
 local exists = helpers.path.exists
 
@@ -70,6 +71,15 @@ describe("portal_gui", function()
 
   describe("prepare_portal", function()
     local index_conf
+    local snapshot
+
+    before_each(function()
+      snapshot = assert:snapshot()
+    end)
+
+    after_each(function()
+      snapshot:revert()
+    end)
 
     local conf = {
       portal_gui_url = nil,
@@ -115,21 +125,23 @@ describe("portal_gui", function()
       portal_gui_use_subdomains = false,
     }
 
-    setup(function()
-    end)
-
     it("inserts the appropriate values with empty config", function()
+      stub(ws_helper, "get_workspace").returns({
+        name = "default"
+      })
+
       singletons.configuration = {
         portal_auth = "basic-auth",
       }
 
-      index_conf = ee.prepare_portal(conf, {
+      index_conf = ee.prepare_portal({
         workspace = {
           name = "default",
-        }
-      })
+        },
+      }, conf)
 
       assert.same({
+        PORTAL_IS_AUTHENTICATED = 'false',
         PORTAL_API_URL = "",
         PORTAL_AUTH = "basic-auth",
         PORTAL_API_PORT = "8004",
@@ -146,13 +158,14 @@ describe("portal_gui", function()
     end)
 
     it("inserts the appropriate values with different workspace name", function()
-      index_conf = ee.prepare_portal(conf, {
-        workspace = {
-          name = "gruce"
-        }
+      stub(ws_helper, "get_workspace").returns({
+        name = "gruce"
       })
 
+      index_conf = ee.prepare_portal({}, conf)
+
       assert.same({
+        PORTAL_IS_AUTHENTICATED = 'false',
         PORTAL_API_URL = "",
         PORTAL_AUTH = "basic-auth",
         PORTAL_API_PORT = "8004",
@@ -169,16 +182,19 @@ describe("portal_gui", function()
     end)
 
     it("inserts the appropriate values with different portal auth type", function()
-      index_conf = ee.prepare_portal(conf, {
-        workspace = {
-          config = {
-            portal_auth = "key-auth",
-          },
-          name = "default"
-        }
+      stub(ws_helper, "get_workspace").returns({
+        config = {
+          portal_auth = "key-auth",
+        },
+        name = "default"
       })
 
+      index_conf = ee.prepare_portal({
+        is_authenticated = true
+      }, conf)
+
       assert.same({
+        PORTAL_IS_AUTHENTICATED = 'true',
         PORTAL_API_URL = "",
         PORTAL_AUTH = "key-auth",
         PORTAL_API_PORT = "8004",

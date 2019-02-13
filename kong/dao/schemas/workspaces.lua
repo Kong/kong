@@ -1,5 +1,6 @@
 local enterprise_utils = require "kong.enterprise_edition.utils"
 local workspaces   = require "kong.workspaces"
+local re_match = ngx.re.match
 
 
 local function check_portal_auth(auth)
@@ -30,6 +31,22 @@ local function validate_email(email)
     local ok, err = enterprise_utils.validate_email(email)
     if not ok then
       return false, email .. " is invalid: " .. err
+    end
+  end
+
+  return true
+end
+
+
+local function validate_origins(portal_cors_origins)
+  if portal_cors_origins ~= nil  then
+    for _, origin in ipairs(portal_cors_origins) do
+      if origin ~= "*" then
+        local _, err = re_match("any string", origin)
+        if err then
+          return false, "portal_cors_origins: '" .. origin .. "' is not a valid regex"
+        end
+      end
     end
   end
 
@@ -82,6 +99,10 @@ local function config_schema(workspace_t)
         type = "string",
         func = validate_email,
       },
+      portal_cors_origins = {
+        type = "array",
+        func = validate_origins,
+      }
     },
   }
 end
