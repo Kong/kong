@@ -763,12 +763,18 @@ do
 
     if token then
       args_t = utils.deep_copy(args or {})
-      token_template = fmt(" %s > ? LIMIT %s", primary_key, page_size)
+      if is_partitioned then
+        token_template = fmt(" %s > ? LIMIT %s", primary_key, page_size)
 
-      if utils.is_valid_uuid(token) then
-        insert(args_t, cassandra.uuid(token))
+        if utils.is_valid_uuid(token) then
+          insert(args_t, cassandra.uuid(token))
+        else
+          insert(args_t, cassandra.text(token))
+        end
+
       else
-        insert(args_t, cassandra.text(token))
+        token_template = fmt(" TOKEN(%s) > TOKEN(%s) LIMIT %s",
+                             primary_key, token, page_size)
       end
     end
 
