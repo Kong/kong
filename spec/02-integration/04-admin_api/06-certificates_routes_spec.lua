@@ -341,6 +341,8 @@ describe("Admin API: #" .. strategy, function()
         assert.same(ssl_fixtures.key_alt, json.key)
         assert.same({"bar.com", "foo.com"}, json.snis)
 
+        json.snis = nil
+
         local in_db = assert(db.certificates:select({ id = certificate.id }))
         assert.same(json, in_db)
       end)
