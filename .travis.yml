@@ -51,8 +51,6 @@ env:
     - KONG_TEST_DATABASE=postgres TEST_SUITE=plugins
     - KONG_TEST_DATABASE=cassandra CASSANDRA=2.2 TEST_SUITE=plugins
     - KONG_TEST_DATABASE=cassandra CASSANDRA=3.9 TEST_SUITE=plugins
-    - KONG_TEST_DATABASE=postgres TEST_SUITE=old-integration
-    - KONG_TEST_DATABASE=postgres TEST_SUITE=old-plugins
     - TEST_SUITE=pdk
 
 before_install:
@@ -82,7 +80,6 @@ jobs:
       script:
       - luacheck -q .
       - bin/busted -v -o gtest spec/01-unit
-      - bin/busted -v -o gtest spec-old-api/01-unit
       - bin/busted -v -o gtest spec-ee/01-unit
       env:
         - KONG_DATABASE=none
