@@ -899,9 +899,11 @@ function Kong.handle_error()
 
   ctx.KONG_UNEXPECTED = true
 
+  local old_ws = ctx.workspaces
   if not ctx.plugins_for_request then
     for _ in plugins_iterator(ctx, loaded_plugins, configured_plugins, true) do
       -- just build list of plugins
+      ctx.workspaces = old_ws
     end
   end
 
