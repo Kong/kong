@@ -29,9 +29,9 @@ for _, strategy in helpers.each_strategy() do
         hosts = { "keyauth2.test" },
       }
 
-      consumer = bp.consumers:insert {
+      consumer = bp.consumers:insert({
         username = "bob"
-      }
+      }, { nulls = true })
 
       assert(helpers.start_kong({
         database   = strategy,

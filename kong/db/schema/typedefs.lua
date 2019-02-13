@@ -302,6 +302,17 @@ typedefs.run_on_first = Schema.define {
   one_of = { "first" },
 }
 
+typedefs.tag = Schema.define {
+  type = "string",
+  required = true, 
+  match = "^[%w%.%-%_~]+$",
+}
+
+typedefs.tags = Schema.define {
+  type = "set",
+  elements = typedefs.tag,
+}
+
 local http_protocols = {}
 for p, s in pairs(constants.PROTOCOLS_WITH_SUBSYSTEM) do
   if s == "http" then

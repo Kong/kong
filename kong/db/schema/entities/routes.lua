@@ -103,6 +103,7 @@ return {
                          },
                        },
                      }, },
+    { tags             = typedefs.tags },
     { service = { type = "foreign", reference = "services", required = true }, },
   },
 

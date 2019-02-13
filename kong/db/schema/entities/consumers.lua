@@ -10,6 +10,7 @@ return {
     { created_at     = typedefs.auto_timestamp_s },
     { username       = { type = "string",  unique = true }, },
     { custom_id      = { type = "string",  unique = true }, },
+    { tags           = typedefs.tags },
   },
 
   entity_checks = {

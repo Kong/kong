@@ -22,5 +22,6 @@ return {
     { run_on = typedefs.run_on },
     { protocols = typedefs.protocols },
     { enabled = { type = "boolean", default = true, }, },
+    { tags           = typedefs.tags },
   },
 }
