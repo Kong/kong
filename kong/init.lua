@@ -331,7 +331,7 @@ function Kong.init()
   singletons.portal_emails = portal_emails.new(config)
   singletons.admin_emails = admin_emails.new(config)
 
-  local reports = require "kong.core.reports"
+  local reports = require "kong.reports"
   local l = singletons.license and
             singletons.license.license.payload.license_key or
             nil
