@@ -37,6 +37,7 @@ local ERRORS            = {
   INVALID_SIZE          =  9,  -- page(size, offset) is invalid
   INVALID_UNIQUE        =  10, -- unique field value is invalid
   INVALID_OPTIONS       =  11, -- invalid options given
+  OPERATION_UNSUPPORTED =  12, -- operation is not supported with this strategy
 }
 
 
@@ -55,6 +56,7 @@ local ERRORS_NAMES               = {
   [ERRORS.INVALID_SIZE]          = "invalid size",
   [ERRORS.INVALID_UNIQUE]        = "invalid unique %s",
   [ERRORS.INVALID_OPTIONS]       = "invalid options",
+  [ERRORS.OPERATION_UNSUPPORTED] = "operation unsupported",
 }
 
 
@@ -391,6 +393,15 @@ function _M:invalid_options(errors)
   end
 
   return new_err_t(self, ERRORS.INVALID_OPTIONS, message, errors)
+end
+
+
+function _M:operation_unsupported(err)
+  if type(err) ~= "string" then
+    error("err must be a string", 2)
+  end
+
+  return new_err_t(self, ERRORS.OPERATION_UNSUPPORTED, err)
 end
 
 

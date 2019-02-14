@@ -77,6 +77,20 @@ end
 
 
 function off.new(connector, schema, errors)
+  local unsupported = function(operation)
+    local err = fmt("cannot %s '%s' entities when not using a database", operation, schema.name)
+    return function()
+      return nil, errors:operation_unsupported(err)
+    end
+  end
+
+  local unsupported_by = function(operation)
+    local err = fmt("cannot %s '%s' entities by '%s' when not using a database", operation, schema.name, '%s')
+    return function(_, field_name)
+      return nil, errors:operation_unsupported(fmt(err, field_name))
+    end
+  end
+
   local self = {
     connector = connector, -- instance of kong.db.strategies.off.connector
     schema = schema,
@@ -84,6 +98,13 @@ function off.new(connector, schema, errors)
     page = page,
     select = select,
     select_by_field = select_by_field,
+    insert = unsupported("create"),
+    update = unsupported("update"),
+    upsert = unsupported("create or update"),
+    delete = unsupported("remove"),
+    update_by_field = unsupported_by("update"),
+    upsert_by_field = unsupported_by("create or update"),
+    delete_by_field = unsupported_by("remove"),
     truncate = function() return true end,
   }
 
