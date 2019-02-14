@@ -6,8 +6,8 @@ local enums         = require "kong.enterprise_edition.dao.enums"
 local cjson         = require "cjson.safe"
 local ee_jwt        = require "kong.enterprise_edition.jwt"
 local ee_api        = require "kong.enterprise_edition.api_helpers"
-local utils         = require "kong.tools.utils"
 local constants     = require "kong.constants"
+local auth          = require "kong.portal.auth"
 local portal_smtp_client = require "kong.portal.emails"
 
 local ws_constants = constants.WORKSPACE_CONFIG
@@ -47,20 +47,6 @@ local function portal_auth_enabled(portal_auth)
 end
 
 
-local function validate_auth_plugin(self, dao_factory, helpers)
-  local workspace = get_workspace()
-  local portal_auth = ws_helper.retrieve_ws_config(ws_constants.PORTAL_AUTH,
-                                                                    workspace)
-
-  self.plugin = auth_plugins[portal_auth]
-  if not self.plugin then
-    return helpers.responses.send_HTTP_NOT_FOUND()
-  end
-
-  self.collection = dao_factory[self.plugin.dao]
-end
-
-
 local function validate_credential_plugin(self, dao_factory, helpers)
   local plugin_name = ngx.unescape_uri(self.params.plugin)
 
@@ -92,82 +78,6 @@ local function find_login_credential(self, dao_factory, helpers)
 end
 
 
-local function verify_consumer(self, dao_factory, helpers)
-  local status
-
-  self.consumer = ngx.ctx.authenticated_consumer
-  if self.consumer then
-    status = ee_api.get_consumer_status(self.consumer)
-  end
-
-  -- Validate status - check if we have an approved developer type consumer
-  if not self.consumer or
-    self.consumer.status ~= enums.CONSUMERS.STATUS.APPROVED  or
-    self.consumer.type   ~= enums.CONSUMERS.TYPE.DEVELOPER then
-
-    if ngx.ctx.authenticated_session then
-      ngx.ctx.authenticated_session:destroy()
-    end
-
-    return helpers.responses.send_HTTP_UNAUTHORIZED(status)
-  end
-end
-
-
-local function execute_plugin(plugin_name, dao_factory, conf_key, workspace, phases)
-  local conf = ws_helper.retrieve_ws_config(conf_key, workspace)
-  conf = utils.deep_copy(conf or {})
-  local prepared_plugin = ee_api.prepare_plugin(ee_api.apis.PORTAL,
-                                                dao_factory, plugin_name, conf)
-
-  for _, phase in ipairs(phases) do
-    ee_api.apply_plugin(prepared_plugin, phase)
-  end
-end
-
-
-local function login(self, dao_factory, helpers)
-  validate_auth_plugin(self, dao_factory, helpers)
-  local workspace = get_workspace()
-
-  -- run the auth plugin access phase to verify creds
-  execute_plugin(self.plugin.name, dao_factory,
-                                  ws_constants.PORTAL_AUTH_CONF,
-                                  workspace, {"access"})
-
-  -- if not openid-connect, run session header_filter to attach session to response
-  local portal_auth = ws_helper.retrieve_ws_config(ws_constants.PORTAL_AUTH,
-                                                                     workspace)
-  if portal_auth ~= "openid-connect" then
-    -- run the session header filter to start a new session
-    execute_plugin("session", dao_factory, ws_constants.PORTAL_SESSION_CONF,
-                                                  workspace, {"header_filter"})
-  end
-
-  verify_consumer(self, dao_factory, helpers)
-end
-
-
-local function authenticate_session(self, dao_factory, helpers)
-  validate_auth_plugin(self, dao_factory, helpers)
-  local workspace = get_workspace()
-
-  -- if openid-connect, use the plugin to verify auth
-  local portal_auth = ws_helper.retrieve_ws_config(ws_constants.PORTAL_AUTH,
-                                                                     workspace)
-  if portal_auth == "openid-connect" then
-    execute_plugin(self.plugin.name, dao_factory,
-                          ws_constants.PORTAL_AUTH_CONF, workspace, {"access"})
-  else
-    -- otherwise, verify the session
-    execute_plugin("session", dao_factory, ws_constants.PORTAL_SESSION_CONF,
-                                         workspace, {"access", "header_filter"})
-  end
-
-  verify_consumer(self, dao_factory, helpers)
-end
-
-
 local function handle_vitals_response(res, err, helpers)
   if err then
     if err:find("Invalid query params", nil, true) then
@@ -188,12 +98,12 @@ return {
     end,
 
     GET = function(self, dao_factory, helpers)
-      login(self, dao_factory, helpers)
+      auth.login(self, dao_factory, helpers)
       return helpers.responses.send_HTTP_OK()
     end,
 
     DELETE = function(self, dao_factory, helpers)
-      authenticate_session(self, dao_factory, helpers)
+      auth.authenticate_api_session(self, dao_factory, helpers)
       return helpers.responses.send_HTTP_OK()
     end,
   },
@@ -208,7 +118,7 @@ return {
 
       -- If auth is enabled, we need to validate consumer/developer
       if portal_auth_enabled(portal_auth) then
-        authenticate_session(self, dao_factory, helpers)
+        auth.authenticate_api_session(self, dao_factory, helpers)
       end
     end,
 
@@ -315,7 +225,7 @@ return {
         })
       end
 
-      validate_auth_plugin(self, dao_factory, helpers)
+      auth.validate_auth_plugin(self, dao_factory, helpers)
       local credential_data
 
       if self.plugin.name == "basic-auth" then
@@ -371,7 +281,7 @@ return {
   ["/validate-reset"] = {
     before = function(self, dao_factory, helpers)
       check_portal_status(helpers)
-      validate_auth_plugin(self, dao_factory, helpers)
+      auth.validate_auth_plugin(self, dao_factory, helpers)
       ee_api.validate_jwt(self, dao_factory, helpers)
     end,
 
@@ -383,7 +293,7 @@ return {
   ["/reset-password"] = {
     before = function(self, dao_factory, helpers)
       check_portal_status(helpers)
-      validate_auth_plugin(self, dao_factory, helpers)
+      auth.validate_auth_plugin(self, dao_factory, helpers)
       ee_api.validate_jwt(self, dao_factory, helpers)
     end,
 
@@ -454,7 +364,7 @@ return {
   ["/forgot-password"] = {
     before = function(self, dao_factory, helpers)
       check_portal_status(helpers)
-      validate_auth_plugin(self, dao_factory, helpers)
+      auth.validate_auth_plugin(self, dao_factory, helpers)
       ee_api.validate_email(self, dao_factory, helpers)
     end,
 
@@ -528,7 +438,7 @@ return {
   ["/config"] = {
     before = function(self, dao_factory, helpers)
       check_portal_status(helpers)
-      authenticate_session(self, dao_factory, helpers)
+      auth.authenticate_api_session(self, dao_factory, helpers)
     end,
 
     GET = function(self, dao_factory, helpers)
@@ -562,7 +472,7 @@ return {
   ["/developer"] = {
     before = function(self, dao_factory, helpers)
       check_portal_status(helpers)
-      authenticate_session(self, dao_factory, helpers)
+      auth.authenticate_api_session(self, dao_factory, helpers)
     end,
 
     GET = function(self, dao_factory, helpers)
@@ -577,7 +487,7 @@ return {
   ["/developer/password"] = {
     before = function(self, dao_factory, helpers)
       check_portal_status(helpers)
-      authenticate_session(self, dao_factory, helpers)
+      auth.authenticate_api_session(self, dao_factory, helpers)
       find_login_credential(self, dao_factory, helpers)
     end,
 
@@ -618,7 +528,7 @@ return {
   ["/developer/email"] = {
     before = function(self, dao_factory, helpers)
       check_portal_status(helpers)
-      authenticate_session(self, dao_factory, helpers)
+      auth.authenticate_api_session(self, dao_factory, helpers)
       find_login_credential(self, dao_factory, helpers)
       ee_api.validate_email(self, dao_factory, helpers)
     end,
@@ -674,7 +584,7 @@ return {
   ["/developer/meta"] = {
     before = function(self, dao_factory, helpers)
       check_portal_status(helpers)
-      authenticate_session(self, dao_factory, helpers)
+      auth.authenticate_api_session(self, dao_factory, helpers)
     end,
 
     PATCH = function(self, dao_factory, helpers)
@@ -723,7 +633,7 @@ return {
   ["/credentials/:plugin"] = {
     before = function(self, dao_factory, helpers)
       check_portal_status(helpers)
-      authenticate_session(self, dao_factory, helpers)
+      auth.authenticate_api_session(self, dao_factory, helpers)
       validate_credential_plugin(self, dao_factory, helpers)
     end,
 
@@ -748,7 +658,7 @@ return {
   ["/credentials/:plugin/:credential_id"] = {
     before = function(self, dao_factory, helpers)
       check_portal_status(helpers)
-      authenticate_session(self, dao_factory, helpers)
+      auth.authenticate_api_session(self, dao_factory, helpers)
       validate_credential_plugin(self, dao_factory, helpers)
 
       local credentials, err = self.credential_collection:find_all({
@@ -790,7 +700,7 @@ return {
   ["/vitals/status_codes/by_consumer"] = {
     before = function(self, dao_factory, helpers)
       check_portal_status(helpers)
-      authenticate_session(self, dao_factory, helpers)
+      auth.authenticate_api_session(self, dao_factory, helpers)
 
       if not singletons.configuration.vitals then
         return helpers.responses.send_HTTP_NOT_FOUND()
@@ -814,7 +724,7 @@ return {
   ["/vitals/status_codes/by_consumer_and_route"] = {
     before = function(self, dao_factory, helpers)
       check_portal_status(helpers)
-      authenticate_session(self, dao_factory, helpers)
+      auth.authenticate_api_session(self, dao_factory, helpers)
 
       if not singletons.configuration.vitals then
         return helpers.responses.send_HTTP_NOT_FOUND()
@@ -839,7 +749,7 @@ return {
   ["/vitals/consumers/cluster"] = {
     before = function(self, dao_factory, helpers)
       check_portal_status(helpers)
-      authenticate_session(self, dao_factory, helpers)
+      auth.authenticate_api_session(self, dao_factory, helpers)
 
       if not singletons.configuration.vitals then
         return helpers.responses.send_HTTP_NOT_FOUND()

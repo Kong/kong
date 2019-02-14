@@ -83,10 +83,12 @@ describe("kong start/stop", function()
         smtp_password = "do not print",
         admin_gui_auth = "key-auth",
         admin_gui_auth_conf = '{ "keys": "never-ever-show" }',
+        admin_gui_session_conf = '{ "keys": "never-ever-show" }',
         enforce_rbac = "on",
         portal = "on",
         portal_auth = "key-auth",
         portal_auth_conf = '{ "keys": "never-ever-show" }',
+        portal_session_conf = '{ "keys": "never-ever-show" }',
       }))
       assert.matches('KONG_PG_PASSWORD ENV found with "******"', stdout, nil, true)
       assert.matches('KONG_CASSANDRA_PASSWORD ENV found with "******"', stdout, nil, true)
@@ -95,7 +97,9 @@ describe("kong start/stop", function()
       assert.matches('cassandra_password = "******"', stdout, nil, true)
       assert.matches('smtp_password = "******"', stdout, nil, true)
       assert.matches('admin_gui_auth_conf = "******"', stdout, nil, true)
+      assert.matches('admin_gui_session_conf = "******"', stdout, nil, true)
       assert.matches('portal_auth_conf = "******"', stdout, nil, true)
+      assert.matches('portal_session_conf = "******"', stdout, nil, true)
     end)
   end)
 

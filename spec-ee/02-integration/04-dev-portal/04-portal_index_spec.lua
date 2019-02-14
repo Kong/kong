@@ -4,6 +4,8 @@ local helpers      = require "spec.helpers"
 local ee_helpers   = require "spec-ee.helpers"
 local singletons   = require "kong.singletons"
 
+local PORTAL_SESSION_CONF = "{ \"cookie_name\": \"portal_session\", \"secret\": \"super-secret\", \"cookie_secure\": false, \"storage\": \"kong\" }"
+
 local function create_portal_index()
   local prefix = singletons.configuration and singletons.configuration.prefix or 'servroot/'
   local portal_dir = 'portal'
@@ -24,185 +26,246 @@ local function create_portal_index()
 end
 
 
+local function close_clients(clients)
+  for idx, client in ipairs(clients) do
+    client:close()
+  end
+end
+
+
+local function client_request(params)
+  local client = assert(helpers.admin_client())
+  local res = assert(client:send(params))
+  res.body = res.body_reader()
+
+  close_clients({ client })
+  return res
+end
+
+
+local function gui_client_request(params)
+  local portal_gui_client = assert(ee_helpers.portal_gui_client())
+  local res = assert(portal_gui_client:send(params))
+  res.body = res.body_reader()
+
+  close_clients({ portal_gui_client })
+  return res
+end
+
+
+local function create_workspace_files(workspace_name)
+
+  client_request({
+    method = "POST",
+    path = "/" .. workspace_name .. "/files",
+    body = {
+      name = "unauthenticated/index",
+      auth = false,
+      type = "page",
+      contents = [[
+        <h1>index page</h1>
+      ]],
+    },
+    headers = {["Content-Type"] = "application/json"},
+  })
+
+  client_request({
+    method = "POST",
+    path = "/" .. workspace_name .. "/files",
+    body = {
+      name = "unauthenticated/login",
+      auth = false,
+      type = "page",
+      contents = [[
+        <h1>login page<h2>
+      ]]
+    },
+    headers = {["Content-Type"] = "application/json"},
+  })
+
+  client_request({
+    method = "POST",
+    path = "/" .. workspace_name .. "/files",
+    body = {
+      name = "unauthenticated/404",
+      auth = false,
+      type = "page",
+      contents = [[
+        <h1>404 page<h2>
+      ]]
+    },
+    headers = {["Content-Type"] = "application/json"},
+  })
+end
+
+
 -- TODO: Cassandra
 for _, strategy in helpers.each_strategy({'postgres'}) do
   describe("#flaky portal index", function()
     local dao
-    local client
 
     setup(function()
       _, _, dao = helpers.get_db_utils(strategy)
     end)
 
-    teardown(function()
-      helpers.stop_kong()
-    end)
-
     describe("router", function ()
-      local portal_gui_client
-
       describe("portal_gui_use_subdomains = off", function()
-        before_each(function()
-          helpers.stop_kong()
+
+        setup(function()
           helpers.register_consumer_relations(dao)
-  
           assert(helpers.start_kong({
-            database    = strategy,
+            database    = strategy, 
             portal      = true,
             portal_auth = "basic-auth",
-            portal_gui_use_subdomains = false,
+            portal_auto_approve = true,
+            portal_session_conf = PORTAL_SESSION_CONF,
           }))
-  
-          client = assert(helpers.admin_client())
-          portal_gui_client = assert(ee_helpers.portal_gui_client())
           create_portal_index()
-        end)
-  
-        after_each(function()
-          if client then
-            client:close()
-          end
-  
-          if portal_gui_client then
-            portal_gui_client:close()
-          end
-        end)
 
-        it("correctly identifies default workspace", function()
-          local res = assert(portal_gui_client:send {
-            method = "GET",
-            path = "/",
-          })
-          local body = assert.res_status(200, res)
-          assert.not_nil(string.match(body, '<meta name="KONG:WORKSPACE" content="default" />'))
-  
-          res = assert(portal_gui_client:send {
-            method = "GET",
-            path = "/hello",
-          })
-          body = assert.res_status(200, res)
-          assert.not_nil(string.match(body, '<meta name="KONG:WORKSPACE" content="default" />'))
-  
-          res = assert(portal_gui_client:send {
-            method = "GET",
-            path = "/hello/goodbye",
-          })
-          body = assert.res_status(200, res)
-          assert.not_nil(string.match(body, '<meta name="KONG:WORKSPACE" content="default" />'))
-        end)
-  
-        it("correctly identifies custom workspace", function()  
-          assert(client:send {
-            method = "POST",
-            path = "/workspaces",
-            body = {
-              name = "team_gruce",
-            },
-            headers = {["Content-Type"] = "application/json"},
-          })
-  
-          local res = assert(portal_gui_client:send {
-            method = "GET",
-            path = "/"
-          })
-          local body = assert.res_status(200, res)
-          assert.not_nil(string.match(body, '<meta name="KONG:WORKSPACE" content="default" />'))
-  
-          res = assert(portal_gui_client:send {
-            method = "GET",
-            path = "/team_gruce"
-          })
-          body = assert.res_status(200, res)
-          assert.not_nil(string.match(body, '<meta name="KONG:WORKSPACE" content="team_gruce" />'))
-  
-          res = assert(portal_gui_client:send {
-            method = "GET",
-            path = "/team_gruce/endpoint"
-          })
-          body = assert.res_status(200, res)
-          assert.not_nil(string.match(body, '<meta name="KONG:WORKSPACE" content="team_gruce" />'))
-  
-          res = assert(portal_gui_client:send {
-            method = "GET",
-            path = "/team_gruce/endpoint/another_endpoint"
-          })
-          body = assert.res_status(200, res)
-          assert.not_nil(string.match(body, '<meta name="KONG:WORKSPACE" content="team_gruce" />'))
-  
-          res = assert(portal_gui_client:send {
-            method = "GET",
-            path = "/team_gruce/default"
-          })
-          body = assert.res_status(200, res)
-          assert.not_nil(string.match(body, '<meta name="KONG:WORKSPACE" content="team_gruce" />'))
-        end)
-  
-        it("correctly overrides default (conf.default) config when workspace config present", function()  
-          assert(client:send {
+          local res = client_request({
             method = "POST",
             path = "/workspaces",
             body = {
               name = "team_gruce",
               config = {
-                portal_auth = "key-auth"
+                portal_auth = "key-auth",
+                portal = true,
               },
             },
             headers = {["Content-Type"] = "application/json"},
           })
-  
-          local res = assert(portal_gui_client:send {
+          assert.equals(201, res.status)
+
+          create_workspace_files("default")
+        end)
+
+        teardown(function()
+          dao:truncate_table('files')
+          helpers.stop_kong()
+        end)
+
+        it("correctly identifies default workspace", function()
+          local res = gui_client_request({
             method = "GET",
-            path = "/default"
+            path = "/",
           })
-          local body = assert.res_status(200, res)
-          assert.not_nil(string.match(body, '<meta name="KONG:PORTAL_AUTH" content="basic%-auth" />'))
+          assert.equals(res.status, 200)
+          assert.not_nil(string.match(res.body, '<meta name="KONG:WORKSPACE" content="default" />'))
+          
+          res = gui_client_request({
+            method = "GET",
+            path = "/test",
+          })
+          assert.equals(res.status, 200)
+          assert.not_nil(string.match(res.body, '<meta name="KONG:WORKSPACE" content="default" />'))
+          
+          res = gui_client_request({
+            method = "GET",
+            path = "/nested/test",
+          })
+          assert.equals(res.status, 200)
+          assert.not_nil(string.match(res.body, '<meta name="KONG:WORKSPACE" content="default" />'))
+        end)
   
-          res = assert(portal_gui_client:send {
+        it("correctly identifies custom workspace", function()
+          local res = gui_client_request({
+            method = "GET",
+            path = "/"
+          })
+          assert.equals(res.status, 200)
+          assert.not_nil(string.match(res.body, '<meta name="KONG:WORKSPACE" content="default" />'))
+  
+          res = gui_client_request({
             method = "GET",
             path = "/team_gruce"
           })
-          body = assert.res_status(200, res)
-          assert.not_nil(string.match(body, '<meta name="KONG:PORTAL_AUTH" content="key%-auth" />'))
+          assert.equals(res.status, 200)
+          assert.not_nil(string.match(res.body, '<meta name="KONG:WORKSPACE" content="team_gruce" />'))
+  
+          res = gui_client_request({
+            method = "GET",
+            path = "/team_gruce/endpoint"
+          })
+          assert.equals(res.status, 200)
+          assert.not_nil(string.match(res.body, '<meta name="KONG:WORKSPACE" content="team_gruce" />'))
+  
+          res = gui_client_request({
+            method = "GET",
+            path = "/team_gruce/endpoint/another_endpoint"
+          })
+          assert.equals(res.status, 200)
+          assert.not_nil(string.match(res.body, '<meta name="KONG:WORKSPACE" content="team_gruce" />'))
+  
+          res = gui_client_request({
+            method = "GET",
+            path = "/team_gruce/default"
+          })
+          assert.equals(res.status, 200)
+          assert.not_nil(string.match(res.body, '<meta name="KONG:WORKSPACE" content="team_gruce" />'))
+        end)
+  
+        it("correctly overrides default (conf.default) config when workspace config present", function()  
+          local res = gui_client_request({
+            method = "GET",
+            path = "/default"
+          })
+          assert.equals(res.status, 200)
+          assert.not_nil(string.match(res.body, '<meta name="KONG:PORTAL_AUTH" content="basic%-auth" />'))
+  
+          res = gui_client_request({
+            method = "GET",
+            path = "/team_gruce"
+          })
+          assert.equals(res.status, 200)
+          assert.not_nil(string.match(res.body, '<meta name="KONG:PORTAL_AUTH" content="key%-auth" />'))
         end)
       end)
 
       describe("portal_gui_use_subdomains = on", function()
-        local portal_gui_host
-        local portal_gui_protocol
+        local portal_gui_host, portal_gui_protocol
 
-        before_each(function()
-          helpers.stop_kong()
+        setup(function()
           helpers.register_consumer_relations(dao)
 
           portal_gui_host = 'cat.hotdog.com'
           portal_gui_protocol = 'http'
-  
+      
           assert(helpers.start_kong({
-            database    = strategy,
+            database    = strategy, 
             portal      = true,
             portal_auth = "basic-auth",
+            portal_auto_approve = true,
+            portal_gui_use_subdomains = true,
+            portal_session_conf = PORTAL_SESSION_CONF,
             portal_gui_host = portal_gui_host,
             portal_gui_protocol = portal_gui_protocol,
-            portal_gui_use_subdomains = true,
           }))
-  
-          client = assert(helpers.admin_client())
-          portal_gui_client = assert(ee_helpers.portal_gui_client())
           create_portal_index()
+
+          local res = client_request({
+            method = "POST",
+            path = "/workspaces",
+            body = {
+              name = "team_gruce",
+              config = {
+                portal_auth = "key-auth",
+                portal = true,
+              },
+            },
+            headers = {["Content-Type"] = "application/json"},
+          })
+          assert.equals(201, res.status)
+
+          create_workspace_files("default")
         end)
-  
-        after_each(function()
-          if client then
-            client:close()
-          end
-  
-          if portal_gui_client then
-            portal_gui_client:close()
-          end
+
+        teardown(function()
+          dao:truncate_table('files')
+          helpers.stop_kong()
         end)
 
         it("correctly identifies default workspace", function()
-          local res = assert(portal_gui_client:send {
+          local res = gui_client_request({
             method = "GET",
             path = "/",
             headers = {
@@ -210,10 +273,10 @@ for _, strategy in helpers.each_strategy({'postgres'}) do
               ['Host'] = 'default.' .. portal_gui_host,
             },
           })
-          local body = assert.res_status(200, res)
-          assert.not_nil(string.match(body, '<meta name="KONG:WORKSPACE" content="default" />'))
+          assert.equals(200, res.status)
+          assert.not_nil(string.match(res.body, '<meta name="KONG:WORKSPACE" content="default" />'))
   
-          res = assert(portal_gui_client:send {
+          res = gui_client_request({
             method = "GET",
             path = "/hello",
             headers = {
@@ -221,21 +284,12 @@ for _, strategy in helpers.each_strategy({'postgres'}) do
               ['Host'] = 'default.' .. portal_gui_host,
             },
           })
-          body = assert.res_status(200, res)
-          assert.not_nil(string.match(body, '<meta name="KONG:WORKSPACE" content="default" />'))
+          assert.equals(200, res.status)
+          assert.not_nil(string.match(res.body, '<meta name="KONG:WORKSPACE" content="default" />'))
         end)
   
         it("correctly identifies custom workspace", function()  
-          assert(client:send {
-            method = "POST",
-            path = "/workspaces",
-            body = {
-              name = "team_gruce",
-            },
-            headers = {["Content-Type"] = "application/json"},
-          })
-  
-          local res = assert(portal_gui_client:send {
+          local res = gui_client_request({
             method = "GET",
             path = "/",
             headers = {
@@ -243,10 +297,10 @@ for _, strategy in helpers.each_strategy({'postgres'}) do
               ['Host'] = 'team_gruce.' .. portal_gui_host,
             },
           })
-          local body = assert.res_status(200, res)
-          assert.not_nil(string.match(body, '<meta name="KONG:WORKSPACE" content="team_gruce" />'))
+          assert.equals(200, res.status)
+          assert.not_nil(string.match(res.body, '<meta name="KONG:WORKSPACE" content="team_gruce" />'))
   
-          res = assert(portal_gui_client:send {
+          res = gui_client_request({
             method = "GET",
             path = "/hotdog",
             headers = {
@@ -254,21 +308,12 @@ for _, strategy in helpers.each_strategy({'postgres'}) do
               ['Host'] = 'team_gruce.' .. portal_gui_host,
             },
           })
-          body = assert.res_status(200, res)
-          assert.not_nil(string.match(body, '<meta name="KONG:WORKSPACE" content="team_gruce" />'))
+          assert.equals(200, res.status)
+          assert.not_nil(string.match(res.body, '<meta name="KONG:WORKSPACE" content="team_gruce" />'))
         end)
 
         it("returns 500 if subdomain not included", function()  
-          assert(client:send {
-            method = "POST",
-            path = "/workspaces",
-            body = {
-              name = "team_gruce",
-            },
-            headers = {["Content-Type"] = "application/json"},
-          })
-  
-          local res = assert(portal_gui_client:send {
+          local res = gui_client_request({
             method = "GET",
             path = "/",
             headers = {
@@ -276,21 +321,12 @@ for _, strategy in helpers.each_strategy({'postgres'}) do
               ['Host'] = portal_gui_host,
             },
           })
-          local body = assert.res_status(500, res)
-          assert.not_nil(string.match(body, '{"message":"An unexpected error occurred"}'))
+          assert.equals(500, res.status)
+          assert.not_nil(string.match(res.body, '{"message":"An unexpected error occurred"}'))
         end)
 
         it("returns 500 if subdomain is not a recognized workspace", function()  
-          assert(client:send {
-            method = "POST",
-            path = "/workspaces",
-            body = {
-              name = "team_gruce",
-            },
-            headers = {["Content-Type"] = "application/json"},
-          })
-  
-          local res = assert(portal_gui_client:send {
+          local res = gui_client_request({
             method = "GET",
             path = "/",
             headers = {
@@ -298,21 +334,12 @@ for _, strategy in helpers.each_strategy({'postgres'}) do
               ['Host'] = 'wrong_workspace.' .. portal_gui_host,
             },
           })
-          local body = assert.res_status(500, res)
-          assert.not_nil(string.match(body, '{"message":"An unexpected error occurred"}'))
+          assert.equals(500, res.status)
+          assert.not_nil(string.match(res.body, '{"message":"An unexpected error occurred"}'))
         end)
 
         it("returns 500 if subdomain is invalid", function()  
-          assert(client:send {
-            method = "POST",
-            path = "/workspaces",
-            body = {
-              name = "team_gruce",
-            },
-            headers = {["Content-Type"] = "application/json"},
-          })
-  
-          local res = assert(portal_gui_client:send {
+          local res = gui_client_request({
             method = "GET",
             path = "/",
             headers = {
@@ -320,8 +347,8 @@ for _, strategy in helpers.each_strategy({'postgres'}) do
               ['Host'] = 'wrong_workspace,' .. portal_gui_host,
             },
           })
-          local body = assert.res_status(500, res)
-          assert.not_nil(string.match(body, '{"message":"An unexpected error occurred"}'))
+          assert.equals(500, res.status)
+          assert.not_nil(string.match(res.body, '{"message":"An unexpected error occurred"}'))
         end)
       end)
     end)

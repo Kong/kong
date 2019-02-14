@@ -74,7 +74,7 @@ function _M.prepare_plugin(type, dao, name, config)
   local fields = {
     name = plugin.name,
     service_id = _M.services[type].id,
-    config = config
+    config = utils.deep_copy(config or {})
   }
 
   local model
@@ -223,9 +223,8 @@ function _M.authenticate(self, dao_factory, rbac_enabled, gui_auth)
   _M.attach_consumer_and_workspaces(self, dao_factory, rbac_user.id)
 
   -- apply auth plugin
-  local auth_conf = utils.deep_copy(singletons.configuration.admin_gui_auth_conf
-                                    or {})
-  local session_conf = singletons.configuration.admin_gui_session_conf or {}
+  local auth_conf = singletons.configuration.admin_gui_auth_conf
+  local session_conf = singletons.configuration.admin_gui_session_conf
 
   -- run the session plugin access to see if we have a current session
   -- with a valid authenticated consumer.

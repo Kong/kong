@@ -331,13 +331,6 @@ function Kong.init()
   singletons.portal_emails = portal_emails.new(config)
   singletons.admin_emails = admin_emails.new(config)
 
-  -- ee.internal_statsd_init() has to occur before build_plugins_map
-  -- and after internal_proxies.new()
-  local _, err = ee.internal_statsd_init()
-  if err then
-    error(tostring(err))
-  end
-
   local reports = require "kong.reports"
   local l = singletons.license and
             singletons.license.license.payload.license_key or
