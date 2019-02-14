@@ -219,7 +219,7 @@ local function do_authentication(conf)
   end
 
   if not is_authorized then
-    return false, {status = 403, message = "Invalid authentication credentials" }
+    return false, {status = 401, message = "Invalid authentication credentials" }
   end
 
   if conf.hide_credentials then
