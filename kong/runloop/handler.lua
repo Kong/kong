@@ -18,6 +18,7 @@ local constants   = require "kong.constants"
 local singletons  = require "kong.singletons"
 local certificate = require "kong.runloop.certificate"
 local concurrency = require "kong.concurrency"
+local ngx_re      = require "ngx.re"
 
 
 local kong        = kong
@@ -34,6 +35,7 @@ local log         = ngx.log
 local ngx_now     = ngx.now
 local re_match    = ngx.re.match
 local re_find     = ngx.re.find
+local re_split    = ngx_re.split
 local update_time = ngx.update_time
 local subsystem   = ngx.config.subsystem
 local unpack      = unpack
@@ -574,6 +576,12 @@ return {
   rewrite = {
     before = function(ctx)
       ctx.KONG_REWRITE_START = get_now()
+
+      -- special handling for proxy-authorization and te headers in case
+      -- the plugin(s) want to specify them (store the original)
+      ctx.http_proxy_authorization = ngx.var.http_proxy_authorization
+      ctx.http_te                  = ngx.var.http_te
+
       mesh.rewrite(ctx)
     end,
     after = function(ctx)
@@ -925,6 +933,58 @@ return {
         end
       end
 
+      -- clear hop-by-hop request headers:
+      local connection = var.http_connection
+      if connection then
+        local header_names = re_split(connection .. ",", [[\s*,\s*]], "djo")
+        if header_names then
+          for i=1, #header_names do
+            if header_names[i] ~= "" then
+              local header_name = lower(header_names[i])
+              -- some of these are already handled by the proxy module,
+              -- proxy-authorization being an exception that is handled
+              -- below with special semantics.
+              if header_name ~= "close" and
+                 header_name ~= "upgrade" and
+                 header_name ~= "keep-alive" and
+                 header_name ~= "proxy-authorization" then
+                ngx.req.clear_header(header_names[i])
+              end
+            end
+          end
+        end
+      end
+
+      -- add te header only when client requests trailers (proxy removes it)
+      local te = var.http_te
+      if te and te == ctx.http_te then
+        local te_values = re_split(te .. ",", [[\s*,\s*]], "djo")
+        if te_values then
+          for i=1, #te_values do
+            if te_values[i] ~= "" and lower(te_values[i]) == "trailers" then
+              ngx.var.upstream_te = "trailers"
+              break
+            end
+          end
+        end
+      end
+
+      if var.http_proxy then
+        ngx.req.clear_header("Proxy")
+      end
+
+      if var.http_proxy_connection then
+        ngx.req.clear_header("Proxy-Connection")
+      end
+
+      -- clear the proxy-authorization header only in case the plugin didn't
+      -- specify it, assuming that the plugin didn't specify the same value.
+      local proxy_authorization = var.http_proxy_authorization
+      if proxy_authorization and
+         proxy_authorization == var.http_proxy_authorization then
+        ngx.req.clear_header("Proxy-Authorization")
+      end
+
       local now = get_now()
 
       -- time spent in Kong's access_by_lua
@@ -966,6 +1026,39 @@ return {
       -- time spent waiting for a response from upstream
       ctx.KONG_WAITING_TIME             = now - ctx.KONG_ACCESS_ENDED_AT
       ctx.KONG_HEADER_FILTER_STARTED_AT = now
+
+      -- clear hop-by-hop response headers:
+      local var = ngx.var
+
+      local connection = var.upstream_http_connection
+      if connection then
+        local header_names = re_split(connection .. ",", [[\s*,\s*]], "djo")
+        if header_names then
+          for i=1, #header_names do
+            if header_names[i] ~= "" then
+              local header_name = lower(header_names[i])
+              if header_name ~= "close" and
+                 header_name ~= "upgrade" and
+                 header_name ~= "keep-alive" then
+                header[header_names[i]] = nil
+              end
+            end
+          end
+        end
+      end
+
+      if var.upstream_http_upgrade then
+        header["Upgrade"] = nil
+      end
+
+      if var.upstream_http_proxy_authenticate then
+        header["Proxy-Authenticate"] = nil
+      end
+
+      -- remove trailer response header when client didn't ask for them
+      if var.upstream_te == "" and var.upstream_http_trailer then
+        header["Trailer"] = nil
+      end
 
       local upstream_status_header = constants.HEADERS.UPSTREAM_STATUS
       if singletons.configuration.enabled_headers[upstream_status_header] then
