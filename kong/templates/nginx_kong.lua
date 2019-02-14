@@ -118,6 +118,7 @@ server {
         default_type                     '';
 
         set $ctx_ref                     '';
+        set $upstream_te                 '';
         set $upstream_host               '';
         set $upstream_upgrade            '';
         set $upstream_connection         '';
@@ -137,6 +138,7 @@ server {
         }
 
         proxy_http_version 1.1;
+        proxy_set_header   TE                $upstream_te;
         proxy_set_header   Host              $upstream_host;
         proxy_set_header   Upgrade           $upstream_upgrade;
         proxy_set_header   Connection        $upstream_connection;
