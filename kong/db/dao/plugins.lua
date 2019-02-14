@@ -35,16 +35,21 @@ local function has_a_common_protocol_with_route(plugin, route)
 end
 
 
-local function has_a_compatible_route_in_service(self, plugin, service_pk)
+local function has_common_protocol_with_service(self, plugin, service_pk)
+  local had_at_least_one_route = false
   for route, err, err_t in self.db.routes:each_for_service(service_pk) do
     if not route then
       return nil, err, err_t
     end
 
+    had_at_least_one_route = true
+
     if has_a_common_protocol_with_route(plugin, route) then
       return true
     end
   end
+
+  return not had_at_least_one_route
 end
 
 
@@ -64,7 +69,7 @@ local function check_protocols_match(self, plugin)
   end
 
   if type(plugin.service) == "table" then
-    if not has_a_compatible_route_in_service(self, plugin, plugin.service) then
+    if not has_common_protocol_with_service(self, plugin, plugin.service) then
       local err_t = self.errors:schema_violation({
         protocols = "must match the protocols of at least one route " ..
                     "pointing to this Plugin's service",
