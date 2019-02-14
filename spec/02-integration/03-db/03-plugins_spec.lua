@@ -25,7 +25,8 @@ for _, strategy in helpers.each_strategy() do
 
     before_each(function()
       service = bp.services:insert()
-      route = bp.routes:insert({ protocols = { "tcp" },
+      route = bp.routes:insert({ service = { id = service.id },
+                                 protocols = { "tcp" },
                                  sources = { { ip = "127.0.0.1" } },
                                })
     end)
@@ -76,7 +77,7 @@ for _, strategy in helpers.each_strategy() do
                       [["},consumer=null}']], err_t.message)
         end)
 
-        it("returns an error when inserting mismatched plugins", function()
+        it("does not validate when associated to an incompatible route, or a service with only incompatible routes", function()
           local plugin, _, err_t = db.plugins:insert({ name = "key-auth",
                                                        protocols = { "http" },
                                                        route = { id = route.id },
@@ -85,12 +86,22 @@ for _, strategy in helpers.each_strategy() do
           assert.equals(err_t.fields.protocols, "must match the associated route's protocols")
 
           local plugin, _, err_t = db.plugins:insert({ name = "key-auth",
-                                                       protocols = { "tcp" },
+                                                       protocols = { "http" },
                                                        service = { id = service.id },
                                                      })
           assert.is_nil(plugin)
           assert.equals(err_t.fields.protocols,
                         "must match the protocols of at least one route pointing to this Plugin's service")
+        end)
+
+        it("validates when associated to a service with no routes", function()
+          local service_with_no_routes = bp.services:insert()
+          local plugin, _, err_t = db.plugins:insert({ name = "key-auth",
+                                                       protocols = { "http" },
+                                                       service = { id = service_with_no_routes.id },
+                                                     })
+          assert.truthy(plugin)
+          assert.is_nil(err_t)
         end)
       end)
 
