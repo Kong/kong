@@ -45,7 +45,7 @@ describe("kong.enterprise_edition.api_helpers", function()
       }
     end)
 
-    it("returns config with defaults applied", function()
+    it("#flaky returns config with defaults applied", function()
       local prepared_plugin = api_helpers.prepare_plugin(api_helpers.apis.PORTAL,
       old_dao, "session", conf)
 
