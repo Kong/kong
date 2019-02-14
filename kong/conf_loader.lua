@@ -4,7 +4,7 @@ local pl_stringx = require "pl.stringx"
 local constants = require "kong.constants"
 local pl_pretty = require "pl.pretty"
 local pl_config = require "pl.config"
-local ciphers = require "kong.tools.ciphers"
+local http_tls = require "http.tls"
 local pl_file = require "pl.file"
 local pl_path = require "pl.path"
 local tablex = require "pl.tablex"
@@ -16,6 +16,13 @@ local ip = require "resty.mediador.ip"
 
 local fmt = string.format
 local concat = table.concat
+
+
+local cipher_suites = {
+  modern = http_tls.modern_cipher_list,
+  intermediate = http_tls.intermediate_cipher_list,
+  old = http_tls.old_cipher_list,
+}
 
 
 local DEFAULT_PATHS = {
@@ -369,11 +376,11 @@ local function check_and_infer(conf)
   end
 
   if conf.ssl_cipher_suite ~= "custom" then
-    local pok, perr = pcall(function()
-      conf.ssl_ciphers = ciphers(conf.ssl_cipher_suite)
-    end)
-    if not pok then
-      errors[#errors + 1] = perr
+    local list = cipher_suites[conf.ssl_cipher_suite]
+    if list then
+      conf.ssl_ciphers = list
+    else
+      errors[#errors + 1] = "Undefined cipher suite " .. tostring(conf.ssl_cipher_suite)
     end
   end
 
