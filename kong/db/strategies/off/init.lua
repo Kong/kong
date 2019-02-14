@@ -1,6 +1,14 @@
 local declarative_config = require("kong.db.schema.others.declarative_config")
 
 
+local kong = kong
+local fmt = string.format
+local tostring = tostring
+local tonumber = tonumber
+local encode_base64 = ngx.encode_base64
+local decode_base64 = ngx.decode_base64
+
+
 local off = {}
 
 
@@ -19,7 +27,22 @@ end
 
 
 local function page_for_key(self, key, size, offset)
-  offset = offset and tonumber(offset) or 1
+  if offset then
+    local token = decode_base64(offset)
+    if not token then
+      return nil, self.errors:invalid_offset(offset, "bad base64 encoding")
+    end
+
+    token = tonumber(token)
+    if not token then
+      return nil, self.errors:invalid_offset(offset, "invalid offset")
+    end
+
+    offset = token
+
+  else
+    offset = 1
+  end
 
   local cache = kong.cache
   if not cache then
@@ -48,7 +71,7 @@ local function page_for_key(self, key, size, offset)
   end
 
   if offset then
-    return ret, nil, tostring(offset + size)
+    return ret, nil, encode_base64(tostring(offset + size), true)
   end
 
   return ret
