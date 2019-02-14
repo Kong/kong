@@ -23,7 +23,7 @@ dependencies = {
   "lua-cassandra == 1.3.4",
   "pgmoon == 1.9.0",
   "luatz == 0.3",
-  "http == 0.2",
+  "http == 0.3",
   "lua_system_constants == 0.1.2",
   "lua-resty-iputils == 0.3.0",
   "luaossl == 20181207",
