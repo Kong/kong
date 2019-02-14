@@ -636,12 +636,12 @@ describe("Configuration loader", function()
           assert.equals("foo:bar", conf.ssl_ciphers)
         end)
         it("doesn't override ssl_ciphers when undefined", function()
-          local ciphers = require "kong.tools.ciphers"
+          local http_tls = require "http.tls"
           local conf, err = conf_loader(nil, {
             ssl_cipher_suite = "custom",
           })
           assert.is_nil(err)
-          assert.same(ciphers("modern"), conf.ssl_ciphers)
+          assert.same(http_tls.modern_cipher_list, conf.ssl_ciphers)
         end)
       end)
       describe("client", function()

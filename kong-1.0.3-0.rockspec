@@ -108,7 +108,6 @@ build = {
     ["kong.api.routes.tags"] = "kong/api/routes/tags.lua",
 
     ["kong.tools.cluster_ca"] = "kong/tools/cluster_ca.lua",
-    ["kong.tools.ciphers"] = "kong/tools/ciphers.lua",
     ["kong.tools.dns"] = "kong/tools/dns.lua",
     ["kong.tools.utils"] = "kong/tools/utils.lua",
     ["kong.tools.printable"] = "kong/tools/printable.lua",
