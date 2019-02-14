@@ -102,7 +102,7 @@ end
 
 
 for _, strategy in helpers.each_strategy() do
-  describe("Portal Rendering [#" .. strategy .. "]", function()
+  describe("#flaky Portal Rendering [#" .. strategy .. "]", function()
     local dao
     local cookie
 
