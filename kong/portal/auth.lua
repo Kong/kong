@@ -155,18 +155,18 @@ function _M.authenticate_gui_session(self, dao_factory, helpers)
   local workspace = ws_helper.get_workspace()
   local portal_auth = ws_helper.retrieve_ws_config(ws_constants.PORTAL_AUTH,
                                                                     workspace)
-
+  
   if portal_auth == nil or portal_auth == '' then
     self.is_authenticated = true
     return
   end
-
+      
   _M.validate_auth_plugin(self, dao_factory, helpers)
 
   if portal_auth == "openid-connect" then
     -- check if user has valid session
     local has_session = check_oidc_session()
-
+    
     -- assume unauthenticated if no session
     if not has_session then
       self.is_authenticated = false

@@ -6,6 +6,65 @@ local ws_helper    = require "kong.workspaces.helper"
 local ws_constants = constants.WORKSPACE_CONFIG
 
 
+local function build_url_obj(page, path, url_map)
+  local workspace = ws_helper.get_workspace()
+  local url_items = {}
+
+  local page_url = ws_helper.build_ws_portal_gui_url(singletons.configuration, workspace) .. '/' .. path
+  page_url = pl_stringx.rstrip(page_url, '/')
+  url_items["loc"] = page_url
+
+  local updated_at = page.updated_at or page.created_at
+  local formated_date = os.date("%Y-%d-%m", updated_at / 1000)
+  url_items["lastmod"] = formated_date
+
+  if not url_map[page_url] then
+    url_map[page_url] = url_items
+  end
+end
+
+
+local function build_url_set_by_type(page, specs, url_map)
+  local pagename = pl_stringx.replace(page.name, 'unauthenticated/', '')
+  local path
+
+  if pl_stringx.endswith(pagename, 'loader') then
+    for idx, spec in ipairs(specs) do
+      local specname = pl_stringx.replace(spec.name, 'unauthenticated/', '')
+      path = pl_stringx.replace(pagename, 'loader', '')
+      path = path .. specname
+      build_url_obj(spec, path, url_map)
+    end
+    return
+  end
+
+  if pl_stringx.endswith(pagename, 'index') then
+    path = pl_stringx.replace(pagename, 'index', '')
+    build_url_obj(page, path, url_map)
+    return
+  end
+
+  path = pagename
+  build_url_obj(page, path, url_map)
+end
+
+
+local function build_xml_template(pages, specs)
+  local url_map = {}
+  local url_list = {}
+
+  for idx, page in ipairs(pages) do
+    build_url_set_by_type(page, specs, url_map)
+  end
+
+  for key, url_item in pairs(url_map) do
+    table.insert(url_list, url_item)
+  end
+
+  return url_list
+end
+
+
 local function find_next_partial(page)
   local partial_match = string.match(page, '{{>.-}}')
 
@@ -244,9 +303,29 @@ local function compile_assets(self)
 end
 
 
+local function compile_sitemap(self)
+  local page_filter = { type = 'page', auth = false }
+  local spec_filter = { type = 'spec', auth = false }
+
+  if self.is_authenticated then
+    page_filter = { type = 'page' }
+    spec_filter = { type = 'spec' }
+  end
+
+  local pages = singletons.dao.files:find_all(page_filter)
+  local specs = singletons.dao.files:find_all(spec_filter)
+
+  return build_xml_template(pages, specs)
+end
+
+
 return {
   compile_assets = compile_assets,
+  compile_sitemap = compile_sitemap,
   -- only exposed for unit testing
+  build_url_obj = build_url_obj,
+  build_url_set_by_type = build_url_set_by_type,
+  build_xml_template = build_xml_template,
   retrieve_page_and_spec = retrieve_page_and_spec,
   retrieve_partials = retrieve_partials,
   find_partials_in_page = find_partials_in_page,

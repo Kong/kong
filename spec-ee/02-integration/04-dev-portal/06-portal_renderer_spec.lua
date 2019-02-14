@@ -100,6 +100,37 @@ local function create_portal_index()
   pl_file.write(index_filename, index_str)
 end
 
+local function create_portal_sitemap()
+  local prefix = singletons.configuration and singletons.configuration.prefix or 'servroot/'
+  local portal_dir = 'portal'
+  local portal_path = prefix .. portal_dir
+  local views_path = portal_path .. '/views'
+  local sitemap_filename = views_path .. "/sitemap.etlua"
+  local sitemap_str =
+    [[
+      <?xml version="1.0" encoding="UTF-8"?>
+      <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+        <% for idx, url_obj in pairs(xml_urlset) do %>
+          <url>
+            <% for key, value in pairs(url_obj) do %>
+              <<%=key%>><%=value%></<%=key%>>
+            <% end %>
+          </url>
+        <% end %>
+      </urlset>
+    ]]
+
+  if not pl_path.exists(portal_path) then
+    pl_path.mkdir(portal_path)
+  end
+
+  if not pl_path.exists(views_path) then
+    pl_path.mkdir(views_path)
+  end
+  
+  pl_file.write(sitemap_filename, sitemap_str)
+end
+
 
 for _, strategy in helpers.each_strategy() do
   describe("Portal Rendering [#" .. strategy .. "]", function()
@@ -119,6 +150,7 @@ for _, strategy in helpers.each_strategy() do
       }))
       configure_portal(dao)
       create_portal_index()
+      create_portal_sitemap()
     end)
 
     teardown(function()
@@ -1328,6 +1360,167 @@ for _, strategy in helpers.each_strategy() do
           assert.equals(200, status)
           assert.equals(1, stringx.count(body, root_spec_loader.id))
           assert.equals(1, stringx.count(body, spec_with_spaces.id))
+        end)
+      end)
+    end)
+
+    describe("sitemap", function()
+      setup(function()
+        assert(register_developer({
+          email = "catdog@konghq.com",
+          key = "dog",
+          meta = "{\"full_name\":\"catdog\"}",
+        }))
+  
+        local res = api_client_request({method = "GET",
+          path = "/auth",
+          headers = {
+            ['apikey'] = 'dog'
+          }
+        })
+        cookie = assert.response(res).has.header("Set-Cookie")
+
+        assert(dao.files:insert {
+          name = "page_pair",
+          auth = true,
+          type = "page",
+          contents = [[
+            <h1>auth_page_pair<h2>
+          ]]
+        })
+  
+        assert(dao.files:insert {
+          name = "unauthenticated/page_pair",
+          auth = false,
+          type = "page",
+          contents = [[
+            <h1>unauth_page_pair<h2>
+          ]]
+        })
+  
+        assert(dao.files:insert {
+          name = "auth_page_solo",
+          auth = true,
+          type = "page",
+          contents = [[
+            <h1>auth_page_solo<h2>
+          ]]
+        })
+  
+        assert(dao.files:insert {
+          name = "unauthenticated/unauth_page_solo",
+          auth = false,
+          type = "page",
+          contents = [[
+            <h1>unauth_page_solo<h2>
+          ]]
+        })
+
+        assert(dao.files:insert {
+          name = "documentation/index",
+          auth = true,
+          type = "page",
+          contents = [[
+            <h1>auth index<h2>
+          ]]
+        })
+
+        assert(dao.files:insert {
+          name = "unauthenticated/documentation/index",
+          auth = true,
+          type = "page",
+          contents = [[
+            <h1>index<h2>
+          ]]
+        })
+
+        assert(dao.files:insert {
+          name = "unauthenticated/specs/loader",
+          auth = true,
+          type = "page",
+          contents = [[
+            <h1>loader<h2>
+          ]]
+        })
+
+        assert(dao.files:insert {
+          name = "spec_page",
+          auth = true,
+          type = "spec",
+          contents = [[
+            {}
+          ]]
+        })
+
+        assert(dao.files:insert {
+          name = "unauthenticated/spec_page",
+          auth = false,
+          type = "spec",
+          contents = [[
+            {}
+          ]]
+        })
+      end)
+
+      teardown(function()
+        dao:truncate_table('files')
+        dao:truncate_table('consumers')
+      end)
+
+      describe("authenticated user #test", function()
+        it("can render sitemap for authenticated user", function()
+          local res = gui_client_request({
+            method = "GET",
+            path = "/default/sitemap.xml",
+            headers = {
+              ["Cookie"] = cookie
+            },
+          })
+          local status = res.status
+          local body = res.body
+
+          assert.equals(200, status)
+          assert.equals(1, stringx.count(body, '/default/auth_page_solo'))
+          assert.equals(1, stringx.count(body, '/default/documentation'))
+          assert.equals(1, stringx.count(body, '/default/specs/spec_page'))
+          assert.equals(1, stringx.count(body, '/default/unauth_page_solo'))
+          assert.equals(1, stringx.count(body, '/default/page_pair'))
+        end)
+      end)
+
+      describe("unauthenticated user", function()
+        it("can render sitemap for unauthenticated user", function()
+          local res = gui_client_request({
+            method = "GET",
+            path = "/default/sitemap.xml",
+          })
+          local status = res.status
+          local body = res.body
+
+          assert.equals(200, status)
+          assert.equals(1, stringx.count(body, '/default/page_pair'))
+          assert.equals(1, stringx.count(body, '/default/unauth_page_solo'))
+          assert.equals(0, stringx.count(body, '/default/auth_page_solo'))
+          assert.equals(0, stringx.count(body, '/default/documentation'))
+          assert.equals(0, stringx.count(body, '/default/specs/spec_page'))
+        end)
+      end)
+
+      describe("special cases", function()
+        it("can render default sitemap at root path", function()
+          local res = gui_client_request({
+            method = "GET",
+            path = "/sitemap.xml",
+          })
+          local status = res.status
+          local body = res.body
+
+          assert.equals(200, status)
+          assert.equals(1, stringx.count(body, '/default/page_pair'))
+          assert.equals(1, stringx.count(body, '/default/unauth_page_solo'))
+          assert.equals(0, stringx.count(body, '/default/auth_page_solo'))
+          assert.equals(0, stringx.count(body, '/default/documentation'))
+          assert.equals(0, stringx.count(body, '/default/specs/spec_page'))
         end)
       end)
     end)
