@@ -680,6 +680,74 @@ describe("Admin API: #" .. strategy, function()
 
           assert.response(res).has.status(204)
       end)
+
+      it("after deleting its targets (regression test for #4317)", function(content_type)
+        assert(db:truncate("upstreams"))
+        assert(db:truncate("targets"))
+
+        -- create the upstream
+        local res = assert(client:send {
+          method = "POST",
+          path = "/upstreams",
+          body = {
+            name = "my-upstream",
+            slots = 100,
+          },
+          headers = { ["Content-Type"] = "application/json" }
+        })
+
+        assert.response(res).has.status(201)
+
+        client:close()
+        client = assert(helpers.admin_client())
+
+        -- create the target
+        local res = assert(client:send {
+          method = "POST",
+          path = "/upstreams/my-upstream/targets",
+          body = {
+            target = "127.0.0.1:8000",
+          },
+          headers = { ["Content-Type"] = "application/json" }
+        })
+
+        assert.response(res).has.status(201)
+
+        client:close()
+        client = assert(helpers.admin_client())
+
+        -- delete the target
+        local res = assert(client:send {
+          method = "DELETE",
+          path = "/upstreams/my-upstream/targets/127.0.0.1:8000",
+          headers = { ["Content-Type"] = "application/json" }
+        })
+
+        assert.response(res).has.status(204)
+
+        client:close()
+        client = assert(helpers.admin_client())
+
+        -- deleting the target does not delete the upstream
+        local res = assert(client:send {
+          method = "GET",
+          path = "/upstreams/my-upstream",
+          headers = { ["Content-Type"] = "application/json" }
+        })
+
+        assert.response(res).has.status(200)
+
+        client:close()
+        client = assert(helpers.admin_client())
+
+        -- delete the upstream
+        res = assert(client:send {
+          method = "DELETE",
+          path = "/upstreams/my-upstream",
+        })
+
+        assert.response(res).has.status(204)
+      end)
     end)
 
     it("returns 405 on invalid method", function()
