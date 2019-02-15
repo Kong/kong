@@ -14,11 +14,6 @@ local fmt = string.format
 
 local CORE_MODELS = {
   "apis",
-  "rbac_users",
-  "rbac_user_roles",
-  "rbac_roles",
-  "rbac_role_entities",
-  "rbac_role_endpoints",
   "consumer_types",
   "consumer_statuses",
   "credentials",
