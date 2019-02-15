@@ -32,7 +32,11 @@ local CORE_ENTITIES = {
   "apis",
   "plugins",
   "cluster_ca",
+
+  -- enterprise core entities follow
   "files",
+  "workspaces",
+  "workspace_entities",
 }
 
 
