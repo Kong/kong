@@ -1,8 +1,14 @@
-local schemas = require "kong.dao.schemas_validation"
-local validate_entity = schemas.validate_entity
-local schema = require "kong.dao.schemas.workspaces"
+local Schema = require "kong.db.schema"
+local workspaces = require "kong.db.schema.entities.workspaces"
+
 
 describe("workspace config", function()
+  local schema
+
+  setup(function()
+    schema = Schema.new(workspaces)
+  end)
+
   describe("schema", function()
     local snapshot
 
@@ -23,9 +29,7 @@ describe("workspace config", function()
         }
       }
 
-      local valid, _ = validate_entity(values, schema)
-      assert.True(valid)
-      assert.True(valid)
+      assert.truthy(schema:validate(values))
     end)
 
     it("should reject when email field is improperly formatted", function()
@@ -37,9 +41,10 @@ describe("workspace config", function()
         },
       }
 
-      local _, err = validate_entity(values, schema)
-      assert.equal("dog is invalid: missing '@' symbol", err["config.portal_emails_from"])
-      assert.equal("cat is invalid: missing '@' symbol", err["config.portal_emails_reply_to"])
+      local ok, err = schema:validate(values)
+      assert.falsy(ok)
+      assert.equal("dog is invalid: missing '@' symbol", err.config["portal_emails_from"])
+      assert.equal("cat is invalid: missing '@' symbol", err.config["portal_emails_reply_to"])
     end)
 
     it("should accept properly formatted token expiration", function()
@@ -50,8 +55,7 @@ describe("workspace config", function()
         },
       }
 
-      local valid, _ = validate_entity(values, schema)
-      assert.True(valid)
+      assert.truthy(schema:validate(values))
     end)
 
     it("should reject improperly formatted token expiration", function()
@@ -62,12 +66,13 @@ describe("workspace config", function()
         },
       }
 
-      local _, err = validate_entity(values, schema)
-      assert.equal("`portal_token_exp` must be equal to or greater than 0", err["config.portal_token_exp"])
+      local ok, err = schema:validate(values)
+      assert.falsy(ok)
+      assert.equal("value must be greater than -1", err.config["portal_token_exp"])
     end)
 
     it("should accept valid auth types", function()
-      local values, valid
+      local values
 
       values = {
         name = "test",
@@ -75,8 +80,7 @@ describe("workspace config", function()
           portal_auth = "basic-auth",
         },
       }
-      valid = validate_entity(values, schema)
-      assert.True(valid)
+      assert.truthy(schema:validate(values))
 
       values = {
         name = "test",
@@ -84,8 +88,7 @@ describe("workspace config", function()
           portal_auth = "key-auth",
         }
       }
-      valid = validate_entity(values, schema)
-      assert.True(valid)
+      assert.truthy(schema:validate(values))
 
       values = {
         name = "test",
@@ -93,8 +96,25 @@ describe("workspace config", function()
           portal_auth = "openid-connect",
         },
       }
-      valid = validate_entity(values, schema)
-      assert.True(valid)
+      assert.truthy(schema:validate(values))
+
+      -- XXX check with portal team if we really need the empty string
+      -- as a possible value
+      --values = {
+      --  name = "test",
+      --  config = {
+      --    portal_auth = "",
+      --  },
+      --}
+      --assert.truthy(schema:validate(values))
+
+      values = {
+        name = "test",
+        config = {
+          portal_auth = nil,
+        },
+      }
+      assert.truthy(schema:validate(values))
     end)
 
     it("should reject improperly formatted auth type", function()
@@ -104,9 +124,7 @@ describe("workspace config", function()
           portal_auth = 'something-invalid',
         },
       }
-
-      local _, err = validate_entity(values, schema)
-      assert.equal("invalid auth type", err["config.portal_auth"])
+      assert.falsy(schema:validate(values))
     end)
   end)
 end)

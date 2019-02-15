@@ -19,8 +19,6 @@ local CORE_MODELS = {
   "rbac_roles",
   "rbac_role_entities",
   "rbac_role_endpoints",
-  "workspaces",
-  "workspace_entities",
   "consumer_types",
   "consumer_statuses",
   "credentials",
