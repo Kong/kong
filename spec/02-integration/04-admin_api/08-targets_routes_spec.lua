@@ -93,7 +93,7 @@ describe("Admin API #" .. strategy, function()
           assert.are.equal(99, json.weight)
         end
       end)
-      it("#only cleans up old target entries", function()
+      it("cleans up old target entries", function()
         local upstream = bp.upstreams:insert { slots = 10 }
         -- insert elements in two targets alternately to build up a history
         for i = 1, 11 do
