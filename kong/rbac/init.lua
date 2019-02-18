@@ -114,6 +114,11 @@ local function retrieve_relationship_ids(entity_id, entity_name, factory_key)
     )
   end
 
+  -- if err then
+  --   log(ngx.ERR, "err retrieving relationship via id ", entity_id, ": ", err)
+  --   return nil, err
+  -- end
+
   return relationship_ids
 end
 
@@ -139,7 +144,7 @@ local function retrieve_relationship_entity(foreign_factory_key, foreign_id)
     )
   end
 
-  return relationship[1]
+  return relationship
 end
 
 
@@ -476,7 +481,7 @@ function _M.create_default_role(user)
     return nil, err
   end
 
-  return true
+  return user
 end
 
 

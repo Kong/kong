@@ -2,8 +2,9 @@ local typedefs = require "kong.db.schema.typedefs"
 
 return {
   name = "rbac_roles",
-  workspaceable = true,
   primary_key = { "id" },
+  dao = "kong.db.dao.rbac_roles",
+  workspaceable = true,
   fields = {
     { id             = typedefs.uuid, },
     { name           = typedefs.name },
