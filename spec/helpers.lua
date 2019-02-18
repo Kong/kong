@@ -74,7 +74,7 @@ end
 --
 -- will return: "hello world\nfoo bar"
 local function unindent(str, concat_newlines, spaced_newlines)
-  str = string.match(str, "^%s*(%S.-%S*)%s*$")
+  str = string.match(str, "(.-%S*)%s*$")
   if not str then
     return ""
   end
@@ -83,6 +83,7 @@ local function unindent(str, concat_newlines, spaced_newlines)
   local prefix = ""
   local len
 
+  str = str:match("^%s") and "\n" .. str or str
   for pref in str:gmatch("\n(%s+)") do
     len = #prefix
 
@@ -95,7 +96,7 @@ local function unindent(str, concat_newlines, spaced_newlines)
   local repl = concat_newlines and "" or "\n"
   repl = spaced_newlines and " " or repl
 
-  return (str:gsub("\n" .. prefix, repl):gsub("\n$", "")):gsub("\\r", "\r")
+  return (str:gsub("^\n%s*", ""):gsub("\n" .. prefix, repl):gsub("\n$", ""):gsub("\\r", "\r"))
 end
 
 ---------------
