@@ -3,6 +3,7 @@ local Entity       = require "kong.db.schema.entity"
 local Errors       = require "kong.db.errors"
 local Strategies   = require "kong.db.strategies"
 local MetaSchema   = require "kong.db.schema.metaschema"
+local constants    = require "kong.constants"
 local log          = require "kong.cmd.utils.log"
 
 
@@ -13,25 +14,6 @@ local error        = error
 local ipairs       = ipairs
 local rawget       = rawget
 local setmetatable = setmetatable
-
-
--- maybe a temporary constant table -- could be move closer
--- to schemas and entities since schemas will also be used
--- independently from the DB module (Admin API for GUI)
--- Notice that the order in which they are listed is important:
--- schemas of dependencies need to be loaded first.
-local CORE_ENTITIES = {
-  "consumers",
-  "services",
-  "routes",
-  "certificates",
-  "snis",
-  "upstreams",
-  "targets",
-  "plugins",
-  "cluster_ca",
-  "tags",
-}
 
 
 local DEFAULT_LOCKS_TTL = 60 -- seconds
@@ -65,7 +47,7 @@ function DB.new(kong_config, strategy)
     -- core entities are for now the only source of schemas.
     -- TODO: support schemas from plugins entities as well.
 
-    for _, entity_name in ipairs(CORE_ENTITIES) do
+    for _, entity_name in ipairs(constants.CORE_ENTITIES) do
       local entity_schema = require("kong.db.schema.entities." .. entity_name)
 
       -- validate core entities schema via metaschema

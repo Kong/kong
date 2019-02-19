@@ -81,6 +81,20 @@ return {
     VIA = "Via",
     SERVER = "Server"
   },
+  -- Notice that the order in which they are listed is important:
+  -- schemas of dependencies need to be loaded first.
+  CORE_ENTITIES = {
+    "consumers",
+    "services",
+    "routes",
+    "certificates",
+    "snis",
+    "upstreams",
+    "targets",
+    "plugins",
+    "cluster_ca",
+    "tags",
+  },
   RATELIMIT = {
     PERIODS = {
       "second",
