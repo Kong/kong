@@ -136,6 +136,15 @@ local function post_process_user(user)
 end
 
 
+local function remove_default_roles(roles)
+  return tablex.map(post_process_role,
+    tablex.filter(rbac_roles,
+      function(role)
+        return not role.is_default
+  end))
+end
+
+
 
 return {
   ["/rbac/users"] = {
@@ -160,6 +169,8 @@ return {
       -- XXX: EE DEAL WITH DELETING default role and
     }
   },
+  -- XXX: EE
+  -- ["/rbac/users/:name_or_id/permissions"] = {},
   ["/rbac/users/:rbac_users/roles"] = {
     schema = rbac_users.schema,
     methods = {
@@ -177,11 +188,7 @@ return {
       GET = function(self, db, helpers)
         local rbac_roles = db.rbac_users:get_roles(db, self.rbac_user)
 
-        rbac_roles = tablex.filter(rbac_roles,
-          function(role)
-            return not role.is_default
-        end)
-        rbac_roles = tablex.map(post_process_role, rbac_roles)
+        rbac_roles = remove_default_roles(rbac_roles)
 
         setmetatable(rbac_roles, cjson.empty_array_mt)
         return kong.response.exit(200, {
@@ -228,12 +235,7 @@ return {
           return helpers.yield_error(err)
         end
 
-        -- filter out default roles and suppress the is_default column
-        roles = tablex.filter(roles, function(role) return not role.is_default end)
-
-        for _, role in ipairs(roles) do
-          post_process_role(role)
-        end
+        roles = remove_default_roles(roles)
 
         -- show the user and all of the roles they are in
         return helpers.responses.send_HTTP_CREATED({
@@ -243,182 +245,34 @@ return {
       end,
 
       DELETE = function(self, db, helpers)
-        return kong.response.exit(200, {message = "AA"})
+        if not self.params.roles then
+          return helpers.responses.send_HTTP_BAD_REQUEST("must provide >= 1 role")
+        end
+
+        local roles, err = objects_from_names(db, self.params.roles, "role")
+        if err then
+          if err:find("not found with name", nil, true) then
+            return helpers.responses.send_HTTP_BAD_REQUEST(err)
+
+          else
+            return helpers.yield_error(err)
+          end
+        end
+
+        for i = 1, #roles do
+          db.rbac_user_roles:delete({
+            user_id = self.rbac_user.id,
+            role_id = roles[i].id,
+          })
+        end
+
+        local cache_key = db.rbac_users:cache_key(self.rbac_user.id)
+        singletons.cache:invalidate(cache_key)
+
+        return helpers.responses.send_HTTP_NO_CONTENT()
       end
-    }
+    },
   },
-
-  --   DELETE = function(self, dao_factory, helpers)
-  --     -- delete the user <-> role mappings
-  --     -- we have to get our row, then delete it
-  --     local roles, err = entity_relationships(dao_factory, self.rbac_user,
-  --                                             "user", "role")
-  --     if err then
-  --       return helpers.yield_error(err)
-  --     end
-
-  --     local default_role
-
-  --     for i = 1, #roles do
-  --       dao_factory.rbac_user_roles:delete({
-  --         user_id = self.rbac_user.id,
-  --         role_id = roles[i].id,
-  --       })
-
-  --       if roles[i].name == self.rbac_user.name then
-  --         default_role = roles[i]
-  --       end
-  --     end
-
-  --     if default_role then
-  --       local _, err = rbac.remove_user_from_default_role(self.rbac_user,
-  --                                                         default_role)
-  --       if err then
-  --         helpers.yield_error(err)
-  --       end
-  --     end
-
-  --     crud.delete(self.rbac_user, dao_factory.rbac_users)
-  --   end,
-  -- },
-
-  -- ["/rbac/users/:name_or_id/permissions"] = {
-  --   before = function(self, dao_factory, helpers)
-  --     crud.find_rbac_user_by_name_or_id(self, dao_factory, helpers)
-  --   end,
-
-  --   GET = function(self, dao_factory, helpers)
-  --     local roles, err = rbac.entity_relationships(dao_factory, self.rbac_user,
-  --                                                  "user", "role")
-  --     if err then
-  --       ngx.log(ngx.ERR, "[rbac] ", err)
-  --       return helpers.responses.send_HTTP_INTERNAL_SERVER_ERROR()
-  --     end
-
-  --     local map = {}
-  --     local entities_perms = rbac.readable_entities_permissions(roles)
-  --     local endpoints_perms = rbac.readable_endpoints_permissions(roles)
-
-  --     map.entities = entities_perms
-  --     map.endpoints = endpoints_perms
-
-  --     return helpers.responses.send_HTTP_OK(map)
-  --   end,
-  -- },
-
-  -- ["/rbac/users/:name_or_id/roles"] = {
-  --   before = function(self, dao_factory, helpers)
-  --     crud.find_rbac_user_by_name_or_id(self, dao_factory, helpers)
-  --   end,
-
-  --   GET = function(self, dao_factory, helpers)
-  --     local roles, err = entity_relationships(dao_factory, self.rbac_user,
-  --                                             "user", "role")
-
-  --     -- filter out default roles and suppress the is_default column
-  --     roles = tablex.filter(roles, function(role) return not role.is_default end)
-
-  --     for _, role in ipairs(roles) do
-  --       post_process_role(role)
-  --     end
-
-  --     if err then
-  --       return helpers.yield_error(err)
-  --     end
-
-  --     setmetatable(roles, cjson.empty_array_mt)
-  --     return helpers.responses.send_HTTP_OK({
-  --       user  = self.rbac_user,
-  --       roles = roles,
-  --     })
-  --   end,
-
-  --   POST = function(self, dao_factory, helpers)
-  --     -- we have the user, now verify our roles
-  --     if not self.params.roles then
-  --       return helpers.responses.send_HTTP_BAD_REQUEST("must provide >= 1 role")
-  --     end
-
-  --     local roles, err = objects_from_names(dao_factory, self.params.roles,
-  --                                           "role")
-  --     if err then
-  --       if err:find("not found with name", nil, true) then
-  --         return helpers.responses.send_HTTP_BAD_REQUEST(err)
-
-  --       else
-  --         return helpers.yield_error(err)
-  --       end
-  --     end
-
-  --     -- we've now validated that all our roles exist, and this user exists,
-  --      -- so time to create the assignment
-  --     for i = 1, #roles do
-  --       local _, err = dao_factory.rbac_user_roles:insert({
-  --         user_id = self.rbac_user.id,
-  --         role_id = roles[i].id
-  --       })
-  --       if err then
-  --         return helpers.yield_error(err)
-  --       end
-  --     end
-
-  --     -- invalidate rbac user so we don't fetch the old roles
-  --     local cache_key = dao_factory["rbac_user_roles"]:cache_key(self.rbac_user.id)
-  --     singletons.cache:invalidate(cache_key)
-
-  --     -- re-fetch the users roles so we show all the role objects, not just our
-  --     -- newly assigned mappings
-  --     roles, err = entity_relationships(dao_factory, self.rbac_user,
-  --                                       "user", "role")
-  --     if err then
-  --       return helpers.yield_error(err)
-  --     end
-
-  --     -- filter out default roles and suppress the is_default column
-  --     roles = tablex.filter(roles, function(role) return not role.is_default end)
-
-  --     for _, role in ipairs(roles) do
-  --       post_process_role(role)
-  --     end
-
-  --     -- show the user and all of the roles they are in
-  --     return helpers.responses.send_HTTP_CREATED({
-  --       user  = self.rbac_user,
-  --       roles = roles,
-  --     })
-  --   end,
-
-  --   DELETE = function(self, dao_factory, helpers)
-  --     -- we have the user, now verify our roles
-  --     if not self.params.roles then
-  --       return helpers.responses.send_HTTP_BAD_REQUEST("must provide >= 1 role")
-  --     end
-
-  --     local roles, err = objects_from_names(dao_factory, self.params.roles,
-  --                                           "role")
-  --     if err then
-  --       if err:find("not found with name", nil, true) then
-  --         return helpers.responses.send_HTTP_BAD_REQUEST(err)
-
-  --       else
-  --         return helpers.yield_error(err)
-  --       end
-  --     end
-
-  --     for i = 1, #roles do
-  --       dao_factory.rbac_user_roles:delete({
-  --         user_id = self.rbac_user.id,
-  --         role_id = roles[i].id,
-  --       })
-  --     end
-
-  --     local cache_key = dao_factory["rbac_users"]:cache_key(self.rbac_user.id)
-  --     singletons.cache:invalidate(cache_key)
-
-  --     return helpers.responses.send_HTTP_NO_CONTENT()
-  --   end,
-  -- },
-
   ["/rbac/roles"] = {
     schema = rbac_roles.schema,
     methods = {
@@ -429,102 +283,109 @@ return {
       POST = endpoints.post_collection_endpoint(rbac_roles.schema),
     }
   },
+  -- XXX EE:
+  -- ["/rbac/roles/:name_or_id/permissions"] = {},
 
-  -- ["/rbac/roles/:name_or_id/permissions"] = {
-  --   before = function(self, dao_factory, helpers)
-  --     crud.find_rbac_role_by_name_or_id(self, dao_factory, helpers)
-  --   end,
+  ["/rbac/roles/:rbac_roles"] = {
+    schema = rbac_roles.schema ,
+    methods = {
 
-  --   GET = function(self, dao_factory, helpers)
-  --     local map = {}
-  --     local entities_perms = rbac.readable_entities_permissions({self.rbac_role})
-  --     local endpoints_perms = rbac.readable_endpoints_permissions({self.rbac_role})
+      -- before = function(self, db, helpers)
+      --   self.params["is_default"] = false
+      --   local rbac_role, _, err_t = endpoints.select_entity(self, db, rbac_roles.schema)
+      --   if err_t then
+      --     return endpoints.handle_error(err_t)
+      --   end
+      --   if not rbac_role then
+      --     return kong.response.exit(404, { message = "Not found" })
+      --   end
+      --   self.rbac_role = rbac_role
 
-  --     map.entities = entities_perms
-  --     map.endpoints = endpoints_perms
+      --   crud.find_rbac_role_by_name_or_id(self, db, helpers)
+      -- end,
 
-  --     return helpers.responses.send_HTTP_OK(map)
-  --   end,
-  -- },
+      GET  = endpoints.get_entity_endpoint(rbac_roles.schema),
+      PUT     = endpoints.put_entity_endpoint(rbac_roles.schema),
+      PATCH   = endpoints.patch_entity_endpoint(rbac_roles.schema),
 
-  -- ["/rbac/roles/:name_or_id"] = {
-  --   before = function(self, dao_factory, helpers)
-  --     self.params["is_default"] = false
-  --     crud.find_rbac_role_by_name_or_id(self, dao_factory, helpers)
-  --   end,
+  --- XXX EE: this should work fine
+      DELETE = function(self, db, helpers)
+        -- delete the user <-> role mappings
+        -- we have to get our row, then delete it
+        local roles, err = db.rbac_users:get_roles(db, self.rbac_user)
+        if err then
+          return helpers.yield_error(err)
+        end
 
-  --   GET = function(self, dao_factory, helpers)
-  --     return helpers.responses.send_HTTP_OK(post_process_role(self.rbac_role))
-  --   end,
+        local default_role
 
-  --   PATCH = function(self, dao_factory, helpers)
-  --     crud.patch(self.params, dao_factory.rbac_roles, self.rbac_role)
-  --   end,
+        for i = 1, #roles do
+          db.rbac_user_roles:delete({
+            user_id = self.rbac_user.id,
+            role_id = roles[i].id,
+          })
 
-  --   DELETE = function(self, dao_factory, helpers)
-  --     -- delete the user <-> role mappings
-  --     -- we have to get our row, then delete it
-  --     local users, err = entity_relationships(dao_factory, self.rbac_role,
-  --                                             "user", "role")
-  --     if err then
-  --       return helpers.yield_error(err)
-  --     end
+          if roles[i].name == self.rbac_user.name then
+            default_role = roles[i]
+          end
+        end
 
-  --     for i = 1, #users do
-  --       dao_factory.rbac_user_roles:delete({
-  --         user_id = users[i].id,
-  --         role_id = self.rbac_role.id,
-  --       })
-  --     end
+        if default_role then
+          local _, err = rbac.remove_user_from_default_role(self.rbac_user,
+            default_role)
+          if err then
+            helpers.yield_error(err)
+          end
+        end
 
-  --     local err = rbac.role_relation_cleanup(self.rbac_role)
-  --     if err then
-  --       return nil, err
-  --     end
+        crud.delete(self.rbac_user, db.rbac_users)
+      end,
+    },
+  },
 
-  --     crud.delete(self.rbac_role, dao_factory.rbac_roles)
-  --   end,
-  -- },
+  ["/rbac/roles/:rbac_role/entities"] = {
+    schema = rbac_roles.schema,
+    methods = {
+    before = function(self, dao_factory, helpers)
+      crud.find_rbac_role_by_name_or_id(self, dao_factory, helpers)
+      self.params.role_id = self.rbac_role.id
+    end,
 
-  --  ["/rbac/roles/:name_or_id/entities"] = {
-  --   before = function(self, dao_factory, helpers)
-  --     crud.find_rbac_role_by_name_or_id(self, dao_factory, helpers)
-  --     self.params.role_id = self.rbac_role.id
-  --   end,
+    -- XXX: EE (how did it work before? looks like we never trimmed to rbac_role)
+    GET = function(self, dao_factory, helpers)
+      return crud.paginated_set(self, dao_factory.rbac_role_entities,
+                                post_process_actions)
+    end,
 
-  --   GET = function(self, dao_factory, helpers)
-  --     return crud.paginated_set(self, dao_factory.rbac_role_entities,
-  --                               post_process_actions)
-  --   end,
+    POST = function(self, dao_factory, helpers)
+      action_bitfield(self)
 
-  --   POST = function(self, dao_factory, helpers)
-  --     action_bitfield(self)
+      if not self.params.entity_id then
+        return helpers.responses.send_HTTP_BAD_REQUEST("Missing required parameter: 'entity_id'")
+      end
 
-  --     if not self.params.entity_id then
-  --       return helpers.responses.send_HTTP_BAD_REQUEST("Missing required parameter: 'entity_id'")
-  --     end
+      local entity_type = "wildcard"
+      if self.params.entity_id ~= "*" then
+        local _, err
+        entity_type, _, err = api_helpers.resolve_entity_type(singletons.db,
+                                                              singletons.dao,
+                                                              self.params.entity_id)
+        -- database error
+        if entity_type == nil then
+          return helpers.responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+        end
+        -- entity doesn't exist
+        if entity_type == false then
+          return helpers.responses.send_HTTP_BAD_REQUEST(err)
+        end
+      end
 
-  --     local entity_type = "wildcard"
-  --     if self.params.entity_id ~= "*" then
-  --       local _, err
-  --       entity_type, _, err = api_helpers.resolve_entity_type(singletons.db,
-  --                                                             singletons.dao,
-  --                                                             self.params.entity_id)
-  --       -- database error
-  --       if entity_type == nil then
-  --         return helpers.responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
-  --       end
-  --       -- entity doesn't exist
-  --       if entity_type == false then
-  --         return helpers.responses.send_HTTP_BAD_REQUEST(err)
-  --       end
-  --     end
-
-  --     self.params.entity_type = entity_type
-  --     crud.post(self.params, dao_factory.rbac_role_entities,
-  --               post_process_actions)
-  --   end,
-  -- },
+      self.params.entity_type = entity_type
+      crud.post(self.params, dao_factory.rbac_role_entities,
+                post_process_actions)
+    end,
+    }
+  },
 
   -- ["/rbac/roles/:name_or_id/entities/:entity_id"] = {
   --   before = function(self, dao_factory, helpers)

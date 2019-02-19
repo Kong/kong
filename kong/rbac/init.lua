@@ -153,11 +153,11 @@ end
 -- user, or the permission object associated with a role
 -- the kong.cache mechanism is used to cache both the id mapping pairs, as
 -- well as the foreign entities themselves
-local function entity_relationships(dao_factory, entity, entity_name, foreign)
+local function entity_relationships(dao_factory, entity, entity_name, foreign, factory_key)
   local cache = singletons.cache
 
   -- get the relationship identities for this identity
-  local factory_key = fmt("rbac_%s_%ss", entity_name, foreign)
+  factory_key = factory_key or fmt("rbac_%s_%ss", entity_name, foreign)
   local relationship_cache_key = dao_factory[factory_key]:cache_key(entity.id)
   local relationship_ids, err = cache:get(relationship_cache_key, nil,
                                           retrieve_relationship_ids,
@@ -535,9 +535,8 @@ function _M.remove_user_from_default_role(user, default_role)
   end
 
   -- get count of users still in the default role
-  local n_users, err = singletons.dao.rbac_user_roles:count({
-    role_id = default_role.id,
-  })
+  local users, err = singletons.db.rbac_roles:get_users(singletons.db, default_role)
+  local n_users = #users
   if err then
     return nil, err
   end
