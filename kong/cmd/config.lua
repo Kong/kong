@@ -1,9 +1,14 @@
 local DB = require "kong.db"
 local log = require "kong.cmd.utils.log"
 local pl_path = require "pl.path"
+local pl_file = require "pl.file"
 local kong_global = require "kong.global"
 local declarative = require "kong.db.declarative"
 local conf_loader = require "kong.conf_loader"
+local kong_yml = require "kong.templates.kong_yml"
+
+
+local INIT_FILE = "kong.yml"
 
 
 local accepted_formats = {
@@ -11,6 +16,16 @@ local accepted_formats = {
   json = true,
   lua = true,
 }
+
+
+local function generate_init()
+  if pl_file.access_time(INIT_FILE) then
+    error(INIT_FILE .. " already exists in the current directory.\n" ..
+          "Will not overwrite it.")
+  end
+
+  pl_file.write(INIT_FILE, kong_yml)
+end
 
 
 local function execute(args)
@@ -28,6 +43,11 @@ local function execute(args)
 
   -- load <PREFIX>/kong.conf containing running node's config
   local conf = assert(conf_loader(default_conf.kong_env))
+
+  if args.command == "init" then
+    generate_init()
+    os.exit(0)
+  end
 
   if args.command == "db-import" then
     args.command = "db_import"
@@ -94,6 +114,9 @@ Usage: kong config COMMAND [OPTIONS]
 Use declarative configuration files with Kong.
 
 The available commands are:
+  init                          Generate an example config file to
+                                get you started.
+
   db_import <file>              Import a declarative config file into
                                 the Kong database.
 
@@ -109,6 +132,7 @@ return {
   lapp = lapp,
   execute = execute,
   sub_commands = {
+    init = true,
     db_import = true,
     parse = true,
   },
