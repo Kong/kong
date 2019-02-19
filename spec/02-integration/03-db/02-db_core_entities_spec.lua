@@ -543,22 +543,6 @@ for _, strategy in helpers.each_strategy() do
           assert.truthy(now - route_in_db.updated_at < 0.1)
         end)
 
-        it("created_at/updated_at cannot be overriden", function()
-          local route, err, err_t = db.routes:insert({
-            protocols  = { "http" },
-            hosts      = { "example.com" },
-            service    = bp.services:insert(),
-            created_at = 0,
-            updated_at = 0,
-          })
-          assert.is_nil(err_t)
-          assert.is_nil(err)
-
-          assert.is_table(route)
-          assert.not_equal(0, route.created_at)
-          assert.not_equal(0, route.updated_at)
-        end)
-
         describe("#stream context", function()
           it("creates a Route with 'snis'", function()
             local route, err, err_t = db.routes:insert({
@@ -662,10 +646,10 @@ for _, strategy in helpers.each_strategy() do
           local route = bp.routes:insert({ hosts = { "example.com" } })
           local pk = { id = route.id }
           local new_route, err, err_t = db.routes:update(pk, {
-            protocols = { 123 },
+            protocols = { "http", 123 },
           })
           assert.is_nil(new_route)
-          local message  = "schema violation (protocols: expected a string)"
+          local message  = "schema violation (protocols.2: expected a string)"
           assert.equal(fmt("[%s] %s", strategy, message), err)
           assert.same({
             code        = Errors.codes.SCHEMA_VIOLATION,
@@ -673,7 +657,7 @@ for _, strategy in helpers.each_strategy() do
             message     = message,
             strategy    = strategy,
             fields      = {
-              protocols  = "expected a string",
+              protocols  = { [2] = "expected a string" },
             }
           }, err_t)
         end)
@@ -734,22 +718,6 @@ for _, strategy in helpers.each_strategy() do
 
           --TODO: enable when it works again
           --assert.not_equal(new_route.created_at, new_route.updated_at)
-        end)
-
-        pending("created_at/updated_at cannot be overriden", function()
-          local route = bp.routes:insert {
-            hosts = { "example.com" },
-          }
-
-          local new_route, err, err_t = db.routes:update({ id = route.id }, {
-            protocols = { "https" },
-            created_at = 1,
-            updated_at = 1,
-          })
-          assert.is_nil(err_t)
-          assert.is_nil(err)
-          assert.not_equal(1, new_route.created_at)
-          assert.not_equal(1, new_route.updated_at)
         end)
 
         describe("unsetting with ngx.null", function()
@@ -998,22 +966,6 @@ for _, strategy in helpers.each_strategy() do
             read_timeout    = 10000,
             retries         = 6,
           }, service)
-        end)
-
-        it("created_at/updated_at cannot be overriden", function()
-          local service, err, err_t = db.services:insert({
-            name       = "example_service_overriding_created_at",
-            protocol   = "http",
-            host       = "example.com",
-            created_at = 0,
-            updated_at = 0,
-          })
-          assert.is_nil(err_t)
-          assert.is_nil(err)
-
-          assert.is_table(service)
-          assert.not_equal(0, service.created_at)
-          assert.not_equal(0, service.updated_at)
         end)
 
         pending("cannot create a Service with an existing id", function()

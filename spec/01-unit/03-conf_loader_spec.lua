@@ -206,7 +206,14 @@ describe("Configuration loader", function()
     assert.equal("/usr/local/kong/ssl/admin-kong-default.key", conf.admin_ssl_cert_key_default)
   end)
   it("strips comments ending settings", function()
+    local _os_getenv = os.getenv
+    finally(function()
+      os.getenv = _os_getenv -- luacheck: ignore
+    end)
+    os.getenv = function() end -- luacheck: ignore
+
     local conf = assert(conf_loader("spec/fixtures/to-strip.conf"))
+
     assert.equal("cassandra", conf.database)
     assert.equal("debug", conf.log_level)
   end)
@@ -444,7 +451,7 @@ describe("Configuration loader", function()
       local conf, err = conf_loader(nil, {
         database = "mysql"
       })
-      assert.equal("database has an invalid value: 'mysql' (postgres, cassandra)", err)
+      assert.equal("database has an invalid value: 'mysql' (postgres, cassandra, off)", err)
       assert.is_nil(conf)
 
       conf, err = conf_loader(nil, {
@@ -769,10 +776,13 @@ describe("Configuration loader", function()
     it("honors path if provided even if a default file exists", function()
       conf_loader.add_default_path("spec/fixtures/to-strip.conf")
 
+      local _os_getenv = os.getenv
       finally(function()
+        os.getenv = _os_getenv -- luacheck: ignore
         package.loaded["kong.conf_loader"] = nil
         conf_loader = require "kong.conf_loader"
       end)
+      os.getenv = function() end -- luacheck: ignore
 
       local conf = assert(conf_loader(helpers.test_conf_path))
       assert.equal("postgres", conf.database)
@@ -788,10 +798,13 @@ describe("Configuration loader", function()
     it("honors path if provided even if a default file exists", function()
       conf_loader.add_default_path("spec/fixtures/to-strip.conf")
 
+      local _os_getenv = os.getenv
       finally(function()
+        os.getenv = _os_getenv -- luacheck: ignore
         package.loaded["kong.conf_loader"] = nil
         conf_loader = require "kong.conf_loader"
       end)
+      os.getenv = function() end -- luacheck: ignore
 
       local conf = assert(conf_loader(helpers.test_conf_path))
       assert.equal("postgres", conf.database)

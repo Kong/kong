@@ -162,6 +162,18 @@ local entity_checks_schema = {
   nilable = true,
 }
 
+local shorthands_array = {
+  type = "array",
+  elements = {
+    type = "map",
+    keys = { type = "string" },
+    values = { type = "function" },
+    required = true,
+    len_eq = 1,
+  },
+  nilable = true,
+}
+
 table.insert(field_schema, { entity_checks = entity_checks_schema })
 
 local meta_errors = {
@@ -382,6 +394,9 @@ local MetaSchema = Schema.new({
       entity_checks = entity_checks_schema,
     },
     {
+      shorthands = shorthands_array,
+    },
+    {
       check = {
         type = "function",
         nilable = true
@@ -509,6 +524,9 @@ MetaSchema.MetaSubSchema = Schema.new({
     },
     {
       entity_checks = entity_checks_schema,
+    },
+    {
+      shorthands = shorthands_array,
     },
     {
       check = {

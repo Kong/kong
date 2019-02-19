@@ -475,15 +475,21 @@ end
 --- Deep copies a table into a new table.
 -- Tables used as keys are also deep copied, as are metatables
 -- @param orig The table to copy
+-- @param copy_mt Copy metatable (default is true)
 -- @return Returns a copy of the input table
-function _M.deep_copy(orig)
+function _M.deep_copy(orig, copy_mt)
+  if copy_mt == nil then
+    copy_mt = true
+  end
   local copy
   if type(orig) == "table" then
     copy = {}
     for orig_key, orig_value in next, orig, nil do
-      copy[_M.deep_copy(orig_key)] = _M.deep_copy(orig_value)
+      copy[_M.deep_copy(orig_key)] = _M.deep_copy(orig_value, copy_mt)
     end
-    setmetatable(copy, _M.deep_copy(getmetatable(orig)))
+    if copy_mt then
+      setmetatable(copy, _M.deep_copy(getmetatable(orig)))
+    end
   else
     copy = orig
   end

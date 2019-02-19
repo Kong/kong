@@ -102,9 +102,11 @@ local validation_errors = {
   MISSING_PK                = "missing primary key",
   -- subschemas
   SUBSCHEMA_UNKNOWN         = "unknown type: %s",
-  SUBSCHEMA_BAD_PARENT      = "entities of type '%s' cannot have subschemas",
-  SUBSCHEMA_UNDEFINED_FIELD = "error in schema definition: abstract field was not specialized",
-  SUBSCHEMA_BAD_TYPE        = "error in schema definition: cannot change type in a specialized field",
+  SUBSCHEMA_BAD_PARENT      = "error in definition of '%s': entities of type '%s' cannot have subschemas",
+  SUBSCHEMA_UNDEFINED_FIELD = "error in definition of '%s': %s: abstract field was not specialized",
+  SUBSCHEMA_BAD_TYPE        = "error in definition of '%s': %s: cannot change type in a specialized field",
+  SUBSCHEMA_BAD_FIELD       = "error in definition of '%s': %s: cannot create a new field",
+  SUBSCHEMA_ABSTRACT_FIELD  = "error in schema definition: abstract field was not specialized",
 }
 
 
@@ -673,6 +675,26 @@ local function memoize(fn)
 end
 
 
+local function validate_elements(self, field, value)
+  field.elements.required = true
+  local errs = {}
+  local all_ok = true
+  for i, v in ipairs(value) do
+    local ok, err = self:validate_field(field.elements, v)
+    if not ok then
+      errs[i] = err
+      all_ok = false
+    end
+  end
+
+  if all_ok then
+    return true
+  else
+    return nil, errs
+  end
+end
+
+
 local get_field_schema = memoize(function(field)
   return Schema.new(field)
 end)
@@ -704,8 +726,12 @@ function Schema:validate_field(field, value)
     return true
   end
 
-  if field.abstract == true then
-    return nil, validation_errors.SUBSCHEMA_UNDEFINED_FIELD
+  if field.eq == null then
+    return nil, validation_errors.EQ:format("null")
+  end
+
+  if field.abstract then
+    return nil, validation_errors.SUBSCHEMA_ABSTRACT_FIELD
   end
 
   if field.type == "array" then
@@ -716,18 +742,9 @@ function Schema:validate_field(field, value)
       return nil, validation_errors.SCHEMA_MISSING_ATTRIBUTE:format("elements")
     end
 
-    field.elements.required = true
-    for _, v in ipairs(value) do
-      local ok, err = self:validate_field(field.elements, v)
-      if not ok then
-        return nil, err
-      end
-    end
-
-    for k, _ in pairs(value) do
-      if type(k) ~= "number" then
-        return nil, validation_errors.ARRAY
-      end
+    local ok, err = validate_elements(self, field, value)
+    if not ok then
+      return nil, err
     end
 
   elseif field.type == "set" then
@@ -739,15 +756,9 @@ function Schema:validate_field(field, value)
     end
 
     field.elements.required = true
-    local set = {}
-    for _, v in ipairs(value) do
-      if not set[v] then
-        local ok, err = self:validate_field(field.elements, v)
-        if not ok then
-          return nil, err
-        end
-        set[v] = true
-      end
+    local ok, err = validate_elements(self, field, value)
+    if not ok then
+      return nil, err
     end
 
   elseif field.type == "map" then
@@ -792,12 +803,11 @@ function Schema:validate_field(field, value)
     end
 
   elseif field.type == "foreign" then
-    local ok, errs = field.schema:validate_primary_key(value, true)
-    if not ok then
-      -- TODO check with GUI team if they need prefer information
-      -- of failed components of a compound foreign key
-      -- as a nested table or just as a flat string.
-      return nil, errs
+    if field.schema and field.schema.validate_primary_key then
+      local ok, errs = field.schema:validate_primary_key(value, true)
+      if not ok then
+        return nil, errs
+      end
     end
 
   elseif field.type == "integer" then
@@ -930,9 +940,6 @@ local function resolve_field(self, k, field, subschema)
   if subschema then
     local ss_field = subschema.fields[k]
     if ss_field then
-      if not compatible_fields(field, ss_field) then
-        return nil, validation_errors.SUBSCHEMA_BAD_TYPE
-      end
       field = ss_field
     end
   end
@@ -1288,39 +1295,56 @@ local function make_set(set)
 end
 
 
+local function should_recurse_record(context, value, field)
+  if context == "update" then
+    return value ~= null and value ~= nil
+  else
+    return value ~= null and (value ~= nil or field.required == true)
+  end
+end
+
+
 local function adjust_field_for_context(field, value, context, nulls)
   if context == "select" and value == null and field.required == true then
     return handle_missing_field(field, value)
   end
-  if field.type == "record" and not field.abstract then
-    local should_recurse
-    if context == "update" then
-      -- avoid filling defaults in partial updates of records
-      should_recurse = (value ~= null and value ~= nil)
-    else
-      should_recurse = (value ~= null and
-                        (value ~= nil or field.required == true))
-    end
-    if should_recurse then
-      local field_schema = get_field_schema(field)
+
+  if field.abstract then
+    return value
+  end
+
+  if field.type == "record" then
+    if should_recurse_record(context, value, field) then
       value = value or handle_missing_field(field, value)
       if type(value) == "table" then
+        local field_schema = get_field_schema(field)
         return field_schema:process_auto_fields(value, context, nulls)
       end
     end
-  end
-  if value == nil then
-    if context == "update" then
-      return nil
-    else
-      return handle_missing_field(field, value)
+
+  elseif type(value) == "table" then
+    local subfield
+    if field.type == "array" then
+      value = make_array(value)
+      subfield = field.elements
+
+    elseif field.type == "set" then
+      value = make_set(value)
+      subfield = field.elements
+
+    elseif field.type == "map" then
+      subfield = field.values
+    end
+
+    if subfield then
+      for i, e in ipairs(value) do
+        value[i] = adjust_field_for_context(subfield, e, context, nulls)
+      end
     end
   end
-  if field.type == "array" then
-    return make_array(value)
-  end
-  if field.type == "set" then
-    return make_set(value)
+
+  if value == nil and context ~= "update" then
+    return handle_missing_field(field, value)
   end
 
   return value
@@ -1334,20 +1358,21 @@ end
 -- is "insert".
 -- This function encapsulates various "smart behaviors"
 -- for value creation and update.
--- @param input The table containing data to be processed.
+-- @param data The table containing data to be processed.
 -- @param context a string describing the CRUD context:
 -- valid values are: "insert", "update", "upsert", "select"
 -- @param nulls boolean: return nulls as explicit ngx.null values
 -- @return A new table, with the auto fields containing
 -- appropriate updated values.
-function Schema:process_auto_fields(input, context, nulls)
+function Schema:process_auto_fields(data, context, nulls)
   ngx.update_time()
 
-  local output = tablex.deepcopy(input)
   local now_s  = ngx_time()
   local now_ms = ngx_now()
   local read_before_write = false
   local cache_key_modified = false
+
+  data = tablex.deepcopy(data)
 
   --[[
   if context == "select" and self.translations then
@@ -1359,51 +1384,73 @@ function Schema:process_auto_fields(input, context, nulls)
   end
   --]]
 
-  for key, field in self:each_field(input) do
+  if self.shorthands then
+    for _, shorthand in ipairs(self.shorthands) do
+      local sname, sfunc = next(shorthand)
+      local value = data[sname]
+      if value ~= nil then
+        data[sname] = nil
+        local new_values = sfunc(value)
+        if new_values then
+          for k, v in pairs(new_values) do
+            data[k] = v
+          end
+        end
+      end
+    end
+  end
 
-    if field.legacy and field.uuid and output[key] == "" then
-      output[key] = null
+  for key, field in self:each_field(data) do
+
+    if field.legacy and field.uuid and data[key] == "" then
+      data[key] = null
     end
 
     if field.auto then
       if field.uuid then
-        if (context == "insert" or context == "upsert") and output[key] == nil then
-          output[key] = utils.uuid()
+        if (context == "insert" or context == "upsert") and data[key] == nil then
+          data[key] = utils.uuid()
         end
 
       elseif field.type == "string" then
-        if (context == "insert" or context == "upsert") and output[key] == nil then
-          output[key] = utils.random_string()
+        if (context == "insert" or context == "upsert") and data[key] == nil then
+          data[key] = utils.random_string()
         end
 
-      elseif (key == "created_at" and (context == "insert" or
-                                       context == "upsert")) or
-             (key == "updated_at" and (context == "insert" or
-                                       context == "upsert" or
-                                       context == "update")) then
-
+      elseif key == "created_at"
+             and (context == "insert" or context == "upsert")
+             and (data[key] == null or data[key] == nil) then
         if field.type == "number" then
-          output[key] = now_ms
+          data[key] = now_ms
         elseif field.type == "integer" then
-          output[key] = now_s
+          data[key] = now_s
+        end
+
+      elseif key == "updated_at" and (context == "insert" or
+                                      context == "upsert" or
+                                      context == "update") then
+        if field.type == "number" then
+          data[key] = now_ms
+        elseif field.type == "integer" then
+          data[key] = now_s
         end
       end
     end
 
-    output[key] = adjust_field_for_context(field, output[key], context, nulls)
+    data[key] = adjust_field_for_context(field, data[key], context, nulls)
 
-    if output[key] ~= nil then
+    if data[key] ~= nil then
       if self.cache_key_set and self.cache_key_set[key] then
         cache_key_modified = true
       end
     end
 
-    if context == "select" and output[key] == null and not nulls then
-      output[key] = nil
+    if context == "select" and data[key] == null and not nulls then
+      data[key] = nil
     end
 
-    if context == "select" and field.type == "integer" and type(output[key]) == "number" then
-      output[key] = floor(output[key])
+    if context == "select" and field.type == "integer" and type(data[key]) == "number" then
+      data[key] = floor(data[key])
     end
   end
 
@@ -1411,7 +1458,7 @@ function Schema:process_auto_fields(input, context, nulls)
   if context ~= "select" and self.translations then
     for _, translation in ipairs(self.translations) do
       if type(translation.write) == "function" then
-        output = translation.write(output)
+        data = translation.write(data)
       end
     end
   end
@@ -1421,7 +1468,7 @@ function Schema:process_auto_fields(input, context, nulls)
     -- If a partial update does not provide the subschema key,
     -- we need to do a read-before-write to get it and be
     -- able to properly validate the entity.
-    (self.subschema_key and input[self.subschema_key] == nil)
+    (self.subschema_key and data[self.subschema_key] == nil)
     -- If we're resetting the value of a composite cache key,
     -- we to do a read-before-write to get the rest of the cache key
     -- and be able to properly update it.
@@ -1433,7 +1480,7 @@ function Schema:process_auto_fields(input, context, nulls)
     read_before_write = true
   end
 
-  return output, nil, read_before_write
+  return data, nil, read_before_write
 end
 
 
@@ -1823,12 +1870,34 @@ function Schema.new_subschema(self, key, definition)
   assert(type(definition) == "table", "definition must be a table")
 
   if not self.subschema_key then
-    return nil, validation_errors.SUBSCHEMA_BAD_PARENT:format(self.name)
+    return nil, validation_errors.SUBSCHEMA_BAD_PARENT:format(key, self.name)
   end
 
   local subschema, err = Schema.new(definition, true)
   if not subschema then
     return nil, err
+  end
+
+  local parent_by_name = {}
+  for _, f in ipairs(self.fields) do
+    local fname, fdata = next(f)
+    parent_by_name[fname] = fdata
+  end
+
+  for fname, field in subschema:each_field() do
+    local parent_field = parent_by_name[fname]
+    if not parent_field then
+      return nil, validation_errors.SUBSCHEMA_BAD_FIELD:format(key, fname)
+    end
+    if not compatible_fields(parent_field, field) then
+      return nil, validation_errors.SUBSCHEMA_BAD_TYPE:format(key, fname)
+    end
+  end
+
+  for fname, field in pairs(parent_by_name) do
+    if field.abstract and field.required and not subschema.fields[fname] then
+      return nil, validation_errors.SUBSCHEMA_UNDEFINED_FIELD:format(key, fname)
+    end
   end
 
   if not self.subschemas then

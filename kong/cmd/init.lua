@@ -22,6 +22,7 @@ local cmds = {
   prepare = true,
   migrations = true,
   version = true,
+  config = true,
   roar = true
 }
 

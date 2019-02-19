@@ -82,6 +82,12 @@ local function init()
     if not ca_row and err == nil then
       -- No CA cert in DB, we are the first cluster member to start
 
+      if kong.db.strategy == "off" then
+        ngx.log(ngx.WARN, "no cluster_ca in declarative configuration: ",
+                          "cannot use node in mesh mode")
+        return
+      end
+
       -- Generate a CA
       local candidate_ca_key = cluster_ca_tools.new_key()
       local candidate_ca_cert = cluster_ca_tools.new_ca(candidate_ca_key)

@@ -31,6 +31,7 @@ local ERRORS_HTTP_CODES = {
   [Errors.codes.INVALID_SIZE]          = 400,
   [Errors.codes.INVALID_UNIQUE]        = 400,
   [Errors.codes.INVALID_OPTIONS]       = 400,
+  [Errors.codes.OPERATION_UNSUPPORTED] = 405,
 }
 
 
@@ -113,8 +114,11 @@ local function handle_error(err_t)
     return app_helpers.yield_error(err_t)
   end
 
-  local body = utils.get_default_exit_body(status, err_t)
-  return kong.response.exit(status, body)
+  if err_t.code == Errors.codes.OPERATION_UNSUPPORTED then
+    return kong.response.exit(status, err_t)
+  end
+
+  return kong.response.exit(status, utils.get_default_exit_body(status, err_t))
 end
 
 
