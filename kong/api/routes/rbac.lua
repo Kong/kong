@@ -40,25 +40,23 @@ local function rbac_operation_allowed(kong_conf, rbac_ctx, current_ws, dest_ws)
 end
 
 
-local function objects_from_names(dao_factory, given_names, object_name)
+local function objects_from_names(db, given_names, object_name)
   local names      = utils.split(given_names, ",")
   local objs       = new_tab(#names, 0)
   local object_dao = fmt("rbac_%ss", object_name)
 
   for i = 1, #names do
-    local object, err = dao_factory[object_dao]:find_all({
-      name = names[i],
-    })
+    local object, err = db[object_dao]:select_by_name(names[i])
     if err then
       return nil, err
     end
 
-    if not object[1] then
+    if not object then
       return nil, fmt("%s not found with name '%s'", object_name, names[i])
     end
 
     -- track the whole object so we have the id for the mapping later
-    objs[i] = object[1]
+    objs[i] = object
   end
 
   return objs
@@ -177,12 +175,74 @@ return {
       end,
 
       GET = function(self, db, helpers)
-
         local rbac_roles = db.rbac_users:get_roles(db, self.rbac_user)
 
-        return kong.response.exit(200, rbac_roles )
+        rbac_roles = tablex.filter(rbac_roles,
+          function(role)
+            return not role.is_default
+        end)
+        rbac_roles = tablex.map(post_process_role, rbac_roles)
+
+        setmetatable(rbac_roles, cjson.empty_array_mt)
+        return kong.response.exit(200, {
+          user = self.rbac_user,
+          roles = rbac_roles
+        })
       end,
       POST = function(self, db, helpers)
+        -- we have the user, now verify our roles
+        if not self.params.roles then
+          return helpers.responses.send_HTTP_BAD_REQUEST("must provide >= 1 role")
+        end
+
+        local roles, err = objects_from_names(db, self.params.roles, "role")
+        if err then
+          if err:find("not found with name", nil, true) then
+            return helpers.responses.send_HTTP_BAD_REQUEST(err)
+
+          else
+            return helpers.yield_error(err)
+          end
+        end
+
+        -- we've now validated that all our roles exist, and this user exists,
+        -- so time to create the assignment
+        for i = 1, #roles do
+          local _, err = db.rbac_user_roles:insert({
+            user_id = self.rbac_user.id,
+            role_id = roles[i].id
+          })
+          if err then
+            return helpers.yield_error(err)
+          end
+        end
+
+        -- invalidate rbac user so we don't fetch the old roles
+        local cache_key = db["rbac_user_roles"]:cache_key(self.rbac_user.id)
+        singletons.cache:invalidate(cache_key)
+
+        -- re-fetch the users roles so we show all the role objects, not just our
+        -- newly assigned mappings
+        roles, err = db.rbac_users:get_roles(db, self.rbac_user)
+        if err then
+          return helpers.yield_error(err)
+        end
+
+        -- filter out default roles and suppress the is_default column
+        roles = tablex.filter(roles, function(role) return not role.is_default end)
+
+        for _, role in ipairs(roles) do
+          post_process_role(role)
+        end
+
+        -- show the user and all of the roles they are in
+        return helpers.responses.send_HTTP_CREATED({
+          user  = self.rbac_user,
+          roles = roles,
+        })
+      end,
+
+      DELETE = function(self, db, helpers)
         return kong.response.exit(200, {message = "AA"})
       end
     }
