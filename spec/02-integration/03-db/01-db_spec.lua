@@ -4,7 +4,8 @@ local utils   = require "kong.tools.utils"
 
 
 for _, strategy in helpers.each_strategy() do
-  local it_ssl = strategy == "cassandra" and pending or it
+  local postgres_only = strategy == "postgres" and it or pending
+  local cassandra_only = strategy == "cassandra" and it or pending
 
 
   describe("kong.db.init [#" .. strategy .. "]", function()
@@ -55,29 +56,40 @@ for _, strategy in helpers.each_strategy() do
         end
       end)
 
-      if strategy == "postgres" then
-        it("initializes infos with custom schema", function()
-          local conf = utils.deep_copy(helpers.test_conf)
+      postgres_only("initializes infos with custom schema", function()
+        local conf = utils.deep_copy(helpers.test_conf)
 
-          conf.pg_schema = "demo"
+        conf.pg_schema = "demo"
 
-          local db, err = DB.new(conf, strategy)
+        local db, err = DB.new(conf, strategy)
 
-          assert.is_nil(err)
-          assert.is_table(db)
+        assert.is_nil(err)
+        assert.is_table(db)
 
-          local infos = db.infos
+        local infos = db.infos
 
-          assert.same({
-            strategy = "PostgreSQL",
-            db_desc = "database",
-            db_name = conf.pg_database,
-            db_schema = conf.pg_schema,
-            db_ver  = "unknown",
-          }, infos)
+        assert.same({
+          strategy = "PostgreSQL",
+          db_desc = "database",
+          db_name = conf.pg_database,
+          db_schema = conf.pg_schema,
+          db_ver  = "unknown",
+        }, infos)
 
-        end)
-      end
+      end)
+
+      cassandra_only("errors when provided Cassandra contact points do not resolve DNS", function()
+        local conf = utils.deep_copy(helpers.test_conf)
+
+        conf.cassandra_contact_points = { "unknown", "unknown2" }
+
+        local db, err = DB.new(conf, strategy)
+        assert.is_nil(db)
+        assert.equal(helpers.unindent([[
+          could not resolve any of the provided Cassandra contact points
+          (cassandra_contact_points = 'unknown, unknown2')
+        ]], true, true), err)
+      end)
     end)
   end)
 
@@ -119,33 +131,31 @@ for _, strategy in helpers.each_strategy() do
       end
     end)
 
-    if strategy == "postgres" then
-      it("initializes infos with custom schema", function()
-        local conf = utils.deep_copy(helpers.test_conf)
+    postgres_only("initializes infos with custom schema", function()
+      local conf = utils.deep_copy(helpers.test_conf)
 
-        conf.pg_schema = "demo"
+      conf.pg_schema = "demo"
 
-        local db, err = DB.new(conf, strategy)
+      local db, err = DB.new(conf, strategy)
 
-        assert.is_nil(err)
-        assert.is_table(db)
+      assert.is_nil(err)
+      assert.is_table(db)
 
-        assert(db:init_connector())
+      assert(db:init_connector())
 
-        local infos = db.infos
+      local infos = db.infos
 
-        assert.matches("^%d+%.?%d*%.?%d*$", infos.db_ver)
-        assert.not_matches("%.$", infos.db_ver)
+      assert.matches("^%d+%.?%d*%.?%d*$", infos.db_ver)
+      assert.not_matches("%.$", infos.db_ver)
 
-        assert.same({
-          strategy = "PostgreSQL",
-          db_desc = "database",
-          db_name = conf.pg_database,
-          db_schema = conf.pg_schema,
-          db_ver  = infos.db_ver,
-        }, infos)
-      end)
-    end
+      assert.same({
+        strategy = "PostgreSQL",
+        db_desc = "database",
+        db_name = conf.pg_database,
+        db_schema = conf.pg_schema,
+        db_ver  = infos.db_ver,
+      }, infos)
+    end)
   end)
 
 
@@ -154,45 +164,59 @@ for _, strategy in helpers.each_strategy() do
       helpers.get_db_utils(strategy, {})
     end)
 
-    if strategy == "postgres" then
-      it("connects to schema configured in postgres by default", function()
-        local db, err = DB.new(helpers.test_conf, strategy)
+    postgres_only("connects to schema configured in postgres by default", function()
+      local db, err = DB.new(helpers.test_conf, strategy)
 
-        assert.is_nil(err)
-        assert.is_table(db)
-        assert(db:init_connector())
-        assert(db:connect())
+      assert.is_nil(err)
+      assert.is_table(db)
+      assert(db:init_connector())
+      assert(db:connect())
 
-        local res = assert(db.connector:query("SELECT CURRENT_SCHEMA AS schema;"))
+      local res = assert(db.connector:query("SELECT CURRENT_SCHEMA AS schema;"))
 
-        assert.is_table(res[1])
-        -- in test suite the CURRENT_SCHEMA is public
-        assert.equal("public", res[1]["schema"])
+      assert.is_table(res[1])
+      -- in test suite the CURRENT_SCHEMA is public
+      assert.equal("public", res[1]["schema"])
 
-        assert(db:close())
-      end)
+      assert(db:close())
+    end)
 
-      it("connects to custom schema when configured", function()
-        local conf = utils.deep_copy(helpers.test_conf)
+    postgres_only("connects to custom schema when configured", function()
+      local conf = utils.deep_copy(helpers.test_conf)
 
-        conf.pg_schema = "demo"
+      conf.pg_schema = "demo"
 
-        local db, err = DB.new(conf, strategy)
+      local db, err = DB.new(conf, strategy)
 
-        assert.is_nil(err)
-        assert.is_table(db)
-        assert(db:init_connector())
-        assert(db:connect())
-        assert(db:reset())
+      assert.is_nil(err)
+      assert.is_table(db)
+      assert(db:init_connector())
+      assert(db:connect())
+      assert(db:reset())
 
-        local res = assert(db.connector:query("SELECT CURRENT_SCHEMA AS schema;"))
+      local res = assert(db.connector:query("SELECT CURRENT_SCHEMA AS schema;"))
 
-        assert.is_table(res[1])
-        assert.equal("demo", res[1]["schema"])
+      assert.is_table(res[1])
+      assert.equal("demo", res[1]["schema"])
 
-        assert(db:close())
-      end)
-    end
+      assert(db:close())
+    end)
+
+    cassandra_only("provided Cassandra contact points resolve DNS", function()
+      local conf = utils.deep_copy(helpers.test_conf)
+
+      conf.cassandra_contact_points = { "localhost" }
+
+      local db, err = DB.new(conf, strategy)
+      assert.is_nil(err)
+      assert.is_table(db)
+
+      assert(db:init_connector())
+
+      local conn, err = db:connect()
+      assert.is_nil(err)
+      assert.is_table(conn)
+    end)
 
     it("returns opened connection when using cosockets", function()
       -- bin/busted runs with ngx.IS_CLI = true, which forces luasocket to
@@ -248,7 +272,7 @@ for _, strategy in helpers.each_strategy() do
       db:close()
     end)
 
-    it_ssl("returns opened connection with ssl (cosockets)", function()
+    postgres_only("returns opened connection with ssl (cosockets)", function()
       ngx.IS_CLI = false
 
       local conf = utils.deep_copy(helpers.test_conf)
@@ -277,7 +301,7 @@ for _, strategy in helpers.each_strategy() do
       db:close()
     end)
 
-    it_ssl("returns opened connection with ssl (luasocket)", function()
+    postgres_only("returns opened connection with ssl (luasocket)", function()
       ngx.IS_CLI = true
 
       local conf = utils.deep_copy(helpers.test_conf)
@@ -365,7 +389,7 @@ for _, strategy in helpers.each_strategy() do
       db:close()
     end)
 
-    it_ssl("returns true when there is a stored connection with ssl (cosockets)", function()
+    postgres_only("returns true when there is a stored connection with ssl (cosockets)", function()
       ngx.IS_CLI = false
 
       local conf = utils.deep_copy(helpers.test_conf)
@@ -395,7 +419,7 @@ for _, strategy in helpers.each_strategy() do
       db:close()
     end)
 
-    it_ssl("returns true when there is a stored connection with ssl (luasocket)", function()
+    postgres_only("returns true when there is a stored connection with ssl (luasocket)", function()
       ngx.IS_CLI = true
 
       local conf = utils.deep_copy(helpers.test_conf)
@@ -505,7 +529,7 @@ for _, strategy in helpers.each_strategy() do
       assert.is_true(db:close())
     end)
 
-    it_ssl("returns true when there is a stored connection with ssl (cosockets)", function()
+    postgres_only("returns true when there is a stored connection with ssl (cosockets)", function()
       ngx.IS_CLI = false
 
       local conf = utils.deep_copy(helpers.test_conf)
@@ -533,7 +557,7 @@ for _, strategy in helpers.each_strategy() do
       assert.is_true(db:close())
     end)
 
-    it_ssl("returns true when there is a stored connection with ssl (luasocket)", function()
+    postgres_only("returns true when there is a stored connection with ssl (luasocket)", function()
       ngx.IS_CLI = true
 
       local conf = utils.deep_copy(helpers.test_conf)

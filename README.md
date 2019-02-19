@@ -98,7 +98,7 @@ code, other repos are also under active development:
   for Kong.
 - [Kong CloudFormation](https://github.com/Kong/kong-dist-cloudformation):
   Kong in a 1-click deployment for AWS EC2
-- [Kong AWS AMI](https://aws.amazon.com/marketplace/pp/B014GHERVU): Kong AMI on
+- [Kong AWS AMI](https://aws.amazon.com/marketplace/pp/B06WP4TNKL): Kong AMI on
   the AWS Marketplace.
 - [Kong on Microsoft Azure](https://github.com/Kong/kong-dist-azure): Run Kong
   using Azure Resource Manager.
@@ -253,7 +253,7 @@ limitations under the License.
 [kong-url]: https://konghq.com/
 [kong-logo]: https://konghq.com/wp-content/uploads/2018/05/kong-logo-github-readme.png
 [kong-benefits]: https://konghq.com/wp-content/uploads/2018/05/kong-benefits-github-readme.png
-[kong-nightly-master]: https://bintray.com/kong/kong-community-edition-nightly/kong-master
+[kong-nightly-master]: https://bintray.com/kong/kong-nightly/master
 [badge-travis-url]: https://travis-ci.org/Kong/kong/branches
 [badge-travis-image]: https://travis-ci.org/Kong/kong.svg?branch=master
 

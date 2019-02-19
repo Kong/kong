@@ -43,13 +43,7 @@ local APPLIED_COLUMN = "[applied]"
 local cache_key_field = { type = "string" }
 
 
-local _M  = {
-  CUSTOM_STRATEGIES = {
-    services = require("kong.db.strategies.cassandra.services"),
-    plugins = require("kong.db.strategies.cassandra.plugins"),
-    tags = require("kong.db.strategies.cassandra.tags"),
-  }
-}
+local _M  = {}
 
 local _mt = {}
 _mt.__index = _mt
@@ -985,7 +979,7 @@ do
   --[[
   Define the max rounds of queries we will send when filtering entity with
   tags
-  For each "round" with AND we send queries at max to the number of tags provided and 
+  For each "round" with AND we send queries at max to the number of tags provided and
   filter in Lua land with entities with all tags provided; for OR we send one request
   each round.
   Depending on the distribution of tags attached to entity, it might be possible
@@ -1115,7 +1109,7 @@ do
           end
 
 
-          if i == 1 then 
+          if i == 1 then
             next_offset = current_next_offset
           end
 

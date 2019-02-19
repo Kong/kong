@@ -9,9 +9,36 @@ CassandraConnector.__index = CassandraConnector
 
 
 function CassandraConnector.new(kong_config)
+  local resolved_contact_points = {}
+
+  do
+    -- Resolve contact points before instantiating cluster, since the
+    -- driver does not support hostnames in the contact points list.
+    local dns_tools = require "kong.tools.dns"
+    local dns = dns_tools(kong_config)
+
+    for i, cp in ipairs(kong_config.cassandra_contact_points) do
+      local ip, err = dns.toip(cp)
+      if not ip then
+        log.error("could not resolve Cassandra contact point '%s': %s",
+                  cp, err)
+
+      else
+        log.debug("resolved Cassandra contact point '%s' to: %s", cp, ip)
+        resolved_contact_points[i] = ip
+      end
+    end
+  end
+
+  if #resolved_contact_points == 0 then
+    return nil, "could not resolve any of the provided Cassandra " ..
+                "contact points (cassandra_contact_points = '" ..
+                table.concat(kong_config.cassandra_contact_points, ", ") .. "')"
+  end
+
   local cluster_options       = {
     shm                       = "kong_cassandra",
-    contact_points            = kong_config.cassandra_contact_points,
+    contact_points            = resolved_contact_points,
     default_port              = kong_config.cassandra_port,
     keyspace                  = kong_config.cassandra_keyspace,
     timeout_connect           = kong_config.cassandra_timeout,

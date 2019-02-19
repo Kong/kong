@@ -95,15 +95,27 @@ describe("Admin API #" .. strategy, function()
       end)
       it("cleans up old target entries", function()
         local upstream = bp.upstreams:insert { slots = 10 }
-        -- count to 12; 10 old ones, 1 active one, and then nr 12 to
-        -- trigger the cleanup
-        for i = 1, 12 do
+        -- insert elements in two targets alternately to build up a history
+        for i = 1, 11 do
           local res = assert(client:send {
             method = "POST",
             path = "/upstreams/" .. upstream.name .. "/targets/",
             body = {
-              target = "mashape.com:123",
-              weight = 99,
+              target = "mashape.com:1111",
+              weight = i,
+            },
+            headers = {
+              ["Content-Type"] = "application/json"
+            },
+          })
+          assert.response(res).has.status(201)
+
+          local res = assert(client:send {
+            method = "POST",
+            path = "/upstreams/" .. upstream.name .. "/targets/",
+            body = {
+              target = "mashape.com:2222",
+              weight = i,
             },
             headers = {
               ["Content-Type"] = "application/json"
@@ -111,10 +123,36 @@ describe("Admin API #" .. strategy, function()
           })
           assert.response(res).has.status(201)
         end
+
+        -- now insert a few more elements only in the second target, to trigger a cleanup
+        for i = 12, 13 do
+          local res = assert(client:send {
+            method = "POST",
+            path = "/upstreams/" .. upstream.name .. "/targets/",
+            body = {
+              target = "mashape.com:2222",
+              weight = i,
+            },
+            headers = {
+              ["Content-Type"] = "application/json"
+            },
+          })
+          assert.response(res).has.status(201)
+        end
+
         local history = assert(db.targets:select_by_upstream_raw({ id = upstream.id }))
-        -- there should be 2 left; 1 from the cleanup, and the final one
-        -- inserted that triggered the cleanup
-        assert.equal(2, #history)
+        -- cleanup took place
+        assert(#history <= 5)
+
+        -- the remaining entries should be the correct ones
+        -- (i.e. the target not involved in the operation that triggered the cleanup
+        -- should not be corrupted)
+        local targets = assert(db.targets:page_for_upstream({ id = upstream.id }))
+        table.sort(targets, function(a,b) return a.target < b.target end)
+        assert.same("mashape.com:1111", targets[1].target)
+        assert.same(11, targets[1].weight)
+        assert.same("mashape.com:2222", targets[2].target)
+        assert.same(13, targets[2].weight)
       end)
 
       describe("errors", function()

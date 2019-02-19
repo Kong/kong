@@ -576,7 +576,7 @@ local function page(self, size, token, foreign_key, foreign_entity_name, options
       }
 
     elseif options and options.tags then
-      statement_name = options.tags_cond == "or" and 
+      statement_name = options.tags_cond == "or" and
                       "page_by_tags_or_next" or
                       "page_by_tags_and_next"
       attributes     = {
@@ -612,7 +612,7 @@ local function page(self, size, token, foreign_key, foreign_entity_name, options
         [LIMIT]               = limit,
       }
     elseif options and options.tags then
-      statement_name = options.tags_cond == "or" and 
+      statement_name = options.tags_cond == "or" and
                       "page_by_tags_or_first" or
                       "page_by_tags_and_first"
       attributes     = {
@@ -882,12 +882,7 @@ function _mt:escape_literal(literal, field_name)
 end
 
 
-local _M  = {
-  CUSTOM_STRATEGIES = {
-    plugins = require("kong.db.strategies.postgres.plugins"),
-    tags = require("kong.db.strategies.postgres.tags"),
-  }
-}
+local _M  = {}
 
 
 function _M.new(connector, schema, errors)
@@ -1710,7 +1705,7 @@ function _M.new(connector, schema, errors)
           "ORDER BY ",  pk_escaped, "\n",
           "   LIMIT $2;";
         }
-  
+
         page_next_by_tags_statement = concat {
           "  SELECT ",  select_expressions, "\n",
           "    FROM ",  table_name_escaped, "\n",
@@ -1728,7 +1723,7 @@ function _M.new(connector, schema, errors)
           "ORDER BY ",  pk_escaped, "\n",
           "   LIMIT $2;";
         }
-  
+
         page_next_by_tags_statement = concat {
           "  SELECT ",  select_expressions, "\n",
           "    FROM ",  table_name_escaped, "\n",

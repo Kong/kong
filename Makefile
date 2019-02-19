@@ -14,38 +14,32 @@ endif
 include .requirements
 .PHONY: install dev lint test test-integration test-plugins test-all fix-windows
 
-release:
-ifeq ($(strip $(KONG_NETTLE_VERSION)),)
-	KONG_NETTLE_VERSION=DEFAULT_KONG_NETTLE_VERSION
-endif
-ifeq ($(strip $(KONG_GMP_VERSION)),)
-	KONG_GMP_VERSION=DEFAULT_KONG_GMP_VERSION
-endif
-ifeq ($(strip $(RESTY_VERSION)),)
-	RESTY_VERSION=DEFAULT_RESTY_VERSION
-endif
-ifeq ($(strip $(RESTY_LUAROCKS_VERSION)),)
-	RESTY_LUAROCKS_VERSION=DEFAULT_RESTY_LUAROCKS_VERSION
-endif
-ifeq ($(strip $(RESTY_OPENSSL_VERSION)),)
-	RESTY_OPENSSL_VERSION=DEFAULT_RESTY_OPENSSL_VERSION
-endif
-ifeq ($(strip $(RESTY_PCRE_VERSION)),)
-	RESTY_PCRE_VERSION=DEFAULT_RESTY_PCRE_VERSION
-endif
-ifeq ($(strip $(KONG_BUILD_TOOLS)),)
-	KONG_BUILD_TOOLS=DEFAULT_KONG_BUILD_TOOLS
-endif
-ifeq ($(strip $(KONG_VERSION)),)
-	KONG_VERSION=DEFAULT_KONG_VERSION
-endif
+KONG_GMP_VERSION ?= `grep KONG_GMP_VERSION .requirements | awk -F"=" '{print $$2}'`
+RESTY_VERSION ?= `grep RESTY_VERSION .requirements | awk -F"=" '{print $$2}'`
+RESTY_LUAROCKS_VERSION ?= `grep RESTY_LUAROCKS_VERSION .requirements | awk -F"=" '{print $$2}'`
+RESTY_OPENSSL_VERSION ?= `grep RESTY_OPENSSL_VERSION .requirements | awk -F"=" '{print $$2}'`
+RESTY_PCRE_VERSION ?= `grep RESTY_PCRE_VERSION .requirements | awk -F"=" '{print $$2}'`
+KONG_BUILD_TOOLS ?= `grep KONG_BUILD_TOOLS .requirements | awk -F"=" '{print $$2}'`
+KONG_VERSION ?= `cat kong-*.rockspec | grep tag | awk '{print $$3}' | sed 's/"//g'`
+
+setup-release:
 	if cd kong-build-tools; \
 	then git pull; \
 	else git clone https://github.com/Kong/kong-build-tools.git; fi
 	cd kong-build-tools; \
 	git reset --hard $$KONG_BUILD_TOOLS;
 	cd kong-build-tools; \
-	make setup_tests && \
+	make setup_tests
+
+nightly-release: setup-release
+	sed -i -e '/return string\.format/,/\"\")/c\return "$(KONG_VERSION)\"' kong/meta.lua && \
+	cd kong-build-tools; \
+	export KONG_SOURCE_LOCATION=`pwd`/../ && \
+	make package-kong && \
+	make release-kong
+
+release: setup-release
+	cd kong-build-tools; \
 	export KONG_SOURCE_LOCATION=`pwd`/../ && \
 	make package-kong && \
 	make release-kong

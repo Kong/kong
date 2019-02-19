@@ -103,10 +103,8 @@ body="{
       \"matrix\": [
         \"BUILD_RELEASE=true PLATFORM=centos:6 $NIGHTLY $VERSION\",
         \"BUILD_RELEASE=true PLATFORM=centos:7 $NIGHTLY $VERSION\",
-        \"BUILD_RELEASE=true PLATFORM=debian:7 $NIGHTLY $VERSION\",
         \"BUILD_RELEASE=true PLATFORM=debian:8 $NIGHTLY $VERSION\",
         \"BUILD_RELEASE=true PLATFORM=debian:9 $NIGHTLY $VERSION\",
-        \"BUILD_RELEASE=true PLATFORM=ubuntu:12.04.5 $NIGHTLY $VERSION\",
         \"BUILD_RELEASE=true PLATFORM=ubuntu:14.04.2 $NIGHTLY $VERSION\",
         \"BUILD_RELEASE=true PLATFORM=ubuntu:16.04 $NIGHTLY $VERSION\",
         \"BUILD_RELEASE=true PLATFORM=ubuntu:17.04 $NIGHTLY $VERSION\",

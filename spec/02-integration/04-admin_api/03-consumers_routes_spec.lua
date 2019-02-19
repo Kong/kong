@@ -899,6 +899,65 @@ describe("Admin API (#" .. strategy .. "): ", function()
       end)
     end)
 
+    describe("PUT", function()
+      local inputs = {
+        ["application/x-www-form-urlencoded"] = {
+          name = "rewriter",
+          ["config.value"] = "updated",
+        },
+        ["application/json"] = {
+          name = "rewriter",
+          config = {
+            value = "updated",
+          }
+        }
+      }
+
+      for content_type, input in pairs(inputs) do
+        it("creates if not found with " .. content_type, function()
+          local consumer = bp.consumers:insert()
+          local plugin_id = utils.uuid()
+
+          local res = assert(client:send {
+            method = "PUT",
+            path = "/consumers/" .. consumer.id .. "/plugins/" .. plugin_id,
+            body = input,
+            headers = { ["Content-Type"] = content_type },
+          })
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+          assert.equal("updated", json.config.value)
+          assert.equal(plugin_id, json.id)
+
+          local in_db = assert(db.plugins:select({
+            id = plugin_id,
+          }, { nulls = true }))
+          assert.same(json, in_db)
+        end)
+
+        it("updates if found with " .. content_type, function()
+          local consumer = bp.consumers:insert()
+          local plugin = bp.rewriter_plugins:insert({ consumer = { id = consumer.id }})
+
+          local res = assert(client:send {
+            method = "PUT",
+            path = "/consumers/" .. consumer.id .. "/plugins/" .. plugin.id,
+            body = input,
+            headers = { ["Content-Type"] = content_type },
+          })
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+          assert.equal("updated", json.config.value)
+          assert.equal(plugin.id, json.id)
+
+          local in_db = assert(db.plugins:select({
+            id = plugin.id,
+          }, { nulls = true }))
+          assert.same(json, in_db)
+        end)
+      end
+    end)
+
     describe("DELETE", function()
       it("deletes a plugin configuration", function()
         local consumer = bp.consumers:insert()

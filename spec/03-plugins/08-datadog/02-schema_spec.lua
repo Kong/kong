@@ -3,7 +3,7 @@ local v = require("spec.helpers").validate_plugin_config_schema
 
 
 describe("Plugin: datadog (schema)", function()
-  it("accepts empty config #o", function()
+  it("accepts empty config", function()
     local ok, err = v({}, schema_def)
     assert.is_nil(err)
     assert.is_truthy(ok)
