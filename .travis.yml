@@ -80,6 +80,9 @@ jobs:
       env: PACKAGE_TYPE=deb RESTY_IMAGE_BASE=ubuntu RESTY_IMAGE_TAG=xenial KONG_PACKAGE_NAME=${PWD##*/} KONG_VERSION=`date +%Y-%m-%d` REPOSITORY_NAME=${PWD##*/}-nightly REPOSITORY_OS_NAME=$TRAVIS_BRANCH
       if: type=cron
     - script: make nightly-release
+      env: PACKAGE_TYPE=deb RESTY_IMAGE_BASE=ubuntu RESTY_IMAGE_TAG=bionic KONG_PACKAGE_NAME=${PWD##*/} KONG_VERSION=`date +%Y-%m-%d` REPOSITORY_NAME=${PWD##*/}-nightly REPOSITORY_OS_NAME=$TRAVIS_BRANCH
+      if: type=cron
+    - script: make nightly-release
       env: PACKAGE_TYPE=rpm RESTY_IMAGE_BASE=centos RESTY_IMAGE_TAG=6 KONG_PACKAGE_NAME=${PWD##*/} KONG_VERSION=`date +%Y-%m-%d` REPOSITORY_NAME=${PWD##*/}-nightly REPOSITORY_OS_NAME=$TRAVIS_BRANCH
       if: type=cron
     - script: make nightly-release
