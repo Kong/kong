@@ -343,18 +343,31 @@ return {
     },
   },
 
-  ["/rbac/roles/:rbac_role/entities"] = {
+  ["/rbac/roles/:rbac_roles/entities"] = {
     schema = rbac_roles.schema,
     methods = {
-    before = function(self, dao_factory, helpers)
-      crud.find_rbac_role_by_name_or_id(self, dao_factory, helpers)
-      self.params.role_id = self.rbac_role.id
+    before = function(self, db, helpers)
+      local rbac_role, _, err_t = endpoints.select_entity(self, db, rbac_roles.schema)
+      if err_t then
+        return endpoints.handle_error(err_t)
+      end
+      if not rbac_role then
+        return kong.response.exit(404, { message = "Not found" })
+      end
+      self.rbac_role = rbac_role
     end,
 
     -- XXX: EE (how did it work before? looks like we never trimmed to rbac_role)
-    GET = function(self, dao_factory, helpers)
-      return crud.paginated_set(self, dao_factory.rbac_role_entities,
-                                post_process_actions)
+    GET = function(self, db, helpers)
+      -- return crud.paginated_set(self, dao_factory.rbac_role_entities,
+      --                           post_process_actions)
+
+      local entities = db.rbac_roles:get_entities(db, self.rbac_role)
+
+
+      return kong.response.exit(200, {
+        entities = entities
+      })
     end,
 
     POST = function(self, dao_factory, helpers)

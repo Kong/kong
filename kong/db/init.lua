@@ -47,6 +47,8 @@ end
 ee_add_core_entities("rbac_users")
 ee_add_core_entities("rbac_roles")
 ee_add_core_entities("rbac_user_roles")
+ee_add_core_entities("rbac_role_entities")
+ee_add_core_entities("rbac_role_endpoints")
 
 
 local DEFAULT_LOCKS_TTL = 60 -- seconds
