@@ -1,7 +1,9 @@
 -- add vitals metrics
 local vitals = require "kong.vitals"
+local constants = require "kong.plugins.statsd-advanced.constants"
 
 
+local match = ngx.re.match
 local ee_metrics = vitals.logging_metrics or {}
 
 
@@ -241,6 +243,23 @@ local function check_schema(value)
   return true
 end
 
+local function check_allow_status_codes(value)
+  if not value then
+    return true
+  end
+
+  for _, range in pairs(value) do
+    -- Get status code range splitting by "-" character
+    local range = match(range, constants.REGEX_STATUS_CODE_RANGE, "oj")
+
+    -- Checks if there are both interval numbers
+    if not range then
+      return false, "ranges should be provided in a format number-number and separated by commas"
+    end
+  end
+  return true;
+end
+
 local function check_udp_packet_size(value)
   if value < 0 then
     return false, "udp_packet_size can't be smaller than 0"
@@ -272,6 +291,10 @@ return {
       type     = "string",
       default  = "kong",
     },
+    allow_status_codes = {
+      type    = "array",
+      func     = check_allow_status_codes,
+    },
     -- EE only
     udp_packet_size = {
       type     = "number",
@@ -285,6 +308,6 @@ return {
     hostname_in_prefix = {
       type    = "boolean",
       default = false,
-    },
+    }
   },
 }

@@ -189,4 +189,69 @@ describe("Plugin: statsd-advanced (schema)", function()
     assert.not_nil(err)
     assert.equal("status_count metric only works with stat_type 'counter'", err.metrics)
   end)
+  it("accepts empty allow status codes configuration parameter", function()
+    local allow_status_codes_input = {}
+
+    local ok, err = validate_entity({ allow_status_codes = allow_status_codes_input}, statsd_schema)
+    assert.is_nil(err)
+    assert.is_true(ok)
+  end)
+  it("accepts if allow status codes configuration parameter is given status codes in form of ranges", function()
+    local allow_status_codes_input = {
+      "200-299",
+      "300-399"
+    }
+
+    local ok, err = validate_entity({ allow_status_codes = allow_status_codes_input}, statsd_schema)
+    assert.is_nil(err)
+    assert.is_true(ok)
+  end)
+  it("rejects if allow status codes configuration is given as alphabet values", function()
+    local allow_status_codes_input = {
+      "test"
+    }
+
+    local _, err = validate_entity({ allow_status_codes = allow_status_codes_input}, statsd_schema)
+    assert.not_nil(err)
+    assert.equal("ranges should be provided in a format number-number and separated by commas", err.allow_status_codes)
+  end)
+  it("rejects if allow status codes configuration is given as special characters", function()
+    local allow_status_codes_input = {
+      "$%%"
+    }
+
+    local _, err = validate_entity({ allow_status_codes = allow_status_codes_input}, statsd_schema)
+    assert.not_nil(err)
+    assert.equal("ranges should be provided in a format number-number and separated by commas", err.allow_status_codes)
+  end)
+  it("rejects if allow status codes configuration is given as alphabet values with dash symbol which indicates range", function()
+    local allow_status_codes_input = {
+      "test-test",
+      "test-test"
+    }
+
+    local _, err = validate_entity({ allow_status_codes = allow_status_codes_input}, statsd_schema)
+    assert.not_nil(err)
+    assert.equal("ranges should be provided in a format number-number and separated by commas", err.allow_status_codes)
+  end)
+  it("rejects if allow status codes configuration is given as alphabet an numeric values with dash symbol which indicates range", function()
+    local allow_status_codes_input = {
+      "test-299",
+      "300-test"
+    }
+
+    local _, err = validate_entity({ allow_status_codes = allow_status_codes_input}, statsd_schema)
+    assert.not_nil(err)
+    assert.equal("ranges should be provided in a format number-number and separated by commas", err.allow_status_codes)
+  end)
+  it("rejects if allow status codes configuration is given as numeric values without dash symbol which indicates range", function()
+    local allow_status_codes_input = {
+      "200",
+      "299"
+    }
+
+    local _, err = validate_entity({ allow_status_codes = allow_status_codes_input}, statsd_schema)
+    assert.not_nil(err)
+    assert.equal("ranges should be provided in a format number-number and separated by commas", err.allow_status_codes)
+  end)
 end)

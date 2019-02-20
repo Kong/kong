@@ -1,6 +1,6 @@
-local BasePlugin       = require "kong.plugins.base_plugin"
-local statsd_handler   = require "kong.vitals.prometheus.statsd.handler"
-
+local BasePlugin      = require "kong.plugins.base_plugin"
+local statsd_handler  = require "kong.vitals.prometheus.statsd.handler"
+local log_helper      = require "kong.plugins.statsd-advanced.log_helper"
 
 
 local StatsdHandler = BasePlugin:extend()
@@ -20,7 +20,7 @@ end
 function StatsdHandler:log(conf)
   StatsdHandler.super.log(self)
 
-  statsd_handler:log(conf)
+  log_helper:log(statsd_handler, conf, ngx.status)
 end
 
 
