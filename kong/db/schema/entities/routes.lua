@@ -87,7 +87,7 @@ return {
                   elements = {
                     type = "record",
                     fields = {
-                      { ip = typedefs.cidr },
+                      { ip = typedefs.ip_or_cidr },
                       { port = typedefs.port },
                     },
                     entity_checks = {
@@ -99,7 +99,7 @@ return {
                        elements = {
                          type = "record",
                          fields = {
-                           { ip = typedefs.cidr },
+                           { ip = typedefs.ip_or_cidr },
                            { port = typedefs.port },
                          },
                          entity_checks = {

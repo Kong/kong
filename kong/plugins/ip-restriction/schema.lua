@@ -9,8 +9,8 @@ return {
     { config = {
         type = "record",
         fields = {
-          { whitelist = { type = "array", elements = typedefs.cidr, }, },
-          { blacklist = { type = "array", elements = typedefs.cidr, }, },
+          { whitelist = { type = "array", elements = typedefs.cidr_v4, }, },
+          { blacklist = { type = "array", elements = typedefs.cidr_v4, }, },
         },
       },
     },
@@ -20,3 +20,4 @@ return {
     { at_least_one_of = { "config.whitelist", "config.blacklist" }, },
   },
 }
+
