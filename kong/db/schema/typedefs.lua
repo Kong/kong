@@ -7,8 +7,11 @@ local iputils = require "resty.iputils"
 local Schema = require("kong.db.schema")
 local socket_url = require("socket.url")
 local constants = require "kong.constants"
+local px = require "resty.mediador.proxy"
 
 
+local pairs = pairs
+local pcall = pcall
 local match = string.match
 local gsub = string.gsub
 local null = ngx.null
@@ -43,7 +46,18 @@ local function validate_ip(ip)
 end
 
 
-local function validate_cidr(ip)
+local function validate_ip_or_cidr(ip)
+  local pok, perr = pcall(px.compile, ip)
+
+  if pok and type(perr) == "function" then
+    return true
+  end
+
+  return nil, "invalid ip or cidr range: '" .. ip .. "'"
+end
+
+
+local function validate_cidr_v4(ip)
   local _, err = iputils.parse_cidr(ip)
 
   -- It's an error only if the second variable is a string
@@ -212,12 +226,18 @@ typedefs.ip = Schema.define {
   custom_validator = validate_ip,
 }
 
-
-typedefs.cidr = Schema.define {
+typedefs.ip_or_cidr = Schema.define {
   type = "string",
-  custom_validator = validate_cidr,
+  custom_validator = validate_ip_or_cidr,
 }
 
+typedefs.cidr_v4 = Schema.define {
+  type = "string",
+  custom_validator = validate_cidr_v4,
+}
+
+-- deprecated alias
+typedefs.cidr = typedefs.cidr_v4
 
 typedefs.port = Schema.define {
   type = "integer",

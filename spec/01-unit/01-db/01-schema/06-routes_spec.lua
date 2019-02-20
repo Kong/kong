@@ -781,7 +781,7 @@ describe("routes schema", function()
 
         it("'" .. v .. "' rejects invalid 'ip' values", function()
           -- invalid IPs
-          for _, ip_val in ipairs({ "127.", ":::1", "1" }) do
+          for _, ip_val in ipairs({ "127.", ":::1", "-1", "localhost", "foo" }) do
             for _, protocol in ipairs({ "tcp", "tls" }) do
               local route = Routes:process_auto_fields({
                 protocols = { protocol },
@@ -793,7 +793,7 @@ describe("routes schema", function()
               }, "insert")
               local ok, errs = Routes:validate(route)
               assert.falsy(ok, "ip test value was valid: " .. ip_val)
-              assert.matches("invalid cidr range: Invalid IP", errs[v][1].ip)
+              assert.equal("invalid ip or cidr range: '" .. ip_val .. "'", errs[v][1].ip)
             end
           end
 
@@ -810,7 +810,49 @@ describe("routes schema", function()
               }, "insert")
               local ok, errs = Routes:validate(route)
               assert.falsy(ok, "ip test value was valid: " .. ip_val)
-              assert.matches("invalid cidr range: Invalid IP", errs[v][1].ip)
+              assert.equal("invalid ip or cidr range: '" .. ip_val .. "'", errs[v][1].ip)
+            end
+          end
+        end)
+
+        it("'" .. v .. "' accepts valid 'ip cidr' values", function()
+          -- valid CIDRs
+          for _, ip_val in ipairs({ "1/0", "2130706433/2", "4294967295/3",
+                                    "0.0.0.0/0", "::/0", "0.0.0.0/1", "::/1",
+                                    "0.0.0.0/32", "::/128" }) do
+            for _, protocol in ipairs({ "tcp", "tls" }) do
+              local route = Routes:process_auto_fields({
+                protocols = { protocol },
+                [v] = {
+                  { ip = ip_val },
+                  { ip = "127.75.78.72", port = 8000 },
+                },
+                service = s,
+              }, "insert")
+              local ok, errs = Routes:validate(route)
+              assert.truthy(ok, "ip test value was valid: " .. ip_val)
+              assert.is_nil(errs)
+            end
+          end
+        end)
+
+        it("'" .. v .. "' rejects invalid 'ip cidr' values", function()
+          -- invalid CIDRs
+          for _, ip_val in ipairs({ "-1/0", "4294967296/2", "0.0.0.0/a",
+                                    "::/a", "0.0.0.0/-1", "::/-1",
+                                    "0.0.0.0/33", "::/129" }) do
+            for _, protocol in ipairs({ "tcp", "tls" }) do
+              local route = Routes:process_auto_fields({
+                protocols = { protocol },
+                [v] = {
+                  { ip = ip_val },
+                  { ip = "127.75.78.72", port = 8000 },
+                },
+                service = s,
+              }, "insert")
+              local ok, errs = Routes:validate(route)
+              assert.falsy(ok, "ip test value was valid: " .. ip_val)
+              assert.equal("invalid ip or cidr range: '" .. ip_val .. "'", errs[v][1].ip)
             end
           end
         end)
