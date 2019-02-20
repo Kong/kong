@@ -1,3 +1,9 @@
+## Unreleased
+
+- Added a support of status code ranges for `if_status` configuration parameter.
+Now you can provide status code ranges and single status codes together
+(e.g., 201-204,401)
+
 ## 0.1.0
 
 ### Added

@@ -1,8 +1,8 @@
-local find = string.find
-local match = string.match
+local constants = require "kong.plugins.response-transformer-advanced.constants"
 
-local REGEX_SINGLE_STATUS_CODE  = "^%d%d%d$"
-local REGEX_STATUS_CODE_RANGE   = "^%d%d%d%-%d%d%d$"
+local find = string.find
+local match = ngx.re.match
+
 
 -- entries must have colons to set the key and value apart
 local function check_for_value(value)
@@ -18,8 +18,8 @@ end
 -- checks if status code entries follow status code or status code range pattern (xxx or xxx-xxx)
 local function check_status_code_format(status_codes)
   for _, entry in pairs(status_codes) do
-    local single_code = match(entry, REGEX_SINGLE_STATUS_CODE)
-    local range = match(entry, REGEX_STATUS_CODE_RANGE)
+    local single_code = match(entry, constants.REGEX_SINGLE_STATUS_CODE)
+    local range = match(entry, constants.REGEX_STATUS_CODE_RANGE)
 
     if not single_code and not range then
       return false, "value '" .. entry .. "' is neither status code nor status code range"
