@@ -370,10 +370,7 @@ local function resolve_role_entity_permissions(roles)
   -- the order of iteration
   local positive_entities, negative_entities =  {}, {}
   for _, role in ipairs(roles) do
-    local role_entities, err = singletons.dao.rbac_role_entities:find_all({
-      role_id  = role.id,
-      __skip_rbac = true,
-    })
+    local role_entities, err = singletons.db.rbac_roles:get_entities(singletons.db, role) -- XXX EE: __skip_rbac = true
     if err then
       return _, _, err
     end

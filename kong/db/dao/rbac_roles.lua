@@ -11,4 +11,8 @@ return {
   get_entities = function(self, db, role)
     return rbac.entity_relationships(db, role, "role", "entity", "rbac_role_entities")
   end,
+
+  get_endpoints = function(self, db, role)
+    return rbac.entity_relationships(db, role, "role", "endpoint", "rbac_role_endpoints")
+  end,
 }

@@ -116,10 +116,10 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
   end)
 
   before_each(function()
-    dao:truncate_table("rbac_users")
-    dao:truncate_table("rbac_roles")
-    dao:truncate_table("rbac_role_entities")
-    dao:truncate_table("rbac_role_endpoints")
+    db:truncate("rbac_users")
+    db:truncate("rbac_roles")
+    db:truncate("rbac_role_entities")
+    db:truncate("rbac_role_endpoints")
     db:truncate("consumers")
 
     if client then
