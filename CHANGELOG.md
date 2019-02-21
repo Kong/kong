@@ -1,3 +1,10 @@
+## Unreleased
+
+- Added filter by status code functionality for responses to be logged.
+Admin from now on can add status code ranges for responses which want to
+be logged and sent to StatsD server. If Admin doesn't provide any status
+code, all responses will be logged.
+
 ## 0.1.2
 
 - Add workspace support with new metrics `status_count_per_workspace`
