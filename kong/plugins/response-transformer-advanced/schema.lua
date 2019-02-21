@@ -19,7 +19,7 @@ end
 local function check_status_code_format(status_codes)
   for _, entry in pairs(status_codes) do
     local single_code = match(entry, constants.REGEX_SINGLE_STATUS_CODE)
-    local range = match(entry, constants.REGEX_STATUS_CODE_RANGE)
+    local range = match(entry, constants.REGEX_SPLIT_RANGE)
 
     if not single_code and not range then
       return false, "value '" .. entry .. "' is neither status code nor status code range"

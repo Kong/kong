@@ -4,8 +4,6 @@ local constants = require "kong.plugins.response-transformer-advanced.constants"
 
 local table_contains = utils.table_contains
 local match = ngx.re.match
-local log = ngx.log
-local ERR = ngx.ERR
 
 
 local STATUS_CODE_SINGLES = 'single'
