@@ -22,16 +22,22 @@ _M.app:before_filter(function(self)
   -- So previous workspace should be dropped
   ctx.admin_api_request = true
   ctx.workspaces = nil
+  ngx.ctx.rbac = nil
 
   local ws_name = self.params.workspace_name or workspaces.DEFAULT_WORKSPACE
-  local workspaces = workspaces.get_req_workspace(ws_name)
-  if not workspaces or #workspaces == 0 then
+
+  local workspace, err = workspaces.fetch_workspace(ws_name)
+  if err then
+    ngx.log(ngx.ERR, err)
+    return responses.send_HTTP_INTERNAL_SERVER_ERROR()
+  end
+  if not workspace then
     responses.send_HTTP_NOT_FOUND(fmt("Workspace '%s' not found", ws_name))
   end
 
   -- save workspace name in the context; if not passed, default workspace is
   -- 'default'
-  ctx.workspaces = workspaces
+  ctx.workspaces = { workspace }
   self.params.workspace_name = nil
 
   local cors_conf = {

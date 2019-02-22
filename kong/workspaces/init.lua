@@ -496,15 +496,18 @@ end
 
 
 -- Coming from admin API request
-function _M.get_req_workspace(ws_name)
+-- Fetch a workspace entity from its name
+function _M.fetch_workspace(ws_name)
+  -- XXX do we ever need this function to return all workspaces (*)?
+  -- if we do, we have a problem (find_all not supported, but we can
+  -- iterate over pages)
 
-  local filter
-  if ws_name ~= "*" then
-    filter = { name = ws_name }
-  end
-
-  return _M.run_with_ws_scope({},
-    singletons.dao.workspaces.find_all, singletons.dao.workspaces, filter)
+  return _M.run_with_ws_scope(
+    {},
+    singletons.db.workspaces.select_by_name,
+    singletons.db.workspaces,
+    ws_name
+  )
 end
 
 local inc_counter

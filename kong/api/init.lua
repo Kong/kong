@@ -176,20 +176,22 @@ app:before_filter(function(self)
     ngx.ctx.workspaces = nil
     ngx.ctx.rbac = nil
 
+    -- workspace name: if no workspace name was provided as the first segment
+    -- in the path (:8001/:workspace/), consider it is the default workspace
     local ws_name = self.params.workspace_name or workspaces.DEFAULT_WORKSPACE
-    local workspaces, err = workspaces.get_req_workspace(ws_name)
+
+    -- fetch the workspace for current request
+    local workspace, err = workspaces.fetch_workspace(ws_name)
     if err then
       ngx.log(ngx.ERR, err)
       return responses.send_HTTP_INTERNAL_SERVER_ERROR()
     end
-
-    if not workspaces or #workspaces == 0 then
+    if not workspace then
       responses.send_HTTP_NOT_FOUND(fmt("Workspace '%s' not found", ws_name))
     end
 
-    -- save workspace name in the context; if not passed, default workspace is
-    -- 'default'
-    ngx.ctx.workspaces = workspaces
+    -- set fetched workspace reference into the context
+    ngx.ctx.workspaces = { workspace }
     self.params.workspace_name = nil
 
     local cors_conf = {
