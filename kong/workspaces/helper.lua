@@ -28,8 +28,8 @@ function _M.apply_unique_per_ws(table_name, params, constraints)
   -- needs to be removed as entity schema doesn't support them
   if table_name ~= "workspace_entities" then
     params.workspace_id = nil
+    params.workspace_name = nil
   end
-  params.workspace_name = nil
 
   if not constraints then
     return
