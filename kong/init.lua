@@ -271,7 +271,7 @@ local function load_declarative_config(kong_config, entities)
   return concurrency.with_worker_mutex(opts, function()
     local value = ngx.shared.kong:get("declarative_config:loaded")
     if value then
-      return
+      return true
     end
 
     local ok, err = declarative.load_into_cache(entities)
@@ -284,7 +284,11 @@ local function load_declarative_config(kong_config, entities)
 
     build_plugins_map(kong.db, utils.uuid())
 
+    assert(runloop.build_router(kong.db, "init"))
+
     mesh.init()
+
+    return true
   end)
 end
 
@@ -430,9 +434,9 @@ function Kong.init()
     if err then
       error("error building initial plugins map: " .. err)
     end
-  end
 
-  assert(runloop.build_router(db, "init"))
+    assert(runloop.build_router(db, "init"))
+  end
 
   db:close()
 end
