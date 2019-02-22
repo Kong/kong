@@ -28,9 +28,9 @@ local lower           = string.lower
 local find            = string.find
 local type            = type
 local sub             = string.sub
-local max             = math.max
 local json            = codec.json
 local base64          = codec.base64
+local base64url       = codec.base64url
 
 
 local PARAM_TYPES_ALL = {
@@ -38,6 +38,16 @@ local PARAM_TYPES_ALL = {
   "query",
   "body",
 }
+
+
+local ee_enums
+do
+  local ok
+  ok, ee_enums = pcall(require, "kong.enterprise_edition.dao.enums")
+  if not ok then
+    ee_enums = nil
+  end
+end
 
 
 local function unexpected(trusted_client, ...)
@@ -821,9 +831,11 @@ local function get_exp(access_token, tokens_encoded, now, exp_default)
     local exp
 
     if type(access_token.payload) == "table" then
-      exp = tonumber(access_token.payload.exp)
-      if exp then
-        return exp
+      if access_token.payload.exp then
+        exp = tonumber(access_token.payload.exp)
+        if exp then
+          return exp
+        end
       end
     end
 
@@ -834,9 +846,15 @@ local function get_exp(access_token, tokens_encoded, now, exp_default)
   end
 
   if tokens_encoded and type(tokens_encoded) == "table" then
-    local expires_in = tonumber(tokens_encoded.expires_in)
-    if expires_in then
-      return now + expires_in
+    if tokens_encoded.expires_in then
+      local expires_in = tonumber(tokens_encoded.expires_in)
+      if expires_in then
+        if expires_in == 0 then
+          return 0
+        end
+
+        return now + expires_in
+      end
     end
   end
 
@@ -953,8 +971,25 @@ function OICHandler:access(conf)
       return unexpected(trusted_client, err or "unable to initialize library")
     end
 
-    iss    = oic.configuration.issuer
-    secret = issuer.secret
+    iss = oic.configuration.issuer
+
+    secret = args.get_conf_arg("session_secret")
+    if not secret then
+      secret = issuer.secret
+    end
+  end
+
+  -- user may want to ignore access token signature verification with
+  -- some flows, e.g. azure ad sends jwt access tokens for which they
+  -- don't provide a JWK in public uri
+  local ignore_signature = {}
+  do
+    local ignore_grants = args.get_conf_arg("ignore_signature")
+    if ignore_grants then
+      for _, grant in ipairs(ignore_grants) do
+        ignore_signature[grant] = true
+      end
+    end
   end
 
   -- initialize functions
@@ -967,7 +1002,6 @@ function OICHandler:access(conf)
   -- try to open session
   local session, session_present, session_data
   if auth_methods.session then
-
     local session_secure = args.get_conf_arg("session_cookie_secure")
     if session_secure == nil then
       local scheme
@@ -1142,6 +1176,7 @@ function OICHandler:access(conf)
     local hide_credentials = args.get_conf_arg("hide_credentials", false)
 
     log("session was not found")
+
     -- bearer token authentication
     if auth_methods.bearer or auth_methods.introspection or auth_methods.kong_oauth2 then
       log("trying to find bearer token")
@@ -1260,6 +1295,13 @@ function OICHandler:access(conf)
             args.get_conf_arg("refresh_token_param_type", PARAM_TYPES_ALL)
           )
 
+          if loc == "header" then
+            local value_prefix = lower(sub(refresh_token, 1, 6))
+            if value_prefix == "bearer" then
+              refresh_token =  sub(refresh_token, 8)
+            end
+          end
+
           if refresh_token then
             log("found refresh token")
             if hide_credentials then
@@ -1280,11 +1322,11 @@ function OICHandler:access(conf)
 
             token_endpoint_args = {
               {
-                refresh_token = refresh_token,
-                grant_type    = "refresh_token",
+                refresh_token    = refresh_token,
+                grant_type       = "refresh_token",
+                ignore_signature = ignore_signature.refresh_token,
               },
             }
-
           else
             log("refresh token was not found")
           end
@@ -1302,14 +1344,16 @@ function OICHandler:access(conf)
 
           token_endpoint_args = {
             {
-              username      = usr,
-              password      = pwd,
-              grant_type    = "password",
+              username         = usr,
+              password         = pwd,
+              grant_type       = "password",
+              ignore_signature = ignore_signature.password,
             },
             {
-              client_id     = cid,
-              client_secret = sec,
-              grant_type    = "client_credentials",
+              client_id        = cid,
+              client_secret    = sec,
+              grant_type       = "client_credentials",
+              ignore_signature = ignore_signature.client_credentials,
             },
           }
 
@@ -1318,9 +1362,10 @@ function OICHandler:access(conf)
 
           token_endpoint_args = {
             {
-              username      = usr,
-              password      = pwd,
-              grant_type    = "password",
+              username         = usr,
+              password         = pwd,
+              grant_type       = "password",
+              ignore_signature = ignore_signature.password,
             },
           }
 
@@ -1329,9 +1374,10 @@ function OICHandler:access(conf)
 
           token_endpoint_args = {
             {
-              client_id     = cid,
-              client_secret = sec,
-              grant_type    = "client_credentials",
+              client_id        = cid,
+              client_secret    = sec,
+              grant_type       = "client_credentials",
+              ignore_signature = ignore_signature.client_credentials,
             },
           }
 
@@ -1485,6 +1531,7 @@ function OICHandler:access(conf)
                 args.clear_uri_arg("code", "state", "session_state")
               end
 
+              token_endpoint_args.ignore_signature = ignore_signature.authorization_code
               token_endpoint_args = { token_endpoint_args }
 
             else
@@ -1577,13 +1624,49 @@ function OICHandler:access(conf)
 
   local credential, consumer
 
-  local now = time()
-  local lwy = args.get_conf_arg("leeway", 0)
+  local leeway = args.get_conf_arg("leeway", 0)
   local exp
   local ttl
+  do
+    local now = time()
+    local ttl_default   = args.get_conf_arg("cache_ttl", 3600)
+    local ttl_max       = args.get_conf_arg("cache_ttl_max")
+    local ttl_min       = args.get_conf_arg("cache_ttl_min")
+    local ttl_neg       = args.get_conf_arg("cache_ttl_min")
+    local ttl_resurrect = args.get_conf_arg("cache_ttl_resurrect")
 
-  local ttl_default = args.get_conf_arg("cache_ttl", 3600)
-  local exp_default = now + ttl_default
+    if ttl_max and ttl_max > 0 then
+      if ttl_min and ttl_min > ttl_max then
+        ttl_min = ttl_max
+      end
+
+      if ttl_default > ttl_max then
+        ttl_default = ttl_max
+      end
+    end
+
+    if ttl_min and ttl_min > 0 then
+      if ttl_default < ttl_min then
+        ttl_default = ttl_min
+      end
+    end
+
+    ttl = {
+      now = now,
+      ttl = ttl_default,
+      min_ttl = ttl_min,
+      max_ttl = ttl_max,
+      neg_ttl = ttl_neg,
+      resurrect_ttl = ttl_resurrect
+    }
+  end
+
+  local exp_default
+  if ttl.ttl == 0 then
+    exp_default = 0
+  else
+    exp_default = ttl.now + ttl.ttl
+  end
 
   local tokens_encoded = session_data.tokens
   local tokens_decoded
@@ -1614,7 +1697,7 @@ function OICHandler:access(conf)
       if auth_methods.kong_oauth2 then
         log("trying to find matching kong oauth2 token")
         token_introspected, credential, consumer = cache.kong_oauth2.load(
-          ctx, tokens_decoded.access_token, ttl_default, true)
+          ctx, tokens_decoded.access_token, ttl, true)
         if token_introspected then
           log("found matching kong oauth2 token")
           token_introspected.active = true
@@ -1626,7 +1709,7 @@ function OICHandler:access(conf)
 
       if not token_introspected then
         if auth_methods.introspection then
-          token_introspected, err = introspect_token(tokens_decoded.access_token, ttl_default)
+          token_introspected, err = introspect_token(tokens_decoded.access_token, ttl)
           if token_introspected then
             if token_introspected.active then
               log("authenticated using oauth2 introspection")
@@ -1652,12 +1735,12 @@ function OICHandler:access(conf)
         auth_method = "kong_oauth2"
       end
 
-      exp = get_exp(token_introspected, tokens_encoded, now, exp_default)
+      exp = get_exp(token_introspected, tokens_encoded, ttl.now, exp_default)
 
     else
       if args.get_conf_arg("introspect_jwt_tokens", false) then
         log("introspecting jwt bearer token")
-        jwt_token_introspected, err = introspect_token(tokens_encoded.access_token, ttl_default)
+        jwt_token_introspected, err = introspect_token(tokens_encoded.access_token, ttl)
         if jwt_token_introspected then
           if jwt_token_introspected.active then
             log("jwt bearer token is active and not revoked")
@@ -1673,11 +1756,16 @@ function OICHandler:access(conf)
           return unauthorized(ctx, iss, unauthorized_error_message, err,
                               session, anonymous, trusted_client)
         end
+
+        exp = get_exp(jwt_token_introspected, tokens_encoded, ttl.now, exp_default)
+      end
+
+      if not exp then
+        exp = get_exp(tokens_decoded.access_token, tokens_encoded, ttl.now, exp_default)
       end
 
       log("authenticated using jwt bearer token")
       auth_method = "bearer"
-      exp = get_exp(tokens_decoded.access_token, tokens_encoded, now, exp_default)
     end
 
     if auth_methods.session then
@@ -1692,6 +1780,7 @@ function OICHandler:access(conf)
   elseif not tokens_encoded then
     -- let's try to retrieve tokens when using authorization code flow,
     -- password credentials, client credentials or refresh_token
+    local auth_params
     if token_endpoint_args then
       for _, arg in ipairs(token_endpoint_args) do
         arg.args = args.get_conf_args("token_post_args_names", "token_post_args_values")
@@ -1724,18 +1813,18 @@ function OICHandler:access(conf)
 
         if args.get_conf_arg("cache_tokens") then
           log("trying to exchange credentials using token endpoint with caching enabled")
-          tokens_encoded, err, downstream_headers = cache.tokens.load(oic, arg, ttl_default, true)
+          tokens_encoded, err, downstream_headers = cache.tokens.load(oic, arg, ttl, true)
 
           if tokens_encoded and (arg.grant_type == "refresh_token" or
                                  arg.grant_type == "password" or
                                  arg.grant_type == "client_credentials") then
 
             log("verifying tokens")
-            tokens_decoded, err = oic.token:verify(tokens_encoded, token_endpoint_args)
+            tokens_decoded, err = oic.token:verify(tokens_encoded, arg)
             if not tokens_decoded then
               log("token verification failed, trying to exchange credentials ",
                   "using token endpoint with cache flushed")
-              tokens_encoded, err, downstream_headers = cache.tokens.load(oic, arg, ttl_default, true, true)
+              tokens_encoded, err, downstream_headers = cache.tokens.load(oic, arg, ttl, true, true)
 
             else
               log("tokens verified")
@@ -1744,13 +1833,13 @@ function OICHandler:access(conf)
 
         else
           log("trying to exchange credentials using token endpoint")
-          tokens_encoded, err, downstream_headers = cache.tokens.load(oic, arg, ttl_default, false)
+          tokens_encoded, err, downstream_headers = cache.tokens.load(oic, arg, ttl, false)
         end
 
         if tokens_encoded then
           log("exchanged credentials with tokens")
           auth_method = arg.grant_type or "authorization_code"
-          token_endpoint_args = arg
+          auth_params = arg
           break
         end
       end
@@ -1764,7 +1853,7 @@ function OICHandler:access(conf)
 
     if not tokens_decoded then
       log("verifying tokens")
-      tokens_decoded, err = oic.token:verify(tokens_encoded, token_endpoint_args)
+      tokens_decoded, err = oic.token:verify(tokens_encoded, auth_params)
       if not tokens_decoded then
         log("token verification failed")
         return unauthorized(ctx, iss, unauthorized_error_message, err,
@@ -1775,7 +1864,7 @@ function OICHandler:access(conf)
       end
     end
 
-    exp = get_exp(tokens_decoded.access_token, tokens_encoded, now, exp_default)
+    exp = get_exp(tokens_decoded.access_token, tokens_encoded, ttl.now, exp_default)
 
     if auth_methods.session then
       session.data = {
@@ -1797,11 +1886,15 @@ function OICHandler:access(conf)
     log("authenticated using session")
 
     auth_method = "session"
-    exp = (session_data.expires or lwy)
+    if session_data.expires then
+      exp = session_data.expires
+    else
+      exp = exp_default
+    end
   end
 
   log("checking for access token")
-  if not tokens_encoded.access_token then
+  if type(tokens_encoded) ~= "table" or not tokens_encoded.access_token then
     return unauthorized(ctx, iss, unauthorized_error_message, "access token was not found",
                         session, anonymous, trusted_client)
 
@@ -1809,35 +1902,70 @@ function OICHandler:access(conf)
     log("found access token")
   end
 
-  local refresh_tokens = args.get_conf_arg("refresh_tokens", true)
-  if refresh_tokens and tokens_encoded.refresh_token then
-    exp = (exp or lwy) - lwy
-  else
-    exp = (exp or lwy) + lwy
+  if not exp then
+    exp = exp_default
   end
 
-  ttl = max(exp - now, 0)
+  local refresh_tokens = args.get_conf_arg("refresh_tokens", true)
+
+  local leeway_adjusted_exp
+  if exp ~= 0 and leeway ~= 0 then
+    if refresh_tokens and tokens_encoded.refresh_token then
+      leeway_adjusted_exp = exp - leeway
+    else
+      leeway_adjusted_exp = exp + leeway
+    end
+
+  else
+    leeway_adjusted_exp = exp
+  end
+
+  if exp > 0 then
+    local ttl_new = exp - ttl.now
+    if ttl_new > 0 then
+      if ttl.max_ttl and ttl.max_ttl > 0 then
+        if ttl_new > ttl.max_ttl then
+          ttl_new = ttl.max_ttl
+        end
+      end
+
+      if ttl.min_ttl and ttl.min_ttl > 0 then
+        if ttl_new < ttl.min_ttl then
+          ttl_new = ttl.min_ttl
+        end
+      end
+
+      ttl.ttl = ttl_new
+    end
+  end
 
   log("checking for access token expiration")
 
-  if exp > now then
+  if leeway_adjusted_exp == 0 or leeway_adjusted_exp > ttl.now then
     log("access token is valid and has not expired")
 
-    if args.get_conf_arg("reverify") then
-      log("reverifying tokens")
-      tokens_decoded, err = oic.token:verify(tokens_encoded)
-      if not tokens_decoded then
-        log("reverifying tokens failed")
-        return unauthorized(ctx,
-                            iss,
-                            unauthorized_error_message,
-                            err,
-                            session,
-                            anonymous,
-                            trusted_client)
+    if auth_method == "session" then
+      if args.get_conf_arg("reverify") then
+        log("reverifying tokens")
+        if ignore_signature.session then
+          tokens_decoded, err = oic.token:verify(tokens_encoded , { ignore_signature = true })
+        else
+          tokens_decoded, err = oic.token:verify(tokens_encoded)
+        end
 
-      else
-        log("reverified tokens")
+        if not tokens_decoded then
+          log("reverifying tokens failed")
+          return unauthorized(ctx,
+                              iss,
+                              unauthorized_error_message,
+                              err,
+                              session,
+                              anonymous,
+                              trusted_client)
+
+        else
+          log("reverified tokens")
+        end
       end
     end
 
@@ -1848,84 +1976,86 @@ function OICHandler:access(conf)
   else
     log("access token has expired")
 
-    if refresh_tokens then
-      -- access token has expired, try to refresh the access token before proxying
-      if not tokens_encoded.refresh_token then
-        return unauthorized(ctx,
-                            iss,
-                            unauthorized_error_message,
-                            "access token cannot be refreshed in absense of refresh token",
-                            session,
-                            anonymous,
-                            trusted_client)
-      end
+    if not refresh_tokens then
+      return unauthorized(ctx,
+        iss,
+        unauthorized_error_message,
+        "access token has expired and refreshing of tokens was disabled",
+        session,
+        anonymous,
+        trusted_client)
+    end
 
-      log("trying to refresh access token using refresh token")
-
-      local tokens_refreshed
-      local refresh_token = tokens_encoded.refresh_token
-      tokens_refreshed, err = oic.token:refresh(refresh_token)
-
-      if not tokens_refreshed then
-        log("unable to refresh access token using refresh token")
-        return unauthorized(ctx,
-                            iss,
-                            unauthorized_error_message,
-                            err,
-                            session,
-                            anonymous,
-                            trusted_client)
-
-      else
-        log("refreshed access token using refresh token")
-      end
-
-      if not tokens_refreshed.id_token then
-        tokens_refreshed.id_token = tokens_encoded.id_token
-      end
-
-      if not tokens_refreshed.refresh_token then
-        tokens_refreshed.refresh_token = refresh_token
-      end
-
-      log("verifying refreshed tokens")
-      tokens_decoded, err = oic.token:verify(tokens_refreshed)
-      if not tokens_decoded then
-        log("unable to verify refreshed tokens")
-        return unauthorized(ctx,
-                            iss,
-                            unauthorized_error_message,
-                            err,
-                            session,
-                            anonymous,
-                            trusted_client)
-
-      else
-        log("verified refreshed tokens")
-      end
-
-      tokens_encoded = tokens_refreshed
-
-      exp = get_exp(tokens_decoded.access_token, tokens_encoded, now, exp_default)
-
-      if auth_methods.session then
-        session.data = {
-          client  = trusted_client.index,
-          tokens  = tokens_encoded,
-          expires = exp,
-        }
-
-        session:regenerate()
-      end
-
-    else
+    -- access token has expired, try to refresh the access token before proxying
+    if not tokens_encoded.refresh_token then
       return unauthorized(ctx,
                           iss,
                           unauthorized_error_message,
-                          "access token has expired and could not be refreshed",
+                          "access token cannot be refreshed in absense of refresh token",
                           session,
                           anonymous,
                           trusted_client)
+    end
+
+    log("trying to refresh access token using refresh token")
+
+    local refresh_token = tokens_encoded.refresh_token
+
+    local tokens_refreshed
+    tokens_refreshed, err = oic.token:refresh(refresh_token)
+    if not tokens_refreshed then
+      log("unable to refresh access token using refresh token")
+      return unauthorized(ctx,
+                          iss,
+                          unauthorized_error_message,
+                          err,
+                          session,
+                          anonymous,
+                          trusted_client)
+
+    else
+      log("refreshed access token using refresh token")
+    end
+
+    if not tokens_refreshed.refresh_token then
+      -- perhaps this refresh token was not a single use token
+      tokens_refreshed.refresh_token = refresh_token
+    end
+
+    log("verifying refreshed tokens")
+
+    if ignore_signature.refresh_token then
+      tokens_decoded, err = oic.token:verify(tokens_refreshed, { ignore_signature = true })
+    else
+      tokens_decoded, err = oic.token:verify(tokens_refreshed)
+    end
+
+    if not tokens_decoded then
+      log("unable to verify refreshed tokens")
+      return unauthorized(ctx,
+                          iss,
+                          unauthorized_error_message,
+                          err,
+                          session,
+                          anonymous,
+                          trusted_client)
+
+    else
+      log("verified refreshed tokens")
+    end
+
+    tokens_encoded = tokens_refreshed
+
+    exp = get_exp(tokens_decoded.access_token, tokens_encoded, ttl.now, exp_default)
+
+    if auth_methods.session then
+      session.data = {
+        client  = trusted_client.index,
+        tokens  = tokens_encoded,
+        expires = exp,
+      }
+
+      session:regenerate()
     end
   end
 
@@ -1998,6 +2128,14 @@ function OICHandler:access(conf)
         else
           log("scopes not found in introspection results")
         end
+
+      elseif jwt_token_introspected then
+        access_token_scopes = find_claim(jwt_token_introspected, scopes_claim)
+        if access_token_scopes then
+          log("scopes found in jwt introspection results")
+        else
+          log("scopes not found in jwt introspection results")
+        end
       end
 
       if not access_token_scopes then
@@ -2064,6 +2202,14 @@ function OICHandler:access(conf)
         else
           log("audience not found in introspection results")
         end
+
+      elseif jwt_token_introspected then
+        access_token_audience = find_claim(jwt_token_introspected, audience_claim)
+        if access_token_audience then
+          log("audience found in jwt introspection results")
+        else
+          log("audience not found in jwt introspection results")
+        end
       end
 
       if not access_token_audience then
@@ -2116,6 +2262,11 @@ function OICHandler:access(conf)
     end
   end
 
+  local userinfo = false
+  local userinfo_loaded = false
+  local cache_userinfo  = args.get_conf_arg("cache_user_info")
+  local search_userinfo = args.get_conf_arg("search_user_info")
+
   -- consumer mapping
   if not consumer then
     local consumer_claim = args.get_conf_arg("consumer_claim")
@@ -2124,15 +2275,28 @@ function OICHandler:access(conf)
 
       local consumer_by = args.get_conf_arg("consumer_by")
 
-      if not consumer and token_introspected then
-        log("trying to find consumer using introspection response")
-        consumer, err = find_consumer({ payload = token_introspected }, consumer_claim, false, consumer_by, ttl)
-        if consumer then
-          log("consumer was found with introspection results")
-        elseif err then
-          log("consumer was not found with introspection results (", err, ")")
-        else
-          log("consumer was not found with introspection results")
+      if not consumer then
+        if token_introspected then
+          log("trying to find consumer using introspection response")
+          consumer, err = find_consumer({ payload = token_introspected }, consumer_claim, false, consumer_by, ttl)
+          if consumer then
+            log("consumer was found with introspection results")
+          elseif err then
+            log("consumer was not found with introspection results (", err, ")")
+          else
+            log("consumer was not found with introspection results")
+          end
+
+        elseif jwt_token_introspected then
+          log("trying to find consumer using jwt introspection response")
+          consumer, err = find_consumer({ payload = jwt_token_introspected }, consumer_claim, false, consumer_by, ttl)
+          if consumer then
+            log("consumer was found with jwt introspection results")
+          elseif err then
+            log("consumer was not found with jwt introspection results (", err, ")")
+          else
+            log("consumer was not found with jwt introspection results")
+          end
         end
       end
 
@@ -2164,6 +2328,39 @@ function OICHandler:access(conf)
             else
               log("consumer was not found with access token")
             end
+          end
+        end
+      end
+
+      if not consumer and search_userinfo then
+        if not userinfo and not userinfo_loaded then
+          log("loading user info")
+          if cache_userinfo then
+            userinfo, err = cache.userinfo.load(oic, tokens_encoded.access_token, ttl, true)
+          else
+            userinfo, err = cache.userinfo.load(oic, tokens_encoded.access_token, ttl, false)
+          end
+
+          userinfo_loaded = true
+
+          if userinfo then
+            log("user info loaded")
+          elseif err then
+            log("user info could not be loaded (", err, ")")
+          else
+            log("user info could not be loaded")
+          end
+        end
+
+        if type(userinfo) == "table" then
+          log("trying to find consumer using user info")
+          consumer, err = find_consumer({ payload = userinfo }, consumer_claim, false, consumer_by, ttl)
+          if consumer then
+            log("consumer was found with user info")
+          elseif err then
+            log("consumer was not found with user info (", err, ")")
+          else
+            log("consumer was not found with user info")
           end
         end
       end
@@ -2203,14 +2400,17 @@ function OICHandler:access(conf)
   end
 
   -- check if the dev portal consumer is not approved
-  if consumer and consumer.status ~= nil and consumer.status ~= 0 then
-    return forbidden(ctx,
-                     iss,
-                     forbidden_error_message,
-                     "consumer is not authorized",
-                     session,
-                     anonymous,
-                     trusted_client)
+  if ee_enums then
+    if consumer and consumer.status ~= ee_enums.CONSUMERS.STATUS.APPROVED and
+                    consumer.type   == ee_enums.CONSUMERS.TYPE.DEVELOPER then
+      return forbidden(ctx,
+                       iss,
+                       forbidden_error_message,
+                       "consumer is not an authorized and approved developer",
+                       session,
+                       anonymous,
+                       trusted_client)
+    end
   end
   -- setting consumer context and headers
   set_consumer(ctx, consumer, credential)
@@ -2229,6 +2429,14 @@ function OICHandler:access(conf)
 
         else
           log("credential claim not found in introspection results")
+        end
+      elseif jwt_token_introspected then
+        credential_value = find_claim(jwt_token_introspected, credential_claim)
+        if credential_value then
+          log("credential claim found in jwt introspection results")
+
+        else
+          log("credential claim not found in jwt introspection results")
         end
       end
 
@@ -2254,6 +2462,37 @@ function OICHandler:access(conf)
             else
               log("credential claim not found in access token")
             end
+          end
+        end
+      end
+
+      if not credential_value and search_userinfo then
+        if not userinfo and not userinfo_loaded then
+          log("loading user info")
+          if cache_userinfo then
+            userinfo, err = cache.userinfo.load(oic, tokens_encoded.access_token, ttl, true)
+          else
+            userinfo, err = cache.userinfo.load(oic, tokens_encoded.access_token, ttl, false)
+          end
+
+          userinfo_loaded = true
+
+          if userinfo then
+            log("user info loaded")
+          elseif err then
+            log("user info could not be loaded (", err, ")")
+          else
+            log("user info could not be loaded")
+          end
+        end
+
+        if type(userinfo) == "table" then
+          log("trying to find credential using user info")
+          credential_value = find_claim(userinfo, credential_claim)
+          if credential_value then
+            log("credential claim found in user info")
+          else
+            log("credential claim was not found in user info")
           end
         end
       end
@@ -2309,6 +2548,37 @@ function OICHandler:access(conf)
             else
               log("authenticated groups claim not found in access token")
             end
+          end
+        end
+      end
+
+      if not authenticated_groups and search_userinfo then
+        if not userinfo and not userinfo_loaded then
+          log("loading user info")
+          if cache_userinfo then
+            userinfo, err = cache.userinfo.load(oic, tokens_encoded.access_token, ttl, true)
+          else
+            userinfo, err = cache.userinfo.load(oic, tokens_encoded.access_token, ttl, false)
+          end
+
+          userinfo_loaded = true
+
+          if userinfo then
+            log("user info loaded")
+          elseif err then
+            log("user info could not be loaded (", err, ")")
+          else
+            log("user info could not be loaded")
+          end
+        end
+
+        if type(userinfo) == "table" then
+          log("trying to find credential using user info")
+          authenticated_groups = find_claim(userinfo, authenticated_groups_claim)
+          if authenticated_groups then
+            log("authenticated groups claim found in user info")
+          else
+            log("authenticated groups claim was not found in user info")
           end
         end
       end
@@ -2381,7 +2651,6 @@ function OICHandler:access(conf)
         else
           if err then
             return unexpected(trusted_client, err)
-
           else
             return unexpected(trusted_client, "exchange token endpoint returned ", error_status or "unknown")
           end
@@ -2395,60 +2664,128 @@ function OICHandler:access(conf)
 
   log("setting upstream and downstream headers")
   do
-    -- granular headers
-    local token
-    if token_introspected then
-      token = token_introspected
+    local upstream_headers_claims = args.get_conf_arg("upstream_headers_claims")
+    local upstream_headers_names  = args.get_conf_arg("upstream_headers_names")
+    if upstream_headers_claims and upstream_headers_names then
+      for i, claim in ipairs(upstream_headers_claims) do
+        claim = args.get_value(claim)
+        if claim then
+          local name = args.get_value(upstream_headers_names[i])
+          if name then
+            local value
+            if token_introspected then
+              value = get_header_value(args.get_value(token_introspected[claim]))
+            end
 
-    else
-      if tokens_decoded then
-        if not tokens_decoded then
-          tokens_decoded = oic.token:decode(tokens_encoded, { verify_signature = false })
-        end
+            if not value and jwt_token_introspected then
+              value = get_header_value(args.get_value(jwt_token_introspected[claim]))
+            end
 
-        if tokens_decoded then
-          local access_token = tokens_decoded.access_token
-          if type(access_token) == "table" then
-            token = access_token.payload
+            if not value and tokens_encoded then
+              if not tokens_decoded then
+                tokens_decoded = oic.token:decode(tokens_encoded, { verify_signature = false })
+              end
+
+              if type(tokens_decoded.access_token) == "table" then
+                value = get_header_value(args.get_value(tokens_decoded.access_token.payload[claim]))
+              end
+
+              if not value and type(tokens_decoded.id_token) == "table" then
+                value = get_header_value(args.get_value(tokens_decoded.id_token.payload[claim]))
+              end
+            end
+
+            if not value and search_userinfo then
+              if not userinfo and not userinfo_loaded then
+                log("loading user info")
+                if cache_userinfo then
+                  userinfo, err = cache.userinfo.load(oic, tokens_encoded.access_token, ttl, true)
+                else
+                  userinfo, err = cache.userinfo.load(oic, tokens_encoded.access_token, ttl, false)
+                end
+
+                userinfo_loaded = true
+
+                if userinfo then
+                  log("user info loaded")
+                elseif err then
+                  log("user info could not be loaded (", err, ")")
+                else
+                  log("user info could not be loaded")
+                end
+              end
+
+              if type(userinfo) == "table" then
+                value = get_header_value(args.get_value(userinfo[claim]))
+              end
+            end
+
+            if value then
+              set_upstream_header(name, value)
+            end
           end
         end
       end
     end
 
-    if token then
-      do
-        local upstream_headers_claims = args.get_conf_arg("upstream_headers_claims")
-        local upstream_headers_names  = args.get_conf_arg("upstream_headers_names")
-        if upstream_headers_claims and upstream_headers_names then
-          for i, claim in ipairs(upstream_headers_claims) do
-            claim = args.get_value(claim)
-            if claim then
-              local name = args.get_value(upstream_headers_names[i])
-              if name then
-                local value = get_header_value(args.get_value(token[claim]))
-                if value then
-                  set_upstream_header(name, value)
-                end
+    local downstream_headers_claims = args.get_conf_arg("downstream_headers_claims")
+    local downstream_headers_names  = args.get_conf_arg("downstream_headers_names")
+    if downstream_headers_claims and downstream_headers_names then
+      for i, claim in ipairs(downstream_headers_claims) do
+        claim = args.get_value(claim)
+        if claim then
+          local name = args.get_value(downstream_headers_names[i])
+          if name then
+            local value
+            if token_introspected then
+              value = get_header_value(args.get_value(token_introspected[claim]))
+            end
+
+            if not value and jwt_token_introspected then
+              value = get_header_value(args.get_value(jwt_token_introspected[claim]))
+            end
+
+            if not value and tokens_encoded then
+              if not tokens_decoded then
+                tokens_decoded = oic.token:decode(tokens_encoded, { verify_signature = false })
+              end
+
+              if type(tokens_decoded.access_token) == "table" then
+                value = get_header_value(args.get_value(tokens_decoded.access_token.payload[claim]))
+              end
+
+              if not value and type(tokens_decoded.id_token) == "table" then
+                value = get_header_value(args.get_value(tokens_decoded.id_token.payload[claim]))
               end
             end
-          end
-        end
-      end
 
-      do
-        local downstream_headers_claims = args.get_conf_arg("downstream_headers_claims")
-        local downstream_headers_names  = args.get_conf_arg("downstream_headers_names")
-        if downstream_headers_claims and downstream_headers_names then
-          for i, claim in ipairs(downstream_headers_claims) do
-            claim = args.get_value(claim)
-            if claim then
-              local name = args.get_value(downstream_headers_names[i])
-              if name then
-                local value = get_header_value(args.get_value(token[claim]))
-                if value then
-                  set_downstream_header(name, value)
+            if not value and search_userinfo then
+              if not userinfo and not userinfo_loaded then
+                log("loading user info")
+                if cache_userinfo then
+                  userinfo, err = cache.userinfo.load(oic, tokens_encoded.access_token, ttl, true)
+                else
+                  userinfo, err = cache.userinfo.load(oic, tokens_encoded.access_token, ttl, false)
+                end
+
+                userinfo_loaded = true
+
+                if userinfo then
+                  log("user info loaded")
+                elseif err then
+                  log("user info could not be loaded (", err, ")")
+                else
+                  log("user info could not be loaded")
                 end
               end
+
+              if type(userinfo) == "table" then
+                value = get_header_value(args.get_value(userinfo[claim]))
+              end
+            end
+
+            if value then
+              set_downstream_header(name, value)
             end
           end
         end
@@ -2463,12 +2800,17 @@ function OICHandler:access(conf)
       return introspect_token(tokens_encoded.access_token, ttl)
     end)
 
-    set_headers(args, "user_info", function()
-      if args.get_conf_arg("cache_user_info") then
-        return cache.userinfo.load(oic, tokens_encoded.access_token, ttl, true)
+    set_headers(args, "user_info", userinfo or function()
+      if not userinfo_loaded then
+        if cache_userinfo then
+          userinfo = cache.userinfo.load(oic, tokens_encoded.access_token, ttl, true)
+        else
+          userinfo = cache.userinfo.load(oic, tokens_encoded.access_token, ttl, false)
+        end
 
-      else
-        return cache.userinfo.load(oic, tokens_encoded.access_token, ttl, false)
+        userinfo_loaded = true
+
+        return userinfo
       end
     end)
 
@@ -2495,6 +2837,13 @@ function OICHandler:access(conf)
         end
       end
     end)
+
+    -- session headers
+    set_headers(args, "session_id", function()
+      if session and session.id and session.encoder then
+        return session.encoder.encode(session.id)
+      end
+    end)
   end
 
   -- login actions
@@ -2518,9 +2867,38 @@ function OICHandler:access(conf)
           local login_tokens = args.get_conf_arg("login_tokens")
           if login_tokens then
             log("adding login tokens to response")
+            local output_tokens
+            local output_introspection
             for _, name in ipairs(login_tokens) do
-              if tokens_encoded[name] then
-                login_response[name] = tokens_encoded[name]
+              if name == "tokens" then
+                output_tokens = true
+                break
+              elseif name == "introspection" then
+                output_introspection = true
+              end
+            end
+
+            local response
+            if output_introspection then
+              if token_introspected then
+                response = token_introspected
+              elseif jwt_token_introspected then
+                response = jwt_token_introspected
+              elseif output_tokens then
+                response = tokens_encoded
+              end
+
+            elseif output_tokens then
+              response = tokens_encoded
+            end
+
+            if response then
+              login_response = response
+            elseif tokens_encoded then
+              for _, name in ipairs(login_tokens) do
+                if tokens_encoded[name] then
+                  login_response[name] = tokens_encoded[name]
+                end
               end
             end
           end
@@ -2552,24 +2930,47 @@ function OICHandler:access(conf)
               end
 
               for _, name in ipairs(login_tokens) do
-                if tokens_encoded[name] then
+                local value
+                if name == "tokens" then
+                  value = tokens_encoded
+
+                elseif name == "introspection" then
+                  if token_introspected then
+                    value = token_introspected
+                  elseif jwt_token_introspected then
+                    value = jwt_token_introspected
+                  end
+
+                else
+                  value = tokens_encoded[name]
+                end
+
+                if value then
+                  if type(value) == "table" then
+                    value = json.encode(value)
+                    if value then
+                      value = base64url.encode(value)
+                    end
+
+                  else
+                    value = tostring(value)
+                  end
+
                   if not redirect_params_added then
                     if login_redirect_mode == "query" then
                       u[i] = "?"
-
                     else
                       u[i] = "#"
                     end
 
                     redirect_params_added = true
-
                   else
                     u[i] = "&"
                   end
 
                   u[i+1] = name
                   u[i+2] = "="
-                  u[i+3] = tokens_encoded[name]
+                  u[i+3] = value
                   i=i+4
                 end
               end

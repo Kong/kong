@@ -1,11 +1,37 @@
-## v0.2.8 (upcoming)
+## v0.2.8
 
-- `config.credential_claim` is searched from `id token` as well
-- `config.authenticated_groups_claim` is searched from `id token` as well
 - Add `config.token_headers_names`
 - Add `config.token_headers_values`
 - Add `config.introspection_post_args_names`
 - Add `config.introspection_post_args_values`
+- Add `config.session_secret`
+- Add `config.ignore_signature`
+- Add `config.cache_ttl_max`
+- Add `config.cache_ttl_min`
+- Add `config.cache_ttl_neg`
+- Add `config.cache_ttl_resurrect`
+- Add `config.upstream_session_id_header`
+- Add `config.downstream_session_id_header`
+- Add `tokens` option to `config.login_tokens` to return full token endpoint results with
+  `response` or `redirect` specified in `config.login_action`
+- Add `introspection` option to `config.login_tokens` to return introspection results with
+  `response` or `redirect` specified in `config.login_action`
+- Change Refresh-token headers can now have `Bearer` in front of the token.
+- Change to forbid only unapproved developers (enterprise edition)
+- Change `config.scopes_claim` is also searched in introspected jwt token results
+- Change `config.audience_claim` is also searched in introspected jwt token results
+- Change `config.consumer_claim` is also searched in introspected jwt token results
+- Change `config.consumer_claim` is also searched with user info when `config.search_user_info` is enabled
+- Change `config.credential_claim` is searched from `id token` as well
+- Change `config.credential_claim` is also searched in introspected jwt token results
+- Change `config.credential_claim` is also searched with user info when `config.search_user_info` is enabled
+- Change `config.authenticated_groups_claim` is searched from `id token` as well
+- Change `config.authenticated_groups_claim` is also searched with user info when `config.search_user_info` is enabled
+- Change `config.upstream_headers_claims` and `config.downstream_headers_claims` are now
+  searched from introspection results, jwt access token and id token,
+  and user info when `config.search_user_info` is enabled
+- Change `id_token` is not anymore copied over when refreshing tokens to prevent further claims verification errors.
+  The token endpoint can return a new id token, or user info can be used instead.
 
 
 ## v0.2.7

@@ -61,6 +61,57 @@ local function cache_invalidate(key)
 end
 
 
+local function get_expiry_and_cache_ttl(token, ttl)
+  local expires_in
+  if type(token) == "table" then
+    if token.expires_in then
+      expires_in = tonumber(token.expires_in)
+    end
+
+    if not expires_in then
+      if token.exp then
+        local exp = tonumber(token.exp)
+        if exp then
+          if exp == 0 then
+            expires_in = 0
+          else
+            expires_in = exp - ttl.now
+          end
+        end
+      end
+    end
+  end
+
+  local exp
+  local cache_ttl
+  if not expires_in or expires_in < 0 then
+    exp = 0
+    cache_ttl = ttl.ttl
+
+  elseif expires_in == 0 then
+    exp = 0
+    if ttl.max_ttl and ttl.max_ttl > 0 then
+      cache_ttl = ttl.max_ttl
+    else
+      cache_ttl = 0
+    end
+
+  else
+    exp = ttl.now + expires_in
+
+    if ttl.max_ttl and ttl.max_ttl > 0 and expires_in > ttl.max_ttl then
+      cache_ttl = ttl.max_ttl
+    elseif ttl.min_ttl and ttl.min_ttl > 0 and expires_in < ttl.min_ttl then
+      cache_ttl = ttl.min_ttl
+    else
+      cache_ttl = expires_in
+    end
+  end
+
+  return exp, cache_ttl
+end
+
+
 local function init_worker()
   if not singletons.worker_events or not singletons.worker_events.register then
     return
@@ -407,7 +458,7 @@ local function kong_oauth2_consumer(consumer_id)
 end
 
 
-local function kong_oauth2_load(access_token, now)
+local function kong_oauth2_load(access_token, ttl)
   log.notice("loading kong oauth2 token from database")
   local token, err = singletons.dao.oauth2_tokens:find_all { access_token = access_token }
   if not token then
@@ -418,35 +469,31 @@ local function kong_oauth2_load(access_token, now)
     token = token[1]
   end
 
-  local expires_in
-  if type(token) == "table" then
-    expires_in = tonumber(token.expires_in) or 0
-  end
+  local exp, cache_ttl = get_expiry_and_cache_ttl(token, ttl)
 
-  return { now + expires_in, token }, nil, expires_in ~= 0 and expires_in or nil
+  return { exp, token }, nil, cache_ttl
 end
 
 
 function kong_oauth2.load(ctx, access_token, ttl, use_cache)
-  local now = time()
   local key = cache_key(access_token, "oauth2_tokens")
   local res
   local err
 
   if use_cache then
-    res, err = cache_get(key, ttl, kong_oauth2_load, access_token, now)
+    res, err = cache_get(key, ttl, kong_oauth2_load, access_token, ttl)
     if not res then
       return nil, err
     end
 
     local exp = res[1]
-    if now > exp then
+    if exp ~= 0 and exp < ttl.now then
       cache_invalidate(key)
-      res, err = kong_oauth2_load(access_token, now)
+      res, err = kong_oauth2_load(access_token, ttl)
     end
 
   else
-    res, err = kong_oauth2_load(access_token, now)
+    res, err = kong_oauth2_load(access_token, ttl)
   end
 
   if not res then
@@ -459,32 +506,60 @@ function kong_oauth2.load(ctx, access_token, ttl, use_cache)
   end
 
   do
-    if (token.service_id and ctx.service.id ~= token.service_id) then
+    if token.service_id and ctx.service and ctx.service.id ~= token.service_id then
       return nil, "kong access token is for different service"
-
-    elseif (token.api_id and ctx.api.id ~= token.api_id) then
+    elseif token.api_id and ctx.api and ctx.api.id ~= token.api_id then
       return nil, "kong access token is for different api"
     end
   end
 
-  local expires_in = tonumber(token.expires_in)
-  if expires_in and expires_in > 0 then
+  local ttl_new
+  local exp = res[1]
+  if exp > 0 then
+    -- TODO: for 1.0 compatibility, remove "/ 1000"
     local iat = token.created_at / 1000
-    if now - iat > expires_in then
+    if (ttl.now - iat) > (exp - ttl.now) then
       return nil, "kong access token has expired"
     end
+
+    local token_ttl = exp - ttl.now
+    if token_ttl > 0 then
+      if ttl.max_ttl and ttl.max_ttl > 0 then
+        if token_ttl > ttl.max_ttl then
+          token_ttl = ttl.max_ttl
+        end
+      end
+
+      if ttl.min_ttl and ttl.min_ttl > 0 then
+        if token_ttl < ttl.min_ttl then
+          token_ttl = ttl.min_ttl
+        end
+      end
+
+      ttl_new = {
+        ttl = token_ttl,
+        neg_ttl = ttl.neg_ttl,
+        resurrect_ttl = ttl.resurrect_ttl,
+      }
+
+    else
+      ttl_new = ttl
+    end
+
+  else
+    ttl_new = ttl
   end
 
   local credential_cache_key = cache_key(token.credential_id, "oauth2_credentials")
   local credential
-  credential, err = cache_get(credential_cache_key, ttl, kong_oauth2_credential, token.credential_id)
+  credential, err = cache_get(credential_cache_key, ttl_new, kong_oauth2_credential, token.credential_id)
   if not credential then
     return nil, err
   end
 
   local consumer_cache_key = cache_key(credential.consumer_id, "consumers")
   local consumer
-  consumer, err = cache_get(consumer_cache_key, ttl, kong_oauth2_consumer, credential.consumer_id)
+  consumer, err = cache_get(consumer_cache_key, ttl_new, kong_oauth2_consumer, credential.consumer_id)
   if not consumer then
     return nil, err
   end
@@ -496,7 +571,7 @@ end
 local introspection = {}
 
 
-local function introspection_load(oic, access_token, endpoint, hint, headers, args, now)
+local function introspection_load(oic, access_token, endpoint, hint, headers, args, ttl)
   log.notice("introspecting access token with identity provider")
   local token, err = oic.token:introspect(access_token, hint or "access_token", {
     introspection_endpoint = endpoint,
@@ -507,22 +582,9 @@ local function introspection_load(oic, access_token, endpoint, hint, headers, ar
     return nil, err or "unable to introspect token"
   end
 
-  local expires_in
-  if type(token) == "table" then
-    expires_in = tonumber(token.expires_in)
-    if not expires_in then
-      local exp = tonumber(token.exp)
-      if exp then
-        expires_in = exp - now
-      end
-    end
-  end
+  local exp, cache_ttl = get_expiry_and_cache_ttl(token, ttl)
 
-  if not expires_in then
-    expires_in = 0
-  end
-
-  return { now + expires_in, token }, nil, expires_in ~= 0 and expires_in or nil
+  return { exp, token }, nil, cache_ttl
 end
 
 
@@ -536,24 +598,23 @@ function introspection.load(oic, access_token, endpoint, hint, headers, args, tt
     access_token
   }, "#introspection="))))
 
-  local now = time()
   local res
   local err
 
   if use_cache and key then
-    res, err = cache_get("oic:" .. key, ttl, introspection_load, oic, access_token, endpoint, hint, headers, args, now)
+    res, err = cache_get("oic:" .. key, ttl, introspection_load, oic, access_token, endpoint, hint, headers, args, ttl)
     if not res then
       return nil, err or "unable to introspect token"
     end
 
     local exp = res[1]
-    if now > exp then
+    if exp > 0 and exp < ttl.now then
       cache_invalidate("oic:" .. key)
-      res, err = introspection_load(oic, access_token, endpoint, hint, headers, args, now)
+      res, err = introspection_load(oic, access_token, endpoint, hint, headers, args, ttl)
     end
 
   else
-    res, err = introspection_load(oic, access_token, endpoint, hint, headers, args, now)
+    res, err = introspection_load(oic, access_token, endpoint, hint, headers, args, ttl)
   end
 
   if not res then
@@ -568,34 +629,20 @@ end
 local tokens = {}
 
 
-local function tokens_load(oic, args, now)
+local function tokens_load(oic, args, ttl)
   log.notice("loading tokens from the identity provider")
   local tokens_encoded, err, headers = oic.token:request(args)
   if not tokens_encoded then
     return nil, err
   end
 
-  local expires_in
-  if type(tokens_encoded) == "table" then
-    expires_in = tonumber(tokens_encoded.expires_in)
-    if not expires_in and type(tokens.access_token) == "table" then
-      local exp = tonumber(tokens_encoded.access_token.exp)
-      if exp then
-        expires_in = exp - now
-      end
-    end
-  end
+  local exp, cache_ttl = get_expiry_and_cache_ttl(tokens_encoded, ttl)
 
-  if not expires_in then
-    expires_in = 0
-  end
-
-  return { now + expires_in, tokens_encoded, headers }, nil, expires_in ~= 0 and expires_in or nil
+  return { exp, tokens_encoded, headers }, nil, cache_ttl
 end
 
 
 function tokens.load(oic, args, ttl, use_cache, flush)
-  local now = time()
   local iss = oic.configuration.issuer
   local key
   local res
@@ -646,19 +693,19 @@ function tokens.load(oic, args, ttl, use_cache, flush)
   end
 
   if use_cache and key then
-    res, err = cache_get("oic:" .. key, ttl, tokens_load, oic, args, now)
+    res, err = cache_get("oic:" .. key, ttl, tokens_load, oic, args, ttl)
     if not res then
       return nil, err or "unable to exchange credentials"
     end
 
     local exp = res[1]
-    if now > exp then
+    if exp < ttl.now then
       cache_invalidate("oic:" .. key)
-      res, err = tokens_load(oic, args, now)
+      res, err = tokens_load(oic, args, ttl)
     end
 
   else
-    res, err = tokens_load(oic, args, now)
+    res, err = tokens_load(oic, args, ttl)
   end
 
   if not res then
@@ -766,7 +813,7 @@ local userinfo = {}
 
 local function userinfo_load(oic, access_token)
   log.notice("loading user info using access token from identity provider")
-  return oic:userinfo(access_token, { userinfo_format = "base64" })
+  return oic:userinfo(access_token)
 end
 
 

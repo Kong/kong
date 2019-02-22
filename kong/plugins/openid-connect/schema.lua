@@ -1,10 +1,14 @@
 local utils     = require "kong.tools.utils"
 local Errors    = require "kong.dao.errors"
+local hash      = require "kong.openid-connect.hash"
+local codec     = require "kong.openid-connect.codec"
 local cache     = require "kong.plugins.openid-connect.cache"
 local arguments = require "kong.plugins.openid-connect.arguments"
 
 
+local sub = string.sub
 local get_phase = ngx.get_phase
+local base64 = codec.base64
 
 
 local function check_user(anonymous)
@@ -23,6 +27,11 @@ local function self_check(_, conf)
   end
 
   local args = arguments(conf)
+
+  local session_secret = args.get_conf_arg("session_secret")
+  if session_secret and #session_secret ~= 32 then
+    conf.session_secret = sub(base64.encode(hash.S256(session_secret)), 1, 32)
+  end
 
   local issuer_uri = args.get_conf_arg("issuer")
   if not issuer_uri then
@@ -229,6 +238,10 @@ return {
       required                         = false,
       type                             = "boolean",
     },
+    session_secret                     = {
+      required                         = false,
+      type                             = "string",
+    },
     session_cookie_name                = {
       required                         = false,
       type                             = "string",
@@ -356,29 +369,6 @@ return {
         "body",
       },
     },
-    refresh_token_param_name           = {
-      required                         = false,
-      type                             = "string",
-    },
-    refresh_token_param_type           = {
-      required                         = false,
-      type                             = "array",
-      enum                             = {
-        "header",
-        "query",
-        "body",
-      },
-      default                          = {
-        "header",
-        "query",
-        "body",
-      },
-    },
-    refresh_tokens                     = {
-      required                         = false,
-      type                             = "boolean",
-      default                          = true,
-    },
     client_credentials_param_type      = {
       required                         = false,
       type                             = "array",
@@ -425,6 +415,29 @@ return {
         "body",
       },
     },
+    refresh_token_param_name           = {
+      required                         = false,
+      type                             = "string",
+    },
+    refresh_token_param_type           = {
+      required                         = false,
+      type                             = "array",
+      enum                             = {
+        "header",
+        "query",
+        "body",
+      },
+      default                          = {
+        "header",
+        "query",
+        "body",
+      },
+    },
+    refresh_tokens                     = {
+      required                         = false,
+      type                             = "boolean",
+      default                          = true,
+    },
     discovery_headers_names            = {
       required                         = false,
       type                             = "array",
@@ -445,11 +458,11 @@ return {
       required                         = false,
       type                             = "array",
     },
-    token_headers_names        = {
+    token_headers_names                = {
       required                         = false,
       type                             = "array",
     },
-    token_headers_values       = {
+    token_headers_values               = {
       required                         = false,
       type                             = "array",
     },
@@ -548,7 +561,7 @@ return {
       required                         = false,
       type                             = "string",
     },
-    upstream_user_info_header           = {
+    upstream_user_info_header          = {
       required                         = false,
       type                             = "string",
     },
@@ -561,6 +574,14 @@ return {
       type                             = "string",
     },
     downstream_introspection_header    = {
+      required                         = false,
+      type                             = "string",
+    },
+    upstream_session_id_header         = {
+      required                         = false,
+      type                             = "string",
+    },
+    downstream_session_id_header       = {
       required                         = false,
       type                             = "string",
     },
@@ -627,6 +648,8 @@ return {
         "id_token",
         "access_token",
         "refresh_token",
+        "tokens",
+        "introspection",
       },
       default                          = {
         "id_token",
@@ -747,15 +770,49 @@ return {
       type                             = "boolean",
       default                          = true,
     },
+    verify_claims                      = {
+      required                         = false,
+      type                             = "boolean",
+      default                          = true,
+    },
     verify_signature                   = {
       required                         = false,
       type                             = "boolean",
       default                          = true,
     },
-    verify_claims                      = {
+    ignore_signature                   = {
       required                         = false,
-      type                             = "boolean",
-      default                          = true,
+      type                             = "array",
+      enum                             = {
+        "password",
+        "client_credentials",
+        "authorization_code",
+        "refresh_token",
+        "session",
+      },
+      default                          = {
+      },
+    },
+    cache_ttl                          = {
+      required                         = false,
+      type                             = "number",
+      default                          = 3600,
+    },
+    cache_ttl_max                      = {
+      required                         = false,
+      type                             = "number",
+    },
+    cache_ttl_min                      = {
+      required                         = false,
+      type                             = "number",
+    },
+    cache_ttl_neg                      = {
+      required                         = false,
+      type                             = "number",
+    },
+    cache_ttl_resurrect                = {
+      required                         = false,
+      type                             = "number",
     },
     cache_introspection                = {
       required                         = false,
@@ -777,10 +834,10 @@ return {
       type                             = "boolean",
       default                          = true,
     },
-    cache_ttl                          = {
+    search_user_info                   = {
       required                         = false,
-      type                             = "number",
-      default                          = 3600,
+      type                             = "boolean",
+      default                          = false,
     },
     hide_credentials                   = {
       required                         = false,
