@@ -343,8 +343,11 @@ function _M.new(dao, db)
     }
   end)
 
+  local workspace_name_seq = new_sequence("workspace-name-%d")
   res.workspaces = new_blueprint(dao and dao.workspaces, function()
-    return {}
+    return {
+      name = workspace_name_seq:next(),
+    }
   end)
 
   res.rewriter_plugins = new_blueprint(db.plugins, function()
