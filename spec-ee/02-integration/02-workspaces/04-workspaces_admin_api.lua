@@ -1,29 +1,27 @@
-local dao_helpers = require "spec.02-integration.03-dao.helpers"
 local helpers     = require "spec.helpers"
 local cjson       = require "cjson"
 local utils       = require "kong.tools.utils"
 local workspaces  = require "kong.workspaces"
-local init_files  = require "kong.portal.migrations.01_initial_files"
 
 
-dao_helpers.for_each_dao(function(kong_config)
+for _, strategy in helpers.each_strategy() do
 
-describe("(#" .. kong_config.database .. ") Admin API workspaces", function()
+describe("Workspaces Admin API (#" .. strategy .. "): ", function()
   local client, dao, db, bp
 
   setup(function()
-    bp, db, dao = helpers.get_db_utils(kong_config.database)
+    bp, db, dao = helpers.get_db_utils(strategy)
 
-    local portal_helper = require "kong.portal.dao_helpers"
-    portal_helper.register_resources(dao)
-
-    helpers.dao:run_migrations()
     assert(helpers.start_kong({
-      database = kong_config.database,
-      nginx_conf = "spec/fixtures/custom_nginx.template",
+      database = strategy,
     }))
-    ngx.ctx.workspaces = nil
+
     client = assert(helpers.admin_client())
+  end)
+
+  before_each(function()
+    db:truncate("workspaces")
+    db:truncate("workspace_entities")
   end)
 
   teardown(function()
@@ -31,17 +29,13 @@ describe("(#" .. kong_config.database .. ") Admin API workspaces", function()
       client:close()
     end
 
-    dao:truncate_tables()
-
     helpers.stop_kong()
   end)
 
   describe("/workspaces", function()
     describe("POST", function()
       it("creates a new workspace", function()
-        local res = assert(client:send {
-          method = "POST",
-          path   = "/workspaces",
+        local res = assert(client:post("/workspaces", {
           body   = {
             name = "foo",
             meta = {
@@ -51,14 +45,12 @@ describe("(#" .. kong_config.database .. ") Admin API workspaces", function()
           headers = {
             ["Content-Type"] = "application/json",
           }
-        })
-
+        }))
         local body = assert.res_status(201, res)
         local json = cjson.decode(body)
 
         assert.is_true(utils.is_valid_uuid(json.id))
         assert.equals("foo", json.name)
-        assert.is_nil(json.comment)
 
         -- no files created, portal is off
         local files_count = dao.files:count()
@@ -66,24 +58,22 @@ describe("(#" .. kong_config.database .. ") Admin API workspaces", function()
       end)
 
       it("handles unique constraint conflicts", function()
-        local res = assert(client:send {
-          method = "POST",
-          path   = "/workspaces",
+        bp.workspaces:insert({
+          name = "foo",
+        })
+        local res = assert(client:post("/workspaces", {
           body   = {
             name = "foo",
           },
           headers = {
             ["Content-Type"] = "application/json",
           }
-        })
-
+        }))
         assert.res_status(409, res)
       end)
 
       it("handles invalid meta json", function()
-        local res = assert(client:send {
-          method = "POST",
-          path   = "/workspaces",
+        local res = assert(client:post("/workspaces", {
           body   = {
             name = "foo",
             meta = "{ color: red }" -- invalid json
@@ -91,22 +81,16 @@ describe("(#" .. kong_config.database .. ") Admin API workspaces", function()
           headers = {
             ["Content-Type"] = "application/json",
           }
-        })
+        }))
 
         local body = assert.res_status(400, res)
         local json = cjson.decode(body)
 
-        assert.equals("meta is not a table", json.meta)
+        assert.equals("expected a record", json.fields.meta)
       end)
 
       it("creates default files if portal is ON", function()
-        local files = dao.files:find_all()
-        assert.equals(0, #files)
-
-
-        local res = assert(client:send {
-          method = "POST",
-          path   = "/workspaces",
+        local res = assert(client:post("/workspaces", {
           body   = {
             name = "ws-with-portal",
             config = {
@@ -116,43 +100,26 @@ describe("(#" .. kong_config.database .. ") Admin API workspaces", function()
           headers = {
             ["Content-Type"] = "application/json",
           }
-        })
+        }))
 
         local body = assert.res_status(201, res)
         local json = cjson.decode(body)
 
         assert.is_true(utils.is_valid_uuid(json.id))
         assert.equals("ws-with-portal", json.name)
-        assert.is_nil(json.comment)
 
-        local files_count = helpers.with_current_ws(
-          {json},
-          function()
-            return dao.files:count()
-          end
-        )
-
-        assert.equals(#init_files, files_count)
+        local res = assert(client:get("/ws-with-portal/files"))
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.truthy(#json.data > 0)
       end)
     end)
 
     describe("GET", function()
-      setup(function()
-        local res = assert(client:send {
-          method = "POST",
-          path   = "/workspaces",
-          body   = {
-            name = "bar",
-          },
-          headers = {
-            ["Content-Type"] = "application/json",
-          }
-        })
-
-        assert.res_status(201, res)
-      end)
-
       it("retrieves a list of workspaces", function()
+        local num_to_create = 4
+        assert(bp.workspaces:insert_n(num_to_create))
+
         local res = assert(client:send {
           method = "GET",
           path   = "/workspaces",
@@ -161,22 +128,13 @@ describe("(#" .. kong_config.database .. ") Admin API workspaces", function()
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
 
-        assert.equals(4, json.total)
-        assert.equals(4, #json.data)
+        -- total is number created + default
+        assert.equals(num_to_create + 1, #json.data)
       end)
 
       it("returns 404 if called from other than default workspace", function()
-        local res = assert(client:send {
-          method = "GET",
-          path   = "/bar/workspaces",
-        })
-        assert.res_status(404, res)
-
-        res = assert(client:send {
-          method = "GET",
-          path   = "/default/workspaces",
-        })
-        assert.res_status(200, res)
+        assert.res_status(404, client:get("/bar/workspaces"))
+        assert.res_status(200, client:get("/default/workspaces"))
       end)
     end)
   end)
@@ -184,26 +142,34 @@ describe("(#" .. kong_config.database .. ") Admin API workspaces", function()
   describe("/workspaces/:workspace", function()
     describe("PATCH", function()
       it("refuses to update the workspace name", function()
-        local res = assert(client:send {
-          method = "PATCH",
-          path = "/workspaces/foo",
+        assert(bp.workspaces:insert {
+          name = "foo",
+          meta = {
+            color = "red",
+          }
+        })
+
+        local res = assert(client:patch("/workspaces/foo", {
           body = {
             name = "new_foo",
           },
           headers = {
             ["Content-Type"] = "application/json",
           },
-        })
+        }))
 
         local body = assert.res_status(400, res)
         local json = cjson.decode(body)
 
         assert.equals("Cannot rename a workspace", json.message)
       end)
+
       it("updates an existing entity", function()
-        local res = assert(client:send {
-          method = "PATCH",
-          path   = "/workspaces/foo",
+        assert(bp.workspaces:insert {
+          name = "foo",
+        })
+
+        local res = assert(client:patch("/workspaces/foo", {
           body   = {
             comment = "foo comment",
             meta = {
@@ -213,7 +179,7 @@ describe("(#" .. kong_config.database .. ") Admin API workspaces", function()
           headers = {
             ["Content-Type"] = "application/json",
           }
-        })
+        }))
 
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
@@ -223,33 +189,16 @@ describe("(#" .. kong_config.database .. ") Admin API workspaces", function()
       end)
 
       it("creates default files if portal is turned on", function()
-        local res = assert(client:send {
-          method = "POST",
-          path   = "/workspaces",
-          body   = {
-            name = "rad-portal-man",
-          },
-          headers = {
-            ["Content-Type"] = "application/json",
-          }
+        assert(bp.workspaces:insert {
+          name = "rad-portal-man",
         })
 
-        assert.res_status(201, res)
-        local body = assert.res_status(201, res)
-        local json = cjson.decode(body)
+        -- portal isn't enabled, so no /files
+        local res = assert(client:get("/rad-portal-man/files"))
+        assert.res_status(404, res)
 
-        local files_count = helpers.with_current_ws(
-          {json},
-          function()
-            return dao.files:count()
-          end
-        )
-
-        assert.equals(0, files_count)
-
-        local res = assert(client:send {
-          method = "PATCH",
-          path   = "/workspaces/rad-portal-man",
+        -- patch to enable portal
+        assert.res_status(200, client:patch("/workspaces/rad-portal-man", {
           body   = {
             config = {
               portal = true
@@ -258,19 +207,13 @@ describe("(#" .. kong_config.database .. ") Admin API workspaces", function()
           headers = {
             ["Content-Type"] = "application/json",
           }
-        })
+        }))
 
+        -- make sure /files exists
+        local res = assert(client:get("/rad-portal-man/files"))
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
-
-        local files_count = helpers.with_current_ws(
-          {json},
-          function()
-            return dao.files:count()
-          end
-        )
-
-        assert.equals(#init_files, files_count)
+        assert.truthy(#json.data > 0)
       end)
     end)
 
@@ -288,11 +231,14 @@ describe("(#" .. kong_config.database .. ") Admin API workspaces", function()
       end)
 
       it("retrieves a single workspace", function()
-        local res = assert(client:send {
-          method = "GET",
-          path   = "/workspaces/foo",
+        assert(bp.workspaces:insert {
+          name = "foo",
+          meta = {
+            color = "red",
+          }
         })
 
+        local res = assert(client:get("/workspaces/foo"))
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
 
@@ -301,118 +247,52 @@ describe("(#" .. kong_config.database .. ") Admin API workspaces", function()
       end)
 
       it("sends the appropriate status on an invalid entity", function()
-        local res = assert(client:send {
-          method = "GET",
-          path   = "/workspaces/baz",
-        })
-
-        assert.res_status(404, res)
+        assert.res_status(404, client:get("/workspaces/baz"))
       end)
 
       it("returns 404 if we call from another workspace", function()
-        local res = assert(client:send {
-          method = "GET",
-          path   = "/foo/workspaces/default",
+        assert(bp.workspaces:insert {
+          name = "foo",
         })
-        assert.res_status(404, res)
-
-        res = assert(client:send {
-          method = "GET",
-          path   = "/workspaces/foo",
-        })
-        assert.res_status(200, res)
-
-        res = assert(client:send {
-          method = "GET",
-          path   = "/default/workspaces/foo",
-        })
-        assert.res_status(200, res)
-
-        res = assert(client:send {
-          method = "GET",
-          path   = "/foo/workspaces/foo",
-        })
-        assert.res_status(200, res)
+        assert.res_status(404, client:get("/foo/workspaces/default"))
+        assert.res_status(200, client:get("/workspaces/foo"))
+        assert.res_status(200, client:get("/default/workspaces/foo"))
+        assert.res_status(200, client:get("/foo/workspaces/foo"))
       end)
-
     end)
 
-    describe("DELETE", function()
+    describe("delete", function()
       it("refuses to delete default workspace", function()
-        local res = assert(client:send {
-          method = "DELETE",
-          path = "/workspaces/default",
-        })
-
-        assert.res_status(400, res)
+        assert.res_status(400, client:delete("/workspaces/default"))
       end)
 
       it("removes a workspace", function()
-        local res = assert(client:send {
-          method = "DELETE",
-          path   = "/workspaces/bar",
+        assert(bp.workspaces:insert {
+          name = "bar",
         })
-
-        assert.res_status(204, res)
+        assert.res_status(204, client:delete("/workspaces/bar"))
       end)
 
       it("sends the appropriate status on an invalid entity", function()
-        local res = assert(client:send {
-          method = "DELETE",
-          path   = "/workspaces/bar",
-        })
-
-        assert.res_status(404, res)
+        assert.res_status(404, client:delete("/workspaces/bar"))
       end)
 
       it("refuses to delete a non empty workspace", function()
-
-        local name = utils.uuid()
-        local ws = bp.workspaces:insert({name = name})
+        local ws = assert(bp.workspaces:insert {
+          name = "foo",
+        })
         bp.services:insert_ws({}, ws)
 
         local res = assert(client:send {
-          method = "DELETE",
-          path   = "/workspaces/" .. name,
+          method = "delete",
+          path   = "/workspaces/foo",
         })
         assert.res_status(400, res)
       end)
-
     end)
   end)
 
   describe("/workspaces/:workspace/entites", function()
-    local uuid1, uuid2
-
-    lazy_setup(function()
-      -- yayyyyyyy determinism!
-      uuid1, uuid2 = "182f2cc8-008e-11e8-ba89-0ed5f89f718b",
-                     "182f2f2a-008e-11e8-ba89-0ed5f89f718b"
-
-      ngx.ctx.workspaces = {}
-      local w = dao.workspaces:find_all({
-        name = "foo",
-      })
-      ngx.ctx.workspaces = dao.workspaces:find_all({name = "default"})
-
-      w = w[1].id
-
-      assert(dao.workspace_entities:insert({
-        workspace_id = w,
-        workspace_name = "foo",
-        entity_id = uuid1,
-        unique_field_name = "name",
-        entity_type = "consumers",
-      }))
-      assert(dao.workspace_entities:insert({
-        workspace_id = w,
-        workspace_name = "bar",
-        entity_id = uuid2,
-        unique_field_name = "name",
-        entity_type = "consumers",
-      }))
-    end)
-
     describe("GET", function()
       it("returns a list of entities associated with the default workspace", function()
         local res = assert(client:send{
@@ -429,7 +309,26 @@ describe("(#" .. kong_config.database .. ") Admin API workspaces", function()
         -- workspace_entities
         assert.equals(0, #json.data)
       end)
+
       it("returns a list of entities associated with the workspace", function()
+        assert(bp.workspaces:insert {
+          name = "foo"
+        })
+        -- create some entities
+        local consumers = bp.consumers:insert_n(10)
+
+        -- share them
+        for _, consumer in ipairs(consumers) do
+          assert.res_status(201, client:post("/workspaces/foo/entities", {
+            body = {
+              entities = consumer.id
+            },
+            headers = {
+              ["Content-Type"] = "application/json",
+            }
+          }))
+        end
+
         local res = assert(client:send {
           method = "GET",
           path = "/workspaces/foo/entities",
@@ -438,109 +337,58 @@ describe("(#" .. kong_config.database .. ") Admin API workspaces", function()
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
 
-        table.sort(json.data, function(a, b) return a.entity_id < b.entity_id end)
-
-        assert.equals(2, json.total)
-        assert.equals(2, #json.data)
-        assert.equals(uuid1, json.data[1].entity_id)
-        assert.equals(uuid2, json.data[2].entity_id)
-      end)
-
-      it("resolves entity relationships when specified", function()
-        local res = assert(client:send {
-          method = "GET",
-          path = "/workspaces/foo/entities?resolve",
-        })
-
-        local body = assert.res_status(200, res)
-        local json = cjson.decode(body)
-
-        table.sort(json)
-
-        assert.equals(2, #json)
-        assert.equals(uuid1, json[1])
-        assert.equals(uuid2, json[2])
+        assert(10, #json.data)
+        for _, entity in ipairs(json.data) do
+          assert.same("consumers", entity.entity_type)
+        end
       end)
     end)
 
     describe("POST", function()
-      describe("creates a new relationship", function()
-        local entities = {}
-        lazy_setup(function()
-          local service1 = assert(db.services:insert {
-            name = "service1",
-            host = "s1.com",
-          })
-          entities.services = service1
-
-
-          local plugin1 = assert(dao.plugins:insert {
-            name = "key-auth",
-            config = {}
-          })
-          entities.plugins = plugin1
-
-          -- XXX if instead of inserting at the dao level we insert via the API,
-          -- one test case will fail - ('{"message":"No workspace by name or id bar"}');
-          -- investigate the root cause
-          assert(dao.workspaces:insert {
-              name = "bar",
-          })
-        end)
-
-        it("with many entity types", function()
-          for entity_type, entity in pairs(entities) do
-            local res = assert(client:send {
-              method = "POST",
-              path = "/workspaces/foo/entities",
-              body = {
-                entities = entity.id,
-              },
-              headers = {
-                ["Content-Type"] = "application/json",
-              }
-            })
-
-            local body = assert.res_status(201, res)
-            local json = cjson.decode(body)
-
-            assert.equals(entity.id, json[1].id)
-          end
-        end)
-      end)
-
       describe("handles errors", function()
         it("on duplicate association", function()
-          local res = assert(client:send {
-            method = "POST",
-            path = "/workspaces/foo/entities",
+          assert(bp.workspaces:insert {
+            name = "foo"
+          })
+          local consumer = assert(bp.consumers:insert())
+
+          local res = assert(client:post("/workspaces/foo/entities", {
             body = {
-              entities = "182f2cc8-008e-11e8-ba89-0ed5f89f718b",
+              entities = consumer.id,
             },
             headers = {
               ["Content-Type"] = "application/json",
             },
-          })
+          }))
+          assert.res_status(201, res)
 
-          local body = assert.res_status(409, res)
-          local json = cjson.decode(body)
-
-          assert.matches("Entity '182f2cc8-008e-11e8-ba89-0ed5f89f718b' " ..
+          local res = assert(client:post("/workspaces/foo/entities", {
+            body = {
+              entities = consumer.id,
+            },
+            headers = {
+              ["Content-Type"] = "application/json",
+            },
+          }))
+          local json = cjson.decode(assert.res_status(409, res))
+          assert.matches("Entity '" .. consumer.id .. "' " ..
                          "already associated with workspace", json.message, nil,
                          true)
         end)
 
         it("on invalid UUID", function()
-          local res = assert(client:send {
-            method = "POST",
-            path = "/workspaces/foo/entities",
+          assert(bp.workspaces:insert {
+            name = "foo"
+          })
+
+          local res = assert(client:post("/workspaces/foo/entities", {
             body = {
               entities = "nop",
             },
             headers = {
               ["Content-Type"] = "application/json",
             },
-          })
+          }))
 
           local body = assert.res_status(400, res)
           local json = cjson.decode(body)
@@ -548,58 +396,33 @@ describe("(#" .. kong_config.database .. ") Admin API workspaces", function()
           assert.equals("'nop' is not a valid UUID", json.message)
         end)
 
-        -- XXX nested workspaces disabled
-        pending("on circular reference", function()
-          local bar_id = dao.workspaces:find_all({
-            name = "bar",
-          })[1].id
-          local foo_id = dao.workspaces:find_all({
-            name = "foo",
-          })[1].id
-
-          local res = assert(client:send {
-            method = "POST",
-            path = "/workspaces/bar/entities",
-            body = {
-              entities = foo_id,
-            },
-            headers = {
-              ["Content-Type"] = "application/json",
-            }
+        it("without inserting some valid rows prior to failure", function()
+          assert(bp.workspaces:insert {
+            name = "foo"
           })
 
-          local body = assert.res_status(409, res)
-          local json = cjson.decode(body)
-
-          assert.equals("Attempted to create circular reference " ..
-                        "(workspace '" .. foo_id .. "' already references " ..
-                        "'" .. bar_id .. "')", json.message)
-        end)
-
-        it("without inserting some valid rows prior to failure", function()
-          local n = dao.workspace_entities:find_all({
-            workspace_id = dao.workspaces:find_all({ name = "foo" })[1].id
+          local dao = db.workspace_entities
+          local n = workspaces.dao_wrappers.find_all(dao, {
+            workspace_name = "foo"
           })
           n = #n
 
-          local res = assert(client:send {
-            method = "POST",
-            path = "/workspaces/foo/entities",
+          local res = assert(client:post("/workspaces/foo/entities", {
             body = {
               entities = utils.uuid() .. ",nop",
             },
             headers = {
               ["Content-Type"] = "application/json",
             },
-          })
+          }))
 
           local body = assert.res_status(400, res)
           local json = cjson.decode(body)
-
           assert.equals("'nop' is not a valid UUID", json.message)
 
-          local new_n = dao.workspace_entities:find_all({
-            workspace_id = dao.workspaces:find_all({ name = "foo" })[1].id
+          local dao = db.workspace_entities
+          local new_n = workspaces.dao_wrappers.find_all(dao, {
+            workspace_name = "foo"
           })
           new_n = #new_n
           assert.same(n, new_n)
@@ -609,7 +432,7 @@ describe("(#" .. kong_config.database .. ") Admin API workspaces", function()
 
     describe("DELETE", function()
       it("fails to remove an unexisting entity relationship", function()
-        local res = assert(client:send {
+        assert.res_status(404, client:send {
           method = "DELETE",
           path = "/workspaces/foo/entities",
           body = {
@@ -619,12 +442,56 @@ describe("(#" .. kong_config.database .. ") Admin API workspaces", function()
             ["Content-Type"] = "application/json",
           },
         })
-
-        assert.res_status(404, res)
       end)
+
       it("does not leave dangling entities (old dao)", function()
-        -- add consumer to default workspace
-        local res = assert(client:send {
+        -- create a workspace
+        assert(bp.workspaces:insert({
+          name = "foo",
+        }))
+        -- create a consumer
+        local consumer = assert(bp.consumers:insert())
+
+        -- share with workspace foo
+        assert.res_status(201, client:post("/workspaces/foo/entities", {
+          body = {
+            entities = consumer.id
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+        }))
+
+        -- now, delete the entity from foo
+        assert.res_status(204, client:delete("/workspaces/foo/entities", {
+          body = {
+            entities = consumer.id
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+        }))
+
+        -- and delete it from default, too
+        assert.res_status(204, client:delete("/workspaces/default/entities", {
+          body = {
+            entities = consumer.id
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+        }))
+
+        -- the entity must be gone - as it was deleted from both workspaces
+        -- it belonged to
+        local res, err = db.consumers:select({
+          id = consumer.id
+        })
+        assert.is_nil(err)
+        assert.is_nil(res)
+
+        -- and we must be able to create an entity with that same name again
+        assert.res_status(201, client:send {
           method = "POST",
           path = "/consumers",
           body = {
@@ -634,266 +501,152 @@ describe("(#" .. kong_config.database .. ") Admin API workspaces", function()
             ["Content-Type"] = "application/json",
           },
         })
-        assert.res_status(201, res)
-        local json = assert.response(res).has.jsonbody()
-
-        -- share foosumer with workspace foo
-        res = assert(client:send {
-          method = "POST",
-          path = "/workspaces/foo/entities",
-          body = {
-            entities = json.id
-          },
-          headers = {
-            ["Content-Type"] = "application/json",
-          },
-        })
-        assert.res_status(201, res)
-
-        -- now, delete the entity from foo
-        -- share foosumer with workspace foo
-        res = assert(client:send {
-          method = "DELETE",
-          path = "/workspaces/foo/entities",
-          body = {
-            entities = json.id
-          },
-          headers = {
-            ["Content-Type"] = "application/json",
-          },
-        })
-        assert.res_status(204, res)
-
-        -- and delete it from default, too
-        res = assert(client:send {
-          method = "DELETE",
-          path = "/workspaces/default/entities",
-          body = {
-            entities = json.id
-          },
-          headers = {
-            ["Content-Type"] = "application/json",
-          },
-        })
-        assert.res_status(204, res)
-
-        -- the entity must be gone from the main entities table as well
-        local res, err = dao.consumers:find({
-          id = json.id
-        })
-        assert.is_nil(err)
-        assert.is_nil(res)
-
-        -- and we must be able to create an entity with that same name again
-        res = assert(client:send {
-          method = "POST",
-          path = "/consumers",
-          body = {
-            username = "foosumer"
-          },
-          headers = {
-            ["Content-Type"] = "application/json",
-          },
-        })
-        assert.res_status(201, res)
       end)
-      it("does not leave dangling entities (new dao)", function()
-        -- add consumer to default workspace
-        local res = assert(client:send {
-          method = "POST",
-          path = "/services",
-          body = {
-            name = "foos",
-            url = helpers.mock_upstream_url,
-          },
-          headers = {
-            ["Content-Type"] = "application/json",
-          },
-        })
-        assert.res_status(201, res)
-        local json = assert.response(res).has.jsonbody()
 
-        -- share foosumer with workspace foo
-        res = assert(client:send {
-          method = "POST",
-          path = "/workspaces/foo/entities",
-          body = {
-            entities = json.id
-          },
-          headers = {
-            ["Content-Type"] = "application/json",
-          },
-        })
-        assert.res_status(201, res)
-
-        -- now, delete the entity from foo
-        -- share foosumer with workspace foo
-        res = assert(client:send {
-          method = "DELETE",
-          path = "/workspaces/foo/entities",
-          body = {
-            entities = json.id
-          },
-          headers = {
-            ["Content-Type"] = "application/json",
-          },
-        })
-        assert.res_status(204, res)
-
-        -- and delete it from default, too
-        res = assert(client:send {
-          method = "DELETE",
-          path = "/workspaces/default/entities",
-          body = {
-            entities = json.id
-          },
-          headers = {
-            ["Content-Type"] = "application/json",
-          },
-        })
-        assert.res_status(204, res)
-
-        -- the entity must be gone from the main entities table as well
-        local res, err = db.daos.services:select({
-          id = json.id
-        })
-        assert.is_nil(err)
-        assert.is_nil(res)
-
-        -- and we must be able to create an entity with that same name again
-        res = assert(client:send {
-          method = "POST",
-          path = "/services",
-          body = {
-            name = "foos",
-            url = helpers.mock_upstream_url,
-          },
-          headers = {
-            ["Content-Type"] = "application/json",
-          },
-        })
-        assert.res_status(201, res)
-      end)
       it("removes a relationship", function()
-        local n = dao.workspace_entities:find_all({
-          workspace_id = dao.workspaces:find_all({ name = "foo" })[1].id
-        })
-        n = #n
+        -- create a workspace
+        assert(bp.workspaces:insert({
+          name = "foo",
+        }))
+        -- create a consumer
+        local consumer = assert(bp.consumers:insert())
 
-        local res = assert(client:send {
+        -- share with workspace foo
+        assert.res_status(201, client:post("/workspaces/foo/entities", {
+          body = {
+            entities = consumer.id
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+        }))
+
+        -- now, delete the entity from foo
+        assert.res_status(204, client:send {
           method = "DELETE",
           path = "/workspaces/foo/entities",
           body = {
-            entities = "182f2cc8-008e-11e8-ba89-0ed5f89f718b",
+            entities = consumer.id
           },
           headers = {
             ["Content-Type"] = "application/json",
           },
         })
 
-        assert.res_status(204, res)
+        -- now, delete the entity from foo
+        local json = cjson.decode(assert.res_status(200, client:get("/workspaces/foo/entities", {
+          body = {
+            entities = consumer.id
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+        })))
 
-        local new_n = dao.workspace_entities:find_all({
-          workspace_id = dao.workspaces:find_all({ name = "foo" })[1].id
-        })
-        new_n = #new_n
-        assert.equals(n - 1, new_n)
+        assert.truthy(#json.data == 0)
       end)
 
       it("sends the appropriate status on an invalid entity", function()
-        local res = assert(client:send {
-          method = "DELETE",
-          path = "/workspaces/baz/entities",
+        assert(bp.workspaces:insert({
+          name = "foo",
+        }))
+        assert.res_status(404, client:delete("/workspaces/foo/entities", {
           body = {
             entities = utils.uuid(),
           },
           headers = {
             ["Content-Type"] = "application/json",
           },
-        })
-
-        assert.res_status(404, res)
+        }))
       end)
     end)
   end)
 
   describe("/workspaces/:workspace/entites/:entity", function()
-    local w_id, e_id
-
-    lazy_setup(function()
-      w_id = dao.workspaces:find_all({ name = "foo" })[1].id
-      e_id = utils.uuid()
-
-      assert(dao.workspace_entities:insert({
-        workspace_id = w_id,
-        workspace_name = "foo",
-        entity_id = e_id,
-        unique_field_name = "name",
-        entity_type = "consumers",
-      }))
-    end)
-
     describe("GET", function()
       it("returns a single relation representation", function()
+        -- create a workspace
+        local ws = assert(bp.workspaces:insert({
+          name = "foo",
+        }))
+        -- create a consumer
+        local consumer = assert(bp.consumers:insert_ws(nil, ws))
+
         local res = assert(client:send {
           method = "GET",
-          path = "/workspaces/foo/entities/" .. e_id,
+          path = "/workspaces/foo/entities/" .. consumer.id,
         })
 
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
 
-        assert.equals(json.workspace_id, w_id)
-        assert.equals(json.entity_id, e_id)
+        assert.equals(json.workspace_id, ws.id)
+        assert.equals(json.entity_id, consumer.id)
         assert.equals(json.entity_type, "consumers")
       end)
 
       it("sends the appropriate status on an invalid entity", function()
-        local res = assert(client:send {
+        -- create a workspace
+        assert(bp.workspaces:insert({
+          name = "foo",
+        }))
+
+        assert.res_status(404, client:send {
           method = "GET",
           path = "/workspaces/foo/entities/" .. utils.uuid(),
         })
-
-        assert.res_status(404, res)
       end)
     end)
 
     describe("DELETE", function()
       it("removes a single relation representation", function()
-        local res = assert(client:send {
-          method = "DELETE",
-          path = "/workspaces/foo/entities/" .. e_id,
-        })
+        -- create a workspace
+        local ws = assert(bp.workspaces:insert({
+          name = "foo",
+        }))
+        -- create a consumer
+        local consumer = assert(bp.consumers:insert_ws(nil, ws))
 
-        assert.res_status(204, res)
+        assert.res_status(204, client:send({
+          method = "DELETE",
+          path = "/workspaces/foo/entities/" .. consumer.id,
+        }))
       end)
 
       it("sends the appropriate status on an invalid entity", function()
-        local res = assert(client:send {
+        assert(bp.workspaces:insert({
+          name = "foo",
+        }))
+        assert.res_status(404, client:send {
           method = "DELETE",
           path = "/workspaces/foo/entities/" .. utils.uuid(),
         })
-
-        assert.res_status(404, res)
       end)
     end)
   end)
-end)
-end)
+end) -- end describe
 
-dao_helpers.for_each_dao(function(kong_config)
-describe("Admin API #" .. kong_config.database, function()
+end -- end for
+
+for _, strategy in helpers.each_strategy() do
+
+describe("Admin API #" .. strategy, function()
   local client
   local bp, db, _
   setup(function()
-    bp, db, _ = helpers.get_db_utils(kong_config.database)
+    bp, db, _ = helpers.get_db_utils(strategy)
 
     assert(helpers.start_kong{
-      database = kong_config.database
+      database = strategy
     })
+
+    client = assert(helpers.admin_client())
   end)
   teardown(function()
     helpers.stop_kong()
+    if client then
+      client:close()
+    end
   end)
 
   describe("POST /routes", function()
@@ -901,17 +654,12 @@ describe("Admin API #" .. kong_config.database, function()
       before_each(function()
         db:truncate("services")
         db:truncate("routes")
-        client = assert(helpers.admin_client())
-      end)
-      after_each(function()
-        if client then client:close() end
+        db:truncate("workspaces")
+        db:truncate("workspace_entities")
       end)
 
-      it("doesnt create a route when it conflicts", function()
-        local ws = bp.workspaces:insert {
-          name = "w1"
-        }
-
+      it("doesn't create a route when it conflicts", function()
+        -- create service and route in workspace default [[
         local demo_ip_service = bp.services:insert {
           name = "demo-ip",
           protocol = "http",
@@ -919,11 +667,17 @@ describe("Admin API #" .. kong_config.database, function()
           path = "/ip",
         }
 
-        bp.services:insert {
-          name = "demo-default",
-          protocol = "http",
-          host = "httpbin.org",
-          path = "/default",
+        bp.routes:insert({
+          hosts = {"my.api.com" },
+          paths = { "/my-uri" },
+          methods = { "GET" },
+          service = demo_ip_service,
+        })
+        -- ]]
+
+        -- create a workspace and add a service in it [[
+        local ws = bp.workspaces:insert {
+          name = "w1"
         }
 
         bp.services:insert_ws ({
@@ -932,44 +686,38 @@ describe("Admin API #" .. kong_config.database, function()
           host = "httpbin.org",
           path = "/anything",
         }, ws)
+        -- ]]
 
-        bp.routes:insert({
-          hosts = {"my.api.com" },
-          paths = { "/my-uri" },
-          methods = { "GET" },
-          service = demo_ip_service,
-        })
-
-        -- route collides in different WS
-        local res = client:post("/w1/services/demo-anything/routes", {
+        -- route collides with one in default workspace
+        assert.res_status(409, client:post("/w1/services/demo-anything/routes", {
           body = {
             hosts = {"my.api.com" },
             paths = { "/my-uri" },
             methods = { "GET" },
           },
           headers = {["Content-Type"] = "application/json"},
-        })
-        assert.res_status(409, res)
+        }))
 
-        -- colliding in same WS, no problemo
-        res = client:post("/default/services/demo-default/routes", {
+        -- add different service to the default workspace
+        bp.services:insert {
+          name = "demo-default",
+          protocol = "http",
+          host = "httpbin.org",
+          path = "/default",
+        }
+
+        -- allows adding service colliding with another in the same workspace
+        assert.res_status(201, client:post("/default/services/demo-default/routes", {
           body = {
             methods = { "GET" },
             hosts = {"my.api.com"},
             paths = { "/my-uri" },
           },
           headers = {["Content-Type"] = "application/json"}
-        })
-        res = cjson.decode(assert.res_status(201, res))
-
-          -- Delete the existing ones
-        res = client:delete("/default/routes/" .. res.id, {
-            headers = {["Content-Type"] = "application/json"},
-          })
-          assert.res_status(204, res)
+        }))
       end)
 
-      it("does not allow creating routes that collide in path and have no host", function()
+      it("doesn't allow creating routes that collide in path and have no host", function()
         local ws_name = utils.uuid()
         local ws = bp.workspaces:insert {
           name = ws_name
@@ -989,24 +737,21 @@ describe("Admin API #" .. kong_config.database, function()
           path = "/anything",
         }, ws)
 
-        local res = client:post("/default/services/demo-ip/routes", {
+        assert.res_status(201, client:post("/default/services/demo-ip/routes", {
           body = {
             paths = { "/my-uri" },
             methods = { "GET" },
           },
           headers = {["Content-Type"] = "application/json"},
-        })
-        assert.res_status(201, res)
+        }))
 
-        local res = client:post("/".. ws_name.."/services/demo-anything/routes", {
+        assert.res_status(409, client:post("/".. ws_name.."/services/demo-anything/routes", {
           body = {
             paths = { "/my-uri" },
             methods = { "GET" },
           },
           headers = {["Content-Type"] = "application/json"},
-        })
-        assert.res_status(409, res)
-
+        }))
       end)
 
       it("route PATCH checks collision", function()
@@ -1029,17 +774,16 @@ describe("Admin API #" .. kong_config.database, function()
           path = "/anything",
         }, ws)
 
-        local res = client:post("/default/services/demo-ip/routes", {
+        assert.res_status(201, client:post("/default/services/demo-ip/routes", {
           body = {
             hosts = {"my.api.com" },
             paths = { "/my-uri" },
             methods = { "GET" },
           },
           headers = { ["Content-Type"] = "application/json"},
-        })
-        assert.res_status(201, res)
+        }))
 
-        res = client:post("/" .. ws_name .. "/services/demo-anything/routes", {
+        local res = client:post("/" .. ws_name .. "/services/demo-anything/routes", {
           body = {
             hosts = {"my.api.com2" },
             paths = { "/my-uri" },
@@ -1050,23 +794,25 @@ describe("Admin API #" .. kong_config.database, function()
         res = cjson.decode(assert.res_status(201, res))
 
         -- route collides in different WS
-        res = client:patch("/" .. ws_name .. "/routes/".. res.id, {
+        assert.res_status(409, client:patch("/" .. ws_name .. "/routes/".. res.id, {
           body = {
             hosts = {"my.api.com" },
             paths = { "/my-uri" },
             methods = { "GET" },
           },
           headers = {["Content-Type"] = "application/json"},
-        })
-        assert.res_status(409, res)
-        end)
+        }))
+      end)
     end)
   end)
-end)
-end)
+end) -- end describe
 
-dao_helpers.for_each_dao(function(kong_config)
-  describe("Admin API #" .. kong_config.database, function()
+end -- end for
+
+
+for _, strategy in helpers.each_strategy() do
+
+  describe("Admin API #" .. strategy, function()
     local client
 
     local function any(t, p)
@@ -1118,10 +864,10 @@ dao_helpers.for_each_dao(function(kong_config)
     end
 
     setup(function()
-      helpers.get_db_utils(kong_config.database)
+      helpers.get_db_utils(strategy)
 
       assert(helpers.start_kong{
-        database = kong_config.database,
+        database = strategy,
         portal_auth = "basic-auth",  -- useful only for admin test
         mock_smtp = true,
       })
@@ -1227,4 +973,4 @@ dao_helpers.for_each_dao(function(kong_config)
       assert.is_equal(before, after)
     end)
   end)
-end)
+end
