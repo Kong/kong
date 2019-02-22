@@ -313,7 +313,7 @@ for _, v in ipairs({"kong", "apis", "cache", }) do
 end
 
 -- XXX EE, move elsewhere
-for _, v in ipairs({"rbac", "vitals", "portal", "workspaces", "admins",
+for _, v in ipairs({"rbac", "vitals", "portal", "admins",
                     "audit", "oas_config"}) do
   local routes = require("kong.api.routes." .. v)
   attach_routes(routes)
