@@ -172,20 +172,6 @@ function _Services_ee:delete(primary_key, options)
   local ok2, err2 = delete_cascade_ws(connector, "oauth2_tokens", oauth2_tokens_list, errors, ws)
   local ok3, err3 = delete_cascade_ws(connector, "oauth2_authorization_codes", oauth2_codes_list, errors, ws)
 
-  if ok and ws then
-    local err = workspaces.delete_entity_relation("services", primary_key)
-    if err then
-      return nil, self.errors:database_error("could not delete Service relationship " ..
-                                             "with Workspace: " .. err)
-    end
-
-    err = rbac.delete_role_entity_permission("services", primary_key)
-    if err then
-      return nil, self.errors:database_error("could not delete Service relationship " ..
-                                             "with Role: " .. err)
-    end
-  end
-
   return ok1 and ok2 and ok3, err1 or err2 or err3, primary_key
 end
 

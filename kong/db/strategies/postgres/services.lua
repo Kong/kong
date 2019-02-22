@@ -97,21 +97,6 @@ function _Services_ee:delete(primary_key, options)
     return false, err1 or err2 or err3
   end
 
-  -- delete workspace relationship
-  if ok and ws then
-    local err = workspaces.delete_entity_relation("services", primary_key)
-    if err then
-      return nil, self.errors:database_error("could not delete Services relationship " ..
-                                             "with Workspace: " .. err)
-    end
-
-    err = rbac.delete_role_entity_permission("services", primary_key)
-    if err then
-      return nil, self.errors:database_error("could not delete Services relationship " ..
-                                             "with Role: " .. err)
-    end
-  end
-
   return true, nil, primary_key
 end
 

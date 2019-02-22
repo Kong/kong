@@ -64,20 +64,6 @@ function _Routes_ee:delete(primary_key, options)
     end
   end
 
-  if ok and ws then
-    local err = workspaces.delete_entity_relation("routes", {id = primary_key.id})
-    if err then
-      return nil, self.errors:database_error("could not delete Route relationship " ..
-                                             "with Workspace: " .. err)
-    end
-
-    err = rbac.delete_role_entity_permission("routes", {id = primary_key.id})
-    if err then
-      return nil, self.errors:database_error("could not delete Route relationship " ..
-                                             "with Role: " .. err)
-    end
-  end
-
   return true, nil, primary_key
 end
 

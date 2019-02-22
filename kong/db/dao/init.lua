@@ -632,6 +632,19 @@ local function generate_foreign_key_methods(schema)
           return nil, tostring(err_t), err_t
         end
 
+        -- XXX workspaces
+        local err = workspaces.delete_entity_relation(self.schema.name, entity)
+        if err then
+          return nil, self.errors:database_error("could not delete Route relationship " ..
+          "with Workspace: " .. err)
+        end
+
+        err = rbac.delete_role_entity_permission("routes", entity)
+        if err then
+          return nil, self.errors:database_error("could not delete Route relationship " ..
+          "with Role: " .. err)
+        end
+
         self:post_crud_event("delete", entity)
         propagate_cascade_delete_events(cascade_entries)
 
@@ -1114,6 +1127,19 @@ function DAO:delete(primary_key, options)
   _, err_t = self.strategy:delete(primary_key, options)
   if err_t then
     return nil, tostring(err_t), err_t
+  end
+
+  -- XXX workspaces
+  local err = workspaces.delete_entity_relation(self.schema.name, entity)
+  if err then
+    return nil, self.errors:database_error("could not delete Route relationship " ..
+    "with Workspace: " .. err)
+  end
+
+  err = rbac.delete_role_entity_permission("routes", entity)
+  if err then
+    return nil, self.errors:database_error("could not delete Route relationship " ..
+    "with Role: " .. err)
   end
 
   self:post_crud_event("delete", entity)
