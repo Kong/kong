@@ -38,17 +38,32 @@ local config_schema = {
 }
 
 
+-- XXX by attempting to make the `meta` field a map, I found a bug in
+-- Kong's cassandra query serializer (where it'd attempt to index an
+-- `elements` field in the map schema, whereas it contains keys and values,
+-- not elements
+local config_meta = {
+  type = "record",
+  fields = {
+    -- XXX add a validator for this field (perhaps `matches` with a Lua
+    -- pattern for the color hex code?
+    { color = { type = "string" } },
+  }
+}
+
+
 return {
   name = "workspaces",
   primary_key = { "id" },
   cache_key = { "name" },
+  endpoint_key = "name",
 
   fields = {
     { id          = typedefs.uuid },
     { name        = typedefs.name },
     { comment     = { type = "string" } },
     { created_at  = typedefs.auto_timestamp_s },
-    { meta        = { type = "map", keys = { type = "string" }, values = { type = "string" } } },
+    { meta        = config_meta },
     { config      = config_schema },
   }
 }
