@@ -138,7 +138,7 @@ end
 
 local function remove_default_roles(roles)
   return tablex.map(post_process_role,
-    tablex.filter(rbac_roles,
+    tablex.filter(roles,
       function(role)
         return not role.is_default
   end))
@@ -181,7 +181,7 @@ return {
           return endpoints.handle_error(err_t)
         end
         if not rbac_user then
-          return kong.response.exit(404, { message = "Not found" })
+          return kong.response.exit(404, { message = "No RBAC user by name or id " .. self.params.rbac_users})
         end
         self.rbac_user = rbac_user
       end,
@@ -216,12 +216,15 @@ return {
         -- we've now validated that all our roles exist, and this user exists,
         -- so time to create the assignment
         for i = 1, #roles do
-          local _, err = db.rbac_user_roles:insert({
+          local _, _, err_t = db.rbac_user_roles:insert({
             user_id = self.rbac_user.id,
             role_id = roles[i].id
           })
-          if err then
-            return helpers.yield_error(err)
+
+          if err_t then
+            return endpoints.handle_error(err_t) -- XXX EE: 400 vs
+                                                 -- 409. primary key
+                                                 -- validation failed
           end
         end
 
@@ -232,11 +235,14 @@ return {
         -- re-fetch the users roles so we show all the role objects, not just our
         -- newly assigned mappings
         roles, err = db.rbac_users:get_roles(db, self.rbac_user)
+        ngx.log(ngx.ERR, [[roles:]], require("inspect")(roles))
+
         if err then
           return helpers.yield_error(err)
         end
 
         roles = remove_default_roles(roles)
+        ngx.log(ngx.ERR, [[roles:]], require("inspect")(roles))
 
         -- show the user and all of the roles they are in
         return helpers.responses.send_HTTP_CREATED({
@@ -267,7 +273,8 @@ return {
           })
         end
 
-        local cache_key = db.rbac_users:cache_key(self.rbac_user.id)
+        local cache_key = db.rbac_user_roles:cache_key(self.rbac_user.id)
+        -- XXX EE was it a bug before?
         singletons.cache:invalidate(cache_key)
 
         return helpers.responses.send_HTTP_NO_CONTENT()
@@ -299,9 +306,18 @@ return {
 
       --- XXX EE: DOESNT WORK. tries to fetch user?
       DELETE = function(self, db, helpers)
+        local rbac_role, _, err_t = endpoints.select_entity(self, db, rbac_roles.schema)
+        if err_t then
+          return endpoints.handle_error(err_t)
+        end
+        if not rbac_role then
+          return kong.response.exit(404, { message = "Not found" })
+        end
+        self.rbac_role = rbac_role
+
         -- delete the user <-> role mappings
         -- we have to get our row, then delete it
-        local users, err = db.rbac_users:get_users(db, self.rbac_role)
+        local users, err = db.rbac_roles:get_users(db, self.rbac_role)
         if err then
           return helpers.yield_error(err)
         end
@@ -314,10 +330,14 @@ return {
         end
 
       local err = rbac.role_relation_cleanup(self.rbac_role)
+
       if err then
         return nil, err
       end
-        crud.delete(self.rbac_role, db.rbac_roles)
+
+      -- XXX EE: crud.delete
+      db.rbac_roles:delete({id = rbac_role.id})
+      return kong.response.exit(204)
       end,
     },
   },
@@ -335,13 +355,17 @@ return {
       end
       self.rbac_role = rbac_role
     end,
-
     GET = function(self, db, helpers)
-      -- XXX: EE. do proper pagination and format
-      local entities = db.rbac_roles:get_entities(db, self.rbac_role)
+      -- XXX: EE. do proper pagination??
+      ngx.log(ngx.ERR, [["pre":]], require("inspect")("pre"))
+
+      local entities = rbac.get_role_entities(db, self.rbac_role)
+      ngx.log(ngx.ERR, [["post":]], require("inspect")("post"))
+
+      entities = tablex.map(post_process_actions, entities)
 
       return kong.response.exit(200, {
-        entities = entities
+        data = entities
       })
     end,
 
@@ -408,7 +432,10 @@ return {
       end,
 
       GET = function(self, db, helpers)
-        local entity, _, err_t = endpoints.select_entity(self, db, singletons.db.rbac_role_entities.schema)
+        local entity, _, err_t = db.rbac_role_entities:select({
+          entity_id = self.entity_id,
+          role_id = self.rbac_role_id
+        })
         if err_t then
           return endpoints.handle_error(err_t)
         end
@@ -416,8 +443,21 @@ return {
         if entity then
           return helpers.responses.send_HTTP_OK(post_process_actions(entity))
         end
+      end,
+      DELETE = function(self, db, helpers)
+        local _, _, err_t = db.rbac_role_entities:delete({
+          entity_id = self.entity_id,
+          role_id = self.rbac_role_id
+        })
+        if err_t then
+          return endpoints.handle_error(err_t)
+        end
+
+        return kong.response.exit(204)
       end
+
     }
+
   --   GET = function(self, dao_factory, helpers)
   --     crud.get(self.params, dao_factory.rbac_role_entities,
   --              post_process_actions)
@@ -541,10 +581,18 @@ return {
       end,
     },
   },
-  -- ["/rbac/roles/:name_or_id/endpoints/:workspace/*"] = {
+  -- ["/rbac/roles/:rbac_roles/endpoints/:workspace/*"] = {
   --   before = function(self, dao_factory, helpers)
-  --     crud.find_rbac_role_by_name_or_id(self, dao_factory, helpers)
+  --     local rbac_role, _, err_t = endpoints.select_entity(self, db, rbac_roles.schema)
+  --     if err_t then
+  --       return endpoints.handle_error(err_t)
+  --     end
+  --     if not rbac_role then
+  --       return kong.response.exit(404, { message = "Not found" })
+  --     end
+  --     self.rbac_role = rbac_role
   --     self.params.role_id = self.rbac_role.id
+
   --     -- Note: /rbac/roles/:name_or_id/endpoints/:workspace// will be treated same as
   --     -- /rbac/roles/:name_or_id/endpoints/:workspace/
   --     -- this is the limitation of lapis implementation
@@ -587,16 +635,28 @@ return {
   --   end,
   -- },
 
-  -- ["/rbac/roles/:name_or_id/endpoints/permissions"] = {
-  --   before = function(self, dao_factory, helpers)
-  --     crud.find_rbac_role_by_name_or_id(self, dao_factory, helpers)
-  --   end,
+  ["/rbac/roles/:rbac_roles/endpoints/permissions"] = {
+    schema = rbac_roles.schema,
+    methods = {
+      before = function(self, db, helpers)
+      local rbac_role, _, err_t = endpoints.select_entity(self, db, rbac_roles.schema)
+      if err_t then
+        return endpoints.handle_error(err_t)
+      end
+      if not rbac_role then
+        return kong.response.exit(404, { message = "Not found" })
+      end
+      self.rbac_role = rbac_role
+      self.params.role_id = self.rbac_role.id
 
-  --   GET = function(self, dao_factory, helpers)
-  --     local map = rbac.readable_endpoints_permissions({self.rbac_role})
-  --     return helpers.responses.send_HTTP_OK(map)
-  --   end,
-  -- },
+    end,
+
+    GET = function(self, dao_factory, helpers)
+      local map = rbac.readable_endpoints_permissions({self.rbac_role})
+      return helpers.responses.send_HTTP_OK(map)
+    end,
+    }
+  },
 
   -- ["/rbac/users/consumers"] = {
   --   POST = function(self, dao_factory)

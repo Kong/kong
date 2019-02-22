@@ -5,7 +5,7 @@ local ssl_fixtures = require "spec.fixtures.ssl"
 
 
 for _, strategy in helpers.each_strategy() do
-  describe("#flaky RBAC on admin route", function()
+  describe("#flaky db #".. strategy .. " RBAC on admin route", function()
     local client
     local dao
     local default_role_one, default_role_two, test_role

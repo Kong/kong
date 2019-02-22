@@ -419,7 +419,7 @@ function _M:truncate_table(dao_name)
   local is_workspaceable = workspaces.get_workspaceable_relations()[dao_name]
 
   if is_workspaceable then
-    local res, _ = self.daos.workspace_entities:find_all({entity_type = dao_name})
+    local res, _ = self.daos.workspace_entities:find_all({entity_type = dao_name}) -- XXX Find all
     for _, v in ipairs(res) do
       workspaces.delete_entity_relation("workspace_entities", {
         workspace_id = v.workspace_id,

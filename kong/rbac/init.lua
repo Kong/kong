@@ -114,6 +114,12 @@ local function retrieve_relationship_ids(entity_id, entity_name, factory_key)
     )
   end
 
+  -- for v in used_dao[factory_key]:each(nil, {skip_rbac = true}) do
+  --   if v[entity_name .. "_id"] == entity_id then
+  --     table.insert(relationship_ids, v)
+  --   end
+  -- end
+
   -- if err then
   --   log(ngx.ERR, "err retrieving relationship via id ", entity_id, ": ", err)
   --   return nil, err
@@ -170,6 +176,9 @@ local function entity_relationships(dao_factory, entity, entity_name, foreign, f
   -- now get the relationship objects for each relationship id
   local relationship_objs = {}
   local foreign_factory_key = fmt("rbac_%ss", foreign)
+
+  ngx.log(ngx.ERR, [[foreign_factory_key:]], require("inspect")(foreign_factory_key))
+
 
   for i = 1, #relationship_ids do
     local foreign_factory_cache_key = dao_factory[foreign_factory_key]:cache_key(
@@ -482,35 +491,57 @@ function _M.create_default_role(user)
 end
 
 
+-- XXX EE should return 2nd value for error
+local function get_role_entities(db, role)
+  local res = {}
+  ngx.log(ngx.ERR, [["yay":]], require("inspect")("yay"))
+
+  for row, err in db.rbac_role_entities:each() do
+    if row.role_id == role.id then
+      table.insert(res, row)
+    end
+  end
+  return res
+end
+_M.get_role_entities = get_role_entities
+
+local function get_role_endpoints(db, role, opts)
+  local res = {}
+  for row, err in db.rbac_role_endpoints:each(nil, opts) do
+    if row.role_id == role.id then
+      table.insert(res, row)
+    end
+  end
+  return res
+end
+_M.get_role_endpoints = get_role_endpoints
+
+
 -- helpers: remove entity and endpoint relation when
 -- a role is removed
 local function role_relation_cleanup(role)
-  local dao = singletons.dao
+  local db = singletons.db
   -- delete the role <-> entity mappings
-  local entities, err = dao.rbac_role_entities:find_all({
-    role_id = role.id,
-  })
+  local entities, err = get_entities(db, role)
   if err then
     return err
   end
 
   for _, entity in ipairs(entities) do
-    local _, err = dao.rbac_role_entities:delete(entity)
+    local _, err = db.rbac_role_entities:delete(entity)
     if err then
       return err
     end
   end
 
   -- delete the role <-> endpoint mappings
-  local endpoints, err = dao.rbac_role_endpoints:find_all({
-    role_id = role.id,
-  })
+  local endpoints, err = get_endpoints(db, role)
   if err then
     return err
   end
 
   for _, endpoint in ipairs(endpoints) do
-    local _, err = dao.rbac_role_endpoints:delete(endpoint)
+    local _, err = db.rbac_role_endpoints:delete(endpoint)
     if err then
       return err
     end
@@ -733,10 +764,7 @@ local function resolve_role_endpoint_permissions(roles)
                   -- negative or not
 
   for _, role in ipairs(roles) do
-    local roles_endpoints, err = singletons.dao.rbac_role_endpoints:find_all({
-      role_id = role.id,
-      __skip_rbac = true,
-    })
+    local roles_endpoints, err = get_role_endpoints(singletons.db, role, {skip_rbac = true}) -- XXX EE __skip_rbac = true
     if err then
       return _, _, err
     end
