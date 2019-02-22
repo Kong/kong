@@ -23,8 +23,14 @@ describe("DNS", function()
       find_all = function(self) return {} end
     }
 
-    singletons.dao.workspaces = {
-      find_all = function() return {} end
+    singletons.db = {}
+    singletons.db.workspaces = {
+      each = function()
+        local i = 2
+        return function()
+          return i == 1 and {} or nil
+        end
+      end
     }
 
     singletons.origins = {}

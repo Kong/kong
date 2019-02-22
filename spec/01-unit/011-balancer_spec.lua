@@ -245,12 +245,8 @@ describe("Balancer", function()
         each = each(UPSTREAMS_FIXTURES),
         select = select(UPSTREAMS_FIXTURES),
       },
-    }
-
-
-    singletons.dao = {
       workspaces = {
-        find_all = function() return WORKSPACE_FIXTURES end
+        each = each(WORKSPACE_FIXTURES),
       }
     }
 
