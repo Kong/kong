@@ -3,8 +3,8 @@ local singletons = require "kong.singletons"
 local utils      = require "kong.tools.utils"
 local tablex = require "pl.tablex"
 local cjson = require "cjson"
-
 local enums = require "kong.enterprise_edition.dao.enums"
+local ws_dao_wrappers = require "kong.workspaces.dao_wrappers"
 
 
 local find    = string.find
@@ -33,6 +33,10 @@ local workspace_delimiter = ":"
 _M.DEFAULT_WORKSPACE = default_workspace
 _M.WORKSPACE_DELIMITER = workspace_delimiter
 local ALL_METHODS = "GET,POST,PUT,DELETE,OPTIONS,PATCH"
+
+
+local compat_find_all = ws_dao_wrappers.compat_find_all
+_M.compat_find_all = compat_find_all
 
 
 -- a map of workspaceable relations to its primary key name
