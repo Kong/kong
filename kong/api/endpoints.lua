@@ -360,7 +360,7 @@ end
 --
 -- /services/:services
 local function patch_entity_endpoint(schema, foreign_schema, foreign_field_name)
-  return not foreign_schema and function(self, db, helpers)
+  return not foreign_schema and function(self, db, helpers, post_process)
     local entity, _, err_t = update_entity(self, db, schema)
     if err_t then
       return handle_error(err_t)
@@ -368,6 +368,19 @@ local function patch_entity_endpoint(schema, foreign_schema, foreign_field_name)
 
     if not entity then
       return helpers.responses.send_HTTP_NOT_FOUND()
+    end
+
+    -- XXX EE only - need to PR upstream
+    if post_process then
+      local n_entity
+      n_entity, _, err_t = post_process(entity)
+      if err_t then
+        return handle_error(err_t)
+      end
+
+      if n_entity then
+        entity = n_entity
+      end
     end
 
     return helpers.responses.send_HTTP_OK(entity)
