@@ -1995,34 +1995,22 @@ function OICHandler:access(conf)
         access_token_scopes = find_claim(token_introspected, scopes_claim)
         if access_token_scopes then
           log("scopes found in introspection results")
-
         else
           log("scopes not found in introspection results")
         end
+      end
 
-      else
+      if not access_token_scopes then
         if not tokens_decoded then
           tokens_decoded = oic.token:decode(tokens_encoded, { verify_signature = false })
         end
 
-        if tokens_decoded then
-          if type(tokens_decoded.access_token) == "table" then
-            access_token_scopes = find_claim(tokens_decoded.access_token.payload, scopes_claim)
-            if access_token_scopes then
-              log("scopes found in access token")
-
-            else
-              log("scopes not found in access token")
-            end
-
+        if tokens_decoded and type(tokens_decoded.access_token) == "table" then
+          access_token_scopes = find_claim(tokens_decoded.access_token.payload, scopes_claim)
+          if access_token_scopes then
+            log("scopes found in access token")
           else
-            access_token_scopes = find_claim(token_introspected, scopes_claim)
-            if access_token_scopes then
-              log("scopes found in introspection results")
-
-            else
-              log("scopes not found in introspection results")
-            end
+            log("scopes not found in access token")
           end
         end
       end
@@ -2073,34 +2061,22 @@ function OICHandler:access(conf)
         access_token_audience = find_claim(token_introspected, audience_claim)
         if access_token_audience then
           log("audience found in introspection results")
-
         else
           log("audience not found in introspection results")
         end
+      end
 
-      else
+      if not access_token_audience then
         if not tokens_decoded then
           tokens_decoded = oic.token:decode(tokens_encoded, { verify_signature = false })
         end
 
-        if tokens_decoded then
-          if type(tokens_decoded.access_token) == "table" then
-            access_token_audience = find_claim(tokens_decoded.access_token.payload, audience_claim)
-            if access_token_audience then
-              log("audience found in access token")
-
-            else
-              log("audience not found in access token")
-            end
-
+        if tokens_decoded and type(tokens_decoded.access_token) == "table" then
+          access_token_audience = find_claim(tokens_decoded.access_token.payload, audience_claim)
+          if access_token_audience then
+            log("audience found in access token")
           else
-            access_token_audience = find_claim(token_introspected, audience_claim)
-            if access_token_audience then
-              log("audience found in introspection results")
-
-            else
-              log("audience not found in introspection results")
-            end
+            log("audience not found in access token")
           end
         end
       end
@@ -2148,29 +2124,48 @@ function OICHandler:access(conf)
 
       local consumer_by = args.get_conf_arg("consumer_by")
 
-      if not tokens_decoded then
-        log("decoding tokens")
-        tokens_decoded, err = oic.token:decode(tokens_encoded, { verify_signature = false })
-      end
-
-      if tokens_decoded then
-        if tokens_decoded.id_token then
-          log("trying to find consumer using id token")
-          consumer, err = find_consumer(tokens_decoded.id_token, consumer_claim, false, consumer_by, ttl)
-          if not consumer then
-            log("trying to find consumer using access token")
-            consumer, err = find_consumer(tokens_decoded.access_token, consumer_claim, false, consumer_by, ttl)
-          end
-
-        else
-          log("trying to find consumer using access token")
-          consumer, err = find_consumer(tokens_decoded.access_token, consumer_claim, false, consumer_by, ttl)
-        end
-      end
-
       if not consumer and token_introspected then
         log("trying to find consumer using introspection response")
         consumer, err = find_consumer({ payload = token_introspected }, consumer_claim, false, consumer_by, ttl)
+        if consumer then
+          log("consumer was found with introspection results")
+        elseif err then
+          log("consumer was not found with introspection results (", err, ")")
+        else
+          log("consumer was not found with introspection results")
+        end
+      end
+
+      if not consumer then
+        if not tokens_decoded then
+          tokens_decoded, err = oic.token:decode(tokens_encoded, { verify_signature = false })
+        end
+
+        if tokens_decoded then
+          if type(tokens_decoded.id_token) == "table" then
+            log("trying to find consumer using id token")
+            consumer, err = find_consumer(tokens_decoded.id_token, consumer_claim, false, consumer_by, ttl)
+            if consumer then
+              log("consumer was found with id token")
+            elseif err then
+              log("consumer was not found with id token (", err, ")")
+            else
+              log("consumer was not found with id token")
+            end
+          end
+
+          if not consumer and type(tokens_decoded.access_token) == "table" then
+            log("trying to find consumer using access token")
+            consumer, err = find_consumer(tokens_decoded.access_token, consumer_claim, false, consumer_by, ttl)
+            if consumer then
+              log("consumer was found with access token")
+            elseif err then
+              log("consumer was not found with access token (", err, ")")
+            else
+              log("consumer was not found with access token")
+            end
+          end
+        end
       end
 
       if not consumer then
@@ -2235,8 +2230,9 @@ function OICHandler:access(conf)
         else
           log("credential claim not found in introspection results")
         end
+      end
 
-      else
+      if not credential_value then
         if not tokens_decoded then
           tokens_decoded = oic.token:decode(tokens_encoded, { verify_signature = false })
         end
@@ -2246,34 +2242,23 @@ function OICHandler:access(conf)
             credential_value = find_claim(tokens_decoded.id_token.payload, credential_claim)
             if credential_value then
               log("credential claim found in id token")
-
             else
               log("credential claim not found in id token")
             end
           end
 
-          if credential_value == nil and type(tokens_decoded.access_token) == "table" then
+          if not credential_value and type(tokens_decoded.access_token) == "table" then
             credential_value = find_claim(tokens_decoded.access_token.payload, credential_claim)
             if credential_value then
               log("credential claim found in access token")
-
             else
               log("credential claim not found in access token")
-            end
-
-          else
-            credential_value = find_claim(token_introspected, credential_claim)
-            if credential_value then
-              log("credential claim found in introspection results")
-
-            else
-              log("credential claim not found in introspection results")
             end
           end
         end
       end
 
-      if credential_value == nil then
+      if not credential_value then
         log("credential claim was not found")
 
       elseif type(credential_value) == "table" then
@@ -2297,12 +2282,12 @@ function OICHandler:access(conf)
         authenticated_groups = find_claim(token_introspected, authenticated_groups_claim)
         if authenticated_groups then
           log("authenticated groups claim found in introspection results")
-
         else
           log("authenticated groups claim not found in introspection results")
         end
+      end
 
-      else
+      if not authenticated_groups then
         if not tokens_decoded then
           tokens_decoded = oic.token:decode(tokens_encoded, { verify_signature = false })
         end
@@ -2312,39 +2297,24 @@ function OICHandler:access(conf)
             authenticated_groups = find_claim(tokens_decoded.id_token.payload, authenticated_groups_claim)
             if authenticated_groups then
               log("authenticated groups found in id token")
-
             else
               log("authenticated groups not found in id token")
             end
           end
 
-          if authenticated_groups == nil and type(tokens_decoded.access_token) == "table" then
+          if not authenticated_groups and type(tokens_decoded.access_token) == "table" then
             authenticated_groups = find_claim(tokens_decoded.access_token.payload, authenticated_groups_claim)
             if authenticated_groups then
               log("authenticated groups claim found in access token")
-
             else
               log("authenticated groups claim not found in access token")
-            end
-
-          else
-            authenticated_groups = find_claim(token_introspected, authenticated_groups_claim)
-            if authenticated_groups then
-              log("authenticated groups claim found in introspection results")
-
-            else
-              log("authenticated groups claim not found in introspection results")
             end
           end
         end
       end
 
-      if authenticated_groups == nil then
+      if not authenticated_groups then
         log("authenticated groups claim was not found")
-
-      elseif type(authenticated_groups) == "table" then
-        log("authenticated groups claim is invalid")
-
       else
         log("authenticated groups found '", authenticated_groups, "'")
         ctx.authenticated_groups = set.new(authenticated_groups)
