@@ -418,7 +418,7 @@ function _M:truncate_table(dao_name)
 
   -- If we are truncating workspaces, re-create the default workspace
   if dao_name == "workspaces" then
-    workspaces.create_default(self)
+    workspaces.upsert_default()
   end
 
   local is_workspaceable = workspaces.get_workspaceable_relations()[dao_name]
@@ -461,7 +461,7 @@ function _M:truncate_tables()
   end
 
   -- If we are truncating workspaces, re-create the default workspace
-  workspaces.create_default(self)
+  workspaces.upsert_default()
 end
 
 function _M:migrations_modules()

@@ -231,12 +231,13 @@ function DB:truncate(table_name)
 
   if table_name then
     ok, err = self.connector:truncate_table(table_name)
-    if table_name == "workspaces" then
-      workspaces.create_default()
-    end
   else
     ok, err = self.connector:truncate()
-    workspaces.create_default()
+  end
+
+  -- re-create default workspace on full or workspaces truncate
+  if not table_name or table_name == "workspaces" then
+    workspaces.upsert_default()
   end
 
   if not ok then

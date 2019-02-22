@@ -153,32 +153,22 @@ local function is_blank(t)
 end
 
 
-function _M.create_default(dao)
-  dao = dao or singletons.dao
+function _M.upsert_default(db)
+  db = db or singletons.db
 
-  local res, err = _M.run_with_ws_scope({},
-    dao.workspaces.find_all,
-    dao.workspaces, {
-    name = default_workspace,
-  })
+  local cb = function()
+    return db.workspaces:upsert_by_name(default_workspace, {
+      name = default_workspace
+    })
+  end
+
+  local res, err = _M.run_with_ws_scope({}, cb)
   if err then
     return nil, err
   end
-  if res and res[1] then
-    ngx.ctx.workspaces = {res[1]}
-    return res[1]
-  end
 
-  -- if it doesn't exist, create it...
-  res, err = dao.workspaces:insert({
-      name = _M.DEFAULT_WORKSPACE,
-  }, { quiet = true })
-  if not res then
-    return nil, err
-  end
-
-  dao.workspace_entities:truncate()
-  ngx.ctx.workspaces = {res}
+  db:truncate("workspace_entities")
+  ngx.ctx.workspaces = { res }
 
   return res
 end
