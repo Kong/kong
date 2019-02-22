@@ -51,7 +51,7 @@ for _, strategy in helpers.each_strategy() do
 
       -- XXX truncate workspace_entities behind the scenes? maybe have a
       -- spec helper to do so?
-      dao:truncate_table("workspace_entities")
+      db:truncate("workspace_entities")
       db:truncate("services")
       db:truncate("routes")
       db:truncate("plugins")
