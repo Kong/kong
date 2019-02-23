@@ -511,10 +511,7 @@ local function truncate_relevant_tables(db, dao)
   db:truncate("routes")
   db:truncate("upstreams")
   db:truncate("targets")
-  dao.plugins:truncate()
-  dao:truncate_tables()
-  ngx.ctx.workspaces = nil
-  ngx.ctx.workspaces = dao.workspaces:find_all({name = "default"})
+  db:truncate("workspaces")
 end
 
 
