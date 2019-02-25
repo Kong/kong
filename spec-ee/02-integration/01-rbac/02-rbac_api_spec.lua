@@ -108,7 +108,7 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
   local bp, db, dao
 
   setup(function()
-    bp, db, dao = helpers.get_db_utils(kong_config.database, {})
+    bp, db, dao = helpers.get_db_utils(kong_config.database)
 
     assert(helpers.start_kong({
       database = kong_config.database
