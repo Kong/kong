@@ -630,6 +630,12 @@ function _M.validate_entity_operation(entity, table_name)
     return true
   end
 
+  -- rbac does not apply to "system tables" - e.g., many-to-many tables
+  -- like workspace_entities
+  if is_system_table(table_name) then
+    return true
+  end
+
   -- whitelisted endpoints are also exempt
   if whitelisted_endpoints[ngx.var.request_uri] then
     return true

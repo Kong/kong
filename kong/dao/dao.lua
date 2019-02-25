@@ -512,7 +512,6 @@ function DAO:update(tbl, filter_keys, options)
   -- XXX: rethink the first condition. as maybe adding __skip_rbac is
   -- more fine grained and useful than this shotgun surgery
   if not options.__skip_rbac and
-    not rbac.is_system_table(self.table) and
     not rbac.validate_entity_operation(old, self.table) then
     return ret_error(self.db.name, nil, Errors.forbidden({
       username = ngx.ctx.rbac.user.name,
