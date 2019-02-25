@@ -13,14 +13,16 @@ local MAX_ITERATIONS = 12
 
 dao_helpers.for_each_dao(function(kong_conf)
 describe("(#" .. kong_conf.database .. ")", function()
-  local dao
+  local dao, db, _
 
 
   setup(function()
     package.loaded["kong.rbac"] = nil
 
-    dao = select(3, spec_helpers.get_db_utils())
+    _, db, dao = spec_helpers.get_db_utils()
     singletons.dao = dao
+    singletons.db = db
+
     rbac = require "kong.rbac"
   end)
 
