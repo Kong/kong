@@ -19,6 +19,7 @@ local fmt   = string.format
 local entity_relationships = rbac.entity_relationships
 
 local rbac_users = kong.db.rbac_users
+local consumers = kong.db.consumers
 local rbac_roles = kong.db.rbac_roles
 local endpoints   = require "kong.api.endpoints"
 
@@ -639,31 +640,33 @@ return {
     schema = rbac_roles.schema,
     methods = {
       before = function(self, db, helpers)
-      local rbac_role, _, err_t = endpoints.select_entity(self, db, rbac_roles.schema)
-      if err_t then
-        return endpoints.handle_error(err_t)
-      end
-      if not rbac_role then
-        return kong.response.exit(404, { message = "Not found" })
-      end
-      self.rbac_role = rbac_role
-      self.params.role_id = self.rbac_role.id
+        local rbac_role, _, err_t = endpoints.select_entity(self, db, rbac_roles.schema)
+        if err_t then
+          return endpoints.handle_error(err_t)
+        end
+        if not rbac_role then
+          return kong.response.exit(404, { message = "Not found" })
+        end
+        self.rbac_role = rbac_role
+        self.params.role_id = self.rbac_role.id
 
-    end,
+      end,
 
-    GET = function(self, dao_factory, helpers)
-      local map = rbac.readable_endpoints_permissions({self.rbac_role})
-      return helpers.responses.send_HTTP_OK(map)
-    end,
+      GET = function(self, dao_factory, helpers)
+        local map = rbac.readable_endpoints_permissions({self.rbac_role})
+        return helpers.responses.send_HTTP_OK(map)
+      end,
     }
   },
-
-  -- ["/rbac/users/consumers"] = {
-  --   POST = function(self, dao_factory)
-  --     -- TODO: validate consumer and user here
-  --     crud.post(self.params, dao_factory.consumers_rbac_users_map)
-  --   end,
-  -- },
+  ["/rbac/users/consumers"] = {
+    schema = consumers.schema,
+    methods = {
+      POST = function(self, dao_factory)
+        -- TODO: validate consumer and user here
+        crud.post(self.params, dao_factory.consumers_rbac_users_map)
+      end
+    },
+  },
 
   -- ["/rbac/users/:user_id/consumers/:consumer_id"] = {
   --   before = function(self, dao_factory, helpers)

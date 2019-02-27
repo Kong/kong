@@ -68,14 +68,11 @@ local function delete(path, headers, expected_status)
 end
 
 
-local function create_api(suffix)
+local function create_service(suffix)
   suffix = tostring(suffix)
-  return post("/apis", {
-    uris = "/my-uri" .. suffix,
-    name = "my-api" .. suffix,
-    methods = "GET",
-    hosts = "my.api" .. suffix ..".com",
-    upstream_url = "http://api".. suffix.. ".com"})
+  return post("/services", {
+    name = "my-service" .. suffix,
+  })
 end
 
 local function map(pred, t)
@@ -997,7 +994,7 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
           local res = assert(client:send {
             method = "POST",
             path = "/rbac/roles",
-            body = {
+           body = {
               name = "read-only",
             },
             headers = {
@@ -3474,7 +3471,7 @@ end
 
 dao_helpers.for_each_dao(function(kong_config)
 describe("Admin API", function()
-  local apis
+  local services
 
   lazy_setup(function()
     helpers.get_db_utils(kong_config.database)
@@ -3484,13 +3481,13 @@ describe("Admin API", function()
     }))
 
     client = assert(helpers.admin_client())
-    apis = map(create_api, {1, 2, 3, 4})
+    services = map(create_service, {1, 2, 3, 4})
 
     post("/rbac/users", {name = "bob", user_token = "bob"})
     post("/rbac/roles" , {name = "mock-role"})
-    post("/rbac/roles/mock-role/entities", {entity_id = apis[2].id, actions = "read"})
-    post("/rbac/roles/mock-role/entities", {entity_id = apis[3].id, actions = "delete"})
-    post("/rbac/roles/mock-role/entities", {entity_id = apis[4].id, actions = "update"})
+    post("/rbac/roles/mock-role/entities", {entity_id = services[2].id, actions = "read"})
+    post("/rbac/roles/mock-role/entities", {entity_id = services[3].id, actions = "delete"})
+    post("/rbac/roles/mock-role/entities", {entity_id = services[4].id, actions = "update"})
     post("/rbac/users/bob/roles", {roles = "mock-role"})
 
     helpers.stop_kong(nil, true, true)
@@ -3510,53 +3507,52 @@ describe("Admin API", function()
   end)
 
   it(".find_all filters non accessible entities", function()
-    local data = get("/apis", {["Kong-Admin-User"] = "bob",
+    local data = get("/services", {["Kong-Admin-User"] = "bob",
                                ["Kong-Admin-Token"] = "bob"}).data
     assert.equal(1, #data)
-    assert.equal(apis[2].id, data[1].id)
+    assert.equal(services[2].id, data[1].id)
   end)
 
   it(".find_all returns 401 for invalid credentials", function()
-    get("/apis", {["Kong-Admin-Token"] = "wrong"}, 401)
-    get("/apis", nil, 401)
+    get("/services", {["Kong-Admin-Token"] = "wrong"}, 401)
+    get("/services", nil, 401)
   end)
 
   it(".find errors for non permitted entities", function()
-    get("/apis/" .. apis[1].id , {["Kong-Admin-Token"] = "wrong"}, 401)
-    get("/apis/" .. apis[2].id , {["Kong-Admin-Token"] = "wrong"}, 401)
-    get("/apis/" .. apis[1].id , {["Kong-Admin-Token"] = "bob"}, 404)
-    get("/apis/" .. apis[2].id , {["Kong-Admin-Token"] = "bob"}, 200)
+    get("/services/" .. services[1].id , {["Kong-Admin-Token"] = "wrong"}, 401)
+    get("/services/" .. services[2].id , {["Kong-Admin-Token"] = "wrong"}, 401)
+    get("/services/" .. services[1].id , {["Kong-Admin-Token"] = "bob"}, 404)
+    get("/services/" .. services[2].id , {["Kong-Admin-Token"] = "bob"}, 200)
   end)
 
   it(".update checks rbac via put", function()
-    put("/apis/" , {
-      id = apis[1].id,
+    put("/services/" , {
+      id = services[1].id,
       name = "new-name",
       created_at = "123",
       upstream_url = helpers.mock_upstream_url,
     }, {["Kong-Admin-Token"] = "bob"}, 403)
 
-    put("/apis/" , {
-      id = apis[4].id,
+    put("/services/" , {
+      id = services[4].id,
       name = "new-name",
       created_at = "123",
-      upstream_url = helpers.mock_upstream_url
     }, {["Kong-Admin-Token"] = "bob"}, 200)
   end)
 
   it(".update checks rbac via patch", function()
-    patch("/apis/".. apis[1].id, {name = "new-name"}, {["Kong-Admin-Token"] = "bob" }, 404)
-    patch("/apis/".. apis[2].id, {name = "new-name"}, {["Kong-Admin-Token"] = "bob" }, 404)
-    patch("/apis/".. apis[3].id, {name = "new-name"}, {["Kong-Admin-Token"] = "bob" }, 404)
-    patch("/apis/".. apis[4].id, {name = "new-name"}, {["Kong-Admin-Token"] = "bob" }, 200)
+    patch("/services/".. services[1].id, {name = "new-name"}, {["Kong-Admin-Token"] = "bob" }, 404)
+    patch("/services/".. services[2].id, {name = "new-name"}, {["Kong-Admin-Token"] = "bob" }, 404)
+    patch("/services/".. services[3].id, {name = "new-name"}, {["Kong-Admin-Token"] = "bob" }, 404)
+    patch("/services/".. services[4].id, {name = "new-name"}, {["Kong-Admin-Token"] = "bob" }, 200)
   end)
 
   it(".delete checks rbac", function()
-    delete("/apis/" .. apis[1].id, nil, 401)
-    delete("/apis/" .. apis[2].id, nil, 401)
-    delete("/apis/" .. apis[1].id, {["Kong-Admin-Token"] = "bob" }, 404)
-    delete("/apis/" .. apis[2].id, {["Kong-Admin-Token"] = "bob" }, 404)
-    delete("/apis/" .. apis[3].id, {["Kong-Admin-Token"] = "bob" }, 204)
+    delete("/services/" .. services[1].id, nil, 401)
+    delete("/services/" .. services[2].id, nil, 401)
+    delete("/services/" .. services[1].id, {["Kong-Admin-Token"] = "bob" }, 404)
+    delete("/services/" .. services[2].id, {["Kong-Admin-Token"] = "bob" }, 404)
+    delete("/services/" .. services[3].id, {["Kong-Admin-Token"] = "bob" }, 204)
   end)
 end)
 
