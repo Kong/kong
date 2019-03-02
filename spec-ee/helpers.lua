@@ -241,17 +241,17 @@ function _M.post(client, path, body, headers, expected_status)
 end
 
 
-function _M.create_admin(email, custom_id, status, bp, dao)
+function _M.create_admin(email, custom_id, status, bp, db)
   local consumer = assert(bp.consumers:insert {
     username = email,
     custom_id = custom_id,
     email = email,
     type = enums.CONSUMERS.TYPE.ADMIN,
-    status = status,
+    -- status = status,
   })
 
   local user_token = utils.uuid()
-  local rbac_user = assert(dao.rbac_users:insert {
+  local rbac_user = assert(db.rbac_users:insert {
     name = email,
     user_token = user_token,
     enabled = true,
@@ -261,7 +261,7 @@ function _M.create_admin(email, custom_id, status, bp, dao)
   -- WARNING: do not do this outside test environment
   rbac_user.raw_user_token = user_token
 
-  assert(dao.consumers_rbac_users_map:insert {
+  assert(db.consumers_rbac_users_map:insert {
     consumer_id = consumer.id,
     user_id = rbac_user.id,
   })

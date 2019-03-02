@@ -146,6 +146,17 @@ local function remove_default_roles(roles)
 end
 
 
+local function find_current_user(self, db, helpers)
+  local rbac_user, _, err_t = endpoints.select_entity(self, db, rbac_users.schema)
+  if err_t then
+    return endpoints.handle_error(err_t)
+  end
+  if not rbac_user then
+    return kong.response.exit(404, { message = "No RBAC user by name or id " .. self.params.rbac_users})
+  end
+  self.rbac_user = rbac_user
+end
+
 
 return {
   ["/rbac/users"] = {
@@ -166,7 +177,34 @@ return {
       GET  = endpoints.get_entity_endpoint(rbac_users.schema),
       PUT     = endpoints.put_entity_endpoint(rbac_users.schema),
       PATCH   = endpoints.patch_entity_endpoint(rbac_users.schema),
-      DELETE  = endpoints.delete_entity_endpoint(rbac_users.schema),
+      DELETE  = function(self, db, helpers)
+        -- endpoints.delete_entity_endpoint(rbac_users.schema)(self, db, helpers)
+        find_current_user(self, db, helpers)
+        local roles = db.rbac_users:get_roles(db, self.rbac_user)
+        local default_role
+
+        for _, role in ipairs(roles) do
+          db.rbac_user_roles:delete({
+            user_id = self.rbac_user.id,
+            role_id = role.id
+          })
+
+          if role.name == self.rbac_user.name then
+            default_role = role
+          end
+        end
+
+        if default_role then
+          local _, err = rbac.remove_user_from_default_role(self.rbac_user,
+            default_role)
+          if err then
+            helpers.yield_error(err)
+          end
+        end
+
+        db.rbac_users:delete({id = self.rbac_user.id})
+        return kong.response.exit(204)
+      end
       -- XXX: EE DEAL WITH DELETING default role and user<->roles
       -- mappings
     }

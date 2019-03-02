@@ -345,6 +345,31 @@ function _M.resolve_workspace_entities(workspaces)
 end
 
 
+-- XXX EE should return 2nd value for error
+local function get_role_entities(db, role)
+  local res = {}
+
+  for row, err in db.rbac_role_entities:each() do
+    if row.role_id == role.id then
+      table.insert(res, row)
+    end
+  end
+  return res
+end
+_M.get_role_entities = get_role_entities
+
+local function get_role_endpoints(db, role, opts)
+  local res = {}
+  for row, err in db.rbac_role_endpoints:each(nil, opts) do
+    if row.role_id == role.id then
+      table.insert(res, row)
+    end
+  end
+  return res
+end
+_M.get_role_endpoints = get_role_endpoints
+
+
 local function resolve_role_entity_permissions(roles)
   local pmap = {}
   local nmap = {} -- map endpoints to a boolean indicating whether it is
@@ -379,7 +404,8 @@ local function resolve_role_entity_permissions(roles)
   -- the order of iteration
   local positive_entities, negative_entities =  {}, {}
   for _, role in ipairs(roles) do
-    local role_entities, err = singletons.db.rbac_roles:get_entities(singletons.db, role) -- XXX EE: __skip_rbac = true
+    -- local role_entities, err = singletons.db.rbac_roles:get_entities(singletons.db, role) -- XXX EE: __skip_rbac = true
+    local role_entities, err = _M.get_role_entities(singletons.db, role)
     if err then
       return _, _, err
     end
@@ -491,38 +517,12 @@ function _M.create_default_role(user)
 end
 
 
--- XXX EE should return 2nd value for error
-local function get_role_entities(db, role)
-  local res = {}
-  ngx.log(ngx.ERR, [["yay":]], require("inspect")("yay"))
-
-  for row, err in db.rbac_role_entities:each() do
-    if row.role_id == role.id then
-      table.insert(res, row)
-    end
-  end
-  return res
-end
-_M.get_role_entities = get_role_entities
-
-local function get_role_endpoints(db, role, opts)
-  local res = {}
-  for row, err in db.rbac_role_endpoints:each(nil, opts) do
-    if row.role_id == role.id then
-      table.insert(res, row)
-    end
-  end
-  return res
-end
-_M.get_role_endpoints = get_role_endpoints
-
-
 -- helpers: remove entity and endpoint relation when
 -- a role is removed
 local function role_relation_cleanup(role)
   local db = singletons.db
   -- delete the role <-> entity mappings
-  local entities, err = get_entities(db, role)
+  local entities, err = get_role_entities(db, role)
   if err then
     return err
   end
@@ -535,7 +535,7 @@ local function role_relation_cleanup(role)
   end
 
   -- delete the role <-> endpoint mappings
-  local endpoints, err = get_endpoints(db, role)
+  local endpoints, err = get_role_endpoints(db, role)
   if err then
     return err
   end
@@ -554,7 +554,7 @@ _M.role_relation_cleanup = role_relation_cleanup
 -- user was the only one in the role
 function _M.remove_user_from_default_role(user, default_role)
   -- delete user-role relationship
-  local _, err = singletons.dao.rbac_user_roles:delete({
+  local _, err = singletons.db.rbac_user_roles:delete({
     user_id = user.id,
     role_id = default_role.id,
   })
@@ -576,9 +576,8 @@ function _M.remove_user_from_default_role(user, default_role)
       return nil, err
     end
 
-    local _, err = singletons.dao.rbac_roles:delete({
+    local _, err = singletons.db.rbac_roles:delete({
       id = default_role.id,
-      name = default_role.name,
     })
     if err then
       return nil, err

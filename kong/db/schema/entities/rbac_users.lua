@@ -14,7 +14,7 @@ return {
   fields = {
     { id             = typedefs.uuid, },
     { created_at     = typedefs.auto_timestamp_s },
-    { name           = typedefs.name },
+    { name           = {type = "string", required = true, unique = true}},
     { user_token     = {type = "string", required = true, unique = true}},
     { user_token_ident = { type = "string", unique = true}},
     { comment = { type = "string"} },
