@@ -11,12 +11,16 @@ core values are high performance and extensibility.
 Actively maintained, Kong is widely used in production at companies ranging
 from startups to Global 5000 as well as government organizations.
 
-[Installation](https://konghq.com/install) |
-[Documentation](https://docs.konghq.com) |
-[Forum](https://discuss.konghq.com) |
-[Blog](https://konghq.com/blog) |
-IRC (freenode): [#kong](https://webchat.freenode.net/?channels=kong) |
-[Nightly Builds][kong-nightly-master]
+
+<h3 align="center">
+ <a href="https://konghq.com/install"><img alt="Installation" src="/menu/Installation.png"></a>  
+  <a href="https://docs.konghq.com"><img alt="Documentation" src="/menu/Documentation.png"></a>
+  <a href="https://discuss.konghq.com"><img alt="Forum" src="/menu/Forum.png"></a>
+  <a href="https://webchat.freenode.net/?channels=kong"><img alt="#Kong" src="/menu/%23Kong.png"></a>
+  <a href="https://bintray.com/kong/kong-nightly/master"><img alt="Nightly Builds" src="/menu/Nightly Builds.png"></a>
+  </a>
+  <br>
+</h3>
 
 ## Summary
 
