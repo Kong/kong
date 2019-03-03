@@ -484,17 +484,15 @@ function _M.create_default_role(user)
   local role, err
 
   -- try fetching the role; if it exists, use it
-  role, err = singletons.dao.rbac_roles:find_all({
-    name = user.name,
-  })
+  role, err = singletons.db.rbac_roles:select_by_name(user.name)
+
   if err then
     return nil, err
   end
-  role = role[1]
 
   -- if it doesn't exist, create it
   if not role then
-    role, err = singletons.dao.rbac_roles:insert({
+    role, err = singletons.db.rbac_roles:insert({
       name = user.name,
       comment = "Default user role generated for " .. user.name,
       is_default = true,
@@ -505,7 +503,7 @@ function _M.create_default_role(user)
   end
 
   -- create the user-role association
-  local res, err = singletons.dao.rbac_user_roles:insert({
+  local res, err = singletons.db.rbac_user_roles:insert({
     user_id = user.id,
     role_id = role.id,
   })
@@ -1214,29 +1212,19 @@ end
 
 
 local function retrieve_consumer_user_map(rbac_user_id)
-  local users, err = singletons.dao.consumers_rbac_users_map:find_all({
-    user_id = rbac_user_id,
-    __skip_rbac = true,
-  })
-
-  if err then
-    log(ngx.ERR, "error retrieving consumer_user map from rbac_user.id: ",
-        rbac_user_id, err)
-    return nil, err
+  --luacheck: ignore
+  for user in singletons.db.consumers_rbac_users_map:each(nil, {skip_rbac = true}) do
+    if user.user_id == rbac_user_id then
+      return user
+    end
   end
-
-  if not next(users) then
-    return nil
-  end
-
-  return users[1]
 end
 
 
 --- Retrieve rbac <> consumer map
 -- @param `rbac_user_id` id of rbac_user
 function _M.get_consumer_user_map(rbac_user_id)
-  local cache_key = singletons.dao.consumers_rbac_users_map:cache_key(rbac_user_id)
+  local cache_key = singletons.db.consumers_rbac_users_map:cache_key(rbac_user_id)
   local user, err = singletons.cache:get(cache_key,
                                          nil,
                                          retrieve_consumer_user_map,

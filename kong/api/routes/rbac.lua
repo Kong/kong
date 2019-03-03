@@ -174,7 +174,26 @@ return {
   ["/rbac/users/:rbac_users"] = {
     schema = rbac_users.schema,
     methods = {
-      GET  = endpoints.get_entity_endpoint(rbac_users.schema),
+      GET  =
+        function(self, db, helpers)
+          find_current_user(self, db, helpers)
+
+          -- make sure it's not associated to a consumer
+          local map, err = rbac.get_consumer_user_map(self.rbac_user.id)
+
+          if err then
+            return responses.send_HTTP_INTERNAL_SERVER_ERROR(
+              "error finding map for rbac_user: ", self.rbac_user.id)
+          end
+
+          if map then
+            return helpers.responses.send_HTTP_NOT_FOUND("No RBAC user by name or id "
+              .. self.rbac_user.name)
+          end
+
+          return kong.response.exit(200, self.rbac_user)
+        end,
+
       PUT     = endpoints.put_entity_endpoint(rbac_users.schema),
       PATCH   = endpoints.patch_entity_endpoint(rbac_users.schema),
       DELETE  = function(self, db, helpers)
@@ -582,7 +601,7 @@ return {
         local ws_name = self.params.workspace
 
         if ws_name ~= "*" then
-          local w, err = workspaces.run_with_ws_scope({}, dao_factory.workspaces.find_all, dao_factory.workspaces, {
+          local w, err = workspaces.run_with_ws_scope({}, singletons.dao.workspaces.find_all, singletons.dao.workspaces, {
             name = ws_name
           })
           if err then
@@ -616,7 +635,13 @@ return {
           self.params.endpoint = ngx.re.gsub(self.params.endpoint, "^/?", "/")
         end
 
-        crud.post(self.params, dao_factory.rbac_role_endpoints, post_process_actions)
+        self.params.rbac_roles = nil
+        local row, err = singletons.db.rbac_role_endpoints:insert(self.params)
+        if err then
+          return kong.response.exit(400, err)
+        end
+
+        return kong.response.exit(201, post_process_actions(row))
       end,
     },
   },

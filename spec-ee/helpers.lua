@@ -242,7 +242,7 @@ end
 
 
 function _M.create_admin(email, custom_id, status, bp, db)
-  local consumer = assert(bp.consumers:insert {
+  local consumer = assert(db.consumers:insert {
     username = email,
     custom_id = custom_id,
     email = email,
@@ -251,11 +251,11 @@ function _M.create_admin(email, custom_id, status, bp, db)
   })
 
   local user_token = utils.uuid()
-  local rbac_user = assert(db.rbac_users:insert {
+  local rbac_user, err = db.rbac_users:insert {
     name = email,
     user_token = user_token,
     enabled = true,
-  })
+  }
 
   -- only used for tests so we can reference token
   -- WARNING: do not do this outside test environment
