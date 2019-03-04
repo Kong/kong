@@ -60,6 +60,7 @@ cache:
 stages:
   - lint and unit
   - test
+  - functional tests
   - Deploy daily build
 
 jobs:
@@ -72,6 +73,9 @@ jobs:
         - KONG_DATABASE=none
     - stage: test
       script: .ci/run_tests.sh
+    - stage: functional tests
+      script: make functional_tests
+      if: type=cron
     - stage: deploy daily build
       install: skip
       script: make nightly-release

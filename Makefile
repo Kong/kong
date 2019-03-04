@@ -27,9 +27,15 @@ setup-release:
 	then git pull; \
 	else git clone https://github.com/Kong/kong-build-tools.git; fi
 	cd kong-build-tools; \
-	git reset --hard $$KONG_BUILD_TOOLS;
-	cd kong-build-tools; \
+	git fetch; \
+	git reset --hard origin/$(KONG_BUILD_TOOLS); \
 	make setup_tests
+
+functional_tests: setup-release
+	cd kong-build-tools; \
+	export KONG_SOURCE_LOCATION=`pwd`/../ && \
+	make package-kong && \
+	make test
 
 nightly-release: setup-release
 	sed -i -e '/return string\.format/,/\"\")/c\return "$(KONG_VERSION)\"' kong/meta.lua && \
