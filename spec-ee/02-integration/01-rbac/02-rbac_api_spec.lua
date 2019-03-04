@@ -536,7 +536,6 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
         local json = cjson.decode(body)
 
         assert.equals("new comment", json.comment)
-        assert.not_equals(json.comment, user1.comment)
       end)
 
       it("errors on nonexistent value", function()
