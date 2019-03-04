@@ -106,6 +106,8 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
   lazy_setup(function()
     bp, db, dao = helpers.get_db_utils(kong_config.database)
 
+    bp.workspaces:insert({name = "mock-workspace"})
+
     assert(helpers.start_kong({
       database = kong_config.database
     }))
@@ -2357,18 +2359,6 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
           path = "/rbac/roles",
           body = {
             name = "mock-role",
-          },
-          headers = {
-            ["Content-Type"] = "application/json",
-          }
-        })
-        assert.res_status(201, res)
-
-        res = assert(client:send {
-          method = "POST",
-          path = "/workspaces",
-          body = {
-            name = "mock-workspace",
           },
           headers = {
             ["Content-Type"] = "application/json",
