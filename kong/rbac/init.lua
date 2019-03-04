@@ -636,16 +636,16 @@ local function delete_role_entity_permission(table_name, entity)
 
   local entity_id = schema.primary_key[1]
 
-  local res, err = dao.rbac_role_entities:find_all({
+  local res, err = db.rbac_role_entities:find_all({
     entity_id = entity[entity_id],
-    entity_type = table_name,
+    -- entity_type = table_name,
   })
   if err then
     return err
   end
 
   for _, row in ipairs(res) do
-    local _, err = dao.rbac_role_entities:delete(row)
+    local _, err = db.rbac_role_entities:delete(row)
     if err then
       return err
     end

@@ -168,12 +168,16 @@ local function create_legacy_wrappers(self, constraints)
       end,
 
       find_all = function(_, filt)
+
+        filt = filt or {}
+        filt.__skip_rbac = nil -- remove skip_rbac from here
+
         local rows = {}
         local filtering = false
         if filt and next(filt) then
           filtering = true
         end
-        for row, err in new_dao:each() do
+        for row, err in new_dao:each(nil, {skip_rbac = filt.__skip_rbac}) do
           if err then
             return nil, err
           end
@@ -187,7 +191,7 @@ local function create_legacy_wrappers(self, constraints)
                   goto continue
                 end
               else
-                if row[k] ~= v then
+                if row[k] ~= v and not string.find(tostring(row[k]), "^.*:" .. tostring(v)) then
                   goto continue
                 end
               end

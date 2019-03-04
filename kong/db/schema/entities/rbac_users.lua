@@ -31,7 +31,7 @@ return {
     end
 
     if rbac.validate_rbac_token(token_users, user.user_token) then
-      return false, Errors.schema("duplicate user token")
+      return false, Errors:unique_violation({"user_token"})
     end
 
     -- if it doesnt look like a bcrypt digest, Do The Thing

@@ -9,6 +9,7 @@ local singletons = require "kong.singletons"
 local tablex     = require "pl.tablex"
 local api_helpers = require "kong.enterprise_edition.api_helpers"
 local workspaces = require "kong.workspaces"
+local enums       = require "kong.enterprise_edition.dao.enums"
 
 
 local band  = bit.band
@@ -162,7 +163,42 @@ return {
   ["/rbac/users"] = {
     schema = rbac_users.schema,
     methods = {
-      GET  = endpoints.get_collection_endpoint(rbac_users.schema),
+      GET  =  function(self, db, helpers)
+        local args = self.args.uri
+        local opts = endpoints.extract_options(args, rbac_users.schema, "select")
+        local size, err = endpoints.get_page_size(args)
+        if err then
+          return endpoints.handle_error(db[rbac_users.schema.name].errors:invalid_size(err))
+        end
+
+        local data, _, err_t, offset = db[rbac_users.schema.name]:page(size, args.offset, opts)
+        if err_t then
+          return endpoints.handle_error(err_t)
+        end
+
+        local next_page = offset and fmt("/%s?offset=%s",
+          rbac_users.schema.name,
+          endpoints.escape_uri(offset)) or ngx.null
+
+        -- filter non-proxy rbac_users (consumers)
+        local res = {}
+        for _, v in ipairs(data) do
+          -- XXX EE: Workaround while rbac user type
+          if v.type == enums.CONSUMERS.TYPE.DEVELOPER or
+             v.type == enums.CONSUMERS.TYPE.ADMIN then
+            _ = _
+          else
+            table.insert(res, v)
+          end
+        end
+
+        return helpers.responses.send_HTTP_OK {
+          data   = res,
+          offset = offset,
+          next   = next_page,
+        }
+      end,
+
       -- post_process_user should be called after GET , but no
       -- post_processing for GETS in endpoints framework
       POST = function(self, db, helpers, post_process)
@@ -512,9 +548,17 @@ return {
         end
 
         return kong.response.exit(204)
-      end
+      end,
 
-    }
+      PATCH = function(self, db, helpers)
+        local args = self.args.post
+        local entity = db.rbac_role_entities:update({
+          entity_id = self.entity_id,
+          role_id = self.rbac_role_id }, args)
+        return kong.response.exit(200, post_process_actions(entity))
+      end,
+
+    },
 
   --   GET = function(self, dao_factory, helpers)
   --     crud.get(self.params, dao_factory.rbac_role_entities,
@@ -731,13 +775,17 @@ return {
     },
   },
 
-  -- ["/rbac/users/:user_id/consumers/:consumer_id"] = {
-  --   before = function(self, dao_factory, helpers)
-  --     crud.find_consumer_rbac_user_map(self, dao_factory, helpers)
-  --   end,
+  -- ["/rbac/users/:rbac_users/consumers/:consumers"] = {
+  --   schema = rbac_users.schema,
+  --   methods = {
+  --     before = function(self, dao_factory, helpers)
+  --       -- crud.find_consumer_rbac_user_map(self, dao_factory, helpers)
+  --     end,
 
-  --   GET = function(self, dao_factory, helpers)
-  --     return helpers.responses.send_HTTP_OK(self.consumer_rbac_user_map)
-  --   end,
+  --     GET = function(self, db, helpers)
+  --       return helpers.responses.send_HTTP_OK(self.consumer_rbac_user_map)
+  --     end,
+  --   },
   -- },
-  }
+
+}
