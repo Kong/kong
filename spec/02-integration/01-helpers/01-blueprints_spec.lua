@@ -3,6 +3,7 @@ local Factory = require "kong.dao.factory"
 local helpers = require "spec.helpers"
 local Blueprints = require "spec.fixtures.blueprints"
 local dao_helpers = require "spec.02-integration.03-dao.helpers"
+local singletons = require "kong.singletons"
 
 
 local UUID_PATTERN = "%x%x%x%x%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%x%x%x%x%x%x%x%x"
@@ -20,6 +21,8 @@ for _, strategy in helpers.each_strategy() do
       bp = assert(Blueprints.new({}, db))
 
       bp, _, _ = helpers.get_db_utils(strategy)
+
+      singletons.db = db
     end)
 
     local service
@@ -82,6 +85,9 @@ dao_helpers.for_each_dao(function(kong_config)
     assert(db.plugins:load_plugin_schemas(helpers.test_conf.loaded_plugins))
     dao = assert(Factory.new(kong_config, db))
     bp  = assert(Blueprints.new(dao, db))
+
+    singletons.dao = dao
+    singletons.db = db
   end)
 
   lazy_teardown(function()
