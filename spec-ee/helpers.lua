@@ -251,7 +251,7 @@ function _M.create_admin(email, custom_id, status, bp, db)
   })
 
   local user_token = utils.uuid()
-  local rbac_user, err = db.rbac_users:insert {
+  local rbac_user, _ = db.rbac_users:insert {
     name = email,
     user_token = user_token,
     enabled = true,

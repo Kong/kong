@@ -17,8 +17,6 @@ local bxor  = bit.bxor
 local fmt   = string.format
 
 
-local entity_relationships = rbac.entity_relationships
-
 local rbac_users = kong.db.rbac_users
 local consumers = kong.db.consumers
 local rbac_roles = kong.db.rbac_roles

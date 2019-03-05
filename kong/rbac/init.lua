@@ -640,7 +640,7 @@ local function delete_role_entity_permission(table_name, entity)
   for role_entity in db.rbac_role_entities:each() do -- XXX EE slow lualand query
     if role_entity.entity_id == entity[entity_id] and
        role_entity.entity_type == table_name then
-         local res, err, err_t = db.rbac_role_entities:delete({
+         local _, err, err_t = db.rbac_role_entities:delete({
            role_id = role_entity.role_id,
            entity_id = role_entity.entity_id
          })

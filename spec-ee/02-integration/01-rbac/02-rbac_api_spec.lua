@@ -31,8 +31,7 @@ local function patch(path, body, headers, expected_status)
   return cjson.decode(assert.res_status(expected_status or 200, res))
 end
 
-
-local function put(path, body, headers, expected_status)
+local function put(path, body, headers, expected_status) -- luacheck: ignore
   headers = headers or {}
   headers["Content-Type"] = "application/json"
   local res = assert(client:send{
