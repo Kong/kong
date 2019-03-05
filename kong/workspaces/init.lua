@@ -555,16 +555,6 @@ end
 -- not have a representation in the db. Therefore they don't exist in
 -- workspace_entities. See kong/enterprise_edition/proxies.lua
 local function load_workspace_scope(ctx, route)
-  if route.id == "00000000-0000-0000-0002-000000000000" or
-    route.id == "00000000-0000-0000-0000-000000000004" or
-    route.id == "00000000-0000-0000-0004-000000000000" or
-    route.id == "00000000-0000-0000-0000-000000000003" or
-    route.id == "00000000-0000-0000-0003-000000000000" or
-    route.id == "00000000-0000-0000-0006-000000000000"
-  then
-    return singletons.dao.workspaces:find_all({name = default_workspace})
-  end
-
   local old_wss = ctx.workspaces
   ctx.workspaces = {}
   local rows, err = singletons.dao.workspace_entities:find_all({
