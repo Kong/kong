@@ -333,9 +333,14 @@ function _M.update_entity_relation(table_name, entity)
 
       for _, row in ipairs(res) do
         if entity[k] then
-          local _, err =  singletons.dao.workspace_entities:update({
+          local pk = {
+            entity_id = row.entity_id,
+            workspace_id = row.workspace_id,
+            unique_field_name = row.unique_field_name,
+          }
+          local _, err =  singletons.db.workspace_entities:update(pk, {
             unique_field_value = entity[k]
-          }, row)
+          })
           if err then
             return err
           end
