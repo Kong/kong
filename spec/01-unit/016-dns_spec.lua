@@ -26,9 +26,8 @@ describe("DNS", function()
     singletons.db = {}
     singletons.db.workspaces = {
       each = function()
-        local i = 2
         return function()
-          return i == 1 and {} or nil
+          return nil
         end
       end
     }
