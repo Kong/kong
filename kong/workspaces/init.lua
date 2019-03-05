@@ -275,6 +275,8 @@ end
 
 function _M.delete_entity_relation(table_name, entity)
   local dao = singletons.dao
+  local db = singletons.db
+
   local constraints = workspaceable_relations[table_name]
   if not constraints then
     return
@@ -291,7 +293,11 @@ function _M.delete_entity_relation(table_name, entity)
 
   local seen = {}
   for _, row in ipairs(res) do
-    local _, err = dao.workspace_entities:delete(row, {__skip_rbac = true})
+    local _, err = db.workspace_entities:delete({
+      entity_id = row.entity_id,
+      workspace_id = row.workspace_id,
+      unique_field_name = row.unique_field_name,
+    }, {__skip_rbac = true})
     if err then
       return err
     end
