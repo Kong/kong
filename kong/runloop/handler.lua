@@ -69,8 +69,29 @@ do
   local router
   local router_version
 
+  local function get_route_for_service(service, route)
+    local r
+    local stype = protocol_subsystem[service.protocol]
+    if subsystem == stype then
+      r = {
+        route = route,
+        service = service,
+      }
+
+      if stype == "http" and route.hosts then
+        -- TODO: headers should probably be moved to route
+        r.headers = {
+          host = route.hosts,
+        }
+      end
+    end
+    return r
+  end
+
+
   build_router = function(db, version)
     local routes, i = {}, 0
+    local r
 
     for route, err in db.routes:each(1000) do
       if err then
@@ -79,32 +100,21 @@ do
 
       local service_pk = route.service
 
+      -- deleted services are inconsistent. We ignore the issue to build the route and avoid losing requests with a 500
+      -- This is better than building the router after some seconds as the service has been deleted ...
       if not service_pk then
-        return nil, "route (" .. route.id .. ") is not associated with service"
-      end
-
-      local service, err = db.services:select(service_pk)
-      if not service then
-        return nil, "could not find service for route (" .. route.id .. "): " ..
-                    err
-      end
-
-      local stype = protocol_subsystem[service.protocol]
-      if subsystem == stype then
-        local r = {
-          route   = route,
-          service = service,
-        }
-
-        if stype == "http" and route.hosts then
-          -- TODO: headers should probably be moved to route
-          r.headers = {
-            host = route.hosts,
-          }
+        log(WARN, "route (" .. route.id .. ") is not associated with service")
+      else
+        local service, err = db.services:select(service_pk)
+        if not service then
+          log(WARN, "could not find service for route (" .. route.id .. "): " .. err or 'Not found service')
+        else
+          r = get_route_for_service(service, route)
+          if r then
+            i = i + 1
+            routes[i] = r
+          end
         end
-
-        i = i + 1
-        routes[i] = r
       end
     end
 
