@@ -493,7 +493,8 @@ return {
         role_id = self.rbac_role.id,
         entity_type = entity_type,
         actions = self.params.actions,
-        -- negative = self.params.negative
+        negative = self.params.negative,
+        comment = self.params.comment,
       })
       if err_t then
         return error(err_t)
@@ -551,13 +552,25 @@ return {
       end,
 
       PATCH = function(self, db, helpers)
-        local args = self.args.post
+        if self.params.actions then
+          action_bitfield(self)
+        end
+
+        self.params.entity_id = nil
+        self.params.role_id = nil
+        self.params.rbac_role_id = nil
+        self.params.rbac_roles = nil
+
+
         local entity = db.rbac_role_entities:update({
           entity_id = self.entity_id,
-          role_id = self.rbac_role_id }, args)
+          role_id = self.rbac_role_id }, self.params)
+        if not entity then
+          kong.response.exit(404)
+        end
+
         return kong.response.exit(200, post_process_actions(entity))
       end,
-
     },
 
   --   GET = function(self, dao_factory, helpers)
@@ -625,7 +638,7 @@ return {
         tablex.map(post_process_actions, endpoints) -- post_process_actions
                                                    -- is destructive!
         return kong.response.exit(200, {
-          endpoints = endpoints
+          data = endpoints
         })
       end,
 
@@ -682,66 +695,85 @@ return {
         self.params.rbac_roles = nil
         local row, err = singletons.db.rbac_role_endpoints:insert(self.params)
         if err then
-          return kong.response.exit(400, err)
+          return kong.response.exit(409, err)
         end
 
         return kong.response.exit(201, post_process_actions(row))
       end,
     },
   },
-  -- ["/rbac/roles/:rbac_roles/endpoints/:workspace/*"] = {
-  --   before = function(self, dao_factory, helpers)
-  --     local rbac_role, _, err_t = endpoints.select_entity(self, db, rbac_roles.schema)
-  --     if err_t then
-  --       return endpoints.handle_error(err_t)
-  --     end
-  --     if not rbac_role then
-  --       return kong.response.exit(404, { message = "Not found" })
-  --     end
-  --     self.rbac_role = rbac_role
-  --     self.params.role_id = self.rbac_role.id
+  ["/rbac/roles/:rbac_roles/endpoints/:workspace/*"] = {
+    schema = kong.db.rbac_role_endpoints.schema,
+    methods = {
+      before = function(self, db, helpers)
+        local rbac_role, _, err_t = endpoints.select_entity(self, db, rbac_roles.schema)
+        if err_t then
+          return endpoints.handle_error(err_t)
+        end
+        if not rbac_role then
+          return kong.response.exit(404, { message = "Not found" })
+        end
+        self.rbac_role = rbac_role
+        self.params.role_id = self.rbac_role.id
 
-  --     -- Note: /rbac/roles/:name_or_id/endpoints/:workspace// will be treated same as
-  --     -- /rbac/roles/:name_or_id/endpoints/:workspace/
-  --     -- this is the limitation of lapis implementation
-  --     -- it's not possible to distinguish // from /
-  --     -- since the self.params.splat will always be "/"
-  --     if self.params.splat ~= "*" and self.params.splat ~= "/" then
-  --       self.params.endpoint = "/" .. self.params.splat
-  --     else
-  --       self.params.endpoint = self.params.splat
-  --     end
-  --     self.params.splat = nil
-  --   end,
+        -- Note: /rbac/roles/:name_or_id/endpoints/:workspace// will be treated same as
+        -- /rbac/roles/:name_or_id/endpoints/:workspace/
+        -- this is the limitation of lapis implementation
+        -- it's not possible to distinguish // from /
+        -- since the self.params.splat will always be "/"
+        if self.params.splat ~= "*" and self.params.splat ~= "/" then
+          self.params.endpoint = "/" .. self.params.splat
+        else
+          self.params.endpoint = self.params.splat
+        end
+        self.params.splat = nil
+      end,
 
-  --   GET = function(self, dao_factory, helpers)
-  --     crud.get(self.params, dao_factory.rbac_role_endpoints,
-  --              post_process_actions)
-  --   end,
+      GET = function(self, db, helpers)
+        local endpoints = rbac.get_role_endpoints(db, self.rbac_role)
+        for _, e in ipairs(endpoints) do
+          if e.endpoint == self.params.endpoint  then
+            kong.response.exit(200, post_process_actions(e))
+          end
+        end
+        kong.response.exit(404)
+    end,
 
-  --   PATCH = function(self, dao_factory, helpers)
-  --     if self.params.actions then
-  --       action_bitfield(self)
-  --     end
+      PATCH = function(self, db, helpers)
+        if self.params.actions then
+          action_bitfield(self)
+        end
 
-  --     local filter = {
-  --       role_id = self.params.role_id,
-  --       workspace = self.params.workspace,
-  --       endpoint = self.params.endpoint,
-  --     }
+        local filter = {
+          role_id = self.params.role_id,
+          workspace = self.params.workspace,
+          endpoint = self.params.endpoint,
+        }
 
-  --     self.params.role_id = nil
-  --     self.params.workspace = nil
-  --     self.params.endpoint = nil
+        self.params.role_id = nil
+        self.params.workspace = nil
+        self.params.endpoint = nil
+        self.params.rbac_roles = nil
 
-  --     crud.patch(self.params, dao_factory.rbac_role_endpoints, filter,
-  --                post_process_actions)
-  --   end,
+        local endpoint = db.rbac_role_endpoints:update(filter, self.params)
+        if not endpoint then
+          return kong.response.exit(404)
+        end
 
-  --   DELETE = function(self, dao_factory, helpers)
-  --     crud.delete(self.params, dao_factory.rbac_role_endpoints)
-  --   end,
-  -- },
+        return kong.response.exit(200, post_process_actions(endpoint))
+      end,
+
+      DELETE = function(self, db, helpers)
+        local filter = {
+          role_id = self.params.role_id,
+          workspace = self.params.workspace,
+          endpoint = self.params.endpoint,
+        }
+        db.rbac_role_endpoints:delete(filter)
+        return kong.response.exit(204)
+      end,
+    }
+  },
 
   ["/rbac/roles/:rbac_roles/endpoints/permissions"] = {
     schema = rbac_roles.schema,

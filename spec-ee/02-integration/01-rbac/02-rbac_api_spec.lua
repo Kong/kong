@@ -2293,6 +2293,18 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
 
         it("returns 204 even when not found", function()
           local res = assert(client:send {
+            method = "POST",
+            path = "/rbac/roles",
+            body = {
+              name = "mock-role",
+            },
+            headers = {
+              ["Content-Type"] = "application/json",
+            }
+          })
+          assert.res_status(201, res)
+
+          local res = assert(client:send {
             method = "DELETE",
             path = "/rbac/roles/mock-role/entities/" .. utils.uuid(),
           })
@@ -3483,7 +3495,7 @@ dao_helpers.for_each_dao(function(kong_config)
     post("/rbac/roles/mock-role/entities", {entity_id = services[4].id, actions = "update"})
     post("/rbac/users/bob/roles", {roles = "mock-role"})
 
-    helpers.stop_kong(nil, true, true)
+    helpers.stop_kong()
     assert(helpers.start_kong {
       database              = kong_config.database,
       enforce_rbac          = "entity",
