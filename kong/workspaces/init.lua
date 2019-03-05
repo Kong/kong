@@ -250,9 +250,12 @@ function _M.add_entity_relation(table_name, entity, workspace)
   if constraints and constraints.unique_keys and next(constraints.unique_keys) then
     for k, _ in pairs(constraints.unique_keys) do
       if not constraints.primary_keys[k] and entity[k] then
-        local _, err = add_entity_relation_db(singletons.dao.workspace_entities, workspace,
-          entity[constraints.primary_key],
-          table_name, k, entity[k])
+        local _, err = add_entity_relation_db(singletons.db.workspace_entities,
+                                              workspace,
+                                              entity[constraints.primary_key],
+                                              table_name,
+                                              k,
+                                              entity[k])
         if err then
           return err
         end
