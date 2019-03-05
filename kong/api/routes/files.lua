@@ -26,5 +26,5 @@ return {
 
       return parent()
     end,
-  }
+  },
 }
