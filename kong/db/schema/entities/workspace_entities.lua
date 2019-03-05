@@ -4,6 +4,7 @@ local typedefs = require "kong.db.schema.typedefs"
 return {
   name = "workspace_entities",
   primary_key = { "workspace_id", "entity_id", "unique_field_name" },
+  generate_admin_api = false,
 
   fields = {
     { workspace_id = typedefs.uuid },
