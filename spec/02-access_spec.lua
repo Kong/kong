@@ -188,7 +188,7 @@ for i, policy in ipairs({"memory", "redis"}) do
         api_id = api1.id,
         config = {
           strategy = policy,
-          content_type = { "text/plain", "application/json" },
+          content_type = { "text/plain", "application/json", "application/octet-stream" },
           [policy] = policy_config,
         },
       })
@@ -784,7 +784,7 @@ for i, policy in ipairs({"memory", "redis"}) do
     it("caches a streaming request", function()
       local res = assert(client:send {
         method = "GET",
-        path = "/stream/5",
+        path = "/stream-bytes/30000",
         headers = {
           host = "api-1.com",
         }
@@ -802,7 +802,7 @@ for i, policy in ipairs({"memory", "redis"}) do
 
       res = assert(client:send {
         method = "GET",
-        path = "/stream/5",
+        path = "/stream-bytes/30000",
         headers = {
           host = "api-1.com",
         }
