@@ -297,7 +297,7 @@ function _M.delete_entity_relation(table_name, entity)
       entity_id = row.entity_id,
       workspace_id = row.workspace_id,
       unique_field_name = row.unique_field_name,
-    }, {__skip_rbac = true})
+    }, {skip_rbac = true})
     if err then
       return err
     end
