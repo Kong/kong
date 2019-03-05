@@ -95,13 +95,23 @@ end
 
 -- fetch the id pair mapping of related objects from the database
 local function retrieve_relationship_ids(entity_id, entity_name, factory_key)
-  local relationship_ids, err = singletons.dao[factory_key]:find_all({
-    [entity_name .. "_id"] = entity_id,
-    __skip_rbac = true,
-  })
-  if err then
-    log(ngx.ERR, "err retrieving relationship via id ", entity_id, ": ", err)
-    return nil, err
+  local relationship_ids, err
+  local dao = rawget(singletons.dao.daos, factory_key)
+
+  -- XXX old-dao: if branch is going away with the old dao...
+  if dao then
+    relationship_ids, err = singletons.dao[factory_key]:find_all({
+      [entity_name .. "_id"] = entity_id,
+      __skip_rbac = true,
+    })
+    if err then
+      log(ngx.ERR, "err retrieving relationship via id ", entity_id, ": ", err)
+      return nil, err
+    end
+  else
+    relationship_ids = workspaces.compat_find_all(factory_key, {
+      [entity_name .. "_id"] = entity_id}
+    )
   end
 
   return relationship_ids
@@ -110,13 +120,23 @@ end
 
 -- fetch the foreign object associated with a mapping id pair
 local function retrieve_relationship_entity(foreign_factory_key, foreign_id)
-  local relationship, err = singletons.dao[foreign_factory_key]:find_all({
-    id = foreign_id,
-    __skip_rbac = true,
-  })
-  if err then
-    log(ngx.ERR, "err retrieving relationship via id ", foreign_id, ": ", err)
-    return nil, err
+  local relationship, err
+  local dao = rawget(singletons.dao.daos, foreign_factory_key)
+
+  -- XXX old-dao: if branch is going away with the old dao...
+  if dao then
+    relationship, err = singletons.dao[foreign_factory_key]:find_all({
+      id = foreign_id,
+      __skip_rbac = true,
+    })
+    if err then
+      log(ngx.ERR, "err retrieving relationship via id ", foreign_id, ": ", err)
+      return nil, err
+    end
+  else
+    relationship = workspaces.compat_find_all(foreign_factory_key, {
+      id = foreign_id}
+    )
   end
 
   return relationship[1]
