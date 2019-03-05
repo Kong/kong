@@ -76,7 +76,7 @@
 -- -- this table is read-only; the following throws an error:
 -- kong.configuration.prefix = "foo"
 
---
+
 --- Request/Response
 -- @section request_response
 
@@ -119,6 +119,11 @@
 --- Router module
 -- @field kong.router
 -- @redirect kong.router
+
+
+--- Nginx module
+-- @field kong.nginx
+-- @redirect kong.nginx
 
 
 --- Singletons
@@ -220,6 +225,7 @@ local MAJOR_VERSIONS = {
       "service.response",
       "response",
       "router",
+      "nginx",
     },
   },
 

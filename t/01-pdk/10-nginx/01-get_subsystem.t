@@ -12,7 +12,7 @@ run_tests();
 
 __DATA__
 
-=== TEST 1: client.get_subsystem() returns http on regular http requests
+=== TEST 1: nginx.get_subsystem() returns http on regular http requests
 --- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
@@ -20,7 +20,7 @@ __DATA__
             local PDK = require "kong.pdk"
             local pdk = PDK.new()
 
-            local subsystem = pdk.client.get_subsystem()
+            local subsystem = pdk.nginx.get_subsystem()
 
             ngx.say("subsystem=", subsystem)
         }
@@ -51,7 +51,7 @@ qq{
           content_by_lua_block {
               local PDK = require "kong.pdk"
               local pdk = PDK.new()
-              local subsystem = pdk.client.get_subsystem()
+              local subsystem = pdk.nginx.get_subsystem()
               local msg = "subsystem=" .. subsystem
               -- must change the status to 200, otherwise nginx will
               -- use the default 400 error page for the body
@@ -85,7 +85,7 @@ HTTP.*? 200 OK(\s|.)+subsystem=http
 
 
 
-=== TEST 3: client.get_subsystem() returns "stream" on tcp connections
+=== TEST 3: nginx.get_subsystem() returns "stream" on tcp connections
 --- stream_config eval
 qq{
     server {
@@ -99,7 +99,7 @@ qq{
 
             local PDK = require "kong.pdk"
             local pdk = PDK.new()
-            ngx.say("subsystem=", assert(pdk.client.get_subsystem()))
+            ngx.say("subsystem=", assert(pdk.nginx.get_subsystem()))
         }
     }
 }
