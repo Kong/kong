@@ -426,7 +426,7 @@ function _M:truncate_table(dao_name)
   if is_workspaceable then
     local res, _ = self.daos.workspace_entities:find_all({entity_type = dao_name})
     for _, v in ipairs(res) do
-      self.db:delete("workspace_entities", self.daos.workspace_entities.schema, {
+      workspaces.delete_entity_relation("workspace_entities", {
         workspace_id = v.workspace_id,
         entity_id = v.entity_id,
         unique_field_name = v.unique_field_name,
