@@ -263,8 +263,8 @@ function _M.add_entity_relation(table_name, entity, workspace)
     end
   end
 
-  inc_counter(singletons.dao, workspace.id, table_name, entity, 1);
-  local _, err = add_entity_relation_db(singletons.dao.workspace_entities, workspace,
+  inc_counter(singletons.db, workspace.id, table_name, entity, 1);
+  local _, err = add_entity_relation_db(singletons.db.workspace_entities, workspace,
                                         entity[constraints.primary_key],
                                         table_name, constraints.primary_key,
                                         entity[constraints.primary_key])
@@ -304,7 +304,7 @@ function _M.delete_entity_relation(table_name, entity)
     end
 
     if not seen[row.workspace_id] then
-      inc_counter(singletons.dao, row.workspace_id, table_name, entity, -1);
+      inc_counter(singletons.db, row.workspace_id, table_name, entity, -1);
       seen[row.workspace_id] = true
     end
   end
