@@ -25,6 +25,7 @@ local config_schema = {
     { portal_auth = { type = "string", one_of = {"basic-auth", "key-auth", "openid-connect"} } },
     { meta = { type = "map", keys = { type = "string" }, values = { type = "string" } } },
     { portal_auto_approve = { type = "boolean" } },
+    -- XXX gt -1 will not read as natural/friendly as ge (>=) 0 - but there's no ge
     { portal_token_exp = { type = "integer", gt = -1 } },
     { portal_invite_email = { type = "boolean" } },
     { portal_access_request_email = { type = "boolean" } },
