@@ -100,10 +100,10 @@ end
 dao_helpers.for_each_dao(function(kong_config)
 
 describe("Admin API RBAC with #" .. kong_config.database, function()
-  local bp, db, dao
+  local bp, db
 
   lazy_setup(function()
-    bp, db, dao = helpers.get_db_utils(kong_config.database)
+    bp, db = helpers.get_db_utils(kong_config.database)
 
     bp.workspaces:insert({name = "mock-workspace"})
 
