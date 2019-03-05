@@ -479,10 +479,12 @@ do
 
     local old_ws = ngx.ctx.workspaces
     ngx.ctx.workspaces = workspaces
+
     for up in singletons.db.upstreams:each() do
     -- build a dictionary, indexed by the upstream name
       upstreams_dict[up.name] = up.id
     end
+
     ngx.ctx.workspaces = old_ws
     return upstreams_dict
   end
@@ -515,7 +517,10 @@ do
   end
 
   get_all_upstreams_as_list = function()
-    local workspaces, err = singletons.dao.workspaces:find_all()
+    local workspaces = require "kong.workspaces"
+
+    -- XXX compat_find_all will go away with workspaces remodel
+    local workspaces, err = workspaces.compat_find_all("workspaces")
     if err then
       return nil, err
     end

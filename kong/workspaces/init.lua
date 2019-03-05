@@ -34,6 +34,7 @@ _M.WORKSPACE_DELIMITER = workspace_delimiter
 local ALL_METHODS = "GET,POST,PUT,DELETE,OPTIONS,PATCH"
 
 
+-- XXX compat_find_all will go away with workspaces remodel
 local compat_find_all = ws_dao_wrappers.compat_find_all
 _M.compat_find_all = compat_find_all
 
@@ -276,7 +277,8 @@ function _M.delete_entity_relation(table_name, entity)
     return
   end
 
-  local res, err = dao.workspace_entities:find_all({
+  -- XXX compat_find_all will go away with workspaces remodel
+  local res, err = compat_find_all("workspace_entities", {
     entity_id = entity[constraints.primary_key],
     __skip_rbac = true
   })
@@ -311,7 +313,8 @@ function _M.update_entity_relation(table_name, entity)
   local constraints = workspaceable_relations[table_name]
   if constraints and constraints.unique_keys then
     for k, _ in pairs(constraints.unique_keys) do
-      local res, err = singletons.dao.workspace_entities:find_all({
+      -- XXX compat_find_all will go away with workspaces remodel
+      local res, err = compat_find_all("workspace_entities", {
         entity_id = entity[constraints.primary_key],
         unique_field_name = k,
       })
@@ -335,7 +338,8 @@ end
 
 
 local function find_entity_by_unique_field(params)
-  local rows, err = singletons.dao.workspace_entities:find_all(params)
+  -- XXX compat_find_all will go away with workspaces remodel
+  local rows, err = compat_find_all("workspace_entities", params)
   if err then
     return nil, err
   end
@@ -346,7 +350,8 @@ end
 _M.find_entity_by_unique_field = find_entity_by_unique_field
 
 local function find_workspaces_by_entity(params)
-  local rows, err = singletons.dao.workspace_entities:find_all(params)
+  -- XXX compat_find_all will go away with workspaces remodel
+  local rows, err = compat_find_all("workspace_entities", params)
   if err then
     return nil, err
   end
@@ -366,7 +371,8 @@ _M.match_route = match_route
 local function entity_workspace_ids(entity)
   local old_wss = ngx.ctx.workspaces
   ngx.ctx.workspaces = nil
-  local ws_rels = singletons.dao.workspace_entities:find_all({entity_id = entity.id})
+  -- XXX compat_find_all will go away with workspaces remodel
+  local ws_rels = compat_find_all("workspace_entities", {entity_id = entity.id})
   ngx.ctx.workspaces = old_wss
   return map(function(x) return x.workspace_id end, ws_rels)
 end
@@ -557,7 +563,9 @@ end
 local function load_workspace_scope(ctx, route)
   local old_wss = ctx.workspaces
   ctx.workspaces = {}
-  local rows, err = singletons.dao.workspace_entities:find_all({
+
+  -- XXX compat_find_all will go away with workspaces remodel
+  local rows, err = compat_find_all("workspace_entities", {
     entity_id  = route.id,
     unique_field_name = "id",
     unique_field_value = route.id,
@@ -588,8 +596,10 @@ end
 
 local function load_user_workspace_scope(ctx, name)
   local old_wss = ctx.workspaces
+
   ctx.workspaces = {}
-  local rows, err = singletons.dao.workspace_entities:find_all({
+  -- XXX compat_find_all will go away with workspaces remodel
+  local rows, err = compat_find_all("workspace_entities", {
     entity_type  = "rbac_users",
     unique_field_name = "name",
     unique_field_value = name,
@@ -614,7 +624,8 @@ end
 -- given an entity ID, look up its entity collection name;
 -- it is only called if the user does not pass in an entity_type
 function _M.resolve_entity_type(entity_id)
-  local rows, err  = singletons.dao.workspace_entities:find_all({
+  -- XXX compat_find_all will go away with workspaces remodel
+  local rows, err = compat_find_all("workspace_entities", {
       entity_id = entity_id
   })
   if err then
@@ -669,7 +680,8 @@ local function load_entity_map(ws_scope, table_name)
   for _, ws in ipairs(ws_scope) do
     local primary_key = workspaceable[table_name].primary_key
 
-    local ws_entities, err = singletons.dao.workspace_entities:find_all({
+    -- XXX compat_find_all will go away with workspaces remodel
+    local ws_entities, err = compat_find_all("workspace_entities", {
       workspace_id = ws.id,
       entity_type = table_name,
       unique_field_name = primary_key,
@@ -918,7 +930,7 @@ local function get_counts_for_ws(dao, workspace_id)
 
   local counts = {}
   for k, v in pairs(entity_types) do
-    local res, err = dao.workspace_entities:find_all({
+    local res, err = compat_find_all("workspace_entities", {
       workspace_id = workspace_id,
       entity_type = k,
       unique_field_name = v,
@@ -950,7 +962,7 @@ end
 
 
 local function initialize_counters_migration(dao)
-  local workspaces, err = dao.workspaces:find_all()
+  local workspaces, err = compat_find_all("workspaces")
   if err then
     return nil, err
   end

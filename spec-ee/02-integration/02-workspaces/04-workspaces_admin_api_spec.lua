@@ -401,8 +401,8 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
             name = "foo"
           })
 
-          local dao = db.workspace_entities
-          local n = workspaces.dao_wrappers.find_all(dao, {
+          -- XXX compat_find_all will go away with workspaces remodel
+          local n = workspaces.compat_find_all("workspace_entities", {
             workspace_name = "foo"
           })
           n = #n
@@ -420,8 +420,8 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
           local json = cjson.decode(body)
           assert.equals("'nop' is not a valid UUID", json.message)
 
-          local dao = db.workspace_entities
-          local new_n = workspaces.dao_wrappers.find_all(dao, {
+          -- XXX compat_find_all will go away with workspaces remodel
+          local new_n = workspaces.compat_find_all("workspace_entities", {
             workspace_name = "foo"
           })
           new_n = #new_n
