@@ -8,7 +8,7 @@ local POLL_INTERVAL = 0.3
 
 dao_helpers.for_each_dao(function(kong_conf)
 
-describe("rbac entities are invalidated with db: " .. kong_conf.database, function()
+describe("rbac entities are invalidated with db: #" .. kong_conf.database, function()
 
   local admin_client_1
   local admin_client_2
