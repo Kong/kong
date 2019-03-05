@@ -220,6 +220,56 @@ describe("kong start/stop #" .. strategy, function()
     end)
   end)
 
+  if strategy == "off" then
+    describe("declarative config start", function()
+      it("starts with a valid declarative config file", function()
+        local yaml_file = helpers.make_yaml_file [[
+          _format_version: "1.1"
+          services:
+          - name: my-service
+            url: http://127.0.0.1:15555
+            routes:
+            - name: example-route
+              hosts:
+              - example.test
+        ]]
+
+        local proxy_client
+
+        finally(function()
+          os.remove(yaml_file)
+          helpers.stop_kong(helpers.test_conf.prefix)
+          if proxy_client then
+            proxy_client:close()
+          end
+        end)
+
+        assert(helpers.start_kong({
+          database = "off",
+          declarative_config = yaml_file,
+          nginx_worker_processes = 100, -- stress test initialization
+          nginx_conf = "spec/fixtures/custom_nginx.template",
+        }))
+
+        -- get a connection, retry until kong starts
+        helpers.wait_until(function()
+          local pok
+          pok, proxy_client = pcall(helpers.proxy_client)
+          return pok
+        end, 10)
+
+        local res = assert(proxy_client:send {
+          method = "GET",
+          path = "/",
+          headers = {
+            host = "example.test",
+          }
+        })
+        assert.res_status(200, res)
+      end)
+    end)
+  end
+
   describe("errors", function()
     it("start inexistent Kong conf file", function()
       local ok, stderr = helpers.kong_exec "start --conf foobar.conf"
