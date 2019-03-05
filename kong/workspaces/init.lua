@@ -869,9 +869,8 @@ local function should_be_counted(dao, entity_type, entity)
   if not entity.type then
     local err
 
-    local consumers = dao.db.new_db.daos.consumers
+    local consumers = dao.consumers
     entity, err = consumers:select({id = entity.id})
-
     if err then
       return nil, err
     end
