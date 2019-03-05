@@ -341,7 +341,7 @@ helpers.for_each_dao(function(kong_config)
 
         assert.unique(all_rows)
       end)
-      it("support a filter", function()
+      it("#flaky support a filter", function()
         local rows, err, offset = apis:find_page {
           name = "fixture_2"
         }
@@ -351,7 +351,7 @@ helpers.for_each_dao(function(kong_config)
         assert.equal(1, #rows)
         assert.equal("fixture_2", rows[1].name)
       end)
-      it("filter supports primary keys", function()
+      it("#flaky filter supports primary keys", function()
         local rows, err = apis:find_page {
           name = "fixture_2"
         }
@@ -480,7 +480,7 @@ helpers.for_each_dao(function(kong_config)
         assert.falsy(err)
         assert.equal(100, count)
       end)
-      it("return the count of rows with filtering", function()
+      it("#flaky return the count of rows with filtering", function()
         local count, err = apis:count {name = "fixture_1"}
         assert.falsy(err)
         assert.equal(1, count)
