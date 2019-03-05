@@ -143,6 +143,7 @@ build = {
     ["kong.api.routes.vitals" ] = "kong/api/routes/vitals.lua",
     ["kong.api.routes.workspaces"] = "kong/api/routes/workspaces.lua",
     ["kong.api.routes.portal"] = "kong/api/routes/portal.lua",
+    ["kong.api.routes.files"] = "kong/api/routes/files.lua",
     ["kong.api.routes.admins"] = "kong/api/routes/admins.lua",
     ["kong.api.routes.audit"] = "kong/api/routes/audit.lua",
     ["kong.api.routes.oas_config"] = "kong/api/routes/oas_config.lua",
@@ -188,6 +189,7 @@ build = {
     ["kong.dao.schemas.rbac_role_endpoints"] = "kong/dao/schemas/rbac_role_endpoints.lua",
     ["kong.dao.schemas.rbac_role_entities"] = "kong/dao/schemas/rbac_role_entities.lua",
     ["kong.dao.schemas.files"] = "kong/dao/schemas/files.lua",
+    ["kong.db.schema.entities.files"] = "kong/db/schema/entities/files.lua",
     ["kong.dao.schemas.consumers_rbac_users_map"] = "kong/dao/schemas/consumers_rbac_users_map.lua",
 
     ["kong.dao.db"] = "kong/dao/db/init.lua",

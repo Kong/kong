@@ -32,6 +32,7 @@ local CORE_ENTITIES = {
   "apis",
   "plugins",
   "cluster_ca",
+  "files",
 }
 
 
