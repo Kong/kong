@@ -253,6 +253,8 @@ local function get_db_utils(strategy, tables, plugins)
     end
   end
 
+  local workspaces = require "kong.workspaces"
+  ngx.ctx.workspaces = { workspaces.upsert_default(db) }
   return bp, db, dao
 end
 
