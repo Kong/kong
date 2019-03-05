@@ -895,9 +895,8 @@ inc_counter = function(dao, ws, entity_type, entity, count)
     return
   end
 
-  if dao.db_type == "cassandra" then
-
-    local _, err = dao.db.cluster:execute([[
+  if dao.strategy == "cassandra" then
+    local _, err = dao.connector.cluster:execute([[
       UPDATE workspace_entity_counters set
       count=count + ? where workspace_id = ? and entity_type= ?]],
       {cassandra.counter(count), cassandra.uuid(ws), entity_type},
@@ -908,14 +907,14 @@ inc_counter = function(dao, ws, entity_type, entity, count)
     if err then
       return nil, err
     end
-  else
 
+  else
     local incr_counter_query = [[
       INSERT INTO workspace_entity_counters(workspace_id, entity_type, count)
       VALUES('%s', '%s', %d)
       ON CONFLICT(workspace_id, entity_type) DO
       UPDATE SET COUNT = workspace_entity_counters.count + excluded.count]]
-    local _, err = dao.db:query(format(incr_counter_query, ws, entity_type, count))
+    local _, err = dao.connector:query(format(incr_counter_query, ws, entity_type, count))
     if err then
       return nil, err
     end
