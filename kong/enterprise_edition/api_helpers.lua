@@ -374,6 +374,7 @@ function _M.resolve_entity_type(new_dao, old_dao, entity_id)
   -- search in all of old dao
   for name, dao in pairs(old_dao.daos) do
     local pk_name = dao.schema.primary_key[1]
+    -- XXX old-dao: if branch is going away with old dao
     if dao.schema.fields[pk_name].type == "id" then
       local rows, err = dao:find_all({
         [pk_name] = entity_id,
@@ -391,12 +392,9 @@ function _M.resolve_entity_type(new_dao, old_dao, entity_id)
   for name, dao in pairs(new_dao.daos) do
     local pk_name = dao.schema.primary_key[1]
     if dao.schema.fields[pk_name].uuid then
-      local row, err = dao:select({
+      local row = dao:select({
         [pk_name] = entity_id,
       })
-      if err then
-        return nil, nil, err
-      end
       if row then
         return name, row, nil
       end
