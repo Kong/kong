@@ -849,43 +849,4 @@ end
 _M.run_with_ws_scope = run_with_ws_scope
 
 
-local function initialize_counters_migration(dao)
-  local workspaces, err = compat_find_all("workspaces")
-  if err then
-    return nil, err
-  end
-
-  local workspaces_counts = {}
-  for _, ws in ipairs(workspaces) do
-    workspaces_counts[ws.id] = get_counts_for_ws(dao, ws.id)
-  end
-
-  for k, v in pairs(workspaces_counts) do
-    for entity_type, count in pairs(v) do
-      dao.workspace_entity_counters:insert({
-        workspace_id = k,
-        entity_type = entity_type,
-        count = count,
-      })
-    end
-  end
-end
-
-
-local function get_initialize_workspace_entity_counters_migration()
-  return
-    {
-      workspace_counters = {
-        {
-        name = "2018-10-11-164515_fill_counters",
-        up = function(_, _, dao)
-          initialize_counters_migration(dao)
-        end,
-        }
-      }
-    }
-end
-_M.get_initialize_workspace_entity_counters_migration = get_initialize_workspace_entity_counters_migration
-
-
 return _M
