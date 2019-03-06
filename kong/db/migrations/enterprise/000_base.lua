@@ -427,6 +427,66 @@ return {
           END IF;
       END;
       $$;
+
+-- read-only role
+DO $$
+DECLARE lastid uuid;
+BEGIN
+
+SELECT uuid_in(overlay(overlay(md5(random()::text || ':' || clock_timestamp()::text) placing '4' from 13) placing to_hex(floor(random()*(11-8+1) + 8)::int)::text from 17)::cstring) into lastid;
+
+INSERT INTO rbac_roles(id, name, comment)
+VALUES (lastid, 'default:read-only', 'Read access to all endpoints, across all workspaces');
+
+
+INSERT INTO rbac_role_endpoints(role_id, workspace, endpoint, actions, negative)
+VALUES (lastid, '*', '*', 1, FALSE);
+END $$;
+
+
+-- admin role
+DO $$
+DECLARE lastid uuid;
+BEGIN
+
+SELECT uuid_in(overlay(overlay(md5(random()::text || ':' || clock_timestamp()::text) placing '4' from 13) placing to_hex(floor(random()*(11-8+1) + 8)::int)::text from 17)::cstring) into lastid;
+
+INSERT INTO rbac_roles(id, name, comment)
+VALUES (lastid, 'default:admin', 'Full access to all endpoints, across all workspaces—except RBAC Admin API');
+
+INSERT INTO rbac_role_endpoints(role_id, workspace, endpoint, actions, negative)
+VALUES (lastid, '*', '*', 15, FALSE);
+
+INSERT INTO rbac_role_endpoints(role_id, workspace, endpoint, actions, negative)
+VALUES (lastid, '*', '/rbac/*', 15, TRUE);
+
+INSERT INTO rbac_role_endpoints(role_id, workspace, endpoint, actions, negative)
+VALUES (lastid, '*', '/rbac/*/*', 15, TRUE);
+
+INSERT INTO rbac_role_endpoints(role_id, workspace, endpoint, actions, negative)
+VALUES (lastid, '*', '/rbac/*/*/*', 15, TRUE);
+
+INSERT INTO rbac_role_endpoints(role_id, workspace, endpoint, actions, negative)
+VALUES (lastid, '*', '/rbac/*/*/*/*', 15, TRUE);
+
+INSERT INTO rbac_role_endpoints(role_id, workspace, endpoint, actions, negative)
+VALUES (lastid, '*', '/rbac/*/*/*/*/*', 15, TRUE);
+END $$;
+
+-- super-admin role
+DO $$
+DECLARE lastid uuid;
+BEGIN
+
+SELECT uuid_in(overlay(overlay(md5(random()::text || ':' || clock_timestamp()::text) placing '4' from 13) placing to_hex(floor(random()*(11-8+1) + 8)::int)::text from 17)::cstring) into lastid;
+
+INSERT INTO rbac_roles(id, name, comment)
+VALUES (lastid, 'default:super-admin', 'Full access to all endpoints, across all workspaces');
+
+INSERT INTO rbac_role_endpoints(role_id, workspace, endpoint, actions, negative)
+VALUES (lastid, '*', '*', 15, FALSE);
+END $$;
+
     ]]
   },
   cassandra = {
@@ -744,6 +804,7 @@ return {
         count counter,
         PRIMARY KEY(workspace_id, entity_type)
       );
+
     ]]
   },
 }
