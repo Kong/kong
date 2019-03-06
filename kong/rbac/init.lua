@@ -131,23 +131,12 @@ end
 
 -- fetch the foreign object associated with a mapping id pair
 local function retrieve_relationship_entity(foreign_factory_key, foreign_id)
-  local relationship, err
-  local dao = rawget(singletons.dao.daos, foreign_factory_key)
-
-  -- XXX old-dao: if branch is going away with the old dao...
-  if dao then
-    relationship, err = singletons.dao[foreign_factory_key]:find_all({
-      id = foreign_id,
-      __skip_rbac = true,
-    })
-    if err then
-      log(ngx.ERR, "err retrieving relationship via id ", foreign_id, ": ", err)
-      return nil, err
-    end
-  else
-    relationship = workspaces.compat_find_all(foreign_factory_key, {
-      id = foreign_id}
-    )
+  local relationship, err = singletons.db[foreign_factory_key]:select({
+    id = foreign_id },
+    { skip_rbac = true })
+  if err then
+    log(ngx.ERR, "err retrieving relationship via id ", foreign_id, ": ", err)
+    return nil, err
   end
 
   return relationship
