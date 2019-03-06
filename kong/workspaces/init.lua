@@ -853,7 +853,9 @@ _M.run_with_ws_scope = run_with_ws_scope
 -- Entity count management
 
 local function counts(workspace_id)
-  local counts, err = singletons.dao.workspace_entity_counters:find_all({workspace_id = workspace_id})
+  local counts, err = compat_find_all("workspace_entity_counters", {
+    workspace_id = workspace_id
+  })
   if err then
     return nil, err
   end
