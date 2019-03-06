@@ -212,7 +212,7 @@ return {
           end
         end
 
-        workspaces.inc_counter(db, self.workspace.id, ws_e[1].entity_type, { id = e }, -1)
+        counters.inc_counter(db, self.workspace.id, ws_e[1].entity_type, { id = e }, -1)
 
         -- find out if the entity is still in any workspace
         -- XXX compat_find_all will go away with workspaces remodel
