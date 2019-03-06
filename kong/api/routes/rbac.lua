@@ -119,6 +119,7 @@ local function post_process_role(role)
 end
 
 
+-- luacheck: ignore
 local function post_process_user(user)
   local map, err = rbac.get_consumer_user_map(user.id)
 
