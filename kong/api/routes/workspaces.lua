@@ -3,6 +3,8 @@ local utils = require "kong.tools.utils"
 local workspaces = require "kong.workspaces"
 local singletons = require "kong.singletons"
 local endpoints = require "kong.api.endpoints"
+local counters =  require "kong.workspaces.counters"
+
 
 -- FT-258: To block some endpoints of being wrongly called from a
 -- workspace namespace, we enforce that some workspace endpoints are
@@ -315,7 +317,7 @@ return {
     end,
 
     GET = function(self, _, helpers)
-      local counts, err = workspaces.counts(self.workspace.id)
+      local counts, err = counters.counts(self.workspace.id)
       if not counts then
         helpers.responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
       end
