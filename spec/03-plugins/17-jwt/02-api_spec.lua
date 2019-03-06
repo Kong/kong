@@ -431,9 +431,9 @@ for _, strategy in helpers.each_strategy() do
         before_each(function()
           db:truncate("jwt_secrets")
           dao:truncate_tables()
-          consumer = bp.consumers:insert {
+          consumer = bp.consumers:insert({
             username = "bob"
-          }
+          }, { nulls = true })
           credential = bp.jwt_secrets:insert {
             consumer = { id = consumer.id },
           }

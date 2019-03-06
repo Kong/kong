@@ -37,9 +37,9 @@ for _, strategy in helpers.each_strategy() do
 
     describe("/consumers/:consumer/basic-auth/", function()
       lazy_setup(function()
-        consumer = bp.consumers:insert {
+        consumer = bp.consumers:insert({
           username = "bob"
-        }
+        }, { nulls = true })
       end)
       after_each(function()
         db:truncate("basicauth_credentials")
