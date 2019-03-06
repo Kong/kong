@@ -182,7 +182,7 @@ build = {
 
     ["kong.dao.schemas.consumer_types"] = "kong/dao/schemas/consumer_types.lua",
     ["kong.dao.schemas.consumer_statuses"] = "kong/dao/schemas/consumer_statuses.lua",
-    ["kong.db.schema.entities.credentials"] = "kong/dao/schemas/credentials.lua",
+    ["kong.dao.schemas.credentials"] = "kong/dao/schemas/credentials.lua",
     ["kong.db.schema.entities.rbac_users"] = "kong/db/schema/entities/rbac_users.lua",
     ["kong.db.schema.entities.rbac_user_roles"] = "kong/db/schema/entities/rbac_user_roles.lua",
     ["kong.db.schema.entities.rbac_roles"] = "kong/db/schema/entities/rbac_roles.lua",
@@ -243,6 +243,8 @@ build = {
     ["kong.db.dao.snis"] = "kong/db/dao/snis.lua",
     ["kong.db.dao.targets"] = "kong/db/dao/targets.lua",
     ["kong.db.dao.plugins"] = "kong/db/dao/plugins.lua",
+    ["kong.db.dao.rbac_roles"] = "kong/db/dao/rbac_roles.lua",
+    ["kong.db.dao.rbac_users"] = "kong/db/dao/rbac_users.lua",
     ["kong.db.schema"] = "kong/db/schema/init.lua",
     ["kong.db.schema.entities.apis"] = "kong/db/schema/entities/apis.lua",
     ["kong.db.schema.entities.cluster_ca"] = "kong/db/schema/entities/cluster_ca.lua",
