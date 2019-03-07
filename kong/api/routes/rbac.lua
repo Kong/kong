@@ -390,9 +390,6 @@ return {
   ["/rbac/roles/:rbac_roles"] = {
     schema = rbac_roles.schema ,
     methods = {
-      before = function(self, db, helpers)
-        self.params.is_default = false
-      end,
       GET  = endpoints.get_entity_endpoint(rbac_roles.schema),
       PUT     = endpoints.put_entity_endpoint(rbac_roles.schema),
       PATCH   = endpoints.patch_entity_endpoint(rbac_roles.schema),
@@ -406,6 +403,10 @@ return {
         if not rbac_role then
           return kong.response.exit(404, { message = "Not found" })
         end
+        if rbac_role.is_default then
+          kong.response.exit(404)
+        end
+
         self.rbac_role = rbac_role
 
         -- delete the user <-> role mappings
