@@ -26,9 +26,18 @@ local function fetch_certificate(sni_name)
   end
 
   if not row then
-    log(DEBUG, "no SNI registered for client-provided name: '",
+    -- no direct match:  find if there's a wildcard available
+    local _, index = string.find(sni_name, '%.')
+    local wildcard_domain = '*' .. string.sub(sni_name, index);
+    row, err = singletons.db.snis:select_by_name(wildcard_domain)
+    
+    if err then
+      return nil, err
+    elseif not row then
+      log(DEBUG, "no SNI or wildcard SNI registered for client-provided name: '",
                sni_name, "'")
-    return true
+      return true
+    end
   end
 
   -- fetch SSL certificate for this sni
