@@ -50,8 +50,8 @@ describe("arguments.infer_value", function()
   end)
 
   it("infers maps", function()
-    assert.same({ x = "1" }, infer_value({ x = "1" }, { type = "map", elements = { type = "string" } }))
-    assert.same({ x = 1 },   infer_value({ x = "1" }, { type = "map", elements = { type = "number" } }))
+    assert.same({ x = "1" }, infer_value({ x = "1" }, { type = "map", keys = { type = "string" }, values = { type = "string" } }))
+    assert.same({ x = 1 },   infer_value({ x = "1" }, { type = "map", keys = { type = "string" }, values = { type = "number" } }))
   end)
 
   it("infers records", function()
