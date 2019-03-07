@@ -433,18 +433,18 @@ return {
         local operation = data.operation
         local target = data.entity
         -- => to worker_events node handler
-        local ok, err = worker_events.post("balancer", "targets", {
+        local _, err = worker_events.post("balancer", "targets", {
           operation = data.operation,
           entity = data.entity,
         })
-        if not ok then
+        if err then
           log(ERR, "failed broadcasting target ",
               operation, " to workers: ", err)
         end
         -- => to cluster_events handler
         local key = fmt("%s:%s", operation, target.upstream.id)
-        ok, err = cluster_events:broadcast("balancer:targets", key)
-        if not ok then
+        _, err = cluster_events:broadcast("balancer:targets", key)
+        if err then
           log(ERR, "failed broadcasting target ", operation, " to cluster: ", err)
         end
       end, "crud", "targets")
@@ -464,13 +464,13 @@ return {
       cluster_events:subscribe("balancer:targets", function(data)
         local operation, key = unpack(utils.split(data, ":"))
         -- => to worker_events node handler
-        local ok, err = worker_events.post("balancer", "targets", {
+        local _, err = worker_events.post("balancer", "targets", {
           operation = operation,
           entity = {
             upstream = { id = key },
           }
         })
-        if not ok then
+        if err then
           log(ERR, "failed broadcasting target ", operation, " to workers: ", err)
         end
       end)
@@ -482,8 +482,8 @@ return {
         local ip, port, health, id, name = data:match(pattern)
         port = tonumber(port)
         local upstream = { id = id, name = name }
-        local ok, err = balancer.post_health(upstream, ip, port, health == "1")
-        if not ok then
+        local _, err = balancer.post_health(upstream, ip, port, health == "1")
+        if err then
           log(ERR, "failed posting health of ", name, " to workers: ", err)
         end
       end)
@@ -497,17 +497,17 @@ return {
         local operation = data.operation
         local upstream = data.entity
         -- => to worker_events node handler
-        local ok, err = worker_events.post("balancer", "upstreams", {
+        local _, err = worker_events.post("balancer", "upstreams", {
           operation = data.operation,
           entity = data.entity,
         })
-        if not ok then
+        if err then
           log(ERR, "failed broadcasting upstream ",
               operation, " to workers: ", err)
         end
         -- => to cluster_events handler
         local key = fmt("%s:%s:%s", operation, upstream.id, upstream.name)
-        ok, err = cluster_events:broadcast("balancer:upstreams", key)
+        local ok, err = cluster_events:broadcast("balancer:upstreams", key)
         if not ok then
           log(ERR, "failed broadcasting upstream ", operation, " to cluster: ", err)
         end
@@ -527,14 +527,14 @@ return {
       cluster_events:subscribe("balancer:upstreams", function(data)
         local operation, id, name = unpack(utils.split(data, ":"))
         -- => to worker_events node handler
-        local ok, err = worker_events.post("balancer", "upstreams", {
+        local _, err = worker_events.post("balancer", "upstreams", {
           operation = operation,
           entity = {
             id = id,
             name = name,
           }
         })
-        if not ok then
+        if err then
           log(ERR, "failed broadcasting upstream ", operation, " to workers: ", err)
         end
       end)
