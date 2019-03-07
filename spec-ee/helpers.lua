@@ -9,7 +9,7 @@ local utils = require "kong.tools.utils"
 local _M = {}
 
 
-function _M.register_rbac_resources(dao, ws)
+function _M.register_rbac_resources(db, ws)
   local utils = require "kong.tools.utils"
   local bit   = require "bit"
   local rbac  = require "kong.rbac"
@@ -28,7 +28,7 @@ function _M.register_rbac_resources(dao, ws)
   -- now, create the roles and assign endpoint permissions to them
 
   -- first, a read-only role across everything
-  roles.read_only, err = dao.rbac_roles:insert({
+  roles.read_only, err = db.rbac_roles:insert({
     id = utils.uuid(),
     name = "read-only",
     comment = "Read-only access across all initial RBAC resources",
@@ -39,7 +39,7 @@ function _M.register_rbac_resources(dao, ws)
   end
 
   -- this role only has the 'read-only' permissions
-  _, err = dao.rbac_role_endpoints:insert({
+  _, err = db.rbac_role_endpoints:insert({
     role_id = roles.read_only.id,
     workspace = "*",
     endpoint = "*",
@@ -51,7 +51,7 @@ function _M.register_rbac_resources(dao, ws)
   end
 
   -- admin role with CRUD access to all resources except RBAC resource
-  roles.admin, err = dao.rbac_roles:insert({
+  roles.admin, err = db.rbac_roles:insert({
     id = utils.uuid(),
     name = "admin",
     comment = "CRUD access to most initial resources (no RBAC)",
@@ -62,7 +62,7 @@ function _M.register_rbac_resources(dao, ws)
   end
 
   -- the 'admin' role has 'full-access' + 'no-rbac' permissions
-  _, err = dao.rbac_role_endpoints:insert({
+  _, err = db.rbac_role_endpoints:insert({
     role_id = roles.admin.id,
     workspace = "*",
     endpoint = "*",
@@ -73,7 +73,7 @@ function _M.register_rbac_resources(dao, ws)
     return nil, nil, err
   end
 
-  _, err = dao.rbac_role_endpoints:insert({
+  _, err = db.rbac_role_endpoints:insert({
     role_id = roles.admin.id,
     workspace = "*",
     endpoint = "/rbac",
@@ -86,7 +86,7 @@ function _M.register_rbac_resources(dao, ws)
   end
 
   -- finally, a super user role who has access to all initial resources
-  roles.super_admin, err = dao.rbac_roles:insert({
+  roles.super_admin, err = db.rbac_roles:insert({
     id = utils.uuid(),
     name = "super-admin",
     comment = "Full CRUD access to all initial resources, including RBAC entities",
@@ -96,7 +96,7 @@ function _M.register_rbac_resources(dao, ws)
     return nil, nil, err
   end
 
-  _, err = dao.rbac_role_entities:insert({
+  _, err = db.rbac_role_entities:insert({
     role_id = roles.super_admin.id,
     entity_id = "*",
     entity_type = "wildcard",
@@ -107,7 +107,7 @@ function _M.register_rbac_resources(dao, ws)
     return nil, nil, err
   end
 
-  _, err = dao.rbac_role_endpoints:insert({
+  _, err = db.rbac_role_endpoints:insert({
     role_id = roles.super_admin.id,
     workspace = "*",
     endpoint = "*",
@@ -118,7 +118,7 @@ function _M.register_rbac_resources(dao, ws)
     return nil, nil, err
   end
 
-  local super_admin, err = dao.rbac_users:insert({
+  local super_admin, err = db.rbac_users:insert({
     id = utils.uuid(),
     name = "super_gruce-" .. ws,
     user_token = "letmein",
@@ -130,7 +130,7 @@ function _M.register_rbac_resources(dao, ws)
     return nil, nil, err
   end
 
-  local super_user_role, err = dao.rbac_user_roles:insert({
+  local super_user_role, err = db.rbac_user_roles:insert({
     user_id = super_admin.id,
     role_id = roles.super_admin.id
   })
