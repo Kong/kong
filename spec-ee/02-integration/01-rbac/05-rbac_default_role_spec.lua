@@ -2,17 +2,18 @@ local helpers    = require "spec.helpers"
 local cjson      = require "cjson"
 local ee_helpers = require "spec-ee.helpers"
 local ssl_fixtures = require "spec.fixtures.ssl"
+local rbac = require "kong.rbac"
 
 
 for _, strategy in helpers.each_strategy() do
   describe("#flaky db #".. strategy .. " RBAC on admin route", function()
     local client
-    local dao
+    local bp, db, dao
     local default_role_one, default_role_two, test_role
 
     setup(function()
-      dao = select(3, helpers.get_db_utils(strategy))
-      ee_helpers.register_rbac_resources(dao)
+      bp, db, dao = helpers.get_db_utils(strategy)
+      ee_helpers.register_rbac_resources(db)
 
       assert(helpers.start_kong({
         enforce_rbac = "off",
@@ -48,10 +49,7 @@ for _, strategy in helpers.each_strategy() do
       assert.res_status(201, res)
 
 
-      local rbac_default_roles = assert(dao.rbac_roles:find_all {
-        name = rbac_user.name,
-      })
-      default_role_one = rbac_default_roles[1]
+      default_role_one = assert(db.rbac_roles:select_by_name(rbac_user.name))
 
       local res = assert(client:send {
         method = "POST",
@@ -153,8 +151,8 @@ for _, strategy in helpers.each_strategy() do
           local body = assert.res_status(201, res)
           local cert = cjson.decode(body)
 
-          local in_db = assert(dao.rbac_role_entities:find_all { role_id = default_role_one.id, entity_id = cert.id})
-          assert.equal(cert.id, in_db[1].entity_id)
+          local in_db = assert(db.rbac_role_entities:select({ role_id = default_role_one.id, entity_id = cert.id}))
+          assert.equal(cert.id, in_db.entity_id)
         end)
         it("should add entity when primary key is string", function()
           local res = assert(client:send {
@@ -252,7 +250,8 @@ for _, strategy in helpers.each_strategy() do
           assert.equal(0, #in_db)
         end)
         it("should remove role, endpoint relation when role is deleted", function()
-          local in_db = assert(dao.rbac_role_endpoints:find_all {role_id = test_role.id})
+          -- local in_db = assert(db.rbac_role_endpoints:find_all({role_id = test_role.id}))
+          local in_db = assert(rbac.get_role_endpoints(db, test_role))
           assert.equal(1, #in_db)
           local res = assert(client:send {
             method = "DELETE",
@@ -263,7 +262,7 @@ for _, strategy in helpers.each_strategy() do
             }
           })
           assert.res_status(204, res)
-          local in_db = assert(dao.rbac_role_endpoints:find_all {role_id = test_role.id})
+          local in_db = assert(rbac.get_role_endpoints(db, test_role))
           assert.equal(0, #in_db)
         end)
       end)
