@@ -43,6 +43,9 @@ for name, _ in pairs(helpers.db.daos) do
     remove = function(_, tbl)
       return api_send("DELETE", "/" .. name .. "/" .. tbl.id)
     end,
+    update = function(_, id, tbl)
+      return api_send("PATCH", "/" .. name .. "/" .. id, tbl)
+    end,
   }
 end
 
@@ -53,6 +56,21 @@ admin_api_as_db["basicauth_credentials"] = {
   end,
   remove = function(_, tbl)
     return api_send("DELETE", "/consumers/" .. tbl.consumer.id .. "/basic-auth/" .. tbl.id)
+  end,
+  update = function(_, id, tbl)
+    return api_send("PATCH", "/consumers/" .. tbl.consumer.id .. "/basic-auth/" .. id, tbl)
+  end,
+}
+
+admin_api_as_db["targets"] = {
+  insert = function(_, tbl)
+    return api_send("POST", "/upstreams/" .. tbl.upstream.id .. "/targets", tbl)
+  end,
+  remove = function(_, tbl)
+    return api_send("DELETE", "/upstreams/" .. tbl.upstream.id .. "/targets/" .. tbl.id)
+  end,
+  update = function(_, id, tbl)
+    return api_send("PATCH", "/upstreams/" .. tbl.upstream.id .. "/targets/" .. id, tbl)
   end,
 }
 
