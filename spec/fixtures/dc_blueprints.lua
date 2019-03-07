@@ -30,6 +30,7 @@ end
 function dc_blueprints.new(db)
   local dc_as_db = {}
 
+  local save_dc
   local dc = reset()
 
   for name, _ in pairs(db.daos) do
@@ -51,6 +52,26 @@ function dc_blueprints.new(db)
         table.insert(dc[name], remove_nulls(tbl))
         return tablex.deepcopy(tbl)
       end,
+      update = function(_, id, tbl)
+        if not dc[name] then
+          return nil, "not found"
+        end
+        tbl = tablex.deepcopy(tbl)
+        local element
+        for _, e in ipairs(dc[name]) do
+          if e.id == id then
+            element = e
+            break
+          end
+        end
+        if not element then
+          return nil, "not found"
+        end
+        for k,v in pairs(tbl) do
+          element[k] = v
+        end
+        return element
+      end
     }
   end
 
@@ -58,8 +79,13 @@ function dc_blueprints.new(db)
 
   bp.done = function()
     local ret = dc
+    save_dc = dc
     dc = reset()
     return ret
+  end
+
+  bp.reset_back = function()
+    dc = save_dc
   end
 
   return bp

@@ -1310,6 +1310,7 @@ local function start_kong(env, tables, preserve_prefix)
         return nil, err
       end
     end
+    env = utils.deep_copy(env)
     env.declarative_config = config_yml
   end
 
