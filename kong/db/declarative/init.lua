@@ -211,12 +211,46 @@ local function remove_nulls(tbl)
 end
 
 
+local function post_upstream_crud_delete_events()
+  local upstreams = kong.cache:get("upstreams|list", nil, function()
+    return nil
+  end)
+  if upstreams then
+    for _, id in ipairs(upstreams) do
+      local _, err = kong.worker_events.post("crud", "upstreams", {
+        operation = "delete",
+        entity = {
+          id = id,
+          name = "?", -- only used for error messages
+        },
+      })
+      if err then
+        kong.log.err("failed posting invalidation event for upstream ", id)
+      end
+    end
+  end
+end
+
+
+local function post_crud_create_event(entity_name, item)
+  local _, err = kong.worker_events.post("crud", entity_name, {
+    operation = "create",
+    entity = item,
+  })
+  if err then
+    kong.log.err("failed posting crud event for ", entity_name, " ", entity_name.id)
+  end
+end
+
+
 function declarative.load_into_cache(entities)
 
   -- FIXME atomicity of cache update
   -- FIXME track evictions (and do something when they happen)
 
-  kong.cache:purge(true)
+  post_upstream_crud_delete_events()
+
+  kong.cache:purge()
 
   for entity_name, items in pairs(entities) do
     local dao = kong.db[entity_name]
@@ -307,8 +341,15 @@ function declarative.load_into_cache(entities)
     return nil, "failed to set declarative_config:loaded in shm: " .. err
   end
 
-  kong.cache:invalidate("router:version")
+  for _, entity_name in ipairs({"upstreams", "targets"}) do
+    if entities[entity_name] then
+      for _, item in pairs(entities[entity_name]) do
+        post_crud_create_event(entity_name, item)
+      end
+    end
+  end
 
+  kong.cache:invalidate("router:version")
   return true
 end
 
