@@ -528,7 +528,11 @@ local function role_relation_cleanup(role)
   end
 
   for _, endpoint in ipairs(endpoints) do
-    local _, err = db.rbac_role_endpoints:delete(endpoint)
+    local _, err = db.rbac_role_endpoints:delete({
+      role_id = endpoint.role_id,
+      workspace = endpoint.workspace,
+      endpoint = endpoint.endpoint,
+    })
     if err then
       return err
     end
@@ -601,7 +605,7 @@ local function add_default_role_entity_permission(entity, table_name)
 
   local entity_id = schema.primary_key[1]
 
-  return singletons.dao.rbac_role_entities:insert({
+  return singletons.db.rbac_role_entities:insert({
     role_id = default_role.id,
     entity_id = entity[entity_id],
     entity_type = table_name,
