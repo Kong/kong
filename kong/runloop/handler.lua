@@ -107,7 +107,12 @@ do
       else
         local service, err = db.services:select(service_pk)
         if not service then
-          log(WARN, "could not find service for route (" .. route.id .. "): " .. err or 'Not found service')
+          
+          if err == nil then
+            err = 'Not found service'
+          end
+
+          log(WARN, "could not find service for route (" .. route.id .. "): " .. err)
         else
           r = get_route_for_service(service, route)
           if r then
