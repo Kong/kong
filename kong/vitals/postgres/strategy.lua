@@ -181,14 +181,14 @@ local STATUS_CODE_QUERIES = {
   }
 }
 
-function _M.dynamic_table_names(dao)
+function _M.dynamic_table_names(db)
   local table_names = {}
 
   -- capture the dynamically-created tables
   local query = [[select table_name from information_schema.tables
       where table_schema = 'public' and table_name like 'vitals_stats_seconds_%']]
 
-  local result, err = dao.db:query(query)
+  local result, err = db.connector:query(query)
   if not result then
     -- just return what we've got, don't halt processing
     log(WARN, _log_prefix, err)
@@ -203,14 +203,14 @@ function _M.dynamic_table_names(dao)
 end
 
 
-function _M.new(dao_factory, opts)
+function _M.new(db, opts)
   if opts == nil then
     opts = {}
   end
 
   local table_rotater = table_rotater_module.new(
     {
-      db = dao_factory.db,
+      connector = db.connector,
       rotation_interval = opts.ttl_seconds or 3600,
     }
   )
@@ -218,7 +218,7 @@ function _M.new(dao_factory, opts)
   local self = {
     list_cache = ngx.shared.kong_vitals_lists,
     delete_interval = opts.delete_interval or 30,
-    db = dao_factory.db,
+    connector = db.connector,
     table_rotater = table_rotater,
     ttl_seconds = opts.ttl_seconds or 3600,
     ttl_minutes = opts.ttl_minutes or 90000,
@@ -289,7 +289,7 @@ delete_handler = function(premature, self)
 
     -- release delete lock
     local query = fmt(RELEASE_LOCK_STATUS_CODES_DELETE)
-    local _, err = self.db:query(query)
+    local _, err = self.connector:query(query)
 
     if err then
       log(WARN, _log_prefix, "err releasing delete lock ", err)
@@ -316,7 +316,7 @@ function _M:acquire_lock_status_codes_delete(now, when)
     local expiry = (when * 10) + now
     local query = fmt(ACQUIRE_LOCK_STATUS_CODES_DELETE, expiry, now)
 
-    res, err = self.db:query(query)
+    res, err = self.connector:query(query)
 
     if err then
       log(WARN, _log_prefix, "error acquiring status code lock: ", err)
@@ -424,7 +424,7 @@ function _M:select_stats(query_type, level, node_id, start_ts)
   query = query .. " ORDER BY at"
 
   -- BOOM
-  res, err = self.db:query(query)
+  res, err = self.connector:query(query)
   if not res then
     return nil, "could not select stats. query: " .. query .. " error: " .. err
   end
@@ -434,10 +434,16 @@ end
 
 
 function _M:select_phone_home()
-  local res, err = self.db:query(fmt(SELECT_STATS_FOR_PHONE_HOME, time() - 3600, self.node_id))
+  local res, err = self.connector:query(fmt(SELECT_STATS_FOR_PHONE_HOME, time() - 3600, self.node_id))
 
   if not res then
     return nil, "could not select stats: " .. err
+  end
+
+  for k, v in pairs(res[1]) do
+    if v == ngx.null then
+      res[1][k] = nil
+    end
   end
 
   -- the only time res[1].plat_count would be nil is when phone_home is
@@ -454,7 +460,7 @@ function _M:select_phone_home()
     res[1][v] = nil
   end
 
-  local nodes, err = self.db:query(fmt(SELECT_NODES_FOR_PHONE_HOME, time() - 3600))
+  local nodes, err = self.connector:query(fmt(SELECT_NODES_FOR_PHONE_HOME, time() - 3600))
   if not res then
     return nil, "could not count nodes: " .. err
   end
@@ -536,7 +542,7 @@ function _M:insert_stats(data, node_id)
                 ulat_count, ulat_total, tname, tname, tname, tname, tname, tname,
                 tname, tname, tname, tname, tname)
 
-    res, err = self.db:query(query)
+    res, err = self.connector:query(query)
 
     if not res then
       -- attempt to create missing table
@@ -547,7 +553,7 @@ function _M:insert_stats(data, node_id)
         if not res then
           log(WARN, _log_prefix, "could not create missing table: ", err)
         else
-          res, err = self.db:query(query)
+          res, err = self.connector:query(query)
         end
       end
 
@@ -580,7 +586,7 @@ function _M:insert_stats(data, node_id)
       ulat_count, ulat_total, tname, tname, tname, tname, tname, tname,
       tname, tname, tname, tname, tname)
 
-    res, err = self.db:query(query)
+    res, err = self.connector:query(query)
 
     if not res then
       log(WARN, _log_prefix, "failed to insert minutes: ", err)
@@ -611,7 +617,7 @@ function _M:delete_stats(expiries)
   local cutoff_time = time() - expiries.minutes
   local q = fmt(DELETE_STATS, "vitals_stats_minutes", cutoff_time)
 
-  local res, err = self.db:query(q)
+  local res, err = self.connector:query(q)
 
   if err then
     return nil, err
@@ -629,7 +635,7 @@ function _M:insert_node_meta()
 
   local query = fmt(q, self.node_id, self.hostname)
 
-  local ok, err = self.db:query(query)
+  local ok, err = self.connector:query(query)
   if not ok then
     return nil, "could not insert metadata. query: " .. query .. " error " .. err
   end
@@ -648,7 +654,7 @@ function _M:select_node_meta(node_ids)
 
   local query = fmt(SELECT_NODE_META, node_ids_str)
 
-  local res, err = self.db:query(query)
+  local res, err = self.connector:query(query)
 
   if err then
     return nil, "could not select nodes. query: " .. query .. " error " .. err
@@ -662,7 +668,7 @@ function _M:update_node_meta(node_id)
   node_id = node_id or self.node_id
   local query = fmt(UPDATE_NODE_META, node_id)
 
-  local ok, err = self.db:query(query)
+  local ok, err = self.connector:query(query)
   if not ok then
     return nil, "could not update metadata. query: " .. query  .. " error " .. err
   end
@@ -710,7 +716,7 @@ function _M:select_consumer_stats(opts)
 
   query = fmt(query, cons_id, duration, cutoff_time)
 
-  local res, err = self.db:query(query)
+  local res, err = self.connector:query(query)
 
   if err then
     return nil, "failed to select consumer requests. err: " .. err
@@ -767,7 +773,7 @@ function _M:select_status_codes(opts)
     query = fmt(query, opts.entity_id, opts.duration, cutoff_time)
   end
 
-  local res, err = self.db:query(query)
+  local res, err = self.connector:query(query)
 
   if err then
     return nil, "failed to select codes. err: " .. err
@@ -816,7 +822,7 @@ function _M:insert_status_codes(data, opts)
     -- strip last comma
     values = values:sub(1, -3)
 
-    res, err = self.db:query(fmt(query, values))
+    res, err = self.connector:query(fmt(query, values))
 
     if not res then
       return nil, "could not insert status code counters. entity_type: " ..
@@ -902,7 +908,7 @@ function _M:delete_status_codes(opts)
 
   local query = fmt(DELETE_CODES, table_name, 1, opts.seconds, 60, opts.minutes)
 
-  local res, err = self.db:query(query)
+  local res, err = self.connector:query(query)
 
   if err then
     return nil, "failed to delete codes. err: " .. err
@@ -942,7 +948,7 @@ end
 function _M:node_exists(node_id)
   local query = fmt(SELECT_NODE, node_id)
 
-  local res, err = self.db:query(query)
+  local res, err = self.connector:query(query)
 
   if err then
     return nil, err

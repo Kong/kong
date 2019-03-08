@@ -1,8 +1,23 @@
+local endpoints = require "kong.api.endpoints"
 local singletons = require "kong.singletons"
-local crud       = require "kong.api.crud_helpers"
 
 if not singletons.configuration.vitals then
   return {}
+end
+
+local function fetch_consumer(self, helpers, db, consumer_id)
+  if not consumer_id then
+    -- XXX check breaking change
+    return helpers.responses.send_HTTP_NOT_FOUND()
+  end
+
+  self.args = {}
+  self.params.consumers = ngx.unescape_uri(consumer_id)
+
+  self.consumer = endpoints.select_entity(self, db, db.consumers.schema)
+  if not self.consumer then
+    return helpers.responses.send_HTTP_NOT_FOUND()
+  end
 end
 
 return {
@@ -99,10 +114,11 @@ return {
       return helpers.responses.send_HTTP_OK(requested_node_stats)
     end
   },
-  ["/vitals/consumers/:username_or_id/cluster"] = {
-    GET = function(self, dao, helpers)
-      self.params.username_or_id = ngx.unescape_uri(self.params.username_or_id)
-      crud.find_consumer_by_username_or_id(self, dao, helpers)
+  ["/vitals/consumers/:consumer_id/cluster"] = {
+    GET = function(self, _, helpers)
+      -- XXX can't use second paremeter here - it's the old dao
+      local db = singletons.db
+      fetch_consumer(self, helpers, db, self.params.consumer_id)
 
       local opts = {
         consumer_id = self.consumer.id,
@@ -195,9 +211,10 @@ return {
     end
   },
   ["/vitals/status_codes/by_consumer"] = {
-    GET = function(self, dao, helpers)
-      self.params.username_or_id = ngx.unescape_uri(self.params.consumer_id)
-      crud.find_consumer_by_username_or_id(self, dao, helpers)
+    GET = function(self, _, helpers)
+      -- XXX can't use second paremeter here - it's the old dao
+      local db = singletons.db
+      fetch_consumer(self, helpers, db, self.params.consumer_id)
 
       local opts = {
         entity_type = "consumer",
@@ -208,7 +225,6 @@ return {
       }
 
       local requested_routes, err = singletons.vitals:get_status_codes(opts)
-
       if err then
         if err:find("Invalid query params", nil, true) then
           return helpers.responses.send_HTTP_BAD_REQUEST(err)
@@ -222,8 +238,9 @@ return {
   },
   ["/vitals/status_codes/by_consumer_and_route"] = {
     GET = function(self, dao, helpers)
-      self.params.username_or_id = ngx.unescape_uri(self.params.consumer_id)
-      crud.find_consumer_by_username_or_id(self, dao, helpers)
+      -- XXX can't use second paremeter here - it's the old dao
+      local db = singletons.db
+      fetch_consumer(self, helpers, db, self.params.consumer_id)
 
       local opts = {
         entity_type = "consumer_route",

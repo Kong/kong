@@ -40,12 +40,12 @@ local TABLE_NAMES_FOR_SELECT = [[
 
 
 function _M.new(opts)
-  if not opts.db then
-    error "opts.db is required"
+  if not opts.connector then
+    error "opts.connector is required"
   end
 
   local self = {
-    db = opts.db,
+    connector = opts.connector,
     rotation_interval = opts.ttl_seconds or 3600,
   }
 
@@ -86,7 +86,7 @@ end
 function _M:init()
   -- make sure we have a current vitals_stats_seconds table
   local query = fmt(CREATE_VITALS_STATS_SECONDS, self:current_table_name())
-  local _, err = self.db:query(query)
+  local _, err = self.connector:query(query)
 
   if err and not match(tostring(err), "exists") then
     -- if the error isn't "table already exists", it's a real problem
@@ -132,7 +132,7 @@ function _M:table_names_for_select()
 
   local previous_table_name = "vitals_stats_seconds_" .. previous_interval
 
-  local res, err = self.db:query(fmt(TABLE_NAMES_FOR_SELECT, current_table_name,
+  local res, err = self.connector:query(fmt(TABLE_NAMES_FOR_SELECT, current_table_name,
                                      previous_table_name))
   if err then
     return nil, err
@@ -153,7 +153,7 @@ end
 
 function _M:create_missing_seconds_table(table_name)
   local query = fmt(CREATE_VITALS_STATS_SECONDS, table_name)
-  local _, err = self.db:query(query)
+  local _, err = self.connector:query(query)
 
   if err and not match(tostring(err), "exists") then
     return nil, "could not create missing table: " .. table_name .. " err: " .. err
@@ -172,7 +172,7 @@ function _M:create_next_table()
 
   log(DEBUG, _log_prefix, query)
 
-  local _, err = self.db:query(query)
+  local _, err = self.connector:query(query)
 
   if err and not match(tostring(err), "exists") then
     return nil, "could not create next table: " .. err
@@ -192,7 +192,7 @@ function _M:drop_previous_table()
 
   log(DEBUG, _log_prefix, q)
 
-  local table_names, err = self.db:query(q)
+  local table_names, err = self.connector:query(q)
 
   if err then
     return nil, "Failed to select tables. query: " .. q .. ". error: " .. tostring(err)
@@ -203,7 +203,7 @@ function _M:drop_previous_table()
 
     log(DEBUG,_log_prefix,  q)
 
-    local _, err = self.db:query(q)
+    local _, err = self.connector:query(q)
 
     if err then
       log(WARN, _log_prefix, "Failed to drop table ", row.table_name, tostring(err))

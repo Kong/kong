@@ -336,14 +336,14 @@ local function aggregate_cluster(stats)
 end
 
 
-function _M.new(dao_factory, opts)
+function _M.new(db, opts)
   if not opts then
     opts = {}
   end
 
   local self = {
-    db          = dao_factory.db,
-    cluster     = dao_factory.db.cluster,
+    connector   = db.connector,
+    cluster     = db.connector.cluster,
     ttl_seconds = opts.ttl_seconds or 3600,
     ttl_minutes = opts.ttl_minutes or 90000,
     node_id     = nil,
@@ -829,7 +829,7 @@ function _M:insert_status_code_classes(data)
 end
 
 function _M:delete_status_code_classes(cutoff_times)
-  if self.db.major_version_n < 3 then
+  if self.connector.major_version < 3 then
     -- the delete algorithm implemented below doesn't work on 2.x
     -- this is documented as a known issue, so we aren't going to log it
     -- or fail here.
@@ -977,7 +977,7 @@ function _M:delete_status_codes(opts)
   local seconds_before = opts.seconds_before
   local minutes_before = opts.minutes_before
 
-  if self.db.major_version_n < 3 then
+  if self.connector.major_version < 3 then
     -- the delete algorithm implemented below doesn't work on 2.x
     -- this is documented as a known issue, so we aren't going to log it
     -- or fail here.
@@ -1215,7 +1215,7 @@ end
 
 
 function _M:delete_consumer_stats(consumers, cutoff_times)
-  if self.db.major_version_n < 3 then
+  if self.connector.major_version < 3 then
     -- the delete algorithm implemented below doesn't work on 2.x
     -- this is documented as a known issue, so we aren't going to log it
     -- or fail here.
