@@ -83,6 +83,7 @@ local validation_errors = {
   REQUIRED                  = "required field missing",
   NO_FOREIGN_DEFAULT        = "will not generate a default value for a foreign field",
   UNKNOWN                   = "unknown field",
+  IMMUTABLE                 = "immutable field cannot be updated",
   -- entity checks
   REQUIRED_FOR_ENTITY_CHECK = "field required for entity check",
   ENTITY_CHECK              = "failed entity check: %s(%s)",
@@ -1432,6 +1433,7 @@ function Schema:process_auto_fields(data, context, nulls)
   local now_ms = ngx_now()
   local read_before_write = false
   local cache_key_modified = false
+  local check_immutable_fields = false
 
   data = tablex.deepcopy(data)
 
@@ -1520,6 +1522,15 @@ function Schema:process_auto_fields(data, context, nulls)
        and data[key] ~= nil and data[key] ~= null then
       read_before_write = true
     end
+
+    if context == 'update' and field.immutable then
+      -- if entity schema contains immutable fields,
+      -- we need to preform a read-before-write and
+      -- check the existing record to insure update
+      -- is valid.
+      read_before_write = true
+      check_immutable_fields = true
+    end
   end
 
   --[[
@@ -1548,7 +1559,7 @@ function Schema:process_auto_fields(data, context, nulls)
     read_before_write = true
   end
 
-  return data, nil, read_before_write
+  return data, nil, read_before_write, check_immutable_fields
 end
 
 
@@ -1664,6 +1675,33 @@ function Schema:validate(input, full_check)
     return nil, errors
   end
   return true
+end
+
+
+-- Iterate through input fields on update and check agianst schema for
+-- immutable attribute. If immutable attribute is set, compare input values
+-- against entity values to detirmine whether input is valid.
+-- @param input The input table.
+-- @param entity The entity update will be performed on.
+-- @return True on success.
+-- On failure, it returns nil and a table containing all errors by field name.
+-- In all cases, the input table is untouched.
+function Schema:validate_immutable_fields(input, entity)
+  local errors = {}
+
+  for key, field in self:each_field(input) do
+    local compare = utils.is_array(input[key]) and tablex.compare_no_order or tablex.deepcompare
+
+    if field.immutable and entity[key] ~= nil and not compare(input[key], entity[key]) then
+      errors[key] = validation_errors.IMMUTABLE
+    end
+  end
+
+  if next(errors) then
+    return nil, errors
+  end
+
+  return true, errors
 end
 
 
