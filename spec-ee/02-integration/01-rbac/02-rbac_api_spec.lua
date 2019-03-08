@@ -3349,14 +3349,13 @@ describe("/rbac/users/consumers map with " .. kong_config.database, function()
   local client
   local user_consumer_map
   local bp
-  local dao
+  local db
   local consumer
 
   lazy_setup(function()
     helpers.stop_kong()
 
-    local _
-    bp, db, dao = helpers.get_db_utils(kong_config.database)
+    bp, db = helpers.get_db_utils(kong_config.database)
 
     assert(helpers.start_kong({
       database = kong_config.database

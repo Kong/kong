@@ -8,11 +8,11 @@ local rbac = require "kong.rbac"
 for _, strategy in helpers.each_strategy() do
   describe("#flaky db #".. strategy .. " RBAC on admin route", function()
     local client
-    local bp, db, dao
+    local db, dao
     local default_role_one, default_role_two, test_role
 
     setup(function()
-      bp, db, dao = helpers.get_db_utils(strategy)
+      db, dao = helpers.get_db_utils(strategy)
       ee_helpers.register_rbac_resources(db)
 
       assert(helpers.start_kong({
@@ -230,8 +230,7 @@ for _, strategy in helpers.each_strategy() do
             },
           })
 
-          local body = assert.res_status(201, res)
-          local cert = cjson.decode(body)
+          assert.res_status(201, res)
           local res = assert(client:send {
             method = "DELETE",
             path  = "/rbac/users/" .. default_role_two.name,
