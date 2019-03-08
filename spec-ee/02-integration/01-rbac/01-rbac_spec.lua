@@ -62,7 +62,7 @@ describe("(#" .. kong_conf.database .. ")", function()
 
         for i, workspace in ipairs(workspaces) do
           for j, entity in ipairs(entities[i]) do
-            assert(dao.workspace_entities:insert({
+            assert(db.workspace_entities:insert({
               workspace_id = workspace,
               workspace_name = "ws_name",
               entity_id = entity,
@@ -75,7 +75,7 @@ describe("(#" .. kong_conf.database .. ")", function()
       end)
 
       teardown(function()
-        dao:truncate_tables()
+        db:truncate()
       end)
 
       it("returns entities for a given workspace id", function()
@@ -119,7 +119,7 @@ describe("(#" .. kong_conf.database .. ")", function()
 
           -- add another workspace, associated with an existing workspace
           workspaces[#workspaces + 1] = u()
-          assert(dao.workspace_entities:insert({
+          assert(db.workspace_entities:insert({
             workspace_id = workspaces[#workspaces],
             workspace_name = "ws_name",
             entity_id = workspaces[x],
@@ -131,7 +131,7 @@ describe("(#" .. kong_conf.database .. ")", function()
           -- add another workspace, associated with an existing workspace,
           -- and containing its own entities as well
           workspaces[#workspaces + 1] = u()
-          assert(dao.workspace_entities:insert({
+          assert(db.workspace_entities:insert({
             workspace_id = workspaces[#workspaces],
             workspace_name = "ws_name",
             entity_id = workspaces[x],
@@ -143,7 +143,7 @@ describe("(#" .. kong_conf.database .. ")", function()
           entities[#workspaces] = {}
           for i = 1, math.random(10) do
             table.insert(entities[#workspaces], u())
-            assert(dao.workspace_entities:insert({
+            assert(db.workspace_entities:insert({
               workspace_id = workspaces[#workspaces],
               workspace_name = "ws_name",
               entity_id = entities[#workspaces][i],
@@ -193,7 +193,7 @@ describe("(#" .. kong_conf.database .. ")", function()
           -- is the union of the the workspace's parent and grandparent
           setup(function()
             workspaces[#workspaces + 1] = utils.uuid()
-            assert(dao.workspace_entities:insert({
+            assert(db.workspace_entities:insert({
               workspace_id = workspaces[#workspaces],
               workspace_name = "ws_name",
               entity_id = workspaces[#workspaces - 1],
@@ -227,7 +227,7 @@ describe("(#" .. kong_conf.database .. ")", function()
           local y
           x, y = utils.uuid(), utils.uuid()
 
-          assert(dao.workspace_entities:insert({
+          assert(db.workspace_entities:insert({
             workspace_id = x,
             workspace_name = "ws_name",
             entity_id = y,
@@ -235,7 +235,7 @@ describe("(#" .. kong_conf.database .. ")", function()
             unique_field_name="id",
             unique_field_value=y,
           }))
-          assert(dao.workspace_entities:insert({
+          assert(db.workspace_entities:insert({
             workspace_id = y,
             workspace_name = "ws_name",
             entity_id = x,
@@ -263,7 +263,7 @@ describe("(#" .. kong_conf.database .. ")", function()
         role_id = u()
         entity_id = u()
 
-        assert(dao.rbac_role_entities:insert({
+        assert(db.rbac_role_entities:insert({
           role_id = role_id,
           entity_id = entity_id,
           entity_type = "entity",
@@ -273,7 +273,7 @@ describe("(#" .. kong_conf.database .. ")", function()
       end)
 
       teardown(function()
-        dao:truncate_tables()
+        db:truncate()
       end)
 
       it("returns a map given a role", function()
@@ -288,7 +288,7 @@ describe("(#" .. kong_conf.database .. ")", function()
         local role_id2 = utils.uuid()
 
         setup(function()
-          assert(dao.rbac_role_entities:insert({
+          assert(db.rbac_role_entities:insert({
             role_id = role_id2,
             entity_id = entity_id,
             entity_type = "entity",
@@ -339,7 +339,7 @@ describe("(#" .. kong_conf.database .. ")", function()
 
 
           -- create a workspace with some entities
-          assert(dao.workspace_entities:insert({
+          assert(db.workspace_entities:insert({
             workspace_id = workspaces[1],
             workspace_name = "ws_name",
             entity_id = entities[1],
@@ -350,7 +350,7 @@ describe("(#" .. kong_conf.database .. ")", function()
 
           -- create a workspace pointing to another workspace, and
           -- containing its own entities
-          assert(dao.workspace_entities:insert({
+          assert(db.workspace_entities:insert({
             workspace_id = workspaces[2],
             workspace_name = "ws_name",
             entity_id = workspaces[1],
@@ -358,7 +358,7 @@ describe("(#" .. kong_conf.database .. ")", function()
             unique_field_name="id",
             unique_field_value=workspaces[1],
           }))
-          assert(dao.workspace_entities:insert({
+          assert(db.workspace_entities:insert({
             workspace_id = workspaces[2],
             workspace_name = "ws_name",
             entity_id = entities[2],
@@ -370,14 +370,14 @@ describe("(#" .. kong_conf.database .. ")", function()
           -- assign two roles; the first role to the first workspace
           -- (which owns entities[1]), and the second role to the second
           -- workspace (which owns workspaces[1] and entities[2])
-          assert(dao.rbac_role_entities:insert({
+          assert(db.rbac_role_entities:insert({
             role_id = roles[1],
             entity_id = workspaces[1],
             entity_type = "workspaces",
             actions = 0x1,
             negative = false,
           }))
-          assert(dao.rbac_role_entities:insert({
+          assert(db.rbac_role_entities:insert({
             role_id = roles[2],
             entity_id = workspaces[2],
             entity_type = "workspaces",
@@ -421,7 +421,7 @@ describe("(#" .. kong_conf.database .. ")", function()
         package.loaded["kong.rbac"] = nil
         local u = utils.uuid
         table.insert(role_ids, u())
-        assert(dao.rbac_role_endpoints:insert({
+        assert(db.rbac_role_endpoints:insert({
           role_id = role_ids[#role_ids],
           workspace = "foo",
           endpoint = "/bar",
@@ -430,7 +430,7 @@ describe("(#" .. kong_conf.database .. ")", function()
         }))
 
         table.insert(role_ids, u())
-        assert(dao.rbac_role_endpoints:insert({
+        assert(db.rbac_role_endpoints:insert({
           role_id = role_ids[#role_ids],
           workspace = "foo",
           endpoint = "/bar",
@@ -438,7 +438,7 @@ describe("(#" .. kong_conf.database .. ")", function()
           negative = true,
         }))
 
-        assert(dao.rbac_role_endpoints:insert({
+        assert(db.rbac_role_endpoints:insert({
           role_id = role_ids[#role_ids],
           workspace = "baz",
           endpoint = "/bar",
@@ -448,7 +448,7 @@ describe("(#" .. kong_conf.database .. ")", function()
       end)
 
       teardown(function()
-        dao:truncate_tables()
+        db:truncate()
       end)
 
       it("returns a permissions map for a given role", function()
@@ -1013,14 +1013,14 @@ describe("(#" .. kong_conf.database .. ")", function()
     end)
 
     teardown(function()
-      dao:truncate_tables()
+      db:truncate()
     end)
 
     it("each action", function()
       role_id = u()
       entity_id = u()
 
-      assert(dao.rbac_role_entities:insert({
+      assert(db.rbac_role_entities:insert({
         role_id = role_id,
         entity_id = tostring(entity_id),
         entity_type = "entity",
@@ -1035,7 +1035,7 @@ describe("(#" .. kong_conf.database .. ")", function()
       role_id = u()
       entity_id = u()
 
-      assert(dao.rbac_role_entities:insert({
+      assert(db.rbac_role_entities:insert({
         role_id = role_id,
         entity_id = entity_id,
         entity_type = "entity",
@@ -1050,7 +1050,7 @@ describe("(#" .. kong_conf.database .. ")", function()
       role_id = u()
       entity_id = u()
 
-      assert(dao.rbac_role_entities:insert({
+      assert(db.rbac_role_entities:insert({
         role_id = role_id,
         entity_id = entity_id,
         entity_type = "entity",
@@ -1065,7 +1065,7 @@ describe("(#" .. kong_conf.database .. ")", function()
       role_id = u()
       entity_id = u()
 
-      assert(dao.rbac_role_entities:insert({
+      assert(db.rbac_role_entities:insert({
         role_id = role_id,
         entity_id = entity_id,
         entity_type = "entity",
@@ -1081,7 +1081,7 @@ describe("(#" .. kong_conf.database .. ")", function()
       role_id = u()
       entity_id = u()
 
-      assert(dao.rbac_role_entities:insert({
+      assert(db.rbac_role_entities:insert({
         role_id = role_id,
         entity_id = entity_id,
         entity_type = "entity",
@@ -1103,13 +1103,13 @@ describe("(#" .. kong_conf.database .. ")", function()
     end)
 
     teardown(function()
-      dao:truncate_tables()
+      db:truncate()
     end)
 
     it("each action", function()
       local role_id = u()
 
-      assert(dao.rbac_role_endpoints:insert({
+      assert(db.rbac_role_endpoints:insert({
         role_id = role_id,
         workspace = "foo",
         endpoint = "/bar",
@@ -1123,7 +1123,7 @@ describe("(#" .. kong_conf.database .. ")", function()
       assert.same(rbac.readable_action(0x1), map.foo["/foo/bar"].actions[1])
 
       role_id = u()
-      assert(dao.rbac_role_endpoints:insert({
+      assert(db.rbac_role_endpoints:insert({
         role_id = role_id,
         workspace = "foo",
         endpoint = "/bar",
@@ -1136,7 +1136,7 @@ describe("(#" .. kong_conf.database .. ")", function()
       assert.equals(rbac.readable_action(0x2), map.foo["/foo/bar"].actions[1])
 
       role_id = u()
-      assert(dao.rbac_role_endpoints:insert({
+      assert(db.rbac_role_endpoints:insert({
         role_id = role_id,
         workspace = "foo",
         endpoint = "/bar",
@@ -1149,7 +1149,7 @@ describe("(#" .. kong_conf.database .. ")", function()
       assert.equals(rbac.readable_action(0x04), map.foo["/foo/bar"].actions[1])
 
       role_id = u()
-      assert(dao.rbac_role_endpoints:insert({
+      assert(db.rbac_role_endpoints:insert({
         role_id = role_id,
         workspace = "foo",
         endpoint = "/bar",
@@ -1164,7 +1164,7 @@ describe("(#" .. kong_conf.database .. ")", function()
     end)
     it("multiple permission", function()
       local role_id = u()
-      assert(dao.rbac_role_endpoints:insert({
+      assert(db.rbac_role_endpoints:insert({
         role_id = role_id,
         workspace = "foo",
         endpoint = "/bar",
