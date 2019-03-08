@@ -252,9 +252,27 @@ function declarative.load_into_cache(entities)
 
   kong.cache:purge()
 
+  -- Array of strings with this format:
+  -- "<tag_name>|<entity_name>|<uuid>".
+  -- For example, a service tagged "admin" would produce
+  -- "admin|services|<the service uuid>"
+  local tags = {}
+
+  -- Keys: tag name, like "admin"
+  -- Values: array of encoded tags, similar to the `tags` variable,
+  -- but filtered for a given tag
+  local tags_by_name = {}
+
   for entity_name, items in pairs(entities) do
     local dao = kong.db[entity_name]
     local schema = dao.schema
+
+    -- Keys: tag_name, eg "admin"
+    -- Values: dictionary of uuids associated to this tag,
+    --         for a specific entity type
+    --         i.e. "all the services associated to the 'admin' tag"
+    --         The ids are keys, and the values are `true`
+    local taggings = {}
 
     local uniques = {}
     local page_for = {}
@@ -313,6 +331,18 @@ function declarative.load_into_cache(entities)
           table.insert(page_for[ref][fid], id)
         end
       end
+
+      if item.tags then
+        for _, tag_name in ipairs(item.tags) do
+          table.insert(tags, tag_name .. "|" .. entity_name .. "|" .. id)
+
+          tags_by_name[tag_name] = tags_by_name[tag_name] or {}
+          table.insert(tags_by_name[tag_name], tag_name .. "|" .. entity_name .. "|" .. id)
+
+          taggings[tag_name] = taggings[tag_name] or {}
+          taggings[tag_name][id] = true
+        end
+      end
     end
 
     local ok, err = kong.cache:get(entity_name .. "|list", nil, function()
@@ -334,6 +364,48 @@ function declarative.load_into_cache(entities)
       end
     end
 
+    -- taggings:admin|services|list -> uuids of services tagged "admin"
+    for tag_name, entity_ids_dict in pairs(taggings) do
+      local key = "taggings:" .. tag_name .. "|" .. entity_name .. "|list"
+      ok, err = kong.cache:get(key, nil, function()
+        -- transform the dict into a sorted array
+        local arr = {}
+        local len = 0
+        for id in pairs(entity_ids_dict) do
+          len = len + 1
+          arr[len] = id
+        end
+        -- stay consistent with pagination
+        table.sort(arr)
+        return arr
+      end)
+      if not ok then
+        return nil, err
+      end
+    end
+  end
+
+  for tag_name, tags in pairs(tags_by_name) do
+    -- tags:admin|list -> all tags tagged "admin", regardless of the entity type
+    -- each tag is encoded as a string with the format "admin|services|uuid", where uuid is the service uuid
+    local key = "tags:" .. tag_name .. "|list"
+    local ok, err = kong.cache:get(key, nil, function()
+      -- print(require("inspect")({ [key] = tags }))
+      return tags
+    end)
+    if not ok then
+      return nil, err
+    end
+  end
+
+  -- tags|list -> all tags, with no distinction of tag name or entity type.
+  -- each tag is encoded as a string with the format "admin|services|uuid", where uuid is the service uuid
+  local ok, err = kong.cache:get("tags|list", nil, function()
+    -- print(require("inspect")({ ["tags|list"] = tags }))
+    return tags
+  end)
+  if not ok then
+    return nil, err
   end
 
   local ok, err = ngx.shared.kong:safe_add("declarative_config:loaded", true)
