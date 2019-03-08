@@ -3356,7 +3356,7 @@ describe("/rbac/users/consumers map with " .. kong_config.database, function()
     helpers.stop_kong()
 
     local _
-    bp, _, dao = helpers.get_db_utils(kong_config.database)
+    bp, db, dao = helpers.get_db_utils(kong_config.database)
 
     assert(helpers.start_kong({
       database = kong_config.database
@@ -3378,14 +3378,14 @@ describe("/rbac/users/consumers map with " .. kong_config.database, function()
       client:close()
     end
 
-    dao:truncate_tables()
+    db:truncate()
     helpers.stop_kong()
   end)
 
   describe("POST", function()
     it("creates a consumer user map", function()
 
-      local user = dao.rbac_users:insert {
+      local user = db.rbac_users:insert {
         name = "the-dale-user",
         user_token = "letmein",
         enabled = true,
@@ -3525,7 +3525,7 @@ dao_helpers.for_each_dao(function(kong_config)
   it(".find errors for non permitted entities", function()
     get("/services/" .. services[1].id , {["Kong-Admin-Token"] = "wrong"}, 401)
     get("/services/" .. services[2].id , {["Kong-Admin-Token"] = "wrong"}, 401)
-    get("/services/" .. services[1].id , {["Kong-Admin-Token"] = "bob"}, 404)
+    get("/services/" .. services[1].id , {["Kong-Admin-Token"] = "bob"}, 403)
     get("/services/" .. services[2].id , {["Kong-Admin-Token"] = "bob"}, 200)
   end)
 
