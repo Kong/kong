@@ -39,30 +39,46 @@ function _M.set_workspace_by_subdomain(self)
     send_workspace_not_found_error('no subdomain set in url')
   end
 
-  local parsed_host = split_host[1]
-  self.workspaces = workspaces.get_req_workspace(parsed_host)
-  if not self.workspaces[1] then
-    send_workspace_not_found_error('workspace "' .. parsed_host .. '" could not be found')
+  local ws_name = split_host[1]
+
+  local workspace, err = workspaces.fetch_workspace(ws_name)
+  if err then
+    ngx.log(ngx.ERR, err)
+    return responses.send_HTTP_INTERNAL_SERVER_ERROR()
   end
+
+  if not workspace then
+    send_workspace_not_found_error(
+                            'workspace "' .. ws_name .. '" could not be found')
+  end
+
+  self.workspaces = { workspace }
 end
 
 
 function _M.set_workspace_by_path(self)
-  self.workspaces = {}
-
-  if self.params.workspace_name then
-    self.workspaces = workspaces.get_req_workspace(self.params.workspace_name)
+  local workspace, err = workspaces.fetch_workspace(self.params.workspace_name)
+  if err then
+    ngx.log(ngx.ERR, err)
+    return responses.send_HTTP_INTERNAL_SERVER_ERROR()
   end
 
-  if not self.workspaces[1] then
-    self.workspaces = workspaces.get_req_workspace(workspaces.DEFAULT_WORKSPACE)
+  -- unable to find workspace associated with workspace_name, fallback to default
+  if not workspace then
+    workspace, err = workspaces.fetch_workspace(workspaces.DEFAULT_WORKSPACE)
+    if err then
+      ngx.log(ngx.ERR, err)
+      return responses.send_HTTP_INTERNAL_SERVER_ERROR()
+    end
+
+    -- yikes, can't fetch default, eject
+    if not workspace then
+      send_workspace_not_found_error(
+                            'workspace "' .. workspaces.DEFAULT_WORKSPACE .. '" could not be found')
+    end
   end
 
-  if not self.workspaces[1] then
-    send_workspace_not_found_error(
-      'workspace "' .. workspaces.DEFAULT_WORKSPACE .. '" could not be found'
-    )
-  end
+  self.workspaces = { workspace }
 end
 
 
