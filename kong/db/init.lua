@@ -37,6 +37,7 @@ local CORE_ENTITIES = {
   "files",
   "workspaces",
   "workspace_entities",
+  "workspace_entity_counters",
 }
 
 

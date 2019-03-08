@@ -81,7 +81,6 @@ build = {
     ["kong.enterprise_edition.dao.migrations.core.cassandra"] = "kong/enterprise_edition/dao/migrations/core/cassandra.lua",
     ["kong.enterprise_edition.dao.schemas.consumer_reset_secrets"] = "kong/enterprise_edition/dao/schemas/consumer_reset_secrets.lua",
     ["kong.enterprise_edition.dao.schemas.token_statuses"] = "kong/enterprise_edition/dao/schemas/token_statuses.lua",
-    ["kong.enterprise_edition.dao.schemas.workspace_entity_counters"] = "kong/enterprise_edition/dao/schemas/workspace_entity_counters.lua",
     ["kong.enterprise_edition.feature_flags"] = "kong/enterprise_edition/feature_flags.lua",
     ["kong.enterprise_edition.jwt"] = "kong/enterprise_edition/jwt.lua",
     ["kong.enterprise_edition.license_helpers"] = "kong/enterprise_edition/license_helpers.lua",
@@ -208,6 +207,7 @@ build = {
 
     ["kong.workspaces"] = "kong/workspaces/init.lua",
     ["kong.workspaces.helper"] = "kong/workspaces/helper.lua",
+    ["kong.workspaces.counters"] = "kong/workspaces/counters.lua",
     ["kong.workspaces.dao_wrappers"] = "kong/workspaces/dao_wrappers.lua",
 
     ["kong.portal"] = "kong/portal/init.lua",
@@ -253,6 +253,7 @@ build = {
     ["kong.db.schema.entities.plugins"] = "kong/db/schema/entities/plugins.lua",
     ["kong.db.schema.entities.workspaces"] = "kong/db/schema/entities/workspaces.lua",
     ["kong.db.schema.entities.workspace_entities"] = "kong/db/schema/entities/workspace_entities.lua",
+    ["kong.db.schema.entities.workspace_entity_counters"] = "kong/db/schema/entities/workspace_entity_counters.lua",
     ["kong.db.schema.entities.rbac_users"] = "kong/db/schema/entities/rbac_users.lua",
     ["kong.db.schema.entities.rbac_user_roles"] = "kong/db/schema/entities/rbac_user_roles.lua",
     ["kong.db.schema.entities.rbac_roles"] = "kong/db/schema/entities/rbac_roles.lua",

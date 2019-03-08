@@ -1,10 +1,9 @@
-local cassandra = require "cassandra"
 local singletons = require "kong.singletons"
 local utils      = require "kong.tools.utils"
 local tablex = require "pl.tablex"
 local cjson = require "cjson"
-local enums = require "kong.enterprise_edition.dao.enums"
 local ws_dao_wrappers = require "kong.workspaces.dao_wrappers"
+local counters = require "kong.workspaces.counters"
 
 
 local find    = string.find
@@ -22,6 +21,7 @@ local getfenv = getfenv
 local utils_split = utils.split
 local ngx_null = ngx.null
 local tostring = tostring
+local inc_counter = counters.inc_counter
 
 
 local _M = {}
@@ -243,7 +243,6 @@ function _M.fetch_workspace(ws_name)
   )
 end
 
-local inc_counter
 function _M.add_entity_relation(table_name, entity, workspace)
   local constraints = workspaceable_relations[table_name]
 
@@ -297,7 +296,7 @@ function _M.delete_entity_relation(table_name, entity)
       entity_id = row.entity_id,
       workspace_id = row.workspace_id,
       unique_field_name = row.unique_field_name,
-    }, {__skip_rbac = true})
+    }, {skip_rbac = true})
     if err then
       return err
     end
@@ -848,169 +847,6 @@ local function run_with_ws_scope(ws_scope, cb, ...)
   return res, err
 end
 _M.run_with_ws_scope = run_with_ws_scope
-
-
--- Entity count management
-
-local function counts(workspace_id)
-  local counts, err = singletons.dao.workspace_entity_counters:find_all({workspace_id = workspace_id})
-  if err then
-    return nil, err
-  end
-
-  local res = {}
-  for _, v in ipairs(counts) do
-    res[v.entity_type] = v.count
-  end
-
-  return res
-end
-_M.counts = counts
-
-
--- Return if entity is relevant to entity counts per workspace. Only
--- non-proxy consumers should not be counted.
-local function should_be_counted(dao, entity_type, entity)
-  if entity_type ~= "consumers" then
-    return true
-  end
-
-  -- some call sites do not provide the consumer.type and only pass
-  -- the id of the entity. In that case, we have to first fetch the
-  -- complete entity object
-  if not entity.type then
-    local err
-
-    local consumers = dao.consumers
-    entity, err = consumers:select({id = entity.id})
-    if err then
-      return nil, err
-    end
-    if not entity then
-      -- The entity is not in the DB. We might be in the middle of the
-      -- callback.
-      return false
-    end
-  end
-
-  if entity.type ~= enums.CONSUMERS.TYPE.PROXY then
-    return false
-  end
-
-  return true
-end
-
-
-inc_counter = function(dao, ws, entity_type, entity, count)
-
-  if not should_be_counted(dao, entity_type, entity) then
-    return
-  end
-
-  if dao.strategy == "cassandra" then
-    local _, err = dao.connector.cluster:execute([[
-      UPDATE workspace_entity_counters set
-      count=count + ? where workspace_id = ? and entity_type= ?]],
-      {cassandra.counter(count), cassandra.uuid(ws), entity_type},
-      {
-        counter = true,
-        prepared = true,
-    })
-    if err then
-      return nil, err
-    end
-
-  else
-    local incr_counter_query = [[
-      INSERT INTO workspace_entity_counters(workspace_id, entity_type, count)
-      VALUES('%s', '%s', %d)
-      ON CONFLICT(workspace_id, entity_type) DO
-      UPDATE SET COUNT = workspace_entity_counters.count + excluded.count]]
-    local _, err = dao.connector:query(format(incr_counter_query, ws, entity_type, count))
-    if err then
-      return nil, err
-    end
-  end
-end
-_M.inc_counter = inc_counter
-
-
-local function get_counts_for_ws(dao, workspace_id)
-  local entity_types = {}
-  for relation, constraints in pairs(get_workspaceable_relations()) do
-    entity_types[relation] = constraints.primary_key
-  end
-
-  local counts = {}
-  for k, v in pairs(entity_types) do
-    local res, err = compat_find_all("workspace_entities", {
-      workspace_id = workspace_id,
-      entity_type = k,
-      unique_field_name = v,
-    })
-    if err then
-      return nil, err
-    end
-
-    counts[k] = #res
-
-
-    -- When the migration that initializes the workspace counts runs, check
-    -- if there's only one admin consumer in a given workspace. If so, do not
-    -- count it. This has the effect that new installations do not see
-    -- consumer count =1.
-    -- Only do this check when count is 1 as we accept small divergences for
-    -- bigger numbers.
-    if k == "consumers" and counts[k] == 1 then
-      local consumer, err = dao.consumers:find({id = res[1].unique_field_value})
-      if not err and consumer.type ~= enums.CONSUMERS.TYPE.PROXY then
-        counts[k] = 0
-      end
-    end
-
-  end
-
-  return counts
-end
-
-
-local function initialize_counters_migration(dao)
-  local workspaces, err = compat_find_all("workspaces")
-  if err then
-    return nil, err
-  end
-
-  local workspaces_counts = {}
-  for _, ws in ipairs(workspaces) do
-    workspaces_counts[ws.id] = get_counts_for_ws(dao, ws.id)
-  end
-
-  for k, v in pairs(workspaces_counts) do
-    for entity_type, count in pairs(v) do
-      dao.workspace_entity_counters:insert({
-        workspace_id = k,
-        entity_type = entity_type,
-        count = count,
-      })
-    end
-  end
-end
-
-
-local function get_initialize_workspace_entity_counters_migration()
-  return
-    {
-      workspace_counters = {
-        {
-        name = "2018-10-11-164515_fill_counters",
-        up = function(_, _, dao)
-          initialize_counters_migration(dao)
-        end,
-        }
-      }
-    }
-end
-_M.get_initialize_workspace_entity_counters_migration = get_initialize_workspace_entity_counters_migration
 
 
 return _M
