@@ -114,17 +114,6 @@ local function retrieve_relationship_ids(entity_id, entity_name, factory_key)
     )
   end
 
-  -- for v in used_dao[factory_key]:each(nil, {skip_rbac = true}) do
-  --   if v[entity_name .. "_id"] == entity_id then
-  --     table.insert(relationship_ids, v)
-  --   end
-  -- end
-
-  -- if err then
-  --   log(ngx.ERR, "err retrieving relationship via id ", entity_id, ": ", err)
-  --   return nil, err
-  -- end
-
   return relationship_ids
 end
 
@@ -629,19 +618,21 @@ local function delete_role_entity_permission(table_name, entity)
 
   local entity_id = schema.primary_key[1]
 
+  local role_entities = workspaces.compat_find_all("rbac_role_entities", {
+    entity_id = entity[entity_id],
+    entity_type = table_name
+  })
 
-  for role_entity in db.rbac_role_entities:each() do -- XXX EE slow lualand query
-    if role_entity.entity_id == entity[entity_id] and
-       role_entity.entity_type == table_name then
-         local _, err, err_t = db.rbac_role_entities:delete({
-           role_id = role_entity.role_id,
-           entity_id = role_entity.entity_id
-         })
-         if err then
-           return err_t
-         end
+  for _, role_entity in ipairs(role_entities) do
+    local _, err, err_t = db.rbac_role_entities:delete({
+      role_id = role_entity.role_id,
+      entity_id = role_entity.entity_id
+    })
+    if err then
+      return err_t
     end
   end
+
 end
 _M.delete_role_entity_permission = delete_role_entity_permission
 

@@ -157,6 +157,20 @@ local function find_current_user(self, db, helpers)
   self.rbac_user = rbac_user
 end
 
+local function find_current_role(self, db, helpers)
+  local rbac_role, _, err_t = endpoints.select_entity(self, db, rbac_roles.schema)
+  if err_t then
+    return endpoints.handle_error(err_t)
+  end
+  if not rbac_role then
+    return kong.response.exit(404, { message = "Not found" })
+  end
+
+  self.rbac_role = rbac_role
+  self.params.role_id = self.rbac_role.id
+end
+
+
 
 return {
   ["/rbac/users"] = {
@@ -608,15 +622,7 @@ return {
     schema = rbac_roles.schema,
     methods = {
       before = function(self, db, helpers)
-        local rbac_role, _, err_t = endpoints.select_entity(self, db, rbac_roles.schema)
-        if err_t then
-          return endpoints.handle_error(err_t)
-        end
-        if not rbac_role then
-          return kong.response.exit(404, { message = "Not found" })
-        end
-        self.rbac_role = rbac_role
-        self.params.role_id = self.rbac_role.id
+        find_current_role(self, db, helpers)
       end,
 
       GET = function(self, db, helpers)
