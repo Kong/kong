@@ -233,7 +233,20 @@ local function get_db_utils(strategy, tables, plugins)
     end
   end
 
+  _G.kong.db = db
+
   return bp, db
+end
+
+
+local function get_cache(db)
+  local worker_events = assert(kong_global.init_worker_events())
+  local cluster_events = assert(kong_global.init_cluster_events(conf, db))
+  local cache = assert(kong_global.init_cache(conf,
+                                              cluster_events,
+                                              worker_events
+                                              ))
+  return cache
 end
 
 -----------------
@@ -1374,6 +1387,7 @@ return {
   db = db,
   blueprints = blueprints,
   get_db_utils = get_db_utils,
+  get_cache = get_cache,
   bootstrap_database = bootstrap_database,
   bin_path = BIN_PATH,
   test_conf = conf,

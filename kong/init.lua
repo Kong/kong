@@ -71,7 +71,6 @@ local openssl_x509 = require "openssl.x509"
 local runloop = require "kong.runloop.handler"
 local mesh = require "kong.runloop.mesh"
 local singletons = require "kong.singletons"
-local kong_cache = require "kong.cache"
 local declarative = require "kong.db.declarative"
 local ngx_balancer = require "ngx.balancer"
 local kong_resty_ctx = require "kong.resty.ctx"
@@ -79,7 +78,6 @@ local certificate = require "kong.runloop.certificate"
 local concurrency = require "kong.concurrency"
 local plugins_iterator = require "kong.runloop.plugins_iterator"
 local balancer_execute = require("kong.runloop.balancer").execute
-local kong_cluster_events = require "kong.cluster_events"
 local kong_error_handlers = require "kong.error_handlers"
 
 local kong             = kong
@@ -487,65 +485,26 @@ function Kong.init_worker()
     end
   end
 
-
-  -- init inter-worker events
-
-
-  local worker_events = require "resty.worker.events"
-
-
-  local ok, err = worker_events.configure {
-    shm = "kong_process_events", -- defined by "lua_shared_dict"
-    timeout = 5,            -- life time of event data in shm
-    interval = 1,           -- poll interval (seconds)
-
-    wait_interval = 0.010,  -- wait before retry fetching event data
-    wait_max = 0.5,         -- max wait time before discarding event
-  }
-  if not ok then
+  local worker_events, err = kong_global.init_worker_events()
+  if not worker_events then
     ngx_log(ngx_CRIT, "could not start inter-worker events: ", err)
     return
   end
+  kong.worker_events = worker_events
 
-
-  -- init cluster_events
-
-
-  local cluster_events, err = kong_cluster_events.new {
-    db                      = kong.db,
-    poll_interval           = kong.configuration.db_update_frequency,
-    poll_offset             = kong.configuration.db_update_propagation,
-  }
+  local cluster_events, err = kong_global.init_cluster_events(kong.configuration, kong.db)
   if not cluster_events then
     ngx_log(ngx_CRIT, "could not create cluster_events: ", err)
     return
   end
+  kong.cluster_events = cluster_events
 
-
-  -- init cache
-
-
-  local db_cache_ttl = kong.configuration.db_cache_ttl
-  if kong.configuration.database == "off" then
-    db_cache_ttl = 0
-  end
-
-  local cache, err = kong_cache.new {
-    cluster_events    = cluster_events,
-    worker_events     = worker_events,
-    propagation_delay = kong.configuration.db_update_propagation,
-    ttl               = db_cache_ttl,
-    neg_ttl           = db_cache_ttl,
-    resurrect_ttl     = kong.configuration.resurrect_ttl,
-    resty_lock_opts   = {
-      exptime = 10,
-      timeout = 5,
-    },
-  }
+  local cache, err = kong_global.init_cache(kong.configuration, cluster_events, worker_events)
   if not cache then
     ngx_log(ngx_CRIT, "could not create kong cache: ", err)
     return
   end
+  kong.cache = cache
 
   local ok, err = cache:get("router:version", { ttl = 0 }, function()
     return "init"
@@ -563,17 +522,11 @@ function Kong.init_worker()
     return
   end
 
-
   -- LEGACY
   singletons.cache          = cache
   singletons.worker_events  = worker_events
   singletons.cluster_events = cluster_events
   -- /LEGACY
-
-
-  kong.cache = cache
-  kong.worker_events = worker_events
-  kong.cluster_events = cluster_events
 
   kong.db:set_events_handler(worker_events)
 
