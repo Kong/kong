@@ -1,4 +1,6 @@
 local helpers = require "spec.helpers"
+local declarative = require "kong.db.declarative"
+local declarative_config = require "kong.db.schema.others.declarative_config"
 
 local fmod    = math.fmod
 
@@ -24,6 +26,9 @@ for _, strategy in helpers.each_strategy() do
       bp, db = helpers.get_db_utils(strategy, {
         "services"
       })
+      if strategy == "off" then
+        _G.kong.cache = helpers.get_cache(db)
+      end
 
       for i = 1, test_entity_count do
         local service = {
@@ -35,6 +40,12 @@ for _, strategy in helpers.each_strategy() do
         assert.is_nil(err)
         assert.is_nil(err_t)
         assert.same(service.tags, row.tags)
+      end
+
+      if strategy == "off" then
+        local entities = assert(bp.done())
+        local dc = assert(declarative_config.load(helpers.test_conf.loaded_plugins))
+        declarative.load_into_cache(dc:flatten(entities))
       end
     end)
 
@@ -75,7 +86,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
 
-    describe("update row in tags table with", function()
+    describe("#db update row in tags table with", function()
       local service1 = db.services:select_by_name("service1")
       assert.is_not_nil(service1)
       assert.is_not_nil(service1.id)
@@ -132,7 +143,7 @@ for _, strategy in helpers.each_strategy() do
       end
     end)
 
-    describe("delete row in tags table with", function()
+    describe("#db delete row in tags table with", function()
       local service5 = db.services:select_by_name("service5")
       assert.is_not_nil(service5)
       assert.is_not_nil(service5.id)
@@ -173,7 +184,7 @@ for _, strategy in helpers.each_strategy() do
       end
     end)
 
-    describe("upsert row in tags table with", function()
+    describe("#db upsert row in tags table with", function()
       -- due to the different sql in postgres stragey
       -- we need to test these two methods seperately
       -- note this is different from test "update row in tags table with"
@@ -220,6 +231,12 @@ for _, strategy in helpers.each_strategy() do
         assert.same(service.tags, row.tags)
       end
 
+      if strategy == "off" then
+        local entities = assert(bp.done())
+        local dc = assert(declarative_config.load(helpers.test_conf.loaded_plugins))
+        declarative.load_into_cache(dc:flatten(entities))
+      end
+
       local scenarios = { -- { tags[], expected_result_count }
         {
           { { "paging" } },
@@ -246,8 +263,9 @@ for _, strategy in helpers.each_strategy() do
       local paging_size = { total_entities_count/single_tag_count, }
 
       for s_idx, scenario in ipairs(scenarios) do
+
         local opts, expected_count = unpack(scenario)
-        for i=1, 2 do -- also produce a size=nil iteration
+        for i = 1, 2 do -- also produce a size=nil iteration
           local size = paging_size[i]
 
           local scenario_name = string.format("#%d %s %s", s_idx, opts[2] and opts[2]:upper() or "",
@@ -283,7 +301,6 @@ for _, strategy in helpers.each_strategy() do
             end)
           end)
         end
-
       end
 
       local func = pending
@@ -396,7 +413,7 @@ for _, strategy in helpers.each_strategy() do
 
     end)
 
-    describe("errors if tag value is invalid", function()
+    describe("#db errors if tag value is invalid", function()
       assert.has_error(function()
         bp.services:insert({
           host = "invalid-tag.com",

@@ -1,7 +1,7 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
 
--- We already test the functionality of page() when filtering by tag in 
+-- We already test the functionality of page() when filtering by tag in
 -- spec/02-integration/03-db/07-tags_spec.lua.
 -- This test we test on the correctness of the admin API response so that
 -- we can ensure the the right function (page()) is executed.
@@ -29,7 +29,7 @@ describe("Admin API - tags", function()
         assert(helpers.start_kong {
           database = strategy,
         })
-        client = helpers.admin_client(10000)
+        client = assert(helpers.admin_client(10000))
       end)
 
       lazy_teardown(function()
@@ -131,11 +131,6 @@ describe("Admin API - tags", function()
           "consumers",
         })
 
-        assert(helpers.start_kong {
-          database = strategy,
-        })
-        client = helpers.admin_client(10000)
-
         for i = 1, 2 do
           local consumer = {
             username = "adminapi-filter-by-tag-" .. i,
@@ -146,6 +141,11 @@ describe("Admin API - tags", function()
           assert.is_nil(err_t)
           assert.same(consumer.tags, row.tags)
         end
+
+        assert(helpers.start_kong {
+          database = strategy,
+        })
+        client = assert(helpers.admin_client(10000))
       end)
 
       lazy_teardown(function()
