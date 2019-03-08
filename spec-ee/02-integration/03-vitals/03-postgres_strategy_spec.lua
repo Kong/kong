@@ -14,7 +14,6 @@ dao_helpers.for_each_dao(function(kong_conf)
 
   describe("Postgres strategy", function()
     local strategy
-    local dao
     local db
     local snapshot
 
@@ -26,10 +25,9 @@ dao_helpers.for_each_dao(function(kong_conf)
         delete_interval = 90000,
       }
 
-      dao = select(3, helpers.get_db_utils(kong_conf.database))
-      strategy = pg_strategy.new(dao, opts)
-
-      db  = dao.db
+      db = select(2, helpers.get_db_utils(kong_conf.database))
+      strategy = pg_strategy.new(db, opts)
+      db = db.connector
 
       -- simulate a "previous" seconds table
       assert(db:query("create table if not exists vitals_stats_seconds_2 " ..
@@ -197,6 +195,10 @@ dao_helpers.for_each_dao(function(kong_conf)
             plat_total = 0,
             ulat_count = 0,
             ulat_total = 0,
+            ulat_max = ngx.null,
+            ulat_min = ngx.null,
+            plat_max = ngx.null,
+            plat_min = ngx.null,
           },
           {
             at       = 1505964714,
@@ -289,6 +291,10 @@ dao_helpers.for_each_dao(function(kong_conf)
             plat_total = 0,
             ulat_count = 0,
             ulat_total = 0,
+            ulat_max = ngx.null,
+            ulat_min = ngx.null,
+            plat_max = ngx.null,
+            plat_min = ngx.null,
           },
           {
             at       = 1505964714,
@@ -409,6 +415,10 @@ dao_helpers.for_each_dao(function(kong_conf)
             plat_total = 0,
             ulat_count = 0,
             ulat_total = 0,
+            ulat_max = ngx.null,
+            ulat_min = ngx.null,
+            plat_max = ngx.null,
+            plat_min = ngx.null,
           }
         }
 
@@ -459,6 +469,10 @@ dao_helpers.for_each_dao(function(kong_conf)
             plat_total = 0,
             ulat_count = 0,
             ulat_total = 0,
+            ulat_max = ngx.null,
+            ulat_min = ngx.null,
+            plat_max = ngx.null,
+            plat_min = ngx.null,
           }
         }
 
@@ -548,6 +562,10 @@ dao_helpers.for_each_dao(function(kong_conf)
             plat_total = 0,
             ulat_count = 0,
             ulat_total = 0,
+            ulat_max = ngx.null,
+            ulat_min = ngx.null,
+            plat_max = ngx.null,
+            plat_min = ngx.null,
           }
         }
 
@@ -614,6 +632,10 @@ dao_helpers.for_each_dao(function(kong_conf)
             plat_total = 0,
             ulat_count = 0,
             ulat_total = 0,
+            ulat_max = ngx.null,
+            ulat_min = ngx.null,
+            plat_max = ngx.null,
+            plat_min = ngx.null,
           }
         }
 
@@ -664,6 +686,10 @@ dao_helpers.for_each_dao(function(kong_conf)
             plat_total = 0,
             ulat_count = 0,
             ulat_total = 0,
+            ulat_max = ngx.null,
+            ulat_min = ngx.null,
+            plat_max = ngx.null,
+            plat_min = ngx.null,
           }
         }
 
@@ -702,6 +728,10 @@ dao_helpers.for_each_dao(function(kong_conf)
             requests = 14,
             ulat_count = 0,
             ulat_total = 0,
+            ulat_max = ngx.null,
+            ulat_min = ngx.null,
+            plat_max = ngx.null,
+            plat_min = ngx.null,
           }
         }
 
@@ -2142,7 +2172,7 @@ dao_helpers.for_each_dao(function(kong_conf)
       end)
 
       it("returns an error message when it fails", function()
-        stub(strategy.db, "query").returns(nil, "failure!")
+        stub(strategy.connector, "query").returns(nil, "failure!")
 
         local opts = {
           entity_type = "route",
@@ -2165,7 +2195,7 @@ dao_helpers.for_each_dao(function(kong_conf)
       local hostname_2 = "testhostname-2"
 
       after_each(function()
-        assert(dao.db:query("truncate table vitals_node_meta"))
+        assert(db:query("truncate table vitals_node_meta"))
       end)
 
       it("retrieves node_id and hostname for a list of nodes", function()
@@ -2179,7 +2209,7 @@ dao_helpers.for_each_dao(function(kong_conf)
 
         for _, row in ipairs(data_to_insert) do
           local query = fmt(q, unpack(row))
-          assert(dao.db:query(query))
+          assert(db:query(query))
         end
 
         local node_ids = { node_id, node_id_2 }
