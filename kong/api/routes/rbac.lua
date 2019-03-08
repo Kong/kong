@@ -401,7 +401,6 @@ return {
       PUT     = endpoints.put_entity_endpoint(rbac_roles.schema),
       PATCH   = endpoints.patch_entity_endpoint(rbac_roles.schema),
 
-      --- XXX EE: DOESNT WORK. tries to fetch user?
       DELETE = function(self, db, helpers)
         local rbac_role, _, err_t = endpoints.select_entity(self, db, rbac_roles.schema)
         if err_t then
@@ -424,15 +423,15 @@ return {
           })
         end
 
-      local err = rbac.role_relation_cleanup(self.rbac_role)
+        local err = rbac.role_relation_cleanup(self.rbac_role)
 
-      if err then
-        return nil, err
-      end
+        if err then
+          return nil, err
+        end
 
-      -- XXX EE: crud.delete
-      db.rbac_roles:delete({id = rbac_role.id})
-      return kong.response.exit(204)
+        -- XXX EE: crud.delete
+        db.rbac_roles:delete({id = rbac_role.id})
+        return kong.response.exit(204)
       end,
     },
   },
