@@ -107,10 +107,7 @@ for _, strategy in helpers.each_strategy() do
       assert.res_status(201, res)
 
 
-      local rbac_default_roles = assert(dao.rbac_roles:find_all {
-        name = rbac_user.name,
-      })
-      default_role_two = rbac_default_roles[1]
+      default_role_two = assert(db.rbac_roles:select_by_name(rbac_user.name))
 
       if client then client:close() end
       helpers.stop_kong(nil, nil, true)

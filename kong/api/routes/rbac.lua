@@ -400,12 +400,6 @@ return {
         if err_t then
           return endpoints.handle_error(err_t)
         end
-        if not rbac_role then
-          return kong.response.exit(404, { message = "Not found" })
-        end
-        if rbac_role.is_default then
-          kong.response.exit(404)
-        end
 
         self.rbac_role = rbac_role
 
