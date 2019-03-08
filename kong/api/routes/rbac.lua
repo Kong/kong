@@ -269,14 +269,7 @@ return {
     schema = rbac_users.schema,
     methods = {
       before = function(self, db, helpers)
-        local rbac_user, _, err_t = endpoints.select_entity(self, db, rbac_users.schema)
-        if err_t then
-          return endpoints.handle_error(err_t)
-        end
-        if not rbac_user then
-          return kong.response.exit(404, { message = "No RBAC user by name or id " .. self.params.rbac_users})
-        end
-        self.rbac_user = rbac_user
+        find_current_user(self, db, helpers)
       end,
 
       GET = function(self, db, helpers)
