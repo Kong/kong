@@ -25,7 +25,7 @@ env:
   global:
     - LUAROCKS=3.1.3
     - OPENSSL=1.1.1c
-    - OPENRESTY=1.13.6.2
+    - OPENRESTY=1.15.8.1
     - DOWNLOAD_ROOT=$HOME/download-root
     - INSTALL_CACHE=$HOME/install-cache
     - KONG_TEST_PG_DATABASE=travis
