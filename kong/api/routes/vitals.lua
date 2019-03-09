@@ -7,7 +7,6 @@ end
 
 local function fetch_consumer(self, helpers, db, consumer_id)
   if not consumer_id then
-    -- XXX check breaking change
     return helpers.responses.send_HTTP_NOT_FOUND()
   end
 
