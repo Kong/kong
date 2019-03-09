@@ -1,3 +1,4 @@
+local utils = require "kong.tools.utils"
 local pl_utils = require "pl.utils"
 
 
@@ -141,6 +142,7 @@ describe("ALF serializer", function()
       assert.is_table(entry.request)
       assert.is_table(entry.response)
       assert.is_table(entry.timings)
+      assert.is_table(entry._kong)
       assert.is_number(entry.time)
     end)
     it("appends the entry to the 'entries' table", function()
@@ -539,6 +541,39 @@ describe("ALF serializer", function()
         assert.equal(3, entry.timings.send)
         assert.equal(0, entry.timings.wait)
         assert.equal(25, entry.timings.receive)
+      end)
+    end)
+
+    describe("kong namespace", function()
+      local entry
+      local workspaces = {{id = utils.uuid(), name = "default"}}
+      local service = {
+        id = utils.uuid(),
+        host = "example.com",
+        port = 80,
+        protocol = "http",
+      }
+      local route = {
+        id = utils.uuid(),
+        service = { id = service.id },
+        hosts = { "example.com" },
+      }
+      before_each(function()
+        _ngx.ctx = _ngx.ctx or {}
+        _ngx.ctx.log_request_workspaces = workspaces
+        _ngx.ctx.service = service
+        _ngx.ctx.route = route
+        local alf = alf_serializer.new()
+        entry = assert(alf:add_entry(_ngx))
+      end)
+      it("contains workspaces info", function()
+        assert.same(workspaces, entry._kong.workspaces)
+      end)
+      it("contains route info", function()
+        assert.same(route, entry._kong.route)
+      end)
+      it("contains service info", function()
+        assert.same(service, entry._kong.service)
       end)
     end)
 

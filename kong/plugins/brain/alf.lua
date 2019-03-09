@@ -217,7 +217,12 @@ function _M:add_entry(_ngx, req_body_str, resp_body_str)
       send = send_t,
       wait = wait_t,
       receive = receive_t
-    }
+    },
+    _kong = {
+      service = ctx.service,
+      route = ctx.route,
+      workspaces = ctx.log_request_workspaces,
+    },
   }
 
   return self.entries[idx], idx
