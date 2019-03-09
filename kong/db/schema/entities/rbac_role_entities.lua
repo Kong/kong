@@ -2,6 +2,7 @@ local typedefs = require "kong.db.schema.typedefs"
 
 return {
   name = "rbac_role_entities",
+  generate_admin_api = false,
   primary_key = { "role_id", "entity_id" },
   fields = {
     { role_id = typedefs.uuid},

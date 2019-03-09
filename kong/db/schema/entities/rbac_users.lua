@@ -6,6 +6,7 @@ local LOG_ROUNDS = 9
 
 return {
   name = "rbac_users",
+  generate_admin_api = false,
   primary_key = { "id" },
   dao = "kong.db.dao.rbac_users",
   endpoint_key = "name",
