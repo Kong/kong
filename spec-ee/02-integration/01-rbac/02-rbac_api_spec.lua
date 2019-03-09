@@ -1035,7 +1035,7 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
           if kong_config.database == "cassandra" then
             assert.res_status(201, res)
           else
-            assert.res_status(409, res)
+            assert.res_status(400, res)
           end
         end)
       end)
@@ -1368,6 +1368,12 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
   -- TODO seed data not yet available in migrations
   describe("#flaky rbac defaults ", function()
     lazy_setup(function()
+      -- db, dao = helpers.get_db_utils(strategy)
+      ee_helpers.register_rbac_resources(db)
+    end)
+
+    before_each(function()
+      ee_helpers.register_rbac_resources(db)
     end)
 
     it("defines the default roles", function()
