@@ -42,10 +42,8 @@ env:
     - KONG_TEST_DATABASE=cassandra CASSANDRA=3.9 TEST_SUITE=plugins
     - TEST_SUITE=pdk
 
-before_install:
-  - source .ci/setup_env.sh
-
 install:
+  - source .ci/setup_env.sh
   - make dev
 
 cache:
