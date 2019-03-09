@@ -278,7 +278,29 @@ return {
     }
   },
   -- XXX: EE
-  -- ["/rbac/users/:name_or_id/permissions"] = {},
+  ["/rbac/users/:rbac_users/permissions"] = {
+    schema = rbac_users.schema,
+    methods = {
+      GET = function(self, db, helpers)
+        find_current_user(self, db, helpers)
+        local roles, err = rbac.entity_relationships(db,
+          self.rbac_user, "user", "role")
+        if err then
+          ngx.log(ngx.ERR, "[rbac] ", err)
+          return helpers.responses.send_HTTP_INTERNAL_SERVER_ERROR()
+        end
+
+        local map = {}
+        local entities_perms = rbac.readable_entities_permissions(roles)
+        local endpoints_perms = rbac.readable_endpoints_permissions(roles)
+
+        map.entities = entities_perms
+        map.endpoints = endpoints_perms
+
+        return helpers.responses.send_HTTP_OK(map)
+      end
+    }
+  },
   ["/rbac/users/:rbac_users/roles"] = {
     schema = rbac_users.schema,
     methods = {
@@ -385,14 +407,55 @@ return {
     schema = rbac_roles.schema,
     methods = {
       GET  = function(self, db, helpers, parent)
-        self.params["is_default"] = false
-        return endpoints.get_collection_endpoint(rbac_roles.schema)(self, db, helpers, parent)
+        local args = self.args.uri
+        local opts = endpoints.extract_options(args, schema, "select")
+        local size, err = endpoints.get_page_size(args)
+        if err then
+          return handle_error(db[rbac_roles.schema.name].errors:invalid_size(err))
+        end
+
+        local data, _, err_t, offset = db[rbac_roles.schema.name]:page(size, args.offset, opts)
+        if err_t then
+          return handle_error(err_t)
+        end
+
+        data = remove_default_roles(data)
+
+        local next_page = offset and fmt("/%s?offset=%s",
+          schema.name,
+          escape_uri(offset)) or null
+
+
+        return helpers.responses.send_HTTP_OK {
+          data   = data,
+          offset = offset,
+          next   = next_page,
+        }
+
+        -- return endpoints.get_collection_endpoint(rbac_roles.schema)(self, db, helpers, parent)
       end,
       POST = endpoints.post_collection_endpoint(rbac_roles.schema),
     }
   },
   -- XXX EE:
-  -- ["/rbac/roles/:name_or_id/permissions"] = {},
+  ["/rbac/roles/:rbac_roles/permissions"] = {
+
+    schema = rbac_roles.schema,
+    methods = {
+      GET = function(self, db, helpers)
+        find_current_role(self, db, helpers)
+
+        local map = {}
+        local entities_perms = rbac.readable_entities_permissions({self.rbac_role})
+        local endpoints_perms = rbac.readable_endpoints_permissions({self.rbac_role})
+
+        map.entities = entities_perms
+        map.endpoints = endpoints_perms
+
+        return helpers.responses.send_HTTP_OK(map)
+      end
+    }
+  },
 
   ["/rbac/roles/:rbac_roles"] = {
     schema = rbac_roles.schema ,
@@ -600,21 +663,15 @@ return {
       --   end,
   },
 
-  ["/rbac/roles/:name_or_id/entities/permissions"] = {
+  ["/rbac/roles/:rbac_roles/entities/permissions"] = {
     schema = rbac_roles.schema,
     methods = {
-      before = function(self, db, helpers)
-        error()
-      end
+      GET = function(self, db, helpers)
+        find_current_role(self, db, helpers)
+        local map = rbac.readable_entities_permissions({self.rbac_role})
+        return helpers.responses.send_HTTP_OK(map)
+      end,
     }
-  --   before = function(self, dao_factory, helpers)
-  --     crud.find_rbac_role_by_name_or_id(self, dao_factory, helpers)
-  --   end,
-
-  --   GET = function(self, dao_factory, helpers)
-  --     local map = rbac.readable_entities_permissions({self.rbac_role})
-  --     return helpers.responses.send_HTTP_OK(map)
-  --   end,
   },
 
   ["/rbac/roles/:rbac_roles/endpoints"] = {
@@ -625,11 +682,17 @@ return {
       end,
 
       GET = function(self, db, helpers)
-        local endpoints = db.rbac_roles:get_endpoints(db, self.rbac_role)
+        local endpoints =  workspaces.compat_find_all("rbac_role_entities", {
+          role_id = self.rbac_role.id
+        })
+
 
         tablex.map(post_process_actions, endpoints) -- post_process_actions
-                                                   -- is destructive!
-        return kong.response.exit(200, {
+                                                    -- is destructive!
+        return kong.response.exit(200, { -- XXX EE. Should we keep old
+                                         -- structure? or should we
+                                         -- just return endoints and
+                                         -- that's it? also, pagination?
           data = endpoints
         })
       end,
@@ -771,16 +834,7 @@ return {
     schema = rbac_roles.schema,
     methods = {
       before = function(self, db, helpers)
-        local rbac_role, _, err_t = endpoints.select_entity(self, db, rbac_roles.schema)
-        if err_t then
-          return endpoints.handle_error(err_t)
-        end
-        if not rbac_role then
-          return kong.response.exit(404, { message = "Not found" })
-        end
-        self.rbac_role = rbac_role
-        self.params.role_id = self.rbac_role.id
-
+        find_current_role(self, db, helpers)
       end,
 
       GET = function(self, dao_factory, helpers)
@@ -789,7 +843,9 @@ return {
       end,
     }
   },
+
   ["/rbac/users/consumers"] = {
+    -- XXX EE: is this used at all?
     schema = consumers.schema,
     methods = {
       POST = function(self, dao_factory)
@@ -799,6 +855,7 @@ return {
     },
   },
 
+  -- XXX EE: is this  used
   -- ["/rbac/users/:rbac_users/consumers/:consumers"] = {
   --   schema = rbac_users.schema,
   --   methods = {
