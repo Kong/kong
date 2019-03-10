@@ -20,7 +20,14 @@ export PATH=$BUILD_TOOLS_DOWNLOAD:$PATH
 #--------
 INSTALL_ROOT=$INSTALL_CACHE/$DEPS_HASH
 
-kong-ngx-build -p $INSTALL_ROOT --work $DOWNLOAD_ROOT --openresty $OPENRESTY --openssl $OPENSSL --luarocks $LUAROCKS -j $JOBS
+kong-ngx-build \
+    --work $DOWNLOAD_ROOT \
+    --prefix $INSTALL_ROOT \
+    --openresty $OPENRESTY \
+    --openresty-patches $OPENRESTY_PATCHES_BRANCH \
+    --luarocks $LUAROCKS \
+    --openssl $OPENSSL \
+    -j $JOBS
 
 OPENSSL_INSTALL=$INSTALL_ROOT/openssl
 OPENRESTY_INSTALL=$INSTALL_ROOT/openresty
