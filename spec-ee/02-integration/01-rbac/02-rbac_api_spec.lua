@@ -119,6 +119,7 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
     db:truncate("rbac_role_entities")
     db:truncate("rbac_role_endpoints")
     db:truncate("consumers")
+    db:truncate("workspace_entities")
 
     if client then
       client:close()
