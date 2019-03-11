@@ -204,6 +204,7 @@ local function new(self)
   -- Returns the protocol matched by the current route (`"http"`, `"https"`, `"tcp"` or
   -- `"tls"`), or `nil`, if no route has been matched, which can happen when dealing with
   -- erroneous requests.
+  -- @function kong.client.get_protocol
   -- @phases access, header_filter, body_filter, log
   -- @tparam [opt] allow_terminated boolean. If set, the `X-Forwarded-Proto` header will be checked when checking for https
   -- @treturn string|nil `"http"`, `"https"`, `"tcp"`, `"tls"` or `nil`
