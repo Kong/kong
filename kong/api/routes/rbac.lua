@@ -3,7 +3,6 @@ local utils     = require "kong.tools.utils"
 local rbac      = require "kong.rbac"
 local bit       = require "bit"
 local cjson     = require "cjson"
-local responses = require "kong.tools.responses"
 local new_tab   = require "table.new"
 local singletons = require "kong.singletons"
 local tablex     = require "pl.tablex"
@@ -82,7 +81,7 @@ local function action_bitfield(self)
       end
 
       if not rbac.actions_bitfields[action] then
-        return responses.send_HTTP_BAD_REQUEST("Undefined RBAC action " ..
+        return kong.response.exit(400, "Undefined RBAC action " ..
                                                action_names[i])
       end
 
@@ -124,7 +123,7 @@ local function post_process_user(user)
   local map, err = rbac.get_consumer_user_map(user.id)
 
   if err then
-    return responses.send_HTTP_INTERNAL_SERVER_ERROR(
+    return kong.response.exit(500,
         "error finding map for rbac_user: ", user.id)
   end
 
@@ -205,11 +204,11 @@ return {
           end
         end
 
-        return helpers.responses.send_HTTP_OK {
+        return kong.response.exit(200, {
           data   = res,
           offset = offset,
           next   = next_page,
-        }
+        })
       end,
 
       -- post_process_user should be called after GET , but no
@@ -231,12 +230,12 @@ return {
           local map, err = rbac.get_consumer_user_map(self.rbac_user.id)
 
           if err then
-            return responses.send_HTTP_INTERNAL_SERVER_ERROR(
+            return kong.response.exit(500,
               "error finding map for rbac_user: ", self.rbac_user.id)
           end
 
           if map then
-            return helpers.responses.send_HTTP_NOT_FOUND("No RBAC user by name or id "
+            return kong.response.exit(404, "No RBAC user by name or id "
               .. self.rbac_user.name)
           end
 
@@ -248,7 +247,7 @@ return {
       DELETE  = function(self, db, helpers)
         -- endpoints.delete_entity_endpoint(rbac_users.schema)(self, db, helpers)
         find_current_user(self, db, helpers)
-        local roles = db.rbac_users:get_roles(db, self.rbac_user)
+        local roles, err = db.rbac_users:get_roles(db, self.rbac_user) -- XXX EE Handle error
         local default_role
 
         for _, role in ipairs(roles) do
@@ -273,11 +272,8 @@ return {
         db.rbac_users:delete({id = self.rbac_user.id})
         return kong.response.exit(204)
       end
-      -- XXX: EE DEAL WITH DELETING default role and user<->roles
-      -- mappings
     }
   },
-  -- XXX: EE
   ["/rbac/users/:rbac_users/permissions"] = {
     schema = rbac_users.schema,
     methods = {
@@ -287,7 +283,7 @@ return {
           self.rbac_user, "user", "role")
         if err then
           ngx.log(ngx.ERR, "[rbac] ", err)
-          return helpers.responses.send_HTTP_INTERNAL_SERVER_ERROR()
+          return kong.response.exit(500)
         end
 
         local map = {}
@@ -297,7 +293,7 @@ return {
         map.entities = entities_perms
         map.endpoints = endpoints_perms
 
-        return helpers.responses.send_HTTP_OK(map)
+        return kong.response.exit(200, map)
       end
     }
   },
@@ -322,14 +318,13 @@ return {
       POST = function(self, db, helpers)
         -- we have the user, now verify our roles
         if not self.params.roles then
-          return helpers.responses.send_HTTP_BAD_REQUEST("must provide >= 1 role")
+          return kong.response.exit(400, "must provide >= 1 role")
         end
 
         local roles, err = objects_from_names(db, self.params.roles, "role")
         if err then
           if err:find("not found with name", nil, true) then
-            return helpers.responses.send_HTTP_BAD_REQUEST(err)
-
+            return kong.response.exit(400, err)
           else
             return helpers.yield_error(err)
           end
@@ -357,17 +352,15 @@ return {
         -- re-fetch the users roles so we show all the role objects, not just our
         -- newly assigned mappings
         roles, err = db.rbac_users:get_roles(db, self.rbac_user)
-        ngx.log(ngx.ERR, [[roles:]], require("inspect")(roles))
 
         if err then
           return helpers.yield_error(err)
         end
 
         roles = remove_default_roles(roles)
-        ngx.log(ngx.ERR, [[roles:]], require("inspect")(roles))
 
         -- show the user and all of the roles they are in
-        return helpers.responses.send_HTTP_CREATED({
+        return kong.response.exit(201, {
           user  = self.rbac_user,
           roles = roles,
         })
@@ -375,13 +368,13 @@ return {
 
       DELETE = function(self, db, helpers)
         if not self.params.roles then
-          return helpers.responses.send_HTTP_BAD_REQUEST("must provide >= 1 role")
+          return kong.response.exit(400, "must provide >= 1 role")
         end
 
         local roles, err = objects_from_names(db, self.params.roles, "role")
         if err then
           if err:find("not found with name", nil, true) then
-            return helpers.responses.send_HTTP_BAD_REQUEST(err)
+            return kong.response.exit(400,err)
 
           else
             return helpers.yield_error(err)
@@ -396,16 +389,16 @@ return {
         end
 
         local cache_key = db.rbac_user_roles:cache_key(self.rbac_user.id)
-        -- XXX EE was it a bug before?
         singletons.cache:invalidate(cache_key)
 
-        return helpers.responses.send_HTTP_NO_CONTENT()
+        return kong.response.exit(204)
       end
     },
   },
   ["/rbac/roles"] = {
     schema = rbac_roles.schema,
     methods = {
+      -- XXX EE fix the names of the indices of the db[xyz.schema.name]
       GET  = function(self, db, helpers, parent)
         local args = self.args.uri
         local opts = endpoints.extract_options(args, schema, "select")
@@ -426,20 +419,18 @@ return {
           escape_uri(offset)) or null
 
 
-        return helpers.responses.send_HTTP_OK {
+        return kong.response.exit(200, {
           data   = data,
           offset = offset,
           next   = next_page,
-        }
+        })
 
         -- return endpoints.get_collection_endpoint(rbac_roles.schema)(self, db, helpers, parent)
       end,
       POST = endpoints.post_collection_endpoint(rbac_roles.schema),
     }
   },
-  -- XXX EE:
   ["/rbac/roles/:rbac_roles/permissions"] = {
-
     schema = rbac_roles.schema,
     methods = {
       GET = function(self, db, helpers)
@@ -452,7 +443,7 @@ return {
         map.entities = entities_perms
         map.endpoints = endpoints_perms
 
-        return helpers.responses.send_HTTP_OK(map)
+        return kong.response.exit(200, map)
       end
     }
   },
@@ -492,7 +483,6 @@ return {
           return nil, err
         end
 
-        -- XXX EE: crud.delete
         db.rbac_roles:delete({id = rbac_role.id})
         return kong.response.exit(204)
       end,
@@ -513,11 +503,8 @@ return {
       self.rbac_role = rbac_role
     end,
     GET = function(self, db, helpers)
-      -- XXX: EE. do proper pagination??
-      ngx.log(ngx.ERR, [["pre":]], require("inspect")("pre"))
-
+      -- XXX: EE. do proper pagination.  Investigate if we can page through it
       local entities = rbac.get_role_entities(db, self.rbac_role)
-      ngx.log(ngx.ERR, [["post":]], require("inspect")("post"))
 
       entities = tablex.map(post_process_actions, entities)
 
@@ -530,7 +517,7 @@ return {
       action_bitfield(self)
 
       if not self.params.entity_id then
-        return helpers.responses.send_HTTP_BAD_REQUEST("Missing required parameter: 'entity_id'")
+        return kong.response.exit(400, "Missing required parameter: 'entity_id'")
       end
 
       local entity_type = "wildcard"
@@ -541,11 +528,11 @@ return {
                                                               self.params.entity_id)
         -- database error
         if entity_type == nil then
-          return helpers.responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+          return kong.response.exit(500, err)
         end
         -- entity doesn't exist
         if entity_type == false then
-          return helpers.responses.send_HTTP_BAD_REQUEST(err)
+          return kong.response.exit(400, err)
         end
       end
 
@@ -563,7 +550,7 @@ return {
         return error(err_t)
       end
 
-      return helpers.responses.send_HTTP_CREATED(post_process_actions(role_entity))
+      return kong.response.exit(201, post_process_actions(role_entity))
     end,
     }
   },
@@ -583,7 +570,7 @@ return {
         self.rbac_role_id = rbac_role.id
 
         if self.params.entity_id ~= "*" and not utils.is_valid_uuid(self.params.entity_id) then
-          return helpers.responses.send_HTTP_BAD_REQUEST(
+          return kong.response.exit(400,
             self.params.entity_id .. " is not a valid uuid")
         end
         self.entity_id = self.params.entity_id
@@ -599,7 +586,7 @@ return {
         end
 
         if entity then
-          return helpers.responses.send_HTTP_OK(post_process_actions(entity))
+          return kong.response.exit(200, post_process_actions(entity))
         end
       end,
       DELETE = function(self, db, helpers)
@@ -669,7 +656,7 @@ return {
       GET = function(self, db, helpers)
         find_current_role(self, db, helpers)
         local map = rbac.readable_entities_permissions({self.rbac_role})
-        return helpers.responses.send_HTTP_OK(map)
+        return kong.response.exit(200, map)
       end,
     }
   },
@@ -700,7 +687,7 @@ return {
       POST = function(self, dao_factory, helpers)
         action_bitfield(self)
         if not self.params.endpoint then
-          helpers.responses.send_HTTP_BAD_REQUEST("'endpoint' is a required field")
+          kong.response.exit(400, "'endpoint' is a required field")
         end
 
         local ctx = ngx.ctx
@@ -721,7 +708,7 @@ return {
           end
           if #w == 0 then
             local err = fmt("Workspace %s does not exist", self.params.workspace)
-            helpers.responses.send_HTTP_NOT_FOUND(err)
+            kong.response.exit(404, err)
           end
         end
 
@@ -730,7 +717,7 @@ return {
           local err_str = fmt(
             "%s is not allowed to create cross workspace permissions",
             ctx.rbac.user.name)
-          helpers.responses.send_HTTP_FORBIDDEN(err_str)
+          kong.response.exit(403, err_str)
         end
 
         local cache_key = dao_factory["rbac_roles"]:cache_key(self.rbac_role.id)
@@ -792,7 +779,7 @@ return {
           end
         end
         kong.response.exit(404)
-    end,
+      end,
 
       PATCH = function(self, db, helpers)
         if self.params.actions then
@@ -839,7 +826,7 @@ return {
 
       GET = function(self, dao_factory, helpers)
         local map = rbac.readable_endpoints_permissions({self.rbac_role})
-        return helpers.responses.send_HTTP_OK(map)
+        return kong.response.exit(200, map)
       end,
     }
   },
