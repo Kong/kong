@@ -2625,7 +2625,7 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
         assert.is_table(json.data)
       end)
 
-      it("limits the size of returned entities", function()
+      it("#flaky limits the size of returned entities", function()
         local res
 
         res = assert(client:send {
