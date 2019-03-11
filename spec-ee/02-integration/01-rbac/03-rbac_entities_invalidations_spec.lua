@@ -13,11 +13,11 @@ describe("rbac entities are invalidated with db: #" .. kong_conf.database, funct
   local admin_client_1
   local admin_client_2
 
-  local dao, db, bp
+  local db, bp
   local wait_for_propagation
 
   setup(function()
-    bp, db, dao = helpers.get_db_utils(kong_conf.database)
+    bp, db = helpers.get_db_utils(kong_conf.database)
     local db_update_propagation = kong_conf.database == "cassandra" and 3 or 0
 
     assert(helpers.start_kong {
