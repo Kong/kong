@@ -494,7 +494,7 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
         assert.same(user1, user2)
       end)
 
-      it("#flaky returns 404 for an rbac_user associated to an admin", function()
+      it("returns 404 for an rbac_user associated to an admin", function()
         local admin = ee_helpers.create_admin("gruce@konghq.com", nil, 0, bp, db)
 
         local res = assert(client:send {
@@ -980,8 +980,7 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
           assert.same("role not found with name 'dne'", json.message)
         end)
 
-        it("#flaky when duplicate relationships are attempted", function()
-          -- XXX new dao returns 400 for this conflicts
+        it("when duplicate relationships are attempted", function()
           local res = assert(client:send {
             path = "/rbac/users",
             method = "POST",
@@ -1366,7 +1365,7 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
   end)
 
   -- TODO seed data not yet available in migrations
-  describe("#flaky rbac defaults ", function()
+  describe("rbac defaults ", function()
     lazy_setup(function()
       -- db, dao = helpers.get_db_utils(strategy)
       ee_helpers.register_rbac_resources(db)
@@ -3351,7 +3350,7 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
   end)
 end)
 
-describe("/rbac/users/consumers map with " .. kong_config.database, function()
+describe("/rbac/users/consumers map with #flaky " .. kong_config.database, function() -- XXX EE should remove those
   local client
   local user_consumer_map
   local bp
