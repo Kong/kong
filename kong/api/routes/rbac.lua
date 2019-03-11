@@ -247,7 +247,9 @@ return {
       DELETE  = function(self, db, helpers)
         -- endpoints.delete_entity_endpoint(rbac_users.schema)(self, db, helpers)
         find_current_user(self, db, helpers)
-        local roles, err = db.rbac_users:get_roles(db, self.rbac_user) -- XXX EE Handle error
+
+        -- local roles = db.rbac_users:get_roles(db, self.rbac_user)
+        local roles = rbac.get_user_roles(db, self.rbac_user) -- XXX EE Handle Error
         local default_role
 
         for _, role in ipairs(roles) do
@@ -279,8 +281,7 @@ return {
     methods = {
       GET = function(self, db, helpers)
         find_current_user(self, db, helpers)
-        local roles, err = rbac.entity_relationships(db,
-          self.rbac_user, "user", "role")
+        local roles, err = rbac.get_user_roles(db, self.rbac_user)
         if err then
           ngx.log(ngx.ERR, "[rbac] ", err)
           return kong.response.exit(500)
@@ -305,8 +306,7 @@ return {
       end,
 
       GET = function(self, db, helpers)
-        local rbac_roles = db.rbac_users:get_roles(db, self.rbac_user)
-
+        local rbac_roles = rbac.get_user_roles(db, self.rbac_user)
         rbac_roles = remove_default_roles(rbac_roles)
 
         setmetatable(rbac_roles, cjson.empty_array_mt)
@@ -351,7 +351,9 @@ return {
 
         -- re-fetch the users roles so we show all the role objects, not just our
         -- newly assigned mappings
-        roles, err = db.rbac_users:get_roles(db, self.rbac_user)
+
+        -- roles, err = db.rbac_users:get_roles(db, self.rbac_user)
+        roles, err = rbac.get_user_roles(db, self.rbac_user)
 
         if err then
           return helpers.yield_error(err)
@@ -465,7 +467,8 @@ return {
 
         -- delete the user <-> role mappings
         -- we have to get our row, then delete it
-        local users, err = db.rbac_roles:get_users(db, self.rbac_role)
+        -- local users, err = db.rbac_roles:get_users(db, self.rbac_role)
+        local users, err = rbac.get_role_users(db, self.rbac_role)
         if err then
           return helpers.yield_error(err)
         end

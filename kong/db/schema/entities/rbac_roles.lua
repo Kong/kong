@@ -5,7 +5,6 @@ return {
   generate_admin_api = false,
   endpoint_key = "name",
   primary_key = { "id" },
-  dao = "kong.db.dao.rbac_roles",
   workspaceable = true,
   fields = {
     { id             = typedefs.uuid, },

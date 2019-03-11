@@ -348,6 +348,28 @@ end
 _M.get_role_endpoints = get_role_endpoints
 
 
+local function get_user_roles(db, user)
+  return entity_relationships(db, user, "user", "role", "rbac_user_roles")
+end
+_M.get_user_roles = get_user_roles
+
+local function get_role_users(db, role)
+  return entity_relationships(db, role, "role", "user", "rbac_user_roles")
+end
+_M.get_role_users = get_role_users
+
+-- local function get_role_entities(db, role)
+--   return entity_relationships(db, role, "role", "entity", "rbac_role_entities")
+-- end
+-- _M.get_role_entities = get_role_entities
+
+-- local function get_role_endpoints(db, role)
+--   return entity_relationships(db, role, "role", "endpoint", "rbac_role_endpoints")
+-- end
+-- _M.get_role_endpoints = get_role_endpoints
+
+
+
 local function resolve_role_entity_permissions(roles)
   local pmap = {}
   local nmap = {} -- map endpoints to a boolean indicating whether it is
@@ -543,7 +565,8 @@ function _M.remove_user_from_default_role(user, default_role)
   end
 
   -- get count of users still in the default role
-  local users, err = singletons.db.rbac_roles:get_users(singletons.db, default_role)
+  -- local users, err = singletons.db.rbac_roles:get_users(singletons.db, default_role)
+  local users, err = get_role_users(singletons.db, default_role)
   local n_users = #users
   if err then
     return nil, err
