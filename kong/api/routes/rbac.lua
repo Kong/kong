@@ -177,19 +177,19 @@ return {
     methods = {
       GET  =  function(self, db, helpers)
         local args = self.args.uri
-        local opts = endpoints.extract_options(args, rbac_users.schema, "select")
+        local opts = endpoints.extract_options(args, "rbac_users", "select")
         local size, err = endpoints.get_page_size(args)
         if err then
-          return endpoints.handle_error(db[rbac_users.schema.name].errors:invalid_size(err))
+          return endpoints.handle_error(db.rbac_users.errors:invalid_size(err))
         end
 
-        local data, _, err_t, offset = db[rbac_users.schema.name]:page(size, args.offset, opts)
+        local data, _, err_t, offset = db.rbac_users:page(size, args.offset, opts)
         if err_t then
           return endpoints.handle_error(err_t)
         end
 
         local next_page = offset and fmt("/%s?offset=%s",
-          rbac_users.schema.name,
+          "rbac_users",
           endpoints.escape_uri(offset)) or ngx.null
 
         -- filter non-proxy rbac_users (consumers)
@@ -406,10 +406,10 @@ return {
         local opts = endpoints.extract_options(args, schema, "select")
         local size, err = endpoints.get_page_size(args)
         if err then
-          return handle_error(db[rbac_roles.schema.name].errors:invalid_size(err))
+          return handle_error(db.rbac_roles.errors:invalid_size(err))
         end
 
-        local data, _, err_t, offset = db[rbac_roles.schema.name]:page(size, args.offset, opts)
+        local data, _, err_t, offset = db.rbac_roles:page(size, args.offset, opts)
         if err_t then
           return handle_error(err_t)
         end
