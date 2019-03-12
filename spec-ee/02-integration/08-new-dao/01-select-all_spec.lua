@@ -1,11 +1,11 @@
+local workspaces = require "kong.workspaces"
 local helpers = require "spec.helpers"
 
 for _, strategy in helpers.each_strategy() do
   describe("kong.db [#" .. strategy .. "]", function()
-    local db
+    local bp, db
 
     lazy_setup(function()
-      local bp
       bp, db, _ = helpers.get_db_utils(strategy)
 
       local s1
@@ -42,6 +42,7 @@ for _, strategy in helpers.each_strategy() do
           assert.same(3, #rows)
         end)
       end)
+
       describe("filters", function()
         it("partitioned entities", function()
           local rows, err
@@ -61,6 +62,24 @@ for _, strategy in helpers.each_strategy() do
           rows, err = db.consumers:select_all({ username = "c1" })
           assert.is_nil(err)
           assert.same(1, #rows)
+        end)
+
+        it("resolves shared entities", function()
+          local ws_d = assert(db.workspaces:select_by_name("default"))
+          local ws_1 = assert(bp.workspaces:insert({
+            name = "w1"
+          }))
+          local c1 = assert(bp.consumers:insert_ws({
+            username = "c123",
+          }, ws_d))
+
+          assert.is_nil(workspaces.add_entity_relation("consumers", c1, ws_1))
+
+          assert.same({c1}, workspaces.run_with_ws_scope({ws_1}, function()
+            return db.consumers:select_all({
+              username = "c123"
+            })
+          end))
         end)
       end)
 

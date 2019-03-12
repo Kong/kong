@@ -1,5 +1,6 @@
 local cjson = require "cjson"
 local iteration = require "kong.db.iteration"
+local utils = require "kong.tools.utils"
 
 
 local setmetatable = setmetatable
@@ -15,6 +16,7 @@ local type         = type
 local next         = next
 local log          = ngx.log
 local fmt          = string.format
+local deep_copy    = utils.deep_copy
 
 local workspaces = require "kong.workspaces"
 local ws_helper  = require "kong.workspaces.helper"
@@ -706,14 +708,34 @@ function DAO:select_all(fields, options)
     end
   end
 
-  if fields then
-    local constraints = workspaceable[schema.name]
-    ws_helper.apply_unique_per_ws(schema.name, fields, constraints)
-  end
+  local constraints = workspaceable[schema.name]
 
-  local rows, err_t = self.strategy:select_all(fields, options)
+  -- prepend workspace prefix
+  local tbl = deep_copy(fields)
+  ws_helper.apply_unique_per_ws(schema.name, tbl, constraints)
+
+  local rows, err_t
+
+  -- attempt select_all with filter fields
+  rows, err_t = self.strategy:select_all(tbl, options)
   if err_t then
     return nil, tostring(err_t), err_t
+  end
+
+  -- if no rows are found, attempt finding shared entities
+  if #rows == 0 then
+    local pk, err = ws_helper.resolve_shared_entity_id(self.schema.name, fields, constraints)
+    if err then
+      return nil, tostring(err_t), err_t
+    end
+    if pk then
+      fields = pk
+    end
+
+    rows, err_t = self.strategy:select_all(fields, options)
+    if err_t then
+      return nil, tostring(err_t), err_t
+    end
   end
 
   local entities, err
