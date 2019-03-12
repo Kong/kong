@@ -431,28 +431,46 @@ return {
 -- read-only role
 DO $$
 DECLARE lastid uuid;
+DECLARE def_ws_id uuid;
 BEGIN
 
 SELECT uuid_in(overlay(overlay(md5(random()::text || ':' || clock_timestamp()::text) placing '4' from 13) placing to_hex(floor(random()*(11-8+1) + 8)::int)::text from 17)::cstring) into lastid;
+SELECT id into def_ws_id from workspaces where name = 'default';
 
 INSERT INTO rbac_roles(id, name, comment)
 VALUES (lastid, 'default:read-only', 'Read access to all endpoints, across all workspaces');
 
+INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value)
+VALUES (def_ws_id, 'default', lastid, 'rbac_roles', 'name', 'read-only');
+
+INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value)
+VALUES (def_ws_id, 'default', lastid, 'rbac_roles', 'id', lastid);
+
 
 INSERT INTO rbac_role_endpoints(role_id, workspace, endpoint, actions, negative)
 VALUES (lastid, '*', '*', 1, FALSE);
+
 END $$;
 
 
 -- admin role
 DO $$
 DECLARE lastid uuid;
+DECLARE def_ws_id uuid;
 BEGIN
 
 SELECT uuid_in(overlay(overlay(md5(random()::text || ':' || clock_timestamp()::text) placing '4' from 13) placing to_hex(floor(random()*(11-8+1) + 8)::int)::text from 17)::cstring) into lastid;
+SELECT id into def_ws_id from workspaces where name = 'default';
 
 INSERT INTO rbac_roles(id, name, comment)
 VALUES (lastid, 'default:admin', 'Full access to all endpoints, across all workspaces—except RBAC Admin API');
+
+INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value)
+VALUES (def_ws_id, 'default', lastid, 'rbac_roles', 'name', 'admin');
+
+INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value)
+VALUES (def_ws_id, 'default', lastid, 'rbac_roles', 'id', lastid);
+
 
 INSERT INTO rbac_role_endpoints(role_id, workspace, endpoint, actions, negative)
 VALUES (lastid, '*', '*', 15, FALSE);
@@ -476,12 +494,21 @@ END $$;
 -- super-admin role
 DO $$
 DECLARE lastid uuid;
+DECLARE def_ws_id uuid;
 BEGIN
 
 SELECT uuid_in(overlay(overlay(md5(random()::text || ':' || clock_timestamp()::text) placing '4' from 13) placing to_hex(floor(random()*(11-8+1) + 8)::int)::text from 17)::cstring) into lastid;
+SELECT id into def_ws_id from workspaces where name = 'default';
 
 INSERT INTO rbac_roles(id, name, comment)
 VALUES (lastid, 'default:super-admin', 'Full access to all endpoints, across all workspaces');
+
+INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value)
+VALUES (def_ws_id, 'default', lastid, 'rbac_roles', 'name', 'super-admin');
+
+INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value)
+VALUES (def_ws_id, 'default', lastid, 'rbac_roles', 'id', lastid);
+
 
 INSERT INTO rbac_role_endpoints(role_id, workspace, endpoint, actions, negative)
 VALUES (lastid, '*', '*', 15, FALSE);
