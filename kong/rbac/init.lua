@@ -353,21 +353,11 @@ local function get_user_roles(db, user)
 end
 _M.get_user_roles = get_user_roles
 
+
 local function get_role_users(db, role)
   return entity_relationships(db, role, "role", "user", "rbac_user_roles")
 end
 _M.get_role_users = get_role_users
-
--- local function get_role_entities(db, role)
---   return entity_relationships(db, role, "role", "entity", "rbac_role_entities")
--- end
--- _M.get_role_entities = get_role_entities
-
--- local function get_role_endpoints(db, role)
---   return entity_relationships(db, role, "role", "endpoint", "rbac_role_endpoints")
--- end
--- _M.get_role_endpoints = get_role_endpoints
-
 
 
 local function resolve_role_entity_permissions(roles)
