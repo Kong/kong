@@ -496,14 +496,7 @@ return {
     schema = rbac_roles.schema,
     methods = {
     before = function(self, db, helpers)
-      local rbac_role, _, err_t = endpoints.select_entity(self, db, rbac_roles.schema)
-      if err_t then
-        return endpoints.handle_error(err_t)
-      end
-      if not rbac_role then
-        return kong.response.exit(404, { message = "Not found" })
-      end
-      self.rbac_role = rbac_role
+      find_current_role()
     end,
     GET = function(self, db, helpers)
       -- XXX: EE. do proper pagination.  Investigate if we can page through it
