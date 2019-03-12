@@ -685,6 +685,47 @@ function DAO:truncate()
 end
 
 
+function DAO:select_all(fields, options)
+  fields = fields or {}
+  local schema = self.schema
+
+  local ok, errors = schema:validate_fields(fields)
+  if not ok then
+    local err_t = self.errors:schema_violation(errors)
+    return nil, tostring(err_t), err_t
+  end
+
+  if options ~= nil then
+    validate_options_type(options)
+
+    local errors
+    ok, errors = validate_options_value(options, schema, "select")
+    if not ok then
+      local err_t = self.errors:invalid_options(errors)
+      return nil, tostring(err_t), err_t
+    end
+  end
+
+  if fields then
+    local constraints = workspaceable[schema.name]
+    ws_helper.apply_unique_per_ws(schema.name, fields, constraints)
+  end
+
+  local rows, err_t = self.strategy:select_all(fields, options)
+  if err_t then
+    return nil, tostring(err_t), err_t
+  end
+
+  local entities, err
+  entities, err, err_t = self:rows_to_entities(rows, options)
+  if not entities then
+    return nil, err, err_t
+  end
+
+  return entities, err, err_t
+end
+
+
 function DAO:select(primary_key, options)
   validate_primary_key_type(primary_key)
 
