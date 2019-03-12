@@ -1031,12 +1031,7 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
             },
           })
 
-          -- TODO PK constraint not applied on cassandra
-          if kong_config.database == "cassandra" then
-            assert.res_status(201, res)
-          else
-            assert.res_status(400, res)
-          end
+          assert.res_status(400, res)
         end)
       end)
     end)
