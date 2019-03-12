@@ -64,6 +64,37 @@ for _, strategy in helpers.each_strategy() do
           assert.same(1, #rows)
         end)
 
+        it("filters out other workspaces' entities", function()
+          local ws1 = assert(bp.workspaces:insert({ name = "ws_11" }))
+          local ws2 = assert(bp.workspaces:insert({ name = "ws_22" }))
+
+          local c1 = assert(bp.consumers:insert_ws({ username = "ws1" }, ws1))
+          local c2 = assert(bp.consumers:insert_ws({ username = "ws2" }, ws1))
+          local c3 = assert(bp.consumers:insert_ws({ username = "ws3" }, ws1))
+
+          local c4 = assert(bp.consumers:insert_ws({ username = "ws3" }, ws2))
+          local c5 = assert(bp.consumers:insert_ws({ username = "ws4" }, ws2))
+          local c6 = assert(bp.consumers:insert_ws({ username = "ws5" }, ws2))
+
+          local sort = function(a, b)
+            return a.username < b.username
+          end
+
+          local res
+
+          res = workspaces.run_with_ws_scope({ws1}, function()
+            return db.consumers:select_all()
+          end)
+          table.sort(res, sort)
+          assert.same({c1, c2, c3}, res)
+
+          res = workspaces.run_with_ws_scope({ws2}, function()
+            return db.consumers:select_all()
+          end)
+          table.sort(res, sort)
+          assert.same({c4, c5, c6}, res)
+        end)
+
         it("resolves shared entities", function()
           local ws_d = assert(db.workspaces:select_by_name("default"))
           local ws_1 = assert(bp.workspaces:insert({
@@ -78,6 +109,26 @@ for _, strategy in helpers.each_strategy() do
           assert.same({c1}, workspaces.run_with_ws_scope({ws_1}, function()
             return db.consumers:select_all({
               username = "c123"
+            })
+          end))
+        end)
+
+        it("resolves entities with same unique keys in different workspaces", function()
+          local ws_1 = assert(bp.workspaces:insert({ name = "ws_1" }))
+          local ws_2 = assert(bp.workspaces:insert({ name = "ws_2" }))
+
+          local c1_ws1 = assert(bp.consumers:insert_ws({ username = "ws1" }, ws_1))
+          local c1_ws2 = assert(bp.consumers:insert_ws({ username = "ws1" }, ws_2))
+
+          assert.same({c1_ws1}, workspaces.run_with_ws_scope({ws_1}, function()
+            return db.consumers:select_all({
+              username = "ws1"
+            })
+          end))
+
+          assert.same({c1_ws2}, workspaces.run_with_ws_scope({ws_2}, function()
+            return db.consumers:select_all({
+              username = "ws1"
             })
           end))
         end)

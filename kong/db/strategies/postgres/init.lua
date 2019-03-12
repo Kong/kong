@@ -606,6 +606,7 @@ local function execute(strategy, statement_name, attributes, options, ws_scope)
       values[#values+1] = escape_literal(connector, v, k)
     end
 
+    argv.workspaces = ws_scope
     argv.fields = concat(fields, ",")
     argv.values = concat(values, ",")
   end
@@ -815,8 +816,9 @@ end
 
 function _mt:select_all(fields, options)
   local q_name = next(fields) and "select_all_filtered" or "select_all"
+  local ws_list = ws_helper.ws_scope_as_list(self.schema.name)
 
-  local res, err = execute(self, q_name, self.collapse(fields), options)
+  local res, err = execute(self, q_name, self.collapse(fields), options, ws_list)
   if not res then
     return toerror(self, err)
   end
@@ -1807,11 +1809,13 @@ function _M.new(connector, schema, errors)
   else
     select_all_statement = concat {
       " SELECT ", select_expressions, "\n",
-      "   FROM ", table_name_escaped, ";",
+      "   FROM workspace_entities ws_e INNER JOIN ", table_name_escaped, " ", table_name_escaped,
+      "    ON ( unique_field_name = '", primary_key[1], "' AND ws_e.workspace_id in ( %s ) and ws_e.entity_id = ", table_name_escaped, ".id::varchar )\n",
     }
     select_all_filtered_statement = concat {
       " SELECT ", select_expressions, "\n",
-      "   FROM ", table_name_escaped, "\n",
+      "   FROM workspace_entities ws_e INNER JOIN ", table_name_escaped, " ", table_name_escaped,
+      "    ON ( unique_field_name = '", primary_key[1], "' AND ws_e.workspace_id in ( %s ) and ws_e.entity_id = ", table_name_escaped, ".id::varchar )\n",
       "  WHERE (%s) = (%s);",
     }
   end
@@ -1822,7 +1826,7 @@ function _M.new(connector, schema, errors)
     argc = 0,
     argv = {},
     make = function(argv)
-      return string.format(select_all_statement, argv.fields, argv.values)
+      return string.format(select_all_statement, argv.workspaces, argv.fields, argv.values)
     end
   }
 
@@ -1832,7 +1836,7 @@ function _M.new(connector, schema, errors)
     argc = 0,
     argv = {},
     make = function(argv)
-      return string.format(select_all_filtered_statement, argv.fields, argv.values)
+      return string.format(select_all_filtered_statement, argv.workspaces, argv.fields, argv.values)
     end
   }
 

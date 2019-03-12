@@ -572,14 +572,30 @@ local function _select_all(self, cql, args)
                                            .. err)
   end
 
-  -- lua-cassandra returns `nil` values for Cassandra's `NULL`. We need to
-  -- populate `ngx.null` ourselves
+  local workspaceable = workspaceable[self.schema.name]
+  local pk_name = workspaceable and workspaceable.primary_key
 
-  for i = 1, #rows do
-    rows[i] = self:deserialize_row(rows[i])
+  local ws_entities_map
+  if workspaceable then -- initialize workspace-entities map
+    local err
+    ws_entities_map, err = workspace_entities_map(get_workspaces(), self.schema.name)
+
+    if err then
+      return nil, self.errors:database_error(err)
+    end
   end
 
-  return rows
+  local c = 1
+  local entities = new_tab(#rows, 0)
+
+  for _, row in ipairs(rows) do
+    if not workspaceable or workspaceable and ws_entities_map[row[pk_name]] then
+      entities[c] = self:deserialize_row(row)
+      c = c + 1
+    end
+  end
+
+  return entities
 end
 
 
