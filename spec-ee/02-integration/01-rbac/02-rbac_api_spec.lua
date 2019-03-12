@@ -495,7 +495,7 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
         assert.same(user1, user2)
       end)
 
-      it("returns 404 for an rbac_user associated to an admin", function()
+      it("#flaky returns 404 for an rbac_user associated to an admin", function()
         local admin = ee_helpers.create_admin("gruce@konghq.com", nil, 0, bp, db)
 
         local res = assert(client:send {
