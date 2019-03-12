@@ -9,7 +9,7 @@ return {
     { role_id = typedefs.uuid},
     { workspace = {type = "string", required = true, default = workspaces.DEFAULT_WORKSPACE}},
     { endpoint = {type = "string", required = true} },
-    { actions = {type = "number", required = true,} },
+    { actions = {type = "integer", required = true,} },
     { negative = {type = "boolean", required = true, default = false,}},
     { comment = {type = "string",} },
     { created_at     = typedefs.auto_timestamp_s },
