@@ -496,7 +496,7 @@ return {
     schema = rbac_roles.schema,
     methods = {
     before = function(self, db, helpers)
-      find_current_role()
+      find_current_role(self, db, helpers)
     end,
     GET = function(self, db, helpers)
       -- XXX: EE. do proper pagination.  Investigate if we can page through it
