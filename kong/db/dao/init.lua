@@ -744,6 +744,10 @@ function DAO:select_all(fields, options)
     return nil, err, err_t
   end
 
+  if options and not options.skip_rbac then
+    entities = rbac.narrow_readable_entities(self.schema.name, entities)
+  end
+
   return entities, err, err_t
 end
 
