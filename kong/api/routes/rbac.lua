@@ -301,11 +301,8 @@ return {
   ["/rbac/users/:rbac_users/roles"] = {
     schema = rbac_users.schema,
     methods = {
-      before = function(self, db, helpers)
-        find_current_user(self, db, helpers)
-      end,
-
       GET = function(self, db, helpers)
+        find_current_user(self, db, helpers)
         local rbac_roles = rbac.get_user_roles(db, self.rbac_user)
         rbac_roles = remove_default_roles(rbac_roles)
 
@@ -316,6 +313,7 @@ return {
         })
       end,
       POST = function(self, db, helpers)
+        find_current_user(self, db, helpers)
         -- we have the user, now verify our roles
         if not self.params.roles then
           return kong.response.exit(400, "must provide >= 1 role")
@@ -370,8 +368,9 @@ return {
 
       DELETE = function(self, db, helpers)
         if not self.params.roles then
-          return kong.response.exit(400, "must provide >= 1 role")
+          return kong.response.exit(400, {message = "must provide >= 1 role"})
         end
+        find_current_user(self, db, helpers)
 
         local roles, err = objects_from_names(db, self.params.roles, "role")
         if err then
@@ -683,7 +682,7 @@ return {
       POST = function(self, dao_factory, helpers)
         action_bitfield(self)
         if not self.params.endpoint then
-          kong.response.exit(400, "'endpoint' is a required field")
+          kong.response.exit(400, {message = "'endpoint' is a required field"})
         end
 
         local ctx = ngx.ctx
@@ -713,7 +712,7 @@ return {
           local err_str = fmt(
             "%s is not allowed to create cross workspace permissions",
             ctx.rbac.user.name)
-          kong.response.exit(403, err_str)
+          kong.response.exit(403, {message = err_str})
         end
 
         local cache_key = dao_factory["rbac_roles"]:cache_key(self.rbac_role.id)
@@ -733,7 +732,7 @@ return {
         self.params.rbac_roles = nil
         local row, err = singletons.db.rbac_role_endpoints:insert(self.params)
         if err then
-          return kong.response.exit(409, err)
+          return kong.response.exit(409, {message = err})
         end
 
         return kong.response.exit(201, post_process_actions(row))
