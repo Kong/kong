@@ -324,26 +324,17 @@ end
 
 
 -- XXX EE should return 2nd value for error
-local function get_role_entities(db, role)
-  local res = {}
-
-  for row, err in db.rbac_role_entities:each() do
-    if row.role_id == role.id then
-      table.insert(res, row)
-    end
-  end
-  return res
+local function get_role_entities(db, role, opts)
+  return workspaces.compat_find_all("rbac_role_entities",
+    {role_id = role.id},
+    opts)
 end
 _M.get_role_entities = get_role_entities
 
 local function get_role_endpoints(db, role, opts)
-  local res = {}
-  for row, err in db.rbac_role_endpoints:each(nil, opts) do
-    if row.role_id == role.id then
-      table.insert(res, row)
-    end
-  end
-  return res
+  return workspaces.compat_find_all("rbac_role_endpoints",
+    {role_id = role.id},
+    opts)
 end
 _M.get_role_endpoints = get_role_endpoints
 
