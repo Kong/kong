@@ -324,7 +324,7 @@ return {
         local roles, err = objects_from_names(db, self.params.roles, "role")
         if err then
           if err:find("not found with name", nil, true) then
-            return kong.response.exit(400, err)
+            return kong.response.exit(400, {message = err})
           else
             return helpers.yield_error(err)
           end
@@ -376,7 +376,7 @@ return {
         local roles, err = objects_from_names(db, self.params.roles, "role")
         if err then
           if err:find("not found with name", nil, true) then
-            return kong.response.exit(400,err)
+            return kong.response.exit(400, {message = err})
 
           else
             return helpers.yield_error(err)
@@ -704,7 +704,7 @@ return {
           end
           if #w == 0 then
             local err = fmt("Workspace %s does not exist", self.params.workspace)
-            kong.response.exit(404, err)
+            kong.response.exit(404, { message = err})
           end
         end
 
