@@ -25,10 +25,8 @@ describe("DNS", function()
 
     singletons.db = {}
     singletons.db.workspaces = {
-      each = function()
-        return function()
-          return nil
-        end
+      select_all = function()
+        return {}
       end
     }
 

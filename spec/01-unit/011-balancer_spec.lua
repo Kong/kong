@@ -246,7 +246,7 @@ describe("Balancer", function()
         select = select(UPSTREAMS_FIXTURES),
       },
       workspaces = {
-        each = each(WORKSPACE_FIXTURES),
+        select_all = function() return WORKSPACE_FIXTURES end,
       }
     }
 
