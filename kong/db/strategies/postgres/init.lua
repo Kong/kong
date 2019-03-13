@@ -882,7 +882,7 @@ function _M.new(connector, schema, errors)
 
   local ttl                           = schema.ttl == true
   local composite_cache_key           = schema.cache_key and #schema.cache_key > 1
-  local max_name_length               = ttl and 3  or 1
+  local max_name_length               = schema.cache_key and 11 or (ttl and 3  or 1)
   local max_type_length               = ttl and 24 or 1
   local fields                        = {}
   local fields_count                  = 0
@@ -949,7 +949,7 @@ function _M.new(connector, schema, errors)
         local name_escaped           = escape_identifier(connector, name)
         local name_expression        = escape_identifier(connector, name, foreign_field)
         local type_postgres          = field_type_to_postgres_type(foreign_field)
-        local is_used_in_primary_key = primary_key_fields[name] ~= nil
+        local is_used_in_primary_key = primary_key_fields[field_name] ~= nil
         local is_unique              = foreign_field.unique == true
         local is_endpoint_key        = schema.endpoint_key == field_name
 
@@ -1471,7 +1471,7 @@ function _M.new(connector, schema, errors)
   end
 
   if composite_cache_key then
-    create_statement = concat { create_statement,
+    create_statement = concat { create_statement, "\n",
       "CREATE INDEX IF NOT EXISTS ", cache_key_index,
       " ON ", table_name_escaped, " (", cache_key_escaped, ");"
     }
