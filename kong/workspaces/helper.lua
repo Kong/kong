@@ -26,13 +26,13 @@ local _M = {}
 function _M.apply_unique_per_ws(table_name, params, constraints)
   -- entity may have workspace_id, workspace_name fields, ex. in case of update
   -- needs to be removed as entity schema doesn't support them
+  if not constraints then
+    return
+  end
+
   if table_name ~= "workspace_entities" then
     params.workspace_id = nil
     params.workspace_name = nil
-  end
-
-  if not constraints then
-    return
   end
 
   local workspace = get_workspaces()[1]
