@@ -381,22 +381,22 @@ return {
     methods = {
       GET  = function(self, db, helpers, parent)
         local args = self.args.uri
-        local opts = endpoints.extract_options(args, schema, "select")
+        local opts = endpoints.extract_options(args, "rbac_roles", "select")
         local size, err = endpoints.get_page_size(args)
         if err then
-          return handle_error(db.rbac_roles.errors:invalid_size(err))
+          return endpoints.handle_error(db.rbac_roles.errors:invalid_size(err))
         end
 
         local data, _, err_t, offset = db.rbac_roles:page(size, args.offset, opts)
         if err_t then
-          return handle_error(err_t)
+          return endpoints.handle_error(err_t)
         end
 
         data = remove_default_roles(data)
 
         local next_page = offset and fmt("/%s?offset=%s",
-          schema.name,
-          escape_uri(offset)) or null
+          "rbac_roles",
+          endpoints.escape_uri(offset)) or ngx.null
 
 
         return kong.response.exit(200, {
