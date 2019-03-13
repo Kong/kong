@@ -2,21 +2,6 @@
 
 local DEFAULT_RESTY_FLAGS="-c 4096"
 
-do
-  local lines = getmetatable(io.output()).lines
-
-  getmetatable(io.output()).lines = function(self, ...)
-    local iter = lines(self, ...)
-
-    return function()
-      local ok, ret = pcall(iter)
-      if ok then
-        return ret
-      end
-    end
-  end
-end
-
 if not os.getenv("KONG_BUSTED_RESPAWNED") then
   -- initial run, so go update the environment
   local script = {}
