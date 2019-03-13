@@ -2,6 +2,7 @@ local arrays        = require "pgmoon.arrays"
 local json          = require "pgmoon.json"
 local cjson         = require "cjson"
 local cjson_safe    = require "cjson.safe"
+local workspaces    = require "kong.workspaces"
 local ws_helper     = require "kong.workspaces.helper"
 
 
@@ -1793,31 +1794,60 @@ function _M.new(connector, schema, errors)
 
   local select_all_statement
   local select_all_filtered_statement
+  local workspaceable = workspaces.get_workspaceable_relations()[table_name]
 
   if ttl then
-    select_all_statement = concat {
-      " SELECT ", select_expressions, "\n",
-      "   FROM ", table_name_escaped, "\n",
-      "  WHERE (", ttl_escaped, " IS NULL OR ", ttl_escaped, " >= CURRENT_TIMESTAMP AT TIME ZONE 'UTC');"
-    }
-    select_all_filtered_statement = concat {
-      " SELECT ", select_expressions, "\n",
-      "   FROM ", table_name_escaped, "\n",
-      "  WHERE (%s) = (%s)\n",
-      "    AND (", ttl_escaped, " IS NULL OR ", ttl_escaped, " >= CURRENT_TIMESTAMP AT TIME ZONE 'UTC');"
-    }
+    if not workspaceable then
+      select_all_statement = concat {
+        " SELECT ", select_expressions, "\n",
+        "   FROM ", table_name_escaped, "\n",
+        "  WHERE (", ttl_escaped, " IS NULL OR ", ttl_escaped, " >= CURRENT_TIMESTAMP AT TIME ZONE 'UTC');"
+      }
+      select_all_filtered_statement = concat {
+        " SELECT ", select_expressions, "\n",
+        "   FROM ", table_name_escaped, "\n",
+        "  WHERE (%s) = (%s)\n",
+        "    AND (", ttl_escaped, " IS NULL OR ", ttl_escaped, " >= CURRENT_TIMESTAMP AT TIME ZONE 'UTC');"
+      }
+    else
+      select_all_statement = concat {
+        " SELECT ", select_expressions, "\n",
+        "   FROM workspace_entities ws_e INNER JOIN ", table_name_escaped, " ", table_name_escaped, "\n",
+        "    ON ( unique_field_name = '", primary_key[1], "' AND ws_e.workspace_id in ( %s ) and ws_e.entity_id = ", table_name_escaped, ".id::varchar )\n",
+        "  WHERE (", ttl_escaped, " IS NULL OR ", ttl_escaped, " >= CURRENT_TIMESTAMP AT TIME ZONE 'UTC');"
+      }
+      select_all_filtered_statement = concat {
+        " SELECT ", select_expressions, "\n",
+        "   FROM workspace_entities ws_e INNER JOIN ", table_name_escaped, " ", table_name_escaped, "\n",
+        "    ON ( unique_field_name = '", primary_key[1], "' AND ws_e.workspace_id in ( %s ) and ws_e.entity_id = ", table_name_escaped, ".id::varchar )\n",
+        "  WHERE (%s) = (%s)", "\n",
+        "    AND (", ttl_escaped, " IS NULL OR ", ttl_escaped, " >= CURRENT_TIMESTAMP AT TIME ZONE 'UTC');"
+      }
+    end
   else
-    select_all_statement = concat {
-      " SELECT ", select_expressions, "\n",
-      "   FROM workspace_entities ws_e INNER JOIN ", table_name_escaped, " ", table_name_escaped,
-      "    ON ( unique_field_name = '", primary_key[1], "' AND ws_e.workspace_id in ( %s ) and ws_e.entity_id = ", table_name_escaped, ".id::varchar )\n",
-    }
-    select_all_filtered_statement = concat {
-      " SELECT ", select_expressions, "\n",
-      "   FROM workspace_entities ws_e INNER JOIN ", table_name_escaped, " ", table_name_escaped,
-      "    ON ( unique_field_name = '", primary_key[1], "' AND ws_e.workspace_id in ( %s ) and ws_e.entity_id = ", table_name_escaped, ".id::varchar )\n",
-      "  WHERE (%s) = (%s);",
-    }
+    if not workspaceable then
+      select_all_statement = concat {
+        " SELECT ", select_expressions, "\n",
+        "   FROM ", table_name_escaped, ";",
+      }
+      select_all_filtered_statement = concat {
+        " SELECT ", select_expressions, "\n",
+        "   FROM ", table_name_escaped, "\n",
+        "  WHERE (%s) = (%s);",
+      }
+    else
+      select_all_statement = concat {
+        " SELECT ", select_expressions, "\n",
+        "   FROM workspace_entities ws_e INNER JOIN ", table_name_escaped, " ", table_name_escaped, "\n",
+        "    ON ( unique_field_name = '", primary_key[1], "' AND ws_e.workspace_id in ( %s ) and ws_e.entity_id = ", table_name_escaped, ".id::varchar );",
+      }
+      select_all_filtered_statement = concat {
+        " SELECT ", select_expressions, "\n",
+        "   FROM workspace_entities ws_e INNER JOIN ", table_name_escaped, " ", table_name_escaped, "\n",
+        "    ON ( unique_field_name = '", primary_key[1], "' AND ws_e.workspace_id in ( %s ) and ws_e.entity_id = ", table_name_escaped, ".id::varchar )\n",
+        "  WHERE (%s) = (%s);",
+      }
+    end
   end
 
   self.statements.select_all = {
@@ -1826,7 +1856,12 @@ function _M.new(connector, schema, errors)
     argc = 0,
     argv = {},
     make = function(argv)
-      return string.format(select_all_statement, argv.workspaces, argv.fields, argv.values)
+      if not workspaceable then
+        return string.format(select_all_statement, argv.fields, argv.values)
+      else
+        return string.format(select_all_statement, argv.workspaces,
+                                                   argv.fields, argv.values)
+      end
     end
   }
 
@@ -1836,7 +1871,13 @@ function _M.new(connector, schema, errors)
     argc = 0,
     argv = {},
     make = function(argv)
-      return string.format(select_all_filtered_statement, argv.workspaces, argv.fields, argv.values)
+      if not workspaceable then
+        return string.format(select_all_filtered_statement, argv.fields, argv.values)
+      else
+        return string.format(select_all_filtered_statement, argv.workspaces,
+                                                            argv.fields,
+                                                            argv.values)
+      end
     end
   }
 

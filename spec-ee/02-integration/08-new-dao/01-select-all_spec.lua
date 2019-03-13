@@ -64,6 +64,26 @@ for _, strategy in helpers.each_strategy() do
           assert.same(1, #rows)
         end)
 
+        it("non-workspaceable entities", function()
+          local ws1 = assert(bp.workspaces:insert({ name = "ws_23" }))
+
+          assert(bp.consumers:insert_ws({ username = "ws1" }, ws1))
+          assert(bp.consumers:insert_ws({ username = "ws2" }, ws1))
+
+          -- workspace_entities is NOT workspace-aware
+          local res, err
+
+          res, err = db.workspace_entities:select_all()
+          assert.is_nil(err)
+          assert.truthy(#res > 0)
+
+          res, err = db.workspace_entities:select_all({
+            workspace_name = "ws_23",
+          })
+          assert.is_nil(err)
+          assert.same(#res, 6)
+        end)
+
         it("filters out other workspaces' entities", function()
           local ws1 = assert(bp.workspaces:insert({ name = "ws_11" }))
           local ws2 = assert(bp.workspaces:insert({ name = "ws_22" }))
