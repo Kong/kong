@@ -78,7 +78,7 @@ for _, strategy in helpers.each_strategy() do
           assert.truthy(#res > 0)
 
           res, err = db.workspace_entities:select_all({
-            workspace_name = "ws_23",
+            workspace_id = ws1.id,
           })
           assert.is_nil(err)
           assert.same(#res, 6)
