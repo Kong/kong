@@ -89,7 +89,6 @@ function DB.new(kong_config, strategy)
 
       -- validate core entities schema via metaschema
       local ok, err_t = MetaSchema:validate(entity_schema)
-
       if not ok then
         return nil, fmt("schema of entity '%s' is invalid: %s", entity_name,
                         tostring(errors:schema_violation(err_t)))

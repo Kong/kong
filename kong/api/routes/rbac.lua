@@ -118,24 +118,6 @@ local function post_process_role(role)
 end
 
 
--- luacheck: ignore
-local function post_process_user(user)
-  local map, err = rbac.get_consumer_user_map(user.id)
-
-  if err then
-    return kong.response.exit(500,
-        "error finding map for rbac_user: ", user.id)
-  end
-
-  -- don't include user associated to a consumer
-  if map then
-    return nil
-  end
-
-  return user
-end
-
-
 local function remove_default_roles(roles)
   return tablex.map(post_process_role,
     tablex.filter(roles,
@@ -196,10 +178,8 @@ return {
         local res = {}
         for _, v in ipairs(data) do
           -- XXX EE: Workaround while rbac user type
-          if v.type == enums.CONSUMERS.TYPE.DEVELOPER or
-             v.type == enums.CONSUMERS.TYPE.ADMIN then
-            _ = _
-          else
+          if v.type ~= enums.CONSUMERS.TYPE.DEVELOPER and
+             v.type ~= enums.CONSUMERS.TYPE.ADMIN then
             table.insert(res, v)
           end
         end
