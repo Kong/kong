@@ -312,7 +312,7 @@ local function serialize_arg(field, arg)
     local t = {}
 
     for k, v in pairs(arg) do
-      t[k] = serialize_arg(field.elements, arg[k])
+      t[k] = serialize_arg(field.values, arg[k])
     end
 
     serialized_arg = cassandra.map(t)

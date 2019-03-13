@@ -204,10 +204,8 @@ local function sort_plugins_for_execution(kong_conf, db, plugin_list)
   -- add reports plugin if not disabled
   if kong_conf.anonymous_reports then
     local reports = require "kong.reports"
-
-    reports.add_ping_value("database", kong_conf.database)
+    reports.configure_ping(kong_conf)
     reports.add_ping_value("database_version", db.infos.db_ver)
-
     reports.toggle(true)
 
     plugin_list[#plugin_list+1] = {
