@@ -404,7 +404,7 @@ return {
           return
         end
 
-        local workspaces, err = db.workspaces:select_all({
+        local workspaces, err = db.workspace_entities:select_all({
           entity_id = data.entity[data.schema.primary_key[1]],
         }, {skip_rbac = true})
         if err then
