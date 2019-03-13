@@ -399,7 +399,6 @@ return {
   ["/rbac/roles"] = {
     schema = rbac_roles.schema,
     methods = {
-      -- XXX EE fix the names of the indices of the db[xyz.schema.name]
       GET  = function(self, db, helpers, parent)
         local args = self.args.uri
         local opts = endpoints.extract_options(args, schema, "select")
@@ -425,8 +424,6 @@ return {
           offset = offset,
           next   = next_page,
         })
-
-        -- return endpoints.get_collection_endpoint(rbac_roles.schema)(self, db, helpers, parent)
       end,
       POST = endpoints.post_collection_endpoint(rbac_roles.schema),
     }
