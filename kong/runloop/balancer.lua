@@ -517,10 +517,7 @@ do
   end
 
   get_all_upstreams_as_list = function()
-    local workspaces = require "kong.workspaces"
-
-    -- XXX compat_find_all will go away with workspaces remodel
-    local workspaces, err = workspaces.compat_find_all("workspaces")
+    local workspaces, err = singletons.db.workspaces:select_all()
     if err then
       return nil, err
     end

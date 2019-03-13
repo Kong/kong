@@ -1,11 +1,10 @@
 local cassandra = require "cassandra"
-local dao_wrappers = require "kong.workspaces.dao_wrappers"
 local enums = require "kong.enterprise_edition.dao.enums"
+local singletons = require "kong.singletons"
 
 
 local format  = string.format
 local ipairs = ipairs
-local compat_find_all = dao_wrappers.compat_find_all
 
 
 local _M = {}
@@ -14,7 +13,7 @@ local _M = {}
 -- Entity count management
 
 function _M.counts(workspace_id)
-  local counts, err = compat_find_all("workspace_entity_counters", {
+  local counts, err = singletons.db.workspace_entity_counters:select_all({
     workspace_id = workspace_id
   })
   if err then

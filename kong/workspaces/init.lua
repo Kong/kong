@@ -281,11 +281,9 @@ function _M.delete_entity_relation(table_name, entity)
     return
   end
 
-  -- XXX compat_find_all will go away with workspaces remodel
-  local res, err = compat_find_all("workspace_entities", {
+  local res, err = db.workspace_entities:select_all({
     entity_id = entity[constraints.primary_key],
-    __skip_rbac = true
-  })
+  }, {skip_rbac = true})
   if err then
     return err
   end
@@ -321,8 +319,7 @@ function _M.update_entity_relation(table_name, entity)
   local constraints = workspaceable_relations[table_name]
   if constraints and constraints.unique_keys then
     for k, _ in pairs(constraints.unique_keys) do
-      -- XXX compat_find_all will go away with workspaces remodel
-      local res, err = compat_find_all("workspace_entities", {
+      local res, err = singletons.db.workspace_entities:select_all({
         entity_id = entity[constraints.primary_key],
         unique_field_name = k,
       })
@@ -351,8 +348,7 @@ end
 
 
 local function find_entity_by_unique_field(params)
-  -- XXX compat_find_all will go away with workspaces remodel
-  local rows, err = compat_find_all("workspace_entities", params)
+  local rows, err = singletons.db.workspace_entities:select_all(params)
   if err then
     return nil, err
   end
@@ -363,8 +359,7 @@ end
 _M.find_entity_by_unique_field = find_entity_by_unique_field
 
 local function find_workspaces_by_entity(params)
-  -- XXX compat_find_all will go away with workspaces remodel
-  local rows, err = compat_find_all("workspace_entities", params)
+  local rows, err = singletons.db.workspace_entities:select_all(params)
   if err then
     return nil, err
   end
@@ -384,8 +379,7 @@ _M.match_route = match_route
 local function entity_workspace_ids(entity)
   local old_wss = ngx.ctx.workspaces
   ngx.ctx.workspaces = nil
-  -- XXX compat_find_all will go away with workspaces remodel
-  local ws_rels = compat_find_all("workspace_entities", {entity_id = entity.id})
+  local ws_rels = singletons.db.workspace_entities:select_all({entity_id = entity.id})
   ngx.ctx.workspaces = old_wss
   return map(function(x) return x.workspace_id end, ws_rels)
 end
@@ -577,8 +571,7 @@ local function load_workspace_scope(ctx, route)
   local old_wss = ctx.workspaces
   ctx.workspaces = {}
 
-  -- XXX compat_find_all will go away with workspaces remodel
-  local rows, err = compat_find_all("workspace_entities", {
+  local rows, err = singletons.db.workspace_entities:select_all({
     entity_id  = route.id,
     unique_field_name = "id",
     unique_field_value = route.id,
@@ -611,8 +604,7 @@ local function load_user_workspace_scope(ctx, name)
   local old_wss = ctx.workspaces
 
   ctx.workspaces = {}
-  -- XXX compat_find_all will go away with workspaces remodel
-  local rows, err = compat_find_all("workspace_entities", {
+  local rows, err = singletons.db.workspace_entities:select_all({
     entity_type  = "rbac_users",
     unique_field_name = "name",
     unique_field_value = name,
@@ -637,8 +629,7 @@ end
 -- given an entity ID, look up its entity collection name;
 -- it is only called if the user does not pass in an entity_type
 function _M.resolve_entity_type(entity_id)
-  -- XXX compat_find_all will go away with workspaces remodel
-  local rows, err = compat_find_all("workspace_entities", {
+  local rows, err = singletons.db.workspace_entities:select_all({
       entity_id = entity_id
   })
   if err then
@@ -694,8 +685,7 @@ local function load_entity_map(ws_scope, table_name)
   for _, ws in ipairs(ws_scope) do
     local primary_key = workspaceable[table_name].primary_key
 
-    -- XXX compat_find_all will go away with workspaces remodel
-    local ws_entities, err = compat_find_all("workspace_entities", {
+    local ws_entities, err = singletons.db.workspace_entities:select_all({
       workspace_id = ws.id,
       entity_type = table_name,
       unique_field_name = primary_key,
