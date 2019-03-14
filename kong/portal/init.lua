@@ -7,6 +7,8 @@ local workspaces   = require "kong.workspaces"
 local ee_api       = require "kong.enterprise_edition.api_helpers"
 local ws_helper    = require "kong.workspaces.helper"
 
+local log = ngx.log
+local ERR = ngx.ERR
 
 local fmt = string.format
 local _M = {}
@@ -16,6 +18,7 @@ _M.app = lapis.Application()
 
 
 _M.app:before_filter(function(self)
+  local invoke_plugin = singletons.invoke_plugin
   local ctx = ngx.ctx
 
   -- in case of endpoint with missing `/`, this block is executed twice.
@@ -31,8 +34,9 @@ _M.app:before_filter(function(self)
     ngx.log(ngx.ERR, err)
     return responses.send_HTTP_INTERNAL_SERVER_ERROR()
   end
+
   if not workspace then
-    responses.send_HTTP_NOT_FOUND(fmt("Workspace '%s' not found", ws_name))
+    return responses.send_HTTP_NOT_FOUND(fmt("Workspace '%s' not found", ws_name))
   end
 
   -- save workspace name in the context; if not passed, default workspace is
@@ -42,15 +46,22 @@ _M.app:before_filter(function(self)
 
   local cors_conf = {
     origins = ws_helper.build_ws_portal_cors_origins(workspace),
-    methods = { "GET", "PATCH", "DELETE", "POST" },
+    methods = { "GET", "PUT", "PATCH", "DELETE", "POST" },
     credentials = true,
   }
 
-  local prepared_plugin = ee_api.prepare_plugin(ee_api.apis.PORTAL,
-                                                singletons.dao,
-                                                "cors", cors_conf)
-  ee_api.apply_plugin(prepared_plugin, "access")
-  ee_api.apply_plugin(prepared_plugin, "header_filter")
+  local ok, err = invoke_plugin({
+    name = "cors",
+    config = cors_conf,
+    phases = { "access", "header_filter"},
+    api_type = ee_api.apis.PORTAL,
+    db = singletons.dao.db.new_db,
+  })
+
+  if not ok then
+    log(ERR, err)
+    return responses.send_HTTP_INTERNAL_SERVER_ERROR()
+  end
 
   api_helpers.filter_body_content_type(self)
 end)

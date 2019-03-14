@@ -88,6 +88,7 @@ local vitals = require "kong.vitals"
 local ee = require "kong.enterprise_edition"
 local portal_emails = require "kong.portal.emails"
 local admin_emails = require "kong.enterprise_edition.admin.emails"
+local invoke_plugin = require "kong.enterprise_edition.invoke_plugin"
 
 local kong             = kong
 local ngx              = ngx
@@ -395,6 +396,12 @@ function Kong.init()
   -- Load plugins as late as possible so that everything is set up
   loaded_plugins = assert(db.plugins:load_plugin_schemas(config.loaded_plugins))
   sort_plugins_for_execution(config, db, loaded_plugins)
+
+
+  singletons.invoke_plugin = invoke_plugin.new {
+    loaded_plugins = loaded_plugins,
+    kong_global = kong_global,
+  }
 
   local err
   plugins_map_semaphore, err = semaphore.new()

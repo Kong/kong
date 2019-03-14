@@ -164,6 +164,8 @@ end
 
 app:before_filter(function(self)
   local req_id = utils.random_string()
+  local invoke_plugin = singletons.invoke_plugin
+
   ngx.ctx.admin_api = {
     req_id = req_id,
   }
@@ -194,16 +196,25 @@ app:before_filter(function(self)
     ngx.ctx.workspaces = { workspace }
     self.params.workspace_name = nil
 
+    local origin = singletons.configuration.admin_gui_url or "*"
+
     local cors_conf = {
-      origins = singletons.configuration.admin_gui_url or "*",
+      origins = { origin },
       methods = { "GET", "PUT", "PATCH", "DELETE", "POST" },
       credentials = true,
     }
-    local prepared_plugin = ee_api.prepare_plugin(ee_api.apis.ADMIN,
-                                                  singletons.dao,
-                                                  "cors", cors_conf)
-    ee_api.apply_plugin(prepared_plugin, "access")
-    ee_api.apply_plugin(prepared_plugin, "header_filter")
+
+    local ok, err = invoke_plugin({
+      name = "cors",
+      config = cors_conf,
+      phases = { "access", "header_filter" },
+      api_type = ee_api.apis.ADMIN,
+      db = singletons.db,
+    })
+
+    if not ok then
+      return api_helpers.yield_error(err)
+    end
 
     local rbac_auth_header = singletons.configuration.rbac_auth_header
     local rbac_token = ngx.req.get_headers()[rbac_auth_header]

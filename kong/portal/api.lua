@@ -98,12 +98,12 @@ return {
     end,
 
     GET = function(self, dao_factory, helpers)
-      auth.login(self, dao_factory, helpers)
+      auth.login(self, dao_factory.db.new_db, helpers)
       return helpers.responses.send_HTTP_OK()
     end,
 
     DELETE = function(self, dao_factory, helpers)
-      auth.authenticate_api_session(self, dao_factory, helpers)
+      auth.authenticate_api_session(self, dao_factory.db.new_db, helpers)
       return helpers.responses.send_HTTP_OK()
     end,
   },
@@ -118,7 +118,7 @@ return {
 
       -- If auth is enabled, we need to validate consumer/developer
       if portal_auth_enabled(portal_auth) then
-        auth.authenticate_api_session(self, dao_factory, helpers)
+        auth.authenticate_api_session(self, dao_factory.db.new_db, helpers)
       end
     end,
 
@@ -225,7 +225,7 @@ return {
         })
       end
 
-      auth.validate_auth_plugin(self, dao_factory, helpers)
+      auth.validate_auth_plugin(self, dao_factory.db.new_db, helpers)
       local credential_data
 
       if self.plugin.name == "basic-auth" then
@@ -281,7 +281,7 @@ return {
   ["/validate-reset"] = {
     before = function(self, dao_factory, helpers)
       check_portal_status(helpers)
-      auth.validate_auth_plugin(self, dao_factory, helpers)
+      auth.validate_auth_plugin(self, dao_factory.db.new_db, helpers)
       ee_api.validate_jwt(self, dao_factory, helpers)
     end,
 
@@ -293,7 +293,7 @@ return {
   ["/reset-password"] = {
     before = function(self, dao_factory, helpers)
       check_portal_status(helpers)
-      auth.validate_auth_plugin(self, dao_factory, helpers)
+      auth.validate_auth_plugin(self, dao_factory.db.new_db, helpers)
       ee_api.validate_jwt(self, dao_factory, helpers)
     end,
 
@@ -364,7 +364,7 @@ return {
   ["/forgot-password"] = {
     before = function(self, dao_factory, helpers)
       check_portal_status(helpers)
-      auth.validate_auth_plugin(self, dao_factory, helpers)
+      auth.validate_auth_plugin(self, dao_factory.db.new_db, helpers)
       ee_api.validate_email(self, dao_factory, helpers)
     end,
 

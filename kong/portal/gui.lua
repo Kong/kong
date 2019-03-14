@@ -1,8 +1,8 @@
 local lapis = require "lapis"
 local pl_file = require "pl.file"
-local auth    = require "kong.portal.auth"
+-- local auth    = require "kong.portal.auth"
 local singletons  = require "kong.singletons"
-local responses   = require "kong.tools.responses"
+-- local responses   = require "kong.tools.responses"
 local gui_helpers = require "kong.portal.gui_helpers"
 local EtluaWidget = require("lapis.etlua").EtluaWidget
 
@@ -32,7 +32,8 @@ app:match("/:workspace_name(/*)", function(self)
   ngx.ctx.workspaces = self.workspaces
   self.workspaces = nil
 
-  auth.authenticate_gui_session(self, singletons.dao, { responses = responses })
+  -- XXX
+  -- auth.authenticate_gui_session(self, singletons.db, { responses = responses })
   gui_helpers.prepare_index(self)
 end)
 
@@ -45,7 +46,7 @@ app:match("/", function(self)
   ngx.ctx.workspaces = self.workspaces
   self.workspaces = nil
 
-  auth.authenticate_gui_session(self, singletons.dao, { responses = responses })
+  -- auth.authenticate_gui_session(self, singletons.db, { responses = responses })
   gui_helpers.prepare_index(self)
 end)
 

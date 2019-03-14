@@ -4,13 +4,13 @@ local api_helpers = require "lapis.application"
 local enums       = require "kong.enterprise_edition.dao.enums"
 local responses   = require "kong.tools.responses"
 local rbac        = require "kong.rbac"
-local utils       = require "kong.tools.utils"
 local workspaces  = require "kong.workspaces"
 local ee_utils    = require "kong.enterprise_edition.utils"
 local ee_jwt      = require "kong.enterprise_edition.jwt"
 
 local log = ngx.log
 local ERR = ngx.ERR
+local DEBUG = ngx.DEBUG
 
 local _M = {}
 
@@ -22,22 +22,6 @@ _M.apis = {
   ADMIN   = "admin",
   PORTAL  = "portal"
 }
-
-
-_M.services = {
-  [_M.apis.PORTAL] = {
-    id = "00000000-0000-0000-0000-000000000000",
-    plugins = {},
-  },
-  [_M.apis.ADMIN]  = {
-    id = "00000000-0000-0000-0000-000000000001",
-    plugins = {},
-  },
-}
-
--- cache of admin plugin configurations
-local admin_plugin_models = {}
-
 
 local auth_whitelisted_uris = {
   ["/admins/register"] = true,
@@ -59,95 +43,12 @@ function _M.get_consumer_status(consumer)
 end
 
 
-function _M.prepare_plugin(type, dao, name, config)
-  -- XXX skip - needs review/port, ignoring for now
-  -- luacheck: ignore
-  do
-    return true
-  end
-
-  local plugin, err = _M.find_plugin(type, name)
-  if err then
-    return api_helpers.yield_error(err)
-  end
-
-  local fields = {
-    name = plugin.name,
-    service_id = _M.services[type].id,
-    config = utils.deep_copy(config or {})
-  }
-
-  local model
-
-  if type == _M.apis.ADMIN then
-    model = admin_plugin_models[plugin.name]
-  end
-
-  if not model then
-    -- convert plugin configuration over to model to obtain defaults
-    model = dao.plugins.model_mt(fields)
-
-    -- only cache valid models
-    local ok, err = model:validate({dao = dao.plugins})
-    if not ok then
-      -- this config is invalid -- throw errors until the user fixes it
-      return api_helpers.yield_error(err)
-    end
-
-    if type == _M.apis.ADMIN then
-      admin_plugin_models[plugin.name] = model
-    end
-  end
-
-  return {
-    handler = plugin.handler,
-    config = model.config,
-  }
-end
-
-
-function _M.apply_plugin(plugin, phase)
-  -- XXX skip - needs review/port, ignoring for now
-  -- luacheck: ignore
-  do
-    return true
-  end
-
-  local err = coroutine.wrap(plugin.handler[phase])(plugin.handler, plugin.config)
-  if err then
-    return api_helpers.yield_error(err)
-  end
-end
-
-
-function _M.find_plugin(type, name)
-  -- XXX skip - needs review/port, ignoring for now
-  -- luacheck: ignore
-  do
-    return true
-  end
-
-  if _M.services[type].plugins[name] then
-    return _M.services[type].plugins[name]
-  end
-
-  for _, plugin in ipairs(singletons.loaded_plugins) do
-    if plugin.name == name then
-      _M.services[type].plugins[name] = plugin
-      return plugin
-    end
-  end
-
-  return nil, "plugin not found"
-end
-
-
 function _M.retrieve_consumer(consumer_id)
   local consumers, err = singletons.dao.consumers:find_all({
     id = consumer_id
   })
   if err then
-    ngx.log(ngx.ERR, "error in retrieving consumer:" .. consumer_id, err)
+    log(ERR, "error in retrieving consumer:" .. consumer_id, err)
     return nil, err
   end
 
@@ -170,6 +71,7 @@ function _M.authenticate(self, dao_factory, rbac_enabled, gui_auth)
   end
 
   local ctx = ngx.ctx
+  local invoke_plugin = singletons.invoke_plugin
 
   -- no authentication required? nothing to do here.
   if not gui_auth and not rbac_enabled then
@@ -206,7 +108,7 @@ function _M.authenticate(self, dao_factory, rbac_enabled, gui_auth)
   for _, nm in ipairs({ user_name, "user-" .. user_name }) do
     rbac_user, err = rbac.get_user(nm, "name")
     if err then
-      ngx.log(ngx.ERR, _log_prefix, err)
+      log(ERR, _log_prefix, err)
       return responses.send_HTTP_INTERNAL_SERVER_ERROR()
     end
 
@@ -216,7 +118,7 @@ function _M.authenticate(self, dao_factory, rbac_enabled, gui_auth)
   end
 
   if not rbac_user then
-    ngx.log(ngx.DEBUG, _log_prefix, "no rbac_user found for name: ", user_name)
+    log(DEBUG, _log_prefix, "no rbac_user found for name: ", user_name)
     return responses.send_HTTP_UNAUTHORIZED()
   end
 
@@ -228,30 +130,54 @@ function _M.authenticate(self, dao_factory, rbac_enabled, gui_auth)
 
   -- run the session plugin access to see if we have a current session
   -- with a valid authenticated consumer.
-  local prepared_plugin_session = _M.prepare_plugin(_M.apis.ADMIN, dao_factory,
-                                                    "session", session_conf)
+  local ok, err = invoke_plugin({
+    name = "session",
+    config = session_conf,
+    phases = { "access" },
+    api_type = _M.apis.ADMIN,
+    db = dao_factory.db.new_db,
+  })
 
-  _M.apply_plugin(prepared_plugin_session, "access")
+  if not ok then
+    return api_helpers.yield_error(err)
+  end
 
   -- if we don't have a valid session, run the gui authentication plugin
   if not ngx.ctx.authenticated_consumer then
-    local prepared_plugin = _M.prepare_plugin(_M.apis.ADMIN, dao_factory,
-                                              gui_auth, auth_conf)
+    local ok, err = invoke_plugin({
+      name = gui_auth,
+      config = auth_conf,
+      phases = { "access" },
+      api_type = _M.apis.ADMIN,
+      db = dao_factory.db.new_db,
+    })
 
-    _M.apply_plugin(prepared_plugin, "access")
+    if not ok then
+      return api_helpers.yield_error(err)
+    end
   end
 
-  _M.apply_plugin(prepared_plugin_session, "header_filter")
+  local ok, err = invoke_plugin({
+    name = "session",
+    config = session_conf,
+    phases = { "header_filter" },
+    api_type = _M.apis.ADMIN,
+    db = dao_factory.db.new_db,
+  })
+
+  if not ok then
+    return api_helpers.yield_error(err)
+  end
 
   -- Plugin ran but consumer was not created on context
   if not ctx.authenticated_consumer then
-    ngx.log(ngx.ERR, _log_prefix, "no consumer mapped from plugin", gui_auth)
+    log(ERR, _log_prefix, "no consumer mapped from plugin", gui_auth)
 
     return responses.send_HTTP_UNAUTHORIZED()
   end
 
   if self.consumer and ctx.authenticated_consumer.id ~= self.consumer.id then
-    ngx.log(ngx.ERR, _log_prefix, "no rbac user mapped with these credentials")
+    log(ERR, _log_prefix, "no rbac user mapped with these credentials")
 
     return responses.send_HTTP_UNAUTHORIZED()
   end
@@ -259,7 +185,7 @@ function _M.authenticate(self, dao_factory, rbac_enabled, gui_auth)
   self.consumer = ctx.authenticated_consumer
 
   if self.consumer.type ~= enums.CONSUMERS.TYPE.ADMIN then
-    ngx.log(ngx.ERR, _log_prefix, "consumer ", self.consumer.id, " is not an admin")
+    log(ERR, _log_prefix, "consumer ", self.consumer.id, " is not an admin")
     return responses.send_HTTP_UNAUTHORIZED()
   end
 
@@ -270,7 +196,7 @@ function _M.authenticate(self, dao_factory, rbac_enabled, gui_auth)
       { id = self.consumer.id })
 
     if err then
-      ngx.log(ngx.ERR, _log_prefix, "failed to approve consumer: ",
+      log(ERR, _log_prefix, "failed to approve consumer: ",
               self.consumer.id, ". err: ", err)
 
       return responses.send_HTTP_INTERNAL_SERVER_ERROR()
@@ -297,7 +223,7 @@ function _M.attach_consumer_and_workspaces(self, dao_factory, rbac_user_id)
   end
 
   if not consumer_user then
-    ngx.log(ngx.DEBUG, _log_prefix, "no consumer mapping for rbac_user: ",
+    log(DEBUG, _log_prefix, "no consumer mapping for rbac_user: ",
             rbac_user_id)
     return responses.send_HTTP_UNAUTHORIZED()
   end
@@ -341,13 +267,13 @@ function _M.attach_workspaces(self, dao_factory, consumer_id)
   self.workspace_entities = workspace_entities
 
   if err then
-    ngx.log(ngx.ERR, _log_prefix, "Error fetching workspaces for consumer: ",
+    log(ERR, _log_prefix, "Error fetching workspaces for consumer: ",
             consumer_id, ": ", err)
     return responses.send_HTTP_INTERNAL_SERVER_ERROR()
   end
 
   if not next(workspace_entities) then
-    ngx.log(ngx.DEBUG, "no workspace found for consumer:" .. consumer_id)
+    log(DEBUG, "no workspace found for consumer:" .. consumer_id)
     return responses.send_HTTP_INTERNAL_SERVER_ERROR()
   end
 

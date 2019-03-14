@@ -276,6 +276,41 @@ local function validate_vitals_tsdb(conf, errors)
 end
 
 
+local function add_ee_required_plugins(conf)
+  local seen_plugins = {}
+  for _, plugin in ipairs(conf.plugins) do
+    -- If using bundled plugins, we can eject early
+    if plugin == "bundled" then
+      return
+    end
+
+    seen_plugins[plugin] = true
+  end
+
+  -- XXX this will need Session as soon as its converted to new dao
+  -- Required by both admin api and portal
+  local required_plugins = { "cors" }
+
+  -- Required for manager
+  if conf.admin_gui_auth and conf.admin_gui_auth ~= "" then
+    required_plugins[#required_plugins + 1] = conf.admin_gui_auth
+  end
+
+  -- Required for portal - all options are needed so that workspace portals
+  -- can select them independently from the default conf value
+  if conf.portal then
+    required_plugins[#required_plugins + 1] = "basic-auth"
+    required_plugins[#required_plugins + 1] = "key-auth"
+  end
+
+  for _, required_plugin in ipairs(required_plugins) do
+    if not seen_plugins[required_plugin] then
+      conf.plugins[#conf.plugins+1] = required_plugin
+    end
+  end
+end
+
+
 local function validate(conf, errors)
   validate_admin_gui_authentication(conf, errors)
   validate_admin_gui_ssl(conf, errors)
@@ -303,6 +338,7 @@ local function validate(conf, errors)
   end
 
   validate_vitals_tsdb(conf, errors)
+  add_ee_required_plugins(conf)
 end
 
 
