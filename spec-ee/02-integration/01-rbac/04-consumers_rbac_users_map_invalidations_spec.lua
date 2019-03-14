@@ -14,6 +14,7 @@ end
 for _, strategy in helpers.each_strategy() do
   describe("#flaky consumers_rbac_users_mapping invalidations #" .. strategy, function()
     local bp
+    local db
     local dao
 
     local admin_client
@@ -23,18 +24,18 @@ for _, strategy in helpers.each_strategy() do
     local headers = {}
 
     setup(function()
-      bp, _, dao = helpers.get_db_utils(strategy)
+      bp, db, dao = helpers.get_db_utils(strategy)
 
       consumer = assert(bp.consumers:insert {
         username = "hawk",
         type = enums.CONSUMERS.TYPE.ADMIN,
-        status = enums.CONSUMERS.STATUS.APPROVED,
+        -- status = enums.CONSUMERS.STATUS.APPROVED,
       })
 
-      assert(dao.basicauth_credentials:insert {
+      assert(bp.basicauth_credentials:insert {
         username    = "hawk",
         password    = "kong",
-        consumer_id = consumer.id,
+        consumer =  { id = consumer.id },
       })
       headers["Authorization"] = "Basic " .. ngx.encode_base64("hawk:kong")
 
@@ -45,24 +46,24 @@ for _, strategy in helpers.each_strategy() do
       })
       headers["Kong-Admin-User"] = user.name
 
-      assert(dao.consumers_rbac_users_map:insert {
+      assert(db.consumers_rbac_users_map:insert {
         consumer_id = consumer.id,
         user_id = user.id,
       })
 
       -- make hawk super
       local _, super_role = ee_helpers.register_rbac_resources(dao)
-      assert(dao.rbac_user_roles:insert({
+      assert(db.rbac_user_roles:insert({
         user_id = user.id,
         role_id = super_role.role_id,
       }))
 
-      superuser = assert(dao.rbac_users:insert {
+      superuser = assert(db.rbac_users:insert {
         name = "dale",
         user_token = "coop",
         enabled = true,
       })
-      assert(dao.rbac_user_roles:insert({
+      assert(db.rbac_user_roles:insert({
         user_id = superuser.id,
         role_id = super_role.role_id,
       }))

@@ -288,7 +288,10 @@ return {
         id uuid    PRIMARY KEY,
         created_at timestamp,
         username   text,
-        custom_id  text
+        custom_id  text,
+        email      text, -- XXX EE
+        enabled    boolean, -- XXX EE
+        is_default boolean -- XXX EE
       );
       CREATE INDEX IF NOT EXISTS consumers_username_idx ON consumers(username);
       CREATE INDEX IF NOT EXISTS consumers_custom_id_idx ON consumers(custom_id);

@@ -30,9 +30,9 @@ for _, strategy in helpers.each_strategy() do
     describe("/consumers/:consumer/acls/", function()
       lazy_setup(function()
         db:truncate()
-        consumer = bp.consumers:insert {
+        consumer = bp.consumers:insert({
           username = "bob"
-        }
+        }, { nulls = true })
       end)
       before_each(function()
         db:truncate("acls")

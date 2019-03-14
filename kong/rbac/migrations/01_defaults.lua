@@ -7,13 +7,10 @@ return {
       local role, ok, err
 
 
-      role, err = dao.rbac_roles:find_all({
-        name = "read-only"
-      })
+      role, err = dao.rbac_roles:select_by_name("read-only")
       if err then
         return err
       end
-      role = role[1]
       if not role then
         -- create read only role
         role, err = dao.rbac_roles:insert({
@@ -37,11 +34,10 @@ return {
         return err
       end
 
-      role, err = dao.rbac_roles:find_all({name = "admin"})
+      role, err = dao.rbac_roles:select_by_name("admin")
       if err then
         return err
       end
-      role = role[1]
       if not role then
         -- create admin role
         role, err = dao.rbac_roles:insert({
@@ -95,11 +91,10 @@ return {
         end
       end
 
-      role, err = dao.rbac_roles:find_all({name = "super-admin"})
+      role, err = dao.rbac_roles:select_by_name("superadmin")
       if err then
         return err
       end
-      role = role[1]
       if not role then
         -- create super admin role
         role, err = dao.rbac_roles:insert({

@@ -3,12 +3,12 @@ local utils     = require "kong.tools.utils"
 local rbac      = require "kong.rbac"
 local bit       = require "bit"
 local cjson     = require "cjson"
-local responses = require "kong.tools.responses"
 local new_tab   = require "table.new"
 local singletons = require "kong.singletons"
 local tablex     = require "pl.tablex"
 local api_helpers = require "kong.enterprise_edition.api_helpers"
 local workspaces = require "kong.workspaces"
+local enums       = require "kong.enterprise_edition.dao.enums"
 
 
 local band  = bit.band
@@ -16,8 +16,10 @@ local bxor  = bit.bxor
 local fmt   = string.format
 
 
-local entity_relationships = rbac.entity_relationships
-
+local rbac_users = kong.db.rbac_users
+local consumers = kong.db.consumers
+local rbac_roles = kong.db.rbac_roles
+local endpoints   = require "kong.api.endpoints"
 
 local function rbac_operation_allowed(kong_conf, rbac_ctx, current_ws, dest_ws)
   if kong_conf.rbac == "off" then
@@ -37,25 +39,23 @@ local function rbac_operation_allowed(kong_conf, rbac_ctx, current_ws, dest_ws)
 end
 
 
-local function objects_from_names(dao_factory, given_names, object_name)
+local function objects_from_names(db, given_names, object_name)
   local names      = utils.split(given_names, ",")
   local objs       = new_tab(#names, 0)
   local object_dao = fmt("rbac_%ss", object_name)
 
   for i = 1, #names do
-    local object, err = dao_factory[object_dao]:find_all({
-      name = names[i],
-    })
+    local object, err = db[object_dao]:select_by_name(names[i])
     if err then
       return nil, err
     end
 
-    if not object[1] then
+    if not object then
       return nil, fmt("%s not found with name '%s'", object_name, names[i])
     end
 
     -- track the whole object so we have the id for the mapping later
-    objs[i] = object[1]
+    objs[i] = object
   end
 
   return objs
@@ -81,7 +81,7 @@ local function action_bitfield(self)
       end
 
       if not rbac.actions_bitfields[action] then
-        return responses.send_HTTP_BAD_REQUEST("Undefined RBAC action " ..
+        return kong.response.exit(400, "Undefined RBAC action " ..
                                                action_names[i])
       end
 
@@ -118,309 +118,378 @@ local function post_process_role(role)
 end
 
 
-local function post_process_user(user)
-  local map, err = rbac.get_consumer_user_map(user.id)
-
-  if err then
-    return responses.send_HTTP_INTERNAL_SERVER_ERROR(
-        "error finding map for rbac_user: ", user.id)
-  end
-
-  -- don't include user associated to a consumer
-  if map then
-    return nil
-  end
-
-  return user
+local function remove_default_roles(roles)
+  return tablex.map(post_process_role,
+    tablex.filter(roles,
+      function(role)
+        return not role.is_default
+  end))
 end
 
 
+local function find_current_user(self, db, helpers)
+  local rbac_user, _, err_t = endpoints.select_entity(self, db, rbac_users.schema)
+  if err_t then
+    return endpoints.handle_error(err_t)
+  end
+  if not rbac_user then
+    return kong.response.exit(404, { message = "No RBAC user by name or id " .. self.params.rbac_users})
+  end
+  self.rbac_user = rbac_user
+end
+
+local function find_current_role(self, db, helpers)
+  local rbac_role, _, err_t = endpoints.select_entity(self, db, rbac_roles.schema)
+  if err_t then
+    return endpoints.handle_error(err_t)
+  end
+  if not rbac_role then
+    return kong.response.exit(404, { message = "Not found" })
+  end
+
+  self.rbac_role = rbac_role
+  self.params.role_id = self.rbac_role.id
+end
+
+
+
 return {
-  ["/rbac/users/"] = {
-    GET = function(self, dao_factory)
-      crud.paginated_set(self, dao_factory.rbac_users, post_process_user)
-    end,
-
-    POST = function(self, dao_factory, helpers)
-      crud.post(self.params, dao_factory.rbac_users)
-    end,
-
-    PUT = function(self, dao_factory)
-      crud.put(self.params, dao_factory.rbac_users)
-    end,
-  },
-
-  ["/rbac/users/:name_or_id"] = {
-    before = function(self, dao_factory, helpers)
-      crud.find_rbac_user_by_name_or_id(self, dao_factory, helpers)
-    end,
-
-    GET = function(self, dao_factory, helpers)
-      return helpers.responses.send_HTTP_OK(self.rbac_user)
-    end,
-
-    PATCH = function(self, dao_factory, helpers)
-      crud.patch(self.params, dao_factory.rbac_users, self.rbac_user)
-    end,
-
-    DELETE = function(self, dao_factory, helpers)
-      -- delete the user <-> role mappings
-      -- we have to get our row, then delete it
-      local roles, err = entity_relationships(dao_factory, self.rbac_user,
-                                              "user", "role")
-      if err then
-        return helpers.yield_error(err)
-      end
-
-      local default_role
-
-      for i = 1, #roles do
-        dao_factory.rbac_user_roles:delete({
-          user_id = self.rbac_user.id,
-          role_id = roles[i].id,
-        })
-
-        if roles[i].name == self.rbac_user.name then
-          default_role = roles[i]
-        end
-      end
-
-      if default_role then
-        local _, err = rbac.remove_user_from_default_role(self.rbac_user,
-                                                          default_role)
+  ["/rbac/users"] = {
+    schema = rbac_users.schema,
+    methods = {
+      GET  =  function(self, db, helpers)
+        local args = self.args.uri
+        local opts = endpoints.extract_options(args, "rbac_users", "select")
+        local size, err = endpoints.get_page_size(args)
         if err then
-          helpers.yield_error(err)
+          return endpoints.handle_error(db.rbac_users.errors:invalid_size(err))
         end
-      end
 
-      crud.delete(self.rbac_user, dao_factory.rbac_users)
-    end,
-  },
-
-  ["/rbac/users/:name_or_id/permissions"] = {
-    before = function(self, dao_factory, helpers)
-      crud.find_rbac_user_by_name_or_id(self, dao_factory, helpers)
-    end,
-
-    GET = function(self, dao_factory, helpers)
-      local roles, err = rbac.entity_relationships(dao_factory, self.rbac_user,
-                                                   "user", "role")
-      if err then
-        ngx.log(ngx.ERR, "[rbac] ", err)
-        return helpers.responses.send_HTTP_INTERNAL_SERVER_ERROR()
-      end
-
-      local map = {}
-      local entities_perms = rbac.readable_entities_permissions(roles)
-      local endpoints_perms = rbac.readable_endpoints_permissions(roles)
-
-      map.entities = entities_perms
-      map.endpoints = endpoints_perms
-
-      return helpers.responses.send_HTTP_OK(map)
-    end,
-  },
-
-  ["/rbac/users/:name_or_id/roles"] = {
-    before = function(self, dao_factory, helpers)
-      crud.find_rbac_user_by_name_or_id(self, dao_factory, helpers)
-    end,
-
-    GET = function(self, dao_factory, helpers)
-      local roles, err = entity_relationships(dao_factory, self.rbac_user,
-                                              "user", "role")
-
-      -- filter out default roles and suppress the is_default column
-      roles = tablex.filter(roles, function(role) return not role.is_default end)
-
-      for _, role in ipairs(roles) do
-        post_process_role(role)
-      end
-
-      if err then
-        return helpers.yield_error(err)
-      end
-
-      setmetatable(roles, cjson.empty_array_mt)
-      return helpers.responses.send_HTTP_OK({
-        user  = self.rbac_user,
-        roles = roles,
-      })
-    end,
-
-    POST = function(self, dao_factory, helpers)
-      -- we have the user, now verify our roles
-      if not self.params.roles then
-        return helpers.responses.send_HTTP_BAD_REQUEST("must provide >= 1 role")
-      end
-
-      local roles, err = objects_from_names(dao_factory, self.params.roles,
-                                            "role")
-      if err then
-        if err:find("not found with name", nil, true) then
-          return helpers.responses.send_HTTP_BAD_REQUEST(err)
-
-        else
-          return helpers.yield_error(err)
+        local data, _, err_t, offset = db.rbac_users:page(size, args.offset, opts)
+        if err_t then
+          return endpoints.handle_error(err_t)
         end
-      end
 
-      -- we've now validated that all our roles exist, and this user exists,
-       -- so time to create the assignment
-      for i = 1, #roles do
-        local _, err = dao_factory.rbac_user_roles:insert({
-          user_id = self.rbac_user.id,
-          role_id = roles[i].id
+        local next_page = offset and fmt("/%s?offset=%s",
+          "rbac_users",
+          endpoints.escape_uri(offset)) or ngx.null
+
+        -- filter non-proxy rbac_users (consumers)
+        local res = {}
+        for _, v in ipairs(data) do
+          -- XXX EE: Workaround while rbac user type
+          if v.type ~= enums.CONSUMERS.TYPE.DEVELOPER and
+             v.type ~= enums.CONSUMERS.TYPE.ADMIN then
+            table.insert(res, v)
+          end
+        end
+
+        return kong.response.exit(200, {
+          data   = res,
+          offset = offset,
+          next   = next_page,
         })
+      end,
+
+      -- post_process_user should be called after GET , but no
+      -- post_processing for GETS in endpoints framework
+      POST = function(self, db, helpers, post_process)
+        return endpoints.post_collection_endpoint(rbac_users.schema)(self, db, helpers)
+      end
+    }
+  },
+
+  ["/rbac/users/:rbac_users"] = {
+    schema = rbac_users.schema,
+    methods = {
+      GET  =
+        function(self, db, helpers)
+          find_current_user(self, db, helpers)
+
+          -- make sure it's not associated to a consumer
+          local map, err = rbac.get_consumer_user_map(self.rbac_user.id)
+
+          if err then
+            return kong.response.exit(500,
+              "error finding map for rbac_user: ", self.rbac_user.id)
+          end
+
+          if map then
+            return kong.response.exit(404, "No RBAC user by name or id "
+              .. self.rbac_user.name)
+          end
+
+          return kong.response.exit(200, self.rbac_user)
+        end,
+
+      PUT     = endpoints.put_entity_endpoint(rbac_users.schema),
+      PATCH   = endpoints.patch_entity_endpoint(rbac_users.schema),
+      DELETE  = function(self, db, helpers)
+        -- endpoints.delete_entity_endpoint(rbac_users.schema)(self, db, helpers)
+        find_current_user(self, db, helpers)
+
+        -- local roles = db.rbac_users:get_roles(db, self.rbac_user)
+        local roles = rbac.get_user_roles(db, self.rbac_user) -- XXX EE Handle Error
+        local default_role
+
+        for _, role in ipairs(roles) do
+          db.rbac_user_roles:delete({
+            user_id = self.rbac_user.id,
+            role_id = role.id
+          })
+
+          if role.name == self.rbac_user.name then
+            default_role = role
+          end
+        end
+
+        if default_role then
+          local _, err = rbac.remove_user_from_default_role(self.rbac_user,
+            default_role)
+          if err then
+            helpers.yield_error(err)
+          end
+        end
+
+        db.rbac_users:delete({id = self.rbac_user.id})
+        return kong.response.exit(204)
+      end
+    }
+  },
+  ["/rbac/users/:rbac_users/permissions"] = {
+    schema = rbac_users.schema,
+    methods = {
+      GET = function(self, db, helpers)
+        find_current_user(self, db, helpers)
+        local roles, err = rbac.get_user_roles(db, self.rbac_user)
+        if err then
+          ngx.log(ngx.ERR, "[rbac] ", err)
+          return kong.response.exit(500)
+        end
+
+        local map = {}
+        local entities_perms = rbac.readable_entities_permissions(roles)
+        local endpoints_perms = rbac.readable_endpoints_permissions(roles)
+
+        map.entities = entities_perms
+        map.endpoints = endpoints_perms
+
+        return kong.response.exit(200, map)
+      end
+    }
+  },
+  ["/rbac/users/:rbac_users/roles"] = {
+    schema = rbac_users.schema,
+    methods = {
+      GET = function(self, db, helpers)
+        find_current_user(self, db, helpers)
+        local rbac_roles = rbac.get_user_roles(db, self.rbac_user)
+        rbac_roles = remove_default_roles(rbac_roles)
+
+        setmetatable(rbac_roles, cjson.empty_array_mt)
+        return kong.response.exit(200, {
+          user = self.rbac_user,
+          roles = rbac_roles
+        })
+      end,
+      POST = function(self, db, helpers)
+        find_current_user(self, db, helpers)
+        -- we have the user, now verify our roles
+        if not self.params.roles then
+          return kong.response.exit(400, "must provide >= 1 role")
+        end
+
+        local roles, err = objects_from_names(db, self.params.roles, "role")
+        if err then
+          if err:find("not found with name", nil, true) then
+            return kong.response.exit(400, {message = err})
+          else
+            return helpers.yield_error(err)
+          end
+        end
+
+        -- we've now validated that all our roles exist, and this user exists,
+        -- so time to create the assignment
+        for i = 1, #roles do
+          local _, _, err_t = db.rbac_user_roles:insert({
+            user_id = self.rbac_user.id,
+            role_id = roles[i].id
+          })
+
+          if err_t then
+            return endpoints.handle_error(err_t) -- XXX EE: 400 vs
+                                                 -- 409. primary key
+                                                 -- validation failed
+          end
+        end
+
+        -- invalidate rbac user so we don't fetch the old roles
+        local cache_key = db["rbac_user_roles"]:cache_key(self.rbac_user.id)
+        singletons.cache:invalidate(cache_key)
+
+        -- re-fetch the users roles so we show all the role objects, not just our
+        -- newly assigned mappings
+
+        -- roles, err = db.rbac_users:get_roles(db, self.rbac_user)
+        roles, err = rbac.get_user_roles(db, self.rbac_user)
+
         if err then
           return helpers.yield_error(err)
         end
-      end
 
-      -- invalidate rbac user so we don't fetch the old roles
-      local cache_key = dao_factory["rbac_user_roles"]:cache_key(self.rbac_user.id)
-      singletons.cache:invalidate(cache_key)
+        roles = remove_default_roles(roles)
 
-      -- re-fetch the users roles so we show all the role objects, not just our
-      -- newly assigned mappings
-      roles, err = entity_relationships(dao_factory, self.rbac_user,
-                                        "user", "role")
-      if err then
-        return helpers.yield_error(err)
-      end
-
-      -- filter out default roles and suppress the is_default column
-      roles = tablex.filter(roles, function(role) return not role.is_default end)
-
-      for _, role in ipairs(roles) do
-        post_process_role(role)
-      end
-
-      -- show the user and all of the roles they are in
-      return helpers.responses.send_HTTP_CREATED({
-        user  = self.rbac_user,
-        roles = roles,
-      })
-    end,
-
-    DELETE = function(self, dao_factory, helpers)
-      -- we have the user, now verify our roles
-      if not self.params.roles then
-        return helpers.responses.send_HTTP_BAD_REQUEST("must provide >= 1 role")
-      end
-
-      local roles, err = objects_from_names(dao_factory, self.params.roles,
-                                            "role")
-      if err then
-        if err:find("not found with name", nil, true) then
-          return helpers.responses.send_HTTP_BAD_REQUEST(err)
-
-        else
-          return helpers.yield_error(err)
-        end
-      end
-
-      for i = 1, #roles do
-        dao_factory.rbac_user_roles:delete({
-          user_id = self.rbac_user.id,
-          role_id = roles[i].id,
+        -- show the user and all of the roles they are in
+        return kong.response.exit(201, {
+          user  = self.rbac_user,
+          roles = roles,
         })
+      end,
+
+      DELETE = function(self, db, helpers)
+        if not self.params.roles then
+          return kong.response.exit(400, {message = "must provide >= 1 role"})
+        end
+        find_current_user(self, db, helpers)
+
+        local roles, err = objects_from_names(db, self.params.roles, "role")
+        if err then
+          if err:find("not found with name", nil, true) then
+            return kong.response.exit(400, {message = err})
+
+          else
+            return helpers.yield_error(err)
+          end
+        end
+
+        for i = 1, #roles do
+          db.rbac_user_roles:delete({
+            user_id = self.rbac_user.id,
+            role_id = roles[i].id,
+          })
+        end
+
+        local cache_key = db.rbac_user_roles:cache_key(self.rbac_user.id)
+        singletons.cache:invalidate(cache_key)
+
+        return kong.response.exit(204)
       end
-
-      local cache_key = dao_factory["rbac_users"]:cache_key(self.rbac_user.id)
-      singletons.cache:invalidate(cache_key)
-
-      return helpers.responses.send_HTTP_NO_CONTENT()
-    end,
+    },
   },
-
   ["/rbac/roles"] = {
-    GET = function(self, dao_factory)
-      self.params["is_default"] = false
-      crud.paginated_set(self, dao_factory.rbac_roles, post_process_role)
-    end,
+    schema = rbac_roles.schema,
+    methods = {
+      GET  = function(self, db, helpers, parent)
+        local args = self.args.uri
+        local opts = endpoints.extract_options(args, "rbac_roles", "select")
+        local size, err = endpoints.get_page_size(args)
+        if err then
+          return endpoints.handle_error(db.rbac_roles.errors:invalid_size(err))
+        end
 
-    POST = function(self, dao_factory)
-      crud.post(self.params, dao_factory.rbac_roles)
-    end,
+        local data, _, err_t, offset = db.rbac_roles:page(size, args.offset, opts)
+        if err_t then
+          return endpoints.handle_error(err_t)
+        end
 
-    PUT = function(self, dao_factory)
-      crud.put(self.params, dao_factory.rbac_roles)
-    end,
-  },
+        data = remove_default_roles(data)
 
-  ["/rbac/roles/:name_or_id/permissions"] = {
-    before = function(self, dao_factory, helpers)
-      crud.find_rbac_role_by_name_or_id(self, dao_factory, helpers)
-    end,
+        local next_page = offset and fmt("/%s?offset=%s",
+          "rbac_roles",
+          endpoints.escape_uri(offset)) or ngx.null
 
-    GET = function(self, dao_factory, helpers)
-      local map = {}
-      local entities_perms = rbac.readable_entities_permissions({self.rbac_role})
-      local endpoints_perms = rbac.readable_endpoints_permissions({self.rbac_role})
 
-      map.entities = entities_perms
-      map.endpoints = endpoints_perms
-
-      return helpers.responses.send_HTTP_OK(map)
-    end,
-  },
-
-  ["/rbac/roles/:name_or_id"] = {
-    before = function(self, dao_factory, helpers)
-      self.params["is_default"] = false
-      crud.find_rbac_role_by_name_or_id(self, dao_factory, helpers)
-    end,
-
-    GET = function(self, dao_factory, helpers)
-      return helpers.responses.send_HTTP_OK(post_process_role(self.rbac_role))
-    end,
-
-    PATCH = function(self, dao_factory, helpers)
-      crud.patch(self.params, dao_factory.rbac_roles, self.rbac_role)
-    end,
-
-    DELETE = function(self, dao_factory, helpers)
-      -- delete the user <-> role mappings
-      -- we have to get our row, then delete it
-      local users, err = entity_relationships(dao_factory, self.rbac_role,
-                                              "user", "role")
-      if err then
-        return helpers.yield_error(err)
-      end
-
-      for i = 1, #users do
-        dao_factory.rbac_user_roles:delete({
-          user_id = users[i].id,
-          role_id = self.rbac_role.id,
+        return kong.response.exit(200, {
+          data   = data,
+          offset = offset,
+          next   = next_page,
         })
-      end
+      end,
+      POST = endpoints.post_collection_endpoint(rbac_roles.schema),
+    }
+  },
+  ["/rbac/roles/:rbac_roles/permissions"] = {
+    schema = rbac_roles.schema,
+    methods = {
+      GET = function(self, db, helpers)
+        find_current_role(self, db, helpers)
 
-      local err = rbac.role_relation_cleanup(self.rbac_role)
-      if err then
-        return nil, err
-      end
+        local map = {}
+        local entities_perms = rbac.readable_entities_permissions({self.rbac_role})
+        local endpoints_perms = rbac.readable_endpoints_permissions({self.rbac_role})
 
-      crud.delete(self.rbac_role, dao_factory.rbac_roles)
-    end,
+        map.entities = entities_perms
+        map.endpoints = endpoints_perms
+
+        return kong.response.exit(200, map)
+      end
+    }
   },
 
-   ["/rbac/roles/:name_or_id/entities"] = {
-    before = function(self, dao_factory, helpers)
-      crud.find_rbac_role_by_name_or_id(self, dao_factory, helpers)
-      self.params.role_id = self.rbac_role.id
+  ["/rbac/roles/:rbac_roles"] = {
+    schema = rbac_roles.schema ,
+    methods = {
+      GET  = endpoints.get_entity_endpoint(rbac_roles.schema),
+      PUT     = endpoints.put_entity_endpoint(rbac_roles.schema),
+      PATCH   = endpoints.patch_entity_endpoint(rbac_roles.schema),
+
+      DELETE = function(self, db, helpers)
+        local rbac_role, _, err_t = endpoints.select_entity(self, db, rbac_roles.schema)
+        if err_t then
+          return endpoints.handle_error(err_t)
+        end
+
+        self.rbac_role = rbac_role
+
+        -- delete the user <-> role mappings
+        -- we have to get our row, then delete it
+        -- local users, err = db.rbac_roles:get_users(db, self.rbac_role)
+        local users, err = rbac.get_role_users(db, self.rbac_role)
+        if err then
+          return helpers.yield_error(err)
+        end
+
+        for i = 1, #users do
+          db.rbac_user_roles:delete({
+            user_id = users[i].id,
+            role_id = self.rbac_role.id,
+          })
+        end
+
+        local err = rbac.role_relation_cleanup(self.rbac_role)
+
+        if err then
+          return nil, err
+        end
+
+        db.rbac_roles:delete({id = rbac_role.id})
+        return kong.response.exit(204)
+      end,
+    },
+  },
+
+  ["/rbac/roles/:rbac_roles/entities"] = {
+    schema = rbac_roles.schema,
+    methods = {
+    before = function(self, db, helpers)
+      find_current_role(self, db, helpers)
+    end,
+    GET = function(self, db, helpers)
+      -- XXX: EE. do proper pagination.  Investigate if we can page through it
+      local entities = rbac.get_role_entities(db, self.rbac_role)
+
+      entities = tablex.map(post_process_actions, entities)
+
+      return kong.response.exit(200, {
+        data = entities
+      })
     end,
 
-    GET = function(self, dao_factory, helpers)
-      return crud.paginated_set(self, dao_factory.rbac_role_entities,
-                                post_process_actions)
-    end,
-
-    POST = function(self, dao_factory, helpers)
+    POST = function(self, db, helpers)
       action_bitfield(self)
 
       if not self.params.entity_id then
-        return helpers.responses.send_HTTP_BAD_REQUEST("Missing required parameter: 'entity_id'")
+        return kong.response.exit(400, "Missing required parameter: 'entity_id'")
       end
 
       local entity_type = "wildcard"
@@ -431,204 +500,332 @@ return {
                                                               self.params.entity_id)
         -- database error
         if entity_type == nil then
-          return helpers.responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+          return kong.response.exit(500, err)
         end
         -- entity doesn't exist
         if entity_type == false then
-          return helpers.responses.send_HTTP_BAD_REQUEST(err)
+          return kong.response.exit(400, err)
         end
       end
 
       self.params.entity_type = entity_type
-      crud.post(self.params, dao_factory.rbac_role_entities,
-                post_process_actions)
-    end,
-  },
 
-  ["/rbac/roles/:name_or_id/entities/:entity_id"] = {
-    before = function(self, dao_factory, helpers)
-      crud.find_rbac_role_by_name_or_id(self, dao_factory, helpers)
-      self.params.role_id = self.rbac_role.id
-      if self.params.entity_id ~= "*" and not utils.is_valid_uuid(self.params.entity_id) then
-        return helpers.responses.send_HTTP_BAD_REQUEST(
-          self.params.entity_id .. " is not a valid uuid")
-      end
-    end,
-
-    GET = function(self, dao_factory, helpers)
-      crud.get(self.params, dao_factory.rbac_role_entities,
-               post_process_actions)
-    end,
-
-    PATCH = function(self, dao_factory, helpers)
-      if self.params.actions then
-        action_bitfield(self)
-      end
-
-      local filter = {
-        role_id = self.params.role_id,
+      local role_entity, _, err_t = db.rbac_role_entities:insert({
         entity_id = self.params.entity_id,
-      }
-
-      self.params.role_id = nil
-      self.params.entity_id = nil
-
-      crud.patch(self.params, dao_factory.rbac_role_entities, filter,
-                 post_process_actions)
-    end,
-
-    DELETE = function(self, dao_factory, helpers)
-      crud.delete(self.params, dao_factory.rbac_role_entities)
-    end,
-  },
-
-  ["/rbac/roles/:name_or_id/entities/permissions"] = {
-    before = function(self, dao_factory, helpers)
-      crud.find_rbac_role_by_name_or_id(self, dao_factory, helpers)
-    end,
-
-    GET = function(self, dao_factory, helpers)
-      local map = rbac.readable_entities_permissions({self.rbac_role})
-      return helpers.responses.send_HTTP_OK(map)
-    end,
-  },
-
-  ["/rbac/roles/:name_or_id/endpoints"] = {
-    before = function(self, dao_factory, helpers)
-      crud.find_rbac_role_by_name_or_id(self, dao_factory, helpers)
-      self.params.role_id = self.rbac_role.id
-    end,
-
-    GET = function(self, dao_factory, helpers)
-      return crud.paginated_set(self, dao_factory.rbac_role_endpoints,
-                                post_process_actions)
-    end,
-
-    POST = function(self, dao_factory, helpers)
-      action_bitfield(self)
-      if not self.params.endpoint then
-        helpers.responses.send_HTTP_BAD_REQUEST("'endpoint' is a required field")
+        role_id = self.rbac_role.id,
+        entity_type = entity_type,
+        actions = self.params.actions,
+        negative = self.params.negative,
+        comment = self.params.comment,
+      })
+      if err_t then
+        return error(err_t)
       end
 
-      local ctx = ngx.ctx
-      local request_ws = ctx.workspaces[1]
+      return kong.response.exit(201, post_process_actions(role_entity))
+    end,
+    }
+  },
 
-      -- if the `workspace` parameter wasn't passed, fallback to the current
-      -- request's workspace
-      self.params.workspace = self.params.workspace or request_ws.name
+  ["/rbac/roles/:rbac_roles/entities/:entity_id"] = {
+    schema = rbac_roles.schema,
+    methods = {
+      before = function(self, db, helpers)
+        local rbac_role, _, err_t = endpoints.select_entity(self, db, rbac_roles.schema)
+        if err_t then
+          return endpoints.handle_error(err_t)
+        end
+        if not rbac_role then
+          return kong.response.exit(404, { message = "Not found" })
+        end
+        self.rbac_role = rbac_role
+        self.rbac_role_id = rbac_role.id
 
-      local ws_name = self.params.workspace
+        if self.params.entity_id ~= "*" and not utils.is_valid_uuid(self.params.entity_id) then
+          return kong.response.exit(400,
+            self.params.entity_id .. " is not a valid uuid")
+        end
+        self.entity_id = self.params.entity_id
+      end,
 
-      if ws_name ~= "*" then
-        local w, err = workspaces.run_with_ws_scope({}, dao_factory.workspaces.find_all, dao_factory.workspaces, {
-          name = ws_name
+      GET = function(self, db, helpers)
+        local entity, _, err_t = db.rbac_role_entities:select({
+          entity_id = self.entity_id,
+          role_id = self.rbac_role_id
         })
-        if err then
-          helpers.yield_error(err)
+        if err_t then
+          return endpoints.handle_error(err_t)
         end
-        if #w == 0 then
-          local err = fmt("Workspace %s does not exist", self.params.workspace)
-          helpers.responses.send_HTTP_NOT_FOUND(err)
+
+        if entity then
+          return kong.response.exit(200, post_process_actions(entity))
         end
-      end
+      end,
+      DELETE = function(self, db, helpers)
+        local _, _, err_t = db.rbac_role_entities:delete({
+          entity_id = self.entity_id,
+          role_id = self.rbac_role_id
+        })
+        if err_t then
+          return endpoints.handle_error(err_t)
+        end
 
-      if not rbac_operation_allowed(singletons.configuration,
-        ctx.rbac, request_ws, ws_name) then
-        local err_str = fmt(
-          "%s is not allowed to create cross workspace permissions",
-          ctx.rbac.user.name)
-        helpers.responses.send_HTTP_FORBIDDEN(err_str)
-      end
+        return kong.response.exit(204)
+      end,
 
-      local cache_key = dao_factory["rbac_roles"]:cache_key(self.rbac_role.id)
-      singletons.cache:invalidate(cache_key)
+      PATCH = function(self, db, helpers)
+        if self.params.actions then
+          action_bitfield(self)
+        end
 
-      -- strip any whitespaces from both ends
-      self.params.endpoint = utils.strip(self.params.endpoint)
+        self.params.entity_id = nil
+        self.params.role_id = nil
+        self.params.rbac_role_id = nil
+        self.params.rbac_roles = nil
 
-      if self.params.endpoint ~= "*" then
-        -- normalize endpoint: remove trailing /
-        self.params.endpoint = ngx.re.gsub(self.params.endpoint, "/$", "")
 
-        -- make sure the endpoint starts with /, unless it's '*'
-        self.params.endpoint = ngx.re.gsub(self.params.endpoint, "^/?", "/")
-      end
+        local entity = db.rbac_role_entities:update({
+          entity_id = self.entity_id,
+          role_id = self.rbac_role_id }, self.params)
+        if not entity then
+          kong.response.exit(404)
+        end
 
-      crud.post(self.params, dao_factory.rbac_role_endpoints, post_process_actions)
-    end,
+        return kong.response.exit(200, post_process_actions(entity))
+      end,
+    },
+
+  --   GET = function(self, dao_factory, helpers)
+  --     crud.get(self.params, dao_factory.rbac_role_entities,
+  --              post_process_actions)
+  --   end,
+
+  --   PATCH = function(self, dao_factory, helpers)
+  --     if self.params.actions then
+  --       action_bitfield(self)
+  --     end
+
+  --     local filter = {
+  --       role_id = self.params.role_id,
+  --       entity_id = self.params.entity_id,
+  --     }
+
+  --     self.params.role_id = nil
+  --     self.params.entity_id = nil
+
+  --     crud.patch(self.params, dao_factory.rbac_role_entities, filter,
+  --                post_process_actions)
+  --   end,
+
+  --   DELETE = function(self, dao_factory, helpers)
+  --     crud.delete(self.params, dao_factory.rbac_role_entities)
+      --   end,
   },
 
-  ["/rbac/roles/:name_or_id/endpoints/:workspace/*"] = {
-    before = function(self, dao_factory, helpers)
-      crud.find_rbac_role_by_name_or_id(self, dao_factory, helpers)
-      self.params.role_id = self.rbac_role.id
-      -- Note: /rbac/roles/:name_or_id/endpoints/:workspace// will be treated same as
-      -- /rbac/roles/:name_or_id/endpoints/:workspace/
-      -- this is the limitation of lapis implementation
-      -- it's not possible to distinguish // from /
-      -- since the self.params.splat will always be "/"
-      if self.params.splat ~= "*" and self.params.splat ~= "/" then
-        self.params.endpoint = "/" .. self.params.splat
-      else
-        self.params.endpoint = self.params.splat
-      end
-      self.params.splat = nil
-    end,
+  ["/rbac/roles/:rbac_roles/entities/permissions"] = {
+    schema = rbac_roles.schema,
+    methods = {
+      GET = function(self, db, helpers)
+        find_current_role(self, db, helpers)
+        local map = rbac.readable_entities_permissions({self.rbac_role})
+        return kong.response.exit(200, map)
+      end,
+    }
+  },
 
-    GET = function(self, dao_factory, helpers)
-      crud.get(self.params, dao_factory.rbac_role_endpoints,
-               post_process_actions)
-    end,
+  ["/rbac/roles/:rbac_roles/endpoints"] = {
+    schema = rbac_roles.schema,
+    methods = {
+      before = function(self, db, helpers)
+        find_current_role(self, db, helpers)
+      end,
 
-    PATCH = function(self, dao_factory, helpers)
-      if self.params.actions then
+      GET = function(self, db, helpers)
+        local endpoints =  workspaces.compat_find_all("rbac_role_entities", {
+          role_id = self.rbac_role.id
+        })
+
+
+        tablex.map(post_process_actions, endpoints) -- post_process_actions
+                                                    -- is destructive!
+        return kong.response.exit(200, { -- XXX EE. Should we keep old
+                                         -- structure? or should we
+                                         -- just return endoints and
+                                         -- that's it? also, pagination?
+          data = endpoints
+        })
+      end,
+
+      POST = function(self, dao_factory, helpers)
         action_bitfield(self)
-      end
+        if not self.params.endpoint then
+          kong.response.exit(400, {message = "'endpoint' is a required field"})
+        end
 
-      local filter = {
-        role_id = self.params.role_id,
-        workspace = self.params.workspace,
-        endpoint = self.params.endpoint,
-      }
+        local ctx = ngx.ctx
+        local request_ws = ctx.workspaces[1]
 
-      self.params.role_id = nil
-      self.params.workspace = nil
-      self.params.endpoint = nil
+        -- if the `workspace` parameter wasn't passed, fallback to the current
+        -- request's workspace
+        self.params.workspace = self.params.workspace or request_ws.name
 
-      crud.patch(self.params, dao_factory.rbac_role_endpoints, filter,
-                 post_process_actions)
-    end,
+        local ws_name = self.params.workspace
 
-    DELETE = function(self, dao_factory, helpers)
-      crud.delete(self.params, dao_factory.rbac_role_endpoints)
-    end,
+        if ws_name ~= "*" then
+          local w, err = workspaces.run_with_ws_scope({}, singletons.dao.workspaces.find_all, singletons.dao.workspaces, {
+            name = ws_name
+          })
+          if err then
+            helpers.yield_error(err)
+          end
+          if #w == 0 then
+            local err = fmt("Workspace %s does not exist", self.params.workspace)
+            kong.response.exit(404, { message = err})
+          end
+        end
+
+        if not rbac_operation_allowed(singletons.configuration,
+          ctx.rbac, request_ws, ws_name) then
+          local err_str = fmt(
+            "%s is not allowed to create cross workspace permissions",
+            ctx.rbac.user.name)
+          kong.response.exit(403, {message = err_str})
+        end
+
+        local cache_key = dao_factory["rbac_roles"]:cache_key(self.rbac_role.id)
+        singletons.cache:invalidate(cache_key)
+
+        -- strip any whitespaces from both ends
+        self.params.endpoint = utils.strip(self.params.endpoint)
+
+        if self.params.endpoint ~= "*" then
+          -- normalize endpoint: remove trailing /
+          self.params.endpoint = ngx.re.gsub(self.params.endpoint, "/$", "")
+
+          -- make sure the endpoint starts with /, unless it's '*'
+          self.params.endpoint = ngx.re.gsub(self.params.endpoint, "^/?", "/")
+        end
+
+        self.params.rbac_roles = nil
+        local row, err = singletons.db.rbac_role_endpoints:insert(self.params)
+        if err then
+          return kong.response.exit(409, {message = err})
+        end
+
+        return kong.response.exit(201, post_process_actions(row))
+      end,
+    },
+  },
+  ["/rbac/roles/:rbac_roles/endpoints/:workspace/*"] = {
+    schema = kong.db.rbac_role_endpoints.schema,
+    methods = {
+      before = function(self, db, helpers)
+        local rbac_role, _, err_t = endpoints.select_entity(self, db, rbac_roles.schema)
+        if err_t then
+          return endpoints.handle_error(err_t)
+        end
+        if not rbac_role then
+          return kong.response.exit(404, { message = "Not found" })
+        end
+        self.rbac_role = rbac_role
+        self.params.role_id = self.rbac_role.id
+
+        -- Note: /rbac/roles/:name_or_id/endpoints/:workspace// will be treated same as
+        -- /rbac/roles/:name_or_id/endpoints/:workspace/
+        -- this is the limitation of lapis implementation
+        -- it's not possible to distinguish // from /
+        -- since the self.params.splat will always be "/"
+        if self.params.splat ~= "*" and self.params.splat ~= "/" then
+          self.params.endpoint = "/" .. self.params.splat
+        else
+          self.params.endpoint = self.params.splat
+        end
+        self.params.splat = nil
+      end,
+
+      GET = function(self, db, helpers)
+        local endpoints = rbac.get_role_endpoints(db, self.rbac_role)
+        for _, e in ipairs(endpoints) do
+          if e.endpoint == self.params.endpoint  then
+            kong.response.exit(200, post_process_actions(e))
+          end
+        end
+        kong.response.exit(404)
+      end,
+
+      PATCH = function(self, db, helpers)
+        if self.params.actions then
+          action_bitfield(self)
+        end
+
+        local filter = {
+          role_id = self.params.role_id,
+          workspace = self.params.workspace,
+          endpoint = self.params.endpoint,
+        }
+
+        self.params.role_id = nil
+        self.params.workspace = nil
+        self.params.endpoint = nil
+        self.params.rbac_roles = nil
+
+        local endpoint = db.rbac_role_endpoints:update(filter, self.params)
+        if not endpoint then
+          return kong.response.exit(404)
+        end
+
+        return kong.response.exit(200, post_process_actions(endpoint))
+      end,
+
+      DELETE = function(self, db, helpers)
+        local filter = {
+          role_id = self.params.role_id,
+          workspace = self.params.workspace,
+          endpoint = self.params.endpoint,
+        }
+        db.rbac_role_endpoints:delete(filter)
+        return kong.response.exit(204)
+      end,
+    }
   },
 
-  ["/rbac/roles/:name_or_id/endpoints/permissions"] = {
-    before = function(self, dao_factory, helpers)
-      crud.find_rbac_role_by_name_or_id(self, dao_factory, helpers)
-    end,
+  ["/rbac/roles/:rbac_roles/endpoints/permissions"] = {
+    schema = rbac_roles.schema,
+    methods = {
+      before = function(self, db, helpers)
+        find_current_role(self, db, helpers)
+      end,
 
-    GET = function(self, dao_factory, helpers)
-      local map = rbac.readable_endpoints_permissions({self.rbac_role})
-      return helpers.responses.send_HTTP_OK(map)
-    end,
+      GET = function(self, dao_factory, helpers)
+        local map = rbac.readable_endpoints_permissions({self.rbac_role})
+        return kong.response.exit(200, map)
+      end,
+    }
   },
 
   ["/rbac/users/consumers"] = {
-    POST = function(self, dao_factory)
-      -- TODO: validate consumer and user here
-      crud.post(self.params, dao_factory.consumers_rbac_users_map)
-    end,
+    -- XXX EE: is this used at all?
+    schema = consumers.schema,
+    methods = {
+      POST = function(self, dao_factory)
+        -- TODO: validate consumer and user here
+        crud.post(self.params, dao_factory.consumers_rbac_users_map)
+      end
+    },
   },
 
-  ["/rbac/users/:user_id/consumers/:consumer_id"] = {
-    before = function(self, dao_factory, helpers)
-      crud.find_consumer_rbac_user_map(self, dao_factory, helpers)
-    end,
+  -- XXX EE: is this  used
+  -- ["/rbac/users/:rbac_users/consumers/:consumers"] = {
+  --   schema = rbac_users.schema,
+  --   methods = {
+  --     before = function(self, dao_factory, helpers)
+  --       -- crud.find_consumer_rbac_user_map(self, dao_factory, helpers)
+  --     end,
 
-    GET = function(self, dao_factory, helpers)
-      return helpers.responses.send_HTTP_OK(self.consumer_rbac_user_map)
-    end,
-  },
+  --     GET = function(self, db, helpers)
+  --       return helpers.responses.send_HTTP_OK(self.consumer_rbac_user_map)
+  --     end,
+  --   },
+  -- },
+
 }

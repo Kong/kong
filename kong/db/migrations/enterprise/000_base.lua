@@ -1,3 +1,47 @@
+local utils = require "kong.tools.utils"
+local fmt = string.format
+local function seed_rbac_data()
+  local res = {}
+  local def_ws_id = '00000000-0000-0000-0000-000000000000'
+  local roles = {
+    {
+      utils.uuid(), "read-only", 'Read access to all endpoints, across all workspaces',
+      {"(%s, '*', '*', 1, FALSE)"}
+    },
+    { utils.uuid(), "admin", 'Full access to all endpoints, across all workspaces—except RBAC Admin API',
+      {"(%s, '*', '*', 15, FALSE);",
+       "(%s, '*', '/rbac/*', 15, TRUE);",
+       "(%s, '*', '/rbac/*/*', 15, TRUE);",
+       "(%s, '*', '/rbac/*/*/*', 15, TRUE);",
+       "(%s, '*', '/rbac/*/*/*/*', 15, TRUE);",
+       "(%s, '*', '/rbac/*/*/*/*/*', 15, TRUE);",
+      },
+    },
+    { utils.uuid(), "super-admin", 'Full access to all endpoints, across all workspaces',
+      {"(%s, '*', '*', 15, FALSE)"}
+    }
+  }
+
+  for _, role in ipairs(roles) do
+    table.insert(res,
+      fmt("INSERT into rbac_roles(id, name, comment) VALUES(%s, 'default:%s', '%s')",
+        role[1] , role[2], role[3]))
+    table.insert(res,
+      fmt("INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value) VALUES(%s, 'default', '%s', 'rbac_roles', 'id', '%s')", def_ws_id, role[1], role[1]))
+    table.insert(res,
+      fmt("INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value) VALUES(%s, 'default', '%s', 'rbac_roles', 'name', '%s')", def_ws_id, role[1], role[2]))
+
+    for _, endpoint in ipairs(role[4]) do
+      table.insert(res,
+        fmt(
+          fmt("INSERT INTO rbac_role_endpoints(role_id, workspace, endpoint, actions, negative) VALUES %s", endpoint),
+        role[1]))
+    end
+  end
+
+  return table.concat(res, ";")
+end
+
 return {
   postgres = {
     up = [[
@@ -427,6 +471,93 @@ return {
           END IF;
       END;
       $$;
+
+-- read-only role
+DO $$
+DECLARE lastid uuid;
+DECLARE def_ws_id uuid;
+BEGIN
+
+SELECT uuid_in(overlay(overlay(md5(random()::text || ':' || clock_timestamp()::text) placing '4' from 13) placing to_hex(floor(random()*(11-8+1) + 8)::int)::text from 17)::cstring) into lastid;
+SELECT id into def_ws_id from workspaces where name = 'default';
+
+INSERT INTO rbac_roles(id, name, comment)
+VALUES (lastid, 'default:read-only', 'Read access to all endpoints, across all workspaces');
+
+INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value)
+VALUES (def_ws_id, 'default', lastid, 'rbac_roles', 'name', 'read-only');
+
+INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value)
+VALUES (def_ws_id, 'default', lastid, 'rbac_roles', 'id', lastid);
+
+
+INSERT INTO rbac_role_endpoints(role_id, workspace, endpoint, actions, negative)
+VALUES (lastid, '*', '*', 1, FALSE);
+
+END $$;
+
+
+-- admin role
+DO $$
+DECLARE lastid uuid;
+DECLARE def_ws_id uuid;
+BEGIN
+
+SELECT uuid_in(overlay(overlay(md5(random()::text || ':' || clock_timestamp()::text) placing '4' from 13) placing to_hex(floor(random()*(11-8+1) + 8)::int)::text from 17)::cstring) into lastid;
+SELECT id into def_ws_id from workspaces where name = 'default';
+
+INSERT INTO rbac_roles(id, name, comment)
+VALUES (lastid, 'default:admin', 'Full access to all endpoints, across all workspaces—except RBAC Admin API');
+
+INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value)
+VALUES (def_ws_id, 'default', lastid, 'rbac_roles', 'name', 'admin');
+
+INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value)
+VALUES (def_ws_id, 'default', lastid, 'rbac_roles', 'id', lastid);
+
+
+INSERT INTO rbac_role_endpoints(role_id, workspace, endpoint, actions, negative)
+VALUES (lastid, '*', '*', 15, FALSE);
+
+INSERT INTO rbac_role_endpoints(role_id, workspace, endpoint, actions, negative)
+VALUES (lastid, '*', '/rbac/*', 15, TRUE);
+
+INSERT INTO rbac_role_endpoints(role_id, workspace, endpoint, actions, negative)
+VALUES (lastid, '*', '/rbac/*/*', 15, TRUE);
+
+INSERT INTO rbac_role_endpoints(role_id, workspace, endpoint, actions, negative)
+VALUES (lastid, '*', '/rbac/*/*/*', 15, TRUE);
+
+INSERT INTO rbac_role_endpoints(role_id, workspace, endpoint, actions, negative)
+VALUES (lastid, '*', '/rbac/*/*/*/*', 15, TRUE);
+
+INSERT INTO rbac_role_endpoints(role_id, workspace, endpoint, actions, negative)
+VALUES (lastid, '*', '/rbac/*/*/*/*/*', 15, TRUE);
+END $$;
+
+-- super-admin role
+DO $$
+DECLARE lastid uuid;
+DECLARE def_ws_id uuid;
+BEGIN
+
+SELECT uuid_in(overlay(overlay(md5(random()::text || ':' || clock_timestamp()::text) placing '4' from 13) placing to_hex(floor(random()*(11-8+1) + 8)::int)::text from 17)::cstring) into lastid;
+SELECT id into def_ws_id from workspaces where name = 'default';
+
+INSERT INTO rbac_roles(id, name, comment)
+VALUES (lastid, 'default:super-admin', 'Full access to all endpoints, across all workspaces');
+
+INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value)
+VALUES (def_ws_id, 'default', lastid, 'rbac_roles', 'name', 'super-admin');
+
+INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value)
+VALUES (def_ws_id, 'default', lastid, 'rbac_roles', 'id', lastid);
+
+
+INSERT INTO rbac_role_endpoints(role_id, workspace, endpoint, actions, negative)
+VALUES (lastid, '*', '*', 15, FALSE);
+END $$;
+
     ]]
   },
   cassandra = {
@@ -744,6 +875,8 @@ return {
         count counter,
         PRIMARY KEY(workspace_id, entity_type)
       );
-    ]]
+    ]] ..
+seed_rbac_data()
+    .. [[ ]]
   },
 }

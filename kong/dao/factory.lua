@@ -14,15 +14,10 @@ local fmt = string.format
 
 local CORE_MODELS = {
   "apis",
-  "rbac_users",
-  "rbac_user_roles",
-  "rbac_roles",
-  "rbac_role_entities",
-  "rbac_role_endpoints",
   "consumer_types",
   "consumer_statuses",
   "credentials",
-  "consumers_rbac_users_map",
+  -- "consumers_rbac_users_map",
   "audit_requests",
   "audit_objects",
 }
@@ -173,12 +168,16 @@ local function create_legacy_wrappers(self, constraints)
       end,
 
       find_all = function(_, filt)
+
+        filt = filt or {}
+        filt.__skip_rbac = nil -- remove skip_rbac from here
+
         local rows = {}
         local filtering = false
         if filt and next(filt) then
           filtering = true
         end
-        for row, err in new_dao:each() do
+        for row, err in new_dao:each(nil, {skip_rbac = filt.__skip_rbac}) do
           if err then
             return nil, err
           end
@@ -192,7 +191,7 @@ local function create_legacy_wrappers(self, constraints)
                   goto continue
                 end
               else
-                if row[k] ~= v then
+                if row[k] ~= v and not string.find(tostring(row[k]), "^.*:" .. tostring(v)) then
                   goto continue
                 end
               end
@@ -424,7 +423,7 @@ function _M:truncate_table(dao_name)
   local is_workspaceable = workspaces.get_workspaceable_relations()[dao_name]
 
   if is_workspaceable then
-    local res, _ = self.daos.workspace_entities:find_all({entity_type = dao_name})
+    local res, _ = workspaces.compat_find_all("workspace_entities", {entity_type = dao_name})
     for _, v in ipairs(res) do
       workspaces.delete_entity_relation("workspace_entities", {
         workspace_id = v.workspace_id,

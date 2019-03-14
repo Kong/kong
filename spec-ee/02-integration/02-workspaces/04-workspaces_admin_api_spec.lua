@@ -806,4 +806,3 @@ describe("Admin API #" .. strategy, function()
 end) -- end describe
 
 end -- end for
-

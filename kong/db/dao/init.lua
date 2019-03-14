@@ -944,6 +944,15 @@ function DAO:insert(entity, options)
     return nil, err, err_t
   end
 
+  local table_name = self.schema.name
+
+  if table_name == "rbac_users" then
+    local _, err = rbac.create_default_role(row)
+    if err then
+      return nil, "failed to create default role for '" .. row.name .. "'"
+    end
+  end
+
   if not err and workspace then
     local err_rel = workspaces.add_entity_relation(self.schema.name, row, workspace)
     if err_rel then

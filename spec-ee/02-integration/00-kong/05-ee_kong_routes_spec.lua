@@ -9,7 +9,7 @@ local ee_helpers = require "spec-ee.helpers"
 
 describe("#flaky Admin API - ee-specific Kong routes", function()
   dao_helpers.for_each_dao(function(kong_conf)
-    describe("/userinfo with db " .. kong_conf.database, function()
+    describe("/userinfo with db #" .. kong_conf.database, function()
 
       local strategy = kong_conf.database
       local client
@@ -258,9 +258,9 @@ describe("#flaky Admin API - ee-specific Kong routes", function()
       end)
 
       it("returns user info of admin consumer outside default workspace", function()
-        local _
+        local db
 
-        bp, _, dao = helpers.get_db_utils(strategy)
+        bp, db, dao = helpers.get_db_utils(strategy)
 
         assert(helpers.start_kong({
           database = strategy,
@@ -282,7 +282,7 @@ describe("#flaky Admin API - ee-specific Kong routes", function()
         -- create the non-default admin
         local admin = ee_helpers.create_admin("test42@konghq.com", "dj-khaled",
                                               enums.CONSUMERS.STATUS.APPROVED,
-                                              bp, dao)
+                                              bp, db)
         local rbac_user = admin.rbac_user
         admin.rbac_user = nil
         admins.link_to_workspace(admin, dao, ws_name)

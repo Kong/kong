@@ -8,16 +8,16 @@ local POLL_INTERVAL = 0.3
 
 dao_helpers.for_each_dao(function(kong_conf)
 
-describe("rbac entities are invalidated with db: " .. kong_conf.database, function()
+describe("rbac entities are invalidated with db: #" .. kong_conf.database, function()
 
   local admin_client_1
   local admin_client_2
 
-  local dao, _, bp
+  local db, bp
   local wait_for_propagation
 
   setup(function()
-    bp, _, dao = helpers.get_db_utils(kong_conf.database)
+    bp, db = helpers.get_db_utils(kong_conf.database)
     local db_update_propagation = kong_conf.database == "cassandra" and 3 or 0
 
     assert(helpers.start_kong {
@@ -91,31 +91,32 @@ describe("rbac entities are invalidated with db: " .. kong_conf.database, functi
 
       service = bp.services:insert()
 
-      rbac_migrations_defaults.up(nil, nil, dao)
+      rbac_migrations_defaults.up(nil, nil, db)
       -- a few extra mock entities for our test
 
-      dao.rbac_users:insert({
+      db.rbac_users:insert({
         name = "alice",
         user_token = "alice",
       })
 
-      dao.rbac_roles:insert({
+      db.rbac_roles:insert({
         name = "foo",
       })
 
       -- this is bob
-      dao.rbac_users:insert({
+      db.rbac_users:insert({
         name = "bob",
         user_token = "bob",
       })
 
-      local god = dao.rbac_users:insert({
+      local god = db.rbac_users:insert({
         name = "god",
         user_token = "god",
       })
 
-      local superadmin = dao.rbac_roles:find_all({name = "super-admin"})[1]
-      dao.rbac_user_roles:insert({
+      local superadmin = db.rbac_roles:select_by_name("superadmin")
+      superadmin = superadmin or db.rbac_roles:select_by_name("super-admin")
+      db.rbac_user_roles:insert({
         user_id = god.id,
         role_id = superadmin.id
       })

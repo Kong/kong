@@ -12,6 +12,8 @@ return {
     { username       = { type = "string",  unique = true }, },
     { custom_id      = { type = "string",  unique = true }, },
     { type           = { type = "integer", default = 0   }, },
+    { email  = { type = "string" } },
+    { status = { type = "integer" } },
   },
 
   entity_checks = {

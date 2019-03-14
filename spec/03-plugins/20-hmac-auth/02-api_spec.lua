@@ -342,6 +342,12 @@ for _, strategy in helpers.each_strategy() do
         local credential
         lazy_setup(function()
           db:truncate("hmacauth_credentials")
+          db:truncate("consumers")
+          consumer = bp.consumers:insert({
+            username  = "bob",
+            custom_id = "1234"
+          }, { nulls = true })
+
           credential = bp.hmacauth_credentials:insert({
             consumer = { id = consumer.id },
             username = "bob"
@@ -363,7 +369,7 @@ for _, strategy in helpers.each_strategy() do
           })
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
-          assert.same(consumer,json)
+          assert.same(consumer, json)
         end)
         it("returns 404 for a random non-existing hmac-auth id", function()
           local res = assert(admin_client:send {

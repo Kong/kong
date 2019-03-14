@@ -28,11 +28,13 @@ describe("DAO propagates CRUD events with DB: #" .. kong_conf.database, function
     assert(db:init_connector())
 
     dao = assert(kong_dao_factory.new(kong_conf, db))
-    dao:set_events_handler(mock_ipc)
-    dao:truncate_table("apis")
 
     singletons.db = db
     singletons.dao = dao
+
+    dao:set_events_handler(mock_ipc)
+    dao:truncate_table("apis")
+
   end)
 
   after_each(function()

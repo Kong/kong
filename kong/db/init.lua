@@ -41,6 +41,18 @@ local CORE_ENTITIES = {
 }
 
 
+local function ee_add_core_entities(entity)
+  table.insert(CORE_ENTITIES, entity)
+end
+
+ee_add_core_entities("rbac_users")
+ee_add_core_entities("rbac_roles")
+ee_add_core_entities("rbac_user_roles")
+ee_add_core_entities("rbac_role_entities")
+ee_add_core_entities("rbac_role_endpoints")
+ee_add_core_entities("consumers_rbac_users_map")
+
+
 local DEFAULT_LOCKS_TTL = 60 -- seconds
 
 
