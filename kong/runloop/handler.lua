@@ -36,7 +36,6 @@ local ngx_now     = ngx.now
 local update_time = ngx.update_time
 local subsystem   = ngx.config.subsystem
 local unpack      = unpack
-local compat_find_all = workspaces.compat_find_all
 
 
 local ERR         = ngx.ERR
@@ -405,11 +404,9 @@ return {
           return
         end
 
-        -- XXX compat_find_all will go away with workspaces remodel
-        local workspaces, err = compat_find_all("workspaces", {
+        local workspaces, err = db.workspace_entities:select_all({
           entity_id = data.entity[data.schema.primary_key[1]],
-          __skip_rbac = true,
-        })
+        }, {skip_rbac = true})
         if err then
           log(ngx.ERR, "[events] could not fetch workspaces: ", err)
           return
@@ -627,11 +624,9 @@ return {
         local operation = data.operation
         local upstream = data.entity
 
-        -- XXX compat_find_all will go away with workspaces remodel
-        local workspace_list, err = compat_find_all("workspace_entities", {
+        local workspace_list, err = db.workspace_entities:select_all({
           entity_id = data.entity.id,
-          __skip_rbac = true,
-        })
+        }, {skip_rbac = true})
         if err then
           log(ngx.ERR, "[events] could not fetch workspaces: ", err)
           return

@@ -1,5 +1,6 @@
 local cjson = require "cjson"
 local iteration = require "kong.db.iteration"
+local utils = require "kong.tools.utils"
 
 
 local setmetatable = setmetatable
@@ -15,6 +16,7 @@ local type         = type
 local next         = next
 local log          = ngx.log
 local fmt          = string.format
+local deep_copy    = utils.deep_copy
 
 local workspaces = require "kong.workspaces"
 local ws_helper  = require "kong.workspaces.helper"
@@ -682,6 +684,71 @@ end
 
 function DAO:truncate()
   return self.strategy:truncate()
+end
+
+
+function DAO:select_all(fields, options)
+  fields = fields or {}
+  local schema = self.schema
+
+  local ok, errors = schema:validate_fields(fields)
+  if not ok then
+    local err_t = self.errors:schema_violation(errors)
+    return nil, tostring(err_t), err_t
+  end
+
+  if options ~= nil then
+    validate_options_type(options)
+
+    local errors
+    ok, errors = validate_options_value(options, schema, "select")
+    if not ok then
+      local err_t = self.errors:invalid_options(errors)
+      return nil, tostring(err_t), err_t
+    end
+  end
+
+  local constraints = workspaceable[schema.name]
+
+  -- prepend workspace prefix
+  local tbl = deep_copy(fields)
+  ws_helper.apply_unique_per_ws(schema.name, tbl, constraints)
+
+  local rows, err_t
+
+  -- attempt select_all with filter fields
+  rows, err_t = self.strategy:select_all(tbl, options)
+  if err_t then
+    return nil, tostring(err_t), err_t
+  end
+
+  -- if no rows are found, attempt finding shared entities
+  if #rows == 0 then
+    local pk, err = ws_helper.resolve_shared_entity_id(self.schema.name, fields, constraints)
+    if err then
+      return nil, tostring(err_t), err_t
+    end
+    if pk then
+      fields = pk
+    end
+
+    rows, err_t = self.strategy:select_all(fields, options)
+    if err_t then
+      return nil, tostring(err_t), err_t
+    end
+  end
+
+  local entities, err
+  entities, err, err_t = self:rows_to_entities(rows, options)
+  if not entities then
+    return nil, err, err_t
+  end
+
+  if options and not options.skip_rbac then
+    entities = rbac.narrow_readable_entities(self.schema.name, entities)
+  end
+
+  return entities, err, err_t
 end
 
 

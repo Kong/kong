@@ -397,13 +397,12 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
         end)
 
         it("without inserting some valid rows prior to failure", function()
-          assert(bp.workspaces:insert {
+          local ws = assert(bp.workspaces:insert {
             name = "foo"
           })
 
-          -- XXX compat_find_all will go away with workspaces remodel
-          local n = workspaces.compat_find_all("workspace_entities", {
-            workspace_name = "foo"
+          local n = db.workspace_entities:select_all({
+            workspace_id = ws.id
           })
           n = #n
 
@@ -420,9 +419,8 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
           local json = cjson.decode(body)
           assert.equals("'nop' is not a valid UUID", json.message)
 
-          -- XXX compat_find_all will go away with workspaces remodel
-          local new_n = workspaces.compat_find_all("workspace_entities", {
-            workspace_name = "foo"
+          local new_n = db.workspace_entities:select_all({
+            workspace_id = ws.id
           })
           new_n = #new_n
           assert.same(n, new_n)

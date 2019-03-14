@@ -41,7 +41,7 @@ _M.app:before_filter(function(self)
   self.params.workspace_name = nil
 
   local cors_conf = {
-    origins = ws_helper.build_ws_portal_cors_origins(workspaces[1]),
+    origins = ws_helper.build_ws_portal_cors_origins(workspace),
     methods = { "GET", "PATCH", "DELETE", "POST" },
     credentials = true,
   }

@@ -151,6 +151,16 @@ local function build_queries(self)
         SELECT %s FROM %s WHERE partition = '%s' AND %s
       ]], select_columns, schema.name, schema.name, select_bind_args),
 
+      -- last format placeholder is left for filter columns
+      select_all = fmt([[
+        SELECT %s FROM %s WHERE partition = '%s'
+      ]], select_columns, schema.name, schema.name),
+
+      -- last format placeholder is left for filter columns
+      select_all_filtered = fmt([[
+        SELECT %s FROM %s WHERE partition = '%s' AND %%s ALLOW FILTERING
+      ]], select_columns, schema.name, schema.name),
+
       select_page = fmt([[
         SELECT %s FROM %s WHERE partition = '%s'
       ]], select_columns, schema.name, schema.name),
@@ -194,6 +204,16 @@ local function build_queries(self)
     select = fmt([[
       SELECT %s FROM %s WHERE %s
     ]], select_columns, schema.name, select_bind_args),
+
+    -- last format placeholder is left for filter columns
+    select_all = fmt([[
+    SELECT %s FROM %s
+    ]], select_columns, schema.name),
+
+    -- last format placeholder is left for filter columns
+    select_all_filtered = fmt([[
+    SELECT %s FROM %s WHERE %%s ALLOW FILTERING
+    ]], select_columns, schema.name),
 
     -- might raise a "you must enable ALLOW FILTERING" error
     select_page = fmt([[
@@ -546,6 +566,40 @@ function _mt:deserialize_row(row)
 end
 
 
+local function _select_all(self, cql, args)
+  local rows, err = self.connector:query(cql, args, nil, "read")
+  if not rows then
+    return nil, self.errors:database_error("could not execute selection query: "
+                                           .. err)
+  end
+
+  local workspaceable = workspaceable[self.schema.name]
+  local pk_name = workspaceable and workspaceable.primary_key
+
+  local ws_entities_map
+  if workspaceable then -- initialize workspace-entities map
+    local err
+    ws_entities_map, err = workspace_entities_map(get_workspaces(), self.schema.name)
+
+    if err then
+      return nil, self.errors:database_error(err)
+    end
+  end
+
+  local c = 1
+  local entities = new_tab(#rows, 0)
+
+  for _, row in ipairs(rows) do
+    if not workspaceable or workspaceable and ws_entities_map[row[pk_name]] then
+      entities[c] = self:deserialize_row(row)
+      c = c + 1
+    end
+  end
+
+  return entities
+end
+
+
 local function _select(self, cql, args)
   local rows, err = self.connector:query(cql, args, nil, "read")
   if not rows then
@@ -735,6 +789,29 @@ function _mt:select(primary_key, options)
   -- execute query
 
   return _select(self, cql, args)
+end
+
+
+function _mt:select_all(fields, options)
+  local q_name = next(fields) and "select_all_filtered" or "select_all"
+
+  local schema = self.schema
+  local cql, err = get_query(self, q_name)
+  if err then
+    return nil, err
+  end
+
+  local select_bind_args = {}
+  local args = {}
+  for name, value in pairs(fields) do
+    insert(select_bind_args, name .. " = ?")
+    insert(args, serialize_arg(schema.fields[name], value))
+  end
+  select_bind_args = concat(select_bind_args, " AND ")
+
+  cql = fmt(cql, select_bind_args)
+
+  return _select_all(self, cql, args)
 end
 
 

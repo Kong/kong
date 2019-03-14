@@ -968,6 +968,9 @@ validate_fields = function(self, input)
   return true, errors
 end
 
+-- XXX EE-only: expose validate_fields for use in DAO:select_all
+Schema.validate_fields = validate_fields
+
 
 local function insert_entity_error(errors, err)
   if not errors["@entity"] then

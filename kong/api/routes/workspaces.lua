@@ -83,8 +83,7 @@ return {
         return helpers.responses.send_HTTP_BAD_REQUEST("Cannot delete default workspace")
       end
 
-      -- XXX compat_find_all will go away with workspaces remodel
-      local results, err = workspaces.compat_find_all("workspace_entities", {
+      local results, err = db.workspace_entities:select_all({
         workspace_id = self.workspace.id,
       })
       if err then
@@ -109,8 +108,7 @@ return {
     GET = function(self, db, helpers)
       ensure_valid_workspace(self, helpers)
 
-      -- XXX compat_find_all will go away with workspaces remodel
-      local entities, err = workspaces.compat_find_all("workspace_entities", {
+      local entities, err = db.workspace_entities:select_all({
         workspace_id = self.workspace.id,
       })
       if err then
@@ -128,8 +126,7 @@ return {
         return helpers.responses.send_HTTP_BAD_REQUEST("must provide >= entity")
       end
 
-      -- XXX compat_find_all will go away with workspaces remodel
-      local existing_entities, err = workspaces.compat_find_all("workspace_entities", {
+      local existing_entities, err = db.workspace_entities:select_all({
         workspace_id = self.workspace.id,
       })
       if err then
@@ -190,8 +187,7 @@ return {
       for i = 1, #entity_ids do
         local e = entity_ids[i]
 
-        -- XXX compat_find_all will go away with workspaces remodel
-        local ws_e, err = workspaces.compat_find_all("workspace_entities", {
+        local ws_e, err = db.workspace_entities:select_all({
           workspace_id = self.workspace.id,
           entity_id = e,
         })
@@ -217,9 +213,8 @@ return {
         counters.inc_counter(db, self.workspace.id, ws_e[1].entity_type, { id = e }, -1)
 
         -- find out if the entity is still in any workspace
-        -- XXX compat_find_all will go away with workspaces remodel
         local rows
-        rows, err = workspaces.compat_find_all("workspace_entities", {
+        rows, err = db.workspace_entities:select_all({
           entity_id = e, -- get the first result's entity_type;
                                            -- we can do that given the result in
                                            -- ws_e is for the same entity_id
@@ -259,8 +254,7 @@ return {
     end,
 
     GET = function(self, db, helpers)
-      -- XXX compat_find_all will go away with workspaces remodel
-      local e, err = workspaces.compat_find_all("workspace_entities", {
+      local e, err = db.workspace_entities:select_all({
         workspace_id = self.workspace.id,
         entity_id = self.params.entity_id,
       })
@@ -280,8 +274,7 @@ return {
     end,
 
     DELETE = function(self, db, helpers)
-      -- XXX compat_find_all will go away with workspaces remodel
-      local e, err = workspaces.compat_find_all("workspace_entities", {
+      local e, err = db.workspace_entities:select_all({
         workspace_id = self.workspace.id,
         entity_id = self.params.entity_id,
       })

@@ -126,7 +126,7 @@ function _M.node_exists()
 end
 
 
-function _M.new(dao_factory, opts)
+function _M.new(db, opts)
   return setmetatable(opts, mt)
 end
 

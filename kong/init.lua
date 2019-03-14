@@ -342,7 +342,7 @@ function Kong.init()
     reports.add_ping_value("rbac_enforced", singletons.configuration.rbac ~= "off")
   end
   singletons.vitals = vitals.new {
-      dao            = dao,
+      db             = db,
       flush_interval = config.vitals_flush_interval,
       delete_interval_pg = config.vitals_delete_interval_pg,
       ttl_seconds    = config.vitals_ttl_seconds,
