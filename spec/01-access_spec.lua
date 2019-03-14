@@ -2,12 +2,18 @@ local utils = require "kong.tools.utils"
 local helpers = require "spec.helpers"
 
 
-for _, strategy in helpers.each_strategy() do
+for _, strategy in helpers.each_strategy({'postgres'}) do
   describe("Plugin: Session (access) [#" .. strategy .. "]", function()
     local client
 
-    setup(function()
-      local bp = helpers.get_db_utils(strategy)
+    lazy_setup(function()
+      local bp = helpers.get_db_utils(strategy, {
+        "plugins",
+        "routes",
+        "services",
+        "consumers",
+        "keyauth_credentials"
+      })
 
       local route1 = bp.routes:insert {
         paths    = {"/test1"},
@@ -21,12 +27,16 @@ for _, strategy in helpers.each_strategy() do
 
       assert(bp.plugins:insert {
         name = "session",
-        route_id = route1.id,
+        route = {
+          id = route1.id,
+        },
       })
 
       assert(bp.plugins:insert {
         name = "session",
-        route_id = route2.id,
+        route = {
+          id = route2.id,
+        },
         config = {
           cookie_name = "da_cookie",
           cookie_samesite = "Lax",
@@ -34,17 +44,21 @@ for _, strategy in helpers.each_strategy() do
           cookie_secure = false,
         }
       })
-    
+
       local consumer = bp.consumers:insert { username = "coop", }
       bp.keyauth_credentials:insert {
         key = "kong",
-        consumer_id = consumer.id,
+        consumer = {
+          id = consumer.id,
+        },
       }
 
       local anonymous = bp.consumers:insert { username = "anon", }
       bp.plugins:insert {
         name = "key-auth",
-        route_id = route1.id,
+        route = {
+          id = route1.id,
+        },
         config = {
           anonymous = anonymous.id
         }
@@ -52,7 +66,9 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name = "key-auth",
-        route_id = route2.id,
+        route = {
+          id = route2.id,
+        },
         config = {
           anonymous = anonymous.id
         }
@@ -60,7 +76,9 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name = "request-termination",
-        consumer_id = anonymous.id,
+        consumer = {
+          id = anonymous.id,
+        },
         config = {
           status_code = 403,
           message = "So it goes.",
@@ -74,7 +92,7 @@ for _, strategy in helpers.each_strategy() do
       })
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       helpers.stop_kong()
     end)
 

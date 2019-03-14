@@ -27,7 +27,7 @@ end
 function _M.open_session(conf)
   local opts = get_opts(conf)
   local s
-  
+
   if conf.storage == 'kong' then
     -- Required strategy for kong adapter which will allow for :regenerate
     -- method to keep sessions around during renewal period to allow for
@@ -42,7 +42,7 @@ function _M.open_session(conf)
     opts.storage = conf.storage
     s = session.open(opts)
   end
-  
+
   return s
 end
 
@@ -56,7 +56,7 @@ function _M.retrieve_session_data(s)
   if s and not s.data then
     return nil, nil
   end
-  
+
   return s.data[1], s.data[2]
 end
 
@@ -110,7 +110,7 @@ function _M.logout(conf)
           if post_args[logout_post_arg] then
             logout = true
           end
-          
+
           if logout then
             log(ngx.DEBUG, "logout by post argument")
           end
