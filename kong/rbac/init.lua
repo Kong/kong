@@ -641,21 +641,22 @@ end
 _M.delete_role_entity_permission = delete_role_entity_permission
 
 
-function _M.narrow_readable_entities(db_table_name, entities)
-  local filtered_rows = {}
-  setmetatable(filtered_rows, getmetatable(entities))
-  if not is_system_table(db_table_name) and is_admin_api_request() then
-    for i, v in ipairs(entities) do
-      local valid = _M.validate_entity_operation(v, db_table_name)
-      if valid then
-        filtered_rows[#filtered_rows+1] = v
-      end
-    end
-
-    return filtered_rows
-  else
+function _M.narrow_readable_entities(table_name, entities)
+  if is_system_table(table_name) or not is_admin_api_request() then -- don't touch it!
     return entities
   end
+
+  local filtered_rows = {}
+  setmetatable(filtered_rows, getmetatable(entities))
+
+  for _, entity in ipairs(entities) do
+    local valid = _M.validate_entity_operation(entity, table_name)
+    if valid then
+      filtered_rows[#filtered_rows+1] = entity
+    end
+  end
+
+  return filtered_rows
 end
 
 
