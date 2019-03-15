@@ -316,9 +316,8 @@ local function generate_foreign_key_methods(schema)
           return nil, err, err_t
         end
 
-        if options and not options.skip_rbac then
-          local table_name = self.schema.name
-          entities = rbac.narrow_readable_entities(table_name, entities)
+        if not options or not options.skip_rbac then
+          entities = rbac.narrow_readable_entities(self.schema.name, entities)
         end
 
         return entities, nil, nil, new_offset
@@ -418,7 +417,7 @@ local function generate_foreign_key_methods(schema)
           return nil
         end
 
-        if options and not options.skip_rbac then
+        if not options or not options.skip_rbac then
           local r = rbac.validate_entity_operation(row, self.schema.name)
           if not r then
             local err_t = self.errors:unauthorized_operation({
@@ -744,7 +743,7 @@ function DAO:select_all(fields, options)
     return nil, err, err_t
   end
 
-  if options and not options.skip_rbac then
+  if not options or not options.skip_rbac then
     entities = rbac.narrow_readable_entities(self.schema.name, entities)
   end
 
@@ -794,7 +793,7 @@ function DAO:select(primary_key, options)
     return nil
   end
 
-  if options and not options.skip_rbac then
+  if not options or not options.skip_rbac then
     local r = rbac.validate_entity_operation(primary_key, self.schema.name)
     if not r then
       local err_t = self.errors:unauthorized_operation({
@@ -852,9 +851,8 @@ function DAO:page(size, offset, options)
     return nil, err, err_t
   end
 
-  if options and not options.skip_rbac then
-    local table_name = self.schema.name
-    entities = rbac.narrow_readable_entities(table_name, entities)
+  if not options or not options.skip_rbac then
+    entities = rbac.narrow_readable_entities(self.schema.name, entities)
   end
 
   return entities, err, err_t, offset
