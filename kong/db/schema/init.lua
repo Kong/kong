@@ -94,8 +94,8 @@ local validation_errors = {
   -- schema error
   SCHEMA_NO_DEFINITION      = "expected a definition table",
   SCHEMA_NO_FIELDS          = "error in schema definition: no 'fields' table",
-  SCHEMA_MISSING_ATTRIBUTE  = "error in schema definition: missing attribute %s",
   SCHEMA_BAD_REFERENCE      = "schema refers to an invalid foreign entity: %s",
+  SCHEMA_CANNOT_VALIDATE    = "error in schema prevents from validating this field",
   SCHEMA_TYPE               = "invalid type: %s",
   -- primary key errors
   NOT_PK                    = "not a primary key",
@@ -712,9 +712,6 @@ function Schema:validate_field(field, value)
     if not is_sequence(value) then
       return nil, validation_errors.ARRAY
     end
-    if not field.elements then
-      return nil, validation_errors.SCHEMA_MISSING_ATTRIBUTE:format("elements")
-    end
 
     field.elements.required = true
     for _, v in ipairs(value) do
@@ -734,9 +731,6 @@ function Schema:validate_field(field, value)
     if not is_sequence(value) then
       return nil, validation_errors.SET
     end
-    if not field.elements then
-      return nil, validation_errors.SCHEMA_MISSING_ATTRIBUTE:format("elements")
-    end
 
     field.elements.required = true
     local set = {}
@@ -753,12 +747,6 @@ function Schema:validate_field(field, value)
   elseif field.type == "map" then
     if type(value) ~= "table" then
       return nil, validation_errors.MAP
-    end
-    if not field.keys then
-      return nil, validation_errors.SCHEMA_MISSING_ATTRIBUTE:format("keys")
-    end
-    if not field.values then
-      return nil, validation_errors.SCHEMA_MISSING_ATTRIBUTE:format("values")
     end
 
     field.keys.required = true
@@ -778,9 +766,6 @@ function Schema:validate_field(field, value)
   elseif field.type == "record" then
     if type(value) ~= "table" then
       return nil, validation_errors.RECORD
-    end
-    if not field.fields then
-      return nil, validation_errors.SCHEMA_MISSING_ATTRIBUTE:format("fields")
     end
 
     local field_schema = get_field_schema(field)
@@ -958,14 +943,19 @@ validate_fields = function(self, input)
     local err
     local field = self.fields[tostring(k)]
     if field and field.type == "self" then
-      field = input
+      local pok
+      pok, err, errors[k] = pcall(self.validate_field, self, input, v)
+      if not pok then
+        errors[k] = validation_errors.SCHEMA_CANNOT_VALIDATE
+        kong.log.debug(errors[k], ": ", err)
+      end
     else
       field, err = resolve_field(self, k, field, subschema)
-    end
-    if field then
-      _, errors[k] = self:validate_field(field, v)
-    else
-      errors[k] = err
+      if field then
+        _, errors[k] = self:validate_field(field, v)
+      else
+        errors[k] = err
+      end
     end
   end
 
@@ -1697,9 +1687,6 @@ end
 -- @return A schema object, or nil and an error message.
 local function get_foreign_schema_for_field(field)
   local ref = field.reference
-  if not ref then
-    return nil, validation_errors.SCHEMA_MISSING_ATTRIBUTE:format("reference")
-  end
 
   local foreign_schema = _cache[ref] and _cache[ref].schema
   if not foreign_schema then
