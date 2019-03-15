@@ -181,6 +181,14 @@ local function convert_legacy_schema(name, old_schema)
     if new_fdata.type == "array" then
       new_fdata.elements = elements
     end
+
+    if (new_fdata.type == "map" and new_fdata.keys == nil)
+       or (new_fdata.type == "record" and new_fdata.fields == nil) then
+      new_fdata.type = "map"
+      new_fdata.keys = { type = "string" }
+      new_fdata.values = { type = "string" }
+    end
+
     if new_fdata.type == nil then
       new_fdata.type = "string"
     end
