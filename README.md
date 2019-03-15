@@ -2,9 +2,9 @@
 
 This is a custom version of the Lambda plugin.
 
-It allows for IAM roles for authorization, see https://github.com/Kong/kong/pull/2777
-
-And additionally it has a modified version of https://github.com/Kong/kong/pull/3639
+- allows for EC2 IAM roles for authorization, see https://github.com/Kong/kong/pull/2777
+- has a modified version of https://github.com/Kong/kong/pull/3639
+- added ECS IAM roles
 
 
 ## Installation
@@ -36,7 +36,16 @@ like other custom plugins:
 > export KONG_CUSTOM_PLUGINS=liamp
 ```
 
+Once enabled, it differs slightly from the original Lambda plugin in that the
+token and secret are no longer required when configuring the plugin.
+The behaviour is now to default to IAM roles, unless the secret and token
+are provided.
+
+When the IAM roles are used (default, if no token/secret is provided), the plugin
+will first try ECS metadata, and if not available it will fallback on EC2
+metadata.
+
 ## Compatibility
 
-This plugins was developed against Kong `0.13`, and hence is compatible with
+This plugin was developed against Kong `0.13`, and hence is compatible with
 Kong Enterprise `0.33`

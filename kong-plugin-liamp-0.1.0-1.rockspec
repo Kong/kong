@@ -28,9 +28,10 @@ build = {
   type = "builtin",
   modules = {
     -- TODO: add any additional files that the plugin consists of
-    ["kong.plugins."..pluginName..".handler"]               = "handler.lua",
-    ["kong.plugins."..pluginName..".iam-role-credentials"]  = "iam-role-credentials.lua",
-    ["kong.plugins."..pluginName..".v4"]                    = "v4.lua",
-    ["kong.plugins."..pluginName..".schema"]                = "schema.lua",
+    ["kong.plugins."..pluginName..".handler"]              = "kong/plugins/"..pluginName.."/handler.lua",
+    ["kong.plugins."..pluginName..".iam-ec2-credentials"]  = "kong/plugins/"..pluginName.."/iam-ec2-credentials.lua",
+    ["kong.plugins."..pluginName..".iam-ecs-credentials"]  = "kong/plugins/"..pluginName.."/iam-ecs-credentials.lua",
+    ["kong.plugins."..pluginName..".v4"]                   = "kong/plugins/"..pluginName.."/v4.lua",
+    ["kong.plugins."..pluginName..".schema"]               = "kong/plugins/"..pluginName.."/schema.lua",
   }
 }

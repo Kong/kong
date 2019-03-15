@@ -96,9 +96,6 @@ return {
       type = "boolean",
       default = false,
     },
-    use_ec2_iam_role = {
-      type="boolean",
-    },
     proxy_scheme = {
       type = "string",
       enum = {
@@ -111,10 +108,15 @@ return {
     },
   },
   self_check = function(schema, plugin_t, dao, is_update)
-    if not plugin_t.use_ec2_iam_role then
-      -- if iam_profile is not set, aws_key and aws_secret are required
-      if not plugin_t.aws_key or plugin_t.aws_key == "" or not plugin_t.aws_secret or plugin_t.aws_secret == "" then
-        return false, Errors.schema "You need to set aws_key and aws_secret or need to use EC2 IAM roles"
+    if (plugin_t.aws_key or "") == "" then
+      -- not provided
+      if (plugin_t.aws_secret or "") ~= "" then
+        return false, Errors.schema "You need to set both or neither of aws_key and aws_secret"
+      end
+    else
+      -- provided
+      if (plugin_t.aws_secret or "") == "" then
+        return false, Errors.schema "You need to set both or neither of aws_key and aws_secret"
       end
     end
     if plugin_t.proxy_url and not plugin_t.proxy_scheme then

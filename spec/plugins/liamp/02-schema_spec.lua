@@ -47,39 +47,27 @@ describe("Plugin: AWS Lambda (schema)", function()
     assert.False(ok)
   end)
 
-  it("errors with no aws_key and use_ec2_iam_role set to false", function()
-    local entity = utils.table_merge(DEFAULTS, { aws_key = "" })
-    local ok, err, self_err = validate_entity(entity, aws_lambda_schema)
-    assert.is_nil(err)
-    assert.equal("You need to set aws_key and aws_secret or need to use EC2 IAM roles", self_err.message)
-    assert.False(ok)
-  end)
-
-  it("errors with empty aws_secret and use_ec2_iam_role set to false", function()
-    local entity = utils.table_merge(DEFAULTS, { aws_secret = "" })
-    local ok, err, self_err = validate_entity(entity, aws_lambda_schema)
-    assert.is_nil(err)
-    assert.equal("You need to set aws_key and aws_secret or need to use EC2 IAM roles", self_err.message)
-    assert.False(ok)
-  end)
-
-  it("errors with empty aws_secret or aws_key and use_ec2_iam_role set to false", function()
-    local entity = utils.table_merge(DEFAULTS, {})
-    entity.aws_key = nil
-    entity.aws_secret = nil
-    local ok, err, self_err = validate_entity(entity, aws_lambda_schema)
-    assert.is_nil(err)
-    assert.equal("You need to set aws_key and aws_secret or need to use EC2 IAM roles", self_err.message)
-    assert.False(ok)
-  end)
-
-  it("accepts if aws_key or aws_secret is missing but use_ec2_iam_role is set to true", function()
-    local entity = utils.table_merge(DEFAULTS, { use_ec2_iam_role = true })
-    entity.aws_key = nil
-    entity.aws_secret = nil
+  it("accepts with neither aws_key nor aws_secret", function()
+    local entity = utils.table_merge(DEFAULTS, { aws_key = "", aws_secret = "" })
     local ok, err = validate_entity(entity, aws_lambda_schema)
     assert.is_nil(err)
     assert.True(ok)
+  end)
+
+  it("errors with aws_secret but without aws_key", function()
+    local entity = utils.table_merge(DEFAULTS, { aws_secret = "xx", aws_key = "" })
+    local ok, err, self_err = validate_entity(entity, aws_lambda_schema)
+    assert.is_nil(err)
+    assert.equal("You need to set both or neither of aws_key and aws_secret", self_err.message)
+    assert.False(ok)
+  end)
+
+  it("errors without aws_secret but with aws_key", function()
+    local entity = utils.table_merge(DEFAULTS, { aws_secret = "", aws_key = "xx" })
+    local ok, err, self_err = validate_entity(entity, aws_lambda_schema)
+    assert.is_nil(err)
+    assert.equal("You need to set both or neither of aws_key and aws_secret", self_err.message)
+    assert.False(ok)
   end)
 
   it("errors if proxy_scheme is missing while proxy_url is provided", function()

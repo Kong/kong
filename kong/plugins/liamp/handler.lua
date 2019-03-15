@@ -11,8 +11,17 @@ local cjson = require "cjson.safe"
 local public_utils = require "kong.tools.public"
 local singletons = require "kong.singletons"
 
-local aws_v4 = require "kong.plugins." .. plugin_name .. ".v4"
-local fetch_iam_credentials_from_metadata_service = require "kong.plugins." .. plugin_name .. ".iam-role-credentials"
+local aws_v4 = require("kong.plugins." .. plugin_name .. ".v4")
+
+local fetch_credentials
+do
+  -- check if ECS is configured, if so, use irt for fetching credentials
+  fetch_credentials = require("kong.plugins." .. plugin_name .. ".iam-ecs-credentials")
+  if not fetch_credentials.configured then
+    -- not set, so fall back on EC2 credentials
+    fetch_credentials = require("kong.plugins." .. plugin_name .. ".iam-ec2-credentials")
+  end
+end
 
 local tostring             = tostring
 local ngx_req_read_body    = ngx.req.read_body
@@ -117,13 +126,14 @@ function AWSLambdaHandler:access(conf)
     query = conf.qualifier and "Qualifier=" .. conf.qualifier
   }
 
-  if conf.use_ec2_iam_role then
+  if (not conf.aws_key) or conf.aws_key == "" then
+    -- no credentials provided, so try the IAM metadata service
     local iam_role_credentials, err = singletons.cache:get(
       IAM_CREDENTIALS_CACHE_KEY,
       {
         ttl = DEFAULT_CACHE_IAM_INSTANCE_CREDS_DURATION
       },
-      fetch_iam_credentials_from_metadata_service
+      fetch_credentials
     )
 
     if not iam_role_credentials then
