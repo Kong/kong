@@ -195,7 +195,10 @@ end
 
 local create_balancer
 do
-  local ring_balancer = require "resty.dns.balancer.ring"
+  local balancer_types = {
+    consistent = require("resty.dns.balancer.ring"),
+    least      = require("resty.dns.balancer.least_connections"),
+  }
 
   local create_healthchecker
   do
@@ -374,10 +377,10 @@ do
 
     creating[upstream.id] = true
 
-    local balancer, err = ring_balancer.new({
-        wheelSize = upstream.slots,
-        dns = dns_client,
-      })
+    local balancer, err = balancer_types[upstream.algorithm].new({
+      wheelSize = upstream.slots,  -- will be ignored by least-connections
+      dns = dns_client,
+    })
 
     if not balancer then
       return nil, err

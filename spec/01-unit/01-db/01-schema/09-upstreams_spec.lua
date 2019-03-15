@@ -47,6 +47,17 @@ describe("load upstreams", function()
     assert.truthy(errs["name"])
   end)
 
+  it("hash_on with 'least' algorithm produces error", function()
+    local ok, errs = validate({
+      name = "myserver",
+      hash_on = "header",
+      hash_on_header = "a_name",
+      algorithm = "least",
+    })
+    assert.falsy(ok)
+    assert.truthy(errs.hash_on)
+  end)
+
   it("invalid hash_on_cookie produces error", function()
     local ok, errs = validate({ hash_on_cookie = "a cookie" })
     assert.falsy(ok)
