@@ -637,7 +637,7 @@ local function on_upstream_event(operation, upstream_data, workspaces)
   if operation == "create" then
 
     for _, workspace in ipairs(workspaces) do
-      singletons.cache:invalidate_local("balancer:upstreams:" .. workspace.workspace_id)
+      singletons.cache:invalidate_local("balancer:upstreams:" .. workspace.id)
     end
 
     local upstream = get_upstream_by_id(upstream_id)
@@ -654,7 +654,7 @@ local function on_upstream_event(operation, upstream_data, workspaces)
   elseif operation == "delete" or operation == "update" then
 
     for _, workspace in ipairs(workspaces) do
-      singletons.cache:invalidate_local("balancer:upstreams:" .. workspace.workspace_id)
+      singletons.cache:invalidate_local("balancer:upstreams:" .. workspace.id)
     end
     singletons.cache:invalidate_local("balancer:upstreams:" .. upstream_id)
     singletons.cache:invalidate_local("balancer:targets:"   .. upstream_id)

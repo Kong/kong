@@ -83,11 +83,12 @@ local function load_plugin_configuration(ctx,
                                          plugin_name,
                                          api_id)
 
-  local key = kong.db.plugins:entity_cache_key(plugin_name,
-                                               route_id,
-                                               service_id,
-                                               consumer_id,
-                                               api_id)
+  local key = kong.db.plugins:cache_key(plugin_name,
+                                        route_id,
+                                        service_id,
+                                        consumer_id,
+                                        api_id,
+                                        true)
   local plugin, err = load_plugin_into_memory_ws(ctx, key)
 
   if err then

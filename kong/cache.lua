@@ -186,21 +186,18 @@ function _M:invalidate(key, workspaces)
     log(ERR, "failed to broadcast cached entity invalidation: ", err)
   end
 
-  local seen_workspaces = {}
   workspaces = workspaces or {}
   for _, ws in ipairs(workspaces) do
-    if not seen_workspaces[ws.workspace_id] then
-      local key_ws = key .. ws.workspace_id
-      self:invalidate_local(key_ws)
 
-      log(DEBUG, "broadcasting (cluster) invalidation for key: '", key_ws, "' ",
-                 "with nbf: '", nbf or "none", "'")
+    local key_ws = key .. ws.id
+    self:invalidate_local(key_ws)
 
-      local ok, err = self.cluster_events:broadcast("invalidations", key_ws, nbf)
-      if not ok then
-        log(ERR, "failed to broadcast cached entity invalidation: ", err)
-      end
-      seen_workspaces[ws.workspace_id] = true
+    log(DEBUG, "broadcasting (cluster) invalidation for key: '", key_ws, "' ",
+               "with nbf: '", nbf or "none", "'")
+
+    local ok, err = self.cluster_events:broadcast("invalidations", key_ws, nbf)
+    if not ok then
+      log(ERR, "failed to broadcast cached entity invalidation: ", err)
     end
   end
 end

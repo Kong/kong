@@ -391,7 +391,7 @@ return {
         if data.schema.table then
           return dao[data.schema.table]:entity_cache_key(entity)
         else
-          return db[data.schema.name]:cache_key(entity)
+          return db[data.schema.name]:cache_key(entity, nil, nil, nil, nil, true)
         end
       end
 
@@ -404,9 +404,7 @@ return {
           return
         end
 
-        local workspaces, err = db.workspace_entities:select_all({
-          entity_id = data.entity[data.schema.primary_key[1]],
-        }, {skip_rbac = true})
+        local workspaces, err = db.workspaces:select_all(nil, {skip_rbac = true})
         if err then
           log(ngx.ERR, "[events] could not fetch workspaces: ", err)
           return
@@ -624,9 +622,7 @@ return {
         local operation = data.operation
         local upstream = data.entity
 
-        local workspace_list, err = db.workspace_entities:select_all({
-          entity_id = data.entity.id,
-        }, {skip_rbac = true})
+        local workspace_list, err = db.workspaces:select_all(nil, {skip_rbac = true})
         if err then
           log(ngx.ERR, "[events] could not fetch workspaces: ", err)
           return
