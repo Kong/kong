@@ -154,6 +154,7 @@ local r =  {
     { id = typedefs.uuid, },
     { created_at = typedefs.auto_timestamp_s },
     { name = { type = "string", required = true, unique = true, custom_validator = validate_name }, },
+    { algorithm = { type = "string", default = "consistent", one_of = { "consistent", "least" }, }, },
     { hash_on = hash_on },
     { hash_fallback = hash_on },
     { hash_on_header = typedefs.header_name, },

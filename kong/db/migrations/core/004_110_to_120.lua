@@ -15,12 +15,23 @@ return {
         -- Do nothing, accept existing state
       END;
       $$;
+
+
+      DO $$
+      BEGIN
+      ALTER TABLE upstreams ADD algorithm text;
+      END$$;
+
     ]],
   },
 
   cassandra = {
     up = [[
       ALTER TABLE routes ADD https_redirect_status_code int;
+
+
+      ALTER TABLE upstreams ADD algorithm text;
+
     ]],
   },
 }
