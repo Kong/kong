@@ -195,25 +195,20 @@ _M.user_can_manage_endpoints_from = user_can_manage_endpoints_from
 
 
 local function retrieve_user(user_name)
-  local users, err = singletons.dao.rbac_users:find_all({
-    name = user_name,
-    __skip_rbac = true,
+  local user, err = singletons.db.rbac_users:select_by_name(user_name, {
+    skip_rbac = true
   })
   if err then
     log(ngx.ERR, "error in retrieving user from name: ", err)
     return nil, err
   end
 
-  for _, user in ipairs(users) do
-    if user.enabled then
-      return user
-    end
-  end
+  return user and user.enabled
 end
 
 
 local function get_user(user_name)
-  local cache_key = singletons.dao.rbac_users:cache_key(user_name)
+  local cache_key = singletons.db.rbac_users:cache_key(user_name)
   local user, err = singletons.cache:get(cache_key, nil,
                                          retrieve_user, user_name)
   if err then
@@ -424,7 +419,7 @@ local function get_rbac_user_info(rbac_user)
 
   local ctx = ngx.ctx
   local old_ws_ctx = ctx.workspaces
-  local user, err = _M.load_rbac_ctx(singletons.dao, ctx, rbac_user)
+  local user, err = _M.load_rbac_ctx(singletons.db, ctx, rbac_user)
 
   ctx.workspaces = old_ws_ctx
 
