@@ -29,7 +29,6 @@ end
 
 return {
   name = "session",
-  endpoint_key = "session_id",
   fields = {
     { config = {
         type = "record",
@@ -55,7 +54,7 @@ return {
             storage = {
               required = false,
               type = "string",
-              enum = {
+              one_of = {
                 "cookie",
                 "kong",
               },
