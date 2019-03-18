@@ -47,7 +47,7 @@ function _M.execute(conf)
 
   local cid, credential = session.retrieve_session_data(s)
 
-  local consumer_cache_key = kong.dao.consumers:cache_key(cid)
+  local consumer_cache_key = kong.db.consumers:cache_key(cid)
   local consumer, err = kong.cache:get(consumer_cache_key, nil,
                                        load_consumer, cid)
 
