@@ -34,6 +34,8 @@ local ngx_req_read_body    = ngx.req.read_body
 local ngx_req_get_uri_args = ngx.req.get_uri_args
 local ngx_req_get_headers  = ngx.req.get_headers
 local ngx_encode_base64    = ngx.encode_base64
+local ngx_update_time      = ngx.update_time
+local ngx_now              = ngx.now
 
 local DEFAULT_CACHE_IAM_INSTANCE_CREDS_DURATION = 60
 local IAM_CREDENTIALS_CACHE_KEY = "plugin." .. plugin_name .. ".iam_role_temp_creds"
@@ -53,6 +55,12 @@ end
 local server_header_value
 local server_header_name
 local AWS_PORT = 443
+
+
+local function get_now()
+  ngx_update_time()
+  return ngx_now() * 1000 -- time is kept in seconds with millisecond resolution.
+end
 
 
 local function send(status, content, headers)
@@ -229,6 +237,9 @@ function AWSLambdaHandler:access(conf)
   -- Trigger request
   local client = http.new()
   client:set_timeout(conf.timeout)
+
+  local kong_wait_time_start = get_now()
+
   local ok
   if conf.proxy_url then
     ok, err = client:connect_proxy(conf.proxy_url, conf.proxy_scheme, host, port)
@@ -256,6 +267,10 @@ function AWSLambdaHandler:access(conf)
   end
 
   local content = res:read_body()
+
+  -- setting the latency here is a bit tricky, but because we are not
+  -- actually proxying, it will not be overwritten
+  ngx.ctx.KONG_WAITING_TIME = get_now() - kong_wait_time_start
   local headers = res.headers
 
   ok, err = client:set_keepalive(conf.keepalive)
