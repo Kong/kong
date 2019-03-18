@@ -26,6 +26,7 @@ do
 end
 
 local tostring             = tostring
+local tonumber             = tonumber
 local pairs                = pairs
 local type                 = type
 local fmt                  = string.format
@@ -54,12 +55,61 @@ end
 
 local server_header_value
 local server_header_name
+local response_bad_gateway
 local AWS_PORT = 443
 
 
 local function get_now()
   ngx_update_time()
   return ngx_now() * 1000 -- time is kept in seconds with millisecond resolution.
+end
+
+
+--[[
+  Response format should be
+  {
+      "statusCode": httpStatusCode,
+      "headers": { "headerName": "headerValue", ... },
+      "body": "..."
+  }
+--]]
+local function validate_custom_response(response)
+  if type(response.statusCode) ~= "number" then
+    return nil, "statusCode must be a number"
+  end
+
+  if response.headers ~= nil and type(response.headers) ~= "table" then
+    return nil, "headers must be a table"
+  end
+
+  if response.body ~= nil and type(response.body) ~= "string" then
+    return nil, "body must be a string"
+  end
+
+  return true
+end
+
+
+local function extract_proxy_response(content)
+  local serialized_content, err = cjson.decode(content)
+  if not serialized_content then
+    return nil, err
+  end
+
+  local ok, err = validate_custom_response(serialized_content)
+  if not ok then
+    return nil, err
+  end
+
+  local headers = serialized_content.headers or {}
+  local body = serialized_content.body or ""
+  headers["Content-Length"] = #body
+
+  return {
+    status_code = tonumber(serialized_content.statusCode),
+    body = body,
+    headers = headers,
+  }
 end
 
 
@@ -76,9 +126,6 @@ local function send(status, content, headers)
     ngx.header["Content-Length"] = #content
   end
 
---  if singletons.configuration.enabled_headers[constants.HEADERS.VIA] then
---    ngx.header[constants.HEADERS.VIA] = server_header
---  end
   if server_header_value then
     ngx.header[server_header_name] = server_header_value
   end
@@ -124,6 +171,16 @@ function AWSLambdaHandler:init_worker()
     else
       server_header_value = nil
       server_header_name = nil
+    end
+  end
+
+
+  -- response for BAD_GATEWAY was added in 0.14x
+  response_bad_gateway = responses.send_HTTP_BAD_GATEWAY
+  if not response_bad_gateway then
+    response_bad_gateway = function(msg)
+      ngx.log(ngx.ERR, LOG_PREFIX, msg)
+      return responses.send(502, "Bad Gateway")
     end
   end
 end
@@ -279,14 +336,29 @@ function AWSLambdaHandler:access(conf)
   end
 
   local status
-  if conf.unhandled_status
-     and headers["X-Amz-Function-Error"] == "Unhandled"
-  then
-    status = conf.unhandled_status
+  if conf.is_proxy_integration then
+    local proxy_response, err = extract_proxy_response(content)
+    if not proxy_response then
+      return response_bad_gateway("could not JSON decode Lambda function " ..
+                                  "response: " .. tostring(err))
+    end
 
-  else
-    status = res.status
+    status = proxy_response.status_code
+    headers = utils.table_merge(headers, proxy_response.headers)
+    content = proxy_response.body
   end
+
+  if not status then
+    if conf.unhandled_status
+      and headers["X-Amz-Function-Error"] == "Unhandled"
+    then
+      status = conf.unhandled_status
+
+    else
+      status = res.status
+    end
+  end
+
 
   local ctx = ngx.ctx
   if ctx.delay_response and not ctx.delayed_response then
