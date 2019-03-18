@@ -29,7 +29,7 @@ for _, strategy in helpers.each_strategy() do
     local proxy_client
 
     setup(function()
-      local bp = helpers.get_db_utils(strategy)
+      local bp = helpers.get_db_utils(strategy, nil, { "statsd-advanced" })
 
       local consumer = bp.consumers:insert {
         username  = "bob",
@@ -38,7 +38,7 @@ for _, strategy in helpers.each_strategy() do
 
       bp.keyauth_credentials:insert {
         key         = "kong",
-        consumer_id = consumer.id,
+        consumer    = { id = consumer.id },
       }
 
       local routes = {}
@@ -67,22 +67,22 @@ for _, strategy in helpers.each_strategy() do
         }
       end
 
-      bp.key_auth_plugins:insert { route_id = routes[1].id }
+      bp.key_auth_plugins:insert { route = { id = routes[1].id } }
 
       bp.plugins:insert {
         name     = "statsd-advanced",
-        route_id   = routes[1].id,
+        route      = { id = routes[1].id },
         config     = {
           host     = "127.0.0.1",
           port     = UDP_PORT,
         },
       }
 
-      bp.key_auth_plugins:insert { route_id = routes[2].id }
+      bp.key_auth_plugins:insert { route = { id = routes[2].id } }
 
       bp.plugins:insert {
         name     = "statsd-advanced",
-        route_id   = routes[2].id,
+        route      = { id = routes[2].id },
         config     = {
           host     = "127.0.0.1",
           port     = UDP_PORT,
@@ -90,11 +90,11 @@ for _, strategy in helpers.each_strategy() do
         },
       }
 
-      bp.key_auth_plugins:insert { route_id = routes[3].id }
+      bp.key_auth_plugins:insert { route = { id = routes[3].id } }
 
       bp.plugins:insert {
         name     = "statsd-advanced",
-        route_id   = routes[3].id,
+        route      = { id = routes[3].id },
         config     = {
           host     = "127.0.0.1",
           port     = UDP_PORT,
@@ -109,11 +109,11 @@ for _, strategy in helpers.each_strategy() do
         },
       }
 
-      bp.key_auth_plugins:insert { route_id = routes[12].id }
+      bp.key_auth_plugins:insert { route = { id = routes[12].id } }
 
       bp.plugins:insert {
         name     = "statsd-advanced",
-        route_id   = routes[12].id,
+        route      = { id = routes[12].id },
         config     = {
           host     = "127.0.0.1",
           port     = UDP_PORT,
@@ -128,7 +128,7 @@ for _, strategy in helpers.each_strategy() do
         },
       }
 
-      bp.key_auth_plugins:insert { route_id = routes[4].id }
+      bp.key_auth_plugins:insert { route = { id = routes[4].id } }
 
       local vitals_metrics = {}
       for _, group in pairs(vitals.logging_metrics) do
@@ -143,7 +143,7 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name     = "statsd-advanced",
-        route_id   = routes[4].id,
+        route      = { id = routes[4].id },
         config     = {
           host     = "127.0.0.1",
           port     = UDP_PORT,
@@ -152,11 +152,11 @@ for _, strategy in helpers.each_strategy() do
       }
 
 
-      bp.key_auth_plugins:insert { route_id = routes[5].id }
+      bp.key_auth_plugins:insert { route = { id = routes[5].id } }
 
       bp.plugins:insert {
         name     = "statsd-advanced",
-        route_id   = routes[5].id,
+        route      = { id = routes[5].id },
         config     = {
           host     = "127.0.0.1",
           port     = TCP_PORT,
@@ -171,11 +171,11 @@ for _, strategy in helpers.each_strategy() do
         }
       }
 
-      bp.key_auth_plugins:insert { route_id = routes[6].id }
+      bp.key_auth_plugins:insert { route = { id = routes[6].id } }
 
       bp.plugins:insert {
         name     = "statsd-advanced",
-        route_id   = routes[6].id,
+        route      = { id = routes[6].id },
         config     = {
           host     = "127.0.0.1",
           port     = UDP_PORT,
@@ -198,11 +198,11 @@ for _, strategy in helpers.each_strategy() do
         }
       }
 
-      bp.key_auth_plugins:insert { route_id = routes[7].id }
+      bp.key_auth_plugins:insert { route = { id = routes[7].id } }
 
       bp.plugins:insert {
         name     = "statsd-advanced",
-        route_id   = routes[7].id,
+        route      = { id = routes[7].id },
         config     = {
           host     = "127.0.0.1",
           port     = UDP_PORT,
@@ -225,11 +225,11 @@ for _, strategy in helpers.each_strategy() do
         }
       }
 
-      bp.key_auth_plugins:insert { route_id = routes[8].id }
+      bp.key_auth_plugins:insert { route = { id = routes[8].id } }
 
       bp.plugins:insert {
         name     = "statsd-advanced",
-        route_id   = routes[8].id,
+        route      = { id = routes[8].id },
         config     = {
           host     = "127.0.0.1",
           port     = UDP_PORT,
@@ -252,11 +252,11 @@ for _, strategy in helpers.each_strategy() do
         }
       }
 
-      bp.key_auth_plugins:insert { route_id = routes[9].id }
+      bp.key_auth_plugins:insert { route = { id = routes[9].id } }
 
       bp.plugins:insert {
         name     = "statsd-advanced",
-        route_id   = routes[9].id,
+        route      = { id = routes[9].id },
         config     = {
           host     = "127.0.0.1",
           port     = UDP_PORT,
@@ -278,11 +278,11 @@ for _, strategy in helpers.each_strategy() do
         },
       }
 
-      bp.key_auth_plugins:insert { route_id = routes[10].id }
+      bp.key_auth_plugins:insert { route = { id = routes[10].id } }
 
       bp.plugins:insert {
         name     = "statsd-advanced",
-        route_id   = routes[10].id,
+        route      = { id = routes[10].id },
         config     = {
           host     = "127.0.0.1",
           port     = UDP_PORT,
@@ -303,11 +303,11 @@ for _, strategy in helpers.each_strategy() do
         },
       }
 
-      bp.key_auth_plugins:insert { route_id = routes[11].id }
+      bp.key_auth_plugins:insert { route = { id = routes[11].id } }
 
       bp.plugins:insert {
         name     = "statsd-advanced",
-        route_id   = routes[11].id,
+        route      = { id = routes[11].id },
         config     = {
           host     = "127.0.0.1",
           port     = UDP_PORT,
@@ -328,11 +328,11 @@ for _, strategy in helpers.each_strategy() do
         },
       }
 
-      bp.key_auth_plugins:insert { route_id = routes[100].id }
+      bp.key_auth_plugins:insert { route = { id = routes[100].id } }
 
       bp.plugins:insert {
         name     = "statsd-advanced",
-        route_id   = routes[100].id,
+        route      = { id = routes[100].id },
         config     = {
           host     = "127.0.0.1",
           port     = UDP_PORT,
@@ -353,11 +353,11 @@ for _, strategy in helpers.each_strategy() do
         },
       }
 
-      bp.key_auth_plugins:insert { route_id = routes[101].id }
+      bp.key_auth_plugins:insert { route = { id = routes[101].id } }
 
       bp.plugins:insert {
         name     = "statsd-advanced",
-        route_id   = routes[101].id,
+        route      = { id = routes[101].id },
         config     = {
           host     = "127.0.0.1",
           port     = UDP_PORT,
@@ -379,11 +379,11 @@ for _, strategy in helpers.each_strategy() do
       }
 
 
-      bp.key_auth_plugins:insert { route_id = routes[102].id }
+      bp.key_auth_plugins:insert { route = { id = routes[102].id } }
 
       bp.plugins:insert {
         name     = "statsd-advanced",
-        route_id   = routes[102].id,
+        route      = { id = routes[102].id },
         config     = {
           host     = "127.0.0.1",
           port     = UDP_PORT,
@@ -429,8 +429,13 @@ for _, strategy in helpers.each_strategy() do
     describe("metrics", function()
       it("logs over UDP with default metrics with vitals on", function()
         local metrics_count = 12
+        for _, group in pairs(vitals.logging_metrics) do
+          for metric, metric_type in pairs(group) do
+            metrics_count = metrics_count + 1
+          end
+        end
         -- shdict_usage metrics
-        metrics_count = metrics_count + (strategy == "cassandra" and 14 or 13) * 2
+        metrics_count = metrics_count + (strategy == "cassandra" and 16 or 15) * 2
         -- vitals metrics
         for _, group in pairs(vitals.logging_metrics) do
           for metric, _ in pairs(group) do
@@ -480,7 +485,7 @@ for _, strategy in helpers.each_strategy() do
       it("logs over UDP with default metrics and new prefix with vitals on", function()
         local metrics_count = 12
         -- shdict_usage metrics, can't test again in 1 minutes
-        -- metrics_count = metrics_count + (strategy == "cassandra" and 14 or 13) * 2
+        -- metrics_count = metrics_count + (strategy == "cassandra" and 16 or 15) * 2
         -- vitals metrics
         for _, group in pairs(vitals.logging_metrics) do
           for metric, _ in pairs(group) do
@@ -787,7 +792,7 @@ for _, strategy in helpers.each_strategy() do
 
       bp.keyauth_credentials:insert {
         key         = "kong",
-        consumer_id = consumer.id,
+        consumer    = { id = consumer.id },
       }
 
       local routes = {}
@@ -804,11 +809,11 @@ for _, strategy in helpers.each_strategy() do
         }
       end
 
-      bp.key_auth_plugins:insert { route_id = routes[1].id }
+      bp.key_auth_plugins:insert { route = { id = routes[1].id } }
 
       bp.plugins:insert {
         name     = "statsd-advanced",
-        route_id   = routes[1].id,
+        route      = { id = routes[1].id },
         config     = {
           host     = "127.0.0.1",
           port     = UDP_PORT,
@@ -838,7 +843,7 @@ for _, strategy in helpers.each_strategy() do
       it("does not send vitals metrics when vitals is turned off", function()
         local metrics_count = 12
         -- shdict_usage metrics
-        metrics_count = metrics_count + (strategy == "cassandra" and 14 or 13) * 2
+        metrics_count = metrics_count + (strategy == "cassandra" and 15 or 14) * 2
         -- should have no vitals metrics
 
         local thread = helpers.udp_server(UDP_PORT, metrics_count)
@@ -896,7 +901,7 @@ for _, strategy in helpers.each_strategy() do
 
       bp.keyauth_credentials:insert {
         key         = "kong",
-        consumer_id = consumer.id,
+        consumer    = { id = consumer.id },
       }
 
       bp.plugins:insert { name = "key-auth" }
