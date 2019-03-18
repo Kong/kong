@@ -36,8 +36,8 @@ env:
     - INSTALL_CACHE=$HOME/install-cache
     - BUSTED_ARGS="-o gtest -v --exclude-tags=flaky,ipv6"
     - PLUGIN_NAME=session
-    - KONG_TEST_PLUGINS=$PLUGIN_NAME
-    - KONG_PLUGINS=$PLUGIN_NAME
+    - KONG_TEST_PLUGINS=bundled,$PLUGIN_NAME
+    - KONG_PLUGINS=bundled,$PLUGIN_NAME
 
   matrix:
     - OPENRESTY=$OPENRESTY_BASE
