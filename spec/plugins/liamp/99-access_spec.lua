@@ -1,4 +1,8 @@
 local helpers = require "spec.helpers"
+local meta    = require "kong.meta"
+
+
+local server_tokens = meta._SERVER_TOKENS
 
 
 for _, strategy in helpers.each_strategy() do
@@ -499,5 +503,36 @@ for _, strategy in helpers.each_strategy() do
       assert.res_status(412, res)
       assert.equal("Unhandled", res.headers["X-Amz-Function-Error"])
     end)
+
+    it("returns server tokens with Via header", function()
+      local res = assert(proxy_client:send {
+        method  = "GET",
+        path    = "/get?key1=some_value1&key2=some_value2&key3=some_value3",
+        headers = {
+          ["Host"] = "lambda.com"
+        }
+      })
+
+      if server_tokens then
+        -- post-0.14
+        assert.equal(server_tokens, res.headers["Via"])
+      else
+        -- pre-0.14
+        assert.equal("kong/", res.headers["Via"]:sub(1,5))
+      end
+    end)
+
+    it("returns Content-Length header", function()
+      local res = assert(proxy_client:send {
+        method  = "GET",
+        path    = "/get?key1=some_value1&key2=some_value2&key3=some_value3",
+        headers = {
+          ["Host"] = "lambda.com"
+        }
+      })
+
+      assert.equal(65, tonumber(res.headers["Content-Length"]))
+    end)
+
   end)
 end

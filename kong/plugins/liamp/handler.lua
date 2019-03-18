@@ -10,12 +10,14 @@ local http = require "resty.http"
 local cjson = require "cjson.safe"
 local public_utils = require "kong.tools.public"
 local singletons = require "kong.singletons"
+local constants = require "kong.constants"
+local meta = require "kong.meta"
 
 local aws_v4 = require("kong.plugins." .. plugin_name .. ".v4")
 
 local fetch_credentials
 do
-  -- check if ECS is configured, if so, use irt for fetching credentials
+  -- check if ECS is configured, if so, use it for fetching credentials
   fetch_credentials = require("kong.plugins." .. plugin_name .. ".iam-ecs-credentials")
   if not fetch_credentials.configured then
     -- not set, so fall back on EC2 credentials
@@ -24,6 +26,10 @@ do
 end
 
 local tostring             = tostring
+local pairs                = pairs
+local type                 = type
+local fmt                  = string.format
+local ngx                  = ngx
 local ngx_req_read_body    = ngx.req.read_body
 local ngx_req_get_uri_args = ngx.req.get_uri_args
 local ngx_req_get_headers  = ngx.req.get_headers
@@ -32,6 +38,7 @@ local ngx_encode_base64    = ngx.encode_base64
 local DEFAULT_CACHE_IAM_INSTANCE_CREDS_DURATION = 60
 local IAM_CREDENTIALS_CACHE_KEY = "plugin." .. plugin_name .. ".iam_role_temp_creds"
 local LOG_PREFIX = "[" .. plugin_name .. "] "
+
 
 local new_tab
 do
@@ -42,13 +49,77 @@ do
   end
 end
 
+
+local server_header_value
+local server_header_name
 local AWS_PORT = 443
 
+
+local function send(status, content, headers)
+  ngx.status = status
+
+  if type(headers) == "table" then
+    for k, v in pairs(headers) do
+      ngx.header[k] = v
+    end
+  end
+
+  if not ngx.header["Content-Length"] then
+    ngx.header["Content-Length"] = #content
+  end
+
+--  if singletons.configuration.enabled_headers[constants.HEADERS.VIA] then
+--    ngx.header[constants.HEADERS.VIA] = server_header
+--  end
+  if server_header_value then
+    ngx.header[server_header_name] = server_header_value
+  end
+
+  ngx.print(content)
+
+  return ngx.exit(status)
+end
+
+
+local function flush(ctx)
+  ctx = ctx or ngx.ctx
+  local response = ctx.delayed_response
+  return send(response.status_code, response.content, response.headers)
+end
+
+
 local AWSLambdaHandler = BasePlugin:extend()
+
 
 function AWSLambdaHandler:new()
   AWSLambdaHandler.super.new(self, plugin_name)
 end
+
+
+function AWSLambdaHandler:init_worker()
+
+  if singletons.configuration.enabled_headers then
+    -- newer `headers` config directive (0.14.x +)
+    if singletons.configuration.enabled_headers[constants.HEADERS.VIA] then
+      server_header_value = meta._SERVER_TOKENS
+      server_header_name = constants.HEADERS.VIA
+    else
+      server_header_value = nil
+      server_header_name = nil
+    end
+
+  else
+    -- old `server_tokens` config directive (up to 0.13.x)
+    if singletons.configuration.server_tokens then
+      server_header_value = _KONG._NAME .. "/" .. _KONG._VERSION
+      server_header_name = "Via"
+    else
+      server_header_value = nil
+      server_header_name = nil
+    end
+  end
+end
+
 
 function AWSLambdaHandler:access(conf)
   AWSLambdaHandler.super.access(self)
@@ -103,8 +174,8 @@ function AWSLambdaHandler:access(conf)
                      " to forward request values: ", err)
   end
 
-  local host = string.format("lambda.%s.amazonaws.com", conf.aws_region)
-  local path = string.format("/2015-03-31/functions/%s/invocations",
+  local host = fmt("lambda.%s.amazonaws.com", conf.aws_region)
+  local path = fmt("/2015-03-31/functions/%s/invocations",
                             conf.function_name)
   local port = conf.port or AWS_PORT
 
@@ -184,7 +255,7 @@ function AWSLambdaHandler:access(conf)
     return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
   end
 
-  local body = res:read_body()
+  local content = res:read_body()
   local headers = res.headers
 
   ok, err = client:set_keepalive(conf.keepalive)
@@ -192,26 +263,32 @@ function AWSLambdaHandler:access(conf)
     return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
   end
 
+  local status
   if conf.unhandled_status
      and headers["X-Amz-Function-Error"] == "Unhandled"
   then
-    ngx.status = conf.unhandled_status
+    status = conf.unhandled_status
 
   else
-    ngx.status = res.status
+    status = res.status
   end
 
-  -- Send response to client
-  for k, v in pairs(headers) do
-    ngx.header[k] = v
+  local ctx = ngx.ctx
+  if ctx.delay_response and not ctx.delayed_response then
+    ctx.delayed_response = {
+      status_code = status,
+      content     = content,
+      headers     = headers,
+    }
+
+    ctx.delayed_response_callback = flush
+    return
   end
 
-  ngx.say(body)
-
-  return ngx.exit(res.status)
+  return send(status, content, headers)
 end
 
 AWSLambdaHandler.PRIORITY = 750
-AWSLambdaHandler.VERSION = "0.1.0"
+AWSLambdaHandler.VERSION = "0.1.1"
 
 return AWSLambdaHandler
