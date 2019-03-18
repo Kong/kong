@@ -86,7 +86,7 @@ for _, strategy in helpers.each_strategy({'postgres'}) do
       }
 
       assert(helpers.start_kong {
-        custom_plugins = "session",
+        plugins = "bundled, session",
         database   = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
       })
