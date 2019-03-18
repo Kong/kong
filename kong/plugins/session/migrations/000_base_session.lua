@@ -26,7 +26,7 @@ return {
         session_id    text,
         expires       int,
         data          text,
-        created_at    timestamp
+        created_at    timestamp,
         PRIMARY KEY (id)
       );
 
