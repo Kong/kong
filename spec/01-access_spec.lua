@@ -2,7 +2,7 @@ local utils = require "kong.tools.utils"
 local helpers = require "spec.helpers"
 
 
-for _, strategy in helpers.each_strategy({'postgres'}) do
+for _, strategy in helpers.each_strategy() do
   describe("Plugin: Session (access) [#" .. strategy .. "]", function()
     local client
 

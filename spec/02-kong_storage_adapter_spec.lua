@@ -8,7 +8,7 @@ function get_sid_from_cookie(cookie)
 end
 
 
-for _, strategy in helpers.each_strategy({'postgres'}) do
+for _, strategy in helpers.each_strategy() do
   describe("Plugin: Session (kong storage adapter) [#" .. strategy .. "]", function()
     local client, bp, db
 
@@ -104,7 +104,7 @@ for _, strategy in helpers.each_strategy({'postgres'}) do
     end)
 
     lazy_teardown(function()
-      helpers.stop_kong(nil, true)
+      helpers.stop_kong()
     end)
 
     before_each(function()
@@ -236,10 +236,11 @@ for _, strategy in helpers.each_strategy({'postgres'}) do
 
         assert.response(res).has.status(200)
 
-        local found = db.sessions:select_by_session_id(sid)
+        local found, err = db.sessions:select_by_session_id(sid)
 
-        -- logged out, no sessions should be in the table
+        -- logged out, no sessions should be in the table, without errors
         assert.is_nil(found)
+        assert.is_nil(err)
       end)
     end)
   end)
