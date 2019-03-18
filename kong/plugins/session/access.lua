@@ -1,5 +1,4 @@
 local constants = require "kong.constants"
-local responses = require "kong.tools.responses"
 local session = require "kong.plugins.session.session"
 local ngx_set_header = ngx.req.set_header
 local log = ngx.log
@@ -42,7 +41,7 @@ function _M.execute(conf)
   if session.logout(conf) then
     log(ngx.DEBUG, "Session logging out")
     s:destroy()
-    return responses.send_HTTP_OK()
+    return ngx.exit(200)
   end
 
 
