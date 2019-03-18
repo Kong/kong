@@ -455,6 +455,13 @@ http {
             }
         }
 
+        location ~ "^/count_log/(?<logname>[a-z0-9_]+)$" {
+            content_by_lua_block {
+                local mu = require "spec.fixtures.mock_upstream"
+                return mu.count_log(ngx.var.logname)
+            }
+        }
+
         location ~ "^/reset_log/(?<logname>[a-z0-9_]+)$" {
             content_by_lua_block {
                 local mu = require "spec.fixtures.mock_upstream"
