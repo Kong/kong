@@ -9,7 +9,7 @@ return {
     fields = {
       { id = typedefs.uuid },
       { session_id = { type = "string", unique = true, required = true } },
-      { expires = { type = "number" } },
+      { expires = { type = "integer" } },
       { data = { type = "string" } },
       { created_at = typedefs.auto_timestamp_s },
     }

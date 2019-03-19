@@ -6,8 +6,8 @@ return {
         session_id    text UNIQUE,
         expires       int,
         data          text,
-        created_at    timestamp without time zone default (CURRENT_TIMESTAMP(0) at time zone 'utc'),
-        ttl           timestamp with time zone,
+        created_at    timestamp WITH TIME ZONE,
+        ttl           timestamp WITH TIME ZONE,
         PRIMARY KEY (id)
       );
 
