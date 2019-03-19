@@ -1,4 +1,5 @@
 local helpers = require "spec.helpers"
+local constants = require "kong.constants"
 local cjson = require "cjson"
 
 
@@ -26,6 +27,11 @@ describe("kong config", function()
     assert(db.plugins:truncate())
     assert(db.routes:truncate())
     assert(db.services:truncate())
+
+    local dns_hostsfile = assert(os.tmpname())
+    local fd = assert(io.open(dns_hostsfile, "w"))
+    assert(fd:write("127.0.0.1 " .. constants.REPORTS.ADDRESS))
+    assert(fd:close())
 
     local filename = helpers.make_yaml_file([[
       _format_version: "1.1"
@@ -62,15 +68,24 @@ describe("kong config", function()
 
     finally(function()
       os.remove(filename)
+      os.remove(dns_hostsfile)
     end)
 
-    helpers.start_kong({
+    assert(helpers.start_kong({
       nginx_conf = "spec/fixtures/custom_nginx.template",
-    })
+      dns_hostsfile = dns_hostsfile,
+      anonymous_reports = "on",
+    }))
+
+    local thread = helpers.udp_server(constants.REPORTS.STATS_PORT)
 
     assert(helpers.kong_exec("config db_import " .. filename, {
       prefix = helpers.test_conf.prefix,
     }))
+
+    local _, res = assert(thread:join())
+    assert.matches("signal=config-db-import", res, nil, true)
+    assert.matches("decl_fmt_version=1.1", res, nil, true)
 
     local client = helpers.admin_client()
 
@@ -89,5 +104,7 @@ describe("kong config", function()
     local body = assert.res_status(200, res)
     local json = cjson.decode(body)
     assert.equals(2, #json.data)
+
+    assert(helpers.stop_kong())
   end)
 end)
