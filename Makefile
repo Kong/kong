@@ -11,7 +11,6 @@ else
 OPENSSL_DIR ?= /usr
 endif
 
-include .requirements
 .PHONY: install dev lint test test-integration test-plugins test-all fix-windows
 
 KONG_GMP_VERSION ?= `grep KONG_GMP_VERSION .requirements | awk -F"=" '{print $$2}'`
