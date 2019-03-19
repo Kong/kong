@@ -111,6 +111,19 @@ describe("reports", function()
         local _, res = assert(thread:join())
         assert.matches("database=cassandra", res, nil, true)
       end)
+
+      it("off", function()
+        local conf = assert(conf_loader(nil, {
+          database = "off",
+        }))
+        reports.configure_ping(conf)
+
+        local thread = helpers.udp_server(8189)
+        reports.send_ping("127.0.0.1", 8189)
+
+        local _, res = assert(thread:join())
+        assert.matches("database=off", res, nil, true)
+      end)
     end)
 
     describe("sends '_admin' for 'admin_listen'", function()
