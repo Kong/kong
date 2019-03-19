@@ -158,7 +158,6 @@ build = {
     ["kong.db.strategies.cassandra"] = "kong/db/strategies/cassandra/init.lua",
     ["kong.db.strategies.cassandra.connector"] = "kong/db/strategies/cassandra/connector.lua",
     ["kong.db.strategies.cassandra.plugins"] = "kong/db/strategies/cassandra/plugins.lua",
-    ["kong.db.strategies.cassandra.services"] = "kong/db/strategies/cassandra/services.lua",
     ["kong.db.strategies.cassandra.tags"] = "kong/db/strategies/cassandra/tags.lua",
     ["kong.db.strategies.postgres"] = "kong/db/strategies/postgres/init.lua",
     ["kong.db.strategies.postgres.plugins"] = "kong/db/strategies/postgres/plugins.lua",
