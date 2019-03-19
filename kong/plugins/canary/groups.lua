@@ -17,7 +17,18 @@ local consumer_in_groups_cache = setmetatable({}, mt_cache)
 
 
 local function load_groups_into_memory(consumer_id)
-  return singletons.dao.acls:find_all {consumer_id = consumer_id}
+  local groups = {}
+  local len    = 0
+
+   for row, err in kong.db.acls:each_for_consumer(consumer_id) do
+    if err then
+      return nil, err
+    end
+    len = len + 1
+    groups[len] = row
+  end
+
+   return groups
 end
 
 
@@ -25,10 +36,10 @@ end
 -- @param conumer_id (string) the consumer for which to fetch the groups it belongs to
 -- @return table with group records (empty table if none), or nil+error
 local function get_consumer_groups_raw(consumer_id)
-  local cache_key = singletons.dao.acls:cache_key(consumer_id)
+  local cache_key = singletons.db.acls:cache_key(consumer_id)
   local raw_groups, err = singletons.cache:get(cache_key, nil,
                                            load_groups_into_memory,
-                                           consumer_id)
+                                           { id = consumer_id })
   if err then
     return nil, err
   end

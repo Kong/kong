@@ -146,7 +146,7 @@ for _, strategy in helpers.each_strategy() do
       })
       bp.plugins:insert {
         name     = "key-auth",
-        route_id = route1.id,
+        route = { id = route1.id },
         config = {},
       }
 
@@ -156,7 +156,7 @@ for _, strategy in helpers.each_strategy() do
       })
       bp.plugins:insert {
         name     = "key-auth",
-        route_id = route2.id,
+        route = { id = route2.id },
         config = {},
       }
 
@@ -166,7 +166,7 @@ for _, strategy in helpers.each_strategy() do
       })
       bp.plugins:insert {
         name     = "key-auth",
-        route_id = route3.id,
+        route = { id = route3.id },
         config = {},
       }
 
@@ -233,8 +233,8 @@ for _, strategy in helpers.each_strategy() do
       it("test percentage 50%", function()
         add_canary(route1.id, {
           upstream_uri = "/requests/path2",
-          percentage = "50",
-          steps = "4",
+          percentage = 50,
+          steps = 4,
         })
         local ids = generate_consumers(admin_client, {0,1,2,3}, 4)
         local count = {}
@@ -261,8 +261,8 @@ for _, strategy in helpers.each_strategy() do
         add_canary(route1.id, {
           upstream_host = "127.0.0.1",
           upstream_port = 20002,
-          percentage = "50",
-          steps = "4",
+          percentage = 50,
+          steps = 4,
         })
         local ids = generate_consumers(admin_client, {0,1,2,3}, 4)
         local count = {}
@@ -289,8 +289,8 @@ for _, strategy in helpers.each_strategy() do
       it("test 'none' as hash", function()
         add_canary(route1.id, {
           upstream_uri = "/requests/path2",
-          percentage = "50",
-          steps = "4",
+          percentage = 50,
+          steps = 4,
           hash = "none",
         })
         -- only use 1 consumer, which should still randomly end up in all targets
@@ -320,8 +320,8 @@ for _, strategy in helpers.each_strategy() do
       it("test 'ip' as hash", function()
         add_canary(route1.id, {
           upstream_uri = "/requests/path2",
-          percentage = "50",
-          steps = "4",
+          percentage = 50,
+          steps = 4,
           hash = "ip",
         })
         local ids = generate_consumers(admin_client, {0,1,2,3}, 4)
@@ -504,6 +504,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("test start with default hash", function()
+        local ids = generate_consumers(admin_client, {0,1,2}, 3)
         add_canary(route1.id, {
           upstream_uri = "/requests/path2",
           percentage = nil,
@@ -511,9 +512,8 @@ for _, strategy in helpers.each_strategy() do
           start = ngx.time() + 2,
           duration = 6
         })
-        local ids = generate_consumers(admin_client, {0,1,2}, 3)
         local count = {}
-        ngx.sleep(2.5)
+        ngx.sleep(1.9)
         for n = 1, 3 do
           for _, apikey in pairs(ids) do
             local res = assert(proxy_client:send {
@@ -552,6 +552,7 @@ for _, strategy in helpers.each_strategy() do
 
       it("test start with default hash and upstream_host", function()
         local server1 = http_server(10, 9, 20002)
+        local ids = generate_consumers(admin_client, {0,1,2}, 3)
         add_canary(route1.id, {
           upstream_host = "127.0.0.1",
           upstream_port = 20002,
@@ -560,9 +561,8 @@ for _, strategy in helpers.each_strategy() do
           start = ngx.time() + 2,
           duration = 6
         })
-        local ids = generate_consumers(admin_client, {0,1,2}, 3)
         local count = {}
-        ngx.sleep(2.5)
+        ngx.sleep(1.9)
         for n = 1, 3 do
           for _, apikey in pairs(ids) do
             local res = assert(proxy_client:send {
@@ -602,6 +602,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("test start with hash as `ip`", function()
+        local ids = generate_consumers(admin_client, {0,1,2}, 3)
         add_canary(route1.id, {
           upstream_uri = "/requests/path2",
           percentage = nil,
@@ -612,7 +613,8 @@ for _, strategy in helpers.each_strategy() do
         })
         local ids = generate_consumers(admin_client, {0,1,2}, 3)
         local count = {}
-        ngx.sleep(2.5)
+        ngx.sleep(1.9)
+        
         for _ = 1, 3 do
           for _, apikey in pairs(ids) do
             local res = assert(proxy_client:send {
@@ -739,7 +741,7 @@ for _, strategy in helpers.each_strategy() do
 
         res = assert(admin_client:send {
           method = "POST",
-          path = "/upstreams/",
+          path = "/upstreams",
           headers = {
             ["Content-Type"] = "application/json"
           },
@@ -764,7 +766,7 @@ for _, strategy in helpers.each_strategy() do
       it("doesn't fallback if healthchecks aren't enabled", function()
         canary_server = http_server(10, 1, 20500, true)
         add_canary(route5.id, {
-          percentage = "100",
+          percentage = 100,
           hash = "none",
           upstream_host = "canary",
           upstream_port = 20500,
@@ -790,7 +792,7 @@ for _, strategy in helpers.each_strategy() do
         canary_server = http_server(10, 2, 20500, true)
 
         add_canary(route5.id, {
-          percentage = "100",
+          percentage = 100,
           hash = "none",
           upstream_host = "canary",
           upstream_port = 20500,
@@ -863,7 +865,7 @@ for _, strategy in helpers.each_strategy() do
         canary_server = http_server(10, 1, 20500, true)
 
         add_canary(route5.id, {
-          percentage = "100",
+          percentage = 100,
           hash = "none",
           upstream_host = "canary",
           upstream_port = 20500,

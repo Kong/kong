@@ -2,7 +2,7 @@
 local BasePlugin  = require "kong.plugins.base_plugin"
 local groups = require "kong.plugins.canary.groups"
 
-local balancer    = require "kong.core.balancer"
+local balancer    = require "kong.runloop.balancer"
 local utils       = require "kong.tools.utils"
 local math_random = math.random
 local math_floor  = math.floor
