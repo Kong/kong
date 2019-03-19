@@ -94,6 +94,12 @@ jobs:
     - script: make release
       env: PACKAGE_TYPE=apk RESTY_IMAGE_BASE=alpine RESTY_IMAGE_TAG=latest KONG_PACKAGE_NAME=${PWD##*/} KONG_VERSION=${TRAVIS_TAG}
       if: tag IS present AND tag ~= 1.
+    - script: make release
+      env: PACKAGE_TYPE=rpm RESTY_IMAGE_BASE=rhel RESTY_IMAGE_TAG=6 KONG_PACKAGE_NAME=${PWD##*/} KONG_VERSION=${TRAVIS_TAG}
+      if: tag IS present AND tag ~= 1.
+    - script: make release
+      env: PACKAGE_TYPE=rpm RESTY_IMAGE_BASE=rhel RESTY_IMAGE_TAG=7 KONG_PACKAGE_NAME=${PWD##*/} KONG_VERSION=${TRAVIS_TAG}
+      if: tag IS present AND tag ~= 1.
     - stage: deploy daily build
       install: skip
       before_install: skip
