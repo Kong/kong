@@ -4,6 +4,16 @@ local cjson = require "cjson"
 
 
 local localhost = "127.0.0.1"
+local SAMPLE_YAML_CONFIG = [[
+ _format_version: "1.1"
+ services:
+ - name: my-service
+   url: http://127.0.0.1:15555
+   routes:
+   - name: example-route
+     hosts:
+     - example.test
+]]
 
 
 local function mock_reports_server()
@@ -93,6 +103,7 @@ for _, strategy in helpers.each_strategy() do
   -- Marked as flaky because they require an arbitrary high port
   describe("#flaky anonymous reports in Admin API #" .. strategy, function()
     local dns_hostsfile
+    local yaml_file
     local reports_server
 
     lazy_setup(function()
@@ -100,10 +111,13 @@ for _, strategy in helpers.each_strategy() do
       local fd = assert(io.open(dns_hostsfile, "w"))
       assert(fd:write("127.0.0.1 " .. constants.REPORTS.ADDRESS))
       assert(fd:close())
+
+      yaml_file = helpers.make_yaml_file(SAMPLE_YAML_CONFIG)
     end)
 
     lazy_teardown(function()
       os.remove(dns_hostsfile)
+      os.remove(yaml_file)
     end)
 
     before_each(function()
@@ -116,6 +130,7 @@ for _, strategy in helpers.each_strategy() do
         database = strategy,
         dns_hostsfile = dns_hostsfile,
         anonymous_reports = "on",
+        declarative_config = yaml_file,
       }))
     end)
 
@@ -298,6 +313,29 @@ for _, strategy in helpers.each_strategy() do
       assert.match("e=r", reports_data[1])
       assert.match("name=tcp%-log", reports_data[1])
     end)
+
+    if strategy == "off" then
+      it("reports declarative reconfigure via /config", function()
+
+        local status, config = assert(admin_send({
+          path    = "/config",
+          body    = {
+            config = SAMPLE_YAML_CONFIG,
+          },
+          headers = {
+            ["Content-Type"] = "multipart/form-data",
+          }
+        }))
+        assert.same(201, status)
+        assert.table(config)
+
+        local _, reports_data = assert(reports_server:stop())
+
+        assert.same(1, #reports_data)
+        assert.match("signal=dbless-reconfigure", reports_data[1], nil, true)
+        assert.match("decl_fmt_version=1.1", reports_data[1], nil, true)
+      end)
+    end
 
   end)
 end

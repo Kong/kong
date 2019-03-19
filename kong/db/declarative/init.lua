@@ -127,7 +127,7 @@ function Config:parse_string(contents, filename, accept)
     return nil, pretty_print_error(err_t), err_t
   end
 
-  return entities
+  return entities, dc_table._format_version
 end
 
 
