@@ -91,17 +91,66 @@ do
     return false
   end
 
-  local function get_service_for_route(db, route)
+
+  local function load_service_from_db(service_pk)
+    local service, err = kong.db.services:select(service_pk)
+    -- kong.db.services:select returns a third value, which we discard here:
+    return service, err
+  end
+
+
+  local function build_services_init_cache(db)
+    local services_init_cache = {}
+
+    for service, err in db.services:each(1000) do
+      if err then
+        return nil, err
+      end
+
+      services_init_cache[service.id] = service
+    end
+
+    return services_init_cache
+  end
+
+
+  local function get_service_for_route(db, route, services_init_cache)
     local service_pk = route.service
     if not service_pk then
       return nil
     end
 
-    local service, err = db.services:select(service_pk)
-    if not service then
-      return nil, "could not find service for route (" .. route.id .. "): " ..
-                  err
+    local id = service_pk.id
+    local service = services_init_cache[id]
+    if service then
+      return service
     end
+
+    local err
+
+    -- kong.cache is not available on init phase
+    if kong.cache then
+      local cache_key = db.services:cache_key(service_pk.id)
+      service, err = kong.cache:get(cache_key, CACHE_ROUTER_OPTS,
+                                    load_service_from_db, service_pk)
+
+    else -- init phase, not present on init cache
+
+      -- A new service/route has been inserted while the initial route
+      -- was being created, on init (perhaps by a different Kong node).
+      -- Load the service individually and update services_init_cache with it
+      service, err = load_service_from_db(service_pk)
+      services_init_cache[id] = service
+    end
+
+    if err then
+      return nil, "error raised while finding service for route (" .. route.id .. "): " ..
+                  err
+
+    elseif not service then
+      return nil, "could not find service for route (" .. route.id .. ")"
+    end
+
 
     -- TODO: this should not be needed as the schema should check it already
     if SUBSYSTEMS[service.protocol] ~= subsystem then
@@ -117,13 +166,24 @@ do
   build_router = function(db, version)
     local routes, i = {}, 0
 
+    local err
+    -- The router is initially created on init phase, where kong.cache is still not ready
+    -- For those cases, use a plain Lua table as a cache instead
+    local services_init_cache = {}
+    if not kong.cache then
+      services_init_cache, err = build_services_init_cache(db)
+      if err then
+        return nil, "could not build services init cache: " .. err
+      end
+    end
+
     for route, err in db.routes:each(1000) do
       if err then
         return nil, "could not load routes: " .. err
       end
 
       if should_process_route(route) then
-        local service, err = get_service_for_route(db, route)
+        local service, err = get_service_for_route(db, route, services_init_cache)
         if err then
           return nil, err
         end
