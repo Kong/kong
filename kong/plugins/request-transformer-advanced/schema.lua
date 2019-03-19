@@ -1,90 +1,78 @@
 local pl_template = require "pl.template"
+local tx = require "pl.tablex"
+local typedefs = require "kong.db.schema.typedefs"
 
 -- entries must have colons to set the key and value apart
-local function check_for_value(value)
-  for _, entry in ipairs(value) do
+local function check_for_value(entry)
+  local name, value = entry:match("^([^:]+):*(.-)$")
+  if not name or not value or value == "" then
+    return false, "key '" ..name.. "' has no value"
+  end
 
-    local name, value = entry:match("^([^:]+):*(.-)$")
-    if not name or not value or value == "" then
-      return false, "key '" ..name.. "' has no value"
-    end
-
-    local status, res, err = pcall(pl_template.compile, value)
-    if not status or err then
-      return false, "value '" .. value ..
-              "' is not in supported format, error:" ..
-              (status and res or err)
-    end
-
+  local status, res, err = pcall(pl_template.compile, value)
+  if not status or err then
+    return false, "value '" .. value ..
+            "' is not in supported format, error:" ..
+            (status and res or err)
   end
   return true
 end
 
-local function check_method(value)
-  if not value then
-    return true
-  end
-  local method = value:upper()
-  local ngx_method = ngx["HTTP_" .. method]
-  if not ngx_method then
-    return false, method .. " is not supported"
-  end
-  return true
-end
+
+local strings_array = {
+  type = "array",
+  default = {},
+  elements = { type = "string" },
+}
+
+
+local strings_array_record = {
+  type = "record",
+  fields = {
+    { body = strings_array },
+    { headers = strings_array },
+    { querystring = strings_array },
+  },
+}
+
+
+local colon_strings_array = {
+  type = "array",
+  default = {},
+  elements = { type = "string", custom_validator = check_for_value }
+}
+
+
+local colon_strings_array_record = {
+  type = "record",
+  fields = {
+    { body = colon_strings_array },
+    { headers = colon_strings_array },
+    { querystring = colon_strings_array },
+  },
+}
+
+
+local colon_strings_array_record_plus_uri = tx.deepcopy(colon_strings_array_record)
+local uri = { uri = { type = "string" } }
+table.insert(colon_strings_array_record_plus_uri.fields, uri)
+
 
 return {
+  name = "request-transformer-advanced",
   fields = {
-    http_method = {type = "string", func = check_method},
-    remove = {
-      type = "table",
-      schema = {
+    { run_on = typedefs.run_on_first },
+    { config = {
+        type = "record",
         fields = {
-          body = {type = "array", default = {}}, -- does not need colons
-          headers = {type = "array", default = {}}, -- does not need colons
-          querystring = {type = "array", default = {}} -- does not need colons
+          { http_method = typedefs.http_method },
+          { remove  = strings_array_record },
+          { rename  = colon_strings_array_record },
+          { replace = colon_strings_array_record_plus_uri },
+          { add     = colon_strings_array_record },
+          { append  = colon_strings_array_record },
         }
-      }
+      },
     },
-    rename = {
-      type = "table",
-      schema = {
-        fields = {
-          body = {type = "array", default = {}},
-          headers = {type = "array", default = {}},
-          querystring = {type = "array", default = {}}
-        }
-      }
-    },
-    replace = {
-      type = "table",
-      schema = {
-        fields = {
-          body = {type = "array", default = {}, func = check_for_value},
-          headers = {type = "array", default = {}, func = check_for_value},
-          querystring = {type = "array", default = {}, func = check_for_value },
-          uri = {type = "string"}
-        }
-      }
-    },
-    add = {
-      type = "table",
-      schema = {
-        fields = {
-          body = {type = "array", default = {}, func = check_for_value},
-          headers = {type = "array", default = {}, func = check_for_value},
-          querystring = {type = "array", default = {}, func = check_for_value}
-        }
-      }
-    },
-    append = {
-      type = "table",
-      schema = {
-        fields = {
-          body = {type = "array", default = {}, func = check_for_value},
-          headers = {type = "array", default = {}, func = check_for_value},
-          querystring = {type = "array", default = {}, func = check_for_value}
-        }
-      }
-    }
   }
 }

@@ -1,34 +1,94 @@
 local helpers = require "spec.helpers"
 local cjson   = require "cjson"
 
-describe("Plugin: request-transformer-advanced(access)", function()
+for _, strategy in helpers.each_strategy() do
+describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", function()
   local client
 
-  setup(function()
-    helpers.get_db_utils()
+  lazy_setup(function()
+    local bp = helpers.get_db_utils(strategy, {
+      "routes",
+      "services",
+      "plugins",
+    })
 
-    local api1 = assert(helpers.dao.apis:insert { name = "api-1", hosts = { "test1.com" }, upstream_url = helpers.mock_upstream_url})
-    local api2 = assert(helpers.dao.apis:insert { name = "api-2", hosts = { "test2.com" }, upstream_url = helpers.mock_upstream_url})
-    local api3 = assert(helpers.dao.apis:insert { name = "api-3", hosts = { "test3.com" }, upstream_url = helpers.mock_upstream_url})
-    local api4 = assert(helpers.dao.apis:insert { name = "api-4", hosts = { "test4.com" }, upstream_url = helpers.mock_upstream_url})
-    local api5 = assert(helpers.dao.apis:insert { name = "api-5", hosts = { "test5.com" }, upstream_url = helpers.mock_upstream_url})
-    local api6 = assert(helpers.dao.apis:insert { name = "api-6", hosts = { "test6.com" }, upstream_url = helpers.mock_upstream_url})
-    local api7 = assert(helpers.dao.apis:insert { name = "api-7", hosts = { "test7.com" }, upstream_url = helpers.mock_upstream_url})
-    local api8 = assert(helpers.dao.apis:insert { name = "api-8", hosts = { "test8.com" }, upstream_url = helpers.mock_upstream_url})
-    local api9 = assert(helpers.dao.apis:insert { name = "api-9", hosts = { "test9.com" }, upstream_url = helpers.mock_upstream_url})
-    local api10 = assert(helpers.dao.apis:insert { name = "api-10", hosts = { "test10.com" }, uris = { "/requests/user1/(?P<user1>\\w+)/user2/(?P<user2>\\S+)" }, upstream_url = helpers.mock_upstream_url, strip_uri = false})
-    local api11 = assert(helpers.dao.apis:insert { name = "api-11", hosts = { "test11.com" }, uris = { "/requests/user1/(?P<user1>\\w+)/user2/(?P<user2>\\S+)" }, upstream_url = helpers.mock_upstream_url})
-    local api12 = assert(helpers.dao.apis:insert { name = "api-12", hosts = { "test12.com" }, uris = { "/requests/" }, upstream_url = helpers.mock_upstream_url, strip_uri = false})
-    local api13 = assert(helpers.dao.apis:insert { name = "api-13", hosts = { "test13.com" }, uris = { "/requests/user1/(?P<user1>\\w+)/user2/(?P<user2>\\S+)" }, upstream_url = helpers.mock_upstream_url})
-    local api14 = assert(helpers.dao.apis:insert { name = "api-14", hosts = { "test14.com" }, uris = { "/user1/(?P<user1>\\w+)/user2/(?P<user2>\\S+)" }, upstream_url = helpers.mock_upstream_url})
-    local api15 = assert(helpers.dao.apis:insert { name = "api-15", hosts = { "test15.com" }, uris = { "/requests/user1/(?<user1>\\w+)/user2/(?<user2>\\S+)" }, upstream_url = helpers.mock_upstream_url, strip_uri = false})
-    local api16 = assert(helpers.dao.apis:insert { name = "api-16", hosts = { "test16.com" }, uris = { "/requests/user1/(?<user1>\\w+)/user2/(?<user2>\\S+)" }, upstream_url = helpers.mock_upstream_url, strip_uri = false})
-    local api17 = assert(helpers.dao.apis:insert { name = "api-17", hosts = { "test17.com" }, uris = { "/requests/user1/(?<user1>\\w+)/user2/(?<user2>\\S+)" }, upstream_url = helpers.mock_upstream_url, strip_uri = false})
-    local api18 = assert(helpers.dao.apis:insert { name = "api-18", hosts = { "test18.com" }, uris = { "/requests/user1/(?<user1>\\w+)/user2/(?<user2>\\S+)" }, upstream_url = helpers.mock_upstream_url, strip_uri = false})
-    local api19 = assert(helpers.dao.apis:insert { name = "api-19", hosts = { "test19.com" }, uris = { "/requests/user1/(?<user1>\\w+)/user2/(?<user2>\\S+)" }, upstream_url = helpers.mock_upstream_url, strip_uri = false})
+    local route1 = bp.routes:insert({
+      hosts = { "test1.com" }
+    })
+    local route2 = bp.routes:insert({
+      hosts = { "test2.com" }
+    })
+    local route3 = bp.routes:insert({
+      hosts = { "test3.com" }
+    })
+    local route4 = bp.routes:insert({
+      hosts = { "test4.com" }
+    })
+    local route5 = bp.routes:insert({
+      hosts = { "test5.com" }
+    })
+    local route6 = bp.routes:insert({
+      hosts = { "test6.com" }
+    })
+    local route7 = bp.routes:insert({
+      hosts = { "test7.com" }
+    })
+    local route8 = bp.routes:insert({
+      hosts = { "test8.com" }
+    })
+    local route9 = bp.routes:insert({
+      hosts = { "test9.com" }
+    })
+    local route10 = bp.routes:insert({
+      hosts = { "test10.com" },
+      paths = { "/requests/user1/(?P<user1>\\w+)/user2/(?P<user2>\\S+)" },
+      strip_path = false
+    })
+    local route11 = bp.routes:insert({
+      hosts = { "test11.com" },
+      paths = { "/requests/user1/(?P<user1>\\w+)/user2/(?P<user2>\\S+)" }
+    })
+    local route12 = bp.routes:insert({
+      hosts = { "test12.com" },
+      paths = { "/requests/" },
+      strip_path = false
+    })
+    local route13 = bp.routes:insert({
+      hosts = { "test13.com" },
+      paths = { "/requests/user1/(?P<user1>\\w+)/user2/(?P<user2>\\S+)" }
+    })
+    local route14 = bp.routes:insert({
+      hosts = { "test14.com" },
+      paths = { "/user1/(?P<user1>\\w+)/user2/(?P<user2>\\S+)" }
+    })
+    local route15 = bp.routes:insert({
+      hosts = { "test15.com" },
+      paths = { "/requests/user1/(?<user1>\\w+)/user2/(?<user2>\\S+)" },
+      strip_path = false
+    })
+    local route16 = bp.routes:insert({
+      hosts = { "test16.com" },
+      paths = { "/requests/user1/(?<user1>\\w+)/user2/(?<user2>\\S+)" },
+      strip_path = false
+    })
+    local route17 = bp.routes:insert({
+      hosts = { "test17.com" },
+      paths = { "/requests/user1/(?<user1>\\w+)/user2/(?<user2>\\S+)" },
+      strip_path = false
+    })
+    local route18 = bp.routes:insert({
+      hosts = { "test18.com" },
+      paths = { "/requests/user1/(?<user1>\\w+)/user2/(?<user2>\\S+)" },
+      strip_path = false
+    })
+    local route19 = bp.routes:insert({
+      hosts = { "test19.com" },
+      paths = { "/requests/user1/(?<user1>\\w+)/user2/(?<user2>\\S+)" },
+      strip_path = false
+    })
 
-    assert(helpers.dao.plugins:insert {
-      api_id = api1.id,
+    bp.plugins:insert {
+      route = { id = route1.id },
       name = "request-transformer-advanced",
       config = {
         add = {
@@ -37,18 +97,18 @@ describe("Plugin: request-transformer-advanced(access)", function()
           body = {"p1:v1"}
         }
       }
-    })
-    assert(helpers.dao.plugins:insert {
-      api_id = api2.id,
+    }
+    bp.plugins:insert {
+      route = { id = route2.id },
       name = "request-transformer-advanced",
       config = {
         add = {
           headers = {"host:mark"}
         }
       }
-    })
-    assert(helpers.dao.plugins:insert {
-      api_id = api3.id,
+    }
+    bp.plugins:insert {
+      route = { id = route3.id },
       name = "request-transformer-advanced",
       config = {
         add = {
@@ -69,9 +129,9 @@ describe("Plugin: request-transformer-advanced(access)", function()
           querystring = {"toreplacequery:no"}
         }
       }
-    })
-    assert(helpers.dao.plugins:insert {
-      api_id = api4.id,
+    }
+    bp.plugins:insert {
+      route = { id = route4.id },
       name = "request-transformer-advanced",
       config = {
         remove = {
@@ -80,9 +140,9 @@ describe("Plugin: request-transformer-advanced(access)", function()
           body = {"toremoveform"}
         }
       }
-    })
-    assert(helpers.dao.plugins:insert {
-      api_id = api5.id,
+    }
+    bp.plugins:insert {
+      route = { id = route5.id },
       name = "request-transformer-advanced",
       config = {
         replace = {
@@ -91,9 +151,9 @@ describe("Plugin: request-transformer-advanced(access)", function()
           body = {"p1:v1"}
         }
       }
-    })
-    assert(helpers.dao.plugins:insert {
-      api_id = api6.id,
+    }
+    bp.plugins:insert {
+      route = { id = route6.id },
       name = "request-transformer-advanced",
       config = {
         append = {
@@ -102,24 +162,24 @@ describe("Plugin: request-transformer-advanced(access)", function()
           body = {"p1:v1", "p1:v2", "p2:value:1"}     -- payload containing a colon
         }
       }
-    })
-    assert(helpers.dao.plugins:insert {
-      api_id = api7.id,
+    }
+    bp.plugins:insert {
+      route = { id = route7.id },
       name = "request-transformer-advanced",
       config = {
         http_method = "POST"
       }
-    })
-    assert(helpers.dao.plugins:insert {
-      api_id = api8.id,
+    }
+    bp.plugins:insert {
+      route = { id = route8.id },
       name = "request-transformer-advanced",
       config = {
         http_method = "GET"
       }
-    })
+    }
 
-    assert(helpers.dao.plugins:insert {
-      api_id = api9.id,
+    bp.plugins:insert {
+      route = { id = route9.id },
       name = "request-transformer-advanced",
       config = {
         rename = {
@@ -128,60 +188,60 @@ describe("Plugin: request-transformer-advanced(access)", function()
           body = {"originalparam:renamedparam"}
         }
       }
-    })
+    }
 
-    assert(helpers.dao.plugins:insert {
-      api_id = api10.id,
+    bp.plugins:insert {
+      route = { id = route10.id },
       name = "request-transformer-advanced",
       config = {
         add = {
           querystring = {"uri_param1:$(uri_captures.user1)", "uri_param2[some_index][1]:$(uri_captures.user2)"},
         }
       }
-    })
+    }
 
-    assert(helpers.dao.plugins:insert {
-      api_id = api11.id,
+    bp.plugins:insert {
+      route = { id = route11.id },
       name = "request-transformer-advanced",
       config = {
         replace = {
           uri = "/requests/user2/$(uri_captures.user2)/user1/$(uri_captures.user1)",
         }
       }
-    })
+    }
 
-    assert(helpers.dao.plugins:insert {
-      api_id = api12.id,
+    bp.plugins:insert {
+      route = { id = route12.id },
       name = "request-transformer-advanced",
       config = {
         add = {
           querystring = {"uri_param1:$(uri_captures.user1 or 'default1')", "uri_param2:$(uri_captures.user2 or 'default2')"},
         }
       }
-    })
+    }
 
-    assert(helpers.dao.plugins:insert {
-      api_id = api13.id,
+    bp.plugins:insert {
+      route = { id = route13.id },
       name = "request-transformer-advanced",
       config = {
         replace = {
           uri = "/requests/user2/$(10 * uri_captures.user1)",
         }
       }
-    })
+    }
 
-    assert(helpers.dao.plugins:insert {
-      api_id = api14.id,
+    bp.plugins:insert {
+      route = { id = route14.id },
       name = "request-transformer-advanced",
       config = {
         replace = {
           uri = "/requests$(uri_captures[0])",
         }
       }
-    })
+    }
 
-    assert(helpers.dao.plugins:insert {
-      api_id = api15.id,
+    bp.plugins:insert {
+      route = { id = route15.id },
       name = "request-transformer-advanced",
       config = {
         add = {
@@ -192,10 +252,10 @@ describe("Plugin: request-transformer-advanced(access)", function()
           querystring = {"q1"},
         }
       }
-    })
+    }
 
-    assert(helpers.dao.plugins:insert {
-      api_id = api16.id,
+    bp.plugins:insert {
+      route = { id = route16.id },
       name = "request-transformer-advanced",
       config = {
         replace = {
@@ -209,10 +269,10 @@ describe("Plugin: request-transformer-advanced(access)", function()
           headers = {"x-remove-header"}
         },
       }
-    })
+    }
 
-    assert(helpers.dao.plugins:insert {
-      api_id = api17.id,
+    bp.plugins:insert {
+      route = { id = route17.id },
       name = "request-transformer-advanced",
       config = {
         replace = {
@@ -224,20 +284,20 @@ describe("Plugin: request-transformer-advanced(access)", function()
           headers = {"x-test-header:$(headers['x-replace-header'])"}
         }
       }
-    })
+    }
 
-    assert(helpers.dao.plugins:insert {
-      api_id = api18.id,
+    bp.plugins:insert {
+      route = { id = route18.id },
       name = "request-transformer-advanced",
       config = {
         add = {
           querystring = {[[q1:$('$(uri_captures.user1)')]]},
         }
       }
-    })
+    }
 
-    assert(helpers.dao.plugins:insert {
-      api_id = api19.id,
+    bp.plugins:insert {
+      route = { id = route19.id },
       name = "request-transformer-advanced",
       config = {
         add = {
@@ -245,15 +305,16 @@ describe("Plugin: request-transformer-advanced(access)", function()
           querystring = {[[q1:$(uri_captures)]]},
         }
       }
-    })
+    }
 
     assert(helpers.start_kong({
-      custom_plugins = "request-transformer-advanced",
+      database = strategy,
+      plugins = "bundled, request-transformer-advanced",
       nginx_conf = "spec/fixtures/custom_nginx.template",
     }))
   end)
 
-  teardown(function()
+  lazy_teardown(function()
     helpers.stop_kong()
   end)
 
@@ -1660,3 +1721,4 @@ describe("Plugin: request-transformer-advanced(access)", function()
     end)
   end)
 end)
+end
