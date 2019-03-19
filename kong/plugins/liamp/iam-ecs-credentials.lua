@@ -20,10 +20,10 @@ local FULL_URI_ALLOWED_HOSTNAMES = makeset { "localhost", "127.0.0.1" }
 local RELATIVE_URI_HOST = '169.254.170.2'
 local DEFAULT_SERVICE_REQUEST_TIMEOUT = 5000
 
+local url = require "socket.url"
 local http = require "resty.http"
 local json = require "cjson"
 local parse_date = require("luatz").parse.rfc_3339
-
 
 local ECSFullUri
 do
@@ -38,7 +38,7 @@ do
         return 'http://' .. RELATIVE_URI_HOST .. ENV_RELATIVE_URI
 
       elseif ENV_FULL_URI then
-        local parsed_url = socket.url.parse(ENV_FULL_URI)
+        local parsed_url = url.parse(ENV_FULL_URI)
 
         if not FULL_URI_ALLOWED_PROTOCOLS[parsed_url.scheme] then
           return nil, 'Unsupported protocol: AWS.RemoteCredentials supports '
@@ -76,7 +76,7 @@ local function fetchCredentials()
   local client = http.new()
   client:set_timeout(DEFAULT_SERVICE_REQUEST_TIMEOUT)
 
-  local parsed_url = socket.url.parse(ECSFullUri)
+  local parsed_url = url.parse(ECSFullUri)
   local ok, err = client:connect(parsed_url.host, parsed_url.port)
 
   if not ok then

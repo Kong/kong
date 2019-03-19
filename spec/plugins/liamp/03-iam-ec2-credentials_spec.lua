@@ -1,7 +1,7 @@
 
 describe("[AWS Lambda] iam-ec2", function()
 
-  local fetch_ec2, http, http_responses
+  local fetch_ec2, http_responses
 
   before_each(function()
     package.loaded["kong.plugins.liamp.iam-ec2-credentials"] = nil

@@ -1,7 +1,7 @@
 
 describe("[AWS Lambda] iam-ecs", function()
 
-  local fetch_ecs, http, http_responses, env_vars
+  local fetch_ecs, http_responses, env_vars
   local old_getenv = os.getenv
 
   before_each(function()
@@ -28,13 +28,13 @@ describe("[AWS Lambda] iam-ecs", function()
       }
     end
     -- mock os.getenv
-    os.getenv = function(name)
+    os.getenv = function(name)  -- luacheck: ignore
       return (env_vars or {})[name] or old_getenv(name)
     end
   end)
 
   after_each(function()
-    os.getenv = old_getenv
+    os.getenv = old_getenv  -- luacheck: ignore
   end)
 
   it("should fetch credentials from metadata service", function()
