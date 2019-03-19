@@ -37,6 +37,7 @@ local version = require "version"
 local pl_dir = require "pl.dir"
 local pl_Set = require "pl.Set"
 local Schema = require "kong.db.schema"
+local Entity = require "kong.db.schema.entity"
 local cjson = require "cjson.safe"
 local utils = require "kong.tools.utils"
 local http = require "resty.http"
@@ -1412,7 +1413,7 @@ Schema.new(consumers_schema_def)
 Schema.new(services_schema_def)
 Schema.new(routes_schema_def)
 
-local plugins_schema = assert(Schema.new(plugins_schema_def))
+local plugins_schema = assert(Entity.new(plugins_schema_def))
 
 local function validate_plugin_config_schema(config, schema_def)
   assert(plugins_schema:new_subschema(schema_def.name, schema_def))
