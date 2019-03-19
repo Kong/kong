@@ -611,10 +611,8 @@ for _, strategy in helpers.each_strategy() do
           duration = 6,
           hash = "ip",
         })
-        local ids = generate_consumers(admin_client, {0,1,2}, 3)
         local count = {}
         ngx.sleep(1.9)
-        
         for _ = 1, 3 do
           for _, apikey in pairs(ids) do
             local res = assert(proxy_client:send {

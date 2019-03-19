@@ -3,7 +3,7 @@ local canary_schema = require "kong.plugins.canary.schema"
 
 
 describe("canary schema", function()
-  it("should work with all require fields providedi #test", function()
+  it("should work with all require fields provided", function()
     local ok, err = validate_entity({ percentage = 10, upstream_host = "balancer_a" }, canary_schema)
  
     assert.is_truthy(ok)
