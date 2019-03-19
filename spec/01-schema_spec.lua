@@ -1,17 +1,16 @@
-local schemas = require "kong.dao.schemas_validation"
 local request_transformer_schema = require "kong.plugins.request-transformer-advanced.schema"
-local validate_entity = schemas.validate_entity
+local v = require("spec.helpers").validate_plugin_config_schema
 
 describe("Plugin: request-transformer-advanced(schema)", function()
   it("validates http_method", function()
-    local ok, err = validate_entity({http_method = "GET"}, request_transformer_schema)
-    assert.is_nil(err)
-    assert.True(ok)
+    local ok, err = v({ http_method = "GET" }, request_transformer_schema)
+    assert.truthy(ok)
+    assert.falsy(err)
   end)
   it("errors invalid http_method", function()
-    local ok, err = validate_entity({http_method = "HELLO"}, request_transformer_schema)
-    assert.equal("HELLO is not supported", err.http_method)
-    assert.False(ok)
+    local ok, err = v({ http_method = "HELLO!" }, request_transformer_schema)
+    assert.falsy(ok)
+    assert.equal("invalid value: HELLO!", err.config.http_method)
   end)
   it("validate regex pattern as value", function()
     local config = {
@@ -19,8 +18,8 @@ describe("Plugin: request-transformer-advanced(schema)", function()
         querystring = {"uri_param1:$(uri_captures.user1)", "uri_param2:$(uri_captures.user2)"},
       }
     }
-    local ok, err = validate_entity(config, request_transformer_schema)
-    assert.is_true(ok)
+    local ok, err = v(config, request_transformer_schema)
+    assert.truthy(ok)
     assert.is_nil(err)
   end)
   it("validate string as value", function()
@@ -29,8 +28,8 @@ describe("Plugin: request-transformer-advanced(schema)", function()
         querystring = {"uri_param1:$(uri_captures.user1)", "uri_param2:value"},
       }
     }
-    local ok, err = validate_entity(config, request_transformer_schema)
-    assert.is_true(ok)
+    local ok, err = v(config, request_transformer_schema)
+    assert.truthy(ok)
     assert.is_nil(err)
   end)
   it("error for missing value", function()
@@ -39,8 +38,8 @@ describe("Plugin: request-transformer-advanced(schema)", function()
         querystring = {"uri_param2:"},
       }
     }
-    local ok, err = validate_entity(config, request_transformer_schema)
-    assert.is_false(ok)
+    local ok, err = v(config, request_transformer_schema)
+    assert.falsy(ok)
     assert.not_nil(err)
   end)
   it("error for malformed regex pattern in value", function()
@@ -49,8 +48,8 @@ describe("Plugin: request-transformer-advanced(schema)", function()
         querystring = {"uri_param2:$(uri_captures user2)"},
       }
     }
-    local ok, err = validate_entity(config, request_transformer_schema)
-    assert.is_false(ok)
+    local ok, err = v(config, request_transformer_schema)
+    assert.falsy(ok)
     assert.not_nil(err)
   end)
 end)
