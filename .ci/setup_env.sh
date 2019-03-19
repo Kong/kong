@@ -4,28 +4,31 @@ set -e
 #---------
 # Download
 #---------
-OPENSSL_DOWNLOAD=$DOWNLOAD_CACHE/openssl-$OPENSSL
-OPENRESTY_DOWNLOAD=$DOWNLOAD_CACHE/openresty-$OPENRESTY
-OPENRESTY_PATCHES_DOWNLOAD=$DOWNLOAD_CACHE/openresty-patches-master
-LUAROCKS_DOWNLOAD=$DOWNLOAD_CACHE/luarocks-$LUAROCKS
-CPAN_DOWNLOAD=$DOWNLOAD_CACHE/cpanm
+
+DEPS_HASH=$(cat .ci/setup_env.sh .travis.yml | md5sum | awk '{ print $1 }')
+
+OPENSSL_DOWNLOAD=$DOWNLOAD_CACHE/$DEPS_HASH/openssl-$OPENSSL
+OPENRESTY_DOWNLOAD=$DOWNLOAD_CACHE/$DEPS_HASH/openresty-$OPENRESTY
+OPENRESTY_PATCHES_DOWNLOAD=$DOWNLOAD_CACHE/$DEPS_HASH/openresty-patches-master
+LUAROCKS_DOWNLOAD=$DOWNLOAD_CACHE/$DEPS_HASH/luarocks-$LUAROCKS
+CPAN_DOWNLOAD=$DOWNLOAD_CACHE/$DEPS_HASH/cpanm
 
 mkdir -p $OPENSSL_DOWNLOAD $OPENRESTY_DOWNLOAD $OPENRESTY_PATCHES_DOWNLOAD $LUAROCKS_DOWNLOAD $CPAN_DOWNLOAD
 
 if [ ! "$(ls -A $OPENSSL_DOWNLOAD)" ]; then
-  pushd $DOWNLOAD_CACHE
+  pushd $DOWNLOAD_CACHE/$DEPS_HASH
     curl -s -S -L http://www.openssl.org/source/openssl-$OPENSSL.tar.gz | tar xz
   popd
 fi
 
 if [ ! "$(ls -A $OPENRESTY_DOWNLOAD)" ]; then
-  pushd $DOWNLOAD_CACHE
+  pushd $DOWNLOAD_CACHE/$DEPS_HASH
     curl -s -S -L https://openresty.org/download/openresty-$OPENRESTY.tar.gz | tar xz
   popd
 fi
 
 if [ ! "$(ls -A $OPENRESTY_PATCHES_DOWNLOAD)" ]; then
-  pushd $DOWNLOAD_CACHE
+  pushd $DOWNLOAD_CACHE/$DEPS_HASH
     curl -s -S -L https://github.com/Kong/openresty-patches/archive/master.tar.gz | tar xz
   popd
 fi
@@ -41,9 +44,9 @@ fi
 #--------
 # Install
 #--------
-OPENSSL_INSTALL=$INSTALL_CACHE/openssl-$OPENSSL
-OPENRESTY_INSTALL=$INSTALL_CACHE/openresty-$OPENRESTY
-LUAROCKS_INSTALL=$INSTALL_CACHE/luarocks-$LUAROCKS
+OPENSSL_INSTALL=$INSTALL_CACHE/$DEPS_HASH/openssl-$OPENSSL
+OPENRESTY_INSTALL=$INSTALL_CACHE/$DEPS_HASH/openresty-$OPENRESTY
+LUAROCKS_INSTALL=$INSTALL_CACHE/$DEPS_HASH/luarocks-$LUAROCKS
 
 mkdir -p $OPENSSL_INSTALL $OPENRESTY_INSTALL $LUAROCKS_INSTALL
 
