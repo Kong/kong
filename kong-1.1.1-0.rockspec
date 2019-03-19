@@ -121,6 +121,7 @@ build = {
 
     ["kong.runloop.handler"] = "kong/runloop/handler.lua",
     ["kong.runloop.certificate"] = "kong/runloop/certificate.lua",
+    ["kong.runloop.cache_prewarm"] = "kong/runloop/cache_prewarm.lua",
     ["kong.runloop.mesh"] = "kong/runloop/mesh.lua",
     ["kong.runloop.plugins_iterator"] = "kong/runloop/plugins_iterator.lua",
     ["kong.runloop.balancer"] = "kong/runloop/balancer.lua",

@@ -75,6 +75,7 @@ local declarative = require "kong.db.declarative"
 local ngx_balancer = require "ngx.balancer"
 local kong_resty_ctx = require "kong.resty.ctx"
 local certificate = require "kong.runloop.certificate"
+local cache_prewarm = require "kong.runloop.cache_prewarm"
 local concurrency = require "kong.concurrency"
 local plugins_iterator = require "kong.runloop.plugins_iterator"
 local balancer_execute = require("kong.runloop.balancer").execute
@@ -284,6 +285,21 @@ local function load_declarative_config(kong_config, entities)
 
     mesh.init()
 
+    return true
+  end)
+end
+
+
+local function execute_cache_prewarm(kong_config)
+  if kong_config.database == "off" then
+    return true
+  end
+
+  return concurrency.with_worker_mutex({ name = "cache_prewarm" }, function()
+    local ok, err = cache_prewarm.execute()
+    if not ok then
+      return nil, err
+    end
     return true
   end)
 end
@@ -534,6 +550,11 @@ function Kong.init_worker()
     return
   end
 
+  ok, err = execute_cache_prewarm(kong.configuration)
+  if not ok then
+    ngx_log(ngx_CRIT, "error prewarming cache: ", err)
+    return
+  end
 
   runloop.init_worker.before()
 
