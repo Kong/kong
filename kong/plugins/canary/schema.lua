@@ -1,6 +1,4 @@
 local typedefs = require "kong.db.schema.typedefs"
-local utils  = require "kong.tools.utils"
-local Errors = require "kong.dao.errors"
 
 
 local function check_start(start)
