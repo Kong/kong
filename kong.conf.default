@@ -30,7 +30,7 @@
                                  # working directory.
 
 #log_level = notice              # Log level of the Nginx server. Logs are
-                                 # found at <prefix>/logs/error.log.
+                                 # found at `<prefix>/logs/error.log`.
 
 # See http://nginx.org/en/docs/ngx_core_module.html#error_log for a list
 # of accepted values.
@@ -314,11 +314,11 @@
                                  # Example: `headers = via, latency_tokens`
 
 #trusted_ips =                   # Defines trusted IP addresses blocks that are
-                                 # known to send correct X-Forwarded-* headers.
+                                 # known to send correct `X-Forwarded-*` headers.
                                  # Requests from trusted IPs make Kong forward
-                                 # their X-Forwarded-* headers upstream.
+                                 # their `X-Forwarded-*` headers upstream.
                                  # Non-trusted requests make Kong insert its
-                                 # own X-Forwarded-* headers.
+                                 # own `X-Forwarded-*` headers.
                                  #
                                  # This property also sets the
                                  # `set_real_ip_from` directive(s) in the Nginx
@@ -333,7 +333,7 @@
                                  # all UNIX-domain sockets will be trusted.
                                  #
                                  # See http://nginx.org/en/docs/http/ngx_http_realip_module.html#set_real_ip_from
-                                 # for examples of accepted values
+                                 # for examples of accepted values.
 
 #real_ip_header = X-Real-IP      # Defines the request header field whose value
                                  # will be used to replace the client address.
@@ -369,7 +369,7 @@
 
 # See http://nginx.org/en/docs/http/ngx_http_core_module.html#client_max_body_size
 # for further description of this parameter. Numeric values may be suffixed
-# with 'k' or 'm' to denote limits in terms of kilobytes or megabytes.
+# with `k` or `m` to denote limits in terms of kilobytes or megabytes.
 
 #client_body_buffer_size = 8k    # Defines the buffer size for reading the
                                  # request body. If the client request body is
@@ -387,7 +387,7 @@
 
 # See http://nginx.org/en/docs/http/ngx_http_core_module.html#client_body_buffer_size
 # for further description of this parameter. Numeric values may be suffixed
-# with 'k' or 'm' to denote limits in terms of kilobytes or megabytes.
+# with `k` or `m` to denote limits in terms of kilobytes or megabytes.
 
 #error_default_type = text/plain  # Default MIME type to use when the request
                                   # `Accept` header is missing and Nginx
@@ -512,7 +512,7 @@
                                        # will use this setting when using the
                                        # `NetworkTopologyStrategy`.
                                        # The format is a comma-separated list
-                                       # made of <dc_name>:<repl_factor>.
+                                       # made of `<dc_name>:<repl_factor>`.
 
 #cassandra_schema_consensus_timeout = 10000  # Defines the timeout (in ms) for
                                              # the waiting period to reach a
@@ -658,12 +658,16 @@
                                  # used for verifying Kong's database
                                  # connections, when `pg_ssl_verify` or
                                  # `cassandra_ssl_verify` are enabled.
+                                 #
+                                 # See https://github.com/openresty/lua-nginx-module#lua_ssl_trusted_certificate
 
 #lua_ssl_verify_depth = 1        # Sets the verification depth in the server
                                  # certificates chain used by Lua cosockets,
                                  # set by `lua_ssl_trusted_certificate`.
                                  # This includes the certificates configured
                                  # for Kong's database connections.
+                                 #
+                                 # See https://github.com/openresty/lua-nginx-module#lua_ssl_verify_depth
 
 #lua_package_path = ./?.lua;./?/init.lua;  # Sets the Lua module search path
                                            # (LUA_PATH). Useful when developing
