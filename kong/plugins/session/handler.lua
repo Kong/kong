@@ -21,6 +21,7 @@ function KongSessionHandler:header_filter(conf)
 
   if not ctx.authenticated_credential then
     -- don't open sessions for anonymous users
+    ngx.log(ngx.DEBUG, "Anonymous: No credential.")
     return
   end
 

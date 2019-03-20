@@ -1,29 +1,17 @@
+local typedefs = require "kong.db.schema.typedefs"
+
 return {
   sessions = {
     primary_key = { "id" },
+    name = "sessions",
     cache_key = { "session_id" },
-    table = "sessions",
+    ttl = true,
     fields = {
-      id = {
-        type = "id",
-        dao_insert_value = true
-      },
-      session_id = {
-        type = "text",
-        unique = true,
-        required = true
-      },
-      expires = {
-        type = "number",
-      },
-      data = {
-        type = "text",
-      },
-      created_at = {
-        type = "timestamp",
-        immutable = true,
-        dao_insert_value = true,
-      },
+      { id = typedefs.uuid },
+      { session_id = { type = "string", unique = true, required = true } },
+      { expires = { type = "integer" } },
+      { data = { type = "string" } },
+      { created_at = typedefs.auto_timestamp_s },
     }
   }
 }

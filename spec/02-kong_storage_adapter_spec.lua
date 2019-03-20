@@ -10,10 +10,17 @@ end
 
 for _, strategy in helpers.each_strategy() do
   describe("Plugin: Session (kong storage adapter) [#" .. strategy .. "]", function()
-    local client, bp, dao
+    local client, bp, db
 
-    setup(function()
-      bp, _, dao = helpers.get_db_utils(strategy)
+    lazy_setup(function()
+      bp, db = helpers.get_db_utils(strategy, {
+        "sessions",
+        "plugins",
+        "routes",
+        "services",
+        "consumers",
+        "keyauth_credentials",
+      })
 
       local route1 = bp.routes:insert {
         paths    = {"/test1"},
@@ -27,7 +34,9 @@ for _, strategy in helpers.each_strategy() do
       
       assert(bp.plugins:insert {
         name = "session",
-        route_id = route1.id,
+        route = {
+          id = route1.id,
+        },
         config = {
           storage = "kong",
           secret = "ultra top secret session",
@@ -36,7 +45,9 @@ for _, strategy in helpers.each_strategy() do
       
       assert(bp.plugins:insert {
         name = "session",
-        route_id = route2.id,
+        route = {
+          id = route2.id,
+        },
         config = {
           secret = "super secret session secret",
           storage = "kong",
@@ -48,13 +59,17 @@ for _, strategy in helpers.each_strategy() do
       local consumer = bp.consumers:insert { username = "coop" }
       bp.keyauth_credentials:insert {
         key = "kong",
-        consumer_id = consumer.id,
+        consumer = {
+          id = consumer.id
+        },
       }
 
       local anonymous = bp.consumers:insert { username = "anon" }
       bp.plugins:insert {
         name = "key-auth",
-        route_id = route1.id,
+        route = {
+          id = route1.id,
+        },
         config = {
           anonymous = anonymous.id
         }
@@ -62,7 +77,9 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name = "key-auth",
-        route_id = route2.id,
+        route = {
+          id = route2.id,
+        },
         config = {
           anonymous = anonymous.id
         }
@@ -70,7 +87,9 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name = "request-termination",
-        consumer_id = anonymous.id,
+        consumer = {
+          id = anonymous.id,
+        },
         config = {
           status_code = 403,
           message = "So it goes.",
@@ -78,13 +97,13 @@ for _, strategy in helpers.each_strategy() do
       }
 
       assert(helpers.start_kong {
-        custom_plugins = "session",
+        plugins = "bundled, session",
         database   = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
       })
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       helpers.stop_kong()
     end)
 
@@ -129,7 +148,7 @@ for _, strategy in helpers.each_strategy() do
 
         -- make sure it's in the db
         local sid = get_sid_from_cookie(cookie)
-        assert.equal(sid, dao.sessions:find_all({session_id = sid})[1].session_id)
+        assert.equal(sid, db.sessions:select_by_session_id(sid).session_id)
       end)
 
       it("renews cookie", function()  
@@ -203,7 +222,7 @@ for _, strategy in helpers.each_strategy() do
 
         -- session should be in the table initially
         local sid = get_sid_from_cookie(cookie)
-        assert.equal(sid, dao.sessions:find_all({session_id = sid})[1].session_id)
+        assert.equal(sid, db.sessions:select_by_session_id(sid).session_id)
 
         -- logout request
         res = assert(client:send({
@@ -217,8 +236,11 @@ for _, strategy in helpers.each_strategy() do
 
         assert.response(res).has.status(200)
 
-        -- logged out, no sessions should be in the table
-        assert.equal(0, #dao.sessions:find_all({session_id = sid}))
+        local found, err = db.sessions:select_by_session_id(sid)
+
+        -- logged out, no sessions should be in the table, without errors
+        assert.is_nil(found)
+        assert.is_nil(err)
       end)
     end)
   end)

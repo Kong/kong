@@ -1,9 +1,9 @@
-local singletons   = require "kong.singletons"
 local concat       = table.concat
 local tonumber     = tonumber
 local setmetatable = setmetatable
 local floor        = math.floor
 local now          = ngx.now
+local kong         = kong
 
 local kong_storage = {}
 
@@ -11,7 +11,7 @@ kong_storage.__index = kong_storage
 
 function kong_storage.new(config)
   return setmetatable({
-    dao         = singletons.dao,
+    db          = kong.db,
     encode      = config.encoder.encode,
     decode      = config.encoder.decode,
     delimiter   = config.cookie.delimiter,
@@ -21,18 +21,18 @@ end
 
 
 local function load_session(sid)
-  local rows, err = singletons.dao.sessions:find_all { session_id = sid }
-  if not rows then
+  local session, err = kong.db.sessions:select_by_session_id(sid)
+  if not session then
     return nil, err
   end
 
-  return rows[1]
+  return session
 end
 
 
 function kong_storage:get(sid)
-  local cache_key = self.dao.sessions:cache_key(sid)
-  local s, err = singletons.cache:get(cache_key, nil, load_session, sid)
+  local cache_key = kong.db.sessions:cache_key(sid)
+  local s, err = kong.cache:get(cache_key, nil, load_session, sid)
 
   if err then
     ngx.log(ngx.ERR, "Error finding session:", err)
@@ -84,7 +84,7 @@ end
 
 
 function kong_storage:insert_session(sid, data, expires)
-  local _, err = self.dao.sessions:insert({
+  local _, err = self.db.sessions:insert({
     session_id = sid,
     data = data,
     expires = expires,
@@ -97,7 +97,7 @@ end
 
 
 function kong_storage:update_session(id, params, ttl)
-  local _, err = self.dao.sessions:update(params, { id = id }, { ttl = ttl })
+  local _, err = self.db.sessions:update(params, { id = id }, { ttl = ttl })
   if err then
     ngx.log(ngx.ERR, "Error updating session: ", err)
   end
@@ -132,7 +132,7 @@ function kong_storage:destroy(id)
     return
   end
   
-  local _, err = self.dao.sessions:delete({
+  local _, err = self.db.sessions:delete({
     id = db_s.id
   })
 

@@ -36,8 +36,8 @@ env:
     - INSTALL_CACHE=$HOME/install-cache
     - BUSTED_ARGS="-o gtest -v --exclude-tags=flaky,ipv6"
     - PLUGIN_NAME=session
-    - KONG_TEST_CUSTOM_PLUGINS=$PLUGIN_NAME
-    - KONG_CUSTOM_PLUGINS=$PLUGIN_NAME
+    - KONG_TEST_PLUGINS=bundled,$PLUGIN_NAME
+    - KONG_PLUGINS=bundled,$PLUGIN_NAME
 
   matrix:
     - OPENRESTY=$OPENRESTY_BASE
@@ -48,18 +48,18 @@ env:
 before_install:
   - git clone https://$GITHUB_TOKEN:@github.com/Kong/kong-ci.git
   - source kong-ci/setup_env.sh
-  - git clone https://$GITHUB_TOKEN:@github.com/Kong/kong-ee.git kong-ee
+  - git clone https://github.com/Kong/kong.git kong-ce
 
 install:
   - luarocks make
-  - cd kong-ee
+  - cd kong-ce
   - make dev
   - createuser --createdb kong
   - createdb -U kong kong_tests
   - cd ../
-  - KONG_DATABASE=postgres KONG_PG_DATABASE=kong_tests kong-ee/bin/kong migrations up
-  - KONG_DATABASE=cassandra KONG_CASSANDRA_KEYSPACE=kong_tests kong-ee/bin/kong migrations up
-  - cd kong-ee
+  - KONG_DATABASE=postgres KONG_PG_DATABASE=kong_tests kong-ce/bin/kong migrations bootstrap
+  - KONG_DATABASE=cassandra KONG_CASSANDRA_KEYSPACE=kong_tests kong-ce/bin/kong migrations bootstrap
+  - cd kong-ce
 
 script:
   - bin/busted $BUSTED_ARGS ../spec
