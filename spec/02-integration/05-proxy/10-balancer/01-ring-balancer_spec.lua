@@ -116,7 +116,8 @@ local function http_server(host, port, counts, test_log, protocol)
   local hard_timeout = ngx.now() + 300
   protocol = protocol or "http"
 
-  local cmd = "resty spec/fixtures/balancer_https_server.lua " ..
+  local cmd = "resty --errlog-level error " .. -- silence _G write guard warns
+              "spec/fixtures/balancer_https_server.lua " ..
               protocol .. " " .. host .. " " .. port ..
               " \"" .. cjson.encode(counts) .. "\" " ..
               (test_log or "") .. " &"
