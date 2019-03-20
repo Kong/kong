@@ -1,7 +1,7 @@
 local crypto = require "kong.plugins.basic-auth.crypto"
 
 describe("Plugin: basic-auth (crypto)", function()
-  it("hashs a credential with consumer_id salt", function()
+  it("hashs a credential with kongsumer_id salt", function()
     local value = crypto.hash("id123", "pass123")
     assert.is_string(value)
     assert.equals(40, #value)

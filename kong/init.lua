@@ -637,7 +637,7 @@ function Kong.rewrite()
     return kong.response.exit(500, { message  = "An unexpected error occurred" })
   end
 
-  -- we're just using the iterator, as in this rewrite phase no consumer nor
+  -- we're just using the iterator, as in this rewrite phase no kongsumer nor
   -- route will have been identified, hence we'll just be executing the global
   -- plugins
   for plugin, plugin_conf in plugins_iterator(ctx, loaded_plugins,

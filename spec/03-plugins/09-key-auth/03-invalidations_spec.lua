@@ -13,7 +13,7 @@ for _, strategy in helpers.each_strategy() do
         "routes",
         "services",
         "plugins",
-        "consumers",
+        "kongsumers",
         "keyauth_credentials",
       })
 
@@ -26,13 +26,13 @@ for _, strategy in helpers.each_strategy() do
         route = { id = route.id },
       }
 
-      local consumer = bp.consumers:insert {
+      local kongsumer = bp.kongsumers:insert {
         username = "bob",
       }
 
       bp.keyauth_credentials:insert {
         key      = "kong",
-        consumer = { id = consumer.id },
+        kongsumer = { id = kongsumer.id },
       }
 
       assert(helpers.start_kong({
@@ -53,7 +53,7 @@ for _, strategy in helpers.each_strategy() do
       helpers.stop_kong()
     end)
 
-    it("invalidates credentials when the Consumer is deleted", function()
+    it("invalidates credentials when the kongsumer is deleted", function()
       -- populate cache
       local res = assert(proxy_client:send {
         method  = "GET",
@@ -73,10 +73,10 @@ for _, strategy in helpers.each_strategy() do
       })
       assert.res_status(200, res)
 
-      -- delete Consumer entity
+      -- delete kongsumer entity
       res = assert(admin_client:send {
         method = "DELETE",
-        path   = "/consumers/bob"
+        path   = "/kongsumers/bob"
       })
       assert.res_status(204, res)
 
@@ -125,7 +125,7 @@ for _, strategy in helpers.each_strategy() do
       -- delete credential entity
       res = assert(admin_client:send {
         method = "DELETE",
-        path   = "/consumers/bob/key-auth/" .. credential.id
+        path   = "/kongsumers/bob/key-auth/" .. credential.id
       })
       assert.res_status(204, res)
 
@@ -174,7 +174,7 @@ for _, strategy in helpers.each_strategy() do
       -- delete credential entity
       res = assert(admin_client:send {
         method  = "PATCH",
-        path    = "/consumers/bob/key-auth/" .. credential.id,
+        path    = "/kongsumers/bob/key-auth/" .. credential.id,
         body    = {
           key   = "kong-updated"
         },

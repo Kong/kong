@@ -128,7 +128,7 @@ local function new(self)
 
 
   ---
-  -- Returns the credentials of the currently authenticated consumer.
+  -- Returns the credentials of the currently authenticated kongsumer.
   -- If not set yet, it returns `nil`.
   -- @function kong.client.get_credential
   -- @phases access, header_filter, body_filter, log
@@ -136,7 +136,7 @@ local function new(self)
   -- @usage
   -- local credential = kong.client.get_credential()
   -- if credential then
-  --   consumer_id = credential.consumer_id
+  --   kongsumer_id = credential.kongsumer_id
   -- else
   --   -- request not authenticated yet
   -- end
@@ -148,53 +148,53 @@ local function new(self)
 
 
   ---
-  -- Returns the `consumer` entity of the currently authenticated consumer.
+  -- Returns the `kongsumer` entity of the currently authenticated kongsumer.
   -- If not set yet, it returns `nil`.
-  -- @function kong.client.get_consumer
+  -- @function kong.client.get_kongsumer
   -- @phases access, header_filter, body_filter, log
-  -- @treturn table the authenticated consumer entity
+  -- @treturn table the authenticated kongsumer entity
   -- @usage
-  -- local consumer = kong.client.get_consumer()
-  -- if consumer then
-  --   consumer_id = consumer.id
+  -- local kongsumer = kong.client.get_kongsumer()
+  -- if kongsumer then
+  --   kongsumer_id = kongsumer.id
   -- else
   --   -- request not authenticated yet, or a credential
-  --   -- without a consumer (external auth)
+  --   -- without a kongsumer (external auth)
   -- end
-  function _CLIENT.get_consumer()
+  function _CLIENT.get_kongsumer()
     check_phase(AUTH_AND_LATER)
 
-    return ngx.ctx.authenticated_consumer
+    return ngx.ctx.authenticated_kongsumer
   end
 
 
   ---
-  -- Sets the authenticated consumer and/or credential for the current request.
-  -- While both `consumer` and `credential` can be `nil`, it is required
+  -- Sets the authenticated kongsumer and/or credential for the current request.
+  -- While both `kongsumer` and `credential` can be `nil`, it is required
   -- that at least one of them exists. Otherwise this function will throw an
   -- error.
   -- @function kong.client.authenticate
   -- @phases access
-  -- @tparam table|nil consumer The consumer to set. Note: if no
+  -- @tparam table|nil kongsumer The kongsumer to set. Note: if no
   -- value is provided, then any existing value will be cleared!
   -- @tparam table|nil credential The credential to set. Note: if
   -- no value is provided, then any existing value will be cleared!
   -- @usage
-  -- -- assuming `credential` and `consumer` have been set by some authentication code
-  -- kong.client.authenticate(consumer, credentials)
-  function _CLIENT.authenticate(consumer, credential)
+  -- -- assuming `credential` and `kongsumer` have been set by some authentication code
+  -- kong.client.authenticate(kongsumer, credentials)
+  function _CLIENT.authenticate(kongsumer, credential)
     check_phase(PHASES.access)
 
-    if not TABLE_OR_NIL[type(consumer)] then
-      error("consumer must be a table or nil", 2)
+    if not TABLE_OR_NIL[type(kongsumer)] then
+      error("kongsumer must be a table or nil", 2)
     elseif not TABLE_OR_NIL[type(credential)] then
       error("credential must be a table or nil", 2)
-    elseif credential == nil and consumer == nil then
-      error("either credential or consumer must be provided", 2)
+    elseif credential == nil and kongsumer == nil then
+      error("either credential or kongsumer must be provided", 2)
     end
 
     local ctx = ngx.ctx
-    ctx.authenticated_consumer = consumer
+    ctx.authenticated_kongsumer = kongsumer
     ctx.authenticated_credential = credential
   end
 

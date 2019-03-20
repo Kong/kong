@@ -5,7 +5,7 @@ local null = ngx.null
 return {
   name = "plugins",
   primary_key = { "id" },
-  cache_key = { "name", "route", "service", "consumer" },
+  cache_key = { "name", "route", "service", "kongsumer" },
   dao = "kong.db.dao.plugins",
 
   subschema_key = "name",
@@ -17,7 +17,7 @@ return {
     { created_at = typedefs.auto_timestamp_s },
     { route = { type = "foreign", reference = "routes", default = null, on_delete = "cascade", }, },
     { service = { type = "foreign", reference = "services", default = null, on_delete = "cascade", }, },
-    { consumer = { type = "foreign", reference = "consumers", default = null, on_delete = "cascade", }, },
+    { kongsumer = { type = "foreign", reference = "kongsumers", default = null, on_delete = "cascade", }, },
     { config = { type = "record", abstract = true, }, },
     { run_on = typedefs.run_on },
     { enabled = { type = "boolean", default = true, }, },

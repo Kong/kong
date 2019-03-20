@@ -5,7 +5,7 @@ local utils = require "kong.tools.utils"
 
 for _, strategy in helpers.each_strategy() do
   describe("Plugin: basic-auth (API) [#" .. strategy .. "]", function()
-    local consumer
+    local kongsumer
     local admin_client
     local bp
     local db
@@ -15,7 +15,7 @@ for _, strategy in helpers.each_strategy() do
         "routes",
         "services",
         "plugins",
-        "consumers",
+        "kongsumers",
         "basicauth_credentials",
       })
 
@@ -35,9 +35,9 @@ for _, strategy in helpers.each_strategy() do
       if admin_client then admin_client:close() end
     end)
 
-    describe("/consumers/:consumer/basic-auth/", function()
+    describe("/kongsumers/:kongsumer/basic-auth/", function()
       lazy_setup(function()
-        consumer = bp.consumers:insert {
+        kongsumer = bp.kongsumers:insert {
           username = "bob"
         }
       end)
@@ -49,7 +49,7 @@ for _, strategy in helpers.each_strategy() do
         it("creates a basic-auth credential", function()
           local res = assert(admin_client:send {
             method  = "POST",
-            path    = "/consumers/bob/basic-auth",
+            path    = "/kongsumers/bob/basic-auth",
             body    = {
               username = "bob",
               password = "kong"
@@ -60,13 +60,13 @@ for _, strategy in helpers.each_strategy() do
           })
           local body = assert.res_status(201, res)
           local json = cjson.decode(body)
-          assert.equal(consumer.id, json.consumer.id)
+          assert.equal(kongsumer.id, json.kongsumer.id)
           assert.equal("bob", json.username)
         end)
         it("hashes the password", function()
           local res = assert(admin_client:send {
             method  = "POST",
-            path    = "/consumers/bob/basic-auth",
+            path    = "/kongsumers/bob/basic-auth",
             body    = {
               username = "bob",
               password = "kong"
@@ -81,13 +81,13 @@ for _, strategy in helpers.each_strategy() do
           assert.not_equal("kong", json.password)
 
           local crypto = require "kong.plugins.basic-auth.crypto"
-          local hash   = crypto.hash(consumer.id, "kong")
+          local hash   = crypto.hash(kongsumer.id, "kong")
           assert.equal(hash, json.password)
         end)
         it("hashes the password without trimming whitespace", function()
           local res = assert(admin_client:send {
             method  = "POST",
-            path    = "/consumers/bob/basic-auth",
+            path    = "/kongsumers/bob/basic-auth",
             body    = {
               username = "bob",
               password = " kong "
@@ -102,14 +102,14 @@ for _, strategy in helpers.each_strategy() do
           assert.not_equal(" kong ", json.password)
 
           local crypto = require "kong.plugins.basic-auth.crypto"
-          local hash   = crypto.hash(consumer.id, " kong ")
+          local hash   = crypto.hash(kongsumer.id, " kong ")
           assert.equal(hash, json.password)
         end)
         describe("errors", function()
           it("returns bad request", function()
             local res = assert(admin_client:send {
               method  = "POST",
-              path    = "/consumers/bob/basic-auth",
+              path    = "/kongsumers/bob/basic-auth",
               body    = {},
               headers = {
                 ["Content-Type"] = "application/json"
@@ -122,7 +122,7 @@ for _, strategy in helpers.each_strategy() do
           it("cannot create two identical usernames", function()
             local res = assert(admin_client:send {
               method  = "POST",
-              path    = "/consumers/bob/basic-auth",
+              path    = "/kongsumers/bob/basic-auth",
               body    = {
                 username = "bob",
                 password = "kong"
@@ -136,7 +136,7 @@ for _, strategy in helpers.each_strategy() do
 
             local res = assert(admin_client:send {
               method  = "POST",
-              path    = "/consumers/bob/basic-auth",
+              path    = "/kongsumers/bob/basic-auth",
               body    = {
                 username = "bob",
                 password = "kong"
@@ -156,7 +156,7 @@ for _, strategy in helpers.each_strategy() do
             bp.basicauth_credentials:insert {
               username = "bob" .. i,
               password = "kong",
-              consumer = { id = consumer.id },
+              kongsumer = { id = kongsumer.id },
             }
           end
         end)
@@ -166,7 +166,7 @@ for _, strategy in helpers.each_strategy() do
         it("retrieves the first page", function()
           local res = assert(admin_client:send {
             method  = "GET",
-            path    = "/consumers/bob/basic-auth"
+            path    = "/kongsumers/bob/basic-auth"
           })
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
@@ -176,21 +176,21 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
 
-    describe("/consumers/:consumer/basic-auth/:id", function()
+    describe("/kongsumers/:kongsumer/basic-auth/:id", function()
       local credential
       before_each(function()
         db:truncate("basicauth_credentials")
         credential = bp.basicauth_credentials:insert {
           username = "bob",
           password = "kong",
-          consumer = { id = consumer.id },
+          kongsumer = { id = kongsumer.id },
         }
       end)
       describe("GET", function()
         it("retrieves basic-auth credential by id", function()
           local res = assert(admin_client:send {
             method  = "GET",
-            path    = "/consumers/bob/basic-auth/" .. credential.id
+            path    = "/kongsumers/bob/basic-auth/" .. credential.id
           })
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
@@ -199,26 +199,26 @@ for _, strategy in helpers.each_strategy() do
         it("retrieves basic-auth credential by username", function()
           local res = assert(admin_client:send {
             method  = "GET",
-            path    = "/consumers/bob/basic-auth/" .. credential.username
+            path    = "/kongsumers/bob/basic-auth/" .. credential.username
           })
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
           assert.equal(credential.id, json.id)
         end)
-        it("retrieves credential by id only if the credential belongs to the specified consumer", function()
-          bp.consumers:insert {
+        it("retrieves credential by id only if the credential belongs to the specified kongsumer", function()
+          bp.kongsumers:insert {
             username = "alice"
           }
 
           local res = assert(admin_client:send {
             method  = "GET",
-            path    = "/consumers/bob/basic-auth/" .. credential.id
+            path    = "/kongsumers/bob/basic-auth/" .. credential.id
           })
           assert.res_status(200, res)
 
           res = assert(admin_client:send {
             method = "GET",
-            path   = "/consumers/alice/basic-auth/" .. credential.id
+            path   = "/kongsumers/alice/basic-auth/" .. credential.id
           })
           assert.res_status(404, res)
         end)
@@ -228,7 +228,7 @@ for _, strategy in helpers.each_strategy() do
         it("creates a basic-auth credential", function()
           local res = assert(admin_client:send {
             method  = "PUT",
-            path    = "/consumers/bob/basic-auth/robert",
+            path    = "/kongsumers/bob/basic-auth/robert",
             body    = {
               password = "kong"
             },
@@ -238,14 +238,14 @@ for _, strategy in helpers.each_strategy() do
           })
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
-          assert.equal(consumer.id, json.consumer.id)
+          assert.equal(kongsumer.id, json.kongsumer.id)
           assert.equal("robert", json.username)
         end)
         describe("errors", function()
           it("returns bad request", function()
             local res = assert(admin_client:send {
               method  = "PUT",
-              path    = "/consumers/bob/basic-auth/b59d82f6-c839-4a60-b491-c6cdff4cd5d3",
+              path    = "/kongsumers/bob/basic-auth/b59d82f6-c839-4a60-b491-c6cdff4cd5d3",
               body    = {
                 username = 123,
               },
@@ -266,7 +266,7 @@ for _, strategy in helpers.each_strategy() do
 
           local res = assert(admin_client:send {
             method  = "PATCH",
-            path    = "/consumers/bob/basic-auth/" .. credential.id,
+            path    = "/kongsumers/bob/basic-auth/" .. credential.id,
             body    = {
               password = "4321"
             },
@@ -283,7 +283,7 @@ for _, strategy in helpers.each_strategy() do
 
           local res = assert(admin_client:send {
             method  = "PATCH",
-            path    = "/consumers/bob/basic-auth/" .. credential.username,
+            path    = "/kongsumers/bob/basic-auth/" .. credential.username,
             body    = {
               password = "upd4321"
             },
@@ -299,7 +299,7 @@ for _, strategy in helpers.each_strategy() do
           it("handles invalid input", function()
             local res = assert(admin_client:send {
               method  = "PATCH",
-              path    = "/consumers/bob/basic-auth/" .. credential.id,
+              path    = "/kongsumers/bob/basic-auth/" .. credential.id,
               body    = {
                 username = 123
               },
@@ -318,7 +318,7 @@ for _, strategy in helpers.each_strategy() do
         it("deletes a credential", function()
           local res = assert(admin_client:send {
             method  = "DELETE",
-            path    = "/consumers/bob/basic-auth/" .. credential.id,
+            path    = "/kongsumers/bob/basic-auth/" .. credential.id,
           })
           assert.res_status(204, res)
         end)
@@ -326,14 +326,14 @@ for _, strategy in helpers.each_strategy() do
           it("returns 404 on missing username", function()
             local res = assert(admin_client:send {
               method  = "DELETE",
-              path    = "/consumers/bob/basic-auth/blah"
+              path    = "/kongsumers/bob/basic-auth/blah"
             })
             assert.res_status(404, res)
           end)
           it("returns 404 if not found", function()
             local res = assert(admin_client:send {
               method  = "DELETE",
-              path    = "/consumers/bob/basic-auth/00000000-0000-0000-0000-000000000000"
+              path    = "/kongsumers/bob/basic-auth/00000000-0000-0000-0000-000000000000"
             })
             assert.res_status(404, res)
           end)
@@ -341,19 +341,19 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
     describe("/basic-auths", function()
-      local consumer2
+      local kongsumer2
       describe("GET", function()
         lazy_setup(function()
           db:truncate("basicauth_credentials")
           bp.basicauth_credentials:insert {
-            consumer = { id = consumer.id },
+            kongsumer = { id = kongsumer.id },
             username = "bob"
           }
-          consumer2 = bp.consumers:insert {
+          kongsumer2 = bp.kongsumers:insert {
             username = "bob-the-buidler"
           }
           bp.basicauth_credentials:insert {
-            consumer = { id = consumer2.id },
+            kongsumer = { id = kongsumer2.id },
             username = "bob-the-buidler"
           }
         end)
@@ -408,45 +408,45 @@ for _, strategy in helpers.each_strategy() do
         end)
       end)
     end)
-    describe("/basic-auths/:credential_username_or_id/consumer", function()
+    describe("/basic-auths/:credential_username_or_id/kongsumer", function()
       describe("GET", function()
         local credential
         lazy_setup(function()
           db:truncate("basicauth_credentials")
           credential = bp.basicauth_credentials:insert {
-            consumer = { id = consumer.id },
+            kongsumer = { id = kongsumer.id },
             username = "bob"
           }
         end)
-        it("retrieve consumer from a basic-auth id", function()
+        it("retrieve kongsumer from a basic-auth id", function()
           local res = assert(admin_client:send {
             method = "GET",
-            path = "/basic-auths/" .. credential.id .. "/consumer"
+            path = "/basic-auths/" .. credential.id .. "/kongsumer"
           })
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
-          assert.same(consumer,json)
+          assert.same(kongsumer,json)
         end)
-        it("retrieve consumer from a basic-auth username", function()
+        it("retrieve kongsumer from a basic-auth username", function()
           local res = assert(admin_client:send {
             method = "GET",
-            path = "/basic-auths/" .. credential.username .. "/consumer"
+            path = "/basic-auths/" .. credential.username .. "/kongsumer"
           })
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
-          assert.same(consumer,json)
+          assert.same(kongsumer,json)
         end)
         it("returns 404 for a random non-existing basic-auth id", function()
           local res = assert(admin_client:send {
             method = "GET",
-            path = "/basic-auths/" .. utils.uuid()  .. "/consumer"
+            path = "/basic-auths/" .. utils.uuid()  .. "/kongsumer"
           })
           assert.res_status(404, res)
         end)
         it("returns 404 for a random non-existing basic-auth username", function()
           local res = assert(admin_client:send {
             method = "GET",
-            path = "/basic-auths/" .. utils.random_string()  .. "/consumer"
+            path = "/basic-auths/" .. utils.random_string()  .. "/kongsumer"
           })
           assert.res_status(404, res)
         end)

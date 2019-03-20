@@ -11,7 +11,7 @@ for _, strategy in helpers.each_strategy() do
     local bp, db = helpers.get_db_utils(strategy, {
       "routes",
       "services",
-      "consumers",
+      "kongsumers",
       "plugins",
       "oauth2_tokens",
       "oauth2_authorization_codes",
@@ -156,10 +156,10 @@ for _, strategy in helpers.each_strategy() do
     describe("when deleting a service", function()
       it("deletes associated oauth2 entities", function()
         local service = bp.services:insert()
-        local consumer = bp.consumers:insert()
+        local kongsumer = bp.kongsumers:insert()
         local credential = bp.oauth2_credentials:insert({
           redirect_uris = { "http://example.com" },
-          consumer = { id = consumer.id },
+          kongsumer = { id = kongsumer.id },
         })
 
         local ok, err, err_t

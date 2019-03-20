@@ -5,13 +5,13 @@ return {
         "id"             UUID                         PRIMARY KEY,
         "created_at"     TIMESTAMP WITHOUT TIME ZONE  DEFAULT (CURRENT_TIMESTAMP(0) AT TIME ZONE 'UTC'),
         "name"           TEXT,
-        "consumer_id"    UUID                         REFERENCES "consumers" ("id") ON DELETE CASCADE,
+        "kongsumer_id"    UUID                         REFERENCES "kongsumers" ("id") ON DELETE CASCADE,
         "client_id"      TEXT                         UNIQUE,
         "client_secret"  TEXT,
         "redirect_uri"   TEXT
       );
 
-      CREATE INDEX IF NOT EXISTS "oauth2_credentials_consumer_idx" ON "oauth2_credentials" ("consumer_id");
+      CREATE INDEX IF NOT EXISTS "oauth2_credentials_kongsumer_idx" ON "oauth2_credentials" ("kongsumer_id");
       CREATE INDEX IF NOT EXISTS "oauth2_credentials_secret_idx"   ON "oauth2_credentials" ("client_secret");
 
 
@@ -54,14 +54,14 @@ return {
       CREATE TABLE IF NOT EXISTS oauth2_credentials(
         id            uuid PRIMARY KEY,
         created_at    timestamp,
-        consumer_id   uuid,
+        kongsumer_id   uuid,
         client_id     text,
         client_secret text,
         name          text,
         redirect_uri  text
       );
       CREATE INDEX IF NOT EXISTS ON oauth2_credentials(client_id);
-      CREATE INDEX IF NOT EXISTS ON oauth2_credentials(consumer_id);
+      CREATE INDEX IF NOT EXISTS ON oauth2_credentials(kongsumer_id);
       CREATE INDEX IF NOT EXISTS ON oauth2_credentials(client_secret);
 
 

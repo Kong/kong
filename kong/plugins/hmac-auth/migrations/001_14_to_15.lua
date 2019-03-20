@@ -7,7 +7,7 @@ return {
 
       DO $$
       BEGIN
-        ALTER INDEX IF EXISTS "hmacauth_credentials_consumer_id" RENAME TO "hmacauth_credentials_consumer_id_idx";
+        ALTER INDEX IF EXISTS "hmacauth_credentials_kongsumer_id" RENAME TO "hmacauth_credentials_kongsumer_id_idx";
       EXCEPTION WHEN DUPLICATE_TABLE THEN
         -- Do nothing, accept existing state
       END;

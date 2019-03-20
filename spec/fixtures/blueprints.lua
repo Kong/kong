@@ -99,12 +99,12 @@ function _M.new(db)
     }
   end)
 
-  local consumer_custom_id_seq = new_sequence("consumer-id-%d")
-  local consumer_username_seq = new_sequence("consumer-username-%d")
-  res.consumers = new_blueprint(db.consumers, function()
+  local kongsumer_custom_id_seq = new_sequence("kongsumer-id-%d")
+  local kongsumer_username_seq = new_sequence("kongsumer-username-%d")
+  res.kongsumers = new_blueprint(db.kongsumers, function()
     return {
-      custom_id = consumer_custom_id_seq:next(),
-      username  = consumer_username_seq:next(),
+      custom_id = kongsumer_custom_id_seq:next(),
+      username  = kongsumer_username_seq:next(),
     }
   end)
 

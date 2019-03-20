@@ -4,12 +4,12 @@ return {
       CREATE TABLE IF NOT EXISTS "hmacauth_credentials" (
         "id"           UUID                         PRIMARY KEY,
         "created_at"   TIMESTAMP WITHOUT TIME ZONE  DEFAULT (CURRENT_TIMESTAMP(0) AT TIME ZONE 'UTC'),
-        "consumer_id"  UUID                         REFERENCES "consumers" ("id") ON DELETE CASCADE,
+        "kongsumer_id"  UUID                         REFERENCES "kongsumers" ("id") ON DELETE CASCADE,
         "username"     TEXT                         UNIQUE,
         "secret"       TEXT
       );
 
-      CREATE INDEX IF NOT EXISTS "hmacauth_credentials_consumer_id" ON "hmacauth_credentials" ("consumer_id");
+      CREATE INDEX IF NOT EXISTS "hmacauth_credentials_kongsumer_id" ON "hmacauth_credentials" ("kongsumer_id");
     ]],
   },
 
@@ -18,12 +18,12 @@ return {
       CREATE TABLE IF NOT EXISTS hmacauth_credentials(
         id          uuid PRIMARY KEY,
         created_at  timestamp,
-        consumer_id uuid,
+        kongsumer_id uuid,
         username    text,
         secret      text
       );
       CREATE INDEX IF NOT EXISTS ON hmacauth_credentials(username);
-      CREATE INDEX IF NOT EXISTS ON hmacauth_credentials(consumer_id);
+      CREATE INDEX IF NOT EXISTS ON hmacauth_credentials(kongsumer_id);
     ]],
   },
 }

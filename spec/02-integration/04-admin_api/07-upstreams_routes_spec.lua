@@ -66,7 +66,7 @@ describe("Admin API: #" .. strategy, function()
             body = {
               name = "my.upstream",
               slots = 10,
-              hash_on = "consumer",
+              hash_on = "kongsumer",
               hash_fallback = "ip",
               hash_on_header = "HeaderName",
               hash_fallback_header = "HeaderFallback",
@@ -79,7 +79,7 @@ describe("Admin API: #" .. strategy, function()
           assert.is_number(json.created_at)
           assert.is_string(json.id)
           assert.are.equal(10, json.slots)
-          assert.are.equal("consumer", json.hash_on)
+          assert.are.equal("kongsumer", json.hash_on)
           assert.are.equal("ip", json.hash_fallback)
           assert.are.equal("HeaderName", json.hash_on_header)
           assert.are.equal("HeaderFallback", json.hash_fallback_header)
@@ -223,7 +223,7 @@ describe("Admin API: #" .. strategy, function()
             body = assert.res_status(400, res)
             local json = cjson.decode(body)
             assert.equals("schema violation", json.name)
-            assert.same({ hash_on = "expected one of: none, consumer, ip, header, cookie" }, json.fields)
+            assert.same({ hash_on = "expected one of: none, kongsumer, ip, header, cookie" }, json.fields)
 
             -- Invalid hash_fallback entries
             res = assert(client:send {
@@ -231,7 +231,7 @@ describe("Admin API: #" .. strategy, function()
               path = "/upstreams",
               body = {
                 name = "my.upstream",
-                hash_on = "consumer",
+                hash_on = "kongsumer",
                 hash_fallback = "something that is invalid",
               },
               headers = {["Content-Type"] = content_type}
@@ -250,8 +250,8 @@ describe("Admin API: #" .. strategy, function()
               path = "/upstreams",
               body = {
                 name = "my.upstream",
-                hash_on = "consumer",
-                hash_fallback = "consumer",
+                hash_on = "kongsumer",
+                hash_fallback = "kongsumer",
               },
               headers = {["Content-Type"] = content_type}
             })
@@ -269,7 +269,7 @@ describe("Admin API: #" .. strategy, function()
               body = {
                 name = "my.upstream",
                 hash_on = "header",
-                hash_fallback = "consumer",
+                hash_fallback = "kongsumer",
                 hash_on_header = "not a <> valid <> header name",
               },
               headers = {["Content-Type"] = content_type}
@@ -285,7 +285,7 @@ describe("Admin API: #" .. strategy, function()
               path = "/upstreams",
               body = {
                 name = "my.upstream",
-                hash_on = "consumer",
+                hash_on = "kongsumer",
                 hash_fallback = "header",
                 hash_fallback_header = "not a <> valid <> header name",
               },
@@ -360,7 +360,7 @@ describe("Admin API: #" .. strategy, function()
               path = "/upstreams",
               body = {
                 name = "my.upstream",
-                hash_on = "consumer",
+                hash_on = "kongsumer",
                 hash_fallback = "header",
               },
               headers = {["Content-Type"] = content_type}
@@ -410,7 +410,7 @@ describe("Admin API: #" .. strategy, function()
               path = "/upstreams",
               body = {
                 name = "my.upstream",
-                hash_on = "consumer",
+                hash_on = "kongsumer",
                 hash_fallback = "cookie",
                 hash_on_cookie = "not a <> valid <> cookie name",
               },
@@ -427,7 +427,7 @@ describe("Admin API: #" .. strategy, function()
               path = "/upstreams",
               body = {
                 name = "my.upstream",
-                hash_on = "consumer",
+                hash_on = "kongsumer",
                 hash_fallback = "cookie",
                 hash_on_cookie = "my-cookie",
                 hash_on_cookie_path = "not a path",

@@ -39,7 +39,7 @@ describe("Log Serializer", function()
   end)
 
   describe("Basic", function()
-    it("serializes without API, Consumer or Authenticated entity", function()
+    it("serializes without API, kongsumer or Authenticated entity", function()
       local res = basic.serialize(ngx)
       assert.is_table(res)
 
@@ -69,7 +69,7 @@ describe("Log Serializer", function()
       assert.equal(99, res.response.size)
 
       assert.is_nil(res.api)
-      assert.is_nil(res.consumer)
+      assert.is_nil(res.kongsumer)
       assert.is_nil(res.authenticated_entity)
 
       -- Tries
@@ -85,31 +85,31 @@ describe("Log Serializer", function()
 
       assert.equal("my_route", res.route.id)
       assert.equal("my_service", res.service.id)
-      assert.is_nil(res.consumer)
+      assert.is_nil(res.kongsumer)
       assert.is_nil(res.authenticated_entity)
     end)
 
-    it("serializes the Consumer object", function()
-      ngx.ctx.authenticated_consumer = {id = "someconsumer"}
+    it("serializes the kongsumer object", function()
+      ngx.ctx.authenticated_kongsumer = {id = "somekongsumer"}
 
       local res = basic.serialize(ngx)
       assert.is_table(res)
 
-      assert.equal("someconsumer", res.consumer.id)
+      assert.equal("somekongsumer", res.kongsumer.id)
       assert.is_nil(res.api)
       assert.is_nil(res.authenticated_entity)
     end)
 
     it("serializes the Authenticated Entity object", function()
       ngx.ctx.authenticated_credential = {id = "somecred",
-                                          consumer_id = "user1"}
+                                          kongsumer_id = "user1"}
 
       local res = basic.serialize(ngx)
       assert.is_table(res)
 
-      assert.same({id = "somecred", consumer_id = "user1"},
+      assert.same({id = "somecred", kongsumer_id = "user1"},
                   res.authenticated_entity)
-      assert.is_nil(res.consumer)
+      assert.is_nil(res.kongsumer)
       assert.is_nil(res.api)
     end)
 

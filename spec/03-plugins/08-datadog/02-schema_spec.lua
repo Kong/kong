@@ -85,7 +85,7 @@ describe("Plugin: datadog (schema)", function()
       }
     }
     local _, err = v({ metrics = metrics_input }, schema_def)
-    assert.equals("required field missing", err.config.metrics.consumer_identifier)
+    assert.equals("required field missing", err.config.metrics.kongsumer_identifier)
   end)
   it("rejects if metric has wrong stat type", function()
     local metrics_input = {

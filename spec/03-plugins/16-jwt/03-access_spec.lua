@@ -30,7 +30,7 @@ for _, strategy in helpers.each_strategy() do
         "routes",
         "services",
         "plugins",
-        "consumers",
+        "kongsumers",
         "jwt_secrets",
       }, {
         "ctx-checker",
@@ -44,16 +44,16 @@ for _, strategy in helpers.each_strategy() do
         }
       end
 
-      local consumers      = bp.consumers
-      local consumer1      = consumers:insert({ username = "jwt_tests_consumer" })
-      local consumer2      = consumers:insert({ username = "jwt_tests_base64_consumer" })
-      local consumer3      = consumers:insert({ username = "jwt_tests_rsa_consumer_1" })
-      local consumer4      = consumers:insert({ username = "jwt_tests_rsa_consumer_2" })
-      local consumer5      = consumers:insert({ username = "jwt_tests_rsa_consumer_5" })
-      local consumer6      = consumers:insert({ username = "jwt_tests_consumer_6" })
-      local consumer7      = consumers:insert({ username = "jwt_tests_hs_consumer_7" })
-      local consumer8      = consumers:insert({ username = "jwt_tests_hs_consumer_8" })
-      local anonymous_user = consumers:insert({ username = "no-body" })
+      local kongsumers      = bp.kongsumers
+      local kongsumer1      = kongsumers:insert({ username = "jwt_tests_kongsumer" })
+      local kongsumer2      = kongsumers:insert({ username = "jwt_tests_base64_kongsumer" })
+      local kongsumer3      = kongsumers:insert({ username = "jwt_tests_rsa_kongsumer_1" })
+      local kongsumer4      = kongsumers:insert({ username = "jwt_tests_rsa_kongsumer_2" })
+      local kongsumer5      = kongsumers:insert({ username = "jwt_tests_rsa_kongsumer_5" })
+      local kongsumer6      = kongsumers:insert({ username = "jwt_tests_kongsumer_6" })
+      local kongsumer7      = kongsumers:insert({ username = "jwt_tests_hs_kongsumer_7" })
+      local kongsumer8      = kongsumers:insert({ username = "jwt_tests_hs_kongsumer_8" })
+      local anonymous_user = kongsumers:insert({ username = "no-body" })
 
       local plugins = bp.plugins
 
@@ -129,36 +129,36 @@ for _, strategy in helpers.each_strategy() do
         config   = { ctx_check_field = "authenticated_jwt_token" },
       })
 
-      jwt_secret        = bp.jwt_secrets:insert { consumer = { id = consumer1.id } }
-      jwt_secret_2      = bp.jwt_secrets:insert { consumer = { id = consumer6.id } }
-      base64_jwt_secret = bp.jwt_secrets:insert { consumer = { id = consumer2.id } }
+      jwt_secret        = bp.jwt_secrets:insert { kongsumer = { id = kongsumer1.id } }
+      jwt_secret_2      = bp.jwt_secrets:insert { kongsumer = { id = kongsumer6.id } }
+      base64_jwt_secret = bp.jwt_secrets:insert { kongsumer = { id = kongsumer2.id } }
 
       rsa_jwt_secret_1 = bp.jwt_secrets:insert {
-        consumer       = { id = consumer3.id },
+        kongsumer       = { id = kongsumer3.id },
         algorithm      = "RS256",
         rsa_public_key = fixtures.rs256_public_key
       }
 
       rsa_jwt_secret_2 = bp.jwt_secrets:insert {
-        consumer       = { id = consumer4.id },
+        kongsumer       = { id = kongsumer4.id },
         algorithm      = "RS256",
         rsa_public_key = fixtures.rs256_public_key
       }
 
       rsa_jwt_secret_3 = bp.jwt_secrets:insert {
-        consumer       = { id = consumer5.id },
+        kongsumer       = { id = kongsumer5.id },
         algorithm      = "RS512",
         rsa_public_key = fixtures.rs512_public_key
       }
 
       hs_jwt_secret_1 = bp.jwt_secrets:insert {
-        consumer       = { id = consumer7.id },
+        kongsumer       = { id = kongsumer7.id },
         algorithm     = "HS384",
         secret        = fixtures.hs384_secret
       }
 
       hs_jwt_secret_2 = bp.jwt_secrets:insert {
-        consumer       = { id = consumer8.id },
+        kongsumer       = { id = kongsumer8.id },
         algorithm     = "HS512",
         secret        = fixtures.hs512_secret
       }
@@ -320,7 +320,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("HS256", function()
-      it("proxies the request with token and consumer headers if it was verified", function()
+      it("proxies the request with token and kongsumer headers if it was verified", function()
         PAYLOAD.iss = jwt_secret.key
         local jwt = jwt_encoder.encode(PAYLOAD, jwt_secret.secret)
         local authorization = "Bearer " .. jwt
@@ -334,8 +334,8 @@ for _, strategy in helpers.each_strategy() do
         })
         local body = cjson.decode(assert.res_status(200, res))
         assert.equal(authorization, body.headers.authorization)
-        assert.equal("jwt_tests_consumer", body.headers["x-consumer-username"])
-        assert.is_nil(body.headers["x-anonymous-consumer"])
+        assert.equal("jwt_tests_kongsumer", body.headers["x-kongsumer-username"])
+        assert.is_nil(body.headers["x-anonymous-kongsumer"])
       end)
       it("proxies the request if the key is found in headers", function()
         local header = {typ = "JWT", alg = "HS256", kid = jwt_secret_2.key}
@@ -365,7 +365,7 @@ for _, strategy in helpers.each_strategy() do
         })
         local body = cjson.decode(assert.res_status(200, res))
         assert.equal(authorization, body.headers.authorization)
-        assert.equal("jwt_tests_consumer", body.headers["x-consumer-username"])
+        assert.equal("jwt_tests_kongsumer", body.headers["x-kongsumer-username"])
       end)
       it("proxies the request if secret is base64", function()
         PAYLOAD.iss = base64_jwt_secret.key
@@ -373,7 +373,7 @@ for _, strategy in helpers.each_strategy() do
         local base64_secret = ngx.encode_base64(base64_jwt_secret.secret)
         local res = assert(admin_client:send {
           method  = "PATCH",
-          path    = "/consumers/jwt_tests_base64_consumer/jwt/" .. base64_jwt_secret.id,
+          path    = "/kongsumers/jwt_tests_base64_kongsumer/jwt/" .. base64_jwt_secret.id,
           body    = {
             key = base64_jwt_secret.key,
             secret = base64_secret},
@@ -395,7 +395,7 @@ for _, strategy in helpers.each_strategy() do
         })
         local body = cjson.decode(assert.res_status(200, res))
         assert.equal(authorization, body.headers.authorization)
-        assert.equal("jwt_tests_base64_consumer", body.headers["x-consumer-username"])
+        assert.equal("jwt_tests_base64_kongsumer", body.headers["x-kongsumer-username"])
       end)
       it("returns 200 the JWT is found in the cookie crumble", function()
         PAYLOAD.iss = jwt_secret.key
@@ -516,9 +516,9 @@ for _, strategy in helpers.each_strategy() do
         })
         local body = cjson.decode(assert.res_status(200, res))
         assert.equal(authorization, body.headers.authorization)
-        assert.equal("jwt_tests_rsa_consumer_1", body.headers["x-consumer-username"])
+        assert.equal("jwt_tests_rsa_kongsumer_1", body.headers["x-kongsumer-username"])
       end)
-      it("identifies Consumer", function()
+      it("identifies kongsumer", function()
         PAYLOAD.iss = rsa_jwt_secret_2.key
         local jwt = jwt_encoder.encode(PAYLOAD, fixtures.rs256_private_key, 'RS256')
         local authorization = "Bearer " .. jwt
@@ -532,7 +532,7 @@ for _, strategy in helpers.each_strategy() do
         })
         local body = cjson.decode(assert.res_status(200, res))
         assert.equal(authorization, body.headers.authorization)
-        assert.equal("jwt_tests_rsa_consumer_2", body.headers["x-consumer-username"])
+        assert.equal("jwt_tests_rsa_kongsumer_2", body.headers["x-kongsumer-username"])
       end)
     end)
 
@@ -551,9 +551,9 @@ for _, strategy in helpers.each_strategy() do
         })
         local body = cjson.decode(assert.res_status(200, res))
         assert.equal(authorization, body.headers.authorization)
-        assert.equal("jwt_tests_rsa_consumer_5", body.headers["x-consumer-username"])
+        assert.equal("jwt_tests_rsa_kongsumer_5", body.headers["x-kongsumer-username"])
       end)
-      it("identifies Consumer", function()
+      it("identifies kongsumer", function()
         PAYLOAD.iss = rsa_jwt_secret_3.key
         local jwt = jwt_encoder.encode(PAYLOAD, fixtures.rs512_private_key, "RS512")
         local authorization = "Bearer " .. jwt
@@ -567,12 +567,12 @@ for _, strategy in helpers.each_strategy() do
         })
         local body = cjson.decode(assert.res_status(200, res))
         assert.equal(authorization, body.headers.authorization)
-        assert.equal("jwt_tests_rsa_consumer_5", body.headers["x-consumer-username"])
+        assert.equal("jwt_tests_rsa_kongsumer_5", body.headers["x-kongsumer-username"])
       end)
     end)
 
     describe("HS386", function()
-      it("proxies the request with token and consumer headers if it was verified", function()
+      it("proxies the request with token and kongsumer headers if it was verified", function()
         PAYLOAD.iss = hs_jwt_secret_1.key
         local jwt = jwt_encoder.encode(PAYLOAD, hs_jwt_secret_1.secret, "HS384")
         local authorization = "Bearer " .. jwt
@@ -586,13 +586,13 @@ for _, strategy in helpers.each_strategy() do
         })
         local body = cjson.decode(assert.res_status(200, res))
         assert.equal(authorization, body.headers.authorization)
-        assert.equal("jwt_tests_hs_consumer_7", body.headers["x-consumer-username"])
-        assert.is_nil(body.headers["x-anonymous-consumer"])
+        assert.equal("jwt_tests_hs_kongsumer_7", body.headers["x-kongsumer-username"])
+        assert.is_nil(body.headers["x-anonymous-kongsumer"])
       end)
     end)
 
     describe("HS512", function()
-      it("proxies the request with token and consumer headers if it was verified", function()
+      it("proxies the request with token and kongsumer headers if it was verified", function()
         PAYLOAD.iss = hs_jwt_secret_2.key
         local jwt = jwt_encoder.encode(PAYLOAD, hs_jwt_secret_2.secret, "HS512")
         local authorization = "Bearer " .. jwt
@@ -606,8 +606,8 @@ for _, strategy in helpers.each_strategy() do
         })
         local body = cjson.decode(assert.res_status(200, res))
         assert.equal(authorization, body.headers.authorization)
-        assert.equal("jwt_tests_hs_consumer_8", body.headers["x-consumer-username"])
-        assert.is_nil(body.headers["x-anonymous-consumer"])
+        assert.equal("jwt_tests_hs_kongsumer_8", body.headers["x-kongsumer-username"])
+        assert.is_nil(body.headers["x-anonymous-kongsumer"])
       end)
     end)
 
@@ -696,8 +696,8 @@ for _, strategy in helpers.each_strategy() do
           }
         })
         local body = cjson.decode(assert.res_status(200, res))
-        assert.equal('jwt_tests_consumer', body.headers["x-consumer-username"])
-        assert.is_nil(body.headers["x-anonymous-consumer"])
+        assert.equal('jwt_tests_kongsumer', body.headers["x-kongsumer-username"])
+        assert.is_nil(body.headers["x-anonymous-kongsumer"])
       end)
       it("works with wrong credentials and anonymous", function()
         local res = assert(proxy_client:send {
@@ -708,8 +708,8 @@ for _, strategy in helpers.each_strategy() do
           }
         })
         local body = cjson.decode(assert.res_status(200, res))
-        assert.equal('true', body.headers["x-anonymous-consumer"])
-        assert.equal('no-body', body.headers["x-consumer-username"])
+        assert.equal('true', body.headers["x-anonymous-kongsumer"])
+        assert.equal('no-body', body.headers["x-kongsumer-username"])
       end)
       it("errors when anonymous user doesn't exist", function()
         local res = assert(proxy_client:send {
@@ -738,7 +738,7 @@ for _, strategy in helpers.each_strategy() do
         "routes",
         "services",
         "plugins",
-        "consumers",
+        "kongsumers",
         "jwt_secrets",
         "keyauth_credentials",
       })
@@ -762,15 +762,15 @@ for _, strategy in helpers.each_strategy() do
         route = { id = route1.id },
       }
 
-      anonymous = bp.consumers:insert {
+      anonymous = bp.kongsumers:insert {
         username = "Anonymous",
       }
 
-      user1 = bp.consumers:insert {
+      user1 = bp.kongsumers:insert {
         username = "Mickey",
       }
 
-      user2 = bp.consumers:insert {
+      user2 = bp.kongsumers:insert {
         username = "Aladdin",
       }
 
@@ -801,11 +801,11 @@ for _, strategy in helpers.each_strategy() do
 
       bp.keyauth_credentials:insert {
         key      = "Mouse",
-        consumer = { id = user1.id },
+        kongsumer = { id = user1.id },
       }
 
       local jwt_secret = bp.jwt_secrets:insert {
-        consumer = { id = user2.id },
+        kongsumer = { id = user2.id },
       }
 
       PAYLOAD.iss = jwt_secret.key
@@ -840,8 +840,8 @@ for _, strategy in helpers.each_strategy() do
           }
         })
         assert.response(res).has.status(200)
-        assert.request(res).has.no.header("x-anonymous-consumer")
-        local id = assert.request(res).has.header("x-consumer-id")
+        assert.request(res).has.no.header("x-anonymous-kongsumer")
+        local id = assert.request(res).has.header("x-kongsumer-id")
         assert.not_equal(id, anonymous.id)
         assert(id == user1.id or id == user2.id)
       end)
@@ -896,8 +896,8 @@ for _, strategy in helpers.each_strategy() do
           }
         })
         assert.response(res).has.status(200)
-        assert.request(res).has.no.header("x-anonymous-consumer")
-        local id = assert.request(res).has.header("x-consumer-id")
+        assert.request(res).has.no.header("x-anonymous-kongsumer")
+        local id = assert.request(res).has.header("x-kongsumer-id")
         assert.not_equal(id, anonymous.id)
         assert(id == user1.id or id == user2.id)
       end)
@@ -912,8 +912,8 @@ for _, strategy in helpers.each_strategy() do
           }
         })
         assert.response(res).has.status(200)
-        assert.request(res).has.no.header("x-anonymous-consumer")
-        local id = assert.request(res).has.header("x-consumer-id")
+        assert.request(res).has.no.header("x-anonymous-kongsumer")
+        local id = assert.request(res).has.header("x-kongsumer-id")
         assert.not_equal(id, anonymous.id)
         assert.equal(user1.id, id)
       end)
@@ -928,8 +928,8 @@ for _, strategy in helpers.each_strategy() do
           }
         })
         assert.response(res).has.status(200)
-        assert.request(res).has.no.header("x-anonymous-consumer")
-        local id = assert.request(res).has.header("x-consumer-id")
+        assert.request(res).has.no.header("x-anonymous-kongsumer")
+        local id = assert.request(res).has.header("x-kongsumer-id")
         assert.not_equal(id, anonymous.id)
         assert.equal(user2.id, id)
       end)
@@ -943,8 +943,8 @@ for _, strategy in helpers.each_strategy() do
           }
         })
         assert.response(res).has.status(200)
-        assert.request(res).has.header("x-anonymous-consumer")
-        local id = assert.request(res).has.header("x-consumer-id")
+        assert.request(res).has.header("x-anonymous-kongsumer")
+        local id = assert.request(res).has.header("x-kongsumer-id")
         assert.equal(id, anonymous.id)
       end)
     end)

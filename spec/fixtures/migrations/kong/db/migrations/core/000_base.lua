@@ -10,7 +10,7 @@ return {
         "channel"    TEXT,
         "data"       TEXT
       );
-      CREATE TABLE IF NOT EXISTS "consumers" (
+      CREATE TABLE IF NOT EXISTS "kongsumers" (
         "id"         UUID                       PRIMARY KEY
       );
     ]]
@@ -26,7 +26,7 @@ return {
         nbf     timestamp,
         PRIMARY KEY (channel, at, node_id, id)
       ) WITH default_time_to_live = 86400;
-      CREATE TABLE IF NOT EXISTS consumers (
+      CREATE TABLE IF NOT EXISTS kongsumers (
         id      uuid,
         PRIMARY KEY (id)
       );

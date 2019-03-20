@@ -23,7 +23,7 @@ local oauth2_credentials = {
   fields = {
     { id = typedefs.uuid },
     { created_at = typedefs.auto_timestamp_s },
-    { consumer = { type = "foreign", reference = "consumers", default = ngx.null, on_delete = "cascade", }, },
+    { kongsumer = { type = "foreign", reference = "kongsumers", default = ngx.null, on_delete = "cascade", }, },
     { name = { type = "string", required = true }, },
     { client_id = { type = "string", required = false, unique = true, auto = true }, },
     { client_secret = { type = "string", required = false, auto = true }, },

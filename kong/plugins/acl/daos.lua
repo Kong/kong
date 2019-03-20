@@ -6,11 +6,11 @@ return {
     name = "acls",
     primary_key = { "id" },
     endpoint_key = "group",
-    cache_key = { "consumer", "group" },
+    cache_key = { "kongsumer", "group" },
     fields = {
       { id = typedefs.uuid },
       { created_at = typedefs.auto_timestamp_s },
-      { consumer = { type = "foreign", reference = "consumers", default = ngx.null, on_delete = "cascade", }, },
+      { kongsumer = { type = "foreign", reference = "kongsumers", default = ngx.null, on_delete = "cascade", }, },
       { group = { type = "string", required = true } },
     },
   },

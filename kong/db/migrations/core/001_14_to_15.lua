@@ -89,7 +89,7 @@ return {
 
       DO $$
       BEGIN
-        ALTER INDEX IF EXISTS "username_idx" RENAME TO "consumers_username_idx";
+        ALTER INDEX IF EXISTS "username_idx" RENAME TO "kongsumers_username_idx";
       EXCEPTION WHEN DUPLICATE_TABLE THEN
         -- Do nothing, accept existing state
       END;
@@ -139,7 +139,7 @@ return {
 
       DO $$
       BEGIN
-        ALTER INDEX IF EXISTS "plugins_consumer_idx" RENAME TO "plugins_consumer_id_idx";
+        ALTER INDEX IF EXISTS "plugins_kongsumer_idx" RENAME TO "plugins_kongsumer_id_idx";
       EXCEPTION WHEN DUPLICATE_TABLE THEN
         -- Do nothing, accept existing state
       END;
@@ -172,7 +172,7 @@ return {
         ALTER "created_at" TYPE TIMESTAMP WITH TIME ZONE USING "created_at" AT TIME ZONE 'UTC',
         ALTER "created_at" SET DEFAULT CURRENT_TIMESTAMP(3) AT TIME ZONE 'UTC';
 
-      ALTER TABLE IF EXISTS ONLY "consumers"
+      ALTER TABLE IF EXISTS ONLY "kongsumers"
         ALTER "created_at" TYPE TIMESTAMP WITH TIME ZONE USING "created_at" AT TIME ZONE 'UTC',
         ALTER "created_at" SET DEFAULT CURRENT_TIMESTAMP(0) AT TIME ZONE 'UTC';
 
@@ -212,7 +212,7 @@ return {
           row.name,
           row.route_id    == ngx.null and "" or row.route_id,
           row.service_id  == ngx.null and "" or row.service_id,
-          row.consumer_id == ngx.null and "" or row.consumer_id,
+          row.kongsumer_id == ngx.null and "" or row.kongsumer_id,
           row.api_id      == ngx.null and "" or row.api_id,
         }, ":")
 
@@ -243,7 +243,7 @@ return {
         api_id uuid,
         route_id uuid,
         service_id uuid,
-        consumer_id uuid,
+        kongsumer_id uuid,
         run_on text,
         name text,
         config text, -- serialized plugin configuration
@@ -271,7 +271,7 @@ return {
           api_id = "uuid",
           route_id = "uuid",
           service_id = "uuid",
-          consumer_id = "uuid",
+          kongsumer_id = "uuid",
           created_at = "timestamp",
           enabled = "boolean",
         },
@@ -287,7 +287,7 @@ return {
           api_id = "uuid",
           route_id = "uuid",
           service_id = "uuid",
-          consumer_id = "uuid",
+          kongsumer_id = "uuid",
           run_on = "text",
           created_at = "timestamp",
           enabled = "boolean",
@@ -303,7 +303,7 @@ return {
         api_id = "api_id",
         route_id = "route_id",
         service_id = "service_id",
-        consumer_id = "consumer_id",
+        kongsumer_id = "kongsumer_id",
         created_at = "created_at",
         enabled = "enabled",
         cache_key = function(row)
@@ -312,7 +312,7 @@ return {
             row.name,
             row.route_id or "",
             row.service_id or "",
-            row.consumer_id or "",
+            row.kongsumer_id or "",
             row.api_id or ""
           }, ":")
         end,
@@ -323,7 +323,7 @@ return {
         DROP INDEX IF EXISTS plugins_api_id_idx;
         DROP INDEX IF EXISTS plugins_route_id_idx;
         DROP INDEX IF EXISTS plugins_service_id_idx;
-        DROP INDEX IF EXISTS plugins_consumer_id_idx;
+        DROP INDEX IF EXISTS plugins_kongsumer_id_idx;
         DROP TABLE IF EXISTS plugins;
 
         CREATE TABLE IF NOT EXISTS plugins(
@@ -332,7 +332,7 @@ return {
           api_id uuid,
           route_id uuid,
           service_id uuid,
-          consumer_id uuid,
+          kongsumer_id uuid,
           run_on text,
           name text,
           config text, -- serialized plugin configuration
@@ -345,7 +345,7 @@ return {
         CREATE INDEX IF NOT EXISTS ON plugins(api_id);
         CREATE INDEX IF NOT EXISTS ON plugins(route_id);
         CREATE INDEX IF NOT EXISTS ON plugins(service_id);
-        CREATE INDEX IF NOT EXISTS ON plugins(consumer_id);
+        CREATE INDEX IF NOT EXISTS ON plugins(kongsumer_id);
         CREATE INDEX IF NOT EXISTS ON plugins(cache_key);
         CREATE INDEX IF NOT EXISTS ON plugins(run_on);
       ]]))
@@ -359,7 +359,7 @@ return {
           api_id = "uuid",
           route_id = "uuid",
           service_id = "uuid",
-          consumer_id = "uuid",
+          kongsumer_id = "uuid",
           run_on = "text",
           created_at = "timestamp",
           enabled = "boolean",
@@ -375,7 +375,7 @@ return {
         api_id = "api_id",
         route_id = "route_id",
         service_id = "service_id",
-        consumer_id = "consumer_id",
+        kongsumer_id = "kongsumer_id",
         run_on = "run_on",
         created_at = "created_at",
         enabled = "enabled",

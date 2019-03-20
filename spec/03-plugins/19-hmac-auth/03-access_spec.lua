@@ -18,14 +18,14 @@ local SIGNATURE_NOT_VALID = "HMAC signature cannot be verified"
 for _, strategy in helpers.each_strategy() do
   describe("Plugin: hmac-auth (access) [#" .. strategy .. "]", function()
     local proxy_client
-    local consumer
+    local kongsumer
     local credential
 
     lazy_setup(function()
       local bp = helpers.get_db_utils(strategy, {
         "routes",
         "services",
-        "consumers",
+        "kongsumers",
         "plugins",
         "hmacauth_credentials",
       })
@@ -42,7 +42,7 @@ for _, strategy in helpers.each_strategy() do
         }
       }
 
-      consumer = bp.consumers:insert {
+      kongsumer = bp.kongsumers:insert {
         username  = "bob",
         custom_id = "1234"
       }
@@ -50,10 +50,10 @@ for _, strategy in helpers.each_strategy() do
       credential = bp.hmacauth_credentials:insert {
         username = "bob",
         secret   = "secret",
-        consumer = { id = consumer.id },
+        kongsumer = { id = kongsumer.id },
       }
 
-      local anonymous_user = bp.consumers:insert {
+      local anonymous_user = bp.kongsumers:insert {
         username = "no-body"
       }
 
@@ -78,7 +78,7 @@ for _, strategy in helpers.each_strategy() do
         name     = "hmac-auth",
         route = { id = route3.id },
         config   = {
-          anonymous  = utils.uuid(),  -- non existing consumer
+          anonymous  = utils.uuid(),  -- non existing kongsumer
           clock_skew = 3000
         }
       }
@@ -696,10 +696,10 @@ for _, strategy in helpers.each_strategy() do
         })
         local body = assert.res_status(200, res)
         local parsed_body = cjson.decode(body)
-        assert.equal(consumer.id, parsed_body.headers["x-consumer-id"])
-        assert.equal(consumer.username, parsed_body.headers["x-consumer-username"])
+        assert.equal(kongsumer.id, parsed_body.headers["x-kongsumer-id"])
+        assert.equal(kongsumer.username, parsed_body.headers["x-kongsumer-username"])
         assert.equal(credential.username, parsed_body.headers["x-credential-username"])
-        assert.is_nil(parsed_body.headers["x-anonymous-consumer"])
+        assert.is_nil(parsed_body.headers["x-anonymous-kongsumer"])
       end)
 
       it("should pass with GET with x-date header", function()
@@ -883,8 +883,8 @@ for _, strategy in helpers.each_strategy() do
         local body = assert.res_status(200, res)
         body = cjson.decode(body)
         assert.equal(hmacAuth, body.headers["authorization"])
-        assert.equal("bob", body.headers["x-consumer-username"])
-        assert.is_nil(body.headers["x-anonymous-consumer"])
+        assert.equal("bob", body.headers["x-kongsumer-username"])
+        assert.is_nil(body.headers["x-anonymous-kongsumer"])
       end)
 
       it("should return 403 when body validation enabled and no digest header is present", function()
@@ -965,8 +965,8 @@ for _, strategy in helpers.each_strategy() do
         })
         local body = assert.res_status(200, res)
         body = cjson.decode(body)
-        assert.equal("true", body.headers["x-anonymous-consumer"])
-        assert.equal('no-body', body.headers["x-consumer-username"])
+        assert.equal("true", body.headers["x-anonymous-kongsumer"])
+        assert.equal('no-body', body.headers["x-kongsumer-username"])
       end)
       it("errors when anonymous user doesn't exist", function()
         finally(function()
@@ -1530,7 +1530,7 @@ for _, strategy in helpers.each_strategy() do
       local bp = helpers.get_db_utils(strategy, {
         "routes",
         "services",
-        "consumers",
+        "kongsumers",
         "plugins",
         "hmacauth_credentials",
         "keyauth_credentials",
@@ -1556,15 +1556,15 @@ for _, strategy in helpers.each_strategy() do
         route = { id = route1.id }
       }
 
-      anonymous = bp.consumers:insert {
+      anonymous = bp.kongsumers:insert {
         username = "Anonymous"
       }
 
-      user1 = bp.consumers:insert {
+      user1 = bp.kongsumers:insert {
         username = "Mickey"
       }
 
-      user2 = bp.consumers:insert {
+      user2 = bp.kongsumers:insert {
         username = "Aladdin"
       }
 
@@ -1596,13 +1596,13 @@ for _, strategy in helpers.each_strategy() do
 
       bp.keyauth_credentials:insert {
         key      = "Mouse",
-        consumer = { id = user1.id },
+        kongsumer = { id = user1.id },
       }
 
       local credential = bp.hmacauth_credentials:insert {
         username = "Aladdin",
         secret   = "OpenSesame",
-        consumer = { id = user2.id },
+        kongsumer = { id = user2.id },
       }
 
       hmacDate = os.date("!%a, %d %b %Y %H:%M:%S GMT")
@@ -1637,8 +1637,8 @@ for _, strategy in helpers.each_strategy() do
           },
         })
         assert.response(res).has.status(200)
-        assert.request(res).has.no.header("x-anonymous-consumer")
-        local id = assert.request(res).has.header("x-consumer-id")
+        assert.request(res).has.no.header("x-anonymous-kongsumer")
+        local id = assert.request(res).has.header("x-kongsumer-id")
         assert.not_equal(id, anonymous.id)
         assert(id == user1.id or id == user2.id,
                string.format("expected %s or %s, got %s", user1.id, user2.id, id))
@@ -1696,8 +1696,8 @@ for _, strategy in helpers.each_strategy() do
           },
         })
         assert.response(res).has.status(200)
-        assert.request(res).has.no.header("x-anonymous-consumer")
-        local id = assert.request(res).has.header("x-consumer-id")
+        assert.request(res).has.no.header("x-anonymous-kongsumer")
+        local id = assert.request(res).has.header("x-kongsumer-id")
         assert.not_equal(id, anonymous.id)
         assert(id == user1.id or id == user2.id,
                string.format("expected %s or %s, got %s", user1.id, user2.id, id))
@@ -1713,8 +1713,8 @@ for _, strategy in helpers.each_strategy() do
           },
         })
         assert.response(res).has.status(200)
-        assert.request(res).has.no.header("x-anonymous-consumer")
-        local id = assert.request(res).has.header("x-consumer-id")
+        assert.request(res).has.no.header("x-anonymous-kongsumer")
+        local id = assert.request(res).has.header("x-kongsumer-id")
         assert.not_equal(id, anonymous.id)
         assert.equal(user1.id, id)
       end)
@@ -1730,8 +1730,8 @@ for _, strategy in helpers.each_strategy() do
           },
         })
         assert.response(res).has.status(200)
-        assert.request(res).has.no.header("x-anonymous-consumer")
-        local id = assert.request(res).has.header("x-consumer-id")
+        assert.request(res).has.no.header("x-anonymous-kongsumer")
+        local id = assert.request(res).has.header("x-kongsumer-id")
         assert.not_equal(id, anonymous.id)
         assert.equal(user2.id, id)
       end)
@@ -1745,8 +1745,8 @@ for _, strategy in helpers.each_strategy() do
           },
         })
         assert.response(res).has.status(200)
-        assert.request(res).has.header("x-anonymous-consumer")
-        local id = assert.request(res).has.header("x-consumer-id")
+        assert.request(res).has.header("x-anonymous-kongsumer")
+        local id = assert.request(res).has.header("x-kongsumer-id")
         assert.equal(id, anonymous.id)
       end)
 

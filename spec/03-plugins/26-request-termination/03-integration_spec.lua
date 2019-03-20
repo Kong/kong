@@ -5,14 +5,14 @@ for _, strategy in helpers.each_strategy() do
   describe("Plugin: request-termination (integration) [#" .. strategy .. "]", function()
     local proxy_client
     local admin_client
-    local consumer
+    local kongsumer
 
     lazy_setup(function()
       local bp = helpers.get_db_utils(strategy, {
         "routes",
         "services",
         "plugins",
-        "consumers",
+        "kongsumers",
         "keyauth_credentials",
       })
 
@@ -24,13 +24,13 @@ for _, strategy in helpers.each_strategy() do
         name = "key-auth",
       }
 
-      consumer = bp.consumers:insert {
+      kongsumer = bp.kongsumers:insert {
         username = "bob",
       }
 
       bp.keyauth_credentials:insert {
         key      = "kong",
-        consumer = { id = consumer.id },
+        kongsumer = { id = kongsumer.id },
       }
 
       assert(helpers.start_kong({
@@ -50,8 +50,8 @@ for _, strategy in helpers.each_strategy() do
       helpers.stop_kong()
     end)
 
-    it("can be applied on a consumer", function()
-      -- add the plugin to a consumer
+    it("can be applied on a kongsumer", function()
+      -- add the plugin to a kongsumer
       local res = assert(admin_client:send {
         method  = "POST",
         path    = "/plugins",
@@ -60,7 +60,7 @@ for _, strategy in helpers.each_strategy() do
         },
         body    = {
           name        = "request-termination",
-          consumer = { id = consumer.id },
+          kongsumer = { id = kongsumer.id },
         },
       })
       assert.response(res).has.status(201)

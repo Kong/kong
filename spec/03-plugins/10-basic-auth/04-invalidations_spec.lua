@@ -12,7 +12,7 @@ for _, strategy in helpers.each_strategy() do
       _, db = helpers.get_db_utils(strategy, {
         "routes",
         "services",
-        "consumers",
+        "kongsumers",
         "plugins",
         "basicauth_credentials",
       })
@@ -36,7 +36,7 @@ for _, strategy in helpers.each_strategy() do
 
     local route
     local plugin
-    local consumer
+    local kongsumer
     local credential
 
     before_each(function()
@@ -56,8 +56,8 @@ for _, strategy in helpers.each_strategy() do
         }
       end
 
-      if not consumer then
-        consumer = admin_api.consumers:insert {
+      if not kongsumer then
+        kongsumer = admin_api.kongsumers:insert {
           username = "bob",
         }
       end
@@ -66,12 +66,12 @@ for _, strategy in helpers.each_strategy() do
         credential = admin_api.basicauth_credentials:insert {
           username = "bob",
           password = "kong",
-          consumer = { id = consumer.id },
+          kongsumer = { id = kongsumer.id },
         }
       end
     end)
 
-    it("#invalidates credentials when the Consumer is deleted", function()
+    it("#invalidates credentials when the kongsumer is deleted", function()
       -- populate cache
       local res = assert(proxy_client:send {
         method  = "GET",
@@ -91,13 +91,13 @@ for _, strategy in helpers.each_strategy() do
       })
       assert.res_status(200, res)
 
-      -- delete Consumer entity
+      -- delete kongsumer entity
       res = assert(admin_client:send {
         method = "DELETE",
-        path   = "/consumers/bob"
+        path   = "/kongsumers/bob"
       })
       assert.res_status(204, res)
-      consumer = nil
+      kongsumer = nil
       credential = nil
 
       -- ensure cache is invalidated
@@ -145,7 +145,7 @@ for _, strategy in helpers.each_strategy() do
       -- delete credential entity
       res = assert(admin_client:send {
         method = "DELETE",
-        path   = "/consumers/bob/basic-auth/" .. cred.id
+        path   = "/kongsumers/bob/basic-auth/" .. cred.id
       })
       assert.res_status(204, res)
       credential = nil
@@ -195,7 +195,7 @@ for _, strategy in helpers.each_strategy() do
       -- delete credential entity
       res = assert(admin_client:send {
         method     = "PATCH",
-        path       = "/consumers/bob/basic-auth/" .. cred.id,
+        path       = "/kongsumers/bob/basic-auth/" .. cred.id,
         body       = {
           username = "bob",
           password = "kong-updated"

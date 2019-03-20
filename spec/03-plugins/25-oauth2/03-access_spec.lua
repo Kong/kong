@@ -74,7 +74,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
     _, db = helpers.get_db_utils(strategy, {
       "routes",
       "services",
-      "consumers",
+      "kongsumers",
       "plugins",
       "keyauth_credentials",
       "oauth2_credentials",
@@ -100,11 +100,11 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
 
     lazy_setup(function()
 
-      local consumer = admin_api.consumers:insert {
+      local kongsumer = admin_api.kongsumers:insert {
         username = "bob"
       }
 
-      local anonymous_user = admin_api.consumers:insert {
+      local anonymous_user = admin_api.kongsumers:insert {
         username = "no-body"
       }
 
@@ -113,7 +113,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
         client_secret  = "secret123",
         redirect_uris  = { "http://google.com/kong" },
         name           = "testapp",
-        consumer       = { id = consumer.id },
+        kongsumer       = { id = kongsumer.id },
       }
 
       admin_api.oauth2_credentials:insert {
@@ -121,7 +121,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
         client_secret  = "secret789",
         redirect_uris  = { "http://google.com/kong?foo=bar&code=123" },
         name           = "testapp2",
-        consumer       = { id = consumer.id },
+        kongsumer       = { id = kongsumer.id },
       }
 
       admin_api.oauth2_credentials:insert {
@@ -129,7 +129,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
         client_secret = "secret333",
         redirect_uris = { "http://google.com/kong" },
         name          = "testapp3",
-        consumer      = { id = consumer.id },
+        kongsumer      = { id = kongsumer.id },
       }
 
       admin_api.oauth2_credentials:insert {
@@ -137,7 +137,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
         client_secret = "secret456",
         redirect_uris = { "http://one.com/one/", "http://two.com/two" },
         name          = "testapp3",
-        consumer      = { id = consumer.id },
+        kongsumer      = { id = kongsumer.id },
       }
 
       admin_api.oauth2_credentials:insert {
@@ -145,7 +145,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
         client_secret = "secret1011",
         redirect_uris = { "http://google.com/kong", },
         name          = "testapp31",
-        consumer      = { id = consumer.id },
+        kongsumer      = { id = kongsumer.id },
       }
 
       local service1    = admin_api.services:insert()
@@ -313,7 +313,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
         config   = {
           scopes             = { "email", "profile", "user.email" },
           global_credentials = true,
-          anonymous          = utils.uuid(), -- a non existing consumer
+          anonymous          = utils.uuid(), -- a non existing kongsumer
         },
       })
 
@@ -895,8 +895,8 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
             }
           })
           local body = cjson.decode(assert.res_status(200, res))
-          assert.truthy(body.headers["x-consumer-id"])
-          assert.are.equal("bob", body.headers["x-consumer-username"])
+          assert.truthy(body.headers["x-kongsumer-id"])
+          assert.are.equal("bob", body.headers["x-kongsumer-username"])
           assert.are.equal("email profile", body.headers["x-authenticated-scope"])
           assert.are.equal("userid123", body.headers["x-authenticated-userid"])
         end)
@@ -1178,8 +1178,8 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
             }
           })
           local body = cjson.decode(assert.res_status(200, res))
-          assert.truthy(body.headers["x-consumer-id"])
-          assert.are.equal("bob", body.headers["x-consumer-username"])
+          assert.truthy(body.headers["x-kongsumer-id"])
+          assert.are.equal("bob", body.headers["x-kongsumer-username"])
           assert.are.equal("email", body.headers["x-authenticated-scope"])
           assert.are.equal("hello", body.headers["x-authenticated-userid"])
         end)
@@ -1412,8 +1412,8 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
             }
           })
           local body = cjson.decode(assert.res_status(200, res))
-          assert.truthy(body.headers["x-consumer-id"])
-          assert.are.equal("bob", body.headers["x-consumer-username"])
+          assert.truthy(body.headers["x-kongsumer-id"])
+          assert.are.equal("bob", body.headers["x-kongsumer-username"])
           assert.are.equal("email", body.headers["x-authenticated-scope"])
           assert.are.equal("id123", body.headers["x-authenticated-userid"])
         end)
@@ -1608,8 +1608,8 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
           }
         })
         local body = cjson.decode(assert.res_status(200, res))
-        assert.truthy(body.headers["x-consumer-id"])
-        assert.are.equal("bob", body.headers["x-consumer-username"])
+        assert.truthy(body.headers["x-kongsumer-id"])
+        assert.are.equal("bob", body.headers["x-kongsumer-username"])
         assert.are.equal("email", body.headers["x-authenticated-scope"])
         assert.are.equal("userid123", body.headers["x-authenticated-userid"])
       end)
@@ -1852,12 +1852,12 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
         })
         local body = cjson.decode(assert.res_status(200, res))
 
-        local consumer = db.consumers:select_by_username("bob")
-        assert.are.equal(consumer.id, body.headers["x-consumer-id"])
-        assert.are.equal(consumer.username, body.headers["x-consumer-username"])
+        local kongsumer = db.kongsumers:select_by_username("bob")
+        assert.are.equal(kongsumer.id, body.headers["x-kongsumer-id"])
+        assert.are.equal(kongsumer.username, body.headers["x-kongsumer-username"])
         assert.are.equal("userid123", body.headers["x-authenticated-userid"])
         assert.are.equal("email", body.headers["x-authenticated-scope"])
-        assert.is_nil(body.headers["x-anonymous-consumer"])
+        assert.is_nil(body.headers["x-anonymous-kongsumer"])
       end)
       it("returns HTTP 400 when scope is not a string", function()
         local invalid_values = {
@@ -1903,12 +1903,12 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
         })
         local body = cjson.decode(assert.res_status(200, res))
 
-        local consumer = db.consumers:select_by_username("bob")
-        assert.are.equal(consumer.id, body.headers["x-consumer-id"])
-        assert.are.equal(consumer.username, body.headers["x-consumer-username"])
+        local kongsumer = db.kongsumers:select_by_username("bob")
+        assert.are.equal(kongsumer.id, body.headers["x-kongsumer-id"])
+        assert.are.equal(kongsumer.username, body.headers["x-kongsumer-username"])
         assert.are.equal("userid123", body.headers["x-authenticated-userid"])
         assert.are.equal("email", body.headers["x-authenticated-scope"])
-        assert.is_nil(body.headers["x-anonymous-consumer"])
+        assert.is_nil(body.headers["x-anonymous-kongsumer"])
       end)
       it("works with wrong credentials and anonymous", function()
         local res = assert(proxy_ssl_client:send {
@@ -1919,8 +1919,8 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
           }
         })
         local body = cjson.decode(assert.res_status(200, res))
-        assert.are.equal("true", body.headers["x-anonymous-consumer"])
-        assert.equal('no-body', body.headers["x-consumer-username"])
+        assert.are.equal("true", body.headers["x-anonymous-kongsumer"])
+        assert.equal('no-body', body.headers["x-kongsumer-username"])
       end)
       it("errors when anonymous user doesn't exist", function()
         finally(function()
@@ -2397,15 +2397,15 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
         route = { id = route1.id },
       }
 
-      anonymous = admin_api.consumers:insert {
+      anonymous = admin_api.kongsumers:insert {
         username = "Anonymous",
       }
 
-      user1 = admin_api.consumers:insert {
+      user1 = admin_api.kongsumers:insert {
         username = "Mickey",
       }
 
-      user2 = admin_api.consumers:insert {
+      user2 = admin_api.kongsumers:insert {
         username = "Aladdin",
       }
 
@@ -2437,7 +2437,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
 
       admin_api.keyauth_credentials:insert({
         key      = "Mouse",
-        consumer = { id = user1.id },
+        kongsumer = { id = user1.id },
       })
 
       admin_api.oauth2_credentials:insert {
@@ -2445,7 +2445,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
         client_secret  = "secret4567",
         redirect_uris  = { "http://google.com/kong" },
         name           = "testapp",
-        consumer       = { id = user2.id },
+        kongsumer       = { id = user2.id },
       }
 
       proxy_client = helpers.proxy_client()
@@ -2474,8 +2474,8 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
           }
         })
         assert.response(res).has.status(200)
-        assert.request(res).has.no.header("x-anonymous-consumer")
-        local id = assert.request(res).has.header("x-consumer-id")
+        assert.request(res).has.no.header("x-anonymous-kongsumer")
+        local id = assert.request(res).has.header("x-kongsumer-id")
         assert.not_equal(id, anonymous.id)
         assert(id == user1.id or id == user2.id)
       end)
@@ -2536,8 +2536,8 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
           }
         })
         assert.response(res).has.status(200)
-        assert.request(res).has.no.header("x-anonymous-consumer")
-        local id = assert.request(res).has.header("x-consumer-id")
+        assert.request(res).has.no.header("x-anonymous-kongsumer")
+        local id = assert.request(res).has.header("x-kongsumer-id")
         assert.not_equal(id, anonymous.id)
         assert(id == user1.id or id == user2.id)
       end)
@@ -2552,8 +2552,8 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
           }
         })
         assert.response(res).has.status(200)
-        assert.request(res).has.no.header("x-anonymous-consumer")
-        local id = assert.request(res).has.header("x-consumer-id")
+        assert.request(res).has.no.header("x-anonymous-kongsumer")
+        local id = assert.request(res).has.header("x-kongsumer-id")
         assert.not_equal(id, anonymous.id)
         assert.equal(user1.id, id)
       end)
@@ -2570,8 +2570,8 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
           }
         })
         assert.response(res).has.status(200)
-        assert.request(res).has.no.header("x-anonymous-consumer")
-        local id = assert.request(res).has.header("x-consumer-id")
+        assert.request(res).has.no.header("x-anonymous-kongsumer")
+        local id = assert.request(res).has.header("x-kongsumer-id")
         assert.not_equal(id, anonymous.id)
         assert.equal(user2.id, id)
       end)
@@ -2585,8 +2585,8 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
           }
         })
         assert.response(res).has.status(200)
-        assert.request(res).has.header("x-anonymous-consumer")
-        local id = assert.request(res).has.header("x-consumer-id")
+        assert.request(res).has.header("x-anonymous-kongsumer")
+        local id = assert.request(res).has.header("x-kongsumer-id")
         assert.equal(id, anonymous.id)
       end)
     end)
@@ -2632,7 +2632,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
         }
       }
 
-      local consumer = admin_api.consumers:insert {
+      local kongsumer = admin_api.kongsumers:insert {
         username = "bobo"
       }
       admin_api.oauth2_credentials:insert {
@@ -2640,7 +2640,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
         client_secret = "secret7890",
         redirect_uris = { "http://google.com/kong" },
         name = "testapp",
-        consumer = { id = consumer.id },
+        kongsumer = { id = kongsumer.id },
       }
     end)
 
@@ -2708,7 +2708,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
         }
       }
 
-      local consumer = admin_api.consumers:insert {
+      local kongsumer = admin_api.kongsumers:insert {
         username = "4232",
       }
 
@@ -2717,7 +2717,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
         client_secret = "secret_4232",
         redirect_uris = { "http://google.com/kong" },
         name = "4232_app",
-        consumer = { id = consumer.id },
+        kongsumer = { id = kongsumer.id },
       }
 
       -- /setup

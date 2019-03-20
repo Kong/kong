@@ -60,7 +60,7 @@ local function fill_plugin_data(self, plugin)
   -- While we're at it, get values for composite uniqueness check
   post.route = post.route or plugin.route
   post.service = post.service or plugin.service
-  post.consumer = post.consumer or plugin.consumer
+  post.kongsumer = post.kongsumer or plugin.kongsumer
 
   if not post.route and self.params.routes then
     post.route = { id = self.params.routes }
@@ -70,8 +70,8 @@ local function fill_plugin_data(self, plugin)
     post.service = { id = self.params.services }
   end
 
-  if not post.consumer and self.params.consumers then
-    post.consumer = { id = self.params.consumers }
+  if not post.kongsumer and self.params.kongsumers then
+    post.kongsumer = { id = self.params.kongsumers }
   end
 
   self.args.post = post
@@ -185,7 +185,7 @@ local function post_process(data)
   r_data.config = nil
   r_data.route = nil
   r_data.service = nil
-  r_data.consumer = nil
+  r_data.kongsumer = nil
   r_data.enabled = nil
 
   if type(data.service) == "table" and data.service.id then
@@ -194,7 +194,7 @@ local function post_process(data)
   elseif type(data.route) == "table" and data.route.id then
     r_data.e = "r"
 
-  elseif type(data.consumer) == "table" and data.consumer.id then
+  elseif type(data.kongsumer) == "table" and data.kongsumer.id then
     r_data.e = "c"
   end
 
@@ -219,7 +219,7 @@ return {
       if post and (post.name     == nil or
                    post.route    == nil or
                    post.service  == nil or
-                   post.consumer == nil) then
+                   post.kongsumer == nil) then
 
         -- We need the name, otherwise we don't know what type of
         -- plugin this is and we can't perform *any* validations.
@@ -263,8 +263,8 @@ return {
   },
 
   -- Available for backward compatibility
-  ["/consumers/:consumers/plugins/:plugins"] = {
-    before = before_plugin_for_entity("consumers", "consumer"),
+  ["/kongsumers/:kongsumers/plugins/:plugins"] = {
+    before = before_plugin_for_entity("kongsumers", "kongsumer"),
     PATCH = patch_plugin,
     GET = get_plugin,
     PUT = put_plugin,

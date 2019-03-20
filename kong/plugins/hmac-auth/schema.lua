@@ -12,7 +12,7 @@ local ALGORITHMS = {
 return {
   name = "hmac-auth",
   fields = {
-    { consumer = typedefs.no_consumer },
+    { kongsumer = typedefs.no_kongsumer },
     { run_on = typedefs.run_on_first },
     { config = {
         type = "record",

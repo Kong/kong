@@ -21,7 +21,7 @@ end
 local hash_on = Schema.define {
   type = "string",
   default = "none",
-  one_of = { "none", "consumer", "ip", "header", "cookie" }
+  one_of = { "none", "kongsumer", "ip", "header", "cookie" }
 }
 
 
@@ -201,12 +201,12 @@ local r =  {
 
     -- hash_fallback must not equal hash_on (headers are allowed)
     { conditional = {
-      if_field = "hash_on", if_match = { match = "^consumer$" },
+      if_field = "hash_on", if_match = { match = "^kongsumer$" },
       then_field = "hash_fallback", then_match = { one_of = { "none", "ip", "header", "cookie" }, },
     }, },
     { conditional = {
       if_field = "hash_on", if_match = { match = "^ip$" },
-      then_field = "hash_fallback", then_match = { one_of = { "none", "consumer", "header", "cookie" }, },
+      then_field = "hash_fallback", then_match = { one_of = { "none", "kongsumer", "header", "cookie" }, },
     }, },
 
     -- different headers

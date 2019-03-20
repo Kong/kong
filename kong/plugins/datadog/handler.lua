@@ -16,15 +16,15 @@ DatadogHandler.PRIORITY = 10
 DatadogHandler.VERSION = "1.0.0"
 
 
-local get_consumer_id = {
-  consumer_id = function(consumer)
-    return consumer and string_gsub(consumer.id, "-", "_")
+local get_kongsumer_id = {
+  kongsumer_id = function(kongsumer)
+    return kongsumer and string_gsub(kongsumer.id, "-", "_")
   end,
-  custom_id   = function(consumer)
-    return consumer and consumer.custom_id
+  custom_id   = function(kongsumer)
+    return kongsumer and kongsumer.custom_id
   end,
-  username    = function(consumer)
-    return consumer and consumer.username
+  username    = function(kongsumer)
+    return kongsumer and kongsumer.username
   end
 }
 
@@ -43,33 +43,33 @@ local metrics = {
                        metric_config.sample_rate, metric_config.tags)
   end,
   unique_users = function (service_name, message, metric_config, logger)
-    local get_consumer_id = get_consumer_id[metric_config.consumer_identifier]
-    local consumer_id     = get_consumer_id(message.consumer)
+    local get_kongsumer_id = get_kongsumer_id[metric_config.kongsumer_identifier]
+    local kongsumer_id     = get_kongsumer_id(message.kongsumer)
 
-    if consumer_id then
+    if kongsumer_id then
       local stat = string_format("%s.user.uniques", service_name)
 
-      logger:send_statsd(stat, consumer_id, logger.stat_types.set,
+      logger:send_statsd(stat, kongsumer_id, logger.stat_types.set,
                          nil, metric_config.tags)
     end
   end,
   request_per_user = function (service_name, message, metric_config, logger)
-    local get_consumer_id = get_consumer_id[metric_config.consumer_identifier]
-    local consumer_id     = get_consumer_id(message.consumer)
+    local get_kongsumer_id = get_kongsumer_id[metric_config.kongsumer_identifier]
+    local kongsumer_id     = get_kongsumer_id(message.kongsumer)
 
-    if consumer_id then
-      local stat = string_format("%s.user.%s.request.count", service_name, consumer_id)
+    if kongsumer_id then
+      local stat = string_format("%s.user.%s.request.count", service_name, kongsumer_id)
 
       logger:send_statsd(stat, 1, logger.stat_types.counter,
                          metric_config.sample_rate, metric_config.tags)
     end
   end,
   status_count_per_user = function (service_name, message, metric_config, logger)
-    local get_consumer_id = get_consumer_id[metric_config.consumer_identifier]
-    local consumer_id     = get_consumer_id(message.consumer)
+    local get_kongsumer_id = get_kongsumer_id[metric_config.kongsumer_identifier]
+    local kongsumer_id     = get_kongsumer_id(message.kongsumer)
 
-    if consumer_id then
-      local fmt = string_format("%s.user.%s.request.status", service_name, consumer_id)
+    if kongsumer_id then
+      local fmt = string_format("%s.user.%s.request.status", service_name, kongsumer_id)
 
       logger:send_statsd(string_format("%s.%s", fmt, message.response.status),
                          1, logger.stat_types.counter,

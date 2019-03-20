@@ -4,11 +4,11 @@ return {
       CREATE TABLE IF NOT EXISTS "keyauth_credentials" (
         "id"           UUID                         PRIMARY KEY,
         "created_at"   TIMESTAMP WITHOUT TIME ZONE  DEFAULT (CURRENT_TIMESTAMP(0) AT TIME ZONE 'UTC'),
-        "consumer_id"  UUID                         REFERENCES "consumers" ("id") ON DELETE CASCADE,
+        "kongsumer_id"  UUID                         REFERENCES "kongsumers" ("id") ON DELETE CASCADE,
         "key"          TEXT                         UNIQUE
       );
 
-      CREATE INDEX IF NOT EXISTS "keyauth_consumer_idx" ON "keyauth_credentials" ("consumer_id");
+      CREATE INDEX IF NOT EXISTS "keyauth_kongsumer_idx" ON "keyauth_credentials" ("kongsumer_id");
     ]],
   },
 
@@ -17,11 +17,11 @@ return {
       CREATE TABLE IF NOT EXISTS keyauth_credentials(
         id          uuid PRIMARY KEY,
         created_at  timestamp,
-        consumer_id uuid,
+        kongsumer_id uuid,
         key         text
       );
       CREATE INDEX IF NOT EXISTS ON keyauth_credentials(key);
-      CREATE INDEX IF NOT EXISTS ON keyauth_credentials(consumer_id);
+      CREATE INDEX IF NOT EXISTS ON keyauth_credentials(kongsumer_id);
     ]],
   },
 }

@@ -10,7 +10,7 @@ describe("kong.db.dao.plugins", function()
   lazy_setup(function()
     assert(Entity.new(require("kong.db.schema.entities.services")))
     assert(Entity.new(require("kong.db.schema.entities.routes")))
-    assert(Entity.new(require("kong.db.schema.entities.consumers")))
+    assert(Entity.new(require("kong.db.schema.entities.kongsumers")))
     local schema = assert(Entity.new(require("kong.db.schema.entities.plugins")))
 
     self = {

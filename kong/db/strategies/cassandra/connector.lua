@@ -946,7 +946,7 @@ do
         "2015-01-12-175310_skeleton",
         "2015-01-12-175310_init_schema",
         "2015-11-23-817313_nodes",
-        "2016-02-25-160900_remove_null_consumer_id",
+        "2016-02-25-160900_remove_null_kongsumer_id",
         "2016-02-29-121813_remove_ttls",
         "2016-09-05-212515_retries_step_1",
         "2016-09-05-212515_retries_step_2",
@@ -971,7 +971,7 @@ do
         "2018-03-22-141700_create_new_ssl_tables",
         "2018-03-26-234600_copy_records_to_new_ssl_tables",
         "2018-03-27-002500_drop_old_ssl_tables",
-        "2018-03-16-160000_index_consumers",
+        "2018-03-16-160000_index_kongsumers",
         "2018-05-17-173100_hash_on_cookie",
       },
       ["response-transformer"] = {

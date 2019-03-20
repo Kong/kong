@@ -516,7 +516,7 @@ for _, strategy in helpers.each_strategy() do
                   code = Errors.codes.UNIQUE_VIOLATION,
                   name = "unique constraint violation",
                   fields = {
-                    consumer = ngx.null,
+                    kongsumer = ngx.null,
                     name = "basic-auth",
                     route = ngx.null,
                     service = {
@@ -525,7 +525,7 @@ for _, strategy in helpers.each_strategy() do
                   },
                   message = [[UNIQUE violation detected on '{]] ..
                             [[service={id="]] .. service.id ..
-                            [["},name="basic-auth",route=null,consumer=null}']],
+                            [["},name="basic-auth",route=null,kongsumer=null}']],
                 }, json)
               end
             end)

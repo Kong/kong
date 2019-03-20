@@ -7,7 +7,7 @@ for _, strategy in helpers.each_strategy() do
   describe("Plugin: jwt (invalidations) [#" .. strategy .. "]", function()
     local admin_client
     local proxy_client
-    local consumer
+    local kongsumer
     local route
     local db
 
@@ -17,7 +17,7 @@ for _, strategy in helpers.each_strategy() do
         "routes",
         "services",
         "plugins",
-        "consumers",
+        "kongsumers",
         "jwt_secrets",
       })
 
@@ -25,8 +25,8 @@ for _, strategy in helpers.each_strategy() do
         hosts = { "jwt.com" },
       }
 
-      consumer = bp.consumers:insert {
-        username = "consumer1",
+      kongsumer = bp.kongsumers:insert {
+        username = "kongsumer1",
       }
 
       bp.plugins:insert {
@@ -38,7 +38,7 @@ for _, strategy in helpers.each_strategy() do
       bp.jwt_secrets:insert {
         key      = "key123",
         secret   = "secret123",
-        consumer = { id = consumer.id },
+        kongsumer = { id = kongsumer.id },
       }
 
       assert(helpers.start_kong({
@@ -96,7 +96,7 @@ for _, strategy in helpers.each_strategy() do
         -- Retrieve credential ID
         res = assert(admin_client:send {
           method = "GET",
-          path   = "/consumers/consumer1/jwt/",
+          path   = "/kongsumers/kongsumer1/jwt/",
         })
         local body = cjson.decode(assert.res_status(200, res))
         local credential_id = body.data[1].id
@@ -105,7 +105,7 @@ for _, strategy in helpers.each_strategy() do
         -- Delete JWT credential (which triggers invalidation)
         res = assert(admin_client:send {
           method = "DELETE",
-          path   = "/consumers/consumer1/jwt/" .. credential_id,
+          path   = "/kongsumers/kongsumer1/jwt/" .. credential_id,
         })
         assert.res_status(204, res)
 
@@ -164,7 +164,7 @@ for _, strategy in helpers.each_strategy() do
         -- Retrieve credential ID
         res = assert(admin_client:send {
           method = "GET",
-          path   = "/consumers/consumer1/jwt/",
+          path   = "/kongsumers/kongsumer1/jwt/",
         })
         local body = cjson.decode(assert.res_status(200, res))
         local credential_id = body.data[1].id
@@ -173,7 +173,7 @@ for _, strategy in helpers.each_strategy() do
         -- Patch JWT credential (which triggers invalidation)
         res = assert(admin_client:send {
           method  = "PATCH",
-          path    = "/consumers/consumer1/jwt/" .. credential_id,
+          path    = "/kongsumers/kongsumer1/jwt/" .. credential_id,
           body    = {
             key = "keyhello"
           },
@@ -216,8 +216,8 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(403, res)
       end)
     end)
-    describe("Consumer entity invalidation", function()
-      it("should invalidate when Consumer entity is deleted", function()
+    describe("kongsumer entity invalidation", function()
+      it("should invalidate when kongsumer entity is deleted", function()
         -- It should work
         local res = assert(proxy_client:send {
           method  = "GET",
@@ -237,10 +237,10 @@ for _, strategy in helpers.each_strategy() do
         })
         assert.res_status(200, res)
 
-        -- Delete Consumer (which triggers invalidation)
+        -- Delete kongsumer (which triggers invalidation)
         res = assert(admin_client:send {
           method = "DELETE",
-          path   = "/consumers/consumer1",
+          path   = "/kongsumers/kongsumer1",
         })
         assert.res_status(204, res)
 

@@ -668,11 +668,11 @@ local function load_oauth2_credential_into_memory(credential_id)
   return result
 end
 
-local function load_consumer_into_memory(consumer_id, anonymous)
-  local result, err = kong.db.consumers:select { id = consumer_id }
+local function load_kongsumer_into_memory(kongsumer_id, anonymous)
+  local result, err = kong.db.kongsumers:select { id = kongsumer_id }
   if not result then
     if anonymous and not err then
-      err = 'anonymous consumer "' .. consumer_id .. '" not found'
+      err = 'anonymous kongsumer "' .. kongsumer_id .. '" not found'
     end
 
     return nil, err
@@ -681,29 +681,29 @@ local function load_consumer_into_memory(consumer_id, anonymous)
   return result
 end
 
-local function set_consumer(consumer, credential, token)
+local function set_kongsumer(kongsumer, credential, token)
   local set_header = kong.service.request.set_header
   local clear_header = kong.service.request.clear_header
 
-  if consumer and consumer.id then
-    set_header(constants.HEADERS.CONSUMER_ID, consumer.id)
+  if kongsumer and kongsumer.id then
+    set_header(constants.HEADERS.kongsumer_ID, kongsumer.id)
   else
-    clear_header(constants.HEADERS.CONSUMER_ID)
+    clear_header(constants.HEADERS.kongsumer_ID)
   end
 
-  if consumer and consumer.custom_id then
-    set_header(constants.HEADERS.CONSUMER_CUSTOM_ID, consumer.custom_id)
+  if kongsumer and kongsumer.custom_id then
+    set_header(constants.HEADERS.kongsumer_CUSTOM_ID, kongsumer.custom_id)
   else
-    clear_header(constants.HEADERS.CONSUMER_CUSTOM_ID)
+    clear_header(constants.HEADERS.kongsumer_CUSTOM_ID)
   end
 
-  if consumer and consumer.username then
-    set_header(constants.HEADERS.CONSUMER_USERNAME, consumer.username)
+  if kongsumer and kongsumer.username then
+    set_header(constants.HEADERS.kongsumer_USERNAME, kongsumer.username)
   else
-    clear_header(constants.HEADERS.CONSUMER_USERNAME)
+    clear_header(constants.HEADERS.kongsumer_USERNAME)
   end
 
-  kong.client.authenticate(consumer, credential)
+  kong.client.authenticate(kongsumer, credential)
 
   if credential then
     if token.scope then
@@ -807,17 +807,17 @@ local function do_authentication(conf)
     return internal_server_error(err)
   end
 
-  -- Retrieve the consumer from the credential
-  local consumer_cache_key, consumer
-  consumer_cache_key = kong.db.consumers:cache_key(credential.consumer.id)
-  consumer, err      = kong.cache:get(consumer_cache_key, nil,
-                                      load_consumer_into_memory,
-                                      credential.consumer.id)
+  -- Retrieve the kongsumer from the credential
+  local kongsumer_cache_key, kongsumer
+  kongsumer_cache_key = kong.db.kongsumers:cache_key(credential.kongsumer.id)
+  kongsumer, err      = kong.cache:get(kongsumer_cache_key, nil,
+                                      load_kongsumer_into_memory,
+                                      credential.kongsumer.id)
   if err then
     return internal_server_error(err)
   end
 
-  set_consumer(consumer, credential, token)
+  set_kongsumer(kongsumer, credential, token)
 
   return true
 end
@@ -848,15 +848,15 @@ function _M.execute(conf)
   if not ok then
     if conf.anonymous then
       -- get anonymous user
-      local consumer_cache_key = kong.db.consumers:cache_key(conf.anonymous)
-      local consumer, err      = kong.cache:get(consumer_cache_key, nil,
-                                                load_consumer_into_memory,
+      local kongsumer_cache_key = kong.db.kongsumers:cache_key(conf.anonymous)
+      local kongsumer, err      = kong.cache:get(kongsumer_cache_key, nil,
+                                                load_kongsumer_into_memory,
                                                 conf.anonymous, true)
       if err then
         return internal_server_error(err)
       end
 
-      set_consumer(consumer, nil, nil)
+      set_kongsumer(kongsumer, nil, nil)
 
     else
       return kong.response.exit(err.status, err.message, err.headers)

@@ -24,7 +24,7 @@ function Plugins:select_by_cache_key_migrating(key)
   for i, field in ipairs({
     "route_id",
     "service_id",
-    "consumer_id",
+    "kongsumer_id",
     "api_id",
   }) do
     local id = parts[i + 2]

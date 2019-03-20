@@ -15,7 +15,7 @@ return {
 
       DO $$
       BEGIN
-        ALTER INDEX IF EXISTS "acls_consumer_id" RENAME TO "acls_consumer_id_idx";
+        ALTER INDEX IF EXISTS "acls_kongsumer_id" RENAME TO "acls_kongsumer_id_idx";
       EXCEPTION WHEN DUPLICATE_TABLE THEN
         -- Do nothing, accept existing state
       END;
@@ -41,7 +41,7 @@ return {
         for i = 1, #rows do
           local row = rows[i]
           local cache_key = string.format("%s:%s:%s:::", "acls",
-                                          row.consumer_id or "",
+                                          row.kongsumer_id or "",
                                           row.group or "")
 
           local sql = string.format([[
@@ -72,7 +72,7 @@ return {
         for i = 1, #rows do
           local row = rows[i]
           local cache_key = string.format("%s:%s:%s:::", "acls",
-                                          row.consumer_id or "",
+                                          row.kongsumer_id or "",
                                           row.group or "")
 
           assert(connector:query("UPDATE acls SET cache_key = ? WHERE id = ?", {

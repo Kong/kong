@@ -6,7 +6,7 @@ local utils = require "kong.tools.utils"
 for _, strategy in helpers.each_strategy() do
   describe("Plugin: hmac-auth (API) [#" .. strategy .. "]", function()
     local admin_client
-    local consumer
+    local kongsumer
     local bp
     local db
 
@@ -14,7 +14,7 @@ for _, strategy in helpers.each_strategy() do
       bp, db = helpers.get_db_utils(strategy, {
         "routes",
         "services",
-        "consumers",
+        "kongsumers",
         "plugins",
         "hmacauth_credentials",
       })
@@ -34,16 +34,16 @@ for _, strategy in helpers.each_strategy() do
       assert(helpers.stop_kong())
     end)
 
-    describe("/consumers/:consumer/hmac-auth/", function()
+    describe("/kongsumers/:kongsumer/hmac-auth/", function()
       describe("POST", function()
         before_each(function()
           assert(db:truncate("routes"))
           assert(db:truncate("services"))
-          assert(db:truncate("consumers"))
+          assert(db:truncate("kongsumers"))
           db:truncate("plugins")
           db:truncate("hmacauth_credentials")
 
-          consumer = bp.consumers:insert{
+          kongsumer = bp.kongsumers:insert{
             username  = "bob",
             custom_id = "1234"
           }
@@ -51,7 +51,7 @@ for _, strategy in helpers.each_strategy() do
         it("[SUCCESS] should create a hmac-auth credential", function()
           local res = assert(admin_client:send {
             method  = "POST",
-            path    = "/consumers/bob/hmac-auth/",
+            path    = "/kongsumers/bob/hmac-auth/",
             body    = {
               username         = "bob",
               secret           = "1234"
@@ -63,12 +63,12 @@ for _, strategy in helpers.each_strategy() do
 
           local body = assert.res_status(201, res)
           local cred = cjson.decode(body)
-          assert.equal(consumer.id, cred.consumer.id)
+          assert.equal(kongsumer.id, cred.kongsumer.id)
         end)
         it("[SUCCESS] should create a hmac-auth credential with a random secret", function()
           local res = assert(admin_client:send {
             method  = "POST",
-            path    = "/consumers/bob/hmac-auth/",
+            path    = "/kongsumers/bob/hmac-auth/",
             body    = {
               username         = "bob",
             },
@@ -84,7 +84,7 @@ for _, strategy in helpers.each_strategy() do
         it("[FAILURE] should return proper errors", function()
           local res = assert(admin_client:send {
             method  = "POST",
-            path    = "/consumers/bob/hmac-auth/",
+            path    = "/kongsumers/bob/hmac-auth/",
             body    = {},
             headers = {
               ["Content-Type"] = "application/json"
@@ -99,12 +99,12 @@ for _, strategy in helpers.each_strategy() do
       describe("GET", function()
         it("should retrieve all", function()
           bp.hmacauth_credentials:insert{
-            consumer = { id = consumer.id },
+            kongsumer = { id = kongsumer.id },
           }
 
           local res = assert(admin_client:send {
             method  = "GET",
-            path    = "/consumers/bob/hmac-auth",
+            path    = "/kongsumers/bob/hmac-auth",
             headers = {
               ["Content-Type"] = "application/json"
             }
@@ -116,18 +116,18 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
 
-    describe("/consumers/:consumer/hmac-auth/:id", function()
+    describe("/kongsumers/:kongsumer/hmac-auth/:id", function()
       local credential
       before_each(function()
         credential = bp.hmacauth_credentials:insert{
-          consumer = { id = consumer.id },
+          kongsumer = { id = kongsumer.id },
         }
       end)
       describe("GET", function()
         it("should retrieve by id", function()
           local res = assert(admin_client:send {
             method  = "GET",
-            path    = "/consumers/bob/hmac-auth/" .. credential.id,
+            path    = "/kongsumers/bob/hmac-auth/" .. credential.id,
             body    = {},
             headers = {
               ["Content-Type"] = "application/json"
@@ -140,7 +140,7 @@ for _, strategy in helpers.each_strategy() do
         it("should retrieve by username", function()
           local res = assert(admin_client:send {
             method  = "GET",
-            path    = "/consumers/bob/hmac-auth/" .. credential.username,
+            path    = "/kongsumers/bob/hmac-auth/" .. credential.username,
             body    = {},
             headers = {
               ["Content-Type"] = "application/json"
@@ -156,7 +156,7 @@ for _, strategy in helpers.each_strategy() do
         it("[SUCCESS] should update a credential by id", function()
           local res = assert(admin_client:send {
             method  = "PATCH",
-            path    = "/consumers/bob/hmac-auth/" .. credential.id,
+            path    = "/kongsumers/bob/hmac-auth/" .. credential.id,
             body    = {
               username         = "alice"
             },
@@ -171,7 +171,7 @@ for _, strategy in helpers.each_strategy() do
         it("[SUCCESS] should update a credential by username", function()
           local res = assert(admin_client:send {
             method  = "PATCH",
-            path    = "/consumers/bob/hmac-auth/" .. credential.username,
+            path    = "/kongsumers/bob/hmac-auth/" .. credential.username,
             body    = {
               username         = "aliceUPD"
             },
@@ -186,7 +186,7 @@ for _, strategy in helpers.each_strategy() do
         it("[FAILURE] should return proper errors", function()
           local res = assert(admin_client:send {
             method  = "PATCH",
-            path    = "/consumers/bob/hmac-auth/" .. credential.id,
+            path    = "/kongsumers/bob/hmac-auth/" .. credential.id,
             body    = {
               username         = ""
             },
@@ -204,7 +204,7 @@ for _, strategy in helpers.each_strategy() do
         it("[SUCCESS] should create and update", function()
           local res = assert(admin_client:send {
             method  = "PUT",
-            path    = "/consumers/bob/hmac-auth/foo",
+            path    = "/kongsumers/bob/hmac-auth/foo",
             body    = {
               secret   = "1234"
             },
@@ -215,12 +215,12 @@ for _, strategy in helpers.each_strategy() do
           local body = assert.res_status(200, res)
           local cred = cjson.decode(body)
           assert.equal("foo", cred.username)
-          assert.equal(consumer.id, cred.consumer.id)
+          assert.equal(kongsumer.id, cred.kongsumer.id)
         end)
         it("[FAILURE] should return proper errors", function()
           local res = assert(admin_client:send {
             method  = "PUT",
-            path    = "/consumers/bob/hmac-auth/foo",
+            path    = "/kongsumers/bob/hmac-auth/foo",
             body    = {
               secret = 123,
             },
@@ -238,7 +238,7 @@ for _, strategy in helpers.each_strategy() do
         it("[FAILURE] should return proper errors", function()
           local res = assert(admin_client:send {
             method  = "DELETE",
-            path    = "/consumers/bob/hmac-auth/aliceasd",
+            path    = "/kongsumers/bob/hmac-auth/aliceasd",
             body    = {},
             headers = {
               ["Content-Type"] = "application/json"
@@ -248,7 +248,7 @@ for _, strategy in helpers.each_strategy() do
 
           local res = assert(admin_client:send {
             method  = "DELETE",
-            path    = "/consumers/bob/hmac-auth/00000000-0000-0000-0000-000000000000",
+            path    = "/kongsumers/bob/hmac-auth/00000000-0000-0000-0000-000000000000",
             body    = {},
             headers = {
               ["Content-Type"] = "application/json"
@@ -259,7 +259,7 @@ for _, strategy in helpers.each_strategy() do
         it("[SUCCESS] should delete a credential", function()
           local res = assert(admin_client:send {
             method  = "DELETE",
-            path    = "/consumers/bob/hmac-auth/" .. credential.id,
+            path    = "/kongsumers/bob/hmac-auth/" .. credential.id,
             body    = {},
             headers = {
               ["Content-Type"] = "application/json"
@@ -270,19 +270,19 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
     describe("/hmac-auths", function()
-      local consumer2
+      local kongsumer2
       describe("GET", function()
         lazy_setup(function()
           db:truncate("hmacauth_credentials")
           bp.hmacauth_credentials:insert {
-            consumer = { id = consumer.id },
+            kongsumer = { id = kongsumer.id },
             username = "bob"
           }
-          consumer2 = bp.consumers:insert {
+          kongsumer2 = bp.kongsumers:insert {
             username = "bob-the-buidler"
           }
           bp.hmacauth_credentials:insert {
-            consumer = { id = consumer2.id },
+            kongsumer = { id = kongsumer2.id },
             username = "bob-the-buidler"
           }
         end)
@@ -337,45 +337,45 @@ for _, strategy in helpers.each_strategy() do
         end)
       end)
     end)
-    describe("/hmac-auths/:hmac_username_or_id/consumer", function()
+    describe("/hmac-auths/:hmac_username_or_id/kongsumer", function()
       describe("GET", function()
         local credential
         lazy_setup(function()
           db:truncate("hmacauth_credentials")
           credential = bp.hmacauth_credentials:insert({
-            consumer = { id = consumer.id },
+            kongsumer = { id = kongsumer.id },
             username = "bob"
           })
         end)
-        it("retrieve consumer from a hmac-auth id", function()
+        it("retrieve kongsumer from a hmac-auth id", function()
           local res = assert(admin_client:send {
             method = "GET",
-            path = "/hmac-auths/" .. credential.id .. "/consumer"
+            path = "/hmac-auths/" .. credential.id .. "/kongsumer"
           })
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
-          assert.same(consumer,json)
+          assert.same(kongsumer,json)
         end)
-        it("retrieve consumer from a hmac-auth username", function()
+        it("retrieve kongsumer from a hmac-auth username", function()
           local res = assert(admin_client:send {
             method = "GET",
-            path = "/hmac-auths/" .. credential.username .. "/consumer"
+            path = "/hmac-auths/" .. credential.username .. "/kongsumer"
           })
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
-          assert.same(consumer,json)
+          assert.same(kongsumer,json)
         end)
         it("returns 404 for a random non-existing hmac-auth id", function()
           local res = assert(admin_client:send {
             method = "GET",
-            path = "/hmac-auths/" .. utils.uuid()  .. "/consumer"
+            path = "/hmac-auths/" .. utils.uuid()  .. "/kongsumer"
           })
           assert.res_status(404, res)
         end)
         it("returns 404 for a random non-existing hmac-auth username", function()
           local res = assert(admin_client:send {
             method = "GET",
-            path = "/hmac-auths/" .. utils.random_string()  .. "/consumer"
+            path = "/hmac-auths/" .. utils.random_string()  .. "/kongsumer"
           })
           assert.res_status(404, res)
         end)

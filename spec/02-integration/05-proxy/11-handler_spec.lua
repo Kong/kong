@@ -119,7 +119,7 @@ for _, strategy in helpers.each_strategy() do
         end)
       end)
 
-      describe("enabled on a specific Consumer", function()
+      describe("enabled on a specific kongsumer", function()
         local admin_client
         local proxy_client
 
@@ -129,11 +129,11 @@ for _, strategy in helpers.each_strategy() do
             "routes",
             "services",
             "plugins",
-            "consumers",
+            "kongsumers",
             "keyauth_credentials",
           })
 
-          -- consumer specific plugin
+          -- kongsumer specific plugin
           local service = bp.services:insert {
             name = "mock_upstream",
           }
@@ -150,20 +150,20 @@ for _, strategy in helpers.each_strategy() do
             service = { id = service.id },
           }
 
-          local consumer3 = bp.consumers:insert {
-            username = "test-consumer-3",
+          local kongsumer3 = bp.kongsumers:insert {
+            username = "test-kongsumer-3",
           }
 
           bp.keyauth_credentials:insert {
-            consumer = { id = consumer3.id },
+            kongsumer = { id = kongsumer3.id },
             key      = "kong",
           }
 
           bp.plugins:insert {
-            consumer = { id = consumer3.id },
+            kongsumer = { id = kongsumer3.id },
             name     = "rewriter",
             config   = {
-              value  = "consumer-specific plugin",
+              value  = "kongsumer-specific plugin",
             },
           }
 
@@ -191,8 +191,8 @@ for _, strategy in helpers.each_strategy() do
             },
           })
           assert.response(res).has.status(200)
-          local value = assert.request(res).has.header("x-consumer-username")
-          assert.equal("test-consumer-3", value)
+          local value = assert.request(res).has.header("x-kongsumer-username")
+          assert.equal("test-kongsumer-3", value)
           assert.request(res).has.no.header("rewriter")
         end)
       end)

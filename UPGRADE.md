@@ -732,9 +732,9 @@ index a66c230f..d4e416bc 100644
   the [Admin API
   reference](https://docs.konghq.com/0.14.x/admin-api/#add-certificate) for
   more details.
-- Filtering by username in the `/consumers` endpoint is not supported with
-  `/consumers?username=...`. Instead, use `/consumers/{username}` to retrieve a
-  Consumer by its username. Filtering with `/consumers?custom_id=...` is still
+- Filtering by username in the `/kongsumers` endpoint is not supported with
+  `/kongsumers?username=...`. Instead, use `/kongsumers/{username}` to retrieve a
+  kongsumer by its username. Filtering with `/kongsumers?custom_id=...` is still
   supported.
 
 #### 2. Deprecation Notices
@@ -1453,7 +1453,7 @@ local SCHEMA = {
   cache_key = { "key" }, -- cache key for this entity
   fields = {
     id = { type = "id" },
-    consumer_id = { type = "id", required = true, foreign = "consumers:id"},
+    kongsumer_id = { type = "id", required = true, foreign = "kongsumers:id"},
     key = { type = "string", required = false, unique = true }
   }
 }
@@ -1485,8 +1485,8 @@ and send broadcast it to all of the other nodes on the cluster so they can
 evict that particular value from their cache, and fetch the fresh value from
 the datastore on the next request.
 
-When a parent entity is receiving a CRUD operation (e.g. the Consumer owning
-this API key, as per our schema's `consumer_id` attribute), Kong performs the
+When a parent entity is receiving a CRUD operation (e.g. the kongsumer owning
+this API key, as per our schema's `kongsumer_id` attribute), Kong performs the
 cache invalidation mechanism for both the parent and the child entity.
 
 Thanks to this new property, the `hooks.lua` module is not required anymore and
@@ -1514,10 +1514,10 @@ local singletons = require "kong.singletons"
 function MyCustomHandler:init_worker()
   local worker_events = singletons.worker_events
 
-  -- listen to all CRUD operations made on Consumers
+  -- listen to all CRUD operations made on kongsumers
   worker_events.register(function(data)
 
-  end, "crud", "consumers")
+  end, "crud", "kongsumers")
 
   -- or, listen to a specific CRUD operation only
   worker_events.register(function(data)
@@ -1525,7 +1525,7 @@ function MyCustomHandler:init_worker()
     print(data.old_entity) -- old entity table (only for "update")
     print(data.entity)     -- new entity table
     print(data.schema)     -- entity's schema
-  end, "crud", "consumers:update")
+  end, "crud", "kongsumers:update")
 end
 ```
 
@@ -1539,7 +1539,7 @@ singletons.worker_events.register(function(data)
     local cache_key = data.entity.id
     singletons.cache:invalidate("prefix:" .. cache_key)
   end
-end, "crud", "consumers")
+end, "crud", "kongsumers")
 ```
 
 ---
@@ -1632,7 +1632,7 @@ Here is how to ensure a smooth upgrade from a Kong `0.9.x` cluster to `0.10`:
 1. Make sure your 0.9 cluster is warm because your
    datastore will be incompatible with your 0.9 Kong nodes once migrated.
    Most of your entities should be cached
-   by the running Kong nodes already (APIs, Consumers, Plugins).
+   by the running Kong nodes already (APIs, kongsumers, Plugins).
 2. Provision a 0.10 node and configure it as you wish (environment variables/
    configuration file). Make sure to point this new 0.10 node to your current
    datastore.
@@ -1677,8 +1677,8 @@ traffic through the new Kong 0.9 nodes before decommissioning your old nodes.
 ## Upgrade to `0.8.x`
 
 No important breaking changes for this release, just be careful to not use the
-long deprecated routes `/consumers/:consumer/keyauth/` and
-`/consumers/:consumer/basicauth/` as instructed in the Changelog. As always,
+long deprecated routes `/kongsumers/:kongsumer/keyauth/` and
+`/kongsumers/:kongsumer/basicauth/` as instructed in the Changelog. As always,
 also make sure to check the configuration file for new properties (this release
 allows you to configure the read/write consistency of Cassandra).
 
@@ -1930,10 +1930,10 @@ Some entities and properties were renamed to avoid confusion:
 
 ```
 Old route                             New route
-/consumers/:consumer/keyauth       -> /consumers/:consumer/key-auth
-/consumers/:consumer/keyauth/:id   -> /consumers/:consumer/key-auth/:id
-/consumers/:consumer/basicauth     -> /consumers/:consumer/basic-auth
-/consumers/:consumer/basicauth/:id -> /consumers/:consumer/basic-auth/:id
+/kongsumers/:kongsumer/keyauth       -> /kongsumers/:kongsumer/key-auth
+/kongsumers/:kongsumer/keyauth/:id   -> /kongsumers/:kongsumer/key-auth/:id
+/kongsumers/:kongsumer/basicauth     -> /kongsumers/:kongsumer/basic-auth
+/kongsumers/:kongsumer/basicauth/:id -> /kongsumers/:kongsumer/basic-auth/:id
 ```
 
 The old routes are still maintained but will be removed in upcoming versions.

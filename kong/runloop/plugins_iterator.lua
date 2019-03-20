@@ -15,22 +15,22 @@ end
 
 
 --- Load the configuration for a plugin entry in the DB.
--- Given a Route, Service, Consumer and a plugin name, retrieve the plugin's
+-- Given a Route, Service, kongsumer and a plugin name, retrieve the plugin's
 -- configuration if it exists. Results are cached in ngx.dict
 -- @param[type=string] route_id ID of the route being proxied.
 -- @param[type=string] service_id ID of the service being proxied.
--- @param[type=string] consumer_id ID of the Consumer making the request (if any).
+-- @param[type=string] kongsumer_id ID of the kongsumer making the request (if any).
 -- @param[type=stirng] plugin_name Name of the plugin being tested for.
 -- @treturn table Plugin retrieved from the cache or database.
 local function load_plugin_configuration(ctx,
                                          route_id,
                                          service_id,
-                                         consumer_id,
+                                         kongsumer_id,
                                          plugin_name)
   local key = kong.db.plugins:cache_key(plugin_name,
                                         route_id,
                                         service_id,
-                                        consumer_id)
+                                        kongsumer_id)
 
   local plugin, err = kong.cache:get(key,
                                      nil,
@@ -63,7 +63,7 @@ local function load_plugin_configuration(ctx,
 
   cfg.route_id    = plugin.route and plugin.route.id
   cfg.service_id  = plugin.service and plugin.service.id
-  cfg.consumer_id = plugin.consumer and plugin.consumer.id
+  cfg.kongsumer_id = plugin.kongsumer and plugin.kongsumer.id
 
   return cfg
 end
@@ -90,7 +90,7 @@ local function get_next(self)
 
     local route        = self.route
     local service      = self.service
-    local consumer     = ctx.authenticated_consumer
+    local kongsumer     = ctx.authenticated_kongsumer
 
     if route and plugin.no_route then
       route = nil
@@ -98,13 +98,13 @@ local function get_next(self)
     if service and plugin.no_service then
       service = nil
     end
-    if consumer and plugin.no_consumer then
-      consumer = nil
+    if kongsumer and plugin.no_kongsumer then
+      kongsumer = nil
     end
 
     local    route_id = route    and    route.id or nil
     local  service_id = service  and  service.id or nil
-    local consumer_id = consumer and consumer.id or nil
+    local kongsumer_id = kongsumer and kongsumer.id or nil
 
     local plugin_name = plugin.name
 
@@ -112,22 +112,22 @@ local function get_next(self)
 
     repeat
 
-      if route_id and service_id and consumer_id then
-        plugin_configuration = load_plugin_configuration(ctx, route_id, service_id, consumer_id, plugin_name)
+      if route_id and service_id and kongsumer_id then
+        plugin_configuration = load_plugin_configuration(ctx, route_id, service_id, kongsumer_id, plugin_name)
         if plugin_configuration then
           break
         end
       end
 
-      if route_id and consumer_id then
-        plugin_configuration = load_plugin_configuration(ctx, route_id, nil, consumer_id, plugin_name)
+      if route_id and kongsumer_id then
+        plugin_configuration = load_plugin_configuration(ctx, route_id, nil, kongsumer_id, plugin_name)
         if plugin_configuration then
           break
         end
       end
 
-      if service_id and consumer_id then
-        plugin_configuration = load_plugin_configuration(ctx, nil, service_id, consumer_id, plugin_name)
+      if service_id and kongsumer_id then
+        plugin_configuration = load_plugin_configuration(ctx, nil, service_id, kongsumer_id, plugin_name)
         if plugin_configuration then
           break
         end
@@ -140,8 +140,8 @@ local function get_next(self)
         end
       end
 
-      if consumer_id then
-        plugin_configuration = load_plugin_configuration(ctx, nil, nil, consumer_id, plugin_name)
+      if kongsumer_id then
+        plugin_configuration = load_plugin_configuration(ctx, nil, nil, kongsumer_id, plugin_name)
         if plugin_configuration then
           break
         end

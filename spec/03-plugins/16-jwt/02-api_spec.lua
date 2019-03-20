@@ -6,7 +6,7 @@ local utils    = require "kong.tools.utils"
 for _, strategy in helpers.each_strategy() do
   describe("Plugin: jwt (API) [#" .. strategy .. "]", function()
     local admin_client
-    local consumer
+    local kongsumer
     local db
     local bp
 
@@ -15,7 +15,7 @@ for _, strategy in helpers.each_strategy() do
         "routes",
         "services",
         "plugins",
-        "consumers",
+        "kongsumers",
         "jwt_secrets",
       })
 
@@ -25,7 +25,7 @@ for _, strategy in helpers.each_strategy() do
 
       admin_client = helpers.admin_client()
 
-      consumer = bp.consumers:insert {
+      kongsumer = bp.kongsumers:insert {
         username = "bob"
       }
     end)
@@ -37,9 +37,9 @@ for _, strategy in helpers.each_strategy() do
       helpers.stop_kong()
     end)
 
-    describe("/consumers/:consumer/jwt/", function()
+    describe("/kongsumers/:kongsumer/jwt/", function()
       lazy_setup(function()
-        bp.consumers:insert {
+        bp.kongsumers:insert {
           username = "alice"
         }
       end)
@@ -56,20 +56,20 @@ for _, strategy in helpers.each_strategy() do
         it("creates a jwt secret", function()
           local res = assert(admin_client:send {
             method = "POST",
-            path = "/consumers/bob/jwt/",
+            path = "/kongsumers/bob/jwt/",
             body = {},
             headers = {
               ["Content-Type"] = "application/json"
             }
           })
           local body = cjson.decode(assert.res_status(201, res))
-          assert.equal(consumer.id, body.consumer.id)
+          assert.equal(kongsumer.id, body.kongsumer.id)
           jwt1 = body
         end)
         it("accepts any given `secret` and `key` parameters", function()
           local res = assert(admin_client:send {
             method = "POST",
-            path = "/consumers/bob/jwt/",
+            path = "/kongsumers/bob/jwt/",
             body = {
               key = "bob2",
               secret = "tooshort"
@@ -86,7 +86,7 @@ for _, strategy in helpers.each_strategy() do
         it("accepts duplicate `secret` parameters across jwt_secrets", function()
           local res = assert(admin_client:send {
             method = "POST",
-            path = "/consumers/alice/jwt/",
+            path = "/kongsumers/alice/jwt/",
             body = {
               key = "alice",
               secret = "foobarbaz"
@@ -102,7 +102,7 @@ for _, strategy in helpers.each_strategy() do
 
           res = assert(admin_client:send {
             method = "POST",
-            path = "/consumers/bob/jwt/",
+            path = "/kongsumers/bob/jwt/",
             body = {
               key = "bobsyouruncle",
               secret = "foobarbaz"
@@ -127,7 +127,7 @@ for _, strategy in helpers.each_strategy() do
 
           local res = assert(admin_client:send {
             method = "POST",
-            path = "/consumers/bob/jwt/",
+            path = "/kongsumers/bob/jwt/",
             body = {
               key = "bob3",
               algorithm = "RS256",
@@ -146,7 +146,7 @@ for _, strategy in helpers.each_strategy() do
 
           local res = assert(admin_client:send {
             method = "POST",
-            path = "/consumers/bob/jwt/",
+            path = "/kongsumers/bob/jwt/",
             body = {
               key = "bob4",
               algorithm = "RS256",
@@ -163,7 +163,7 @@ for _, strategy in helpers.each_strategy() do
         it("fails with missing `rsa_public_key` parameter for RS256 algorithms", function ()
           local res = assert(admin_client:send {
             method = "POST",
-            path = "/consumers/bob/jwt/",
+            path = "/kongsumers/bob/jwt/",
             body = {
               key = "bob5",
               algorithm = "RS256"
@@ -184,7 +184,7 @@ for _, strategy in helpers.each_strategy() do
         it("fails with an invalid rsa_public_key for RS256 algorithms", function ()
           local res = assert(admin_client:send {
             method = "POST",
-            path = "/consumers/bob/jwt/",
+            path = "/kongsumers/bob/jwt/",
             body = {
               key = "bob5",
               algorithm = "RS256",
@@ -206,7 +206,7 @@ for _, strategy in helpers.each_strategy() do
         it("does not fail when `secret` parameter for HS256 algorithms is missing", function ()
           local res = assert(admin_client:send {
             method = "POST",
-            path = "/consumers/bob/jwt/",
+            path = "/kongsumers/bob/jwt/",
             body = {
               key = "bob5",
               algorithm = "HS256",
@@ -228,7 +228,7 @@ for _, strategy in helpers.each_strategy() do
         it("retrieves all", function()
           local res = assert(admin_client:send {
             method = "GET",
-            path = "/consumers/bob/jwt/",
+            path = "/kongsumers/bob/jwt/",
           })
           local body = cjson.decode(assert.res_status(200, res))
           assert.equal(6, #(body.data))
@@ -236,12 +236,12 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
 
-    describe("/consumers/:consumer/jwt/:id", function()
+    describe("/kongsumers/:kongsumer/jwt/:id", function()
       local jwt_secret
       before_each(function()
         db:truncate("jwt_secrets")
         jwt_secret = bp.jwt_secrets:insert({
-          consumer = { id = consumer.id },
+          kongsumer = { id = kongsumer.id },
         })
       end)
 
@@ -249,14 +249,14 @@ for _, strategy in helpers.each_strategy() do
         it("retrieves by id", function()
           local res = assert(admin_client:send {
             method = "GET",
-            path = "/consumers/bob/jwt/" .. jwt_secret.id,
+            path = "/kongsumers/bob/jwt/" .. jwt_secret.id,
           })
           assert.res_status(200, res)
         end)
         it("retrieves by key", function()
           local res = assert(admin_client:send {
             method = "GET",
-            path = "/consumers/bob/jwt/" .. jwt_secret.key,
+            path = "/kongsumers/bob/jwt/" .. jwt_secret.key,
           })
           assert.res_status(200, res)
         end)
@@ -266,7 +266,7 @@ for _, strategy in helpers.each_strategy() do
         it("creates and update", function()
           local res = assert(admin_client:send {
             method = "PUT",
-            path = "/consumers/bob/jwt/abcd",
+            path = "/kongsumers/bob/jwt/abcd",
             body = {},
             headers = {
               ["Content-Type"] = "application/json"
@@ -274,7 +274,7 @@ for _, strategy in helpers.each_strategy() do
           })
           local body = cjson.decode(assert.res_status(200, res))
           assert.equal("abcd", body.key)
-          assert.equal(consumer.id, body.consumer.id)
+          assert.equal(kongsumer.id, body.kongsumer.id)
         end)
       end)
 
@@ -283,7 +283,7 @@ for _, strategy in helpers.each_strategy() do
         it("updates a credential by id", function()
           local res = assert(admin_client:send {
             method = "PATCH",
-            path = "/consumers/bob/jwt/" .. jwt_secret.id,
+            path = "/kongsumers/bob/jwt/" .. jwt_secret.id,
             body = {
               key = "alice",
               secret = "newsecret"
@@ -299,7 +299,7 @@ for _, strategy in helpers.each_strategy() do
         it("updates a credential by key", function()
           local res = assert(admin_client:send {
             method = "PATCH",
-            path = "/consumers/bob/jwt/" .. jwt_secret.key,
+            path = "/kongsumers/bob/jwt/" .. jwt_secret.key,
             body = {
               key = "alice",
               secret = "newsecret2"
@@ -318,7 +318,7 @@ for _, strategy in helpers.each_strategy() do
         it("deletes a credential", function()
           local res = assert(admin_client:send {
             method = "DELETE",
-            path = "/consumers/bob/jwt/" .. jwt_secret.id,
+            path = "/kongsumers/bob/jwt/" .. jwt_secret.id,
             body = {},
             headers = {
               ["Content-Type"] = "application/json"
@@ -329,7 +329,7 @@ for _, strategy in helpers.each_strategy() do
         it("returns proper errors", function()
           local res = assert(admin_client:send {
             method = "DELETE",
-            path = "/consumers/bob/jwt/" .. "blah",
+            path = "/kongsumers/bob/jwt/" .. "blah",
             body = {},
             headers = {
               ["Content-Type"] = "application/json"
@@ -339,7 +339,7 @@ for _, strategy in helpers.each_strategy() do
 
          local res = assert(admin_client:send {
             method = "DELETE",
-            path = "/consumers/bob/jwt/" .. "00000000-0000-0000-0000-000000000000",
+            path = "/kongsumers/bob/jwt/" .. "00000000-0000-0000-0000-000000000000",
             body = {},
             headers = {
               ["Content-Type"] = "application/json"
@@ -351,20 +351,20 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("/jwts", function()
-      local consumer2
+      local kongsumer2
       describe("GET", function()
         lazy_setup(function()
-          consumer2 = bp.consumers:insert {
+          kongsumer2 = bp.kongsumers:insert {
             username = "bob-the-buidler"
           }
         end)
         before_each(function()
           db:truncate("jwt_secrets")
           bp.jwt_secrets:insert {
-            consumer = { id = consumer.id },
+            kongsumer = { id = kongsumer.id },
           }
           bp.jwt_secrets:insert {
-            consumer = { id = consumer2.id },
+            kongsumer = { id = kongsumer2.id },
           }
         end)
         it("retrieves all the jwts with trailing slash", function()
@@ -418,44 +418,44 @@ for _, strategy in helpers.each_strategy() do
         end)
       end)
     end)
-    describe("/jwts/:jwt_key_or_id/consumer", function()
+    describe("/jwts/:jwt_key_or_id/kongsumer", function()
       describe("GET", function()
         local credential
         before_each(function()
           db:truncate("jwt_secrets")
           credential = bp.jwt_secrets:insert {
-            consumer = { id = consumer.id },
+            kongsumer = { id = kongsumer.id },
           }
         end)
-        it("retrieve consumer from a JWT id", function()
+        it("retrieve kongsumer from a JWT id", function()
           local res = assert(admin_client:send {
             method = "GET",
-            path = "/jwts/" .. credential.id .. "/consumer"
+            path = "/jwts/" .. credential.id .. "/kongsumer"
           })
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
-          assert.same(consumer,json)
+          assert.same(kongsumer,json)
         end)
-        it("retrieve consumer from a JWT key", function()
+        it("retrieve kongsumer from a JWT key", function()
           local res = assert(admin_client:send {
             method = "GET",
-            path = "/jwts/" .. credential.key .. "/consumer"
+            path = "/jwts/" .. credential.key .. "/kongsumer"
           })
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
-          assert.same(consumer,json)
+          assert.same(kongsumer,json)
         end)
         it("returns 404 for a random non-existing JWT id", function()
           local res = assert(admin_client:send {
             method = "GET",
-            path = "/jwts/" .. utils.uuid()  .. "/consumer"
+            path = "/jwts/" .. utils.uuid()  .. "/kongsumer"
           })
           assert.res_status(404, res)
         end)
         it("returns 404 for a random non-existing JWT key", function()
           local res = assert(admin_client:send {
             method = "GET",
-            path = "/jwts/" .. utils.random_string()  .. "/consumer"
+            path = "/jwts/" .. utils.random_string()  .. "/kongsumer"
           })
           assert.res_status(404, res)
         end)

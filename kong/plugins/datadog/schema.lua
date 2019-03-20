@@ -22,8 +22,8 @@ local STAT_TYPES = {
   "timer",
 }
 
-local CONSUMER_IDENTIFIERS = {
-  "consumer_id",
+local kongsumer_IDENTIFIERS = {
+  "kongsumer_id",
   "custom_id",
   "username",
 }
@@ -59,14 +59,14 @@ local DEFAULT_METRICS = {
   {
     name                = "unique_users",
     stat_type           = "set",
-    consumer_identifier = "custom_id",
+    kongsumer_identifier = "custom_id",
     tags                = {"app:kong"}
   },
   {
     name                = "request_per_user",
     stat_type           = "counter",
     sample_rate         = 1,
-    consumer_identifier = "custom_id",
+    kongsumer_identifier = "custom_id",
     tags                = {"app:kong"}
   },
   {
@@ -83,7 +83,7 @@ local DEFAULT_METRICS = {
     name                = "status_count_per_user",
     stat_type           = "counter",
     sample_rate         = 1,
-    consumer_identifier = "custom_id",
+    kongsumer_identifier = "custom_id",
     tags                = {"app:kong"}
   }
 }
@@ -110,7 +110,7 @@ return {
                   { stat_type = { type = "string", required = true, one_of = STAT_TYPES }, },
                   { tags = { type = "array", elements = { type = "string", match = "^.*[^:]$" }, }, },
                   { sample_rate = { type = "number", between = { 0, 1 }, }, },
-                  { consumer_identifier = { type = "string", one_of = CONSUMER_IDENTIFIERS }, },
+                  { kongsumer_identifier = { type = "string", one_of = kongsumer_IDENTIFIERS }, },
                 },
                 entity_checks = {
                   { conditional = {
@@ -128,7 +128,7 @@ return {
                   { conditional = {
                     if_field = "name",
                     if_match = { one_of = { "status_count_per_user", "request_per_user", "unique_users" }, },
-                    then_field = "consumer_identifier",
+                    then_field = "kongsumer_identifier",
                     then_match = { required = true },
                   }, },
 

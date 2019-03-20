@@ -3,7 +3,7 @@ local typedefs = require "kong.db.schema.typedefs"
 local utils = require "kong.tools.utils"
 local routes_definition = require "kong.db.schema.entities.routes"
 local services_definition = require "kong.db.schema.entities.services"
-local consumers_definition = require "kong.db.schema.entities.consumers"
+local kongsumers_definition = require "kong.db.schema.entities.kongsumers"
 local plugins_definition = require "kong.db.schema.entities.plugins"
 local dao_plugins = require "kong.db.dao.plugins"
 
@@ -13,7 +13,7 @@ describe("plugins", function()
   local db
 
   lazy_setup(function()
-    assert(Entity.new(consumers_definition))
+    assert(Entity.new(kongsumers_definition))
     assert(Entity.new(services_definition))
     assert(Entity.new(routes_definition))
     Plugins = assert(Entity.new(plugins_definition))
@@ -226,11 +226,11 @@ describe("plugins", function()
       assert.truthy(ok)
     end)
 
-    it("no_consumer", function()
+    it("no_kongsumer", function()
       local subschema = {
-        name = "with-no-consumer",
+        name = "with-no-kongsumer",
         fields = {
-          { consumer = typedefs.no_consumer },
+          { kongsumer = typedefs.no_kongsumer },
           { config = {
               type = "record",
               fields = {
@@ -242,20 +242,20 @@ describe("plugins", function()
       assert(db.plugins.schema:new_subschema(subschema.name, subschema))
 
       local ok, err = Plugins:validate(Plugins:process_auto_fields({
-        name = "with-no-consumer",
-        consumer = { id = utils.uuid() },
+        name = "with-no-kongsumer",
+        kongsumer = { id = utils.uuid() },
         config = {
           string = "foo",
         }
       }))
       assert.falsy(ok)
       assert.same({
-        consumer = "value must be null",
+        kongsumer = "value must be null",
       }, err)
 
       ok = Plugins:validate(Plugins:process_auto_fields({
-        name = "with-no-consumer",
-        consumer = ngx.null,
+        name = "with-no-kongsumer",
+        kongsumer = ngx.null,
         config = {
           string = "foo",
         }
@@ -277,10 +277,10 @@ describe("plugins", function()
       })))
     end)
 
-    it("accepts a plugin if configured for consumer", function()
+    it("accepts a plugin if configured for kongsumer", function()
       assert(Plugins:validate(Plugins:process_auto_fields({
         name = "rate-limiting",
-        consumer = { id = utils.uuid() },
+        kongsumer = { id = utils.uuid() },
         config = {
           second = 1,
         }

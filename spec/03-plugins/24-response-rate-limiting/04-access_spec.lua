@@ -77,7 +77,7 @@ local function init_db(strategy, policy)
     "routes",
     "services",
     "plugins",
-    "consumers",
+    "kongsumers",
     "keyauth_credentials",
   })
 
@@ -103,16 +103,16 @@ describe(fmt("#flaky Plugin: response-ratelimiting (access) with policy: #%s [#%
       SLEEP_TIME = 0.15
     end
 
-    local consumer1 = bp.consumers:insert {custom_id = "provider_123"}
+    local kongsumer1 = bp.kongsumers:insert {custom_id = "provider_123"}
     bp.keyauth_credentials:insert {
       key      = "apikey123",
-      consumer = { id = consumer1.id },
+      kongsumer = { id = kongsumer1.id },
     }
 
-    local consumer2 = bp.consumers:insert {custom_id = "provider_124"}
+    local kongsumer2 = bp.kongsumers:insert {custom_id = "provider_124"}
     bp.keyauth_credentials:insert {
       key      = "apikey124",
-      consumer = { id = consumer2.id },
+      kongsumer = { id = kongsumer2.id },
     }
 
     local route1 = bp.routes:insert {
@@ -176,7 +176,7 @@ describe(fmt("#flaky Plugin: response-ratelimiting (access) with policy: #%s [#%
 
     bp.response_ratelimiting_plugins:insert({
       route = { id = route3.id },
-      consumer = { id = consumer1.id },
+      kongsumer = { id = kongsumer1.id },
       config      = {
         fault_tolerant = false,
         policy         = policy,
@@ -403,7 +403,7 @@ describe(fmt("#flaky Plugin: response-ratelimiting (access) with policy: #%s [#%
 
   describe("With authentication", function()
     describe("API-specific plugin", function()
-      it("blocks if exceeding limit and a per consumer & route setting", function()
+      it("blocks if exceeding limit and a per kongsumer & route setting", function()
         test_limit("/response-headers?apikey=apikey123&x-kong-limit=video=1", "test3.com", ITERATIONS - 2)
       end)
 
@@ -554,12 +554,12 @@ describe(fmt("#flaky Plugin: response-ratelimiting (expirations) with policy: #%
   end)
 end)
 
-describe(fmt("#flaky Plugin: response-ratelimiting (access - global for single consumer) with policy: #%s [#%s]", policy, strategy), function()
+describe(fmt("#flaky Plugin: response-ratelimiting (access - global for single kongsumer) with policy: #%s [#%s]", policy, strategy), function()
 
   lazy_setup(function()
     local bp = init_db(strategy, policy)
 
-    local consumer = bp.consumers:insert {
+    local kongsumer = bp.kongsumers:insert {
       custom_id = "provider_126",
     }
 
@@ -567,12 +567,12 @@ describe(fmt("#flaky Plugin: response-ratelimiting (access - global for single c
 
     bp.keyauth_credentials:insert {
       key      = "apikey126",
-      consumer = { id = consumer.id },
+      kongsumer = { id = kongsumer.id },
     }
 
-    -- just consumer, no no route or service
+    -- just kongsumer, no no route or service
     bp.response_ratelimiting_plugins:insert({
-      consumer = { id = consumer.id },
+      kongsumer = { id = kongsumer.id },
       config = {
         fault_tolerant = false,
         policy         = policy,
@@ -598,7 +598,7 @@ describe(fmt("#flaky Plugin: response-ratelimiting (access - global for single c
     helpers.stop_kong(nil, true)
   end)
 
-  it("blocks when the consumer exceeds their quota, no matter what service/route used", function()
+  it("blocks when the kongsumer exceeds their quota, no matter what service/route used", function()
     test_limit("/response-headers?apikey=apikey126&x-kong-limit=video=1", "test%d.com")
   end)
 end)
@@ -608,7 +608,7 @@ describe(fmt("#flaky Plugin: response-ratelimiting (access - global) with policy
   lazy_setup(function()
     local bp = init_db(strategy, policy)
 
-    -- global plugin (not attached to route, service or consumer)
+    -- global plugin (not attached to route, service or kongsumer)
     bp.response_ratelimiting_plugins:insert({
       config = {
         fault_tolerant = false,

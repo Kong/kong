@@ -11,7 +11,7 @@ return {
     fields = {
       { id = typedefs.uuid },
       { created_at = typedefs.auto_timestamp_s },
-      { consumer = { type = "foreign", reference = "consumers", default = ngx.null, on_delete = "cascade", }, },
+      { kongsumer = { type = "foreign", reference = "kongsumers", default = ngx.null, on_delete = "cascade", }, },
       { username = { type = "string", required = true, unique = true }, },
       { password = { type = "string", required = true }, },
     },

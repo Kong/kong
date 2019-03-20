@@ -35,7 +35,7 @@ for _, strategy in helpers.each_strategy() do
         "routes",
         "services",
         "plugins",
-        "consumers",
+        "kongsumers",
       })
 
       local route1 = bp.routes:insert {
@@ -62,7 +62,7 @@ for _, strategy in helpers.each_strategy() do
         hosts = { "ldap6.com" },
       }
 
-      local anonymous_user = bp.consumers:insert {
+      local anonymous_user = bp.kongsumers:insert {
         username = "no-body"
       }
 
@@ -115,7 +115,7 @@ for _, strategy in helpers.each_strategy() do
           base_dn   = "ou=scientists,dc=ldap,dc=mashape,dc=com",
           attribute = "uid",
           cache_ttl = 2,
-          anonymous = utils.uuid(), -- non existing consumer
+          anonymous = utils.uuid(), -- non existing kongsumer
         }
       }
 
@@ -469,9 +469,9 @@ for _, strategy in helpers.each_strategy() do
           }
         })
         assert.response(res).has.status(200)
-        local value = assert.request(res).has.header("x-anonymous-consumer")
+        local value = assert.request(res).has.header("x-anonymous-kongsumer")
         assert.are.equal("true", value)
-        value = assert.request(res).has.header("x-consumer-username")
+        value = assert.request(res).has.header("x-kongsumer-username")
         assert.equal('no-body', value)
       end)
       it("errors when anonymous user doesn't exist", function()
@@ -497,7 +497,7 @@ for _, strategy in helpers.each_strategy() do
         "routes",
         "services",
         "plugins",
-        "consumers",
+        "kongsumers",
         "keyauth_credentials",
       })
 
@@ -527,11 +527,11 @@ for _, strategy in helpers.each_strategy() do
         route = { id = route1.id },
       }
 
-      anonymous = bp.consumers:insert {
+      anonymous = bp.kongsumers:insert {
         username = "Anonymous",
       }
 
-      user = bp.consumers:insert {
+      user = bp.kongsumers:insert {
         username = "Mickey",
       }
 
@@ -567,7 +567,7 @@ for _, strategy in helpers.each_strategy() do
 
       bp.keyauth_credentials:insert {
         key      = "Mouse",
-        consumer = { id = user.id },
+        kongsumer = { id = user.id },
       }
 
       assert(helpers.start_kong({
@@ -600,7 +600,7 @@ for _, strategy in helpers.each_strategy() do
           }
         })
         assert.response(res).has.status(200)
-        assert.request(res).has.no.header("x-anonymous-consumer")
+        assert.request(res).has.no.header("x-anonymous-kongsumer")
       end)
 
       it("fails 401, with only the first credential provided", function()
@@ -653,8 +653,8 @@ for _, strategy in helpers.each_strategy() do
           }
         })
         assert.response(res).has.status(200)
-        assert.request(res).has.no.header("x-anonymous-consumer")
-        local id = assert.request(res).has.header("x-consumer-id")
+        assert.request(res).has.no.header("x-anonymous-kongsumer")
+        local id = assert.request(res).has.header("x-kongsumer-id")
         assert.not_equal(id, anonymous.id)
         assert(id == user.id)
       end)
@@ -669,8 +669,8 @@ for _, strategy in helpers.each_strategy() do
           }
         })
         assert.response(res).has.status(200)
-        assert.request(res).has.no.header("x-anonymous-consumer")
-        local id = assert.request(res).has.header("x-consumer-id")
+        assert.request(res).has.no.header("x-anonymous-kongsumer")
+        local id = assert.request(res).has.header("x-kongsumer-id")
         assert.not_equal(id, anonymous.id)
         assert.equal(user.id, id)
       end)
@@ -685,7 +685,7 @@ for _, strategy in helpers.each_strategy() do
           }
         })
         assert.response(res).has.status(200)
-        assert.request(res).has.no.header("x-anonymous-consumer")
+        assert.request(res).has.no.header("x-anonymous-kongsumer")
         local id = assert.request(res).has.header("x-credential-username")
         assert.equal("einstein", id)
       end)
@@ -699,8 +699,8 @@ for _, strategy in helpers.each_strategy() do
           }
         })
         assert.response(res).has.status(200)
-        assert.request(res).has.header("x-anonymous-consumer")
-        local id = assert.request(res).has.header("x-consumer-id")
+        assert.request(res).has.header("x-anonymous-kongsumer")
+        local id = assert.request(res).has.header("x-kongsumer-id")
         assert.equal(id, anonymous.id)
       end)
     end)

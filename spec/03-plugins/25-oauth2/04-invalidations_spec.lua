@@ -13,7 +13,7 @@ for _, strategy in helpers.each_strategy() do
       bp, db = helpers.get_db_utils(strategy, {
         "routes",
         "services",
-        "consumers",
+        "kongsumers",
         "plugins",
         "oauth2_tokens",
         "oauth2_credentials",
@@ -24,7 +24,7 @@ for _, strategy in helpers.each_strategy() do
     before_each(function()
       assert(db:truncate("routes"))
       assert(db:truncate("services"))
-      assert(db:truncate("consumers"))
+      assert(db:truncate("kongsumers"))
       assert(db:truncate("plugins"))
       assert(db:truncate("oauth2_tokens"))
       assert(db:truncate("oauth2_credentials"))
@@ -51,7 +51,7 @@ for _, strategy in helpers.each_strategy() do
         },
       }
 
-      local consumer = bp.consumers:insert {
+      local kongsumer = bp.kongsumers:insert {
         username = "bob",
       }
 
@@ -60,7 +60,7 @@ for _, strategy in helpers.each_strategy() do
         client_secret  = "secret123",
         redirect_uris  = { "http://google.com/kong" },
         name           = "testapp",
-        consumer       = { id = consumer.id },
+        kongsumer       = { id = kongsumer.id },
       }
 
       assert(helpers.start_kong({
@@ -139,7 +139,7 @@ for _, strategy in helpers.each_strategy() do
         -- Delete OAuth2 credential (which triggers invalidation)
         local res = assert(admin_client:send {
           method  = "DELETE",
-          path    = "/consumers/bob/oauth2/" .. credential.id,
+          path    = "/kongsumers/bob/oauth2/" .. credential.id,
           headers = {}
         })
         assert.response(res).has.status(204)
@@ -208,7 +208,7 @@ for _, strategy in helpers.each_strategy() do
         -- Update OAuth2 credential (which triggers invalidation)
         local res = assert(admin_client:send {
           method  = "PATCH",
-          path    = "/consumers/bob/oauth2/" .. credential.id,
+          path    = "/kongsumers/bob/oauth2/" .. credential.id,
           body    = {
             client_id = "updated_clientid123"
           },
@@ -256,8 +256,8 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
 
-    describe("Consumer entity invalidation", function()
-      it("invalidates when Consumer entity is deleted", function()
+    describe("kongsumer entity invalidation", function()
+      it("invalidates when kongsumer entity is deleted", function()
         -- It should properly work
         local code = provision_code("clientid123")
         local res = assert(proxy_ssl_client:send {
@@ -281,10 +281,10 @@ for _, strategy in helpers.each_strategy() do
         })
         assert.res_status(200, res)
 
-        -- Delete Consumer (which triggers invalidation)
+        -- Delete kongsumer (which triggers invalidation)
         local res = assert(admin_client:send {
           method  = "DELETE",
-          path    = "/consumers/bob",
+          path    = "/kongsumers/bob",
           headers = {}
         })
         assert.res_status(204, res)
@@ -515,7 +515,7 @@ for _, strategy in helpers.each_strategy() do
         -- Delete OAuth2 client (which triggers invalidation)
         local res = assert(admin_client:send {
           method  = "DELETE",
-          path    = "/consumers/bob/oauth2/" .. credential.id,
+          path    = "/kongsumers/bob/oauth2/" .. credential.id,
           headers = {}
         })
         assert.res_status(204, res)

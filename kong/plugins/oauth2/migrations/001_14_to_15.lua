@@ -63,7 +63,7 @@ return {
 
       DO $$
       BEGIN
-        ALTER INDEX IF EXISTS "oauth2_credentials_consumer_idx" RENAME TO "oauth2_credentials_consumer_id_idx";
+        ALTER INDEX IF EXISTS "oauth2_credentials_kongsumer_idx" RENAME TO "oauth2_credentials_kongsumer_id_idx";
       EXCEPTION WHEN DUPLICATE_TABLE THEN
         -- Do nothing, accept existing state
       END;

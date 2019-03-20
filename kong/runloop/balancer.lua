@@ -658,13 +658,13 @@ local create_hash = function(upstream, ctx)
 
   for _ = 1,2 do
 
-   if hash_on == "consumer" then
+   if hash_on == "kongsumer" then
       if not ctx then
         ctx = ngx.ctx
       end
 
-      -- consumer, fallback to credential
-      identifier = (ctx.authenticated_consumer or EMPTY_T).id or
+      -- kongsumer, fallback to credential
+      identifier = (ctx.authenticated_kongsumer or EMPTY_T).id or
                    (ctx.authenticated_credential or EMPTY_T).id
 
     elseif hash_on == "ip" then

@@ -34,7 +34,7 @@ describe("Admin API (#" .. strategy .. "): ", function()
 
   lazy_setup(function()
     bp, db = helpers.get_db_utils(strategy, {
-      "consumers",
+      "kongsumers",
       "plugins",
     }, {
       "rewriter",
@@ -57,14 +57,14 @@ describe("Admin API (#" .. strategy .. "): ", function()
     if client then client:close() end
   end)
 
-  describe("/consumers", function()
+  describe("/kongsumers", function()
     describe("POST", function()
-      it_content_types("creates a Consumer", function(content_type)
+      it_content_types("creates a kongsumer", function(content_type)
         return function()
           local username = gensym()
           local res = assert(client:send {
             method = "POST",
-            path = "/consumers",
+            path = "/kongsumers",
             body = {
               username = username,
             },
@@ -82,7 +82,7 @@ describe("Admin API (#" .. strategy .. "): ", function()
           return function()
             local res = assert(client:send {
               method = "POST",
-              path = "/consumers",
+              path = "/kongsumers",
               body = {},
               headers = {["Content-Type"] = content_type}
             })
@@ -97,12 +97,12 @@ describe("Admin API (#" .. strategy .. "): ", function()
         end)
         it_content_types("returns 409 on conflicting username", function(content_type)
           return function()
-            local consumer = bp.consumers:insert()
+            local kongsumer = bp.kongsumers:insert()
             local res = assert(client:send {
               method = "POST",
-              path = "/consumers",
+              path = "/kongsumers",
               body = {
-                username = consumer.username,
+                username = kongsumer.username,
               },
               headers = {["Content-Type"] = content_type}
             })
@@ -110,18 +110,18 @@ describe("Admin API (#" .. strategy .. "): ", function()
             local json = cjson.decode(body)
             assert.equal("unique constraint violation", json.name)
             assert.equal("UNIQUE violation detected on '{username=\"" ..
-                         consumer.username .. "\"}'", json.message)
+                         kongsumer.username .. "\"}'", json.message)
           end
         end)
         it_content_types("returns 400 on conflicting custom_id", function(content_type)
           return function()
-            local consumer = bp.consumers:insert()
+            local kongsumer = bp.kongsumers:insert()
             local res = assert(client:send {
               method = "POST",
-              path = "/consumers",
+              path = "/kongsumers",
               body = {
                 username = "tom",
-                custom_id = consumer.custom_id,
+                custom_id = kongsumer.custom_id,
               },
               headers = {["Content-Type"] = content_type}
             })
@@ -129,13 +129,13 @@ describe("Admin API (#" .. strategy .. "): ", function()
             local json = cjson.decode(body)
             assert.equal("unique constraint violation", json.name)
             assert.equal("UNIQUE violation detected on '{custom_id=\"" ..
-                         consumer.custom_id .. "\"}'", json.message)
+                         kongsumer.custom_id .. "\"}'", json.message)
           end
         end)
         it("returns 415 on invalid content-type", function()
           local res = assert(client:request {
             method = "POST",
-            path = "/consumers",
+            path = "/kongsumers",
             body = '{"hello": "world"}',
             headers = {["Content-Type"] = "invalid"}
           })
@@ -144,7 +144,7 @@ describe("Admin API (#" .. strategy .. "): ", function()
         it("returns 415 on missing content-type with body ", function()
           local res = assert(client:request {
             method = "POST",
-            path = "/consumers",
+            path = "/kongsumers",
             body = "invalid"
           })
           assert.res_status(415, res)
@@ -152,7 +152,7 @@ describe("Admin API (#" .. strategy .. "): ", function()
         it("returns 400 on missing body with application/json", function()
           local res = assert(client:request {
             method = "POST",
-            path = "/consumers",
+            path = "/kongsumers",
             headers = {["Content-Type"] = "application/json"}
           })
           local body = assert.res_status(400, res)
@@ -162,7 +162,7 @@ describe("Admin API (#" .. strategy .. "): ", function()
         it("returns 400 on missing body with multipart/form-data", function()
           local res = assert(client:request {
             method = "POST",
-            path = "/consumers",
+            path = "/kongsumers",
             headers = {["Content-Type"] = "multipart/form-data"}
           })
           local body = assert.res_status(400, res)
@@ -175,7 +175,7 @@ describe("Admin API (#" .. strategy .. "): ", function()
         it("returns 400 on missing body with multipart/x-www-form-urlencoded", function()
           local res = assert(client:request {
             method = "POST",
-            path = "/consumers",
+            path = "/kongsumers",
             headers = {["Content-Type"] = "application/x-www-form-urlencoded"}
           })
           local body = assert.res_status(400, res)
@@ -188,7 +188,7 @@ describe("Admin API (#" .. strategy .. "): ", function()
         it("returns 400 on missing body with no content-type header", function()
           local res = assert(client:request {
             method = "POST",
-            path = "/consumers",
+            path = "/kongsumers",
           })
           local body = assert.res_status(400, res)
           local json = cjson.decode(body)
@@ -202,18 +202,18 @@ describe("Admin API (#" .. strategy .. "): ", function()
 
     describe("GET", function()
       before_each(function()
-        assert(db:truncate("consumers"))
-        bp.consumers:insert_n(10)
+        assert(db:truncate("kongsumers"))
+        bp.kongsumers:insert_n(10)
       end)
       lazy_teardown(function()
-        assert(db:truncate("consumers"))
+        assert(db:truncate("kongsumers"))
         db:truncate("plugins")
       end)
 
       it("retrieves the first page", function()
         local res = assert(client:send {
           method = "GET",
-          path = "/consumers"
+          path = "/kongsumers"
         })
         res = assert.res_status(200, res)
         local json = cjson.decode(res)
@@ -226,7 +226,7 @@ describe("Admin API (#" .. strategy .. "): ", function()
         for i = 1, 4 do
           local res = assert(client:send {
             method = "GET",
-            path = "/consumers",
+            path = "/kongsumers",
             query = {size = 3, offset = offset}
           })
           local body = assert.res_status(200, res)
@@ -249,9 +249,9 @@ describe("Admin API (#" .. strategy .. "): ", function()
       end)
       it("allows filtering by custom_id", function()
         local custom_id = gensym()
-        local c = bp.consumers:insert({ custom_id = custom_id })
+        local c = bp.kongsumers:insert({ custom_id = custom_id })
 
-        local res = client:get("/consumers?custom_id=" .. custom_id)
+        local res = client:get("/kongsumers?custom_id=" .. custom_id)
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
 
@@ -264,7 +264,7 @@ describe("Admin API (#" .. strategy .. "): ", function()
       for i = 1, #methods do
         local res = assert(client:send {
           method = methods[i],
-          path = "/consumers",
+          path = "/kongsumers",
           body = {}, -- tmp: body to allow POST/PUT to work
           headers = {["Content-Type"] = "application/json"}
         })
@@ -274,42 +274,42 @@ describe("Admin API (#" .. strategy .. "): ", function()
       end
     end)
 
-    describe("/consumers/{consumer}", function()
+    describe("/kongsumers/{kongsumer}", function()
       describe("GET", function()
         it("retrieves by id", function()
-          local consumer = bp.consumers:insert()
+          local kongsumer = bp.kongsumers:insert()
           local res = assert(client:send {
             method = "GET",
-            path = "/consumers/" .. consumer.id
+            path = "/kongsumers/" .. kongsumer.id
           })
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
-          assert.same(consumer, json)
+          assert.same(kongsumer, json)
         end)
         it("retrieves by username", function()
-          local consumer = bp.consumers:insert()
+          local kongsumer = bp.kongsumers:insert()
           local res = assert(client:send {
             method = "GET",
-            path = "/consumers/" .. consumer.username
+            path = "/kongsumers/" .. kongsumer.username
           })
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
-          assert.same(consumer, json)
+          assert.same(kongsumer, json)
         end)
         it("retrieves by urlencoded username", function()
-          local consumer = bp.consumers:insert()
+          local kongsumer = bp.kongsumers:insert()
           local res = assert(client:send {
             method = "GET",
-            path = "/consumers/" .. escape(consumer.username)
+            path = "/kongsumers/" .. escape(kongsumer.username)
           })
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
-          assert.same(consumer, json)
+          assert.same(kongsumer, json)
         end)
         it("returns 404 if not found", function()
           local res = assert(client:send {
             method = "GET",
-            path = "/consumers/_inexistent_"
+            path = "/kongsumers/_inexistent_"
           })
           assert.res_status(404, res)
         end)
@@ -318,11 +318,11 @@ describe("Admin API (#" .. strategy .. "): ", function()
       describe("PATCH", function()
         it_content_types("updates by id", function(content_type)
           return function()
-            local consumer = bp.consumers:insert()
+            local kongsumer = bp.kongsumers:insert()
             local new_username = gensym()
             local res = assert(client:send {
               method = "PATCH",
-              path = "/consumers/" .. consumer.id,
+              path = "/kongsumers/" .. kongsumer.id,
               body = {
                 username = new_username,
               },
@@ -331,19 +331,19 @@ describe("Admin API (#" .. strategy .. "): ", function()
             local body = assert.res_status(200, res)
             local json = cjson.decode(body)
             assert.equal(new_username, json.username)
-            assert.equal(consumer.id, json.id)
+            assert.equal(kongsumer.id, json.id)
 
-            local in_db = assert(db.consumers:select {id = consumer.id})
+            local in_db = assert(db.kongsumers:select {id = kongsumer.id})
             assert.same(json, in_db)
           end
         end)
         it_content_types("updates by username", function(content_type)
           return function()
-            local consumer = bp.consumers:insert()
+            local kongsumer = bp.kongsumers:insert()
             local new_username = gensym()
             local res = assert(client:send {
               method = "PATCH",
-              path = "/consumers/" .. consumer.username,
+              path = "/kongsumers/" .. kongsumer.username,
               body = {
                 username = new_username,
               },
@@ -352,31 +352,31 @@ describe("Admin API (#" .. strategy .. "): ", function()
             local body = assert.res_status(200, res)
             local json = cjson.decode(body)
             assert.equal(new_username, json.username)
-            assert.equal(consumer.id, json.id)
+            assert.equal(kongsumer.id, json.id)
 
-            local in_db = assert(db.consumers:select {id = consumer.id})
+            local in_db = assert(db.kongsumers:select {id = kongsumer.id})
             assert.same(json, in_db)
           end
         end)
         it_content_types("updates by username and custom_id with previous values", function(content_type)
           return function()
-            local consumer = bp.consumers:insert()
+            local kongsumer = bp.kongsumers:insert()
             local res = assert(client:send {
               method = "PATCH",
-              path = "/consumers/" .. consumer.username,
+              path = "/kongsumers/" .. kongsumer.username,
               body = {
-                username = consumer.username,
-                custom_id = consumer.custom_id,
+                username = kongsumer.username,
+                custom_id = kongsumer.custom_id,
               },
               headers = {["Content-Type"] = content_type}
             })
             local body = assert.res_status(200, res)
             local json = cjson.decode(body)
-            assert.equal(consumer.username, json.username)
-            assert.equal(consumer.custom_id, json.custom_id)
-            assert.equal(consumer.id, json.id)
+            assert.equal(kongsumer.username, json.username)
+            assert.equal(kongsumer.custom_id, json.custom_id)
+            assert.equal(kongsumer.id, json.id)
 
-            local in_db = assert(db.consumers:select {id = consumer.id})
+            local in_db = assert(db.kongsumers:select {id = kongsumer.id})
             assert.same(json, in_db)
           end
         end)
@@ -386,7 +386,7 @@ describe("Admin API (#" .. strategy .. "): ", function()
             return function()
               local res = assert(client:send {
                 method = "PATCH",
-                path = "/consumers/_inexistent_",
+                path = "/kongsumers/_inexistent_",
                 body = {
                  username = gensym(),
                 },
@@ -396,29 +396,29 @@ describe("Admin API (#" .. strategy .. "): ", function()
             end
           end)
           it("returns 415 on invalid content-type", function()
-            local consumer = bp.consumers:insert()
+            local kongsumer = bp.kongsumers:insert()
             local res = assert(client:request {
               method = "PATCH",
-              path = "/consumers/" .. consumer.id,
+              path = "/kongsumers/" .. kongsumer.id,
               body = '{"hello": "world"}',
               headers = {["Content-Type"] = "invalid"}
             })
             assert.res_status(415, res)
           end)
           it("returns 415 on missing content-type with body ", function()
-            local consumer = bp.consumers:insert()
+            local kongsumer = bp.kongsumers:insert()
             local res = assert(client:request {
               method = "PATCH",
-              path = "/consumers/" .. consumer.id,
+              path = "/kongsumers/" .. kongsumer.id,
               body = "invalid"
             })
             assert.res_status(415, res)
           end)
           it("returns 400 on missing body with application/json", function()
-            local consumer = bp.consumers:insert()
+            local kongsumer = bp.kongsumers:insert()
             local res = assert(client:request {
               method = "PATCH",
-              path = "/consumers/" .. consumer.id,
+              path = "/kongsumers/" .. kongsumer.id,
               headers = {["Content-Type"] = "application/json"}
             })
             local body = assert.res_status(400, res)
@@ -433,7 +433,7 @@ describe("Admin API (#" .. strategy .. "): ", function()
           return function()
             local custom_id = gensym()
             local id = utils.uuid()
-            local res = client:put("/consumers/" .. id, {
+            local res = client:put("/kongsumers/" .. id, {
               body    = { custom_id = custom_id },
               headers = { ["Content-Type"] = content_type }
             })
@@ -447,7 +447,7 @@ describe("Admin API (#" .. strategy .. "): ", function()
         it_content_types("creates if not exists by username", function(content_type)
           return function()
             local name = gensym()
-            local res = client:put("/consumers/" .. name, {
+            local res = client:put("/kongsumers/" .. name, {
               body    = {},
               headers = { ["Content-Type"] = content_type }
             })
@@ -460,9 +460,9 @@ describe("Admin API (#" .. strategy .. "): ", function()
 
         it_content_types("replaces if found", function(content_type)
           return function()
-            local consumer = bp.consumers:insert()
+            local kongsumer = bp.kongsumers:insert()
             local new_username = gensym()
-            local res = client:put("/consumers/" .. consumer.id, {
+            local res = client:put("/kongsumers/" .. kongsumer.id, {
               body    = { username = new_username },
               headers = { ["Content-Type"] = content_type }
             })
@@ -471,41 +471,41 @@ describe("Admin API (#" .. strategy .. "): ", function()
             local json = cjson.decode(body)
             assert.equal(new_username, json.username)
 
-            local in_db = assert(db.consumers:select({ id = consumer.id }, { nulls = true }))
+            local in_db = assert(db.kongsumers:select({ id = kongsumer.id }, { nulls = true }))
             assert.same(json, in_db)
           end
         end)
 
         it_content_types("replaces if found by username", function(content_type)
           return function()
-            local consumer = bp.consumers:insert()
+            local kongsumer = bp.kongsumers:insert()
             local new_custom_id = gensym()
-            local res = client:put("/consumers/" .. consumer.username, {
+            local res = client:put("/kongsumers/" .. kongsumer.username, {
               body    = { custom_id = new_custom_id },
               headers = { ["Content-Type"] = content_type }
             })
             local body = assert.res_status(200, res)
             local json = cjson.decode(body)
-            assert.equal(consumer.username, json.username)
+            assert.equal(kongsumer.username, json.username)
             assert.equal(new_custom_id, json.custom_id)
 
             local id = json.id
-            res = client:put("/consumers/" .. consumer.username, {
+            res = client:put("/kongsumers/" .. kongsumer.username, {
               body    = {},
               headers = { ["Content-Type"] = content_type }
             })
             body = assert.res_status(200, res)
             json = cjson.decode(body)
             assert.equal(id, json.id)
-            assert.equal(consumer.username, json.username)
+            assert.equal(kongsumer.username, json.username)
             assert.equal(cjson.null, json.custom_id)
           end
         end)
 
         describe("errors", function()
           it("handles malformed JSON body", function()
-            local consumer = bp.consumers:insert()
-            local res = client:put("/consumers/" .. consumer.id, {
+            local kongsumer = bp.kongsumers:insert()
+            local res = client:put("/kongsumers/" .. kongsumer.id, {
               body    = '{"hello": "world"',
               headers = { ["Content-Type"] = "application/json" }
             })
@@ -516,7 +516,7 @@ describe("Admin API (#" .. strategy .. "): ", function()
           it_content_types("handles invalid input", function(content_type)
             return function()
               -- Missing params
-              local res = client:put("/consumers/" .. utils.uuid(), {
+              local res = client:put("/kongsumers/" .. utils.uuid(), {
                 body = {},
                 headers = { ["Content-Type"] = content_type }
               })
@@ -538,19 +538,19 @@ describe("Admin API (#" .. strategy .. "): ", function()
 
       describe("DELETE", function()
         it("deletes by id", function()
-          local consumer = bp.consumers:insert()
+          local kongsumer = bp.kongsumers:insert()
           local res = assert(client:send {
             method = "DELETE",
-            path = "/consumers/" .. consumer.id
+            path = "/kongsumers/" .. kongsumer.id
           })
           local body = assert.res_status(204, res)
           assert.equal("", body)
         end)
         it("deletes by username", function()
-          local consumer = bp.consumers:insert()
+          local kongsumer = bp.kongsumers:insert()
           local res = assert(client:send {
             method = "DELETE",
-            path = "/consumers/" .. consumer.username
+            path = "/kongsumers/" .. kongsumer.username
           })
           local body = assert.res_status(204, res)
           assert.equal("", body)
@@ -559,7 +559,7 @@ describe("Admin API (#" .. strategy .. "): ", function()
     end)
   end)
 
-  describe("/consumers/{username_or_id}/plugins", function()
+  describe("/kongsumers/{username_or_id}/plugins", function()
     before_each(function()
       db.plugins:truncate()
     end)
@@ -578,11 +578,11 @@ describe("Admin API (#" .. strategy .. "): ", function()
       }
 
       for content_type, input in pairs(inputs) do
-        it("creates a plugin config using a consumer id with " .. content_type, function()
-          local consumer = bp.consumers:insert()
+        it("creates a plugin config using a kongsumer id with " .. content_type, function()
+          local kongsumer = bp.kongsumers:insert()
           local res = assert(client:send {
             method = "POST",
-            path = "/consumers/" .. consumer.id .. "/plugins",
+            path = "/kongsumers/" .. kongsumer.id .. "/plugins",
             body = input,
             headers = {["Content-Type"] = content_type}
           })
@@ -591,11 +591,11 @@ describe("Admin API (#" .. strategy .. "): ", function()
           assert.equal("rewriter", json.name)
           assert.same("potato", json.config.value)
         end)
-        it("creates a plugin config using a consumer username with " .. content_type, function()
-          local consumer = bp.consumers:insert()
+        it("creates a plugin config using a kongsumer username with " .. content_type, function()
+          local kongsumer = bp.kongsumers:insert()
           local res = assert(client:send {
             method = "POST",
-            path = "/consumers/" .. consumer.username .. "/plugins",
+            path = "/kongsumers/" .. kongsumer.username .. "/plugins",
             body = input,
             headers = {["Content-Type"] = content_type}
           })
@@ -609,10 +609,10 @@ describe("Admin API (#" .. strategy .. "): ", function()
       describe("errors", function()
         it_content_types("handles invalid input", function(content_type)
           return function()
-            local consumer = bp.consumers:insert()
+            local kongsumer = bp.kongsumers:insert()
             local res = assert(client:send {
               method = "POST",
-              path = "/consumers/" .. consumer.id .. "/plugins",
+              path = "/kongsumers/" .. kongsumer.id .. "/plugins",
               body = {},
               headers = {["Content-Type"] = content_type}
             })
@@ -630,11 +630,11 @@ describe("Admin API (#" .. strategy .. "): ", function()
         end)
         it_content_types("returns 409 on conflict", function(content_type)
           return function()
-            local consumer = bp.consumers:insert()
+            local kongsumer = bp.kongsumers:insert()
             -- insert initial plugin
             local res = assert(client:send {
               method = "POST",
-              path = "/consumers/" .. consumer.id .. "/plugins",
+              path = "/kongsumers/" .. kongsumer.id .. "/plugins",
               body = {
                 name = "rewriter",
               },
@@ -646,7 +646,7 @@ describe("Admin API (#" .. strategy .. "): ", function()
             -- do it again, to provoke the error
             res = assert(client:send {
               method = "POST",
-              path = "/consumers/" .. consumer.id .. "/plugins",
+              path = "/kongsumers/" .. kongsumer.id .. "/plugins",
               body = {
                 name = "rewriter",
               },
@@ -658,12 +658,12 @@ describe("Admin API (#" .. strategy .. "): ", function()
               code = Errors.codes.UNIQUE_VIOLATION,
               name = "unique constraint violation",
               message = [[UNIQUE violation detected on '{service=null,]] ..
-                        [[name="rewriter",route=null,consumer={id="]] ..
-                        consumer.id .. [["}}']],
+                        [[name="rewriter",route=null,kongsumer={id="]] ..
+                        kongsumer.id .. [["}}']],
               fields = {
                 name = "rewriter",
-                consumer = {
-                  id = consumer.id,
+                kongsumer = {
+                  id = kongsumer.id,
                 },
                 route = ngx.null,
                 service = ngx.null,
@@ -676,22 +676,22 @@ describe("Admin API (#" .. strategy .. "): ", function()
 
     describe("GET", function()
       it("retrieves the first page", function()
-        local consumer = bp.consumers:insert()
-        bp.rewriter_plugins:insert({ consumer = { id = consumer.id }})
+        local kongsumer = bp.kongsumers:insert()
+        bp.rewriter_plugins:insert({ kongsumer = { id = kongsumer.id }})
 
         local res = assert(client:send {
           method = "GET",
-          path = "/consumers/" .. consumer.id .. "/plugins"
+          path = "/kongsumers/" .. kongsumer.id .. "/plugins"
         })
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
         assert.equal(1, #json.data)
       end)
       it("ignores an invalid body", function()
-        local consumer = bp.consumers:insert()
+        local kongsumer = bp.kongsumers:insert()
         local res = assert(client:send {
           method = "GET",
-          path = "/consumers/" .. consumer.id .. "/plugins",
+          path = "/kongsumers/" .. kongsumer.id .. "/plugins",
           body = "this fails if decoded as json",
           headers = {
             ["Content-Type"] = "application/json",
@@ -704,58 +704,58 @@ describe("Admin API (#" .. strategy .. "): ", function()
   end)
 
 
-  describe("/consumers/{username_or_id}/plugins/{plugin}", function()
+  describe("/kongsumers/{username_or_id}/plugins/{plugin}", function()
 
     describe("GET", function()
 
       it("retrieves by id", function()
-        local consumer = bp.consumers:insert()
-        local plugin = bp.rewriter_plugins:insert({ consumer = { id = consumer.id }}, { nulls = true })
+        local kongsumer = bp.kongsumers:insert()
+        local plugin = bp.rewriter_plugins:insert({ kongsumer = { id = kongsumer.id }}, { nulls = true })
 
         local res = assert(client:send {
           method = "GET",
-          path = "/consumers/" .. consumer.id .. "/plugins/" .. plugin.id
+          path = "/kongsumers/" .. kongsumer.id .. "/plugins/" .. plugin.id
         })
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
         assert.same(plugin, json)
       end)
-      it("retrieves by consumer id when it has spaces", function()
-        local consumer = bp.consumers:insert()
-        local plugin = bp.rewriter_plugins:insert({ consumer = { id = consumer.id }}, { nulls = true })
+      it("retrieves by kongsumer id when it has spaces", function()
+        local kongsumer = bp.kongsumers:insert()
+        local plugin = bp.rewriter_plugins:insert({ kongsumer = { id = kongsumer.id }}, { nulls = true })
 
         local res = assert(client:send {
           method = "GET",
-          path = "/consumers/" .. consumer.id .. "/plugins/" .. plugin.id
+          path = "/kongsumers/" .. kongsumer.id .. "/plugins/" .. plugin.id
         })
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
         assert.same(plugin, json)
       end)
-      it("only retrieves if associated to the correct consumer", function()
-        local consumer = bp.consumers:insert()
-        local plugin = bp.rewriter_plugins:insert({ consumer = { id = consumer.id }})
+      it("only retrieves if associated to the correct kongsumer", function()
+        local kongsumer = bp.kongsumers:insert()
+        local plugin = bp.rewriter_plugins:insert({ kongsumer = { id = kongsumer.id }})
 
-        -- Create an consumer and try to query our plugin through it
-        local w_consumer = bp.consumers:insert {
+        -- Create an kongsumer and try to query our plugin through it
+        local w_kongsumer = bp.kongsumers:insert {
           custom_id = "wc",
-          username = "wrong-consumer"
+          username = "wrong-kongsumer"
         }
 
-        -- Try to request the plugin through it (belongs to the fixture consumer instead)
+        -- Try to request the plugin through it (belongs to the fixture kongsumer instead)
         local res = assert(client:send {
           method = "GET",
-          path = "/consumers/" .. w_consumer.id .. "/plugins/" .. plugin.id
+          path = "/kongsumers/" .. w_kongsumer.id .. "/plugins/" .. plugin.id
         })
         assert.res_status(404, res)
       end)
       it("ignores an invalid body", function()
-        local consumer = bp.consumers:insert()
-        local plugin = bp.rewriter_plugins:insert({ consumer = { id = consumer.id }})
+        local kongsumer = bp.kongsumers:insert()
+        local plugin = bp.rewriter_plugins:insert({ kongsumer = { id = kongsumer.id }})
 
         local res = assert(client:send {
           method = "GET",
-          path = "/consumers/" .. consumer.id .. "/plugins/" .. plugin.id,
+          path = "/kongsumers/" .. kongsumer.id .. "/plugins/" .. plugin.id,
           body = "this fails if decoded as json",
           headers = {
             ["Content-Type"] = "application/json",
@@ -781,12 +781,12 @@ describe("Admin API (#" .. strategy .. "): ", function()
       for content_type, input in pairs(inputs) do
 
         it("updates if found with " .. content_type, function()
-          local consumer = bp.consumers:insert()
-          local plugin = bp.rewriter_plugins:insert({ consumer = { id = consumer.id }})
+          local kongsumer = bp.kongsumers:insert()
+          local plugin = bp.rewriter_plugins:insert({ kongsumer = { id = kongsumer.id }})
 
           local res = assert(client:send {
             method = "PATCH",
-            path = "/consumers/" .. consumer.id .. "/plugins/" .. plugin.id,
+            path = "/kongsumers/" .. kongsumer.id .. "/plugins/" .. plugin.id,
             body = input,
             headers = {["Content-Type"] = content_type}
           })
@@ -801,8 +801,8 @@ describe("Admin API (#" .. strategy .. "): ", function()
 
         it("doesn't override a plugin config if partial with " .. content_type, function()
         -- This is delicate since a plugin config is a text field in a DB like Cassandra
-          local consumer = bp.consumers:insert()
-          local plugin = bp.rewriter_plugins:insert({ consumer = { id = consumer.id }})
+          local kongsumer = bp.kongsumers:insert()
+          local plugin = bp.rewriter_plugins:insert({ kongsumer = { id = kongsumer.id }})
 
           local err
           plugin, err = db.plugins:update(
@@ -811,7 +811,7 @@ describe("Admin API (#" .. strategy .. "): ", function()
               name = "rewriter",
               route = plugin.route,
               service = plugin.service,
-              consumer = plugin.consumer,
+              kongsumer = plugin.kongsumer,
               config = {
                 value = "potato",
                 extra = "extra1",
@@ -824,7 +824,7 @@ describe("Admin API (#" .. strategy .. "): ", function()
 
           local res = assert(client:send {
             method = "PATCH",
-            path = "/consumers/" .. consumer.id .. "/plugins/" .. plugin.id,
+            path = "/kongsumers/" .. kongsumer.id .. "/plugins/" .. plugin.id,
             body = input,
             headers = {["Content-Type"] = content_type}
           })
@@ -841,12 +841,12 @@ describe("Admin API (#" .. strategy .. "): ", function()
 
       it_content_types("updates the enabled property", function(content_type)
         return function()
-          local consumer = bp.consumers:insert()
-          local plugin = bp.rewriter_plugins:insert({ consumer = { id = consumer.id }})
+          local kongsumer = bp.kongsumers:insert()
+          local plugin = bp.rewriter_plugins:insert({ kongsumer = { id = kongsumer.id }})
 
           local res = assert(client:send {
             method = "PATCH",
-            path = "/consumers/" .. consumer.id .. "/plugins/" .. plugin.id,
+            path = "/kongsumers/" .. kongsumer.id .. "/plugins/" .. plugin.id,
             body = {
               name = "rewriter",
               enabled = false
@@ -864,11 +864,11 @@ describe("Admin API (#" .. strategy .. "): ", function()
       describe("errors", function()
         it_content_types("returns 404 if not found", function(content_type)
           return function()
-            local consumer = bp.consumers:insert()
+            local kongsumer = bp.kongsumers:insert()
 
             local res = assert(client:send {
               method = "PATCH",
-              path = "/consumers/" .. consumer.id .. "/plugins/b6cca0aa-4537-11e5-af97-23a06d98af51",
+              path = "/kongsumers/" .. kongsumer.id .. "/plugins/b6cca0aa-4537-11e5-af97-23a06d98af51",
               body = {},
               headers = {["Content-Type"] = content_type}
             })
@@ -877,13 +877,13 @@ describe("Admin API (#" .. strategy .. "): ", function()
         end)
         it_content_types("handles invalid input", function(content_type)
           return function()
-            local consumer = bp.consumers:insert()
-            local plugin = bp.rewriter_plugins:insert({ consumer = { id = consumer.id }})
+            local kongsumer = bp.kongsumers:insert()
+            local plugin = bp.rewriter_plugins:insert({ kongsumer = { id = kongsumer.id }})
 
             local res = assert(client:send {
 
               method = "PATCH",
-              path = "/consumers/" .. consumer.id .. "/plugins/" .. plugin.id,
+              path = "/kongsumers/" .. kongsumer.id .. "/plugins/" .. plugin.id,
               body = {
                 name = "foo"
               },
@@ -915,12 +915,12 @@ describe("Admin API (#" .. strategy .. "): ", function()
 
       for content_type, input in pairs(inputs) do
         it("creates if not found with " .. content_type, function()
-          local consumer = bp.consumers:insert()
+          local kongsumer = bp.kongsumers:insert()
           local plugin_id = utils.uuid()
 
           local res = assert(client:send {
             method = "PUT",
-            path = "/consumers/" .. consumer.id .. "/plugins/" .. plugin_id,
+            path = "/kongsumers/" .. kongsumer.id .. "/plugins/" .. plugin_id,
             body = input,
             headers = { ["Content-Type"] = content_type },
           })
@@ -936,12 +936,12 @@ describe("Admin API (#" .. strategy .. "): ", function()
         end)
 
         it("updates if found with " .. content_type, function()
-          local consumer = bp.consumers:insert()
-          local plugin = bp.rewriter_plugins:insert({ consumer = { id = consumer.id }})
+          local kongsumer = bp.kongsumers:insert()
+          local plugin = bp.rewriter_plugins:insert({ kongsumer = { id = kongsumer.id }})
 
           local res = assert(client:send {
             method = "PUT",
-            path = "/consumers/" .. consumer.id .. "/plugins/" .. plugin.id,
+            path = "/kongsumers/" .. kongsumer.id .. "/plugins/" .. plugin.id,
             body = input,
             headers = { ["Content-Type"] = content_type },
           })
@@ -960,22 +960,22 @@ describe("Admin API (#" .. strategy .. "): ", function()
 
     describe("DELETE", function()
       it("deletes a plugin configuration", function()
-        local consumer = bp.consumers:insert()
-        local plugin = bp.rewriter_plugins:insert({ consumer = { id = consumer.id }})
+        local kongsumer = bp.kongsumers:insert()
+        local plugin = bp.rewriter_plugins:insert({ kongsumer = { id = kongsumer.id }})
 
         local res = assert(client:send {
           method = "DELETE",
-          path = "/consumers/" .. consumer.id .. "/plugins/" .. plugin.id
+          path = "/kongsumers/" .. kongsumer.id .. "/plugins/" .. plugin.id
         })
         assert.res_status(204, res)
       end)
       describe("errors", function()
         it("returns 404 if not found", function()
-          local consumer = bp.consumers:insert()
+          local kongsumer = bp.kongsumers:insert()
 
           local res = assert(client:send {
             method = "DELETE",
-            path = "/consumers/" .. consumer.id .. "/plugins/fafafafa-1234-baba-5678-cececececece"
+            path = "/kongsumers/" .. kongsumer.id .. "/plugins/fafafafa-1234-baba-5678-cececececece"
           })
           assert.res_status(404, res)
         end)

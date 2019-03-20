@@ -11,7 +11,7 @@ run_tests();
 
 __DATA__
 
-=== TEST 1: client.authenticate() sets the consumer
+=== TEST 1: client.authenticate() sets the kongsumer
 --- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
@@ -20,20 +20,20 @@ __DATA__
             local pdk = PDK.new()
 
             pdk.client.authenticate(setmetatable({},{
-                __tostring = function() return "this consumer" end,
+                __tostring = function() return "this kongsumer" end,
             }),
             setmetatable({},{
                 __tostring = function() return "this credential" end,
             }))
 
 
-            ngx.say("consumer: ", tostring(pdk.client.get_consumer()), ", credential: ", tostring(pdk.client.get_credential()))
+            ngx.say("kongsumer: ", tostring(pdk.client.get_kongsumer()), ", credential: ", tostring(pdk.client.get_credential()))
         }
     }
 --- request
 GET /t
 --- response_body
-consumer: this consumer, credential: this credential
+kongsumer: this kongsumer, credential: this credential
 --- no_error_log
 [error]
 
@@ -55,13 +55,13 @@ consumer: this consumer, credential: this credential
 --- request
 GET /t
 --- response_body
-either credential or consumer must be provided
+either credential or kongsumer must be provided
 --- no_error_log
 [error]
 
 
 
-=== TEST 3: client.authenticate() only accepts table as consumer
+=== TEST 3: client.authenticate() only accepts table as kongsumer
 --- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
@@ -69,7 +69,7 @@ either credential or consumer must be provided
             local PDK = require "kong.pdk"
             local pdk = PDK.new()
 
-            local pok, err = pcall(pdk.client.authenticate, "not_a_proper_consumer")
+            local pok, err = pcall(pdk.client.authenticate, "not_a_proper_kongsumer")
 
             ngx.say(tostring(err))
         }
@@ -77,7 +77,7 @@ either credential or consumer must be provided
 --- request
 GET /t
 --- response_body
-consumer must be a table or nil
+kongsumer must be a table or nil
 --- no_error_log
 [error]
 

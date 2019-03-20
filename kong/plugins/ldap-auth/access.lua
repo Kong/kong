@@ -135,11 +135,11 @@ local function authenticate(conf, given_credentials)
 end
 
 
-local function load_consumer(consumer_id, anonymous)
-  local result, err = kong.db.consumers:select { id = consumer_id }
+local function load_kongsumer(kongsumer_id, anonymous)
+  local result, err = kong.db.kongsumers:select { id = kongsumer_id }
   if not result then
     if anonymous and not err then
-      err = 'anonymous consumer "' .. consumer_id .. '" not found'
+      err = 'anonymous kongsumer "' .. kongsumer_id .. '" not found'
     end
     return nil, err
   end
@@ -148,30 +148,30 @@ local function load_consumer(consumer_id, anonymous)
 end
 
 
-local function set_consumer(consumer, credential)
-  kong.client.authenticate(consumer, credential)
+local function set_kongsumer(kongsumer, credential)
+  kong.client.authenticate(kongsumer, credential)
 
   local set_header = kong.service.request.set_header
   local clear_header = kong.service.request.clear_header
 
-  if consumer then
+  if kongsumer then
     -- this can only be the Anonymous user in this case
-    if consumer.id then
-      set_header(constants.HEADERS.CONSUMER_ID, consumer.id)
+    if kongsumer.id then
+      set_header(constants.HEADERS.kongsumer_ID, kongsumer.id)
     else
-      clear_header(constants.HEADERS.CONSUMER_ID)
+      clear_header(constants.HEADERS.kongsumer_ID)
     end
 
-    if consumer.custom_id then
-      set_header(constants.HEADERS.CONSUMER_CUSTOM_ID, consumer.custom_id)
+    if kongsumer.custom_id then
+      set_header(constants.HEADERS.kongsumer_CUSTOM_ID, kongsumer.custom_id)
     else
-      clear_header(constants.HEADERS.CONSUMER_CUSTOM_ID)
+      clear_header(constants.HEADERS.kongsumer_CUSTOM_ID)
     end
 
-    if consumer.username then
-      set_header(constants.HEADERS.CONSUMER_USERNAME, consumer.username)
+    if kongsumer.username then
+      set_header(constants.HEADERS.kongsumer_USERNAME, kongsumer.username)
     else
-      clear_header(constants.HEADERS.CONSUMER_USERNAME)
+      clear_header(constants.HEADERS.kongsumer_USERNAME)
     end
 
     set_header(constants.HEADERS.ANONYMOUS, true)
@@ -187,9 +187,9 @@ local function set_consumer(consumer, credential)
 
   -- in case of auth plugins concatenation, remove remnants of anonymous
   clear_header(constants.HEADERS.ANONYMOUS)
-  clear_header(constants.HEADERS.CONSUMER_ID)
-  clear_header(constants.HEADERS.CONSUMER_CUSTOM_ID)
-  clear_header(constants.HEADERS.CONSUMER_USERNAME)
+  clear_header(constants.HEADERS.kongsumer_ID)
+  clear_header(constants.HEADERS.kongsumer_CUSTOM_ID)
+  clear_header(constants.HEADERS.kongsumer_USERNAME)
 end
 
 
@@ -227,7 +227,7 @@ local function do_authentication(conf)
     kong.service.request.clear_header(PROXY_AUTHORIZATION)
   end
 
-  set_consumer(nil, credential)
+  set_kongsumer(nil, credential)
 
   return true
 end
@@ -244,16 +244,16 @@ function _M.execute(conf)
   if not ok then
     if conf.anonymous then
       -- get anonymous user
-      local consumer_cache_key = kong.db.consumers:cache_key(conf.anonymous)
-      local consumer, err      = singletons.cache:get(consumer_cache_key, nil,
-                                                      load_consumer,
+      local kongsumer_cache_key = kong.db.kongsumers:cache_key(conf.anonymous)
+      local kongsumer, err      = singletons.cache:get(kongsumer_cache_key, nil,
+                                                      load_kongsumer,
                                                       conf.anonymous, true)
       if err then
         kong.log.err(err)
         return kong.response.exit(500, { message = "An unexpected error occurred" })
       end
 
-      set_consumer(consumer, nil)
+      set_kongsumer(kongsumer, nil)
 
     else
       return kong.response.exit(err.status, { message = err.message }, err.headers)

@@ -392,12 +392,12 @@ for _, strategy in helpers.each_strategy() do
           local fake_id = utils.uuid()
           local credentials, _, err_t = db.basicauth_credentials:insert({
             username = "peter",
-            consumer = { id = fake_id },
+            kongsumer = { id = fake_id },
           })
 
           assert.is_nil(credentials)
           assert.equals("foreign key violation", err_t.name)
-          assert.same({ consumer = { id = fake_id } }, err_t.fields)
+          assert.same({ kongsumer = { id = fake_id } }, err_t.fields)
         end)
 
         -- I/O

@@ -63,7 +63,7 @@ and improving the robustness of our migrations and core components.
 ##### Admin API
 
 - Improve performance of the `PUT` method in auth plugins endpoints (e.g.
-  `/consumers/:consumers/basic-auth/:basicauth_credentials`) by preventing
+  `/kongsumers/:kongsumers/basic-auth/:basicauth_credentials`) by preventing
   a unnecessary read-before-write.
   [#4206](https://github.com/Kong/kong/pull/4206)
 
@@ -254,8 +254,8 @@ A summary of the changes introduced in the new Admin API:
 
 - Pagination has been included in all "multi-record" endpoints, and pagination
   control fields are different than in 0.14.x.
-- Filtering now happens via URL path changes (`/consumers/x/plugins`) instead
-  of querystring fields (`/plugins?consumer_id=x`).
+- Filtering now happens via URL path changes (`/kongsumers/x/plugins`) instead
+  of querystring fields (`/plugins?kongsumer_id=x`).
 - Array values can't be coerced from comma-separated strings anymore. They must
   now be "proper" JSON values on JSON requests, or use a new syntax on
   form-url-encoded or multipart requests.
@@ -360,7 +360,7 @@ this changelog.
   - New functions `kong.response.get_path_with_query()` and
     `kong.request.get_start_time()`.
     [#3842](https://github.com/Kong/kong/pull/3842)
-  - Getters and setters for Service, Route, Consumer, and Credential.
+  - Getters and setters for Service, Route, kongsumer, and Credential.
     [#3916](https://github.com/Kong/kong/pull/3916)
   - `kong.response.get_source()` returns `error` on nginx-produced errors.
     [#4006](https://github.com/Kong/kong/pull/4006)
@@ -524,8 +524,8 @@ A summary of the changes introduced in the new Admin API:
 
 - Pagination has been included in all "multi-record" endpoints, and pagination
   control fields are different than in 0.14.x.
-- Filtering now happens via URL path changes (`/consumers/x/plugins`) instead
-  of querystring fields (`/plugins?consumer_id=x`).
+- Filtering now happens via URL path changes (`/kongsumers/x/plugins`) instead
+  of querystring fields (`/plugins?kongsumer_id=x`).
 - Array values can't be coherced from comma-separated strings. They must be
   "proper" JSON values on JSON requests, or use a new syntax on
   form-url-encoded or multipart requests.
@@ -574,7 +574,7 @@ for a complete list.
   Thanks [@kepkin](https://github.com/kepkin) for the patch.
   [#3589](https://github.com/Kong/kong/pull/3589)
 - acl: Add a new `hide_groups_header` configuration option. If enabled, this
-  option prevents the plugin from injecting the `X-Consumer-Groups` header
+  option prevents the plugin from injecting the `X-kongsumer-Groups` header
   into the upstream request.
   Thanks [@jeremyjpj0916](https://github.com/jeremyjpj0916) for the patch!
   [#3703](https://github.com/Kong/kong/pull/3703)
@@ -585,7 +585,7 @@ for a complete list.
 
 - Prevent some plugins from breaking in subtle ways when manipulating some
   entities and their attributes. An example of such breaking behavior could be
-  observed when Kong was wrongly injecting `X-Consumer-Username: userdata:
+  observed when Kong was wrongly injecting `X-kongsumer-Username: userdata:
   NULL` in upstream requests headers, instead of not injecting this header at
   all.
   [#3714](https://github.com/Kong/kong/pull/3714)
@@ -702,8 +702,8 @@ upgrade your Kong cluster.
   received notable usability improvements, but suffer from a few breaking
   changes.
   [#3386](https://github.com/Kong/kong/pull/3386)
-- :warning: The Consumers entity has moved to the new DAO implementation. As
-  such, the `/consumers` endpoint has received notable usability improvements,
+- :warning: The kongsumers entity has moved to the new DAO implementation. As
+  such, the `/kongsumers` endpoint has received notable usability improvements,
   but suffers from a few breaking changes.
   [#3437](https://github.com/Kong/kong/pull/3437)
 
@@ -816,12 +816,12 @@ upgrade your Kong cluster.
 ##### Admin API
 
 - :fireworks: Support for `PUT` in new endpoints (e.g. `/services/{id or
-  name}`, `/routes/{id}`, `/consumers/{id or username}`), allowing the
+  name}`, `/routes/{id}`, `/kongsumers/{id or username}`), allowing the
   development of idempotent configuration workflows when scripting the Admin
   API.
   [#3416](https://github.com/Kong/kong/pull/3416)
 - Support for `PATCH` and `DELETE` on the `/services/{name}`,
-  `/consumers/{username}`, and `/snis/{name}` endpoints.
+  `/kongsumers/{username}`, and `/snis/{name}` endpoints.
   [#3416](https://github.com/Kong/kong/pull/3416)
 
 ### Fixes
@@ -854,7 +854,7 @@ upgrade your Kong cluster.
 - Do not set `Content-Type` headers on HTTP 204 No Content responses.
   [#3351](https://github.com/Kong/kong/pull/3351)
 - Ensure the PostgreSQL connector of the new DAO (used by Services, Routes,
-  Consumers, and SSL certs/SNIs) is now fully re-entrant and properly behaves
+  kongsumers, and SSL certs/SNIs) is now fully re-entrant and properly behaves
   in busy workloads (e.g. scripting requests to the Admin API).
   [#3423](https://github.com/Kong/kong/pull/3423)
 - Properly route HTTP/1.0 requests without a Host header when using the old
@@ -903,7 +903,7 @@ upgrade your Kong cluster.
   `service_id` field.
   [#3548](https://github.com/Kong/kong/pull/3548)
 - Better type inference in new endpoints (e.g. `/services`, `/routes`,
-  `/consumers`) when using `application/x-www-form-urlencoded` MIME type.
+  `/kongsumers`) when using `application/x-www-form-urlencoded` MIME type.
   [#3416](https://github.com/Kong/kong/pull/3416)
 
 [Back to TOC](#table-of-contents)
@@ -995,7 +995,7 @@ core and plugins.
 - Ensure the `/plugin/schema/:name` endpoint does not corrupt plugins' schemas.
   [#3348](https://github.com/Kong/kong/pull/3348)
 - Properly URL-decode path segments of plugins endpoints accepting spaces
-  (e.g. `/consumers/<consumer>/basic-auth/John%20Doe/`).
+  (e.g. `/kongsumers/<kongsumer>/basic-auth/John%20Doe/`).
   [#3250](https://github.com/Kong/kong/pull/3250)
 - Properly serialize boolean filtering values when using Cassandra.
   [#3362](https://github.com/Kong/kong/pull/3362)
@@ -1370,7 +1370,7 @@ but will be dropped in subsequent ones.
 - :fireworks: Support for **hash based load balancing**! Kong now offers
   consistent hashing/sticky sessions load balancing capabilities via the new
   `hash_*` attributes of the Upstream entity. Hashes can be based off client
-  IPs, request headers, or Consumers!
+  IPs, request headers, or kongsumers!
   [#2875](https://github.com/Kong/kong/pull/2875)
 - :fireworks: Logging plugins now log requests that were short-circuited by
   Kong! (e.g. HTTP 401 responses from auth plugins or HTTP 429 responses from
@@ -1472,31 +1472,31 @@ but will be dropped in subsequent ones.
   Thanks [@hbagdi](https://github.com/hbagdi) for the contribution.
   [#2955](https://github.com/Kong/kong/pull/2955)
     - `/key-auths/` to paginate through all keys.
-    - `/key-auths/:credential_key_or_id/consumer` to retrieve the Consumer
+    - `/key-auths/:credential_key_or_id/kongsumer` to retrieve the kongsumer
       associated with a key.
 - basic-auth: New endpoints to manipulate basic-auth credentials.
   Thanks [@hbagdi](https://github.com/hbagdi) for the contribution.
   [#2998](https://github.com/Kong/kong/pull/2998)
     - `/basic-auths/` to paginate through all basic-auth credentials.
-    - `/basic-auths/:credential_username_or_id/consumer` to retrieve the
-      Consumer associated with a credential.
+    - `/basic-auths/:credential_username_or_id/kongsumer` to retrieve the
+      kongsumer associated with a credential.
 - jwt: New endpoints to manipulate JWTs.
   Thanks [@hbagdi](https://github.com/hbagdi) for the contribution.
   [#3003](https://github.com/Kong/kong/pull/3003)
     - `/jwts/` to paginate through all JWTs.
-    - `/jwts/:jwt_key_or_id/consumer` to retrieve the Consumer
+    - `/jwts/:jwt_key_or_id/kongsumer` to retrieve the kongsumer
       associated with a JWT.
 - hmac-auth: New endpoints to manipulate hmac-auth credentials.
   Thanks [@hbagdi](https://github.com/hbagdi) for the contribution.
   [#3009](https://github.com/Kong/kong/pull/3009)
     - `/hmac-auths/` to paginate through all hmac-auth credentials.
-    - `/hmac-auths/:hmac_username_or_id/consumer` to retrieve the Consumer
+    - `/hmac-auths/:hmac_username_or_id/kongsumer` to retrieve the kongsumer
       associated with a credential.
 - acl: New endpoints to manipulate ACLs.
   Thanks [@hbagdi](https://github.com/hbagdi) for the contribution.
   [#3039](https://github.com/Kong/kong/pull/3039)
     - `/acls/` to paginate through all ACLs.
-    - `/acls/:acl_id/consumer` to retrieve the Consumer
+    - `/acls/:acl_id/kongsumer` to retrieve the kongsumer
       associated with an ACL.
 
 ### Fixed
@@ -1915,9 +1915,9 @@ if you are planning to upgrade a Kong cluster.
 
 ##### Admin API
 
-- Ability to retrieve plugins added to a Consumer via two new endpoints:
-  `/consumers/:username_or_id/plugins/` and
-  `/consumers/:username_or_id/plugins/:plugin_id`.
+- Ability to retrieve plugins added to a kongsumer via two new endpoints:
+  `/kongsumers/:username_or_id/plugins/` and
+  `/kongsumers/:username_or_id/plugins/:plugin_id`.
   [#2714](https://github.com/Kong/kong/pull/2714)
 - Support for JSON `null` in `PATCH` requests to unset a value on any
   entity.
@@ -2116,7 +2116,7 @@ if you are planning to upgrade a Kong cluster.
 - :fireworks: Plugins can implement a new `rewrite` handler to execute code in
   the Nginx rewrite phase. This phase is executed prior to matching a
   registered Kong API, and prior to any authentication plugin. As such, only
-  global plugins (neither tied to an API or Consumer) will execute this phase.
+  global plugins (neither tied to an API or kongsumer) will execute this phase.
   [#2354](https://github.com/Kong/kong/pull/2354)
 - Ability for the client to chose whether the upstream request (Kong <->
   upstream) should contain a trailing slash in its URI. Prior to this change,
@@ -2150,8 +2150,8 @@ if you are planning to upgrade a Kong cluster.
     upstream services. Thanks to [@pauldaustin](https://github.com/pauldaustin)
     for the contribution.
     [#2051](https://github.com/Kong/kong/pull/2051)
-  - Logging plugins: The produced logs include two new fields: a `consumer`
-    field, which contains the properties of the authenticated Consumer
+  - Logging plugins: The produced logs include two new fields: a `kongsumer`
+    field, which contains the properties of the authenticated kongsumer
     (`id`, `custom_id`, and `username`), if any, and a `tries` field, which
     includes the upstream connection successes and failures of the load-
     balancer.
@@ -2211,7 +2211,7 @@ if you are planning to upgrade a Kong cluster.
 - The `cassandra_timeout` configuration property is now correctly taken into
   consideration by Kong.
   [#2326](https://github.com/Kong/kong/pull/2326)
-- Correctly trigger plugins configured on the anonymous Consumer for anonymous
+- Correctly trigger plugins configured on the anonymous kongsumer for anonymous
   requests (from auth plugins with the new `config.anonymous` parameter).
   [#2424](https://github.com/Kong/kong/pull/2424)
 - When multiple auth plugins were configured with the recent `config.anonymous`
@@ -2244,8 +2244,8 @@ if you are planning to upgrade a Kong cluster.
     [#2463](https://github.com/Kong/kong/pull/2463)
   - Endpoints with path parameters like `/xxx_or_id` will now also yield the
     proper result if the `xxx` field is formatted as a UUID. Most notably, this
-    fixes a problem for Consumers whose `username` is a UUID, that could not be
-    found when requesting `/consumers/{username_as_uuid}`.
+    fixes a problem for kongsumers whose `username` is a UUID, that could not be
+    found when requesting `/kongsumers/{username_as_uuid}`.
     [#2420](https://github.com/Kong/kong/pull/2420)
   - The "active targets" endpoint does not require a trailing slash anymore.
     [#2307](https://github.com/Kong/kong/pull/2307)
@@ -2330,9 +2330,9 @@ if you are planning to upgrade a Kong cluster.
   - oauth2: Don't try to remove credential values from request bodies if the
     MIME type is multipart, since such attempts would result in an error.
     [#2176](https://github.com/Kong/kong/pull/2176)
-  - ldap: This plugin should not be applied to a single Consumer, however, this
+  - ldap: This plugin should not be applied to a single kongsumer, however, this
     was not properly enforced. It is now impossible to apply this plugin to a
-    single Consumer (as per all authentication plugin).
+    single kongsumer (as per all authentication plugin).
     [#2237](https://github.com/Kong/kong/pull/2237)
   - aws-lambda: Support for `us-west-2` region in schema.
     [#2257](https://github.com/Kong/kong/pull/2257)
@@ -2438,9 +2438,9 @@ perform significantly better than any previous version.
     [#1777](https://github.com/Kong/kong/pull/1777)
     [#1190](https://github.com/Kong/kong/pull/1190)
   - Anonymous authentication for auth plugins. When such plugins receive the
-    `config.anonymous=<consumer_id>` property, even non-authenticated requests
-    will be proxied by Kong, with the traditional Consumer headers set to the
-    designated anonymous consumer, but also with a `X-Anonymous-Consumer`
+    `config.anonymous=<kongsumer_id>` property, even non-authenticated requests
+    will be proxied by Kong, with the traditional kongsumer headers set to the
+    designated anonymous kongsumer, but also with a `X-Anonymous-kongsumer`
     header. Multiple auth plugins will work in a logical `OR` fashion.
     [#1666](https://github.com/Kong/kong/pull/1666) and
     [#2035](https://github.com/Kong/kong/pull/2035)
@@ -2699,7 +2699,7 @@ The main focus of this release is Kong's new CLI. With a simpler configuration f
 
 - :fireworks: Support for overriding configuration settings with environment variables.
 - :fireworks: Support for SSL connections between Kong and PostgreSQL. [#1425](https://github.com/Kong/kong/pull/1425)
-- :fireworks: Ability to apply plugins with more granularity: per-consumer, and global plugins are now possible. [#1403](https://github.com/Kong/kong/pull/1403)
+- :fireworks: Ability to apply plugins with more granularity: per-kongsumer, and global plugins are now possible. [#1403](https://github.com/Kong/kong/pull/1403)
 - New `kong check` command: validates a Kong configuration file.
 - Better version check for third-party dependencies (OpenResty, Serf, Dnsmasq). [#1307](https://github.com/Kong/kong/pull/1307)
 - Ability to configure the validation depth of database SSL certificates from the configuration file. [#1420](https://github.com/Kong/kong/pull/1420)
@@ -2709,8 +2709,8 @@ The main focus of this release is Kong's new CLI. With a simpler configuration f
   - :fireworks: **New bot-detection plugin**: protect your APIs by detecting and rejecting common bots and crawlers. [#1413](https://github.com/Kong/kong/pull/1413)
   - correlation-id: new "tracker" generator, identifying requests per worker and connection. [#1288](https://github.com/Kong/kong/pull/1288)
   - request/response-transformer: ability to add strings including colon characters. [#1353](https://github.com/Kong/kong/pull/1353)
-  - rate-limiting: support for new rate-limiting policies (`cluster`, `local` and `redis`), and for a new `limit_by` property to force rate-limiting by `consumer`, `credential` or `ip`.
-  - response-rate-limiting: support for new rate-limiting policies (`cluster`, `local` and `redis`), and for a new `limit_by` property to force rate-limiting by `consumer`, `credential` or `ip`.
+  - rate-limiting: support for new rate-limiting policies (`cluster`, `local` and `redis`), and for a new `limit_by` property to force rate-limiting by `kongsumer`, `credential` or `ip`.
+  - response-rate-limiting: support for new rate-limiting policies (`cluster`, `local` and `redis`), and for a new `limit_by` property to force rate-limiting by `kongsumer`, `credential` or `ip`.
   - galileo: performance improvements of ALF serialization. ALFs are not discarded when exceeding 20MBs anymore. [#1463](https://github.com/Kong/kong/issues/1463)
   - statsd: new `upstream_stream` latency metric. [#1466](https://github.com/Kong/kong/pull/1466)
   - datadog: new `upstream_stream` latency metric and tagging support for each metric. [#1473](https://github.com/Kong/kong/pull/1473)
@@ -2795,7 +2795,7 @@ This release includes some fixes and minor updates:
 
 - Adds `X-Forwarded-Host` and `X-Forwarded-Prefix` to the upstream request headers. [#1180](https://github.com/Kong/kong/pull/1180)
 - Plugins:
-  - Datadog: Added two new metrics, `unique_users` and `request_per_user`, that log the consumer information. [#1179](https://github.com/Kong/kong/pull/1179)
+  - Datadog: Added two new metrics, `unique_users` and `request_per_user`, that log the kongsumer information. [#1179](https://github.com/Kong/kong/pull/1179)
 
 ### Fixed
 
@@ -2813,7 +2813,7 @@ This release includes support for PostgreSQL as Kong's primary datastore!
 
 ### Breaking changes
 
-- Remove support for the long deprecated `/consumers/:consumer/keyauth/` and `/consumers/:consumer/basicauth/` routes (deprecated in `0.5.0`). The new routes (available since `0.5.0` too) use the real name of the plugin: `/consumers/:consumer/key-auth` and `/consumers/:consumer/basic-auth`.
+- Remove support for the long deprecated `/kongsumers/:kongsumer/keyauth/` and `/kongsumers/:kongsumer/basicauth/` routes (deprecated in `0.5.0`). The new routes (available since `0.5.0` too) use the real name of the plugin: `/kongsumers/:kongsumer/key-auth` and `/kongsumers/:kongsumer/basic-auth`.
 
 ### Added
 
@@ -2825,7 +2825,7 @@ This release includes support for PostgreSQL as Kong's primary datastore!
   - LDAP: add support for LDAP authentication. [#1133](https://github.com/Kong/kong/pull/1133)
   - StatsD: add support for StatsD logging. [#1142](https://github.com/Kong/kong/pull/1142)
   - JWT: add support for RS256 signed tokens thanks to [@kdstew](https://github.com/kdstew)! [#1053](https://github.com/Kong/kong/pull/1053)
-  - ACL: appends `X-Consumer-Groups` to the request, so the upstream service can check what groups the consumer belongs to. [#1154](https://github.com/Kong/kong/pull/1154)
+  - ACL: appends `X-kongsumer-Groups` to the request, so the upstream service can check what groups the kongsumer belongs to. [#1154](https://github.com/Kong/kong/pull/1154)
   - Galileo (mashape-analytics): increase batch sending timeout to 30s. [#1091](https://github.com/Kong/kong/pull/1091)
 - Added `ttl_on_failure` option in the cluster configuration, to configure the TTL of failed nodes. [#1125](https://github.com/Kong/kong/pull/1125)
 
@@ -2878,7 +2878,7 @@ However by upgrading the underlying OpenResty version, source installations do n
   - SSL: Replace shelled out openssl calls with native `ngx.ssl` conversion utilities, which preserve the certificate chain. [#968](https://github.com/Kong/kong/pull/968)
 - Avoid user warning on start when the user is not root. [#964](https://github.com/Kong/kong/pull/964)
 - Store Serf logs in NGINX working directory to prevent eventual permission issues. [#975](https://github.com/Kong/kong/pull/975)
-- Allow plugins configured on a Consumer *without* being configured on an API to run. [#978](https://github.com/Kong/kong/issues/978) [#980](https://github.com/Kong/kong/pull/980)
+- Allow plugins configured on a kongsumer *without* being configured on an API to run. [#978](https://github.com/Kong/kong/issues/978) [#980](https://github.com/Kong/kong/pull/980)
 - Fixed an edge-case where Kong nodes would not be registered in the `nodes` table. [#1008](https://github.com/Kong/kong/pull/1008)
 
 [Back to TOC](#table-of-contents)
@@ -3077,10 +3077,10 @@ Several breaking changes are introduced. You will have to slightly change your c
 
 ```
 Old route                             New route
-/consumers/:consumer/keyauth       -> /consumers/:consumer/key-auth
-/consumers/:consumer/keyauth/:id   -> /consumers/:consumer/key-auth/:id
-/consumers/:consumer/basicauth     -> /consumers/:consumer/basic-auth
-/consumers/:consumer/basicauth/:id -> /consumers/:consumer/basic-auth/:id
+/kongsumers/:kongsumer/keyauth       -> /kongsumers/:kongsumer/key-auth
+/kongsumers/:kongsumer/keyauth/:id   -> /kongsumers/:kongsumer/key-auth/:id
+/kongsumers/:kongsumer/basicauth     -> /kongsumers/:kongsumer/basic-auth
+/kongsumers/:kongsumer/basicauth/:id -> /kongsumers/:kongsumer/basic-auth/:id
 ```
 
 The old routes are still maintained but will be removed in upcoming versions. Consider them **deprecated**.
@@ -3093,7 +3093,7 @@ The old routes are still maintained but will be removed in upcoming versions. Co
 
 - Plugins
   - **New Response Rate Limiting plugin**: Give a usage quota to your users based on a parameter in your response. [#247](https://github.com/Kong/kong/pull/247)
-  - **New ACL (Access Control) plugin**: Configure authorizations for your Consumers. [#225](https://github.com/Kong/kong/issues/225)
+  - **New ACL (Access Control) plugin**: Configure authorizations for your kongsumers. [#225](https://github.com/Kong/kong/issues/225)
   - **New JWT (JSON Web Token) plugin**: Verify and authenticate JWTs. [#519](https://github.com/Kong/kong/issues/519)
   - **New HMAC signature plugin**: Verify and authenticate HMAC signed HTTP requests. [#549](https://github.com/Kong/kong/pull/549)
   - Plugins migrations. Each plugin can now have its own migration scripts if it needs to store data in your cluster. This is a step forward to improve Kong's pluggable architecture. [#443](https://github.com/Kong/kong/pull/443)
@@ -3111,13 +3111,13 @@ The old routes are still maintained but will be removed in upcoming versions. Co
 - Resolver
   - Making a request with a querystring will now correctly match an API's path. [#496](https://github.com/Kong/kong/pull/496)
 - Admin API
-  - Data associated to a given API/Consumer will correctly be deleted if related Consumer/API is deleted. [#107](https://github.com/Kong/kong/issues/107) [#438](https://github.com/Kong/kong/issues/438) [#504](https://github.com/Kong/kong/issues/504)
+  - Data associated to a given API/kongsumer will correctly be deleted if related kongsumer/API is deleted. [#107](https://github.com/Kong/kong/issues/107) [#438](https://github.com/Kong/kong/issues/438) [#504](https://github.com/Kong/kong/issues/504)
   - The `/api/{api_name_or_id}/plugins/{plugin_name_or_id}` changed to `/api/{api_name_or_id}/plugins/{plugin_id}` to avoid requesting the wrong plugin if two are configured for one API. [#482](https://github.com/Kong/kong/pull/482)
   - APIs created without a `name` but with a `request_path` will now have a name which defaults to the set `request_path`. [#547](https://github.com/Kong/kong/issues/547)
 - Plugins
   - Mashape Analytics: More robust buffer and better error logging. [#471](https://github.com/Kong/kong/pull/471)
   - Mashape Analytics: Several ALF (API Log Format) serialization fixes. [#515](https://github.com/Kong/kong/pull/515)
-  - Oauth2: A response is now returned on `http://kong:8001/consumers/{consumer}/oauth2/{oauth2_id}`. [#469](https://github.com/Kong/kong/issues/469)
+  - Oauth2: A response is now returned on `http://kong:8001/kongsumers/{kongsumer}/oauth2/{oauth2_id}`. [#469](https://github.com/Kong/kong/issues/469)
   - Oauth2: Saving `authenticated_userid` on Password Grant. [#476](https://github.com/Kong/kong/pull/476)
   - Oauth2: Proper handling of the `/oauth2/authorize` and `/oauth2/token` endpoints in the OAuth 2.0 Plugin when an API with a `path` is being consumed using the `public_dns` instead. [#503](https://github.com/Kong/kong/issues/503)
   - OAuth2: Properly returning `X-Authenticated-UserId` in the `client_credentials` and `password` flows. [#535](https://github.com/Kong/kong/issues/535)
@@ -3189,7 +3189,7 @@ The old routes are still maintained but will be removed in upcoming versions. Co
 - Plugins
   - Basic authentication not being executed if added to an API with default configuration. [6d732cd](https://github.com/Kong/kong/commit/6d732cd8b0ec92ef328faa843215d8264f50fb75)
   - SSL plugin configuration parsing. [#353](https://github.com/Kong/kong/pull/353)
-  - SSL plugin doesn't accept a `consumer_id` anymore, as this wouldn't make sense. [#372](https://github.com/Kong/kong/pull/372) [#322](https://github.com/Kong/kong/pull/322)
+  - SSL plugin doesn't accept a `kongsumer_id` anymore, as this wouldn't make sense. [#372](https://github.com/Kong/kong/pull/372) [#322](https://github.com/Kong/kong/pull/322)
   - Authentication plugins now return `401` when missing credentials. [#375](https://github.com/Kong/kong/pull/375) [#354](https://github.com/Kong/kong/pull/354)
 - Admin API
   - Non supported HTTP methods now return `405` instead of `500`. [38f1b7f](https://github.com/Kong/kong/commit/38f1b7fa9f45f60c4130ef5ff9fe2c850a2ba586)
@@ -3235,7 +3235,7 @@ The old routes are still maintained but will be removed in upcoming versions. Co
   - Keyauth plugin now defaults `key_names` to "apikey".
 - Admin API
   - RESTful routing. Much nicer Admin API routing. Ex: `/apis/{name_or_id}/plugins`. [#98](https://github.com/Kong/kong/issues/98) [#257](https://github.com/Kong/kong/pull/257)
-  - Support `PUT` method for endpoints such as `/apis/`, `/apis/plugins/`, `/consumers/`
+  - Support `PUT` method for endpoints such as `/apis/`, `/apis/plugins/`, `/kongsumers/`
   - Support for `application/json` and `x-www-form-urlencoded` Content Types for all `PUT`, `POST` and `PATCH` endpoints by passing a `Content-Type` header. [#236](https://github.com/Kong/kong/pull/236)
 - Resolver
   - Support resolving APIs by Path as well as by Header. [#192](https://github.com/Kong/kong/pull/192) [#282](https://github.com/Kong/kong/pull/282)
@@ -3276,7 +3276,7 @@ This is a maintenance release including several bug fixes and usability improvem
   - Support for Cassandra downtime. If Cassandra goes down and is brought back up, Kong will not need to restart anymore, statements will be re-prepared on-the-fly. This is part of an ongoing effort from [jbochi/lua-resty-cassandra#47](https://github.com/jbochi/lua-resty-cassandra/pull/47), [#146](https://github.com/Kong/kong/pull/146) and [#187](https://github.com/Kong/kong/pull/187).
 Queries effectuated during the downtime will still be lost. [#11](https://github.com/Kong/kong/pull/11)
   - Leverage reused sockets. If the DAO reuses a socket, it will not re-set their keyspace. This should give a small but appreciable performance improvement. [#170](https://github.com/Kong/kong/pull/170)
-  - Cascade delete plugins configurations when deleting a Consumer or an API associated with it. [#107](https://github.com/Kong/kong/pull/107)
+  - Cascade delete plugins configurations when deleting a kongsumer or an API associated with it. [#107](https://github.com/Kong/kong/pull/107)
   - Allow Cassandra hosts listening on different ports than the default. [#185](https://github.com/Kong/kong/pull/185)
 - CLI
   - Added a notice log when Kong tries to connect to Cassandra to avoid user confusion. [#168](https://github.com/Kong/kong/pull/168)
@@ -3320,7 +3320,7 @@ First public release of Kong. This version brings a lot of internal improvements
 - Package distributions: .rpm, .deb and .pkg for easy installs on most common platforms.
 
 #### Fixed
-- Admin API: trailing slash is not necessary anymore for core resources such as `/apis` or `/consumers`.
+- Admin API: trailing slash is not necessary anymore for core resources such as `/apis` or `/kongsumers`.
 - Leaner default configuration. [#156](https://github.com/Kong/kong/issues/156)
 
 > **internal**
@@ -3355,7 +3355,7 @@ First public beta. Includes caching and better usability.
   - Order of `plugins_available` doesn't matter anymore. [#17](https://github.com/Kong/kong/issues/17)
   - Better handling of plugins: Kong now detects which plugins are configured and if they are installed on the current machine.
   - `bin/kong` now defaults on `/etc/kong.yml` for config and `/var/logs/kong` for output. [#71](https://github.com/Kong/kong/issues/71)
-- Proxy: APIs/Consumers caching with expiration for faster authentication.
+- Proxy: APIs/kongsumers caching with expiration for faster authentication.
 - Admin API: Plugins now use plain form parameters for configuration. [#70](https://github.com/Kong/kong/issues/70)
 - Keep track of already executed migrations. `rollback` now behaves as expected. [#8](https://github.com/Kong/kong/issues/8)
 
@@ -3383,7 +3383,7 @@ First version running with Cassandra.
 - Built-in authentication plugin (api key, HTTP basic).
 - Built-in ratelimiting plugin.
 - Built-in TCP logging plugin.
-- Configuration API (for consumers, apis, plugins).
+- Configuration API (for kongsumers, apis, plugins).
 - CLI `bin/kong` script.
 - Database migrations (using `db.lua`).
 

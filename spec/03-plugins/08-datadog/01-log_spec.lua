@@ -11,18 +11,18 @@ for _, strategy in helpers.each_strategy() do
         "routes",
         "services",
         "plugins",
-        "consumers",
+        "kongsumers",
         "keyauth_credentials",
       })
 
-      local consumer = bp.consumers:insert {
+      local kongsumer = bp.kongsumers:insert {
         username  = "foo",
         custom_id = "bar"
       }
 
       bp.keyauth_credentials:insert({
         key      = "kong",
-        consumer = { id = consumer.id },
+        kongsumer = { id = kongsumer.id },
       })
 
       local route1 = bp.routes:insert {

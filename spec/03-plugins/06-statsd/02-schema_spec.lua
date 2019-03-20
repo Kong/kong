@@ -89,7 +89,7 @@ pending("Plugin: statsd (schema)", function()
     }
     local _, err = validate_entity({ metrics = metrics_input}, statsd_schema)
     assert.not_nil(err)
-    assert.equal("consumer_identifier must be defined for metric status_count_per_user", err.metrics)
+    assert.equal("kongsumer_identifier must be defined for metric status_count_per_user", err.metrics)
   end)
   it("rejects if metric has wrong stat type", function()
     local metrics_input = {

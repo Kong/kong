@@ -49,10 +49,10 @@ end
 
 admin_api_as_db["basicauth_credentials"] = {
   insert = function(_, tbl)
-    return api_send("POST", "/consumers/" .. tbl.consumer.id .. "/basic-auth", tbl)
+    return api_send("POST", "/kongsumers/" .. tbl.kongsumer.id .. "/basic-auth", tbl)
   end,
   remove = function(_, tbl)
-    return api_send("DELETE", "/consumers/" .. tbl.consumer.id .. "/basic-auth/" .. tbl.id)
+    return api_send("DELETE", "/kongsumers/" .. tbl.kongsumer.id .. "/basic-auth/" .. tbl.id)
   end,
 }
 

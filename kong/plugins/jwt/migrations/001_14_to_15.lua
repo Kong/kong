@@ -7,7 +7,7 @@ return {
 
       DO $$
       BEGIN
-        ALTER INDEX IF EXISTS "jwt_secrets_consumer_id" RENAME TO "jwt_secrets_consumer_id_idx";
+        ALTER INDEX IF EXISTS "jwt_secrets_kongsumer_id" RENAME TO "jwt_secrets_kongsumer_id_idx";
       EXCEPTION WHEN DUPLICATE_TABLE THEN
         -- Do nothing, accept existing state
       END;

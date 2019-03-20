@@ -22,12 +22,12 @@ local hash_password = function(self, cred_id_or_username, cred)
     if existing.password == cred.password then
       return
     end
-    if not cred.consumer then
-      cred.consumer = existing.consumer
+    if not cred.kongsumer then
+      cred.kongsumer = existing.kongsumer
     end
   end
 
-  cred.password = crypto.hash(cred.consumer.id, cred.password)
+  cred.password = crypto.hash(cred.kongsumer.id, cred.password)
 
   return true
 end

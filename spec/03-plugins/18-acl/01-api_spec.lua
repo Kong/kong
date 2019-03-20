@@ -4,7 +4,7 @@ local helpers = require "spec.helpers"
 
 for _, strategy in helpers.each_strategy() do
   describe("Plugin: acl (API) [#" .. strategy .. "]", function()
-    local consumer
+    local kongsumer
     local admin_client
     local bp
     local db
@@ -14,7 +14,7 @@ for _, strategy in helpers.each_strategy() do
         "routes",
         "services",
         "plugins",
-        "consumers",
+        "kongsumers",
         "acls",
       })
 
@@ -33,10 +33,10 @@ for _, strategy in helpers.each_strategy() do
       helpers.stop_kong()
     end)
 
-    describe("/consumers/:consumer/acls/", function()
+    describe("/kongsumers/:kongsumer/acls/", function()
       lazy_setup(function()
         db:truncate()
-        consumer = bp.consumers:insert {
+        kongsumer = bp.kongsumers:insert {
           username = "bob"
         }
       end)
@@ -48,7 +48,7 @@ for _, strategy in helpers.each_strategy() do
         it("creates an ACL association", function()
           local res = assert(admin_client:send {
             method  = "POST",
-            path    = "/consumers/bob/acls",
+            path    = "/kongsumers/bob/acls",
             body    = {
               group = "admin"
             },
@@ -58,14 +58,14 @@ for _, strategy in helpers.each_strategy() do
           })
           local body = assert.res_status(201, res)
           local json = cjson.decode(body)
-          assert.equal(consumer.id, json.consumer.id)
+          assert.equal(kongsumer.id, json.kongsumer.id)
           assert.equal("admin", json.group)
         end)
         describe("errors", function()
           it("returns bad request", function()
             local res = assert(admin_client:send {
               method  = "POST",
-              path    = "/consumers/bob/acls",
+              path    = "/kongsumers/bob/acls",
               body    = {},
               headers = {
                 ["Content-Type"] = "application/json"
@@ -83,11 +83,11 @@ for _, strategy in helpers.each_strategy() do
           db:truncate("acls")
         end)
         it("retrieves the first page", function()
-          bp.acls:insert_n(3, { consumer = { id = consumer.id } })
+          bp.acls:insert_n(3, { kongsumer = { id = kongsumer.id } })
 
           local res = assert(admin_client:send {
             method  = "GET",
-            path    = "/consumers/bob/acls"
+            path    = "/kongsumers/bob/acls"
           })
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
@@ -97,24 +97,24 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
 
-    describe("/consumers/:consumer/acls/:id", function()
+    describe("/kongsumers/:kongsumer/acls/:id", function()
       local acl, acl2
       before_each(function()
         db:truncate("acls")
         acl = bp.acls:insert {
           group    = "hello",
-          consumer = { id = consumer.id },
+          kongsumer = { id = kongsumer.id },
         }
         acl2 = bp.acls:insert {
           group    = "hello2",
-          consumer = { id = consumer.id },
+          kongsumer = { id = kongsumer.id },
         }
       end)
       describe("GET", function()
         it("retrieves by id", function()
           local res = assert(admin_client:send {
             method  = "GET",
-            path    = "/consumers/bob/acls/" .. acl.id
+            path    = "/kongsumers/bob/acls/" .. acl.id
           })
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
@@ -123,39 +123,39 @@ for _, strategy in helpers.each_strategy() do
         it("retrieves by group", function()
           local res = assert(admin_client:send {
             method  = "GET",
-            path    = "/consumers/bob/acls/" .. acl.group
+            path    = "/kongsumers/bob/acls/" .. acl.group
           })
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
           assert.equal(acl.id, json.id)
         end)
-        it("retrieves ACL by id only if the ACL belongs to the specified consumer", function()
-          bp.consumers:insert {
+        it("retrieves ACL by id only if the ACL belongs to the specified kongsumer", function()
+          bp.kongsumers:insert {
             username = "alice"
           }
 
           local res = assert(admin_client:send {
             method  = "GET",
-            path    = "/consumers/bob/acls/" .. acl.id
+            path    = "/kongsumers/bob/acls/" .. acl.id
           })
           assert.res_status(200, res)
 
           res = assert(admin_client:send {
             method = "GET",
-            path   = "/consumers/alice/acls/" .. acl.id
+            path   = "/kongsumers/alice/acls/" .. acl.id
           })
           assert.res_status(404, res)
         end)
-        it("retrieves ACL by group only if the ACL belongs to the specified consumer", function()
+        it("retrieves ACL by group only if the ACL belongs to the specified kongsumer", function()
           local res = assert(admin_client:send {
             method  = "GET",
-            path    = "/consumers/bob/acls/" .. acl.group
+            path    = "/kongsumers/bob/acls/" .. acl.group
           })
           assert.res_status(200, res)
 
           res = assert(admin_client:send {
             method = "GET",
-            path   = "/consumers/alice/acls/" .. acl.group
+            path   = "/kongsumers/alice/acls/" .. acl.group
           })
           assert.res_status(404, res)
         end)
@@ -165,7 +165,7 @@ for _, strategy in helpers.each_strategy() do
         it("updates an ACL's groupname", function()
           local res = assert(admin_client:send {
             method = "PUT",
-            path = "/consumers/bob/acls/pro",
+            path = "/kongsumers/bob/acls/pro",
             body = {},
             headers = {
               ["Content-Type"] = "application/json"
@@ -173,14 +173,14 @@ for _, strategy in helpers.each_strategy() do
           })
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
-          assert.equal(consumer.id, json.consumer.id)
+          assert.equal(kongsumer.id, json.kongsumer.id)
           assert.equal("pro", json.group)
         end)
         describe("errors", function()
           it("returns bad request", function()
             local res = assert(admin_client:send {
               method  = "PUT",
-              path    = "/consumers/bob/acls/f7852533-9160-4f5a-ae12-1ab99219ea95",
+              path    = "/kongsumers/bob/acls/f7852533-9160-4f5a-ae12-1ab99219ea95",
               body    = {
                 group = 123,
               },
@@ -201,7 +201,7 @@ for _, strategy in helpers.each_strategy() do
 
           local res = assert(admin_client:send {
             method  = "PATCH",
-            path    = "/consumers/bob/acls/" .. acl.id,
+            path    = "/kongsumers/bob/acls/" .. acl.id,
             body    = {
               group            = "updatedGroup"
             },
@@ -218,7 +218,7 @@ for _, strategy in helpers.each_strategy() do
 
           local res = assert(admin_client:send {
             method  = "PATCH",
-            path    = "/consumers/bob/acls/" .. acl.group,
+            path    = "/kongsumers/bob/acls/" .. acl.group,
             body    = {
               group            = "updatedGroup2"
             },
@@ -234,7 +234,7 @@ for _, strategy in helpers.each_strategy() do
           it("handles invalid input", function()
             local res = assert(admin_client:send {
               method  = "PATCH",
-              path    = "/consumers/bob/acls/" .. acl.id,
+              path    = "/kongsumers/bob/acls/" .. acl.id,
               body    = {
                 group            = 123,
               },
@@ -253,14 +253,14 @@ for _, strategy in helpers.each_strategy() do
         it("deletes an ACL group by id", function()
           local res = assert(admin_client:send {
             method  = "DELETE",
-            path    = "/consumers/bob/acls/" .. acl.id,
+            path    = "/kongsumers/bob/acls/" .. acl.id,
           })
           assert.res_status(204, res)
         end)
         it("deletes an ACL group by group", function()
           local res = assert(admin_client:send {
             method  = "DELETE",
-            path    = "/consumers/bob/acls/" .. acl2.group,
+            path    = "/kongsumers/bob/acls/" .. acl2.group,
           })
           assert.res_status(204, res)
         end)
@@ -268,14 +268,14 @@ for _, strategy in helpers.each_strategy() do
           it("returns 404 on missing group", function()
             local res = assert(admin_client:send {
               method  = "DELETE",
-              path    = "/consumers/bob/acls/blah"
+              path    = "/kongsumers/bob/acls/blah"
             })
             assert.res_status(404, res)
           end)
           it("returns 404 if not found", function()
             local res = assert(admin_client:send {
               method  = "DELETE",
-              path    = "/consumers/bob/acls/00000000-0000-0000-0000-000000000000"
+              path    = "/kongsumers/bob/acls/00000000-0000-0000-0000-000000000000"
             })
             assert.res_status(404, res)
           end)
@@ -284,7 +284,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("/acls", function()
-      local consumer2
+      local kongsumer2
 
       describe("GET", function()
         lazy_setup(function()
@@ -293,18 +293,18 @@ for _, strategy in helpers.each_strategy() do
           for i = 1, 3 do
             bp.acls:insert {
               group    = "group" .. i,
-              consumer = { id = consumer.id },
+              kongsumer = { id = kongsumer.id },
             }
           end
 
-          consumer2 = bp.consumers:insert {
+          kongsumer2 = bp.kongsumers:insert {
             username = "bob-the-buidler"
           }
 
           for i = 1, 3 do
             bp.acls:insert {
               group = "group" .. i,
-              consumer = { id = consumer2.id },
+              kongsumer = { id = kongsumer2.id },
             }
           end
         end)
@@ -361,7 +361,7 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
 
-    describe("/acls/:acl_id/consumer", function()
+    describe("/acls/:acl_id/kongsumer", function()
       describe("GET", function()
         local credential
 
@@ -369,17 +369,17 @@ for _, strategy in helpers.each_strategy() do
           db:truncate("acls")
           credential = db.acls:insert {
             group = "foo-group",
-            consumer = { id = consumer.id },
+            kongsumer = { id = kongsumer.id },
           }
         end)
-        it("retrieves a Consumer from an acl's id", function()
+        it("retrieves a kongsumer from an acl's id", function()
           local res = assert(admin_client:send {
             method = "GET",
-            path = "/acls/" .. credential.id .. "/consumer",
+            path = "/acls/" .. credential.id .. "/kongsumer",
           })
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
-          assert.same(consumer, json)
+          assert.same(kongsumer, json)
         end)
       end)
     end)

@@ -17,8 +17,8 @@ local RATELIMIT_REMAINING = "X-RateLimit-Remaining"
 local function get_identifier(conf)
   local identifier
 
-  if conf.limit_by == "consumer" then
-    identifier = (kong.client.get_consumer() or
+  if conf.limit_by == "kongsumer" then
+    identifier = (kong.client.get_kongsumer() or
                   kong.client.get_credential() or
                   EMPTY).id
 

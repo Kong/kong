@@ -3,32 +3,32 @@ local endpoints = require "kong.api.endpoints"
 
 local kong = kong
 local jwt_secrets_schema = kong.db.jwt_secrets.schema
-local consumers_schema   = kong.db.consumers.schema
+local kongsumers_schema   = kong.db.kongsumers.schema
 
 
 return {
-  ["/consumers/:consumers/jwt/"] = {
+  ["/kongsumers/:kongsumers/jwt/"] = {
     schema = jwt_secrets_schema,
     methods = {
-      GET = endpoints.get_collection_endpoint(jwt_secrets_schema, consumers_schema,
-                                              "consumer"),
-      POST = endpoints.post_collection_endpoint(jwt_secrets_schema, consumers_schema,
-                                                "consumer"),
+      GET = endpoints.get_collection_endpoint(jwt_secrets_schema, kongsumers_schema,
+                                              "kongsumer"),
+      POST = endpoints.post_collection_endpoint(jwt_secrets_schema, kongsumers_schema,
+                                                "kongsumer"),
     }
   },
-  ["/consumers/:consumers/jwt/:jwt_secrets"] = {
+  ["/kongsumers/:kongsumers/jwt/:jwt_secrets"] = {
     schema = jwt_secrets_schema,
     methods = {
       before = function(self, db)
-        local consumer, _, err_t = endpoints.select_entity(self, db, consumers_schema)
+        local kongsumer, _, err_t = endpoints.select_entity(self, db, kongsumers_schema)
         if err_t then
           return endpoints.handle_error(err_t)
         end
-        if not consumer then
+        if not kongsumer then
           return kong.response.exit(404, { message = "Not found" })
         end
 
-        self.consumer = consumer
+        self.kongsumer = kongsumer
 
         if self.req.method ~= "PUT" then
           local cred, _, err_t = endpoints.select_entity(self, db, jwt_secrets_schema)
@@ -36,7 +36,7 @@ return {
             return endpoints.handle_error(err_t)
           end
 
-          if not cred or cred.consumer.id ~= consumer.id then
+          if not cred or cred.kongsumer.id ~= kongsumer.id then
             return kong.response.exit(404, { message = "Not found" })
           end
 
@@ -46,7 +46,7 @@ return {
       end,
       GET  = endpoints.get_entity_endpoint(jwt_secrets_schema),
       PUT  = function(self, ...)
-        self.args.post.consumer = { id = self.consumer.id }
+        self.args.post.kongsumer = { id = self.kongsumer.id }
         return endpoints.put_entity_endpoint(jwt_secrets_schema)(self, ...)
       end,
       PATCH  = endpoints.patch_entity_endpoint(jwt_secrets_schema),
@@ -59,11 +59,11 @@ return {
       GET = endpoints.get_collection_endpoint(jwt_secrets_schema),
     }
   },
-  ["/jwts/:jwt_secrets/consumer"] = {
-    schema = consumers_schema,
+  ["/jwts/:jwt_secrets/kongsumer"] = {
+    schema = kongsumers_schema,
     methods = {
-      GET = endpoints.get_entity_endpoint(jwt_secrets_schema, consumers_schema,
-                                          "consumer"),
+      GET = endpoints.get_entity_endpoint(jwt_secrets_schema, kongsumers_schema,
+                                          "kongsumer"),
     }
   }
 }

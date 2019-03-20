@@ -5,7 +5,7 @@ local utils = require "kong.tools.utils"
 
 for _, strategy in helpers.each_strategy() do
   describe("Plugin: key-auth (API) [#" .. strategy .. "]", function()
-    local consumer
+    local kongsumer
     local admin_client
     local bp
     local db
@@ -17,7 +17,7 @@ for _, strategy in helpers.each_strategy() do
         "routes",
         "services",
         "plugins",
-        "consumers",
+        "kongsumers",
         "keyauth_credentials",
       })
 
@@ -29,7 +29,7 @@ for _, strategy in helpers.each_strategy() do
         hosts = { "keyauth2.test" },
       }
 
-      consumer = bp.consumers:insert {
+      kongsumer = bp.kongsumers:insert {
         username = "bob"
       }
 
@@ -48,7 +48,7 @@ for _, strategy in helpers.each_strategy() do
       helpers.stop_kong()
     end)
 
-    describe("/consumers/:consumer/key-auth", function()
+    describe("/kongsumers/:kongsumer/key-auth", function()
       describe("POST", function()
         after_each(function()
           db:truncate("keyauth_credentials")
@@ -56,7 +56,7 @@ for _, strategy in helpers.each_strategy() do
         it("creates a key-auth credential with key", function()
           local res = assert(admin_client:send {
             method  = "POST",
-            path    = "/consumers/bob/key-auth",
+            path    = "/kongsumers/bob/key-auth",
             body    = {
               key   = "1234"
             },
@@ -66,13 +66,13 @@ for _, strategy in helpers.each_strategy() do
           })
           local body = assert.res_status(201, res)
           local json = cjson.decode(body)
-          assert.equal(consumer.id, json.consumer.id)
+          assert.equal(kongsumer.id, json.kongsumer.id)
           assert.equal("1234", json.key)
         end)
         it("creates a key-auth auto-generating a unique key", function()
           local res = assert(admin_client:send {
             method  = "POST",
-            path    = "/consumers/bob/key-auth",
+            path    = "/kongsumers/bob/key-auth",
             body    = {},
             headers = {
               ["Content-Type"] = "application/json"
@@ -80,7 +80,7 @@ for _, strategy in helpers.each_strategy() do
           })
           local body = assert.res_status(201, res)
           local json = cjson.decode(body)
-          assert.equal(consumer.id, json.consumer.id)
+          assert.equal(kongsumer.id, json.kongsumer.id)
           assert.is_string(json.key)
 
           local first_key = json.key
@@ -88,7 +88,7 @@ for _, strategy in helpers.each_strategy() do
 
           local res = assert(admin_client:send {
             method  = "POST",
-            path    = "/consumers/bob/key-auth",
+            path    = "/kongsumers/bob/key-auth",
             body    = {},
             headers = {
               ["Content-Type"] = "application/json"
@@ -96,7 +96,7 @@ for _, strategy in helpers.each_strategy() do
           })
           local body = assert.res_status(201, res)
           local json = cjson.decode(body)
-          assert.equal(consumer.id, json.consumer.id)
+          assert.equal(kongsumer.id, json.kongsumer.id)
           assert.is_string(json.key)
 
           assert.not_equal(first_key, json.key)
@@ -107,7 +107,7 @@ for _, strategy in helpers.each_strategy() do
         lazy_setup(function()
           for i = 1, 3 do
             assert(bp.keyauth_credentials:insert {
-              consumer = { id = consumer.id }
+              kongsumer = { id = kongsumer.id }
             })
           end
         end)
@@ -117,7 +117,7 @@ for _, strategy in helpers.each_strategy() do
         it("retrieves the first page", function()
           local res = assert(admin_client:send {
             method  = "GET",
-            path    = "/consumers/bob/key-auth"
+            path    = "/kongsumers/bob/key-auth"
           })
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
@@ -127,19 +127,19 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
 
-    describe("/consumers/:consumer/key-auth/:id", function()
+    describe("/kongsumers/:kongsumer/key-auth/:id", function()
       local credential
       before_each(function()
         db:truncate("keyauth_credentials")
         credential = bp.keyauth_credentials:insert {
-          consumer = { id = consumer.id },
+          kongsumer = { id = kongsumer.id },
         }
       end)
       describe("GET", function()
         it("retrieves key-auth credential by id", function()
           local res = assert(admin_client:send {
             method  = "GET",
-            path    = "/consumers/bob/key-auth/" .. credential.id
+            path    = "/kongsumers/bob/key-auth/" .. credential.id
           })
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
@@ -148,26 +148,26 @@ for _, strategy in helpers.each_strategy() do
         it("retrieves key-auth credential by key", function()
           local res = assert(admin_client:send {
             method  = "GET",
-            path    = "/consumers/bob/key-auth/" .. credential.key
+            path    = "/kongsumers/bob/key-auth/" .. credential.key
           })
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
           assert.equal(credential.id, json.id)
         end)
-        it("retrieves credential by id only if the credential belongs to the specified consumer", function()
-          assert(bp.consumers:insert {
+        it("retrieves credential by id only if the credential belongs to the specified kongsumer", function()
+          assert(bp.kongsumers:insert {
             username = "alice"
           })
 
           local res = assert(admin_client:send {
             method  = "GET",
-            path    = "/consumers/bob/key-auth/" .. credential.id
+            path    = "/kongsumers/bob/key-auth/" .. credential.id
           })
           assert.res_status(200, res)
 
           res = assert(admin_client:send {
             method = "GET",
-            path   = "/consumers/alice/key-auth/" .. credential.id
+            path   = "/kongsumers/alice/key-auth/" .. credential.id
           })
           assert.res_status(404, res)
         end)
@@ -180,7 +180,7 @@ for _, strategy in helpers.each_strategy() do
         it("creates a key-auth credential with key", function()
           local res = assert(admin_client:send {
             method  = "PUT",
-            path    = "/consumers/bob/key-auth/1234",
+            path    = "/kongsumers/bob/key-auth/1234",
             body    = {},
             headers = {
               ["Content-Type"] = "application/json"
@@ -188,13 +188,13 @@ for _, strategy in helpers.each_strategy() do
           })
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
-          assert.equal(consumer.id, json.consumer.id)
+          assert.equal(kongsumer.id, json.kongsumer.id)
           assert.equal("1234", json.key)
         end)
         it("creates a key-auth credential auto-generating the key", function()
           local res = assert(admin_client:send {
             method  = "PUT",
-            path    = "/consumers/bob/key-auth/c16bbff7-5d0d-4a28-8127-1ee581898f11",
+            path    = "/kongsumers/bob/key-auth/c16bbff7-5d0d-4a28-8127-1ee581898f11",
             body    = {},
             headers = {
               ["Content-Type"] = "application/json"
@@ -202,7 +202,7 @@ for _, strategy in helpers.each_strategy() do
           })
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
-          assert.equal(consumer.id, json.consumer.id)
+          assert.equal(kongsumer.id, json.kongsumer.id)
           assert.is_string(json.key)
         end)
       end)
@@ -211,7 +211,7 @@ for _, strategy in helpers.each_strategy() do
         it("updates a credential by id", function()
           local res = assert(admin_client:send {
             method  = "PATCH",
-            path    = "/consumers/bob/key-auth/" .. credential.id,
+            path    = "/kongsumers/bob/key-auth/" .. credential.id,
             body    = { key = "4321" },
             headers = {
               ["Content-Type"] = "application/json"
@@ -224,7 +224,7 @@ for _, strategy in helpers.each_strategy() do
         it("updates a credential by key", function()
           local res = assert(admin_client:send {
             method  = "PATCH",
-            path    = "/consumers/bob/key-auth/" .. credential.key,
+            path    = "/kongsumers/bob/key-auth/" .. credential.key,
             body    = { key = "4321UPD" },
             headers = {
               ["Content-Type"] = "application/json"
@@ -238,7 +238,7 @@ for _, strategy in helpers.each_strategy() do
           it("handles invalid input", function()
             local res = assert(admin_client:send {
               method  = "PATCH",
-              path    = "/consumers/bob/key-auth/" .. credential.id,
+              path    = "/kongsumers/bob/key-auth/" .. credential.id,
               body    = { key = 123 },
               headers = {
                 ["Content-Type"] = "application/json"
@@ -255,7 +255,7 @@ for _, strategy in helpers.each_strategy() do
         it("deletes a credential", function()
           local res = assert(admin_client:send {
             method  = "DELETE",
-            path    = "/consumers/bob/key-auth/" .. credential.id,
+            path    = "/kongsumers/bob/key-auth/" .. credential.id,
           })
           assert.res_status(204, res)
         end)
@@ -263,14 +263,14 @@ for _, strategy in helpers.each_strategy() do
           it("returns 400 on invalid input", function()
             local res = assert(admin_client:send {
               method  = "DELETE",
-              path    = "/consumers/bob/key-auth/blah"
+              path    = "/kongsumers/bob/key-auth/blah"
             })
             assert.res_status(404, res)
           end)
           it("returns 404 if not found", function()
             local res = assert(admin_client:send {
               method  = "DELETE",
-              path    = "/consumers/bob/key-auth/00000000-0000-0000-0000-000000000000"
+              path    = "/kongsumers/bob/key-auth/00000000-0000-0000-0000-000000000000"
             })
             assert.res_status(404, res)
           end)
@@ -321,7 +321,7 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
     describe("/key-auths", function()
-      local consumer2
+      local kongsumer2
 
       describe("GET", function()
         lazy_setup(function()
@@ -329,17 +329,17 @@ for _, strategy in helpers.each_strategy() do
 
           for i = 1, 3 do
             bp.keyauth_credentials:insert {
-              consumer = { id = consumer.id },
+              kongsumer = { id = kongsumer.id },
             }
           end
 
-          consumer2 = bp.consumers:insert {
+          kongsumer2 = bp.kongsumers:insert {
             username = "bob-the-buidler",
           }
 
           for i = 1, 3 do
             bp.keyauth_credentials:insert {
-              consumer = { id = consumer2.id },
+              kongsumer = { id = kongsumer2.id },
             }
           end
         end)
@@ -396,46 +396,46 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
 
-    describe("/key-auths/:credential_key_or_id/consumer", function()
+    describe("/key-auths/:credential_key_or_id/kongsumer", function()
       describe("GET", function()
         local credential
 
         lazy_setup(function()
           db:truncate("keyauth_credentials")
           credential = bp.keyauth_credentials:insert {
-            consumer = { id = consumer.id },
+            kongsumer = { id = kongsumer.id },
           }
         end)
 
-        it("retrieve Consumer from a credential's id", function()
+        it("retrieve kongsumer from a credential's id", function()
           local res = assert(admin_client:send {
             method = "GET",
-            path = "/key-auths/" .. credential.id .. "/consumer"
+            path = "/key-auths/" .. credential.id .. "/kongsumer"
           })
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
-          assert.same(consumer, json)
+          assert.same(kongsumer, json)
         end)
-        it("retrieve a Consumer from a credential's key", function()
+        it("retrieve a kongsumer from a credential's key", function()
           local res = assert(admin_client:send {
             method = "GET",
-            path = "/key-auths/" .. credential.key .. "/consumer"
+            path = "/key-auths/" .. credential.key .. "/kongsumer"
           })
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
-          assert.same(consumer, json)
+          assert.same(kongsumer, json)
         end)
         it("returns 404 for a random non-existing id", function()
           local res = assert(admin_client:send {
             method = "GET",
-            path = "/key-auths/" .. utils.uuid()  .. "/consumer"
+            path = "/key-auths/" .. utils.uuid()  .. "/kongsumer"
           })
           assert.res_status(404, res)
         end)
         it("returns 404 for a random non-existing key", function()
           local res = assert(admin_client:send {
             method = "GET",
-            path = "/key-auths/" .. utils.random_string()  .. "/consumer"
+            path = "/key-auths/" .. utils.random_string()  .. "/kongsumer"
           })
           assert.res_status(404, res)
         end)

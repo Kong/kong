@@ -58,7 +58,7 @@ for _, strategy in helpers.each_strategy() do
           assert.same("unique constraint violation", err_t.name)
           assert.same([[UNIQUE violation detected on '{service=null,]] ..
                       [[name="key-auth",route={id="]] .. route.id ..
-                      [["},consumer=null}']], err_t.message)
+                      [["},kongsumer=null}']], err_t.message)
         end)
       end)
 
@@ -103,7 +103,7 @@ for _, strategy in helpers.each_strategy() do
           assert.same("unique constraint violation", err_t.name)
           assert.same([[UNIQUE violation detected on '{service=null,]] ..
                       [[name="key-auth",route={id="]] .. route.id ..
-                      [["},consumer=null}']], err_t.message)
+                      [["},kongsumer=null}']], err_t.message)
         end)
       end)
     end)

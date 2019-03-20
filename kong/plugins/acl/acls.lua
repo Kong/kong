@@ -5,8 +5,8 @@ local type = type
 
 
 local invalidate_cache = function(self, entity)
-  local consumer = entity.consumer
-  if type(consumer) ~= "table" then
+  local kongsumer = entity.kongsumer
+  if type(kongsumer) ~= "table" then
     return true
   end
 
@@ -15,7 +15,7 @@ local invalidate_cache = function(self, entity)
     return true
   end
 
-  local cache_key = self:cache_key(consumer.id)
+  local cache_key = self:cache_key(kongsumer.id)
   return singletons.cache:invalidate(cache_key)
 end
 

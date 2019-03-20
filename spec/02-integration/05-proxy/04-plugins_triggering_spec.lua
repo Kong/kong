@@ -22,7 +22,7 @@ for _, strategy in helpers.each_strategy() do
         "routes",
         "services",
         "plugins",
-        "consumers",
+        "kongsumers",
         "keyauth_credentials",
       }, {
         "error-handler-log",
@@ -33,25 +33,25 @@ for _, strategy in helpers.each_strategy() do
 
       db:truncate("ratelimiting_metrics")
 
-      local consumer1 = bp.consumers:insert {
-        username = "consumer1"
+      local kongsumer1 = bp.kongsumers:insert {
+        username = "kongsumer1"
       }
 
       bp.keyauth_credentials:insert {
         key      = "secret1",
-        consumer = { id = consumer1.id },
+        kongsumer = { id = kongsumer1.id },
       }
 
-      local consumer2 = bp.consumers:insert {
-        username = "consumer2"
+      local kongsumer2 = bp.kongsumers:insert {
+        username = "kongsumer2"
       }
 
       bp.keyauth_credentials:insert {
         key      = "secret2",
-        consumer = { id = consumer2.id },
+        kongsumer = { id = kongsumer2.id },
       }
 
-      local consumer3 = bp.consumers:insert {
+      local kongsumer3 = bp.kongsumers:insert {
         username = "anonymous"
       }
 
@@ -96,16 +96,16 @@ for _, strategy in helpers.each_strategy() do
         },
       }
 
-      -- Consumer Specific Configuration
+      -- kongsumer Specific Configuration
       bp.plugins:insert {
         name     = "rate-limiting",
-        consumer = { id = consumer2.id },
+        kongsumer = { id = kongsumer2.id },
         config   = {
           hour   = 3,
         },
       }
 
-      -- API and Consumer Configuration
+      -- API and kongsumer Configuration
       local service3 = bp.services:insert {
         name = "api2",
       }
@@ -119,7 +119,7 @@ for _, strategy in helpers.each_strategy() do
       bp.plugins:insert {
         name     = "rate-limiting",
         route    = { id = route2.id },
-        consumer = { id = consumer2.id },
+        kongsumer = { id = kongsumer2.id },
         config   = {
           hour   = 4,
         },
@@ -139,7 +139,7 @@ for _, strategy in helpers.each_strategy() do
       bp.plugins:insert {
         name        = "key-auth",
         config      = {
-          anonymous = consumer3.id,
+          anonymous = kongsumer3.id,
         },
         route       = { id = route3.id },
         service     = { id = service4.id },
@@ -149,7 +149,7 @@ for _, strategy in helpers.each_strategy() do
         name     = "rate-limiting",
         route    = { id = route3.id },
         service  = { id = service4.id },
-        consumer = { id = consumer3.id },
+        kongsumer = { id = kongsumer3.id },
         config   = {
           hour   = 5,
         }
@@ -197,7 +197,7 @@ for _, strategy in helpers.each_strategy() do
       assert.equal("2", res.headers["x-ratelimit-limit-hour"])
     end)
 
-    it("checks global consumer configuration", function()
+    it("checks global kongsumer configuration", function()
       local res = assert(proxy_client:send {
         method  = "GET",
         path    = "/status/200?apikey=secret2",
@@ -207,7 +207,7 @@ for _, strategy in helpers.each_strategy() do
       assert.equal("3", res.headers["x-ratelimit-limit-hour"])
     end)
 
-    it("checks consumer specific configuration", function()
+    it("checks kongsumer specific configuration", function()
       local res = assert(proxy_client:send {
         method  = "GET",
         path    = "/status/200?apikey=secret2",
@@ -217,7 +217,7 @@ for _, strategy in helpers.each_strategy() do
       assert.equal("4", res.headers["x-ratelimit-limit-hour"])
     end)
 
-    it("checks anonymous consumer specific configuration", function()
+    it("checks anonymous kongsumer specific configuration", function()
       local res = assert(proxy_client:send {
         method  = "GET",
         path    = "/status/200",
@@ -238,7 +238,7 @@ for _, strategy in helpers.each_strategy() do
         helpers.stop_kong()
         db:truncate("routes")
         db:truncate("services")
-        db:truncate("consumers")
+        db:truncate("kongsumers")
         db:truncate("plugins")
         db:truncate("keyauth_credentials")
 
@@ -444,7 +444,7 @@ for _, strategy in helpers.each_strategy() do
       --
       -- At the time of this test, the issue only arises when a request is
       -- authenticated via an auth plugin, and the runloop runs again, and
-      -- tries to evaluate is the `schema.no_consumer` flag is set.
+      -- tries to evaluate is the `schema.no_kongsumer` flag is set.
       -- Since the reports plugin has no `schema`, this indexing fails.
 
       lazy_setup(function()
@@ -456,7 +456,7 @@ for _, strategy in helpers.each_strategy() do
 
         db:truncate("routes")
         db:truncate("services")
-        db:truncate("consumers")
+        db:truncate("kongsumers")
         db:truncate("plugins")
         db:truncate("keyauth_credentials")
 
@@ -476,13 +476,13 @@ for _, strategy in helpers.each_strategy() do
           service = { id = service.id },
         }
 
-        local consumer = bp.consumers:insert {
+        local kongsumer = bp.kongsumers:insert {
           username = "bob",
         }
 
         bp.keyauth_credentials:insert {
           key      = "abcd",
-          consumer = { id = consumer.id },
+          kongsumer = { id = kongsumer.id },
         }
 
         assert(helpers.start_kong {
@@ -531,7 +531,7 @@ for _, strategy in helpers.each_strategy() do
       lazy_setup(function()
         db:truncate("routes")
         db:truncate("services")
-        db:truncate("consumers")
+        db:truncate("kongsumers")
         db:truncate("plugins")
         db:truncate("keyauth_credentials")
 

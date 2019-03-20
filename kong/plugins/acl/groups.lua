@@ -7,15 +7,15 @@ local EMPTY = tablex.readonly {}
 local kong = kong
 local mt_cache = { __mode = "k" }
 local setmetatable = setmetatable
-local consumer_groups_cache = setmetatable({}, mt_cache)
-local consumer_in_groups_cache = setmetatable({}, mt_cache)
+local kongsumer_groups_cache = setmetatable({}, mt_cache)
+local kongsumer_in_groups_cache = setmetatable({}, mt_cache)
 
 
-local function load_groups_into_memory(consumer_pk)
+local function load_groups_into_memory(kongsumer_pk)
   local groups = {}
   local len    = 0
 
-  for row, err in kong.db.acls:each_for_consumer(consumer_pk, 1000) do
+  for row, err in kong.db.acls:each_for_kongsumer(kongsumer_pk, 1000) do
     if err then
       return nil, err
     end
@@ -27,14 +27,14 @@ local function load_groups_into_memory(consumer_pk)
 end
 
 
---- Returns the database records with groups the consumer belongs to
--- @param conumer_id (string) the consumer for which to fetch the groups it belongs to
+--- Returns the database records with groups the kongsumer belongs to
+-- @param conumer_id (string) the kongsumer for which to fetch the groups it belongs to
 -- @return table with group records (empty table if none), or nil+error
-local function get_consumer_groups_raw(consumer_id)
-  local cache_key = kong.db.acls:cache_key(consumer_id)
+local function get_kongsumer_groups_raw(kongsumer_id)
+  local cache_key = kong.db.acls:cache_key(kongsumer_id)
   local raw_groups, err = kong.cache:get(cache_key, nil,
                                          load_groups_into_memory,
-                                         { id = consumer_id })
+                                         { id = kongsumer_id })
   if err then
     return nil, err
   end
@@ -45,7 +45,7 @@ local function get_consumer_groups_raw(consumer_id)
 end
 
 
---- Returns a table with all group names a consumer belongs to.
+--- Returns a table with all group names a kongsumer belongs to.
 -- The table will have an array part to iterate over, and a hash part
 -- where each group name is indexed by itself. Eg.
 -- {
@@ -55,18 +55,18 @@ end
 --   admins = "admins",
 -- }
 -- If there are no groups defined, it will return an empty table
--- @param conumer_id (string) the consumer for which to fetch the groups it belongs to
+-- @param conumer_id (string) the kongsumer for which to fetch the groups it belongs to
 -- @return table with groups (empty table if none) or nil+error
-local function get_consumer_groups(consumer_id)
-  local raw_groups, err = get_consumer_groups_raw(consumer_id)
+local function get_kongsumer_groups(kongsumer_id)
+  local raw_groups, err = get_kongsumer_groups_raw(kongsumer_id)
   if not raw_groups then
     return nil, err
   end
 
-  local groups = consumer_groups_cache[raw_groups]
+  local groups = kongsumer_groups_cache[raw_groups]
   if not groups then
     groups = {}
-    consumer_groups_cache[raw_groups] = groups
+    kongsumer_groups_cache[raw_groups] = groups
     for i = 1, #raw_groups do
       local group = raw_groups[i].group
       groups[i] = group
@@ -77,23 +77,23 @@ local function get_consumer_groups(consumer_id)
 end
 
 
---- checks whether a consumer-group-list is part of a given list of groups.
+--- checks whether a kongsumer-group-list is part of a given list of groups.
 -- @param groups_to_check (table) an array of group names. Note: since the
 -- results will be cached by this table, always use the same table for the
 -- same set of groups!
--- @param consumer_groups (table) list of consumer groups (result from
--- `get_consumer_groups`)
--- @return (boolean) whether the consumer is part of any of the groups.
-local function consumer_in_groups(groups_to_check, consumer_groups)
+-- @param kongsumer_groups (table) list of kongsumer groups (result from
+-- `get_kongsumer_groups`)
+-- @return (boolean) whether the kongsumer is part of any of the groups.
+local function kongsumer_in_groups(groups_to_check, kongsumer_groups)
   -- 1st level cache on "groups_to_check"
-  local result1 = consumer_in_groups_cache[groups_to_check]
+  local result1 = kongsumer_in_groups_cache[groups_to_check]
   if result1 == nil then
     result1 = setmetatable({}, mt_cache)
-    consumer_in_groups_cache[groups_to_check] = result1
+    kongsumer_in_groups_cache[groups_to_check] = result1
   end
 
-  -- 2nd level cache on "consumer_groups"
-  local result2 = result1[consumer_groups]
+  -- 2nd level cache on "kongsumer_groups"
+  local result2 = result1[kongsumer_groups]
   if result2 ~= nil then
     return result2
   end
@@ -101,46 +101,46 @@ local function consumer_in_groups(groups_to_check, consumer_groups)
   -- not found, so validate and populate 2nd level cache
   result2 = false
   for i = 1, #groups_to_check do
-    if consumer_groups[groups_to_check[i]] then
+    if kongsumer_groups[groups_to_check[i]] then
       result2 = true
       break
     end
   end
 
-  result1[consumer_groups] = result2
+  result1[kongsumer_groups] = result2
 
   return result2
 end
 
 
---- checks whether a consumer is part of the gieven list of groups
+--- checks whether a kongsumer is part of the gieven list of groups
 -- @param groups_to_check (table) an array of group names. Note: since the
 -- results will be cached by this table, always use the same table for the
 -- same set of groups!
--- @param consumer_id (string) id of consumer to verify
-local function consumer_id_in_groups(groups_to_check, consumer_id)
-  local consumer_groups, err = get_consumer_groups(consumer_id)
-  if not consumer_groups then
+-- @param kongsumer_id (string) id of kongsumer to verify
+local function kongsumer_id_in_groups(groups_to_check, kongsumer_id)
+  local kongsumer_groups, err = get_kongsumer_groups(kongsumer_id)
+  if not kongsumer_groups then
     return nil, err
   end
 
-  return consumer_in_groups(groups_to_check, consumer_groups)
+  return kongsumer_in_groups(groups_to_check, kongsumer_groups)
 end
 
 
---- Gets the currently identified consumer for the request.
--- Checks both consumer and if not found the credentials.
--- @return consumer_id (string), or alternatively `nil` if no consumer was
+--- Gets the currently identified kongsumer for the request.
+-- Checks both kongsumer and if not found the credentials.
+-- @return kongsumer_id (string), or alternatively `nil` if no kongsumer was
 -- authenticated.
-local function get_current_consumer_id()
-  return (kong.client.get_consumer() or EMPTY).id or
-         (kong.client.get_credential() or EMPTY).consumer_id
+local function get_current_kongsumer_id()
+  return (kong.client.get_kongsumer() or EMPTY).id or
+         (kong.client.get_credential() or EMPTY).kongsumer_id
 end
 
 
 return {
-  get_consumer_groups = get_consumer_groups,
-  consumer_in_groups = consumer_in_groups,
-  consumer_id_in_groups = consumer_id_in_groups,
-  get_current_consumer_id = get_current_consumer_id,
+  get_kongsumer_groups = get_kongsumer_groups,
+  kongsumer_in_groups = kongsumer_in_groups,
+  kongsumer_id_in_groups = kongsumer_id_in_groups,
+  get_current_kongsumer_id = get_current_kongsumer_id,
 }

@@ -59,19 +59,19 @@ local alg_verify = {
   HS512 = function(data, signature, key) return signature == alg_sign.HS512(data, key) end,
   RS256 = function(data, signature, key)
     local pkey_ok, pkey = pcall(openssl_pkey.new, key)
-    assert(pkey_ok, "Consumer Public Key is Invalid")
+    assert(pkey_ok, "kongsumer Public Key is Invalid")
     local digest = openssl_digest.new("sha256"):update(data)
     return pkey:verify(signature, digest)
   end,
   RS512 = function(data, signature, key)
     local pkey_ok, pkey = pcall(openssl_pkey.new, key)
-    assert(pkey_ok, "Consumer Public Key is Invalid")
+    assert(pkey_ok, "kongsumer Public Key is Invalid")
     local digest = openssl_digest.new("sha512"):update(data)
     return pkey:verify(signature, digest)
   end,
   ES256 = function(data, signature, key)
     local pkey_ok, pkey = pcall(openssl_pkey.new, key)
-    assert(pkey_ok, "Consumer Public Key is Invalid")
+    assert(pkey_ok, "kongsumer Public Key is Invalid")
     assert(#signature == 64, "Signature must be 64 bytes.")
     local asn = {}
     asn[1] = asn_sequence.resign_integer(sub(signature, 1, 32))

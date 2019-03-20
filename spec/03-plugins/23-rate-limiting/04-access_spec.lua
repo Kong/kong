@@ -83,27 +83,27 @@ for _, strategy in helpers.each_strategy() do
 
         bp, db = helpers.get_db_utils(strategy)
 
-        local consumer1 = bp.consumers:insert {
+        local kongsumer1 = bp.kongsumers:insert {
           custom_id = "provider_123",
         }
 
         bp.keyauth_credentials:insert {
           key      = "apikey122",
-          consumer = { id = consumer1.id },
+          kongsumer = { id = kongsumer1.id },
         }
 
-        local consumer2 = bp.consumers:insert {
+        local kongsumer2 = bp.kongsumers:insert {
           custom_id = "provider_124",
         }
 
         bp.keyauth_credentials:insert {
           key      = "apikey123",
-          consumer = { id = consumer2.id },
+          kongsumer = { id = kongsumer2.id },
         }
 
         bp.keyauth_credentials:insert {
           key      = "apikey333",
-          consumer = { id = consumer2.id },
+          kongsumer = { id = kongsumer2.id },
         }
 
         local route1 = bp.routes:insert {
@@ -166,7 +166,7 @@ for _, strategy in helpers.each_strategy() do
 
         bp.rate_limiting_plugins:insert({
           route = { id = route3.id },
-          consumer = { id = consumer1.id },
+          kongsumer = { id = kongsumer1.id },
           config      = {
             minute         = 8,
             fault_tolerant = false,
@@ -189,7 +189,7 @@ for _, strategy in helpers.each_strategy() do
 
         bp.rate_limiting_plugins:insert({
           route = { id = route4.id },
-          consumer = { id = consumer1.id },
+          kongsumer = { id = kongsumer1.id },
           config           = {
             minute         = 6,
             fault_tolerant = true,
@@ -355,13 +355,13 @@ for _, strategy in helpers.each_strategy() do
             local json = cjson.decode(body)
             assert.same({ message = "API rate limit exceeded" }, json)
 
-            -- Using a different key of the same consumer works
+            -- Using a different key of the same kongsumer works
             GET("/status/200?apikey=apikey333", {
               headers = { Host = "test3.com" },
             }, 200)
           end)
         end)
-        describe("Plugin customized for specific consumer and route", function()
+        describe("Plugin customized for specific kongsumer and route", function()
           it("blocks if exceeding limit", function()
             for i = 1, 8 do
               local res = GET("/status/200?apikey=apikey122", {
@@ -380,7 +380,7 @@ for _, strategy in helpers.each_strategy() do
             assert.same({ message = "API rate limit exceeded" }, json)
           end)
 
-          it("blocks if the only rate-limiting plugin existing is per consumer and not per API", function()
+          it("blocks if the only rate-limiting plugin existing is per kongsumer and not per API", function()
             for i = 1, 6 do
               local res = GET("/status/200?apikey=apikey122", {
                 headers = { Host = "test4.com" },
@@ -614,7 +614,7 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
 
-    describe(fmt("#flaky Plugin: rate-limiting (access - global for single consumer) with policy: %s [#%s]", policy, strategy), function()
+    describe(fmt("#flaky Plugin: rate-limiting (access - global for single kongsumer) with policy: %s [#%s]", policy, strategy), function()
       local bp
       local db
 
@@ -623,7 +623,7 @@ for _, strategy in helpers.each_strategy() do
         flush_redis()
         bp, db = helpers.get_db_utils(strategy)
 
-        local consumer = bp.consumers:insert {
+        local kongsumer = bp.kongsumers:insert {
           custom_id = "provider_125",
         }
 
@@ -631,12 +631,12 @@ for _, strategy in helpers.each_strategy() do
 
         bp.keyauth_credentials:insert {
           key      = "apikey125",
-          consumer = { id = consumer.id },
+          kongsumer = { id = kongsumer.id },
         }
 
-        -- just consumer, no no route or service
+        -- just kongsumer, no no route or service
         bp.rate_limiting_plugins:insert({
-          consumer = { id = consumer.id },
+          kongsumer = { id = kongsumer.id },
           config = {
             limit_by       = "credential",
             policy         = policy,
@@ -664,7 +664,7 @@ for _, strategy in helpers.each_strategy() do
         assert(db:truncate())
       end)
 
-      it("blocks when the consumer exceeds their quota, no matter what service/route used", function()
+      it("blocks when the kongsumer exceeds their quota, no matter what service/route used", function()
         for i = 1, 6 do
           local res = GET("/status/200?apikey=apikey125", {
             headers = { Host = fmt("test%d.com", i) },
@@ -693,7 +693,7 @@ for _, strategy in helpers.each_strategy() do
         flush_redis()
         bp, db = helpers.get_db_utils(strategy)
 
-        -- global plugin (not attached to route, service or consumer)
+        -- global plugin (not attached to route, service or kongsumer)
         bp.rate_limiting_plugins:insert({
           config = {
             policy         = policy,

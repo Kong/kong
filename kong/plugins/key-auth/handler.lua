@@ -30,11 +30,11 @@ local function load_credential(key)
 end
 
 
-local function load_consumer(consumer_id, anonymous)
-  local result, err = kong.db.consumers:select({ id = consumer_id })
+local function load_kongsumer(kongsumer_id, anonymous)
+  local result, err = kong.db.kongsumers:select({ id = kongsumer_id })
   if not result then
     if anonymous and not err then
-      err = 'anonymous consumer "' .. consumer_id .. '" not found'
+      err = 'anonymous kongsumer "' .. kongsumer_id .. '" not found'
     end
 
     return nil, err
@@ -44,29 +44,29 @@ local function load_consumer(consumer_id, anonymous)
 end
 
 
-local function set_consumer(consumer, credential)
+local function set_kongsumer(kongsumer, credential)
   local set_header = kong.service.request.set_header
   local clear_header = kong.service.request.clear_header
 
-  if consumer and consumer.id then
-    set_header(constants.HEADERS.CONSUMER_ID, consumer.id)
+  if kongsumer and kongsumer.id then
+    set_header(constants.HEADERS.kongsumer_ID, kongsumer.id)
   else
-    clear_header(constants.HEADERS.CONSUMER_ID)
+    clear_header(constants.HEADERS.kongsumer_ID)
   end
 
-  if consumer and consumer.custom_id then
-    set_header(constants.HEADERS.CONSUMER_CUSTOM_ID, consumer.custom_id)
+  if kongsumer and kongsumer.custom_id then
+    set_header(constants.HEADERS.kongsumer_CUSTOM_ID, kongsumer.custom_id)
   else
-    clear_header(constants.HEADERS.CONSUMER_CUSTOM_ID)
+    clear_header(constants.HEADERS.kongsumer_CUSTOM_ID)
   end
 
-  if consumer and consumer.username then
-    set_header(constants.HEADERS.CONSUMER_USERNAME, consumer.username)
+  if kongsumer and kongsumer.username then
+    set_header(constants.HEADERS.kongsumer_USERNAME, kongsumer.username)
   else
-    clear_header(constants.HEADERS.CONSUMER_USERNAME)
+    clear_header(constants.HEADERS.kongsumer_USERNAME)
   end
 
-  kong.client.authenticate(consumer, credential)
+  kong.client.authenticate(kongsumer, credential)
 
   if credential then
     if credential.username then
@@ -148,7 +148,7 @@ local function do_authentication(conf)
     return nil, { status = 401, message = "No API key found in request" }
   end
 
-  -- retrieve our consumer linked to this API key
+  -- retrieve our kongsumer linked to this API key
 
   local cache = kong.cache
 
@@ -169,17 +169,17 @@ local function do_authentication(conf)
   -- Success, this request is authenticated
   -----------------------------------------
 
-  -- retrieve the consumer linked to this API key, to set appropriate headers
-  local consumer_cache_key, consumer
-  consumer_cache_key = kong.db.consumers:cache_key(credential.consumer.id)
-  consumer, err      = cache:get(consumer_cache_key, nil, load_consumer,
-                                 credential.consumer.id)
+  -- retrieve the kongsumer linked to this API key, to set appropriate headers
+  local kongsumer_cache_key, kongsumer
+  kongsumer_cache_key = kong.db.kongsumers:cache_key(credential.kongsumer.id)
+  kongsumer, err      = cache:get(kongsumer_cache_key, nil, load_kongsumer,
+                                 credential.kongsumer.id)
   if err then
     kong.log.err(err)
     return nil, { status = 500, message = "An unexpected error occurred" }
   end
 
-  set_consumer(consumer, credential)
+  set_kongsumer(kongsumer, credential)
 
   return true
 end
@@ -203,15 +203,15 @@ function KeyAuthHandler:access(conf)
   if not ok then
     if conf.anonymous then
       -- get anonymous user
-      local consumer_cache_key = kong.db.consumers:cache_key(conf.anonymous)
-      local consumer, err = kong.cache:get(consumer_cache_key, nil,
-                                           load_consumer, conf.anonymous, true)
+      local kongsumer_cache_key = kong.db.kongsumers:cache_key(conf.anonymous)
+      local kongsumer, err = kong.cache:get(kongsumer_cache_key, nil,
+                                           load_kongsumer, conf.anonymous, true)
       if err then
         kong.log.err(err)
         return kong.response.exit(500, { message = "An unexpected error occurred" })
       end
 
-      set_consumer(consumer, nil)
+      set_kongsumer(kongsumer, nil)
 
     else
       return kong.response.exit(err.status, { message = err.message }, err.headers)

@@ -260,9 +260,9 @@ typedefs.no_service = Schema.define {
 }
 
 
-typedefs.no_consumer = Schema.define {
+typedefs.no_kongsumer = Schema.define {
   type = "foreign",
-  reference = "consumers",
+  reference = "kongsumers",
   eq = null,
 }
 

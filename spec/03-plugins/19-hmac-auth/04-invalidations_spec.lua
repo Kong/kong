@@ -6,7 +6,7 @@ for _, strategy in helpers.each_strategy() do
   describe("Plugin: hmac-auth (invalidations) [#" .. strategy .. "]", function()
     local proxy_client
     local admin_client
-    local consumer
+    local kongsumer
     local credential
     local db
 
@@ -16,7 +16,7 @@ for _, strategy in helpers.each_strategy() do
         "routes",
         "services",
         "plugins",
-        "consumers",
+        "kongsumers",
         "hmacauth_credentials",
       })
 
@@ -32,15 +32,15 @@ for _, strategy in helpers.each_strategy() do
         },
       }
 
-      consumer = bp.consumers:insert {
-        username  = "consumer1",
+      kongsumer = bp.kongsumers:insert {
+        username  = "kongsumer1",
         custom_id = "1234",
       }
 
       credential = bp.hmacauth_credentials:insert {
         username = "bob",
         secret   = "secret",
-        consumer = { id = consumer.id },
+        kongsumer = { id = kongsumer.id },
       }
 
       assert(helpers.start_kong({
@@ -101,7 +101,7 @@ for _, strategy in helpers.each_strategy() do
         -- Retrieve credential ID
         res = assert(admin_client:send {
           method = "GET",
-          path   = "/consumers/consumer1/hmac-auth/",
+          path   = "/kongsumers/kongsumer1/hmac-auth/",
           body   = {},
         })
         local body = assert.res_status(200, res)
@@ -111,7 +111,7 @@ for _, strategy in helpers.each_strategy() do
         -- Delete Hmac Auth credential (which triggers invalidation)
         res = assert(admin_client:send {
           method = "DELETE",
-          path   = "/consumers/consumer1/hmac-auth/" .. credential_id,
+          path   = "/kongsumers/kongsumer1/hmac-auth/" .. credential_id,
           body   = {},
         })
         assert.res_status(204, res)
@@ -142,11 +142,11 @@ for _, strategy in helpers.each_strategy() do
       it("should invalidate when Hmac Auth Credential entity is updated", function()
         local res = assert(admin_client:send {
           method  = "POST",
-          path    = "/consumers/consumer1/hmac-auth/",
+          path    = "/kongsumers/kongsumer1/hmac-auth/",
           body    = {
             username      = "bob",
             secret        = "secret",
-            consumer      = { id = consumer.id },
+            kongsumer      = { id = kongsumer.id },
           },
           headers = {
             ["Content-Type"] = "application/json",
@@ -186,7 +186,7 @@ for _, strategy in helpers.each_strategy() do
         -- Update Hmac Auth credential (which triggers invalidation)
         res = assert(admin_client:send {
           method  = "PATCH",
-          path    = "/consumers/consumer1/hmac-auth/" .. credential.id,
+          path    = "/kongsumers/kongsumer1/hmac-auth/" .. credential.id,
           body    = {
             username         = "hello123"
           },
@@ -221,8 +221,8 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(200, res)
       end)
     end)
-    describe("Consumer entity invalidation", function()
-      it("should invalidate when Consumer entity is deleted", function()
+    describe("kongsumer entity invalidation", function()
+      it("should invalidate when kongsumer entity is deleted", function()
         -- It should work
         local authorization, date = get_authorization("hello123")
         local res = assert(proxy_client:send {
@@ -246,10 +246,10 @@ for _, strategy in helpers.each_strategy() do
         })
         assert.res_status(200, res)
 
-        -- Delete Consumer (which triggers invalidation)
+        -- Delete kongsumer (which triggers invalidation)
         res = assert(admin_client:send {
           method = "DELETE",
-          path   = "/consumers/consumer1",
+          path   = "/kongsumers/kongsumer1",
           body   = {},
         })
         assert.res_status(204, res)

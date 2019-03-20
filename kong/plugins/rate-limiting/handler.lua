@@ -26,8 +26,8 @@ RateLimitingHandler.VERSION = "1.0.0"
 local function get_identifier(conf)
   local identifier
 
-  if conf.limit_by == "consumer" then
-    identifier = (kong.client.get_consumer() or
+  if conf.limit_by == "kongsumer" then
+    identifier = (kong.client.get_kongsumer() or
                   kong.client.get_credential() or
                   EMPTY).id
 
@@ -87,7 +87,7 @@ function RateLimitingHandler:access(conf)
 
   local current_timestamp = time() * 1000
 
-  -- Consumer is identified by ip address or authenticated_credential id
+  -- kongsumer is identified by ip address or authenticated_credential id
   local identifier = get_identifier(conf)
   local fault_tolerant = conf.fault_tolerant
 

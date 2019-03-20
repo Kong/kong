@@ -21,7 +21,7 @@ local setmetatable = setmetatable
 -- Notice that the order in which they are listed is important:
 -- schemas of dependencies need to be loaded first.
 local CORE_ENTITIES = {
-  "consumers",
+  "kongsumers",
   "services",
   "routes",
   "certificates",

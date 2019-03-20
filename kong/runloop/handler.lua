@@ -6,7 +6,7 @@
 -- through the `ngx.ctx` table.
 --
 -- In the `access_by_lua` phase, it is responsible for retrieving the route being proxied by
--- a consumer. Then it is responsible for loading the plugins to execute on this request.
+-- a kongsumer. Then it is responsible for loading the plugins to execute on this request.
 local ck          = require "resty.cookie"
 local meta        = require "kong.meta"
 local utils       = require "kong.tools.utils"

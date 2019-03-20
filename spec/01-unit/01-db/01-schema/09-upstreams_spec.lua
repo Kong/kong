@@ -128,7 +128,7 @@ describe("load upstreams", function()
   end)
 
   it("hash_on must be different from hash_fallback", function()
-    local ok, errs = validate({ hash_on = "consumer", hash_fallback = "consumer" })
+    local ok, errs = validate({ hash_on = "kongsumer", hash_fallback = "kongsumer" })
     assert.falsy(ok)
     assert.truthy(errs.hash_fallback)
     ok, errs = validate({ hash_on = "ip", hash_fallback = "ip" })

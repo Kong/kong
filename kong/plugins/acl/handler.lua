@@ -43,27 +43,27 @@ function ACLHandler:access(conf)
     config_cache[conf] = config
   end
 
-  -- get the consumer/credentials
-  local consumer_id = groups.get_current_consumer_id()
-  if not consumer_id then
-    kong.log.err("Cannot identify the consumer, add an authentication ",
+  -- get the kongsumer/credentials
+  local kongsumer_id = groups.get_current_kongsumer_id()
+  if not kongsumer_id then
+    kong.log.err("Cannot identify the kongsumer, add an authentication ",
                  "plugin to use the ACL plugin")
     return kong.response.exit(403, { message = "You cannot consume this service" })
   end
 
-  -- get the consumer groups, since we need those as cache-keys to make sure
+  -- get the kongsumer groups, since we need those as cache-keys to make sure
   -- we invalidate properly if they change
-  local consumer_groups, err = groups.get_consumer_groups(consumer_id)
-  if not consumer_groups then
+  local kongsumer_groups, err = groups.get_kongsumer_groups(kongsumer_id)
+  if not kongsumer_groups then
     kong.log.err(err)
     return kong.response.exit(500, { message = "An unexpected error occurred" })
   end
 
   -- 'to_be_blocked' is either 'true' if it's to be blocked, or the header
   -- value if it is to be passed
-  local to_be_blocked = config.cache[consumer_groups]
+  local to_be_blocked = config.cache[kongsumer_groups]
   if to_be_blocked == nil then
-    local in_group = groups.consumer_in_groups(config.groups, consumer_groups)
+    local in_group = groups.kongsumer_in_groups(config.groups, kongsumer_groups)
 
     if config.type == BLACK then
       to_be_blocked = in_group
@@ -75,11 +75,11 @@ function ACLHandler:access(conf)
       -- we're allowed, convert 'false' to the header value, if needed
       -- if not needed, set dummy value to save mem for potential long strings
       to_be_blocked = conf.hide_groups_header and ""
-                      or concat(consumer_groups, ", ")
+                      or concat(kongsumer_groups, ", ")
     end
 
     -- update cache
-    config.cache[consumer_groups] = to_be_blocked
+    config.cache[kongsumer_groups] = to_be_blocked
   end
 
   if to_be_blocked == true then -- NOTE: we only catch the boolean here!
@@ -87,7 +87,7 @@ function ACLHandler:access(conf)
   end
 
   if not conf.hide_groups_header and to_be_blocked then
-    kong.service.request.set_header(constants.HEADERS.CONSUMER_GROUPS,
+    kong.service.request.set_header(constants.HEADERS.kongsumer_GROUPS,
                                     to_be_blocked)
   end
 end

@@ -19,7 +19,7 @@ local MOCK_UPSTREAM_STREAM_SSL_PORT = 15558
 
 require("resty.core")
 
-local consumers_schema_def = require "kong.db.schema.entities.consumers"
+local kongsumers_schema_def = require "kong.db.schema.entities.kongsumers"
 local services_schema_def = require "kong.db.schema.entities.services"
 local plugins_schema_def = require "kong.db.schema.entities.plugins"
 local routes_schema_def = require "kong.db.schema.entities.routes"
@@ -1226,7 +1226,7 @@ end
 
 
 -- Prepopulate Schema's cache
-Schema.new(consumers_schema_def)
+Schema.new(kongsumers_schema_def)
 Schema.new(services_schema_def)
 Schema.new(routes_schema_def)
 

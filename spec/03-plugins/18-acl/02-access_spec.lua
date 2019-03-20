@@ -14,79 +14,79 @@ for _, strategy in helpers.each_strategy() do
         "routes",
         "services",
         "plugins",
-        "consumers",
+        "kongsumers",
         "acls",
         "keyauth_credentials",
       })
 
-      local consumer1 = bp.consumers:insert {
-        username = "consumer1"
+      local kongsumer1 = bp.kongsumers:insert {
+        username = "kongsumer1"
       }
 
       bp.keyauth_credentials:insert {
         key      = "apikey123",
-        consumer = { id = consumer1.id },
+        kongsumer = { id = kongsumer1.id },
       }
 
-      local consumer2 = bp.consumers:insert {
-        username = "consumer2"
+      local kongsumer2 = bp.kongsumers:insert {
+        username = "kongsumer2"
       }
 
       bp.keyauth_credentials:insert {
         key      = "apikey124",
-        consumer = { id = consumer2.id },
+        kongsumer = { id = kongsumer2.id },
       }
 
       bp.acls:insert {
         group    = "admin",
-        consumer = { id = consumer2.id },
+        kongsumer = { id = kongsumer2.id },
       }
 
-      local consumer3 = bp.consumers:insert {
-        username = "consumer3"
+      local kongsumer3 = bp.kongsumers:insert {
+        username = "kongsumer3"
       }
 
       bp.keyauth_credentials:insert {
         key      = "apikey125",
-        consumer = { id = consumer3.id },
+        kongsumer = { id = kongsumer3.id },
       }
 
       bp.acls:insert {
         group    = "pro",
-        consumer = { id = consumer3.id },
+        kongsumer = { id = kongsumer3.id },
       }
 
       bp.acls:insert {
         group       = "hello",
-        consumer = { id = consumer3.id },
+        kongsumer = { id = kongsumer3.id },
       }
 
-      local consumer4 = bp.consumers:insert {
-        username = "consumer4"
+      local kongsumer4 = bp.kongsumers:insert {
+        username = "kongsumer4"
       }
 
       bp.keyauth_credentials:insert {
         key      = "apikey126",
-        consumer = { id = consumer4.id },
+        kongsumer = { id = kongsumer4.id },
       }
 
       bp.acls:insert {
         group    = "free",
-        consumer = { id = consumer4.id },
+        kongsumer = { id = kongsumer4.id },
       }
 
       bp.acls:insert {
         group    = "hello",
-        consumer = { id = consumer4.id },
+        kongsumer = { id = kongsumer4.id },
       }
 
-      local anonymous = bp.consumers:insert {
+      local anonymous = bp.kongsumers:insert {
         username = "anonymous"
       }
 
       bp.acls:insert {
         group    = "anonymous",
-        consumer = { id = anonymous.id },
+        kongsumer = { id = anonymous.id },
       }
 
       local route1 = bp.routes:insert {
@@ -287,8 +287,8 @@ for _, strategy in helpers.each_strategy() do
     end)
 
 
-    describe("Mapping to Consumer", function()
-      it("should work with consumer with credentials", function()
+    describe("Mapping to kongsumer", function()
+      it("should work with kongsumer with credentials", function()
         local res = assert(proxy_client:send {
           method  = "GET",
           path    = "/request?apikey=apikey124",
@@ -298,10 +298,10 @@ for _, strategy in helpers.each_strategy() do
         })
 
         local body = cjson.decode(assert.res_status(200, res))
-        assert.equal("admin", body.headers["x-consumer-groups"])
+        assert.equal("admin", body.headers["x-kongsumer-groups"])
       end)
 
-      it("should work with consumer without credentials", function()
+      it("should work with kongsumer without credentials", function()
         local res = assert(proxy_client:send {
           method  = "GET",
           path    = "/request",
@@ -311,7 +311,7 @@ for _, strategy in helpers.each_strategy() do
         })
 
         local body = cjson.decode(assert.res_status(200, res))
-        assert.equal("anonymous", body.headers["x-consumer-groups"])
+        assert.equal("anonymous", body.headers["x-kongsumer-groups"])
       end)
     end)
 
@@ -351,10 +351,10 @@ for _, strategy in helpers.each_strategy() do
           }
         })
         local body = cjson.decode(assert.res_status(200, res))
-        assert.equal("admin", body.headers["x-consumer-groups"])
+        assert.equal("admin", body.headers["x-kongsumer-groups"])
       end)
 
-      it("should not send x-consumer-groups header when hide_groups_header flag true", function()
+      it("should not send x-kongsumer-groups header when hide_groups_header flag true", function()
         local res = assert(proxy_client:send {
           method  = "GET",
           path    = "/request?apikey=apikey124",
@@ -363,10 +363,10 @@ for _, strategy in helpers.each_strategy() do
           }
         })
         local body = cjson.decode(assert.res_status(200, res))
-        assert.equal(nil, body.headers["x-consumer-groups"])
+        assert.equal(nil, body.headers["x-kongsumer-groups"])
       end)
 
-      it("should send x-consumer-groups header when hide_groups_header flag false", function()
+      it("should send x-kongsumer-groups header when hide_groups_header flag false", function()
         local res = assert(proxy_client:send {
           method  = "GET",
           path    = "/request?apikey=apikey124",
@@ -375,7 +375,7 @@ for _, strategy in helpers.each_strategy() do
           }
         })
         local body = cjson.decode(assert.res_status(200, res))
-        assert.equal("admin", body.headers["x-consumer-groups"])
+        assert.equal("admin", body.headers["x-kongsumer-groups"])
       end)
 
       it("should work when not in blacklist", function()
@@ -413,7 +413,7 @@ for _, strategy in helpers.each_strategy() do
           }
         })
         local body = cjson.decode(assert.res_status(200, res))
-        assert.True(body.headers["x-consumer-groups"] == "pro, hello" or body.headers["x-consumer-groups"] == "hello, pro")
+        assert.True(body.headers["x-kongsumer-groups"] == "pro, hello" or body.headers["x-kongsumer-groups"] == "hello, pro")
       end)
 
       it("should fail when not in whitelist", function()
@@ -493,24 +493,24 @@ for _, strategy in helpers.each_strategy() do
 
     describe("Real-world usage", function()
       it("should not fail when multiple rules are set fast", function()
-        -- Create consumer
+        -- Create kongsumer
         local res = assert(admin_client:send {
           method  = "POST",
-          path    = "/consumers/",
+          path    = "/kongsumers/",
           headers = {
             ["Content-Type"] = "application/json"
           },
           body    = {
-            username = "acl_consumer"
+            username = "acl_kongsumer"
           }
         })
         local body = cjson.decode(assert.res_status(201, res))
-        local consumer = { id = body.id }
+        local kongsumer = { id = body.id }
 
         -- Create key
         local res = assert(admin_client:send {
           method  = "POST",
-          path    = "/consumers/acl_consumer/key-auth/",
+          path    = "/kongsumers/acl_kongsumer/key-auth/",
           headers = {
             ["Content-Type"] = "application/json"
           },
@@ -572,10 +572,10 @@ for _, strategy in helpers.each_strategy() do
           })
           assert.res_status(201, res)
 
-          -- Add a new group to the consumer
+          -- Add a new group to the kongsumer
           local res = assert(admin_client:send {
             method  = "POST",
-            path    = "/consumers/acl_consumer/acls/",
+            path    = "/kongsumers/acl_kongsumer/acls/",
             headers = {
               ["Content-Type"] = "application/json"
             },
@@ -586,7 +586,7 @@ for _, strategy in helpers.each_strategy() do
           assert.res_status(201, res)
 
           -- Wait for cache to be invalidated
-          local cache_key = db.acls:cache_key(consumer)
+          local cache_key = db.acls:cache_key(kongsumer)
 
           helpers.wait_until(function()
             local res = assert(admin_client:send {

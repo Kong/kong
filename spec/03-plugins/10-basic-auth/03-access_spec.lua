@@ -13,15 +13,15 @@ for _, strategy in helpers.each_strategy() do
         "routes",
         "services",
         "plugins",
-        "consumers",
+        "kongsumers",
         "basicauth_credentials",
       })
 
-      local consumer = bp.consumers:insert {
+      local kongsumer = bp.kongsumers:insert {
         username = "bob",
       }
 
-      local anonymous_user = bp.consumers:insert {
+      local anonymous_user = bp.kongsumers:insert {
         username = "no-body",
       }
 
@@ -57,19 +57,19 @@ for _, strategy in helpers.each_strategy() do
       bp.basicauth_credentials:insert {
         username = "bob",
         password = "kong",
-        consumer = { id = consumer.id },
+        kongsumer = { id = kongsumer.id },
       }
 
       bp.basicauth_credentials:insert {
         username = "user123",
         password = "password123",
-        consumer = { id = consumer.id },
+        kongsumer = { id = kongsumer.id },
       }
 
       bp.basicauth_credentials:insert {
         username = "user321",
         password = "password:123",
-        consumer = { id = consumer.id },
+        kongsumer = { id = kongsumer.id },
       }
 
       bp.plugins:insert {
@@ -84,7 +84,7 @@ for _, strategy in helpers.each_strategy() do
         name     = "basic-auth",
         route = { id = route4.id },
         config   = {
-          anonymous = utils.uuid(), -- a non-existing consumer id
+          anonymous = utils.uuid(), -- a non-existing kongsumer id
         },
       }
 
@@ -214,7 +214,7 @@ for _, strategy in helpers.each_strategy() do
           }
         })
         local body = cjson.decode(assert.res_status(200, res))
-        assert.equal('bob', body.headers["x-consumer-username"])
+        assert.equal('bob', body.headers["x-kongsumer-username"])
       end)
 
       it("authenticates with a password containing ':'", function()
@@ -227,7 +227,7 @@ for _, strategy in helpers.each_strategy() do
           }
         })
         local body = cjson.decode(assert.res_status(200, res))
-        assert.equal("bob", body.headers["x-consumer-username"])
+        assert.equal("bob", body.headers["x-kongsumer-username"])
       end)
 
       it("returns 403 for valid Base64 encoding", function()
@@ -258,9 +258,9 @@ for _, strategy in helpers.each_strategy() do
 
     end)
 
-    describe("Consumer headers", function()
+    describe("kongsumer headers", function()
 
-      it("sends Consumer headers to upstream", function()
+      it("sends kongsumer headers to upstream", function()
         local res = assert(proxy_client:send {
           method  = "GET",
           path    = "/request",
@@ -271,8 +271,8 @@ for _, strategy in helpers.each_strategy() do
         })
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
-        assert.is_string(json.headers["x-consumer-id"])
-        assert.equal("bob", json.headers["x-consumer-username"])
+        assert.is_string(json.headers["x-kongsumer-id"])
+        assert.equal("bob", json.headers["x-kongsumer-username"])
       end)
 
     end)
@@ -322,8 +322,8 @@ for _, strategy in helpers.each_strategy() do
           }
         })
         local body = cjson.decode(assert.res_status(200, res))
-        assert.equal('bob', body.headers["x-consumer-username"])
-        assert.is_nil(body.headers["x-anonymous-consumer"])
+        assert.equal('bob', body.headers["x-kongsumer-username"])
+        assert.is_nil(body.headers["x-anonymous-kongsumer"])
       end)
 
       it("works with wrong credentials and anonymous", function()
@@ -335,8 +335,8 @@ for _, strategy in helpers.each_strategy() do
           }
         })
         local body = cjson.decode(assert.res_status(200, res))
-        assert.equal('true', body.headers["x-anonymous-consumer"])
-        assert.equal('no-body', body.headers["x-consumer-username"])
+        assert.equal('true', body.headers["x-anonymous-kongsumer"])
+        assert.equal('no-body', body.headers["x-kongsumer-username"])
       end)
 
       it("errors when anonymous user doesn't exist", function()
@@ -365,19 +365,19 @@ for _, strategy in helpers.each_strategy() do
         "routes",
         "services",
         "plugins",
-        "consumers",
+        "kongsumers",
         "basicauth_credentials",
       })
 
-      anonymous = bp.consumers:insert {
+      anonymous = bp.kongsumers:insert {
         username = "Anonymous",
       }
 
-      user1 = bp.consumers:insert {
+      user1 = bp.kongsumers:insert {
         username = "Mickey",
       }
 
-      user2 = bp.consumers:insert {
+      user2 = bp.kongsumers:insert {
         username = "Aladdin",
       }
 
@@ -427,13 +427,13 @@ for _, strategy in helpers.each_strategy() do
 
       bp.keyauth_credentials:insert({
         key      = "Mouse",
-        consumer = { id = user1.id },
+        kongsumer = { id = user1.id },
       })
 
       bp.basicauth_credentials:insert {
         username = "Aladdin",
         password = "OpenSesame",
-        consumer = { id = user2.id },
+        kongsumer = { id = user2.id },
       }
 
       assert(helpers.start_kong({
@@ -465,8 +465,8 @@ for _, strategy in helpers.each_strategy() do
           }
         })
         assert.response(res).has.status(200)
-        assert.request(res).has.no.header("x-anonymous-consumer")
-        local id = assert.request(res).has.header("x-consumer-id")
+        assert.request(res).has.no.header("x-anonymous-kongsumer")
+        local id = assert.request(res).has.header("x-kongsumer-id")
         assert.not_equal(id, anonymous.id)
         assert(id == user1.id or id == user2.id)
       end)
@@ -521,8 +521,8 @@ for _, strategy in helpers.each_strategy() do
           }
         })
         assert.response(res).has.status(200)
-        assert.request(res).has.no.header("x-anonymous-consumer")
-        local id = assert.request(res).has.header("x-consumer-id")
+        assert.request(res).has.no.header("x-anonymous-kongsumer")
+        local id = assert.request(res).has.header("x-kongsumer-id")
         assert.not_equal(id, anonymous.id)
         assert(id == user1.id or id == user2.id)
       end)
@@ -537,8 +537,8 @@ for _, strategy in helpers.each_strategy() do
           }
         })
         assert.response(res).has.status(200)
-        assert.request(res).has.no.header("x-anonymous-consumer")
-        local id = assert.request(res).has.header("x-consumer-id")
+        assert.request(res).has.no.header("x-anonymous-kongsumer")
+        local id = assert.request(res).has.header("x-kongsumer-id")
         assert.not_equal(id, anonymous.id)
         assert.equal(user1.id, id)
       end)
@@ -553,8 +553,8 @@ for _, strategy in helpers.each_strategy() do
           }
         })
         assert.response(res).has.status(200)
-        assert.request(res).has.no.header("x-anonymous-consumer")
-        local id = assert.request(res).has.header("x-consumer-id")
+        assert.request(res).has.no.header("x-anonymous-kongsumer")
+        local id = assert.request(res).has.header("x-kongsumer-id")
         assert.not_equal(id, anonymous.id)
         assert.equal(user2.id, id)
       end)
@@ -568,8 +568,8 @@ for _, strategy in helpers.each_strategy() do
           }
         })
         assert.response(res).has.status(200)
-        assert.request(res).has.header("x-anonymous-consumer")
-        local id = assert.request(res).has.header("x-consumer-id")
+        assert.request(res).has.header("x-anonymous-kongsumer")
+        local id = assert.request(res).has.header("x-kongsumer-id")
         assert.equal(id, anonymous.id)
       end)
 

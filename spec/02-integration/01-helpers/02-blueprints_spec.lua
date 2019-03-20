@@ -116,8 +116,8 @@ for _, strategy in helpers.each_strategy() do
       assert.equal("string", type(s2.certificate.id))
     end)
 
-    it("inserts consumers", function()
-      local c = bp.consumers:insert()
+    it("inserts kongsumers", function()
+      local c = bp.kongsumers:insert()
       assert.equal("string", type(c.custom_id))
       assert.equal("string", type(c.username))
     end)
@@ -177,8 +177,8 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     it("inserts jwt secrets", function()
-      local c = bp.consumers:insert()
-      local s = bp.jwt_secrets:insert({ consumer = { id = c.id } })
+      local c = bp.kongsumers:insert()
+      local s = bp.jwt_secrets:insert({ kongsumer = { id = c.id } })
       assert.equals("secret", s.secret)
       assert.equals("HS256", s.algorithm)
       assert.is_string(s.key)
@@ -186,9 +186,9 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     it("inserts oauth2 credendials", function()
-      local co = bp.consumers:insert()
+      local co = bp.kongsumers:insert()
       local c = bp.oauth2_credentials:insert({
-        consumer  = { id = co.id },
+        kongsumer  = { id = co.id },
         redirect_uris = { "http://foo.com" },
       })
       assert.equals("oauth2 credential", c.name)
@@ -197,9 +197,9 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     it("inserts oauth2 authorization codes", function()
-      local co = bp.consumers:insert()
+      local co = bp.kongsumers:insert()
       local cr = bp.oauth2_credentials:insert({
-        consumer  = { id = co.id },
+        kongsumer  = { id = co.id },
         redirect_uris = { "http://foo.com" },
       })
       local c = bp.oauth2_authorization_codes:insert({ credential = { id = cr.id } })
@@ -209,9 +209,9 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     it("inserts oauth2 tokens", function()
-      local co = bp.consumers:insert()
+      local co = bp.kongsumers:insert()
       local cr = bp.oauth2_credentials:insert({
-        consumer = { id = co.id },
+        kongsumer = { id = co.id },
         redirect_uris = { "http://foo.com" },
       })
       local t = bp.oauth2_tokens:insert({ credential = { id = cr.id } })
@@ -233,8 +233,8 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     it("inserts hmac usernames", function()
-      local c = bp.consumers:insert()
-      local u = bp.hmacauth_credentials:insert({ consumer = { id = c.id } })
+      local c = bp.kongsumers:insert()
+      local u = bp.hmacauth_credentials:insert({ kongsumer = { id = c.id } })
       assert.is_string(u.username)
       assert.equals("secret", u.secret)
       assert.matches(UUID_PATTERN, u.id)

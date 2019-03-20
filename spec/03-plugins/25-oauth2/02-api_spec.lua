@@ -4,7 +4,7 @@ local helpers = require "spec.helpers"
 
 for _, strategy in helpers.each_strategy() do
   describe("Plugin: oauth (API) [#" .. strategy .. "]", function()
-    local consumer
+    local kongsumer
     local service
     local admin_client
     local bp, db
@@ -13,7 +13,7 @@ for _, strategy in helpers.each_strategy() do
       bp, db = helpers.get_db_utils(strategy, {
         "routes",
         "services",
-        "consumers",
+        "kongsumers",
         "plugins",
         "oauth2_tokens",
         "oauth2_authorization_codes",
@@ -36,11 +36,11 @@ for _, strategy in helpers.each_strategy() do
       helpers.clean_prefix()
     end)
 
-    describe("/consumers/:consumer/oauth2/", function()
+    describe("/kongsumers/:kongsumer/oauth2/", function()
       lazy_setup(function()
         service = bp.services:insert({ host = "oauth2_token.com" })
-        consumer = bp.consumers:insert({ username = "bob" })
-        bp.consumers:insert({ username = "sally" })
+        kongsumer = bp.kongsumers:insert({ username = "bob" })
+        bp.kongsumers:insert({ username = "sally" })
       end)
 
       after_each(function()
@@ -51,7 +51,7 @@ for _, strategy in helpers.each_strategy() do
         it("creates a oauth2 credential", function()
           local res = assert(admin_client:send {
             method  = "POST",
-            path    = "/consumers/bob/oauth2",
+            path    = "/kongsumers/bob/oauth2",
             body    = {
               name          = "Test APP",
               redirect_uris = { "http://google.com/" },
@@ -61,14 +61,14 @@ for _, strategy in helpers.each_strategy() do
             }
           })
           local body = cjson.decode(assert.res_status(201, res))
-          assert.equal(consumer.id, body.consumer.id)
+          assert.equal(kongsumer.id, body.kongsumer.id)
           assert.equal("Test APP", body.name)
           assert.same({ "http://google.com/" }, body.redirect_uris)
         end)
         it("creates a oauth2 credential with multiple redirect_uris", function()
           local res = assert(admin_client:send {
             method  = "POST",
-            path    = "/consumers/bob/oauth2",
+            path    = "/kongsumers/bob/oauth2",
             body    = {
               name          = "Test APP",
               redirect_uris = { "http://google.com/", "http://google.org/" },
@@ -78,14 +78,14 @@ for _, strategy in helpers.each_strategy() do
             }
           })
           local body = cjson.decode(assert.res_status(201, res))
-          assert.equal(consumer.id, body.consumer.id)
+          assert.equal(kongsumer.id, body.kongsumer.id)
           assert.equal("Test APP", body.name)
           assert.same({ "http://google.com/", "http://google.org/" }, body.redirect_uris)
         end)
         it("creates multiple oauth2 credentials with the same client_secret", function()
           local res = assert(admin_client:send {
             method  = "POST",
-            path    = "/consumers/bob/oauth2",
+            path    = "/kongsumers/bob/oauth2",
             body    = {
               name          = "Test APP",
               redirect_uris = { "http://google.com/" },
@@ -98,7 +98,7 @@ for _, strategy in helpers.each_strategy() do
           assert.res_status(201, res)
           res = assert(admin_client:send {
             method = "POST",
-            path   = "/consumers/sally/oauth2",
+            path   = "/kongsumers/sally/oauth2",
             body   = {
               name          = "Test APP",
               redirect_uris = { "http://google.com/" },
@@ -114,7 +114,7 @@ for _, strategy in helpers.each_strategy() do
           it("returns bad request", function()
             local res = assert(admin_client:send {
               method  = "POST",
-              path    = "/consumers/bob/oauth2",
+              path    = "/kongsumers/bob/oauth2",
               body    = {},
               headers = {
                 ["Content-Type"] = "application/json"
@@ -127,7 +127,7 @@ for _, strategy in helpers.each_strategy() do
           it("returns bad request with invalid redirect_uris", function()
             local res = assert(admin_client:send {
               method  = "POST",
-              path    = "/consumers/bob/oauth2",
+              path    = "/kongsumers/bob/oauth2",
               body    = {
                 name             = "Test APP",
                 redirect_uris    = { "not-valid" }
@@ -142,7 +142,7 @@ for _, strategy in helpers.each_strategy() do
 
             local res = assert(admin_client:send {
               method  = "POST",
-              path    = "/consumers/bob/oauth2",
+              path    = "/kongsumers/bob/oauth2",
               body    = {
                 name            = "Test APP",
                 redirect_uris   = { "http://test.com/#with-fragment" },
@@ -157,7 +157,7 @@ for _, strategy in helpers.each_strategy() do
 
             local res = assert(admin_client:send {
               method  = "POST",
-              path    = "/consumers/bob/oauth2",
+              path    = "/kongsumers/bob/oauth2",
               body    = {
                 name             = "Test APP",
                 redirect_uris    = {"http://valid.com", "not-valid"}
@@ -172,7 +172,7 @@ for _, strategy in helpers.each_strategy() do
 
             local res = assert(admin_client:send {
               method  = "POST",
-              path    = "/consumers/bob/oauth2",
+              path    = "/kongsumers/bob/oauth2",
               body    = {
                 name             = "Test APP",
                 redirect_uris    = {"http://valid.com", "http://test.com/#with-fragment"}
@@ -192,7 +192,7 @@ for _, strategy in helpers.each_strategy() do
         it("creates an oauth2 credential", function()
           local res = assert(admin_client:send {
             method  = "PUT",
-            path    = "/consumers/bob/oauth2/client_one",
+            path    = "/kongsumers/bob/oauth2/client_one",
             body = {
               name             = "Test APP",
               redirect_uris    = { "http://google.com/" },
@@ -202,7 +202,7 @@ for _, strategy in helpers.each_strategy() do
             }
           })
           local body = cjson.decode(assert.res_status(200, res))
-          assert.equal(consumer.id, body.consumer.id)
+          assert.equal(kongsumer.id, body.kongsumer.id)
           assert.equal("Test APP", body.name)
           assert.equal("client_one", body.client_id)
           assert.same({ "http://google.com/" }, body.redirect_uris)
@@ -211,7 +211,7 @@ for _, strategy in helpers.each_strategy() do
           it("returns bad request", function()
             local res = assert(admin_client:send {
               method  = "PUT",
-              path    = "/consumers/bob/oauth2/client_two",
+              path    = "/kongsumers/bob/oauth2/client_two",
               body    = {},
               headers = {
                 ["Content-Type"] = "application/json"
@@ -230,7 +230,7 @@ for _, strategy in helpers.each_strategy() do
             bp.oauth2_credentials:insert {
               name          = "app" .. i,
               redirect_uris = { helpers.mock_upstream_ssl_url },
-              consumer      = { id = consumer.id },
+              kongsumer      = { id = kongsumer.id },
             }
           end
         end)
@@ -240,7 +240,7 @@ for _, strategy in helpers.each_strategy() do
         it("retrieves the first page", function()
           local res = assert(admin_client:send {
             method  = "GET",
-            path    = "/consumers/bob/oauth2"
+            path    = "/kongsumers/bob/oauth2"
           })
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
@@ -250,15 +250,15 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
 
-    describe("/consumers/:consumer/oauth2/:id", function()
+    describe("/kongsumers/:kongsumer/oauth2/:id", function()
       local credential
 
       lazy_setup(function()
         assert(db:truncate("routes"))
         assert(db:truncate("services"))
-        assert(db:truncate("consumers"))
+        assert(db:truncate("kongsumers"))
         service = bp.services:insert({ host = "oauth2_token.com" })
-        consumer = bp.consumers:insert({ username = "bob" })
+        kongsumer = bp.kongsumers:insert({ username = "bob" })
       end)
 
       before_each(function()
@@ -267,14 +267,14 @@ for _, strategy in helpers.each_strategy() do
         credential = bp.oauth2_credentials:insert {
           name          = "test app",
           redirect_uris = { helpers.mock_upstream_ssl_url },
-          consumer      = { id = consumer.id },
+          kongsumer      = { id = kongsumer.id },
         }
       end)
       describe("GET", function()
         it("retrieves oauth2 credential by id", function()
           local res = assert(admin_client:send {
             method  = "GET",
-            path    = "/consumers/bob/oauth2/" .. credential.id
+            path    = "/kongsumers/bob/oauth2/" .. credential.id
           })
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
@@ -283,39 +283,39 @@ for _, strategy in helpers.each_strategy() do
         it("retrieves oauth2 credential by client id", function()
           local res = assert(admin_client:send {
             method  = "GET",
-            path    = "/consumers/bob/oauth2/" .. credential.client_id
+            path    = "/kongsumers/bob/oauth2/" .. credential.client_id
           })
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
           assert.equal(credential.id, json.id)
         end)
-        it("retrieves credential by id only if the credential belongs to the specified consumer", function()
-          bp.consumers:insert {
+        it("retrieves credential by id only if the credential belongs to the specified kongsumer", function()
+          bp.kongsumers:insert {
             username = "alice"
           }
 
           local res = assert(admin_client:send {
             method  = "GET",
-            path    = "/consumers/bob/oauth2/" .. credential.id
+            path    = "/kongsumers/bob/oauth2/" .. credential.id
           })
           assert.res_status(200, res)
 
           res = assert(admin_client:send {
             method = "GET",
-            path   = "/consumers/alice/oauth2/" .. credential.id
+            path   = "/kongsumers/alice/oauth2/" .. credential.id
           })
           assert.res_status(404, res)
         end)
-        it("retrieves credential by clientid only if the credential belongs to the specified consumer", function()
+        it("retrieves credential by clientid only if the credential belongs to the specified kongsumer", function()
           local res = assert(admin_client:send {
             method  = "GET",
-            path    = "/consumers/bob/oauth2/" .. credential.client_id
+            path    = "/kongsumers/bob/oauth2/" .. credential.client_id
           })
           assert.res_status(200, res)
 
           res = assert(admin_client:send {
             method = "GET",
-            path   = "/consumers/alice/oauth2/" .. credential.client_id
+            path   = "/kongsumers/alice/oauth2/" .. credential.client_id
           })
           assert.res_status(404, res)
         end)
@@ -327,7 +327,7 @@ for _, strategy in helpers.each_strategy() do
 
           local res = assert(admin_client:send {
             method  = "PATCH",
-            path    = "/consumers/bob/oauth2/" .. credential.id,
+            path    = "/kongsumers/bob/oauth2/" .. credential.id,
             body    = {
               name             = "4321"
             },
@@ -344,7 +344,7 @@ for _, strategy in helpers.each_strategy() do
 
           local res = assert(admin_client:send {
             method  = "PATCH",
-            path    = "/consumers/bob/oauth2/" .. credential.client_id,
+            path    = "/kongsumers/bob/oauth2/" .. credential.client_id,
             body    = {
               name             = "4321UDP"
             },
@@ -360,7 +360,7 @@ for _, strategy in helpers.each_strategy() do
           it("handles invalid input", function()
             local res = assert(admin_client:send {
               method  = "PATCH",
-              path    = "/consumers/bob/oauth2/" .. credential.id,
+              path    = "/kongsumers/bob/oauth2/" .. credential.id,
               body    = {
                 redirect_uris = { "not-valid" },
               },
@@ -379,7 +379,7 @@ for _, strategy in helpers.each_strategy() do
         it("deletes a credential", function()
           local res = assert(admin_client:send {
             method  = "DELETE",
-            path    = "/consumers/bob/oauth2/" .. credential.id,
+            path    = "/kongsumers/bob/oauth2/" .. credential.id,
           })
           assert.res_status(204, res)
         end)
@@ -387,14 +387,14 @@ for _, strategy in helpers.each_strategy() do
           it("returns 400 on invalid input", function()
             local res = assert(admin_client:send {
               method  = "DELETE",
-              path    = "/consumers/bob/oauth2/blah"
+              path    = "/kongsumers/bob/oauth2/blah"
             })
             assert.res_status(404, res)
           end)
           it("returns 404 if not found", function()
             local res = assert(admin_client:send {
               method  = "DELETE",
-              path    = "/consumers/bob/oauth2/00000000-0000-0000-0000-000000000000"
+              path    = "/kongsumers/bob/oauth2/00000000-0000-0000-0000-000000000000"
             })
             assert.res_status(404, res)
           end)
@@ -408,7 +408,7 @@ for _, strategy in helpers.each_strategy() do
         oauth2_credential = bp.oauth2_credentials:insert {
           name          = "Test APP",
           redirect_uris = { helpers.mock_upstream_ssl_url },
-          consumer      = { id = consumer.id },
+          kongsumer      = { id = kongsumer.id },
         }
       end)
       after_each(function()

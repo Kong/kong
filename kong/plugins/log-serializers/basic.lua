@@ -13,7 +13,7 @@ function _M.serialize(ngx)
   if ctx.authenticated_credential ~= nil then
     authenticated_entity = {
       id = ctx.authenticated_credential.id,
-      consumer_id = ctx.authenticated_credential.consumer_id
+      kongsumer_id = ctx.authenticated_credential.kongsumer_id
     }
   end
 
@@ -46,7 +46,7 @@ function _M.serialize(ngx)
     authenticated_entity = authenticated_entity,
     route = ctx.route,
     service = ctx.service,
-    consumer = ctx.authenticated_consumer,
+    kongsumer = ctx.authenticated_kongsumer,
     client_ip = var.remote_addr,
     started_at = req.start_time() * 1000
   }

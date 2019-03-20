@@ -4,7 +4,7 @@ local typedefs = require "kong.db.schema.typedefs"
 return {
   name = "basic-auth",
   fields = {
-    { consumer = typedefs.no_consumer },
+    { kongsumer = typedefs.no_kongsumer },
     { run_on = typedefs.run_on_first },
     { config = {
         type = "record",

@@ -1105,12 +1105,12 @@ describe("schema", function()
           subschema_key = "name",
           fields = {
             { name = { type = "string", required = true, } },
-            { consumer = { type = "string", } },
+            { kongsumer = { type = "string", } },
           }
         })
         Test:new_subschema("length_5", {
           fields = {
-            { consumer = {
+            { kongsumer = {
                 type = "string",
                 len_eq = 5,
             } }
@@ -1122,22 +1122,22 @@ describe("schema", function()
 
         local ok, errors = Test:validate({
           name = "length_5",
-          consumer = "aaa",
+          kongsumer = "aaa",
         })
         assert.falsy(ok)
         assert.same({
-          consumer = "length must be 5",
+          kongsumer = "length must be 5",
         }, errors)
 
         ok = Test:validate({
           name = "length_5",
-          consumer = "aaaaa",
+          kongsumer = "aaaaa",
         })
         assert.truthy(ok)
 
         ok = Test:validate({
           name = "no_restrictions",
-          consumer = "aaa",
+          kongsumer = "aaa",
         })
         assert.truthy(ok)
 
@@ -1149,12 +1149,12 @@ describe("schema", function()
           subschema_key = "name",
           fields = {
             { name = { type = "string", required = true, } },
-            { consumer = { type = "string", } },
+            { kongsumer = { type = "string", } },
           }
         })
         Test:new_subschema("length_5", {
           fields = {
-            { consumer = {
+            { kongsumer = {
                 type = "integer",
             } }
           }
@@ -1165,16 +1165,16 @@ describe("schema", function()
 
         local ok, errors = Test:validate({
           name = "length_5",
-          consumer = "aaaaa",
+          kongsumer = "aaaaa",
         })
         assert.falsy(ok)
         assert.same({
-          consumer = "error in schema definition: cannot change type in a specialized field",
+          kongsumer = "error in schema definition: cannot change type in a specialized field",
         }, errors)
 
         ok = Test:validate({
           name = "no_restrictions",
-          consumer = "aaa",
+          kongsumer = "aaa",
         })
         assert.truthy(ok)
 
@@ -1182,7 +1182,7 @@ describe("schema", function()
 
       it("a specialized field can force a value using 'eq'", function()
         assert(Schema.new({
-          name = "mock_consumers",
+          name = "mock_kongsumers",
           primary_key = { "id" },
           fields = {
             { id = { type = "string" }, },
@@ -1194,12 +1194,12 @@ describe("schema", function()
           subschema_key = "name",
           fields = {
             { name = { type = "string", required = true, } },
-            { consumer = { type = "foreign", reference = "mock_consumers" } },
+            { kongsumer = { type = "foreign", reference = "mock_kongsumers" } },
           }
         }))
-        Test:new_subschema("no_consumer", {
+        Test:new_subschema("no_kongsumer", {
           fields = {
-            { consumer = { type = "foreign", reference = "mock_consumers", eq = ngx.null } }
+            { kongsumer = { type = "foreign", reference = "mock_kongsumers", eq = ngx.null } }
           }
         })
         Test:new_subschema("no_restrictions", {
@@ -1207,23 +1207,23 @@ describe("schema", function()
         })
 
         local ok, errors = Test:validate({
-          name = "no_consumer",
-          consumer = { id = "hello" },
+          name = "no_kongsumer",
+          kongsumer = { id = "hello" },
         })
         assert.falsy(ok)
         assert.same({
-          consumer = "value must be null",
+          kongsumer = "value must be null",
         }, errors)
 
         ok = Test:validate({
-          name = "no_consumer",
-          consumer = ngx.null,
+          name = "no_kongsumer",
+          kongsumer = ngx.null,
         })
         assert.truthy(ok)
 
         ok = Test:validate({
           name = "no_restrictions",
-          consumer = { id = "hello" },
+          kongsumer = { id = "hello" },
         })
         assert.truthy(ok)
 

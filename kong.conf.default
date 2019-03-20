@@ -109,7 +109,7 @@
                          # which the proxy server should listen for
                          # HTTP/HTTPS traffic.
                          # The proxy server is the public entry point of Kong,
-                         # which proxies traffic from your consumers to your
+                         # which proxies traffic from your kongsumers to your
                          # backend services. This value accepts IPv4, IPv6, and
                          # hostnames.
                          #
@@ -400,7 +400,7 @@
 # DATASTORE
 #------------------------------------------------------------------------------
 
-# Kong will store all of its data (such as Routes, Services, Consumers, and Plugins) in
+# Kong will store all of its data (such as Routes, Services, kongsumers, and Plugins) in
 # either Cassandra or PostgreSQL, and all Kong nodes belonging to the same cluster
 # must connect themselves to the same database.
 #
@@ -522,7 +522,7 @@
 #------------------------------------------------------------------------------
 
 # In order to avoid unnecessary communication with the datastore, Kong caches
-# entities (such as APIs, Consumers, Credentials...) for a configurable period
+# entities (such as APIs, kongsumers, Credentials...) for a configurable period
 # of time. It also handles invalidations if such an entity is updated.
 #
 # This section allows for configuring the behavior of Kong regarding the

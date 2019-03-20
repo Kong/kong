@@ -194,8 +194,8 @@ local function convert_legacy_schema(name, old_schema)
   if old_schema.no_service then
     insert(new_schema.fields, { service = typedefs.no_service })
   end
-  if old_schema.no_consumer then
-    insert(new_schema.fields, { consumer = typedefs.no_consumer })
+  if old_schema.no_kongsumer then
+    insert(new_schema.fields, { kongsumer = typedefs.no_kongsumer })
   end
   return new_schema
 end
@@ -254,8 +254,8 @@ function Plugins:load_plugin_schemas(plugin_set)
       return nil, "error initializing schema for plugin: " .. err
     end
 
-    if schema.fields.consumer and schema.fields.consumer.eq == null then
-      plugin.no_consumer = true
+    if schema.fields.kongsumer and schema.fields.kongsumer.eq == null then
+      plugin.no_kongsumer = true
     end
     if schema.fields.route and schema.fields.route.eq == null then
       plugin.no_route = true

@@ -26,7 +26,7 @@ function Plugins:select_by_cache_key_migrating(key)
   for i, field in ipairs({
     "route_id",
     "service_id",
-    "consumer_id",
+    "kongsumer_id",
     "api_id",
   }) do
     local id = parts[i + 2]
@@ -65,7 +65,7 @@ function Plugins:select_by_cache_key_migrating(key)
           if row.name == parts[2] and
              row.route_id == parts[3] and
              row.service_id == parts[4] and
-             row.consumer_id == parts[5] and
+             row.kongsumer_id == parts[5] and
              row.api_id == parts[6] then
             row.cache_key = nil
             return self:deserialize_row(row)

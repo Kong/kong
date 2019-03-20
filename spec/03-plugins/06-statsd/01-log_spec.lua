@@ -16,18 +16,18 @@ for _, strategy in helpers.each_strategy() do
         "routes",
         "services",
         "plugins",
-        "consumers",
+        "kongsumers",
         "keyauth_credentials",
       })
 
-      local consumer = bp.consumers:insert {
+      local kongsumer = bp.kongsumers:insert {
         username  = "bob",
         custom_id = "robert",
       }
 
       bp.keyauth_credentials:insert {
         key      = "kong",
-        consumer = { id = consumer.id },
+        kongsumer = { id = kongsumer.id },
       }
 
       local routes = {}
@@ -165,7 +165,7 @@ for _, strategy in helpers.each_strategy() do
             {
               name                = "unique_users",
               stat_type           = "set",
-              consumer_identifier = "custom_id",
+              kongsumer_identifier = "custom_id",
             }
           },
         },
@@ -182,7 +182,7 @@ for _, strategy in helpers.each_strategy() do
             {
               name                = "status_count_per_user",
               stat_type           = "counter",
-              consumer_identifier = "custom_id",
+              kongsumer_identifier = "custom_id",
               sample_rate         = 1,
             }
           },
@@ -200,7 +200,7 @@ for _, strategy in helpers.each_strategy() do
             {
               name                = "request_per_user",
               stat_type           = "counter",
-              consumer_identifier = "username",
+              kongsumer_identifier = "username",
               sample_rate         = 1,
             }
           },

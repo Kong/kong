@@ -1,7 +1,7 @@
 local typedefs = require "kong.db.schema.typedefs"
 
 return {
-  name         = "consumers",
+  name         = "kongsumers",
   primary_key  = { "id" },
   endpoint_key = "username",
 

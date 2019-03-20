@@ -86,7 +86,7 @@ qq{
                 log           = true,
                 admin_api     = "forced false",
             }, {
-                method        = "get_consumer",
+                method        = "get_kongsumer",
                 args          = {},
                 init_worker   = "forced false",
                 certificate   = "pending",

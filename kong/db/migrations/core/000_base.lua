@@ -105,14 +105,14 @@ return {
       );
 
 
-      CREATE TABLE IF NOT EXISTS "consumers" (
+      CREATE TABLE IF NOT EXISTS "kongsumers" (
         "id"          UUID                         PRIMARY KEY,
         "created_at"  TIMESTAMP WITHOUT TIME ZONE  DEFAULT (CURRENT_TIMESTAMP(0) AT TIME ZONE 'UTC'),
         "username"    TEXT                         UNIQUE,
         "custom_id"   TEXT                         UNIQUE
       );
 
-      CREATE INDEX IF NOT EXISTS "username_idx" ON "consumers" (LOWER("username"));
+      CREATE INDEX IF NOT EXISTS "username_idx" ON "kongsumers" (LOWER("username"));
 
 
 
@@ -120,7 +120,7 @@ return {
         "id"           UUID                         UNIQUE,
         "created_at"   TIMESTAMP WITHOUT TIME ZONE  DEFAULT (CURRENT_TIMESTAMP(0) AT TIME ZONE 'UTC'),
         "name"         TEXT                         NOT NULL,
-        "consumer_id"  UUID                         REFERENCES "consumers" ("id") ON DELETE CASCADE,
+        "kongsumer_id"  UUID                         REFERENCES "kongsumers" ("id") ON DELETE CASCADE,
         "service_id"   UUID                         REFERENCES "services"  ("id") ON DELETE CASCADE,
         "route_id"     UUID                         REFERENCES "routes"    ("id") ON DELETE CASCADE,
         "api_id"       UUID                         REFERENCES "apis"      ("id") ON DELETE CASCADE,
@@ -131,7 +131,7 @@ return {
       );
 
       CREATE INDEX IF NOT EXISTS "plugins_name_idx"       ON "plugins" ("name");
-      CREATE INDEX IF NOT EXISTS "plugins_consumer_idx"   ON "plugins" ("consumer_id");
+      CREATE INDEX IF NOT EXISTS "plugins_kongsumer_idx"   ON "plugins" ("kongsumer_id");
       CREATE INDEX IF NOT EXISTS "plugins_service_id_idx" ON "plugins" ("service_id");
       CREATE INDEX IF NOT EXISTS "plugins_route_id_idx"   ON "plugins" ("route_id");
       CREATE INDEX IF NOT EXISTS "plugins_api_idx"        ON "plugins" ("api_id");
@@ -284,14 +284,14 @@ return {
 
 
 
-      CREATE TABLE IF NOT EXISTS consumers(
+      CREATE TABLE IF NOT EXISTS kongsumers(
         id uuid    PRIMARY KEY,
         created_at timestamp,
         username   text,
         custom_id  text
       );
-      CREATE INDEX IF NOT EXISTS consumers_username_idx ON consumers(username);
-      CREATE INDEX IF NOT EXISTS consumers_custom_id_idx ON consumers(custom_id);
+      CREATE INDEX IF NOT EXISTS kongsumers_username_idx ON kongsumers(username);
+      CREATE INDEX IF NOT EXISTS kongsumers_custom_id_idx ON kongsumers(custom_id);
 
 
 
@@ -300,7 +300,7 @@ return {
         name        text,
         api_id      uuid,
         config      text,
-        consumer_id uuid,
+        kongsumer_id uuid,
         created_at  timestamp,
         enabled     boolean,
         route_id    uuid,
@@ -311,7 +311,7 @@ return {
       CREATE INDEX IF NOT EXISTS plugins_api_id_idx ON plugins(api_id);
       CREATE INDEX IF NOT EXISTS plugins_route_id_idx ON plugins(route_id);
       CREATE INDEX IF NOT EXISTS plugins_service_id_idx ON plugins(service_id);
-      CREATE INDEX IF NOT EXISTS plugins_consumer_id_idx ON plugins(consumer_id);
+      CREATE INDEX IF NOT EXISTS plugins_kongsumer_id_idx ON plugins(kongsumer_id);
 
 
 

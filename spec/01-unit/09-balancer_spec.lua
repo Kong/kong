@@ -536,11 +536,11 @@ describe("Balancer", function()
       })
       assert.is_nil(hash)
     end)
-    it("consumer", function()
+    it("kongsumer", function()
       local value = uuid()
-      ngx.ctx.authenticated_consumer = { id = value }
+      ngx.ctx.authenticated_kongsumer = { id = value }
       local hash = balancer._create_hash({
-          hash_on = "consumer",
+          hash_on = "kongsumer",
       })
       assert.are.same(crc32(value), hash)
     end)
@@ -596,18 +596,18 @@ describe("Balancer", function()
     describe("fallback", function()
       it("none", function()
         local hash = balancer._create_hash({
-            hash_on = "consumer",
+            hash_on = "kongsumer",
             hash_fallback = "none",
         })
         assert.is_nil(hash)
       end)
-      it("consumer", function()
+      it("kongsumer", function()
         local value = uuid()
-        ngx.ctx.authenticated_consumer = { id = value }
+        ngx.ctx.authenticated_kongsumer = { id = value }
         local hash = balancer._create_hash({
             hash_on = "header",
             hash_on_header = "non-existing",
-            hash_fallback = "consumer",
+            hash_fallback = "kongsumer",
         })
         assert.are.same(crc32(value), hash)
       end)
@@ -615,7 +615,7 @@ describe("Balancer", function()
         local value = "1.2.3.4"
         ngx.var.remote_addr = value
         local hash = balancer._create_hash({
-            hash_on = "consumer",
+            hash_on = "kongsumer",
             hash_fallback = "ip",
         })
         assert.are.same(crc32(value), hash)
@@ -624,7 +624,7 @@ describe("Balancer", function()
         local value = "some header value"
         headers.HeaderName = value
         local hash = balancer._create_hash({
-            hash_on = "consumer",
+            hash_on = "kongsumer",
             hash_fallback = "header",
             hash_fallback_header = "HeaderName",
         })
@@ -634,7 +634,7 @@ describe("Balancer", function()
         local value = { "some header value", "another value" }
         headers.HeaderName = value
         local hash = balancer._create_hash({
-            hash_on = "consumer",
+            hash_on = "kongsumer",
             hash_fallback = "header",
             hash_fallback_header = "HeaderName",
         })
@@ -646,7 +646,7 @@ describe("Balancer", function()
           ngx.var.cookie_Foo = value
           ngx.ctx.balancer_data = {}
           local hash = balancer._create_hash({
-            hash_on = "consumer",
+            hash_on = "kongsumer",
             hash_fallback = "cookie",
             hash_on_cookie = "Foo",
           })
@@ -656,7 +656,7 @@ describe("Balancer", function()
         it("creates the cookie when not present in the request", function()
           ngx.ctx.balancer_data = {}
           balancer._create_hash({
-            hash_on = "consumer",
+            hash_on = "kongsumer",
             hash_fallback = "cookie",
             hash_on_cookie = "Foo",
             hash_on_cookie_path = "/",

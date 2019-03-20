@@ -4,7 +4,7 @@ for _, strategy in helpers.each_strategy() do
   describe("Plugin: ACL (invalidations) [#" .. strategy .. "]", function()
     local admin_client
     local proxy_client
-    local consumer
+    local kongsumer
     local acl
     local db
 
@@ -14,42 +14,42 @@ for _, strategy in helpers.each_strategy() do
         "routes",
         "services",
         "plugins",
-        "consumers",
+        "kongsumers",
         "acls",
         "keyauth_credentials",
       })
 
-      consumer = bp.consumers:insert {
-        username = "consumer1"
+      kongsumer = bp.kongsumers:insert {
+        username = "kongsumer1"
       }
 
       bp.keyauth_credentials:insert {
         key      = "apikey123",
-        consumer = { id = consumer.id },
+        kongsumer = { id = kongsumer.id },
       }
 
       acl = bp.acls:insert {
         group    = "admin",
-        consumer = { id = consumer.id },
+        kongsumer = { id = kongsumer.id },
       }
 
       bp.acls:insert {
         group    = "pro",
-        consumer = { id = consumer.id },
+        kongsumer = { id = kongsumer.id },
       }
 
-      local consumer2 = bp.consumers:insert {
-        username = "consumer2"
+      local kongsumer2 = bp.kongsumers:insert {
+        username = "kongsumer2"
       }
 
       bp.keyauth_credentials:insert {
         key      = "apikey124",
-        consumer = { id = consumer2.id },
+        kongsumer = { id = kongsumer2.id },
       }
 
       bp.acls:insert {
         group    = "admin",
-        consumer = { id = consumer2.id },
+        kongsumer = { id = kongsumer2.id },
       }
 
       local route1 = bp.routes:insert {
@@ -118,7 +118,7 @@ for _, strategy in helpers.each_strategy() do
 
         -- Check that the cache is populated
 
-        local cache_key = db.acls:cache_key(consumer.id)
+        local cache_key = db.acls:cache_key(kongsumer.id)
         local res = assert(admin_client:send {
           method  = "GET",
           path    = "/cache/" .. cache_key,
@@ -129,7 +129,7 @@ for _, strategy in helpers.each_strategy() do
         -- Delete ACL group (which triggers invalidation)
         local res = assert(admin_client:send {
           method  = "DELETE",
-          path    = "/consumers/consumer1/acls/" .. acl.id,
+          path    = "/kongsumers/kongsumer1/acls/" .. acl.id,
           headers = {}
         })
         assert.res_status(204, res)
@@ -177,7 +177,7 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(403, res)
 
         -- Check that the cache is populated
-        local cache_key = db.acls:cache_key(consumer.id)
+        local cache_key = db.acls:cache_key(kongsumer.id)
         local res = assert(admin_client:send {
           method  = "GET",
           path    = "/cache/" .. cache_key,
@@ -188,7 +188,7 @@ for _, strategy in helpers.each_strategy() do
         -- Update ACL group (which triggers invalidation)
         local res = assert(admin_client:send {
           method  = "PATCH",
-          path    = "/consumers/consumer1/acls/" .. acl.id,
+          path    = "/kongsumers/kongsumer1/acls/" .. acl.id,
           headers = {
             ["Content-Type"] = "application/json"
           },
@@ -231,8 +231,8 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
 
-    describe("Consumer entity invalidation", function()
-      it("should invalidate when Consumer entity is deleted", function()
+    describe("kongsumer entity invalidation", function()
+      it("should invalidate when kongsumer entity is deleted", function()
         -- It should work
         local res = assert(proxy_client:send {
           method  = "GET",
@@ -244,7 +244,7 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(200, res)
 
         -- Check that the cache is populated
-        local cache_key = db.acls:cache_key(consumer.id)
+        local cache_key = db.acls:cache_key(kongsumer.id)
         local res = assert(admin_client:send {
           method  = "GET",
           path    = "/cache/" .. cache_key,
@@ -252,10 +252,10 @@ for _, strategy in helpers.each_strategy() do
         })
         assert.res_status(200, res)
 
-        -- Delete Consumer (which triggers invalidation)
+        -- Delete kongsumer (which triggers invalidation)
         local res = assert(admin_client:send {
           method  = "DELETE",
-          path    = "/consumers/consumer1",
+          path    = "/kongsumers/kongsumer1",
           headers = {}
         })
         assert.res_status(204, res)
