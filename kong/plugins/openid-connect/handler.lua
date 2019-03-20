@@ -2,16 +2,16 @@ local BasePlugin      = require "kong.plugins.base_plugin"
 local cache           = require "kong.plugins.openid-connect.cache"
 local arguments       = require "kong.plugins.openid-connect.arguments"
 local log             = require "kong.plugins.openid-connect.log"
-local constants       = require "kong.constants"
-local singletons      = require "kong.singletons"
-local responses       = require "kong.tools.responses"
 local openid          = require "kong.openid-connect"
 local uri             = require "kong.openid-connect.uri"
 local set             = require "kong.openid-connect.set"
+local hash            = require "kong.openid-connect.hash"
 local codec           = require "kong.openid-connect.codec"
+local constants       = require "kong.constants"
 local session_factory = require "resty.session"
 
 
+local kong            = kong
 local ngx             = ngx
 local redirect        = ngx.redirect
 local var             = ngx.var
@@ -57,7 +57,7 @@ local function unexpected(trusted_client, ...)
     return redirect(trusted_client.unexpected_redirect_uri)
   end
 
-  return responses.send_HTTP_INTERNAL_SERVER_ERROR()
+  return kong.response.exit(500, { message = "An unexpected error occurred" })
 end
 
 
@@ -144,7 +144,7 @@ local function redirect_uri(args)
   local host
   local port
 
-  if singletons.ip.trusted(var.realip_remote_addr or var.remote_addr) then
+  if kong.ip.is_trusted(var.realip_remote_addr or var.remote_addr) then
     scheme = args.get_header("X-Forwarded-Proto")
     if not scheme then
       scheme = var.scheme
@@ -687,8 +687,10 @@ local function unauthorized(ctx, issuer, msg, err, session, anonymous, trusted_c
   end
 
   local parts = uri.parse(issuer)
-  header["WWW-Authenticate"] = 'Bearer realm="' .. parts.host .. '"'
-  return responses.send_HTTP_UNAUTHORIZED(msg)
+
+  return kong.response.exit(401, { message = msg }, {
+    ["WWW-Authenticate"] = 'Bearer realm="' .. parts.host .. '"'
+  })
 end
 
 
@@ -710,13 +712,19 @@ local function forbidden(ctx, issuer, msg, err, session, anonymous, trusted_clie
   end
 
   local parts = uri.parse(issuer)
-  header["WWW-Authenticate"] = 'Bearer realm="' .. parts.host .. '"'
-  return responses.send_HTTP_FORBIDDEN(msg)
+
+  return kong.response.exit(403, { message = msg }, {
+    ["WWW-Authenticate"] = 'Bearer realm="' .. parts.host .. '"'
+  })
 end
 
 
 local function success(response)
-  return responses.send_HTTP_OK(response)
+  if not response then
+    return kong.response.exit(204)
+  end
+
+  return kong.response.exit(200, response)
 end
 
 
@@ -976,6 +984,8 @@ function OICHandler:access(conf)
     secret = args.get_conf_arg("session_secret")
     if not secret then
       secret = issuer.secret
+    elseif #secret ~= 32 then
+      secret = sub(base64.encode(hash.S256(secret)), 1, 32)
     end
   end
 
@@ -1005,7 +1015,7 @@ function OICHandler:access(conf)
     local session_secure = args.get_conf_arg("session_cookie_secure")
     if session_secure == nil then
       local scheme
-      if singletons.ip.trusted(var.realip_remote_addr or var.remote_addr) then
+      if kong.ip.is_trusted(var.realip_remote_addr or var.remote_addr) then
         scheme = args.get_header("X-Forwarded-Proto")
       end
 
@@ -1163,7 +1173,7 @@ function OICHandler:access(conf)
           end
 
           log("logout response")
-          return responses.send_HTTP_OK()
+          return success()
         end
       end
     end
@@ -1425,7 +1435,7 @@ function OICHandler:access(conf)
           local authorization_secure = args.get_conf_arg("authorization_cookie_secure")
           if authorization_secure == nil then
             local scheme
-            if singletons.ip.trusted(var.realip_remote_addr or var.remote_addr) then
+            if kong.ip.is_trusted(var.realip_remote_addr or var.remote_addr) then
               scheme = args.get_header("X-Forwarded-Proto")
             end
 
@@ -2904,7 +2914,7 @@ function OICHandler:access(conf)
           end
 
           log("login with response login action")
-          return success(login_response)
+          return success(args.get_value(login_response))
 
         elseif login_action == "redirect" then
           if trusted_client.login_redirect_uri then

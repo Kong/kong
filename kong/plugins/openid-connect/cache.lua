@@ -7,7 +7,6 @@ local keys          = require "kong.openid-connect.keys"
 local hash          = require "kong.openid-connect.hash"
 local codec         = require "kong.openid-connect.codec"
 local utils         = require "kong.tools.utils"
-local singletons    = require "kong.singletons"
 local http          = require "resty.http"
 
 
@@ -23,6 +22,7 @@ local time          = ngx.time
 local sub           = string.sub
 local tonumber      = tonumber
 local tostring      = tostring
+local kong          = kong
 
 
 local function cache_get(key, opts, func, ...)
@@ -34,7 +34,7 @@ local function cache_get(key, opts, func, ...)
     options = opts
   end
 
-  return singletons.cache:get(key, options, func, ...)
+  return kong.cache:get(key, options, func, ...)
 end
 
 
@@ -44,12 +44,7 @@ local function cache_key(key, entity)
   end
 
   if entity then
-    if singletons.dao[entity] then
-      return singletons.dao[entity]:cache_key(key)
-
-    elseif singletons.db[entity] then
-      return singletons.db[entity]:cache_key(key)
-    end
+    return kong.db[entity]:cache_key(key)
   end
 
   return key
@@ -57,7 +52,7 @@ end
 
 
 local function cache_invalidate(key)
-  return singletons.cache:invalidate(key)
+  return kong.cache:invalidate(key)
 end
 
 
@@ -112,12 +107,17 @@ local function get_expiry_and_cache_ttl(token, ttl)
 end
 
 
+local function get_secret()
+  return sub(base64.encode(utils.get_rand_bytes(32)), 1, 32)
+end
+
+
 local function init_worker()
-  if not singletons.worker_events or not singletons.worker_events.register then
+  if not kong.worker_events or not kong.worker_events.register then
     return
   end
 
-  singletons.worker_events.register(function(data)
+  kong.worker_events.register(function(data)
     log("consumer updated, invalidating cache")
 
     local old_entity = data.old_entity
@@ -266,12 +266,10 @@ function issuers.rediscover(issuer, opts)
 
   issuer = normalize_issuer(issuer)
 
-  local discovery = singletons.dao.oic_issuers:find_all { issuer = issuer }
+  local discovery = kong.db.oic_issuers:select_by_issuer(issuer)
   local now = time()
 
-  if discovery and discovery[1] then
-    discovery = discovery[1]
-
+  if discovery then
     local cdec, err = json.decode(discovery.configuration)
     if not cdec then
       return nil, "decoding discovery document failed with " .. err
@@ -298,7 +296,7 @@ function issuers.rediscover(issuer, opts)
     }
 
     local err
-    data, err = singletons.dao.oic_issuers:update({ id = discovery.id }, data)
+    data, err = kong.db.oic_issuers:update({ id = discovery.id }, data)
     if not data then
       log.err("unable to update issuer ", issuer, " discovery documents in database (", err , ")")
       return nil
@@ -307,7 +305,7 @@ function issuers.rediscover(issuer, opts)
     return data.keys
 
   else
-    local secret = sub(base64.encode(utils.get_rand_bytes(32)), 1, 32)
+    local secret = get_secret()
     local err
     local data = {
       issuer        = issuer,
@@ -316,7 +314,7 @@ function issuers.rediscover(issuer, opts)
       secret        = secret,
     }
 
-    data, err = singletons.dao.oic_issuers:insert(data)
+    data, err = kong.db.oic_issuers:insert(data)
     if not data then
       log.err("unable to store issuer ", issuer, " discovery documents in database (", err , ")")
       return nil
@@ -332,13 +330,13 @@ local function issuers_init(issuer, opts)
 
   log.notice("loading configuration for ", issuer, " from database")
 
-  local results = singletons.dao.oic_issuers:find_all { issuer = issuer }
-  if results and results[1] then
+  local results = kong.db.oic_issuers:select_by_issuer(issuer)
+  if results then
     return {
       issuer        = issuer,
-      configuration = results[1].configuration,
-      keys          = results[1].keys,
-      secret        = results[1].secret,
+      configuration = results.configuration,
+      keys          = results.keys,
+      secret        = results.secret,
     }
   end
 
@@ -347,7 +345,7 @@ local function issuers_init(issuer, opts)
     return nil, "openid connect discovery failed"
   end
 
-  local secret = sub(base64.encode(utils.get_rand_bytes(32)), 1, 32)
+  local secret = get_secret()
 
   local data = {
     issuer        = issuer,
@@ -357,7 +355,7 @@ local function issuers_init(issuer, opts)
   }
 
   local err
-  data, err = singletons.dao.oic_issuers:insert(data)
+  data, err = kong.db.oic_issuers:insert(data)
   if not data then
     log.err("unable to store issuer ", issuer, " discovery documents in database (", err , ")")
     return nil
@@ -377,7 +375,6 @@ end
 
 local consumers = {}
 
-
 local function consumers_load(subject, key)
   if not subject or subject == "" then
     return nil, "unable to load consumer by a missing subject"
@@ -385,24 +382,24 @@ local function consumers_load(subject, key)
 
   local result, err
 
-  if key == "id" then
-    log.notice("loading consumer by id using ", subject)
-    result, err = singletons.dao.consumers:find { id = subject }
-    if type(result) == "table" then
-      return result
-    end
+  log.notice("loading consumer by ", key, " using ", subject)
 
+  if key == "id" then
+    result, err = kong.db.consumers:select { id = subject }
+  elseif key == "username" then
+    result, err = kong.db.consumers:select_by_username(subject)
+  elseif key == "custom_id" then
+    result, err = kong.db.consumers:select_by_custom_id(subject)
   else
-    log.notice("loading consumer by " .. key .. " using " .. subject)
-    result, err = singletons.dao.consumers:find_all { [key] = subject }
-    if type(result) == "table" and type(result[1]) == "table" then
-      return result[1]
-    end
+    return nil, "consumer cannot be loaded by " .. key
+  end
+
+  if type(result) == "table" then
+    return result
   end
 
   if err then
     log.notice("failed to load consumer (", err, ")")
-
   else
     log.notice("failed to load consumer")
   end
@@ -412,19 +409,19 @@ end
 
 
 function consumers.load(subject, anonymous, consumer_by, ttl)
-  local cons
+  local field_names
   if anonymous then
-    cons = { "id" }
+    field_names = { "id" }
 
   elseif consumer_by then
-    cons = consumer_by
+    field_names = consumer_by
 
   else
-    cons = { "custom_id" }
+    field_names = { "custom_id" }
   end
 
   local err
-  for _, field_name in ipairs(cons) do
+  for _, field_name in ipairs(field_names) do
     local key
 
     if field_name == "id" then
@@ -449,24 +446,20 @@ local kong_oauth2 = {}
 
 
 local function kong_oauth2_credential(credential_id)
-  return singletons.dao.oauth2_credentials:find { id = credential_id }
+  return kong.db.oauth2_credentials:select { id = credential_id }
 end
 
 
 local function kong_oauth2_consumer(consumer_id)
-  return singletons.dao.consumers:find { id = consumer_id }
+  return kong.db.consumers:select { id = consumer_id }
 end
 
 
 local function kong_oauth2_load(access_token, ttl)
   log.notice("loading kong oauth2 token from database")
-  local token, err = singletons.dao.oauth2_tokens:find_all { access_token = access_token }
+  local token, err = kong.db.oauth2_tokens:select_by_access_token(access_token)
   if not token then
     return nil, err or "unable to load kong oauth2 token from database"
-  end
-
-  if #token > 0 then
-    token = token[1]
   end
 
   local exp, cache_ttl = get_expiry_and_cache_ttl(token, ttl)
@@ -505,19 +498,14 @@ function kong_oauth2.load(ctx, access_token, ttl, use_cache)
     return nil, "kong oauth access token was not found"
   end
 
-  do
-    if token.service_id and ctx.service and ctx.service.id ~= token.service_id then
-      return nil, "kong access token is for different service"
-    elseif token.api_id and ctx.api and ctx.api.id ~= token.api_id then
-      return nil, "kong access token is for different api"
-    end
+  if token.service_id and ctx.service and ctx.service.id ~= token.service_id then
+    return nil, "kong access token is for different service"
   end
 
   local ttl_new
   local exp = res[1]
   if exp > 0 then
-    -- TODO: for 1.0 compatibility, remove "/ 1000"
-    local iat = token.created_at / 1000
+    local iat = token.created_at
     if (ttl.now - iat) > (exp - ttl.now) then
       return nil, "kong access token has expired"
     end
@@ -846,5 +834,5 @@ return {
   tokens         = tokens,
   token_exchange = token_exchange,
   userinfo       = userinfo,
-  version        = "0.2.8",
+  version        = "1.0.0",
 }

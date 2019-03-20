@@ -1,35 +1,43 @@
+local typedefs = require "kong.db.schema.typedefs"
+
+
 return {
-  oic_issuers            = {
-    primary_key          = {
-      "id",
-    },
-    cache_key            = {
-      "issuer",
-    },
-    table                = "oic_issuers",
-    fields               = {
-      id                 = {
-        type             = "id",
-        dao_insert_value = true,
+  oic_issuers = {
+    name               = "oic_issuers",
+    primary_key        = { "id" },
+    cache_key          = { "issuer" },
+    endpoint_key       = "issuer",
+    generate_admin_api = false,
+    fields = {
+      {
+        id = typedefs.uuid,
       },
-      issuer             = {
-        type             = "url",
-        unique           = true,
-        required         = true,
+      {
+        issuer = typedefs.url {
+          required = true,
+          unique   = true,
+        },
       },
-      configuration      = {
-        type             = "text",
+      {
+        configuration = {
+          required = true,
+          type     = "string",
+        },
       },
-      keys               = {
-        type             = "text",
+      {
+        keys = {
+          required = true,
+          type     = "string",
+        },
       },
-      secret             = {
-        type             = "text",
+      {
+        secret = {
+          required = true,
+          type     = "string",
+        },
       },
-      created_at         = {
-        type             = "timestamp",
-        immutable        = true,
-        dao_insert_value = true,
+      {
+        created_at = typedefs.auto_timestamp_s,
       },
     },
   },

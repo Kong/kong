@@ -1,5 +1,12 @@
+local endpoints = require "kong.api.endpoints"
 local json = require "cjson.safe"
-local crud = require "kong.api.crud_helpers"
+
+
+local escape_uri = ngx.escape_uri
+local ipairs = ipairs
+local kong = kong
+local null = ngx.null
+local fmt = string.format
 
 
 local function issuer(row)
@@ -31,22 +38,44 @@ local function issuer(row)
 end
 
 
+local issuers_schema = kong.db.oic_issuers.schema
+
+
 return {
   ["/openid-connect/issuers/"] = {
-    resource = "openid-connect",
+    schema = issuers_schema,
+    methods = {
+      GET = function(self, db)
+        local issuers, _, err_t, offset = endpoints.page_collection(self, db, issuers_schema)
+        if err_t then
+          return endpoints.handle_error(err_t)
+        end
 
-    GET = function(self, dao)
-      crud.paginated_set(self, dao.oic_issuers, issuer)
-    end,
+        for i, row in ipairs(issuers) do
+          issuers[i] = issuer(row)
+        end
+
+        local next_page
+        if offset then
+          next_page = fmt("/openid-connect/issuers?offset=%s", escape_uri(offset))
+        else
+          next_page = null
+        end
+
+        return kong.response.exit(200, {
+          data    = issuers,
+          offset  = offset,
+          next    = next_page,
+        })
+      end,
+    },
   },
-  ["/openid-connect/issuers/:id"] = {
-    resource = "openid-connect",
 
-    GET = function(self, dao)
-      crud.get({ id = self.params.id }, dao.oic_issuers, issuer)
-    end,
-    DELETE = function(self, dao)
-      crud.delete({ id = self.params.id }, dao.oic_issuers)
-    end
+  ["/openid-connect/issuers/:oic_issuers"] = {
+    schema = issuers_schema,
+    methods = {
+      GET = endpoints.get_entity_endpoint(issuers_schema),
+      DELETE = endpoints.delete_entity_endpoint(issuers_schema),
+    },
   },
 }

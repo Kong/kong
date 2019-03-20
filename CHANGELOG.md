@@ -1,3 +1,9 @@
+## v1.0.0
+
+- Change Kong 1.0 support
+- Remove all the sub-plugins (`openid-connect-verification`, `openid-connect-authentication`, and `openid-connect-protection`)
+- Update `lua-resty-http` to `>= 0.13`
+
 ## v0.2.8
 
 - Add `config.token_headers_names`
