@@ -28,10 +28,11 @@ build = {
   type = "builtin",
   modules = {
     -- TODO: add any additional files that the plugin consists of
+    ["kong.plugins."..pluginName..".aws-serializer"]       = "kong/plugins/"..pluginName.."/aws-serializer.lua",
     ["kong.plugins."..pluginName..".handler"]              = "kong/plugins/"..pluginName.."/handler.lua",
     ["kong.plugins."..pluginName..".iam-ec2-credentials"]  = "kong/plugins/"..pluginName.."/iam-ec2-credentials.lua",
     ["kong.plugins."..pluginName..".iam-ecs-credentials"]  = "kong/plugins/"..pluginName.."/iam-ecs-credentials.lua",
-    ["kong.plugins."..pluginName..".v4"]                   = "kong/plugins/"..pluginName.."/v4.lua",
     ["kong.plugins."..pluginName..".schema"]               = "kong/plugins/"..pluginName.."/schema.lua",
+    ["kong.plugins."..pluginName..".v4"]                   = "kong/plugins/"..pluginName.."/v4.lua",
   }
 }

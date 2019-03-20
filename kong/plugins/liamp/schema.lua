@@ -100,6 +100,10 @@ return {
       type = "boolean",
       default = false,
     },
+    awsgateway_compatible = {
+      type = "boolean",
+      default = false,
+    },
     proxy_scheme = {
       type = "string",
       enum = {

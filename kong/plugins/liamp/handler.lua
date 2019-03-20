@@ -14,6 +14,7 @@ local constants = require "kong.constants"
 local meta = require "kong.meta"
 
 local aws_v4 = require("kong.plugins." .. plugin_name .. ".v4")
+local aws_serializer = require("kong.plugins." .. plugin_name .. ".aws-serializer")
 
 local fetch_credentials
 do
@@ -191,9 +192,14 @@ function AWSLambdaHandler:access(conf)
 
   local upstream_body = new_tab(0, 6)
 
-  if conf.forward_request_body or conf.forward_request_headers
-    or conf.forward_request_method or conf.forward_request_uri
-  then
+  if conf.awsgateway_compatible then
+    upstream_body = aws_serializer()
+
+  elseif conf.forward_request_body or
+         conf.forward_request_headers or
+         conf.forward_request_method or
+         conf.forward_request_uri then
+
     -- new behavior to forward request method, body, uri and their args
     local var = ngx.var
 
