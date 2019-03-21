@@ -655,8 +655,57 @@ Schema.entity_checkers = {
     fn = function(entity, arg)
       return arg.fn(entity)
     end,
-  }
+  },
 
+  mutually_required = {
+    run_with_missing_fields = true,
+    fn = function(entity, field_names)
+      local nonempty = {}
+
+      for _, name in ipairs(field_names) do
+        if is_nonempty(get_field(entity, name)) then
+          insert(nonempty, name)
+        end
+      end
+
+      if #nonempty == 0 or #nonempty == #field_names then
+        return true
+      end
+
+      return nil, "All or none of " .. quoted_list(field_names) .. " must be set. "
+                  .. "Only " .. quoted_list(nonempty) .. " found"
+    end
+  },
+
+  mutually_exclusive_sets = {
+    run_with_missing_fields = true,
+    field_sources = { "set1", "set2" },
+    required_fields = { "set1", "set2" },
+
+    fn = function(entity, args)
+      local nonempty1 = {}
+      local nonempty2 = {}
+
+      for _, name in ipairs(args.set1) do
+        if is_nonempty(get_field(entity, name)) then
+          insert(nonempty1, name)
+        end
+      end
+
+      for _, name in ipairs(args.set2) do
+        if is_nonempty(get_field(entity, name)) then
+          insert(nonempty2, name)
+        end
+      end
+
+      if #nonempty1 > 0 and #nonempty2 > 0 then
+        return nil, quoted_list(nonempty1) .. " must not be set with " ..
+                    quoted_list(nonempty2)
+      end
+
+      return true
+    end
+  },
 }
 
 

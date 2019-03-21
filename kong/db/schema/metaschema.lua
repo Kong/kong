@@ -134,12 +134,22 @@ local entity_checkers = {
     },
   },
   { custom_entity_check = {
-    type = "record",
-    fields = {
-      { field_sources = { type = "array", elements = { type = "string" } } },
-      { fn = { type = "function" } },
+      type = "record",
+      fields = {
+        { field_sources = { type = "array", elements = { type = "string" } } },
+        { fn = { type = "function" } },
+      }
     }
-  } },
+  },
+  { mutually_required = { type = "array", elements = { type = "string" } } },
+  { mutually_exclusive_sets = {
+      type = "record",
+      fields = {
+        { set1 = {type = "array", elements = {type = "string"} } },
+        { set2 = {type = "array", elements = {type = "string"} } },
+      }
+    }
+  },
 }
 
 local entity_check_names = {}
