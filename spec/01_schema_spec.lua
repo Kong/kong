@@ -1,16 +1,16 @@
-local validate_entity = require("kong.dao.schemas_validation").validate_entity
+local v = require("spec.helpers").validate_plugin_config_schema
 local schema          = require "kong.plugins.route-by-header.schema"
 
 
 describe("route-by-header schema", function()
   it("should allow empty rules list", function()
-    local ok, err = validate_entity({}, schema)
-    assert.True(ok)
+    local ok, err = v({}, schema)
+    assert.is_truthy(ok)
     assert.is_nil(err)
   end)
   it("should allow rule list with one item", function()
-    local ok, err = validate_entity({
-      rules= {
+    local ok, err = v({
+      rules = {
         {
           condition = {
             header1 =  "value1",
@@ -20,12 +20,12 @@ describe("route-by-header schema", function()
         }
       }
     }, schema)
-    assert.True(ok)
+    assert.is_truthy(ok)
     assert.is_nil(err)
   end)
   it("should allow rule list with multiple items", function()
-    local ok, err = validate_entity({
-      rules= {
+    local ok, err = v({
+      rules = {
         {
           condition = {
             header1 =  "value1",
@@ -43,37 +43,36 @@ describe("route-by-header schema", function()
         }
       }
     }, schema)
-    assert.True(ok)
+    assert.truthy(ok)
     assert.is_nil(err)
   end)
   it("should not allow empty condition", function()
-    local ok, err = validate_entity({
+    local ok, err = v({
       rules= {
         {
-          condition = {
-          },
+          condition = {},
           upstream_name = "bar.domain.com",
         }
       }
     }, schema)
-    assert.False(ok)
+    assert.falsy(ok)
     assert.not_nil(err)
-    assert.is_equal(err.rules, "condition must have al-least one entry")
+    assert.is_equal(err.config.rules.condition, "length must be at least 1")
   end)
   it("should not allow rule without condition entry", function()
-    local ok, err = validate_entity({
+    local ok, err = v({
       rules= {
         {
           upstream_name = "bar.domain.com",
         }
       }
     }, schema)
-    assert.False(ok)
+    assert.falsy(ok)
     assert.not_nil(err)
-    assert.is_equal(err.rules, "each rules entry must have an 'upstream_name' and 'condition' defined")
+    assert.is_equal(err.config.rules.condition, "required field missing")
   end)
   it("should not allow empty host", function()
-    local ok, err = validate_entity({
+    local ok, err = v({
       rules= {
         {
           condition = {
@@ -85,12 +84,12 @@ describe("route-by-header schema", function()
         }
       }
     }, schema)
-    assert.False(ok)
+    assert.falsy(ok)
     assert.not_nil(err)
-    assert.is_equal(err.rules, "each rules entry must have an 'upstream_name' and 'condition' defined")
+    assert.is_equal(err.config.rules.upstream_name, "length must be at least 1")
   end)
   it("should not allow rule without upstream entry", function()
-    local ok, err = validate_entity({
+    local ok, err = v({
       rules= {
         {
           condition = {
@@ -101,8 +100,8 @@ describe("route-by-header schema", function()
         }
       }
     }, schema)
-    assert.False(ok)
+    assert.falsy(ok)
     assert.not_nil(err)
-    assert.is_equal(err.rules, "each rules entry must have an 'upstream_name' and 'condition' defined")
+    assert.is_equal(err.config.rules.upstream_name, "required field missing")
   end)
 end)

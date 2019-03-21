@@ -1,20 +1,4 @@
-local strip = require "kong.tools.utils".strip
-
-
-local function check_for_value(rules)
-  for _, rule in ipairs(rules) do
-    if not rule.upstream_name or strip(rule.upstream_name) == "" or not rule.condition then
-      return false, "each rules entry must have an 'upstream_name' and 'condition' defined"
-    end
-
-    if not next(rule.condition) then
-      return false, "condition must have al-least one entry"
-    end
-
-  end
-  return true
-end
-
+local typedefs = require "kong.db.schema.typedefs"
 
 --[[
   config schema
@@ -38,9 +22,30 @@ end
     ]
   },
 ]]
-return {
+
+local rule = {
+  type = "record",
   fields = {
-    rules = {type = "table", default = {}, func = check_for_value},
+    { upstream_name = { type = "string", required = true } },
+    { condition = {
+      type = "map",
+      required = true,
+      len_min = 1,
+      keys = { type = "string" },
+      values = { type = "string" },
+    }},
   }
 }
 
+return {
+  name = "route-by-header",
+  fields = {
+    { run_on = typedefs.run_on_first },
+    { config = {
+      type = "record",
+      fields = {
+        { rules = { type = "array", default = {}, elements = rule }},
+      }
+    }}
+  }
+}

@@ -83,7 +83,7 @@ for _, strategy in helpers.each_strategy() do
       })
 
       bp.targets:insert({
-        upstream_id = upstream_foo.id,
+        upstream = { id = upstream_foo.id },
         target = "127.0.0.1:30001"
       })
 
@@ -92,7 +92,7 @@ for _, strategy in helpers.each_strategy() do
       })
 
       bp.targets:insert({
-        upstream_id = upstream_bar.id,
+        upstream = { id = upstream_bar.id },
         target = "127.0.0.1:30002"
       })
 
@@ -108,7 +108,7 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name     = "route-by-header",
-        route_id = route1.id,
+        route    = { id = route1.id },
         config = {}
       }
 
@@ -126,7 +126,7 @@ for _, strategy in helpers.each_strategy() do
 
       plugin2 = bp.plugins:insert {
         name     = "route-by-header",
-        route_id = route2.id,
+        route    = { id = route2.id },
         config = {
           rules= {
             {
@@ -149,7 +149,7 @@ for _, strategy in helpers.each_strategy() do
       assert(helpers.start_kong({
         nginx_conf = "spec/fixtures/custom_nginx.template",
         database = strategy,
-        custom_plugins = "route-by-header",
+        plugins = "bundled,route-by-header",
       }))
 
       proxy_client = helpers.proxy_client()
