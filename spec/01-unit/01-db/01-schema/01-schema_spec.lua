@@ -1543,6 +1543,74 @@ describe("schema", function()
       }))
     end)
 
+    it("test mutually required checks", function()
+      local Test = Schema.new({
+        fields = {
+          { a1 = { type = "string" } },
+          { a2 = { type = "string" } },
+          { a3 = { type = "string" } },
+        },
+        entity_checks = {
+          { mutually_required = { "a2" } },
+          { mutually_required = { "a1", "a3" } },
+        }
+      })
+
+      local ok, err = Test:validate_update({
+        a1 = "foo"
+      })
+      assert.is_falsy(ok)
+      assert.match("all or none of these fields must be set: 'a1', 'a3'", err["@entity"][1])
+
+      ok, err = Test:validate_update({
+        a2 = "foo"
+      })
+      assert.truthy(ok)
+      assert.falsy(err)
+    end)
+
+    it("test mutually exclusive checks", function()
+      local Test = Schema.new({
+        fields = {
+          { a1 = { type = "string" } },
+          { a2 = { type = "string" } },
+          { a3 = { type = "string" } },
+          { a4 = { type = "string" } },
+          { a5 = { type = "string" } },
+        },
+        entity_checks = {
+          { mutually_exclusive_sets = { set1 = {"a3"}, set2 = {"a5"}} },
+          { mutually_exclusive_sets = { set1 = {"a1", "a2"}, set2 = {"a4", "a5"}} },
+        }
+      })
+
+      local ok, err = Test:validate_update({
+        a1 = "foo",
+        a5 = "bla",
+      })
+      assert.is_falsy(ok)
+      assert.same("these sets are mutually exclusive: ('a1'), ('a5')", err["@entity"][1])
+
+      ok, err = Test:validate_update({
+        a1 = "foo",
+      })
+      assert.truthy(ok)
+      assert.falsy(err)
+
+      ok, err = Test:validate_update({
+        a3 = "foo",
+        a5 = "bla",
+      })
+      assert.is_falsy(ok)
+      assert.same("these sets are mutually exclusive: ('a3'), ('a5')", err["@entity"][1])
+
+      ok, err = Test:validate_update({
+        a5 = "foo",
+      })
+      assert.truthy(ok)
+      assert.falsy(err)
+    end)
+
     it("test conditional checks on set elements", function()
       local Test = Schema.new({
         fields = {
