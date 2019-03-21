@@ -16,7 +16,7 @@ return {
     { created_at     = typedefs.auto_timestamp_s },
     { name           = {type = "string", required = true, unique = true}},
     { user_token     = {type = "string", required = true, unique = true}},
-    { user_token_ident = { type = "string", unique = true}},
+    { user_token_ident = { type = "string"}},
     { comment = { type = "string"} },
     { enabled = { type = "boolean", required = true, default = true}}
   },
