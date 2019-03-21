@@ -951,8 +951,9 @@ end
 -- it is called directly by the rbac_user DAO to validate uniqueness of tokens
 -- or when searching directly for legacy plaintext tokens
 local function retrieve_token_users(ident, k)
-  local token_users, err = workspaces.compat_find_all("rbac_users", {
-    [k] = ident, enabled = true})
+  local token_users, err = singletons.db.rbac_users:select_all({
+    [k] = ident, enabled = true },
+    { skip_rbac = true })
   if err then
     return nil, err
   end
