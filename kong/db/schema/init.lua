@@ -9,6 +9,7 @@ local re_match     = ngx.re.match
 local re_find      = ngx.re.find
 local concat       = table.concat
 local insert       = table.insert
+local format       = string.format
 local assert       = assert
 local ipairs       = ipairs
 local pairs        = pairs
@@ -91,6 +92,8 @@ local validation_errors = {
   CONDITIONAL_AT_LEAST_ONE_OF = "at least one of these fields must be non-empty: %s",
   ONLY_ONE_OF               = "only one of these fields must be non-empty: %s",
   DISTINCT                  = "values of these fields must be distinct: %s",
+  MUTUALLY_REQUIRED         = "all or none of these fields must be set: %s",
+  MUTUALLY_EXCLUSIVE_SETS   = "these sets are mutually exclusive: %s",
   -- schema error
   SCHEMA_NO_DEFINITION      = "expected a definition table",
   SCHEMA_NO_FIELDS          = "error in schema definition: no 'fields' table",
@@ -657,8 +660,56 @@ Schema.entity_checkers = {
     fn = function(entity, arg)
       return arg.fn(entity)
     end,
-  }
+  },
 
+  mutually_required = {
+    run_with_missing_fields = true,
+    fn = function(entity, field_names)
+      local nonempty = {}
+
+      for _, name in ipairs(field_names) do
+        if is_nonempty(get_field(entity, name)) then
+          insert(nonempty, name)
+        end
+      end
+
+      if #nonempty == 0 or #nonempty == #field_names then
+        return true
+      end
+
+      return nil, quoted_list(field_names)
+    end
+  },
+
+  mutually_exclusive_sets = {
+    run_with_missing_fields = true,
+    field_sources = { "set1", "set2" },
+    required_fields = { "set1", "set2" },
+
+    fn = function(entity, args)
+      local nonempty1 = {}
+      local nonempty2 = {}
+
+      for _, name in ipairs(args.set1) do
+        if is_nonempty(get_field(entity, name)) then
+          insert(nonempty1, name)
+        end
+      end
+
+      for _, name in ipairs(args.set2) do
+        if is_nonempty(get_field(entity, name)) then
+          insert(nonempty2, name)
+        end
+      end
+
+      if #nonempty1 > 0 and #nonempty2 > 0 then
+        return nil, format("(%s), (%s)", quoted_list(nonempty1),
+                                         quoted_list(nonempty2))
+      end
+
+      return true
+    end
+  },
 }
 
 
