@@ -6,6 +6,8 @@
 local public_utils = require "kong.tools.public"
 
 
+local EMPTY = {}
+
 local ngx_req_get_headers = ngx.req.get_headers
 local ngx_req_get_uri_args = ngx.req.get_uri_args
 local ngx_encode_base64    = ngx.encode_base64
@@ -32,7 +34,7 @@ return function(ctx)
 
   -- prepare url-captures/path-parameters
   local pathParameters = {}
-  for name, value in pairs(ctx.router_matches.uri_captures) do
+  for name, value in pairs(ctx.router_matches.uri_captures or EMPTY) do
     if type(name) == "string" then  -- skip numerical indices, only named
       pathParameters[name] = value
     end
@@ -65,9 +67,12 @@ return function(ctx)
     end
   end
 
+  -- prepare path
+  local path = var.request_uri:match("^([^%?]+)")  -- strip any query args
+
   local request = {
     resource                        = ctx.router_matches.uri,
-    path                            = ctx.router_matches.uri_captures[0],
+    path                            = path,
     httpMethod                      = var.request_method,
     headers                         = headers,
     multiValueHeaders               = multiValueHeaders,
@@ -78,7 +83,8 @@ return function(ctx)
     isBase64Encoded                 = isBase64Encoded,
   }
 
-print(require("pl.pretty").write(request))
+  --print(require("pl.pretty").write(request))
+  --print(require("pl.pretty").write(ctx.router_matches))
 
   return request
 end
