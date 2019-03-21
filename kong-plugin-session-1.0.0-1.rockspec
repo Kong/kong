@@ -1,12 +1,12 @@
 package = "kong-plugin-session"
 
-version = "0.1.1-1"
+version = "1.0.0-1"
 
 supported_platforms = {"linux", "macosx"}
 
 source = {
   url = "git://github.com/Kong/kong-plugin-session",
-  tag = "0.1.1-1"
+  tag = "1.0.0"
 }
 
 description = {
@@ -18,6 +18,7 @@ description = {
 dependencies = {
   "lua >= 5.1",
   "lua-resty-session == 2.23",
+  "kong >= 0.15",
 }
 
 build = {
