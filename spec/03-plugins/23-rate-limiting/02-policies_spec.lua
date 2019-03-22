@@ -2,15 +2,56 @@ local uuid      = require("kong.tools.utils").uuid
 local helpers   = require "spec.helpers"
 local timestamp = require "kong.tools.timestamp"
 
+local get_local_key = function(conf, identifier, period, period_date)
+  return string.format("ratelimit:%s:%s:%s:%s:%s",
+    conf.route_id, conf.service_id, identifier, period_date, period)
+end
 
-for _, strategy in helpers.each_strategy() do
-  describe("Plugin: rate-limiting (policies) [#" .. strategy .. "]", function()
-    describe("cluster", function()
+describe("Plugin: rate-limiting (policies)", function()
+
+  local policies
+
+  lazy_setup(function()
+    package.loaded["kong.plugins.rate-limiting.policies"] = nil
+    policies = require "kong.plugins.rate-limiting.policies"
+  end)
+
+  describe("local", function()
+    local identifier = uuid()
+    local conf       = { route_id = uuid(), service_id = uuid() }
+
+    local shm = ngx.shared.kong_rate_limiting_counters
+
+    before_each(function()
+      shm:flush_all()
+      shm:flush_expired()
+    end)
+
+    it("sets the TTL equal to one period when incrementing", function()
+      local current_timestamp = 1553263548
+      local periods = timestamp.get_timestamps(current_timestamp)
+
+      local limits = {
+        minute = 100,
+        hour   = 100
+      }
+
+      assert(policies["local"].increment(conf, limits, identifier, current_timestamp, 1))
+
+      local minute_key_ttl = shm:ttl(get_local_key(conf, identifier, "minute", periods.minute))
+      local hour_key_ttl = shm:ttl(get_local_key(conf, identifier, "hour", periods.hour))
+
+      assert(minute_key_ttl > 55 and minute_key_ttl <= 60)
+      assert(hour_key_ttl > 3555 and hour_key_ttl <= 3600)
+    end)
+  end)
+
+  for _, strategy in helpers.each_strategy() do
+    describe("cluster [#" .. strategy .. "]", function()
       local identifier = uuid()
       local conf       = { route = { id = uuid() }, service = { id = uuid() } }
 
       local db
-      local policies
 
       lazy_setup(function()
         local _
@@ -21,9 +62,6 @@ for _, strategy in helpers.each_strategy() do
         else
           _G.kong = { db = db }
         end
-
-        package.loaded["kong.plugins.rate-limiting.policies"] = nil
-        policies = require "kong.plugins.rate-limiting.policies"
       end)
 
       before_each(function()
@@ -90,5 +128,6 @@ for _, strategy in helpers.each_strategy() do
         end
       end)
     end)
-  end)
-end
+  end
+
+end)
