@@ -22,7 +22,9 @@ local _log_prefix = "[admins] "
 local _M = {}
 
 -- creates a user-friendly representation from a fully-instantiated admin
--- that we've fetched from the db
+-- that we've fetched from the db. For reference:
+-- https://www.gocomics.com/calvinandhobbes/1987/03/24
+-- https://www.gocomics.com/calvinandhobbes/1987/03/28
 local function transmogrify(admin)
   if not admin then return nil end
 
@@ -174,10 +176,9 @@ function _M.generate_token(admin, opts)
   local db = opts.db or singletons.db
   local remote_addr = opts.remote_addr or ngx.var.remote_addr
 
-  if
-    admin.status == enums.CONSUMERS.STATUS.INVITED
-    and opts.generate_register_url
-    and not opts.token_optional
+  if admin.status == enums.CONSUMERS.STATUS.INVITED and
+     opts.generate_register_url and not
+     opts.token_optional
   then
 
     local err

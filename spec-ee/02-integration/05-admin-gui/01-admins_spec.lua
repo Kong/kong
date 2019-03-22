@@ -125,9 +125,6 @@ for _, strategy in helpers.each_strategy() do
           res = assert.res_status(200, res)
           local json = cjson.decode(res)
 
-          -- TODO: should the response be nested under 'admin' like this,
-          -- or kept at top-level like other entities? The original sin here
-          -- was returning { consumer = foo, rbac_user = bar, message = hi }.
           assert.equal("dale", json.admin.username)
           assert.equal("cooper", json.admin.custom_id)
           assert.equal("twinpeaks@konghq.com", json.admin.email)

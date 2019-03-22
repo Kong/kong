@@ -15,8 +15,6 @@ for _, strategy in helpers.each_strategy() do
     lazy_setup(function()
       _, db, factory = helpers.get_db_utils(strategy)
 
-      helpers.bootstrap_database(db)
-
       admins = db.admins
 
       singletons.db = db
