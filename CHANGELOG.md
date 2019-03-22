@@ -1,4 +1,4 @@
-## 0.35.0
+## Unreleased
 
 - Added a support of status code ranges for `if_status` configuration parameter.
 Now you can provide status code ranges and single status codes together
