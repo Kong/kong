@@ -45,8 +45,7 @@ return {
           { upstream_port = typedefs.port },
           { upstream_uri = {
               type = "string",
-              len_min = 1,
-              required = false
+              len_min = 1
           }},
           { upstream_fallback = {
               type = "boolean",
