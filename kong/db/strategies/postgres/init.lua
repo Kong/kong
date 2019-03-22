@@ -1106,7 +1106,7 @@ function _M.new(connector, schema, errors)
         local name_escaped           = escape_identifier(connector, name)
         local name_expression        = escape_identifier(connector, name, foreign_field)
         local type_postgres          = field_type_to_postgres_type(foreign_field)
-        local is_used_in_primary_key = primary_key_fields[name] ~= nil
+        local is_used_in_primary_key = primary_key_fields[field_name] ~= nil
         local is_unique              = foreign_field.unique == true
         local is_endpoint_key        = schema.endpoint_key == field_name
 
