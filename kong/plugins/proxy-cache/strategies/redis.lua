@@ -6,7 +6,7 @@ local utils = require "kong.tools.utils"
 local type         = type
 local time         = ngx.time
 local tonumber     = tonumber
-local unpack       = table.unpack
+local unpack       = unpack
 local cjson_encode = cjson.encode
 local cjson_decode = cjson.decode
 
