@@ -357,6 +357,12 @@ function _M.new(dao, db)
     }
   end)
 
+  local rbac_roles_seq = new_sequence("rbac_role-%d")
+  res.rbac_roles = new_blueprint(db.rbac_roles, function()
+    return {
+      name = rbac_roles_seq:next(),
+    }
+  end)
   return res
 end
 

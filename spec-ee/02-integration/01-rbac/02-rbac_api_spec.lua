@@ -267,9 +267,12 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
 
         -- make sure rbacy_user has rbacy_role
         local rbacy_role = find_role(db, "rbacy")
-        local user_roles = db.rbac_user_roles:select({ user_id = rbacy_user.id, role_id = rbacy_role.id })
+        local user_roles = db.rbac_user_roles:select({
+          user = { id = rbacy_user.id },
+          role = { id = rbacy_role.id },
+        })
 
-        assert.same(rbacy_role.id, user_roles.role_id)
+        assert.same(rbacy_role.id, user_roles.role.id)
 
         -- now, create another user who will have rbacy role
         -- note that is to support legacy situation where default role
@@ -288,7 +291,10 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
         local body = assert.res_status(201, res)
         local yarbacy_user = cjson.decode(body)
 
-        assert(db.rbac_user_roles:insert({ user_id = yarbacy_user.id, role_id = rbacy_role.id }))
+        assert(db.rbac_user_roles:insert({
+          user = { id = yarbacy_user.id },
+          role = { id = rbacy_role.id },
+        }))
 
         -- delete the rbacy user
         res = assert(client:send {
@@ -299,8 +305,11 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
 
         -- and check the rbacy role is still here, as yarbacy
         -- still has the rbacy role and would hate to lose it
-        local user_role = db.rbac_user_roles:select({ user_id = yarbacy_user.id, role_id = rbacy_role.id })
-        assert.equal(rbacy_role.id, user_role.role_id)
+        local user_role = db.rbac_user_roles:select({
+          user = { id = yarbacy_user.id },
+          role = { id = rbacy_role.id },
+        })
+        assert.equal(rbacy_role.id, user_role.role.id)
 
         -- clean up user and role
         -- note we never get here if an assertion above fails
@@ -2029,7 +2038,7 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
 
-        assert.is_true(utils.is_valid_uuid(json.role_id))
+        assert.is_true(utils.is_valid_uuid(json.role.id))
         assert.is_true(utils.is_valid_uuid(json.entity_id))
         assert.same("foo", json.comment)
         assert.same({ "read" }, json.actions)
@@ -2867,7 +2876,7 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
 
-        assert.is_true(utils.is_valid_uuid(json.role_id))
+        assert.is_true(utils.is_valid_uuid(json.role.id))
         assert.same("foo", json.comment)
         table.sort(json.actions)
         assert.same({ "create", "delete", "read", "update" }, json.actions)
@@ -2916,7 +2925,7 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
 
-        assert.is_true(utils.is_valid_uuid(json.role_id))
+        assert.is_true(utils.is_valid_uuid(json.role.id))
         assert.same("fooo", json.comment)
         table.sort(json.actions)
         assert.same({ "read" }, json.actions)
@@ -2965,7 +2974,7 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
 
-        assert.is_true(utils.is_valid_uuid(json.role_id))
+        assert.is_true(utils.is_valid_uuid(json.role.id))
         assert.same("foooo", json.comment)
         table.sort(json.actions)
         assert.same({ "read" }, json.actions)

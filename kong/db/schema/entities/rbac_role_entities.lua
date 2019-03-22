@@ -3,9 +3,9 @@ local typedefs = require "kong.db.schema.typedefs"
 return {
   name = "rbac_role_entities",
   generate_admin_api = false,
-  primary_key = { "role_id", "entity_id" },
+  primary_key = { "role", "entity_id" },
   fields = {
-    { role_id = typedefs.uuid},
+    { role = { type = "foreign", required = true, reference = "rbac_roles", on_delete = "cascade" } }, -- XXX EE
     { entity_id = {type = "string", required = true,} },
     { entity_type = {type = "string", required = true} },
     { actions = {type = "integer", required = true,} },

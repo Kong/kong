@@ -224,12 +224,6 @@ return {
         END IF;
       END$$;
 
-      CREATE TABLE IF NOT EXISTS rbac_user_roles(
-        user_id uuid NOT NULL,
-        role_id uuid NOT NULL,
-        PRIMARY KEY(user_id, role_id)
-      );
-
       CREATE TABLE IF NOT EXISTS rbac_roles(
         id uuid PRIMARY KEY,
         name text UNIQUE NOT NULL,
@@ -241,8 +235,14 @@ return {
       CREATE INDEX IF NOT EXISTS rbac_roles_name_idx on rbac_roles(name);
       CREATE INDEX IF NOT EXISTS rbac_role_default_idx on rbac_roles(is_default);
 
+      CREATE TABLE IF NOT EXISTS rbac_user_roles(
+        user_id uuid  REFERENCES "rbac_users" ("id") ON DELETE CASCADE,
+        role_id uuid  REFERENCES "rbac_roles" ("id") ON DELETE CASCADE,
+        PRIMARY KEY(user_id, role_id)
+      );
+
       CREATE TABLE IF NOT EXISTS rbac_role_entities(
-        role_id uuid,
+        role_id uuid  REFERENCES "rbac_roles" ("id") ON DELETE CASCADE,
         entity_id text,
         entity_type text NOT NULL,
         actions smallint NOT NULL,
@@ -251,9 +251,10 @@ return {
         created_at timestamp without time zone default (CURRENT_TIMESTAMP(0) at time zone 'utc'),
         PRIMARY KEY(role_id, entity_id)
       );
+      CREATE INDEX IF NOT EXISTS rbac_role_entities_role_idx on rbac_role_entities(role_id);
 
       CREATE TABLE IF NOT EXISTS rbac_role_endpoints(
-        role_id uuid,
+        role_id uuid  REFERENCES "rbac_roles" ("id") ON DELETE CASCADE,
         workspace text NOT NULL,
         endpoint text NOT NULL,
         actions smallint NOT NULL,
@@ -262,8 +263,7 @@ return {
         negative boolean NOT NULL,
         PRIMARY KEY(role_id, workspace, endpoint)
       );
-
-
+      CREATE INDEX IF NOT EXISTS rbac_role_endpoints_role_idx on rbac_role_endpoints(role_id);
 
       CREATE TABLE IF NOT EXISTS files(
         id uuid PRIMARY KEY,
@@ -678,6 +678,7 @@ CREATE TABLE IF NOT EXISTS admins (
         role_id uuid,
         PRIMARY KEY(user_id, role_id)
       );
+      CREATE INDEX IF NOT EXISTS ON rbac_user_roles(role_id);
 
       CREATE TABLE IF NOT EXISTS rbac_roles(
         id uuid PRIMARY KEY,

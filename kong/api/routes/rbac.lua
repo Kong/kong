@@ -148,7 +148,7 @@ local function find_current_role(self, db, helpers)
   end
 
   self.rbac_role = rbac_role
-  self.params.role_id = self.rbac_role.id
+  self.params.role = {id = self.rbac_role.id}
 end
 
 
@@ -228,21 +228,23 @@ return {
         -- endpoints.delete_entity_endpoint(rbac_users.schema)(self, db, helpers)
         find_current_user(self, db, helpers)
 
-        -- local roles = db.rbac_users:get_roles(db, self.rbac_user)
-        local roles = rbac.get_user_roles(db, self.rbac_user) -- XXX EE Handle Error
-        local default_role
+        -- local roles = rbac.get_user_roles(db, self.rbac_user) -- XXX EE Handle Error
 
-        for _, role in ipairs(roles) do
-          db.rbac_user_roles:delete({
-            user_id = self.rbac_user.id,
-            role_id = role.id
-          })
+        -- for _, role in ipairs(roles) do
 
-          if role.name == self.rbac_user.name then
-            default_role = role
-          end
-        end
+        --   db.rbac_user_roles:delete({
+        --     user = { id = self.rbac_user.id },
+        --     role = { id = role.id },
+        --   })
 
+        --   if role.name == self.rbac_user.name then
+        --     default_role = role
+        --   end
+        -- end
+
+        db.rbac_users:delete({id = self.rbac_user.id})
+
+        local default_role = db.rbac_roles:select_by_name(self.rbac_user.name)
         if default_role then
           local _, err = rbac.remove_user_from_default_role(self.rbac_user,
             default_role)
@@ -251,7 +253,6 @@ return {
           end
         end
 
-        db.rbac_users:delete({id = self.rbac_user.id})
         return kong.response.exit(204)
       end
     }
@@ -312,8 +313,8 @@ return {
         -- so time to create the assignment
         for i = 1, #roles do
           local _, _, err_t = db.rbac_user_roles:insert({
-            user_id = self.rbac_user.id,
-            role_id = roles[i].id
+            user = { id = self.rbac_user.id },
+            role = { id = roles[i].id }
           })
 
           if err_t then
@@ -364,8 +365,8 @@ return {
 
         for i = 1, #roles do
           db.rbac_user_roles:delete({
-            user_id = self.rbac_user.id,
-            role_id = roles[i].id,
+            user = { id = self.rbac_user.id },
+            role = { id = roles[i].id },
           })
         end
 
@@ -441,26 +442,28 @@ return {
 
         self.rbac_role = rbac_role
 
-        -- delete the user <-> role mappings
-        -- we have to get our row, then delete it
-        -- local users, err = db.rbac_roles:get_users(db, self.rbac_role)
-        local users, err = rbac.get_role_users(db, self.rbac_role)
-        if err then
-          return helpers.yield_error(err)
-        end
 
-        for i = 1, #users do
-          db.rbac_user_roles:delete({
-            user_id = users[i].id,
-            role_id = self.rbac_role.id,
-          })
-        end
+        -- -- delete the user <-> role mappings
+        -- -- we have to get our row, then delete it
+        -- -- local users, err = db.rbac_roles:get_users(db, self.rbac_role)
+        -- local users, err = rbac.get_role_users(db, self.rbac_role)
+        -- if err then
+        --   return helpers.yield_error(err)
+        -- end
 
-        local err = rbac.role_relation_cleanup(self.rbac_role)
+        -- for i = 1, #users do
+        --   db.rbac_user_roles:delete({
+        --     user = { id = users[i].id },
+        --     role = { id = self.rbac_role.id },
+        --   })
+        -- end
 
-        if err then
-          return nil, err
-        end
+        -- local err = rbac.role_relation_cleanup(self.rbac_role)
+
+        -- if err then
+        --   return nil, err
+        -- end
+
 
         db.rbac_roles:delete({id = rbac_role.id})
         return kong.response.exit(204)
@@ -512,7 +515,7 @@ return {
 
       local role_entity, _, err_t = db.rbac_role_entities:insert({
         entity_id = self.params.entity_id,
-        role_id = self.rbac_role.id,
+        role = { id = self.rbac_role.id },
         entity_type = entity_type,
         actions = self.params.actions,
         negative = self.params.negative,
@@ -551,7 +554,7 @@ return {
       GET = function(self, db, helpers)
         local entity, _, err_t = db.rbac_role_entities:select({
           entity_id = self.entity_id,
-          role_id = self.rbac_role_id
+          role = { id = self.rbac_role_id },
         })
         if err_t then
           return endpoints.handle_error(err_t)
@@ -564,7 +567,7 @@ return {
       DELETE = function(self, db, helpers)
         local _, _, err_t = db.rbac_role_entities:delete({
           entity_id = self.entity_id,
-          role_id = self.rbac_role_id
+          role = { id = self.rbac_role_id },
         })
         if err_t then
           return endpoints.handle_error(err_t)
@@ -586,7 +589,8 @@ return {
 
         local entity = db.rbac_role_entities:update({
           entity_id = self.entity_id,
-          role_id = self.rbac_role_id }, self.params)
+          role = { id = self.rbac_role_id }
+          }, self.params)
         if not entity then
           kong.response.exit(404)
         end
@@ -642,7 +646,7 @@ return {
 
       GET = function(self, db, helpers)
         local endpoints =  workspaces.compat_find_all("rbac_role_entities", {
-          role_id = self.rbac_role.id
+          role = { id = self.rbac_role.id }
         })
 
 
@@ -729,6 +733,7 @@ return {
         end
         self.rbac_role = rbac_role
         self.params.role_id = self.rbac_role.id
+        self.params.role =  { id = self.rbac_role.id }
 
         -- Note: /rbac/roles/:name_or_id/endpoints/:workspace// will be treated same as
         -- /rbac/roles/:name_or_id/endpoints/:workspace/
@@ -759,7 +764,7 @@ return {
         end
 
         local filter = {
-          role_id = self.params.role_id,
+          role = { id = self.params.role.id, },
           workspace = self.params.workspace,
           endpoint = self.params.endpoint,
         }
@@ -779,7 +784,7 @@ return {
 
       DELETE = function(self, db, helpers)
         local filter = {
-          role_id = self.params.role_id,
+          role = { id = self.params.role_id, },
           workspace = self.params.workspace,
           endpoint = self.params.endpoint,
         }

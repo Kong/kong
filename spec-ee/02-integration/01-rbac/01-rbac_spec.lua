@@ -13,13 +13,13 @@ local MAX_ITERATIONS = 12
 
 dao_helpers.for_each_dao(function(kong_conf)
 describe("(#" .. kong_conf.database .. ")", function()
-  local dao, db, _
+  local dao, db, bp
 
 
   setup(function()
     package.loaded["kong.rbac"] = nil
 
-    _, db, dao = spec_helpers.get_db_utils()
+    bp, db, dao = spec_helpers.get_db_utils()
     singletons.dao = dao
     singletons.db = db
 
@@ -260,11 +260,11 @@ describe("(#" .. kong_conf.database .. ")", function()
 
       setup(function()
         local u = utils.uuid
-        role_id = u()
+        role_id = bp.rbac_roles:insert().id
         entity_id = u()
 
         assert(db.rbac_role_entities:insert({
-          role_id = role_id,
+          role = { id = role_id },
           entity_id = entity_id,
           entity_type = "entity",
           actions = 0x1,
@@ -285,11 +285,11 @@ describe("(#" .. kong_conf.database .. ")", function()
       end)
 
       describe("prioritizes explicit negative permissions", function()
-        local role_id2 = utils.uuid()
+        local role_id2 = bp.rbac_roles:insert().id
 
         setup(function()
           assert(db.rbac_role_entities:insert({
-            role_id = role_id2,
+            role = { id = role_id2 },
             entity_id = entity_id,
             entity_type = "entity",
             actions = 0x1,
@@ -328,7 +328,7 @@ describe("(#" .. kong_conf.database .. ")", function()
         setup(function()
           local u = utils.uuid
           for i = 1, 2 do
-            roles[i] = u()
+            roles[i] = bp.rbac_roles:insert().id
             workspaces[i] = u()
             entities[i] = u()
           end
@@ -371,14 +371,14 @@ describe("(#" .. kong_conf.database .. ")", function()
           -- (which owns entities[1]), and the second role to the second
           -- workspace (which owns workspaces[1] and entities[2])
           assert(db.rbac_role_entities:insert({
-            role_id = roles[1],
+            role = { id = roles[1] },
             entity_id = workspaces[1],
             entity_type = "workspaces",
             actions = 0x1,
             negative = false,
           }))
           assert(db.rbac_role_entities:insert({
-            role_id = roles[2],
+            role = {id = roles[2] },
             entity_id = workspaces[2],
             entity_type = "workspaces",
             actions = 0x1,
@@ -419,19 +419,18 @@ describe("(#" .. kong_conf.database .. ")", function()
 
       setup(function()
         package.loaded["kong.rbac"] = nil
-        local u = utils.uuid
-        table.insert(role_ids, u())
+        table.insert(role_ids, bp.rbac_roles:insert().id)
         assert(db.rbac_role_endpoints:insert({
-          role_id = role_ids[#role_ids],
+          role = { id = role_ids[#role_ids] },
           workspace = "foo",
           endpoint = "/bar",
           actions = 0x1,
           negative = false,
         }))
 
-        table.insert(role_ids, u())
+        table.insert(role_ids, bp.rbac_roles:insert().id)
         assert(db.rbac_role_endpoints:insert({
-          role_id = role_ids[#role_ids],
+          role = { id = role_ids[#role_ids] },
           workspace = "foo",
           endpoint = "/bar",
           actions = 0x1,
@@ -439,7 +438,7 @@ describe("(#" .. kong_conf.database .. ")", function()
         }))
 
         assert(db.rbac_role_endpoints:insert({
-          role_id = role_ids[#role_ids],
+          role = { id = role_ids[#role_ids] },
           workspace = "baz",
           endpoint = "/bar",
           actions = 0x5,
@@ -1017,11 +1016,11 @@ describe("(#" .. kong_conf.database .. ")", function()
     end)
 
     it("each action", function()
-      role_id = u()
+      role_id = bp.rbac_roles:insert().id
       entity_id = u()
 
       assert(db.rbac_role_entities:insert({
-        role_id = role_id,
+        role = { id = role_id },
         entity_id = tostring(entity_id),
         entity_type = "entity",
         actions = 0x01,
@@ -1032,11 +1031,11 @@ describe("(#" .. kong_conf.database .. ")", function()
       })
       assert.same(rbac.readable_action(0x1), map[entity_id].actions[1])
 
-      role_id = u()
+      role_id = bp.rbac_roles:insert().id
       entity_id = u()
 
       assert(db.rbac_role_entities:insert({
-        role_id = role_id,
+        role = { id = role_id },
         entity_id = entity_id,
         entity_type = "entity",
         actions = 0x02,
@@ -1047,11 +1046,11 @@ describe("(#" .. kong_conf.database .. ")", function()
       })
       assert.equals(rbac.readable_action(0x2), map[entity_id].actions[1])
 
-      role_id = u()
+      role_id = bp.rbac_roles:insert().id
       entity_id = u()
 
       assert(db.rbac_role_entities:insert({
-        role_id = role_id,
+        role = { id = role_id },
         entity_id = entity_id,
         entity_type = "entity",
         actions = 0x04,
@@ -1062,11 +1061,11 @@ describe("(#" .. kong_conf.database .. ")", function()
       })
       assert.equals(rbac.readable_action(0x4), map[entity_id].actions[1])
 
-      role_id = u()
+      role_id = bp.rbac_roles:insert().id
       entity_id = u()
 
       assert(db.rbac_role_entities:insert({
-        role_id = role_id,
+        role = { id = role_id },
         entity_id = entity_id,
         entity_type = "entity",
         actions = 0x08,
@@ -1078,11 +1077,11 @@ describe("(#" .. kong_conf.database .. ")", function()
       assert.equals(rbac.readable_action(0x08), map[entity_id].actions[1])
     end)
     it("multiple permission", function()
-      role_id = u()
+      role_id = bp.rbac_roles:insert().id
       entity_id = u()
 
       assert(db.rbac_role_entities:insert({
-        role_id = role_id,
+        role = { id = role_id },
         entity_id = entity_id,
         entity_type = "entity",
         actions = 0x03,
@@ -1097,20 +1096,15 @@ describe("(#" .. kong_conf.database .. ")", function()
     end)
   end)
   describe("readable_endpoint_permissions", function()
-    local u
-    setup(function()
-      u = utils.uuid
-    end)
-
     teardown(function()
       db:truncate()
     end)
 
-    it("each action", function()
-      local role_id = u()
+    it("each action lala", function()
+      local role_id = bp.rbac_roles:insert().id
 
       assert(db.rbac_role_endpoints:insert({
-        role_id = role_id,
+        role = { id = role_id },
         workspace = "foo",
         endpoint = "/bar",
         actions = 0x1,
@@ -1120,11 +1114,12 @@ describe("(#" .. kong_conf.database .. ")", function()
         { id = role_id },
       })
 
+
       assert.same(rbac.readable_action(0x1), map.foo["/foo/bar"].actions[1])
 
-      role_id = u()
+      role_id = bp.rbac_roles:insert().id
       assert(db.rbac_role_endpoints:insert({
-        role_id = role_id,
+        role = { id = role_id },
         workspace = "foo",
         endpoint = "/bar",
         actions = 0x02,
@@ -1135,9 +1130,9 @@ describe("(#" .. kong_conf.database .. ")", function()
       })
       assert.equals(rbac.readable_action(0x2), map.foo["/foo/bar"].actions[1])
 
-      role_id = u()
+      role_id = bp.rbac_roles:insert().id
       assert(db.rbac_role_endpoints:insert({
-        role_id = role_id,
+        role = { id = role_id },
         workspace = "foo",
         endpoint = "/bar",
         actions = 0x04,
@@ -1148,9 +1143,9 @@ describe("(#" .. kong_conf.database .. ")", function()
       })
       assert.equals(rbac.readable_action(0x04), map.foo["/foo/bar"].actions[1])
 
-      role_id = u()
+      role_id = bp.rbac_roles:insert().id
       assert(db.rbac_role_endpoints:insert({
-        role_id = role_id,
+        role = { id = role_id },
         workspace = "foo",
         endpoint = "/bar",
         actions = 0x08,
@@ -1163,9 +1158,10 @@ describe("(#" .. kong_conf.database .. ")", function()
       assert.equals(rbac.readable_action(0x08), map.foo["/foo/bar"].actions[1])
     end)
     it("multiple permission", function()
-      local role_id = u()
+      local role_id = bp.rbac_roles:insert().id
+
       assert(db.rbac_role_endpoints:insert({
-        role_id = role_id,
+        role = { id = role_id },
         workspace = "foo",
         endpoint = "/bar",
         actions = 0x03,

@@ -40,7 +40,7 @@ function _M.register_rbac_resources(db, ws)
 
   -- this role only has the 'read-only' permissions
   _, err = db.rbac_role_endpoints:insert({
-    role_id = roles.read_only.id,
+    role = { id = roles.read_only.id, },
     workspace = "*",
     endpoint = "*",
     actions = rbac.actions_bitfields.read,
@@ -63,7 +63,7 @@ function _M.register_rbac_resources(db, ws)
 
   -- the 'admin' role has 'full-access' + 'no-rbac' permissions
   _, err = db.rbac_role_endpoints:insert({
-    role_id = roles.admin.id,
+    role = { id = roles.admin.id, },
     workspace = "*",
     endpoint = "*",
     actions = action_bits_all, -- all actions
@@ -74,7 +74,7 @@ function _M.register_rbac_resources(db, ws)
   end
 
   _, err = db.rbac_role_endpoints:insert({
-    role_id = roles.admin.id,
+    role = { id = roles.admin.id, },
     workspace = "*",
     endpoint = "/rbac",
     negative = true,
@@ -97,7 +97,7 @@ function _M.register_rbac_resources(db, ws)
   end
 
   _, err = db.rbac_role_entities:insert({
-    role_id = roles.super_admin.id,
+    role = { id = roles.super_admin.id, },
     entity_id = "*",
     entity_type = "wildcard",
     actions = action_bits_all, -- all actions
@@ -108,7 +108,7 @@ function _M.register_rbac_resources(db, ws)
   end
 
   _, err = db.rbac_role_endpoints:insert({
-    role_id = roles.super_admin.id,
+    role = { id = roles.super_admin.id, },
     workspace = "*",
     endpoint = "*",
     actions = action_bits_all, -- all actions
@@ -131,8 +131,8 @@ function _M.register_rbac_resources(db, ws)
   end
 
   local super_user_role, err = db.rbac_user_roles:insert({
-    user_id = super_admin.id,
-    role_id = roles.super_admin.id
+    user = { id = super_admin.id, },
+    role = { id = roles.super_admin.id },
   })
 
   if err then

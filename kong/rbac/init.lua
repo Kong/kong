@@ -96,22 +96,23 @@ end
 -- fetch the id pair mapping of related objects from the database
 local function retrieve_relationship_ids(entity_id, entity_name, factory_key)
   local relationship_ids, err
-  local dao = rawget(singletons.dao.daos, factory_key)
 
-  -- XXX old-dao: if branch is going away with the old dao...
-  if dao then
-    relationship_ids, err = singletons.dao[factory_key]:find_all({
-      [entity_name .. "_id"] = entity_id,
-      __skip_rbac = true,
+
+  -- workspace_entities doesn't have a "formal" foreign key relationship
+  -- with workspace even though the field name is workspace_id so the
+  -- search is different for rbac and workspace_entities.
+  if factory_key == "workspace_entities" then
+    relationship_ids, err = workspaces.compat_find_all(factory_key, {
+      [entity_name .. "_id"] = entity_id
     })
-    if err then
-      log(ngx.ERR, "err retrieving relationship via id ", entity_id, ": ", err)
-      return nil, err
-    end
   else
-    relationship_ids = workspaces.compat_find_all(factory_key, {
-      [entity_name .. "_id"] = entity_id}
-    )
+    relationship_ids, err = workspaces.compat_find_all(factory_key, {
+      [entity_name] = { id = entity_id }
+    })
+  end
+  if err then
+    log(ngx.ERR, "err retrieving relationship via id ", entity_id, ": ", err)
+    return nil, err
   end
 
   return relationship_ids
@@ -155,17 +156,14 @@ local function entity_relationships(dao_factory, entity, entity_name, foreign, f
   local relationship_objs = {}
   local foreign_factory_key = fmt("rbac_%ss", foreign)
 
-  ngx.log(ngx.ERR, [[foreign_factory_key:]], require("inspect")(foreign_factory_key))
-
-
   for i = 1, #relationship_ids do
     local foreign_factory_cache_key = dao_factory[foreign_factory_key]:cache_key(
-      relationship_ids[i][foreign .. "_id"])
+      relationship_ids[i][foreign].id)
 
     local relationship, err = cache:get(foreign_factory_cache_key, nil,
                                         retrieve_relationship_entity,
                                         foreign_factory_key,
-                                        relationship_ids[i][foreign .. "_id"])
+                                        relationship_ids[i][foreign].id)
     if err then
       log(ngx.ERR, "err in retrieving relationship: ", err)
       return nil, err
@@ -321,14 +319,14 @@ end
 -- XXX EE should return 2nd value for error
 local function get_role_entities(db, role, opts)
   return workspaces.compat_find_all("rbac_role_entities",
-    {role_id = role.id},
+    {role = { id = role.id }},
     opts)
 end
 _M.get_role_entities = get_role_entities
 
 local function get_role_endpoints(db, role, opts)
   return workspaces.compat_find_all("rbac_role_endpoints",
-    {role_id = role.id},
+    { role = {id = role.id }},
     opts)
 end
 _M.get_role_endpoints = get_role_endpoints
@@ -480,8 +478,8 @@ function _M.create_default_role(user)
 
   -- create the user-role association
   local res, err = singletons.db.rbac_user_roles:insert({
-    user_id = user.id,
-    role_id = role.id,
+    user = {id = user.id},
+    role = {id = role.id} ,
   })
   if not res then
     return nil, err
@@ -516,7 +514,7 @@ local function role_relation_cleanup(role)
 
   for _, endpoint in ipairs(endpoints) do
     local _, err = db.rbac_role_endpoints:delete({
-      role_id = endpoint.role_id,
+      role = { id = endpoint.role_id },
       workspace = endpoint.workspace,
       endpoint = endpoint.endpoint,
     })
@@ -528,20 +526,11 @@ end
 _M.role_relation_cleanup = role_relation_cleanup
 
 
--- helpers: remove user from default role; delete the role if the
--- user was the only one in the role
+-- helpers: delete the role if the user was the only one in the role
 function _M.remove_user_from_default_role(user, default_role)
   -- delete user-role relationship
-  local _, err = singletons.db.rbac_user_roles:delete({
-    user_id = user.id,
-    role_id = default_role.id,
-  })
-  if err then
-    return nil, err
-  end
 
   -- get count of users still in the default role
-  -- local users, err = singletons.db.rbac_roles:get_users(singletons.db, default_role)
   local users, err = get_role_users(singletons.db, default_role)
   local n_users = #users
   if err then
@@ -550,11 +539,6 @@ function _M.remove_user_from_default_role(user, default_role)
 
   -- if count of users in role reached 0, delete it
   if n_users == 0 then
-    local err = role_relation_cleanup(default_role)
-    if err then
-      return nil, err
-    end
-
     local _, err = singletons.db.rbac_roles:delete({
       id = default_role.id,
     })
@@ -594,7 +578,7 @@ local function add_default_role_entity_permission(entity, table_name)
   local entity_id = schema.primary_key[1]
 
   return singletons.db.rbac_role_entities:insert({
-    role_id = default_role.id,
+    role = { id = default_role.id },
     entity_id = entity[entity_id],
     entity_type = table_name,
     actions = bitfield_all_actions,
@@ -624,7 +608,7 @@ local function delete_role_entity_permission(table_name, entity)
 
   for _, role_entity in ipairs(role_entities) do
     local _, err, err_t = db.rbac_role_entities:delete({
-      role_id = role_entity.role_id,
+      role = { id = role_entity.role_id },
       entity_id = role_entity.entity_id
     })
     if err then
