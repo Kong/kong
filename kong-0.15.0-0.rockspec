@@ -169,6 +169,7 @@ build = {
     -- upstream (in 0.15.0)
     ["kong.db.migrations.enterprise"] = "kong/db/migrations/enterprise/init.lua",
     ["kong.db.migrations.enterprise.000_base"] = "kong/db/migrations/enterprise/000_base.lua",
+    ["kong.db.migrations.enterprise.001_034_to_035"] = "kong/db/migrations/enterprise/001_034_to_035.lua",
     ["kong.db.strategies.cassandra.routes"] = "kong/db/strategies/cassandra/routes.lua",
 
     ["kong.runloop.handler"] = "kong/runloop/handler.lua",
