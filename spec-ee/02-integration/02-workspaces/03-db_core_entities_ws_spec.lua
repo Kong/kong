@@ -140,7 +140,7 @@ for _, strategy in helpers.each_strategy() do
           end, dao)
         end)
 
-        it("shouldn't allow insert of route with service from other workspace", function()
+        it("#flaky shouldn't allow insert of route with service from other workspace", function()
           local service_default
           with_current_ws(nil, function()
             local err_t, err
@@ -248,7 +248,7 @@ for _, strategy in helpers.each_strategy() do
           end, dao)
         end)
 
-        it("shouldn't allow to update route with service from other workspace", function()
+        it("#flaky shouldn't allow to update route with service from other workspace", function()
           local service_default
           with_current_ws(nil, function()
             local err_t, err

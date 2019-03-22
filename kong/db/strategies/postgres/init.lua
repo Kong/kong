@@ -760,7 +760,7 @@ local function foreign_pk_exists(dao, field_name, field, foreign_pk)
   local foreign_strategy = _M.new(dao.connector, foreign_schema,
                                    dao.errors)
 
-  local foreign_row, err_t = foreign_strategy:select_ws(foreign_pk)
+  local foreign_row, err_t = foreign_strategy:select(foreign_pk)
   if err_t then
     return nil, err_t
   end
