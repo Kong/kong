@@ -131,8 +131,8 @@ function _M.register_rbac_resources(db, ws)
   end
 
   local super_user_role, err = db.rbac_user_roles:insert({
-    user = { id = super_admin.id, },
-    role = { id = roles.super_admin.id },
+    user = super_admin,
+    role = roles.super_admin,
   })
 
   if err then

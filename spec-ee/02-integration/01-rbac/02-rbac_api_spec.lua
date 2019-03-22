@@ -268,8 +268,8 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
         -- make sure rbacy_user has rbacy_role
         local rbacy_role = find_role(db, "rbacy")
         local user_roles = db.rbac_user_roles:select({
-          user = { id = rbacy_user.id },
-          role = { id = rbacy_role.id },
+          user = rbacy_user,
+          role = rbacy_role,
         })
 
         assert.same(rbacy_role.id, user_roles.role.id)
@@ -292,8 +292,8 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
         local yarbacy_user = cjson.decode(body)
 
         assert(db.rbac_user_roles:insert({
-          user = { id = yarbacy_user.id },
-          role = { id = rbacy_role.id },
+          user = yarbacy_user,
+          role = rbacy_role,
         }))
 
         -- delete the rbacy user
@@ -306,8 +306,8 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
         -- and check the rbacy role is still here, as yarbacy
         -- still has the rbacy role and would hate to lose it
         local user_role = db.rbac_user_roles:select({
-          user = { id = yarbacy_user.id },
-          role = { id = rbacy_role.id },
+          user = yarbacy_user,
+          role = rbacy_role,
         })
         assert.equal(rbacy_role.id, user_role.role.id)
 

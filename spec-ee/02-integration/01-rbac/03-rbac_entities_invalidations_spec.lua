@@ -117,8 +117,8 @@ describe("rbac entities are invalidated with db: #" .. kong_conf.database, funct
       local superadmin = db.rbac_roles:select_by_name("superadmin")
       superadmin = superadmin or db.rbac_roles:select_by_name("super-admin")
       db.rbac_user_roles:insert({
-        user = { id = god.id },
-        role = { id = superadmin.id },
+        user = god,
+        role = superadmin,
       })
 
       -- populate cache with a miss on both nodes

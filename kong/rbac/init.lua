@@ -319,7 +319,7 @@ end
 -- XXX EE should return 2nd value for error
 local function get_role_entities(db, role, opts)
   return workspaces.compat_find_all("rbac_role_entities",
-    {role = { id = role.id }},
+    {role = { id =  role.id }},
     opts)
 end
 _M.get_role_entities = get_role_entities
@@ -478,8 +478,8 @@ function _M.create_default_role(user)
 
   -- create the user-role association
   local res, err = singletons.db.rbac_user_roles:insert({
-    user = {id = user.id},
-    role = {id = role.id} ,
+    user = user,
+    role = role ,
   })
   if not res then
     return nil, err
@@ -578,7 +578,7 @@ local function add_default_role_entity_permission(entity, table_name)
   local entity_id = schema.primary_key[1]
 
   return singletons.db.rbac_role_entities:insert({
-    role = { id = default_role.id },
+    role = default_role,
     entity_id = entity[entity_id],
     entity_type = table_name,
     actions = bitfield_all_actions,

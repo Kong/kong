@@ -57,7 +57,7 @@ return {
 
       -- add endpoint permissions to the admin role
       ok, err = dao.rbac_role_endpoints:insert({
-        role =  {id = role.id},
+        role =  role,
         workspace = "*",
         endpoint = "*",
         actions = action_bits_all, -- all actions
@@ -80,7 +80,7 @@ return {
       } do
         -- add negative endpoint permissions to the rbac endpoint
         ok, err = dao.rbac_role_endpoints:insert({
-          role = { id = role.id },
+          role = role,
           workspace = "*",
           endpoint = rbac_endpoint,
           negative = true,
@@ -109,7 +109,7 @@ return {
 
       -- add endpoint permissions to the super admin role
       ok, err = dao.rbac_role_endpoints:insert({
-        role = { id = role.id },
+        role = role,
         workspace = "*",
         endpoint = "*",
         actions = action_bits_all, -- all actions
@@ -119,7 +119,7 @@ return {
       end
 
       ok, err = dao.rbac_role_entities:insert({
-        role = { id = role.id },
+        role = role,
         entity_id = "*",
         entity_type = "wildcard",
         actions = action_bits_all,

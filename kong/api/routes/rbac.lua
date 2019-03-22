@@ -148,7 +148,7 @@ local function find_current_role(self, db, helpers)
   end
 
   self.rbac_role = rbac_role
-  self.params.role = {id = self.rbac_role.id}
+  self.params.role = self.rbac_role
 end
 
 
@@ -242,7 +242,7 @@ return {
         --   end
         -- end
 
-        db.rbac_users:delete({id = self.rbac_user.id})
+        db.rbac_users:delete({id = self.rbac_user.id })
 
         local default_role = db.rbac_roles:select_by_name(self.rbac_user.name)
         if default_role then
@@ -313,8 +313,8 @@ return {
         -- so time to create the assignment
         for i = 1, #roles do
           local _, _, err_t = db.rbac_user_roles:insert({
-            user = { id = self.rbac_user.id },
-            role = { id = roles[i].id }
+            user = self.rbac_user,
+            role = roles[i]
           })
 
           if err_t then
@@ -365,7 +365,7 @@ return {
 
         for i = 1, #roles do
           db.rbac_user_roles:delete({
-            user = { id = self.rbac_user.id },
+            user = { id = self.rbac_user.id } ,
             role = { id = roles[i].id },
           })
         end
@@ -464,8 +464,7 @@ return {
         --   return nil, err
         -- end
 
-
-        db.rbac_roles:delete({id = rbac_role.id})
+        db.rbac_roles:delete({ id = rbac_role.id })
         return kong.response.exit(204)
       end,
     },
@@ -515,7 +514,7 @@ return {
 
       local role_entity, _, err_t = db.rbac_role_entities:insert({
         entity_id = self.params.entity_id,
-        role = { id = self.rbac_role.id },
+        role = self.rbac_role,
         entity_type = entity_type,
         actions = self.params.actions,
         negative = self.params.negative,
@@ -733,7 +732,7 @@ return {
         end
         self.rbac_role = rbac_role
         self.params.role_id = self.rbac_role.id
-        self.params.role =  { id = self.rbac_role.id }
+        self.params.role =  self.rbac_role
 
         -- Note: /rbac/roles/:name_or_id/endpoints/:workspace// will be treated same as
         -- /rbac/roles/:name_or_id/endpoints/:workspace/
