@@ -1,26 +1,26 @@
-local validate_entity    = require("kong.dao.schemas_validation").validate_entity
 local proxy_cache_schema = require "kong.plugins.proxy-cache.schema"
+local v = require("spec.helpers").validate_plugin_config_schema
 
 describe("proxy-cache schema", function()
   it("accepts a minimal config", function()
-    local ok, err = validate_entity({
+    local entity, err = v({
       strategy = "memory",
     }, proxy_cache_schema)
 
     assert.is_nil(err)
-    assert.is_true(ok)
+    assert.is_truthy(entity)
   end)
 
   it("defines default content-type values", function()
     local config = {strategy = "memory"}
-    local ok, err = validate_entity(config, proxy_cache_schema)
+    local entity, err = v(config, proxy_cache_schema)
     assert.is_nil(err)
-    assert.is_true(ok)
-    assert.same(config.content_type, {"text/plain", "application/json"})
+    assert.is_truthy(entity)
+    assert.same(entity.config.content_type, {"text/plain", "application/json"})
   end)
 
   it("accepts a config with custom values", function()
-    local ok, err = validate_entity({
+    local entity, err = v({
       strategy = "memory",
       response_code = { 200, 301 },
       request_method = { "GET" },
@@ -28,83 +28,81 @@ describe("proxy-cache schema", function()
     }, proxy_cache_schema)
 
     assert.is_nil(err)
-    assert.is_true(ok)
+    assert.is_truthy(entity)
   end)
 
   it("accepts an array of numbers as strings", function()
-    local ok, err = validate_entity({
+    local entity, err = v({
       strategy = "memory",
-      response_code = {"123", "200"},
+      response_code = {123, 200},
     }, proxy_cache_schema)
 
     assert.is_nil(err)
-    assert.is_true(ok)
+    assert.is_truthy(entity)
   end)
 
   it("errors with invalid response_code", function()
-    local ok, err = validate_entity({
+    local entity, err = v({
       strategy = "memory",
       response_code = { 99 },
     }, proxy_cache_schema)
 
-    assert.same("response_code must be an integer within 100 - 999", err.response_code)
-    assert.is_false(ok)
+    assert.same("value should be between 100 and 900", err.config.response_code)
+    assert.is_falsy(entity)
   end)
 
   it("errors if response_code is an empty array", function()
-    local ok, err = validate_entity({
+    local entity, err = v({
       strategy = "memory",
       response_code = {},
     }, proxy_cache_schema)
 
-    assert.same("response_code must contain at least one value", err.response_code)
-    assert.is_false(ok)
+    assert.same("length must be at least 1", err.config.response_code)
+    assert.is_falsy(entity)
   end)
 
   it("errors if response_code is a string", function()
-    local ok, err = validate_entity({
+    local entity, err = v({
       strategy = "memory",
       response_code = "",
     }, proxy_cache_schema)
 
-    assert.same("response_code must contain at least one value", err.response_code)
-    assert.is_false(ok)
+    assert.same("expected an array", err.config.response_code)
+    assert.is_falsy(entity)
   end)
 
   it("errors if response_code has non-numeric values", function()
-    local ok, err = validate_entity({
+    local entity, err = v({
       strategy = "memory",
       response_code = {true, "alo", 123},
     }, proxy_cache_schema)
 
-    assert.same("response_code value must be an integer", err.response_code)
-    assert.is_false(ok)
+    assert.same("expected an integer", err.config.response_code)
+    assert.is_falsy(entity)
   end)
 
   it("errors if response_code has float value", function()
-    local ok, err = validate_entity({
+    local entity, err = v({
       strategy = "memory",
       response_code = {123.5},
     }, proxy_cache_schema)
 
-    assert.same("response_code must be an integer within 100 - 999", err.response_code)
-    assert.is_false(ok)
+    assert.same("expected an integer", err.config.response_code)
+    assert.is_falsy(entity)
   end)
 
-
-
   it("errors with invalid ttl", function()
-    local ok, err = validate_entity({
+    local entity, err = v({
       strategy = "memory",
       cache_ttl = -1
     }, proxy_cache_schema)
 
-    assert.same("cache_ttl must be a positive number", err.cache_ttl)
-    assert.is_false(ok)
+    assert.same("value must be greater than 0", err.config.cache_ttl)
+    assert.is_falsy(entity)
   end)
 
   it("accepts a redis config", function()
-    local ok, err = validate_entity({
+    local entity, err = v({
       strategy = "redis",
       redis = {
         host = "127.0.0.1",
@@ -113,56 +111,35 @@ describe("proxy-cache schema", function()
     }, proxy_cache_schema)
 
     assert.is_nil(err)
-    assert.is_true(ok)
+    assert.is_truthy(entity)
   end)
 
-  it("errors with a missing redis config", function()
-    local ok, _, err = validate_entity({
+  it("creates a missing redis config", function()
+    local entity, err = v({
       strategy = "redis",
     }, proxy_cache_schema)
 
-    assert.is_false(ok)
-    assert.same("No redis config provided", err.message)
+    assert.is_nil(err)
+    assert.is_truthy(entity)
   end)
 
   it("supports vary_query_params values", function()
-    local ok, _, err = validate_entity({
+    local entity, err = v({
       strategy = "memory",
-      vary_query_params = "foo",
+      vary_query_params = { "foo" },
     }, proxy_cache_schema)
 
-    assert.True(ok)
+    assert.is_nil(err)
+    assert.is_truthy(entity)
   end)
 
   it("supports vary_headers values", function()
-    local ok, _, err = validate_entity({
+    local entity, err = v({
       strategy = "memory",
-      vary_headers = "foo",
+      vary_headers = { "foo" },
     }, proxy_cache_schema)
 
-    assert.True(ok)
+    assert.is_nil(err)
+    assert.is_truthy(entity)
   end)
-
-  it("sorts vary_query_params values", function()
-    local t = {
-        strategy = "memory",
-        vary_query_params = {"b", "a"}
-    }
-    local ok, _, err = validate_entity(t, proxy_cache_schema)
-
-    assert.True(ok)
-    assert.are.same({"a", "b"}, t.vary_query_params)
-    end)
-
-  it("sorts vary_headers values", function()
-    local t = {
-        strategy = "memory",
-        vary_headers = {"b", "A"}
-    }
-    local ok, _, err = validate_entity(t, proxy_cache_schema)
-
-    assert.True(ok)
-    assert.are.same({"a", "b"}, t.vary_headers)
-    end)
-
 end)

@@ -8,7 +8,6 @@ local TIMEOUT = 10 -- default timeout for non-memory strategies
 
 local REDIS_HOST = "127.0.0.1"
 local REDIS_PORT = 6379
-local REDIS_PASSWORD = ""
 local REDIS_DATABASE = 1
 
 
@@ -35,7 +34,6 @@ for i, policy in ipairs({"memory", "redis"}) do
         host = REDIS_HOST,
         port = REDIS_PORT,
         database = REDIS_DATABASE,
-        password = REDIS_PASSWORD,
       }
     end
 
@@ -46,156 +44,101 @@ for i, policy in ipairs({"memory", "redis"}) do
 
     setup(function()
 
-      local bp, _, dao = helpers.get_db_utils()
+      local bp = helpers.get_db_utils(nil, nil, {"proxy-cache"})
       strategy:flush(true)
 
-      local api1 = assert(dao.apis:insert {
-        name = "api-1",
-        hosts = { "api-1.com" },
-        upstream_url = "http://httpbin.org",
-      })
-      local api2 = assert(dao.apis:insert {
-        name = "api-2",
-        hosts = { "api-2.com" },
-        upstream_url = "http://httpbin.org",
-      })
-      assert(dao.apis:insert {
-        name = "api-3",
-        hosts = { "api-3.com" },
-        upstream_url = "http://httpbin.org",
-      })
-      assert(dao.apis:insert {
-        name = "api-4",
-        hosts = { "api-4.com" },
-        upstream_url = "http://httpbin.org",
-      })
-      local api5 = assert(dao.apis:insert {
-        name = "api-5",
-        hosts = { "api-5.com" },
-        upstream_url = "http://httpbin.org",
-      })
-      local api6 = assert(dao.apis:insert {
-        name = "api-6",
-        hosts = { "api-6.com" },
-        upstream_url = "http://httpbin.org",
-      })
-      local api7 = assert(dao.apis:insert {
-        name = "api-7",
-        hosts = { "api-7.com" },
-        upstream_url = "http://httpbin.org",
-      })
-      local api8 = assert(dao.apis:insert {
-        name = "api-8",
-        hosts = { "api-8.com" },
-        upstream_url = "http://httpbin.org",
-      })
-      local api9 = assert(dao.apis:insert {
-        name = "api-9",
-        hosts = { "api-9.com" },
-        upstream_url = "http://httpbin.org",
-      })
-      local api10 = assert(dao.apis:insert {
-        name = "api-10",
-        hosts = { "api-10.com" },
-        upstream_url = "http://httpbin.org",
-      })
-      local api11 = assert(dao.apis:insert {
-        name = "api-11",
-        hosts = { "api-11.com" },
-        upstream_url = "http://httpbin.org",
-      })
-      local api12 = assert(dao.apis:insert {
-        name = "api-12",
-        hosts = { "api-12.com" },
-        upstream_url = "http://httpbin.org",
-      })
-      local api13 = assert(dao.apis:insert {
-        name = "api-13",
-        hosts = { "api-13.com" },
-        upstream_url = "http://httpbin.org",
-      })
-      local api14 = assert(dao.apis:insert {
-        name = "api-14",
-        hosts = { "api-14.com" },
-        upstream_url = "http://httpbin.org",
-      })
-
-      -- routes/services
-
-      local service1 = assert(bp.services:insert({
-        name = "service-1",
-        host = helpers.mock_upstream_host,
-        port = helpers.mock_upstream_port,
-        protocol = helpers.mock_upstream_protocol,
-      }))
-
-      local route1 = assert(bp.routes:insert({
-        methods = { "GET" },
-        protocols = { "http" },
+      local route1 = assert(bp.routes:insert {
         hosts = { "route-1.com" },
-        service = service1,
-      }))
-
-      local route2 = assert(bp.routes:insert({
-        methods = { "GET" },
-        protocols = { "http" },
+      })
+      local route2 = assert(bp.routes:insert {
         hosts = { "route-2.com" },
-        service = service1,
+      })
+      assert(bp.routes:insert {
+        hosts = { "route-3.com" },
+      })
+      assert(bp.routes:insert {
+        hosts = { "route-4.com" },
+      })
+      local route5 = assert(bp.routes:insert {
+        hosts = { "route-5.com" },
+      })
+      local route6 = assert(bp.routes:insert {
+        hosts = { "route-6.com" },
+      })
+      local route7 = assert(bp.routes:insert {
+        hosts = { "route-7.com" },
+      })
+      local route8 = assert(bp.routes:insert {
+        hosts = { "route-8.com" },
+      })
+      local route9 = assert(bp.routes:insert {
+        hosts = { "route-9.com" },
+      })
+      local route10 = assert(bp.routes:insert {
+        hosts = { "route-10.com" },
+      })
+      local route11 = assert(bp.routes:insert {
+        hosts = { "route-11.com" },
+      })
+      local route12 = assert(bp.routes:insert {
+        hosts = { "route-12.com" },
+      })
+      local route13 = assert(bp.routes:insert {
+        hosts = { "route-13.com" },
+      })
+      local route14 = assert(bp.routes:insert {
+        hosts = { "route-14.com" },
+      })
+      local route15 = assert(bp.routes:insert({
+        hosts = { "route-15.com" },
+      }))
+      local route16 = assert(bp.routes:insert({
+        hosts = { "route-16.com" },
       }))
 
-      local consumer1 = assert(dao.consumers:insert {
+      local consumer1 = assert(bp.consumers:insert {
         username = "bob",
       })
-      assert(dao.keyauth_credentials:insert {
+      assert(bp.keyauth_credentials:insert {
         key = "bob",
-        consumer_id = consumer1.id,
+        consumer = { id = consumer1.id },
       })
-      local consumer2 = assert(dao.consumers:insert {
+      local consumer2 = assert(bp.consumers:insert {
         username = "alice",
       })
-      assert(dao.keyauth_credentials:insert {
+      assert(bp.keyauth_credentials:insert {
         key = "alice",
-        consumer_id = consumer2.id,
+        consumer = { id = consumer2.id },
       })
-      assert(dao.plugins:insert {
+      assert(bp.plugins:insert {
         name = "key-auth",
-        api_id = api5.id,
+        route = { id = route5.id },
         config = {},
       })
-      assert(dao.plugins:insert {
+      assert(bp.plugins:insert {
         name = "key-auth",
-        api_id = api13.id,
+        route = { id = route13.id },
         config = {},
       })
-      assert(dao.plugins:insert {
+      assert(bp.plugins:insert {
         name = "key-auth",
-        api_id = api14.id,
+        route = { id = route14.id },
         config = {},
       })
-      assert(dao.plugins:insert {
+      assert(bp.plugins:insert {
         name = "key-auth",
-        route_id = route1.id,
+        route = { id = route15.id },
         config = {},
       })
-      assert(dao.plugins:insert {
+      assert(bp.plugins:insert {
         name = "key-auth",
-        route_id = route2.id,
+        route = { id = route16.id },
         config = {},
       })
 
-      assert(dao.plugins:insert {
+      assert(bp.plugins:insert {
         name = "proxy-cache",
-        api_id = api1.id,
-        config = {
-          strategy = policy,
-          content_type = { "text/plain", "application/json", "application/octet-stream" },
-          [policy] = policy_config,
-        },
-      })
-
-      assert(dao.plugins:insert {
-        name = "proxy-cache",
-        api_id = api2.id,
+        route = { id = route1.id },
         config = {
           strategy = policy,
           content_type = { "text/plain", "application/json" },
@@ -203,8 +146,18 @@ for i, policy in ipairs({"memory", "redis"}) do
         },
       })
 
-      -- global plugin for apis 3 and 4
-      assert(dao.plugins:insert {
+      assert(bp.plugins:insert {
+        name = "proxy-cache",
+        route = { id = route2.id },
+        config = {
+          strategy = policy,
+          content_type = { "text/plain", "application/json" },
+          [policy] = policy_config,
+        },
+      })
+
+      -- global plugin for routes 3 and 4
+      assert(bp.plugins:insert {
         name = "proxy-cache",
         config = {
           strategy = policy,
@@ -213,9 +166,9 @@ for i, policy in ipairs({"memory", "redis"}) do
         },
       })
 
-      assert(dao.plugins:insert {
+      assert(bp.plugins:insert {
         name = "proxy-cache",
-        api_id = api5.id,
+        route = { id = route5.id },
         config = {
           strategy = policy,
           content_type = { "text/plain", "application/json" },
@@ -223,9 +176,9 @@ for i, policy in ipairs({"memory", "redis"}) do
         },
       })
 
-      assert(dao.plugins:insert {
+      assert(bp.plugins:insert {
         name = "proxy-cache",
-        api_id = api6.id,
+        route = { id = route6.id },
         config = {
           strategy = policy,
           content_type = { "text/plain", "application/json" },
@@ -234,9 +187,9 @@ for i, policy in ipairs({"memory", "redis"}) do
         },
       })
 
-      assert(dao.plugins:insert {
+      assert(bp.plugins:insert {
         name = "proxy-cache",
-        api_id = api7.id,
+        route = { id = route7.id },
         config = {
           strategy = policy,
           content_type = { "text/plain", "application/json" },
@@ -245,9 +198,9 @@ for i, policy in ipairs({"memory", "redis"}) do
         },
       })
 
-      assert(dao.plugins:insert {
+      assert(bp.plugins:insert {
         name = "proxy-cache",
-        api_id = api8.id,
+        route = { id = route8.id },
         config = {
           strategy = policy,
           content_type = { "text/plain", "application/json" },
@@ -257,9 +210,9 @@ for i, policy in ipairs({"memory", "redis"}) do
         },
       })
 
-      assert(dao.plugins:insert {
+      assert(bp.plugins:insert {
         name = "proxy-cache",
-        api_id = api9.id,
+        route = { id = route9.id },
         config = {
           strategy = policy,
           content_type = { "text/plain", "application/json" },
@@ -269,21 +222,21 @@ for i, policy in ipairs({"memory", "redis"}) do
         },
       })
 
-      assert(dao.plugins:insert {
+      assert(bp.plugins:insert {
         name = "proxy-cache",
-        api_id = api10.id,
+        route = { id = route10.id },
         config = {
           strategy = policy,
-          content_type = { "text/plain", "application/json" },
-          response_code = { 200, 418 },
+          content_type = { "text/html; charset=utf-8", "application/json" },
+          response_code = { 200, 417 },
           request_method = { "GET", "HEAD", "POST" },
           [policy] = policy_config,
         },
       })
 
-      assert(dao.plugins:insert {
+      assert(bp.plugins:insert {
         name = "proxy-cache",
-        api_id = api11.id,
+        route = { id = route11.id },
         config = {
           strategy = policy,
           [policy] = policy_config,
@@ -294,9 +247,9 @@ for i, policy in ipairs({"memory", "redis"}) do
         },
       })
 
-      assert(dao.plugins:insert {
+      assert(bp.plugins:insert {
         name = "proxy-cache",
-        api_id = api12.id,
+        route = { id = route12.id },
         config = {
           strategy = policy,
           [policy] = policy_config,
@@ -308,12 +261,23 @@ for i, policy in ipairs({"memory", "redis"}) do
       })
 
       assert(helpers.start_kong({
-        custom_plugins = "proxy-cache",
+        plugins = "bundled,proxy-cache",
         nginx_conf = "spec/fixtures/custom_nginx.template",
       }))
+    end)
+
+
+    before_each(function()
+      if client then
+        client:close()
+      end
+      if admin_client then
+        admin_client:close()
+      end
       client = helpers.proxy_client()
       admin_client = helpers.admin_client()
     end)
+
 
     teardown(function()
       if client then
@@ -324,7 +288,7 @@ for i, policy in ipairs({"memory", "redis"}) do
         admin_client:close()
       end
 
-      helpers.stop_kong()
+      helpers.stop_kong(nil, true)
     end)
 
     it("caches a simple request", function()
@@ -332,7 +296,7 @@ for i, policy in ipairs({"memory", "redis"}) do
         method = "GET",
         path = "/get",
         headers = {
-          host = "api-1.com",
+          host = "route-1.com",
         }
       })
 
@@ -353,7 +317,7 @@ for i, policy in ipairs({"memory", "redis"}) do
         method = "GET",
         path = "/get",
         headers = {
-          host = "api-1.com",
+          host = "route-1.com",
         }
       }
 
@@ -374,7 +338,7 @@ for i, policy in ipairs({"memory", "redis"}) do
         method = "GET",
         path = "/get",
         headers = {
-          host = "api-6.com",
+          host = "route-6.com",
         }
       })
 
@@ -391,7 +355,7 @@ for i, policy in ipairs({"memory", "redis"}) do
         method = "GET",
         path = "/get",
         headers = {
-          host = "api-6.com",
+          host = "route-6.com",
         }
       }
 
@@ -415,7 +379,7 @@ for i, policy in ipairs({"memory", "redis"}) do
         method = "GET",
         path = "/get",
         headers = {
-          host = "api-6.com",
+          host = "route-6.com",
         }
       })
 
@@ -432,7 +396,7 @@ for i, policy in ipairs({"memory", "redis"}) do
         method = "GET",
         path = "/get",
         headers = {
-          host = "api-6.com",
+          host = "route-6.com",
         }
       })
 
@@ -444,7 +408,7 @@ for i, policy in ipairs({"memory", "redis"}) do
         method = "GET",
         path = "/get",
         headers = {
-          host = "api-9.com",
+          host = "route-9.com",
         }
       })
 
@@ -461,7 +425,7 @@ for i, policy in ipairs({"memory", "redis"}) do
         method = "GET",
         path = "/get",
         headers = {
-          host = "api-9.com",
+          host = "route-9.com",
         }
       })
 
@@ -486,7 +450,7 @@ for i, policy in ipairs({"memory", "redis"}) do
         method = "GET",
         path = "/get",
         headers = {
-          host = "api-9.com",
+          host = "route-9.com",
         }
       })
 
@@ -497,7 +461,7 @@ for i, policy in ipairs({"memory", "redis"}) do
         method = "GET",
         path = "/get",
         headers = {
-          host = "api-9.com",
+          host = "route-9.com",
         }
       })
 
@@ -510,7 +474,7 @@ for i, policy in ipairs({"memory", "redis"}) do
         method = "GET",
         path = "/cache/2",
         headers = {
-          host = "api-7.com",
+          host = "route-7.com",
         }
       })
 
@@ -527,7 +491,7 @@ for i, policy in ipairs({"memory", "redis"}) do
         method = "GET",
         path = "/cache/2",
         headers = {
-          host = "api-7.com",
+          host = "route-7.com",
         }
       })
 
@@ -549,7 +513,7 @@ for i, policy in ipairs({"memory", "redis"}) do
         method = "GET",
         path = "/cache/2",
         headers = {
-          host = "api-7.com",
+          host = "route-7.com",
         }
       })
 
@@ -565,7 +529,7 @@ for i, policy in ipairs({"memory", "redis"}) do
         method = "GET",
         path = "/cache/2",
         headers = {
-          host = "api-7.com",
+          host = "route-7.com",
         }
       })
 
@@ -577,7 +541,7 @@ for i, policy in ipairs({"memory", "redis"}) do
         method = "GET",
         path = "/cache/0",
         headers = {
-          host = "api-7.com",
+          host = "route-7.com",
         }
       })
 
@@ -588,7 +552,7 @@ for i, policy in ipairs({"memory", "redis"}) do
         method = "GET",
         path = "/cache/0",
         headers = {
-          host = "api-7.com",
+          host = "route-7.com",
         }
       })
 
@@ -603,13 +567,12 @@ for i, policy in ipairs({"memory", "redis"}) do
         method = "GET",
         path = "/response-headers?Cache-Control=max-age%3D604800",
         headers = {
-          host = "api-7.com",
+          host = "route-7.com",
         }
       })
 
       assert.res_status(200, res)
       assert.same("Miss", res.headers["X-Cache-Status"])
-      local cache_key = res.headers["X-Cache-Key"]
     end)
 
     it("Cache-Control contains s-maxage only", function()
@@ -617,13 +580,12 @@ for i, policy in ipairs({"memory", "redis"}) do
         method = "GET",
         path = "/response-headers?Cache-Control=s-maxage%3D604800",
         headers = {
-          host = "api-7.com",
+          host = "route-7.com",
         }
       })
 
       assert.res_status(200, res)
       assert.same("Miss", res.headers["X-Cache-Status"])
-      local cache_key = res.headers["X-Cache-Key"]
     end)
 
     it("Expires present, Cache-Control absent", function()
@@ -633,13 +595,12 @@ for i, policy in ipairs({"memory", "redis"}) do
         path = "/response-headers",
         query = "Expires=" .. httpdate,
         headers = {
-          host = "api-7.com",
+          host = "route-7.com",
         }
       })
 
       assert.res_status(200, res)
       assert.same("Miss", res.headers["X-Cache-Status"])
-      local cache_key = res.headers["X-Cache-Key"]
     end)
 
     describe("respects cache-control", function()
@@ -649,7 +610,7 @@ for i, policy in ipairs({"memory", "redis"}) do
           method = "GET",
           path = "/cache/2",
           headers = {
-            host = "api-7.com",
+            host = "route-7.com",
             ["Cache-Control"] = "min-fresh=30"
           }
         })
@@ -663,7 +624,7 @@ for i, policy in ipairs({"memory", "redis"}) do
           method = "GET",
           path = "/cache/10",
           headers = {
-            host = "api-7.com",
+            host = "route-7.com",
             ["Cache-Control"] = "max-age=2"
           }
         })
@@ -681,7 +642,7 @@ for i, policy in ipairs({"memory", "redis"}) do
           method = "GET",
           path = "/cache/10",
           headers = {
-            host = "api-7.com",
+            host = "route-7.com",
             ["Cache-Control"] = "max-age=2"
           }
         })
@@ -705,7 +666,7 @@ for i, policy in ipairs({"memory", "redis"}) do
           method = "GET",
           path = "/cache/10",
           headers = {
-            host = "api-7.com",
+            host = "route-7.com",
             ["Cache-Control"] = "max-age=2"
           }
         })
@@ -719,7 +680,7 @@ for i, policy in ipairs({"memory", "redis"}) do
           method = "GET",
           path = "/cache/2",
           headers = {
-            host = "api-8.com",
+            host = "route-8.com",
           }
         })
 
@@ -736,7 +697,7 @@ for i, policy in ipairs({"memory", "redis"}) do
           method = "GET",
           path = "/cache/2",
           headers = {
-            host = "api-8.com",
+            host = "route-8.com",
           }
         })
 
@@ -758,7 +719,7 @@ for i, policy in ipairs({"memory", "redis"}) do
           method = "GET",
           path = "/cache/2",
           headers = {
-            host = "api-8.com",
+            host = "route-8.com",
             ["Cache-Control"] = "max-stale=1",
           }
         })
@@ -767,12 +728,12 @@ for i, policy in ipairs({"memory", "redis"}) do
         assert.same("Refresh", res.headers["X-Cache-Status"])
       end)
 
-      it("only-if-cached", function()
+      it("#o only-if-cached", function()
         local res = assert(client:send {
           method = "GET",
           path   = "/get?not=here",
           headers = {
-            host = "api-8.com",
+            host = "route-8.com",
             ["Cache-Control"] = "only-if-cached",
           }
         })
@@ -784,9 +745,9 @@ for i, policy in ipairs({"memory", "redis"}) do
     it("caches a streaming request", function()
       local res = assert(client:send {
         method = "GET",
-        path = "/stream-bytes/30000",
+        path = "/stream/3",
         headers = {
-          host = "api-1.com",
+          host = "route-1.com",
         }
       })
 
@@ -802,9 +763,9 @@ for i, policy in ipairs({"memory", "redis"}) do
 
       res = assert(client:send {
         method = "GET",
-        path = "/stream-bytes/30000",
+        path = "/stream/3",
         headers = {
-          host = "api-1.com",
+          host = "route-1.com",
         }
       })
 
@@ -813,12 +774,12 @@ for i, policy in ipairs({"memory", "redis"}) do
       assert.same(body1, body2)
     end)
 
-    it("uses a separate cache key for the same consumer between apis", function()
+    it("uses a separate cache key for the same consumer between routes", function()
       local res = assert(client:send {
         method = "GET",
         path = "/get",
         headers = {
-          host = "api-13.com",
+          host = "route-13.com",
           apikey = "bob",
         }
       })
@@ -829,7 +790,7 @@ for i, policy in ipairs({"memory", "redis"}) do
         method = "GET",
         path = "/get",
         headers = {
-          host = "api-14.com",
+          host = "route-14.com",
           apikey = "bob",
         }
       })
@@ -844,7 +805,7 @@ for i, policy in ipairs({"memory", "redis"}) do
         method = "GET",
         path = "/get",
         headers = {
-          host = "route-1.com",
+          host = "route-15.com",
           apikey = "bob",
         }
       })
@@ -855,7 +816,7 @@ for i, policy in ipairs({"memory", "redis"}) do
         method = "GET",
         path = "/get",
         headers = {
-          host = "route-2.com",
+          host = "route-16.com",
           apikey = "bob",
         }
       })
@@ -865,12 +826,12 @@ for i, policy in ipairs({"memory", "redis"}) do
       assert.not_equal(cache_key1, cache_key2)
     end)
 
-    it("uses an separate cache key betweens apis as a global plugin", function()
+    it("uses an separate cache key between routes-specific and a global plugin", function()
       local res = assert(client:send {
         method = "GET",
         path = "/get",
         headers = {
-          host = "api-3.com",
+          host = "route-3.com",
         }
       })
 
@@ -885,7 +846,7 @@ for i, policy in ipairs({"memory", "redis"}) do
         method = "GET",
         path = "/get",
         headers = {
-          host = "api-4.com",
+          host = "route-4.com",
         }
       })
 
@@ -896,12 +857,12 @@ for i, policy in ipairs({"memory", "redis"}) do
       assert.not_same(cache_key1, cache_key2)
     end)
 
-    it("differentiates caches between instances", function()
+    it("#o differentiates caches between instances", function()
       local res = assert(client:send {
         method = "GET",
         path = "/get",
         headers = {
-          host = "api-2.com",
+          host = "route-2.com",
         }
       })
 
@@ -921,14 +882,13 @@ for i, policy in ipairs({"memory", "redis"}) do
         method = "GET",
         path = "/get",
         headers = {
-          host = "api-2.com",
+          host = "route-2.com",
         }
       })
 
-      assert.res_status(200, res)
-
-      assert.same("Hit", res.headers["X-Cache-Status"])
       local cache_key2 = res.headers["X-Cache-Key"]
+      assert.res_status(200, res)
+      assert.same("Hit", res.headers["X-Cache-Status"])
       assert.same(cache_key1, cache_key2)
     end)
 
@@ -937,7 +897,7 @@ for i, policy in ipairs({"memory", "redis"}) do
         method = "GET",
         path = "/get?a=b&b=c",
         headers = {
-          host = "api-1.com",
+          host = "route-1.com",
         }
       })
 
@@ -948,7 +908,7 @@ for i, policy in ipairs({"memory", "redis"}) do
         method = "GET",
         path = "/get?a=c",
         headers = {
-          host = "api-1.com",
+          host = "route-1.com",
         }
       })
 
@@ -960,7 +920,7 @@ for i, policy in ipairs({"memory", "redis"}) do
         method = "GET",
         path = "/get?b=c&a=b",
         headers = {
-          host = "api-1.com",
+          host = "route-1.com",
         }
       })
 
@@ -973,7 +933,7 @@ for i, policy in ipairs({"memory", "redis"}) do
         method = "GET",
         path = "/get?foo=b&b=c",
         headers = {
-          host = "api-12.com",
+          host = "route-12.com",
         }
       })
 
@@ -991,7 +951,7 @@ for i, policy in ipairs({"memory", "redis"}) do
         method = "GET",
         path = "/get?b=d&foo=b",
         headers = {
-          host = "api-12.com",
+          host = "route-12.com",
         }
       })
 
@@ -1005,7 +965,7 @@ for i, policy in ipairs({"memory", "redis"}) do
         method = "GET",
         path = "/get",
         headers = {
-          host = "api-11.com",
+          host = "route-11.com",
           foo = "bar"
         }
       })
@@ -1022,7 +982,7 @@ for i, policy in ipairs({"memory", "redis"}) do
         method = "GET",
         path = "/get",
         headers = {
-          host = "api-11.com",
+          host = "route-11.com",
           foo = "bar"
         }
       })
@@ -1033,7 +993,7 @@ for i, policy in ipairs({"memory", "redis"}) do
         method = "GET",
         path = "/get",
         headers = {
-          host = "api-11.com",
+          host = "route-11.com",
           foo = "baz"
         }
       })
@@ -1041,13 +1001,13 @@ for i, policy in ipairs({"memory", "redis"}) do
       assert.same("Miss", res.headers["X-Cache-Status"])
     end)
 
-    describe("handles authenticated apis", function()
+    describe("handles authenticated routes", function()
       it("by ignoring cache if the request is unauthenticated", function()
         local res = assert(client:send {
           method = "GET",
           path = "/get",
           headers = {
-            host = "api-5.com",
+            host = "route-5.com",
           }
         })
 
@@ -1060,7 +1020,7 @@ for i, policy in ipairs({"memory", "redis"}) do
           method = "GET",
           path = "/get",
           headers = {
-            host = "api-5.com",
+            host = "route-5.com",
             apikey = "bob",
           }
         })
@@ -1072,7 +1032,7 @@ for i, policy in ipairs({"memory", "redis"}) do
           method = "GET",
           path = "/get",
           headers = {
-            host = "api-5.com",
+            host = "route-5.com",
             apikey = "bob",
           }
         })
@@ -1084,7 +1044,7 @@ for i, policy in ipairs({"memory", "redis"}) do
           method = "GET",
           path = "/get",
           headers = {
-            host = "api-5.com",
+            host = "route-5.com",
             apikey = "alice",
           }
         })
@@ -1096,7 +1056,7 @@ for i, policy in ipairs({"memory", "redis"}) do
           method = "GET",
           path = "/get",
           headers = {
-            host = "api-5.com",
+            host = "route-5.com",
             apikey = "alice",
           }
         })
@@ -1113,7 +1073,7 @@ for i, policy in ipairs({"memory", "redis"}) do
           method = "POST",
           path = "/post",
           headers = {
-            host = "api-1.com",
+            host = "route-1.com",
             ["Content-Type"] = "application/json",
           },
           {
@@ -1132,7 +1092,7 @@ for i, policy in ipairs({"memory", "redis"}) do
           method = "GET",
           path = "/status/418",
           headers = {
-            host = "api-1.com",
+            host = "route-1.com",
           },
         })
 
@@ -1145,7 +1105,7 @@ for i, policy in ipairs({"memory", "redis"}) do
           method = "GET",
           path = "/xml",
           headers = {
-            host = "api-1.com",
+            host = "route-1.com",
           },
         })
 
@@ -1160,7 +1120,7 @@ for i, policy in ipairs({"memory", "redis"}) do
           method = "POST",
           path = "/post",
           headers = {
-            host = "api-10.com",
+            host = "route-10.com",
             ["Content-Type"] = "application/json",
           },
           {
@@ -1181,7 +1141,7 @@ for i, policy in ipairs({"memory", "redis"}) do
           method = "POST",
           path = "/post",
           headers = {
-            host = "api-10.com",
+            host = "route-10.com",
             ["Content-Type"] = "application/json",
           },
           {
@@ -1196,24 +1156,24 @@ for i, policy in ipairs({"memory", "redis"}) do
       it("response status", function()
         local res = assert(client:send {
           method = "GET",
-          path = "/status/418",
+          path = "/status/417",
           headers = {
-            host = "api-10.com",
+            host = "route-10.com",
           },
         })
 
-        assert.res_status(418, res)
+        assert.res_status(417, res)
         assert.same("Miss", res.headers["X-Cache-Status"])
 
         res = assert(client:send {
           method = "GET",
-          path = "/status/418",
+          path = "/status/417",
           headers = {
-            host = "api-10.com",
+            host = "route-10.com",
           },
         })
 
-        assert.res_status(418, res)
+        assert.res_status(417, res)
         assert.same("Hit", res.headers["X-Cache-Status"])
       end)
 
@@ -1235,11 +1195,11 @@ for i, policy in ipairs({"memory", "redis"}) do
           method = "GET",
           path = "/get",
           headers = {
-            host = "api-1.com",
+            host = "route-1.com",
           }
         })
 
-        local body1 = assert.res_status(200, res)
+        assert.res_status(200, res)
         assert.same("Miss", res.headers["X-Cache-Status"])
         cache_key = res.headers["X-Cache-Key"]
 
@@ -1256,11 +1216,11 @@ for i, policy in ipairs({"memory", "redis"}) do
           method = "GET",
           path = "/get",
           headers = {
-            host = "api-1.com",
+            host = "route-1.com",
           }
         })
 
-        local body = assert.res_status(200, res)
+        assert.res_status(200, res)
         assert.same("Bypass", res.headers["X-Cache-Status"])
 
         local err_log = pl_file.read(helpers.test_conf.nginx_err_logs)
@@ -1275,11 +1235,11 @@ for i, policy in ipairs({"memory", "redis"}) do
           method = "GET",
           path = "/get?show-me=proxy-latency",
           headers = {
-            host = "api-1.com",
+            host = "route-1.com",
           }
         })
 
-        local body = assert.res_status(200, res)
+        assert.res_status(200, res)
         assert.same("Miss", res.headers["X-Cache-Status"])
         assert.matches("^%d+$", res.headers["X-Kong-Proxy-Latency"])
 
@@ -1287,16 +1247,13 @@ for i, policy in ipairs({"memory", "redis"}) do
           method = "GET",
           path = "/get?show-me=proxy-latency",
           headers = {
-            host = "api-1.com",
+            host = "route-1.com",
           }
         })
 
-        local body = assert.res_status(200, res)
+        assert.res_status(200, res)
         assert.same("Hit", res.headers["X-Cache-Status"])
         assert.matches("^%d+$", res.headers["X-Kong-Proxy-Latency"])
-        if policy == "memory" then
-          assert.True(3 > tonumber(res.headers["X-Kong-Proxy-Latency"]))
-        end
       end)
 
       it("X-Kong-Upstream-Latency", function()
@@ -1304,11 +1261,11 @@ for i, policy in ipairs({"memory", "redis"}) do
           method = "GET",
           path = "/get?show-me=upstream-latency",
           headers = {
-            host = "api-1.com",
+            host = "route-1.com",
           }
         })
 
-        local body = assert.res_status(200, res)
+        assert.res_status(200, res)
         assert.same("Miss", res.headers["X-Cache-Status"])
         assert.matches("^%d+$", res.headers["X-Kong-Upstream-Latency"])
         cache_key = res.headers["X-Cache-Key"]
@@ -1322,14 +1279,13 @@ for i, policy in ipairs({"memory", "redis"}) do
           method = "GET",
           path = "/get?show-me=upstream-latency",
           headers = {
-            host = "api-1.com",
+            host = "route-1.com",
           }
         })
 
-        local body = assert.res_status(200, res)
+        assert.res_status(200, res)
         assert.same("Hit", res.headers["X-Cache-Status"])
         assert.matches("^%d+$", res.headers["X-Kong-Upstream-Latency"])
-        assert.True(5 > tonumber(res.headers["X-Kong-Upstream-Latency"]))
       end)
     end)
   end)

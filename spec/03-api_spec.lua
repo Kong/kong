@@ -3,20 +3,18 @@ local cjson = require "cjson"
 
 
 describe("Plugin: proxy-cache", function()
-  local proxy_client, admin_client, cache_key, plugin1, api1
+  local bp
+  local proxy_client, admin_client, cache_key, plugin1, route1
 
   setup(function()
-    helpers.dao:truncate_tables()
-    helpers.dao:run_migrations()
+    bp = helpers.get_db_utils(nil, nil, {"proxy-cache"})
 
-    api1 = assert(helpers.dao.apis:insert {
-      name = "api-1",
-      hosts = { "api-1.com" },
-      upstream_url = "http://httpbin.org",
+    route1 = assert(bp.routes:insert {
+      hosts = { "route-1.com" },
     })
-    plugin1 = assert(helpers.dao.plugins:insert {
+    plugin1 = assert(bp.plugins:insert {
       name = "proxy-cache",
-      api_id = api1.id,
+      route = { id = route1.id },
       config = {
         strategy = "memory",
         content_type = { "text/plain", "application/json" },
@@ -26,14 +24,13 @@ describe("Plugin: proxy-cache", function()
       },
     })
 
-    local api2 = assert(helpers.dao.apis:insert {
-      name = "api-2",
-      hosts = { "api-2.com" },
-      upstream_url = "http://httpbin.org",
+    local route2 = assert(bp.routes:insert {
+      hosts = { "route-2.com" },
     })
-    assert(helpers.dao.plugins:insert {
+
+    assert(bp.plugins:insert {
       name = "proxy-cache",
-      api_id = api2.id,
+      route = { id = route2.id },
       config = {
         strategy = "memory",
         content_type = { "text/plain", "application/json" },
@@ -45,18 +42,22 @@ describe("Plugin: proxy-cache", function()
 
     assert(helpers.start_kong({
       custom_plugins = "proxy-cache",
+      nginx_conf = "spec/fixtures/custom_nginx.template",
     }))
-    admin_client = helpers.admin_client()
-    proxy_client = helpers.proxy_client()
-  end)
-  teardown(function()
+
     if admin_client then
       admin_client:close()
     end
     if proxy_client then
       proxy_client:close()
     end
-    helpers.stop_kong()
+
+    admin_client = helpers.admin_client()
+    proxy_client = helpers.proxy_client()
+  end)
+
+  teardown(function()
+    helpers.stop_kong(nil, true)
   end)
 
   describe("(schema)", function()
@@ -73,10 +74,10 @@ describe("Plugin: proxy-cache", function()
             memory = {
               dictionary_name = "kong",
             },
-            response_code = {"123", "200"},
+            response_code = {123, 200},
             cache_ttl = 600,
-            request_method = "GET",
-            content_type = "text/json",
+            request_method = { "GET" },
+            content_type = { "text/json" },
           },
         },
         headers = {
@@ -104,8 +105,8 @@ describe("Plugin: proxy-cache", function()
             },
             response_code = {},
             cache_ttl = 600,
-            request_method = "GET",
-            content_type = "text/json",
+            request_method = { "GET" },
+            content_type = { "text/json" },
           },
         },
         headers = {
@@ -114,8 +115,7 @@ describe("Plugin: proxy-cache", function()
       })
       local body = assert.res_status(400, res)
       local json_body = cjson.decode(body)
-      assert.same("response_code must contain at least one value",
-        json_body["config.response_code"])
+      assert.same("length must be at least 1", json_body.fields.config.response_code)
     end)
     it("errors if response_code is a string", function()
       local res = assert(admin_client:send {
@@ -128,7 +128,7 @@ describe("Plugin: proxy-cache", function()
             memory = {
               dictionary_name = "kong",
             },
-            response_code="",
+            response_code = {},
             cache_ttl = 600,
             request_method = "GET",
             content_type = "text/json",
@@ -140,8 +140,7 @@ describe("Plugin: proxy-cache", function()
       })
       local body = assert.res_status(400, res)
       local json_body = cjson.decode(body)
-      assert.same("response_code must contain at least one value",
-        json_body["config.response_code"])
+      assert.same("length must be at least 1", json_body.fields.config.response_code)
     end)
     it("errors if response_code has non-numeric values", function()
       local res = assert(admin_client:send {
@@ -166,8 +165,8 @@ describe("Plugin: proxy-cache", function()
       })
       local body = assert.res_status(400, res)
       local json_body = cjson.decode(body)
-      assert.same("response_code value must be an integer",
-        json_body["config.response_code"])
+      assert.same("expected an integer",
+                   json_body.fields.config.response_code)
     end)
     it("errors if response_code has float value", function()
       local res = assert(admin_client:send {
@@ -180,7 +179,7 @@ describe("Plugin: proxy-cache", function()
             memory = {
               dictionary_name = "kong",
             },
-            response_code = {100.5},
+            response_code = {90},
             cache_ttl = 600,
             request_method = "GET",
             content_type = "text/json",
@@ -192,8 +191,8 @@ describe("Plugin: proxy-cache", function()
       })
       local body = assert.res_status(400, res)
       local json_body = cjson.decode(body)
-      assert.same("response_code must be an integer within 100 - 999",
-        json_body["config.response_code"])
+      assert.same("value should be between 100 and 900",
+                   json_body.fields.config.response_code)
     end)
   end)
   describe("(API)", function()
@@ -203,7 +202,7 @@ describe("Plugin: proxy-cache", function()
           method = "GET",
           path = "/get",
           headers = {
-            host = "api-1.com",
+            host = "route-1.com",
           }
         })
 
@@ -220,7 +219,7 @@ describe("Plugin: proxy-cache", function()
           method = "GET",
           path = "/get",
           headers = {
-            host = "api-1.com",
+            host = "route-1.com",
           }
         })
 
@@ -240,7 +239,7 @@ describe("Plugin: proxy-cache", function()
           method = "GET",
           path = "/get",
           headers = {
-            host = "api-1.com",
+            host = "route-1.com",
           }
         })
 
@@ -258,7 +257,7 @@ describe("Plugin: proxy-cache", function()
           method = "GET",
           path = "/get",
           headers = {
-            host = "api-1.com",
+            host = "route-1.com",
           }
         })
 
@@ -266,23 +265,23 @@ describe("Plugin: proxy-cache", function()
         assert.same("Miss", res.headers["X-Cache-Status"])
       end)
       it("purge all the cache entries", function()
-        -- make a `Hit` request to `api-1`
+        -- make a `Hit` request to `route-1`
         local res = assert(proxy_client:send {
           method = "GET",
           path = "/get",
           headers = {
-            host = "api-1.com",
+            host = "route-1.com",
           }
         })
         assert.res_status(200, res)
         assert.same("Hit", res.headers["X-Cache-Status"])
 
-        -- make a `Miss` request to `api-2`
+        -- make a `Miss` request to `route-2`
         local res = assert(proxy_client:send {
           method = "GET",
           path = "/get",
           headers = {
-            host = "api-2.com",
+            host = "route-2.com",
           }
         })
 
@@ -294,12 +293,12 @@ describe("Plugin: proxy-cache", function()
         assert.matches("^[%w%d]+$", cache_key1)
         assert.equals(32, #cache_key1)
 
-        -- make a `Hit` request to `api-1`
+        -- make a `Hit` request to `route-1`
         res = assert(proxy_client:send {
           method = "GET",
           path = "/get",
           headers = {
-            host = "api-2.com",
+            host = "route-2.com",
           }
         })
 
@@ -319,7 +318,7 @@ describe("Plugin: proxy-cache", function()
           method = "GET",
           path = "/get",
           headers = {
-            host = "api-1.com",
+            host = "route-1.com",
           }
         })
 
@@ -330,7 +329,7 @@ describe("Plugin: proxy-cache", function()
           method = "GET",
           path = "/get",
           headers = {
-            host = "api-2.com",
+            host = "route-2.com",
           }
         })
 
@@ -361,7 +360,7 @@ describe("Plugin: proxy-cache", function()
 
         local res = assert(admin_client:send {
           method = "DELETE",
-          path = "/proxy-cache/" .. api1.id .. "/caches/" .. "123",
+          path = "/proxy-cache/" .. route1.id .. "/caches/" .. "123",
         })
         assert.res_status(404, res)
       end)
@@ -394,7 +393,7 @@ describe("Plugin: proxy-cache", function()
           method = "GET",
           path = "/get",
           headers = {
-            host = "api-1.com",
+            host = "route-1.com",
           }
         })
         assert.res_status(200, res)

@@ -1,6 +1,4 @@
-local cjson        = require "cjson"
 local helpers      = require "spec.helpers"
-local dao_helpers  = require "spec.02-integration.03-dao.helpers"
 
 
 local POLL_INTERVAL = 0.3
@@ -13,33 +11,28 @@ describe("proxy-cache invalidations via: " .. strategy, function()
   local client_2
   local admin_client_1
   local admin_client_2
-  local api1
-  local api2
+  local route1
+  local route2
   local plugin1
   local plugin2
+  local bp
 
-  local dao
   local wait_for_propagation
 
   setup(function()
-    local kong_dao_factory = require "kong.dao.factory"
-    dao = select(3, helpers.get_db_utils(strategy))
+    bp = helpers.get_db_utils(strategy, nil, {"proxy-cache"})
 
-    api1 = assert(dao.apis:insert {
-      name = "api-1",
-      hosts = { "api-1.com" },
-      upstream_url = "http://httpbin.org",
+    route1 = assert(bp.routes:insert {
+      hosts = { "route-1.com" },
     })
 
-    api2 = assert(dao.apis:insert {
-      name = "api-2",
-      hosts = { "api-2.com" },
-      upstream_url = "http://httpbin.org",
+    route2 = assert(bp.routes:insert {
+      hosts = { "route-2.com" },
     })
 
-    plugin1 = assert(dao.plugins:insert {
+    plugin1 = assert(bp.plugins:insert {
       name = "proxy-cache",
-      api_id = api1.id,
+      route = { id = route1.id },
       config = {
         strategy = "memory",
         content_type = { "text/plain", "application/json" },
@@ -49,9 +42,9 @@ describe("proxy-cache invalidations via: " .. strategy, function()
       },
     })
 
-    plugin2 = assert(dao.plugins:insert {
+    plugin2 = assert(bp.plugins:insert {
       name = "proxy-cache",
-      api_id = api2.id,
+      route = { id = route2.id },
       config = {
         strategy = "memory",
         content_type = { "text/plain", "application/json" },
@@ -76,6 +69,7 @@ describe("proxy-cache invalidations via: " .. strategy, function()
       db_update_frequency   = POLL_INTERVAL,
       db_update_propagation = db_update_propagation,
       custom_plugins        = "proxy-cache",
+      nginx_conf            = "spec/fixtures/custom_nginx.template",
     })
 
     assert(helpers.start_kong {
@@ -106,8 +100,6 @@ describe("proxy-cache invalidations via: " .. strategy, function()
   teardown(function()
     helpers.stop_kong("servroot1", true)
     helpers.stop_kong("servroot2", true)
-
-    dao:truncate_tables()
   end)
 
   before_each(function()
@@ -133,11 +125,11 @@ describe("proxy-cache invalidations via: " .. strategy, function()
         method = "GET",
         path = "/get",
         headers = {
-          Host = "api-1.com",
+          Host = "route-1.com",
         },
       })
 
-      local body = assert.res_status(200, res_1)
+      assert.res_status(200, res_1)
       assert.same("Miss", res_1.headers["X-Cache-Status"])
       cache_key = res_1.headers["X-Cache-Key"]
 
@@ -145,11 +137,11 @@ describe("proxy-cache invalidations via: " .. strategy, function()
         method = "GET",
         path = "/get",
         headers = {
-          host = "api-1.com",
+          host = "route-1.com",
         },
       })
 
-      body = assert.res_status(200, res_2)
+      assert.res_status(200, res_2)
       assert.same("Miss", res_2.headers["X-Cache-Status"])
       assert.same(cache_key, res_2.headers["X-Cache-Key"])
 
@@ -157,11 +149,11 @@ describe("proxy-cache invalidations via: " .. strategy, function()
         method = "GET",
         path = "/get",
         headers = {
-          host = "api-2.com",
+          host = "route-2.com",
         },
       })
 
-      body = assert.res_status(200, res_1)
+      assert.res_status(200, res_1)
       assert.same("Miss", res_1.headers["X-Cache-Status"])
       cache_key2 = res_1.headers["X-Cache-Key"]
       assert.not_same(cache_key, cache_key2)
@@ -170,11 +162,11 @@ describe("proxy-cache invalidations via: " .. strategy, function()
         method = "GET",
         path = "/get",
         headers = {
-          host = "api-2.com",
+          host = "route-2.com",
         },
       })
 
-      body = assert.res_status(200, res_2)
+      assert.res_status(200, res_2)
       assert.same("Miss", res_2.headers["X-Cache-Status"])
     end)
 
@@ -183,22 +175,22 @@ describe("proxy-cache invalidations via: " .. strategy, function()
         method = "GET",
         path = "/get",
         headers = {
-          host = "api-1.com",
+          host = "route-1.com",
         },
       })
 
-      local body = assert.res_status(200, res_1)
+      assert.res_status(200, res_1)
       assert.same("Hit", res_1.headers["X-Cache-Status"])
 
       local res_2 = assert(client_2:send {
         method = "GET",
         path = "/get",
         headers = {
-          host = "api-1.com",
+          host = "route-1.com",
         },
       })
 
-      body = assert.res_status(200, res_2)
+      assert.res_status(200, res_2)
       assert.same("Hit", res_2.headers["X-Cache-Status"])
 
       -- now purge the entry
@@ -225,22 +217,22 @@ describe("proxy-cache invalidations via: " .. strategy, function()
         method = "GET",
         path = "/get",
         headers = {
-          Host = "api-1.com",
+          Host = "route-1.com",
         },
       })
 
-      body = assert.res_status(200, res_1)
+      assert.res_status(200, res_1)
       assert.same("Miss", res_1.headers["X-Cache-Status"])
 
       res_2 = assert(client_2:send {
         method = "GET",
         path = "/get",
         headers = {
-          host = "api-1.com",
+          host = "route-1.com",
         },
       })
 
-      body = assert.res_status(200, res_2)
+      assert.res_status(200, res_2)
       assert.same("Miss", res_2.headers["X-Cache-Status"])
       assert.same(cache_key, res_2.headers["X-Cache-Key"])
 
