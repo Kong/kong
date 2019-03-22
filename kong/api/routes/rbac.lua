@@ -228,20 +228,6 @@ return {
         -- endpoints.delete_entity_endpoint(rbac_users.schema)(self, db, helpers)
         find_current_user(self, db, helpers)
 
-        -- local roles = rbac.get_user_roles(db, self.rbac_user) -- XXX EE Handle Error
-
-        -- for _, role in ipairs(roles) do
-
-        --   db.rbac_user_roles:delete({
-        --     user = { id = self.rbac_user.id },
-        --     role = { id = role.id },
-        --   })
-
-        --   if role.name == self.rbac_user.name then
-        --     default_role = role
-        --   end
-        -- end
-
         db.rbac_users:delete({id = self.rbac_user.id })
 
         local default_role = db.rbac_roles:select_by_name(self.rbac_user.name)
@@ -441,28 +427,6 @@ return {
         end
 
         self.rbac_role = rbac_role
-
-
-        -- -- delete the user <-> role mappings
-        -- -- we have to get our row, then delete it
-        -- -- local users, err = db.rbac_roles:get_users(db, self.rbac_role)
-        -- local users, err = rbac.get_role_users(db, self.rbac_role)
-        -- if err then
-        --   return helpers.yield_error(err)
-        -- end
-
-        -- for i = 1, #users do
-        --   db.rbac_user_roles:delete({
-        --     user = { id = users[i].id },
-        --     role = { id = self.rbac_role.id },
-        --   })
-        -- end
-
-        -- local err = rbac.role_relation_cleanup(self.rbac_role)
-
-        -- if err then
-        --   return nil, err
-        -- end
 
         db.rbac_roles:delete({ id = rbac_role.id })
         return kong.response.exit(204)
