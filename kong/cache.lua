@@ -38,7 +38,7 @@ local mt = { __index = _M }
 
 function _M.new(opts)
   if _init then
-    return error("kong.cache was already created")
+    error("kong.cache was already created", 2)
   end
 
   -- opts validation
@@ -46,27 +46,27 @@ function _M.new(opts)
   opts = opts or {}
 
   if not opts.cluster_events then
-    return error("opts.cluster_events is required")
+    error("opts.cluster_events is required", 2)
   end
 
   if not opts.worker_events then
-    return error("opts.worker_events is required")
+    error("opts.worker_events is required", 2)
   end
 
   if opts.propagation_delay and type(opts.propagation_delay) ~= "number" then
-    return error("opts.propagation_delay must be a number")
+    error("opts.propagation_delay must be a number", 2)
   end
 
   if opts.ttl and type(opts.ttl) ~= "number" then
-    return error("opts.ttl must be a number")
+    error("opts.ttl must be a number", 2)
   end
 
   if opts.neg_ttl and type(opts.neg_ttl) ~= "number" then
-    return error("opts.neg_ttl must be a number")
+    error("opts.neg_ttl must be a number", 2)
   end
 
   if opts.resty_lock_opts and type(opts.resty_lock_opts) ~= "table" then
-    return error("opts.resty_lock_opts must be a table")
+    error("opts.resty_lock_opts must be a table", 2)
   end
 
   local mlcache, err = resty_mlcache.new(SHM_CACHE, SHM_CACHE, {
@@ -118,7 +118,7 @@ end
 
 function _M:get(key, opts, cb, ...)
   if type(key) ~= "string" then
-    return error("key must be a string")
+    error("key must be a string", 2)
   end
 
   --log(DEBUG, "get from key: ", key)
@@ -134,11 +134,11 @@ end
 
 function _M:get_bulk(bulk, opts)
   if type(bulk) ~= "table" then
-    return error("bulk must be a table")
+    error("bulk must be a table", 2)
   end
 
   if opts ~= nil and type(opts) ~= "table" then
-    return error("opts must be a table")
+    error("opts must be a table", 2)
   end
 
   local res, err = self.mlcache:get_bulk(bulk, opts)
@@ -152,7 +152,7 @@ end
 
 function _M:probe(key)
   if type(key) ~= "string" then
-    return error("key must be a string")
+    error("key must be a string", 2)
   end
 
   local ttl, err, v = self.mlcache:peek(key)
@@ -166,7 +166,7 @@ end
 
 function _M:invalidate_local(key)
   if type(key) ~= "string" then
-    return error("key must be a string")
+    error("key must be a string", 2)
   end
 
   log(DEBUG, "invalidating (local): '", key, "'")
@@ -180,7 +180,7 @@ end
 
 function _M:invalidate(key)
   if type(key) ~= "string" then
-    return error("key must be a string")
+    error("key must be a string", 2)
   end
 
   self:invalidate_local(key)
