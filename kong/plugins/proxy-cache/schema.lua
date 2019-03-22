@@ -1,35 +1,5 @@
 local strategies = require "kong.plugins.proxy-cache.strategies"
 local redis      = require "kong.enterprise_edition.redis"
-local errors     = require "kong.dao.errors"
-
-
-local function check_status(status_t)
-  if #status_t == 0 then
-    return false, "response_code must contain at least one value"
-  end
-
-  for i = 1, #status_t do
-    local status = tonumber(status_t[i])
-    if not status then
-      return false, "response_code value must be an integer"
-    end
-
-    if status % 1 ~= 0 or status < 100 or status > 999 then
-      return false, "response_code must be an integer within 100 - 999"
-    end
-  end
-
-  return true
-end
-
-
-local function check_ttl(ttl)
-  if ttl and (ttl <= 0) then
-    return false, "cache_ttl must be a positive number"
-  end
-
-  return true
-end
 
 
 local function check_shdict(name)
@@ -41,98 +11,91 @@ local function check_shdict(name)
 end
 
 
-local memory_schema = {
-  fields = {
-    dictionary_name = {
-      type = "string",
-      default = "kong_cache",
-    },
-  },
-}
-
-
 return {
+  name = "proxy-cache",
   fields = {
-    response_code = {
-      type = "array",
-      default = { 200, 301, 404 },
-      func = check_status,
-      required = true,
-    },
-    request_method = {
-      type = "array",
-      default = { "GET", "HEAD" },
-      required = true,
-    },
-    content_type = {
-      type = "array",
-      default = { "text/plain","application/json" },
-      required = true,
-    },
-    cache_ttl = {
-      type = "number",
-      default = 300,
-      func = check_ttl,
-    },
-    strategy = {
-      type = "string",
-      enum = strategies.STRATEGY_TYPES,
-      required = true,
-    },
-    cache_control = {
-      type = "boolean",
-      default = false,
-      required = true,
-    },
-    storage_ttl = {
-      type = "number",
-    },
-    memory = {
-      type = "table",
-      schema = memory_schema,
-    },
-    redis = {
-      type = "table",
-      schema = redis.config_schema,
-    },
-    vary_query_params = {
-      type = "array",
-    },
-    vary_headers = {
-      type = "array",
+    { config = {
+        type = "record",
+        fields = {
+          { response_code = {
+            type = "array",
+            default = { 200, 301, 404 },
+            elements = { type = "integer", between = {100, 900} },
+            len_min = 1,
+            required = true,
+          }},
+          { request_method = {
+            type = "array",
+            default = { "GET", "HEAD" },
+            elements = {
+              type = "string",
+              one_of = { "HEAD", "GET", "POST", "PATCH", "PUT" },
+            },
+            required = true
+          }},
+          { content_type = {
+            type = "array",
+            default = { "text/plain","application/json" },
+            elements = { type = "string" },
+            required = true,
+          }},
+          { cache_ttl = {
+            type = "integer",
+            default = 300,
+            gt = 0,
+          }},
+          { strategy = {
+            type = "string",
+            one_of = strategies.STRATEGY_TYPES,
+            required = true,
+          }},
+          { cache_control = {
+            type = "boolean",
+            default = false,
+            required = true,
+          }},
+          { storage_ttl = {
+            type = "integer",
+          }},
+          { memory = {
+            type = "record",
+            fields = {
+              { dictionary_name = {
+                type = "string",
+                required = true,
+                default = "kong_cache",
+              }},
+            },
+          }},
+          { vary_query_params = {
+            type = "array",
+            elements = { type = "string" },
+          }},
+          { vary_headers = {
+            type = "array",
+            elements = { type = "string" },
+          }},
+          { redis = redis.config_schema }, -- redis schema is provided by
+                                           -- Kong Enterprise, since it's useful
+                                           -- for other plugins (e.g., rate-limiting)
+        },
+      }
     },
   },
-  self_check = function(schema, plugin_t, dao, is_updating)
-    if plugin_t.strategy == "memory" then
-      local ok, err = check_shdict(plugin_t.memory.dictionary_name)
 
-      if not ok then
-        return false, errors.schema(err)
+  entity_checks = {
+    { custom_entity_check = {
+      field_sources = { "config" },
+      fn = function(entity)
+        if entity.config.strategy == "memory" then
+          local ok, err = check_shdict(entity.config.memory.dictionary_name)
+          if not ok then
+            return nil, err
+          end
+        end
+
+        return true
       end
-    elseif plugin_t.strategy == "redis" then
-      if not plugin_t.redis then
-        return false, errors.schema("No redis config provided")
-      end
-    end
-
-    if plugin_t.response_code then
-      for i = 1, #plugin_t.response_code do
-        plugin_t.response_code[i] = tonumber(plugin_t.response_code[i])
-      end
-    end
-
-    if plugin_t.vary_headers then
-      for i, v in ipairs(plugin_t.vary_headers) do
-        plugin_t.vary_headers[i] = string.lower(v)
-      end
-
-      table.sort(plugin_t.vary_headers)
-    end
-
-    if plugin_t.vary_query_params then
-      table.sort(plugin_t.vary_query_params)
-    end
-
-    return true
-  end,
+    }},
+  },
 }
