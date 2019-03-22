@@ -308,8 +308,10 @@ http {
                     valid_routes = {
                         ["/ws"]                         = "Websocket echo server",
                         ["/get"]                        = "Accepts a GET request and returns it in JSON format",
+                        ["/xml"]                        = "Returns a simple XML document",
                         ["/post"]                       = "Accepts a POST request and returns it in JSON format",
                         ["/response-headers?:key=:val"] = "Returns given response headers",
+                        ["/cache/:n"]                   = "Sets a Cache-Control header for n seconds",
                         ["/anything"]                   = "Accepts any request and returns it in JSON format",
                         ["/request"]                    = "Alias to /anything",
                         ["/delay/:duration"]            = "Delay the response for <duration> seconds",
@@ -339,6 +341,19 @@ http {
             }
         }
 
+        location /xml {
+            content_by_lua_block {
+                local mu = require "spec.fixtures.mock_upstream"
+                local xml = [[
+                  <?xml version="1.0" encoding="UTF-8"?>
+                    <note>
+                      <body>Kong, Monolith destroyer.</body>
+                    </note>
+                ]]
+                return mu.send_text_response(xml, "application/xml")
+            }
+        }
+
         location /post {
             access_by_lua_block {
                 local mu = require "spec.fixtures.mock_upstream"
@@ -358,6 +373,15 @@ http {
             content_by_lua_block {
                 local mu = require "spec.fixtures.mock_upstream"
                 return mu.send_default_json_response({}, ngx.req.get_uri_args())
+            }
+        }
+
+        location ~ "^/cache/(?<n>\d+)$" {
+            content_by_lua_block {
+                local mu = require "spec.fixtures.mock_upstream"
+                return mu.send_default_json_response({}, {
+                    ["Cache-Control"] = "public, max-age=" .. ngx.var.n,
+                })
             }
         }
 
