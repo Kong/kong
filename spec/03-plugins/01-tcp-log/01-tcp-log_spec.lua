@@ -82,7 +82,7 @@ for _, strategy in helpers.each_strategy() do
       assert.equal("127.0.0.1", log_message.client_ip)
     end)
 
-    it("logs proper latencies", function()
+    it("#flaky logs proper latencies", function()
       local tcp_thread = helpers.tcp_server(TCP_PORT) -- Starting the mock TCP server
 
       -- Making the request

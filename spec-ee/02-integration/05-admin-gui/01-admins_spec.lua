@@ -11,33 +11,33 @@ local escape = require("socket.url").escape
 local post = ee_helpers.post
 
 
--- luacheck: ignore
--- XXX bypass this file for now - admin hasn't been finished in 0.15 yet
-do
-  return
-end
-
-
 for _, strategy in helpers.each_strategy() do
   describe("Admin API - Admins #" .. strategy, function()
     local client
+    local db
     local dao
     local bp
     local admin, proxy_consumer
     local another_ws
     local admins = {}
 
-    setup(function()
-      bp, _, dao = helpers.get_db_utils(strategy)
-
+    lazy_setup(function()
+      bp, db, dao = helpers.get_db_utils(strategy, {
+        "consumers",
+        "rbac_users",
+        "rbac_roles",
+        "rbac_user_roles",
+        "admins",
+      })
       assert(helpers.start_kong({
         database = strategy,
         admin_gui_url = "http://manager.konghq.com",
-        admin_gui_auth = 'basic-auth',
-        enforce_rbac = "on",
+        -- TODO: Re-enable when auth plugins work again
+        --admin_gui_auth = "basic-auth",
+        --enforce_rbac = "on",
       }))
 
-      another_ws = assert(dao.workspaces:insert({
+      another_ws = assert(bp.workspaces:insert({
         name = "another-one",
       }))
 
@@ -46,38 +46,23 @@ for _, strategy in helpers.each_strategy() do
 
       for i = 1, 3 do
         -- admins that are already approved
-        local consumer = assert(bp.consumers:insert {
+        admins[i] = assert(db.admins:insert {
           username = "admin-" .. i .. "@test.com",
           custom_id = "admin-" .. i,
           email = "admin-" .. i .. "@test.com",
-          type = enums.CONSUMERS.TYPE.ADMIN,
           status = enums.CONSUMERS.STATUS.APPROVED,
         })
-
-        local rbac_user = assert(dao.rbac_users:insert {
-          name = "admin-" .. i,
-          user_token = utils.uuid(),
-          enabled = true,
-        })
-
-        assert(dao.consumers_rbac_users_map:insert {
-          consumer_id = consumer.id,
-          user_id = rbac_user.id,
-        })
-
-        -- for now, an admin is a munging of consumer + rbac_user,
-        -- and we don't return the user_token in any responses
-        rbac_user.user_token = nil
-        consumer.rbac_user = rbac_user
-
-        admins[i] = consumer
       end
-
+      admins[4] = assert(db.admins:insert {
+        username = "admin-4@test.com",
+        custom_id = "admin-4",
+        email = "admin-4@test.com",
+        status = enums.CONSUMERS.STATUS.INVITED,
+      })
       -- developers don't show up as admins
       assert(bp.consumers:insert {
         username = "developer-1",
         custom_id = "developer-1",
-        email = "developer-1@test.com",
         type = enums.CONSUMERS.TYPE.DEVELOPER,
       })
 
@@ -85,14 +70,13 @@ for _, strategy in helpers.each_strategy() do
       proxy_consumer = assert(bp.consumers:insert {
         username = "consumer-1",
         custom_id = "consumer-1",
-        email = "consumer-1@test.com",
         type = enums.CONSUMERS.TYPE.PROXY,
       })
 
       admin = admins[1]
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       helpers.stop_kong()
     end)
 
@@ -117,7 +101,7 @@ for _, strategy in helpers.each_strategy() do
 
           res = assert.res_status(200, res)
           local json = cjson.decode(res)
-          assert.equal(3, #json.data)
+          assert.equal(4, #json.data)
         end)
 
       end)
@@ -135,116 +119,19 @@ for _, strategy in helpers.each_strategy() do
               custom_id = "cooper",
               username  = "dale",
               email = "Twinpeaks@KongHQ.com",
+              status = enums.CONSUMERS.STATUS.INVITED,
             },
           })
           res = assert.res_status(200, res)
           local json = cjson.decode(res)
 
-          assert.equal("dale", json.consumer.username)
-          assert.equal("cooper", json.consumer.custom_id)
-          assert.equal("twinpeaks@konghq.com", json.consumer.email)
-          assert.equal(enums.CONSUMERS.TYPE.ADMIN, json.consumer.type)
-          assert.equal(enums.CONSUMERS.STATUS.INVITED, json.consumer.status)
-          assert.equal("dale", json.rbac_user.name)
-
-          local consumer_reset_secrets, err = dao.consumer_reset_secrets:find_all {
-            consumer_id = json.consumer.id,
-          }
-
-          assert.is_nil(err)
-          assert.same(json.consumer.id, consumer_reset_secrets[1].consumer_id)
-        end)
-
-        it("uses the admins_helpers validator", function()
-          local res = assert(client:send {
-            method = "POST",
-            path  = "/admins",
-            headers = {
-              ["Kong-Admin-Token"] = "letmein",
-              ["Content-Type"]     = "application/json",
-            },
-            body  = {
-              custom_id = "admin-1",
-              username  = "i-am-unique",
-              email = "twinpeaks@konghq.com",
-            },
-          })
-          assert.res_status(409, res)
-        end)
-
-        it("links an admin to another workspace", function()
-          local res = assert(client:send {
-            method = "POST",
-            path  = "/" .. another_ws.name .. "/admins",
-            headers = {
-              ["Kong-Admin-Token"] = "letmein",
-              ["Content-Type"]     = "application/json",
-            },
-            body  = {
-              custom_id = "admin-1",
-              username  = "i-am-unique",
-              email = "twinpeaks@konghq.com",
-            },
-          })
-          assert.res_status(200, res)
-        end)
-
-        it("returns 409 when rbac_user with same name already exists", function()
-          -- rbac_user who is not part of an admin record
-          local user = assert(dao.rbac_users:insert {
-            name = "vanilla-rbac-user",
-            user_token = utils.uuid(),
-            enabled = true,
-          })
-
-          local res = assert(client:send {
-            method = "POST",
-            path  = "/admins",
-            headers = {
-              ["Kong-Admin-Token"] = "letmein",
-              ["Content-Type"]     = "application/json",
-            },
-            body  = {
-              custom_id = user.name,
-              username  = user.name,
-              email = "gruce@konghq.com",
-            },
-          })
-          assert.res_status(409, res)
-        end)
-
-        it("returns 400 when trying to create with type = proxy", function()
-          local res = assert(client:send {
-            method = "POST",
-            path = "/admins",
-            body = {
-              username = "foo",
-              type = enums.CONSUMERS.TYPE.PROXY,
-            },
-            headers = {
-              ["Kong-Admin-Token"] = "letmein",
-              ["Content-Type"] = "application/json"
-            }
-          })
-          local body = assert.res_status(400, res)
-          assert.equal("type is invalid", cjson.decode(body).message)
-        end)
-
-        it("returns 400 when trying to create with type = developer", function()
-          local res = assert(client:send {
-            method = "POST",
-            path = "/admins",
-            body = {
-              username = "foo",
-              type = enums.CONSUMERS.TYPE.DEVELOPER,
-            },
-            headers = {
-              ["Kong-Admin-Token"] = "letmein",
-              ["Content-Type"] = "application/json"
-            }
-          })
-          local body = assert.res_status(400, res)
-          assert.equal("type is invalid", cjson.decode(body).message)
+          -- TODO: should the response be nested under 'admin' like this,
+          -- or kept at top-level like other entities? The original sin here
+          -- was returning { consumer = foo, rbac_user = bar, message = hi }.
+          assert.equal("dale", json.admin.username)
+          assert.equal("cooper", json.admin.custom_id)
+          assert.equal("twinpeaks@konghq.com", json.admin.email)
+          assert.equal(enums.CONSUMERS.STATUS.INVITED, json.admin.status)
         end)
       end)
     end)
@@ -264,7 +151,7 @@ for _, strategy in helpers.each_strategy() do
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
 
-          assert.same(admins[1], json)
+          assert.same(admins[1].id, json.id)
         end)
 
         it("retrieves by username", function()
@@ -278,7 +165,23 @@ for _, strategy in helpers.each_strategy() do
           })
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
-          assert.same(admins[2], json)
+          assert.same(admins[2].id, json.id)
+        end)
+
+        it("includes token for invited user", function()
+          local res = assert(client:send {
+            method = "GET",
+            path = "/admins/" .. escape("admin-4@test.com") .. "?generate_register_url=true",
+            headers = {
+              ["Kong-Admin-Token"] = "letmein",
+              ["Content-Type"]     = "application/json",
+            },
+          })
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+          assert.same(admins[4].id, json.id)
+          assert.not_nil(json.token)
+          assert.not_nil(json.register_url)
         end)
 
         it("returns 404 if not found", function()
@@ -295,23 +198,6 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       describe("PATCH", function()
-        it("returns 400 when trying to change consumer type", function()
-          local res = assert(client:send {
-            method = "PATCH",
-            path = "/admins/" .. admin.id,
-            body = {
-              type = enums.CONSUMERS.TYPE.PROXY,
-            },
-            headers = {
-              ["Kong-Admin-Token"] = "letmein",
-              ["Content-Type"] = "application/json",
-            },
-          })
-
-          local body = cjson.decode(assert.res_status(400, res))
-          assert.same("type is invalid", body.message)
-        end)
-
         it("updates by id", function()
           return function()
             local res = assert(client:send {
@@ -331,17 +217,6 @@ for _, strategy in helpers.each_strategy() do
             assert.equal("alice", json.username)
             assert.equal("alice@konghq.com", json.email)
             assert.equal(admin.id, json.id)
-
-            local in_db = assert(bp.consumers:find {id = admin.id})
-            assert.same(json, in_db)
-
-            -- keeps consumer.username and rbac_user.name in sync
-            local rbac_users = assert(dao.rbac_users:find_all({ name = "alice" }))
-            assert.same("alice", rbac_users[1].name)
-
-            -- keeps consumer.username and basic-auth cred.username in sync
-            local creds = assert(dao.basicauth_credentials:find_all({ consumer_id = admin.id} ))
-            assert.same("alice", creds[1].username)
           end
         end)
 
@@ -362,35 +237,6 @@ for _, strategy in helpers.each_strategy() do
             local json = cjson.decode(body)
             assert.equal("alice", json.username)
             assert.equal(admin.id, json.id)
-
-            local in_db = assert(bp.consumers:find {id = admin.id})
-            assert.same(json, in_db)
-          end
-        end)
-
-        it("doesn't modify rbac_user when username doesn't change", function()
-          return function()
-            local res = assert(client:send {
-              method = "PATCH",
-              path = "/admins/" .. admin.username,
-              body = {
-                custom_id = "alice"
-              },
-              headers = {
-                ["Kong-Admin-Token"] = "letmein",
-                ["Content-Type"]     = "application/json",
-              },
-            })
-            local body = assert.res_status(200, res)
-            local json = cjson.decode(body)
-            assert.equal("alice", json.username)
-            assert.equal(admin.id, json.id)
-
-            local in_db = assert(bp.consumers:find {id = admin.id})
-            assert.same(json, in_db)
-
-            local rbac_users = assert(dao.rbac_users:find_all({ name = admin.username }))
-            assert.same(admin.username, rbac_users[1].name)
           end
         end)
 
@@ -413,30 +259,16 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       describe("DELETE", function()
-        local function createAdmin(name)
-          local res = assert(client:send {
-            method = "POST",
-            path  = "/admins",
-            headers = {
-              ["Kong-Admin-Token"] = "letmein",
-              ["Content-Type"]     = "application/json",
-            },
-            body  = {
-              username = name,
-              email = name .. "@konghq.com",
-            },
-          })
-
-          local body = assert.res_status(200, res)
-          return cjson.decode(body)
-        end
-
         it("deletes by id", function()
-          local admin = createAdmin("gruce-delete-me")
+          local admin = assert(db.admins:insert({
+            username = "deleteme" .. utils.uuid(),
+            email = "deleteme@konghq.com",
+            status = enums.CONSUMERS.STATUS.INVITED,
+          }))
 
           local res = assert(client:send {
             method = "DELETE",
-            path   = "/admins/" .. admin.consumer.id,
+            path   = "/admins/" .. admin.id,
             headers = {
               ["Kong-Admin-Token"] = "letmein",
               ["Content-Type"]     = "application/json",
@@ -444,19 +276,18 @@ for _, strategy in helpers.each_strategy() do
           })
           local body = assert.res_status(204, res)
           assert.equal("", body)
-
-          assert.equal(0, #dao.consumers_rbac_users_map:find_all({
-            consumer_id = admin.consumer.id
-          }))
-          assert.equal(0, #dao.rbac_users:find_all({id = admin.rbac_user.id}))
-          assert.equal(0, #dao.consumers:find_all({id = admin.consumer.id}))
         end)
 
         it("deletes by username", function()
-          local admin = createAdmin("gruce-delete-me")
+          local admin = assert(db.admins:insert({
+            username = "gruce-delete-me",
+            email = "deleteme@konghq.com",
+            status = enums.CONSUMERS.STATUS.INVITED,
+          }))
+
           local res = assert(client:send {
             method = "DELETE",
-            path   = "/admins/" .. admin.consumer.username,
+            path   = "/admins/" .. admin.username,
             headers = {
               ["Kong-Admin-Token"] = "letmein",
               ["Content-Type"]     = "application/json",
@@ -464,12 +295,6 @@ for _, strategy in helpers.each_strategy() do
           })
           local body = assert.res_status(204, res)
           assert.equal("", body)
-
-          assert.equal(0, #dao.consumers_rbac_users_map:find_all({
-            consumer_id = admin.consumer.id
-          }))
-          assert.equal(0, #dao.rbac_users:find_all({id = admin.rbac_user.id}))
-          assert.equal(0, #dao.consumers:find_all({id = admin.consumer.id}))
         end)
 
         it("returns 404 if not found", function()
@@ -485,7 +310,7 @@ for _, strategy in helpers.each_strategy() do
         end)
       end)
 
-      describe("/admins/:consumer_id/workspaces", function()
+      pending("/admins/:consumer_id/workspaces", function()
         describe("GET", function()
           it("retrieves workspaces", function()
             local res = assert(client:send {
@@ -581,7 +406,7 @@ for _, strategy in helpers.each_strategy() do
     end)
   end)
 
-  describe("Admin API - Admins Register #" .. strategy, function()
+  pending("Admin API - Admins Register #" .. strategy, function()
     local client
     local dao
 
@@ -672,7 +497,7 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
 
-    describe("/admins/register ldap-auth-advanced", function()
+    pending("/admins/register ldap-auth-advanced", function()
       local headers = {
         ["Content-Type"] = "application/json",
         ["Kong-Admin-Token"] = "letmein", -- super-admin
@@ -728,7 +553,7 @@ for _, strategy in helpers.each_strategy() do
     end)
   end)
 
-  describe("Admin API - auto-approval #" .. strategy, function()
+  pending("Admin API - auto-approval #" .. strategy, function()
     local client
     local dao
     local consumer
@@ -818,7 +643,7 @@ for _, strategy in helpers.each_strategy() do
       assert(helpers.stop_kong())
     end)
 
-    it("generates a token and register_url for an invited admin", function()
+    pending("generates a token and register_url for an invited admin", function()
       -- create an admin who is pending
       local res = assert(client:send {
         method = "POST",
@@ -884,7 +709,7 @@ for _, strategy in helpers.each_strategy() do
     end)
   end)
 
-  describe("Admin API - /admins/password_resets #" .. strategy, function()
+  pending("Admin API - /admins/password_resets #" .. strategy, function()
     local client
     local dao
     local admin

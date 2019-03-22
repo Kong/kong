@@ -3,10 +3,15 @@ local enums = require "kong.enterprise_edition.dao.enums"
 local portal_crud = require "kong.portal.crud_helpers"
 local workspaces = require "kong.workspaces"
 local responses = require "kong.tools.responses"
-local utils = require "kong.tools.utils"
 local secrets = require "kong.enterprise_edition.consumer_reset_secret_helpers"
-local rbac = require "kong.rbac"
+local ee_utils = require "kong.enterprise_edition.utils"
+local utils = require "kong.tools.utils"
+
+
+local kong = kong
 local emails = singletons.admin_emails
+
+local lower = string.lower
 
 local log = ngx.log
 local ERR = ngx.ERR
@@ -16,71 +21,83 @@ local _log_prefix = "[admins] "
 
 local _M = {}
 
+-- creates a user-friendly representation from a fully-instantiated admin
+-- that we've fetched from the db
+local function transmogrify(admin)
+  if not admin then return nil end
 
-local function delete_rbac_user_roles(rbac_user, dao)
-  local user_roles_map, err = dao.rbac_user_roles:find_all({
-    user_id = rbac_user.id,
-    __skip_rbac = true,
-  })
+  return {
+      id = admin.id,
+      username = admin.username,
+      custom_id = admin.custom_id,
+      email = admin.email,
+      status = admin.status,
+      created_at = admin.created_at,
+      updated_at = admin.updated_at,
+    }
+end
+
+
+local function sanitize_params(params)
+  -- you can only manage admins here. don't try anything sneaky!
+  -- TODO: We _could_ silently ignore type now. We had this check in the past
+  -- to ensure people didn't accidentally create a consumer of the wrong type.
+  -- That is impossible now (on this path, anyway).
+  if params.type then
+    return nil, {
+      code = responses.status_codes.HTTP_BAD_REQUEST,
+      body = { message = "Invalid parameter: 'type'" },
+    }
+  end
+
+  -- ignore other invalid params
+  local sanitized_params = {
+    id = params.id,
+    email = params.email,
+    username = params.username,
+    custom_id = params.custom_id,
+    status = params.status,
+  }
+
+  if params.email then
+    -- store email in lower case so we can check uniqueness
+    params.email = lower(params.email)
+
+    local ok, err = ee_utils.validate_email(params.email)
+    if not ok then
+      return nil, {
+        code = responses.status_codes.HTTP_BAD_REQUEST,
+        body = { message = "Invalid email: " .. err },
+      }
+    end
+  end
+
+  return sanitized_params
+end
+
+
+function _M.find_all()
+  -- TODO: Swap compat_find_all with select_all method that Fast-Track created
+  local all_admins, err = workspaces.compat_find_all("admins")
+
   if err then
     return nil, err
   end
 
-  for _, map in ipairs(user_roles_map) do
-    local _, err = dao.rbac_user_roles:delete(map)
-    if err then
-      return nil, err
-    end
-
-    local role, err = dao.rbac_roles:find({ id = map.role_id })
-    if err then
-      return nil, err
-    end
-
-    if role.is_default then
-      local _, err = rbac.remove_user_from_default_role(rbac_user, role)
-      if err then
-        return nil, err
-      end
-    end
+  local transmogrified_admins = {}
+  for i, v in ipairs(all_admins) do
+    transmogrified_admins[i] = transmogrify(v)
   end
 
-  return true
+  return {
+    code = responses.status_codes.HTTP_OK,
+    body = {data = transmogrified_admins },
+  }
 end
 
 
-local function rollback_on_create(entities, dao)
-  local _, err
-
-  if entities.consumer then
-    _, err = dao.consumers:delete(entities.consumer)
-    if err then
-      log(ERR, _log_prefix, err)
-    end
-  end
-
-  if entities.rbac_user then
-    _, err = dao.rbac_users:delete(entities.rbac_user)
-    if err then
-      log(ERR, _log_prefix, err)
-    end
-
-    _, err = delete_rbac_user_roles(entities.rbac_user, dao)
-    if err then
-      log(ERR, _log_prefix, err)
-    end
-  end
-end
-
-
-function _M.validate(params, dao, http_method)
-  -- how many rows do we expect to find?
-  local max_count = http_method == "POST" and 0 or 1
-
-  -- get all rbac users
-  local rbac_users, err = workspaces.run_with_ws_scope({},
-    dao.rbac_users.find_all,
-    dao.rbac_users)
+function _M.validate(params, db, http_method)
+  local all_admins, err = workspaces.compat_find_all("admins")
 
   if err then
     -- unable to complete validation, so no success and no validation messages
@@ -88,104 +105,153 @@ function _M.validate(params, dao, http_method)
   end
 
   local matches = 0
-  local matching_record
-  for _, user in ipairs(rbac_users) do
-    if user.name == params.username or
-       user.name == params.custom_id or
-       user.name == params.email then
+  local consumer, rbac_user
+  for _, admin in ipairs(all_admins) do
+    -- if we're doing an update, don't compare us to ourself
+    if http_method == "PATCH" and params.id == admin.id then
+      goto continue
+    end
+
+    if admin.email and admin.email == params.email or
+       admin.username and admin.username == params.username or
+       admin.custom_id and admin.custom_id == params.custom_id
+    then
 
       matches = matches + 1
-      matching_record = user
     end
-  end
 
-  if matches > max_count then
-    return false, { rbac_user = matching_record }
-  end
+    -- XXX we're only looking at rbac_users associated to admins, but we
+    -- need to make sure that the parameters passed will be unique across
+    -- all rbac_users. TODO - figure out how to find all rbac_users in
+    -- global scope.
+    rbac_user, err = workspaces.run_with_ws_scope(
+      {},
+      db.rbac_users.select,
+      db.rbac_users,
+      { id = admin.rbac_user.id }
+    )
+    if not rbac_user then
+      -- bad data: can't have an admin without an rbac_user
+      return nil, nil, (err or "rbac_user not found for admin " .. admin.id)
+    end
+    admin.rbac_user = rbac_user
 
-  -- now check admin consumers
-  local admins, err = workspaces.run_with_ws_scope({},
-      dao.consumers.find_all, dao.consumers, { type =  enums.CONSUMERS.TYPE.ADMIN })
-
-  if err then
-    -- unable to complete validation, so no success and no validation messages
-    return nil, nil, err
-  end
-
-  matches = 0
-  for _, admin in ipairs(admins) do
-    if (admin.custom_id and admin.custom_id == params.custom_id) or
-      (admin.username and admin.username == params.username) or
-      (admin.email and admin.email == params.email) then
+    if rbac_user.name == params.username or
+       rbac_user.name == params.custom_id or
+       rbac_user.name == params.email then
 
       matches = matches + 1
-      matching_record = admin
     end
-  end
 
-  if matches > max_count then
-    return false, { consumer = matching_record }
+    consumer, err = workspaces.run_with_ws_scope(
+      {},
+      db.consumers.select,
+      db.consumers,
+      { id = admin.consumer.id }
+    )
+    if not consumer then
+      -- again, we should never get here: admins must have consumers
+      return nil, nil, err or "consumer not found for admin " .. admin.id
+    end
+    admin.consumer = consumer
+
+    if consumer.username and consumer.username == params.username then
+      matches = matches + 1
+    end
+
+    if matches > 0 then
+      return false, admin
+    end
+
+    ::continue::
   end
 
   return true
 end
 
+function _M.generate_token(admin, opts)
+  -- generates another registration URL and token in case a user didn't get them
+  local db = opts.db or singletons.db
+  local remote_addr = opts.remote_addr or ngx.var.remote_addr
 
-function _M.create(opts)
-  local params = opts.params
+  if
+    admin.status == enums.CONSUMERS.STATUS.INVITED
+    and opts.generate_register_url
+    and not opts.token_optional
+  then
+
+    local err
+    admin, err = db.admins:select({ id = admin.id })
+    if err or not admin then
+      return nil, err
+    end
+
+    local expiry = singletons.configuration.admin_invitation_expiry
+    local jwt, err = secrets.create(admin.consumer, remote_addr, expiry)
+    if err then
+      return nil, err
+    end
+
+    admin = transmogrify(admin)
+    admin.register_url = emails:register_url(admin.email, jwt)
+    admin.token = jwt
+  end
+
+  return {
+    code = responses.status_codes.HTTP_OK,
+    body = admin,
+  }
+end
+
+function _M.create(params, opts)
   local token_optional = opts.token_optional or false
-  local dao = opts.dao_factory
 
-  local admin_name = params.username or params.custom_id
+  local safe_params, validation_failures = sanitize_params(params)
+  if validation_failures then
+    return validation_failures
+  end
 
-  -- create rbac_user
-  local rbac_user, err = dao.rbac_users:insert({
-    name = admin_name,
-    user_token = utils.uuid(),
-    comment = "User generated on creation of Admin.",
-  })
+  local _, admin, err = _M.validate(safe_params, opts.db, "POST")
 
   if err then
-    log(ERR, _log_prefix, err)
+    return nil, err
+  end
 
+  if admin then
+    -- already exists. try to link them to current workspace.
+    local linked, err = _M.link_to_workspace(admin, opts.workspace)
+
+    if err then
+      return nil, err
+    end
+
+    if linked then
+      -- in a POST, this isn't the greatest response code, but we
+      -- haven't really created an admin, so...
+      return {
+        code = responses.status_codes.HTTP_OK,
+        body = { admin = admin },
+      }
+    end
+
+    -- if we got here, user already exists
     return {
-      code = responses.status_codes.HTTP_INTERNAL_SERVER_ERROR,
-      body = { message = "failed to create admin (1)"}
+      code = responses.status_codes.HTTP_CONFLICT,
+      body = {
+        message = "user already exists with same username, email, or custom_id"
+      },
     }
   end
 
-  -- create consumer
-  local consumer, err = dao.consumers:insert({
-    username  = params.username,
-    custom_id = params.custom_id,
-    type = params.type,
-    email = params.email,
-    status = enums.CONSUMERS.STATUS.INVITED,
-  })
+  -- and if we got here, we're good to go.
+  local admin, err = singletons.db.admins:insert(params)
 
   if err then
-    rollback_on_create({ rbac_user = rbac_user }, dao)
     log(ERR, _log_prefix, err)
 
     return {
       code = responses.status_codes.HTTP_INTERNAL_SERVER_ERROR,
-      body = { message = "failed to create admin (2)" }
-    }
-  end
-
-  -- create mapping
-  local _, err = dao.consumers_rbac_users_map:insert({
-    consumer_id = consumer.id,
-    user_id = rbac_user.id,
-  })
-
-  if err then
-    rollback_on_create({ rbac_user = rbac_user, consumer = consumer }, dao)
-    log(ERR, _log_prefix, err)
-
-    return {
-      code = responses.status_codes.HTTP_INTERNAL_SERVER_ERROR,
-      body = { message = "failed to create admin (3)" }
+      body = { message = "failed to create admin" }
     }
   end
 
@@ -193,31 +259,29 @@ function _M.create(opts)
   if not token_optional then
     local expiry = singletons.configuration.admin_invitation_expiry
 
-    jwt, err = secrets.create(consumer, ngx.var.remote_addr, expiry)
+    jwt, err = secrets.create(admin, ngx.var.remote_addr, expiry)
 
     if err then
       return {
         code = responses.status_codes.HTTP_OK,
         body = {
           message = "User created, but failed to create invitation",
-          consumer = consumer,
-          rbac_user = rbac_user,
+          admin = transmogrify(admin),
         }
       }
     end
   end
 
   if emails then
-    local _, err = emails:invite({{ username = admin_name, email = consumer.email }}, jwt)
+    local _, err = emails:invite({{ username = admin.username, email = admin.email }}, jwt)
     if err then
-      log(ERR, _log_prefix, "error inviting user: ", consumer.email)
+      log(ERR, _log_prefix, "error inviting user: ", admin.email)
 
       return {
         code = responses.status_codes.HTTP_OK,
         body = {
           message = "User created, but failed to send invitation email",
-          rbac_user = rbac_user,
-          consumer = consumer,
+          admin = transmogrify(admin),
         },
       }
     end
@@ -227,90 +291,106 @@ function _M.create(opts)
 
   return {
     code = responses.status_codes.HTTP_OK,
-    body = {
-      rbac_user = rbac_user,
-      consumer = consumer,
-    }
+    body = { admin = transmogrify(admin) },
   }
 end
 
 
-function _M.update(params, consumer, rbac_user)
+function _M.update(params, admin_to_update, opts)
   if not next(params) then
     return { code = responses.status_codes.HTTP_BAD_REQUEST, body = "empty body" }
   end
 
-  -- update consumer
-  local admin, err = singletons.dao.consumers:update(params, { id = consumer.id })
+  local db = opts.db or singletons.db
+
+  local safe_params, validation_errors = sanitize_params(params)
+  if validation_errors then
+    return validation_errors
+  end
+
+  local _, duplicate, err = _M.validate(safe_params, db, "PATCH")
   if err then
     return nil, err
   end
 
-  if not admin then
-    return { code = responses.status_codes.HTTP_NOT_FOUND }
+  if duplicate then
+    return {
+      code = responses.status_codes.HTTP_CONFLICT,
+      body = "user already exists with same username, email, or custom_id"
+
+    }
   end
 
-  if consumer.username == params.username then
-    -- username didn't change, nothing more to do here.
-    -- return same data structure as passed in
-    admin.rbac_user = rbac_user
-    return { code = responses.status_codes.HTTP_OK, body = admin }
-  end
-
-  -- update rbac_user if consumer.username changed, because these have
-  -- to stay in sync in order for us to authenticate this admin
-  if rbac_user.name ~= admin.username then
-    rbac_user, err = singletons.dao.rbac_users:update(
-                     { name = admin.username },
-                     { id = rbac_user.id })
-    if err then
-      return nil, err
-    end
+  local admin, err = workspaces.run_with_ws_scope(
+    {},
+    db.admins.update,
+    db.admins,
+    { id = admin_to_update.id },
+    safe_params
+  )
+  if err then
+    return nil, err
   end
 
   -- update any basic-auth credential for this user. Have to find it first.
-  local creds, err = workspaces.run_with_ws_scope({},
-                    singletons.dao.basicauth_credentials.find_all,
-                    singletons.dao.basicauth_credentials,
-                    { consumer_id = admin.id })
+  local creds, err = db.basicauth_credentials:page_for_consumer(admin.consumer)
   if err then
     return nil, err
   end
 
   if creds[1] then
     local _, err = workspaces.run_with_ws_scope({},
-                   singletons.dao.basicauth_credentials.update,
-                   singletons.dao.basicauth_credentials,
-                   { username = admin.username },
-                   { id = creds[1].id })
+                   db.basicauth_credentials.update,
+                   db.basicauth_credentials,
+                   { id = creds[1].id },
+                   { username = admin.username })
     if err then
       return nil, err
     end
   end
 
-  -- return the updated admin, including the updated rbac_user
-  admin.rbac_user = rbac_user
-  return { code = responses.status_codes.HTTP_OK, body = admin }
+  return { code = responses.status_codes.HTTP_OK, body = transmogrify(admin) }
 end
 
 
-function _M.find_by_username_or_id(username_or_id)
-  local dao = singletons.dao
-  local admins, err = workspaces.run_with_ws_scope({},
-                      dao.consumers.find_all,
-                      dao.consumers,
-                      { type =  enums.CONSUMERS.TYPE.ADMIN })
+function _M.delete(admin_to_delete, opts)
+  -- we need a full admin here, not a prettified one
+  local admin, err = opts.db.admins:select({ id = admin_to_delete.id })
   if err then
     return nil, err
   end
 
-  for _, admin in ipairs(admins) do
-    if admin.id == username_or_id or
-       admin.username == username_or_id then
+  local _, err = opts.db.admins:delete(admin)
+  if err then return
+    nil, err
+  end
 
-      return admin
+  return { code = responses.status_codes.HTTP_NO_CONTENT }
+end
+
+
+function _M.find_by_username_or_id(username_or_id)
+  if not username_or_id then
+    return nil
+  end
+
+  local admin, err
+
+  if utils.is_valid_uuid(username_or_id) then
+    admin, err = kong.db.admins:select({ id = username_or_id })
+    if err then
+      return err
     end
   end
+
+  if not admin then
+    admin, err = kong.db.admins:select_by_username(username_or_id)
+    if err then
+      return nil, err
+    end
+  end
+
+  return transmogrify(admin)
 end
 
 
@@ -332,79 +412,13 @@ function _M.find_by_email(email)
 end
 
 
-function _M.link_to_workspace(consumer_or_user, dao, workspace, plugin)
-  -- either a consumer or an rbac_user is passed in
-  -- figure out which one and initialize the other
-  local consumer = consumer_or_user.consumer
-  local rbac_user = consumer_or_user.rbac_user
-
-  local map_filter
-  if consumer then
-    map_filter = { consumer_id = consumer.id }
-
-  elseif rbac_user then
-    map_filter = { user_id = rbac_user.id }
-
-  else
-    return nil, "'admin' must include a consumer or an rbac_user"
-
-  end
-
-  local maps, err = workspaces.run_with_ws_scope({},
-    dao.consumers_rbac_users_map.find_all,
-    dao.consumers_rbac_users_map,
-    map_filter)
-
-  if err then
-    return nil, err
-  end
-
-  if not maps[1] then
-    -- the consumer or rbac_user passed in is not an admin
-    -- so nothing to link, but also not a runtime error.
-    -- returning explicit nils here to express that.
-    return nil, nil
-  end
-
-  if not consumer then
-    local res, err = workspaces.run_with_ws_scope({},
-      dao.consumers.find_all,
-      dao.consumers,
-      { id = maps[1].consumer_id })
-
-    if err then
-      return nil, err
-    end
-
-    if not res[1] then
-      return nil, "no consumer found with id " .. maps[1].consumer_id
-    end
-
-    consumer = res[1]
-  end
-
-  if not rbac_user then
-    local res, err = workspaces.run_with_ws_scope({},
-      dao.rbac_users.find_all,
-      dao.rbac_users,
-      { id = maps[1].user_id })
-
-    if err then
-      return nil, err
-    end
-
-    if not res[1] then
-      return nil, "no rbac_user found with id " .. maps[1].user_id
-    end
-
-    rbac_user = res[1]
-  end
-
-  -- see if this admin is already in this workspace
+function _M.link_to_workspace(admin, workspace)
+  -- see if this admin is already in this workspace. Look it up by its
+  -- consumer id, because admins themselves are global.
   local ws_list, err = workspaces.find_workspaces_by_entity({
     workspace_id = workspace.id,
     entity_type = "consumers",
-    entity_id = consumer.id,
+    entity_id = admin.consumer.id,
   })
 
   if err then
@@ -417,22 +431,20 @@ function _M.link_to_workspace(consumer_or_user, dao, workspace, plugin)
   end
 
   -- link consumer
-  local _, err = workspaces.add_entity_relation("consumers", consumer, workspace)
+  local _, err = workspaces.add_entity_relation("consumers", admin.consumer, workspace)
 
   if err then
     return nil, err
   end
 
   -- link rbac_user
-  local _, err = workspaces.add_entity_relation("rbac_users", rbac_user, workspace)
+  local _, err = workspaces.add_entity_relation("rbac_users", admin.rbac_user, workspace)
 
   if err then
     return nil, err
   end
 
-  -- for now, an admin is a munging of consumer and rbac_user
-  consumer.rbac_user = rbac_user
-  return consumer
+  return true
 end
 
 

@@ -34,11 +34,10 @@ local function seed_rbac_data()
     for _, endpoint in ipairs(role[4]) do
       table.insert(res,
         fmt(
-          fmt("INSERT INTO rbac_role_endpoints(role_id, workspace, endpoint, actions, negative) VALUES %s", endpoint),
+          fmt("INSERT INTO rbac_role_endpoints(role_id, workspace, endpoint, actions, negative) VALUES %s;", endpoint),
         role[1]))
     end
   end
-
   return table.concat(res, ";")
 end
 
@@ -558,6 +557,18 @@ INSERT INTO rbac_role_endpoints(role_id, workspace, endpoint, actions, negative)
 VALUES (lastid, '*', '*', 15, FALSE);
 END $$;
 
+CREATE TABLE IF NOT EXISTS admins (
+  id          uuid,
+  created_at  timestamp,
+  updated_at  timestamp,
+  consumer_id  uuid references consumers (id),
+  rbac_user_id  uuid references rbac_users (id),
+  email text,
+  status int,
+  username text unique,
+  custom_id text unique,
+  PRIMARY KEY(id)
+);
     ]]
   },
   cassandra = {
@@ -875,8 +886,26 @@ END $$;
         count counter,
         PRIMARY KEY(workspace_id, entity_type)
       );
-    ]] ..
-seed_rbac_data()
-    .. [[ ]]
+    ]]
+    .. seed_rbac_data() ..
+    [[
+      CREATE TABLE IF NOT EXISTS admins (
+        id          uuid,
+        created_at  timestamp,
+        updated_at  timestamp,
+        consumer_id  uuid,
+        rbac_user_id  uuid,
+        email text,
+        status int,
+        username   text,
+        custom_id  text,
+        PRIMARY KEY(id)
+      );
+      CREATE INDEX IF NOT EXISTS admins_consumer_id_idx ON admins(consumer_id);
+      CREATE INDEX IF NOT EXISTS admins_rbac_user_id_idx ON admins(rbac_user_id);
+      CREATE INDEX IF NOT EXISTS admins_email_idx ON admins(email);
+      CREATE INDEX IF NOT EXISTS admins_username_idx ON admins(username);
+      CREATE INDEX IF NOT EXISTS admins_custom_id_idx ON admins(custom_id);
+    ]]
   },
 }
