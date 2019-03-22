@@ -5,6 +5,11 @@ local singletons = require "kong.singletons"
 local _M = {}
 
 
+local function first_key(t)
+  return require("pl.tablex").keys(t)[1]
+end
+
+
 -- Temporary wrapper around :each implementing arbitrary filtering,
 -- used throughout workspaces implementation
 function _M.compat_find_all(dao_name, filt)
@@ -27,7 +32,12 @@ function _M.compat_find_all(dao_name, filt)
     if filtering then
       local match = true
       for k,v in pairs(filt) do
-        if row[k] ~= v then
+        if type(row[k]) == "table" and type(v) == "table" and
+           first_key(row[k]) == first_key(v) then
+             if row[k].id ~= v.id then
+               goto continue
+             end
+        elseif row[k] ~= v then
           goto continue
         end
       end
