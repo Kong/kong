@@ -132,6 +132,24 @@ function _M:get(key, opts, cb, ...)
 end
 
 
+function _M:get_bulk(bulk, opts)
+  if type(bulk) ~= "table" then
+    return error("bulk must be a table")
+  end
+
+  if opts ~= nil and type(opts) ~= "table" then
+    return error("opts must be a table")
+  end
+
+  local res, err = self.mlcache:get_bulk(bulk, opts)
+  if err then
+    return nil, "failed to get_bulk from node cache: " .. err
+  end
+
+  return res
+end
+
+
 function _M:probe(key)
   if type(key) ~= "string" then
     return error("key must be a string")
