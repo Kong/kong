@@ -1,6 +1,3 @@
-local helpers = require "spec.helpers"
-local cjson = require "cjson"
-local rbac = require "kong.rbac"
 local utils = require "kong.tools.utils"
 local key_utils = require "kong.plugins.proxy-cache.cache_key"
 
