@@ -8,10 +8,10 @@ local server_header = meta._NAME .. "/" .. meta._VERSION
 
 for _, strategy in helpers.each_strategy() do
   describe("forward-proxy access (#" .. strategy .. ")", function()
-    local client, bp, dao, db
+    local client, bp, db
 
     setup(function()
-      bp, db, dao = helpers.get_db_utils(strategy)
+      bp, db = helpers.get_db_utils(strategy, nil, {"forward-proxy"})
 
       local service = db.services:insert {
         name = "service-1",
@@ -26,7 +26,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.plugins:insert {
-        route_id = route1.id,
+        route = { id = route1.id },
         name   = "forward-proxy",
         config = {
           proxy_host = helpers.mock_upstream_host,
@@ -47,7 +47,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.plugins:insert {
-        route_id = route2.id,
+        route = { id = route2.id },
         name   = "forward-proxy",
         config = {
           proxy_host = helpers.mock_upstream_host,
