@@ -354,7 +354,8 @@ local function generate_foreign_key_methods(schema)
           validate_options_type(options)
         end
 
-        local ok, errors = self.schema:validate_primary_key(foreign_key)
+        local ok, errors = field.schema:validate_primary_key(foreign_key)
+
         if not ok then
           local err_t = self.errors:invalid_primary_key(errors)
           return iteration.failed(tostring(err_t), err_t)
