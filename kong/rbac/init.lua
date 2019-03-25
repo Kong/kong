@@ -318,16 +318,22 @@ end
 
 -- XXX EE should return 2nd value for error
 local function get_role_entities(db, role, opts)
-  return workspaces.compat_find_all("rbac_role_entities",
-    {role = { id =  role.id }},
-    opts)
+  local res = {}
+  for role in db.rbac_role_entities:each_for_role({id = role.id}, nil,  opts) do
+    table.insert(res, role)
+  end
+
+  return res
 end
 _M.get_role_entities = get_role_entities
 
 local function get_role_endpoints(db, role, opts)
-  return workspaces.compat_find_all("rbac_role_endpoints",
-    { role = {id = role.id }},
-    opts)
+  local res = {}
+  for role in db.rbac_role_endpoints:each_for_role({id = role.id}, nil, opts) do
+    table.insert(res, role)
+  end
+
+  return res
 end
 _M.get_role_endpoints = get_role_endpoints
 
@@ -601,7 +607,7 @@ local function delete_role_entity_permission(table_name, entity)
 
   local entity_id = schema.primary_key[1]
 
-  local role_entities = workspaces.compat_find_all("rbac_role_entities", {
+  local role_entities = db.rbac_role_entities:select_all({
     entity_id = entity[entity_id],
     entity_type = table_name
   })

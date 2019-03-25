@@ -608,13 +608,9 @@ return {
       end,
 
       GET = function(self, db, helpers)
-        local endpoints =  workspaces.compat_find_all("rbac_role_entities", {
-          role = { id = self.rbac_role.id }
-        })
-
+        local endpoints = rbac.get_role_endpoints(db, self.rbac_role)
 
         tablex.map(post_process_actions, endpoints) -- post_process_actions
-                                                    -- is destructive!
         return kong.response.exit(200, { -- XXX EE. Should we keep old
                                          -- structure? or should we
                                          -- just return endoints and
