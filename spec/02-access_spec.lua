@@ -22,13 +22,13 @@ local function add_plugin(admin_client, config, expected_status)
   return json
 end
 
-for _, strategy in helpers.each_strategy("postgres") do
+for _, strategy in helpers.each_strategy({"postgres"})do
   local proxy_client
   local admin_client
 
   describe("Plugin: request-validator (access) [#" .. strategy .. "]", function()
     setup(function()
-      local bp = helpers.get_db_utils(strategy)
+      local bp = helpers.get_db_utils(strategy, nil, { "request-validator" })
 
       bp.routes:insert {
         paths = {"/"}
@@ -37,8 +37,9 @@ for _, strategy in helpers.each_strategy("postgres") do
       assert(helpers.start_kong({
         nginx_conf = "spec/fixtures/custom_nginx.template",
         database = strategy,
-        custom_plugins = "request-validator",
+        plugins = "request-validator",
       }))
+
       proxy_client = helpers.proxy_client()
       admin_client = helpers.admin_client()
     end)
@@ -104,14 +105,14 @@ for _, strategy in helpers.each_strategy("postgres") do
       for _, schema in ipairs(invalid_schema_jsons) do
         it("errors with invalid schema json", function()
           local plugin = add_plugin(admin_client, {body_schema = schema}, 400)
-          assert.same("failed decoding schema", plugin.config)
+          assert.same("failed decoding schema", plugin.fields["@entity"][1])
         end)
       end
 
       for _, schema in ipairs(invalid_schemas) do
         it("errors with invalid schemas", function()
           local plugin = add_plugin(admin_client, {body_schema = schema}, 400)
-          assert.match("^.*schema violation.*$", plugin.config)
+          assert.same("schema violation", plugin.fields["@entity"][1].name)
         end)
       end
 
