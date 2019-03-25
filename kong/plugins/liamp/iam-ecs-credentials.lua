@@ -66,6 +66,11 @@ do
     ECSFullUri, err = getECSFullUri()
     if not ECSFullUri then
       ngx.log(ngx.ERR, LOG_PREFIX, "Failed to construct IAM url: ", err)
+    else
+      -- parse it and set a default port if omitted
+      ECSFullUri = url.parse(ECSFullUri)
+      ECSFullUri.port = ECSFullUri.port or
+                        ({ http = 80, https = 443 })[ECSFullUri.scheme]
     end
   end
 end
@@ -76,8 +81,7 @@ local function fetchCredentials()
   local client = http.new()
   client:set_timeout(DEFAULT_SERVICE_REQUEST_TIMEOUT)
 
-  local parsed_url = url.parse(ECSFullUri)
-  local ok, err = client:connect(parsed_url.host, parsed_url.port)
+  local ok, err = client:connect(ECSFullUri.host, ECSFullUri.port)
 
   if not ok then
     return nil, "Could not connect to metadata service: " .. tostring(err)
@@ -85,7 +89,7 @@ local function fetchCredentials()
 
   local response, err = client:request {
     method = "GET",
-    path   = parsed_url.path,
+    path   = ECSFullUri.path,
   }
 
   if not response then
