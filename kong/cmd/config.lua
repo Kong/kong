@@ -108,8 +108,7 @@ local function execute(args)
       end
 
     else -- parse
-      log("parse successful:")
-      log(declarative.to_yaml_string(dc_table))
+      log("parse successful")
     end
 
     os.exit(0)
