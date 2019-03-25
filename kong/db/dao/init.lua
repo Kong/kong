@@ -92,6 +92,16 @@ local function validate_foreign_key_type(foreign_key)
 end
 
 
+local function validate_foreign_key_is_single_primary_key(field)
+  if #field.schema.primary_key > 1 then
+    error("primary keys containing composite foreign keys " ..
+          "are currently not supported", 3)
+  end
+
+  return true
+end
+
+
 local function validate_unique_type(unique_value, name, field)
   if type(unique_value) ~= "table" and (field.type == "array"  or
                                         field.type == "set"    or
@@ -269,6 +279,8 @@ local function generate_foreign_key_methods(schema)
 
   for name, field in schema:each_field() do
     if field.type == "foreign" then
+      validate_foreign_key_is_single_primary_key(field)
+
       local page_method_name = "page_for_" .. name
       methods[page_method_name] = function(self, foreign_key, size, offset, options)
         validate_foreign_key_type(foreign_key)
