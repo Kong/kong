@@ -15,6 +15,7 @@ describe("[AWS Lambda] aws-gateway input", function()
         get_body_data = function() return mock_request.body end,
       },
       log = function() end,
+      encode_base64 = old_ngx.encode_base64
     }, {
       -- look up any unknown key in the mock request, eg. .var and .ctx tables
       __index = function(self, key)
@@ -31,7 +32,7 @@ describe("[AWS Lambda] aws-gateway input", function()
   teardown(function()
     -- make sure to drop the mocks
     package.loaded["kong.plugins.liamp.aws-serializer"] = nil
-    ngx = old_ngx
+    ngx = old_ngx         -- luacheck: ignore
   end)
 
 
@@ -47,7 +48,7 @@ describe("[AWS Lambda] aws-gateway input", function()
         ["multi-query"] = { "first", "second" },
         boolean = true,
       },
-      body = nil,
+      body = "text",
       var = {
         request_method = "GET",
         request_uri = "/123/strip/more?boolean=;multi-query=first;single-query=hello%20world;multi-query=second"
@@ -74,6 +75,7 @@ describe("[AWS Lambda] aws-gateway input", function()
           version = "123",
         },
         isBase64Encoded = false,
+        body = "text",
         headers = {
           ["multi-header"] = "first",
           ["single-header"] = "hello world",
@@ -106,7 +108,7 @@ describe("[AWS Lambda] aws-gateway input", function()
         ["multi-query"] = { "first", "second" },
         boolean = true,
       },
-      body = nil,
+      body = "text",
       var = {
         request_method = "GET",
         request_uri = "/plain/strip/more?boolean=;multi-query=first;single-query=hello%20world;multi-query=second"
@@ -126,6 +128,7 @@ describe("[AWS Lambda] aws-gateway input", function()
         resource = "/plain/strip",
         pathParameters = {},
         isBase64Encoded = false,
+        body = "text",
         headers = {
           ["multi-header"] = "first",
           ["single-header"] = "hello world",
@@ -146,5 +149,72 @@ describe("[AWS Lambda] aws-gateway input", function()
         },
       }, out)
   end)
+
+
+  do
+    local td = {
+      {
+        description = "none",
+        ct = nil,
+        body_in = "text",
+        body_out = "text",
+        base64 = false,
+      }, {
+        description = "application/json",
+        ct = "application/json",
+        body_in = [[{ "text": "some text" }]],
+        body_out = [[{ "text": "some text" }]],
+        base64 = false,
+      }, {
+        description = "unknown",
+        ct = "some-unknown-type-description",
+        body_in = "text",
+        body_out = ngx.encode_base64("text"),
+        base64 = true,
+      },
+    }
+
+    for _, tdata in ipairs(td) do
+
+      it("serializes a request with body type: " .. tdata.description, function()
+        mock_request = {
+          body = tdata.body_in,
+          headers = {
+            ["Content-Type"] = tdata.ct,
+          },
+          query = {},
+          var = {
+            request_method = "GET",
+            request_uri = "/plain/strip/more",
+            http_content_type = tdata.ct,
+          },
+          ctx = {
+            router_matches = {
+              uri = "/plain/strip"
+            },
+          },
+        }
+
+        local out = aws_serialize()
+
+        assert.same({
+          body = tdata.body_out,
+          headers = {
+            ["Content-Type"] = tdata.ct,
+          },
+          multiValueHeaders = {
+            ["Content-Type"] = tdata.ct and { tdata.ct } or nil,
+          },
+          httpMethod = "GET",
+          queryStringParameters = {},
+          multiValueQueryStringParameters = {},
+          pathParameters = {},
+          resource = "/plain/strip",
+          path = "/plain/strip/more",
+          isBase64Encoded = tdata.base64,
+        }, out)
+      end)
+    end
+  end
 
 end)

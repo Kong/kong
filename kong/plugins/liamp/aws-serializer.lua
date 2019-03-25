@@ -8,7 +8,7 @@ local public_utils = require "kong.tools.public"
 
 local EMPTY = {}
 
-local ngx_req_get_headers = ngx.req.get_headers
+local ngx_req_get_headers  = ngx.req.get_headers
 local ngx_req_get_uri_args = ngx.req.get_uri_args
 local ngx_encode_base64    = ngx.encode_base64
 
@@ -59,7 +59,8 @@ return function(ctx)
   local isBase64Encoded = false
   local body
   do
-    local _, err_code, body = public_utils.get_body_info()
+    local _, err_code
+    _, err_code, body = public_utils.get_body_info()
     if err_code == public_utils.req_body_errors.unknown_ct then
       -- don't know what this body MIME type is, base64 it just in case
       body = ngx_encode_base64(body)
