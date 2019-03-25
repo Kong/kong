@@ -4,8 +4,8 @@ local redis = require "kong.enterprise_edition.redis"
 
 local REDIS_HOST = "127.0.0.1"
 local REDIS_PORT = 6379
-local REDIS_PASSWORD = ""
 local REDIS_DATABASE = 1
+local REDIS_PASSWORD = nil
 
 for i, policy in ipairs({"cluster", "redis"}) do
   local MOCK_RATE = 3
@@ -16,42 +16,41 @@ for i, policy in ipairs({"cluster", "redis"}) do
   end
 
   describe(s, function()
-    local consumer1, consumer2
+    local bp, consumer1, consumer2
 
     setup(function()
       helpers.kill_all()
       redis.flush_redis(REDIS_HOST, REDIS_PORT, REDIS_DATABASE, REDIS_PASSWORD)
-      helpers.dao:drop_schema()
-      helpers.get_db_utils()
 
-      consumer1 = assert(helpers.dao.consumers:insert {
+      bp = helpers.get_db_utils(nil, nil, {"rate-limiting-advanced"})
+
+      consumer1 = assert(bp.consumers:insert {
         custom_id = "provider_123"
       })
-      assert(helpers.dao.keyauth_credentials:insert {
+      assert(bp.keyauth_credentials:insert {
         key = "apikey122",
-        consumer_id = consumer1.id
+        consumer = { id = consumer1.id },
       })
 
-      consumer2 = assert(helpers.dao.consumers:insert {
+      consumer2 = assert(bp.consumers:insert {
         custom_id = "provider_124"
       })
-      assert(helpers.dao.keyauth_credentials:insert {
+      assert(bp.keyauth_credentials:insert {
         key = "apikey123",
-        consumer_id = consumer2.id
+        consumer = { id = consumer2.id },
       })
-      assert(helpers.dao.keyauth_credentials:insert {
+      assert(bp.keyauth_credentials:insert {
         key = "apikey333",
-        consumer_id = consumer2.id
+        consumer = { id = consumer2.id },
       })
 
-      local api1 = assert(helpers.dao.apis:insert {
-        name = "api-1",
+      local route1 = assert(bp.routes:insert {
+        name = "route-1",
         hosts = { "test1.com" },
-        upstream_url = helpers.mock_upstream_url
       })
-      assert(helpers.dao.plugins:insert {
+      assert(bp.plugins:insert {
         name = "rate-limiting-advanced",
-        api_id = api1.id,
+        route = { id = route1.id },
         config = {
           strategy = policy,
           window_size = { MOCK_RATE },
@@ -66,14 +65,13 @@ for i, policy in ipairs({"cluster", "redis"}) do
         }
       })
 
-      local api2 = assert(helpers.dao.apis:insert {
-        name = "api-2",
+      local route2 = assert(bp.routes:insert {
+        name = "route-2",
         hosts = { "test2.com" },
-        upstream_url = helpers.mock_upstream_url
       })
-      assert(helpers.dao.plugins:insert {
+      assert(bp.plugins:insert {
         name = "rate-limiting-advanced",
-        api_id = api2.id,
+        route = { id = route2.id },
         config = {
           strategy = policy,
           window_size = { 5, 10 },
@@ -88,18 +86,17 @@ for i, policy in ipairs({"cluster", "redis"}) do
         }
       })
 
-      local api3 = assert(helpers.dao.apis:insert {
-        name = "api-3",
+      local route3 = assert(bp.routes:insert {
+        name = "route-3",
         hosts = { "test3.com" },
-        upstream_url = helpers.mock_upstream_url
       })
-      assert(helpers.dao.plugins:insert {
+      assert(bp.plugins:insert {
         name = "key-auth",
-        api_id = api3.id
+        route = { id = route3.id },
       })
-      assert(helpers.dao.plugins:insert {
+      assert(bp.plugins:insert {
         name = "rate-limiting-advanced",
-        api_id = api3.id,
+        route = { id = route3.id },
         config = {
           identifier = "credential",
           strategy = policy,
@@ -115,14 +112,13 @@ for i, policy in ipairs({"cluster", "redis"}) do
         }
       })
 
-      local api4 = assert(helpers.dao.apis:insert {
-        name = "api-4",
+      local route4 = assert(bp.routes:insert {
+        name = "route-4",
         hosts = { "test4.com" },
-        upstream_url = helpers.mock_upstream_url
       })
-      assert(helpers.dao.plugins:insert {
+      assert(bp.plugins:insert {
         name = "rate-limiting-advanced",
-        api_id = api4.id,
+        route = { id = route4.id },
         config = {
           strategy = policy,
           window_size = { MOCK_RATE },
@@ -138,14 +134,13 @@ for i, policy in ipairs({"cluster", "redis"}) do
         }
       })
 
-      local api5 = assert(helpers.dao.apis:insert {
-        name = "api-5",
+      local route5 = assert(bp.routes:insert {
+        name = "route-5",
         hosts = { "test5.com" },
-        upstream_url = helpers.mock_upstream_url
       })
-      assert(helpers.dao.plugins:insert {
+      assert(bp.plugins:insert {
         name = "rate-limiting-advanced",
-        api_id = api5.id,
+        route = { id = route5.id },
         config = {
           strategy = policy,
           window_size = { MOCK_RATE },
@@ -161,14 +156,13 @@ for i, policy in ipairs({"cluster", "redis"}) do
         }
       })
 
-      local api6 = assert(helpers.dao.apis:insert {
-        name = "api-6",
+      local route6 = assert(bp.routes:insert {
+        name = "route-6",
         hosts = { "test6.com" },
-        upstream_url = helpers.mock_upstream_url
       })
-      assert(helpers.dao.plugins:insert {
+      assert(bp.plugins:insert {
         name = "rate-limiting-advanced",
-        api_id = api6.id,
+        route = { id = route6.id },
         config = {
           strategy = policy,
           window_size = { MOCK_RATE },
@@ -184,18 +178,17 @@ for i, policy in ipairs({"cluster", "redis"}) do
         }
       })
 
-      local api7 = assert(helpers.dao.apis:insert {
-        name = "api-7",
+      local route7 = assert(bp.routes:insert {
+        name = "route-7",
         hosts = { "test7.com" },
-        upstream_url = helpers.mock_upstream_url
       })
-      assert(helpers.dao.plugins:insert {
+      assert(bp.plugins:insert {
         name = "key-auth",
-        api_id = api7.id
+        route = { id = route7.id },
       })
-      assert(helpers.dao.plugins:insert {
+      assert(bp.plugins:insert {
         name = "rate-limiting-advanced",
-        api_id = api7.id,
+        route = { id = route7.id },
         config = {
           strategy = policy,
           window_size = { MOCK_RATE },
@@ -210,18 +203,17 @@ for i, policy in ipairs({"cluster", "redis"}) do
         }
       })
 
-      local api8 = assert(helpers.dao.apis:insert {
-        name = "api-8",
+      local route8 = assert(bp.routes:insert {
+        name = "route-8",
         hosts = { "test8.com" },
-        upstream_url = helpers.mock_upstream_url
       })
-      assert(helpers.dao.plugins:insert {
+      assert(bp.plugins:insert {
         name = "key-auth",
-        api_id = api8.id
+        route = { id = route8.id },
       })
-      assert(helpers.dao.plugins:insert {
+      assert(bp.plugins:insert {
         name = "rate-limiting-advanced",
-        api_id = api8.id,
+        route = { id = route8.id },
         config = {
           identifier = "ip",
           strategy = policy,
@@ -237,14 +229,13 @@ for i, policy in ipairs({"cluster", "redis"}) do
         }
       })
 
-      local api9 = assert(helpers.dao.apis:insert {
-        name = "api-9",
+      local route9 = assert(bp.routes:insert {
+        name = "route-9",
         hosts = { "test9.com" },
-        upstream_url = helpers.mock_upstream_url
       })
-      assert(helpers.dao.plugins:insert {
+      assert(bp.plugins:insert {
         name = "rate-limiting-advanced",
-        api_id = api9.id,
+        route = { id = route9.id },
         config = {
           strategy = policy,
           window_size = { MOCK_RATE },
@@ -346,7 +337,7 @@ for i, policy in ipairs({"cluster", "redis"}) do
       end)
 
       it("shares limit data in the same namespace", function()
-        -- decrement the counters in api4
+        -- decrement the counters in route4
         for i = 1, 3 do
           local res = assert(helpers.proxy_client():send {
             method = "GET",
@@ -361,7 +352,7 @@ for i, policy in ipairs({"cluster", "redis"}) do
           assert.are.same(3 - i, tonumber(res.headers["x-ratelimit-remaining-3"]))
         end
 
-        -- access api5, which shares the same namespace
+        -- access route5, which shares the same namespace
         local res = assert(helpers.proxy_client():send {
           method = "GET",
           path = "/get",
@@ -475,7 +466,7 @@ for i, policy in ipairs({"cluster", "redis"}) do
       end)
     end)
     describe("With authentication", function()
-      describe("API-specific plugin", function()
+      describe("Route-specific plugin", function()
         local name = "blocks if exceeding limit"
         if policy == "redis" then
           name = "#flaky " .. name

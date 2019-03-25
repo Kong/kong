@@ -2,14 +2,14 @@ local helpers = require "spec.helpers"
 local cjson = require "cjson"
 
 describe("rate-limiting-advanced API", function()
-  local admin_client
+  local admin_client, bp
 
   setup(function()
-    helpers.get_db_utils()
-    assert(helpers.dao.apis:insert {
-      name         = "test",
-      hosts        = { "test1.com" },
-      upstream_url = "http://httpbin.org",
+    bp = helpers.get_db_utils(nil, nil, {"rate-limiting-advanced"})
+
+    assert(bp.routes:insert {
+      name  = "test",
+      hosts = { "test1.com" },
     })
 
     assert(helpers.start_kong({
@@ -23,14 +23,14 @@ describe("rate-limiting-advanced API", function()
     if admin_client then
       admin_client:close()
     end
-    helpers.stop_kong()
+    helpers.stop_kong(nil, true)
   end)
 
   describe("POST", function()
     it("errors with size/limit mismatch", function()
       local res = assert(admin_client:send {
         method = "POST",
-        path = "/apis/test/plugins/",
+        path = "/routes/test/plugins/",
         body = {
           name = "rate-limiting-advanced",
           config = {
@@ -44,15 +44,13 @@ describe("rate-limiting-advanced API", function()
         }
       })
       local body = cjson.decode(assert.res_status(400, res))
-      assert.same({
-        config = "You must provide the same number of windows and limits",
-      }, body)
+      assert.same("You must provide the same number of windows and limits", body.fields["@entity"][1])
     end)
 
     it("errors with missing size/limit configs", function()
       local res = assert(admin_client:send {
         method = "POST",
-        path = "/apis/test/plugins/",
+        path = "/routes/test/plugins/",
         body = {
           name = "rate-limiting-advanced",
           config = {
@@ -65,9 +63,7 @@ describe("rate-limiting-advanced API", function()
         }
       })
       local body = cjson.decode(assert.res_status(400, res))
-      assert.same({
-        ["config.window_size"] = "window_size is required",
-      }, body)
+      assert.same("required field missing", body.fields.config.window_size)
     end)
 
     it("transparently sorts limit/window_size pairs", function()
@@ -88,6 +84,10 @@ describe("rate-limiting-advanced API", function()
       })
       local body = assert.res_status(201, res)
       local json = cjson.decode(body)
+
+      table.sort(json.config.limit)
+      table.sort(json.config.window_size)
+
       assert.same({ 10, 100 }, json.config.limit)
       assert.same({ 60, 3600 }, json.config.window_size)
     end)
@@ -99,7 +99,7 @@ describe("rate-limiting-advanced API", function()
     setup(function()
       local res = assert(admin_client:send {
         method = "POST",
-        path = "/apis/test/plugins/",
+        path = "/routes/test/plugins/",
         body = {
           name = "rate-limiting-advanced",
           config = {
@@ -119,7 +119,7 @@ describe("rate-limiting-advanced API", function()
     it("errors with size/limit mismatch", function()
       local res = assert(admin_client:send {
         method = "PATCH",
-        path = "/apis/test/plugins/" .. plugin_id,
+        path = "/routes/test/plugins/" .. plugin_id,
         body = {
           name = "rate-limiting-advanced",
           config = {
@@ -133,36 +133,13 @@ describe("rate-limiting-advanced API", function()
         }
       })
       local body = cjson.decode(assert.res_status(400, res))
-      assert.same({
-        config = "You must provide the same number of windows and limits",
-      }, body)
-    end)
-
-    it("errors with missing size/limit configs", function()
-      local res = assert(admin_client:send {
-        method = "PATCH",
-        path = "/apis/test/plugins/" .. plugin_id,
-        body = {
-          name = "rate-limiting-advanced",
-          config = {
-            limit = { 10 },
-            sync_rate = 10,
-          }
-        },
-        headers = {
-          ["Content-Type"] = "application/json"
-        }
-      })
-      local body = cjson.decode(assert.res_status(400, res))
-      assert.same({
-        config = "Both window_size and limit must be provided",
-      }, body)
+      assert.same("You must provide the same number of windows and limits", body.fields["@entity"][1])
     end)
 
     it("accepts an update without requiring size/limit configs", function()
       local res = assert(admin_client:send {
         method = "PATCH",
-        path = "/apis/test/plugins/" .. plugin_id,
+        path = "/routes/test/plugins/" .. plugin_id,
         body = {
           name = "rate-limiting-advanced",
           config = {
@@ -181,7 +158,7 @@ describe("rate-limiting-advanced API", function()
     it("accepts an update chaings size/limit configs", function()
       local res = assert(admin_client:send {
         method = "PATCH",
-        path = "/apis/test/plugins/" .. plugin_id,
+        path = "/routes/test/plugins/" .. plugin_id,
         body = {
           name = "rate-limiting-advanced",
           config = {
