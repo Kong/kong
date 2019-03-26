@@ -201,6 +201,10 @@
                          #
                          # Example: `stream_listen = 127.0.0.1:8444 http2 ssl`
 
+#prometheus_listen = off
+#prometheus_ssl_cert =
+#prometheus_ssl_cert_key =
+
 #nginx_user = nobody nobody      # Defines user and group credentials used by
                                  # worker processes. If group is omitted, a
                                  # group whose name equals that of user is

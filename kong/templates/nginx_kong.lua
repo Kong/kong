@@ -233,4 +233,35 @@ server {
     }
 }
 > end
+
+> if #prometheus_listeners > 0 then
+server {
+    server_name kong_prometheus_exporter;
+> for i = 1, #prometheus_listeners do
+    listen $(prometheus_listeners[i].listener);
+> end
+
+    access_log off;
+    error_log ${{ADMIN_ERROR_LOG}} ${{LOG_LEVEL}};
+
+> if prometheus_ssl_enabled then
+    ssl_certificate ${{PROMETHEUS_SSL_CERT}};
+    ssl_certificate_key ${{PROMETHEUS_SSL_CERT_KEY}};
+    ssl_protocols TLSv1.1 TLSv1.2 TLSv1.3;
+
+    ssl_session_cache shared:SSL:10m;
+    ssl_session_timeout 10m;
+    ssl_prefer_server_ciphers on;
+    ssl_ciphers ${{SSL_CIPHERS}};
+> end
+
+    location /metrics {
+        default_type text/plain;
+        content_by_lua_block {
+            local promethus = require "kong.plugins.prometheus.exporter"
+            promethus:collect()
+        }
+    }
+}
+> end
 ]]

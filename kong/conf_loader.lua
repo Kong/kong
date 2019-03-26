@@ -81,6 +81,7 @@ local CONF_INFERENCES = {
   -- forced string inferences (or else are retrieved as numbers)
   proxy_listen = { typ = "array" },
   admin_listen = { typ = "array" },
+  prometheus_listen = { typ = "array" },
   stream_listen = { typ = "array" },
   origins = { typ = "array" },
   db_update_frequency = {  typ = "number"  },
@@ -363,6 +364,25 @@ local function check_and_infer(conf)
     if conf.admin_ssl_cert_key and not pl_path.exists(conf.admin_ssl_cert_key) then
       errors[#errors + 1] = "admin_ssl_cert_key: no such file at " ..
                           conf.admin_ssl_cert_key
+    end
+  end
+
+  if (concat(conf.prometheus_listen, ",") .. " "):find("%sssl[%s,]") then
+    if conf.prometheus_ssl_cert and not conf.prometheus_ssl_cert_key then
+      errors[#errors + 1] = "prometheus_ssl_cert_key must be specified"
+
+    elseif conf.prometheus_ssl_cert_key and not conf.prometheus_ssl_cert then
+      errors[#errors + 1] = "prometheus_ssl_cert must be specified"
+    end
+
+    if conf.prometheus_ssl_cert and not pl_path.exists(conf.prometheus_ssl_cert) then
+      errors[#errors + 1] = "prometheus_ssl_cert: no such file at " ..
+                          conf.prometheus_ssl_cert
+    end
+
+    if conf.prometheus_ssl_cert_key and not pl_path.exists(conf.prometheus_ssl_cert_key) then
+      errors[#errors + 1] = "prometheus_ssl_cert_key: no such file at " ..
+                          conf.prometheus_ssl_cert_key
     end
   end
 
@@ -873,6 +893,21 @@ local function load(path, custom_conf)
     for _, listener in ipairs(conf.admin_listeners) do
       if listener.ssl == true then
         conf.admin_ssl_enabled = true
+        break
+      end
+    end
+
+    conf.prometheus_listeners, err = parse_listeners(conf.prometheus_listen, http_flags)
+    if err then
+      return nil, "prometheus_listen " .. err
+    end
+
+    setmetatable(conf.prometheus_listeners, _nop_tostring_mt)
+    conf.prometheus_ssl_enabled = false
+
+    for _, listener in ipairs(conf.prometheus_listeners) do
+      if listener.ssl == true then
+        conf.prometheus_ssl_enabled = true
         break
       end
     end
