@@ -11,7 +11,8 @@ else
 OPENSSL_DIR ?= /usr
 endif
 
-.PHONY: install dev lint test test-integration test-plugins test-all fix-windows
+.PHONY: install remove dependencies dev \
+	lint test test-integration test-plugins test-all fix-windows
 
 KONG_GMP_VERSION ?= `grep KONG_GMP_VERSION .requirements | awk -F"=" '{print $$2}'`
 RESTY_VERSION ?= `grep RESTY_VERSION .requirements | awk -F"=" '{print $$2}'`
@@ -52,9 +53,10 @@ release: setup-release
 install:
 	@luarocks make OPENSSL_DIR=$(OPENSSL_DIR) CRYPTO_DIR=$(OPENSSL_DIR)
 
-dev:
+remove:
 	-@luarocks remove kong
-	@luarocks make OPENSSL_DIR=$(OPENSSL_DIR) CRYPTO_DIR=$(OPENSSL_DIR)
+
+dependencies:
 	@for rock in $(DEV_ROCKS) ; do \
 	  if luarocks list --porcelain $$rock | grep -q "installed" ; then \
 	    echo $$rock already installed, skipping ; \
@@ -63,6 +65,8 @@ dev:
 	    luarocks install $$rock OPENSSL_DIR=$(OPENSSL_DIR) CRYPTO_DIR=$(OPENSSL_DIR); \
 	  fi \
 	done;
+
+dev: remove install dependencies
 
 lint:
 	@luacheck -q .
