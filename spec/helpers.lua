@@ -23,6 +23,7 @@ local consumers_schema_def = require "kong.db.schema.entities.consumers"
 local services_schema_def = require "kong.db.schema.entities.services"
 local plugins_schema_def = require "kong.db.schema.entities.plugins"
 local routes_schema_def = require "kong.db.schema.entities.routes"
+local prefix_handler = require "kong.cmd.utils.prefix_handler"
 local dc_blueprints = require "spec.fixtures.dc_blueprints"
 local declarative = require "kong.db.declarative"
 local conf_loader = require "kong.conf_loader"
@@ -1296,7 +1297,31 @@ local function get_version()
 end
 
 
-local function start_kong(env, tables, preserve_prefix)
+local function render_fixtures(conf, env, prefix, fixtures)
+
+  if fixtures and (fixtures.http_mock or fixtures.stream_mock) then
+    -- prepare the prefix so we get the full config in the
+    -- hidden `.kong_env` file, including test specified env vars etc
+    assert(kong_exec("prepare --conf " .. conf, env))
+    local render_config = assert(conf_loader(prefix .. "/.kong_env"))
+
+    for _, mocktype in ipairs { "http_mock", "stream_mock" } do
+
+      for filename, contents in pairs(fixtures[mocktype] or {}) do
+        -- render the file using the full configuration
+        contents = assert(prefix_handler.compile_conf(render_config, contents))
+
+        -- write file to prefix
+        filename = prefix .. "/" .. filename .. "." .. mocktype
+        assert(pl_utils.writefile(filename, contents))
+      end
+    end
+  end
+
+  return true
+end
+
+local function start_kong(env, tables, preserve_prefix, fixtures)
   if tables ~= nil and type(tables) ~= "table" then
     error("arg #2 must be a list of tables to truncate")
   end
@@ -1326,6 +1351,8 @@ local function start_kong(env, tables, preserve_prefix)
     env = utils.deep_copy(env)
     env.declarative_config = config_yml
   end
+
+  assert(render_fixtures(TEST_CONF_PATH .. nginx_conf, env, prefix, fixtures))
 
   return kong_exec("start --conf " .. TEST_CONF_PATH .. nginx_conf, env)
 end
