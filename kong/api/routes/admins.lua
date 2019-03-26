@@ -500,15 +500,9 @@ return {
         end
 
         -- Mark the token secret as consumed
-        local _, err = singletons.dao.consumer_reset_secrets:update({
-          status = enums.TOKENS.STATUS.CONSUMED,
-          updated_at = ngx.now() * 1000,
-        }, {
-          id = self.reset_secret_id,
-        })
-
-        if err then
-          helpers.yield_error(err)
+        local ok, err = secrets.consume_secret(self.reset_secret_id)
+        if not ok then
+          return helpers.yield_error(err)
         end
 
         return res

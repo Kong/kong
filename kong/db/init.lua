@@ -35,9 +35,11 @@ local CORE_ENTITIES = {
 
   -- enterprise core entities follow
   "files",
+  "developers",
   "workspaces",
   "workspace_entities",
   "workspace_entity_counters",
+  "consumer_reset_secrets",
 }
 
 

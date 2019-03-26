@@ -32,7 +32,6 @@ local function setup_ws_defaults(dao, db, workspace)
   end
 
   ngx.ctx.workspaces = { ws }
-  ee_helpers.register_token_statuses(dao)
   helpers.register_consumer_relations(dao)
 
   -- create a record we can use to test inter-workspace calls

@@ -35,7 +35,12 @@ end
 
 
 function _M.get_consumer_status(consumer)
-  local status = consumer.status
+  local status
+
+  if consumer.type == enums.CONSUMERS.TYPE.DEVELOPER then
+    local developer = singletons.db.developers:select_by_email(consumer.email)
+    status = developer.status
+  end
 
   return {
     status = status,
@@ -319,6 +324,8 @@ end
 
 
 function _M.validate_jwt(self, dao_factory, helpers, token_optional)
+  local reset_secrets = singletons.db.consumer_reset_secrets
+
   -- Verify params
   if token_optional then
     return
@@ -335,21 +342,21 @@ function _M.validate_jwt(self, dao_factory, helpers, token_optional)
     return helpers.responses.send_HTTP_UNAUTHORIZED(err)
   end
 
-  -- Look up the secret by consumer id and pending status
-  local rows, err = singletons.dao.consumer_reset_secrets:find_all({
-    consumer_id = jwt.claims.id,
-    status = enums.TOKENS.STATUS.PENDING,
-  })
+  -- Look up the secret by consumer id
+  local reset_secret
+  for secret, err in reset_secrets:each_for_consumer({ id = jwt.claims.id }) do
+    if err then
+      return helpers.responses.send_HTTP_UNAUTHORIZED(err)
+    end
 
-  if err then
-    return helpers.responses.send_HTTP_UNAUTHORIZED(err)
+    if not reset_secret and secret.status == enums.TOKENS.STATUS.PENDING then
+      reset_secret = secret
+    end
   end
 
-  if not rows or next(rows) == nil then
+  if not reset_secret then
     return helpers.responses.send_HTTP_UNAUTHORIZED()
   end
-
-  local reset_secret = rows[1]
 
   -- Generate a new signature and compare it to passed token
   local ok, _ = ee_jwt.verify_signature(jwt, reset_secret.secret)

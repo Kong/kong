@@ -57,7 +57,9 @@ end
 
 
 function _M.set_workspace_by_path(self)
-  local workspace, err = workspaces.fetch_workspace(self.params.workspace_name)
+  local workspace_name = self.params.workspace_name or workspaces.DEFAULT_WORKSPACE
+  local workspace, err = workspaces.fetch_workspace(workspace_name)
+
   if err then
     ngx.log(ngx.ERR, err)
     return responses.send_HTTP_INTERNAL_SERVER_ERROR()

@@ -58,7 +58,6 @@ local PHASES = kong_global.phases
 
 _G.kong = kong_global.new() -- no versioned PDK for plugins for now
 
-
 local DB = require "kong.db"
 local dns = require "kong.tools.dns"
 local utils = require "kong.tools.utils"
@@ -86,6 +85,7 @@ local kong_error_handlers = require "kong.error_handlers"
 local internal_proxies = require "kong.enterprise_edition.proxies"
 local vitals = require "kong.vitals"
 local ee = require "kong.enterprise_edition"
+local portal_auth = require "kong.portal.auth"
 local portal_emails = require "kong.portal.emails"
 local admin_emails = require "kong.enterprise_edition.admin.emails"
 local invoke_plugin = require "kong.enterprise_edition.invoke_plugin"
@@ -808,6 +808,13 @@ function Kong.access()
       if err then
         ctx.delay_response = false
         return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+      end
+
+      local ok, err = portal_auth.verify_developer_status(ctx.authenticated_consumer)
+
+      if not ok then
+        ctx.delay_response = false
+        return responses.send_HTTP_UNAUTHORIZED(err)
       end
     end
     ctx.workspaces = old_ws

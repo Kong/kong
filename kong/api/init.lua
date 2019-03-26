@@ -324,8 +324,7 @@ for _, v in ipairs({"kong", "apis", "cache", }) do
 end
 
 -- XXX EE, move elsewhere
-for _, v in ipairs({"vitals", "portal",
-                    "audit", "oas_config"}) do
+for _, v in ipairs({"vitals", "audit", "oas_config"}) do
   local routes = require("kong.api.routes." .. v)
   attach_routes(routes)
 end

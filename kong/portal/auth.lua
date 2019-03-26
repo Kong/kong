@@ -9,6 +9,7 @@ local ws_constants  = constants.WORKSPACE_CONFIG
 local log = ngx.log
 local ERR = ngx.ERR
 
+local DEVELOPER_TYPE = enums.CONSUMERS.TYPE.DEVELOPER
 
 local _M = {}
 
@@ -78,6 +79,8 @@ function _M.validate_auth_plugin(self, db, helpers, portal_auth)
   end
 
   self.collection = db.daos[self.plugin.dao]
+
+  return self.collection
 end
 
 
@@ -234,6 +237,26 @@ function _M.authenticate_gui_session(self, db, helpers)
   end
 
   verify_consumer(self, db, helpers)
+end
+
+
+function _M.verify_developer_status(consumer)
+  if consumer and consumer.type == DEVELOPER_TYPE then
+    local email = consumer.username
+    local developer, err = singletons.db.developers:select_by_email(email)
+
+    if err then
+      kong.log.err(err)
+      return false
+    end
+
+    local status = developer.status
+    if status ~= enums.CONSUMERS.STATUS.APPROVED then
+      return false, 'Unauthorized: Developer status ' .. '"' .. enums.CONSUMERS.STATUS_LABELS[developer.status] .. '"'
+    end
+  end
+
+  return true
 end
 
 

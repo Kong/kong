@@ -239,10 +239,6 @@ local function get_db_utils(strategy, tables, plugins)
     truncate_tables(db, dao, tables)
   end
 
-  -- XXX rbac resources are gone
-  local portal_helper = require "kong.portal.dao_helpers"
-  portal_helper.register_resources(dao)
-
   db.old_dao = dao
 
   -- blueprints

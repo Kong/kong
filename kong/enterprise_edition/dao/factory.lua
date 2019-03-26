@@ -6,12 +6,6 @@ local rl = require "kong.tools.public.rate-limiting"
 local _M = {}
 
 
-_M.EE_MODELS = {
-  "token_statuses",
-  "consumer_reset_secrets",
-}
-
-
 function _M.additional_tables(dao)
   local additional_tables = {}
 

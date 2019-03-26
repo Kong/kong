@@ -41,16 +41,15 @@ describe("files API (#" .. strategy .. "): ", function()
   local fileStub
 
   lazy_setup(function()
-    _, db, dao = helpers.get_db_utils(strategy, {
-      "files",
-    })
+    _, db, dao = helpers.get_db_utils(strategy)
     assert(helpers.start_kong({
-      database = strategy
+      database = strategy,
+      portal = true,
     }))
   end)
 
   lazy_teardown(function()
-    helpers.stop_kong(nil, true)
+    helpers.stop_kong()
   end)
 
   before_each(function()

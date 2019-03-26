@@ -532,14 +532,8 @@ function _M.reset_password(plugin, collection, consumer, new_password, secret_id
 
   log(DEBUG, _log_prefix, "password was reset, updating secrets")
   -- Mark the token secret as consumed
-  local _, err = singletons.dao.consumer_reset_secrets:update({
-    status = enums.TOKENS.STATUS.CONSUMED,
-    updated_at = ngx.now() * 1000,
-  }, {
-    id = secret_id,
-  })
-
-  if err then
+  local ok, err = secrets.consume_secret(secret_id)
+  if not ok then
     return nil, err
   end
 

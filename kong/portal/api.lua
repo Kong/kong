@@ -4,15 +4,13 @@ local ee_crud       = require "kong.enterprise_edition.crud_helpers"
 local ws_helper     = require "kong.workspaces.helper"
 local enums         = require "kong.enterprise_edition.dao.enums"
 local cjson         = require "cjson.safe"
-local ee_jwt        = require "kong.enterprise_edition.jwt"
 local ee_api        = require "kong.enterprise_edition.api_helpers"
 local constants     = require "kong.constants"
 local auth          = require "kong.portal.auth"
 local portal_smtp_client = require "kong.portal.emails"
+local secrets       = require "kong.enterprise_edition.consumer_reset_secret_helpers"
 
 local ws_constants = constants.WORKSPACE_CONFIG
-
-local time = ngx.time
 
 --- Allowed auth plugins
 -- Table containing allowed auth plugins that the developer portal api
@@ -340,17 +338,12 @@ return {
       end
 
       -- Mark the token secret as consumed
-      local _, err = singletons.dao.consumer_reset_secrets:update({
-        status = enums.TOKENS.STATUS.CONSUMED,
-        updated_at = time() * 1000,
-      }, {
-        id = self.reset_secret_id,
-      })
-
-      if err then
+      local ok, err = secrets.consume_secret(self.reset_secret_id)
+      if not ok then
         return helpers.yield_error(err)
       end
 
+      -- Email user with reset success confirmation
       local portal_emails = portal_smtp_client.new()
       local _, err = portal_emails:password_reset_success(self.consumer.email)
       if err then
@@ -364,8 +357,7 @@ return {
   ["/forgot-password"] = {
     before = function(self, dao_factory, helpers)
       check_portal_status(helpers)
-      auth.validate_auth_plugin(self, dao_factory.db.new_db, helpers)
-      ee_api.validate_email(self, dao_factory, helpers)
+      auth.validate_auth_plugin(self, singletons.db, helpers)
     end,
 
     POST = function(self, dao_factory, helpers)
@@ -373,60 +365,26 @@ return {
       local token_ttl = ws_helper.retrieve_ws_config(
                                       ws_constants.PORTAL_TOKEN_EXP, workspace)
 
-      local filter = {__skip_rbac = true}
-      local rows, err = crud.find_by_id_or_field(dao_factory.consumers, filter,
-                                                    self.params.email, "email")
+      local developer, err = singletons.db.developers:select_by_email(
+                                       self.params.email, { skip_rbac = true })
       if err then
         return helpers.yield_error(err)
       end
 
-      -- If we do not have a consumer, return 200 ok
-      self.consumer = rows[1]
-      if not self.consumer then
+      -- If we do not have a developer, return 200 ok
+      if not developer then
         return helpers.responses.send_HTTP_OK()
       end
 
-      local rows, err = singletons.dao.consumer_reset_secrets:find_all({
-        consumer_id = self.consumer.id
-      })
-
-      if err then
+      -- Generate a reset secret and jwt
+      local jwt, err = secrets.create(developer.consumer, ngx.var.remote_addr, token_ttl)
+      if not jwt then
         return helpers.yield_error(err)
       end
 
-      -- Invalidate any pending resets for this consumer
-      for _, row in ipairs(rows) do
-        if row.status == enums.TOKENS.STATUS.PENDING then
-          local _, err = singletons.dao.consumer_reset_secrets:update({
-            status = enums.TOKENS.STATUS.INVALIDATED,
-            updated_at = time() * 1000,
-          }, {
-            id = row.id
-          })
-          if err then
-            return helpers.yield_error(err)
-          end
-        end
-      end
-
-      -- Generate new reset
-      local row, err = singletons.dao.consumer_reset_secrets:insert({
-        consumer_id = self.consumer.id,
-        client_addr = ngx.var.remote_addr,
-      })
-
-      if err then
-        return helpers.yield_error(err)
-      end
-
-      local claims = {id = self.consumer.id, exp = time() + token_ttl}
-      local jwt, err = ee_jwt.generate_JWT(claims, row.secret)
-      if err then
-        return helpers.yield_error(err)
-      end
-
+      -- Email user with reset jwt included
       local portal_emails = portal_smtp_client.new()
-      local _, err = portal_emails:password_reset(self.consumer.email, jwt)
+      local _, err = portal_emails:password_reset(developer.email, jwt)
       if err then
         return helpers.yield_error(err)
       end

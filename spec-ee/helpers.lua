@@ -213,21 +213,6 @@ function _M.portal_gui_client(timeout)
 end
 
 
--- helper for reset token tests
-function _M.register_token_statuses(dao)
-  for status, id in pairs(enums.TOKENS.STATUS) do
-    local _, err = dao.token_statuses:insert({
-      id = id,
-      name = status,
-    })
-
-    if err then
-      return err
-    end
-  end
-end
-
-
 function _M.post(client, path, body, headers, expected_status)
   headers = headers or {}
   headers["Content-Type"] = "application/json"

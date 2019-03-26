@@ -295,10 +295,6 @@ function _M.new(kong_config, new_db)
     schemas[m_name] = require("kong.dao.schemas." .. m_name)
   end
 
-  for _, m_name in ipairs(ee_dao_factory.EE_MODELS) do
-    schemas[m_name] = require("kong.enterprise_edition.dao.schemas." .. m_name)
-  end
-
   for plugin_name in pairs(self.plugin_names) do
     local has_schema, plugin_schemas = utils.load_module_if_exists("kong.plugins." .. plugin_name .. ".daos")
     if has_schema then

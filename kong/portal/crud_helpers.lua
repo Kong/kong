@@ -13,7 +13,7 @@ function _M.insert_credential(plugin, consumer_type)
   return function(credential)
     local _, err = singletons.dao.credentials:insert({
       id = credential.id,
-      consumer_id = credential.consumer_id,
+      consumer_id = credential.consumer.id,
       consumer_type = consumer_type or enums.CONSUMERS.TYPE.PROXY,
       plugin = plugin,
       credential_data = tostring(cjson.encode(credential)),
@@ -35,7 +35,7 @@ function _M.update_credential(credential)
 
   local _, err = singletons.dao.credentials:update(params, {
       id = credential.id,
-      consumer_id = credential.consumer_id
+      consumer_id = credential.consumer.id
   }, {__skip_rbac = true})
 
   if err then

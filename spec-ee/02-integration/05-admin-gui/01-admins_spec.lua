@@ -41,8 +41,7 @@ for _, strategy in helpers.each_strategy() do
         name = "another-one",
       }))
 
-      ee_helpers.register_rbac_resources(db)
-      ee_helpers.register_token_statuses(dao)
+      ee_helpers.register_rbac_resources(dao)
 
       for i = 1, 3 do
         -- admins that are already approved
@@ -364,7 +363,7 @@ for _, strategy in helpers.each_strategy() do
 
   pending("Admin API - Admins Register #" .. strategy, function()
     local client
-    local dao
+    local db, dao
 
     describe("/admins/register basic-auth", function()
       local headers = {
@@ -373,7 +372,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       before_each(function()
-        _, _, dao = helpers.get_db_utils(strategy)
+        _, db, dao = helpers.get_db_utils(strategy)
         assert(helpers.start_kong({
           database = strategy,
           admin_gui_url = "http://manager.konghq.com",
@@ -381,7 +380,6 @@ for _, strategy in helpers.each_strategy() do
           enforce_rbac = "on",
         }))
         ee_helpers.register_rbac_resources(dao)
-        ee_helpers.register_token_statuses(dao)
         client = assert(helpers.admin_client())
       end)
 
@@ -415,7 +413,7 @@ for _, strategy in helpers.each_strategy() do
                                       email = "hong@konghq.com",
                                     }, headers, 200)
 
-          local reset_secret = dao.consumer_reset_secrets:find_all({
+          local reset_secret = db.consumer_reset_secrets:select_all({
             consumer_id = admin.consumer.id
           })[1]
           assert.equal(enums.TOKENS.STATUS.PENDING, reset_secret.status)
@@ -444,7 +442,7 @@ for _, strategy in helpers.each_strategy() do
           assert.equal("bob", json.credential.username)
           assert.is.falsy("clawz" == json.credential.password)
 
-          reset_secret = dao.consumer_reset_secrets:find_all({
+          reset_secret = db.consumer_reset_secrets:select_all({
             id = reset_secret.id
           })[1]
 
@@ -460,7 +458,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       before_each(function()
-        _, _, dao = helpers.get_db_utils(strategy)
+        _, db, dao = helpers.get_db_utils(strategy)
         assert(helpers.start_kong({
           database = strategy,
           admin_gui_url = "http://manager.konghq.com",
@@ -468,7 +466,6 @@ for _, strategy in helpers.each_strategy() do
           enforce_rbac = "on",
         }))
         ee_helpers.register_rbac_resources(dao)
-        ee_helpers.register_token_statuses(dao)
         client = assert(helpers.admin_client())
       end)
 
@@ -484,7 +481,7 @@ for _, strategy in helpers.each_strategy() do
                                       email = "hong@konghq.com",
                                     }, headers, 200)
 
-          local reset_secret = dao.consumer_reset_secrets:find_all({
+          local reset_secret = db.consumer_reset_secrets:select_all({
             consumer_id = admin.consumer.id
           })[1]
           assert.equal(nil, reset_secret)
@@ -523,7 +520,6 @@ for _, strategy in helpers.each_strategy() do
         enforce_rbac = "on",
       }))
       ee_helpers.register_rbac_resources(dao)
-      ee_helpers.register_token_statuses(dao)
       client = assert(helpers.admin_client())
     end)
 
@@ -579,10 +575,11 @@ for _, strategy in helpers.each_strategy() do
   describe("Admin API - secret token generation #" .. strategy, function()
     local client
     local dao
+    local db
     local consumer
 
     before_each(function()
-      _, _, dao = helpers.get_db_utils(strategy)
+      _, db, dao = helpers.get_db_utils(strategy)
       assert(helpers.start_kong({
         database = strategy,
         admin_gui_url = "http://manager.konghq.com",
@@ -590,7 +587,6 @@ for _, strategy in helpers.each_strategy() do
         enforce_rbac = "on",
       }))
       ee_helpers.register_rbac_resources(dao)
-      ee_helpers.register_token_statuses(dao)
       client = assert(helpers.admin_client())
     end)
 
@@ -648,7 +644,7 @@ for _, strategy in helpers.each_strategy() do
       assert.is_nil(err)
 
       -- Look up the secret by consumer id and pending status
-      local secrets, err = dao.consumer_reset_secrets:find_all({
+      local secrets, err = db.consumer_reset_secrets:select_all({
         consumer_id = jwt.claims.id,
         status = enums.TOKENS.STATUS.PENDING,
       })
@@ -667,11 +663,12 @@ for _, strategy in helpers.each_strategy() do
 
   pending("Admin API - /admins/password_resets #" .. strategy, function()
     local client
+    local db
     local dao
     local admin
 
     before_each(function()
-      _, _, dao = helpers.get_db_utils(strategy)
+      _, db, dao = helpers.get_db_utils(strategy)
       assert(helpers.start_kong({
         database = strategy,
         admin_gui_url = "http://manager.konghq.com",
@@ -679,7 +676,6 @@ for _, strategy in helpers.each_strategy() do
         enforce_rbac = "on",
       }))
       ee_helpers.register_rbac_resources(dao)
-      ee_helpers.register_token_statuses(dao)
       client = assert(helpers.admin_client())
 
       local res = assert(client:send {
@@ -725,7 +721,7 @@ for _, strategy in helpers.each_strategy() do
       })
       assert.res_status(201, res)
 
-      local resets, err = dao.consumer_reset_secrets:find_all({
+      local resets, err = db.consumer_reset_secrets:select_all({
         consumer_id = admin.id
       })
 
@@ -734,38 +730,22 @@ for _, strategy in helpers.each_strategy() do
       -- one when he was invited, one when he forgot password
       assert.same(2, #resets)
     end)
-
-    it("returns 404 if you're not an admin", function()
-      local res = assert(client:send {
-        method = "POST",
-        path = "/admins/password_resets",
-        headers = {
-          ["Content-Type"] = "application/json",
-        },
-        body = {
-          email = "developer-1@test.com",
-        }
-      })
-
-      assert.res_status(404, res)
-    end)
-
   end)
 
   describe("Admin API - /admins/password_resets for admin #" .. strategy, function()
     local client
-    local dao, db
+    local dao
 
     before_each(function()
-      _, db, dao = helpers.get_db_utils(strategy)
+      _, _, dao = helpers.get_db_utils(strategy)
       assert(helpers.start_kong({
         database = strategy,
         admin_gui_url = "http://manager.konghq.com",
         admin_gui_auth = "ldap-auth-advanced",
         enforce_rbac = "on",
       }))
-      ee_helpers.register_rbac_resources(db)
-      ee_helpers.register_token_statuses(dao)
+      ee_helpers.register_rbac_resources(dao)
+
       client = assert(helpers.admin_client())
     end)
 

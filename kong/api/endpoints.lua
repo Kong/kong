@@ -82,7 +82,6 @@ end
 
 local function query_entity(context, self, db, schema)
   local dao = db[schema.name]
-
   local args
   if context == "update" or context == "upsert" then
     args = self.args.post
