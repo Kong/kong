@@ -5,24 +5,23 @@ for _ , strategy in helpers.each_strategy() do
   describe("Plugin: oauth2-introspection (hooks)" , function()
     local client , admin_client
     setup(function()
-      local dao = select(3 , helpers.get_db_utils(strategy))
+      local bp = helpers.get_db_utils(strategy, nil, {"introspection-endpoint",
+                                                      "oauth2-introspection"})
       local introspection_url = string.format("http://%s/introspect" ,
         helpers.test_conf.proxy_listen[1])
 
-      assert(dao.apis:insert {
+      assert(bp.routes:insert {
         name = "introspection-api",
-        uris = { "/introspect" },
-        upstream_url = "http://mockbin.com"
+        paths = { "/introspect" },
       })
 
-      local api1 = assert(dao.apis:insert {
-        name = "api-1",
+      local route1 = assert(bp.routes:insert {
+        name = "route-1",
         hosts = { "introspection.com" },
-        upstream_url = "http://mockbin.com"
       })
-      assert(dao.plugins:insert {
+      assert(bp.plugins:insert {
         name = "oauth2-introspection",
-        api_id = api1.id,
+        route = { id = route1.id },
         config = {
           introspection_url = introspection_url,
           authorization_value = "hello",
@@ -30,13 +29,14 @@ for _ , strategy in helpers.each_strategy() do
         }
       })
 
-      assert(dao.consumers:insert {
+      assert(bp.consumers:insert {
         username = "bob"
       })
 
       assert(helpers.start_kong({
         database = strategy,
-        custom_plugins = "introspection-endpoint, oauth2-introspection",
+        plugins = "bundled,introspection-endpoint,oauth2-introspection",
+        nginx_conf = "spec/fixtures/custom_nginx.template",
         lua_package_path = "?/init.lua;./kong/?.lua;./spec/fixtures/?.lua;/kong-plugin/spec/fixtures/custom_plugins/?.lua;;"
       }))
 
@@ -45,7 +45,7 @@ for _ , strategy in helpers.each_strategy() do
 
       local res = assert(admin_client:send {
         method = "POST",
-        path = "/apis/introspection-api/plugins/",
+        path = "/routes/introspection-api/plugins/",
         body = {
           name = "introspection-endpoint"
         },

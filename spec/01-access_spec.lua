@@ -9,22 +9,21 @@ for _ , strategy in helpers.each_strategy() do
   describe("Plugin: basic-auth (access)" , function()
     local client , admin_client
     setup(function()
-      local dao = select(3 , helpers.get_db_utils(strategy))
+      local bp = helpers.get_db_utils(strategy, nil, {"introspection-endpoint",
+                                                      "oauth2-introspection"})
 
-      assert(dao.apis:insert {
+      assert(bp.routes:insert {
         name = "introspection-api",
-        uris = { "/introspect" },
-        upstream_url = "http://mockbin.com"
+        paths = { "/introspect" },
       })
 
-      local api1 = assert(dao.apis:insert {
-        name = "api-1",
+      local route1 = assert(bp.routes:insert {
+        name = "route-1",
         hosts = { "introspection.com" },
-        upstream_url = "http://mockbin.com"
       })
-      assert(dao.plugins:insert {
+      assert(bp.plugins:insert {
         name = "oauth2-introspection",
-        api_id = api1.id,
+        route = { id = route1.id },
         config = {
           introspection_url = introspection_url,
           authorization_value = "hello",
@@ -32,14 +31,13 @@ for _ , strategy in helpers.each_strategy() do
         }
       })
 
-      local api2 = assert(dao.apis:insert {
-        name = "api-2",
+      local route2 = assert(bp.routes:insert {
+        name = "route-2",
         hosts = { "introspection2.com" },
-        upstream_url = "http://mockbin.com"
       })
-      assert(dao.plugins:insert {
+      assert(bp.plugins:insert {
         name = "oauth2-introspection",
-        api_id = api2.id,
+        route = { id = route2.id },
         config = {
           introspection_url = introspection_url,
           authorization_value = "hello",
@@ -47,31 +45,30 @@ for _ , strategy in helpers.each_strategy() do
         }
       })
 
-      assert(dao.consumers:insert {
+      assert(bp.consumers:insert {
         username = "bob"
       })
-      local consumer = assert(dao.consumers:insert {
+      local consumer = assert(bp.consumers:insert {
         username = "limited-bob"
       })
-      assert(dao.plugins:insert {
+      assert(bp.plugins:insert {
         name = "correlation-id",
-        api_id = api1.id,
-        consumer_id = consumer.id,
+        route = { id = route1.id },
+        consumer = { id = consumer.id },
         config = {},
       })
 
-      local anonymous_user = assert(dao.consumers:insert {
+      local anonymous_user = assert(bp.consumers:insert {
         username = "no-body",
       })
 
-      local api3 = assert(dao.apis:insert {
-        name = "api-3",
+      local route3 = assert(bp.routes:insert {
+        name = "route-3",
         hosts = { "introspection3.com" },
-        upstream_url = "http://mockbin.com"
       })
-      assert(dao.plugins:insert {
+      assert(bp.plugins:insert {
         name = "oauth2-introspection",
-        api_id = api3.id,
+        route = { id = route3.id },
         config = {
           introspection_url = introspection_url,
           authorization_value = "hello",
@@ -80,14 +77,13 @@ for _ , strategy in helpers.each_strategy() do
         }
       })
 
-      local api4 = assert(dao.apis:insert {
-        name = "api-4",
+      local route4 = assert(bp.routes:insert {
+        name = "route-4",
         hosts = { "introspection4.com" },
-        upstream_url = "http://mockbin.com"
       })
-      assert(dao.plugins:insert {
+      assert(bp.plugins:insert {
         name = "oauth2-introspection",
-        api_id = api4.id,
+        route = { id = route4.id },
         config = {
           introspection_url = introspection_url,
           authorization_value = "hello",
@@ -96,14 +92,13 @@ for _ , strategy in helpers.each_strategy() do
         }
       })
 
-      local api5 = assert(dao.apis:insert {
-        name = "api-5",
+      local route5 = assert(bp.routes:insert {
+        name = "route-5",
         hosts = { "introspection5.com" },
-        upstream_url = "http://mockbin.com"
       })
-      assert(dao.plugins:insert {
+      assert(bp.plugins:insert {
         name = "oauth2-introspection",
-        api_id = api5.id,
+        route = { id = route5.id },
         config = {
           introspection_url = introspection_url,
           authorization_value = "hello",
@@ -114,7 +109,8 @@ for _ , strategy in helpers.each_strategy() do
 
       assert(helpers.start_kong({
         database = strategy,
-        custom_plugins = "introspection-endpoint, oauth2-introspection",
+        plugins = "bundled,introspection-endpoint,oauth2-introspection",
+        nginx_conf = "spec/fixtures/custom_nginx.template",
         lua_package_path = "?/init.lua;./kong/?.lua;./spec/fixtures/?.lua;/kong-plugin/spec/fixtures/custom_plugins/?.lua;;"
       }))
 
@@ -123,7 +119,7 @@ for _ , strategy in helpers.each_strategy() do
 
       local res = assert(admin_client:send {
         method = "POST",
-        path = "/apis/introspection-api/plugins/",
+        path = "/routes/introspection-api/plugins/",
         body = {
           name = "introspection-endpoint"
         },
@@ -285,7 +281,7 @@ for _ , strategy in helpers.each_strategy() do
           })
 
           local body = cjson.decode(assert.res_status(200 , res))
-          assert.equal("valid_complex" , body.queryString.access_token)
+          assert.equal("valid_complex" , body.uri_args.access_token)
           assert.equal("some_client_id" , body.headers["x-credential-client-id"])
           assert.equal("some_username" , body.headers["x-credential-username"])
           assert.equal("some_scope" , body.headers["x-credential-scope"])
@@ -307,7 +303,7 @@ for _ , strategy in helpers.each_strategy() do
           })
 
           local body = cjson.decode(assert.res_status(200 , res))
-          assert.is_nil(body.queryString.access_token)
+          assert.is_nil(body.uri_args.access_token)
           assert.equal("some_client_id" , body.headers["x-credential-client-id"])
           assert.equal("some_username" , body.headers["x-credential-username"])
           assert.equal("some_scope" , body.headers["x-credential-scope"])
@@ -388,25 +384,23 @@ for _ , strategy in helpers.each_strategy() do
     local client , user1 , user2 , anonymous , admin_client
 
     setup(function()
-      local dao = select(3 , helpers.get_db_utils(strategy))
+      local bp = helpers.get_db_utils(strategy)
 
-      assert(dao.apis:insert {
+      assert(bp.routes:insert {
         name = "introspection-api",
-        uris = { "/introspect" },
-        upstream_url = "http://mockbin.com"
+        paths = { "/introspect" },
       })
-      local api1 = assert(dao.apis:insert {
-        name = "api-1",
+      local route1 = assert(bp.routes:insert {
+        name = "route-1",
         hosts = { "logical-and.com" },
-        upstream_url = "http://mockbin.com",
       })
-      assert(dao.plugins:insert {
+      assert(bp.plugins:insert {
         name = "key-auth",
-        api_id = api1.id,
+        route = { id = route1.id },
       })
-      assert(dao.plugins:insert {
+      assert(bp.plugins:insert {
         name = "oauth2-introspection",
-        api_id = api1.id,
+        route = { id = route1.id },
         config = {
           introspection_url = introspection_url,
           authorization_value = "hello",
@@ -414,28 +408,27 @@ for _ , strategy in helpers.each_strategy() do
         }
       })
 
-      anonymous = assert(dao.consumers:insert {
+      anonymous = assert(bp.consumers:insert {
         username = "Anonymous",
       })
-      user1 = assert(dao.consumers:insert {
+      user1 = assert(bp.consumers:insert {
         username = "bob",
       })
-      user2 = assert(dao.consumers:insert {
+      user2 = assert(bp.consumers:insert {
         username = "alice",
       })
-      assert(dao.keyauth_credentials:insert {
+      assert(bp.keyauth_credentials:insert {
         key = "mouse",
-        consumer_id = user2.id,
+        consumer = { id = user2.id },
       })
 
-      local api2 = assert(dao.apis:insert {
-        name = "api-2",
+      local route2 = assert(bp.routes:insert {
+        name = "route-2",
         hosts = { "logical-or.com" },
-        upstream_url = "http://mockbin.com",
       })
-      assert(dao.plugins:insert {
+      assert(bp.plugins:insert {
         name = "oauth2-introspection",
-        api_id = api2.id,
+        route = { id = route2.id },
         config = {
           introspection_url = introspection_url,
           authorization_value = "hello",
@@ -444,9 +437,9 @@ for _ , strategy in helpers.each_strategy() do
         }
       })
 
-      assert(dao.plugins:insert {
+      assert(bp.plugins:insert {
         name = "key-auth",
-        api_id = api2.id,
+        route = { id = route2.id },
         config = {
           anonymous = anonymous.id,
         },
@@ -464,7 +457,7 @@ for _ , strategy in helpers.each_strategy() do
 
       local res = assert(admin_client:send {
         method = "POST",
-        path = "/apis/introspection-api/plugins/",
+        path = "/routes/introspection-api/plugins/",
         body = {
           name = "introspection-endpoint"
         },
