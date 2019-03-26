@@ -8,11 +8,13 @@ describe("[AWS Lambda] aws-gateway input", function()
 
   setup(function()
     old_ngx = ngx
+    local body_data
     _G.ngx = setmetatable({
       req = {
         get_headers = function() return deepcopy(mock_request.headers) end,
         get_uri_args = function() return deepcopy(mock_request.query) end,
-        get_body_data = function() return mock_request.body end,
+        read_body = function() body_data = mock_request.body end,
+        get_body_data = function() return body_data end,
       },
       log = function() end,
       encode_base64 = old_ngx.encode_base64

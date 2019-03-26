@@ -11,6 +11,7 @@ local EMPTY = {}
 local ngx_req_get_headers  = ngx.req.get_headers
 local ngx_req_get_uri_args = ngx.req.get_uri_args
 local ngx_encode_base64    = ngx.encode_base64
+local ngx_req_read_body    = ngx.req.read_body
 
 
 return function(ctx)
@@ -59,6 +60,8 @@ return function(ctx)
   local isBase64Encoded = false
   local body
   do
+    ngx_req_read_body()
+
     local _, err_code
     _, err_code, body = public_utils.get_body_info()
     if err_code == public_utils.req_body_errors.unknown_ct then
