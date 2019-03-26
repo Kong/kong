@@ -14,8 +14,8 @@ return {
 
       -- Search by custom_id: /consumers?custom_id=xxx
       if args.custom_id then
-        self.params.consumers = args.custom_id
-        local consumer, _, err_t = endpoints.select_entity(self, db, db.consumers.schema, "select_by_custom_id")
+        local opts = endpoints.extract_options(args, db.consumers.schema, "select")
+        local consumer, _, err_t = db.consumers:select_by_custom_id(args.custom_id, opts)
         if err_t then
           return endpoints.handle_error(err_t)
         end
