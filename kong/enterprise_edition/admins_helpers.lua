@@ -7,8 +7,6 @@ local secrets = require "kong.enterprise_edition.consumer_reset_secret_helpers"
 local ee_utils = require "kong.enterprise_edition.utils"
 local utils = require "kong.tools.utils"
 
-
-local kong = kong
 local emails = singletons.admin_emails
 
 local lower = string.lower
@@ -370,7 +368,7 @@ function _M.delete(admin_to_delete, opts)
 end
 
 
-function _M.find_by_username_or_id(username_or_id)
+function _M.find_by_username_or_id(username_or_id, raw)
   if not username_or_id then
     return nil
   end
@@ -391,7 +389,9 @@ function _M.find_by_username_or_id(username_or_id)
     end
   end
 
-  return transmogrify(admin)
+  -- it's convenient to find_by_username_or_id in this module, too,
+  -- and use the returned rbac_user and consumer ids.
+  return raw and admin or transmogrify(admin)
 end
 
 
@@ -446,6 +446,48 @@ function _M.link_to_workspace(admin, workspace)
   end
 
   return true
+end
+
+
+function _M.workspaces_for_admin(username_or_id)
+  -- we need a full admin here, not a prettified one
+  local admin, err = _M.find_by_username_or_id(username_or_id, true)
+  if err then
+    return nil, err
+  end
+
+  if not admin then
+    return { code = 404, body = { message = "not found" }}
+  end
+
+  local rows, err = workspaces.find_workspaces_by_entity({
+    entity_id = admin.rbac_user.id,
+    entity_type = "rbac_users",
+    unique_field_name = "id",
+  })
+
+  if err then
+    return nil, err
+  end
+
+  local ws_for_admin = {}
+  for i, workspace in ipairs(rows) do
+    local ws, err = kong.db.workspaces:select({ id = workspace.workspace_id })
+
+    -- since we're selecting by id and we got these id's from a list of
+    -- workspace entities, whatever goes wrong here indicates some kind
+    -- of data corruption. bail early.
+    if err or not ws then
+      return nil, (err or "workspace not found: "..  workspace.name)
+    end
+
+    ws_for_admin[i] = ws
+  end
+
+  return {
+    code = 200,
+    body = ws_for_admin,
+  }
 end
 
 

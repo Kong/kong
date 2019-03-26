@@ -15,6 +15,12 @@ for _, strategy in helpers.each_strategy() do
     lazy_setup(function()
       _, db, factory = helpers.get_db_utils(strategy)
 
+      if _G.kong then
+        _G.kong.db = db
+      else
+        _G.kong = { db = db }
+      end
+
       admins = db.admins
 
       singletons.db = db
@@ -323,6 +329,43 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
 
+    describe("find_by_username_or_id", function()
+      it("finds by username", function()
+        local res, err = admins_helpers.find_by_username_or_id(admins[1].username)
+        assert.is_nil(err)
+
+        assert.same(admins[1].username, res.username)
+        assert.same(admins[1].custom_id, res.custom_id)
+        assert.same(admins[1].status, res.status)
+        assert.same(admins[1].email, res.email)
+        assert.not_nil(res.created_at)
+        assert.not_nil(res.updated_at)
+        assert.is_nil(res.consumer)
+        assert.is_nil(res.rbac_user)
+      end)
+
+      it("finds by id", function()
+        local res, err = admins_helpers.find_by_username_or_id(admins[1].id)
+        assert.is_nil(err)
+
+        assert.same(admins[1].username, res.username)
+      end)
+
+      it("renders the raw entity when asked", function()
+        local res, err = admins_helpers.find_by_username_or_id(admins[1].username, true)
+        assert.is_nil(err)
+
+        assert.same(admins[1].username, res.username)
+        assert.same(admins[1].custom_id, res.custom_id)
+        assert.same(admins[1].status, res.status)
+        assert.same(admins[1].email, res.email)
+        assert.not_nil(res.created_at)
+        assert.not_nil(res.updated_at)
+        assert.same(admins[1].consumer.id, res.consumer.id)
+        assert.same(admins[1].rbac_user.id, res.rbac_user.id)
+      end)
+    end)
+
     describe("link_to_workspace", function()
       it("links an admin to another workspace", function()
         -- odd-numbered admins are in default_ws
@@ -350,6 +393,24 @@ for _, strategy in helpers.each_strategy() do
         assert.is_nil(err)
         assert.not_nil(ws_list)
         assert.same(ws_list[1].workspace_id, another_ws.id)
+      end)
+    end)
+
+    describe("workspaces_for_admin", function()
+      it("returns workspaces", function()
+        local opts = {
+          db = db,
+        }
+        local res, err = admins_helpers.workspaces_for_admin(admins[1].username, opts)
+        assert.is_nil(err)
+        assert.same(200, res.code)
+        assert.same(2, #res.body)
+
+        -- ensure that what came back looks like a workspace
+        local ws = res.body[1]
+        for _, key in ipairs({ "config", "created_at", "id", "meta", "name" }) do
+          assert.not_nil(ws[key])
+        end
       end)
     end)
   end)

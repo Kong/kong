@@ -5,6 +5,7 @@ local utils      = require "kong.tools.utils"
 local ee_jwt     = require "kong.enterprise_edition.jwt"
 local ee_utils   = require "kong.enterprise_edition.utils"
 local ee_helpers = require "spec-ee.helpers"
+local admins_helpers = require "kong.enterprise_edition.admins_helpers"
 local escape = require("socket.url").escape
 
 
@@ -17,7 +18,7 @@ for _, strategy in helpers.each_strategy() do
     local db
     local dao
     local bp
-    local admin, proxy_consumer
+    local admin
     local another_ws
     local admins = {}
 
@@ -67,7 +68,7 @@ for _, strategy in helpers.each_strategy() do
       })
 
       -- proxy users don't show up as admins
-      proxy_consumer = assert(bp.consumers:insert {
+      assert(bp.consumers:insert {
         username = "consumer-1",
         custom_id = "consumer-1",
         type = enums.CONSUMERS.TYPE.PROXY,
@@ -307,59 +308,15 @@ for _, strategy in helpers.each_strategy() do
         end)
       end)
 
-      pending("/admins/:consumer_id/workspaces", function()
+      describe("/admins/:admin/workspaces", function()
         describe("GET", function()
-          it("retrieves workspaces", function()
-            local res = assert(client:send {
-              method = "POST",
-              path = "/admins",
-              headers = {
-                ["Kong-Admin-Token"] = "letmein",
-                ["Content-Type"]     = "application/json",
-              },
-              body  = {
-                custom_id = "get-cooper",
-                username  = "get-dale",
-                email = "dale-twinpeaks@konghq.com",
-              },
-            })
-
-            local body = assert.res_status(200, res)
-            admin = cjson.decode(body)
+          it("retrieves workspaces for an admin by id", function()
+            -- put an admin in another workspace besides default
+            assert(admins_helpers.link_to_workspace(admins[2], another_ws))
 
             local res = assert(client:send {
               method = "GET",
-              path = "/admins/" .. admin.consumer.id .. "/workspaces",
-              headers = {
-                ["Kong-Admin-Token"] = "letmein",
-                ["Content-Type"]     = "application/json",
-              },
-            })
-
-            local body = assert.res_status(200, res)
-            local json = cjson.decode(body)
-
-            assert.equal(1, #json)
-            assert.equal("default", json[1].name)
-          end)
-
-          it("returns multiple workspaces admin belongs to", function()
-            local res = assert(client:send {
-              method = "POST",
-              path = "/workspaces/" .. another_ws.name .. "/entities",
-              headers = {
-                ["Kong-Admin-Token"] = "letmein",
-                ["Content-Type"]     = "application/json",
-              },
-              body  = {
-                entities = admin.consumer.id .. "," .. admin.rbac_user.id
-              },
-            })
-            assert.res_status(201, res)
-
-            local res = assert(client:send {
-              method = "GET",
-              path = "/admins/" .. admin.consumer.id .. "/workspaces",
+              path = "/admins/" .. admins[2].id .. "/workspaces",
               headers = {
                 ["Kong-Admin-Token"] = "letmein",
                 ["Content-Type"]     = "application/json",
@@ -375,22 +332,25 @@ for _, strategy in helpers.each_strategy() do
             assert.contains(another_ws.name, names)
           end)
 
-          it("returns 404 if not found", function()
+          it("retrieves workspaces for an admin by name", function()
             local res = assert(client:send {
               method = "GET",
-              path = "/admins/" .. admin.rbac_user.id .. "/workspaces",
+              path = "/admins/" .. admins[1].username .. "/workspaces",
               headers = {
                 ["Kong-Admin-Token"] = "letmein",
                 ["Content-Type"]     = "application/json",
               },
             })
-            assert.res_status(404, res)
+
+            local body = assert.res_status(200, res)
+            local json = cjson.decode(body)
+            assert.equal(1, #json)
           end)
 
-          it("returns 404 if consumer is not of type admin", function()
+          it("returns 404 if admin not found", function()
             local res = assert(client:send {
               method = "GET",
-              path = "/admins/" .. proxy_consumer.id .. "/workspaces",
+              path = "/admins/" .. admin.rbac_user.id .. "/workspaces",
               headers = {
                 ["Kong-Admin-Token"] = "letmein",
                 ["Content-Type"]     = "application/json",

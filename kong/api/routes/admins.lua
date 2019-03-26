@@ -13,10 +13,10 @@ local cjson = require "cjson"
 
 
 local emails = singletons.admin_emails
+local kong = kong
 
 local log = ngx.log
 local ERR = ngx.ERR
-local DEBUG = ngx.DEBUG
 
 local _log_prefix = "[admins] "
 
@@ -395,69 +395,14 @@ return {
     end
   },
 
-  ["/admins/:consumer_id/workspaces"] = {
-    before = function(self, dao_factory, helpers)
-      self.params.consumer_id = ngx.unescape_uri(self.params.consumer_id)
-      crud.find_consumer_rbac_user_map(self, dao_factory, helpers)
-    end,
-
-    GET = function(self, dao_factory, helpers)
-      local old_ws = ngx.ctx.workspaces
-      ngx.ctx.workspaces = {}
-
-      local rows, err = workspaces.find_workspaces_by_entity({
-        entity_id = self.consumer_rbac_user_map.user_id,
-        unique_field_name = "id",
-      })
-
+  ["/admins/:admin/workspaces"] = {
+    GET = function(self, db, helpers, parent)
+      local res, err = admins.workspaces_for_admin(self.params.admin)
       if err then
-        log(ERR, _log_prefix, "error fetching workspace for rbac user: ",
-           self.consumer_rbac_user_map.user_id, ": ", err)
+        return kong.response.exit(500, { message = err })
       end
 
-      local wrkspaces = {}
-      for i, workspace in ipairs(rows) do
-        local ws, err = dao_factory.workspaces:find({
-          id = workspace.workspace_id
-        })
-        if err then
-          log(ERR, _log_prefix, "error fetching workspace: ", err)
-          return helpers.responses.send_HTTP_INTERNAL_SERVER_ERROR()
-        end
-
-        if ws then
-          -- only fetch the consumer from the first workspace
-          -- to avoid extraneous lookups
-          if i == 1 then
-            ngx.ctx.workspaces = { ws }
-            local consumer, err = dao_factory.consumers:find({
-              id = self.params.consumer_id
-            })
-            ngx.ctx.workspaces = {}
-
-            if err then
-              log(ERR, _log_prefix, "error fetching consumer in workspace: ",
-                  ws.workspace_name, ": ", err)
-            end
-
-            if not consumer then
-              log(DEBUG, _log_prefix, "no consumer found in workspace: ",
-                  ws.workspace_name)
-              helpers.responses.send_HTTP_NOT_FOUND()
-            end
-
-            if consumer.type ~= enums.CONSUMERS.TYPE.ADMIN then
-              log(DEBUG, _log_prefix, "consumer is not of type admin")
-              helpers.responses.send_HTTP_NOT_FOUND()
-            end
-          end
-
-          wrkspaces[i] = ws
-        end
-      end
-
-      ngx.ctx.workspaces = old_ws
-      helpers.responses.send_HTTP_OK(wrkspaces)
+      return kong.response.exit(res.code, res.body)
     end
   },
 
