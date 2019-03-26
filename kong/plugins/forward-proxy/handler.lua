@@ -10,6 +10,8 @@ local ERR                 = ngx.ERR
 local log                 = ngx.log
 local ngx_req_get_headers = ngx.req.get_headers
 local ngx_req_get_method  = ngx.req.get_method
+local ngx_req_read_body    = ngx.req.read_body
+local ngx_req_get_body    = ngx.req.get_body_data
 local ngx_now             = ngx.now
 
 
@@ -105,12 +107,25 @@ function ForwardProxyHandler:access(conf)
 
   local res
   local headers = ngx_req_get_headers()
+
+  ngx_req_read_body()
+
+  headers["transfer-encoding"] = nil -- transfer-encoding is hop-by-hop, strip
+                                     -- it out
+
+  headers["content-length"] = nil -- clear content-length - it will be set
+                                  -- later on by resty-http (if not found);
+                                  -- further, if we leave it here it will
+                                  -- cause issues if the value varies (if may
+                                  -- happen, e.g., due to a different transfer
+                                  -- encoding being used subsequently)
+
   headers["Host"] = var.upstream_host
   res, err = httpc:request({
     method  = ngx_req_get_method(),
     path    = var.upstream_scheme .."://" .. addr.host .. var.upstream_uri,
     headers = headers,
-    body    = httpc:get_client_body_reader(),
+    body    = ngx_req_get_body(),
   })
   if not res then
     log(ERR, _prefix_log, "failed to send proxy request: ", err)

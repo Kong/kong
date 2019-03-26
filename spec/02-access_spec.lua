@@ -145,6 +145,25 @@ for _, strategy in helpers.each_strategy() do
       assert.same(json.post_data.params, { foo = "bar" })
     end)
 
+    it("forwards query params and request body data (chunked transfer)", function()
+      local res = assert(client:send {
+        method  = "POST",
+        path    = "/post?baz=bat",
+        headers = {
+          host = "service-1.com",
+          ["Content-Type"] = "text/plain",
+          ["Transfer-Encoding"] = "chunked",
+        },
+        body = "4\r\nKong\r\n0\r\n\r\n",
+      })
+
+      local body = assert.res_status(200, res)
+      local json = cjson.decode(body)
+
+      assert.same(json.uri_args, { baz = "bat" })
+      assert.same(json.post_data.text, "Kong")
+    end)
+
     it("errors on connection failure", function()
       local res = assert(client:send {
         method  = "GET",
