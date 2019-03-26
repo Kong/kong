@@ -1,3 +1,9 @@
+## Unreleased
+
+### Fixes
+
+- Fix an issue preventing the plugin from working with requests using chunked TE
+
 ## 0.0.5
 
 ### Fixes
