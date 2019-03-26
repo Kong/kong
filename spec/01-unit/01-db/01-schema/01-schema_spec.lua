@@ -486,15 +486,6 @@ describe("schema", function()
       assert.falsy(Test:validate({ f = "foo" }))
     end)
 
-    it("requires an array schema to have `elements`", function()
-      local Test = Schema.new({
-        fields = {
-          { f = { type = "array" } }
-        }
-      })
-      assert.falsy(Test:validate({ f = {} }))
-    end)
-
     it("validates array elements", function()
       local Test = Schema.new({
         fields = {
@@ -539,15 +530,6 @@ describe("schema", function()
       assert.falsy(Test:validate({ f = "foo" }))
     end)
 
-    it("requires an set schema to have `elements`", function()
-      local Test = Schema.new({
-        fields = {
-          { f = { type = "set" } }
-        }
-      })
-      assert.falsy(Test:validate({ f = {} }))
-    end)
-
     it("validates set elements", function()
       local Test = Schema.new({
         fields = {
@@ -588,33 +570,6 @@ describe("schema", function()
       })
       assert.truthy(Test:validate({ f = {} }))
       assert.falsy(Test:validate({ f = "foo" }))
-    end)
-
-    it("fails with a map without `keys` and `values`", function()
-      local Test = Schema.new({
-        fields = {
-          { f = { type = "map" } }
-        }
-      })
-      assert.falsy(Test:validate({ f = {} }))
-    end)
-
-    it("fails with a map without `values`", function()
-      local Test = Schema.new({
-        fields = {
-          { f = { type = "map", keys = { type = "string" } } }
-        }
-      })
-      assert.falsy(Test:validate({ f = {} }))
-    end)
-
-    it("fails with a map without `keys`", function()
-      local Test = Schema.new({
-        fields = {
-          { f = { type = "map", values = { type = "string" } } }
-        }
-      })
-      assert.falsy(Test:validate({ f = {} }))
     end)
 
     it("accepts a map with `keys` and `values`", function()
@@ -669,13 +624,7 @@ describe("schema", function()
       assert.falsy(Test:validate({ f = "foo" }))
     end)
 
-    it("requires a record to have `fields`", function()
-      local Test = Schema.new({
-        fields = {
-          { f = { type = "record" } }
-        }
-      })
-      assert.falsy(Test:validate({ f = {} }))
+    it("accepts a record with empty `fields`", function()
       local Test = Schema.new({
         fields = {
           {

@@ -69,8 +69,6 @@ jobs:
       - bin/busted -v -o gtest spec/01-unit
       env:
         - KONG_DATABASE=none
-    - stage: test
-      script: .ci/run_tests.sh
     - stage: functional tests
       script: make functional_tests
       if: type=cron

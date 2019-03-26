@@ -1,6 +1,9 @@
 local helpers = require "spec.helpers"
 
 
+assert:set_parameter("TableFormatLevel", 10)
+
+
 local UUID_PATTERN = "%x%x%x%x%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%x%x%x%x%x%x%x%x"
 
 
@@ -23,15 +26,16 @@ for _, strategy in helpers.each_strategy() do
 
     end)
 
-    before_each(function()
-      service = bp.services:insert()
-      route = bp.routes:insert({ service = { id = service.id },
-                                 protocols = { "tcp" },
-                                 sources = { { ip = "127.0.0.1" } },
-                               })
-    end)
-
     describe("Plugins #plugins", function()
+
+      before_each(function()
+        service = bp.services:insert()
+        route = bp.routes:insert({ service = { id = service.id },
+                                   protocols = { "tcp" },
+                                   sources = { { ip = "127.0.0.1" } },
+                                 })
+      end)
+
       describe(":insert()", function()
         it("checks composite uniqueness", function()
           local route = bp.routes:insert({ methods = {"GET"} })
@@ -179,6 +183,66 @@ for _, strategy in helpers.each_strategy() do
         assert.is_nil(p)
         assert.equals(err_t.fields.protocols,
                       "must match the protocols of at least one route pointing to this Plugin's service")
+      end)
+    end)
+
+    describe(":load_plugin_schemas()", function()
+      it("reports failure with missing plugins", function()
+        local ok, err = db.plugins:load_plugin_schemas({
+          ["missing"] = true,
+        })
+        assert.falsy(ok)
+        assert.match("missing plugin is enabled but not installed", err, 1, true)
+      end)
+
+      it("reports failure with bad plugins #4392", function()
+        local ok, err = db.plugins:load_plugin_schemas({
+          ["legacy-plugin-bad"] = true,
+        })
+        assert.falsy(ok)
+        assert.match("failed converting legacy schema for legacy-plugin-bad", err, 1, true)
+      end)
+
+      it("succeeds with good plugins", function()
+        local ok, err = db.plugins:load_plugin_schemas({
+          ["legacy-plugin-good"] = true,
+        })
+        assert.truthy(ok)
+        assert.is_nil(err)
+
+        local foo = {
+          required = false,
+          type = "map",
+          keys = { type = "string" },
+          values = { type = "string" },
+          default = {
+            foo = "boo",
+            bar = "bla",
+          }
+        }
+        local config = {
+          type = "record",
+          required = true,
+          fields = {
+            { foo = foo },
+            foo = foo,
+          }
+        }
+        local consumer = {
+          type = "foreign",
+          reference = "consumers",
+          eq = ngx.null,
+          schema = db.consumers.schema,
+        }
+        assert.same({
+          name = "legacy-plugin-good",
+          fields = {
+            { config = config },
+            { consumer = consumer },
+            config = config,
+            consumer = consumer,
+          }
+        }, db.plugins.schema.subschemas["legacy-plugin-good"])
       end)
     end)
   end) -- kong.db [strategy]

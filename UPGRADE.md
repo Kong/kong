@@ -256,19 +256,32 @@ See the section above on Plugins for information on plugin compatibility.
 
 Kong 1.0 introduces a new, improved migrations framework.
 It supports a no-downtime, Blue/Green migration model for upgrading
-from 0.14.x. The full migration is now split into two steps,
-which are performed via commands `kong migrations up` and
-`kong migrations finish`.
+from 0.14.x. This means that while the migration is ongoing, you will
+have two Kong clusters running, sharing the same database. The "Blue" cluster
+is your existing cluster running 0.14.x, the "Green" cluster is the new one
+running Kong 1.0.
+
+The migrations are designed so that there is no need to fully copy
+the data, but this also means that they are designed in such a way so that
+the new version of Kong is able to use the data as it is migrated, and to do
+it in a way so that the old Kong cluster keeps working until it is finally
+time to decomission it. For this reason, the full migration is now split into
+two steps, which are performed via commands `kong migrations up` (which does
+only non-destructive operations) and `kong migrations finish` (which puts the
+database in the final expected state for Kong 1.0).
 
 For a no-downtime migration from a 0.14 cluster to a 1.0 cluster,
 we recommend the following sequence of steps:
 
 1. Download 1.0, and configure it to point to the same datastore
-   as your 0.14 cluster. Run `kong migrations up`.
-2. Both 0.14 and 1.0 nodes can now run simultaneously on the same
-   datastore. Start provisioning 1.0 nodes, but do not use their
-   Admin API yet. Prefer making Admin API requests to your 0.14 nodes
-   instead.
+   as your 0.14 cluster. Run `kong migrations up` from a Kong 1.0
+   node.
+2. Once that finishes running, both 0.14 and 1.0 clusters can now
+   run simultaneously on the same datastore. Start provisioning
+   1.0 nodes, but do not use their Admin API yet. If you need to
+   perform Admin API requests, these should be made to your 0.14 nodes.
+   The reason is to prevent the new cluster from generating data
+   that is not understood by the old cluster.
 3. Gradually divert traffic away from your 0.14 nodes, and into
    your 1.0 cluster. Monitor your traffic to make sure everything
    is going smoothly.

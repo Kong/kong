@@ -15,6 +15,71 @@ describe("metaschema", function()
     assert.falsy(MetaSchema:validate(s))
   end)
 
+  it("requires an array schema to have `elements`", function()
+    local s = {
+      name = "bad",
+      primary_key = { "f" },
+      fields = {
+        { f = { type = "array" } }
+      }
+    }
+    local ok, err = MetaSchema:validate(s)
+    assert.falsy(ok)
+    assert.match("field of type 'array' must declare 'elements'", err.f)
+  end)
+
+  it("requires an set schema to have `elements`", function()
+    local s = {
+      name = "bad",
+      primary_key = { "f" },
+      fields = {
+        { f = { type = "set" } }
+      }
+    }
+    local ok, err = MetaSchema:validate(s)
+    assert.falsy(ok)
+    assert.match("field of type 'set' must declare 'elements'", err.f)
+  end)
+
+  it("requires a map schema to have `keys`", function()
+    local s = {
+      name = "bad",
+      primary_key = { "f" },
+      fields = {
+        { f = { type = "map", values = { type = "string" } } }
+      }
+    }
+    local ok, err = MetaSchema:validate(s)
+    assert.falsy(ok)
+    assert.match("field of type 'map' must declare 'keys'", err.f)
+  end)
+
+  it("requires a map schema to have `values`", function()
+    local s = {
+      name = "bad",
+      primary_key = { "f" },
+      fields = {
+        { f = { type = "map", keys = { type = "string" } } }
+      }
+    }
+    local ok, err = MetaSchema:validate(s)
+    assert.falsy(ok)
+    assert.match("field of type 'map' must declare 'values'", err.f)
+  end)
+
+  it("requires a record schema to have `fields`", function()
+    local s = {
+      name = "bad",
+      primary_key = { "f" },
+      fields = {
+        { f = { type = "record" } }
+      }
+    }
+    local ok, err = MetaSchema:validate(s)
+    assert.falsy(ok)
+    assert.match("field of type 'record' must declare 'fields'", err.f)
+  end)
+
   it("fields cannot be empty", function()
     local s = {
       name = "bad",

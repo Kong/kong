@@ -898,7 +898,7 @@ function _M.new(connector, schema, errors)
   local ttl                           = schema.ttl == true
   local tags                          = schema.fields.tags ~= nil
   local composite_cache_key           = schema.cache_key and #schema.cache_key > 1
-  local max_name_length               = ttl and 3  or 1
+  local max_name_length               = schema.cache_key and 11 or (ttl and 3  or 1)
   local max_type_length               = ttl and 24 or 1
   local fields                        = {}
   local fields_count                  = 0
@@ -966,7 +966,7 @@ function _M.new(connector, schema, errors)
         local name_escaped           = escape_identifier(connector, name)
         local name_expression        = escape_identifier(connector, name, foreign_field)
         local type_postgres          = field_type_to_postgres_type(foreign_field)
-        local is_used_in_primary_key = primary_key_fields[name] ~= nil
+        local is_used_in_primary_key = primary_key_fields[field_name] ~= nil
         local is_unique              = foreign_field.unique == true
         local is_endpoint_key        = schema.endpoint_key == field_name
 
@@ -1026,29 +1026,29 @@ function _M.new(connector, schema, errors)
         if on_delete and on_update then
           foreign_key_constraints[foreign_key_constrainst_count] = concat {
             "  FOREIGN KEY (", concat(foreign_key_names, ", "), ")\n",
-            "   REFERENCES ", escape_identifier(connector, foreign_schema.name), " (", concat(foreign_col_names, ", "), ")\n",
-            "    ON DELETE ", on_delete, "\n",
-            "    ON UPDATE ", on_update,
+            "   REFERENCES ",  escape_identifier(connector, foreign_schema.name), " (", concat(foreign_col_names, ", "), ")\n",
+            "    ON DELETE ",  on_delete, "\n",
+            "    ON UPDATE ",  on_update,
           }
 
         elseif on_delete then
           foreign_key_constraints[foreign_key_constrainst_count] = concat {
             "  FOREIGN KEY (", concat(foreign_key_names, ", "), ")\n",
-            "   REFERENCES ", escape_identifier(connector, foreign_schema.name), " (", concat(foreign_col_names, ", "), ")\n",
-            "    ON DELETE ", on_delete,
+            "   REFERENCES ",  escape_identifier(connector, foreign_schema.name), " (", concat(foreign_col_names, ", "), ")\n",
+            "    ON DELETE ",  on_delete,
           }
 
         elseif on_update then
           foreign_key_constraints[foreign_key_constrainst_count] = concat {
             "  FOREIGN KEY (", concat(foreign_key_names, ", "), ")\n",
-            "   REFERENCES ", escape_identifier(connector, foreign_schema.name), " (", concat(foreign_col_names, ", "), ")\n",
-            "    ON UPDATE ", on_update,
+            "   REFERENCES ",  escape_identifier(connector, foreign_schema.name), " (", concat(foreign_col_names, ", "), ")\n",
+            "    ON UPDATE ",  on_update,
           }
 
         else
           foreign_key_constraints[foreign_key_constrainst_count] = concat {
             "  FOREIGN KEY (", concat(foreign_key_names, ", "), ")\n",
-            "   REFERENCES ", escape_identifier(connector, foreign_schema.name), " (", concat(foreign_col_names, ", "), ")",
+            "   REFERENCES ",  escape_identifier(connector, foreign_schema.name), " (", concat(foreign_col_names, ", "), ")",
           }
         end
       end
@@ -1379,14 +1379,14 @@ function _M.new(connector, schema, errors)
 
     delete_statement = concat {
       "DELETE\n",
-      "  FROM ", table_name_escaped, "\n",
+      "  FROM ",  table_name_escaped, "\n",
       " WHERE (", pk_escaped, ") = (", primary_key_placeholders, ")\n",
       "   AND (", ttl_escaped, " IS NULL OR ", ttl_escaped, " >= CURRENT_TIMESTAMP AT TIME ZONE 'UTC');",
     }
 
     count_statement = concat {
       "SELECT COUNT(*) AS ", escape_identifier(connector, "count"), "\n",
-      "  FROM ", table_name_escaped, "\n",
+      "  FROM ",  table_name_escaped, "\n",
       " WHERE (", ttl_escaped, " IS NULL OR ", ttl_escaped, " >= CURRENT_TIMESTAMP AT TIME ZONE 'UTC')\n",
       " LIMIT 1;"
     }
@@ -1465,7 +1465,7 @@ function _M.new(connector, schema, errors)
 
     delete_statement = concat {
       "DELETE\n",
-      "  FROM ", table_name_escaped, "\n",
+      "  FROM ",  table_name_escaped, "\n",
       " WHERE (", pk_escaped, ") = (", primary_key_placeholders, ");",
     }
 
@@ -1489,7 +1489,7 @@ function _M.new(connector, schema, errors)
   end
 
   if composite_cache_key then
-    create_statement = concat { create_statement,
+    create_statement = concat { create_statement, "\n",
       "CREATE INDEX IF NOT EXISTS ", cache_key_index,
       " ON ", table_name_escaped, " (", cache_key_escaped, ");"
     }
@@ -1506,66 +1506,65 @@ function _M.new(connector, schema, errors)
   local page_next_args   = new_tab(page_next_count, 0)
 
   local self = setmetatable({
-    connector          = connector,
-    schema             = schema,
-    errors             = errors,
-    expand             = foreign_key_count > 0 and
-                         expand(table_name .. "_expand", foreign_key_list) or
-                         noop,
-    collapse           = collapse(table_name .. "_collapse", foreign_key_list),
-    fields             = fields_hash,
-    statements         = {
-      create           = create_statement,
-      truncate         = truncate_statement,
-      count            = count_statement,
-      drop             = drop_statement,
-      insert           = {
-        expr           = insert_expressions,
-        cols           = insert_columns,
-        argn           = insert_names,
-        argc           = insert_count,
-        argv           = insert_args,
-        make           = compile(table_name .. "_insert", insert_statement),
+    connector    = connector,
+    schema       = schema,
+    errors       = errors,
+    expand       = foreign_key_count > 0 and
+                   expand(table_name .. "_expand", foreign_key_list) or
+                   noop,
+    collapse     = collapse(table_name .. "_collapse", foreign_key_list),
+    fields       = fields_hash,
+    statements   = {
+      create     = create_statement,
+      truncate   = truncate_statement,
+      count      = count_statement,
+      drop       = drop_statement,
+      insert     = {
+        expr     = insert_expressions,
+        cols     = insert_columns,
+        argn     = insert_names,
+        argc     = insert_count,
+        argv     = insert_args,
+        make     = compile(table_name .. "_insert", insert_statement),
       },
-      upsert           = {
-        expr           = upsert_expressions,
-        argn           = insert_names,
-        argc           = insert_count,
-        argv           = insert_args,
-        make           = compile(table_name .. "_upsert", upsert_statement),
+      upsert     = {
+        expr     = upsert_expressions,
+        argn     = insert_names,
+        argc     = insert_count,
+        argv     = insert_args,
+        make     = compile(table_name .. "_upsert", upsert_statement),
       },
-      update           = {
-        expr           = update_expressions,
-        placeholders   = update_placeholders,
-        argn           = update_args_names,
-        argc           = update_args_count,
-        argv           = update_args,
-        make           = compile(table_name .. "_update", update_statement),
+      update     = {
+        expr     = update_expressions,
+        argn     = update_args_names,
+        argc     = update_args_count,
+        argv     = update_args,
+        make     = compile(table_name .. "_update", update_statement),
       },
-      delete           = {
-        argn           = primary_key_names,
-        argc           = primary_key_count,
-        argv           = primary_key_args,
-        make           = compile(table_name .. "_delete", delete_statement),
+      delete     = {
+        argn     = primary_key_names,
+        argc     = primary_key_count,
+        argv     = primary_key_args,
+        make     = compile(table_name .. "_delete", delete_statement),
       },
-      select           = {
-        expr           = select_expressions,
-        argn           = primary_key_names,
-        argc           = primary_key_count,
-        argv           = primary_key_args,
-        make           = compile(table_name .. "_select" , select_statement),
+      select     = {
+        expr     = select_expressions,
+        argn     = primary_key_names,
+        argc     = primary_key_count,
+        argv     = primary_key_args,
+        make     = compile(table_name .. "_select" , select_statement),
       },
-      page_first       = {
-        argn           = { LIMIT },
-        argc           = 1,
-        argv           = single_args,
-        make           = compile(table_name .. "_first" , page_first_statement),
+      page_first = {
+        argn     = { LIMIT },
+        argc     = 1,
+        argv     = single_args,
+        make     = compile(table_name .. "_first" , page_first_statement),
       },
-      page_next        = {
-        argn           = page_next_names,
-        argc           = page_next_count,
-        argv           = page_next_args,
-        make           = compile(table_name .. "_next" , page_next_statement),
+      page_next  = {
+        argn     = page_next_names,
+        argc     = page_next_count,
+        argv     = page_next_args,
+        make     = compile(table_name .. "_next" , page_next_statement),
       },
     },
   }, _mt)
@@ -1776,9 +1775,9 @@ function _M.new(connector, schema, errors)
 
       if ttl then
         select_by_statement = concat {
-          "SELECT ", select_expressions, "\n",
-          "  FROM ", table_name_escaped, "\n",
-          " WHERE ", unique_escaped, " = $1\n",
+          "SELECT ",  select_expressions, "\n",
+          "  FROM ",  table_name_escaped, "\n",
+          " WHERE ",  unique_escaped, " = $1\n",
           "   AND (", ttl_escaped, " IS NULL OR ", ttl_escaped, " >= CURRENT_TIMESTAMP AT TIME ZONE 'UTC')\n",
           " LIMIT 1;"
         }
@@ -1859,8 +1858,8 @@ function _M.new(connector, schema, errors)
       if ttl then
         delete_by_statement = concat {
           "DELETE\n",
-          "  FROM ", table_name_escaped, "\n",
-          " WHERE ", unique_escaped, " = $1\n",
+          "  FROM ",  table_name_escaped, "\n",
+          " WHERE ",  unique_escaped, " = $1\n",
           "   AND (", ttl_escaped, " IS NULL OR ", ttl_escaped, " >= CURRENT_TIMESTAMP AT TIME ZONE 'UTC');",
         }
 

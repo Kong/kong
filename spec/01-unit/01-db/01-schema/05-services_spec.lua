@@ -98,6 +98,45 @@ describe("services", function()
     assert.same(service.read_timeout, 60000)
   end)
 
+  describe("timeout attributes", function()
+    -- refusals
+    it("should not be zero", function()
+      local service = {
+        host            = "example.com",
+        port            = 80,
+        protocol        = "https",
+        connect_timeout = 0,
+        read_timeout    = 0,
+        write_timeout   = 0,
+      }
+
+      local ok, err = Services:validate(service)
+      assert.falsy(ok)
+      assert.equal("value should be between 1 and 2147483646",
+                   err.connect_timeout)
+      assert.equal("value should be between 1 and 2147483646",
+                   err.read_timeout)
+      assert.equal("value should be between 1 and 2147483646",
+                   err.write_timeout)
+    end)
+
+    -- acceptance
+    it("should be greater than zero", function()
+      local service = {
+        host            = "example.com",
+        port            = 80,
+        protocol        = "https",
+        connect_timeout = 1,
+        read_timeout    = 10,
+        write_timeout   = 100,
+      }
+
+      local ok, err = Services:validate(service)
+      assert.is_nil(err)
+      assert.is_true(ok)
+    end)
+  end)
+
   describe("path attribute", function()
     -- refusals
     it("must be a string", function()
