@@ -258,6 +258,17 @@ describe("Admin API (#" .. strategy .. "): ", function()
         assert.equal(1, #json.data)
         assert.same(c, json.data[1])
       end)
+      it("allows filtering by uuid-like custom_id", function()
+        local custom_id = utils.uuid()
+        local c = bp.consumers:insert({ custom_id = custom_id }, { nulls = true })
+
+        local res = client:get("/consumers?custom_id=" .. custom_id)
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+
+        assert.equal(1, #json.data)
+        assert.same(c, json.data[1])
+      end)
     end)
     it("returns 405 on invalid method", function()
       local methods = {"DELETE", "PATCH"}
