@@ -31,8 +31,7 @@ local plugins = {
   "pre-function",
   "post-function",
   "prometheus",
-  -- XXX disabled for now; needs to have its schema updated
-  --"session",
+  "session",
 }
 
 local plugin_map = {}

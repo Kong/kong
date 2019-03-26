@@ -192,23 +192,30 @@ end
 _M.user_can_manage_endpoints_from = user_can_manage_endpoints_from
 
 
-local function retrieve_user(user_name)
-  local user, err = singletons.db.rbac_users:select_by_name(user_name, {
-    skip_rbac = true
+local function retrieve_user(id)
+  local user, err = singletons.db.rbac_users:select({id = id}, {
+    skip_rbac = true,
   })
+
   if err then
     log(ngx.ERR, "error in retrieving user from name: ", err)
     return nil, err
   end
 
-  return user and user.enabled
+  if not user then
+    log(ngx.DEBUG, "rbac_user not found")
+    return nil, nil
+  end
+
+  if user.enabled then
+    return user
+  end
 end
 
 
-local function get_user(user_name)
-  local cache_key = singletons.db.rbac_users:cache_key(user_name)
-  local user, err = singletons.cache:get(cache_key, nil,
-                                         retrieve_user, user_name)
+local function get_user(id)
+  local cache_key = singletons.db.rbac_users:cache_key(id)
+  local user, err = singletons.cache:get(cache_key, nil, retrieve_user, id)
   if err then
     return nil, err
   end

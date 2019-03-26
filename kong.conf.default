@@ -641,10 +641,6 @@
                                  # resource.
 
 
-#rbac_user_header = Kong-Admin-User   # Defines the name of the HTTP request
-                                      # header from which the Admin API will
-                                      # attempt to identify the RBAC user.
-
 #rbac_auth_header = Kong-Admin-Token  # Defines the name of the HTTP request
                                       # header from which the Admin API will
                                       # attempt to authenticate the RBAC user.
@@ -759,6 +755,11 @@
                         #
                         # admin_gui_session_conf = { "cookie_name": "kookie", \
                         #                            "secret": "changeme" }
+
+#admin_gui_auth_header = Kong-Admin-User
+                        # Defines the name of the HTTP request header from which
+                        # the Admin API will attempt to identify the Kong Admin
+                        # user.
 
 #------------------------------------------------------------------------------
 # VITALS

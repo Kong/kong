@@ -220,7 +220,7 @@ app:before_filter(function(self)
     local rbac_token = ngx.req.get_headers()[rbac_auth_header]
 
     if not rbac_token then
-      ee_api.authenticate(self, singletons.dao,
+      ee_api.authenticate(self,
                           singletons.configuration.enforce_rbac ~= "off",
                           singletons.configuration.admin_gui_auth)
     end

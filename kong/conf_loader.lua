@@ -197,7 +197,6 @@ local CONF_INFERENCES = {
   lua_socket_pool_size = { typ = "number" },
 
   enforce_rbac = {enum = {"on", "off", "both", "entity"}},
-  rbac_user_header = {typ = "string"},
   rbac_auth_header = {typ = "string"},
 
   vitals = {typ = "boolean"},
@@ -226,8 +225,9 @@ local CONF_INFERENCES = {
   admin_gui_access_log = {typ = "string"},
   admin_gui_flags = {typ = "string"},
   admin_gui_auth = {typ = "string"},
-  admin_gui_auth_conf = {type = "string"},
-  admin_gui_session_conf = {type = "string"},
+  admin_gui_auth_conf = {typ = "string"},
+  admin_gui_auth_header = {typ = "string"},
+  admin_gui_session_conf = {typ = "string"},
   admin_emails_from = {typ = "string"},
   admin_emails_reply_to = {typ = "string"},
   admin_docs_url = {typ = "string"},
@@ -283,6 +283,7 @@ local CONF_SENSITIVE = {
   pg_password = true,
   cassandra_password = true,
   smtp_password = true,
+  admin_gui_auth_header = true,
   admin_gui_auth_conf = true,
   admin_gui_session_conf = true,
   portal_auth_conf = true,

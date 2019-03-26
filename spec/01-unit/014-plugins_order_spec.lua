@@ -53,8 +53,7 @@ describe("Plugins", function()
       "zipkin",
       "bot-detection",
       "cors",
-      -- EE merge - session needs to have its schema adapted before it's enabled
-      -- "session",
+      "session",
       "jwt",
       "oauth2",
       "key-auth",

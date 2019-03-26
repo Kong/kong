@@ -33,16 +33,15 @@ for _, strategy in helpers.each_strategy() do
       assert(helpers.start_kong({
         database = strategy,
         admin_gui_url = "http://manager.konghq.com",
-        -- TODO: Re-enable when auth plugins work again
-        --admin_gui_auth = "basic-auth",
-        --enforce_rbac = "on",
+        admin_gui_auth = "basic-auth",
+        enforce_rbac = "on",
       }))
 
       another_ws = assert(bp.workspaces:insert({
         name = "another-one",
       }))
 
-      ee_helpers.register_rbac_resources(dao)
+      ee_helpers.register_rbac_resources(db)
       ee_helpers.register_token_statuses(dao)
 
       for i = 1, 3 do
@@ -755,17 +754,17 @@ for _, strategy in helpers.each_strategy() do
 
   describe("Admin API - /admins/password_resets for admin #" .. strategy, function()
     local client
-    local dao
+    local dao, db
 
     before_each(function()
-      _, _, dao = helpers.get_db_utils(strategy)
+      _, db, dao = helpers.get_db_utils(strategy)
       assert(helpers.start_kong({
         database = strategy,
         admin_gui_url = "http://manager.konghq.com",
         admin_gui_auth = "ldap-auth-advanced",
         enforce_rbac = "on",
       }))
-      ee_helpers.register_rbac_resources(dao)
+      ee_helpers.register_rbac_resources(db)
       ee_helpers.register_token_statuses(dao)
       client = assert(helpers.admin_client())
     end)
