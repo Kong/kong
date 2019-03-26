@@ -1,4 +1,6 @@
+local typedefs = require "kong.db.schema.typedefs"
 local utils = require "kong.tools.utils"
+
 
 local function check_user(anonymous)
   if anonymous == "" or utils.is_valid_uuid(anonymous) then
@@ -8,17 +10,24 @@ local function check_user(anonymous)
   return false, "the anonymous user must be empty or a valid uuid"
 end
 
+
 return {
-  no_consumer = true,
+  name = "oauth2-introspection",
   fields = {
-    introspection_url = {type = "url", required = true},
-    ttl = {type = "number", default = 30},
-    token_type_hint = {type = "string"},
-    authorization_value = {type = "string", required = true},
-    timeout = {default = 10000, type = "number"},
-    keepalive = {default = 60000, type = "number"},
-    hide_credentials = { type = "boolean", default = false },
-    run_on_preflight = {type = "boolean", default = true},
-    anonymous = {type = "string", default = "", func = check_user},
-  }
+    { consumer = typedefs.no_consumer },
+    { config = {
+      type = "record",
+      fields = {
+        { introspection_url = typedefs.url { required = true} },
+        { ttl = { type = "number", default = 30 } },
+        { token_type_hint = { type = "string" } },
+        { authorization_value = { type = "string", required = true } },
+        { timeout = { type = "integer", default = 10000 } },
+        { keepalive = { type = "integer", default = 60000 } },
+        { hide_credentials = { type = "boolean", default = false } },
+        { run_on_preflight = {type = "boolean", default = true} },
+        { anonymous = {type = "string", len_min = 0, default = "", custom_validator = check_user } },
+      }}
+    },
+  },
 }
