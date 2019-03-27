@@ -1218,10 +1218,19 @@ end
 do
   local reports = require "kong.reports"
   local rbac_users_count = function()
-    local c, err = singletons.dao.rbac_users:count()
-    if not c then
+    -- XXX consider iterating for :each() workspace, select ws ,
+    -- "rbac_users" for performance reasons
+    local counts, err = singletons.db.workspace_entity_counters:select_all({
+      entity_type = "rbac_users"
+    })
+    if err then
       log(ngx.WARN, "failed to get count of RBAC users: ", err)
       return nil
+    end
+
+    local c = 0
+    for _, entity_counter in ipairs(counts) do
+      c = c + entity_counter.count or 0
     end
 
     return c
