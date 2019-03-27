@@ -6,7 +6,7 @@ local _M = {}
 
 
 function _M.consumer_field_cache_key(key, value)
-  return singletons.dao.consumers:cache_key(key, value, "consumers")
+  return singletons.db.consumers:cache_key(key, value, "consumers")
 end
 
 

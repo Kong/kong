@@ -225,15 +225,20 @@ end
 
 local function find_consumer(consumer_field, value)
   local result, err
+  local dao = singletons.db.consumers
 
-  result, err = singletons.dao.consumers:find_all { [consumer_field] = value }
+  if consumer_field == "id" then
+    result, err = dao:select({ id = value })
+  else 
+     result, err = dao["select_by_" .. consumer_field](dao, value)
+  end
 
   if err then
     ngx_log(ngx_debug, "failed to load consumer", err)
     return
   end
 
-  return result[1]
+  return result
 end
 
 
@@ -245,7 +250,7 @@ local function load_consumers(value, consumer_by, ttl)
     local consumer
 
     if field_name == "id" then
-      key = singletons.dao.consumers:cache_key(value)
+      key = singletons.db.consumers:cache_key(value)
     else
       key = ldap_cache.consumer_field_cache_key(field_name, value)
     end
@@ -285,7 +290,7 @@ local function do_authentication(conf)
     end
 
     -- anonymous is configured but doesn't exist
-    if anonymous ~= "" and not consumer then
+    if anonymous ~= "-" and not consumer then
       return false, { status = 500 }
     end
 
@@ -343,7 +348,7 @@ end
 
 
 function _M.execute(conf)
-  if ngx.ctx.authenticated_credential and conf.anonymous ~= "" then
+  if ngx.ctx.authenticated_credential and conf.anonymous ~= "-" then
     -- we're already authenticated, and we're configured for using anonymous,
     -- hence we're in a logical OR between auth methods and we're already done.
     return
