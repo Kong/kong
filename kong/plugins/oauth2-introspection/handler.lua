@@ -3,7 +3,6 @@
 local BasePlugin = require "kong.plugins.base_plugin"
 local responses = require "kong.tools.responses"
 local constants = require "kong.constants"
-local singletons = require "kong.singletons"
 
 local utils = require "kong.tools.utils"
 local Multipart = require "multipart"
@@ -17,6 +16,7 @@ local CONTENT_TYPE = "content-type"
 local CONTENT_LENGTH = "content-length"
 local ACCESS_TOKEN = "access_token"
 
+local kong = kong
 local req_get_headers = ngx.req.get_headers
 local ngx_set_header = ngx.req.set_header
 local get_method = ngx.req.get_method
@@ -170,11 +170,11 @@ local function load_credential(conf, access_token)
 end
 
 local function load_consumer(username)
-  return singletons.db.consumers:select_by_username(username)
+  return kong.db.consumers:select_by_username(username)
 end
 
 local function load_consumer_mem(consumer_id, anonymous)
-  local result, err = singletons.db.consumers:select { id = consumer_id }
+  local result, err = kong.db.consumers:select { id = consumer_id }
   if not result then
     if anonymous and not err then
       err = 'anonymous consumer "' .. consumer_id .. '" not found'
@@ -206,9 +206,9 @@ local function do_authentication(conf)
     }
   end
 
-  local cache = singletons.cache
+  local cache = kong.cache
   local cache_key = fmt("oauth2_introspection:%s", access_token)
-  local credential, err = singletons.cache:get(cache_key,
+  local credential, err = kong.cache:get(cache_key,
                                               { ttl = conf.ttl },
                                               load_credential, conf,
                                               access_token)
@@ -286,8 +286,8 @@ function OAuth2Introspection:access(conf)
   if not ok then
     if conf.anonymous ~= "" then
       -- get anonymous user
-      local consumer_cache_key = singletons.db.consumers:cache_key(conf.anonymous)
-      local consumer, err = singletons.cache:get(consumer_cache_key, nil,
+      local consumer_cache_key = kong.db.consumers:cache_key(conf.anonymous)
+      local consumer, err = kong.cache:get(consumer_cache_key, nil,
         load_consumer_mem,
         conf.anonymous, true)
       if err then
@@ -302,8 +302,8 @@ function OAuth2Introspection:access(conf)
 end
 
 function OAuth2Introspection:init_worker()
-  local worker_events = singletons.worker_events
-  local cache = singletons.cache
+  local worker_events = kong.worker_events
+  local cache = kong.cache
 
   worker_events.register(function(data)
     local consumer_id_key = consumers_id_key(data.old_entity and
