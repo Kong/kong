@@ -62,7 +62,7 @@ be aware of the following changes:
   the same OpenSSL version. If you are installing Kong from one of our
   distribution packages, you are not affected by this change.
 
-### 2. Breaking Changes
+#### 2. Breaking Changes
 
 Kong 1.1 does not include any breaking changes over Kong 1.0, but Kong 1.0
 included a number of breaking changes over Kong 0.x. If you are upgrading
@@ -70,9 +70,9 @@ from 0.14,x, please read the section on
 [Kong 1.0 Breaking Changes](#kong-1-0-breaking-changes) carefully before
 proceeding.
 
-### 3. Suggested Upgrade Path
+#### 3. Suggested Upgrade Path
 
-#### Upgrade from `0.x` to `1.1`
+##### Upgrade from `0.x` to `1.1`
 
 The lowest version that Kong 1.1 supports migrating from is 0.14.1. if you
 are migrating from a previous 0.x release, please migrate to 0.14.1 first.
@@ -82,7 +82,7 @@ upgrading from 0.14.1 to Kong 1.0. Please follow the steps described in the
 "Migration Steps from 0.14" in the [Suggested Upgrade Path for Kong
 1.0](#kong-1-0-upgrade-path).
 
-#### Upgrade from `1.0.x` to `1.1`
+##### Upgrade from `1.0.x` to `1.1`
 
 Kong 1.1 supports a no-downtime migration model. This means that while the
 migration is ongoing, you will have two Kong clusters running, sharing the
@@ -117,12 +117,12 @@ database in the final expected state for Kong 1.1).
    was successful. From now on, you can safely make Admin API
    requests to your 1.1 nodes.
 
-#### Upgrade Path from 1.1 Release Candidates
+##### Upgrade Path from 1.1 Release Candidates
 
 The process is the same as for upgrading from 1.0 listed above, but on step 1
 you should run `kong migrations up --force` instead.
 
-#### Installing 1.1 on a Fresh Datastore
+##### Installing 1.1 on a Fresh Datastore
 
 The following commands should be used to prepare a new 1.1 cluster from a fresh datastore:
 
@@ -164,7 +164,7 @@ Changelog](https://github.com/Kong/kong/blob/master/CHANGELOG.md) for a
 complete list of changes and new features.
 
 <a name="kong-1-0-breaking-changes"></a>
-### 1. Breaking Changes
+#### 1. Breaking Changes
 
 ##### Dependencies
 
@@ -424,7 +424,7 @@ that you consult the full [0.15
 Changelog](https://github.com/Kong/kong/blob/master/CHANGELOG.md) for a
 complete list of changes and new features.
 
-### 1. Breaking Changes
+#### 1. Breaking Changes
 
 ##### Dependencies
 
