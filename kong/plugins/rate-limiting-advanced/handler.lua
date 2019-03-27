@@ -7,6 +7,7 @@ local singletons   = require "kong.singletons"
 local schema       = require "kong.plugins.rate-limiting-advanced.schema"
 
 
+local kong     = kong
 local max      = math.max
 local tonumber = tonumber
 
@@ -85,7 +86,7 @@ local function new_namespace(config, init_timer)
       strategy_opts = strategy_opts,
       dict          = dict_name,
       window_sizes  = config.window_size,
-      dao_factory   = singletons.dao,
+      db            = kong.db,
     })
   end)
 
@@ -122,11 +123,10 @@ end
 
 function NewRLHandler:init_worker()
   local worker_events = singletons.worker_events
-  local dao_factory   = singletons.dao
 
   -- to start with, load existing plugins and create the
   -- namespaces/sync timers
-  local plugins, err = dao_factory.plugins:find_all({
+  local plugins, err = kong.db.plugins:select_all({
     name = "rate-limiting-advanced",
   })
   if err then
