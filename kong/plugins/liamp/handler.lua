@@ -16,15 +16,23 @@ local meta = require "kong.meta"
 local aws_v4 = require("kong.plugins." .. plugin_name .. ".v4")
 local aws_serializer = require("kong.plugins." .. plugin_name .. ".aws-serializer")
 
+
 local fetch_credentials
 do
-  -- check if ECS is configured, if so, use it for fetching credentials
-  fetch_credentials = require("kong.plugins." .. plugin_name .. ".iam-ecs-credentials")
-  if not fetch_credentials.configured then
-    -- not set, so fall back on EC2 credentials
-    fetch_credentials = require("kong.plugins." .. plugin_name .. ".iam-ec2-credentials")
+  local credential_sources = {
+    require("kong.plugins." .. plugin_name .. ".iam-ecs-credentials"),
+    -- The EC2 one will always return `configured == true`, so must be the last!
+    require("kong.plugins." .. plugin_name .. ".iam-ec2-credentials"),
+  }
+
+  for _, credential_source in ipairs(credential_sources) do
+    if credential_source.configured then
+      fetch_credentials = credential_source.fetchCredential
+      break
+    end
   end
 end
+
 
 local tostring             = tostring
 local tonumber             = tonumber

@@ -26,7 +26,7 @@ describe("[AWS Lambda] iam-ec2", function()
         end,
       }
     end
-    fetch_ec2 = require "kong.plugins.liamp.iam-ec2-credentials"
+    fetch_ec2 = require("kong.plugins.liamp.iam-ec2-credentials").fetchCredentials
   end)
 
   after_each(function()

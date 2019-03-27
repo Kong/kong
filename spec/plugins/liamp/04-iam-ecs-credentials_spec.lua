@@ -56,7 +56,7 @@ describe("[AWS Lambda] iam-ecs", function()
 ]]
     }
 
-    fetch_ecs = require "kong.plugins.liamp.iam-ecs-credentials"
+    fetch_ecs = require("kong.plugins.liamp.iam-ecs-credentials").fetchCredentials
 
     local iam_role_credentials, err = fetch_ecs()
 

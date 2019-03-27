@@ -120,16 +120,10 @@ local function fetchCredentialsLogged()
   if creds then
     return creds
   end
-  ngx.log(ngx.ERR, err)
+  ngx.log(ngx.ERR, LOG_PREFIX, err)
 end
 
-local M = setmetatable({
-    configured = not not ECSFullUri, -- force to boolean
-    fetchCredentials = fetchCredentialsLogged,
-  }, {
-    __call = function(self, ...)
-      return self.fetchCredentials(...)
-    end
-})
-
-return M
+return {
+  configured = not not ECSFullUri, -- force to boolean
+  fetchCredentials = fetchCredentialsLogged,
+}

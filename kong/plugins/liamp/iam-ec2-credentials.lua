@@ -81,11 +81,21 @@ local function fetch_ec2_credentials()
   }
 end
 
-return function()
+local function fetchCredentialsLogged()
   -- wrapper to log any errors
   local creds, err = fetch_ec2_credentials()
   if creds then
     return creds
   end
-  ngx.log(ngx.ERR, err)
+  ngx.log(ngx.ERR, LOG_PREFIX, err)
 end
+
+return {
+  -- we set configured to true, because we cannot properly test it. Only by
+  -- using the metadata url, but on a non-EC2 machine that will block on
+  -- timeouts and hence prevent Kong from starting quickly. So for now
+  -- we're just using the EC2 fetcher as the final fallback.
+  configured = true,
+  fetchCredentials = fetchCredentialsLogged,
+}
+
