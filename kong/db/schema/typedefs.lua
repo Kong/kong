@@ -106,6 +106,39 @@ local function validate_sni(host)
 end
 
 
+local function validate_wildcard_host(host)
+  local idx = string.find(host, "*", nil, true)
+  if idx then
+    if idx ~= 1 and idx ~= #host then
+      return nil, "wildcard must be leftmost or rightmost character"
+    end
+
+    -- substitute wildcard for upcoming host normalization
+    local mock_host, count = string.gsub(host, "%*", "wildcard")
+    if count > 1 then
+      return nil, "only one wildcard must be specified"
+    end
+
+    host = mock_host
+  end
+
+  local res, err_or_port = utils.normalize_ip(host)
+  if type(err_or_port) == "string" and err_or_port ~= "invalid port number" then
+    return nil, "invalid value: " .. host
+  end
+
+  if res.type ~= "name" then
+    return nil, "must not be an IP"
+  end
+
+  if err_or_port == "invalid port number" or type(res.port) == "number" then
+    return nil, "must not have a port"
+  end
+
+  return true
+end
+
+
 local function validate_url(url)
   local parsed_url, err = socket_url.parse(url)
 
@@ -165,6 +198,12 @@ typedefs.protocol = Schema.define {
 typedefs.host = Schema.define {
   type = "string",
   custom_validator = validate_host,
+}
+
+
+typedefs.wildcard_host = Schema.define {
+  type = "string",
+  custom_validator = validate_wildcard_host,
 }
 
 
@@ -304,7 +343,7 @@ typedefs.run_on_first = Schema.define {
 
 typedefs.tag = Schema.define {
   type = "string",
-  required = true, 
+  required = true,
   match = "^[%w%.%-%_~]+$",
 }
 
