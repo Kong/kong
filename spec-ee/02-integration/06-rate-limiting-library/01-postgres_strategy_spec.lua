@@ -1,6 +1,5 @@
 local postgres_strategy = require "kong.tools.public.rate-limiting.strategies.postgres"
 local dao_helpers       = require "spec.02-integration.03-dao.helpers"
-local dao_factory       = require "kong.dao.factory"
 local DB                = require "kong.db"
 
 local function window_floor(size, time)
@@ -15,7 +14,6 @@ dao_helpers.for_each_dao(function(kong_conf)
 
   describe("rate-limiting: Postgres strategy", function()
     local strategy
-    local dao
     local db
 
     local mock_time = ngx.time()
@@ -26,12 +24,11 @@ dao_helpers.for_each_dao(function(kong_conf)
                             mock_window_size
 
     setup(function()
-      local new_db = assert(DB.new(kong_conf))
-      assert(new_db:init_connector())
+      db = assert(DB.new(kong_conf))
+      assert(db:init_connector())
 
-      dao      = assert(dao_factory.new(kong_conf, new_db))
-      strategy = postgres_strategy.new(dao)
-      db       = dao.db
+      strategy = postgres_strategy.new(db)
+      db       = db.connector
 
       db:query("TRUNCATE rl_counters")
     end)

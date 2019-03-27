@@ -468,7 +468,7 @@ function _M.new(opts)
   config[namespace] = {
     dict         = opts.dict,
     sync_rate    = opts.sync_rate,
-    strategy     = strategy_class.new(opts.dao_factory, opts.strategy_opts),
+    strategy     = strategy_class.new(opts.db, opts.strategy_opts),
     seen_map     = {{}},
     seen_map_idx = 0,
     seen_map_ctr = 1,

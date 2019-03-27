@@ -1,7 +1,6 @@
 local ratelimit   = require "kong.tools.public.rate-limiting"
 local spec_helpers = require "spec.helpers"
 local conf_loader = require "kong.conf_loader"
-local dao_factory = require "kong.dao.factory"
 local DB          = require "kong.db"
 
 local function window_floor(size, time)
@@ -13,11 +12,10 @@ describe("rate-limiting", function()
 
   local new_db = assert(DB.new(kong_conf))
   assert(new_db:init_connector())
-
-  local dao = assert(dao_factory.new(kong_conf, new_db))
+  local db = new_db.connector
 
   setup(function()
-    assert(dao.db:query("TRUNCATE TABLE rl_counters"))
+    assert(db:query("TRUNCATE TABLE rl_counters"))
   end)
 
   describe("new()", function()
@@ -31,7 +29,7 @@ describe("rate-limiting", function()
           dict        = "foo",
           sync_rate   = 10,
           strategy    = "postgres",
-          dao_factory = dao,
+          db = new_db,
         }))
       end)
 
@@ -41,7 +39,7 @@ describe("rate-limiting", function()
           sync_rate = 10,
           strategy  = "postgres",
           namespace = "bar",
-          dao_factory = dao,
+          db = new_db,
         }))
       end)
     end)
@@ -58,7 +56,7 @@ describe("rate-limiting", function()
           sync_rate = 10,
           strategy  = "postgres",
           namespace = "ba|r",
-          dao_factory = dao,
+          db = db,
         }) end, "namespace must not contain a pipe char")
       end)
 
@@ -68,7 +66,7 @@ describe("rate-limiting", function()
           sync_rate = 10,
           strategy  = "postgres",
           namespace = 12345,
-          dao_factory = dao,
+          db = db,
         }) end, "namespace must be a valid string")
       end)
       it("when namespace already exists", function()
@@ -77,7 +75,7 @@ describe("rate-limiting", function()
           sync_rate = 10,
           strategy  = "postgres",
           namespace = "bar",
-          dao_factory = dao,
+          db = new_db,
         }))
 
         assert.has.error(function() ratelimit.new({
@@ -85,7 +83,7 @@ describe("rate-limiting", function()
           sync_rate = 10,
           strategy  = "postgres",
           namespace = "bar",
-          dao_factory = dao,
+          db = new_db,
         }) end, "namespace bar already exists")
       end)
 
@@ -98,7 +96,7 @@ describe("rate-limiting", function()
         assert.has.error(function() ratelimit.new({
           sync_rate = 10,
           strategy  = "postgres",
-          dao_factory = dao,
+          db = new_db,
         }) end, "given dictionary reference must be a string")
       end)
 
@@ -107,7 +105,7 @@ describe("rate-limiting", function()
           dict      = "foo",
           sync_rate = 10,
           strategy  = "yomama",
-          dao_factory = dao,
+          db = new_db,
         }) end)
       end)
 
@@ -116,7 +114,7 @@ describe("rate-limiting", function()
           dict      = "foo",
           sync_rate = "bar",
           strategy  = "postgres",
-          dao_factory = dao,
+          db = new_db,
         }) end, "sync rate must be a number")
       end)
     end)
@@ -138,7 +136,7 @@ describe("rate-limiting", function()
         sync_rate = 10,
         strategy  = "postgres",
         window_sizes = { 60 },
-        dao_factory = dao,
+        db = new_db,
       }))
 
       assert(ratelimit.new({
@@ -147,7 +145,7 @@ describe("rate-limiting", function()
         strategy  = "postgres",
         namespace = "other",
         window_sizes = { 60 },
-        dao_factory = dao,
+        db = new_db,
       }))
 
       assert(ratelimit.new({
@@ -156,7 +154,7 @@ describe("rate-limiting", function()
         strategy     = "postgres",
         namespace    = "tiny",
         window_sizes = { 2 },
-        dao_factory  = dao,
+        db = new_db,
       }))
 
       assert(ratelimit.new({
@@ -165,12 +163,12 @@ describe("rate-limiting", function()
         strategy     = "postgres",
         namespace    = "mock",
         window_sizes = { 60 },
-        dao_factory  = dao,
+        db = new_db,
       }))
     end)
 
     teardown(function()
-      dao.db:query("TRUNCATE TABLE rl_counters")
+      db:query("TRUNCATE TABLE rl_counters")
     end)
 
     describe("increment()", function()
@@ -261,7 +259,7 @@ describe("rate-limiting", function()
 
         -- insert new keys 'foo' and 'baz', which will be incremented
         -- and freshly inserted, respectively
-        assert(dao.db:query(
+        assert(db:query(
 [[
   INSERT INTO rl_counters (key, namespace, window_start, window_size, count)
     VALUES
@@ -275,9 +273,9 @@ describe("rate-limiting", function()
         ratelimit.increment("foo", 60, 3, "mock")
         ratelimit.sync(nil, "mock") -- sync the mock namespace
 
-        local rows = assert(dao.db:query("SELECT * from rl_counters where key = 'foo' and namespace = 'mock'"))
+        local rows = assert(db:query("SELECT * from rl_counters where key = 'foo' and namespace = 'mock'"))
         assert.same(6, rows[1].count)
-        rows = assert(dao.db:query("SELECT * from rl_counters"))
+        rows = assert(db:query("SELECT * from rl_counters"))
         assert.same(2, #rows)
       end)
 

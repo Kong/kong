@@ -91,9 +91,9 @@ local _M = {}
 local mt = { __index = _M }
 
 
-function _M.new(dao_factory)
+function _M.new(db)
   local self = {
-    cluster = dao_factory.db.cluster,
+    cluster = db.connector.cluster,
   }
 
   cluster = self.cluster
