@@ -20,11 +20,11 @@ for _, strategy in helpers.each_strategy() do
       }
 
       plugin = bp.plugins:insert {
-        route_id = route.id,
+        route = { id = route.id },
         name     = "ldap-auth",
         config   = {
           ldap_host = ldap_host_aws,
-          ldap_port = "389",
+          ldap_port = 389,
           start_tls = false,
           base_dn   = "ou=scientists,dc=ldap,dc=mashape,dc=com",
           attribute = "uid",

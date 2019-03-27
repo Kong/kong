@@ -31,7 +31,7 @@ for _, strategy in helpers.each_strategy() do
     local plugin2
 
     setup(function()
-      local bp = helpers.get_db_utils(strategy)
+      local bp = helpers.get_db_utils(strategy, nil, { "ldap-auth-advanced" })
 
       local route1 = bp.routes:insert {
         hosts = { "ldap.com" },
@@ -70,12 +70,12 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.plugins:insert {
-        route_id = route1.id,
+        route = { id = route1.id },
         name     = "ldap-auth-advanced",
         config   = {
           consumer_optional = true,
           ldap_host = ldap_host_aws,
-          ldap_port = "389",
+          ldap_port = 389,
           start_tls = false,
           base_dn   = "ou=scientists,dc=ldap,dc=mashape,dc=com",
           attribute = "uid"
@@ -83,12 +83,12 @@ for _, strategy in helpers.each_strategy() do
       }
 
       plugin2 = bp.plugins:insert {
-        route_id = route2.id,
+        route = { id = route2.id },
         name     = "ldap-auth-advanced",
         config   = {
           consumer_optional     = true,
           ldap_host        = ldap_host_aws,
-          ldap_port        = "389",
+          ldap_port        = 389,
           start_tls        = false,
           base_dn          = "ou=scientists,dc=ldap,dc=mashape,dc=com",
           attribute        = "uid",
@@ -98,12 +98,12 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.plugins:insert {
-        route_id = route3.id,
+        route = { id = route3.id },
         name     = "ldap-auth-advanced",
         config   = {
           consumer_optional = true,
           ldap_host = ldap_host_aws,
-          ldap_port = "389",
+          ldap_port = 389,
           start_tls = false,
           base_dn   = "ou=scientists,dc=ldap,dc=mashape,dc=com",
           attribute = "uid",
@@ -112,12 +112,12 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.plugins:insert {
-        route_id = route4.id,
+        route = { id = route4.id },
         name     = "ldap-auth-advanced",
         config   = {
           consumer_optional = true,
           ldap_host = "ec2-54-210-29-167.compute-1.amazonaws.com",
-          ldap_port = "389",
+          ldap_port = 389,
           start_tls = false,
           base_dn   = "ou=scientists,dc=ldap,dc=mashape,dc=com",
           attribute = "uid",
@@ -127,12 +127,12 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.plugins:insert {
-        route_id = route5.id,
+        route = { id = route5.id },
         name     = "ldap-auth-advanced",
         config   = {
           consumer_optional = true,
           ldap_host = ldap_host_aws,
-          ldap_port = "389",
+          ldap_port = 389,
           start_tls = false,
           base_dn   = "ou=scientists,dc=ldap,dc=mashape,dc=com",
           attribute = "uid",
@@ -141,11 +141,12 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.plugins:insert {
+       -- route = { id = route6.id },
         name     = "ldap-auth-advanced",
         config   = {
           consumer_optional = true,
           ldap_host = ldap_host_aws,
-          ldap_port = "389",
+          ldap_port = 389,
           start_tls = false,
           base_dn   = "ou=scientists,dc=ldap,dc=mashape,dc=com",
           attribute = "uid"
@@ -153,13 +154,13 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.plugins:insert {
-        route_id = route7.id,
+        route = { id = route7.id },
         name     = "ldap-auth-advanced",
         config   = {
           consumer_optional = true,
           ldap_host         = ldap_host_aws,
           ldap_password     = "password",
-          ldap_port         = "389",
+          ldap_port         = 389,
           start_tls         = false,
           bind_dn           = "uid=einstein,ou=scientists,dc=ldap,dc=mashape,dc=com",
           base_dn           = "dc=ldap,dc=mashape,dc=com",
@@ -170,13 +171,13 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.plugins:insert {
-        route_id = route8.id,
+        route = { id = route8.id },
         name     = "ldap-auth-advanced",
         config   = {
           consumer_optional = true,
           ldap_host         = ldap_host_aws,
           ldap_password     = "password",
-          ldap_port         = "389",
+          ldap_port         = 389,
           start_tls         = false,
           bind_dn           = "uid=einstein,ou=scientists,dc=ldap,dc=mashape,dc=com",
           base_dn           = "dc=ldap,dc=mashape,dc=com",
@@ -577,7 +578,7 @@ for _, strategy in helpers.each_strategy() do
     local anonymous
 
     setup(function()
-      local bp = helpers.get_db_utils(strategy)
+      local bp = helpers.get_db_utils(strategy, nil, { "ldap-auth-advanced" })
 
       local service1 = bp.services:insert({
         path = "/request"
@@ -589,12 +590,12 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.plugins:insert {
-        route_id = route1.id,
+        route = { id = route1.id },
         name     = "ldap-auth-advanced",
         config   = {
           consumer_optional = true,
           ldap_host = ldap_host_aws,
-          ldap_port = "389",
+          ldap_port = 389,
           start_tls = false,
           base_dn   = "ou=scientists,dc=ldap,dc=mashape,dc=com",
           attribute = "uid",
@@ -603,7 +604,7 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name     = "key-auth",
-        route_id = route1.id,
+        route = { id = route1.id },
       }
 
       anonymous = bp.consumers:insert {
@@ -624,12 +625,12 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.plugins:insert {
-        route_id = route2.id,
+        route = { id = route2.id },
         name     = "ldap-auth-advanced",
         config   = {
           consumer_optional = true,
           ldap_host = ldap_host_aws,
-          ldap_port = "389",
+          ldap_port = 389,
           start_tls = false,
           base_dn   = "ou=scientists,dc=ldap,dc=mashape,dc=com",
           attribute = "uid",
@@ -639,7 +640,7 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name     = "key-auth",
-        route_id = route2.id,
+        route = { id = route2.id },
         config   = {
           anonymous = anonymous.id,
         },
@@ -647,7 +648,7 @@ for _, strategy in helpers.each_strategy() do
 
       bp.keyauth_credentials:insert {
         key         = "Mouse",
-        consumer_id = user.id,
+        consumer = { id = user.id },
       }
 
       assert(helpers.start_kong({
@@ -800,7 +801,7 @@ for _, strategy in helpers.each_strategy() do
 
     setup(function()
       local _
-      bp, _, dao = helpers.get_db_utils(strategy)
+      bp, _, dao = helpers.get_db_utils(strategy, nil, { "ldap-auth-advanced" })
 
       routes = {
         bp.routes:insert {
@@ -853,11 +854,11 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.plugins:insert {
-        route_id = routes[1].id,
+        route = { id = routes[1].id },
         name     = "ldap-auth-advanced",
         config   = {
           ldap_host = ldap_host_aws,
-          ldap_port = "389",
+          ldap_port = 389,
           start_tls = false,
           base_dn   = "ou=scientists,dc=ldap,dc=mashape,dc=com",
           attribute = "uid"
@@ -865,11 +866,11 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.plugins:insert {
-        route_id = routes[2].id,
+        route = { id = routes[2].id },
         name     = "ldap-auth-advanced",
         config   = {
           ldap_host = ldap_host_aws,
-          ldap_port = "389",
+          ldap_port = 389,
           start_tls = false,
           consumer_by = { "username" },
           base_dn   = "ou=scientists,dc=ldap,dc=mashape,dc=com",
@@ -878,11 +879,11 @@ for _, strategy in helpers.each_strategy() do
       }
 
       plugin = bp.plugins:insert {
-        route_id = routes[3].id,
+        route = { id = routes[3].id },
         name     = "ldap-auth-advanced",
         config   = {
           ldap_host = ldap_host_aws,
-          ldap_port = "389",
+          ldap_port = 389,
           start_tls = false,
           consumer_by = { "custom_id" },
           base_dn   = "ou=scientists,dc=ldap,dc=mashape,dc=com",
@@ -892,11 +893,11 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.plugins:insert {
-        route_id = routes[4].id,
+        route = { id = routes[4].id },
         name     = "ldap-auth-advanced",
         config   = {
           ldap_host = ldap_host_aws,
-          ldap_port = "389",
+          ldap_port = 389,
           start_tls = false,
           base_dn   = "ou=scientists,dc=ldap,dc=mashape,dc=com",
           attribute = "uid",
@@ -905,12 +906,12 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.plugins:insert {
-        route_id = routes[5].id,
+        route = { id = routes[5].id },
         name     = "ldap-auth-advanced",
         config   = {
           ldap_host         = ldap_host_aws,
           ldap_password     = "password",
-          ldap_port         = "389",
+          ldap_port         = 389,
           start_tls         = false,
           bind_dn           = "uid=einstein,ou=scientists,dc=ldap,dc=mashape,dc=com",
           base_dn           = "dc=ldap,dc=mashape,dc=com",
@@ -922,12 +923,12 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.plugins:insert {
-        route_id = routes[6].id,
+        route = { id = routes[6].id },
         name     = "ldap-auth-advanced",
         config   = {
           ldap_host         = ldap_host_aws,
           ldap_password     = "password",
-          ldap_port         = "389",
+          ldap_port         = 389,
           start_tls         = false,
           bind_dn           = "uid=einstein,ou=scientists,dc=ldap,dc=mashape,dc=com",
           base_dn           = "dc=ldap,dc=mashape,dc=com",
@@ -939,12 +940,12 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.plugins:insert {
-        route_id = routes[7].id,
+        route = { id = routes[7].id },
         name     = "ldap-auth-advanced",
         config   = {
           ldap_host         = ldap_host_aws,
           ldap_password     = "password",
-          ldap_port         = "389",
+          ldap_port         = 389,
           start_tls         = false,
           bind_dn           = "something=is,wrong=com",
           base_dn           = "dc=ldap,dc=mashape,dc=com",
