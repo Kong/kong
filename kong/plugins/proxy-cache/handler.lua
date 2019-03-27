@@ -7,6 +7,7 @@ local utils       = require "kong.tools.utils"
 local ee          = require "kong.enterprise_edition"
 
 
+local kong             = kong
 local max              = math.max
 local floor            = math.floor
 local get_method       = ngx.req.get_method
@@ -281,7 +282,6 @@ end
 function ProxyCacheHandler:init_worker()
   -- catch notifications from other nodes that we purged a cache entry
   local cluster_events = singletons.cluster_events
-  local dao            = singletons.dao
 
   -- only need one worker to handle purges like this
   -- if/when we introduce inline LRU caching this needs to involve
@@ -291,9 +291,8 @@ function ProxyCacheHandler:init_worker()
 
     local plugin_id, cache_key = unpack(utils.split(data, ":"))
 
-    local plugin, err = dao.plugins:find({
+    local plugin, err = kong.db.plugins:select({
       id   = plugin_id,
-      name = "proxy-cache",
     })
     if err then
       ngx_log(ngx.ERR, "[proxy-cache] error in retrieving plugins: ", err)

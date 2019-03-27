@@ -4,6 +4,7 @@ local STRATEGY_PATH = "kong.plugins.proxy-cache.strategies"
 local singletons = require "kong.singletons"
 
 
+local kong = kong
 local cluster_events = singletons.cluster_events
 
 
@@ -18,8 +19,8 @@ return {
   ["/proxy-cache"] = {
     resource = "proxy-cache",
 
-    DELETE = function(_, dao, helpers)
-      local rows, err = dao.plugins:find_all {
+    DELETE = function(_, _, helpers)
+      local rows, err = kong.db.plugins:select_all {
         name = "proxy-cache"
       }
       if err then
@@ -53,8 +54,8 @@ return {
   ["/proxy-cache/:cache_key"] = {
     resource = "proxy-cache",
 
-    GET = function(self, dao, helpers)
-      local rows, err = dao.plugins:find_all {
+    GET = function(self, _, helpers)
+      local rows, err = kong.db.plugins:select_all {
         name = "proxy-cache",
       }
       if err then
@@ -82,8 +83,8 @@ return {
       return helpers.responses.send_HTTP_NOT_FOUND()
     end,
 
-    DELETE = function(self, dao, helpers)
-      local rows, err = dao.plugins:find_all {
+    DELETE = function(self, _, helpers)
+      local rows, err = kong.db.plugins:select_all {
         name = "proxy-cache",
       }
       if err then
@@ -127,20 +128,19 @@ return {
   ["/proxy-cache/:plugin_id/caches/:cache_key"] = {
     resource = "proxy-cache",
 
-    GET = function(self, dao, helpers)
-      local rows, err = dao.plugins:find_all {
+    GET = function(self, _, helpers)
+      local row, err = kong.db.plugins:select {
         id   = self.params.plugin_id,
-        name = "proxy-cache"
       }
       if err then
         return helpers.yield_error(err)
       end
 
-      if #rows == 0 then
+      if not row then
         return helpers.responses.send_HTTP_NOT_FOUND()
       end
 
-      local conf = rows[1].config
+      local conf = row.config
       local strategy = require(STRATEGY_PATH)({
         strategy_name = conf.strategy,
         strategy_opts = conf[conf.strategy],
@@ -155,20 +155,19 @@ return {
 
       return helpers.responses.send_HTTP_OK(cache_val)
     end,
-    DELETE = function(self, dao, helpers)
-      local rows, err = dao.plugins:find_all {
+    DELETE = function(self, _, helpers)
+      local row, err = kong.db.plugins:select {
         id   = self.params.plugin_id,
-        name = "proxy-cache"
       }
       if err then
         return helpers.yield_error(err)
       end
 
-      if #rows == 0 then
+      if not row then
         return helpers.responses.send_HTTP_NOT_FOUND()
       end
 
-      local conf = rows[1].config
+      local conf = row.config
       local strategy = require(STRATEGY_PATH)({
         strategy_name = conf.strategy,
         strategy_opts = conf[conf.strategy],
@@ -187,7 +186,7 @@ return {
       end
 
       if require(STRATEGY_PATH).LOCAL_DATA_STRATEGIES[conf.strategy] then
-        local ok, err = broadcast_purge(rows[1].id, self.params.cache_key)
+        local ok, err = broadcast_purge(row.id, self.params.cache_key)
         if not ok then
           ngx.log(ngx.ERR, "failed broadcasting proxy cache purge to cluster: ",
                   err)
