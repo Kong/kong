@@ -1,4 +1,6 @@
 local utils = require "kong.tools.utils"
+local typedefs = require "kong.db.schema.typedefs"
+
 
 local function check_user(anonymous)
   if anonymous == "" or utils.is_valid_uuid(anonymous) then
@@ -11,26 +13,83 @@ end
 -- If you add more configuration parameters, be sure to check if it needs to be added to cache key
 
 return {
-  no_consumer = true,
+  name = "ldap-auth-advanced",
   fields = {
-    ldap_host = {required = true, type = "string"},
-    ldap_password = {type = "string"},
-    ldap_port = {type = "number", default = 389},
-    bind_dn = {type = "string"},
-    start_tls = {required = true, type = "boolean", default = false},
-    verify_ldap_host = {required = true, type = "boolean", default = false},
-    base_dn = {required = true, type = "string"},                            -- used for cache key
-    attribute = {required = true, type = "string"},                          -- used for cache key
-    cache_ttl = {required = true, type = "number", default = 60},            -- used for cache key
-    hide_credentials = {type = "boolean", default = false},
-    timeout = {type = "number", default = 10000},
-    keepalive = {type = "number", default = 60000},
-    anonymous = {type = "string", default = "", func = check_user},
-    header_type = {type = "string", default = "ldap"},
-    consumer_optional = { required = false, type = "boolean", default = false },
-    consumer_by = { required = false, type = "array",
-      enum = { "username", "custom_id" },
-      default = { "username", "custom_id" },
-    },
+    { consumer = typedefs.no_consumer },
+    { config = {
+      type = "record",
+      fields = {
+        { ldap_host = {
+          type = "string",
+          required = true, 
+        }},
+        { ldap_password = {
+          type = "string"
+        }},
+        { ldap_port = {
+          type = "number", 
+          default = 389
+        }},
+        { bind_dn = {
+          type = "string"
+        }},
+        { start_tls = {
+          type = "boolean",
+          required = true, 
+          default = false
+        }},
+        { verify_ldap_host = {
+          type = "boolean",
+          required = true, 
+          default = false
+        }},
+        { base_dn = {
+          type = "string",
+          required = true 
+        }},                            -- used for cache key
+        { attribute = {
+          type = "string",
+          required = true 
+        }},                          -- used for cache key
+        { cache_ttl = {
+          type = "number",
+          required = true, 
+          default = 60
+        }},            -- used for cache key
+        { hide_credentials = {
+          type = "boolean", 
+          default = false
+        }},
+        { timeout = {
+          type = "number", 
+          default = 10000
+        }},
+        { keepalive = {
+          type = "number", 
+          default = 60000
+        }},
+        { anonymous = {
+          type = "string",
+          len_min = 0,
+          default = "", 
+          custom_validator = check_user
+        }},
+        { header_type = {
+          type = "string", 
+          default = "ldap"
+        }},
+        { consumer_optional = { 
+          type = "boolean",
+          required = false, 
+          default = false 
+        }},
+        { consumer_by = { 
+          type = "array",
+          elements = { type = "string", one_of = { "username", "custom_id" }},
+          required = false, 
+          default = { "username", "custom_id" },
+        }},
+      }
+    }}
   }
 }
