@@ -28,7 +28,7 @@
 
 > Released on: 2019/03/27
 
-This is a minor release, introducing new features such as **Declarative
+This release introduces new features such as **Declarative
 Configuration**, **DB-less Mode**, **Bulk Database Import**, **Tags**, as well
 as **Transparent Proxying**. It contains a large number of other features and
 fixes, listed below. Also, the Plugin Development kit also saw a minor
