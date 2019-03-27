@@ -170,16 +170,11 @@ local function load_credential(conf, access_token)
 end
 
 local function load_consumer(username)
-  local result, err = singletons.dao.consumers:find_all { username = username }
-  if not result then
-    error(err)
-  elseif #result == 1 then
-    return result[1]
-  end
+  return singletons.db.consumers:select_by_username(username)
 end
 
 local function load_consumer_mem(consumer_id, anonymous)
-  local result, err = singletons.dao.consumers:find { id = consumer_id }
+  local result, err = singletons.db.consumers:select { id = consumer_id }
   if not result then
     if anonymous and not err then
       err = 'anonymous consumer "' .. consumer_id .. '" not found'
@@ -291,7 +286,7 @@ function OAuth2Introspection:access(conf)
   if not ok then
     if conf.anonymous ~= "" then
       -- get anonymous user
-      local consumer_cache_key = singletons.dao.consumers:cache_key(conf.anonymous)
+      local consumer_cache_key = singletons.db.consumers:cache_key(conf.anonymous)
       local consumer, err = singletons.cache:get(consumer_cache_key, nil,
         load_consumer_mem,
         conf.anonymous, true)
