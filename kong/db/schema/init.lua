@@ -1217,6 +1217,10 @@ do
         end
       })
       run_checks(self_proxy, input, full_check, subschema.entity_checks, errors)
+
+      if subschema.check and full_check then
+        run_self_check(subschema, input, errors)
+      end
     end
 
     if self.check and full_check then

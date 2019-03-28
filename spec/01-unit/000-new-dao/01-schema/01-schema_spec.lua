@@ -880,6 +880,72 @@ describe("schema", function()
       assert.same("my own field error", errs["fail2"])
     end)
 
+    it("runs a custom check with string error on a subschema", function()
+      local Test = Schema.new({
+        name = "test",
+        subschema_key = "name",
+        fields = {
+          { name = { type = "string", required = true, } },
+          { config = { type = "record", abstract = true, } },
+        }
+      })
+      Test:new_subschema("my_subschema", {
+        fields = {
+          { config = {
+            type = "record",
+            fields = {
+              { foo = { type = "string" } },
+              { bar = { type = "integer" } },
+            }
+          } }
+        },
+        check = function()
+          return nil, "Error in subschema"
+        end
+      })
+      local data, errs = Test:validate({
+        name = "my_subschema",
+        config = {
+          foo = "hello",
+          bar = 123,
+        }
+      })
+      assert.falsy(data)
+      assert.same("Error in subschema", errs["@entity"][1])
+    end)
+
+    it("runs a custom check on a subschema", function()
+      local Test = Schema.new({
+        name = "test",
+        subschema_key = "name",
+        fields = {
+          { name = { type = "string", required = true, } },
+          { config = { type = "record", abstract = true, } },
+        }
+      })
+      Test:new_subschema("my_subschema", {
+        fields = {
+          { config = {
+            type = "record",
+            fields = {
+              { foo = { type = "string" } },
+              { bar = { type = "integer" } },
+            }
+          } }
+        },
+        check = function()
+          return true
+        end
+      })
+      assert.truthy(Test:validate({
+        name = "my_subschema",
+        config = {
+          foo = "hello",
+          bar = 123,
+        }
+      }))
+    end)
+
     it("can make a string from an error", function()
       local Test = Schema.new({
         fields = {
