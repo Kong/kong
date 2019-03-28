@@ -411,7 +411,7 @@ for _, strategy in helpers.each_strategy() do
         -- this is to ensure we have the right number of shdicts being used so we know
         -- how many udp packets are we expecting below
         nginx_conf = "spec/fixtures/custom_nginx_statsd_advanced.template",
-        custom_plugins = "statsd-advanced",
+        plugins = "bundled,statsd-advanced",
         vitals = "on"
       }))
 
@@ -762,7 +762,7 @@ for _, strategy in helpers.each_strategy() do
         local hostname = require("kong.tools.utils").get_hostname()
         hostname = string.gsub(hostname, "%.", "_")
 
-        local thread = helpers.udp_server(UDP_PORT, metrics_count)
+        local thread = helpers.udp_server(UDP_PORT)
         local response = assert(proxy_client:send {
           method  = "GET",
           path    = "/request?apikey=kong",
