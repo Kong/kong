@@ -338,6 +338,8 @@ return {
           config text, -- serialized plugin configuration
           enabled boolean,
           cache_key text,
+          protocols set<text>, -- added in 1.1.0
+          tags set<text>, -- added in 1.1.0
           PRIMARY KEY (id)
         );
 
