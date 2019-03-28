@@ -1,5 +1,6 @@
 # Table of Contents
 
+- [1.1.1](#111)
 - [1.1.0](#110)
 - [1.0.3](#103)
 - [1.0.2](#102)
@@ -24,6 +25,24 @@
 - [0.10.0](#0100---20170307)
 - [0.9.9 and prior](#099---20170202)
 
+## [1.1.1]
+
+> Released on: 2019/03/28
+
+This release contains a fix for 0.14 Kong clusters using Cassandra to safely
+migrate to Kong 1.1.
+
+### Fixes
+
+- Ensure the 0.14 -> 1.1 migration path for Cassandra does not corrupt the
+  database schema.
+  [#4450](https://github.com/Kong/kong/pull/4450)
+- Allow the `kong config init` command to run without a pointing to a prefix
+  directory.
+  [#4451](https://github.com/Kong/kong/pull/4451)
+
+[Back to TOC](#table-of-contents)
+
 ## [1.1.0]
 
 > Released on: 2019/03/27
@@ -38,6 +57,12 @@ This release includes database migrations. Please take a few minutes to read
 the [1.1 Upgrade Path](https://github.com/Kong/kong/blob/master/UPGRADE.md)
 for more details regarding changes and migrations before planning to upgrade
 your Kong cluster.
+
+:large_orange_diamond: **Post-release note (as of 2019/03/28):** an issue has
+been found when migrating from a 0.14 Kong cluster to 1.1.0 when running on top
+of Cassandra. Kong 1.1.1 has been released to address this issue. Kong clusters
+running on top of PostgreSQL are not affected by this issue, and can migrate to
+1.1.0 or 1.1.1 safely.
 
 ### Additions
 
@@ -3561,6 +3586,7 @@ First version running with Cassandra.
 
 [Back to TOC](#table-of-contents)
 
+[1.1.1]: https://github.com/Kong/kong/compare/1.1.0...1.1.1
 [1.1.0]: https://github.com/Kong/kong/compare/1.0.3...1.1.0
 [1.0.3]: https://github.com/Kong/kong/compare/1.0.2...1.0.3
 [1.0.2]: https://github.com/Kong/kong/compare/1.0.1...1.0.2
