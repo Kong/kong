@@ -198,7 +198,7 @@ local function retrieve_user(id)
   })
 
   if err then
-    log(ngx.ERR, "error in retrieving user from name: ", err)
+    log(ngx.ERR, "error in retrieving user", err)
     return nil, err
   end
 

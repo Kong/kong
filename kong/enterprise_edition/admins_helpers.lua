@@ -36,7 +36,7 @@ local function transmogrify(admin)
       updated_at = admin.updated_at,
     }
 end
-
+_M.transmogrify = transmogrify
 
 local function sanitize_params(params)
   -- you can only manage admins here. don't try anything sneaky!

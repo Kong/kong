@@ -5,29 +5,67 @@ local enums = require "kong.enterprise_edition.dao.enums"
 local admins = require "kong.enterprise_edition.admins_helpers"
 local workspaces = require "kong.workspaces"
 local ee_helpers = require "spec-ee.helpers"
+local utils = require "kong.tools.utils"
+local rbac = require "kong.rbac"
 
 
-describe("#flaky Admin API - ee-specific Kong routes", function()
+local function admin(db, workspace, name, role, email)
+  local ws, err = db.workspaces:select_by_name(workspace)
+  assert.is_nil(err)
+  assert.not_nil(ws)
+  assert.same(workspace, ws.name)
+
+  return workspaces.run_with_ws_scope({ws}, function ()
+    local admin, err = db.admins:insert({
+      username = name,
+      email = email,
+      status = 4, -- TODO remove once admins are auto-tagged as invited
+    })
+    assert.is_nil(err)
+
+    local role = db.rbac_roles:select_by_name(role)
+    assert.is_not_nil(role)
+    assert(db.rbac_user_roles:insert({
+      user = { id = admin.rbac_user.id },
+      role = { id = role.id },
+    }))
+
+    local raw_user_token = utils.uuid()
+    db.rbac_users:update({id = admin.rbac_user.id}, {
+      user_token = raw_user_token
+    })
+    admin.rbac_user.raw_user_token = raw_user_token
+
+    return admin
+  end)
+end
+
+
+describe("Admin API - ee-specific Kong routes", function()
   dao_helpers.for_each_dao(function(kong_conf)
     describe("/userinfo with db #" .. kong_conf.database, function()
 
       local strategy = kong_conf.database
       local client
-      local dao
-      local bp
+      local db
 
       after_each(function()
         helpers.stop_kong()
+        if client then
+          client:close()
+        end
       end)
 
-      teardown(function()
+      before_each(function()
+        db = select(2, helpers.get_db_utils(strategy))
+      end)
+
+      lazy_teardown(function()
         -- this is just truncating tables, a side effect
         helpers.get_db_utils(strategy)
       end)
 
       it("return 404 on user info when admin_auth is off", function()
-        helpers.get_db_utils(strategy)
-
         assert(helpers.start_kong({
           database = strategy,
         }))
@@ -42,9 +80,6 @@ describe("#flaky Admin API - ee-specific Kong routes", function()
       end)
 
       it("returns 403 with admin_auth = on, invalid credentials", function()
-        local _
-        bp, _, dao = helpers.get_db_utils(strategy)
-
         assert(helpers.start_kong({
           database = strategy,
           admin_gui_auth = 'basic-auth',
@@ -52,12 +87,6 @@ describe("#flaky Admin API - ee-specific Kong routes", function()
         }))
 
         client = assert(helpers.admin_client())
-
-        bp.consumers:insert {
-          username = "hawk",
-          type = enums.CONSUMERS.TYPE.ADMIN,
-          status = enums.CONSUMERS.STATUS.APPROVED,
-        }
 
         local res = assert(client:send {
           method = "GET",
@@ -69,46 +98,24 @@ describe("#flaky Admin API - ee-specific Kong routes", function()
       end)
 
       it("returns user info of admin consumer with rbac", function()
-        local _
-        bp, _, dao = helpers.get_db_utils(strategy)
-
         assert(helpers.start_kong({
           database = strategy,
           admin_gui_auth = "basic-auth",
           enforce_rbac = "both",
         }))
 
-        local _, super_role = ee_helpers.register_rbac_resources(dao)
+        ee_helpers.register_rbac_resources(db)
 
         client = assert(helpers.admin_client())
 
-        local consumer = bp.consumers:insert {
-          username = "hawk",
-          type = enums.CONSUMERS.TYPE.ADMIN,
-          status = enums.CONSUMERS.STATUS.APPROVED,
-        }
+        local admin = admin(db, 'default', 'hawk', 'super-admin')
 
-        assert(dao.basicauth_credentials:insert {
+        assert(db.basicauth_credentials:insert {
           username    = "hawk",
           password    = "kong",
-          consumer_id = consumer.id,
-        })
-
-        local user = dao.rbac_users:insert {
-          name = "hawk",
-          user_token = "tawken",
-          enabled = true,
-        }
-
-        -- make hawk super
-        assert(dao.rbac_user_roles:insert({
-          user_id = user.id,
-          role_id = super_role.role_id,
-        }))
-
-        assert(dao.consumers_rbac_users_map:insert {
-          consumer_id = consumer.id,
-          user_id = user.id
+          consumer = {
+            id = admin.consumer.id,
+          },
         })
 
         local res = assert(client:send {
@@ -125,10 +132,15 @@ describe("#flaky Admin API - ee-specific Kong routes", function()
 
         local user_workspaces = json.workspaces
         json.workspaces = nil
+        json.admin.updated_at = nil
+
+        local admin_res = admins.transmogrify(admin)
+        -- updated_at changes when user logs in and status switches to approved
+        admin_res.updated_at = nil
+        admin_res.status = enums.CONSUMERS.STATUS.APPROVED
 
         local expected = {
-          consumer = consumer,
-          rbac_user = user,
+          admin = admin_res,
           permissions = {
             endpoints = {
               ["*"] = {
@@ -157,73 +169,24 @@ describe("#flaky Admin API - ee-specific Kong routes", function()
           method = "GET",
           path = "/userinfo",
           headers = {
-            ["Kong-Admin-Token"] = "tawken",
+            ["Kong-Admin-Token"] = admin.rbac_user.raw_user_token,
           }
         })
 
         res = assert.res_status(200, res)
         local json2 = cjson.decode(res)
         local user_workspaces2 = json2.workspaces
+
         json2.workspaces = nil
+        json2.admin.updated_at = nil
 
         assert.same(json2, json)
         assert.same(user_workspaces2, user_workspaces)
       end)
 
-      it("is whitelisted and supports legacy rbac_user.name", function()
-        local _
-        bp, _, dao = helpers.get_db_utils(strategy)
 
-        assert(helpers.start_kong({
-          database = strategy,
-          admin_gui_auth = "basic-auth",
-          enforce_rbac = "both",
-        }))
-
-        client = assert(helpers.admin_client())
-
-        local user = dao.rbac_users:insert {
-          name = "user-hawk",
-          user_token = "tawken",
-          enabled = true,
-        }
-
-        local consumer = bp.consumers:insert {
-          username = "hawk",
-          type = enums.CONSUMERS.TYPE.ADMIN,
-          status = enums.CONSUMERS.STATUS.APPROVED,
-        }
-
-        assert(dao.basicauth_credentials:insert {
-          username    = consumer.username,
-          password    = "kong",
-          consumer_id = consumer.id,
-        })
-
-        assert(dao.consumers_rbac_users_map:insert {
-          consumer_id = consumer.id,
-          user_id = user.id
-        })
-
-        -- rbac_user.name is "user-hawk", can look up by consumer.username "hawk"
-        local res = assert(client:send {
-          method = "GET",
-          path = "/userinfo",
-          headers = {
-            ["Authorization"] = "Basic " .. ngx.encode_base64("hawk:kong"),
-            ["Kong-Admin-User"] = consumer.username,
-          }
-        })
-
-        res = assert.res_status(200, res)
-        local json = cjson.decode(res)
-
-        assert.same(consumer, json.consumer)
-        assert.same(user, json.rbac_user)
-      end)
-
-      it("returns 404 on user info when consumer is not mapped to rbac user, ", function()
-        local bp, _, dao = helpers.get_db_utils(strategy)
+      it("returns 404 when rbac user is not mapped to an admin", function()
+        db = select(2, helpers.get_db_utils(strategy))
 
         assert(helpers.start_kong({
           database = strategy,
@@ -233,24 +196,16 @@ describe("#flaky Admin API - ee-specific Kong routes", function()
 
         client = assert(helpers.proxy_client())
 
-        local consumer = bp.consumers:insert {
-          username = "hawk",
-          type = enums.CONSUMERS.TYPE.PROXY,
-          status = enums.CONSUMERS.STATUS.APPROVED,
+        db.rbac_users:insert {
+          name = "some-user",
+          user_token = "billgatesletmeinnow",
         }
-
-        assert(dao.basicauth_credentials:insert {
-          username    = "hawk",
-          password    = "kong",
-          consumer_id = consumer.id,
-        })
 
         local res = assert(client:send {
           method = "GET",
           path = "/userinfo",
           headers = {
-            ["Authorization"] = "Basic " .. ngx.encode_base64("hawk:kong"),
-            ["Kong-Admin-User"] = "hawk",
+            ["Kong-Admin-Token"] = "billgatesletmeinnow",
           }
         })
 
@@ -258,9 +213,7 @@ describe("#flaky Admin API - ee-specific Kong routes", function()
       end)
 
       it("returns user info of admin consumer outside default workspace", function()
-        local db
-
-        bp, db, dao = helpers.get_db_utils(strategy)
+        db = select(2, helpers.get_db_utils(strategy))
 
         assert(helpers.start_kong({
           database = strategy,
@@ -271,36 +224,35 @@ describe("#flaky Admin API - ee-specific Kong routes", function()
         client = assert(helpers.admin_client())
 
         -- populate a new workspace with an admin
-        ee_helpers.register_rbac_resources(dao)
+        ee_helpers.register_rbac_resources(db)
         local ws_name = "test-ws"
-        local ws, err = dao.workspaces:insert({ name = ws_name, }, { quiet = true })
+        local ws, err = db.workspaces:insert({ name = ws_name, }, { quiet = true })
         if err then
-          ws = dao.workspaces:find_all({ name = ws_name })[1]
+          ws = db.workspaces:select_by_name(ws_name)
         end
         ngx.ctx.workspaces = { ws }
 
         -- create the non-default admin
-        local admin = ee_helpers.create_admin("test42@konghq.com", "dj-khaled",
-                                              enums.CONSUMERS.STATUS.APPROVED,
-                                              bp, db)
-        local rbac_user = admin.rbac_user
+        local role = db.rbac_roles:insert({ name = "another-one" })
+        local admin = admin(db, "test-ws", "dj-khaled", "another-one", "test42@konghq.com")
         admin.rbac_user = nil
-        admins.link_to_workspace(admin, dao, ws_name)
+        admin.status = enums.CONSUMERS.STATUS.APPROVED
+        admin.updated_at = nil
+        admins.link_to_workspace(admin, ws_name)
 
-        dao.rbac_roles:insert({ name = "another-one" })
-        ee_helpers.post(client, "/" .. ws_name .. "/rbac/roles/another-one/endpoints", {
-          workspace = "default",
+        assert(db.rbac_role_endpoints:insert {
+          role = { id = role.id },
           endpoint = "*",
-          actions = "read"
-        }, { ['Kong-Admin-Token'] = 'letmein'})
+          workspace = "default",
+          actions = rbac.actions_bitfields.read
+        })
 
-        ee_helpers.post(client, "/" .. ws_name .. "/admins/".. admin.id .. "/roles",
-             { roles = "another-one" }, { ["Kong-Admin-Token"] = "letmein" }, 201)
-
-        assert(dao.basicauth_credentials:insert {
+        assert(db.basicauth_credentials:insert {
           username    = "dj-khaled",
           password    = "another-one",
-          consumer_id = admin.id,
+          consumer = {
+            id = admin.consumer.id,
+          },
         })
 
         -- Make sure non-default admin can still request /userinfo
@@ -309,7 +261,7 @@ describe("#flaky Admin API - ee-specific Kong routes", function()
           path = "/userinfo",
           headers = {
             ["Authorization"] = "Basic " .. ngx.encode_base64("dj-khaled:another-one"),
-            ["Kong-Admin-User"] = "test42@konghq.com",
+            ["Kong-Admin-User"] = admin.username,
           }
         })
 
@@ -318,12 +270,10 @@ describe("#flaky Admin API - ee-specific Kong routes", function()
 
         local user_workspaces = json.workspaces
         json.workspaces = nil
+        json.admin.updated_at = nil
 
-        local token = rbac_user.raw_user_token
-        rbac_user.raw_user_token = nil
         local expected = {
-          consumer = admin,
-          rbac_user = rbac_user,
+          admin = admins.transmogrify(admin),
           permissions = {
             endpoints = {
               ["default"] = {
@@ -341,23 +291,30 @@ describe("#flaky Admin API - ee-specific Kong routes", function()
         assert.equal(1, #user_workspaces)
         assert.equal("test-ws", user_workspaces[1].name)
 
+        -- TODO: add this back once we can know the rbac_user.token upon admin
+        -- insert.
+        --
         -- Now send the same request, but with just the rbac token
         -- and make sure the responses are equivalent
-        res = assert(client:send {
-          method = "GET",
-          path = "/userinfo",
-          headers = {
-            ["Kong-Admin-Token"] = token,
-          }
-        })
+        -- local rbac_user = admin.rbac_user
+        -- local token = rbac_user.raw_user_token
+        -- rbac_user.raw_user_token = nil
+        -- res = assert(client:send {
+        --   method = "GET",
+        --   path = "/userinfo",
+        --   headers = {
+        --     ["Kong-Admin-Token"] = token,
+        --   }
+        -- })
 
-        res = assert.res_status(200, res)
-        local json2 = cjson.decode(res)
-        local user_workspaces2 = json2.workspaces
-        json2.workspaces = nil
+        -- res = assert.res_status(200, res)
+        -- local json2 = cjson.decode(res)
+        -- local user_workspaces2 = json2.workspaces
+        -- json2.workspaces = nil
+        -- json2.admin.updated_at = nil
 
-        assert.same(json2, json)
-        assert.same(user_workspaces2, user_workspaces)
+        -- assert.same(json2, json)
+        -- assert.same(user_workspaces2, user_workspaces)
       end)
     end)
   end)

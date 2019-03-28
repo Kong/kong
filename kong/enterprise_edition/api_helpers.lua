@@ -216,6 +216,7 @@ function _M.authenticate(self, rbac_enabled, gui_auth)
   end
 
   self.rbac_user = rbac_user
+  self.admin = admin
   -- set back workspace context from request
   ctx.workspaces = old_ws
 end
