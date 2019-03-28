@@ -407,106 +407,115 @@ return {
   },
 
   ["/admins/register"] = {
-    before = function(self, dao_factory, helpers)
-      validate_auth_plugin(self, dao_factory, helpers)
+    before = function(self, db, helpers, parent)
+      validate_auth_plugin(self, db, helpers)
       if self.token_optional then
         return helpers.responses.send_HTTP_BAD_REQUEST("cannot register " ..
                                                        "with admin_gui_auth = "
                                                        .. self.plugin.name)
       end
-      ee_api.validate_email(self, dao_factory, helpers)
-      ee_api.validate_jwt(self, dao_factory, helpers)
+      ee_api.validate_email(self, db, helpers)
+      ee_api.validate_jwt(self, db, helpers)
     end,
 
-    POST = function(self, dao_factory, helpers)
+    POST = function(self, db, helpers, parent)
+      -- validate_jwt both validates the JWT and determines which consumer
+      -- owns it, setting that on self. :magic:
       if not self.consumer_id then
         log(ERR, _log_prefix, "consumer not found for registration")
-        return helpers.responses.send_HTTP_UNAUTHORIZED()
+        return kong.response.exit(401)
       end
 
-      local rows, err = workspaces.run_with_ws_scope({},
-                                    dao_factory.consumers.find_all,
-                                    dao_factory.consumers,
-                                    {
-                                      id = self.consumer_id,
-                                    })
-      if err then
-        helpers.yield_error(err)
+      -- this block is a little messy. A consumer cannot logically belong to
+      -- >1 admin, but the schema doesn't generate select_by for foreign keys.
+      -- could also use `select_all` here, but for now prefer to use CE
+      -- functions where possible.
+      local res = {}
+      for row, err in db.admins:each_for_consumer({ id = self.consumer_id }) do
+        if err then
+          return kong.response.exit(500, { message = err })
+        end
+        res[1] = row
       end
 
-      if not next(rows) then
-        return helpers.responses.send_HTTP_UNAUTHORIZED()
+      local admin = res[1]
+
+      if not admin or admin.email ~= self.params.email then
+        return kong.response.exit(401)
       end
 
-      local consumer = rows[1]
       local credential_data
-
-      if consumer.email ~= self.params.email then
-        return helpers.responses.send_HTTP_UNAUTHORIZED()
-      end
+      local credential_dao
 
       -- create credential object based on admin_gui_auth
       if self.plugin.name == "basic-auth" then
+        credential_dao = db.basicauth_credentials
         credential_data = {
-          consumer_id = consumer.id,
-          username = consumer.username,
+          consumer = admin.consumer,
+          username = admin.username,
           password = self.params.password,
         }
       end
 
       if self.plugin.name == "key-auth" then
+        credential_dao = db.keyauth_credentials
         credential_data = {
-          consumer_id = consumer.id,
+          consumer = admin.consumer,
           key = self.params.password,
         }
       end
 
-      if credential_data == nil then
-        return helpers.responses.send_HTTP_BAD_REQUEST(
+      if not credential_data then
+        return kong.response.exit(400,
           "Cannot create credential with admin_gui_auth = " ..
           self.plugin.name)
       end
 
       -- Find the workspace the consumer is in
-      local refs, err = dao_factory.workspace_entities:find_all{
+      local refs, err = db.workspace_entities:select_all({
         entity_type = "consumers",
-        entity_id = consumer.id,
+        entity_id = admin.consumer.id,
         unique_field_name = "id",
-      }
+      })
 
       if err then
-        helpers.yield_error(err)
+        kong.response.exit(500, { message = err })
       end
 
       -- Set the current workspace so the credential is created there
-      local workspace = {
-        id = refs[1].workspace_id,
-        name = refs[1].workspace_name,
-      }
-      ngx.ctx.workspaces = { workspace }
+      local credential, err = workspaces.run_with_ws_scope(
+                              { id = refs[1].workspace_id },
+                              credential_dao.insert,
+                              credential_dao,
+                              credential_data
+      )
+      if err then
+        return kong.response.exit(500, { message = err })
+      end
 
-      crud.post(credential_data, self.collection, function(credential)
-        crud.portal_crud.insert_credential(self.plugin.name,
-                                           enums.CONSUMERS.TYPE.ADMIN
-                                          )(credential)
-        local res = {
-          consumer = consumer,
-          credential = credential,
-        }
+      -- now put it in the global credentials table. not sure we need this.
+      local _, err = singletons.dao.credentials:insert({
+        id = credential.id,
+        consumer_id = credential.consumer_id,
+        consumer_type = enums.CONSUMERS.TYPE.ADMIN,
+        plugin = self.plugin.name,
+        credential_data = tostring(cjson.encode(credential)),
+      })
+      if err then
+        return kong.response.exit(500, { message = err })
+      end
 
-        if consumer.status == enums.CONSUMERS.STATUS.INVITED then
-          dao_factory.consumers:update({status = enums.CONSUMERS.STATUS.APPROVED},
-                                      {id = consumer.id})
-        end
+      if admin.status == enums.CONSUMERS.STATUS.INVITED then
+        db.admins:update({status = enums.CONSUMERS.STATUS.APPROVED}, {id = admin.id})
+      end
 
-        -- Mark the token secret as consumed
-        local ok, err = secrets.consume_secret(self.reset_secret_id)
-        if not ok then
-          return helpers.yield_error(err)
-        end
+      -- Mark the token secret as consumed
+      local _, err = secrets.consume_secret(self.reset_secret_id)
+      if err then
+        return kong.response.exit(500, { message = err })
+      end
 
-        return res
-      end)
+      return kong.response.exit(201)
     end,
   },
 }

@@ -323,7 +323,7 @@ return {
       CREATE TABLE IF NOT EXISTS credentials (
         id                uuid PRIMARY KEY,
         consumer_id       uuid REFERENCES consumers (id) ON DELETE CASCADE,
-        consumer_type     integer REFERENCES consumer_types (id),
+        consumer_type     integer,
         plugin            text NOT NULL,
         credential_data   json,
         created_at        timestamp without time zone DEFAULT timezone('utc'::text, ('now'::text)::timestamp(0) with time zone)

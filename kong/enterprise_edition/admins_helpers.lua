@@ -192,7 +192,7 @@ function _M.generate_token(admin, opts)
     end
 
     admin = transmogrify(admin)
-    admin.register_url = emails:register_url(admin.email, jwt)
+    admin.register_url = emails:register_url(admin.email, jwt, admin.username)
     admin.token = jwt
   end
 
@@ -256,16 +256,16 @@ function _M.create(params, opts)
 
   local jwt
   if not token_optional then
-    local expiry = singletons.configuration.admin_invitation_expiry
+    local expiry = opts.token_expiry or singletons.configuration.admin_invitation_expiry
 
-    jwt, err = secrets.create(admin, ngx.var.remote_addr, expiry)
+    jwt, err = secrets.create(admin.consumer, opts.remote_addr, expiry)
 
     if err then
       return {
         code = responses.status_codes.HTTP_OK,
         body = {
           message = "User created, but failed to create invitation",
-          admin = transmogrify(admin),
+          admin = opts.raw and admin or transmogrify(admin),
         }
       }
     end
@@ -280,7 +280,7 @@ function _M.create(params, opts)
         code = responses.status_codes.HTTP_OK,
         body = {
           message = "User created, but failed to send invitation email",
-          admin = transmogrify(admin),
+          admin = opts.raw and admin or transmogrify(admin),
         },
       }
     end
@@ -290,7 +290,7 @@ function _M.create(params, opts)
 
   return {
     code = responses.status_codes.HTTP_OK,
-    body = { admin = transmogrify(admin) },
+    body = { admin = opts.raw and admin or transmogrify(admin) },
   }
 end
 
