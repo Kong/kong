@@ -24,6 +24,7 @@ local url = require "socket.url"
 local http = require "resty.http"
 local json = require "cjson"
 local parse_date = require("luatz").parse.rfc_3339
+local ngx_now = ngx.now
 
 local ECSFullUri
 do
@@ -106,19 +107,20 @@ local function fetchCredentials()
   ngx.log(ngx.DEBUG, LOG_PREFIX, "Received temporary IAM credential from ECS metadata " ..
                       "service with session token: ", credentials.Token)
 
-  return {
+  local result = {
     access_key    = credentials.AccessKeyId,
     secret_key    = credentials.SecretAccessKey,
     session_token = credentials.Token,
     expiration    = parse_date(credentials.Expiration):timestamp()
   }
+  return result, nil, result.expiration - ngx_now()
 end
 
 local function fetchCredentialsLogged()
   -- wrapper to log any errors
-  local creds, err = fetchCredentials()
+  local creds, err, ttl = fetchCredentials()
   if creds then
-    return creds
+    return creds, err, ttl
   end
   ngx.log(ngx.ERR, LOG_PREFIX, err)
 end

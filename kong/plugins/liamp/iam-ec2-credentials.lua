@@ -1,6 +1,7 @@
 local http  = require "resty.http"
 local json  = require "cjson"
 local parse_date = require("luatz").parse.rfc_3339
+local ngx_now = ngx.now
 
 
 local plugin_name = ({...})[1]:match("^kong%.plugins%.([^%.]+)")
@@ -73,19 +74,20 @@ local function fetch_ec2_credentials()
   ngx.log(ngx.DEBUG, LOG_PREFIX, "Received temporary IAM credential from metadata service for role '",
                      iam_role_name, "' with session token: ", iam_security_token_data.Token)
 
-  return {
+  local result = {
     access_key    = iam_security_token_data.AccessKeyId,
     secret_key    = iam_security_token_data.SecretAccessKey,
     session_token = iam_security_token_data.Token,
     expiration    = parse_date(iam_security_token_data.Expiration):timestamp()
   }
+  return result, nil, result.expiration - ngx_now()
 end
 
 local function fetchCredentialsLogged()
   -- wrapper to log any errors
-  local creds, err = fetch_ec2_credentials()
+  local creds, err, ttl = fetch_ec2_credentials()
   if creds then
-    return creds
+    return creds, err, ttl
   end
   ngx.log(ngx.ERR, LOG_PREFIX, err)
 end

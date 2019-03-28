@@ -47,7 +47,6 @@ local ngx_encode_base64    = ngx.encode_base64
 local ngx_update_time      = ngx.update_time
 local ngx_now              = ngx.now
 
-local DEFAULT_CACHE_IAM_INSTANCE_CREDS_DURATION = 60
 local IAM_CREDENTIALS_CACHE_KEY = "plugin." .. plugin_name .. ".iam_role_temp_creds"
 local LOG_PREFIX = "[" .. plugin_name .. "] "
 
@@ -280,9 +279,7 @@ function AWSLambdaHandler:access(conf)
     -- no credentials provided, so try the IAM metadata service
     local iam_role_credentials, err = singletons.cache:get(
       IAM_CREDENTIALS_CACHE_KEY,
-      {
-        ttl = DEFAULT_CACHE_IAM_INSTANCE_CREDS_DURATION
-      },
+      nil,
       fetch_credentials
     )
 
