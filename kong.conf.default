@@ -45,7 +45,7 @@
 #proxy_error_log = logs/error.log         # Path for proxy port request error
                                           # logs. The granularity of these logs
                                           # is adjusted by the `log_level`
-                                          # directive.
+                                          # property.
 
 #admin_access_log = logs/admin_access.log # Path for Admin API request access
                                           # logs. Set this value to `off` to
@@ -57,7 +57,7 @@
 #admin_error_log = logs/error.log         # Path for Admin API request error
                                           # logs. The granularity of these logs
                                           # is adjusted by the `log_level`
-                                          # directive.
+                                          # property.
 
 #plugins = bundled               # Comma-separated list of plugins this node
                                  # should load. By default, only plugins
@@ -212,8 +212,9 @@
                                  # spawned by Nginx.
                                  #
                                  # See http://nginx.org/en/docs/ngx_core_module.html#worker_processes
-                                 # for detailed usage of this directive and
-                                 # a description of accepted values.
+                                 # for detailed usage of the equivalent Nginx
+                                 # directive and a description of accepted
+                                 # values.
 
 #nginx_daemon = on               # Determines whether Nginx will run as a daemon
                                  # or as a foreground process. Mainly useful
@@ -352,7 +353,7 @@
                                  # See http://nginx.org/en/docs/http/ngx_http_realip_module.html#real_ip_header
                                  # for a description of this directive.
 
-#real_ip_recursive = off         # This value sets the ngx_http_realip_module
+#real_ip_recursive = off         # This value sets the `ngx_http_realip_module`
                                  # directive of the same name in the Nginx
                                  # configuration.
                                  #
