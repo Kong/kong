@@ -111,6 +111,7 @@ describe("Admin API - Developer Portal - " .. strategy, function()
         email = "gruce@konghq.com",
         password = "kong",
         meta = "{\"full_name\":\"I Like Turtles\"}",
+        status = 2,
       })
       configure_portal()
     end)
@@ -134,12 +135,19 @@ describe("Admin API - Developer Portal - " .. strategy, function()
     end)
 
     describe("PATCH", function()
+      after_each(function()
+        assert(db.developers:update(
+          developer.id,
+          { email = "gruce@konghq.com", }
+        ))
+      end)
+
       it("updates the developer email, username, and login credential", function()
         local res = assert(client:send {
           method = "PATCH",
           body = {
             email = "new_email@whodis.com",
-            status = 0,
+            status = 1,
           },
           path = "/developers/".. developer.id,
           headers = {
@@ -149,9 +157,11 @@ describe("Admin API - Developer Portal - " .. strategy, function()
 
         local body = assert.res_status(200, res)
         local resp_body_json = cjson.decode(body)
-        local consumer = singletons.db.consumers:select({ id = resp_body_json.consumer.id })
+        local consumer = singletons.db.consumers:select({
+          id = resp_body_json.developer.consumer.id
+        })
 
-        assert.equals("new_email@whodis.com", resp_body_json.email)
+        assert.equals("new_email@whodis.com", resp_body_json.developer.email)
         assert.equals("new_email@whodis.com", consumer.username)
 
         -- XXX DEVX: re-introduce this part of test once auth endpoint merged
@@ -245,280 +255,289 @@ describe("Admin API - Developer Portal - " .. strategy, function()
       describe("smtp", function()
         -- XXX DEVX: write smtp on tests
 
-        -- it("sends an email to the approved developer", function()
-        --   local res = assert(client:send {
-        --     method = "PATCH",
-        --     body = {
-        --       status = 0
-        --     },
-        --     path = "/portal/developers/".. developer.id,
-        --     headers = {["Content-Type"] = "application/json"}
-        --   })
+        it("sends an email to the approved developer", function()
+          local res = assert(client:send {
+            method = "PATCH",
+            body = {
+              status = 0,
+            },
+            path = "/developers/".. developer.id,
+            headers = {
+              ["Content-Type"] = "application/json",
+            }
+          })
 
-        --   local expected_email = {
-        --     error = {
-        --       count = 0,
-        --       emails = {},
-        --     },
-        --     sent = {
-        --       count = 1,
-        --       emails = {
-        --         ["gruce@konghq.com"] = true,
-        --       }
-        --     },
-        --     smtp_mock = true,
-        --   }
+          local expected_email = {
+            error = {
+              count = 0,
+              emails = {},
+            },
+            sent = {
+              count = 1,
+              emails = {
+                ["gruce@konghq.com"] = true,
+              }
+            },
+            smtp_mock = true,
+          }
 
-        --   local body = assert.res_status(200, res)
-        --   local resp_body_json = cjson.decode(body)
-        --   assert.same(expected_email, resp_body_json.email)
-        -- end)
+          local body = assert.res_status(200, res)
+          local resp_body_json = cjson.decode(body)
+          assert.same(expected_email, resp_body_json.email)
+        end)
 
-        -- it("does not send an email if rejected, revoked, or re-approved from revoked", function()
-        --   local res = assert(client:send {
-        --     method = "PATCH",
-        --     body = {
-        --       status = 2
-        --     },
-        --     path = "/portal/developers/".. developer.id,
-        --     headers = {["Content-Type"] = "application/json"}
-        --   })
+        it("does not send an email if rejected, revoked, or re-approved from revoked", function()
+          local res = assert(client:send {
+            method = "PATCH",
+            body = {
+              status = 2
+            },
+            path = "/developers/".. developer.id,
+            headers = {["Content-Type"] = "application/json"}
+          })
 
-        --   local body = assert.res_status(200, res)
-        --   local resp_body_json = cjson.decode(body)
-        --   assert.is_nil(resp_body_json.email)
+          local body = assert.res_status(200, res)
+          local resp_body_json = cjson.decode(body)
+          assert.is_nil(resp_body_json.email)
 
-        --   local res = assert(client:send {
-        --     method = "PATCH",
-        --     body = {
-        --       status = 3
-        --     },
-        --     path = "/portal/developers/".. developer.id,
-        --     headers = {["Content-Type"] = "application/json"}
-        --   })
+          local res = assert(client:send {
+            method = "PATCH",
+            body = {
+              status = 3
+            },
+            path = "/developers/".. developer.id,
+            headers = {["Content-Type"] = "application/json"}
+          })
 
-        --   local body = assert.res_status(200, res)
-        --   local resp_body_json = cjson.decode(body)
-        --   assert.is_nil(resp_body_json.email)
+          local body = assert.res_status(200, res)
+          local resp_body_json = cjson.decode(body)
+          assert.is_nil(resp_body_json.email)
 
-        --   local res = assert(client:send {
-        --     method = "PATCH",
-        --     body = {
-        --       status = 0
-        --     },
-        --     path = "/portal/developers/".. developer.id,
-        --     headers = {["Content-Type"] = "application/json"}
-        --   })
+          local res = assert(client:send {
+            method = "PATCH",
+            body = {
+              status = 0
+            },
+            path = "/developers/".. developer.id,
+            headers = {["Content-Type"] = "application/json"}
+          })
 
-        --   local body = assert.res_status(200, res)
-        --   local resp_body_json = cjson.decode(body)
-        --   assert.is_nil(resp_body_json.email)
-        -- end)
+          local body = assert.res_status(200, res)
+          local resp_body_json = cjson.decode(body)
+          assert.is_nil(resp_body_json.email)
+        end)
       end)
     end)
 
-    describe("/portal/invite", function()
-      -- describe("POST", function()
-      --   describe("portal_invite_email = off", function()
-      --     before_each(function()
-      --       helpers.stop_kong()
-      --       assert(db:truncate())
-      --       helpers.register_consumer_relations(dao)
+    -- TODO DEVX: write developer plugin tests
+    describe("/developer/:developer/plugins", function()
+    end)
 
-      --       assert(helpers.start_kong({
-      --         database   = strategy,
-      --         portal     = true,
-      --         portal_auth = "basic-auth",
-      --         portal_auth_config = "{ \"hide_credentials\": true }",
-      --         portal_auto_approve = "off",
-      --         portal_invite_email = "off",
-      --       }))
+    describe("/developer/:developer/plugins/:id", function()
+    end)
+  end)
 
-      --       client = assert(helpers.admin_client())
-      --       configure_portal(dao)
-      --     end)
+  describe("/portal/invite", function()
+    describe("POST", function()
+      describe("portal_invite_email = off", function()
+        before_each(function()
+          helpers.stop_kong()
+          assert(db:truncate())
+          helpers.register_consumer_relations(dao)
 
-      --     it("returns 501 if portal_invite_email is turned off", function()
-      --       local res = assert(client:send {
-      --         method = "POST",
-      --         body = {
-      --           emails = {"me@example.com"},
-      --         },
-      --         path = "/portal/invite",
-      --         headers = {
-      --           ["Content-Type"] = "application/json",
-      --         }
-      --       })
+          assert(helpers.start_kong({
+            database   = strategy,
+            portal     = true,
+            portal_auth = "basic-auth",
+            portal_auth_config = "{ \"hide_credentials\": true }",
+            portal_auto_approve = "off",
+            portal_invite_email = "off",
+          }))
 
-      --       local body = assert.res_status(501, res)
-      --       local resp_body_json = cjson.decode(body)
-      --       local message = resp_body_json.message
+          client = assert(helpers.admin_client())
+          configure_portal(dao)
+        end)
 
-      --       assert.equal("portal_invite_email is disabled", message)
-      --     end)
-      --   end)
+        it("returns 501 if portal_invite_email is turned off", function()
+          local res = assert(client:send {
+            method = "POST",
+            body = {
+              emails = {"me@example.com"},
+            },
+            path = "/portal/invite",
+            headers = {
+              ["Content-Type"] = "application/json",
+            }
+          })
 
-      --   describe("smtp = on, valid config", function()
-      --     before_each(function()
-      --       helpers.stop_kong()
-      --       assert(db:truncate())
-      --       helpers.register_consumer_relations(dao)
+          local body = assert.res_status(501, res)
+          local resp_body_json = cjson.decode(body)
+          local message = resp_body_json.message
 
-      --       assert(helpers.start_kong({
-      --         database   = strategy,
-      --         portal     = true,
-      --         portal_auth = "basic-auth",
-      --         portal_auth_config = "{ \"hide_credentials\": true }",
-      --         portal_auto_approve = "off",
-      --         portal_emails_from = "me@example.com",
-      --         portal_emails_reply_to = "me@example.com",
-      --         smtp = "on",
-      --         smtp_mock = "on",
-      --       }))
+          assert.equal("portal_invite_email is disabled", message)
+        end)
+      end)
 
-      --       client = assert(helpers.admin_client())
-      --       configure_portal(dao)
-      --     end)
+      describe("smtp = on, valid config", function()
+        before_each(function()
+          helpers.stop_kong()
+          assert(db:truncate())
+          helpers.register_consumer_relations(dao)
 
-      --     it("returns 400 if not sent with emails param", function()
-      --       local res = assert(client:send {
-      --         method = "POST",
-      --         body = {
+          assert(helpers.start_kong({
+            database   = strategy,
+            portal     = true,
+            portal_auth = "basic-auth",
+            portal_auth_config = "{ \"hide_credentials\": true }",
+            portal_auto_approve = "off",
+            portal_emails_from = "me@example.com",
+            portal_emails_reply_to = "me@example.com",
+            smtp = "on",
+            smtp_mock = "on",
+          }))
 
-      --         },
-      --         path = "/portal/invite",
-      --         headers = {
-      --           ["Content-Type"] = "application/json",
-      --         }
-      --       })
+          client = assert(helpers.admin_client())
+          configure_portal(dao)
+        end)
 
-      --       local body = assert.res_status(400, res)
-      --       local resp_body_json = cjson.decode(body)
-      --       local message = resp_body_json.message
+        it("returns 400 if not sent with emails param", function()
+          local res = assert(client:send {
+            method = "POST",
+            body = {
 
-      --       assert.equal("emails param required", message)
-      --     end)
+            },
+            path = "/portal/invite",
+            headers = {
+              ["Content-Type"] = "application/json",
+            }
+          })
 
-      --     it("returns 400 if emails is empty", function()
-      --       local res = assert(client:send {
-      --         method = "POST",
-      --         body = {
-      --           emails = {},
-      --         },
-      --         path = "/portal/invite",
-      --         headers = {
-      --           ["Content-Type"] = "application/json",
-      --         }
-      --       })
+          local body = assert.res_status(400, res)
+          local resp_body_json = cjson.decode(body)
+          local message = resp_body_json.message
 
-      --       local body = assert.res_status(400, res)
-      --       local resp_body_json = cjson.decode(body)
-      --       local message = resp_body_json.message
+          assert.equal("emails param required", message)
+        end)
 
-      --       assert.equal("emails param required", message)
-      --     end)
+        it("returns 400 if emails is empty", function()
+          local res = assert(client:send {
+            method = "POST",
+            body = {
+              emails = {},
+            },
+            path = "/portal/invite",
+            headers = {
+              ["Content-Type"] = "application/json",
+            }
+          })
 
-      --     it("returns 200 if emails are sent", function()
-      --       local res = assert(client:send {
-      --         method = "POST",
-      --         body = {
-      --           emails = {"me@example.com", "you@example.com"},
-      --         },
-      --         path = "/portal/invite",
-      --         headers = {
-      --           ["Content-Type"] = "application/json",
-      --         }
-      --       })
+          local body = assert.res_status(400, res)
+          local resp_body_json = cjson.decode(body)
+          local message = resp_body_json.message
 
-      --       local expected = {
-      --         smtp_mock = true,
-      --         error = {
-      --           count = 0,
-      --           emails = {},
-      --         },
-      --         sent = {
-      --           count = 2,
-      --           emails = {
-      --             ["me@example.com"] = true,
-      --             ["you@example.com"] = true,
-      --           },
-      --         }
-      --       }
+          assert.equal("emails param required", message)
+        end)
 
-      --       local body = assert.res_status(200, res)
-      --       local resp_body_json = cjson.decode(body)
+        it("returns 200 if emails are sent", function()
+          local res = assert(client:send {
+            method = "POST",
+            body = {
+              emails = {"me@example.com", "you@example.com"},
+            },
+            path = "/portal/invite",
+            headers = {
+              ["Content-Type"] = "application/json",
+            }
+          })
 
-      --       assert.same(expected, resp_body_json)
-      --     end)
+          local expected = {
+            smtp_mock = true,
+            error = {
+              count = 0,
+              emails = {},
+            },
+            sent = {
+              count = 2,
+              emails = {
+                ["me@example.com"] = true,
+                ["you@example.com"] = true,
+              },
+            }
+          }
 
-      --     it("returns 200 if some of the emails are sent", function()
-      --       local res = assert(client:send {
-      --         method = "POST",
-      --         body = {
-      --           emails = {"me@example.com", "bademail.com"},
-      --         },
-      --         path = "/portal/invite",
-      --         headers = {
-      --           ["Content-Type"] = "application/json",
-      --         }
-      --       })
+          local body = assert.res_status(200, res)
+          local resp_body_json = cjson.decode(body)
 
-      --       local expected = {
-      --         smtp_mock = true,
-      --         error = {
-      --           count = 1,
-      --           emails = {
-      --             ["bademail.com"] = "Invalid email: missing '@' symbol",
-      --           },
-      --         },
-      --         sent = {
-      --           count = 1,
-      --           emails = {
-      --             ["me@example.com"] = true,
-      --           },
-      --         }
-      --       }
+          assert.same(expected, resp_body_json)
+        end)
 
-      --       local body = assert.res_status(200, res)
-      --       local resp_body_json = cjson.decode(body)
+        it("returns 200 if some of the emails are sent", function()
+          local res = assert(client:send {
+            method = "POST",
+            body = {
+              emails = {"me@example.com", "bademail.com"},
+            },
+            path = "/portal/invite",
+            headers = {
+              ["Content-Type"] = "application/json",
+            }
+          })
 
-      --       assert.same(expected, resp_body_json)
-      --     end)
+          local expected = {
+            smtp_mock = true,
+            error = {
+              count = 1,
+              emails = {
+                ["bademail.com"] = "Invalid email: missing '@' symbol",
+              },
+            },
+            sent = {
+              count = 1,
+              emails = {
+                ["me@example.com"] = true,
+              },
+            }
+          }
 
-      --     it("returns 400 if none of the emails are sent", function()
-      --       local res = assert(client:send {
-      --         method = "POST",
-      --         body = {
-      --           emails = {"notemail", "bademail.com"},
-      --         },
-      --         path = "/portal/invite",
-      --         headers = {
-      --           ["Content-Type"] = "application/json",
-      --         }
-      --       })
+          local body = assert.res_status(200, res)
+          local resp_body_json = cjson.decode(body)
 
-      --       local expected = {
-      --         smtp_mock = true,
-      --         error = {
-      --           count = 2,
-      --           emails = {
-      --             ["notemail"] = "Invalid email: missing '@' symbol",
-      --             ["bademail.com"] = "Invalid email: missing '@' symbol",
-      --           },
-      --         },
-      --         sent = {
-      --           count = 0,
-      --           emails = {},
-      --         }
-      --       }
+          assert.same(expected, resp_body_json)
+        end)
 
-      --       local body = assert.res_status(400, res)
-      --       local resp_body_json = cjson.decode(body)
+        it("returns 400 if none of the emails are sent", function()
+          local res = assert(client:send {
+            method = "POST",
+            body = {
+              emails = {"notemail", "bademail.com"},
+            },
+            path = "/portal/invite",
+            headers = {
+              ["Content-Type"] = "application/json",
+            }
+          })
 
-      --       assert.same(expected, resp_body_json.message)
-      --     end)
-      --   end)
-      -- end)
+          local expected = {
+            smtp_mock = true,
+            error = {
+              count = 2,
+              emails = {
+                ["notemail"] = "Invalid email: missing '@' symbol",
+                ["bademail.com"] = "Invalid email: missing '@' symbol",
+              },
+            },
+            sent = {
+              count = 0,
+              emails = {},
+            }
+          }
+
+          local body = assert.res_status(400, res)
+          local resp_body_json = cjson.decode(body)
+
+          assert.same(expected, resp_body_json.message)
+        end)
+      end)
     end)
 
     -- TODO DEVX: write developer plugin tests

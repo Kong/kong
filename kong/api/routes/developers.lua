@@ -4,6 +4,7 @@ local singletons = require "kong.singletons"
 local constants  = require "kong.constants"
 local ws_helper  = require "kong.workspaces.helper"
 local enums      = require "kong.enterprise_edition.dao.enums"
+local portal_smtp_client = require "kong.portal.emails"
 
 local unescape_uri = ngx.unescape_uri
 local ws_constants = constants.WORKSPACE_CONFIG
@@ -88,12 +89,38 @@ return {
       local developer_pk = self.params.developers
       self.params.developers = nil
 
+      -- save previous status
+      local developer = find_developer(db, developer_pk)
+      if not developer then
+        return helpers.responses.send_HTTP_NOT_FOUND()
+      end
+
+      local previous_status = developer.status
+
       local developer, _, err_t = update_developer(db, developer_pk, self.params)
       if not developer then
         return endpoints.handle_error(err_t)
       end
 
-      return helpers.responses.send_HTTP_OK(developer)
+      local res = { developer = developer }
+      if developer.status == enums.CONSUMERS.STATUS.APPROVED and
+         developer.status ~= previous_status and
+         previous_status ~= enums.CONSUMERS.STATUS.REVOKED then
+
+        local portal_emails = portal_smtp_client.new()
+        local email_res, err = portal_emails:approved(developer.email)
+        if err then
+          if err.code then
+            return helpers.responses.send(err.code, {message = err.message})
+          end
+
+          return helpers.yield_error(err)
+        end
+
+        res.email = email_res
+      end
+
+      return helpers.responses.send_HTTP_OK(res)
     end,
   },
 
@@ -140,6 +167,10 @@ return {
   },
 
   ["/developers/:email_or_id/plugins/:id"] = {
+    before = function(self, dao_factory, helpers)
+      check_portal_status(helpers)
+    end,
+
     GET = function(self, db, helpers)
       local developer = find_developer(db, self.params.email_or_id)
 
@@ -226,5 +257,28 @@ return {
 
       return helpers.responses.send_HTTP_NO_CONTENT()
     end
-  }
+  },
+
+  ["/portal/invite"] = {
+    before = function(self, db, helpers)
+      check_portal_status(helpers)
+    end,
+
+    POST = function(self, db, helpers)
+      if not self.params.emails or next(self.params.emails) == nil then
+        return helpers.responses.send_HTTP_BAD_REQUEST("emails param required")
+      end
+      local portal_emails = portal_smtp_client.new()
+      local res, err = portal_emails:invite(self.params.emails)
+      if err then
+        if err.code then
+          return helpers.responses.send(err.code, {message = err.message})
+        end
+
+        return helpers.yield_error(err)
+      end
+
+      return helpers.responses.send_HTTP_OK(res)
+    end
+  },
 }
