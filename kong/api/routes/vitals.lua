@@ -1,9 +1,13 @@
 local endpoints = require "kong.api.endpoints"
-local singletons = require "kong.singletons"
 
-if not singletons.configuration.vitals then
+
+local kong = kong
+
+
+if not kong.configuration.vitals then
   return {}
 end
+
 
 local function fetch_consumer(self, helpers, db, consumer_id)
   if not consumer_id then
@@ -22,14 +26,14 @@ end
 return {
   ["/vitals/"] = {
     GET = function(self, dao, helpers)
-      local data = singletons.vitals:get_index()
+      local data = kong.vitals:get_index()
 
       return helpers.responses.send_HTTP_OK(data)
     end
   },
   ["/vitals/cluster"] = {
     GET = function(self, dao, helpers)
-      local cluster_stats, err = singletons.vitals:get_stats(
+      local cluster_stats, err = kong.vitals:get_stats(
           self.params.interval,
           "cluster",
           nil,
@@ -56,7 +60,7 @@ return {
         entity_type = "cluster",
       }
 
-      local status_codes, err = singletons.vitals:get_status_codes(opts)
+      local status_codes, err = kong.vitals:get_status_codes(opts)
 
       if err then
         if err:find("Invalid query params", nil, true) then
@@ -72,7 +76,7 @@ return {
   },
   ["/vitals/nodes/"] = {
     GET = function(self, dao, helpers)
-      local all_node_stats, err = singletons.vitals:get_stats(
+      local all_node_stats, err = kong.vitals:get_stats(
           self.params.interval,
           "node",
           nil,
@@ -93,7 +97,7 @@ return {
   },
   ["/vitals/nodes/:node_id"] = {
     GET = function(self, dao, helpers)
-      local requested_node_stats, err = singletons.vitals:get_stats(
+      local requested_node_stats, err = kong.vitals:get_stats(
           self.params.interval,
           "node",
           self.params.node_id,
@@ -116,7 +120,7 @@ return {
   ["/vitals/consumers/:consumer_id/cluster"] = {
     GET = function(self, _, helpers)
       -- XXX can't use second paremeter here - it's the old dao
-      local db = singletons.db
+      local db = kong.db
       fetch_consumer(self, helpers, db, self.params.consumer_id)
 
       local opts = {
@@ -126,7 +130,7 @@ return {
         level       = "cluster",
       }
 
-      local cluster_stats, err = singletons.vitals:get_consumer_stats(opts)
+      local cluster_stats, err = kong.vitals:get_consumer_stats(opts)
 
       if err then
         if err:find("Invalid query params", nil, true) then
@@ -143,7 +147,7 @@ return {
   },
   ["/vitals/status_codes/by_service"] = {
     GET = function(self, dao, helpers)
-      local service, service_err = singletons.db.services:select({ id = self.params.service_id })
+      local service, service_err = kong.db.services:select({ id = self.params.service_id })
 
       if service_err then
         helpers.responses.send_HTTP_BAD_REQUEST("Invalid query params: service_id is invalid")
@@ -162,7 +166,7 @@ return {
         workspace_id = ngx.ctx.workspaces[1] and ngx.ctx.workspaces[1].id,
       }
 
-      local status_codes, err = singletons.vitals:get_status_codes(opts)
+      local status_codes, err = kong.vitals:get_status_codes(opts)
 
       if err then
         if err:find("Invalid query params", nil, true) then
@@ -177,7 +181,7 @@ return {
   },
   ["/vitals/status_codes/by_route"] = {
     GET = function(self, dao, helpers)
-      local route, route_err = singletons.db.routes:select({ id = self.params.route_id })
+      local route, route_err = kong.db.routes:select({ id = self.params.route_id })
 
       if route_err then
         helpers.responses.send_HTTP_BAD_REQUEST("Invalid query params: route_id is invalid")
@@ -196,7 +200,7 @@ return {
         workspace_id = ngx.ctx.workspaces[1] and ngx.ctx.workspaces[1].id,
       }
 
-      local status_codes, err = singletons.vitals:get_status_codes(opts)
+      local status_codes, err = kong.vitals:get_status_codes(opts)
 
       if err then
         if err:find("Invalid query params", nil, true) then
@@ -212,7 +216,7 @@ return {
   ["/vitals/status_codes/by_consumer"] = {
     GET = function(self, _, helpers)
       -- XXX can't use second paremeter here - it's the old dao
-      local db = singletons.db
+      local db = kong.db
       fetch_consumer(self, helpers, db, self.params.consumer_id)
 
       local opts = {
@@ -223,7 +227,7 @@ return {
         level       = "cluster",
       }
 
-      local requested_routes, err = singletons.vitals:get_status_codes(opts)
+      local requested_routes, err = kong.vitals:get_status_codes(opts)
       if err then
         if err:find("Invalid query params", nil, true) then
           return helpers.responses.send_HTTP_BAD_REQUEST(err)
@@ -238,7 +242,7 @@ return {
   ["/vitals/status_codes/by_consumer_and_route"] = {
     GET = function(self, dao, helpers)
       -- XXX can't use second paremeter here - it's the old dao
-      local db = singletons.db
+      local db = kong.db
       fetch_consumer(self, helpers, db, self.params.consumer_id)
 
       local opts = {
@@ -250,7 +254,7 @@ return {
         workspace_id = ngx.ctx.workspaces[1] and ngx.ctx.workspaces[1].id,
       }
 
-      local requested_routes, err = singletons.vitals:get_status_codes(opts, "route_id")
+      local requested_routes, err = kong.vitals:get_status_codes(opts, "route_id")
 
       if err then
         if err:find("Invalid query params", nil, true) then
@@ -284,7 +288,7 @@ return {
         level       = "cluster",
       }
 
-      local res, err = singletons.vitals:get_status_codes(opts)
+      local res, err = kong.vitals:get_status_codes(opts)
 
       if err then
         if err:find("Invalid query params", nil, true) then

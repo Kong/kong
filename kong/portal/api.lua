@@ -10,6 +10,8 @@ local auth          = require "kong.portal.auth"
 local portal_smtp_client = require "kong.portal.emails"
 local secrets       = require "kong.enterprise_edition.consumer_reset_secret_helpers"
 
+
+local kong = kong
 local ws_constants = constants.WORKSPACE_CONFIG
 
 --- Allowed auth plugins
@@ -674,7 +676,7 @@ return {
         level       = "cluster",
       }
 
-      local res, err = singletons.vitals:get_status_codes(opts)
+      local res, err = kong.vitals:get_status_codes(opts)
       return handle_vitals_response(res, err, helpers)
     end,
   },
@@ -699,7 +701,7 @@ return {
         level       = "cluster",
       }
 
-      local res, err = singletons.vitals:get_status_codes(opts, key_by)
+      local res, err = kong.vitals:get_status_codes(opts, key_by)
       return handle_vitals_response(res, err, helpers)
     end
   },
@@ -722,7 +724,7 @@ return {
         level       = "cluster",
       }
 
-      local res, err = singletons.vitals:get_consumer_stats(opts)
+      local res, err = kong.vitals:get_consumer_stats(opts)
       return handle_vitals_response(res, err, helpers)
     end
   },

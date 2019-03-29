@@ -3,12 +3,13 @@ local meta       = require "kong.enterprise_edition.meta"
 local pl_file    = require "pl.file"
 local pl_utils   = require "pl.utils"
 local pl_path    = require "pl.path"
-local singletons = require "kong.singletons"
 local constants  = require "kong.constants"
 local ws_helper  = require "kong.workspaces.helper"
 local feature_flags   = require "kong.enterprise_edition.feature_flags"
 local license_helpers = require "kong.enterprise_edition.license_helpers"
 
+
+local kong = kong
 local ws_constants  = constants.WORKSPACE_CONFIG
 local _M = {}
 
@@ -22,22 +23,22 @@ _M.handlers = {
   access = {
     after = function(ctx)
       if not ctx.is_internal then
-        singletons.vitals:log_latency(ctx.KONG_PROXY_LATENCY)
-        singletons.vitals:log_request(ctx)
+        kong.vitals:log_latency(ctx.KONG_PROXY_LATENCY)
+        kong.vitals:log_request(ctx)
       end
     end
   },
   header_filter = {
     after = function(ctx)
       if not ctx.is_internal then
-        singletons.vitals:log_upstream_latency(ctx.KONG_WAITING_TIME)
+        kong.vitals:log_upstream_latency(ctx.KONG_WAITING_TIME)
       end
     end
   },
   log = {
     after = function(ctx, status)
       if not ctx.is_internal then
-        singletons.vitals:log_phase_after_plugins(ctx, status)
+        kong.vitals:log_phase_after_plugins(ctx, status)
       end
     end
   }
