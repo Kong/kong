@@ -929,20 +929,16 @@ function OICHandler:access(conf)
   log("loading discovery information")
   local oic, iss, secret, options
   do
+    local issuer
     local issuer_uri = args.get_conf_arg("issuer")
-    if not issuer_uri then
-      return unexpected(trusted_client, "issuer was not specified")
-    end
 
     local discovery_options = args.get_http_opts {
-      headers              = args.get_conf_args("discovery_headers_names", "discovery_headers_values"),
-      rediscovery_lifetime = args.get_conf_arg("rediscovery_lifetime", 300),
-      extra_jwks_uris      = args.get_conf_arg("extra_jwks_uris"),
+      headers               = args.get_conf_args("discovery_headers_names", "discovery_headers_values"),
+      rediscovery_lifetime  = args.get_conf_arg("rediscovery_lifetime", 300),
+      extra_jwks_uris       = args.get_conf_arg("extra_jwks_uris"),
     }
 
-    local issuer
     issuer, err = cache.issuers.load(issuer_uri, discovery_options)
-
     if not issuer then
       return unexpected(trusted_client, err or "discovery information could not be loaded")
     end
@@ -953,6 +949,7 @@ function OICHandler:access(conf)
       redirect_uri              = trusted_client.redirect_uri,
       scope                     = args.get_conf_arg("scopes", {}),
       response_mode             = args.get_conf_arg("response_mode"),
+      response_type             = args.get_conf_arg("response_type"),
       audience                  = args.get_conf_arg("audience"),
       domains                   = args.get_conf_arg("domains"),
       max_age                   = args.get_conf_arg("max_age"),
@@ -963,6 +960,8 @@ function OICHandler:access(conf)
       http_proxy_authorization  = args.get_conf_arg("http_proxy_authorization"),
       https_proxy               = args.get_conf_arg("https_proxy"),
       https_proxy_authorization = args.get_conf_arg("http_proxy_authorization"),
+      authorization_endpoint    = args.get_conf_arg("authorization_endpoint"),
+      token_endpoint            = args.get_conf_arg("token_endpoint"),
       no_proxy                  = args.get_conf_arg("no_proxy"),
       keepalive                 = args.get_conf_arg("keepalive", true),
       ssl_verify                = args.get_conf_arg("ssl_verify", true),

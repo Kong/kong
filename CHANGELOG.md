@@ -1,8 +1,18 @@
+## v1.1.0
+
+- Add `config.authorization_endpoint`
+- Add `config.token_endpoint`
+- Add `config.response_type`
+- Change `config.issuer` to semi-optional (you still need to specify it but code won't error if http request to issuer fails)
+- Fix issue with Kong OAuth 2.0 and OpenID Connect sharing incompatible values with same cache key
+
+
 ## v1.0.0
 
 - Change Kong 1.0 support
 - Remove all the sub-plugins (`openid-connect-verification`, `openid-connect-authentication`, and `openid-connect-protection`)
 - Update `lua-resty-http` to `>= 0.13`
+
 
 ## v0.2.8
 

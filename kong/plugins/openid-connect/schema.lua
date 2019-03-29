@@ -189,6 +189,18 @@ return {
             },
           },
           {
+            response_type = {
+              required = false,
+              type     = "array",
+              default  = {
+                "code",
+              },
+              elements = {
+                type = "string",
+              },
+            },
+          },
+          {
             auth_methods = {
               required = false,
               type     = "array",
@@ -318,6 +330,11 @@ return {
             authorization_cookie_secure = {
               required = false,
               type     = "boolean",
+            },
+          },
+          {
+            authorization_endpoint = typedefs.url {
+              required = false,
             },
           },
           {
@@ -723,6 +740,11 @@ return {
                 "client_secret_basic",
                 "client_secret_post",
               },
+            },
+          },
+          {
+            token_endpoint = typedefs.url {
+              required = false,
             },
           },
           {

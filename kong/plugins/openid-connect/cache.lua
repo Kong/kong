@@ -157,18 +157,23 @@ end
 local function discover(issuer, opts, now)
   opts = opts or {}
 
+  local cdec
+
   log.notice("loading configuration for ", issuer, " using discovery")
   local claims, err = configuration.load(issuer, opts)
   if not claims then
-    log.err("loading configuration for ", issuer, " using discovery failed with ", err)
-    return nil
-  end
+    log.notice("loading configuration for ", issuer, " using discovery failed with ", err ,
+               " (falling back to empty configuration)")
+    cdec = {
+      issuer = issuer,
+    }
 
-  local cdec
-  cdec, err = json.decode(claims)
-  if not cdec then
-    log.err("decoding discovery document failed with ", err)
-    return nil
+  else
+    cdec, err = json.decode(claims)
+    if not cdec then
+      log.err("decoding discovery document failed with ", err)
+      return nil
+    end
   end
 
   cdec.updated_at = now or time()
@@ -238,6 +243,10 @@ local function discover(issuer, opts, now)
         end
       end
     end
+  end
+
+  if not jwks then
+    jwks = {}
   end
 
   if type(jwks) == "table" then
@@ -445,65 +454,69 @@ end
 local kong_oauth2 = {}
 
 
-local function kong_oauth2_credential(credential_id)
-  return kong.db.oauth2_credentials:select { id = credential_id }
+local function kong_oauth2_credential(credential)
+  return kong.db.oauth2_credentials:select(credential)
 end
 
 
-local function kong_oauth2_consumer(consumer_id)
-  return kong.db.consumers:select { id = consumer_id }
+local function kong_oauth2_consumer(consumer)
+  return kong.db.consumers:select(consumer)
 end
 
 
 local function kong_oauth2_load(access_token, ttl)
   log.notice("loading kong oauth2 token from database")
   local token, err = kong.db.oauth2_tokens:select_by_access_token(access_token)
-  if not token then
-    return nil, err or "unable to load kong oauth2 token from database"
+
+  if err then
+    return nil, err
   end
 
-  local exp, cache_ttl = get_expiry_and_cache_ttl(token, ttl)
+  if not token then
+    return nil, "unable to load kong oauth2 token from database"
+  end
 
-  return { exp, token }, nil, cache_ttl
+  local _, cache_ttl = get_expiry_and_cache_ttl(token, ttl)
+
+  return token, nil, cache_ttl
 end
 
 
 function kong_oauth2.load(ctx, access_token, ttl, use_cache)
   local key = cache_key(access_token, "oauth2_tokens")
-  local res
+  local token
   local err
 
   if use_cache then
-    res, err = cache_get(key, ttl, kong_oauth2_load, access_token, ttl)
-    if not res then
+    token, err = cache_get(key, ttl, kong_oauth2_load, access_token, ttl)
+    if not token then
       return nil, err
     end
 
-    local exp = res[1]
+    local exp = get_expiry_and_cache_ttl(token, ttl)
     if exp ~= 0 and exp < ttl.now then
       cache_invalidate(key)
-      res, err = kong_oauth2_load(access_token, ttl)
+      token, err = kong_oauth2_load(access_token, ttl)
     end
 
   else
-    res, err = kong_oauth2_load(access_token, ttl)
+    token, err = kong_oauth2_load(access_token, ttl)
   end
 
-  if not res then
+  if not token then
     return nil, err or "kong oauth was not found"
   end
 
-  local token = res[2]
   if not token.access_token or token.access_token ~= access_token then
     return nil, "kong oauth access token was not found"
   end
 
-  if token.service_id and ctx.service and ctx.service.id ~= token.service_id then
+  if token.service and ctx.service and ctx.service.id ~= token.service.id then
     return nil, "kong access token is for different service"
   end
 
   local ttl_new
-  local exp = res[1]
+  local exp = get_expiry_and_cache_ttl(token, ttl)
   if exp > 0 then
     local iat = token.created_at
     if (ttl.now - iat) > (exp - ttl.now) then
@@ -538,16 +551,16 @@ function kong_oauth2.load(ctx, access_token, ttl, use_cache)
     ttl_new = ttl
   end
 
-  local credential_cache_key = cache_key(token.credential_id, "oauth2_credentials")
+  local credential_cache_key = cache_key(token.credential, "oauth2_credentials")
   local credential
-  credential, err = cache_get(credential_cache_key, ttl_new, kong_oauth2_credential, token.credential_id)
+  credential, err = cache_get(credential_cache_key, ttl_new, kong_oauth2_credential, token.credential)
   if not credential then
     return nil, err
   end
 
-  local consumer_cache_key = cache_key(credential.consumer_id, "consumers")
+  local consumer_cache_key = cache_key(credential.consumer, "consumers")
   local consumer
-  consumer, err = cache_get(consumer_cache_key, ttl_new, kong_oauth2_consumer, credential.consumer_id)
+  consumer, err = cache_get(consumer_cache_key, ttl_new, kong_oauth2_consumer, credential.consumer)
   if not consumer then
     return nil, err
   end
@@ -834,5 +847,5 @@ return {
   tokens         = tokens,
   token_exchange = token_exchange,
   userinfo       = userinfo,
-  version        = "1.0.0",
+  version        = "1.1.0",
 }
