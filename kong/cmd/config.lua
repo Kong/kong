@@ -29,6 +29,11 @@ end
 
 
 local function execute(args)
+  if args.command == "init" then
+    generate_init()
+    os.exit(0)
+  end
+
   log.disable()
   -- retrieve default prefix or use given one
   local default_conf = assert(conf_loader(args.conf, {
@@ -43,11 +48,6 @@ local function execute(args)
 
   -- load <PREFIX>/kong.conf containing running node's config
   local conf = assert(conf_loader(default_conf.kong_env))
-
-  if args.command == "init" then
-    generate_init()
-    os.exit(0)
-  end
 
   if args.command == "db-import" then
     args.command = "db_import"
