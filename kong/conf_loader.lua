@@ -187,6 +187,28 @@ local CONF_INFERENCES = {
 
   lua_ssl_verify_depth = { typ = "number" },
   lua_socket_pool_size = { typ = "number" },
+
+  -- known keys which require no type inference:
+  prefix = {},
+  pg_user = {},
+  pg_host = {},
+  pg_schema = {},
+  pg_database = {},
+  cassandra_username = {},
+  cassandra_keyspace = {},
+  declarative_config = {},
+  mem_cache_size = {},
+  lua_package_path = {},
+  lua_package_cpath = {},
+  lua_ssl_trusted_certificate = {},
+  ssl_cert = {},
+  ssl_cert_key = {},
+  ssl_ciphers = {},
+  ssl_cipher_suite = {},
+  admin_ssl_cert = {},
+  admin_ssl_cert_key = {},
+  client_ssl_cert = {},
+  client_ssl_cert_key = {},
 }
 
 
@@ -221,13 +243,33 @@ local _nop_tostring_mt = {
 }
 
 
+local function is_dynamic_key(k)
+  for _, dyn_key_prefix in pairs(DYNAMIC_KEY_PREFIXES) do
+    if string.match(k, "^(" .. dyn_key_prefix .. ".+)") then
+      return true
+    end
+  end
+  return false
+end
+
+
 -- Validate properties (type/enum/custom) and infer their type.
 -- @param[type=table] conf The configuration table to treat.
-local function check_and_infer(conf)
+-- @param[type=boolean] strict Report unknown fields as errors.
+local function check_and_infer(conf, strict)
   local errors = {}
 
   for k, value in pairs(conf) do
-    local v_schema = CONF_INFERENCES[k] or {}
+    local v_schema = CONF_INFERENCES[k]
+    if not v_schema then
+      if strict then
+        if not is_dynamic_key(k) then
+          errors[#errors + 1] = fmt("unknown key: '%s'", k)
+        end
+      end
+      v_schema = {}
+    end
+
     local typ = v_schema.typ
 
     if type(value) == "string" then
@@ -750,7 +792,7 @@ local function load(path, custom_conf)
   local conf = tablex.pairmap(overrides, defaults, from_file_conf, custom_conf)
 
   -- validation
-  local ok, err, errors = check_and_infer(conf)
+  local ok, err, errors = check_and_infer(conf, os.getenv("KONG_STRICT_CONF"))
   if not ok then
     return nil, err, errors
   end
