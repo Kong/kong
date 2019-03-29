@@ -1,11 +1,11 @@
 local spec_helpers = require "spec.helpers"
 local dao_helpers = require "spec.02-integration.03-dao.helpers"
 local utils       = require "kong.tools.utils"
-local singletons  = require "kong.singletons"
 local bit = require "bit"
 
 
 local rbac
+local kong = kong
 
 
 local MAX_ITERATIONS = 12
@@ -20,8 +20,6 @@ describe("(#" .. kong_conf.database .. ")", function()
     package.loaded["kong.rbac"] = nil
 
     bp, db, dao = spec_helpers.get_db_utils()
-    singletons.dao = dao
-    singletons.db = db
 
     rbac = require "kong.rbac"
   end)
@@ -935,8 +933,7 @@ describe("(#" .. kong_conf.database .. ")", function()
   describe("check_cascade", function()
     local entities
     setup(function()
-      local singletons = require "kong.singletons"
-      singletons.configuration= {
+      kong.configuration= {
         rbac = "both",
       }
       entities = {
@@ -965,7 +962,7 @@ describe("(#" .. kong_conf.database .. ")", function()
       }
     end)
     teardown(function()
-      singletons.configuration = nil
+      kong.configuration = nil
     end)
 
     it("all entities allowed", function()
@@ -999,7 +996,7 @@ describe("(#" .. kong_conf.database .. ")", function()
       assert.equals(false, rbac.check_cascade(entities, rbac_ctx))
     end)
     it("rbac off", function()
-      singletons.configuration= {
+      kong.configuration= {
         rbac = "off",
       }
       assert.equals(true, rbac.check_cascade(entities, nil))
