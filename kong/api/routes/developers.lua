@@ -16,6 +16,16 @@ local function check_portal_status(helpers)
 end
 
 
+local function find_developer(db, developer_pk)
+  local id = unescape_uri(developer_pk)
+  if utils.is_valid_uuid(id) then
+    return db.developers:select({ id = developer_pk })
+  end
+
+  return db.developers:select_by_email(developer_pk)
+end
+
+
 local function update_developer(db, developer_pk, params)
   local id = unescape_uri(developer_pk)
   if utils.is_valid_uuid(id) then
@@ -74,7 +84,7 @@ return {
       check_portal_status(helpers)
     end,
 
-    PATCH = function(self, db, helpers, parent)
+    PATCH = function(self, db, helpers)
       local developer_pk = self.params.developers
       self.params.developers = nil
 
@@ -85,5 +95,136 @@ return {
 
       return helpers.responses.send_HTTP_OK(developer)
     end,
+  },
+
+  ["/developers/:email_or_id/plugins/"] = {
+    GET = function(self, db, helpers)
+      local developer = find_developer(db, self.params.email_or_id)
+      if not developer then
+        return helpers.responses.send_HTTP_NOT_FOUND()
+      end
+
+      local consumer = developer.consumer
+      local plugins, err, err_t = db.plugins:select_all({ consumer = consumer })
+      if err then
+        return endpoints.handle_error(err_t)
+      end
+
+      helpers.responses.send_HTTP_OK(plugins)
+    end,
+
+    POST = function(self, db, helpers)
+      local developer = find_developer(db, self.params.email_or_id)
+      if not developer then
+        return helpers.responses.send_HTTP_NOT_FOUND()
+      end
+
+      self.params.email_or_id = nil
+      self.params.consumer = developer.consumer
+      
+      local ok, _, err_t = db.plugins:insert(self.params)
+      if not ok then
+        return endpoints.handle_error(err_t)
+      end
+
+      return helpers.responses.send_HTTP_CREATED(ok)
+    end,
+
+    -- TODO DEVX: Implement PUT if time allows
+    -- PUT = function(self, dao_factory, helpers)
+    --   find_developer(self, dao_factory, helpers)
+    --   self.params.consumer_id = self.consumer.id
+
+    --   crud.put(self.params, dao_factory.plugins)
+    -- end
+  },
+
+  ["/developers/:email_or_id/plugins/:id"] = {
+    GET = function(self, db, helpers)
+      local developer = find_developer(db, self.params.email_or_id)
+
+      if not developer then
+        return helpers.responses.send_HTTP_NOT_FOUND()
+      end
+
+      local consumer = developer.consumer
+      local plugin, _, err_t = db.plugins:select_all({
+        consumer = { id = consumer.id },
+        id = self.params.id
+      })
+
+      if err_t then
+        return endpoints.handle_error(err_t)
+      end
+
+      if not next(plugin) then
+        return helpers.responses.send_HTTP_NOT_FOUND()
+      end
+
+      return helpers.responses.send_HTTP_OK(plugin)
+    end,
+
+    PATCH = function(self, db, helpers)
+      local developer = find_developer(db, self.params.email_or_id)
+      if not developer then
+        return helpers.responses.send_HTTP_NOT_FOUND()
+      end
+
+      self.params.email_or_id = nil
+
+      local consumer = developer.consumer
+      local plugins, _, err_t = db.plugins:select_all({
+        consumer = { id = consumer.id },
+        id = self.params.id
+      })
+
+      if err_t then
+        return endpoints.handle_error(err_t)
+      end
+
+      if not next(plugins) then
+        return helpers.responses.send_HTTP_NOT_FOUND()
+      end
+
+      self.params.id = nil
+
+      local plugin = plugins[1]
+      local ok, _, err_t = db.plugins:update({ id = plugin.id }, self.params)
+      if not ok then
+        return endpoints.handle_error(err_t)
+      end
+
+      return helpers.responses.send_HTTP_OK(ok)
+    end,
+
+    DELETE = function(self, db, helpers)
+      local developer = find_developer(db, self.params.email_or_id)
+      if not developer then
+        return helpers.responses.send_HTTP_NOT_FOUND()
+      end
+
+      local consumer = developer.consumer
+      local plugins, _, err_t = db.plugins:select_all({
+        consumer = { id = consumer.id },
+        id = self.params.id
+      })
+
+      if err_t then
+        return endpoints.handle_error(err_t)
+      end
+
+      if not next(plugins) then
+        return helpers.responses.send_HTTP_NOT_FOUND()
+      end
+
+      self.params.id = nil
+      local plugin = plugins[1]
+      local ok, _, err_t = db.plugins:delete({ id = plugin.id })
+      if not ok then
+        return endpoints.handle_error(err_t)
+      end
+
+      return helpers.responses.send_HTTP_NO_CONTENT()
+    end
   }
 }

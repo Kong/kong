@@ -520,6 +520,13 @@ describe("Admin API - Developer Portal - " .. strategy, function()
       --   end)
       -- end)
     end)
+
+    -- TODO DEVX: write developer plugin tests
+    describe("/developer/:developer/plugins", function()
+    end)
+
+    describe("/developer/:developer/plugins/:id", function()
+    end)
   end)
 end)
 end
