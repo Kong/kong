@@ -591,52 +591,25 @@ for _, strategy in helpers.each_strategy() do
         "targets",
       })
 
+      local fixtures = {
+        dns_mock = helpers.dns_mock.new()
+      }
+
+      fixtures.dns_mock:SRV {
+        name = "my.srv.test.com",
+        target = "a.my.srv.test.com",
+        port = 80,  -- port should fail to connect
+      }
+      fixtures.dns_mock:A {
+        name = "a.my.srv.test.com",
+        address = "127.0.0.1",
+      }
+
       assert(helpers.start_kong({
         database   = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
         db_update_frequency = 0.1,
-        -- inject path to mock-resolver to make Kong load that module
-        lua_package_path = "spec/fixtures/mocks/lua-resty-dns/?.lua;" .. package.path,
-      }))
-
-      -- write the mock dns file AFTER kong starts, or it will be erased again
-      assert(require("pl.utils").writefile(dns_mock_filename,[[
-        local TYPE_A, TYPE_AAAA, TYPE_CNAME, TYPE_SRV = 1, 28, 5, 33
-        return {
-          [TYPE_SRV] = {
-            ["my.srv.test.com"] = {
-              {
-                type     = TYPE_SRV,
-                name     = "my.srv.test.com",
-                target   = "a.my.srv.test.com",
-                port     = 80,  -- this port should FAIL to connect
-                weight   = 10,
-                ttl      = 600,
-                priority = 20,
-                class    = 1,
-              },
-            },
-          },
-
-          [TYPE_A] = {
-            ["a.my.srv.test.com"] = {
-              {
-                type     = TYPE_A,
-                name     = "a.my.srv.test.com",
-                address  = "127.0.0.1",
-                ttl      = 600,
-                class    = 1,
-              },
-            },
-          },
-
-          [TYPE_AAAA] = {
-          },
-
-          [TYPE_CNAME] = {
-          },
-        }
-      ]]))
+      }, nil, nil, fixtures))
 
     end)
 

@@ -2,9 +2,9 @@
 -- (so NOT the Kong dns client)
 
 -- this file should be in the Kong working direrctory (prefix)
-local MOCK_RECORD_FILENAME = "dns_mock_records.lua"
+local MOCK_RECORD_FILENAME = "dns_mock_records.json"
 
-
+local cjson = require "cjson.safe"
 
 -- first thing is to get the original (non-mock) resolver
 local resolver
@@ -68,9 +68,11 @@ do
     end
 
     -- there is a file with mock records available, go load it
-    mock_records = assert(loadfile(filename))()
-    assert(type(mock_records) == "table",
-           "expected mock_record file to contain a table")
+    local f = assert(io.open(filename))
+    local json_file = assert(f:read("*a"))
+    f:close()
+
+    mock_records = assert(cjson.decode(json_file))
 
     return mock_records
   end
