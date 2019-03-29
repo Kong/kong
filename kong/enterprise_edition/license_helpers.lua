@@ -1,9 +1,9 @@
 local cjson      = require "cjson.safe"
 local pl_path    = require "pl.path"
 local log        = require "kong.cmd.utils.log"
-local singletons = require "kong.singletons"
 
 
+local kong = kong
 local timer_at = ngx.timer.at
 local split = require('kong.tools.utils').split
 local re_find = ngx.re.find
@@ -123,10 +123,10 @@ end
 
 
 local function report_expired_license()
-  local expiration_date = singletons.license and
-    singletons.license.license               and
-    singletons.license.license.payload       and
-    singletons.license.license.payload.license_expiration_date
+  local expiration_date = kong.license and
+    kong.license.license               and
+    kong.license.license.payload       and
+    kong.license.license.payload.license_expiration_date
 
   if not expiration_date or
      not re_find(expiration_date, "^\\d{4}-\\d{2}-\\d{2}$") then

@@ -327,14 +327,14 @@ function Kong.init()
   singletons.db = db
   -- /LEGACY
 
-  singletons.license = ee.read_license_info()
+  kong.license = ee.read_license_info()
   singletons.internal_proxies = internal_proxies.new()
   singletons.portal_emails = portal_emails.new(config)
   singletons.admin_emails = admin_emails.new(config)
 
   local reports = require "kong.reports"
-  local l = singletons.license and
-            singletons.license.license.payload.license_key or
+  local l = kong.license and
+            kong.license.license.payload.license_key or
             nil
   reports.add_immutable_value("license_key", l)
   reports.add_immutable_value("enterprise", true)

@@ -60,8 +60,8 @@ return {
       end
 
       local license
-      if singletons.license then
-        license = utils.deep_copy(singletons.license).license.payload
+      if kong.license then
+        license = utils.deep_copy(kong.license).license.payload
         license.license_key = nil
       end
 
