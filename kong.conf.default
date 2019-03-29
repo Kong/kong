@@ -400,19 +400,30 @@
 # DATASTORE
 #------------------------------------------------------------------------------
 
-# Kong will store all of its data (such as Routes, Services, Consumers, and Plugins) in
-# either Cassandra or PostgreSQL, and all Kong nodes belonging to the same cluster
-# must connect themselves to the same database.
+# Kong can run with a database to store coordinated data between Kong nodes in
+# a cluster, or without a database, where each node stores its information
+# independently in memory.
+#
+# When using a database, Kong will store data for all its entities (such as
+# Routes, Services, Consumers, and Plugins) in either Cassandra or PostgreSQL,
+# and all Kong nodes belonging to the same cluster must connect themselves
+# to the same database.
 #
 # Kong supports the following database versions:
 # - **PostgreSQL**: 9.5 and above.
 # - **Cassandra**: 2.2 and above.
 #
+# When not using a database, Kong is said to be in "DB-less mode": it will keep
+# its entities in memory, and each node needs to have this data entered via a
+# declarative configuration file, which can be specified through the
+# `declarative_config` property, or via the Admin API using the `/config`
+# endpoint.
+#
 
 #database = postgres             # Determines which of PostgreSQL or Cassandra
                                  # this node will use as its datastore.
-                                 # Accepted values are `postgres` and
-                                 # `cassandra`.
+                                 # Accepted values are `postgres`,
+                                 # `cassandra`, and `off`.
 
 #pg_host = 127.0.0.1             # Host of the Postgres server.
 #pg_port = 5432                  # Port of the Postgres server.
@@ -520,6 +531,19 @@
                                              # Cassandra nodes.
                                              # This value is only used during
                                              # migrations.
+
+#declarative_config =           # The path to the declarative configuration
+                                # file which holds the specification of all
+                                # entities (Routes, Services, Consumers, etc.)
+                                # to be used when the `database` is set to `off`.
+                                #
+                                # Entities are stored in Kong's in-memory cache,
+                                # so you must ensure that enough memory is
+                                # allocated to it via the `mem_cache_size`
+                                # property. You must also ensure that items
+                                # in the cache never expire, which means that
+                                # `db_cache_ttl` should preserve its default
+                                # value of 0.
 
 #------------------------------------------------------------------------------
 # DATASTORE CACHE
