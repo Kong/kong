@@ -1,4 +1,5 @@
 local conf_loader = require "kong.conf_loader"
+local pl_utils = require "pl.utils"
 local helpers = require "spec.helpers"
 local tablex = require "pl.tablex"
 
@@ -965,4 +966,58 @@ describe("Configuration loader", function()
       assert.equal("123456", conf.cassandra_password)
     end)
   end)
+
+  describe("changes", function()
+    local pr = os.getenv("TRAVIS_PULL_REQUEST")
+    local pr_it = pr and it or pending
+
+    pr_it("are reflected in kong.conf.default", function()
+      local base = os.getenv("TRAVIS_BRANCH")
+      print("Travis PR " .. pr .. " (" ..os.getenv("TRAVIS_PULL_REQUEST_BRANCH") .. ") targeting " .. base)
+
+      local cmd = "git diff " .. base .. " --numstat | cut -f3"
+      local ok, _, files, stderr = pl_utils.executeex(cmd)
+      assert(ok, "failed running: " .. cmd .. "\n" .. (stderr or ""))
+      files = "\n" .. files .. "\n"
+
+      if not files:match("\nkong/conf_loader.lua\n") then
+        print("[PASS]: No changes made to conf_loader.")
+        return
+      end
+
+      if files:match("\nkong.conf.default\n") then
+        print("[PASS]: PR includes changes to both kong/conf_loader.lua and kong.conf.default")
+        return
+      end
+
+      -- Some PRs modify conf_loader but do not require changes to kong.conf.default.
+      -- These should be noted with a hashtag in the commit message: #noconfchange
+
+      local log
+      cmd = "git log " .. base .. "..HEAD"
+      ok, _, log, stderr = pl_utils.executeex(cmd)
+      assert(ok, "failed running: " .. cmd .. "\n" .. (stderr or ""))
+
+      if log:match("#noconfchange") then
+        print("[PASS]: PR includes changes to kong/conf_loader.lua and uses #noconfchange hashtag")
+        return
+      end
+
+      print("*************************************************************************")
+      print("[FAIL]: Your pull request modifies kong.conf_loader (possibly modifying")
+      print("or adding directives) but does not include an accompanying change to")
+      print("kong.conf.default. Please document any changes in kong.conf.default")
+      print("and include in this PR.")
+      print()
+      print("If your PR modifies kong.conf_loader but does not require changes to")
+      print("kong.conf.default (i.e. no user-visible changes to the configuration")
+      print("format), please add the hashtag #noconfchange to your commit message")
+      print("to make this test pass.")
+      print("*************************************************************************")
+      print()
+
+      assert(false)
+    end)
+  end)
+
 end)
