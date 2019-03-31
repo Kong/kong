@@ -256,7 +256,7 @@ function _M.create(params, opts)
 
   local jwt
   if not token_optional then
-    local expiry = opts.token_expiry or singletons.configuration.admin_invitation_expiry
+    local expiry = opts.token_expiry or kong.configuration.admin_invitation_expiry
 
     jwt, err = secrets.create(admin.consumer, opts.remote_addr, expiry)
 
@@ -396,15 +396,7 @@ end
 
 
 function _M.find_by_email(email)
-  if not email or email == "" then
-    return nil, "email is required"
-  end
-
-  local dao = singletons.dao
-  local admins, err = workspaces.run_with_ws_scope({},
-                      dao.consumers.find_all,
-                      dao.consumers,
-                      { type = enums.CONSUMERS.TYPE.ADMIN, email = email })
+  local admins, err = kong.db.admins:select_all({ email = email })
   if err then
     return nil, err
   end

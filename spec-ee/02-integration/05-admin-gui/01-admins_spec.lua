@@ -591,46 +591,57 @@ for _, strategy in helpers.each_strategy() do
   pending("Admin API - /admins/password_resets #" .. strategy, function()
     local client
     local db
-    local dao
     local admin
 
-    before_each(function()
-      _, db, dao = helpers.get_db_utils(strategy)
+    lazy_setup(function()
+      _, db = helpers.get_db_utils(strategy)
+
+      local config = {
+        admin_invitation_expiry = 600,
+      }
+
+      if _G.kong then
+        _G.kong.db = db
+        _G.kong.configuration = config
+      else
+        _G.kong = {
+          db = db,
+          configuration = config,
+        }
+      end
+
       assert(helpers.start_kong({
         database = strategy,
         admin_gui_url = "http://manager.konghq.com",
         admin_gui_auth = "basic-auth",
         enforce_rbac = "on",
       }))
-      ee_helpers.register_rbac_resources(dao)
+      ee_helpers.register_rbac_resources(db)
       client = assert(helpers.admin_client())
 
-      local res = assert(client:send {
-        method = "POST",
-        path  = "/admins",
-        headers = {
-          ["Kong-Admin-Token"] = "letmein",
-          ["Content-Type"] = "application/json",
-        },
-        body  = {
-          custom_id = "gruce",
-          username = "gruce",
-          email = "gruce@konghq.com",
-        }
-      })
-      res = assert.res_status(200, res)
-      local json = cjson.decode(res)
-      admin = json.consumer
+      local res = assert(admins_helpers.create({
+        custom_id = "gruce",
+        username = "gruce",
+        email = "gruce@konghq.com",
+      }, {
+        token_optional = false,
+        remote_addr = "localhost",
+        db = db,
+        workspace = ngx.ctx.workspaces[1],
+        raw = true,
+      }))
 
-      -- add credentials for him
-      assert(dao.basicauth_credentials:insert {
+      admin = res.body.admin
+
+      -- add credentials
+      assert(db.basicauth_credentials:insert {
         username    = "gruce",
         password    = "kong",
-        consumer_id = admin.id,
+        consumer = admin.consumer,
       })
     end)
 
-    after_each(function()
+    lazy_teardown(function()
       if client then client:close() end
       assert(helpers.stop_kong())
     end)
@@ -648,14 +659,14 @@ for _, strategy in helpers.each_strategy() do
       })
       assert.res_status(201, res)
 
-      local resets, err = db.consumer_reset_secrets:select_all({
-        consumer_id = admin.id
-      })
-
-      assert.is_nil(err)
+      local num_secrets = 0
+      for _, err in db.consumer_reset_secrets:each_for_consumer({ id = admin.consumer.id }) do
+        assert.is_nil(err)
+        num_secrets = num_secrets + 1
+      end
 
       -- one when he was invited, one when he forgot password
-      assert.same(2, #resets)
+      assert.same(2, num_secrets)
     end)
   end)
 
