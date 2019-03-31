@@ -338,7 +338,7 @@ return {
         ee_api.validate_jwt(self, db, helpers)
 
         -- make sure the email in the query params matches the one in the token
-        if self.admin.consumer.id ~= self.consumer.id then
+        if self.admin.consumer.id ~= self.consumer_id then
           return kong.response.exit(404)
         end
       end
@@ -364,32 +364,32 @@ return {
     end,
 
     -- reset password and consume token
-    PATCH = function(self, dao_factory, helpers)
+    PATCH = function(self, db, helpers, parent)
       local new_password = self.params.password
       if not new_password or new_password == "" then
-        return helpers.responses.send_HTTP_BAD_REQUEST("password is required")
+        return kong.response.exit(400, { message = "password is required" })
       end
 
       local found, err = admins.reset_password(self.plugin,
                                                self.collection,
-                                               self.consumer,
+                                               self.admin.consumer,
                                                new_password,
                                                self.reset_secret_id)
 
       if err then
-        return helpers.yield_error(err)
+        return kong.response.exit(500, err)
       end
 
       if not found then
-        return helpers.responses.send_HTTP_NOT_FOUND()
+        return kong.response.exit(400)
       end
 
-      local _, err = emails:reset_password_success(self.consumer.email)
+      local _, err = emails:reset_password_success(self.admin.email)
       if err then
-        return helpers.yield_error(err)
+        return kong.response.exit(500, err)
       end
 
-      return helpers.responses.send_HTTP_OK()
+      return kong.response.exit(200)
     end
   },
 
