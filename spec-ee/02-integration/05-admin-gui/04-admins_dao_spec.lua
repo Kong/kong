@@ -1,13 +1,11 @@
-local spec_helpers = require "spec.helpers"
+local helpers = require "spec.helpers"
 local singletons = require "kong.singletons"
 local workspaces = require "kong.workspaces"
-local helpers = require "spec.02-integration.03-dao.helpers"
-local Factory = require "kong.dao.factory"
 local enums = require "kong.enterprise_edition.dao.enums"
-local DB = require "kong.db"
 
-helpers.for_each_dao(function(kong_config)
-  local db, factory, admins
+
+for _, strategy in helpers.each_strategy() do
+  local db, dao, admins, _
 
   local function truncate_tables()
     db:truncate("workspace_entities")
@@ -18,20 +16,14 @@ helpers.for_each_dao(function(kong_config)
     db:truncate("admins")
   end
 
-  describe("admins dao with #" .. kong_config.database, function()
+  describe("admins dao with #" .. strategy, function()
 
     lazy_setup(function()
-      db = DB.new(kong_config)
-      assert(db:init_connector())
-
-      spec_helpers.bootstrap_database(db)
-
-      factory = assert(Factory.new(kong_config, db))
-      assert(factory:init())
-      admins = db.admins
+      _, db, dao = helpers.get_db_utils(strategy)
 
       singletons.db = db
-      singletons.dao = factory
+      singletons.dao = dao
+      admins = db.admins
 
       -- consumers are workspaceable, so we need a workspace context
       -- TODO: do admins need to be workspaceable? Preferably not.
@@ -158,4 +150,4 @@ helpers.for_each_dao(function(kong_config)
       end)
     end)
   end)
-end)
+end
