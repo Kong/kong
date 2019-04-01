@@ -3,7 +3,6 @@
 local BasePlugin   = require "kong.plugins.base_plugin"
 local ratelimiting = require "kong.tools.public.rate-limiting"
 local responses    = require "kong.tools.responses"
-local singletons   = require "kong.singletons"
 local schema       = require "kong.plugins.rate-limiting-advanced.schema"
 
 
@@ -56,7 +55,7 @@ local function new_namespace(config, init_timer)
 
   local ok, err = pcall(function()
     local strategy = config.strategy == "cluster" and
-                     singletons.configuration.database or
+                     kong.configuration.database or
                      "redis"
 
     local strategy_opts = strategy == "redis" and config.redis
@@ -122,7 +121,7 @@ function NewRLHandler:new()
 end
 
 function NewRLHandler:init_worker()
-  local worker_events = singletons.worker_events
+  local worker_events = kong.worker_events
 
   -- to start with, load existing plugins and create the
   -- namespaces/sync timers
