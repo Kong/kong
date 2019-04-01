@@ -1,11 +1,8 @@
 local STRATEGY_PATH = "kong.plugins.proxy-cache.strategies"
 
 
-local singletons = require "kong.singletons"
-
-
 local kong = kong
-local cluster_events = singletons.cluster_events
+local cluster_events = kong.cluster_events
 
 
 local function broadcast_purge(plugin_id, cache_key)
@@ -19,12 +16,12 @@ return {
   ["/proxy-cache"] = {
     resource = "proxy-cache",
 
-    DELETE = function(_, _, helpers)
+    DELETE = function()
       local rows, err = kong.db.plugins:select_all {
         name = "proxy-cache"
       }
       if err then
-        return helpers.yield_error(err)
+        return kong.response.exit(500, { message = err })
       end
 
       for _, row in ipairs(rows) do
@@ -36,7 +33,7 @@ return {
 
         local ok, err = strategy:flush(true)
         if not ok then
-          helpers.yield_error(err)
+          return kong.response.exit(500, { message = err })
         end
 
         if require(STRATEGY_PATH).LOCAL_DATA_STRATEGIES[conf.strategy] then
@@ -48,18 +45,18 @@ return {
         end
       end
 
-      return helpers.responses.send_HTTP_NO_CONTENT()
+      return kong.response.exit(204)
     end
   },
   ["/proxy-cache/:cache_key"] = {
     resource = "proxy-cache",
 
-    GET = function(self, _, helpers)
+    GET = function(self)
       local rows, err = kong.db.plugins:select_all {
         name = "proxy-cache",
       }
       if err then
-        return helpers.yield_error(err)
+        return kong.response.exit(500, err)
       end
 
       for _, plugin in ipairs(rows) do
@@ -71,24 +68,24 @@ return {
 
         local cache_val, err = strategy:fetch(self.params.cache_key)
         if err and err ~= "request object not in cache" then
-          return helpers.yield_error(err)
+          return kong.response.exit(500, err)
         end
 
         if cache_val then
-          return helpers.responses.send_HTTP_OK(cache_val)
+          return kong.response.exit(200, cache_val)
         end
       end
 
       -- fell through, not found
-      return helpers.responses.send_HTTP_NOT_FOUND()
+      return kong.response.exit(404)
     end,
 
-    DELETE = function(self, _, helpers)
+    DELETE = function(self)
       local rows, err = kong.db.plugins:select_all {
         name = "proxy-cache",
       }
       if err then
-        return helpers.yield_error(err)
+        return kong.response.exit(500, err)
       end
 
       for _, plugin in ipairs(rows) do
@@ -100,13 +97,13 @@ return {
 
         local cache_val, err = strategy:fetch(self.params.cache_key)
         if err and err ~= "request object not in cache" then
-          return helpers.yield_error(err)
+          return kong.response.exit(500, err)
         end
 
         if cache_val then
           local _, err = strategy:purge(self.params.cache_key)
           if err then
-            return helpers.yield_error(err)
+            return kong.response.exit(500, err)
           end
 
           if require(STRATEGY_PATH).LOCAL_DATA_STRATEGIES[conf.strategy] then
@@ -117,27 +114,27 @@ return {
             end
           end
 
-          return helpers.responses.send_HTTP_NO_CONTENT()
+          return kong.response.exit(204)
         end
       end
 
       -- fell through, not found
-      return helpers.responses.send_HTTP_NOT_FOUND()
+      return kong.response.exit(404)
     end,
   },
   ["/proxy-cache/:plugin_id/caches/:cache_key"] = {
     resource = "proxy-cache",
 
-    GET = function(self, _, helpers)
+    GET = function(self)
       local row, err = kong.db.plugins:select {
         id   = self.params.plugin_id,
       }
       if err then
-        return helpers.yield_error(err)
+        return kong.response.exit(500, err)
       end
 
       if not row then
-        return helpers.responses.send_HTTP_NOT_FOUND()
+        return kong.response.exit(404)
       end
 
       local conf = row.config
@@ -148,23 +145,23 @@ return {
 
       local cache_val, err = strategy:fetch(self.params.cache_key)
       if err == "request object not in cache" then
-        return helpers.responses.send_HTTP_NOT_FOUND()
+        return kong.response.exit(404)
       elseif err then
-        return helpers.yield_error(err)
+        return kong.response.exit(500, err)
       end
 
-      return helpers.responses.send_HTTP_OK(cache_val)
+      return kong.response.exit(200, cache_val)
     end,
-    DELETE = function(self, _, helpers)
+    DELETE = function(self)
       local row, err = kong.db.plugins:select {
         id   = self.params.plugin_id,
       }
       if err then
-        return helpers.yield_error(err)
+        return kong.response.exit(500, err)
       end
 
       if not row then
-        return helpers.responses.send_HTTP_NOT_FOUND()
+        return kong.response.exit(404)
       end
 
       local conf = row.config
@@ -175,14 +172,14 @@ return {
 
       local _, err = strategy:fetch(self.params.cache_key)
       if err == "request object not in cache" then
-        return helpers.responses.send_HTTP_NOT_FOUND()
+        return kong.response.exit(404)
       elseif err then
-        return helpers.yield_error(err)
+        return kong.response.exit(500, err)
       end
 
       local _, err = strategy:purge(self.params.cache_key)
       if err then
-        return helpers.yield_error(err)
+        return kong.response.exit(500, err)
       end
 
       if require(STRATEGY_PATH).LOCAL_DATA_STRATEGIES[conf.strategy] then
@@ -193,7 +190,7 @@ return {
         end
       end
 
-      return helpers.responses.send_HTTP_NO_CONTENT()
+      return kong.response.exit(204)
     end
   },
 }

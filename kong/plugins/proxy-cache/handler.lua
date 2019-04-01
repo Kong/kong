@@ -2,7 +2,6 @@ local BasePlugin  = require "kong.plugins.base_plugin"
 local strategies  = require "kong.plugins.proxy-cache.strategies"
 local cache_key   = require "kong.plugins.proxy-cache.cache_key"
 local responses   = require "kong.tools.responses"
-local singletons  = require "kong.singletons"
 local utils       = require "kong.tools.utils"
 local ee          = require "kong.enterprise_edition"
 
@@ -281,7 +280,7 @@ end
 
 function ProxyCacheHandler:init_worker()
   -- catch notifications from other nodes that we purged a cache entry
-  local cluster_events = singletons.cluster_events
+  local cluster_events = kong.cluster_events
 
   -- only need one worker to handle purges like this
   -- if/when we introduce inline LRU caching this needs to involve
