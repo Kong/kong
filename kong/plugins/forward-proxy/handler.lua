@@ -1,10 +1,10 @@
 local BasePlugin = require "kong.plugins.base_plugin"
-local responses  = require "kong.tools.responses"
 local meta       = require "kong.meta"
 local http       = require "resty.http"
 local ee         = require "kong.enterprise_edition"
 
 
+local kong                = kong
 local ngx                 = ngx
 local ERR                 = ngx.ERR
 local log                 = ngx.log
@@ -90,7 +90,7 @@ function ForwardProxyHandler:access(conf)
 
   if not ok then
     log(ERR, _prefix_log, "failed to connect to proxy: ", err)
-    return responses.send_HTTP_INTERNAL_SERVER_ERROR()
+    return kong.response.exit(500)
   end
 
   if var.upstream_scheme == "https" then
@@ -99,7 +99,7 @@ function ForwardProxyHandler:access(conf)
     -- reused
     local ok, err = httpc:ssl_handshake(false, addr.host, conf.https_verify)
     if not ok then
-      return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+      return kong.response.exit(500, err)
     end
   end
 
@@ -114,7 +114,7 @@ function ForwardProxyHandler:access(conf)
   })
   if not res then
     log(ERR, _prefix_log, "failed to send proxy request: ", err)
-    return responses.send_HTTP_INTERNAL_SERVER_ERROR()
+    return kong.response.exit(500)
   end
 
   local callback = function()
