@@ -32,7 +32,7 @@ $ curl http://localhost:8001/plugins -d name=prometheus
 
 #### Via Kong's Admin API
 
-Metrics are availble on the admin API at `/metrics` endpoint:
+Metrics are available on the admin API at `/metrics` endpoint:
 ```
 curl http://localhost:8001/metrics
 ```
@@ -53,7 +53,7 @@ Alternatively, this plugin has the capability to serve the content on a
 different port using a custom server block in Kong's NGINX template.
 
 If you're using Kong 0.14.0 or above, then you can inject the server block
-using Kong's [injecting Nginx directives](https://docs.konghq.com/0.14.x/configuration/#injecting-nginx-directives) 
+using Kong's [injecting NGINX directives](https://docs.konghq.com/0.14.x/configuration/#injecting-nginx-directives) 
 feature.
 
 Consider the below file containing an Nginx `server` block:
@@ -67,8 +67,8 @@ server {
     location / {
         default_type text/plain;
         content_by_lua_block {
-             local promethus = require "kong.plugins.prometheus.exporter"
-             promethus:collect()
+             local prometheus = require "kong.plugins.prometheus.exporter"
+             prometheus:collect()
         }
     }
 
@@ -90,7 +90,7 @@ nginx_http_include=/path/to/prometheus-server.conf
 
 If you're running Kong version older than 0.14.0, then you can achieve the
 same result by using a
-[custom Nginx template](https://docs.konghq.com/0.14.x/configuration/#custom-nginx-templates-embedding-kong).
+[custom NGINX template](https://docs.konghq.com/0.14.x/configuration/#custom-nginx-templates-embedding-kong).
 
 #### Sample /metrics output
 
