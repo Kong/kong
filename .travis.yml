@@ -77,6 +77,9 @@ jobs:
       install: skip
       before_install: skip
       script: make release
+      env: PACKAGE_TYPE=src RESTY_IMAGE_BASE=src KONG_PACKAGE_NAME=${PWD##*/} KONG_VERSION=${TRAVIS_TAG}
+      if: tag IS present AND tag ~= 1.
+    - script: make release
       env: PACKAGE_TYPE=deb RESTY_IMAGE_BASE=ubuntu RESTY_IMAGE_TAG=trusty KONG_PACKAGE_NAME=${PWD##*/} KONG_VERSION=${TRAVIS_TAG}
       if: tag IS present AND tag ~= 1.
     - script: make release
