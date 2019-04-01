@@ -1,9 +1,9 @@
 local BasePlugin = require "kong.plugins.base_plugin"
-local responses = require "kong.tools.responses"
 local Entity = require "kong.db.schema.entity"
 local utils = require "kong.plugins.request-validator.utils"
 
 
+local kong = kong
 local gen_schema = utils.gen_schema
 local get_req_body_json = utils.get_req_body_json
 
@@ -34,12 +34,12 @@ function RequestValidator:access(conf)
     -- `pk`
     local schema, err = gen_schema(conf.body_schema)
     if err then
-      return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+      return kong.response.exit(500, err)
     end
 
     entity, err = Entity.new(schema)
     if err then
-      return responses.send_HTTP_INTERNAL_SERVER_ERROR("failed creating entity from schema")
+      return kong.response.exit(500, { message = "failed creating entity from schema" })
     end
 
     entity_cache[conf] = entity
@@ -47,13 +47,13 @@ function RequestValidator:access(conf)
 
   local body, err = get_req_body_json()
   if err then
-    return responses.send_HTTP_BAD_REQUEST(err)
+    return kong.response.exit(400, err)
   end
 
   -- try to validate body against schema
   local ok = entity:validate(body)
   if not ok then
-    return responses.send_HTTP_BAD_REQUEST("request body doesn't conform to schema")
+    return kong.response.exit(400, { message = "request body doesn't conform to schema" })
   end
 end
 
