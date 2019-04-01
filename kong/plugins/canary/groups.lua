@@ -4,10 +4,10 @@
 -- NOTE: tests are with the ACL plugin
 
 
-local singletons = require "kong.singletons"
 local pl_tablex = require "pl.tablex"
 
 
+local kong = kong
 local EMPTY = pl_tablex.readonly {}
 
 
@@ -36,8 +36,8 @@ end
 -- @param conumer_id (string) the consumer for which to fetch the groups it belongs to
 -- @return table with group records (empty table if none), or nil+error
 local function get_consumer_groups_raw(consumer_id)
-  local cache_key = singletons.db.acls:cache_key(consumer_id)
-  local raw_groups, err = singletons.cache:get(cache_key, nil,
+  local cache_key = kong.db.acls:cache_key(consumer_id)
+  local raw_groups, err = kong.cache:get(cache_key, nil,
                                            load_groups_into_memory,
                                            { id = consumer_id })
   if err then
