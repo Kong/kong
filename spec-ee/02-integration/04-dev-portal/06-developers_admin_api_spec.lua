@@ -23,10 +23,10 @@ end
 
 describe("Admin API - Developer Portal - " .. strategy, function()
   local client
-  local db
+  local db, dao
 
   lazy_setup(function()
-    _, db, _ = helpers.get_db_utils(strategy)
+    _, db, dao = helpers.get_db_utils(strategy)
 
     singletons.configuration = {
       portal_auth = "basic-auth",
@@ -340,7 +340,6 @@ describe("Admin API - Developer Portal - " .. strategy, function()
         before_each(function()
           helpers.stop_kong()
           assert(db:truncate())
-          helpers.register_consumer_relations(dao)
 
           assert(helpers.start_kong({
             database   = strategy,
@@ -379,7 +378,6 @@ describe("Admin API - Developer Portal - " .. strategy, function()
         before_each(function()
           helpers.stop_kong()
           assert(db:truncate())
-          helpers.register_consumer_relations(dao)
 
           assert(helpers.start_kong({
             database   = strategy,
