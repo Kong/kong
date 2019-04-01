@@ -277,33 +277,6 @@ return {
       CREATE INDEX IF NOT EXISTS portal_files_name_idx on files(name);
 
 
-
-      CREATE TABLE IF NOT EXISTS consumer_statuses (
-        id               int PRIMARY KEY,
-        name             text NOT NULL,
-        comment          text,
-        created_at       timestamp without time zone DEFAULT timezone('utc'::text, ('now'::text)::timestamp(0) with time zone)
-      );
-
-      CREATE TABLE IF NOT EXISTS consumer_types (
-        id               int PRIMARY KEY,
-        name             text NOT NULL,
-        comment          text,
-        created_at       timestamp without time zone DEFAULT timezone('utc'::text, ('now'::text)::timestamp(0) with time zone)
-      );
-
-      CREATE INDEX IF NOT EXISTS consumer_statuses_names_idx
-          ON consumer_statuses (name);
-
-      CREATE INDEX IF NOT EXISTS consumer_types_name_idx
-          ON consumer_types (name);
-
-      INSERT INTO consumer_types(id, name, comment)
-      VALUES (0, 'proxy', 'Default consumer, used for proxy.'),
-             (1, 'developer', 'Kong Developer Portal consumer.'),
-             (2, 'admin', 'Admin consumer.')
-      ON CONFLICT DO NOTHING;
-
       ALTER TABLE consumers
         ADD COLUMN type int NOT NULL DEFAULT 0,
         ADD COLUMN email text,
@@ -313,12 +286,7 @@ return {
       ALTER TABLE consumers ADD CONSTRAINT consumers_email_type_key UNIQUE(email, type);
 
       CREATE INDEX IF NOT EXISTS consumers_type_idx
-          ON consumers (type);
-
-      CREATE INDEX IF NOT EXISTS consumers_status_idx
-          ON consumers (status);
-
-
+        ON consumers (type);
 
       CREATE TABLE IF NOT EXISTS credentials (
         id                uuid PRIMARY KEY,
@@ -745,22 +713,6 @@ CREATE TABLE IF NOT EXISTS admins (
         PRIMARY KEY ((consumer_id, duration), at, code, route_id, service_id)
       );
 
-      CREATE TABLE IF NOT EXISTS consumer_statuses (
-        id               int PRIMARY KEY,
-        name             text,
-        comment          text,
-        created_at       timestamp
-      );
-
-      CREATE TABLE IF NOT EXISTS consumer_types (
-        id               int PRIMARY KEY,
-        name             text,
-        comment          text,
-        created_at       timestamp
-      );
-
-      CREATE INDEX IF NOT EXISTS consumer_statuses_names_idx ON consumer_statuses(name);
-      CREATE INDEX IF NOT EXISTS consumer_types_name_idx ON consumer_types(name);
 
       ALTER TABLE consumers ADD type int;
       ALTER TABLE consumers ADD email text;
@@ -768,7 +720,6 @@ CREATE TABLE IF NOT EXISTS admins (
       ALTER TABLE consumers ADD meta text;
 
       CREATE INDEX IF NOT EXISTS consumers_type_idx ON consumers(type);
-      CREATE INDEX IF NOT EXISTS consumers_status_idx ON consumers(status);
 
       CREATE TABLE IF NOT EXISTS credentials (
         id                 uuid PRIMARY KEY,
@@ -789,8 +740,6 @@ CREATE TABLE IF NOT EXISTS admins (
         PRIMARY KEY(consumer_id, user_id)
       );
 
-      INSERT INTO consumer_types(id, name, comment, created_at)
-      VALUES (2, 'admin', 'Admin consumer.', dateof(now()));
 
       CREATE INDEX IF NOT EXISTS ON rbac_role_entities(entity_type);
 

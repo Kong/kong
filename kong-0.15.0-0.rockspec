@@ -180,8 +180,6 @@ build = {
     ["kong.dao.schemas_validation"] = "kong/dao/schemas_validation.lua",
     ["kong.dao.schemas.apis"] = "kong/dao/schemas/apis.lua",
 
-    ["kong.dao.schemas.consumer_types"] = "kong/dao/schemas/consumer_types.lua",
-    ["kong.dao.schemas.consumer_statuses"] = "kong/dao/schemas/consumer_statuses.lua",
     ["kong.dao.schemas.credentials"] = "kong/dao/schemas/credentials.lua",
     ["kong.dao.schemas.files"] = "kong/dao/schemas/files.lua",
     ["kong.db.schema.entities.files"] = "kong/db/schema/entities/files.lua",

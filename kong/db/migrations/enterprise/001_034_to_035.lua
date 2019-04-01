@@ -18,6 +18,13 @@ return {
        ADD CONSTRAINT rbac_role_endpoints_role_id_fkey FOREIGN KEY (role_id) REFERENCES rbac_roles(id) ON DELETE CASCADE;
 
      CREATE INDEX IF NOT EXISTS rbac_role_endpoints_role_idx on rbac_role_endpoints(role_id);
+
+     ALTER TABLE "consumers" DROP COLUMN IF EXISTS status;
+     ALTER TABLE "consumers" DROP CONSTRAINT IF EXISTS "consumers_type_fkey";
+     ALTER TABLE "credentials" DROP CONSTRAINT IF EXISTS "consumers_type_fkey";
+     DROP TABLE IF EXISTS consumer_statuses;
+     DROP TABLE IF EXISTS consumer_types;
+
      END
      $$;
     ]],

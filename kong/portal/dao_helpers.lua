@@ -25,50 +25,6 @@ local auth_plugins = {
 }
 
 
-local function register_resources(dao)
-  local _, err = dao.consumer_types:insert({
-    id = enums.CONSUMERS.TYPE.PROXY,
-    name = 'proxy',
-    comment = "Default consumer, used for proxy.",
-  })
-
-  if err then
-    return err
-  end
-
-  local _, err = dao.consumer_types:insert({
-    id = enums.CONSUMERS.TYPE.DEVELOPER,
-    name = 'developer',
-    comment = "Kong Developer Portal consumer.",
-  })
-
-  if err then
-    return err
-  end
-
-  local _, err = dao.consumer_types:insert({
-    id = enums.CONSUMERS.TYPE.ADMIN,
-    name = 'admin',
-    comment = "Admin consumer.",
-  })
-
-  if err then
-    return err
-  end
-
-  for status, id in pairs(enums.CONSUMERS.STATUS) do
-    local _, err = dao.consumer_statuses:insert({
-      id = id,
-      name = status,
-    })
-
-    if err then
-      return err
-    end
-  end
-end
-
-
 local function rollback_on_create(entities)
   local _, err
 
@@ -317,5 +273,4 @@ end
 return {
   create_developer = create_developer,
   update_developer = update_developer,
-  register_resources = register_resources,
 }

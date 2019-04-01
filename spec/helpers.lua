@@ -1259,13 +1259,6 @@ local function get_running_conf(prefix)
   return conf_loader(default_conf.kong_env)
 end
 
--- consumer_statuses/types need to be populated after table truncate without
--- need for rerunning migrations, due to foreign keys on consumers table
-local function register_consumer_relations(dao)
-  local portal = require "kong.portal.dao_helpers"
-  portal.register_resources(dao)
-end
-
 
 singletons.dao = dao
 
@@ -1352,7 +1345,6 @@ return {
   clean_prefix = clean_prefix,
   wait_for_invalidation = wait_for_invalidation,
   each_strategy = each_strategy,
-  register_consumer_relations = register_consumer_relations,
   validate_plugin_config_schema = validate_plugin_config_schema,
 
   -- miscellaneous

@@ -44,7 +44,6 @@ describe("Admin API (#" .. strategy .. "): ", function()
       database = strategy,
       plugins = "bundled,rewriter",
     }))
-    helpers.register_consumer_relations(dao)
   end)
 
   lazy_teardown(function()
@@ -54,7 +53,6 @@ describe("Admin API (#" .. strategy .. "): ", function()
   before_each(function()
     dao:truncate_tables()
     ngx.ctx.workspaces = dao.workspaces:find_all()
-    helpers.register_consumer_relations(dao)
     consumer = assert(dao.consumers:insert {
       username = "bob",
       custom_id = "1234"

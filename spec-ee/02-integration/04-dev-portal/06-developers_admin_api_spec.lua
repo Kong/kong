@@ -1,7 +1,6 @@
 local cjson   = require "cjson"
 local helpers = require "spec.helpers"
 local singletons  = require "kong.singletons"
-local dao_helpers = require "kong.portal.dao_helpers"
 local enums       = require "kong.enterprise_edition.dao.enums"
 
 
@@ -24,10 +23,10 @@ end
 
 describe("Admin API - Developer Portal - " .. strategy, function()
   local client
-  local db, dao
+  local db
 
   lazy_setup(function()
-    _, db, dao = helpers.get_db_utils(strategy)
+    _, db, _ = helpers.get_db_utils(strategy)
 
     singletons.configuration = {
       portal_auth = "basic-auth",
@@ -58,7 +57,6 @@ describe("Admin API - Developer Portal - " .. strategy, function()
   describe("/developers", function()
     describe("GET", function ()
       lazy_setup(function()
-        dao_helpers.register_resources(dao)
         for i = 1, 5 do
           assert(db.developers:insert {
             email = "developer-" .. i .. "@dog.com"
@@ -106,7 +104,6 @@ describe("Admin API - Developer Portal - " .. strategy, function()
     local developer
 
     lazy_setup(function()
-      dao_helpers.register_resources(dao)
       developer = assert(db.developers:insert {
         email = "gruce@konghq.com",
         password = "kong",
