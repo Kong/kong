@@ -291,7 +291,7 @@ function OAuth2Introspection:access(conf)
         load_consumer_mem,
         conf.anonymous, true)
       if err then
-        responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+        return kong.response.exit(500, err)
       end
       set_anonymous_consumer(consumer)
 
