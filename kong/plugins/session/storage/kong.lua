@@ -75,7 +75,7 @@ function kong_storage:open(cookie, lifetime)
         expires = db_s.expires
       end
     end
-    
+
     return id, expires, data, hmac
   end
 
@@ -89,7 +89,7 @@ function kong_storage:insert_session(sid, data, expires)
     data = data,
     expires = expires,
   }, { ttl = self.lifetime })
-  
+
   if err then
     ngx.log(ngx.ERR, "Error inserting session: ", err)
   end
@@ -97,7 +97,7 @@ end
 
 
 function kong_storage:update_session(id, params, ttl)
-  local _, err = self.db.sessions:update(params, { id = id }, { ttl = ttl })
+  local _, err = self.db.sessions:update({ id = id }, params, { ttl = ttl })
   if err then
     ngx.log(ngx.ERR, "Error updating session: ", err)
   end
@@ -109,7 +109,6 @@ function kong_storage:save(id, expires, data, hmac)
   local value = concat({key, expires, self.encode(hmac)}, self.delimiter)
 
   if life > 0 then
-    
     if ngx.get_phase() == 'header_filter' then
       ngx.timer.at(0, function()
         self:insert_session(key, self.encode(data), expires)
@@ -131,7 +130,7 @@ function kong_storage:destroy(id)
   if not db_s then
     return
   end
-  
+
   local _, err = self.db.sessions:delete({
     id = db_s.id
   })

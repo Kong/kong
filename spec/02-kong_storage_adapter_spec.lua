@@ -2,7 +2,7 @@ local helpers = require "spec.helpers"
 local utils = require "kong.tools.utils"
 
 
-function get_sid_from_cookie(cookie)
+local function get_sid_from_cookie(cookie)
   local cookie_parts = utils.split(cookie, "; ")
   return utils.split(utils.split(cookie_parts[1], "|")[1], "=")[2]
 end
@@ -31,7 +31,7 @@ for _, strategy in helpers.each_strategy() do
         paths    = {"/test2"},
         hosts = {"httpbin.org"}
       }
-      
+
       assert(bp.plugins:insert {
         name = "session",
         route = {
@@ -42,7 +42,7 @@ for _, strategy in helpers.each_strategy() do
           secret = "ultra top secret session",
         }
       })
-      
+
       assert(bp.plugins:insert {
         name = "session",
         route = {
@@ -113,10 +113,10 @@ for _, strategy in helpers.each_strategy() do
 
     after_each(function()
       if client then client:close() end
-    end)      
+    end)
 
     describe("kong adapter - ", function()
-      it("kong adapter stores consumer", function()  
+      it("kong adapter stores consumer", function()
         local res, cookie
         local request = {
           method = "GET",
@@ -127,54 +127,7 @@ for _, strategy in helpers.each_strategy() do
         -- make sure the anonymous consumer can't get in (request termination)
         res = assert(client:send(request))
         assert.response(res).has.status(403)
-  
-        -- make a request with a valid key, grab the cookie for later
-        request.headers.apikey = "kong"
-        res = assert(client:send(request))
-        assert.response(res).has.status(200)
-        cookie = assert.response(res).has.header("Set-Cookie")
-        
-        ngx.sleep(2)
 
-        -- use the cookie without the key to ensure cookie still lets them in
-        request.headers.apikey = nil
-        request.headers.cookie = cookie  
-        res = assert(client:send(request))
-        assert.response(res).has.status(200)
-
-        -- one more time to ensure session was not destroyed or errored out
-        res = assert(client:send(request))
-        assert.response(res).has.status(200)
-
-        -- make sure it's in the db
-        local sid = get_sid_from_cookie(cookie)
-        assert.equal(sid, db.sessions:select_by_session_id(sid).session_id)
-      end)
-
-      it("renews cookie", function()  
-        local res, cookie
-        local request = {
-          method = "GET",
-          path = "/test2/status/200",
-          headers = { host = "httpbin.org", },
-        }
-
-        local function send_requests(request, number, step)
-          local cookie = request.headers.cookie
-
-          for i = 1, number do
-            request.headers.cookie = cookie
-            res = assert(client:send(request))
-            assert.response(res).has.status(200)
-            cookie = res.headers['Set-Cookie'] or cookie
-            ngx.sleep(step)
-          end
-        end
-
-        -- make sure the anonymous consumer can't get in (request termination)
-        res = assert(client:send(request))
-        assert.response(res).has.status(403)
-  
         -- make a request with a valid key, grab the cookie for later
         request.headers.apikey = "kong"
         res = assert(client:send(request))
@@ -188,13 +141,60 @@ for _, strategy in helpers.each_strategy() do
         request.headers.cookie = cookie
         res = assert(client:send(request))
         assert.response(res).has.status(200)
-        
+
+        -- one more time to ensure session was not destroyed or errored out
+        res = assert(client:send(request))
+        assert.response(res).has.status(200)
+
+        -- make sure it's in the db
+        local sid = get_sid_from_cookie(cookie)
+        assert.equal(sid, db.sessions:select_by_session_id(sid).session_id)
+      end)
+
+      it("renews cookie", function()
+        local res, cookie
+        local request = {
+          method = "GET",
+          path = "/test2/status/200",
+          headers = { host = "httpbin.org", },
+        }
+
+        local function send_requests(request, number, step)
+          cookie = request.headers.cookie
+
+          for _ = 1, number do
+            request.headers.cookie = cookie
+            res = assert(client:send(request))
+            assert.response(res).has.status(200)
+            cookie = res.headers['Set-Cookie'] or cookie
+            ngx.sleep(step)
+          end
+        end
+
+        -- make sure the anonymous consumer can't get in (request termination)
+        res = assert(client:send(request))
+        assert.response(res).has.status(403)
+
+        -- make a request with a valid key, grab the cookie for later
+        request.headers.apikey = "kong"
+        res = assert(client:send(request))
+        assert.response(res).has.status(200)
+        cookie = assert.response(res).has.header("Set-Cookie")
+
+        ngx.sleep(2)
+
+        -- use the cookie without the key to ensure cookie still lets them in
+        request.headers.apikey = nil
+        request.headers.cookie = cookie
+        res = assert(client:send(request))
+        assert.response(res).has.status(200)
+
         -- renewal period, make sure requests still come through and
         -- if set-cookie header comes through, attach it to subsequent requests
         send_requests(request, 5, 0.5)
       end)
 
-      it("destroys session on logout", function()  
+      it("destroys session on logout", function()
         local res, cookie
         local request = {
           method = "GET",
@@ -205,7 +205,7 @@ for _, strategy in helpers.each_strategy() do
         -- make sure the anonymous consumer can't get in (request termination)
         res = assert(client:send(request))
         assert.response(res).has.status(403)
-  
+
         -- make a request with a valid key, grab the cookie for later
         request.headers.apikey = "kong"
         res = assert(client:send(request))
