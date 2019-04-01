@@ -117,6 +117,8 @@ db.plugins:load_plugin_schemas(conf.loaded_plugins)
 db.old_dao = dao
 local blueprints = assert(Blueprints.new(dao, db))
 
+kong.db = db
+
 local each_strategy
 
 do
@@ -218,6 +220,8 @@ local function get_db_utils(strategy, tables, plugins)
     -- (e.g., this module's module-leveldao, which defaults for postgres)
     singletons.dao = dao
     singletons.db = db
+
+    kong.db = db
 
     --assert(dao:run_migrations())
   end
