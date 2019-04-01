@@ -1,10 +1,10 @@
 local responses = require "kong.tools.responses"
 local constants = require "kong.constants"
-local singletons = require "kong.singletons"
 local ldap_cache = require "kong.plugins.ldap-auth-advanced.cache"
 local ldap = require "kong.plugins.ldap-auth-advanced.ldap"
 
 
+local kong = kong
 local match = string.match
 local lower = string.lower
 local find = string.find
@@ -75,7 +75,7 @@ local function ldap_authenticate(given_username, given_password, conf)
 
     if err then
       ngx_log(ngx_error, "[ldap-auth-advanced]", err)
-      return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+      return kong.response.exit(500)
     end
 
     if ok then
@@ -89,7 +89,7 @@ local function ldap_authenticate(given_username, given_password, conf)
         ngx_log(ngx_error, "[ldap-auth-advanced] failed ldap search for "..
                             conf.attribute .. "=" .. given_username .. 
                            " base_dn=" .. conf.base_dn)
-        return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+        return kong.response.exit(500)
       end
 
       local user_dn
@@ -98,7 +98,7 @@ local function ldap_authenticate(given_username, given_password, conf)
           ngx_log(ngx_debug, "[ldap-auth-advanced] more than one user found in" ..
                              " ldap_search with attribute = " .. conf.attribute ..
                              " and given_username=" .. given_username)
-          return responses.send_HTTP_INTERNAL_SERVER_ERROR()
+          return kong.response.exit(500)
         end
 
         user_dn = dn
@@ -169,12 +169,12 @@ local function authenticate(conf, given_credentials)
     return false
   end
 
-  local credential, err = singletons.cache:get(cache_key(conf, given_username, given_password), {
+  local credential, err = kong.cache:get(cache_key(conf, given_username, given_password), {
     ttl = conf.cache_ttl,
     neg_ttl = conf.cache_ttl
   }, load_credential, given_username, given_password, conf)
   if err or credential == nil then
-    return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+    return kong.response.exit(500, err)
   end
 
   return credential and credential.password == given_password, credential
@@ -225,7 +225,7 @@ end
 
 local function find_consumer(consumer_field, value)
   local result, err
-  local dao = singletons.db.consumers
+  local dao = kong.db.consumers
 
   if consumer_field == "id" then
     result, err = dao:select({ id = value })
@@ -250,12 +250,12 @@ local function load_consumers(value, consumer_by, ttl)
     local consumer
 
     if field_name == "id" then
-      key = singletons.db.consumers:cache_key(value)
+      key = kong.db.consumers:cache_key(value)
     else
       key = ldap_cache.consumer_field_cache_key(field_name, value)
     end
 
-    consumer, err = singletons.cache:get(key, ttl, find_consumer, field_name,
+    consumer, err = kong.cache:get(key, ttl, find_consumer, field_name,
                                          value)
 
     if consumer then
