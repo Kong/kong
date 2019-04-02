@@ -61,7 +61,7 @@ return {
 
   fields = {
     { id          = typedefs.uuid },
-    { name        = typedefs.name },
+    { name        = typedefs.name { required = true } },
     { comment     = { type = "string" } },
     { created_at  = typedefs.auto_timestamp_s },
     { meta        = config_meta },
