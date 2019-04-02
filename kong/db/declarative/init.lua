@@ -6,7 +6,15 @@ local cjson = require "cjson.safe"
 local tablex = require "pl.tablex"
 
 
+local kong = kong
+local setmetatable = setmetatable
 local deepcopy = tablex.deepcopy
+local ipairs = ipairs
+local pairs = pairs
+local table = table
+local error = error
+local pcall = pcall
+local type = type
 local null = ngx.null
 
 
@@ -243,6 +251,30 @@ local function post_crud_create_event(entity_name, item)
 end
 
 
+local function safe_cache_get(cache_key, item, cb)
+  local free_space = kong.cache:free_space()
+
+  local ok, err
+  if cb then
+    ok, err = kong.cache:get(cache_key, nil, cb)
+  else
+    ok, err = kong.cache:get(cache_key, nil, function()
+      return item
+    end)
+  end
+
+  if not ok then
+    return nil, err
+  end
+
+  if kong.cache:free_space() >= free_space then
+    return nil, "cache memory was exhausted while loading declarative config " ..
+                "into the cache, please consider raising the 'mem_cache_size=" ..
+                kong.configuration.mem_cache_size .. "'"
+  end
+end
+
+
 function declarative.load_into_cache(entities)
 
   -- FIXME atomicity of cache update
@@ -293,18 +325,14 @@ function declarative.load_into_cache(entities)
 
       local cache_key = dao:cache_key(id)
       item = remove_nulls(item)
-      local ok, err = kong.cache:get(cache_key, nil, function()
-        return item
-      end)
+      local ok, err = safe_cache_get(cache_key, item)
       if not ok then
         return nil, err
       end
 
       if schema.cache_key then
         local cache_key = dao:cache_key(item)
-        ok, err = kong.cache:get(cache_key, nil, function()
-          return item
-        end)
+        ok, err = safe_cache_get(cache_key, item)
         if not ok then
           return nil, err
         end
@@ -313,9 +341,7 @@ function declarative.load_into_cache(entities)
       for _, unique in ipairs(uniques) do
         if item[unique] then
           local cache_key = entity_name .. "|" .. unique .. ":" .. item[unique]
-          ok, err = kong.cache:get(cache_key, nil, function()
-            return item
-          end)
+          ok, err = safe_cache_get(cache_key, item)
           if not ok then
             return nil, err
           end
@@ -345,9 +371,7 @@ function declarative.load_into_cache(entities)
       end
     end
 
-    local ok, err = kong.cache:get(entity_name .. "|list", nil, function()
-      return ids
-    end)
+    local ok, err = safe_cache_get(entity_name .. "|list", ids)
     if not ok then
       return nil, err
     end
@@ -355,9 +379,7 @@ function declarative.load_into_cache(entities)
     for ref, fids in pairs(page_for) do
       for fid, entries in pairs(fids) do
         local key = entity_name .. "|" .. ref .. "|" .. fid .. "|list"
-        ok, err = kong.cache:get(key, nil, function()
-          return entries
-        end)
+        ok, err = safe_cache_get(key, entries)
         if not ok then
           return nil, err
         end
@@ -367,7 +389,7 @@ function declarative.load_into_cache(entities)
     -- taggings:admin|services|list -> uuids of services tagged "admin"
     for tag_name, entity_ids_dict in pairs(taggings) do
       local key = "taggings:" .. tag_name .. "|" .. entity_name .. "|list"
-      ok, err = kong.cache:get(key, nil, function()
+      ok, err = safe_cache_get(key, nil, function()
         -- transform the dict into a sorted array
         local arr = {}
         local len = 0
@@ -389,10 +411,7 @@ function declarative.load_into_cache(entities)
     -- tags:admin|list -> all tags tagged "admin", regardless of the entity type
     -- each tag is encoded as a string with the format "admin|services|uuid", where uuid is the service uuid
     local key = "tags:" .. tag_name .. "|list"
-    local ok, err = kong.cache:get(key, nil, function()
-      -- print(require("inspect")({ [key] = tags }))
-      return tags
-    end)
+    local ok, err = safe_cache_get(key, tags)
     if not ok then
       return nil, err
     end
@@ -400,10 +419,7 @@ function declarative.load_into_cache(entities)
 
   -- tags|list -> all tags, with no distinction of tag name or entity type.
   -- each tag is encoded as a string with the format "admin|services|uuid", where uuid is the service uuid
-  local ok, err = kong.cache:get("tags|list", nil, function()
-    -- print(require("inspect")({ ["tags|list"] = tags }))
-    return tags
-  end)
+  local ok, err = safe_cache_get("tags|list", tags)
   if not ok then
     return nil, err
   end

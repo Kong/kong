@@ -1,16 +1,31 @@
-local resty_mlcache = require "resty.mlcache"
+local resty_mlcache    = require "resty.mlcache"
 
 
-local type    = type
-local max     = math.max
-local ngx_log = ngx.log
-local ngx_now = ngx.now
-local ERR     = ngx.ERR
-local NOTICE  = ngx.NOTICE
-local DEBUG   = ngx.DEBUG
+local type             = type
+local fmt              = string.format
+local math             = math
+local error            = error
+local pairs            = pairs
+local ngx_log          = ngx.log
+local ngx_now          = ngx.now
+local ngx_shared       = ngx.shared
+local worker_id        = ngx.worker.id
+local timer_every      = ngx.timer.every
+local setmetatable     = setmetatable
 
 
-local SHM_CACHE = "kong_db_cache"
+local ERR              = ngx.ERR
+local WARN             = ngx.WARN
+local NOTICE           = ngx.NOTICE
+local INFO             = ngx.INFO
+local DEBUG            = ngx.DEBUG
+
+
+local SHM_LOCKS        = "kong_locks"
+local SHM_CACHE        = "kong_db_cache"
+local SHM_CACHE_MISSES = "kong_db_cache_miss"
+
+
 --[[
 Hypothesis
 ----------
@@ -29,6 +44,48 @@ local _init
 
 local function log(lvl, ...)
   return ngx_log(lvl, "[DB cache] ", ...)
+end
+
+
+local function format_bytes(bytes, si)
+  local unit = si and 1000 or 1024
+
+  if bytes < unit then
+    return bytes .. " B"
+  end
+
+  local exp = math.floor(math.log(bytes) / math.log(unit))
+
+  local units = si and { "k",  "M",  "G",  "T",  "P",  "E"  } or
+                       { "Ki", "Mi", "Gi", "Ti", "Pi", "Ei" }
+
+
+  return fmt("%.1f %sB", bytes / (unit ^ exp), units[exp])
+end
+
+
+local function monitor(premature, cache)
+  if premature then
+    return
+  end
+
+  local size = cache.size
+  local used = cache:used_space()
+
+  local pct = used / size * 100
+
+  local msg = fmt("%.1f%% of cache is used (%s / %s)", pct,
+                  format_bytes(used, true), format_bytes(size, true))
+
+  if pct >= 60 and pct < 80 then
+    log(DEBUG, msg)
+  elseif pct >= 80 and pct < 90 then
+    log(INFO, msg)
+  elseif pct >= 90 and pct < 95  then
+    log(NOTICE, msg, ", please consider raising 'mem_cache_size'")
+  elseif pct >= 95 then
+    log(WARN, msg, ", please consider raising 'mem_cache_size'")
+  end
 end
 
 
@@ -70,12 +127,12 @@ function _M.new(opts)
   end
 
   local mlcache, err = resty_mlcache.new(SHM_CACHE, SHM_CACHE, {
-    shm_miss         = "kong_db_cache_miss",
-    shm_locks        = "kong_locks",
+    shm_miss         = SHM_CACHE_MISSES,
+    shm_locks        = SHM_LOCKS,
     shm_set_retries  = 3,
     lru_size         = LRU_SIZE,
-    ttl              = max(opts.ttl     or 3600, 0),
-    neg_ttl          = max(opts.neg_ttl or 300,  0),
+    ttl              = math.max(opts.ttl     or 3600, 0),
+    neg_ttl          = math.max(opts.neg_ttl or 300,  0),
     resurrect_ttl    = opts.resurrect_ttl or 30,
     resty_lock_opts  = opts.resty_lock_opts,
     ipc = {
@@ -96,9 +153,10 @@ function _M.new(opts)
   end
 
   local self          = {
-    propagation_delay = max(opts.propagation_delay or 0, 0),
+    propagation_delay = math.max(opts.propagation_delay or 0, 0),
     cluster_events    = opts.cluster_events,
     mlcache           = mlcache,
+    size              = ngx_shared[SHM_CACHE]:capacity(),
   }
 
   local ok, err = self.cluster_events:subscribe("invalidations", function(key)
@@ -108,6 +166,10 @@ function _M.new(opts)
   if not ok then
     return nil, "failed to subscribe to invalidations cluster events " ..
                 "channel: " .. err
+  end
+
+  if worker_id() == 0 then
+    timer_every(60, monitor, self)
   end
 
   _init = true
@@ -189,6 +251,16 @@ function _M:purge()
   if not ok then
     log(ERR, "failed to purge cache: ", err)
   end
+end
+
+
+function _M:used_space()
+  return self.size - ngx_shared[SHM_CACHE]:free_space()
+end
+
+
+function _M:free_space()
+  return ngx_shared[SHM_CACHE]:free_space()
 end
 
 

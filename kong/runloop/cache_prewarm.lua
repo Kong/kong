@@ -1,3 +1,10 @@
+local kong = kong
+local now = ngx.now
+local floor = math.floor
+local ipairs = ipairs
+local tostring = tostring
+
+
 local cache_prewarm = {}
 
 
@@ -10,31 +17,40 @@ local ENTITIES_TO_PREWARM = {
 local function cache_prewarm_single_entity(entity_name)
   local dao = kong.db[entity_name]
   if not dao then
-    return nil, "Invalid entity name found when prewarming the cache: " .. tostring(entity_name)
+    return nil, "invalid entity name found when prewarming cache: " ..
+                tostring(entity_name)
   end
 
-  ngx.log(ngx.NOTICE, "Preloading '" .. entity_name .. "' into the cache ...")
+  kong.log.notice("preloading '", entity_name, "' into cache")
 
-  local start = ngx.now()
+  local start = now()
 
   for entity, err in dao:each(1000) do
     if err then
       return nil, err
     end
 
-    local cache_key = dao:cache_key(entity)
-    local ok, err   = kong.cache:get(cache_key, nil, function()
+    local free_space = kong.cache:free_space()
+    local cache_key  = dao:cache_key(entity)
+    local ok, err    = kong.cache:get(cache_key, nil, function()
       return entity
     end)
     if not ok then
       return nil, err
     end
+
+    if kong.cache:free_space() >= free_space then
+      kong.log.warn("cache memory is exhausted, please consider raising the ",
+                    "'mem_cache_size=", kong.configuration.mem_cache_size, "'")
+
+      return nil
+    end
   end
 
-  local ellapsed = math.floor((ngx.now() - start) * 1000)
+  local elapsed = floor((now() - start) * 1000)
 
-  ngx.log(ngx.NOTICE, "Finished preloading '" .. entity_name ..
-                      "' into the cache. Ellapsed time: " .. tostring(ellapsed) .. "ms.")
+  kong.log.notice("finished preloading '", entity_name,
+                  "' into cache within ", tostring(elapsed), " ms")
   return true
 end
 
@@ -52,7 +68,11 @@ function cache_prewarm.execute()
   for _, entity_name in ipairs(ENTITIES_TO_PREWARM) do
     local ok, err = cache_prewarm_single_entity(entity_name)
     if not ok then
-      return nil, err
+      if err then
+        return nil, err
+      else
+        return true
+      end
     end
   end
 
