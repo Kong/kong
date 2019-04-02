@@ -1,7 +1,6 @@
 require "kong.plugins.jwt-signer.env"
 
 
-local singletons  = require "kong.singletons"
 local timestamp   = require "kong.tools.timestamp"
 local utils       = require "kong.tools.utils"
 local codec       = require "kong.openid-connect.codec"
@@ -26,35 +25,36 @@ local time        = ngx.time
 local find        = string.find
 local type        = type
 local null        = ngx.null
+local kong        = kong
 
 
 local function init_worker()
-  if not singletons.worker_events or not singletons.worker_events.register then
+  if not kong.worker_events or not kong.worker_events.register then
     return
   end
 
-  singletons.worker_events.register(function(data)
+  kong.worker_events.register(function(data)
     log("consumer updated, invalidating cache")
 
     local old_entity = data.old_entity
     if old_entity then
       if old_entity.custom_id and old_entity.custom_id ~= null and old_entity.custom_id ~= "" then
-        singletons.cache:invalidate(singletons.dao.consumers:cache_key("custom_id", old_entity.custom_id))
+        kong.cache:invalidate(kong.db.consumers:cache_key("custom_id", old_entity.custom_id))
       end
 
       if old_entity.username and old_entity.username ~= null and old_entity.username ~= "" then
-        singletons.cache:invalidate(singletons.dao.consumers:cache_key("username", old_entity.username))
+        kong.cache:invalidate(kong.db.consumers:cache_key("username", old_entity.username))
       end
     end
 
     local entity = data.entity
     if entity then
       if entity.custom_id and entity.custom_id ~= null and entity.custom_id ~= "" then
-        singletons.cache:invalidate(singletons.dao.consumers:cache_key("custom_id", entity.custom_id))
+        kong.cache:invalidate(kong.db.consumers:cache_key("custom_id", entity.custom_id))
       end
 
       if entity.username and entity.username ~= null and entity.username ~= "" then
-        singletons.cache:invalidate(singletons.dao.consumers:cache_key("username", entity.username))
+        kong.cache:invalidate(kong.db.consumers:cache_key("username", entity.username))
       end
     end
   end, "crud", "consumers")
@@ -70,13 +70,9 @@ local function load_keys_db(name)
   local row, err
 
   if utils.is_valid_uuid(name) then
-    row, err = singletons.dao.jwt_signer_jwks:find({ id = name })
-
+    row, err = kong.db.jwt_signer_jwks:select { id = name }
   else
-    row, err = singletons.dao.jwt_signer_jwks:find_all({ name = name })
-    if row then
-      row = row[1]
-    end
+    row, err = kong.db.jwt_signer_jwks:select_by_name(name)
   end
 
   return row, err
@@ -96,7 +92,7 @@ local function rotate_keys(name, row, update, force)
         return nil, err
       end
 
-      row, err = singletons.dao.jwt_signer_jwks:insert({
+      row, err = kong.db.jwt_signer_jwks:insert({
         name       = name,
         keys       = row,
         created_at = now,
@@ -134,7 +130,7 @@ local function rotate_keys(name, row, update, force)
         local data = { keys = current_keys, previous = previous_keys, updated_at = now }
         local id = { id = row.id }
 
-        row, err = singletons.dao.jwt_signer_jwks:update(data, id)
+        row, err = kong.db.jwt_signer_jwks:update(id, data)
 
         if not row then
           return nil, err
@@ -157,7 +153,7 @@ local function rotate_keys(name, row, update, force)
         return nil, err
       end
 
-      row, err = singletons.dao.jwt_signer_jwks:insert({
+      row, err = kong.db.jwt_signer_jwks:insert({
         name       = name,
         keys       = row,
         created_at = now,
@@ -189,7 +185,7 @@ local function rotate_keys(name, row, update, force)
       local data = { keys = current_keys, previous = previous_keys, updated_at = now }
       local id = { id = row.id }
 
-      row, err = singletons.dao.jwt_signer_jwks:update(data, id)
+      row, err = kong.db.jwt_signer_jwks:update(id, data)
       if not row then
         return nil, err
       end
@@ -209,8 +205,8 @@ end
 
 
 local function load_keys(name)
-  local cache_key = singletons.dao.jwt_signer_jwks:cache_key(name)
-  local row, err = singletons.cache:get(cache_key, nil, load_keys_db, name)
+  local cache_key = kong.db.jwt_signer_jwks:cache_key(name)
+  local row, err = kong.cache:get(cache_key, nil, load_keys_db, name)
   if err then
     log(err)
   end
@@ -224,28 +220,31 @@ local function load_consumer_db(subject, by)
     return nil, "unable to load consumer by a missing subject"
   end
 
-  local row, err
+  local result, err
+  log.notice("loading consumer by  ", by, " using ", subject)
 
   if by == "id" then
-    log("loading consumer by id using ", subject)
-    row, err = singletons.dao.consumers:find { id = subject }
-    if type(row) == "table" then
-      return row
+    if not utils.is_valid_uuid(subject) then
+      return nil, "invalid id " .. subject
     end
-
+    result, err = kong.db.consumers:select { id = subject }
+  elseif by == "username" then
+    result, err = kong.db.consumers:select_by_username(subject)
+  elseif by == "custom_id" then
+    result, err = kong.db.consumers.select_by_custom_id(subject)
   else
-    log("loading consumer by " .. by .. " using " .. subject)
-    row, err = singletons.dao.consumers:find_all { [by] = subject }
-    if type(row) == "table" and type(row[1]) == "table" then
-      return row[1]
-    end
+    return nil, "consumer cannot be loaded by " .. by
+  end
+
+  if type(result) == "table" then
+      return result
   end
 
   if err then
-    log("failed to load consumer (", err, ")")
+    log.notice("failed to load consumer (", err, ")")
 
   else
-    log("failed to load consumer")
+    log.notice("failed to load consumer")
   end
 
   return nil, err
@@ -262,13 +261,13 @@ local function load_consumer(subject, consumer_by)
   for _, by in ipairs(consumer_by) do
     local cache_key
     if by == "id" then
-      cache_key = singletons.dao.consumers:cache_key(subject)
+      cache_key = kong.db.consumers:cache_key(subject)
     else
-      cache_key = singletons.dao.consumers:cache_key(by, subject)
+      cache_key = kong.db.consumers:cache_key(by, subject)
     end
 
     local consumer
-    consumer, err = singletons.cache:get(cache_key, nil, load_consumer_db, subject, by)
+    consumer, err = kong.cache:get(cache_key, nil, load_consumer_db, subject, by)
     if consumer then
       return consumer
     end
@@ -375,16 +374,16 @@ local function introspect(endpoint, opaque_token, hint, authorization, args, cac
       cache_key = "jwt-signer:" .. cache_key
 
       local now = time()
-      local res, err = singletons.cache:get(cache_key,
-                                            nil,
-                                            introspect_uri_cache,
-                                            endpoint,
-                                            opaque_token,
-                                            hint,
-                                            authorization,
-                                            args_table or args,
-                                            now,
-                                            timeout)
+      local res, err = kong.cache:get(cache_key,
+                                      nil,
+                                      introspect_uri_cache,
+                                      endpoint,
+                                      opaque_token,
+                                      hint,
+                                      authorization,
+                                      args_table or args,
+                                      now,
+                                      timeout)
 
       if not res then
         return nil, err or "unable to introspect token"
@@ -392,7 +391,7 @@ local function introspect(endpoint, opaque_token, hint, authorization, args, cac
 
       local exp = res[2]
       if exp and now > exp then
-        singletons.cache:invalidate(cache_key)
+        kong.cache:invalidate(cache_key)
         return introspect_uri(endpoint, opaque_token, hint, authorization, args_table or args, timeout)
       end
 
