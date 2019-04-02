@@ -938,7 +938,7 @@ local function update_user_token(user)
   local ident  = get_token_ident(user.user_token)
   local digest = bcrypt.digest(user.user_token, LOG_ROUNDS)
 
-  local _, err = kong.dao.rbac_users:update(
+  local _, err = kong.db.rbac_users:update(
     { user_token = digest, user_token_ident = ident },
     user
   )
