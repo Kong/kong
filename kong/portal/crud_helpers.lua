@@ -11,9 +11,9 @@ local _M = {}
 
 function _M.insert_credential(plugin, consumer_type)
   return function(credential)
-    local _, err = singletons.dao.credentials:insert({
+    local _, err = singletons.db.credentials:insert({
       id = credential.id,
-      consumer_id = credential.consumer.id,
+      consumer = { id = credential.consumer.id },
       consumer_type = consumer_type or enums.CONSUMERS.TYPE.PROXY,
       plugin = plugin,
       credential_data = tostring(cjson.encode(credential)),
@@ -29,14 +29,11 @@ end
 
 
 function _M.update_credential(credential)
-  local params = {
-    credential_data = cjson.encode(credential),
-  }
-
-  local _, err = singletons.dao.credentials:update(params, {
-      id = credential.id,
-      consumer_id = credential.consumer.id
-  }, {__skip_rbac = true})
+  local _, err = singletons.db.credentials:update(
+    { id = credential.id },
+    { credential_data = cjson.encode(credential), },
+    { skip_rbac = true }
+  )
 
   if err then
     return app_helpers.yield_error(err)
@@ -51,14 +48,14 @@ function _M.delete_credential(credential)
     ngx.log(ngx.DEBUG, "Failed to delete credential from credentials")
   end
 
-  local _, err = singletons.dao.credentials:delete({ id = credential.id }, {__skip_rbac = true})
+  local _, err = singletons.db.credentials:delete({ id = credential.id }, { skip_rbac = true })
   if err then
     return app_helpers.yield_error(err)
   end
 end
 
 function _M.update_login_credential(credential_params, dao_collection, filter_keys)
-  local credential, err = dao_collection:update(credential_params, filter_keys, {__skip_rbac = true})
+  local credential, err = dao_collection:update(credential_params, filter_keys, { skip_rbac = true })
 
   if err then
     return nil, err

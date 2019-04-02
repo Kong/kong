@@ -60,8 +60,8 @@ end
 
 
 local function find_login_credential(self, dao_factory, helpers)
-  local credentials, err = dao_factory.credentials:find_all({
-    consumer_id = self.consumer.id,
+  local credentials, err = singletons.db.credentials:select_all({
+    consumer = { id = self.consumer.id },
     consumer_type = enums.CONSUMERS.TYPE.DEVELOPER,
     plugin = self.plugin.name,
   })
@@ -305,8 +305,8 @@ return {
       ee_crud.find_developer_by_email_or_id(self, dao_factory, helpers,
                                                           {__skip_rbac = true})
 
-      local credentials, err = dao_factory.credentials:find_all({
-        consumer_id = self.consumer.id,
+      local credentials, err = singletons.db.credentials:select_all({
+        consumer = {id = self.consumer.id },
         consumer_type = enums.CONSUMERS.TYPE.DEVELOPER,
         plugin = self.plugin.name,
       })

@@ -14,7 +14,6 @@ local fmt = string.format
 
 local CORE_MODELS = {
   "apis",
-  "credentials",
   -- "consumers_rbac_users_map",
   "audit_requests",
   "audit_objects",

@@ -62,7 +62,7 @@ end
 local function build_cred_data(self, plugin_cred, consumer)
   return {
     id = plugin_cred.id,
-    consumer_id = consumer.id,
+    consumer = { id = consumer.id },
     consumer_type = enums.CONSUMERS.TYPE.DEVELOPER,
     plugin = self.portal_auth,
     credential_data = tostring(cjson.encode(plugin_cred)),
@@ -141,7 +141,7 @@ local function create_developer(self, entity, options)
 
   -- create credential reference
   local cred_data = build_cred_data(self, plugin_cred, consumer)
-  local cred = singletons.dao.credentials:insert(cred_data)
+  local cred = self.db.credentials:insert(cred_data)
   if not cred then
     rollback_on_create({ consumer = consumer })
     local err = "developer insert: could not create credential for " .. entity.email
@@ -218,8 +218,8 @@ local function update_developer(self, developer, entity, options)
     end
 
     -- find all consumers credentails
-    local credentials, err = singletons.dao.credentials:find_all({
-      consumer_id = consumer.id,
+    local credentials, err = self.db.credentials:select_all({
+      consumer = { id = consumer.id },
       consumer_type = enums.CONSUMERS.TYPE.DEVELOPER,
       plugin = self.portal_auth,
     })
@@ -247,14 +247,11 @@ local function update_developer(self, developer, entity, options)
 
     -- if credential update successful, update credential reference
     if credential then
-      local credential_params = {
-        credential_data = cjson.encode(credential),
-      }
 
-      local ok = singletons.dao.credentials:update(
-        credential_params,
-        { id = credential.id, },
-        {__skip_rbac = true, }
+      local ok = self.db.credentials:update(
+        { id = credential.id },
+        { credential_data = cjson.encode(credential), },
+        { skip_rbac = true }
       )
 
       if not ok then

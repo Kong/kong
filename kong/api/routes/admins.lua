@@ -427,9 +427,9 @@ return {
       end
 
       -- now put it in the global credentials table. not sure we need this.
-      local _, err = singletons.dao.credentials:insert({
+      local _, err = singletons.db.credentials:insert({
         id = credential.id,
-        consumer_id = credential.consumer_id,
+        consumer = { id = credential.consumer.id },
         consumer_type = enums.CONSUMERS.TYPE.ADMIN,
         plugin = self.plugin.name,
         credential_data = tostring(cjson.encode(credential)),
