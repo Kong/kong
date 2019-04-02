@@ -666,7 +666,7 @@ function _M.validate_entity_operation(entity, table_name)
   end
 
   -- whitelisted endpoints are also exempt
-  if whitelisted_endpoints[string.gsub(ngx.var.request_uri, "?.*", "")] then
+  if whitelisted_endpoints[ngx.var.uri] then
     return true
   end
 
@@ -879,7 +879,7 @@ end
 
 
 function _M.authorize_request_endpoint(map, workspace, endpoint, route_name, action)
-  if whitelisted_endpoints[string.gsub(endpoint, "?.*", "")] then
+  if whitelisted_endpoints[endpoint] then
     return true
   end
 
@@ -1110,7 +1110,7 @@ function _M.validate_user(rbac_user)
   end
 
   -- if it's whitelisted, we don't care who the user is
-  if whitelisted_endpoints[string.gsub(ngx.var.request_uri, "?.*", "")] then
+  if whitelisted_endpoints[ngx.var.uri] then
     return true
   end
 
