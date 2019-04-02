@@ -1,6 +1,5 @@
 local BasePlugin = require "kong.plugins.base_plugin"
 local constants  = require "kong.constants"
-local responses  = require "kong.tools.responses"
 local arguments  = require "kong.plugins.jwt-signer.arguments"
 local cache      = require "kong.plugins.jwt-signer.cache"
 local log        = require "kong.plugins.jwt-signer.log"
@@ -220,9 +219,7 @@ local function unauthorized(realm, err, desc, real_error, ...)
                                    err,
                                    desc)
 
-  responses.send_HTTP_UNAUTHORIZED()
-
-  return false
+  return kong.response.exit(401, { message = "Unauthorized" })
 end
 
 
@@ -236,21 +233,20 @@ local function forbidden(realm, err, desc, real_error, ...)
     err,
     desc)
 
-  responses.send_HTTP_FORBIDDEN("Forbidden")
-
-  return false
+  return kong.response.exit(403, { message = "Forbidden" })
 end
 
 
 local function unexpected(realm, err, desc, real_error)
+  if real_error then
+    log.error(real_error)
+  end
+
   header["WWW-Authenticate"] = fmt('Bearer realm="%s", error="%s", error_description="%s"',
     realm or var.host,
     err,
     desc)
-
-  responses.send_HTTP_INTERNAL_SERVER_ERROR(real_error)
-
-  return false
+  return kong.response.exit(500, { message = "An unexpected error occurred" })
 end
 
 
