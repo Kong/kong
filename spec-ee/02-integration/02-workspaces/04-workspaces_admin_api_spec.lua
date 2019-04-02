@@ -57,6 +57,20 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
         assert.equals(0, files_count)
       end)
 
+      it("handles empty workspace name passed on creation", function()
+        local res = assert(client:post("/workspaces", {
+          body = {},
+          headers = {
+            ["Content-Type"] = "application/json"
+          }
+        }))
+
+        local body = assert.res_status(400, res)
+        local json = cjson.decode(body)
+
+        assert.equals("required field missing", json.fields.name)
+      end)
+
       it("handles unique constraint conflicts", function()
         bp.workspaces:insert({
           name = "foo",
