@@ -1,11 +1,15 @@
 local cache = require "kong.plugins.jwt-signer.cache"
+local endpoints = require "kong.api.endpoints"
 local utils = require "kong.tools.utils"
-local crud  = require "kong.api.crud_helpers"
 local json  = require "cjson.safe"
 
 
+local escape_uri = ngx.escape_uri
+local fmt = string.format
 local setmetatable = setmetatable
 local ipairs = ipairs
+local kong = kong
+local null = ngx.null
 local pairs = pairs
 local type = type
 
@@ -86,97 +90,81 @@ local function post_process_row(row)
 end
 
 
+local jwks_schema = kong.db.jwt_signer_jwks.schema
+
+
 return {
   ["/jwt-signer/jwks/"] = {
-    resource = "jwt-signer",
+    schema = jwks_schema,
+    methods = {
+      GET = function(self, db)
+        local jwks, _, err_t, offset = endpoints.page_collection(self, db, jwks_schema)
 
-    GET = function(self, dao)
-      crud.paginated_set(self, dao.jwt_signer_jwks, post_process_keys)
-    end,
+        if err_t then
+          return endpoints.handle_error(err_t)
+        end
+        for i, row in ipairs(jwks) do
+          jwks[i] = post_process_keys(row)
+        end
+
+        local next_page
+        if offset then
+          next_page = fmt("jwt-signer/jwks?offset=%s", escape_uri(offset))
+        else
+          next_page = null
+        end
+
+        return kong.response.exit(200, {
+          data      = jwks,
+          offset    = offset,
+          next      = next_page,
+        })
+      end,
+    },
   },
 
-  ["/jwt-signer/jwks/:id"] = {
-    resource = "jwt-signer",
-
-    GET = function(self, dao, helpers)
-      local id = self.params.id
-
-      local row, err
-      if utils.is_valid_uuid(id) then
-        row, err = dao.jwt_signer_jwks:find({ id = id })
-
-      else
-        row, err = dao.jwt_signer_jwks:find_all({ name = id })
-        row = row and row[1]
-      end
-
-      if err then
-        return helpers.yield_error(err)
-      elseif row == nil then
-        return helpers.responses.send_HTTP_NOT_FOUND()
-      end
-
-      return helpers.responses.send_HTTP_OK(post_process_row(row))
-    end,
-
-    DELETE = function(self, dao, helpers)
-      local id = self.params.id
-
-      if utils.is_valid_uuid(id) then
-        return crud.delete({ id = self.params.id }, dao.jwt_signer_jwks)
-      end
-
-      local row, err = dao.jwt_signer_jwks:find_all({ name = id })
-      row = row and row[1]
-
-      if err then
-        return helpers.yield_error(err)
-      elseif row == nil then
-        return helpers.responses.send_HTTP_NOT_FOUND()
-      end
-
-      return crud.delete({ id = row.id }, dao.jwt_signer_jwks)
-    end
+  ["/jwt-signer/jwks/:jwt_signer_jwks"] = {
+    schema = jwks_schema,
+    methods = {
+      GET = endpoints.get_entity_endpoint(jwks_schema),
+      DELETE = endpoints.delete_entity_endpoint(jwks_schema),
+    },
   },
 
   ["/jwt-signer/jwks/:id/rotate"] = {
-    resource = "jwt-signer",
+    schema = jwks_schema,
+    methods = {
+      POST = function(self, db)
+        local id = self.params.id
 
-    POST = function(self, dao, helpers)
-      local id = self.params.id
+        local row, err
 
-      local row, err
-      if utils.is_valid_uuid(id) then
-        row, err = dao.jwt_signer_jwks:find({ id = id })
+        if utils.is_valid_uuid(id) then
+          row, err = db.jwt_signer_jwks:select { id = id }
+        else
+          row, err = db.jwt_signer_jwks:select_by_name(id)
+        end
 
-      else
-        row, err = dao.jwt_signer_jwks:find_all({ name = id })
-        row = row and row[1]
-      end
+        if err then
+          return endpoints.handle_error(err)
+        elseif  row == nil then
+          return kong.response.exit(404, { message = "Not found" })
+        end
 
-      if err then
-        return helpers.yield_error(err)
+        local ok
 
-      elseif row == nil then
-        return helpers.responses.send_HTTP_NOT_FOUND()
-      end
+        ok, err = cache.rotate_keys(row.name, row, true, true)
+        if not ok then return endpoints.handle_error(err) end
 
-      local ok
+        row, err = db.jwt_signer_jwks:select { id = row.id }
+        if err then
+          return endpoints.handle_error(err)
+        elseif row == nil then
+          return kong.response.exit(404, { message = "Not found" })
+        end
 
-      ok, err = cache.rotate_keys(row.name, row, true, true)
-      if not ok then
-        return helpers.yield_error(err)
-      end
-
-      row, err = dao.jwt_signer_jwks:find({ id = row.id })
-      if err then
-        return helpers.yield_error(err)
-
-      elseif row == nil then
-        return helpers.responses.send_HTTP_NOT_FOUND()
-      end
-
-      return helpers.responses.send_HTTP_OK(post_process_row(row))
-    end,
+        return kong.response.exit(200, post_process_row(row))
+      end,
+    },
   },
 }
