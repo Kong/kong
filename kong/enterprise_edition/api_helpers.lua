@@ -76,8 +76,7 @@ function _M.authenticate(self, rbac_enabled, gui_auth)
   end
 
   -- lookup to see if we white listed this route from auth checks
-  local auth_whitelisted = auth_whitelisted_uris[ngx.var.request_uri]
-  if auth_whitelisted then
+  if auth_whitelisted_uris[string.gsub(ngx.var.request_uri, "?.*", "")] then
     return
   end
 
