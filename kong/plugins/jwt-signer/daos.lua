@@ -1,37 +1,35 @@
+local typedefs = require "kong.db.schema.typedefs"
+
 return {
   jwt_signer_jwks = {
-    primary_key = {
-      "id",
-    },
-    cache_key   = {
-      "name",
-    },
-    table       = "jwt_signer_jwks",
-    fields      = {
-      id                 = {
-        type             = "id",
-        dao_insert_value = true,
-        required         = true,
+    name                = "jwt_signer_jwks",
+    primary_key         = { "id" },
+    cache_key           = { "name" },
+    endpoint_key        = "name",
+    generate_admin_api  = false,
+    fields = {
+      { id = typedefs.uuid },
+      {
+        name = {
+          type= "string",
+          required = true,
+          unique = true,
+        },
       },
-      name               = {
-        type             = "text",
-        unique           = true,
-        required         = true,
+      {
+        keys = {
+          type = "string",
+          required = true,
+        },
       },
-      keys               = {
-        type             = "text",
-        required         = true,
+      {
+        previous = {
+          type = "string",
+          required = false,
+        },
       },
-      previous           = {
-        type             = "text",
-        required         = false,
-      },
-      created_at         = {
-        type             = "timestamp",
-      },
-      updated_at         = {
-        type             = "timestamp",
-      },
+      { created_at = typedefs.auto_timestamp_s },
+      { updated_at = typedefs.auto_timestamp_s },
     },
   },
 }
