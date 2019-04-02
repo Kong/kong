@@ -706,7 +706,7 @@ for _, strategy in helpers.each_strategy() do
 
         -- TODO: test setup may not be right, because API call returns
         -- 403 even before resetting password
-        pending("updates password", function()
+        it("updates password", function()
           -- create admin
           local res = assert(admins_helpers.create({
             username = "kinman",
@@ -720,6 +720,13 @@ for _, strategy in helpers.each_strategy() do
           }))
 
           local admin = res.body.admin
+
+          -- give admin a role so API request will succeed
+          local role = assert(db.rbac_roles:select_by_name("read-only"))
+          assert(db.rbac_user_roles:insert({
+            user = admin.rbac_user,
+            role = role,
+          }))
 
           -- get JWT for setting password
           local token
