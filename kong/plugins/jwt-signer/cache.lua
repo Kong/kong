@@ -1,7 +1,6 @@
 require "kong.plugins.jwt-signer.env"
 
 
-local timestamp   = require "kong.tools.timestamp"
 local utils       = require "kong.tools.utils"
 local codec       = require "kong.openid-connect.codec"
 local token       = require "kong.openid-connect.token"
@@ -81,7 +80,7 @@ end
 
 local function rotate_keys(name, row, update, force)
   local err
-  local now = timestamp.get_utc_ms()
+  local now = time()
 
   if find(name, "https://", 1, true) == 1 or find(name, "http://", 1, true) == 1 then
     if not row then
@@ -95,8 +94,6 @@ local function rotate_keys(name, row, update, force)
       row, err = kong.db.jwt_signer_jwks:insert({
         name       = name,
         keys       = row,
-        created_at = now,
-        updated_at = now,
       })
 
       if not row then
@@ -106,7 +103,7 @@ local function rotate_keys(name, row, update, force)
     elseif update ~= false then
       local updated_at = row.updated_at or 0
 
-      if not force and now - updated_at < 300000 then
+      if not force and now - updated_at < 300 then
         log.notice("jwks were rotated less than 5 minutes ago (skipping)")
 
       else
@@ -156,8 +153,6 @@ local function rotate_keys(name, row, update, force)
       row, err = kong.db.jwt_signer_jwks:insert({
         name       = name,
         keys       = row,
-        created_at = now,
-        updated_at = now,
       })
 
       if not row then
