@@ -205,7 +205,7 @@ local function query_entity(context, self, db, schema, method)
     end
 
     if not method then
-      return dao[method or context](dao, size, args.offset, opts)
+      return dao[context](dao, size, args.offset, opts)
     end
 
     return dao[method](dao, self.params[schema.name], size, args.offset, opts)
