@@ -673,7 +673,7 @@ for _, strategy in helpers.each_strategy() do
         end)
       end)
 
-      describe("#PATCH", function()
+      describe("PATCH", function()
         it("validates parameters", function()
           local res = assert(client:send {
             method = "PATCH",
@@ -704,8 +704,6 @@ for _, strategy in helpers.each_strategy() do
           assert.same("email is required", json.message)
         end)
 
-        -- TODO: test setup may not be right, because API call returns
-        -- 403 even before resetting password
         it("updates password", function()
           -- create admin
           local res = assert(admins_helpers.create({
