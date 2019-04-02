@@ -697,4 +697,514 @@ for _, strategy in helpers.each_strategy() do
     end)
 
   end)
+
+  describe("Admin API - /admins/:admin/roles #" .. strategy, function()
+    local db, client
+
+    lazy_setup(function()
+      _, db = helpers.get_db_utils(strategy)
+
+      assert(helpers.start_kong({
+        database = strategy,
+        admin_gui_url = "http://manager.konghq.com",
+      }))
+    end)
+
+    before_each(function()
+      db:truncate("rbac_users")
+      db:truncate("rbac_user_roles")
+      db:truncate("rbac_roles")
+      db:truncate("rbac_role_entities")
+      db:truncate("rbac_role_endpoints")
+      db:truncate("consumers")
+      db:truncate("admins")
+      db:truncate("workspace_entities")
+
+      if client then
+        client:close()
+      end
+
+      client = assert(helpers.admin_client())
+    end)
+
+    lazy_teardown(function()
+      if client then
+        client:close()
+      end
+
+      helpers.stop_kong()
+
+      db:truncate("rbac_users")
+      db:truncate("rbac_user_roles")
+      db:truncate("rbac_roles")
+      db:truncate("rbac_role_entities")
+      db:truncate("rbac_role_endpoints")
+      db:truncate("consumers")
+      db:truncate("admins")
+      db:truncate("workspace_entities")
+    end)
+
+
+    describe("POST", function()
+      it("associates a role with an admin", function()
+        assert(admins_helpers.create({
+          username = "bob",
+          email = "bob@konghq.com",
+          status = enums.CONSUMERS.STATUS.APPROVED,
+        }, {
+          token_optional = true,
+          db = db,
+          workspace = ngx.ctx.workspaces[1]
+        }))
+
+        local res = assert(client:send {
+          method = "POST",
+          path = "/rbac/roles",
+          body = {
+            name = "read-only",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+        })
+        assert.res_status(201, res)
+
+        local res = assert(client:send {
+          path = "/admins/bob/roles",
+          method = "POST",
+          body = {
+            roles = "read-only",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+        })
+        local body = assert.res_status(201, res)
+        local json = cjson.decode(body)
+
+        -- bob has read-only now
+        assert.same(1, #json.roles)
+        assert.same("read-only", json.roles[1].name)
+      end)
+
+      it("associates multiple roles with a user", function()
+        assert(admins_helpers.create({
+          username = "jerry",
+          email = "jerry@konghq.com",
+          status = enums.CONSUMERS.STATUS.APPROVED,
+        }, {
+          token_optional = true,
+          db = db,
+          workspace = ngx.ctx.workspaces[1]
+        }))
+
+        local res = assert(client:send {
+          method = "POST",
+          path = "/rbac/roles",
+          body = {
+            name = "read-only",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+        })
+        assert.res_status(201, res)
+
+        local res = assert(client:send {
+          method = "POST",
+          path = "/rbac/roles",
+          body = {
+            name = "admin",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+        })
+        assert.res_status(201, res)
+
+        local res = assert(client:send {
+          path = "/admins/jerry/roles",
+          method = "POST",
+          body = {
+            roles = "read-only,admin",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+        })
+        local body = assert.res_status(201, res)
+        local json = cjson.decode(body)
+
+        -- jerry now has read-only and admin
+        assert.same(2, #json.roles)
+      end)
+
+      describe("errors", function()
+        it("when the admin doesn't exist", function()
+          local res = assert(client:send {
+            path = "/admins/dne/roles",
+            method = "POST",
+            body = {
+              roles = "read-only",
+            },
+            headers = {
+              ["Content-Type"] = "application/json",
+            },
+          })
+
+          assert.res_status(404, res)
+        end)
+
+        it("when the role doesn't exist", function()
+          assert(admins_helpers.create({
+            username = "bob",
+            email = "bob@konghq.com",
+            status = enums.CONSUMERS.STATUS.APPROVED,
+          }, {
+            token_optional = true,
+            db = db,
+            workspace = ngx.ctx.workspaces[1]
+          }))
+
+          local res = assert(client:send {
+            path = "/admins/bob/roles",
+            method = "POST",
+            body = {
+              roles = "dne",
+            },
+            headers = {
+              ["Content-Type"] = "application/json",
+            },
+          })
+
+          local body = assert.res_status(400, res)
+          local json = cjson.decode(body)
+
+          assert.same("role not found with name 'dne'", json.message)
+        end)
+
+        it("when duplicate relationships are attempted", function()
+          assert(admins_helpers.create({
+            username = "bill",
+            email = "bill@konghq.com",
+            status = enums.CONSUMERS.STATUS.APPROVED,
+          }, {
+            token_optional = true,
+            db = db,
+            workspace = ngx.ctx.workspaces[1]
+          }))
+
+          local res = assert(client:send {
+            method = "POST",
+            path = "/rbac/roles",
+            body = {
+              name = "read-only",
+            },
+            headers = {
+              ["Content-Type"] = "application/json",
+            },
+          })
+          assert.res_status(201, res)
+
+          local res = assert(client:send {
+            path = "/admins/bill/roles",
+            method = "POST",
+            body = {
+              roles = "read-only",
+            },
+            headers = {
+              ["Content-Type"] = "application/json",
+            },
+          })
+
+          assert.res_status(201, res)
+
+          res = assert(client:send {
+            path = "/admins/bill/roles",
+            method = "POST",
+            body = {
+              roles = "read-only",
+            },
+            headers = {
+              ["Content-Type"] = "application/json",
+            },
+          })
+
+          assert.res_status(400, res)
+        end)
+      end)
+    end)
+
+    describe("GET", function()
+      it("displays the non-default roles associated with the admin", function()
+        assert(admins_helpers.create({
+          username = "bob",
+          email = "bob@konghq.com",
+          status = enums.CONSUMERS.STATUS.APPROVED,
+        }, {
+          token_optional = true,
+          db = db,
+          workspace = ngx.ctx.workspaces[1],
+        }))
+
+        local res = assert(client:send {
+          method = "POST",
+          path = "/rbac/roles",
+          body = {
+            name = "read-only",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+        })
+        assert.res_status(201, res)
+
+        local res = assert(client:send {
+          path = "/admins/bob/roles",
+          method = "POST",
+          body = {
+            roles = "read-only",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+        })
+        assert.res_status(201, res)
+
+        local res = assert(client:send {
+          path = "/admins/bob/roles",
+          method = "GET",
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+
+        -- bob has read-only role
+        assert.same(1, #json.roles)
+        assert.same("read-only", json.roles[1].name)
+
+        local res = assert(client:send {
+          method = "POST",
+          path = "/rbac/roles",
+          body = {
+            name = "admin",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+        })
+        assert.res_status(201, res)
+
+        assert(admins_helpers.create({
+          username = "jerry",
+          email = "jerry@konghq.com",
+          status = enums.CONSUMERS.STATUS.APPROVED,
+        }, {
+          token_optional = true,
+          db = db,
+          workspace = ngx.ctx.workspaces[1],
+        }))
+
+        local res = assert(client:send {
+          path = "/admins/jerry/roles",
+          method = "POST",
+          body = {
+            roles = "read-only,admin",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+        })
+        assert.res_status(201, res)
+
+        res = assert(client:send {
+          path = "/admins/jerry/roles",
+          method = "GET",
+        })
+
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+
+        -- jerry has admin and read-only
+        assert.same(2, #json.roles)
+        for _, role in ipairs(json.roles) do
+          assert.is_true(role.name == "admin" or role.name == "read-only")
+        end
+      end)
+    end)
+
+    describe("DELETE", function()
+      it("removes a role associated with an admin", function()
+        assert(admins_helpers.create({
+          username = "bob",
+          email = "bob@konghq.com",
+          status = enums.CONSUMERS.STATUS.APPROVED,
+        }, {
+          token_optional = true,
+          db = db,
+          workspace = ngx.ctx.workspaces[1]
+        }))
+
+        local res = assert(client:send {
+          method = "POST",
+          path = "/rbac/roles",
+          body = {
+            name = "read-only",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+        })
+        assert.res_status(201, res)
+
+        local res = assert(client:send {
+          path = "/admins/bob/roles",
+          method = "POST",
+          body = {
+            roles = "read-only",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+        })
+        assert.res_status(201, res)
+
+        local res = assert(client:send {
+          path = "/admins/bob/roles",
+          method = "DELETE",
+          body = {
+            roles = "read-only",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+        })
+        assert.res_status(204, res)
+
+        res = assert(client:send {
+          path = "/admins/bob/roles",
+          method = "GET",
+        })
+
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+
+        -- bob didn't have any other public roles
+        assert.same(0, #json.roles)
+      end)
+
+      it("removes only one role associated with a user", function()
+        local res = assert(client:send {
+          method = "POST",
+          path = "/rbac/roles",
+          body = {
+            name = "read-only",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+        })
+        assert.res_status(201, res)
+
+        local res = assert(client:send {
+          method = "POST",
+          path = "/rbac/roles",
+          body = {
+            name = "admin",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+        })
+        assert.res_status(201, res)
+
+        assert(admins_helpers.create({
+          username = "jerry",
+          email = "jerry@konghq.com",
+          status = enums.CONSUMERS.STATUS.APPROVED,
+        }, {
+          token_optional = true,
+          db = db,
+          workspace = ngx.ctx.workspaces[1]
+        }))
+
+        local res = assert(client:send {
+          path = "/admins/jerry/roles",
+          method = "POST",
+          body = {
+            roles = "read-only,admin",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+        })
+        assert.res_status(201, res)
+
+        local res = assert(client:send {
+          path = "/admins/jerry/roles",
+          method = "DELETE",
+          body = {
+            roles = "read-only",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+        })
+        assert.res_status(204, res)
+
+        res = assert(client:send {
+          path = "/admins/jerry/roles",
+          method = "GET",
+        })
+
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+
+        -- jerry no longer has read-only
+        assert.same(1, #json.roles)
+        assert.same("admin", json.roles[1].name)
+      end)
+
+      describe("errors", function()
+        it("when the user doesn't exist", function()
+          local res = assert(client:send {
+            path = "/admins/dne/roles",
+            method = "DELETE",
+            body = {
+              roles = "read-only",
+            },
+            headers = {
+              ["Content-Type"] = "application/json",
+            },
+          })
+
+          assert.res_status(404, res)
+        end)
+
+        it("when no roles are defined", function()
+          assert(admins_helpers.create({
+            username = "bob",
+            email = "bob@konghq.com",
+            status = enums.CONSUMERS.STATUS.APPROVED,
+          }, {
+            token_optional = true,
+            db = db,
+            workspace = ngx.ctx.workspaces[1]
+          }))
+
+          local res = assert(client:send {
+            path = "/admins/bob/roles",
+            method = "DELETE",
+            headers = {
+              ["Content-Type"] = "application/json",
+            },
+          })
+
+          local body = assert.res_status(400, res)
+          local json = cjson.decode(body)
+
+          assert.same("must provide >= 1 role", json.message)
+        end)
+      end)
+    end)
+  end)
 end

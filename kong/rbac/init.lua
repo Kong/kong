@@ -3,9 +3,11 @@ local _M = {}
 local bit        = require "bit"
 local workspaces = require "kong.workspaces"
 local responses  = require "kong.tools.responses"
+local utils      = require "kong.tools.utils"
 local cjson      = require "cjson"
 local tablex     = require "pl.tablex"
 local bcrypt     = require "bcrypt"
+local new_tab    = require "table.new"
 
 
 local band   = bit.band
@@ -441,6 +443,30 @@ local function get_rbac_user_info(rbac_user)
   return user or guest_user
 end
 _M.get_rbac_user_info = get_rbac_user_info
+
+
+local function objects_from_names(db, given_names, object_name)
+  local names      = utils.split(given_names, ",")
+  local objs       = new_tab(#names, 0)
+  local object_dao = fmt("rbac_%ss", object_name)
+
+  for i = 1, #names do
+    local object, err = db[object_dao]:select_by_name(names[i])
+    if err then
+      return nil, err
+    end
+
+    if not object then
+      return nil, fmt("%s not found with name '%s'", object_name, names[i])
+    end
+
+    -- track the whole object so we have the id for the mapping later
+    objs[i] = object
+  end
+
+  return objs
+end
+_M.objects_from_names = objects_from_names
 
 
 local function is_system_table(t)
