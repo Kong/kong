@@ -1,6 +1,5 @@
 local singletons = require "kong.singletons"
 local enums = require "kong.enterprise_edition.dao.enums"
-local portal_crud = require "kong.portal.crud_helpers"
 local workspaces = require "kong.workspaces"
 local responses = require "kong.tools.responses"
 local secrets = require "kong.enterprise_edition.consumer_reset_secret_helpers"
@@ -256,7 +255,7 @@ function _M.create(params, opts)
 
   local jwt
   if not token_optional then
-    local expiry = opts.token_expiry or singletons.configuration.admin_invitation_expiry
+    local expiry = opts.token_expiry or kong.configuration.admin_invitation_expiry
 
     jwt, err = secrets.create(admin.consumer, opts.remote_addr, expiry)
 
@@ -396,15 +395,7 @@ end
 
 
 function _M.find_by_email(email)
-  if not email or email == "" then
-    return nil, "email is required"
-  end
-
-  local dao = singletons.dao
-  local admins, err = workspaces.run_with_ws_scope({},
-                      dao.consumers.find_all,
-                      dao.consumers,
-                      { type = enums.CONSUMERS.TYPE.ADMIN, email = email })
+  local admins, err = kong.db.admins:select_all({ email = email })
   if err then
     return nil, err
   end
@@ -493,45 +484,18 @@ end
 
 function _M.reset_password(plugin, collection, consumer, new_password, secret_id)
   log(DEBUG, _log_prefix, "searching ", plugin.name, "creds for consumer ", consumer.id)
-  local credentials, err = workspaces.run_with_ws_scope({},
-    singletons.db.credentials.select_all,
-    singletons.db.credentials,
-    {
-      consumer = { id = consumer.id, },
-      plugin = plugin.name,
-    }
-  )
+  for row, err in collection:each_for_consumer({ id = consumer.id }) do
+    if err then
+      return nil, err
+    end
 
-  if err then
-    return nil, err
-  end
-
-  local credential = credentials[1]
-  if not credential then
-    log(DEBUG, _log_prefix, "no credential found")
-    return false
-  end
-
-  log(DEBUG, _log_prefix, "found credential")
-
-  -- expedient use of portal_crud here
-  local ok, err = portal_crud.update_login_credential(
-    { [plugin.credential_key] = new_password },
-    collection,
-    { consumer_id = consumer.id, id = credential.id }
-  )
-
-  if err then
-    return nil, err
-  end
-
-  if not ok then
-    log(DEBUG, _log_prefix, "failed to update credential")
-    return false
+    local _, err = collection:update({ id = row.id }, { [plugin.credential_key] = new_password })
+    if err then
+      return nil, err
+    end
   end
 
   log(DEBUG, _log_prefix, "password was reset, updating secrets")
-  -- Mark the token secret as consumed
   local ok, err = secrets.consume_secret(secret_id)
   if not ok then
     return nil, err

@@ -245,86 +245,84 @@ return {
   },
 
   ["/admins/password_resets"] = {
-    before = function(self, dao_factory, helpers)
-      validate_auth_plugin(self, dao_factory, helpers)
+    before = function(self, db, helpers, parent)
+      validate_auth_plugin(self, db, helpers)
 
       -- if we don't store your creds, you don't belong here
       if self.token_optional then
-        return helpers.responses.send_HTTP_NOT_FOUND()
+        return kong.response.exit(404)
       end
 
       if not self.params.email or self.params.email == "" then
-        return helpers.responses.send_HTTP_BAD_REQUEST("email is required")
+        return kong.response.exit(400, {message = "email is required" })
       end
 
       -- if you've forgotten your password, this is all we know about you
-      self.consumer = admins.find_by_email(self.params.email)
-      if not self.consumer then
-        return helpers.responses.send_HTTP_NOT_FOUND()
+      self.admin = admins.find_by_email(self.params.email)
+      if not self.admin then
+        return kong.response.exit(404)
       end
 
       -- when you reset your password, you come in with an email and a JWT
       -- if it's there, make sure it's good
       if self.params.token then
-        ee_api.validate_jwt(self, dao_factory, helpers)
+        -- validate_jwt both validates the JWT and determines which consumer
+        -- owns it, setting consumer_id on self. still :magic:
+        ee_api.validate_jwt(self, db, helpers)
 
         -- make sure the email in the query params matches the one in the token
-        if self.consumer_id ~= self.consumer.id then
-          return helpers.responses.send_HTTP_NOT_FOUND()
+        if self.admin.consumer.id ~= self.consumer_id then
+          return kong.response.exit(404)
         end
       end
     end,
 
     -- create a password reset request and send mail
-    POST = function(self, dao_factory, helpers)
-      local expiry = singletons.configuration.admin_invitation_expiry
+    POST = function(self, db, helpers, parent)
+      local expiry = kong.configuration.admin_invitation_expiry
 
-      local jwt, err = secrets.create(self.consumer, ngx.var.remote_addr, expiry)
+      local jwt, err = secrets.create(self.admin.consumer, ngx.var.remote_addr, expiry)
 
       if err then
-        log(ERR, _log_prefix, "failed to generate password reset token: ", err)
-        return helpers.responses.send_HTTP_INTERNAL_SERVER_ERROR()
+        return kong.response.exit(500, "failed to generate reset token: " .. err)
       end
 
       -- send mail
-      local _, err = emails:reset_password(self.consumer.email, jwt)
+      local _, err = emails:reset_password(self.admin.email, jwt)
       if err then
-        log(ERR, _log_prefix, "failed to send reset_password email for: ",
-          self.consumer.email)
-
-        return helpers.responses.send_HTTP_INTERNAL_SERVER_ERROR()
+        return kong.response.exit(500, err)
       end
 
-      return helpers.responses.send_HTTP_CREATED()
+      return kong.response.exit(201)
     end,
 
     -- reset password and consume token
-    PATCH = function(self, dao_factory, helpers)
+    PATCH = function(self, db, helpers, parent)
       local new_password = self.params.password
       if not new_password or new_password == "" then
-        return helpers.responses.send_HTTP_BAD_REQUEST("password is required")
+        return kong.response.exit(400, { message = "password is required" })
       end
 
       local found, err = admins.reset_password(self.plugin,
                                                self.collection,
-                                               self.consumer,
+                                               self.admin.consumer,
                                                new_password,
                                                self.reset_secret_id)
 
       if err then
-        return helpers.yield_error(err)
+        return kong.response.exit(500, err)
       end
 
       if not found then
-        return helpers.responses.send_HTTP_NOT_FOUND()
+        return kong.response.exit(400)
       end
 
-      local _, err = emails:reset_password_success(self.consumer.email)
+      local _, err = emails:reset_password_success(self.admin.email)
       if err then
-        return helpers.yield_error(err)
+        return kong.response.exit(500, err)
       end
 
-      return helpers.responses.send_HTTP_OK()
+      return kong.response.exit(200)
     end
   },
 
