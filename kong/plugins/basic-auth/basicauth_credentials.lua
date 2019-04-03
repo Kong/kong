@@ -46,9 +46,11 @@ end
 
 
 function _BasicauthCredentials:update(cred_pk, cred, options)
-  local ok, err, err_t = hash_password(self, cred_pk.id, cred)
-  if not ok then
-    return nil, err, err_t
+  if cred.password ~= nil then
+    local ok, err, err_t = hash_password(self, cred_pk.id, cred)
+    if not ok then
+      return nil, err, err_t
+    end
   end
   return self.super.update(self, cred_pk, cred, options)
 end
