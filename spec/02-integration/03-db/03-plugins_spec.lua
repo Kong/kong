@@ -8,7 +8,7 @@ local UUID_PATTERN = "%x%x%x%x%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%x
 
 
 for _, strategy in helpers.each_strategy() do
-  describe("kong.db [#" .. strategy .. "]", function()
+  describe("kong.db.plugins [#" .. strategy .. "]", function()
     local db, bp, service, route
     local global_plugin
 
@@ -243,6 +243,41 @@ for _, strategy in helpers.each_strategy() do
             consumer = consumer,
           }
         }, db.plugins.schema.subschemas["legacy-plugin-good"])
+      end)
+    end) -- :load_plugin_schemas()
+
+    describe("#select_by_cache_keys", function()
+      it("returns no plugins with empty database", function()
+        local res, err = db.plugins:select_by_cache_keys({ "foo", "bar" })
+        assert.is_nil(err)
+        assert.same({}, res)
+      end)
+
+      it("returns a single plugin matching a single key", function()
+        local key = db.plugins:cache_key(global_plugin)
+        local res, err = db.plugins:select_by_cache_keys({ key })
+        assert.same(global_plugin.id, res[1].id)
+        assert.is_nil(err)
+      end)
+
+      it("returns multiple plugins given their keys, in the right order", function()
+        local s1 = bp.services:insert()
+        local p1 = bp.key_auth_plugins:insert({ service = { id = s1.id } })
+
+        local s2 = bp.services:insert()
+        local p2 = bp.key_auth_plugins:insert({ service = { id = s2.id } })
+
+        local k1 = db.plugins:cache_key(p1)
+        local k2 = db.plugins:cache_key(p2)
+        local res, err = db.plugins:select_by_cache_keys({ k1, "foo", k2, "bar", "baz" })
+        assert.is_nil(err)
+        assert.same(p1.id, res[1].id)
+        assert.same(p2.id, res[2].id)
+
+        local res, err = db.plugins:select_by_cache_keys({ "foo", k2, "bar", k1, "baz" })
+        assert.is_nil(err)
+        assert.same(p2.id, res[1].id)
+        assert.same(p1.id, res[2].id)
       end)
     end)
   end) -- kong.db [strategy]

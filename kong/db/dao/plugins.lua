@@ -250,6 +250,10 @@ function Plugins:load_plugin_schemas(plugin_set)
   return plugin_list
 end
 
+function Plugins:select_by_cache_keys(keys)
+  return self.strategy:select_by_cache_keys(keys)
+end
+
 
 function Plugins:select_by_cache_key(key)
   local schema_state = assert(self.db:last_schema_state())
