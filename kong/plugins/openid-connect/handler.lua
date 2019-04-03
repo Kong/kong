@@ -117,20 +117,42 @@ end
 
 
 local function create_introspect_token(args, oic)
-  local endpoint = args.get_conf_arg("introspection_endpoint")
-  local hint     = args.get_conf_arg("introspection_hint", "access_token")
-  local headers  = args.get_conf_args("introspection_headers_names", "introspection_headers_values")
-  local pargs    = args.get_conf_args("introspection_post_args_names", "introspection_post_args_values")
-
-
-  if args.get_conf_arg("cache_introspection") then
-    return function(access_token, ttl)
-        log("introspecting token with caching enabled")
-        return cache.introspection.load(oic, access_token, endpoint, hint, headers, pargs, ttl, true)
-    end
-  end
+  local endpoint  = args.get_conf_arg("introspection_endpoint")
+  local hint      = args.get_conf_arg("introspection_hint", "access_token")
+  local headers   = args.get_conf_args("introspection_headers_names", "introspection_headers_values")
+  local use_cache = args.get_conf_arg("cache_introspection")
 
   return function(access_token, ttl)
+    local pargs       = args.get_conf_args("introspection_post_args_names", "introspection_post_args_values")
+    local client_args = args.get_conf_arg("introspection_post_args_client")
+    if client_args then
+      for _, client_arg_name in ipairs(client_args) do
+        local extra_arg = args.get_uri_arg(client_arg_name)
+        if extra_arg then
+          if not pargs then
+            pargs = {}
+          end
+
+          pargs[client_arg_name] = extra_arg
+
+        else
+          extra_arg = args.get_post_arg(client_arg_name)
+          if extra_arg then
+            if not pargs then
+              pargs = {}
+            end
+
+            pargs[client_arg_name] = extra_arg
+          end
+        end
+      end
+    end
+
+    if use_cache then
+      log("introspecting token with caching enabled")
+      return cache.introspection.load(oic, access_token, endpoint, hint, headers, pargs, ttl, true)
+    end
+
     log("introspecting token")
     return cache.introspection.load(oic, access_token, endpoint, hint, headers, pargs, ttl, false)
   end
@@ -1032,6 +1054,7 @@ function OICHandler:access(conf)
       name = args.get_conf_arg("session_cookie_name", "session"),
       cookie = {
         lifetime = args.get_conf_arg("session_cookie_lifetime", 3600),
+        renew    = args.get_conf_arg("session_cookie_renew", 600),
         path     = args.get_conf_arg("session_cookie_path", "/"),
         domain   = args.get_conf_arg("session_cookie_domain"),
         samesite = args.get_conf_arg("session_cookie_samesite", "Lax"),
@@ -1793,6 +1816,29 @@ function OICHandler:access(conf)
     if token_endpoint_args then
       for _, arg in ipairs(token_endpoint_args) do
         arg.args = args.get_conf_args("token_post_args_names", "token_post_args_values")
+        local client_args = args.get_conf_arg("token_post_args_client")
+        if client_args then
+          for _, client_arg_name in ipairs(client_args) do
+            local extra_arg = args.get_uri_arg(client_arg_name)
+            if extra_arg then
+              if not arg.args then
+                arg.args = {}
+              end
+
+              arg.args[client_arg_name] = extra_arg
+
+            else
+              extra_arg = args.get_post_arg(client_arg_name)
+              if extra_arg then
+                if not arg.args then
+                  arg.args = {}
+                end
+
+                arg.args[client_arg_name] = extra_arg
+              end
+            end
+          end
+        end
 
         local token_headers = args.get_conf_args("token_headers_names", "token_headers_values")
         local token_headers_client = args.get_conf_arg("token_headers_client")

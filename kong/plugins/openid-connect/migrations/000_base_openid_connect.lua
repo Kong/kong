@@ -26,8 +26,6 @@ return {
         keys           text,
         secret         text,
         created_at     timestamp,
-
-        PRIMARY KEY (id)
       );
 
       CREATE INDEX IF NOT EXISTS ON oic_issuers (issuer);

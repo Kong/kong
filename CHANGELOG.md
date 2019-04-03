@@ -1,3 +1,11 @@
+## v1.2.0
+
+- Add `config.token_post_args_client`
+- Add `config.instrospection_post_args_client`
+- Add `config.session_cookie_renew`
+- Fix Cassandra migration
+
+
 ## v1.1.0
 
 - Add `config.authorization_endpoint`

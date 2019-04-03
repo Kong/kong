@@ -358,6 +358,13 @@ return {
             },
           },
           {
+            session_cookie_renew = {
+              required = false,
+              type     = "number",
+              default  = 600,
+            },
+          },
+          {
             session_cookie_path = typedefs.path {
               required = false,
               default  = "/",
@@ -686,6 +693,15 @@ return {
           },
           {
             token_post_args_values = {
+              required = false,
+              type     = "array",
+              elements = {
+                type   = "string",
+              },
+            },
+          },
+          {
+            token_post_args_client = {
               required = false,
               type     = "array",
               elements = {
