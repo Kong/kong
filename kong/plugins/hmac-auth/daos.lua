@@ -7,6 +7,8 @@ return {
     name = "hmacauth_credentials",
     endpoint_key = "username",
     cache_key = { "username" },
+    workspaceable = true,
+
     fields = {
       { id = typedefs.uuid },
       { created_at = typedefs.auto_timestamp_s },
