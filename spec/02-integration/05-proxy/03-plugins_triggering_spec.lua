@@ -238,7 +238,6 @@ for _, strategy in helpers.each_strategy() do
 
         helpers.stop_kong()
         dao:truncate_tables()
-        helpers.register_consumer_relations(dao)
 
         db:truncate("routes")
         db:truncate("services")
@@ -462,7 +461,6 @@ for _, strategy in helpers.each_strategy() do
         helpers.stop_kong()
 
         dao:truncate_tables()
-        helpers.register_consumer_relations(dao)
 
         db:truncate("routes")
         db:truncate("services")

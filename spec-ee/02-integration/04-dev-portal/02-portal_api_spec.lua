@@ -145,7 +145,6 @@ for _, strategy in helpers.each_strategy() do
         describe("vitals", function ()
           setup(function()
             helpers.stop_kong()
-            helpers.register_consumer_relations(dao)
 
             assert(helpers.start_kong({
               database   = strategy,
@@ -230,7 +229,6 @@ for _, strategy in helpers.each_strategy() do
           insert_files(dao)
           configure_portal(dao)
 
-          helpers.register_consumer_relations(dao)
         end)
 
          after_each(function()
@@ -413,7 +411,6 @@ for _, strategy in helpers.each_strategy() do
           insert_files(dao)
           configure_portal(dao)
 
-          helpers.register_consumer_relations(dao)
 
           assert(helpers.start_kong({
             database   = strategy,
@@ -487,7 +484,6 @@ for _, strategy in helpers.each_strategy() do
           setup(function()
             helpers.stop_kong()
             assert(db:truncate())
-            helpers.register_consumer_relations(dao)
 
             assert(helpers.start_kong({
               database = strategy,
@@ -638,7 +634,6 @@ for _, strategy in helpers.each_strategy() do
           setup(function()
             helpers.stop_kong()
             assert(db:truncate())
-            helpers.register_consumer_relations(dao)
 
             assert(helpers.start_kong({
               database = strategy,
@@ -792,7 +787,6 @@ for _, strategy in helpers.each_strategy() do
         setup(function()
           helpers.stop_kong()
           assert(db:truncate())
-          helpers.register_consumer_relations(dao)
           configure_portal(dao)
           insert_files(dao)
 
@@ -2392,7 +2386,6 @@ for _, strategy in helpers.each_strategy() do
         setup(function()
           helpers.stop_kong()
           assert(db:truncate())
-          helpers.register_consumer_relations(dao)
           configure_portal(dao)
           insert_files(dao)
 
@@ -3956,7 +3949,6 @@ for _, strategy in helpers.each_strategy() do
         setup(function()
           helpers.stop_kong()
           assert(db:truncate())
-          helpers.register_consumer_relations(dao)
 
           assert(helpers.start_kong({
             database   = strategy,
@@ -4068,7 +4060,6 @@ for _, strategy in helpers.each_strategy() do
         setup(function()
           helpers.stop_kong()
           assert(db:truncate())
-          helpers.register_consumer_relations(dao)
 
           assert(helpers.start_kong({
             database   = strategy,

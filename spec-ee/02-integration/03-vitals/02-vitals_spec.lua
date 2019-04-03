@@ -1,5 +1,4 @@
 local kong_vitals  = require "kong.vitals"
-local singletons   = require "kong.singletons"
 local dao_helpers  = require "spec.02-integration.03-dao.helpers"
 local utils        = require "kong.tools.utils"
 local json_null  = require("cjson").null
@@ -34,7 +33,7 @@ dao_helpers.for_each_dao(function(kong_conf)
     setup(function()
       db = select(2, helpers.get_db_utils(kong_conf.database))
 
-      singletons.configuration = { vitals = true }
+      kong.configuration = { vitals = true }
       vitals = kong_vitals.new({
         db = db,
       })
@@ -274,7 +273,7 @@ dao_helpers.for_each_dao(function(kong_conf)
 
     describe("cache_accessed()", function()
       it("doesn't increment the cache counter when vitals is off", function()
-        singletons.configuration = { vitals = false }
+        kong.configuration = { vitals = false }
 
         local vitals = kong_vitals.new { db = db }
         vitals:reset_counters()
@@ -283,7 +282,7 @@ dao_helpers.for_each_dao(function(kong_conf)
       end)
 
       it("does increment the cache counter when vitals is on", function()
-        singletons.configuration = { vitals = true }
+        kong.configuration = { vitals = true }
 
         local vitals = kong_vitals.new { db = db, flush_interval = 1 }
         stub(vitals, "enabled").returns(true)
@@ -324,7 +323,7 @@ dao_helpers.for_each_dao(function(kong_conf)
 
     describe("log_latency()", function()
       it("doesn't log latency when vitals is off", function()
-        singletons.configuration = { vitals = false }
+        kong.configuration = { vitals = false }
 
         local vitals = kong_vitals.new { db = db }
         vitals:reset_counters()
@@ -333,7 +332,7 @@ dao_helpers.for_each_dao(function(kong_conf)
       end)
 
       it("does log latency when vitals is on", function()
-        singletons.configuration = { vitals = true }
+        kong.configuration = { vitals = true }
 
         local vitals = kong_vitals.new { db = db }
         stub(vitals, "enabled").returns(true)
@@ -352,7 +351,7 @@ dao_helpers.for_each_dao(function(kong_conf)
 
     describe("log_upstream_latency()", function()
       it("doesn't log upstream latency when vitals is off", function()
-        singletons.configuration = { vitals = false }
+        kong.configuration = { vitals = false }
 
         local vitals = kong_vitals.new { db = db }
         vitals:reset_counters()
@@ -361,7 +360,7 @@ dao_helpers.for_each_dao(function(kong_conf)
       end)
 
       it("does log upstream latency when vitals is on", function()
-        singletons.configuration = { vitals = true }
+        kong.configuration = { vitals = true }
 
         local vitals = kong_vitals.new { db = db }
         stub(vitals, "enabled").returns(true)
@@ -801,7 +800,7 @@ dao_helpers.for_each_dao(function(kong_conf)
 
     describe("init()", function()
       it("doesn't initialize strategy  when vitals is off", function()
-        singletons.configuration = { vitals = false }
+        kong.configuration = { vitals = false }
 
         local vitals = kong_vitals.new { db = db }
         vitals:reset_counters()
@@ -813,7 +812,7 @@ dao_helpers.for_each_dao(function(kong_conf)
         assert.spy(s_strategy).was_called(0)
       end)
       it("does initialize strategy when vitals is on", function()
-        singletons.configuration = { vitals = true }
+        kong.configuration = { vitals = true }
 
         local vitals = kong_vitals.new({
           db = db,

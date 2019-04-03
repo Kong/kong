@@ -32,7 +32,6 @@ local function setup_ws_defaults(dao, db, workspace)
   end
 
   ngx.ctx.workspaces = { ws }
-  helpers.register_consumer_relations(dao)
 
   -- create a record we can use to test inter-workspace calls
   assert(db.consumers:insert({ username = workspace .. "-joe" }))

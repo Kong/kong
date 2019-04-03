@@ -3,7 +3,6 @@ local utils     = require "kong.tools.utils"
 local rbac      = require "kong.rbac"
 local bit       = require "bit"
 local cjson     = require "cjson"
-local new_tab   = require "table.new"
 local singletons = require "kong.singletons"
 local tablex     = require "pl.tablex"
 local api_helpers = require "kong.enterprise_edition.api_helpers"
@@ -36,29 +35,6 @@ local function rbac_operation_allowed(kong_conf, rbac_ctx, current_ws, dest_ws)
   end
 
   return false
-end
-
-
-local function objects_from_names(db, given_names, object_name)
-  local names      = utils.split(given_names, ",")
-  local objs       = new_tab(#names, 0)
-  local object_dao = fmt("rbac_%ss", object_name)
-
-  for i = 1, #names do
-    local object, err = db[object_dao]:select_by_name(names[i])
-    if err then
-      return nil, err
-    end
-
-    if not object then
-      return nil, fmt("%s not found with name '%s'", object_name, names[i])
-    end
-
-    -- track the whole object so we have the id for the mapping later
-    objs[i] = object
-  end
-
-  return objs
 end
 
 
@@ -286,7 +262,7 @@ return {
           return kong.response.exit(400, "must provide >= 1 role")
         end
 
-        local roles, err = objects_from_names(db, self.params.roles, "role")
+        local roles, err = rbac.objects_from_names(db, self.params.roles, "role")
         if err then
           if err:find("not found with name", nil, true) then
             return kong.response.exit(400, {message = err})
@@ -339,7 +315,7 @@ return {
         end
         find_current_user(self, db, helpers)
 
-        local roles, err = objects_from_names(db, self.params.roles, "role")
+        local roles, err = rbac.objects_from_names(db, self.params.roles, "role")
         if err then
           if err:find("not found with name", nil, true) then
             return kong.response.exit(400, {message = err})

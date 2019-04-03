@@ -1,4 +1,5 @@
 local typedefs = require "kong.db.schema.typedefs"
+local ee_typedefs = require "kong.enterprise_edition.db.typedefs"
 
 return {
   name         = "consumers",
@@ -11,7 +12,7 @@ return {
     { created_at     = typedefs.auto_timestamp_s },
     { username       = { type = "string",  unique = true }, },
     { custom_id      = { type = "string",  unique = true }, },
-    { type           = { type = "integer", default = 0   }, },
+    { type           = ee_typedefs.consumer_type { required = true } },
   },
 
   entity_checks = {

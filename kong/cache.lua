@@ -1,8 +1,8 @@
 local resty_mlcache = require "resty.mlcache"
-local singletons = require "kong.singletons"
 local reports = require "kong.reports"
 
 
+local kong    = kong
 local type    = type
 local max     = math.max
 local ngx_log = ngx.log
@@ -101,7 +101,7 @@ function _M.new(opts)
     propagation_delay = max(opts.propagation_delay or 0, 0),
     cluster_events    = opts.cluster_events,
     mlcache           = mlcache,
-    vitals            = singletons.vitals,
+    vitals            = kong.vitals,
   }
 
   local ok, err = self.cluster_events:subscribe("invalidations", function(key)
@@ -131,7 +131,7 @@ function _M:get(key, opts, cb, ...)
     return nil, "failed to get from node cache: " .. err
   end
 
-  singletons.vitals:cache_accessed(hit_lvl, key, v)
+  kong.vitals:cache_accessed(hit_lvl, key, v)
   reports.report_cached_entity(v)
 
   return v

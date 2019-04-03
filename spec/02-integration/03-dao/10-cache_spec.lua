@@ -39,12 +39,9 @@ describe("dao in-memory cache", function()
     })
 
     -- XXX: EE only [[
-    package.loaded["kong.singletons"] = {
-      vitals = {
-        cache_accessed = function()
-          -- TODO: test that I am being called with hit_lvl
-        end,
-      }
+    kong.vitals = {
+      cache_accessed = function()
+      end
     }
 
     local kong_cache = require "kong.cache"
@@ -56,7 +53,7 @@ describe("dao in-memory cache", function()
   end)
 
   teardown(function()
-    package.loaded["kong.singletons"] = nil
+    kong.vitals = nil
   end)
   --]]
 

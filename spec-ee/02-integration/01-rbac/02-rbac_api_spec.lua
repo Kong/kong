@@ -1845,8 +1845,6 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
 
-        ngx.log(ngx.ERR, [[json:]], require("inspect")(json))
-
         -- assert.same(2, json.total) -- XXX EE No total in count in new dao
         assert.same(2, #json.data)
         assert.same({ "read" }, json.data[1].actions)

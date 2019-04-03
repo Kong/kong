@@ -14,7 +14,7 @@ return {
     { username       = { type = "string",  unique = true }, },
     { custom_id      = { type = "string",  unique = true }, },
     { email          = ee_typedefs.email { unique = true } },
-    { status         = { type = "integer", between = { 0, 4 } } },
+    { status         = ee_typedefs.admin_status { required = true } },
     { consumer       = { type = "foreign", reference = "consumers", required = true } },
     { rbac_user      = { type = "foreign", reference = "rbac_users", required = true } },
   },

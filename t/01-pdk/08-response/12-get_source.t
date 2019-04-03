@@ -79,6 +79,7 @@ X-Source: exit
 
 
 === TEST 4: response.get_source() returns "error" when upstream timeouts
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         proxy_pass http://localhost:58252;
@@ -108,6 +109,7 @@ content source: error
 
 
 === TEST 5: response.get_source() returns "error" when upstream timeouts even with KONG_PROXIED = true
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         access_by_lua_block {
@@ -141,6 +143,7 @@ content source: error
 
 
 === TEST 6: response.get_source() returns "error" when upstream timeouts even with KONG_EXITED = true
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         access_by_lua_block {

@@ -1,14 +1,12 @@
-local crud       = require "kong.api.crud_helpers"
 local enums      = require "kong.enterprise_edition.dao.enums"
-local utils      = require "kong.tools.utils"
 local rbac       = require "kong.rbac"
 local workspaces = require "kong.workspaces"
 local singletons = require "kong.singletons"
 local admins     = require "kong.enterprise_edition.admins_helpers"
 local ee_api     = require "kong.enterprise_edition.api_helpers"
+local endpoints  = require "kong.api.endpoints"
 local tablex     = require "pl.tablex"
 local secrets = require "kong.enterprise_edition.consumer_reset_secret_helpers"
-local new_tab = require "table.new"
 local cjson = require "cjson"
 
 
@@ -19,8 +17,6 @@ local log = ngx.log
 local ERR = ngx.ERR
 
 local _log_prefix = "[admins] "
-
-local entity_relationships = rbac.entity_relationships
 
 
 --- Allowed auth plugins
@@ -43,31 +39,6 @@ local auth_plugins = {
 }
 
 
-local function objects_from_names(dao_factory, given_names, object_name)
-  local names = utils.split(given_names, ",")
-  local objs = new_tab(#names, 0)
-  local object_dao = string.format("rbac_%ss", object_name)
-
-  for i = 1, #names do
-    local object, err = dao_factory[object_dao]:find_all({
-      name = names[i],
-    })
-    if err then
-      return nil, err
-    end
-
-    if not object[1] then
-      return nil, string.format("%s not found with name '%s'", object_name, names[i])
-    end
-
-    -- track the whole object so we have the id for the mapping later
-    objs[i] = object[1]
-  end
-
-  return objs
-end
-
-
 local function validate_auth_plugin(self, dao_factory, helpers, plugin_name)
   local gui_auth = singletons.configuration.admin_gui_auth
   plugin_name = plugin_name or gui_auth
@@ -81,47 +52,6 @@ local function validate_auth_plugin(self, dao_factory, helpers, plugin_name)
   else
     self.token_optional = true
   end
-end
-
-
-local function set_rbac_user(self, dao_factory, helpers)
-  -- Lookup the rbac_user<->consumer map
-  local maps, err = dao_factory.consumers_rbac_users_map:find_all({
-    consumer_id = self.consumer.id
-  })
-
-  if err then
-    helpers.yield_error(err)
-  end
-
-  local map = maps[1]
-
-  if not map then
-    log(ERR, _log_prefix, "No rbac mapping found for consumer ", self.consumer.id)
-    helpers.responses.send_HTTP_INTERNAL_SERVER_ERROR()
-  end
-
-  -- Find the rbac_user associated with the consumer
-  local users, err = dao_factory.rbac_users:find_all({
-    id = map.user_id
-  })
-
-  if err then
-    helpers.yield_error(err)
-  end
-
-  -- Set the rbac_user on the consumer entity
-  local rbac_user = users[1]
-
-  if not rbac_user then
-    log(ERR, _log_prefix, "No RBAC user found for consumer ", map.consumer_id,
-        " and rbac user ", map.user_id)
-    helpers.responses.send_HTTP_INTERNAL_SERVER_ERROR()
-  end
-
-  rbac_user.user_token = nil
-  self.consumer.rbac_user = rbac_user
-  self.rbac_user = rbac_user
 end
 
 
@@ -200,24 +130,27 @@ return {
     end
   },
 
-  ["/admins/:username_or_id/roles"] = {
-    before = function(self, dao_factory, helpers)
-      self.params.username_or_id = ngx.unescape_uri(self.params.username_or_id)
-      crud.find_consumer_by_username_or_id(self, dao_factory, helpers)
+  ["/admins/:admin/roles"] = {
+    before = function(self, db, helpers, parent)
+      local err
 
-      if self.consumer.type ~= enums.CONSUMERS.TYPE.ADMIN then
-        return helpers.responses.send_HTTP_NOT_FOUND()
+      local name_or_id = ngx.unescape_uri(self.params.admin)
+      self.admin, err = admins.find_by_username_or_id(name_or_id, true)
+      if err then
+        return kong.response.exit(500, err)
       end
 
-      set_rbac_user(self, dao_factory, helpers)
+      if not self.admin then
+        return kong.response.exit(404)
+      end
     end,
 
-    GET = function(self, dao_factory, helpers)
-      local roles, err = entity_relationships(dao_factory, self.rbac_user,
-        "user", "role")
+    GET = function(self, db, helpers, parent)
+      local roles, err = rbac.entity_relationships(db, self.admin.rbac_user,
+                                                   "user", "role")
 
       if err then
-        return helpers.yield_error(err)
+        return kong.response.exit(500, err)
       end
 
       -- filter out default roles
@@ -225,89 +158,89 @@ return {
 
       setmetatable(roles, cjson.empty_array_mt)
 
-      return helpers.responses.send_HTTP_OK({
+      return kong.response.exit(200, {
         roles = roles,
       })
     end,
 
-    POST = function(self, dao_factory, helpers)
+    POST = function(self, db, helpers, parent)
       -- we have the user, now verify our roles
       if not self.params.roles then
-        return helpers.responses.send_HTTP_BAD_REQUEST("must provide >= 1 role")
+        return kong.response.exit(400, "must provide >= 1 role")
       end
 
-      local roles, err = objects_from_names(dao_factory, self.params.roles,
-        "role")
+      local roles, err = rbac.objects_from_names(db, self.params.roles, "role")
       if err then
         if err:find("not found with name", nil, true) then
-          return helpers.responses.send_HTTP_BAD_REQUEST(err)
+          return kong.response.exit(400, { message = err })
 
         else
-          return helpers.yield_error(err)
+          return kong.response.exit(500, err)
         end
       end
 
       -- we've now validated that all our roles exist, and this user exists,
       -- so time to create the assignment
       for i = 1, #roles do
-        local _, err = dao_factory.rbac_user_roles:insert({
-          user_id = self.rbac_user.id,
-          role_id = roles[i].id
+        local _, _, err_t = db.rbac_user_roles:insert({
+          user = self.admin.rbac_user,
+          role = roles[i]
         })
-        if err then
-          return helpers.yield_error(err)
+
+        if err_t then
+          return endpoints.handle_error(err_t)
         end
       end
 
       -- invalidate rbac user so we don't fetch the old roles
-      local cache_key = dao_factory["rbac_user_roles"]:cache_key(self.rbac_user.id)
+      local cache_key = db["rbac_user_roles"]:cache_key(self.admin.rbac_user.id)
       singletons.cache:invalidate(cache_key)
 
       -- re-fetch the users roles so we show all the role objects, not just our
       -- newly assigned mappings
-      roles, err = entity_relationships(dao_factory, self.rbac_user,
-        "user", "role")
+      roles, err = rbac.entity_relationships(db, self.admin.rbac_user, "user",
+                                             "role")
       if err then
-        return helpers.yield_error(err)
+        return kong.response.exit(500, err)
       end
 
       -- filter out default roles
       roles = tablex.filter(roles, function(role) return not role.is_default end)
 
-      -- show the user and all of the roles they are in
-      return helpers.responses.send_HTTP_CREATED({
-        roles = roles,
-      })
+      return kong.response.exit(201, { roles = roles })
     end,
 
-    DELETE = function(self, dao_factory, helpers)
+    DELETE = function(self, db, helpers, parent)
       -- we have the user, now verify our roles
       if not self.params.roles then
-        return helpers.responses.send_HTTP_BAD_REQUEST("must provide >= 1 role")
+        return kong.response.exit(400, { message = "must provide >= 1 role" })
       end
 
-      local roles, err = objects_from_names(dao_factory, self.params.roles,
-        "role")
+      local roles, err = rbac.objects_from_names(db, self.params.roles, "role")
       if err then
         if err:find("not found with name", nil, true) then
-          return helpers.responses.send_HTTP_BAD_REQUEST(err)
+          return kong.response.exit(400, { message = err })
 
         else
-          return helpers.yield_error(err)
+          return kong.response.exit(500, err)
         end
       end
 
+      local _
       for i = 1, #roles do
-        dao_factory.rbac_user_roles:delete({
-          user_id = self.rbac_user.id,
-          role_id = roles[i].id,
+        _, err = db.rbac_user_roles:delete({
+          user = self.admin.rbac_user,
+          role = roles[i],
         })
+        if err then
+          return kong.response.exit(500, err)
+        end
       end
 
-      local cache_key = dao_factory["rbac_users"]:cache_key(self.rbac_user.id)
+      local cache_key = db.rbac_user_roles:cache_key(self.admin.rbac_user.id)
       singletons.cache:invalidate(cache_key)
 
-      return helpers.responses.send_HTTP_NO_CONTENT()
+      return kong.response.exit(204)
     end,
   },
 
@@ -492,9 +425,9 @@ return {
       end
 
       -- now put it in the global credentials table. not sure we need this.
-      local _, err = singletons.dao.credentials:insert({
+      local _, err = singletons.db.credentials:insert({
         id = credential.id,
-        consumer_id = credential.consumer_id,
+        consumer = { id = credential.consumer.id },
         consumer_type = enums.CONSUMERS.TYPE.ADMIN,
         plugin = self.plugin.name,
         credential_data = tostring(cjson.encode(credential)),

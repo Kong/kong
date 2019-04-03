@@ -16,7 +16,6 @@ for _, strategy in helpers.each_strategy() do
 
     describe("consumers", function()
       it("add null custom_id", function()
-        helpers.register_consumer_relations(dao)
 
         local consumer_create, err, err_t = dao.consumers:insert {
           username = "bob",

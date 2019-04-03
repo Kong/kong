@@ -17,6 +17,8 @@ local MOCK_UPSTREAM_SSL_PORT = 15556
 local MOCK_UPSTREAM_STREAM_PORT = 15557
 local MOCK_UPSTREAM_STREAM_SSL_PORT = 15558
 
+require("resty.core")
+
 local consumers_schema_def = require "kong.db.schema.entities.consumers"
 local services_schema_def = require "kong.db.schema.entities.services"
 local plugins_schema_def = require "kong.db.schema.entities.plugins"
@@ -24,6 +26,7 @@ local routes_schema_def = require "kong.db.schema.entities.routes"
 local apis_schema_def = require "kong.db.schema.entities.apis"
 local conf_loader = require "kong.conf_loader"
 local DAOFactory = require "kong.dao.factory"
+local kong_global = require "kong.global"
 local Blueprints = require "spec.fixtures.blueprints"
 local pl_stringx = require "pl.stringx"
 local pl_utils = require "pl.utils"
@@ -41,11 +44,6 @@ local log = require "kong.cmd.utils.log"
 local DB = require "kong.db"
 local singletons = require "kong.singletons"
 
-
-
-local kong = {
-  table = require("kong.pdk.table").new()
-}
 
 
 log.set_lvl(log.levels.quiet) -- disable stdout logs in tests
@@ -108,12 +106,18 @@ end
 -- Conf and DAO
 ---------------
 local conf = assert(conf_loader(TEST_CONF_PATH))
+
+_G.kong = kong_global.new()
+kong_global.init_pdk(_G.kong, conf, nil) -- nil: latest PDK
+
 local db = assert(DB.new(conf))
 assert(db:init_connector())
 local dao = assert(DAOFactory.new(conf, db))
 db.plugins:load_plugin_schemas(conf.loaded_plugins)
 db.old_dao = dao
 local blueprints = assert(Blueprints.new(dao, db))
+
+kong.db = db
 
 local each_strategy
 
@@ -216,6 +220,8 @@ local function get_db_utils(strategy, tables, plugins)
     -- (e.g., this module's module-leveldao, which defaults for postgres)
     singletons.dao = dao
     singletons.db = db
+
+    kong.db = db
 
     --assert(dao:run_migrations())
   end
@@ -1259,13 +1265,6 @@ local function get_running_conf(prefix)
   return conf_loader(default_conf.kong_env)
 end
 
--- consumer_statuses/types need to be populated after table truncate without
--- need for rerunning migrations, due to foreign keys on consumers table
-local function register_consumer_relations(dao)
-  local portal = require "kong.portal.dao_helpers"
-  portal.register_resources(dao)
-end
-
 
 singletons.dao = dao
 
@@ -1352,7 +1351,6 @@ return {
   clean_prefix = clean_prefix,
   wait_for_invalidation = wait_for_invalidation,
   each_strategy = each_strategy,
-  register_consumer_relations = register_consumer_relations,
   validate_plugin_config_schema = validate_plugin_config_schema,
 
   -- miscellaneous

@@ -10,16 +10,15 @@ for _, strategy in helpers.each_strategy() do
   end
 
   describe("#flaky Admin API", function()
-    local bp, dao
+    local bp
     local client
     local admin, developer
 
     setup(function()
-      bp, _, dao = helpers.get_db_utils(strategy)
+      bp, _, _ = helpers.get_db_utils(strategy)
       assert(helpers.start_kong({
         database = strategy
       }))
-      helpers.register_consumer_relations(dao)
 
       admin = assert(bp.consumers:insert {
         username = "adminbob",

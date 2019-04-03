@@ -63,9 +63,9 @@ local function migrate(dao, password)
 
   if credential then
     -- add creds to the common lookup table
-    local _, err = dao.credentials:insert({
+    local _, err = singletons.db.credentials:insert({
       id = credential.id,
-      consumer_id = credential.consumer_id,
+      consumer = { id = credential.consumer_id, },
       consumer_type = enums.CONSUMERS.TYPE.ADMIN,
       plugin = "basic-auth",
       credential_data = tostring(cjson.encode(credential)),

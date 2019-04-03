@@ -327,14 +327,14 @@ function Kong.init()
   singletons.db = db
   -- /LEGACY
 
-  singletons.license = ee.read_license_info()
+  kong.license = ee.read_license_info()
   singletons.internal_proxies = internal_proxies.new()
   singletons.portal_emails = portal_emails.new(config)
   singletons.admin_emails = admin_emails.new(config)
 
   local reports = require "kong.reports"
-  local l = singletons.license and
-            singletons.license.license.payload.license_key or
+  local l = kong.license and
+            kong.license.license.payload.license_key or
             nil
   reports.add_immutable_value("license_key", l)
   reports.add_immutable_value("enterprise", true)
@@ -342,7 +342,7 @@ function Kong.init()
   if config.anonymous_reports then
     reports.add_ping_value("rbac_enforced", singletons.configuration.rbac ~= "off")
   end
-  singletons.vitals = vitals.new {
+  kong.vitals = vitals.new {
       db             = db,
       flush_interval = config.vitals_flush_interval,
       delete_interval_pg = config.vitals_delete_interval_pg,
@@ -556,7 +556,7 @@ function Kong.init_worker()
   end
 
   -- vitals functions require a timer, so must start in worker context
-  local ok, err = singletons.vitals:init()
+  local ok, err = kong.vitals:init()
   if not ok then
     ngx.log(ngx.CRIT, "could not initialize vitals: ", err)
     return

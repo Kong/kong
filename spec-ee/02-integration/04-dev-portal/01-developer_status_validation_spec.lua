@@ -1,7 +1,6 @@
 local cjson   = require "cjson"
 local helpers = require "spec.helpers"
 local singletons = require "kong.singletons"
-local dao_helpers = require "kong.portal.dao_helpers"
 local enums      = require "kong.enterprise_edition.dao.enums"
 
 local auth_types = {
@@ -36,13 +35,12 @@ if strategy == 'cassandra' then
 end
 
 describe("Developer status validation for " .. auth_type .. " [#" .. strategy .. "]", function()
-  local db, dao, proxy_client
+  local db, _, proxy_client
   local proxy_consumer, approved_developer, pending_developer
   local rejected_developer, revoked_developer, invited_developer
 
   lazy_setup(function()
-    _, db, dao = helpers.get_db_utils(strategy)
-    dao_helpers.register_resources(dao)
+    _, db, _ = helpers.get_db_utils(strategy)
 
     singletons.configuration = {
       portal_auth = auth_type,

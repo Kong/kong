@@ -4,11 +4,11 @@ local ffi        = require "ffi"
 local tablex     = require "pl.tablex"
 local pl_stringx = require "pl.stringx"
 local reports    = require "kong.reports"
-local singletons = require "kong.singletons"
 local utils      = require "kong.tools.utils"
 local public     = require "kong.tools.public"
 local pg_strat   = require "kong.vitals.postgres.strategy"
 local feature_flags = require "kong.enterprise_edition.feature_flags"
+
 
 local timer_at   = ngx.timer.at
 local time       = ngx.time
@@ -171,7 +171,7 @@ end
 
 
 local function load_tsdb_strategy(strategy)
-  local conf = singletons.configuration
+  local conf = kong.configuration
   if strategy == "prometheus" then
     local db_strategy = require("kong.vitals.prometheus.strategy")
 
@@ -235,7 +235,7 @@ function _M.new(opts)
 
     local db_strategy
 
-    local vitals_strategy_conf = singletons.configuration.vitals_strategy
+    local vitals_strategy_conf = kong.configuration.vitals_strategy
 
     if not vitals_strategy_conf or vitals_strategy_conf == "database" then
       if db.strategy == "postgres" then
@@ -276,12 +276,12 @@ end
 
 
 function _M:enabled()
-  return singletons.configuration.vitals and self.initialized
+  return kong.configuration.vitals and self.initialized
 end
 
 
 function _M:init()
-  if not singletons.configuration.vitals then
+  if not kong.configuration.vitals then
     return self:init_failed("vitals not enabled")
   end
 
@@ -319,7 +319,7 @@ function _M:init()
   reports.add_ping_value("vitals", true)
   for _, v in ipairs(PH_STATS) do
     reports.add_ping_value(v, function()
-      local res, err = singletons.vitals:phone_home(v)
+      local res, err = kong.vitals:phone_home(v)
       if err then
         log(WARN, _log_prefix, "failed to retrieve stats: ", err)
         return nil
@@ -1228,7 +1228,7 @@ function _M:get_status_codes(opts, key_by)
     return {}
   elseif self.tsdb_storage then
     -- don't translate since we already translated in TSDB strategy
-    -- don't move this into convert_status_codes and use singletons.vitals since it may not be set
+    -- don't move this into convert_status_codes and use kong.vitals since it may not be set
     return res
   end
 

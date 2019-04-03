@@ -58,7 +58,6 @@ describe("Admin API post-processing #" .. strategy, function()
       headers = { ["Content-Type"] = "application/json" },
     })
 
-    helpers.register_consumer_relations(helpers.dao)
     bp.consumers:insert({
       username = "michael",
       custom_id = "landon",
