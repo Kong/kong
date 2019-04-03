@@ -1,3 +1,9 @@
+local tostring = tostring
+local ipairs = ipairs
+local math = math
+local ngx = ngx
+
+
 local cache_prewarm = {}
 
 
@@ -23,6 +29,12 @@ local function cache_prewarm_single_entity(entity_name)
     end
 
     local cache_key = dao:cache_key(entity)
+
+    local ok, err = kong.cache:safe_set(cache_key, entity)
+    if not ok then
+      return nil, err
+    end
+
     local ok, err   = kong.cache:get(cache_key, nil, function()
       return entity
     end)
@@ -52,6 +64,15 @@ function cache_prewarm.execute()
   for _, entity_name in ipairs(ENTITIES_TO_PREWARM) do
     local ok, err = cache_prewarm_single_entity(entity_name)
     if not ok then
+      if err == "no memory" then
+        kong.log.warn("cache prewarming has been stopped because cache ",
+                      "memory is exhausted, please consider increasing ",
+                      "the value of 'mem_cache_size' (currently at ",
+                      kong.configuration.mem_cache_size, ")")
+
+        return true
+      end
+
       return nil, err
     end
   end
