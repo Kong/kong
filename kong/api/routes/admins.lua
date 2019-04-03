@@ -414,12 +414,16 @@ return {
       end
 
       -- Set the current workspace so the credential is created there
+      local consumer_ws = {
+        id = refs[1].workspace_id,
+        name = refs[1].workspace_name,
+      }
+
       local credential, err = workspaces.run_with_ws_scope(
-                              { id = refs[1].workspace_id },
-                              credential_dao.insert,
-                              credential_dao,
-                              credential_data
-      )
+                                { consumer_ws },
+                                credential_dao.insert,
+                                credential_dao,
+                                credential_data)
       if err then
         return kong.response.exit(500, { message = err })
       end
