@@ -1,71 +1,202 @@
 local kong         = kong
 local setmetatable = setmetatable
 
-
--- Loads a plugin config from the datastore.
--- @return plugin config table or an empty sentinel table in case of a db-miss
-local function load_plugin_into_memory(key)
-  local row, err = kong.db.plugins:select_by_cache_key(key)
-  if err then
-    return nil, tostring(err)
-  end
-
-  return row
+local ok, new_tab = pcall(require, "table.new")
+if not ok then
+  new_tab = function (narr, nrec) return {} end
 end
 
-
---- Load the configuration for a plugin entry in the DB.
--- Given a Route, Service, Consumer and a plugin name, retrieve the plugin's
--- configuration if it exists. Results are cached in ngx.dict
--- @param[type=string] route_id ID of the route being proxied.
--- @param[type=string] service_id ID of the service being proxied.
--- @param[type=string] consumer_id ID of the Consumer making the request (if any).
--- @param[type=stirng] plugin_name Name of the plugin being tested for.
--- @treturn table Plugin retrieved from the cache or database.
-local function load_plugin_configuration(ctx,
-                                         route_id,
-                                         service_id,
-                                         consumer_id,
-                                         plugin_name)
-  local key = kong.db.plugins:cache_key(plugin_name,
-                                        route_id,
-                                        service_id,
-                                        consumer_id)
-
-  local plugin, err = kong.cache:get(key,
-                                     nil,
-                                     load_plugin_into_memory,
-                                     key)
+-- Given a key, retrieve a plugin from the cache
+-- @treturn table Plugin retrieved from the cache
+-- @treturn string|nil err Error message if needed
+-- @treturn boolean true if we should stop looking at the cache and query the db instead
+local function probe_cache_for_plugin(key)
+  local _, err, plugin = kong.cache:probe(key)
   if err then
-    ctx.delay_response = false
-    ngx.log(ngx.ERR, tostring(err))
-    return ngx.exit(ngx.ERROR)
+    return nil, err, nil
   end
 
-  if not plugin or not plugin.enabled then
-    return
+  if not plugin then
+    return nil, nil, true -- not found in cache, must query db to handle recent additions to db
+  end
+
+  if not plugin.enabled then
+    return nil, nil, nil -- found in cache but disabled. try with other keys
   end
 
   if plugin.run_on ~= "all" then
-    if ctx.is_service_mesh_request then
+    if ngx.ctx.is_service_mesh_request then
       if plugin.run_on == "first" then
-        return
+        return nil, nil, nil -- found in cache but incompatible. try with other keys
       end
 
     else
       if plugin.run_on == "second" then
-        return
+        return nil, nil, nil -- found in cache but incompatible. try with other keys
       end
     end
   end
 
-  local cfg = plugin.config or {}
+  return plugin, nil, nil
+end
 
-  cfg.route_id    = plugin.route and plugin.route.id
-  cfg.service_id  = plugin.service and plugin.service.id
-  cfg.consumer_id = plugin.consumer and plugin.consumer.id
 
-  return cfg
+-- Combines the given parameters in several different keys, trying them on the cache
+-- This function does not use get_keys_for_plugin on purpose, to avoid table allocations
+-- @treturn table Plugin retrieved from the cache
+-- @treturn string|nil err Error message if needed
+-- @treturn boolean true if we should stop looking at the cache and query the db instead
+local function get_plugin_from_cache(plugin_name, route_id, service_id, consumer_id)
+  local key, plugin, err, query_db
+  local dao = kong.db.plugins
+  local get_cache_key = dao.cache_key
+
+  if route_id and service_id and consumer_id then
+    key = get_cache_key(dao, plugin_name, route_id, service_id, consumer_id)
+    plugin, err, query_db = probe_cache_for_plugin(key)
+    if plugin or err or query_db then
+      return plugin, err, query_db
+    end
+  end
+
+  if route_id and consumer_id then
+    key = get_cache_key(dao, plugin_name, route_id, nil, consumer_id)
+    plugin, err, query_db = probe_cache_for_plugin(key)
+    if plugin or err or query_db then
+      return plugin, err, query_db
+    end
+  end
+
+  if service_id and consumer_id then
+    key = get_cache_key(dao, plugin_name, nil, service_id, consumer_id)
+    plugin, err, query_db = probe_cache_for_plugin(key)
+    if plugin or err or query_db then
+      return plugin, err, query_db
+    end
+  end
+
+  if route_id and service_id then
+    key = get_cache_key(dao, plugin_name, route_id, service_id, nil)
+    plugin, err, query_db = probe_cache_for_plugin(key)
+    if plugin or err or query_db then
+      return plugin, err, query_db
+    end
+  end
+
+  if consumer_id then
+    key = get_cache_key(dao, plugin_name, nil, nil, consumer_id)
+    plugin, err, query_db = probe_cache_for_plugin(key)
+    if plugin or err or query_db then
+      return plugin, err, query_db
+    end
+  end
+
+  if route_id then
+    key = get_cache_key(dao, plugin_name, route_id, nil, nil)
+    plugin, err, query_db = probe_cache_for_plugin(key)
+    if plugin or err or query_db then
+      return plugin, err, query_db
+    end
+  end
+
+  if service_id then
+    key = get_cache_key(dao, plugin_name, nil, service_id, nil)
+    plugin, err, query_db = probe_cache_for_plugin(key)
+    if plugin or err or query_db then
+      return plugin, err, query_db
+    end
+  end
+
+end
+
+
+-- With the given params, return a list of all the keys that would be tested
+-- for those params, in order. This list will be used to load all the plugins
+-- from the database and fill up the negatives in one go
+local function get_keys_for_plugin(plugin_name, route_id, service_id, consumer_id)
+  local keys = new_tab(8, 0)
+  local len = 0
+
+  local dao = kong.db.plugins
+  local get_cache_key = dao.cache_key
+
+  if route_id and service_id and consumer_id then
+    len = len + 1
+    keys[len] = get_cache_key(dao, plugin_name, route_id, service_id, consumer_id)
+  end
+
+  if route_id and consumer_id then
+    len = len + 1
+    keys[len] = get_cache_key(dao, plugin_name, route_id, nil, consumer_id)
+  end
+
+  if service_id and consumer_id then
+    len = len + 1
+    keys[len] = get_cache_key(dao, plugin_name, nil, service_id, consumer_id)
+  end
+
+  if route_id and service_id then
+    len = len + 1
+    keys[len] = get_cache_key(dao, plugin_name, route_id, service_id, nil)
+  end
+
+  if consumer_id then
+    len = len + 1
+    keys[len] = get_cache_key(dao, plugin_name, nil, nil, consumer_id)
+  end
+
+  if route_id then
+    len = len + 1
+    keys[len] = get_cache_key(dao, plugin_name, route_id, nil, nil)
+  end
+
+  if service_id then
+    len = len + 1
+    keys[len] = get_cache_key(dao, plugin_name, nil, service_id, nil)
+  end
+
+  len = len + 1
+  keys[len] = get_cache_key(dao, plugin_name, nil, nil, nil)
+
+  return keys
+end
+
+
+-- Fills up the cache using `get_bulk` for paralell access, filling up positive and negative hits
+local function populate_cache(keys, plugins)
+  local plugins_len = #plugins
+
+  local dict = new_tab(0, plugins_len)
+  local plugin
+  for i = 1, plugins_len do
+    plugin = plugins[i]
+    if plugin.cache_key then
+      dict[plugin.cache_key] = plugin
+    end
+  end
+
+  local find_in_dict = function(key)
+    return dict[key]
+  end
+
+  local cache = kong.cache
+  local cache_get = cache.get
+  local ok, err
+  for i = 1, #keys do
+    ok, err = cache_get(cache, keys[i], nil, find_in_dict)
+    if not ok then
+      return nil, err
+    end
+  end
+
+  return true
+end
+
+
+local function handle_error(err)
+  ngx.ctx.delay_response = false
+  ngx.log(ngx.ERR, tostring(err))
+  return ngx.exit(ngx.ERROR)
 end
 
 
@@ -108,65 +239,38 @@ local function get_next(self)
 
     local plugin_name = plugin.name
 
-    local plugin_configuration
+    local plugin, err, query_db = get_plugin_from_cache(plugin_name,
+                                                        route_id,
+                                                        service_id,
+                                                        consumer_id)
+    if err then
+      return handle_error(err)
+    end
 
-    repeat
+    if not plugin and query_db then
+      local keys = get_keys_for_plugin(plugin_name, route_id, service_id, consumer_id)
+      local plugins, err = kong.db.plugins:select_by_cache_keys(keys)
 
-      if route_id and service_id and consumer_id then
-        plugin_configuration = load_plugin_configuration(ctx, route_id, service_id, consumer_id, plugin_name)
-        if plugin_configuration then
-          break
-        end
+      if err then
+        return handle_error(err)
       end
 
-      if route_id and consumer_id then
-        plugin_configuration = load_plugin_configuration(ctx, route_id, nil, consumer_id, plugin_name)
-        if plugin_configuration then
-          break
-        end
+      local _, err = populate_cache(keys, plugins)
+      if err then
+        return handle_error(err)
       end
 
-      if service_id and consumer_id then
-        plugin_configuration = load_plugin_configuration(ctx, nil, service_id, consumer_id, plugin_name)
-        if plugin_configuration then
-          break
-        end
-      end
+      plugin = plugins[1]
+    end
 
-      if route_id and service_id then
-        plugin_configuration = load_plugin_configuration(ctx, route_id, service_id, nil, plugin_name)
-        if plugin_configuration then
-          break
-        end
-      end
+    if plugin then
+      local cfg = plugin.config or {}
 
-      if consumer_id then
-        plugin_configuration = load_plugin_configuration(ctx, nil, nil, consumer_id, plugin_name)
-        if plugin_configuration then
-          break
-        end
-      end
+      cfg.route_id    = type(plugin.route) == "table" and plugin.route.id
+      cfg.service_id  = type(plugin.service) == "table" and plugin.service.id
+      cfg.consumer_id = type(plugin.consumer) == "table" and plugin.consumer.id
 
-      if route_id then
-        plugin_configuration = load_plugin_configuration(ctx, route_id, nil, nil, plugin_name)
-        if plugin_configuration then
-          break
-        end
-      end
-
-      if service_id then
-        plugin_configuration = load_plugin_configuration(ctx, nil, service_id, nil, plugin_name)
-        if plugin_configuration then
-          break
-        end
-      end
-
-      plugin_configuration = load_plugin_configuration(ctx, nil, nil, nil, plugin_name)
-
-    until true
-
-    if plugin_configuration then
-      ctx.plugins_for_request[plugin.name] = plugin_configuration
+      ctx.plugins_for_request[plugin.name] = cfg
     end
   end
 
