@@ -498,6 +498,8 @@ return {
         if entity then
           return kong.response.exit(200, post_process_actions(entity))
         end
+
+        return kong.response.exit(404, { message = "Not Found" })
       end,
       DELETE = function(self, db, helpers)
         local _, _, err_t = db.rbac_role_entities:delete({

@@ -2271,6 +2271,13 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
         })
 
         assert.res_status(204, res)
+
+        local res = assert(client:send {
+          method = "GET",
+          path = "/rbac/roles/mock-role/entities/" .. e_id,
+        })
+
+        assert.res_status(404, res)
       end)
 
       describe("errors", function()
