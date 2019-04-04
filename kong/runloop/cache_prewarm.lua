@@ -34,8 +34,9 @@ local function cache_prewarm_single_entity(entity_name, dao)
       return nil, err
     end
 
+    -- NOTE: this is just for warming up L1
     local ok, err   = kong.cache:get(cache_key, nil, function()
-      return entity
+      error("this should never be called as the L2 should already be warmed")
     end)
     if not ok then
       return nil, err
@@ -75,7 +76,8 @@ function cache_prewarm.execute(configured_plugins)
             kong.log.warn("cache prewarming has been stopped because cache ",
                           "memory is exhausted, please consider increasing ",
                           "the value of 'mem_cache_size' (currently at ",
-                          kong.configuration.mem_cache_size, ")")
+                          kong.configuration.mem_cache_size, ") for ",
+                          "optimal performance")
 
             return true
           end
