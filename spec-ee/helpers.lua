@@ -1,4 +1,3 @@
-local enums       = require "kong.enterprise_edition.dao.enums"
 local helpers     = require "spec.helpers"
 local conf_loader = require "kong.conf_loader"
 local cjson = require "cjson.safe"
@@ -227,34 +226,19 @@ end
 
 
 function _M.create_admin(email, custom_id, status, bp, db)
-  local consumer = assert(db.consumers:insert {
+  local admin = assert(db.admins:insert({
     username = email,
     custom_id = custom_id,
     email = email,
-    type = enums.CONSUMERS.TYPE.ADMIN,
-    -- status = status,
-  })
+    status = status,
+  }))
 
   local user_token = utils.uuid()
-  local rbac_user, _ = db.rbac_users:insert {
-    name = email,
-    user_token = user_token,
-    enabled = true,
-  }
-
   -- only used for tests so we can reference token
   -- WARNING: do not do this outside test environment
-  rbac_user.raw_user_token = user_token
+  admin.rbac_user.raw_user_token = user_token
 
-  assert(db.consumers_rbac_users_map:insert {
-    consumer_id = consumer.id,
-    user_id = rbac_user.id,
-  })
-
-  -- for now, an admin is a munging of consumer + rbac_user
-  consumer.rbac_user = rbac_user
-
-  return consumer
+  return admin
 end
 
 

@@ -1,4 +1,3 @@
-local crud      = require "kong.api.crud_helpers"
 local utils     = require "kong.tools.utils"
 local rbac      = require "kong.rbac"
 local bit       = require "bit"
@@ -16,7 +15,6 @@ local fmt   = string.format
 
 
 local rbac_users = kong.db.rbac_users
-local consumers = kong.db.consumers
 local rbac_roles = kong.db.rbac_roles
 local endpoints   = require "kong.api.endpoints"
 
@@ -182,17 +180,15 @@ return {
         function(self, db, helpers)
           find_current_user(self, db, helpers)
 
-          -- make sure it's not associated to a consumer
-          local map, err = rbac.get_consumer_user_map(self.rbac_user.id)
-
-          if err then
-            return kong.response.exit(500,
-              "error finding map for rbac_user: ", self.rbac_user.id)
-          end
-
-          if map then
-            return kong.response.exit(404, "No RBAC user by name or id "
-              .. self.rbac_user.name)
+          -- make sure it's not associated to an admin
+          for row, err in db.admins:each_for_rbac_user({ id = self.rbac_user.id }) do
+            if err then
+              return kong.response.exit(500, err)
+            end
+            if row then
+              return kong.response.exit(404, "No RBAC user by name or id "
+                .. self.params.rbac_users)
+            end
           end
 
           return kong.response.exit(200, self.rbac_user)
@@ -742,30 +738,5 @@ return {
       end,
     }
   },
-
-  ["/rbac/users/consumers"] = {
-    -- XXX EE: is this used at all?
-    schema = consumers.schema,
-    methods = {
-      POST = function(self, dao_factory)
-        -- TODO: validate consumer and user here
-        crud.post(self.params, dao_factory.consumers_rbac_users_map)
-      end
-    },
-  },
-
-  -- XXX EE: is this  used
-  -- ["/rbac/users/:rbac_users/consumers/:consumers"] = {
-  --   schema = rbac_users.schema,
-  --   methods = {
-  --     before = function(self, dao_factory, helpers)
-  --       -- crud.find_consumer_rbac_user_map(self, dao_factory, helpers)
-  --     end,
-
-  --     GET = function(self, db, helpers)
-  --       return helpers.responses.send_HTTP_OK(self.consumer_rbac_user_map)
-  --     end,
-  --   },
-  -- },
 
 }

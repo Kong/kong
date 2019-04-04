@@ -3,7 +3,6 @@ local utils         = require "kong.tools.utils"
 local responses     = require "kong.tools.responses"
 local app_helpers   = require "lapis.application"
 local portal_crud   = require "kong.portal.crud_helpers"
-local rbac          = require "kong.rbac"
 local tablex        = require "pl.tablex"
 
 
@@ -70,36 +69,6 @@ function _M.find_workspace_by_name_or_id(self, dao_factory, helpers)
   self.params.workspace_name_or_id = nil
 end
 
-function _M.find_rbac_user_by_name_or_id(self, dao_factory, helpers)
-  local rows, err = _M.find_by_id_or_field(dao_factory.rbac_users, {},
-                                           self.params.name_or_id, "name")
-
-  if err then
-    return helpers.yield_error(err)
-  end
-
-  self.rbac_user = rows[1]
-  if not self.rbac_user then
-    return helpers.responses.send_HTTP_NOT_FOUND("No RBAC user by name or id " ..
-                                                 self.params.name_or_id)
-  end
-
-  -- make sure it's not associated to a consumer
-  local map, err = rbac.get_consumer_user_map(self.rbac_user.id)
-
-  if err then
-    return responses.send_HTTP_INTERNAL_SERVER_ERROR(
-      "error finding map for rbac_user: ", self.rbac_user.id)
-  end
-
-  if map then
-    return helpers.responses.send_HTTP_NOT_FOUND("No RBAC user by name or id "
-      .. self.params.name_or_id)
-  end
-
-  self.params.name_or_id = nil
-end
-
 function _M.find_rbac_role_by_name_or_id(self, dao_factory, helpers)
   local rows, err = _M.find_by_id_or_field(dao_factory.rbac_roles,
                                            { is_default = false },
@@ -117,19 +86,6 @@ function _M.find_rbac_role_by_name_or_id(self, dao_factory, helpers)
   end
 
   self.params.name_or_id = nil
-end
-
-function _M.find_consumer_rbac_user_map(self, dao_factory, helpers)
-  local rows, err = dao_factory.consumers_rbac_users_map:find_all(self.params)
-  if err then
-    return helpers.yield_error(err)
-  end
-
-  if not next(rows) then
-    return helpers.responses.send_HTTP_NOT_FOUND()
-  end
-
-  self.consumer_rbac_user_map = rows[1]
 end
 
 function _M.find_api_by_name_or_id(self, dao_factory, helpers)

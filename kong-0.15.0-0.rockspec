@@ -182,7 +182,6 @@ build = {
 
     ["kong.db.schema.entities.credentials"] = "kong/db/schema/entities/credentials.lua",
     ["kong.db.schema.entities.files"] = "kong/db/schema/entities/files.lua",
-    ["kong.db.schema.entities.consumers_rbac_users_map"] = "kong/db/schema/entities/consumers_rbac_users_map.lua",
     ["kong.db.schema.entities.consumer_reset_secrets"] = "kong/db/schema/entities/consumer_reset_secrets.lua",
 
     ["kong.dao.db"] = "kong/dao/db/init.lua",
@@ -199,7 +198,6 @@ build = {
 
     ["kong.rbac"] = "kong/rbac/init.lua",
     ["kong.rbac.migrations.01_defaults"] = "kong/rbac/migrations/01_defaults.lua",
-    ["kong.rbac.migrations.02_admins"] = "kong/rbac/migrations/02_admins.lua",
     ["kong.rbac.migrations.03_user_default_role"] = "kong/rbac/migrations/03_user_default_role.lua",
     ["kong.rbac.migrations.04_kong_admin_basic_auth"] = "kong/rbac/migrations/04_kong_admin_basic_auth.lua",
     ["kong.rbac.migrations.05_super_admin"] = "kong/rbac/migrations/05_super_admin.lua",

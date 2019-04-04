@@ -447,7 +447,7 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
         assert.equals(4, #json.data)
       end)
 
-      it("#flaky filters out admins", function()
+      it("filters out admins", function()
         ee_helpers.create_admin("gruce-admin@konghq.com", nil, 0, bp, db)
 
         local res = assert(client:send {
@@ -504,7 +504,7 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
         assert.same(user1, user2)
       end)
 
-      it("#flaky returns 404 for an rbac_user associated to an admin", function()
+      it("returns 404 for an rbac_user associated to an admin", function()
         local admin = ee_helpers.create_admin("gruce@konghq.com", nil, 0, bp, db)
 
         local res = assert(client:send {
@@ -3349,87 +3349,6 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
         -- TODO improve this - test for the actual perms map
         assert(json)
       end)
-    end)
-  end)
-end)
-
-describe("/rbac/users/consumers map with #flaky " .. kong_config.database, function() -- XXX EE should remove those
-  local client
-  local user_consumer_map
-  local bp
-  local db
-  local consumer
-
-  lazy_setup(function()
-    helpers.stop_kong()
-
-    bp, db = helpers.get_db_utils(kong_config.database)
-
-    assert(helpers.start_kong({
-      database = kong_config.database
-    }))
-
-    consumer = bp.consumers:insert { username = "dale" }
-  end)
-
-  before_each(function()
-    if client then
-      client:close()
-    end
-
-    client = assert(helpers.admin_client())
-  end)
-
-  lazy_teardown(function()
-    if client then
-      client:close()
-    end
-
-    db:truncate()
-    helpers.stop_kong()
-  end)
-
-  describe("POST", function()
-    it("creates a consumer user map", function()
-
-      local user = db.rbac_users:insert {
-        name = "the-dale-user",
-        user_token = "letmein",
-        enabled = true,
-      }
-
-      local res = assert(client:send {
-        method = "POST",
-        path = "/rbac/users/consumers",
-        body = {
-          user_id = user.id,
-          consumer_id = consumer.id
-        },
-        headers = {
-          ["Content-Type"] = "application/json",
-        },
-      })
-
-      local body = assert.res_status(201, res)
-      user_consumer_map = cjson.decode(body)
-
-      assert.equal(user_consumer_map.user_id, user.id)
-      assert.equal(user_consumer_map.consumer_id, consumer.id)
-    end)
-  end)
-
-  describe("GET", function()
-    it("retrieves a specific consumer user map", function()
-      local res = assert(client:send {
-        method = "GET",
-        path = "/rbac/users/" .. user_consumer_map.user_id .."/consumers/"
-        .. user_consumer_map.consumer_id,
-      })
-
-      local body = assert.res_status(200, res)
-      local json = cjson.decode(body)
-
-      assert.same(json, user_consumer_map)
     end)
   end)
 end)

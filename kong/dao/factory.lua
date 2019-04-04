@@ -6,7 +6,6 @@ local constants = require "kong.constants"
 local ModelFactory = require "kong.dao.model_factory"
 local ee_dao_factory = require "kong.enterprise_edition.dao.factory"
 local workspaces = require "kong.workspaces"
-local rbac_migrations_admins = require "kong.rbac.migrations.02_admins"
 local rbac_migrations_basic_auth = require "kong.rbac.migrations.04_kong_admin_basic_auth"
 
 
@@ -14,7 +13,6 @@ local fmt = string.format
 
 local CORE_MODELS = {
   "apis",
-  -- "consumers_rbac_users_map",
   "audit_requests",
   "audit_objects",
 }
@@ -679,13 +677,6 @@ function _M:run_migrations(on_migrate, on_success)
     end
   end
 
-  -- this migration must happen after plugin migrations, before workspace one
-  local _, err, n_ran = migrate(self, "admins", rbac_migrations_admins,
-    cur_migrations, on_migrate, on_success)
-  if err then
-    return ret_error_string(self.db.name, nil, err)
-  end
-  migrations_ran = migrations_ran + n_ran
 
   -- run workspace-related migrations
   local def_workspace_migration = workspaces.get_default_workspace_migration()

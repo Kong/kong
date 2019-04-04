@@ -305,13 +305,6 @@ return {
 
 
 
-      CREATE TABLE IF NOT EXISTS consumers_rbac_users_map(
-        consumer_id uuid REFERENCES consumers (id) ON DELETE CASCADE,
-        user_id uuid REFERENCES rbac_users (id) ON DELETE CASCADE,
-        created_at timestamp without time zone DEFAULT timezone('utc'::text, ('now'::text)::timestamp(0) with time zone),
-        PRIMARY KEY (consumer_id, user_id)
-      );
-
       CREATE TABLE IF NOT EXISTS consumer_reset_secrets(
         id uuid PRIMARY KEY,
         consumer_id uuid REFERENCES consumers (id) ON DELETE CASCADE,
@@ -732,14 +725,6 @@ CREATE TABLE IF NOT EXISTS admins (
 
       CREATE INDEX IF NOT EXISTS credentials_consumer_id ON credentials(consumer_id);
       CREATE INDEX IF NOT EXISTS credentials_plugin ON credentials(plugin);
-
-      CREATE TABLE IF NOT EXISTS consumers_rbac_users_map(
-        consumer_id uuid,
-        user_id     uuid,
-        created_at  timestamp,
-        PRIMARY KEY(consumer_id, user_id)
-      );
-
 
       CREATE INDEX IF NOT EXISTS ON rbac_role_entities(entity_type);
 

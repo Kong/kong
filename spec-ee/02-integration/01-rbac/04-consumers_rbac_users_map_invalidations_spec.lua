@@ -12,7 +12,7 @@ end
 
 
 for _, strategy in helpers.each_strategy() do
-  describe("#flaky consumers_rbac_users_mapping invalidations #" .. strategy, function()
+  pending("#flaky consumers_rbac_users_mapping invalidations #" .. strategy, function()
     local bp
     local db
     local dao
@@ -118,7 +118,7 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(200, cache_res)
       end)
 
-      it("invalidates consumer rbac user map cache when admin is deleted",
+      pending("invalidates consumer rbac user map cache when admin is deleted",
         function()
           local admin = ee_helpers.create_admin("gruce@konghq.com", nil, 0, bp, dao)
 

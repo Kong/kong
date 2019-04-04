@@ -1213,34 +1213,6 @@ function _M.check_cascade(entities, rbac_ctx)
   return true
 end
 
-
-local function retrieve_consumer_user_map(rbac_user_id)
-  --luacheck: ignore
-  for user in kong.db.consumers_rbac_users_map:each(nil, {skip_rbac = true}) do
-    if user.user_id == rbac_user_id then
-      return user
-    end
-  end
-end
-
-
---- Retrieve rbac <> consumer map
--- @param `rbac_user_id` id of rbac_user
-function _M.get_consumer_user_map(rbac_user_id)
-  local cache_key = kong.db.consumers_rbac_users_map:cache_key(rbac_user_id)
-  local user, err = kong.cache:get(cache_key,
-                                         nil,
-                                         retrieve_consumer_user_map,
-                                         rbac_user_id)
-
-  if err then
-    return nil, err
-  end
-
-  return user
-end
-
-
 do
   local reports = require "kong.reports"
   local rbac_users_count = function()
