@@ -120,6 +120,13 @@ function _M.new(dao, db)
     }
   end)
 
+  local developer_email_seq = new_sequence("dev-%d@example.com")
+  res.developers = new_blueprint(db.developers, function()
+    return {
+      email = developer_email_seq:next(),
+    }
+  end)
+
   res.targets = new_blueprint(db.targets, function(overrides)
     return {
       weight = 10,

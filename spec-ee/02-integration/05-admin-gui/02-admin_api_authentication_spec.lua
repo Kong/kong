@@ -68,23 +68,28 @@ end
 
 
 for _, strategy in helpers.each_strategy() do
+
+  if strategy == 'cassandra' then
+    return
+  end
   describe("Admin API authentication on #" .. strategy, function()
     lazy_setup(function()
       _, db, dao = helpers.get_db_utils(strategy)
     end)
 
     lazy_teardown(function()
-      helpers.stop_kong()
+      helpers.stop_kong(nil, true)
       if client then
         client:close()
       end
     end)
 
-    describe("basic-auth authentication", function()
+    describe("basic-auth authentication #test", function()
       local super_admin, read_only_admin, test_admin
 
       lazy_setup(function()
-        helpers.stop_kong()
+        helpers.stop_kong(nil, true)
+        truncate_tables(db)
 
         assert(helpers.start_kong({
           database   = strategy,
@@ -128,13 +133,13 @@ for _, strategy in helpers.each_strategy() do
           workspace = "default",
           endpoint = "/consumers",
           actions = "read"
-        }, { ['Kong-Admin-Token'] = 'letmein'}, 201)
+        }, { ['Kong-Admin-Token'] = 'letmein-' .. ws.name }, 201)
 
         post(client, "/" .. ws.name .. "/rbac/roles/another-one/endpoints", {
           workspace = ws.name,
           endpoint = "*",
           actions = "create,read,update,delete"
-        }, { ['Kong-Admin-Token'] = 'letmein'}, 201)
+        }, { ['Kong-Admin-Token'] = 'letmein-' .. ws.name }, 201)
 
         assert(db.basicauth_credentials:insert {
           username    = "dj-khaled",
@@ -151,6 +156,10 @@ for _, strategy in helpers.each_strategy() do
         end
       end)
 
+      it("is a test", function()
+
+      end)
+
       describe("GET", function()
         it("internal proxy no longer exists when gui_auth is enabled",
         function()
@@ -158,7 +167,7 @@ for _, strategy in helpers.each_strategy() do
             method = "GET",
             path = "/_kong/admin",
             headers = {
-              ['Kong-Admin-Token'] = "letmein",
+              ['Kong-Admin-Token'] = 'letmein-' .. 'default',
             },
           })
 
@@ -179,7 +188,7 @@ for _, strategy in helpers.each_strategy() do
             method = "GET",
             path = "/",
             headers = {
-              ['Kong-Admin-Token'] = "letmein",
+              ['Kong-Admin-Token'] = 'letmein-' .. 'default',
             }
           })
 
@@ -366,7 +375,7 @@ for _, strategy in helpers.each_strategy() do
       local super_admin, read_only_admin
 
       setup(function()
-        helpers.stop_kong()
+        helpers.stop_kong(nil, true)
         truncate_tables(db)
 
         assert(helpers.start_kong({

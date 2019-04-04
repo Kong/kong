@@ -815,6 +815,7 @@ CREATE TABLE IF NOT EXISTS admins (
         meta text,
         PRIMARY KEY(id)
       );
+      CREATE INDEX IF NOT EXISTS developers_email_idx ON developers(email);
       CREATE INDEX IF NOT EXISTS developers_consumer_id_idx ON developers(consumer_id);
     ]]
   },

@@ -2,7 +2,6 @@ local arrays        = require "pgmoon.arrays"
 local json          = require "pgmoon.json"
 local cjson         = require "cjson"
 local cjson_safe    = require "cjson.safe"
-local workspaces    = require "kong.workspaces"
 local ws_helper     = require "kong.workspaces.helper"
 
 
@@ -1795,7 +1794,7 @@ function _M.new(connector, schema, errors)
 
   local select_all_statement
   local select_all_filtered_statement
-  local workspaceable = workspaces.get_workspaceable_relations()[table_name]
+  local workspaceable = schema.workspaceable
 
   if ttl then
     if not workspaceable then

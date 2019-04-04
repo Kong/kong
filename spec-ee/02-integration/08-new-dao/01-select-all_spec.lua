@@ -65,7 +65,7 @@ for _, strategy in helpers.each_strategy() do
         end)
 
         it("non-workspaceable entities", function()
-          local ws1 = assert(bp.workspaces:insert({ name = "ws_23" }))
+          local ws1 = assert(bp.workspaces:insert({ name = "ws_24" }))
 
           assert(bp.consumers:insert_ws({ username = "ws1" }, ws1))
           assert(bp.consumers:insert_ws({ username = "ws2" }, ws1))
@@ -84,17 +84,51 @@ for _, strategy in helpers.each_strategy() do
           assert.same(#res, 6)
         end)
 
-        it("filters out other workspaces' entities", function()
+        it("filters out other workspaces' entities (developers)", function()
+          local s = require "kong.singletons"
+          s.configuration = { portal_auth = "basic-auth" }
+
           local ws1 = assert(bp.workspaces:insert({ name = "ws_11" }))
           local ws2 = assert(bp.workspaces:insert({ name = "ws_22" }))
+
+          local c1 = assert(bp.developers:insert_ws({ email = "developer1@example.com" }, ws1))
+          local c2 = assert(bp.developers:insert_ws({ email = "developer2@example.com" }, ws1))
+          local c3 = assert(bp.developers:insert_ws({ email = "developer3@example.com" }, ws1))
+
+          local c4 = assert(bp.developers:insert_ws({ email = "developer4@example.com" }, ws2))
+          local c5 = assert(bp.developers:insert_ws({ email = "developer5@example.com" }, ws2))
+          local c6 = assert(bp.developers:insert_ws({ email = "developer6@example.com" }, ws2))
+
+          local sort = function(a, b)
+            return a.email < b.email
+          end
+
+          local res
+
+          res = workspaces.run_with_ws_scope({ws1}, function()
+            return db.developers:select_all()
+          end)
+          table.sort(res, sort)
+          assert.same({c1, c2, c3}, res)
+
+          res = workspaces.run_with_ws_scope({ws2}, function()
+            return db.developers:select_all()
+          end)
+          table.sort(res, sort)
+          assert.same({c4, c5, c6}, res)
+        end)
+
+        it("filters out other workspaces' entities (consumers)", function()
+          local ws1 = assert(bp.workspaces:insert({ name = "ws_12" }))
+          local ws2 = assert(bp.workspaces:insert({ name = "ws_23" }))
 
           local c1 = assert(bp.consumers:insert_ws({ username = "ws1" }, ws1))
           local c2 = assert(bp.consumers:insert_ws({ username = "ws2" }, ws1))
           local c3 = assert(bp.consumers:insert_ws({ username = "ws3" }, ws1))
 
-          local c4 = assert(bp.consumers:insert_ws({ username = "ws3" }, ws2))
-          local c5 = assert(bp.consumers:insert_ws({ username = "ws4" }, ws2))
-          local c6 = assert(bp.consumers:insert_ws({ username = "ws5" }, ws2))
+          local c4 = assert(bp.consumers:insert_ws({ username = "ws4" }, ws2))
+          local c5 = assert(bp.consumers:insert_ws({ username = "ws5" }, ws2))
+          local c6 = assert(bp.consumers:insert_ws({ username = "ws6" }, ws2))
 
           local sort = function(a, b)
             return a.username < b.username

@@ -92,7 +92,7 @@ for _, strategy in helpers.each_strategy() do
             method = "GET",
             path = "/admins?type=2",
             headers = {
-              ["Kong-Admin-Token"] = "letmein",
+              ["Kong-Admin-Token"] = "letmein-default",
             },
           })
 
@@ -109,7 +109,7 @@ for _, strategy in helpers.each_strategy() do
             method = "POST",
             path  = "/admins",
             headers = {
-              ["Kong-Admin-Token"] = "letmein",
+              ["Kong-Admin-Token"] = "letmein-default",
               ["Content-Type"]     = "application/json",
             },
             body  = {
@@ -137,7 +137,7 @@ for _, strategy in helpers.each_strategy() do
             method = "GET",
             path = "/admins/" .. admins[1].id,
             headers = {
-              ["Kong-Admin-Token"] = "letmein",
+              ["Kong-Admin-Token"] = "letmein-default",
               ["Content-Type"]     = "application/json",
             },
           })
@@ -153,7 +153,7 @@ for _, strategy in helpers.each_strategy() do
             method = "GET",
             path = "/admins/" .. escape("admin-2@test.com"),
             headers = {
-              ["Kong-Admin-Token"] = "letmein",
+              ["Kong-Admin-Token"] = "letmein-default",
               ["Content-Type"]     = "application/json",
             },
           })
@@ -167,7 +167,7 @@ for _, strategy in helpers.each_strategy() do
             method = "GET",
             path = "/admins/" .. admins[4].id .. "?generate_register_url=true",
             headers = {
-              ["Kong-Admin-Token"] = "letmein",
+              ["Kong-Admin-Token"] = "letmein-default",
               ["Content-Type"]     = "application/json",
             },
           })
@@ -200,7 +200,7 @@ for _, strategy in helpers.each_strategy() do
             method = "GET",
             path = "/admins/not-an-admin",
             headers = {
-              ["Kong-Admin-Token"] = "letmein",
+              ["Kong-Admin-Token"] = "letmein-default",
               ["Content-Type"]     = "application/json",
             },
           })
@@ -219,7 +219,7 @@ for _, strategy in helpers.each_strategy() do
                 email = "ALICE@kongHQ.com",
               },
               headers = {
-                ["Kong-Admin-Token"] = "letmein",
+                ["Kong-Admin-Token"] = "letmein-default",
                 ["Content-Type"]     = "application/json",
               },
             })
@@ -240,7 +240,7 @@ for _, strategy in helpers.each_strategy() do
                 username = "alice"
               },
               headers = {
-                ["Kong-Admin-Token"] = "letmein",
+                ["Kong-Admin-Token"] = "letmein-default",
                 ["Content-Type"]     = "application/json",
               },
             })
@@ -260,7 +260,7 @@ for _, strategy in helpers.each_strategy() do
                username = "alice"
               },
               headers = {
-                ["Kong-Admin-Token"] = "letmein",
+                ["Kong-Admin-Token"] = "letmein-default",
                 ["Content-Type"]     = "application/json",
               },
             })
@@ -281,7 +281,7 @@ for _, strategy in helpers.each_strategy() do
             method = "DELETE",
             path   = "/admins/" .. admin.id,
             headers = {
-              ["Kong-Admin-Token"] = "letmein",
+              ["Kong-Admin-Token"] = "letmein-default",
               ["Content-Type"]     = "application/json",
             },
           })
@@ -300,7 +300,7 @@ for _, strategy in helpers.each_strategy() do
             method = "DELETE",
             path   = "/admins/" .. admin.username,
             headers = {
-              ["Kong-Admin-Token"] = "letmein",
+              ["Kong-Admin-Token"] = "letmein-default",
               ["Content-Type"]     = "application/json",
             },
           })
@@ -313,7 +313,7 @@ for _, strategy in helpers.each_strategy() do
             method = "DELETE",
             path   = "/admins/not-an-admin",
             headers = {
-              ["Kong-Admin-Token"] = "letmein",
+              ["Kong-Admin-Token"] = "letmein-default",
               ["Content-Type"]     = "application/json",
             },
           })
@@ -331,7 +331,7 @@ for _, strategy in helpers.each_strategy() do
               method = "GET",
               path = "/admins/" .. admins[2].id .. "/workspaces",
               headers = {
-                ["Kong-Admin-Token"] = "letmein",
+                ["Kong-Admin-Token"] = "letmein-default",
                 ["Content-Type"]     = "application/json",
               },
             })
@@ -350,7 +350,7 @@ for _, strategy in helpers.each_strategy() do
               method = "GET",
               path = "/admins/" .. admins[1].username .. "/workspaces",
               headers = {
-                ["Kong-Admin-Token"] = "letmein",
+                ["Kong-Admin-Token"] = "letmein-default",
                 ["Content-Type"]     = "application/json",
               },
             })
@@ -365,7 +365,7 @@ for _, strategy in helpers.each_strategy() do
               method = "GET",
               path = "/admins/" .. admin.rbac_user.id .. "/workspaces",
               headers = {
-                ["Kong-Admin-Token"] = "letmein",
+                ["Kong-Admin-Token"] = "letmein-default",
                 ["Content-Type"]     = "application/json",
               },
             })
@@ -551,7 +551,7 @@ for _, strategy in helpers.each_strategy() do
         method = "POST",
         path  = "/admins",
         headers = {
-          ["Kong-Admin-Token"] = "letmein",
+          ["Kong-Admin-Token"] = "letmein-default",
           ["Content-Type"] = "application/json",
         },
         body  = {

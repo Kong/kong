@@ -120,7 +120,7 @@ function _M.register_rbac_resources(db, ws)
   local super_admin, err = db.rbac_users:insert({
     id = utils.uuid(),
     name = "super_gruce-" .. ws,
-    user_token = "letmein",
+    user_token = "letmein-" .. ws,
     enabled = true,
     comment = "Test - Initial RBAC Super Admin User"
   })

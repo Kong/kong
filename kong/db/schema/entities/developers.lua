@@ -25,10 +25,11 @@ local developer_status = Schema.define { type = "integer", between = { 0, 4 }, d
 
 
 return {
-  name         = "developers",
-  primary_key  = { "id" },
-  endpoint_key = "email",
-  dao          = "kong.db.dao.developers",
+  name          = "developers",
+  primary_key   = { "id" },
+  endpoint_key  = "email",
+  dao           = "kong.db.dao.developers",
+  workspaceable = true,
 
   fields = {
     { id             = typedefs.uuid, },
@@ -40,3 +41,4 @@ return {
     { meta           = { type = "string" }, },
   },
 } 
+
