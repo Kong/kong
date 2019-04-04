@@ -290,13 +290,13 @@ local function load_declarative_config(kong_config, entities)
 end
 
 
-local function execute_cache_prewarm(kong_config)
+local function execute_cache_prewarm(kong_config, configured_plugins)
   if kong_config.database == "off" then
     return true
   end
 
   return concurrency.with_worker_mutex({ name = "cache_prewarm" }, function()
-    local ok, err = cache_prewarm.execute()
+    local ok, err = cache_prewarm.execute(configured_plugins)
     if not ok then
       return nil, err
     end
@@ -550,7 +550,7 @@ function Kong.init_worker()
     return
   end
 
-  ok, err = execute_cache_prewarm(kong.configuration)
+  ok, err = execute_cache_prewarm(kong.configuration, configured_plugins)
   if not ok then
     ngx_log(ngx_CRIT, "error prewarming cache: ", err)
     return

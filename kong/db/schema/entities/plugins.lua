@@ -7,6 +7,7 @@ return {
   primary_key = { "id" },
   cache_key = { "name", "route", "service", "consumer" },
   dao = "kong.db.dao.plugins",
+  prewarm = true,
 
   subschema_key = "name",
   subschema_error = "plugin '%s' not enabled; add it to the 'plugins' configuration property",
@@ -22,6 +23,6 @@ return {
     { run_on = typedefs.run_on },
     { protocols = typedefs.protocols },
     { enabled = { type = "boolean", default = true, }, },
-    { tags           = typedefs.tags },
+    { tags = typedefs.tags },
   },
 }

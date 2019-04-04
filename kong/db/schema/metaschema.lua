@@ -66,6 +66,7 @@ local field_schema = {
   { abstract = { type = "boolean" }, },
   { generate_admin_api = { type = "boolean" }, },
   { legacy = { type = "boolean" }, },
+  { prewarm = { type = "boolean" }, },
 }
 
 for _, field in ipairs(validators) do
@@ -383,6 +384,12 @@ local MetaSchema = Schema.new({
     },
     {
       legacy = {
+        type = "boolean",
+        nilable = true,
+      },
+    },
+    {
+      prewarm = {
         type = "boolean",
         nilable = true,
       },

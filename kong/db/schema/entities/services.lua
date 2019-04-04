@@ -13,6 +13,7 @@ return {
   name = "services",
   primary_key = { "id" },
   endpoint_key = "name",
+  prewarm = true,
 
   fields = {
     { id              = typedefs.uuid, },

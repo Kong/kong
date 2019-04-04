@@ -150,7 +150,7 @@ local function load_plugin_handler(plugin)
 end
 
 
-local function load_plugin_entity_strategy(schema, db)
+local function load_plugin_entity_strategy(plugin, schema, db)
   local Strategy = require(fmt("kong.db.strategies.%s", db.strategy))
   local strategy, err = Strategy.new(db.connector, schema, db.errors)
   if not strategy then
@@ -162,6 +162,7 @@ local function load_plugin_entity_strategy(schema, db)
   if not dao then
     return nil, err
   end
+  dao.plugin_name = plugin
   db.daos[schema.name] = dao
 end
 
@@ -174,7 +175,7 @@ local function plugin_entity_loader(db)
       return nil, err
     end
 
-    load_plugin_entity_strategy(schema, db)
+    load_plugin_entity_strategy(plugin, schema, db)
   end
 end
 
