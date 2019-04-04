@@ -106,11 +106,11 @@ local function retrieve_relationship_ids(entity_id, entity_name, factory_key)
   if factory_key == "workspace_entities" then
     relationship_ids, err = workspaces.compat_find_all(factory_key, {
       [entity_name .. "_id"] = entity_id
-    })
+    }, { skip_rbac = true })
   else
     relationship_ids, err = workspaces.compat_find_all(factory_key, {
       [entity_name] = { id = entity_id }
-    })
+    }, { skip_rbac = true })
   end
   if err then
     log(ngx.ERR, "err retrieving relationship via id ", entity_id, ": ", err)
@@ -327,6 +327,8 @@ end
 
 -- XXX EE should return 2nd value for error
 local function get_role_entities(db, role, opts)
+  opts = opts or {}
+  opts.skip_rbac = true
   local res = {}
   for role in db.rbac_role_entities:each_for_role({id = role.id}, nil,  opts) do
     table.insert(res, role)
@@ -337,6 +339,8 @@ end
 _M.get_role_entities = get_role_entities
 
 local function get_role_endpoints(db, role, opts)
+  opts = opts or {}
+  opts.skip_rbac = true
   local res = {}
   for role in db.rbac_role_endpoints:each_for_role({id = role.id}, nil, opts) do
     table.insert(res, role)
@@ -639,11 +643,17 @@ local function delete_role_entity_permission(table_name, entity)
   end
 
   local entity_id = schema.primary_key[1]
+  if schema.fields[entity_id].type == "foreign" then
+    entity_id = entity_id .. "_id"
+  end
 
-  local role_entities = db.rbac_role_entities:select_all({
+  local role_entities, err, err_t = db.rbac_role_entities:select_all({
     entity_id = entity[entity_id],
     entity_type = table_name
   })
+  if err then
+    return err_t
+  end
 
   for _, role_entity in ipairs(role_entities) do
     local _, err, err_t = db.rbac_role_entities:delete({

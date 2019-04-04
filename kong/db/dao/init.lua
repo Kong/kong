@@ -217,6 +217,34 @@ local function check_update(self, key, entity, options, name)
 end
 
 
+-- Iterator wrapper that applies rbac to any dao iterator unless
+-- skip_rbac is passed.
+local function rbacced_iterator(iterator, self, options)
+  if options and options.skip_rbac then
+    return iterator
+  end
+
+  return function()
+    local res, t, page = iterator()
+    if not res then
+      return res, t, page
+    end
+
+    local valid = rbac.validate_entity_operation(res, self.schema.name)
+    while not valid do
+      res, t, page = iterator()
+      if not res then
+        return res, t, page
+      end
+
+      valid = rbac.validate_entity_operation(res, self.schema.name)
+    end
+
+    return res, t, page
+  end
+end
+
+
 local function find_cascade_delete_entities(self, entity)
   local constraints = self.schema:get_constraints()
   local entries = {}
@@ -368,7 +396,7 @@ local function generate_foreign_key_methods(schema)
           return strategy[page_method_name](strategy, foreign_key, size, offset, options)
         end
 
-        return iteration.by_row(self, pager, size)
+        return rbacced_iterator(iteration.by_row(self, pager, size), self, options)
       end
 
     elseif field.unique or schema.endpoint_key == name then
@@ -896,6 +924,13 @@ function DAO:each(size, options)
 end
 
 
+do
+  local each = DAO.each
+  DAO.each = function(self, size, options)
+    return rbacced_iterator(each(self, size, options), self, options)
+  end
+end
+
 function DAO:insert(entity, options)
   validate_entity_type(entity)
 
@@ -1198,6 +1233,17 @@ function DAO:delete(primary_key, options)
 
   local cascade_entries = find_cascade_delete_entities(self, primary_key)
 
+  if (not options or not options.skip_rbac) and  -- not skipping rbac
+    (not rbac.validate_entity_operation(entity, self.schema.name) or
+     not rbac.check_cascade(cascade_entries, ngx.ctx.rbac))  then
+      -- operation or cascading not allowed
+      local err_t = self.errors:unauthorized_operation({
+        username = ngx.ctx.rbac.user.name,
+        action = rbac.readable_action(ngx.ctx.rbac.action)
+      })
+      return nil, tostring(err_t), err_t
+  end
+
   local _
   _, err_t = self.strategy:delete(primary_key, options)
   if err_t then
@@ -1211,9 +1257,9 @@ function DAO:delete(primary_key, options)
     "with Workspace: " .. err)
   end
 
-  err = rbac.delete_role_entity_permission("routes", entity)
+  err = rbac.delete_role_entity_permission(self.schema.name, entity)
   if err then
-    return nil, self.errors:database_error("could not delete Route relationship " ..
+    return nil, self.errors:database_error("could not delete entity relationship " ..
     "with Role: " .. err)
   end
 

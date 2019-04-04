@@ -12,10 +12,14 @@ end
 
 -- Temporary wrapper around :each implementing arbitrary filtering,
 -- used throughout workspaces implementation
-function _M.compat_find_all(dao_name, filt)
+function _M.compat_find_all(dao_name, filt, opts)
   local dao = singletons.db[dao_name]
 
   filt = filt or {}
+  if opts then
+    opts.skip_rbac = opts.skip_rbac or filt.__skip_rbac
+  end
+
   filt.__skip_rbac = nil -- remove skip_rbac from here
 
   local rows = {}
@@ -25,7 +29,7 @@ function _M.compat_find_all(dao_name, filt)
     filtering = true
   end
 
-  for row, err in dao:each() do
+  for row, err in dao:each(nil, opts) do
     if err then
       return nil, err
     end
