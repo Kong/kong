@@ -1,6 +1,5 @@
 local singletons    = require "kong.singletons"
 local crud          = require "kong.api.crud_helpers"
-local ee_crud       = require "kong.enterprise_edition.crud_helpers"
 local ws_helper     = require "kong.workspaces.helper"
 local enums         = require "kong.enterprise_edition.dao.enums"
 local cjson         = require "cjson.safe"
@@ -133,10 +132,14 @@ return {
     POST = function(self, db, helpers)
       self.params.status = get_developer_status()
 
-      local developer, err, err_t = db.developers:insert(self.params)
+      local developer, _, err_t = db.developers:insert(self.params)
       if not developer then
         return endpoints.handle_error(err_t)
       end
+
+      local res = {
+        developer = developer,
+      }
 
       if developer.status == enums.CONSUMERS.STATUS.PENDING then
         local portal_emails = portal_smtp_client.new()
@@ -149,14 +152,16 @@ return {
 
           return helpers.yield_error(err)
         end
+
+        res.email = email
       end
 
-      return helpers.responses.send_HTTP_OK(developer)
+      return helpers.responses.send_HTTP_OK(res)
     end,
   },
 
   ["/validate-reset"] = {
-    POST = function(self, dao_factory, helpers)
+    POST = function(self, db, helpers)
       auth.validate_auth_plugin(self, db, helpers)
       ee_api.validate_jwt(self, db, helpers)
       return helpers.responses.send_HTTP_OK()
@@ -171,10 +176,10 @@ return {
       -- If we made it this far, the jwt is valid format and properly signed.
       -- Now we will lookup the consumer and credentials we need to update
       -- Lookup consumer by id contained in jwt, if not found, this will 404
-      local consumer, err, err_t = db.consumers:select({ id = self.consumer_id },
+      local consumer, _, err_t = db.consumers:select({ id = self.consumer_id },
                                                           { skip_rbac = true })
-      if err then
-        return helpers.yield_error(err)
+      if not consumer then
+        return endpoints.handle_error(err_t)
       end
 
       local credentials, err = db.credentials:select_all({
@@ -229,7 +234,7 @@ return {
   },
 
   ["/forgot-password"] = {
-    POST = function(self, dao_factory, helpers)
+    POST = function(self, db, helpers)
       auth.validate_auth_plugin(self, db, helpers)
 
       local workspace = get_workspace()
@@ -358,7 +363,7 @@ return {
 
   ["/developer/email"] = {
     PATCH = function(self, db, helpers)
-      local developer, err, err_t = db.developers:update({
+      local developer, _, err_t = db.developers:update({
         id = self.developer.id
       }, {
         email = self.params.email
@@ -417,7 +422,7 @@ return {
     GET = function(self, db, helpers)
       validate_credential_plugin(self, db, helpers)
 
-      local credentials, err, err_t = singletons.dao.credentials:find_all({
+      local credentials, _, err_t = singletons.dao.credentials:find_all({
         consumer_id = self.developer.consumer.id,
         consumer_type = enums.CONSUMERS.TYPE.PROXY,
         plugin = self.credential_plugin.name,
@@ -449,7 +454,7 @@ return {
       })
 
       if err then
-        return app_helpers.yield_error(err)
+        return helpers.yield_error(err)
       end
 
       return helpers.responses.send_HTTP_OK(credential)
@@ -514,7 +519,7 @@ return {
 
       crud.portal_crud.delete_credential(credential)
 
-      local ok, err, err_t = self.credential_collection:delete({id = credential.id})
+      local ok, _, err_t = self.credential_collection:delete({id = credential.id})
       if not ok then
         return endpoints.handle_error(err_t)
       end

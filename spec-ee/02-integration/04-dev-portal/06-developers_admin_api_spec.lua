@@ -22,7 +22,7 @@ if strategy == 'cassandra' then
 end
 
 describe("Admin API - Developer Portal - " .. strategy, function()
-  local client
+  local client, portal_api_client
   local db, dao
 
   lazy_setup(function()

@@ -32,16 +32,16 @@ local DEFAULT_CONSUMER = {
   },
 }
 
-local function insert_files(dao)
+local function insert_files(db)
   for i = 1, 10 do
-    assert(dao.files:insert {
+    assert(db.files:insert {
       name = "file-" .. i,
       contents = "i-" .. i,
       type = "partial",
       auth = i % 2 == 0 and true or false
     })
 
-    assert(dao.files:insert {
+    assert(db.files:insert {
       name = "file-page" .. i,
       contents = "i-" .. i,
       type = "page",
@@ -112,33 +112,25 @@ end
 local rbac_mode = {"off", "on"}
 
 for _, strategy in helpers.each_strategy() do
-
-   -- TODO DEVX: re-impliment once api endpoints are done
-   if strategy == 'cassandra' or strategy == 'postgres' then
-    return
-  end
-
   for idx, rbac in ipairs(rbac_mode) do
-    describe("#flaky Developer Portal - Portal API " .. strategy .. " (ENFORCE_RBAC = " .. rbac .. ")", function()
+    describe("Developer Portal - Portal API " .. strategy .. " (ENFORCE_RBAC = " .. rbac .. ")", function()
       local portal_api_client
       local client
-      local bp, db, dao = helpers.get_db_utils(strategy)
+      local bp, db, dao
+
+      lazy_setup(function()
+        bp, db, dao = helpers.get_db_utils(strategy)
+      end)
+
+      lazy_teardown(function()
+        helpers.stop_kong()
+      end)
 
       -- do not run tests for cassandra < 3
+      -- XXX DEVX check this for db.major_version_n
       if strategy == "cassandra" and dao.db.major_version_n < 3 then
         return
       end
-
-      setup(function()
-        dao:drop_schema()
-        ngx.ctx.workspaces = {}
-        dao:run_migrations()
-      end)
-
-      teardown(function()
-        helpers.stop_kong()
-        dao:drop_schema()
-      end)
 
       -- this block is only run once, not for each rbac state
       if idx == 1 then

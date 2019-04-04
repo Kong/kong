@@ -11,8 +11,6 @@ local ee_api = require "kong.enterprise_edition.api_helpers"
 local ws_helper = require "kong.workspaces.helper"
 local constants = require "kong.constants"
 local Errors = require "kong.db.errors"
-local Endpoints = require "kong.api.endpoints"
-local arguments = require "kong.api.arguments"
 local auth = require "kong.portal.auth"
 
 
@@ -75,38 +73,6 @@ local function parse_params(fn)
 end
 
 
--- old DAO
-local function on_error(self)
-  local err = self.errors[1]
-
-  if type(err) ~= "table" then
-    return responses.send_HTTP_INTERNAL_SERVER_ERROR(tostring(err))
-  end
-
-  if err.forbidden then
-    return responses.send_HTTP_FORBIDDEN(err.tbl)
-  end
-
-  if err.name then
-    return new_db_on_error(self)
-  end
-
-  if err.db then
-    return responses.send_HTTP_INTERNAL_SERVER_ERROR(err.message)
-  end
-
-  if err.unique then
-    return responses.send_HTTP_CONFLICT(err.tbl)
-  end
-
-  if err.foreign then
-    return responses.send_HTTP_NOT_FOUND(err.tbl)
-  end
-
-  return responses.send_HTTP_BAD_REQUEST(err.tbl or err.message)
-end
-
-
 -- new DB
 local function new_db_on_error(self)
   local err = self.errors[1]
@@ -141,7 +107,39 @@ local function new_db_on_error(self)
 end
 
 
-local function auth_required(uri)
+-- old DAO
+local function on_error(self)
+  local err = self.errors[1]
+
+  if type(err) ~= "table" then
+    return responses.send_HTTP_INTERNAL_SERVER_ERROR(tostring(err))
+  end
+
+  if err.forbidden then
+    return responses.send_HTTP_FORBIDDEN(err.tbl)
+  end
+
+  if err.name then
+    return new_db_on_error(self)
+  end
+
+  if err.db then
+    return responses.send_HTTP_INTERNAL_SERVER_ERROR(err.message)
+  end
+
+  if err.unique then
+    return responses.send_HTTP_CONFLICT(err.tbl)
+  end
+
+  if err.foreign then
+    return responses.send_HTTP_NOT_FOUND(err.tbl)
+  end
+
+  return responses.send_HTTP_BAD_REQUEST(err.tbl or err.message)
+end
+
+
+local function auth_required(uri, ws)
   -- whitelisted, no auth needed
   if auth_whitelisted_uris[uri] then
     return false
@@ -241,7 +239,7 @@ app:before_filter(function(self)
     return responses.send_HTTP_INTERNAL_SERVER_ERROR()
   end
 
-  if auth_required(ngx.var.request_uri) then
+  if auth_required(ngx.var.request_uri, ws) then
     auth.authenticate_api_session(self, singletons.db, handler_helpers)
   end
 
@@ -273,7 +271,7 @@ app:before_filter(function(self)
 end)
 
 
-function attach_routes(routes)
+local function attach_routes(routes)
   for route_path, methods in pairs(routes) do
     methods.on_error = methods.on_error or on_error
 

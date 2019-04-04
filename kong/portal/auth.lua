@@ -90,7 +90,6 @@ end
 
 function _M.login(self, db, helpers)
   local invoke_plugin = singletons.invoke_plugin
-  local status
 
   _M.validate_auth_plugin(self, db, helpers)
 
@@ -142,7 +141,6 @@ end
 
 function _M.authenticate_api_session(self, db, helpers)
   local invoke_plugin = singletons.invoke_plugin
-  local status
 
   _M.validate_auth_plugin(self, db, helpers)
 
