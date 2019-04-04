@@ -133,7 +133,7 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
       client:close()
     end
 
-    helpers.stop_kong(nil, true, true)
+    helpers.stop_kong()
   end)
 
   describe("/rbac/users", function()
@@ -1845,7 +1845,6 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
 
-        -- assert.same(2, json.total) -- XXX EE No total in count in new dao
         assert.same(2, #json.data)
         assert.same({ "read" }, json.data[1].actions)
       end)
@@ -3399,15 +3398,15 @@ for _, h in ipairs({ "", "Custom-Auth-Token" }) do
 end
 
 
-dao_helpers.for_each_dao(function(kong_config)
-  describe("Admin API #".. kong_config.database, function()
+for _, strategy in helpers.each_strategy() do
+  describe("Admin API #".. strategy, function()
   local services
 
   lazy_setup(function()
-    helpers.get_db_utils(kong_config.database)
+    helpers.get_db_utils()
 
     assert(helpers.start_kong({
-      database = kong_config.database,
+      database = strategy
     }))
 
     client = assert(helpers.admin_client())
@@ -3422,15 +3421,24 @@ dao_helpers.for_each_dao(function(kong_config)
 
     helpers.stop_kong()
     assert(helpers.start_kong {
-      database              = kong_config.database,
+      database              = strategy,
       enforce_rbac          = "entity",
     })
-    client = assert(helpers.admin_client())
   end)
 
   lazy_teardown(function()
     helpers.stop_kong()
 
+    if client then
+      client:close()
+    end
+  end)
+
+  before_each(function()
+    client = assert(helpers.admin_client())
+  end)
+
+  after_each(function()
     if client then
       client:close()
     end
@@ -3486,15 +3494,15 @@ dao_helpers.for_each_dao(function(kong_config)
   end)
 end)
 
-end)
+end
 
-dao_helpers.for_each_dao(function(kong_config)
-describe("RBAC users #" .. kong_config.database, function()
+for _, strategy in helpers.each_strategy() do
+  describe("RBAC users #" .. strategy, function()
   lazy_setup(function()
-    helpers.get_db_utils(kong_config.database)
+    helpers.get_db_utils()
 
     assert(helpers.start_kong({
-      database = kong_config.database,
+      database = strategy,
     }))
     client = assert(helpers.admin_client())
 
@@ -3515,16 +3523,16 @@ describe("RBAC users #" .. kong_config.database, function()
     post("/ws1/rbac/roles/ws1-admin/endpoints", {endpoint = "*", actions = "read,create,update,delete", workspace = "ws1"})
     post("/ws1/rbac/users/bob/roles", {roles = "ws1-admin"})
 
-    helpers.stop_kong(nil, true, true)
+    helpers.stop_kong()
     assert(helpers.start_kong {
-      database              = kong_config.database,
+      database              = strategy,
       enforce_rbac          = "on",
     })
     client = assert(helpers.admin_client())
   end)
 
   lazy_teardown(function()
-    helpers.stop_kong(nil, true, true)
+    helpers.stop_kong()
 
     if client then
       client:close()
@@ -3556,4 +3564,4 @@ describe("RBAC users #" .. kong_config.database, function()
   end)
 
 end)
-end)
+end
