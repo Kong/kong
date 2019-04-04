@@ -30,7 +30,7 @@ end
 local function update_developer(db, developer_pk, params)
   local id = unescape_uri(developer_pk)
   if utils.is_valid_uuid(id) then
-    return db.developers:update(developer_pk, params)
+    return db.developers:update({ id = developer_pk }, params)
   end
 
   return db.developers:update_by_email(developer_pk, params)

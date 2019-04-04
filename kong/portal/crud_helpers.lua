@@ -9,25 +9,6 @@ local workspaces  = require "kong.workspaces"
 local _M = {}
 
 
-function _M.insert_credential(plugin, consumer_type)
-  return function(credential)
-    local _, err = singletons.db.credentials:insert({
-      id = credential.id,
-      consumer = { id = credential.consumer.id },
-      consumer_type = consumer_type or enums.CONSUMERS.TYPE.PROXY,
-      plugin = plugin,
-      credential_data = tostring(cjson.encode(credential)),
-    })
-
-    if err then
-      return app_helpers.yield_error(err)
-    end
-
-    return credential
-  end
-end
-
-
 function _M.update_credential(credential)
   local _, err = singletons.db.credentials:update(
     { id = credential.id },
@@ -54,8 +35,8 @@ function _M.delete_credential(credential)
   end
 end
 
-function _M.update_login_credential(credential_params, dao_collection, filter_keys)
-  local credential, err = dao_collection:update(credential_params, filter_keys, { skip_rbac = true })
+function _M.update_login_credential(collection, cred_pk, entity)
+  local credential, err = collection:update(cred_pk, entity, {skip_rbac = true})
 
   if err then
     return nil, err

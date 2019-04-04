@@ -236,14 +236,14 @@ end
 local function retrieve_partials (self, page)
   local partials = {}
   local page = page.contents
-  local is_authenticated = self.is_authenticated
+  local is_authenticated = self.developer ~= nil
 
   return find_partials_in_page(page, partials, is_authenticated)
 end
 
 
 local function retrieve_page_and_spec (self)
-  local is_authenticated = self.is_authenticated
+  local is_authenticated = self.developer ~= nil
   local workspace = ws_helper.get_workspace()
   local portal_auth = ws_helper.retrieve_ws_config(ws_constants.PORTAL_AUTH,
                                                                     workspace)

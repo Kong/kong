@@ -2,7 +2,7 @@ local cjson   = require "cjson"
 local helpers = require "spec.helpers"
 local singletons  = require "kong.singletons"
 local enums       = require "kong.enterprise_edition.dao.enums"
-
+local ee_helpers  = require "spec-ee.helpers"
 
 local function configure_portal()
   singletons.db.workspaces:upsert_by_name("default", {
@@ -45,13 +45,13 @@ describe("Admin API - Developer Portal - " .. strategy, function()
 
   before_each(function()
     client = helpers.admin_client()
+    portal_api_client = ee_helpers.portal_api_client()
     configure_portal(db)
   end)
 
   after_each(function()
     if client then client:close() end
-    -- XXX DEVX is this needed?
-    -- if portal_api_client then portal_api_client:close() end
+    if portal_api_client then portal_api_client:close() end
   end)
 
   describe("/developers", function()
@@ -161,47 +161,45 @@ describe("Admin API - Developer Portal - " .. strategy, function()
         assert.equals("new_email@whodis.com", resp_body_json.developer.email)
         assert.equals("new_email@whodis.com", consumer.username)
 
-        -- XXX DEVX: re-introduce this part of test once auth endpoint merged
         -- old email fails to access portal api
-        -- local res = assert(portal_api_client:send {
-        --   method = "GET",
-        --   path = "/auth",
-        --   headers = {
-        --     ["Authorization"] = "Basic " .. ngx.encode_base64("gruce@konghq.com:kong"),
-        --   }
-        -- })
+        local res = assert(portal_api_client:send {
+          method = "GET",
+          path = "/auth",
+          headers = {
+            ["Authorization"] = "Basic " .. ngx.encode_base64("gruce@konghq.com:kong"),
+          }
+        })
 
-        -- local body = assert.res_status(403, res)
-        -- local json = cjson.decode(body)
-        -- assert.equals("Invalid authentication credentials", json.message)
+        local body = assert.res_status(403, res)
+        local json = cjson.decode(body)
+        assert.equals("Invalid authentication credentials", json.message)
 
-        -- local cookie = res.headers["Set-Cookie"]
-        -- assert.is_nil(cookie)
+        local cookie = res.headers["Set-Cookie"]
+        assert.is_nil(cookie)
 
-        -- -- new email succeeds to access portal api
-        -- local res = assert(portal_api_client:send {
-        --   method = "GET",
-        --   path = "/auth",
-        --   headers = {
-        --     ["Authorization"] = "Basic " .. ngx.encode_base64("new_email@whodis.com:kong"),
-        --   }
-        -- })
+        -- new email succeeds to access portal api
+        local res = assert(portal_api_client:send {
+          method = "GET",
+          path = "/auth",
+          headers = {
+            ["Authorization"] = "Basic " .. ngx.encode_base64("new_email@whodis.com:kong"),
+          }
+        })
 
-        -- assert.res_status(200, res)
-        -- cookie = assert.response(res).has.header("Set-Cookie")
+        assert.res_status(200, res)
+        cookie = assert.response(res).has.header("Set-Cookie")
 
-        -- local res = assert(portal_api_client:send {
-        --   method = "GET",
-        --   path = "/developer",
-        --   headers = {
-        --     ["Cookie"] = cookie
-        --   },
-        -- })
+        local res = assert(portal_api_client:send {
+          method = "GET",
+          path = "/developer",
+          headers = {
+            ["Cookie"] = cookie
+          },
+        })
 
-        -- local body = assert.res_status(200, res)
-        -- local resp_body_json = cjson.decode(body)
-        -- assert.equal("new_email@whodis.com", resp_body_json.email)
-        -- assert.equal("new_email@whodis.com", resp_body_json.username)
+        local body = assert.res_status(200, res)
+        local resp_body_json = cjson.decode(body)
+        assert.equal("new_email@whodis.com", resp_body_json.email)
       end)
 
       it("returns 400 if patched with an invalid email", function()

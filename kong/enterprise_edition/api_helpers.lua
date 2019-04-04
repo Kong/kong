@@ -313,8 +313,8 @@ function _M.resolve_entity_type(new_dao, old_dao, entity_id)
 end
 
 
-function _M.validate_jwt(self, dao_factory, helpers, token_optional)
-  local reset_secrets = singletons.db.consumer_reset_secrets
+function _M.validate_jwt(self, db, helpers, token_optional)
+  local reset_secrets = db.consumer_reset_secrets
 
   -- Verify params
   if token_optional then

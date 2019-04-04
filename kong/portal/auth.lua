@@ -48,23 +48,27 @@ local function check_oidc_session()
   return true
 end
 
-
-local function verify_consumer(self, db, helpers)
-  self.consumer = ngx.ctx.authenticated_consumer
-
-  -- Validate status - check if we have an approved developer type consumer
-  if not self.consumer or
-    self.consumer.status ~= enums.CONSUMERS.STATUS.APPROVED  or
-    self.consumer.type   ~= enums.CONSUMERS.TYPE.DEVELOPER then
-
-    if ngx.ctx.authenticated_session then
-      ngx.ctx.authenticated_session:destroy()
-    end
-
-    return
+local function get_developer()
+  local consumer = ngx.ctx.authenticated_consumer
+  if not consumer or consumer.type ~= DEVELOPER_TYPE then
+    return nil, "Invalid Consumer"
   end
 
-  self.is_authenticated = true
+  local developer, err = singletons.db.developers:select_by_email(consumer.username)
+  if err then
+    return nil, err
+  end
+
+  if not developer then
+    return nil, "Developer not found"
+  end
+
+  local status = developer.status
+  if status ~= enums.CONSUMERS.STATUS.APPROVED then
+    return nil, "Unauthorized: Developer status: " .. enums.CONSUMERS.STATUS_LABELS[developer.status]
+  end
+
+  return developer
 end
 
 
@@ -123,15 +127,16 @@ function _M.login(self, db, helpers)
     end
   end
 
-  verify_consumer(self, db, helpers)
+  local developer, err = get_developer()
+  if err then
+    if ngx.ctx.authenticated_session then
+      ngx.ctx.authenticated_session:destroy()
+    end
 
-  if self.consumer then
-    status = ee_api.get_consumer_status(self.consumer)
+    return helpers.responses.send_HTTP_UNAUTHORIZED(err)
   end
 
-  if not self.is_authenticated then
-    return helpers.responses.send_HTTP_UNAUTHORIZED(status)
-  end
+  self.developer = developer
 end
 
 
@@ -176,15 +181,16 @@ function _M.authenticate_api_session(self, db, helpers)
     return helpers.responses.send_HTTP_INTERNAL_SERVER_ERROR()
   end
 
-  verify_consumer(self, db, helpers)
+  local developer, err = get_developer()
+  if err then
+    if ngx.ctx.authenticated_session then
+      ngx.ctx.authenticated_session:destroy()
+    end
 
-  if self.consumer then
-    status = ee_api.get_consumer_status(self.consumer)
+    return helpers.responses.send_HTTP_UNAUTHORIZED(err)
   end
 
-  if not self.is_authenticated then
-    return helpers.responses.send_HTTP_UNAUTHORIZED(status)
-  end
+  self.developer = developer
 end
 
 
@@ -194,7 +200,6 @@ function _M.authenticate_gui_session(self, db, helpers)
   local portal_auth = ws_helper.retrieve_ws_config(ws_constants.PORTAL_AUTH, workspace)
 
   if portal_auth == nil or portal_auth == '' then
-    self.is_authenticated = true
     return
   end
 
@@ -207,7 +212,6 @@ function _M.authenticate_gui_session(self, db, helpers)
     
     -- assume unauthenticated if no session
     if not has_session then
-      self.is_authenticated = false
       return
     end
 
@@ -236,7 +240,15 @@ function _M.authenticate_gui_session(self, db, helpers)
     return helpers.responses.send_HTTP_INTERNAL_SERVER_ERROR()
   end
 
-  verify_consumer(self, db, helpers)
+  local developer = get_developer()
+  if not developer then
+    if ngx.ctx.authenticated_session then
+      ngx.ctx.authenticated_session:destroy()
+    end
+    return
+  end
+
+  self.developer = developer
 end
 
 

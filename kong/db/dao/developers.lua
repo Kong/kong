@@ -67,7 +67,7 @@ end
 
 
 function _Developers:update(developer_pk, entity, options)
-  local developer, err, err_t = self.db.developers:select({ id = developer_pk })
+  local developer, err, err_t = self.db.developers:select({ id = developer_pk.id })
   if not developer then
     ngx.log(ngx.DEBUG, err)
     return nil, err, err_t
@@ -85,8 +85,8 @@ function _Developers:update(developer_pk, entity, options)
 end
 
 
-function _Developers:update_by_email(developer_pk, entity, options)
-  local developer, err, err_t = self.db.developers:select_by_email(developer_pk)
+function _Developers:update_by_email(developer_email, entity, options)
+  local developer, err, err_t = self.db.developers:select_by_email(developer_email)
   if not developer then
     ngx.log(ngx.DEBUG, err, err_t)
     return nil, err, err_t
@@ -114,7 +114,6 @@ end
 
 -- deletes consumer associated with developer, as well as developer
 function _Developers:delete(developer_pk, options)
-
   local developer, err, err_t = self.db.developers:select({ id = developer_pk.id })
   if not developer then
     return nil, err, err_t
@@ -124,7 +123,7 @@ function _Developers:delete(developer_pk, options)
   if not ok then
     return nil, err, err_t
   end
-  
+
   return self.super.delete(self, developer_pk, options)
 end
 

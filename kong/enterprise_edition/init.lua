@@ -177,7 +177,8 @@ end
 
 function _M.prepare_portal(self, kong_config)
   local workspace = ws_helper.get_workspace()
-  local is_authenticated = self.is_authenticated or false
+  local is_authenticated = self.developer ~= nil
+
   local portal_gui_listener = select_listener(kong_config.portal_gui_listeners,
                                               {ssl = false})
   local portal_gui_ssl_listener = select_listener(kong_config.portal_gui_listeners,

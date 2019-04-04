@@ -287,9 +287,8 @@ local function add_ee_required_plugins(conf)
     seen_plugins[plugin] = true
   end
 
-  -- XXX this will need Session as soon as its converted to new dao
   -- Required by both admin api and portal
-  local required_plugins = { "cors" }
+  local required_plugins = { "cors", "session" }
 
   -- Required for manager
   if conf.admin_gui_auth and conf.admin_gui_auth ~= "" then

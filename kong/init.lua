@@ -942,7 +942,7 @@ end
 
 
 function Kong.serve_portal_api()
-  return lapis.serve(require("kong.portal").app)
+  return lapis.serve("kong.portal")
 end
 
 function Kong.serve_portal_gui()

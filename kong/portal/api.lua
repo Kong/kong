@@ -8,7 +8,9 @@ local ee_api        = require "kong.enterprise_edition.api_helpers"
 local constants     = require "kong.constants"
 local auth          = require "kong.portal.auth"
 local portal_smtp_client = require "kong.portal.emails"
-local secrets       = require "kong.enterprise_edition.consumer_reset_secret_helpers"
+local secrets = require "kong.enterprise_edition.consumer_reset_secret_helpers"
+local endpoints = require "kong.api.endpoints"
+
 
 
 local kong = kong
@@ -28,26 +30,38 @@ local auth_plugins = {
   ["openid-connect"] = { name = "openid-connect" },
 }
 
+local function get_developer_status()
+  local workspace = ngx.ctx.workspaces and ngx.ctx.workspaces[1] or {}
+  local auto_approve = ws_helper.retrieve_ws_config(ws_constants.PORTAL_AUTO_APPROVE, workspace)
+
+  if auto_approve then
+    return enums.CONSUMERS.STATUS.APPROVED
+  end
+
+  return enums.CONSUMERS.STATUS.PENDING
+end
+
 local function get_workspace()
   return ngx.ctx.workspaces and ngx.ctx.workspaces[1] or {}
 end
 
 
-local function check_portal_status(helpers)
-  local workspace = get_workspace()
-  local portal = ws_helper.retrieve_ws_config(ws_constants.PORTAL, workspace)
-  if not portal then
-    return helpers.responses.send_HTTP_NOT_FOUND()
+local function count_entities(arr)
+  local res = {
+    total = 0,
+    data = setmetatable({}, cjson.empty_array_mt)
+  }
+
+  for _, item in ipairs(arr) do
+    res.total = res.total + 1
+    res.data[res.total] = item
   end
+
+  return res
 end
 
 
-local function portal_auth_enabled(portal_auth)
-  return portal_auth and portal_auth ~= ""
-end
-
-
-local function validate_credential_plugin(self, dao_factory, helpers)
+local function validate_credential_plugin(self, db, helpers)
   local plugin_name = ngx.unescape_uri(self.params.plugin)
 
   self.credential_plugin = auth_plugins[plugin_name]
@@ -55,26 +69,7 @@ local function validate_credential_plugin(self, dao_factory, helpers)
     return helpers.responses.send_HTTP_NOT_FOUND()
   end
 
-  self.credential_collection = dao_factory[self.credential_plugin.dao]
-end
-
-
-local function find_login_credential(self, dao_factory, helpers)
-  local credentials, err = singletons.db.credentials:select_all({
-    consumer = { id = self.consumer.id },
-    consumer_type = enums.CONSUMERS.TYPE.DEVELOPER,
-    plugin = self.plugin.name,
-  })
-
-  if err then
-    return helpers.yield_error(err)
-  end
-
-  if next(credentials) == nil then
-    return helpers.responses.send_HTTP_NOT_FOUND()
-  end
-
-  self.credential = credentials[1]
+  self.credential_collection = db.daos[self.credential_plugin.dao]
 end
 
 
@@ -93,219 +88,96 @@ end
 
 return {
   ["/auth"] = {
-    before = function(self, dao_factory, helpers)
-      check_portal_status(helpers)
-    end,
-
-    GET = function(self, dao_factory, helpers)
-      auth.login(self, dao_factory.db.new_db, helpers)
+    GET = function(self, db, helpers)
+      auth.login(self, db, helpers)
       return helpers.responses.send_HTTP_OK()
     end,
 
-    DELETE = function(self, dao_factory, helpers)
-      auth.authenticate_api_session(self, dao_factory.db.new_db, helpers)
+    DELETE = function(self, db, helpers)
+      auth.authenticate_api_session(self, db, helpers)
       return helpers.responses.send_HTTP_OK()
-    end,
-  },
-
-  ["/files"] = {
-    before = function(self, dao_factory, helpers)
-      check_portal_status(helpers)
-
-      local workspace = get_workspace()
-      local portal_auth = ws_helper.retrieve_ws_config(
-                                           ws_constants.PORTAL_AUTH, workspace)
-
-      -- If auth is enabled, we need to validate consumer/developer
-      if portal_auth_enabled(portal_auth) then
-        auth.authenticate_api_session(self, dao_factory.db.new_db, helpers)
-      end
-    end,
-
-    GET = function(self, dao_factory, helpers)
-      crud.paginated_set(self, dao_factory.files, nil, {__skip_rbac = true})
     end,
   },
 
   ["/files/unauthenticated"] = {
-    before = function(self, dao_factory, helpers)
-      check_portal_status(helpers)
-    end,
-
     -- List all unauthenticated files stored in the portal file system
-    GET = function(self, dao_factory, helpers)
+    GET = function(self, db, helpers)
       self.params.auth = false
 
-      crud.paginated_set(self, dao_factory.files, nil, {__skip_rbac = true})
+      local files, err, err_t = db.files:select_all({
+        auth = false,
+      }, { skip_rbac = true })
+
+      if err then
+        return endpoints.handle_error(err_t)
+      end
+
+      return helpers.responses.send_HTTP_OK({data = files})
     end,
   },
 
   ["/files/*"] = {
-    before = function(self, dao_factory, helpers)
-      check_portal_status(helpers)
-      local dao = dao_factory.files
+    GET = function(self, db, helpers)
       local identifier = self.params.splat
 
-      -- Find a file by id or field "name"
-      local rows, err = crud.find_by_id_or_field(dao, {__skip_rbac = true},
-                                                            identifier, "name")
+      local file, err, err_t = db.files:select_by_name(identifier, { skip_rbac = true })
       if err then
-        return helpers.yield_error(err)
+        return endpoints.handle_error(err_t)
       end
 
-      -- Since we know both the name and id of files are unique
-      self.params.file_name_or_id = nil
-      self.portal_file = rows[1]
-      if not self.portal_file then
-        return helpers.responses.send_HTTP_NOT_FOUND(
-          "No file found by name or id '" .. identifier .. "'"
-        )
-      end
-    end,
-
-    GET = function(self, dao_factory, helpers)
-      return helpers.responses.send_HTTP_OK(self.portal_file)
+      return helpers.responses.send_HTTP_OK({data = file})
     end,
   },
 
   ["/register"] = {
-    before = function(self, dao_factory, helpers)
-      check_portal_status(helpers)
-      local workspace = get_workspace()
-      self.auto_approve = ws_helper.retrieve_ws_config(
-                                   ws_constants.PORTAL_AUTO_APPROVE, workspace)
+    POST = function(self, db, helpers)
+      self.params.status = get_developer_status()
 
-      ee_api.validate_email(self, dao_factory, helpers)
-    end,
-
-    POST = function(self, dao_factory, helpers)
-      if not self.params.meta then
-        return helpers.responses.send_HTTP_BAD_REQUEST("meta param is missing")
+      local developer, err, err_t = db.developers:insert(self.params)
+      if not developer then
+        return endpoints.handle_error(err_t)
       end
 
-      local meta, err = cjson.decode(self.params.meta)
-      if err then
-        return helpers.responses.send_HTTP_BAD_REQUEST("meta param is invalid")
-      end
-
-      local full_name = meta.full_name
-      if not full_name or full_name == "" then
-        return helpers.responses.send_HTTP_BAD_REQUEST(
-                                         "meta param missing key: 'full_name'")
-      end
-
-      self.params.type = enums.CONSUMERS.TYPE.DEVELOPER
-      self.params.status = enums.CONSUMERS.STATUS.PENDING
-      self.params.username = self.params.email
-
-      if self.auto_approve then
-        self.params.status = enums.CONSUMERS.STATUS.APPROVED
-      end
-
-      local password = self.params.password
-      local key = self.params.key
-
-      self.params.password = nil
-      self.params.key = nil
-
-      local consumer, err = dao_factory.consumers:insert(self.params)
-      if err then
-        return helpers.yield_error(err)
-      end
-
-      -- omit credential post for oidc
-      local workspace = get_workspace()
-      local portal_auth = ws_helper.retrieve_ws_config(
-                                           ws_constants.PORTAL_AUTH, workspace)
-
-      if portal_auth == "openid-connect" then
-        return helpers.responses.send_HTTP_CREATED({
-          consumer = consumer,
-          credential = {},
-        })
-      end
-
-      auth.validate_auth_plugin(self, dao_factory.db.new_db, helpers)
-      local credential_data
-
-      if self.plugin.name == "basic-auth" then
-        credential_data = {
-          consumer_id = consumer.id,
-          username = self.params.username,
-          password = password,
-        }
-      end
-
-      if self.plugin.name == "key-auth" then
-        credential_data = {
-          consumer_id = consumer.id,
-          key = key,
-        }
-      end
-
-      if credential_data == nil then
-        return helpers.responses.send_HTTP_BAD_REQUEST(
-          "Cannot create credential with portal_auth = " ..
-          self.plugin.name)
-      end
-
-      crud.post(credential_data, self.collection, function(credential)
-          crud.portal_crud.insert_credential(self.plugin.name,
-                                             enums.CONSUMERS.TYPE.DEVELOPER
-                                            )(credential)
-        local res = {
-          consumer = consumer,
-          credential = credential,
-        }
-
-        if consumer.status == enums.CONSUMERS.STATUS.PENDING then
-          local portal_emails = portal_smtp_client.new()
-          local email, err = portal_emails:access_request(consumer.email,
-                                                                     full_name)
-          if err then
-            if err.code then
-              return helpers.responses.send(err.code, {message = err.message})
-            end
-
-            return helpers.yield_error(err)
+      if developer.status == enums.CONSUMERS.STATUS.PENDING then
+        local portal_emails = portal_smtp_client.new()
+        local email, err = portal_emails:access_request(developer.email,
+                                                      developer.meta.full_name)
+        if err then
+          if err.code then
+            return helpers.responses.send(err.code, { message = err.message })
           end
 
-          res.email = email
+          return helpers.yield_error(err)
         end
+      end
 
-        return res
-      end)
+      return helpers.responses.send_HTTP_OK(developer)
     end,
   },
 
   ["/validate-reset"] = {
-    before = function(self, dao_factory, helpers)
-      check_portal_status(helpers)
-      auth.validate_auth_plugin(self, dao_factory.db.new_db, helpers)
-      ee_api.validate_jwt(self, dao_factory, helpers)
-    end,
-
     POST = function(self, dao_factory, helpers)
+      auth.validate_auth_plugin(self, db, helpers)
+      ee_api.validate_jwt(self, db, helpers)
       return helpers.responses.send_HTTP_OK()
     end,
   },
 
   ["/reset-password"] = {
-    before = function(self, dao_factory, helpers)
-      check_portal_status(helpers)
-      auth.validate_auth_plugin(self, dao_factory.db.new_db, helpers)
-      ee_api.validate_jwt(self, dao_factory, helpers)
-    end,
+    POST = function(self, db, helpers)
+      auth.validate_auth_plugin(self, db, helpers)
+      ee_api.validate_jwt(self, db, helpers)
 
-    POST = function(self, dao_factory, helpers)
       -- If we made it this far, the jwt is valid format and properly signed.
       -- Now we will lookup the consumer and credentials we need to update
       -- Lookup consumer by id contained in jwt, if not found, this will 404
-      self.params.email_or_id = self.consumer_id
-      ee_crud.find_developer_by_email_or_id(self, dao_factory, helpers,
-                                                          {__skip_rbac = true})
+      local consumer, err, err_t = db.consumers:select({ id = self.consumer_id },
+                                                          { skip_rbac = true })
+      if err then
+        return helpers.yield_error(err)
+      end
 
-      local credentials, err = singletons.db.credentials:select_all({
+      local credentials, err = db.credentials:select_all({
         consumer = {id = self.consumer.id },
         consumer_type = enums.CONSUMERS.TYPE.DEVELOPER,
         plugin = self.plugin.name,
@@ -327,10 +199,10 @@ return {
                                   self.plugin.credential_key .. " is required")
       end
 
-      local filter = {consumer_id = self.consumer.id, id = credential.id}
-      local cred_params = {[self.plugin.credential_key] = new_password}
-      local ok, err = crud.portal_crud.update_login_credential(cred_params,
-                                                      self.collection, filter)
+      local cred_pk = { id = credential.id }
+      local entity = { [self.plugin.credential_key] = new_password }
+      local ok, err = crud.portal_crud.update_login_credential(
+                                              self.collection, cred_pk, entity)
       if err then
         return helpers.yield_error(err)
       end
@@ -347,7 +219,7 @@ return {
 
       -- Email user with reset success confirmation
       local portal_emails = portal_smtp_client.new()
-      local _, err = portal_emails:password_reset_success(self.consumer.email)
+      local _, err = portal_emails:password_reset_success(consumer.username)
       if err then
         return helpers.yield_error(err)
       end
@@ -357,18 +229,15 @@ return {
   },
 
   ["/forgot-password"] = {
-    before = function(self, dao_factory, helpers)
-      check_portal_status(helpers)
-      auth.validate_auth_plugin(self, singletons.db, helpers)
-    end,
-
     POST = function(self, dao_factory, helpers)
+      auth.validate_auth_plugin(self, db, helpers)
+
       local workspace = get_workspace()
       local token_ttl = ws_helper.retrieve_ws_config(
                                       ws_constants.PORTAL_TOKEN_EXP, workspace)
 
-      local developer, err = singletons.db.developers:select_by_email(
-                                       self.params.email, { skip_rbac = true })
+      local developer, err = db.developers:select_by_email(self.params.email,
+                                                          { skip_rbac = true })
       if err then
         return helpers.yield_error(err)
       end
@@ -379,7 +248,8 @@ return {
       end
 
       -- Generate a reset secret and jwt
-      local jwt, err = secrets.create(developer.consumer, ngx.var.remote_addr, token_ttl)
+      local jwt, err = secrets.create(developer.consumer, ngx.var.remote_addr,
+                                                                     token_ttl)
       if not jwt then
         return helpers.yield_error(err)
       end
@@ -396,62 +266,68 @@ return {
   },
 
   ["/config"] = {
-    before = function(self, dao_factory, helpers)
-      check_portal_status(helpers)
-      auth.authenticate_api_session(self, dao_factory, helpers)
-    end,
-
-    GET = function(self, dao_factory, helpers)
+    GET = function(self, db, helpers)
       local distinct_plugins = {}
 
       do
-        local rows, err = dao_factory.plugins:find_all()
+        local rows, err = db.plugins:select_all()
         if err then
           return helpers.responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
         end
 
         local map = {}
         for _, row in ipairs(rows) do
-          if not map[row.name] then
+          if not map[row.name] and auth_plugins[row.name] and auth_plugins[row.name].dao then
             distinct_plugins[#distinct_plugins+1] = row.name
           end
           map[row.name] = true
         end
       end
 
-      self.config = {
+      return helpers.responses.send_HTTP_OK({
         plugins = {
           enabled_in_cluster = distinct_plugins,
         }
-      }
-
-      return helpers.responses.send_HTTP_OK(self.config)
+      })
     end,
   },
 
   ["/developer"] = {
-    before = function(self, dao_factory, helpers)
-      check_portal_status(helpers)
-      auth.authenticate_api_session(self, dao_factory, helpers)
+    GET = function(self, db, helpers)
+      return helpers.responses.send_HTTP_OK(self.developer)
     end,
 
-    GET = function(self, dao_factory, helpers)
-      return helpers.responses.send_HTTP_OK(self.consumer)
-    end,
+    DELETE = function(self, db, helpers)
+      local ok, err = db.developers:delete({id = self.developer.id})
+      if not ok then
+        if err then
+          return helpers.yield_error(err)
+        else
+          return helpers.responses.send_HTTP_NOT_FOUND()
+        end
+      end
 
-    DELETE = function(self, dao_factory)
-      crud.delete(self.consumer, dao_factory.consumers)
+       return helpers.responses.send_HTTP_NO_CONTENT()
     end
   },
 
   ["/developer/password"] = {
-    before = function(self, dao_factory, helpers)
-      check_portal_status(helpers)
-      auth.authenticate_api_session(self, dao_factory, helpers)
-      find_login_credential(self, dao_factory, helpers)
-    end,
-
     PATCH = function(self, dao_factory, helpers)
+      local credentials, err = singletons.dao.credentials:find_all({
+        consumer_id = self.developer.consumer.id,
+        consumer_type = enums.CONSUMERS.TYPE.DEVELOPER,
+        plugin = self.plugin.name,
+      })
+
+      if err then
+        return helpers.yield_error(err)
+      end
+
+      local credential = credentials[1]
+      if not credential then
+        return kong.response.exit(500)
+      end
+
       local cred_params = {}
 
       if self.params.password then
@@ -465,14 +341,9 @@ return {
                                                  "key or password is required")
       end
 
-      local filter = {
-        consumer_id = self.consumer.id,
-        id = self.credential.id,
-      }
-
-      local ok, err = crud.portal_crud.update_login_credential(cred_params,
-                                                       self.collection, filter)
-
+      local cred_pk = { id = credential.id }
+      local ok, err = crud.portal_crud.update_login_credential(self.collection,
+                                                          cred_pk, cred_params)
       if err then
         return helpers.yield_error(err)
       end
@@ -486,76 +357,31 @@ return {
   },
 
   ["/developer/email"] = {
-    before = function(self, dao_factory, helpers)
-      check_portal_status(helpers)
-      auth.authenticate_api_session(self, dao_factory, helpers)
-      find_login_credential(self, dao_factory, helpers)
-      ee_api.validate_email(self, dao_factory, helpers)
-    end,
-
-    PATCH = function(self, dao_factory, helpers)
-      local workspace = get_workspace()
-      local portal_auth = ws_helper.retrieve_ws_config(
-                                           ws_constants.PORTAL_AUTH, workspace)
-
-      if portal_auth == "basic-auth" then
-        local cred_params = {
-          username = self.params.email,
-        }
-
-        local filter = {
-          consumer_id = self.consumer.id,
-          id = self.credential.id,
-        }
-
-        local ok, err = crud.portal_crud.update_login_credential(cred_params,
-                                                      self.collection, filter)
-
-        if err then
-          return helpers.yield_error(err)
-        end
-
-        if not ok then
-          return helpers.responses.send_HTTP_NOT_FOUND()
-        end
-      end
-
-      local dev_params = {
-        username = self.params.email,
-        email = self.params.email,
-      }
-
-      local ok, err = singletons.dao.consumers:update(dev_params, {
-        id = self.consumer.id,
+    PATCH = function(self, db, helpers)
+      local developer, err, err_t = db.developers:update({
+        id = self.developer.id
+      }, {
+        email = self.params.email
       })
 
-      if err then
-        return helpers.yield_error(err)
+      if not developer then
+        return endpoints.handle_error(err_t)
       end
 
-      if not ok then
-        return helpers.responses.send_HTTP_NOT_FOUND()
-      end
-
-      return helpers.responses.send_HTTP_NO_CONTENT()
+      return helpers.responses.send_HTTP_OK(developer)
     end,
   },
 
   ["/developer/meta"] = {
-    before = function(self, dao_factory, helpers)
-      check_portal_status(helpers)
-      auth.authenticate_api_session(self, dao_factory, helpers)
-    end,
-
-    PATCH = function(self, dao_factory, helpers)
+    PATCH = function(self, db, helpers)
       local meta_params = self.params.meta and cjson.decode(self.params.meta)
 
       if not meta_params then
         return helpers.responses.send_HTTP_BAD_REQUEST("meta required")
       end
 
-      local current_dev_meta = self.consumer.meta and
-                                               cjson.decode(self.consumer.meta)
+      local current_dev_meta = self.developer.meta and
+                                               cjson.decode(self.developer.meta)
 
       if not current_dev_meta then
         return helpers.responses.send_HTTP_NOT_FOUND()
@@ -569,13 +395,10 @@ return {
         end
       end
 
-      -- Encode full meta (current and new) and assign it to update params
-      local dev_params = {
+      local ok, err = db.developers:update({
+        id = self.developer.id
+      }, {
         meta = cjson.encode(current_dev_meta)
-      }
-
-      local ok, err = singletons.dao.consumers:update(dev_params, {
-        id = self.consumer.id,
       })
 
       if err then
@@ -591,83 +414,121 @@ return {
   },
 
   ["/credentials/:plugin"] = {
-    before = function(self, dao_factory, helpers)
-      check_portal_status(helpers)
-      auth.authenticate_api_session(self, dao_factory, helpers)
-      validate_credential_plugin(self, dao_factory, helpers)
+    GET = function(self, db, helpers)
+      validate_credential_plugin(self, db, helpers)
+
+      local credentials, err, err_t = singletons.dao.credentials:find_all({
+        consumer_id = self.developer.consumer.id,
+        consumer_type = enums.CONSUMERS.TYPE.PROXY,
+        plugin = self.credential_plugin.name,
+      }, { skip_rbac = true })
+
+      if not credentials then
+        return endpoints.handle_error(err_t)
+      end
+
+      return helpers.responses.send_HTTP_OK(count_entities(credentials))
     end,
 
-    GET = function(self, dao_factory, helpers)
-      self.params.consumer_type = enums.CONSUMERS.TYPE.PROXY
-      self.params.consumer_id = self.consumer.id
-      self.params.plugin = self.credential_plugin.name
-
-      crud.paginated_set(self, dao_factory.credentials, nil,
-                                                         {__skip_rbac = true})
-    end,
-
-    POST = function(self, dao_factory, helpers)
-      self.params.consumer_id = self.consumer.id
+    POST = function(self, db, helpers)
+      validate_credential_plugin(self, db, helpers)
+      self.params.consumer = { id = self.developer.consumer.id }
       self.params.plugin = nil
 
-      crud.post(self.params, self.credential_collection,
-               crud.portal_crud.insert_credential(self.credential_plugin.name))
+      local credential, _, err_t = self.credential_collection:insert(self.params, {skip_rbac = true})
+      if not credential then
+        return endpoints.handle_error(err_t)
+      end
+
+      local _, err = singletons.dao.credentials:insert({
+        id = credential.id,
+        consumer_id = credential.consumer.id,
+        consumer_type = enums.CONSUMERS.TYPE.PROXY,
+        plugin = self.credential_plugin.name,
+        credential_data = tostring(cjson.encode(credential)),
+      })
+
+      if err then
+        return app_helpers.yield_error(err)
+      end
+
+      return helpers.responses.send_HTTP_OK(credential)
     end,
   },
 
   ["/credentials/:plugin/:credential_id"] = {
-    before = function(self, dao_factory, helpers)
-      check_portal_status(helpers)
-      auth.authenticate_api_session(self, dao_factory, helpers)
-      validate_credential_plugin(self, dao_factory, helpers)
+    before = function(self, db, helpers)
+      validate_credential_plugin(self, db, helpers)
+    end,
 
-      local credentials, err = self.credential_collection:find_all({
-        __skip_rbac = true,
-        consumer_id = self.consumer.id,
-        id = self.params.credential_id,
+    GET = function(self, dao_factory, helpers)
+      local credential, _, err_t = self.credential_collection:select({
+        id = self.params.credential_id
+      }, {
+        skip_rbac = true,
       })
 
+      if not credential then
+        return endpoints.handle_error(err_t)
+      end
+
+      if credential.consumer.id ~= self.developer.consumer.id then
+        return helpers.responses.send_HTTP_BAD_REQUEST()
+      end
+
+      return helpers.responses.send_HTTP_OK(credential)
+    end,
+
+    PATCH = function(self, db, helpers)
+      local cred_id = self.params.credential_id
+      self.params.plugin = nil
+      self.params.credential_id = nil
+
+      local credential, err = crud.portal_crud.update_login_credential(
+                     self.credential_collection, { id = cred_id }, self.params)
       if err then
         return helpers.yield_error(err)
       end
 
-      if next(credentials) == nil then
+      if not credential then
         return helpers.responses.send_HTTP_NOT_FOUND()
       end
 
-      self.credential = credentials[1]
+      return helpers.responses.send_HTTP_OK(credential)
     end,
 
-    GET = function(self, dao_factory, helpers)
-      return helpers.responses.send_HTTP_OK(self.credential)
-    end,
+    DELETE = function(self, db, helpers)
+      local credential, _, err_t = self.credential_collection:select({
+        id = self.params.credential_id
+      }, {
+        skip_rbac = true,
+      })
 
-    PATCH = function(self, dao_factory)
-      self.params.plugin = nil
-      self.params.credential_id = nil
+      if not credential then
+        return endpoints.handle_error(err_t)
+      end
 
-      crud.patch(self.params, self.credential_collection, self.credential,
-                      crud.portal_crud.update_credential, {__skip_rbac = true})
-    end,
+      if credential.consumer.id ~= self.developer.consumer.id then
+        return helpers.responses.send_HTTP_BAD_REQUEST()
+      end
 
-    DELETE = function(self, dao_factory)
-      crud.portal_crud.delete_credential(self.credential)
-      crud.delete(self.credential, self.credential_collection,
-                                                          {__skip_rbac = true})
+      crud.portal_crud.delete_credential(credential)
+
+      local ok, err, err_t = self.credential_collection:delete({id = credential.id})
+      if not ok then
+        return endpoints.handle_error(err_t)
+      end
+
+      return helpers.responses.send_HTTP_NO_CONTENT()
     end,
   },
 
   ["/vitals/status_codes/by_consumer"] = {
-    before = function(self, dao_factory, helpers)
-      check_portal_status(helpers)
-      auth.authenticate_api_session(self, dao_factory, helpers)
-
+    GET = function(self, db, helpers)
       if not singletons.configuration.vitals then
         return helpers.responses.send_HTTP_NOT_FOUND()
       end
-    end,
 
-    GET = function(self, dao_factory, helpers)
       local opts = {
         entity_type = "consumer",
         duration    = self.params.interval,
@@ -682,16 +543,11 @@ return {
   },
 
   ["/vitals/status_codes/by_consumer_and_route"] = {
-    before = function(self, dao_factory, helpers)
-      check_portal_status(helpers)
-      auth.authenticate_api_session(self, dao_factory, helpers)
-
+    GET = function(self, db, helpers)
       if not singletons.configuration.vitals then
         return helpers.responses.send_HTTP_NOT_FOUND()
       end
-    end,
 
-    GET = function(self, dao_factory, helpers)
       local key_by = "route_id"
       local opts = {
         entity_type = "consumer_route",
@@ -707,16 +563,11 @@ return {
   },
 
   ["/vitals/consumers/cluster"] = {
-    before = function(self, dao_factory, helpers)
-      check_portal_status(helpers)
-      auth.authenticate_api_session(self, dao_factory, helpers)
-
+    GET = function(self, db, helpers)
       if not singletons.configuration.vitals then
         return helpers.responses.send_HTTP_NOT_FOUND()
       end
-    end,
 
-    GET = function(self, dao_factory, helpers)
       local opts = {
         consumer_id = self.consumer.id,
         duration    = self.params.interval,

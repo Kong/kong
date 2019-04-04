@@ -63,8 +63,7 @@ app:match("/:workspace_name(/*)", function(self)
   ngx.ctx.workspaces = self.workspaces
   self.workspaces = nil
 
-  -- XXX
-  -- auth.authenticate_gui_session(self, singletons.db, { responses = responses })
+  auth.authenticate_gui_session(self, singletons.db, { responses = responses })
   gui_helpers.prepare_index(self)
 end)
 
@@ -79,7 +78,7 @@ app:match("/", function(self)
   ngx.ctx.workspaces = self.workspaces
   self.workspaces = nil
 
-  -- auth.authenticate_gui_session(self, singletons.db, { responses = responses })
+  auth.authenticate_gui_session(self, singletons.db, { responses = responses })
   gui_helpers.prepare_index(self)
 end)
 
