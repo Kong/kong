@@ -153,6 +153,40 @@ describe("declarative config: flatten", function()
         }, idempotent(config))
       end)
 
+      it("accepts field names with the same name as entities", function()
+        local config = assert(lyaml.load([[
+          _format_version: "1.1"
+          routes:
+          - name: foo
+            protocols: ["tls"]
+            snis:
+            - "example.com"
+        ]]))
+        config = DeclarativeConfig:flatten(config)
+        assert.same({
+          routes = {
+            {
+              tags = null,
+              created_at = 1234567890,
+              destinations = null,
+              hosts = null,
+              id = "UUID",
+              methods = null,
+              name = "foo",
+              paths = null,
+              preserve_host = false,
+              protocols = { "tls" },
+              regex_priority = 0,
+              service = null,
+              snis = { "example.com" },
+              sources = null,
+              strip_path = true,
+              updated_at = 1234567890
+            }
+          }
+        }, idempotent(config))
+      end)
+
       it("allows url shorthand", function()
         local config = lyaml.load([[
           _format_version: "1.1"
