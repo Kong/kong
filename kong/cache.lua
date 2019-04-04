@@ -239,6 +239,18 @@ function _M:safe_set(key, value)
 end
 
 
+function _M:safe_add(key, value)
+  local str_marshalled, err = marshall_for_shm(value, self.mlcache.ttl,
+                                                      self.mlcache.neg_ttl)
+
+  if err then
+    return nil, err
+  end
+
+  return ngx.shared[SHM_CACHE]:safe_add(SHM_CACHE .. key, str_marshalled)
+end
+
+
 function _M:probe(key)
   if type(key) ~= "string" then
     return error("key must be a string")
