@@ -34,7 +34,7 @@ if strategy == 'cassandra' then
   return
 end
 
-describe("files API (#" .. strategy .. "): ", function()
+pending("files API (#" .. strategy .. "): ", function()
   local db
   local dao
   local client

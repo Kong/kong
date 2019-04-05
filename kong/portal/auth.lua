@@ -51,7 +51,7 @@ end
 local function get_developer()
   local consumer = ngx.ctx.authenticated_consumer
   if not consumer or consumer.type ~= DEVELOPER_TYPE then
-    return nil, "Invalid Consumer"
+    return nil, "Unauthorized"
   end
 
   local developer, err = singletons.db.developers:select_by_email(consumer.username)

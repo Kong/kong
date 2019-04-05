@@ -50,7 +50,7 @@ function _Developers:insert(entity, options)
   local ok, err = validate_insert(entity)
   if not ok then
     local err_t = { code = Errors.codes.SCHEMA_VIOLATION, fields = err }
-    ngx.log(ngx.DEBUG, err)
+    ngx.log(ngx.DEBUG, tostring(err))
     return nil, err, err_t
   end
 
@@ -58,7 +58,7 @@ function _Developers:insert(entity, options)
     dao_helpers.create_developer(self, entity, options)
 
   if not developer then
-    ngx.log(ngx.DEBUG, err)
+    ngx.log(ngx.DEBUG, tostring(err))
     return nil, err, err_t
   end
 

@@ -183,7 +183,7 @@ return {
       end
 
       local credentials, err = db.credentials:select_all({
-        consumer = {id = self.consumer.id },
+        consumer = {id = consumer.id },
         consumer_type = enums.CONSUMERS.TYPE.DEVELOPER,
         plugin = self.plugin.name,
       })
@@ -241,10 +241,10 @@ return {
       local token_ttl = ws_helper.retrieve_ws_config(
                                       ws_constants.PORTAL_TOKEN_EXP, workspace)
 
-      local developer, err = db.developers:select_by_email(self.params.email,
+      local developer, _, err_t = db.developers:select_by_email(self.params.email,
                                                           { skip_rbac = true })
-      if err then
-        return helpers.yield_error(err)
+      if err_t then
+        return endpoints.handle_error(err_t)
       end
 
       -- If we do not have a developer, return 200 ok
@@ -317,9 +317,9 @@ return {
   },
 
   ["/developer/password"] = {
-    PATCH = function(self, dao_factory, helpers)
-      local credentials, err = singletons.dao.credentials:find_all({
-        consumer_id = self.developer.consumer.id,
+    PATCH = function(self, db, helpers)
+      local credentials, err = db.credentials:select_all({
+        consumer = { id =  self.developer.consumer.id },
         consumer_type = enums.CONSUMERS.TYPE.DEVELOPER,
         plugin = self.plugin.name,
       })
@@ -422,7 +422,7 @@ return {
     GET = function(self, db, helpers)
       validate_credential_plugin(self, db, helpers)
 
-      local credentials, _, err_t = singletons.dao.credentials:find_all({
+      local credentials, _, err_t = db.credentials:select_all({
         consumer_id = self.developer.consumer.id,
         consumer_type = enums.CONSUMERS.TYPE.PROXY,
         plugin = self.credential_plugin.name,
@@ -445,9 +445,9 @@ return {
         return endpoints.handle_error(err_t)
       end
 
-      local _, err = singletons.dao.credentials:insert({
+      local _, err = db.credentials:insert({
         id = credential.id,
-        consumer_id = credential.consumer.id,
+        consumer = { id = credential.consumer.id },
         consumer_type = enums.CONSUMERS.TYPE.PROXY,
         plugin = self.credential_plugin.name,
         credential_data = tostring(cjson.encode(credential)),
@@ -462,11 +462,9 @@ return {
   },
 
   ["/credentials/:plugin/:credential_id"] = {
-    before = function(self, db, helpers)
+    GET = function(self, db, helpers)
       validate_credential_plugin(self, db, helpers)
-    end,
 
-    GET = function(self, dao_factory, helpers)
       local credential, _, err_t = self.credential_collection:select({
         id = self.params.credential_id
       }, {
@@ -485,6 +483,8 @@ return {
     end,
 
     PATCH = function(self, db, helpers)
+      validate_credential_plugin(self, db, helpers)
+
       local cred_id = self.params.credential_id
       self.params.plugin = nil
       self.params.credential_id = nil
@@ -503,6 +503,8 @@ return {
     end,
 
     DELETE = function(self, db, helpers)
+      validate_credential_plugin(self, db, helpers)
+
       local credential, _, err_t = self.credential_collection:select({
         id = self.params.credential_id
       }, {
@@ -537,7 +539,7 @@ return {
       local opts = {
         entity_type = "consumer",
         duration    = self.params.interval,
-        entity_id   = self.consumer.id,
+        entity_id   = self.developer.consumer.id,
         start_ts    = self.params.start_ts,
         level       = "cluster",
       }
@@ -557,7 +559,7 @@ return {
       local opts = {
         entity_type = "consumer_route",
         duration    = self.params.interval,
-        entity_id   = self.consumer.id,
+        entity_id   = self.developer.consumer.id,
         start_ts    = self.params.start_ts,
         level       = "cluster",
       }
@@ -574,7 +576,7 @@ return {
       end
 
       local opts = {
-        consumer_id = self.consumer.id,
+        consumer_id = self.developer.consumer.id,
         duration    = self.params.interval,
         start_ts    = self.params.start_ts,
         level       = "cluster",
