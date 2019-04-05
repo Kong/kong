@@ -836,7 +836,9 @@ for _, strategy in helpers.each_strategy() do
             }
           })
 
-          assert.res_status(404, res)
+          local body = assert.res_status(404, res)
+          local json = cjson.decode(body)
+          assert.same("Not found", json.message)
         end)
       end)
 
@@ -854,7 +856,9 @@ for _, strategy in helpers.each_strategy() do
             }
           })
 
-          assert.res_status(404, res)
+          local body = assert.res_status(404, res)
+          local json = cjson.decode(body)
+          assert.same("Not found", json.message)
         end)
       end)
     end)
@@ -1014,7 +1018,9 @@ for _, strategy in helpers.each_strategy() do
             },
           })
 
-          assert.res_status(404, res)
+          local body = assert.res_status(404, res)
+          local json = cjson.decode(body)
+          assert.same("Not found", json.message)
         end)
 
         it("when the role doesn't exist", function()
@@ -1339,7 +1345,9 @@ for _, strategy in helpers.each_strategy() do
             },
           })
 
-          assert.res_status(404, res)
+          local body = assert.res_status(404, res)
+          local json = cjson.decode(body)
+          assert.same("Not found", json.message)
         end)
 
         it("when no roles are defined", function()

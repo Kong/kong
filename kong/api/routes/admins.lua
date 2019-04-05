@@ -141,7 +141,7 @@ return {
       end
 
       if not self.admin then
-        return kong.response.exit(404)
+        return kong.response.exit(404, { message = "Not found" })
       end
     end,
 
@@ -250,7 +250,7 @@ return {
 
       -- if we don't store your creds, you don't belong here
       if self.token_optional then
-        return kong.response.exit(404)
+        return kong.response.exit(404, { message = "Not found" })
       end
 
       if not self.params.email or self.params.email == "" then
@@ -260,7 +260,7 @@ return {
       -- if you've forgotten your password, this is all we know about you
       self.admin = admins.find_by_email(self.params.email)
       if not self.admin then
-        return kong.response.exit(404)
+        return kong.response.exit(404, { message = "Not found" })
       end
 
       -- when you reset your password, you come in with an email and a JWT
@@ -272,7 +272,7 @@ return {
 
         -- make sure the email in the query params matches the one in the token
         if self.admin.consumer.id ~= self.consumer_id then
-          return kong.response.exit(404)
+          return kong.response.exit(404, { message = "Not found" })
         end
       end
     end,
