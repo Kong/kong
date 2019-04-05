@@ -409,7 +409,7 @@ return {
         id          uuid,
         created_at  timestamp,
         updated_at  timestamp,
-        email text,
+        email text  unique,
         status int,
         meta text,
         consumer_id  uuid references consumers (id) on delete cascade,
@@ -817,6 +817,7 @@ CREATE TABLE IF NOT EXISTS admins (
       );
       CREATE INDEX IF NOT EXISTS developers_email_idx ON developers(email);
       CREATE INDEX IF NOT EXISTS developers_consumer_id_idx ON developers(consumer_id);
+      CREATE INDEX IF NOT EXISTS developers_email_idx ON developers(email);
     ]]
   },
 }

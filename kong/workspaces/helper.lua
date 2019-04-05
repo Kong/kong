@@ -199,7 +199,9 @@ end
 -- * if workspace specific config does not exist fall back to
 --   default config value.
 function _M.retrieve_ws_config(config_name, workspace)
-  if workspace.config and workspace.config[config_name] ~= nil then
+  if workspace.config and
+     workspace.config[config_name] ~= nil and
+     workspace.config[config_name] ~= ngx.null then
     return workspace.config[config_name]
   end
 
