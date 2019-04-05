@@ -245,5 +245,34 @@ for _, strategy in helpers.each_strategy() do
         }, db.plugins.schema.subschemas["legacy-plugin-good"])
       end)
     end)
+
+    describe(":cache_key", function()
+      it("combines route, service, and consumer ids, ignoring service if route is present (strings)", function()
+        assert.same("plugins:p::::",   db.plugins:cache_key("p", nil, nil, nil))
+        assert.same("plugins:p:::c:",  db.plugins:cache_key("p", nil, nil, "c"))
+        assert.same("plugins:p::s::",  db.plugins:cache_key("p", nil, "s", nil))
+        assert.same("plugins:p::s:c:", db.plugins:cache_key("p", nil, "s", "c"))
+        assert.same("plugins:p:r:::",  db.plugins:cache_key("p", "r", nil, nil))
+        assert.same("plugins:p:r::c:", db.plugins:cache_key("p", "r", nil, "c"))
+        assert.same("plugins:p:r:::",  db.plugins:cache_key("p", "r", "s", nil)) -- s ignored
+        assert.same("plugins:p:r::c:", db.plugins:cache_key("p", "r", "s", "c")) -- s ignored
+      end)
+
+      it("combines route, service, and consumer ids, ignoring service if route is present (tables)", function()
+        local r = { id = "r" }
+        local s = { id = "s" }
+        local c = { id = "c" }
+
+        assert.same("plugins:p::::",   db.plugins:cache_key({ name = "p" }))
+        assert.same("plugins:p:::c:",  db.plugins:cache_key({ name = "p", consumer = c }))
+        assert.same("plugins:p::s::",  db.plugins:cache_key({ name = "p", service = s }))
+        assert.same("plugins:p::s:c:", db.plugins:cache_key({ name = "p", service = s, consumer = c }))
+        assert.same("plugins:p:r:::",  db.plugins:cache_key({ name = "p", route = r }))
+        assert.same("plugins:p:r::c:", db.plugins:cache_key({ name = "p", route = r, consumer = c }))
+        assert.same("plugins:p:r:::",  db.plugins:cache_key({ name = "p", route = r, service = s })) -- s igmnored
+        assert.same("plugins:p:r::c:", db.plugins:cache_key({ name = "p", route = r, service = s, consumer = c })) -- s ignored
+      end)
+    end)
+
   end) -- kong.db [strategy]
 end

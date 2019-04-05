@@ -251,6 +251,33 @@ function Plugins:load_plugin_schemas(plugin_set)
 end
 
 
+-- Custom method which removes the service_id from the cache_key if route_id is also present
+function Plugins:cache_key(key, route_id, service_id, consumer_id)
+  if type(key) == "string" then
+    if route_id then
+      service_id = nil
+    end
+    return self.super.cache_key(self, key, route_id, service_id, consumer_id)
+  end
+
+  if type(key) ~= "table" then
+    error("key must be a string or an entity table", 2)
+  end
+  -- Else key is a table (a plugin entity)
+
+  local plugin_name = key.name
+  local route       = key.route
+  local service     = key.service
+  local consumer    = key.consumer
+  local route_id    = route    and route    ~= null and route.id    or nil
+  local service_id  = service  and service  ~= null and service.id  or nil
+  local consumer_id = consumer and consumer ~= null and consumer.id or nil
+
+  -- Call the function again but with strings, so service_id will be ignored if necessary
+  return self:cache_key(plugin_name, route_id, service_id, consumer_id)
+end
+
+
 function Plugins:select_by_cache_key(key)
   local schema_state = assert(self.db:last_schema_state())
 
