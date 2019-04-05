@@ -103,7 +103,9 @@ local function get_next(self)
     end
 
     local    route_id = route    and    route.id or nil
-    local  service_id = service  and  service.id or nil
+    -- ignore service_id if route_id  was provided:
+    local  service_id = not route_id and
+                        service  and  service.id or nil
     local consumer_id = consumer and consumer.id or nil
 
     local plugin_name = plugin.name
@@ -111,13 +113,6 @@ local function get_next(self)
     local plugin_configuration
 
     repeat
-
-      if route_id and service_id and consumer_id then
-        plugin_configuration = load_plugin_configuration(ctx, route_id, service_id, consumer_id, plugin_name)
-        if plugin_configuration then
-          break
-        end
-      end
 
       if route_id and consumer_id then
         plugin_configuration = load_plugin_configuration(ctx, route_id, nil, consumer_id, plugin_name)
@@ -128,13 +123,6 @@ local function get_next(self)
 
       if service_id and consumer_id then
         plugin_configuration = load_plugin_configuration(ctx, nil, service_id, consumer_id, plugin_name)
-        if plugin_configuration then
-          break
-        end
-      end
-
-      if route_id and service_id then
-        plugin_configuration = load_plugin_configuration(ctx, route_id, service_id, nil, plugin_name)
         if plugin_configuration then
           break
         end
