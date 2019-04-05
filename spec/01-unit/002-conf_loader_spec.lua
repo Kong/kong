@@ -82,8 +82,8 @@ describe("Configuration loader", function()
       custom_plugins = "baz,foobaz",
     }))
     assert.is_not_nil(conf.loaded_plugins)
-    -- this is to account for ee_conf_loader adding required "cors" plugin
-    assert.same(5, tablex.size(conf.loaded_plugins))
+    -- this is to account for ee_conf_loader adding required "cors" and "session" plugin
+    assert.same(6, tablex.size(conf.loaded_plugins))
     assert.True(conf.loaded_plugins["foo"])
     assert.True(conf.loaded_plugins["bar"])
     assert.True(conf.loaded_plugins["baz"])
