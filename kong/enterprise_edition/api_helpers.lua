@@ -142,6 +142,7 @@ function _M.authenticate(self, rbac_enabled, gui_auth)
   })
 
   if not ok then
+    log(ERR, _log_prefix, err)
     return api_helpers.yield_error(err)
   end
 
@@ -156,6 +157,7 @@ function _M.authenticate(self, rbac_enabled, gui_auth)
     })
 
     if not ok then
+      log(ERR, _log_prefix, err)
       return api_helpers.yield_error(err)
     end
   end
@@ -185,6 +187,7 @@ function _M.authenticate(self, rbac_enabled, gui_auth)
   })
 
   if not ok then
+    log(ERR, _log_prefix, err)
     return api_helpers.yield_error(err)
   end
 
