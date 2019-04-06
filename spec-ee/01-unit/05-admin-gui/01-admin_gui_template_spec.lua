@@ -155,6 +155,7 @@ describe("admin_gui template", function()
       admin_gui_url = "http://0.0.0.0:8002",
       proxy_url = "http://0.0.0.0:8000",
       admin_api_uri = "0.0.0.0:8001",
+      anonymous_reports = "off",
       admin_gui_listeners = {
         {
           ip = "0.0.0.0",
@@ -222,6 +223,7 @@ describe("admin_gui template", function()
       assert.matches("'RBAC_ENFORCED': 'false'", admin_idx, nil, true)
       assert.matches("'RBAC_HEADER': 'Kong-Admin-Token'", admin_idx, nil, true)
       assert.matches("'RBAC_USER_HEADER': 'Kong-Admin-User'", admin_idx, nil, true)
+      assert.matches("'ANONYMOUS_REPORTS': 'false'", admin_idx, nil, true)
     end)
 
     it("inserts new values when called again", function()
@@ -231,6 +233,7 @@ describe("admin_gui template", function()
       new_conf.admin_gui_url = 'http://admin-test.example.com'
       new_conf.proxy_url = 'http://127.0.0.1:8000'
       new_conf.admin_gui_flags = "{ HIDE_VITALS: true }"
+      new_conf.anonymous_reports = "on"
 
       -- update template
       ee.prepare_admin(new_conf)
@@ -248,6 +251,7 @@ describe("admin_gui template", function()
       assert.matches("'RBAC_HEADER': 'Kong-Admin-Token'", admin_idx, nil, true)
       assert.matches("'RBAC_USER_HEADER': 'Kong-Admin-User'", admin_idx, nil, true)
       assert.matches("'FEATURE_FLAGS': '{ HIDE_VITALS: true }'", admin_idx, nil, true)
+      assert.matches("'ANONYMOUS_REPORTS': 'true'", admin_idx, nil, true)
     end)
   end)
 end)

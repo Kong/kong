@@ -204,7 +204,7 @@ function _M.authenticate_gui_session(self, db, helpers)
   if portal_auth == "openid-connect" then
     -- check if user has valid session
     local has_session = check_oidc_session()
-
+    
     -- assume unauthenticated if no session
     if not has_session then
       self.is_authenticated = false
