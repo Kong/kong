@@ -419,23 +419,11 @@ return {
         name = refs[1].workspace_name,
       }
 
-      local credential, err = workspaces.run_with_ws_scope(
+      local _, err = workspaces.run_with_ws_scope(
                                 { consumer_ws },
                                 credential_dao.insert,
                                 credential_dao,
                                 credential_data)
-      if err then
-        return kong.response.exit(500, { message = err })
-      end
-
-      -- now put it in the global credentials table. not sure we need this.
-      local _, err = singletons.db.credentials:insert({
-        id = credential.id,
-        consumer = { id = credential.consumer.id },
-        consumer_type = enums.CONSUMERS.TYPE.ADMIN,
-        plugin = self.plugin.name,
-        credential_data = tostring(cjson.encode(credential)),
-      })
       if err then
         return kong.response.exit(500, { message = err })
       end
