@@ -118,16 +118,16 @@ for _, strategy in helpers.each_strategy({"cassandra"}) do
       local portal_api_client
       local client
 
-      local _, db, dao = helpers.get_db_utils(strategy)
+      local _, db, _ = helpers.get_db_utils(strategy)
 
       -- do not run tests for cassandra < 3
-      -- XXX DEVX check this for db.major_version_n
       if strategy == "cassandra" and db.connector.major_version < 3 then
         return
       end
 
       lazy_teardown(function()
         helpers.stop_kong()
+        assert(db:truncate())
       end)
 
       -- this block is only run once, not for each rbac state
@@ -211,7 +211,7 @@ for _, strategy in helpers.each_strategy({"cassandra"}) do
         end)
       end
 
-      describe("CORS", function()
+      pending("CORS", function()
         local db
 
         lazy_setup(function()
@@ -398,8 +398,7 @@ for _, strategy in helpers.each_strategy({"cassandra"}) do
       pending("/files without auth", function()
         lazy_setup(function()
           helpers.stop_kong()
-          dao:truncate_tables()
-
+          db:truncate()
           configure_portal(db)
 
           assert(helpers.start_kong({
@@ -542,7 +541,7 @@ for _, strategy in helpers.each_strategy({"cassandra"}) do
             end)
 
             -- XXX DEVX
-            -- TODO Validate METE
+            -- TODO Validate META
             pending("returns a 400 if meta is missing", function()
               local res = register_developer(portal_api_client, {
                 email = "gruce@konghq.com",
@@ -1920,7 +1919,7 @@ for _, strategy in helpers.each_strategy({"cassandra"}) do
           end)
         end)
 
-        describe("/developer/meta [basic-auth]", function()
+        pending("/developer/meta [basic-auth]", function()
           local cookie
 
           lazy_setup(function()

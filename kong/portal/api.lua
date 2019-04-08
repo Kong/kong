@@ -182,17 +182,18 @@ return {
         return endpoints.handle_error(err_t)
       end
 
-      local credentials, err = db.credentials:select_all({
-        consumer = {id = consumer.id },
-        consumer_type = enums.CONSUMERS.TYPE.DEVELOPER,
-        plugin = self.plugin.name,
-      })
+      local credential
+      for row, err in db.credentials:each_for_consumer({ id = consumer.id }) do
+        if err then
+          return helpers.yield_error(err)
+        end
 
-      if err then
-        return helpers.yield_error(err)
+        if row.consumer_type == enums.CONSUMERS.TYPE.DEVELOPER and
+           row.plugin == self.plugin.name then
+           credential = row
+        end
       end
 
-      local credential = credentials[1]
       if not credential then
         return helpers.responses.send_HTTP_NOT_FOUND()
       end
@@ -318,19 +319,20 @@ return {
 
   ["/developer/password"] = {
     PATCH = function(self, db, helpers)
-      local credentials, err = db.credentials:select_all({
-        consumer = { id =  self.developer.consumer.id },
-        consumer_type = enums.CONSUMERS.TYPE.DEVELOPER,
-        plugin = self.plugin.name,
-      })
+      local credential
+      for row, err in db.credentials:each_for_consumer({ id = self.developer.consumer.id}) do
+        if err then
+          return helpers.yield_error(err)
+        end
 
-      if err then
-        return helpers.yield_error(err)
+        if row.consumer_type == enums.CONSUMERS.TYPE.DEVELOPER and
+           row.plugin == self.plugin.name then
+           credential = row
+        end
       end
 
-      local credential = credentials[1]
       if not credential then
-        return kong.response.exit(500)
+        return helpers.responses.send_HTTP_NOT_FOUND()
       end
 
       local cred_params = {}
@@ -422,14 +424,16 @@ return {
     GET = function(self, db, helpers)
       validate_credential_plugin(self, db, helpers)
 
-      local credentials, _, err_t = db.credentials:select_all({
-        consumer_id = self.developer.consumer.id,
-        consumer_type = enums.CONSUMERS.TYPE.PROXY,
-        plugin = self.credential_plugin.name,
-      }, { skip_rbac = true })
+      local credentials = {}
+      for row, err in db.credentials:each_for_consumer({ id = self.developer.consumer.id}) do
+        if err then
+          return helpers.yield_error(err)
+        end
 
-      if not credentials then
-        return endpoints.handle_error(err_t)
+        if row.consumer_type == enums.CONSUMERS.TYPE.PROXY and
+           row.plugin == self.credential_plugin.name then
+           credentials[#credentials + 1] = row
+        end
       end
 
       return helpers.responses.send_HTTP_OK(count_entities(credentials))

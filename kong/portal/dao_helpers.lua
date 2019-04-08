@@ -218,25 +218,27 @@ local function update_developer(self, developer, entity, options)
     end
 
     -- find all consumers credentails
-    local credentials, err = self.db.credentials:select_all({
-      consumer = { id = consumer.id },
-      consumer_type = enums.CONSUMERS.TYPE.DEVELOPER,
-      plugin = self.portal_auth,
-    })
-    if err then
-      local code = Errors.codes.DATABASE_ERROR
-      local err = "developer update: could not find login credentials for " .. developer.email
-      local err_t = { code = code }
-      return nil, err, err_t
+    local credential
+    for row, err in self.db.credentials:each_for_consumer({ id = consumer.id }) do
+      if err then
+        local code = Errors.codes.DATABASE_ERROR
+        local err = "developer update: could not find login credentials for " .. developer.email
+        local err_t = { code = code }
+        return nil, err, err_t
+      end
+
+      if row.consumer_type == enums.CONSUMERS.TYPE.DEVELOPER and
+         row.plugin == self.portal_auth then
+         credential = row
+      end
     end
-    if next(credentials) == nil then
+
+    if not credential then
       local code = Errors.codes.DATABASE_ERROR
       local err = 'developer update: primary login credentials not found for ' .. developer.email
       local err_t = { code = code }
       return nil, err, err_t
     end
-
-    local credential = credentials[1]
 
     -- update plugin credential
     local collection = auth.validate_auth_plugin(self, self.db, helpers)

@@ -148,7 +148,7 @@ return {
 
       self.params.email_or_id = nil
       self.params.consumer = developer.consumer
-      
+
       local ok, _, err_t = db.plugins:insert(self.params)
       if not ok then
         return endpoints.handle_error(err_t)
