@@ -25,6 +25,10 @@ local function apply_plugin(plugin, phase, opts)
     set_phase(kong, PHASES.admin_api)
   end
 
+  if opts.api_type == "portal" then
+    set_phase(kong, PHASES.access)
+  end
+
   return true
 end
 
