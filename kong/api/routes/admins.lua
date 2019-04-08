@@ -65,10 +65,10 @@ return {
       local res, err = admins.find_all()
 
       if err then
-        return helpers.responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+        return endpoints.handle_error(err)
       end
 
-      return helpers.responses.send(res.code, res.body)
+      return kong.response.exit(res.code, res.body)
     end,
 
     POST = function(self, db, helpers, parent)
@@ -79,10 +79,10 @@ return {
       })
 
       if err then
-        return helpers.responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+        return endpoints.handle_error(err)
       end
 
-      return helpers.responses.send(res.code, res.body)
+      return kong.response.exit(res.code, res.body)
     end,
   },
 
@@ -92,11 +92,11 @@ return {
 
       self.admin, err = admins.find_by_username_or_id(ngx.unescape_uri(self.params.admins))
       if err then
-        return helpers.responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+        return endpoints.handle_error(err)
       end
 
       if not self.admin then
-        return helpers.responses.send_HTTP_NOT_FOUND()
+        return kong.response.exit(404, { message = "Not found" })
       end
     end,
 
@@ -105,28 +105,28 @@ return {
 
       local res, err = admins.generate_token(self.admin, opts)
       if err then
-        return helpers.yield_error(err)
+        return endpoints.handle_error(err)
       end
 
-      return helpers.responses.send(res.code, res.body)
+      return kong.response.exit(res.code, res.body)
     end,
 
     PATCH = function(self, db, helpers, parent)
       local res, err = admins.update(self.params, self.admin, { db = db })
       if err then
-        return helpers.yield_error(err)
+        return endpoints.handle_error(err)
       end
 
-      return helpers.responses.send(res.code, res.body)
+      return kong.response.exit(res.code, res.body)
     end,
 
     DELETE = function(self, db, helpers, parent)
       local res, err = admins.delete(self.admin, { db = db })
       if err then
-        return helpers.yield_error(err)
+        return endpoints.handle_error(err)
       end
 
-      return helpers.responses.send(res.code, res.body)
+      return kong.response.exit(res.code, res.body)
     end
   },
 
@@ -137,7 +137,7 @@ return {
       local name_or_id = ngx.unescape_uri(self.params.admin)
       self.admin, err = admins.find_by_username_or_id(name_or_id, true)
       if err then
-        return kong.response.exit(500, err)
+        return endpoints.handle_error(err)
       end
 
       if not self.admin then
@@ -150,7 +150,7 @@ return {
                                                    "user", "role")
 
       if err then
-        return kong.response.exit(500, err)
+        return endpoints.handle_error(err)
       end
 
       -- filter out default roles
@@ -166,16 +166,15 @@ return {
     POST = function(self, db, helpers, parent)
       -- we have the user, now verify our roles
       if not self.params.roles then
-        return kong.response.exit(400, "must provide >= 1 role")
+        return kong.response.exit(400, { message = "must provide >= 1 role" })
       end
 
       local roles, err = rbac.objects_from_names(db, self.params.roles, "role")
       if err then
         if err:find("not found with name", nil, true) then
           return kong.response.exit(400, { message = err })
-
         else
-          return kong.response.exit(500, err)
+          return endpoints.handle_error(err)
         end
       end
 
@@ -201,7 +200,7 @@ return {
       roles, err = rbac.entity_relationships(db, self.admin.rbac_user, "user",
                                              "role")
       if err then
-        return kong.response.exit(500, err)
+        return endpoints.handle_error(err)
       end
 
       -- filter out default roles
@@ -220,9 +219,8 @@ return {
       if err then
         if err:find("not found with name", nil, true) then
           return kong.response.exit(400, { message = err })
-
         else
-          return kong.response.exit(500, err)
+          return endpoints.handle_error(err)
         end
       end
 
@@ -233,7 +231,7 @@ return {
           role = roles[i],
         })
         if err then
-          return kong.response.exit(500, err)
+          return endpoints.handle_error(err)
         end
       end
 
@@ -254,7 +252,7 @@ return {
       end
 
       if not self.params.email or self.params.email == "" then
-        return kong.response.exit(400, {message = "email is required" })
+        return kong.response.exit(400, { message = "email is required" })
       end
 
       -- if you've forgotten your password, this is all we know about you
@@ -284,13 +282,13 @@ return {
       local jwt, err = secrets.create(self.admin.consumer, ngx.var.remote_addr, expiry)
 
       if err then
-        return kong.response.exit(500, "failed to generate reset token: " .. err)
+        return endpoints.handle_error("failed to generate reset token: " .. err)
       end
 
       -- send mail
       local _, err = emails:reset_password(self.admin.email, jwt)
       if err then
-        return kong.response.exit(500, err)
+        return endpoints.handle_error(err)
       end
 
       return kong.response.exit(201)
@@ -310,16 +308,16 @@ return {
                                                self.reset_secret_id)
 
       if err then
-        return kong.response.exit(500, err)
+        return endpoints.handle_error(err)
       end
 
       if not found then
-        return kong.response.exit(400)
+        return kong.response.exit(404, { message = "Not found" })
       end
 
       local _, err = emails:reset_password_success(self.admin.email)
       if err then
-        return kong.response.exit(500, err)
+        return endpoints.handle_error(err)
       end
 
       return kong.response.exit(200)
@@ -330,7 +328,7 @@ return {
     GET = function(self, db, helpers, parent)
       local res, err = admins.workspaces_for_admin(self.params.admin)
       if err then
-        return kong.response.exit(500, { message = err })
+        return endpoints.handle_error(err)
       end
 
       return kong.response.exit(res.code, res.body)
@@ -354,7 +352,7 @@ return {
       -- owns it, setting that on self. :magic:
       if not self.consumer_id then
         log(ERR, _log_prefix, "consumer not found for registration")
-        return kong.response.exit(401)
+        return kong.response.exit(401, { message = "Unauthorized" })
       end
 
       -- this block is a little messy. A consumer cannot logically belong to
@@ -364,7 +362,7 @@ return {
       local res = {}
       for row, err in db.admins:each_for_consumer({ id = self.consumer_id }) do
         if err then
-          return kong.response.exit(500, { message = err })
+          return endpoints.handle_error(err)
         end
         res[1] = row
       end
@@ -372,7 +370,7 @@ return {
       local admin = res[1]
 
       if not admin or admin.email ~= self.params.email then
-        return kong.response.exit(401)
+        return kong.response.exit(401, { message = "Unauthorized" })
       end
 
       local credential_data
@@ -410,7 +408,7 @@ return {
       })
 
       if err then
-        kong.response.exit(500, { message = err })
+        return endpoints.handle_error(err)
       end
 
       -- Set the current workspace so the credential is created there
@@ -425,7 +423,7 @@ return {
                                 credential_dao,
                                 credential_data)
       if err then
-        return kong.response.exit(500, { message = err })
+        return endpoints.handle_error(err)
       end
 
       if admin.status == enums.CONSUMERS.STATUS.INVITED then
@@ -435,7 +433,7 @@ return {
       -- Mark the token secret as consumed
       local _, err = secrets.consume_secret(self.reset_secret_id)
       if err then
-        return kong.response.exit(500, { message = err })
+        return endpoints.handle_error(err)
       end
 
       return kong.response.exit(201)

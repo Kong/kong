@@ -1,8 +1,6 @@
-local constants   = require "kong.constants"
+local endpoints   = require "kong.api.endpoints"
 local singletons  = require "kong.singletons"
-local api_helpers = require "lapis.application"
 local enums       = require "kong.enterprise_edition.dao.enums"
-local responses   = require "kong.tools.responses"
 local rbac        = require "kong.rbac"
 local workspaces  = require "kong.workspaces"
 local ee_utils    = require "kong.enterprise_edition.utils"
@@ -28,10 +26,6 @@ local auth_whitelisted_uris = {
   ["/admins/register"] = true,
   ["/admins/password_resets"] = true,
 }
-
-function _M.get_consumer_id_from_headers()
-  return ngx.req.get_headers()[constants.HEADERS.CONSUMER_ID]
-end
 
 
 function _M.get_consumer_status(consumer)
@@ -94,20 +88,21 @@ function _M.authenticate(self, rbac_enabled, gui_auth)
   local user_header = singletons.configuration.admin_gui_auth_header
   local user_name = ngx.req.get_headers()[user_header]
   if not user_name then
-    return responses.send_HTTP_UNAUTHORIZED("Invalid RBAC credentials. " ..
-                                            "Token or User credentials required")
+    return kong.response.exit(401, {
+      message = "Invalid RBAC credentials. Token or User credentials required"
+    })
   end
 
   local admin, err = kong.db.admins:select_by_username(user_name)
 
   if not admin then
     log(DEBUG, _log_prefix, "Admin not found with user_name=" .. user_name)
-    return responses.send_HTTP_UNAUTHORIZED()
+    return kong.response.exit(401, { message = "Unauthorized" })
   end
 
   if err then
     log(ERR, _log_prefix, err)
-    return responses.send_HTTP_INTERNAL_SERVER_ERROR()
+    return endpoints.handle_error(err)
   end
 
   local consumer_id = admin.consumer.id
@@ -116,12 +111,12 @@ function _M.authenticate(self, rbac_enabled, gui_auth)
 
   if err then
     log(ERR, _log_prefix, err)
-    return responses.send_HTTP_INTERNAL_SERVER_ERROR()
+    return endpoints.handle_error(err)
   end
 
   if not rbac_user then
     log(DEBUG, _log_prefix, "no rbac_user found for name: ", user_name)
-    return responses.send_HTTP_UNAUTHORIZED()
+    return kong.response.exit(401, { message = "Unauthorized" })
   end
 
   -- sets self.workspace_entities, ngx.ctx.workspaces, and self.consumer
@@ -143,7 +138,7 @@ function _M.authenticate(self, rbac_enabled, gui_auth)
 
   if not ok then
     log(ERR, _log_prefix, err)
-    return api_helpers.yield_error(err)
+    return endpoints.handle_error(err)
   end
 
   -- if we don't have a valid session, run the gui authentication plugin
@@ -158,24 +153,23 @@ function _M.authenticate(self, rbac_enabled, gui_auth)
 
     if not ok then
       log(ERR, _log_prefix, err)
-      return api_helpers.yield_error(err)
+      return endpoints.handle_error(err)
     end
   end
 
   if not ok then
-    return api_helpers.yield_error(err)
+    return endpoints.handle_error(err)
   end
 
   -- Plugin ran but consumer was not created on context
   if not ctx.authenticated_consumer then
     log(ERR, _log_prefix, "no consumer mapped from plugin", gui_auth)
-    return responses.send_HTTP_UNAUTHORIZED()
+    return kong.response.exit(401, { message = "Unauthorized" })
   end
 
   if self.consumer and ctx.authenticated_consumer.id ~= self.consumer.id then
-    log(ERR, _log_prefix, "admin is not mapped to the consumer of the "
-        .. "credentials provided")
-    return responses.send_HTTP_UNAUTHORIZED()
+    log(ERR, _log_prefix, "authenticated consumer is not an admin")
+    return kong.response.exit(401, { message = "Unauthorized" })
   end
 
   local ok, err = invoke_plugin({
@@ -188,14 +182,14 @@ function _M.authenticate(self, rbac_enabled, gui_auth)
 
   if not ok then
     log(ERR, _log_prefix, err)
-    return api_helpers.yield_error(err)
+    return endpoints.handle_error(err)
   end
 
   self.consumer = ctx.authenticated_consumer
 
   if self.consumer.type ~= enums.CONSUMERS.TYPE.ADMIN then
     log(ERR, _log_prefix, "consumer ", self.consumer.id, " is not an admin")
-    return responses.send_HTTP_UNAUTHORIZED()
+    return kong.response.exit(401, { message = "Unauthorized" })
   end
 
   -- consumer transitions from INVITED to APPROVED on first successful login
@@ -204,17 +198,15 @@ function _M.authenticate(self, rbac_enabled, gui_auth)
                                    { status = enums.CONSUMERS.STATUS.APPROVED })
 
     if err then
-      log(ERR, _log_prefix, "failed to approve admin: ", admin.id,
-          ". err: ", err)
-
-      return responses.send_HTTP_INTERNAL_SERVER_ERROR()
+      log(ERR, _log_prefix, "failed to approve admin: ", admin.id, ": ", err)
+      return endpoints.handle_error(err)
     end
 
     admin.status = enums.CONSUMERS.STATUS.APPROVED
   end
 
   if admin.status ~= enums.CONSUMERS.STATUS.APPROVED then
-    return responses.send_HTTP_UNAUTHORIZED(_M.get_consumer_status(admin))
+    return kong.response.exit(401, _M.get_consumer_status(admin))
   end
 
   self.rbac_user = rbac_user
@@ -238,14 +230,9 @@ function _M.attach_consumer(self, consumer_id)
   local consumer, err = kong.cache:get(cache_key, nil, _M.retrieve_consumer,
                                        consumer_id)
 
-  if err then
-    log(ERR, _log_prefix, "error getting consumer:", consumer_id, err)
-    return responses.send_HTTP_INTERNAL_SERVER_ERROR()
-  end
-
-  if not consumer then
-    return responses.send_HTTP_INTERNAL_SERVER_ERROR("consumer not found: " ..
-                                                      consumer_id)
+  if err or not consumer then
+    log(ERR, _log_prefix, "failed to get consumer:", consumer_id, ": ", err)
+    return endpoints.handle_error()
   end
 
   self.consumer = consumer
@@ -264,12 +251,12 @@ function _M.attach_workspaces(self, consumer_id)
   if err then
     log(ERR, _log_prefix, "Error fetching workspaces for consumer: ",
         consumer_id, ": ", err)
-    return responses.send_HTTP_INTERNAL_SERVER_ERROR()
+    return endpoints.handle_error()
   end
 
   if not next(workspace_entities) then
-    log(DEBUG, "no workspace found for consumer:" .. consumer_id)
-    return responses.send_HTTP_INTERNAL_SERVER_ERROR()
+    log(ERR, "no workspace found for consumer:" .. consumer_id)
+    return endpoints.handle_error()
   end
 
   return {
@@ -335,21 +322,22 @@ function _M.validate_jwt(self, dao_factory, helpers, token_optional)
   end
 
   if not self.params.token or self.params.token == "" then
-    return helpers.responses.send_HTTP_BAD_REQUEST("token is required")
+    return kong.exit(400, { message = "token is required" })
   end
 
   -- Parse and ensure that jwt contains the correct claims/headers.
   -- Signature NOT verified yet
   local jwt, err = ee_utils.validate_reset_jwt(self.params.token)
   if err then
-    return helpers.responses.send_HTTP_UNAUTHORIZED(err)
+    return kong.response.exit(401, { message = "Unauthorized" })
   end
 
   -- Look up the secret by consumer id
   local reset_secret
   for secret, err in reset_secrets:each_for_consumer({ id = jwt.claims.id }) do
     if err then
-      return helpers.responses.send_HTTP_UNAUTHORIZED(err)
+      log(ERR, _log_prefix, err)
+      return kong.response.exit(401, { message = "Unauthorized" })
     end
 
     if not reset_secret and secret.status == enums.TOKENS.STATUS.PENDING then
@@ -358,14 +346,14 @@ function _M.validate_jwt(self, dao_factory, helpers, token_optional)
   end
 
   if not reset_secret then
-    return helpers.responses.send_HTTP_UNAUTHORIZED()
+    return kong.response.exit(401, { message = "Unauthorized"})
   end
 
   -- Generate a new signature and compare it to passed token
   local ok, _ = ee_jwt.verify_signature(jwt, reset_secret.secret)
   if not ok then
     log(ERR, _log_prefix, "JWT signature is invalid")
-    return helpers.responses.send_HTTP_UNAUTHORIZED()
+    return kong.response.exit(401, { message = "Unauthorized" })
   end
 
   self.reset_secret_id = reset_secret.id
@@ -376,7 +364,7 @@ end
 function _M.validate_email(self, dao_factory, helpers)
   local ok, err = ee_utils.validate_email(self.params.email)
   if not ok then
-    return helpers.responses.send_HTTP_BAD_REQUEST("Invalid email: " .. err)
+    return kong.response.exit(400, { message = "Invalid email: " .. err })
   end
 end
 

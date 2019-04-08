@@ -1,7 +1,6 @@
 local singletons = require "kong.singletons"
 local enums = require "kong.enterprise_edition.dao.enums"
 local workspaces = require "kong.workspaces"
-local responses = require "kong.tools.responses"
 local secrets = require "kong.enterprise_edition.consumer_reset_secret_helpers"
 local ee_utils = require "kong.enterprise_edition.utils"
 local utils = require "kong.tools.utils"
@@ -44,7 +43,7 @@ local function sanitize_params(params)
   -- That is impossible now (on this path, anyway).
   if params.type then
     return nil, {
-      code = responses.status_codes.HTTP_BAD_REQUEST,
+      code = 400,
       body = { message = "Invalid parameter: 'type'" },
     }
   end
@@ -65,7 +64,7 @@ local function sanitize_params(params)
     local ok, err = ee_utils.validate_email(params.email)
     if not ok then
       return nil, {
-        code = responses.status_codes.HTTP_BAD_REQUEST,
+        code = 400,
         body = { message = "Invalid email: " .. err },
       }
     end
@@ -89,8 +88,8 @@ function _M.find_all()
   end
 
   return {
-    code = responses.status_codes.HTTP_OK,
-    body = {data = transmogrified_admins },
+    code = 200,
+    body = { data = transmogrified_admins },
   }
 end
 
@@ -196,7 +195,7 @@ function _M.generate_token(admin, opts)
   end
 
   return {
-    code = responses.status_codes.HTTP_OK,
+    code = 200,
     body = admin,
   }
 end
@@ -227,14 +226,14 @@ function _M.create(params, opts)
       -- in a POST, this isn't the greatest response code, but we
       -- haven't really created an admin, so...
       return {
-        code = responses.status_codes.HTTP_OK,
+        code = 200,
         body = { admin = admin },
       }
     end
 
     -- if we got here, user already exists
     return {
-      code = responses.status_codes.HTTP_CONFLICT,
+      code = 409,
       body = {
         message = "user already exists with same username, email, or custom_id"
       },
@@ -257,7 +256,7 @@ function _M.create(params, opts)
     log(ERR, _log_prefix, err)
 
     return {
-      code = responses.status_codes.HTTP_INTERNAL_SERVER_ERROR,
+      code = 500,
       body = { message = "failed to create admin" }
     }
   end
@@ -270,7 +269,7 @@ function _M.create(params, opts)
 
     if err then
       return {
-        code = responses.status_codes.HTTP_OK,
+        code = 200,
         body = {
           message = "User created, but failed to create invitation",
           admin = opts.raw and admin or transmogrify(admin),
@@ -285,7 +284,7 @@ function _M.create(params, opts)
       log(ERR, _log_prefix, "error inviting user: ", admin.email)
 
       return {
-        code = responses.status_codes.HTTP_OK,
+        code = 200,
         body = {
           message = "User created, but failed to send invitation email",
           admin = opts.raw and admin or transmogrify(admin),
@@ -297,7 +296,7 @@ function _M.create(params, opts)
   end
 
   return {
-    code = responses.status_codes.HTTP_OK,
+    code = 200,
     body = { admin = opts.raw and admin or transmogrify(admin) },
   }
 end
@@ -305,7 +304,7 @@ end
 
 function _M.update(params, admin_to_update, opts)
   if not next(params) then
-    return { code = responses.status_codes.HTTP_BAD_REQUEST, body = "empty body" }
+    return { code = 400, body = "empty body" }
   end
 
   local db = opts.db or singletons.db
@@ -322,9 +321,8 @@ function _M.update(params, admin_to_update, opts)
 
   if duplicate then
     return {
-      code = responses.status_codes.HTTP_CONFLICT,
+      code = 409,
       body = "user already exists with same username, email, or custom_id"
-
     }
   end
 
@@ -371,7 +369,7 @@ function _M.update(params, admin_to_update, opts)
     end
   end
 
-  return { code = responses.status_codes.HTTP_OK, body = transmogrify(admin) }
+  return { code = 200, body = transmogrify(admin) }
 end
 
 
@@ -387,7 +385,7 @@ function _M.delete(admin_to_delete, opts)
     nil, err
   end
 
-  return { code = responses.status_codes.HTTP_NO_CONTENT }
+  return { code = 204 }
 end
 
 
