@@ -1226,7 +1226,7 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
               local resp_body_json = cjson.decode(body)
               local message = resp_body_json.message
 
-              assert.equal("Invalid JWT", message)
+              assert.equal("Unauthorized", message)
             end)
 
             it("should return 401 if token is signed with an invalid secret", function()
@@ -1268,7 +1268,7 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
               local resp_body_json = cjson.decode(body)
               local message = resp_body_json.message
 
-              assert.equal("Expired JWT", message)
+              assert.equal("Unauthorized", message)
             end)
 
             it("should return 401 if token contains non-existent developer", function()
@@ -1428,7 +1428,7 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
               local resp_body_json = cjson.decode(body)
               local message = resp_body_json.message
 
-              assert.equal("Invalid JWT", message)
+              assert.equal("Unauthorized", message)
             end)
 
             it("should return 401 if token is signed with an invalid secret", function()
@@ -1468,7 +1468,7 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
               local resp_body_json = cjson.decode(body)
               local message = resp_body_json.message
 
-              assert.equal("Expired JWT", message)
+              assert.equal("Unauthorized", message)
             end)
 
             it("should return 401 if token contains non-existent developer", function()
@@ -2803,7 +2803,7 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
               local resp_body_json = cjson.decode(body)
               local message = resp_body_json.message
 
-              assert.equal("Invalid JWT", message)
+              assert.equal("Unauthorized", message)
             end)
 
             it("should return 401 if token is signed with an invalid secret", function()
@@ -2845,7 +2845,7 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
               local resp_body_json = cjson.decode(body)
               local message = resp_body_json.message
 
-              assert.equal("Expired JWT", message)
+              assert.equal("Unauthorized", message)
             end)
 
             it("should return 401 if token contains non-existent developer", function()
@@ -3006,7 +3006,7 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
               local resp_body_json = cjson.decode(body)
               local message = resp_body_json.message
 
-              assert.equal("Invalid JWT", message)
+              assert.equal("Unauthorized", message)
             end)
 
             it("should return 401 if token is signed with an invalid secret", function()
@@ -3046,7 +3046,7 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
               local resp_body_json = cjson.decode(body)
               local message = resp_body_json.message
 
-              assert.equal("Expired JWT", message)
+              assert.equal("Unauthorized", message)
             end)
 
             it("should return 401 if token contains non-existent developer", function()
