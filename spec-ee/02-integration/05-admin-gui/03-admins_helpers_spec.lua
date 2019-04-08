@@ -85,7 +85,7 @@ for _, strategy in helpers.each_strategy() do
           email = "unique@test.com",
         }
 
-        local res, match, err = admins_helpers.validate(params, db, "POST")
+        local res, match, err = admins_helpers.validate(params, db)
 
         assert.is_nil(err)
         assert.same(admins[1], match)
@@ -99,7 +99,7 @@ for _, strategy in helpers.each_strategy() do
           email = "admin-2@test.com",
         }
 
-        local res, match, err = admins_helpers.validate(params, db, "POST")
+        local res, match, err = admins_helpers.validate(params, db)
 
         assert.is_nil(err)
         assert.same(admins[2], match)
@@ -109,17 +109,31 @@ for _, strategy in helpers.each_strategy() do
       it("works on update as well as create", function()
         -- admin 1 can't have the same email as admin 2
         local params = {
-          id = admins[1].id,
           username = admins[1].username,
           custom_id = admins[1].custom_id,
           email = admins[2].email,
         }
 
-        local res, match, err = admins_helpers.validate(params, db, "PATCH")
+        local res, match, err = admins_helpers.validate(params, db, admins[1])
 
         assert.is_nil(err)
         assert.same(admins[2], match)
         assert.is_false(res)
+      end)
+
+      it("allows update of self", function()
+        -- update admin 1
+        local params = {
+          username = admins[1].username .. "-updated",
+          custom_id = admins[1].custom_id,
+          email = admins[1].email,
+        }
+
+        local res, match, err = admins_helpers.validate(params, db, admins[1])
+
+        assert.is_nil(err)
+        assert.is_nil(match)
+        assert.is_true(res)
       end)
     end)
 
@@ -264,7 +278,6 @@ for _, strategy in helpers.each_strategy() do
         assert.is_nil(admin.custom_id)
         local new_custom_id = "admin-custom-id"
         local params = {
-          id = admin.id,
           username = admin.username,
           custom_id = new_custom_id,
           email = admin.email,
@@ -295,7 +308,6 @@ for _, strategy in helpers.each_strategy() do
         }))
 
         local params = {
-          id = admin.id,
           username = admin.username .. utils.uuid(),
         }
 

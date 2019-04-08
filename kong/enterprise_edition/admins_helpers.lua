@@ -95,7 +95,7 @@ function _M.find_all()
 end
 
 
-function _M.validate(params, db, http_method)
+function _M.validate(params, db, admin_to_update)
   local all_admins, err = workspaces.compat_find_all("admins")
 
   if err then
@@ -107,7 +107,7 @@ function _M.validate(params, db, http_method)
   local consumer, rbac_user
   for _, admin in ipairs(all_admins) do
     -- if we're doing an update, don't compare us to ourself
-    if http_method == "PATCH" and params.id == admin.id then
+    if admin_to_update and admin_to_update.id == admin.id then
       goto continue
     end
 
@@ -209,7 +209,7 @@ function _M.create(params, opts)
     return validation_failures
   end
 
-  local _, admin, err = _M.validate(safe_params, opts.db, "POST")
+  local _, admin, err = _M.validate(safe_params, opts.db)
 
   if err then
     return nil, err
@@ -306,7 +306,7 @@ function _M.update(params, admin_to_update, opts)
     return validation_errors
   end
 
-  local _, duplicate, err = _M.validate(safe_params, db, "PATCH")
+  local _, duplicate, err = _M.validate(safe_params, db, admin_to_update)
   if err then
     return nil, err
   end
