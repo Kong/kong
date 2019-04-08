@@ -187,7 +187,8 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
           body   = {
             comment = "foo comment",
             meta = {
-              color = "red"
+              color = "red",
+              thumbnail = "cool"
             }
           },
           headers = {

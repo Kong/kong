@@ -49,6 +49,7 @@ local config_meta = {
     -- XXX add a validator for this field (perhaps `matches` with a Lua
     -- pattern for the color hex code?
     { color = { type = "string" } },
+    { thumbnail = { type = "string" } },
   }
 }
 
