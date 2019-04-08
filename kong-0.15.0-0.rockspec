@@ -193,8 +193,6 @@ build = {
     ["kong.dao.migrations.helpers"] = "kong/dao/migrations/helpers.lua",
     ["kong.dao.migrations.cassandra"] = "kong/dao/migrations/cassandra.lua",
     ["kong.dao.migrations.postgres"] = "kong/dao/migrations/postgres.lua",
-    ["kong.dao.schemas.audit_objects"] = "kong/dao/schemas/audit_objects.lua",
-    ["kong.dao.schemas.audit_requests"] = "kong/dao/schemas/audit_requests.lua",
 
     ["kong.rbac"] = "kong/rbac/init.lua",
     ["kong.rbac.migrations.01_defaults"] = "kong/rbac/migrations/01_defaults.lua",
@@ -258,6 +256,8 @@ build = {
     ["kong.db.schema.entities.rbac_roles"] = "kong/db/schema/entities/rbac_roles.lua",
     ["kong.db.schema.entities.rbac_role_endpoints"] = "kong/db/schema/entities/rbac_role_endpoints.lua",
     ["kong.db.schema.entities.rbac_role_entities"] = "kong/db/schema/entities/rbac_role_entities.lua",
+    ["kong.db.schema.entities.audit_objects"] = "kong/db/schema/entities/audit_objects.lua",
+    ["kong.db.schema.entities.audit_requests"] = "kong/db/schema/entities/audit_requests.lua",
     ["kong.db.schema.others.migrations"] = "kong/db/schema/others/migrations.lua",
     ["kong.db.schema.entity"] = "kong/db/schema/entity.lua",
     ["kong.db.schema.metaschema"] = "kong/db/schema/metaschema.lua",

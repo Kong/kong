@@ -1,8 +1,10 @@
 local utils = require "kong.tools.utils"
 local pl_stringx   = require "pl.stringx"
 
+local kong         = kong
 local fmt          = string.format
 local ngx_utc_time = ngx.utctime
+local audit_ttl    = kong.configuration.audit_log_record_ttl
 
 
 local function build_developer_queries(res, consumer, db_type, connector)
@@ -112,7 +114,15 @@ return {
      END
      $$;
 
+     ALTER TABLE audit_objects
+        ADD COLUMN ttl timestamp WITH TIME ZONE DEFAULT (CURRENT_TIMESTAMP(0)
+          AT TIME ZONE 'UTC' + INTERVAL ']] .. audit_ttl .. [[');
+
+     ALTER TABLE audit_requests
+        ADD COLUMN ttl timestamp WITH TIME ZONE DEFAULT (CURRENT_TIMESTAMP(0)
+          AT TIME ZONE 'UTC' + INTERVAL ']] .. audit_ttl .. [[');
     ]],
+
     teardown = function(connector)
       assert(connector:connect_migrations())
 
@@ -125,6 +135,21 @@ return {
         ALTER TABLE consumers DROP COLUMN IF EXISTS email;
         ALTER TABLE consumers DROP COLUMN IF EXISTS status;
       ]]))
+
+      assert(connector:query([[
+        ALTER TABLE audit_objects
+          DROP COLUMN expire;
+
+        DROP TRIGGER delete_expired_audit_objects_trigger ON audit_objects;
+        DROP FUNCTION delete_expired_audit_objects();
+
+        ALTER TABLE audit_requests
+          DROP COLUMN expire;
+
+        DROP TRIGGER delete_expired_audit_requests_trigger ON audit_requests;
+        DROP FUNCTION delete_expired_audit_requests();
+      ]]))
+
     end
   },
 
@@ -132,6 +157,7 @@ return {
     up = [[
       CREATE INDEX IF NOT EXISTS ON rbac_user_roles(role_id);
     ]],
+
     teardown = function(connector)
       local coordinator = connector:connect_migrations()
 
@@ -145,6 +171,10 @@ return {
         ALTER TABLE consumers DROP status;
         ALTER TABLE consumers DROP email;
         ALTER TABLE consumers DROP meta;
+      ]]))
+
+      assert(connector:query([[
+        ALTER TABLE audit_requests DROP expire;
       ]]))
     end
   }

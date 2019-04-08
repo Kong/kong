@@ -41,6 +41,8 @@ local CORE_ENTITIES = {
   "workspace_entity_counters",
   "consumer_reset_secrets",
   "credentials",
+  "audit_requests",
+  "audit_objects",
 }
 
 

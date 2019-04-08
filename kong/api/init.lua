@@ -324,7 +324,7 @@ for _, v in ipairs({"kong", "apis", "cache", }) do
 end
 
 -- XXX EE, move elsewhere
-for _, v in ipairs({"vitals", "audit", "oas_config"}) do
+for _, v in ipairs({"vitals", "oas_config"}) do
   local routes = require("kong.api.routes." .. v)
   attach_routes(routes)
 end
@@ -411,7 +411,7 @@ if singletons.configuration and singletons.configuration.loaded_plugins then
 end
 
 -- Loading plugins routes
-for _, k in ipairs({"rbac"}) do
+for _, k in ipairs({"rbac", "audit"}) do
   local loaded, mod = utils.load_module_if_exists("kong.api.routes.".. k)
   if loaded then
     ngx.log(ngx.DEBUG, "Loading API endpoints for module: ", k)
