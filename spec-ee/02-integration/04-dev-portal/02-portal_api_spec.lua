@@ -32,25 +32,25 @@ local DEFAULT_CONSUMER = {
   },
 }
 
-local function insert_files(db)
-  for i = 1, 10 do
-    local file_name = "file-" .. i
-    assert(db.files:upsert_by_name(file_name, {
-      name = file_name,
-      contents = "i-" .. i,
-      type = "partial",
-      auth = i % 2 == 0 and true or false,
-    }))
+-- local function insert_files(db)
+--   for i = 1, 10 do
+--     local file_name = "file-" .. i
+--     assert(db.files:upsert_by_name(file_name, {
+--       name = file_name,
+--       contents = "i-" .. i,
+--       type = "partial",
+--       auth = i % 2 == 0 and true or false,
+--     }))
 
-    local file_page_name = "file-page" .. i
-    assert(db.files:upsert_by_name(file_page_name, {
-      name = file_page_name,
-      contents = "i-" .. i,
-      type = "page",
-      auth = i % 2 == 0 and true or false,
-    }))
-  end
-end
+--     local file_page_name = "file-page" .. i
+--     assert(db.files:upsert_by_name(file_page_name, {
+--       name = file_page_name,
+--       contents = "i-" .. i,
+--       type = "page",
+--       auth = i % 2 == 0 and true or false,
+--     }))
+--   end
+-- end
 
 
 local function register_developer(portal_api_client, body)
@@ -112,7 +112,7 @@ end
 
 local rbac_mode = {"off"}
 
-for _, strategy in helpers.each_strategy({"postgres"}) do
+for _, strategy in helpers.each_strategy({"cassandra"}) do
   for idx, rbac in ipairs(rbac_mode) do
     describe("Developer Portal - Portal API " .. strategy .. " (ENFORCE_RBAC = " .. rbac .. ")", function()
       local portal_api_client
@@ -122,7 +122,7 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
 
       -- do not run tests for cassandra < 3
       -- XXX DEVX check this for db.major_version_n
-      if strategy == "cassandra" and dao.db.major_version_n < 3 then
+      if strategy == "cassandra" and db.connector.major_version < 3 then
         return
       end
 
@@ -216,7 +216,6 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
 
         lazy_setup(function()
           _, db, _ = helpers.get_db_utils(strategy)
-          insert_files(db)
           configure_portal(db)
         end)
 
@@ -401,9 +400,7 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
           helpers.stop_kong()
           dao:truncate_tables()
 
-          insert_files(db)
           configure_portal(db)
-
 
           assert(helpers.start_kong({
             database   = strategy,
@@ -783,7 +780,6 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
           helpers.stop_kong()
           assert(db:truncate())
           configure_portal(db)
-          insert_files(db)
 
           assert(helpers.start_kong({
             database   = strategy,
@@ -2395,7 +2391,6 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
           helpers.stop_kong()
           assert(db:truncate())
           configure_portal(db)
-          insert_files(db)
 
           assert(helpers.start_kong({
             database   = strategy,
