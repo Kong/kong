@@ -242,8 +242,17 @@ function _M.create(params, opts)
   end
 
   -- and if we got here, we're good to go.
-  local admin, err = singletons.db.admins:insert(params)
+  local admin, err, err_t = singletons.db.admins:insert(params)
 
+  -- error table is kong-generated schema violations
+  if err_t then
+    return {
+      code = 400,
+      body = err_t,
+    }
+  end
+
+  -- if no schema violation errors, no user friendly message
   if err then
     log(ERR, _log_prefix, err)
 

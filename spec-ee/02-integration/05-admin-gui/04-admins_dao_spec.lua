@@ -107,6 +107,30 @@ for _, strategy in helpers.each_strategy() do
         assert.not_same(admin.custom_id, admin.rbac_user.name)
       end)
 
+      it("validates user input", function()
+        -- "user" is not a valid field
+        local admin_params = {
+          user = "admin-1",
+          email = "admin-1@konghq.com",
+          status = enums.CONSUMERS.STATUS.APPROVED,
+        }
+
+        local _, err, err_t = admins:insert(admin_params)
+        local expected_t = {
+          code = 2,
+          fields = {
+            user = "unknown field"
+          },
+          message = "schema violation (user: unknown field)",
+          name = "schema violation",
+          strategy = strategy,
+        }
+        assert.same(expected_t, err_t)
+
+        local expected_m = "[" .. strategy .. "] schema violation (user: unknown field)"
+        assert.same(expected_m, err)
+      end)
+
       it("rolls back the rbac_user if we can't create the consumer", function()
         stub(db.consumers, "insert").returns(nil, "failed!")
 

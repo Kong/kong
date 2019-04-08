@@ -30,6 +30,13 @@ end
 local _Admins = {}
 
 function _Admins:insert(admin, options)
+  -- validate user-entered data before starting all these inserts
+  local ok, errors = self.schema:validate(admin, false)
+  if not ok then
+    local err_t = self.errors:schema_violation(errors)
+    return nil, tostring(err_t), err_t
+  end
+
   local unique_name
 
   -- either username is non-null, or custom_id is
