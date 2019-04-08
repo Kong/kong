@@ -6,6 +6,18 @@ local pl_utils = require "pl.utils"
 -- test fixtures. we have to load them before requiring the
 -- ALF serializer, since it caches those functions at the
 -- module chunk level.
+local _kong = {
+  response = {
+    get_headers = function()
+      return {
+        connection = "close",
+        ["content-type"] = {"application/json", "application/x-www-form-urlencoded"},
+        ["content-length"] = "934"
+      }
+    end
+  },
+}
+
 local _ngx = {
   encode_base64 = function(str)
     return string.format("base64_%s", str)
@@ -32,15 +44,6 @@ local _ngx = {
         foobar = "baz"
       }
     end,
-  },
-  resp = {
-    get_headers = function()
-      return {
-        connection = "close",
-        ["content-type"] = {"application/json", "application/x-www-form-urlencoded"},
-        ["content-length"] = "934"
-      }
-    end
   },
 
   -- ALF buffer stubs
@@ -75,6 +78,7 @@ local function reload_buffer()
   package.loaded["kong.plugins.brain.buffer"] = nil
 
   _G.ngx = _ngx
+  _G.kong = _kong
   Buffer = require "kong.plugins.brain.buffer"
 end
 

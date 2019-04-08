@@ -21,13 +21,6 @@
 -- * timings.connect is ignored
 
 local cjson = require "cjson.safe"
-local resp_get_headers = ngx.resp.get_headers
-local req_start_time = ngx.req.start_time
-local req_get_method = ngx.req.get_method
-local req_get_headers = ngx.req.get_headers
-local req_get_uri_args = ngx.req.get_uri_args
-local encode_base64 = ngx.encode_base64
-local http_version = ngx.req.http_version
 local setmetatable = setmetatable
 local tonumber = tonumber
 local os_date = os.date
@@ -35,6 +28,18 @@ local pairs = pairs
 local type = type
 local gsub = string.gsub
 local fmt = string.format
+local ngx = ngx
+local kong = kong
+
+
+local resp_get_headers = kong.response.get_headers
+local req_start_time = ngx.req.start_time
+local req_get_method = ngx.req.get_method
+local req_get_headers = ngx.req.get_headers
+local req_get_uri_args = ngx.req.get_uri_args
+local encode_base64 = ngx.encode_base64
+local http_version = ngx.req.http_version
+
 
 local _M = {
   _VERSION = "2.0.0",

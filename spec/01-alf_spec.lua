@@ -5,6 +5,18 @@ local pl_utils = require "pl.utils"
 -- test fixtures. we have to load them before requiring the
 -- ALF serializer, since it caches those functions at the
 -- module chunk level.
+local _kong = {
+  response = {
+    get_headers = function()
+      return {
+        connection = "close",
+        ["content-type"] = {"application/json", "application/x-www-form-urlencoded"},
+        ["content-length"] = "934"
+      }
+    end
+  },
+}
+
 local _ngx = {
   encode_base64 = function(str)
     return string.format("base64_%s", str)
@@ -31,15 +43,6 @@ local _ngx = {
         foobar = "baz"
       }
     end,
-  },
-  resp = {
-    get_headers = function()
-      return {
-        connection = "close",
-        ["content-type"] = {"application/json", "application/x-www-form-urlencoded"},
-        ["content-length"] = "934"
-      }
-    end
   },
 
   -- ALF buffer stubs
@@ -69,6 +72,7 @@ local _ngx = {
   }
 }
 _G.ngx = _ngx
+_G.kong = _kong
 
 -- asserts if an array contains a given table
 local function contains(state, args)
@@ -261,7 +265,7 @@ describe("ALF serializer", function()
       end)
       it("captures body info if and only if asked for", function()
         local body_str = "hello=world&foo=bar"
-        _G.ngx.resp.get_headers = function()
+        _G.kong.response.get_headers = function()
           return {}
         end
         reload_alf_serializer()
@@ -390,15 +394,15 @@ describe("ALF serializer", function()
     describe("response body", function()
       local get_headers
       setup(function()
-        get_headers = _G.ngx.resp.get_headers
+        get_headers = _G.kong.response.get_headers
       end)
       teardown(function()
-        _G.ngx.resp.get_headers = get_headers
+        _G.kong.response.get_headers = get_headers
         reload_alf_serializer()
       end)
       it("captures body info if and only if asked for", function()
         local body_str = "message=hello"
-        _G.ngx.resp.get_headers = function()
+        _G.kong.response.get_headers = function()
           return {}
         end
         reload_alf_serializer()
@@ -418,7 +422,7 @@ describe("ALF serializer", function()
         assert.is_nil(entry2.response.postData)
       end)
       it("captures bodySize from Content-Length if not logging bodies", function()
-        _G.ngx.resp.get_headers = function()
+        _G.kong.response.get_headers = function()
           return {["content-length"] = "38"}
         end
         reload_alf_serializer()
@@ -429,7 +433,7 @@ describe("ALF serializer", function()
       it("captures bodySize reading the body if logging bodies", function()
         local body_str = "hello=world"
 
-        _G.ngx.resp.get_headers = function()
+        _G.kong.response.get_headers = function()
           return {["content-length"] = "3800"}
         end
         reload_alf_serializer()
@@ -438,7 +442,7 @@ describe("ALF serializer", function()
         assert.equal(#body_str, entry.response.bodySize)
       end)
       it("zeroes bodySize if body logging but no body", function()
-        _G.ngx.resp.get_headers = function()
+        _G.kong.response.get_headers = function()
           return {}
         end
         reload_alf_serializer()
@@ -447,7 +451,7 @@ describe("ALF serializer", function()
         assert.equal(0, entry.response.bodySize)
       end)
       it("zeroes bodySize if no body logging or Content-Length", function()
-        _G.ngx.resp.get_headers = function()
+        _G.kong.response.get_headers = function()
           return {}
         end
         reload_alf_serializer()
@@ -463,7 +467,7 @@ describe("ALF serializer", function()
       it("captures content.mimeType", function()
         local body_str = [[{"hello": "world"}]]
 
-        _G.ngx.resp.get_headers = function()
+        _G.kong.response.get_headers = function()
           return {["content-type"] = "application/json"}
         end
         reload_alf_serializer()
@@ -480,7 +484,7 @@ describe("ALF serializer", function()
         local entry = assert(alf:add_entry(_ngx)) -- no body str
         assert.False(entry.request.bodyCaptured)
 
-        _G.ngx.resp.get_headers = function()
+        _G.kong.response.get_headers = function()
           return {["content-length"] = "38"}
         end
         reload_alf_serializer()
@@ -488,7 +492,7 @@ describe("ALF serializer", function()
         entry = assert(alf:add_entry(_ngx)) -- no body str
         assert.True(entry.response.bodyCaptured)
 
-        _G.ngx.resp.get_headers = function()
+        _G.kong.response.get_headers = function()
           return {["transfer-encoding"] = "chunked"}
         end
         reload_alf_serializer()
@@ -496,7 +500,7 @@ describe("ALF serializer", function()
         entry = assert(alf:add_entry(_ngx))
         assert.True(entry.response.bodyCaptured)
 
-        _G.ngx.resp.get_headers = function()
+        _G.kong.response.get_headers = function()
           return {["content-type"] = "multipart/byteranges"}
         end
         reload_alf_serializer()
@@ -504,7 +508,7 @@ describe("ALF serializer", function()
         entry = assert(alf:add_entry(_ngx))
         assert.True(entry.response.bodyCaptured)
 
-        _G.ngx.resp.get_headers = function()
+        _G.kong.response.get_headers = function()
           return {["content-length"] = "0"}
         end
         reload_alf_serializer()
@@ -514,7 +518,7 @@ describe("ALF serializer", function()
       end)
       it("bodyCaptures handles headers with multiple values", function()
         -- it uses the last header value
-        _G.ngx.resp.get_headers = function()
+        _G.kong.response.get_headers = function()
           return {["content-length"] = {"0", "38"}}
         end
         reload_alf_serializer()
@@ -637,7 +641,7 @@ describe("ALF serializer", function()
       assert.equal(3, #alf_o.har.log.entries)
     end)
     it("gives empty arrays and not empty objects", function()
-      _G.ngx.resp.get_headers = function()
+      _G.kong.response.get_headers = function()
         return {}
       end
       _G.ngx.req.get_uri_args = function()
