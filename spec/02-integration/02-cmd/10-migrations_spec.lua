@@ -13,7 +13,7 @@ local lua_path = [[ KONG_LUA_PATH_OVERRIDE="./spec/fixtures/migrations/?.lua;]] 
                  [[./spec/fixtures/custom_plugins/?/init.lua;" ]]
 
 
-for _, strategy in helpers.each_strategy() do
+for _, strategy in helpers.each_strategy({"postgres"}) do
 
 
   local function run_kong(cmd, env)
@@ -161,6 +161,7 @@ for _, strategy in helpers.each_strategy() do
         })
         assert.same(5, code)
         assert.match("database has new migrations available:\n" ..
+                     "session: 000_base_session\n" ..
                      "with-migrations: 000_base_with_migrations, 001_14_to_15",
                      stdout, 1, true)
       end)
@@ -183,8 +184,8 @@ for _, strategy in helpers.each_strategy() do
         code, stdout, stderr = run_kong("migrations up", {
           plugins = "with-migrations",
         })
-        assert.match("2 migrations processed", stdout .. "\n" .. stderr, 1, true)
-        assert.match("1 executed", stdout .. "\n" .. stderr, 1, true)
+        assert.match("3 migrations processed", stdout .. "\n" .. stderr, 1, true)
+        assert.match("2 executed", stdout .. "\n" .. stderr, 1, true)
         assert.match("1 pending", stdout .. "\n" .. stderr, 1, true)
         assert.same(0, code)
 
@@ -202,7 +203,7 @@ for _, strategy in helpers.each_strategy() do
           pending = pending + (type(row.pending) == "table" and #row.pending or 0)
         end
 
-        assert.same(nr_migrations + 1, executed)
+        assert.same(nr_migrations + 2, executed)
         assert.same(1, pending)
       end)
 
@@ -246,7 +247,7 @@ for _, strategy in helpers.each_strategy() do
           pending = pending + (type(row.pending) == "table" and #row.pending or 0)
         end
         --assert.same({}, rows)
-        assert.same(nr_migrations + 2, executed)
+        assert.same(nr_migrations + 3, executed)
         assert.same(0, pending)
       end)
 
