@@ -1,8 +1,8 @@
 local lapis = require "lapis"
 local pl_file = require "pl.file"
--- local auth    = require "kong.portal.auth"
+local auth    = require "kong.portal.auth"
 local singletons  = require "kong.singletons"
--- local responses   = require "kong.tools.responses"
+local responses   = require "kong.tools.responses"
 local gui_helpers = require "kong.portal.gui_helpers"
 local EtluaWidget = require("lapis.etlua").EtluaWidget
 
