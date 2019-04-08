@@ -108,7 +108,7 @@ describe("Admin API - Developer Portal - " .. strategy, function()
         email = "gruce@konghq.com",
         password = "kong",
         meta = "{\"full_name\":\"I Like Turtles\"}",
-        status = 2,
+        status = enums.CONSUMERS.STATUS.REJECTED,
       })
       configure_portal()
     end)
@@ -134,7 +134,7 @@ describe("Admin API - Developer Portal - " .. strategy, function()
     describe("PATCH", function()
       after_each(function()
         assert(db.developers:update(
-          developer.id,
+          { id = developer.id },
           { email = "gruce@konghq.com", }
         ))
       end)
@@ -144,7 +144,7 @@ describe("Admin API - Developer Portal - " .. strategy, function()
           method = "PATCH",
           body = {
             email = "new_email@whodis.com",
-            status = 1,
+            status = enums.CONSUMERS.STATUS.APPROVED,
           },
           path = "/developers/".. developer.id,
           headers = {
@@ -154,6 +154,7 @@ describe("Admin API - Developer Portal - " .. strategy, function()
 
         local body = assert.res_status(200, res)
         local resp_body_json = cjson.decode(body)
+
         local consumer = singletons.db.consumers:select({
           id = resp_body_json.developer.consumer.id
         })
@@ -248,13 +249,26 @@ describe("Admin API - Developer Portal - " .. strategy, function()
       end)
 
       describe("smtp", function()
-        -- XXX DEVX: write smtp on tests
 
-        it("sends an email to the approved developer", function()
+        it("sends an email to the approved developer if their status changes to approved", function()
+          -- set to pending first
           local res = assert(client:send {
             method = "PATCH",
             body = {
-              status = 0,
+              status = enums.CONSUMERS.STATUS.PENDING,
+            },
+            path = "/developers/".. developer.id,
+            headers = {
+              ["Content-Type"] = "application/json",
+            }
+          })
+
+          assert.res_status(200, res)
+
+          local res = assert(client:send {
+            method = "PATCH",
+            body = {
+              status = enums.CONSUMERS.STATUS.APPROVED,
             },
             path = "/developers/".. developer.id,
             headers = {
@@ -278,6 +292,7 @@ describe("Admin API - Developer Portal - " .. strategy, function()
 
           local body = assert.res_status(200, res)
           local resp_body_json = cjson.decode(body)
+
           assert.same(expected_email, resp_body_json.email)
         end)
 
@@ -285,7 +300,7 @@ describe("Admin API - Developer Portal - " .. strategy, function()
           local res = assert(client:send {
             method = "PATCH",
             body = {
-              status = 2
+              status = enums.CONSUMERS.STATUS.REJECTED
             },
             path = "/developers/".. developer.id,
             headers = {["Content-Type"] = "application/json"}
@@ -298,7 +313,7 @@ describe("Admin API - Developer Portal - " .. strategy, function()
           local res = assert(client:send {
             method = "PATCH",
             body = {
-              status = 3
+              status = enums.CONSUMERS.STATUS.REVOKED
             },
             path = "/developers/".. developer.id,
             headers = {["Content-Type"] = "application/json"}
@@ -311,7 +326,7 @@ describe("Admin API - Developer Portal - " .. strategy, function()
           local res = assert(client:send {
             method = "PATCH",
             body = {
-              status = 0
+              status = enums.CONSUMERS.STATUS.APPROVED
             },
             path = "/developers/".. developer.id,
             headers = {["Content-Type"] = "application/json"}

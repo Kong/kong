@@ -100,24 +100,19 @@ local function configure_portal(db, config)
 end
 
 
-local function close_clients(portal_api_client, client)
-  if client then
-    client:close()
-  end
-
+local function close_clients(portal_api_client)
   if portal_api_client then
     portal_api_client:close()
   end
 end
 
-local rbac_mode = {"off"}
+local rbac_mode = {"off", "on"}
 
-for _, strategy in helpers.each_strategy({"cassandra"}) do
+-- XXX DEVX add cassandra back in
+for _, strategy in helpers.each_strategy({"postgres"}) do
   for idx, rbac in ipairs(rbac_mode) do
     describe("Developer Portal - Portal API " .. strategy .. " (ENFORCE_RBAC = " .. rbac .. ")", function()
       local portal_api_client
-      local client
-
       local _, db, _ = helpers.get_db_utils(strategy)
 
       -- do not run tests for cassandra < 3
@@ -130,88 +125,7 @@ for _, strategy in helpers.each_strategy({"cassandra"}) do
         assert(db:truncate())
       end)
 
-      -- this block is only run once, not for each rbac state
-      if idx == 1 then
-        pending("vitals", function ()
-          lazy_setup(function()
-            helpers.stop_kong()
-
-            assert(helpers.start_kong({
-              database   = strategy,
-              portal     = true,
-              vitals     = true,
-            }))
-
-            configure_portal(db)
-          end)
-
-          lazy_teardown(function()
-            helpers.stop_kong()
-          end)
-
-          before_each(function()
-            portal_api_client = assert(ee_helpers.portal_api_client())
-            client = assert(helpers.admin_client())
-          end)
-
-          after_each(function()
-            close_clients(portal_api_client, client)
-          end)
-
-          it("does not track internal proxies", function()
-            local service_id = "00000000-0000-0000-0000-000000000001"
-
-            local res = assert(portal_api_client:send {
-              method = "GET",
-              path = "/vitals/status_codes/by_service",
-              query = {
-                interval   = "minutes",
-                service_id = service_id,
-              }
-            })
-
-            res = assert.res_status(404, res)
-            local json = cjson.decode(res)
-
-            assert.same("Not found", json.message)
-          end)
-
-          it("does not report metrics for internal proxies", function()
-            local service_id = "00000000-0000-0000-0000-000000000001"
-
-            local pres = assert(portal_api_client:send {
-              method = "GET",
-              path = "/files"
-            })
-
-            assert.res_status(200, pres)
-
-            ngx.sleep(11) -- flush interval for vitals is at 10 seconds so wait
-                          -- 11 to ensure we get metrics for the bucket this
-                          -- request would live in.
-
-            local res = assert(client:send {
-              method = "GET",
-              path = "/vitals/cluster",
-              query = {
-                interval   = "seconds",
-                service_id = service_id,
-              }
-            })
-
-            res = assert.res_status(200, res)
-
-            local json = cjson.decode(res)
-            for k,v in pairs(json.stats.cluster) do
-              assert.equal(0, v[7]) -- ensure that each `requests_proxy_total` is
-                                    -- equal to 0, this means that there were no
-                                    -- proxy requests during this timeframe
-            end
-          end)
-        end)
-      end
-
-      pending("CORS", function()
+      describe("CORS", function()
         local db
 
         lazy_setup(function()

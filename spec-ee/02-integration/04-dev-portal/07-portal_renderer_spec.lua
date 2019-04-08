@@ -56,16 +56,12 @@ local function register_developer(params)
 end
 
 
-local function configure_portal(dao)
-  local workspaces = dao.workspaces:find_all({name = "default"})
-  local workspace = workspaces[1]
-
-  dao.workspaces:update({
+local function configure_portal(db)
+  db.workspaces:upsert_by_name("default", {
+    name = "default",
     config = {
       portal = true,
-    }
-  }, {
-    id = workspace.id,
+    },
   })
 end
 
@@ -96,7 +92,7 @@ local function create_portal_index()
   if not pl_path.exists(views_path) then
     pl_path.mkdir(views_path)
   end
-  
+
   pl_file.write(index_filename, index_str)
 end
 
@@ -136,26 +132,26 @@ for _, strategy in helpers.each_strategy() do
 
 
   -- TODO DEVX: re-impliment once api endpoints are done
-  if strategy == 'cassandra' or strategy == 'postgres' then
+  if strategy == 'cassandra' then
     return
   end
-  
-  describe("#flaky Portal Rendering [#" .. strategy .. "]", function()
-    local dao
+
+  pending("Portal Rendering [#" .. strategy .. "]", function()
+    local db
     local cookie
 
     setup(function()
-      _, _, dao = helpers.get_db_utils(strategy)
+      _, db, _ = helpers.get_db_utils(strategy)
 
       assert(helpers.start_kong({
-        database    = strategy, 
+        database    = strategy,
         portal      = true,
         enforce_rbac = "off",
         portal_auth = "key-auth",
         portal_auto_approve = true,
         portal_session_conf = PORTAL_SESSION_CONF,
       }))
-      configure_portal(dao)
+      configure_portal(db)
       create_portal_index()
       create_portal_sitemap()
     end)
@@ -165,7 +161,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("pages", function()
-      local auth_page_pair, unauth_page_pair, auth_page_solo, 
+      local auth_page_pair, unauth_page_pair, auth_page_solo,
             unauth_page_solo, login_page, not_found_page,
             namespaced_index_page, namespaced_page
 
@@ -175,7 +171,7 @@ for _, strategy in helpers.each_strategy() do
           key = "dog",
           meta = "{\"full_name\":\"catdog\"}",
         }))
-  
+
         local res = api_client_request({method = "GET",
           path = "/auth",
           headers = {
@@ -184,7 +180,7 @@ for _, strategy in helpers.each_strategy() do
         })
         cookie = assert.response(res).has.header("Set-Cookie")
 
-        auth_page_pair = assert(dao.files:insert {
+        auth_page_pair = assert(db.files:insert {
           name = "page_pair",
           auth = true,
           type = "page",
@@ -192,8 +188,8 @@ for _, strategy in helpers.each_strategy() do
             <h1>auth_page_pair<h2>
           ]]
         })
-  
-        unauth_page_pair = assert(dao.files:insert {
+
+        unauth_page_pair = assert(db.files:insert {
           name = "unauthenticated/page_pair",
           auth = false,
           type = "page",
@@ -201,8 +197,8 @@ for _, strategy in helpers.each_strategy() do
             <h1>unauth_page_pair<h2>
           ]]
         })
-  
-        auth_page_solo = assert(dao.files:insert {
+
+        auth_page_solo = assert(db.files:insert {
           name = "auth_page_solo",
           auth = true,
           type = "page",
@@ -210,8 +206,8 @@ for _, strategy in helpers.each_strategy() do
             <h1>auth_page_solo<h2>
           ]]
         })
-  
-        unauth_page_solo = assert(dao.files:insert {
+
+        unauth_page_solo = assert(db.files:insert {
           name = "unauthenticated/unauth_page_solo",
           auth = false,
           type = "page",
@@ -219,8 +215,8 @@ for _, strategy in helpers.each_strategy() do
             <h1>unauth_page_solo<h2>
           ]]
         })
-  
-        login_page = assert(dao.files:insert {
+
+        login_page = assert(db.files:insert {
           name = "unauthenticated/login",
           auth = false,
           type = "page",
@@ -228,8 +224,8 @@ for _, strategy in helpers.each_strategy() do
             <h1>login<h2>
           ]]
         })
-  
-        not_found_page = assert(dao.files:insert {
+
+        not_found_page = assert(db.files:insert {
           name = "unauthenticated/404",
           auth = false,
           type = "page",
@@ -238,7 +234,7 @@ for _, strategy in helpers.each_strategy() do
           ]]
         })
 
-        namespaced_index_page = assert(dao.files:insert {
+        namespaced_index_page = assert(db.files:insert {
           name = "documentation/index",
           auth = true,
           type = "page",
@@ -247,7 +243,7 @@ for _, strategy in helpers.each_strategy() do
           ]]
         })
 
-        namespaced_page = assert(dao.files:insert {
+        namespaced_page = assert(db.files:insert {
           name = "documentation/page",
           auth = true,
           type = "page",
@@ -258,8 +254,8 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       teardown(function()
-        dao:truncate_table('files')
-        dao:truncate_table('consumers')
+        db:truncate('files')
+        db:truncate('consumers')
       end)
 
       describe("unauthenticated user", function()
@@ -270,7 +266,7 @@ for _, strategy in helpers.each_strategy() do
           })
           local status = res.status
           local body = res.body
-  
+
           assert.equals(200, status)
           assert.equals(1, stringx.count(body, unauth_page_pair.id))
         end)
@@ -282,7 +278,7 @@ for _, strategy in helpers.each_strategy() do
           })
           local status = res.status
           local body = res.body
-  
+
           assert.equals(200, status)
           assert.equals(1, stringx.count(body, unauth_page_pair.id))
         end)
@@ -294,7 +290,7 @@ for _, strategy in helpers.each_strategy() do
           })
           local status = res.status
           local body = res.body
-  
+
           assert.equals(200, status)
           assert.equals(1, stringx.count(body, unauth_page_solo.id))
         end)
@@ -306,7 +302,7 @@ for _, strategy in helpers.each_strategy() do
           })
           local status = res.status
           local body = res.body
-  
+
           assert.equals(200, status)
           assert.equals(1, stringx.count(body, login_page.id))
         end)
@@ -323,11 +319,11 @@ for _, strategy in helpers.each_strategy() do
           })
           local status = res.status
           local body = res.body
-  
+
           assert.equals(200, status)
           assert.equals(1, stringx.count(body, auth_page_pair.id))
         end)
-  
+
         it("can render unauthenticated page with auth pair by explicit name", function()
           local res = gui_client_request({
             method = "GET",
@@ -338,7 +334,7 @@ for _, strategy in helpers.each_strategy() do
           })
           local status = res.status
           local body = res.body
-  
+
           assert.equals(200, status)
           assert.equals(1, stringx.count(body, unauth_page_pair.id))
         end)
@@ -353,7 +349,7 @@ for _, strategy in helpers.each_strategy() do
           })
           local status = res.status
           local body = res.body
-  
+
           assert.equals(200, status)
           assert.equals(1, stringx.count(body, unauth_page_solo.id))
         end)
@@ -368,7 +364,7 @@ for _, strategy in helpers.each_strategy() do
           })
           local status = res.status
           local body = res.body
-  
+
           assert.equals(200, status)
           assert.equals(1, stringx.count(body, auth_page_solo.id))
         end)
@@ -383,7 +379,7 @@ for _, strategy in helpers.each_strategy() do
           })
           local status = res.status
           local body = res.body
-  
+
           assert.equals(200, status)
           assert.equals(1, stringx.count(body, not_found_page.id))
         end)
@@ -400,7 +396,7 @@ for _, strategy in helpers.each_strategy() do
           })
           local status = res.status
           local body = res.body
-  
+
           assert.equals(200, status)
           assert.equals(1, stringx.count(body, namespaced_index_page.id))
         end)
@@ -415,7 +411,7 @@ for _, strategy in helpers.each_strategy() do
           })
           local status = res.status
           local body = res.body
-  
+
           assert.equals(200, status)
           assert.equals(1, stringx.count(body, namespaced_page.id))
         end)
@@ -430,7 +426,7 @@ for _, strategy in helpers.each_strategy() do
           })
           local status = res.status
           local body = res.body
-  
+
           assert.equals(200, status)
           assert.equals(1, stringx.count(body, not_found_page.id))
         end)
@@ -442,7 +438,7 @@ for _, strategy in helpers.each_strategy() do
           })
           local status = res.status
           local body = res.body
-  
+
           assert.equals(200, status)
           assert.equals(1, stringx.count(body, login_page.id))
         end)
@@ -466,7 +462,8 @@ for _, strategy in helpers.each_strategy() do
               },
               headers = {["Content-Type"] = "application/json"},
             })
-            assert.equals(res.status, 201)
+
+            assert.equals(201, res.status)
 
             res = client_request({
               method = "POST",
@@ -511,9 +508,10 @@ for _, strategy in helpers.each_strategy() do
               method = "GET",
               path = "/oidc-test/page_pair",
             })
+
             local status = res.status
             local body = res.body
-    
+
             assert.equals(200, status)
             assert.equals(0, stringx.count(body, oidc_auth_page_pair.id))
             assert.equals(1, stringx.count(body, oidc_unauth_page_pair.id))
@@ -584,7 +582,7 @@ for _, strategy in helpers.each_strategy() do
             })
             local status = res.status
             local body = res.body
-    
+
             assert.equals(200, status)
             assert.equals(0, stringx.count(body, noauth_dashboard.id))
             assert.equals(1, stringx.count(body, noauth_not_found.id))
@@ -595,7 +593,7 @@ for _, strategy in helpers.each_strategy() do
             })
             status = res.status
             body = res.body
-    
+
             assert.equals(200, status)
             assert.equals(0, stringx.count(body, noauth_login.id))
             assert.equals(1, stringx.count(body, noauth_not_found.id))
@@ -606,7 +604,7 @@ for _, strategy in helpers.each_strategy() do
             })
             status = res.status
             body = res.body
-    
+
             assert.equals(200, status)
             assert.equals(0, stringx.count(body, noauth_register.id))
             assert.equals(1, stringx.count(body, noauth_not_found.id))
@@ -617,7 +615,7 @@ for _, strategy in helpers.each_strategy() do
             })
             status = res.status
             body = res.body
-    
+
             assert.equals(200, status)
             assert.equals(0, stringx.count(body, noauth_settings.id))
             assert.equals(1, stringx.count(body, noauth_not_found.id))
@@ -639,7 +637,7 @@ for _, strategy in helpers.each_strategy() do
           key = "dog",
           meta = "{\"full_name\":\"catdog\"}",
         }))
-  
+
         local res = api_client_request({method = "GET",
           path = "/auth",
           headers = {
@@ -648,7 +646,7 @@ for _, strategy in helpers.each_strategy() do
         })
         cookie = assert.response(res).has.header("Set-Cookie")
 
-        auth_page_pair = assert(dao.files:insert {
+        auth_page_pair = assert(db.files:insert {
           name = "page_pair",
           auth = true,
           type = "page",
@@ -659,8 +657,8 @@ for _, strategy in helpers.each_strategy() do
             {{> nested_partial_parent }}
           ]]
         })
-  
-        unauth_page_pair = assert(dao.files:insert {
+
+        unauth_page_pair = assert(db.files:insert {
           name = "unauthenticated/page_pair",
           auth = false,
           type = "page",
@@ -672,7 +670,7 @@ for _, strategy in helpers.each_strategy() do
           ]]
         })
 
-        auth_partial = assert(dao.files:insert {
+        auth_partial = assert(db.files:insert {
           name = "partial",
           auth = true,
           type = "partial",
@@ -681,7 +679,7 @@ for _, strategy in helpers.each_strategy() do
           ]]
         })
 
-        unauth_partial = assert(dao.files:insert {
+        unauth_partial = assert(db.files:insert {
           name = "unauthenticated/partial",
           auth = false,
           type = "partial",
@@ -690,7 +688,7 @@ for _, strategy in helpers.each_strategy() do
           ]]
         })
 
-        nested_partial_parent = assert(dao.files:insert {
+        nested_partial_parent = assert(db.files:insert {
           name = "nested_partial_parent",
           auth = true,
           type = "partial",
@@ -700,7 +698,7 @@ for _, strategy in helpers.each_strategy() do
           ]]
         })
 
-        nested_partial_child = assert(dao.files:insert {
+        nested_partial_child = assert(db.files:insert {
           name = "nested_partial_child",
           auth = true,
           type = "partial",
@@ -709,7 +707,7 @@ for _, strategy in helpers.each_strategy() do
           ]]
         })
 
-        infinite_loop_page = assert(dao.files:insert {
+        infinite_loop_page = assert(db.files:insert {
           name = "infinite_loop_page",
           auth = true,
           type = "page",
@@ -719,7 +717,7 @@ for _, strategy in helpers.each_strategy() do
           ]]
         })
 
-        infinite_loop_partial = assert(dao.files:insert {
+        infinite_loop_partial = assert(db.files:insert {
           name = "infinite_loop_partial",
           auth = true,
           type = "partial",
@@ -729,7 +727,7 @@ for _, strategy in helpers.each_strategy() do
           ]]
         })
 
-        formatting_page = assert(dao.files:insert {
+        formatting_page = assert(db.files:insert {
           name = "formatting_page",
           auth = true,
           type = "page",
@@ -747,7 +745,7 @@ for _, strategy in helpers.each_strategy() do
           ]]
         })
 
-        block_syntax_partial = assert(dao.files:insert {
+        block_syntax_partial = assert(db.files:insert {
           name = "block_syntax_partial",
           auth = true,
           type = "partial",
@@ -756,7 +754,7 @@ for _, strategy in helpers.each_strategy() do
           ]]
         })
 
-        strange_spacing_partial = assert(dao.files:insert {
+        strange_spacing_partial = assert(db.files:insert {
           name = "strange_spacing_partial",
           auth = true,
           type = "partial",
@@ -765,7 +763,7 @@ for _, strategy in helpers.each_strategy() do
           ]]
         })
 
-        partial_with_argument = assert(dao.files:insert {
+        partial_with_argument = assert(db.files:insert {
           name = "partial_with_argument",
           auth = true,
           type = "partial",
@@ -774,7 +772,7 @@ for _, strategy in helpers.each_strategy() do
           ]]
         })
 
-        improper_format_partial = assert(dao.files:insert {
+        improper_format_partial = assert(db.files:insert {
           name = "improper_format_partial",
           auth = true,
           type = "partial",
@@ -785,8 +783,8 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       teardown(function()
-        dao:truncate_table('files')
-        dao:truncate_table('consumers')
+        db:truncate('files')
+        db:truncate('consumers')
       end)
 
       describe("authenticated user", function()
@@ -800,12 +798,12 @@ for _, strategy in helpers.each_strategy() do
           })
           local status = res.status
           local body = res.body
-  
+
           assert.equals(status, 200)
           assert.equals(1, stringx.count(body, auth_page_pair.id))
           assert.equals(1, stringx.count(body, auth_partial.id))
         end)
-  
+
         it("can render unauthenticated partials", function()
           local res = gui_client_request({
             method = "GET",
@@ -816,7 +814,7 @@ for _, strategy in helpers.each_strategy() do
           })
           local status = res.status
           local body = res.body
-  
+
           assert.equals(status, 200)
           assert.equals(1, stringx.count(body, auth_page_pair.id))
           assert.equals(1, stringx.count(body, unauth_partial.id))
@@ -831,12 +829,12 @@ for _, strategy in helpers.each_strategy() do
           })
           local status = res.status
           local body = res.body
-  
+
           assert.equals(status, 200)
           assert.equals(1, stringx.count(body, unauth_page_pair.id))
           assert.equals(1, stringx.count(body, unauth_partial.id))
         end)
-  
+
         it("cannot render authenticated partials", function()
           local res = gui_client_request({
             method = "GET",
@@ -844,7 +842,7 @@ for _, strategy in helpers.each_strategy() do
           })
           local status = res.status
           local body = res.body
-  
+
           assert.equals(status, 200)
           assert.equals(1, stringx.count(body, unauth_page_pair.id))
           assert.equals(0, stringx.count(body, auth_partial.id))
@@ -862,7 +860,7 @@ for _, strategy in helpers.each_strategy() do
           })
           local status = res.status
           local body = res.body
-  
+
           assert.equals(status, 200)
           assert.equals(1, stringx.count(body, auth_page_pair.id))
           assert.equals(1, stringx.count(body, nested_partial_parent.id))
@@ -879,7 +877,7 @@ for _, strategy in helpers.each_strategy() do
           })
           local status = res.status
           local body = res.body
-  
+
           assert.equals(status, 200)
           assert.equals(1, stringx.count(body, infinite_loop_page.id))
           assert.equals(1, stringx.count(body, infinite_loop_partial.id))
@@ -896,7 +894,7 @@ for _, strategy in helpers.each_strategy() do
           })
           local status = res.status
           local body = res.body
-  
+
           assert.equals(status, 200)
           assert.equals(1, stringx.count(body, formatting_page.id))
           assert.equals(1, stringx.count(body, block_syntax_partial.id))
@@ -908,7 +906,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("specs", function()
-      local root_spec_loader, auth_nested_spec_loader, unauth_nested_spec_loader,  
+      local root_spec_loader, auth_nested_spec_loader, unauth_nested_spec_loader,
             auth_spec1, auth_spec2, unauth_spec1, unauth_spec2,
             auth_nested_spec, unauth_nested_spec, login_page,
             spec_with_spaces
@@ -919,7 +917,7 @@ for _, strategy in helpers.each_strategy() do
           key = "dog",
           meta = "{\"full_name\":\"catdog\"}",
         }))
-  
+
         local res = api_client_request({method = "GET",
           path = "/auth",
           headers = {
@@ -928,7 +926,7 @@ for _, strategy in helpers.each_strategy() do
         })
         cookie = assert.response(res).has.header("Set-Cookie")
 
-        root_spec_loader = assert(dao.files:insert {
+        root_spec_loader = assert(db.files:insert {
           name = "loader",
           auth = true,
           type = "page",
@@ -937,7 +935,7 @@ for _, strategy in helpers.each_strategy() do
           ]]
         })
 
-        auth_nested_spec_loader = assert(dao.files:insert {
+        auth_nested_spec_loader = assert(db.files:insert {
           name = "abc/loader",
           auth = true,
           type = "page",
@@ -946,7 +944,7 @@ for _, strategy in helpers.each_strategy() do
           ]]
         })
 
-        unauth_nested_spec_loader = assert(dao.files:insert {
+        unauth_nested_spec_loader = assert(db.files:insert {
           name = "unauthenticated/xyz/loader",
           auth = false,
           type = "page",
@@ -955,7 +953,7 @@ for _, strategy in helpers.each_strategy() do
           ]]
         })
 
-        auth_spec1 = assert(dao.files:insert {
+        auth_spec1 = assert(db.files:insert {
           name = "auth_spec1",
           auth = true,
           type = "spec",
@@ -964,7 +962,7 @@ for _, strategy in helpers.each_strategy() do
           ]]
         })
 
-        auth_spec2 = assert(dao.files:insert {
+        auth_spec2 = assert(db.files:insert {
           name = "auth_spec2",
           auth = true,
           type = "spec",
@@ -973,7 +971,7 @@ for _, strategy in helpers.each_strategy() do
           ]]
         })
 
-        unauth_spec1 = assert(dao.files:insert {
+        unauth_spec1 = assert(db.files:insert {
           name = "unauthenticated/unauth_spec1",
           auth = false,
           type = "spec",
@@ -982,7 +980,7 @@ for _, strategy in helpers.each_strategy() do
           ]]
         })
 
-        unauth_spec2 = assert(dao.files:insert {
+        unauth_spec2 = assert(db.files:insert {
           name = "unauthenticated/unauth_spec2",
           auth = false,
           type = "spec",
@@ -991,7 +989,7 @@ for _, strategy in helpers.each_strategy() do
           ]]
         })
 
-        auth_nested_spec = assert(dao.files:insert {
+        auth_nested_spec = assert(db.files:insert {
           name = "doggos/auth_nested_spec",
           auth = true,
           type = "spec",
@@ -1000,7 +998,7 @@ for _, strategy in helpers.each_strategy() do
           ]]
         })
 
-        unauth_nested_spec = assert(dao.files:insert {
+        unauth_nested_spec = assert(db.files:insert {
           name = "unauthenticated/floofs/unauth_nested_spec",
           auth = false,
           type = "spec",
@@ -1009,7 +1007,7 @@ for _, strategy in helpers.each_strategy() do
           ]]
         })
 
-        spec_with_spaces = assert(dao.files:insert {
+        spec_with_spaces = assert(db.files:insert {
           name = "spec with spaces",
           auth = true,
           type = "spec",
@@ -1018,7 +1016,7 @@ for _, strategy in helpers.each_strategy() do
           ]]
         })
 
-        login_page = assert(dao.files:insert {
+        login_page = assert(db.files:insert {
           name = "unauthenticated/login",
           auth = false,
           type = "page",
@@ -1029,8 +1027,8 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       teardown(function()
-        dao:truncate_table('files')
-        dao:truncate_table('consumers')
+        db:truncate('files')
+        db:truncate('consumers')
       end)
 
       describe("authenticated user", function()
@@ -1044,7 +1042,7 @@ for _, strategy in helpers.each_strategy() do
           })
           local status = res.status
           local body = res.body
-  
+
           assert.equals(200, status)
           assert.equals(1, stringx.count(body, root_spec_loader.id))
           assert.equals(1, stringx.count(body, auth_spec1.id))
@@ -1074,7 +1072,7 @@ for _, strategy in helpers.each_strategy() do
           })
           local status = res.status
           local body = res.body
-  
+
           assert.equals(200, status)
           assert.equals(1, stringx.count(body, root_spec_loader.id))
           assert.equals(1, stringx.count(body, unauth_spec1.id))
@@ -1104,7 +1102,7 @@ for _, strategy in helpers.each_strategy() do
           })
           local status = res.status
           local body = res.body
-  
+
           assert.equals(200, status)
           assert.equals(1, stringx.count(body, auth_nested_spec_loader.id))
           assert.equals(1, stringx.count(body, auth_spec1.id))
@@ -1134,7 +1132,7 @@ for _, strategy in helpers.each_strategy() do
           })
           local status = res.status
           local body = res.body
-  
+
           assert.equals(200, status)
           assert.equals(1, stringx.count(body, auth_nested_spec_loader.id))
           assert.equals(1, stringx.count(body, unauth_spec1.id))
@@ -1164,7 +1162,7 @@ for _, strategy in helpers.each_strategy() do
           })
           local status = res.status
           local body = res.body
-  
+
           assert.equals(200, status)
           assert.equals(1, stringx.count(body, unauth_nested_spec_loader.id))
           assert.equals(1, stringx.count(body, unauth_spec1.id))
@@ -1194,7 +1192,7 @@ for _, strategy in helpers.each_strategy() do
           })
           local status = res.status
           local body = res.body
-  
+
           assert.equals(200, status)
           assert.equals(1, stringx.count(body, auth_nested_spec_loader.id))
           assert.equals(1, stringx.count(body, auth_nested_spec.id))
@@ -1210,7 +1208,7 @@ for _, strategy in helpers.each_strategy() do
           })
           local status = res.status
           local body = res.body
-  
+
           assert.equals(200, status)
           assert.equals(1, stringx.count(body, auth_nested_spec_loader.id))
           assert.equals(1, stringx.count(body, unauth_nested_spec.id))
@@ -1226,7 +1224,7 @@ for _, strategy in helpers.each_strategy() do
           })
           local status = res.status
           local body = res.body
-  
+
           assert.equals(200, status)
           assert.equals(1, stringx.count(body, unauth_nested_spec_loader.id))
           assert.equals(1, stringx.count(body, unauth_nested_spec.id))
@@ -1241,7 +1239,7 @@ for _, strategy in helpers.each_strategy() do
           })
           local status = res.status
           local body = res.body
-  
+
           assert.equals(200, status)
           assert.equals(1, stringx.count(body, unauth_nested_spec_loader.id))
           assert.equals(1, stringx.count(body, unauth_spec1.id))
@@ -1265,7 +1263,7 @@ for _, strategy in helpers.each_strategy() do
           })
           local status = res.status
           local body = res.body
-  
+
           assert.equals(200, status)
           assert.equals(1, stringx.count(body, login_page.id))
           assert.equals(0, stringx.count(body, root_spec_loader.id))
@@ -1291,7 +1289,7 @@ for _, strategy in helpers.each_strategy() do
           })
           local status = res.status
           local body = res.body
-  
+
           assert.equals(200, status)
           assert.equals(1, stringx.count(body, login_page.id))
           assert.equals(0, stringx.count(body, unauth_nested_spec_loader.id))
@@ -1317,7 +1315,7 @@ for _, strategy in helpers.each_strategy() do
           })
           local status = res.status
           local body = res.body
-  
+
           assert.equals(200, status)
           assert.equals(1, stringx.count(body, unauth_nested_spec_loader.id))
           assert.equals(1, stringx.count(body, unauth_nested_spec.id))
@@ -1330,7 +1328,7 @@ for _, strategy in helpers.each_strategy() do
           })
           local status = res.status
           local body = res.body
-  
+
           assert.equals(200, status)
           assert.equals(1, stringx.count(body, login_page.id))
           assert.equals(0, stringx.count(body, auth_nested_spec_loader.id))
@@ -1344,7 +1342,7 @@ for _, strategy in helpers.each_strategy() do
           })
           local status = res.status
           local body = res.body
-  
+
           assert.equals(200, status)
           assert.equals(1, stringx.count(body, login_page.id))
           assert.equals(0, stringx.count(body, unauth_nested_spec_loader.id))
@@ -1363,7 +1361,7 @@ for _, strategy in helpers.each_strategy() do
           })
           local status = res.status
           local body = res.body
-  
+
           assert.equals(200, status)
           assert.equals(1, stringx.count(body, root_spec_loader.id))
           assert.equals(1, stringx.count(body, spec_with_spaces.id))
