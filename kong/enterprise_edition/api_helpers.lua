@@ -322,7 +322,7 @@ function _M.validate_jwt(self, db, helpers, token_optional)
   end
 
   if not self.params.token or self.params.token == "" then
-    return kong.exit(400, { message = "token is required" })
+    return kong.response.exit(400, { message = "token is required" })
   end
 
   -- Parse and ensure that jwt contains the correct claims/headers.
