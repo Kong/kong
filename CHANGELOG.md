@@ -235,7 +235,7 @@ our installation assets.
 
 - All bintray repositories have been renamed from `kong-community-edition-*`
   to `kong-*`.
-- All Kong packages have been renamed from `kong-community-edition` to `kong`
+- All Kong packages have been renamed from `kong-community-edition` to `kong`.
 
 For more details about the updated installation, please visit the official docs:
 [https://konghq.com/install](https://konghq.com/install/)
