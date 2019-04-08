@@ -339,20 +339,35 @@ function _M.update(params, admin_to_update, opts)
     return nil, err
   end
 
-  -- update any basic-auth credential for this user. Have to find it first.
-  local creds, err = db.basicauth_credentials:page_for_consumer(admin.consumer)
-  if err then
-    return nil, err
-  end
-
-  if creds[1] then
-    local _, err = workspaces.run_with_ws_scope({},
-                   db.basicauth_credentials.update,
-                   db.basicauth_credentials,
-                   { id = creds[1].id },
-                   { username = admin.username })
+  -- keep consumer and credential names in sync with admin
+  if params.username ~= admin_to_update.username then
+    -- update consumer
+    local _, err = workspaces.run_with_ws_scope(
+      {},
+      db.consumers.update,
+      db.consumers,
+      { id = admin_to_update.consumer.id },
+      { username = params.username }
+    )
     if err then
       return nil, err
+    end
+
+    -- update basic-auth credential, if any
+    local creds, err = db.basicauth_credentials:page_for_consumer(admin.consumer)
+    if err then
+      return nil, err
+    end
+
+    if creds[1] then
+      local _, err = workspaces.run_with_ws_scope({},
+                     db.basicauth_credentials.update,
+                     db.basicauth_credentials,
+                     { id = creds[1].id },
+                     { username = admin.username })
+      if err then
+        return nil, err
+      end
     end
   end
 

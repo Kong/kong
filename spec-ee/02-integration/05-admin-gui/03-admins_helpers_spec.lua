@@ -299,7 +299,7 @@ for _, strategy in helpers.each_strategy() do
         assert.same(nil, res.body.custom_id)
       end)
 
-      it("keeps admin.username and basicauth_credentials.name in sync", function()
+      it("keeps username for admin, consumer, and credential in sync", function()
         -- create a credential to keep in sync
         assert(db.basicauth_credentials:insert({
           consumer = admin.consumer,
@@ -311,13 +311,14 @@ for _, strategy in helpers.each_strategy() do
           username = admin.username .. utils.uuid(),
         }
 
-        local res, err = admins_helpers.update(params, admin, { db = db })
-        assert.is_nil(err)
+        local res = assert(admins_helpers.update(params, admin, { db = db }))
         assert.same(params.username, res.body.username)
 
-        local creds, err = db.basicauth_credentials:page_for_consumer(admin.consumer)
-        assert.is_nil(err)
+        local creds = assert(db.basicauth_credentials:page_for_consumer(admin.consumer))
         assert.same(params.username, creds[1].username)
+
+        local consumers = assert(db.admins:page_for_consumer(admin.consumer))
+        assert.same(params.username, consumers[1].username)
       end)
     end)
 

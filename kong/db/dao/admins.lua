@@ -58,9 +58,9 @@ function _Admins:insert(admin, options)
   end
 
   -- create consumer
-  -- username and custom id have to be unique
+  -- username must be same as admin.username for ldap-auth-advanced to work
   local consumer, err = self.db.consumers:insert({
-    username  = unique_name,
+    username  = admin.username,
     type = enums.CONSUMERS.TYPE.ADMIN,
   })
 

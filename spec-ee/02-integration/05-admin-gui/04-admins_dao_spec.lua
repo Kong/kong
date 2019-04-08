@@ -79,8 +79,8 @@ for _, strategy in helpers.each_strategy() do
         assert.same(enums.CONSUMERS.STATUS.INVITED, admin.status)
       end)
 
-      it("generates unique consumer.username and rbac_user.name", function()
-        -- we aren't keeping these in sync with admin name, so they need
+      it("generates unique rbac_user.name", function()
+        -- we aren't keeping this in sync with admin name, so it needs
         -- to be unique. That way if you create an admin 'kinman' and change
         -- the name to 'karen' and back to 'kinman' you don't get a warning
         -- that 'kinman' already exists.
@@ -92,19 +92,8 @@ for _, strategy in helpers.each_strategy() do
 
         local admin, err = admins:insert(admin_params)
         assert.is_nil(err)
-        assert.not_same(admin.username, admin.consumer.username)
+        assert.same(admin.username, admin.consumer.username)
         assert.not_same(admin.username, admin.rbac_user.name)
-
-        local admin_params = {
-          custom_id = "admin-2-custom_id",
-          email = "admin-2@konghq.com",
-          status = enums.CONSUMERS.STATUS.APPROVED,
-        }
-
-        local admin, err = admins:insert(admin_params)
-        assert.is_nil(err)
-        assert.not_same(admin.custom_id, admin.consumer.custom_id)
-        assert.not_same(admin.custom_id, admin.rbac_user.name)
       end)
 
       it("validates user input", function()
