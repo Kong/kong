@@ -24,10 +24,12 @@
 -- |[[    ]]|
 -- ==========
 
+
 pcall(require, "luarocks.loader")
 require "resty.core"
-local constants = require "kong.constants"
 
+
+local constants = require "kong.constants"
 do
   -- let's ensure the required shared dictionaries are
   -- declared via lua_shared_dict in the Nginx conf
@@ -48,6 +50,7 @@ do
     }
   end
 end
+
 
 require("kong.globalpatches")()
 
@@ -78,6 +81,7 @@ local plugins_iterator = require "kong.runloop.plugins_iterator"
 local balancer_execute = require("kong.runloop.balancer").execute
 local kong_error_handlers = require "kong.error_handlers"
 
+
 local kong             = kong
 local ngx              = ngx
 local header           = ngx.header
@@ -86,6 +90,7 @@ local ngx_ERR          = ngx.ERR
 local ngx_WARN         = ngx.WARN
 local ngx_CRIT         = ngx.CRIT
 local ngx_DEBUG        = ngx.DEBUG
+local table            = table
 local ipairs           = ipairs
 local assert           = assert
 local tostring         = tostring
@@ -98,24 +103,21 @@ local set_ssl_ctx      = ngx_balancer.set_ssl_ctx
 local set_timeouts     = ngx_balancer.set_timeouts
 local set_more_tries   = ngx_balancer.set_more_tries
 
+
 local ffi = require "ffi"
 local cast = ffi.cast
 local voidpp = ffi.typeof("void**")
+
 
 local TLS_SCHEMES = {
   https = true,
   tls = true,
 }
 
+
 local configured_plugins
 local loaded_plugins
 local schema_state
-
-
--- Kong public context handlers.
--- @section kong_handlers
-
-local Kong = {}
 
 
 local function sort_plugins_for_execution(kong_conf, db, plugin_list)
@@ -129,6 +131,7 @@ local function sort_plugins_for_execution(kong_conf, db, plugin_list)
   -- add reports plugin if not disabled
   if kong_conf.anonymous_reports then
     local reports = require "kong.reports"
+
     reports.configure_ping(kong_conf)
     reports.add_ping_value("database_version", db.infos.db_ver)
     reports.toggle(true)
@@ -137,6 +140,20 @@ local function sort_plugins_for_execution(kong_conf, db, plugin_list)
       name = "reports",
       handler = reports,
     }
+  end
+end
+
+
+local function execute_plugins(ctx, phase, load_configuration)
+  for plugin, plugin_conf in plugins_iterator(ctx, loaded_plugins,
+    configured_plugins,
+    load_configuration) do
+    kong_global.set_named_ctx(kong, "plugin", plugin_conf)
+    kong_global.set_namespaced_log(kong, plugin.name)
+
+    plugin.handler[phase](plugin.handler, plugin_conf)
+
+    kong_global.reset_log(kong)
   end
 end
 
@@ -150,9 +167,16 @@ local function flush_delayed_response(ctx)
   end
 
   kong.response.exit(ctx.delayed_response.status_code,
-                     ctx.delayed_response.content,
-                     ctx.delayed_response.headers)
+    ctx.delayed_response.content,
+    ctx.delayed_response.headers)
 end
+
+
+-- Kong public context handlers.
+-- @section kong_handlers
+
+
+local Kong = {}
 
 
 function Kong.init()
@@ -180,6 +204,7 @@ function Kong.init()
     default_client_ssl_ctx = http_tls.new_client_context()
     default_client_ssl_ctx:setVerify(openssl_ssl.VERIFY_NONE)
     default_client_ssl_ctx:setAlpnProtos { "http/1.1" }
+
     -- TODO: copy proxy_ssl_* flags?
     if config.client_ssl then
       local pem_key = assert(pl_utils.readfile(config.client_ssl_cert_key))
@@ -201,7 +226,6 @@ function Kong.init()
   schema_state = assert(db:schema_state())
   if schema_state.needs_bootstrap  then
     error("database needs bootstrap; run 'kong migrations bootstrap'")
-
   elseif schema_state.new_migrations then
     error("new migrations available; run 'kong migrations list'")
   end
@@ -223,7 +247,7 @@ function Kong.init()
   do
     local origins = {}
 
-    for i, v in ipairs(config.origins) do
+    for _, v in ipairs(config.origins) do
       -- Validated in conf_loader
       local from_scheme, from_authority, to_scheme, to_authority =
         v:match("^(%a[%w+.-]*)://([^=]+:[%d]+)=(%a[%w+.-]*)://(.+)$")
@@ -237,10 +261,8 @@ function Kong.init()
       if to.port == nil then
         if to_scheme == "http" then
           to.port = 80
-
         elseif to_scheme == "https" then
           to.port = 443
-
         else
           error("scheme has unknown default port")
         end
@@ -281,9 +303,11 @@ local function list_migrations(migtable)
     for _, mig in ipairs(t.migrations) do
       table.insert(mignames, mig.name)
     end
+
     table.insert(list, string.format("%s (%s)", t.subsystem,
                        table.concat(mignames, ", ")))
   end
+
   return table.concat(list, " ")
 end
 
@@ -305,7 +329,6 @@ function Kong.init_worker()
     ngx_log(ngx_CRIT, "could not init DB: ", err)
     return
   end
-
 
   if ngx.worker.id() == 0 then
     if schema_state.missing_migrations then
@@ -361,6 +384,7 @@ function Kong.init_worker()
   end
 end
 
+
 function Kong.ssl_certificate()
   kong_global.set_phase(kong, PHASES.certificate)
 
@@ -369,13 +393,9 @@ function Kong.ssl_certificate()
   runloop.certificate.before(ctx)
 
   configured_plugins = runloop.get_plugins()
-  for plugin, plugin_conf in plugins_iterator(ctx, loaded_plugins,
-                                              configured_plugins, true) do
-    kong_global.set_namespaced_log(kong, plugin.name)
-    plugin.handler:certificate(plugin_conf)
-    kong_global.reset_log(kong)
-  end
+  execute_plugins(ctx, "certificate", true)
 end
+
 
 function Kong.balancer()
   kong_global.set_phase(kong, PHASES.balancer)
@@ -384,6 +404,7 @@ function Kong.balancer()
   local balancer_data = ctx.balancer_data
   local tries = balancer_data.tries
   local current_try = {}
+
   balancer_data.try_count = balancer_data.try_count + 1
   tries[balancer_data.try_count] = current_try
 
@@ -473,6 +494,7 @@ function Kong.balancer()
   runloop.balancer.after(ctx)
 end
 
+
 function Kong.rewrite()
   kong_resty_ctx.stash_ref()
   kong_global.set_phase(kong, PHASES.rewrite)
@@ -485,18 +507,11 @@ function Kong.rewrite()
   -- route will have been identified, hence we'll just be executing the global
   -- plugins
   configured_plugins = runloop.get_plugins()
-  for plugin, plugin_conf in plugins_iterator(ctx, loaded_plugins,
-                                              configured_plugins, true) do
-    kong_global.set_named_ctx(kong, "plugin", plugin_conf)
-    kong_global.set_namespaced_log(kong, plugin.name)
-
-    plugin.handler:rewrite(plugin_conf)
-
-    kong_global.reset_log(kong)
-  end
+  execute_plugins(ctx, "rewrite", true)
 
   runloop.rewrite.after(ctx)
 end
+
 
 function Kong.preread()
   kong_global.set_phase(kong, PHASES.preread)
@@ -506,18 +521,11 @@ function Kong.preread()
   runloop.preread.before(ctx)
 
   configured_plugins = runloop.get_plugins()
-  for plugin, plugin_conf in plugins_iterator(ctx, loaded_plugins,
-                                              configured_plugins, true) do
-    kong_global.set_named_ctx(kong, "plugin", plugin_conf)
-    kong_global.set_namespaced_log(kong, plugin.name)
-
-    plugin.handler:preread(plugin_conf)
-
-    kong_global.reset_log(kong)
-  end
+  execute_plugins(ctx, "preread", true)
 
   runloop.preread.after(ctx)
 end
+
 
 function Kong.access()
   kong_global.set_phase(kong, PHASES.access)
@@ -555,6 +563,7 @@ function Kong.access()
   runloop.access.after(ctx)
 end
 
+
 function Kong.header_filter()
   kong_global.set_phase(kong, PHASES.header_filter)
 
@@ -562,54 +571,33 @@ function Kong.header_filter()
 
   runloop.header_filter.before(ctx)
 
-  for plugin, plugin_conf in plugins_iterator(ctx, loaded_plugins,
-                                              configured_plugins) do
-    kong_global.set_named_ctx(kong, "plugin", plugin_conf)
-    kong_global.set_namespaced_log(kong, plugin.name)
-
-    plugin.handler:header_filter(plugin_conf)
-
-    kong_global.reset_log(kong)
-  end
+  execute_plugins(ctx, "header_filter")
 
   runloop.header_filter.after(ctx)
 end
+
 
 function Kong.body_filter()
   kong_global.set_phase(kong, PHASES.body_filter)
 
   local ctx = ngx.ctx
 
-  for plugin, plugin_conf in plugins_iterator(ctx, loaded_plugins,
-                                              configured_plugins) do
-    kong_global.set_named_ctx(kong, "plugin", plugin_conf)
-    kong_global.set_namespaced_log(kong, plugin.name)
-
-    plugin.handler:body_filter(plugin_conf)
-
-    kong_global.reset_log(kong)
-  end
+  execute_plugins(ctx, "body_filter")
 
   runloop.body_filter.after(ctx)
 end
+
 
 function Kong.log()
   kong_global.set_phase(kong, PHASES.log)
 
   local ctx = ngx.ctx
 
-  for plugin, plugin_conf in plugins_iterator(ctx, loaded_plugins,
-                                              configured_plugins) do
-    kong_global.set_named_ctx(kong, "plugin", plugin_conf)
-    kong_global.set_namespaced_log(kong, plugin.name)
-
-    plugin.handler:log(plugin_conf)
-
-    kong_global.reset_log(kong)
-  end
+  execute_plugins(ctx, "log")
 
   runloop.log.after(ctx)
 end
+
 
 function Kong.handle_error()
   kong_resty_ctx.apply_ref()
@@ -627,6 +615,7 @@ function Kong.handle_error()
 
   return kong_error_handlers(ngx)
 end
+
 
 function Kong.serve_admin_api(options)
   kong_global.set_phase(kong, PHASES.admin_api)
