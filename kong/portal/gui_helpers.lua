@@ -26,6 +26,12 @@ function _M.prepare_index(self)
 end
 
 
+function _M.prepare_sitemap(self)
+  local pages = renderer.compile_sitemap(self)
+  self.xml_urlset = pages
+end
+
+
 function _M.set_workspace_by_subdomain(self)
   self.workspaces = {}
 

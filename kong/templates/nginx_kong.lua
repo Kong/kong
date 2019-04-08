@@ -307,6 +307,10 @@ server {
     location ~* \.(jpg|jpeg|png|gif|ico|css|ttf|js)$ {
         root portal;
 
+        header_filter_by_lua_block {
+            ngx.header["server"] = nil
+        }
+
         expires 90d;
         add_header Cache-Control 'public';
         add_header X-Frame-Options 'sameorigin';
@@ -319,6 +323,10 @@ server {
     location / {
         root portal;
         default_type text/html;
+
+        header_filter_by_lua_block {
+            ngx.header["server"] = nil
+        }
 
         content_by_lua_block {
             Kong.serve_portal_gui({
@@ -337,6 +345,10 @@ server {
     }
 
     location /robots.txt {
+        header_filter_by_lua_block {
+            ngx.header["server"] = nil
+        }
+
         return 200 'User-agent: *\nDisallow: /';
     }
 }
