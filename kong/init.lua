@@ -231,7 +231,7 @@ end
 
 
 local function parse_declarative_config(kong_config)
-  if not kong_config.database == "off" then
+  if kong_config.database ~= "off" then
     return {}
   end
 
