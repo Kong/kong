@@ -2,6 +2,16 @@ local kong         = kong
 local setmetatable = setmetatable
 
 
+local COMBO_R   = 1
+local COMBO_S   = 2
+local COMBO_RS  = 3
+local COMBO_C   = 4
+local COMBO_RC  = 5
+local COMBO_SC  = 6
+local COMBO_RSC = 7
+local COMBO_GLOBAL = 0
+
+
 -- Loads a plugin config from the datastore.
 -- @return plugin config table or an empty sentinel table in case of a db-miss
 local function load_plugin_into_memory(key)
@@ -71,6 +81,7 @@ end
 
 local function get_next(self)
   local i = self.i + 1
+  local combos = self.combos
 
   local plugin = self.loaded_plugins[i]
   if not plugin then
@@ -112,56 +123,58 @@ local function get_next(self)
 
     repeat
 
-      if route_id and service_id and consumer_id then
+      if combos[COMBO_RSC] and route_id and service_id and consumer_id then
         plugin_configuration = load_plugin_configuration(ctx, route_id, service_id, consumer_id, plugin_name)
         if plugin_configuration then
           break
         end
       end
 
-      if route_id and consumer_id then
+      if combos[COMBO_RC] and route_id and consumer_id then
         plugin_configuration = load_plugin_configuration(ctx, route_id, nil, consumer_id, plugin_name)
         if plugin_configuration then
           break
         end
       end
 
-      if service_id and consumer_id then
+      if combos[COMBO_SC] and service_id and consumer_id then
         plugin_configuration = load_plugin_configuration(ctx, nil, service_id, consumer_id, plugin_name)
         if plugin_configuration then
           break
         end
       end
 
-      if route_id and service_id then
+      if combos[COMBO_RS] and route_id and service_id then
         plugin_configuration = load_plugin_configuration(ctx, route_id, service_id, nil, plugin_name)
         if plugin_configuration then
           break
         end
       end
 
-      if consumer_id then
+      if combos[COMBO_C] and consumer_id then
         plugin_configuration = load_plugin_configuration(ctx, nil, nil, consumer_id, plugin_name)
         if plugin_configuration then
           break
         end
       end
 
-      if route_id then
+      if combos[COMBO_R] and route_id then
         plugin_configuration = load_plugin_configuration(ctx, route_id, nil, nil, plugin_name)
         if plugin_configuration then
           break
         end
       end
 
-      if service_id then
+      if combos[COMBO_S] and service_id then
         plugin_configuration = load_plugin_configuration(ctx, nil, service_id, nil, plugin_name)
         if plugin_configuration then
           break
         end
       end
 
-      plugin_configuration = load_plugin_configuration(ctx, nil, nil, nil, plugin_name)
+      if combos[COMBO_GLOBAL] then
+        plugin_configuration = load_plugin_configuration(ctx, nil, nil, nil, plugin_name)
+      end
 
     until true
 
@@ -191,6 +204,7 @@ local plugin_iter_mt = { __call = get_next }
 -- avoid it.
 -- @treturn function iterator
 local function iter_plugins_for_req(ctx, loaded_plugins, configured_plugins,
+                                    configured_plugin_combos,
                                     access_or_cert_ctx)
   if not ctx.plugins_for_request then
     ctx.plugins_for_request = {}
@@ -203,6 +217,7 @@ local function iter_plugins_for_req(ctx, loaded_plugins, configured_plugins,
     service               = ctx.service,
     loaded_plugins        = loaded_plugins,
     configured_plugins    = configured_plugins,
+    combos                = configured_plugin_combos,
     access_or_cert_ctx    = access_or_cert_ctx,
   }
 

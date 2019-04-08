@@ -115,6 +115,7 @@ local PLUGINS_MAP_MUTEX_OPTS
 local declarative_entities
 local plugins_map_version
 local configured_plugins
+local configured_plugin_combos
 local loaded_plugins
 local schema_state
 
@@ -132,6 +133,7 @@ end
 
 local function build_plugins_map(db, version)
   local map = {}
+  local combos = {}
 
   for plugin, err in db.plugins:each(1000) do
     if err then
@@ -140,6 +142,11 @@ local function build_plugins_map(db, version)
 
     if plugin_protocols_match_current_subsystem(plugin) then
       map[plugin.name] = true
+
+      local combo_key = (plugin.route and 1 or 0)
+                      + (plugin.service and 2 or 0)
+                      + (plugin.consumer and 4 or 0)
+      combos[combo_key] = true
     end
   end
 
@@ -148,6 +155,7 @@ local function build_plugins_map(db, version)
   end
 
   configured_plugins = map
+  configured_plugin_combos = combos
 
   return true
 end
@@ -564,7 +572,8 @@ function Kong.ssl_certificate()
   end
 
   for plugin, plugin_conf in plugins_iterator(ctx, loaded_plugins,
-                                              configured_plugins, true) do
+                                              configured_plugins,
+                                              configured_plugin_combos, true) do
     kong_global.set_namespaced_log(kong, plugin.name)
     plugin.handler:certificate(plugin_conf)
     kong_global.reset_log(kong)
@@ -685,7 +694,8 @@ function Kong.rewrite()
   -- route will have been identified, hence we'll just be executing the global
   -- plugins
   for plugin, plugin_conf in plugins_iterator(ctx, loaded_plugins,
-                                              configured_plugins, true) do
+                                              configured_plugins,
+                                              configured_plugin_combos, true) do
     kong_global.set_named_ctx(kong, "plugin", plugin_conf)
     kong_global.set_namespaced_log(kong, plugin.name)
 
@@ -711,7 +721,8 @@ function Kong.preread()
   end
 
   for plugin, plugin_conf in plugins_iterator(ctx, loaded_plugins,
-                                              configured_plugins, true) do
+                                              configured_plugins,
+                                              configured_plugin_combos, true) do
     kong_global.set_named_ctx(kong, "plugin", plugin_conf)
     kong_global.set_namespaced_log(kong, plugin.name)
 
@@ -733,7 +744,8 @@ function Kong.access()
   ctx.delay_response = true
 
   for plugin, plugin_conf in plugins_iterator(ctx, loaded_plugins,
-                                              configured_plugins, true) do
+                                              configured_plugins,
+                                              configured_plugin_combos, true) do
     if not ctx.delayed_response then
       kong_global.set_named_ctx(kong, "plugin", plugin_conf)
       kong_global.set_namespaced_log(kong, plugin.name)
@@ -767,7 +779,8 @@ function Kong.header_filter()
   runloop.header_filter.before(ctx)
 
   for plugin, plugin_conf in plugins_iterator(ctx, loaded_plugins,
-                                              configured_plugins) do
+                                              configured_plugins,
+                                              configured_plugin_combos) do
     kong_global.set_named_ctx(kong, "plugin", plugin_conf)
     kong_global.set_namespaced_log(kong, plugin.name)
 
@@ -785,7 +798,8 @@ function Kong.body_filter()
   local ctx = ngx.ctx
 
   for plugin, plugin_conf in plugins_iterator(ctx, loaded_plugins,
-                                              configured_plugins) do
+                                              configured_plugins,
+                                              configured_plugin_combos) do
     kong_global.set_named_ctx(kong, "plugin", plugin_conf)
     kong_global.set_namespaced_log(kong, plugin.name)
 
@@ -803,7 +817,8 @@ function Kong.log()
   local ctx = ngx.ctx
 
   for plugin, plugin_conf in plugins_iterator(ctx, loaded_plugins,
-                                              configured_plugins) do
+                                              configured_plugins,
+                                              configured_plugin_combos) do
     kong_global.set_named_ctx(kong, "plugin", plugin_conf)
     kong_global.set_namespaced_log(kong, plugin.name)
 
@@ -823,7 +838,9 @@ function Kong.handle_error()
   ctx.KONG_UNEXPECTED = true
 
   if not ctx.plugins_for_request then
-    for _ in plugins_iterator(ctx, loaded_plugins, configured_plugins, true) do
+    for _ in plugins_iterator(ctx, loaded_plugins,
+                              configured_plugins,
+                              configured_plugin_combos, true) do
       -- just build list of plugins
     end
   end
