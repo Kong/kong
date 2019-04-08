@@ -16,7 +16,7 @@ local _server_addr
 local BrainHandler = BasePlugin:extend()
 
 BrainHandler.PRIORITY = 3
-BrainHandler.VERSION = "0.1.0"
+BrainHandler.VERSION = "1.0.0"
 
 function BrainHandler:new()
   BrainHandler.super.new(self, "brain")
