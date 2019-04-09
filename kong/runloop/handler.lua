@@ -153,14 +153,23 @@ local function load_declarative_config()
 end
 
 
-local function prewarm_dns(premature, hosts, count)
+local function prewarm_hostname(premature, host)
+  if premature then
+    return
+  end
+
+  kong.dns.toip(host)
+end
+
+
+local function prewarm_hostnames(premature, hosts, count)
   if premature then
     return
   end
 
   log(DEBUG, "prewarming dns client on worker #", WORKER_ID, "...")
   for i = 1, count do
-    kong.dns.toip(hosts[i])
+    prewarm_hostname(premature, hosts[i])
   end
   log(DEBUG, "prewarming dns client on worker #", WORKER_ID, " done")
 end
@@ -194,7 +203,7 @@ local function cache_services()
   end
 
   if count > 0 then
-    ngx.timer.at(0, prewarm_dns, hosts, count)
+    ngx.timer.at(0, prewarm_hostnames, hosts, count)
   end
 
   return true
@@ -269,7 +278,7 @@ local function register_events()
 
     local entity_channel           = data.schema.table or data.schema.name
     local entity_operation_channel = fmt("%s:%s", entity_channel,
-      data.operation)
+                                         data.operation)
 
     -- crud:routes
     local _, err = worker_events.post_local("crud", entity_channel, data)
@@ -298,7 +307,7 @@ local function register_events()
 
   worker_events.register(function(data)
     if data.operation ~= "create" and
-      data.operation ~= "delete"
+       data.operation ~= "delete"
     then
       -- no need to rebuild the router if we just added a Service
       -- since no Route is pointing to that Service yet.
@@ -306,6 +315,13 @@ local function register_events()
       -- only allowed because no Route is pointing to it anymore.
       log(DEBUG, "[events] Service updated, invalidating router")
       cache:invalidate("router:version")
+    end
+
+    if data.operation == "create" or
+       data.operation == "update" then
+      if utils.hostname_type(data.entity.host) == "name" then
+        ngx.timer.at(0, prewarm_hostname, data.entity.host)
+      end
     end
   end, "crud", "services")
 
@@ -333,8 +349,7 @@ local function register_events()
 
     for sn, err in db.snis:each_for_certificate({ id = certificate.id }, 1000) do
       if err then
-        log(ERR, "[events] could not find associated snis for certificate: ",
-          err)
+        log(ERR, "[events] could not find associated snis for certificate: ", err)
         break
       end
 
@@ -420,8 +435,7 @@ local function register_events()
       entity = data.entity,
     })
     if err then
-      log(ERR, "failed broadcasting upstream ",
-        operation, " to workers: ", err)
+      log(ERR, "failed broadcasting upstream ", operation, " to workers: ", err)
     end
     -- => to cluster_events handler
     local key = fmt("%s:%s:%s", operation, upstream.id, upstream.name)
