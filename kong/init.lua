@@ -411,9 +411,10 @@ function Kong.balancer()
   runloop.balancer.before(ctx)
 
   if balancer_data.try_count > 1 then
-    -- only call balancer on retry, first one is done in `runloop.access.after`
-    -- which runs in the ACCESS context and hence has less limitations than
-    -- this BALANCER context where the retries are executed
+    -- only call balancer on retry, first one is done in `runloop.preread.after`
+    -- or `runloop.access.after` which runs in the prepread or access context and
+    -- hence has less limitations than this balancer context where the retries
+    -- are executed
 
     -- record failure data
     local previous_try = tries[balancer_data.try_count - 1]
