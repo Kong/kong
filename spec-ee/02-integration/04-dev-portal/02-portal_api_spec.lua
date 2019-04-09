@@ -32,25 +32,25 @@ local DEFAULT_CONSUMER = {
   },
 }
 
--- local function insert_files(db)
---   for i = 1, 10 do
---     local file_name = "file-" .. i
---     assert(db.files:upsert_by_name(file_name, {
---       name = file_name,
---       contents = "i-" .. i,
---       type = "partial",
---       auth = i % 2 == 0 and true or false,
---     }))
+local function insert_files(db)
+  for i = 1, 10 do
+    local file_name = "file-" .. i
+    assert(db.files:upsert_by_name(file_name, {
+      name = file_name,
+      contents = "i-" .. i,
+      type = "partial",
+      auth = i % 2 == 0 and true or false,
+    }))
 
---     local file_page_name = "file-page" .. i
---     assert(db.files:upsert_by_name(file_page_name, {
---       name = file_page_name,
---       contents = "i-" .. i,
---       type = "page",
---       auth = i % 2 == 0 and true or false,
---     }))
---   end
--- end
+    local file_page_name = "file-page" .. i
+    assert(db.files:upsert_by_name(file_page_name, {
+      name = file_page_name,
+      contents = "i-" .. i,
+      type = "page",
+      auth = i % 2 == 0 and true or false,
+    }))
+  end
+end
 
 
 local function register_developer(portal_api_client, body)
@@ -309,11 +309,15 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
         end)
       end)
 
-      pending("/files without auth", function()
+      describe("/files without auth", function()
         lazy_setup(function()
           helpers.stop_kong()
           db:truncate()
-          configure_portal(db)
+          configure_portal(db, {
+            portal = true,
+          })
+
+          insert_files(db)
 
           assert(helpers.start_kong({
             database   = strategy,
@@ -693,6 +697,7 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
           helpers.stop_kong()
           assert(db:truncate())
           configure_portal(db)
+          insert_files(db)
 
           assert(helpers.start_kong({
             database   = strategy,
@@ -872,7 +877,7 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
           end)
         end)
 
-        pending("/files [basic-auth]", function()
+        describe("/files [basic-auth]", function()
           describe("GET", function()
             it("returns 401 when unauthenticated", function()
               local res = assert(portal_api_client:send {
@@ -918,7 +923,13 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
               local res_put = assert(portal_api_client:send {
                 method = "PUT",
                 path = "/files",
+                body = {
+                  name = "test",
+                  contents = "hello world",
+                  type = "dog"
+                },
                 headers = {
+                  ["Content-Type"] = "application/json",
                   ["Cookie"] = cookie
                 },
               })
@@ -928,7 +939,13 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
               local res_patch = assert(portal_api_client:send {
                 method = "PATCH",
                 path = "/files",
+                body = {
+                  name = "test",
+                  contents = "hello world",
+                  type = "dog"
+                },
                 headers = {
+                  ["Content-Type"] = "application/json",
                   ["Cookie"] = cookie
                 },
               })
@@ -938,7 +955,13 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
               local res_post = assert(portal_api_client:send {
                 method = "POST",
                 path = "/files",
+                body = {
+                  name = "test",
+                  contents = "hello world",
+                  type = "dog"
+                },
                 headers = {
+                  ["Content-Type"] = "application/json",
                   ["Cookie"] = cookie
                 },
               })
@@ -2304,6 +2327,7 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
           helpers.stop_kong()
           assert(db:truncate())
           configure_portal(db)
+          insert_files(db)
 
           assert(helpers.start_kong({
             database   = strategy,
@@ -2314,6 +2338,7 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
             portal_auto_approve = "off",
             admin_gui_url = "http://localhost:8080",
           }))
+
 
           portal_api_client = assert(ee_helpers.portal_api_client())
 
@@ -2444,7 +2469,7 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
           end)
         end)
 
-        pending("/files [key-auth]", function()
+        describe("/files [key-auth]", function()
           describe("GET", function()
             it("returns 401 when unauthenticated", function()
               local res = assert(portal_api_client:send {
@@ -2458,6 +2483,7 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
                 method = "GET",
                 path = "/files",
                 headers = {
+                  ["Content-Type"] = "application/json",
                   ["Cookie"] = "nope"
                 },
               })
@@ -2490,7 +2516,13 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
               local res_put = assert(portal_api_client:send {
                 method = "PUT",
                 path = "/files",
+                body = {
+                  name = "test",
+                  contents = "hello world",
+                  type = "dog"
+                },
                 headers = {
+                  ["Content-Type"] = "application/json",
                   ["Cookie"] = cookie
                 },
               })
@@ -2500,7 +2532,13 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
               local res_patch = assert(portal_api_client:send {
                 method = "PATCH",
                 path = "/files",
+                body = {
+                  name = "test",
+                  contents = "hello world",
+                  type = "dog"
+                },
                 headers = {
+                  ["Content-Type"] = "application/json",
                   ["Cookie"] = cookie
                 },
               })
@@ -2510,7 +2548,13 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
               local res_post = assert(portal_api_client:send {
                 method = "POST",
                 path = "/files",
+                body = {
+                  name = "test",
+                  contents = "hello world",
+                  type = "dog"
+                },
                 headers = {
+                  ["Content-Type"] = "application/json",
                   ["Cookie"] = cookie
                 },
               })

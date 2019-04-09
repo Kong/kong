@@ -239,7 +239,7 @@ app:before_filter(function(self)
     return responses.send_HTTP_INTERNAL_SERVER_ERROR()
   end
 
-  if auth_required(ngx.var.request_uri, ws) then
+  if auth_required(ngx.var.uri, ws) then
     auth.authenticate_api_session(self, singletons.db, handler_helpers)
   end
 

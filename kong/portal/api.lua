@@ -101,17 +101,34 @@ return {
   ["/files/unauthenticated"] = {
     -- List all unauthenticated files stored in the portal file system
     GET = function(self, db, helpers)
-      self.params.auth = false
-
       local files, err, err_t = db.files:select_all({
         auth = false,
-      }, { skip_rbac = true })
+        type = self.params.type,
+      }, {
+        skip_rbac = true,
+      })
 
       if err then
         return endpoints.handle_error(err_t)
       end
 
-      return helpers.responses.send_HTTP_OK({data = files})
+      return helpers.responses.send_HTTP_OK(count_entities(files))
+    end,
+  },
+
+  ["/files"] = {
+    GET = function(self, db, helpers)
+      local files, err, err_t = db.files:select_all({
+        type = self.params.type,
+      }, {
+        skip_rbac = true ,
+      })
+
+      if err then
+        return endpoints.handle_error(err_t)
+      end
+
+      return helpers.responses.send_HTTP_OK(count_entities(files))
     end,
   },
 

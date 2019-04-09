@@ -14,16 +14,14 @@ local function it_content_types(title, fn)
 end
 
 
-local function configure_portal(dao)
-  local workspaces = dao.workspaces:find_all({name = "default"})
-  local workspace = workspaces[1]
+local function configure_portal(db, config)
+  config = config or {
+    portal = true,
+  }
 
-  dao.workspaces:update({
-    config = {
-      portal = true,
-    }
-  }, {
-    id = workspace.id,
+  db.workspaces:upsert_by_name("default", {
+    name = "default",
+    config = config,
   })
 end
 
@@ -34,14 +32,13 @@ if strategy == 'cassandra' then
   return
 end
 
-pending("files API (#" .. strategy .. "): ", function()
+describe("files API (#" .. strategy .. "): ", function()
   local db
-  local dao
   local client
   local fileStub
 
   lazy_setup(function()
-    _, db, dao = helpers.get_db_utils(strategy)
+    _, db, _ = helpers.get_db_utils(strategy)
     assert(helpers.start_kong({
       database = strategy,
       portal = true,
@@ -53,15 +50,14 @@ pending("files API (#" .. strategy .. "): ", function()
   end)
 
   before_each(function()
-    dao:truncate_tables()
-    db:truncate('files')
-    fileStub = assert(dao.files:insert {
+    db:truncate()
+    fileStub = assert(db.files:insert {
       name = "stub",
       contents = "1",
       type = "page"
     })
     client = helpers.admin_client()
-    configure_portal(dao)
+    configure_portal(db)
   end)
 
   after_each(function()
@@ -264,13 +260,13 @@ pending("files API (#" .. strategy .. "): ", function()
         db:truncate('files')
 
         for i = 1, 100 do
-          assert(dao.files:insert {
+          assert(db.files:insert {
             name = "file-" .. i,
             contents = "i-" .. i,
             type = "partial"
           })
         end
-        configure_portal(dao)
+        configure_portal(db)
       end)
 
       teardown(function()
@@ -406,9 +402,8 @@ pending("files API (#" .. strategy .. "): ", function()
             assert.equal("bar", json.contents)
             assert.equal(fileStub.id, json.id)
 
-            local in_db = assert(dao.files:find {
+            local in_db = assert(db.files:select {
               id = fileStub.id,
-              name = fileStub.name,
             })
             assert.same(json, in_db)
           end
@@ -430,10 +425,10 @@ pending("files API (#" .. strategy .. "): ", function()
             assert.equal("bar", json.contents)
             assert.equal(fileStub.id, json.id)
 
-            local in_db = assert(dao.files:find {
+            local in_db = assert(db.files:select {
               id = fileStub.id,
-              name = fileStub.name,
             })
+
             assert.same(json, in_db)
           end
         end)
