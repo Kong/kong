@@ -195,8 +195,12 @@ return {
       -- Lookup consumer by id contained in jwt, if not found, this will 404
       local consumer, _, err_t = db.consumers:select({ id = self.consumer_id },
                                                           { skip_rbac = true })
-      if not consumer then
+      if err_t then
         return endpoints.handle_error(err_t)
+      end
+
+      if not consumer then
+        return helpers.responses.send_HTTP_NOT_FOUND()
       end
 
       local credential
@@ -492,8 +496,12 @@ return {
         skip_rbac = true,
       })
 
-      if not credential then
+      if err_t then
         return endpoints.handle_error(err_t)
+      end
+
+      if not credential then
+        return helpers.responses.send_HTTP_NOT_FOUND()
       end
 
       if credential.consumer.id ~= self.developer.consumer.id then

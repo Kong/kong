@@ -2235,7 +2235,7 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
             end)
           end)
 
-          pending("DELETE", function()
+          describe("DELETE", function()
             it("deletes a basic-auth credential", function()
               local plugin = "basic-auth"
               local path = "/credentials/"
@@ -3822,7 +3822,7 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
             end)
           end)
 
-          pending("DELETE", function()
+          describe("DELETE", function()
             it("deletes a basic-auth credential", function()
               local plugin = "basic-auth"
               local path = "/credentials/"
@@ -3907,7 +3907,7 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
         end)
       end)
 
-      pending("Vitals off ", function()
+      describe("Vitals off ", function()
         local cookie
 
         lazy_setup(function()
@@ -3929,7 +3929,7 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
           portal_api_client = assert(ee_helpers.portal_api_client())
 
           local res = register_developer(portal_api_client, "basic-auth")
-          assert.res_status(201, res)
+          assert.res_status(200, res)
 
           cookie = authenticate(portal_api_client, "basic-auth", true)
 
@@ -4017,7 +4017,7 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
         end)
       end)
 
-      pending("Vitals on", function()
+      describe("Vitals on", function()
         local approved_developer
         local cookie
 
@@ -4040,9 +4040,9 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
           portal_api_client = assert(ee_helpers.portal_api_client())
 
           local res = register_developer(portal_api_client, "basic-auth")
-          local body = assert.res_status(201, res)
+          local body = assert.res_status(200, res)
           local resp_body_json = cjson.decode(body)
-          approved_developer = resp_body_json.consumer
+          approved_developer = resp_body_json.developer
 
           cookie = authenticate(portal_api_client, "basic-auth", true)
 
