@@ -123,7 +123,7 @@ local function create_portal_sitemap()
   if not pl_path.exists(views_path) then
     pl_path.mkdir(views_path)
   end
-  
+
   pl_file.write(sitemap_filename, sitemap_str)
 end
 
@@ -140,7 +140,7 @@ for _, strategy in helpers.each_strategy() do
     local db
     local cookie
 
-    setup(function()
+    lazy_setup(function()
       _, db, _ = helpers.get_db_utils(strategy)
 
       assert(helpers.start_kong({
@@ -156,7 +156,7 @@ for _, strategy in helpers.each_strategy() do
       create_portal_sitemap()
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       helpers.stop_kong(nil, true)
     end)
 
@@ -165,7 +165,7 @@ for _, strategy in helpers.each_strategy() do
             unauth_page_solo, login_page, not_found_page,
             namespaced_index_page, namespaced_page
 
-      setup(function()
+      lazy_setup(function()
         assert(register_developer({
           email = "catdog@konghq.com",
           key = "dog",
@@ -253,9 +253,9 @@ for _, strategy in helpers.each_strategy() do
         })
       end)
 
-      teardown(function()
-        db:truncate('files')
-        db:truncate('consumers')
+      lazy_teardown(function()
+        db:truncate("files")
+        -- db:truncate('consumers')
       end)
 
       describe("unauthenticated user", function()
@@ -446,7 +446,7 @@ for _, strategy in helpers.each_strategy() do
         describe("OIDC authentication", function()
           local oidc_auth_page_pair, oidc_unauth_page_pair
 
-          setup(function()
+          lazy_setup(function()
             local res = client_request({
               method = "POST",
               path = "/workspaces",
@@ -496,7 +496,7 @@ for _, strategy in helpers.each_strategy() do
             oidc_unauth_page_pair = cjson.decode(res.body)
           end)
 
-          teardown(function()
+          lazy_teardown(function()
             client_request({
               method = "DELETE",
               path = "/workspaces/oidc-test",
@@ -522,7 +522,7 @@ for _, strategy in helpers.each_strategy() do
           local noauth_not_found, noauth_login, noauth_register,
                 noauth_dashboard, noauth_settings
 
-          setup(function()
+          lazy_setup(function()
             local res = client_request({
               method = "POST",
               path = "/workspaces",
@@ -568,7 +568,7 @@ for _, strategy in helpers.each_strategy() do
             noauth_settings = cjson.decode(res.body)
           end)
 
-          teardown(function()
+          lazy_teardown(function()
             client_request({
               method = "DELETE",
               path = "/workspaces/noauth-test",
@@ -631,7 +631,7 @@ for _, strategy in helpers.each_strategy() do
             block_syntax_partial, strange_spacing_partial, partial_with_argument,
             improper_format_partial
 
-      setup(function()
+      lazy_setup(function()
         assert(register_developer({
           email = "catdog@konghq.com",
           key = "dog",
@@ -782,9 +782,9 @@ for _, strategy in helpers.each_strategy() do
         })
       end)
 
-      teardown(function()
-        db:truncate('files')
-        db:truncate('consumers')
+      lazy_teardown(function()
+        db:truncate("files")
+        -- db:truncate('consumers')
       end)
 
       describe("authenticated user", function()
@@ -911,7 +911,7 @@ for _, strategy in helpers.each_strategy() do
             auth_nested_spec, unauth_nested_spec, login_page,
             spec_with_spaces
 
-      setup(function()
+      lazy_setup(function()
         assert(register_developer({
           email = "catdog@konghq.com",
           key = "dog",
@@ -1026,9 +1026,9 @@ for _, strategy in helpers.each_strategy() do
         })
       end)
 
-      teardown(function()
-        db:truncate('files')
-        db:truncate('consumers')
+      lazy_teardown(function()
+        db:truncate("files")
+        -- db:truncate('consumers')
       end)
 
       describe("authenticated user", function()
@@ -1370,13 +1370,13 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("sitemap", function()
-      setup(function()
+      lazy_setup(function()
         assert(register_developer({
           email = "catdog@konghq.com",
           key = "dog",
           meta = "{\"full_name\":\"catdog\"}",
         }))
-  
+
         local res = api_client_request({method = "GET",
           path = "/auth",
           headers = {
@@ -1385,7 +1385,7 @@ for _, strategy in helpers.each_strategy() do
         })
         cookie = assert.response(res).has.header("Set-Cookie")
 
-        assert(dao.files:insert {
+        assert(db.files:insert {
           name = "page_pair",
           auth = true,
           type = "page",
@@ -1393,8 +1393,8 @@ for _, strategy in helpers.each_strategy() do
             <h1>auth_page_pair<h2>
           ]]
         })
-  
-        assert(dao.files:insert {
+
+        assert(db.files:insert {
           name = "unauthenticated/page_pair",
           auth = false,
           type = "page",
@@ -1402,8 +1402,8 @@ for _, strategy in helpers.each_strategy() do
             <h1>unauth_page_pair<h2>
           ]]
         })
-  
-        assert(dao.files:insert {
+
+        assert(db.files:insert {
           name = "auth_page_solo",
           auth = true,
           type = "page",
@@ -1411,8 +1411,8 @@ for _, strategy in helpers.each_strategy() do
             <h1>auth_page_solo<h2>
           ]]
         })
-  
-        assert(dao.files:insert {
+
+        assert(db.files:insert {
           name = "unauthenticated/unauth_page_solo",
           auth = false,
           type = "page",
@@ -1421,7 +1421,7 @@ for _, strategy in helpers.each_strategy() do
           ]]
         })
 
-        assert(dao.files:insert {
+        assert(db.files:insert {
           name = "documentation/index",
           auth = true,
           type = "page",
@@ -1430,7 +1430,7 @@ for _, strategy in helpers.each_strategy() do
           ]]
         })
 
-        assert(dao.files:insert {
+        assert(db.files:insert {
           name = "unauthenticated/documentation/index",
           auth = true,
           type = "page",
@@ -1439,7 +1439,7 @@ for _, strategy in helpers.each_strategy() do
           ]]
         })
 
-        assert(dao.files:insert {
+        assert(db.files:insert {
           name = "unauthenticated/specs/loader",
           auth = true,
           type = "page",
@@ -1448,7 +1448,7 @@ for _, strategy in helpers.each_strategy() do
           ]]
         })
 
-        assert(dao.files:insert {
+        assert(db.files:insert {
           name = "spec_page",
           auth = true,
           type = "spec",
@@ -1457,7 +1457,7 @@ for _, strategy in helpers.each_strategy() do
           ]]
         })
 
-        assert(dao.files:insert {
+        assert(db.files:insert {
           name = "unauthenticated/spec_page",
           auth = false,
           type = "spec",
@@ -1467,9 +1467,9 @@ for _, strategy in helpers.each_strategy() do
         })
       end)
 
-      teardown(function()
-        dao:truncate_table('files')
-        dao:truncate_table('consumers')
+      lazy_teardown(function()
+        db:truncate("files")
+        -- db:truncate('consumers')
       end)
 
       describe("authenticated user #test", function()
