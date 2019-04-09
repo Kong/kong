@@ -6,8 +6,8 @@ local TCP_PORT = 35001
 describe("Plugin: tcp-log (log)", function()
   local client
 
-  setup(function()
-    local dao = select(3, helpers.get_db_utils())
+  lazy_setup(function()
+    local _, db, dao = helpers.get_db_utils()
 
     local api1 = assert(dao.apis:insert {
       name         = "api-1",
@@ -21,8 +21,8 @@ describe("Plugin: tcp-log (log)", function()
       upstream_url = helpers.mock_upstream_url,
     })
 
-    assert(dao.plugins:insert {
-      api_id = api1.id,
+    assert(db.plugins:insert {
+      api = { id = api1.id },
       name   = "tcp-log",
       config = {
         host = "127.0.0.1",
@@ -30,8 +30,8 @@ describe("Plugin: tcp-log (log)", function()
       },
     })
 
-    assert(dao.plugins:insert {
-      api_id = api2.id,
+    assert(db.plugins:insert {
+      api = { id = api2.id },
       name   = "tcp-log",
       config = {
         host = "127.0.0.1",
@@ -45,7 +45,7 @@ describe("Plugin: tcp-log (log)", function()
     }))
     client = helpers.proxy_client()
   end)
-  teardown(function()
+  lazy_teardown(function()
     if client then client:close() end
     helpers.stop_kong()
   end)
@@ -79,7 +79,7 @@ describe("Plugin: tcp-log (log)", function()
     -- Making the request
     local r = assert(client:send {
       method  = "GET",
-      path    = "/delay/2",
+      path    = "/delay/1",
       headers = {
         host  = "tcp_logging.com",
       },
@@ -95,7 +95,15 @@ describe("Plugin: tcp-log (log)", function()
     local log_message = cjson.decode(res)
 
     assert.True(log_message.latencies.proxy < 3000)
-    assert.True(log_message.latencies.request >= log_message.latencies.kong + log_message.latencies.proxy)
+
+    -- Sometimes there's a split milisecond that makes numbers not
+    -- add up by 1. Adding an artificial 1 to make the test
+    -- resilient to those.
+    local is_latencies_sum_adding_up =
+      1+log_message.latencies.request >= log_message.latencies.kong +
+      log_message.latencies.proxy
+
+    assert.True(is_latencies_sum_adding_up)
   end)
 
   it("performs a TLS handshake on the remote TCP server", function()

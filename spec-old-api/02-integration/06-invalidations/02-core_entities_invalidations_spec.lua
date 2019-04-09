@@ -17,7 +17,7 @@ describe("core entities are invalidated with db: #" .. strategy, function()
 
   local wait_for_propagation
 
-  setup(function()
+  lazy_setup(function()
     helpers.get_db_utils(strategy)
 
     local db_update_propagation = strategy == "cassandra" and 3 or 0
@@ -53,7 +53,7 @@ describe("core entities are invalidated with db: #" .. strategy, function()
     end
   end)
 
-  teardown(function()
+  lazy_teardown(function()
     helpers.stop_kong("servroot1")
     helpers.stop_kong("servroot2")
   end)
@@ -78,7 +78,7 @@ describe("core entities are invalidated with db: #" .. strategy, function()
 
   describe("APIs (router)", function()
 
-    setup(function()
+    lazy_setup(function()
       -- populate cache with a miss on
       -- both nodes
 
@@ -215,7 +215,7 @@ describe("core entities are invalidated with db: #" .. strategy, function()
   -- ssl_certificates
   -------------------
 
-  describe("#o ssl_certificates / SNIs", function()
+  describe("ssl_certificates / snis", function()
 
     local function get_cert(port, sni)
       local pl_utils = require "pl.utils"
@@ -232,7 +232,7 @@ describe("core entities are invalidated with db: #" .. strategy, function()
       return stderr
     end
 
-    setup(function()
+    lazy_setup(function()
       -- populate cache with a miss on
       -- both nodes
       local cert_1 = get_cert(8443, "ssl-example.com")
@@ -240,8 +240,8 @@ describe("core entities are invalidated with db: #" .. strategy, function()
 
       -- if you get an error when running these, you likely have an outdated version of openssl installed
       -- to update in osx: https://github.com/Kong/kong/pull/2776#issuecomment-320275043
-      assert.matches("CN=localhost", cert_1, nil, true)
-      assert.matches("CN=localhost", cert_2, nil, true)
+      assert.cn("localhost", cert_1)
+      assert.cn("localhost", cert_2)
     end)
 
     it("on certificate+SNI create", function()
@@ -251,7 +251,7 @@ describe("core entities are invalidated with db: #" .. strategy, function()
         body   = {
           cert = ssl_fixtures.cert,
           key  = ssl_fixtures.key,
-          snis = "ssl-example.com",
+          snis = { "ssl-example.com" },
         },
         headers = {
           ["Content-Type"] = "application/json",
@@ -263,12 +263,12 @@ describe("core entities are invalidated with db: #" .. strategy, function()
       -- because our test instance only has 1 worker
 
       local cert_1 = get_cert(8443, "ssl-example.com")
-      assert.matches("CN=ssl-example.com", cert_1, nil, true)
+      assert.cn("ssl-example.com", cert_1)
 
       wait_for_propagation()
 
       local cert_2 = get_cert(9443, "ssl-example.com")
-      assert.matches("CN=ssl-example.com", cert_2, nil, true)
+      assert.cn("ssl-example.com", cert_2)
     end)
 
     it("on certificate delete+re-creation", function()
@@ -288,7 +288,7 @@ describe("core entities are invalidated with db: #" .. strategy, function()
         body   = {
           cert = ssl_fixtures.cert,
           key  = ssl_fixtures.key,
-          snis = "new-ssl-example.com",
+          snis = { "new-ssl-example.com" },
         },
         headers = {
           ["Content-Type"] = "application/json",
@@ -300,18 +300,18 @@ describe("core entities are invalidated with db: #" .. strategy, function()
       -- because our test instance only has 1 worker
 
       local cert_1a = get_cert(8443, "ssl-example.com")
-      assert.matches("CN=localhost", cert_1a, nil, true)
+      assert.cn("localhost", cert_1a)
 
       local cert_1b = get_cert(8443, "new-ssl-example.com")
-      assert.matches("CN=ssl-example.com", cert_1b, nil, true)
+      assert.cn("ssl-example.com", cert_1b)
 
       wait_for_propagation()
 
       local cert_2a = get_cert(9443, "ssl-example.com")
-      assert.matches("CN=localhost", cert_2a, nil, true)
+      assert.cn("localhost", cert_2a)
 
       local cert_2b = get_cert(9443, "new-ssl-example.com")
-      assert.matches("CN=ssl-example.com", cert_2b, nil, true)
+      assert.cn("ssl-example.com", cert_2b)
     end)
 
     it("on certificate update", function()
@@ -335,16 +335,16 @@ describe("core entities are invalidated with db: #" .. strategy, function()
       -- because our test instance only has 1 worker
 
       local cert_1 = get_cert(8443, "new-ssl-example.com")
-      assert.matches("CN=ssl-alt.com", cert_1, nil, true)
+      assert.cn("ssl-alt.com", cert_1)
 
       wait_for_propagation()
 
       local cert_2 = get_cert(9443, "new-ssl-example.com")
-      assert.matches("CN=ssl-alt.com", cert_2, nil, true)
+      assert.cn("ssl-alt.com", cert_2)
     end)
 
     pending("on SNI update", function()
-      -- Pending: currently, SNIs cannot be updated:
+      -- Pending: currently, snis cannot be updated:
       --   - A PATCH updating the name property would not work, since
       --     the URI path expects the current name, and so does the
       --     query fetchign the row to be updated
@@ -369,10 +369,10 @@ describe("core entities are invalidated with db: #" .. strategy, function()
       -- because our test instance only has 1 worker
 
       local cert_1_old_sni = get_cert(8443, "new-ssl-example.com")
-      assert.matches("CN=localhost", cert_1_old_sni, nil, true)
+      assert.cn("localhost", cert_1_old_sni)
 
       local cert_1_new_sni = get_cert(8443, "updated-sni.com")
-      assert.matches("CN=updated-sni.com", cert_1_new_sni, nil, true)
+      assert.cn("updated-sni.com", cert_1_new_sni)
     end)
 
     it("on certificate delete", function()
@@ -395,12 +395,12 @@ describe("core entities are invalidated with db: #" .. strategy, function()
       -- because our test instance only has 1 worker
 
       local cert_1 = get_cert(8443, "new-ssl-example.com")
-      assert.matches("CN=localhost", cert_1, nil, true)
+      assert.cn("localhost", cert_1)
 
       wait_for_propagation()
 
       local cert_2 = get_cert(9443, "new-ssl-example.com")
-      assert.matches("CN=localhost", cert_2, nil, true)
+      assert.cn("localhost", cert_2)
     end)
   end)
 

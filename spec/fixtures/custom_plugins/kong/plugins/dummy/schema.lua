@@ -1,6 +1,13 @@
 return {
+  name = "dummy",
   fields = {
-    resp_header_value = { type = "string", default = "1" },
-    append_body = { type = "string" },
-  }
+    { config = {
+        type = "record",
+        nullable = false,
+        fields = {
+          { resp_header_value = { type = "string", default = "1" }, },
+          { append_body = { type = "string" }, },
+          { resp_code = { type = "number" }, },
+    }, }, },
+  },
 }

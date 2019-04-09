@@ -2,9 +2,6 @@ local Schema = require "kong.db.schema"
 local MetaSchema = require "kong.db.schema.metaschema"
 
 
-Schema.new(MetaSchema)
-
-
 describe("metaschema", function()
   it("rejects a bad schema", function()
     local s = {
@@ -15,6 +12,19 @@ describe("metaschema", function()
       primary_key = { "foo" },
     }
     assert.falsy(MetaSchema:validate(s))
+  end)
+
+  it("fields cannot be empty", function()
+    local s = {
+      name = "bad",
+      fields = {
+        {}
+      },
+      primary_key = { "foo" },
+    }
+    local ok, err = MetaSchema:validate(s)
+    assert.falsy(ok)
+    assert.match("field entry table is empty", err.fields)
   end)
 
   it("rejects an invalid entity check", function()
@@ -31,6 +41,82 @@ describe("metaschema", function()
     assert.falsy(MetaSchema:validate(s))
   end)
 
+  it("validates a schema with nested records", function()
+    local s = {
+      name = "hello",
+      primary_key = { "foo" },
+      fields = {
+        { foo = { type = "number" } },
+        { f = {
+            type = "record",
+            fields = {
+              { r = {
+                  type = "record",
+                  fields = {
+                    { a = { type = "string" }, },
+                    { b = { type = "number" }, } }}}}}}}}
+    assert.truthy(MetaSchema:validate(s))
+  end)
+
+  it("a schema can be marked as legacy", function()
+    local s = {
+      name = "hello",
+      primary_key = { "foo" },
+      legacy = true,
+      fields = {
+        { foo = { type = "number" } } } }
+    assert.truthy(MetaSchema:validate(s))
+
+    s = {
+      name = "hello",
+      primary_key = { "foo" },
+      legacy = 2,
+      fields = {
+        { foo = { type = "number" } } } }
+    assert.falsy(MetaSchema:validate(s))
+  end)
+
+  it("a schema can declare a cache_key", function()
+    local s = {
+      name = "hello",
+      primary_key = { "foo" },
+      cache_key = { "foo" },
+      fields = {
+        { foo = { type = "number", unique = true } } } }
+    assert.truthy(MetaSchema:validate(s))
+  end)
+
+  it("cache_key elements must be fields", function()
+    local s = {
+      name = "hello",
+      primary_key = { "foo" },
+      cache_key = { "foo", "bar" },
+      fields = {
+        { foo = { type = "number" } } } }
+    assert.falsy(MetaSchema:validate(s))
+  end)
+
+  it("a field in a single-field cache_key must be unique", function()
+    local s = {
+      name = "hello",
+      primary_key = { "foo" },
+      cache_key = { "foo" },
+      fields = {
+        { foo = { type = "number" } } } }
+    assert.falsy(MetaSchema:validate(s))
+  end)
+
+  it("fields in a composite cache_key don't need to be unique", function()
+    local s = {
+      name = "hello",
+      primary_key = { "foo" },
+      cache_key = { "foo", "bar" },
+      fields = {
+        { foo = { type = "number" } },
+        { bar = { type = "number" } } } }
+    assert.truthy(MetaSchema:validate(s))
+  end)
+
   it("allows only one entity check per array field", function()
     local s = {
       name = "bad",
@@ -44,6 +130,28 @@ describe("metaschema", function()
       entity_checks = {
         { only_one_of = { "a", "b" },
           at_least_one_of = { "c", "d" },
+        },
+      }
+    }
+    local ok, errs = MetaSchema:validate(s)
+    assert.falsy(ok)
+    assert.truthy(errs)
+  end)
+
+  it("accepts a function in an entity check", function()
+    local s = {
+      name = "bad",
+      fields = {
+        { a = { type = "number" } },
+        { b = { type = "number" } },
+      },
+      entity_checks = {
+        { custom_entity_check = {
+            field_sources = { "a" },
+            fn = function()
+              return true
+            end,
+          }
         },
       }
     }
@@ -113,6 +221,103 @@ describe("metaschema", function()
     end
   end)
 
+  it("allows specifying an endpoint key with endpoint_key", function()
+    local s = {
+      name = "test",
+      endpoint_key = "str",
+      fields = {
+        { str = { type = "string", unique = true } },
+        { num = { type = "number" } },
+      },
+      primary_key = { "str" },
+    }
+    assert.truthy(MetaSchema:validate(s))
+  end)
+
+  it("endpoint_key must be a field", function()
+    local s = {
+      name = "test",
+      endpoint_key = "bla",
+      fields = {
+        { str = { type = "string", unique = true } },
+        { num = { type = "number" } },
+      },
+      primary_key = { "str" },
+    }
+    local ok, err = MetaSchema:validate(s)
+    assert.falsy(ok)
+    assert.match("value must be a field name", err.endpoint_key)
+  end)
+
+  it("ttl support can be enabled with ttl = true", function()
+    local s = {
+      name = "test",
+      ttl = true,
+      fields = {
+        { str = { type = "string", unique = true } },
+        { created_at = { type = "number", timestamp = true, auto = true } },
+      },
+      primary_key = { "str" },
+    }
+    assert.truthy(MetaSchema:validate(s))
+  end)
+
+  it("ttl support can be disabled with ttl = false", function()
+    local s = {
+      name = "test",
+      ttl = false,
+      fields = {
+        { str = { type = "string", unique = true } },
+      },
+      primary_key = { "str" },
+    }
+    assert.truthy(MetaSchema:validate(s))
+  end)
+
+  it("ttl support can be disabled with ttl = nil", function()
+    local s = {
+      name = "test",
+      fields = {
+        { str = { type = "string", unique = true } },
+        { ttl = { type = "integer" } },
+      },
+      primary_key = { "str" },
+    }
+    assert.truthy(MetaSchema:validate(s))
+  end)
+
+
+  it("ttl must be a boolean (true)", function()
+    local s = {
+      name = "test",
+      ttl = "true",
+      fields = {
+        { str = { type = "string", unique = true } },
+        { created_at = { type = "integer", timestamp = true, auto = true } },
+      },
+      primary_key = { "str" },
+    }
+    local ok, err = MetaSchema:validate(s)
+    assert.falsy(ok)
+    assert.match("expected a boolean", err.ttl)
+  end)
+
+  it("ttl reserves ttl as a field name", function()
+    local s = {
+      name = "test",
+      ttl = "true",
+      fields = {
+        { str = { type = "string", unique = true } },
+        { ttl = { type = "integer" } },
+        { created_at = { type = "integer", timestamp = true, auto = true } },
+      },
+      primary_key = { "str" },
+    }
+    local ok, err = MetaSchema:validate(s)
+    assert.falsy(ok)
+    assert.match("ttl is a reserved field name when ttl is enabled", err.ttl)
+  end)
+
   it("supports the unique attribute in base types", function()
     local s = {
       name = "test",
@@ -144,6 +349,137 @@ describe("metaschema", function()
     assert.match("'map' cannot have attribute 'unique'", err.map)
     assert.match("'record' cannot have attribute 'unique'", err.rec)
     assert.match("'set' cannot have attribute 'unique'", err.set)
+  end)
+
+  it("a schema cannot have a field of type 'any'", function()
+    local s = {
+      name = "hello",
+      primary_key = { "foo" },
+      fields = {
+        { foo = { type = "any" } } } }
+    local ok, err = MetaSchema:validate(s)
+    assert.falsy(ok)
+    assert.match("expected one of", err.fields.type)
+  end)
+
+  describe("subschemas", function()
+
+    it("supports declaring subschemas", function()
+      local s = {
+        name = "test",
+        subschema_key = "str",
+        fields = {
+          { str = { type = "string", unique = true } },
+        },
+        primary_key = { "str" },
+      }
+      assert.truthy(MetaSchema:validate(s))
+    end)
+
+    it("subschema_key must be an existing field name", function()
+      local s = {
+        name = "test",
+        subschema_key = "str",
+        fields = {
+          { str = { type = "string", unique = true } },
+        },
+        primary_key = { "str" },
+      }
+
+      local ok = MetaSchema:validate(s)
+      assert.truthy(ok)
+
+      local err
+      s.subschema_key = "foo"
+      ok, err = MetaSchema:validate(s)
+      assert.falsy(ok)
+      assert.match("value must be a field name", err.subschema_key)
+    end)
+
+    it("subschema_key must be a string field", function()
+      local s = {
+        name = "test",
+        subschema_key = "num",
+        fields = {
+          { str = { type = "string", unique = true } },
+          { num = { type = "number", unique = true } },
+        },
+        primary_key = { "str" },
+      }
+      local ok, err = MetaSchema:validate(s)
+      assert.falsy(ok)
+      assert.match("must be a string", err.subschema_key)
+    end)
+
+    it("schema can define abstract fields", function()
+      local s = {
+        name = "test",
+        subschema_key = "str",
+        fields = {
+          { str = { type = "string", unique = true } },
+          { num = { type = "number", abstract = true } },
+        },
+        primary_key = { "str" },
+      }
+
+      local ok = MetaSchema:validate(s)
+      assert.truthy(ok)
+    end)
+
+    it("abstract composite types can be abstract within their limitations", function()
+      local s = {
+        name = "test",
+        subschema_key = "str",
+        fields = {
+          { str = { type = "string", unique = true } },
+          -- abstract arrays, sets and maps need their types
+          -- so that strategies (postgres in particular)
+          -- can build the proper types
+          { arr = { type = "array", abstract = true } },
+          { set = { type = "set", abstract = true } },
+          { map = { type = "map", abstract = true } },
+          -- abstract records don't need their fields
+          -- to be declared because strategies store them as JSON
+          -- (we need this property for the `config` field of Plugins)
+          { rec = { type = "record", abstract = true } },
+        },
+        primary_key = { "str" },
+      }
+
+      local ok, err = MetaSchema:validate(s)
+      assert.falsy(ok)
+      assert.same({
+        arr = "field of type 'array' must declare 'elements'",
+        set = "field of type 'set' must declare 'elements'",
+        map = "field of type 'map' must declare 'values'",
+      }, err)
+
+      s = {
+        name = "test",
+        subschema_key = "str",
+        fields = {
+          { str = { type = "string", unique = true } },
+          { arr = { type = "array", elements = { type = "string" }, abstract = true } },
+          { set = { type = "set", elements = { type = "string" }, abstract = true } },
+          { rec = { type = "record", abstract = true } },
+        },
+        primary_key = { "str" },
+      }
+
+      ok = MetaSchema:validate(s)
+      assert.truthy(ok)
+    end)
+
+  end)
+
+  it("validates a value with 'eq'", function()
+    assert.truthy(MetaSchema:validate({
+      name = "test",
+      primary_key = { "pk" },
+      fields = {
+        { pk = { type = "boolean", default = true, eq = true } },
+      },
+    }))
   end)
 
   it("validates the routes schema", function()

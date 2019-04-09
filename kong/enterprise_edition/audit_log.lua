@@ -64,8 +64,12 @@ end
 
 
 local function dao_audit_handler(data)
+  if data.schema.name == "audit_objects" or data.schema.name == "audit_requests" then
+    return
+  end
+
   if utils.table_contains(singletons.configuration.audit_log_ignore_tables,
-                          data.schema.table) then
+                          data.schema.name) then
     return
   end
 
@@ -78,13 +82,7 @@ local function dao_audit_handler(data)
     entity     = cjson.encode(data.entity),
   }
 
-
-  local ttl_val = singletons.configuration.audit_log_record_ttl
-  local ttl = singletons.configuration.database == "cassandra" and ttl_val
-  if not ttl then
-    data.expire = (ngx.now() + ttl_val) * 1000
-  end
-
+  local ttl = singletons.configuration.audit_log_record_ttl
 
   if type(ngx.ctx.rbac) == "table" then
     data.rbac_user_id = ngx.ctx.rbac.user.id
@@ -96,8 +94,8 @@ local function dao_audit_handler(data)
   end
 
 
-  local ok, err = singletons.dao.audit_objects:insert(data,
-    { quiet = true, ttl = ttl }
+  local ok, err = singletons.db.audit_objects:insert(data,
+    { ttl = ttl }
   )
   if not ok then
     ngx.log(ngx.ERR, "failed to write audit log entry: ", err)
@@ -110,20 +108,14 @@ _M.dao_audit_handler = dao_audit_handler
 
 
 local function audit_log_writer(_, data)
-  local ttl_val = singletons.configuration.audit_log_record_ttl
-  local ttl = singletons.configuration.database == "cassandra" and ttl_val
-  if not ttl then
-    data.expire = (ngx.now() + ttl_val) * 1000
-  end
+  local ttl = singletons.configuration.audit_log_record_ttl
 
-
-  local ok, err = singletons.dao.audit_requests:insert(data,
-    { ttl = ttl, quiet = true }
+  local ok, err = singletons.db.audit_requests:insert(data,
+    { ttl = ttl }
   )
   if not ok then
     ngx.log(ngx.ERR, "failed to write audit log entry: ", err)
   end
-
 
   return
 end
@@ -153,7 +145,6 @@ local function admin_log_handler()
       end
     end
   end
-
 
   local data = {
     request_id   = ngx.ctx.admin_api.req_id,

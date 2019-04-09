@@ -1,10 +1,9 @@
-local cassandra = require "cassandra"
 local singletons = require "kong.singletons"
 local utils      = require "kong.tools.utils"
 local tablex = require "pl.tablex"
 local cjson = require "cjson"
-
-local enums = require "kong.enterprise_edition.dao.enums"
+local ws_dao_wrappers = require "kong.workspaces.dao_wrappers"
+local counters = require "kong.workspaces.counters"
 
 
 local find    = string.find
@@ -22,7 +21,7 @@ local getfenv = getfenv
 local utils_split = utils.split
 local ngx_null = ngx.null
 local tostring = tostring
-local concat = table.concat
+local inc_counter = counters.inc_counter
 
 
 local _M = {}
@@ -33,6 +32,11 @@ local workspace_delimiter = ":"
 _M.DEFAULT_WORKSPACE = default_workspace
 _M.WORKSPACE_DELIMITER = workspace_delimiter
 local ALL_METHODS = "GET,POST,PUT,DELETE,OPTIONS,PATCH"
+
+
+-- XXX compat_find_all will go away with workspaces remodel
+local compat_find_all = ws_dao_wrappers.compat_find_all
+_M.compat_find_all = compat_find_all
 
 
 -- a map of workspaceable relations to its primary key name
@@ -149,48 +153,22 @@ local function is_blank(t)
 end
 
 
-function _M.create_default(dao)
-  dao = dao or singletons.dao
+function _M.upsert_default(db)
+  db = db or singletons.db
 
-  local res, err = dao.workspaces:run_with_ws_scope({}, dao.workspaces.find_all, {
-    name = default_workspace,
-  })
+  local cb = function()
+    return db.workspaces:upsert_by_name(default_workspace, {
+      name = default_workspace
+    })
+  end
+
+  local res, err = _M.run_with_ws_scope({}, cb)
   if err then
     return nil, err
   end
-  if res and res[1] then
-    ngx.ctx.workspaces = {res[1]}
-    return res[1]
-  end
 
-  -- if it doesn't exist, create it...
-  res, err = dao.workspaces:insert({
-      name = _M.DEFAULT_WORKSPACE,
-  }, { quiet = true })
-  if not res then
-    return nil, err
-  end
-
-  dao.workspace_entities:truncate()
-  dao.workspace_entities:insert({
-    workspace_id = res.id,
-    workspace_name = res.name,
-    entity_id = res.id,
-    entity_type = "workspaces",
-    unique_field_name = "id",
-    unique_field_value = res.id,
-  }, { quiet = true })
-
-  dao.workspace_entities:insert({
-    workspace_id = res.id,
-    workspace_name = res.name,
-    entity_id = res.id,
-    entity_type = "workspaces",
-    unique_field_name = "name",
-    unique_field_value = res.name,
-  }, { quiet = true })
-
-  ngx.ctx.workspaces = {res}
+  db:truncate("workspace_entities")
+  ngx.ctx.workspaces = { res }
 
   return res
 end
@@ -250,289 +228,33 @@ local function add_entity_relation_db(dao, ws, entity_id, table_name, field_name
 end
 
 
--- return migration for adding default workspace and existing
--- workspaceable entities to the default workspace
-function _M.get_default_workspace_migration()
-
-  local prefix_separator = format("%s%s", default_workspace, workspace_delimiter)
-
-  local function pg_batch_update_entities_with_ws_prefix(dao, relation, constraints)
-    local unique_fields_updates = {}
-    local unique_fields_wheres = {}
-    local sample_unique_field
-    for k, _ in pairs(constraints.unique_keys) do
-      if not constraints.primary_keys[k] then
-        sample_unique_field = sample_unique_field or k
-
-        table.insert(unique_fields_updates,
-                     format(" %s = '%s' || %s ",
-                            k,
-                            prefix_separator,
-                            k))
-
-        table.insert(unique_fields_wheres,
-                     format("( %s IS NOT NULL AND %s NOT LIKE '%s%%' )",
-                            k, k, prefix_separator))
-      end
-    end
-
-    if unique_accross_ws[relation] then
-      return
-    end
-
-    if sample_unique_field then
-      local update_query = format("update %s set %s where %s",
-                                  relation,
-                                  concat(unique_fields_updates, ", "),
-                                  concat(unique_fields_wheres, " or "))
-      local _, err = dao.db:query(update_query)
-      if err then
-        return nil, err
-      end
-    end
-
-    return true
-  end
-
-
-  local function cas_update_entity_with_ws_prefix(dao, relation, entity, constraints, default_ws)
-    local err, _
-    local updates = {}
-    for k, v in pairs(constraints.unique_keys) do
-      if not constraints.primary_keys[k] and entity[k] then
-        updates[k] = entity[k]
-      end
-    end
-
-    local old_ws = ngx.ctx.workspaces
-    ngx.ctx.workspaces = {default_ws}
-    if next(updates) then
-      _, err = dao[relation]:update(updates, entity)
-    end
-    ngx.ctx.workspaces = old_ws
-    if err then
-      return nil, err
-    end
-
-    return true
-  end
-
-  local function escape_string(str)
-    return string.gsub(str, "'", "''")
-  end
-
-
-  return {
-    default_workspace = {
-      {
-        name = "2018-02-16-110000_default_workspace_entities",
-        up = function(factory, _, dao)
-
-          singletons.dao = singletons.dao or dao
-
-          local _, err = dao:truncate_table("workspace_entities")
-          if err then
-            return err
-          end
-
-          _, err = dao:truncate_table("workspaces")
-          if err then
-            return err
-          end
-
-          local default, err = dao.workspaces:insert({
-            name = default_workspace,
-          })
-          if err then
-            return err
-          end
-
-          for relation, constraints in pairs(workspaceable_relations) do
-            if dao[relation] then
-              local entities, err = dao[relation]:find_all()
-              if err then
-                return err
-              end
-
-              for _, entity in ipairs(entities) do
-                if constraints.unique_keys then
-                  for k, _ in pairs(constraints.unique_keys) do
-                    if not constraints.primary_keys[k] and entity[k] then
-                      local _, err = add_entity_relation_db(dao.workspace_entities, default,
-                                                            entity[constraints.primary_key],
-                                                            relation, k, entity[k])
-                      if err then
-                        return err
-                      end
-                    end
-                  end
-
-                end
-                local _, err = add_entity_relation_db(dao.workspace_entities, default,
-                                                      entity[constraints.primary_key],
-                                                      relation, constraints.primary_key,
-                                                      entity[constraints.primary_key])
-                if err then
-                  return err
-                end
-
-                if factory.name == "cassandra" and relation ~= "workspaces" then
-                  local _, err = cas_update_entity_with_ws_prefix(dao, relation, entity, constraints, default)
-                  if err then
-                    return err
-                  end
-                end
-              end
-
-              if factory.name == "postgres" and relation ~= "workspaces" then
-                local _, err = pg_batch_update_entities_with_ws_prefix(dao, relation, constraints)
-                if err then
-                  return err
-                end
-              end
-            end
-          end
-
-          -- Add new-dao entities (routes and services)
-          if factory.name == "postgres" then
-            local services =  dao.db:query("select * from services;")
-            for _, entity in ipairs(services) do
-              local _, err = add_entity_relation_db(dao.workspace_entities,
-                                                    default,
-                                                    entity.id,
-                                                    "services",
-                                                    "name",
-                                                    entity.name)
-              if err then
-                return err
-              end
-
-              _, err = add_entity_relation_db(dao.workspace_entities,
-                                              default,
-                                              entity.id,
-                                              "services",
-                                              "id",
-                                              entity.id)
-              if err then
-                return err
-              end
-            end
-
-            local _, err = dao.db:query(
-              format("update services set name = '%s' || name where name NOT LIKE '%s%%'",
-                     prefix_separator,
-                     prefix_separator))
-            if err then
-              return err
-            end
-
-
-            local routes, err = dao.db:query("select * from routes;")
-            if err then
-              return err
-            end
-
-            for _, route in ipairs(routes) do
-              local _, err = add_entity_relation_db(dao.workspace_entities,
-                                                    default,
-                                                    route.id,
-                                                    "routes",
-                                                    "id",
-                                                    route.id)
-              if err then
-                return err
-              end
-            end
-
-          else  -- cassandra
-            local coordinator  = dao.db:get_coordinator()
-            for rows, err, page in coordinator:iterate("SELECT * FROM services",
-                                                       nil,
-                                                       {page_size = 1000}) do
-              if err then
-                return err
-              end
-              for _, service in ipairs(rows) do
-                service.name = string.gsub(service.name, "^" .. prefix_separator, "")
-
-                local _, err = add_entity_relation_db(
-                  dao.workspace_entities,
-                  default,
-                  service.id,
-                  "services",
-                  "name",
-                  service.name)
-                if err then
-                  return err
-                end
-
-                _, err = add_entity_relation_db(dao.workspace_entities,
-                                                default,
-                                                service.id,
-                                                "services",
-                                                "id",
-                                                service.id)
-                if err then
-                  return err
-                end
-
-                local q = format("UPDATE services SET name = '%s' WHERE id = %s and partition = 'services';",
-                  format("%s%s", prefix_separator, escape_string(service.name)),
-                  service.id,
-                  escape_string(service.name))
-                _, err = dao.db:query(q)
-                if err then
-                  return err
-                end
-              end
-            end
-
-            coordinator  = dao.db:get_coordinator()
-            for rows, err, page in coordinator:iterate("SELECT * FROM routes",
-                                                       nil,
-                                                       {page_size = 1000}) do
-              if err then
-                return err
-              end
-
-              for _, route in ipairs(rows) do
-                local _, err = add_entity_relation_db(dao.workspace_entities,
-                  default, route.id, "routes", "id", route.id)
-                if err then
-                  return err
-                end
-              end
-            end
-          end
-        end,
-      },
-    }
-  }
-end
-
-
 -- Coming from admin API request
-function _M.get_req_workspace(ws_name)
+-- Fetch a workspace entity from its name
+function _M.fetch_workspace(ws_name)
+  -- XXX do we ever need this function to return all workspaces (*)?
+  -- if we do, we have a problem (find_all not supported, but we can
+  -- iterate over pages)
 
-  local filter
-  if ws_name ~= "*" then
-    filter = { name = ws_name }
-  end
-
-  return singletons.dao.workspaces:run_with_ws_scope({},
-    singletons.dao.workspaces.find_all, filter)
+  return _M.run_with_ws_scope(
+    {},
+    singletons.db.workspaces.select_by_name,
+    singletons.db.workspaces,
+    ws_name
+  )
 end
 
-local inc_counter
 function _M.add_entity_relation(table_name, entity, workspace)
   local constraints = workspaceable_relations[table_name]
 
   if constraints and constraints.unique_keys and next(constraints.unique_keys) then
     for k, _ in pairs(constraints.unique_keys) do
       if not constraints.primary_keys[k] and entity[k] then
-        local _, err = add_entity_relation_db(singletons.dao.workspace_entities, workspace,
-          entity[constraints.primary_key],
-          table_name, k, entity[k])
+        local _, err = add_entity_relation_db(singletons.db.workspace_entities,
+                                              workspace,
+                                              entity[constraints.primary_key],
+                                              table_name,
+                                              k,
+                                              entity[k])
         if err then
           return err
         end
@@ -540,8 +262,8 @@ function _M.add_entity_relation(table_name, entity, workspace)
     end
   end
 
-  inc_counter(singletons.dao, workspace.id, table_name, entity, 1);
-  local _, err = add_entity_relation_db(singletons.dao.workspace_entities, workspace,
+  inc_counter(singletons.db, workspace.id, table_name, entity, 1);
+  local _, err = add_entity_relation_db(singletons.db.workspace_entities, workspace,
                                         entity[constraints.primary_key],
                                         table_name, constraints.primary_key,
                                         entity[constraints.primary_key])
@@ -552,22 +274,27 @@ end
 
 function _M.delete_entity_relation(table_name, entity)
   local dao = singletons.dao
+  local db = singletons.db
+
   local constraints = workspaceable_relations[table_name]
   if not constraints then
     return
   end
 
-  local res, err = dao.workspace_entities:find_all({
+  local res, err = db.workspace_entities:select_all({
     entity_id = entity[constraints.primary_key],
-    __skip_rbac = true
-  })
+  }, {skip_rbac = true})
   if err then
     return err
   end
 
   local seen = {}
   for _, row in ipairs(res) do
-    local _, err = dao.workspace_entities:delete(row, {__skip_rbac = true})
+    local _, err = db.workspace_entities:delete({
+      entity_id = row.entity_id,
+      workspace_id = row.workspace_id,
+      unique_field_name = row.unique_field_name,
+    }, {skip_rbac = true})
     if err then
       return err
     end
@@ -580,7 +307,7 @@ function _M.delete_entity_relation(table_name, entity)
     end
 
     if not seen[row.workspace_id] then
-      inc_counter(singletons.dao, row.workspace_id, table_name, entity, -1);
+      inc_counter(singletons.db, row.workspace_id, table_name, entity, -1);
       seen[row.workspace_id] = true
     end
   end
@@ -592,7 +319,7 @@ function _M.update_entity_relation(table_name, entity)
   local constraints = workspaceable_relations[table_name]
   if constraints and constraints.unique_keys then
     for k, _ in pairs(constraints.unique_keys) do
-      local res, err = singletons.dao.workspace_entities:find_all({
+      local res, err = singletons.db.workspace_entities:select_all({
         entity_id = entity[constraints.primary_key],
         unique_field_name = k,
       })
@@ -602,9 +329,14 @@ function _M.update_entity_relation(table_name, entity)
 
       for _, row in ipairs(res) do
         if entity[k] then
-          local _, err =  singletons.dao.workspace_entities:update({
+          local pk = {
+            entity_id = row.entity_id,
+            workspace_id = row.workspace_id,
+            unique_field_name = row.unique_field_name,
+          }
+          local _, err =  singletons.db.workspace_entities:update(pk, {
             unique_field_value = entity[k]
-          }, row)
+          })
           if err then
             return err
           end
@@ -616,7 +348,7 @@ end
 
 
 local function find_entity_by_unique_field(params)
-  local rows, err = singletons.dao.workspace_entities:find_all(params)
+  local rows, err = singletons.db.workspace_entities:select_all(params)
   if err then
     return nil, err
   end
@@ -627,7 +359,7 @@ end
 _M.find_entity_by_unique_field = find_entity_by_unique_field
 
 local function find_workspaces_by_entity(params)
-  local rows, err = singletons.dao.workspace_entities:find_all(params)
+  local rows, err = singletons.db.workspace_entities:select_all(params)
   if err then
     return nil, err
   end
@@ -647,7 +379,7 @@ _M.match_route = match_route
 local function entity_workspace_ids(entity)
   local old_wss = ngx.ctx.workspaces
   ngx.ctx.workspaces = nil
-  local ws_rels = singletons.dao.workspace_entities:find_all({entity_id = entity.id})
+  local ws_rels = singletons.db.workspace_entities:select_all({entity_id = entity.id})
   ngx.ctx.workspaces = old_wss
   return map(function(x) return x.workspace_id end, ws_rels)
 end
@@ -836,19 +568,10 @@ end
 -- not have a representation in the db. Therefore they don't exist in
 -- workspace_entities. See kong/enterprise_edition/proxies.lua
 local function load_workspace_scope(ctx, route)
-  if route.id == "00000000-0000-0000-0002-000000000000" or
-    route.id == "00000000-0000-0000-0000-000000000004" or
-    route.id == "00000000-0000-0000-0004-000000000000" or
-    route.id == "00000000-0000-0000-0000-000000000003" or
-    route.id == "00000000-0000-0000-0003-000000000000" or
-    route.id == "00000000-0000-0000-0006-000000000000"
-  then
-    return singletons.dao.workspaces:find_all({name = default_workspace})
-  end
-
   local old_wss = ctx.workspaces
   ctx.workspaces = {}
-  local rows, err = singletons.dao.workspace_entities:find_all({
+
+  local rows, err = singletons.db.workspace_entities:select_all({
     entity_id  = route.id,
     unique_field_name = "id",
     unique_field_value = route.id,
@@ -879,8 +602,9 @@ end
 
 local function load_user_workspace_scope(ctx, name)
   local old_wss = ctx.workspaces
+
   ctx.workspaces = {}
-  local rows, err = singletons.dao.workspace_entities:find_all({
+  local rows, err = singletons.db.workspace_entities:select_all({
     entity_type  = "rbac_users",
     unique_field_name = "name",
     unique_field_value = name,
@@ -905,7 +629,7 @@ end
 -- given an entity ID, look up its entity collection name;
 -- it is only called if the user does not pass in an entity_type
 function _M.resolve_entity_type(entity_id)
-  local rows, err  = singletons.dao.workspace_entities:find_all({
+  local rows, err = singletons.db.workspace_entities:select_all({
       entity_id = entity_id
   })
   if err then
@@ -917,7 +641,8 @@ function _M.resolve_entity_type(entity_id)
 
   local entity_type = rows[1].entity_type
 
-  if singletons.dao[entity_type] then
+  -- XXX old-dao: if branch goes away with the old dao
+  if rawget(singletons.dao.daos, entity_type) then
     rows, err = singletons.dao[entity_type]:find_all({
       [workspaceable_relations[entity_type].primary_key] = entity_id,
       __skip_rbac = true,
@@ -960,7 +685,7 @@ local function load_entity_map(ws_scope, table_name)
   for _, ws in ipairs(ws_scope) do
     local primary_key = workspaceable[table_name].primary_key
 
-    local ws_entities, err = singletons.dao.workspace_entities:find_all({
+    local ws_entities, err = singletons.db.workspace_entities:select_all({
       workspace_id = ws.id,
       entity_type = table_name,
       unique_field_name = primary_key,
@@ -1104,175 +829,14 @@ function _M.remove_ws_prefix(table_name, row, include_ws)
 end
 
 
-function _M.run_with_ws_scope(ws_scope, cb, ...)
+local function run_with_ws_scope(ws_scope, cb, ...)
   local old_ws = ngx.ctx.workspaces
   ngx.ctx.workspaces = ws_scope
   local res, err = cb(...)
   ngx.ctx.workspaces = old_ws
   return res, err
 end
-
-
--- Entity count management
-
-local function counts(workspace_id)
-  local counts, err = singletons.dao.workspace_entity_counters:find_all({workspace_id = workspace_id})
-  if err then
-    return nil, err
-  end
-
-  local res = {}
-  for _, v in ipairs(counts) do
-    res[v.entity_type] = v.count
-  end
-
-  return res
-end
-_M.counts = counts
-
-
--- Return if entity is relevant to entity counts per workspace. Only
--- non-proxy consumers should not be counted.
-local function should_be_counted(dao, entity_type, entity)
-  if entity_type ~= "consumers" then
-    return true
-  end
-
-  -- some call sites do not provide the consumer.type and only pass
-  -- the id of the entity. In that case, we have to first fetch the
-  -- complete entity object
-  if not entity.type then
-    local err
-    entity, err = dao[entity_type]:find({id = entity.id})
-    if err then
-      return nil, err
-    end
-    if not entity then
-      -- The entity is not in the DB. We might be in the middle of the
-      -- callback.
-      return false
-    end
-  end
-
-  if entity.type ~= enums.CONSUMERS.TYPE.PROXY then
-    return false
-  end
-
-  return true
-end
-
-
-inc_counter = function(dao, ws, entity_type, entity, count)
-
-  if not should_be_counted(dao, entity_type, entity) then
-    return
-  end
-
-  if dao.db_type == "cassandra" then
-
-    local _, err = dao.db.cluster:execute([[
-      UPDATE workspace_entity_counters set
-      count=count + ? where workspace_id = ? and entity_type= ?]],
-      {cassandra.counter(count), cassandra.uuid(ws), entity_type},
-      {
-        counter = true,
-        prepared = true,
-    })
-    if err then
-      return nil, err
-    end
-  else
-
-    local incr_counter_query = [[
-      INSERT INTO workspace_entity_counters(workspace_id, entity_type, count)
-      VALUES('%s', '%s', %d)
-      ON CONFLICT(workspace_id, entity_type) DO
-      UPDATE SET COUNT = workspace_entity_counters.count + excluded.count]]
-    local _, err = dao.db:query(format(incr_counter_query, ws, entity_type, count))
-    if err then
-      return nil, err
-    end
-  end
-end
-_M.inc_counter = inc_counter
-
-
-local function get_counts_for_ws(dao, workspace_id)
-  local entity_types = {}
-  for relation, constraints in pairs(get_workspaceable_relations()) do
-    entity_types[relation] = constraints.primary_key
-  end
-
-  local counts = {}
-  for k, v in pairs(entity_types) do
-    local res, err = dao.workspace_entities:find_all({
-      workspace_id = workspace_id,
-      entity_type = k,
-      unique_field_name = v,
-    })
-    if err then
-      return nil, err
-    end
-
-    counts[k] = #res
-
-
-    -- When the migration that initializes the workspace counts runs, check
-    -- if there's only one admin consumer in a given workspace. If so, do not
-    -- count it. This has the effect that new installations do not see
-    -- consumer count =1.
-    -- Only do this check when count is 1 as we accept small divergences for
-    -- bigger numbers.
-    if k == "consumers" and counts[k] == 1 then
-      local consumer, err = dao.consumers:find({id = res[1].unique_field_value})
-      if not err and consumer.type ~= enums.CONSUMERS.TYPE.PROXY then
-        counts[k] = 0
-      end
-    end
-
-  end
-
-  return counts
-end
-
-
-local function initialize_counters_migration(dao)
-  local workspaces, err = dao.workspaces:find_all()
-  if err then
-    return nil, err
-  end
-
-  local workspaces_counts = {}
-  for _, ws in ipairs(workspaces) do
-    workspaces_counts[ws.id] = get_counts_for_ws(dao, ws.id)
-  end
-
-  for k, v in pairs(workspaces_counts) do
-    for entity_type, count in pairs(v) do
-      dao.workspace_entity_counters:insert({
-        workspace_id = k,
-        entity_type = entity_type,
-        count = count,
-      })
-    end
-  end
-end
-
-
-local function get_initialize_workspace_entity_counters_migration()
-  return
-    {
-      workspace_counters = {
-        {
-        name = "2018-10-11-164515_fill_counters",
-        up = function(_, _, dao)
-          initialize_counters_migration(dao)
-        end,
-        }
-      }
-    }
-end
-_M.get_initialize_workspace_entity_counters_migration = get_initialize_workspace_entity_counters_migration
+_M.run_with_ws_scope = run_with_ws_scope
 
 
 return _M

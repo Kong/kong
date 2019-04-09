@@ -1,16 +1,15 @@
-local constants   = require "kong.constants"
+local endpoints   = require "kong.api.endpoints"
 local singletons  = require "kong.singletons"
-local api_helpers = require "lapis.application"
 local enums       = require "kong.enterprise_edition.dao.enums"
-local responses   = require "kong.tools.responses"
 local rbac        = require "kong.rbac"
-local utils       = require "kong.tools.utils"
 local workspaces  = require "kong.workspaces"
 local ee_utils    = require "kong.enterprise_edition.utils"
 local ee_jwt      = require "kong.enterprise_edition.jwt"
 
+local kong = kong
 local log = ngx.log
 local ERR = ngx.ERR
+local DEBUG = ngx.DEBUG
 
 local _M = {}
 
@@ -23,34 +22,19 @@ _M.apis = {
   PORTAL  = "portal"
 }
 
-
-_M.services = {
-  [_M.apis.PORTAL] = {
-    id = "00000000-0000-0000-0000-000000000000",
-    plugins = {},
-  },
-  [_M.apis.ADMIN]  = {
-    id = "00000000-0000-0000-0000-000000000001",
-    plugins = {},
-  },
-}
-
--- cache of admin plugin configurations
-local admin_plugin_models = {}
-
-
 local auth_whitelisted_uris = {
   ["/admins/register"] = true,
   ["/admins/password_resets"] = true,
 }
 
-function _M.get_consumer_id_from_headers()
-  return ngx.req.get_headers()[constants.HEADERS.CONSUMER_ID]
-end
-
 
 function _M.get_consumer_status(consumer)
-  local status = consumer.status
+  local status
+
+  if consumer.type == enums.CONSUMERS.TYPE.DEVELOPER then
+    local developer = singletons.db.developers:select_by_email(consumer.email)
+    status = developer.status
+  end
 
   return {
     status = status,
@@ -59,93 +43,26 @@ function _M.get_consumer_status(consumer)
 end
 
 
-function _M.prepare_plugin(type, dao, name, config)
-  local plugin, err = _M.find_plugin(type, name)
-  if err then
-    return api_helpers.yield_error(err)
-  end
-
-  local fields = {
-    name = plugin.name,
-    service_id = _M.services[type].id,
-    config = utils.deep_copy(config or {})
-  }
-
-  local model
-
-  if type == _M.apis.ADMIN then
-    model = admin_plugin_models[plugin.name]
-  end
-
-  if not model then
-    -- convert plugin configuration over to model to obtain defaults
-    model = dao.plugins.model_mt(fields)
-
-    -- only cache valid models
-    local ok, err = model:validate({dao = dao.plugins})
-    if not ok then
-      -- this config is invalid -- throw errors until the user fixes it
-      return api_helpers.yield_error(err)
-    end
-
-    if type == _M.apis.ADMIN then
-      admin_plugin_models[plugin.name] = model
-    end
-  end
-
-  return {
-    handler = plugin.handler,
-    config = model.config,
-  }
-end
-
-
-function _M.apply_plugin(plugin, phase)
-  local err = coroutine.wrap(plugin.handler[phase])(plugin.handler, plugin.config)
-  if err then
-    return api_helpers.yield_error(err)
-  end
-end
-
-
-function _M.find_plugin(type, name)
-  if _M.services[type].plugins[name] then
-    return _M.services[type].plugins[name]
-  end
-
-  for _, plugin in ipairs(singletons.loaded_plugins) do
-    if plugin.name == name then
-      _M.services[type].plugins[name] = plugin
-      return plugin
-    end
-  end
-
-  return nil, "plugin not found"
-end
-
-
 function _M.retrieve_consumer(consumer_id)
-  local consumers, err = singletons.dao.consumers:find_all({
+  local consumer, err = kong.db.consumers:select({
     id = consumer_id
   })
   if err then
-    ngx.log(ngx.ERR, "error in retrieving consumer:" .. consumer_id, err)
+    log(ERR, "error in retrieving consumer:" .. consumer_id, err)
     return nil, err
   end
 
-  if not next(consumers) then
-    return nil
-  end
 
-  return consumers[1]
+  return consumer or nil
 end
 
 
 --- Authenticate the incoming request checking for rbac users and admin
 --  consumer credentials
 --
-function _M.authenticate(self, dao_factory, rbac_enabled, gui_auth)
+function _M.authenticate(self, rbac_enabled, gui_auth)
   local ctx = ngx.ctx
+  local invoke_plugin = singletons.invoke_plugin
 
   -- no authentication required? nothing to do here.
   if not gui_auth and not rbac_enabled then
@@ -153,8 +70,7 @@ function _M.authenticate(self, dao_factory, rbac_enabled, gui_auth)
   end
 
   -- lookup to see if we white listed this route from auth checks
-  local auth_whitelisted = auth_whitelisted_uris[ngx.var.request_uri]
-  if auth_whitelisted then
+  if auth_whitelisted_uris[ngx.var.uri] then
     return
   end
 
@@ -169,34 +85,42 @@ function _M.authenticate(self, dao_factory, rbac_enabled, gui_auth)
 
   -- Once we get here we know rbac_token and gui_auth are both enabled
   -- and we need to run authentication checks
-  local rbac_user_header = singletons.configuration.rbac_user_header
-  local user_name = ngx.req.get_headers()[rbac_user_header]
+  local user_header = singletons.configuration.admin_gui_auth_header
+  local user_name = ngx.req.get_headers()[user_header]
   if not user_name then
-    return responses.send_HTTP_UNAUTHORIZED("Invalid RBAC credentials. " ..
-                                            "Token or User credentials required")
+    return kong.response.exit(401, {
+      message = "Invalid RBAC credentials. Token or User credentials required"
+    })
   end
 
-  -- in 0.33, the rbac_user created with an admin consumer "foo" was named
-  -- "user-foo". Support both naming conventions.
-  local rbac_user, err
-  for _, nm in ipairs({ user_name, "user-" .. user_name }) do
-    rbac_user, err = rbac.get_user(nm, "name")
-    if err then
-      ngx.log(ngx.ERR, _log_prefix, err)
-      return responses.send_HTTP_INTERNAL_SERVER_ERROR()
-    end
+  local admin, err = kong.db.admins:select_by_username(user_name)
 
-    if rbac_user then
-      break
-    end
+  if not admin then
+    log(DEBUG, _log_prefix, "Admin not found with user_name=" .. user_name)
+    return kong.response.exit(401, { message = "Unauthorized" })
+  end
+
+  if err then
+    log(ERR, _log_prefix, err)
+    return endpoints.handle_error(err)
+  end
+
+  local consumer_id = admin.consumer.id
+  local rbac_user_id = admin.rbac_user.id
+  local rbac_user, err = rbac.get_user(rbac_user_id)
+
+  if err then
+    log(ERR, _log_prefix, err)
+    return endpoints.handle_error(err)
   end
 
   if not rbac_user then
-    ngx.log(ngx.DEBUG, _log_prefix, "no rbac_user found for name: ", user_name)
-    return responses.send_HTTP_UNAUTHORIZED()
+    log(DEBUG, _log_prefix, "no rbac_user found for name: ", user_name)
+    return kong.response.exit(401, { message = "Unauthorized" })
   end
 
-  _M.attach_consumer_and_workspaces(self, dao_factory, rbac_user.id)
+  -- sets self.workspace_entities, ngx.ctx.workspaces, and self.consumer
+  _M.attach_consumer_and_workspaces(self, consumer_id)
 
   -- apply auth plugin
   local auth_conf = singletons.configuration.admin_gui_auth_conf
@@ -204,127 +128,135 @@ function _M.authenticate(self, dao_factory, rbac_enabled, gui_auth)
 
   -- run the session plugin access to see if we have a current session
   -- with a valid authenticated consumer.
-  local prepared_plugin_session = _M.prepare_plugin(_M.apis.ADMIN, dao_factory,
-                                                    "session", session_conf)
+  local ok, err = invoke_plugin({
+    name = "session",
+    config = session_conf,
+    phases = { "access" },
+    api_type = _M.apis.ADMIN,
+    db = kong.db,
+  })
 
-  _M.apply_plugin(prepared_plugin_session, "access")
+  if not ok then
+    log(ERR, _log_prefix, err)
+    return endpoints.handle_error(err)
+  end
 
   -- if we don't have a valid session, run the gui authentication plugin
   if not ngx.ctx.authenticated_consumer then
-    local prepared_plugin = _M.prepare_plugin(_M.apis.ADMIN, dao_factory,
-                                              gui_auth, auth_conf)
+    local ok, err = invoke_plugin({
+      name = gui_auth,
+      config = auth_conf,
+      phases = { "access" },
+      api_type = _M.apis.ADMIN,
+      db = kong.db,
+    })
 
-    _M.apply_plugin(prepared_plugin, "access")
+    if not ok then
+      log(ERR, _log_prefix, err)
+      return endpoints.handle_error(err)
+    end
   end
 
-  _M.apply_plugin(prepared_plugin_session, "header_filter")
+  if not ok then
+    return endpoints.handle_error(err)
+  end
 
   -- Plugin ran but consumer was not created on context
   if not ctx.authenticated_consumer then
-    ngx.log(ngx.ERR, _log_prefix, "no consumer mapped from plugin", gui_auth)
-
-    return responses.send_HTTP_UNAUTHORIZED()
+    log(ERR, _log_prefix, "no consumer mapped from plugin", gui_auth)
+    return kong.response.exit(401, { message = "Unauthorized" })
   end
 
   if self.consumer and ctx.authenticated_consumer.id ~= self.consumer.id then
-    ngx.log(ngx.ERR, _log_prefix, "no rbac user mapped with these credentials")
+    log(ERR, _log_prefix, "authenticated consumer is not an admin")
+    return kong.response.exit(401, { message = "Unauthorized" })
+  end
 
-    return responses.send_HTTP_UNAUTHORIZED()
+  local ok, err = invoke_plugin({
+    name = "session",
+    config = session_conf,
+    phases = { "header_filter" },
+    api_type = _M.apis.ADMIN,
+    db = kong.db,
+  })
+
+  if not ok then
+    log(ERR, _log_prefix, err)
+    return endpoints.handle_error(err)
   end
 
   self.consumer = ctx.authenticated_consumer
 
   if self.consumer.type ~= enums.CONSUMERS.TYPE.ADMIN then
-    ngx.log(ngx.ERR, _log_prefix, "consumer ", self.consumer.id, " is not an admin")
-    return responses.send_HTTP_UNAUTHORIZED()
+    log(ERR, _log_prefix, "consumer ", self.consumer.id, " is not an admin")
+    return kong.response.exit(401, { message = "Unauthorized" })
   end
 
   -- consumer transitions from INVITED to APPROVED on first successful login
-  if self.consumer.status == enums.CONSUMERS.STATUS.INVITED then
-    self.consumer, err = dao_factory.consumers:update(
-      { status = enums.CONSUMERS.STATUS.APPROVED },
-      { id = self.consumer.id })
+  if admin.status == enums.CONSUMERS.STATUS.INVITED then
+    local _, err = kong.db.admins:update({ id = admin.id },
+                                   { status = enums.CONSUMERS.STATUS.APPROVED })
 
     if err then
-      ngx.log(ngx.ERR, _log_prefix, "failed to approve consumer: ",
-              self.consumer.id, ". err: ", err)
-
-      return responses.send_HTTP_INTERNAL_SERVER_ERROR()
+      log(ERR, _log_prefix, "failed to approve admin: ", admin.id, ": ", err)
+      return endpoints.handle_error(err)
     end
 
-    ctx.authenticated_consumer = self.consumer
+    admin.status = enums.CONSUMERS.STATUS.APPROVED
   end
 
-  if self.consumer.status ~= enums.CONSUMERS.STATUS.APPROVED then
-    return responses.send_HTTP_UNAUTHORIZED(_M.get_consumer_status(self.consumer))
+  if admin.status ~= enums.CONSUMERS.STATUS.APPROVED then
+    return kong.response.exit(401, _M.get_consumer_status(admin))
   end
 
   self.rbac_user = rbac_user
+  self.admin = admin
   -- set back workspace context from request
   ctx.workspaces = old_ws
 end
 
 
-function _M.attach_consumer_and_workspaces(self, dao_factory, rbac_user_id)
-  local consumer_user, err = rbac.get_consumer_user_map(rbac_user_id)
-
-  if err then
-    return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
-  end
-
-  if not consumer_user then
-    ngx.log(ngx.DEBUG, _log_prefix, "no consumer mapping for rbac_user: ",
-            rbac_user_id)
-    return responses.send_HTTP_UNAUTHORIZED()
-  end
-
-  local workspace = _M.attach_workspaces(self, dao_factory,
-                                         consumer_user.consumer_id)
+function _M.attach_consumer_and_workspaces(self, consumer_id)
+  local workspace = _M.attach_workspaces(self, consumer_id)
 
   ngx.ctx.workspaces = { workspace }
 
-  _M.attach_consumer(self, dao_factory, consumer_user.consumer_id)
+  _M.attach_consumer(self, consumer_id)
 end
 
 
-function _M.attach_consumer(self, dao_factory, consumer_id)
-  local cache_key = dao_factory.consumers:cache_key(consumer_id)
-  local consumer, err = singletons.cache:get(cache_key, nil,
-                                            _M.retrieve_consumer,
-                                            consumer_id)
+function _M.attach_consumer(self, consumer_id)
+  local cache_key = kong.db.consumers:cache_key(consumer_id)
+  local consumer, err = kong.cache:get(cache_key, nil, _M.retrieve_consumer,
+                                       consumer_id)
 
-  if err then
-    return responses.send_HTTP_INTERNAL_SERVER_ERROR("error getting consumer: "
-                                                     .. consumer_id)
-  end
-
-  if not consumer then
-    return responses.send_HTTP_INTERNAL_SERVER_ERROR("consumer not found: " ..
-                                                      consumer_id)
+  if err or not consumer then
+    log(ERR, _log_prefix, "failed to get consumer:", consumer_id, ": ", err)
+    return endpoints.handle_error()
   end
 
   self.consumer = consumer
 end
 
 
-function _M.attach_workspaces(self, dao_factory, consumer_id)
-  local workspace_entities, err = dao_factory.workspace_entities:find_all{
+function _M.attach_workspaces(self, consumer_id)
+  local workspace_entities, err = kong.db.workspace_entities:select_all({
     entity_id = consumer_id,
     unique_field_name = "id",
     entity_type = "consumers",
-  }
+  })
 
   self.workspace_entities = workspace_entities
 
   if err then
-    ngx.log(ngx.ERR, _log_prefix, "Error fetching workspaces for consumer: ",
-            consumer_id, ": ", err)
-    return responses.send_HTTP_INTERNAL_SERVER_ERROR()
+    log(ERR, _log_prefix, "Error fetching workspaces for consumer: ",
+        consumer_id, ": ", err)
+    return endpoints.handle_error()
   end
 
   if not next(workspace_entities) then
-    ngx.log(ngx.DEBUG, "no workspace found for consumer:" .. consumer_id)
-    return responses.send_HTTP_INTERNAL_SERVER_ERROR()
+    log(ERR, "no workspace found for consumer:" .. consumer_id)
+    return endpoints.handle_error()
   end
 
   return {
@@ -350,6 +282,7 @@ function _M.resolve_entity_type(new_dao, old_dao, entity_id)
   -- search in all of old dao
   for name, dao in pairs(old_dao.daos) do
     local pk_name = dao.schema.primary_key[1]
+    -- XXX old-dao: if branch is going away with old dao
     if dao.schema.fields[pk_name].type == "id" then
       local rows, err = dao:find_all({
         [pk_name] = entity_id,
@@ -367,12 +300,9 @@ function _M.resolve_entity_type(new_dao, old_dao, entity_id)
   for name, dao in pairs(new_dao.daos) do
     local pk_name = dao.schema.primary_key[1]
     if dao.schema.fields[pk_name].uuid then
-      local row, err = dao:select({
+      local row = dao:select({
         [pk_name] = entity_id,
       })
-      if err then
-        return nil, nil, err
-      end
       if row then
         return name, row, nil
       end
@@ -383,44 +313,47 @@ function _M.resolve_entity_type(new_dao, old_dao, entity_id)
 end
 
 
-function _M.validate_jwt(self, dao_factory, helpers, token_optional)
+function _M.validate_jwt(self, db, helpers, token_optional)
+  local reset_secrets = db.consumer_reset_secrets
+
   -- Verify params
   if token_optional then
     return
   end
 
   if not self.params.token or self.params.token == "" then
-    return helpers.responses.send_HTTP_BAD_REQUEST("token is required")
+    return kong.response.exit(400, { message = "token is required" })
   end
 
   -- Parse and ensure that jwt contains the correct claims/headers.
   -- Signature NOT verified yet
   local jwt, err = ee_utils.validate_reset_jwt(self.params.token)
   if err then
-    return helpers.responses.send_HTTP_UNAUTHORIZED(err)
+    return kong.response.exit(401, { message = "Unauthorized" })
   end
 
-  -- Look up the secret by consumer id and pending status
-  local rows, err = singletons.dao.consumer_reset_secrets:find_all({
-    consumer_id = jwt.claims.id,
-    status = enums.TOKENS.STATUS.PENDING,
-  })
+  -- Look up the secret by consumer id
+  local reset_secret
+  for secret, err in reset_secrets:each_for_consumer({ id = jwt.claims.id }) do
+    if err then
+      log(ERR, _log_prefix, err)
+      return kong.response.exit(401, { message = "Unauthorized" })
+    end
 
-  if err then
-    return helpers.responses.send_HTTP_UNAUTHORIZED(err)
+    if not reset_secret and secret.status == enums.TOKENS.STATUS.PENDING then
+      reset_secret = secret
+    end
   end
 
-  if not rows or next(rows) == nil then
-    return helpers.responses.send_HTTP_UNAUTHORIZED()
+  if not reset_secret then
+    return kong.response.exit(401, { message = "Unauthorized"})
   end
-
-  local reset_secret = rows[1]
 
   -- Generate a new signature and compare it to passed token
   local ok, _ = ee_jwt.verify_signature(jwt, reset_secret.secret)
   if not ok then
     log(ERR, _log_prefix, "JWT signature is invalid")
-    return helpers.responses.send_HTTP_UNAUTHORIZED()
+    return kong.response.exit(401, { message = "Unauthorized" })
   end
 
   self.reset_secret_id = reset_secret.id
@@ -431,7 +364,7 @@ end
 function _M.validate_email(self, dao_factory, helpers)
   local ok, err = ee_utils.validate_email(self.params.email)
   if not ok then
-    return helpers.responses.send_HTTP_BAD_REQUEST("Invalid email: " .. err)
+    return kong.response.exit(400, { message = "Invalid email: " .. err })
   end
 end
 

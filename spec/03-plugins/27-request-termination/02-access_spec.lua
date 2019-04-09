@@ -1,5 +1,9 @@
 local helpers = require "spec.helpers"
 local cjson   = require "cjson"
+local meta    = require "kong.meta"
+
+
+local server_tokens = meta._SERVER_TOKENS
 
 
 for _, strategy in helpers.each_strategy() do
@@ -8,8 +12,12 @@ for _, strategy in helpers.each_strategy() do
     local admin_client
     local plugin_message, plugin_body
 
-    setup(function()
-      local bp = helpers.get_db_utils(strategy)
+    lazy_setup(function()
+      local bp = helpers.get_db_utils(strategy, {
+        "routes",
+        "services",
+        "plugins",
+      })
 
       local route1 = bp.routes:insert({
         hosts = { "api1.request-termination.com" },
@@ -37,13 +45,13 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name     = "request-termination",
-        route_id = route1.id,
+        route = { id = route1.id },
         config   = {},
       }
 
       bp.plugins:insert {
         name     = "request-termination",
-        route_id = route2.id,
+        route = { id = route2.id },
         config   = {
           status_code = 404,
         },
@@ -51,7 +59,7 @@ for _, strategy in helpers.each_strategy() do
 
       plugin_message = bp.plugins:insert {
         name     = "request-termination",
-        route_id = route3.id,
+        route = { id = route3.id },
         config   = {
           status_code = 406,
           message     = "Invalid",
@@ -60,7 +68,7 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name     = "request-termination",
-        route_id = route4.id,
+        route = { id = route4.id },
         config   = {
           body = "<html><body><h1>Service is down for maintenance</h1></body></html>",
         },
@@ -68,7 +76,7 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name     = "request-termination",
-        route_id = route5.id,
+        route = { id = route5.id },
         config   = {
           status_code  = 451,
           content_type = "text/html",
@@ -78,7 +86,7 @@ for _, strategy in helpers.each_strategy() do
 
       plugin_body = bp.plugins:insert {
         name     = "request-termination",
-        route_id = route6.id,
+        route = { id = route6.id },
         config   = {
           status_code = 503,
           body        = '{"code": 1, "message": "Service unavailable"}',
@@ -94,7 +102,7 @@ for _, strategy in helpers.each_strategy() do
       admin_client = helpers.admin_client()
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       if proxy_client and admin_client then
         proxy_client:close()
         admin_client:close()
@@ -159,7 +167,7 @@ for _, strategy in helpers.each_strategy() do
         })
         local body = assert.res_status(200, res)
         local plugin = cjson.decode(body)
-        assert.is_nil(plugin.config.message)
+        assert.equal(ngx.null, plugin.config.message)
         local res = assert(proxy_client:send {
           method = "GET",
           path = "/status/200",
@@ -228,7 +236,7 @@ for _, strategy in helpers.each_strategy() do
         })
         local body = assert.res_status(200, res)
         local plugin = cjson.decode(body)
-        assert.is_nil(plugin.config.body)
+        assert.equal(ngx.null, plugin.config.body)
         local res = assert(proxy_client:send {
           method = "GET",
           path = "/status/200",
@@ -257,6 +265,18 @@ for _, strategy in helpers.each_strategy() do
         })
         assert.res_status(200, res)
       end)
+    end)
+
+    it("returns server tokens with Server header", function()
+      local res = assert(proxy_client:send {
+        method = "GET",
+        path = "/status/200",
+        headers = {
+          ["Host"] = "api1.request-termination.com"
+        }
+      })
+
+      assert.equal(server_tokens, res.headers["Server"])
     end)
   end)
 end

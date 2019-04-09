@@ -1,15 +1,18 @@
 local crypto = require "kong.plugins.basic-auth.crypto"
-local singletons = require "kong.singletons"
 local constants = require "kong.constants"
-local responses = require "kong.tools.responses"
 
-local ngx_set_header = ngx.req.set_header
-local ngx_get_headers = ngx.req.get_headers
-local ngx_re_match = ngx.re.match
+
+local decode_base64 = ngx.decode_base64
+local re_gmatch = ngx.re.gmatch
+local re_match = ngx.re.match
+local kong = kong
+
 
 local realm = 'Basic realm="' .. _KONG._NAME .. '"'
 
+
 local _M = {}
+
 
 -- Fast lookup for credential retrieval depending on the type of the authentication
 --
@@ -19,35 +22,34 @@ local _M = {}
 -- @param {table} conf Plugin config
 -- @return {string} public_key
 -- @return {string} private_key
-local function retrieve_credentials(request, header_name, conf)
+local function retrieve_credentials(header_name, conf)
   local username, password
-  local authorization_header = request.get_headers()[header_name]
+  local authorization_header = kong.request.get_header(header_name)
 
   if authorization_header then
-    local iterator, iter_err = ngx.re.gmatch(authorization_header, "\\s*[Bb]asic\\s*(.+)")
+    local iterator, iter_err = re_gmatch(authorization_header, "\\s*[Bb]asic\\s*(.+)")
     if not iterator then
-      ngx.log(ngx.ERR, iter_err)
+      kong.log.err(iter_err)
       return
     end
 
     local m, err = iterator()
     if err then
-      ngx.log(ngx.ERR, err)
+      kong.log.err(err)
       return
     end
 
     if m and m[1] then
-      local decoded_basic = ngx.decode_base64(m[1])
+      local decoded_basic = decode_base64(m[1])
       if decoded_basic then
-        local basic_parts, err = ngx_re_match(decoded_basic,
-                                              "([^:]+):(.*)", "oj")
+        local basic_parts, err = re_match(decoded_basic, "([^:]+):(.*)", "oj")
         if err then
-          ngx.log(ngx.ERR, err)
+          kong.log.err(err)
           return
         end
 
         if not basic_parts then
-          ngx.log(ngx.ERR, "[basic-auth] header has unrecognized format")
+          kong.log.err("header has unrecognized format")
           return
         end
 
@@ -58,7 +60,7 @@ local function retrieve_credentials(request, header_name, conf)
   end
 
   if conf.hide_credentials then
-    request.clear_header(header_name)
+    kong.service.request.clear_header(header_name)
   end
 
   return username, password
@@ -69,19 +71,20 @@ end
 -- @param given_password The password as given in the Authorization header
 -- @return Success of authentication
 local function validate_credentials(credential, given_password)
-  local digest, err = crypto.encrypt({consumer_id = credential.consumer_id, password = given_password})
+  local digest, err = crypto.encrypt(credential.consumer.id, given_password)
   if err then
-    ngx.log(ngx.ERR, "[basic-auth]  " .. err)
+    kong.log.err(err)
   end
+
   return credential.password == digest
 end
 
 local function load_credential_into_memory(username)
-  local credentials, err = singletons.dao.basicauth_credentials:find_all {username = username}
+  local credential, err = kong.db.basicauth_credentials:select_by_username(username)
   if err then
     return nil, err
   end
-  return credentials[1]
+  return credential
 end
 
 local function load_credential_from_db(username)
@@ -89,18 +92,20 @@ local function load_credential_from_db(username)
     return
   end
 
-  local credential_cache_key = singletons.dao.basicauth_credentials:cache_key(username)
-  local credential, err      = singletons.cache:get(credential_cache_key, nil,
-                                                    load_credential_into_memory,
-                                                    username)
+  local credential_cache_key = kong.db.basicauth_credentials:cache_key(username)
+  local credential, err      = kong.cache:get(credential_cache_key, nil,
+                                              load_credential_into_memory,
+                                              username)
   if err then
-    return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+    kong.log.err(err)
+    return kong.response.exit(500, { message = "An unexpected error occurred" })
   end
+
   return credential
 end
 
 local function load_consumer_into_memory(consumer_id, anonymous)
-  local result, err = singletons.dao.consumers:find { id = consumer_id }
+  local result, err = kong.db.consumers:select { id = consumer_id }
   if not result then
     if anonymous and not err then
       err = 'anonymous consumer "' .. consumer_id .. '" not found'
@@ -111,51 +116,80 @@ local function load_consumer_into_memory(consumer_id, anonymous)
 end
 
 local function set_consumer(consumer, credential)
-  ngx_set_header(constants.HEADERS.CONSUMER_ID, consumer.id)
-  ngx_set_header(constants.HEADERS.CONSUMER_CUSTOM_ID, consumer.custom_id)
-  ngx_set_header(constants.HEADERS.CONSUMER_USERNAME, consumer.username)
-  ngx.ctx.authenticated_consumer = consumer
-  if credential then
-    ngx_set_header(constants.HEADERS.CREDENTIAL_USERNAME, credential.username)
-    ngx.ctx.authenticated_credential = credential
-    ngx_set_header(constants.HEADERS.ANONYMOUS, nil) -- in case of auth plugins concatenation
+  local set_header = kong.service.request.set_header
+  local clear_header = kong.service.request.clear_header
+
+  if consumer and consumer.id then
+    set_header(constants.HEADERS.CONSUMER_ID, consumer.id)
   else
-    ngx_set_header(constants.HEADERS.ANONYMOUS, true)
+    clear_header(constants.HEADERS.CONSUMER_ID)
   end
 
+  if consumer and consumer.custom_id then
+    set_header(constants.HEADERS.CONSUMER_CUSTOM_ID, consumer.custom_id)
+  else
+    clear_header(constants.HEADERS.CONSUMER_CUSTOM_ID)
+  end
+
+  if consumer and consumer.username then
+    set_header(constants.HEADERS.CONSUMER_USERNAME, consumer.username)
+  else
+    clear_header(constants.HEADERS.CONSUMER_USERNAME)
+  end
+
+  kong.client.authenticate(consumer, credential)
+
+  if credential then
+    if credential.username then
+      set_header(constants.HEADERS.CREDENTIAL_USERNAME, credential.username)
+    else
+      clear_header(constants.HEADERS.CREDENTIAL_USERNAME)
+    end
+
+    clear_header(constants.HEADERS.ANONYMOUS)
+
+  else
+    clear_header(constants.HEADERS.CREDENTIAL_USERNAME)
+    set_header(constants.HEADERS.ANONYMOUS, true)
+  end
 end
 
 local function do_authentication(conf)
   -- If both headers are missing, return 401
-  local headers = ngx_get_headers()
-  if not (headers["authorization"] or headers["proxy-authorization"]) then
-    ngx.header["WWW-Authenticate"] = realm
-    return false, {status = 401}
+  if not (kong.request.get_header("authorization") or kong.request.get_header("proxy-authorization")) then
+    return false, {
+      status = 401,
+      message = "Unauthorized",
+      headers = {
+        ["WWW-Authenticate"] = realm
+      }
+    }
   end
 
   local credential
-  local given_username, given_password = retrieve_credentials(ngx.req, "proxy-authorization", conf)
+  local given_username, given_password = retrieve_credentials("proxy-authorization", conf)
   if given_username then
     credential = load_credential_from_db(given_username)
   end
 
   -- Try with the authorization header
   if not credential then
-    given_username, given_password = retrieve_credentials(ngx.req, "authorization", conf)
+    given_username, given_password = retrieve_credentials("authorization", conf)
     credential = load_credential_from_db(given_username)
   end
 
   if not credential or not validate_credentials(credential, given_password) then
-    return false, {status = 403, message = "Invalid authentication credentials"}
+    return false, { status = 403, message = "Invalid authentication credentials" }
   end
 
   -- Retrieve consumer
-  local consumer_cache_key = singletons.dao.consumers:cache_key(credential.consumer_id)
-  local consumer, err      = singletons.cache:get(consumer_cache_key, nil,
-                                                  load_consumer_into_memory,
-                                                  credential.consumer_id)
+  local consumer_cache_key = kong.db.consumers:cache_key(credential.consumer.id)
+  local consumer, err      = kong.cache:get(consumer_cache_key, nil,
+                                            load_consumer_into_memory,
+                                            credential.consumer.id)
   if err then
-    return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+    kong.log.err(err)
+    return kong.response.exit(500, { message = "An unexpected error occurred" })
   end
 
   set_consumer(consumer, credential)
@@ -165,8 +199,7 @@ end
 
 
 function _M.execute(conf)
-
-  if ngx.ctx.authenticated_credential and conf.anonymous ~= "" then
+  if conf.anonymous and kong.client.get_credential() then
     -- we're already authenticated, and we're configured for using anonymous,
     -- hence we're in a logical OR between auth methods and we're already done.
     return
@@ -174,18 +207,21 @@ function _M.execute(conf)
 
   local ok, err = do_authentication(conf)
   if not ok then
-    if conf.anonymous ~= "" then
+    if conf.anonymous then
       -- get anonymous user
-      local consumer_cache_key = singletons.dao.consumers:cache_key(conf.anonymous)
-      local consumer, err      = singletons.cache:get(consumer_cache_key, nil,
-                                                      load_consumer_into_memory,
-                                                      conf.anonymous, true)
+      local consumer_cache_key = kong.db.consumers:cache_key(conf.anonymous)
+      local consumer, err      = kong.cache:get(consumer_cache_key, nil,
+                                                load_consumer_into_memory,
+                                                conf.anonymous, true)
       if err then
-        return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+        kong.log.err(err)
+        return kong.response.exit(500, { message = "An unexpected error occurred" })
       end
+
       set_consumer(consumer, nil)
+
     else
-      return responses.send(err.status, err.message)
+      return kong.response.exit(err.status, { message = err.message }, err.headers)
     end
   end
 end

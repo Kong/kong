@@ -6,6 +6,7 @@ max_line_length = false
 
 globals = {
     "_KONG",
+    "kong",
     "ngx.IS_CLI",
 }
 
@@ -48,4 +49,9 @@ files["spec-ee/**/*.lua"] = {
     std = "ngx_lua+busted",
 }
 
+-- XXX TEMPORARY - MERGE
+exclude_files = {
+    "spec/**/*.lua",
+    "spec-old-api/**/*.lua",
+}
 

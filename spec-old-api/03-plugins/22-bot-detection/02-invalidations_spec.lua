@@ -3,16 +3,16 @@ local helpers = require "spec.helpers"
 describe("Plugin: bot-detection (hooks)", function()
   local plugin, proxy_client, admin_client
 
-  setup(function()
-    local dao = select(3, helpers.get_db_utils())
+  lazy_setup(function()
+    local _, db, dao = helpers.get_db_utils()
 
     local api1 = assert(dao.apis:insert {
       name         = "bot.com",
       hosts        = { "bot.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    plugin = assert(dao.plugins:insert {
-      api_id = api1.id,
+    plugin = assert(db.plugins:insert {
+      api = { id = api1.id },
       name   = "bot-detection",
       config = {},
     })
@@ -22,7 +22,7 @@ describe("Plugin: bot-detection (hooks)", function()
     }))
   end)
 
-  teardown(function()
+  lazy_teardown(function()
     helpers.stop_kong()
   end)
 
@@ -53,7 +53,9 @@ describe("Plugin: bot-detection (hooks)", function()
       method = "PATCH",
       path = "/apis/bot.com/plugins/" .. plugin.id,
       body = {
-        ["config.blacklist"] = "helloworld"
+        config = {
+          blacklist = { "helloworld" }
+        },
       },
       headers = {
         ["content-type"] = "application/json"
@@ -93,7 +95,9 @@ describe("Plugin: bot-detection (hooks)", function()
       method = "PATCH",
       path = "/apis/bot.com/plugins/" .. plugin.id,
       body = {
-        ["config.whitelist"] = "facebookexternalhit/1.1"
+        config = {
+          whitelist = { "facebookexternalhit/1.1" },
+        }
       },
       headers = {
         ["content-type"] = "application/json",

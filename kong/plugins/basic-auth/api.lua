@@ -1,165 +1,71 @@
-local crud = require "kong.api.crud_helpers"
-local ee_crud = require "kong.enterprise_edition.crud_helpers"
-local enums   = require "kong.enterprise_edition.dao.enums"
+local endpoints = require "kong.api.endpoints"
+
+
+local kong               = kong
+local credentials_schema = kong.db.basicauth_credentials.schema
+local consumers_schema   = kong.db.consumers.schema
+
 
 return {
-  ["/consumers/:username_or_id/basic-auth/"] = {
-    before = function(self, dao_factory, helpers)
-      ee_crud.find_consumer_by_username_or_id(self, dao_factory, helpers)
-      self.params.consumer_id = self.consumer.id
-    end,
+  ["/consumers/:consumers/basic-auth"] = {
+    schema = credentials_schema,
+    methods = {
+      GET = endpoints.get_collection_endpoint(
+              credentials_schema, consumers_schema, "consumer"),
 
-    GET = function(self, dao_factory)
-      crud.paginated_set(self, dao_factory.basicauth_credentials)
-    end,
-
-    PUT = function(self, dao_factory)
-      crud.put(self.params, dao_factory.basicauth_credentials)
-    end,
-
-    POST = function(self, dao_factory)
-      crud.post(self.params, dao_factory.basicauth_credentials,
-                crud.portal_crud.insert_credential('basic-auth'))
-    end
+      POST = endpoints.post_collection_endpoint(
+              credentials_schema, consumers_schema, "consumer"),
+    },
   },
-  ["/developers/:email_or_id/basic-auth/"] = {
-    before = function(self, dao_factory, helpers)
-      self.params.email_or_id = ngx.unescape_uri(self.params.email_or_id)
-      ee_crud.find_developer_by_email_or_id(self, dao_factory, helpers)
-      self.params.consumer_id = self.consumer.id
-    end,
+  ["/consumers/:consumers/basic-auth/:basicauth_credentials"] = {
+    schema = credentials_schema,
+    methods = {
+      before = function(self, db)
+        local consumer, _, err_t = endpoints.select_entity(self, db, consumers_schema)
+        if err_t then
+          return endpoints.handle_error(err_t)
+        end
+        if not consumer then
+          return kong.response.exit(404, { message = "Not found" })
+        end
 
-    GET = function(self, dao_factory)
-      self.params.plugin = 'basic-auth'
-      self.params.consumer_type = enums.CONSUMERS.TYPE.PROXY
-      crud.paginated_set(self, dao_factory.credentials, function (row)
-        return row.credential_data
-      end)
-    end,
+        self.consumer = consumer
 
-    PUT = function(self, dao_factory)
-      crud.put(self.params, dao_factory.basicauth_credentials)
-    end,
+        local cred, _, err_t = endpoints.select_entity(self, db, credentials_schema)
+        if err_t then
+          return endpoints.handle_error(err_t)
+        end
 
-    POST = function(self, dao_factory)
-      crud.post(self.params, dao_factory.basicauth_credentials,
-                crud.portal_crud.insert_credential('basic-auth'))
-    end
-  },
-  ["/consumers/:username_or_id/basic-auth/:credential_username_or_id"] = {
-    before = function(self, dao_factory, helpers)
-      ee_crud.find_consumer_by_username_or_id(self, dao_factory, helpers)
-      self.params.consumer_id = self.consumer.id
+        if self.req.cmd_mth ~= "PUT" then
+          if not cred or cred.consumer.id ~= consumer.id then
+            return kong.response.exit(404, { message = "Not found" })
+          end
 
-      local credentials, err = crud.find_by_id_or_field(
-        dao_factory.basicauth_credentials,
-        { consumer_id = self.params.consumer_id },
-        ngx.unescape_uri(self.params.credential_username_or_id),
-        "username"
-      )
+          self.basicauth_credential = cred
+          self.params.basicauth_credentials = cred.id
+        end
+      end,
 
-      if err then
-        return helpers.yield_error(err)
-      elseif next(credentials) == nil then
-        return helpers.responses.send_HTTP_NOT_FOUND()
-      end
-      self.params.credential_username_or_id = nil
-
-      self.basicauth_credential = credentials[1]
-    end,
-
-    GET = function(self, dao_factory, helpers)
-      return helpers.responses.send_HTTP_OK(self.basicauth_credential)
-    end,
-
-    PATCH = function(self, dao_factory)
-      crud.patch(self.params, dao_factory.basicauth_credentials, self.basicauth_credential,
-          crud.portal_crud.update_credential)
-    end,
-
-    DELETE = function(self, dao_factory)
-      crud.portal_crud.delete_credential(self.basicauth_credential)
-      crud.delete(self.basicauth_credential, dao_factory.basicauth_credentials)
-    end
-  },
-  ["/developers/:email_or_id/basic-auth/:credential_username_or_id"] = {
-    before = function(self, dao_factory, helpers)
-      self.params.email_or_id = ngx.unescape_uri(self.params.email_or_id)
-      ee_crud.find_developer_by_email_or_id(self, dao_factory, helpers)
-      self.params.consumer_id = self.consumer.id
-
-      local credentials, err = crud.find_by_id_or_field(
-        dao_factory.basicauth_credentials,
-        { consumer_id = self.params.consumer_id },
-        ngx.unescape_uri(self.params.credential_username_or_id),
-        "username"
-      )
-
-      if err then
-        return helpers.yield_error(err)
-      elseif next(credentials) == nil then
-        return helpers.responses.send_HTTP_NOT_FOUND()
-      end
-      self.params.credential_username_or_id = nil
-
-      self.basicauth_credential = credentials[1]
-    end,
-
-    GET = function(self, dao_factory, helpers)
-      return helpers.responses.send_HTTP_OK(self.basicauth_credential)
-    end,
-
-    PATCH = function(self, dao_factory)
-      crud.patch(self.params, dao_factory.basicauth_credentials, self.basicauth_credential,
-          crud.portal_crud.update_credential)
-    end,
-
-    DELETE = function(self, dao_factory)
-      crud.portal_crud.delete_credential(self.basicauth_credential)
-      crud.delete(self.basicauth_credential, dao_factory.basicauth_credentials)
-    end
+      GET  = endpoints.get_entity_endpoint(credentials_schema),
+      PUT  = function(self, ...)
+        self.args.post.consumer = { id = self.consumer.id }
+        return endpoints.put_entity_endpoint(credentials_schema)(self, ...)
+      end,
+      PATCH  = endpoints.patch_entity_endpoint(credentials_schema),
+      DELETE = endpoints.delete_entity_endpoint(credentials_schema),
+    },
   },
   ["/basic-auths/"] = {
-    GET = function(self, dao_factory)
-      crud.paginated_set(self,
-                         dao_factory.basicauth_credentials,
-                         ee_crud.post_process_credential)
-    end
+    schema = credentials_schema,
+    methods = {
+      GET = endpoints.get_collection_endpoint(credentials_schema),
+    }
   },
-  ["/basic-auths/:credential_username_or_id/:type"] = {
-    before = function(self, dao_factory, helpers)
-      local credentials, err = crud.find_by_id_or_field(
-        dao_factory.basicauth_credentials,
-        nil,
-        ngx.unescape_uri(self.params.credential_username_or_id),
-        "username"
-      )
-
-      if err then
-        return helpers.yield_error(err)
-      elseif next(credentials) == nil then
-        return helpers.responses.send_HTTP_NOT_FOUND()
-      end
-
-      self.params.credential_username_or_id = nil
-
-      if self.params.type == 'developer' then
-        self.params.email_or_id = credentials[1].consumer_id
-        ee_crud.find_developer_by_email_or_id(self, dao_factory, helpers)
-      end
-
-      if self.params.type == 'consumer' then
-        self.params.username_or_id = credentials[1].consumer_id
-        ee_crud.find_consumer_by_username_or_id(self, dao_factory, helpers)
-      end
-
-      if not self.consumer then
-        return helpers.responses.send_HTTP_NOT_FOUND()
-      end
-    end,
-
-    GET = function(self, dao_factory,helpers)
-      return helpers.responses.send_HTTP_OK(self.consumer)
-    end
+  ["/basic-auths/:basicauth_credentials/consumer"] = {
+    schema = consumers_schema,
+    methods = {
+      GET = endpoints.get_entity_endpoint(
+              credentials_schema, consumers_schema, "consumer"),
+    }
   },
 }

@@ -44,7 +44,16 @@ _M.dao_insert_values = {
   end
 }
 
-_M.additional_tables = { "ttls", "cluster_events", "routes", "services" }
+_M.additional_tables = {
+  "ttls",
+  "cluster_events",
+  "routes",
+  "services",
+  "consumers",
+  "plugins",
+  "certificates",
+  "snis",
+}
 
 function _M.new(kong_config)
   local self = _M.super.new()
@@ -52,6 +61,7 @@ function _M.new(kong_config)
   self.query_options = {
     host = kong_config.pg_host,
     port = kong_config.pg_port,
+    timeout = kong_config.pg_timeout,
     user = kong_config.pg_user,
     password = kong_config.pg_password,
     database = kong_config.pg_database,
@@ -434,6 +444,11 @@ end
 function _M:query(query, schema)
   local conn_opts = query_opts(self)
   local pg = pgmoon.new(conn_opts)
+
+  if conn_opts.timeout then
+    pg:settimeout(conn_opts.timeout)
+  end
+
   local ok, err = pg:connect()
   if not ok then
     return nil, Errors.db(err)
@@ -459,7 +474,7 @@ local function deserialize_timestamps(self, row, schema)
   for k, v in pairs(schema.fields) do
     if v.type == "timestamp" and result[k] then
       local query = fmt([[
-        SELECT (extract(epoch from timestamp '%s') * 1000) as %s;
+        SELECT (extract(epoch from '%s' at time zone 'UTC') * 1000) as %s;
       ]], result[k], k)
       local res, err = self:query(query)
       if not res then return nil, err
@@ -476,7 +491,7 @@ local function serialize_timestamps(self, tbl, schema)
   for k, v in pairs(schema.fields) do
     if v.type == "timestamp" and result[k] then
       local query = fmt([[
-        SELECT to_timestamp(%f) at time zone 'UTC' as %s;
+        SELECT to_timestamp(%.3f) at time zone 'UTC' at time zone 'UTC' as %s;
       ]], result[k] / 1000, k)
       local res, err = self:query(query)
       if not res then return nil, err
@@ -631,6 +646,7 @@ function _M:update(table_name, schema, _, filter_keys, values, nils, full, _, op
   options = options or {}
 
   local args = {}
+
   local values, err = serialize_timestamps(self, values, schema)
   if not values then
     return nil, err
@@ -747,12 +763,20 @@ function _M:reachable()
   local conn_opts = query_opts(self)
   local pg = pgmoon.new(conn_opts)
 
+  if conn_opts.timeout then
+    pg:settimeout(conn_opts.timeout)
+  end
+
   local ok, err = pg:connect()
   if not ok then
     return nil, Errors.db(err)
   end
 
-  pg:keepalive()
+  if conn_opts.socket_type == "nginx" then
+    pg:keepalive()
+  else
+    pg:disconnect()
+  end
 
   return true
 end

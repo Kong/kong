@@ -1,38 +1,46 @@
 -- JWT verification module
 -- Adapted version of x25/luajwt for Kong. It provides various improvements and
--- an OOP architecture allowing the JWT to be parsed and verified separatly,
+-- an OOP architecture allowing the JWT to be parsed and verified separately,
 -- avoiding multiple parsings.
 --
 -- @see https://github.com/x25/luajwt
 
 local json = require "cjson"
-local utils = require "kong.tools.utils"
 local openssl_digest = require "openssl.digest"
 local openssl_hmac = require "openssl.hmac"
 local openssl_pkey = require "openssl.pkey"
 local asn_sequence = require "kong.plugins.jwt.asn_sequence"
 
-local error = error
+
+local rep = string.rep
+local sub = string.sub
+local find = string.find
 local type = type
+local time = ngx.time
+local pairs = pairs
+local error = error
 local pcall = pcall
-local ngx_time = ngx.time
-local string_rep = string.rep
-local string_sub = string.sub
-local table_concat = table.concat
+local concat = table.concat
+local insert = table.insert
+local unpack = unpack
+local assert = assert
+local tostring = tostring
 local setmetatable = setmetatable
+local getmetatable = getmetatable
 local encode_base64 = ngx.encode_base64
 local decode_base64 = ngx.decode_base64
 
+
 --- Supported algorithms for signing tokens.
 local alg_sign = {
-  ["HS256"] = function(data, key) return openssl_hmac.new(key, "sha256"):final(data) end,
-  --["HS384"] = function(data, key) return openssl_hmac.new(key, "sha384"):final(data) end,
-  --["HS512"] = function(data, key) return openssl_hmac.new(key, "sha512"):final(data) end,
-  ["RS256"] = function(data, key) return openssl_pkey.new(key):sign(openssl_digest.new("sha256"):update(data)) end,
-  ["RS512"] = function(data, key) return openssl_pkey.new(key):sign(openssl_digest.new("sha512"):update(data)) end,
-  ["ES256"] = function(data, key)
-    local pkeyPrivate = openssl_pkey.new(key)
-    local signature = pkeyPrivate:sign(openssl_digest.new("sha256"):update(data))
+  HS256 = function(data, key) return openssl_hmac.new(key, "sha256"):final(data) end,
+  HS384 = function(data, key) return openssl_hmac.new(key, "sha384"):final(data) end,
+  HS512 = function(data, key) return openssl_hmac.new(key, "sha512"):final(data) end,
+  RS256 = function(data, key) return openssl_pkey.new(key):sign(openssl_digest.new("sha256"):update(data)) end,
+  RS512 = function(data, key) return openssl_pkey.new(key):sign(openssl_digest.new("sha512"):update(data)) end,
+  ES256 = function(data, key)
+    local pkey = openssl_pkey.new(key)
+    local signature = pkey:sign(openssl_digest.new("sha256"):update(data))
 
     local derSequence = asn_sequence.parse_simple_sequence(signature)
     local r = asn_sequence.unsign_integer(derSequence[1], 32)
@@ -43,59 +51,63 @@ local alg_sign = {
   end
 }
 
+
 --- Supported algorithms for verifying tokens.
 local alg_verify = {
-  ["HS256"] = function(data, signature, key) return signature == alg_sign["HS256"](data, key) end,
-  --["HS384"] = function(data, signature, key) return signature == alg_sign["HS384"](data, key) end,
-  --["HS512"] = function(data, signature, key) return signature == alg_sign["HS512"](data, key) end,
-  ["RS256"] = function(data, signature, key)
+  HS256 = function(data, signature, key) return signature == alg_sign.HS256(data, key) end,
+  HS384 = function(data, signature, key) return signature == alg_sign.HS384(data, key) end,
+  HS512 = function(data, signature, key) return signature == alg_sign.HS512(data, key) end,
+  RS256 = function(data, signature, key)
     local pkey_ok, pkey = pcall(openssl_pkey.new, key)
     assert(pkey_ok, "Consumer Public Key is Invalid")
-    local digest = openssl_digest.new('sha256'):update(data)
+    local digest = openssl_digest.new("sha256"):update(data)
     return pkey:verify(signature, digest)
   end,
-  ["RS512"] = function(data, signature, key)
+  RS512 = function(data, signature, key)
     local pkey_ok, pkey = pcall(openssl_pkey.new, key)
     assert(pkey_ok, "Consumer Public Key is Invalid")
-    local digest = openssl_digest.new('sha512'):update(data)
+    local digest = openssl_digest.new("sha512"):update(data)
     return pkey:verify(signature, digest)
   end,
-  ["ES256"] = function(data, signature, key)
+  ES256 = function(data, signature, key)
     local pkey_ok, pkey = pcall(openssl_pkey.new, key)
     assert(pkey_ok, "Consumer Public Key is Invalid")
     assert(#signature == 64, "Signature must be 64 bytes.")
     local asn = {}
-    asn[1] = asn_sequence.resign_integer(string_sub(signature, 1, 32))
-    asn[2] = asn_sequence.resign_integer(string_sub(signature, 33, 64))
+    asn[1] = asn_sequence.resign_integer(sub(signature, 1, 32))
+    asn[2] = asn_sequence.resign_integer(sub(signature, 33, 64))
     local signatureAsn = asn_sequence.create_simple_sequence(asn)
-    local digest = openssl_digest.new('sha256'):update(data)
+    local digest = openssl_digest.new("sha256"):update(data)
     return pkey:verify(signatureAsn, digest)
   end
 }
 
+
 --- base 64 encoding
 -- @param input String to base64 encode
 -- @return Base64 encoded string
-local function b64_encode(input)
-  local result = encode_base64(input)
-  result = result:gsub("+", "-"):gsub("/", "_"):gsub("=", "")
+local function base64_encode(input)
+  local result = encode_base64(input, true)
+  result = result:gsub("+", "-"):gsub("/", "_")
   return result
 end
+
 
 --- base 64 decode
 -- @param input String to base64 decode
 -- @return Base64 decoded string
-local function b64_decode(input)
+local function base64_decode(input)
   local remainder = #input % 4
 
   if remainder > 0 then
     local padlen = 4 - remainder
-    input = input .. string_rep('=', padlen)
+    input = input .. rep("=", padlen)
   end
 
   input = input:gsub("-", "+"):gsub("_", "/")
   return decode_base64(input)
 end
+
 
 --- Tokenize a string by delimiter
 -- Used to separate the header, claims and signature part of a JWT
@@ -106,8 +118,12 @@ end
 local function tokenize(str, div, len)
   local result, pos = {}, 0
 
-  for st, sp in function() return str:find(div, pos, true) end do
-    result[#result + 1] = str:sub(pos, st-1)
+  local iter = function()
+    return find(str, div, pos, true)
+  end
+
+  for st, sp in iter do
+    result[#result + 1] = sub(str, pos, st-1)
     pos = sp + 1
     len = len - 1
     if len <= 1 then
@@ -115,9 +131,10 @@ local function tokenize(str, div, len)
     end
   end
 
-  result[#result + 1] = str:sub(pos)
+  result[#result + 1] = sub(str, pos)
   return result
 end
+
 
 --- Parse a JWT
 -- Parse a JWT and validate header values.
@@ -129,9 +146,9 @@ local function decode_token(token)
 
   -- Decode JSON
   local ok, header, claims, signature = pcall(function()
-    return json.decode(b64_decode(header_64)),
-           json.decode(b64_decode(claims_64)),
-           b64_decode(signature_64)
+    return json.decode(base64_decode(header_64)),
+           json.decode(base64_decode(claims_64)),
+           base64_decode(signature_64)
   end)
   if not ok then
     return nil, "invalid JSON"
@@ -164,14 +181,17 @@ local function decode_token(token)
   }
 end
 
+
 -- For test purposes
 local function encode_token(data, key, alg, header)
   if type(data) ~= "table" then
     error("Argument #1 must be table", 2)
   end
+
   if type(key) ~= "string" then
     error("Argument #2 must be string", 2)
   end
+
   if header and type(header) ~= "table" then
     error("Argument #4 must be a table", 2)
   end
@@ -182,17 +202,42 @@ local function encode_token(data, key, alg, header)
     error("Algorithm not supported", 2)
   end
 
-  local header = header or {typ = "JWT", alg = alg}
+  local header = header or { typ = "JWT", alg = alg }
   local segments = {
-    b64_encode(json.encode(header)),
-    b64_encode(json.encode(data))
+    base64_encode(json.encode(header)),
+    base64_encode(json.encode(data))
   }
 
-  local signing_input = table_concat(segments, ".")
+  local signing_input = concat(segments, ".")
   local signature = alg_sign[alg](signing_input, key)
-  segments[#segments+1] = b64_encode(signature)
-  return table_concat(segments, ".")
+
+  segments[#segments+1] = base64_encode(signature)
+
+  return concat(segments, ".")
 end
+
+
+local err_list_mt = {}
+
+
+local function add_error(errors, k, v)
+  if not errors then
+    errors = {}
+  end
+
+  if errors and errors[k] then
+    if getmetatable(errors[k]) ~= err_list_mt then
+      errors[k] = setmetatable({errors[k]}, err_list_mt)
+    end
+
+    insert(errors[k], v)
+  else
+    errors[k] = v
+  end
+
+  return errors
+end
+
 
 --[[
 
@@ -200,11 +245,15 @@ end
 
 ]]--
 
+
 local _M = {}
+
+
 _M.__index = _M
 
---- Instanciate a JWT parser
--- Parse a JWT and instanciate a JWT parser for further operations
+
+--- Instantiate a JWT parser
+-- Parse a JWT and instantiate a JWT parser for further operations
 -- Return errors instead of an instance if any encountered
 -- @param token JWT to parse
 -- @return JWT parser
@@ -222,6 +271,7 @@ function _M:new(token)
   return setmetatable(token, _M)
 end
 
+
 --- Verify a JWT signature
 -- Verify the current JWT signature against a given key
 -- @param key Key against which to verify the signature
@@ -230,29 +280,32 @@ function _M:verify_signature(key)
   return alg_verify[self.header.alg](self.header_64 .. "." .. self.claims_64, self.signature, key)
 end
 
-function _M:b64_decode(input)
-  return b64_decode(input)
+
+function _M:base64_decode(input)
+  return base64_decode(input)
 end
+
 
 --- Registered claims according to RFC 7519 Section 4.1
 local registered_claims = {
-  ["nbf"] = {
+  nbf = {
     type = "number",
     check = function(nbf)
-      if nbf > ngx_time() then
+      if nbf > time() then
         return "token not valid yet"
       end
     end
   },
-  ["exp"] = {
+  exp = {
     type = "number",
     check = function(exp)
-      if exp <= ngx_time() then
+      if exp <= time() then
         return "token expired"
       end
     end
   }
 }
+
 
 --- Verify registered claims (according to RFC 7519 Section 4.1)
 -- Claims are verified by type and a check.
@@ -263,18 +316,22 @@ function _M:verify_registered_claims(claims_to_verify)
   if not claims_to_verify then
     claims_to_verify = {}
   end
-  local errors = nil
-  local claim, claim_rules
+
+  local errors
+  local claim
+  local claim_rules
 
   for _, claim_name in pairs(claims_to_verify) do
     claim = self.claims[claim_name]
     claim_rules = registered_claims[claim_name]
+
     if type(claim) ~= claim_rules.type then
-      errors = utils.add_error(errors, claim_name, "must be a " .. claim_rules.type)
+      errors = add_error(errors, claim_name, "must be a " .. claim_rules.type)
+
     else
       local check_err = claim_rules.check(claim)
       if check_err then
-        errors = utils.add_error(errors, claim_name, check_err)
+        errors = add_error(errors, claim_name, check_err)
       end
     end
   end
@@ -282,6 +339,27 @@ function _M:verify_registered_claims(claims_to_verify)
   return errors == nil, errors
 end
 
+
+--- Check that the maximum allowed expiration is not reached
+-- @param maximum_expiration of the claim
+-- @return A Boolean indicating true if the claim has reached the maximum
+-- allowed expiration time
+-- @return error if any
+function _M:check_maximum_expiration(maximum_expiration)
+  if maximum_expiration <= 0 then
+    return true
+  end
+
+  local exp = self.claims.exp
+  if exp == nil or exp - time() > maximum_expiration then
+    return false, { exp = "exceeds maximum allowed expiration" }
+  end
+
+  return true
+end
+
+
 _M.encode = encode_token
+
 
 return _M

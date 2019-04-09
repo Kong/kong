@@ -11,20 +11,23 @@ for _, strategy in helpers.each_strategy() do
     local proxy_client
     local plugin
 
-    setup(function()
-      local bp
-      bp = helpers.get_db_utils(strategy)
+    lazy_setup(function()
+      local bp = helpers.get_db_utils(strategy, {
+        "routes",
+        "services",
+        "plugins",
+      })
 
       local route = bp.routes:insert {
         hosts = { "ldapauth.com" },
       }
 
       plugin = bp.plugins:insert {
-        route_id = route.id,
+        route = { id = route.id },
         name     = "ldap-auth",
         config   = {
           ldap_host = ldap_host_aws,
-          ldap_port = "389",
+          ldap_port = 389,
           start_tls = false,
           base_dn   = "ou=scientists,dc=ldap,dc=mashape,dc=com",
           attribute = "uid",
@@ -52,7 +55,7 @@ for _, strategy in helpers.each_strategy() do
       end
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       helpers.stop_kong(nil, true)
     end)
 
@@ -128,7 +131,6 @@ for _, strategy in helpers.each_strategy() do
       it("should invalidate cache once ttl expires", function()
         local cache_key = cache_key(plugin.config, "einstein", "password")
 
-        -- XXX EE: flaky - increased timeout
         helpers.wait_until(function()
           local res = assert(admin_client:send {
             method = "GET",
@@ -137,7 +139,7 @@ for _, strategy in helpers.each_strategy() do
           })
           res:read_body()
           return res.status == 404
-        end, 20)
+        end)
       end)
     end)
   end)

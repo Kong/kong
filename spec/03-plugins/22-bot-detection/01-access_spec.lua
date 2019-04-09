@@ -9,8 +9,12 @@ for _, strategy in helpers.each_strategy() do
   describe("Plugin: bot-detection (access) [#" .. strategy .. "]", function()
     local proxy_client
 
-    setup(function()
-      local bp = helpers.get_db_utils(strategy)
+    lazy_setup(function()
+      local bp = helpers.get_db_utils(strategy, {
+        "plugins",
+        "routes",
+        "services",
+      })
 
       local route1 = bp.routes:insert {
         hosts = { "bot.com" },
@@ -25,24 +29,24 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.plugins:insert {
-        route_id = route1.id,
+        route = { id = route1.id },
         name     = "bot-detection",
         config   = {},
       }
 
       bp.plugins:insert {
-        route_id = route2.id,
+        route = { id = route2.id },
         name     = "bot-detection",
         config   = {
-          blacklist = HELLOWORLD,
+          blacklist = { HELLOWORLD },
         },
       }
 
       bp.plugins:insert {
-        route_id = route3.id,
+        route = { id = route3.id },
         name     = "bot-detection",
         config   = {
-          whitelist = FACEBOOK,
+          whitelist = { FACEBOOK },
         },
       }
 
@@ -52,7 +56,7 @@ for _, strategy in helpers.each_strategy() do
       }))
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       helpers.stop_kong()
     end)
 
@@ -156,15 +160,19 @@ for _, strategy in helpers.each_strategy() do
   describe("Plugin: bot-detection configured global (access) [#" .. strategy .. "]", function()
     local proxy_client
 
-    setup(function()
-      local bp = helpers.get_db_utils(strategy)
+    lazy_setup(function()
+      local bp = helpers.get_db_utils(strategy, {
+        "plugins",
+        "routes",
+        "services",
+      })
 
       bp.routes:insert {
         hosts = { "bot.com" },
       }
 
       bp.plugins:insert {
-        route_id = nil,  -- apply globally
+        route = nil,  -- apply globally
         name     = "bot-detection",
         config   = {},
       }
@@ -175,7 +183,7 @@ for _, strategy in helpers.each_strategy() do
       }))
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       helpers.stop_kong()
     end)
 

@@ -190,7 +190,7 @@ describe("portal_gui", function()
       })
 
       index_conf = ee.prepare_portal({
-        is_authenticated = true
+        developer = {}
       }, conf)
 
       assert.same({

@@ -16,5 +16,39 @@ return {
     down = [[
       DROP TABLE acls;
     ]]
-  }
+  },
+  {
+    name = "2018-00-30-000000_add_cache_key_to_acls",
+    up = [[
+      ALTER TABLE acls ADD cache_key text;
+      CREATE INDEX IF NOT EXISTS ON acls(cache_key);
+    ]],
+    ignore_error = "Invalid column name"
+  },
+  {
+    name = "2018-08-30-000001_fill_in_acls_cache_key",
+    up = function(_, _, dao)
+      local rows, err = dao.db:query([[
+        SELECT * FROM acls;
+      ]])
+      if err then
+        return err
+      end
+      local len = #rows
+      local fmt = string.format
+      for i = 1, len do
+        local row = rows[i]
+        local key = fmt("%s:%s:%s:::",
+                        "acls", row.consumer_id or "", row.group or "")
+        local cql = fmt("UPDATE acls SET cache_key = '%s' WHERE id = '%s';",
+                        key, row.id)
+        local _, err = dao.db:query(cql)
+        if err then
+          return err
+        end
+      end
+    end,
+    down = nil
+  },
+
 }

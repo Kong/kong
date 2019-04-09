@@ -42,15 +42,15 @@ http {
     lua_max_running_timers 4096;
     lua_max_pending_timers 16384;
     lua_shared_dict kong                5m;
-    lua_shared_dict kong_cache          ${{MEM_CACHE_SIZE}};
+    lua_shared_dict kong_db_cache       ${{MEM_CACHE_SIZE}};
     lua_shared_dict kong_db_cache_miss 12m;
+    lua_shared_dict kong_locks          8m;
     lua_shared_dict kong_process_events 5m;
     lua_shared_dict kong_cluster_events 5m;
     lua_shared_dict kong_vitals_counters 5m;
     lua_shared_dict kong_vitals_lists   1m;
     lua_shared_dict kong_healthchecks   5m;
     lua_shared_dict kong_rate_limiting_counters 12m;
-    lua_shared_dict prometheus_metrics           5m;
     lua_shared_dict kong_reports_apis            1m;
     lua_shared_dict kong_reports_consumers       1m;
     lua_shared_dict kong_reports_routes          1m;
@@ -64,22 +64,31 @@ http {
     lua_ssl_verify_depth ${{LUA_SSL_VERIFY_DEPTH}};
 > end
 
+    lua_shared_dict kong_mock_upstream_loggers 10m;
+
+# injected nginx_http_* directives
+> for _, el in ipairs(nginx_http_directives)  do
+    $(el.name) $(el.value);
+> end
+
     init_by_lua_block {
-        kong = require 'kong'
-        kong.init()
+        Kong = require 'kong'
+        Kong.init()
     }
 
     init_worker_by_lua_block {
-        kong.init_worker()
+        Kong.init_worker()
     }
 
 > if #proxy_listeners > 0 then
     upstream kong_upstream {
         server 0.0.0.1;
         balancer_by_lua_block {
-            kong.balancer()
+            Kong.balancer()
         }
+> if upstream_keepalive > 0 then
         keepalive ${{UPSTREAM_KEEPALIVE}};
+> end
     }
 
     server {
@@ -97,9 +106,9 @@ http {
 > if proxy_ssl_enabled then
         ssl_certificate ${{SSL_CERT}};
         ssl_certificate_key ${{SSL_CERT_KEY}};
-        ssl_protocols TLSv1.1 TLSv1.2;
+        ssl_protocols TLSv1.1 TLSv1.2 TLSv1.3;
         ssl_certificate_by_lua_block {
-            kong.ssl_certificate()
+            Kong.ssl_certificate()
         }
 > end
 
@@ -109,7 +118,15 @@ http {
         set_real_ip_from   $(trusted_ips[i]);
 > end
 
+    # injected nginx_proxy_* directives
+> for _, el in ipairs(nginx_proxy_directives)  do
+        $(el.name) $(el.value);
+> end
+
         location / {
+            default_type '';
+
+            set $ctx_ref                     '';
             set $upstream_host               '';
             set $upstream_upgrade            '';
             set $upstream_connection         '';
@@ -121,11 +138,11 @@ http {
             set $upstream_x_forwarded_port   '';
 
             rewrite_by_lua_block {
-                kong.rewrite()
+                Kong.rewrite()
             }
 
             access_by_lua_block {
-                kong.access()
+                Kong.access()
             }
 
             proxy_http_version 1.1;
@@ -143,22 +160,36 @@ http {
             proxy_pass         $upstream_scheme://kong_upstream$upstream_uri;
 
             header_filter_by_lua_block {
-                kong.header_filter()
+                Kong.header_filter()
             }
 
             body_filter_by_lua_block {
-                kong.body_filter()
+                Kong.body_filter()
             }
 
             log_by_lua_block {
-                kong.log()
+                Kong.log()
             }
         }
 
         location = /kong_error_handler {
             internal;
+            uninitialized_variable_warn off;
+
             content_by_lua_block {
-                kong.handle_error()
+                Kong.handle_error()
+            }
+
+            header_filter_by_lua_block {
+                Kong.header_filter()
+            }
+
+            body_filter_by_lua_block {
+                Kong.body_filter()
+            }
+
+            log_by_lua_block {
+                Kong.log()
             }
         }
     }
@@ -179,13 +210,18 @@ http {
 > if admin_ssl_enabled then
         ssl_certificate ${{ADMIN_SSL_CERT}};
         ssl_certificate_key ${{ADMIN_SSL_CERT_KEY}};
-        ssl_protocols TLSv1.1 TLSv1.2;
+        ssl_protocols TLSv1.1 TLSv1.2 TLSv1.3;
+> end
+
+    # injected nginx_admin_* directives
+> for _, el in ipairs(nginx_admin_directives)  do
+        $(el.name) $(el.value);
 > end
 
         location / {
             default_type application/json;
             content_by_lua_block {
-                kong.serve_admin_api({
+                Kong.serve_admin_api({
                     acah = "Content-Type, ${{RBAC_AUTH_HEADER}}",
                 })
             }
@@ -214,18 +250,28 @@ http {
 
         ssl_certificate ${{SSL_CERT}};
         ssl_certificate_key ${{SSL_CERT_KEY}};
-        ssl_protocols TLSv1.1 TLSv1.2;
+        ssl_protocols TLSv1.1 TLSv1.2 TLSv1.3;
 
         location ~ "/2015-03-31/functions/(?:[^/])*/invocations" {
             content_by_lua_block {
                 local function say(res, status)
                   ngx.header["x-amzn-RequestId"] = "foo"
+
                   if string.match(ngx.var.uri, "functionWithUnhandledError") then
                     ngx.header["X-Amz-Function-Error"] = "Unhandled"
                   end
+
                   ngx.status = status
 
-                  if type(res) == 'string' then
+                  if string.match(ngx.var.uri, "functionWithBadJSON") then
+                    local badRes = "{\"foo\":\"bar\""
+                    ngx.header["Content-Length"] = #badRes + 1
+                    ngx.say(badRes)
+
+                  elseif string.match(ngx.var.uri, "functionWithNoResponse") then
+                    ngx.header["Content-Length"] = 0
+
+                  elseif type(res) == 'string' then
                     ngx.header["Content-Length"] = #res + 1
                     ngx.say(res)
 
@@ -264,7 +310,7 @@ http {
 
         ssl_certificate ${{SSL_CERT}};
         ssl_certificate_key ${{SSL_CERT_KEY}};
-        ssl_protocols TLSv1.1 TLSv1.2;
+        ssl_protocols TLSv1.1 TLSv1.2 TLSv1.3;
 
         set_real_ip_from 127.0.0.1;
 
@@ -275,8 +321,10 @@ http {
                     valid_routes = {
                         ["/ws"]                         = "Websocket echo server",
                         ["/get"]                        = "Accepts a GET request and returns it in JSON format",
+                        ["/xml"]                        = "Returns a simple XML document",
                         ["/post"]                       = "Accepts a POST request and returns it in JSON format",
                         ["/response-headers?:key=:val"] = "Returns given response headers",
+                        ["/cache/:n"]                   = "Sets a Cache-Control header for n seconds",
                         ["/anything"]                   = "Accepts any request and returns it in JSON format",
                         ["/request"]                    = "Alias to /anything",
                         ["/delay/:duration"]            = "Delay the response for <duration> seconds",
@@ -306,6 +354,19 @@ http {
             }
         }
 
+        location /xml {
+            content_by_lua_block {
+                local mu = require "spec.fixtures.mock_upstream"
+                local xml = [[
+                  <?xml version="1.0" encoding="UTF-8"?>
+                    <note>
+                      <body>Kong, Monolith destroyer.</body>
+                    </note>
+                ]]
+                return mu.send_text_response(xml, "application/xml")
+            }
+        }
+
         location /post {
             access_by_lua_block {
                 local mu = require "spec.fixtures.mock_upstream"
@@ -325,6 +386,15 @@ http {
             content_by_lua_block {
                 local mu = require "spec.fixtures.mock_upstream"
                 return mu.send_default_json_response({}, ngx.req.get_uri_args())
+            }
+        }
+
+        location ~ "^/cache/(?<n>\d+)$" {
+            content_by_lua_block {
+                local mu = require "spec.fixtures.mock_upstream"
+                return mu.send_default_json_response({}, {
+                    ["Cache-Control"] = "public, max-age=" .. ngx.var.n,
+                })
             }
         }
 
@@ -394,5 +464,124 @@ http {
                 end
             }
         }
+
+        location ~ "^/post_log/(?<logname>[a-z_]+)$" {
+            content_by_lua_block {
+                local mu = require "spec.fixtures.mock_upstream"
+                return mu.store_log(ngx.var.logname)
+            }
+        }
+
+        location ~ "^/post_auth_log/(?<logname>[a-z_]+)/(?<username>[a-zA-Z0-9_]+)/(?<password>.+)$" {
+            access_by_lua_block {
+                local mu = require "spec.fixtures.mock_upstream"
+                return mu.filter_access_by_basic_auth(ngx.var.username,
+                                                      ngx.var.password)
+            }
+            content_by_lua_block {
+                local mu = require "spec.fixtures.mock_upstream"
+                return mu.store_log(ngx.var.logname)
+            }
+        }
+
+        location ~ "^/read_log/(?<logname>[a-z_]+)$" {
+            content_by_lua_block {
+                local mu = require "spec.fixtures.mock_upstream"
+                return mu.retrieve_log(ngx.var.logname)
+            }
+        }
     }
 }
+
+> if #stream_listeners > 0 then
+stream {
+
+    log_format basic '$remote_addr [$time_local] '
+                     '$protocol $status $bytes_sent $bytes_received '
+                     '$session_time';
+
+    lua_package_path '${{LUA_PACKAGE_PATH}};;';
+    lua_package_cpath '${{LUA_PACKAGE_CPATH}};;';
+    lua_shared_dict stream_kong                5m;
+    lua_shared_dict stream_kong_db_cache       ${{MEM_CACHE_SIZE}};
+    lua_shared_dict stream_kong_db_cache_miss 12m;
+    lua_shared_dict stream_kong_locks          8m;
+    lua_shared_dict stream_kong_process_events 5m;
+    lua_shared_dict stream_kong_cluster_events 5m;
+    lua_shared_dict stream_kong_healthchecks   5m;
+    lua_shared_dict stream_kong_rate_limiting_counters 12m;
+> if database == "cassandra" then
+    lua_shared_dict stream_kong_cassandra      5m;
+> end
+    lua_shared_dict stream_prometheus_metrics  5m;
+    lua_shared_dict stream_kong_vitals_counters 50m;
+    lua_shared_dict stream_kong_vitals_lists     1m;
+
+
+    upstream kong_upstream {
+        server 0.0.0.1:1;
+        balancer_by_lua_block {
+            Kong.balancer()
+        }
+    }
+
+    init_by_lua_block {
+        -- shared dictionaries conflict between stream/http modules. use a prefix.
+        local shared = ngx.shared
+        ngx.shared = setmetatable({}, {
+            __index = function(t, k)
+                return shared["stream_"..k]
+            end,
+        })
+
+        -- XXX: lua-resty-core doesn't load the ffi regex module in the stream
+        -- subsystem. The code it binds is part of the http module. However
+        -- without it we can't use regex during the init phase.
+        require "resty.core.regex"
+
+        Kong = require 'kong'
+        Kong.init()
+    }
+
+    init_worker_by_lua_block {
+        Kong.init_worker()
+    }
+
+    server {
+> for i = 1, #stream_listeners do
+        listen $(stream_listeners[i].listener);
+> end
+
+        access_log logs/access.log basic;
+        error_log logs/error.log debug;
+
+> if ssl_preread_enabled then
+        ssl_preread on;
+> end
+        preread_by_lua_block {
+            Kong.preread()
+        }
+        proxy_pass kong_upstream;
+
+        log_by_lua_block {
+            Kong.log()
+        }
+    }
+
+    server {
+        listen 15557;
+        listen 15558 ssl;
+
+        ssl_certificate ${{SSL_CERT}};
+        ssl_certificate_key ${{SSL_CERT_KEY}};
+        ssl_protocols TLSv1.1 TLSv1.2;
+
+        content_by_lua_block {
+            local sock = assert(ngx.req.socket(true))
+            local data = sock:receive()  -- read a line from downstream
+            ngx.say(data) -- echo whatever was sent
+        }
+    }
+
+}
+> end

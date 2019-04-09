@@ -6,29 +6,36 @@ for _, strategy in helpers.each_strategy() do
     local proxy_client
     local consumer
     local acl
-    local dao
+    local db
 
     before_each(function()
-      local bp, _
-      bp, _, dao = helpers.get_db_utils(strategy)
+      local bp
+      bp, db = helpers.get_db_utils(strategy, {
+        "routes",
+        "services",
+        "plugins",
+        "consumers",
+        "acls",
+        "keyauth_credentials",
+      })
 
       consumer = bp.consumers:insert {
         username = "consumer1"
       }
 
       bp.keyauth_credentials:insert {
-        key         = "apikey123",
-        consumer_id = consumer.id
+        key      = "apikey123",
+        consumer = { id = consumer.id },
       }
 
       acl = bp.acls:insert {
-        group       = "admin",
-        consumer_id = consumer.id
+        group    = "admin",
+        consumer = { id = consumer.id },
       }
 
       bp.acls:insert {
-        group       = "pro",
-        consumer_id = consumer.id
+        group    = "pro",
+        consumer = { id = consumer.id },
       }
 
       local consumer2 = bp.consumers:insert {
@@ -36,13 +43,13 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.keyauth_credentials:insert {
-        key         = "apikey124",
-        consumer_id = consumer2.id
+        key      = "apikey124",
+        consumer = { id = consumer2.id },
       }
 
       bp.acls:insert {
-        group       = "admin",
-        consumer_id = consumer2.id
+        group    = "admin",
+        consumer = { id = consumer2.id },
       }
 
       local route1 = bp.routes:insert {
@@ -51,12 +58,12 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name     = "key-auth",
-        route_id = route1.id
+        route = { id = route1.id }
       }
 
       bp.plugins:insert {
         name     = "acl",
-        route_id = route1.id,
+        route = { id = route1.id },
         config   = {
           whitelist = {"admin"}
         }
@@ -68,12 +75,12 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name     = "key-auth",
-        route_id = route2.id
+        route = { id = route2.id }
       }
 
       bp.plugins:insert {
         name     = "acl",
-        route_id = route2.id,
+        route = { id = route2.id },
         config   = {
           whitelist = { "ya" }
         }
@@ -98,10 +105,6 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("ACL entity invalidation", function()
-      before_each(function()
-        assert(dao:run_migrations())
-      end)
-
       it("should invalidate when ACL entity is deleted", function()
         -- It should work
         local res = assert(proxy_client:send {
@@ -115,7 +118,7 @@ for _, strategy in helpers.each_strategy() do
 
         -- Check that the cache is populated
 
-        local cache_key = dao.acls:cache_key(consumer.id)
+        local cache_key = db.acls:cache_key(consumer.id)
         local res = assert(admin_client:send {
           method  = "GET",
           path    = "/cache/" .. cache_key,
@@ -174,7 +177,7 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(403, res)
 
         -- Check that the cache is populated
-        local cache_key = dao.acls:cache_key(consumer.id)
+        local cache_key = db.acls:cache_key(consumer.id)
         local res = assert(admin_client:send {
           method  = "GET",
           path    = "/cache/" .. cache_key,
@@ -229,10 +232,6 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("Consumer entity invalidation", function()
-      before_each(function()
-        assert(dao:run_migrations())
-      end)
-
       it("should invalidate when Consumer entity is deleted", function()
         -- It should work
         local res = assert(proxy_client:send {
@@ -245,7 +244,7 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(200, res)
 
         -- Check that the cache is populated
-        local cache_key = dao.acls:cache_key(consumer.id)
+        local cache_key = db.acls:cache_key(consumer.id)
         local res = assert(admin_client:send {
           method  = "GET",
           path    = "/cache/" .. cache_key,
@@ -273,7 +272,7 @@ for _, strategy in helpers.each_strategy() do
         end, 3)
 
         -- Wait for key to be invalidated
-        local keyauth_cache_key = dao.keyauth_credentials:cache_key("apikey123")
+        local keyauth_cache_key = db.keyauth_credentials:cache_key("apikey123")
         helpers.wait_until(function()
           local res = assert(admin_client:send {
             method  = "GET",

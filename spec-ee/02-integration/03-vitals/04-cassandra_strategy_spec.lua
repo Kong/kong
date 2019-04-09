@@ -1,7 +1,7 @@
 local cassandra_strategy = require "kong.vitals.cassandra.strategy"
-local dao_factory = require "kong.dao.factory"
 local dao_helpers = require "spec.02-integration.03-dao.helpers"
 local utils = require "kong.tools.utils"
+local helpers = require "spec.helpers"
 local fmt = string.format
 local time = ngx.time
 local cassandra = require "cassandra"
@@ -15,8 +15,8 @@ dao_helpers.for_each_dao(function(kong_conf)
 
   describe("Cassandra strategy", function()
     local strategy
-    local dao
     local cluster
+    local db
     local uuid
     local hostname
     local snapshot
@@ -28,10 +28,10 @@ dao_helpers.for_each_dao(function(kong_conf)
         ttl_minutes = 90000,
       }
 
-      dao      = assert(dao_factory.new(kong_conf))
-      dao:run_migrations()
-      strategy = cassandra_strategy.new(dao, opts)
-      cluster  = dao.db.cluster
+      db = select(2, helpers.get_db_utils(kong_conf.database))
+      strategy = cassandra_strategy.new(db, opts)
+      db = db.connector
+      cluster  = db.cluster
       uuid     = utils.uuid()
       hostname = "my_hostname"
     end)
@@ -639,9 +639,6 @@ dao_helpers.for_each_dao(function(kong_conf)
       }
 
       before_each(function()
-        -- init the db so we have access to version info
-        assert(dao.db:init())
-
         assert(strategy:init(node_1_uuid, hostname))
         assert(strategy:insert_stats(node_1_data))
 
@@ -659,7 +656,7 @@ dao_helpers.for_each_dao(function(kong_conf)
         expected[1]["v.lun"] = 5
         expected[1]["v.lux"] = 10
 
-        if tonumber(dao.db:infos().version) >= 3 then
+        if tonumber(db.major_version) >= 3 then
           expected[1]["v.nt"] = 3
         else
           -- 2.x can't do the node count query. Per PO, leave it out
@@ -940,7 +937,7 @@ dao_helpers.for_each_dao(function(kong_conf)
         assert.is_true(results > 0)
 
         -- delete only really does something in cassandra 3+
-        if dao.db.major_version_n >= 3 then
+        if db.major_version >= 3 then
           local res, err = cluster:execute("select * from vitals_consumers")
           assert.is_nil(err)
           assert.same(3, #res)
@@ -1054,7 +1051,7 @@ dao_helpers.for_each_dao(function(kong_conf)
         assert.is_true(results > 0)
 
         -- delete only really does something in cassandra 3+
-        if dao.db.major_version_n >= 3 then
+        if db.major_version >= 3 then
           local res, err = cluster:execute("select * from vitals_code_classes_by_cluster")
           assert.is_nil(err)
 
@@ -2057,7 +2054,7 @@ dao_helpers.for_each_dao(function(kong_conf)
         assert.is_true(results > 0)
 
         -- delete only really does something in cassandra 3+
-        if dao.db.major_version_n >= 3 then
+        if db.major_version >= 3 then
           local res, err = cluster:execute("select * from vitals_codes_by_route")
           assert.is_nil(err)
 
@@ -2109,7 +2106,7 @@ dao_helpers.for_each_dao(function(kong_conf)
         assert.is_true(results > 0)
 
         -- delete only really does something in cassandra 3+
-        if dao.db.major_version_n >= 3 then
+        if db.major_version >= 3 then
           local res, err = cluster:execute("select * from vitals_codes_by_service")
           assert.is_nil(err)
 
@@ -2159,7 +2156,7 @@ dao_helpers.for_each_dao(function(kong_conf)
         assert.is_true(results > 0)
 
         -- delete only really does something in cassandra 3+
-        if dao.db.major_version_n >= 3 then
+        if db.major_version >= 3 then
           local res, err = cluster:execute("select * from vitals_code_classes_by_workspace")
           assert.is_nil(err)
 
@@ -2168,7 +2165,7 @@ dao_helpers.for_each_dao(function(kong_conf)
       end)
 
       it("does not clean up status codes for an invalid entity type", function()
-        if dao.db.major_version_n < 3 then
+        if db.major_version < 3 then
           -- delete not implemented for Cassandra 2.x
           return
         end
@@ -2218,7 +2215,7 @@ dao_helpers.for_each_dao(function(kong_conf)
       local hostname_2 = "testhostname-2"
 
       after_each(function()
-        assert(dao.db:query("truncate table vitals_node_meta"))
+        assert(cluster:execute("truncate table vitals_node_meta"))
       end)
 
       it("retrieves node_id and hostname for a list of nodes", function()

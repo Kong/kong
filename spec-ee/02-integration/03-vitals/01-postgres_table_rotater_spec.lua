@@ -1,6 +1,6 @@
 local table_rotater = require "kong.vitals.postgres.table_rotater"
-local dao_factory   = require "kong.dao.factory"
 local dao_helpers   = require "spec.02-integration.03-dao.helpers"
+local helpers       = require "spec.helpers"
 local ngx_time      = ngx.time
 local fmt           = string.format
 
@@ -27,18 +27,16 @@ dao_helpers.for_each_dao(function(kong_conf)
 
   describe("Postgres table_rotater", function()
     local rotater
-    local dao
-    local db
+    local db, _
     local snapshot
 
 
     setup(function()
-      dao = assert(dao_factory.new(kong_conf))
-      db  = dao.db
-
+      _, db, _ = helpers.get_db_utils(kong_conf.database)
+      db = db.connector
 
       local opts = {
-        db                = db,
+        connector         = db,
         rotation_interval = 3600,
       }
 
@@ -73,7 +71,7 @@ dao_helpers.for_each_dao(function(kong_conf)
       end)
 
       it("does not bomb if postgres thinks it exists", function()
-        db = rotater.db
+        db = rotater.connector
         stub(db, "query").returns(nil, "typname, typnamespace=already exists with value")
 
         assert(rotater:init())

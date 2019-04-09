@@ -1,21 +1,44 @@
 local cjson = require "cjson"
 local helpers = require "spec.helpers"
 
+for _, strategy in helpers.each_strategy() do
 describe("Plugin: oauth2 (invalidations)", function()
   local admin_client, proxy_ssl_client
+  local db
+  local dao
+  local bp
 
+<<<<<<< HEAD
   before_each(function()
     helpers.dao:truncate_tables()
     helpers.register_consumer_relations(helpers.dao)
+||||||| merged common ancestors
+  before_each(function()
+    helpers.dao:truncate_tables()
+=======
+  lazy_setup(function()
+    bp, db, dao = helpers.get_db_utils(strategy)
+  end)
+>>>>>>> 0.15.0
 
-    local api = assert(helpers.dao.apis:insert {
+  before_each(function()
+    assert(db:truncate("routes"))
+    assert(db:truncate("services"))
+    assert(db:truncate("consumers"))
+    assert(db:truncate("plugins"))
+    assert(db:truncate("oauth2_tokens"))
+    assert(db:truncate("oauth2_credentials"))
+    assert(db:truncate("oauth2_authorization_codes"))
+    dao:truncate_table("apis")
+
+    local api = assert(dao.apis:insert {
       name         = "api-1",
       hosts        = { "oauth2.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(helpers.dao.plugins:insert {
+    assert(db.plugins:insert {
       name   = "oauth2",
-      api_id = api.id,
+      api = { id = api.id },
       config = {
         scopes                    = { "email", "profile" },
         enable_authorization_code = true,
@@ -26,18 +49,19 @@ describe("Plugin: oauth2 (invalidations)", function()
       },
     })
 
-    local consumer = assert(helpers.dao.consumers:insert {
+    local consumer = bp.consumers:insert {
       username = "bob",
-    })
-    assert(helpers.dao.oauth2_credentials:insert {
+    }
+    bp.oauth2_credentials:insert {
       client_id     = "clientid123",
       client_secret = "secret123",
-      redirect_uri  = "http://google.com/kong",
+      redirect_uris = { "http://google.com/kong" },
       name          = "testapp",
-      consumer_id   = consumer.id,
-    })
+      consumer      = { id = consumer.id },
+    }
 
     assert(helpers.start_kong({
+      database = strategy,
       nginx_conf = "spec/fixtures/custom_nginx.template",
     }))
     admin_client     = helpers.admin_client()
@@ -96,7 +120,7 @@ describe("Plugin: oauth2 (invalidations)", function()
       assert.response(res).has.status(200)
 
       -- Check that cache is populated
-      local cache_key = helpers.dao.oauth2_credentials:cache_key("clientid123")
+      local cache_key = db.oauth2_credentials:cache_key("clientid123")
 
       local res = assert(admin_client:send {
         method = "GET",
@@ -167,7 +191,7 @@ describe("Plugin: oauth2 (invalidations)", function()
       assert.res_status(400, res)
 
       -- Check that cache is populated
-      local cache_key = helpers.dao.oauth2_credentials:cache_key("clientid123")
+      local cache_key = db.oauth2_credentials:cache_key("clientid123")
 
       local res = assert(admin_client:send {
         method = "GET",
@@ -243,7 +267,7 @@ describe("Plugin: oauth2 (invalidations)", function()
       assert.res_status(200, res)
 
       -- Check that cache is populated
-      local cache_key = helpers.dao.oauth2_credentials:cache_key("clientid123")
+      local cache_key = db.oauth2_credentials:cache_key("clientid123")
 
       local res = assert(admin_client:send {
         method = "GET",
@@ -312,7 +336,7 @@ describe("Plugin: oauth2 (invalidations)", function()
       assert.res_status(200, res)
 
       -- Check that cache is populated
-      local cache_key = helpers.dao.oauth2_tokens:cache_key(token.access_token)
+      local cache_key = db.oauth2_tokens:cache_key(token.access_token)
       local res = assert(admin_client:send {
         method = "GET",
         path = "/cache/" .. cache_key,
@@ -320,8 +344,8 @@ describe("Plugin: oauth2 (invalidations)", function()
       })
       assert.res_status(200, res)
 
-      local res = helpers.dao.oauth2_tokens:find_all({access_token=token.access_token})
-      local token_id = res[1].id
+      local res = db.oauth2_tokens:select_by_access_token(token.access_token)
+      local token_id = res.id
       assert.is_string(token_id)
 
       -- Delete token (which triggers invalidation)
@@ -379,7 +403,7 @@ describe("Plugin: oauth2 (invalidations)", function()
       assert.res_status(200, res)
 
       -- Check that cache is populated
-      local cache_key = helpers.dao.oauth2_tokens:cache_key(token.access_token)
+      local cache_key = db.oauth2_tokens:cache_key(token.access_token)
 
       local res = assert(admin_client:send {
         method = "GET",
@@ -388,8 +412,8 @@ describe("Plugin: oauth2 (invalidations)", function()
       })
       assert.res_status(200, res)
 
-      local res = helpers.dao.oauth2_tokens:find_all({access_token=token.access_token})
-      local token_id = res[1].id
+      local res = db.oauth2_tokens:select_by_access_token(token.access_token)
+      local token_id = res.id
       assert.is_string(token_id)
 
       -- Update OAuth 2 token (which triggers invalidation)
@@ -464,7 +488,7 @@ describe("Plugin: oauth2 (invalidations)", function()
       assert.res_status(200, res)
 
       -- Check that cache is populated
-      local cache_key = helpers.dao.oauth2_tokens:cache_key(token.access_token)
+      local cache_key = db.oauth2_tokens:cache_key(token.access_token)
 
       local res = assert(admin_client:send {
         method = "GET",
@@ -474,7 +498,7 @@ describe("Plugin: oauth2 (invalidations)", function()
       assert.res_status(200, res)
 
       -- Retrieve credential ID
-      local cache_key_credential = helpers.dao.oauth2_credentials:cache_key("clientid123")
+      local cache_key_credential = db.oauth2_credentials:cache_key("clientid123")
 
       local res = assert(admin_client:send {
         method = "GET",
@@ -514,3 +538,4 @@ describe("Plugin: oauth2 (invalidations)", function()
   end)
 
 end)
+end

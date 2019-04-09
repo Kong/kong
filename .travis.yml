@@ -1,5 +1,5 @@
 dist: trusty
-sudo: required
+sudo: false
 
 language: java
 
@@ -13,6 +13,7 @@ notifications:
 
 services:
   - redis-server
+  - docker
 
 addons:
   postgresql: "9.5"
@@ -22,51 +23,35 @@ addons:
       - libpcre3-dev
       - build-essential
 
-services:
-  - redis
-  - docker
-
 env:
   global:
-    - LUAROCKS=2.4.3
-    - OPENSSL=1.0.2n
-    - CASSANDRA=3.9
+    - LUAROCKS=3.0.4
+    - OPENSSL=1.1.1a
     - OPENRESTY_BASE=1.13.6.2
     - OPENRESTY_LATEST=1.13.6.2
     - OPENRESTY=$OPENRESTY_BASE
     - DOWNLOAD_CACHE=$HOME/download-cache
     - INSTALL_CACHE=$HOME/install-cache
+    - KONG_TEST_PG_DATABASE=travis
+    - KONG_TEST_PG_USER=postgres
+    - JOBS=2
   matrix:
-    - TEST_SUITE=lint
     # enterprise matrix begin
-    - TEST_SUITE=unit-ee
-    - TEST_SUITE=integration-ee
-      OPENRESTY=$OPENRESTY_LATEST
-    - TEST_SUITE=plugins-ee
-      OPENRESTY=$OPENRESTY_LATEST
-    - TEST_SUITE=integration-ee
-      OPENRESTY=$OPENRESTY_BASE
-      CASSANDRA=2.2.12
-    - TEST_SUITE=plugins-ee
-      OPENRESTY=$OPENRESTY_BASE
-      CASSANDRA=2.2.12
+    # XXX add extra jobs for different cassandra versions
+    - KONG_TEST_DATABASE=postgres TEST_SUITE=integration-ee
+    - KONG_TEST_DATABASE=cassandra CASSANDRA=2.2 TEST_SUITE=integration-ee
+    - KONG_TEST_DATABASE=cassandra CASSANDRA=3.9 TEST_SUITE=integration-ee
+    - KONG_TEST_DATABASE=cassandra CASSANDRA=2.2 TEST_SUITE=plugins-ee
+    - KONG_TEST_DATABASE=cassandra CASSANDRA=3.9 TEST_SUITE=plugins-ee
+    - KONG_TEST_DATABASE=postgres TEST_SUITE=plugins-ee
     # enterprise matrix end
-    - TEST_SUITE=unit
-    - TEST_SUITE=integration
-      OPENRESTY=$OPENRESTY_LATEST
-    - TEST_SUITE=plugins
-      OPENRESTY=$OPENRESTY_LATEST
-    - TEST_SUITE=integration
-      OPENRESTY=$OPENRESTY_BASE
-      CASSANDRA=2.2.12
-    - TEST_SUITE=plugins
-      OPENRESTY=$OPENRESTY_BASE
-      CASSANDRA=2.2.12
-    - TEST_SUITE=old-unit
-    - TEST_SUITE=old-integration
-      OPENRESTY=$OPENRESTY_BASE
-    - TEST_SUITE=old-plugins
-      OPENRESTY=$OPENRESTY_BASE
+    - KONG_TEST_DATABASE=postgres TEST_SUITE=integration
+    - KONG_TEST_DATABASE=cassandra CASSANDRA=2.2 TEST_SUITE=integration
+    - KONG_TEST_DATABASE=cassandra CASSANDRA=3.9 TEST_SUITE=integration
+    - KONG_TEST_DATABASE=postgres TEST_SUITE=plugins
+    - KONG_TEST_DATABASE=cassandra CASSANDRA=2.2 TEST_SUITE=plugins
+    - KONG_TEST_DATABASE=cassandra CASSANDRA=3.9 TEST_SUITE=plugins
+    - TEST_SUITE=pdk
 
 before_install:
   - source .ci/setup_env.sh
@@ -74,11 +59,30 @@ before_install:
 install:
   - make dev
 
-script:
-  - .ci/run_tests.sh
+cache:
+  apt: true
+  pip: true
+  directories:
+    - $DOWNLOAD_CACHE
+    - $INSTALL_CACHE
+    - $HOME/.ccm/repository
+
+stages:
+  - lint and unit
+  - pdk tests
+  - test
+  - name: deploy
+    if: tag =~ 0. || type == cron
 
 jobs:
   include:
+    - stage: lint and unit
+      script:
+      - luacheck -q .
+      - bin/busted -v -o gtest spec/01-unit
+      - bin/busted -v -o gtest spec-ee/01-unit
+      env:
+        - KONG_DATABASE=none
     - stage: deploy
       if: branch = master
       script: .ci/build_artifacts.sh
@@ -95,11 +99,5 @@ jobs:
       if: tag =~ 0.
       script: .ci/trigger-travis.sh --pro $TRAVIS_ACCESS_TOKEN
 
-
-cache:
-  apt: true
-  pip: true
-  directories:
-    - $DOWNLOAD_CACHE
-    - $INSTALL_CACHE
-    - $HOME/.ccm/repository
+script:
+  - .ci/run_tests.sh

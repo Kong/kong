@@ -112,7 +112,9 @@ for _, strategy in helpers.each_strategy() do
           path   = "/plugins",
           body   = {
             name       = "dummy",
-            service_id = service_fixture.id,
+            service = {
+              id = service_fixture.id
+            }
           },
           headers = {
             ["Content-Type"] = "application/json",

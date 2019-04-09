@@ -1,68 +1,131 @@
 -- Copyright (C) Kong Inc.
-
 local BasePlugin = require "kong.plugins.base_plugin"
 local aws_v4 = require "kong.plugins.aws-lambda.v4"
-local responses = require "kong.tools.responses"
-local utils = require "kong.tools.utils"
 local http = require "resty.http"
 local cjson = require "cjson.safe"
-local public_utils = require "kong.tools.public"
+local meta = require "kong.meta"
+local constants = require "kong.constants"
+
+
+local VIA_HEADER = constants.HEADERS.VIA
+local VIA_HEADER_VALUE = meta._NAME .. "/" .. meta._VERSION
+
 
 local tostring             = tostring
-local ngx_req_read_body    = ngx.req.read_body
-local ngx_req_get_uri_args = ngx.req.get_uri_args
-local ngx_req_get_headers  = ngx.req.get_headers
+local tonumber             = tonumber
+local type                 = type
+local fmt                  = string.format
 local ngx_encode_base64    = ngx.encode_base64
 
-local new_tab
-do
-  local ok
-  ok, new_tab = pcall(require, "table.new")
-  if not ok then
-    new_tab = function(narr, nrec) return {} end
-  end
-end
+
+local raw_content_types = {
+  ["text/plain"] = true,
+  ["text/html"] = true,
+  ["application/xml"] = true,
+  ["text/xml"] = true,
+  ["application/soap+xml"] = true,
+}
+
 
 local AWS_PORT = 443
 
+
+--[[
+  Response format should be
+  {
+      "statusCode": httpStatusCode,
+      "headers": { "headerName": "headerValue", ... },
+      "body": "..."
+  }
+--]]
+local function validate_custom_response(response)
+  if type(response.statusCode) ~= "number" then
+    return nil, "statusCode must be a number"
+  end
+
+  if response.headers ~= nil and type(response.headers) ~= "table" then
+    return nil, "headers must be a table"
+  end
+
+  if response.body ~= nil and type(response.body) ~= "string" then
+    return nil, "body must be a string"
+  end
+
+  return true
+end
+
+
+local function extract_proxy_response(content)
+  local serialized_content, err = cjson.decode(content)
+  if not serialized_content then
+    return nil, err
+  end
+
+  local ok, err = validate_custom_response(serialized_content)
+  if not ok then
+    return nil, err
+  end
+
+  local headers = serialized_content.headers or {}
+  local body = serialized_content.body or ""
+  headers["Content-Length"] = #body
+
+  return {
+    status_code = tonumber(serialized_content.statusCode),
+    body = body,
+    headers = headers,
+  }
+end
+
+
 local AWSLambdaHandler = BasePlugin:extend()
+
 
 function AWSLambdaHandler:new()
   AWSLambdaHandler.super.new(self, "aws-lambda")
 end
 
+
 function AWSLambdaHandler:access(conf)
   AWSLambdaHandler.super.access(self)
 
-  local upstream_body = new_tab(0, 6)
+  local upstream_body = kong.table.new(0, 6)
+  local var = ngx.var
 
   if conf.forward_request_body or conf.forward_request_headers
     or conf.forward_request_method or conf.forward_request_uri
   then
     -- new behavior to forward request method, body, uri and their args
-    local var = ngx.var
-
     if conf.forward_request_method then
-      upstream_body.request_method = var.request_method
+      upstream_body.request_method = kong.request.get_method()
     end
 
     if conf.forward_request_headers then
-      upstream_body.request_headers = ngx_req_get_headers()
+      upstream_body.request_headers = kong.request.get_headers()
     end
 
     if conf.forward_request_uri then
-      upstream_body.request_uri      = var.request_uri
-      upstream_body.request_uri_args = ngx_req_get_uri_args()
+      local path = kong.request.get_path()
+      local query = kong.request.get_raw_query()
+      if query ~= "" then
+        upstream_body.request_uri = path .. "?" .. query
+      else
+        upstream_body.request_uri = path
+      end
+      upstream_body.request_uri_args = kong.request.get_query()
     end
 
     if conf.forward_request_body then
-      ngx_req_read_body()
-
-      local body_args, err_code, body_raw = public_utils.get_body_info()
-      if err_code == public_utils.req_body_errors.unknown_ct then
-        -- don't know what this body MIME type is, base64 it just in case
-        body_raw = ngx_encode_base64(body_raw)
-        upstream_body.request_body_base64 = true
+      local content_type = kong.request.get_header("content-type")
+      local body_raw = kong.request.get_raw_body()
+      local body_args, err = kong.request.get_body()
+      if err and err:match("content type") then
+        body_args = {}
+        if not raw_content_types[content_type] then
+          -- don't know what this body MIME type is, base64 it just in case
+          body_raw = ngx_encode_base64(body_raw)
+          upstream_body.request_body_base64 = true
+        end
       end
 
       upstream_body.request_body      = body_raw
@@ -72,20 +135,18 @@ function AWSLambdaHandler:access(conf)
   else
     -- backwards compatible upstream body for configurations not specifying
     -- `forward_request_*` values
-    ngx_req_read_body()
-
-    local body_args = public_utils.get_body_args()
-    upstream_body = utils.table_merge(ngx_req_get_uri_args(), body_args)
+    local body_args = kong.request.get_body()
+    upstream_body = kong.table.merge(kong.request.get_query(), body_args)
   end
 
   local upstream_body_json, err = cjson.encode(upstream_body)
   if not upstream_body_json then
-    ngx.log(ngx.ERR, "[aws-lambda] could not JSON encode upstream body",
-                     " to forward request values: ", err)
+    kong.log.err("could not JSON encode upstream body",
+                 " to forward request values: ", err)
   end
 
-  local host = string.format("lambda.%s.amazonaws.com", conf.aws_region)
-  local path = string.format("/2015-03-31/functions/%s/invocations",
+  local host = fmt("lambda.%s.amazonaws.com", conf.aws_region)
+  local path = fmt("/2015-03-31/functions/%s/invocations",
                             conf.function_name)
   local port = conf.port or AWS_PORT
 
@@ -111,7 +172,8 @@ function AWSLambdaHandler:access(conf)
 
   local request, err = aws_v4(opts)
   if err then
-    return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+    kong.log.err(err)
+    return kong.response.exit(500, { message = "An unexpected error occurred" })
   end
 
   -- Trigger request
@@ -120,7 +182,8 @@ function AWSLambdaHandler:access(conf)
   client:connect(host, port)
   local ok, err = client:ssl_handshake()
   if not ok then
-    return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+    kong.log.err(err)
+    return kong.response.exit(500, { message = "An unexpected error occurred" })
   end
 
   local res, err = client:request {
@@ -130,37 +193,64 @@ function AWSLambdaHandler:access(conf)
     headers = request.headers
   }
   if not res then
-    return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+    kong.log.err(err)
+    return kong.response.exit(500, { message = "An unexpected error occurred" })
   end
 
-  local body = res:read_body()
+  local content = res:read_body()
   local headers = res.headers
+
+  if var.http2 then
+    headers["Connection"] = nil
+    headers["Keep-Alive"] = nil
+    headers["Proxy-Connection"] = nil
+    headers["Upgrade"] = nil
+    headers["Transfer-Encoding"] = nil
+  end
 
   local ok, err = client:set_keepalive(conf.keepalive)
   if not ok then
-    return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+    kong.log.err(err)
+    return kong.response.exit(500, { message = "An unexpected error occurred" })
   end
 
-  if conf.unhandled_status
-     and headers["X-Amz-Function-Error"] == "Unhandled"
-  then
-    ngx.status = conf.unhandled_status
+  local status
 
-  else
-    ngx.status = res.status
+  if conf.is_proxy_integration then
+    local proxy_response, err = extract_proxy_response(content)
+    if not proxy_response then
+      kong.log.err(err)
+      return kong.response.exit(502, { message = "Bad Gateway",
+                                       error = "could not JSON decode Lambda " ..
+                                               "function response: " .. err })
+    end
+
+    status = proxy_response.status_code
+    headers = kong.table.merge(headers, proxy_response.headers)
+    content = proxy_response.body
   end
 
-  -- Send response to client
-  for k, v in pairs(headers) do
-    ngx.header[k] = v
+  if not status then
+    if conf.unhandled_status
+      and headers["X-Amz-Function-Error"] == "Unhandled"
+    then
+      status = conf.unhandled_status
+
+    else
+      status = res.status
+    end
   end
 
-  ngx.say(body)
+  if kong.configuration.enabled_headers[VIA_HEADER] then
+    headers[VIA_HEADER] = VIA_HEADER_VALUE
+  end
 
-  return ngx.exit(res.status)
+  return kong.response.exit(status, content, headers)
 end
 
+
 AWSLambdaHandler.PRIORITY = 750
-AWSLambdaHandler.VERSION = "0.1.0"
+AWSLambdaHandler.VERSION = "0.1.1"
+
 
 return AWSLambdaHandler

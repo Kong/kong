@@ -23,13 +23,19 @@ end
 
 describe("Plugin: rate-limiting (integration)", function()
   local client
+  local bp
 
-  setup(function()
-    -- only to run migrations
-    helpers.get_db_utils()
+  lazy_setup(function()
+    bp = helpers.get_db_utils(nil, {
+      "routes",
+      "services",
+      "plugins",
+    }, {
+      "rate-limiting"
+    })
   end)
 
-  teardown(function()
+  lazy_teardown(function()
     if client then
       client:close()
     end
@@ -41,18 +47,16 @@ describe("Plugin: rate-limiting (integration)", function()
     -- Regression test for the following issue:
     -- https://github.com/Kong/kong/issues/3292
 
-    setup(function()
+    lazy_setup(function()
       flush_redis(REDIS_DB_1)
       flush_redis(REDIS_DB_2)
 
-      local api1 = assert(helpers.dao.apis:insert {
-        name         = "redistest1_com",
+      local route1 = assert(bp.routes:insert {
         hosts        = { "redistest1.com" },
-        upstream_url = helpers.mock_upstream_url,
       })
-      assert(helpers.dao.plugins:insert {
-        name   = "rate-limiting",
-        api_id = api1.id,
+      assert(bp.plugins:insert {
+        name = "rate-limiting",
+        route = { id = route1.id },
         config = {
           minute         = 1,
           policy         = "redis",
@@ -63,14 +67,12 @@ describe("Plugin: rate-limiting (integration)", function()
         },
       })
 
-      local api2 = assert(helpers.dao.apis:insert {
-        name         = "redistest2_com",
+      local route2 = assert(bp.routes:insert {
         hosts        = { "redistest2.com" },
-        upstream_url = helpers.mock_upstream_url,
       })
-      assert(helpers.dao.plugins:insert {
-        name   = "rate-limiting",
-        api_id = api2.id,
+      assert(bp.plugins:insert {
+        name = "rate-limiting",
+        route = { id = route2.id },
         config = {
           minute         = 1,
           policy         = "redis",
@@ -80,7 +82,6 @@ describe("Plugin: rate-limiting (integration)", function()
           fault_tolerant = false,
         }
       })
-
       assert(helpers.start_kong({
         nginx_conf = "spec/fixtures/custom_nginx.template",
       }))

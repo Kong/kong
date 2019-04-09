@@ -1,41 +1,19 @@
-local enums       = require "kong.enterprise_edition.dao.enums"
 local cjson       = require "cjson"
 local app_helpers = require "lapis.application"
 local singletons  = require "kong.singletons"
 local files       = require "kong.portal.migrations.01_initial_files"
+local workspaces  = require "kong.workspaces"
 
 
 local _M = {}
 
 
-function _M.insert_credential(plugin, consumer_type)
-  return function(credential)
-    local _, err = singletons.dao.credentials:insert({
-      id = credential.id,
-      consumer_id = credential.consumer_id,
-      consumer_type = consumer_type or enums.CONSUMERS.TYPE.PROXY,
-      plugin = plugin,
-      credential_data = tostring(cjson.encode(credential)),
-    })
-
-    if err then
-      return app_helpers.yield_error(err)
-    end
-
-    return credential
-  end
-end
-
-
 function _M.update_credential(credential)
-  local params = {
-    credential_data = cjson.encode(credential),
-  }
-
-  local _, err = singletons.dao.credentials:update(params, {
-      id = credential.id,
-      consumer_id = credential.consumer_id
-  }, {__skip_rbac = true})
+  local _, err = singletons.db.credentials:update(
+    { id = credential.id },
+    { credential_data = cjson.encode(credential), },
+    { skip_rbac = true }
+  )
 
   if err then
     return app_helpers.yield_error(err)
@@ -50,14 +28,14 @@ function _M.delete_credential(credential)
     ngx.log(ngx.DEBUG, "Failed to delete credential from credentials")
   end
 
-  local _, err = singletons.dao.credentials:delete({ id = credential.id }, {__skip_rbac = true})
+  local _, err = singletons.db.credentials:delete({ id = credential.id }, { skip_rbac = true })
   if err then
     return app_helpers.yield_error(err)
   end
 end
 
-function _M.update_login_credential(credential_params, dao_collection, filter_keys)
-  local credential, err = dao_collection:update(credential_params, filter_keys, {__skip_rbac = true})
+function _M.update_login_credential(collection, cred_pk, entity)
+  local credential, err = collection:update(cred_pk, entity, {skip_rbac = true})
 
   if err then
     return nil, err
@@ -77,7 +55,7 @@ function _M.check_initialized(workspace, dao)
     return workspace
   end
 
-  local count, err = dao.files:run_with_ws_scope({workspace}, dao.files.count)
+  local count, err = workspaces.run_with_ws_scope({workspace}, dao.files.count, dao.files)
   if not count then
     return nil, err
   end
@@ -89,7 +67,7 @@ function _M.check_initialized(workspace, dao)
 
   -- if no files for this workspace, create them!
   for _, file in ipairs(files) do
-    local ok, err = dao.files:run_with_ws_scope({workspace}, dao.files.insert, {
+    local ok, err = workspaces.run_with_ws_scope({workspace}, dao.files.insert, dao.files, {
       auth = file.auth,
       name = file.name,
       type = file.type,

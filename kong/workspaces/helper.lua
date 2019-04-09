@@ -26,13 +26,13 @@ local _M = {}
 function _M.apply_unique_per_ws(table_name, params, constraints)
   -- entity may have workspace_id, workspace_name fields, ex. in case of update
   -- needs to be removed as entity schema doesn't support them
-  if table_name ~= "workspace_entities" then
-    params.workspace_id = nil
-  end
-  params.workspace_name = nil
-
   if not constraints then
     return
+  end
+
+  if table_name ~= "workspace_entities" then
+    params.workspace_id = nil
+    params.workspace_name = nil
   end
 
   local workspace = get_workspaces()[1]
@@ -54,8 +54,9 @@ function _M.apply_unique_per_ws(table_name, params, constraints)
 end
 
 
--- If entity has a unique key it will have workspace_name prefix so we
--- have to search first in the relationship table
+-- If an entity has a unique key, that unique key will have workspace
+-- name prefix. This function searches for that entity in the workspace-
+-- entities table
 function _M.resolve_shared_entity_id(table_name, params, constraints)
   if not constraints or not constraints.unique_keys then
     return
@@ -96,7 +97,7 @@ end
 -- validates that given primary_key belongs to current ws scope
 function _M.validate_pk_exist(table_name, params, constraints)
   if not constraints or not constraints.primary_key then
-    return
+    return true
   end
 
   local ws_scope = get_workspaces()
@@ -137,7 +138,8 @@ function _M.remove_ws_prefix(table_name, row, include_ws)
     -- skip if no unique key or it's also a primary, field
     -- is not set or has null value
     if row[field_name] and constraints.primary_key ~= field_name and
-      field_schema.type ~= "id" and row[field_name] ~= ngx_null then
+      field_schema.type ~= "id" and row[field_name] ~= ngx_null
+      and type(row[field_name]) == "string" then
       local names = utils_split(row[field_name], workspace_delimiter)
       if #names > 1 then
         row[field_name] = names[2]
@@ -197,7 +199,9 @@ end
 -- * if workspace specific config does not exist fall back to
 --   default config value.
 function _M.retrieve_ws_config(config_name, workspace)
-  if workspace.config and workspace.config[config_name] ~= nil then
+  if workspace.config and
+     workspace.config[config_name] ~= nil and
+     workspace.config[config_name] ~= ngx.null then
     return workspace.config[config_name]
   end
 

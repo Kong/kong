@@ -16,7 +16,7 @@ end
 describe("SSL", function()
   local admin_client, client, https_client
 
-  setup(function()
+  lazy_setup(function()
     local _, _, dao = helpers.get_db_utils()
 
     assert(dao.apis:insert {
@@ -79,13 +79,13 @@ describe("SSL", function()
       body = {
         cert = ssl_fixtures.cert,
         key  = ssl_fixtures.key,
-        snis = "example.com,ssl1.com",
+        snis = { "example.com", "ssl1.com" },
       },
       headers = { ["Content-Type"] = "application/json" },
     })
   end)
 
-  teardown(function()
+  lazy_teardown(function()
     helpers.stop_kong()
   end)
 
@@ -105,15 +105,15 @@ describe("SSL", function()
   describe("handshake", function()
     it("sets the default fallback SSL certificate if no SNI match", function()
       local cert = get_cert("test.com")
-      assert.matches("CN=localhost", cert, nil, true)
+      assert.cn("localhost", cert)
     end)
 
     it("sets the configured SSL certificate if SNI match", function()
       local cert = get_cert("ssl1.com")
-      assert.matches("CN=ssl-example.com", cert, nil, true)
+      assert.cn("ssl-example.com", cert)
 
       cert = get_cert("example.com")
-      assert.matches("CN=ssl-example.com", cert, nil, true)
+      assert.cn("ssl-example.com", cert)
     end)
   end)
 
@@ -188,7 +188,7 @@ describe("SSL", function()
 
       -- restart kong and use a new client to simulate a connection from an
       -- untrusted ip
-      setup(function()
+      lazy_setup(function()
         assert(helpers.kong_exec("restart -c " .. helpers.test_conf_path, {
           trusted_ips = "1.2.3.4", -- explicitly trust an IP that is not us
         }))

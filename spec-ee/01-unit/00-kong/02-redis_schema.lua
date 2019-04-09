@@ -1,107 +1,117 @@
-local validate_entity = require("kong.dao.schemas_validation").validate_entity
-local redis_schema = require "kong.enterprise_edition.redis".config_schema
+local redis = require "kong.enterprise_edition.redis".config_schema
+local Entity = require "kong.db.schema.entity"
+
 
 describe("redis schema", function()
+  local Redis = assert(Entity.new(redis))
+
   it("errors with invalid redis data", function()
-    local ok, err  = validate_entity({
+    local ok, err  = Redis:validate_insert({
       host = "127.0.0.1",
       port = "foo",
-    }, redis_schema)
+    })
 
-    assert.is_false(ok)
-    assert.same("port is not a number", err.port)
+    assert.is_falsy(ok)
+    assert.same("expected an integer", err.port)
 
-    local ok, _, err = validate_entity({
+    local ok, err = Redis:validate_insert({
       port = 6379,
-    }, redis_schema)
+    })
 
-    assert.is_false(ok)
-    assert.same("Redis host must be provided", err.message)
+    assert.is_falsy(ok)
+    assert.same("All or none of 'host', 'port' must be set. Only 'port' found",
+                err["@entity"][1])
 
-    local ok, _, err = validate_entity({
+    local ok, err = Redis:validate_insert({
       host = "127.0.0.1",
-    }, redis_schema)
+    })
 
-    assert.is_false(ok)
-    assert.same("Redis port must be provided", err.message)
+    assert.is_falsy(ok)
+    assert.same("All or none of 'host', 'port' must be set. Only 'host' found",
+                err["@entity"][1])
   end)
 
   it("accepts valid redis sentinel data", function()
-    local ok, err = validate_entity({
-      sentinel_addresses = "127.0.0.1:26379",
+    local ok, err = Redis:validate_insert({
+      sentinel_addresses = { "127.0.0.1:26379" },
       sentinel_master = "mymaster",
       sentinel_role = "master",
-    }, redis_schema)
+    })
 
-    assert.is_true(ok)
     assert.is_nil(err)
+    assert.is_true(ok)
   end)
 
   it("errors with invalid redis sentinel data", function()
-    local ok, _, err = validate_entity({
-      sentinel_addresses = "127.0.0.1:26379",
+    local ok, err = Redis:validate_insert({
+      sentinel_addresses = { "127.0.0.1:26379" },
       sentinel_role = "master",
-    }, redis_schema)
+    })
 
-    assert.is_false(ok)
-    assert.same("You need to specify a Redis Sentinel master", err.message)
+    assert.is_falsy(ok)
+    assert.same("All or none of 'sentinel_master', 'sentinel_role', " ..
+                 "'sentinel_addresses' must be set. Only 'sentinel_role', " ..
+                 "'sentinel_addresses' found", err["@entity"][1])
 
-    local ok, _, err = validate_entity({
+    local ok, err = Redis:validate_insert({
       sentinel_master = "mymaster",
       sentinel_role = "master",
-    }, redis_schema)
+    })
 
-    assert.is_false(ok)
-    assert.same("You need to specify one or more Redis Sentinel addresses",
-                err.message)
+    assert.is_falsy(ok)
+    assert.same("All or none of 'sentinel_master', 'sentinel_role', " ..
+                 "'sentinel_addresses' must be set. Only 'sentinel_master', " ..
+                 "'sentinel_role' found", err["@entity"][1])
 
-    local ok, _, err = validate_entity({
-      sentinel_addresses = "127.0.0.1:26379",
+    local ok, err = Redis:validate_insert({
+      sentinel_addresses = { "127.0.0.1:26379" },
       sentinel_master = "mymaster",
-    }, redis_schema)
+    })
 
-    assert.is_false(ok)
-    assert.same("You need to specify a Redis Sentinel role",  err.message)
+    assert.is_falsy(ok)
+    assert.same("All or none of 'sentinel_master', 'sentinel_role', " ..
+                 "'sentinel_addresses' must be set. Only 'sentinel_master', " ..
+                 "'sentinel_addresses' found", err["@entity"][1])
 
-    local ok, _, err = validate_entity({
-      sentinel_addresses = "127.0.0.1:26379",
+    local ok, err = Redis:validate_insert({
+      sentinel_addresses = { "127.0.0.1:26379" },
       sentinel_master = "mymaster",
       sentinel_role = "master",
       host = "127.0.0.1",
-    }, redis_schema)
+    })
 
-    assert.is_false(ok)
-    assert.same("When Redis Sentinel is enabled you cannot set a 'redis.host'",
-                err.message)
+    assert.is_falsy(ok)
+    assert.same("'sentinel_master', 'sentinel_role', 'sentinel_addresses' must not be set with 'host'",
+                err["@entity"][1])
 
-    local ok, _, err = validate_entity({
-      sentinel_addresses = "127.0.0.1:26379",
+    local ok, err = Redis:validate_insert({
+      sentinel_addresses = { "127.0.0.1:26379" },
       sentinel_master = "mymaster",
       sentinel_role = "master",
       port = 6379,
-    }, redis_schema)
+    })
 
-    assert.is_false(ok)
-    assert.same("When Redis Sentinel is enabled you cannot set a 'redis.port'",
-                err.message)
+    assert.is_falsy(ok)
+    assert.same("'sentinel_master', 'sentinel_role', 'sentinel_addresses' must not be set with 'port'",
+                err["@entity"][1])
 
-    local ok, _, err = validate_entity({
-      sentinel_addresses = "127.0.0.1",
+    local ok, err = Redis:validate_insert({
+      sentinel_addresses = { "127.0.0.1" },
       sentinel_master = "mymaster",
       sentinel_role = "master",
-    }, redis_schema)
+    })
 
-    assert.is_false(ok)
-    assert.same("Invalid Redis Sentinel address: 127.0.0.1", err.message)
+    assert.is_falsy(ok)
+    assert.same("Invalid Redis Sentinel address: 127.0.0.1", err.sentinel_addresses)
 
-    local ok, _, err = validate_entity({
-      sentinel_addresses = "127.0.0.1:12345,127.0.0.2",
+    local ok, err = Redis:validate_insert({
+      sentinel_addresses = { "127.0.0.1:12345", "127.0.0.2" },
       sentinel_master = "mymaster",
       sentinel_role = "master",
-    }, redis_schema)
+    })
 
-    assert.is_false(ok)
-    assert.same("Invalid Redis Sentinel address: 127.0.0.2", err.message)
+    assert.is_falsy(ok)
+    assert.same("Invalid Redis Sentinel address: 127.0.0.2", err.sentinel_addresses)
 
   end)
 end)

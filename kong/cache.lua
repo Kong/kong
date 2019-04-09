@@ -1,8 +1,8 @@
 local resty_mlcache = require "resty.mlcache"
-local singletons = require "kong.singletons"
-local reports = require "kong.core.reports"
+local reports = require "kong.reports"
 
 
+local kong    = kong
 local type    = type
 local max     = math.max
 local ngx_log = ngx.log
@@ -12,7 +12,7 @@ local NOTICE  = ngx.NOTICE
 local DEBUG   = ngx.DEBUG
 
 
-local SHM_CACHE = "kong_cache"
+local SHM_CACHE = "kong_db_cache"
 --[[
 Hypothesis
 ----------
@@ -72,11 +72,13 @@ function _M.new(opts)
   end
 
   local mlcache, err = resty_mlcache.new(SHM_CACHE, SHM_CACHE, {
-    shm_miss         = ngx.shared.kong_db_cache_miss and "kong_db_cache_miss" or nil,
+    shm_miss         = "kong_db_cache_miss",
+    shm_locks        = "kong_locks",
     shm_set_retries  = 3,
     lru_size         = LRU_SIZE,
     ttl              = max(opts.ttl     or 3600, 0),
     neg_ttl          = max(opts.neg_ttl or 300,  0),
+    resurrect_ttl    = opts.resurrect_ttl or 30,
     resty_lock_opts  = opts.resty_lock_opts,
     ipc = {
       register_listeners = function(events)
@@ -99,7 +101,7 @@ function _M.new(opts)
     propagation_delay = max(opts.propagation_delay or 0, 0),
     cluster_events    = opts.cluster_events,
     mlcache           = mlcache,
-    vitals            = singletons.vitals,
+    vitals            = kong.vitals,
   }
 
   local ok, err = self.cluster_events:subscribe("invalidations", function(key)
@@ -129,7 +131,7 @@ function _M:get(key, opts, cb, ...)
     return nil, "failed to get from node cache: " .. err
   end
 
-  singletons.vitals:cache_accessed(hit_lvl, key, v)
+  kong.vitals:cache_accessed(hit_lvl, key, v)
   reports.report_cached_entity(v)
 
   return v
@@ -184,21 +186,18 @@ function _M:invalidate(key, workspaces)
     log(ERR, "failed to broadcast cached entity invalidation: ", err)
   end
 
-  local seen_workspaces = {}
   workspaces = workspaces or {}
   for _, ws in ipairs(workspaces) do
-    if not seen_workspaces[ws.workspace_id] then
-      local key_ws = key .. ws.workspace_id
-      self:invalidate_local(key_ws)
 
-      log(DEBUG, "broadcasting (cluster) invalidation for key: '", key_ws, "' ",
-                 "with nbf: '", nbf or "none", "'")
+    local key_ws = key .. ws.id
+    self:invalidate_local(key_ws)
 
-      local ok, err = self.cluster_events:broadcast("invalidations", key_ws, nbf)
-      if not ok then
-        log(ERR, "failed to broadcast cached entity invalidation: ", err)
-      end
-      seen_workspaces[ws.workspace_id] = true
+    log(DEBUG, "broadcasting (cluster) invalidation for key: '", key_ws, "' ",
+               "with nbf: '", nbf or "none", "'")
+
+    local ok, err = self.cluster_events:broadcast("invalidations", key_ws, nbf)
+    if not ok then
+      log(ERR, "failed to broadcast cached entity invalidation: ", err)
     end
   end
 end

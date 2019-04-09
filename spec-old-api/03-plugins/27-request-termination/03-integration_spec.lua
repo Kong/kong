@@ -4,24 +4,24 @@ describe("Plugin: request-termination (integration)", function()
   local client, admin_client
   local consumer1
 
-  setup(function()
-    local dao = select(3, helpers.get_db_utils())
+  lazy_setup(function()
+    local bp, db, dao = helpers.get_db_utils()
 
     assert(dao.apis:insert {
       name         = "api-1",
       hosts        = { "api1.request-termination.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name = "key-auth",
     })
-    consumer1 = assert(dao.consumers:insert {
+    consumer1 = bp.consumers:insert {
       username = "bob",
-    })
-    assert(dao.keyauth_credentials:insert {
-      key         = "kong",
-      consumer_id = consumer1.id,
-    })
+    }
+    bp.keyauth_credentials:insert {
+      key      = "kong",
+      consumer = { id = consumer1.id },
+    }
 
     assert(helpers.start_kong({
       nginx_conf = "spec/fixtures/custom_nginx.template",
@@ -30,7 +30,7 @@ describe("Plugin: request-termination (integration)", function()
     admin_client = helpers.admin_client()
   end)
 
-  teardown(function()
+  lazy_teardown(function()
     if client and admin_client then
       client:close()
       admin_client:close()
@@ -49,7 +49,7 @@ describe("Plugin: request-termination (integration)", function()
       },
       body = {
         name = "request-termination",
-        consumer_id = consumer1.id,
+        consumer = { id = consumer1.id },
       },
     })
     assert.response(res).has.status(201)

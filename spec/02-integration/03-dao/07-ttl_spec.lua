@@ -11,8 +11,8 @@ for _, strategy in helpers.each_strategy() do
   describe("TTL with #" .. strategy, function()
     local dao
 
-    setup(function()
-      _, _, dao = helpers.get_db_utils(strategy)
+    lazy_setup(function()
+      _, _, dao = helpers.get_db_utils(strategy, {})
     end)
 
     before_each(function()

@@ -1,61 +1,58 @@
 local multipart = require "multipart"
-local cjson = require "cjson"
+local cjson = require "cjson.safe"
 
-local table_insert = table.insert
-local req_set_uri_args = ngx.req.set_uri_args
-local req_get_uri_args = ngx.req.get_uri_args
-local req_set_header = ngx.req.set_header
-local req_get_headers = ngx.req.get_headers
-local req_read_body = ngx.req.read_body
-local req_set_body_data = ngx.req.set_body_data
-local req_get_body_data = ngx.req.get_body_data
-local req_clear_header = ngx.req.clear_header
-local req_set_method = ngx.req.set_method
-local encode_args = ngx.encode_args
-local ngx_decode_args = ngx.decode_args
+
+local ngx = ngx
+local kong = kong
+local next = next
 local type = type
-local string_find = string.find
-local pcall = pcall
+local find = string.find
+local upper = string.upper
+local lower = string.lower
+local pairs = pairs
+local insert = table.insert
+local noop = function() end
+
 
 local _M = {}
 
-local CONTENT_LENGTH = "content-length"
-local CONTENT_TYPE = "content-type"
+
+local CONTENT_TYPE = "Content-Type"
 local HOST = "host"
-local JSON, MULTI, ENCODED = "json", "multi_part", "form_encoded"
+local JSON = "json"
+local FORM = "form"
+local MULTIPART = "multipart"
 
-local function parse_json(body)
-  if body then
-    local status, res = pcall(cjson.decode, body)
-    if status then
-      return res
-    end
-  end
-end
-
-local function decode_args(body)
-  if body then
-    return ngx_decode_args(body)
-  end
-  return {}
-end
 
 local function get_content_type(content_type)
   if content_type == nil then
     return
   end
-  if string_find(content_type:lower(), "application/json", nil, true) then
+
+  content_type = lower(content_type)
+
+  if find(content_type, "application/json", nil, true) then
     return JSON
-  elseif string_find(content_type:lower(), "multipart/form-data", nil, true) then
-    return MULTI
-  elseif string_find(content_type:lower(), "application/x-www-form-urlencoded", nil, true) then
-    return ENCODED
+  end
+
+  if find(content_type, "application/x-www-form-urlencoded", nil, true) then
+    return FORM
+  end
+
+  if find(content_type, "multipart/form-data", nil, true) then
+    return MULTIPART
   end
 end
 
+
 local function iter(config_array)
-  return function(config_array, i, previous_name, previous_value)
+  if type(config_array) ~= "table" then
+    return noop
+  end
+
+  return function(config_array, i)
     i = i + 1
+
     local current_pair = config_array[i]
     if current_pair == nil then -- n + 1
       return nil
@@ -70,327 +67,591 @@ local function iter(config_array)
   end, config_array, 0
 end
 
+
 local function append_value(current_value, value)
   local current_value_type = type(current_value)
-
-  if current_value_type  == "string" then
-    return { current_value, value }
-  elseif current_value_type  == "table" then
-    table_insert(current_value, value)
+  if current_value_type  == "table" then
+    insert(current_value, value)
     return current_value
-  else
-    return { value }
   end
+
+  if current_value_type == "string"  or
+     current_value_type == "boolean" or
+     current_value_type == "number" then
+    return { current_value, value }
+  end
+
+  return { value }
 end
+
 
 local function transform_headers(conf)
-  -- Remove header(s)
-  for _, name, value in iter(conf.remove.headers) do
-    req_clear_header(name)
-  end
+  local clear_header = kong.service.request.clear_header
 
-  -- Rename headers(s)
-  for _, old_name, new_name in iter(conf.rename.headers) do
-    if req_get_headers()[old_name] then
-      local value = req_get_headers()[old_name]
-      req_set_header(new_name, value)
-      req_clear_header(old_name)
-    end
-  end
+  local remove  = 0 < #conf.remove.headers
+  local rename  = 0 < #conf.rename.headers
+  local replace = 0 < #conf.replace.headers
+  local add     = 0 < #conf.add.headers
+  local append  = 0 < #conf.append.headers
 
-  -- Replace header(s)
-  for _, name, value in iter(conf.replace.headers) do
-    if req_get_headers()[name] then
-      req_set_header(name, value)
-      if name:lower() == HOST then -- Host header has a special treatment
-        ngx.var.upstream_host = value
-      end
-    end
-  end
-
-  -- Add header(s)
-  for _, name, value in iter(conf.add.headers) do
-    if not req_get_headers()[name] then
-      req_set_header(name, value)
-      if name:lower() == HOST then -- Host header has a special treatment
-        ngx.var.upstream_host = value
-      end
-    end
-  end
-
-  -- Append header(s)
-  for _, name, value in iter(conf.append.headers) do
-    req_set_header(name, append_value(req_get_headers()[name], value))
-    if name:lower() == HOST then -- Host header has a special treatment
-      ngx.var.upstream_host = value
-    end
-  end
-end
-
-local function transform_querystrings(conf)
-  -- Remove querystring(s)
-  if conf.remove.querystring then
-    local querystring = req_get_uri_args()
-    for _, name, value in iter(conf.remove.querystring) do
-      querystring[name] = nil
-    end
-    req_set_uri_args(querystring)
-  end
-
-  -- Rename querystring(s)
-  if conf.rename.querystring then
-    local querystring = req_get_uri_args()
-    for _, old_name, new_name in iter(conf.rename.querystring) do
-      local value = querystring[old_name]
-      querystring[new_name] = value
-      querystring[old_name] = nil
-    end
-    req_set_uri_args(querystring)
-  end
-
-  -- Replace querystring(s)
-  if conf.replace.querystring then
-    local querystring = req_get_uri_args()
-    for _, name, value in iter(conf.replace.querystring) do
-      if querystring[name] then
-        querystring[name] = value
-      end
-    end
-    req_set_uri_args(querystring)
-  end
-
-  -- Add querystring(s)
-  if conf.add.querystring then
-    local querystring = req_get_uri_args()
-    for _, name, value in iter(conf.add.querystring) do
-      if not querystring[name] then
-        querystring[name] = value
-      end
-    end
-    req_set_uri_args(querystring)
-  end
-
-  -- Append querystring(s)
-  if conf.append.querystring then
-    local querystring = req_get_uri_args()
-    for _, name, value in iter(conf.append.querystring) do
-      querystring[name] = append_value(querystring[name], value)
-    end
-    req_set_uri_args(querystring)
-  end
-end
-
-local function transform_json_body(conf, body, content_length)
-  local removed, renamed, replaced, added, appended = false, false, false, false, false
-  local content_length = (body and #body) or 0
-  local parameters = parse_json(body)
-  if parameters == nil and content_length > 0 then
-    return false, nil
-  end
-
-  if content_length > 0 and #conf.remove.body > 0 then
-    for _, name, value in iter(conf.remove.body) do
-      parameters[name] = nil
-      removed = true
-    end
-  end
-
-  if content_length > 0 and #conf.rename.body > 0 then
-    for _, old_name, new_name in iter(conf.rename.body) do
-      local value = parameters[old_name]
-      parameters[new_name] = value
-      parameters[old_name] = nil
-      renamed = true
-    end
-  end
-
-  if content_length > 0 and #conf.replace.body > 0 then
-    for _, name, value in iter(conf.replace.body) do
-      if parameters[name] then
-        parameters[name] = value
-        replaced = true
-      end
-    end
-  end
-
-  if #conf.add.body > 0 then
-    for _, name, value in iter(conf.add.body) do
-      if not parameters[name] then
-        parameters[name] = value
-        added = true
-      end
-    end
-  end
-
-  if #conf.append.body > 0 then
-    for _, name, value in iter(conf.append.body) do
-      local old_value = parameters[name]
-      parameters[name] = append_value(old_value, value)
-      appended = true
-    end
-  end
-
-  if removed or renamed or replaced or added or appended then
-    return true, cjson.encode(parameters)
-  end
-end
-
-local function transform_url_encoded_body(conf, body, content_length)
-  local renamed, removed, replaced, added, appended = false, false, false, false, false
-  local parameters = decode_args(body)
-
-  if content_length > 0 and #conf.remove.body > 0 then
-    for _, name, value in iter(conf.remove.body) do
-      parameters[name] = nil
-      removed = true
-    end
-  end
-
-  if content_length > 0 and #conf.rename.body > 0 then
-    for _, old_name, new_name in iter(conf.rename.body) do
-      local value = parameters[old_name]
-      parameters[new_name] = value
-      parameters[old_name] = nil
-      renamed = true
-    end
-  end
-
-  if content_length > 0 and #conf.replace.body > 0 then
-    for _, name, value in iter(conf.replace.body) do
-      if parameters[name] then
-        parameters[name] = value
-        replaced = true
-      end
-    end
-  end
-
-  if #conf.add.body > 0 then
-    for _, name, value in iter(conf.add.body) do
-      if parameters[name] == nil then
-        parameters[name] = value
-        added = true
-      end
-    end
-  end
-
-  if #conf.append.body > 0 then
-    for _, name, value in iter(conf.append.body) do
-      local old_value = parameters[name]
-      parameters[name] = append_value(old_value, value)
-      appended = true
-    end
-  end
-
-  if removed or renamed or replaced or added or appended then
-    return true, encode_args(parameters)
-  end
-end
-
-local function transform_multipart_body(conf, body, content_length, content_type_value)
-  local removed, renamed, replaced, added, appended = false, false, false, false, false
-  local parameters = multipart(body and body or "", content_type_value)
-
-  if content_length > 0 and #conf.rename.body > 0 then
-    for _, old_name, new_name in iter(conf.rename.body) do
-      if parameters:get(old_name) then
-        local value = parameters:get(old_name).value
-        parameters:set_simple(new_name, value)
-        parameters:delete(old_name)
-        renamed = true
-      end
-    end
-  end
-
-  if content_length > 0 and #conf.remove.body > 0 then
-    for _, name, value in iter(conf.remove.body) do
-      parameters:delete(name)
-      removed = true
-    end
-  end
-
-  if content_length > 0 and #conf.replace.body > 0 then
-    for _, name, value in iter(conf.replace.body) do
-      if parameters:get(name) then
-        parameters:delete(name)
-        parameters:set_simple(name, value)
-        replaced = true
-      end
-    end
-  end
-
-  if #conf.add.body > 0 then
-    for _, name, value in iter(conf.add.body) do
-      if not parameters:get(name) then
-        parameters:set_simple(name, value)
-        added = true
-      end
-    end
-  end
-
-  if removed or renamed or replaced or added or appended then
-    return true, parameters:tostring()
-  end
-end
-
-local function transform_body(conf)
-  local content_type_value = req_get_headers()[CONTENT_TYPE]
-  local content_type = get_content_type(content_type_value)
-  if content_type == nil or #conf.rename.body < 1 and
-     #conf.remove.body < 1 and #conf.replace.body < 1 and
-     #conf.add.body < 1 and #conf.append.body < 1 then
+  if not remove  and
+     not rename  and
+     not replace and
+     not add     and
+     not append then
     return
   end
 
-  -- Call req_read_body to read the request body first
-  req_read_body()
-  local body = req_get_body_data()
-  local is_body_transformed = false
-  local content_length = (body and #body) or 0
+  local removed
+  local renamed
+  local replaced
+  local added
+  local appended
 
-  if content_type == ENCODED then
-    is_body_transformed, body = transform_url_encoded_body(conf, body, content_length)
-  elseif content_type == MULTI then
-    is_body_transformed, body = transform_multipart_body(conf, body, content_length, content_type_value)
-  elseif content_type == JSON then
-    is_body_transformed, body = transform_json_body(conf, body, content_length)
-  end
+  local headers = kong.request.get_headers()
 
-  if is_body_transformed then
-    req_set_body_data(body)
-    req_set_header(CONTENT_LENGTH, #body)
-  end
-end
+  if remove then
+    for _, name, value in iter(conf.remove.headers) do
+      if headers[name] ~= nil then
+        headers[name] = nil
+        clear_header(name)
 
-local function transform_method(conf)
-  if conf.http_method then
-    req_set_method(ngx["HTTP_" .. conf.http_method:upper()])
-    if conf.http_method == "GET" or conf.http_method == "HEAD" or conf.http_method == "TRACE" then
-      local content_type_value = req_get_headers()[CONTENT_TYPE]
-      local content_type = get_content_type(content_type_value)
-      if content_type == ENCODED then
-        -- Also put the body into querystring
-
-        -- Read the body
-        req_read_body()
-        local body = req_get_body_data()
-        local parameters = decode_args(body)
-
-        -- Append to querystring
-        local querystring = req_get_uri_args()
-        for name, value in pairs(parameters) do
-          querystring[name] = value
+        if not removed then
+          removed = true
         end
-        req_set_uri_args(querystring)
       end
     end
   end
+
+  if rename then
+    for _, old_name, new_name in iter(conf.rename.headers) do
+      local value = headers[old_name]
+      if value ~= nil then
+        headers[new_name] = value
+        headers[old_name] = nil
+
+        clear_header(old_name)
+
+        if not renamed then
+          renamed = true
+        end
+      end
+    end
+  end
+
+  if replace then
+    for _, name, value in iter(conf.replace.headers) do
+      if headers[name] ~= nil then
+        headers[name] = value
+
+        if not replaced then
+          replaced = true
+        end
+
+        if lower(name) == HOST then -- Host header has a special treatment
+          ngx.var.upstream_host = value
+        end
+      end
+    end
+  end
+
+  if add then
+    for _, name, value in iter(conf.add.headers) do
+      if headers[name] == nil then
+        headers[name] = value
+
+        if not added then
+          added = true
+        end
+
+        if lower(name) == HOST then -- Host header has a special treatment
+          ngx.var.upstream_host = value
+        end
+      end
+    end
+  end
+
+  if append then
+    for _, name, value in iter(conf.append.headers) do
+      headers[name] = append_value(headers[name], value)
+
+      if not appended then
+        appended = true
+      end
+
+      if lower(name) == HOST then -- Host header has a special treatment
+        ngx.var.upstream_host = value
+      end
+    end
+  end
+
+  if removed or renamed or replaced or added or appended then
+    kong.service.request.set_headers(headers)
+  end
 end
 
-function _M.execute(conf)
-  transform_method(conf)
-  transform_body(conf)
-  transform_headers(conf)
-  transform_querystrings(conf)
+
+local function transform_query(conf, query)
+  local remove  = 0 < #conf.remove.querystring
+  local rename  = 0 < #conf.rename.querystring
+  local replace = 0 < #conf.replace.querystring
+  local add     = 0 < #conf.add.querystring
+  local append  = 0 < #conf.append.querystring
+
+  if not remove  and
+     not rename  and
+     not replace and
+     not add     and
+     not append then
+    return
+  end
+
+  local removed
+  local renamed
+  local replaced
+  local added
+  local appended
+
+
+  if not query then
+    query = kong.request.get_query()
+  end
+
+  if remove then
+    for _, name, value in iter(conf.remove.querystring) do
+      if query[name] ~= nil then
+        query[name] = nil
+
+        if not removed then
+          removed = true
+        end
+      end
+    end
+  end
+
+  if rename then
+    for _, old_name, new_name in iter(conf.rename.querystring) do
+      local value = query[old_name]
+      if value ~= nil then
+        query[new_name] = value
+        query[old_name] = nil
+
+        if not renamed then
+          renamed = true
+        end
+      end
+    end
+  end
+
+  if replace then
+    for _, name, value in iter(conf.replace.querystring) do
+      if query[name] ~= nil then
+        query[name] = value
+
+        if not replaced then
+          replaced = true
+        end
+      end
+    end
+  end
+
+  if add then
+    for _, name, value in iter(conf.add.querystring) do
+      if query[name] == nil then
+        query[name] = value
+
+        if not added then
+          added = true
+        end
+      end
+    end
+  end
+
+  if append then
+    for _, name, value in iter(conf.append.querystring) do
+      query[name] = append_value(query[name], value)
+
+      if not appended then
+        appended = true
+      end
+    end
+  end
+
+  if removed or renamed or replaced or added or appended then
+    kong.service.request.set_query(query)
+  end
 end
+
+
+local function transform_json_body(conf, body_raw, actions)
+  local removed
+  local renamed
+  local replaced
+  local added
+  local appended
+
+  local json
+
+  if actions.has_content then
+    cjson.decode_array_with_array_mt(true)
+    json = cjson.decode(body_raw)
+    cjson.decode_array_with_array_mt(false)
+
+    if type(json) ~= "table" then
+      return
+    end
+
+    if actions.remove then
+      for _, name in iter(conf.remove.body) do
+        if json[name] ~= nil then
+          json[name] = nil
+
+          if not removed then
+            removed = true
+          end
+        end
+      end
+    end
+
+    if actions.rename then
+      for _, old_name, new_name in iter(conf.rename.body) do
+        local value = json[old_name]
+        if value ~= nil then
+          json[new_name] = value
+          json[old_name] = nil
+
+          if not renamed then
+            renamed = true
+          end
+        end
+      end
+    end
+
+    if actions.replace then
+      for _, name, value in iter(conf.replace.body) do
+        if json[name] ~= nil then
+          json[name] = value
+
+          if not replaced then
+            replaced = true
+          end
+        end
+      end
+    end
+  end
+
+  if actions.add then
+    if json == nil then
+      json = {}
+    end
+
+    for _, name, value in iter(conf.add.body) do
+      if json[name] == nil then
+        json[name] = value
+
+        if not added then
+          added = true
+        end
+      end
+    end
+  end
+
+  if actions.append then
+    if json == nil then
+      json = {}
+    end
+
+    for _, name, value in iter(conf.append.body) do
+      json[name] = append_value(json[name], value)
+
+      if not appended then
+        appended = true
+      end
+    end
+  end
+
+  if removed or renamed or replaced or added or appended then
+    return true, cjson.encode(json)
+  end
+end
+
+
+local function transform_form_body(conf, body_raw, actions)
+  local removed
+  local renamed
+  local replaced
+  local added
+  local appended
+
+  local form
+
+  if actions.has_content then
+    form = ngx.decode_args(body_raw)
+
+    if type(form) ~= "table" then
+      return
+    end
+
+    if actions.remove then
+      for _, name in iter(conf.remove.body) do
+        if form[name] ~= nil then
+          form[name] = nil
+
+          if not removed then
+            removed = true
+          end
+        end
+      end
+    end
+
+    if actions.rename then
+      for _, old_name, new_name in iter(conf.rename.body) do
+        local value = form[old_name]
+        if value ~= nil then
+          form[new_name] = value
+          form[old_name] = nil
+
+          if not renamed then
+            renamed = true
+          end
+        end
+      end
+    end
+
+    if actions.replace then
+      for _, name, value in iter(conf.replace.body) do
+        if form[name] ~= nil then
+          form[name] = value
+
+          if not replaced then
+            replaced = true
+          end
+        end
+      end
+    end
+  end
+
+  if actions.add then
+    if form == nil then
+      form = {}
+    end
+
+    for _, name, value in iter(conf.add.body) do
+      if form[name] == nil then
+        form[name] = value
+
+        if not added then
+          added = true
+        end
+      end
+    end
+  end
+
+  if actions.append then
+    if form == nil then
+      form = {}
+    end
+
+    for _, name, value in iter(conf.append.body) do
+      form[name] = append_value(form[name], value)
+
+      if not appended then
+        appended = true
+      end
+    end
+  end
+
+  if removed or renamed or replaced or added or appended then
+    return true, ngx.encode_args(form)
+  end
+end
+
+
+local function transform_multipart_body(conf, body_raw, actions, content_type_value)
+  if not content_type_value then
+    return
+  end
+
+  local removed
+  local renamed
+  local replaced
+  local added
+
+  local parts
+
+  if actions.has_content then
+    parts =  multipart(body_raw, content_type_value)
+
+    if type(parts) ~= "table" then
+      return
+    end
+
+    if actions.remove then
+      for _, name in iter(conf.remove.body) do
+        if parts:get(name) then
+          parts:delete(name)
+
+          if not removed then
+            removed = true
+          end
+        end
+      end
+    end
+
+    if actions.rename then
+      for _, old_name, new_name in iter(conf.rename.body) do
+        if parts:get(old_name) then
+          local value = parts:get(old_name).value
+
+          parts:set_simple(new_name, value)
+          parts:delete(old_name)
+
+          if not renamed then
+            renamed = true
+          end
+        end
+      end
+    end
+
+    if actions.replace then
+      for _, name, value in iter(conf.replace.body) do
+        if parts:get(name) then
+          parts:delete(name)
+          parts:set_simple(name, value)
+
+          if not replaced then
+            replaced = true
+          end
+        end
+      end
+    end
+  end
+
+  if actions.add then
+    if parts == nil then
+      parts = multipart("", content_type_value)
+    end
+
+    for _, name, value in iter(conf.add.body) do
+      if not parts:get(name) then
+        parts:set_simple(name, value)
+
+        if not added then
+          added = true
+        end
+      end
+    end
+  end
+
+  if removed or renamed or replaced or added then
+    return true, parts:tostring()
+  end
+end
+
+
+local function transform_body(conf, body_raw)
+  local content_type_value = kong.request.get_header(CONTENT_TYPE)
+  local content_type = get_content_type(content_type_value)
+  if content_type == nil then
+    return
+  end
+
+  local actions = {
+    remove  = 0 < #conf.remove.body,
+    rename  = 0 < #conf.rename.body,
+    replace = 0 < #conf.replace.body,
+    add     = 0 < #conf.add.body,
+    append  = 0 < #conf.append.body,
+  }
+
+  if not actions.rename  and
+     not actions.remove  and
+     not actions.replace and
+     not actions.add     and
+     not actions.append then
+    return
+  end
+
+  if not body_raw then
+    body_raw = kong.request.get_raw_body()
+  end
+
+  if body_raw then
+    actions.has_content = #body_raw ~= 0
+  end
+
+  local transformed
+  if content_type == JSON then
+    transformed, body_raw = transform_json_body(conf, body_raw, actions)
+  elseif content_type == FORM then
+    transformed, body_raw = transform_form_body(conf, body_raw, actions)
+  elseif content_type == MULTIPART then
+    transformed, body_raw = transform_multipart_body(conf, body_raw, actions,
+                                                     content_type_value)
+  end
+
+  if transformed then
+    kong.service.request.set_raw_body(body_raw)
+  end
+end
+
+
+local function transform_method(conf)
+  if not conf.http_method then
+    return
+  end
+
+  local method = upper(conf.http_method)
+  if method ~= kong.request.get_method() then
+    kong.service.request.set_method(method)
+  end
+
+  if method ~= "GET" and method ~= "HEAD" and method ~= "TRACE" then
+    return
+  end
+
+  local query
+  local body_raw
+
+  local content_type_value = kong.request.get_header(CONTENT_TYPE)
+  local content_type = get_content_type(content_type_value)
+  if content_type == FORM then
+    -- Also put the body args into query args
+    body_raw = kong.request.get_raw_body()
+    if body_raw then
+      local form = ngx.decode_args(body_raw)
+      if type(form) == "table" and next(form) then
+        query = kong.request.get_query()
+        for name, value in pairs(form) do
+          if query[name] then
+            if type(query[name]) == "table" then
+              insert(query[name], value)
+            else
+              query[name] = { query[name], value }
+            end
+
+          else
+            query[name] = value
+          end
+        end
+
+        kong.service.request.set_query(query)
+      end
+    end
+  end
+
+  return query, body_raw
+end
+
+
+function _M.execute(conf)
+  transform_headers(conf)
+
+  local query, body_raw = transform_method(conf)
+
+  transform_query(conf, query)
+  transform_body(conf, body_raw)
+end
+
 
 return _M

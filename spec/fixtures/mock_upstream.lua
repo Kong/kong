@@ -5,6 +5,11 @@ local ws_server  = require "resty.websocket.server"
 local pl_stringx = require "pl.stringx"
 
 
+local kong = {
+  table = require("kong.pdk.table").new()
+}
+
+
 local function parse_multipart_form_params(body, content_type)
   if not content_type then
     return nil, 'missing content-type'
@@ -231,7 +236,7 @@ end
 
 
 local function send_default_json_response(extra_fields, response_headers)
-  local tbl = utils.table_merge(get_default_json_response(), extra_fields)
+  local tbl = kong.table.merge(get_default_json_response(), extra_fields)
   return send_text_response(cjson.encode(tbl),
                             "application/json", response_headers)
 end
@@ -291,6 +296,50 @@ local function serve_web_sockets()
 end
 
 
+local function store_log(logname)
+  ngx.req.read_body()
+  local body = ngx.req.get_body_data()
+  local loggers = ngx.shared["kong_mock_upstream_loggers"]
+  if not loggers then
+    loggers = {}
+    ngx.shared["kong_mock_upstream_loggers"] = loggers
+  end
+  loggers[logname] = loggers[logname] or {}
+  local headers = {}
+  for k, v in pairs(ngx.req.get_headers()) do
+    table.insert(headers, { name = k:lower(), value = v })
+  end
+  table.insert(loggers[logname], {
+    request = {
+      headers = headers,
+      postData = {
+        text = body,
+      }
+    }
+  })
+  ngx.status = 200
+  return send_default_json_response({
+    code = 200,
+  })
+end
+
+
+local function retrieve_log(logname)
+  local loggers = ngx.shared["kong_mock_upstream_loggers"]
+  if not loggers then
+    loggers = {}
+    ngx.shared["kong_mock_upstream_loggers"] = loggers
+  end
+  loggers[logname] = loggers[logname] or {}
+  ngx.status = 200
+  ngx.say(cjson.encode({
+    log = {
+      entries = loggers[logname],
+    }
+  }))
+end
+
+
 return {
   get_default_json_response   = get_default_json_response,
   filter_access_by_method     = filter_access_by_method,
@@ -298,4 +347,6 @@ return {
   send_text_response          = send_text_response,
   send_default_json_response  = send_default_json_response,
   serve_web_sockets           = serve_web_sockets,
+  store_log                   = store_log,
+  retrieve_log                = retrieve_log,
 }

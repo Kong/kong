@@ -3,7 +3,6 @@ local utils         = require "kong.tools.utils"
 local responses     = require "kong.tools.responses"
 local app_helpers   = require "lapis.application"
 local portal_crud   = require "kong.portal.crud_helpers"
-local rbac          = require "kong.rbac"
 local tablex        = require "pl.tablex"
 
 
@@ -70,36 +69,6 @@ function _M.find_workspace_by_name_or_id(self, dao_factory, helpers)
   self.params.workspace_name_or_id = nil
 end
 
-function _M.find_rbac_user_by_name_or_id(self, dao_factory, helpers)
-  local rows, err = _M.find_by_id_or_field(dao_factory.rbac_users, {},
-                                           self.params.name_or_id, "name")
-
-  if err then
-    return helpers.yield_error(err)
-  end
-
-  self.rbac_user = rows[1]
-  if not self.rbac_user then
-    return helpers.responses.send_HTTP_NOT_FOUND("No RBAC user by name or id " ..
-                                                 self.params.name_or_id)
-  end
-
-  -- make sure it's not associated to a consumer
-  local map, err = rbac.get_consumer_user_map(self.rbac_user.id)
-
-  if err then
-    return responses.send_HTTP_INTERNAL_SERVER_ERROR(
-      "error finding map for rbac_user: ", self.rbac_user.id)
-  end
-
-  if map then
-    return helpers.responses.send_HTTP_NOT_FOUND("No RBAC user by name or id "
-      .. self.params.name_or_id)
-  end
-
-  self.params.name_or_id = nil
-end
-
 function _M.find_rbac_role_by_name_or_id(self, dao_factory, helpers)
   local rows, err = _M.find_by_id_or_field(dao_factory.rbac_roles,
                                            { is_default = false },
@@ -117,19 +86,6 @@ function _M.find_rbac_role_by_name_or_id(self, dao_factory, helpers)
   end
 
   self.params.name_or_id = nil
-end
-
-function _M.find_consumer_rbac_user_map(self, dao_factory, helpers)
-  local rows, err = dao_factory.consumers_rbac_users_map:find_all(self.params)
-  if err then
-    return helpers.yield_error(err)
-  end
-
-  if not next(rows) then
-    return helpers.responses.send_HTTP_NOT_FOUND()
-  end
-
-  self.consumer_rbac_user_map = rows[1]
 end
 
 function _M.find_api_by_name_or_id(self, dao_factory, helpers)
@@ -161,19 +117,32 @@ function _M.find_plugin_by_filter(self, dao_factory, filter, helpers)
   end
 end
 
-function _M.find_consumer_by_username_or_id(self, dao_factory, helpers, filter)
-  filter = filter or {}
-  local rows, err = _M.find_by_id_or_field(dao_factory.consumers, filter,
-                                           self.params.username_or_id, "username")
+-- XXX merge - fix me for Admins? additional parameter `filter`
+function _M.find_consumer_by_username_or_id(self, dao_factory, helpers)
+  local username_or_id = self.params.username_or_id
+  local db = assert(dao_factory.db.new_db)
+  local consumer, err
+  if utils.is_valid_uuid(username_or_id) then
+    consumer, err = db.consumers:select({ id = username_or_id })
 
-  if err then
-    return helpers.yield_error(err)
+    if err then
+      return helpers.yield_error(err)
+    end
   end
+
+  if not consumer then
+    consumer, err = db.consumers:select_by_username(username_or_id)
+
+    if err then
+      return helpers.yield_error(err)
+    end
+  end
+
   self.params.username_or_id = nil
   self.params.type = nil
 
   -- We know username and id are unique, so if we have a row, it must be the only one
-  self.consumer = rows[1]
+  self.consumer = consumer
   if not self.consumer then
     return helpers.responses.send_HTTP_NOT_FOUND()
   end
@@ -336,6 +305,17 @@ end
 -- if it does, we are performing an update, if not, an insert.
 function _M.put(params, dao_collection, post_process)
   local new_entity, err
+
+  -- If a wrapper is detected, give it the new upsert behavior
+  if dao_collection.unwrapped then
+    local entity = dao_collection.unwrapped
+    local pk = entity.schema:extract_pk_values(params)
+    local new_entity, err = entity:upsert(pk, params)
+    if not err then
+      return responses.send_HTTP_OK(post_process_row(new_entity, post_process))
+    end
+    return app_helpers.yield_error(err)
+  end
 
   local model = dao_collection.model_mt(params)
   if not model:has_primary_keys() then

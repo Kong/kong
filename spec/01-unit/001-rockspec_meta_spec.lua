@@ -7,7 +7,7 @@ describe("rockspec/meta", function()
   local rock, lua_srcs = {}
   local rock_filename
 
-  setup(function()
+  lazy_setup(function()
     lua_srcs = pl_dir.getallfiles("./kong", "*.lua")
     assert.True(#lua_srcs > 0)
 
@@ -38,6 +38,14 @@ describe("rockspec/meta", function()
       assert.is_number(meta._CORE_VERSION_TABLE.minor)
       assert.is_number(meta._CORE_VERSION_TABLE.patch)
       -- suffix optional
+    end)
+
+    it("has a _SERVER_TOKENS field", function()
+      assert.is_string(meta._SERVER_TOKENS)
+    end)
+
+    it("has a _SERVER_TOKENS field that equals to _NAME/_VERSION", function()
+      assert.equal(meta._NAME .. "/" .. meta._VERSION, meta._SERVER_TOKENS)
     end)
 
     it("has a _DEPENDENCIES field", function()

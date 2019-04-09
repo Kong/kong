@@ -1,57 +1,92 @@
 local helpers = require "spec.helpers"
+local admin_api = require "spec.fixtures.admin_api"
 local cjson   = require "cjson"
+
+
+local function next_second()
+  ngx.update_time()
+  local now = ngx.now()
+  ngx.sleep(1 - (now - math.floor(now)))
+end
+
+
+local function insert_routes(routes)
+  if type(routes) ~= "table" then
+    return error("expected arg #1 to be a table", 2)
+  end
+
+  for i = 1, #routes do
+    local route = routes[i]
+    local service = route.service or {}
+
+    if not service.host then
+      service.host = helpers.mock_upstream_host
+    end
+
+    if not service.port then
+      service.port = helpers.mock_upstream_port
+    end
+
+    if not service.protocol then
+      service.protocol = helpers.mock_upstream_protocol
+    end
+
+    service = admin_api.named_services:insert(service)
+    route.service = service
+
+    if not route.protocol then
+      route.protocols = { "http" }
+    end
+
+    route.service = service
+    route = admin_api.routes:insert(route)
+    route.service = service
+
+    routes[i] = route
+  end
+
+  return routes
+end
+
+local function remove_routes(routes)
+  local services = {}
+
+  for _, route in ipairs(routes) do
+    local sid = route.service.id
+    if not services[sid] then
+      services[sid] = route.service
+      table.insert(services, services[sid])
+    end
+  end
+
+  for _, route in ipairs(routes) do
+    admin_api.routes:remove({ id = route.id })
+  end
+
+  for _, service in ipairs(services) do
+    admin_api.services:remove(service)
+  end
+end
 
 for _, strategy in helpers.each_strategy() do
   describe("Router [#" .. strategy .. "]" , function()
     local proxy_client
-    local bp
-    local db
-    local dao
 
-    local function insert_routes(routes)
-      if type(routes) ~= "table" then
-        return error("expected arg #1 to be a table", 2)
-      end
+    lazy_setup(function()
+      helpers.get_db_utils(strategy, {
+        "routes",
+        "services",
+        "apis",
+      })
 
-      for i = 1, #routes do
-        local route = routes[i]
-        local service = route.service or {}
+      assert(helpers.start_kong({
+        database = strategy,
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+      }))
+    end)
 
-        if not service.name then
-          service.name = "service-" .. i
-        end
-
-        if not service.host then
-          service.host = helpers.mock_upstream_host
-        end
-
-        if not service.port then
-          service.port = helpers.mock_upstream_port
-        end
-
-        if not service.protocol then
-          service.protocol = helpers.mock_upstream_protocol
-        end
-
-        service = bp.services:insert(service)
-        route.service = service
-
-        if not route.protocol then
-          route.protocols = { "http" }
-        end
-
-        route = bp.routes:insert(route)
-        route.service = service
-
-
-        routes[i] = route
-      end
-
-      return routes
-    end
-
-    setup(function()
-      bp, db, dao = helpers.get_db_utils(strategy)
+    lazy_teardown(function()
+      helpers.stop_kong()
     end)
 
     before_each(function()
@@ -65,19 +100,6 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("no routes match", function()
-      setup(function()
-        assert(db:truncate())
-        dao:truncate_tables()
-
-        assert(helpers.start_kong({
-          database = strategy,
-          nginx_conf = "spec/fixtures/custom_nginx.template",
-        }))
-      end)
-
-      teardown(function()
-        helpers.stop_kong()
-      end)
 
       it("responds 404 if no route matches", function()
         local res = assert(proxy_client:send {
@@ -96,24 +118,22 @@ for _, strategy in helpers.each_strategy() do
 
     describe("use-cases", function()
       local routes
+      local first_service_name
 
-      setup(function()
-        assert(db:truncate())
-        dao:truncate_tables()
-
+      lazy_setup(function()
         routes = insert_routes {
-          { -- service-1
+          {
             methods    = { "GET" },
             protocols  = { "http" },
             strip_path = false,
           },
-          { -- service-2
+          {
             methods    = { "POST", "PUT" },
             paths      = { "/post", "/put" },
             protocols  = { "http" },
             strip_path = false,
           },
-          { -- service-3
+          {
             paths      = { "/mock_upstream" },
             protocols  = { "http" },
             strip_path = true,
@@ -121,15 +141,15 @@ for _, strategy in helpers.each_strategy() do
               path     = "/status",
             },
           },
-          { -- service-4
+          {
             paths      = { "/private" },
             protocols  = { "http" },
             strip_path = false,
             service    = {
-              path     = "/basic-auth",
+              path     = "/basic-auth/",
             },
           },
-          { -- service-5
+          {
             paths      = { [[/users/\d+/profile]] },
             protocols  = { "http" },
             strip_path = true,
@@ -138,15 +158,11 @@ for _, strategy in helpers.each_strategy() do
             },
           },
         }
-
-        assert(helpers.start_kong({
-          database   = strategy,
-          nginx_conf = "spec/fixtures/custom_nginx.template",
-        }))
+        first_service_name = routes[1].service.name
       end)
 
-      teardown(function()
-        helpers.stop_kong()
+      lazy_teardown(function()
+        remove_routes(routes)
       end)
 
       it("restricts an route to its methods if specified", function()
@@ -214,7 +230,7 @@ for _, strategy in helpers.each_strategy() do
 
           -- TEST: we matched an API that had no Host header defined
           local remainder = assert(sock:receive("*a"))
-          assert.matches("kong-service-name: service-1",
+          assert.matches("kong-service-name: " .. first_service_name,
                          string.lower(remainder), nil, true)
         end)
 
@@ -298,57 +314,51 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("URI regexes order of evaluation with created_at", function()
-      local routes1, routes2
+      local routes1, routes2, routes3
 
-      setup(function()
-        assert(db:truncate())
-        dao:truncate_tables()
-
+      lazy_setup(function()
         routes1 = insert_routes {
           {
             strip_path = true,
             paths      = { "/status/(re)" },
             service    = {
-              name     = "service-1",
+              name     = "regex_1",
               path     = "/status/200",
             },
           },
         }
 
-        ngx.sleep(1)
+        next_second()
 
         routes2 = insert_routes {
           {
             strip_path = true,
             paths      = { "/status/(r)" },
             service    = {
-              name     = "service-2",
+              name     = "regex_2",
               path     = "/status/200",
             },
           }
         }
 
-        ngx.sleep(1)
+        next_second()
 
-        insert_routes {
+        routes3 = insert_routes {
           {
             strip_path = true,
             paths      = { "/status" },
             service    = {
-              name     = "service-3",
+              name     = "regex_3",
               path     = "/status/200",
             },
           }
         }
-
-        assert(helpers.start_kong({
-          database   = strategy,
-          nginx_conf = "spec/fixtures/custom_nginx.template",
-        }))
       end)
 
-      teardown(function()
-        helpers.stop_kong()
+      lazy_teardown(function()
+        remove_routes(routes1)
+        remove_routes(routes2)
+        remove_routes(routes3)
       end)
 
       it("depends on created_at field", function()
@@ -377,72 +387,68 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("URI regexes order of evaluation with regex_priority", function()
-      setup(function()
-        assert(db:truncate())
-        dao:truncate_tables()
+      local routes = {}
+      lazy_setup(function()
 
         -- TEST 1 (regex_priority)
 
-        insert_routes {
+        routes[1] = insert_routes {
           {
             strip_path = true,
             paths      = { "/status/(?<foo>re)" },
             service    = {
-              name     = "service-1",
+              name     = "regex_1",
               path     = "/status/200",
             },
             regex_priority = 0,
           }
         }
 
-        insert_routes {
+        routes[2] = insert_routes {
           {
             strip_path = true,
             paths      = { "/status/(re)" },
             service    = {
-              name     = "service-2",
+              name     = "regex_2",
               path     = "/status/200",
             },
-            regex_priority = 4, -- shadows service-4 (which is created before and is shorter)
+            regex_priority = 4, -- shadows service which is created before and is shorter
           },
         }
 
         -- TEST 2 (tie breaker by created_at)
 
-        insert_routes {
+        routes[3] = insert_routes {
           {
             strip_path = true,
             paths      = { "/status/(ab)" },
             service    = {
-              name     = "service-3",
+              name     = "regex_3",
               path     = "/status/200",
             },
             regex_priority = 0,
           }
         }
 
-        ngx.sleep(1)
+        next_second()
 
-        insert_routes {
+        routes[4] = insert_routes {
           {
             strip_path = true,
             paths      = { "/status/(ab)c?" },
             service    = {
-              name     = "service-4",
+              name     = "regex_4",
               path     = "/status/200",
             },
             regex_priority = 0,
           },
         }
-
-        assert(helpers.start_kong({
-          database   = strategy,
-          nginx_conf = "spec/fixtures/custom_nginx.template",
-        }))
       end)
 
-      teardown(function()
-        helpers.stop_kong()
+      lazy_teardown(function()
+        for _, r in ipairs(routes) do
+          remove_routes(r)
+        end
       end)
 
       it("depends on the regex_priority field", function()
@@ -452,7 +458,7 @@ for _, strategy in helpers.each_strategy() do
           headers = { ["kong-debug"] = 1 },
         })
         assert.res_status(200, res)
-        assert.equal("service-2", res.headers["kong-service-name"])
+        assert.equal("regex_2", res.headers["kong-service-name"])
       end)
 
       it("depends on created_at if regex_priority is tie", function()
@@ -462,32 +468,23 @@ for _, strategy in helpers.each_strategy() do
           headers = { ["kong-debug"] = 1 },
         })
         assert.res_status(200, res)
-        assert.equal("service-3", res.headers["kong-service-name"])
+        assert.equal("regex_3", res.headers["kong-service-name"])
       end)
     end)
 
     describe("URI arguments (querystring)", function()
+      local routes
 
-      setup(function()
-        assert(db:truncate())
-        dao:truncate_tables()
-
-        insert_routes {
+      lazy_setup(function()
+        routes = insert_routes {
           {
             hosts = { "mock_upstream" },
           },
         }
-
-        assert(dao:run_migrations())
-
-        assert(helpers.start_kong({
-          database   = strategy,
-          nginx_conf = "spec/fixtures/custom_nginx.template",
-        }))
       end)
 
-      teardown(function()
-        helpers.stop_kong()
+      lazy_teardown(function()
+        remove_routes(routes)
       end)
 
       it("preserves URI arguments", function()
@@ -541,10 +538,7 @@ for _, strategy in helpers.each_strategy() do
     describe("percent-encoded URIs", function()
       local routes
 
-      setup(function()
-        assert(db:truncate())
-        dao:truncate_tables()
-
+      lazy_setup(function()
         routes = insert_routes {
           {
             strip_path = true,
@@ -555,15 +549,10 @@ for _, strategy in helpers.each_strategy() do
             paths      = { "/foo/../bar" },
           },
         }
-
-        assert(helpers.start_kong({
-          database   = strategy,
-          nginx_conf = "spec/fixtures/custom_nginx.template",
-        }))
       end)
 
-      teardown(function()
-        helpers.stop_kong()
+      lazy_teardown(function()
+        remove_routes(routes)
       end)
 
       it("routes when [paths] is percent-encoded", function()
@@ -596,26 +585,19 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("strip_path", function()
+      local routes
 
-      setup(function()
-        assert(db:truncate())
-        dao:truncate_tables()
-
-        insert_routes {
+      lazy_setup(function()
+        routes = insert_routes {
           {
             paths      = { "/x/y/z", "/z/y/x" },
             strip_path = true,
           },
         }
-
-        assert(helpers.start_kong({
-          database   = strategy,
-          nginx_conf = "spec/fixtures/custom_nginx.template",
-        }))
       end)
 
-      teardown(function()
-        helpers.stop_kong()
+      lazy_teardown(function()
+        remove_routes(routes)
       end)
 
       describe("= true", function()
@@ -664,12 +646,10 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("preserve_host", function()
+      local routes
 
-      setup(function()
-        assert(db:truncate())
-        dao:truncate_tables()
-
-        insert_routes {
+      lazy_setup(function()
+        routes = insert_routes {
           {
             preserve_host = true,
             hosts         = { "preserved.com" },
@@ -691,14 +671,10 @@ for _, strategy in helpers.each_strategy() do
           }
         }
 
-        assert(helpers.start_kong({
-          database   = strategy,
-          nginx_conf = "spec/fixtures/custom_nginx.template",
-        }))
       end)
 
-      teardown(function()
-        helpers.stop_kong()
+      lazy_teardown(function()
+        remove_routes(routes)
       end)
 
       describe("x = false (default)", function()
@@ -783,10 +759,7 @@ for _, strategy in helpers.each_strategy() do
     describe("edge-cases", function()
       local routes
 
-      setup(function()
-        assert(db:truncate())
-        dao:truncate_tables()
-
+      lazy_setup(function()
         routes = insert_routes {
           {
             strip_path = true,
@@ -797,15 +770,10 @@ for _, strategy in helpers.each_strategy() do
             paths      = { "/foobar" },
           },
         }
-
-        assert(helpers.start_kong({
-          database   = strategy,
-          nginx_conf = "spec/fixtures/custom_nginx.template",
-        }))
       end)
 
-      teardown(function()
-        helpers.stop_kong()
+      lazy_teardown(function()
+        remove_routes(routes)
       end)
 
       it("root / [uri] for a catch-all rule", function()
@@ -838,10 +806,7 @@ for _, strategy in helpers.each_strategy() do
     describe("[paths] + [methods]", function()
       local routes
 
-      setup(function()
-        assert(db:truncate())
-        dao:truncate_tables()
-
+      lazy_setup(function()
         routes = insert_routes {
           {
             strip_path = true,
@@ -854,15 +819,10 @@ for _, strategy in helpers.each_strategy() do
             paths      = { "/root/fixture" },
           },
         }
-
-        assert(helpers.start_kong({
-          database   = strategy,
-          nginx_conf = "spec/fixtures/custom_nginx.template",
-        }))
       end)
 
-      teardown(function()
-        helpers.stop_kong()
+      lazy_teardown(function()
+        remove_routes(routes)
       end)
 
       it("prioritizes longer URIs", function()
@@ -885,10 +845,7 @@ for _, strategy in helpers.each_strategy() do
     describe("[paths] + [hosts]", function()
       local routes
 
-      setup(function()
-        assert(db:truncate())
-        dao:truncate_tables()
-
+      lazy_setup(function()
         routes = insert_routes {
           {
             strip_path = true,
@@ -901,15 +858,10 @@ for _, strategy in helpers.each_strategy() do
             paths      = { "/root/fixture" },
           },
         }
-
-        assert(helpers.start_kong({
-          database   = strategy,
-          nginx_conf = "spec/fixtures/custom_nginx.template",
-        }))
       end)
 
-      teardown(function()
-        helpers.stop_kong()
+      lazy_teardown(function()
+        remove_routes(routes)
       end)
 
       it("prioritizes longer URIs", function()
@@ -930,106 +882,218 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
 
-    describe("trailing slash", function()
+    describe("slash handing", function()
       local checks = {
-        -- upstream url    paths            request path    expected path          strip path
-        {  "/",            "/",            "/",            "/",                    true      },
-        {  "/",            "/",            "/get/bar",     "/get/bar",             true      },
-        {  "/",            "/",            "/get/bar/",    "/get/bar/",            true      },
-        {  "/",            "/get/bar",     "/get/bar",     "/",                    true      },
-        {  "/",            "/get/bar",     "/get/bar/",    "/",                    true      },
-        {  "/get/bar",     "/",            "/",            "/get/bar",             true      },
-        {  "/get/bar",     "/",            "/get/bar",     "/get/bar/get/bar",     true      },
-        {  "/get/bar",     "/",            "/get/bar/",    "/get/bar/get/bar/",    true      },
-        {  "/get/bar",     "/get/bar",     "/get/bar",     "/get/bar",             true      },
-        {  "/get/bar",     "/get/bar",     "/get/bar/",    "/get/bar/",            true      },
-        {  "/get/bar/",    "/",            "/",            "/get/bar/",            true      },
-        {  "/get/bar/",    "/",            "/get/bar",     "/get/bar/get/bar",     true      },
-        {  "/get/bar/",    "/",            "/get/bar/",    "/get/bar/get/bar/",    true      },
-        {  "/get/bar/",    "/get/bar",     "/get/bar",     "/get/bar",             true      },
-        {  "/get/bar/",    "/get/bar",     "/get/bar/",    "/get/bar/",            true      },
+        -- upstream url    paths           request path    expected path           strip uri
+        {  "/",            "/",            "/",            "/",                    true      }, -- 1
+        {  "/",            "/",            "/foo/bar",     "/foo/bar",             true      },
+        {  "/",            "/",            "/foo/bar/",    "/foo/bar/",            true      },
+        {  "/",            "/foo/bar",     "/foo/bar",     "/",                    true      },
+        {  "/",            "/foo/bar",     "/foo/bar/",    "/",                    true      },
+        {  "/",            "/foo/bar/",    "/foo/bar/",    "/",                    true      },
+        {  "/fee/bor",     "/",            "/",            "/fee/bor",             true      },
+        {  "/fee/bor",     "/",            "/foo/bar",     "/fee/borfoo/bar",      true      },
+        {  "/fee/bor",     "/",            "/foo/bar/",    "/fee/borfoo/bar/",     true      },
+        {  "/fee/bor",     "/foo/bar",     "/foo/bar",     "/fee/bor",             true      }, -- 10
+        {  "/fee/bor",     "/foo/bar",     "/foo/bar/",    "/fee/bor/",            true      },
+        {  "/fee/bor",     "/foo/bar/",    "/foo/bar/",    "/fee/bor",             true      },
+        {  "/fee/bor/",    "/",            "/",            "/fee/bor/",            true      },
+        {  "/fee/bor/",    "/",            "/foo/bar",     "/fee/bor/foo/bar",     true      },
+        {  "/fee/bor/",    "/",            "/foo/bar/",    "/fee/bor/foo/bar/",    true      },
+        {  "/fee/bor/",    "/foo/bar",     "/foo/bar",     "/fee/bor/",            true      },
+        {  "/fee/bor/",    "/foo/bar",     "/foo/bar/",    "/fee/bor/",            true      },
+        {  "/fee/bor/",    "/foo/bar/",    "/foo/bar/",    "/fee/bor/",            true      },
         {  "/",            "/",            "/",            "/",                    false     },
-        {  "/",            "/",            "/get/bar",     "/get/bar",             false     },
-        {  "/",            "/",            "/get/bar/",    "/get/bar/",            false     },
-        {  "/",            "/get/bar",     "/get/bar",     "/get/bar",             false     },
-        {  "/",            "/get/bar",     "/get/bar/",    "/get/bar/",            false     },
-        {  "/get/bar",     "/",            "/",            "/get/bar",             false     },
-        {  "/get/bar",     "/",            "/get/bar",     "/get/bar/get/bar",     false     },
-        {  "/get/bar",     "/",            "/get/bar/",    "/get/bar/get/bar/",    false     },
-        {  "/get/bar",     "/get/bar",     "/get/bar",     "/get/bar/get/bar",     false     },
-        {  "/get/bar",     "/get/bar",     "/get/bar/",    "/get/bar/get/bar/",    false     },
-        {  "/get/bar/",    "/",            "/",            "/get/bar/",            false     },
-        {  "/get/bar/",    "/",            "/get/bar",     "/get/bar/get/bar",     false     },
-        {  "/get/bar/",    "/",            "/get/bar/",    "/get/bar/get/bar/",    false     },
-        {  "/get/bar/",    "/get/bar",     "/get/bar",     "/get/bar/get/bar",     false     },
-        {  "/get/bar/",    "/get/bar",     "/get/bar/",    "/get/bar/get/bar/",    false     },
+        {  "/",            "/",            "/foo/bar",     "/foo/bar",             false     }, -- 20
+        {  "/",            "/",            "/foo/bar/",    "/foo/bar/",            false     },
+        {  "/",            "/foo/bar",     "/foo/bar",     "/foo/bar",             false     },
+        {  "/",            "/foo/bar",     "/foo/bar/",    "/foo/bar/",            false     },
+        {  "/",            "/foo/bar/",    "/foo/bar/",    "/foo/bar/",            false     },
+        {  "/fee/bor",     "/",            "/",            "/fee/bor",             false     },
+        {  "/fee/bor",     "/",            "/foo/bar",     "/fee/borfoo/bar",      false     },
+        {  "/fee/bor",     "/",            "/foo/bar/",    "/fee/borfoo/bar/",     false     },
+        {  "/fee/bor",     "/foo/bar",     "/foo/bar",     "/fee/borfoo/bar",      false     },
+        {  "/fee/bor",     "/foo/bar",     "/foo/bar/",    "/fee/borfoo/bar/",     false     },
+        {  "/fee/bor",     "/foo/bar/",    "/foo/bar/",    "/fee/borfoo/bar/",     false     }, -- 30
+        {  "/fee/bor/",    "/",            "/",            "/fee/bor/",            false     },
+        {  "/fee/bor/",    "/",            "/foo/bar",     "/fee/bor/foo/bar",     false     },
+        {  "/fee/bor/",    "/",            "/foo/bar/",    "/fee/bor/foo/bar/",    false     },
+        {  "/fee/bor/",    "/foo/bar",     "/foo/bar",     "/fee/bor/foo/bar",     false     },
+        {  "/fee/bor/",    "/foo/bar",     "/foo/bar/",    "/fee/bor/foo/bar/",    false     },
+        {  "/fee/bor/",    "/foo/bar/",    "/foo/bar/",    "/fee/bor/foo/bar/",    false     },
+        -- the following block runs the same tests, but with a request path that is longer
+        -- than the matched part, so either matches in the middle of a segment, or has an
+        -- additional segment.
+        {  "/",            "/",            "/foo/bars",    "/foo/bars",            true      },
+        {  "/",            "/",            "/foo/bar/s",   "/foo/bar/s",           true      },
+        {  "/",            "/foo/bar",     "/foo/bars",    "/s",                   true      },
+        {  "/",            "/foo/bar/",    "/foo/bar/s",   "/s",                   true      }, -- 40
+        {  "/fee/bor",     "/",            "/foo/bars",    "/fee/borfoo/bars",     true      },
+        {  "/fee/bor",     "/",            "/foo/bar/s",   "/fee/borfoo/bar/s",    true      },
+        {  "/fee/bor",     "/foo/bar",     "/foo/bars",    "/fee/bors",            true      },
+        {  "/fee/bor",     "/foo/bar/",    "/foo/bar/s",   "/fee/bors",            true      },
+        {  "/fee/bor/",    "/",            "/foo/bars",    "/fee/bor/foo/bars",    true      },
+        {  "/fee/bor/",    "/",            "/foo/bar/s",   "/fee/bor/foo/bar/s",   true      },
+        {  "/fee/bor/",    "/foo/bar",     "/foo/bars",    "/fee/bor/s",           true      },
+        {  "/fee/bor/",    "/foo/bar/",    "/foo/bar/s",   "/fee/bor/s",           true      },
+        {  "/",            "/",            "/foo/bars",    "/foo/bars",            false     },
+        {  "/",            "/",            "/foo/bar/s",   "/foo/bar/s",           false     }, -- 50
+        {  "/",            "/foo/bar",     "/foo/bars",    "/foo/bars",            false     },
+        {  "/",            "/foo/bar/",    "/foo/bar/s",   "/foo/bar/s",           false     },
+        {  "/fee/bor",     "/",            "/foo/bars",    "/fee/borfoo/bars",     false     },
+        {  "/fee/bor",     "/",            "/foo/bar/s",   "/fee/borfoo/bar/s",    false     },
+        {  "/fee/bor",     "/foo/bar",     "/foo/bars",    "/fee/borfoo/bars",     false     },
+        {  "/fee/bor",     "/foo/bar/",    "/foo/bar/s",   "/fee/borfoo/bar/s",    false     },
+        {  "/fee/bor/",    "/",            "/foo/bars",    "/fee/bor/foo/bars",    false     },
+        {  "/fee/bor/",    "/",            "/foo/bar/s",   "/fee/bor/foo/bar/s",   false     },
+        {  "/fee/bor/",    "/foo/bar",     "/foo/bars",    "/fee/bor/foo/bars",    false     },
+        {  "/fee/bor/",    "/foo/bar/",    "/foo/bar/s",   "/fee/bor/foo/bar/s",   false     }, -- 60
+        -- the following block matches on host, instead of path
+        {  "/",            nil,            "/",            "/",                    false     },
+        {  "/",            nil,            "/foo/bar",     "/foo/bar",             false     },
+        {  "/",            nil,            "/foo/bar/",    "/foo/bar/",            false     },
+        {  "/fee/bor",     nil,            "/",            "/fee/bor",             false     },
+        {  "/fee/bor",     nil,            "/foo/bar",     "/fee/borfoo/bar",      false     },
+        {  "/fee/bor",     nil,            "/foo/bar/",    "/fee/borfoo/bar/",     false     },
+        {  "/fee/bor/",    nil,            "/",            "/fee/bor/",            false     },
+        {  "/fee/bor/",    nil,            "/foo/bar",     "/fee/bor/foo/bar",     false     },
+        {  "/fee/bor/",    nil,            "/foo/bar/",    "/fee/bor/foo/bar/",    false     },
+        {  "/",            nil,            "/",            "/",                    true      }, -- 70
+        {  "/",            nil,            "/foo/bar",     "/foo/bar",             true      },
+        {  "/",            nil,            "/foo/bar/",    "/foo/bar/",            true      },
+        {  "/fee/bor",     nil,            "/",            "/fee/bor",             true      },
+        {  "/fee/bor",     nil,            "/foo/bar",     "/fee/borfoo/bar",      true      },
+        {  "/fee/bor",     nil,            "/foo/bar/",    "/fee/borfoo/bar/",     true      },
+        {  "/fee/bor/",    nil,            "/",            "/fee/bor/",            true      },
+        {  "/fee/bor/",    nil,            "/foo/bar",     "/fee/bor/foo/bar",     true      },
+        {  "/fee/bor/",    nil,            "/foo/bar/",    "/fee/bor/foo/bar/",    true      },
       }
 
-      setup(function()
-        assert(db:truncate())
-        dao:truncate_tables()
+      describe("(plain)", function()
+        local routes = {}
+        lazy_setup(function()
 
-        for i, args in ipairs(checks) do
-          assert(insert_routes {
-            {
-              strip_path   = args[5],
-              paths        = {
-                args[2],
-              },
-              hosts        = {
-                "localbin-" .. i .. ".com",
-              },
-              service = {
-                name = "service-" .. i,
-                path = args[1]
+          for i, args in ipairs(checks) do
+            routes[i] = insert_routes {
+              {
+                strip_path   = args[5],
+                paths        = args[2] and {
+                  args[2],
+                } or nil,
+                hosts        = {
+                  "localbin-" .. i .. ".com",
+                },
+                service = {
+                  name = "plain_" .. i,
+                  path = args[1]
+                }
               }
             }
-          })
+          end
+        end)
+
+        lazy_teardown(function()
+          for _, r in ipairs(routes) do
+            remove_routes(r)
+          end
+        end)
+
+        local function check(i, request_uri, expected_uri)
+          return function()
+            local res = assert(proxy_client:send {
+              method  = "GET",
+              path    = request_uri,
+              headers = {
+                ["Host"] = "localbin-" .. i .. ".com",
+              }
+            })
+
+            local json = assert.res_status(200, res)
+            local data = cjson.decode(json)
+
+            assert.equal(expected_uri, data.vars.request_uri)
+          end
         end
 
-        assert(helpers.start_kong({
-          database   = strategy,
-          nginx_conf = "spec/fixtures/custom_nginx.template",
-        }))
+        for i, args in ipairs(checks) do
+          local config = "(strip = " .. (args[5] and "on" or "off") .. ")"
+
+          it("(" .. i .. ") " .. config ..
+             " is not appended to upstream url " .. args[1] ..
+             " (with " .. (args[2] and ("uri " .. args[2]) or
+             ("host test" .. i .. ".domain.org")) .. ")" ..
+             " when requesting " .. args[3], function()
+            check(i, args[3], args[4])
+          end)
+        end
       end)
 
-      teardown(function()
-        helpers.stop_kong()
+      describe("(regex)", function()
+        local function make_a_regex(path)
+          return "/[0]?" .. path:sub(2, -1)
+        end
+
+        local routes = {}
+
+        lazy_setup(function()
+          for i, args in ipairs(checks) do
+            routes[i] = assert(insert_routes {
+              {
+                strip_path   = args[5],
+                paths        = args[2] and {
+                  make_a_regex(args[2]),
+                } or nil,
+                hosts        = {
+                  "localbin-" .. i .. ".com",
+                },
+                service = {
+                  name = "make_regex_" .. i,
+                  path = args[1]
+                }
+              }
+            })
+          end
+        end)
+
+        lazy_teardown(function()
+          for _, r in ipairs(routes) do
+            remove_routes(r)
+          end
+        end)
+
+        local function check(i, request_uri, expected_uri)
+          return function()
+            local res = assert(proxy_client:send {
+              method  = "GET",
+              path    = request_uri,
+              headers = {
+                ["Host"] = "localbin-" .. i .. ".com",
+              }
+            })
+
+            local json = assert.res_status(200, res)
+            local data = cjson.decode(json)
+
+            assert.equal(expected_uri, data.vars.request_uri)
+          end
+        end
+
+        for i, args in ipairs(checks) do
+          if args[2] then  -- skip if hostbased match
+            local config = "(strip = " .. (args[5] and "on" or "off") .. ")"
+
+            it("(" .. i .. ") " .. config ..
+              " is not appended to upstream url " .. args[1] ..
+              " (with " .. (args[2] and ("uri " .. make_a_regex(args[2])) or
+              ("host test" .. i .. ".domain.org")) .. ")" ..
+              " when requesting " .. args[3], function()
+              check(i, args[3], args[4])
+            end)
+          end
+        end
       end)
 
-      local function check(i, request_uri, expected_uri)
-        return function()
-          local res = assert(proxy_client:send {
-            method  = "GET",
-            path    = request_uri,
-            headers = {
-              ["Host"] = "localbin-" .. i .. ".com",
-            }
-          })
 
-          local json = assert.res_status(200, res)
-          local data = cjson.decode(json)
-
-          assert.equal(expected_uri, data.vars.request_uri)
-        end
-      end
-
-      for i, args in ipairs(checks) do
-
-        local config = "(strip_path = n/a)"
-
-        if args[5] == true then
-          config = "(strip_path = on) "
-
-        elseif args[5] == false then
-          config = "(strip_path = off)"
-        end
-
-        it(config .. " is not appended to upstream url " .. args[1] ..
-                     " (with uri "                       .. args[2] .. ")" ..
-                     " when requesting "                 .. args[3],
-          check(i, args[3], args[4]))
-      end
     end)
   end)
 end

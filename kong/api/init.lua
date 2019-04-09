@@ -15,6 +15,7 @@ local rbac = require "kong.rbac"
 local workspaces = require "kong.workspaces"
 local ee_api      = require "kong.enterprise_edition.api_helpers"
 
+local ngx      = ngx
 local sub      = string.sub
 local find     = string.find
 local type     = type
@@ -48,41 +49,15 @@ local function parse_params(fn)
 
     self.params = api_helpers.normalize_nested_params(self.params)
 
-    return fn(self, ...)
+    local res = fn(self, ...)
+    if res == nil and ngx.status >= 200 then
+      return ngx.exit(0)
+    end
+
+    return res
   end)
 end
 
-
--- old DAO
-local function on_error(self)
-  local err = self.errors[1]
-
-  if type(err) == "table" then
-    if err.db then
-      return responses.send_HTTP_INTERNAL_SERVER_ERROR(err.message)
-    end
-    if err.forbidden then
-      return responses.send_HTTP_FORBIDDEN(err.tbl)
-    end
-  end
-  if type(err) ~= "table" then
-    return responses.send_HTTP_INTERNAL_SERVER_ERROR(tostring(err))
-  end
-
-  if err.db then
-    return responses.send_HTTP_INTERNAL_SERVER_ERROR(err.message)
-  end
-
-  if err.unique then
-    return responses.send_HTTP_CONFLICT(err.tbl)
-  end
-
-  if err.foreign then
-    return responses.send_HTTP_NOT_FOUND(err.tbl)
-  end
-
-  return responses.send_HTTP_BAD_REQUEST(err.tbl or err.message)
-end
 
 -- new DB
 local function new_db_on_error(self)
@@ -90,6 +65,10 @@ local function new_db_on_error(self)
 
   if type(err) ~= "table" then
     return responses.send_HTTP_INTERNAL_SERVER_ERROR(tostring(err))
+  end
+
+  if err.strategy then
+    err.strategy = nil
   end
 
   if err.code == Errors.codes.SCHEMA_VIOLATION
@@ -105,12 +84,44 @@ local function new_db_on_error(self)
   end
 
   if err.code == Errors.codes.PRIMARY_KEY_VIOLATION
- -- or err.code == Errors.codes.UNIQUE_VIOLATION
+  or err.code == Errors.codes.UNIQUE_VIOLATION
   then
     return responses.send_HTTP_CONFLICT(err)
   end
 
   return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+end
+
+
+-- old DAO
+local function on_error(self)
+  local err = self.errors[1]
+
+  if type(err) ~= "table" then
+    return responses.send_HTTP_INTERNAL_SERVER_ERROR(tostring(err))
+  end
+
+  if err.forbidden then
+    return responses.send_HTTP_FORBIDDEN(err.tbl)
+  end
+
+  if err.name then
+    return new_db_on_error(self)
+  end
+
+  if err.db then
+    return responses.send_HTTP_INTERNAL_SERVER_ERROR(err.message)
+  end
+
+  if err.unique then
+    return responses.send_HTTP_CONFLICT(err.tbl)
+  end
+
+  if err.foreign then
+    return responses.send_HTTP_NOT_FOUND(err.tbl)
+  end
+
+  return responses.send_HTTP_BAD_REQUEST(err.tbl or err.message)
 end
 
 
@@ -153,6 +164,8 @@ end
 
 app:before_filter(function(self)
   local req_id = utils.random_string()
+  local invoke_plugin = singletons.invoke_plugin
+
   ngx.ctx.admin_api = {
     req_id = req_id,
   }
@@ -165,38 +178,49 @@ app:before_filter(function(self)
     ngx.ctx.workspaces = nil
     ngx.ctx.rbac = nil
 
+    -- workspace name: if no workspace name was provided as the first segment
+    -- in the path (:8001/:workspace/), consider it is the default workspace
     local ws_name = self.params.workspace_name or workspaces.DEFAULT_WORKSPACE
-    local workspaces, err = workspaces.get_req_workspace(ws_name)
+
+    -- fetch the workspace for current request
+    local workspace, err = workspaces.fetch_workspace(ws_name)
     if err then
       ngx.log(ngx.ERR, err)
       return responses.send_HTTP_INTERNAL_SERVER_ERROR()
     end
-
-    if not workspaces or #workspaces == 0 then
+    if not workspace then
       responses.send_HTTP_NOT_FOUND(fmt("Workspace '%s' not found", ws_name))
     end
 
-    -- save workspace name in the context; if not passed, default workspace is
-    -- 'default'
-    ngx.ctx.workspaces = workspaces
+    -- set fetched workspace reference into the context
+    ngx.ctx.workspaces = { workspace }
     self.params.workspace_name = nil
 
+    local origin = singletons.configuration.admin_gui_url or "*"
+
     local cors_conf = {
-      origins = singletons.configuration.admin_gui_url or "*",
+      origins = { origin },
       methods = { "GET", "PUT", "PATCH", "DELETE", "POST" },
       credentials = true,
     }
-    local prepared_plugin = ee_api.prepare_plugin(ee_api.apis.ADMIN,
-                                                  singletons.dao,
-                                                  "cors", cors_conf)
-    ee_api.apply_plugin(prepared_plugin, "access")
-    ee_api.apply_plugin(prepared_plugin, "header_filter")
+
+    local ok, err = invoke_plugin({
+      name = "cors",
+      config = cors_conf,
+      phases = { "access", "header_filter" },
+      api_type = ee_api.apis.ADMIN,
+      db = singletons.db,
+    })
+
+    if not ok then
+      return api_helpers.yield_error(err)
+    end
 
     local rbac_auth_header = singletons.configuration.rbac_auth_header
     local rbac_token = ngx.req.get_headers()[rbac_auth_header]
 
     if not rbac_token then
-      ee_api.authenticate(self, singletons.dao,
+      ee_api.authenticate(self,
                           singletons.configuration.enforce_rbac ~= "off",
                           singletons.configuration.admin_gui_auth)
     end
@@ -262,12 +286,19 @@ end
 
 
 local function attach_new_db_routes(routes)
-  for route_path, methods in pairs(routes) do
+  for route_path, definition in pairs(routes) do
+    local schema  = definition.schema
+    local methods = definition.methods
+
     methods.on_error = methods.on_error or new_db_on_error
 
     for method_name, method_handler in pairs(methods) do
       local wrapped_handler = function(self)
-        self.args = arguments.load()
+        self.args = arguments.load({
+          schema  = schema,
+          request = self.req,
+        })
+
         return method_handler(self, singletons.db, handler_helpers)
       end
 
@@ -287,9 +318,13 @@ ngx.log(ngx.DEBUG, "Loading Admin API endpoints")
 
 
 -- Load core routes
-for _, v in ipairs({"kong", "apis", "consumers", "plugins", "cache",
-                    "certificates", "snis", "upstreams", "rbac", "vitals", "portal",
-                    "workspaces", "admins", "audit", "oas_config"}) do
+for _, v in ipairs({"kong", "apis", "cache", }) do
+  local routes = require("kong.api.routes." .. v)
+  attach_routes(routes)
+end
+
+-- XXX EE, move elsewhere
+for _, v in ipairs({"vitals", "oas_config"}) do
   local routes = require("kong.api.routes." .. v)
   attach_routes(routes)
 end
@@ -306,55 +341,91 @@ do
 
   -- Auto Generated Routes
   for _, dao in pairs(singletons.db.daos) do
-    routes = Endpoints.new(dao.schema, routes)
+    if dao.schema.generate_admin_api ~= false and not dao.schema.legacy then
+      routes = Endpoints.new(dao.schema, routes)
+    end
   end
 
   -- Custom Routes
   for _, dao in pairs(singletons.db.daos) do
     local schema = dao.schema
+
     local ok, custom_endpoints = utils.load_module_if_exists("kong.api.routes." .. schema.name)
     if ok then
       for route_pattern, verbs in pairs(custom_endpoints) do
         if routes[route_pattern] ~= nil and type(verbs) == "table" then
           for verb, handler in pairs(verbs) do
-            local parent = routes[route_pattern][verb]
+            local parent = routes[route_pattern]["methods"][verb]
             if parent ~= nil and type(handler) == "function" then
-              routes[route_pattern][verb] = function(self, db, helpers)
-                return handler(self, db, helpers, function()
-                  return parent(self, db, helpers)
+              routes[route_pattern]["methods"][verb] = function(self, db, helpers)
+                return handler(self, db, helpers, function(post_process)
+                  return parent(self, db, helpers, post_process)
                 end)
               end
 
             else
-              routes[route_pattern][verb] = handler
+              routes[route_pattern]["methods"][verb] = handler
             end
           end
 
         else
-          routes[route_pattern] = verbs
+          routes[route_pattern] = {
+            schema  = dao.schema,
+            methods = verbs,
+          }
         end
       end
     end
-
   end
+
   attach_new_db_routes(routes)
 end
 
 
+local function is_new_db_routes(mod)
+  for _, verbs in pairs(mod) do
+    if type(verbs) == "table" then -- ignore "before" functions
+      return verbs.schema
+    end
+  end
+end
+
+
 -- Loading plugins routes
-if singletons.configuration and singletons.configuration.plugins then
-  for k in pairs(singletons.configuration.plugins) do
+if singletons.configuration and singletons.configuration.loaded_plugins then
+  for k in pairs(singletons.configuration.loaded_plugins) do
     local loaded, mod = utils.load_module_if_exists("kong.plugins." .. k .. ".api")
 
     if loaded then
       ngx.log(ngx.DEBUG, "Loading API endpoints for plugin: ", k)
-      attach_routes(mod)
+      if is_new_db_routes(mod) then
+        attach_new_db_routes(mod)
+      else
+        attach_routes(mod)
+      end
 
     else
       ngx.log(ngx.DEBUG, "No API endpoints loaded for plugin: ", k)
     end
   end
 end
+
+-- Loading plugins routes
+for _, k in ipairs({"rbac", "audit"}) do
+  local loaded, mod = utils.load_module_if_exists("kong.api.routes.".. k)
+  if loaded then
+    ngx.log(ngx.DEBUG, "Loading API endpoints for module: ", k)
+    if is_new_db_routes(mod) then
+      attach_new_db_routes(mod)
+    else
+      attach_routes(mod)
+    end
+
+  else
+    ngx.log(ngx.DEBUG, "No API endpoints loaded for module: ", k)
+  end
+end
+
 
 
 return app

@@ -18,8 +18,16 @@ for _, strategy in helpers.each_strategy() do
     local proxy_client
     local https_client
 
-    setup(function()
-      local bp = helpers.get_db_utils(strategy)
+    lazy_setup(function()
+      local bp, _, dao = helpers.get_db_utils(strategy, {
+        "routes",
+        "services",
+        "certificates",
+      })
+
+      dao:truncate_tables()
+      ngx.ctx.workspaces = nil
+      ngx.ctx.workspaces = dao.workspaces:find_all({name = "default"})
 
       local service = bp.services:insert {
         name = "global-cert",
@@ -99,13 +107,13 @@ for _, strategy in helpers.each_strategy() do
         body    = {
           cert  = ssl_fixtures.cert,
           key   = ssl_fixtures.key,
-          snis  = "example.com,ssl1.com",
+          snis  = { "example.com", "ssl1.com" },
         },
         headers = { ["Content-Type"] = "application/json" },
       })
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       helpers.stop_kong()
     end)
 
@@ -125,15 +133,15 @@ for _, strategy in helpers.each_strategy() do
     describe("handshake", function()
       it("sets the default fallback SSL certificate if no SNI match", function()
         local cert = get_cert("test.com")
-        assert.matches("CN=localhost", cert, nil, true)
+        assert.cn("localhost", cert)
       end)
 
       it("sets the configured SSL certificate if SNI match", function()
         local cert = get_cert("ssl1.com")
-        assert.matches("CN=ssl-example.com", cert, nil, true)
+        assert.cn("ssl-example.com", cert)
 
         cert = get_cert("example.com")
-        assert.matches("CN=ssl-example.com", cert, nil, true)
+        assert.cn("ssl-example.com", cert)
       end)
     end)
 
@@ -155,7 +163,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       describe("from not trusted_ip", function()
-        setup(function()
+        lazy_setup(function()
           helpers.stop_kong(nil, nil, true)
 
           assert(helpers.start_kong {
@@ -181,7 +189,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       describe("from trusted_ip", function()
-        setup(function()
+        lazy_setup(function()
           helpers.stop_kong(nil, nil, true)
 
           assert(helpers.start_kong {
@@ -223,7 +231,7 @@ for _, strategy in helpers.each_strategy() do
 
         -- restart kong and use a new client to simulate a connection from an
         -- untrusted ip
-        setup(function()
+        lazy_setup(function()
           assert(helpers.kong_exec("restart -c " .. helpers.test_conf_path, {
             database = strategy,
             trusted_ips = "1.2.3.4", -- explicitly trust an IP that is not us

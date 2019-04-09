@@ -1,5 +1,5 @@
 local kong_cluster_events = require "kong.cluster_events"
-local Factory = require "kong.dao.factory"
+local DB = require "kong.db"
 local helpers = require "spec.helpers"
 local worker_events = require "resty.worker.events"
 local create_unique_key = require("kong.tools.utils").uuid
@@ -28,22 +28,20 @@ describe("dao in-memory cache", function()
 
   local cache, key
 
-  setup(function()
+  lazy_setup(function()
     assert(worker_events.configure {
       shm = "kong_process_events",
     })
-    local dao_factory = assert(Factory.new(helpers.test_conf))
+    local db = DB.new(helpers.test_conf)
+    assert(db:init_connector())
     local cluster_events = assert(kong_cluster_events.new {
-      dao = dao_factory,
+      db = db,
     })
 
     -- XXX: EE only [[
-    package.loaded["kong.singletons"] = {
-      vitals = {
-        cache_accessed = function()
-          -- TODO: test that I am being called with hit_lvl
-        end,
-      }
+    kong.vitals = {
+      cache_accessed = function()
+      end
     }
 
     local kong_cache = require "kong.cache"
@@ -55,7 +53,7 @@ describe("dao in-memory cache", function()
   end)
 
   teardown(function()
-    package.loaded["kong.singletons"] = nil
+    kong.vitals = nil
   end)
   --]]
 

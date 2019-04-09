@@ -5,21 +5,21 @@ local utils = require "kong.tools.utils"
 
 describe("Plugin: key-auth (access)", function()
   local client
-  setup(function()
-    local dao = select(3, helpers.get_db_utils())
+  lazy_setup(function()
+    local bp, db, dao = helpers.get_db_utils()
 
-    local anonymous_user = assert(dao.consumers:insert {
+    local anonymous_user = bp.consumers:insert {
       username = "no-body",
-    })
+    }
 
     local api1 = assert(dao.apis:insert {
       name         = "api-1",
       hosts        = { "key-auth1.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name   = "key-auth",
-      api_id = api1.id,
+      api = { id = api1.id },
     })
 
     local api2 = assert(dao.apis:insert {
@@ -27,30 +27,30 @@ describe("Plugin: key-auth (access)", function()
       hosts        = { "key-auth2.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name   = "key-auth",
-      api_id = api2.id,
+      api = { id = api2.id },
       config = {
         hide_credentials = true,
       },
     })
 
-    local consumer1 = assert(dao.consumers:insert {
+    local consumer1 = bp.consumers:insert {
       username = "bob"
-    })
-    assert(dao.keyauth_credentials:insert {
-      key         = "kong",
-      consumer_id = consumer1.id,
-    })
+    }
+    bp.keyauth_credentials:insert {
+      key      = "kong",
+      consumer = { id = consumer1.id },
+    }
 
     local api3 = assert(dao.apis:insert {
       name         = "api-3",
       hosts        = { "key-auth3.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name   = "key-auth",
-      api_id = api3.id,
+      api = { id = api3.id },
       config = {
         anonymous = anonymous_user.id,
       },
@@ -61,9 +61,9 @@ describe("Plugin: key-auth (access)", function()
       hosts        = { "key-auth4.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name   = "key-auth",
-      api_id = api4.id,
+      api = { id = api4.id },
       config = {
         anonymous = utils.uuid(),  -- unknown consumer
       },
@@ -74,9 +74,9 @@ describe("Plugin: key-auth (access)", function()
       hosts        = { "key-auth5.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name   = "key-auth",
-      api_id = api5.id,
+      api = { id = api5.id },
       config = {
         key_in_body = true,
       },
@@ -87,9 +87,9 @@ describe("Plugin: key-auth (access)", function()
       hosts        = { "key-auth6.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name = "key-auth",
-      api_id = api6.id,
+      api = { id = api6.id },
       config = {
         key_in_body      = true,
         hide_credentials = true,
@@ -101,9 +101,9 @@ describe("Plugin: key-auth (access)", function()
       hosts = { "key-auth7.com" },
       upstream_url = "http://mockbin.com",
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name = "key-auth",
-      api_id = api7.id,
+      api = { id = api7.id },
       config = {
         run_on_preflight = false,
       },
@@ -114,7 +114,7 @@ describe("Plugin: key-auth (access)", function()
     }))
     client = helpers.proxy_client()
   end)
-  teardown(function()
+  lazy_teardown(function()
     if client then client:close() end
     helpers.stop_kong()
   end)
@@ -409,62 +409,62 @@ describe("Plugin: key-auth (access)", function()
 
   local client, user1, user2, anonymous
 
-  setup(function()
-    local _, _, dao = helpers.get_db_utils()
+  lazy_setup(function()
+    local bp, db, dao = helpers.get_db_utils()
 
     local api1 = assert(dao.apis:insert {
       name         = "api-1",
       hosts        = { "logical-and.com" },
       upstream_url = helpers.mock_upstream_url .. "/request",
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name   = "basic-auth",
-      api_id = api1.id,
+      api = { id = api1.id },
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name   = "key-auth",
-      api_id = api1.id,
+      api = { id = api1.id },
     })
 
-    anonymous = assert(dao.consumers:insert {
+    anonymous = bp.consumers:insert {
       username = "Anonymous",
-    })
-    user1 = assert(dao.consumers:insert {
+    }
+    user1 = bp.consumers:insert {
       username = "Mickey",
-    })
-    user2 = assert(dao.consumers:insert {
+    }
+    user2 = bp.consumers:insert {
       username = "Aladdin",
-    })
+    }
 
     local api2 = assert(dao.apis:insert {
       name         = "api-2",
       hosts        = { "logical-or.com" },
       upstream_url = helpers.mock_upstream_url .. "/request",
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name   = "basic-auth",
-      api_id = api2.id,
+      api = { id = api2.id },
       config = {
         anonymous = anonymous.id,
       },
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name   = "key-auth",
-      api_id = api2.id,
+      api = { id = api2.id },
       config = {
         anonymous = anonymous.id,
       },
     })
 
-    assert(dao.keyauth_credentials:insert {
-      key         = "Mouse",
-      consumer_id = user1.id,
-    })
-    assert(dao.basicauth_credentials:insert {
-      username    = "Aladdin",
-      password    = "OpenSesame",
-      consumer_id = user2.id,
-    })
+    bp.keyauth_credentials:insert {
+      key      = "Mouse",
+      consumer = { id = user1.id },
+    }
+    bp.basicauth_credentials:insert {
+      username = "Aladdin",
+      password = "OpenSesame",
+      consumer = { id = user2.id },
+    }
 
     assert(helpers.start_kong({
       nginx_conf = "spec/fixtures/custom_nginx.template",
@@ -473,7 +473,7 @@ describe("Plugin: key-auth (access)", function()
   end)
 
 
-  teardown(function()
+  lazy_teardown(function()
     if client then client:close() end
     helpers.stop_kong()
   end)

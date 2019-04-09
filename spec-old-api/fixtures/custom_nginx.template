@@ -56,12 +56,12 @@ http {
 > end
 
     init_by_lua_block {
-        kong = require 'kong'
-        kong.init()
+        Kong = require 'kong'
+        Kong.init()
     }
 
     init_worker_by_lua_block {
-        kong.init_worker()
+        Kong.init_worker()
     }
 
     proxy_next_upstream_tries 999;
@@ -69,7 +69,7 @@ http {
     upstream kong_upstream {
         server 0.0.0.1;
         balancer_by_lua_block {
-            kong.balancer()
+            Kong.balancer()
         }
         keepalive ${{UPSTREAM_KEEPALIVE}};
     }
@@ -88,9 +88,9 @@ http {
         listen ${{PROXY_LISTEN_SSL}} ssl${{HTTP2}}${{PROXY_PROTOCOL}};
         ssl_certificate ${{SSL_CERT}};
         ssl_certificate_key ${{SSL_CERT_KEY}};
-        ssl_protocols TLSv1.1 TLSv1.2;
+        ssl_protocols TLSv1.1 TLSv1.2 TLSv1.3;
         ssl_certificate_by_lua_block {
-            kong.ssl_certificate()
+            Kong.ssl_certificate()
         }
 > end
 
@@ -113,11 +113,11 @@ http {
             set $upstream_x_forwarded_port   '';
 
             rewrite_by_lua_block {
-                kong.rewrite()
+                Kong.rewrite()
             }
 
             access_by_lua_block {
-                kong.access()
+                Kong.access()
             }
 
             proxy_http_version 1.1;
@@ -135,22 +135,22 @@ http {
             proxy_pass         $upstream_scheme://kong_upstream$upstream_uri;
 
             header_filter_by_lua_block {
-                kong.header_filter()
+                Kong.header_filter()
             }
 
             body_filter_by_lua_block {
-                kong.body_filter()
+                Kong.body_filter()
             }
 
             log_by_lua_block {
-                kong.log()
+                Kong.log()
             }
         }
 
         location = /kong_error_handler {
             internal;
             content_by_lua_block {
-                kong.handle_error()
+                Kong.handle_error()
             }
         }
     }
@@ -168,13 +168,13 @@ http {
         listen ${{ADMIN_LISTEN_SSL}} ssl${{ADMIN_HTTP2}};
         ssl_certificate ${{ADMIN_SSL_CERT}};
         ssl_certificate_key ${{ADMIN_SSL_CERT_KEY}};
-        ssl_protocols TLSv1.1 TLSv1.2;
+        ssl_protocols TLSv1.1 TLSv1.2 TLSv1.3;
 > end
 
         location / {
             default_type application/json;
             content_by_lua_block {
-                kong.serve_admin_api()
+                Kong.serve_admin_api()
             }
         }
 
@@ -195,7 +195,7 @@ http {
 
         ssl_certificate ${{SSL_CERT}};
         ssl_certificate_key ${{SSL_CERT_KEY}};
-        ssl_protocols TLSv1.1 TLSv1.2;
+        ssl_protocols TLSv1.1 TLSv1.2 TLSv1.3;
 
         location ~ "/2015-03-31/functions/(?:[^/])*/invocations" {
             content_by_lua_block {
@@ -245,7 +245,7 @@ http {
 
         ssl_certificate ${{SSL_CERT}};
         ssl_certificate_key ${{SSL_CERT_KEY}};
-        ssl_protocols TLSv1.1 TLSv1.2;
+        ssl_protocols TLSv1.1 TLSv1.2 TLSv1.3;
 
         set_real_ip_from 127.0.0.1;
 

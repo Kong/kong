@@ -14,6 +14,7 @@ local function create_big_data(size)
 end
 
 
+pending("pending on feature flags", function()
 for _, strategy in helpers.each_strategy() do
   describe("Plugin: response-transformer with feature_flag response_transformation_limit_body_size on", function()
     local proxy_client
@@ -283,3 +284,4 @@ for _, strategy in helpers.each_strategy() do
     end)
   end)
 end
+end)

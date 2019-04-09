@@ -6,10 +6,15 @@ describe("Admin API /cache [#" .. strategy .. "]", function()
   local proxy_client
   local admin_client
 
-  setup(function()
-    ngx.ctx.workspaces = nil
-    local bp, _, dao = helpers.get_db_utils(strategy)
-    require("kong.singletons").dao = dao
+  lazy_setup(function()
+    local bp = helpers.get_db_utils(strategy, {
+      "routes",
+      "services",
+      "plugins",
+    }, {
+      "cache"
+    })
+
     local service = bp.services:insert()
 
     bp.routes:insert {
@@ -24,20 +29,21 @@ describe("Admin API /cache [#" .. strategy .. "]", function()
     }
 
     bp.plugins:insert {
-      name       = "cache",
-      service_id = service.id,
+      name    = "cache",
+      service = { id = service.id },
     }
 
     assert(helpers.start_kong({
       database   = strategy,
       nginx_conf = "spec/fixtures/custom_nginx.template",
+      plugins = "cache",
     }))
     proxy_client = helpers.proxy_client()
     admin_client = helpers.admin_client()
   end)
 
 
-  teardown(function()
+  lazy_teardown(function()
     if admin_client then
       admin_client:close()
     end

@@ -1,12 +1,14 @@
 local _M = {}
 
-local singletons = require "kong.singletons"
 local bit        = require "bit"
 local workspaces = require "kong.workspaces"
 local responses  = require "kong.tools.responses"
+local utils      = require "kong.tools.utils"
 local cjson      = require "cjson"
 local tablex     = require "pl.tablex"
 local bcrypt     = require "bcrypt"
+local new_tab    = require "table.new"
+
 
 local band   = bit.band
 local bor    = bit.bor
@@ -95,10 +97,21 @@ end
 
 -- fetch the id pair mapping of related objects from the database
 local function retrieve_relationship_ids(entity_id, entity_name, factory_key)
-  local relationship_ids, err = singletons.dao[factory_key]:find_all({
-    [entity_name .. "_id"] = entity_id,
-    __skip_rbac = true,
-  })
+  local relationship_ids, err
+
+
+  -- workspace_entities doesn't have a "formal" foreign key relationship
+  -- with workspace even though the field name is workspace_id so the
+  -- search is different for rbac and workspace_entities.
+  if factory_key == "workspace_entities" then
+    relationship_ids, err = workspaces.compat_find_all(factory_key, {
+      [entity_name .. "_id"] = entity_id
+    }, { skip_rbac = true })
+  else
+    relationship_ids, err = workspaces.compat_find_all(factory_key, {
+      [entity_name] = { id = entity_id }
+    }, { skip_rbac = true })
+  end
   if err then
     log(ngx.ERR, "err retrieving relationship via id ", entity_id, ": ", err)
     return nil, err
@@ -110,16 +123,15 @@ end
 
 -- fetch the foreign object associated with a mapping id pair
 local function retrieve_relationship_entity(foreign_factory_key, foreign_id)
-  local relationship, err = singletons.dao[foreign_factory_key]:find_all({
-    id = foreign_id,
-    __skip_rbac = true,
-  })
+  local relationship, err = kong.db[foreign_factory_key]:select({
+    id = foreign_id },
+    { skip_rbac = true })
   if err then
     log(ngx.ERR, "err retrieving relationship via id ", foreign_id, ": ", err)
     return nil, err
   end
 
-  return relationship[1]
+  return relationship
 end
 
 
@@ -128,11 +140,11 @@ end
 -- user, or the permission object associated with a role
 -- the kong.cache mechanism is used to cache both the id mapping pairs, as
 -- well as the foreign entities themselves
-local function entity_relationships(dao_factory, entity, entity_name, foreign)
-  local cache = singletons.cache
+local function entity_relationships(dao_factory, entity, entity_name, foreign, factory_key)
+  local cache = kong.cache
 
   -- get the relationship identities for this identity
-  local factory_key = fmt("rbac_%s_%ss", entity_name, foreign)
+  factory_key = factory_key or fmt("rbac_%s_%ss", entity_name, foreign)
   local relationship_cache_key = dao_factory[factory_key]:cache_key(entity.id)
   local relationship_ids, err = cache:get(relationship_cache_key, nil,
                                           retrieve_relationship_ids,
@@ -148,12 +160,12 @@ local function entity_relationships(dao_factory, entity, entity_name, foreign)
 
   for i = 1, #relationship_ids do
     local foreign_factory_cache_key = dao_factory[foreign_factory_key]:cache_key(
-      relationship_ids[i][foreign .. "_id"])
+      relationship_ids[i][foreign].id)
 
     local relationship, err = cache:get(foreign_factory_cache_key, nil,
                                         retrieve_relationship_entity,
                                         foreign_factory_key,
-                                        relationship_ids[i][foreign .. "_id"])
+                                        relationship_ids[i][foreign].id)
     if err then
       log(ngx.ERR, "err in retrieving relationship: ", err)
       return nil, err
@@ -182,28 +194,30 @@ end
 _M.user_can_manage_endpoints_from = user_can_manage_endpoints_from
 
 
-local function retrieve_user(user_name)
-  local users, err = singletons.dao.rbac_users:find_all({
-    name = user_name,
-    __skip_rbac = true,
+local function retrieve_user(id)
+  local user, err = kong.db.rbac_users:select({id = id}, {
+    skip_rbac = true,
   })
+
   if err then
-    log(ngx.ERR, "error in retrieving user from name: ", err)
+    log(ngx.ERR, "error in retrieving user", err)
     return nil, err
   end
 
-  for _, user in ipairs(users) do
-    if user.enabled then
-      return user
-    end
+  if not user then
+    log(ngx.DEBUG, "rbac_user not found")
+    return nil, nil
+  end
+
+  if user.enabled then
+    return user
   end
 end
 
 
-local function get_user(user_name)
-  local cache_key = singletons.dao.rbac_users:cache_key(user_name)
-  local user, err = singletons.cache:get(cache_key, nil,
-                                         retrieve_user, user_name)
+local function get_user(id)
+  local cache_key = kong.db.rbac_users:cache_key(id)
+  local user, err = kong.cache:get(cache_key, nil, retrieve_user, id)
   if err then
     return nil, err
   end
@@ -311,6 +325,44 @@ function _M.resolve_workspace_entities(workspaces)
 end
 
 
+-- XXX EE should return 2nd value for error
+local function get_role_entities(db, role, opts)
+  opts = opts or {}
+  opts.skip_rbac = true
+  local res = {}
+  for role in db.rbac_role_entities:each_for_role({id = role.id}, nil,  opts) do
+    table.insert(res, role)
+  end
+
+  return res
+end
+_M.get_role_entities = get_role_entities
+
+local function get_role_endpoints(db, role, opts)
+  opts = opts or {}
+  opts.skip_rbac = true
+  local res = {}
+  for role in db.rbac_role_endpoints:each_for_role({id = role.id}, nil, opts) do
+    table.insert(res, role)
+  end
+
+  return res
+end
+_M.get_role_endpoints = get_role_endpoints
+
+
+local function get_user_roles(db, user)
+  return entity_relationships(db, user, "user", "role", "rbac_user_roles")
+end
+_M.get_user_roles = get_user_roles
+
+
+local function get_role_users(db, role)
+  return entity_relationships(db, role, "role", "user", "rbac_user_roles")
+end
+_M.get_role_users = get_role_users
+
+
 local function resolve_role_entity_permissions(roles)
   local pmap = {}
   local nmap = {} -- map endpoints to a boolean indicating whether it is
@@ -345,10 +397,8 @@ local function resolve_role_entity_permissions(roles)
   -- the order of iteration
   local positive_entities, negative_entities =  {}, {}
   for _, role in ipairs(roles) do
-    local role_entities, err = singletons.dao.rbac_role_entities:find_all({
-      role_id  = role.id,
-      __skip_rbac = true,
-    })
+    -- local role_entities, err = kong.db.rbac_roles:get_entities(kong.db, role) -- XXX EE: __skip_rbac = true
+    local role_entities, err = _M.get_role_entities(kong.db, role)
     if err then
       return _, _, err
     end
@@ -386,7 +436,7 @@ local function get_rbac_user_info(rbac_user)
 
   local ctx = ngx.ctx
   local old_ws_ctx = ctx.workspaces
-  local user, err = _M.load_rbac_ctx(singletons.dao, ctx, rbac_user)
+  local user, err = _M.load_rbac_ctx(kong.db, ctx, rbac_user)
 
   ctx.workspaces = old_ws_ctx
 
@@ -397,6 +447,30 @@ local function get_rbac_user_info(rbac_user)
   return user or guest_user
 end
 _M.get_rbac_user_info = get_rbac_user_info
+
+
+local function objects_from_names(db, given_names, object_name)
+  local names      = utils.split(given_names, ",")
+  local objs       = new_tab(#names, 0)
+  local object_dao = fmt("rbac_%ss", object_name)
+
+  for i = 1, #names do
+    local object, err = db[object_dao]:select_by_name(names[i])
+    if err then
+      return nil, err
+    end
+
+    if not object then
+      return nil, fmt("%s not found with name '%s'", object_name, names[i])
+    end
+
+    -- track the whole object so we have the id for the mapping later
+    objs[i] = object
+  end
+
+  return objs
+end
+_M.objects_from_names = objects_from_names
 
 
 local function is_system_table(t)
@@ -427,17 +501,15 @@ function _M.create_default_role(user)
   local role, err
 
   -- try fetching the role; if it exists, use it
-  role, err = singletons.dao.rbac_roles:find_all({
-    name = user.name,
-  })
+  role, err = kong.db.rbac_roles:select_by_name(user.name)
+
   if err then
     return nil, err
   end
-  role = role[1]
 
   -- if it doesn't exist, create it
   if not role then
-    role, err = singletons.dao.rbac_roles:insert({
+    role, err = kong.db.rbac_roles:insert({
       name = user.name,
       comment = "Default user role generated for " .. user.name,
       is_default = true,
@@ -448,47 +520,47 @@ function _M.create_default_role(user)
   end
 
   -- create the user-role association
-  local res, err = singletons.dao.rbac_user_roles:insert({
-    user_id = user.id,
-    role_id = role.id,
+  local res, err = kong.db.rbac_user_roles:insert({
+    user = user,
+    role = role ,
   })
   if not res then
     return nil, err
   end
 
-  return true
+  return user
 end
 
 
 -- helpers: remove entity and endpoint relation when
 -- a role is removed
 local function role_relation_cleanup(role)
-  local dao = singletons.dao
+  local db = kong.db
   -- delete the role <-> entity mappings
-  local entities, err = dao.rbac_role_entities:find_all({
-    role_id = role.id,
-  })
+  local entities, err = get_role_entities(db, role)
   if err then
     return err
   end
 
   for _, entity in ipairs(entities) do
-    local _, err = dao.rbac_role_entities:delete(entity)
+    local _, err = db.rbac_role_entities:delete(entity)
     if err then
       return err
     end
   end
 
   -- delete the role <-> endpoint mappings
-  local endpoints, err = dao.rbac_role_endpoints:find_all({
-    role_id = role.id,
-  })
+  local endpoints, err = get_role_endpoints(db, role)
   if err then
     return err
   end
 
   for _, endpoint in ipairs(endpoints) do
-    local _, err = dao.rbac_role_endpoints:delete(endpoint)
+    local _, err = db.rbac_role_endpoints:delete({
+      role = { id = endpoint.role_id },
+      workspace = endpoint.workspace,
+      endpoint = endpoint.endpoint,
+    })
     if err then
       return err
     end
@@ -497,36 +569,21 @@ end
 _M.role_relation_cleanup = role_relation_cleanup
 
 
--- helpers: remove user from default role; delete the role if the
--- user was the only one in the role
+-- helpers: delete the role if the user was the only one in the role
 function _M.remove_user_from_default_role(user, default_role)
   -- delete user-role relationship
-  local _, err = singletons.dao.rbac_user_roles:delete({
-    user_id = user.id,
-    role_id = default_role.id,
-  })
-  if err then
-    return nil, err
-  end
 
   -- get count of users still in the default role
-  local n_users, err = singletons.dao.rbac_user_roles:count({
-    role_id = default_role.id,
-  })
+  local users, err = get_role_users(kong.db, default_role)
+  local n_users = #users
   if err then
     return nil, err
   end
 
   -- if count of users in role reached 0, delete it
   if n_users == 0 then
-    local err = role_relation_cleanup(default_role)
-    if err then
-      return nil, err
-    end
-
-    local _, err = singletons.dao.rbac_roles:delete({
+    local _, err = kong.db.rbac_roles:delete({
       id = default_role.id,
-      name = default_role.name,
     })
     if err then
       return nil, err
@@ -552,17 +609,19 @@ local function add_default_role_entity_permission(entity, table_name)
   end
 
   local schema
-  if singletons.dao[table_name] then -- old dao
-    schema = singletons.dao[table_name].schema
+  local entity_dao = rawget(kong.dao.daos, table_name)
+
+  if entity_dao then -- old dao
+    schema = entity_dao.schema
 
   else -- new dao
-    schema = singletons.db.daos[table_name].schema
+    schema = kong.db.daos[table_name].schema
   end
 
   local entity_id = schema.primary_key[1]
 
-  return singletons.dao.rbac_role_entities:insert({
-    role_id = default_role.id,
+  return kong.db.rbac_role_entities:insert({
+    role = default_role,
     entity_id = entity[entity_id],
     entity_type = table_name,
     actions = bitfield_all_actions,
@@ -575,50 +634,57 @@ _M.add_default_role_entity_permission = add_default_role_entity_permission
 -- remove role-entity permission: remove an entity from the role
 -- should be called when entity is deleted or role is removed
 local function delete_role_entity_permission(table_name, entity)
-  local schema
-  local dao = singletons.dao
-  if dao[table_name] then -- old dao
-    schema = dao[table_name].schema
+  local dao = kong.dao
+  local db = kong.db
 
-  else -- new dao
-    schema = singletons.db.daos[table_name].schema
+  local schema = db[table_name] and db[table_name].schema
+  if not schema then -- old dao
+    schema = dao[table_name].schema
   end
 
   local entity_id = schema.primary_key[1]
+  if schema.fields[entity_id].type == "foreign" then
+    entity_id = entity_id .. "_id"
+  end
 
-  local res, err = dao.rbac_role_entities:find_all({
+  local role_entities, err, err_t = db.rbac_role_entities:select_all({
     entity_id = entity[entity_id],
-    entity_type = table_name,
+    entity_type = table_name
   })
   if err then
-    return err
+    return err_t
   end
 
-  for _, row in ipairs(res) do
-    local _, err = dao.rbac_role_entities:delete(row)
+  for _, role_entity in ipairs(role_entities) do
+    local _, err, err_t = db.rbac_role_entities:delete({
+      role = { id = role_entity.role_id },
+      entity_id = role_entity.entity_id
+    })
     if err then
-      return err
+      return err_t
     end
   end
+
 end
 _M.delete_role_entity_permission = delete_role_entity_permission
 
 
-function _M.narrow_readable_entities(db_table_name, entities)
-  local filtered_rows = {}
-  setmetatable(filtered_rows, getmetatable(entities))
-  if not is_system_table(db_table_name) and is_admin_api_request() then
-    for i, v in ipairs(entities) do
-      local valid = _M.validate_entity_operation(v, db_table_name)
-      if valid then
-        filtered_rows[#filtered_rows+1] = v
-      end
-    end
-
-    return filtered_rows
-  else
+function _M.narrow_readable_entities(table_name, entities)
+  if is_system_table(table_name) or not is_admin_api_request() then -- don't touch it!
     return entities
   end
+
+  local filtered_rows = {}
+  setmetatable(filtered_rows, getmetatable(entities))
+
+  for _, entity in ipairs(entities) do
+    local valid = _M.validate_entity_operation(entity, table_name)
+    if valid then
+      filtered_rows[#filtered_rows+1] = entity
+    end
+  end
+
+  return filtered_rows
 end
 
 
@@ -629,14 +695,20 @@ function _M.validate_entity_operation(entity, table_name)
     return true
   end
 
-  -- whitelisted endpoints are also exempt
-  if whitelisted_endpoints[ngx.var.request_uri] then
+  -- rbac does not apply to "system tables" - e.g., many-to-many tables
+  -- like workspace_entities
+  if is_system_table(table_name) then
     return true
   end
 
-  if not singletons.configuration or
-         singletons.configuration.rbac ~= "entity" and
-         singletons.configuration.rbac ~= "both" then
+  -- whitelisted endpoints are also exempt
+  if whitelisted_endpoints[ngx.var.uri] then
+    return true
+  end
+
+  if not kong.configuration or
+         kong.configuration.rbac ~= "entity" and
+         kong.configuration.rbac ~= "both" then
     return true
   end
 
@@ -654,11 +726,13 @@ function _M.validate_entity_operation(entity, table_name)
   local action = rbac_ctx.action
 
   local schema
-  if singletons.dao[table_name] then -- old dao
-    schema = singletons.dao[table_name].schema
+  local entity_dao = rawget(kong.dao.daos, table_name)
+
+  if entity_dao then -- old dao
+    schema = entity_dao.schema
 
   else -- new dao
-    schema = singletons.db.daos[table_name].schema
+    schema = kong.db.daos[table_name].schema
   end
 
   local entity_id = schema.primary_key[1]
@@ -703,10 +777,7 @@ local function resolve_role_endpoint_permissions(roles)
                   -- negative or not
 
   for _, role in ipairs(roles) do
-    local roles_endpoints, err = singletons.dao.rbac_role_endpoints:find_all({
-      role_id = role.id,
-      __skip_rbac = true,
-    })
+    local roles_endpoints, err = get_role_endpoints(kong.db, role, {skip_rbac = true}) -- XXX EE __skip_rbac = true
     if err then
       return _, _, err
     end
@@ -903,7 +974,7 @@ local function update_user_token(user)
   local ident  = get_token_ident(user.user_token)
   local digest = bcrypt.digest(user.user_token, LOG_ROUNDS)
 
-  local _, err = singletons.dao.rbac_users:update(
+  local _, err = kong.db.rbac_users:update(
     { user_token = digest, user_token_ident = ident },
     user
   )
@@ -923,11 +994,9 @@ end
 -- it is called directly by the rbac_user DAO to validate uniqueness of tokens
 -- or when searching directly for legacy plaintext tokens
 local function retrieve_token_users(ident, k)
-  local token_users, err = singletons.dao.rbac_users:run_with_ws_scope(
-    {},
-    singletons.dao.rbac_users.find_all,
-    { [k] = ident, enabled = true, __skip_rbac = true }
-  )
+  local token_users, err = kong.db.rbac_users:select_all({
+    [k] = ident, enabled = true },
+    { skip_rbac = true })
   if err then
     return nil, err
   end
@@ -944,7 +1013,7 @@ local function get_token_users(rbac_token)
 
   local cache_key = "rbac_user_token_ident:" .. ident
 
-  local token_users, err = singletons.cache:get(cache_key,
+  local token_users, err = kong.cache:get(cache_key,
                                                 nil,
                                                 retrieve_token_users,
                                                 ident,
@@ -981,7 +1050,7 @@ function _M.load_rbac_ctx(dao_factory, ctx, rbac_user)
   local user = rbac_user
 
   if not user then
-    local rbac_auth_header = singletons.configuration.rbac_auth_header
+    local rbac_auth_header = kong.configuration.rbac_auth_header
     local rbac_token = ngx.req.get_headers()[rbac_auth_header]
 
     if type(rbac_token) ~= "string" then
@@ -1072,12 +1141,12 @@ function _M.load_rbac_ctx(dao_factory, ctx, rbac_user)
 end
 
 function _M.validate_user(rbac_user)
-  if singletons.configuration.rbac == "off" then
+  if kong.configuration.rbac == "off" then
     return
   end
 
   -- if it's whitelisted, we don't care who the user is
-  if whitelisted_endpoints[ngx.var.request_uri] then
+  if whitelisted_endpoints[ngx.var.uri] then
     return true
   end
 
@@ -1098,9 +1167,9 @@ function _M.validate_endpoint(route_name, route, rbac_user)
     return
   end
 
-  if not singletons.configuration or
-         singletons.configuration.rbac ~= "both" and
-         singletons.configuration.rbac ~= "on" then
+  if not kong.configuration or
+         kong.configuration.rbac ~= "both" and
+         kong.configuration.rbac ~= "on" then
     return
   end
 
@@ -1124,9 +1193,9 @@ end
 -- checks whether the given action can be cleanly performed in a
 -- set of entities
 function _M.check_cascade(entities, rbac_ctx)
-  if not singletons.configuration or
-         singletons.configuration.rbac ~= "entity" and
-         singletons.configuration.rbac ~= "both" then
+  if not kong.configuration or
+         kong.configuration.rbac ~= "entity" and
+         kong.configuration.rbac ~= "both" then
     return true
   end
 
@@ -1154,51 +1223,22 @@ function _M.check_cascade(entities, rbac_ctx)
   return true
 end
 
-
-local function retrieve_consumer_user_map(rbac_user_id)
-  local users, err = singletons.dao.consumers_rbac_users_map:find_all({
-    user_id = rbac_user_id,
-    __skip_rbac = true,
-  })
-
-  if err then
-    log(ngx.ERR, "error retrieving consumer_user map from rbac_user.id: ",
-        rbac_user_id, err)
-    return nil, err
-  end
-
-  if not next(users) then
-    return nil
-  end
-
-  return users[1]
-end
-
-
---- Retrieve rbac <> consumer map
--- @param `rbac_user_id` id of rbac_user
-function _M.get_consumer_user_map(rbac_user_id)
-  local cache_key = singletons.dao.consumers_rbac_users_map:cache_key(rbac_user_id)
-  local user, err = singletons.cache:get(cache_key,
-                                         nil,
-                                         retrieve_consumer_user_map,
-                                         rbac_user_id)
-
-  if err then
-    return nil, err
-  end
-
-  return user
-end
-
-
 do
-  local reports = require "kong.core.reports"
+  local reports = require "kong.reports"
   local rbac_users_count = function()
-    local c, err = singletons.dao.rbac_users:count()
-    if not c then
+    -- XXX consider iterating for :each() workspace, select ws ,
+    -- "rbac_users" for performance reasons
+    local counts, err = kong.db.workspace_entity_counters:select_all({
+      entity_type = "rbac_users"
+    })
+    if err then
       log(ngx.WARN, "failed to get count of RBAC users: ", err)
       return nil
+    end
+
+    local c = 0
+    for _, entity_counter in ipairs(counts) do
+      c = c + entity_counter.count or 0
     end
 
     return c

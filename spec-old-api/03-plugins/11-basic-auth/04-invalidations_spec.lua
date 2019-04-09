@@ -4,28 +4,30 @@ local cjson = require "cjson"
 describe("Plugin: basic-auth (invalidations)", function()
   local admin_client, proxy_client
   local dao
+  local bp
+  local db
 
   before_each(function()
-    dao = select(3, helpers.get_db_utils())
+    bp, db, dao = helpers.get_db_utils()
 
     local api = assert(dao.apis:insert {
       name         = "api-1",
       hosts        = { "basic-auth.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name   = "basic-auth",
-      api_id = api.id,
+      api = { id = api.id },
     })
 
-    local consumer = assert(dao.consumers:insert {
+    local consumer = bp.consumers:insert {
       username = "bob",
-    })
-    assert(dao.basicauth_credentials:insert {
-      username    = "bob",
-      password    = "kong",
-      consumer_id = consumer.id,
-    })
+    }
+    bp.basicauth_credentials:insert {
+      username = "bob",
+      password = "kong",
+      consumer = { id = consumer.id },
+    }
 
     assert(helpers.start_kong({
       nginx_conf = "spec/fixtures/custom_nginx.template",
@@ -55,7 +57,7 @@ describe("Plugin: basic-auth (invalidations)", function()
     assert.res_status(200, res)
 
     -- ensure cache is populated
-    local cache_key = dao.basicauth_credentials:cache_key("bob")
+    local cache_key = db.basicauth_credentials:cache_key("bob")
     res = assert(admin_client:send {
       method = "GET",
       path = "/cache/" .. cache_key
@@ -103,7 +105,7 @@ describe("Plugin: basic-auth (invalidations)", function()
     assert.res_status(200, res)
 
     -- ensure cache is populated
-    local cache_key = dao.basicauth_credentials:cache_key("bob")
+    local cache_key = db.basicauth_credentials:cache_key("bob")
     res = assert(admin_client:send {
       method = "GET",
       path = "/cache/" .. cache_key
@@ -152,7 +154,7 @@ describe("Plugin: basic-auth (invalidations)", function()
     assert.res_status(200, res)
 
     -- ensure cache is populated
-    local cache_key = dao.basicauth_credentials:cache_key("bob")
+    local cache_key = db.basicauth_credentials:cache_key("bob")
     res = assert(admin_client:send {
       method = "GET",
       path = "/cache/" .. cache_key

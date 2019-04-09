@@ -60,10 +60,10 @@ end
 local _M = {}
 
 
-function _M.new(dao_factory)
+function _M.new(db)
   return setmetatable(
     {
-      db = dao_factory.db,
+      db = db.connector,
     },
     {
       __index = _M,

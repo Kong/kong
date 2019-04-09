@@ -3,12 +3,13 @@ local meta       = require "kong.enterprise_edition.meta"
 local pl_file    = require "pl.file"
 local pl_utils   = require "pl.utils"
 local pl_path    = require "pl.path"
-local singletons = require "kong.singletons"
 local constants  = require "kong.constants"
 local ws_helper  = require "kong.workspaces.helper"
 local feature_flags   = require "kong.enterprise_edition.feature_flags"
 local license_helpers = require "kong.enterprise_edition.license_helpers"
 
+
+local kong = kong
 local ws_constants  = constants.WORKSPACE_CONFIG
 local _M = {}
 
@@ -22,22 +23,22 @@ _M.handlers = {
   access = {
     after = function(ctx)
       if not ctx.is_internal then
-        singletons.vitals:log_latency(ctx.KONG_PROXY_LATENCY)
-        singletons.vitals:log_request(ctx)
+        kong.vitals:log_latency(ctx.KONG_PROXY_LATENCY)
+        kong.vitals:log_request(ctx)
       end
     end
   },
   header_filter = {
     after = function(ctx)
       if not ctx.is_internal then
-        singletons.vitals:log_upstream_latency(ctx.KONG_WAITING_TIME)
+        kong.vitals:log_upstream_latency(ctx.KONG_WAITING_TIME)
       end
     end
   },
   log = {
     after = function(ctx, status)
       if not ctx.is_internal then
-        singletons.vitals:log_phase_after_plugins(ctx, status)
+        kong.vitals:log_phase_after_plugins(ctx, status)
       end
     end
   }
@@ -162,7 +163,7 @@ function _M.prepare_admin(kong_config)
     RBAC = prepare_variable(kong_config.rbac),
     RBAC_ENFORCED = prepare_variable(rbac_enforced),
     RBAC_HEADER = prepare_variable(kong_config.rbac_auth_header),
-    RBAC_USER_HEADER = prepare_variable(kong_config.rbac_user_header),
+    RBAC_USER_HEADER = prepare_variable(kong_config.admin_gui_auth_header),
     KONG_VERSION = prepare_variable(meta.versions.package),
     FEATURE_FLAGS = prepare_variable(kong_config.admin_gui_flags),
     PORTAL = prepare_variable(kong_config.portal),
@@ -176,7 +177,8 @@ end
 
 function _M.prepare_portal(self, kong_config)
   local workspace = ws_helper.get_workspace()
-  local is_authenticated = self.is_authenticated or false
+  local is_authenticated = self.developer ~= nil
+
   local portal_gui_listener = select_listener(kong_config.portal_gui_listeners,
                                               {ssl = false})
   local portal_gui_ssl_listener = select_listener(kong_config.portal_gui_listeners,

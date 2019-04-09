@@ -5,7 +5,7 @@ describe("OpenResty phases", function()
     describe("enabled on all APIs", function()
       local api_client, proxy_client
 
-      setup(function()
+      lazy_setup(function()
         local dao = select(3, helpers.get_db_utils())
 
         -- insert plugin-less api and a global plugin
@@ -29,7 +29,7 @@ describe("OpenResty phases", function()
         proxy_client = helpers.proxy_client()
       end)
 
-      teardown(function()
+      lazy_teardown(function()
         if api_client then api_client:close() end
         helpers.stop_kong()
       end)
@@ -51,7 +51,7 @@ describe("OpenResty phases", function()
     describe("enabled on a specific APIs", function()
       local api_client, proxy_client
 
-      setup(function()
+      lazy_setup(function()
         local dao = select(3, helpers.get_db_utils())
 
         -- api specific plugin
@@ -61,7 +61,7 @@ describe("OpenResty phases", function()
           upstream_url = helpers.mock_upstream_url,
         })
         assert(dao.plugins:insert {
-          api_id = api2.id,
+          api = { id = api2.id },
           name   = "rewriter",
           config = {
             value = "api-specific plugin",
@@ -76,7 +76,7 @@ describe("OpenResty phases", function()
         proxy_client = helpers.proxy_client()
       end)
 
-      teardown(function()
+      lazy_teardown(function()
         if api_client then api_client:close() end
         helpers.stop_kong()
       end)
@@ -97,8 +97,8 @@ describe("OpenResty phases", function()
     describe("enabled on a specific Consumers", function()
       local api_client, proxy_client
 
-      setup(function()
-        local dao = select(3, helpers.get_db_utils())
+      lazy_setup(function()
+        local bp, _, dao = helpers.get_db_utils()
 
         -- consumer specific plugin
         local api3 = assert(dao.apis:insert {
@@ -107,18 +107,18 @@ describe("OpenResty phases", function()
           upstream_url = helpers.mock_upstream_url,
         })
         assert(dao.plugins:insert {
-          api_id = api3.id,
+          api = { id = api3.id },
           name   = "key-auth",
         })
-        local consumer3 = assert(dao.consumers:insert {
+        local consumer3 = bp.consumers:insert {
           username = "test-consumer",
-        })
-        assert(dao.keyauth_credentials:insert {
-          key         = "kong",
-          consumer_id = consumer3.id,
-        })
+        }
+        bp.keyauth_credentials:insert {
+          key      = "kong",
+          consumer = { id = consumer3.id },
+        }
         assert(dao.plugins:insert {
-          consumer_id = consumer3.id,
+          consumer = { id = consumer3.id },
           name        = "rewriter",
           config      = {
             value = "consumer-specific plugin",
@@ -133,7 +133,7 @@ describe("OpenResty phases", function()
         proxy_client = helpers.proxy_client()
       end)
 
-      teardown(function()
+      lazy_teardown(function()
         if api_client then api_client:close() end
         helpers.stop_kong()
       end)

@@ -1,5 +1,12 @@
 local helpers = require "spec.helpers"
-local singletons = require "kong.singletons"
+local utils = require "kong.tools.utils"
+local cjson = require "cjson"
+local pl_path = require "pl.path"
+local pl_file = require "pl.file"
+local pl_stringx = require "pl.stringx"
+
+
+local LOG_WAIT_TIMEOUT = 10
 
 
 for _, strategy in helpers.each_strategy() do
@@ -10,10 +17,19 @@ for _, strategy in helpers.each_strategy() do
     local dao
     local bp
 
-    setup(function()
-      singletons.dao = select(3, helpers.get_db_utils(strategy, true))
-
-      bp, db, dao = helpers.get_db_utils(strategy)
+    lazy_setup(function()
+      bp, db, dao = helpers.get_db_utils(strategy, {
+        "apis",
+        "routes",
+        "services",
+        "plugins",
+        "consumers",
+        "keyauth_credentials",
+      }, {
+        "error-handler-log",
+        "error-generator-pre",
+      })
+      dao:truncate_tables()
 
       ngx.ctx.workspaces = nil
       ngx.ctx.workspaces = dao.workspaces:find_all({name = "default"})
@@ -23,8 +39,8 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.keyauth_credentials:insert {
-        key         = "secret1",
-        consumer_id = consumer1.id
+        key      = "secret1",
+        consumer = { id = consumer1.id },
       }
 
       local consumer2 = bp.consumers:insert {
@@ -32,8 +48,8 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.keyauth_credentials:insert {
-        key         = "secret2",
-        consumer_id = consumer2.id
+        key      = "secret2",
+        consumer = { id = consumer2.id },
       }
 
       local consumer3 = bp.consumers:insert {
@@ -73,20 +89,20 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.plugins:insert {
-        name       = "rate-limiting",
-        route_id   = route1.id,
-        service_id = service2.id,
-        config     = {
-          hour     = 2,
+        name    = "rate-limiting",
+        route   = { id = route1.id },
+        service = { id = service2.id },
+        config  = {
+          hour  = 2,
         },
       }
 
       -- Consumer Specific Configuration
       bp.plugins:insert {
-        name        = "rate-limiting",
-        consumer_id = consumer2.id,
-        config      = {
-          hour      = 3,
+        name     = "rate-limiting",
+        consumer = { id = consumer2.id },
+        config   = {
+          hour   = 3,
         },
       }
 
@@ -102,11 +118,11 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.plugins:insert {
-        name        = "rate-limiting",
-        route_id    = route2.id,
-        consumer_id = consumer2.id,
-        config      = {
-          hour      = 4,
+        name     = "rate-limiting",
+        route    = { id = route2.id },
+        consumer = { id = consumer2.id },
+        config   = {
+          hour   = 4,
         },
       }
 
@@ -126,17 +142,17 @@ for _, strategy in helpers.each_strategy() do
         config      = {
           anonymous = consumer3.id,
         },
-        route_id    = route3.id,
-        service_id  = service4.id,
+        route       = { id = route3.id },
+        service     = { id = service4.id },
       }
 
       bp.plugins:insert {
-        name        = "rate-limiting",
-        route_id    = route3.id,
-        service_id  = service4.id,
-        consumer_id = consumer3.id,
-        config      = {
-          hour      = 5,
+        name     = "rate-limiting",
+        route    = { id = route3.id },
+        service  = { id = service4.id },
+        consumer = { id = consumer3.id },
+        config   = {
+          hour   = 5,
         }
       }
 
@@ -148,7 +164,7 @@ for _, strategy in helpers.each_strategy() do
       proxy_client = helpers.proxy_client()
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       if proxy_client then proxy_client:close() end
       helpers.stop_kong()
     end)
@@ -215,14 +231,19 @@ for _, strategy in helpers.each_strategy() do
     describe("short-circuited requests", function()
       local FILE_LOG_PATH = os.tmpname()
 
-      setup(function()
+      lazy_setup(function()
         if proxy_client then
           proxy_client:close()
         end
 
         helpers.stop_kong()
         dao:truncate_tables()
-        helpers.register_consumer_relations(dao)
+
+        db:truncate("routes")
+        db:truncate("services")
+        db:truncate("consumers")
+        db:truncate("plugins")
+        db:truncate("keyauth_credentials")
 
         ngx.ctx.workspaces = nil
         ngx.ctx.workspaces = dao.workspaces:find_all({name = "default"})
@@ -242,14 +263,14 @@ for _, strategy in helpers.each_strategy() do
 
           -- plugin able to short-circuit a request
           assert(dao.plugins:insert {
-            name   = "key-auth",
-            route_id = route.id,
+            name  = "key-auth",
+            route = { id = route.id },
           })
 
           -- response/body filter plugin
           assert(dao.plugins:insert {
             name   = "dummy",
-            route_id = route.id,
+            route  = { id = route.id },
             config = {
               append_body = "appended from body filtering",
             }
@@ -257,8 +278,8 @@ for _, strategy in helpers.each_strategy() do
 
           -- log phase plugin
           assert(dao.plugins:insert {
-            name = "file-log",
-            route_id = route.id,
+            name   = "file-log",
+            route  = { id = route.id },
             config = {
               path = FILE_LOG_PATH,
             },
@@ -281,8 +302,8 @@ for _, strategy in helpers.each_strategy() do
 
           -- plugin that produces an error
           assert(dao.plugins:insert {
-            name = "dummy",
-            route_id = route.id,
+            name   = "dummy",
+            route  = { id = route.id },
             config = {
               append_body = "obtained even with error",
             }
@@ -290,8 +311,8 @@ for _, strategy in helpers.each_strategy() do
 
           -- log phase plugin
           assert(dao.plugins:insert {
-            name = "file-log",
-            route_id = route.id,
+            name   = "file-log",
+            route  = { id = route.id },
             config = {
               path = FILE_LOG_PATH,
             },
@@ -306,7 +327,7 @@ for _, strategy in helpers.each_strategy() do
         proxy_client = helpers.proxy_client()
       end)
 
-      teardown(function()
+      lazy_teardown(function()
         if proxy_client then
           proxy_client:close()
         end
@@ -321,12 +342,6 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("execute a log plugin", function()
-        local utils = require "kong.tools.utils"
-        local cjson = require "cjson"
-        local pl_path = require "pl.path"
-        local pl_file = require "pl.file"
-        local pl_stringx = require "pl.stringx"
-
         local uuid = utils.uuid()
 
         local res = assert(proxy_client:send {
@@ -345,7 +360,7 @@ for _, strategy in helpers.each_strategy() do
 
         helpers.wait_until(function()
           return pl_path.exists(FILE_LOG_PATH) and pl_path.getsize(FILE_LOG_PATH) > 0
-        end, 3)
+        end, LOG_WAIT_TIMEOUT)
 
         local log = pl_file.read(FILE_LOG_PATH)
         local log_message = cjson.decode(pl_stringx.strip(log))
@@ -389,11 +404,6 @@ for _, strategy in helpers.each_strategy() do
 
       -- regression test for bug spotted in 0.12.0rc2
       it("responses.send stops plugin but runloop continues", function()
-        local utils = require "kong.tools.utils"
-        local cjson = require "cjson"
-        local pl_path = require "pl.path"
-        local pl_file = require "pl.file"
-        local pl_stringx = require "pl.stringx"
         local uuid = utils.uuid()
 
         local res = assert(proxy_client:send {
@@ -419,7 +429,7 @@ for _, strategy in helpers.each_strategy() do
         -- access phase got a chance to inject the logging plugin
         helpers.wait_until(function()
           return pl_path.exists(FILE_LOG_PATH) and pl_path.getsize(FILE_LOG_PATH) > 0
-        end, 3)
+        end, LOG_WAIT_TIMEOUT)
 
         local log = pl_file.read(FILE_LOG_PATH)
         local log_message = cjson.decode(pl_stringx.strip(log))
@@ -443,16 +453,20 @@ for _, strategy in helpers.each_strategy() do
       -- tries to evaluate is the `schema.no_consumer` flag is set.
       -- Since the reports plugin has no `schema`, this indexing fails.
 
-      setup(function()
+      lazy_setup(function()
         if proxy_client then
           proxy_client:close()
         end
 
         helpers.stop_kong()
 
-        assert(db:truncate())
         dao:truncate_tables()
-        helpers.register_consumer_relations(dao)
+
+        db:truncate("routes")
+        db:truncate("services")
+        db:truncate("consumers")
+        db:truncate("plugins")
+        db:truncate("keyauth_credentials")
 
         ngx.ctx.workspaces = nil
         ngx.ctx.workspaces = dao.workspaces:find_all({name = "default"})
@@ -468,9 +482,9 @@ for _, strategy in helpers.each_strategy() do
         }
 
         bp.plugins:insert {
-          name       = "key-auth",
-          route_id   = route.id,
-          service_id = service.id,
+          name    = "key-auth",
+          route   = { id = route.id },
+          service = { id = service.id },
         }
 
         local consumer = bp.consumers:insert {
@@ -478,8 +492,8 @@ for _, strategy in helpers.each_strategy() do
         }
 
         bp.keyauth_credentials:insert {
-          key         = "abcd",
-          consumer_id = consumer.id,
+          key      = "abcd",
+          consumer = { id = consumer.id },
         }
 
         assert(helpers.start_kong {
@@ -491,7 +505,7 @@ for _, strategy in helpers.each_strategy() do
         proxy_client = helpers.proxy_client()
       end)
 
-      teardown(function()
+      lazy_teardown(function()
         if proxy_client then
           proxy_client:close()
         end
@@ -518,6 +532,612 @@ for _, strategy in helpers.each_strategy() do
           },
         })
         assert.res_status(200, res)
+      end)
+    end)
+
+    describe("proxy-intercepted error", function()
+      local FILE_LOG_PATH = os.tmpname()
+
+
+      lazy_setup(function()
+        dao:truncate_tables()
+        db:truncate("routes")
+        db:truncate("services")
+        db:truncate("consumers")
+        db:truncate("plugins")
+        db:truncate("keyauth_credentials")
+
+        ngx.ctx.workspaces = nil
+        ngx.ctx.workspaces = dao.workspaces:find_all({name = "default"})
+
+        do
+          -- service to mock HTTP 502
+          local mock_service = bp.services:insert {
+            name = "conn_refused",
+            host = "127.0.0.2",
+            port = 26865,
+          }
+
+          bp.routes:insert {
+            hosts     = { "refused" },
+            protocols = { "http" },
+            service   = mock_service,
+          }
+
+          bp.plugins:insert {
+            name     = "file-log",
+            service  = { id = mock_service.id },
+            config   = {
+              path   = FILE_LOG_PATH,
+              reopen = true,
+            }
+          }
+        end
+
+        do
+          -- service to mock HTTP 503
+          local mock_service = bp.services:insert {
+            name = "unavailable",
+          }
+
+          bp.routes:insert {
+            hosts     = { "unavailable" },
+            protocols = { "http" },
+            service   = mock_service,
+          }
+
+          bp.plugins:insert {
+            name     = "file-log",
+            service  = { id = mock_service.id },
+            config   = {
+              path   = FILE_LOG_PATH,
+              reopen = true,
+            }
+          }
+        end
+
+        do
+          -- service to mock HTTP 504
+          local httpbin_service = bp.services:insert {
+            name            = "timeout",
+            host            = "httpbin.org",
+            connect_timeout = 1, -- ms
+          }
+
+          bp.routes:insert {
+            hosts     = { "connect_timeout" },
+            protocols = { "http" },
+            service   = httpbin_service,
+          }
+
+          bp.plugins:insert {
+            name     = "file-log",
+            service  = { id = httpbin_service.id },
+            config   = {
+              path   = FILE_LOG_PATH,
+              reopen = true,
+            }
+          }
+        end
+
+        do
+          -- global plugin to catch Nginx-produced client errors
+          bp.plugins:insert {
+            name = "file-log",
+            config = {
+              path = FILE_LOG_PATH,
+              reopen = true,
+            }
+          }
+
+          bp.plugins:insert {
+            name = "error-handler-log",
+            config = {},
+          }
+        end
+
+        -- start mock httpbin instance
+        assert(helpers.start_kong {
+          database = strategy,
+          admin_listen = "127.0.0.1:9011",
+          proxy_listen = "127.0.0.1:9010",
+          proxy_listen_ssl = "127.0.0.1:9453",
+          admin_listen_ssl = "127.0.0.1:9454",
+          prefix = "servroot2",
+          nginx_conf = "spec/fixtures/custom_nginx.template",
+        })
+
+        -- start Kong instance with our services and plugins
+        assert(helpers.start_kong {
+          database = strategy,
+          -- /!\ test with real nginx config
+        })
+      end)
+
+
+      lazy_teardown(function()
+        helpers.stop_kong("servroot2")
+        helpers.stop_kong()
+      end)
+
+
+      before_each(function()
+        proxy_client = helpers.proxy_client()
+      end)
+
+
+      after_each(function()
+        pl_file.delete(FILE_LOG_PATH)
+
+        if proxy_client then
+          proxy_client:close()
+        end
+      end)
+
+
+      it("executes a log plugin on Bad Gateway (HTTP 502)", function()
+        -- triggers error_page directive
+        local uuid = utils.uuid()
+
+        local res = assert(proxy_client:send {
+          method = "GET",
+          path = "/status/200",
+          headers = {
+            ["Host"] = "refused",
+            ["X-UUID"] = uuid,
+          }
+        })
+        assert.res_status(502, res) -- Bad Gateway
+
+        -- TEST: ensure that our logging plugin was executed and wrote
+        -- something to disk.
+
+        helpers.wait_until(function()
+          return pl_path.exists(FILE_LOG_PATH)
+                 and pl_path.getsize(FILE_LOG_PATH) > 0
+        end, LOG_WAIT_TIMEOUT)
+
+        local log = pl_file.read(FILE_LOG_PATH)
+        local log_message = cjson.decode(pl_stringx.strip(log))
+        assert.equal("127.0.0.1", log_message.client_ip)
+        assert.equal(uuid, log_message.request.headers["x-uuid"])
+      end)
+
+
+      pending("log plugins sees same request in error_page handler (HTTP 502)", function()
+        -- PENDING: waiting on Nginx error_patch_preserve_method patch
+
+        -- triggers error_page directive
+        local uuid = utils.uuid()
+
+        local res = assert(proxy_client:send {
+          method = "POST",
+          path = "/status/200?foo=bar",
+          headers = {
+            ["Host"] = "refused",
+            ["X-UUID"] = uuid,
+          },
+          --[[ file-log plugin does not log request body
+          body = {
+            hello = "world",
+          }
+          --]]
+        })
+        assert.res_status(502, res) -- Bad Gateway
+
+        -- TEST: ensure that our logging plugin was executed and wrote
+        -- something to disk.
+
+        helpers.wait_until(function()
+          return pl_path.exists(FILE_LOG_PATH)
+                 and pl_path.getsize(FILE_LOG_PATH) > 0
+        end, LOG_WAIT_TIMEOUT)
+
+        local log = pl_file.read(FILE_LOG_PATH)
+        local log_message = cjson.decode(pl_stringx.strip(log))
+        assert.equal(uuid, log_message.request.headers["x-uuid"])
+        assert.equal("refused", log_message.request.headers.host)
+        assert.equal("POST", log_message.request.method)
+        assert.equal("bar", log_message.request.querystring.foo)
+        assert.equal("/status/200?foo=bar", log_message.upstream_uri)
+      end)
+
+
+      it("executes a log plugin on Service Unavailable (HTTP 503)", function()
+        -- Does not trigger error_page directive (no proxy_intercept_errors)
+        local uuid = utils.uuid()
+
+        local res = assert(proxy_client:send {
+          method = "GET",
+          path = "/status/503",
+          headers = {
+            ["Host"] = "unavailable",
+            ["X-UUID"] = uuid,
+          }
+        })
+        assert.res_status(503, res) -- Service Unavailable
+
+        -- TEST: ensure that our logging plugin was executed and wrote
+        -- something to disk.
+
+        helpers.wait_until(function()
+          return pl_path.exists(FILE_LOG_PATH)
+                 and pl_path.getsize(FILE_LOG_PATH) > 0
+        end, LOG_WAIT_TIMEOUT)
+
+        local log = pl_file.read(FILE_LOG_PATH)
+        local log_message = cjson.decode(pl_stringx.strip(log))
+        assert.equal("127.0.0.1", log_message.client_ip)
+        assert.equal(uuid, log_message.request.headers["x-uuid"])
+      end)
+
+
+      it("executes a log plugin on Gateway Timeout (HTTP 504)", function()
+        -- triggers error_page directive
+        local uuid = utils.uuid()
+
+        local res = assert(proxy_client:send {
+          method = "GET",
+          path = "/status/200",
+          headers = {
+            ["Host"] = "connect_timeout",
+            ["X-UUID"] = uuid,
+          }
+        })
+        assert.res_status(504, res) -- Gateway Timeout
+
+        -- TEST: ensure that our logging plugin was executed and wrote
+        -- something to disk.
+
+        helpers.wait_until(function()
+          return pl_path.exists(FILE_LOG_PATH)
+                 and pl_path.getsize(FILE_LOG_PATH) > 0
+        end, LOG_WAIT_TIMEOUT)
+
+        local log = pl_file.read(FILE_LOG_PATH)
+        local log_message = cjson.decode(pl_stringx.strip(log))
+        assert.equal("127.0.0.1", log_message.client_ip)
+        assert.equal(uuid, log_message.request.headers["x-uuid"])
+      end)
+
+
+      pending("log plugins sees same request in error_page handler (HTTP 504)", function()
+        -- triggers error_page directive
+        local uuid = utils.uuid()
+
+        local res = assert(proxy_client:send {
+          method = "POST",
+          path = "/status/200?foo=bar",
+          headers = {
+            ["Host"] = "connect_timeout",
+            ["X-UUID"] = uuid,
+          },
+          --[[ file-log plugin does not log request body
+          body = {
+            hello = "world",
+          }
+          --]]
+        })
+        assert.res_status(504, res) -- Gateway Timeout
+
+        -- TEST: ensure that our logging plugin was executed and wrote
+        -- something to disk.
+
+        helpers.wait_until(function()
+          return pl_path.exists(FILE_LOG_PATH)
+                 and pl_path.getsize(FILE_LOG_PATH) > 0
+        end, LOG_WAIT_TIMEOUT)
+
+        local log = pl_file.read(FILE_LOG_PATH)
+        local log_message = cjson.decode(pl_stringx.strip(log))
+        assert.equal(uuid, log_message.request.headers["x-uuid"])
+        assert.equal("connect_timeout", log_message.request.headers.host)
+        assert.equal("POST", log_message.request.method)
+        assert.equal("bar", log_message.request.querystring.foo)
+        assert.equal("/status/200?foo=bar", log_message.upstream_uri)
+      end)
+
+
+      it("executes a global log plugin on Nginx-produced client errors (HTTP 494)", function()
+        -- triggers error_page directive
+        local uuid = utils.uuid()
+
+        local res = assert(proxy_client:send {
+          method = "GET",
+          path = "/",
+          headers = {
+            ["Host"] = "unavailable",
+            ["X-Large"] = string.rep("a", 2^10 * 10), -- default large_client_header_buffers is 8k
+            ["X-UUID"] = uuid,
+          }
+        })
+        assert.res_status(494, res)
+
+        -- TEST: ensure that our logging plugin was executed and wrote
+        -- something to disk.
+
+        helpers.wait_until(function()
+          return pl_path.exists(FILE_LOG_PATH)
+                 and pl_path.getsize(FILE_LOG_PATH) > 0
+        end, LOG_WAIT_TIMEOUT)
+
+        local log = pl_file.read(FILE_LOG_PATH)
+        local log_message = cjson.decode(pl_stringx.strip(log))
+
+        assert.equal(uuid, log_message.request.headers["x-uuid"])
+        assert.equal(494, log_message.response.status)
+      end)
+
+
+      pending("log plugins sees same request in error_page handler (HTTP 494)", function()
+        -- PENDING: waiting on Nginx error_patch_preserve_method patch
+
+        -- triggers error_page directive
+        local uuid = utils.uuid()
+
+        local res = assert(proxy_client:send {
+          method = "POST",
+          path = "/status/200?foo=bar",
+          headers = {
+            ["Host"] = "unavailable",
+            ["X-Large"] = string.rep("a", 2^10 * 10), -- default large_client_header_buffers is 8k
+            ["X-UUID"] = uuid,
+          },
+          --[[ file-log plugin does not log request body
+          body = {
+            hello = "world",
+          }
+          --]]
+        })
+        assert.res_status(494, res)
+
+        -- TEST: ensure that our logging plugin was executed and wrote
+        -- something to disk.
+
+        helpers.wait_until(function()
+          return pl_path.exists(FILE_LOG_PATH)
+                 and pl_path.getsize(FILE_LOG_PATH) > 0
+        end, LOG_WAIT_TIMEOUT)
+
+        local log = pl_file.read(FILE_LOG_PATH)
+        local log_message = cjson.decode(pl_stringx.strip(log))
+        assert.equal("POST", log_message.request.method)
+        assert.equal("bar", log_message.request.querystring.foo)
+        assert.equal("/status/200?foo=bar", log_message.upstream_uri)
+        assert.equal(uuid, log_message.request.headers["x-uuid"])
+        assert.equal("unavailable", log_message.request.headers.host)
+      end)
+
+
+      it("executes a global log plugin on Nginx-produced client errors (HTTP 414)", function()
+        -- triggers error_page directive
+        local uuid = utils.uuid()
+
+        local res = assert(proxy_client:send {
+          method = "GET",
+          path = "/?foo=" .. string.rep("a", 2^10 * 10),
+          headers = {
+            ["Host"] = "unavailable",
+            ["X-UUID"] = uuid,
+          }
+        })
+        assert.res_status(414, res)
+
+        -- TEST: ensure that our logging plugin was executed and wrote
+        -- something to disk.
+
+        helpers.wait_until(function()
+          return pl_path.exists(FILE_LOG_PATH)
+                 and pl_path.getsize(FILE_LOG_PATH) > 0
+        end, LOG_WAIT_TIMEOUT)
+
+        local log = pl_file.read(FILE_LOG_PATH)
+        local log_message = cjson.decode(pl_stringx.strip(log))
+
+        assert.same({}, log_message.request.headers)
+        assert.equal(414, log_message.response.status)
+      end)
+
+
+      pending("log plugins sees same request in error_page handler (HTTP 414)", function()
+        -- PENDING: waiting on Nginx error_patch_preserve_method patch
+
+        -- triggers error_page directive
+        local uuid = utils.uuid()
+
+        local res = assert(proxy_client:send {
+          method = "POST",
+          path = "/?foo=" .. string.rep("a", 2^10 * 10),
+          headers = {
+            ["Host"] = "unavailable",
+            ["X-UUID"] = uuid,
+          },
+          --[[ file-log plugin does not log request body
+          body = {
+            hello = "world",
+          }
+          --]]
+        })
+        assert.res_status(414, res)
+
+        -- TEST: ensure that our logging plugin was executed and wrote
+        -- something to disk.
+
+        helpers.wait_until(function()
+          return pl_path.exists(FILE_LOG_PATH)
+                 and pl_path.getsize(FILE_LOG_PATH) > 0
+        end, LOG_WAIT_TIMEOUT)
+
+        local log = pl_file.read(FILE_LOG_PATH)
+        local log_message = cjson.decode(pl_stringx.strip(log))
+        local ins = require "inspect"
+        print(ins(log_message))
+        assert.equal("POST", log_message.request.method)
+        assert.equal("", log_message.upstream_uri) -- no URI here since Nginx could not parse request
+        assert.is_nil(log_message.request.headers["x-uuid"]) -- none since Nginx could not parse request
+        assert.is_nil(log_message.request.headers.host) -- none as well
+      end)
+
+
+      it("executes plugins header_filter/body_filter on Nginx-produced client errors (HTTP 4xx)", function()
+        local res = assert(proxy_client:send {
+          method = "GET",
+          path = "/?foo=" .. string.rep("a", 2^10 * 10),
+          headers = {
+            ["Host"] = "unavailable",
+          }
+        })
+        local body = assert.res_status(414, res)
+        assert.equal("header_filter", res.headers["Log-Plugin-Phases"])
+        assert.equal("body_filter", body)
+      end)
+
+
+      it("executes plugins header_filter/body_filter on Nginx-produced server errors (HTTP 5xx)", function()
+        local res = assert(proxy_client:send {
+          method = "GET",
+          path = "/status/200",
+          headers = {
+            ["Host"] = "connect_timeout",
+          }
+        })
+        local body = assert.res_status(504, res) -- Gateway Timeout
+        assert.equal("rewrite,access,header_filter", res.headers["Log-Plugin-Phases"]) -- rewrite + acecss from original request handling
+        assert.equal("body_filter", body)
+      end)
+
+
+      it("sees ctx introspection variables on Nginx-produced server errors (HTTP 5xx)", function()
+        local res = assert(proxy_client:send {
+          method = "GET",
+          path = "/status/200",
+          headers = {
+            ["Host"] = "connect_timeout",
+          }
+        })
+        assert.res_status(504, res) -- Gateway Timeout
+        assert.equal("timeout", res.headers["Log-Plugin-Service-Matched"])
+      end)
+    end)
+
+    describe("plugin with run_on", function()
+      lazy_setup(function()
+        if proxy_client then
+          proxy_client:close()
+        end
+
+        helpers.stop_kong()
+
+        dao:truncate_tables()
+        db:truncate("routes")
+        db:truncate("services")
+        db:truncate("plugins")
+        ngx.ctx.workspaces = nil
+        ngx.ctx.workspaces = dao.workspaces:find_all({name = "default"})
+
+        do
+          local service = assert(bp.services:insert {
+            name = "example",
+            host = helpers.mock_upstream_host,
+            port = helpers.mock_upstream_port,
+          })
+
+          local route1 = assert(db.routes:insert {
+            hosts     = { "run-on-first.org" },
+            protocols = { "http" },
+            service   = service,
+          })
+
+          assert(bp.plugins:insert {
+            name = "error-generator-pre",
+            route = { id = route1.id },
+            config = {
+              access = true,
+            },
+            run_on = "first",
+          })
+
+          local route2 = assert(db.routes:insert {
+            hosts     = { "run-on-second.org" },
+            protocols = { "http" },
+            service   = service,
+          })
+
+          assert(bp.plugins:insert {
+            name = "error-generator-pre",
+            route = { id = route2.id },
+            config = {
+              access = true,
+            },
+            run_on = "second",
+          })
+
+          local route3 = assert(db.routes:insert {
+            hosts     = { "run-on-all.org" },
+            protocols = { "http" },
+            service   = service,
+          })
+
+          assert(bp.plugins:insert {
+            name = "error-generator-pre",
+            route = { id = route3.id },
+            config = {
+              access = true,
+            },
+            run_on = "all",
+          })
+        end
+
+        assert(helpers.start_kong {
+          database = strategy,
+          nginx_conf = "spec/fixtures/custom_nginx.template",
+        })
+
+        proxy_client = helpers.proxy_client()
+      end)
+
+      lazy_teardown(function()
+        if proxy_client then
+          proxy_client:close()
+        end
+
+        helpers.stop_kong()
+      end)
+
+      it("= first does get executed when running on first", function()
+        local res = assert(proxy_client:send {
+          method = "GET",
+          path = "/status/200",
+          headers = {
+            ["Host"] = "run-on-first.org",
+          }
+        })
+
+        assert.res_status(500, res)
+      end)
+
+      it("= second does not get executed when running on first", function()
+        local res = assert(proxy_client:send {
+          method = "GET",
+          path = "/status/200",
+          headers = {
+            ["Host"] = "run-on-second.org",
+          }
+        })
+
+        assert.res_status(200, res)
+      end)
+
+      it("= all does get executed when running on first", function()
+        local res = assert(proxy_client:send {
+          method = "GET",
+          path = "/status/200",
+          headers = {
+            ["Host"] = "run-on-all.org",
+          }
+        })
+
+        assert.res_status(500, res)
       end)
     end)
   end)

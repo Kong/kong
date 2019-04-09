@@ -7,13 +7,10 @@ return {
       local role, ok, err
 
 
-      role, err = dao.rbac_roles:find_all({
-        name = "read-only"
-      })
+      role, err = dao.rbac_roles:select_by_name("read-only")
       if err then
         return err
       end
-      role = role[1]
       if not role then
         -- create read only role
         role, err = dao.rbac_roles:insert({
@@ -28,7 +25,7 @@ return {
 
       -- add endpoint permissions to the read only role
       ok, err = dao.rbac_role_endpoints:insert({
-        role_id = role.id,
+        role = { id = role.id, },
         workspace = "*",
         endpoint = "*",
         actions = rbac.actions_bitfields.read,
@@ -37,11 +34,10 @@ return {
         return err
       end
 
-      role, err = dao.rbac_roles:find_all({name = "admin"})
+      role, err = dao.rbac_roles:select_by_name("admin")
       if err then
         return err
       end
-      role = role[1]
       if not role then
         -- create admin role
         role, err = dao.rbac_roles:insert({
@@ -61,7 +57,7 @@ return {
 
       -- add endpoint permissions to the admin role
       ok, err = dao.rbac_role_endpoints:insert({
-        role_id = role.id,
+        role =  role,
         workspace = "*",
         endpoint = "*",
         actions = action_bits_all, -- all actions
@@ -84,7 +80,7 @@ return {
       } do
         -- add negative endpoint permissions to the rbac endpoint
         ok, err = dao.rbac_role_endpoints:insert({
-          role_id = role.id,
+          role = role,
           workspace = "*",
           endpoint = rbac_endpoint,
           negative = true,
@@ -95,11 +91,10 @@ return {
         end
       end
 
-      role, err = dao.rbac_roles:find_all({name = "super-admin"})
+      role, err = dao.rbac_roles:select_by_name("superadmin")
       if err then
         return err
       end
-      role = role[1]
       if not role then
         -- create super admin role
         role, err = dao.rbac_roles:insert({
@@ -114,7 +109,7 @@ return {
 
       -- add endpoint permissions to the super admin role
       ok, err = dao.rbac_role_endpoints:insert({
-        role_id = role.id,
+        role = role,
         workspace = "*",
         endpoint = "*",
         actions = action_bits_all, -- all actions
@@ -124,7 +119,7 @@ return {
       end
 
       ok, err = dao.rbac_role_entities:insert({
-        role_id = role.id,
+        role = role,
         entity_id = "*",
         entity_type = "wildcard",
         actions = action_bits_all,

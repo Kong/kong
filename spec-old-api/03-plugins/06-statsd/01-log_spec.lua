@@ -3,16 +3,16 @@ local UDP_PORT = 20000
 
 describe("Plugin: statsd (log)", function()
   local client
-  setup(function()
-    local dao = select(3, helpers.get_db_utils())
+  lazy_setup(function()
+    local bp, db, dao = helpers.get_db_utils()
 
-    local consumer1 = assert(dao.consumers:insert {
+    local consumer1 = bp.consumers:insert {
       username  = "bob",
       custom_id = "robert",
-    })
-    assert(dao.keyauth_credentials:insert {
-      key         = "kong",
-      consumer_id = consumer1.id,
+    }
+    bp.keyauth_credentials:insert({
+      key      = "kong",
+      consumer = { id = consumer1.id },
     })
 
     local api1 = assert(dao.apis:insert {
@@ -20,9 +20,9 @@ describe("Plugin: statsd (log)", function()
       hosts        = { "logging1.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name   = "key-auth",
-      api_id = api1.id,
+      api = { id = api1.id },
     })
     local api2 = assert(dao.apis:insert {
       name         = "stastd2",
@@ -64,18 +64,18 @@ describe("Plugin: statsd (log)", function()
       hosts        = { "logging9.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name   = "key-auth",
-      api_id = api9.id,
+      api = { id = api9.id },
     })
     local api10 = assert(dao.apis:insert {
       name         = "stastd10",
       hosts        = { "logging10.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name   = "key-auth",
-      api_id = api10.id,
+      api = { id = api10.id },
     })
     local api11 = assert(dao.apis:insert {
       name         = "stastd11",
@@ -83,9 +83,9 @@ describe("Plugin: statsd (log)", function()
       upstream_url = helpers.mock_upstream_url,
     })
 
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name   = "key-auth",
-      api_id = api11.id,
+      api = { id = api11.id },
     })
 
     local api12 = assert(dao.apis:insert {
@@ -100,26 +100,26 @@ describe("Plugin: statsd (log)", function()
       upstream_url = helpers.mock_upstream_url,
     })
 
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name   = "key-auth",
-      api_id = api12.id,
+      api = { id = api12.id },
     })
 
-    assert(dao.plugins:insert {
+    assert(db.plugins:insert {
       name   = "key-auth",
-      api_id = api13.id,
+      api = { id = api13.id },
     })
 
-    assert(dao.plugins:insert {
-      api_id = api1.id,
+    assert(db.plugins:insert {
+      api = { id = api1.id },
       name   = "statsd",
       config = {
         host = "127.0.0.1",
         port = UDP_PORT,
       },
     })
-    assert(dao.plugins:insert {
-      api_id = api2.id,
+    assert(db.plugins:insert {
+      api = { id = api2.id },
       name   = "statsd",
       config = {
         host    = "127.0.0.1",
@@ -130,8 +130,8 @@ describe("Plugin: statsd (log)", function()
         }},
       },
     })
-    assert(dao.plugins:insert {
-      api_id = api3.id,
+    assert(db.plugins:insert {
+      api = { id = api3.id },
       name   = "statsd",
       config    = {
         host    = "127.0.0.1",
@@ -143,8 +143,8 @@ describe("Plugin: statsd (log)", function()
         }},
       },
     })
-    assert(dao.plugins:insert {
-      api_id = api4.id,
+    assert(db.plugins:insert {
+      api = { id = api4.id },
       name   = "statsd",
       config = {
         host    = "127.0.0.1",
@@ -155,8 +155,8 @@ describe("Plugin: statsd (log)", function()
         }},
       },
     })
-    assert(dao.plugins:insert {
-      api_id = api5.id,
+    assert(db.plugins:insert {
+      api = { id = api5.id },
       name   = "statsd",
       config = {
         host    = "127.0.0.1",
@@ -168,8 +168,8 @@ describe("Plugin: statsd (log)", function()
         }}
       }
     })
-    assert(dao.plugins:insert {
-      api_id = api6.id,
+    assert(db.plugins:insert {
+      api = { id = api6.id },
       name   = "statsd",
       config    = {
         host    = "127.0.0.1",
@@ -180,8 +180,8 @@ describe("Plugin: statsd (log)", function()
         }},
       },
     })
-    assert(dao.plugins:insert {
-      api_id = api7.id,
+    assert(db.plugins:insert {
+      api = { id = api7.id },
       name   = "statsd",
       config = {
         host    = "127.0.0.1",
@@ -192,8 +192,8 @@ describe("Plugin: statsd (log)", function()
         }},
       },
     })
-    assert(dao.plugins:insert {
-      api_id = api8.id,
+    assert(db.plugins:insert {
+      api = { id = api8.id },
       name   = "statsd",
       config = {
         host    = "127.0.0.1",
@@ -204,8 +204,8 @@ describe("Plugin: statsd (log)", function()
         }},
       }
     })
-    assert(dao.plugins:insert {
-      api_id = api9.id,
+    assert(db.plugins:insert {
+      api = { id = api9.id },
       name   = "statsd",
       config = {
         host    = "127.0.0.1",
@@ -217,8 +217,8 @@ describe("Plugin: statsd (log)", function()
         }},
       },
     })
-    assert(dao.plugins:insert {
-      api_id = api10.id,
+    assert(db.plugins:insert {
+      api = { id = api10.id },
       name   = "statsd",
       config = {
         host = "127.0.0.1",
@@ -231,8 +231,8 @@ describe("Plugin: statsd (log)", function()
         }},
       },
     })
-    assert(dao.plugins:insert {
-      api_id = api11.id,
+    assert(db.plugins:insert {
+      api = { id = api11.id },
       name   = "statsd",
       config = {
         host    = "127.0.0.1",
@@ -245,8 +245,8 @@ describe("Plugin: statsd (log)", function()
         }},
       },
     })
-    assert(dao.plugins:insert {
-      api_id = api12.id,
+    assert(db.plugins:insert {
+      api = { id = api12.id },
       name   = "statsd",
       config = {
         host    = "127.0.0.1",
@@ -258,8 +258,8 @@ describe("Plugin: statsd (log)", function()
         }},
       },
     })
-    assert(dao.plugins:insert {
-      api_id = api13.id,
+    assert(db.plugins:insert {
+      api = { id = api13.id },
       name   = "statsd",
       config = {
         host   = "127.0.0.1",
@@ -274,7 +274,7 @@ describe("Plugin: statsd (log)", function()
     client = helpers.proxy_client()
   end)
 
-  teardown(function()
+  lazy_teardown(function()
     if client then client:close() end
     helpers.stop_kong()
   end)

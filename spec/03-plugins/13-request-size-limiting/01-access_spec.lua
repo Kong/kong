@@ -10,8 +10,12 @@ for _, strategy in helpers.each_strategy() do
   describe("Plugin: request-size-limiting (access) [#" .. strategy .. "]", function()
     local proxy_client
 
-    setup(function()
-      local bp = helpers.get_db_utils(strategy)
+    lazy_setup(function()
+      local bp = helpers.get_db_utils(strategy, {
+        "routes",
+        "services",
+        "plugins",
+      })
 
       local route = bp.routes:insert {
         hosts = { "limit.com" },
@@ -19,7 +23,7 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name     = "request-size-limiting",
-        route_id = route.id,
+        route = { id = route.id },
         config   = {
           allowed_payload_size = TEST_SIZE
         }
@@ -33,7 +37,7 @@ for _, strategy in helpers.each_strategy() do
       proxy_client = helpers.proxy_client()
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       if proxy_client then
         proxy_client:close()
       end

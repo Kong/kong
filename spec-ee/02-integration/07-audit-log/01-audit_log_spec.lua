@@ -3,10 +3,11 @@ local cjson = require "cjson"
 
 for _, strategy in helpers.each_strategy() do
   describe("audit_log with #" .. strategy, function()
-    local dao, admin_client, proxy_client
+    local admin_client, proxy_client
+    local db, bp
 
     setup(function()
-      dao = select(3, helpers.get_db_utils(strategy))
+      bp, db = helpers.get_db_utils(strategy)
 
       assert(helpers.start_kong({
         database   = strategy,
@@ -22,6 +23,9 @@ for _, strategy in helpers.each_strategy() do
     before_each(function()
       admin_client = helpers.admin_client()
       proxy_client = helpers.proxy_client()
+
+      db:truncate("audit_objects")
+      db:truncate("audit_requests")
     end)
 
     after_each(function()
@@ -30,22 +34,18 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     local function delay()
-      ngx.sleep(strategy == "cassandra" and 1 or 0.3)
+      ngx.sleep(strategy == "cassandra" and 1.5 or 0.5)
     end
 
     describe("audit requests", function()
-      local req_id, ws_foo
-
       it("creates a single audit log entry", function()
         local res = assert(admin_client:send({
           path = "/",
         }))
         assert.res_status(200, res)
-        req_id = res.headers["X-Kong-Admin-Request-ID"]
+        local req_id = res.headers["X-Kong-Admin-Request-ID"]
 
         delay()
-
-        assert.same(1, dao.audit_requests:count())
 
         res = assert(admin_client:send({
           path = "/audit/requests"
@@ -53,48 +53,41 @@ for _, strategy in helpers.each_strategy() do
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
 
-        delay()
-
+        assert.same(1, #json.data)
         assert.same(req_id, json.data[1].request_id)
-      end)
 
-      it("creates a second log entry for the audit endpoint request", function()
-        assert.same(2, dao.audit_requests:count())
+        res = assert(admin_client:send({
+          path = "/audit/requests"
+        }))
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+
+        assert.same(2, #json.data)
       end)
 
       it("creates an entry with the appropriate workspace association", function()
-        local res = assert(admin_client:send {
-          method = "POST",
-          path   = "/workspaces",
-          body   = { 
-            name = "foo",
-          },
-          headers = { 
-            ["Content-Type"] = "application/json",
-          }
-        })  
-        local body = assert.res_status(201, res)
-        ws_foo = cjson.decode(body)
+        local ws_foo = assert(bp.workspaces:insert({
+          name = "foo",
+        }))
 
-        res = assert(admin_client:send({
+        local res = assert(admin_client:send({
           path = "/foo/consumers",
         }))
         assert.res_status(200, res)
-        req_id = res.headers["X-Kong-Admin-Request-ID"]
 
         delay()
 
         res = assert(admin_client:send({
-          path = "/audit/requests?request_id=" .. req_id
+          path = "/audit/requests"
         }))
-        body = assert.res_status(200, res)
-        local json = cjson.decode(body)
+        local json = cjson.decode(assert.res_status(200, res))
 
+        assert.same(1, #json.data)
         assert.same(ws_foo.id, json.data[1].workspace)
       end)
 
       it("does not sign the audit log entry by default", function()
-        local rows = dao.audit_requests:find_all()
+        local rows = db.audit_requests:select_all()
         for _, row in ipairs(rows) do
           assert.is_nil(row.signature)
         end
@@ -105,7 +98,7 @@ for _, strategy in helpers.each_strategy() do
           path = "/fdsfds/consumers",
         }))
         assert.res_status(404, res)
-        req_id = res.headers["X-Kong-Admin-Request-ID"]
+        local req_id = res.headers["X-Kong-Admin-Request-ID"]
 
         delay()
 
@@ -115,88 +108,16 @@ for _, strategy in helpers.each_strategy() do
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
 
-        assert.is_nil(json.data[1].workspace)
+        assert.same(1, #json.data)
+        assert.same(ngx.null, json.data[1].workspace)
       end)
 
     end)
 
-    -- XXX EE: flaky
-    pending("audit objects", function()
+    describe("audit objects", function()
       describe("creates an audit log entry", function()
         describe("for object", function()
-          local id
-
           it("CREATE", function()
-            local res = assert(admin_client:send({
-              method = "POST",
-              path   = "/consumers",
-              body   = {
-                username = "bob"
-              },
-              headers = {
-                ["Content-Type"] = "application/json",
-              }
-            }))
-            local body = assert.res_status(201, res)
-            local json = cjson.decode(body)
-            id = json.id
-  
-            delay()
-  
-            local rows = dao.audit_objects:find_all({
-              request_id = res.headers["X-Kong-Admin-Request-ID"],
-              dao_name   = "consumers",
-            })
-            assert.same(1, #rows)
-            assert.same("create", rows[1].operation)
-            assert.matches('"username":"bob"', rows[1].entity, nil, true)
-          end)
-
-          it("UPDATE", function()
-            local res = assert(admin_client:send({
-              method = "PATCH",
-              path   = "/consumers/" .. id,
-              body   = {
-                username = "fred"
-              },
-              headers = {
-              ["Content-Type"] = "application/json",
-              }
-            }))
-            assert.res_status(200, res)
-
-            delay()
-
-            local rows = dao.audit_objects:find_all({
-              request_id = res.headers["X-Kong-Admin-Request-ID"],
-              dao_name   = "consumers",
-            })
-            assert.same(1, #rows)
-            assert.same("update", rows[1].operation)
-            assert.matches('"username":"fred"', rows[1].entity, nil, true)
-          end)
-
-          it("DELETE", function()
-            local res = assert(admin_client:send({
-              method = "DELETE",
-              path   = "/consumers/" .. id,
-            }))
-            assert.res_status(204, res)
-
-            delay()
-
-            local rows = dao.audit_objects:find_all({
-              request_id = res.headers["X-Kong-Admin-Request-ID"],
-              dao_name   = "consumers",
-            })
-            assert.same(1, #rows)
-            assert.same("delete", rows[1].operation)
-            assert.matches('"username":"fred"', rows[1].entity, nil, true)
-          end)
-        end)
-
-        describe("for workspace associations", function()
-          it("", function()
             local res = assert(admin_client:send({
               method = "POST",
               path   = "/consumers",
@@ -211,13 +132,104 @@ for _, strategy in helpers.each_strategy() do
   
             delay()
   
-            local rows = dao.audit_objects:find_all({
-              request_id = res.headers["X-Kong-Admin-Request-ID"],
-              dao_name   = "workspace_entities",
+            local body = assert.res_status(200, admin_client:get("/audit/objects"))
+            local json = cjson.decode(body)
+
+            assert.same(4, #json.data)
+
+            for _, object in ipairs(json.data) do
+              assert.same("create", object.operation)
+              if object.dao_name == "consumers" then
+                assert.matches('"username":"bob"', object.entity, nil, true)
+              end
+            end
+          end)
+
+          it("UPDATE", function()
+            -- note: as object audit log events are inserted from worker events,
+            -- entities inserted directly from the dao are not accounted for
+            local c1 = bp.consumers:insert({
+              username = "c1",
             })
-            assert.same(2, #rows)
-            assert.same("create", rows[1].operation)
-            assert.same("create", rows[2].operation)
+
+            local res = assert(admin_client:patch("/consumers/" .. c1.id, {
+              body   = {
+                username = "c2"
+              },
+              headers = {
+              ["Content-Type"] = "application/json",
+              }
+            }))
+            assert.res_status(200, res)
+
+            delay()
+
+            local body = assert.res_status(200, admin_client:get("/audit/objects"))
+            local json = cjson.decode(body)
+
+            assert.same(3, #json.data)
+
+            for _, object in ipairs(json.data) do
+              assert.same("update", object.operation)
+              if object.dao_name == "consumers" then
+                assert.matches('"username":"c2"', object.entity, nil, true)
+              end
+            end
+          end)
+
+          it("DELETE", function()
+            local c1 = bp.consumers:insert({
+              username = "fred",
+            })
+
+            local res = assert(admin_client:send({
+              method = "DELETE",
+              path   = "/consumers/" .. c1.id,
+            }))
+            assert.res_status(204, res)
+
+            delay()
+
+            local body = assert.res_status(200, admin_client:get("/audit/objects"))
+            local json = cjson.decode(body)
+
+            assert.same(4, #json.data)
+
+            for _, object in ipairs(json.data) do
+              assert.same("delete", object.operation)
+              if object.dao_name == "consumers" then
+                assert.matches('"username":"fred"', object.entity, nil, true)
+              end
+            end
+          end)
+        end)
+
+        describe("for workspace associations", function()
+          it("", function()
+            local res = assert(admin_client:send({
+              method = "POST",
+              path   = "/consumers",
+              body   = {
+                username = "c3"
+              },
+              headers = {
+                ["Content-Type"] = "application/json",
+              }
+            }))
+            assert.res_status(201, res)
+
+            delay()
+
+            local body = assert.res_status(200, admin_client:get("/audit/objects"))
+            local json = cjson.decode(body)
+
+            -- 1 row for the main entity, plus 3 in workspace_entities, one
+            -- for each non-nil unique field, plus PK
+            assert.same(4, #json.data)
+            assert.same("create", json.data[1].operation)
+            assert.same("create", json.data[2].operation)
+            assert.same("create", json.data[3].operation)
+            assert.same("create", json.data[4].operation)
           end)
         end)
       end)
@@ -225,10 +237,10 @@ for _, strategy in helpers.each_strategy() do
   end)
 
   describe("audit_log ignore_methods with #" .. strategy, function()
-    local dao, admin_client, proxy_client
+    local db, admin_client, proxy_client
 
     setup(function()
-      dao = select(3, helpers.get_db_utils(strategy))
+      db = select(2, helpers.get_db_utils(strategy))
 
       assert(helpers.start_kong({
         database   = strategy,
@@ -236,9 +248,6 @@ for _, strategy in helpers.each_strategy() do
         audit_log  = "on",
         audit_log_ignore_methods = "GET",
       }))
-
-      dao.audit_requests:truncate()
-      dao.audit_objects:truncate()
     end)
 
     teardown(function()
@@ -248,6 +257,9 @@ for _, strategy in helpers.each_strategy() do
     before_each(function()
       admin_client = helpers.admin_client()
       proxy_client = helpers.proxy_client()
+
+      db:truncate("audit_objects")
+      db:truncate("audit_requests")
     end)
 
     after_each(function()
@@ -268,7 +280,10 @@ for _, strategy in helpers.each_strategy() do
 
         delay()
 
-        assert.same(0, dao.audit_requests:count())
+        local body = assert.res_status(200, admin_client:get("/audit/requests"))
+        local json = cjson.decode(body)
+
+        assert.same(0, #json.data)
       end)
     end)
 
@@ -288,16 +303,19 @@ for _, strategy in helpers.each_strategy() do
 
         delay()
 
-        assert.same(1, dao.audit_requests:count())
+        local body = assert.res_status(200, admin_client:get("/audit/requests"))
+        local json = cjson.decode(body)
+
+        assert.same(1, #json.data)
       end)
     end)
   end)
 
   describe("audit_log ignore_paths with #" .. strategy, function()
-    local dao, admin_client, proxy_client
+    local db, admin_client, proxy_client
 
     setup(function()
-      dao = select(3, helpers.get_db_utils(strategy))
+      db = select(2, helpers.get_db_utils(strategy))
 
       assert(helpers.start_kong({
         database   = strategy,
@@ -305,9 +323,6 @@ for _, strategy in helpers.each_strategy() do
         audit_log  = "on",
         audit_log_ignore_paths = "/consumers,/foo",
       }))
-
-      dao.audit_requests:truncate()
-      dao.audit_objects:truncate()
     end)
 
     teardown(function()
@@ -317,6 +332,9 @@ for _, strategy in helpers.each_strategy() do
     before_each(function()
       admin_client = helpers.admin_client()
       proxy_client = helpers.proxy_client()
+
+      db:truncate("audit_objects")
+      db:truncate("audit_requests")
     end)
 
     after_each(function()
@@ -344,7 +362,10 @@ for _, strategy in helpers.each_strategy() do
 
         delay()
 
-        assert.same(0, dao.audit_requests:count())
+        local body = assert.res_status(200, admin_client:get("/audit/requests"))
+        local json = cjson.decode(body)
+
+        assert.same(0, #json.data)
       end)
     end)
 
@@ -364,7 +385,7 @@ for _, strategy in helpers.each_strategy() do
 
         delay()
 
-        assert.same(1, dao.audit_requests:count())
+        assert.same(1, #db.audit_requests:select_all())
 
         res = assert(admin_client:send({
           method = "POST",
@@ -378,17 +399,16 @@ for _, strategy in helpers.each_strategy() do
           }
         }))
         assert.res_status(201, res)
+        print(res)
 
-        delay()
-
-        assert.same(1, dao.audit_requests:count())
+        assert.same(1, #db.audit_requests:select_all())
       end)
     end)
 
     describe("for an unrelated path", function()
       setup(function()
-        dao.audit_requests:truncate()
-        dao.audit_objects:truncate()
+        db.audit_requests:truncate()
+        db.audit_objects:truncate()
       end)
 
       it("generates an audit log entry", function()
@@ -407,7 +427,10 @@ for _, strategy in helpers.each_strategy() do
 
         delay()
 
-        assert.same(1, dao.audit_requests:count())
+        local body = assert.res_status(200, admin_client:get("/audit/requests"))
+        local json = cjson.decode(body)
+
+        assert.same(1, #json.data)
       end)
     end)
 
@@ -444,10 +467,12 @@ for _, strategy in helpers.each_strategy() do
 
         -- 3 entries, 2 for the prevous 2 object creations
         -- and 1 for the workspace_association
-        assert.same(3, dao.audit_requests:count())
+        local body = assert.res_status(200, admin_client:get("/audit/objects"))
+        local json = cjson.decode(body)
 
-        local rows = dao.audit_objects:find_all()
-        for _, row in ipairs(rows) do
+        assert.same(4, #json.data)
+
+        for _, row in ipairs(json.data) do
           local f = {
             services = true,
             workspaces = true,
@@ -461,10 +486,10 @@ for _, strategy in helpers.each_strategy() do
   end)
 
   describe("audit_log ignore_tables with #" .. strategy, function()
-    local dao, admin_client, proxy_client
+    local db, admin_client, proxy_client
 
     setup(function()
-      dao = select(3, helpers.get_db_utils(strategy))
+      db = select(2, helpers.get_db_utils(strategy))
 
       assert(helpers.start_kong({
         database   = strategy,
@@ -473,8 +498,8 @@ for _, strategy in helpers.each_strategy() do
         audit_log_ignore_tables = "consumers",
       }))
 
-      dao.audit_requests:truncate()
-      dao.audit_objects:truncate()
+      db:truncate("audit_objects")
+      db:truncate("audit_requests")
     end)
 
     teardown(function()
@@ -512,9 +537,11 @@ for _, strategy in helpers.each_strategy() do
         delay()
 
         -- workspace_entities audit log entries
-        assert.same(2, dao.audit_objects:count())
-        local rows = dao.audit_objects:find_all()
-        for _, row in ipairs(rows) do
+        local body = assert.res_status(200, admin_client:get("/audit/objects"))
+        local json = cjson.decode(body)
+        assert.same(3, #json.data)
+
+        for _, row in ipairs(json.data) do
           assert.not_same(row.dao_name, "consumers")
         end
       end)
@@ -522,8 +549,8 @@ for _, strategy in helpers.each_strategy() do
 
     describe("for an unrelated table", function()
       setup(function()
-        dao.audit_requests:truncate()
-        dao.audit_objects:truncate()
+        db.audit_requests:truncate()
+        db.audit_objects:truncate()
       end)
 
       it("generates a log entry", function()
@@ -542,17 +569,19 @@ for _, strategy in helpers.each_strategy() do
 
         delay()
 
-        assert.same(1, dao.audit_requests:count())
+        local body = assert.res_status(200, admin_client:get("/audit/objects"))
+        local json = cjson.decode(body)
+        assert.same(3, #json.data)
       end)
     end)
   end)
 
   describe("audit_log record_ttl with #" .. strategy, function()
-    local dao, admin_client, proxy_client
+    local db, admin_client, proxy_client
     local MOCK_TTL = 2
 
     setup(function()
-      dao = select(3, helpers.get_db_utils(strategy))
+      db = select(2, helpers.get_db_utils(strategy))
 
       assert(helpers.start_kong({
         database   = strategy,
@@ -560,9 +589,6 @@ for _, strategy in helpers.each_strategy() do
         audit_log  = "on",
         audit_log_record_ttl = MOCK_TTL,
       }))
-
-      dao.audit_requests:truncate()
-      dao.audit_objects:truncate()
     end)
 
     teardown(function()
@@ -572,6 +598,9 @@ for _, strategy in helpers.each_strategy() do
     before_each(function()
       admin_client = helpers.admin_client()
       proxy_client = helpers.proxy_client()
+
+      db.audit_requests:truncate()
+      db.audit_objects:truncate()
     end)
 
     after_each(function()
@@ -592,7 +621,9 @@ for _, strategy in helpers.each_strategy() do
 
         delay()
 
-        assert.same(1, dao.audit_requests:count())
+        local body = assert.res_status(200, admin_client:get("/audit/requests"))
+        local json = cjson.decode(body)
+        assert.same(1, #json.data)
 
         ngx.sleep(MOCK_TTL + 1)
 
@@ -603,16 +634,18 @@ for _, strategy in helpers.each_strategy() do
 
         delay()
 
-        assert.same(1, dao.audit_requests:count())
+        body = assert.res_status(200, admin_client:get("/audit/requests"))
+        json = cjson.decode(body)
+        assert.same(1, #json.data)
       end)
     end)
   end)
 
   describe("audit_log signing_key with #" .. strategy, function()
-    local dao, admin_client, proxy_client
+    local db, admin_client, proxy_client
 
     setup(function()
-      dao = select(3, helpers.get_db_utils(strategy))
+      db = select(2, helpers.get_db_utils(strategy))
 
       os.execute("openssl genrsa -out ./spec/fixtures/key.pem 2048 2>/dev/null")
 
@@ -622,9 +655,6 @@ for _, strategy in helpers.each_strategy() do
         audit_log  = "on",
         audit_log_signing_key = "./spec/fixtures/key.pem",
       }))
-
-      dao.audit_requests:truncate()
-      dao.audit_objects:truncate()
     end)
 
     teardown(function()
@@ -636,6 +666,9 @@ for _, strategy in helpers.each_strategy() do
     before_each(function()
       admin_client = helpers.admin_client()
       proxy_client = helpers.proxy_client()
+
+      db.audit_requests:truncate()
+      db.audit_objects:truncate()
     end)
 
     after_each(function()
@@ -656,10 +689,11 @@ for _, strategy in helpers.each_strategy() do
 
         delay()
 
-        assert.same(1, dao.audit_requests:count())
+        local body = assert.res_status(200, admin_client:get("/audit/requests"))
+        local json = cjson.decode(body)
+        assert.same(1, #json.data)
 
-        local entry = dao.audit_requests:find_all()[1]
-        assert.not_nil(entry.signature)
+        assert.not_nil(json.data[1].signature)
       end)
     end)
   end)
@@ -667,10 +701,10 @@ for _, strategy in helpers.each_strategy() do
   -- This test is for cases when ngx.ctx.workspaces is not set correctly
   -- when serving requests like "GET /userinfo" or "GET /default/kong".
   describe("audit_log with rbac and admin_gui_auth" .. strategy, function()
-    local dao, admin_client, proxy_client
+    local db, admin_client, proxy_client
 
     setup(function()
-      dao = select(3, helpers.get_db_utils(strategy))
+      db = select(2, helpers.get_db_utils(strategy))
 
       assert(helpers.start_kong({
         database   = strategy,
@@ -680,9 +714,6 @@ for _, strategy in helpers.each_strategy() do
         enforce_rbac = "on",
         admin_gui_listen = "0.0.0.0:8002",
       }))
-
-      dao.audit_requests:truncate()
-      dao.audit_objects:truncate()
     end)
 
     teardown(function()
@@ -692,6 +723,9 @@ for _, strategy in helpers.each_strategy() do
     before_each(function()
       admin_client = helpers.admin_client()
       proxy_client = helpers.proxy_client()
+
+      db.audit_requests:truncate()
+      db.audit_objects:truncate()
     end)
 
     after_each(function()
@@ -712,7 +746,7 @@ for _, strategy in helpers.each_strategy() do
 
         delay()
 
-        assert.same(1, dao.audit_requests:count())
+        assert.same(1, #db.audit_requests:select_all())
       end)
     end)
   end)

@@ -1,27 +1,17 @@
 local typedefs = require "kong.db.schema.typedefs"
 
 
-local function validate_name(name)
-  if not string.match(name, "^[%w%.%-%_~]+$") then
-    return nil,
-           "invalid value '" .. name ..
-           "': it must only contain alphanumeric and '., -, _, ~' characters"
-  end
-
-  return true
-end
-
-
 return {
   name = "services",
   primary_key = { "id" },
   workspaceable = true,
+  endpoint_key = "name",
+
   fields = {
     { id              = typedefs.uuid, },
-    { created_at      = { type = "integer", timestamp = true, auto = true }, },
-    { updated_at      = { type = "integer", timestamp = true, auto = true }, },
-    { name            = { type = "string", unique = true,
-                          custom_validator = validate_name }, },
+    { created_at      = typedefs.auto_timestamp_s },
+    { updated_at      = typedefs.auto_timestamp_s },
+    { name            = typedefs.name },
     { retries         = { type = "integer", default = 5, between = { 0, 32767 } }, },
     -- { tags          = { type = "array", array = { type = "string" } }, },
     { protocol        = typedefs.protocol { required = true, default = "http" } },
@@ -32,5 +22,12 @@ return {
     { write_timeout   = typedefs.timeout { default = 60000 }, },
     { read_timeout    = typedefs.timeout { default = 60000 }, },
     -- { load_balancer = { type = "foreign", reference = "load_balancers" } },
+  },
+
+  entity_checks = {
+    { conditional = { if_field = "protocol",
+                      if_match = { one_of = { "tcp", "tls" }},
+                      then_field = "path",
+                      then_match = { eq = ngx.null }}},
   },
 }

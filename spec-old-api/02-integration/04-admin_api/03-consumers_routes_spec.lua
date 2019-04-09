@@ -23,7 +23,6 @@ describe("Admin API", function()
   local consumer, consumer2, consumer3
   before_each(function()
     helpers.dao:truncate_tables()
-    helpers.register_consumer_relations(helpers.dao)
     consumer = assert(helpers.dao.consumers:insert {
       username = "bob",
       custom_id = "1234"
@@ -373,7 +372,6 @@ describe("Admin API", function()
     describe("GET", function()
       before_each(function()
         helpers.dao:truncate_tables()
-        helpers.register_consumer_relations(helpers.dao)
 
         for i = 1, 10 do
           assert(helpers.dao.consumers:insert {
@@ -655,7 +653,6 @@ describe("Admin API", function()
   describe("/consumers/{username_or_id}/plugins", function()
     before_each(function()
       helpers.dao.plugins:truncate()
-      helpers.register_consumer_relations(helpers.dao)
     end)
     describe("POST", function()
       it_content_types("creates a plugin config using a consumer id", function(content_type)

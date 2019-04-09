@@ -1,11 +1,11 @@
 local helpers = require "spec.helpers"
 
 
-describe("DAO db/cassandra.lua", function()
+describe("DAO db/cassandra.lua #cassandra", function()
   local cassandra_db
 
 
-  setup(function()
+  lazy_setup(function()
     local dao = select(3, helpers.get_db_utils("cassandra"))
     cassandra_db = dao.db
   end)

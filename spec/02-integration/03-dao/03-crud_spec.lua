@@ -20,8 +20,11 @@ say:set("assertion.raw_table.negative", "Expected %s\nto not be a raw_table")
 assert:register("assertion", "raw_table", raw_table, "assertion.raw_table.positive", "assertion.raw_table.negative")
 
 local helpers = require "spec.02-integration.03-dao.helpers"
+local spec_helpers = require "spec.helpers"
 local Factory = require "kong.dao.factory"
+local DB = require "kong.db"
 local version = require "version"
+local singletons = require "kong.singletons"
 
 local api_tbl = {
   name = "example",
@@ -33,25 +36,28 @@ local api_tbl = {
 
 helpers.for_each_dao(function(kong_config)
   describe("Model (CRUD) with DB: #" .. kong_config.database, function()
-    local factory, apis, oauth2_credentials
-    setup(function()
-      factory = assert(Factory.new(kong_config))
+    local factory, apis
+    lazy_setup(function()
+      local db = DB.new(kong_config)
+      assert(db:init_connector())
+
+      spec_helpers.bootstrap_database(db)
+
+      factory = assert(Factory.new(kong_config, db))
+      assert(factory:init())
       apis = factory.apis
 
-      -- DAO used for testing arrays
-      oauth2_credentials = factory.oauth2_credentials
-      oauth2_credentials.constraints.unique.client_id.schema.fields.consumer_id.required = false
-
-      assert(factory:run_migrations())
+      singletons.db = db
+      singletons.dao = factory
     end)
-    teardown(function()
-      factory:truncate_tables()
+    lazy_teardown(function()
+      factory:truncate_table("apis")
       ngx.shared.kong_cassandra:flush_expired()
     end)
 
     describe("insert()", function()
       after_each(function()
-        factory:truncate_tables()
+        factory:truncate_table("apis")
       end)
       it("insert a valid API", function()
         local api, err = apis:insert(api_tbl)
@@ -73,32 +79,6 @@ helpers.for_each_dao(function(kong_config)
         assert.is_table(api)
         assert.equal("example", api.name)
         assert.raw_table(api)
-      end)
-      it("insert a valid array field and return it properly", function()
-        local res, err = oauth2_credentials:insert {
-          name = "test_app",
-          redirect_uri = "https://example.org"
-        }
-        assert.falsy(err)
-        assert.is_table(res)
-        assert.equal("test_app", res.name)
-        assert.is_table(res.redirect_uri)
-        assert.equal(1, #res.redirect_uri)
-        assert.same({"https://example.org"}, res.redirect_uri)
-        assert.raw_table(res)
-      end)
-      it("insert a valid array field and return it properly bis", function()
-        local res, err = oauth2_credentials:insert {
-          name = "test_app",
-          redirect_uri = "https://example.org, https://example.com"
-        }
-        assert.falsy(err)
-        assert.is_table(res)
-        assert.equal("test_app", res.name)
-        assert.is_table(res.redirect_uri)
-        assert.equal(2, #res.redirect_uri)
-        assert.same({"https://example.org", "https://example.com"}, res.redirect_uri)
-        assert.raw_table(res)
       end)
       it("add DAO-inserted values", function()
         local api, err = apis:insert(api_tbl)
@@ -180,7 +160,7 @@ helpers.for_each_dao(function(kong_config)
         api_fixture = api
       end)
       after_each(function()
-        factory:truncate_tables()
+        factory:truncate_table("apis")
       end)
 
       it("select by primary key", function()
@@ -219,8 +199,8 @@ helpers.for_each_dao(function(kong_config)
     end)
 
     describe("find_all()", function()
-      setup(function()
-        factory:truncate_tables()
+      lazy_setup(function()
+        factory:truncate_table("apis")
 
         for i = 1, 100 do
           local api, err = apis:insert {
@@ -231,16 +211,9 @@ helpers.for_each_dao(function(kong_config)
           assert.falsy(err)
           assert.truthy(api)
         end
-
-        local res, err = oauth2_credentials:insert {
-          name = "test_app",
-          redirect_uri = "https://example.org, https://example.com"
-        }
-        assert.falsy(err)
-        assert.truthy(res)
       end)
-      teardown(function()
-        factory:truncate_tables()
+      lazy_teardown(function()
+        factory:truncate_table("apis")
       end)
 
       it("retrieve all rows", function()
@@ -269,16 +242,6 @@ helpers.for_each_dao(function(kong_config)
         assert.is_table(rows)
         assert.equal(1, #rows)
         assert.equal("fixture_100", rows[1].name)
-      end)
-      it("return rows with arrays", function()
-        local rows, err = oauth2_credentials:find_all()
-        assert.falsy(err)
-        assert.is_table(rows)
-        assert.equal(1, #rows)
-        assert.equal("test_app", rows[1].name)
-        assert.is_table(rows[1].redirect_uri)
-        assert.equal(2, #rows[1].redirect_uri)
-        assert.same({ "https://example.org", "https://example.com" }, rows[1].redirect_uri)
       end)
       pending("return empty table if no row match", function()
         local rows, err = apis:find_all {
@@ -323,8 +286,8 @@ helpers.for_each_dao(function(kong_config)
     end)
 
     describe("find_page()", function()
-      setup(function()
-        factory:truncate_tables()
+      lazy_setup(function()
+        factory:truncate_table("apis")
 
         for i = 1, 100 do
           local api, err = apis:insert {
@@ -337,8 +300,8 @@ helpers.for_each_dao(function(kong_config)
           assert.truthy(api)
         end
       end)
-      teardown(function()
-        factory:truncate_tables()
+      lazy_teardown(function()
+        factory:truncate_table("apis")
       end)
 
       it("has a default_page size (100)", function()
@@ -378,7 +341,7 @@ helpers.for_each_dao(function(kong_config)
 
         assert.unique(all_rows)
       end)
-      it("support a filter", function()
+      it("#flaky support a filter", function()
         local rows, err, offset = apis:find_page {
           name = "fixture_2"
         }
@@ -388,7 +351,7 @@ helpers.for_each_dao(function(kong_config)
         assert.equal(1, #rows)
         assert.equal("fixture_2", rows[1].name)
       end)
-      it("filter supports primary keys", function()
+      it("#flaky filter supports primary keys", function()
         local rows, err = apis:find_page {
           name = "fixture_2"
         }
@@ -494,8 +457,8 @@ helpers.for_each_dao(function(kong_config)
     end)
 
     describe("count()", function()
-      setup(function()
-        factory:truncate_tables()
+      lazy_setup(function()
+        factory:truncate_table("apis")
 
         for i = 1, 100 do
           local api, err = apis:insert {
@@ -508,8 +471,8 @@ helpers.for_each_dao(function(kong_config)
         end
       end)
 
-      teardown(function()
-        factory:truncate_tables()
+      lazy_teardown(function()
+        factory:truncate_table("apis")
       end)
 
       it("return the count of rows", function()
@@ -517,7 +480,7 @@ helpers.for_each_dao(function(kong_config)
         assert.falsy(err)
         assert.equal(100, count)
       end)
-      it("return the count of rows with filtering", function()
+      it("#flaky return the count of rows with filtering", function()
         local count, err = apis:count {name = "fixture_1"}
         assert.falsy(err)
         assert.equal(1, count)
@@ -558,14 +521,14 @@ helpers.for_each_dao(function(kong_config)
     describe("update()", function()
       local api_fixture
       before_each(function()
-        factory:truncate_tables()
+        factory:truncate_table("apis")
 
         local api, err = apis:insert(api_tbl)
         assert.falsy(err)
         api_fixture = api
       end)
       after_each(function()
-        factory:truncate_tables()
+        factory:truncate_table("apis")
       end)
 
       it("update by primary key", function()
@@ -764,18 +727,18 @@ helpers.for_each_dao(function(kong_config)
     describe("delete()", function()
       local api_fixture
       before_each(function()
-        factory:truncate_tables()
+        factory:truncate_table("apis")
 
         local api, err = apis:insert(api_tbl)
         assert.falsy(err)
         api_fixture = api
       end)
       after_each(function()
-        factory:truncate_tables()
+        factory:truncate_table("apis")
       end)
 
       it("delete a row", function()
-        local res, err = apis:delete(api_fixture)
+        local res, err = apis:delete({ id = api_fixture.id })
         assert.falsy(err)
         assert.same(res, api_fixture)
 
@@ -786,9 +749,6 @@ helpers.for_each_dao(function(kong_config)
       it("return false if no rows were deleted", function()
         local res, err = apis:delete {
           id = "6f204116-d052-11e5-bec8-5bc780ae6c56",
-          name = "inexistent",
-          hosts = { "inexistent.com" },
-          upstream_url = "http://inexistent.com"
         }
         assert.falsy(err)
         assert.falsy(res)
@@ -812,24 +772,27 @@ helpers.for_each_dao(function(kong_config)
       end)
     end)
 
-    describe("errors", function()
+    describe("#flaky errors", function()
       it("returns errors prefixed by the DB type in __tostring()", function()
         local pg_port = kong_config.pg_port
+        local pg_timeout = kong_config.pg_timeout
         local cassandra_port = kong_config.cassandra_port
         local cassandra_timeout = kong_config.cassandra_timeout
         finally(function()
           kong_config.pg_port = pg_port
+          kong_config.pg_timeout = pg_timeout
           kong_config.cassandra_port = cassandra_port
           kong_config.cassandra_timeout = cassandra_timeout
           ngx.shared.kong_cassandra:flush_all()
           ngx.shared.kong_cassandra:flush_expired()
         end)
         kong_config.pg_port = 3333
+        kong_config.pg_timeout = 1000
         kong_config.cassandra_port = 3333
         kong_config.cassandra_timeout = 1000
 
         assert.error_matches(function()
-          local fact = assert(Factory.new(kong_config))
+          local fact = assert(Factory.new(kong_config, DB.new(kong_config)))
           assert(fact.apis:find_all())
         end, "[" .. kong_config.database .. " error]", nil, true)
       end)

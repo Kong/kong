@@ -69,8 +69,8 @@ function _M.new(opts)
     return error("opts.poll_offset must be a number")
   end
 
-  if not opts.dao then
-    return error("opts.dao is required")
+  if not opts.db then
+    return error("opts.db is required")
   end
 
   -- strategy selection
@@ -81,22 +81,21 @@ function _M.new(opts)
 
   do
     local db_strategy
-    local dao_factory = opts.dao
 
-    if dao_factory.db_type == "cassandra" then
+    if opts.db.strategy == "cassandra" then
       db_strategy = require "kong.cluster_events.strategies.cassandra"
 
-    elseif dao_factory.db_type == "postgres" then
+    elseif opts.db.strategy == "postgres" then
       db_strategy = require "kong.cluster_events.strategies.postgres"
 
     else
       return error("no cluster_events strategy for " ..
-                   dao_factory.db_type)
+                   opts.db.strategy)
     end
 
     local event_ttl_in_db = max(poll_offset * 10, MIN_EVENT_TTL_IN_DB)
 
-    strategy = db_strategy.new(dao_factory, PAGE_SIZE, event_ttl_in_db)
+    strategy = db_strategy.new(opts.db, PAGE_SIZE, event_ttl_in_db)
   end
 
   -- instantiation

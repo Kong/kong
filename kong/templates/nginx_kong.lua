@@ -29,15 +29,15 @@ lua_socket_pool_size ${{LUA_SOCKET_POOL_SIZE}};
 lua_max_running_timers 4096;
 lua_max_pending_timers 16384;
 lua_shared_dict kong                5m;
-lua_shared_dict kong_cache          ${{MEM_CACHE_SIZE}};
+lua_shared_dict kong_db_cache       ${{MEM_CACHE_SIZE}};
 lua_shared_dict kong_db_cache_miss 12m;
+lua_shared_dict kong_locks          8m;
 lua_shared_dict kong_process_events 5m;
 lua_shared_dict kong_cluster_events 5m;
 lua_shared_dict kong_vitals_counters 50m;
 lua_shared_dict kong_vitals_lists   1m;
 lua_shared_dict kong_healthchecks   5m;
 lua_shared_dict kong_rate_limiting_counters 12m;
-lua_shared_dict prometheus_metrics           5m;
 lua_shared_dict kong_reports_apis            1m;
 lua_shared_dict kong_reports_consumers       10m;
 lua_shared_dict kong_reports_routes          1m;
@@ -51,13 +51,18 @@ lua_ssl_trusted_certificate '${{LUA_SSL_TRUSTED_CERTIFICATE}}';
 lua_ssl_verify_depth ${{LUA_SSL_VERIFY_DEPTH}};
 > end
 
+# injected nginx_http_* directives
+> for _, el in ipairs(nginx_http_directives)  do
+$(el.name) $(el.value);
+> end
+
 init_by_lua_block {
-    kong = require 'kong'
-    kong.init()
+    Kong = require 'kong'
+    Kong.init()
 }
 
 init_worker_by_lua_block {
-    kong.init_worker()
+    Kong.init_worker()
 }
 
 
@@ -65,9 +70,11 @@ init_worker_by_lua_block {
 upstream kong_upstream {
     server 0.0.0.1;
     balancer_by_lua_block {
-        kong.balancer()
+        Kong.balancer()
     }
+> if upstream_keepalive > 0 then
     keepalive ${{UPSTREAM_KEEPALIVE}};
+> end
 }
 
 server {
@@ -86,9 +93,9 @@ server {
 > if proxy_ssl_enabled then
     ssl_certificate ${{SSL_CERT}};
     ssl_certificate_key ${{SSL_CERT_KEY}};
-    ssl_protocols TLSv1.1 TLSv1.2;
+    ssl_protocols TLSv1.1 TLSv1.2 TLSv1.3;
     ssl_certificate_by_lua_block {
-        kong.ssl_certificate()
+        Kong.ssl_certificate()
     }
 
     ssl_session_cache shared:SSL:10m;
@@ -108,7 +115,15 @@ server {
     set_real_ip_from   $(trusted_ips[i]);
 > end
 
+    # injected nginx_proxy_* directives
+> for _, el in ipairs(nginx_proxy_directives)  do
+    $(el.name) $(el.value);
+> end
+
     location / {
+        default_type                     '';
+
+        set $ctx_ref                     '';
         set $upstream_host               '';
         set $upstream_upgrade            '';
         set $upstream_connection         '';
@@ -120,11 +135,11 @@ server {
         set $upstream_x_forwarded_port   '';
 
         rewrite_by_lua_block {
-            kong.rewrite()
+            Kong.rewrite()
         }
 
         access_by_lua_block {
-            kong.access()
+            Kong.access()
         }
 
         proxy_http_version 1.1;
@@ -142,22 +157,36 @@ server {
         proxy_pass         $upstream_scheme://kong_upstream$upstream_uri;
 
         header_filter_by_lua_block {
-            kong.header_filter()
+            Kong.header_filter()
         }
 
         body_filter_by_lua_block {
-            kong.body_filter()
+            Kong.body_filter()
         }
 
         log_by_lua_block {
-            kong.log()
+            Kong.log()
         }
     }
 
     location = /kong_error_handler {
         internal;
+        uninitialized_variable_warn off;
+
         content_by_lua_block {
-            kong.handle_error()
+            Kong.handle_error()
+        }
+
+        header_filter_by_lua_block {
+            Kong.header_filter()
+        }
+
+        body_filter_by_lua_block {
+            Kong.body_filter()
+        }
+
+        log_by_lua_block {
+            Kong.log()
         }
     }
 }
@@ -300,7 +329,7 @@ server {
         }
 
         content_by_lua_block {
-            kong.serve_portal_gui({
+            Kong.serve_portal_gui({
                 acah = "Content-Type",
             })
         }
@@ -351,7 +380,7 @@ server {
     location / {
         default_type application/json;
         content_by_lua_block {
-            kong.serve_portal_api({
+            Kong.serve_portal_api({
                 acah = "Content-Type",
             })
         }
@@ -386,7 +415,7 @@ server {
 > if admin_ssl_enabled then
     ssl_certificate ${{ADMIN_SSL_CERT}};
     ssl_certificate_key ${{ADMIN_SSL_CERT_KEY}};
-    ssl_protocols TLSv1.1 TLSv1.2;
+    ssl_protocols TLSv1.1 TLSv1.2 TLSv1.3;
 
     ssl_session_cache shared:SSL:10m;
     ssl_session_timeout 10m;
@@ -394,10 +423,15 @@ server {
     ssl_ciphers ${{SSL_CIPHERS}};
 > end
 
+    # injected nginx_admin_* directives
+> for _, el in ipairs(nginx_admin_directives)  do
+    $(el.name) $(el.value);
+> end
+
     location / {
         default_type application/json;
         content_by_lua_block {
-            kong.serve_admin_api({
+            Kong.serve_admin_api({
                 acah = "Content-Type, ${{RBAC_AUTH_HEADER}}",
             })
         }

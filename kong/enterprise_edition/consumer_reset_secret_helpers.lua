@@ -1,40 +1,26 @@
 local singletons = require "kong.singletons"
 local ee_jwt = require "kong.enterprise_edition.jwt"
 local enums = require "kong.enterprise_edition.dao.enums"
-local now = ngx.now
 
+local INVALIDATED = enums.TOKENS.STATUS.INVALIDATED
+local PENDING = enums.TOKENS.STATUS.PENDING
+local CONSUMED = enums.TOKENS.STATUS.CONSUMED
 
 local _M = {}
 
-local function create(consumer, client_addr, expiry)
-  local rows, err = singletons.dao.consumer_reset_secrets:find_all({
-    consumer_id = consumer.id
-  })
 
-  if err then
+function _M.create(consumer, client_addr, expiry)
+  local reset_secrets = singletons.db.consumer_reset_secrets
+
+  -- Invalidate pending resets
+  local ok, err = _M.invalidate_pending_resets(consumer)
+  if not ok then
     return nil, err
   end
 
-  -- Invalidate any pending resets for this consumer
-  for _, row in ipairs(rows) do
-    if row.status == enums.TOKENS.STATUS.PENDING then
-      local _, err = singletons.dao.consumer_reset_secrets:update({
-            status = enums.TOKENS.STATUS.INVALIDATED,
-            updated_at = now() * 1000,
-          }, {
-            id = row.id
-          })
-
-      if err then
-        -- bail on first error. There's probably something else more wrong.
-        return nil, err
-      end
-    end
-  end
-
   -- Generate new reset
-  local row, err = singletons.dao.consumer_reset_secrets:insert({
-    consumer_id = consumer.id,
+  local row, err = reset_secrets:insert({
+    consumer = { id = consumer.id },
     client_addr = client_addr,
   })
 
@@ -55,6 +41,39 @@ local function create(consumer, client_addr, expiry)
 
   return jwt
 end
-_M.create = create
+
+
+function _M.invalidate_pending_resets(consumer)
+  local reset_secrets = singletons.db.consumer_reset_secrets
+
+  for secret, err in reset_secrets:each_for_consumer({ id = consumer.id }) do
+    if err then
+      return nil, err
+    end
+
+    if secret.status == PENDING then
+      local _, err = reset_secrets:update({
+        id = secret.id,
+      }, {
+        status = INVALIDATED,
+      })
+      if err then
+        return nil, err
+      end
+    end
+  end
+
+  return true
+end
+
+
+function _M.consume_secret(secret_id)
+  return singletons.db.consumer_reset_secrets:update({
+    id = secret_id,
+  }, {
+    status = CONSUMED,
+  })
+end
+
 
 return _M

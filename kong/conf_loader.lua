@@ -10,50 +10,77 @@ local tablex = require "pl.tablex"
 local cjson = require "cjson.safe"
 local utils = require "kong.tools.utils"
 local log = require "kong.cmd.utils.log"
+local env = require "kong.cmd.utils.env"
 local ip = require "kong.tools.ip"
 local ciphers = require "kong.tools.ciphers"
 local ee_conf_loader = require "kong.enterprise_edition.conf_loader"
 
+
+local fmt = string.format
+local concat = table.concat
+
+
 local DEFAULT_PATHS = {
   "/etc/kong/kong.conf",
-  "/etc/kong.conf"
+  "/etc/kong.conf",
 }
+
+
+local HEADERS = constants.HEADERS
+local HEADER_KEY_TO_NAME = {
+  ["server_tokens"] = "server_tokens",
+  ["latency_tokens"] = "latency_tokens",
+  [string.lower(HEADERS.VIA)] = HEADERS.VIA,
+  [string.lower(HEADERS.SERVER)] = HEADERS.SERVER,
+  [string.lower(HEADERS.PROXY_LATENCY)] = HEADERS.PROXY_LATENCY,
+  [string.lower(HEADERS.UPSTREAM_LATENCY)] = HEADERS.UPSTREAM_LATENCY,
+  [string.lower(HEADERS.UPSTREAM_STATUS)] = HEADERS.UPSTREAM_STATUS,
+}
+
+
+local DYNAMIC_KEY_PREFIXES = {
+  ["nginx_http_directives"] = "nginx_http_",
+  ["nginx_proxy_directives"] = "nginx_proxy_",
+  ["nginx_admin_directives"] = "nginx_admin_",
+}
+
 
 local PREFIX_PATHS = {
   nginx_pid = {"pids", "nginx.pid"},
   nginx_err_logs = {"logs", "error.log"},
   nginx_acc_logs = {"logs", "access.log"},
-  nginx_admin_acc_logs = {"logs", "admin_access.log"},
-  nginx_portal_api_acc_logs = {"logs", "portal_api_access.log"},
+  admin_acc_logs = {"logs", "admin_access.log"},
   nginx_conf = {"nginx.conf"},
-  nginx_kong_conf = {"nginx-kong.conf"}
-  ;
-  kong_env = {".kong_env"}
-  ;
+  nginx_kong_conf = {"nginx-kong.conf"},
+  nginx_kong_stream_conf = {"nginx-kong-stream.conf"},
+
+  kong_env = {".kong_env"},
+
   ssl_cert_default = {"ssl", "kong-default.crt"},
   ssl_cert_key_default = {"ssl", "kong-default.key"},
-  ssl_cert_csr_default = {"ssl", "kong-default.csr"}
-  ;
+  ssl_cert_csr_default = {"ssl", "kong-default.csr"},
+
   client_ssl_cert_default = {"ssl", "kong-default.crt"},
   client_ssl_cert_key_default = {"ssl", "kong-default.key"},
-  client_ssl_cert_csr_default = {"ssl", "kong-default.csr"}
-  ;
+
   admin_ssl_cert_default = {"ssl", "admin-kong-default.crt"},
-  admin_ssl_cert_key_default = {"ssl", "admin-kong-default.key"},
-  admin_ssl_cert_csr_default = {"ssl", "admin-kong-default.csr"}
+  admin_ssl_cert_key_default = {"ssl", "admin-kong-default.key"}
+  ;
+
+  -- XXX EE code [[
+  nginx_portal_api_acc_logs = {"logs", "portal_api_access.log"}
   ;
   admin_gui_ssl_cert_default = {"ssl", "admin-gui-kong-default.crt"},
-  admin_gui_ssl_cert_key_default = {"ssl", "admin-gui-kong-default.key"},
-  admin_gui_ssl_cert_csr_default = {"ssl", "admin-gui-kong-default.csr"}
+  admin_gui_ssl_cert_key_default = {"ssl", "admin-gui-kong-default.key"}
   ;
   portal_api_ssl_cert_default = {"ssl", "portal-api-kong-default.crt"},
-  portal_api_ssl_cert_key_default = {"ssl", "portal-api-kong-default.key"},
-  portal_api_ssl_cert_csr_default = {"ssl", "portal-api-kong-default.csr"}
+  portal_api_ssl_cert_key_default = {"ssl", "portal-api-kong-default.key"}
   ;
   portal_gui_ssl_cert_default = {"ssl", "portal-gui-kong-default.crt"},
   portal_gui_ssl_cert_key_default = {"ssl", "portal-gui-kong-default.key"},
-  portal_gui_ssl_cert_csr_default = {"ssl", "portal-gui-kong-default.csr"}
+  -- ]]
 }
+
 
 -- By default, all properties in the configuration are considered to
 -- be strings/numbers, but if we want to forcefully infer their type, specify it
@@ -68,74 +95,108 @@ local PREFIX_PATHS = {
 -- `array`: a comma-separated list
 local CONF_INFERENCES = {
   -- forced string inferences (or else are retrieved as numbers)
-  proxy_listen = {typ = "array"},
-  admin_listen = {typ = "array"},
-  admin_api_uri = {typ = "string"},
-  db_update_frequency = { typ = "number" },
-  db_update_propagation = { typ = "number" },
-  db_cache_ttl = { typ = "number" },
-  nginx_user = {typ = "string"},
-  nginx_worker_processes = {typ = "string"},
-  upstream_keepalive = {typ = "number"},
-  server_tokens = {typ = "boolean"},
-  latency_tokens = {typ = "boolean"},
-  trusted_ips = {typ = "array"},
-  real_ip_header = {typ = "string"},
-  real_ip_recursive = {typ = "ngx_boolean"},
-  client_max_body_size = {typ = "string"},
-  client_body_buffer_size = {typ = "string"},
-  error_default_type = {enum = {"application/json", "application/xml",
-                                "text/html", "text/plain"}},
+  proxy_listen = { typ = "array" },
+  admin_listen = { typ = "array" },
+  stream_listen = { typ = "array" },
+  origins = { typ = "array" },
+  db_update_frequency = {  typ = "number"  },
+  db_update_propagation = {  typ = "number"  },
+  db_cache_ttl = {  typ = "number"  },
+  db_resurrect_ttl = {  typ = "number"  },
+  nginx_user = { typ = "string" },
+  nginx_worker_processes = { typ = "string" },
+  upstream_keepalive = { typ = "number" },
+  headers = { typ = "array" },
+  trusted_ips = { typ = "array" },
+  real_ip_header = { typ = "string" },
+  real_ip_recursive = { typ = "ngx_boolean" },
+  client_max_body_size = { typ = "string" },
+  client_body_buffer_size = { typ = "string" },
+  error_default_type = { enum = {
+                           "application/json",
+                           "application/xml",
+                           "text/html",
+                           "text/plain",
+                         }
+                       },
 
-  database = {enum = {"postgres", "cassandra"}},
-  pg_port = {typ = "number"},
-  pg_password = {typ = "string"},
-  pg_ssl = {typ = "boolean"},
-  pg_ssl_verify = {typ = "boolean"},
+  database = { enum = { "postgres", "cassandra" }  },
+  pg_port = { typ = "number" },
+  pg_timeout = { typ = "number" },
+  pg_password = { typ = "string" },
+  pg_ssl = { typ = "boolean" },
+  pg_ssl_verify = { typ = "boolean" },
 
-  cassandra_contact_points = {typ = "array"},
-  cassandra_port = {typ = "number"},
-  cassandra_password = {typ = "string"},
-  cassandra_timeout = {typ = "number"},
-  cassandra_ssl = {typ = "boolean"},
-  cassandra_ssl_verify = {typ = "boolean"},
-  cassandra_consistency = {enum = {"ALL", "EACH_QUORUM", "QUORUM", "LOCAL_QUORUM", "ONE",
-                                   "TWO", "THREE", "LOCAL_ONE"}}, -- no ANY: this is R/W
-  cassandra_lb_policy = {enum = {"RoundRobin", "RequestRoundRobin", "DCAwareRoundRobin", "RequestDCAwareRoundRobin"}},
-  cassandra_local_datacenter = {typ = "string"},
-  cassandra_repl_strategy = {enum = {"SimpleStrategy", "NetworkTopologyStrategy"}},
-  cassandra_repl_factor = {typ = "number"},
-  cassandra_data_centers = {typ = "array"},
-  cassandra_schema_consensus_timeout = {typ = "number"},
+  cassandra_contact_points = { typ = "array" },
+  cassandra_port = { typ = "number" },
+  cassandra_password = { typ = "string" },
+  cassandra_timeout = { typ = "number" },
+  cassandra_ssl = { typ = "boolean" },
+  cassandra_ssl_verify = { typ = "boolean" },
+  cassandra_consistency = { enum = {
+                              "ALL",
+                              "EACH_QUORUM",
+                              "QUORUM",
+                              "LOCAL_QUORUM",
+                              "ONE",
+                              "TWO",
+                              "THREE",
+                              "LOCAL_ONE",
+                            }
+                          },
+  cassandra_lb_policy = { enum = {
+                            "RoundRobin",
+                            "RequestRoundRobin",
+                            "DCAwareRoundRobin",
+                            "RequestDCAwareRoundRobin",
+                          }
+                        },
+  cassandra_local_datacenter = { typ = "string" },
+  cassandra_repl_strategy = { enum = {
+                                "SimpleStrategy",
+                                "NetworkTopologyStrategy",
+                              }
+                            },
+  cassandra_repl_factor = { typ = "number" },
+  cassandra_data_centers = { typ = "array" },
+  cassandra_schema_consensus_timeout = { typ = "number" },
 
-  dns_resolver = {typ = "array"},
-  dns_hostsfile = {typ = "string"},
-  dns_order = {typ = "array"},
-  dns_stale_ttl = {typ = "number"},
-  dns_not_found_ttl = {typ = "number"},
-  dns_error_ttl = {typ = "number"},
-  dns_no_sync = {typ = "boolean"},
+  dns_resolver = { typ = "array" },
+  dns_hostsfile = { typ = "string" },
+  dns_order = { typ = "array" },
+  dns_valid_ttl = { typ = "number" },
+  dns_stale_ttl = { typ = "number" },
+  dns_not_found_ttl = { typ = "number" },
+  dns_error_ttl = { typ = "number" },
+  dns_no_sync = { typ = "boolean" },
 
-  client_ssl = {typ = "boolean"},
+  client_ssl = { typ = "boolean" },
 
-  proxy_access_log = {typ = "string"},
-  proxy_error_log = {typ = "string"},
-  admin_access_log = {typ = "string"},
-  admin_error_log = {typ = "string"},
-  portal_api_access_log = {typ = "string"},
-  portal_api_error_log = {typ = "string"},
-  log_level = {enum = {"debug", "info", "notice", "warn",
-                       "error", "crit", "alert", "emerg"}},
-  custom_plugins = {typ = "array"},
-  anonymous_reports = {typ = "boolean"},
-  nginx_daemon = {typ = "ngx_boolean"},
-  nginx_optimizations = {typ = "boolean"},
+  proxy_access_log = { typ = "string" },
+  proxy_error_log = { typ = "string" },
+  admin_access_log = { typ = "string" },
+  admin_error_log = { typ = "string" },
+  log_level = { enum = {
+                  "debug",
+                  "info",
+                  "notice",
+                  "warn",
+                  "error",
+                  "crit",
+                  "alert",
+                  "emerg",
+                }
+              },
+  plugins = { typ = "array" },
+  custom_plugins = { typ = "array" },
+  anonymous_reports = { typ = "boolean" },
+  nginx_daemon = { typ = "ngx_boolean" },
+  nginx_optimizations = { typ = "boolean" },
 
-  lua_ssl_verify_depth = {typ = "number"},
-  lua_socket_pool_size = {typ = "number"},
+  lua_ssl_verify_depth = { typ = "number" },
+  lua_socket_pool_size = { typ = "number" },
 
   enforce_rbac = {enum = {"on", "off", "both", "entity"}},
-  rbac_user_header = {typ = "string"},
   rbac_auth_header = {typ = "string"},
 
   vitals = {typ = "boolean"},
@@ -158,13 +219,15 @@ local CONF_INFERENCES = {
   audit_log_record_ttl = {typ = "number"},
   audit_log_signing_key = {typ = "string"},
 
+  admin_api_uri = {typ = "string"},
   admin_gui_listen = {typ = "array"},
   admin_gui_error_log = {typ = "string"},
   admin_gui_access_log = {typ = "string"},
   admin_gui_flags = {typ = "string"},
   admin_gui_auth = {typ = "string"},
-  admin_gui_auth_conf = {type = "string"},
-  admin_gui_session_conf = {type = "string"},
+  admin_gui_auth_conf = {typ = "string"},
+  admin_gui_auth_header = {typ = "string"},
+  admin_gui_session_conf = {typ = "string"},
   admin_emails_from = {typ = "string"},
   admin_emails_reply_to = {typ = "string"},
   admin_docs_url = {typ = "string"},
@@ -178,6 +241,8 @@ local CONF_INFERENCES = {
   portal_gui_use_subdomains = {typ = "boolean"},
   portal_session_conf = {typ = "string"},
 
+  portal_api_access_log = {typ = "string"},
+  portal_api_error_log = {typ = "string"},
   portal_api_listen = {typ = "array"},
   portal_api_url = {typ = "string"},
 
@@ -210,27 +275,43 @@ local CONF_INFERENCES = {
   smtp_mock = {typ = "boolean"},
 }
 
+
 -- List of settings whose values must not be printed when
 -- using the CLI in debug mode (which prints all settings).
+local CONF_SENSITIVE_PLACEHOLDER = "******"
 local CONF_SENSITIVE = {
   pg_password = true,
   cassandra_password = true,
   smtp_password = true,
+  admin_gui_auth_header = true,
   admin_gui_auth_conf = true,
   admin_gui_session_conf = true,
   portal_auth_conf = true,
   portal_session_conf = true,
 }
 
-local CONF_SENSITIVE_PLACEHOLDER = "******"
 
 local typ_checks = {
   array = function(v) return type(v) == "table" end,
   string = function(v) return type(v) == "string" end,
   number = function(v) return type(v) == "number" end,
   boolean = function(v) return type(v) == "boolean" end,
-  ngx_boolean = function(v) return v == "on" or v == "off" end
+  ngx_boolean = function(v) return v == "on" or v == "off" end,
 }
+
+
+-- This meta table will prevent the parsed table to be passed on in the
+-- intermediate Kong config file in the prefix directory.
+-- We thus avoid 'table: 0x41c3fa58' from appearing into the prefix
+-- hidden configuration file.
+-- This is only to be applied to values that are injected into the
+-- configuration object, and not configuration properties themselves,
+-- otherwise we would prevent such properties from being specifiable
+-- via environment variables.
+local _nop_tostring_mt = {
+  __tostring = function() return "" end,
+}
+
 
 -- Validate properties (type/enum/custom) and infer their type.
 -- @param[type=table] conf The configuration table to treat.
@@ -242,7 +323,6 @@ local function check_and_infer(conf)
     local typ = v_schema.typ
 
     if type(value) == "string" then
-
       -- remove trailing comment, if any
       -- and remove escape chars from octothorpes
       value = string.gsub(value, "[^\\]#.-$", "")
@@ -257,12 +337,16 @@ local function check_and_infer(conf)
     -- transform {array} values (comma-separated strings)
     if typ == "boolean" then
       value = value == true or value == "on" or value == "true"
+
     elseif typ == "ngx_boolean" then
       value = (value == "on" or value == true) and "on" or "off"
+
     elseif typ == "string" then
       value = tostring(value) -- forced string inference
+
     elseif typ == "number" then
-      value = tonumber(value) -- catch ENV variables (strings) that should be numbers
+      value = tonumber(value) -- catch ENV variables (strings) that are numbers
+
     elseif typ == "array" and type(value) == "string" then
       -- must check type because pl will already convert comma
       -- separated strings to tables (but not when the arr has
@@ -280,11 +364,15 @@ local function check_and_infer(conf)
     end
 
     typ = typ or "string"
+
     if value and not typ_checks[typ](value) then
-      errors[#errors+1] = k .. " is not a " .. typ .. ": '" .. tostring(value) .. "'"
+      errors[#errors + 1] = fmt("%s is not a %s: '%s'", k, typ,
+                                tostring(value))
+
     elseif v_schema.enum and not tablex.find(v_schema.enum, value) then
-      errors[#errors+1] = k .. " has an invalid value: '" .. tostring(value)
-                          .. "' (" .. table.concat(v_schema.enum, ", ") .. ")"
+      errors[#errors + 1] = fmt("%s has an invalid value: '%s' (%s)", k,
+                              tostring(value), concat(v_schema.enum, ", "))
+
     end
 
     conf[k] = value
@@ -295,21 +383,23 @@ local function check_and_infer(conf)
   ---------------------
 
   if conf.database == "cassandra" then
-    if conf.cassandra_lb_policy == "DCAwareRoundRobin" and
-      not conf.cassandra_local_datacenter then
-      errors[#errors+1] = "must specify 'cassandra_local_datacenter' when " ..
-      "DCAwareRoundRobin policy is in use"
+    if conf.cassandra_lb_policy == "DCAwareRoundRobin"
+       and not conf.cassandra_local_datacenter
+    then
+      errors[#errors + 1] = "must specify 'cassandra_local_datacenter' when " ..
+                          "DCAwareRoundRobin policy is in use"
     end
 
     for _, contact_point in ipairs(conf.cassandra_contact_points) do
       local endpoint, err = utils.normalize_ip(contact_point)
       if not endpoint then
-        errors[#errors+1] = "bad cassandra contact point '" .. contact_point ..
-        "': " .. err
+        errors[#errors + 1] = fmt("bad cassandra contact point '%s': %s",
+                                  contact_point, err)
 
       elseif endpoint.port then
-        errors[#errors+1] = "bad cassandra contact point '" .. contact_point ..
-        "': port must be specified in cassandra_port"
+        errors[#errors + 1] = fmt("bad cassandra contact point '%s': %s",
+                                  contact_point,
+                                  "port must be specified in cassandra_port")
       end
     end
 
@@ -322,48 +412,58 @@ local function check_and_infer(conf)
     end
   end
 
-  if (table.concat(conf.proxy_listen, ",") .. " "):find("%sssl[%s,]") then
+  if (concat(conf.proxy_listen, ",") .. " "):find("%sssl[%s,]") then
     if conf.ssl_cert and not conf.ssl_cert_key then
-      errors[#errors+1] = "ssl_cert_key must be specified"
+      errors[#errors + 1] = "ssl_cert_key must be specified"
+
     elseif conf.ssl_cert_key and not conf.ssl_cert then
-      errors[#errors+1] = "ssl_cert must be specified"
+      errors[#errors + 1] = "ssl_cert must be specified"
     end
 
     if conf.ssl_cert and not pl_path.exists(conf.ssl_cert) then
-      errors[#errors+1] = "ssl_cert: no such file at " .. conf.ssl_cert
+      errors[#errors + 1] = "ssl_cert: no such file at " .. conf.ssl_cert
     end
+
     if conf.ssl_cert_key and not pl_path.exists(conf.ssl_cert_key) then
-      errors[#errors+1] = "ssl_cert_key: no such file at " .. conf.ssl_cert_key
+      errors[#errors + 1] = "ssl_cert_key: no such file at " .. conf.ssl_cert_key
     end
   end
 
   if conf.client_ssl then
     if conf.client_ssl_cert and not conf.client_ssl_cert_key then
-      errors[#errors+1] = "client_ssl_cert_key must be specified"
+      errors[#errors + 1] = "client_ssl_cert_key must be specified"
+
     elseif conf.client_ssl_cert_key and not conf.client_ssl_cert then
-      errors[#errors+1] = "client_ssl_cert must be specified"
+      errors[#errors + 1] = "client_ssl_cert must be specified"
     end
 
     if conf.client_ssl_cert and not pl_path.exists(conf.client_ssl_cert) then
-      errors[#errors+1] = "client_ssl_cert: no such file at " .. conf.client_ssl_cert
+      errors[#errors + 1] = "client_ssl_cert: no such file at " ..
+                          conf.client_ssl_cert
     end
+
     if conf.client_ssl_cert_key and not pl_path.exists(conf.client_ssl_cert_key) then
-      errors[#errors+1] = "client_ssl_cert_key: no such file at " .. conf.client_ssl_cert_key
+      errors[#errors + 1] = "client_ssl_cert_key: no such file at " ..
+                          conf.client_ssl_cert_key
     end
   end
 
-  if (table.concat(conf.admin_listen, ",") .. " "):find("%sssl[%s,]") then
+  if (concat(conf.admin_listen, ",") .. " "):find("%sssl[%s,]") then
     if conf.admin_ssl_cert and not conf.admin_ssl_cert_key then
-      errors[#errors+1] = "admin_ssl_cert_key must be specified"
+      errors[#errors + 1] = "admin_ssl_cert_key must be specified"
+
     elseif conf.admin_ssl_cert_key and not conf.admin_ssl_cert then
-      errors[#errors+1] = "admin_ssl_cert must be specified"
+      errors[#errors + 1] = "admin_ssl_cert must be specified"
     end
 
     if conf.admin_ssl_cert and not pl_path.exists(conf.admin_ssl_cert) then
-      errors[#errors+1] = "admin_ssl_cert: no such file at " .. conf.admin_ssl_cert
+      errors[#errors + 1] = "admin_ssl_cert: no such file at " ..
+                          conf.admin_ssl_cert
     end
+
     if conf.admin_ssl_cert_key and not pl_path.exists(conf.admin_ssl_cert_key) then
-      errors[#errors+1] = "admin_ssl_cert_key: no such file at " .. conf.admin_ssl_cert_key
+      errors[#errors + 1] = "admin_ssl_cert_key: no such file at " ..
+                          conf.admin_ssl_cert_key
     end
   end
 
@@ -439,35 +539,48 @@ local function check_and_infer(conf)
   end
 
   if conf.ssl_cipher_suite ~= "custom" then
-    local ok, err = pcall(function()
+    local pok, perr = pcall(function()
       conf.ssl_ciphers = ciphers(conf.ssl_cipher_suite)
     end)
-    if not ok then
-      errors[#errors + 1] = err
+    if not pok then
+      errors[#errors + 1] = perr
+    end
+  end
+
+  if conf.headers then
+    for _, token in ipairs(conf.headers) do
+      if token ~= "off" and not HEADER_KEY_TO_NAME[string.lower(token)] then
+        errors[#errors + 1] = fmt("headers: invalid entry '%s'",
+                                  tostring(token))
+      end
     end
   end
 
   if conf.dns_resolver then
     for _, server in ipairs(conf.dns_resolver) do
       local dns = utils.normalize_ip(server)
+
       if not dns or dns.type == "name" then
-        errors[#errors+1] = "dns_resolver must be a comma separated list in " ..
-                            "the form of IPv4/6 or IPv4/6:port, got '" .. server .. "'"
+        errors[#errors + 1] = "dns_resolver must be a comma separated list " ..
+                              "in the form of IPv4/6 or IPv4/6:port, got '"  ..
+                              server .. "'"
       end
     end
   end
 
   if conf.dns_hostsfile then
     if not pl_path.isfile(conf.dns_hostsfile) then
-      errors[#errors+1] = "dns_hostsfile: file does not exist"
+      errors[#errors + 1] = "dns_hostsfile: file does not exist"
     end
   end
 
   if conf.dns_order then
     local allowed = { LAST = true, A = true, CNAME = true, SRV = true }
+
     for _, name in ipairs(conf.dns_order) do
       if not allowed[name:upper()] then
-        errors[#errors+1] = "dns_order: invalid entry '" .. tostring(name) .. "'"
+        errors[#errors + 1] = fmt("dns_order: invalid entry '%s'",
+                                  tostring(name))
       end
     end
   end
@@ -476,38 +589,82 @@ local function check_and_infer(conf)
     conf.lua_package_cpath = ""
   end
 
-  -- Checking the trusted ips
+  -- checking the trusted ips
   for _, address in ipairs(conf.trusted_ips) do
     if not ip.valid(address) and not address == "unix:" then
-      errors[#errors+1] = "trusted_ips must be a comma separated list in "..
-                          "the form of IPv4 or IPv6 address or CIDR "..
-                          "block or 'unix:', got '" .. address .. "'"
+      errors[#errors + 1] = "trusted_ips must be a comma separated list in " ..
+                            "the form of IPv4 or IPv6 address or CIDR "      ..
+                            "block or 'unix:', got '" .. address .. "'"
+    end
+  end
+
+  -- Validate origins
+  local seen_origins = {}
+
+  for i, v in ipairs(conf.origins) do
+    local from_scheme, from_host_port, to_host_port =
+      v:match("^(%a[%w+.-]*)://([^=]+:[%d]+)=%a[%w+.-]*://([^/]+)$")
+
+    if not from_scheme then
+      errors[#errors + 1] = "an origin must be of the form " ..
+                            "'from_scheme://from_host:from_port=" ..
+                            "to_scheme://to_host:to_port', got '" ..
+                            v .. "'"
+
+    else
+      -- Validate 'from'
+      local from_authority, err =
+        utils.format_host(utils.normalize_ip(from_host_port))
+      if not from_authority then
+        errors[#errors + 1] = "failed to parse authority: " .. err ..
+                              "(" .. from_host_port .. ")"
+
+      else
+        -- Check for duplicates
+        local from_origin = from_scheme:lower() .. "://" .. from_authority
+
+        if seen_origins[from_origin] then
+          errors[#errors + 1] = "duplicate origin (" .. from_origin .. ")"
+        end
+
+        seen_origins[from_origin] = true
+      end
+
+      -- Validate 'to'
+      local to, err = utils.normalize_ip(to_host_port)
+      if not to then
+        errors[#errors + 1] = "failed to parse authority (" .. err .. ")"
+      end
     end
   end
 
   return #errors == 0, errors[1], errors
 end
 
+
 local function overrides(k, default_v, file_conf, arg_conf)
   local value -- definitive value for this property
 
   -- default values have lowest priority
+
   if file_conf and file_conf[k] == nil then
-    -- PL will ignore empty strings, so we need a placeholer (NONE)
+    -- PL will ignore empty strings, so we need a placeholder (NONE)
     value = default_v == "NONE" and "" or default_v
   else
-    -- given conf values have middle priority
-    value = file_conf[k]
+    value = file_conf[k] -- given conf values have middle priority
   end
 
   -- environment variables have higher priority
+
   local env_name = "KONG_" .. string.upper(k)
   local env = os.getenv(env_name)
   if env ~= nil then
     local to_print = env
+
     if CONF_SENSITIVE[k] then
       to_print = CONF_SENSITIVE_PLACEHOLDER
     end
+
     log.debug('%s ENV found with "%s"', env_name, to_print)
     value = env
   end
@@ -519,6 +676,7 @@ local function overrides(k, default_v, file_conf, arg_conf)
 
   return value, k
 end
+
 
 -- @param value The options string to check for flags (whitespace separated)
 -- @param flags List of boolean flags to check for.
@@ -550,18 +708,23 @@ local function parse_option_flags(value, flags)
   return pl_stringx.strip(value), result, pl_stringx.strip(sanitized)
 end
 
+
 -- Parses a listener address line.
--- Supports multiple (comma separated) addresses, with 'ssl' and 'http2' flags.
+-- Supports multiple (comma separated) addresses, with flags such as
+-- 'ssl' and 'http2' added to the end.
 -- Pre- and postfixed whitespace as well as comma's are allowed.
 -- "off" as a first entry will return empty tables.
--- @value list of entries (strings)
--- @return list of parsed entries, each entry having fields `ip` (normalized string)
--- `port` (number), `ssl` (bool), `http2` (bool), `listener` (string, full listener)
-local function parse_listeners(values)
+-- @param values list of entries (strings)
+-- @param flags array of strings listing accepted flags.
+-- @return list of parsed entries, each entry having fields
+-- `listener` (string, full listener), `ip` (normalized string)
+-- `port` (number), and a boolean entry for each flag added to the entry
+-- (e.g. `ssl`).
+local function parse_listeners(values, flags)
+  assert(type(flags) == "table")
   local list = {}
-  local flags = { "ssl", "http2", "proxy_protocol" }
   local usage = "must be of form: [off] | <ip>:<port> [" ..
-                table.concat(flags, "] [") .. "], [... next entry ...]"
+                concat(flags, "] [") .. "], [... next entry ...]"
 
   if pl_stringx.strip(values[1]) == "off" then
     return list
@@ -604,6 +767,28 @@ local function parse_listeners(values)
   return list
 end
 
+
+local function parse_nginx_directives(dyn_key_prefix, conf)
+  conf = conf or {}
+  local directives = {}
+
+  for k, v in pairs(conf) do
+    if type(k) == "string" then
+      local directive = string.match(k, dyn_key_prefix .. "(.+)")
+      if directive then
+        if tonumber(v) then
+          v = string.format("%q", v)
+        end
+
+        table.insert(directives, { name = directive, value = v })
+      end
+    end
+  end
+
+  return directives
+end
+
+
 --- Load Kong configuration
 -- The loaded configuration will have all properties from the default config
 -- merged with the (optionally) specified config file, environment variables
@@ -634,7 +819,9 @@ local function load(path, custom_conf)
   if path and not pl_path.exists(path) then
     -- file conf has been specified and must exist
     return nil, "no file at: " .. path
-  elseif not path then
+  end
+
+  if not path then
     -- try to look for a conf in default locations, but no big
     -- deal if none is found: we will use our defaults.
     for _, default_path in ipairs(DEFAULT_PATHS) do
@@ -642,12 +829,15 @@ local function load(path, custom_conf)
         path = default_path
         break
       end
+
       log.verbose("no config file found at %s", default_path)
     end
   end
 
   if not path then
-    log.verbose("no config file, skipping loading")
+    -- still no file in default locations
+    log.verbose("no config file, skip loading")
+
   else
     local f, err = pl_file.read(path)
     if not f then
@@ -655,6 +845,7 @@ local function load(path, custom_conf)
     end
 
     log.verbose("reading config file at %s", path)
+
     local s = pl_stringio.open(f)
     from_file_conf, err = pl_config.read(s, {
       smart = false,
@@ -670,6 +861,51 @@ local function load(path, custom_conf)
   -- Merging & validation
   -----------------------
 
+  do
+    -- find dynamic keys that need to be loaded
+    local dynamic_keys = {}
+
+    local function find_dynamic_keys(dyn_key_prefix, t)
+      t = t or {}
+
+      for k, v in pairs(t) do
+        local directive = string.match(k, "(" .. dyn_key_prefix .. ".+)")
+        if directive then
+          dynamic_keys[directive] = true
+          t[k] = tostring(v)
+        end
+      end
+    end
+
+    local kong_env_vars = {}
+
+    do
+      -- get env vars prefixed with KONG_<dyn_key_prefix>
+      local env_vars, err = env.read_all()
+      if err then
+        return nil, err
+      end
+
+      for k, v in pairs(env_vars) do
+        local kong_var = string.match(string.lower(k), "^kong_(.+)")
+        if kong_var then
+          -- the value will be read in `overrides()`
+          kong_env_vars[kong_var] = true
+        end
+      end
+    end
+
+    for _, dyn_key_prefix in pairs(DYNAMIC_KEY_PREFIXES) do
+      find_dynamic_keys(dyn_key_prefix, custom_conf)
+      find_dynamic_keys(dyn_key_prefix, kong_env_vars)
+      find_dynamic_keys(dyn_key_prefix, from_file_conf)
+    end
+
+    -- union (add dynamic keys to `defaults` to prevent removal of the keys
+    -- during the intersection that happens later)
+    defaults = tablex.merge(defaults, dynamic_keys, true)
+  end
+
   -- merge default conf with file conf, ENV variables and arg conf (with precedence)
   local conf = tablex.pairmap(overrides, defaults, from_file_conf, custom_conf)
 
@@ -681,9 +917,16 @@ local function load(path, custom_conf)
 
   conf = tablex.merge(conf, defaults) -- intersection (remove extraneous properties)
 
-  -- print alphabetically-sorted values
+  -- nginx directives from conf
+  for directives_block, dyn_key_prefix in pairs(DYNAMIC_KEY_PREFIXES) do
+    local directives = parse_nginx_directives(dyn_key_prefix, conf)
+    conf[directives_block] = setmetatable(directives, _nop_tostring_mt)
+  end
+
   do
+    -- print alphabetically-sorted values
     local conf_arr = {}
+
     for k, v in pairs(conf) do
       local to_print = v
       if CONF_SENSITIVE[k] then
@@ -704,38 +947,90 @@ local function load(path, custom_conf)
   -- Additional injected values
   -----------------------------
 
-  -- merge plugins
   do
-    local custom_plugins = {}
-    for i = 1, #conf.custom_plugins do
-      local plugin_name = pl_stringx.strip(conf.custom_plugins[i])
-      custom_plugins[plugin_name] = true
+    -- merge plugins
+    local plugins = {}
+
+    if #conf.plugins > 0 and conf.plugins[1] ~= "off" then
+      for i = 1, #conf.plugins do
+        local plugin_name = pl_stringx.strip(conf.plugins[i])
+
+        if plugin_name ~= "off" then
+          if plugin_name == "bundled" then
+            plugins = tablex.merge(constants.BUNDLED_PLUGINS, plugins, true)
+
+          else
+            plugins[plugin_name] = true
+          end
+        end
+      end
     end
-    conf.plugins = tablex.merge(constants.PLUGINS_AVAILABLE, custom_plugins, true)
-    setmetatable(conf.plugins, nil) -- remove Map mt
+
+    if conf.custom_plugins and #conf.custom_plugins > 0 then
+      local warned
+
+      for i = 1, #conf.custom_plugins do
+        local plugin_name = pl_stringx.strip(conf.custom_plugins[i])
+
+        if not plugins[plugin_name] and not warned then
+          log.warn("the 'custom_plugins' configuration property is " ..
+                   "deprecated, use 'plugins' instead")
+          warned = true
+        end
+
+        plugins[plugin_name] = true
+      end
+    end
+
+    conf.loaded_plugins = setmetatable(plugins, _nop_tostring_mt)
   end
 
-  -- nginx user directive
+  -- temporary workaround: inject an shm for prometheus plugin if needed
+  -- TODO: allow plugins to declare shm dependencies that are automatically
+  -- injected
+  if conf.loaded_plugins["prometheus"] then
+    local http_directives = conf["nginx_http_directives"]
+    local found = false
+
+    for _, directive in pairs(http_directives) do
+      if directive.name == "lua_shared_dict"
+         and string.find(directive.value, "prometheus_metrics", nil, true)
+      then
+         found = true
+         break
+      end
+    end
+
+    if not found then
+      table.insert(http_directives, {
+        name  = "lua_shared_dict",
+        value = "prometheus_metrics 5m",
+      })
+    end
+  end
+
   do
-    local user = conf.nginx_user:gsub("^%s*", ""):gsub("%s$", ""):gsub("%s+", " ")
+    -- nginx 'user' directive
+    local user = conf.nginx_user:gsub("^%s*", "")
+                                :gsub("%s$", "")
+                                :gsub("%s+", " ")
+
     if user == "nobody" or user == "nobody nobody" then
       conf.nginx_user = nil
     end
   end
 
-  -- extract ports/listen ips
   do
-    local err
-    -- this meta table will prevent the parsed table to be passed on in the
-    -- intermediate Kong config file in the prefix directory
-    local mt = { __tostring = function() return "" end }
+    local http_flags = { "ssl", "http2", "proxy_protocol", "transparent" }
+    local stream_flags = { "proxy_protocol", "transparent" }
 
-    conf.proxy_listeners, err = parse_listeners(conf.proxy_listen)
+    -- extract ports/listen ips
+    conf.proxy_listeners, err = parse_listeners(conf.proxy_listen, http_flags)
     if err then
       return nil, "proxy_listen " .. err
     end
 
-    setmetatable(conf.proxy_listeners, mt)  -- do not pass on, parse again
+    setmetatable(conf.proxy_listeners, _nop_tostring_mt)
     conf.proxy_ssl_enabled = false
 
     for _, listener in ipairs(conf.proxy_listeners) do
@@ -745,12 +1040,19 @@ local function load(path, custom_conf)
       end
     end
 
-    conf.admin_listeners, err = parse_listeners(conf.admin_listen)
+    conf.stream_listeners, err = parse_listeners(conf.stream_listen, stream_flags)
+    if err then
+      return nil, "stream_listen " .. err
+    end
+
+    setmetatable(conf.stream_listeners, _nop_tostring_mt)
+
+    conf.admin_listeners, err = parse_listeners(conf.admin_listen, http_flags)
     if err then
       return nil, "admin_listen " .. err
     end
 
-    setmetatable(conf.admin_listeners, mt)  -- do not pass on, parse again
+    setmetatable(conf.admin_listeners, _nop_tostring_mt)
     conf.admin_ssl_enabled = false
 
     for _, listener in ipairs(conf.admin_listeners) do
@@ -760,12 +1062,12 @@ local function load(path, custom_conf)
       end
     end
 
-    conf.admin_gui_listeners, err = parse_listeners(conf.admin_gui_listen)
+    conf.admin_gui_listeners, err = parse_listeners(conf.admin_gui_listen, http_flags)
     if err then
       return nil, "admin_gui_listen " .. err
     end
 
-    setmetatable(conf.admin_gui_listeners, mt)  -- do not pass on, parse again
+    setmetatable(conf.admin_gui_listeners, _nop_tostring_mt)  -- do not pass on, parse again
     conf.admin_gui_ssl_enabled = false
 
     for _, listener in ipairs(conf.admin_gui_listeners) do
@@ -776,12 +1078,12 @@ local function load(path, custom_conf)
     end
 
     if conf.portal then
-      conf.portal_gui_listeners, err = parse_listeners(conf.portal_gui_listen)
+      conf.portal_gui_listeners, err = parse_listeners(conf.portal_gui_listen, http_flags)
       if err then
         return nil, "portal_gui_listen " .. err
       end
 
-      setmetatable(conf.portal_gui_listeners, mt)
+      setmetatable(conf.portal_gui_listeners, _nop_tostring_mt)
       conf.portal_gui_ssl_enabled = false
 
       for _, listener in ipairs(conf.portal_gui_listeners) do
@@ -791,12 +1093,12 @@ local function load(path, custom_conf)
         end
       end
 
-      conf.portal_api_listeners, err = parse_listeners(conf.portal_api_listen)
+      conf.portal_api_listeners, err = parse_listeners(conf.portal_api_listen, http_flags)
       if err then
         return nil, "portal_api_listen " .. err
       end
 
-      setmetatable(conf.portal_api_listeners, mt)
+      setmetatable(conf.portal_api_listeners, _nop_tostring_mt)
       conf.portal_api_ssl_enabled = false
 
       for _, listener in ipairs(conf.portal_api_listeners) do
@@ -806,6 +1108,44 @@ local function load(path, custom_conf)
         end
       end
     end
+  end
+
+  do
+    -- is ssl_preread compiled in OpenResty?
+    conf.ssl_preread_enabled = false
+    local nginx_configuration = ngx.config.nginx_configure()
+    if nginx_configuration:find("with-stream_ssl_preread_module", 1, true) then
+      conf.ssl_preread_enabled = true
+    end
+  end
+
+  do
+    -- load headers configuration
+    local enabled_headers = {}
+
+    for _, v in pairs(HEADER_KEY_TO_NAME) do
+      enabled_headers[v] = false
+    end
+
+    if #conf.headers > 0 and conf.headers[1] ~= "off" then
+      for _, token in ipairs(conf.headers) do
+        if token ~= "off" then
+          enabled_headers[HEADER_KEY_TO_NAME[string.lower(token)]] = true
+        end
+      end
+    end
+
+    if enabled_headers.server_tokens then
+      enabled_headers[HEADERS.VIA] = true
+      enabled_headers[HEADERS.SERVER] = true
+    end
+
+    if enabled_headers.latency_tokens then
+      enabled_headers[HEADERS.PROXY_LATENCY] = true
+      enabled_headers[HEADERS.UPSTREAM_LATENCY] = true
+    end
+
+    conf.enabled_headers = setmetatable(enabled_headers, _nop_tostring_mt)
   end
 
   -- load absolute paths
@@ -875,23 +1215,28 @@ local function load(path, custom_conf)
   return setmetatable(conf, nil) -- remove Map mt
 end
 
+
 return setmetatable({
   load = load,
+
   add_default_path = function(path)
     DEFAULT_PATHS[#DEFAULT_PATHS+1] = path
   end,
+
   remove_sensitive = function(conf)
     local purged_conf = tablex.deepcopy(conf)
+
     for k in pairs(CONF_SENSITIVE) do
       if purged_conf[k] then
         purged_conf[k] = CONF_SENSITIVE_PLACEHOLDER
       end
     end
+
     return purged_conf
   end,
   parse_listeners = parse_listeners,
 }, {
   __call = function(_, ...)
     return load(...)
-  end
+  end,
 })

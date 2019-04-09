@@ -6,7 +6,7 @@ describe("Log Serializer", function()
   before_each(function()
     ngx = {
       ctx = {
-        balancer_address = {
+        balancer_data = {
           tries = {
             {
               ip = "127.0.0.1",
@@ -114,7 +114,7 @@ describe("Log Serializer", function()
     end)
 
     it("serializes the tries and failure information", function()
-      ngx.ctx.balancer_address.tries = {
+      ngx.ctx.balancer_data.tries = {
         { ip = "127.0.0.1", port = 1234, state = "next",   code = 502 },
         { ip = "127.0.0.1", port = 1234, state = "failed", code = nil },
         { ip = "127.0.0.1", port = 1234 },
@@ -140,8 +140,8 @@ describe("Log Serializer", function()
         }, res.tries)
     end)
 
-    it("does not fail when the 'balancer_address' structure is missing", function()
-      ngx.ctx.balancer_address = nil
+    it("does not fail when the 'balancer_data' structure is missing", function()
+      ngx.ctx.balancer_data = nil
 
       local res = basic.serialize(ngx)
       assert.is_table(res)

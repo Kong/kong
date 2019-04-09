@@ -3,12 +3,12 @@ local cjson      = require "cjson.safe"
 local ffi        = require "ffi"
 local tablex     = require "pl.tablex"
 local pl_stringx = require "pl.stringx"
-local reports    = require "kong.core.reports"
-local singletons = require "kong.singletons"
+local reports    = require "kong.reports"
 local utils      = require "kong.tools.utils"
 local public     = require "kong.tools.public"
 local pg_strat   = require "kong.vitals.postgres.strategy"
 local feature_flags = require "kong.enterprise_edition.feature_flags"
+
 
 local timer_at   = ngx.timer.at
 local time       = ngx.time
@@ -171,7 +171,7 @@ end
 
 
 local function load_tsdb_strategy(strategy)
-  local conf = singletons.configuration
+  local conf = kong.configuration
   if strategy == "prometheus" then
     local db_strategy = require("kong.vitals.prometheus.strategy")
 
@@ -212,8 +212,8 @@ end
 function _M.new(opts)
   opts = opts or {}
 
-  if not opts.dao then
-    return error("opts.dao is required")
+  if not opts.db then
+    return error("opts.db is required")
   end
 
   if opts.flush_interval                   and
@@ -226,7 +226,7 @@ function _M.new(opts)
   local tsdb_storage = false
 
   do
-    local dao_factory = opts.dao
+    local db = opts.db
 
     local strategy_opts = {
       ttl_seconds = opts.ttl_seconds or 3600,
@@ -235,16 +235,16 @@ function _M.new(opts)
 
     local db_strategy
 
-    local vitals_strategy_conf = singletons.configuration.vitals_strategy
+    local vitals_strategy_conf = kong.configuration.vitals_strategy
 
     if not vitals_strategy_conf or vitals_strategy_conf == "database" then
-      if dao_factory.db_type == "postgres" then
+      if db.strategy == "postgres" then
         db_strategy = pg_strat
         strategy_opts.delete_interval = opts.delete_interval_pg or 90000
-      elseif dao_factory.db_type == "cassandra" then
+      elseif db.strategy == "cassandra" then
         db_strategy = require "kong.vitals.cassandra.strategy"
       else
-        return error("no vitals strategy for " .. dao_factory.db_type)
+        return error("no vitals strategy for " .. db.strategy)
       end
     else
       -- use TSDB strategies
@@ -252,7 +252,7 @@ function _M.new(opts)
       tsdb_storage = true
     end
 
-    strategy = db_strategy.new(dao_factory, strategy_opts)
+    strategy = db_strategy.new(db, strategy_opts)
   end
 
   -- paradoxically, we set flush_interval to a very high default here,
@@ -276,12 +276,12 @@ end
 
 
 function _M:enabled()
-  return singletons.configuration.vitals and self.initialized
+  return kong.configuration.vitals and self.initialized
 end
 
 
 function _M:init()
-  if not singletons.configuration.vitals then
+  if not kong.configuration.vitals then
     return self:init_failed("vitals not enabled")
   end
 
@@ -319,7 +319,7 @@ function _M:init()
   reports.add_ping_value("vitals", true)
   for _, v in ipairs(PH_STATS) do
     reports.add_ping_value(v, function()
-      local res, err = singletons.vitals:phone_home(v)
+      local res, err = kong.vitals:phone_home(v)
       if err then
         log(WARN, _log_prefix, "failed to retrieve stats: ", err)
         return nil
@@ -1097,6 +1097,7 @@ function _M:phone_home(stat_label)
       log(WARN, _log_prefix, "failed to cache phone home: ", c_err)
     end
   end
+
   return res[1][stat_label]
 end
 
@@ -1227,7 +1228,7 @@ function _M:get_status_codes(opts, key_by)
     return {}
   elseif self.tsdb_storage then
     -- don't translate since we already translated in TSDB strategy
-    -- don't move this into convert_status_codes and use singletons.vitals since it may not be set
+    -- don't move this into convert_status_codes and use kong.vitals since it may not be set
     return res
   end
 
@@ -1314,7 +1315,7 @@ end
   Returns the names of tables created by the vitals module, mainly for use in
   `kong migrations reset`. Add to this list when you create a new vitals table.
  ]]
-function _M.table_names(dao)
+function _M.table_names(db)
 
   -- tables common across both dbs
   local table_names = {
@@ -1332,9 +1333,9 @@ function _M.table_names(dao)
   }
   local table_count = #table_names
 
-  if dao.db_type == "postgres" then
+  if db.strategy == "postgres" then
     -- pick up the tables created at runtime
-    for i, v in ipairs(pg_strat.dynamic_table_names(dao)) do
+    for i, v in ipairs(pg_strat.dynamic_table_names(db)) do
       table_names[table_count+i] = v
     end
   end

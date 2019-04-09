@@ -175,13 +175,13 @@ local function get_scope_name(message, service_identifier)
       service_identifier = "service_name_or_host"
     end
     local service_name = get_service_id[service_identifier](service)
-    if service_name == ngx.null then
+    if not service_name or service_name == ngx.null  then
       return "service.unnamed"
     end
     return "service." .. re_gsub(service_name, [[\.]], "_", "oj")
 
   elseif api then
-    if api == ngx.null then
+    if not api or api == ngx.null then
       return "api.unnamed"
     end
     return "api." .. re_gsub(api.name, [[\.]], "_", "oj")

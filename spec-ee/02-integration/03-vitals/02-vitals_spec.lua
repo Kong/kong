@@ -1,9 +1,8 @@
-local dao_factory  = require "kong.dao.factory"
 local kong_vitals  = require "kong.vitals"
-local singletons   = require "kong.singletons"
 local dao_helpers  = require "spec.02-integration.03-dao.helpers"
 local utils        = require "kong.tools.utils"
 local json_null  = require("cjson").null
+local helpers = require "spec.helpers"
 
 local ngx_time     = ngx.time
 local fmt          = string.format
@@ -12,8 +11,8 @@ local fmt          = string.format
 dao_helpers.for_each_dao(function(kong_conf)
   describe("vitals with db: " .. kong_conf.database, function()
     local vitals
-    local dao
     local snapshot
+    local db
 
     local stat_labels = {
       "cache_datastore_hits_total",
@@ -32,12 +31,11 @@ dao_helpers.for_each_dao(function(kong_conf)
     }
 
     setup(function()
-      dao = assert(dao_factory.new(kong_conf))
-      assert(dao:run_migrations())
+      db = select(2, helpers.get_db_utils(kong_conf.database))
 
-      singletons.configuration = { vitals = true }
+      kong.configuration = { vitals = true }
       vitals = kong_vitals.new({
-        dao = dao,
+        db = db,
       })
 
       vitals:init()
@@ -53,8 +51,8 @@ dao_helpers.for_each_dao(function(kong_conf)
 
     describe("phone_home()", function()
       before_each(function()
-        assert(dao.db:truncate_table("vitals_stats_minutes"))
-        assert(dao.db:truncate_table("vitals_node_meta"))
+        assert(db:truncate("vitals_stats_minutes"))
+        assert(db:truncate("vitals_node_meta"))
         assert(vitals.list_cache:delete("vitals:ph_stats"))
       end)
 
@@ -123,7 +121,7 @@ dao_helpers.for_each_dao(function(kong_conf)
       end)
 
       it("returns true upon acquiring a lock", function()
-        local vitals = kong_vitals.new { dao = dao }
+        local vitals = kong_vitals.new { db = db }
 
         local ok, err = vitals:flush_lock()
         assert.is_true(ok)
@@ -131,13 +129,13 @@ dao_helpers.for_each_dao(function(kong_conf)
       end)
 
       it("returns false when failing to acquire a lock, without err", function()
-        local vitals = kong_vitals.new { dao = dao }
+        local vitals = kong_vitals.new { db = db }
 
         local ok, err = vitals:flush_lock()
         assert.is_true(ok)
         assert.is_nil(err)
 
-        local vitals2 = kong_vitals.new { dao = dao }
+        local vitals2 = kong_vitals.new { db = db }
 
         ok, err = vitals2:flush_lock()
         assert.is_false(ok)
@@ -159,7 +157,7 @@ dao_helpers.for_each_dao(function(kong_conf)
       end)
 
       it("returns true when all workers have posted data", function()
-        local vitals = kong_vitals.new { dao = dao }
+        local vitals = kong_vitals.new { db = db }
 
         local ok, err = vitals:poll_worker_data(flush_key, expected)
         assert.is_true(ok)
@@ -171,7 +169,7 @@ dao_helpers.for_each_dao(function(kong_conf)
           ngx.shared.kong:lpop(flush_key)
         end)
 
-        local vitals = kong_vitals.new { dao = dao }
+        local vitals = kong_vitals.new { db = db }
 
         local ok, err = vitals:poll_worker_data(flush_key, expected)
         assert.is_false(ok)
@@ -195,25 +193,25 @@ dao_helpers.for_each_dao(function(kong_conf)
 
     describe(".table_names()", function()
       before_each(function()
-        if dao.db_type == "postgres" then
+        if db.strategy == "postgres" then
           -- this is ugly, but tests are creating dynamic tables and
           -- not cleaning them up. will sort that in another PR
-          dao:drop_schema()
-          dao:run_migrations()
+          db:schema_reset()
+          helpers.bootstrap_database(db)
 
           -- insert a fake stats table
-          assert(dao.db:query("create table if not exists vitals_stats_seconds_foo (like vitals_stats_seconds)"))
+          assert(db.connector:query("create table if not exists vitals_stats_seconds_foo (like vitals_stats_seconds)"))
         end
       end)
 
       after_each(function()
-        if dao.db_type == "postgres" then
-          assert(dao.db:query("drop table if exists vitals_stats_seconds_foo"))
+        if db.strategy == "postgres" then
+          assert(db.connector:query("drop table if exists vitals_stats_seconds_foo"))
         end
       end)
 
       it("returns all vitals table names", function()
-        local results, _ = kong_vitals.table_names(dao)
+        local results, _ = kong_vitals.table_names(db)
 
         local expected = {
           "vitals_code_classes_by_cluster",
@@ -229,7 +227,7 @@ dao_helpers.for_each_dao(function(kong_conf)
           "vitals_stats_seconds",
         }
 
-        if (dao.db_type == "postgres") then
+        if (db.strategy == "postgres") then
           table.insert(expected, "vitals_stats_seconds_foo")
         end
 
@@ -260,7 +258,7 @@ dao_helpers.for_each_dao(function(kong_conf)
 
       it("puts later data in the last bucket so we don't lose it", function()
         local vitals = kong_vitals.new({
-          dao            = dao,
+          db = db,
           flush_interval = 60,
         })
 
@@ -275,18 +273,18 @@ dao_helpers.for_each_dao(function(kong_conf)
 
     describe("cache_accessed()", function()
       it("doesn't increment the cache counter when vitals is off", function()
-        singletons.configuration = { vitals = false }
+        kong.configuration = { vitals = false }
 
-        local vitals = kong_vitals.new { dao = dao }
+        local vitals = kong_vitals.new { db = db }
         vitals:reset_counters()
 
         assert.same("vitals not enabled", vitals:cache_accessed(2))
       end)
 
       it("does increment the cache counter when vitals is on", function()
-        singletons.configuration = { vitals = true }
+        kong.configuration = { vitals = true }
 
-        local vitals = kong_vitals.new { dao = dao, flush_interval = 1 }
+        local vitals = kong_vitals.new { db = db, flush_interval = 1 }
         stub(vitals, "enabled").returns(true)
 
         vitals:reset_counters()
@@ -325,18 +323,18 @@ dao_helpers.for_each_dao(function(kong_conf)
 
     describe("log_latency()", function()
       it("doesn't log latency when vitals is off", function()
-        singletons.configuration = { vitals = false }
+        kong.configuration = { vitals = false }
 
-        local vitals = kong_vitals.new { dao = dao }
+        local vitals = kong_vitals.new { db = db }
         vitals:reset_counters()
 
         assert.same("vitals not enabled", vitals:log_latency(7))
       end)
 
       it("does log latency when vitals is on", function()
-        singletons.configuration = { vitals = true }
+        kong.configuration = { vitals = true }
 
-        local vitals = kong_vitals.new { dao = dao }
+        local vitals = kong_vitals.new { db = db }
         stub(vitals, "enabled").returns(true)
 
         vitals:reset_counters()
@@ -353,18 +351,18 @@ dao_helpers.for_each_dao(function(kong_conf)
 
     describe("log_upstream_latency()", function()
       it("doesn't log upstream latency when vitals is off", function()
-        singletons.configuration = { vitals = false }
+        kong.configuration = { vitals = false }
 
-        local vitals = kong_vitals.new { dao = dao }
+        local vitals = kong_vitals.new { db = db }
         vitals:reset_counters()
 
         assert.same("vitals not enabled", vitals:log_upstream_latency(7))
       end)
 
       it("does log upstream latency when vitals is on", function()
-        singletons.configuration = { vitals = true }
+        kong.configuration = { vitals = true }
 
-        local vitals = kong_vitals.new { dao = dao }
+        local vitals = kong_vitals.new { db = db }
         stub(vitals, "enabled").returns(true)
 
         vitals:reset_counters()
@@ -382,14 +380,14 @@ dao_helpers.for_each_dao(function(kong_conf)
 
     describe("log_request()", function()
       it("doesn't log when vitals is off", function()
-        local vitals = kong_vitals.new { dao = dao }
+        local vitals = kong_vitals.new { db = db }
         stub(vitals, "enabled").returns(false)
 
         assert.same("vitals not enabled", vitals:log_request(nil))
       end)
 
       it("does log when vitals is on", function()
-        local vitals = kong_vitals.new { dao = dao }
+        local vitals = kong_vitals.new { db = db }
         stub(vitals, "enabled").returns(true)
 
         vitals:reset_counters()
@@ -442,27 +440,27 @@ dao_helpers.for_each_dao(function(kong_conf)
 
     describe("flush_vitals_cache()", function()
       before_each(function()
-        if dao.db.name == "cassandra" then
-          assert(dao.db:truncate_table("vitals_consumers"))
-          assert(dao.db:truncate_table("vitals_codes_by_service"))
+        if db.strategy == "cassandra" then
+          assert(db:truncate("vitals_consumers"))
+          assert(db:truncate("vitals_codes_by_service"))
         end
-        assert(dao.db:truncate_table("vitals_code_classes_by_cluster"))
-        assert(dao.db:truncate_table("vitals_code_classes_by_workspace"))
-        assert(dao.db:truncate_table("vitals_codes_by_route"))
-        assert(dao.db:truncate_table("vitals_codes_by_consumer_route"))
+        assert(db:truncate("vitals_code_classes_by_cluster"))
+        assert(db:truncate("vitals_code_classes_by_workspace"))
+        assert(db:truncate("vitals_codes_by_route"))
+        assert(db:truncate("vitals_codes_by_consumer_route"))
       end)
 
       after_each(function()
         vitals.counter_cache:flush_all() -- mark expired
         vitals.counter_cache:flush_expired() -- really clean them up
-        if dao.db.name == "cassandra" then
-          assert(dao.db:truncate_table("vitals_consumers"))
-          assert(dao.db:truncate_table("vitals_codes_by_service"))
+        if db.strategy == "cassandra" then
+          assert(db:truncate("vitals_consumers"))
+          assert(db:truncate("vitals_codes_by_service"))
         end
-        assert(dao.db:truncate_table("vitals_code_classes_by_cluster"))
-        assert(dao.db:truncate_table("vitals_code_classes_by_workspace"))
-        assert(dao.db:truncate_table("vitals_codes_by_route"))
-        assert(dao.db:truncate_table("vitals_codes_by_consumer_route"))
+        assert(db:truncate("vitals_code_classes_by_cluster"))
+        assert(db:truncate("vitals_code_classes_by_workspace"))
+        assert(db:truncate("vitals_codes_by_route"))
+        assert(db:truncate("vitals_codes_by_consumer_route"))
       end)
 
       it("flushes cache entries", function()
@@ -532,10 +530,10 @@ dao_helpers.for_each_dao(function(kong_conf)
         assert.same(expected, res.stats.cluster)
 
         local res, err
-        if dao.db.name == "postgres" then
-          res, err = dao.db:query("SELECT route_id, code, extract('epoch' from at) as at, duration, count FROM vitals_codes_by_route")
+        if db.strategy == "postgres" then
+          res, err = db.connector:query("SELECT route_id, code, extract('epoch' from at) as at, duration, count FROM vitals_codes_by_route")
         else
-          res, err = dao.db:query("select * from vitals_codes_by_route")
+          res, err = db.connector:query("select * from vitals_codes_by_route")
         end
 
         assert.is_nil(err)
@@ -550,7 +548,7 @@ dao_helpers.for_each_dao(function(kong_conf)
           minute,
           minute,
         }
-        if dao.db.name == "cassandra" then
+        if db.strategy == "cassandra" then
           for i, v in ipairs(ats) do
             ats[i] = v * 1000
           end
@@ -589,13 +587,13 @@ dao_helpers.for_each_dao(function(kong_conf)
         end
 
         local res, err
-        if dao.db.name == "postgres" then
-          res, err = dao.db:query([[
+        if db.strategy == "postgres" then
+          res, err = db.connector:query([[
               select code_class, extract('epoch' from at) as at,
               duration, count from vitals_code_classes_by_cluster
            ]])
         else
-          res, err = dao.db:query("select * from vitals_code_classes_by_cluster")
+          res, err = db.connector:query("select * from vitals_code_classes_by_cluster")
         end
 
         assert.is_nil(err)
@@ -609,7 +607,7 @@ dao_helpers.for_each_dao(function(kong_conf)
           minute,
           minute,
         }
-        if dao.db.name == "cassandra" then
+        if db.strategy == "cassandra" then
           for i, v in ipairs(ats) do
             ats[i] = v * 1000
           end
@@ -645,8 +643,8 @@ dao_helpers.for_each_dao(function(kong_conf)
 
         -- vitals_consumers is cassandra-only
         local res, err
-        if dao.db.name == "cassandra" then
-          res, err = dao.db:query("select * from vitals_consumers")
+        if db.strategy == "cassandra" then
+          res, err = db.connector:query("select * from vitals_consumers")
 
           assert.is_nil(err)
           table.sort(res, function(a,b)
@@ -685,10 +683,10 @@ dao_helpers.for_each_dao(function(kong_conf)
 
         local res, err
 
-        if dao.db.name == "postgres" then
-          res, err = dao.db:query("SELECT consumer_id, service_id, route_id, code, extract('epoch' from at) as at, duration, count FROM vitals_codes_by_consumer_route")
+        if db.strategy == "postgres" then
+          res, err = db.connector:query("SELECT consumer_id, service_id, route_id, code, extract('epoch' from at) as at, duration, count FROM vitals_codes_by_consumer_route")
         else
-          res, err = dao.db:query("select * from vitals_codes_by_consumer_route")
+          res, err = db.connector:query("select * from vitals_codes_by_consumer_route")
         end
 
         assert.is_nil(err)
@@ -701,7 +699,7 @@ dao_helpers.for_each_dao(function(kong_conf)
           minute,
         }
 
-        if dao.db.name == "cassandra" then
+        if db.strategy == "cassandra" then
           for i, v in ipairs(ats) do
             ats[i] = v * 1000
           end
@@ -802,9 +800,9 @@ dao_helpers.for_each_dao(function(kong_conf)
 
     describe("init()", function()
       it("doesn't initialize strategy  when vitals is off", function()
-        singletons.configuration = { vitals = false }
+        kong.configuration = { vitals = false }
 
-        local vitals = kong_vitals.new { dao = dao }
+        local vitals = kong_vitals.new { db = db }
         vitals:reset_counters()
 
         local s_strategy = spy.on(vitals.strategy, "init")
@@ -814,10 +812,10 @@ dao_helpers.for_each_dao(function(kong_conf)
         assert.spy(s_strategy).was_called(0)
       end)
       it("does initialize strategy when vitals is on", function()
-        singletons.configuration = { vitals = true }
+        kong.configuration = { vitals = true }
 
         local vitals = kong_vitals.new({
-          dao = dao,
+          db = db,
         })
         vitals:reset_counters()
 
@@ -848,11 +846,11 @@ dao_helpers.for_each_dao(function(kong_conf)
       local cons_id = utils.uuid()
 
       after_each(function()
-        if dao.db.name == "cassandra" then
-          assert(dao.db:query("truncate table vitals_consumers"))
+        if db.strategy == "cassandra" then
+          assert(db.connector:query("truncate table vitals_consumers"))
         end
-        assert(dao.db:query("truncate table vitals_node_meta"))
-        assert(dao.db:query("truncate table vitals_codes_by_consumer_route"))
+        assert(db.connector:query("truncate table vitals_node_meta"))
+        assert(db.connector:query("truncate table vitals_codes_by_consumer_route"))
       end)
 
       it("returns seconds stats for a consumer", function()
@@ -981,7 +979,7 @@ dao_helpers.for_each_dao(function(kong_conf)
       }
 
       setup(function()
-        vitals = kong_vitals.new { dao = dao }
+        vitals = kong_vitals.new { db = db }
         stub(vitals.strategy, "select_stats").returns(mockStats)
         stub(vitals.strategy, "select_node_meta").returns({})
       end)
@@ -1116,7 +1114,7 @@ dao_helpers.for_each_dao(function(kong_conf)
       }
 
       setup(function()
-        vitals = kong_vitals.new { dao = dao }
+        vitals = kong_vitals.new { db = db }
         stub(vitals.strategy, "select_status_codes").returns(data_to_insert)
       end)
 
@@ -1415,7 +1413,7 @@ dao_helpers.for_each_dao(function(kong_conf)
 
     describe("get_node_meta()", function()
       after_each(function()
-        assert(dao.db:query("truncate table vitals_node_meta"))
+        assert(db.connector:query("truncate table vitals_node_meta"))
       end)
 
       it("returns metadata for the requested node ids", function()
@@ -1436,7 +1434,7 @@ dao_helpers.for_each_dao(function(kong_conf)
           if kong_conf.database == "cassandra" then
             assert(vitals.strategy:init(unpack(row)))
           else
-            assert(dao.db:query(fmt(q, unpack(row))))
+            assert(db.connector:query(fmt(q, unpack(row))))
           end
         end
 

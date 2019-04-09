@@ -2,6 +2,7 @@ local timestamp = require "kong.tools.timestamp"
 local cassandra = require "cassandra"
 local Cluster = require "resty.cassandra.cluster"
 local Errors = require "kong.dao.errors"
+local db_errors = require "kong.db.errors"
 local utils = require "kong.tools.utils"
 local cjson = require "cjson"
 local workspaces = require "kong.workspaces"
@@ -34,7 +35,15 @@ _M.dao_insert_values = {
   end
 }
 
-_M.additional_tables = { "cluster_events", "routes", "services" }
+_M.additional_tables = {
+  "cluster_events",
+  "routes",
+  "services",
+  "consumers",
+  "plugins",
+  "certificates",
+  "snis",
+}
 
 function _M.new(kong_config)
   local self = _M.super.new()
@@ -427,20 +436,56 @@ local function check_unique_constraints(self, table_name, constraints, values, p
   return errors == nil, Errors.unique(errors)
 end
 
-local function check_foreign_constaints(self, values, constraints)
+
+local function check_foreign_key_in_new_db(new_dao, primary_key)
+  local entity, err, err_t = new_dao:select(primary_key)
+
+  if err then
+    if err_t.code == db_errors.codes.DATABASE_ERROR then
+      return false, Errors.db(err)
+    end
+
+    return false, Errors.schema(err_t)
+  end
+
+  if entity then
+    return entity
+  end
+
+  return false
+end
+
+
+local function check_foreign_constraints(self, values, constraints)
   local errors
 
   for col, constraint in pairs(constraints.foreign) do
     -- Only check foreign keys if value is non-null,
     -- if must not be null, field should be required
     if values[col] ~= nil and values[col] ~= ngx.null then
-      local res, err = self:find(constraint.table, constraint.schema, {
-        [constraint.col] = values[col]
-      })
-      if err then return nil, err
-      elseif not res then
-        errors = utils.add_error(errors, col, values[col])
+
+      if self.new_db[constraint.table] then
+        -- new DAO
+        local new_dao = self.new_db[constraint.table]
+        local res, err = check_foreign_key_in_new_db(new_dao, {
+          [constraint.col] = values[col]
+        })
+        if err then return nil, err
+        elseif not res then
+          errors = utils.add_error(errors, col, values[col])
+        end
+
+      else
+        -- old DAO
+        local res, err = self:find(constraint.table, constraint.schema, {
+          [constraint.col] = values[col]
+        })
+        if err then return nil, err
+        elseif not res then
+          errors = utils.add_error(errors, col, values[col])
+        end
       end
+
     end
   end
 
@@ -481,7 +526,7 @@ function _M:insert(table_name, schema, model, constraints, options)
     return nil, err
   end
 
-  ok, err = check_foreign_constaints(self, model, constraints)
+  ok, err = check_foreign_constraints(self, model, constraints)
   if not ok then
     return nil, err
   end
@@ -679,13 +724,13 @@ end
 function _M:update(table_name, schema, constraints, filter_keys, values, nils, full, model, options)
   options = options or {}
 
-  -- must check unique constaints manually too
+  -- must check unique constraints manually too
   local ok, err = check_unique_constraints(self, table_name, constraints, values, filter_keys, true)
   if not ok then
     return nil, err
   end
 
-  ok, err = check_foreign_constaints(self, values, constraints)
+  ok, err = check_foreign_constraints(self, values, constraints)
   if not ok then
     return nil, err
   end
@@ -757,10 +802,28 @@ function _M:delete(table_name, schema, primary_keys, constraints)
   local where, args = get_where(schema, primary_keys)
   local query = fmt("DELETE FROM %s WHERE %s", table_name, where)
   local res, err =  self:query(query, args)
-  if not res then return nil, err
-  elseif res.type == "VOID" then
-    if constraints and constraints.cascade then
-      for f_entity, cascade in pairs(constraints.cascade) do
+  if not res
+    then return nil, err
+  end
+  if res.type ~= "VOID" then
+    return nil
+  end
+
+  if constraints and constraints.cascade then
+    for f_entity, cascade in pairs(constraints.cascade) do
+      if cascade.new_db then
+        local db_entity = cascade.db_entity
+
+        for row, err in db_entity["each_for_" .. cascade.f_col](db_entity, primary_keys) do
+          if not row then
+            return nil, err
+          end
+
+          local key = db_entity.schema:extract_pk_values(row)
+          db_entity:delete(key)
+        end
+
+      else
         local tbl = {[cascade.f_col] = primary_keys[cascade.col]}
         local rows, err = self:find_all(cascade.table, tbl, cascade.schema)
         if not rows then
@@ -780,8 +843,8 @@ function _M:delete(table_name, schema, primary_keys, constraints)
         end
       end
     end
-    return row
   end
+  return row
 end
 
 --- Migrations

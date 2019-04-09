@@ -4,7 +4,7 @@ local enums = require "kong.enterprise_edition.dao.enums"
 
 
 for _, strategy in helpers.each_strategy() do
-  describe("Plugin (EE logic): key-auth (API) [" .. strategy .. "]", function()
+  pending("Pending on feature flags - Plugin (EE logic): key-auth (API) [" .. strategy .. "]", function()
     local admin_client
     local dao
     local admin, consumer, developer

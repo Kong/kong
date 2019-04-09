@@ -14,8 +14,12 @@ for _, strategy in helpers.each_strategy() do
   describe("Plugin: response-transformer [#" .. strategy .. "]", function()
     local proxy_client
 
-    setup(function()
-      local bp = helpers.get_db_utils(strategy)
+    lazy_setup(function()
+      local bp = helpers.get_db_utils(strategy, {
+        "routes",
+        "services",
+        "plugins",
+      })
 
       local route = bp.routes:insert({
         hosts   = { "response.com" },
@@ -23,7 +27,7 @@ for _, strategy in helpers.each_strategy() do
       })
 
       bp.plugins:insert {
-        route_id = route.id,
+        route = { id = route.id },
         name     = "response-transformer",
         config   = {
           add    = {
@@ -41,7 +45,7 @@ for _, strategy in helpers.each_strategy() do
       }))
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       helpers.stop_kong()
     end)
 

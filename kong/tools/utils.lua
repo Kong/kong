@@ -2,7 +2,7 @@
 -- Module containing some general utility functions used in many places in Kong.
 --
 -- NOTE: Before implementing a function here, consider if it will be used in many places
--- across Kong. If not, a local function in the appropriate module is prefered.
+-- across Kong. If not, a local function in the appropriate module is preferred.
 --
 -- @copyright Copyright 2016-2018 Kong Inc. All rights reserved.
 -- @license [Apache 2.0](https://opensource.org/licenses/Apache-2.0)
@@ -29,7 +29,6 @@ local fmt        = string.format
 local find       = string.find
 local gsub       = string.gsub
 local split      = pl_stringx.split
-local strip      = pl_stringx.strip
 local re_find    = ngx.re.find
 local re_match   = ngx.re.match
 
@@ -61,9 +60,18 @@ local _M = {}
 _M.split = split
 
 --- strips whitespace from a string.
--- just a placeholder to the penlight `pl.stringx.strip` function
 -- @function strip
-_M.strip = strip
+_M.strip = function(str)
+  if str == nil then
+    return ""
+  end
+  str = tostring(str)
+  if #str > 200 then
+    return str:gsub("^%s+", ""):reverse():gsub("^%s+", ""):reverse()
+  else
+    return str:match("^%s*(.-)%s*$")
+  end
+end
 
 --- packs a set of arguments in a table.
 -- Explicitly sets field `n` to the number of arguments, so it is `nil` safe
@@ -114,7 +122,7 @@ do
       _system_infos.cores = tonumber(stdout:sub(1, -2))
     end
 
-    ok, _, stdout = pl_utils.executeex("uname -a")
+    ok, _, stdout = pl_utils.executeex("uname -ms")
     if ok then
       _system_infos.uname = stdout:gsub(";", ","):sub(1, -2)
     end
@@ -786,7 +794,7 @@ _M.format_host = function(p1, p2)
     return nil, "cannot format type '" .. t .. "'"
   end
   if typ == "ipv6" and not find(host, "[", nil, true) then
-    return "[" .. host .. "]" .. (port and ":" .. port or "")
+    return "[" .. _M.normalize_ipv6(host) .. "]" .. (port and ":" .. port or "")
   else
     return host ..  (port and ":" .. port or "")
   end
@@ -807,6 +815,24 @@ _M.validate_header_name = function(name)
   end
 
   return nil, "bad header name '" .. name ..
+              "', allowed characters are A-Z, a-z, 0-9, '_', and '-'"
+end
+
+--- Validates a cookie name.
+-- Checks characters used in a cookie name to be valid
+-- a-z, A-Z, 0-9, '_' and '-' are allowed.
+-- @param name (string) the cookie name to verify
+-- @return the valid cookie name, or `nil+error`
+_M.validate_cookie_name = function(name)
+  if name == nil or name == "" then
+    return nil, "no cookie name provided"
+  end
+
+  if re_match(name, "^[a-zA-Z0-9-_]+$", "jo") then
+    return name
+  end
+
+  return nil, "bad cookie name '" .. name ..
               "', allowed characters are A-Z, a-z, 0-9, '_', and '-'"
 end
 

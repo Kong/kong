@@ -1,18 +1,25 @@
 local api_helpers = require "kong.api.api_helpers"
 local singletons  = require "kong.singletons"
 local responses   = require "kong.tools.responses"
-local endpoints   = require "kong.api.endpoints"
-local reports     = require "kong.core.reports"
+local reports     = require "kong.reports"
 local utils       = require "kong.tools.utils"
-local crud        = require "kong.api.crud_helpers"
 local workspaces  = require "kong.workspaces"
-local Router      = require "kong.core.router"
-local core_handler = require "kong.core.handler"
+local Router      = require "kong.router"
+local core_handler = require "kong.runloop.handler"
 local uuid = require("kong.tools.utils").uuid
 
-local tostring    = tostring
-local type        = type
+
 local null        = ngx.null
+
+
+local function post_process(data)
+  local r_data = utils.deep_copy(data)
+  r_data.config = nil
+  r_data.e = "r"
+  reports.send("api", r_data)
+  return data
+end
+
 
 local function build_router_without(excluded_route)
   local routes, i = {}, 0
@@ -80,12 +87,14 @@ local function build_router_without(excluded_route)
   return router
 end
 
+
 local function rebuild_routes(db)
   local old_wss = ngx.ctx.workspaces
   ngx.ctx.workspaces = {}
   core_handler.build_router(db, uuid())
   ngx.ctx.workspaces = old_wss
 end
+
 
 return {
   ["/routes"] = {
@@ -143,61 +152,8 @@ return {
   },
 
   ["/routes/:routes/plugins"] = {
-    on_error = function(self)
-      local err = self.errors[1]
-
-      if type(err) ~= "table" then
-        return responses.send_HTTP_INTERNAL_SERVER_ERROR(tostring(err))
-      end
-
-      if err.db then
-        return responses.send_HTTP_INTERNAL_SERVER_ERROR(err.message)
-      end
-
-      if err.unique then
-        return responses.send_HTTP_CONFLICT(err.tbl)
-      end
-
-      if err.foreign then
-        return responses.send_HTTP_NOT_FOUND(err.tbl)
-      end
-
-      return responses.send_HTTP_BAD_REQUEST(err.tbl or err.message)
+    POST = function(_, _, _, parent)
+      return parent(post_process)
     end,
-
-    before = function(self, db, helpers)
-      local id = self.params.routes
-
-      local parent_entity, _, err_t = db.routes:select({ id = id })
-      if err_t then
-        return endpoints.handle_error(err_t)
-      end
-
-      if not parent_entity then
-        return helpers.responses.send_HTTP_NOT_FOUND()
-      end
-
-      self.params.routes   = nil
-      self.params.route_id = parent_entity.id
-    end,
-
-    GET = function(self)
-      crud.paginated_set(self, singletons.dao.plugins)
-    end,
-
-    POST = function(self)
-      crud.post(self.params, singletons.dao.plugins,
-        function(data)
-          local r_data = utils.deep_copy(data)
-          r_data.config = nil
-          r_data.e = "r"
-          reports.send("api", r_data)
-        end
-      )
-    end,
-
-    PUT = function(self)
-      crud.put(self.params, singletons.dao.plugins)
-    end
   },
 }

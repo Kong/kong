@@ -551,7 +551,7 @@ for _, strategy in helpers.each_strategy() do
 
       describe("#" .. mode, function()
 
-        it("proxy with upstreams in different workspaces", function()
+        it("#flaky proxy with upstreams in different workspaces", function()
 
           local upstream_name = add_upstream({})
           local port = add_target(upstream_name, localhost)

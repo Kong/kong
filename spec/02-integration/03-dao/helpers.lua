@@ -1,7 +1,11 @@
 local spec_helpers = require "spec.helpers"
 local conf_loader = require "kong.conf_loader"
 
-local DATABASES = {"postgres", "cassandra"}
+local DATABASES = { "postgres", "cassandra" }
+local env_var = os.getenv("KONG_DATABASE")
+if env_var then
+  DATABASES = { env_var }
+end
 
 local function for_each_dao(fn)
   for i = 1, #DATABASES do

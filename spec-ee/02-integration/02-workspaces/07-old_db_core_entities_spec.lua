@@ -1,5 +1,4 @@
 local helpers = require "spec.helpers"
-local enums   = require "kong.enterprise_edition.dao.enums"
 
 
 for _, strategy in helpers.each_strategy() do
@@ -17,12 +16,10 @@ for _, strategy in helpers.each_strategy() do
 
     describe("consumers", function()
       it("add null custom_id", function()
-        helpers.register_consumer_relations(dao)
 
         local consumer_create, err, err_t = dao.consumers:insert {
           username = "bob",
           custom_id = ngx.null,
-          type = enums.CONSUMERS.TYPE.DEVELOPER
         }
         assert.is_nil(err_t)
         assert.is_nil(err)

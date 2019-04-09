@@ -2,10 +2,10 @@
 -- features, such as Sentinel compatibility.
 
 local redis_connector = require "resty.redis.connector"
-local errors          = require "kong.dao.errors"
+local typedefs        = require "kong.db.schema.typedefs"
 local utils           = require "kong.tools.utils"
 local redis           = require "resty.redis"
-local reports         = require "kong.core.reports"
+local reports         = require "kong.reports"
 
 
 local log = ngx.log
@@ -23,97 +23,48 @@ local function is_redis_sentinel(redis)
   return is_sentinel and true or false
 end
 
+
+local function validate_sentinel_addresses(addresses)
+  for _, address in ipairs(addresses) do
+    local parts = utils.split(address, ":")
+
+    if not (#parts == 2 and tonumber(parts[2])) then
+      return false, "Invalid Redis Sentinel address: " .. address
+    end
+  end
+
+  return true
+end
+
+
 _M.config_schema = {
+  type = "record",
+
   fields = {
-    host = {
-      type = "string",
-    },
-    port = {
-      type = "number",
-    },
-    timeout = {
-      type = "number",
-    },
-    password = {
-      type = "string",
-    },
-    database = {
-      type = "number",
-    },
-    sentinel_master = {
-      type = "string",
-    },
-    sentinel_role = {
-      type = "string",
-      enum = { "master", "slave", "any" },
-    },
-    sentinel_addresses = {
-      type = "array",
-    },
+    { host = typedefs.host },
+    { port = typedefs.port },
+    { timeout = typedefs.timeout { default = 2000 } },
+    { password = { type = "string", } },
+    { database = { type = "integer", default = 0 } },
+    { sentinel_master = { type = "string", } },
+    { sentinel_role = { type = "string", one_of = { "master", "slave", "any" }, } },
+    { sentinel_addresses = { type = "array", elements = { type = "string" }, min_len = 1, custom_validator =  validate_sentinel_addresses } },
   },
-  self_check = function(schema, plugin_t, dao, is_updating)
-    if is_redis_sentinel(plugin_t) then
-      if not plugin_t.sentinel_master then
-        return false,
-               errors.schema("You need to specify a Redis Sentinel master")
-      end
 
-      if not plugin_t.sentinel_role then
-        return false,
-               errors.schema("You need to specify a Redis Sentinel role")
-      end
-
-      if not plugin_t.sentinel_addresses then
-        return false,
-               errors.schema("You need to specify one or more " ..
-               "Redis Sentinel addresses")
-
-      else
-        if plugin_t.host then
-          return false,
-                 errors.schema("When Redis Sentinel is enabled you cannot " ..
-                 "set a 'redis.host'")
-        end
-
-        if plugin_t.port then
-          return false,
-                 errors.schema("When Redis Sentinel is enabled you cannot " ..
-                 "set a 'redis.port'")
-        end
-
-        if #plugin_t.sentinel_addresses == 0 then
-          return false,
-                 errors.schema("You need to specify one or more " ..
-                 "Redis Sentinel addresses")
-        end
-
-        for _, address in ipairs(plugin_t.sentinel_addresses) do
-          local parts = utils.split(address, ":")
-
-          if not (#parts == 2 and tonumber(parts[2])) then
-            return false,
-                   errors.schema("Invalid Redis Sentinel address: " .. address)
-          end
-        end
-      end
-    else
-      if not plugin_t.host then
-        return false, errors.schema("Redis host must be provided")
-      end
-
-      if not plugin_t.port then
-        return false, errors.schema("Redis port must be provided")
-      end
-    end
-
-    if not plugin_t.database then
-      plugin_t.database = 0
-    end
-
-    if not plugin_t.timeout then
-      plugin_t.timeout = 2000
-    end
-  end,
+  entity_checks = {
+    {
+      mutually_exclusive_sets = {
+        set1 = { "sentinel_master", "sentinel_role", "sentinel_addresses" },
+        set2 = { "host", "port" },
+      },
+    },
+    {
+      mutually_required = { "sentinel_master", "sentinel_role", "sentinel_addresses" },
+    },
+    {
+      mutually_required = { "host", "port" },
+    },
+  }
 }
 
 

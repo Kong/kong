@@ -9,15 +9,19 @@ for _, strategy in helpers.each_strategy() do
   describe("Plugin: udp-log (log) [#" .. strategy .. "]", function()
     local proxy_client
 
-    setup(function()
-      local bp = helpers.get_db_utils(strategy)
+    lazy_setup(function()
+      local bp = helpers.get_db_utils(strategy, {
+        "routes",
+        "services",
+        "plugins",
+      })
 
       local route = bp.routes:insert {
         hosts = { "udp_logging.com" },
       }
 
       bp.plugins:insert {
-        route_id = route.id,
+        route = { id = route.id },
         name     = "udp-log",
         config   = {
           host   = "127.0.0.1",
@@ -33,7 +37,7 @@ for _, strategy in helpers.each_strategy() do
       proxy_client = helpers.proxy_client()
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       if proxy_client then
         proxy_client:close()
       end

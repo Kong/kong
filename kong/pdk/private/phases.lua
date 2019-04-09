@@ -1,0 +1,132 @@
+local bit = require "bit"
+
+
+local band = bit.band
+local fmt = string.format
+
+
+local PHASES = {
+  --init        = 0x00000001,
+  init_worker   = 0x00000001,
+  certificate   = 0x00000002,
+  --set         = 0x00000004,
+  rewrite       = 0x00000010,
+  access        = 0x00000020,
+  balancer      = 0x00000040,
+  --content     = 0x00000100,
+  header_filter = 0x00000200,
+  body_filter   = 0x00000400,
+  --timer       = 0x00001000,
+  log           = 0x00002000,
+  preread       = 0x00004000,
+  admin_api     = 0x10000000,
+}
+
+
+do
+  local n = 0
+  for k, v in pairs(PHASES) do
+    n = n + 1
+    PHASES[v] = k
+  end
+
+  PHASES.n = n
+end
+
+
+local function new_phase(...)
+  return bit.bor(...)
+end
+
+
+local function get_phases_names(phases)
+  local names = {}
+  local n = 1
+
+  for _ = 1, PHASES.n do
+    if band(phases, n) ~= 0 and PHASES[n] then
+      table.insert(names, PHASES[n])
+    end
+
+    n = bit.lshift(n, 1)
+  end
+
+  return names
+end
+
+
+local function check_phase(accepted_phases)
+  if not kong then
+    -- no _G.kong, we are likely in tests
+    return
+  end
+
+  local current_phase = kong.ctx.core.phase
+  if not current_phase then
+    error("no phase in kong.ctx.core.phase")
+  end
+
+  if band(current_phase, accepted_phases) ~= 0 then
+    return
+  end
+
+  local current_phase_name = PHASES[current_phase] or "'unknown phase'"
+  local accepted_phases_names = get_phases_names(accepted_phases)
+
+  error(fmt("function cannot be called in %s phase (only in: %s)",
+            current_phase_name,
+            table.concat(accepted_phases_names, ", ")))
+end
+
+
+local function check_not_phase(rejected_phases)
+  if not kong then
+    -- no _G.kong, we are likely in tests
+    return
+  end
+
+  local current_phase = kong.ctx.core.phase
+  if not current_phase then
+    error("no phase in kong.ctx.core.phase")
+  end
+
+  if band(current_phase, rejected_phases) == 0 then
+    return
+  end
+
+  local current_phase_name = PHASES[current_phase] or "'unknown phase'"
+  local rejected_phases_names = get_phases_names(rejected_phases)
+
+  error(fmt("function cannot be called in %s phase (can be called in any " ..
+            "phases except: %s)",
+            current_phase_name,
+            table.concat(rejected_phases_names, ", ")))
+end
+
+
+-- Exact phases + convenience aliases
+local public_phases = setmetatable({
+  request = new_phase(PHASES.rewrite,
+                      PHASES.access,
+                      PHASES.header_filter,
+                      PHASES.body_filter,
+                      PHASES.log,
+                      PHASES.admin_api),
+}, {
+  __index = function(t, k)
+    error("unknown phase or phase alias: " .. k)
+  end
+})
+
+
+for k, v in pairs(PHASES) do
+  public_phases[k] = v
+end
+
+
+return {
+  new = new_phase,
+  check = check_phase,
+  check_not = check_not_phase,
+  phases = public_phases,
+}

@@ -4,54 +4,79 @@ local cjson   = require "cjson"
 
 local function it_content_types(title, fn)
   local test_form_encoded = fn("application/x-www-form-urlencoded")
+  local test_multipart = fn("multipart/form-data")
   local test_json = fn("application/json")
+
   it(title .. " with application/www-form-urlencoded", test_form_encoded)
+  it(title .. " with multipart/form-data", test_multipart)
   it(title .. " with application/json", test_json)
 end
 
+for _, strategy in helpers.each_strategy() do
 
-describe("Admin API post-processing", function()
+describe("Admin API post-processing #" .. strategy, function()
   local client
+  local plugin
+  local db
+  local bp
 
-  setup(function()
-    assert(helpers.dao:run_migrations())
+  lazy_setup(function()
+    bp, db = helpers.get_db_utils(strategy, {
+      "plugins",
+    }, {
+      "admin-api-post-process"
+    })
+
     assert(helpers.start_kong {
-      custom_plugins = "admin-api-post-process"
+      database = strategy,
+      nginx_conf = "spec/fixtures/custom_nginx.template",
+      plugins = "bundled, admin-api-post-process, dummy"
     })
 
     client = assert(helpers.admin_client())
   end)
 
-  teardown(function()
+  lazy_teardown(function()
     if client then
       client:close()
     end
 
     helpers.stop_kong()
+    db.plugins:truncate()
   end)
 
   before_each(function()
-    helpers.dao:truncate_tables()
+    db:truncate("plugins")
+    db:truncate("consumers")
+    local client = helpers.admin_client()
+    local res = assert(client:send {
+      method = "POST",
+      path = "/plugins",
+      body = {
+        name = "admin-api-post-process",
+      },
+      headers = { ["Content-Type"] = "application/json" },
+    })
 
-    helpers.register_consumer_relations(helpers.dao)
-
-    assert(helpers.dao.consumers:insert({
+    bp.consumers:insert({
       username = "michael",
       custom_id = "landon",
-    }))
+    })
+    local body = assert.res_status(201, res)
+    plugin = cjson.decode(body)
+    assert(client:close())
   end)
 
   it_content_types("post-processes paginated sets", function(content_type)
     return function()
       local res = assert(client:send {
         method = "GET",
-        path = "/consumers/post_processed",
+        path = "/plugins/post_processed",
         headers = { ["Content-Type"] = content_type }
       })
       local body = assert.res_status(200, res)
       local json = cjson.decode(body).data[1]
-      assert.equal("MICHAEL", json.username)
-      assert.equal("LANDON", json.custom_id)
+      assert.equal("ADMIN-API-POST-PROCESS", json.name)
     end
   end)
 
@@ -59,17 +84,15 @@ describe("Admin API post-processing", function()
     return function()
       local res = assert(client:send {
         method = "POST",
-        path = "/consumers/post_processed",
+        path = "/plugins/post_processed",
         body = {
-          username = "devon",
-          custom_id = "miles",
+          name = "dummy",
         },
         headers = { ["Content-Type"] = content_type }
       })
       local body = assert.res_status(201, res)
       local json = cjson.decode(body)
-      assert.equal("DEVON", json.username)
-      assert.equal("MILES", json.custom_id)
+      assert.equal("DUMMY", json.name)
     end
   end)
 
@@ -77,48 +100,67 @@ describe("Admin API post-processing", function()
     return function()
       local res = assert(client:send {
         method = "GET",
-        path = "/consumers/michael/post_processed",
+        path = "/plugins/" .. plugin.id .. "/post_processed",
         headers = { ["Content-Type"] = content_type }
       })
       local body = assert.res_status(200, res)
       local json = cjson.decode(body)
-      assert.equal("MICHAEL", json.username)
-      assert.equal("LANDON", json.custom_id)
+      assert.equal("ADMIN-API-POST-PROCESS", json.name)
     end
   end)
 
   it_content_types("post-processes crud.patch", function(content_type)
     return function()
+      if content_type == "multipart/form-data" then
+        -- the client doesn't play well with this
+        return
+      end
+
       local res = assert(client:send {
         method = "PATCH",
-        path = "/consumers/michael/post_processed",
+        path = "/plugins/" .. plugin.id .. "/post_processed",
         body = {
-          custom_id = "knight",
+          name = "admin-api-post-process",
+          api = ngx.null,
+          route = ngx.null,
+          service = ngx.null,
+          consumer = ngx.null,
+          config = {
+            foo = "potato"
+          }
         },
         headers = { ["Content-Type"] = content_type }
       })
       local body = assert.res_status(200, res)
       local json = cjson.decode(body)
-      assert.equal("MICHAEL", json.username)
-      assert.equal("KNIGHT", json.custom_id)
+      assert.equal("POTATO", json.config.foo)
     end
   end)
 
   it_content_types("post-processes crud.put", function(content_type)
     return function()
+      if content_type == "multipart/form-data" then
+        -- the client doesn't play well with this
+        return
+      end
+
       local res = assert(client:send {
         method = "PUT",
-        path = "/consumers/michael/post_processed",
+        path = "/plugins/" .. plugin.id .. "/post_processed",
         body = {
-          username = "garthe",
-          custom_id = "knight",
+          name = "admin-api-post-process",
+          created_at = 1,
+          config = {
+            foo = "carrot",
+          }
         },
         headers = { ["Content-Type"] = content_type }
       })
-      local body = assert.res_status(201, res)
+      local body = assert.res_status(200, res)
       local json = cjson.decode(body)
-      assert.equal("GARTHE", json.username)
-      assert.equal("KNIGHT", json.custom_id)
+      assert.equal("CARROT", json.config.foo)
     end
   end)
 end)
+
+end

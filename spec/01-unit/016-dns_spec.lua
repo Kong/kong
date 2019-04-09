@@ -8,7 +8,7 @@ describe("DNS", function()
   local balancer, resolver, query_func, old_new
   local mock_records, singletons, client
 
-  setup(function()
+  lazy_setup(function()
     stub(ngx, "log")
     singletons = require "kong.singletons"
 
@@ -23,18 +23,23 @@ describe("DNS", function()
       find_all = function(self) return {} end
     }
 
-    singletons.dao.workspaces = {
-      find_all = function() return {} end
+    singletons.db = {}
+    singletons.db.workspaces = {
+      select_all = function()
+        return {}
+      end
     }
 
-    balancer = require "kong.core.balancer"
+    singletons.origins = {}
+
+    balancer = require "kong.runloop.balancer"
     balancer.init()
 
     resolver = require "resty.dns.resolver"
     client = require "resty.dns.client"
   end)
 
-  teardown(function()
+  lazy_teardown(function()
     if type(ngx.log) == "table" then
       ngx.log:revert()
     end

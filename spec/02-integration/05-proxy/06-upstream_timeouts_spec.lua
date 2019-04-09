@@ -3,7 +3,7 @@ local helpers = require "spec.helpers"
 for _, strategy in helpers.each_strategy() do
   describe("upstream timeouts with DB: #" .. strategy, function()
     local proxy_client
-    local bp
+    local bp, dao
 
     local function insert_routes(routes)
       if type(routes) ~= "table" then
@@ -42,8 +42,14 @@ for _, strategy in helpers.each_strategy() do
       return true
     end
 
-    setup(function()
-      bp = helpers.get_db_utils(strategy)
+    lazy_setup(function()
+      bp, _, dao = helpers.get_db_utils(strategy, {
+        "routes",
+        "services",
+      })
+
+      ngx.ctx.workspaces = nil
+      ngx.ctx.workspaces = dao.workspaces:find_all({name = "default"})
 
       insert_routes {
         {
@@ -78,7 +84,7 @@ for _, strategy in helpers.each_strategy() do
       }))
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       helpers.stop_kong()
     end)
 

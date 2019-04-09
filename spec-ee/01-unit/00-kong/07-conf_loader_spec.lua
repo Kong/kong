@@ -55,13 +55,10 @@ describe("Configuration loader - enterprise", function()
     local conf = assert(conf_loader())
     assert.equal("/usr/local/kong/ssl/admin-gui-kong-default.crt", conf.admin_gui_ssl_cert_default)
     assert.equal("/usr/local/kong/ssl/admin-gui-kong-default.key", conf.admin_gui_ssl_cert_key_default)
-    assert.equal("/usr/local/kong/ssl/admin-gui-kong-default.csr", conf.admin_gui_ssl_cert_csr_default)
     assert.equal("/usr/local/kong/ssl/portal-gui-kong-default.crt", conf.portal_gui_ssl_cert_default)
     assert.equal("/usr/local/kong/ssl/portal-gui-kong-default.key", conf.portal_gui_ssl_cert_key_default)
-    assert.equal("/usr/local/kong/ssl/portal-gui-kong-default.csr", conf.portal_gui_ssl_cert_csr_default)
     assert.equal("/usr/local/kong/ssl/portal-api-kong-default.crt", conf.portal_api_ssl_cert_default)
     assert.equal("/usr/local/kong/ssl/portal-api-kong-default.key", conf.portal_api_ssl_cert_key_default)
-    assert.equal("/usr/local/kong/ssl/portal-api-kong-default.csr", conf.portal_api_ssl_cert_csr_default)
   end)
 
   describe("validations", function()
@@ -97,7 +94,7 @@ describe("Configuration loader - enterprise", function()
         admin_gui_listen = "127.0.0.1"
       })
       assert.is_nil(conf)
-      assert.equal("admin_gui_listen must be of form: [off] | <ip>:<port> [ssl] [http2] [proxy_protocol], [... next entry ...]", err)
+      assert.equal("admin_gui_listen must be of form: [off] | <ip>:<port> [ssl] [http2] [proxy_protocol] [transparent], [... next entry ...]", err)
 
       conf, err = conf_loader(nil, {
         portal = "on",
@@ -106,7 +103,7 @@ describe("Configuration loader - enterprise", function()
         portal_token_exp = 21600,
       })
       assert.is_nil(conf)
-      assert.equal("portal_gui_listen must be of form: [off] | <ip>:<port> [ssl] [http2] [proxy_protocol], [... next entry ...]", err)
+      assert.equal("portal_gui_listen must be of form: [off] | <ip>:<port> [ssl] [http2] [proxy_protocol] [transparent], [... next entry ...]", err)
 
       conf, err = conf_loader(nil, {
         portal = "on",
@@ -115,7 +112,7 @@ describe("Configuration loader - enterprise", function()
         portal_token_exp = 21600,
       })
       assert.is_nil(conf)
-      assert.equal("portal_api_listen must be of form: [off] | <ip>:<port> [ssl] [http2] [proxy_protocol], [... next entry ...]", err)
+      assert.equal("portal_api_listen must be of form: [off] | <ip>:<port> [ssl] [http2] [proxy_protocol] [transparent], [... next entry ...]", err)
     end)
 
     it("enforces positive number for portal_token_exp ", function()

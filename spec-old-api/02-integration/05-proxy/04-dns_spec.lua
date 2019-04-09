@@ -42,7 +42,7 @@ end
 describe("DNS", function()
   local dao
 
-  setup(function()
+  lazy_setup(function()
     dao = select(3, helpers.get_db_utils())
   end)
 
@@ -50,7 +50,7 @@ describe("DNS", function()
     local retries = 3
     local client
 
-    setup(function()
+    lazy_setup(function()
       assert(dao.apis:insert {
         name = "tests-retries",
         hosts = { "retries.com" },
@@ -62,7 +62,7 @@ describe("DNS", function()
       client = helpers.proxy_client()
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       if client then client:close() end
       helpers.stop_kong()
     end)
@@ -90,8 +90,14 @@ describe("DNS", function()
   describe("upstream resolve failure", function()
     local client
 
+<<<<<<< HEAD
     setup(function()
       dao = select(3, helpers.get_db_utils())
+||||||| merged common ancestors
+    setup(function()
+=======
+    lazy_setup(function()
+>>>>>>> 0.15.0
       assert(dao.apis:insert {
         name = "tests-retries-bis",
         hosts = { "retries-bis.com" },
@@ -102,7 +108,7 @@ describe("DNS", function()
       client = helpers.proxy_client()
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       if client then client:close() end
       helpers.stop_kong()
     end)
