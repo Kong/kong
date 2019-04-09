@@ -153,14 +153,35 @@ local function load_declarative_config()
 end
 
 
+local function prewarm_dns(premature, hosts, count)
+  if premature then
+    return
+  end
+
+  log(DEBUG, "prewarming dns client on worker #", WORKER_ID, "...")
+  for i = 1, count do
+    kong.dns.toip(hosts[i])
+  end
+  log(DEBUG, "prewarming dns client on worker #", WORKER_ID, " done")
+end
+
+
 local function cache_services()
   if not kong.db or not kong.cache then
     return true
   end
 
+  local hosts, names, count = {}, {}, 0
+
   for service, err in kong.db.services:each(1000) do
     if err then
       return nil, err
+    end
+
+    if utils.hostname_type(service.host) == "name" and names[service.host] == nil then
+      count = count + 1
+      hosts[count] = service.host
+      names[service.host] = true
     end
 
     local cache_key = kong.db.services:cache_key(service)
@@ -170,6 +191,10 @@ local function cache_services()
     if err then
       return nil, err
     end
+  end
+
+  if count > 0 then
+    ngx.timer.at(0, prewarm_dns, hosts, count)
   end
 
   return true
