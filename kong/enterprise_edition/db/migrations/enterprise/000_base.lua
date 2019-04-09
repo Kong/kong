@@ -1,46 +1,3 @@
-local utils = require "kong.tools.utils"
-local fmt = string.format
-local function seed_rbac_data()
-  local res = {}
-  local def_ws_id = '00000000-0000-0000-0000-000000000000'
-  local roles = {
-    {
-      utils.uuid(), "read-only", 'Read access to all endpoints, across all workspaces',
-      {"(%s, '*', '*', 1, FALSE)"}
-    },
-    { utils.uuid(), "admin", 'Full access to all endpoints, across all workspaces—except RBAC Admin API',
-      {"(%s, '*', '*', 15, FALSE);",
-       "(%s, '*', '/rbac/*', 15, TRUE);",
-       "(%s, '*', '/rbac/*/*', 15, TRUE);",
-       "(%s, '*', '/rbac/*/*/*', 15, TRUE);",
-       "(%s, '*', '/rbac/*/*/*/*', 15, TRUE);",
-       "(%s, '*', '/rbac/*/*/*/*/*', 15, TRUE);",
-      },
-    },
-    { utils.uuid(), "super-admin", 'Full access to all endpoints, across all workspaces',
-      {"(%s, '*', '*', 15, FALSE)"}
-    }
-  }
-
-  for _, role in ipairs(roles) do
-    table.insert(res,
-      fmt("INSERT into rbac_roles(id, name, comment) VALUES(%s, 'default:%s', '%s')",
-        role[1] , role[2], role[3]))
-    table.insert(res,
-      fmt("INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value) VALUES(%s, 'default', '%s', 'rbac_roles', 'id', '%s')", def_ws_id, role[1], role[1]))
-    table.insert(res,
-      fmt("INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value) VALUES(%s, 'default', '%s', 'rbac_roles', 'name', '%s')", def_ws_id, role[1], role[2]))
-
-    for _, endpoint in ipairs(role[4]) do
-      table.insert(res,
-        fmt(
-          fmt("INSERT INTO rbac_role_endpoints(role_id, workspace, endpoint, actions, negative) VALUES %s;", endpoint),
-        role[1]))
-    end
-  end
-  return table.concat(res, ";")
-end
-
 return {
   postgres = {
     up = [[
@@ -784,9 +741,6 @@ CREATE TABLE IF NOT EXISTS admins (
         count counter,
         PRIMARY KEY(workspace_id, entity_type)
       );
-    ]]
-    .. seed_rbac_data() ..
-    [[
       CREATE TABLE IF NOT EXISTS admins (
         id          uuid,
         created_at  timestamp,

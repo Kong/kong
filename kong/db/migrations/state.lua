@@ -112,6 +112,49 @@ local function load_subsystems(db, plugin_names)
     end
   end
 
+  -- load enterprise entities
+  local namespace = "kong.enterprise_edition.db.migrations"
+  local enterprise_namespace = fmt("%s.enterprise", namespace)
+
+  table.insert(res, {
+    name = "enterprise",
+    namespace = enterprise_namespace,
+    migrations_index = require(enterprise_namespace),
+  })
+
+  -- load EE subsystems
+  local ee_path = pl_path.package_path(enterprise_namespace)
+
+  local dir_path, n = string.gsub(pl_path.abspath(ee_path),
+    "enterprise" .. pl_path.sep .. "init%.lua$", "")
+  if n ~= 1 then
+    return nil, prefix_err(db, "failed to substitute migrations path in "
+      .. dir_path)
+  end
+
+  local dirs = pl_dir.getdirectories(dir_path)
+
+  for _, dir in ipairs(dirs) do
+    if not string.find(dir, "enterprise$") then
+      local name = pl_path.basename(dir)
+      local namespace = fmt("%s.%s", namespace, name)
+      local filepath = dir .. pl_path.sep .. "init.lua"
+      local index = assert(loadfile(filepath))
+
+      local mig_idx = index()
+      if type(mig_idx) ~= "table" then
+        return nil, fmt_err(db, "migrations index at '%s' must be a table",
+          filepath)
+      end
+
+      table.insert(res, {
+        name = name,
+        namespace = namespace,
+        migrations_index = mig_idx,
+      })
+    end
+  end
+
   for _, subsys in ipairs(res) do
     subsys.migrations = {}
 
