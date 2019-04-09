@@ -18,7 +18,7 @@ for _, strategy in helpers.each_strategy() do
       })
 
       bp.plugins:insert {
-        route_id = route1.id,
+        route    = { id = route1.id },
         name     = "response-transformer-advanced",
         config   = {
           remove    = {
@@ -29,7 +29,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.plugins:insert {
-        route_id = route2.id,
+        route    = { id = route2.id },
         name     = "response-transformer-advanced",
         config   = {
           replace = {
@@ -41,7 +41,7 @@ for _, strategy in helpers.each_strategy() do
       assert(helpers.start_kong({
         database   = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
-        custom_plugins = "response-transformer-advanced"
+        plugins    = "bundled, response-transformer-advanced"
       }))
     end)
 

@@ -12,7 +12,7 @@ describe("Plugin: response-transformer-advanced (filter)", function()
     })
 
     bp.plugins:insert {
-      route_id  = route1.id,
+      route     = { id = route1.id },
       name      = "response-transformer-advanced",
       config    = {
         replace = {
@@ -24,7 +24,7 @@ describe("Plugin: response-transformer-advanced (filter)", function()
 
     assert(helpers.start_kong({
       nginx_conf = "spec/fixtures/custom_nginx.template",
-      custom_plugins = "response-transformer-advanced"
+      plugins = "bundled, response-transformer-advanced"
     }))
   end)
 

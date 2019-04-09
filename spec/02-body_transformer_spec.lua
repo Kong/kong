@@ -178,6 +178,7 @@ describe("Plugin: response-transformer-advanced", function()
         ctx    = {
           buffer = "",
         },
+        config = ngx.config,
       }
       handler = require("kong.plugins.response-transformer-advanced.handler")
       handler:new()

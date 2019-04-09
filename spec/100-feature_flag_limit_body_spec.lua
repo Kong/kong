@@ -27,7 +27,7 @@ for _, strategy in helpers.each_strategy() do
       })
 
       bp.plugins:insert {
-        route_id = route.id,
+        route    = { id = route.id },
         name     = "response-transformer-advanced",
         config   = {
           add    = {
@@ -40,7 +40,7 @@ for _, strategy in helpers.each_strategy() do
         database          = strategy,
         nginx_conf        = "spec/fixtures/custom_nginx.template",
         feature_conf_path = "spec-ee/fixtures/response_transformer/feature_response_transformer_limit_body.conf",
-        custom_plugins    = "response-transformer-advanced",
+        plugins           = "bundled, response-transformer-advanced",
       }))
     end)
 
@@ -119,7 +119,7 @@ for _, strategy in helpers.each_strategy() do
       })
 
       bp.plugins:insert {
-        route_id = route.id,
+        route    = { id = route.id },
         name     = "response-transformer-advanced",
         config   = {
           add    = {
@@ -132,7 +132,7 @@ for _, strategy in helpers.each_strategy() do
         database          = strategy,
         nginx_conf        = "spec/fixtures/custom_nginx.template",
         feature_conf_path = "spec-ee/fixtures/response_transformer/feature_response_transformer_limit_body_chunked.conf",
-        custom_plugins    = "response-transformer-advanced",
+        plugins           = "bundled, response-transformer-advanced",
       }))
     end)
 
@@ -175,7 +175,7 @@ for _, strategy in helpers.each_strategy() do
       })
 
       bp.plugins:insert {
-        route_id = route.id,
+        route    = { id = route.id },
         name     = "response-transformer-advanced",
         config   = {
           add    = {
@@ -188,7 +188,7 @@ for _, strategy in helpers.each_strategy() do
         database          = strategy,
         nginx_conf        = "spec/fixtures/custom_nginx.template",
         feature_conf_path = "spec-ee/fixtures/response_transformer/feature_response_transformer_limit_body-body_size_not_defined.conf",
-        custom_plugins    = "response-transformer-advanced",
+        plugins           = "bundled, response-transformer-advanced",
       }))
     end)
 
@@ -237,7 +237,7 @@ for _, strategy in helpers.each_strategy() do
       })
 
       bp.plugins:insert {
-        route_id = route.id,
+        route    = { id = route.id },
         name     = "response-transformer-advanced",
         config   = {
           add    = {
@@ -250,7 +250,7 @@ for _, strategy in helpers.each_strategy() do
         database          = strategy,
         nginx_conf        = "spec/fixtures/custom_nginx.template",
         feature_conf_path = "spec-ee/fixtures/response_transformer/feature_response_transformer_limit_body-body_size_invalid.conf",
-        custom_plugins    = "response-transformer-advanced",
+        plugins           = "bundled, response-transformer-advanced",
       }))
     end)
 

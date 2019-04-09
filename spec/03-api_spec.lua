@@ -19,7 +19,7 @@ for _, strategy in helpers.each_strategy() do
         assert(helpers.start_kong({
           database   = strategy,
           nginx_conf = "spec/fixtures/custom_nginx.template",
-          custom_plugins = "response-transformer-advanced",
+          plugins = "bundled, response-transformer-advanced",
         }))
 
         admin_client = helpers.admin_client()
@@ -34,8 +34,8 @@ for _, strategy in helpers.each_strategy() do
               name   = "response-transformer-advanced",
               config = {
                 remove = {
-                  headers = "just_a_key",
-                  json    = "just_a_key",
+                  headers = {"just_a_key"},
+                  json    = {"just_a_key"},
                 },
               },
             },
@@ -56,7 +56,7 @@ for _, strategy in helpers.each_strategy() do
               name   = "response-transformer-advanced",
               config = {
                 add = {
-                  headers = "just_a_key",
+                  headers = {"just_a_key"},
                 },
               },
             },
@@ -66,7 +66,9 @@ for _, strategy in helpers.each_strategy() do
           })
           local body = assert.response(res).has.status(400)
           local json = cjson.decode(body)
-          assert.same({ ["config.add.headers"] = "key 'just_a_key' has no value" }, json)
+          local msg = "key 'just_a_key' has no value"
+          local expected = { config = { add = { headers = msg } } }
+          assert.same(expected, json["fields"])
         end)
         it("replace fails with missing colons for key/value separation", function()
           local res = assert(admin_client:send {
@@ -76,7 +78,7 @@ for _, strategy in helpers.each_strategy() do
               name   = "response-transformer-advanced",
               config = {
                 replace = {
-                  headers = "just_a_key",
+                  headers = {"just_a_key"},
                 },
               },
             },
@@ -86,7 +88,9 @@ for _, strategy in helpers.each_strategy() do
           })
           local body = assert.response(res).has.status(400)
           local json = cjson.decode(body)
-          assert.same({ ["config.replace.headers"] = "key 'just_a_key' has no value" }, json)
+          local msg = "key 'just_a_key' has no value"
+          local expected = { config = { replace = { headers = msg } } }
+          assert.same(expected, json["fields"])
         end)
         it("append fails with missing colons for key/value separation", function()
           local res = assert(admin_client:send {
@@ -96,7 +100,7 @@ for _, strategy in helpers.each_strategy() do
               name   = "response-transformer-advanced",
               config = {
                 append = {
-                  headers = "just_a_key",
+                  headers = {"just_a_key"},
                 },
               },
             },
@@ -106,7 +110,9 @@ for _, strategy in helpers.each_strategy() do
           })
           local body = assert.response(res).has.status(400)
           local json = cjson.decode(body)
-          assert.same({ ["config.append.headers"] = "key 'just_a_key' has no value" }, json)
+          local msg = "key 'just_a_key' has no value"
+          local expected = { config = { append = { headers = msg } } }
+          assert.same(expected, json["fields"])
         end)
       end)
     end)
