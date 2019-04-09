@@ -1446,6 +1446,13 @@ function Schema:process_auto_fields(input, context, nulls)
     if context == "select" and output[key] == null and not nulls then
       output[key] = nil
     end
+
+    -- Set read_before_write to true,
+    -- to handle deep merge of record object on update.
+    if context == "update" and field.type == "record"
+       and output[key] ~= nil and output[key] ~= null then
+      read_before_write = true
+    end
   end
 
   --[[

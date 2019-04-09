@@ -126,5 +126,35 @@ describe("workspace config", function()
       }
       assert.falsy(schema:validate(values))
     end)
+
+    it("should correctly merge new/old configs", function()
+      local old_values = {
+        name = "test",
+        config = {
+          portal = true,
+          portal_auth = 'basic-auth',
+        },
+      }
+
+      local new_values = {
+        name = "test",
+        config = {
+          portal_auth = 'key-auth',
+        },
+      }
+
+      local expected_values = {
+        name = "test",
+        config = {
+          portal = true,
+          portal_auth = 'key-auth',
+        },
+      }
+
+      local values = schema:merge_values(new_values, old_values)
+
+      assert.equals(values.config.portal, expected_values.config.portal)
+      assert.equals(values.config.portal_auth, expected_values.config.portal_auth)
+    end)
   end)
 end)

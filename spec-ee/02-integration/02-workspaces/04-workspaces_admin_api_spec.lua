@@ -230,6 +230,42 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
         local json = cjson.decode(body)
         assert.truthy(#json.data > 0)
       end)
+
+      it("respects previoulsy set config values on update", function()
+        assert(bp.workspaces:insert {
+          name = "sweet-portal-dude",
+          config = {
+            portal = true,
+            portal_auth = "basic-auth",
+            portal_auto_approve = true,
+          }
+        })
+
+        -- patch to update workspace config
+        assert.res_status(200, client:patch("/workspaces/sweet-portal-dude", {
+          body   = {
+            config = {
+              portal_auth = "key-auth"
+            }
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          }
+        }))
+
+        local expected_config = {
+          portal = true,
+          portal_auth = "key-auth",
+          portal_auto_approve = true,
+        }
+
+        local res = assert(client:get("/workspaces/sweet-portal-dude"))
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.equals(json.config.portal, expected_config.portal)
+        assert.equals(json.config.portal_auth, expected_config.portal_auth)
+        assert.equals(json.config.portal_auto_approve, expected_config.portal_auto_approve)
+      end)
     end)
 
     describe("GET", function()
