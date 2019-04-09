@@ -1,6 +1,5 @@
 local utils = require "kong.tools.utils"
 local endpoints = require "kong.api.endpoints"
-local singletons = require "kong.singletons"
 local constants  = require "kong.constants"
 local ws_helper  = require "kong.workspaces.helper"
 local enums      = require "kong.enterprise_edition.dao.enums"
@@ -8,13 +7,6 @@ local portal_smtp_client = require "kong.portal.emails"
 
 local unescape_uri = ngx.unescape_uri
 local ws_constants = constants.WORKSPACE_CONFIG
-
-
-local function check_portal_status(helpers)
-  if not singletons.configuration.portal then
-    return helpers.responses.send_HTTP_NOT_FOUND()
-  end
-end
 
 
 local function find_developer(db, developer_pk)
@@ -51,10 +43,6 @@ end
 
 return {
   ["/developers"] = {
-    before = function(self, db, helpers)
-      check_portal_status(helpers)
-    end,
-
     GET = function(self, db, helpers, parent)
       self.params.status = tonumber(self.params.status)
 
@@ -81,10 +69,6 @@ return {
   },
 
   ["/developers/:developers"] = {
-    before = function(self, db, helpers)
-      check_portal_status(helpers)
-    end,
-
     PATCH = function(self, db, helpers)
       local developer_pk = self.params.developers
       self.params.developers = nil
@@ -167,10 +151,6 @@ return {
   },
 
   ["/developers/:email_or_id/plugins/:id"] = {
-    before = function(self, dao_factory, helpers)
-      check_portal_status(helpers)
-    end,
-
     GET = function(self, db, helpers)
       local developer = find_developer(db, self.params.email_or_id)
 
@@ -260,10 +240,6 @@ return {
   },
 
   ["/portal/invite"] = {
-    before = function(self, db, helpers)
-      check_portal_status(helpers)
-    end,
-
     POST = function(self, db, helpers)
       if not self.params.emails or next(self.params.emails) == nil then
         return helpers.responses.send_HTTP_BAD_REQUEST("emails param required")

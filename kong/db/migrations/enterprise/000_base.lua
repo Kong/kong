@@ -172,8 +172,8 @@ return {
         config                    JSON                      DEFAULT '{"portal":false}'::json
       );
 
-      INSERT INTO workspaces(id, name)
-      VALUES ('00000000-0000-0000-0000-000000000000', 'default');
+      INSERT INTO workspaces(id, name, config)
+      VALUES ('00000000-0000-0000-0000-000000000000', 'default', '{"portal":true}'::json);
 
       CREATE TABLE IF NOT EXISTS workspace_entities(
         workspace_id uuid,

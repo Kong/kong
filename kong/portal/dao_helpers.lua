@@ -29,7 +29,7 @@ local function rollback_on_create(entities)
   local _, err
 
   if entities.consumer then
-    _, err = singletons.dao.consumers:delete({ id = entities.consumer.id })
+    _, err = singletons.db.consumers:delete({ id = entities.consumer.id })
     if err then
       log(ERR, _log_prefix, err)
     end
@@ -235,7 +235,7 @@ local function update_developer(self, developer, entity, options)
 
     if not credential then
       local code = Errors.codes.DATABASE_ERROR
-      local err = 'developer update: primary login credentials not found for ' .. developer.email
+      local err = "developer update: primary login credentials not found for " .. developer.email
       local err_t = { code = code }
       return nil, err, err_t
     end
@@ -258,7 +258,7 @@ local function update_developer(self, developer, entity, options)
 
       if not ok then
         local code = Errors.codes.DATABASE_ERROR
-        local err = 'developer update: ' .. 'could not update login credential for: ' .. developer.email
+        local err = "developer update: " .. "could not update login credential for: " .. developer.email
         local err_t = { code = code }
         return nil, err, err_t
       end

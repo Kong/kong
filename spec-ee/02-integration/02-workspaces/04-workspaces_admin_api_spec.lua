@@ -208,10 +208,6 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
           name = "rad-portal-man",
         })
 
-        -- portal isn't enabled, so no /files
-        local res = assert(client:get("/rad-portal-man/files"))
-        assert.res_status(404, res)
-
         -- patch to enable portal
         assert.res_status(200, client:patch("/workspaces/rad-portal-man", {
           body   = {
