@@ -46,7 +46,7 @@ local validators = {
   { match_none = match_list },
   { match_any = match_any_list },
   { starts_with = { type = "string" }, },
-  { one_of = { type = "array", elements = { type = "string" } }, },
+  { one_of = { type = "array", elements = { type = "any" } }, },
   { contains = { type = "any" }, },
   { is_regex = { type = "boolean" }, },
   { timestamp = { type = "boolean" }, },
