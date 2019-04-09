@@ -4,11 +4,13 @@ local workspaces = require "kong.workspaces"
 local secrets = require "kong.enterprise_edition.consumer_reset_secret_helpers"
 local ee_utils = require "kong.enterprise_edition.utils"
 local utils = require "kong.tools.utils"
+local cjson = require "cjson"
 
 local emails = singletons.admin_emails
 
 local lower = string.lower
 
+local null = ngx.null
 local log = ngx.log
 local ERR = ngx.ERR
 local DEBUG = ngx.DEBUG
@@ -75,21 +77,25 @@ end
 
 
 function _M.find_all()
-  -- TODO: Swap compat_find_all with select_all method that Fast-Track created
-  local all_admins, err = workspaces.compat_find_all("admins")
-
+  -- gets the first 100 admins, not workspaced
+  -- TODO: make admins truly paginated and workspace-aware
+  local all_admins, err = kong.db.admins:page()
   if err then
     return nil, err
   end
 
-  local transmogrified_admins = {}
+  setmetatable(all_admins, cjson.empty_array_mt)
+
   for i, v in ipairs(all_admins) do
-    transmogrified_admins[i] = transmogrify(v)
+    all_admins[i] = transmogrify(v)
   end
 
   return {
     code = 200,
-    body = { data = transmogrified_admins },
+    body = {
+      data = all_admins,
+      next = null,
+    },
   }
 end
 

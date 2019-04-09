@@ -66,8 +66,10 @@ for _, strategy in helpers.each_strategy() do
       it("returns the right data structure", function()
         local res, err = admins_helpers.find_all()
         assert.is_nil(err)
-        assert.same(4, #res.body['data'])
         assert.same(200, res.code)
+        assert(utils.is_array(res.body.data))
+        assert.same(4, #res.body.data)
+        assert.same(ngx.null, res.body.next)
 
         assert.not_nil(res.body['data'][1].created_at)
         assert.not_nil(res.body['data'][1].email)

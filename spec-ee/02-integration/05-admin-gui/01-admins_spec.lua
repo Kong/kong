@@ -99,6 +99,8 @@ for _, strategy in helpers.each_strategy() do
           res = assert.res_status(200, res)
           local json = cjson.decode(res)
           assert.equal(4, #json.data)
+          assert(utils.is_array(json.data))
+          assert.same(ngx.null, json.next)
         end)
 
       end)
