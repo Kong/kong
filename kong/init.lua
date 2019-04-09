@@ -82,6 +82,9 @@ local balancer_execute = require("kong.runloop.balancer").execute
 local kong_error_handlers = require "kong.error_handlers"
 
 
+local BasePlugin = require "kong.plugins.base_plugin"
+
+
 local kong             = kong
 local ngx              = ngx
 local header           = ngx.header
@@ -146,14 +149,16 @@ end
 
 local function execute_plugins(ctx, phase, load_configuration)
   for plugin, plugin_conf in plugins_iterator(ctx, loaded_plugins,
-    configured_plugins,
-    load_configuration) do
-    kong_global.set_named_ctx(kong, "plugin", plugin_conf)
-    kong_global.set_namespaced_log(kong, plugin.name)
+                                              configured_plugins,
+                                              load_configuration) do
+    if plugin.handler[phase] ~= BasePlugin[phase] then
+      kong_global.set_named_ctx(kong, "plugin", plugin_conf)
+      kong_global.set_namespaced_log(kong, plugin.name)
 
-    plugin.handler[phase](plugin.handler, plugin_conf)
+      plugin.handler[phase](plugin.handler, plugin_conf)
 
-    kong_global.reset_log(kong)
+      kong_global.reset_log(kong)
+    end
   end
 end
 
@@ -167,8 +172,8 @@ local function flush_delayed_response(ctx)
   end
 
   kong.response.exit(ctx.delayed_response.status_code,
-    ctx.delayed_response.content,
-    ctx.delayed_response.headers)
+                     ctx.delayed_response.content,
+                     ctx.delayed_response.headers)
 end
 
 
@@ -378,9 +383,11 @@ function Kong.init_worker()
 
 
   for _, plugin in ipairs(loaded_plugins) do
-    kong_global.set_namespaced_log(kong, plugin.name)
-    plugin.handler:init_worker()
-    kong_global.reset_log(kong)
+    if plugin.handler.init_worker ~= BasePlugin.init_worker then
+      kong_global.set_namespaced_log(kong, plugin.name)
+      plugin.handler:init_worker()
+      kong_global.reset_log(kong)
+    end
   end
 end
 
@@ -539,7 +546,7 @@ function Kong.access()
 
   for plugin, plugin_conf in plugins_iterator(ctx, loaded_plugins,
                                               configured_plugins, true) do
-    if not ctx.delayed_response then
+    if not ctx.delayed_response and plugin.handler.access ~= BasePlugin.access then
       kong_global.set_named_ctx(kong, "plugin", plugin_conf)
       kong_global.set_namespaced_log(kong, plugin.name)
 
