@@ -46,17 +46,11 @@ end
 
 
 local function count_entities(arr)
-  local res = {
-    total = 0,
-    data = setmetatable({}, cjson.empty_array_mt)
+  arr = arr or setmetatable({}, cjson.empty_array_mt)
+  return {
+    total = #arr,
+    data = arr
   }
-
-  for _, item in ipairs(arr) do
-    res.total = res.total + 1
-    res.data[res.total] = item
-  end
-
-  return res
 end
 
 
