@@ -90,7 +90,8 @@ return {
     before = function(self, db, helpers, parent)
       local err
 
-      self.admin, err = admins.find_by_username_or_id(ngx.unescape_uri(self.params.admins))
+      self.admin, err = admins.find_by_username_or_id(
+                               ngx.unescape_uri(self.params.admins), true)
       if err then
         return endpoints.handle_error(err)
       end

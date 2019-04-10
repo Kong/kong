@@ -14,14 +14,13 @@ for _, strategy in helpers.each_strategy() do
   describe("Admin API - Admins #" .. strategy, function()
     local client
     local db
-    local dao
     local bp
     local admin
     local another_ws
     local admins = {}
 
     lazy_setup(function()
-      bp, db, dao = helpers.get_db_utils(strategy, {
+      bp, db = helpers.get_db_utils(strategy, {
         "consumers",
         "rbac_users",
         "rbac_roles",
@@ -39,7 +38,7 @@ for _, strategy in helpers.each_strategy() do
         name = "another-one",
       }))
 
-      ee_helpers.register_rbac_resources(dao)
+      ee_helpers.register_rbac_resources(db)
 
       for i = 1, 3 do
         -- admins that are already approved
@@ -83,6 +82,7 @@ for _, strategy in helpers.each_strategy() do
 
     after_each(function()
       if client then client:close() end
+      db:truncate("basicauth_credentials")
     end)
 
     describe("/admins", function()
@@ -133,7 +133,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("/admins/:admin_id", function()
-      describe("GET", function()
+      describe("#GET", function()
         it("retrieves by id", function()
           local res = assert(client:send {
             method = "GET",
@@ -148,6 +148,13 @@ for _, strategy in helpers.each_strategy() do
           local json = cjson.decode(body)
 
           assert.same(admins[1].id, json.id)
+          assert.same(admins[1].username, json.username)
+          assert.same(admins[1].email, json.email)
+          assert.same(admins[1].status, json.status)
+
+          -- validate the admin is API-friendly
+          assert.is_nil(json.consumer)
+          assert.is_nil(json.rbac_user)
         end)
 
         it("retrieves by username", function()
@@ -178,6 +185,10 @@ for _, strategy in helpers.each_strategy() do
           assert.same(admins[4].id, json.id)
           assert.not_nil(json.token)
           assert.not_nil(json.register_url)
+
+          -- validate the admin is API-friendly
+          assert.is_nil(json.consumer)
+          assert.is_nil(json.rbac_user)
 
           local jwt, err = ee_utils.validate_reset_jwt(json.token)
           assert.is_nil(err)
@@ -234,23 +245,25 @@ for _, strategy in helpers.each_strategy() do
         end)
 
         it("updates by username", function()
-          return function()
-            local res = assert(client:send {
-              method = "PATCH",
-              path = "/admins/" .. admin.username,
-              body = {
-                username = "alice"
-              },
-              headers = {
-                ["Kong-Admin-Token"] = "letmein-default",
-                ["Content-Type"]     = "application/json",
-              },
-            })
-            local body = assert.res_status(200, res)
-            local json = cjson.decode(body)
-            assert.equal("alice", json.username)
-            assert.equal(admin.id, json.id)
-          end
+          local new_name = admin.username .. utils.uuid()
+          local res = assert(client:send {
+            method = "PATCH",
+            path = "/admins/" .. admin.username,
+            body = {
+              username = new_name
+            },
+            headers = {
+              ["Kong-Admin-Token"] = "letmein-default",
+              ["Content-Type"]     = "application/json",
+            },
+          })
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+          assert.equal(new_name, json.username)
+          assert.equal(admin.id, json.id)
+
+          -- name has changed: keep in sync with db
+          admin.username = new_name
         end)
 
         it("returns 404 if not found", function()

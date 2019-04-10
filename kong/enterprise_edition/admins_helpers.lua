@@ -175,19 +175,14 @@ end
 
 function _M.generate_token(admin, opts)
   -- generates another registration URL and token in case a user didn't get them
-  local db = opts.db or singletons.db
   local remote_addr = opts.remote_addr or ngx.var.remote_addr
+
+  local admin_to_return = transmogrify(admin)
 
   if admin.status == enums.CONSUMERS.STATUS.INVITED and
      opts.generate_register_url and not
      opts.token_optional
   then
-
-    local err
-    admin, err = db.admins:select({ id = admin.id })
-    if err or not admin then
-      return nil, err
-    end
 
     local expiry = singletons.configuration.admin_invitation_expiry
     local jwt, err = secrets.create(admin.consumer, remote_addr, expiry)
@@ -195,14 +190,13 @@ function _M.generate_token(admin, opts)
       return nil, err
     end
 
-    admin = transmogrify(admin)
-    admin.register_url = emails:register_url(admin.email, jwt, admin.username)
-    admin.token = jwt
+    admin_to_return.register_url = emails:register_url(admin.email, jwt, admin.username)
+    admin_to_return.token = jwt
   end
 
   return {
     code = 200,
-    body = admin,
+    body = admin_to_return,
   }
 end
 
