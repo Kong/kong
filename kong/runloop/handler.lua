@@ -876,6 +876,12 @@ do
                         + (plugin.consumer and 4 or 0)
 
         new_plugins.combos[combo_key] = true
+
+        if not new_plugins.combos[plugin.name] then
+          new_plugins.combos[plugin.name] = {}
+        end
+
+        new_plugins.combos[plugin.name][combo_key] = true
       end
 
       counter = counter + 1

@@ -107,59 +107,61 @@ local function get_next(self)
 
     local plugin_configuration
 
+    local name = plugin.name
+
     repeat
 
-      if combos[COMBO_RSC] and route_id and service_id and consumer_id then
-        plugin_configuration = load_configuration(self, plugin.name, route_id, service_id, consumer_id)
+      if combos[COMBO_RSC] and combos[name][COMBO_RSC] and route_id and service_id and consumer_id then
+        plugin_configuration = load_configuration(self, name, route_id, service_id, consumer_id)
         if plugin_configuration then
           break
         end
       end
 
-      if combos[COMBO_RC] and route_id and consumer_id then
-        plugin_configuration = load_configuration(self, plugin.name, route_id, nil, consumer_id)
+      if combos[COMBO_RC] and combos[name][COMBO_RC] and route_id and consumer_id then
+        plugin_configuration = load_configuration(self, name, route_id, nil, consumer_id)
         if plugin_configuration then
           break
         end
       end
 
-      if combos[COMBO_SC] and service_id and consumer_id then
-        plugin_configuration = load_configuration(self, plugin.name, nil, service_id, consumer_id)
+      if combos[COMBO_SC] and combos[name][COMBO_SC] and service_id and consumer_id then
+        plugin_configuration = load_configuration(self, name, nil, service_id, consumer_id)
         if plugin_configuration then
           break
         end
       end
 
-      if combos[COMBO_RS] and route_id and service_id then
-        plugin_configuration = load_configuration(self, plugin.name, route_id, service_id)
+      if combos[COMBO_RS] and combos[name][COMBO_RS] and route_id and service_id then
+        plugin_configuration = load_configuration(self, name, route_id, service_id)
         if plugin_configuration then
           break
         end
       end
 
-      if combos[COMBO_C] and consumer_id then
-        plugin_configuration = load_configuration(self, plugin.name, nil, nil, consumer_id)
+      if combos[COMBO_C] and combos[name][COMBO_C] and consumer_id then
+        plugin_configuration = load_configuration(self, name, nil, nil, consumer_id)
         if plugin_configuration then
           break
         end
       end
 
-      if combos[COMBO_R] and route_id then
-        plugin_configuration = load_configuration(self, plugin.name, route_id)
+      if combos[COMBO_R] and combos[name][COMBO_R] and route_id then
+        plugin_configuration = load_configuration(self, name, route_id)
         if plugin_configuration then
           break
         end
       end
 
-      if combos[COMBO_S] and service_id then
-        plugin_configuration = load_configuration(self, plugin.name, nil, service_id)
+      if combos[COMBO_S] and combos[name][COMBO_S] and service_id then
+        plugin_configuration = load_configuration(self, name, nil, service_id)
         if plugin_configuration then
           break
         end
       end
 
-      if combos[COMBO_GLOBAL] then
-        plugin_configuration = load_configuration(self, plugin.name)
+      if combos[COMBO_GLOBAL] and combos[name][COMBO_GLOBAL] then
+        plugin_configuration = load_configuration(self, name)
       end
 
     until true
