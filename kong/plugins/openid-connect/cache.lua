@@ -394,7 +394,10 @@ local function consumers_load(subject, key)
   log.notice("loading consumer by ", key, " using ", subject)
 
   if key == "id" then
-    result, err = kong.db.consumers:select { id = subject }
+    if utils.is_valid_uuid(subject) then
+      result, err = kong.db.consumers:select({ id = subject })
+    end
+
   elseif key == "username" then
     result, err = kong.db.consumers:select_by_username(subject)
   elseif key == "custom_id" then
@@ -408,9 +411,9 @@ local function consumers_load(subject, key)
   end
 
   if err then
-    log.notice("failed to load consumer (", err, ")")
+    log.notice("failed to load consumer by ", key, " (", err, ")")
   else
-    log.notice("failed to load consumer")
+    log.notice("failed to load consumer by ", key)
   end
 
   return nil, err
