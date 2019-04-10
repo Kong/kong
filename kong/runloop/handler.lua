@@ -809,6 +809,7 @@ do
     local new_plugins = {
       map = {},
       cache = {},
+      combos = {}
     }
 
     local counter = 0
@@ -843,6 +844,12 @@ do
 
         local cache_key = kong.db.plugins:cache_key(plugin)
         new_plugins.cache[cache_key] = plugin
+
+        local combo_key = (plugin.route    and 1 or 0)
+                        + (plugin.service  and 2 or 0)
+                        + (plugin.consumer and 4 or 0)
+
+        new_plugins.combos[combo_key] = true
       end
 
       counter = counter + 1

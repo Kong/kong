@@ -2,6 +2,16 @@ local kong         = kong
 local setmetatable = setmetatable
 
 
+local COMBO_R   = 1
+local COMBO_S   = 2
+local COMBO_RS  = 3
+local COMBO_C   = 4
+local COMBO_RC  = 5
+local COMBO_SC  = 6
+local COMBO_RSC = 7
+local COMBO_GLOBAL = 0
+
+
 --- Load the configuration for a plugin entry.
 -- Given a Route, Service, Consumer and a plugin name, retrieve the plugin's
 -- configuration if it exists.
@@ -67,10 +77,11 @@ local function get_next(self)
 
   -- load the plugin configuration in early phases
   if self.load_configuration then
+    local combos   = self.configured_plugins.combos
 
-    local route        = self.route
-    local service      = self.service
-    local consumer     = ctx.authenticated_consumer
+    local route    = self.route
+    local service  = self.service
+    local consumer = ctx.authenticated_consumer
 
     if route and plugin.no_route then
       route = nil
@@ -92,56 +103,58 @@ local function get_next(self)
 
     repeat
 
-      if route_id and service_id and consumer_id then
+      if combos[COMBO_RSC] and route_id and service_id and consumer_id then
         plugin_configuration = load_plugin_configuration(self, route_id, service_id, consumer_id, plugin_name)
         if plugin_configuration then
           break
         end
       end
 
-      if route_id and consumer_id then
+      if combos[COMBO_RC] and route_id and consumer_id then
         plugin_configuration = load_plugin_configuration(self, route_id, nil, consumer_id, plugin_name)
         if plugin_configuration then
           break
         end
       end
 
-      if service_id and consumer_id then
+      if combos[COMBO_SC] and service_id and consumer_id then
         plugin_configuration = load_plugin_configuration(self, nil, service_id, consumer_id, plugin_name)
         if plugin_configuration then
           break
         end
       end
 
-      if route_id and service_id then
+      if combos[COMBO_RS] and route_id and service_id then
         plugin_configuration = load_plugin_configuration(self, route_id, service_id, nil, plugin_name)
         if plugin_configuration then
           break
         end
       end
 
-      if consumer_id then
+      if combos[COMBO_C] and consumer_id then
         plugin_configuration = load_plugin_configuration(self, nil, nil, consumer_id, plugin_name)
         if plugin_configuration then
           break
         end
       end
 
-      if route_id then
+      if combos[COMBO_R] and route_id then
         plugin_configuration = load_plugin_configuration(self, route_id, nil, nil, plugin_name)
         if plugin_configuration then
           break
         end
       end
 
-      if service_id then
+      if combos[COMBO_S] and service_id then
         plugin_configuration = load_plugin_configuration(self, nil, service_id, nil, plugin_name)
         if plugin_configuration then
           break
         end
       end
 
-      plugin_configuration = load_plugin_configuration(self, nil, nil, nil, plugin_name)
+      if combos[COMBO_GLOBAL] then
+        plugin_configuration = load_plugin_configuration(self, nil, nil, nil, plugin_name)
+      end
 
     until true
 
