@@ -127,16 +127,9 @@ local function create_portal_sitemap()
   pl_file.write(sitemap_filename, sitemap_str)
 end
 
-
-for _, strategy in helpers.each_strategy() do
-
-
-  -- TODO DEVX: re-impliment once api endpoints are done
-  if strategy == 'cassandra' then
-    return
-  end
-
-  pending("Portal Rendering [#" .. strategy .. "]", function()
+-- TODO DEVX: re-impliment once api endpoints are done
+for _, strategy in helpers.each_strategy({"postgres"}) do
+  describe("Portal Rendering [#" .. strategy .. "]", function()
     local db
     local cookie
 
@@ -160,7 +153,7 @@ for _, strategy in helpers.each_strategy() do
       helpers.stop_kong(nil, true)
     end)
 
-    describe("pages", function()
+    pending("pages", function()
       local auth_page_pair, unauth_page_pair, auth_page_solo,
             unauth_page_solo, login_page, not_found_page,
             namespaced_index_page, namespaced_page
@@ -624,7 +617,7 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
 
-    describe("partials", function()
+    pending("partials", function()
       local auth_partial, auth_page_pair, unauth_page_pair,
             unauth_partial, nested_partial_parent, nested_partial_child,
             infinite_loop_page, infinite_loop_partial, formatting_page,
@@ -905,7 +898,7 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
 
-    describe("specs", function()
+    pending("specs", function()
       local root_spec_loader, auth_nested_spec_loader, unauth_nested_spec_loader,
             auth_spec1, auth_spec2, unauth_spec1, unauth_spec2,
             auth_nested_spec, unauth_nested_spec, login_page,

@@ -33,7 +33,7 @@ app:match("/sitemap.xml", function(self)
   ngx.ctx.workspaces = self.workspaces
   self.workspaces = nil
 
-  auth.authenticate_gui_session(self, singletons.dao, { responses = responses })
+  auth.authenticate_gui_session(self, singletons.db, { responses = responses })
   gui_helpers.prepare_sitemap(self)
 end)
 
@@ -48,7 +48,7 @@ app:match("/:workspace_name/sitemap.xml", function(self)
   ngx.ctx.workspaces = self.workspaces
   self.workspaces = nil
 
-  auth.authenticate_gui_session(self, singletons.dao, { responses = responses })
+  auth.authenticate_gui_session(self, singletons.db, { responses = responses })
   gui_helpers.prepare_sitemap(self)
 end)
 

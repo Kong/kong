@@ -310,10 +310,11 @@ end
 
 
 local function compile_sitemap(self)
+  local is_authenticated = self.developer ~= nil
   local page_filter = { type = 'page', auth = false }
   local spec_filter = { type = 'spec', auth = false }
 
-  if self.is_authenticated then
+  if is_authenticated then
     page_filter = { type = 'page' }
     spec_filter = { type = 'spec' }
   end
