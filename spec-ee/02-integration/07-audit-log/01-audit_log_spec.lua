@@ -1,6 +1,16 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
 
+
+local function fetch_all(dao)
+  local rows = {}
+  for row in dao:each() do
+    table.insert(rows, row)
+  end
+  return rows
+end
+
+
 for _, strategy in helpers.each_strategy() do
   describe("audit_log with #" .. strategy, function()
     local admin_client, proxy_client
@@ -33,10 +43,6 @@ for _, strategy in helpers.each_strategy() do
       proxy_client:close()
     end)
 
-    local function delay()
-      ngx.sleep(strategy == "cassandra" and 1.5 or 0.5)
-    end
-
     describe("audit requests", function()
       it("creates a single audit log entry", function()
         local res = assert(admin_client:send({
@@ -45,24 +51,10 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(200, res)
         local req_id = res.headers["X-Kong-Admin-Request-ID"]
 
-        delay()
-
-        res = assert(admin_client:send({
-          path = "/audit/requests"
-        }))
-        local body = assert.res_status(200, res)
-        local json = cjson.decode(body)
-
-        assert.same(1, #json.data)
-        assert.same(req_id, json.data[1].request_id)
-
-        res = assert(admin_client:send({
-          path = "/audit/requests"
-        }))
-        local body = assert.res_status(200, res)
-        local json = cjson.decode(body)
-
-        assert.same(2, #json.data)
+        helpers.wait_until(function()
+          local rows = fetch_all(db.audit_requests)
+          return 1 == #rows and req_id == rows[1].request_id
+        end)
       end)
 
       it("creates an entry with the appropriate workspace association", function()
@@ -75,19 +67,14 @@ for _, strategy in helpers.each_strategy() do
         }))
         assert.res_status(200, res)
 
-        delay()
-
-        res = assert(admin_client:send({
-          path = "/audit/requests"
-        }))
-        local json = cjson.decode(assert.res_status(200, res))
-
-        assert.same(1, #json.data)
-        assert.same(ws_foo.id, json.data[1].workspace)
+        helpers.wait_until(function()
+          local rows = fetch_all(db.audit_requests)
+          return #rows == 1 and ws_foo.id == rows[1].workspace
+        end)
       end)
 
       it("does not sign the audit log entry by default", function()
-        local rows = db.audit_requests:select_all()
+        local rows = fetch_all(db.audit_requests)
         for _, row in ipairs(rows) do
           assert.is_nil(row.signature)
         end
@@ -98,18 +85,11 @@ for _, strategy in helpers.each_strategy() do
           path = "/fdsfds/consumers",
         }))
         assert.res_status(404, res)
-        local req_id = res.headers["X-Kong-Admin-Request-ID"]
 
-        delay()
-
-        res = assert(admin_client:send({
-          path = "/audit/requests?request_id=" .. req_id
-        }))
-        local body = assert.res_status(200, res)
-        local json = cjson.decode(body)
-
-        assert.same(1, #json.data)
-        assert.same(ngx.null, json.data[1].workspace)
+        helpers.wait_until(function()
+          local rows = fetch_all(db.audit_requests)
+          return #rows == 1 and rows[1].workspace == nil
+        end)
       end)
 
     end)
@@ -129,15 +109,15 @@ for _, strategy in helpers.each_strategy() do
               }
             }))
             assert.res_status(201, res)
-  
-            delay()
-  
-            local body = assert.res_status(200, admin_client:get("/audit/objects"))
-            local json = cjson.decode(body)
 
-            assert.same(4, #json.data)
+            local rows
 
-            for _, object in ipairs(json.data) do
+            helpers.wait_until(function()
+              rows = fetch_all(db.audit_objects)
+              return 4 == #rows
+            end)
+
+            for _, object in ipairs(rows) do
               assert.same("create", object.operation)
               if object.dao_name == "consumers" then
                 assert.matches('"username":"bob"', object.entity, nil, true)
@@ -162,14 +142,14 @@ for _, strategy in helpers.each_strategy() do
             }))
             assert.res_status(200, res)
 
-            delay()
+            local rows
 
-            local body = assert.res_status(200, admin_client:get("/audit/objects"))
-            local json = cjson.decode(body)
+            helpers.wait_until(function()
+              rows = fetch_all(db.audit_objects)
+              return 3 == #rows
+            end)
 
-            assert.same(3, #json.data)
-
-            for _, object in ipairs(json.data) do
+            for _, object in ipairs(rows) do
               assert.same("update", object.operation)
               if object.dao_name == "consumers" then
                 assert.matches('"username":"c2"', object.entity, nil, true)
@@ -188,14 +168,14 @@ for _, strategy in helpers.each_strategy() do
             }))
             assert.res_status(204, res)
 
-            delay()
+            local rows
 
-            local body = assert.res_status(200, admin_client:get("/audit/objects"))
-            local json = cjson.decode(body)
+            helpers.wait_until(function()
+              rows = fetch_all(db.audit_objects)
+              return 4 == #rows
+            end)
 
-            assert.same(4, #json.data)
-
-            for _, object in ipairs(json.data) do
+            for _, object in ipairs(rows) do
               assert.same("delete", object.operation)
               if object.dao_name == "consumers" then
                 assert.matches('"username":"fred"', object.entity, nil, true)
@@ -218,18 +198,19 @@ for _, strategy in helpers.each_strategy() do
             }))
             assert.res_status(201, res)
 
-            delay()
+            local rows
 
-            local body = assert.res_status(200, admin_client:get("/audit/objects"))
-            local json = cjson.decode(body)
+            helpers.wait_until(function()
+              rows = fetch_all(db.audit_objects)
+              return 4 == #rows
+            end)
 
             -- 1 row for the main entity, plus 3 in workspace_entities, one
             -- for each non-nil unique field, plus PK
-            assert.same(4, #json.data)
-            assert.same("create", json.data[1].operation)
-            assert.same("create", json.data[2].operation)
-            assert.same("create", json.data[3].operation)
-            assert.same("create", json.data[4].operation)
+            assert.same("create", rows[1].operation)
+            assert.same("create", rows[2].operation)
+            assert.same("create", rows[3].operation)
+            assert.same("create", rows[4].operation)
           end)
         end)
       end)
@@ -267,10 +248,6 @@ for _, strategy in helpers.each_strategy() do
       proxy_client:close()
     end)
 
-    local function delay()
-      ngx.sleep(strategy == "cassandra" and 1 or 0.3)
-    end
-
     describe("for ignored methods", function()
       it("does not create an audit log entry", function()
         local res = assert(admin_client:send({
@@ -278,7 +255,7 @@ for _, strategy in helpers.each_strategy() do
         }))
         assert.res_status(200, res)
 
-        delay()
+        ngx.sleep(2)
 
         local body = assert.res_status(200, admin_client:get("/audit/requests"))
         local json = cjson.decode(body)
@@ -301,12 +278,10 @@ for _, strategy in helpers.each_strategy() do
         }))
         assert.res_status(201, res)
 
-        delay()
-
-        local body = assert.res_status(200, admin_client:get("/audit/requests"))
-        local json = cjson.decode(body)
-
-        assert.same(1, #json.data)
+        helpers.wait_until(function()
+          local rows = fetch_all(db.audit_requests)
+          return 1 == #rows
+        end)
       end)
     end)
   end)
@@ -342,10 +317,6 @@ for _, strategy in helpers.each_strategy() do
       proxy_client:close()
     end)
 
-    local function delay()
-      ngx.sleep(strategy == "cassandra" and 1 or 0.3)
-    end
-
     describe("for an ignored path prefix", function()
       it("does not generate an audit log entry", function()
         local res = assert(admin_client:send({
@@ -360,7 +331,7 @@ for _, strategy in helpers.each_strategy() do
         }))
         assert.res_status(201, res)
 
-        delay()
+        ngx.sleep(2)
 
         local body = assert.res_status(200, admin_client:get("/audit/requests"))
         local json = cjson.decode(body)
@@ -383,9 +354,10 @@ for _, strategy in helpers.each_strategy() do
         })
         assert.res_status(201, res)
 
-        delay()
-
-        assert.same(1, #db.audit_requests:select_all())
+        helpers.wait_until(function()
+          local rows = fetch_all(db.audit_requests)
+          return 1 == #rows
+        end)
 
         res = assert(admin_client:send({
           method = "POST",
@@ -399,9 +371,10 @@ for _, strategy in helpers.each_strategy() do
           }
         }))
         assert.res_status(201, res)
-        print(res)
 
-        assert.same(1, #db.audit_requests:select_all())
+        helpers.wait_until(function()
+          return 1 == #fetch_all(db.audit_requests)
+        end)
       end)
     end)
 
@@ -425,12 +398,10 @@ for _, strategy in helpers.each_strategy() do
         }))
         assert.res_status(201, res)
 
-        delay()
-
-        local body = assert.res_status(200, admin_client:get("/audit/requests"))
-        local json = cjson.decode(body)
-
-        assert.same(1, #json.data)
+        helpers.wait_until(function()
+          local rows = fetch_all(db.audit_requests)
+          return 1 == #rows
+        end)
       end)
     end)
 
@@ -448,8 +419,6 @@ for _, strategy in helpers.each_strategy() do
         })
         assert.res_status(201, res)
 
-        delay()
-
         res = assert(admin_client:send {
           method = "POST",
           path   = "/bar/services",
@@ -463,16 +432,16 @@ for _, strategy in helpers.each_strategy() do
         })
         assert.res_status(201, res)
 
-        delay()
-
-        -- 3 entries, 2 for the prevous 2 object creations
+        -- 3 entries, 2 for the previous 2 object creations
         -- and 1 for the workspace_association
-        local body = assert.res_status(200, admin_client:get("/audit/objects"))
-        local json = cjson.decode(body)
+        local rows
 
-        assert.same(4, #json.data)
+        helpers.wait_until(function()
+          rows = fetch_all(db.audit_objects)
+          return 4 == #rows
+        end)
 
-        for _, row in ipairs(json.data) do
+        for _, row in ipairs(rows) do
           local f = {
             services = true,
             workspaces = true,
@@ -516,10 +485,6 @@ for _, strategy in helpers.each_strategy() do
       proxy_client:close()
     end)
 
-    local function delay()
-      ngx.sleep(strategy == "cassandra" and 1 or 0.3)
-    end
-
     describe("for an ignored table", function()
       it("does not generate an audit log entry", function()
         local res = assert(admin_client:send({
@@ -534,14 +499,15 @@ for _, strategy in helpers.each_strategy() do
         }))
         assert.res_status(201, res)
 
-        delay()
-
         -- workspace_entities audit log entries
-        local body = assert.res_status(200, admin_client:get("/audit/objects"))
-        local json = cjson.decode(body)
-        assert.same(3, #json.data)
+        local rows
 
-        for _, row in ipairs(json.data) do
+        helpers.wait_until(function()
+          rows = fetch_all(db.audit_objects)
+          return 3 == #rows
+        end)
+
+        for _, row in ipairs(rows) do
           assert.not_same(row.dao_name, "consumers")
         end
       end)
@@ -567,11 +533,9 @@ for _, strategy in helpers.each_strategy() do
         }))
         assert.res_status(201, res)
 
-        delay()
-
-        local body = assert.res_status(200, admin_client:get("/audit/objects"))
-        local json = cjson.decode(body)
-        assert.same(3, #json.data)
+        helpers.wait_until(function()
+          return 3 == #fetch_all(db.audit_objects)
+        end)
       end)
     end)
   end)
@@ -608,10 +572,6 @@ for _, strategy in helpers.each_strategy() do
       proxy_client:close()
     end)
 
-    local function delay()
-      ngx.sleep(strategy == "cassandra" and 1 or 0.3)
-    end
-
     describe("generates records", function()
       it("expiring after their ttl", function()
         local res = assert(admin_client:send({
@@ -619,24 +579,15 @@ for _, strategy in helpers.each_strategy() do
         }))
         assert.res_status(200, res)
 
-        delay()
-
-        local body = assert.res_status(200, admin_client:get("/audit/requests"))
-        local json = cjson.decode(body)
-        assert.same(1, #json.data)
+        helpers.wait_until(function()
+          return 1 == #fetch_all(db.audit_requests)
+        end)
 
         ngx.sleep(MOCK_TTL + 1)
 
-        res = assert(admin_client:send({
-          path = "/",
-        }))
-        assert.res_status(200, res)
-
-        delay()
-
-        body = assert.res_status(200, admin_client:get("/audit/requests"))
-        json = cjson.decode(body)
-        assert.same(1, #json.data)
+        helpers.wait_until(function()
+          return 0 == #fetch_all(db.audit_requests)
+        end)
       end)
     end)
   end)
@@ -676,10 +627,6 @@ for _, strategy in helpers.each_strategy() do
       proxy_client:close()
     end)
 
-    local function delay()
-      ngx.sleep(strategy == "cassandra" and 1 or 0.3)
-    end
-
     describe("audit log entries", function()
       it("are generated with an adjacent signature", function()
         local res = assert(admin_client:send({
@@ -687,13 +634,10 @@ for _, strategy in helpers.each_strategy() do
         }))
         assert.res_status(200, res)
 
-        delay()
-
-        local body = assert.res_status(200, admin_client:get("/audit/requests"))
-        local json = cjson.decode(body)
-        assert.same(1, #json.data)
-
-        assert.not_nil(json.data[1].signature)
+        helpers.wait_until(function()
+          local rows = fetch_all(db.audit_requests)
+          return 1 == #rows and rows[1].signature
+        end)
       end)
     end)
   end)
@@ -733,10 +677,6 @@ for _, strategy in helpers.each_strategy() do
       proxy_client:close()
     end)
 
-    local function delay()
-      ngx.sleep(strategy == "cassandra" and 1 or 0.3)
-    end
-
     describe("audit log", function()
       it("creates an audit_request entry", function()
         local res = assert(admin_client:send({
@@ -744,9 +684,9 @@ for _, strategy in helpers.each_strategy() do
         }))
         assert.res_status(401, res)
 
-        delay()
-
-        assert.same(1, #db.audit_requests:select_all())
+        helpers.wait_until(function()
+          return 1 == #fetch_all(db.audit_requests)
+        end)
       end)
     end)
   end)
