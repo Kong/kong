@@ -75,6 +75,7 @@ return {
       local res, err = admins.create(self.params, {
         token_optional = self.token_optional,
         workspace = ngx.ctx.workspaces[1],
+        remote_addr = ngx.var.remote_addr,
         db = db,
       })
 

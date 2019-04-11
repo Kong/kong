@@ -183,6 +183,7 @@ for _, strategy in helpers.each_strategy() do
         assert.not_nil(res.body.admin.id)
         assert.not_nil(res.body.admin.created_at)
         assert.not_nil(res.body.admin.updated_at)
+        assert.is_nil(res.body.message)
       end)
 
       it("rejects the 'type' parameter", function()

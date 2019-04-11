@@ -19,7 +19,7 @@ for _, strategy in helpers.each_strategy() do
     local another_ws
     local admins = {}
 
-    lazy_setup(function()
+    local function setup(config)
       bp, db = helpers.get_db_utils(strategy, {
         "consumers",
         "rbac_users",
@@ -27,12 +27,7 @@ for _, strategy in helpers.each_strategy() do
         "rbac_user_roles",
         "admins",
       })
-      assert(helpers.start_kong({
-        database = strategy,
-        admin_gui_url = "http://manager.konghq.com",
-        admin_gui_auth = "basic-auth",
-        enforce_rbac = "on",
-      }))
+      assert(helpers.start_kong(config))
 
       another_ws = assert(bp.workspaces:insert({
         name = "another-one",
@@ -70,6 +65,16 @@ for _, strategy in helpers.each_strategy() do
       })
 
       admin = admins[1]
+    end
+
+    lazy_setup(function()
+      setup({
+        database = strategy,
+        admin_gui_url = "http://manager.konghq.com",
+        admin_gui_auth = "basic-auth",
+        enforce_rbac = "on",
+      })
+
     end)
 
     lazy_teardown(function()
@@ -128,6 +133,39 @@ for _, strategy in helpers.each_strategy() do
           assert.equal("cooper", json.admin.custom_id)
           assert.equal("twinpeaks@konghq.com", json.admin.email)
           assert.equal(enums.CONSUMERS.STATUS.INVITED, json.admin.status)
+          assert.is_nil(json.message)
+        end)
+
+        it("creates an admin when email fails", function()
+          helpers.stop_kong()
+          setup({
+            database = strategy,
+            admin_gui_url = "http://manager.konghq.com",
+            admin_gui_auth = "basic-auth",
+            enforce_rbac = "on",
+            smtp_mock = false,
+          })
+
+          client = assert(helpers.admin_client())
+
+          local res = assert(client:send {
+            method = "POST",
+            path  = "/admins",
+            headers = {
+              ["Kong-Admin-Token"] = "letmein-default",
+              ["Content-Type"]     = "application/json",
+            },
+            body  = {
+              custom_id = "lynch",
+              username  = "david",
+              email = "d.lynch@konghq.com",
+              status = enums.CONSUMERS.STATUS.INVITED,
+            },
+          })
+          res = assert.res_status(200, res)
+          local json = cjson.decode(res)
+
+          assert.equal("User created, but failed to send invitation email", json.message)
         end)
       end)
     end)
