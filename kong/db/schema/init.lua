@@ -1186,7 +1186,9 @@ do
     for _, check in ipairs(checks) do
       local check_name = next(check)
       local arg = check[check_name]
-      run_entity_check(self, check_name, input, arg, full_check, errors)
+      if arg and arg ~= null then
+        run_entity_check(self, check_name, input, arg, full_check, errors)
+      end
     end
   end
 
