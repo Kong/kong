@@ -199,7 +199,7 @@ end
 
 local function rewrite(ctx)
   local ssl = getssl()
-  if ssl and ssl:getAlpnSelected() == mesh_alpn then
+  if ssl and mesh_alpn and ssl:getAlpnSelected() == mesh_alpn then
     if ctx.is_service_mesh_request then
       ngx.log(ngx.ERR, "already service mesh; circular routing?")
       return ngx.exit(500)
