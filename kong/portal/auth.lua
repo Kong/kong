@@ -87,6 +87,13 @@ function _M.validate_auth_plugin(self, db, helpers, portal_auth)
   return self.collection
 end
 
+function _M.apply_workspace_cookie_name(session_conf, workspace)
+  if workspace.name ~= "default" then
+    session_conf.cookie_name = workspace.name .. "_" .. session_conf.cookie_name
+  end
+  return session_conf
+end
+
 
 function _M.login(self, db, helpers)
   local invoke_plugin = singletons.invoke_plugin
@@ -112,6 +119,8 @@ function _M.login(self, db, helpers)
   -- if not openid-connect, run session header_filter to attach session to response
   if self.plugin.name ~= "openid-connect" then
     local session_conf = ws_helper.retrieve_ws_config(ws_constants.PORTAL_SESSION_CONF, workspace)
+    session_conf = _M.apply_workspace_cookie_name(session_conf, workspace)
+
     local ok, err = invoke_plugin({
       name = "session",
       config = session_conf,
@@ -165,6 +174,8 @@ function _M.authenticate_api_session(self, db, helpers)
   else
     -- otherwise, verify the session
     local session_conf = ws_helper.retrieve_ws_config(ws_constants.PORTAL_SESSION_CONF, workspace)
+    session_conf = _M.apply_workspace_cookie_name(session_conf, workspace)
+
     ok, err = invoke_plugin({
       name = "session",
       config = session_conf,
@@ -207,7 +218,7 @@ function _M.authenticate_gui_session(self, db, helpers)
   if portal_auth == "openid-connect" then
     -- check if user has valid session
     local has_session = check_oidc_session()
-    
+
     -- assume unauthenticated if no session
     if not has_session then
       return
@@ -224,6 +235,8 @@ function _M.authenticate_gui_session(self, db, helpers)
   else
     -- otherwise, verify the session
     local session_conf = ws_helper.retrieve_ws_config(ws_constants.PORTAL_SESSION_CONF, workspace)
+    session_conf = _M.apply_workspace_cookie_name(session_conf, workspace)
+
     ok, err = invoke_plugin({
       name = "session",
       config = session_conf,

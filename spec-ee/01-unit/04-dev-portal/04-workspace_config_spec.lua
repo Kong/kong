@@ -26,6 +26,9 @@ describe("config helper", function()
       portal_emails_from = "hotdog@konghq.com",
       portal_emails_reply_to = "hotdog@konghq.com",
       smtp_admin_emails = {"admin@example.com"},
+      portal_session_conf = {
+        cookie_name = "yum",
+      },
     }
   end)
 
@@ -147,6 +150,38 @@ describe("config helper", function()
 
     local ws_conf_item = ws_helper.retrieve_ws_config('hotdog', workspace)
     assert.is_nil(ws_conf_item)
+  end)
+
+  it("should return a copy of table values to not mutate singletons", function()
+    local workspace = {
+      config = {}
+    }
+
+    local session_conf = ws_helper.retrieve_ws_config(ws_constants.PORTAL_SESSION_CONF, workspace)
+    assert.same(session_conf, singletons.configuration.portal_session_conf)
+    session_conf.cookie_name = "MUTATION!"
+
+    local session_conf_2 = ws_helper.retrieve_ws_config(ws_constants.PORTAL_SESSION_CONF, workspace)
+    assert.same(session_conf_2, singletons.configuration.portal_session_conf)
+
+    assert.not_equal(session_conf_2.cookie_name, session_conf.cookie_name)
+  end)
+
+  it("should return a copy of table values to not mutate workspace config", function()
+    local workspace = {
+      config = {
+        portal_session_conf = {
+          cookie_name = "reee",
+        },
+      }
+    }
+    local session_conf = ws_helper.retrieve_ws_config(ws_constants.PORTAL_SESSION_CONF, workspace)
+    assert.same(session_conf, workspace.config.portal_session_conf)
+    session_conf.cookie_name = "MUTATION!"
+
+    local session_conf_2 = ws_helper.retrieve_ws_config(ws_constants.PORTAL_SESSION_CONF, workspace)
+    assert.same(session_conf_2, workspace.config.portal_session_conf)
+    assert.not_equal(session_conf_2.cookie_name, session_conf.cookie_name)
   end)
 end)
 

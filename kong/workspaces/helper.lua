@@ -10,7 +10,7 @@ local tostring     = tostring
 local table_concat = table.concat
 local ngx_null     = ngx.null
 local utils_split  = utils.split
-
+local type         = type
 
 local workspaceable = workspaces.get_workspaceable_relations()
 local workspace_delimiter = workspaces.WORKSPACE_DELIMITER
@@ -199,13 +199,21 @@ end
 -- * if workspace specific config does not exist fall back to
 --   default config value.
 function _M.retrieve_ws_config(config_name, workspace)
+  local conf
   if workspace.config and
      workspace.config[config_name] ~= nil and
      workspace.config[config_name] ~= ngx.null then
-    return workspace.config[config_name]
+    conf = workspace.config[config_name]
+  else
+    conf = singletons.configuration[config_name]
   end
 
-  return singletons.configuration[config_name]
+  -- if table, return a copy so that we don't mutate the conf
+  if type(conf) == "table" then
+    return utils.deep_copy(conf)
+  end
+
+  return conf
 end
 
 
