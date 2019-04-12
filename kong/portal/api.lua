@@ -11,9 +11,12 @@ local secrets = require "kong.enterprise_edition.consumer_reset_secret_helpers"
 local endpoints = require "kong.api.endpoints"
 
 
-
 local kong = kong
-local ws_constants = constants.WORKSPACE_CONFIG
+
+
+local PORTAL_AUTH = constants.WORKSPACE_CONFIG.PORTAL_AUTH
+local PORTAL_AUTO_APPROVE = constants.WORKSPACE_CONFIG.PORTAL_AUTO_APPROVE
+local PORTAL_TOKEN_EXP = constants.WORKSPACE_CONFIG.PORTAL_TOKEN_EXP
 
 --- Allowed auth plugins
 -- Table containing allowed auth plugins that the developer portal api
@@ -31,7 +34,7 @@ local auth_plugins = {
 
 local function get_developer_status()
   local workspace = ngx.ctx.workspaces and ngx.ctx.workspaces[1] or {}
-  local auto_approve = ws_helper.retrieve_ws_config(ws_constants.PORTAL_AUTO_APPROVE, workspace)
+  local auto_approve = ws_helper.retrieve_ws_config(PORTAL_AUTO_APPROVE, workspace)
 
   if auto_approve then
     return enums.CONSUMERS.STATUS.APPROVED
@@ -111,6 +114,14 @@ return {
   },
 
   ["/files"] = {
+    before = function(self, db, helpers)
+      local ws = get_workspace()
+      local portal_auth = ws_helper.retrieve_ws_config(PORTAL_AUTH, ws)
+      if portal_auth and portal_auth ~= "" then
+        auth.authenticate_api_session(self, db, helpers)
+      end
+    end,
+
     GET = function(self, db, helpers)
       local files, err, err_t = db.files:select_all({
         type = self.params.type,
@@ -127,6 +138,14 @@ return {
   },
 
   ["/files/*"] = {
+    before = function(self, db, helpers)
+      local ws = get_workspace()
+      local portal_auth = ws_helper.retrieve_ws_config(PORTAL_AUTH, ws)
+      if portal_auth and portal_auth ~= "" then
+        auth.authenticate_api_session(self, db, helpers)
+      end
+    end,
+
     GET = function(self, db, helpers)
       local identifier = self.params.splat
 
@@ -254,11 +273,11 @@ return {
       auth.validate_auth_plugin(self, db, helpers)
 
       local workspace = get_workspace()
-      local token_ttl = ws_helper.retrieve_ws_config(
-                                      ws_constants.PORTAL_TOKEN_EXP, workspace)
+      local token_ttl = ws_helper.retrieve_ws_config(PORTAL_TOKEN_EXP,
+                                                     workspace)
 
-      local developer, _, err_t = db.developers:select_by_email(self.params.email,
-                                                          { skip_rbac = true })
+      local developer, _, err_t = db.developers:select_by_email(
+                                    self.params.email, { skip_rbac = true })
       if err_t then
         return endpoints.handle_error(err_t)
       end
@@ -270,7 +289,7 @@ return {
 
       -- Generate a reset secret and jwt
       local jwt, err = secrets.create(developer.consumer, ngx.var.remote_addr,
-                                                                     token_ttl)
+                                      token_ttl)
       if not jwt then
         return helpers.yield_error(err)
       end
@@ -287,6 +306,10 @@ return {
   },
 
   ["/config"] = {
+    before = function(self, db, helpers)
+      auth.authenticate_api_session(self, db, helpers)
+    end,
+
     GET = function(self, db, helpers)
       local distinct_plugins = {}
 
@@ -314,6 +337,10 @@ return {
   },
 
   ["/developer"] = {
+    before = function(self, db, helpers)
+      auth.authenticate_api_session(self, db, helpers)
+    end,
+
     GET = function(self, db, helpers)
       return helpers.responses.send_HTTP_OK(self.developer)
     end,
@@ -333,6 +360,10 @@ return {
   },
 
   ["/developer/password"] = {
+    before = function(self, db, helpers)
+      auth.authenticate_api_session(self, db, helpers)
+    end,
+
     PATCH = function(self, db, helpers)
       local credential
       for row, err in db.credentials:each_for_consumer({ id = self.developer.consumer.id}) do
@@ -379,6 +410,10 @@ return {
   },
 
   ["/developer/email"] = {
+    before = function(self, db, helpers)
+      auth.authenticate_api_session(self, db, helpers)
+    end,
+
     PATCH = function(self, db, helpers)
       local developer, _, err_t = db.developers:update({
         id = self.developer.id
@@ -395,6 +430,10 @@ return {
   },
 
   ["/developer/meta"] = {
+    before = function(self, db, helpers)
+      auth.authenticate_api_session(self, db, helpers)
+    end,
+
     PATCH = function(self, db, helpers)
       local meta_params = self.params.meta and cjson.decode(self.params.meta)
 
@@ -436,9 +475,12 @@ return {
   },
 
   ["/credentials/:plugin"] = {
-    GET = function(self, db, helpers)
+    before = function(self, db, helpers)
+      auth.authenticate_api_session(self, db, helpers)
       validate_credential_plugin(self, db, helpers)
+    end,
 
+    GET = function(self, db, helpers)
       local credentials = {}
       for row, err in db.credentials:each_for_consumer({ id = self.developer.consumer.id}) do
         if err then
@@ -455,7 +497,6 @@ return {
     end,
 
     POST = function(self, db, helpers)
-      validate_credential_plugin(self, db, helpers)
       self.params.consumer = { id = self.developer.consumer.id }
       self.params.plugin = nil
 
@@ -481,9 +522,12 @@ return {
   },
 
   ["/credentials/:plugin/:credential_id"] = {
-    GET = function(self, db, helpers)
+    before = function(self, db, helpers)
+      auth.authenticate_api_session(self, db, helpers)
       validate_credential_plugin(self, db, helpers)
+    end,
 
+    GET = function(self, db, helpers)
       local credential, _, err_t = self.credential_collection:select({
         id = self.params.credential_id
       }, {
@@ -506,8 +550,6 @@ return {
     end,
 
     PATCH = function(self, db, helpers)
-      validate_credential_plugin(self, db, helpers)
-
       local cred_id = self.params.credential_id
       self.params.plugin = nil
       self.params.credential_id = nil
@@ -526,8 +568,6 @@ return {
     end,
 
     DELETE = function(self, db, helpers)
-      validate_credential_plugin(self, db, helpers)
-
       local credential, _, err_t = self.credential_collection:select({
         id = self.params.credential_id
       }, {
@@ -554,11 +594,14 @@ return {
   },
 
   ["/vitals/status_codes/by_consumer"] = {
-    GET = function(self, db, helpers)
+    before = function(self, db, helpers)
+      auth.authenticate_api_session(self, db, helpers)
       if not singletons.configuration.vitals then
         return helpers.responses.send_HTTP_NOT_FOUND()
       end
+    end,
 
+    GET = function(self, db, helpers)
       local opts = {
         entity_type = "consumer",
         duration    = self.params.interval,
@@ -573,11 +616,14 @@ return {
   },
 
   ["/vitals/status_codes/by_consumer_and_route"] = {
-    GET = function(self, db, helpers)
+    before = function(self, db, helpers)
+      auth.authenticate_api_session(self, db, helpers)
       if not singletons.configuration.vitals then
         return helpers.responses.send_HTTP_NOT_FOUND()
       end
+    end,
 
+    GET = function(self, db, helpers)
       local key_by = "route_id"
       local opts = {
         entity_type = "consumer_route",
@@ -593,11 +639,14 @@ return {
   },
 
   ["/vitals/consumers/cluster"] = {
-    GET = function(self, db, helpers)
+    before = function(self, db, helpers)
+      auth.authenticate_api_session(self, db, helpers)
       if not singletons.configuration.vitals then
         return helpers.responses.send_HTTP_NOT_FOUND()
       end
+    end,
 
+    GET = function(self, db, helpers)
       local opts = {
         consumer_id = self.developer.consumer.id,
         duration    = self.params.interval,

@@ -11,7 +11,6 @@ local ee_api = require "kong.enterprise_edition.api_helpers"
 local ws_helper = require "kong.workspaces.helper"
 local constants = require "kong.constants"
 local Errors = require "kong.db.errors"
-local auth = require "kong.portal.auth"
 
 
 local log = ngx.log
@@ -22,27 +21,10 @@ local find = string.find
 
 
 local PORTAL = constants.WORKSPACE_CONFIG.PORTAL
-local PORTAL_AUTH = constants.WORKSPACE_CONFIG.PORTAL_AUTH
+local NEEDS_BODY = tablex.readonly({ PUT = 1, POST = 2, PATCH = 3 })
 
 
 local app = lapis.Application()
-
--- auth not needed on these routes
-local auth_whitelisted_uris = {
-  ["/auth"] = true,
-  ["/files/unauthenticated"] = true,
-  ["/register"] = true,
-  ["/validate-reset"] = true,
-  ["/reset-password"] = true,
-  ["/forgot-password"] = true,
-}
-
--- only authenticate if authentication is enabled
-local auth_conditional_uris = {
-  ["/files"] = true,
-}
-
-local NEEDS_BODY = tablex.readonly({ PUT = 1, POST = 2, PATCH = 3 })
 
 
 local function parse_params(fn)
@@ -139,22 +121,6 @@ local function on_error(self)
 end
 
 
-local function auth_required(uri, ws)
-  -- whitelisted, no auth needed
-  if auth_whitelisted_uris[uri] then
-    return false
-  end
-
-  -- only check auth if auth is enabled
-  if auth_conditional_uris[uri] then
-    local portal_auth = ws_helper.retrieve_ws_config(PORTAL_AUTH, ws)
-    return portal_auth and portal_auth ~= ""
-  end
-
-  return true
-end
-
-
 -- Register application defaults
 app.handle_404 = function(self)
   return responses.send_HTTP_NOT_FOUND()
@@ -237,10 +203,6 @@ app:before_filter(function(self)
   if not ok then
     log(ERR, err)
     return responses.send_HTTP_INTERNAL_SERVER_ERROR()
-  end
-
-  if auth_required(ngx.var.uri, ws) then
-    auth.authenticate_api_session(self, singletons.db, handler_helpers)
   end
 
   if not NEEDS_BODY[ngx.req.get_method()] then
