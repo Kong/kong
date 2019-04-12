@@ -5,7 +5,6 @@ local rbac        = require "kong.rbac"
 local workspaces  = require "kong.workspaces"
 local ee_utils    = require "kong.enterprise_edition.utils"
 local ee_jwt      = require "kong.enterprise_edition.jwt"
-local endpoints   = require "kong.api.endpoints"
 
 local kong = kong
 local log = ngx.log
