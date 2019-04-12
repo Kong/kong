@@ -251,7 +251,7 @@ end
 
 
 local function load_declarative_config(kong_config, entities)
-  if not kong_config.database == "off" then
+  if kong_config.database ~= "off" then
     return true
   end
 

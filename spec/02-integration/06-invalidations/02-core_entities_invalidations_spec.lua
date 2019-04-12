@@ -866,4 +866,154 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
   end)
+
+  -- declarative_config directive should be ignored in database tests:
+  -- regression test for #4508.
+  describe("declarative_config is ignored in DB mode [#" .. strategy .. "]", function()
+
+    local admin_client_1
+    local admin_client_2
+
+    local proxy_client_1
+    local proxy_client_2
+
+    local wait_for_propagation
+
+    local service_fixture
+
+    lazy_setup(function()
+      local bp = helpers.get_db_utils(strategy, {
+        "apis",
+        "routes",
+        "services",
+        "plugins",
+        "certificates",
+        "snis",
+      })
+
+      -- insert single fixture Service
+      service_fixture = bp.services:insert()
+
+      local db_update_propagation = strategy == "cassandra" and 0.1 or 0
+
+      assert(helpers.start_kong {
+        log_level             = "debug",
+        prefix                = "servroot1",
+        database              = strategy,
+        proxy_listen          = "0.0.0.0:8000, 0.0.0.0:8443 ssl",
+        admin_listen          = "0.0.0.0:8001",
+        db_update_frequency   = POLL_INTERVAL,
+        db_update_propagation = db_update_propagation,
+        nginx_conf            = "spec/fixtures/custom_nginx.template",
+        declarative_config    = "ignore-me.yml",
+      })
+
+      assert(helpers.start_kong {
+        log_level             = "debug",
+        prefix                = "servroot2",
+        database              = strategy,
+        proxy_listen          = "0.0.0.0:9000, 0.0.0.0:9443 ssl",
+        admin_listen          = "0.0.0.0:9001",
+        db_update_frequency   = POLL_INTERVAL,
+        db_update_propagation = db_update_propagation,
+        declarative_config    = "ignore-me.yml",
+      })
+
+      admin_client_1 = helpers.http_client("127.0.0.1", 8001)
+      admin_client_2 = helpers.http_client("127.0.0.1", 9001)
+      proxy_client_1 = helpers.http_client("127.0.0.1", 8000)
+      proxy_client_2 = helpers.http_client("127.0.0.1", 9000)
+
+      wait_for_propagation = function()
+        ngx.sleep(POLL_INTERVAL * 2 + db_update_propagation * 2)
+      end
+    end)
+
+    lazy_teardown(function()
+      helpers.stop_kong("servroot1", true)
+      helpers.stop_kong("servroot2", true)
+    end)
+
+    before_each(function()
+      admin_client_1 = helpers.http_client("127.0.0.1", 8001)
+      admin_client_2 = helpers.http_client("127.0.0.1", 9001)
+      proxy_client_1 = helpers.http_client("127.0.0.1", 8000)
+      proxy_client_2 = helpers.http_client("127.0.0.1", 9000)
+    end)
+
+    after_each(function()
+      admin_client_1:close()
+      admin_client_2:close()
+      proxy_client_1:close()
+      proxy_client_2:close()
+    end)
+
+    describe("propagation works correctly", function()
+      lazy_setup(function()
+        -- populate cache with a miss on
+        -- both nodes
+
+        local res_1 = assert(proxy_client_1:send {
+          method  = "GET",
+          path    = "/status/200",
+          headers = {
+            host = "propagation.test",
+          }
+        })
+        assert.res_status(404, res_1)
+
+        local res_2 = assert(proxy_client_2:send {
+          method  = "GET",
+          path    = "/status/200",
+          headers = {
+            host = "propagation.test",
+          }
+        })
+        assert.res_status(404, res_2)
+      end)
+
+      it("on create", function()
+        local admin_res = assert(admin_client_1:send {
+          method  = "POST",
+          path    = "/routes",
+          body    = {
+            protocols = { "http" },
+            hosts     = { "propagation.test" },
+            service   = {
+              id = service_fixture.id,
+            }
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+        })
+        assert.res_status(201, admin_res)
+
+        -- no need to wait for workers propagation (lua-resty-worker-events)
+        -- because our test instance only has 1 worker
+
+        local res_1 = assert(proxy_client_1:send {
+          method  = "GET",
+          path    = "/status/200",
+          headers = {
+            host = "propagation.test",
+          }
+        })
+        assert.res_status(200, res_1)
+
+
+        wait_for_propagation()
+
+        local res_2 = assert(proxy_client_2:send {
+          method  = "GET",
+          path    = "/status/200",
+          headers = {
+            host = "propagation.test",
+          }
+        })
+        assert.res_status(200, res_2)
+      end)
+    end)
+  end)
+
 end
