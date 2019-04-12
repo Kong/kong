@@ -422,13 +422,11 @@ end
 
 function _mt:reset()
   local schema = self:escape_identifier(self.config.schema)
-  local user = self:escape_identifier(self.config.user)
-
   local ok, err = self:query(concat {
     "BEGIN;\n",
     "  DROP SCHEMA IF EXISTS ", schema ," CASCADE;\n",
-    "  CREATE SCHEMA IF NOT EXISTS ", schema, " AUTHORIZATION ", user, ";\n",
-    "  GRANT ALL ON SCHEMA ", schema ," TO ", user, ";\n",
+    "  CREATE SCHEMA IF NOT EXISTS ", schema, " AUTHORIZATION CURRENT_USER;\n",
+    "  GRANT ALL ON SCHEMA ", schema ," TO CURRENT_USER;\n",
     "  SET SCHEMA ",  self:escape_literal(self.config.schema), ";\n",
     "COMMIT;",
   })
@@ -628,12 +626,10 @@ function _mt:schema_bootstrap(kong_config, default_locks_ttl)
   logger.debug("creating '%s' schema if not existing...", self.config.schema)
 
   local schema = self:escape_identifier(self.config.schema)
-  local user = self:escape_identifier(self.config.user)
-
   local ok, err = self:query(concat {
     "BEGIN;\n",
-    "  CREATE SCHEMA IF NOT EXISTS ", schema, " AUTHORIZATION ", user, ";\n",
-    "  GRANT ALL ON SCHEMA ", schema ," TO ", user, ";\n",
+    "  CREATE SCHEMA IF NOT EXISTS ", schema, " AUTHORIZATION CURRENT_USER;\n",
+    "  GRANT ALL ON SCHEMA ", schema ," TO CURRENT_USER;\n",
     "  SET SCHEMA ",  self:escape_literal(self.config.schema), ";\n",
     "COMMIT;",
   })
@@ -682,13 +678,11 @@ function _mt:schema_reset()
   end
 
   local schema = self:escape_identifier(self.config.schema)
-  local user = self:escape_identifier(self.config.user)
-
   local ok, err = self:query(concat {
     "BEGIN;\n",
     "  DROP SCHEMA IF EXISTS ", schema, " CASCADE;\n",
-    "  CREATE SCHEMA IF NOT EXISTS ", schema, " AUTHORIZATION ", user, ";\n",
-    "  GRANT ALL ON SCHEMA ", schema ," TO ", user, ";\n",
+    "  CREATE SCHEMA IF NOT EXISTS ", schema, " AUTHORIZATION CURRENT_USER;\n",
+    "  GRANT ALL ON SCHEMA ", schema ," TO CURRENT_USER;\n",
     "  SET SCHEMA ",  self:escape_literal(self.config.schema), ";\n",
     "COMMIT;",
   })
