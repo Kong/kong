@@ -6,7 +6,6 @@ local singletons = require "kong.singletons"
 local tablex     = require "pl.tablex"
 local api_helpers = require "kong.enterprise_edition.api_helpers"
 local workspaces = require "kong.workspaces"
-local enums       = require "kong.enterprise_edition.dao.enums"
 
 
 local band  = bit.band
@@ -102,13 +101,30 @@ end
 
 
 local function find_current_user(self, db, helpers)
+  -- PUT creates if rbac_user doesn't exist, so exit early
+  if kong.request.get_method() == "PUT" then
+    return
+  end
+
   local rbac_user, _, err_t = endpoints.select_entity(self, db, rbac_users.schema)
   if err_t then
     return endpoints.handle_error(err_t)
   end
   if not rbac_user then
-    return kong.response.exit(404, { message = "No RBAC user by name or id " .. self.params.rbac_users})
+    return kong.response.exit(404, { message = "No RBAC user by name or id " ..
+                              self.params.rbac_users})
   end
+
+  local admin, err = db.admins:select_by_rbac_user(rbac_user)
+
+  if err then
+    return kong.response.exit(500, err)
+  end
+
+  if admin then
+    return kong.response.exit(404, { message = "Not Found" })
+  end
+
   self.rbac_user = rbac_user
 end
 
@@ -124,7 +140,6 @@ local function find_current_role(self, db, helpers)
   self.rbac_role = rbac_role
   self.params.role = self.rbac_role
 end
-
 
 
 return {
@@ -151,9 +166,13 @@ return {
         -- filter non-proxy rbac_users (consumers)
         local res = {}
         for _, v in ipairs(data) do
-          -- XXX EE: Workaround while rbac user type
-          if v.type ~= enums.CONSUMERS.TYPE.DEVELOPER and
-             v.type ~= enums.CONSUMERS.TYPE.ADMIN then
+          -- XXX EE: Workaround for not showing admin rbac users
+          local admin, err = db.admins:select_by_rbac_user(v)
+          if err then
+            return endpoints.handle_error(err_t)
+          end
+
+          if not admin then
             table.insert(res, v)
           end
         end
@@ -176,29 +195,17 @@ return {
   ["/rbac/users/:rbac_users"] = {
     schema = rbac_users.schema,
     methods = {
-      GET  =
-        function(self, db, helpers)
-          find_current_user(self, db, helpers)
+      before = function(self, db, helpers)
+        find_current_user(self, db, helpers)
+      end,
 
-          -- make sure it's not associated to an admin
-          for row, err in db.admins:each_for_rbac_user({ id = self.rbac_user.id }) do
-            if err then
-              return kong.response.exit(500, err)
-            end
-            if row then
-              return kong.response.exit(404, "No RBAC user by name or id "
-                .. self.params.rbac_users)
-            end
-          end
-
+      GET = function(self, db, helpers)
           return kong.response.exit(200, self.rbac_user)
         end,
 
-      PUT     = endpoints.put_entity_endpoint(rbac_users.schema),
-      PATCH   = endpoints.patch_entity_endpoint(rbac_users.schema),
+      PATCH = endpoints.patch_entity_endpoint(rbac_users.schema),
       DELETE  = function(self, db, helpers)
         -- endpoints.delete_entity_endpoint(rbac_users.schema)(self, db, helpers)
-        find_current_user(self, db, helpers)
 
         db.rbac_users:delete({id = self.rbac_user.id })
 

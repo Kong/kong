@@ -448,7 +448,9 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
       end)
 
       it("filters out admins", function()
-        ee_helpers.create_admin("gruce-admin@konghq.com", nil, 0, bp, db)
+        local email = "gruceadmin@konghq.com"
+
+        local admin = ee_helpers.create_admin(email, nil, 0, bp, db)
 
         local res = assert(client:send {
           method = "GET",
@@ -458,7 +460,7 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
         for _, user in ipairs(json.data) do
-          assert.are_not.same("gruce-admin@konghq.com", user.name)
+          assert.not_equal(admin.rbac_user.id, user.id)
         end
       end)
     end)
@@ -505,7 +507,7 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
       end)
 
       it("returns 404 for an rbac_user associated to an admin", function()
-        local admin = ee_helpers.create_admin("gruce@konghq.com", nil, 0, bp, db)
+        local admin = ee_helpers.create_admin("global@konghq.com", nil, 0, bp, db)
 
         local res = assert(client:send {
           method = "GET",

@@ -2,17 +2,15 @@ local cjson   = require "cjson"
 local helpers = require "spec.helpers"
 local enums = require "kong.enterprise_edition.dao.enums"
 
-
 for _, strategy in helpers.each_strategy() do
-  pending("Pending on feature flags - Plugin (EE logic): basic-auth (API) [#" .. strategy .. "]", function()
+  describe("Plugin (EE logic): basic-auth (API) [#" .. strategy .. "]", function()
     local admin_client
-    local dao
+    local bp, db
     local admin, consumer, developer
     local admin_credential, developer_credential, consumer_credential
 
     setup(function()
-      local bp, _
-      bp, _, dao = helpers.get_db_utils(strategy)
+      bp, db = helpers.get_db_utils(strategy)
 
       consumer = bp.consumers:insert {
         username = "consumer",
@@ -21,7 +19,6 @@ for _, strategy in helpers.each_strategy() do
 
       developer = bp.consumers:insert {
         username = "developer",
-        email = "developer",
         type = enums.CONSUMERS.TYPE.DEVELOPER,
       }
 
@@ -73,7 +70,7 @@ for _, strategy in helpers.each_strategy() do
               ["Content-Type"] = "application/json"
             }
           })
-          assert.res_status(404, res) 
+          assert.res_status(404, res)
         end)
 
         it("returns 200 for consumers", function()
@@ -92,9 +89,9 @@ for _, strategy in helpers.each_strategy() do
         end)
       end)
 
-      describe("PUT", function()
+      pending("PUT", function()
         teardown(function()
-          dao:truncate_table("basicauth_credentials")
+          db:truncate("basicauth_credentials")
         end)
 
         it("returns 404 for admins", function()
@@ -145,7 +142,7 @@ for _, strategy in helpers.each_strategy() do
 
       describe("GET", function()
         teardown(function()
-          dao:truncate_table("basicauth_credentials")
+          db:truncate("basicauth_credentials")
         end)
 
         it("returns 404 for admins", function()
@@ -174,10 +171,10 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
 
-    describe("/developers/:developer/basic-auth/", function()
+    pending("/developers/:developer/basic-auth/", function()
 
       teardown(function()
-        dao:truncate_table("basicauth_credentials")
+        db:truncate("basicauth_credentials")
       end)
 
       describe("POST", function()
@@ -229,7 +226,7 @@ for _, strategy in helpers.each_strategy() do
 
       describe("PUT", function()
         teardown(function()
-          dao:truncate_table("basicauth_credentials")
+          db:truncate("basicauth_credentials")
         end)
 
         it("returns 404 for admins", function()
@@ -280,7 +277,7 @@ for _, strategy in helpers.each_strategy() do
 
       describe("GET", function()
         teardown(function()
-          dao:truncate_table("basicauth_credentials")
+          db:truncate("basicauth_credentials")
         end)
 
         it("returns 404 for admins", function()
@@ -312,29 +309,35 @@ for _, strategy in helpers.each_strategy() do
     describe("/consumers/:consumer/basic-auth/:id", function()
 
       before_each(function()
-        dao:truncate_table("basicauth_credentials")
+        db:truncate("basicauth_credentials")
 
-        admin_credential = assert(dao.basicauth_credentials:insert {
+        admin_credential = assert(db.basicauth_credentials:insert {
           username = "admin1",
           password = "kong",
-          consumer_id = admin.id
-        })
-        
-        developer_credential = assert(dao.basicauth_credentials:insert {
-          username = "developer1",
-          password = "kong",
-          consumer_id = developer.id
+          consumer = {
+            id = admin.id
+          }
         })
 
-        consumer_credential = assert(dao.basicauth_credentials:insert {
+        developer_credential = assert(db.basicauth_credentials:insert {
+          username = "developer1",
+          password = "kong",
+          consumer = {
+            id = developer.id
+          }
+        })
+
+        consumer_credential = assert(db.basicauth_credentials:insert {
           username = "consumer1",
           password = "kong",
-          consumer_id = consumer.id
+          consumer = {
+            id = consumer.id
+          }
         })
       end)
 
       teardown(function()
-        dao:truncate_table("basicauth_credentials")
+        db:truncate("basicauth_credentials")
       end)
 
       describe("GET", function()
@@ -500,32 +503,38 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
 
-    describe("/developers/:developer/basic-auth/:id", function()
+    pending("/developers/:developer/basic-auth/:id", function()
 
       before_each(function()
-        dao:truncate_table("basicauth_credentials")
+        db:truncate("basicauth_credentials")
 
-        admin_credential = assert(dao.basicauth_credentials:insert {
+        admin_credential = assert(db.basicauth_credentials:insert {
           username = "admin1",
           password = "kong",
-          consumer_id = admin.id
-        })
-        
-        developer_credential = assert(dao.basicauth_credentials:insert {
-          username = "developer1",
-          password = "kong",
-          consumer_id = developer.id
+          consumer = {
+            id = admin.id
+          }
         })
 
-        consumer_credential = assert(dao.basicauth_credentials:insert {
+        developer_credential = assert(db.basicauth_credentials:insert {
+          username = "developer1",
+          password = "kong",
+          consumer = {
+            id = developer.id
+          }
+        })
+
+        consumer_credential = assert(db.basicauth_credentials:insert {
           username = "consumer1",
           password = "kong",
-          consumer_id = consumer.id
+          consumer = {
+            id = consumer.id
+          }
         })
       end)
 
       teardown(function()
-        dao:truncate_table("basicauth_credentials")
+        db:truncate("basicauth_credentials")
       end)
 
       describe("GET", function()
@@ -696,33 +705,33 @@ for _, strategy in helpers.each_strategy() do
     describe("/basic-auths", function()
       describe("GET", function()
         setup(function()
-          assert(dao.basicauth_credentials:insert {
-            consumer_id = consumer.id,
+          assert(db.basicauth_credentials:insert {
+            consumer = { id = consumer.id, },
             username = 'consumer1',
             password = '1',
           })
 
-          assert(dao.basicauth_credentials:insert {
-            consumer_id = admin.id,
+          assert(db.basicauth_credentials:insert {
+            consumer = { id = admin.id, },
             username = 'admin1',
             password = '2',
           })
         end)
 
         teardown(function()
-          dao:truncate_table("basicauth_credentials")
+          db:truncate("basicauth_credentials")
         end)
 
         it("filters for an admin and counts are off", function()
           local res = assert(admin_client:send {
             method = "GET",
-            path = "/basic-auths?consumer_id=" .. admin.id
+            path = "/basic-auths"
           })
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
           assert.is_table(json.data)
-          assert.equal(0, #json.data)
-          assert.equal(1, json.total)
+          assert.equal(1, #json.data)
+          assert.not_equal(json.data[1].consumer.id, admin.id)
         end)
       end)
     end)
@@ -731,22 +740,22 @@ for _, strategy in helpers.each_strategy() do
       describe("GET", function()
 
         setup(function()
-          dao:truncate_table("basicauth_credentials")
-          admin_credential = assert(dao.basicauth_credentials:insert {
-                                      consumer_id = admin.id,
+          db:truncate("basicauth_credentials")
+          admin_credential = assert(db.basicauth_credentials:insert {
+                                      consumer = { id = admin.id, },
                                       username = "admin" })
 
-          consumer_credential = assert(dao.basicauth_credentials:insert {
-                                      consumer_id = consumer.id,
+          consumer_credential = assert(db.basicauth_credentials:insert {
+                                      consumer = { id = consumer.id, },
                                       username = "consumer" })
 
-          developer_credential = assert(dao.basicauth_credentials:insert {
-                                      consumer_id = developer.id,
+          developer_credential = assert(db.basicauth_credentials:insert {
+                                      consumer = { id = developer.id, },
                                       username = "developer" })
         end)
 
         teardown(function()
-          dao:truncate_table("basicauth_credentials")
+          db:truncate("basicauth_credentials")
         end)
 
         it("returns 404 for admin from a basic-auth id", function()
@@ -799,26 +808,26 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
 
-    describe("/basic-auths/:developer_username_or_id/developer", function()
+    pending("/basic-auths/:developer_username_or_id/developer", function()
       describe("GET", function()
 
         setup(function()
-          dao:truncate_table("basicauth_credentials")
-          admin_credential = assert(dao.basicauth_credentials:insert {
-                                      consumer_id = admin.id,
+          db:truncate("basicauth_credentials")
+          admin_credential = assert(db.basicauth_credentials:insert {
+                                      consumer = { id = admin.id, },
                                       username = "admin" })
 
-          consumer_credential = assert(dao.basicauth_credentials:insert {
-                                      consumer_id = consumer.id,
+          consumer_credential = assert(db.basicauth_credentials:insert {
+                                      consumer = { id = consumer.id, },
                                       username = "consumer" })
 
-          developer_credential = assert(dao.basicauth_credentials:insert {
-                                      consumer_id = developer.id,
+          developer_credential = assert(db.basicauth_credentials:insert {
+                                      consumer = { id = developer.id, },
                                       username = "developer" })
         end)
 
         teardown(function()
-          dao:truncate_table("basicauth_credentials")
+          db:truncate("basicauth_credentials")
         end)
 
         it("returns 404 for admin from a basic-auth id", function()

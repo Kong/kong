@@ -116,4 +116,17 @@ function _Admins:delete(admin, options)
 end
 
 
+function _Admins:select_by_rbac_user(rbac_user)
+  local admins, err = kong.db.admins:page_for_rbac_user({
+    id = rbac_user.id
+  })
+
+  if err then
+    return nil, err
+  end
+
+  return admins[1]
+end
+
+
 return _Admins

@@ -61,6 +61,15 @@ local function extract_options(args, schema, context)
       options.ttl = tonumber(args.ttl) or args.ttl
       args.ttl = nil
     end
+
+    ---[[ EE
+    -- consumer paging filter by type
+    if schema.name == "consumers" and schema.fields and schema.fields.type
+      and args.type and context == "page"
+    then
+      options.type = args.type
+    end
+    --]] EE
   end
 
   return options
@@ -80,7 +89,7 @@ local function get_page_size(args)
 end
 
 
-local function query_entity(context, self, db, schema)
+local function query_entity(context, self, db, schema, method)
   local dao = db[schema.name]
   local args
   if context == "update" or context == "upsert" then
@@ -95,6 +104,16 @@ local function query_entity(context, self, db, schema)
   local id = unescape_uri(self.params[schema.name])
   if utils.is_valid_uuid(id) then
     return dao[context](dao, { id = id }, args, opts)
+  end
+
+
+  if context == "page" and method then
+    local size, err = get_page_size(args)
+    if err then
+      return nil, err, db[schema.name].errors:invalid_size(err)
+    end
+
+    return dao[method](dao, self.params[schema.name], size, args.offset, opts)
   end
 
   if schema.endpoint_key then
@@ -126,6 +145,10 @@ local function delete_entity(...)
   return query_entity("delete", ...)
 end
 
+local function page_collection(...)
+  return query_entity("page", ...)
+end
+
 
 -- Generates admin api get collection endpoint functions
 --
@@ -138,7 +161,7 @@ end
 --
 -- /services
 local function get_collection_endpoint(schema, foreign_schema, foreign_field_name)
-  return not foreign_schema and function(self, db, helpers)
+  return not foreign_schema and function(self, db, helpers, post_process)
     local args = self.args.uri
     local opts = extract_options(args, schema, "select")
     local size, err = get_page_size(args)
@@ -151,12 +174,25 @@ local function get_collection_endpoint(schema, foreign_schema, foreign_field_nam
       return handle_error(err_t)
     end
 
+    -- post process data
+    local p_data = {}
+    if type(post_process) == "function" then
+      for i, row in ipairs(data) do
+        local p_row = post_process(row)
+        if p_row and next(p_row) then
+          p_data[i] = p_row
+        end
+      end
+    else
+      p_data = data
+    end
+
     local next_page = offset and fmt("/%s?offset=%s",
                                      schema.name,
                                      escape_uri(offset)) or null
 
     return helpers.responses.send_HTTP_OK {
-      data   = data,
+      data   = p_data,
       offset = offset,
       next   = next_page,
     }
@@ -260,7 +296,7 @@ end
 --
 -- /services/:services
 local function get_entity_endpoint(schema, foreign_schema, foreign_field_name)
-  return function(self, db, helpers)
+  return function(self, db, helpers, post_process)
     local entity, _, err_t = select_entity(self, db, schema)
     if err_t then
       return handle_error(err_t)
@@ -287,6 +323,21 @@ local function get_entity_endpoint(schema, foreign_schema, foreign_field_name)
         return helpers.responses.send_HTTP_NOT_FOUND()
       end
     end
+
+    ---EE [[
+    -- need to PR upstream
+    if post_process then
+      local n_entity
+      n_entity, _, err_t = post_process(entity)
+      if err_t then
+        return handle_error(err_t)
+      end
+
+      if n_entity then
+        entity = n_entity
+      end
+    end
+    --]] EE
 
     return helpers.responses.send_HTTP_OK(entity)
   end
@@ -548,6 +599,7 @@ local Endpoints = {
   get_page_size = get_page_size,
   select_entity = select_entity,
   extract_options = extract_options,
+  page_collection = page_collection,
   get_entity_endpoint = get_entity_endpoint,
   put_entity_endpoint = put_entity_endpoint,
   patch_entity_endpoint = patch_entity_endpoint,

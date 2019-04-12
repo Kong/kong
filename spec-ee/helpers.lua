@@ -225,9 +225,9 @@ function _M.post(client, path, body, headers, expected_status)
 end
 
 
-function _M.create_admin(email, custom_id, status, bp, db)
+function _M.create_admin(email, custom_id, status, bp, db, username)
   local admin = assert(db.admins:insert({
-    username = email,
+    username = username or email,
     custom_id = custom_id,
     email = email,
     status = status,

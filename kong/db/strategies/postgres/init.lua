@@ -716,6 +716,7 @@ local _M  = {
     services = require("kong.db.strategies.postgres.services"),
     routes   = require("kong.db.strategies.postgres.routes"),
     plugins = require("kong.db.strategies.postgres.plugins"),
+    consumers = require("kong.db.strategies.postgres.consumers"),
     -- rbac_users = require("kong.db.strategies.postgres.rbac_users"),
   }
 }

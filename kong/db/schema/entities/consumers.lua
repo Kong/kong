@@ -6,6 +6,7 @@ return {
   primary_key  = { "id" },
   endpoint_key = "username",
   workspaceable = true,
+  dao           = "kong.db.dao.consumers",
 
   fields = {
     { id             = typedefs.uuid, },

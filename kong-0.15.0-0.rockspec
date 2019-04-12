@@ -230,6 +230,7 @@ build = {
     ["kong.db.iteration"] = "kong/db/iteration.lua",
     ["kong.db.dao"] = "kong/db/dao/init.lua",
     ["kong.db.dao.admins"] = "kong/db/dao/admins.lua",
+    ["kong.db.dao.consumers"] = "kong/db/dao/consumers.lua",
     ["kong.db.dao.developers"] = "kong/db/dao/developers.lua",
     ["kong.db.dao.certificates"] = "kong/db/dao/certificates.lua",
     ["kong.db.dao.snis"] = "kong/db/dao/snis.lua",
@@ -268,12 +269,14 @@ build = {
     ["kong.db.strategies.cassandra.connector"] = "kong/db/strategies/cassandra/connector.lua",
     ["kong.db.strategies.cassandra.plugins"] = "kong/db/strategies/cassandra/plugins.lua",
     ["kong.db.strategies.cassandra.services"] = "kong/db/strategies/cassandra/services.lua",
+    ["kong.db.strategies.cassandra.consumers"] = "kong/db/strategies/cassandra/consumers.lua",
     ["kong.db.strategies.postgres"] = "kong/db/strategies/postgres/init.lua",
     ["kong.db.strategies.postgres.plugins"] = "kong/db/strategies/postgres/plugins.lua",
     ["kong.db.strategies.postgres.connector"] = "kong/db/strategies/postgres/connector.lua",
 
     ["kong.db.strategies.postgres.services"] = "kong/db/strategies/postgres/services.lua",
     ["kong.db.strategies.postgres.routes"] = "kong/db/strategies/postgres/routes.lua",
+    ["kong.db.strategies.postgres.consumers"] = "kong/db/strategies/postgres/consumers.lua",
 
     ["kong.db.migrations.state"] = "kong/db/migrations/state.lua",
     ["kong.db.migrations.helpers"] = "kong/db/migrations/helpers.lua",

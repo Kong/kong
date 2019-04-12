@@ -34,7 +34,7 @@ local function setup_ws_defaults(dao, db, workspace)
   ngx.ctx.workspaces = { ws }
 
   -- create a record we can use to test inter-workspace calls
-  assert(db.consumers:insert({ username = workspace .. "-joe" }))
+  assert(db.services:insert({  host = workspace .. "-example.com", }))
 
   ee_helpers.register_rbac_resources(db, workspace)
 
@@ -131,7 +131,7 @@ for _, strategy in helpers.each_strategy() do
 
         post(client, "/" .. ws.name .. "/rbac/roles/another-one/endpoints", {
           workspace = "default",
-          endpoint = "/consumers",
+          endpoint = "/services",
           actions = "read"
         }, { ['Kong-Admin-Token'] = 'letmein-' .. ws.name }, 201)
 
@@ -259,32 +259,25 @@ for _, strategy in helpers.each_strategy() do
         it("credentials in another workspace can access workspace data", function()
           local res = client:send {
             method = "GET",
-            path = "/test-ws/consumers",
+            path = "/test-ws/services",
             headers = {
               Authorization = "Basic " .. ngx.encode_base64("dj-khaled:another-one"),
               ["Kong-Admin-User"] = test_admin.username,
             }
           }
 
+          assert.res_status(200, res)
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
 
-          -- TODO just count #json.data when admins are filtered out of consumers
-          local count = 0
-          for k, c in ipairs(json.data) do
-            if c.type == 0 then
-              count = count + 1
-            end
-          end
-
-          assert.equal(1, count)
+          assert.equal(1, #json.data)
         end)
 
         it("rbac token in another workspace can access data across workspaces",
           function()
           local res = client:send {
             method = "GET",
-            path = "/consumers",
+            path = "/services",
             headers = {
               Authorization = "Basic "
               .. ngx.encode_base64("dj-khaled:another-one"),
@@ -336,7 +329,7 @@ for _, strategy in helpers.each_strategy() do
           function()
           local res = client:send {
             method = "GET",
-            path = "/test-ws/consumers",
+            path = "/test-ws/services",
             headers = {
               ['Kong-Admin-Token'] = test_admin.rbac_user.raw_user_token,
             }
@@ -344,15 +337,7 @@ for _, strategy in helpers.each_strategy() do
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
 
-          -- TODO just count #json.data when admins are filtered out of consumers
-          local count = 0
-          for k, c in ipairs(json.data) do
-            if c.type == 0 then
-              count = count + 1
-            end
-          end
-
-          assert.equal(1, count)
+          assert.equal(1, #json.data)
         end)
 
         -- TODO: address using admin raw token once we can safely reset it/know it

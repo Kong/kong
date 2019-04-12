@@ -56,6 +56,7 @@ local _M  = {
     services = require("kong.db.strategies.cassandra.services"),
     routes   = require("kong.db.strategies.cassandra.routes"),
     plugins = require("kong.db.strategies.cassandra.plugins"),
+    consumers = require("kong.db.strategies.cassandra.consumers"),
     -- rbac_users = require("kong.db.strategies.cassandra.rbac_users"),
   }
 }

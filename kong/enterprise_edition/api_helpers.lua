@@ -5,6 +5,7 @@ local rbac        = require "kong.rbac"
 local workspaces  = require "kong.workspaces"
 local ee_utils    = require "kong.enterprise_edition.utils"
 local ee_jwt      = require "kong.enterprise_edition.jwt"
+local endpoints   = require "kong.api.endpoints"
 
 local kong = kong
 local log = ngx.log
@@ -366,6 +367,38 @@ function _M.validate_email(self, dao_factory, helpers)
   if not ok then
     return kong.response.exit(400, { message = "Invalid email: " .. err })
   end
+end
+
+
+function _M.routes_consumers_before(self, params, is_collection)
+  if params.type then
+    return kong.response.exit(400, { message = "Invalid parameter: 'type'" })
+  end
+
+  if is_collection then
+    return true
+  end
+
+  -- PUT creates if consumer doesn't exist, so exit early
+  if kong.request.get_method() == "PUT" then
+    return
+  end
+
+  local consumer, _, err_t = endpoints.select_entity(self, kong.db,
+                                                     kong.db.consumers.schema)
+  if err_t then
+    return endpoints.handle_error(err_t)
+  end
+
+  if not consumer then
+    return kong.response.exit(404, { message = "Not found" })
+  end
+
+  if consumer.type ~= enums.CONSUMERS.TYPE.PROXY then
+    return kong.response.exit(404, { message = "Not Found" })
+  end
+
+  return consumer
 end
 
 
