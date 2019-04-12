@@ -5,6 +5,13 @@ local singletons   = require "kong.singletons"
 local ws_helper    = require "kong.workspaces.helper"
 local ws_constants = constants.WORKSPACE_CONFIG
 
+local no_files_found = {
+  name = "unauthenticated/index",
+  contents = "<h1>No Files Found</h1>",
+  auth = false,
+  type = "page"
+}
+
 
 local function build_url_obj(page, path, url_map)
   local workspace = ws_helper.get_workspace()
@@ -290,6 +297,10 @@ local function retrieve_page_and_spec (self)
   -- default to 404 if no page is found
   if not page then
     page = not_found
+  end
+
+  if not page then 
+    page = no_files_found
   end
 
   return page, spec
