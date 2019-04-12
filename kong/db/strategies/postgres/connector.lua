@@ -118,6 +118,61 @@ local function iterator(rows)
 end
 
 
+local function get_table_names(self, excluded)
+  local i = 0
+  local table_names = {}
+  for row, err in self:iterate(SQL_INFORMATION_SCHEMA_TABLES) do
+    if err then
+      return nil, err
+    end
+
+    if not excluded or not excluded[row.table_name] then
+      i = i + 1
+      table_names[i] = self:escape_identifier(row.table_name)
+    end
+  end
+
+  return table_names
+end
+
+
+local function reset_schema(self)
+  local table_names, err = get_table_names(self)
+  if not table_names then
+    return nil, err
+  end
+
+  local drop_tables
+  if #table_names == 0 then
+    drop_tables = ""
+  else
+    drop_tables = concat {
+      "    DROP TABLE IF EXISTS ", concat(table_names, ", "), " CASCADE;\n"
+    }
+  end
+
+  local schema = self:escape_identifier(self.config.schema)
+  local ok, err = self:query(concat {
+    "BEGIN;\n",
+    "  DO $$\n",
+    "  BEGIN\n",
+    "    DROP SCHEMA IF EXISTS ", schema, " CASCADE;\n",
+    "    CREATE SCHEMA IF NOT EXISTS ", schema, " AUTHORIZATION CURRENT_USER;\n",
+    "    GRANT ALL ON SCHEMA ", schema ," TO CURRENT_USER;\n",
+    "  EXCEPTION WHEN insufficient_privilege THEN\n", drop_tables,
+    "  END;\n",
+    "  $$;\n",
+    "    SET SCHEMA ",  self:escape_literal(self.config.schema), ";\n",
+    "COMMIT;",  })
+
+  if not ok then
+    return nil, err
+  end
+
+  return true
+end
+
+
 local setkeepalive
 
 
@@ -196,7 +251,9 @@ setkeepalive = function(connection)
 end
 
 
-local _mt = {}
+local _mt = {
+  reset = reset_schema
+}
 
 
 _mt.__index = _mt
@@ -420,37 +477,13 @@ function _mt:iterate(sql)
 end
 
 
-function _mt:reset()
-  local schema = self:escape_identifier(self.config.schema)
-  local ok, err = self:query(concat {
-    "BEGIN;\n",
-    "  DROP SCHEMA IF EXISTS ", schema ," CASCADE;\n",
-    "  CREATE SCHEMA IF NOT EXISTS ", schema, " AUTHORIZATION CURRENT_USER;\n",
-    "  GRANT ALL ON SCHEMA ", schema ," TO CURRENT_USER;\n",
-    "  SET SCHEMA ",  self:escape_literal(self.config.schema), ";\n",
-    "COMMIT;",
-  })
-
-  if not ok then
+function _mt:truncate()
+  local table_names, err = get_table_names(self, PROTECTED_TABLES)
+  if not table_names then
     return nil, err
   end
 
-  return true
-end
-
-
-function _mt:truncate()
-  local i, table_names = 0, {}
-
-  for row in self:iterate(SQL_INFORMATION_SCHEMA_TABLES) do
-    local table_name = row.table_name
-    if not PROTECTED_TABLES[table_name] then
-      i = i + 1
-      table_names[i] = self:escape_identifier(table_name)
-    end
-  end
-
-  if i == 0 then
+  if #table_names == 0 then
     return true
   end
 
@@ -579,16 +612,21 @@ function _mt:schema_migrations()
     error("no connection")
   end
 
-  local has_schema_meta_table
-  for row in self:iterate(SQL_INFORMATION_SCHEMA_TABLES) do
-    local table_name = row.table_name
-    if table_name == "schema_meta" then
-      has_schema_meta_table = true
+  local table_names, err = get_table_names(self)
+  if not table_names then
+    return nil, err
+  end
+
+  local schema_meta_table_name = self:escape_identifier("schema_meta")
+  local schema_meta_table_exists
+  for _, table_name in ipairs(table_names) do
+    if table_name == schema_meta_table_name then
+      schema_meta_table_exists = true
       break
     end
   end
 
-  if not has_schema_meta_table then
+  if not schema_meta_table_exists then
     -- database, but no schema_meta: needs bootstrap
     return nil
   end
@@ -628,8 +666,14 @@ function _mt:schema_bootstrap(kong_config, default_locks_ttl)
   local schema = self:escape_identifier(self.config.schema)
   local ok, err = self:query(concat {
     "BEGIN;\n",
-    "  CREATE SCHEMA IF NOT EXISTS ", schema, " AUTHORIZATION CURRENT_USER;\n",
-    "  GRANT ALL ON SCHEMA ", schema ," TO CURRENT_USER;\n",
+    "  DO $$\n",
+    "  BEGIN\n",
+    "    CREATE SCHEMA IF NOT EXISTS ", schema, " AUTHORIZATION CURRENT_USER;\n",
+    "    GRANT ALL ON SCHEMA ", schema ," TO CURRENT_USER;\n",
+    "  EXCEPTION WHEN insufficient_privilege THEN\n",
+    "    -- Do nothing, perhaps the schema has been created already\n",
+    "  END;\n",
+    "  $$;\n",
     "  SET SCHEMA ",  self:escape_literal(self.config.schema), ";\n",
     "COMMIT;",
   })
@@ -677,22 +721,9 @@ function _mt:schema_reset()
     error("no connection")
   end
 
-  local schema = self:escape_identifier(self.config.schema)
-  local ok, err = self:query(concat {
-    "BEGIN;\n",
-    "  DROP SCHEMA IF EXISTS ", schema, " CASCADE;\n",
-    "  CREATE SCHEMA IF NOT EXISTS ", schema, " AUTHORIZATION CURRENT_USER;\n",
-    "  GRANT ALL ON SCHEMA ", schema ," TO CURRENT_USER;\n",
-    "  SET SCHEMA ",  self:escape_literal(self.config.schema), ";\n",
-    "COMMIT;",
-  })
-
-  if not ok then
-    return nil, err
-  end
-
-  return true
+  return reset_schema(self)
 end
+
 
 function _mt:run_up_migration(name, up_sql)
   if type(name) ~= "string" then
