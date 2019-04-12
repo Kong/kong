@@ -563,6 +563,10 @@ local function parse_listeners(values, flags)
   local usage = "must be of form: [off] | <ip>:<port> [" ..
                 concat(flags, "] [") .. "], [... next entry ...]"
 
+  if #values == 0 then
+    return nil, usage
+  end
+
   if pl_stringx.strip(values[1]) == "off" then
     return list
   end
