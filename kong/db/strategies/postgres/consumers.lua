@@ -3,6 +3,8 @@ local cjson_safe    = require "cjson.safe"
 local encode_base64 = ngx.encode_base64
 local decode_base64 = ngx.decode_base64
 local fmt           = string.format
+local ws_helper     = require "kong.workspaces.helper"
+local unpack        = unpack
 
 
 local Consumers = {}
@@ -20,6 +22,20 @@ local sql_templates = {
     WHERE id >= %s AND type = %s
     ORDER BY id
     LIMIT %s;]],
+
+  page_by_type_first_ws  = [[
+    SELECT id, username, custom_id, created_at
+    FROM workspace_entities ws_e INNER JOIN consumers c
+    ON ( unique_field_name = 'id' AND ws_e.workspace_id in ( %s ) and ws_e.entity_id = c.id::varchar )
+    WHERE type = %s ORDER BY id LIMIT %s;
+  ]],
+
+  page_by_type_next_ws  = [[
+    SELECT id, username, custom_id, created_at
+    FROM workspace_entities ws_e INNER JOIN consumers c
+    ON ( unique_field_name = 'id' AND ws_e.workspace_id in ( %s ) and ws_e.entity_id = c.id::varchar )
+    WHERE id >= %s AND type = %s ORDER BY id LIMIT %s;
+  ]],
 }
 
 local function page(self, size, token, options, type)
@@ -27,6 +43,12 @@ local function page(self, size, token, options, type)
   local sql
   local args
   local type_literal
+  local ws_suffix = ""
+
+  local ws_list = ws_helper.ws_scope_as_list(self.schema.name)
+  if ws_list then
+    ws_suffix = "_ws"
+  end
 
   if type then
     type_literal = self:escape_literal(type)
@@ -46,17 +68,20 @@ local function page(self, size, token, options, type)
     local id_delimiter = self:escape_literal(token_decoded)
 
     if type then
-      sql = sql_templates.page_by_type_next
+      sql = sql_templates.page_by_type_next .. ws_suffix
       args = { id_delimiter, type_literal, limit }
     end
   else
     if type then
-      sql = sql_templates.page_by_type_first
+      sql = sql_templates.page_by_type_first .. ws_suffix
       args = { type_literal, limit  }
     end
   end
 
   sql = fmt(sql, unpack(args))
+  if ws_list then
+    sql = fmt(sql, ws_list, unpack(args))
+  end
 
   local res, err = self.connector:query(sql)
 
