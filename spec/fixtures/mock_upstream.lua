@@ -296,20 +296,26 @@ local function serve_web_sockets()
 end
 
 
-local function store_log(logname)
-  ngx.req.read_body()
-  local body = ngx.req.get_body_data()
+local function get_logger(logname)
   local loggers = ngx.shared["kong_mock_upstream_loggers"]
   if not loggers then
     loggers = {}
     ngx.shared["kong_mock_upstream_loggers"] = loggers
   end
   loggers[logname] = loggers[logname] or {}
+  return loggers[logname], loggers
+end
+
+
+local function store_log(logname)
+  ngx.req.read_body()
+  local body = ngx.req.get_body_data()
+  local logger = get_logger(logname)
   local headers = {}
   for k, v in pairs(ngx.req.get_headers()) do
     table.insert(headers, { name = k:lower(), value = v })
   end
-  table.insert(loggers[logname], {
+  table.insert(logger, {
     request = {
       headers = headers,
       postData = {
@@ -325,18 +331,19 @@ end
 
 
 local function retrieve_log(logname)
-  local loggers = ngx.shared["kong_mock_upstream_loggers"]
-  if not loggers then
-    loggers = {}
-    ngx.shared["kong_mock_upstream_loggers"] = loggers
-  end
-  loggers[logname] = loggers[logname] or {}
+  local logger = get_logger(logname)
   ngx.status = 200
   ngx.say(cjson.encode({
     log = {
-      entries = loggers[logname],
+      entries = logger,
     }
   }))
+end
+
+
+local function reset_log(logname)
+  local _, loggers = get_logger(logname)
+  loggers[logname] = {}
 end
 
 
@@ -349,4 +356,5 @@ return {
   serve_web_sockets           = serve_web_sockets,
   store_log                   = store_log,
   retrieve_log                = retrieve_log,
+  reset_log                   = reset_log,
 }

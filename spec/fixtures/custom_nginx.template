@@ -395,14 +395,14 @@ http {
             }
         }
 
-        location ~ "^/post_log/(?<logname>[a-z_]+)$" {
+        location ~ "^/post_log/(?<logname>[a-z0-9_]+)$" {
             content_by_lua_block {
                 local mu = require "spec.fixtures.mock_upstream"
                 return mu.store_log(ngx.var.logname)
             }
         }
 
-        location ~ "^/post_auth_log/(?<logname>[a-z_]+)/(?<username>[a-zA-Z0-9_]+)/(?<password>.+)$" {
+        location ~ "^/post_auth_log/(?<logname>[a-z0-9_]+)/(?<username>[a-zA-Z0-9_]+)/(?<password>.+)$" {
             access_by_lua_block {
                 local mu = require "spec.fixtures.mock_upstream"
                 return mu.filter_access_by_basic_auth(ngx.var.username,
@@ -414,10 +414,17 @@ http {
             }
         }
 
-        location ~ "^/read_log/(?<logname>[a-z_]+)$" {
+        location ~ "^/read_log/(?<logname>[a-z0-9_]+)$" {
             content_by_lua_block {
                 local mu = require "spec.fixtures.mock_upstream"
                 return mu.retrieve_log(ngx.var.logname)
+            }
+        }
+
+        location ~ "^/reset_log/(?<logname>[a-z0-9_]+)$" {
+            content_by_lua_block {
+                local mu = require "spec.fixtures.mock_upstream"
+                return mu.reset_log(ngx.var.logname)
             }
         }
     }
