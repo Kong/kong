@@ -12,7 +12,7 @@ describe("ee conf loader", function()
                                                        }, msgs)
 
       local expected = { "admin_gui_auth must be 'key-auth', 'basic-auth', " ..
-                         "'ldap-auth-advanced' or not set" }
+                         "'ldap-auth-advanced', 'openid-connect' or not set" }
       assert.same(expected, msgs)
     end)
 

@@ -809,7 +809,7 @@ for _, strategy in helpers.each_strategy() do
           -- use password
           res = assert(client:send {
             method = "GET",
-            path = "/",
+            path = "/auth",
             headers = {
               ["Authorization"] = "Basic " .. ngx.encode_base64("kinman:password"),
               ["Kong-Admin-User"] = "kinman",
@@ -840,16 +840,14 @@ for _, strategy in helpers.each_strategy() do
           -- use password
           res = assert(client:send {
             method = "GET",
-            path = "/",
+            path = "/auth",
             headers = {
               ["Authorization"] = "Basic " .. ngx.encode_base64("kinman:new-password"),
               ["Kong-Admin-User"] = "kinman",
             }
           })
-          local body = assert.res_status(200, res)
-          local json = cjson.decode(body)
 
-          assert.equal("Welcome to kong", json.tagline)
+          assert.res_status(200, res)
         end)
       end)
     end)

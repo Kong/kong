@@ -41,9 +41,10 @@ local function validate_admin_gui_authentication(conf, errors)
   if conf.admin_gui_auth then
     if conf.admin_gui_auth ~= "key-auth" and
        conf.admin_gui_auth ~= "basic-auth" and
-       conf.admin_gui_auth ~= "ldap-auth-advanced" then
+       conf.admin_gui_auth ~= "ldap-auth-advanced" and
+        conf.admin_gui_auth ~= "openid-connect" then
       errors[#errors+1] = "admin_gui_auth must be 'key-auth', 'basic-auth', " ..
-        "'ldap-auth-advanced' or not set"
+        "'ldap-auth-advanced', 'openid-connect' or not set"
     end
 
     if not conf.enforce_rbac or conf.enforce_rbac == 'off' then

@@ -66,6 +66,21 @@ local function admin(db, workspace, name, role, email)
   end)
 end
 
+local function get_admin_cookie_basic_auth(username, password)
+  local res = assert(client:send {
+    method = "GET",
+    path = "/auth",
+    headers = {
+      ["Authorization"] = "Basic " .. ngx.encode_base64(username .. ":"
+                                                        .. password),
+      ["Kong-Admin-User"] = username,
+    }
+  })
+
+  assert.res_status(200, res)
+  return res.headers["Set-Cookie"]
+end
+
 
 for _, strategy in helpers.each_strategy() do
 
@@ -78,7 +93,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     lazy_teardown(function()
-      helpers.stop_kong(nil, true)
+      helpers.stop_kong()
       if client then
         client:close()
       end
@@ -88,7 +103,7 @@ for _, strategy in helpers.each_strategy() do
       local super_admin, read_only_admin, test_admin
 
       lazy_setup(function()
-        helpers.stop_kong(nil, true)
+        helpers.stop_kong()
         truncate_tables(db)
 
         assert(helpers.start_kong({
@@ -156,10 +171,6 @@ for _, strategy in helpers.each_strategy() do
         end
       end)
 
-      it("is a test", function()
-
-      end)
-
       describe("GET", function()
         it("internal proxy no longer exists when gui_auth is enabled",
         function()
@@ -198,21 +209,6 @@ for _, strategy in helpers.each_strategy() do
           assert.equal("Welcome to kong", json.tagline)
         end)
 
-        it("returns 200 when authenticated with credentials", function()
-          local res = assert(client:send {
-            method = "GET",
-            path = "/",
-            headers = {
-              ["Authorization"] = "Basic " .. ngx.encode_base64(super_admin.username .. ":hunter1"),
-              ["Kong-Admin-User"] = super_admin.username,
-            }
-          })
-          local body = assert.res_status(200, res)
-          local json = cjson.decode(body)
-
-          assert.equal("Welcome to kong", json.tagline)
-        end)
-
         it("returns 401 when user token is invalid", function()
           local res = assert(client:send {
             method = "GET",
@@ -230,7 +226,7 @@ for _, strategy in helpers.each_strategy() do
         it("returns 403 when authenticated with invalid password", function()
           local res = assert(client:send {
             method = "GET",
-            path = "/",
+            path = "/auth",
             headers = {
               ["Authorization"] = "Basic "
               .. ngx.encode_base64("i-am-mars:but-mypassword-is-wrong"),
@@ -245,7 +241,7 @@ for _, strategy in helpers.each_strategy() do
           function()
           local res = assert(client:send {
             method = "GET",
-            path = "/",
+            path = "/auth",
             headers = {
               Authorization = "Basic " .. ngx.encode_base64(super_admin.username .. ":hunter1"),
               ["Kong-Admin-User"] = read_only_admin.username,
@@ -257,11 +253,12 @@ for _, strategy in helpers.each_strategy() do
 
 
         it("credentials in another workspace can access workspace data", function()
+          local cookie = get_admin_cookie_basic_auth(test_admin.username, 'another-one')
           local res = client:send {
             method = "GET",
             path = "/test-ws/services",
             headers = {
-              Authorization = "Basic " .. ngx.encode_base64("dj-khaled:another-one"),
+              ["cookie"] = cookie,
               ["Kong-Admin-User"] = test_admin.username,
             }
           }
@@ -275,12 +272,12 @@ for _, strategy in helpers.each_strategy() do
 
         it("rbac token in another workspace can access data across workspaces",
           function()
+          local cookie = get_admin_cookie_basic_auth(test_admin.username, 'another-one')
           local res = client:send {
             method = "GET",
             path = "/services",
             headers = {
-              Authorization = "Basic "
-              .. ngx.encode_base64("dj-khaled:another-one"),
+              ["cookie"] = cookie,
               ["Kong-Admin-User"] = test_admin.username,
             }
           }
@@ -290,12 +287,12 @@ for _, strategy in helpers.each_strategy() do
 
         it("credentials in another workspace cannot access workspace data not"
           .. " permissioned for", function()
+          local cookie = get_admin_cookie_basic_auth(test_admin.username, 'another-one')
           local res = client:send {
             method = "GET",
             path = "/plugins",
             headers = {
-              Authorization = "Basic "
-              .. ngx.encode_base64("dj-khaled:another-one"),
+              ["cookie"] = cookie,
               ["Kong-Admin-User"] = test_admin.username,
             }
           }
@@ -354,13 +351,75 @@ for _, strategy in helpers.each_strategy() do
           assert.res_status(200, res)
         end)
       end)
+
+      describe("GET", function()
+        it("/auth returns 200 with credentials", function()
+          local res = assert(client:send {
+            method = "GET",
+            path = "/auth",
+            headers = {
+              ["Authorization"] = "Basic " .. ngx.encode_base64(super_admin.username .. ":hunter1"),
+              ["Kong-Admin-User"] = super_admin.username,
+            }
+          })
+          assert.res_status(200, res)
+        end)
+
+        it("returns 403 when authenticated with invalid password", function()
+          local res = assert(client:send {
+            method = "GET",
+            path = "/auth",
+            headers = {
+              ["Authorization"] = "Basic "
+              .. ngx.encode_base64("i-am-mars:but-mypassword-is-wrong"),
+              ["Kong-Admin-User"] = super_admin.username,
+            }
+          })
+
+          assert.res_status(403, res)
+        end)
+
+        it("returns 401 when authenticated with mismatched user/credentials",
+          function()
+          local res = assert(client:send {
+            method = "GET",
+            path = "/auth",
+            headers = {
+              Authorization = "Basic " .. ngx.encode_base64(super_admin.username .. ":hunter1"),
+              ["Kong-Admin-User"] = read_only_admin.username,
+            }
+          })
+
+          assert.res_status(401, res)
+        end)
+
+
+        it("credentials in another workspace can access workspace data", function()
+          local cookie = get_admin_cookie_basic_auth(test_admin.username, 'another-one')
+
+          local res = client:send {
+            method = "GET",
+            path = "/test-ws/services",
+            headers = {
+              ["cookie"] = cookie,
+              ["Kong-Admin-User"] = test_admin.username,
+            }
+          }
+
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+
+          assert.equal(1, #json.data)
+          assert.equal("test-ws-example.com", json.data[1].host)
+        end)
+      end)
     end)
 
     describe("key-auth authentication", function()
       local super_admin, read_only_admin
 
       setup(function()
-        helpers.stop_kong(nil, true)
+        helpers.stop_kong()
         truncate_tables(db)
 
         assert(helpers.start_kong({
@@ -404,23 +463,34 @@ for _, strategy in helpers.each_strategy() do
         it("returns 200 when authenticated with credentials", function()
           local res = assert(client:send {
             method = "GET",
-            path = "/",
+            path = "/auth",
             headers = {
               apikey = "hunter1",
+              ["Kong-Admin-User"] = super_admin.username,
+            }
+          })
+          assert.res_status(200, res)
+
+          local cookie_key_auth = res.headers["Set-Cookie"]
+
+          res = assert(client:send {
+            method = "GET",
+            path = "/",
+            headers = {
+              cookie = cookie_key_auth,
               ["Kong-Admin-User"] = super_admin.username,
             }
           })
 
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
-
           assert.equal("Welcome to kong", json.tagline)
         end)
 
         it("returns 403 when authenticated with invalid password", function()
           local res = assert(client:send {
             method = "GET",
-            path = "/",
+            path = "/auth",
             headers = {
               apikey = "my-key-is-wrong",
               ["Kong-Admin-User"] = super_admin.username,
@@ -434,7 +504,7 @@ for _, strategy in helpers.each_strategy() do
           function()
           local res = assert(client:send {
             method = "GET",
-            path = "/",
+            path = "/auth",
             headers = {
               apikey = "hunter1",
               ["Kong-Admin-User"] = read_only_admin.username,

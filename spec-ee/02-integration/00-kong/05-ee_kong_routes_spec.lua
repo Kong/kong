@@ -5,7 +5,6 @@ local enums = require "kong.enterprise_edition.dao.enums"
 local admins = require "kong.enterprise_edition.admins_helpers"
 local workspaces = require "kong.workspaces"
 local ee_helpers = require "spec-ee.helpers"
-local utils = require "kong.tools.utils"
 local rbac = require "kong.rbac"
 
 
@@ -29,12 +28,6 @@ local function admin(db, workspace, name, role, email)
       user = { id = admin.rbac_user.id },
       role = { id = role.id },
     }))
-
-    local raw_user_token = utils.uuid()
-    db.rbac_users:update({id = admin.rbac_user.id}, {
-      user_token = raw_user_token
-    })
-    admin.rbac_user.raw_user_token = raw_user_token
 
     return admin
   end)
@@ -120,9 +113,18 @@ describe("Admin API - ee-specific Kong routes", function()
 
         local res = assert(client:send {
           method = "GET",
-          path = "/userinfo",
+          path = "/auth",
           headers = {
             ["Authorization"] = "Basic " .. ngx.encode_base64("hawk:kong"),
+            ["Kong-Admin-User"] = admin.username,
+          }
+        })
+
+        res = assert(client:send {
+          method = "GET",
+          path = "/userinfo",
+          headers = {
+            ["cookie"] = res.headers['Set-Cookie'],
             ["Kong-Admin-User"] = "hawk",
           }
         })
@@ -163,25 +165,27 @@ describe("Admin API - ee-specific Kong routes", function()
         assert.equal(1, #user_workspaces)
         assert.equal(workspaces.DEFAULT_WORKSPACE, user_workspaces[1].name)
 
+        --- TODO: add this back once we can know the rbac_user.token of admin
+        --
         -- Now send the same request, but with just the rbac token
         -- and make sure the responses are equivalent
-        res = assert(client:send {
-          method = "GET",
-          path = "/userinfo",
-          headers = {
-            ["Kong-Admin-Token"] = admin.rbac_user.raw_user_token,
-          }
-        })
+        -- res = assert(client:send {
+        --   method = "GET",
+        --   path = "/userinfo",
+        --   headers = {
+        --     ["Kong-Admin-Token"] = admin.rbac_user.raw_user_token,
+        --   }
+        -- })
 
-        res = assert.res_status(200, res)
-        local json2 = cjson.decode(res)
-        local user_workspaces2 = json2.workspaces
+        -- res = assert.res_status(200, res)
+        -- local json2 = cjson.decode(res)
+        -- local user_workspaces2 = json2.workspaces
 
-        json2.workspaces = nil
-        json2.admin.updated_at = nil
+        -- json2.workspaces = nil
+        -- json2.admin.updated_at = nil
 
-        assert.same(json2, json)
-        assert.same(user_workspaces2, user_workspaces)
+        -- assert.same(json2, json)
+        -- assert.same(user_workspaces2, user_workspaces)
       end)
 
 
@@ -255,12 +259,21 @@ describe("Admin API - ee-specific Kong routes", function()
           },
         })
 
-        -- Make sure non-default admin can still request /userinfo
         local res = assert(client:send {
+          method = "GET",
+          path = "/auth",
+          headers = {
+            ["Authorization"] = "Basic " .. ngx.encode_base64("dj-khaled:another-one"),
+            ["Kong-Admin-User"] = admin.username,
+          }
+        })
+
+        -- Make sure non-default admin can still request /userinfo
+        res = assert(client:send {
           method = "GET",
           path = "/userinfo",
           headers = {
-            ["Authorization"] = "Basic " .. ngx.encode_base64("dj-khaled:another-one"),
+            ["cookie"] = res.headers['Set-Cookie'],
             ["Kong-Admin-User"] = admin.username,
           }
         })
@@ -291,7 +304,7 @@ describe("Admin API - ee-specific Kong routes", function()
         assert.equal(1, #user_workspaces)
         assert.equal("test-ws", user_workspaces[1].name)
 
-        -- TODO: add this back once we can know the rbac_user.token upon admin
+        -- TODO: add this back once we can know the rbac_user.token of admin
         -- insert.
         --
         -- Now send the same request, but with just the rbac token

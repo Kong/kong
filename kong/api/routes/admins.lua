@@ -36,6 +36,7 @@ local auth_plugins = {
     credential_key = "key"
   },
   ["ldap-auth-advanced"] = { name = "ldap-auth-advanced" },
+  ["openid-connect"] = { name = "openid-connect" },
 }
 
 

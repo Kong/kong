@@ -29,7 +29,7 @@ end
 
 
 local whitelisted_endpoints = {
-  ["/userinfo"] = true,
+  ["/auth"] = true,
   ["/admins/register"] = true,
   ["/admins/password_resets"] = true,
 }
@@ -975,8 +975,7 @@ local function update_user_token(user)
   local digest = bcrypt.digest(user.user_token, LOG_ROUNDS)
 
   local _, err = kong.db.rbac_users:update(
-    { user_token = digest, user_token_ident = ident },
-    user
+    { id = user.id }, { user_token = digest, user_token_ident = ident }
   )
   if err then
     ngx.log(ngx.ERR, "error attempting to update user token hash: ", err)

@@ -25,6 +25,7 @@ _M.apis = {
 local auth_whitelisted_uris = {
   ["/admins/register"] = true,
   ["/admins/password_resets"] = true,
+  ["/auth"] = true,
 }
 
 
@@ -56,6 +57,31 @@ function _M.retrieve_consumer(consumer_id)
   return consumer or nil
 end
 
+function _M.validate_admin()
+  local user_header = singletons.configuration.admin_gui_auth_header
+  local args = ngx.req.get_uri_args()
+  local user_name = args[user_header] or ngx.req.get_headers()[user_header]
+
+  if not user_name then
+    return kong.response.exit(401, "Invalid credentials. Token or User " ..
+                              "credentials required")
+  end
+
+  local admin, err = kong.db.admins:select_by_username(user_name, {skip_rbac = true})
+
+  if err then
+    log(ERR, _log_prefix, err)
+    return nil, err
+  end
+
+  if not admin then
+    log(DEBUG, _log_prefix, "Admin not found with user_name=" .. user_name)
+    return nil, err
+  end
+
+  return admin
+end
+
 
 --- Authenticate the incoming request checking for rbac users and admin
 --  consumer credentials
@@ -83,27 +109,18 @@ function _M.authenticate(self, rbac_enabled, gui_auth)
   local old_ws = ctx.workspaces
   ctx.workspaces = {}
 
-  -- Once we get here we know rbac_token and gui_auth are both enabled
-  -- and we need to run authentication checks
-  local user_header = singletons.configuration.admin_gui_auth_header
-  local user_name = ngx.req.get_headers()[user_header]
-  if not user_name then
-    return kong.response.exit(401, {
-      message = "Invalid RBAC credentials. Token or User credentials required"
-    })
-  end
-
-  local admin, err = kong.db.admins:select_by_username(user_name)
-
-  if not admin then
-    log(DEBUG, _log_prefix, "Admin not found with user_name=" .. user_name)
-    return kong.response.exit(401, { message = "Unauthorized" })
-  end
+  local admin, err = _M.validate_admin()
 
   if err then
     log(ERR, _log_prefix, err)
-    return endpoints.handle_error(err)
+    return kong.response.exit(401, { message = "Unauthorized" })
   end
+
+  if not admin then
+    log(DEBUG, _log_prefix, "Admin not found")
+    return kong.response.exit(401, { message = "Unauthorized" })
+  end
+
 
   local consumer_id = admin.consumer.id
   local rbac_user_id = admin.rbac_user.id
@@ -115,15 +132,13 @@ function _M.authenticate(self, rbac_enabled, gui_auth)
   end
 
   if not rbac_user then
-    log(DEBUG, _log_prefix, "no rbac_user found for name: ", user_name)
+    log(DEBUG, _log_prefix, "no rbac_user found for name: " .. admin.username)
     return kong.response.exit(401, { message = "Unauthorized" })
   end
 
   -- sets self.workspace_entities, ngx.ctx.workspaces, and self.consumer
   _M.attach_consumer_and_workspaces(self, consumer_id)
 
-  -- apply auth plugin
-  local auth_conf = singletons.configuration.admin_gui_auth_conf
   local session_conf = singletons.configuration.admin_gui_session_conf
 
   -- run the session plugin access to see if we have a current session
@@ -141,27 +156,6 @@ function _M.authenticate(self, rbac_enabled, gui_auth)
     return endpoints.handle_error(err)
   end
 
-  -- if we don't have a valid session, run the gui authentication plugin
-  if not ngx.ctx.authenticated_consumer then
-    local ok, err = invoke_plugin({
-      name = gui_auth,
-      config = auth_conf,
-      phases = { "access" },
-      api_type = _M.apis.ADMIN,
-      db = kong.db,
-    })
-
-    if not ok then
-      log(ERR, _log_prefix, err)
-      return endpoints.handle_error(err)
-    end
-  end
-
-  if not ok then
-    return endpoints.handle_error(err)
-  end
-
-  -- Plugin ran but consumer was not created on context
   if not ctx.authenticated_consumer then
     log(ERR, _log_prefix, "no consumer mapped from plugin", gui_auth)
     return kong.response.exit(401, { message = "Unauthorized" })
@@ -195,7 +189,8 @@ function _M.authenticate(self, rbac_enabled, gui_auth)
   -- consumer transitions from INVITED to APPROVED on first successful login
   if admin.status == enums.CONSUMERS.STATUS.INVITED then
     local _, err = kong.db.admins:update({ id = admin.id },
-                                   { status = enums.CONSUMERS.STATUS.APPROVED })
+                                   { status = enums.CONSUMERS.STATUS.APPROVED },
+                                   {skip_rbac = true})
 
     if err then
       log(ERR, _log_prefix, "failed to approve admin: ", admin.id, ": ", err)

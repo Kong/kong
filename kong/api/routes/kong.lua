@@ -223,4 +223,109 @@ return {
       })
     end,
   },
+
+  ["/auth"] = {
+    before = function(self, dao_factory, helpers)
+      local gui_auth = singletons.configuration.admin_gui_auth
+      local gui_auth_conf = singletons.configuration.admin_gui_auth_conf
+      local invoke_plugin = singletons.invoke_plugin
+
+      local _log_prefix = "kong[auth]"
+
+      if not gui_auth and not ngx.ctx.rbac then
+        return kong.response.exit(404, { message = "Not found" })
+      end
+
+      local admin, err = ee_api.validate_admin()
+      if not admin then
+        ngx.log(ngx.DEBUG, _log_prefix, "Admin not found")
+        return kong.response.exit(401, { message = "Unauthorized" })
+      end
+
+      if err then
+        ngx.log(ngx.ERR, _log_prefix, err)
+        return kong.response.exit(500, err)
+      end
+
+      -- Check if an admin exists before going through auth plugin flow
+      if self.params.validate_user then
+        return admin and true
+      end
+
+      local consumer_id = admin.consumer.id
+
+      ee_api.attach_consumer_and_workspaces(self, consumer_id)
+
+      local session_conf = singletons.configuration.admin_gui_session_conf
+
+      -- run the session plugin access to see if we have a current session
+      -- with a valid authenticated consumer.
+      local ok, err = invoke_plugin({
+        name = "session",
+        config = session_conf,
+        phases = { "access" },
+        api_type = ee_api.apis.ADMIN,
+        db = kong.db,
+      })
+
+      if err or not ok then
+        ngx.log(ngx.ERR, _log_prefix, err)
+        return helpers.responses.send_HTTP_INTERNAL_SERVER_ERROR()
+      end
+
+      -- apply auth plugin
+      if not ngx.ctx.authenticated_consumer then
+        local ok, err = invoke_plugin({
+          name = gui_auth,
+          config = gui_auth_conf,
+          phases = { "access" },
+          api_type = ee_api.apis.ADMIN,
+          db = kong.db,
+        })
+
+       if err or not ok then
+         ngx.log(ngx.ERR, _log_prefix, err)
+         return kong.response.exit(500, err)
+       end
+      end
+
+      -- Plugin ran but consumer was not created on context
+      if not ngx.ctx.authenticated_consumer then
+        ngx.log(ngx.ERR, _log_prefix, "no consumer mapped from plugin",
+                gui_auth)
+
+        return kong.response.exit(401, { message = "Unauthorized" })
+      end
+
+      if self.consumer
+         and ngx.ctx.authenticated_consumer.id ~= self.consumer.id
+      then
+        ngx.log(ngx.ERR, _log_prefix, "no rbac user mapped with these " ..
+                "credentials")
+        return kong.response.exit(401, { message = "Unauthorized" })
+      end
+
+      local ok, err = invoke_plugin({
+        name = "session",
+        config = session_conf,
+        phases = { "header_filter" },
+        api_type = ee_api.apis.ADMIN,
+        db = kong.db,
+      })
+
+      if err or not ok then
+        ngx.log(ngx.ERR, _log_prefix, err)
+        return kong.response.exit(500, err)
+      end
+    end,
+
+    GET = function(self, dao_factory, helpers)
+      return helpers.responses.send_HTTP_OK()
+    end,
+
+    DELETE = function(self, dao_factory, helpers)
+      -- stub for logging out
+      return helpers.responses.send_HTTP_OK()
+    end,
+  },
 }
