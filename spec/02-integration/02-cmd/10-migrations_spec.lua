@@ -5,7 +5,7 @@ local DB = require "kong.db.init"
 
 -- Current number of migrations to execute in a new install
 -- additional 1 for EE
-local nr_migrations = 1 + 2 -- 11
+local nr_migrations = 1 + 1 -- 11
 
 
 local lua_path = [[ KONG_LUA_PATH_OVERRIDE="./spec/fixtures/migrations/?.lua;]] ..
