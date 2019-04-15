@@ -23,11 +23,11 @@ for _, strategy in helpers.each_strategy() do
   describe("Admin API #" .. strategy, function()
     local bp
     local db
-    local dao
+    local _
     local client
 
     lazy_setup(function()
-      bp, db, dao = helpers.get_db_utils(strategy, {
+      bp, db, _ = helpers.get_db_utils(strategy, {
         "routes",
         "services",
       })
@@ -387,7 +387,7 @@ for _, strategy in helpers.each_strategy() do
               service = db.services:insert({
                 protocol = "http",
                 host     = "service.com",
-              })
+              }, db)
 
               route = db.routes:insert({
                 protocol = "http",
@@ -399,7 +399,7 @@ for _, strategy in helpers.each_strategy() do
                 protocol = "http",
                 hosts    = { "service.com" },
               })
-            end, dao)
+            end, db)
 
             local res = client:get("/services/" .. service.id .. "/routes", {
               headers = { ["Content-Type"] = content_type },
@@ -675,7 +675,7 @@ for _, strategy in helpers.each_strategy() do
         describe("GET", function()
           it("retrieves the first page", function()
             local service = bp.services:insert()
-            assert(dao.plugins:insert {
+            assert(db.plugins:insert {
               name = "key-auth",
               service = { id = service.id },
             })

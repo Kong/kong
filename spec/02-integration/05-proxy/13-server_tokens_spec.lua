@@ -12,7 +12,7 @@ describe("headers [#" .. strategy .. "]", function()
 
   describe("Server/Via", function()
     local proxy_client
-    local bp, dao
+    local bp, db -- luacheck: ignore
 
     local function start(config)
       return function()
@@ -26,12 +26,12 @@ describe("headers [#" .. strategy .. "]", function()
         config.nginx_conf = "spec/fixtures/custom_nginx.template"
 
         assert(helpers.start_kong(config))
-        end, dao)
+        end, db)
       end
     end
 
     lazy_setup(function()
-      bp, _, dao = helpers.get_db_utils(strategy, {
+      bp, db, _ = helpers.get_db_utils(strategy, {
         "routes",
         "services",
       })
@@ -240,7 +240,7 @@ describe("headers [#" .. strategy .. "]", function()
 
   describe("X-Kong-Proxy-Latency/X-Kong-Upstream-Latency", function()
     local proxy_client
-    local bp, dao -- luacheck: ignore
+    local bp, db  -- luacheck: ignore
 
     local function start(config)
       return function()
@@ -248,7 +248,7 @@ describe("headers [#" .. strategy .. "]", function()
         bp.routes:insert {
           hosts = { "headers-inspect.com" },
         }
-        end, dao)
+        end, db)
 
         config = config or {}
         config.database   = strategy
@@ -259,7 +259,7 @@ describe("headers [#" .. strategy .. "]", function()
     end
 
     lazy_setup(function()
-      bp, _, dao = helpers.get_db_utils(strategy, {
+      bp, db, _ = helpers.get_db_utils(strategy, {
         "routes",
         "services",
       })
@@ -585,7 +585,7 @@ describe("headers [#" .. strategy .. "]", function()
     end
 
     lazy_setup(function()
-      bp, _, dao = helpers.get_db_utils(strategy, {
+      bp, db, _ = helpers.get_db_utils(strategy, {
         "routes",
         "services",
       })

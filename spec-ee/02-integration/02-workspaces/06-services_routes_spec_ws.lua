@@ -20,12 +20,12 @@ for _, strategy in helpers.each_strategy() do
   describe("Admin API #" .. strategy, function()
     local bp
     local db
-    local dao
+    local _
     local client
     local foo_ws
 
     setup(function()
-      bp, db, dao = helpers.get_db_utils(strategy)
+      bp, db, _ = helpers.get_db_utils(strategy)
 
       assert(helpers.start_kong({
         database = strategy,
@@ -188,7 +188,7 @@ for _, strategy in helpers.each_strategy() do
               local in_db = assert(db.services:select({ id = service.id }))
               json.path = nil
               assert.same(json, in_db)
-            end, dao)
+            end, db)
           end
         end)
 
@@ -226,7 +226,7 @@ for _, strategy in helpers.each_strategy() do
               local in_db = assert(db.services:select_by_name(service.name))
               json.path = nil
               assert.same(json, in_db)
-            end, dao)
+            end, db)
           end
         end)
       end)
@@ -249,7 +249,7 @@ for _, strategy in helpers.each_strategy() do
             local in_db, err = db.services:select({ id = service.id })
             assert.is_nil(err)
             assert.is_nil(in_db)
-          end, dao)
+          end, db)
         end)
 
         it("deletes a service by name", function()
@@ -291,7 +291,7 @@ for _, strategy in helpers.each_strategy() do
           }, foo_ws))
 
           -- add explicit null values to entity queried directly from db
-          -- (while the admin returns entities with explicit nulls, the dao
+          -- (while the admin returns entities with explicit nulls, the db
           -- does not)
           route = db.routes.schema:process_auto_fields(route, "select", true)
 
@@ -687,4 +687,3 @@ for _, strategy in helpers.each_strategy() do
     end)
   end)
 end
-

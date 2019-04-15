@@ -1406,10 +1406,10 @@ return {
       wait_pid(pid_path, timeout)
     end
   end,
-  with_current_ws = function(ws,fn, dao)
+  with_current_ws = function(ws,fn, db)
     local old_ws = ngx.ctx.workspaces
     ngx.ctx.workspaces = nil
-    ws = ws or dao.workspaces:find_all({name = "default"})
+    ws = ws or {db.workspaces:select_by_name("default")}
     ngx.ctx.workspaces = ws
     local res = fn()
     ngx.ctx.workspaces = old_ws

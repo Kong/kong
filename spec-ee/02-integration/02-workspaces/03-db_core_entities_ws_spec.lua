@@ -8,41 +8,28 @@ local with_current_ws = helpers.with_current_ws
 
 local a_blank_uuid = "00000000-0000-0000-0000-000000000000"
 
-local function add_ws(dao, ws_name)
-  return with_current_ws(nil, function()
-    -- create another workspace in default workspace
-    local res = dao.workspaces:find_all({
-      name = ws_name,
-    })
-
-    if res and #res > 0 then
-      return res[1]
-    end
-
-    local foo_ws = assert(dao.workspaces:insert({
-      name = ws_name,
-    }))
-    return foo_ws
-  end, dao)
+local function add_ws(db, ws_name)
+  return db.workspaces:select_by_name(ws_name) or
+    assert(db.workspaces:insert({name = ws_name}))
 end
 
 
 for _, strategy in helpers.each_strategy() do
   describe("kong.db [#" .. strategy .. "]", function()
-    local db, bp, dao
+    local db, bp, _
 
-    setup(function()
+    lazy_setup(function()
       ngx.ctx.workspaces = nil
-      bp, db, dao = helpers.get_db_utils(strategy)
+      bp, db, _ = helpers.get_db_utils(strategy)
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       db:truncate()
     end)
 
     describe("Routes", function()
       describe(":insert()", function()
-        it("creates a Route in default workspace", function()
+        it("joider creates a Route in default workspace", function()
           local route, err_t, err = db.routes:insert({
             protocols = { "http" },
             hosts = { "example.com" },
@@ -69,11 +56,9 @@ for _, strategy in helpers.each_strategy() do
             service         = route.service,
           }, route)
 
-          local ws = dao.workspaces:find_all({
-            name = "default"
-          })
-          local default_ws = ws[1]
-          local rel = dao.workspace_entities:find({
+          local ws = db.workspaces:select_by_name("default")
+          local default_ws = ws
+          local rel = db.workspace_entities:select({
             workspace_id = default_ws.id,
             entity_id = route.id,
             unique_field_name = "id"
@@ -90,15 +75,16 @@ for _, strategy in helpers.each_strategy() do
           }, rel)
         end)
 
-        it("creates a Route in non-default workspace", function()
-          local foo_ws = add_ws(dao, "foo")
+        it("creates a Route in non-default workspacess", function()
+          local foo_ws = assert(add_ws(db, "foo"))
 
           with_current_ws({ foo_ws }, function ()
             -- add route in foo workspace
+            local service = assert(db.services:insert({ host = "service.com" }))
             local route, err_t, err = db.routes:insert({
               protocols = { "http" },
               hosts = { "example.com" },
-              service = assert(db.services:insert({ host = "service.com" })),
+              service = service,
             })
 
             assert.is_nil(err_t)
@@ -122,7 +108,7 @@ for _, strategy in helpers.each_strategy() do
             }, route)
 
             -- validate relationship
-            local rel = dao.workspace_entities:find({
+            local rel = db.workspace_entities:select({
               workspace_id = foo_ws.id,
               entity_id = route.id,
               unique_field_name = "id"
@@ -137,7 +123,7 @@ for _, strategy in helpers.each_strategy() do
               workspace_id = foo_ws.id,
               workspace_name = "foo"
             }, rel)
-          end, dao)
+          end, db)
         end)
 
         it("#flaky shouldn't allow insert of route with service from other workspace", function()
@@ -148,8 +134,8 @@ for _, strategy in helpers.each_strategy() do
             assert.is_nil(err_t)
             assert.is_nil(err)
 
-          end, dao)
-          local foo_ws = add_ws(dao, "foo")
+          end, db)
+          local foo_ws = add_ws(db, "foo")
           with_current_ws({ foo_ws }, function ()
             -- add route in foo workspace
             local route, err_t, err = db.routes:insert({
@@ -165,7 +151,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       describe(":select()", function()
-        setup(function()
+        lazy_setup(function()
           db:truncate()
         end)
 
@@ -178,11 +164,11 @@ for _, strategy in helpers.each_strategy() do
             assert.is_nil(err_t)
             assert.is_nil(err)
             assert.same(route_inserted, route)
-          end, dao)
+          end, db)
         end)
 
         it("returns an existing Route from foo workspace", function()
-          local foo_ws = add_ws(dao, "foo")
+          local foo_ws = add_ws(db, "foo")
           with_current_ws( {foo_ws},function()
             local route_inserted = bp.routes:insert({
               hosts = { "example.com" },
@@ -192,18 +178,18 @@ for _, strategy in helpers.each_strategy() do
             assert.is_nil(err_t)
             assert.is_nil(err)
             assert.same(route_inserted, route)
-          end, dao)
+          end, db)
         end)
       end)
 
       describe(":update() in non-default workspace", function()
-        setup(function()
+        lazy_setup(function()
           db:truncate()
         end)
 
         -- I/O
         it("returns not found error", function()
-          local foo_ws = add_ws(dao, "foo")
+          local foo_ws = add_ws(db, "foo")
           with_current_ws( {foo_ws},function()
             local pk = { id = utils.uuid() }
             local new_route, err, err_t = db.routes:update(pk, {
@@ -212,11 +198,11 @@ for _, strategy in helpers.each_strategy() do
             assert.is_nil(new_route)
             assert.is_not_nil(err_t)
             assert.is_not_nil(err)
-          end, dao)
+          end, db)
         end)
 
         it("updates an existing Route", function()
-          local foo_ws = add_ws(dao, "foo")
+          local foo_ws = add_ws(db, "foo")
           with_current_ws( {foo_ws},function()
             local route = db.routes:insert({
               protocols = { "http" },
@@ -245,7 +231,7 @@ for _, strategy in helpers.each_strategy() do
               preserve_host   = route.preserve_host,
               service         = route.service,
             }, new_route)
-          end, dao)
+          end, db)
         end)
 
         it("#flaky shouldn't allow to update route with service from other workspace", function()
@@ -256,8 +242,8 @@ for _, strategy in helpers.each_strategy() do
             assert.is_nil(err_t)
             assert.is_nil(err)
 
-          end, dao)
-          local foo_ws = add_ws(dao, "foo")
+          end, db)
+          local foo_ws = add_ws(db, "foo")
 
           with_current_ws({ foo_ws }, function ()
             -- add route in foo workspace
@@ -301,12 +287,12 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       describe(":delete()", function()
-        setup(function()
+        lazy_setup(function()
           db:truncate()
         end)
 
         it("deletes an existing Route", function()
-          local foo_ws = add_ws(dao, "foo")
+          local foo_ws = add_ws(db, "foo")
           with_current_ws( {foo_ws},function()
             local route = bp.routes:insert({
               hosts = { "example.com" },
@@ -325,12 +311,12 @@ for _, strategy in helpers.each_strategy() do
             assert.is_nil(err_t)
             assert.is_nil(err)
             assert.is_nil(route_in_db)
-          end, dao)
+          end, db)
         end)
 
         -- I/O
         it("returns nothing if the Route does not exist", function()
-          local foo_ws = add_ws(dao, "foo")
+          local foo_ws = add_ws(db, "foo")
           with_current_ws( {foo_ws},function()
             local u = utils.uuid()
             local ok, err, err_t = db.routes:delete({
@@ -339,18 +325,18 @@ for _, strategy in helpers.each_strategy() do
             assert.is_true(ok)
             assert.is_nil(err_t)
             assert.is_nil(err)
-          end, dao)
+          end, db)
         end)
       end)
 
       describe(":page()", function()
-        setup(function()
+        lazy_setup(function()
           db:truncate()
         end)
 
         it("invokes schema post-processing", function()
           assert(db:truncate())
-          local foo_ws = add_ws(dao, "foo")
+          local foo_ws = add_ws(db, "foo")
           with_current_ws( {foo_ws},function()
             bp.routes:insert {
               methods = { "GET" },
@@ -363,21 +349,21 @@ for _, strategy in helpers.each_strategy() do
             for i = 1, #rows do
               assert.is_truthy(rows[i].methods.GET)
             end
-          end, dao)
+          end, db)
         end)
 
         describe("page size", function()
           local foo_ws
-          setup(function()
+          lazy_setup(function()
 
             db:truncate()
 
-            foo_ws = add_ws(dao, "foo")
+            foo_ws = add_ws(db, "foo")
             with_current_ws( {foo_ws},function()
               for i = 1, 1002 do
                 bp.routes:insert({ hosts = { "example-" .. i .. ".com" } })
               end
-            end, dao)
+            end, db)
           end)
 
           it("defaults page_size = 100", function()
@@ -387,7 +373,7 @@ for _, strategy in helpers.each_strategy() do
               assert.is_nil(err)
               assert.is_table(rows)
               assert.equal(100, #rows)
-            end, dao)
+            end, db)
           end)
 
           it("max page_size = 1000", function()
@@ -398,16 +384,16 @@ for _, strategy in helpers.each_strategy() do
               assert.not_nil(err)
               assert.equal("size must be an integer between 1 and 1000",
                 err_t.message)
-            end, dao)
+            end, db)
           end)
         end)
 
         describe("page offset", function()
           local foo_ws
-          setup(function()
+          lazy_setup(function()
             db:truncate()
 
-            foo_ws = add_ws(dao, "foo")
+            foo_ws = add_ws(db, "foo")
             with_current_ws( {foo_ws},function()
               for i = 1, 10 do
                 bp.routes:insert({
@@ -415,7 +401,7 @@ for _, strategy in helpers.each_strategy() do
                   methods = { "GET" },
                 })
               end
-            end, dao)
+            end, db)
           end)
 
 
@@ -427,7 +413,7 @@ for _, strategy in helpers.each_strategy() do
               assert.is_table(rows)
               assert.equal(10, #rows)
               assert.is_nil(offset)
-            end, dao)
+            end, db)
           end)
 
           it("fetched rows are returned in a table without hash part", function()
@@ -444,7 +430,7 @@ for _, strategy in helpers.each_strategy() do
               end
 
               assert.equal(#rows, #keys) -- no hash part in rows
-            end, dao)
+            end, db)
           end)
 
           it("fetches rows always in same order", function()
@@ -454,7 +440,7 @@ for _, strategy in helpers.each_strategy() do
               assert.is_table(rows1)
               assert.is_table(rows2)
               assert.same(rows1, rows2)
-            end, dao)
+            end, db)
           end)
 
           it("returns offset when page_size < total", function()
@@ -465,7 +451,7 @@ for _, strategy in helpers.each_strategy() do
               assert.is_table(rows)
               assert.equal(5, #rows)
               assert.is_string(offset)
-            end, dao)
+            end, db)
           end)
 
           it("fetches subsequent pages with offset", function()
@@ -499,7 +485,7 @@ for _, strategy in helpers.each_strategy() do
                   assert.not_same(row_1, row_2)
                 end
               end
-            end, dao)
+            end, db)
           end)
 
           it("fetches same page with same offset", function()
@@ -524,7 +510,7 @@ for _, strategy in helpers.each_strategy() do
               for i = 1, #rows_a do
                 assert.same(rows_a[i], rows_b[i])
               end
-            end, dao)
+            end, db)
           end)
 
           it("fetches pages with last page having a single row", function()
@@ -544,7 +530,7 @@ for _, strategy in helpers.each_strategy() do
               until offset == nil
 
               assert.equal(1, #rows) -- last page
-            end, dao)
+            end, db)
           end)
 
           it("fetches first page with invalid offset", function()
@@ -559,17 +545,17 @@ for _, strategy in helpers.each_strategy() do
                 message  = message,
                 strategy = strategy,
               }, err_t)
-            end, dao)
+            end, db)
           end)
         end)
       end)
 
       describe(":each()", function()
         local foo_ws
-        setup(function()
+        lazy_setup(function()
           db:truncate()
 
-          foo_ws = add_ws(dao, "foo")
+          foo_ws = add_ws(db, "foo")
           with_current_ws( {foo_ws},function()
             for i = 1, 100 do
               bp.routes:insert({
@@ -577,7 +563,7 @@ for _, strategy in helpers.each_strategy() do
                 methods = { "GET" }
               })
             end
-          end, dao)
+          end, db)
         end)
 
         -- I/O
@@ -594,7 +580,7 @@ for _, strategy in helpers.each_strategy() do
             end
 
             assert.equal(100, n_rows)
-          end, dao)
+          end, db)
         end)
 
         it("page is smaller than total rows", function()
@@ -621,7 +607,7 @@ for _, strategy in helpers.each_strategy() do
               [9] = true,
               [10] = true,
             }, pages)
-          end, dao)
+          end, db)
         end)
       end)
     end)
@@ -636,12 +622,12 @@ for _, strategy in helpers.each_strategy() do
 	 --]]
 
     describe("Services", function()
-      setup(function()
+      lazy_setup(function()
         db:truncate()
       end)
 
       describe(":insert() in non-default workspace", function()
-        local foo_ws = add_ws(dao, "foo")
+        local foo_ws = add_ws(db, "foo")
         it("creates a Service with user-specified values", function()
           with_current_ws( {foo_ws},function()
             local service, err, err_t = db.services:insert({
@@ -677,7 +663,7 @@ for _, strategy in helpers.each_strategy() do
               read_timeout    = 10000,
               retries         = 6,
             }, service)
-          end, dao)
+          end, db)
         end)
 
 
@@ -707,13 +693,13 @@ for _, strategy in helpers.each_strategy() do
                 name = "my_service",
               }
             }, err_t)
-          end, dao)
+          end, db)
         end)
       end)
 
       describe(":select_by_name() in non-default workspace", function()
-        local foo_ws = add_ws(dao, "foo")
-        setup(function()
+        local foo_ws = add_ws(db, "foo")
+        lazy_setup(function()
           db:truncate()
 
           with_current_ws( {foo_ws},function()
@@ -723,7 +709,7 @@ for _, strategy in helpers.each_strategy() do
                 host = "service" .. i .. ".com",
               }))
             end
-          end, dao)
+          end, db)
         end)
 
         -- I/O
@@ -731,7 +717,7 @@ for _, strategy in helpers.each_strategy() do
           with_current_ws( {foo_ws},function()
             local service = assert(db.services:select_by_name("service_1"))
             assert.equal("service1.com", service.host)
-          end, dao)
+          end, db)
         end)
 
         it("returns nothing on non-existing Service", function()
@@ -740,15 +726,15 @@ for _, strategy in helpers.each_strategy() do
             assert.is_nil(err)
             assert.is_nil(err_t)
             assert.is_nil(service)
-          end, dao)
+          end, db)
         end)
       end)
 
       describe(":update() in non-default workspace", function()
         local foo_ws
-        setup(function()
+        lazy_setup(function()
           db:truncate()
-          foo_ws = add_ws(dao, "foo")
+          foo_ws = add_ws(db, "foo")
         end)
 
         it("cannot update a Service to bear an already existing name", function()
@@ -783,7 +769,7 @@ for _, strategy in helpers.each_strategy() do
                   name = "service",
                 }
               }, err_t)
-          end, dao)
+          end, db)
         end)
       end)
 
@@ -792,7 +778,7 @@ for _, strategy in helpers.each_strategy() do
         before_each(function()
           db:truncate()
 
-          foo_ws = add_ws(dao, "foo")
+          foo_ws = add_ws(db, "foo")
           with_current_ws( {foo_ws},function()
             assert(db.services:insert({
               name = "test-service",
@@ -803,7 +789,7 @@ for _, strategy in helpers.each_strategy() do
               name = "existing-service",
               host = "existing-service.com",
             }))
-          end, dao)
+          end, db)
         end)
 
         -- I/O
@@ -816,7 +802,7 @@ for _, strategy in helpers.each_strategy() do
               strategy)
             assert.equal(message, err)
             assert.equal(Errors.codes.NOT_FOUND, err_t.code)
-          end, dao)
+          end, db)
         end)
 
         it("updates an existing Service", function()
@@ -838,7 +824,7 @@ for _, strategy in helpers.each_strategy() do
             assert.is_nil(err_t)
             assert.is_nil(err)
             assert.equal("https", service_in_db.protocol)
-          end, dao)
+          end, db)
         end)
 
         it("updates an existing Service", function()
@@ -852,7 +838,7 @@ for _, strategy in helpers.each_strategy() do
             })
             assert.is_nil(err_t)
             assert.is_nil(err)
-          end, dao)
+          end, db)
 
           with_current_ws( {foo_ws},function()
             local updated_service, err, err_t = db.services:update_by_name("test-service", {
@@ -868,7 +854,7 @@ for _, strategy in helpers.each_strategy() do
             assert.is_nil(err_t)
             assert.is_nil(err)
             assert.equal("https", service_in_db.protocol)
-          end, dao)
+          end, db)
 
           -- validate service in default is still same
           with_current_ws(nil,function ()
@@ -878,7 +864,7 @@ for _, strategy in helpers.each_strategy() do
             assert.is_nil(err_t)
             assert.is_nil(err)
             assert.same(service_default, service_default_db)
-          end, dao)
+          end, db)
         end)
 
         it("cannot update a Service to an already existing name", function()
@@ -898,23 +884,23 @@ for _, strategy in helpers.each_strategy() do
                 name = "existing-service",
               }
             }, err_t)
-          end, dao)
+          end, db)
         end)
       end)
 
       describe(":delete_by_name() in non-default workspace", function()
         local service, foo_ws
 
-        setup(function()
+        lazy_setup(function()
           db:truncate()
 
-          foo_ws = add_ws(dao, "foo")
+          foo_ws = add_ws(db, "foo")
           with_current_ws( {foo_ws},function()
             service = assert(db.services:insert({
               name = "service_1",
               host = "service1.com",
             }))
-          end, dao)
+          end, db)
         end)
 
         -- I/O
@@ -924,13 +910,13 @@ for _, strategy in helpers.each_strategy() do
             assert.is_true(ok)
             assert.is_nil(err_t)
             assert.is_nil(err)
-          end, dao)
+          end, db)
         end)
 
         it("deletes an existing Service", function()
           with_current_ws( {foo_ws},function()
             -- validate relationship deleted
-            local rel, err = dao.workspace_entities:find({
+            local rel, err = db.workspace_entities:select({
               workspace_id = foo_ws.id,
               entity_id = service.id,
               unique_field_name = "name"
@@ -951,7 +937,7 @@ for _, strategy in helpers.each_strategy() do
             assert.is_nil(service_in_db)
 
             -- validate relationship deleted
-            local rel, err = dao.workspace_entities:find({
+            local rel, err = db.workspace_entities:select({
               workspace_id = foo_ws.id,
               entity_id = service.id,
               unique_field_name = "name"
@@ -959,7 +945,7 @@ for _, strategy in helpers.each_strategy() do
             assert.is_nil(err)
             assert.is_nil(rel)
 
-          end, dao)
+          end, db)
         end)
       end)
     end)
@@ -972,9 +958,9 @@ for _, strategy in helpers.each_strategy() do
     describe("Services and Routes association in non-default workspace", function()
       local foo_ws
 
-      setup(function()
+      lazy_setup(function()
         db:truncate()
-        foo_ws = add_ws(dao, "foo")
+        foo_ws = add_ws(db, "foo")
       end)
 
       it(":insert() a Route with a relation to a Service", function()
@@ -1009,7 +995,7 @@ for _, strategy in helpers.each_strategy() do
           assert.is_nil(err_t)
           assert.is_nil(err)
           assert.same(route, route_in_db)
-        end, dao)
+        end, db)
       end)
 
       it(":update() attaches a Route to an existing Service", function()
@@ -1025,7 +1011,7 @@ for _, strategy in helpers.each_strategy() do
           assert.is_nil(err_t)
           assert.is_nil(err)
           assert.same(new_route.service, { id = service2.id })
-        end, dao)
+        end, db)
       end)
 
       it(":delete() a Service is not allowed if a Route is associated to it", function()
@@ -1049,7 +1035,7 @@ for _, strategy in helpers.each_strategy() do
               ["@referenced_by"] = "routes",
             },
           }, err_t)
-        end, dao)
+        end, db)
       end)
 
       it(":delete() a Route without deleting the associated Service", function()
@@ -1071,7 +1057,7 @@ for _, strategy in helpers.each_strategy() do
           assert.is_nil(err_t)
           assert.is_nil(err)
           assert.same(service, service_in_db)
-        end, dao)
+        end, db)
       end)
 
       describe("routes:each_for_service()", function()
@@ -1086,7 +1072,7 @@ for _, strategy in helpers.each_strategy() do
               assert.is_nil(err)
             end
             assert.same({}, rows)
-          end, dao)
+          end, db)
         end)
 
         it("lists Routes associated to a Service", function()
@@ -1112,7 +1098,7 @@ for _, strategy in helpers.each_strategy() do
             end
             assert.same({ route1 }, rows)
             ngx.sleep(50)
-          end, dao)
+          end, db)
         end)
 
         it("invokes schema post-processing", function()
@@ -1142,7 +1128,7 @@ for _, strategy in helpers.each_strategy() do
             -- our post-processing function will use a "set" metatable to alias
             -- the values for shorthand accesses.
             assert.is_truthy(rows[1].methods.GET)
-          end, dao)
+          end, db)
         end)
       end) -- routes:each_for_service()
     end) -- Services and Routes association

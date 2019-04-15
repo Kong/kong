@@ -20,7 +20,7 @@ for _, strategy in helpers.each_strategy() do
     local service_fixture
 
     lazy_setup(function()
-      local bp, _, dao = helpers.get_db_utils(strategy, {
+      local bp, db, _ = helpers.get_db_utils(strategy, {
         "apis",
         "routes",
         "services",
@@ -31,8 +31,8 @@ for _, strategy in helpers.each_strategy() do
 
       -- insert single fixture Service
       helpers.with_current_ws(nil, function()
-      service_fixture = bp.services:insert()
-      end, dao)
+        service_fixture = bp.services:insert()
+      end, db)
 
       local db_update_propagation = strategy == "cassandra" and 0.1 or 0
 
