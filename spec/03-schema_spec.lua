@@ -23,7 +23,7 @@ describe("ldap auth advanced schema", function()
   end)
 
   it("should pass with parameters config.ssl enabled and config.start_tls disbled", function()
-    local ok, err = validate_entity({ base_dn = "ou=scientists,dc=ldap,dc=mashape,dc=com", attribute = "uuid", 
+    local ok, err = validate_entity({ base_dn = "ou=scientists,dc=ldap,dc=mashape,dc=com", attribute = "uuid",
                                       ldap_host = "host", ssl = true, start_tls = false }, ldap_schema)
 
     assert.is_truthy(ok)
@@ -38,3 +38,4 @@ describe("ldap auth advanced schema", function()
     assert.is_nil(err)
   end)
 end)
+

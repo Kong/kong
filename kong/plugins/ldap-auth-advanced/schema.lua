@@ -45,7 +45,7 @@ return {
         }},
         { ssl = {
           type = "boolean",
-          required = true, 
+          required = true,
           default = false
         }},
         { start_tls = {
