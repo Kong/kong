@@ -4,6 +4,7 @@ local reports = require "kong.reports"
 local endpoints = require "kong.api.endpoints"
 local arguments = require "kong.api.arguments"
 local singletons = require "kong.singletons"
+local api_helpers = require "kong.api.api_helpers"
 
 
 local kong = kong
@@ -99,86 +100,6 @@ do
 end
 
 
--- Remove functions from a schema definition so that
--- cjson can encode the schema.
-local schema_to_jsonable
-do
-  local insert = table.insert
-  local ipairs = ipairs
-  local next = next
-
-  local fdata_to_jsonable
-
-
-  local function fields_to_jsonable(fields)
-    local out = {}
-    for _, field in ipairs(fields) do
-      local fname = next(field)
-      local fdata = field[fname]
-      insert(out, { [fname] = fdata_to_jsonable(fdata, "no") })
-    end
-    setmetatable(out, cjson.array_mt)
-    return out
-  end
-
-
-  -- Convert field data from schemas into something that can be
-  -- passed to a JSON encoder.
-  -- @tparam table fdata A Lua table with field data
-  -- @tparam string is_array A three-state enum: "yes", "no" or "maybe"
-  -- @treturn table A JSON-convertible Lua table
-  fdata_to_jsonable = function(fdata, is_array)
-    local out = {}
-    local iter = is_array == "yes" and ipairs or pairs
-
-    for k, v in iter(fdata) do
-      if is_array == "maybe" and type(k) ~= "number" then
-        is_array = "no"
-      end
-
-      if k == "schema" then
-        out[k] = schema_to_jsonable(v)
-
-      elseif type(v) == "table" then
-        if k == "fields" and fdata.type == "record" then
-          out[k] = fields_to_jsonable(v)
-
-        elseif k == "default" and fdata.type == "array" then
-          out[k] = fdata_to_jsonable(v, "yes")
-
-        else
-          out[k] = fdata_to_jsonable(v, "maybe")
-        end
-
-      elseif type(v) == "number" then
-        if v ~= v then
-          out[k] = "nan"
-        elseif v == math.huge then
-          out[k] = "inf"
-        elseif v == -math.huge then
-          out[k] = "-inf"
-        else
-          out[k] = v
-        end
-
-      elseif type(v) ~= "function" then
-        out[k] = v
-      end
-    end
-    if is_array == "yes" or is_array == "maybe" then
-      setmetatable(out, cjson.array_mt)
-    end
-    return out
-  end
-
-
-  schema_to_jsonable = function(schema)
-    local fields = fields_to_jsonable(schema.fields)
-    return { fields = fields }
-  end
-end
-
-
 local function post_process(data)
   local r_data = utils.deep_copy(data)
 
@@ -240,12 +161,15 @@ return {
 
   ["/plugins/schema/:name"] = {
     GET = function(self, db, helpers)
+      kong.log.warn("DEPRECATED: /plugins/schema/:name endpoint " ..
+                    "is deprecated, please use /schemas/plugins/:name " ..
+                    "instead.")
       local subschema = db.plugins.schema.subschemas[self.params.name]
       if not subschema then
         return kong.response.exit(404, { message = "No plugin named '" .. self.params.name .. "'" })
       end
 
-      local copy = schema_to_jsonable(subschema.fields.config)
+      local copy = api_helpers.schema_to_jsonable(subschema.fields.config)
       return kong.response.exit(200, copy)
     end
   },

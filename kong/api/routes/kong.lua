@@ -2,6 +2,7 @@ local utils = require "kong.tools.utils"
 local singletons = require "kong.singletons"
 local conf_loader = require "kong.conf_loader"
 local cjson = require "cjson"
+local api_helpers = require "kong.api.api_helpers"
 
 local sub = string.sub
 local find = string.find
@@ -15,6 +16,18 @@ local knode  = (kong and kong.node) and kong.node or
 local tagline = "Welcome to " .. _KONG._NAME
 local version = _KONG._VERSION
 local lua_version = jit and jit.version or _VERSION
+
+
+local strip_foreign_schemas = function(fields)
+  for _, field in ipairs(fields) do
+    local fname = next(field)
+    local fdata = field[fname]
+    if fdata["type"] == "foreign" then
+      fdata.schema = nil
+    end
+  end
+end
+
 
 return {
   ["/"] = {
@@ -118,5 +131,31 @@ return {
 
       return kong.response.exit(200, status_response)
     end
-  }
+  },
+  ["/schemas/:name"] = {
+    GET = function(self, db, helpers)
+      local entity = kong.db[self.params.name]
+      local schema = entity and entity.schema or nil
+      if not schema then
+        return kong.response.exit(404, { message = "No entity named '"
+                                      .. self.params.name .. "'" })
+      end
+      local copy = api_helpers.schema_to_jsonable(schema)
+      strip_foreign_schemas(copy.fields)
+      return kong.response.exit(200, copy)
+    end
+  },
+  ["/schemas/plugins/:name"] = {
+    GET = function(self, db, helpers)
+      local subschema = kong.db.plugins.schema.subschemas[self.params.name]
+      if not subschema then
+        return kong.response.exit(404, { message = "No plugin named '"
+                                  .. self.params.name .. "'" })
+      end
+
+      local copy = api_helpers.schema_to_jsonable(subschema)
+      strip_foreign_schemas(copy.fields)
+      return kong.response.exit(200, copy)
+    end
+  },
 }

@@ -163,4 +163,94 @@ describe("Admin API - Kong routes", function()
       end)
     end)
   end
+
+  describe("/schemas/:entity", function()
+    describe("GET", function()
+      local client
+
+      lazy_setup(function()
+        helpers.get_db_utils(nil, {})
+        assert(helpers.start_kong())
+        client = helpers.admin_client(10000)
+      end)
+
+      lazy_teardown(function()
+        if client then client:close() end
+        helpers.stop_kong()
+      end)
+
+      it("returns the schema of all DB entities", function()
+        for _, dao in pairs(helpers.db.daos) do
+          local res = assert(client:send {
+            method = "GET",
+            path = "/schemas/" .. dao.schema.name,
+          })
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+          assert.is_table(json.fields)
+        end
+      end)
+      it("returns 404 on a missing entity", function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/schemas/not-present",
+        })
+        local body = assert.res_status(404, res)
+        local json = cjson.decode(body)
+        assert.same({ message = "No entity named 'not-present'" }, json)
+      end)
+      it("does not return #only schema of a foreign key", function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/schemas/routes",
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        for _, field in pairs(json.fields) do
+          if next(field) == "service" then
+            local fdata = field["service"]
+            assert.is_nil(fdata.schema)
+          end
+        end
+      end)
+    end)
+  end)
+
+  describe("/schemas/:entity", function()
+    describe("GET", function()
+      local client
+
+      lazy_setup(function()
+        helpers.get_db_utils(nil, {})
+        assert(helpers.start_kong())
+        client = helpers.admin_client(10000)
+      end)
+
+      lazy_teardown(function()
+        if client then client:close() end
+        helpers.stop_kong()
+      end)
+
+      it("returns schema of all plugins", function()
+        for plugin, _ in pairs(helpers.test_conf.loaded_plugins) do
+          local res = assert(client:send {
+            method = "GET",
+            path = "/schemas/plugins/" .. plugin,
+          })
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+          assert.is_table(json.fields)
+        end
+      end)
+      it("returns 404 on a non-existent plugin", function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/schemas/plugins/not-present",
+        })
+        local body = assert.res_status(404, res)
+        local json = cjson.decode(body)
+        assert.same({ message = "No plugin named 'not-present'" }, json)
+      end)
+    end)
+  end)
 end)
