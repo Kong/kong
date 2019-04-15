@@ -10,6 +10,16 @@ local function check_user(anonymous)
   return false, "the anonymous user must be empty or a valid uuid"
 end
 
+local function check_ssl_tls(entity)
+  local ssl = entity.config.ssl
+  local start_tls = entity.config.start_tls
+
+  if ssl == true and start_tls == true then
+    return nil, "SSL and StartTLS cannot be enabled simultaneously."
+  end
+  return true
+end
+
 -- If you add more configuration parameters, be sure to check if it needs to be added to cache key
 
 return {
@@ -32,6 +42,11 @@ return {
         }},
         { bind_dn = {
           type = "string"
+        }},
+        { ssl = {
+          type = "boolean",
+          required = true, 
+          default = false
         }},
         { start_tls = {
           type = "boolean",
@@ -90,6 +105,12 @@ return {
           default = { "username", "custom_id" },
         }},
       }
+    }}
+  },
+  entity_checks = {
+    { custom_entity_check = {
+      field_sources = { "config" },
+      fn = check_ssl_tls
     }}
   }
 }
