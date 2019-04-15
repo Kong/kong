@@ -121,26 +121,18 @@ local function find_file (filename, filetype, is_authenticated)
     filename = 'unauthenticated/' .. filename
   end
 
-  local db = assert(singletons.dao.db.new_db)
-  local file = db.files:select_by_name(filename)
-
-  if file and file.auth ~= is_authenticated then
-    return nil
+  local file = singletons.db.files:select_by_name(filename)
+  if file and file.auth == is_authenticated and file.type == filetype then
+    return file
   end
-
-  return file
 end
 
 
 local function find_partial_by_name (partial_name, is_authenticated)
-  local db = assert(singletons.dao.db.new_db)
-  local file = db.files:select_by_name(partial_name)
-
-  if file and file.auth ~= is_authenticated then
-    return nil
+  local file = singletons.db.files:select_by_name(partial_name)
+  if file and file.auth == is_authenticated then
+    return file
   end
-
-  return file
 end
 
 
@@ -299,7 +291,7 @@ local function retrieve_page_and_spec (self)
     page = not_found
   end
 
-  if not page then 
+  if not page then
     page = no_files_found
   end
 

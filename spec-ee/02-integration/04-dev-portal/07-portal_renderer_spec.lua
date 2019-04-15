@@ -46,10 +46,11 @@ local function gui_client_request(params)
 end
 
 
-local function register_developer(params)
+local function register_developer(params, workspace)
+  workspace = workspace or "default"
   return api_client_request({
     method = "POST",
-    path = "/register",
+    path = "/" .. workspace .. "/register",
     body = params,
     headers = {["Content-Type"] = "application/json"},
   })
@@ -132,6 +133,7 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
   describe("Portal Rendering [#" .. strategy .. "]", function()
     local db
     local cookie
+    local cookie_2
 
     lazy_setup(function()
       _, db, _ = helpers.get_db_utils(strategy)
@@ -153,7 +155,7 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
       helpers.stop_kong(nil, true)
     end)
 
-    pending("pages", function()
+    describe("pages", function()
       local auth_page_pair, unauth_page_pair, auth_page_solo,
             unauth_page_solo, login_page, not_found_page,
             namespaced_index_page, namespaced_page
@@ -178,7 +180,7 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
           auth = true,
           type = "page",
           contents = [[
-            <h1>auth_page_pair<h2>
+            <h1>auth_page_pair</h1>
           ]]
         })
 
@@ -187,7 +189,7 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
           auth = false,
           type = "page",
           contents = [[
-            <h1>unauth_page_pair<h2>
+            <h1>unauth_page_pair</h1>
           ]]
         })
 
@@ -196,7 +198,7 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
           auth = true,
           type = "page",
           contents = [[
-            <h1>auth_page_solo<h2>
+            <h1>auth_page_solo</h1>
           ]]
         })
 
@@ -205,7 +207,7 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
           auth = false,
           type = "page",
           contents = [[
-            <h1>unauth_page_solo<h2>
+            <h1>unauth_page_solo</h1>
           ]]
         })
 
@@ -214,7 +216,7 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
           auth = false,
           type = "page",
           contents = [[
-            <h1>login<h2>
+            <h1>login</h1>
           ]]
         })
 
@@ -223,7 +225,7 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
           auth = false,
           type = "page",
           contents = [[
-            <h1>404<h2>
+            <h1>404</h1>
           ]]
         })
 
@@ -232,7 +234,7 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
           auth = true,
           type = "page",
           contents = [[
-            <h1>index<h2>
+            <h1>index</h1>
           ]]
         })
 
@@ -241,14 +243,15 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
           auth = true,
           type = "page",
           contents = [[
-            <h1>page<h2>
+            <h1>page</h1>
           ]]
         })
       end)
 
       lazy_teardown(function()
         db:truncate("files")
-        -- db:truncate('consumers')
+        db:truncate("consumers")
+        db:truncate("developers")
       end)
 
       describe("unauthenticated user", function()
@@ -436,7 +439,8 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
           assert.equals(1, stringx.count(body, login_page.id))
         end)
 
-        describe("OIDC authentication", function()
+        --- XXX REAPPLY WHEN portal_auth_conf is added
+        pending("OIDC authentication", function()
           local oidc_auth_page_pair, oidc_unauth_page_pair
 
           lazy_setup(function()
@@ -466,7 +470,7 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
                 auth = true,
                 type = "page",
                 contents = [[
-                  <h1>auth_page_pair<h2>
+                  <h1>auth_page_pair</h1>
                 ]],
               },
               headers = {["Content-Type"] = "application/json"},
@@ -481,7 +485,7 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
                 auth = false,
                 type = "page",
                 contents = [[
-                  <h1>unauth_page_pair<h2>
+                  <h1>unauth_page_pair</h1>
                 ]]
               },
               headers = {["Content-Type"] = "application/json"},
@@ -511,7 +515,8 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
           end)
         end)
 
-        describe("No authentication", function()
+        --- XXX REAPPLY WHEN portal_auth accepts an empty string
+        pending("No authentication", function()
           local noauth_not_found, noauth_login, noauth_register,
                 noauth_dashboard, noauth_settings
 
@@ -617,7 +622,7 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
       end)
     end)
 
-    pending("partials", function()
+    describe("partials", function()
       local auth_partial, auth_page_pair, unauth_page_pair,
             unauth_partial, nested_partial_parent, nested_partial_child,
             infinite_loop_page, infinite_loop_partial, formatting_page,
@@ -644,7 +649,7 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
           auth = true,
           type = "page",
           contents = [[
-            <h1>auth_page_pair<h2>
+            <h1>auth_page_pair</h1>
             {{> partial }}
             {{> unauthenticated/partial }}
             {{> nested_partial_parent }}
@@ -656,7 +661,7 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
           auth = false,
           type = "page",
           contents = [[
-            <h1>unauth_page_pair<h2>
+            <h1>unauth_page_pair</h1>
             {{> partial }}
             {{> unauthenticated/partial }}
             {{> nested_partial_parent }}
@@ -777,7 +782,8 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
 
       lazy_teardown(function()
         db:truncate("files")
-        -- db:truncate('consumers')
+        db:truncate("consumers")
+        db:truncate("developers")
       end)
 
       describe("authenticated user", function()
@@ -898,7 +904,7 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
       end)
     end)
 
-    pending("specs", function()
+    describe("specs", function()
       local root_spec_loader, auth_nested_spec_loader, unauth_nested_spec_loader,
             auth_spec1, auth_spec2, unauth_spec1, unauth_spec2,
             auth_nested_spec, unauth_nested_spec, login_page,
@@ -924,7 +930,7 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
           auth = true,
           type = "page",
           contents = [[
-            <h1>root_spec_loader<h2>
+            <h1>root_spec_loader</h1>
           ]]
         })
 
@@ -933,7 +939,7 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
           auth = true,
           type = "page",
           contents = [[
-            <h1>auth_nested_spec_loader<h2>
+            <h1>auth_nested_spec_loader</h1>
           ]]
         })
 
@@ -942,7 +948,7 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
           auth = false,
           type = "page",
           contents = [[
-            <h1>unauth_nested_spec_loader<h2>
+            <h1>unauth_nested_spec_loader</h1>
           ]]
         })
 
@@ -951,7 +957,7 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
           auth = true,
           type = "spec",
           contents = [[
-            <h1>auth_spec1<h2>
+            <h1>auth_spec1</h1>
           ]]
         })
 
@@ -960,7 +966,7 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
           auth = true,
           type = "spec",
           contents = [[
-            <h1>auth_spec2<h2>
+            <h1>auth_spec2</h1>
           ]]
         })
 
@@ -969,7 +975,7 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
           auth = false,
           type = "spec",
           contents = [[
-            <h1>unauth_spec1<h2>
+            <h1>unauth_spec1</h1>
           ]]
         })
 
@@ -978,7 +984,7 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
           auth = false,
           type = "spec",
           contents = [[
-            <h1>unauth_spec2<h2>
+            <h1>unauth_spec2</h1>
           ]]
         })
 
@@ -987,7 +993,7 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
           auth = true,
           type = "spec",
           contents = [[
-            <h1>auth_nested_spec<h2>
+            <h1>auth_nested_spec</h1>
           ]]
         })
 
@@ -996,7 +1002,7 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
           auth = false,
           type = "spec",
           contents = [[
-            <h1>unauth_nested_spec<h2>
+            <h1>unauth_nested_spec</h1>
           ]]
         })
 
@@ -1005,7 +1011,7 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
           auth = true,
           type = "spec",
           contents = [[
-            <h1>spec with spaces<h2>
+            <h1>spec with spaces</h1>
           ]]
         })
 
@@ -1014,14 +1020,15 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
           auth = false,
           type = "page",
           contents = [[
-            <h1>login<h2>
+            <h1>login</h1>
           ]]
         })
       end)
 
       lazy_teardown(function()
         db:truncate("files")
-        -- db:truncate('consumers')
+        db:truncate("consumers")
+        db:truncate("developers")
       end)
 
       describe("authenticated user", function()
@@ -1033,6 +1040,7 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
               ["Cookie"] = cookie
             },
           })
+
           local status = res.status
           local body = res.body
 
@@ -1383,7 +1391,7 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
           auth = true,
           type = "page",
           contents = [[
-            <h1>auth_page_pair<h2>
+            <h1>auth_page_pair</h1>
           ]]
         })
 
@@ -1392,7 +1400,7 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
           auth = false,
           type = "page",
           contents = [[
-            <h1>unauth_page_pair<h2>
+            <h1>unauth_page_pair</h1>
           ]]
         })
 
@@ -1401,7 +1409,7 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
           auth = true,
           type = "page",
           contents = [[
-            <h1>auth_page_solo<h2>
+            <h1>auth_page_solo</h1>
           ]]
         })
 
@@ -1410,7 +1418,7 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
           auth = false,
           type = "page",
           contents = [[
-            <h1>unauth_page_solo<h2>
+            <h1>unauth_page_solo</h1>
           ]]
         })
 
@@ -1419,7 +1427,7 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
           auth = true,
           type = "page",
           contents = [[
-            <h1>auth index<h2>
+            <h1>auth index</h1>
           ]]
         })
 
@@ -1428,16 +1436,16 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
           auth = true,
           type = "page",
           contents = [[
-            <h1>index<h2>
+            <h1>index</h1>
           ]]
         })
 
         assert(db.files:insert {
-          name = "unauthenticated/specs/loader",
+          name = "specs/loader",
           auth = true,
           type = "page",
           contents = [[
-            <h1>loader<h2>
+            <h1>loader</h1>
           ]]
         })
 
@@ -1458,11 +1466,44 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
             {}
           ]]
         })
+
+        --- WORKSPACE 2
+        local res = client_request({
+          method = "POST",
+          path = "/workspaces",
+          body = {
+            name = "sitemaptest",
+            config = {
+              portal = true,
+              portal_auth = "key-auth",
+              portal_auto_approve = true,
+            }
+          },
+          headers = {["Content-Type"] = "application/json"},
+        })
+
+        assert.equals(res.status, 201)
+
+        assert(register_developer({
+          email = "derpdog@konghq.com",
+          key = "dog2",
+          meta = "{\"full_name\":\"catdog\"}",
+        }, "sitemaptest"))
+
+        local res = api_client_request({method = "GET",
+          path = "/sitemaptest/auth",
+          headers = {
+            ['apikey'] = 'dog2'
+          }
+        })
+
+        cookie_2 = assert.response(res).has.header("Set-Cookie")
       end)
 
       lazy_teardown(function()
         db:truncate("files")
-        -- db:truncate('consumers')
+        db:truncate("consumers")
+        db:truncate("developers")
       end)
 
       describe("authenticated user #test", function()
@@ -1484,6 +1525,37 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
           assert.equals(1, stringx.count(body, '/default/unauth_page_solo'))
           assert.equals(1, stringx.count(body, '/default/page_pair'))
         end)
+
+        it("can render sitemap for authenticated user (new workspace default files)", function()
+          local res = gui_client_request({
+            method = "GET",
+            path = "/sitemaptest/sitemap.xml",
+            headers = {
+              ["Cookie"] = cookie_2
+            },
+          })
+          local status = res.status
+          local body = res.body
+
+          assert.equals(200, status)
+          assert.equals(1, stringx.count(body, '/sitemaptest/unauthorized'))
+          assert.equals(1, stringx.count(body, '/sitemaptest/search'))
+          assert.equals(1, stringx.count(body, '/sitemaptest/guides/kong-ee-introduction'))
+          assert.equals(1, stringx.count(body, '/sitemaptest/register'))
+          assert.equals(1, stringx.count(body, '/sitemaptest/about'))
+          assert.equals(1, stringx.count(body, '/sitemaptest/user'))
+          assert.equals(1, stringx.count(body, '/sitemaptest/documentation/files'))
+          assert.equals(1, stringx.count(body, '/sitemaptest/settings'))
+          assert.equals(1, stringx.count(body, '/sitemaptest/guides/5-minute-quickstart'))
+          assert.equals(1, stringx.count(body, '/sitemaptest/login'))
+          assert.equals(1, stringx.count(body, '/sitemaptest/guides/kong-architecture-overview'))
+          assert.equals(1, stringx.count(body, '/sitemaptest/guides/uploading-spec'))
+          assert.equals(1, stringx.count(body, '/sitemaptest/404'))
+          assert.equals(1, stringx.count(body, '/sitemaptest/documentation/admin'))
+          assert.equals(1, stringx.count(body, '/sitemaptest/documentation/vitals'))
+          assert.equals(1, stringx.count(body, '/sitemaptest/reset-password'))
+          assert.equals(1, stringx.count(body, '/sitemaptest/dashboard'))
+        end)
       end)
 
       describe("unauthenticated user", function()
@@ -1501,6 +1573,34 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
           assert.equals(0, stringx.count(body, '/default/auth_page_solo'))
           assert.equals(0, stringx.count(body, '/default/documentation'))
           assert.equals(0, stringx.count(body, '/default/specs/spec_page'))
+        end)
+
+        it("can render sitemap for unauthenticated user (new workspace default files)", function()
+          local res = gui_client_request({
+            method = "GET",
+            path = "/sitemaptest/sitemap.xml",
+          })
+          local status = res.status
+          local body = res.body
+
+          assert.equals(200, status)
+          assert.equals(1, stringx.count(body, '/sitemaptest/unauthorized'))
+          assert.equals(0, stringx.count(body, '/sitemaptest/search'))
+          assert.equals(0, stringx.count(body, '/sitemaptest/guides/kong-ee-introduction'))
+          assert.equals(1, stringx.count(body, '/sitemaptest/register'))
+          assert.equals(0, stringx.count(body, '/sitemaptest/about'))
+          assert.equals(0, stringx.count(body, '/sitemaptest/user'))
+          assert.equals(0, stringx.count(body, '/sitemaptest/documentation/files'))
+          assert.equals(0, stringx.count(body, '/sitemaptest/settings'))
+          assert.equals(0, stringx.count(body, '/sitemaptest/guides/5-minute-quickstart'))
+          assert.equals(1, stringx.count(body, '/sitemaptest/login'))
+          assert.equals(0, stringx.count(body, '/sitemaptest/guides/kong-architecture-overview'))
+          assert.equals(0, stringx.count(body, '/sitemaptest/guides/uploading-spec'))
+          assert.equals(1, stringx.count(body, '/sitemaptest/404'))
+          assert.equals(0, stringx.count(body, '/sitemaptest/documentation/admin'))
+          assert.equals(0, stringx.count(body, '/sitemaptest/documentation/vitals'))
+          assert.equals(1, stringx.count(body, '/sitemaptest/reset-password'))
+          assert.equals(0, stringx.count(body, '/sitemaptest/dashboard'))
         end)
       end)
 
