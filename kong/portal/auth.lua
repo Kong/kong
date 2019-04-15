@@ -81,7 +81,7 @@ function _M.validate_auth_plugin(self, db, helpers, portal_auth)
 
   self.plugin = auth_plugins[portal_auth]
   if not self.plugin then
-    return helpers.responses.send_HTTP_NOT_FOUND()
+    return kong.response.exit(404, { message = "Not found"})
   end
 
   self.collection = db.daos[self.plugin.dao]
@@ -115,7 +115,7 @@ function _M.login(self, db, helpers)
 
   if not ok then
     log(ERR, err)
-    return helpers.responses.send_HTTP_INTERNAL_SERVER_ERROR()
+    return kong.response.exit(500, { message = "An unexpected error occurred" })
   end
 
   -- if not openid-connect, run session header_filter to attach session to response
@@ -133,7 +133,7 @@ function _M.login(self, db, helpers)
 
     if not ok then
       log(ERR, err)
-      return helpers.responses.send_HTTP_INTERNAL_SERVER_ERROR()
+      return kong.response.exit(500, { message = "An unexpected error occurred" })
     end
   end
 
@@ -143,7 +143,7 @@ function _M.login(self, db, helpers)
       ngx.ctx.authenticated_session:destroy()
     end
 
-    return helpers.responses.send_HTTP_UNAUTHORIZED(err)
+    return kong.response.exit(401, { message = err })
   end
 
   self.developer = developer
@@ -171,7 +171,7 @@ function _M.authenticate_api_session(self, db, helpers)
 
     if not ok then
       log(ERR, err)
-      return helpers.responses.send_HTTP_INTERNAL_SERVER_ERROR()
+      return kong.response.exit(500, { message = "An unexpected error occurred" })
     end
   else
     -- otherwise, verify the session
@@ -189,7 +189,7 @@ function _M.authenticate_api_session(self, db, helpers)
 
   if not ok then
     log(ERR, err)
-    return helpers.responses.send_HTTP_INTERNAL_SERVER_ERROR()
+    return kong.response.exit(500, { message = "An unexpected error occurred" })
   end
 
   local developer, err = get_developer()
@@ -198,7 +198,7 @@ function _M.authenticate_api_session(self, db, helpers)
       ngx.ctx.authenticated_session:destroy()
     end
 
-    return helpers.responses.send_HTTP_UNAUTHORIZED(err)
+    return kong.response.exit(401, { message = err })
   end
 
   self.developer = developer
@@ -262,7 +262,7 @@ function _M.authenticate_gui_session(self, db, helpers)
 
   if not ok then
     log(ERR, err)
-    return helpers.responses.send_HTTP_INTERNAL_SERVER_ERROR()
+    return kong.response.exit(500, { message = "An unexpected error occurred" })
   end
 
   local developer = get_developer()

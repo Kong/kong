@@ -1,6 +1,5 @@
 local api_helpers = require "kong.api.api_helpers"
 local singletons  = require "kong.singletons"
-local responses   = require "kong.tools.responses"
 local reports     = require "kong.reports"
 local utils       = require "kong.tools.utils"
 local workspaces  = require "kong.workspaces"
@@ -103,7 +102,7 @@ return {
 
       if workspaces.is_route_colliding(self, singletons.router) then
         local err = "API route collides with an existing API"
-        return responses.send_HTTP_CONFLICT(err)
+        return kong.response.exit(409, {message = err})
       end
       return parent()
     end,
@@ -137,7 +136,7 @@ return {
 
       if workspaces.is_route_colliding(self, r) then
         local err = "API route collides with an existing API"
-        return responses.send_HTTP_CONFLICT(err)
+        return kong.response.exit(409, {message = err})
       end
 
       return parent()

@@ -231,7 +231,7 @@ return {
         local roles, err = rbac.get_user_roles(db, self.rbac_user)
         if err then
           ngx.log(ngx.ERR, "[rbac] ", err)
-          return kong.response.exit(500)
+          return kong.response.exit(500, { message = "An unexpected error occurred" })
         end
 
         local map = {}
@@ -540,7 +540,7 @@ return {
           role = { id = self.rbac_role_id }
           }, self.params)
         if not entity then
-          kong.response.exit(404)
+          kong.response.exit(404, { message = "Not found" })
         end
 
         return kong.response.exit(200, post_process_actions(entity))
@@ -699,7 +699,7 @@ return {
             kong.response.exit(200, post_process_actions(e))
           end
         end
-        kong.response.exit(404)
+        kong.response.exit(404, { message = "Not found" })
       end,
 
       PATCH = function(self, db, helpers)
@@ -720,7 +720,7 @@ return {
 
         local endpoint = db.rbac_role_endpoints:update(filter, self.params)
         if not endpoint then
-          return kong.response.exit(404)
+          return kong.response.exit(404, { message = "Not found" })
         end
 
         return kong.response.exit(200, post_process_actions(endpoint))

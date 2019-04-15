@@ -53,7 +53,7 @@ local function validate_credential_plugin(self, db, helpers)
 
   self.credential_plugin = auth_plugins[plugin_name]
   if not self.credential_plugin then
-    return helpers.responses.send_HTTP_NOT_FOUND()
+    return kong.response.exit(404, { message = "Not found" })
   end
 
   self.credential_collection = db.daos[self.credential_plugin.dao]
@@ -63,13 +63,13 @@ end
 local function handle_vitals_response(res, err, helpers)
   if err then
     if err:find("Invalid query params", nil, true) then
-      return helpers.responses.send_HTTP_BAD_REQUEST(err)
+      return kong.response.exit(400, { message = err })
     end
 
-    return helpers.yield_error(err)
+    return endpoints.handle_error({ message = err })
   end
 
-  return helpers.responses.send_HTTP_OK(res)
+  return kong.response.exit(200, res)
 end
 
 
@@ -77,12 +77,12 @@ return {
   ["/auth"] = {
     GET = function(self, db, helpers)
       auth.login(self, db, helpers)
-      return helpers.responses.send_HTTP_OK()
+      return kong.response.exit(200)
     end,
 
     DELETE = function(self, db, helpers)
       auth.authenticate_api_session(self, db, helpers)
-      return helpers.responses.send_HTTP_OK()
+      return kong.response.exit(200)
     end,
   },
 
@@ -114,7 +114,7 @@ return {
         return endpoints.handle_error(err_t)
       end
 
-      return helpers.responses.send_HTTP_OK(paginated_results)
+      return kong.response.exit(200, paginated_results)
     end,
   },
 
@@ -152,7 +152,7 @@ return {
         return endpoints.handle_error(err_t)
       end
 
-      return helpers.responses.send_HTTP_OK(paginated_results)
+      return kong.response.exit(200, paginated_results)
     end,
   },
 
@@ -173,7 +173,7 @@ return {
         return endpoints.handle_error(err_t)
       end
 
-      return helpers.responses.send_HTTP_OK({data = file})
+      return kong.response.exit(200, {data = file})
     end,
   },
 
@@ -196,16 +196,16 @@ return {
                                                       developer.meta.full_name)
         if err then
           if err.code then
-            return helpers.responses.send(err.code, { message = err.message })
+            return kong.response.exit(err.code, { message = err.message })
           end
 
-          return helpers.yield_error(err)
+          return endpoints.handle_error(err)
         end
 
         res.email = email
       end
 
-      return helpers.responses.send_HTTP_OK(res)
+      return kong.response.exit(200, res)
     end,
   },
 
@@ -213,7 +213,7 @@ return {
     POST = function(self, db, helpers)
       auth.validate_auth_plugin(self, db, helpers)
       ee_api.validate_jwt(self, db, helpers)
-      return helpers.responses.send_HTTP_OK()
+      return kong.response.exit(200)
     end,
   },
 
@@ -232,13 +232,13 @@ return {
       end
 
       if not consumer then
-        return helpers.responses.send_HTTP_NOT_FOUND()
+        return kong.response.exit(404, { message = "Not found" })
       end
 
       local credential
       for row, err in db.credentials:each_for_consumer({ id = consumer.id }) do
         if err then
-          return helpers.yield_error(err)
+          return endpoints.handle_error(err)
         end
 
         if row.consumer_type == enums.CONSUMERS.TYPE.DEVELOPER and
@@ -248,14 +248,14 @@ return {
       end
 
       if not credential then
-        return helpers.responses.send_HTTP_NOT_FOUND()
+        return kong.response.exit(404, { message = "Not found" })
       end
 
       -- key or password
       local new_password = self.params[self.plugin.credential_key]
       if not new_password or new_password == "" then
-        return helpers.responses.send_HTTP_BAD_REQUEST(
-                                  self.plugin.credential_key .. " is required")
+        return kong.response.exit(400,
+          { message = self.plugin.credential_key .. " is required"})
       end
 
       local cred_pk = { id = credential.id }
@@ -263,27 +263,27 @@ return {
       local ok, err = crud.portal_crud.update_login_credential(
                                               self.collection, cred_pk, entity)
       if err then
-        return helpers.yield_error(err)
+        return endpoints.handle_error(err)
       end
 
       if not ok then
-        return helpers.responses.send_HTTP_NOT_FOUND()
+        return kong.response.exit(404, { message = "Not found" })
       end
 
       -- Mark the token secret as consumed
       local ok, err = secrets.consume_secret(self.reset_secret_id)
       if not ok then
-        return helpers.yield_error(err)
+        return endpoints.handle_error(err)
       end
 
       -- Email user with reset success confirmation
       local portal_emails = portal_smtp_client.new()
       local _, err = portal_emails:password_reset_success(consumer.username)
       if err then
-        return helpers.yield_error(err)
+        return endpoints.handle_error(err)
       end
 
-      return helpers.responses.send_HTTP_OK()
+      return kong.response.exit(200)
     end,
   },
 
@@ -303,24 +303,24 @@ return {
 
       -- If we do not have a developer, return 200 ok
       if not developer then
-        return helpers.responses.send_HTTP_OK()
+        return kong.response.exit(200)
       end
 
       -- Generate a reset secret and jwt
       local jwt, err = secrets.create(developer.consumer, ngx.var.remote_addr,
                                       token_ttl)
       if not jwt then
-        return helpers.yield_error(err)
+        return endpoints.handle_error(err)
       end
 
       -- Email user with reset jwt included
       local portal_emails = portal_smtp_client.new()
       local _, err = portal_emails:password_reset(developer.email, jwt)
       if err then
-        return helpers.yield_error(err)
+        return endpoints.handle_error(err)
       end
 
-      return helpers.responses.send_HTTP_OK()
+      return kong.response.exit(200)
     end,
   },
 
@@ -335,7 +335,7 @@ return {
       do
         local rows, err = db.plugins:select_all()
         if err then
-          return helpers.responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+          return kong.response.exit(500, { message = "An unexpected error occurred" })
         end
 
         local map = {}
@@ -347,7 +347,7 @@ return {
         end
       end
 
-      return helpers.responses.send_HTTP_OK({
+      return kong.response.exit(200, {
         plugins = {
           enabled_in_cluster = distinct_plugins,
         }
@@ -361,20 +361,20 @@ return {
     end,
 
     GET = function(self, db, helpers)
-      return helpers.responses.send_HTTP_OK(self.developer)
+      return kong.response.exit(200, self.developer)
     end,
 
     DELETE = function(self, db, helpers)
       local ok, err = db.developers:delete({id = self.developer.id})
       if not ok then
         if err then
-          return helpers.yield_error(err)
+          return endpoints.handle_error(err)
         else
-          return helpers.responses.send_HTTP_NOT_FOUND()
+          return kong.response.exit(404, { message = "Not found" })
         end
       end
 
-       return helpers.responses.send_HTTP_NO_CONTENT()
+      return kong.response.exit(204)
     end
   },
 
@@ -387,7 +387,7 @@ return {
       local credential
       for row, err in db.credentials:each_for_consumer({ id = self.developer.consumer.id}) do
         if err then
-          return helpers.yield_error(err)
+          return endpoints.handle_error(err)
         end
 
         if row.consumer_type == enums.CONSUMERS.TYPE.DEVELOPER and
@@ -397,7 +397,7 @@ return {
       end
 
       if not credential then
-        return helpers.responses.send_HTTP_NOT_FOUND()
+        return kong.response.exit(404, { message = "Not found" })
       end
 
       local cred_params = {}
@@ -409,22 +409,21 @@ return {
         cred_params.key = self.params.key
         self.params.key = nil
       else
-        return helpers.responses.send_HTTP_BAD_REQUEST(
-                                                 "key or password is required")
+        return kong.response.exit(400, { message = "key or password is required" })
       end
 
       local cred_pk = { id = credential.id }
       local ok, err = crud.portal_crud.update_login_credential(self.collection,
                                                           cred_pk, cred_params)
       if err then
-        return helpers.yield_error(err)
+        return endpoints.handle_error(err)
       end
 
       if not ok then
-        return helpers.responses.send_HTTP_NOT_FOUND()
+        return kong.response.exit(404, { message = "Not found" })
       end
 
-      return helpers.responses.send_HTTP_NO_CONTENT()
+      return kong.response.exit(204)
     end,
   },
 
@@ -444,7 +443,7 @@ return {
         return endpoints.handle_error(err_t)
       end
 
-      return helpers.responses.send_HTTP_OK(developer)
+      return kong.response.exit(200, developer)
     end,
   },
 
@@ -457,14 +456,14 @@ return {
       local meta_params = self.params.meta and cjson.decode(self.params.meta)
 
       if not meta_params then
-        return helpers.responses.send_HTTP_BAD_REQUEST("meta required")
+        return kong.response.exit(400, "meta required")
       end
 
       local current_dev_meta = self.developer.meta and
                                                cjson.decode(self.developer.meta)
 
       if not current_dev_meta then
-        return helpers.responses.send_HTTP_NOT_FOUND()
+        return kong.response.exit(404, { message = "Not found" })
       end
 
       -- Iterate over meta update params and assign them to current meta
@@ -482,14 +481,14 @@ return {
       })
 
       if err then
-        return helpers.yield_error(err)
+        return endpoints.handle_error(err)
       end
 
       if not ok then
-        return helpers.responses.send_HTTP_NOT_FOUND()
+        return kong.response.exit(404, { message = "Not found" })
       end
 
-      return helpers.responses.send_HTTP_NO_CONTENT()
+      return kong.response.exit(204)
     end,
   },
 
@@ -531,7 +530,7 @@ return {
     before = function(self, db, helpers)
       auth.authenticate_api_session(self, db, helpers)
       if not singletons.configuration.vitals then
-        return helpers.responses.send_HTTP_NOT_FOUND()
+        return kong.response.exit(404, { message = "Not found" })
       end
     end,
 
@@ -553,7 +552,7 @@ return {
     before = function(self, db, helpers)
       auth.authenticate_api_session(self, db, helpers)
       if not singletons.configuration.vitals then
-        return helpers.responses.send_HTTP_NOT_FOUND()
+        return kong.response.exit(404, { message = "Not found" })
       end
     end,
 
@@ -576,7 +575,7 @@ return {
     before = function(self, db, helpers)
       auth.authenticate_api_session(self, db, helpers)
       if not singletons.configuration.vitals then
-        return helpers.responses.send_HTTP_NOT_FOUND()
+        return kong.response.exit(404, { message = "Not found" })
       end
     end,
 

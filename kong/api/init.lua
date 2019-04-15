@@ -102,7 +102,7 @@ local function on_error(self)
   end
 
   if err.forbidden then
-    return kong.response.exit(403, err.tbl)
+    return responses.send_HTTP_FORBIDDEN(err.tbl)
   end
 
   if err.name then

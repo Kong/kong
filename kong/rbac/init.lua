@@ -2,7 +2,6 @@ local _M = {}
 
 local bit        = require "bit"
 local workspaces = require "kong.workspaces"
-local responses  = require "kong.tools.responses"
 local utils      = require "kong.tools.utils"
 local cjson      = require "cjson"
 local tablex     = require "pl.tablex"
@@ -720,7 +719,7 @@ function _M.validate_entity_operation(entity, table_name)
   local rbac_ctx, err = get_rbac_user_info()
   if err then
     ngx.log(ngx.ERR, "[rbac] ", err)
-    return responses.send_HTTP_INTERNAL_SERVER_ERROR()
+    return kong.response.exit(500, { message = "An unexpected error occurred" })
   end
 
   if rbac_ctx.user == "guest" then
@@ -1098,11 +1097,11 @@ function _M.load_rbac_ctx(dao_factory, ctx, rbac_user)
 
   local user_ws_scope, err = workspaces.resolve_user_ws_scope(ctx, user.name)
   if err then
-    return responses.send_HTTP_INTERNAL_SERVER_ERROR()
+    return kong.response.exit(500, { message = "An unexpected error occurred" })
   end
 
   if not user_ws_scope or #user_ws_scope == 0 then
-    return responses.send_HTTP_UNAUTHORIZED("Invalid RBAC credentials")
+    return kong.response.exit(401, {message = "Invalid RBAC credentials"})
   end
 
   ngx.ctx.workspaces = user_ws_scope
@@ -1161,11 +1160,11 @@ function _M.validate_user(rbac_user)
   local rbac_ctx, err = get_rbac_user_info(rbac_user)
   if err then
     ngx.log(ngx.ERR, "[rbac] ", err)
-    return responses.send_HTTP_INTERNAL_SERVER_ERROR()
+    return kong.response.exit(500, { message = "An unexpected error occurred" })
   end
 
   if rbac_ctx.user == "guest" then
-    return responses.send_HTTP_UNAUTHORIZED("Invalid RBAC credentials")
+    return kong.response.exit(401, { message = "Invalid RBAC credentials" })
   end
 end
 
@@ -1184,7 +1183,7 @@ function _M.validate_endpoint(route_name, route, rbac_user)
   local rbac_ctx, err = get_rbac_user_info(rbac_user)
   if err then
     ngx.log(ngx.ERR, "[rbac] ", err)
-    return responses.send_HTTP_INTERNAL_SERVER_ERROR()
+    return kong.response.exit(500, { message = "An unexpected error occurred" })
   end
 
   local  ok = _M.authorize_request_endpoint(rbac_ctx.endpoints_perms,
@@ -1193,7 +1192,7 @@ function _M.validate_endpoint(route_name, route, rbac_user)
   if not ok then
     local err = fmt("%s, you do not have permissions to %s this resource",
                     rbac_ctx.user.name, readable_action(rbac_ctx.action))
-    return responses.send_HTTP_FORBIDDEN(err)
+    return kong.response.exit(403, { message = err })
   end
 end
 

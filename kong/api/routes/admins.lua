@@ -45,7 +45,7 @@ local function validate_auth_plugin(self, dao_factory, helpers, plugin_name)
   plugin_name = plugin_name or gui_auth
   self.plugin = auth_plugins[plugin_name]
   if not self.plugin and gui_auth then
-    return helpers.responses.send_HTTP_NOT_FOUND()
+    return kong.response.exit(404, { message = "Not found" })
   end
 
   if self.plugin and self.plugin.dao then
@@ -345,9 +345,8 @@ return {
     before = function(self, db, helpers, parent)
       validate_auth_plugin(self, db, helpers)
       if self.token_optional then
-        return helpers.responses.send_HTTP_BAD_REQUEST("cannot register " ..
-                                                       "with admin_gui_auth = "
-                                                       .. self.plugin.name)
+        return kong.response.exit(400, {
+          message = "cannot register with admin_gui_auth = " .. self.plugin.name})
       end
       ee_api.validate_email(self, db, helpers)
       ee_api.validate_jwt(self, db, helpers)

@@ -3,15 +3,18 @@ local pl_stringx  = require "pl.stringx"
 local workspaces  = require "kong.workspaces"
 local singletons  = require "kong.singletons"
 local renderer    = require "kong.portal.renderer"
-local responses   = require "kong.tools.responses"
 local ee          = require "kong.enterprise_edition"
+local responses   = require "kong.tools.responses"
 
 
 local _M = {}
 local config = singletons.configuration
-
-
 local function send_workspace_not_found_error(err)
+  -- return kong.response.exit(500, { message = "An unexpected error occurred" })
+  --
+  -- XXX EE. the code above doesn't work due to error("no phase in
+  -- kong.ctx.core.phase").
+
   local err_msg = 'failed to retrieve workspace for the request (reason: ' .. err .. ')'
   responses.send_HTTP_INTERNAL_SERVER_ERROR(err_msg)
 end
@@ -50,6 +53,7 @@ function _M.set_workspace_by_subdomain(self)
   local workspace, err = workspaces.fetch_workspace(ws_name)
   if err then
     ngx.log(ngx.ERR, err)
+    -- return kong.response.exit(500, { message = "An unexpected error occurred" })
     return responses.send_HTTP_INTERNAL_SERVER_ERROR()
   end
 
@@ -69,6 +73,7 @@ function _M.set_workspace_by_path(self)
   if err then
     ngx.log(ngx.ERR, err)
     return responses.send_HTTP_INTERNAL_SERVER_ERROR()
+    -- return kong.response.exit(500, { message = "An unexpected error occurred" })
   end
 
   -- unable to find workspace associated with workspace_name, fallback to default
@@ -77,6 +82,7 @@ function _M.set_workspace_by_path(self)
     if err then
       ngx.log(ngx.ERR, err)
       return responses.send_HTTP_INTERNAL_SERVER_ERROR()
+      -- return kong.response.exit(500, { message = "An unexpected error occurred" })
     end
 
     -- yikes, can't fetch default, eject

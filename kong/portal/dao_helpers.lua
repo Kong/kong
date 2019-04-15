@@ -4,7 +4,6 @@ local Errors     = require "kong.db.errors"
 local singletons = require "kong.singletons"
 local auth       = require "kong.portal.auth"
 local utils      = require "kong.tools.utils"
-local responses  = require "kong.tools.responses"
 local workspaces = require "kong.workspaces"
 local enums      = require "kong.enterprise_edition.dao.enums"
 local enterprise_utils = require "kong.enterprise_edition.utils"
@@ -12,7 +11,7 @@ local enterprise_utils = require "kong.enterprise_edition.utils"
 local log = ngx.log
 local ERR = ngx.ERR
 local _log_prefix = "[developers] "
-local helpers = { responses = responses }
+local helpers = {} -- XXX EE remove this
 local ws_constants = constants.WORKSPACE_CONFIG
 
 local auth_plugins = {

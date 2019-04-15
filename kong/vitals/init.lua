@@ -24,7 +24,6 @@ local FF_VALUES  = feature_flags.VALUES
 local FF_FLAGS   = feature_flags.FLAGS
 
 local fmt        = string.format
-local kong = kong
 local knode  = (kong and kong.node) and kong.node or
                require "kong.pdk.node".new()
 

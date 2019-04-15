@@ -1,4 +1,3 @@
-local responses   = require "kong.tools.responses"
 local api_crud_helpers = require "kong.api.crud_helpers"
 local enums = require "kong.enterprise_edition.dao.enums"
 local ee_api_helpers = require "kong.enterprise_edition.api_helpers"
@@ -31,8 +30,8 @@ function _M.post_process_credential(credential)
                                       ee_api_helpers.retrieve_consumer,
                                       credential.consumer.id)
   if err then
-    return responses.send_HTTP_INTERNAL_SERVER_ERROR(
-        "error finding consumer: ", credential.consumer_id)
+    return kong.response.exit(500, {message =
+      "error finding consumer: ", credential.consumer_id})
   end
 
   -- don't return credentials for non-proxy consumers

@@ -7,7 +7,6 @@ local workspaces = require "kong.workspaces"
 local singletons = require "kong.singletons"
 local ApiRouter = require "kong.api_router"
 local core_handler = require "kong.runloop.handler"
-local helpers = require "kong.tools.responses"
 
 
 local function filter(pred, t)
@@ -69,7 +68,7 @@ return {
       -- if no id, it acts as POST
       if not self.params.id and workspaces.is_api_colliding(self) then
         local err = "API route collides with an existing API"
-        return helpers.send_HTTP_CONFLICT(err)
+        return kong.respnse.exit(409, { message = err })
       end
 
       if self.params.id then
@@ -79,7 +78,7 @@ return {
           local r = ApiRouter.new(all_apis_except(curr_api))
           if workspaces.is_api_colliding(self, r) then
             local err = "API route collides with an existing API"
-            return helpers.send_HTTP_CONFLICT(err)
+            return kong.respnse.exit(409, { message = err })
           end
         end
       end
@@ -90,7 +89,7 @@ return {
     POST = function(self, dao_factory)
       if workspaces.is_api_colliding(self) then
         local err = "API route collides with an existing API"
-        return helpers.send_HTTP_CONFLICT(err)
+        return kong.respnse.exit(409, { message = err })
       end
       crud.post(self.params, dao_factory.apis)
     end
@@ -102,7 +101,7 @@ return {
     end,
 
     GET = function(self, dao_factory, helpers)
-      return helpers.responses.send_HTTP_OK(self.api)
+      return kong.respnse.exit(200,  self.api)
     end,
 
     -- XXX: DO NOT add helpers as a third parameter. It collides with
@@ -112,7 +111,7 @@ return {
       -- create temporary router
       if workspaces.is_api_colliding(self, r) then
         local err = "API route collides with an existing API"
-        return helpers.send_HTTP_CONFLICT(err)
+        return kong.respnse.exit(409, {message = err})
       end
 
       crud.patch(self.params, dao_factory.apis, self.api)

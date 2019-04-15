@@ -5,7 +5,6 @@ local pl_pretty   = require "pl.pretty"
 local api_helpers = require "kong.api.api_helpers"
 local app_helpers = require "lapis.application"
 local singletons = require "kong.singletons"
-local responses = require "kong.tools.responses"
 local ee_api = require "kong.enterprise_edition.api_helpers"
 local workspaces = require "kong.workspaces"
 local constants = require "kong.constants"
@@ -34,7 +33,7 @@ local function parse_params(fn)
         content_type = content_type:lower()
 
         if find(content_type, "application/json", 1, true) and not self.json then
-          return responses.send_HTTP_BAD_REQUEST("Cannot parse JSON body")
+          return kong.response.exit(400, { message = "Cannot parse JSON body"})
 
         elseif find(content_type, "application/x-www-form-urlencode", 1, true) then
           self.params = utils.decode_args(self.params)
@@ -59,7 +58,7 @@ local function new_db_on_error(self)
   local err = self.errors[1]
 
   if type(err) ~= "table" then
-    return responses.send_HTTP_INTERNAL_SERVER_ERROR(tostring(err))
+    return kong.response.exit(500, { message = tostring(err)})
   end
 
   if err.strategy then
@@ -71,20 +70,20 @@ local function new_db_on_error(self)
   or err.code == Errors.codes.FOREIGN_KEY_VIOLATION
   or err.code == Errors.codes.INVALID_OFFSET
   then
-    return responses.send_HTTP_BAD_REQUEST(err)
+    return kong.response.exit(400, err)
   end
 
   if err.code == Errors.codes.NOT_FOUND then
-    return responses.send_HTTP_NOT_FOUND(err)
+    return kong.response.exit(404,err)
   end
 
   if err.code == Errors.codes.PRIMARY_KEY_VIOLATION
   or err.code == Errors.codes.UNIQUE_VIOLATION
   then
-    return responses.send_HTTP_CONFLICT(err)
+    return kong.response.exit(409, err)
   end
 
-  return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+  return kong.response.exit(500, err)
 end
 
 
@@ -93,11 +92,11 @@ local function on_error(self)
   local err = self.errors[1]
 
   if type(err) ~= "table" then
-    return responses.send_HTTP_INTERNAL_SERVER_ERROR(tostring(err))
+    return kong.response.exit(500, tostring(err))
   end
 
   if err.forbidden then
-    return responses.send_HTTP_FORBIDDEN(err.tbl)
+    return kong.response.exit(403, err.tbl)
   end
 
   if err.name then
@@ -105,24 +104,24 @@ local function on_error(self)
   end
 
   if err.db then
-    return responses.send_HTTP_INTERNAL_SERVER_ERROR(err.message)
+    return kong.response.exit(500, { message = err.message })
   end
 
   if err.unique then
-    return responses.send_HTTP_CONFLICT(err.tbl)
+    return kong.response.exit(409, err.tbl)
   end
 
   if err.foreign then
-    return responses.send_HTTP_NOT_FOUND(err.tbl)
+    return kong.response.exit(404, err.tbl)
   end
 
-  return responses.send_HTTP_BAD_REQUEST(err.tbl or err.message)
+  return kong.response.exit(400, { message = err.tbl or err.message })
 end
 
 
 -- Register application defaults
 app.handle_404 = function(self)
-  return responses.send_HTTP_NOT_FOUND()
+  return kong.response.exit(404, { message = "Not found" })
 end
 
 
@@ -132,7 +131,7 @@ app.handle_error = function(self, err, trace)
       err = pl_pretty.write(err)
     end
     if find(err, "don't know how to respond to", nil, true) then
-      return responses.send_HTTP_METHOD_NOT_ALLOWED()
+      return kong.response.exit(405, { message = "Method not allowed"})
     end
   end
 
@@ -140,13 +139,13 @@ app.handle_error = function(self, err, trace)
 
   -- We just logged the error so no need to give it to responses and log it
   -- twice
-  return responses.send_HTTP_INTERNAL_SERVER_ERROR()
+  return kong.response.exit(500, { message = "An unexpected error occurred" })
 end
 
 
 -- Instantiate a single helper object for wrapped methods
 local handler_helpers = {
-  responses = responses,
+  responses = {},
   yield_error = app_helpers.yield_error
 }
 
@@ -166,18 +165,17 @@ app:before_filter(function(self)
   local ws, err = workspaces.fetch_workspace(ws_name)
   if err then
     ngx.log(ngx.ERR, err)
-    return responses.send_HTTP_INTERNAL_SERVER_ERROR()
+    return kong.response.exit(500, { message = "An unexpected error occurred" })
   end
 
   if not ws then
-    return responses.send_HTTP_NOT_FOUND(fmt("'%s' workspace not found",
-                                                                      ws_name))
+    return kong.response.exit(404, { message = fmt("'%s' workspace not found", ws_name) })
   end
 
   -- check if portal is enabled
   local portal_enabled = workspaces.retrieve_ws_config(PORTAL, ws)
   if not portal_enabled then
-    return responses.send_HTTP_NOT_FOUND(fmt("'%s' portal disabled", ws_name))
+    return kong.response.exit(404, { message =  fmt("'%s' portal disabled", ws_name) })
   end
 
   -- save workspace name in the context; if not passed, default workspace is
@@ -201,7 +199,7 @@ app:before_filter(function(self)
 
   if not ok then
     log(ERR, err)
-    return responses.send_HTTP_INTERNAL_SERVER_ERROR()
+    return kong.response.exit(500, { message = "An unexpected error occurred" })
   end
 
   if not NEEDS_BODY[ngx.req.get_method()] then
@@ -228,7 +226,7 @@ app:before_filter(function(self)
     return
   end
 
-  return responses.send_HTTP_UNSUPPORTED_MEDIA_TYPE()
+  return kong.response.exit(415)
 end)
 
 
