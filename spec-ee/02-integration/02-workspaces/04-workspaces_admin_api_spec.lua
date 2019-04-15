@@ -127,6 +127,141 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
         local json = cjson.decode(body)
         assert.truthy(#json.data > 0)
       end)
+
+      describe("portal_auth_conf", function()
+
+        after_each(function()
+          db:truncate("files")
+          db:truncate("workspaces")
+          db:truncate("workspace_entities")
+        end)
+
+        it("(basic-auth) handles invalid config object", function()
+          local res = assert(client:post("/workspaces", {
+            body   = {
+              name = "foo",
+              config = {
+                portal_auth = "basic-auth",
+                portal_auth_conf = {
+                  ["abc"] = "123"
+                }
+              }
+            },
+            headers = {
+              ["Content-Type"] = "application/json",
+            }
+          }))
+
+          local body = assert.res_status(400, res)
+          local json = cjson.decode(body)
+
+          assert.equals("unknown field", json.message.config.abc)
+        end)
+
+        it("(basic-auth) handles invalid config type", function()
+          local res = assert(client:post("/workspaces", {
+            body   = {
+              name = "foo",
+              config = {
+                portal_auth = "basic-auth",
+                portal_auth_conf = "hello"
+              }
+            },
+            headers = {
+              ["Content-Type"] = "application/json",
+            }
+          }))
+
+          local body = assert.res_status(400, res)
+          local json = cjson.decode(body)
+
+          assert.equals("'config.portal_auth_conf' must be type 'table'", json.message)
+        end)
+
+        it("(basic-auth) accepts valid config", function()
+          local res = assert(client:post("/workspaces", {
+            body   = {
+              name = "foo",
+              config = {
+                portal_auth = "basic-auth",
+                portal_auth_conf = {
+                  ["hide_credentials"] = true
+                }
+              }
+            },
+            headers = {
+              ["Content-Type"] = "application/json",
+            }
+          }))
+
+          local body = assert.res_status(201, res)
+          local json = cjson.decode(body)
+          assert.equals(json.config.portal_auth_conf, '{"hide_credentials":true}') 
+        end)
+
+        it("(key-auth) handles invalid config object", function()
+          local res = assert(client:post("/workspaces", {
+            body   = {
+              name = "foo",
+              config = {
+                portal_auth = "key-auth",
+                portal_auth_conf = {
+                  ["abc"] = "123"
+                }
+              }
+            },
+            headers = {
+              ["Content-Type"] = "application/json",
+            }
+          }))
+
+          local body = assert.res_status(400, res)
+          local json = cjson.decode(body)
+
+          assert.equals("unknown field", json.message.config.abc)
+        end)
+
+        it("(key-auth) handles invalid config type", function()
+          local res = assert(client:post("/workspaces", {
+            body   = {
+              name = "foo",
+              config = {
+                portal_auth = "key-auth",
+                portal_auth_conf = "hello"
+              }
+            },
+            headers = {
+              ["Content-Type"] = "application/json",
+            }
+          }))
+
+          local body = assert.res_status(400, res)
+          local json = cjson.decode(body)
+
+          assert.equals("'config.portal_auth_conf' must be type 'table'", json.message)
+        end)
+
+        it("(key-auth) accepts valid config", function()
+          local res = assert(client:post("/workspaces", {
+            body   = {
+              name = "foo",
+              config = {
+                portal_auth = "key-auth",
+                portal_auth_conf = {
+                  ["hide_credentials"] = true
+                }
+              }
+            },
+            headers = {
+              ["Content-Type"] = "application/json",
+            }
+          }))
+
+          local body = assert.res_status(201, res)
+          local json = cjson.decode(body)
+          assert.equals(json.config.portal_auth_conf, '{"hide_credentials":true}') 
+        end)
+      end)
     end)
 
     describe("GET", function()
@@ -261,6 +396,178 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
         assert.equals(json.config.portal, expected_config.portal)
         assert.equals(json.config.portal_auth, expected_config.portal_auth)
         assert.equals(json.config.portal_auto_approve, expected_config.portal_auto_approve)
+      end)
+
+      describe("portal_auth_conf", function()
+
+        before_each(function()
+          db:truncate("files")
+          db:truncate("workspaces")
+          db:truncate("workspace_entities")
+        end)
+
+        it("(basic-auth) does not allow PATCH without 'portal_auth' value", function()
+          assert(bp.workspaces:insert {
+            name = "rad-portal-man",
+            config = {
+              portal = true
+            }
+          })
+  
+          local res = client:patch("/workspaces/rad-portal-man", {
+            body = {
+              config = {
+                portal_auth_conf = {
+                  ["hide_credentials"] = true
+                }
+              }
+            },
+            headers = {
+              ["Content-Type"] = "application/json",
+            }
+          })
+  
+          local body = assert.res_status(400, res)
+          local json = cjson.decode(body)
+          assert.equals("'config.portal_auth' must be set in order to configure 'config.portal_auth_type'", json.message)
+        end)
+
+        it("(basic-auth) allows PATCH when setting 'portal_auth' in same call", function()
+          assert(bp.workspaces:insert {
+            name = "rad-portal-man",
+            config = {
+              portal = true
+            }
+          })
+  
+          local res = client:patch("/workspaces/rad-portal-man", {
+            body = {
+              config = {
+                portal_auth_conf = {
+                  ["hide_credentials"] = true
+                },
+                portal_auth = 'basic-auth'
+              }
+            },
+            headers = {
+              ["Content-Type"] = "application/json",
+            }
+          })
+  
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+          assert.equals('{"hide_credentials":true}', json.config.portal_auth_conf)
+        end)
+
+        it("(basic-auth) allows PATCH with no previous 'portal_auth_conf' value", function()
+          assert(bp.workspaces:insert {
+            name = "rad-portal-man",
+            config = {
+              portal = true,
+              portal_auth = 'basic-auth'
+            }
+          })
+  
+          local res = client:patch("/workspaces/rad-portal-man", {
+            body = {
+              config = {
+                portal_auth_conf = {
+                  ["hide_credentials"] = true
+                }
+              }
+            },
+            headers = {
+              ["Content-Type"] = "application/json",
+            }
+          })
+  
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+          assert.equals('{"hide_credentials":true}', json.config.portal_auth_conf)
+        end)
+
+        it("(basic-auth) PATCH overrides previous 'portal_auth_conf' values", function()
+          assert(client:post("/workspaces", {
+            body = {
+              name = "bad-portal-man",
+              config = {
+                portal_auth = "basic-auth",
+                portal_auth_conf = {
+                  ["hide_credentials"] = true,
+                }
+              }
+            },
+            headers = {
+              ["Content-Type"] = "application/json",
+            }
+          }))
+
+          if client then
+            client:close()
+          end
+          client = assert(helpers.admin_client())
+
+          local res = client:patch("/workspaces/bad-portal-man", {
+            body = {
+              config = {
+                portal_auth_conf = {
+                  ["hide_credentials"] = false
+                }
+              }
+            },
+            headers = {
+              ["Content-Type"] = "application/json",
+            }
+          })
+
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+          assert.equals('{"hide_credentials":false}', json.config.portal_auth_conf)
+        end)
+
+        it("(key-auth) PATCH respects previous 'portal_auth_conf' values", function()
+          assert(client:post("/workspaces", {
+            body = {
+              name = "sad-portal-man",
+              config = {
+                portal_auth = "key-auth",
+                portal_auth_conf = {
+                  ["hide_credentials"] = false,
+                  ["key_names"] = { "dog" }
+                }
+              }
+            },
+            headers = {
+              ["Content-Type"] = "application/json",
+            }
+          }))
+
+          if client then
+            client:close()
+          end
+
+          client = assert(helpers.admin_client())
+
+          local res = client:patch("/workspaces/sad-portal-man", {
+            body = {
+              config = {
+                portal_auth_conf = {
+                  ["hide_credentials"] = true
+                }
+              }
+            },
+            headers = {
+              ["Content-Type"] = "application/json",
+            }
+          })
+
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+          assert.equals(
+            '{"hide_credentials":true,"key_names":["dog"]}',
+            json.config.portal_auth_conf
+          )
+        end)
       end)
     end)
 

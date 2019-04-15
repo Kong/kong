@@ -1,19 +1,19 @@
-local cjson     = require "cjson.safe"
+local cjson      = require "cjson.safe"
 local constants  = require "kong.constants"
+local Errors     = require "kong.db.errors"
 local singletons = require "kong.singletons"
+local auth       = require "kong.portal.auth"
+local utils      = require "kong.tools.utils"
+local responses  = require "kong.tools.responses"
 local ws_helper  = require "kong.workspaces.helper"
 local enums      = require "kong.enterprise_edition.dao.enums"
-local Errors     = require "kong.db.errors"
 local enterprise_utils = require "kong.enterprise_edition.utils"
-local auth      = require "kong.portal.auth"
-local responses     = require "kong.tools.responses"
 
 local log = ngx.log
 local ERR = ngx.ERR
 local _log_prefix = "[developers] "
 local helpers = { responses = responses }
 local ws_constants = constants.WORKSPACE_CONFIG
-
 
 local auth_plugins = {
   ["basic-auth"] = { name = "basic-auth", dao = "basicauth_credentials", },
@@ -86,6 +86,53 @@ local function create_consumer(entity)
     username = entity.email,
     type = enums.CONSUMERS.TYPE.DEVELOPER,
   })
+end
+
+
+local function set_portal_auth_conf(ws, entity)
+  local ws_config = ws.config or {}
+  local entity_config = entity.config or {}
+  local auth_type = ws_config.portal_auth or entity_config.portal_auth
+  local auth_empty = not auth_type or
+                        auth_type == ngx.null or
+                        auth_type == ""
+
+  if auth_empty and
+     entity_config.portal_auth_conf and
+     entity_config.portal_auth_conf ~= ngx.null then
+
+    return nil, "'config.portal_auth' must be set in order to configure 'config.portal_auth_type'"
+  end
+
+  if auth_type and
+     entity_config.portal_auth_conf and
+     entity_config.portal_auth_conf ~= ngx.null then
+
+    local entity_auth_conf = entity_config.portal_auth_conf 
+    local ws_auth_conf = cjson.decode(ws_config.portal_auth_conf)
+
+    if type(entity_auth_conf) ~= "table" then
+      return nil, "'config.portal_auth_conf' must be type 'table'"
+    end
+
+    local auth_conf = utils.deep_merge(ws_auth_conf or {}, entity_auth_conf)
+    local ok, err = singletons.invoke_plugin({
+      name = auth_type,
+      config = auth_conf,
+      phases = { "access" },
+      api_type = "portal",
+      db = kong.db,
+      validate_only = true,
+    })
+
+    if not ok then
+      return nil, err
+    end
+
+    entity.config.portal_auth_conf = cjson.encode(auth_conf)
+  end
+
+  return entity
 end
 
 
@@ -272,4 +319,5 @@ end
 return {
   create_developer = create_developer,
   update_developer = update_developer,
+  set_portal_auth_conf = set_portal_auth_conf,
 }

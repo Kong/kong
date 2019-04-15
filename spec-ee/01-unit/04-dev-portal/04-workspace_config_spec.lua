@@ -2,11 +2,10 @@ local singletons = require "kong.singletons"
 local ws_helper  = require "kong.workspaces.helper"
 local constants  = require "kong.constants"
 
-
 local ws_constants = constants.WORKSPACE_CONFIG
 
 
-describe("config helper", function()
+describe("retrieve_ws_config", function()
   local snapshot
 
   before_each(function()

@@ -236,6 +236,7 @@ build = {
     ["kong.db.dao.snis"] = "kong/db/dao/snis.lua",
     ["kong.db.dao.targets"] = "kong/db/dao/targets.lua",
     ["kong.db.dao.plugins"] = "kong/db/dao/plugins.lua",
+    ["kong.db.dao.workspaces"] = "kong/db/dao/workspaces.lua",
     ["kong.db.schema"] = "kong/db/schema/init.lua",
     ["kong.db.schema.entities.admins"] = "kong/db/schema/entities/admins.lua",
     ["kong.db.schema.entities.apis"] = "kong/db/schema/entities/apis.lua",

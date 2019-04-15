@@ -1,16 +1,30 @@
-local enterprise_utils = require "kong.enterprise_edition.utils"
+local lpeg     = require "lpeg"
+local Schema   = require "kong.db.schema"
+local lp_email = require "lpeg_patterns.email"
 local typedefs = require "kong.db.schema.typedefs"
 
+local EOF = lpeg.P(-1)
+local email_validator_pattern = lp_email.email_nocfws * EOF
 
-local function validate_email(email)
-  if email ~= nil then
-    local ok, err = enterprise_utils.validate_email(email)
-    if not ok then
-      return false, email .. " is invalid: " .. err
+
+local email = Schema.define {
+  type = "string",
+  custom_validator = function(s)
+    local has_match = email_validator_pattern:match(s)
+    if not has_match then
+      return nil, "invalid email address " .. s
     end
+    return true
   end
+}
 
-  return true
+
+local function validate_portal_auth(portal_auth)
+  return portal_auth == "openid-connect" or
+         portal_auth == "basic-auth" or
+         portal_auth == "key-auth" or
+         portal_auth == "" or
+         portal_auth == nil
 end
 
 
@@ -22,7 +36,8 @@ local config_schema = {
     { portal = { type = "boolean", required = true, default = false } },
     -- XXX supported auth should not be hardcoded here, but instead set in a single place,
     -- in the portal module
-    { portal_auth = { type = "string", one_of = {"basic-auth", "key-auth", "openid-connect"} } },
+    { portal_auth = { type = "string", len_min = 0, custom_validator = validate_portal_auth } },
+    { portal_auth_conf = { type = "string" } },
     { meta = { type = "map", keys = { type = "string" }, values = { type = "string" } } },
     { portal_auto_approve = { type = "boolean" } },
     -- XXX gt -1 will not read as natural/friendly as ge (>=) 0 - but there's no ge
@@ -32,8 +47,8 @@ local config_schema = {
     { portal_approved_email = { type = "boolean" } },
     { portal_reset_email = { type = "boolean" } },
     { portal_reset_success_email = { type = "boolean" } },
-    { portal_emails_from = { type = "string", custom_validator = validate_email} },
-    { portal_emails_reply_to = { type = "string", custom_validator = validate_email } },
+    { portal_emails_from = email },
+    { portal_emails_reply_to = email },
     { portal_cors_origins = { type = "array", elements = { type = "string", is_regex = true } } },
   }
 }
@@ -59,6 +74,7 @@ return {
   primary_key = { "id" },
   cache_key = { "name" },
   endpoint_key = "name",
+  dao          = "kong.db.dao.workspaces",
 
   fields = {
     { id          = typedefs.uuid },

@@ -86,7 +86,42 @@ local function prepare_plugin(opts)
 end
 
 
+local function validate(opts)
+  local plugin = loaded_plugins_map[opts.name]
+
+  if not plugin then
+    return nil, "plugin: " .. opts.name .. " not found."
+  end
+
+  local fields = {
+    name = opts.name,
+    service = { id = SERVICE_IDS[opts.api_type], },
+    config = utils.deep_copy(opts.config or {}),
+  }
+
+  -- convert plugin configuration over to model to obtain defaults
+  local plugins_entity = opts.db.plugins
+  local model, err = plugins_entity.schema:process_auto_fields(fields, "insert")
+  if not model then
+    return nil, err
+  end
+
+    -- only cache valid models
+  local ok, err = plugins_entity.schema:validate_insert(model)
+  if not ok then
+    -- this config is invalid -- return errors until the user fixes
+    return nil, err
+  end
+
+  return true
+end
+
+
 local function prepare_and_invoke(opts)
+  if opts.validate_only then
+    return validate(opts)
+  end
+
   local prepared_plugin, err = prepare_plugin(opts)
   if not prepared_plugin then
     return nil, err

@@ -43,8 +43,8 @@ describe("workspace config", function()
 
       local ok, err = schema:validate(values)
       assert.falsy(ok)
-      assert.equal("dog is invalid: missing '@' symbol", err.config["portal_emails_from"])
-      assert.equal("cat is invalid: missing '@' symbol", err.config["portal_emails_reply_to"])
+      assert.equal("invalid email address dog", err.config["portal_emails_from"])
+      assert.equal("invalid email address cat", err.config["portal_emails_reply_to"])
     end)
 
     it("should accept properly formatted token expiration", function()
@@ -98,15 +98,13 @@ describe("workspace config", function()
       }
       assert.truthy(schema:validate(values))
 
-      -- XXX check with portal team if we really need the empty string
-      -- as a possible value
-      --values = {
-      --  name = "test",
-      --  config = {
-      --    portal_auth = "",
-      --  },
-      --}
-      --assert.truthy(schema:validate(values))
+      values = {
+       name = "test",
+       config = {
+         portal_auth = "",
+       },
+      }
+      assert.truthy(schema:validate(values))
 
       values = {
         name = "test",
