@@ -351,7 +351,7 @@ function _M.new(dao, db)
   end)
 
   local workspace_name_seq = new_sequence("workspace-name-%d")
-  res.workspaces = new_blueprint(dao and dao.workspaces, function()
+  res.workspaces = new_blueprint(db.workspaces, function()
     return {
       name = workspace_name_seq:next(),
     }
