@@ -375,9 +375,10 @@ local function translate_vitals_stats(metrics_query, prometheus_stats, interval,
         end
       end
 
-      local last_value, current_value, incr_value
+      local last_value, last_ts
       start_k = earliest_ts
       for _, dp in ipairs(dps) do
+        local current_value
         -- if we use integer as key, cjson will complain excessively sparse array
         local k = fmt("%d", dp[1])
         -- 'NaN' will be parsed to math.nan and cjson will not encode it
@@ -389,19 +390,25 @@ local function translate_vitals_stats(metrics_query, prometheus_stats, interval,
         end
 
         if is_rate and v ~= nil then
-          if last_value ~= nil then -- skip the first data point
-            -- add the data point
-            if last_value > v then-- detect counter reset
-              incr_value = v
-            else
-              incr_value = v - last_value
-            end
-            current_value = incr_value
+          -- if there's missed scrape, skip the current for calculating rate
+          -- because we have zero knowledge with the previous counter value
+          if last_ts and dp[1] - last_ts > interval then
+            last_value = nil
           end
-          last_value = v
+          -- only it's not the first data point at beginning or missed scrape
+          if last_value ~= nil then 
+            -- add the data point
+            if last_value > v then -- detect counter reset
+              current_value = v
+            else
+              current_value = v - last_value
+            end
+          end
         else
           current_value = v == nil and null or math_floor(v)
         end
+        last_value = v
+        last_ts = dp[1]
 
         -- if there's only one metric, client expect every timestamp has a value of number
         if metrics_count == 1 then
@@ -536,8 +543,9 @@ local function translate_vitals_status(metrics_query, prometheus_stats, interval
         code = status_code_tag
       end
 
-      local last_value, incr_value
+      local last_value, last_ts
       for _, dp in ipairs(series.values) do
+        local incr_value
         -- if we use integer as key, cjson will complain excessively sparse array
         local k = fmt("%d", dp[1])
         -- 'NaN' will be parsed to math.nan and cjson will not encode it
@@ -550,10 +558,15 @@ local function translate_vitals_status(metrics_query, prometheus_stats, interval
           if not n[k] then
               n[k] = {}
           end
-          
-          if last_value ~= nil then -- skip the first data point
+          -- if there's missed scrape, skip the current for calculating rate
+          -- because we have zero knowledge with the previous counter value
+          if last_ts and dp[1] - last_ts > interval then
+            last_value = nil
+          end
+          -- only it's not the first data point at beginning or missed scrape
+          if last_value ~= nil then
             -- add the data point
-            if last_value > v then-- detect counter reset
+            if last_value > v then -- detect counter reset
               incr_value = v
             else
               incr_value = v - last_value
@@ -565,8 +578,9 @@ local function translate_vitals_status(metrics_query, prometheus_stats, interval
               n[k][code] = incr_value
             end
           end
-          last_value = v
         end
+        last_value = v
+        last_ts = dp[1]
 
       end -- for _, dp in ipairs(series.values) do
     end -- do

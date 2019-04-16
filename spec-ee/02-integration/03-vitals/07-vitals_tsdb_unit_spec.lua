@@ -275,6 +275,71 @@ describe("vitals Prometheus strategy", function()
     cjson.decode('{"status":"success","data":{"resultType":"matrix","result":[{"metric":{"instance":"localhost:65555"},"values":[[1527892620,"2699"],[1527892680,"12342"],[1527892740,"15463"],[1527892800,"27453"],[1527892860,"38464"],[1527892920,"49573"]]}]}}').data.result
   }
 
+  local common_stats_rates_sample = {
+    -- prometheus v1 format
+    -- is_rate, counter reset
+    cjson.decode('{"status":"success","data":{"resultType":"matrix","result":[{"metric":{"instance":"localhost:65555"},"values":[[1527892620,"2699"],[1527892680,"27402"],[1527892740,"27402"],[1527892800,"0"],[1527892860,"27402"],[1527892920,"27402"]]}]}}').data.result,
+    -- is_rate, missed scrape
+    cjson.decode('{"status":"success","data":{"resultType":"matrix","result":[{"metric":{"instance":"localhost:65555"},"values":[[1527892620,"5770"],[1527892740,"50789"],[1527892800,"50789"],[1527892860,"50789"],[1527892920,"50789"]]}]}}').data.result,
+    cjson.decode('{"status":"success","data":{"resultType":"matrix","result":[{"metric":{"instance":"localhost:65555"},"values":[[1527892620,"0"],[1527892680,"1"],[1527892740,"1"],[1527892800,"1"],[1527892860,"1"],[1527892920,"1"]]}]}}').data.result,
+    cjson.decode('{"status":"success","data":{"resultType":"matrix","result":[{"metric":{"instance":"localhost:65555"},"values":[[1527892620,"4548"],[1527892680,"3099"],[1527892740,"3099"],[1527892800,"3099"],[1527892860,"3099"],[1527892920,"3099"]]}]}}').data.result,
+    cjson.decode('{"status":"success","data":{"resultType":"matrix","result":[{"metric":{"instance":"localhost:65555"},"values":[[1527892620,"-1"],[1527892680,"43"],[1527892740,"45"],[1527892800,"45"],[1527892860,"45"],[1527892920,"45"]]}]}}').data.result,
+    cjson.decode('{"status":"success","data":{"resultType":"matrix","result":[{"metric":{"instance":"localhost:65555"},"values":[[1527892620,"93"],[1527892680,"203"],[1527892740,"203"],[1527892800,"203"],[1527892860,"203"],[1527892920,"203"]]}]}}').data.result,
+    -- is_rate, missed scrape and counter reset
+    cjson.decode('{"status":"success","data":{"resultType":"matrix","result":[{"metric":{"instance":"localhost:65555"},"values":[[1527892620,"95"],[1527892680,"11386"],[1527892800,"10"],[1527892860,"11386"],[1527892920,"11386"]]}]}}').data.result,
+    cjson.decode('{"status":"success","data":{"resultType":"matrix","result":[{"metric":{"instance":"localhost:65555"},"values":[[1527892620,"3030.5333333333333"],[1527892680,"1352.1333333333334"],[1527892740,"1361.9"],[1527892800,"1361.9"],[1527892860,"1361.9"],[1527892920,"1361.9"]]}]}}').data.result,
+    cjson.decode('{"status":"success","data":{"resultType":"matrix","result":[{"metric":{"instance":"localhost:65555"},"values":[[1527892620,"25.066666666666666"],[1527892680,"102.66666666666667"],[1527892740,"103.03333333333333"],[1527892800,"103.03333333333333"],[1527892860,"103.03333333333333"],[1527892920,"103.03333333333333"]]}]}}').data.result,
+  }
+
+  -- 200 counter reset
+  -- 201 missed scrape
+  -- 204 counter reset and missed scrape
+  local status_code_rates_sample = {
+    cjson.decode([[
+      {
+        "status": "success",
+        "data": {
+          "resultType": "matrix",
+          "result": [{
+            "metric": {
+              "status_code": "200"
+            },
+            "values": [
+              [1527892620, "19"],
+              [1527892680, "1171"],
+              [1527892740, "1171"],
+              [1527892800, "10"],
+              [1527892860, "1171"],
+              [1527892920, "1171"]
+            ]
+          }, {
+            "metric": {
+              "status_code": "201"
+            },
+            "values": [
+              [1527892620, "5"],
+              [1527892680, "1186"],
+              [1527892740, "1186"],
+              [1527892860, "1186"],
+              [1527892920, "1186"]
+            ]
+          }, {
+            "metric": {
+              "status_code": "204"
+            },
+            "values": [
+              [1527892620, "5"],
+              [1527892680, "1186"],
+              [1527892740, "1186"],
+              [1527892860, "10"],
+              [1527892920, "1186"]
+            ]
+          }]
+        }
+      }
+    ]]).data.result,
+  }
+
   local query_parameters = {
     -- level, expected_duration_seconds, expected_interval (seconds), passed_in_interval (seconds)
     { "seconds", 5  * 60, 30, 1 },     -- 5min
@@ -829,7 +894,7 @@ describe("vitals Prometheus strategy", function()
     end)
   end)
 
-  describe("translates", function()
+  describe("translates common stats", function()
     local prometheus = require "kong.vitals.prometheus.strategy"
     setup(function()
       -- the last variable should be synced with the sample json below
@@ -840,7 +905,7 @@ describe("vitals Prometheus strategy", function()
       prometheus.query:revert()
     end)
 
-    it("cluster level common stats", function()
+    it("cluster level", function()
       local prom = prometheus.new(nil, {host = "notahost", port = 65555, cluster_level = true})
       local ok, err = prom:select_stats("minutes", "cluster", nil)
       assert.is_nil(err)
@@ -884,7 +949,7 @@ describe("vitals Prometheus strategy", function()
       ]]), ok)
     end)
 
-    it("node level common stats", function()
+    it("node level", function()
       local prom = prometheus.new(nil, {host = "notahost", port = 65555})
       local ok, err = prom:select_stats("minutes", "cluster", nil)
       assert.is_nil(err)
@@ -934,7 +999,7 @@ describe("vitals Prometheus strategy", function()
     end)
   end)
 
-  describe("translates", function()
+  describe("translates status code", function()
     local prometheus = require "kong.vitals.prometheus.strategy"
     local cjson = require "cjson"
     setup(function()
@@ -946,10 +1011,10 @@ describe("vitals Prometheus strategy", function()
       prometheus.query:revert()
     end)
 
-    it("status code", function()
+    it("", function()
       local prom = prometheus.new(nil, {host = "notahost", port = 65555})
       -- we feed in per minute sample so we query for duration for minute
-      local ok, err = prom:select_status_codes({ duration = 60, entity = ""})
+      local ok, err = prom:select_status_codes({ duration = 60, entity_type = ""})
       assert.is_nil(err)
       assert.same(cjson.decode([[
         {
@@ -1032,7 +1097,7 @@ describe("vitals Prometheus strategy", function()
       ]]), ok)
     end)
 
-    it("status code with merged classes", function()
+    it("with merged classes", function()
       local prom = prometheus.new(nil, {host = "notahost", port = 65555})
       -- we feed in per minute sample so we query for duration for minute
       local ok, err = prom:select_status_codes({ duration = 60, entity_type = "cluster"})
@@ -1090,7 +1155,7 @@ describe("vitals Prometheus strategy", function()
     end)
   end)
 
-  describe("translates", function()
+  describe("translates status code with key_by", function()
     local prometheus = require "kong.vitals.prometheus.strategy"
     local cjson = require "cjson"
     setup(function()
@@ -1102,7 +1167,7 @@ describe("vitals Prometheus strategy", function()
       prometheus.query:revert()
     end)
 
-    it("status code with key_by", function()
+    it("", function()
       local prom = prometheus.new(nil, {host = "notahost", port = 65555})
       -- we feed in per minute sample so we query for duration for minute
       local ok, err = prom:select_status_codes({
@@ -1167,7 +1232,7 @@ describe("vitals Prometheus strategy", function()
     end)
   end)
 
-  describe("translates", function()
+  describe("translates consumer stats", function()
     local prometheus = require "kong.vitals.prometheus.strategy"
     setup(function()
       -- the last variable should be synced with the sample json below
@@ -1178,17 +1243,17 @@ describe("vitals Prometheus strategy", function()
       prometheus.query:revert()
     end)
 
-    it("cluster level consumer stats", function()
+    it("cluster level", function()
       local prom = prometheus.new(nil, {host = "notahost", port = 65555, cluster_level = true})
-      local ok, err = prom:select_consumer_stats("minutes", "cluster", nil)
+      local ok, err = prom:select_consumer_stats({duration = 60, consumer_id = utils.uuid()})
       assert.is_nil(err)
       assert.same(cjson.decode([[
       {
         "meta": {
           "earliest_ts": 1527892620,
           "latest_ts": 1527892920,
-          "interval": "seconds",
-          "interval_width": 15,
+          "interval": "minutes",
+          "interval_width": 60,
           "level": "cluster",
           "nodes": {
               "cluster": {
@@ -1212,45 +1277,172 @@ describe("vitals Prometheus strategy", function()
       ]]), ok)
     end)
 
-    pending("node level consumer stats", function()
-      local prom = prometheus.new(nil, {host = "notahost", port = 65555})
-      local ok, err = prom:select_consumer_stats("minutes", "cluster", nil)
-      assert.is_nil(err)
-
-      local prom = prometheus.new(nil, {host = "notahost", port = 65555, cluster_level = false})
-      local ok_explicit_arg, err = prom:select_consumer_stats("minutes", "cluster", nil)
-      assert.is_nil(err)
-      assert.same(ok, ok_explicit_arg)
-
-      assert.same(cjson.decode([[
-      {
-        "meta": {
-          "earliest_ts": 1527892620,
-          "latest_ts": 1527892920,
-          "interval": "seconds",
-          "interval_width": 30,
-          "level": "node",
-          "nodes": {
-            "localhost:65555": {
-              "hostname": "localhost:65555"
-            }
-          },
-          "stat_labels": [
-            "requests_consumer_total"
-          ]
-        },
-        "stats": {
-          "localhost:65555": {
-            "1527892680": 9643,
-            "1527892740": 3121,
-            "1527892800": 11990,
-            "1527892860": 11011,
-            "1527892920": 11109
-          }
-        }
-      }
-      ]]), ok)
+    pending("node level", function()
     end)
+  end)
+
+  describe("calculates rates correctly", function()
+    local prometheus = require "kong.vitals.prometheus.strategy"
+
+    describe("with common stats", function()
+      setup(function()
+        -- the last variable should be synced with the sample json below
+        stub(prometheus, "query").returns(common_stats_rates_sample, nil, 120)
+      end)
+    
+      teardown(function()
+        prometheus.query:revert()
+      end)
+
+      it("", function()
+        local prom = prometheus.new(nil, {host = "notahost", port = 65555, cluster_level = true})
+        local ok, err = prom:select_stats("minutes", "cluster", nil)
+        assert.is_nil(err)
+        assert.same(cjson.decode([[
+          {
+            "meta": {
+              "earliest_ts": 1527892620,
+              "latest_ts": 1527892920,
+              "interval": "minutes",
+              "interval_width": 60,
+              "level": "cluster",
+              "stat_labels": [
+                "cache_datastore_hits_total",
+                "cache_datastore_misses_total",
+                "latency_proxy_request_min_ms",
+                "latency_proxy_request_max_ms",
+                "latency_upstream_min_ms",
+                "latency_upstream_max_ms",
+                "requests_proxy_total",
+                "latency_proxy_request_avg_ms",
+                "latency_upstream_avg_ms"
+              ],
+              "nodes": {
+                "cluster": {
+                  "hostname": "cluster"
+                }
+              }
+            },
+            "stats": {
+              "cluster": {
+                "1527892680": [24703, null, 1, 3099, 43, 203, 11291, 1352, 102],
+                "1527892740": [0, null, 1, 3099, 45, 203, null, 1361, 103],
+                "1527892920": [0, 0, 1, 3099, 45, 203, 0, 1361, 103],
+                "1527892860": [27402, 0, 1, 3099, 45, 203, 11376, 1361, 103],
+                "1527892620": [null, null, 0, 4548, -1, 93, null, 3030, 25],
+                "1527892800": [0, 0, 1, 3099, 45, 203, null, 1361, 103]
+              }
+            }
+          }
+        ]]), ok)
+      end)
+    end)
+
+    describe("with status code", function()
+      setup(function()
+        -- the last variable should be synced with the sample json below
+        stub(prometheus, "query").returns(status_code_rates_sample, nil, 120)
+      end)
+    
+      teardown(function()
+        prometheus.query:revert()
+      end)
+
+      it("", function()
+        local prom = prometheus.new(nil, {host = "notahost", port = 65555, cluster_level = true})
+        local ok, err = prom:select_status_codes({ duration = 60, entity_type = ""})
+        assert.is_nil(err)
+        assert.same(cjson.decode([[
+          {
+            "meta":{
+               "nodes":{
+                  "cluster":{
+                     "hostname":"cluster"
+                  }
+               },
+               "level":"cluster",
+               "interval_width":60,
+               "interval":"minutes",
+               "stat_labels":[
+                  "status_code"
+               ]
+            },
+            "stats":{
+               "cluster":{
+                  "1527892620":{
+          
+                  },
+                  "1527892680":{
+                     "204":1181,
+                     "200":1152,
+                     "201":1181
+                  },
+                  "1527892740":{
+                     "204":0,
+                     "200":0,
+                     "201":0
+                  },
+                  "1527892800":{
+                    "200":10
+                  },
+                  "1527892860":{
+                    "200":1161
+                  },
+                  "1527892920":{
+                     "204":1176,
+                     "200":0,
+                     "201":0
+                  }
+               }
+            }
+         }
+        ]]), ok)
+      end)
+
+      it("with merged classes", function()
+        local prom = prometheus.new(nil, {host = "notahost", port = 65555, cluster_level = true})
+        local ok, err = prom:select_status_codes({ duration = 60, entity_type = "cluster"})
+        assert.is_nil(err)
+        assert.same(cjson.decode([[
+          {
+            "meta": {
+              "interval": "minutes",
+              "interval_width": 60,
+              "stat_labels": ["status_code"],
+              "nodes": {
+                "cluster": {
+                  "hostname": "cluster"
+                }
+              },
+              "level": "cluster"
+            },
+            "stats":{
+               "cluster":{
+                  "1527892620":{
+          
+                  },
+                  "1527892680":{
+                     "2xx":3514
+                  },
+                  "1527892740":{
+                     "2xx":0
+                  },
+                  "1527892800":{
+                    "2xx":10
+                  },
+                  "1527892860":{
+                    "2xx":1161
+                  },
+                  "1527892920":{
+                     "2xx":1176
+                  }
+               }
+            }
+         }
+        ]]), ok)
+      end)
+    end)
+
   end)
 
   describe("mocks", function()
