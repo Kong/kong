@@ -144,7 +144,7 @@ For usage with [key-auth] plugin
         --data "name=request-termination"  \
         --data "config.status_code=403" \
         --data "config.message=So long and thanks for all the fish!" \
-        --data "consumer_id=<anonymous_consumer_id>"
+        --data "consumer.id=<anonymous_consumer_id>"
     ```
 
     Anonymous requests now will return status `403`.
