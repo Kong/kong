@@ -1,15 +1,15 @@
 local singletons    = require "kong.singletons"
-local crud          = require "kong.api.crud_helpers"
-local ws_helper     = require "kong.workspaces.helper"
-local enums         = require "kong.enterprise_edition.dao.enums"
 local cjson         = require "cjson.safe"
-local ee_api        = require "kong.enterprise_edition.api_helpers"
 local constants     = require "kong.constants"
 local auth          = require "kong.portal.auth"
+local crud          = require "kong.api.crud_helpers"
+local ws_helper     = require "kong.workspaces.helper"
 local portal_smtp_client = require "kong.portal.emails"
-local secrets = require "kong.enterprise_edition.consumer_reset_secret_helpers"
-local endpoints = require "kong.api.endpoints"
-
+local endpoints          = require "kong.api.endpoints"
+local crud_helpers       = require "kong.portal.crud_helpers"
+local enums              = require "kong.enterprise_edition.dao.enums"
+local ee_api             = require "kong.enterprise_edition.api_helpers"
+local secrets            = require "kong.enterprise_edition.consumer_reset_secret_helpers"
 
 local kong = kong
 
@@ -98,6 +98,12 @@ return {
   ["/files/unauthenticated"] = {
     -- List all unauthenticated files stored in the portal file system
     GET = function(self, db, helpers)
+      local size = self.params.size or 100
+      local offset = self.params.offset
+
+      self.params.size = nil
+      self.params.offset = nil
+
       local files, err, err_t = db.files:select_all({
         auth = false,
         type = self.params.type,
@@ -109,7 +115,15 @@ return {
         return endpoints.handle_error(err_t)
       end
 
-      return helpers.responses.send_HTTP_OK(count_entities(files))
+      local paginated_results, _, err_t = crud_helpers.paginate(
+        self, '/files/unauthenticated', files, size, offset
+      )
+      
+      if not paginated_results then
+        return endpoints.handle_error(err_t)
+      end
+
+      return helpers.responses.send_HTTP_OK(paginated_results)
     end,
   },
 
@@ -123,6 +137,12 @@ return {
     end,
 
     GET = function(self, db, helpers)
+      local size = self.params.size or 100
+      local offset = self.params.offset
+
+      self.params.size = nil
+      self.params.offset = nil
+
       local files, err, err_t = db.files:select_all({
         type = self.params.type,
       }, {
@@ -133,7 +153,15 @@ return {
         return endpoints.handle_error(err_t)
       end
 
-      return helpers.responses.send_HTTP_OK(count_entities(files))
+      local paginated_results, _, err_t = crud_helpers.paginate(
+        self, '/files/unauthenticated', files, size, offset
+      )
+
+      if not paginated_results then
+        return endpoints.handle_error(err_t)
+      end
+
+      return helpers.responses.send_HTTP_OK(paginated_results)
     end,
   },
 

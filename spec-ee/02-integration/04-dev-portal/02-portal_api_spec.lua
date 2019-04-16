@@ -348,7 +348,6 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
             local body = assert.res_status(200, res)
             local json = cjson.decode(body)
 
-            assert.equal(20, json.total)
             assert.equal(20, #json.data)
           end)
 
@@ -361,7 +360,6 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
             local body = assert.res_status(200, res)
             local json = cjson.decode(body)
 
-            assert.equal(10, json.total)
             assert.equal(10, #json.data)
             for key, value in ipairs(json.data) do
               assert.equal(false, value.auth)
@@ -377,11 +375,31 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
             local body = assert.res_status(200, res)
             local json = cjson.decode(body)
 
-            assert.equal(5, json.total)
             assert.equal(5, #json.data)
             for key, value in ipairs(json.data) do
               assert.equal(false, value.auth)
             end
+          end)
+
+          it("can paginate unauthenticated files", function()
+            local res = assert(portal_api_client:send {
+              method = "GET",
+              path = "/files/unauthenticated?type=partial&size=4",
+            })
+
+            local body = assert.res_status(200, res)
+            local json = cjson.decode(body)
+            assert.equal(4, #json.data)
+
+            local res = assert(portal_api_client:send {
+              method = "GET",
+              path = json.next .. "&size=4",
+            })
+
+            local body = assert.res_status(200, res)
+            local json = cjson.decode(body)
+            assert.equal(1, #json.data)
+            assert.equal(ngx.null, json.next)
           end)
         end)
       end)
@@ -912,7 +930,6 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
               local body = assert.res_status(200, res)
               local json = cjson.decode(body)
 
-              assert.equal(20, json.total)
               assert.equal(20, #json.data)
             end)
           end)
@@ -2505,7 +2522,6 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
               local body = assert.res_status(200, res)
               local json = cjson.decode(body)
 
-              assert.equal(20, json.total)
               assert.equal(20, #json.data)
             end)
           end)

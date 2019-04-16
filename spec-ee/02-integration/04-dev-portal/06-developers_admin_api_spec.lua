@@ -93,6 +93,26 @@ describe("Admin API - Developer Portal - " .. strategy, function()
         local json = cjson.decode(res)
         assert.equal(1, #json.data)
       end)
+
+      it("paginates correctly", function()
+        local res = assert(client:send {
+          methd = "GET",
+          path = "/developers?size=3"
+        })
+        res = assert.res_status(200, res)
+        local json = cjson.decode(res)
+        assert.equal(3, #json.data)
+
+        local next = json.next
+        local res = assert(client:send {
+          methd = "GET",
+          path = next
+        })
+        res = assert.res_status(200, res)
+        local json = cjson.decode(res)
+        assert.equal(3, #json.data)
+        assert.equal(ngx.null, json.next)
+      end)
     end)
 
     describe("POST", function ()

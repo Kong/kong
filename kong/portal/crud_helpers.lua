@@ -1,11 +1,88 @@
 local cjson       = require "cjson"
-local app_helpers = require "lapis.application"
+local Errors      = require "kong.db.errors"
 local singletons  = require "kong.singletons"
-local files       = require "kong.portal.migrations.01_initial_files"
+local app_helpers = require "lapis.application"
 local workspaces  = require "kong.workspaces"
-
+local files       = require "kong.portal.migrations.01_initial_files"
 
 local _M = {}
+
+
+function _M.find_and_filter(self, entity, validator)
+  local filtered_items = {}
+  local all_items, err = entity:page()
+  if err then
+    return nil, err
+  end
+
+  if not validator then
+    return all_items
+  end
+
+  for i, v in ipairs(all_items) do
+    if validator(self, v) then
+      table.insert(filtered_items, v)
+    end
+  end
+
+  return filtered_items
+end
+
+
+local function rebuild_params(params)
+  local param_str = ""
+  for k, v in pairs(params) do
+    param_str = param_str .. tostring(k) .. '=' .. tostring(v)
+  end
+
+  return param_str
+end
+
+
+local function get_paginated_table(self, route, set, size, idx)
+  local offset
+  local data = {}
+  local next = ngx.null
+  local offset_idx = size + idx
+  local final_idx = size + idx - 1
+
+  local data = setmetatable(data, cjson.empty_array_mt)
+
+  for i = idx, final_idx do
+    if set[i] then
+      table.insert(data, set[i])
+    end
+  end
+
+  if set[offset_idx] then
+    offset = set[offset_idx].id
+    next = route .. '?' .. rebuild_params(self.params) .. '&offset=' .. offset
+  end
+
+  return  {
+    data = data,
+    offset = offset,
+    next = next,
+  }
+end
+
+
+function _M.paginate(self, route, set, size, offset)
+  if not offset then
+    return get_paginated_table(self, route, set, size, 1)
+  end
+
+  for i, v in ipairs(set) do
+    if v.id == offset then
+      return get_paginated_table(self, route, set, size, i)
+    end
+  end
+
+  return nil, nil, {
+    code = Errors.codes.INVALID_OFFSET,
+    message = "invalid offset"
+  }
+end
 
 
 function _M.update_credential(credential)

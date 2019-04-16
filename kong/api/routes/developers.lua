@@ -1,9 +1,10 @@
-local utils = require "kong.tools.utils"
-local endpoints = require "kong.api.endpoints"
-local constants  = require "kong.constants"
-local ws_helper  = require "kong.workspaces.helper"
-local enums      = require "kong.enterprise_edition.dao.enums"
+local constants    = require "kong.constants"
+local utils        = require "kong.tools.utils"
+local endpoints    = require "kong.api.endpoints"
+local ws_helper    = require "kong.workspaces.helper"
 local portal_smtp_client = require "kong.portal.emails"
+local crud_helpers       = require "kong.portal.crud_helpers"
+local enums              = require "kong.enterprise_edition.dao.enums"
 
 local unescape_uri = ngx.unescape_uri
 local ws_constants = constants.WORKSPACE_CONFIG
@@ -44,6 +45,11 @@ end
 return {
   ["/developers"] = {
     GET = function(self, db, helpers, parent)
+      local size = self.params.size or 100
+      local offset = self.params.offset
+
+      self.params.offset = nil
+      self.params.size = nil
       self.params.status = tonumber(self.params.status)
 
       local developers, err, err_t = db.developers:select_all(self.params)
@@ -51,7 +57,15 @@ return {
         return endpoints.handle_error(err_t)
       end
 
-      return helpers.responses.send_HTTP_OK({ data = developers })
+      local paginated_results, _, err_t = crud_helpers.paginate(
+        self, '/developers', developers, size, offset
+      )
+
+      if not paginated_results then
+        return endpoints.handle_error(err_t)
+      end
+
+      return helpers.responses.send_HTTP_OK(paginated_results)
     end,
 
     POST = function(self, db, helpers)

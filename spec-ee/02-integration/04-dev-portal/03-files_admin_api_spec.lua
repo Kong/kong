@@ -260,11 +260,21 @@ describe("files API (#" .. strategy .. "): ", function()
         db:truncate('files')
 
         for i = 1, 100 do
-          assert(db.files:insert {
-            name = "file-" .. i,
-            contents = "i-" .. i,
-            type = "partial"
-          })
+          if math.fmod(i, 2) == 0 then
+            assert(db.files:insert {
+              name = "file-" .. i,
+              contents = "i-" .. i,
+              type = "page",
+              auth = true
+            })
+          else
+            assert(db.files:insert {
+              name = "file-" .. i,
+              contents = "i-" .. i,
+              type = "partial",
+              auth = false
+            })
+          end
         end
         configure_portal(db)
       end)
@@ -283,48 +293,54 @@ describe("files API (#" .. strategy .. "): ", function()
         assert.equal(100, #json.data)
       end)
 
-      it("paginates a set", function()
-        local pages = {}
-        local offset
+      it("paginates correctly", function()
+        local res = assert(client:send {
+          methd = "GET",
+          path = "/files?size=50"
+        })
+        res = assert.res_status(200, res)
+        local json = cjson.decode(res)
+        assert.equal(50, #json.data)
 
-        for i = 1, 4 do
-          local res = assert(client:send {
-            method = "GET",
-            path = "/files",
-            query = {size = 33, offset = offset}
-          })
-
-          local body = assert.res_status(200, res)
-          local json = cjson.decode(body)
-
-          if i < 4 then
-            assert.equal(33, #json.data)
-          else
-            assert.equal(1, #json.data)
-          end
-
-          if i > 1 then
-            -- check all pages are different
-            assert.not_same(pages[i-1], json)
-          end
-
-          offset = json.offset
-          pages[i] = json
-        end
+        local next = json.next
+        local res = assert(client:send {
+          methd = "GET",
+          path = next
+        })
+        res = assert.res_status(200, res)
+        local json = cjson.decode(res)
+        assert.equal(50, #json.data)
+        assert.equal(ngx.null, json.next)
       end)
 
-      -- it("handles invalid filters", function()
-      --   local res = assert(client:send {
-      --     method = "GET",
-      --     path = "/files",
-      --     query = {foo = "bar"}
-      --   })
+      it("can filter", function()
+        local res = assert(client:send {
+          methd = "GET",
+          path = "/files?type=partial"
+        })
+        res = assert.res_status(200, res)
+        local json = cjson.decode(res)
+        assert.equal(50, #json.data)
 
-      --   local body = assert.res_status(400, res)
-      --   local json = cjson.decode(body)
+        local res = assert(client:send {
+          methd = "GET",
+          path = "/files?type=page"
+        })
+        res = assert.res_status(200, res)
+        local json = cjson.decode(res)
+        assert.equal(50, #json.data)
+      end)
 
-      --   assert.same({ foo = "unknown field" }, json)
-      -- end)
+      it("can filter and paginate", function()
+        local res = assert(client:send {
+          methd = "GET",
+          path = "/files?type=partial&size=2"
+        })
+        res = assert.res_status(200, res)
+        local json = cjson.decode(res)
+        assert.equal(2, #json.data)
+        assert.equal('partial', json.data[1].type)
+      end)
     end)
 
     it("returns 405 on invalid method", function()
