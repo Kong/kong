@@ -1,3 +1,4 @@
+local endpoints   = require "kong.api.endpoints"
 local singletons  = require "kong.singletons"
 local enums       = require "kong.enterprise_edition.dao.enums"
 local rbac        = require "kong.rbac"
