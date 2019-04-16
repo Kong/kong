@@ -12,13 +12,13 @@ local MAX_ITERATIONS = 12
 
 for _, strategy in spec_helpers.each_strategy() do
 describe("(#" .. strategy .. ")", function()
-  local dao, db, bp
+  local db, bp
 
 
   setup(function()
     package.loaded["kong.rbac"] = nil
 
-    bp, db, dao = spec_helpers.get_db_utils()
+    bp, db = spec_helpers.get_db_utils()
 
     rbac = require "kong.rbac"
   end)
@@ -332,7 +332,7 @@ describe("(#" .. strategy .. ")", function()
 
 
           -- clear the existing role->entity mappings
-          dao:run_migrations()
+          db:truncate("rbac_role_entities")
 
 
           -- create a workspace with some entities
