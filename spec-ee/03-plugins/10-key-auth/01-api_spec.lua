@@ -6,13 +6,13 @@ local enums = require "kong.enterprise_edition.dao.enums"
 for _, strategy in helpers.each_strategy() do
   pending("Pending on feature flags - Plugin (EE logic): key-auth (API) [" .. strategy .. "]", function()
     local admin_client
-    local dao
+    local db
     local admin, consumer, developer
     local admin_credential, developer_credential, consumer_credential
 
     setup(function()
-      local bp, _
-      bp, _, dao = helpers.get_db_utils(strategy)
+      local bp
+      bp, db = helpers.get_db_utils(strategy)
 
       consumer = bp.consumers:insert {
         username = "consumer",
@@ -49,7 +49,7 @@ for _, strategy in helpers.each_strategy() do
     describe("/consumers/:consumer/key-auth", function()
       describe("POST", function()
         after_each(function()
-          dao:truncate_table("keyauth_credentials")
+          db:truncate("keyauth_credentials")
         end)
 
         it("returns 404 for admin user", function()
@@ -97,7 +97,7 @@ for _, strategy in helpers.each_strategy() do
 
       describe("PUT", function()
         after_each(function()
-          dao:truncate_table("keyauth_credentials")
+          db:truncate("keyauth_credentials")
         end)
 
         it("returns 404 for admin user", function()
@@ -173,7 +173,7 @@ for _, strategy in helpers.each_strategy() do
     describe("/developers/:developer/key-auth", function()
       describe("POST", function()
         after_each(function()
-          dao:truncate_table("keyauth_credentials")
+          db:truncate("keyauth_credentials")
         end)
 
         it("returns 404 for admin user", function()
@@ -221,7 +221,7 @@ for _, strategy in helpers.each_strategy() do
 
       describe("PUT", function()
         after_each(function()
-          dao:truncate_table("keyauth_credentials")
+          db:truncate("keyauth_credentials")
         end)
 
         it("returns 404 for admin user", function()
@@ -296,17 +296,17 @@ for _, strategy in helpers.each_strategy() do
 
     describe("/consumers/:consumer/key-auth/:id", function()
       before_each(function()
-        dao:truncate_table("keyauth_credentials")
+        db:truncate("keyauth_credentials")
 
-        admin_credential = assert(dao.keyauth_credentials:insert {
+        admin_credential = assert(db.keyauth_credentials:insert {
           consumer_id = admin.id
         })
 
-        developer_credential = assert(dao.keyauth_credentials:insert {
+        developer_credential = assert(db.keyauth_credentials:insert {
           consumer_id = developer.id
         })
 
-        consumer_credential = assert(dao.keyauth_credentials:insert {
+        consumer_credential = assert(db.keyauth_credentials:insert {
           consumer_id = consumer.id
         })
       end)
@@ -476,23 +476,23 @@ for _, strategy in helpers.each_strategy() do
 
     describe("/developers/:developer/key-auth/:id", function()
       before_each(function()
-        dao:truncate_table("keyauth_credentials")
+        db:truncate("keyauth_credentials")
 
-        admin_credential = assert(dao.keyauth_credentials:insert {
+        admin_credential = assert(db.keyauth_credentials:insert {
           consumer_id = admin.id
         })
 
-        developer_credential = assert(dao.keyauth_credentials:insert {
+        developer_credential = assert(db.keyauth_credentials:insert {
           consumer_id = developer.id
         })
 
-        consumer_credential = assert(dao.keyauth_credentials:insert {
+        consumer_credential = assert(db.keyauth_credentials:insert {
           consumer_id = consumer.id
         })
       end)
 
       teardown(function()
-        dao:truncate_table("keyauth_credentials")
+        db:truncate("keyauth_credentials")
       end)
 
       describe("GET", function()
@@ -661,34 +661,34 @@ for _, strategy in helpers.each_strategy() do
     describe("/key-auths", function()
       describe("GET", function()
         setup(function()
-          assert(dao.keyauth_credentials:insert {
+          assert(db.keyauth_credentials:insert {
             consumer_id = consumer.id,
             key = '1',
           })
 
-          assert(dao.keyauth_credentials:insert {
+          assert(db.keyauth_credentials:insert {
             consumer_id = consumer.id,
             key = '2',
           })
 
-          assert(dao.keyauth_credentials:insert {
+          assert(db.keyauth_credentials:insert {
             consumer_id = admin.id,
             key = '3',
           })
 
-          assert(dao.keyauth_credentials:insert {
+          assert(db.keyauth_credentials:insert {
             consumer_id = developer.id,
             key = '4',
           })
 
-          assert(dao.keyauth_credentials:insert {
+          assert(db.keyauth_credentials:insert {
             consumer_id = developer.id,
             key = '5',
           })
         end)
 
         teardown(function()
-          dao:truncate_table("keyauth_credentials")
+          db:truncate("keyauth_credentials")
         end)
 
         it("does not include admins and counts are off", function()
@@ -721,22 +721,22 @@ for _, strategy in helpers.each_strategy() do
       describe("GET", function()
 
         setup(function()
-          dao:truncate_table("keyauth_credentials")
-          admin_credential = assert(dao.keyauth_credentials:insert {
+          db:truncate("keyauth_credentials")
+          admin_credential = assert(db.keyauth_credentials:insert {
             consumer_id = admin.id,
           })
 
-          consumer_credential = assert(dao.keyauth_credentials:insert {
+          consumer_credential = assert(db.keyauth_credentials:insert {
             consumer_id = consumer.id,
           })
 
-          developer_credential = assert(dao.keyauth_credentials:insert {
+          developer_credential = assert(db.keyauth_credentials:insert {
             consumer_id = developer.id,
           })
         end)
 
         teardown(function()
-          dao:truncate_table("keyauth_credentials")
+          db:truncate("keyauth_credentials")
         end)
 
         it("returns 404 for admins by id", function()
@@ -793,22 +793,22 @@ for _, strategy in helpers.each_strategy() do
       describe("GET", function()
 
         setup(function()
-          dao:truncate_table("keyauth_credentials")
-          admin_credential = assert(dao.keyauth_credentials:insert {
+          db:truncate("keyauth_credentials")
+          admin_credential = assert(db.keyauth_credentials:insert {
             consumer_id = admin.id,
           })
 
-          consumer_credential = assert(dao.keyauth_credentials:insert {
+          consumer_credential = assert(db.keyauth_credentials:insert {
             consumer_id = consumer.id,
           })
 
-          developer_credential = assert(dao.keyauth_credentials:insert {
+          developer_credential = assert(db.keyauth_credentials:insert {
             consumer_id = developer.id,
           })
         end)
 
         teardown(function()
-          dao:truncate_table("keyauth_credentials")
+          db:truncate("keyauth_credentials")
         end)
 
         it("returns 404 for admins by id", function()
