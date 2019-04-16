@@ -644,19 +644,6 @@ function _M.resolve_entity_type(entity_id)
 
   local entity_type = rows[1].entity_type
 
-  -- XXX old-dao: if branch goes away with the old dao
-  if rawget(singletons.dao.daos, entity_type) then
-    rows, err = singletons.dao[entity_type]:find_all({
-      [workspaceable_relations[entity_type].primary_key] = entity_id,
-      __skip_rbac = true,
-    })
-    if err then
-      return nil, nil, err
-    end
-
-    return entity_type, rows[1]
-  end
-
   local row, err = singletons.db[entity_type]:select({
     [workspaceable_relations[entity_type].primary_key] = entity_id,
   }, {skip_rbac = true})
