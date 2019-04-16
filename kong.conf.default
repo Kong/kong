@@ -728,6 +728,7 @@
                         # ----------------------+--------------------------
                         # basic-auth            | Basic Authentication
                         # ldap-auth-advanced    | LDAP Authentication
+                        # openid-connect        | OpenID Connect Authentication
 
 #admin_gui_auth_conf =
                         # Admin GUI Authentication Plugin Config (JSON)
