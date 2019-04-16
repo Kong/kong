@@ -3,6 +3,8 @@ local cjson_safe    = require "cjson.safe"
 local encode_base64 = ngx.encode_base64
 local decode_base64 = ngx.decode_base64
 local fmt           = string.format
+local ws_helper     = require "kong.workspaces.helper"
+local unpack        = unpack
 
 
 local Consumers = {}
@@ -20,16 +22,35 @@ local sql_templates = {
     WHERE id >= %s AND type = %s
     ORDER BY id
     LIMIT %s;]],
+
+  page_by_type_first_ws  = [[
+    SELECT id, username, custom_id, created_at
+    FROM workspace_entities ws_e INNER JOIN consumers c
+    ON ( unique_field_name = 'id' AND ws_e.workspace_id in ( %s ) and ws_e.entity_id = c.id::varchar )
+    WHERE type = %s ORDER BY id LIMIT %s;
+  ]],
+
+  page_by_type_next_ws  = [[
+    SELECT id, username, custom_id, created_at
+    FROM workspace_entities ws_e INNER JOIN consumers c
+    ON ( unique_field_name = 'id' AND ws_e.workspace_id in ( %s ) and ws_e.entity_id = c.id::varchar )
+    WHERE id >= %s AND type = %s ORDER BY id LIMIT %s;
+  ]],
 }
 
-local function page(self, size, token, options, type)
+
+function Consumers:page_by_type(type, size, token, options)
   local limit = size + 1
   local sql
   local args
-  local type_literal
+  local ws_suffix = ""
 
-  if type then
-    type_literal = self:escape_literal(type)
+  -- maybe validate type
+  local type_literal = self:escape_literal(type)
+
+  local ws_list = ws_helper.ws_scope_as_list(self.schema.name)
+  if ws_list then
+    ws_suffix = "_ws"
   end
 
   if token then
@@ -45,39 +66,33 @@ local function page(self, size, token, options, type)
 
     local id_delimiter = self:escape_literal(token_decoded)
 
-    if type then
-      sql = sql_templates.page_by_type_next
-      args = { id_delimiter, type_literal, limit }
-    end
+    sql = sql_templates["page_by_type_next" .. ws_suffix]
+    args = { id_delimiter, type_literal, limit }
   else
-    if type then
-      sql = sql_templates.page_by_type_first
-      args = { type_literal, limit  }
+    sql = sql_templates["page_by_type_first" .. ws_suffix]
+    args = { type_literal, limit  }
+  end
+
+  if ws_list then
+    sql = fmt(sql, ws_list, unpack(args))
+  else
+    sql = fmt(sql, unpack(args))
+  end
+
+    local res, err = self.connector:query(sql)
+    if not res then
+      return nil, self.errors:database_error(err)
     end
+
+    local offset
+    if res[limit] then
+      offset = cjson.encode(res[limit].id)
+      offset = encode_base64(offset, true)
+      res[limit] = nil
+    end
+
+    return res, nil, offset
   end
-
-  sql = fmt(sql, unpack(args))
-
-  local res, err = self.connector:query(sql)
-
-  if not res then
-    return nil, self.errors:database_error(err)
-  end
-
-  local offset
-  if res[limit] then
-    offset = cjson.encode(res[limit].id)
-    offset = encode_base64(offset, true)
-    res[limit] = nil
-  end
-
-  return res, nil, offset
-
-end
-
-function Consumers:page_by_type(type, size, token, options)
-  return page(self, size, token, options, type)
-end
 
 
 return Consumers
