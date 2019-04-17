@@ -967,11 +967,11 @@ return {
       var.upstream_x_forwarded_port  = forwarded_port
 
       local err
-      ctx.workspaces, err = workspaces.resolve_ws_scope(ctx, route.protocols and route or api)
+      ctx.workspaces, err = workspaces.resolve_ws_scope(ctx, route.protocols and route)
       ctx.log_request_workspaces = ctx.workspaces
       if err then
-        return responses.send_HTTP_INTERNAL_SERVER_ERROR("failed to retrieve workspace " ..
-          "for the request (reason: " .. tostring(err) .. ")")
+        return kong.response.exit(500, { message = "failed to retrieve workspace " ..
+          "for the request (reason: " .. tostring(err) .. ")"})
       end
     end,
     -- Only executed if the `router` module found a route and allows nginx to proxy it.

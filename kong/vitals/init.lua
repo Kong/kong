@@ -5,7 +5,6 @@ local tablex     = require "pl.tablex"
 local pl_stringx = require "pl.stringx"
 local reports    = require "kong.reports"
 local utils      = require "kong.tools.utils"
-local public     = require "kong.tools.public"
 local pg_strat   = require "kong.vitals.postgres.strategy"
 local feature_flags = require "kong.enterprise_edition.feature_flags"
 
@@ -25,6 +24,9 @@ local FF_VALUES  = feature_flags.VALUES
 local FF_FLAGS   = feature_flags.FLAGS
 
 local fmt        = string.format
+local kong = kong
+local knode  = (kong and kong.node) and kong.node or
+               require "kong.pdk.node".new()
 
 local new_tab
 do
@@ -288,7 +290,7 @@ function _M:init()
   log(DEBUG, _log_prefix, "init")
 
   -- get node id (uuid)
-  local node_id, err = public.get_node_id()
+  local node_id, err = knode.get_id()
 
   if err then
     return self:init_failed(nil, err)

@@ -821,7 +821,7 @@ function Kong.access()
 
       if not ok then
         ctx.delay_response = false
-        return responses.send_HTTP_UNAUTHORIZED(err)
+        return kong.response.exit(401, err)
       end
     end
     ctx.workspaces = old_ws
