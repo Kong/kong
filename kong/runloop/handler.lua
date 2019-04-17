@@ -978,8 +978,11 @@ do
 
     else
       ok = rebuild_async(callback, current_version, semaphore)
-      if not ok and wait == 0 then
-        rebuild_sync(callback, current_version, semaphore)
+      if not ok then
+        if wait and wait == 0 then
+          rebuild_sync(callback, current_version, semaphore)
+        end
+
         release_semaphore(semaphore)
       end
     end
