@@ -693,6 +693,18 @@ do
       return build_router(current_version, recurse, tries)
     end
 
+    local ok, err = kong.db:connect()
+    if not ok then
+      if recurse and tries < 6 then
+        kong.db:setkeepalive()
+        log(NOTICE,  "could not connect database: " .. err)
+        sleep(0.01 * tries * tries)
+        return build_router(current_version, recurse, tries + 1)
+      end
+
+      return nil, err
+    end
+
     local routes, i, counter = {}, 0, 0
 
     for route, err in kong.db.routes:each(1000) do
@@ -706,7 +718,6 @@ do
           kong.db:setkeepalive()
           log(NOTICE,  "could not load routes: " .. err)
           sleep(0.01 * tries * tries)
-          kong.db:connect()
           return build_router(current_version, recurse, tries + 1)
         end
 
@@ -732,7 +743,6 @@ do
             kong.db:setkeepalive()
             log(NOTICE,  "could not find service for route (", route.id, "): ", err)
             sleep(0.01 * tries * tries)
-            kong.db:connect()
             return build_router(current_version, recurse, tries + 1)
           end
 
@@ -831,6 +841,18 @@ do
       return build_plugins(current_version)
     end
 
+    local ok, err = kong.db:connect()
+    if not ok then
+      if recurse and tries < 6 then
+        kong.db:setkeepalive()
+        log(NOTICE,  "could not connect database: " .. err)
+        sleep(0.01 * tries * tries)
+        return build_plugins(current_version, recurse, tries + 1)
+      end
+
+      return nil, err
+    end
+
     local new_plugins = {
       map    = {},
       cache  = {},
@@ -851,7 +873,6 @@ do
           kong.db:setkeepalive()
           log(NOTICE,  "could not load plugins: " .. err)
           sleep(0.01 * tries * tries)
-          kong.db:connect()
           return build_plugins(current_version, recurse, tries + 1)
         end
 
@@ -919,14 +940,10 @@ do
   end
 
   local function rebuild_sync(callback, version)
-    kong.db:connect()
-
     local pok, ok, err = pcall(callback, version)
     if not pok or not ok then
       log(CRIT, "could not rebuild synchronously: ", ok or err)
     end
-
-    kong.db:setkeepalive()
   end
 
   local function rebuild_timer(premature, callback, version, semaphore)
@@ -935,16 +952,12 @@ do
       return
     end
 
-    kong.db:connect()
-
     local pok, ok, err = pcall(callback, version, true)
     if not pok or not ok then
       log(CRIT, "could not rebuild asynchronously: ", ok or err)
     end
 
     release_semaphore(semaphore)
-
-    kong.db:setkeepalive()
   end
 
   local function rebuild_async(callback, version, semaphore)
