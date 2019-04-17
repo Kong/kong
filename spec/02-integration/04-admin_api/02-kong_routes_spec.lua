@@ -199,7 +199,7 @@ describe("Admin API - Kong routes", function()
         local json = cjson.decode(body)
         assert.same({ message = "No entity named 'not-present'" }, json)
       end)
-      it("does not return #only schema of a foreign key", function()
+      it("does not return schema of a foreign key", function()
         local res = assert(client:send {
           method = "GET",
           path = "/schemas/routes",
@@ -251,6 +251,61 @@ describe("Admin API - Kong routes", function()
         local json = cjson.decode(body)
         assert.same({ message = "No plugin named 'not-present'" }, json)
       end)
+    end)
+  end)
+
+
+  describe("/schemas/:db_entity_name/validate", function()
+    local client
+
+    lazy_setup(function()
+      helpers.get_db_utils(nil, {})
+      assert(helpers.start_kong())
+      client = helpers.admin_client(10000)
+    end)
+
+    lazy_teardown(function()
+      if client then client:close() end
+      helpers.stop_kong()
+    end)
+
+    it("returns 200 on a valid schema", function()
+      local res = assert(client:post("/schemas/services/validate", {
+        body = { host = "example.com" },
+        headers = {["Content-Type"] = "application/json"}
+      }))
+      local body = assert.res_status(200, res)
+      local json = cjson.decode(body)
+      assert.equal("entity is valid", json.message)
+    end)
+    it("returns 200 on a valid plugin schema", function()
+      local res = assert(client:post("/schemas/plugins/validate", {
+        body = {
+          name = "key-auth",
+          config = {
+            key_names = { "foo", "bar" },
+            hide_credentials = true,
+          },
+        },
+        headers = {["Content-Type"] = "application/json"}
+      }))
+      local body = assert.res_status(200, res)
+      local json = cjson.decode(body)
+      assert.equal("entity is valid", json.message)
+    end)
+    it("returns 400 on an invalid plugin subschema", function()
+      local res = assert(client:post("/schemas/plugins/validate", {
+        body = {
+          name = "key-auth",
+          config = {
+            keys = "foo",
+          },
+        },
+        headers = {["Content-Type"] = "application/json"}
+      }))
+      local body = assert.res_status(400, res)
+      local json = cjson.decode(body)
+      assert.equal("schema violation", json.name)
     end)
   end)
 end)

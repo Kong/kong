@@ -3,6 +3,8 @@ local singletons = require "kong.singletons"
 local conf_loader = require "kong.conf_loader"
 local cjson = require "cjson"
 local api_helpers = require "kong.api.api_helpers"
+local Schema = require "kong.db.schema"
+local Errors = require "kong.db.errors"
 
 local sub = string.sub
 local find = string.find
@@ -11,6 +13,7 @@ local tonumber = tonumber
 local kong = kong
 local knode  = (kong and kong.node) and kong.node or
                require "kong.pdk.node".new()
+local errors = Errors.new()
 
 
 local tagline = "Welcome to " .. _KONG._NAME
@@ -143,6 +146,26 @@ return {
       local copy = api_helpers.schema_to_jsonable(schema)
       strip_foreign_schemas(copy.fields)
       return kong.response.exit(200, copy)
+    end
+  },
+  ["/schemas/:db_entity_name/validate"] = {
+    POST = function(self, db, helpers)
+      local db_entity_name = self.params.db_entity_name
+      -- What happens when db_entity_name is a field name in the schema?
+      self.params.db_entity_name = nil
+      local entity = kong.db[db_entity_name]
+      local schema = entity and entity.schema or nil
+      if not schema then
+        return kong.response.exit(404, { message = "No entity named '"
+                                  .. db_entity_name .. "'" })
+      end
+      local schema = assert(Schema.new(schema))
+      local _, err_t = schema:validate(schema:process_auto_fields(
+                                        self.params, "insert"))
+      if err_t then
+        return kong.response.exit(400, errors:schema_violation(err_t))
+      end
+      return kong.response.exit(200, { message = "entity is valid" })
     end
   },
   ["/schemas/plugins/:name"] = {
