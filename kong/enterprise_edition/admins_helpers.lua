@@ -101,7 +101,7 @@ end
 
 
 function _M.validate(params, db, admin_to_update)
-  local all_admins, err = workspaces.compat_find_all("admins")
+  local all_admins, err = kong.db.admins:select_all({})
 
   if err then
     -- unable to complete validation, so no success and no validation messages

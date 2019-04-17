@@ -134,10 +134,10 @@ for _, strategy in helpers.each_strategy() do
         assert.same(err, "failed!")
 
         -- leave no trace
-        local consumers = assert(#workspaces.compat_find_all("consumers", { username = "gruce"}))
+        local consumers = assert(#kong.db.consumers:select_all({ username = "gruce" }))
         assert.same(0, consumers)
 
-        local rbac_users = assert(#workspaces.compat_find_all("rbac_users", { name = "gruce" }))
+        local rbac_users = assert(#kong.db.rbac_users:select_all({ name = "gruce" }))
         assert.same(0, rbac_users)
       end)
 
@@ -155,10 +155,10 @@ for _, strategy in helpers.each_strategy() do
         assert.same(err, "failed!")
 
         -- leave no trace
-        local consumers = assert(#workspaces.compat_find_all("consumers", { username = "gruce"}))
+        local consumers = assert(#kong.db.consumers:select_all({ username = "gruce" }))
         assert.same(0, consumers)
 
-        local rbac_users = assert(#workspaces.compat_find_all("rbac_users", { name = "gruce" }))
+        local rbac_users = assert(#kong.db.rbac_users:select_all({ name = "gruce" }))
         assert.same(0, rbac_users)
       end)
     end)
