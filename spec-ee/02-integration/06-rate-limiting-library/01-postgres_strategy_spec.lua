@@ -1,14 +1,14 @@
 local postgres_strategy = require "kong.tools.public.rate-limiting.strategies.postgres"
-local dao_helpers       = require "spec.02-integration.03-dao.helpers"
+local helpers       = require "spec.helpers"
 local DB                = require "kong.db"
 
 local function window_floor(size, time)
   return math.floor(time / size) * size
 end
 
-dao_helpers.for_each_dao(function(kong_conf)
+for _, strategy in helpers.each_strategy() do
 
-  if kong_conf.database == "cassandra" then
+  if strategy == "cassandra" then
     return
   end
 
@@ -24,7 +24,7 @@ dao_helpers.for_each_dao(function(kong_conf)
                             mock_window_size
 
     setup(function()
-      db = assert(DB.new(kong_conf))
+      db = assert(DB.new(helpers.test_conf))
       assert(db:init_connector())
 
       strategy = postgres_strategy.new(db)
@@ -233,4 +233,4 @@ dao_helpers.for_each_dao(function(kong_conf)
       end)
     end)
   end)
-end)
+end

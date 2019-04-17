@@ -1,5 +1,4 @@
 local spec_helpers = require "spec.helpers"
-local dao_helpers = require "spec.02-integration.03-dao.helpers"
 local utils       = require "kong.tools.utils"
 local bit = require "bit"
 
@@ -11,8 +10,8 @@ local kong = kong
 local MAX_ITERATIONS = 12
 
 
-dao_helpers.for_each_dao(function(kong_conf)
-describe("(#" .. kong_conf.database .. ")", function()
+for _, strategy in spec_helpers.each_strategy() do
+describe("(#" .. strategy .. ")", function()
   local dao, db, bp
 
 
@@ -1173,4 +1172,4 @@ describe("(#" .. kong_conf.database .. ")", function()
     end)
   end)
 end)
-end)
+end

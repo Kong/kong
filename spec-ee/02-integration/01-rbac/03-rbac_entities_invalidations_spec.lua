@@ -1,14 +1,13 @@
 local cjson        = require "cjson"
 local helpers      = require "spec.helpers"
-local dao_helpers  = require "spec.02-integration.03-dao.helpers"
 local rbac_migrations_defaults = require "kong.rbac.migrations.01_defaults"
 
 local POLL_INTERVAL = 0.3
 
 
-dao_helpers.for_each_dao(function(kong_conf)
+for _, strategy in helpers.each_strategy() do
 
-describe("rbac entities are invalidated with db: #" .. kong_conf.database, function()
+describe("rbac entities are invalidated with db: #" .. strategy, function()
 
   local admin_client_1
   local admin_client_2
@@ -17,13 +16,13 @@ describe("rbac entities are invalidated with db: #" .. kong_conf.database, funct
   local wait_for_propagation
 
   setup(function()
-    bp, db = helpers.get_db_utils(kong_conf.database)
-    local db_update_propagation = kong_conf.database == "cassandra" and 3 or 0
+    bp, db = helpers.get_db_utils(strategy)
+    local db_update_propagation = strategy == "cassandra" and 3 or 0
 
     assert(helpers.start_kong {
       log_level             = "debug",
       prefix                = "servroot1",
-      database              = kong_conf.database,
+      database              = strategy,
       proxy_listen          = "0.0.0.0:8000, 0.0.0.0:8443 ssl",
       admin_listen          = "0.0.0.0:8001",
       admin_gui_listen      = "0.0.0.0:8002",
@@ -37,7 +36,7 @@ describe("rbac entities are invalidated with db: #" .. kong_conf.database, funct
     assert(helpers.start_kong {
       log_level             = "debug",
       prefix                = "servroot2",
-      database              = kong_conf.database,
+      database              = strategy,
       proxy_listen          = "0.0.0.0:9000, 0.0.0.0:9443 ssl",
       admin_listen          = "0.0.0.0:9001",
       admin_gui_listen      = "0.0.0.0:9002",
@@ -638,4 +637,4 @@ describe("rbac entities are invalidated with db: #" .. kong_conf.database, funct
   end)
 end)
 
-end)
+end

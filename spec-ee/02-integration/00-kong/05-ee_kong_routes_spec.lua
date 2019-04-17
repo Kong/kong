@@ -1,6 +1,5 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
-local dao_helpers = require "spec.02-integration.03-dao.helpers"
 local enums = require "kong.enterprise_edition.dao.enums"
 local admins = require "kong.enterprise_edition.admins_helpers"
 local workspaces = require "kong.workspaces"
@@ -35,10 +34,10 @@ end
 
 
 describe("Admin API - ee-specific Kong routes", function()
-  dao_helpers.for_each_dao(function(kong_conf)
-    describe("/userinfo with db #" .. kong_conf.database, function()
+  for _, strategy in helpers.each_strategy() do
+    describe("/userinfo with db #" .. strategy, function()
 
-      local strategy = kong_conf.database
+      local strategy = strategy
       local client
       local db
 
@@ -385,5 +384,5 @@ describe("Admin API - ee-specific Kong routes", function()
         -- assert.same(user_workspaces2, user_workspaces)
       end)
     end)
-  end)
+  end
 end)

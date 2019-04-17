@@ -1,4 +1,3 @@
-local dao_helpers = require "spec.02-integration.03-dao.helpers"
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
 local utils = require "kong.tools.utils"
@@ -97,18 +96,18 @@ local function find_role(db, role_name)
 end
 
 
-dao_helpers.for_each_dao(function(kong_config)
+for _, strategy in helpers.each_strategy() do
 
-describe("Admin API RBAC with #" .. kong_config.database, function()
+describe("Admin API RBAC with #" .. strategy, function()
   local bp, db
 
   lazy_setup(function()
-    bp, db = helpers.get_db_utils(kong_config.database)
+    bp, db = helpers.get_db_utils(strategy)
 
     bp.workspaces:insert({name = "mock-workspace"})
 
     assert(helpers.start_kong({
-      database = kong_config.database
+      database = strategy
     }))
   end)
 
@@ -2532,7 +2531,7 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
       describe("errors", function()
         -- cassandra cannot apply the PK constraint here
         -- FIXME on cassandra
-        local block = kong_config.database == "cassandra" and pending or it
+        local block = strategy == "cassandra" and pending or it
         block("on duplicate PK", function()
           local res
 
@@ -3382,7 +3381,7 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
     end)
   end)
 end)
-end)
+end
 
 for _, h in ipairs({ "", "Custom-Auth-Token" }) do
   describe("Admin API", function()

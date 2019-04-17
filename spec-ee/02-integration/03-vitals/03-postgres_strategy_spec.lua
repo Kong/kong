@@ -1,13 +1,12 @@
 local pg_strategy = require "kong.vitals.postgres.strategy"
-local dao_helpers = require "spec.02-integration.03-dao.helpers"
 local utils       = require "kong.tools.utils"
 local helpers     = require "spec.helpers"
 local fmt         = string.format
 local time        = ngx.time
 
 
-dao_helpers.for_each_dao(function(kong_conf)
-  if kong_conf.database == "cassandra" then
+for _, strategy in helpers.each_strategy() do
+  if strategy == "cassandra" then
     return
   end
 
@@ -25,7 +24,7 @@ dao_helpers.for_each_dao(function(kong_conf)
         delete_interval = 90000,
       }
 
-      db = select(2, helpers.get_db_utils(kong_conf.database))
+      db = select(2, helpers.get_db_utils(strategy))
       strategy = pg_strategy.new(db, opts)
       db = db.connector
 
@@ -2254,4 +2253,4 @@ dao_helpers.for_each_dao(function(kong_conf)
       end)
     end)
   end)
-end)
+end

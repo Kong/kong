@@ -1,5 +1,4 @@
 local table_rotater = require "kong.vitals.postgres.table_rotater"
-local dao_helpers   = require "spec.02-integration.03-dao.helpers"
 local helpers       = require "spec.helpers"
 local ngx_time      = ngx.time
 local fmt           = string.format
@@ -20,8 +19,8 @@ local function drop_vitals_seconds_tables(db)
 end
 
 
-dao_helpers.for_each_dao(function(kong_conf)
-  if kong_conf.database == "cassandra" then
+for _, strategy in helpers.each_strategy() do
+  if strategy == "cassandra" then
     return
   end
 
@@ -32,7 +31,7 @@ dao_helpers.for_each_dao(function(kong_conf)
 
 
     setup(function()
-      _, db, _ = helpers.get_db_utils(kong_conf.database)
+      _, db, _ = helpers.get_db_utils(strategy)
       db = db.connector
 
       local opts = {
@@ -199,4 +198,4 @@ dao_helpers.for_each_dao(function(kong_conf)
       end)
     end)
   end)
-end)
+end

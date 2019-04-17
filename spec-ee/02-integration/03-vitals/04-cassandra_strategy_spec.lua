@@ -1,5 +1,4 @@
 local cassandra_strategy = require "kong.vitals.cassandra.strategy"
-local dao_helpers = require "spec.02-integration.03-dao.helpers"
 local utils = require "kong.tools.utils"
 local helpers = require "spec.helpers"
 local fmt = string.format
@@ -7,8 +6,8 @@ local time = ngx.time
 local cassandra = require "cassandra"
 
 
-dao_helpers.for_each_dao(function(kong_conf)
-  if kong_conf.database == "postgres" then
+for _, strategy in helpers.each_strategy() do
+  if strategy == "postgres" then
     return
   end
 
@@ -28,7 +27,7 @@ dao_helpers.for_each_dao(function(kong_conf)
         ttl_minutes = 90000,
       }
 
-      db = select(2, helpers.get_db_utils(kong_conf.database))
+      db = select(2, helpers.get_db_utils(strategy))
       strategy = cassandra_strategy.new(db, opts)
       db = db.connector
       cluster  = db.cluster
@@ -2281,4 +2280,4 @@ dao_helpers.for_each_dao(function(kong_conf)
       end)
     end)
   end)
-end)
+end

@@ -1,5 +1,4 @@
 local kong_vitals  = require "kong.vitals"
-local dao_helpers  = require "spec.02-integration.03-dao.helpers"
 local utils        = require "kong.tools.utils"
 local json_null  = require("cjson").null
 local helpers = require "spec.helpers"
@@ -8,8 +7,8 @@ local ngx_time     = ngx.time
 local fmt          = string.format
 
 
-dao_helpers.for_each_dao(function(kong_conf)
-  describe("vitals with db: " .. kong_conf.database, function()
+for _, strategy in helpers.each_strategy() do
+  describe("vitals with db: " .. strategy, function()
     local vitals
     local snapshot
     local db
@@ -31,7 +30,7 @@ dao_helpers.for_each_dao(function(kong_conf)
     }
 
     setup(function()
-      db = select(2, helpers.get_db_utils(kong_conf.database))
+      db = select(2, helpers.get_db_utils(strategy))
 
       kong.configuration = { vitals = true }
       vitals = kong_vitals.new({
@@ -1431,7 +1430,7 @@ dao_helpers.for_each_dao(function(kong_conf)
         local q = "insert into vitals_node_meta(node_id, hostname) values('%s', '%s')"
 
         for _, row in ipairs(data_to_insert) do
-          if kong_conf.database == "cassandra" then
+          if strategy == "cassandra" then
             assert(vitals.strategy:init(unpack(row)))
           else
             assert(db.connector:query(fmt(q, unpack(row))))
@@ -1456,4 +1455,4 @@ dao_helpers.for_each_dao(function(kong_conf)
     end)
   end)
 
-end)
+end

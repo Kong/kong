@@ -1,5 +1,5 @@
 local cassandra_strategy = require "kong.tools.public.rate-limiting.strategies.cassandra"
-local dao_helpers        = require "spec.02-integration.03-dao.helpers"
+local helpers        = require "spec.helpers"
 local DB                 = require "kong.db"
 
 local function window_floor(size, time)
@@ -38,10 +38,9 @@ do
                     "assertion.has.negative")
 end
 
+for _, strategy in helpers.each_strategy() do
 
-dao_helpers.for_each_dao(function(kong_conf)
-
-if kong_conf.database == "postgres" then
+if strategy == "postgres" then
   return
 end
 
@@ -50,7 +49,7 @@ describe("rate-limiting: Cassadra strategy", function()
   local cluster
 
   setup(function()
-    local db = assert(DB.new(kong_conf))
+    local db = assert(DB.new(helpers.test_conf, strategy))
     assert(db:init_connector())
 
     strategy = cassandra_strategy.new(db)
@@ -353,4 +352,4 @@ describe("rate-limiting: Cassadra strategy", function()
     end)
   end)
 end)
-end)
+end

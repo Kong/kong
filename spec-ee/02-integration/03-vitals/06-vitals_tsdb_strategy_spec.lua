@@ -1,8 +1,7 @@
 local helpers          = require "spec.helpers"
-local dao_helpers      = require "spec.02-integration.03-dao.helpers"
 
-dao_helpers.for_each_dao(function(kong_conf)
-  describe("vitals tsdb strategy with " .. kong_conf.database , function()
+for _, strategy in helpers.each_strategy() do
+  describe("vitals tsdb strategy with " .. strategy , function()
     -- in case anything failed, stop kong here
     teardown(helpers.stop_kong)
 
@@ -24,7 +23,7 @@ dao_helpers.for_each_dao(function(kong_conf)
     end)
   end)
 
-  describe("vitals tsdb strategy with " .. kong_conf.database , function()
+  describe("vitals tsdb strategy with " .. strategy , function()
     -- in case anything failed, stop kong here
     teardown(helpers.stop_kong)
 
@@ -46,7 +45,7 @@ dao_helpers.for_each_dao(function(kong_conf)
     end)
   end)
 
-  pending("vitals tsdb strategy with " .. kong_conf.database , function()
+  pending("vitals tsdb strategy with " .. strategy , function()
     -- mark as pending because we don't have statsd-advanced plugin bundled
     -- in case anything failed, stop kong here
     teardown(helpers.stop_kong)
@@ -71,7 +70,7 @@ dao_helpers.for_each_dao(function(kong_conf)
     end)
   end)
 
-  describe("vitals tsdb strategy with " .. kong_conf.database , function()
+  describe("vitals tsdb strategy with " .. strategy , function()
     -- in case anything failed, stop kong here
     teardown(helpers.stop_kong)
 
@@ -88,4 +87,4 @@ dao_helpers.for_each_dao(function(kong_conf)
       helpers.stop_kong()
     end)
   end)
-end)
+end

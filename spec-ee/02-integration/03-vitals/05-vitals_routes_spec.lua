@@ -1,6 +1,5 @@
 local helpers     = require "spec.helpers"
 local workspaces  = require "kong.workspaces"
-local dao_helpers = require "spec.02-integration.03-dao.helpers"
 local utils       = require "kong.tools.utils"
 local cassandra   = require "kong.vitals.cassandra.strategy"
 local postgres    = require "kong.vitals.postgres.strategy"
@@ -8,8 +7,8 @@ local cjson       = require "cjson"
 local time        = ngx.time
 local fmt         = string.format
 
-dao_helpers.for_each_dao(function(kong_conf)
-  describe("Admin API Vitals with " .. kong_conf.database, function()
+for _, db_strategy in helpers.each_strategy() do
+  describe("Admin API Vitals with " .. db_strategy, function()
     local client, db, strategy, bp, connector
 
     local minute_start_at = time() - ( time() % 60 )
@@ -35,7 +34,7 @@ dao_helpers.for_each_dao(function(kong_conf)
 
     describe("when vitals is enabled", function()
       setup(function()
-        bp, db = helpers.get_db_utils(kong_conf.database)
+        bp, db = helpers.get_db_utils(db_strategy)
         connector = db.connector
 
         -- to insert test data
@@ -77,7 +76,7 @@ dao_helpers.for_each_dao(function(kong_conf)
         assert(strategy:insert_stats(test_data_2, node_2))
 
         assert(helpers.start_kong({
-          database = kong_conf.database,
+          database = db_strategy,
           vitals   = true,
         }))
 
@@ -1977,10 +1976,10 @@ dao_helpers.for_each_dao(function(kong_conf)
 
     describe("when vitals is not enabled", function()
       setup(function()
-        bp, db = helpers.get_db_utils(kong_conf.database)
+        bp, db = helpers.get_db_utils(db_strategy)
 
         assert(helpers.start_kong({
-          database = kong_conf.database,
+          database = db_strategy,
           vitals   = false,
         }))
 
@@ -2008,4 +2007,4 @@ dao_helpers.for_each_dao(function(kong_conf)
     end)
   end)
 
-end)
+end
