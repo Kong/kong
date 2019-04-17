@@ -887,6 +887,12 @@ do
       counter = counter + 1
     end
 
+    for _, plugin in ipairs(loaded_plugins) do
+      if not new_plugins.combos[plugin.name] then
+        new_plugins.combos[plugin.name] = EMPTY_T
+      end
+    end
+
     plugins_version = version
     plugins = new_plugins
 
