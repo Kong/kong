@@ -49,7 +49,6 @@ end
 
 
 local function count_entities(arr)
-  arr = arr or setmetatable({}, cjson.empty_array_mt)
   return {
     total = #arr,
     data = arr
@@ -118,7 +117,7 @@ return {
       local paginated_results, _, err_t = crud_helpers.paginate(
         self, '/files/unauthenticated', files, size, offset
       )
-      
+
       if not paginated_results then
         return endpoints.handle_error(err_t)
       end
@@ -509,7 +508,7 @@ return {
     end,
 
     GET = function(self, db, helpers)
-      local credentials = {}
+      local credentials = setmetatable({}, cjson.empty_array_mt)
       for row, err in db.credentials:each_for_consumer({ id = self.developer.consumer.id}) do
         if err then
           return helpers.yield_error(err)
