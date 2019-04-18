@@ -188,6 +188,61 @@ describe("Admin API - ee-specific Kong routes", function()
         -- assert.same(user_workspaces2, user_workspaces)
       end)
 
+      it("/userinfo whitelisted - admin consumer success without needing /userinfo " ..
+         "rbac endpoint permissions", function()
+        assert(helpers.start_kong({
+          database = strategy,
+          admin_gui_auth = "basic-auth",
+          enforce_rbac = "both",
+        }))
+
+        ee_helpers.register_rbac_resources(db)
+        client = assert(helpers.admin_client())
+
+
+        -- create the non-default admin
+        local role = db.rbac_roles:insert({ name = "not-much-role" })
+        assert(db.rbac_role_endpoints:insert {
+          role = { id = role.id },
+          endpoint = "/snis", -- just one endpoint to some random entity
+          workspace = "default",
+          actions = rbac.actions_bitfields.read
+        })
+
+        local admin = admin(db, 'default', 'not-trustworthy', 'not-much-role')
+
+        assert(db.basicauth_credentials:insert {
+          username    = "not-trustworthy",
+          password    = "12345", -- so secure :facepalm: !!!
+          consumer = {
+            id = admin.consumer.id,
+          },
+        })
+
+        local res = assert(client:send {
+          method = "GET",
+          path = "/auth",
+          headers = {
+            ["Authorization"] = "Basic " .. ngx.encode_base64("not-trustworthy:12345"),
+            ["Kong-Admin-User"] = admin.username,
+          }
+        })
+
+        res = assert(client:send {
+          method = "GET",
+          path = "/userinfo",
+          headers = {
+            ["cookie"] = res.headers['Set-Cookie'],
+            ["Kong-Admin-User"] = "not-trustworthy",
+          }
+        })
+
+        res = assert.res_status(200, res)
+        local json = cjson.decode(res)
+
+        assert.equal(1, #json.workspaces)
+      end)
+
 
       it("returns 404 when rbac user is not mapped to an admin", function()
         db = select(2, helpers.get_db_utils(strategy))

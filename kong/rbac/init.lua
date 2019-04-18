@@ -30,6 +30,7 @@ end
 
 local whitelisted_endpoints = {
   ["/auth"] = true,
+  ["/userinfo"] = true,
   ["/admins/register"] = true,
   ["/admins/password_resets"] = true,
 }
