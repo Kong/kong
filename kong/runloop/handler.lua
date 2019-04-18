@@ -7,43 +7,54 @@
 --
 -- In the `access_by_lua` phase, it is responsible for retrieving the route being proxied by
 -- a consumer. Then it is responsible for loading the plugins to execute on this request.
-local ck          = require "resty.cookie"
-local meta        = require "kong.meta"
-local utils       = require "kong.tools.utils"
-local Router      = require "kong.router"
-local reports     = require "kong.reports"
-local balancer    = require "kong.runloop.balancer"
-local mesh        = require "kong.runloop.mesh"
-local constants   = require "kong.constants"
-local singletons  = require "kong.singletons"
-local certificate = require "kong.runloop.certificate"
-local concurrency = require "kong.concurrency"
-local ngx_re      = require "ngx.re"
+local ck           = require "resty.cookie"
+local meta         = require "kong.meta"
+local utils        = require "kong.tools.utils"
+local Router       = require "kong.router"
+local reports      = require "kong.reports"
+local balancer     = require "kong.runloop.balancer"
+local mesh         = require "kong.runloop.mesh"
+local constants    = require "kong.constants"
+local singletons   = require "kong.singletons"
+local certificate  = require "kong.runloop.certificate"
+local concurrency  = require "kong.concurrency"
+local ngx_re       = require "ngx.re"
 
 
-local kong        = kong
-local ipairs      = ipairs
-local tostring    = tostring
-local tonumber    = tonumber
-local sub         = string.sub
-local find        = string.find
-local lower       = string.lower
-local fmt         = string.format
-local sort        = table.sort
-local ngx         = ngx
-local log         = ngx.log
-local ngx_now     = ngx.now
-local re_match    = ngx.re.match
-local re_find     = ngx.re.find
-local re_split    = ngx_re.split
-local update_time = ngx.update_time
-local subsystem   = ngx.config.subsystem
-local unpack      = unpack
+local kong         = kong
+local ipairs       = ipairs
+local tostring     = tostring
+local tonumber     = tonumber
+local sub          = string.sub
+local find         = string.find
+local lower        = string.lower
+local fmt          = string.format
+local sort         = table.sort
+local ngx          = ngx
+local arg          = ngx.arg
+local var          = ngx.var
+local log          = ngx.log
+local exit         = ngx.exit
+local header       = ngx.header
+local ngx_now      = ngx.now
+local timer_at     = ngx.timer.at
+local re_match     = ngx.re.match
+local re_find      = ngx.re.find
+local re_split     = ngx_re.split
+local update_time  = ngx.update_time
+local subsystem    = ngx.config.subsystem
+local start_time   = ngx.req.start_time
+local clear_header = ngx.req.clear_header
+local starttls     = ngx.req.starttls
+local unpack       = unpack
 
 
-local ERR         = ngx.ERR
-local WARN        = ngx.WARN
-local DEBUG       = ngx.DEBUG
+local ERR          = ngx.ERR
+local INFO         = ngx.INFO
+local WARN         = ngx.WARN
+local CRIT         = ngx.CRIT
+local DEBUG        = ngx.DEBUG
+local ERROR        = ngx.ERROR
 
 
 local CACHE_ROUTER_OPTS = { ttl = 0 }
@@ -178,7 +189,7 @@ do
                                               CACHE_ROUTER_OPTS,
                                               utils.uuid)
     if err then
-      log(ngx.CRIT, "could not ensure router is up to date: ", err)
+      log(CRIT, "could not ensure router is up to date: ", err)
       return nil, err
     end
 
@@ -191,7 +202,7 @@ do
 
     local ok, err = build_router(singletons.db, version)
     if not ok then
-      log(ngx.CRIT, "could not rebuild router: ", err)
+      log(CRIT, "could not rebuild router: ", err)
       return nil, err
     end
 
@@ -210,7 +221,7 @@ do
                                               CACHE_ROUTER_OPTS,
                                               utils.uuid)
     if err then
-      log(ngx.CRIT, "could not ensure router is up to date: ", err)
+      log(CRIT, "could not ensure router is up to date: ", err)
       return nil, err
     end
 
@@ -323,12 +334,12 @@ return {
 
       worker_events.register(function(data)
         if not data.schema then
-          log(ngx.ERR, "[events] missing schema in crud subscriber")
+          log(ERR, "[events] missing schema in crud subscriber")
           return
         end
 
         if not data.entity then
-          log(ngx.ERR, "[events] missing entity in crud subscriber")
+          log(ERR, "[events] missing entity in crud subscriber")
           return
         end
 
@@ -352,7 +363,7 @@ return {
         end
 
         if not data.operation then
-          log(ngx.ERR, "[events] missing operation in crud subscriber")
+          log(ERR, "[events] missing operation in crud subscriber")
           return
         end
 
@@ -365,14 +376,14 @@ return {
         -- crud:routes
         local _, err = worker_events.post_local("crud", entity_channel, data)
         if err then
-          log(ngx.ERR, "[events] could not broadcast crud event: ", err)
+          log(ERR, "[events] could not broadcast crud event: ", err)
           return
         end
 
         -- crud:routes:create
         _, err = worker_events.post_local("crud", entity_operation_channel, data)
         if err then
-          log(ngx.ERR, "[events] could not broadcast crud event: ", err)
+          log(ERR, "[events] could not broadcast crud event: ", err)
           return
         end
       end, "dao:crud")
@@ -550,7 +561,7 @@ return {
 
 
       -- initialize balancers for active healthchecks
-      ngx.timer.at(0, function()
+      timer_at(0, function()
         balancer.init()
       end)
 
@@ -579,8 +590,8 @@ return {
 
       -- special handling for proxy-authorization and te headers in case
       -- the plugin(s) want to specify them (store the original)
-      ctx.http_proxy_authorization = ngx.var.http_proxy_authorization
-      ctx.http_te                  = ngx.var.http_te
+      ctx.http_proxy_authorization = var.http_proxy_authorization
+      ctx.http_te                  = var.http_te
 
       mesh.rewrite(ctx)
     end,
@@ -593,16 +604,14 @@ return {
       local router, err = get_router()
       if not router then
         log(ERR, "no router to route connection (reason: " .. err .. ")")
-        return ngx.exit(500)
+        return exit(500)
       end
 
       local match_t = router.exec(ngx)
       if not match_t then
         log(ERR, "no Route found with those values")
-        return ngx.exit(500)
+        return exit(500)
       end
-
-      local var = ngx.var
 
       local ssl_termination_ctx -- OpenSSL SSL_CTX to use for termination
 
@@ -620,25 +629,25 @@ return {
         -- XXX: for now, use presence of SNI to terminate.
         local sni = var.ssl_preread_server_name
         if sni then
-          ngx.log(ngx.DEBUG, "SNI: ", sni)
+          log(DEBUG, "SNI: ", sni)
 
           local err
           ssl_termination_ctx, err = certificate.find_certificate(sni)
           if not ssl_termination_ctx then
-            ngx.log(ngx.ERR, err)
-            return ngx.exit(ngx.ERROR)
+            log(ERR, err)
+            return exit(ERROR)
           end
 
           -- TODO Fake certificate phase?
 
-          ngx.log(ngx.INFO, "attempting to terminate TLS")
+          log(INFO, "attempting to terminate TLS")
         end
       end
 
       -- Terminate TLS
-      if ssl_termination_ctx and not ngx.req.starttls(ssl_termination_ctx) then -- luacheck: ignore
+      if ssl_termination_ctx and not starttls(ssl_termination_ctx) then -- luacheck: ignore
         -- errors are logged by nginx core
-        return ngx.exit(ngx.ERROR)
+        return exit(ERROR)
       end
 
       ctx.KONG_PREREAD_START = get_now()
@@ -680,8 +689,8 @@ return {
       ctx.KONG_PREREAD_TIME     = now - ctx.KONG_PREREAD_START
       ctx.KONG_PREREAD_ENDED_AT = now
       -- time spent in Kong before sending the request to upstream
-      -- ngx.req.start_time() is kept in seconds with millisecond resolution.
-      ctx.KONG_PROXY_LATENCY   = now - ngx.req.start_time() * 1000
+      -- start_time() is kept in seconds with millisecond resolution.
+      ctx.KONG_PROXY_LATENCY   = now - start_time() * 1000
       ctx.KONG_PROXIED         = true
     end
   },
@@ -696,8 +705,6 @@ return {
       end
 
       -- routing request
-
-      local var = ngx.var
 
       ctx.KONG_ACCESS_START = get_now()
 
@@ -744,8 +751,8 @@ return {
       if (protocols and protocols.https and not protocols.http and
           forwarded_proto ~= "https")
       then
-        ngx.header["connection"] = "Upgrade"
-        ngx.header["upgrade"]    = "TLS/1.2, HTTP/1.1"
+        header["connection"] = "Upgrade"
+        header["upgrade"]    = "TLS/1.2, HTTP/1.1"
         return kong.response.exit(426, { message = "Please use HTTPS protocol" })
       end
 
@@ -889,8 +896,6 @@ return {
     end,
     -- Only executed if the `router` module found a route and allows nginx to proxy it.
     after = function(ctx)
-      local var = ngx.var
-
       do
         -- Nginx's behavior when proxying a request with an empty querystring
         -- `/foo?` is to keep `$is_args` an empty string, hence effectively
@@ -948,7 +953,7 @@ return {
                  header_name ~= "upgrade" and
                  header_name ~= "keep-alive" and
                  header_name ~= "proxy-authorization" then
-                ngx.req.clear_header(header_names[i])
+                clear_header(header_names[i])
               end
             end
           end
@@ -962,7 +967,7 @@ return {
         if te_values then
           for i=1, #te_values do
             if te_values[i] ~= "" and lower(te_values[i]) == "trailers" then
-              ngx.var.upstream_te = "trailers"
+              var.upstream_te = "trailers"
               break
             end
           end
@@ -970,11 +975,11 @@ return {
       end
 
       if var.http_proxy then
-        ngx.req.clear_header("Proxy")
+        clear_header("Proxy")
       end
 
       if var.http_proxy_connection then
-        ngx.req.clear_header("Proxy-Connection")
+        clear_header("Proxy-Connection")
       end
 
       -- clear the proxy-authorization header only in case the plugin didn't
@@ -982,7 +987,7 @@ return {
       local proxy_authorization = var.http_proxy_authorization
       if proxy_authorization and
          proxy_authorization == var.http_proxy_authorization then
-        ngx.req.clear_header("Proxy-Authorization")
+        clear_header("Proxy-Authorization")
       end
 
       local now = get_now()
@@ -991,8 +996,8 @@ return {
       ctx.KONG_ACCESS_TIME     = now - ctx.KONG_ACCESS_START
       ctx.KONG_ACCESS_ENDED_AT = now
       -- time spent in Kong before sending the request to upstream
-      -- ngx.req.start_time() is kept in seconds with millisecond resolution.
-      ctx.KONG_PROXY_LATENCY   = now - ngx.req.start_time() * 1000
+      -- start_time() is kept in seconds with millisecond resolution.
+      ctx.KONG_PROXY_LATENCY   = now - start_time() * 1000
       ctx.KONG_PROXIED         = true
     end
   },
@@ -1016,8 +1021,6 @@ return {
   },
   header_filter = {
     before = function(ctx)
-      local header = ngx.header
-
       if not ctx.KONG_PROXIED then
         return
       end
@@ -1028,8 +1031,6 @@ return {
       ctx.KONG_HEADER_FILTER_STARTED_AT = now
 
       -- clear hop-by-hop response headers:
-      local var = ngx.var
-
       local connection = var.upstream_http_connection
       if connection then
         local header_names = re_split(connection .. ",", [[\s*,\s*]], "djo")
@@ -1062,7 +1063,7 @@ return {
 
       local upstream_status_header = constants.HEADERS.UPSTREAM_STATUS
       if singletons.configuration.enabled_headers[upstream_status_header] then
-        header[upstream_status_header] = tonumber(sub(ngx.var.upstream_status or "", -3))
+        header[upstream_status_header] = tonumber(sub(var.upstream_status or "", -3))
         if not header[upstream_status_header] then
           log(ERR, "failed to set ", upstream_status_header, " header")
         end
@@ -1083,8 +1084,6 @@ return {
       end
     end,
     after = function(ctx)
-      local header = ngx.header
-
       if ctx.KONG_PROXIED then
         if singletons.configuration.enabled_headers[constants.HEADERS.UPSTREAM_LATENCY] then
           header[constants.HEADERS.UPSTREAM_LATENCY] = ctx.KONG_WAITING_TIME
@@ -1110,7 +1109,7 @@ return {
   },
   body_filter = {
     after = function(ctx)
-      if not ngx.arg[2] then
+      if not arg[2] then
         return
       end
 
