@@ -113,6 +113,7 @@ local function transform_headers(conf)
 
   if remove then
     for _, name, _ in iter(conf.remove.headers) do
+      name = lower(name)
       if headers[name] ~= nil then
         headers[name] = nil
         clear_header(name)
@@ -126,6 +127,7 @@ local function transform_headers(conf)
 
   if rename then
     for _, old_name, new_name in iter(conf.rename.headers) do
+      old_name = lower(old_name)
       local value = headers[old_name]
       if value ~= nil then
         headers[new_name] = value
@@ -166,7 +168,8 @@ local function transform_headers(conf)
 
   if append then
     for _, name, value in iter(conf.append.headers) do
-      if lower(name) ~= "host" then
+      name = lower(name)
+      if name ~= "host" then
         headers[name] = append_value(headers[name], value)
 
         if not appended then
