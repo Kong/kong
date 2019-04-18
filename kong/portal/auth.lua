@@ -209,6 +209,7 @@ function _M.authenticate_gui_session(self, db, helpers)
   local portal_auth = ws_helper.retrieve_ws_config(ws_constants.PORTAL_AUTH, workspace)
 
   if portal_auth == nil or portal_auth == '' then
+    self.developer = {}
     return
   end
 
