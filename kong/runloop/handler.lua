@@ -17,15 +17,15 @@ local mesh         = require "kong.runloop.mesh"
 local constants    = require "kong.constants"
 local semaphore    = require "ngx.semaphore"
 local singletons   = require "kong.singletons"
-local certificate  = require "kong.runloop.certificate"
 local concurrency  = require "kong.concurrency"
 local declarative  = require "kong.db.declarative"
 local certificate  = require "kong.runloop.certificate"
-local ngx_re       = require "ngx.re"
+local BasePlugin   = require "kong.plugins.base_plugin"
 
 
 local kong         = kong
 local pcall        = pcall
+local pairs        = pairs
 local ipairs       = ipairs
 local tostring     = tostring
 local tonumber     = tonumber
@@ -860,6 +860,25 @@ do
       combos = {},
     }
 
+    if subsystem == "stream" then
+      new_plugins.phases = {
+        init_worker = {},
+        preread     = {},
+        log         = {},
+      }
+
+    else
+      new_plugins.phases = {
+        init_worker   = {},
+        certificate   = {},
+        rewrite       = {},
+        access        = {},
+        header_filter = {},
+        body_filter   = {},
+        log           = {},
+      }
+    end
+
     local counter = 0
 
     for plugin, err in kong.db.plugins:each(1000) do
@@ -909,8 +928,18 @@ do
     end
 
     for _, plugin in ipairs(loaded_plugins) do
-      if not new_plugins.combos[plugin.name] then
+      if new_plugins.combos[plugin.name] then
+        for phase_name, phase in pairs(new_plugins.phases) do
+          if plugin.handler[phase_name] ~= BasePlugin[phase_name] then
+            phase[plugin.name] = true
+          end
+        end
+
+      else
         new_plugins.combos[plugin.name] = EMPTY_T
+        if plugin.handler.init_worker ~= BasePlugin.init_worker then
+          new_plugins.phases.init_worker[plugin.name] = true
+        end
       end
     end
 
@@ -1604,7 +1633,7 @@ return {
       end
 
       local upstream_status_header = constants.HEADERS.UPSTREAM_STATUS
-      if singletons.configuration.enabled_headers[upstream_status_header] then
+      if kong.configuration.enabled_headers[upstream_status_header] then
         header[upstream_status_header] = tonumber(sub(var.upstream_status or "", -3))
         if not header[upstream_status_header] then
           log(ERR, "failed to set ", upstream_status_header, " header")

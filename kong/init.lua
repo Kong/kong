@@ -82,9 +82,6 @@ local balancer_execute = require("kong.runloop.balancer").execute
 local kong_error_handlers = require "kong.error_handlers"
 
 
-local BasePlugin = require "kong.plugins.base_plugin"
-
-
 local kong             = kong
 local ngx              = ngx
 local header           = ngx.header
@@ -123,8 +120,9 @@ local schema_state
 
 
 local function execute_plugins(ctx, phase)
+  local phase_plugins = plugins.phases[phase]
   for plugin, configuration in plugins_iterator(ctx, phase, plugins) do
-    if plugin.handler[phase] ~= BasePlugin[phase] then
+    if phase_plugins[plugin.name] then
       kong_global.set_named_ctx(kong, "plugin", configuration)
       kong_global.set_namespaced_log(kong, plugin.name)
 
@@ -352,8 +350,9 @@ function Kong.init_worker()
 
 
   plugins = runloop.get_plugins()
+  local phase_plugins = plugins.phases.init_worker
   for _, plugin in ipairs(plugins.loaded) do
-    if plugin.handler.init_worker ~= BasePlugin.init_worker then
+    if phase_plugins[plugin.name] then
       kong_global.set_namespaced_log(kong, plugin.name)
       plugin.handler:init_worker()
       kong_global.reset_log(kong)
@@ -514,8 +513,9 @@ function Kong.access()
 
   ctx.delay_response = true
 
+  local phase_plugins = plugins.phases.access
   for plugin, configuration in plugins_iterator(ctx, "access", plugins) do
-    if not ctx.delayed_response and plugin.handler.access ~= BasePlugin.access then
+    if not ctx.delayed_response and phase_plugins[plugin.name] then
       kong_global.set_named_ctx(kong, "plugin", configuration)
       kong_global.set_namespaced_log(kong, plugin.name)
 
