@@ -28,7 +28,7 @@ env:
     - OPENRESTY_BASE=1.13.6.2
     - OPENRESTY_LATEST=1.13.6.2
     - OPENRESTY=$OPENRESTY_BASE
-    - DOWNLOAD_CACHE=$HOME/download-cache
+    - DOWNLOAD_ROOT=$HOME/download-root
     - INSTALL_CACHE=$HOME/install-cache
     - KONG_TEST_PG_DATABASE=travis
     - KONG_TEST_PG_USER=postgres
@@ -51,7 +51,6 @@ cache:
   apt: true
   pip: true
   directories:
-    - $DOWNLOAD_CACHE
     - $INSTALL_CACHE
     - $HOME/.ccm/repository
 
