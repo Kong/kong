@@ -74,6 +74,15 @@ local function prepare_plugin(opts)
       end
     end
 
+    -- strip out default ports from cors origins
+    if opts.name == 'cors' and model.config and model.config.origins then
+      local origins = model.config.origins
+      for k, v in ipairs(origins) do
+        model.config.origins[k] = ngx.re.gsub(origins[k], ":443$", "")
+        model.config.origins[k] = ngx.re.gsub(origins[k], ":80$", "")
+      end
+    end
+
     if opts.api_type == "admin" then
       admin_plugin_models[opts.name] = model
     end
@@ -150,7 +159,9 @@ return {
     set_phase = kong_global.set_phase
     set_named_ctx = kong_global.set_named_ctx
 
-    return setmetatable({}, {
+    return setmetatable({
+      prepare_plugin = prepare_plugin,
+    }, {
       __call = function(_, ...)
         return prepare_and_invoke(...)
       end,
