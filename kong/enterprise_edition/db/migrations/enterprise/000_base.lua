@@ -437,7 +437,6 @@ return {
         id uuid PRIMARY KEY,
         name text UNIQUE NOT NULL,
         user_token text UNIQUE NOT NULL,
-        user_token_ident text UNIQUE NOT NULL,
         comment text,
         enabled boolean NOT NULL,
         created_at timestamp without time zone default (CURRENT_TIMESTAMP(0) at time zone 'utc')
@@ -450,9 +449,6 @@ return {
         END IF;
         IF (SELECT to_regclass('rbac_users_token_idx')) IS NULL THEN
           CREATE INDEX rbac_users_token_idx on rbac_users(user_token);
-        END IF;
-        IF (SELECT to_regclass('idx_rbac_token_ident')) IS NULL THEN
-          CREATE INDEX idx_rbac_token_ident on rbac_users(user_token_ident);
         END IF;
       END$$;
 
@@ -839,7 +835,6 @@ CREATE TABLE IF NOT EXISTS admins (
         id uuid PRIMARY KEY,
         name text,
         user_token text,
-        user_token_ident text,
         comment text,
         enabled boolean,
         created_at timestamp
@@ -847,7 +842,6 @@ CREATE TABLE IF NOT EXISTS admins (
 
       CREATE INDEX IF NOT EXISTS ON rbac_users(name);
       CREATE INDEX IF NOT EXISTS ON rbac_users(user_token);
-      CREATE INDEX IF NOT EXISTS ON rbac_users(user_token_ident);
 
       CREATE TABLE IF NOT EXISTS rbac_user_roles(
         user_id uuid,
