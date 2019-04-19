@@ -241,5 +241,23 @@ describe("Admin API #off", function()
 
       assert.response(res).has.status(201)
     end)
+    it("returns 400 on an invalid config string", function()
+      local res = assert(client:send {
+        method = "POST",
+        path = "/config",
+        body = {
+          config = "bobby tables",
+        },
+        headers = {
+          ["Content-Type"] = "application/json"
+        }
+      })
+
+      local body =assert.response(res).has.status(400)
+      local json = cjson.decode(body)
+      assert.same({
+        error = "expected a table as input",
+      }, json)
+    end)
   end)
 end)
