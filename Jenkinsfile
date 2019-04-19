@@ -56,10 +56,6 @@ pipeline {
             sh './package.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p centos:7 --ee $BUILD_ARG -V'
             sh './release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p centos:7 -e $BUILD_ARG'
           },
-          debian7: {
-            sh './package.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p debian:7 --ee $BUILD_ARG -V'
-            sh './release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p debian:7 -e $BUILD_ARG'
-          },
           debian8: {
             sh './package.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p debian:8 --ee $BUILD_ARG -V'
             sh './release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p debian:8 -e $BUILD_ARG'
@@ -67,10 +63,6 @@ pipeline {
           debian9: {
             sh './package.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p debian:9 --ee $BUILD_ARG -V'
             sh './release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p debian:9 -e $BUILD_ARG'
-          },
-          ubuntu1204: {
-            sh './package.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p ubuntu:12.04.5 --ee $BUILD_ARG -V'
-            sh './release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p ubuntu:12.04.5 -e $BUILD_ARG'
           },
           ubuntu1404: {
             sh './package.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p ubuntu:14.04.2 --ee $BUILD_ARG -V'
