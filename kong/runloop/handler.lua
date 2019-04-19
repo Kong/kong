@@ -7,6 +7,8 @@
 --
 -- In the `access_by_lua` phase, it is responsible for retrieving the route being proxied by
 -- a consumer. Then it is responsible for loading the plugins to execute on this request.
+local semaphore    = require "ngx.semaphore"
+local ngx_re       = require "ngx.re"
 local ck           = require "resty.cookie"
 local meta         = require "kong.meta"
 local utils        = require "kong.tools.utils"
@@ -15,7 +17,6 @@ local reports      = require "kong.reports"
 local balancer     = require "kong.runloop.balancer"
 local mesh         = require "kong.runloop.mesh"
 local constants    = require "kong.constants"
-local semaphore    = require "ngx.semaphore"
 local singletons   = require "kong.singletons"
 local concurrency  = require "kong.concurrency"
 local declarative  = require "kong.db.declarative"
@@ -26,6 +27,8 @@ local BasePlugin   = require "kong.plugins.base_plugin"
 local kong         = kong
 local pcall        = pcall
 local pairs        = pairs
+local error        = error
+local assert       = assert
 local ipairs       = ipairs
 local tostring     = tostring
 local tonumber     = tonumber
@@ -39,17 +42,22 @@ local arg          = ngx.arg
 local var          = ngx.var
 local log          = ngx.log
 local exit         = ngx.exit
+local sleep        = ngx.sleep
 local header       = ngx.header
 local ngx_now      = ngx.now
-local timer_at     = ngx.timer.at
+local starttls     = ngx.req.starttls
+local start_time   = ngx.req.start_time
+local clear_header = ngx.req.clear_header
+local update_time  = ngx.update_time
+local worker_id    = ngx.worker.id
 local re_match     = ngx.re.match
 local re_find      = ngx.re.find
 local re_split     = ngx_re.split
-local update_time  = ngx.update_time
+local timer_at     = ngx.timer.at
+local timer_every  = ngx.timer.every
+local get_phase    = ngx.get_phase
 local subsystem    = ngx.config.subsystem
-local start_time   = ngx.req.start_time
-local clear_header = ngx.req.clear_header
-local starttls     = ngx.req.starttls
+local kong_dict    = ngx.shared.kong
 local unpack       = unpack
 
 
@@ -65,6 +73,7 @@ local NOTICE       = ngx.NOTICE
 local SERVER_HEADER = meta._SERVER_TOKENS
 local CACHE_OPTS = { ttl = 0 }
 local SUBSYSTEMS = constants.PROTOCOLS_WITH_SUBSYSTEM
+local HEADERS = constants.HEADERS
 local EMPTY_T = {}
 local WORKER_ID
 
@@ -131,7 +140,7 @@ local function load_declarative_config()
   }
 
   return concurrency.with_worker_mutex(opts, function()
-    local value = ngx.shared.kong:get("declarative_config:loaded")
+    local value = kong_dict:get("declarative_config:loaded")
     if value then
       return true
     end
@@ -204,7 +213,7 @@ local function cache_services()
   end
 
   if count > 0 then
-    ngx.timer.at(0, prewarm_hostnames, hosts, count)
+    timer_at(0, prewarm_hostnames, hosts, count)
   end
 
   return true
@@ -213,12 +222,12 @@ end
 
 local function start_timers()
   -- initialize balancers for active healthchecks
-  ngx.timer.at(0, function()
+  timer_at(0, function()
     balancer.init()
   end)
 
 
-  ngx.timer.every(1, function(premature)
+  timer_every(1, function(premature)
     if premature then
       return
     end
@@ -321,7 +330,7 @@ local function register_events()
     if data.operation == "create" or
        data.operation == "update" then
       if utils.hostname_type(data.entity.host) == "name" then
-        ngx.timer.at(0, prewarm_hostname, data.entity.host)
+        timer_at(0, prewarm_hostname, data.entity.host)
       end
     end
   end, "crud", "services")
@@ -485,7 +494,7 @@ end
 
 
 local function init_worker()
-  WORKER_ID = ngx.worker.id()
+  WORKER_ID = worker_id()
 
   local _, err = cache_services()
   if err then
@@ -674,8 +683,9 @@ do
   end
 
   build_router = function(version, recurse, tries)
+    local phase = get_phase()
     if version == "init" then
-      if ngx.get_phase() == "init" then
+      if phase == "init" then
         log(DEBUG, "initialising router...")
       else
         log(DEBUG, "initialising router on worker #", WORKER_ID, "...")
@@ -800,7 +810,7 @@ do
     singletons.router = new_router
 
     if version == "init" then
-      if ngx.get_phase() == "init" then
+      if phase == "init" then
         log(DEBUG, "initialising router done")
       else
         log(DEBUG, "initialising router on worker #", WORKER_ID, " done")
@@ -822,8 +832,9 @@ do
   end
 
   build_plugins = function(version, recurse, tries)
+    local phase = get_phase()
     if version == "init" then
-      if ngx.get_phase() == "init" then
+      if phase == "init" then
         log(DEBUG, "initialising plugins...")
       else
         log(DEBUG, "initialising plugins on worker #", WORKER_ID, "...")
@@ -947,7 +958,7 @@ do
     plugins = new_plugins
 
     if version == "init" then
-      if ngx.get_phase() == "init" then
+      if phase == "init" then
         log(DEBUG, "initialising plugins done")
       else
         log(DEBUG, "initialising plugins on worker #", WORKER_ID, " done")
@@ -990,7 +1001,7 @@ do
   end
 
   local function rebuild_async(callback, version, semaphore)
-    local ok, err = ngx.timer.at(0, rebuild_timer, callback, version, semaphore)
+    local ok, err = timer_at(0, rebuild_timer, callback, version, semaphore)
     if not ok then
       log(CRIT, "could not create rebuild timer: ", err)
       return false
@@ -1142,7 +1153,6 @@ return {
       end
     end
   },
-
   init_worker = {
     before = function()
       init_worker()
@@ -1185,7 +1195,6 @@ return {
       end
 
       local ssl_termination_ctx -- OpenSSL SSL_CTX to use for termination
-
       local ssl_preread_alpn_protocols = var.ssl_preread_alpn_protocols
       -- ssl_preread_alpn_protocols is a comma separated list
       -- see https://trac.nginx.org/nginx/ticket/1616
@@ -1632,7 +1641,7 @@ return {
         header["Trailer"] = nil
       end
 
-      local upstream_status_header = constants.HEADERS.UPSTREAM_STATUS
+      local upstream_status_header = HEADERS.UPSTREAM_STATUS
       if kong.configuration.enabled_headers[upstream_status_header] then
         header[upstream_status_header] = tonumber(sub(var.upstream_status or "", -3))
         if not header[upstream_status_header] then
@@ -1655,25 +1664,26 @@ return {
       end
     end,
     after = function(ctx)
+      local enabled_headers = kong.configuration.enabled_headers
       if ctx.KONG_PROXIED then
-        if kong.configuration.enabled_headers[constants.HEADERS.UPSTREAM_LATENCY] then
-          header[constants.HEADERS.UPSTREAM_LATENCY] = ctx.KONG_WAITING_TIME
+        if enabled_headers[HEADERS.UPSTREAM_LATENCY] then
+          header[HEADERS.UPSTREAM_LATENCY] = ctx.KONG_WAITING_TIME
         end
 
-        if kong.configuration.enabled_headers[constants.HEADERS.PROXY_LATENCY] then
-          header[constants.HEADERS.PROXY_LATENCY] = ctx.KONG_PROXY_LATENCY
+        if enabled_headers[HEADERS.PROXY_LATENCY] then
+          header[HEADERS.PROXY_LATENCY] = ctx.KONG_PROXY_LATENCY
         end
 
-        if kong.configuration.enabled_headers[constants.HEADERS.VIA] then
-          header[constants.HEADERS.VIA] = SERVER_HEADER
+        if enabled_headers[HEADERS.VIA] then
+          header[HEADERS.VIA] = SERVER_HEADER
         end
 
       else
-        if kong.configuration.enabled_headers[constants.HEADERS.SERVER] then
-          header[constants.HEADERS.SERVER] = SERVER_HEADER
+        if enabled_headers[HEADERS.SERVER] then
+          header[HEADERS.SERVER] = SERVER_HEADER
 
         else
-          header[constants.HEADERS.SERVER] = nil
+          header[HEADERS.SERVER] = nil
         end
       end
     end
