@@ -27,7 +27,6 @@ local PROXY_AUTHORIZATION = "proxy-authorization"
 
 local ldap_config_cache = setmetatable({}, { __mode = "k" })
 
-
 local _M = {}
 
 local function retrieve_credentials(authorization_header_value, conf)
@@ -50,7 +49,16 @@ local function ldap_authenticate(given_username, given_password, conf)
 
   local sock = ngx_socket_tcp()
   sock:settimeout(conf.timeout)
-  ok, err = sock:connect(conf.ldap_host, conf.ldap_port)
+
+  local opts = {}
+
+  -- keep TLS connections in a separate pool to avoid reusing non-secure
+  -- connections and vica versa, because StartTLS use the same port 
+  if conf.start_tls then
+    opts.pool = conf.ldap_host .. ":" .. conf.ldap_port .. ":starttls"
+  end
+
+  ok, err = sock:connect(conf.ldap_host, conf.ldap_port, opts)
   if not ok then
     ngx_log(ngx_error, "[ldap-auth-advanced] failed to connect to ", conf.ldap_host,
             ":", tostring(conf.ldap_port),": ", err)
@@ -58,7 +66,8 @@ local function ldap_authenticate(given_username, given_password, conf)
   end
 
   if conf.ssl or conf.start_tls then
-    if conf.start_tls then
+    -- convert connection to a StarTLS connection only if it is a new connection
+    if conf.start_tls and sock:getreusedtimes() == 0 then
       local success, err = ldap.start_tls(sock)
       if not success then
         return false, err
