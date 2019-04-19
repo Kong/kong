@@ -179,4 +179,67 @@ describe("Admin API #off", function()
       end
     end)
   end)
+
+  describe("/config", function()
+    it("accepts configuration as JSON body", function()
+      local res = assert(client:send {
+        method = "POST",
+        path = "/config",
+        body = {
+          _format_version = "1.1",
+          consumers = {
+            {
+              username = "bobby",
+            },
+          },
+        },
+        headers = {
+          ["Content-Type"] = "application/json"
+        }
+      })
+
+      assert.response(res).has.status(201)
+    end)
+    it("accepts configuration as a JSON string", function()
+      local res = assert(client:send {
+        method = "POST",
+        path = "/config",
+        body = {
+          config = [[
+          {
+            "_format_version" : "1.1",
+            "consumers" : [
+              {
+                "username" : "bobby",
+              },
+            ],
+          }
+          ]],
+        },
+        headers = {
+          ["Content-Type"] = "application/json"
+        }
+      })
+
+      assert.response(res).has.status(201)
+    end)
+    it("accepts configuration as a YAML string", function()
+      local res = assert(client:send {
+        method = "POST",
+        path = "/config",
+        body = {
+          config = [[
+          _format_version: "1.1"
+          consumers:
+          - username: bobby
+          ]],
+        },
+        headers = {
+          ["Content-Type"] = "application/json"
+        }
+      })
+
+      assert.response(res).has.status(201)
+    end)
+  end)
 end)
