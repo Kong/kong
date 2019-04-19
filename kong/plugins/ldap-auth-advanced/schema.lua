@@ -14,7 +14,7 @@ local function check_ssl_tls(entity)
   local ssl = entity.config.ssl
   local start_tls = entity.config.start_tls
 
-  if ssl == true and start_tls == true then
+  if ssl and start_tls then
     return nil, "SSL and StartTLS cannot be enabled simultaneously."
   end
   return true
