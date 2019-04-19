@@ -1008,7 +1008,7 @@ do
     local ok = acquire_semaphore(semaphore, wait)
     if not ok then
       if wait and wait > 0 then
-        rebuild_sync(callback, current_version, semaphore)
+        rebuild_sync(callback, current_version)
       end
 
       return
@@ -1021,14 +1021,14 @@ do
     end
 
     if wait and wait > 0 then
-      rebuild_sync(callback, current_version, semaphore)
+      rebuild_sync(callback, current_version)
       release_semaphore(semaphore)
 
     else
       ok = rebuild_async(callback, current_version, semaphore)
       if not ok then
         if wait and wait == 0 then
-          rebuild_sync(callback, current_version, semaphore)
+          rebuild_sync(callback, current_version)
         end
 
         release_semaphore(semaphore)
