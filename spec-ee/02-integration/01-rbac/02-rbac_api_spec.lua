@@ -837,6 +837,12 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
         assert.res_status(204, res)
         assert.is_nil(find_role(db, "baz"))
       end)
+      describe("errors", function()
+        it("when the role doesn't exist", function()
+          delete("/rbac/roles/notexists", nil, 404)
+        end)
+      end)
+
     end)
   end)
 
