@@ -121,6 +121,9 @@ end
 
 
 function Config:parse_table(dc_table)
+  if type(dc_table) ~= "table" then
+    return nil, "expected a table as input"
+  end
   local ok, err_t = self.schema:validate(dc_table)
   if not ok then
     return nil, pretty_print_error(err_t), err_t
