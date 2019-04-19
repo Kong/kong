@@ -1,6 +1,7 @@
 local declarative = require("kong.db.declarative")
 local reports = require("kong.reports")
 local kong = kong
+local dc = declarative.new_config(kong.configuration)
 
 
 -- Do not accept Lua configurations from the Admin API
@@ -25,11 +26,15 @@ return {
         })
       end
 
-      local dc = declarative.new_config(kong.configuration)
-
+      local entities, err_or_ver
+      if self.params._format_version then
+        entities, err_or_ver = dc:parse_table(self.params)
+      else
       local config = self.params.config
-      -- TODO extract proper filename from the input
-      local entities, err_or_ver = dc:parse_string(config, "config.yml", accept)
+        -- TODO extract proper filename from the input
+        entities, err_or_ver = dc:parse_string(config, "config.yml", accept)
+      end
+
       if not entities then
         return kong.response.exit(400, { error = err_or_ver })
       end
