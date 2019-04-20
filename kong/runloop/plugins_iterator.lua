@@ -2,6 +2,9 @@ local kong         = kong
 local setmetatable = setmetatable
 local singletons   = require "kong.singletons"
 
+local tostring = tostring
+local ipairs   = ipairs
+
 
 -- Loads a plugin config from the datastore.
 -- @return plugin config table or an empty sentinel table in case of a db-miss
@@ -19,32 +22,50 @@ local function load_plugin_into_memory_ws(ctx, key)
   local ws_scope = ctx.workspaces or {}
 
   -- when there is no workspace, like in phase rewrite
+  local plugin, err
   if not ws_scope or #ws_scope == 0 then
 
-    local plugin, err  = kong.cache:get(key,
-                                        nil,
-                                        load_plugin_into_memory,
-                                        key)
+    plugin, err  = kong.cache:get(key,
+                                  nil,
+                                  load_plugin_into_memory,
+                                  key)
     return plugin, err
   end
 
-  -- check if plugin in cache for each workspace
+  local found
   for _, ws in ipairs(ws_scope) do
     local plugin_cache_key = key .. ws.id
 
-    local _, err, plugin = singletons.cache:probe(plugin_cache_key)
+    plugin = singletons.cache.mlcache.lru:get(plugin_cache_key)
+    if plugin then
+      return plugin
+    end
+
+    local ttl
+    ttl, err, plugin = singletons.cache:probe(plugin_cache_key)
     if err then
       return nil, err
     end
 
-    if plugin then
-      return plugin
+    singletons.cache.mlcache.lru:set(plugin_cache_key, plugin)
+
+    if ttl then
+      found = true
+
+      if plugin then
+        return plugin
+      end
     end
+  end
+
+  -- plugin is negative cached
+  if found then
+    return plugin
   end
 
   -- load plugin, here workspace scope can contain more than one workspace
   -- depending on with how many workspace, api being shared
-  local plugin = load_plugin_into_memory(key)
+  plugin = load_plugin_into_memory(key)
 
   -- add positive and negative cache
   for _, ws in ipairs(ws_scope) do

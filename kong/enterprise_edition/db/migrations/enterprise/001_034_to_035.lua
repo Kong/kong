@@ -124,6 +124,16 @@ return {
      ALTER TABLE audit_requests
         ADD COLUMN ttl timestamp WITH TIME ZONE DEFAULT (CURRENT_TIMESTAMP(0)
           AT TIME ZONE 'UTC' + INTERVAL ']] .. audit_ttl .. [[');
+
+    ALTER TABLE rbac_users
+        ADD COLUMN user_token_ident text;
+
+      DO $$
+      BEGIN
+        IF (SELECT to_regclass('idx_rbac_token_ident')) IS NULL THEN
+        CREATE INDEX idx_rbac_token_ident on rbac_users(user_token_ident);
+        END IF;
+      END$$;
     ]],
 
     teardown = function(connector)
@@ -159,6 +169,9 @@ return {
   cassandra = {
     up = [[
       CREATE INDEX IF NOT EXISTS ON rbac_user_roles(role_id);
+
+      ALTER TABLE rbac_users ADD user_token_ident text;
+      CREATE INDEX IF NOT EXISTS ON rbac_users(user_token_ident);
     ]],
 
     teardown = function(connector)
