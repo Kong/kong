@@ -570,10 +570,11 @@ end
 _M.role_relation_cleanup = role_relation_cleanup
 
 
--- helpers: delete the role if the user was the only one in the role
-function _M.remove_user_from_default_role(user, default_role)
-  -- delete user-role relationship
-
+-- helpers: delete the role no rbac_user has that role This is ment to
+-- be used on default roles after deleting its main user. Previously
+-- this function had to delete the rbac_user_role relationship. Now
+-- it's managed by delete-cascade at dao level
+function _M.remove_default_role_if_empty(default_role)
   -- get count of users still in the default role
   local users, err = get_role_users(kong.db, default_role)
   local n_users = #users
@@ -658,7 +659,7 @@ local function delete_role_entity_permission(table_name, entity)
 
   for _, role_entity in ipairs(role_entities) do
     local _, err, err_t = db.rbac_role_entities:delete({
-      role = { id = role_entity.role_id },
+      role = { id = role_entity.role.id },
       entity_id = role_entity.entity_id
     })
     if err then

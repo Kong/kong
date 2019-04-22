@@ -211,8 +211,7 @@ return {
 
         local default_role = db.rbac_roles:select_by_name(self.rbac_user.name)
         if default_role then
-          local _, err = rbac.remove_user_from_default_role(self.rbac_user,
-            default_role)
+          local _, err = rbac.remove_default_role_if_empty(default_role)
           if err then
             helpers.yield_error(err)
           end

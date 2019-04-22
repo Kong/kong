@@ -1,5 +1,6 @@
 local utils = require "kong.tools.utils"
 local enums = require "kong.enterprise_edition.dao.enums"
+local rbac      = require "kong.rbac"
 
 local log = ngx.log
 local ERR = ngx.ERR
@@ -97,6 +98,18 @@ function _Admins:delete(admin, options)
   local consumer_id = admin.consumer.id
   local rbac_user_id = admin.rbac_user.id
 
+  local roles, err = rbac.get_user_roles(kong.db, admin.rbac_user)
+  if err then
+    return nil, err
+  end
+
+  local default_roles = {}
+  for _, role in ipairs(roles) do
+    if role.is_default then
+      default_roles[#default_roles+1] = role
+    end
+  end
+
   local _, err = self.super.delete(self, { id = admin.id }, options)
   if err then
     return nil, err
@@ -110,6 +123,13 @@ function _Admins:delete(admin, options)
   _, err = self.db.rbac_users:delete({ id = rbac_user_id })
   if err then
     return nil, err
+  end
+
+  for _, role in ipairs(default_roles) do
+    local _, err = rbac.remove_default_role_if_empty(role)
+    if err then
+      return nil, err
+    end
   end
 
   return true

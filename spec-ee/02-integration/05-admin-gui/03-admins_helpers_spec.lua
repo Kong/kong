@@ -5,6 +5,9 @@ local admins_helpers = require "kong.enterprise_edition.admins_helpers"
 local workspaces = require "kong.workspaces"
 local singletons = require "kong.singletons"
 
+local cache = {
+  get = function(self, x, y, f, ...) return f(...) end,
+}
 for _, strategy in helpers.each_strategy() do
 
   describe("admin_helpers with #" .. strategy, function()
@@ -17,8 +20,11 @@ for _, strategy in helpers.each_strategy() do
 
       if _G.kong then
         _G.kong.db = db
+        _G.kong.cache =  cache
       else
-        _G.kong = { db = db }
+        _G.kong = { db = db,
+          cache = cache
+        }
       end
 
       admins = db.admins
@@ -242,7 +248,7 @@ for _, strategy in helpers.each_strategy() do
     describe("update", function()
       local admin
 
-      setup(function()
+      lazy_setup(function()
         admin = assert(db.admins:insert(
           {
             username = "admin",
@@ -252,7 +258,7 @@ for _, strategy in helpers.each_strategy() do
           })
         )
       end)
-      teardown(function()
+      lazy_teardown(function()
         if admin then
           db.admins:delete(admin)
         end
