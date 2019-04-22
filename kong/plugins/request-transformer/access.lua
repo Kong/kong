@@ -144,7 +144,6 @@ local function transform_headers(conf)
 
   if replace then
     for _, name, value in iter(conf.replace.headers) do
-      name = lower(name)
       if headers[name] ~= nil or name == "host" then
         headers[name] = value
 

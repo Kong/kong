@@ -207,7 +207,7 @@ for _, strategy in helpers.each_strategy() do
         name     = "request-transformer",
         config   = {
           remove = {
-            headers     = {"x-to-remove"},
+            headers     = {"X-to-Remove"},
             querystring = {"q1"},
             body        = {"toremoveform"}
           }
@@ -231,7 +231,7 @@ for _, strategy in helpers.each_strategy() do
         name     = "request-transformer",
         config   = {
           append = {
-            headers     = {"h1:v1", "h1:v2", "h2:v1",},
+            headers     = {"h1:v1", "h1:v2", "H2:v1",},
             querystring = {"q1:v1", "q1:v2", "q2:v1"},
             body        = {"p1:v1", "p1:v2", "p2:value:1"} -- payload containing a colon
           }
@@ -259,7 +259,7 @@ for _, strategy in helpers.each_strategy() do
         name     = "request-transformer",
         config   = {
           rename = {
-            headers     = {"x-to-rename:x-is-renamed"},
+            headers     = {"X-to-Rename:x-is-renamed"},
             querystring = {"originalparam:renamedparam"},
             body        = {"originalparam:renamedparam"}
           }
