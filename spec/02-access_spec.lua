@@ -55,6 +55,27 @@ for _, strategy in helpers.each_strategy() do
         },
       }
 
+      local service3 = db.services:insert {
+        name = "service-3",
+        host = "example.com",
+        protocol = "http",
+        port = 8090,
+      }
+
+      local route3 = db.routes:insert {
+        hosts = { "service-3.com" },
+        service   = service3,
+      }
+
+      bp.plugins:insert {
+        route_id = route3.id,
+        name   = "forward-proxy",
+        config = {
+          proxy_host = helpers.mock_upstream_host,
+          proxy_port = helpers.mock_upstream_port,
+        },
+      }
+
       assert(helpers.start_kong({
         database = strategy,
         custom_plugins = "forward-proxy",
@@ -107,6 +128,22 @@ for _, strategy in helpers.each_strategy() do
       local json = cjson.decode(body)
 
       assert.same("GET http://example.com/get HTTP/1.1",
+        json.vars.request, nil, true)
+    end)
+
+    it("includes non-standard port in to the proxy", function()
+      local res = assert(client:send {
+        method  = "GET",
+        path    = "/get",
+        headers = {
+          host = "service-3.com",
+        },
+      })
+
+      local body = assert.res_status(200, res)
+      local json = cjson.decode(body)
+
+      assert.same("GET http://example.com:8090/get HTTP/1.1",
         json.vars.request, nil, true)
     end)
 

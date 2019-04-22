@@ -121,9 +121,25 @@ function ForwardProxyHandler:access(conf)
                                   -- encoding being used subsequently)
 
   headers["Host"] = var.upstream_host
+
+  local path
+
+  if var.upstream_scheme == "https" and addr.port == 443 or
+     var.upstream_scheme == "http" and addr.port == 80 then
+    path = var.upstream_scheme .."://" .. addr.host .. var.upstream_uri
+
+  else
+    path = var.upstream_scheme .."://" .. addr.host .. ":" ..
+           addr.port .. var.upstream_uri
+
+    if var.upstream_host then
+      headers["Host"] = var.upstream_host .. ":" .. addr.port
+    end
+  end
+
   res, err = httpc:request({
     method  = ngx_req_get_method(),
-    path    = var.upstream_scheme .."://" .. addr.host .. var.upstream_uri,
+    path    = path,
     headers = headers,
     body    = ngx_req_get_body(),
   })
