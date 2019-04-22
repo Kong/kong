@@ -150,12 +150,39 @@ local function load_plugin_handler(plugin)
 end
 
 
-local function load_plugin_entity_strategy(schema, db)
+local function load_plugin_entity_strategy(schema, db, plugin)
   local Strategy = require(fmt("kong.db.strategies.%s", db.strategy))
   local strategy, err = Strategy.new(db.connector, schema, db.errors)
   if not strategy then
     return nil, err
   end
+
+  local custom_strat = fmt("kong.plugins.%s.strategies.%s.%s",
+                           plugin, db.strategy, schema.name)
+  local exists, mod = utils.load_module_if_exists(custom_strat)
+  if exists and mod then
+    local parent_mt = getmetatable(strategy)
+    local mt = {
+      __index = function(t, k)
+        -- explicit parent
+        if k == "super" then
+          return parent_mt
+        end
+
+        -- override
+        local f = mod[k]
+        if f then
+          return f
+        end
+
+        -- parent fallback
+        return parent_mt[k]
+      end
+    }
+
+    setmetatable(strategy, mt)
+  end
+
   db.strategies[schema.name] = strategy
 
   local dao, err = DAO.new(db, schema, strategy, db.errors)
@@ -174,7 +201,7 @@ local function plugin_entity_loader(db)
       return nil, err
     end
 
-    load_plugin_entity_strategy(schema, db)
+    load_plugin_entity_strategy(schema, db, plugin)
   end
 end
 

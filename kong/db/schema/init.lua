@@ -1502,6 +1502,13 @@ function Schema:process_auto_fields(data, context, nulls)
     if context == "select" and field.type == "integer" and type(data[key]) == "number" then
       data[key] = floor(data[key])
     end
+
+    -- Set read_before_write to true,
+    -- to handle deep merge of record object on update.
+    if context == "update" and field.type == "record"
+       and data[key] ~= nil and data[key] ~= null then
+      read_before_write = true
+    end
   end
 
   --[[

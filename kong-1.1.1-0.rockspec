@@ -33,7 +33,7 @@ dependencies = {
   "lua-resty-dns-client == 3.0.2",
   "lua-resty-worker-events == 0.3.3",
   "lua-resty-mediador == 0.1.2",
-  "lua-resty-healthcheck == 0.6.0",
+  "lua-resty-healthcheck == 0.6.1",
   "lua-resty-cookie == 0.1.0",
   "lua-resty-mlcache == 2.4.0",
   -- external Kong plugins
@@ -246,6 +246,7 @@ build = {
     ["kong.plugins.rate-limiting.migrations.000_base_rate_limiting"] = "kong/plugins/rate-limiting/migrations/000_base_rate_limiting.lua",
     ["kong.plugins.rate-limiting.migrations.001_14_to_15"] = "kong/plugins/rate-limiting/migrations/001_14_to_15.lua",
     ["kong.plugins.rate-limiting.migrations.002_15_to_10"] = "kong/plugins/rate-limiting/migrations/002_15_to_10.lua",
+    ["kong.plugins.rate-limiting.migrations.003_10_to_112"] = "kong/plugins/rate-limiting/migrations/003_10_to_112.lua",
     ["kong.plugins.rate-limiting.handler"] = "kong/plugins/rate-limiting/handler.lua",
     ["kong.plugins.rate-limiting.schema"] = "kong/plugins/rate-limiting/schema.lua",
     ["kong.plugins.rate-limiting.daos"] = "kong/plugins/rate-limiting/daos.lua",

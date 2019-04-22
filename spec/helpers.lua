@@ -23,6 +23,7 @@ local consumers_schema_def = require "kong.db.schema.entities.consumers"
 local services_schema_def = require "kong.db.schema.entities.services"
 local plugins_schema_def = require "kong.db.schema.entities.plugins"
 local routes_schema_def = require "kong.db.schema.entities.routes"
+local prefix_handler = require "kong.cmd.utils.prefix_handler"
 local dc_blueprints = require "spec.fixtures.dc_blueprints"
 local declarative = require "kong.db.declarative"
 local conf_loader = require "kong.conf_loader"
@@ -1103,6 +1104,156 @@ luassert:register("assertion", "cn", assert_cn,
                   "assertion.cn.negative",
                   "assertion.cn.positive")
 
+
+
+local dns_mock = {}
+do
+  dns_mock.__index = dns_mock
+  dns_mock.__tostring = function(self)
+    -- fill array to prevent json encoding errors
+    for i = 1, 33 do
+      self[i] = self[i] or true
+    end
+    local json = assert(cjson.encode(self))
+    return json
+  end
+
+
+  local TYPE_A, TYPE_AAAA, TYPE_CNAME, TYPE_SRV = 1, 28, 5, 33
+
+
+  --- Creates a new DNS mocks.
+  function dns_mock.new()
+    return setmetatable({}, dns_mock)
+  end
+
+  --- Adds an SRV record to the DNS mock.
+  -- Fields name, target, port are required. Other fields get defaults:
+  -- weight (20), ttl (600), priority (20)
+  function dns_mock:SRV(rec)
+    if self == dns_mock then
+      error("can't operate omn the class, you must create an instance", 2)
+    end
+    if getmetatable(self or {}) ~= dns_mock then
+      error("SRV method must be called using the colon notation", 2)
+    end
+    assert(rec, "Missing record parameter")
+    local name = assert(rec.name, "No name field in SRV record")
+
+    self[TYPE_SRV] = self[TYPE_SRV] or {}
+    local query_answer = self[TYPE_SRV][name]
+    if not query_answer then
+      query_answer = {}
+      self[TYPE_SRV][name] = query_answer
+    end
+
+    table.insert(query_answer, {
+      type = TYPE_SRV,
+      name = name,
+      target = assert(rec.target, "No target field in SRV record"),
+      port = assert(rec.port, "No port field in SRV record"),
+      weight = rec.weight or 10,
+      ttl = rec.ttl or 600,
+      priority = rec.priority or 20,
+      class = rec.class or 1
+    })
+    return true
+  end
+
+
+  --- Adds an A record to the DNS mock.
+  -- Fields name, address are required. Other fields get defaults:
+  -- ttl (600)
+  function dns_mock:A(rec)
+    if self == dns_mock then
+      error("can't operate omn the class, you must create an instance", 2)
+    end
+    if getmetatable(self or {}) ~= dns_mock then
+      error("A method must be called using the colon notation", 2)
+    end
+    assert(rec, "Missing record parameter")
+    local name = assert(rec.name, "No name field in A record")
+
+    self[TYPE_A] = self[TYPE_A] or {}
+    local query_answer = self[TYPE_A][name]
+    if not query_answer then
+      query_answer = {}
+      self[TYPE_A][name] = query_answer
+    end
+
+    table.insert(query_answer, {
+      type = TYPE_A,
+      name = name,
+      address = assert(rec.address, "No address field in A record"),
+      ttl = rec.ttl or 600,
+      class = rec.class or 1
+    })
+    return true
+  end
+
+
+  --- Adds an AAAA record to the DNS mock.
+  -- Fields name, address are required. Other fields get defaults:
+  -- ttl (600)
+  function dns_mock:AAAA(rec)
+    if self == dns_mock then
+      error("can't operate omn the class, you must create an instance", 2)
+    end
+    if getmetatable(self or {}) ~= dns_mock then
+      error("AAAA method must be called using the colon notation", 2)
+    end
+    assert(rec, "Missing record parameter")
+    local name = assert(rec.name, "No name field in AAAA record")
+
+    self[TYPE_AAAA] = self[TYPE_AAAA] or {}
+    local query_answer = self[TYPE_AAAA][name]
+    if not query_answer then
+      query_answer = {}
+      self[TYPE_AAAA][name] = query_answer
+    end
+
+    table.insert(query_answer, {
+      type = TYPE_AAAA,
+      name = name,
+      address = assert(rec.address, "No address field in AAAA record"),
+      ttl = rec.ttl or 600,
+      class = rec.class or 1
+    })
+    return true
+  end
+
+
+  --- Adds an CNAME record to the DNS mock.
+  -- Fields name, cname are required. Other fields get defaults:
+  -- ttl (600)
+  function dns_mock:CNAME(rec)
+    if self == dns_mock then
+      error("can't operate omn the class, you must create an instance", 2)
+    end
+    if getmetatable(self or {}) ~= dns_mock then
+      error("CNAME method must be called using the colon notation", 2)
+    end
+    assert(rec, "Missing record parameter")
+    local name = assert(rec.name, "No name field in CNAME record")
+
+    self[TYPE_CNAME] = self[TYPE_CNAME] or {}
+    local query_answer = self[TYPE_CNAME][name]
+    if not query_answer then
+      query_answer = {}
+      self[TYPE_CNAME][name] = query_answer
+    end
+
+    table.insert(query_answer, {
+      type = TYPE_CNAME,
+      name = name,
+      cname = assert(rec.cname, "No cname field in CNAME record"),
+      ttl = rec.ttl or 600,
+      class = rec.class or 1
+    })
+    return true
+  end
+end
+
 ----------------
 -- Shell helpers
 -- @section Shell-helpers
@@ -1297,7 +1448,47 @@ local function get_version()
 end
 
 
-local function start_kong(env, tables, preserve_prefix)
+local function render_fixtures(conf, env, prefix, fixtures)
+
+  if fixtures and (fixtures.http_mock or fixtures.stream_mock) then
+    -- prepare the prefix so we get the full config in the
+    -- hidden `.kong_env` file, including test specified env vars etc
+    assert(kong_exec("prepare --conf " .. conf, env))
+    local render_config = assert(conf_loader(prefix .. "/.kong_env"))
+
+    for _, mocktype in ipairs { "http_mock", "stream_mock" } do
+
+      for filename, contents in pairs(fixtures[mocktype] or {}) do
+        -- render the file using the full configuration
+        contents = assert(prefix_handler.compile_conf(render_config, contents))
+
+        -- write file to prefix
+        filename = prefix .. "/" .. filename .. "." .. mocktype
+        assert(pl_utils.writefile(filename, contents))
+      end
+    end
+  end
+
+  if fixtures and fixtures.dns_mock then
+    -- write the mock records to the prefix
+    assert(getmetatable(fixtures.dns_mock) == dns_mock,
+           "expected dns_mock to be of a helpers.dns_mock class")
+    assert(pl_utils.writefile(prefix .. "/dns_mock_records.json",
+                              tostring(fixtures.dns_mock)))
+
+    -- add the mock resolver to the path to ensure the records are loaded
+    local path
+    local key = "lua_package_path"
+    path, key = lookup(env, key) -- case insensitive lookup
+
+    -- if no existing path setting then end with double semi-colons
+    env[key] = "spec/fixtures/mocks/lua-resty-dns/?.lua;" .. (path or ";")
+  end
+
+  return true
+end
+
+local function start_kong(env, tables, preserve_prefix, fixtures)
   if tables ~= nil and type(tables) ~= "table" then
     error("arg #2 must be a list of tables to truncate")
   end
@@ -1327,6 +1518,8 @@ local function start_kong(env, tables, preserve_prefix)
     env = utils.deep_copy(env)
     env.declarative_config = config_yml
   end
+
+  assert(render_fixtures(TEST_CONF_PATH .. nginx_conf, env, prefix, fixtures))
 
   return kong_exec("start --conf " .. TEST_CONF_PATH .. nginx_conf, env)
 end
@@ -1413,6 +1606,7 @@ return {
 
   -- Kong testing helpers
   execute = exec,
+  dns_mock = dns_mock,
   kong_exec = kong_exec,
   get_version = get_version,
   http_client = http_client,

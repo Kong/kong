@@ -278,6 +278,24 @@ for _, strategy in helpers.each_strategy() do
           local json = cjson.decode(body)
           assert.not_equal(previous_hash, json.password)
         end)
+        it("ignores a nil password when updated by id", function()
+          local previous_hash = credential.password
+
+          local res = assert(admin_client:send {
+            method  = "PATCH",
+            path    = "/consumers/bob/basic-auth/" .. credential.id,
+            body    = {
+              username = "Tyrion Lannister"
+            },
+            headers = {
+              ["Content-Type"] = "application/json"
+            }
+          })
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+          assert.equal("Tyrion Lannister", json.username)
+          assert.equal(previous_hash, json.password)
+        end)
         it("updates a credential by username", function()
           local previous_hash = credential.password
 
@@ -294,6 +312,24 @@ for _, strategy in helpers.each_strategy() do
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
           assert.not_equal(previous_hash, json.password)
+        end)
+        it("ignores a nil password when updated by username", function()
+          local previous_hash = credential.password
+
+          local res = assert(admin_client:send {
+            method  = "PATCH",
+            path    = "/consumers/bob/basic-auth/" .. credential.username,
+            body    = {
+              username = "Tyrion Lannister"
+            },
+            headers = {
+              ["Content-Type"] = "application/json"
+            }
+          })
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+          assert.equal("Tyrion Lannister", json.username)
+          assert.equal(previous_hash, json.password)
         end)
         describe("errors", function()
           it("handles invalid input", function()

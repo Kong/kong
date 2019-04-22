@@ -113,6 +113,10 @@ local function build_queries(self)
 
   local select_bind_args = new_tab(n_pk, 0)
   for _, field_name in self.each_pk_field() do
+    if schema.fields[field_name].type == "foreign"  then
+      field_name = field_name .. "_" .. schema.fields[field_name].schema.primary_key[1]
+    end
+
     insert(select_bind_args, field_name .. " = ?")
   end
   select_bind_args = concat(select_bind_args, " AND ")
@@ -319,6 +323,11 @@ local function serialize_arg(field, arg)
 
   elseif field.type == "record" then
     serialized_arg = cassandra.text(cjson.encode(arg))
+
+  elseif field.type == "foreign" then
+    local fk_pk = field.schema.primary_key[1]
+    local fk_field = field.schema.fields[fk_pk]
+    serialized_arg = serialize_arg(fk_field, arg[fk_pk])
 
   else
     error("[cassandra strategy] don't know how to serialize field")
@@ -1456,7 +1465,7 @@ do
           if err then
             return nil, self.errors:database_error("could not gather " ..
                                                    "associated entities " ..
-                                                   "for delete cascade: ", err)
+                                                   "for delete cascade: " .. err)
           end
 
           local row_pk = constraint.schema:extract_pk_values(row)
@@ -1464,7 +1473,7 @@ do
           _, err = strategy:delete(row_pk)
           if err then
             return nil, self.errors:database_error("could not cascade " ..
-                                                   "delete entity: ", err)
+                                                   "delete entity: " .. err)
           end
         end
       end

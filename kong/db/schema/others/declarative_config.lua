@@ -249,7 +249,11 @@ local function populate_references(input, known_entities, by_id, by_key, expecte
     local parent_fk
     local child_key
     if parent_entity then
-      parent_fk = all_schemas[parent_entity]:extract_pk_values(input)
+      local parent_schema = all_schemas[parent_entity]
+      if parent_schema.fields[entity] then
+        goto continue
+      end
+      parent_fk = parent_schema:extract_pk_values(input)
       child_key = foreign_children[parent_entity][entity]
     end
 
