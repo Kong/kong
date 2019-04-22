@@ -404,13 +404,11 @@ return {
         if err_t then
           return endpoints.handle_error(err_t)
         end
-        if not rbac_role then
-          return kong.response.exit(404, { message = "Not found" })
-        end
-
         self.rbac_role = rbac_role
 
-        db.rbac_roles:delete({ id = rbac_role.id })
+        if rbac_role then
+          db.rbac_roles:delete({ id = rbac_role.id })
+        end
 
         return kong.response.exit(204)
       end,
