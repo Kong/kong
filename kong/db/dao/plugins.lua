@@ -5,6 +5,7 @@ local Entity = require "kong.db.schema.entity"
 local DAO = require "kong.db.dao"
 local MetaSchema = require "kong.db.schema.metaschema"
 local wokspaces = require "kong.workspaces"
+local tracing = require "kong.tracing"
 
 
 local Plugins = {}
@@ -227,6 +228,8 @@ function Plugins:load_plugin_schemas(plugin_set)
     if not ok then
       return nil, plugin .. " plugin is enabled but not installed;\n" .. handler
     end
+
+    tracing.plugin_wrap(handler, plugin)
 
     local schema
     local plugin_schema = "kong.plugins." .. plugin .. ".schema"

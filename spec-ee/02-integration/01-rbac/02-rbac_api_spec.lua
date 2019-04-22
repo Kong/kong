@@ -839,7 +839,7 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
       end)
       describe("errors", function()
         it("when the role doesn't exist", function()
-          delete("/rbac/roles/notexists", nil, 404)
+          delete("/rbac/roles/notexists", nil, 204)
         end)
       end)
 

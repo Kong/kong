@@ -133,6 +133,7 @@ server {
         set $upstream_x_forwarded_proto  '';
         set $upstream_x_forwarded_host   '';
         set $upstream_x_forwarded_port   '';
+        set $set_request_id     $request_id;
 
         rewrite_by_lua_block {
             Kong.rewrite()
@@ -335,9 +336,8 @@ server {
         }
 
         add_header Cache-Control 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0';
-        add_header X-Frame-Options 'sameorigin';
-        add_header X-XSS-Protection '1; mode=block';
-        add_header X-Content-Type-Options 'nosniff';
+        add_header Access-Control-Allow-Headers 'Content-Type';
+        add_header Access-Control-Allow-Origin '*';
         etag off;
 
         access_log logs/portal_gui_access.log;
@@ -432,13 +432,14 @@ server {
         default_type application/json;
         content_by_lua_block {
             Kong.serve_admin_api({
-                acah = "Content-Type, ${{RBAC_AUTH_HEADER}}",
+                acah = "Content-Type, ${{RBAC_AUTH_HEADER}}, Kong-Request-Type",
             })
         }
 
         log_by_lua_block {
             local audit_log = require "kong.enterprise_edition.audit_log"
             audit_log.admin_log_handler()
+            require("kong.tracing").flush()
         }
     }
 

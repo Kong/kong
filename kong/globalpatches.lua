@@ -2,6 +2,7 @@ require("resty.core")
 
 
 local ran_before
+local tracing = require "kong.tracing"
 
 
 return function(options)
@@ -280,7 +281,12 @@ return function(options)
 
     local function resolve_connect(f, sock, host, port, opts)
       if sub(host, 1, 5) ~= "unix:" then
+        local t = tracing.trace("connect.toip", {
+          host = host,
+          traceback = debug.traceback(),
+        })
         host, port = toip(host, port)
+        t:finish()
         if not host then
           return nil, "[toip() name lookup failed]: " .. tostring(port)
         end

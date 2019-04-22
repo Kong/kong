@@ -273,6 +273,16 @@ local CONF_INFERENCES = {
 
   smtp_admin_emails = {typ = "array"},
   smtp_mock = {typ = "boolean"},
+
+  tracing = {typ = "boolean"},
+  tracing_write_strategy = {enum = {"file", "file_raw", "tcp", "tls", "udp",
+                                    "http"}},
+  tracing_write_endpoint = {typ = "string"},
+  tracing_time_threshold = {typ = "number"},
+  tracing_types = {typ = "array"},
+  tracing_debug_header = {typ = "string"},
+  generate_trace_details = {typ = "boolean"},
+
 }
 
 

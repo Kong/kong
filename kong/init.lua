@@ -69,6 +69,7 @@ local openssl_pkey = require "openssl.pkey"
 local openssl_x509 = require "openssl.x509"
 local runloop = require "kong.runloop.handler"
 local mesh = require "kong.runloop.mesh"
+local tracing = require "kong.tracing"
 local responses = require "kong.tools.responses"
 local semaphore = require "ngx.semaphore"
 local singletons = require "kong.singletons"
@@ -285,6 +286,7 @@ function Kong.init()
   end
 
   kong_global.init_pdk(kong, config, nil) -- nil: latest PDK
+  tracing.init(config)
 
   local err = ee.feature_flags_init(config)
   if err then
@@ -292,6 +294,7 @@ function Kong.init()
   end
 
   local db = assert(DB.new(config))
+  tracing.connector_query_wrap(db.connector)
   assert(db:init_connector())
 
   schema_state = assert(db:schema_state())
@@ -623,6 +626,8 @@ function Kong.ssl_certificate()
 end
 
 function Kong.balancer()
+  local trace = tracing.trace("balancer")
+
   kong_global.set_phase(kong, PHASES.balancer)
 
   local ctx = ngx.ctx
@@ -717,6 +722,8 @@ function Kong.balancer()
   end
 
   runloop.balancer.after(ctx)
+
+  trace:finish()
 end
 
 function Kong.rewrite()
@@ -935,6 +942,16 @@ function Kong.serve_admin_api(options)
 
       return ngx.exit(204)
     end
+  end
+
+  local headers = ngx.req.get_headers()
+
+  if headers["Kong-Request-Type"] == "editor"  then
+    header["Access-Control-Allow-Origin"] = singletons.configuration.admin_gui_url or "*"
+    header["Access-Control-Allow-Credentials"] = true
+    header["Content-Type"] = 'text/html'
+
+    return lapis.serve("kong.portal.gui")
   end
 
   return lapis.serve("kong.api")

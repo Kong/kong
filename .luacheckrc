@@ -37,6 +37,14 @@ files["kong/plugins/ldap-auth*/*.lua"] = {
 }
 
 
+files["kong/tracing/init.lua"] = {
+    read_globals = {
+        "table.pack",
+        "table.unpack",
+    }
+}
+
+
 files["spec/**/*.lua"] = {
     std = "ngx_lua+busted",
 }
