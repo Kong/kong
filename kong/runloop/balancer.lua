@@ -841,9 +841,13 @@ local function execute(target, ctx)
   local ip, port, hostname
   if balancer then
     -- have to invoke the ring-balancer
+    local trace = require("kong.tracing").trace("balancer.getPeer", {
+      qname     = target.host,
+    })
     ip, port, hostname = balancer:getPeer(hash_value,
                                           target.try_count,
                                           dns_cache_only)
+    trace:finish()
     if not ip and port == "No peers are available" then
       return nil, "failure to get a peer from the ring-balancer", 503
     end
@@ -852,7 +856,11 @@ local function execute(target, ctx)
   else
     -- have to do a regular DNS lookup
     local try_list
+    local trace = require("kong.tracing").trace("balancer.toip", {
+      qname     = target.host,
+    })
     ip, port, try_list = toip(target.host, target.port, dns_cache_only)
+    trace:finish()
     hostname = target.host
     if not ip then
       log(ERR, "[dns] ", port, ". Tried: ", tostring(try_list))

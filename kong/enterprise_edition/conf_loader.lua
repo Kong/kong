@@ -310,6 +310,13 @@ local function add_ee_required_plugins(conf)
   end
 end
 
+local function validate_tracing(conf, errors)
+  if conf.tracing and not conf.tracing_write_endpoint then
+    errors[#errors + 1] = "'tracing_write_endpoint' must be defined when " ..
+      "'tracing' is enabled"
+  end
+end
+
 
 local function validate(conf, errors)
   validate_admin_gui_authentication(conf, errors)
@@ -339,6 +346,7 @@ local function validate(conf, errors)
 
   validate_vitals_tsdb(conf, errors)
   add_ee_required_plugins(conf)
+  validate_tracing(conf, errors)
 end
 
 
@@ -350,4 +358,5 @@ return {
   validate_smtp_config = validate_smtp_config,
   validate_portal_smtp_config = validate_portal_smtp_config,
   validate_portal_cors_origins = validate_portal_cors_origins,
+  validate_tracing = validate_tracing,
 }

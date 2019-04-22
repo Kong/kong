@@ -1,6 +1,7 @@
 local kong         = kong
 local setmetatable = setmetatable
 local singletons   = require "kong.singletons"
+local tracing      = require "kong.tracing"
 
 local tostring = tostring
 local ipairs   = ipairs
@@ -103,6 +104,7 @@ local function load_plugin_configuration(ctx,
                                          consumer_id,
                                          plugin_name,
                                          api_id)
+  local trace = tracing.trace("load_plugin_config", { plugin_name = plugin_name })
 
   local key = kong.db.plugins:cache_key(plugin_name,
                                         route_id,
@@ -111,6 +113,7 @@ local function load_plugin_configuration(ctx,
                                         api_id,
                                         true)
   local plugin, err = load_plugin_into_memory_ws(ctx, key)
+  trace:finish()
 
   if err then
     ctx.delay_response = false

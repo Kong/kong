@@ -1244,3 +1244,91 @@
                                  # offline, and can be used the validate audit
                                  # entries in the future. If this value is
                                  # undefined, no signature will be generated.
+
+#-------------------------------------------------------------------------------
+# GRANULAR TRACING
+#-------------------------------------------------------------------------------
+
+# Granular tracing offers a mechanism to expose metrics and detailed debug data
+# about the lifecycle of Kong in a human- or machine-consumable format.
+
+#tracing = off                   # When enabled, Kong will generate granular
+                                 # debug data about various portions of the
+                                 # request lifecycle, such as DB or DNS queries,
+                                 # plugin execution, core handler timing, etc.
+
+#tracing_write_strategy = file   # Defines how Kong will write tracing data at
+                                 # the conclusion of the request. The default
+                                 # option, 'file', writes a human-readable
+                                 # depiction of tracing data to a configurable
+                                 # location on the node's file system. Other
+                                 # strategies write tracing data as a JSON
+                                 # document to the configured endpoint. Valid
+                                 # entries for this option are 'file',
+                                 # 'file_raw', 'http', 'tcp', 'tls', and 'udp'.
+
+#tracing_write_endpoint =        # Defines the endpoint to which tracing data
+                                 # will be written.
+                                 #
+                                 # For the 'file' and 'file_raw' tracing write
+                                 # strategies, this value must be a valid
+                                 # location on the node's file system to which
+                                 # Kong must have write access.
+                                 #
+                                 # For the 'tcp', 'tls', and
+                                 # 'udp' strategies, this value is defined as a
+                                 # string in the form of:
+                                 #
+                                 #  <HOST>:<PORT>
+                                 #
+                                 # For the 'http' strategy, this value is
+                                 # defined in the form of:
+                                 #
+                                 #  <scheme>://<IP / HOSTNAME>(:<PORT>(/<PATH>))
+                                 #
+                                 # Traces sent via HTTP are delivered via POST
+                                 # method with an 'application/json'
+                                 # Content-Type.
+
+#tracing_time_threshold = 0      # The minimum time, in microseconds, over which
+                                 # a trace must execute in order to write the
+                                 # trace data to the configured endpoint. This
+                                 # configuration can be used to lower the noise
+                                 # present in trace data by removing trace
+                                 # objects that are not interesting from a
+                                 # timing perspective. The default value of '0'
+                                 # removes this limitation, causing traces of
+                                 # any duration to be written.
+
+#tracing_types = all             # Defines the types of traces that are written.
+                                 # Trace types not defined in this list are
+                                 # ignored, regardless of their lifetime. The
+                                 # default special value of 'all' results in all
+                                 # trace types being written, regardless of type.
+                                 # Included trace types are: 'query',
+                                 # 'legacy_query', `router', 'balancer.getPeer',
+                                 # 'balancer.toip', 'connect.toip',
+                                 # 'access.before', and 'access.after',
+                                 # 'cassandra_iterate, and 'plugin'.
+
+#tracing_debug_header =          # Defines the name of the HTTP request header
+                                 # that must be present in order to generate
+                                 # traces within a request. Setting this value
+                                 # provides a mechanism to selectively generate
+                                 # request traces at the client's request. Note
+                                 # that the value of the header does not matter,
+                                 # only that the header is present in the
+                                 # request. When this value is not set and
+                                 # tracing is enabled, Kong will generate trace
+                                 # data for all requests flowing through the
+                                 # proxy and Admin API.
+
+#generate_trace_details = off    # When enabled, Kong will write context-
+                                 # specific details into traces. Trace details
+                                 # offer more data about the context of the
+                                 # trace. This can significantly increase the
+                                 # size of trace reports. Note also that trace
+                                 # details may contain potentially sensitive
+                                 # information, such as raw SQL queries; care
+                                 # should be taken to store traces properly when
+                                 # this option is enabled.

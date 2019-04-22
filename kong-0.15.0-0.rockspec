@@ -67,6 +67,9 @@ build = {
     ["kong.cluster_events.strategies.cassandra"] = "kong/cluster_events/strategies/cassandra.lua",
     ["kong.cluster_events.strategies.postgres"] = "kong/cluster_events/strategies/postgres.lua",
 
+    ["kong.tracing"] = "kong/tracing/init.lua",
+    ["kong.tracing.strategies"] = "kong/tracing/strategies.lua",
+
     ["kong.enterprise_edition"] = "kong/enterprise_edition/init.lua",
     ["kong.enterprise_edition.admin.emails"] = "kong/enterprise_edition/admin/emails.lua",
     ["kong.enterprise_edition.admins_helpers"] = "kong/enterprise_edition/admins_helpers.lua",

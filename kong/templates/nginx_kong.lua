@@ -133,6 +133,7 @@ server {
         set $upstream_x_forwarded_proto  '';
         set $upstream_x_forwarded_host   '';
         set $upstream_x_forwarded_port   '';
+        set $set_request_id     $request_id;
 
         rewrite_by_lua_block {
             Kong.rewrite()
@@ -438,6 +439,7 @@ server {
         log_by_lua_block {
             local audit_log = require "kong.enterprise_edition.audit_log"
             audit_log.admin_log_handler()
+            require("kong.tracing").flush()
         }
     }
 

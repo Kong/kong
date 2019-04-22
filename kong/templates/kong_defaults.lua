@@ -169,4 +169,12 @@ feature_conf_path = NONE
 
 smtp_admin_emails = NONE
 smtp_mock = on
+
+tracing = off
+tracing_write_endpoint =
+tracing_write_strategy = file
+tracing_time_threshold = 0
+tracing_types = all
+tracing_debug_header =
+generate_trace_details = off
 ]]

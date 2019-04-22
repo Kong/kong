@@ -21,6 +21,7 @@ local responses   = require "kong.tools.responses"
 local singletons  = require "kong.singletons"
 local certificate = require "kong.runloop.certificate"
 local workspaces  = require "kong.workspaces"
+local tracing     = require "kong.tracing"
 
 
 local kong        = kong
@@ -161,6 +162,7 @@ do
 
     local err
     router, err = Router.new(routes)
+    tracing.wrap_router(router)
     if not router then
       return nil, "could not create router: " .. err
     end
@@ -1145,6 +1147,8 @@ return {
           balancer_data.balancer.report_http_status(ip, port, status)
         end
       end
+
+      tracing.flush()
     end
   }
 }
