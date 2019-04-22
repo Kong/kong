@@ -15,6 +15,9 @@ app:enable("etlua")
 
 
 app:before_filter(function(self)
+  local headers = ngx.req.get_headers()
+
+  self.is_admin = headers["Kong-Request-Type"] == "editor"
   self.path = ngx.unescape_uri(self.req.parsed_url.path)
 
   if config.portal_gui_use_subdomains then

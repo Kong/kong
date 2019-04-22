@@ -4,6 +4,8 @@ local constants     = require "kong.constants"
 local utils         = require "kong.tools.utils"
 local enums         = require "kong.enterprise_edition.dao.enums"
 local singletons    = require "kong.singletons"
+local rbac          = require "kong.rbac"
+
 local ws_constants  = constants.WORKSPACE_CONFIG
 
 local log = ngx.log
@@ -210,6 +212,17 @@ function _M.authenticate_gui_session(self, db, helpers)
 
   if portal_auth == nil or portal_auth == '' then
     self.developer = {}
+    return
+  end
+
+  if self.is_admin then
+    ee_api.authenticate(self, singletons.dao,
+                          singletons.configuration.enforce_rbac ~= "off",
+                          singletons.configuration.admin_gui_auth)
+
+    rbac.validate_user(self.rbac_user)
+    self.developer = {}
+
     return
   end
 

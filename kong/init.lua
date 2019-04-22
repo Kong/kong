@@ -937,6 +937,16 @@ function Kong.serve_admin_api(options)
     end
   end
 
+  local headers = ngx.req.get_headers()
+
+  if headers["Kong-Request-Type"] == "editor"  then
+    header["Access-Control-Allow-Origin"] = singletons.configuration.admin_gui_url or "*"
+    header["Access-Control-Allow-Credentials"] = true
+    header["Content-Type"] = 'text/html'
+
+    return lapis.serve("kong.portal.gui")
+  end
+
   return lapis.serve("kong.api")
 end
 

@@ -24,6 +24,6 @@ return {
     { type       = type },
     { name       = { type = "string", required = true, unique = true } },
     { auth       = { type = "boolean", default = true } },
-    { contents   = { type = "string", required = true } },
+    { contents   = { type = "string", len_min = 0, required = true } },
   }
 }
