@@ -243,12 +243,10 @@ local function post_crud_create_event(entity_name, item)
 end
 
 
-function declarative.load_into_cache(entities)
+function declarative.load_into_cache(entities, send_events)
 
   -- FIXME atomicity of cache update
   -- FIXME track evictions (and do something when they happen)
-
-  post_upstream_crud_delete_events()
 
   kong.cache:purge()
 
@@ -413,6 +411,19 @@ function declarative.load_into_cache(entities)
     return nil, "failed to set declarative_config:loaded in shm: " .. err
   end
 
+  kong.cache:invalidate("router:version")
+  return true
+end
+
+
+function declarative.load_into_cache_with_events(entities)
+  post_upstream_crud_delete_events()
+
+  local ok, err = declarative.load_into_cache(entities)
+  if not ok then
+    return nil, err
+  end
+
   for _, entity_name in ipairs({"upstreams", "targets"}) do
     if entities[entity_name] then
       for _, item in pairs(entities[entity_name]) do
@@ -421,7 +432,6 @@ function declarative.load_into_cache(entities)
     end
   end
 
-  kong.cache:invalidate("router:version")
   return true
 end
 
