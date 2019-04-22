@@ -79,7 +79,7 @@ end
 local function validate_admin_gui_session(conf, errors)
   if conf.admin_gui_session_conf then
     if not conf.admin_gui_auth or conf.admin_gui_auth == "" then
-      errors[#errors+1] = "admin_gui_auth_conf is set with no admin_gui_auth"
+      errors[#errors+1] = "admin_gui_session_conf is set with no admin_gui_auth"
     end
 
     local session_config, err = cjson.decode(tostring(conf.admin_gui_session_conf))
