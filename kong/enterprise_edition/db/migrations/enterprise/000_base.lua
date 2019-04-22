@@ -157,7 +157,6 @@ local function seed_kong_admin_data_pg()
   end
 
   local random_password = utils.random_string()
-  local password = random_password
   local kong_admin_consumer_id = utils.uuid()
   return fmt([[
     DO $$
@@ -225,7 +224,7 @@ local function seed_kong_admin_data_pg()
     END IF;
 
     END $$;
-  ]], password, kong_admin_consumer_id, crypto.encrypt(kong_admin_consumer_id, password))
+  ]], random_password, kong_admin_consumer_id, crypto.encrypt(kong_admin_consumer_id, password))
 end
 
 

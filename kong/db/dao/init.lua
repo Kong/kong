@@ -1255,14 +1255,14 @@ function DAO:delete(primary_key, options)
   -- XXX workspaces
   local err = workspaces.delete_entity_relation(self.schema.name, entity)
   if err then
-    return nil, self.errors:database_error("could not delete Route relationship " ..
-    "with Workspace: " .. err)
+    return nil, self.errors:database_error(
+      "could not delete Route relationship with Workspace: " .. err)
   end
 
   err = rbac.delete_role_entity_permission(self.schema.name, entity)
   if err then
-    return nil, self.errors:database_error("could not delete entity relationship " ..
-    "with Role: " .. err)
+    return nil, self.errors:database_error(
+      "could not delete entity relationship with Role: " .. err)
   end
 
   self:post_crud_event("delete", entity)
