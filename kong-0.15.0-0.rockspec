@@ -171,7 +171,6 @@ build = {
     ["kong.enterprise_edition.db.migrations.enterprise"] = "kong/enterprise_edition/db/migrations/enterprise/init.lua",
     ["kong.enterprise_edition.db.migrations.enterprise.000_base"] = "kong/enterprise_edition/db/migrations/enterprise/000_base.lua",
     ["kong.enterprise_edition.db.migrations.enterprise.001_034_to_035"] = "kong/enterprise_edition/db/migrations/enterprise/001_034_to_035.lua",
-    ["kong.db.strategies.cassandra.routes"] = "kong/db/strategies/cassandra/routes.lua",
 
     ["kong.runloop.handler"] = "kong/runloop/handler.lua",
     ["kong.runloop.certificate"] = "kong/runloop/certificate.lua",
@@ -272,14 +271,11 @@ build = {
     ["kong.db.strategies.cassandra"] = "kong/db/strategies/cassandra/init.lua",
     ["kong.db.strategies.cassandra.connector"] = "kong/db/strategies/cassandra/connector.lua",
     ["kong.db.strategies.cassandra.plugins"] = "kong/db/strategies/cassandra/plugins.lua",
-    ["kong.db.strategies.cassandra.services"] = "kong/db/strategies/cassandra/services.lua",
     ["kong.db.strategies.cassandra.consumers"] = "kong/db/strategies/cassandra/consumers.lua",
     ["kong.db.strategies.postgres"] = "kong/db/strategies/postgres/init.lua",
     ["kong.db.strategies.postgres.plugins"] = "kong/db/strategies/postgres/plugins.lua",
     ["kong.db.strategies.postgres.connector"] = "kong/db/strategies/postgres/connector.lua",
 
-    ["kong.db.strategies.postgres.services"] = "kong/db/strategies/postgres/services.lua",
-    ["kong.db.strategies.postgres.routes"] = "kong/db/strategies/postgres/routes.lua",
     ["kong.db.strategies.postgres.consumers"] = "kong/db/strategies/postgres/consumers.lua",
 
     ["kong.db.migrations.state"] = "kong/db/migrations/state.lua",
