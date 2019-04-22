@@ -1,12 +1,7 @@
 local utils        = require "kong.tools.utils"
-local rbac         = require "kong.rbac"
-local bcrypt       = require "bcrypt"
 local crypto       = require "kong.plugins.basic-auth.crypto"
 
 local fmt = string.format
-
-
-local LOG_ROUNDS = 9
 
 
 local function seed_kong_admin_data_cas()
@@ -64,13 +59,13 @@ local function seed_kong_admin_data_cas()
   local password = os.getenv("KONG_PASSWORD")
 
   if password then
-    local digest = bcrypt.digest(password, LOG_ROUNDS)
+    local password = password
 
     local kong_admin_rbac_id = utils.uuid()
     -- create kong_admin RBAC user
     table.insert(res,
-      fmt("INSERT into rbac_users(id, name, user_token, user_token_ident, enabled, comment) VALUES(%s, 'default:%s', '%s', '%s', %s, '%s')",
-        kong_admin_rbac_id, "kong_admin", digest, rbac.get_token_ident(password), 'true', "Initial RBAC Secure User"))
+      fmt("INSERT into rbac_users(id, name, user_token, enabled, comment) VALUES(%s, 'default:%s', '%s', %s, '%s')",
+        kong_admin_rbac_id, "kong_admin", password, 'true', "Initial RBAC Secure User"))
     add_to_default_ws(kong_admin_rbac_id, "rbac_users", "id", kong_admin_rbac_id)
     add_to_default_ws(kong_admin_rbac_id, "rbac_users", "name", "kong_admin")
 
@@ -95,8 +90,8 @@ local function seed_kong_admin_data_cas()
     -- create kong_admin user
     local kong_admin_id = utils.uuid()
     table.insert(res,
-      fmt("INSERT into rbac_users(id, name, user_token, user_token_ident, enabled, comment) VALUES(%s, 'default:%s-%s', '%s', '%s', %s, '%s')",
-        kong_admin_id, "kong_admin", kong_admin_id, digest, rbac.get_token_ident(password), 'true', "Initial RBAC Secure User"))
+      fmt("INSERT into rbac_users(id, name, user_token, enabled, comment) VALUES(%s, 'default:%s-%s', '%s', %s, '%s')",
+        kong_admin_id, "kong_admin", kong_admin_id, password, 'true', "Initial RBAC Secure User"))
     add_to_default_ws(kong_admin_id, "rbac_users", "id", kong_admin_id)
     add_to_default_ws(kong_admin_id, "rbac_users", "name", "kong_admin-" .. kong_admin_id)
 
@@ -162,7 +157,7 @@ local function seed_kong_admin_data_pg()
   end
 
   local random_password = utils.random_string()
-  local digest = bcrypt.digest(random_password, LOG_ROUNDS)
+  local password = random_password
   local kong_admin_consumer_id = utils.uuid()
   return fmt([[
     DO $$
@@ -183,7 +178,7 @@ local function seed_kong_admin_data_pg()
     -- create kong_admin user
     SELECT * into tmp FROM rbac_users WHERE name='default:kong-admin' LIMIT 1;
     IF NOT FOUND THEN
-        INSERT INTO rbac_users(id, name, user_token, user_token_ident, enabled, comment) VALUES(kong_admin_user_id, CONCAT('default:kong_admin-', kong_admin_user_id::varchar), '%s', '%s', true, 'Initial RBAC Secure User');
+        INSERT INTO rbac_users(id, name, user_token, enabled, comment) VALUES(kong_admin_user_id, CONCAT('default:kong_admin-', kong_admin_user_id::varchar), '%s', true, 'Initial RBAC Secure User');
         INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value) VALUES(def_ws_id, 'default', kong_admin_user_id, 'rbac_users', 'id', kong_admin_user_id);
         INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value) VALUES(def_ws_id, 'default', kong_admin_user_id, 'rbac_users', 'name', CONCAT('kong_admin-', kong_admin_user_id::varchar));
 
@@ -230,7 +225,7 @@ local function seed_kong_admin_data_pg()
     END IF;
 
     END $$;
-  ]], digest, rbac.get_token_ident(random_password), kong_admin_consumer_id, crypto.encrypt(kong_admin_consumer_id, password))
+  ]], password, kong_admin_consumer_id, crypto.encrypt(kong_admin_consumer_id, password))
 end
 
 
@@ -240,7 +235,7 @@ local function seed_kong_admin_data_rbac_pg()
     return ""
   end
 
-  local digest = bcrypt.digest(password, LOG_ROUNDS)
+  local password = password
   return fmt([[
     DO $$
     DECLARE kong_admin_user_id uuid;
@@ -253,7 +248,7 @@ local function seed_kong_admin_data_rbac_pg()
     SELECT id into def_ws_id from workspaces where name = 'default';
 
     -- create kong_admin user
-    INSERT INTO rbac_users(id, name, user_token, user_token_ident, enabled, comment) VALUES(kong_admin_user_id, 'default:kong_admin', '%s', '%s', true, 'Initial RBAC Secure User');
+    INSERT INTO rbac_users(id, name, user_token, enabled, comment) VALUES(kong_admin_user_id, 'default:kong_admin', '%s', true, 'Initial RBAC Secure User');
     INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value) VALUES(def_ws_id, 'default', kong_admin_user_id, 'rbac_users', 'id', kong_admin_user_id);
     INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value) VALUES(def_ws_id, 'default', kong_admin_user_id, 'rbac_users', 'name', 'kong_admin');
 
@@ -269,7 +264,7 @@ local function seed_kong_admin_data_rbac_pg()
     INSERT into rbac_user_roles(user_id, role_id) VALUES(kong_admin_user_id, kong_admin_default_role_id);
 
     END $$;
-  ]], digest, rbac.get_token_ident(password))
+  ]], password)
 end
 
 
