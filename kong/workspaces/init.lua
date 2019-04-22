@@ -815,7 +815,8 @@ function _M.remove_ws_prefix(table_name, row, include_ws)
       field_schema.schema.fields[field_name].type ~= "id" and  row[field_name] ~= ngx_null then
       local names = utils_split(row[field_name], workspace_delimiter, 2)
       if #names > 1 then
-        row[field_name] = names[2]
+        table.remove(names, 1)
+        row[field_name] = table.concat(names, workspace_delimiter)
       end
     end
   end
