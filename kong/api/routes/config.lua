@@ -39,7 +39,7 @@ return {
         return kong.response.exit(400, { error = err_or_ver })
       end
 
-      local ok, err = declarative.load_into_cache(entities)
+      local ok, err = declarative.load_into_cache_with_events(entities)
       if not ok then
         kong.log.err("failed loading declarative config into cache: ", err)
         return kong.response.exit(500, { message = "An unexpected error occurred" })
