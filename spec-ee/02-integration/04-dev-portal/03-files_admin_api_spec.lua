@@ -36,6 +36,7 @@ describe("files API (#" .. strategy .. "): ", function()
   local db
   local client
   local fileStub
+  local fileSlashStub
 
   lazy_setup(function()
     _, db, _ = helpers.get_db_utils(strategy)
@@ -56,6 +57,13 @@ describe("files API (#" .. strategy .. "): ", function()
       contents = "1",
       type = "page"
     })
+
+    fileSlashStub = assert(db.files:insert {
+      name = "slash/stub",
+      contents = "1",
+      type = "page"
+    })
+
     client = helpers.admin_client()
     configure_portal(db)
   end)
@@ -136,6 +144,31 @@ describe("files API (#" .. strategy .. "): ", function()
                 name = "stub",
               },
               message = [[UNIQUE violation detected on '{name="stub"}']],
+              name = "unique constraint violation",
+            }, json)
+          end
+        end)
+
+        it_content_types("returns 409 on conflicting file (slash in name)", function(content_type)
+          return function()
+            local res = assert(client:send {
+              method = "POST",
+              path = "/files",
+              body = {
+                name = fileSlashStub.name,
+                contents = "hello world",
+                type = "page"
+              },
+              headers = {["Content-Type"] = content_type}
+            })
+            local body = assert.res_status(409, res)
+            local json = cjson.decode(body)
+            assert.same({
+              code = 5,
+              fields = {
+                name = "slash/stub",
+              },
+              message = [[UNIQUE violation detected on '{name="slash/stub"}']],
               name = "unique constraint violation",
             }, json)
           end
@@ -234,6 +267,32 @@ describe("files API (#" .. strategy .. "): ", function()
               path = "/files",
               body = {
                 name = "test",
+                contents = "hello world",
+                type = "dog"
+              },
+              headers = {["Content-Type"] = content_type}
+            })
+
+            local body = assert.res_status(400, res)
+            local json = cjson.decode(body)
+            assert.same({
+              code = 2,
+              fields = {
+                type = "expected one of: page, partial, spec",
+              },
+              message = "schema violation (type: expected one of: page, partial, spec)",
+              name = "schema violation",
+            }, json)
+          end
+        end)
+
+        it_content_types("returns 400 on improper type declaration (slash in name)", function(content_type)
+          return function()
+            local res = assert(client:send {
+              method = "POST",
+              path = "/files",
+              body = {
+                name = "slash/test",
                 contents = "hello world",
                 type = "dog"
               },
@@ -385,7 +444,7 @@ describe("files API (#" .. strategy .. "): ", function()
         it("retrieves by urlencoded name", function()
           local res = assert(client:send {
             method = "GET",
-            path = "/files/" .. escape(fileStub.name)
+            path = "/files/" .. escape(fileStub.name),
           })
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
@@ -398,6 +457,34 @@ describe("files API (#" .. strategy .. "): ", function()
             path = "/files/_inexistent_"
           })
           assert.res_status(404, res)
+        end)
+
+        it("returns 404 if not found (slash in name)", function()
+          local res = assert(client:send {
+            method = "GET",
+            path = "/files/stub/something"
+          })
+          assert.res_status(404, res)
+        end)
+
+        it("retrieves by name (slash in name)", function()
+          local res = assert(client:send {
+            method = "GET",
+            path = "/files/" .. fileSlashStub.name
+          })
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+          assert.same(fileSlashStub, json)
+        end)
+
+        it("retrieves by urlencoded name (slash in name)", function()
+          local res = assert(client:send {
+            method = "GET",
+            path = "/files/" .. escape(fileSlashStub.name),
+          })
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+          assert.same(fileSlashStub, json)
         end)
       end)
 
@@ -448,12 +535,50 @@ describe("files API (#" .. strategy .. "): ", function()
             assert.same(json, in_db)
           end
         end)
+
+        it_content_types("updates by name (slash in name)", function(content_type)
+          return function()
+            local res = assert(client:send {
+              method = "PATCH",
+              path = "/files/" .. fileSlashStub.name,
+              body = {
+                contents = "bar"
+              },
+              headers = {["Content-Type"] = content_type}
+            })
+
+            local body = assert.res_status(200, res)
+            local json = cjson.decode(body)
+            assert.equal("bar", json.contents)
+            assert.equal(fileSlashStub.id, json.id)
+
+            local in_db = assert(db.files:select {
+              id = fileSlashStub.id,
+            })
+
+            assert.same(json, in_db)
+          end
+        end)
         describe("errors", function()
           it_content_types("returns 404 if not found", function(content_type)
             return function()
               local res = assert(client:send {
                 method = "PATCH",
                 path = "/files/_inexistent_",
+                body = {
+                 name = "alice"
+                },
+                headers = {["Content-Type"] = content_type}
+              })
+              assert.res_status(404, res)
+            end
+          end)
+
+          it_content_types("returns 404 if not found (slash in name)", function(content_type)
+            return function()
+              local res = assert(client:send {
+                method = "PATCH",
+                path = "/files/stub/_inexistent_",
                 body = {
                  name = "alice"
                 },
@@ -505,6 +630,15 @@ describe("files API (#" .. strategy .. "): ", function()
           local res = assert(client:send {
             method = "DELETE",
             path = "/files/" .. fileStub.name
+          })
+          local body = assert.res_status(204, res)
+          assert.equal("", body)
+        end)
+
+        it("deletes by name (slash in name)", function()
+          local res = assert(client:send {
+            method = "DELETE",
+            path = "/files/" .. fileSlashStub.name
           })
           local body = assert.res_status(204, res)
           assert.equal("", body)

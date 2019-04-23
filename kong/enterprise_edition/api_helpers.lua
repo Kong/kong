@@ -395,5 +395,36 @@ function _M.routes_consumers_before(self, params, is_collection)
   return consumer
 end
 
+  -- Attach entity handlers to splat route
+  -- e.g. /files/:files -> /files/*
+  -- This can be used for routes where entity name contains slashes
+function _M.splatify_entity_route(entity, routes)
+  local entity_pattern = "/" .. entity .. "/:" .. entity
+  local entity_endpoint = routes[entity_pattern]
+  if not entity_endpoint then
+    log(ERR, _log_prefix, "entity endpoint: " .. entity_pattern .. "not found")
+    return
+  end
+
+  local route = {
+    schema = entity_endpoint.schema,
+    methods = entity_endpoint.methods,
+  }
+
+  local before = route.methods.before or function() end
+
+  -- before filter to assign splat to entity param and call original before if necessary
+  route.methods.before = function(self, db, helpers)
+    if self.params.splat then
+      self.params[entity] = self.params.splat
+      self.params.splat = nil
+    end
+
+    before(self, db, helpers)
+  end
+
+  routes["/" .. entity .. "/*"] = route
+end
+
 
 return _M
