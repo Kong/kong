@@ -105,19 +105,21 @@ end
 
 
 local function parse_declarative_config()
-  if not kong.configuration.database == "off" then
+  local config = kong.configuration
+  if config.database ~= "off" then
     return {}
   end
 
-  if not kong.configuration.declarative_config then
+  local declarative_config = config.declarative_config
+  if not declarative_config then
     return {}
   end
 
-  local dc = declarative.new_config(kong.configuration)
-  local entities, err = dc:parse_file(kong.configuration.declarative_config)
+  local dc = declarative.new_config(config)
+  local entities, err = dc:parse_file(declarative_config)
   if not entities then
     return nil, "error parsing declarative config file " ..
-                kong.configuration.declarative_config .. ":\n" .. err
+                declarative_config .. ":\n" .. err
   end
 
   return entities
@@ -125,11 +127,13 @@ end
 
 
 local function load_declarative_config()
+  local config = kong.configuration
   if kong.configuration.database ~= "off" then
     return true
   end
 
-  if not kong.configuration.declarative_config then
+  local declarative_config = config.declarative_config
+  if not declarative_config then
     -- no configuration yet, just build empty plugins
     assert(build_plugins("init"))
     return true
@@ -150,8 +154,7 @@ local function load_declarative_config()
       return nil, err
     end
 
-    kong.log.notice("declarative config loaded from ",
-                    kong.configuration.declarative_config)
+    kong.log.notice("declarative config loaded from ", declarative_config)
 
     assert(build_router("init"))
     assert(build_plugins("init"))
