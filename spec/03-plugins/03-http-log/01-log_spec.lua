@@ -119,7 +119,7 @@ for _, strategy in helpers.each_strategy() do
                                     .. "/post_log/http_queue"
         }
       }
-      
+
       local route6 = bp.routes:insert {
         hosts   = { "https_logging_faulty.test" },
         service = service2
@@ -132,7 +132,7 @@ for _, strategy in helpers.each_strategy() do
           http_endpoint = "https://" .. helpers.mock_upstream_ssl_host
                                      .. ":"
                                      .. helpers.mock_upstream_ssl_port
-                                     .. "/delay/1",
+                                     .. "/delay/5",
           timeout = 1
         }
       }
@@ -258,7 +258,7 @@ for _, strategy in helpers.each_strategy() do
         end
       end, 10)
     end)
-    
+
     it("gracefully handles layer 4 failures", function()
     	-- setup: cleanup logs
       local test_error_log_path = helpers.test_conf.nginx_err_logs
@@ -273,16 +273,32 @@ for _, strategy in helpers.each_strategy() do
       }))
       assert.res_status(200, res)
 
-      -- Assertion: there should be no [error], including no error
-      -- resulting from attempting to reference a nil res on
-      -- res:body() calls within the http-log plugin
-
       local pl_file = require "pl.file"
-      local logs = pl_file.read(test_error_log_path)
 
-      for line in logs:gmatch("[^\r\n]+") do
-        assert.not_match("[error]", line, nil, true)
-      end
+      helpers.wait_until(function()
+        -- Assertion: there should be no [error] resulting from attempting
+        -- to reference a nil res on res:body() calls within the http-log plugin
+
+        local logs = pl_file.read(test_error_log_path)
+        local found = false
+
+        for line in logs:gmatch("[^\r\n]+") do
+          if line:find("send(): failed request to " ..
+                       helpers.mock_upstream_ssl_host .. ":" ..
+                       helpers.mock_upstream_ssl_port .. ": timeout",
+                       0, true)
+          then
+            found = true
+
+          else
+            assert.not_match("[error]", line, nil, true)
+          end
+        end
+
+        if found then
+            return true
+        end
+      end, 0.2)
     end)
 
     it("adds authorization if userinfo is present", function()
@@ -362,7 +378,7 @@ for _, strategy in helpers.each_strategy() do
         }
       }))
       assert.res_status(404, res)
-      
+
       --Assert that the plugin executed and has 1 log entry
       helpers.wait_until(function()
         local client = assert(helpers.http_client(helpers.mock_upstream_host, helpers.mock_upstream_port))
