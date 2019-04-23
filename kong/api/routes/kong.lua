@@ -140,7 +140,7 @@ return {
       local admin_auth = singletons.configuration.admin_gui_auth
 
       if not admin_auth and not ngx.ctx.rbac then
-        return kong.response.exit(404)
+        return kong.response.exit(404, { message = "Not found" })
       end
 
       -- For when only RBAC token comes in
@@ -155,7 +155,7 @@ return {
 
         if not admins[1] then
           -- no admin associated with this rbac_user
-          return kong.response.exit(404)
+          return kong.response.exit(404, { message = "Not found" })
         end
 
         ee_api.attach_consumer_and_workspaces(self, admins[1].consumer.id)

@@ -63,8 +63,8 @@ function _M.validate_admin()
   local user_name = args[user_header] or ngx.req.get_headers()[user_header]
 
   if not user_name then
-    return kong.response.exit(401, "Invalid credentials. Token or User " ..
-                              "credentials required")
+    return kong.response.exit(401,
+      { message = "Invalid credentials. Token or User credentials required" })
   end
 
   local admin, err = kong.db.admins:select_by_username(user_name, {skip_rbac = true})
