@@ -119,7 +119,7 @@ for _, strategy in helpers.each_strategy() do
                                     .. "/post_log/http_queue"
         }
       }
-      
+
       local route6 = bp.routes:insert {
         hosts   = { "https_logging_faulty.test" },
         service = service2
@@ -258,7 +258,7 @@ for _, strategy in helpers.each_strategy() do
         end
       end, 10)
     end)
-    
+
     it("gracefully handles layer 4 failures", function()
     	-- setup: cleanup logs
       local test_error_log_path = helpers.test_conf.nginx_err_logs
@@ -281,7 +281,13 @@ for _, strategy in helpers.each_strategy() do
       local logs = pl_file.read(test_error_log_path)
 
       for line in logs:gmatch("[^\r\n]+") do
-        assert.not_match("[error]", line, nil, true)
+        if not line:find("send(): failed request to " ..
+                         helpers.mock_upstream_ssl_host .. ":" ..
+                         helpers.mock_upstream_ssl_port .. ": timeout",
+                         0, true)
+        then
+          assert.not_match("[error]", line, nil, true)
+        end
       end
     end)
 
@@ -362,7 +368,7 @@ for _, strategy in helpers.each_strategy() do
         }
       }))
       assert.res_status(404, res)
-      
+
       --Assert that the plugin executed and has 1 log entry
       helpers.wait_until(function()
         local client = assert(helpers.http_client(helpers.mock_upstream_host, helpers.mock_upstream_port))
