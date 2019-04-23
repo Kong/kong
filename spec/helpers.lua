@@ -1415,4 +1415,19 @@ return {
     ngx.ctx.workspaces = old_ws
     return res
   end,
+  setenv = function(env, value)
+    local ffi = require "ffi"
+    ffi.cdef[[
+    int setenv(const char *name, const char *value, int overwrite);
+    ]]
+    return ffi.C.setenv(env, value, 1) == 0
+  end,
+  unsetenv = function(env)
+    local ffi = require "ffi"
+    ffi.cdef[[
+    int unsetenv(const char *name);
+    ]]
+    return ffi.C.unsetenv(env) == 0
+  end
+
 }
