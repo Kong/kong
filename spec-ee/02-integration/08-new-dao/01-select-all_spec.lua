@@ -41,6 +41,37 @@ for _, strategy in helpers.each_strategy() do
           assert.is_nil(err)
           assert.same(3, #rows)
         end)
+
+        it("in a given workspace", function()
+          local ws1 = assert(bp.workspaces:insert({ name = "ws_90" }))
+
+          assert(bp.consumers:insert_ws({ username = "c90" }, ws1))
+          assert(bp.consumers:insert_ws({ username = "c91" }, ws1))
+
+          local rows, err = workspaces.run_with_ws_scope({ws1}, function()
+            return db.consumers:select_all()
+          end)
+
+          assert.is_nil(err)
+          assert.same(2, #rows)
+        end)
+
+        it("in all workspaces", function()
+          local ws1 = assert(bp.workspaces:insert({ name = "ws_91" }))
+          local ws2 = assert(bp.workspaces:insert({ name = "ws_92" }))
+          local ws3 = assert(bp.workspaces:insert({ name = "ws_93" }))
+
+          assert(bp.consumers:insert_ws({ username = "c90" }, ws1))
+          assert(bp.consumers:insert_ws({ username = "c91" }, ws2))
+          assert(bp.consumers:insert_ws({ username = "c91" }, ws3))
+
+          local rows, err = workspaces.run_with_ws_scope({}, function()
+            return db.consumers:select_all()
+          end)
+
+          assert.is_nil(err)
+          assert.same(3, #rows)
+        end)
       end)
 
       describe("filters", function()
