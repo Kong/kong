@@ -63,7 +63,7 @@ return {
               { dictionary_name = {
                 type = "string",
                 required = true,
-                default = "kong_cache",
+                default = "kong_db_cache",
               }},
             },
           }},
