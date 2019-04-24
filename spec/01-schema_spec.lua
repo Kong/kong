@@ -114,13 +114,13 @@ describe("proxy-cache schema", function()
     assert.is_truthy(entity)
   end)
 
-  it("creates a missing redis config", function()
+  it("errors with a missing redis config", function()
     local entity, err = v({
       strategy = "redis",
     }, proxy_cache_schema)
 
-    assert.is_nil(err)
-    assert.is_truthy(entity)
+    assert.is_same("No redis config provided", err["@entity"][1])
+    assert.is_falsy(entity)
   end)
 
   it("supports vary_query_params values", function()

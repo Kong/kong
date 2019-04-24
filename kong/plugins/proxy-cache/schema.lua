@@ -87,10 +87,17 @@ return {
     { custom_entity_check = {
       field_sources = { "config" },
       fn = function(entity)
-        if entity.config.strategy == "memory" then
-          local ok, err = check_shdict(entity.config.memory.dictionary_name)
+        local config = entity.config
+
+        if config.strategy == "memory" then
+          local ok, err = check_shdict(config.memory.dictionary_name)
           if not ok then
             return nil, err
+          end
+
+        elseif entity.config.strategy == "redis" then
+          if config.redis.host == ngx.null and config.redis.sentinel_addresses == ngx.null then
+            return nil, "No redis config provided"
           end
         end
 
