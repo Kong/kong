@@ -1,11 +1,21 @@
 local cjson       = require "cjson"
 local Errors      = require "kong.db.errors"
+local workspaces  = require "kong.workspaces"
 local singletons  = require "kong.singletons"
 local app_helpers = require "lapis.application"
-local workspaces  = require "kong.workspaces"
+local endpoints   = require "kong.api.endpoints"
+local enums       = require "kong.enterprise_edition.dao.enums"
 local files       = require "kong.portal.migrations.01_initial_files"
 
 local _M = {}
+
+
+local function count_entities(arr)
+  return {
+    total = #arr,
+    data = arr
+  }
+end
 
 
 function _M.find_and_filter(self, entity, validator)
@@ -85,7 +95,139 @@ function _M.paginate(self, route, set, size, offset)
 end
 
 
-function _M.update_credential(credential)
+local function find_login_credentials(db, consumer_pk)
+  local creds = {}
+  local login_creds = db.credentials:select_all({ consumer = { id = consumer_pk } })
+  for i, v in ipairs(login_creds) do
+    if v.consumer_type == enums.CONSUMERS.TYPE.DEVELOPER then
+      table.insert(creds, v.credential_data)
+    end
+  end
+
+  return creds
+end
+
+
+local function is_login_credential(login_credentials, credential)
+  for i, v in ipairs(login_credentials) do
+    if v.id == credential.id then
+      return true
+    end
+  end
+
+  return false
+end
+
+
+function _M.get_credential(self, db, helpers, opts)
+  local login_credentials = find_login_credentials(db, self.developer.consumer.id)
+  local credential, _, err_t = self.credential_collection:select({ id = self.params.credential_id })
+  if err_t then
+    return helpers.handle_error(err_t)
+  end
+
+  if not credential then
+    helpers.responses.send_HTTP_NOT_FOUND()
+  end
+
+  if is_login_credential(login_credentials, credential) then
+    return helpers.responses.send_HTTP_NOT_FOUND()
+  end
+
+  return helpers.responses.send_HTTP_OK(credential)
+end
+
+
+function _M.create_credential(self, db, helpers, opts)
+  self.params.consumer = { id = self.developer.consumer.id }
+  self.params.plugin = nil
+
+  local credential, _, err_t = self.credential_collection:insert(self.params, opts)
+  if not credential then
+    return endpoints.handle_error(err_t)
+  end
+
+  return helpers.responses.send_HTTP_OK(credential)
+end
+
+
+function _M.update_credential(self, db, helpers, opts)
+  local cred_id = self.params.credential_id
+  self.params.plugin = nil
+  self.params.credential_id = nil
+
+  local login_credentials = find_login_credentials(db, self.developer.consumer.id)
+  local credential, _, err_t = self.credential_collection:select({ id = cred_id })
+  if not credential then
+    return endpoints.handle_error(err_t)
+  end
+
+  if is_login_credential(login_credentials, credential) then
+    return helpers.responses.send_HTTP_NOT_FOUND()
+  end
+
+  credential, _, err_t = self.credential_collection:update({ id = cred_id }, self.params)
+  if not credential then
+    return endpoints.handle_error(err_t)
+  end
+
+  return helpers.responses.send_HTTP_OK(credential)
+end
+
+
+function _M.delete_credential(self, db, helpers, opts)
+  local cred_id = self.params.credential_id
+  self.params.plugin = nil
+  self.params.credential_id = nil
+
+  local login_credentials = find_login_credentials(db, self.developer.consumer.id)
+  local credential, _, err_t = self.credential_collection:select({ id = cred_id })
+  if not credential then
+    return endpoints.handle_error(err_t)
+  end
+
+  if is_login_credential(login_credentials, credential) then
+    return helpers.responses.send_HTTP_NOT_FOUND()
+  end
+
+  local ok, _, err_t = self.credential_collection:delete({id = cred_id })
+  if not ok then
+    return endpoints.handle_error(err_t)
+  end
+
+  return helpers.responses.send_HTTP_NO_CONTENT()
+end
+
+
+function _M.get_credentials(self, db, helpers, opts)
+  local credentials = setmetatable({}, cjson.empty_array_mt)
+  local login_credentials = find_login_credentials(db, self.developer.consumer.id)
+  
+  for row, err in self.credential_collection:each_for_consumer({ id = self.developer.consumer.id }, opts) do
+    if err then
+      return endpoints.handle_error(err)
+    end
+
+    if not is_login_credential(login_credentials, row) then
+      credentials[#credentials + 1] = row
+    end
+  end
+
+  return helpers.responses.send_HTTP_OK(count_entities(credentials))
+end
+
+
+function _M.update_login_credential(collection, cred_pk, entity)
+  local credential, err = collection:update(cred_pk, entity, {skip_rbac = true})
+
+  if err then
+    return nil, err
+  end
+
+  if credential == nil then
+    return nil
+  end
+
   local _, err = singletons.db.credentials:update(
     { id = credential.id },
     { credential_data = cjson.encode(credential), },
@@ -99,31 +241,6 @@ function _M.update_credential(credential)
   return credential
 end
 
-
-function _M.delete_credential(credential)
-  if not credential or not credential.id then
-    ngx.log(ngx.DEBUG, "Failed to delete credential from credentials")
-  end
-
-  local _, err = singletons.db.credentials:delete({ id = credential.id }, { skip_rbac = true })
-  if err then
-    return app_helpers.yield_error(err)
-  end
-end
-
-function _M.update_login_credential(collection, cred_pk, entity)
-  local credential, err = collection:update(cred_pk, entity, {skip_rbac = true})
-
-  if err then
-    return nil, err
-  end
-
-  if credential == nil then
-    return nil
-  end
-
-  return _M.update_credential(credential)
-end
 
 function _M.check_initialized(workspace, dao)
   -- if portal is not enabled, return early
