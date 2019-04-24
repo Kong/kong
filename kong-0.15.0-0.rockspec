@@ -203,7 +203,6 @@ build = {
     ["kong.rbac.migrations.05_super_admin"] = "kong/rbac/migrations/05_super_admin.lua",
 
     ["kong.workspaces"] = "kong/workspaces/init.lua",
-    ["kong.workspaces.helper"] = "kong/workspaces/helper.lua",
     ["kong.workspaces.counters"] = "kong/workspaces/counters.lua",
     ["kong.workspaces.dao_wrappers"] = "kong/workspaces/dao_wrappers.lua",
 

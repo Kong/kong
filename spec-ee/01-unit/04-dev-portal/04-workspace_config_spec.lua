@@ -1,5 +1,5 @@
 local singletons = require "kong.singletons"
-local ws_helper  = require "kong.workspaces.helper"
+local workspaces = require "kong.workspaces"
 local constants  = require "kong.constants"
 
 local ws_constants = constants.WORKSPACE_CONFIG
@@ -42,29 +42,29 @@ describe("retrieve_ws_config", function()
       }
     }
 
-    local ws_conf_item = ws_helper.retrieve_ws_config(ws_constants.PORTAL_AUTH, workspace)
+    local ws_conf_item = workspaces.retrieve_ws_config(ws_constants.PORTAL_AUTH, workspace)
     assert.equal(ws_conf_item, singletons.configuration.portal_auth)
-    ws_conf_item = ws_helper.retrieve_ws_config(ws_constants.PORTAL_AUTH_CONF, workspace)
+    ws_conf_item = workspaces.retrieve_ws_config(ws_constants.PORTAL_AUTH_CONF, workspace)
     assert.equal(ws_conf_item, singletons.configuration.portal_auth_conf)
-    ws_conf_item = ws_helper.retrieve_ws_config(ws_constants.PORTAL_AUTO_APPROVE, workspace)
+    ws_conf_item = workspaces.retrieve_ws_config(ws_constants.PORTAL_AUTO_APPROVE, workspace)
     assert.equal(ws_conf_item, singletons.configuration.portal_auto_approve)
-    ws_conf_item = ws_helper.retrieve_ws_config(ws_constants.PORTAL_TOKEN_EXP, workspace)
+    ws_conf_item = workspaces.retrieve_ws_config(ws_constants.PORTAL_TOKEN_EXP, workspace)
     assert.equal(ws_conf_item, singletons.configuration.portal_token_exp)
-    ws_conf_item = ws_helper.retrieve_ws_config(ws_constants.PORTAL_INVITE_EMAIL, workspace)
+    ws_conf_item = workspaces.retrieve_ws_config(ws_constants.PORTAL_INVITE_EMAIL, workspace)
     assert.equal(ws_conf_item, singletons.configuration.portal_invite_email)
-    ws_conf_item = ws_helper.retrieve_ws_config(ws_constants.PORTAL_ACCESS_REQUEST_EMAIL, workspace)
+    ws_conf_item = workspaces.retrieve_ws_config(ws_constants.PORTAL_ACCESS_REQUEST_EMAIL, workspace)
     assert.equal(ws_conf_item, singletons.configuration.portal_access_request_email)
-    ws_conf_item = ws_helper.retrieve_ws_config(ws_constants.PORTAL_APPROVED_EMAIL, workspace)
+    ws_conf_item = workspaces.retrieve_ws_config(ws_constants.PORTAL_APPROVED_EMAIL, workspace)
     assert.equal(ws_conf_item, singletons.configuration.portal_reset_email)
-    ws_conf_item = ws_helper.retrieve_ws_config(ws_constants.PORTAL_RESET_EMAIL, workspace)
+    ws_conf_item = workspaces.retrieve_ws_config(ws_constants.PORTAL_RESET_EMAIL, workspace)
     assert.equal(ws_conf_item, singletons.configuration.portal_reset_success_email)
-    ws_conf_item = ws_helper.retrieve_ws_config(ws_constants.PORTAL_RESET_SUCCESS_EMAIL, workspace)
+    ws_conf_item = workspaces.retrieve_ws_config(ws_constants.PORTAL_RESET_SUCCESS_EMAIL, workspace)
     assert.equal(ws_conf_item, singletons.configuration.portal_reset_success_email)
-    ws_conf_item = ws_helper.retrieve_ws_config(ws_constants.PORTAL_EMAILS_FROM, workspace)
+    ws_conf_item = workspaces.retrieve_ws_config(ws_constants.PORTAL_EMAILS_FROM, workspace)
     assert.equal(ws_conf_item, singletons.configuration.portal_emails_from)
-    ws_conf_item = ws_helper.retrieve_ws_config(ws_constants.PORTAL_EMAILS_REPLY_TO, workspace)
+    ws_conf_item = workspaces.retrieve_ws_config(ws_constants.PORTAL_EMAILS_REPLY_TO, workspace)
     assert.equal(ws_conf_item, singletons.configuration.portal_emails_reply_to)
-    ws_conf_item = ws_helper.retrieve_ws_config(ws_constants.PORTAL_CORS_ORIGINS, workspace)
+    ws_conf_item = workspaces.retrieve_ws_config(ws_constants.PORTAL_CORS_ORIGINS, workspace)
     assert.equal(ws_conf_item, singletons.configuration.portal_cors_origins)
   end)
 
@@ -88,29 +88,29 @@ describe("retrieve_ws_config", function()
       }
     }
 
-    local ws_conf_item = ws_helper.retrieve_ws_config(ws_constants.PORTAL_AUTH, workspace)
+    local ws_conf_item = workspaces.retrieve_ws_config(ws_constants.PORTAL_AUTH, workspace)
     assert.equal(ws_conf_item, workspace.config.portal_auth)
-    ws_conf_item = ws_helper.retrieve_ws_config(ws_constants.PORTAL_AUTH_CONF, workspace)
+    ws_conf_item = workspaces.retrieve_ws_config(ws_constants.PORTAL_AUTH_CONF, workspace)
     assert.equal(ws_conf_item, workspace.config.portal_auth_conf)
-    ws_conf_item = ws_helper.retrieve_ws_config(ws_constants.PORTAL_AUTO_APPROVE, workspace)
+    ws_conf_item = workspaces.retrieve_ws_config(ws_constants.PORTAL_AUTO_APPROVE, workspace)
     assert.equal(ws_conf_item, workspace.config.portal_auto_approve)
-    ws_conf_item = ws_helper.retrieve_ws_config(ws_constants.PORTAL_TOKEN_EXP, workspace)
+    ws_conf_item = workspaces.retrieve_ws_config(ws_constants.PORTAL_TOKEN_EXP, workspace)
     assert.equal(ws_conf_item, workspace.config.portal_token_exp)
-    ws_conf_item = ws_helper.retrieve_ws_config(ws_constants.PORTAL_INVITE_EMAIL, workspace)
+    ws_conf_item = workspaces.retrieve_ws_config(ws_constants.PORTAL_INVITE_EMAIL, workspace)
     assert.equal(ws_conf_item, workspace.config.portal_invite_email)
-    ws_conf_item = ws_helper.retrieve_ws_config(ws_constants.PORTAL_ACCESS_REQUEST_EMAIL, workspace)
+    ws_conf_item = workspaces.retrieve_ws_config(ws_constants.PORTAL_ACCESS_REQUEST_EMAIL, workspace)
     assert.equal(ws_conf_item, workspace.config.portal_access_request_email)
-    ws_conf_item = ws_helper.retrieve_ws_config(ws_constants.PORTAL_APPROVED_EMAIL, workspace)
+    ws_conf_item = workspaces.retrieve_ws_config(ws_constants.PORTAL_APPROVED_EMAIL, workspace)
     assert.equal(ws_conf_item, workspace.config.portal_reset_email)
-    ws_conf_item = ws_helper.retrieve_ws_config(ws_constants.PORTAL_RESET_EMAIL, workspace)
+    ws_conf_item = workspaces.retrieve_ws_config(ws_constants.PORTAL_RESET_EMAIL, workspace)
     assert.equal(ws_conf_item, workspace.config.portal_reset_success_email)
-    ws_conf_item = ws_helper.retrieve_ws_config(ws_constants.PORTAL_RESET_SUCCESS_EMAIL, workspace)
+    ws_conf_item = workspaces.retrieve_ws_config(ws_constants.PORTAL_RESET_SUCCESS_EMAIL, workspace)
     assert.equal(ws_conf_item, workspace.config.portal_reset_success_email)
-    ws_conf_item = ws_helper.retrieve_ws_config(ws_constants.PORTAL_EMAILS_FROM, workspace)
+    ws_conf_item = workspaces.retrieve_ws_config(ws_constants.PORTAL_EMAILS_FROM, workspace)
     assert.equal(ws_conf_item, workspace.config.portal_emails_from)
-    ws_conf_item = ws_helper.retrieve_ws_config(ws_constants.PORTAL_EMAILS_REPLY_TO, workspace)
+    ws_conf_item = workspaces.retrieve_ws_config(ws_constants.PORTAL_EMAILS_REPLY_TO, workspace)
     assert.equal(ws_conf_item, workspace.config.portal_emails_reply_to)
-    ws_conf_item = ws_helper.retrieve_ws_config(ws_constants.PORTAL_CORS_ORIGINS, workspace)
+    ws_conf_item = workspaces.retrieve_ws_config(ws_constants.PORTAL_CORS_ORIGINS, workspace)
     assert.same(ws_conf_item, workspace.config.portal_cors_origins)
   end)
 
@@ -121,7 +121,7 @@ describe("retrieve_ws_config", function()
       }
     }
 
-    local ws_conf_item = ws_helper.retrieve_ws_config(ws_constants.PORTAL_AUTH, workspace)
+    local ws_conf_item = workspaces.retrieve_ws_config(ws_constants.PORTAL_AUTH, workspace)
     assert.equal(ws_conf_item, singletons.configuration.portal_auth)
   end)
 
@@ -132,7 +132,7 @@ describe("retrieve_ws_config", function()
       }
     }
 
-    local ws_conf_item = ws_helper.retrieve_ws_config(ws_constants.PORTAL_AUTH, workspace)
+    local ws_conf_item = workspaces.retrieve_ws_config(ws_constants.PORTAL_AUTH, workspace)
     assert.equal(ws_conf_item, workspace.config.portal_auth)
   end)
 
@@ -147,7 +147,7 @@ describe("retrieve_ws_config", function()
       }
     }
 
-    local ws_conf_item = ws_helper.retrieve_ws_config('hotdog', workspace)
+    local ws_conf_item = workspaces.retrieve_ws_config('hotdog', workspace)
     assert.is_nil(ws_conf_item)
   end)
 
@@ -156,11 +156,11 @@ describe("retrieve_ws_config", function()
       config = {}
     }
 
-    local session_conf = ws_helper.retrieve_ws_config(ws_constants.PORTAL_SESSION_CONF, workspace)
+    local session_conf = workspaces.retrieve_ws_config(ws_constants.PORTAL_SESSION_CONF, workspace)
     assert.same(session_conf, singletons.configuration.portal_session_conf)
     session_conf.cookie_name = "MUTATION!"
 
-    local session_conf_2 = ws_helper.retrieve_ws_config(ws_constants.PORTAL_SESSION_CONF, workspace)
+    local session_conf_2 = workspaces.retrieve_ws_config(ws_constants.PORTAL_SESSION_CONF, workspace)
     assert.same(session_conf_2, singletons.configuration.portal_session_conf)
 
     assert.not_equal(session_conf_2.cookie_name, session_conf.cookie_name)
@@ -174,11 +174,11 @@ describe("retrieve_ws_config", function()
         },
       }
     }
-    local session_conf = ws_helper.retrieve_ws_config(ws_constants.PORTAL_SESSION_CONF, workspace)
+    local session_conf = workspaces.retrieve_ws_config(ws_constants.PORTAL_SESSION_CONF, workspace)
     assert.same(session_conf, workspace.config.portal_session_conf)
     session_conf.cookie_name = "MUTATION!"
 
-    local session_conf_2 = ws_helper.retrieve_ws_config(ws_constants.PORTAL_SESSION_CONF, workspace)
+    local session_conf_2 = workspaces.retrieve_ws_config(ws_constants.PORTAL_SESSION_CONF, workspace)
     assert.same(session_conf_2, workspace.config.portal_session_conf)
     assert.not_equal(session_conf_2.cookie_name, session_conf.cookie_name)
   end)
@@ -207,7 +207,7 @@ describe("build_ws_portal_gui_url", function()
     }
 
     local expected_url = 'http://mykewlwebsite.org/test_workspace'
-    local portal_gui_url = ws_helper.build_ws_portal_gui_url(config, workspace)
+    local portal_gui_url = workspaces.build_ws_portal_gui_url(config, workspace)
     assert.equal(portal_gui_url, expected_url)
   end)
 
@@ -223,7 +223,7 @@ describe("build_ws_portal_gui_url", function()
     }
 
     local expected_url = 'https://test_workspace.mykewlwebsite.org'
-    local portal_gui_url = ws_helper.build_ws_portal_gui_url(config, workspace)
+    local portal_gui_url = workspaces.build_ws_portal_gui_url(config, workspace)
     assert.equal(portal_gui_url, expected_url)
   end)
 
@@ -239,7 +239,7 @@ describe("build_ws_portal_gui_url", function()
     }
 
     local expected_url = 'http://test_workspace.subdomain.mykewlwebsite.org'
-    local portal_gui_url = ws_helper.build_ws_portal_gui_url(config, workspace)
+    local portal_gui_url = workspaces.build_ws_portal_gui_url(config, workspace)
     assert.equal(portal_gui_url, expected_url)
   end)
 end)
@@ -263,7 +263,7 @@ describe("build_ws_admin_gui_url", function()
     local workspace = {}
 
     local expected_url = "http://admins-are-fun.org"
-    local admin_gui_url = ws_helper.build_ws_admin_gui_url(config, workspace)
+    local admin_gui_url = workspaces.build_ws_admin_gui_url(config, workspace)
     assert.equal(admin_gui_url, expected_url)
   end)
 
@@ -277,7 +277,7 @@ describe("build_ws_admin_gui_url", function()
     }
 
     local expected_url = 'http://admins-are-fun.org/test_workspace'
-    local admin_gui_url = ws_helper.build_ws_admin_gui_url(config, workspace)
+    local admin_gui_url = workspaces.build_ws_admin_gui_url(config, workspace)
     assert.equal(admin_gui_url, expected_url)
   end)
 end)
@@ -292,7 +292,7 @@ describe("build_ws_portal_cors_origins", function()
       }
     }
 
-    local origins = ws_helper.build_ws_portal_cors_origins(workspace)
+    local origins = workspaces.build_ws_portal_cors_origins(workspace)
     assert.same({ "wow" }, origins)
   end)
 
@@ -305,7 +305,7 @@ describe("build_ws_portal_cors_origins", function()
       }
     }
 
-    local origins = ws_helper.build_ws_portal_cors_origins(workspace)
+    local origins = workspaces.build_ws_portal_cors_origins(workspace)
     assert.same({ "http://example.com" }, origins)
   end)
 
@@ -317,7 +317,7 @@ describe("build_ws_portal_cors_origins", function()
       }
     }
 
-    local origins = ws_helper.build_ws_portal_cors_origins(workspace)
+    local origins = workspaces.build_ws_portal_cors_origins(workspace)
     assert.same({ "http://example.com" }, origins)
   end)
 
@@ -331,7 +331,7 @@ describe("build_ws_portal_cors_origins", function()
       }
     }
 
-    local origins = ws_helper.build_ws_portal_cors_origins(workspace)
+    local origins = workspaces.build_ws_portal_cors_origins(workspace)
     assert.same({ "http://wooo.example.com" }, origins)
   end)
 end)

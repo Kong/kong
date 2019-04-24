@@ -4,7 +4,7 @@ local pl_file    = require "pl.file"
 local pl_utils   = require "pl.utils"
 local pl_path    = require "pl.path"
 local constants  = require "kong.constants"
-local ws_helper  = require "kong.workspaces.helper"
+local workspaces = require "kong.workspaces"
 local feature_flags   = require "kong.enterprise_edition.feature_flags"
 local license_helpers = require "kong.enterprise_edition.license_helpers"
 
@@ -176,7 +176,7 @@ end
 
 
 function _M.prepare_portal(self, kong_config)
-  local workspace = ws_helper.get_workspace()
+  local workspace = workspaces.get_workspace()
   local is_authenticated = self.developer ~= nil
 
   local portal_gui_listener = select_listener(kong_config.portal_gui_listeners,
@@ -194,8 +194,8 @@ function _M.prepare_portal(self, kong_config)
 
   local rbac_enforced = kong_config.rbac == "both" or kong_config.rbac == "on"
 
-  local portal_gui_url = ws_helper.build_ws_portal_gui_url(kong_config, workspace)
-  local portal_auth = ws_helper.retrieve_ws_config(ws_constants.PORTAL_AUTH, workspace)
+  local portal_gui_url = workspaces.build_ws_portal_gui_url(kong_config, workspace)
+  local portal_auth = workspaces.retrieve_ws_config(ws_constants.PORTAL_AUTH, workspace)
 
   return {
     PORTAL_API_URL = prepare_variable(kong_config.portal_api_url),

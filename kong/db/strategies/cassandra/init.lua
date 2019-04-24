@@ -1,7 +1,6 @@
 local iteration = require "kong.db.iteration"
 local cassandra = require "cassandra"
 local workspaces = require "kong.workspaces"
-local ws_helper = require "kong.workspaces.helper"
 local utils      = require "kong.tools.utils"
 
 
@@ -368,7 +367,7 @@ local function foreign_pk_exists(self, field_name, field, foreign_pk)
 
   local constraint = workspaceable[foreign_schema.name]
   if constraint then
-    local res, err = ws_helper.validate_pk_exist(foreign_schema.name, foreign_pk,
+    local res, err = workspaces.validate_pk_exist(foreign_schema.name, foreign_pk,
                                                  constraint)
     if err then
       return nil, err

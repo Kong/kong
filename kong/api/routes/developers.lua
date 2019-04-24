@@ -1,7 +1,7 @@
 local constants    = require "kong.constants"
 local utils        = require "kong.tools.utils"
 local endpoints    = require "kong.api.endpoints"
-local ws_helper    = require "kong.workspaces.helper"
+local workspaces   = require "kong.workspaces"
 local portal_smtp_client = require "kong.portal.emails"
 local crud_helpers       = require "kong.portal.crud_helpers"
 local enums              = require "kong.enterprise_edition.dao.enums"
@@ -52,7 +52,7 @@ end
 
 local function get_developer_status()
   local workspace = ngx.ctx.workspaces and ngx.ctx.workspaces[1] or {}
-  local auto_approve = ws_helper.retrieve_ws_config(ws_constants.PORTAL_AUTO_APPROVE, workspace)
+  local auto_approve = workspaces.retrieve_ws_config(ws_constants.PORTAL_AUTO_APPROVE, workspace)
 
   if auto_approve then
     return enums.CONSUMERS.STATUS.APPROVED

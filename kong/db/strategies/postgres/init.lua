@@ -2,7 +2,7 @@ local arrays        = require "pgmoon.arrays"
 local json          = require "pgmoon.json"
 local cjson         = require "cjson"
 local cjson_safe    = require "cjson.safe"
-local ws_helper     = require "kong.workspaces.helper"
+local workspaces    = require "kong.workspaces"
 
 
 local encode_base64 = ngx.encode_base64
@@ -624,7 +624,7 @@ local function page(self, size, token, foreign_key, foreign_entity_name, options
 
   local statement_name
   local attributes
-  local ws_list = ws_helper.ws_scope_as_list(self.schema.name)
+  local ws_list = workspaces.ws_scope_as_list(self.schema.name)
 
   if token then
     if foreign_entity_name then
@@ -816,7 +816,7 @@ end
 
 function _mt:select_all(fields, options)
   local q_name = next(fields) and "select_all_filtered" or "select_all"
-  local ws_list = ws_helper.ws_scope_as_list(self.schema.name)
+  local ws_list = workspaces.ws_scope_as_list(self.schema.name)
 
   local res, err = execute(self, q_name, self.collapse(fields), options, ws_list)
   if not res then
@@ -851,7 +851,7 @@ end
 
 -- TODO may not be needed
 function _mt:select_ws(primary_key)
-  local ws_list = ws_helper.ws_scope_as_list(self.schema.name)
+  local ws_list = workspaces.ws_scope_as_list(self.schema.name)
   local res, err = execute(self, "select_ws",
                            self.collapse(primary_key), nil, ws_list)
 
@@ -869,7 +869,7 @@ end
 
 
 function _mt:select_by_field(field_name, unique_value, options)
-  local ws_list = ws_helper.ws_scope_as_list(self.schema.name)
+  local ws_list = workspaces.ws_scope_as_list(self.schema.name)
   local statement_name = "select_by_" .. field_name
   local filter = {
     [field_name] = unique_value,

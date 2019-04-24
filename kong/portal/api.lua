@@ -3,7 +3,7 @@ local cjson         = require "cjson.safe"
 local constants     = require "kong.constants"
 local auth          = require "kong.portal.auth"
 local crud          = require "kong.api.crud_helpers"
-local ws_helper     = require "kong.workspaces.helper"
+local workspaces    = require "kong.workspaces"
 local portal_smtp_client = require "kong.portal.emails"
 local endpoints          = require "kong.api.endpoints"
 local crud_helpers       = require "kong.portal.crud_helpers"
@@ -34,7 +34,7 @@ local auth_plugins = {
 
 local function get_developer_status()
   local workspace = ngx.ctx.workspaces and ngx.ctx.workspaces[1] or {}
-  local auto_approve = ws_helper.retrieve_ws_config(PORTAL_AUTO_APPROVE, workspace)
+  local auto_approve = workspaces.retrieve_ws_config(PORTAL_AUTO_APPROVE, workspace)
 
   if auto_approve then
     return enums.CONSUMERS.STATUS.APPROVED
@@ -121,7 +121,7 @@ return {
   ["/files"] = {
     before = function(self, db, helpers)
       local ws = get_workspace()
-      local portal_auth = ws_helper.retrieve_ws_config(PORTAL_AUTH, ws)
+      local portal_auth = workspaces.retrieve_ws_config(PORTAL_AUTH, ws)
       if portal_auth and portal_auth ~= "" then
         auth.authenticate_api_session(self, db, helpers)
       end
@@ -159,7 +159,7 @@ return {
   ["/files/*"] = {
     before = function(self, db, helpers)
       local ws = get_workspace()
-      local portal_auth = ws_helper.retrieve_ws_config(PORTAL_AUTH, ws)
+      local portal_auth = workspaces.retrieve_ws_config(PORTAL_AUTH, ws)
       if portal_auth and portal_auth ~= "" then
         auth.authenticate_api_session(self, db, helpers)
       end
@@ -292,7 +292,7 @@ return {
       auth.validate_auth_plugin(self, db, helpers)
 
       local workspace = get_workspace()
-      local token_ttl = ws_helper.retrieve_ws_config(PORTAL_TOKEN_EXP,
+      local token_ttl = workspaces.retrieve_ws_config(PORTAL_TOKEN_EXP,
                                                      workspace)
 
       local developer, _, err_t = db.developers:select_by_email(

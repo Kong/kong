@@ -1,5 +1,5 @@
 local split = require("pl.stringx").split
-local ws_scope_as_list = require("kong.workspaces.helper").ws_scope_as_list
+local ws_scope_as_list = require("kong.workspaces").ws_scope_as_list
 
 
 local insert = table.insert

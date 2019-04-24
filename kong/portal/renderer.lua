@@ -2,7 +2,7 @@ local pl_tablex   = require "pl.tablex"
 local pl_stringx   = require "pl.stringx"
 local constants    = require "kong.constants"
 local singletons   = require "kong.singletons"
-local ws_helper    = require "kong.workspaces.helper"
+local workspaces = require "kong.workspaces"
 local ws_constants = constants.WORKSPACE_CONFIG
 
 local no_files_found = {
@@ -14,10 +14,10 @@ local no_files_found = {
 
 
 local function build_url_obj(page, path, url_map)
-  local workspace = ws_helper.get_workspace()
+  local workspace = workspaces.get_workspace()
   local url_items = {}
 
-  local page_url = ws_helper.build_ws_portal_gui_url(singletons.configuration, workspace) .. '/' .. path
+  local page_url = workspaces.build_ws_portal_gui_url(singletons.configuration, workspace) .. '/' .. path
   page_url = pl_stringx.rstrip(page_url, '/')
   url_items["loc"] = page_url
 
@@ -243,8 +243,8 @@ end
 
 local function retrieve_page_and_spec (self)
   local is_authenticated = self.developer ~= nil
-  local workspace = ws_helper.get_workspace()
-  local portal_auth = ws_helper.retrieve_ws_config(ws_constants.PORTAL_AUTH,
+  local workspace = workspaces.get_workspace()
+  local portal_auth = workspaces.retrieve_ws_config(ws_constants.PORTAL_AUTH,
                                                                     workspace)
 
   local path = self.path
