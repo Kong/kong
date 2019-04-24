@@ -84,16 +84,30 @@ function _M.find_all()
     return nil, err
   end
 
-  setmetatable(all_admins, cjson.empty_array_mt)
+  local ws_admins = {}
+  setmetatable(ws_admins, cjson.empty_array_mt)
 
-  for i, v in ipairs(all_admins) do
-    all_admins[i] = transmogrify(v)
+  for _, v in ipairs(all_admins) do
+    -- see if admin is in current workspace
+    local ws, err = kong.db.workspace_entities:select_all({
+      workspace_name = ngx.ctx.workspaces[1].name,
+      entity_type = "consumers",
+      entity_id = v.consumer.id,
+      unique_field_name = "id",
+    })
+    if err then
+      return nil, err
+    end
+
+    if ws[1] then
+      ws_admins[#ws_admins + 1] = transmogrify(v)
+    end
   end
 
   return {
     code = 200,
     body = {
-      data = all_admins,
+      data = ws_admins,
       next = null,
     },
   }
@@ -407,6 +421,23 @@ function _M.find_by_username_or_id(username_or_id, raw)
     admin, err = kong.db.admins:select_by_username(username_or_id)
     if err then
       return nil, err
+    end
+  end
+
+  -- see if this admin is in this workspace
+  if admin then
+    local ws, err = kong.db.workspace_entities:select_all({
+      workspace_name = ngx.ctx.workspaces[1].name,
+      entity_type = "consumers",
+      entity_id = admin.consumer.id,
+      unique_field_name = "id",
+    })
+    if err then
+      return nil, err
+    end
+
+    if not ws[1] then
+      return nil
     end
   end
 
