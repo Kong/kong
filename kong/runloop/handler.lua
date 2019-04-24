@@ -607,7 +607,7 @@ return {
         return exit(500)
       end
 
-      local match_t = router.exec(ngx)
+      local match_t = router.exec()
       if not match_t then
         log(ERR, "no Route found with those values")
         return exit(500)
@@ -708,7 +708,7 @@ return {
 
       ctx.KONG_ACCESS_START = get_now()
 
-      local match_t = router.exec(ngx)
+      local match_t = router.exec()
       if not match_t then
         return kong.response.exit(404, { message = "no Route matched with those values" })
       end
