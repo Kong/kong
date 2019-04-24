@@ -808,8 +808,8 @@ CREATE TABLE IF NOT EXISTS admins (
 
       CREATE INDEX IF NOT EXISTS ON workspaces(name);
 
-      INSERT INTO workspaces(id, name)
-      VALUES (00000000-0000-0000-0000-000000000000, 'default');
+      INSERT INTO workspaces(id, name, config, meta)
+      VALUES (00000000-0000-0000-0000-000000000000, 'default', '{"portal":true}', '{}');
 
       CREATE TABLE IF NOT EXISTS workspace_entities(
         workspace_id uuid,
