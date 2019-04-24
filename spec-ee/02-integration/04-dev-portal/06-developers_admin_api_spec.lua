@@ -4,6 +4,7 @@ local singletons  = require "kong.singletons"
 local enums       = require "kong.enterprise_edition.dao.enums"
 local ee_helpers  = require "spec-ee.helpers"
 
+
 local function configure_portal()
   singletons.db.workspaces:upsert_by_name("default", {
     name = "default",
@@ -12,6 +13,23 @@ local function configure_portal()
       portal_auth = "basic-auth",
     }
   })
+end
+
+
+local function close_clients(clients)
+  for idx, client in ipairs(clients) do
+    client:close()
+  end
+end
+
+
+local function client_request(params)
+  local client = assert(helpers.admin_client())
+  local res = assert(client:send(params))
+  res.body = res.body_reader()
+
+  close_clients({ client })
+  return res
 end
 
 
@@ -367,7 +385,7 @@ describe("Admin API - Developer Portal - " .. strategy, function()
     end)
   end)
 
-  describe("/portal/invite", function()
+  describe("/developers/invite", function()
     describe("POST", function()
       describe("portal_invite_email = off", function()
         before_each(function()
@@ -393,7 +411,7 @@ describe("Admin API - Developer Portal - " .. strategy, function()
             body = {
               emails = {"me@example.com"},
             },
-            path = "/portal/invite",
+            path = "/developers/invite",
             headers = {
               ["Content-Type"] = "application/json",
             }
@@ -434,7 +452,7 @@ describe("Admin API - Developer Portal - " .. strategy, function()
             body = {
 
             },
-            path = "/portal/invite",
+            path = "/developers/invite",
             headers = {
               ["Content-Type"] = "application/json",
             }
@@ -453,7 +471,7 @@ describe("Admin API - Developer Portal - " .. strategy, function()
             body = {
               emails = {},
             },
-            path = "/portal/invite",
+            path = "/developers/invite",
             headers = {
               ["Content-Type"] = "application/json",
             }
@@ -472,7 +490,7 @@ describe("Admin API - Developer Portal - " .. strategy, function()
             body = {
               emails = {"me@example.com", "you@example.com"},
             },
-            path = "/portal/invite",
+            path = "/developers/invite",
             headers = {
               ["Content-Type"] = "application/json",
             }
@@ -505,7 +523,7 @@ describe("Admin API - Developer Portal - " .. strategy, function()
             body = {
               emails = {"me@example.com", "bademail.com"},
             },
-            path = "/portal/invite",
+            path = "/developers/invite",
             headers = {
               ["Content-Type"] = "application/json",
             }
@@ -539,7 +557,7 @@ describe("Admin API - Developer Portal - " .. strategy, function()
             body = {
               emails = {"notemail", "bademail.com"},
             },
-            path = "/portal/invite",
+            path = "/developers/invite",
             headers = {
               ["Content-Type"] = "application/json",
             }
@@ -573,6 +591,346 @@ describe("Admin API - Developer Portal - " .. strategy, function()
     end)
 
     describe("/developer/:developer/plugins/:id", function()
+    end)
+  end)
+
+  describe("/developers/:developers/credentials/:plugin", function()
+    local developer
+
+    after_each(function()
+      assert(db:truncate())
+    end)
+
+    before_each(function()
+      helpers.stop_kong()
+      assert(db:truncate())
+
+      assert(helpers.start_kong({
+        database   = strategy,
+        portal     = true,
+        portal_auth = "basic-auth",
+        portal_auth_config = "{ \"hide_credentials\": true }",
+        portal_auto_approve = "off",
+        portal_invite_email = "off",
+      }))
+
+      developer = assert(db.developers:insert {
+        email = "gruce@konghq.com",
+        password = "kong",
+        meta = "{\"full_name\":\"I Like Turtles\"}",
+        status = enums.CONSUMERS.STATUS.APPROVED,
+      })
+
+      for i = 1, 10 do
+        assert(client_request({
+          method = "POST",
+          path = "/default/developers/" .. developer.id .. "/credentials/basic-auth",
+          body = {
+            username = 'dog' .. tostring(i),
+            password = 'cat',
+          },
+          headers = {["Content-Type"] = "application/json"},
+        }))
+      end
+
+      for i = 1, 5 do
+        assert(client_request({
+          method = "POST",
+          path = "/default/developers/" .. developer.id .. "/credentials/key-auth",
+          body = {
+            key = 'bat' .. tostring(i),
+          },
+          headers = {["Content-Type"] = "application/json"},
+        }))
+      end
+
+      client = assert(helpers.admin_client())
+      configure_portal(dao)
+    end)
+
+    describe("POST", function()
+      it("can create credentials", function()
+        local res = assert(client_request({
+          method = "POST",
+          path = "/default/developers/" .. developer.id .. "/credentials/basic-auth",
+          body = {
+            username = 'dog20',
+            password = 'cat',
+          },
+          headers = {["Content-Type"] = "application/json"},
+        }))
+        assert.res_status(200, res)
+
+        res = assert(client:send {
+          method = "GET",
+          path = "/default/developers/" .. developer.id .. "/credentials/basic-auth"
+        })
+        res = assert.res_status(200, res)
+        local json = cjson.decode(res)
+        assert.equal(11, #json.data)
+        for i, v in ipairs(json.data) do
+          assert.truthy(string.match(json.data[i].username, 'dog'))
+        end
+
+        assert(client_request({
+          method = "POST",
+          path = "/default/developers/" .. developer.id .. "/credentials/key-auth",
+          body = {
+            key = 'bat420',
+          },
+          headers = {["Content-Type"] = "application/json"},
+        }))
+        res = assert(client:send {
+          method = "GET",
+          path = "/default/developers/" .. developer.id .. "/credentials/key-auth"
+        })
+        res = assert.res_status(200, res)
+        local json = cjson.decode(res)
+        assert.equal(6, #json.data)
+        for i, v in ipairs(json.data) do
+          assert.truthy(string.match(json.data[i].key, 'bat'))
+        end
+      end)
+    end)
+
+    describe("GET", function()
+      it("retrieves credentials by type", function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/default/developers/" .. developer.id .. "/credentials/basic-auth"
+        })
+        res = assert.res_status(200, res)
+        local json = cjson.decode(res)
+        assert.equal(10, #json.data)
+        for i, v in ipairs(json.data) do
+          assert.truthy(string.match(json.data[i].username, 'dog'))
+        end
+
+        local res = assert(client:send {
+          method = "GET",
+          path = "/default/developers/" .. developer.id .. "/credentials/key-auth"
+        })
+        res = assert.res_status(200, res)
+        local json = cjson.decode(res)
+        assert.equal(5, #json.data)
+        for i, v in ipairs(json.data) do
+          assert.truthy(string.match(json.data[i].key, 'bat'))
+        end
+      end)
+    end)
+  end)
+
+  describe("/developers/:developers/credentials/:plugin/:credential_id", function()
+    local res, developer, basic_auth, key_auth
+
+    after_each(function()
+      assert(db:truncate())
+    end)
+
+    before_each(function()
+      helpers.stop_kong()
+      assert(db:truncate())
+
+      assert(helpers.start_kong({
+        database   = strategy,
+        portal     = true,
+        portal_auth = "basic-auth",
+        portal_auth_config = "{ \"hide_credentials\": true }",
+        portal_auto_approve = "off",
+        portal_invite_email = "off",
+      }))
+
+      developer = assert(db.developers:insert {
+        email = "gruce@konghq.com",
+        password = "kong",
+        meta = "{\"full_name\":\"I Like Turtles\"}",
+        status = enums.CONSUMERS.STATUS.APPROVED,
+      })
+
+      res = client_request({
+        method = "POST",
+        path = "/default/developers/" .. developer.id .. "/credentials/basic-auth",
+        body = {
+          username = 'dog',
+          password = 'cat',
+        },
+        headers = {["Content-Type"] = "application/json"},
+      })
+
+      basic_auth = cjson.decode(res.body)
+
+      res = client_request({
+        method = "POST",
+        path = "/default/developers/" .. developer.id .. "/credentials/key-auth",
+        body = {
+          key = 'bat',
+        },
+        headers = {["Content-Type"] = "application/json"},
+      })
+
+      key_auth = cjson.decode(res.body)
+
+      client = assert(helpers.admin_client())
+      configure_portal(dao)
+    end)
+
+    describe("GET", function()
+      it("retrieves credentials by type", function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/default/developers/" .. developer.id .. "/credentials/basic-auth/" .. basic_auth.id
+        })
+        res = assert.res_status(200, res)
+        local json = cjson.decode(res)
+        assert.equal(json.id, basic_auth.id)
+        assert.equal(json.username, basic_auth.username)
+
+        local res = assert(client:send {
+          method = "GET",
+          path = "/default/developers/" .. developer.id .. "/credentials/key-auth/" .. key_auth.id
+        })
+        res = assert.res_status(200, res)
+        local json = cjson.decode(res)
+        assert.equal(json.id, key_auth.id)
+        assert.equal(json.key, key_auth.key)
+      end)
+
+      it("cannot retrieve credentials of wrong type", function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/default/developers/" .. developer.id .. "/credentials/basic-auth/" .. key_auth.id
+        })
+        assert.res_status(404, res)
+
+        local res = assert(client:send {
+          method = "GET",
+          path = "/default/developers/" .. developer.id .. "/credentials/key-auth/" .. basic_auth.id
+        })
+        assert.res_status(404, res)
+      end)
+    end)
+
+    describe("PATCH", function()
+      it("can update credential with valid params", function()
+        local res = assert(client:send {
+          method = "PATCH",
+          body = {
+            username = "woah-dude",
+          },
+          path = "/default/developers/" .. developer.id .. "/credentials/basic-auth/" .. basic_auth.id,
+          headers = {
+            ["Content-Type"] = "application/json",
+          }
+        })
+        res = assert.res_status(200, res)
+        local json = cjson.decode(res)
+        assert.equal(json.id, basic_auth.id)
+        assert.equal(json.username, "woah-dude")
+
+        local res = assert(client:send {
+          method = "PATCH",
+          body = {
+            key = "radical",
+          },
+          path = "/default/developers/" .. developer.id .. "/credentials/key-auth/" .. key_auth.id,
+          headers = {
+            ["Content-Type"] = "application/json",
+          }
+        })
+        res = assert.res_status(200, res)
+        local json = cjson.decode(res)
+        assert.equal(json.id, key_auth.id)
+        assert.equal(json.key, "radical")
+      end)
+
+      it("cannot update credential with invalid params", function()
+        local res = assert(client:send {
+          method = "PATCH",
+          body = {
+            usrname = "woah-dude",
+          },
+          path = "/default/developers/" .. developer.id .. "/credentials/basic-auth/" .. basic_auth.id,
+          headers = {
+            ["Content-Type"] = "application/json",
+          }
+        })
+        assert.res_status(400, res)
+
+        local res = assert(client:send {
+          method = "PATCH",
+          body = {
+            keys = "radical",
+          },
+          path = "/default/developers/" .. developer.id .. "/credentials/key-auth/" .. key_auth.id,
+          headers = {
+            ["Content-Type"] = "application/json",
+          }
+        })
+        assert.res_status(400, res)
+      end)
+    end)
+
+    describe("DELETE", function()
+      it("can delete credential", function()
+        res = client_request({
+          method = "POST",
+          path = "/default/developers/" .. developer.id .. "/credentials/basic-auth",
+          body = {
+            username = 'test',
+            password = 'test',
+          },
+          headers = {["Content-Type"] = "application/json"},
+        })
+        basic_auth = cjson.decode(res.body)
+
+        res = client_request({
+          method = "POST",
+          path = "/default/developers/" .. developer.id .. "/credentials/key-auth",
+          body = {
+            key = 'test',
+          },
+          headers = {["Content-Type"] = "application/json"},
+        })
+        key_auth = cjson.decode(res.body)
+
+        res = assert(client:send {
+          method = "DELETE",
+          path = "/default/developers/" .. developer.id .. "/credentials/basic-auth/" .. basic_auth.id,
+          headers = {
+            ["Content-Type"] = "application/json",
+          }
+        })
+        assert.res_status(204, res)
+
+        res = assert(client:send {
+          method = "DELETE",
+          path = "/default/developers/" .. developer.id .. "/credentials/key-auth/" .. key_auth.id,
+          headers = {
+            ["Content-Type"] = "application/json",
+          }
+        })
+        assert.res_status(204, res)
+      end)
+
+      it("delete will always return 204 if they don't exist", function()
+        local res = assert(client:send {
+          method = "DELETE",
+          path = "/default/developers/" .. developer.id .. "/credentials/basic-auth/" .. basic_auth.id,
+          headers = {
+            ["Content-Type"] = "application/json",
+          }
+        })
+        assert.res_status(204, res)
+
+        res = assert(client:send {
+          method = "DELETE",
+          path = "/default/developers/" .. developer.id .. "/credentials/key-auth/" .. key_auth.id,
+          headers = {
+            ["Content-Type"] = "application/json",
+          }
+        })
+        assert.res_status(204, res)
+      end)
     end)
   end)
 end)

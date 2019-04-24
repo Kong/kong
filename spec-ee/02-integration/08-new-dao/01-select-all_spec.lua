@@ -7,25 +7,28 @@ for _, strategy in helpers.each_strategy() do
 
     lazy_setup(function()
       bp, db, _ = helpers.get_db_utils(strategy)
+    end)
 
-      local s1
-      s1 = bp.services:insert({ name = "s1" })
-      bp.services:insert({ name = "s2" })
-      bp.services:insert({ name = "s3" })
-
-      bp.routes:insert({ name = "r1", paths = {"/"}, service = s1 })
-      bp.routes:insert({ name = "r2", paths = {"/"}, service = s1 })
-      bp.routes:insert({ name = "r3", paths = {"/"}, service = s1 })
-
-      bp.consumers:insert({ username = "c1" })
-      bp.consumers:insert({ username = "c2" })
-      bp.consumers:insert({ username = "c3" })
+    before_each(function()
+      db:truncate("routes")
+      db:truncate("services")
+      db:truncate("consumers")
+      db:truncate("workspaces")
     end)
 
     describe(":select_all()", function()
       describe("returns all rows", function()
         it("partitioned entities", function()
           local rows, err
+
+          local s1
+          s1 = bp.services:insert({ name = "s1" })
+          bp.services:insert({ name = "s2" })
+          bp.services:insert({ name = "s3" })
+
+          bp.routes:insert({ name = "r1", paths = {"/"}, service = s1 })
+          bp.routes:insert({ name = "r2", paths = {"/"}, service = s1 })
+          bp.routes:insert({ name = "r3", paths = {"/"}, service = s1 })
 
           rows, err = db.services:select_all()
           assert.is_nil(err)
@@ -36,8 +39,43 @@ for _, strategy in helpers.each_strategy() do
           assert.same(3, #rows)
         end)
 
-        it("partitioned entities", function()
+        it("unpartitioned entities", function()
+          bp.consumers:insert({ username = "c1" })
+          bp.consumers:insert({ username = "c2" })
+          bp.consumers:insert({ username = "c3" })
+
           local rows, err = db.consumers:select_all()
+          assert.is_nil(err)
+          assert.same(3, #rows)
+        end)
+
+        it("in a given workspace", function()
+          local ws1 = assert(bp.workspaces:insert({ name = "ws_90" }))
+
+          assert(bp.consumers:insert_ws({ username = "c90" }, ws1))
+          assert(bp.consumers:insert_ws({ username = "c91" }, ws1))
+
+          local rows, err = workspaces.run_with_ws_scope({ws1}, function()
+            return db.consumers:select_all()
+          end)
+
+          assert.is_nil(err)
+          assert.same(2, #rows)
+        end)
+
+        it("in all workspaces", function()
+          local ws1 = assert(bp.workspaces:insert({ name = "ws_91" }))
+          local ws2 = assert(bp.workspaces:insert({ name = "ws_92" }))
+          local ws3 = assert(bp.workspaces:insert({ name = "ws_93" }))
+
+          assert(bp.consumers:insert_ws({ username = "c90" }, ws1))
+          assert(bp.consumers:insert_ws({ username = "c91" }, ws2))
+          assert(bp.consumers:insert_ws({ username = "c91" }, ws3))
+
+          local rows, err = workspaces.run_with_ws_scope({}, function()
+            return db.consumers:select_all()
+          end)
+
           assert.is_nil(err)
           assert.same(3, #rows)
         end)
@@ -46,6 +84,9 @@ for _, strategy in helpers.each_strategy() do
       describe("filters", function()
         it("partitioned entities", function()
           local rows, err
+
+          local s1 = bp.services:insert({ name = "s1" })
+          bp.routes:insert({ name = "r1", paths = {"/"}, service = s1 })
 
           rows, err = db.services:select_all({ name = "s1" })
           assert.is_nil(err)
@@ -58,6 +99,7 @@ for _, strategy in helpers.each_strategy() do
 
         it("unpartitioned entities", function()
           local rows, err
+          bp.consumers:insert({ username = "c1" })
 
           rows, err = db.consumers:select_all({ username = "c1" })
           assert.is_nil(err)

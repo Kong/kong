@@ -3,7 +3,7 @@ local cjson_safe    = require "cjson.safe"
 local encode_base64 = ngx.encode_base64
 local decode_base64 = ngx.decode_base64
 local fmt           = string.format
-local ws_helper     = require "kong.workspaces.helper"
+local workspaces = require "kong.workspaces"
 local unpack        = unpack
 
 
@@ -48,7 +48,7 @@ function Consumers:page_by_type(type, size, token, options)
   -- maybe validate type
   local type_literal = self:escape_literal(type)
 
-  local ws_list = ws_helper.ws_scope_as_list(self.schema.name)
+  local ws_list = workspaces.ws_scope_as_list(self.schema.name)
   if ws_list then
     ws_suffix = "_ws"
   end

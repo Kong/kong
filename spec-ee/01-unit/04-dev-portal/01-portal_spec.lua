@@ -4,7 +4,7 @@ local conf_loader    = require "kong.conf_loader"
 local ee             = require "kong.enterprise_edition"
 local meta           = require "kong.enterprise_edition.meta"
 local singletons     = require "kong.singletons"
-local ws_helper      = require "kong.workspaces.helper"
+local workspaces = require "kong.workspaces"
 
 local exists = helpers.path.exists
 
@@ -126,7 +126,7 @@ describe("portal_gui", function()
     }
 
     it("inserts the appropriate values with empty config", function()
-      stub(ws_helper, "get_workspace").returns({
+      stub(workspaces, "get_workspace").returns({
         name = "default"
       })
 
@@ -158,7 +158,7 @@ describe("portal_gui", function()
     end)
 
     it("inserts the appropriate values with different workspace name", function()
-      stub(ws_helper, "get_workspace").returns({
+      stub(workspaces, "get_workspace").returns({
         name = "gruce"
       })
 
@@ -182,7 +182,7 @@ describe("portal_gui", function()
     end)
 
     it("inserts the appropriate values with different portal auth type", function()
-      stub(ws_helper, "get_workspace").returns({
+      stub(workspaces, "get_workspace").returns({
         config = {
           portal_auth = "key-auth",
         },

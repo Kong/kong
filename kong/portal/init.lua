@@ -6,9 +6,8 @@ local api_helpers = require "kong.api.api_helpers"
 local app_helpers = require "lapis.application"
 local singletons = require "kong.singletons"
 local responses = require "kong.tools.responses"
-local workspaces = require "kong.workspaces"
 local ee_api = require "kong.enterprise_edition.api_helpers"
-local ws_helper = require "kong.workspaces.helper"
+local workspaces = require "kong.workspaces"
 local constants = require "kong.constants"
 local Errors = require "kong.db.errors"
 
@@ -176,7 +175,7 @@ app:before_filter(function(self)
   end
 
   -- check if portal is enabled
-  local portal_enabled = ws_helper.retrieve_ws_config(PORTAL, ws)
+  local portal_enabled = workspaces.retrieve_ws_config(PORTAL, ws)
   if not portal_enabled then
     return responses.send_HTTP_NOT_FOUND(fmt("'%s' portal disabled", ws_name))
   end
@@ -187,7 +186,7 @@ app:before_filter(function(self)
   self.params.workspace_name = nil
 
   local cors_conf = {
-    origins = ws_helper.build_ws_portal_cors_origins(ws),
+    origins = workspaces.build_ws_portal_cors_origins(ws),
     methods = { "GET", "PUT", "PATCH", "DELETE", "POST" },
     credentials = true,
   }

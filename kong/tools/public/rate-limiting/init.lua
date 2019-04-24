@@ -13,7 +13,7 @@ local DEBUG = ngx.DEBUG
 local ERR   = ngx.ERR
 
 
-local locks_shm = ngx.shared.kong_cache
+local locks_shm = ngx.shared.kong_locks
 
 
 local new_tab

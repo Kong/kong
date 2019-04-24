@@ -1,7 +1,7 @@
 local smtp_client  = require "kong.enterprise_edition.smtp_client"
 local portal_utils = require "kong.portal.utils"
 local singletons   = require "kong.singletons"
-local ws_helper    = require "kong.workspaces.helper"
+local workspaces = require "kong.workspaces"
 local constants    = require "kong.constants"
 
 local ws_constants = constants.WORKSPACE_CONFIG
@@ -111,15 +111,15 @@ end
 
 function _M:invite(recipients)
   local workspace = ngx.ctx.workspaces and ngx.ctx.workspaces[1] or {}
-  local portal_invite_email = ws_helper.retrieve_ws_config(ws_constants.PORTAL_INVITE_EMAIL, workspace)
+  local portal_invite_email = workspaces.retrieve_ws_config(ws_constants.PORTAL_INVITE_EMAIL, workspace)
 
   if not portal_invite_email then
     return nil, {code =  501, message = "portal_invite_email is disabled"}
   end
 
-  local portal_gui_url = ws_helper.build_ws_portal_gui_url(singletons.configuration, workspace)
-  local portal_emails_from = ws_helper.retrieve_ws_config(ws_constants.PORTAL_EMAILS_FROM, workspace)
-  local portal_emails_reply_to = ws_helper.retrieve_ws_config(ws_constants.PORTAL_EMAILS_REPLY_TO, workspace)
+  local portal_gui_url = workspaces.build_ws_portal_gui_url(singletons.configuration, workspace)
+  local portal_emails_from = workspaces.retrieve_ws_config(ws_constants.PORTAL_EMAILS_FROM, workspace)
+  local portal_emails_reply_to = workspaces.retrieve_ws_config(ws_constants.PORTAL_EMAILS_REPLY_TO, workspace)
   local conf = self.conf.portal_invite_email
   local options = {
     from = portal_emails_from,
@@ -140,16 +140,16 @@ end
 
 function _M:access_request(developer_email, developer_name)
   local workspace = ngx.ctx.workspaces and ngx.ctx.workspaces[1] or {}
-  local portal_access_request_email = ws_helper.retrieve_ws_config(ws_constants.PORTAL_ACCESS_REQUEST_EMAIL, workspace)
+  local portal_access_request_email = workspaces.retrieve_ws_config(ws_constants.PORTAL_ACCESS_REQUEST_EMAIL, workspace)
 
   if not portal_access_request_email then
     return nil
   end
 
-  local admin_gui_url = ws_helper.build_ws_admin_gui_url(singletons.configuration, workspace)
-  local portal_gui_url = ws_helper.build_ws_portal_gui_url(singletons.configuration, workspace)
-  local portal_emails_from = ws_helper.retrieve_ws_config(ws_constants.PORTAL_EMAILS_FROM, workspace)
-  local portal_emails_reply_to = ws_helper.retrieve_ws_config(ws_constants.PORTAL_EMAILS_REPLY_TO, workspace)
+  local admin_gui_url = workspaces.build_ws_admin_gui_url(singletons.configuration, workspace)
+  local portal_gui_url = workspaces.build_ws_portal_gui_url(singletons.configuration, workspace)
+  local portal_emails_from = workspaces.retrieve_ws_config(ws_constants.PORTAL_EMAILS_FROM, workspace)
+  local portal_emails_reply_to = workspaces.retrieve_ws_config(ws_constants.PORTAL_EMAILS_REPLY_TO, workspace)
   local conf = self.conf.portal_access_request_email
   local options = {
     from = portal_emails_from,
@@ -165,15 +165,15 @@ end
 
 function _M:approved(recipient)
   local workspace = ngx.ctx.workspaces and ngx.ctx.workspaces[1] or {}
-  local portal_approved_email = ws_helper.retrieve_ws_config(ws_constants.PORTAL_APPROVED_EMAIL, workspace)
+  local portal_approved_email = workspaces.retrieve_ws_config(ws_constants.PORTAL_APPROVED_EMAIL, workspace)
 
   if not portal_approved_email then
     return nil
   end
 
-  local portal_gui_url = ws_helper.build_ws_portal_gui_url(singletons.configuration, workspace)
-  local portal_emails_from = ws_helper.retrieve_ws_config(ws_constants.PORTAL_EMAILS_FROM, workspace)
-  local portal_emails_reply_to = ws_helper.retrieve_ws_config(ws_constants.PORTAL_EMAILS_REPLY_TO, workspace)
+  local portal_gui_url = workspaces.build_ws_portal_gui_url(singletons.configuration, workspace)
+  local portal_emails_from = workspaces.retrieve_ws_config(ws_constants.PORTAL_EMAILS_FROM, workspace)
+  local portal_emails_reply_to = workspaces.retrieve_ws_config(ws_constants.PORTAL_EMAILS_REPLY_TO, workspace)
   local conf = self.conf.portal_approved_email
   local options = {
     from = portal_emails_from,
@@ -188,20 +188,20 @@ end
 
 function _M:password_reset(recipient, token)
   local workspace = ngx.ctx.workspaces and ngx.ctx.workspaces[1] or {}
-  local portal_reset_email = ws_helper.retrieve_ws_config(ws_constants.PORTAL_RESET_EMAIL, workspace)
+  local portal_reset_email = workspaces.retrieve_ws_config(ws_constants.PORTAL_RESET_EMAIL, workspace)
 
   if not portal_reset_email then
     return nil, {code =  501, message = "portal_reset_email is disabled"}
   end
 
-  local exp_seconds = ws_helper.retrieve_ws_config(ws_constants.PORTAL_TOKEN_EXP, workspace)
+  local exp_seconds = workspaces.retrieve_ws_config(ws_constants.PORTAL_TOKEN_EXP, workspace)
   if not exp_seconds then
     return nil, {code =  500, message = "portal_token_exp is required"}
   end
 
-  local portal_gui_url = ws_helper.build_ws_portal_gui_url(singletons.configuration, workspace)
-  local portal_emails_from = ws_helper.retrieve_ws_config(ws_constants.PORTAL_EMAILS_FROM, workspace)
-  local portal_emails_reply_to = ws_helper.retrieve_ws_config(ws_constants.PORTAL_EMAILS_REPLY_TO, workspace)
+  local portal_gui_url = workspaces.build_ws_portal_gui_url(singletons.configuration, workspace)
+  local portal_emails_from = workspaces.retrieve_ws_config(ws_constants.PORTAL_EMAILS_FROM, workspace)
+  local portal_emails_reply_to = workspaces.retrieve_ws_config(ws_constants.PORTAL_EMAILS_REPLY_TO, workspace)
   local exp_string = portal_utils.humanize_timestamp(exp_seconds)
   local conf = self.conf.portal_reset_email
   local options = {
@@ -217,15 +217,15 @@ end
 
 function _M:password_reset_success(recipient)
   local workspace = ngx.ctx.workspaces and ngx.ctx.workspaces[1] or {}
-  local portal_reset_success_email = ws_helper.retrieve_ws_config(ws_constants.PORTAL_RESET_SUCCESS_EMAIL, workspace)
+  local portal_reset_success_email = workspaces.retrieve_ws_config(ws_constants.PORTAL_RESET_SUCCESS_EMAIL, workspace)
 
   if not portal_reset_success_email then
     return nil, {code =  501, message = "portal_reset_success_email is disabled"}
   end
 
-  local portal_gui_url = ws_helper.build_ws_portal_gui_url(singletons.configuration, workspace)
-  local portal_emails_from = ws_helper.retrieve_ws_config(ws_constants.PORTAL_EMAILS_FROM, workspace)
-  local portal_emails_reply_to = ws_helper.retrieve_ws_config(ws_constants.PORTAL_EMAILS_REPLY_TO, workspace)
+  local portal_gui_url = workspaces.build_ws_portal_gui_url(singletons.configuration, workspace)
+  local portal_emails_from = workspaces.retrieve_ws_config(ws_constants.PORTAL_EMAILS_FROM, workspace)
+  local portal_emails_reply_to = workspaces.retrieve_ws_config(ws_constants.PORTAL_EMAILS_REPLY_TO, workspace)
   local conf = self.conf.portal_reset_success_email
   local options = {
     from = portal_emails_from,

@@ -1,5 +1,5 @@
 local ee_api        = require "kong.enterprise_edition.api_helpers"
-local ws_helper     = require "kong.workspaces.helper"
+local workspaces    = require "kong.workspaces"
 local constants     = require "kong.constants"
 local utils         = require "kong.tools.utils"
 local enums         = require "kong.enterprise_edition.dao.enums"
@@ -37,8 +37,8 @@ end
 
 
 local function check_oidc_session()
-  local workspace = ws_helper.get_workspace()
-  local conf = ws_helper.retrieve_ws_config(ws_constants.PORTAL_AUTH_CONF, workspace)
+  local workspace = workspaces.get_workspace()
+  local conf = workspaces.retrieve_ws_config(ws_constants.PORTAL_AUTH_CONF, workspace)
   conf = utils.deep_copy(conf or {})
   local cookie_name = get_conf_arg(conf, "session_cookie_name", "session")
 
@@ -75,8 +75,8 @@ end
 
 
 function _M.validate_auth_plugin(self, db, helpers, portal_auth)
-  local workspace = ws_helper.get_workspace()
-  portal_auth = portal_auth or ws_helper.retrieve_ws_config(
+  local workspace = workspaces.get_workspace()
+  portal_auth = portal_auth or workspaces.retrieve_ws_config(
                                           ws_constants.PORTAL_AUTH, workspace)
 
   self.plugin = auth_plugins[portal_auth]
@@ -102,8 +102,8 @@ function _M.login(self, db, helpers)
 
   _M.validate_auth_plugin(self, db, helpers)
 
-  local workspace = ws_helper.get_workspace()
-  local auth_conf = ws_helper.retrieve_ws_config(ws_constants.PORTAL_AUTH_CONF, workspace)
+  local workspace = workspaces.get_workspace()
+  local auth_conf = workspaces.retrieve_ws_config(ws_constants.PORTAL_AUTH_CONF, workspace)
 
   local ok, err = invoke_plugin({
     name = self.plugin.name,
@@ -120,7 +120,7 @@ function _M.login(self, db, helpers)
 
   -- if not openid-connect, run session header_filter to attach session to response
   if self.plugin.name ~= "openid-connect" then
-    local session_conf = ws_helper.retrieve_ws_config(ws_constants.PORTAL_SESSION_CONF, workspace)
+    local session_conf = workspaces.retrieve_ws_config(ws_constants.PORTAL_SESSION_CONF, workspace)
     session_conf = _M.apply_workspace_cookie_name(session_conf, workspace)
 
     local ok, err = invoke_plugin({
@@ -155,12 +155,12 @@ function _M.authenticate_api_session(self, db, helpers)
 
   _M.validate_auth_plugin(self, db, helpers)
 
-  local workspace = ws_helper.get_workspace()
+  local workspace = workspaces.get_workspace()
   local ok, err
 
   if self.plugin.name == "openid-connect" then
     -- if openid-connect, use the plugin to verify auth
-    local auth_conf = ws_helper.retrieve_ws_config(ws_constants.PORTAL_AUTH_CONF, workspace)
+    local auth_conf = workspaces.retrieve_ws_config(ws_constants.PORTAL_AUTH_CONF, workspace)
     ok, err = invoke_plugin({
       name = self.plugin.name,
       config = auth_conf,
@@ -175,7 +175,7 @@ function _M.authenticate_api_session(self, db, helpers)
     end
   else
     -- otherwise, verify the session
-    local session_conf = ws_helper.retrieve_ws_config(ws_constants.PORTAL_SESSION_CONF, workspace)
+    local session_conf = workspaces.retrieve_ws_config(ws_constants.PORTAL_SESSION_CONF, workspace)
     session_conf = _M.apply_workspace_cookie_name(session_conf, workspace)
 
     ok, err = invoke_plugin({
@@ -207,8 +207,8 @@ end
 
 function _M.authenticate_gui_session(self, db, helpers)
   local invoke_plugin = singletons.invoke_plugin
-  local workspace = ws_helper.get_workspace()
-  local portal_auth = ws_helper.retrieve_ws_config(ws_constants.PORTAL_AUTH, workspace)
+  local workspace = workspaces.get_workspace()
+  local portal_auth = workspaces.retrieve_ws_config(ws_constants.PORTAL_AUTH, workspace)
 
   if portal_auth == nil or portal_auth == '' then
     self.developer = {}
@@ -238,7 +238,7 @@ function _M.authenticate_gui_session(self, db, helpers)
       return
     end
 
-    local auth_conf = ws_helper.retrieve_ws_config(ws_constants.PORTAL_AUTH_CONF, workspace)
+    local auth_conf = workspaces.retrieve_ws_config(ws_constants.PORTAL_AUTH_CONF, workspace)
     ok, err = invoke_plugin({
       name = self.plugin.name,
       config = auth_conf,
@@ -248,7 +248,7 @@ function _M.authenticate_gui_session(self, db, helpers)
     })
   else
     -- otherwise, verify the session
-    local session_conf = ws_helper.retrieve_ws_config(ws_constants.PORTAL_SESSION_CONF, workspace)
+    local session_conf = workspaces.retrieve_ws_config(ws_constants.PORTAL_SESSION_CONF, workspace)
     session_conf = _M.apply_workspace_cookie_name(session_conf, workspace)
 
     ok, err = invoke_plugin({

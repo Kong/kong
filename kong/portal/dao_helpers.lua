@@ -5,7 +5,7 @@ local singletons = require "kong.singletons"
 local auth       = require "kong.portal.auth"
 local utils      = require "kong.tools.utils"
 local responses  = require "kong.tools.responses"
-local ws_helper  = require "kong.workspaces.helper"
+local workspaces = require "kong.workspaces"
 local enums      = require "kong.enterprise_edition.dao.enums"
 local enterprise_utils = require "kong.enterprise_edition.utils"
 
@@ -108,7 +108,7 @@ local function set_portal_auth_conf(ws, entity)
      entity_config.portal_auth_conf and
      entity_config.portal_auth_conf ~= ngx.null then
 
-    local entity_auth_conf = entity_config.portal_auth_conf 
+    local entity_auth_conf = entity_config.portal_auth_conf
     local ws_auth_conf = cjson.decode(ws_config.portal_auth_conf)
 
     if type(entity_auth_conf) ~= "table" then
@@ -225,7 +225,7 @@ local function update_developer(self, developer, entity, options)
     end
 
     -- retrieve portal auth plugin type
-    self.portal_auth = ws_helper.retrieve_ws_config(ws_constants.PORTAL_AUTH, workspace)
+    self.portal_auth = workspaces.retrieve_ws_config(ws_constants.PORTAL_AUTH, workspace)
     if not self.portal_auth or self.portal_auth == "" then
       local code = Errors.codes.DATABASE_ERROR
       local err = "developer update: portal auth must be turned on to update developer fields"

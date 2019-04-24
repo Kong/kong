@@ -378,6 +378,9 @@ do
     end
   end
 
+  -- Assign files entity handlers to files splat route
+  ee_api.splatify_entity_route("files", routes)
+
   attach_new_db_routes(routes)
 end
 

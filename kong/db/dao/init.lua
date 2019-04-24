@@ -19,7 +19,6 @@ local fmt          = string.format
 local deep_copy    = utils.deep_copy
 
 local workspaces = require "kong.workspaces"
-local ws_helper  = require "kong.workspaces.helper"
 local rbac       = require "kong.rbac"
 
 
@@ -193,7 +192,7 @@ local function check_update(self, key, entity, options, name)
   end
 
 
-  ws_helper.remove_ws_prefix(self.schema.name, entity_to_update)
+  workspaces.remove_ws_prefix(self.schema.name, entity_to_update)
 
   local ok, errors = self.schema:validate_update(entity_to_update)
   if not ok then
@@ -424,7 +423,7 @@ local function generate_foreign_key_methods(schema)
 
         local params = { [name] = unique_value }
         local constraints = workspaceable[self.schema.name]
-        ws_helper.apply_unique_per_ws(self.schema.name, params, constraints)
+        workspaces.apply_unique_per_ws(self.schema.name, params, constraints)
 
         local row, err_t = self.strategy:select_by_field(name, params[name], options)
         if err_t then
@@ -432,7 +431,7 @@ local function generate_foreign_key_methods(schema)
         end
 
         if not row then
-          local pk, err_t = ws_helper.resolve_shared_entity_id(self.schema.name,
+          local pk, err_t = workspaces.resolve_shared_entity_id(self.schema.name,
                                                               { [name] = unique_value },
                                                                workspaceable[self.schema.name])
           if err_t then
@@ -477,7 +476,7 @@ local function generate_foreign_key_methods(schema)
         end
 
 
-        local pk, err_t = ws_helper.resolve_shared_entity_id(self.schema.name,
+        local pk, err_t = workspaces.resolve_shared_entity_id(self.schema.name,
           { [name] = unique_value },
           workspaceable[self.schema.name])
         if err_t then
@@ -487,7 +486,7 @@ local function generate_foreign_key_methods(schema)
           return self:update(pk, entity, options)
         end
 
-        ws_helper.remove_ws_prefix(self.schema.name, entity)
+        workspaces.remove_ws_prefix(self.schema.name, entity)
         -- luacheck: ignore
 
         local entity_to_update, rbw_entity, err, err_t = check_update(self, unique_value,
@@ -522,7 +521,7 @@ local function generate_foreign_key_methods(schema)
           validate_options_type(options)
         end
 
-        local pk, err_t = ws_helper.resolve_shared_entity_id(self.schema.name,
+        local pk, err_t = workspaces.resolve_shared_entity_id(self.schema.name,
                                                             { [name] = unique_value },
                                                              workspaceable[self.schema.name])
 
@@ -577,7 +576,7 @@ local function generate_foreign_key_methods(schema)
         local constraints = workspaceable[self.schema.name]
         local params = {[name] = unique_value}
 
-        local workspace = ws_helper.apply_unique_per_ws(self.schema.name, params, constraints)
+        local workspace = workspaces.apply_unique_per_ws(self.schema.name, params, constraints)
 
         local row, err_t = self.strategy:upsert_by_field(name, params[name],
                                                          entity_to_upsert, options)
@@ -616,7 +615,7 @@ local function generate_foreign_key_methods(schema)
       methods["delete_by_" .. name] = function(self, unique_value, options)
         validate_unique_type(unique_value, name, field)
 
-        local pk, err_t = ws_helper.resolve_shared_entity_id(self.schema.name,
+        local pk, err_t = workspaces.resolve_shared_entity_id(self.schema.name,
                                                             { [name] = unique_value },
                                                             workspaceable[self.schema.name])
         if err_t then
@@ -655,6 +654,17 @@ local function generate_foreign_key_methods(schema)
         end
 
         local cascade_entries = find_cascade_delete_entities(self, entity)
+
+        if (not options or not options.skip_rbac) and  -- not skipping rbac
+          (not rbac.validate_entity_operation(entity, self.schema.name) or
+            not rbac.check_cascade(cascade_entries, ngx.ctx.rbac))  then
+          -- operation or cascading not allowed
+          local err_t = self.errors:unauthorized_operation({
+            username = ngx.ctx.rbac.user.name,
+            action = rbac.readable_action(ngx.ctx.rbac.action)
+          })
+          return nil, tostring(err_t), err_t
+        end
 
         local _
         _, err_t = self.strategy:delete_by_field(name, unique_value, options)
@@ -740,7 +750,7 @@ function DAO:select_all(fields, options)
 
   -- prepend workspace prefix
   local tbl = deep_copy(fields)
-  ws_helper.apply_unique_per_ws(schema.name, tbl, constraints)
+  workspaces.apply_unique_per_ws(schema.name, tbl, constraints)
 
   local rows, err_t
 
@@ -752,7 +762,7 @@ function DAO:select_all(fields, options)
 
   -- if no rows are found, attempt finding shared entities
   if #rows == 0 then
-    local pk, err = ws_helper.resolve_shared_entity_id(self.schema.name, fields, constraints)
+    local pk, err = workspaces.resolve_shared_entity_id(self.schema.name, fields, constraints)
     if err then
       return nil, tostring(err_t), err_t
     end
@@ -804,7 +814,7 @@ function DAO:select(primary_key, options)
   local table_name = self.schema.name
   local constraints = workspaceable[table_name]
 
-  local ok, err = ws_helper.validate_pk_exist(table_name, primary_key, constraints)
+  local ok, err = workspaces.validate_pk_exist(table_name, primary_key, constraints)
   if err then
     local err_t = self.errors:database_error(err)
     return nil, tostring(err_t), err_t
@@ -962,7 +972,7 @@ function DAO:insert(entity, options)
     entity_to_insert.cache_key = self:cache_key(entity_to_insert)
   end
 
-  local workspace, err_t = ws_helper.apply_unique_per_ws(self.schema.name, entity_to_insert,
+  local workspace, err_t = workspaces.apply_unique_per_ws(self.schema.name, entity_to_insert,
                                                          workspaceable[self.schema.name])
   if err then
     return nil, tostring(err_t), err_t
@@ -1028,7 +1038,7 @@ function DAO:update(primary_key, entity, options)
   end
 
   local constraints = workspaceable[self.schema.name]
-  local ok, err = ws_helper.validate_pk_exist(self.schema.name,
+  local ok, err = workspaces.validate_pk_exist(self.schema.name,
                                               primary_key, constraints)
   if err then
     local err_t = self.errors:database_error(err)
@@ -1058,7 +1068,7 @@ function DAO:update(primary_key, entity, options)
     end
   end
 
-  ws_helper.apply_unique_per_ws(self.schema.name, entity_to_update, constraints)
+  workspaces.apply_unique_per_ws(self.schema.name, entity_to_update, constraints)
 
   local row, err_t = self.strategy:update(primary_key, entity_to_update, options)
   if not row then
@@ -1077,7 +1087,7 @@ function DAO:update(primary_key, entity, options)
     end
   end
 
-  ws_helper.remove_ws_prefix(self.schema.name, rbw_entity)
+  workspaces.remove_ws_prefix(self.schema.name, rbw_entity)
   self:post_crud_event("update", row, rbw_entity)
 
   return row
@@ -1103,7 +1113,7 @@ function DAO:upsert(primary_key, entity, options)
   -- Check entity is already in workspace, if yes update workspace_entity
   -- relation else add relation
   -- FIXME try upsert to workspace_entity
-  local is_update, err = ws_helper.validate_pk_exist(self.schema.name,
+  local is_update, err = workspaces.validate_pk_exist(self.schema.name,
                                                      primary_key, constraints)
 
 
@@ -1144,7 +1154,7 @@ function DAO:upsert(primary_key, entity, options)
     return nil, tostring(err_t), err_t
   end
 
-  local workspace = ws_helper.apply_unique_per_ws(self.schema.name, entity_to_upsert, constraints)
+  local workspace = workspaces.apply_unique_per_ws(self.schema.name, entity_to_upsert, constraints)
 
   local row, err_t = self.strategy:upsert(primary_key, entity_to_upsert, options)
   if not row then
@@ -1197,7 +1207,7 @@ function DAO:delete(primary_key, options)
   end
 
   local constraints = workspaceable[self.schema.name]
-  local ok, err = ws_helper.validate_pk_exist(self.schema.name,
+  local ok, err = workspaces.validate_pk_exist(self.schema.name,
                                               primary_key, constraints)
   if err then
     local err_t = self.errors:database_error(err)
@@ -1208,7 +1218,7 @@ function DAO:delete(primary_key, options)
     return true
   end
 
-  ws_helper.apply_unique_per_ws(self.schema.name, primary_key, constraints)
+  workspaces.apply_unique_per_ws(self.schema.name, primary_key, constraints)
 
   local ok, errors = self.schema:validate_primary_key(primary_key)
   if not ok then
@@ -1334,7 +1344,7 @@ function DAO:row_to_entity(row, options)
     return nil, tostring(err_t), err_t
   end
 
-  ws_helper.remove_ws_prefix(self.schema.name, entity, options and options.include_ws)
+  workspaces.remove_ws_prefix(self.schema.name, entity, options and options.include_ws)
 
   return entity
 end

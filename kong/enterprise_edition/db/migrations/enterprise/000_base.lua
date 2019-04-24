@@ -2,7 +2,7 @@ local utils        = require "kong.tools.utils"
 local crypto       = require "kong.plugins.basic-auth.crypto"
 
 local fmt = string.format
-
+local created_ts = math.floor(ngx.now()) * 1000
 
 local function seed_kong_admin_data_cas()
   local res = {}
@@ -39,11 +39,10 @@ local function seed_kong_admin_data_cas()
       {"(%s, '*', '*', 15, FALSE)"}
     }
   }
-
   for _, role in ipairs(roles) do
     table.insert(res,
-      fmt("INSERT into rbac_roles(id, name, comment) VALUES(%s, 'default:%s', '%s')",
-        role[1] , role[2], role[3]))
+      fmt("INSERT into rbac_roles(id, name, comment, created_at) VALUES(%s, 'default:%s', '%s', '%s')",
+        role[1] , role[2], role[3], created_ts))
     add_to_default_ws(role[1], "rbac_roles", "id", role[1])
     add_to_default_ws(role[1], "rbac_roles", "name", role[2])
 
@@ -64,8 +63,8 @@ local function seed_kong_admin_data_cas()
     local kong_admin_rbac_id = utils.uuid()
     -- create kong_admin RBAC user
     table.insert(res,
-      fmt("INSERT into rbac_users(id, name, user_token, enabled, comment) VALUES(%s, 'default:%s', '%s', %s, '%s')",
-        kong_admin_rbac_id, "kong_admin", password, 'true', "Initial RBAC Secure User"))
+      fmt("INSERT into rbac_users(id, name, user_token, enabled, comment, created_at) VALUES(%s, 'default:%s', '%s', %s, '%s', %s)",
+        kong_admin_rbac_id, "kong_admin", password, 'true', "Initial RBAC Secure User", created_ts))
     add_to_default_ws(kong_admin_rbac_id, "rbac_users", "id", kong_admin_rbac_id)
     add_to_default_ws(kong_admin_rbac_id, "rbac_users", "name", "kong_admin")
 
@@ -77,8 +76,8 @@ local function seed_kong_admin_data_cas()
     --create default role for the user
     local kong_admin_rbac_default_role_id =  utils.uuid()
     table.insert(res,
-      fmt("INSERT into rbac_roles(id, name, comment, is_default) VALUES(%s, 'default:%s', '%s', %s)",
-        kong_admin_rbac_default_role_id , "kong_admin", "Default user role generated for kong_admin", 'true'))
+      fmt("INSERT into rbac_roles(id, name, comment, is_default, created_at) VALUES(%s, 'default:%s', '%s', %s, %s)",
+        kong_admin_rbac_default_role_id , "kong_admin", "Default user role generated for kong_admin", 'true', created_ts))
     add_to_default_ws(kong_admin_rbac_default_role_id, "rbac_roles", "id", kong_admin_rbac_default_role_id)
     add_to_default_ws(kong_admin_rbac_default_role_id, "rbac_roles", "name", "kong_admin")
 
@@ -90,8 +89,8 @@ local function seed_kong_admin_data_cas()
     -- create kong_admin user
     local kong_admin_id = utils.uuid()
     table.insert(res,
-      fmt("INSERT into rbac_users(id, name, user_token, enabled, comment) VALUES(%s, 'default:%s-%s', '%s', %s, '%s')",
-        kong_admin_id, "kong_admin", kong_admin_id, password, 'true', "Initial RBAC Secure User"))
+      fmt("INSERT into rbac_users(id, name, user_token, enabled, comment, created_at) VALUES(%s, 'default:%s-%s', '%s', %s, '%s', %s)",
+        kong_admin_id, "kong_admin", kong_admin_id, password, 'true', "Initial RBAC Secure User", created_ts))
     add_to_default_ws(kong_admin_id, "rbac_users", "id", kong_admin_id)
     add_to_default_ws(kong_admin_id, "rbac_users", "name", "kong_admin-" .. kong_admin_id)
 
@@ -103,8 +102,8 @@ local function seed_kong_admin_data_cas()
     --create default role for the user
     local kong_admin_default_role_id =  utils.uuid()
     table.insert(res,
-      fmt("INSERT into rbac_roles(id, name, comment, is_default) VALUES(%s, 'default:%s-%s', '%s', %s)",
-        kong_admin_default_role_id , "kong_admin", kong_admin_id, "Default user role generated for kong_admin", 'true'))
+      fmt("INSERT into rbac_roles(id, name, comment, is_default, created_at) VALUES(%s, 'default:%s-%s', '%s', %s, %s)",
+        kong_admin_default_role_id , "kong_admin", kong_admin_id, "Default user role generated for kong_admin", 'true', created_ts))
     add_to_default_ws(kong_admin_default_role_id, "rbac_roles", "id", kong_admin_default_role_id)
     add_to_default_ws(kong_admin_default_role_id, "rbac_roles", "name", "kong_admin")
 
@@ -116,8 +115,8 @@ local function seed_kong_admin_data_cas()
 
     local kong_admin_consumer_id =  utils.uuid()
     table.insert(res,
-      fmt("INSERT into consumers(id, username, type, created_at) VALUES(%s, 'default:%s', %s, toUnixTimestamp(now()))",
-        kong_admin_consumer_id , "kong_admin", 2))
+      fmt("INSERT into consumers(id, username, type, created_at) VALUES(%s, 'default:%s', %s, %s)",
+        kong_admin_consumer_id , "kong_admin", 2, created_ts))
 
     add_to_default_ws(kong_admin_consumer_id, "consumers", "id", kong_admin_consumer_id)
     add_to_default_ws(kong_admin_consumer_id, "consumers", "username", "kong_admin")
@@ -126,9 +125,9 @@ local function seed_kong_admin_data_cas()
     -- create admin
     local kong_admin_admin_id =  utils.uuid()
     table.insert(res,
-      fmt("INSERT into admins(id, consumer_id, rbac_user_id, status, username, created_at)" ..
-        "VALUES(%s , %s, %s, %s, '%s', toUnixTimestamp(now()))",
-        kong_admin_admin_id , kong_admin_consumer_id, kong_admin_id, 0, "kong_admin"))
+      fmt("INSERT into admins(id, consumer_id, rbac_user_id, status, username, created_at, updated_at)" ..
+        "VALUES(%s , %s, %s, %s, '%s', %s, %s)",
+        kong_admin_admin_id , kong_admin_consumer_id, kong_admin_id, 0, "kong_admin", created_ts, created_ts))
 
     add_to_default_ws(kong_admin_admin_id, "admins", "id", kong_admin_admin_id)
     add_to_default_ws(kong_admin_admin_id, "admins", "username", "kong_admin")
@@ -139,8 +138,8 @@ local function seed_kong_admin_data_cas()
     local kong_admin_basic_auth_id = utils.uuid()
     table.insert(res,
       fmt("INSERT into basicauth_credentials(id, consumer_id, username, password, created_at)" ..
-        "VALUES(%s , %s, 'default:%s', '%s', toUnixTimestamp(now()))",
-        kong_admin_basic_auth_id , kong_admin_consumer_id, "kong_admin", crypto.encrypt(kong_admin_consumer_id, password)))
+        "VALUES(%s , %s, 'default:%s', '%s', %s)",
+        kong_admin_basic_auth_id , kong_admin_consumer_id, "kong_admin", crypto.encrypt(kong_admin_consumer_id, password), created_ts))
 
     add_to_default_ws(kong_admin_basic_auth_id, "basicauth_credentials", "id", kong_admin_basic_auth_id)
     add_to_default_ws(kong_admin_basic_auth_id, "basicauth_credentials", "username", "kong_admin")
@@ -218,7 +217,7 @@ local function seed_kong_admin_data_pg()
     SELECT * into tmp FROM basicauth_credentials where username='default:kong_admin' limit 1;
     IF NOT FOUND THEN
         SELECT uuid_in(overlay(overlay(md5(random()::text || ':' || clock_timestamp()::text) placing '4' from 13) placing to_hex(floor(random()*(11-8+1) + 8)::int)::text from 17)::cstring) into kong_admin_basic_auth_id;
-        INSERT into basicauth_credentials(id, consumer_id, username, password, created_at) VALUES(kong_admin_basic_auth_id, kong_admin_consumer_id, 'default:kong_admin', '%s', now());
+        INSERT into basicauth_credentials(id, consumer_id, username, password) VALUES(kong_admin_basic_auth_id, kong_admin_consumer_id, 'default:kong_admin', '%s');
         INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value) VALUES(def_ws_id, 'default', kong_admin_basic_auth_id, 'basicauth_credentials', 'id', kong_admin_basic_auth_id);
         INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value) VALUES(def_ws_id, 'default', kong_admin_basic_auth_id, 'basicauth_credentials', 'username', 'kong_admin');
     END IF;
@@ -725,8 +724,8 @@ END $$;
 
 CREATE TABLE IF NOT EXISTS admins (
   id          uuid,
-  created_at  timestamp,
-  updated_at  timestamp,
+  created_at  TIMESTAMP WITHOUT TIME ZONE  DEFAULT (CURRENT_TIMESTAMP(0) AT TIME ZONE 'UTC'),
+  updated_at  TIMESTAMP WITHOUT TIME ZONE  DEFAULT (CURRENT_TIMESTAMP(0) AT TIME ZONE 'UTC'),
   consumer_id  uuid references consumers (id),
   rbac_user_id  uuid references rbac_users (id),
   email text,

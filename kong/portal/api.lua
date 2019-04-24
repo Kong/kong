@@ -3,7 +3,7 @@ local cjson         = require "cjson.safe"
 local constants     = require "kong.constants"
 local auth          = require "kong.portal.auth"
 local crud          = require "kong.api.crud_helpers"
-local ws_helper     = require "kong.workspaces.helper"
+local workspaces    = require "kong.workspaces"
 local portal_smtp_client = require "kong.portal.emails"
 local endpoints          = require "kong.api.endpoints"
 local crud_helpers       = require "kong.portal.crud_helpers"
@@ -34,7 +34,7 @@ local auth_plugins = {
 
 local function get_developer_status()
   local workspace = ngx.ctx.workspaces and ngx.ctx.workspaces[1] or {}
-  local auto_approve = ws_helper.retrieve_ws_config(PORTAL_AUTO_APPROVE, workspace)
+  local auto_approve = workspaces.retrieve_ws_config(PORTAL_AUTO_APPROVE, workspace)
 
   if auto_approve then
     return enums.CONSUMERS.STATUS.APPROVED
@@ -45,14 +45,6 @@ end
 
 local function get_workspace()
   return ngx.ctx.workspaces and ngx.ctx.workspaces[1] or {}
-end
-
-
-local function count_entities(arr)
-  return {
-    total = #arr,
-    data = arr
-  }
 end
 
 
@@ -129,7 +121,7 @@ return {
   ["/files"] = {
     before = function(self, db, helpers)
       local ws = get_workspace()
-      local portal_auth = ws_helper.retrieve_ws_config(PORTAL_AUTH, ws)
+      local portal_auth = workspaces.retrieve_ws_config(PORTAL_AUTH, ws)
       if portal_auth and portal_auth ~= "" then
         auth.authenticate_api_session(self, db, helpers)
       end
@@ -167,7 +159,7 @@ return {
   ["/files/*"] = {
     before = function(self, db, helpers)
       local ws = get_workspace()
-      local portal_auth = ws_helper.retrieve_ws_config(PORTAL_AUTH, ws)
+      local portal_auth = workspaces.retrieve_ws_config(PORTAL_AUTH, ws)
       if portal_auth and portal_auth ~= "" then
         auth.authenticate_api_session(self, db, helpers)
       end
@@ -300,7 +292,7 @@ return {
       auth.validate_auth_plugin(self, db, helpers)
 
       local workspace = get_workspace()
-      local token_ttl = ws_helper.retrieve_ws_config(PORTAL_TOKEN_EXP,
+      local token_ttl = workspaces.retrieve_ws_config(PORTAL_TOKEN_EXP,
                                                      workspace)
 
       local developer, _, err_t = db.developers:select_by_email(
@@ -508,43 +500,11 @@ return {
     end,
 
     GET = function(self, db, helpers)
-      local credentials = setmetatable({}, cjson.empty_array_mt)
-      for row, err in db.credentials:each_for_consumer({ id = self.developer.consumer.id}) do
-        if err then
-          return helpers.yield_error(err)
-        end
-
-        if row.consumer_type == enums.CONSUMERS.TYPE.PROXY and
-           row.plugin == self.credential_plugin.name then
-           credentials[#credentials + 1] = row
-        end
-      end
-
-      return helpers.responses.send_HTTP_OK(count_entities(credentials))
+      return crud_helpers.get_credentials(self, db, helpers)
     end,
 
     POST = function(self, db, helpers)
-      self.params.consumer = { id = self.developer.consumer.id }
-      self.params.plugin = nil
-
-      local credential, _, err_t = self.credential_collection:insert(self.params, {skip_rbac = true})
-      if not credential then
-        return endpoints.handle_error(err_t)
-      end
-
-      local _, err = db.credentials:insert({
-        id = credential.id,
-        consumer = { id = credential.consumer.id },
-        consumer_type = enums.CONSUMERS.TYPE.PROXY,
-        plugin = self.credential_plugin.name,
-        credential_data = tostring(cjson.encode(credential)),
-      })
-
-      if err then
-        return helpers.yield_error(err)
-      end
-
-      return helpers.responses.send_HTTP_OK(credential)
+      return crud_helpers.create_credential(self, db, helpers, { skip_rbac = true })
     end,
   },
 
@@ -555,68 +515,15 @@ return {
     end,
 
     GET = function(self, db, helpers)
-      local credential, _, err_t = self.credential_collection:select({
-        id = self.params.credential_id
-      }, {
-        skip_rbac = true,
-      })
-
-      if err_t then
-        return endpoints.handle_error(err_t)
-      end
-
-      if not credential then
-        return helpers.responses.send_HTTP_NOT_FOUND()
-      end
-
-      if credential.consumer.id ~= self.developer.consumer.id then
-        return helpers.responses.send_HTTP_BAD_REQUEST()
-      end
-
-      return helpers.responses.send_HTTP_OK(credential)
+      return crud_helpers.get_credential(self, db, helpers, { skip_rbac = true })
     end,
 
     PATCH = function(self, db, helpers)
-      local cred_id = self.params.credential_id
-      self.params.plugin = nil
-      self.params.credential_id = nil
-
-      local credential, err = crud.portal_crud.update_login_credential(
-                     self.credential_collection, { id = cred_id }, self.params)
-      if err then
-        return helpers.yield_error(err)
-      end
-
-      if not credential then
-        return helpers.responses.send_HTTP_NOT_FOUND()
-      end
-
-      return helpers.responses.send_HTTP_OK(credential)
+      return crud_helpers.update_credential(self, db, helpers, { skip_rbac = true })
     end,
 
     DELETE = function(self, db, helpers)
-      local credential, _, err_t = self.credential_collection:select({
-        id = self.params.credential_id
-      }, {
-        skip_rbac = true,
-      })
-
-      if not credential then
-        return endpoints.handle_error(err_t)
-      end
-
-      if credential.consumer.id ~= self.developer.consumer.id then
-        return helpers.responses.send_HTTP_BAD_REQUEST()
-      end
-
-      crud.portal_crud.delete_credential(credential)
-
-      local ok, _, err_t = self.credential_collection:delete({id = credential.id})
-      if not ok then
-        return endpoints.handle_error(err_t)
-      end
-
-      return helpers.responses.send_HTTP_NO_CONTENT()
+      return crud_helpers.delete_credential(self, db, helpers, { skip_rbac = true })
     end,
   },
 

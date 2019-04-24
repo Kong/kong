@@ -55,6 +55,11 @@ for _, strategy in helpers.each_strategy() do
       end
     end)
 
+    before_each(function()
+      -- default to default workspace. ;-) each test can override
+      ngx.ctx.workspaces = { default_ws }
+    end)
+
     lazy_teardown(function()
       db:truncate("basicauth_credentials")
       db:truncate("workspace_entities")
@@ -74,7 +79,7 @@ for _, strategy in helpers.each_strategy() do
         assert.is_nil(err)
         assert.same(200, res.code)
         assert(utils.is_array(res.body.data))
-        assert.same(4, #res.body.data)
+        assert.same(2, #res.body.data)
         assert.same(ngx.null, res.body.next)
 
         assert.not_nil(res.body['data'][1].created_at)
@@ -104,18 +109,33 @@ for _, strategy in helpers.each_strategy() do
         local params = {
           username = "i-am-unique",
           custom_id = "i-am-unique",
-          email = "admin-2@test.com",
+          email = "admin-3@test.com",
         }
 
         local res, match, err = admins_helpers.validate(params, db)
 
         assert.is_nil(err)
-        assert.same(admins[2], match)
+        assert.same(admins[3], match)
         assert.is_false(res)
       end)
 
       it("works on update as well as create", function()
-        -- admin 1 can't have the same email as admin 2
+        -- admin 1 can't have the same email as admin 3
+        local params = {
+          username = admins[1].username,
+          custom_id = admins[1].custom_id,
+          email = admins[3].email,
+        }
+
+        local res, match, err = admins_helpers.validate(params, db, admins[1])
+
+        assert.is_nil(err)
+        assert.same(admins[3], match)
+        assert.is_false(res)
+      end)
+
+      it("works across workspaces", function()
+        -- admin 1 (default_ws) can't have the same email as admin 2 (another_ws)
         local params = {
           username = admins[1].username,
           custom_id = admins[1].custom_id,

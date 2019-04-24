@@ -1,13 +1,33 @@
 local constants    = require "kong.constants"
 local utils        = require "kong.tools.utils"
 local endpoints    = require "kong.api.endpoints"
-local ws_helper    = require "kong.workspaces.helper"
+local workspaces   = require "kong.workspaces"
 local portal_smtp_client = require "kong.portal.emails"
 local crud_helpers       = require "kong.portal.crud_helpers"
 local enums              = require "kong.enterprise_edition.dao.enums"
 
 local unescape_uri = ngx.unescape_uri
 local ws_constants = constants.WORKSPACE_CONFIG
+
+local auth_plugins = {
+  ["basic-auth"] = { name = "basic-auth", dao = "basicauth_credentials", credential_key = "password" },
+  ["oauth2"] =     { name = "oauth2",     dao = "oauth2_credentials" },
+  ["hmac-auth"] =  { name = "hmac-auth",  dao = "hmacauth_credentials" },
+  ["jwt"] =        { name = "jwt",        dao = "jwt_secrets" },
+  ["key-auth"] =   { name = "key-auth",   dao = "keyauth_credentials", credential_key = "key" },
+  ["openid-connect"] = { name = "openid-connect" },
+}
+
+local function validate_credential_plugin(self, db, helpers)
+  local plugin_name = ngx.unescape_uri(self.params.plugin)
+
+  self.credential_plugin = auth_plugins[plugin_name]
+  if not self.credential_plugin then
+    return helpers.responses.send_HTTP_NOT_FOUND()
+  end
+
+  self.credential_collection = db.daos[self.credential_plugin.dao]
+end
 
 
 local function find_developer(db, developer_pk)
@@ -32,7 +52,7 @@ end
 
 local function get_developer_status()
   local workspace = ngx.ctx.workspaces and ngx.ctx.workspaces[1] or {}
-  local auto_approve = ws_helper.retrieve_ws_config(ws_constants.PORTAL_AUTO_APPROVE, workspace)
+  local auto_approve = workspaces.retrieve_ws_config(ws_constants.PORTAL_AUTO_APPROVE, workspace)
 
   if auto_approve then
     return enums.CONSUMERS.STATUS.APPROVED
@@ -122,6 +142,7 @@ return {
     end,
   },
 
+
   ["/developers/:email_or_id/plugins/"] = {
     GET = function(self, db, helpers)
       local developer = find_developer(db, self.params.email_or_id)
@@ -154,14 +175,6 @@ return {
 
       return helpers.responses.send_HTTP_CREATED(ok)
     end,
-
-    -- TODO DEVX: Implement PUT if time allows
-    -- PUT = function(self, dao_factory, helpers)
-    --   find_developer(self, dao_factory, helpers)
-    --   self.params.consumer_id = self.consumer.id
-
-    --   crud.put(self.params, dao_factory.plugins)
-    -- end
   },
 
   ["/developers/:email_or_id/plugins/:id"] = {
@@ -253,7 +266,57 @@ return {
     end
   },
 
-  ["/portal/invite"] = {
+  ["/developers/:developers/credentials/:plugin"] = {
+    before = function(self, db, helpers)
+      validate_credential_plugin(self, db, helpers)
+
+      local developer_pk = self.params.developers
+      local developer = find_developer(db, developer_pk)
+      if not developer then
+        return helpers.responses.send_HTTP_NOT_FOUND()
+      end
+
+      self.developer = developer
+      self.params.developers = nil
+    end,
+
+    GET = function(self, db, helpers)
+      return crud_helpers.get_credentials(self, db, helpers)
+    end,
+
+    POST = function(self, db, helpers)
+      return crud_helpers.create_credential(self, db, helpers)
+    end,
+  },
+
+  ["/developers/:developers/credentials/:plugin/:credential_id"] = {
+    before = function(self, db, helpers)
+      validate_credential_plugin(self, db, helpers)
+
+      local developer_pk = self.params.developers
+      local developer = find_developer(db, developer_pk)
+      if not developer then
+        return helpers.responses.send_HTTP_NOT_FOUND()
+      end
+
+      self.developer = developer
+      self.params.developers = nil
+    end,
+
+    GET = function(self, db, helpers)
+      return crud_helpers.get_credential(self, db, helpers)
+    end,
+
+    PATCH = function(self, db, helpers)
+      return crud_helpers.update_credential(self, db, helpers)
+    end,
+
+    DELETE = function(self, db, helpers)
+      return crud_helpers.delete_credential(self, db, helpers)
+    end,
+  },
+
+  ["/developers/invite"] = {
     POST = function(self, db, helpers)
       if not self.params.emails or next(self.params.emails) == nil then
         return helpers.responses.send_HTTP_BAD_REQUEST("emails param required")

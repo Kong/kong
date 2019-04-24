@@ -1,7 +1,6 @@
 local iteration = require "kong.db.iteration"
 local cassandra = require "cassandra"
 local workspaces = require "kong.workspaces"
-local ws_helper = require "kong.workspaces.helper"
 local utils      = require "kong.tools.utils"
 
 
@@ -368,7 +367,7 @@ local function foreign_pk_exists(self, field_name, field, foreign_pk)
 
   local constraint = workspaceable[foreign_schema.name]
   if constraint then
-    local res, err = ws_helper.validate_pk_exist(foreign_schema.name, foreign_pk,
+    local res, err = workspaces.validate_pk_exist(foreign_schema.name, foreign_pk,
                                                  constraint)
     if err then
       return nil, err
@@ -583,11 +582,13 @@ local function _select_all(self, cql, args)
 
   local workspaceable = workspaceable[self.schema.name]
   local pk_name = workspaceable and workspaceable.primary_key
+  local ws_list = get_workspaces()
+  local apply_workspaces = workspaceable and ws_list[1]
 
   local ws_entities_map
-  if workspaceable then -- initialize workspace-entities map
+  if apply_workspaces then -- initialize workspace-entities map
     local err
-    ws_entities_map, err = workspace_entities_map(get_workspaces(), self.schema.name)
+    ws_entities_map, err = workspace_entities_map(ws_list, self.schema.name)
 
     if err then
       return nil, self.errors:database_error(err)
@@ -598,7 +599,7 @@ local function _select_all(self, cql, args)
   local entities = new_tab(#rows, 0)
 
   for _, row in ipairs(rows) do
-    if not workspaceable or workspaceable and ws_entities_map[row[pk_name]] then
+    if not apply_workspaces or ws_entities_map[row[pk_name]] then
       entities[c] = self:deserialize_row(row)
       c = c + 1
     end

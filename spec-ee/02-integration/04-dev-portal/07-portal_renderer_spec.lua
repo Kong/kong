@@ -439,7 +439,7 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
           assert.equals(1, stringx.count(body, login_page.id))
         end)
 
-        --- XXX REAPPLY WHEN portal_auth_conf is added
+        -- TODO DEVX reenable when openid-connect is installed
         pending("OIDC authentication", function()
           local oidc_auth_page_pair, oidc_unauth_page_pair
 
@@ -515,8 +515,7 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
           end)
         end)
 
-        --- XXX REAPPLY WHEN portal_auth accepts an empty string
-        pending("No authentication", function()
+        describe("No authentication", function()
           local noauth_not_found, noauth_login, noauth_register,
                 noauth_dashboard, noauth_settings
 

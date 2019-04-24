@@ -2,7 +2,7 @@ local arrays        = require "pgmoon.arrays"
 local json          = require "pgmoon.json"
 local cjson         = require "cjson"
 local cjson_safe    = require "cjson.safe"
-local ws_helper     = require "kong.workspaces.helper"
+local workspaces    = require "kong.workspaces"
 
 
 local encode_base64 = ngx.encode_base64
@@ -624,7 +624,7 @@ local function page(self, size, token, foreign_key, foreign_entity_name, options
 
   local statement_name
   local attributes
-  local ws_list = ws_helper.ws_scope_as_list(self.schema.name)
+  local ws_list = workspaces.ws_scope_as_list(self.schema.name)
 
   if token then
     if foreign_entity_name then
@@ -816,7 +816,7 @@ end
 
 function _mt:select_all(fields, options)
   local q_name = next(fields) and "select_all_filtered" or "select_all"
-  local ws_list = ws_helper.ws_scope_as_list(self.schema.name)
+  local ws_list = workspaces.ws_scope_as_list(self.schema.name)
 
   local res, err = execute(self, q_name, self.collapse(fields), options, ws_list)
   if not res then
@@ -851,7 +851,7 @@ end
 
 -- TODO may not be needed
 function _mt:select_ws(primary_key)
-  local ws_list = ws_helper.ws_scope_as_list(self.schema.name)
+  local ws_list = workspaces.ws_scope_as_list(self.schema.name)
   local res, err = execute(self, "select_ws",
                            self.collapse(primary_key), nil, ws_list)
 
@@ -869,7 +869,7 @@ end
 
 
 function _mt:select_by_field(field_name, unique_value, options)
-  local ws_list = ws_helper.ws_scope_as_list(self.schema.name)
+  local ws_list = workspaces.ws_scope_as_list(self.schema.name)
   local statement_name = "select_by_" .. field_name
   local filter = {
     [field_name] = unique_value,
@@ -1792,61 +1792,58 @@ function _M.new(connector, schema, errors)
   }, _mt)
 
   local select_all_statement
+  local select_all_statement_ws
   local select_all_filtered_statement
+  local select_all_filtered_statement_ws
+
   local workspaceable = schema.workspaceable
 
   if ttl then
-    if not workspaceable then
-      select_all_statement = concat {
-        " SELECT ", select_expressions, "\n",
-        "   FROM ", table_name_escaped, "\n",
-        "  WHERE (", ttl_escaped, " IS NULL OR ", ttl_escaped, " >= CURRENT_TIMESTAMP AT TIME ZONE 'UTC');"
-      }
-      select_all_filtered_statement = concat {
-        " SELECT ", select_expressions, "\n",
-        "   FROM ", table_name_escaped, "\n",
-        "  WHERE (%s) = (%s)\n",
-        "    AND (", ttl_escaped, " IS NULL OR ", ttl_escaped, " >= CURRENT_TIMESTAMP AT TIME ZONE 'UTC');"
-      }
-    else
-      select_all_statement = concat {
-        " SELECT ", select_expressions, "\n",
-        "   FROM workspace_entities ws_e INNER JOIN ", table_name_escaped, " ", table_name_escaped, "\n",
-        "    ON ( unique_field_name = '", primary_key[1], "' AND ws_e.workspace_id in ( %s ) and ws_e.entity_id = ", table_name_escaped, ".id::varchar )\n",
-        "  WHERE (", ttl_escaped, " IS NULL OR ", ttl_escaped, " >= CURRENT_TIMESTAMP AT TIME ZONE 'UTC');"
-      }
-      select_all_filtered_statement = concat {
-        " SELECT ", select_expressions, "\n",
-        "   FROM workspace_entities ws_e INNER JOIN ", table_name_escaped, " ", table_name_escaped, "\n",
-        "    ON ( unique_field_name = '", primary_key[1], "' AND ws_e.workspace_id in ( %s ) and ws_e.entity_id = ", table_name_escaped, ".id::varchar )\n",
-        "  WHERE (%s) = (%s)", "\n",
-        "    AND (", ttl_escaped, " IS NULL OR ", ttl_escaped, " >= CURRENT_TIMESTAMP AT TIME ZONE 'UTC');"
-      }
-    end
+    select_all_statement = concat {
+      " SELECT ", select_expressions, "\n",
+      "   FROM ", table_name_escaped, "\n",
+      "  WHERE (", ttl_escaped, " IS NULL OR ", ttl_escaped, " >= CURRENT_TIMESTAMP AT TIME ZONE 'UTC');"
+    }
+    select_all_filtered_statement = concat {
+      " SELECT ", select_expressions, "\n",
+      "   FROM ", table_name_escaped, "\n",
+      "  WHERE (%s) = (%s)\n",
+      "    AND (", ttl_escaped, " IS NULL OR ", ttl_escaped, " >= CURRENT_TIMESTAMP AT TIME ZONE 'UTC');"
+    }
+    select_all_statement_ws = concat {
+      " SELECT ", select_expressions, "\n",
+      "   FROM workspace_entities ws_e INNER JOIN ", table_name_escaped, " ", table_name_escaped, "\n",
+      "    ON ( unique_field_name = '", primary_key[1], "' AND ws_e.workspace_id in ( %s ) and ws_e.entity_id = ", table_name_escaped, ".id::varchar )\n",
+      "  WHERE (", ttl_escaped, " IS NULL OR ", ttl_escaped, " >= CURRENT_TIMESTAMP AT TIME ZONE 'UTC');"
+    }
+    select_all_filtered_statement_ws = concat {
+      " SELECT ", select_expressions, "\n",
+      "   FROM workspace_entities ws_e INNER JOIN ", table_name_escaped, " ", table_name_escaped, "\n",
+      "    ON ( unique_field_name = '", primary_key[1], "' AND ws_e.workspace_id in ( %s ) and ws_e.entity_id = ", table_name_escaped, ".id::varchar )\n",
+      "  WHERE (%s) = (%s)", "\n",
+      "    AND (", ttl_escaped, " IS NULL OR ", ttl_escaped, " >= CURRENT_TIMESTAMP AT TIME ZONE 'UTC');"
+    }
   else
-    if not workspaceable then
-      select_all_statement = concat {
-        " SELECT ", select_expressions, "\n",
-        "   FROM ", table_name_escaped, ";",
-      }
-      select_all_filtered_statement = concat {
-        " SELECT ", select_expressions, "\n",
-        "   FROM ", table_name_escaped, "\n",
-        "  WHERE (%s) = (%s);",
-      }
-    else
-      select_all_statement = concat {
-        " SELECT ", select_expressions, "\n",
-        "   FROM workspace_entities ws_e INNER JOIN ", table_name_escaped, " ", table_name_escaped, "\n",
-        "    ON ( unique_field_name = '", primary_key[1], "' AND ws_e.workspace_id in ( %s ) and ws_e.entity_id = ", table_name_escaped, ".id::varchar );",
-      }
-      select_all_filtered_statement = concat {
-        " SELECT ", select_expressions, "\n",
-        "   FROM workspace_entities ws_e INNER JOIN ", table_name_escaped, " ", table_name_escaped, "\n",
-        "    ON ( unique_field_name = '", primary_key[1], "' AND ws_e.workspace_id in ( %s ) and ws_e.entity_id = ", table_name_escaped, ".id::varchar )\n",
-        "  WHERE (%s) = (%s);",
-      }
-    end
+    select_all_statement = concat {
+      " SELECT ", select_expressions, "\n",
+      "   FROM ", table_name_escaped, ";",
+    }
+    select_all_filtered_statement = concat {
+      " SELECT ", select_expressions, "\n",
+      "   FROM ", table_name_escaped, "\n",
+      "  WHERE (%s) = (%s);",
+    }
+    select_all_statement_ws = concat {
+      " SELECT ", select_expressions, "\n",
+      "   FROM workspace_entities ws_e INNER JOIN ", table_name_escaped, " ", table_name_escaped, "\n",
+      "    ON ( unique_field_name = '", primary_key[1], "' AND ws_e.workspace_id in ( %s ) and ws_e.entity_id = ", table_name_escaped, ".id::varchar );",
+    }
+    select_all_filtered_statement_ws = concat {
+      " SELECT ", select_expressions, "\n",
+      "   FROM workspace_entities ws_e INNER JOIN ", table_name_escaped, " ", table_name_escaped, "\n",
+      "    ON ( unique_field_name = '", primary_key[1], "' AND ws_e.workspace_id in ( %s ) and ws_e.entity_id = ", table_name_escaped, ".id::varchar )\n",
+      "  WHERE (%s) = (%s);",
+    }
   end
 
   self.statements.select_all = {
@@ -1855,11 +1852,12 @@ function _M.new(connector, schema, errors)
     argc = 0,
     argv = {},
     make = function(argv)
-      if not workspaceable then
+      if not workspaceable or not argv.workspaces then
         return string.format(select_all_statement, argv.fields, argv.values)
       else
-        return string.format(select_all_statement, argv.workspaces,
-                                                   argv.fields, argv.values)
+        return string.format(select_all_statement_ws, argv.workspaces,
+                                                      argv.fields,
+                                                      argv.values)
       end
     end
   }
@@ -1870,10 +1868,10 @@ function _M.new(connector, schema, errors)
     argc = 0,
     argv = {},
     make = function(argv)
-      if not workspaceable then
+      if not workspaceable or not argv.workspaces then
         return string.format(select_all_filtered_statement, argv.fields, argv.values)
       else
-        return string.format(select_all_filtered_statement, argv.workspaces,
+        return string.format(select_all_filtered_statement_ws, argv.workspaces,
                                                             argv.fields,
                                                             argv.values)
       end

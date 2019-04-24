@@ -22,16 +22,20 @@ local utils_split = utils.split
 local ngx_null = ngx.null
 local tostring = tostring
 local inc_counter = counters.inc_counter
+local table_concat = table.concat
+local rawget  = rawget
+local table_remove = table.remove
 
 
 local _M = {}
 
-local default_workspace = "default"
-local workspace_delimiter = ":"
-
-_M.DEFAULT_WORKSPACE = default_workspace
-_M.WORKSPACE_DELIMITER = workspace_delimiter
+local DEFAULT_WORKSPACE = "default"
+local WORKSPACE_DELIMETER = ":"
 local ALL_METHODS = "GET,POST,PUT,DELETE,OPTIONS,PATCH"
+
+
+_M.DEFAULT_WORKSPACE = DEFAULT_WORKSPACE
+_M.WORKSPACE_DELIMITER = WORKSPACE_DELIMETER
 
 
 -- XXX compat_find_all will go away with workspaces remodel
@@ -50,20 +54,6 @@ local unique_accross_ws = {
   workspaces = true,
   workspace_entities = true,
 }
-
-
-local function metatable(base)
-  return {
-    __index = base,
-    __newindex = function()
-      error "immutable table"
-    end,
-    __pairs = function()
-      return next, base, nil
-    end,
-    __metatable = false,
-  }
-end
 
 
 local function map(f, t)
@@ -157,8 +147,8 @@ function _M.upsert_default(db)
   db = db or singletons.db
 
   local cb = function()
-    return db.workspaces:upsert_by_name(default_workspace, {
-      name = default_workspace
+    return db.workspaces:upsert_by_name(DEFAULT_WORKSPACE, {
+      name = DEFAULT_WORKSPACE
     })
   end
 
@@ -211,21 +201,19 @@ end
 
 
 local function get_workspaceable_relations()
-  return setmetatable({}, metatable(workspaceable_relations))
+  return setmetatable({},  {
+    __index = workspaceable_relations,
+    __newindex = function()
+      error "immutable table"
+    end,
+    __pairs = function()
+      return next, workspaceable_relations, nil
+    end,
+    __metatable = false,
+  })
 end
 _M.get_workspaceable_relations = get_workspaceable_relations
 
-
-local function add_entity_relation_db(dao, ws, entity_id, table_name, field_name, field_value)
-  return dao:insert({
-    workspace_id = ws.id,
-    entity_id = entity_id,
-    entity_type = table_name,
-    unique_field_name = field_name or "",
-    unique_field_value = field_value or "",
-    workspace_name = ws.name,
-  })
-end
 
 
 -- Coming from admin API request
@@ -243,32 +231,47 @@ function _M.fetch_workspace(ws_name)
   )
 end
 
-function _M.add_entity_relation(table_name, entity, workspace)
-  local constraints = workspaceable_relations[table_name]
 
-  if constraints and constraints.unique_keys and next(constraints.unique_keys) then
-    for k, _ in pairs(constraints.unique_keys) do
-      if not constraints.primary_keys[k] and entity[k] then
-        local _, err = add_entity_relation_db(singletons.db.workspace_entities,
-                                              workspace,
-                                              entity[constraints.primary_key],
-                                              table_name,
-                                              k,
-                                              entity[k])
-        if err then
-          return err
+do
+  local function add_entity_relation_db(dao, ws, entity_id, table_name, field_name, field_value)
+    return dao:insert({
+      workspace_id = ws.id,
+      entity_id = entity_id,
+      entity_type = table_name,
+      unique_field_name = field_name or "",
+      unique_field_value = field_value or "",
+      workspace_name = ws.name,
+    })
+  end
+
+
+  function _M.add_entity_relation(table_name, entity, workspace)
+    local constraints = workspaceable_relations[table_name]
+
+    if constraints and constraints.unique_keys and next(constraints.unique_keys) then
+      for k, _ in pairs(constraints.unique_keys) do
+        if not constraints.primary_keys[k] and entity[k] then
+          local _, err = add_entity_relation_db(singletons.db.workspace_entities,
+                                                workspace,
+                                                entity[constraints.primary_key],
+                                                table_name,
+                                                k,
+                                                entity[k])
+          if err then
+            return err
+          end
         end
       end
     end
+
+    inc_counter(singletons.db, workspace.id, table_name, entity, 1);
+    local _, err = add_entity_relation_db(singletons.db.workspace_entities, workspace,
+                                          entity[constraints.primary_key],
+                                          table_name, constraints.primary_key,
+                                          entity[constraints.primary_key])
+
+    return err
   end
-
-  inc_counter(singletons.db, workspace.id, table_name, entity, 1);
-  local _, err = add_entity_relation_db(singletons.db.workspace_entities, workspace,
-                                        entity[constraints.primary_key],
-                                        table_name, constraints.primary_key,
-                                        entity[constraints.primary_key])
-
-  return err
 end
 
 
@@ -679,11 +682,10 @@ end
 _M.is_proxy_request = is_proxy_request
 
 
-local workspaceable = get_workspaceable_relations()
 local function load_entity_map(ws_scope, table_name)
   local ws_entities_map = {}
   for _, ws in ipairs(ws_scope) do
-    local primary_key = workspaceable[table_name].primary_key
+    local primary_key = workspaceable_relations[table_name].primary_key
 
     local ws_entities, err = singletons.db.workspace_entities:select_all({
       workspace_id = ws.id,
@@ -703,11 +705,12 @@ local function load_entity_map(ws_scope, table_name)
   return ws_entities_map
 end
 
+
 -- cache entities map in memory for current request
 -- ws_scope table has a life of current proxy request only
 local entity_map_cache = setmetatable({}, { __mode = "k" })
 local function workspace_entities_map(ws_scope, table_name)
-  local ws_scope = get_workspaces()
+  local ws_scope = ws_scope or get_workspaces()
 
   if not is_proxy_request() then
     return load_entity_map(ws_scope, table_name)
@@ -749,8 +752,8 @@ function _M.apply_unique_per_ws(table_name, params, constraints)
 
   for field_name, field_schema in pairs(constraints.unique_keys) do
     if params[field_name] and not constraints.primary_keys[field_name] and
-      field_schema.schema.fields[field_name].type ~= "id" and  params[field_name] ~= ngx_null then
-      params[field_name] = format("%s%s%s", workspace.name, workspace_delimiter,
+      field_schema.type ~= "id" and  params[field_name] ~= ngx_null then
+      params[field_name] = format("%s%s%s", workspace.name, WORKSPACE_DELIMETER,
                                   params[field_name])
     end
   end
@@ -784,7 +787,7 @@ function _M.resolve_shared_entity_id(table_name, params, constraints)
       })
 
       if err then
-        return false, err
+        return nil, err
       end
 
       if row then
@@ -793,7 +796,7 @@ function _M.resolve_shared_entity_id(table_name, params, constraints)
           params[k] = nil
         end
         params[constraints.primary_key] = row.entity_id
-        return true
+        return params
       end
     end
   end
@@ -805,17 +808,22 @@ function _M.remove_ws_prefix(table_name, row, include_ws)
     return
   end
 
-  local constraints = workspaceable[table_name]
+  local constraints = workspaceable_relations[table_name]
   if not constraints or not constraints.unique_keys then
-    return
+    return row
   end
 
   for field_name, field_schema in pairs(constraints.unique_keys) do
-    if row[field_name] and not constraints.primary_keys[field_name] and
-      field_schema.schema.fields[field_name].type ~= "id" and  row[field_name] ~= ngx_null then
-      local names = utils_split(row[field_name], workspace_delimiter, 2)
+    -- skip if no unique key or it's also a primary, field
+    -- is not set or has null value
+    if row[field_name] and constraints.primary_key ~= field_name and
+       field_schema.type ~= "id" and row[field_name] ~= ngx_null and
+       type(row[field_name]) == "string" then
+
+      local names = utils_split(row[field_name], WORKSPACE_DELIMETER)
       if #names > 1 then
-        row[field_name] = names[2]
+        table_remove(names, 1)
+        row[field_name] = table_concat(names, WORKSPACE_DELIMETER)
       end
     end
   end
@@ -837,6 +845,149 @@ local function run_with_ws_scope(ws_scope, cb, ...)
   return res, err
 end
 _M.run_with_ws_scope = run_with_ws_scope
+
+
+-- validates that given primary_key belongs to current ws scope
+function _M.validate_pk_exist(table_name, params, constraints)
+  if not constraints or not constraints.primary_key then
+    return true
+  end
+
+  local ws_scope = get_workspaces()
+  if #ws_scope == 0 then
+    return true
+  end
+  local workspace = ws_scope[1]
+
+  if table_name == "workspaces" and
+    params.name == DEFAULT_WORKSPACE then
+    return true
+  end
+
+  local row, err = find_entity_by_unique_field({
+    workspace_id = workspace.id,
+    entity_id = params[constraints.primary_key]
+  })
+
+  if err then
+    return false, err
+  end
+
+  return row and true
+end
+
+
+-- true if the table is workspaceable and the workspace name is not
+-- the wildcard - which should evaluate to all workspaces - and we are not
+-- retrieving the default workspace itself
+--
+-- this is to break the cycle: some methods here - e.g., find_all -
+-- need to retrieve the current workspace entity, which is set in
+-- `before_filter`, but to set the entity some of those same methods are
+-- used
+function _M.is_workspaceable(table_name, ws_scope)
+  return workspaceable_relations[table_name] and #ws_scope > 0
+end
+
+
+local function encode_ws_list(ws_scope)
+  local ids = {}
+  for _, ws in ipairs(ws_scope) do
+    ids[#ids + 1] = "'" .. tostring(ws.id) .. "'"
+  end
+  return table_concat(ids, ", ")
+end
+
+
+function _M.ws_scope_as_list(table_name)
+  local ws_scope = get_workspaces()
+
+  if workspaceable_relations[table_name] and #ws_scope > 0 then
+    return encode_ws_list(ws_scope)
+  end
+end
+
+
+function _M.get_workspace()
+  return ngx.ctx.workspaces and ngx.ctx.workspaces[1] or {}
+end
+
+
+-- used to retrieve workspace specific configuration values.
+-- * config must exist in default configuration or will result
+--   in an error.
+-- * if workspace specific config does not exist fall back to
+--   default config value.
+function _M.retrieve_ws_config(config_name, workspace)
+  local conf
+  if workspace.config and
+    workspace.config[config_name] ~= nil and
+    workspace.config[config_name] ~= ngx.null then
+    conf = workspace.config[config_name]
+  else
+    conf = singletons.configuration[config_name]
+  end
+
+  -- if table, return a copy so that we don't mutate the conf
+  if type(conf) == "table" then
+    return utils.deep_copy(conf)
+  end
+
+  return conf
+end
+
+
+function _M.build_ws_admin_gui_url(config, workspace)
+  local admin_gui_url = config.admin_gui_url
+  -- this will only occur when smtp_mock is on
+  -- otherwise, conf_loader will throw an error if
+  -- admin_gui_url is nil
+  if not admin_gui_url then
+    return ""
+  end
+
+  if not workspace.name or workspace.name == "" then
+    return admin_gui_url
+  end
+
+  return admin_gui_url .. "/" .. workspace.name
+end
+
+
+function _M.build_ws_portal_gui_url(config, workspace)
+  if not config.portal_gui_host
+    or not config.portal_gui_protocol
+    or not workspace.name then
+    return config.portal_gui_host
+  end
+
+  if config.portal_gui_use_subdomains then
+    return config.portal_gui_protocol .. '://' .. workspace.name .. '.' .. config.portal_gui_host
+  end
+
+  return config.portal_gui_protocol .. '://' .. config.portal_gui_host .. '/' .. workspace.name
+end
+
+
+function _M.build_ws_portal_cors_origins(workspace)
+  -- portal_cors_origins takes precedence
+  local portal_cors_origins = _M.retrieve_ws_config("portal_cors_origins", workspace)
+  if portal_cors_origins and #portal_cors_origins > 0 then
+    return portal_cors_origins
+  end
+
+  -- otherwise build origin from protocol, host and subdomain, if applicable
+  local subdomain = ""
+  local portal_gui_use_subdomains = _M.retrieve_ws_config("portal_gui_use_subdomains", workspace)
+  if portal_gui_use_subdomains then
+    subdomain = workspace.name .. "."
+  end
+
+  local portal_gui_protocol = _M.retrieve_ws_config("portal_gui_protocol", workspace)
+  local portal_gui_host = _M.retrieve_ws_config("portal_gui_host", workspace)
+
+  return { portal_gui_protocol .. "://" .. subdomain .. portal_gui_host }
+end
 
 
 return _M
