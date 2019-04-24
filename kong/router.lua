@@ -412,6 +412,7 @@ local function marshall_route(r)
 
   if route_t.type == "http" then
     route_t.upstream_url_t.path = s.path or "/"
+    route_t.upstream_url_t.path_separated = s.path_separated or false
   end
 
   return route_t
@@ -595,7 +596,7 @@ do
 
               if m.uri_postfix then
                 -- remove the uri_postfix group
-                m[#m]          = nil
+                m[#m] = nil
                 m.uri_postfix = nil
               end
 
@@ -631,7 +632,7 @@ do
 
             if m.uri_postfix then
               -- remove the uri_postfix group
-              m[#m]          = nil
+              m[#m] = nil
               m.uri_postfix = nil
             end
 
@@ -1195,24 +1196,36 @@ function _M.new(routes)
             if matched_route.type == "http" then
               -- if we do not have a path-match, then the postfix is simply the
               -- incoming path, without the initial slash
-              local request_postfix = matches.uri_postfix or sub(req_uri, 2, -1)
+              local request_postfix = matches.uri_postfix or sub(req_uri, 2)
               local upstream_base = upstream_url_t.path or "/"
-
+              local endslash = sub(upstream_base, -1) == "/"
               if matched_route.strip_uri then
                 -- we drop the matched part, replacing it with the upstream path
-                if sub(upstream_base, -1, -1) == "/" and
-                   sub(request_postfix, 1, 1) == "/" then
-                  -- double "/", so drop the first
+                if endslash and sub(request_postfix, 1, 1) == "/" then
                   upstream_uri = sub(upstream_base, 1, -2) .. request_postfix
-
+                elseif not endslash and upstream_url_t.path_separated then
+                  if request_postfix == "" then
+                    upstream_uri = upstream_base
+                  elseif request_postfix == "/" then
+                    upstream_uri = upstream_base .. request_postfix
+                  else
+                    upstream_uri = upstream_base .. "/" .. request_postfix
+                  end
                 else
                   upstream_uri = upstream_base .. request_postfix
+                end
+
+              elseif not endslash and upstream_url_t.path_separated then
+                if req_uri == "/" then
+                  upstream_uri = upstream_base
+                else
+                  upstream_uri = upstream_base .. req_uri
                 end
 
               else
                 -- we retain the incoming path, just prefix it with the upstream
                 -- path, but skip the initial slash
-                upstream_uri = upstream_base .. sub(req_uri, 2, -1)
+                upstream_uri = upstream_base .. sub(req_uri, 2)
               end
 
               -- preserve_host header logic

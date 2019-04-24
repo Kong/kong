@@ -25,6 +25,7 @@ return {
     { host            = typedefs.host { required = true } },
     { port            = typedefs.port { required = true, default = 80 }, },
     { path            = typedefs.path },
+    { path_separated  = { type = "boolean", default = false }, },
     { connect_timeout = nonzero_timeout { default = 60000 }, },
     { write_timeout   = nonzero_timeout { default = 60000 }, },
     { read_timeout    = nonzero_timeout { default = 60000 }, },
