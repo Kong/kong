@@ -142,7 +142,13 @@ return {
                                       then_at_least_one_of = { "sources", "destinations", "snis" },
                                       then_err = "must set one of %s when 'protocols' is 'tcp' or 'tls'",
                                     }},
+    { conditional_at_least_one_of = { if_field = "protocols",
+                                      if_match = { elements = { type = "string", one_of = { "grpc", "grpcs" }}},
+                                      then_at_least_one_of = { "methods", "hosts", "paths" },
+                                      then_err = "must set one of %s when 'protocols' is 'grpc' or 'grpcs'"
+                                    }},
 
+    -- TCP/TLS
     { conditional = { if_field = "protocols",
                       if_match = { elements = { type = "string", one_of = { "tcp", "tls" }}},
                       then_field = "hosts",
@@ -185,5 +191,26 @@ return {
                       then_match = { len_eq = 0 },
                       then_err = "'snis' can only be set when 'protocols' is 'https' or 'tls'",
                     }},
+
+    -- GRPC/GRPCS
+    { conditional = { if_field = "protocols",
+                      if_match = { elements = { type = "string", one_of = { "grpc", "grpcs" }}},
+                      then_field = "snis",
+                      then_match = { len_eq = 0 },
+                      then_err = "cannot set 'snis' when 'protocols' is 'grpc' or 'grpcs'",
+                    }},
+    { conditional = { if_field = "protocols",
+                      if_match = { elements = { type = "string", one_of = { "grpc", "grpcs" }}},
+                      then_field = "destinations",
+                      then_match = { len_eq = 0 },
+                      then_err = "cannot set 'destinations' when 'protocols' is 'grpc' or 'grpcs'",
+                    }},
+    { conditional = { if_field = "protocols",
+                      if_match = { elements = { type = "string", one_of = { "grpc", "grpcs" }}},
+                      then_field = "sources",
+                      then_match = { len_eq = 0 },
+                      then_err = "cannot set 'sources' when 'protocols' is 'grpc' or 'grpcs'",
+                    }},
   },
+
 }

@@ -1030,4 +1030,21 @@ describe("routes schema", function()
       }
     }, errs)
   end)
+
+  it("errors if no L7 matching attribute set", function()
+    local s = { id = "a4fbd24e-6a52-4937-bd78-2536713072d2" }
+      for _, v in ipairs({ "grpc", "grpcs" }) do
+        local route = Routes:process_auto_fields({
+          protocols = { v },
+          service = s,
+        }, "insert")
+        local ok, errs = Routes:validate(route)
+        assert.falsy(ok)
+        assert.same({
+          ["@entity"] = {
+            "must set one of 'methods', 'hosts', 'paths' when 'protocols' is 'grpc' or 'grpcs'"
+          }
+        }, errs)
+      end
+  end)
 end)

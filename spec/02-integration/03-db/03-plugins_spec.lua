@@ -60,7 +60,7 @@ for _, strategy in helpers.each_strategy() do
               key_names = { "apikey" },
             },
             run_on = "first",
-            protocols = { "http", "https" },
+            protocols = { "grpc", "grpcs", "http", "https" },
             enabled = true,
             name = "key-auth",
             route = {
@@ -133,7 +133,7 @@ for _, strategy in helpers.each_strategy() do
               key_names = { "apikey" },
             },
             run_on = "first",
-            protocols = { "http", "https" },
+            protocols = { "grpc", "grpcs", "http", "https" },
             enabled = true,
             name = "key-auth",
             route = {

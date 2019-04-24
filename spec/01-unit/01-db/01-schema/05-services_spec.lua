@@ -500,8 +500,32 @@ describe("services", function()
       assert.is_true(ok)
     end)
 
-    it("if 'protocol = tcp/tls', then 'path' is empty", function()
-      for _, v in ipairs({ "tcp", "tls" }) do
+    it("'protocol' accepts 'grpc'", function()
+      local service = {
+        protocol = "grpc",
+        host = "x.y",
+        port = 80,
+      }
+
+      local ok, err = Services:validate(service)
+      assert.is_nil(err)
+      assert.is_true(ok)
+    end)
+
+    it("'protocol' accepts 'grpcs'", function()
+      local service = {
+        protocol = "grpcs",
+        host = "x.y",
+        port = 80,
+      }
+
+      local ok, err = Services:validate(service)
+      assert.is_nil(err)
+      assert.is_true(ok)
+    end)
+
+    it("if 'protocol = tcp/tls/grpc/grpcs', then 'path' is empty", function()
+      for _, v in ipairs({ "tcp", "tls", "grpc", "grpcs" }) do
         local service = {
           protocol = v,
           host = "x.y",

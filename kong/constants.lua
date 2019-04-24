@@ -52,7 +52,9 @@ local protocols_with_subsystem = {
   http = "http",
   https = "http",
   tcp = "stream",
-  tls = "stream"
+  tls = "stream",
+  grpc = "http",
+  grpcs = "http",
 }
 local protocols = {}
 for p,_ in pairs(protocols_with_subsystem) do
