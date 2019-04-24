@@ -58,6 +58,7 @@ local ERROR        = ngx.ERROR
 
 
 local SUBSYSTEMS = constants.PROTOCOLS_WITH_SUBSYSTEM
+local GRPC_PROXY_MODES = constants.GRPC_PROXY_MODES
 local EMPTY_T = {}
 local TTL_ZERO = { ttl = 0 }
 
@@ -988,6 +989,12 @@ return {
       -- router for Routes/Services
       local router = get_updated_router()
 
+      -- if there is a gRPC service in the context, don't re-execute the pre-access
+      -- phase handler - it has been executed before the internal redirect
+      if ctx.service and GRPC_PROXY_MODES[ctx.service.protocol] then
+        return
+      end
+
       -- routing request
 
       ctx.KONG_ACCESS_START = get_now()
@@ -1189,6 +1196,17 @@ return {
       var.upstream_x_forwarded_proto = forwarded_proto
       var.upstream_x_forwarded_host  = forwarded_host
       var.upstream_x_forwarded_port  = forwarded_port
+
+      -- At this point, the router and `balancer_setup_stage1` have been
+      -- executed; detect requests that need to be redirected from `proxy_pass`
+      -- to `grpc_pass`. After redirection, this function will return early
+      if var.kong_proxy_mode ~= "grpc" and service and service.protocol == "grpc" then
+        return ngx.exec("@grpc")
+      end
+
+      if var.kong_proxy_mode ~= "grpcs" and service and service.protocol == "grpcs" then
+        return ngx.exec("@grpcs")
+      end
     end,
     -- Only executed if the `router` module found a route and allows nginx to proxy it.
     after = function(ctx)

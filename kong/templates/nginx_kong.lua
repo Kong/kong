@@ -136,6 +136,7 @@ server {
         set $upstream_x_forwarded_proto  '';
         set $upstream_x_forwarded_host   '';
         set $upstream_x_forwarded_port   '';
+        set $kong_proxy_mode             'http';
 
         rewrite_by_lua_block {
             Kong.rewrite()
@@ -171,6 +172,30 @@ server {
         log_by_lua_block {
             Kong.log()
         }
+    }
+
+    location @grpc {
+        internal;
+        rewrite_by_lua_block       { Kong.rewrite() }
+        access_by_lua_block        { Kong.access() }
+        header_filter_by_lua_block { Kong.header_filter() }
+        body_filter_by_lua_block   { Kong.body_filter() }
+        log_by_lua_block           { Kong.log() }
+
+        set $kong_proxy_mode       'grpc';
+        grpc_pass grpc://kong_upstream;
+    }
+
+    location @grpcs {
+        internal;
+        rewrite_by_lua_block       { Kong.rewrite() }
+        access_by_lua_block        { Kong.access() }
+        header_filter_by_lua_block { Kong.header_filter() }
+        body_filter_by_lua_block   { Kong.body_filter() }
+        log_by_lua_block           { Kong.log() }
+
+        set $kong_proxy_mode       'grpcs';
+        grpc_pass grpcs://kong_upstream;
     }
 
     location = /kong_error_handler {
