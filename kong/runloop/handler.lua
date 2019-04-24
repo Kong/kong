@@ -223,6 +223,18 @@ local function cache_services()
 end
 
 
+local function get_services()
+  local services = {}
+  for service, err in kong.db.services:each(1000) do
+    if err then
+      return nil, err
+    end
+    services[service.id] = service
+  end
+  return services
+end
+
+
 local function start_timers()
   -- initialize balancers for active healthchecks
   timer_at(0, function()
@@ -658,13 +670,19 @@ do
     return service, err
   end
 
-  local function get_service_for_route(route)
+  local function get_service_for_route(route, services)
     local service_pk = route.service
     if not service_pk then
       return nil
     end
 
-    local service, err = load_service(service_pk)
+    local service, err
+    if services then
+      service = services[service_pk.id]
+    else
+      service, err = load_service(service_pk)
+    end
+
     if not service then
       if err then
         return nil, "could not find service for route (" .. route.id .. "): " ..
@@ -686,30 +704,18 @@ do
   end
 
   build_router = function(version, recurse, tries)
-    local phase = get_phase()
-    if version == "init" then
-      if phase == "init" then
-        log(DEBUG, "initialising router...")
-      else
-        log(DEBUG, "initialising router on worker #", WORKER_ID, "...")
-      end
-
-    else
-      log(DEBUG, "rebuilding router on worker #", WORKER_ID, "...")
-    end
-
     tries = tries or 1
 
-    local current_version
-    current_version = get_version("router")
+    local current_version = get_version("router")
     if version ~= current_version then
       return build_router(current_version, recurse, tries)
     end
 
     local ok, err = kong.db:connect()
     if not ok then
+      kong.db:close()
+
       if recurse and tries < 6 then
-        kong.db:setkeepalive()
         log(NOTICE,  "could not connect database: " .. err)
         sleep(0.01 * tries * tries)
         return build_router(current_version, recurse, tries + 1)
@@ -717,6 +723,24 @@ do
 
       return nil, err
     end
+
+    local services
+    local phase = get_phase()
+    if version == "init" then
+      if phase == "init" then
+        log(DEBUG, "initialising router...")
+        services, err = get_services()
+        if not services then
+          return nil, err
+        end
+
+      else
+        log(DEBUG, "initialising router on worker #", WORKER_ID, "...")
+      end
+    else
+      log(DEBUG, "rebuilding router on worker #", WORKER_ID, "...")
+    end
+
 
     local routes, i, counter = {}, 0, 0
 
@@ -727,8 +751,9 @@ do
           return build_router(current_version, recurse, tries)
         end
 
+        kong.db:close()
+
         if recurse and tries < 6 then
-          kong.db:setkeepalive()
           log(NOTICE,  "could not load routes: " .. err)
           sleep(0.01 * tries * tries)
           return build_router(current_version, recurse, tries + 1)
@@ -745,15 +770,16 @@ do
       end
 
       if should_process_route(route) then
-        local service, err = get_service_for_route(route)
+        local service, err = get_service_for_route(route, services)
         if err then
           current_version = get_version("router")
           if version ~= current_version then
             return build_router(current_version, recurse, tries)
           end
 
+          kong.db:close()
+
           if recurse and tries < 6 then
-            kong.db:setkeepalive()
             log(NOTICE,  "could not find service for route (", route.id, "): ", err)
             sleep(0.01 * tries * tries)
             return build_router(current_version, recurse, tries + 1)
@@ -804,6 +830,7 @@ do
 
     local new_router, err = Router.new(routes)
     if not new_router then
+      kong.db:close()
       return nil, "could not create router: " .. err
     end
 
@@ -831,10 +858,34 @@ do
       end
     end
 
+    if version ~= "init" then
+      kong.db.setkeepalive()
+    end
+
     return true
   end
 
   build_plugins = function(version, recurse, tries)
+    tries = tries or 1
+
+    local current_version = get_version("plugins")
+    if version ~= current_version then
+      return build_plugins(current_version)
+    end
+
+    local ok, err = kong.db:connect()
+    if not ok then
+      kong.db:close()
+
+      if recurse and tries < 6 then
+        log(NOTICE,  "could not connect database: " .. err)
+        sleep(0.01 * tries * tries)
+        return build_plugins(current_version, recurse, tries + 1)
+      end
+
+      return nil, err
+    end
+
     local phase = get_phase()
     if version == "init" then
       if phase == "init" then
@@ -845,26 +896,6 @@ do
 
     else
       log(DEBUG, "rebuilding plugins on worker #", WORKER_ID, "...")
-    end
-
-    tries = tries or 1
-
-    local current_version
-    current_version = get_version("plugins")
-    if version ~= current_version then
-      return build_plugins(current_version)
-    end
-
-    local ok, err = kong.db:connect()
-    if not ok then
-      if recurse and tries < 6 then
-        kong.db:setkeepalive()
-        log(NOTICE,  "could not connect database: " .. err)
-        sleep(0.01 * tries * tries)
-        return build_plugins(current_version, recurse, tries + 1)
-      end
-
-      return nil, err
     end
 
     local new_plugins = {
@@ -902,8 +933,9 @@ do
           return build_plugins(current_version)
         end
 
+        kong.db:close()
+
         if recurse and tries < 6 then
-          kong.db:setkeepalive()
           log(NOTICE,  "could not load plugins: " .. err)
           sleep(0.01 * tries * tries)
           return build_plugins(current_version, recurse, tries + 1)
@@ -977,6 +1009,10 @@ do
         log(DEBUG, "rebuilding plugins on worker #", WORKER_ID)
         return build_plugins(current_version)
       end
+    end
+
+    if version ~= "init" then
+      kong.db.setkeepalive()
     end
 
     return true
@@ -1151,8 +1187,8 @@ return {
         end
 
       else
-        build_router("init")
-        build_plugins("init")
+        assert(build_router("init"))
+        assert(build_plugins("init"))
       end
     end
   },
