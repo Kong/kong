@@ -1,3 +1,7 @@
+## v1.2.1 (upcoming)
+
+- Change more reentrant migrations (not a real issue, but for future)
+
 ## v1.2.0
 
 - Add `config.token_post_args_client`
