@@ -788,7 +788,7 @@ function _mt:record_migration(subsystem, name, state)
 end
 
 
-function _mt:is_014()
+function _mt:is_034()
   local res = {}
 
   local needed_migrations = {
@@ -820,79 +820,102 @@ function _mt:is_014()
       "2017-10-27-134100_consistent_hashing_2",
       "2017-09-14-121200_routes_and_services",
       "2017-10-25-180700_plugins_routes_and_services",
-      "2018-03-27-123400_prepare_certs_and_snis",
-      "2018-03-27-125400_fill_in_snis_ids",
-      "2018-03-27-130400_make_ids_primary_keys_in_snis",
-      "2018-05-17-173100_hash_on_cookie",
-    },
-    ["response-transformer"] = {
-      "2016-05-04-160000_resp_trans_schema_changes",
-    },
-    ["jwt"] = {
-      "2015-06-09-jwt-auth",
-      "2016-03-07-jwt-alg",
-      "2017-05-22-jwt_secret_not_unique",
-      "2017-07-31-120200_jwt-auth_preflight_default",
-      "2017-10-25-211200_jwt_cookie_names_default",
-      "2018-03-15-150000_jwt_maximum_expiration",
-    },
-    ["ip-restriction"] = {
-      "2016-05-24-remove-cache",
-    },
-    ["statsd"] = {
-      "2017-06-09-160000_statsd_schema_changes",
-    },
-    ["cors"] = {
-      "2017-03-14_multiple_orgins",
-    },
-    ["basic-auth"] = {
-      "2015-08-03-132400_init_basicauth",
-      "2017-01-25-180400_unique_username",
-    },
-    ["key-auth"] = {
-      "2015-07-31-172400_init_keyauth",
-      "2017-07-31-120200_key-auth_preflight_default",
-    },
-    ["ldap-auth"] = {
-      "2017-10-23-150900_header_type_default",
-    },
-    ["hmac-auth"] = {
-      "2015-09-16-132400_init_hmacauth",
-      "2017-06-21-132400_init_hmacauth",
-    },
-    ["datadog"] = {
-      "2017-06-09-160000_datadog_schema_changes",
-    },
-    ["tcp-log"] = {
-      "2017-12-13-120000_tcp-log_tls",
-    },
-    ["acl"] = {
-      "2015-08-25-841841_init_acl",
-    },
-    ["response-ratelimiting"] = {
-      "2015-08-03-132400_init_response_ratelimiting",
-      "2016-08-04-321512_response-rate-limiting_policies",
-      "2017-12-19-120000_add_route_and_service_id_to_response_ratelimiting",
-    },
-    ["request-transformer"] = {
-      "2016-05-04-160000_req_trans_schema_changes",
-    },
-    ["rate-limiting"] = {
-      "2015-08-03-132400_init_ratelimiting",
-      "2016-07-25-471385_ratelimiting_policies",
-      "2017-11-30-120000_add_route_and_service_id",
-    },
-    ["oauth2"] = {
-      "2015-08-03-132400_init_oauth2",
-      "2016-07-15-oauth2_code_credential_id",
-      "2016-12-22-283949_serialize_redirect_uri",
-      "2016-09-19-oauth2_api_id",
-      "2016-12-15-set_global_credentials",
-      "2017-04-24-oauth2_client_secret_not_unique",
-      "2017-10-19-set_auth_header_name_default",
-      "2017-10-11-oauth2_new_refresh_token_ttl_config_value",
-      "2018-01-09-oauth2_pg_add_service_id",
-    },
+      "2017-06-20-100000_init_ratelimiting",
+      "2017-07-31-993505_vitals_stats_seconds",
+      "2017-08-30-892844_vitals_stats_minutes",
+      "2017-08-30-892844_vitals_stats_hours",
+      "2017-10-31-145721_vitals_stats_v0.30",
+      "2017-10-31-145722_vitals_node_meta",
+      "2017-11-13-145723_vitals_consumers",
+      "2018-01-12-110000_workspaces",
+      "2018-04-18-110000_old_rbac_cleanup",
+      "2018-04-20-160000_rbac",
+      "2018-08-15-100000_rbac_role_defaults",
+      "2018-04-20-122000_rbac_defaults",
+      "2018-04-20-122000_rbac_user_default_roles",
+      "2018-02-01-000000_vitals_stats_v0.31",
+      "2018-02-13-621974_portal_files_entity",
+      "2018-03-12-000000_vitals_v0.32",
+      "2018-04-25-000001_portal_initial_files",
+      "2018-04-10-094800_dev_portal_consumer_types_statuses",
+      "2018-04-10-094800_consumer_type_status_defaults",
+      "2018-05-08-143700_consumer_dev_portal_columns",
+      "2018-05-03-120000_credentials_master_table",
+      "2017-05-15-110000_vitals_locks",
+      "2018-03-12-000000_vitals_v0.33",
+      "2018-06-12-105400_consumers_rbac_users_mapping",
+      "2018-06-12-076222_consumer_type_status_admin",
+      "2018-07-30-038822_remove_old_vitals_tables",
+      "2018-08-07-114500_consumer_reset_secrets",
+      "2018-08-14-000000_vitals_workspaces",
+      "2018-09-05-144800_workspace_meta",
+      "2018-10-03-120000_audit_requests_init",
+      "2018-10-03-120000_audit_objects_init",
+      "2018-10-05-144800_workspace_config",
+      "2018-10-09-095247_create_entity_counters_table",
+      "2018-10-17-160000_nested_workspaces_cleanup",
+      "2018-10-17-170000_portal_files_to_files",
+      "2018-10-24-000000_upgrade_admins",
+      "2018-11-30-000000_case_insensitive_email"},
+    ["response-transformer"] =
+      {"2016-05-04-160000_resp_trans_schema_changes"},
+    ["ip-restriction"] =
+      {"2016-05-24-remove-cache"},
+    ["statsd"] =
+      {"2017-06-09-160000_statsd_schema_changes"},
+    ["oauth2"] =
+      {"2015-08-03-132400_init_oauth2",
+       "2016-07-15-oauth2_code_credential_id",
+       "2016-12-22-283949_serialize_redirect_uri",
+       "2016-09-19-oauth2_api_id",
+       "2016-12-15-set_global_credentials",
+       "2017-04-24-oauth2_client_secret_not_unique",
+       "2017-10-19-set_auth_header_name_default",
+       "2017-10-11-oauth2_new_refresh_token_ttl_config_value",
+       "2018-01-09-oauth2_pg_add_service_id"},
+    ["jwt"] =
+      {"2015-06-09-jwt-auth",
+       "2016-03-07-jwt-alg",
+       "2017-05-22-jwt_secret_not_unique",
+       "2017-07-31-120200_jwt-auth_preflight_default",
+       "2017-10-25-211200_jwt_cookie_names_default"},
+    ["cors"] =
+      {"2017-03-14_multiple_orgins"},
+    ["basic-auth"] =
+      {"2015-08-03-132400_init_basicauth",
+       "2017-01-25-180400_unique_username"},
+    ["key-auth"] =
+      {"2015-07-31-172400_init_keyauth",
+       "2017-07-31-120200_key-auth_preflight_default"},
+    ["ldap-auth"] =
+      {"2017-10-23-150900_header_type_default"},
+    ["hmac-auth"] =
+      {"2015-09-16-132400_init_hmacauth",
+       "2017-06-21-132400_init_hmacauth"},
+    ["datadog"] =
+      {"2017-06-09-160000_datadog_schema_changes"},
+    ["tcp-log"] =
+      {"2017-12-13-120000_tcp-log_tls"},
+    ["acl"] =
+      {"2015-08-25-841841_init_acl"},
+    ["admins"] =
+      {"2018-06-30-000000_rbac_consumer_admins"},
+    ["response-ratelimiting"] =
+      {"2015-08-03-132400_init_response_ratelimiting",
+       "2016-08-04-321512_response-rate-limiting_policies",
+       "2017-12-19-120000_add_route_and_service_id_to_response_ratelimiting"},
+    ["request-transformer"] =
+      {"2016-05-04-160000_req_trans_schema_changes"},
+    ["default_workspace"] =
+      {"2018-02-16-110000_default_workspace_entities"},
+    ["rate-limiting"] =
+      {"2015-08-03-132400_init_ratelimiting_plugin_reimport_ee",
+       "2016-07-25-471385_ratelimiting_policies",
+       "2017-11-30-120000_add_route_and_service_id"},
+    ["kong_admin_basic_auth"] =
+      {"2018-11-08-000000_kong_admin_basic_auth"},
+    ["workspace_counters"] =
+      {"2018-10-11-164515_fill_counters"}
   }
 
   local rows, err = self:query([[
@@ -929,7 +952,7 @@ function _mt:is_014()
   for name, migrations in pairs(needed_migrations) do
     local current_migrations = schema_migrations[name]
     if not current_migrations then
-      -- missing all migrations for a component: below 0.14
+      -- missing all migrations for a component: below 0.34
       res.invalid_state = true
       res.missing_component = name
       return res
@@ -946,7 +969,7 @@ function _mt:is_014()
       end
 
       if not found then
-        -- missing at least one migration for a component: below 0.14
+        -- missing at least one migration for a component: below 0.34
         res.invalid_state = true
         res.missing_component = name
         res.missing_migration = needed_migration
@@ -955,8 +978,8 @@ function _mt:is_014()
     end
   end
 
-  -- all migrations match: 0.14 install
-  res.is_014 = true
+  -- all migrations match: 0.34 install
+  res.is_034 = true
 
   return res
 end

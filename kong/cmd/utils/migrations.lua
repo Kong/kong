@@ -41,7 +41,7 @@ end
 
 local function bootstrap(schema_state, db, ttl)
   if schema_state.needs_bootstrap then
-    if schema_state.legacy_is_014 then
+    if schema_state.legacy_is_034 then
       error(fmt("cannot bootstrap a non-empty %s, run 'kong migrations " ..
                 "up' instead", db.infos.db_desc))
     end
@@ -109,7 +109,7 @@ local function up(schema_state, db, opts)
                 db.infos.db_desc))
     end
 
-    if schema_state.legacy_is_014 then
+    if schema_state.legacy_is_034 then
       -- legacy: migration from 0.14 to 1.0 can be performed
       log("upgrading from 0.14, bootstrapping database...")
       assert(db:schema_bootstrap())
