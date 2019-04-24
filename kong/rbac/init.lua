@@ -19,7 +19,6 @@ local find   = string.find
 local setmetatable = setmetatable
 local getmetatable = getmetatable
 
-
 local LOG_ROUNDS = 9
 
 
@@ -1014,11 +1013,15 @@ local function get_token_users(rbac_token)
 
   local cache_key = "rbac_user_token_ident:" .. ident
 
-  local token_users, err = kong.cache:get(cache_key,
-                                                nil,
-                                                retrieve_token_users,
-                                                ident,
-                                                "user_token_ident")
+  local function cache_get()
+    return kong.cache:get(cache_key,
+                          nil,
+                          retrieve_token_users,
+                          ident,
+                          "user_token_ident")
+  end
+
+  local token_users, err = workspaces.run_with_ws_scope({}, cache_get)
   if err then
     return nil, err
   end
