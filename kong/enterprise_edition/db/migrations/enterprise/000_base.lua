@@ -67,6 +67,7 @@ local function seed_kong_admin_data_cas()
         kong_admin_rbac_id, "kong_admin", password, 'true', "Initial RBAC Secure User", created_ts))
     add_to_default_ws(kong_admin_rbac_id, "rbac_users", "id", kong_admin_rbac_id)
     add_to_default_ws(kong_admin_rbac_id, "rbac_users", "name", "kong_admin")
+    add_to_default_ws(kong_admin_rbac_id, "rbac_users", "user_token", password)
 
     -- add user-roles relation
     table.insert(res,
@@ -93,6 +94,7 @@ local function seed_kong_admin_data_cas()
         kong_admin_id, "kong_admin", kong_admin_id, password, 'true', "Initial RBAC Secure User", created_ts))
     add_to_default_ws(kong_admin_id, "rbac_users", "id", kong_admin_id)
     add_to_default_ws(kong_admin_id, "rbac_users", "name", "kong_admin-" .. kong_admin_id)
+    add_to_default_ws(kong_admin_id, "rbac_users", "user_token", password)
 
     -- add user-roles relation
     table.insert(res,
@@ -179,7 +181,7 @@ local function seed_kong_admin_data_pg()
         INSERT INTO rbac_users(id, name, user_token, enabled, comment) VALUES(kong_admin_user_id, CONCAT('default:kong_admin-', kong_admin_user_id::varchar), '%s', true, 'Initial RBAC Secure User');
         INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value) VALUES(def_ws_id, 'default', kong_admin_user_id, 'rbac_users', 'id', kong_admin_user_id);
         INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value) VALUES(def_ws_id, 'default', kong_admin_user_id, 'rbac_users', 'name', CONCAT('kong_admin-', kong_admin_user_id::varchar));
-
+        INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value) VALUES(def_ws_id, 'default', kong_admin_user_id, 'rbac_users', 'user_token', '%s');
 
         SELECT id into super_admin_role_id from rbac_roles where name = 'default:super-admin';
         INSERT into rbac_user_roles(user_id, role_id) VALUES(kong_admin_user_id, super_admin_role_id);
@@ -223,7 +225,7 @@ local function seed_kong_admin_data_pg()
     END IF;
 
     END $$;
-  ]], random_password, kong_admin_consumer_id, crypto.encrypt(kong_admin_consumer_id, password))
+  ]], random_password, random_password, kong_admin_consumer_id, crypto.encrypt(kong_admin_consumer_id, password))
 end
 
 
@@ -249,6 +251,7 @@ local function seed_kong_admin_data_rbac_pg()
     INSERT INTO rbac_users(id, name, user_token, enabled, comment) VALUES(kong_admin_user_id, 'default:kong_admin', '%s', true, 'Initial RBAC Secure User');
     INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value) VALUES(def_ws_id, 'default', kong_admin_user_id, 'rbac_users', 'id', kong_admin_user_id);
     INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value) VALUES(def_ws_id, 'default', kong_admin_user_id, 'rbac_users', 'name', 'kong_admin');
+    INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value) VALUES(def_ws_id, 'default', kong_admin_user_id, 'rbac_users', 'user_token', '%s');
 
 
     SELECT id into super_admin_role_id from rbac_roles where name = 'default:super-admin';
@@ -262,7 +265,7 @@ local function seed_kong_admin_data_rbac_pg()
     INSERT into rbac_user_roles(user_id, role_id) VALUES(kong_admin_user_id, kong_admin_default_role_id);
 
     END $$;
-  ]], password)
+  ]], password, password)
 end
 
 
