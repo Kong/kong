@@ -4,6 +4,16 @@ local crypto       = require "kong.plugins.basic-auth.crypto"
 local fmt = string.format
 local created_ts = math.floor(ngx.now()) * 1000
 
+local function detect(f, t)
+  for _, v in ipairs(t) do
+    local res = f(v)
+    if res then
+      return res
+    end
+  end
+end
+
+
 local function seed_kong_admin_data_cas()
   local res = {}
   local def_ws_id = '00000000-0000-0000-0000-000000000000'
@@ -1059,6 +1069,23 @@ CREATE TABLE IF NOT EXISTS admins (
       CREATE INDEX IF NOT EXISTS developers_email_idx ON developers(email);
       CREATE INDEX IF NOT EXISTS developers_consumer_id_idx ON developers(consumer_id);
       CREATE INDEX IF NOT EXISTS developers_email_idx ON developers(email);
-    ]] .. seed_kong_admin_data_cas(),
+    ]],
+    teardown = function(connector)
+      local coordinator = connector:connect_migrations()
+
+      -- create default workspace if doesn't exist
+      for rows, err in coordinator:iterate("select * from workspaces") do
+        if not detect(function(x) return x.name == "default" end, rows) then
+          connector:query([[INSERT INTO workspaces(id, name)
+            VALUES (00000000-0000-0000-0000-000000000000, 'default');]])
+        end
+      end
+
+      -- create default roles if they do not exist (checking for read-only one)
+      local read_only_present = connector:query("select * from rbac_roles where name='default:read-only';")
+      if not read_only_present then
+        assert(connector:query(seed_kong_admin_data_cas()))
+      end
+    end
   },
 }

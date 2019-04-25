@@ -1079,7 +1079,7 @@ do
     end
 
     -- all migrations match: 0.14 install
-    res.is_014 = true
+    res.is_034 = true
 
     return res
   end
