@@ -150,13 +150,13 @@ function Connector:record_migration()
 end
 
 
-function Connector:is_014()
+function Connector:is_034()
   -- Implemented pre 1.0 release with Postgres/Cassandra connectors.
   -- All future connectors (if any) won't have to provide a mean to
   -- migrate from 0.14, hence do not have to implement this function.
   return {
-    is_eq_014 = false,
-    is_gt_014 = true,
+    is_eq_034 = false,
+    is_gt_034 = true,
   }
 end
 
