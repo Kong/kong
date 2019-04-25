@@ -626,7 +626,7 @@ return {
           IF NOT EXISTS(
               SELECT FROM information_schema.triggers
                WHERE event_object_table = 'audit_requests'
-                 AND trigger_name = 'deleted_expired_audit_requests_trigger')
+                 AND trigger_name = 'delete_expired_audit_requests_trigger')
           THEN
               CREATE TRIGGER delete_expired_audit_requests_trigger
                AFTER INSERT on audit_requests
