@@ -1114,7 +1114,7 @@ function DAO:upsert(primary_key, entity, options)
   -- relation else add relation
   -- FIXME try upsert to workspace_entity
   local is_update, err = workspaces.validate_pk_exist(self.schema.name,
-                                                     primary_key, constraints)
+                                                      primary_key, constraints)
 
 
   if err then
@@ -1208,7 +1208,7 @@ function DAO:delete(primary_key, options)
 
   local constraints = workspaceable[self.schema.name]
   local ok, err = workspaces.validate_pk_exist(self.schema.name,
-                                              primary_key, constraints)
+                                               primary_key, constraints)
   if err then
     local err_t = self.errors:database_error(err)
     return nil, tostring(err_t), err_t

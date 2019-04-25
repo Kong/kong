@@ -848,19 +848,18 @@ _M.run_with_ws_scope = run_with_ws_scope
 
 
 -- validates that given primary_key belongs to current ws scope
-function _M.validate_pk_exist(table_name, params, constraints)
+function _M.validate_pk_exist(table_name, params, constraints, workspace)
   if not constraints or not constraints.primary_key then
     return true
   end
 
-  local ws_scope = get_workspaces()
-  if #ws_scope == 0 then
-    return true
-  end
-  local workspace = ws_scope[1]
-
   if table_name == "workspaces" and
     params.name == DEFAULT_WORKSPACE then
+    return true
+  end
+
+  local workspace = workspace or get_workspaces()[1]
+  if not workspace then
     return true
   end
 

@@ -365,10 +365,11 @@ local function foreign_pk_exists(self, field_name, field, foreign_pk)
   local foreign_strategy = _M.new(self.connector, foreign_schema,
                                   self.errors)
 
+  local workspace = get_workspaces()[1]
   local constraint = workspaceable[foreign_schema.name]
-  if constraint then
+    if workspace and constraint then
     local res, err = workspaces.validate_pk_exist(foreign_schema.name, foreign_pk,
-                                                 constraint)
+                                                 constraint, workspace)
     if err then
       return nil, err
     end
@@ -378,6 +379,7 @@ local function foreign_pk_exists(self, field_name, field, foreign_pk)
                                                                       field_name,
                                                                       foreign_schema.name)
     end
+    return res
   end
 
   local foreign_row, err_t = foreign_strategy:select(foreign_pk)

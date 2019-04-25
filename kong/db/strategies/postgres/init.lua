@@ -5,6 +5,10 @@ local cjson_safe    = require "cjson.safe"
 local workspaces    = require "kong.workspaces"
 
 
+local get_workspaces = workspaces.get_workspaces
+local workspaceable  = workspaces.get_workspaceable_relations()
+
+
 local encode_base64 = ngx.encode_base64
 local decode_base64 = ngx.decode_base64
 local encode_array  = arrays.encode_array
@@ -756,9 +760,13 @@ end
 local function foreign_pk_exists(dao, field_name, field, foreign_pk)
   local foreign_schema = field.schema
   local foreign_strategy = _M.new(dao.connector, foreign_schema,
-                                   dao.errors)
+                                  dao.errors)
 
-  local foreign_row, err_t = foreign_strategy:select(foreign_pk)
+  local suffix = (get_workspaces()[1] and workspaceable[foreign_schema.name]) and
+    "_ws" or ""
+
+  local foreign_row, err_t = foreign_strategy["select" .. suffix](foreign_strategy,
+                                                                  foreign_pk)
   if err_t then
     return nil, err_t
   end
@@ -849,11 +857,12 @@ function _mt:select(primary_key, options)
 end
 
 
--- TODO may not be needed
-function _mt:select_ws(primary_key)
+-- run select entity joined with workspace, needed to make sure foreign entity
+-- is present in correct workspace
+function _mt:select_ws(primary_key, options)
   local ws_list = workspaces.ws_scope_as_list(self.schema.name)
   local res, err = execute(self, "select_ws",
-                           self.collapse(primary_key), nil, ws_list)
+                           self.collapse(primary_key), options, ws_list)
 
   if res then
     local row = res[1]

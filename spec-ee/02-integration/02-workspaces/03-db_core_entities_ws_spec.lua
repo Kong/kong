@@ -126,7 +126,7 @@ for _, strategy in helpers.each_strategy() do
           end, db)
         end)
 
-        it("#flaky shouldn't allow insert of route with service from other workspace", function()
+        it("shouldn't allow insert of route with service from other workspace", function()
           local service_default
           with_current_ws(nil, function()
             local err_t, err
@@ -179,6 +179,23 @@ for _, strategy in helpers.each_strategy() do
             assert.is_nil(err)
             assert.same(route_inserted, route)
           end, db)
+        end)
+
+        it("should not return foo service from default workspace", function()
+          local foo_ws = add_ws(db, "foo")
+          local service_inserted
+          with_current_ws( {foo_ws},function()
+            service_inserted = db.services:insert({ host = "service.com" })
+            local service, err, err_t = db.services:select({ id = service_inserted.id })
+            assert.is_nil(err_t)
+            assert.is_nil(err)
+            assert.same(service_inserted, service)
+          end, db)
+
+          local service, err, err_t = db.services:select({ id = service_inserted.id })
+          assert.is_nil(err_t)
+          assert.is_nil(err)
+          assert.is_nil(service)
         end)
       end)
 
@@ -234,7 +251,7 @@ for _, strategy in helpers.each_strategy() do
           end, db)
         end)
 
-        it("#flaky shouldn't allow to update route with service from other workspace", function()
+        it("shouldn't allow to update route with service from other workspace", function()
           local service_default
           with_current_ws(nil, function()
             local err_t, err
