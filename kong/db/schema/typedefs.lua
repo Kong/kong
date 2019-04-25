@@ -56,7 +56,8 @@ end
 
 
 local function validate_path(path)
-  if not match(path, "^/[%w%.%-%_~%/%%]*$") then
+  -- Accept '$''{''}' and all characters defined in RFC 3986
+  if not match(path, "^/[%w%.%-%_~%/%%${}]*$") then
     return nil,
            "invalid path: '" .. path ..
            "' (characters outside of the reserved list of RFC 3986 found)",
@@ -304,7 +305,7 @@ typedefs.run_on_first = Schema.define {
 
 typedefs.tag = Schema.define {
   type = "string",
-  required = true, 
+  required = true,
   match = "^[%w%.%-%_~]+$",
 }
 
