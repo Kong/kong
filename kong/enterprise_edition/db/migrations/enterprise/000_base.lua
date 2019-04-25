@@ -649,23 +649,28 @@ return {
 DO $$
 DECLARE lastid uuid;
 DECLARE def_ws_id uuid;
+DECLARE tmp record;
 BEGIN
 
 SELECT uuid_in(overlay(overlay(md5(random()::text || ':' || clock_timestamp()::text) placing '4' from 13) placing to_hex(floor(random()*(11-8+1) + 8)::int)::text from 17)::cstring) into lastid;
 SELECT id into def_ws_id from workspaces where name = 'default';
 
-INSERT INTO rbac_roles(id, name, comment)
-VALUES (lastid, 'default:read-only', 'Read access to all endpoints, across all workspaces');
+SELECT * into tmp FROM rbac_roles WHERE name='default:read-only' LIMIT 1;
 
-INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value)
-VALUES (def_ws_id, 'default', lastid, 'rbac_roles', 'name', 'read-only');
+IF NOT FOUND THEN
+  INSERT INTO rbac_roles(id, name, comment)
+  VALUES (lastid, 'default:read-only', 'Read access to all endpoints, across all workspaces');
 
-INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value)
-VALUES (def_ws_id, 'default', lastid, 'rbac_roles', 'id', lastid);
+  INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value)
+  VALUES (def_ws_id, 'default', lastid, 'rbac_roles', 'name', 'read-only');
+
+  INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value)
+  VALUES (def_ws_id, 'default', lastid, 'rbac_roles', 'id', lastid);
 
 
-INSERT INTO rbac_role_endpoints(role_id, workspace, endpoint, actions, negative)
-VALUES (lastid, '*', '*', 1, FALSE);
+  INSERT INTO rbac_role_endpoints(role_id, workspace, endpoint, actions, negative)
+  VALUES (lastid, '*', '*', 1, FALSE);
+END IF;
 
 END $$;
 
@@ -674,61 +679,73 @@ END $$;
 DO $$
 DECLARE lastid uuid;
 DECLARE def_ws_id uuid;
+DECLARE tmp record;
 BEGIN
 
 SELECT uuid_in(overlay(overlay(md5(random()::text || ':' || clock_timestamp()::text) placing '4' from 13) placing to_hex(floor(random()*(11-8+1) + 8)::int)::text from 17)::cstring) into lastid;
 SELECT id into def_ws_id from workspaces where name = 'default';
 
-INSERT INTO rbac_roles(id, name, comment)
-VALUES (lastid, 'default:admin', 'Full access to all endpoints, across all workspaces—except RBAC Admin API');
+SELECT * into tmp FROM rbac_roles WHERE name='default:admin' LIMIT 1;
 
-INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value)
-VALUES (def_ws_id, 'default', lastid, 'rbac_roles', 'name', 'admin');
+IF NOT FOUND THEN
+  INSERT INTO rbac_roles(id, name, comment)
+  VALUES (lastid, 'default:admin', 'Full access to all endpoints, across all workspaces—except RBAC Admin API');
 
-INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value)
-VALUES (def_ws_id, 'default', lastid, 'rbac_roles', 'id', lastid);
+  INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value)
+  VALUES (def_ws_id, 'default', lastid, 'rbac_roles', 'name', 'admin');
+
+  INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value)
+  VALUES (def_ws_id, 'default', lastid, 'rbac_roles', 'id', lastid);
 
 
-INSERT INTO rbac_role_endpoints(role_id, workspace, endpoint, actions, negative)
-VALUES (lastid, '*', '*', 15, FALSE);
+  INSERT INTO rbac_role_endpoints(role_id, workspace, endpoint, actions, negative)
+  VALUES (lastid, '*', '*', 15, FALSE);
 
-INSERT INTO rbac_role_endpoints(role_id, workspace, endpoint, actions, negative)
-VALUES (lastid, '*', '/rbac/*', 15, TRUE);
+  INSERT INTO rbac_role_endpoints(role_id, workspace, endpoint, actions, negative)
+  VALUES (lastid, '*', '/rbac/*', 15, TRUE);
 
-INSERT INTO rbac_role_endpoints(role_id, workspace, endpoint, actions, negative)
-VALUES (lastid, '*', '/rbac/*/*', 15, TRUE);
+  INSERT INTO rbac_role_endpoints(role_id, workspace, endpoint, actions, negative)
+  VALUES (lastid, '*', '/rbac/*/*', 15, TRUE);
 
-INSERT INTO rbac_role_endpoints(role_id, workspace, endpoint, actions, negative)
-VALUES (lastid, '*', '/rbac/*/*/*', 15, TRUE);
+  INSERT INTO rbac_role_endpoints(role_id, workspace, endpoint, actions, negative)
+  VALUES (lastid, '*', '/rbac/*/*/*', 15, TRUE);
 
-INSERT INTO rbac_role_endpoints(role_id, workspace, endpoint, actions, negative)
-VALUES (lastid, '*', '/rbac/*/*/*/*', 15, TRUE);
+  INSERT INTO rbac_role_endpoints(role_id, workspace, endpoint, actions, negative)
+  VALUES (lastid, '*', '/rbac/*/*/*/*', 15, TRUE);
 
-INSERT INTO rbac_role_endpoints(role_id, workspace, endpoint, actions, negative)
-VALUES (lastid, '*', '/rbac/*/*/*/*/*', 15, TRUE);
+  INSERT INTO rbac_role_endpoints(role_id, workspace, endpoint, actions, negative)
+  VALUES (lastid, '*', '/rbac/*/*/*/*/*', 15, TRUE);
+END IF;
+
 END $$;
 
 -- super-admin role
 DO $$
 DECLARE lastid uuid;
 DECLARE def_ws_id uuid;
+DECLARE tmp record;
 BEGIN
 
 SELECT uuid_in(overlay(overlay(md5(random()::text || ':' || clock_timestamp()::text) placing '4' from 13) placing to_hex(floor(random()*(11-8+1) + 8)::int)::text from 17)::cstring) into lastid;
 SELECT id into def_ws_id from workspaces where name = 'default';
 
-INSERT INTO rbac_roles(id, name, comment)
-VALUES (lastid, 'default:super-admin', 'Full access to all endpoints, across all workspaces');
+SELECT * into tmp FROM rbac_roles WHERE name='default:super-admin' LIMIT 1;
 
-INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value)
-VALUES (def_ws_id, 'default', lastid, 'rbac_roles', 'name', 'super-admin');
+IF NOT FOUND THEN
+  INSERT INTO rbac_roles(id, name, comment)
+  VALUES (lastid, 'default:super-admin', 'Full access to all endpoints, across all workspaces');
 
-INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value)
-VALUES (def_ws_id, 'default', lastid, 'rbac_roles', 'id', lastid);
+  INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value)
+  VALUES (def_ws_id, 'default', lastid, 'rbac_roles', 'name', 'super-admin');
+
+  INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value)
+  VALUES (def_ws_id, 'default', lastid, 'rbac_roles', 'id', lastid);
 
 
-INSERT INTO rbac_role_endpoints(role_id, workspace, endpoint, actions, negative)
-VALUES (lastid, '*', '*', 15, FALSE);
+  INSERT INTO rbac_role_endpoints(role_id, workspace, endpoint, actions, negative)
+  VALUES (lastid, '*', '*', 15, FALSE);
+END IF;
+
 END $$;
 
 CREATE TABLE IF NOT EXISTS admins (
