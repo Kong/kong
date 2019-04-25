@@ -114,7 +114,7 @@ return {
 
      ALTER TABLE "consumers" DROP COLUMN IF EXISTS status;
      ALTER TABLE "consumers" DROP CONSTRAINT IF EXISTS "consumers_type_fkey";
-     ALTER TABLE "credentials" DROP CONSTRAINT IF EXISTS "consumers_type_fkey";
+     ALTER TABLE "credentials" DROP CONSTRAINT IF EXISTS "credentials_consumer_type_fkey";
      DROP TABLE IF EXISTS consumer_statuses;
      DROP TABLE IF EXISTS consumer_types;
 

@@ -387,7 +387,7 @@ return {
         PRIMARY KEY(key)
       );
       INSERT INTO vitals_locks(key, expiry)
-      VALUES ('delete_status_codes', NULL);
+      VALUES ('delete_status_codes', NULL) ON CONFLICT DO NOTHING;
 
 
 
@@ -401,7 +401,7 @@ return {
       );
 
       INSERT INTO workspaces(id, name, config)
-      VALUES ('00000000-0000-0000-0000-000000000000', 'default', '{"portal":true}'::json);
+      VALUES ('00000000-0000-0000-0000-000000000000', 'default', '{"portal":true}'::json) ON CONFLICT DO NOTHING;
 
       CREATE TABLE IF NOT EXISTS workspace_entities(
         workspace_id uuid,
@@ -500,14 +500,20 @@ return {
 
       CREATE INDEX IF NOT EXISTS portal_files_name_idx on files(name);
 
+      DO $$
+      BEGIN
+        IF not EXISTS (SELECT column_name
+               FROM information_schema.columns
+               WHERE table_schema='public' and table_name='consumers' and column_name='type') THEN
+          ALTER TABLE consumers
+            ADD COLUMN type int NOT NULL DEFAULT 0,
+            ADD COLUMN email text,
+            ADD COLUMN status integer,
+            ADD COLUMN meta text;
 
-      ALTER TABLE consumers
-        ADD COLUMN type int NOT NULL DEFAULT 0,
-        ADD COLUMN email text,
-        ADD COLUMN status integer,
-        ADD COLUMN meta text;
-
-      ALTER TABLE consumers ADD CONSTRAINT consumers_email_type_key UNIQUE(email, type);
+            ALTER TABLE consumers ADD CONSTRAINT consumers_email_type_key UNIQUE(email, type);
+         END IF;
+      END$$;
 
       CREATE INDEX IF NOT EXISTS consumers_type_idx
         ON consumers (type);
@@ -576,7 +582,7 @@ return {
           IF NOT EXISTS(
               SELECT FROM information_schema.triggers
                WHERE event_object_table = 'audit_objects'
-                 AND trigger_name = 'deleted_expired_audit_objects_trigger')
+                 AND trigger_name = 'delete_expired_audit_objects_trigger')
           THEN
               CREATE TRIGGER delete_expired_audit_objects_trigger
                AFTER INSERT on audit_objects
