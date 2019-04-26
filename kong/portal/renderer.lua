@@ -12,6 +12,12 @@ local no_files_found = {
   type = "page"
 }
 
+local portal_disabled = {
+  name = "unauthenticated/index",
+  contents = "<h1>Portal Disabled</h1>",
+  auth = false,
+  type = "page"
+}
 
 local function build_url_obj(page, path, url_map)
   local workspace = workspaces.get_workspace()
@@ -101,7 +107,7 @@ local function replace_partial_in_page(page, partial, match)
 end
 
 
-local function get_next_route (path, extension)
+local function get_next_route(path, extension)
   local split_path = pl_stringx.split(path, '/')
 
   if extension ~= '' then
@@ -116,7 +122,7 @@ local function get_next_route (path, extension)
 end
 
 
-local function find_file (filename, filetype, is_authenticated)
+local function find_file(filename, filetype, is_authenticated)
   if not is_authenticated and not pl_stringx.startswith(filename, "unauthenticated/") then
     filename = 'unauthenticated/' .. filename
   end
@@ -128,7 +134,7 @@ local function find_file (filename, filetype, is_authenticated)
 end
 
 
-local function find_partial_by_name (partial_name, is_authenticated)
+local function find_partial_by_name(partial_name, is_authenticated)
   local file = singletons.db.files:select_by_name(partial_name)
   if file and file.auth == is_authenticated then
     return file
@@ -136,7 +142,7 @@ local function find_partial_by_name (partial_name, is_authenticated)
 end
 
 
-local function search_for_page (path, is_authenticated)
+local function search_for_page(path, is_authenticated)
   local page = find_file(path, 'page', is_authenticated)
 
   if not page then
@@ -158,7 +164,7 @@ local function set_page_if_blacklist_match(path, page)
 end
 
 
-local function search_for_valid_spec (path, extension, is_authenticated)
+local function search_for_valid_spec(path, extension, is_authenticated)
   local path, extension = get_next_route(path, extension)
   local spec = nil
 
@@ -202,7 +208,7 @@ local function search_for_valid_spec (path, extension, is_authenticated)
 end
 
 
-local function find_partials_in_page (page, partials, is_authenticated)
+local function find_partials_in_page(page, partials, is_authenticated)
   local partial_match = find_next_partial(page)
 
   if not partial_match then
@@ -232,7 +238,7 @@ local function find_partials_in_page (page, partials, is_authenticated)
 end
 
 
-local function retrieve_partials (self, page)
+local function retrieve_partials(self, page)
   local partials = {}
   local page = page.contents
   local is_authenticated = self.developer ~= nil
@@ -241,9 +247,16 @@ local function retrieve_partials (self, page)
 end
 
 
-local function retrieve_page_and_spec (self)
+local function retrieve_page_and_spec(self)
   local is_authenticated = self.developer ~= nil
   local workspace = workspaces.get_workspace()
+
+  local portal_enabled = workspaces.retrieve_ws_config(ws_constants.PORTAL,
+                                                                    workspace)
+  if not portal_enabled then
+    return portal_disabled
+  end
+
   local portal_auth = workspaces.retrieve_ws_config(ws_constants.PORTAL_AUTH,
                                                                     workspace)
 
