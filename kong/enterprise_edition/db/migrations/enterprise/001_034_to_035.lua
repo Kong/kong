@@ -167,6 +167,12 @@ return {
         DROP FUNCTION delete_expired_audit_requests();
       ]]))
 
+      assert(connector:query([[
+        UPDATE workspaces
+        SET config = '{"portal":false}'::json
+        WHERE id = '00000000-0000-0000-0000-000000000000'
+      ]]))
+
     end
   },
 
@@ -195,6 +201,12 @@ return {
 
       assert(connector:query([[
         ALTER TABLE audit_requests DROP expire;
+      ]]))
+
+      assert(connector:query([[
+        UPDATE workspaces
+        SET config = '{"portal":false}'
+        WHERE id = 00000000-0000-0000-0000-000000000000
       ]]))
     end
   }

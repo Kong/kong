@@ -32,7 +32,6 @@ local config_schema = {
   type = "record",
 
   fields = {
-    -- XXX revisit the default (needs to be true iff workspace == default)
     { portal = { type = "boolean", required = true, default = false } },
     -- XXX supported auth should not be hardcoded here, but instead set in a single place,
     -- in the portal module

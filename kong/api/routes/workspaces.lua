@@ -36,9 +36,7 @@ end
 -- dev portal post-process: perform portal checks and create files
 -- for the created/updated workspace if needed
 local function portal_post_process(workspace)
-  local dao = singletons.dao
-
-  local workspace, err = portal_crud.check_initialized(workspace, dao)
+  local workspace, err = portal_crud.check_initialized(workspace, kong.db)
   if err then
     return kong.response.exit(500, {message = err})
   end

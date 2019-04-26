@@ -29,7 +29,7 @@ for _, strategy in helpers.each_strategy() do
       assert.equal("default", default_ws.name)
       assert.equal("00000000-0000-0000-0000-000000000000", default_ws.id)
       assert.same({}, default_ws.meta)
-      assert.same({ portal = true }, default_ws.config)
+      assert.same({ portal = false }, default_ws.config)
     end)
   end)
 end

@@ -202,7 +202,7 @@ end
 function _M.get_credentials(self, db, helpers, opts)
   local credentials = setmetatable({}, cjson.empty_array_mt)
   local login_credentials = find_login_credentials(db, self.developer.consumer.id)
-  
+
   for row, err in self.credential_collection:each_for_consumer({ id = self.developer.consumer.id }, opts) do
     if err then
       return endpoints.handle_error(err)
@@ -242,31 +242,36 @@ function _M.update_login_credential(collection, cred_pk, entity)
 end
 
 
-function _M.check_initialized(workspace, dao)
+function _M.check_initialized(workspace, db)
   -- if portal is not enabled, return early
   local config = workspace.config
   if not config.portal then
     return workspace
   end
 
-  local count, err = workspaces.run_with_ws_scope({workspace}, dao.files.count, dao.files)
-  if not count then
-    return nil, err
-  end
+  -- Check if any files exist
+  local any_file = workspaces.run_with_ws_scope(
+    { workspace },
+    db.files.each,
+    db.files )()
 
   -- if we already have files, return
-  if count > 0 then
+  if any_file then
     return workspace
   end
 
   -- if no files for this workspace, create them!
   for _, file in ipairs(files) do
-    local ok, err = workspaces.run_with_ws_scope({workspace}, dao.files.insert, dao.files, {
-      auth = file.auth,
-      name = file.name,
-      type = file.type,
-      contents = file.contents,
-    })
+    local ok, err = workspaces.run_with_ws_scope(
+      { workspace },
+      db.files.insert,
+      db.files,
+      {
+        auth = file.auth,
+        name = file.name,
+        type = file.type,
+        contents = file.contents,
+      })
 
     if not ok then
       return nil, err
