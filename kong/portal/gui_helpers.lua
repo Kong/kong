@@ -9,6 +9,8 @@ local responses   = require "kong.tools.responses"
 
 local _M = {}
 local config = singletons.configuration
+
+
 local function send_workspace_not_found_error(err)
   -- return kong.response.exit(500, { message = "An unexpected error occurred" })
   --

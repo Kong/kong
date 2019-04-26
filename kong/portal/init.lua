@@ -74,7 +74,7 @@ local function new_db_on_error(self)
   end
 
   if err.code == Errors.codes.NOT_FOUND then
-    return kong.response.exit(404,err)
+    return kong.response.exit(404, {message = "Not Found"})
   end
 
   if err.code == Errors.codes.PRIMARY_KEY_VIOLATION
@@ -104,7 +104,9 @@ local function on_error(self)
   end
 
   if err.db then
-    return kong.response.exit(500, { message = err.message })
+    ngx.log(ngx.ERR, err.message)
+
+    return kong.response.exit(500, { message = "An unexpected error occurred" })
   end
 
   if err.unique then
@@ -112,7 +114,7 @@ local function on_error(self)
   end
 
   if err.foreign then
-    return kong.response.exit(404, err.tbl)
+    return kong.response.exit(404, { message = "Not found" })
   end
 
   return kong.response.exit(400, { message = err.tbl or err.message })

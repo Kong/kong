@@ -970,8 +970,10 @@ return {
       ctx.workspaces, err = workspaces.resolve_ws_scope(ctx, route.protocols and route)
       ctx.log_request_workspaces = ctx.workspaces
       if err then
-        return kong.response.exit(500, { message = "failed to retrieve workspace " ..
-          "for the request (reason: " .. tostring(err) .. ")"})
+        ngx.log(ngx.ERR, "failed to retrieve workspace for the request (reason: "
+                         .. tostring(err) .. ")")
+
+        return kong.response.exit(500, { message = "An unexpected error occurred"})
       end
     end,
     -- Only executed if the `router` module found a route and allows nginx to proxy it.
