@@ -1,3 +1,14 @@
+## Unreleased
+
+### Fixed
+
+- Fix an issue where plugin tries to start a secure connection on an existing
+  pooled connection from previous requests
+
+### Added
+
+- Tests for multiple connection strategies
+
 ## 0.33
 
 ### Fixed
