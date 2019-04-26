@@ -1,9 +1,9 @@
 package = "kong"
-version = "1.1.1-0"
+version = "1.1.2-0"
 supported_platforms = {"linux", "macosx"}
 source = {
   url = "git://github.com/Kong/kong",
-  tag = "1.1.1"
+  tag = "1.1.2"
 }
 description = {
   summary = "Kong is a scalable and customizable API Management Layer built on top of Nginx.",
@@ -118,6 +118,7 @@ build = {
     ["kong.tools.utils"] = "kong/tools/utils.lua",
     ["kong.tools.printable"] = "kong/tools/printable.lua",
     ["kong.tools.timestamp"] = "kong/tools/timestamp.lua",
+    ["kong.tools.batch_queue"] = "kong/tools/batch_queue.lua",
 
     ["kong.runloop.handler"] = "kong/runloop/handler.lua",
     ["kong.runloop.certificate"] = "kong/runloop/certificate.lua",
@@ -223,9 +224,6 @@ build = {
     ["kong.plugins.oauth2.daos"] = "kong/plugins/oauth2/daos.lua",
     ["kong.plugins.oauth2.api"] = "kong/plugins/oauth2/api.lua",
 
-    ["kong.plugins.log-buffering.json_producer"] = "kong/plugins/log-buffering/json_producer.lua",
-    ["kong.plugins.log-buffering.lua_producer"] = "kong/plugins/log-buffering/lua_producer.lua",
-    ["kong.plugins.log-buffering.buffer"] = "kong/plugins/log-buffering/buffer.lua",
 
     ["kong.plugins.log-serializers.basic"] = "kong/plugins/log-serializers/basic.lua",
 
@@ -237,7 +235,6 @@ build = {
 
     ["kong.plugins.http-log.handler"] = "kong/plugins/http-log/handler.lua",
     ["kong.plugins.http-log.schema"] = "kong/plugins/http-log/schema.lua",
-    ["kong.plugins.http-log.sender"] = "kong/plugins/http-log/sender.lua",
 
     ["kong.plugins.file-log.handler"] = "kong/plugins/file-log/handler.lua",
     ["kong.plugins.file-log.schema"] = "kong/plugins/file-log/schema.lua",

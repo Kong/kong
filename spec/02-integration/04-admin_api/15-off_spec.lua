@@ -179,4 +179,85 @@ describe("Admin API #off", function()
       end
     end)
   end)
+
+  describe("/config", function()
+    it("accepts configuration as JSON body", function()
+      local res = assert(client:send {
+        method = "POST",
+        path = "/config",
+        body = {
+          _format_version = "1.1",
+          consumers = {
+            {
+              username = "bobby",
+            },
+          },
+        },
+        headers = {
+          ["Content-Type"] = "application/json"
+        }
+      })
+
+      assert.response(res).has.status(201)
+    end)
+    it("accepts configuration as a JSON string", function()
+      local res = assert(client:send {
+        method = "POST",
+        path = "/config",
+        body = {
+          config = [[
+          {
+            "_format_version" : "1.1",
+            "consumers" : [
+              {
+                "username" : "bobby",
+              },
+            ],
+          }
+          ]],
+        },
+        headers = {
+          ["Content-Type"] = "application/json"
+        }
+      })
+
+      assert.response(res).has.status(201)
+    end)
+    it("accepts configuration as a YAML string", function()
+      local res = assert(client:send {
+        method = "POST",
+        path = "/config",
+        body = {
+          config = [[
+          _format_version: "1.1"
+          consumers:
+          - username: bobby
+          ]],
+        },
+        headers = {
+          ["Content-Type"] = "application/json"
+        }
+      })
+
+      assert.response(res).has.status(201)
+    end)
+    it("returns 400 on an invalid config string", function()
+      local res = assert(client:send {
+        method = "POST",
+        path = "/config",
+        body = {
+          config = "bobby tables",
+        },
+        headers = {
+          ["Content-Type"] = "application/json"
+        }
+      })
+
+      local body =assert.response(res).has.status(400)
+      local json = cjson.decode(body)
+      assert.same({
+        error = "expected a table as input",
+      }, json)
+    end)
+  end)
 end)
