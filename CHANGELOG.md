@@ -1,8 +1,16 @@
-## Unreleased
+## 0.0.6
 
 ### Fixes
 
-- Fix an issue preventing the plugin from working with requests using chunked TE
+* Ensure that the configured `proxy_port` is forwarded in the upstream
+  request's URL. This fixues issues when using non-default ports for
+  HTTP/HTTPs
+* Fix an issue preventing the plugin from working with requests using chunked
+  TE
+
+**Note:** This release is set to be compatible with Kong Enterprise 0.34-1
+only, and as such, does not support the new DAO/Schema/PDK, or other new
+features of Kong 1.0.
 
 ## 0.0.5
 
