@@ -45,6 +45,8 @@ return {
     ]],
 
     teardown = function(connector, helpers)
+      assert(connector:connect_migrations())
+
       -- 2018-03-27-125400_fill_in_snis_ids
       local rows, err = connector:query([[
         SELECT * FROM snis;
@@ -60,14 +62,10 @@ return {
                                 rows[i].name)
       end
       sql_buffer[len + 2] = "COMMIT;"
-
-      local _, err = connector:query(table.concat(sql_buffer))
-      if err then
-        return err
-      end
+      assert(connector:query(table.concat(sql_buffer)))
 
       -- 2018-03-27-130400_make_ids_primary_keys_in_snis",
-      connector:query([[
+      assert(connector:query([[
         ALTER TABLE snis
           DROP CONSTRAINT IF EXISTS ssl_servers_names_pkey;
 
@@ -89,7 +87,7 @@ return {
         EXCEPTION WHEN duplicate_table THEN
           -- Do nothing, accept existing state
         END$$;
-      ]])
+      ]]))
     end,
   },
 
