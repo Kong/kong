@@ -76,6 +76,7 @@ local ngx_balancer = require "ngx.balancer"
 local kong_resty_ctx = require "kong.resty.ctx"
 local certificate = require "kong.runloop.certificate"
 local concurrency = require "kong.concurrency"
+local cache_warmup = require "kong.cache_warmup"
 local plugins_iterator = require "kong.runloop.plugins_iterator"
 local balancer_execute = require("kong.runloop.balancer").execute
 local kong_error_handlers = require "kong.error_handlers"
@@ -246,6 +247,17 @@ local function execute_plugins(ctx, phase)
       kong_global.reset_log(kong)
     end
   end
+end
+
+
+local function execute_cache_warmup()
+  if ngx.worker.id() == 0 then
+    local ok, err = cache_warmup.execute()
+    if not ok then
+      return nil, err
+    end
+  end
+  return true
 end
 
 
@@ -605,6 +617,11 @@ function Kong.init_worker()
     return
   end
 
+  ok, err = execute_cache_warmup()
+  if not ok then
+    ngx_log(ngx_CRIT, "error warming up cache: ", err)
+    return
+  end
 
   runloop.init_worker.before()
 
