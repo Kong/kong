@@ -43,8 +43,12 @@ local nginx_signals = require "kong.cmd.utils.nginx_signals"
 local log = require "kong.cmd.utils.log"
 local DB = require "kong.db"
 local singletons = require "kong.singletons"
+local ffi = require "ffi"
 
-
+ffi.cdef[[
+int setenv(const char *name, const char *value, int overwrite);
+int unsetenv(const char *name);
+]]
 
 log.set_lvl(log.levels.quiet) -- disable stdout logs in tests
 
@@ -1416,17 +1420,9 @@ return {
     return res
   end,
   setenv = function(env, value)
-    local ffi = require "ffi"
-    ffi.cdef[[
-    int setenv(const char *name, const char *value, int overwrite);
-    ]]
     return ffi.C.setenv(env, value, 1) == 0
   end,
   unsetenv = function(env)
-    local ffi = require "ffi"
-    ffi.cdef[[
-    int unsetenv(const char *name);
-    ]]
     return ffi.C.unsetenv(env) == 0
   end
 
