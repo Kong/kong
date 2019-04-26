@@ -8,7 +8,7 @@ local time        = ngx.time
 local fmt         = string.format
 
 for _, db_strategy in helpers.each_strategy() do
-  describe("Admin API Vitals with " .. db_strategy, function()
+  describe("Admin API Vitals with #" .. db_strategy, function()
     local client, db, strategy, bp, connector
 
     local minute_start_at = time() - ( time() % 60 )

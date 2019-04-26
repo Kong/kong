@@ -8,7 +8,7 @@ local fmt          = string.format
 
 
 for _, strategy in helpers.each_strategy() do
-  describe("vitals with db: " .. strategy, function()
+  describe("vitals with db: #" .. strategy, function()
     local vitals
     local snapshot
     local db

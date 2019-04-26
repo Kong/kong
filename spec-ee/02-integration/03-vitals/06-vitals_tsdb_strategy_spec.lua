@@ -1,7 +1,7 @@
 local helpers          = require "spec.helpers"
 
 for _, strategy in helpers.each_strategy() do
-  describe("vitals tsdb strategy with " .. strategy , function()
+  describe("vitals tsdb strategy with #" .. strategy , function()
     -- in case anything failed, stop kong here
     teardown(helpers.stop_kong)
 
