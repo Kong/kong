@@ -281,7 +281,8 @@ build = {
     ["kong.db.migrations.helpers"] = "kong/db/migrations/helpers.lua",
     ["kong.db.migrations.core"] = "kong/db/migrations/core/init.lua",
     ["kong.db.migrations.core.000_base"] = "kong/db/migrations/core/000_base.lua",
-    ["kong.db.migrations.core.001_14_to_15"] = "kong/db/migrations/core/001_14_to_15.lua",
+    ["kong.db.migrations.core.001_13_to_14"] = "kong/db/migrations/core/001_13_to_14.lua",
+    ["kong.db.migrations.core.002_14_to_15"] = "kong/db/migrations/core/002_14_to_15.lua",
 
     ["kong.pdk"] = "kong/pdk/init.lua",
     ["kong.pdk.private.checks"] = "kong/pdk/private/checks.lua",
