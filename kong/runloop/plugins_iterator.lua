@@ -14,14 +14,15 @@ local function load_plugin_into_memory(key)
 end
 
 
---- Load the configuration for a plugin entry in the DB.
+--- Load the configuration for a plugin entry.
 -- Given a Route, Service, Consumer and a plugin name, retrieve the plugin's
--- configuration if it exists. Results are cached in ngx.dict
--- @param[type=string] route_id ID of the route being proxied.
--- @param[type=string] service_id ID of the service being proxied.
--- @param[type=string] consumer_id ID of the Consumer making the request (if any).
--- @param[type=stirng] plugin_name Name of the plugin being tested for.
--- @treturn table Plugin retrieved from the cache or database.
+-- configuration if it exists.
+-- @param[type=table] the iterator object.
+-- @param[type=string] route_id Id of the route being proxied.
+-- @param[type=string] service_id Id of the service being proxied.
+-- @param[type=string] consumer_id Id of the donsumer making the request (if any).
+-- @param[type=string] plugin_name Name of the plugin being tested for.
+-- @treturn table Plugin retrieved.
 local function load_plugin_configuration(ctx,
                                          route_id,
                                          service_id,
@@ -86,7 +87,7 @@ local function get_next(self)
   local ctx = self.ctx
 
   -- load the plugin configuration in early phases
-  if self.access_or_cert_ctx then
+  if self.load_plugins_for_request then
 
     local route        = self.route
     local service      = self.service
@@ -183,15 +184,19 @@ end
 local plugin_iter_mt = { __call = get_next }
 
 
---- Plugins for request iterator.
+--- Plugins Iterator
+--
 -- Iterate over the plugin loaded for a request, stored in
 -- `ngx.ctx.plugins_for_request`.
--- @param[type=boolean] access_or_cert_ctx Tells if the context
--- is access_by_lua_block. We don't use `ngx.get_phase()` simply because we can
--- avoid it.
+--
+-- @param[type=table] ctx Nginx context table
+-- @param[type=table] loaded_plugins Plugins loaded
+-- @param[type=table] configured_plugins Plugins configured
+-- @param[type=boolean] load_plugins_for_request Whether or not to load plugins
+--                      from the DB/configuration
 -- @treturn function iterator
 local function iter_plugins_for_req(ctx, loaded_plugins, configured_plugins,
-                                    access_or_cert_ctx)
+                                    load_plugins_for_request)
   if not ctx.plugins_for_request then
     ctx.plugins_for_request = {}
   end
@@ -203,7 +208,7 @@ local function iter_plugins_for_req(ctx, loaded_plugins, configured_plugins,
     service               = ctx.service,
     loaded_plugins        = loaded_plugins,
     configured_plugins    = configured_plugins,
-    access_or_cert_ctx    = access_or_cert_ctx,
+    load_plugins_for_request = load_plugins_for_request,
   }
 
   return setmetatable(plugin_iter_state, plugin_iter_mt)
