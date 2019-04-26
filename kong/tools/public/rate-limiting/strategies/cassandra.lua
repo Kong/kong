@@ -42,10 +42,6 @@ UPDATE rl_counters
    AND window_size  = ?
    AND key          = ?
 ]]
-local INCR_BATCH_OPTIONS = {
-  prepared = true,
-  counter  = true,
-}
 
 
 local SELECT_COUNTER_QUERY = [[
@@ -136,34 +132,28 @@ function _M:push_diffs(diffs)
     local windows   = diffs[i].windows
     local n_windows = #windows
 
-    -- build batch of all windows for this key
-
-    local queries = new_tab(n_windows, 0)
+    -- update counters of all windows for this key
     local c_key   = key
 
     for j = 1, n_windows do
       -- build args for this increment query
-
       local c_diff   = cassandra.counter(windows[j].diff)
       local c_window = cassandra.timestamp(windows[j].window)
 
-      queries[j] = {
-        INCR_COUNTER_QUERY,
+      -- update current key counter for current windows
+      local res, err = self.cluster:execute(
+        INCR_COUNTER_QUERY, 
         {
           c_diff,
           windows[j].namespace,
           c_window,
           windows[j].size,
           c_key,
-        },
-      }
-    end
-
-    -- send batch of all windows for this key
-
-    local res, err = self.cluster:batch(queries, INCR_BATCH_OPTIONS)
-    if not res then
-      log(ERR, "failed to send batch of diff counters: ", err)
+        } 
+      )
+      if not res then
+        log(ERR, "failed to increment diff counters: ", err)
+      end  
     end
   end
 end
