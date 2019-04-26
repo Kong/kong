@@ -108,6 +108,10 @@ return {
 
      CREATE INDEX IF NOT EXISTS rbac_role_endpoints_role_idx on rbac_role_endpoints(role_id);
 
+     CREATE INDEX IF NOT EXISTS cluster_events_expire_at_idx ON cluster_events(expire_at);
+
+     CREATE INDEX IF NOT EXISTS workspace_entities_idx_entity_id ON workspace_entities(entity_id);
+
      ALTER TABLE "consumers" DROP COLUMN IF EXISTS status;
      ALTER TABLE "consumers" DROP CONSTRAINT IF EXISTS "consumers_type_fkey";
      ALTER TABLE "credentials" DROP CONSTRAINT IF EXISTS "consumers_type_fkey";
