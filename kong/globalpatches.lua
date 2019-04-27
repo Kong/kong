@@ -283,7 +283,7 @@ return function(options)
         local try_list
         host, port, try_list = toip(host, port)
         if not host then
-          return nil, "[toip() name lookup failed]: " .. tostring(port) ..
+          return nil, "[cosocket] DNS resolution failed: " .. tostring(port) ..
                       ". Tried: " .. tostring(try_list)
         end
       end

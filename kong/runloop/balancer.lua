@@ -819,7 +819,7 @@ local function execute(target, ctx)
     ip, port, try_list = toip(target.host, target.port, dns_cache_only)
     hostname = target.host
     if not ip then
-      log(ERR, "[dns] ", port, ". Tried: ", tostring(try_list))
+      log(ERR, "DNS resolution failed: ", port, ". Tried: ", tostring(try_list))
       if port == "dns server error: 3 name error" or
          port == "dns client error: 101 empty record received" then
         return nil, "name resolution failed", 503
