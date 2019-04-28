@@ -236,7 +236,7 @@ When developing, you can use the `Makefile` for doing the following operations:
 ## Enterprise Support & Demo
 
 If you are working in a large organization you should learn more about [Kong
-Enterprise](https://konghq.com/kong-enterprise-edition/).
+Enterprise]Kong Enterprise adds features, functionality, and performance to Kong. (https://konghq.com/kong-enterprise-edition/).
 
 ## License
 
