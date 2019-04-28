@@ -447,6 +447,22 @@
                                  # See the `lua_ssl_trusted_certificate`
                                  # setting to specify a certificate authority.
 
+#pg_max_concurrent_queries = 0   # Sets the maximum number of concurrent queries
+                                 # that can be executing at any given time. This
+                                 # limit is enforced per worker process; the
+                                 # total number of concurrent queries for this node
+                                 # will be will be `pg_max_concurrent_queries * nginx_worker_processes`.
+                                 # The default value of 0 removes this
+                                 # concurrency limitation.
+
+#pg_semaphore_timeout = 60       # Defines the timeout, in seconds, after which
+                                 # Postgres query semaphore resource acquisition
+                                 # attempts will fail. Such failures will
+                                 # generally result in the associated proxy or
+                                 # Admin API request failing with an HTTP 500.
+                                 # Detailed discussion of this behavior is
+                                 # available in the online documentation.
+
 #cassandra_contact_points = 127.0.0.1  # A comma-separated list of contact
                                        # points to your cluster.
                                        # You may specify IP addresses or

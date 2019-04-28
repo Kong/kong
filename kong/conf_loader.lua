@@ -120,6 +120,8 @@ local CONF_INFERENCES = {
   pg_password = { typ = "string" },
   pg_ssl = { typ = "boolean" },
   pg_ssl_verify = { typ = "boolean" },
+  pg_max_concurrent_queries = { typ = "number" },
+  pg_semaphore_timeout = { typ = "number" },
 
   cassandra_contact_points = { typ = "array" },
   cassandra_port = { typ = "number" },
@@ -474,6 +476,18 @@ local function check_and_infer(conf)
         errors[#errors + 1] = "failed to parse authority (" .. err .. ")"
       end
     end
+  end
+
+  if conf.pg_max_concurrent_queries < 0 then
+    errors[#errors + 1] = "pg_max_concurrent_queries must be an integer greater than 0"
+  end
+
+  if conf.pg_max_concurrent_queries ~= math.floor(conf.pg_max_concurrent_queries) then
+    errors[#errors + 1] = "pg_max_concurrent_queries must be an integer greater than 0"
+  end
+
+  if conf.pg_semaphore_timeout < 0 then
+    errors[#errors + 1] = "pg_semaphore_timeout must be greater than 0"
   end
 
   return #errors == 0, errors[1], errors

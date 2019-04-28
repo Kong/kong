@@ -824,6 +824,39 @@ describe("Configuration loader", function()
     end)
   end)
 
+  describe("pg_semaphore options", function()
+    it("rejects a pg_max_concurrent_queries with a negative number", function()
+      local conf, err = conf_loader(nil, {
+        pg_max_concurrent_queries = -1,
+      })
+      assert.is_nil(conf)
+      assert.equal("pg_max_concurrent_queries must be an integer greater than 0", err)
+    end)
+
+    it("rejects a pg_max_concurrent_queries with a decimal", function()
+      local conf, err = conf_loader(nil, {
+        pg_max_concurrent_queries = 0.1
+      })
+      assert.is_nil(conf)
+      assert.equal("pg_max_concurrent_queries must be an integer greater than 0", err)
+    end)
+
+    it("rejects a pg_semaphore_timeout with a negative number", function()
+      local conf, err = conf_loader(nil, {
+        pg_semaphore_timeout = -1,
+      })
+      assert.is_nil(conf)
+      assert.equal("pg_semaphore_timeout must be greater than 0", err)
+    end)
+
+    it("accepts a pg_semaphore_timeout with a decimal", function()
+      local _, err = conf_loader(nil, {
+        pg_semaphore_timeout = 0.1
+      })
+      assert.is_nil(err)
+    end)
+  end)
+
   describe("origins config option", function()
     it("rejects an invalid origins config option", function()
       local conf, err = conf_loader(nil, {
