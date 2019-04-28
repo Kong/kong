@@ -5,9 +5,20 @@ local tcp = ngx.socket.tcp
 local udp = ngx.socket.udp
 local concat = table.concat
 local insert = table.insert
+local encode_base64 = ngx.encode_base64
 
 
 local function wire_serialize(t)
+  for i, trace in ipairs(t) do
+    if trace.data then
+      for k, v in pairs(trace.data) do
+        trace.data[k] = encode_base64(v)
+      end
+    end
+
+    t[i] = trace
+  end
+
   return cjson.encode(t) .. "\n"
 end
 
