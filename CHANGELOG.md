@@ -3,7 +3,6 @@
 - [1.1.2](#112)
 - [1.1.1](#111)
 - [1.1.0](#110)
-- [1.0.4](#104)
 - [1.0.3](#103)
 - [1.0.2](#102)
 - [1.0.1](#101)
@@ -62,6 +61,15 @@ contains bugfixes. The are no new features or breaking changes.
 - rate-limiting: added index on rate-limiting metrics.
   Thanks, [@mvanholsteijn](https://github.com/mvanholsteijn)!
   [#4486](https://github.com/Kong/kong/pull/4486)
+
+##### Installation
+
+- All bintray repositories have been renamed from `kong-community-edition-*`
+  to `kong-*`.
+- All Kong packages have been renamed from `kong-community-edition` to `kong`.
+
+For more details about the updated installation, please visit the official docs:
+[https://konghq.com/install](https://konghq.com/install/)
 
 [Back to TOC](#table-of-contents)
 
@@ -259,25 +267,6 @@ running on top of PostgreSQL are not affected by this issue, and can migrate to
   [#4396](https://github.com/Kong/kong/pull/4396)
 
 [Back to TOC](#table-of-contents)
-
-## [1.0.4]
-
-> Released on: TBD
-
-The release includes some potential breaking changes to installation and
-infrastructure automation as we update some naming conventions related to
-our installation assets.
-
-### Changes
-
-##### Installation
-
-- All bintray repositories have been renamed from `kong-community-edition-*`
-  to `kong-*`.
-- All Kong packages have been renamed from `kong-community-edition` to `kong`.
-
-For more details about the updated installation, please visit the official docs:
-[https://konghq.com/install](https://konghq.com/install/)
 
 ## [1.0.3]
 
