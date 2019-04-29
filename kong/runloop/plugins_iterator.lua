@@ -25,7 +25,6 @@ local function load_plugin_into_memory_ws(ctx, key)
   -- when there is no workspace, like in phase rewrite
   local plugin, err
   if not ws_scope or #ws_scope == 0 then
-
     plugin, err  = kong.cache:get(key,
                                   nil,
                                   load_plugin_into_memory,
@@ -74,9 +73,11 @@ local function load_plugin_into_memory_ws(ctx, key)
 
     local to_be_cached
     if plugin and ws.id == plugin.workspace_id then
-      -- positive cache
       to_be_cached = plugin
+      found = true -- signal fetched plugin is part of a workspace in the context
+                   -- so it can be used for the current request
     end
+
     local _, err = kong.cache:get(plugin_cache_key, nil, function ()
       return to_be_cached
     end, plugin_cache_key)
@@ -85,7 +86,7 @@ local function load_plugin_into_memory_ws(ctx, key)
     end
   end
 
-  return plugin
+  return found and plugin
 end
 
 

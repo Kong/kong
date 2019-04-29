@@ -13,6 +13,35 @@ local fmt = string.format
 local Plugins = {}
 
 
+function Plugins:select_by_field(field, value)
+  local plugin, err = self.super.select_by_field(self, field, value)
+  if err then
+    return nil, err
+  end
+
+  -- the plugin was fetched with a cache key (that doesn't take
+  -- workspaces into consideration); so we need to fetch the workspace(s)
+  -- the plugin belongs to, in order to make sure it can be used for the
+  -- current request's route workspaces
+  local plugin_workspaces
+  if plugin then
+    plugin_workspaces = kong.db.workspace_entities:select_all {
+      entity_id = plugin.id,
+      unique_field_name = "id",
+    }
+
+    -- XXX potentially dangerous historical assumption: plugin only
+    -- belongs to one workspace; if it's shared, its workspace scope
+    -- (used to fetch entities the plugin needs, such as credentials),
+    -- will have length > 1, so we can't safely pick the 1st workspace
+    plugin.workspace_id = plugin_workspaces[1].workspace_id
+    plugin.workspace_name = plugin_workspaces[1].workspace_name
+  end
+
+  return plugin
+end
+
+
 -- Emulate the `select_by_cache_key` operation
 -- using the `plugins` table of a 0.14 database.
 -- @tparam string key a 0.15+ plugin cache_key
