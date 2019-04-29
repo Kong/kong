@@ -152,6 +152,7 @@ local function build_plugins_map(db, version)
   return true
 end
 
+
 local function plugins_map_wrapper()
   local version, err = kong.cache:get("plugins_map:version",
                                       PLUGINS_MAP_CACHE_OPTS, utils.uuid)
@@ -186,6 +187,31 @@ local function plugins_map_wrapper()
 
   return true
 end
+
+
+local function execute_plugins(ctx, phase, load_configuration)
+  if load_configuration then
+    local ok, err = plugins_map_wrapper()
+    if not ok then
+      ngx_log(ngx_CRIT, "could not ensure plugins map is up to date: ", err)
+      return kong.response.exit(500, { message  = "An unexpected error occurred" })
+    end
+  end
+
+  local iterator = plugins_iterator(ctx,
+                                    loaded_plugins,
+                                    configured_plugins,
+                                    load_configuration)
+  for plugin, plugin_conf in iterator do
+    kong_global.set_named_ctx(kong, "plugin", plugin_conf)
+    kong_global.set_namespaced_log(kong, plugin.name)
+
+    plugin.handler[phase](plugin.handler, plugin_conf)
+
+    kong_global.reset_log(kong)
+  end
+end
+
 
 -- Kong public context handlers.
 -- @section kong_handlers
@@ -557,18 +583,7 @@ function Kong.ssl_certificate()
 
   runloop.certificate.before(ctx)
 
-  local ok, err = plugins_map_wrapper()
-  if not ok then
-    ngx_log(ngx_CRIT, "could not ensure plugins map is up to date: ", err)
-    return ngx.exit(ngx.ERROR)
-  end
-
-  for plugin, plugin_conf in plugins_iterator(ctx, loaded_plugins,
-                                              configured_plugins, true) do
-    kong_global.set_namespaced_log(kong, plugin.name)
-    plugin.handler:certificate(plugin_conf)
-    kong_global.reset_log(kong)
-  end
+  execute_plugins(ctx, "certificate", true)
 end
 
 function Kong.balancer()
@@ -675,24 +690,7 @@ function Kong.rewrite()
 
   runloop.rewrite.before(ctx)
 
-  local ok, err = plugins_map_wrapper()
-  if not ok then
-    ngx_log(ngx_CRIT, "could not ensure plugins map is up to date: ", err)
-    return kong.response.exit(500, { message  = "An unexpected error occurred" })
-  end
-
-  -- we're just using the iterator, as in this rewrite phase no consumer nor
-  -- route will have been identified, hence we'll just be executing the global
-  -- plugins
-  for plugin, plugin_conf in plugins_iterator(ctx, loaded_plugins,
-                                              configured_plugins, true) do
-    kong_global.set_named_ctx(kong, "plugin", plugin_conf)
-    kong_global.set_namespaced_log(kong, plugin.name)
-
-    plugin.handler:rewrite(plugin_conf)
-
-    kong_global.reset_log(kong)
-  end
+  execute_plugins(ctx, "rewrite", true)
 
   runloop.rewrite.after(ctx)
 end
@@ -704,21 +702,7 @@ function Kong.preread()
 
   runloop.preread.before(ctx)
 
-  local ok, err = plugins_map_wrapper()
-  if not ok then
-    ngx_log(ngx_CRIT, "could not ensure plugins map is up to date: ", err)
-    return ngx.exit(ngx.ERROR)
-  end
-
-  for plugin, plugin_conf in plugins_iterator(ctx, loaded_plugins,
-                                              configured_plugins, true) do
-    kong_global.set_named_ctx(kong, "plugin", plugin_conf)
-    kong_global.set_namespaced_log(kong, plugin.name)
-
-    plugin.handler:preread(plugin_conf)
-
-    kong_global.reset_log(kong)
-  end
+  execute_plugins(ctx, "preread", true)
 
   runloop.preread.after(ctx)
 end
@@ -766,15 +750,7 @@ function Kong.header_filter()
 
   runloop.header_filter.before(ctx)
 
-  for plugin, plugin_conf in plugins_iterator(ctx, loaded_plugins,
-                                              configured_plugins) do
-    kong_global.set_named_ctx(kong, "plugin", plugin_conf)
-    kong_global.set_namespaced_log(kong, plugin.name)
-
-    plugin.handler:header_filter(plugin_conf)
-
-    kong_global.reset_log(kong)
-  end
+  execute_plugins(ctx, "header_filter")
 
   runloop.header_filter.after(ctx)
 end
@@ -784,15 +760,7 @@ function Kong.body_filter()
 
   local ctx = ngx.ctx
 
-  for plugin, plugin_conf in plugins_iterator(ctx, loaded_plugins,
-                                              configured_plugins) do
-    kong_global.set_named_ctx(kong, "plugin", plugin_conf)
-    kong_global.set_namespaced_log(kong, plugin.name)
-
-    plugin.handler:body_filter(plugin_conf)
-
-    kong_global.reset_log(kong)
-  end
+  execute_plugins(ctx, "body_filter")
 
   runloop.body_filter.after(ctx)
 end
@@ -802,15 +770,7 @@ function Kong.log()
 
   local ctx = ngx.ctx
 
-  for plugin, plugin_conf in plugins_iterator(ctx, loaded_plugins,
-                                              configured_plugins) do
-    kong_global.set_named_ctx(kong, "plugin", plugin_conf)
-    kong_global.set_namespaced_log(kong, plugin.name)
-
-    plugin.handler:log(plugin_conf)
-
-    kong_global.reset_log(kong)
-  end
+  execute_plugins(ctx, "log")
 
   runloop.log.after(ctx)
 end
