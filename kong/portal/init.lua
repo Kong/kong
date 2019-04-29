@@ -83,7 +83,9 @@ local function new_db_on_error(self)
     return kong.response.exit(409, err)
   end
 
-  return kong.response.exit(500, err)
+
+  ngx.log(ngx.ERR, err)
+  return kong.response.exit(500, { message = "An unexpected error occurred" })
 end
 
 
