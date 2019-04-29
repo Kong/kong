@@ -209,7 +209,9 @@ local function check_update(self, key, entity, options, name)
   end
 
   if self.schema.cache_key and #self.schema.cache_key > 1 then
-    entity_to_update.cache_key = self:cache_key(entity_to_update)
+    entity_to_update.cache_key = self:cache_key(entity_to_update,
+                                                nil, nil, nil, nil,
+                                                true) -- don't attach ws
   end
 
   return entity_to_update, rbw_entity
@@ -553,7 +555,9 @@ local function generate_foreign_key_methods(schema)
           return nil, tostring(err_t), err_t
         end
         if self.schema.cache_key and #self.schema.cache_key > 1 then
-          entity_to_upsert.cache_key = self:cache_key(entity_to_upsert)
+          entity_to_upsert.cache_key = self:cache_key(entity_to_upsert,
+                                                      nil, nil, nil, nil,
+                                                      true) -- don't attach ws
         end
         entity_to_upsert[name] = nil
 
@@ -969,7 +973,9 @@ function DAO:insert(entity, options)
   end
 
   if self.schema.cache_key and #self.schema.cache_key > 1 then
-    entity_to_insert.cache_key = self:cache_key(entity_to_insert)
+    entity_to_insert.cache_key = self:cache_key(entity_to_insert,
+                                                nil, nil, nil, nil,
+                                                true) -- don't attach workspace
   end
 
   local workspace, err_t = workspaces.apply_unique_per_ws(self.schema.name, entity_to_insert,
@@ -1143,7 +1149,9 @@ function DAO:upsert(primary_key, entity, options)
   end
 
   if self.schema.cache_key and #self.schema.cache_key > 1 then
-    entity_to_upsert.cache_key = self:cache_key(entity_to_upsert)
+    entity_to_upsert.cache_key = self:cache_key(entity_to_upsert,
+                                                nil, nil, nil,
+                                                true) -- don't attach workspace
   end
 
   if not rbac.validate_entity_operation(primary_key, self.schema.name) then
@@ -1282,7 +1290,6 @@ function DAO:delete(primary_key, options)
 end
 
 
--- XXX EE check if needs workspaces logic
 function DAO:select_by_cache_key(cache_key, options)
   local ck_definition = self.schema.cache_key
   if not ck_definition then
@@ -1290,7 +1297,9 @@ function DAO:select_by_cache_key(cache_key, options)
   end
 
   if type(cache_key) ~= "string" then
-    cache_key = self:cache_key(cache_key)
+    cache_key = self:cache_key(cache_key,
+                               nil, nil, nil, nil,
+                               true) -- don't attach workspace
   end
 
   if #ck_definition == 1 then
