@@ -165,6 +165,8 @@ return {
 
         -- filter non-proxy rbac_users (consumers)
         local res = {}
+        setmetatable(res, cjson.empty_array_mt)
+
         for _, v in ipairs(data) do
           -- XXX EE: Workaround for not showing admin rbac users
           local admin, err = db.admins:select_by_rbac_user(v)
@@ -358,6 +360,7 @@ return {
         end
 
         data = remove_default_roles(data)
+        setmetatable(data, cjson.empty_array_mt)
 
         local next_page = offset and fmt("/%s?offset=%s",
           "rbac_roles",

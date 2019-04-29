@@ -409,6 +409,14 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
     end)
 
     describe("GET", function()
+      it("returns the right data structure when empty", function()
+        local res = assert(client:get("/rbac/users"))
+        local body = assert.res_status(200, res)
+
+        assert.matches('"next":null', body, nil, true)
+        assert.matches('"data":[]', body, nil, true)
+      end)
+
       it("lists users", function()
         local res = assert(client:post("/rbac/users", {
           body = {
@@ -703,6 +711,14 @@ describe("Admin API RBAC with #" .. kong_config.database, function()
     end)
 
     describe("GET", function()
+      it("returns the right data structure when empty", function()
+        local res = assert(client:get("/rbac/roles"))
+        local body = assert.res_status(200, res)
+
+        assert.matches('"next":null', body, nil, true)
+        assert.matches('"data":[]', body, nil, true)
+      end)
+
       it("lists roles", function()
         local id = utils.uuid()
         local res = assert(client:send {
