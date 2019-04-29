@@ -1,5 +1,6 @@
 # Table of Contents
 
+- [unreleased](#unreleased)
 - [1.1.2](#112)
 - [1.1.1](#111)
 - [1.1.0](#110)
@@ -25,6 +26,20 @@
 - [0.10.1](#0101---20170327)
 - [0.10.0](#0100---20170307)
 - [0.9.9 and prior](#099---20170202)
+
+## [unreleased]
+
+### Installation
+
+- All bintray repositories have been renamed from `kong-community-edition-*`
+  to `kong-*`.
+- All Kong packages have been renamed from `kong-community-edition` to `kong`.
+
+For more details about the updated installation, please visit the official docs:
+[https://konghq.com/install](https://konghq.com/install/)
+
+[Back to TOC](#table-of-contents)
+
 
 ## [1.1.2]
 
@@ -61,15 +76,6 @@ contains bugfixes. The are no new features or breaking changes.
 - rate-limiting: added index on rate-limiting metrics.
   Thanks, [@mvanholsteijn](https://github.com/mvanholsteijn)!
   [#4486](https://github.com/Kong/kong/pull/4486)
-
-##### Installation
-
-- All bintray repositories have been renamed from `kong-community-edition-*`
-  to `kong-*`.
-- All Kong packages have been renamed from `kong-community-edition` to `kong`.
-
-For more details about the updated installation, please visit the official docs:
-[https://konghq.com/install](https://konghq.com/install/)
 
 [Back to TOC](#table-of-contents)
 
