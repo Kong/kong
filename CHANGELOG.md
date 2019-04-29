@@ -1,5 +1,6 @@
 # Table of Contents
 
+- [1.1.2](#112)
 - [1.1.1](#111)
 - [1.1.0](#110)
 - [1.0.4](#104)
@@ -25,6 +26,44 @@
 - [0.10.1](#0101---20170327)
 - [0.10.0](#0100---20170307)
 - [0.9.9 and prior](#099---20170202)
+
+## [1.1.2]
+
+> Released on: 2019/04/24
+
+This is a patch release in the 1.0 series. Being a patch release, it strictly
+contains bugfixes. The are no new features or breaking changes.
+
+## Fixes
+
+- core: address issue where field type "record" nested values reset on update
+  [#4495](https://github.com/Kong/kong/pull/4495)
+- core: correctly manage primary keys of type "foreign"
+  [#4429](https://github.com/Kong/kong/pull/4429)
+- core: declarative config is not parsed on db-mode anymore
+  [#4487](https://github.com/Kong/kong/pull/4487)
+  [#4509](https://github.com/Kong/kong/pull/4509)
+- db-less: Fixed a problem in Kong balancer timing out.
+  [#4534](https://github.com/Kong/kong/pull/4534)
+- db-less: Accept declarative config directly in JSON requests.
+  [#4527](https://github.com/Kong/kong/pull/4527)
+- db-less: do not mis-detect mesh mode
+  [#4498](https://github.com/Kong/kong/pull/4498)
+- db-less: fix crash when field has same name as entity
+  [#4478](https://github.com/Kong/kong/pull/4478)
+- basic-auth: ignore password if nil on basic auth credential patch
+  [#4470](https://github.com/Kong/kong/pull/4470)
+- http-log: Simplify queueing mechanism. Fixed a bug where traces were lost
+  in some cases.
+  [#4510](https://github.com/Kong/kong/pull/4510)
+- request-transformer: validate header values in plugin configuration.
+  Thanks, [@rune-chan](https://github.com/rune-chan)!
+  [#4512](https://github.com/Kong/kong/pull/4512).
+- rate-limiting: added index on rate-limiting metrics.
+  Thanks, [@mvanholsteijn](https://github.com/mvanholsteijn)!
+  [#4486](https://github.com/Kong/kong/pull/4486)
+
+[Back to TOC](#table-of-contents)
 
 ## [1.1.1]
 
@@ -3606,6 +3645,7 @@ First version running with Cassandra.
 
 [Back to TOC](#table-of-contents)
 
+[1.1.2]: https://github.com/Kong/kong/compare/1.1.1...1.1.2
 [1.1.1]: https://github.com/Kong/kong/compare/1.1.0...1.1.1
 [1.1.0]: https://github.com/Kong/kong/compare/1.0.3...1.1.0
 [1.0.3]: https://github.com/Kong/kong/compare/1.0.2...1.0.3

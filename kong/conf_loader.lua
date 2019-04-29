@@ -428,7 +428,7 @@ local function check_and_infer(conf)
 
   -- checking the trusted ips
   for _, address in ipairs(conf.trusted_ips) do
-    if not ip.valid(address) and not address == "unix:" then
+    if not ip.valid(address) and address ~= "unix:" then
       errors[#errors + 1] = "trusted_ips must be a comma separated list in " ..
                             "the form of IPv4 or IPv6 address or CIDR "      ..
                             "block or 'unix:', got '" .. address .. "'"
@@ -562,6 +562,10 @@ local function parse_listeners(values, flags)
   local list = {}
   local usage = "must be of form: [off] | <ip>:<port> [" ..
                 concat(flags, "] [") .. "], [... next entry ...]"
+
+  if #values == 0 then
+    return nil, usage
+  end
 
   if pl_stringx.strip(values[1]) == "off" then
     return list

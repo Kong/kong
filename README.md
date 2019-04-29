@@ -2,6 +2,7 @@
 
 [![Build Status][badge-travis-image]][badge-travis-url]
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://github.com/Kong/kong/blob/master/LICENSE)
+[![Twitter](https://img.shields.io/twitter/follow/thekonginc.svg?style=social&label=Follow)](https://twitter.com/intent/follow?screen_name=thekonginc)
 
 Kong is a cloud-native, fast, scalable, and distributed Microservice
 Abstraction Layer *(also known as an API Gateway, API Middleware or in some
@@ -120,6 +121,11 @@ You can read more about writing your own plugins in the [Plugin Development
 Guide](https://docs.konghq.com/latest/plugin-development/), or browse an
 online version of Kong's source code documentation in the [Plugin Development
 Kit (PDK) Reference](https://docs.konghq.com/latest/pdk/).
+
+#### Docker
+
+You can use Docker / docker-compose and a mounted volume to develop Kong by
+following the instructions on [Kong/kong-build-tools](https://github.com/Kong/kong-build-tools#developing-kong).
 
 #### Vagrant
 

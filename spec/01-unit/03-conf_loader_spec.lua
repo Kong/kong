@@ -475,6 +475,19 @@ describe("Configuration loader", function()
       assert.is_nil(conf)
       assert.equal("proxy_listen must be of form: [off] | <ip>:<port> [ssl] [http2] [proxy_protocol] [transparent], [... next entry ...]", err)
     end)
+    it("rejects empty string in listen addresses", function()
+      local conf, err = conf_loader(nil, {
+        admin_listen = ""
+      })
+      assert.is_nil(conf)
+      assert.equal("admin_listen must be of form: [off] | <ip>:<port> [ssl] [http2] [proxy_protocol] [transparent], [... next entry ...]", err)
+
+      conf, err = conf_loader(nil, {
+        proxy_listen = ""
+      })
+      assert.is_nil(conf)
+      assert.equal("proxy_listen must be of form: [off] | <ip>:<port> [ssl] [http2] [proxy_protocol] [transparent], [... next entry ...]", err)
+    end)
     it("errors when dns_resolver is not a list in ipv4/6[:port] format", function()
       local conf, err = conf_loader(nil, {
         dns_resolver = "1.2.3.4:53;4.3.2.1" -- ; as separator

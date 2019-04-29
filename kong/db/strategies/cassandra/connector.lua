@@ -97,10 +97,10 @@ function CassandraConnector.new(kong_config)
     local dns = dns_tools(kong_config)
 
     for i, cp in ipairs(kong_config.cassandra_contact_points) do
-      local ip, err = dns.toip(cp)
+      local ip, err, try_list = dns.toip(cp)
       if not ip then
-        log.error("could not resolve Cassandra contact point '%s': %s",
-                  cp, err)
+        log.error("[cassandra] DNS resolution failed for contact " ..
+                  "point '%s': %s. Tried: %s", cp, err, tostring(try_list))
 
       else
         log.debug("resolved Cassandra contact point '%s' to: %s", cp, ip)

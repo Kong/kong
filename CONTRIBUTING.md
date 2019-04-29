@@ -646,6 +646,27 @@ local t = { foo = "hello", bar = "world" }
 
 ### Strings
 
+**Do** favor the use of double quotes in all Lua code (plain files and
+`*_by_lua_block` directives):
+
+```lua
+-- bad
+local str = 'hello'
+
+-- good
+local str = "hello"
+```
+
+If a string contains double quotes, **do** favor long bracket strings:
+
+```lua
+-- bad
+local str = "message: \"hello\""
+
+-- good
+local str = [[message: "hello"]]
+```
+
 When using the concatenation operator, **do** insert spaces around it:
 
 ```lua

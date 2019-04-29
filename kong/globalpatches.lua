@@ -280,9 +280,11 @@ return function(options)
 
     local function resolve_connect(f, sock, host, port, opts)
       if sub(host, 1, 5) ~= "unix:" then
-        host, port = toip(host, port)
+        local try_list
+        host, port, try_list = toip(host, port)
         if not host then
-          return nil, "[toip() name lookup failed]: " .. tostring(port)
+          return nil, "[cosocket] DNS resolution failed: " .. tostring(port) ..
+                      ". Tried: " .. tostring(try_list)
         end
       end
 
