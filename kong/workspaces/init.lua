@@ -23,7 +23,6 @@ local ngx_null = ngx.null
 local tostring = tostring
 local inc_counter = counters.inc_counter
 local table_concat = table.concat
-local rawget  = rawget
 local table_remove = table.remove
 
 
