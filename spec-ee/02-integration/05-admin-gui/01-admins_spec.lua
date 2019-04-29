@@ -4,6 +4,7 @@ local enums      = require "kong.enterprise_edition.dao.enums"
 local utils      = require "kong.tools.utils"
 local ee_jwt     = require "kong.enterprise_edition.jwt"
 local ee_helpers = require "spec-ee.helpers"
+local workspaces = require "kong.workspaces"
 local admins_helpers = require "kong.enterprise_edition.admins_helpers"
 local secrets = require "kong.enterprise_edition.consumer_reset_secret_helpers"
 local ee_utils = require "kong.enterprise_edition.utils"
@@ -411,6 +412,28 @@ for _, strategy in helpers.each_strategy() do
             local body = assert.res_status(200, res)
             local json = cjson.decode(body)
             assert.equal(1, #json)
+          end)
+
+          it("retrieves workspaces for an admin outside default", function()
+            local lesser_admin
+            workspaces.run_with_ws_scope({another_ws}, function ()
+              lesser_admin = ee_helpers.create_admin('outside_default@gmail.com',
+                                                     nil, 0, bp, db)
+            end)
+
+            local res = assert(client:send {
+              method = "GET",
+              path = "/admins/" .. lesser_admin.username .. "/workspaces",
+              headers = {
+                ["Kong-Admin-Token"] = "letmein-default",
+                ["Content-Type"]     = "application/json",
+              },
+            })
+
+            local body = assert.res_status(200, res)
+            local json = cjson.decode(body)
+            assert.equal(1, #json)
+            assert.equal(another_ws.name, json[1].name)
           end)
 
           it("returns 404 if admin not found", function()

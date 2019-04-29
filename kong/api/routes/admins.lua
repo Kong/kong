@@ -329,7 +329,10 @@ return {
 
   ["/admins/:admin/workspaces"] = {
     GET = function(self, db, helpers, parent)
-      local res, err = admins.workspaces_for_admin(self.params.admin)
+      -- lookup across all workspaces
+      local res, err = workspaces.run_with_ws_scope({},
+                                                    admins.workspaces_for_admin,
+                                                    self.params.admin)
       if err then
         return endpoints.handle_error(err)
       end

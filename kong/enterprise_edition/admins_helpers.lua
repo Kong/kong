@@ -427,7 +427,8 @@ function _M.find_by_username_or_id(username_or_id, raw)
   -- see if this admin is in this workspace
   if admin then
     local ws, err = kong.db.workspace_entities:select_all({
-      workspace_name = ngx.ctx.workspaces[1].name,
+      -- permit global workspace lookup
+      workspace_name = ngx.ctx.workspaces[1] and ngx.ctx.workspaces[1].name,
       entity_type = "consumers",
       entity_id = admin.consumer.id,
       unique_field_name = "id",
