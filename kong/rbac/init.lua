@@ -621,13 +621,17 @@ local function add_default_role_entity_permission(entity, table_name)
 
   local entity_id = schema.primary_key[1]
 
-  return kong.db.rbac_role_entities:insert({
-    role = default_role,
-    entity_id = entity[entity_id],
-    entity_type = table_name,
-    actions = bitfield_all_actions,
-    negative = false,
-  })
+  local function insert()
+    return kong.db.rbac_role_entities:insert({
+      role = default_role,
+      entity_id = entity[entity_id],
+      entity_type = table_name,
+      actions = bitfield_all_actions,
+      negative = false,
+    })
+  end
+
+  return workspaces.run_with_ws_scope({}, insert)
 end
 _M.add_default_role_entity_permission = add_default_role_entity_permission
 

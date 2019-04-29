@@ -3540,6 +3540,7 @@ for _, strategy in helpers.each_strategy() do
     -- create 2 workspaces
     post("/workspaces", {name = "ws1"})
     post("/workspaces", {name = "ws2"})
+    post("/workspaces", {name = "ws3"})
 
     -- user 'admin' (role ws1ws2-admin) has powers over both
     post("/ws1/rbac/users", {name = "admin", user_token = "ws1ws2-admin"})
@@ -3553,6 +3554,15 @@ for _, strategy in helpers.each_strategy() do
     post("/ws1/rbac/roles" , {name = "ws1-admin"})
     post("/ws1/rbac/roles/ws1-admin/endpoints", {endpoint = "*", actions = "read,create,update,delete", workspace = "ws1"})
     post("/ws1/rbac/users/bob/roles", {roles = "ws1-admin"})
+
+
+    -- user god (all access)
+    post("/ws1/rbac/users", {name = "god", user_token = "god"})
+    post("/ws1/rbac/roles" , {name = "ws1-super-admin"})
+    post("/ws1/rbac/roles/ws1-super-admin/endpoints", {endpoint = "*", actions = "read,create,update,delete", workspace = "*"})
+    post("/ws1/rbac/roles/ws1-super-admin/entities", {entity_id = "*", actions = "*"})
+    post("/ws1/rbac/users/god/roles", {roles = "ws1-super-admin"})
+
 
     helpers.stop_kong()
     assert(helpers.start_kong {
@@ -3592,6 +3602,18 @@ for _, strategy in helpers.each_strategy() do
       workspace = "ws2",
       actions = "read,create,update,delete"},
         {["Kong-Admin-Token"] = "ws1ws2-admin"}, 201)
+  end)
+
+  it("user can add role in another workspace with ws1-super-admin role", function()
+    post("/ws3/rbac/roles", {
+      name = "new-ws3-role"
+    },{["Kong-Admin-Token"] = "god"}, 201)
+  end)
+
+  it("user can't add a new role in another workspace with admin role", function()
+    post("/ws3/rbac/roles", {
+      name = "another-new-ws3-role"
+    },{["Kong-Admin-Token"] = "bob"}, 403)
   end)
 
 end)
