@@ -658,7 +658,9 @@ end
 -- A reusable handler for endpoints that are deactivated
 -- (e.g. /targets/:targets)
 local disable = {
-  before = not_found
+  before = function()
+    return not_found()
+  end
 }
 
 

@@ -52,6 +52,18 @@ describe("Admin API #" .. strategy, function()
     if client then client:close() end
   end)
 
+  describe("/targets", function()
+    it("returns a 404", function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/targets"
+      })
+      assert.response(res).has.status(404)
+      local json = assert.response(res).has.jsonbody()
+      assert.equal("Not found", json.message)
+    end)
+  end)
+
   describe("/upstreams/{upstream}/targets/", function()
     describe("POST", function()
       it_content_types("creates a target with defaults", function(content_type)
