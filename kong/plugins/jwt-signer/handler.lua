@@ -212,7 +212,7 @@ end
 
 local function unauthorized(realm, err, desc, real_error, ...)
   if real_error then
-    log.notice(real_error, ...)
+    log.debug(real_error, ...)
   end
 
   header["WWW-Authenticate"] = fmt('Bearer realm="%s", error="%s", error_description="%s"',
