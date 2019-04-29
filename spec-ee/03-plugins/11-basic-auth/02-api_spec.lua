@@ -706,12 +706,6 @@ for _, strategy in helpers.each_strategy() do
       describe("GET", function()
         setup(function()
           assert(db.basicauth_credentials:insert {
-            consumer = { id = consumer.id, },
-            username = 'consumer1',
-            password = '1',
-          })
-
-          assert(db.basicauth_credentials:insert {
             consumer = { id = admin.id, },
             username = 'admin1',
             password = '2',
@@ -722,7 +716,24 @@ for _, strategy in helpers.each_strategy() do
           db:truncate("basicauth_credentials")
         end)
 
+        it("returns an empty array instead of an empty object", function()
+          local res = assert(admin_client:send {
+            method = "GET",
+            path = "/basic-auths"
+          })
+          local body = assert.res_status(200, res)
+          assert.matches('"data":%[%]', body)
+        end)
+
+
         it("filters for an admin and counts are off", function()
+
+          assert(db.basicauth_credentials:insert {
+            consumer = { id = consumer.id, },
+            username = 'consumer1',
+            password = '1',
+          })
+
           local res = assert(admin_client:send {
             method = "GET",
             path = "/basic-auths"

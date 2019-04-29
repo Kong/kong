@@ -3,6 +3,7 @@ local responses    = require "kong.tools.responses"
 local utils        = require "kong.tools.utils"
 local arguments    = require "kong.api.arguments"
 local app_helpers  = require "lapis.application"
+local cjson        = require "cjson"
 
 
 local escape_uri   = ngx.escape_uri
@@ -192,7 +193,7 @@ local function get_collection_endpoint(schema, foreign_schema, foreign_field_nam
                                      escape_uri(offset)) or null
 
     return helpers.responses.send_HTTP_OK {
-      data   = p_data,
+      data   = setmetatable(p_data, cjson.empty_array_mt),
       offset = offset,
       next   = next_page,
     }
