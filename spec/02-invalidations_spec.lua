@@ -6,9 +6,9 @@ local md5 = ngx.md5
 local ldap_host_aws = "ec2-54-172-82-117.compute-1.amazonaws.com"
 
 local ldap_strategies = {
-  non_secure = { name = "non-secure", port = 389, start_tls = false, ssl = false},
-  ssl = { name = "SSL", port = 636, start_tls = false, ssl = true },
-  start_tls = { name = "StartTLS", port = 389, start_tls = true, ssl = false }
+  non_secure = { name = "non-secure", port = 389, start_tls = false, ldaps = false},
+  ldaps = { name = "ldaps", port = 636, start_tls = false, ldaps = true },
+  start_tls = { name = "starttls", port = 389, start_tls = true, ldaps = false }
 }
 
 for _, ldap_strategy in pairs(ldap_strategies) do
@@ -34,7 +34,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
               ldap_host = ldap_host_aws,
               ldap_port = ldap_strategy.port,
               start_tls = ldap_strategy.start_tls,
-              ssl       = ldap_strategy.ssl, 
+              ldaps     = ldap_strategy.ldaps, 
               base_dn   = "ou=scientists,dc=ldap,dc=mashape,dc=com",
               attribute = "uid",
               cache_ttl = 1,

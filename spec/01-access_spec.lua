@@ -23,9 +23,9 @@ end
 local ldap_host_aws = "ec2-54-172-82-117.compute-1.amazonaws.com"
 
 local ldap_strategies = {
-  non_secure = { name = "non-secure", port = 389, start_tls = false, ssl = false},
-  ssl = { name = "SSL", port = 636, start_tls = false, ssl = true },
-  start_tls = { name = "StartTLS", port = 389, start_tls = true, ssl = false }
+  non_secure = { name = "non-secure", port = 389, start_tls = false, ldaps = false},
+  ldaps = { name = "ldaps", port = 636, start_tls = false, ldaps = true },
+  start_tls = { name = "starttls", port = 389, start_tls = true, ldaps = false }
 }
 
 for _, strategy in helpers.each_strategy() do
@@ -195,7 +195,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
               ldap_host = ldap_host_aws,
               ldap_port = ldap_strategy.port,
               start_tls = ldap_strategy.start_tls,
-              ssl       = ldap_strategy.ssl,
+              ldaps     = ldap_strategy.ldaps,
               base_dn   = "ou=scientists,dc=ldap,dc=mashape,dc=com",
               attribute = "uid"
             }
@@ -209,7 +209,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
               ldap_host        = ldap_host_aws,
               ldap_port        = ldap_strategy.port,
               start_tls        = ldap_strategy.start_tls,
-              ssl              = ldap_strategy.ssl,
+              ldaps            = ldap_strategy.ldaps,
               base_dn          = "ou=scientists,dc=ldap,dc=mashape,dc=com",
               attribute        = "uid",
               hide_credentials = true,
@@ -225,7 +225,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
               ldap_host = ldap_host_aws,
               ldap_port = ldap_strategy.port,
               start_tls = ldap_strategy.start_tls,
-              ssl       = ldap_strategy.ssl,
+              ldaps     = ldap_strategy.ldaps,
               base_dn   = "ou=scientists,dc=ldap,dc=mashape,dc=com",
               attribute = "uid",
               anonymous = anonymous_user.id,
@@ -240,7 +240,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
               ldap_host = "ec2-54-210-29-167.compute-1.amazonaws.com",
               ldap_port = ldap_strategy.port,
               start_tls = ldap_strategy.start_tls,
-              ssl       = ldap_strategy.ssl,
+              ldaps     = ldap_strategy.ldaps,
               base_dn   = "ou=scientists,dc=ldap,dc=mashape,dc=com",
               attribute = "uid",
               cache_ttl = 2,
@@ -256,7 +256,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
               ldap_host = ldap_host_aws,
               ldap_port = ldap_strategy.port,
               start_tls = ldap_strategy.start_tls,
-              ssl       = ldap_strategy.ssl,
+              ldaps     = ldap_strategy.ldaps,
               base_dn   = "ou=scientists,dc=ldap,dc=mashape,dc=com",
               attribute = "uid",
               header_type = "basic",
@@ -271,7 +271,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
               ldap_host = ldap_host_aws,
               ldap_port = ldap_strategy.port,
               start_tls = ldap_strategy.start_tls,
-              ssl       = ldap_strategy.ssl,
+              ldaps     = ldap_strategy.ldaps,
               base_dn   = "ou=scientists,dc=ldap,dc=mashape,dc=com",
               attribute = "uid"
             }
@@ -286,7 +286,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
               ldap_password     = "password",
               ldap_port         = ldap_strategy.port,
               start_tls         = ldap_strategy.start_tls,
-              ssl               = ldap_strategy.ssl,
+              ldaps             = ldap_strategy.ldaps,
               bind_dn           = "uid=einstein,ou=scientists,dc=ldap,dc=mashape,dc=com",
               base_dn           = "dc=ldap,dc=mashape,dc=com",
               attribute         = "uid",
@@ -304,7 +304,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
               ldap_password     = "password",
               ldap_port         = ldap_strategy.port,
               start_tls         = ldap_strategy.start_tls,
-              ssl               = ldap_strategy.ssl,
+              ldaps             = ldap_strategy.ldaps,
               bind_dn           = "uid=einstein,ou=scientists,dc=ldap,dc=mashape,dc=com",
               base_dn           = "dc=ldap,dc=mashape,dc=com",
               attribute         = "cn",
@@ -723,7 +723,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
               ldap_host = ldap_host_aws,
               ldap_port = ldap_strategy.port,
               start_tls = ldap_strategy.start_tls,
-              ssl       = ldap_strategy.ssl,
+              ldaps     = ldap_strategy.ldaps,
               base_dn   = "ou=scientists,dc=ldap,dc=mashape,dc=com",
               attribute = "uid",
             },
@@ -759,7 +759,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
               ldap_host = ldap_host_aws,
               ldap_port = ldap_strategy.port,
               start_tls = ldap_strategy.start_tls,
-              ssl       = ldap_strategy.ssl,
+              ldaps     = ldap_strategy.ldaps,
               base_dn   = "ou=scientists,dc=ldap,dc=mashape,dc=com",
               attribute = "uid",
               anonymous = anonymous.id,
@@ -988,7 +988,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
               ldap_host = ldap_host_aws,
               ldap_port = ldap_strategy.port,
               start_tls = ldap_strategy.start_tls,
-              ssl       = ldap_strategy.ssl,
+              ldaps     = ldap_strategy.ldaps,
               base_dn   = "ou=scientists,dc=ldap,dc=mashape,dc=com",
               attribute = "uid"
             }
@@ -1001,7 +1001,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
               ldap_host = ldap_host_aws,
               ldap_port = ldap_strategy.port,
               start_tls = ldap_strategy.start_tls,
-              ssl       = ldap_strategy.ssl,
+              ldaps     = ldap_strategy.ldaps,
               consumer_by = { "username" },
               base_dn   = "ou=scientists,dc=ldap,dc=mashape,dc=com",
               attribute = "uid",
@@ -1015,7 +1015,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
               ldap_host = ldap_host_aws,
               ldap_port = ldap_strategy.port,
               start_tls = ldap_strategy.start_tls,
-              ssl       = ldap_strategy.ssl,
+              ldaps     = ldap_strategy.ldaps,
               consumer_by = { "custom_id" },
               base_dn   = "ou=scientists,dc=ldap,dc=mashape,dc=com",
               attribute = "uid",
@@ -1030,7 +1030,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
               ldap_host = ldap_host_aws,
               ldap_port = ldap_strategy.port,
               start_tls = ldap_strategy.start_tls,
-              ssl       = ldap_strategy.ssl,
+              ldaps     = ldap_strategy.ldaps,
               base_dn   = "ou=scientists,dc=ldap,dc=mashape,dc=com",
               attribute = "uid",
               anonymous = anonymous_consumer.id
@@ -1045,7 +1045,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
               ldap_password     = "password",
               ldap_port         = ldap_strategy.port,
               start_tls         = ldap_strategy.start_tls,
-              ssl               = ldap_strategy.ssl,
+              ldaps             = ldap_strategy.ldaps,
               bind_dn           = "uid=einstein,ou=scientists,dc=ldap,dc=mashape,dc=com",
               base_dn           = "dc=ldap,dc=mashape,dc=com",
               consumer_by       = { "custom_id" },
@@ -1063,7 +1063,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
               ldap_password     = "password",
               ldap_port         = ldap_strategy.port,
               start_tls         = ldap_strategy.start_tls,
-              ssl               = ldap_strategy.ssl,
+              ldaps             = ldap_strategy.ldaps,
               bind_dn           = "uid=einstein,ou=scientists,dc=ldap,dc=mashape,dc=com",
               base_dn           = "dc=ldap,dc=mashape,dc=com",
               consumer_by       = { "username" },
@@ -1081,7 +1081,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
               ldap_password     = "password",
               ldap_port         = ldap_strategy.port,
               start_tls         = ldap_strategy.start_tls,
-              ssl               = ldap_strategy.ssl,
+              ldaps             = ldap_strategy.ldaps,
               bind_dn           = "something=is,wrong=com",
               base_dn           = "dc=ldap,dc=mashape,dc=com",
               consumer_by       = { "username" },
