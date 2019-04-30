@@ -19,11 +19,7 @@ local function drop_vitals_seconds_tables(db)
 end
 
 
-for _, strategy in helpers.each_strategy() do
-  if strategy == "cassandra" then
-    return
-  end
-
+for _, strategy in helpers.each_strategy({"postgres"}) do
   describe("Postgres table_rotater", function()
     local rotater
     local db, _

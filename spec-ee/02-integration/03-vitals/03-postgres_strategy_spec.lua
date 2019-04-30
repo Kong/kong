@@ -5,12 +5,7 @@ local fmt         = string.format
 local time        = ngx.time
 
 
-for _, strategy in helpers.each_strategy() do
-  if strategy == "cassandra" then
-    return
-  end
-
-
+for _, strategy in helpers.each_strategy({"postgres"}) do
   describe("Postgres strategy", function()
     local strategy
     local db

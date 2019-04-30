@@ -6,12 +6,7 @@ local function window_floor(size, time)
   return math.floor(time / size) * size
 end
 
-for _, strategy in helpers.each_strategy() do
-
-  if strategy == "cassandra" then
-    return
-  end
-
+for _, strategy in helpers.each_strategy({"postgres"}) do
   describe("rate-limiting: Postgres strategy", function()
     local strategy
     local db

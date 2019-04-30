@@ -6,12 +6,7 @@ local time = ngx.time
 local cassandra = require "cassandra"
 
 
-for _, strategy in helpers.each_strategy() do
-  if strategy == "postgres" then
-    return
-  end
-
-
+for _, strategy in helpers.each_strategy({"cassandra"}) do
   describe("Cassandra strategy", function()
     local strategy
     local cluster
