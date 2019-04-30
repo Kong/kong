@@ -676,11 +676,20 @@ local function generate_foreign_key_methods(schema)
           return nil, tostring(err_t), err_t
         end
 
-        -- XXX workspaces
+        -- delete workspace_entities entries for the entity being deleted
         local err = workspaces.delete_entity_relation(self.schema.name, entity)
         if err then
           return nil, self.errors:database_error("could not delete Route relationship " ..
           "with Workspace: " .. err)
+        end
+
+        -- delete workspace_entities entries for all cascade entries
+        for _, entry in ipairs(cascade_entries) do
+          err = workspaces.delete_entity_relation(entry.dao.schema.name, entry.entity)
+          if err then
+            local msg = "Could not delete cascade relationship with workspaces: "
+            return nil, self.errors:database_error(msg .. err)
+          end
         end
 
         err = rbac.delete_role_entity_permission("routes", entity)
@@ -1270,11 +1279,20 @@ function DAO:delete(primary_key, options)
     return nil, tostring(err_t), err_t
   end
 
-  -- XXX workspaces
+  -- delete workspace_entities entries for the entity being deleted
   local err = workspaces.delete_entity_relation(self.schema.name, entity)
   if err then
     return nil, self.errors:database_error(
       "could not delete Route relationship with Workspace: " .. err)
+  end
+
+  -- delete workspace_entities entries for all cascade entries
+  for _, entry in ipairs(cascade_entries) do
+    err = workspaces.delete_entity_relation(entry.dao.schema.name, entry.entity)
+    if err then
+      local msg = "Could not delete cascade relationship with workspaces: "
+      return nil, self.errors:database_error(msg .. err)
+    end
   end
 
   err = rbac.delete_role_entity_permission(self.schema.name, entity)
