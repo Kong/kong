@@ -2,6 +2,7 @@ local cjson       = require "cjson"
 local Errors      = require "kong.db.errors"
 local workspaces  = require "kong.workspaces"
 local singletons  = require "kong.singletons"
+local app_helpers = require "lapis.app
 local endpoints   = require "kong.api.endpoints"
 local enums       = require "kong.enterprise_edition.dao.enums"
 local files       = require "kong.portal.migrations.01_initial_files"

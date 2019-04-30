@@ -6,6 +6,9 @@ local tracing      = require "kong.tracing"
 local tostring = tostring
 local ipairs   = ipairs
 
+local tostring = tostring
+local ipairs   = ipairs
+
 
 -- Loads a plugin config from the datastore.
 -- @return plugin config table or an empty sentinel table in case of a db-miss
