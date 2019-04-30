@@ -134,7 +134,7 @@ function _M:get(key, opts, cb, ...)
   kong.vitals:cache_accessed(hit_lvl, key, v)
   reports.report_cached_entity(v)
 
-  return v
+  return v, nil, hit_lvl
 end
 
 

@@ -23,12 +23,20 @@ local function load_plugin_into_memory_ws(ctx, key)
   local ws_scope = ctx.workspaces or {}
 
   -- when there is no workspace, like in phase rewrite
-  local plugin, err
-  if not ws_scope or #ws_scope == 0 then
-    plugin, err  = kong.cache:get(key,
-                                  nil,
-                                  load_plugin_into_memory,
-                                  key)
+  local plugin, err, hit_level = kong.cache:get(key,
+                                                nil,
+                                                load_plugin_into_memory,
+                                                key)
+
+  if err then
+    return nil, err
+  end
+
+  if not plugin and hit_level < 3 then
+    return plugin
+  end
+
+  if #ws_scope == 0 then
     return plugin, err
   end
 
@@ -38,22 +46,28 @@ local function load_plugin_into_memory_ws(ctx, key)
 
     plugin = singletons.cache.mlcache.lru:get(plugin_cache_key)
     if plugin then
-      return plugin
-    end
-
-    local ttl
-    ttl, err, plugin = singletons.cache:probe(plugin_cache_key)
-    if err then
-      return nil, err
-    end
-
-    singletons.cache.mlcache.lru:set(plugin_cache_key, plugin)
-
-    if ttl then
       found = true
 
-      if plugin then
+      if plugin.enabled then -- using .enabled as a sentinel for existence
         return plugin
+      end
+    end
+
+    if not plugin then
+      local ttl
+      ttl, err, plugin = singletons.cache:probe(plugin_cache_key)
+      if err then
+        return nil, err
+      end
+
+      singletons.cache.mlcache.lru:set(plugin_cache_key, plugin)
+
+      if ttl then
+        found = true
+
+        if plugin and plugin.enabled then
+          return plugin
+        end
       end
     end
   end
