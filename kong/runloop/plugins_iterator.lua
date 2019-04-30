@@ -87,7 +87,7 @@ local function load_plugin_into_memory_ws(ctx, key)
 
   -- plugin is negative cached
   if found then
-    return plugin
+     return plugin
   end
 
   -- if we got here, no L1 or L2 entry was found in any workspace, so attempt to
@@ -103,8 +103,6 @@ local function load_plugin_into_memory_ws(ctx, key)
     local to_be_cached
     if plugin and ws.id == plugin.workspace_id then
       to_be_cached = plugin
-      found = true -- signal fetched plugin is part of a workspace in the context
-                   -- so it can be used for the current request
     end
 
     local _, err = kong.cache:get(plugin_cache_key, nil, function ()
@@ -115,7 +113,7 @@ local function load_plugin_into_memory_ws(ctx, key)
     end
   end
 
-  return found and plugin
+  return plugin
 end
 
 
