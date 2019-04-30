@@ -11,28 +11,28 @@ describe("ldap auth advanced schema", function()
     assert.is_nil(err)
   end)
 
-  it("should fail with both config.ssl and config.start_tls options enabled", function()
+  it("should fail with both config.ldaps and config.start_tls options enabled", function()
     local ok, err = validate_entity({ base_dn = "ou=scientists,dc=ldap,dc=mashape,dc=com", attribute = "uuid",
-                                      ldap_host = "host", ssl = true, start_tls = true }, ldap_schema)
+                                      ldap_host = "host", ldaps = true, start_tls = true }, ldap_schema)
 
     local expected = {
-      "SSL and StartTLS cannot be enabled simultaneously."
+      "ldaps and StartTLS cannot be enabled simultaneously."
     }
     assert.is_falsy(ok)
     assert.is_same(expected, err["@entity"])
   end)
 
-  it("should pass with parameters config.ssl enabled and config.start_tls disbled", function()
+  it("should pass with parameters config.ldaps enabled and config.start_tls disbled", function()
     local ok, err = validate_entity({ base_dn = "ou=scientists,dc=ldap,dc=mashape,dc=com", attribute = "uuid",
-                                      ldap_host = "host", ssl = true, start_tls = false }, ldap_schema)
+                                      ldap_host = "host", ldaps = true, start_tls = false }, ldap_schema)
 
     assert.is_truthy(ok)
     assert.is_nil(err)
   end)
 
-  it("should pass with parameters config.ssl disabled and config.start_tls enabled", function()
+  it("should pass with parameters config.ldaps disabled and config.start_tls enabled", function()
     local ok, err = validate_entity({ base_dn = "ou=scientists,dc=ldap,dc=mashape,dc=com", attribute = "uuid",
-                                      ldap_host = "host", ssl = false, start_tls = true }, ldap_schema)
+                                      ldap_host = "host", ldaps = false, start_tls = true }, ldap_schema)
 
     assert.is_truthy(ok)
     assert.is_nil(err)

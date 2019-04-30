@@ -10,12 +10,12 @@ local function check_user(anonymous)
   return false, "the anonymous user must be empty or a valid uuid"
 end
 
-local function check_ssl_tls(entity)
-  local ssl = entity.config.ssl
+local function check_ldaps_tls(entity)
+  local ldaps = entity.config.ldaps
   local start_tls = entity.config.start_tls
 
-  if ssl and start_tls then
-    return nil, "SSL and StartTLS cannot be enabled simultaneously."
+  if ldaps and start_tls then
+    return nil, "ldaps and StartTLS cannot be enabled simultaneously."
   end
   return true
 end
@@ -43,7 +43,7 @@ return {
         { bind_dn = {
           type = "string"
         }},
-        { ssl = {
+        { ldaps = {
           type = "boolean",
           required = true,
           default = false
@@ -110,7 +110,7 @@ return {
   entity_checks = {
     { custom_entity_check = {
       field_sources = { "config" },
-      fn = check_ssl_tls
+      fn = check_ldaps_tls
     }}
   }
 }

@@ -65,7 +65,7 @@ local function ldap_authenticate(given_username, given_password, conf)
     return nil, err
   end
 
-  if conf.ssl or conf.start_tls then
+  if conf.ldaps or conf.start_tls then
     -- convert connection to a StarTLS connection only if it is a new connection
     if conf.start_tls and sock:getreusedtimes() == 0 then
       local success, err = ldap.start_tls(sock)
