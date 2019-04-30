@@ -40,16 +40,6 @@ local PARAM_TYPES_ALL = {
 }
 
 
-local ee_enums
-do
-  local ok
-  ok, ee_enums = pcall(require, "kong.enterprise_edition.dao.enums")
-  if not ok then
-    ee_enums = nil
-  end
-end
-
-
 local function unexpected(trusted_client, ...)
   log.err(...)
 
@@ -2454,19 +2444,6 @@ function OICHandler:access(conf)
     end
   end
 
-  -- check if the dev portal consumer is not approved
-  if ee_enums then
-    if consumer and consumer.status ~= ee_enums.CONSUMERS.STATUS.APPROVED and
-                    consumer.type   == ee_enums.CONSUMERS.TYPE.DEVELOPER then
-      return forbidden(ctx,
-                       iss,
-                       forbidden_error_message,
-                       "consumer is not an authorized and approved developer",
-                       session,
-                       anonymous,
-                       trusted_client)
-    end
-  end
   -- setting consumer context and headers
   set_consumer(ctx, consumer, credential)
 
