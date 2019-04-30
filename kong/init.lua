@@ -79,6 +79,7 @@ local concurrency = require "kong.concurrency"
 local plugins_iterator = require "kong.runloop.plugins_iterator"
 local balancer_execute = require("kong.runloop.balancer").execute
 local kong_error_handlers = require "kong.error_handlers"
+local BasePlugin   = require "kong.plugins.base_plugin"
 
 local kong             = kong
 local ngx              = ngx
@@ -137,6 +138,24 @@ local function build_new_plugins(version)
     combos = {},
   }
 
+  if subsystem == "stream" then
+    new_plugins.phases = {
+      init_worker = {},
+      preread     = {},
+      log         = {},
+    }
+
+  else
+    new_plugins.phases = {
+      init_worker   = {},
+      certificate   = {},
+      rewrite       = {},
+      access        = {},
+      header_filter = {},
+      body_filter   = {},
+      log           = {},
+    }
+  end
 
   for plugin, err in kong.db.plugins:each(1000) do
     if err then
@@ -154,6 +173,21 @@ local function build_new_plugins(version)
 
       new_plugins.combos[plugin.name] = new_plugins.combos[plugin.name] or {}
       new_plugins.combos[plugin.name][combo_key] = true
+    end
+  end
+
+  for _, plugin in ipairs(loaded_plugins) do
+    if new_plugins.combos[plugin.name] then
+      for phase_name, phase in pairs(new_plugins.phases) do
+        if plugin.handler[phase_name] ~= BasePlugin[phase_name] then
+          phase[plugin.name] = true
+        end
+      end
+
+    else
+      if plugin.handler.init_worker ~= BasePlugin.init_worker then
+        new_plugins.phases.init_worker[plugin.name] = true
+      end
     end
   end
 
@@ -200,13 +234,17 @@ end
 
 
 local function execute_plugins(ctx, phase)
+  local phase_plugins = plugins.phases[phase]
+
   for plugin, configuration in plugins_iterator(ctx, phase, plugins) do
-    kong_global.set_named_ctx(kong, "plugin", configuration)
-    kong_global.set_namespaced_log(kong, plugin.name)
+    if phase_plugins[plugin.name] then
+      kong_global.set_named_ctx(kong, "plugin", configuration)
+      kong_global.set_namespaced_log(kong, plugin.name)
 
-    plugin.handler[phase](plugin.handler, configuration)
+      plugin.handler[phase](plugin.handler, configuration)
 
-    kong_global.reset_log(kong)
+      kong_global.reset_log(kong)
+    end
   end
 end
 
@@ -573,10 +611,13 @@ function Kong.init_worker()
 
   -- run plugins init_worker context
   update_plugins()
+  local phase_plugins = plugins.phases.init_worker
   for _, plugin in ipairs(plugins.loaded) do
-    kong_global.set_namespaced_log(kong, plugin.name)
-    plugin.handler:init_worker()
-    kong_global.reset_log(kong)
+    if phase_plugins[plugin.name] then
+      kong_global.set_namespaced_log(kong, plugin.name)
+      plugin.handler:init_worker()
+      kong_global.reset_log(kong)
+    end
   end
 end
 
@@ -724,8 +765,9 @@ function Kong.access()
   ctx.delay_response = true
 
   update_plugins()
+  local phase_plugins = plugins.phases.access
   for plugin, plugin_conf in plugins_iterator(ctx, "access", plugins) do
-    if not ctx.delayed_response then
+    if not ctx.delayed_response and phase_plugins[plugin.name] then
       kong_global.set_named_ctx(kong, "plugin", plugin_conf)
       kong_global.set_namespaced_log(kong, plugin.name)
 
