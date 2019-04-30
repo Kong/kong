@@ -22,7 +22,7 @@ end
 local function load_plugin_into_memory_ws(ctx, key)
   local ws_scope = ctx.workspaces or {}
 
-  -- when there is no workspace, like in phase rewrite
+  -- query with "global cache key" - no workspace attached to it
   local plugin, err, hit_level = kong.cache:get(key,
                                                 nil,
                                                 load_plugin_into_memory,
@@ -32,27 +32,37 @@ local function load_plugin_into_memory_ws(ctx, key)
     return nil, err
   end
 
+  -- if plugin is nil and hit_level is 1 or 2, it means the value came
+  -- from L1 or L2 cache, so it's was negative cached
   if not plugin and hit_level < 3 then
     return plugin
   end
 
+  -- if the workspace scope is empty, the following logic is not relevant -
+  -- return
   if #ws_scope == 0 then
     return plugin, err
   end
 
   local found
+
+  -- iterate for all workspaces in the context; if a plugin is found for some of
+  -- them, return it; otherwise, cache a negative entry
   for _, ws in ipairs(ws_scope) do
     local plugin_cache_key = key .. ws.id
 
+    -- attempt finding the plugin in the L1 (LRU) cache
     plugin = singletons.cache.mlcache.lru:get(plugin_cache_key)
     if plugin then
       found = true
 
-      if plugin.enabled then -- using .enabled as a sentinel for existence
-        return plugin
+      if plugin.enabled then -- using .enabled as a sentinel for positive cache -
+        return plugin        -- if it was a negative cache, such field would not
+                             -- be there
       end
     end
 
+    -- if plugin is nil, that means it wasn't found so far, so do an L2 (shm) lookup
     if not plugin then
       local ttl
       ttl, err, plugin = singletons.cache:probe(plugin_cache_key)
@@ -60,12 +70,15 @@ local function load_plugin_into_memory_ws(ctx, key)
         return nil, err
       end
 
+      -- :set causes the value to be written back to L1, so subsequent requests
+      -- will find a cached entry there (positive or negative)
       singletons.cache.mlcache.lru:set(plugin_cache_key, plugin)
 
-      if ttl then
+      if ttl then -- ttl means a cached value was found (positive or negative)
         found = true
 
-        if plugin and plugin.enabled then
+        if plugin and plugin.enabled then -- if positive, return (again, using
+                                          -- `.enabled` as a sentinel)
           return plugin
         end
       end
@@ -77,11 +90,13 @@ local function load_plugin_into_memory_ws(ctx, key)
     return plugin
   end
 
-  -- load plugin, here workspace scope can contain more than one workspace
-  -- depending on with how many workspace, api being shared
+  -- if we got here, no L1 or L2 entry was found in any workspace, so attempt to
+  -- load a plugin into memory - by querying the database
   plugin = load_plugin_into_memory(key)
 
-  -- add positive and negative cache
+  -- iterate over the workspace scope, adding a positive entry (for the workspace
+  -- the plugin belongs to) and negative entries for workspaces the plugin doesn't
+  -- belong to
   for _, ws in ipairs(ws_scope) do
     local plugin_cache_key = key .. ws.id
 
