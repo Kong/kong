@@ -35,17 +35,17 @@ end
 
 for _, strategy in helpers.each_strategy() do
 
-if strategy == 'cassandra' then
-  return
-end
-
 describe("Admin API - Developer Portal - " .. strategy, function()
   local client, portal_api_client
   local db, dao
 
-  lazy_setup(function()
-    _, db, dao = helpers.get_db_utils(strategy)
+  _, db, dao = helpers.get_db_utils(strategy)
+  -- do not run tests for cassandra < 3
+  if strategy == "cassandra" and db.connector.major_version < 3 then
+    return
+  end
 
+  lazy_setup(function()
     singletons.configuration = {
       portal_auth = "basic-auth",
     }

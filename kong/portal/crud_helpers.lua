@@ -2,10 +2,14 @@ local cjson       = require "cjson"
 local Errors      = require "kong.db.errors"
 local workspaces  = require "kong.workspaces"
 local singletons  = require "kong.singletons"
-local app_helpers = require "lapis.application"
 local endpoints   = require "kong.api.endpoints"
 local enums       = require "kong.enterprise_edition.dao.enums"
 local files       = require "kong.portal.migrations.01_initial_files"
+
+
+local kong = kong
+local type = type
+
 
 local _M = {}
 
@@ -96,11 +100,23 @@ end
 
 
 local function find_login_credentials(db, consumer_pk)
-  local creds = {}
-  local login_creds = db.credentials:select_all({ consumer = { id = consumer_pk } })
-  for i, v in ipairs(login_creds) do
-    if v.consumer_type == enums.CONSUMERS.TYPE.DEVELOPER then
-      table.insert(creds, v.credential_data)
+  local creds = setmetatable({}, cjson.empty_array_mt)
+
+  for row, err in db.credentials:each_for_consumer({id = consumer_pk}) do
+    if err then
+      return nil, err
+    end
+
+    if row.consumer_type == enums.CONSUMERS.TYPE.DEVELOPER then
+      local cred_data = row.credential_data
+      if type(cred_data) == "string" then
+        cred_data, err = cjson.decode(cred_data)
+        if err then
+          return nil, err
+        end
+      end
+
+      table.insert(creds, cred_data)
     end
   end
 
@@ -120,21 +136,25 @@ end
 
 
 function _M.get_credential(self, db, helpers, opts)
-  local login_credentials = find_login_credentials(db, self.developer.consumer.id)
+  local login_credentials, err = find_login_credentials(db, self.developer.consumer.id)
+  if err then
+    return endpoints.handle_error(err)
+  end
+
   local credential, _, err_t = self.credential_collection:select({ id = self.params.credential_id })
   if err_t then
-    return helpers.handle_error(err_t)
+    return endpoints.handle_error(err_t)
   end
 
   if not credential then
-    helpers.responses.send_HTTP_NOT_FOUND()
+    return kong.response.exit(404, { message = "Not found" })
   end
 
   if is_login_credential(login_credentials, credential) then
-    return helpers.responses.send_HTTP_NOT_FOUND()
+    return kong.response.exit(404, { message = "Not found" })
   end
 
-  return helpers.responses.send_HTTP_OK(credential)
+  return kong.response.exit(200, credential)
 end
 
 
@@ -147,7 +167,7 @@ function _M.create_credential(self, db, helpers, opts)
     return endpoints.handle_error(err_t)
   end
 
-  return helpers.responses.send_HTTP_OK(credential)
+  return kong.response.exit(200, credential)
 end
 
 
@@ -156,14 +176,18 @@ function _M.update_credential(self, db, helpers, opts)
   self.params.plugin = nil
   self.params.credential_id = nil
 
-  local login_credentials = find_login_credentials(db, self.developer.consumer.id)
+  local login_credentials, err = find_login_credentials(db, self.developer.consumer.id)
+  if err then
+    return endpoints.handle_error(err)
+  end
+
   local credential, _, err_t = self.credential_collection:select({ id = cred_id })
   if not credential then
     return endpoints.handle_error(err_t)
   end
 
   if is_login_credential(login_credentials, credential) then
-    return helpers.responses.send_HTTP_NOT_FOUND()
+    return kong.response.exit(404, { message = "Not found" })
   end
 
   credential, _, err_t = self.credential_collection:update({ id = cred_id }, self.params)
@@ -171,7 +195,7 @@ function _M.update_credential(self, db, helpers, opts)
     return endpoints.handle_error(err_t)
   end
 
-  return helpers.responses.send_HTTP_OK(credential)
+  return kong.response.exit(200, credential)
 end
 
 
@@ -180,14 +204,18 @@ function _M.delete_credential(self, db, helpers, opts)
   self.params.plugin = nil
   self.params.credential_id = nil
 
-  local login_credentials = find_login_credentials(db, self.developer.consumer.id)
+  local login_credentials, err = find_login_credentials(db, self.developer.consumer.id)
+  if err then
+    return endpoints.handle_error(err)
+  end
+
   local credential, _, err_t = self.credential_collection:select({ id = cred_id })
   if not credential then
     return endpoints.handle_error(err_t)
   end
 
   if is_login_credential(login_credentials, credential) then
-    return helpers.responses.send_HTTP_NOT_FOUND()
+    return kong.response.exit(404, { message = "Not found" })
   end
 
   local ok, _, err_t = self.credential_collection:delete({id = cred_id })
@@ -195,13 +223,16 @@ function _M.delete_credential(self, db, helpers, opts)
     return endpoints.handle_error(err_t)
   end
 
-  return helpers.responses.send_HTTP_NO_CONTENT()
+  return kong.response.exit(204)
 end
 
 
 function _M.get_credentials(self, db, helpers, opts)
   local credentials = setmetatable({}, cjson.empty_array_mt)
-  local login_credentials = find_login_credentials(db, self.developer.consumer.id)
+  local login_credentials, err = find_login_credentials(db, self.developer.consumer.id)
+  if err then
+    return endpoints.handle_error(err)
+  end
 
   for row, err in self.credential_collection:each_for_consumer({ id = self.developer.consumer.id }, opts) do
     if err then
@@ -213,7 +244,7 @@ function _M.get_credentials(self, db, helpers, opts)
     end
   end
 
-  return helpers.responses.send_HTTP_OK(count_entities(credentials))
+  return kong.response.exit(200, count_entities(credentials))
 end
 
 
@@ -228,14 +259,14 @@ function _M.update_login_credential(collection, cred_pk, entity)
     return nil
   end
 
-  local _, err = singletons.db.credentials:update(
+  local _, err, err_t = singletons.db.credentials:update(
     { id = credential.id },
     { credential_data = cjson.encode(credential), },
     { skip_rbac = true }
   )
 
   if err then
-    return app_helpers.yield_error(err)
+    return endpoints.handle_error(err_t)
   end
 
   return credential

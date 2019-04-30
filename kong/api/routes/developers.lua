@@ -3,8 +3,11 @@ local utils        = require "kong.tools.utils"
 local endpoints    = require "kong.api.endpoints"
 local workspaces   = require "kong.workspaces"
 local portal_smtp_client = require "kong.portal.emails"
-local crud_helpers       = require "kong.portal.crud_helpers"
-local enums              = require "kong.enterprise_edition.dao.enums"
+local crud_helpers = require "kong.portal.crud_helpers"
+local enums = require "kong.enterprise_edition.dao.enums"
+local cjson = require "cjson"
+
+local kong = kong
 
 local unescape_uri = ngx.unescape_uri
 local ws_constants = constants.WORKSPACE_CONFIG
@@ -23,7 +26,7 @@ local function validate_credential_plugin(self, db, helpers)
 
   self.credential_plugin = auth_plugins[plugin_name]
   if not self.credential_plugin then
-    return helpers.responses.send_HTTP_NOT_FOUND()
+    return kong.response.exit(404, { message = "Not found" })
   end
 
   self.credential_collection = db.daos[self.credential_plugin.dao]
@@ -85,7 +88,7 @@ return {
         return endpoints.handle_error(err_t)
       end
 
-      return helpers.responses.send_HTTP_OK(paginated_results)
+      return kong.response.exit(200, paginated_results)
     end,
 
     POST = function(self, db, helpers)
@@ -98,7 +101,7 @@ return {
         return endpoints.handle_error(err_t)
       end
 
-      return helpers.responses.send_HTTP_OK(developer)
+      return kong.response.exit(200, developer)
     end,
   },
 
@@ -110,7 +113,7 @@ return {
       -- save previous status
       local developer = find_developer(db, developer_pk)
       if not developer then
-        return helpers.responses.send_HTTP_NOT_FOUND()
+        return kong.response.exit(404, { message = "Not found" })
       end
 
       local previous_status = developer.status
@@ -129,16 +132,17 @@ return {
         local email_res, err = portal_emails:approved(developer.email)
         if err then
           if err.code then
+            -- TODO DEVX update this to use endpoints.handle_error
             return helpers.responses.send(err.code, {message = err.message})
           end
 
-          return helpers.yield_error(err)
+          return endpoints.handle_error(err)
         end
 
         res.email = email_res
       end
 
-      return helpers.responses.send_HTTP_OK(res)
+      return kong.response.exit(200, res)
     end,
   },
 
@@ -147,22 +151,27 @@ return {
     GET = function(self, db, helpers)
       local developer = find_developer(db, self.params.email_or_id)
       if not developer then
-        return helpers.responses.send_HTTP_NOT_FOUND()
+        return kong.response.exit(404, { message = "Not found" })
       end
 
       local consumer = developer.consumer
-      local plugins, err, err_t = db.plugins:select_all({ consumer = consumer })
-      if err then
-        return endpoints.handle_error(err_t)
+      local plugins = setmetatable({}, cjson.empty_array_mt)
+
+      for row, err in db.plugins:each_for_consumer({id = consumer.id}) do
+        if err then
+          return endpoints.handle_error(err)
+        end
+
+        table.insert(plugins, row)
       end
 
-      helpers.responses.send_HTTP_OK(plugins)
+      return kong.response.exit(200, plugins)
     end,
 
     POST = function(self, db, helpers)
       local developer = find_developer(db, self.params.email_or_id)
       if not developer then
-        return helpers.responses.send_HTTP_NOT_FOUND()
+        return kong.response.exit(404, { message = "Not found" })
       end
 
       self.params.email_or_id = nil
@@ -173,96 +182,82 @@ return {
         return endpoints.handle_error(err_t)
       end
 
-      return helpers.responses.send_HTTP_CREATED(ok)
+      return kong.response.exit(201, ok)
     end,
   },
 
   ["/developers/:email_or_id/plugins/:id"] = {
     GET = function(self, db, helpers)
       local developer = find_developer(db, self.params.email_or_id)
-
       if not developer then
-        return helpers.responses.send_HTTP_NOT_FOUND()
+        return kong.response.exit(404, { message = "Not found" })
       end
 
       local consumer = developer.consumer
-      local plugin, _, err_t = db.plugins:select_all({
-        consumer = { id = consumer.id },
-        id = self.params.id
-      })
-
-      if err_t then
+      local plugin, err, err_t = db.plugins:select({id = self.params.id})
+      if err then
         return endpoints.handle_error(err_t)
       end
 
-      if not next(plugin) then
-        return helpers.responses.send_HTTP_NOT_FOUND()
+      if not plugin or plugin.consumer and plugin.consumer.id ~= consumer.id then
+        return kong.response.exit(404, { message = "Not found" })
       end
 
-      return helpers.responses.send_HTTP_OK(plugin)
+      return kong.response.exit(200, plugin)
     end,
 
     PATCH = function(self, db, helpers)
       local developer = find_developer(db, self.params.email_or_id)
       if not developer then
-        return helpers.responses.send_HTTP_NOT_FOUND()
+        return kong.response.exit(404, { message = "Not found" })
       end
 
       self.params.email_or_id = nil
 
       local consumer = developer.consumer
-      local plugins, _, err_t = db.plugins:select_all({
-        consumer = { id = consumer.id },
-        id = self.params.id
-      })
-
-      if err_t then
+      local plugin, err, err_t = db.plugins:select({id = self.params.id})
+      if err then
         return endpoints.handle_error(err_t)
       end
 
-      if not next(plugins) then
-        return helpers.responses.send_HTTP_NOT_FOUND()
+      if not plugin or plugin.consumer and plugin.consumer.id ~= consumer.id then
+        return kong.response.exit(404, { message = "Not found" })
       end
 
       self.params.id = nil
 
-      local plugin = plugins[1]
       local ok, _, err_t = db.plugins:update({ id = plugin.id }, self.params)
       if not ok then
         return endpoints.handle_error(err_t)
       end
 
-      return helpers.responses.send_HTTP_OK(ok)
+      return kong.response.exit(200, ok)
     end,
 
     DELETE = function(self, db, helpers)
       local developer = find_developer(db, self.params.email_or_id)
       if not developer then
-        return helpers.responses.send_HTTP_NOT_FOUND()
+        return kong.response.exit(404, { message = "Not found" })
       end
 
       local consumer = developer.consumer
-      local plugins, _, err_t = db.plugins:select_all({
-        consumer = { id = consumer.id },
-        id = self.params.id
-      })
-
-      if err_t then
+      local plugin, err, err_t = db.plugins:select({id = self.params.id})
+      if err then
         return endpoints.handle_error(err_t)
       end
 
-      if not next(plugins) then
-        return helpers.responses.send_HTTP_NOT_FOUND()
+      if not plugin or plugin.consumer and plugin.consumer.id ~= consumer.id then
+        return kong.response.exit(404, { message = "Not found" })
       end
 
       self.params.id = nil
-      local plugin = plugins[1]
+
       local ok, _, err_t = db.plugins:delete({ id = plugin.id })
       if not ok then
         return endpoints.handle_error(err_t)
       end
 
-      return helpers.responses.send_HTTP_NO_CONTENT()
+      return kong.response.exit(204)
     end
   },
 
@@ -273,7 +268,7 @@ return {
       local developer_pk = self.params.developers
       local developer = find_developer(db, developer_pk)
       if not developer then
-        return helpers.responses.send_HTTP_NOT_FOUND()
+        return kong.response.exit(404, { message = "Not found" })
       end
 
       self.developer = developer
@@ -296,7 +291,7 @@ return {
       local developer_pk = self.params.developers
       local developer = find_developer(db, developer_pk)
       if not developer then
-        return helpers.responses.send_HTTP_NOT_FOUND()
+        return kong.response.exit(404, { message = "Not found" })
       end
 
       self.developer = developer
@@ -319,7 +314,7 @@ return {
   ["/developers/invite"] = {
     POST = function(self, db, helpers)
       if not self.params.emails or next(self.params.emails) == nil then
-        return helpers.responses.send_HTTP_BAD_REQUEST("emails param required")
+        return kong.response.exit(400, { message = "emails param required" })
       end
       local portal_emails = portal_smtp_client.new()
       local res, err = portal_emails:invite(self.params.emails)
@@ -328,10 +323,10 @@ return {
           return helpers.responses.send(err.code, {message = err.message})
         end
 
-        return helpers.yield_error(err)
+        return endpoints.handle_error(err)
       end
 
-      return helpers.responses.send_HTTP_OK(res)
+      return kong.response.exit(200, res)
     end
   },
 }
