@@ -30,10 +30,10 @@ end
 return {
   name = "session",
   fields = {
+    { consumer = typedefs.no_consumer },
     { config = {
         type = "record",
         fields = {
-          { consumer = typedefs.no_consumer },
           {
             secret = {
               type = "string",
