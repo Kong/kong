@@ -725,9 +725,7 @@ for _, strategy in helpers.each_strategy() do
           assert.matches('"data":%[%]', body)
         end)
 
-
         it("filters for an admin and counts are off", function()
-
           assert(db.basicauth_credentials:insert {
             consumer = { id = consumer.id, },
             username = 'consumer1',

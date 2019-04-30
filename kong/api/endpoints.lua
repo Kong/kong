@@ -181,7 +181,7 @@ local function get_collection_endpoint(schema, foreign_schema, foreign_field_nam
       for i, row in ipairs(data) do
         local p_row = post_process(row)
         if p_row and next(p_row) then
-          p_data[i] = p_row
+          p_data[#p_data+1] = p_row
         end
       end
     else
