@@ -119,12 +119,25 @@ function _Developers:delete(developer_pk, options)
     return nil, err, err_t
   end
 
-  local ok, err, err_t = self.db.consumers:delete({ id = developer.consumer.id })
-  if not ok then
+  local consumer_id = developer.consumer.id
+
+  local _, err, err_t = self.super.delete(self, developer_pk, options)
+  if err then
     return nil, err, err_t
   end
 
-  return self.super.delete(self, developer_pk, options)
+  for row, err in self.db.credentials:each_for_consumer({ id = consumer_id }) do
+    if err then
+      return nil, err
+    end
+
+    local _, err, err_t = self.db.credentials:delete({ id = row.id })
+    if err then
+      return nil, err, err_t
+    end
+  end
+
+  return self.db.consumers:delete({ id = consumer_id})
 end
 
 

@@ -35,7 +35,7 @@ local DEFAULT_CONSUMER = {
 local function insert_files(db)
   for i = 1, 10 do
     local file_name = "file-" .. i
-    assert(db.files:upsert_by_name(file_name, {
+    assert(db.files:insert({
       name = file_name,
       contents = "i-" .. i,
       type = "partial",
@@ -43,7 +43,7 @@ local function insert_files(db)
     }))
 
     local file_page_name = "file-page" .. i
-    assert(db.files:upsert_by_name(file_page_name, {
+    assert(db.files:insert({
       name = file_page_name,
       contents = "i-" .. i,
       type = "page",
@@ -108,8 +108,7 @@ end
 
 local rbac_mode = {"off", "on"}
 
--- XXX DEVX add cassandra back in
-for _, strategy in helpers.each_strategy({"postgres"}) do
+for _, strategy in helpers.each_strategy() do
   for idx, rbac in ipairs(rbac_mode) do
     describe("Developer Portal - Portal API " .. strategy .. " (ENFORCE_RBAC = " .. rbac .. ")", function()
       local portal_api_client
