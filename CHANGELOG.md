@@ -1,6 +1,7 @@
-## v1.2.1 (upcoming)
+## v1.2.1
 
 - Change more reentrant migrations (not a real issue, but for future)
+- Remove developer status/type check from plugin EBB-56 
 
 ## v1.2.0
 
