@@ -1,4 +1,5 @@
 local utils = require "kong.tools.utils"
+local cjson = require "cjson"
 
 local tostring     = tostring
 local type         = type
@@ -57,6 +58,10 @@ local function prepare_plugin(opts)
     if not model then
       local err_t = plugins_entity.errors:schema_violation(err)
       return nil, tostring(err_t), err_t
+    end
+
+    if type(model.config) == "string" then
+      model.config = cjson.decode(model.config)
     end
 
      -- only cache valid models

@@ -159,41 +159,46 @@ local function create_developer(self, entity, options)
     return nil, err, err_t
   end
 
-  -- validate auth plugin
-  local collection = auth.validate_auth_plugin(self, self.db, helpers)
-  if not collection then
-    rollback_on_create({ consumer = consumer })
-    local err = "developer insert: could not create developer, invalid portal_auth plugin set"
-    local err_t = { code = Errors.codes.DATABASE_ERROR }
-    return nil, err, err_t
-  end
+  local workspace = ngx.ctx.workspaces and ngx.ctx.workspaces[1] or {}
+  local portal_auth = workspaces.retrieve_ws_config(ws_constants.PORTAL_AUTH, workspace)
 
-  -- generate credential data
-  local credential_plugin_data = build_cred_plugin_data(self, entity, consumer)
-  if credential_plugin_data == nil then
-    rollback_on_create({ consumer = consumer })
-    local err = "developer insert: could not set credential plugin data for " .. entity.email
-    local err_t = { code = Errors.codes.DATABASE_ERROR }
-    return nil, err, err_t
-  end
+  if portal_auth ~= "openid-connect" then
+    -- validate auth plugin
+    local collection = auth.validate_auth_plugin(self, self.db, helpers, portal_auth)
+    if not collection then
+      rollback_on_create({ consumer = consumer })
+      local err = "developer insert: could not create developer, invalid portal_auth plugin set"
+      local err_t = { code = Errors.codes.DATABASE_ERROR }
+      return nil, err, err_t
+    end
 
-  -- create plugin credential
-  local plugin_cred = collection:insert(credential_plugin_data)
-  if not plugin_cred then
-    rollback_on_create({ consumer = consumer })
-    local err = "developer insert: could not create plugin credential for " .. entity.email
-    local err_t = { code = Errors.codes.DATABASE_ERROR }
-    return nil, err, err_t
-  end
+    -- generate credential data
+    local credential_plugin_data = build_cred_plugin_data(self, entity, consumer)
+    if credential_plugin_data == nil then
+      rollback_on_create({ consumer = consumer })
+      local err = "developer insert: could not set credential plugin data for " .. entity.email
+      local err_t = { code = Errors.codes.DATABASE_ERROR }
+      return nil, err, err_t
+    end
 
-  -- create credential reference
-  local cred_data = build_cred_data(self, plugin_cred, consumer)
-  local cred = self.db.credentials:insert(cred_data)
-  if not cred then
-    rollback_on_create({ consumer = consumer })
-    local err = "developer insert: could not create credential for " .. entity.email
-    local err_t = { code = Errors.codes.DATABASE_ERROR }
-    return nil, err, err_t
+    -- create plugin credential
+    local plugin_cred = collection:insert(credential_plugin_data)
+    if not plugin_cred then
+      rollback_on_create({ consumer = consumer })
+      local err = "developer insert: could not create plugin credential for " .. entity.email
+      local err_t = { code = Errors.codes.DATABASE_ERROR }
+      return nil, err, err_t
+    end
+
+    -- create credential reference
+    local cred_data = build_cred_data(self, plugin_cred, consumer)
+    local cred = self.db.credentials:insert(cred_data)
+    if not cred then
+      rollback_on_create({ consumer = consumer })
+      local err = "developer insert: could not create credential for " .. entity.email
+      local err_t = { code = Errors.codes.DATABASE_ERROR }
+      return nil, err, err_t
+    end
   end
 
   -- create developer
@@ -233,81 +238,83 @@ local function update_developer(self, developer, entity, options)
       return nil, err, err_t
     end
 
-    -- retrieve auth plugin
-    local plugin = auth_plugins[self.portal_auth]
-    if not plugin then
-      local code = Errors.codes.DATABASE_ERROR
-      local err = "developer update: invalid authentication applied to portal in workspace" .. workspace.name
-      local err_t = { code = code }
-      return nil, err, err_t
-    end
-
-    -- find developers consumer
-    local consumer = self.db.consumers:select({ id = developer.consumer.id })
-    if not consumer then
-      local code = Errors.codes.DATABASE_ERROR
-      local err = "developer update: could not find consumer mapping for " .. developer.email
-      local err_t = { code = code }
-      return nil, err, err_t
-    end
-
-    -- update consumer username
-    -- XXX DEVX: look into expanding this error state to include more generic 500 error
-    local ok = self.db.consumers:update(
-      { id = consumer.id },
-      { username = entity.email }
-    )
-    if not ok then
-      local code = Errors.codes.UNIQUE_VIOLATION
-      local err = "developer update: could not update consumer mapping for " .. developer.email
-      local err_t = { code = code, fields = { ["email"] = "already exists with value '" .. entity.email .. "'" }, }
-      return nil, err, err_t
-    end
-
-    -- find all consumers credentails
-    local credential
-    for row, err in self.db.credentials:each_for_consumer({ id = consumer.id }) do
-      if err then
+    if self.portal_auth ~= "openid-connect" then
+      -- retrieve auth plugin
+      local plugin = auth_plugins[self.portal_auth]
+      if not plugin then
         local code = Errors.codes.DATABASE_ERROR
-        local err = "developer update: could not find login credentials for " .. developer.email
+        local err = "developer update: invalid authentication applied to portal in workspace" .. workspace.name
         local err_t = { code = code }
         return nil, err, err_t
       end
 
-      if row.consumer_type == enums.CONSUMERS.TYPE.DEVELOPER and
-         row.plugin == self.portal_auth then
-         credential = row
+      -- find developers consumer
+      local consumer = self.db.consumers:select({ id = developer.consumer.id })
+      if not consumer then
+        local code = Errors.codes.DATABASE_ERROR
+        local err = "developer update: could not find consumer mapping for " .. developer.email
+        local err_t = { code = code }
+        return nil, err, err_t
       end
-    end
 
-    if not credential then
-      local code = Errors.codes.DATABASE_ERROR
-      local err = "developer update: primary login credentials not found for " .. developer.email
-      local err_t = { code = code }
-      return nil, err, err_t
-    end
+      -- update consumer username
+      -- XXX DEVX: look into expanding this error state to include more generic 500 error
+      local ok = self.db.consumers:update(
+        { id = consumer.id },
+        { username = entity.email }
+      )
+      if not ok then
+        local code = Errors.codes.UNIQUE_VIOLATION
+        local err = "developer update: could not update consumer mapping for " .. developer.email
+        local err_t = { code = code, fields = { ["email"] = "already exists with value '" .. entity.email .. "'" }, }
+        return nil, err, err_t
+      end
 
-    -- update plugin credential
-    local collection = auth.validate_auth_plugin(self, self.db, helpers)
-    local credential, _, _ = collection:update(
-      { id = credential.id },
-      { username = entity.email }
-    )
+      -- find all consumers credentails
+      local credential
+      for row, err in self.db.credentials:each_for_consumer({ id = consumer.id }) do
+        if err then
+          local code = Errors.codes.DATABASE_ERROR
+          local err = "developer update: could not find login credentials for " .. developer.email
+          local err_t = { code = code }
+          return nil, err, err_t
+        end
 
-    -- if credential update successful, update credential reference
-    if credential then
+        if row.consumer_type == enums.CONSUMERS.TYPE.DEVELOPER and
+          row.plugin == self.portal_auth then
+          credential = row
+        end
+      end
 
-      local ok = self.db.credentials:update(
+      if not credential then
+        local code = Errors.codes.DATABASE_ERROR
+        local err = "developer update: primary login credentials not found for " .. developer.email
+        local err_t = { code = code }
+        return nil, err, err_t
+      end
+
+      -- update plugin credential
+      local collection = auth.validate_auth_plugin(self, self.db, helpers)
+      local credential, _, _ = collection:update(
         { id = credential.id },
-        { credential_data = cjson.encode(credential), },
-        { skip_rbac = true }
+        { username = entity.email }
       )
 
-      if not ok then
-        local code = Errors.codes.DATABASE_ERROR
-        local err = "developer update: " .. "could not update login credential for: " .. developer.email
-        local err_t = { code = code }
-        return nil, err, err_t
+      -- if credential update successful, update credential reference
+      if credential then
+
+        local ok = self.db.credentials:update(
+          { id = credential.id },
+          { credential_data = cjson.encode(credential), },
+          { skip_rbac = true }
+        )
+
+        if not ok then
+          local code = Errors.codes.DATABASE_ERROR
+          local err = "developer update: " .. "could not update login credential for: " .. developer.email
+          local err_t = { code = code }
+          return nil, err, err_t
+        end
       end
     end
   end
