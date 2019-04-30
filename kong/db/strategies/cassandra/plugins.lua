@@ -13,8 +13,8 @@ local fmt = string.format
 local Plugins = {}
 
 
-function Plugins:select_by_field(field, value)
-  local plugin, err = self.super.select_by_field(self, field, value)
+function Plugins:select_by_field(field, value, options)
+  local plugin, err = self.super.select_by_field(self, field, value, options)
   if err then
     return nil, err
   end
@@ -27,10 +27,10 @@ function Plugins:select_by_field(field, value)
   local found
 
   if plugin then
-    local plugin_workspaces = kong.db.workspace_entities:select_all {
+    local plugin_workspaces = kong.db.workspace_entities:select_all({
       entity_id = plugin.id,
       unique_field_name = "id",
-    }
+    }, {skip_rbac = true})
 
     -- XXX potentially dangerous historical assumption: plugin only
     -- belongs to one workspace; if it's shared, its workspace scope
