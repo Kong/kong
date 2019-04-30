@@ -2,52 +2,50 @@ local kong         = kong
 local setmetatable = setmetatable
 
 
--- Loads a plugin config from the datastore.
--- @return plugin config table or an empty sentinel table in case of a db-miss
-local function load_plugin_into_memory(key)
-  local row, err = kong.db.plugins:select_by_cache_key(key)
-  if err then
-    return nil, tostring(err)
-  end
+local COMBO_R      = 1
+local COMBO_S      = 2
+local COMBO_RS     = 3
+local COMBO_C      = 4
+local COMBO_RC     = 5
+local COMBO_SC     = 6
+local COMBO_RSC    = 7
+local COMBO_GLOBAL = 0
 
-  return row
-end
+
+local MUST_LOAD_CONFIGURATION_IN_PHASES = {
+  preread     = true,
+  certificate = true,
+  rewrite     = true,
+  access      = true,
+  content     = true,
+}
 
 
 --- Load the configuration for a plugin entry in the DB.
 -- Given a Route, Service, Consumer and a plugin name, retrieve the plugin's
 -- configuration if it exists. Results are cached in ngx.dict
--- @param[type=string] route_id ID of the route being proxied.
--- @param[type=string] service_id ID of the service being proxied.
--- @param[type=string] consumer_id ID of the Consumer making the request (if any).
--- @param[type=stirng] plugin_name Name of the plugin being tested for.
--- @treturn table Plugin retrieved from the cache or database.
-local function load_plugin_configuration(ctx,
-                                         route_id,
-                                         service_id,
-                                         consumer_id,
-                                         plugin_name)
-  local key = kong.db.plugins:cache_key(plugin_name,
+-- @param[type=string] name Name of the plugin being tested for configuration.
+-- @param[type=string] route_id Id of the route being proxied.
+-- @param[type=string] service_id Id of the service being proxied.
+-- @param[type=string] consumer_id Id of the donsumer making the request (if any).
+-- @treturn table Plugin configuration, if retrieved.
+local function load_configuration(self,
+                                  name,
+                                  route_id,
+                                  service_id,
+                                  consumer_id)
+  local key = kong.db.plugins:cache_key(name,
                                         route_id,
                                         service_id,
                                         consumer_id)
 
-  local plugin, err = kong.cache:get(key,
-                                     nil,
-                                     load_plugin_into_memory,
-                                     key)
-  if err then
-    ctx.delay_response = false
-    ngx.log(ngx.ERR, tostring(err))
-    return ngx.exit(ngx.ERROR)
-  end
-
+  local plugin = self.plugins.cache[key]
   if not plugin or not plugin.enabled then
     return
   end
 
   if plugin.run_on ~= "all" then
-    if ctx.is_service_mesh_request then
+    if self.ctx.is_service_mesh_request then
       if plugin.run_on == "first" then
         return
       end
@@ -72,24 +70,23 @@ end
 local function get_next(self)
   local i = self.i + 1
 
-  local plugin = self.loaded_plugins[i]
+  local plugin = self.plugins.loaded[i]
   if not plugin then
     return nil
   end
 
   self.i = i
 
-  if not self.configured_plugins[plugin.name] then
+  if not self.plugins.map[plugin.name] then
     return get_next(self)
   end
 
   local ctx = self.ctx
 
-  -- load the plugin configuration in early phases
-  if self.access_or_cert_ctx then
+  if MUST_LOAD_CONFIGURATION_IN_PHASES[self.phase] then
 
-    local route        = self.route
-    local service      = self.service
+    local route        = ctx.route
+    local service      = ctx.service
     local consumer     = ctx.authenticated_consumer
 
     if route and plugin.no_route then
@@ -106,108 +103,111 @@ local function get_next(self)
     local  service_id = service  and  service.id or nil
     local consumer_id = consumer and consumer.id or nil
 
-    local plugin_name = plugin.name
+    local name   = plugin.name
+    local combos = self.plugins.combos[name]
 
     local plugin_configuration
 
     repeat
 
-      if route_id and service_id and consumer_id then
-        plugin_configuration = load_plugin_configuration(ctx, route_id, service_id, consumer_id, plugin_name)
+      if not combos then
+        break
+      end
+
+      if route_id and service_id and consumer_id and combos[COMBO_RSC] then
+        plugin_configuration = load_configuration(self, name, route_id, service_id, consumer_id)
         if plugin_configuration then
           break
         end
       end
 
-      if route_id and consumer_id then
-        plugin_configuration = load_plugin_configuration(ctx, route_id, nil, consumer_id, plugin_name)
+      if route_id and consumer_id and combos[COMBO_RC] then
+        plugin_configuration = load_configuration(self, name, route_id, nil, consumer_id)
         if plugin_configuration then
           break
         end
       end
 
-      if service_id and consumer_id then
-        plugin_configuration = load_plugin_configuration(ctx, nil, service_id, consumer_id, plugin_name)
+      if service_id and consumer_id and combos[COMBO_SC] then
+        plugin_configuration = load_configuration(self, name, nil, service_id, consumer_id)
         if plugin_configuration then
           break
         end
       end
 
-      if route_id and service_id then
-        plugin_configuration = load_plugin_configuration(ctx, route_id, service_id, nil, plugin_name)
+      if route_id and service_id and combos[COMBO_RS] then
+        plugin_configuration = load_configuration(self, name, route_id, service_id, nil)
         if plugin_configuration then
           break
         end
       end
 
-      if consumer_id then
-        plugin_configuration = load_plugin_configuration(ctx, nil, nil, consumer_id, plugin_name)
+      if consumer_id and combos[COMBO_C] then
+        plugin_configuration = load_configuration(self, name, nil, nil, consumer_id)
         if plugin_configuration then
           break
         end
       end
 
-      if route_id then
-        plugin_configuration = load_plugin_configuration(ctx, route_id, nil, nil, plugin_name)
+      if route_id and combos[COMBO_R] then
+        plugin_configuration = load_configuration(self, name, route_id, nil, nil)
         if plugin_configuration then
           break
         end
       end
 
-      if service_id then
-        plugin_configuration = load_plugin_configuration(ctx, nil, service_id, nil, plugin_name)
+      if service_id and combos[COMBO_S] then
+        plugin_configuration = load_configuration(self, name, nil, service_id, nil)
         if plugin_configuration then
           break
         end
       end
 
-      plugin_configuration = load_plugin_configuration(ctx, nil, nil, nil, plugin_name)
+      if combos[COMBO_GLOBAL] then
+        plugin_configuration = load_configuration(self, name, nil, nil, nil)
+      end
 
     until true
 
     if plugin_configuration then
-      ctx.plugins_for_request[plugin.name] = plugin_configuration
+      ctx.plugins[name] = plugin_configuration
     end
   end
 
   -- return the plugin configuration
-  local plugins_for_request = ctx.plugins_for_request
-  if plugins_for_request[plugin.name] then
-    return plugin, plugins_for_request[plugin.name]
+  if ctx.plugins[plugin.name] then
+    return plugin, ctx.plugins[plugin.name]
   end
 
   return get_next(self) -- Load next plugin
 end
 
 
-local plugin_iter_mt = { __call = get_next }
+local plugins_iterator_mt = { __call = get_next }
 
 
 --- Plugins for request iterator.
 -- Iterate over the plugin loaded for a request, stored in
--- `ngx.ctx.plugins_for_request`.
--- @param[type=boolean] access_or_cert_ctx Tells if the context
--- is access_by_lua_block. We don't use `ngx.get_phase()` simply because we can
--- avoid it.
+--`ngx.ctx.plugins`.
+--
+-- @param[type=table] ctx Nginx context table
+-- @param[type=string] phase Plugins iterator execution phase
+-- @param[type=table] plugins Plugins table
 -- @treturn function iterator
-local function iter_plugins_for_req(ctx, loaded_plugins, configured_plugins,
-                                    access_or_cert_ctx)
-  if not ctx.plugins_for_request then
-    ctx.plugins_for_request = {}
+local function plugins_iterator(ctx, phase, plugins)
+  if not ctx.plugins then
+    ctx.plugins = {}
   end
 
-  local plugin_iter_state = {
-    i                     = 0,
-    ctx                   = ctx,
-    route                 = ctx.route,
-    service               = ctx.service,
-    loaded_plugins        = loaded_plugins,
-    configured_plugins    = configured_plugins,
-    access_or_cert_ctx    = access_or_cert_ctx,
+  local plugins_iterator_state = {
+    i       = 0,
+    ctx     = ctx,
+    phase   = phase,
+    plugins = plugins,
   }
 
-  return setmetatable(plugin_iter_state, plugin_iter_mt)
+  return setmetatable(plugins_iterator_state, plugins_iterator_mt)
 end
 
 
-return iter_plugins_for_req
+return plugins_iterator

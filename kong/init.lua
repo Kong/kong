@@ -99,6 +99,7 @@ local set_current_peer = ngx_balancer.set_current_peer
 local set_ssl_ctx      = ngx_balancer.set_ssl_ctx
 local set_timeouts     = ngx_balancer.set_timeouts
 local set_more_tries   = ngx_balancer.set_more_tries
+local subsystem        = ngx.config.subsystem
 
 local ffi = require "ffi"
 local cast = ffi.cast
@@ -109,73 +110,82 @@ local TLS_SCHEMES = {
   tls = true,
 }
 
-local PLUGINS_MAP_CACHE_OPTS = { ttl = 0 }
-local PLUGINS_MAP_MUTEX_OPTS
+local PLUGINS_MUTEX_OPTS
 
 local declarative_entities
-local plugins_map_version
-local configured_plugins
 local loaded_plugins
+local plugins
 local schema_state
 
 
 local function plugin_protocols_match_current_subsystem(plugin)
-  local current_subsystem = ngx.config.subsystem
   local c = constants.PROTOCOLS_WITH_SUBSYSTEM
   for _, protocol in ipairs(plugin.protocols) do
-    if c[protocol] == current_subsystem then
+    if c[protocol] == subsystem then
       return true
     end
   end
 end
 
 
-local function build_plugins_map(db, version)
-  local map = {}
+local function build_new_plugins(version)
+  local new_plugins = {
+    version = version,
+    map = {},
+    cache = {},
+    loaded = loaded_plugins,
+    combos = {},
+  }
 
-  for plugin, err in db.plugins:each(1000) do
+
+  for plugin, err in kong.db.plugins:each(1000) do
     if err then
       return nil, err
     end
 
     if plugin_protocols_match_current_subsystem(plugin) then
-      map[plugin.name] = true
+      new_plugins.map[plugin.name] = true
+      local cache_key = kong.db.plugins:cache_key(plugin)
+      new_plugins.cache[cache_key] = plugin
+
+      local combo_key = (plugin.route    and 1 or 0)
+                      + (plugin.service  and 2 or 0)
+                      + (plugin.consumer and 4 or 0)
+
+      new_plugins.combos[plugin.name] = new_plugins.combos[plugin.name] or {}
+      new_plugins.combos[plugin.name][combo_key] = true
     end
   end
 
-  if version then
-    plugins_map_version = version
-  end
-
-  configured_plugins = map
-
-  return true
+  return new_plugins
 end
 
 
-local function plugins_map_wrapper()
-  local version, err = kong.cache:get("plugins_map:version",
-                                      PLUGINS_MAP_CACHE_OPTS, utils.uuid)
-  if err then
-    return nil, "failed to retrieve plugins map version: " .. err
+local function update_plugins(version)
+  local err
+  if not version then
+    version, err = kong.cache:get("plugins_map:version", { ttl = 0 }, utils.uuid)
+    if err then
+      return nil, "failed to retrieve plugins map version: " .. err
+    end
   end
 
-  if plugins_map_version ~= version then
-    local ok, err = concurrency.with_coroutine_mutex(PLUGINS_MAP_MUTEX_OPTS,
-                                                     function()
+  if not plugins or plugins.version ~= version then
+    local ok, err = concurrency.with_coroutine_mutex(PLUGINS_MUTEX_OPTS, function()
       -- we have the lock but we might not have needed it. check the
       -- version again and rebuild if necessary
-      version, err = kong.cache:get("plugins_map:version",
-                                    PLUGINS_MAP_CACHE_OPTS, utils.uuid)
+      version, err = kong.cache:get("plugins_map:version", { ttl = 0 }, utils.uuid)
       if err then
         return nil, "failed to re-retrieve version: " .. err
       end
 
-      if plugins_map_version ~= version then
-        -- we have the lock and we need to rebuild the map
-        ngx_log(ngx_DEBUG, "rebuilding plugins map")
+      if not plugins or plugins.version ~= version then
+        local new_plugins, err = build_new_plugins(version)
 
-        return build_plugins_map(kong.db, version)
+        if not new_plugins then
+          return nil, "error found when building plugins: " .. err
+        end
+        plugins = new_plugins
       end
 
       return true
@@ -189,24 +199,12 @@ local function plugins_map_wrapper()
 end
 
 
-local function execute_plugins(ctx, phase, load_configuration)
-  if load_configuration then
-    local ok, err = plugins_map_wrapper()
-    if not ok then
-      ngx_log(ngx_CRIT, "could not ensure plugins map is up to date: ", err)
-      return kong.response.exit(500, { message  = "An unexpected error occurred" })
-    end
-  end
-
-  local iterator = plugins_iterator(ctx,
-                                    loaded_plugins,
-                                    configured_plugins,
-                                    load_configuration)
-  for plugin, plugin_conf in iterator do
-    kong_global.set_named_ctx(kong, "plugin", plugin_conf)
+local function execute_plugins(ctx, phase)
+  for plugin, configuration in plugins_iterator(ctx, phase, plugins) do
+    kong_global.set_named_ctx(kong, "plugin", configuration)
     kong_global.set_namespaced_log(kong, plugin.name)
 
-    plugin.handler[phase](plugin.handler, plugin_conf)
+    plugin.handler[phase](plugin.handler, configuration)
 
     kong_global.reset_log(kong)
   end
@@ -219,22 +217,23 @@ end
 local Kong = {}
 
 
-local function sort_plugins_for_execution(kong_conf, db, plugin_list)
-  -- sort plugins by order of execution
-  table.sort(plugin_list, function(a, b)
+local function sort_plugins_for_execution(plugins)
+  -- sort plugins by priority
+  table.sort(plugins, function(a, b)
     local priority_a = a.handler.PRIORITY or 0
     local priority_b = b.handler.PRIORITY or 0
     return priority_a > priority_b
   end)
 
   -- add reports plugin if not disabled
-  if kong_conf.anonymous_reports then
+  if kong.configuration.anonymous_reports then
     local reports = require "kong.reports"
-    reports.configure_ping(kong_conf)
-    reports.add_ping_value("database_version", db.infos.db_ver)
+
+    reports.configure_ping(kong.configuration)
+    reports.add_ping_value("database_version", kong.db.infos.db_ver)
     reports.toggle(true)
 
-    plugin_list[#plugin_list+1] = {
+    plugins[#plugins + 1] = {
       name = "reports",
       handler = reports,
     }
@@ -283,7 +282,11 @@ local function load_declarative_config(kong_config, entities)
 
   if not kong_config.declarative_config then
     -- no configuration yet, just build empty plugins map
-    build_plugins_map(kong.db, utils.uuid())
+    local err
+    plugins, err = build_new_plugins(utils.uuid())
+    if err then
+      error("error building initial plugins: " .. err)
+    end
     return true
   end
 
@@ -304,7 +307,10 @@ local function load_declarative_config(kong_config, entities)
     kong.log.notice("declarative config loaded from ",
                     kong_config.declarative_config)
 
-    build_plugins_map(kong.db, utils.uuid())
+    plugins, err = build_new_plugins(utils.uuid())
+    if err then
+      error("error building initial plugins: " .. err)
+    end
 
     assert(runloop.build_router(kong.db, "init"))
 
@@ -426,7 +432,7 @@ function Kong.init()
 
   -- Load plugins as late as possible so that everything is set up
   loaded_plugins = assert(db.plugins:load_plugin_schemas(config.loaded_plugins))
-  sort_plugins_for_execution(config, db, loaded_plugins)
+  sort_plugins_for_execution(loaded_plugins)
 
   do
     local timeout = 60
@@ -438,8 +444,8 @@ function Kong.init()
       -- pg_timeout is defined in ms
       timeout = kong.configuration.pg_timeout / 1000
     end
-    PLUGINS_MAP_MUTEX_OPTS = {
-      name = "plugins_map",
+    PLUGINS_MUTEX_OPTS = {
+      name = "plugins",
       timeout = timeout,
     }
   end
@@ -452,9 +458,10 @@ function Kong.init()
     end
 
   else
-    local _, err = build_plugins_map(db, "init")
+    local err
+    plugins, err = build_new_plugins("init")
     if err then
-      error("error building initial plugins map: " .. err)
+      error("error building initial plugins: " .. err)
     end
 
     assert(runloop.build_router(db, "init"))
@@ -565,13 +572,10 @@ function Kong.init_worker()
 
 
   -- run plugins init_worker context
-
-
-  for _, plugin in ipairs(loaded_plugins) do
+  update_plugins()
+  for _, plugin in ipairs(plugins.loaded) do
     kong_global.set_namespaced_log(kong, plugin.name)
-
     plugin.handler:init_worker()
-
     kong_global.reset_log(kong)
   end
 end
@@ -583,7 +587,8 @@ function Kong.ssl_certificate()
 
   runloop.certificate.before(ctx)
 
-  execute_plugins(ctx, "certificate", true)
+  update_plugins()
+  execute_plugins(ctx, "certificate")
 end
 
 function Kong.balancer()
@@ -690,7 +695,8 @@ function Kong.rewrite()
 
   runloop.rewrite.before(ctx)
 
-  execute_plugins(ctx, "rewrite", true)
+  update_plugins()
+  execute_plugins(ctx, "rewrite")
 
   runloop.rewrite.after(ctx)
 end
@@ -702,7 +708,8 @@ function Kong.preread()
 
   runloop.preread.before(ctx)
 
-  execute_plugins(ctx, "preread", true)
+  update_plugins()
+  execute_plugins(ctx, "preread")
 
   runloop.preread.after(ctx)
 end
@@ -716,8 +723,8 @@ function Kong.access()
 
   ctx.delay_response = true
 
-  for plugin, plugin_conf in plugins_iterator(ctx, loaded_plugins,
-                                              configured_plugins, true) do
+  update_plugins()
+  for plugin, plugin_conf in plugins_iterator(ctx, "access", plugins) do
     if not ctx.delayed_response then
       kong_global.set_named_ctx(kong, "plugin", plugin_conf)
       kong_global.set_namespaced_log(kong, plugin.name)
@@ -782,8 +789,9 @@ function Kong.handle_error()
 
   ctx.KONG_UNEXPECTED = true
 
-  if not ctx.plugins_for_request then
-    for _ in plugins_iterator(ctx, loaded_plugins, configured_plugins, true) do
+  if not ctx.plugins then
+    update_plugins()
+    for _ in plugins_iterator(ctx, "content", plugins) do
       -- just build list of plugins
     end
   end
