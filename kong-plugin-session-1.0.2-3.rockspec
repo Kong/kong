@@ -1,6 +1,6 @@
 package = "kong-plugin-session"
 
-version = "1.0.2-2"
+version = "1.0.2-3"
 
 supported_platforms = {"linux", "macosx"}
 
