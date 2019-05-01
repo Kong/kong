@@ -7,6 +7,7 @@
 
 ### Added
 
+- ldaps protocol support
 - Tests for multiple connection strategies
 
 ## 0.33
