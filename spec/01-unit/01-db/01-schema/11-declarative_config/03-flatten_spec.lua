@@ -175,6 +175,7 @@ describe("declarative config: flatten", function()
               name = "foo",
               paths = null,
               preserve_host = false,
+              https_redirect_status_code = 426,
               protocols = { "tls" },
               regex_priority = 0,
               service = null,
@@ -405,6 +406,7 @@ describe("declarative config: flatten", function()
               paths = { "/" },
               preserve_host = false,
               protocols = { "http", "https" },
+              https_redirect_status_code = 426,
               regex_priority = 0,
               service = {
                 id = "UUID"
@@ -667,6 +669,7 @@ describe("declarative config: flatten", function()
                 paths = { "/path" },
                 preserve_host = false,
                 protocols = { "http", "https" },
+                https_redirect_status_code = 426,
                 regex_priority = 0,
                 service = {
                   id = "UUID"
@@ -734,6 +737,7 @@ describe("declarative config: flatten", function()
                 paths = { "/path" },
                 preserve_host = false,
                 protocols = { "http", "https" },
+                https_redirect_status_code = 426,
                 regex_priority = 0,
                 service = {
                   id = "UUID"
@@ -753,6 +757,7 @@ describe("declarative config: flatten", function()
                 paths = null,
                 preserve_host = false,
                 protocols = { "http", "https" },
+                https_redirect_status_code = 426,
                 regex_priority = 0,
                 service = {
                   id = "UUID"
@@ -772,6 +777,7 @@ describe("declarative config: flatten", function()
                 paths = null,
                 preserve_host = false,
                 protocols = { "http", "https" },
+                https_redirect_status_code = 426,
                 regex_priority = 0,
                 service = {
                   id = "UUID"
@@ -791,6 +797,7 @@ describe("declarative config: flatten", function()
                 paths = { "/path" },
                 preserve_host = false,
                 protocols = { "http", "https" },
+                https_redirect_status_code = 426,
                 regex_priority = 0,
                 service = {
                   id = "UUID"
@@ -861,6 +868,7 @@ describe("declarative config: flatten", function()
                 paths = null,
                 preserve_host = false,
                 protocols = { "http", "https" },
+                https_redirect_status_code = 426,
                 regex_priority = 0,
                 service = {
                   id = "UUID"
@@ -1014,6 +1022,7 @@ describe("declarative config: flatten", function()
                 paths = { "/" },
                 preserve_host = false,
                 protocols = { "http", "https" },
+                https_redirect_status_code = 426,
                 regex_priority = 0,
                 service = {
                   id = "UUID"
@@ -1033,6 +1042,7 @@ describe("declarative config: flatten", function()
                 paths = null,
                 preserve_host = false,
                 protocols = { "http", "https" },
+                https_redirect_status_code = 426,
                 regex_priority = 0,
                 service = {
                   id = "UUID"

@@ -74,6 +74,10 @@ return {
                            },
                          }
                        }, },
+    { https_redirect_status_code = { type = "integer",
+                                     one_of = { 426, 301, 302, 307, 308 },
+                                     default = 426, required = true,
+                                   }, },
     { regex_priority = { type = "integer", default = 0 }, },
     { strip_path     = { type = "boolean", default = true }, },
     { preserve_host  = { type = "boolean", default = false }, },

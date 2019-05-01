@@ -114,6 +114,17 @@ describe("routes schema", function()
     assert.truthy(errs["protocols"])
   end)
 
+  it("invalid https_redirect_status_code produces error", function()
+
+    local route = Routes:process_auto_fields({ protocols = { "http" },
+                                               https_redirect_status_code = 404,
+                                             }, "insert")
+    local ok, errs = Routes:validate(route)
+    assert.falsy(ok)
+    assert.truthy(errs["https_redirect_status_code"])
+  end)
+
+
   it("produces defaults", function()
     local route = {
       protocols = { "http" },
@@ -133,6 +144,7 @@ describe("routes schema", function()
     assert.same(0,             route.regex_priority)
     assert.same(true,          route.strip_path)
     assert.same(false,         route.preserve_host)
+    assert.same(426,           route.https_redirect_status_code)
   end)
 
   it("validates the foreign key in entities", function()
@@ -250,13 +262,13 @@ describe("routes schema", function()
 
     -- acceptance
     it("accepts an apex '/'", function()
-      local route = {
+      local route = Routes:process_auto_fields({
         protocols = { "http" },
         service = { id = a_valid_uuid },
         methods = {},
         hosts = {},
         paths = { "/" },
-      }
+      }, "insert")
 
       local ok, err = Routes:validate(route)
       assert.is_nil(err)
@@ -264,13 +276,13 @@ describe("routes schema", function()
     end)
 
     it("accepts unreserved characters from RFC 3986", function()
-      local route = {
+      local route = Routes:process_auto_fields({
         protocols = { "http" },
         service = { id = a_valid_uuid },
         methods = {},
         hosts = {},
         paths = { "/abcd~user~2" },
-      }
+      }, "insert")
 
       local ok, err = Routes:validate(route)
       assert.is_nil(err)
@@ -281,13 +293,13 @@ describe("routes schema", function()
       local valid_paths = { "/abcd%aa%10%ff%AA%FF" }
 
       for i = 1, #valid_paths do
-        local route = {
+        local route = Routes:process_auto_fields({
           protocols = { "http" },
           service = { id = a_valid_uuid },
           methods = {},
           hosts = {},
           paths = { valid_paths[i] },
-        }
+        }, "insert")
 
         local ok, err = Routes:validate(route)
         assert.is_nil(err)
@@ -296,13 +308,13 @@ describe("routes schema", function()
     end)
 
     it("accepts trailing slash", function()
-      local route = {
+      local route = Routes:process_auto_fields({
         protocols = { "http" },
         service = { id = a_valid_uuid },
         methods = {},
         hosts = {},
         paths = { "/ovo/" },
-      }
+      }, "insert")
 
       local ok, err = Routes:validate(route)
       assert.is_nil(err)
@@ -445,13 +457,13 @@ describe("routes schema", function()
       }
 
       for i = 1, #valid_hosts do
-        local route = {
+        local route = Routes:process_auto_fields({
           protocols = { "http" },
           service = { id = a_valid_uuid },
           methods = {},
           paths = {},
           hosts = { valid_hosts[i] },
-        }
+        }, "insert")
 
         local ok, err = Routes:validate(route)
         assert.is_nil(err)
@@ -466,13 +478,13 @@ describe("routes schema", function()
       }
 
       for i = 1, #valid_hosts do
-        local route = {
+        local route = Routes:process_auto_fields({
           protocols = { "http" },
           service = { id = a_valid_uuid },
           methods = {},
           paths = {},
           hosts = { valid_hosts[i] },
-        }
+        }, "insert")
 
         local ok, err = Routes:validate(route)
         assert.is_nil(err)
@@ -540,13 +552,13 @@ describe("routes schema", function()
       }
 
       for i = 1, #valid_methods do
-        local route = {
+        local route = Routes:process_auto_fields({
           protocols = { "http" },
           service = { id = a_valid_uuid },
           paths = {},
           hosts = {},
           methods = { valid_methods[i] },
-        }
+        }, "insert")
 
         local ok, err = Routes:validate(route)
         assert.is_nil(err)
@@ -612,12 +624,12 @@ describe("routes schema", function()
       }
 
       for i = 1, #valid_names do
-        local route = {
+        local route = Routes:process_auto_fields({
           protocols = { "http" },
           paths = { "/" },
           name = valid_names[i],
           service = { id = a_valid_uuid }
-        }
+        }, "insert")
 
         local ok, err = Routes:validate(route)
         assert.is_nil(err)
