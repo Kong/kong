@@ -96,10 +96,11 @@ for _, strategy in helpers.each_strategy() do
         assert.not_same(admin.username, admin.rbac_user.name)
       end)
 
-      it("validates user input", function()
+      it("validates user input - invalid fields", function()
         -- "user" is not a valid field
         local admin_params = {
           user = "admin-1",
+          username = "admin-user",
           email = "admin-1@konghq.com",
           status = enums.CONSUMERS.STATUS.APPROVED,
         }
@@ -118,6 +119,28 @@ for _, strategy in helpers.each_strategy() do
 
         local expected_m = "[" .. strategy .. "] schema violation (user: unknown field)"
         assert.same(expected_m, err)
+      end)
+
+      it("validates user input - username is required", function()
+        local admin_params = {
+          custom_id = "admin-no-username",
+          email = "admin-no-username@konghq.com",
+          status = enums.CONSUMERS.STATUS.APPROVED,
+        }
+
+        local _, err, err_t = admins:insert(admin_params)
+        local expected_t = {
+          code = 2,
+          fields = {
+            username = "required field missing",
+          },
+          message = "schema violation (username: required field missing)",
+          name = "schema violation",
+          strategy = strategy,
+        }
+        assert.same(expected_t, err_t)
+
+        assert.same("[" .. strategy .. "] schema violation (username: required field missing)", err)
       end)
 
       it("rolls back the rbac_user if we can't create the consumer", function()

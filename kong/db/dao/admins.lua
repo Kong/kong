@@ -31,21 +31,20 @@ end
 local _Admins = {}
 
 function _Admins:insert(admin, options)
-  -- validate user-entered data before starting all these inserts
+  -- validate user-entered data before starting all these inserts.
+  -- we can't do full validation (schema.validate(admin, true)) because
+  -- we don't have an rbac_user and a consumer yet. But when not
+  -- doing full validation, the required check only looks for
+  -- ngx.null, not nil. See kong.db.schema.init:1588.
+  admin.username = admin.username or ngx.null
+
   local ok, errors = self.schema:validate(admin, false)
   if not ok then
     local err_t = self.errors:schema_violation(errors)
     return nil, tostring(err_t), err_t
   end
 
-  local unique_name
-
-  -- either username is non-null, or custom_id is
-  if admin.username and admin.username ~= ngx.null then
-    unique_name = admin.username .. "-" .. utils.uuid()
-  else
-    unique_name = admin.custom_id .. "-" .. utils.uuid()
-  end
+  local unique_name = admin.username .. "-" .. utils.uuid()
 
   -- create rbac_user
   local rbac_user, err = self.db.rbac_users:insert({

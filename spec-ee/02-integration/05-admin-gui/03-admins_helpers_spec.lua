@@ -263,6 +263,22 @@ for _, strategy in helpers.each_strategy() do
         }
         assert.same(expected, res)
       end)
+
+      it("doesn't 500 when email is null", function()
+        local opts = {
+          token_optional = false,
+          db = db,
+        }
+
+        local params = {
+          username = "gruce-" .. utils.uuid(),
+          email = ngx.null,
+          status = enums.CONSUMERS.STATUS.APPROVED,
+        }
+
+        local res = admins_helpers.create(params, opts)
+        assert.same(200, res.code)
+      end)
     end)
 
     describe("update", function()

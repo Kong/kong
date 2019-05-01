@@ -59,7 +59,7 @@ local function sanitize_params(params)
     status = params.status,
   }
 
-  if params.email then
+  if params.email and type(params.email) == "string" then
     -- store email in lower case so we can check uniqueness
     params.email = lower(params.email)
 
