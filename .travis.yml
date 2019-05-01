@@ -72,7 +72,7 @@ stages:
   - pdk tests
   - test
   - name: deploy
-    if: tag =~ 0. || type == cron
+    if: tag =~ 0. || type == cron || branch = master
 
 jobs:
   include:
