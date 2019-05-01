@@ -18,7 +18,7 @@ from startups to Global 5000 as well as government organizations.
 [Forum](https://discuss.konghq.com) |
 [Blog](https://konghq.com/blog) |
 IRC (freenode): [#kong](https://webchat.freenode.net/?channels=kong) |
-[Nightly Builds][kong-nightly-master]
+[RefPlat Builds][kong-nightly-master]
 
 ## Summary
 
@@ -253,11 +253,11 @@ limitations under the License.
 ```
 
 [kong-url]: https://konghq.com/
-[kong-logo]: https://d2ffutrenqvap3.cloudfront.net/items/1946191x3s1H0M2u3J18/slack-imgs.png
-[kong-benefits]: https://cl.ly/002i2Z432A1s/Image%202017-10-16%20at%2012.30.08%20AM.png
-[google-groups-url]: https://groups.google.com/forum/#!forum/konglayer
+[kong-logo]: https://konghq.com/wp-content/uploads/2018/05/kong-logo-github-readme.png
+[kong-benefits]: https://konghq.com/wp-content/uploads/2018/05/kong-benefits-github-readme.png
+[kong-nightly-master]: https://bintray.com/kong/kong-enterprise-edition-cloud-deb/ubuntu
 [badge-travis-url]: https://travis-ci.com/Kong/kong-ee/branches
-[badge-travis-image]: https://travis-ci.com/Kong/kong-ee.svg?token=BfzyBZDa3icGPsKGmBHb&branch=master
+[badge-travis-image]: https://api.travis-ci.com/Kong/kong-ee.svg?token=BfzyBZDa3icGPsKGmBHb&branch=master
 
 [busted]: https://github.com/Olivine-Labs/busted
 [luacheck]: https://github.com/mpeterv/luacheck
