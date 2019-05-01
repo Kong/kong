@@ -73,10 +73,16 @@ local function dao_audit_handler(data)
     return
   end
 
+  local pk_field = data.schema.primary_key[1]
+  local pk_value = data.entity[pk_field]
+
+  if type(pk_value) == "table" then -- the pk may contain a foreign relationship;
+    pk_value = pk_value[next(pk_value)] -- in this case, it'll be a table
+  end
 
   local data = {
     request_id = ngx.ctx.admin_api.req_id,
-    entity_key = data.entity[data.schema.primary_key[1]],
+    entity_key = pk_value,
     dao_name   = data.schema.table or data.schema.name,
     operation  = data.operation,
     entity     = cjson.encode(data.entity),
@@ -92,7 +98,6 @@ local function dao_audit_handler(data)
   if singletons.configuration.audit_log_signing_key then
     sign_adjacent(data)
   end
-
 
   local ok, err = singletons.db.audit_objects:insert(data,
     { ttl = ttl }
