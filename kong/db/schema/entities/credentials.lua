@@ -4,6 +4,7 @@ local ee_typedefs = require "kong.enterprise_edition.db.typedefs"
 return {
   name         = "credentials",
   primary_key  = { "id" },
+  generate_admin_api = false,
 
   fields = {
     { id              = typedefs.uuid },
