@@ -70,7 +70,7 @@ local function new_db_on_error(self)
   or err.code == Errors.codes.FOREIGN_KEY_VIOLATION
   or err.code == Errors.codes.INVALID_OFFSET
   then
-    return kong.response.exit(400, err)
+    return kong.response.exit(400, { message = err.message })
   end
 
   if err.code == Errors.codes.NOT_FOUND then
@@ -80,7 +80,7 @@ local function new_db_on_error(self)
   if err.code == Errors.codes.PRIMARY_KEY_VIOLATION
   or err.code == Errors.codes.UNIQUE_VIOLATION
   then
-    return kong.response.exit(409, err)
+    return kong.response.exit(409, { message = err.message })
   end
 
 
@@ -112,7 +112,7 @@ local function on_error(self)
   end
 
   if err.unique then
-    return kong.response.exit(409, err.tbl)
+    return kong.response.exit(409, { message = err.tbl.message })
   end
 
   if err.foreign then

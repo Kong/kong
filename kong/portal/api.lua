@@ -456,7 +456,7 @@ return {
       local meta_params = self.params.meta and cjson.decode(self.params.meta)
 
       if not meta_params then
-        return kong.response.exit(400, "meta required")
+        return kong.response.exit(400, { message = "meta required" })
       end
 
       local current_dev_meta = self.developer.meta and
