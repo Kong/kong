@@ -487,6 +487,7 @@ for _, strategy in helpers.each_strategy() do
             strip_path      = true,
             tags            = ngx.null,
             service         = route.service,
+            https_redirect_status_code = 426,
           }, route)
         end)
 
@@ -524,6 +525,7 @@ for _, strategy in helpers.each_strategy() do
             tags            = ngx.null,
             preserve_host   = false,
             service         = route.service,
+            https_redirect_status_code = 426,
           }, route)
         end)
 
@@ -560,6 +562,7 @@ for _, strategy in helpers.each_strategy() do
             strip_path      = true,
             preserve_host   = false,
             service         = ngx.null,
+            https_redirect_status_code = 426,
           }, route)
         end)
 
@@ -747,6 +750,7 @@ for _, strategy in helpers.each_strategy() do
             preserve_host   = route.preserve_host,
             tags            = route.tags,
             service         = route.service,
+            https_redirect_status_code = 426,
           }, new_route)
 
 
@@ -777,6 +781,7 @@ for _, strategy in helpers.each_strategy() do
               preserve_host   = route.preserve_host,
               tags            = route.tags,
               service         = route.service,
+              https_redirect_status_code = 426,
             }, new_route)
           end)
 
@@ -1459,6 +1464,7 @@ for _, strategy in helpers.each_strategy() do
           service          = {
             id = service.id
           },
+          https_redirect_status_code = 426,
         }, route)
 
         local route_in_db, err, err_t = db.routes:select({ id = route.id }, { nulls = true })

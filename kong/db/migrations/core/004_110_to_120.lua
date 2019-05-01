@@ -7,10 +7,20 @@ return {
       EXCEPTION WHEN UNDEFINED_COLUMN THEN
         -- Do nothing, accept existing state
       END$$;
+
+      DO $$
+      BEGIN
+        ALTER TABLE IF EXISTS ONLY "routes" ADD "https_redirect_status_code" INTEGER;
+      EXCEPTION WHEN DUPLICATE_COLUMN THEN
+        -- Do nothing, accept existing state
+      END;
+      $$;
     ]],
   },
 
   cassandra = {
-    up = [[]],
+    up = [[
+      ALTER TABLE routes ADD https_redirect_status_code int;
+    ]],
   },
 }

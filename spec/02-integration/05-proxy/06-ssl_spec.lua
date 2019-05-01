@@ -87,6 +87,38 @@ for _, strategy in helpers.each_strategy() do
         preserve_host = false,
       }
 
+      local service7 = bp.services:insert {
+        name     = "service-7",
+        protocol = helpers.mock_upstream_ssl_protocol,
+        host     = helpers.mock_upstream_hostname,
+        port     = helpers.mock_upstream_ssl_port,
+      }
+
+      bp.routes:insert {
+        protocols     = { "https" },
+        hosts         = { "example.com" },
+        paths         = { "/redirect-301" },
+        https_redirect_status_code = 301,
+        service       = service7,
+        preserve_host = false,
+      }
+
+      local service8 = bp.services:insert {
+        name     = "service-8",
+        protocol = helpers.mock_upstream_ssl_protocol,
+        host     = helpers.mock_upstream_hostname,
+        port     = helpers.mock_upstream_ssl_port,
+      }
+
+      bp.routes:insert {
+        protocols     = { "https" },
+        hosts         = { "example.com" },
+        paths         = { "/redirect-302" },
+        https_redirect_status_code = 302,
+        service       = service8,
+        preserve_host = false,
+      }
+
       local cert = bp.certificates:insert {
         cert  = ssl_fixtures.cert,
         key   = ssl_fixtures.key,
@@ -230,6 +262,32 @@ for _, strategy in helpers.each_strategy() do
         assert.same({ message = "Please use HTTPS protocol" }, json)
         assert.contains("Upgrade", res.headers.connection)
         assert.equal("TLS/1.2, HTTP/1.1", res.headers.upgrade)
+      end)
+
+      it("returns 301 when route has https_redirect_status_code set to 301", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/redirect-301",
+          headers = {
+            ["Host"] = "example.com",
+          }
+        })
+
+        assert.res_status(301, res)
+        assert.equal("https://example.com/redirect-301", res.headers.location)
+      end)
+
+      it("returns 302 when route has https_redirect_status_code set to 302", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/redirect-302?foo=bar",
+          headers = {
+            ["Host"] = "example.com",
+          }
+        })
+
+        assert.res_status(302, res)
+        assert.equal("https://example.com/redirect-302?foo=bar", res.headers.location)
       end)
 
       describe("from not trusted_ip", function()
