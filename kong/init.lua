@@ -251,8 +251,12 @@ end
 
 
 local function execute_cache_warmup(kong_config)
+  if kong_config.database == "off" then
+    return true
+  end
+
   if ngx.worker.id() == 0 then
-    local ok, err = cache_warmup.execute(kong_config.loaded_plugins)
+    local ok, err = cache_warmup.execute(kong_config.db_cache_warmup_entities)
     if not ok then
       return nil, err
     end
