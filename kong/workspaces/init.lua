@@ -143,7 +143,7 @@ end
 
 
 function _M.upsert_default(db)
-  db = db or singletons.db
+  db = db or singletons.db or kong.db -- XXX EE: safeguard to catch db if available anywhere.
 
   local cb = function()
     return db.workspaces:upsert_by_name(DEFAULT_WORKSPACE, {

@@ -1251,7 +1251,7 @@ local function get_running_conf(prefix)
 end
 
 
-singletons.dao = dao
+singletons.db = db
 
 -- Prepopulate Schema's cache
 Schema.new(consumers_schema_def)
