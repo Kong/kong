@@ -4,7 +4,6 @@ local workspaces  = require "kong.workspaces"
 local singletons  = require "kong.singletons"
 local renderer    = require "kong.portal.renderer"
 local ee          = require "kong.enterprise_edition"
-local responses   = require "kong.tools.responses"
 
 
 local _M = {}
@@ -18,7 +17,8 @@ local function send_workspace_not_found_error(err)
   -- kong.ctx.core.phase").
 
   local err_msg = 'failed to retrieve workspace for the request (reason: ' .. err .. ')'
-  responses.send_HTTP_INTERNAL_SERVER_ERROR(err_msg)
+  ngx.log(ngx.ERR, err_msg)
+  kong.response.exit(500, { message = "An unexpected error occurred"})
 end
 
 
@@ -55,8 +55,7 @@ function _M.set_workspace_by_subdomain(self)
   local workspace, err = workspaces.fetch_workspace(ws_name)
   if err then
     ngx.log(ngx.ERR, err)
-    -- return kong.response.exit(500, { message = "An unexpected error occurred" })
-    return responses.send_HTTP_INTERNAL_SERVER_ERROR()
+    return kong.response.exit(500, { message = "An unexpected error occurred" })
   end
 
   if not workspace then
@@ -74,8 +73,7 @@ function _M.set_workspace_by_path(self)
 
   if err then
     ngx.log(ngx.ERR, err)
-    return responses.send_HTTP_INTERNAL_SERVER_ERROR()
-    -- return kong.response.exit(500, { message = "An unexpected error occurred" })
+    return kong.response.exit(500, { message = "An unexpected error occurred" })
   end
 
   -- unable to find workspace associated with workspace_name, fallback to default
@@ -83,8 +81,7 @@ function _M.set_workspace_by_path(self)
     workspace, err = workspaces.fetch_workspace(workspaces.DEFAULT_WORKSPACE)
     if err then
       ngx.log(ngx.ERR, err)
-      return responses.send_HTTP_INTERNAL_SERVER_ERROR()
-      -- return kong.response.exit(500, { message = "An unexpected error occurred" })
+      return kong.response.exit(500, { message = "An unexpected error occurred" })
     end
 
     -- yikes, can't fetch default, eject

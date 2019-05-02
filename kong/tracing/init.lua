@@ -1,7 +1,10 @@
 local ffi = require "ffi"
 local uuid = require("kong.tools.utils").uuid
 local strategies = require "kong.tracing.strategies"
-local get_node_id = require("kong.tools.public").get_node_id
+local knode  = (kong and kong.node) and kong.node or
+               require "kong.pdk.node".new()
+
+local get_node_id = knode.get_id
 
 
 local at = ngx.timer.at

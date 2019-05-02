@@ -70,7 +70,6 @@ local openssl_x509 = require "openssl.x509"
 local runloop = require "kong.runloop.handler"
 local mesh = require "kong.runloop.mesh"
 local tracing = require "kong.tracing"
-local responses = require "kong.tools.responses"
 local semaphore = require "ngx.semaphore"
 local singletons = require "kong.singletons"
 local kong_cache = require "kong.cache"
@@ -803,7 +802,7 @@ function Kong.access()
 
       if not ok then
         ctx.delay_response = false
-        return responses.send_HTTP_UNAUTHORIZED(err)
+        return kong.response.exit(401, { message = err })
       end
     end
     ctx.workspaces = old_ws

@@ -79,8 +79,6 @@ build = {
     ["kong.enterprise_edition.crud_helpers"] = "kong/enterprise_edition/crud_helpers.lua",
     ["kong.enterprise_edition.dao.enums"] = "kong/enterprise_edition/dao/enums.lua",
     ["kong.enterprise_edition.dao.factory"] = "kong/enterprise_edition/dao/factory.lua",
-    ["kong.enterprise_edition.dao.migrations.core.postgres"] = "kong/enterprise_edition/dao/migrations/core/postgres.lua",
-    ["kong.enterprise_edition.dao.migrations.core.cassandra"] = "kong/enterprise_edition/dao/migrations/core/cassandra.lua",
     ["kong.enterprise_edition.db.typedefs"] = "kong/enterprise_edition/db/typedefs.lua",
     ["kong.enterprise_edition.feature_flags"] = "kong/enterprise_edition/feature_flags.lua",
     ["kong.enterprise_edition.jwt"] = "kong/enterprise_edition/jwt.lua",
@@ -172,23 +170,9 @@ build = {
     ["kong.runloop.plugins_iterator"] = "kong/runloop/plugins_iterator.lua",
     ["kong.runloop.balancer"] = "kong/runloop/balancer.lua",
 
-    ["kong.dao.errors"] = "kong/dao/errors.lua",
-    ["kong.dao.schemas_validation"] = "kong/dao/schemas_validation.lua",
-    ["kong.dao.schemas.apis"] = "kong/dao/schemas/apis.lua",
-
     ["kong.db.schema.entities.credentials"] = "kong/db/schema/entities/credentials.lua",
     ["kong.db.schema.entities.files"] = "kong/db/schema/entities/files.lua",
     ["kong.db.schema.entities.consumer_reset_secrets"] = "kong/db/schema/entities/consumer_reset_secrets.lua",
-
-    ["kong.dao.db"] = "kong/dao/db/init.lua",
-    ["kong.dao.db.cassandra"] = "kong/dao/db/cassandra.lua",
-    ["kong.dao.db.postgres"] = "kong/dao/db/postgres.lua",
-    ["kong.dao.dao"] = "kong/dao/dao.lua",
-    ["kong.dao.factory"] = "kong/dao/factory.lua",
-    ["kong.dao.model_factory"] = "kong/dao/model_factory.lua",
-    ["kong.dao.migrations.helpers"] = "kong/dao/migrations/helpers.lua",
-    ["kong.dao.migrations.cassandra"] = "kong/dao/migrations/cassandra.lua",
-    ["kong.dao.migrations.postgres"] = "kong/dao/migrations/postgres.lua",
 
     ["kong.rbac"] = "kong/rbac/init.lua",
     ["kong.rbac.migrations.01_defaults"] = "kong/rbac/migrations/01_defaults.lua",

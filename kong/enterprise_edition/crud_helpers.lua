@@ -1,27 +1,26 @@
-local api_crud_helpers = require "kong.api.crud_helpers"
 local enums = require "kong.enterprise_edition.dao.enums"
 local ee_api_helpers = require "kong.enterprise_edition.api_helpers"
 
 local _M = {}
 
+-- XXX EE: delete these unneeded find_*
+-- function _M.find_consumer_by_username_or_id(self, dao_factory, helpers, filter)
+--   filter = filter or {}
+--   filter.type = enums.CONSUMERS.TYPE.PROXY
 
-function _M.find_consumer_by_username_or_id(self, dao_factory, helpers, filter)
-  filter = filter or {}
-  filter.type = enums.CONSUMERS.TYPE.PROXY
-
-  api_crud_helpers.find_consumer_by_username_or_id(self,
-                                                   dao_factory,
-                                                   helpers,
-                                                   filter)
-end
+--   api_crud_helpers.find_consumer_by_username_or_id(self,
+--                                                    dao_factory,
+--                                                    helpers,
+--                                                    filter)
+-- end
 
 
-function _M.find_developer_by_email_or_id(self, dao_factory, helpers, filter)
-  filter = filter or {}
-  filter.type = enums.CONSUMERS.TYPE.DEVELOPER
+-- function _M.find_developer_by_email_or_id(self, dao_factory, helpers, filter)
+--   filter = filter or {}
+--   filter.type = enums.CONSUMERS.TYPE.DEVELOPER
 
-  api_crud_helpers.find_consumer_by_email_or_id(self, dao_factory, helpers, filter)
-end
+--   api_crud_helpers.find_consumer_by_email_or_id(self, dao_factory, helpers, filter)
+-- end
 
 
 function _M.post_process_credential(credential)
