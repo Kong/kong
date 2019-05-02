@@ -54,6 +54,10 @@ for _, strategy in helpers.each_strategy() do
       local row, err = db.plugins:select_by_cache_key(key)
       assert.is_nil(err)
 
+      -- EE: remove workspaces fields
+      row.workspace_id = nil
+      row.workspace_name = nil
+
       assert.same(key_auth, row)
 
       -- TEST 2: retrieve rate-limiting plugin for Service
