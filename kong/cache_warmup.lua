@@ -11,6 +11,11 @@ local kong = kong
 local ngx = ngx
 
 
+function cache_warmup._mock_kong(mock_kong)
+  kong = mock_kong
+end
+
+
 local function warmup_dns(premature, hosts, count)
   if premature then
     return
