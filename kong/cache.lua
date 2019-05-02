@@ -227,8 +227,11 @@ end
 
 
 function _M:safe_set(key, value)
-  local str_marshalled = marshall_for_shm(value, self.mlcache.ttl,
-                                                 self.mlcache.neg_ttl)
+  local str_marshalled, err = marshall_for_shm(value, self.mlcache.ttl,
+                                                      self.mlcache.neg_ttl)
+  if err then
+    return nil, err
+  end
 
   return ngx.shared[SHM_CACHE]:safe_set(SHM_CACHE .. key, str_marshalled)
 end

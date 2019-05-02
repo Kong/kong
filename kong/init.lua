@@ -250,9 +250,9 @@ local function execute_plugins(ctx, phase)
 end
 
 
-local function execute_cache_warmup()
+local function execute_cache_warmup(kong_config)
   if ngx.worker.id() == 0 then
-    local ok, err = cache_warmup.execute()
+    local ok, err = cache_warmup.execute(kong_config.loaded_plugins)
     if not ok then
       return nil, err
     end
@@ -617,7 +617,7 @@ function Kong.init_worker()
     return
   end
 
-  ok, err = execute_cache_warmup()
+  ok, err = execute_cache_warmup(kong.configuration)
   if not ok then
     ngx_log(ngx_CRIT, "error warming up cache: ", err)
     return
