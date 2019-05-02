@@ -253,10 +253,23 @@ describe("Admin API #off", function()
         }
       })
 
-      local body =assert.response(res).has.status(400)
+      local body = assert.response(res).has.status(400)
       local json = cjson.decode(body)
       assert.same({
         error = "expected a table as input",
+      }, json)
+    end)
+
+    it("returns 400 when given no input", function()
+      local res = assert(client:send {
+        method = "POST",
+        path = "/config",
+      })
+
+      local body = assert.response(res).has.status(400)
+      local json = cjson.decode(body)
+      assert.same({
+        message = "expected a declarative configuration",
       }, json)
     end)
   end)
