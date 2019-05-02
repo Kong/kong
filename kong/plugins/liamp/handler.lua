@@ -341,9 +341,13 @@ function AWSLambdaHandler:access(conf)
   ngx.ctx.KONG_WAITING_TIME = get_now() - kong_wait_time_start
   local headers = res.headers
 
-  ok, err = client:set_keepalive(conf.keepalive)
-  if not ok then
-    return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+  if conf.proxy_url then
+    client:close()
+  else
+    ok, err = client:set_keepalive(conf.keepalive)
+    if not ok then
+      return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+    end
   end
 
   local status
