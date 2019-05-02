@@ -1,6 +1,5 @@
 local cache = require "kong.plugins.jwt-signer.cache"
 local endpoints = require "kong.api.endpoints"
-local utils = require "kong.tools.utils"
 local json  = require "cjson.safe"
 
 
@@ -94,11 +93,12 @@ local jwks_schema = kong.db.jwt_signer_jwks.schema
 
 
 return {
-  ["/jwt-signer/jwks/"] = {
+  ["/jwt-signer/jwks"] = {
     schema = jwks_schema,
     methods = {
       GET = function(self, db)
-        local jwks, _, err_t, offset = endpoints.page_collection(self, db, jwks_schema)
+        -- TODO: Remove hardcoded method "page" once 4f90ae61c gets on ee
+        local jwks, _, err_t, offset = endpoints.page_collection(self, db, jwks_schema, "page")
 
         if err_t then
           return endpoints.handle_error(err_t)
@@ -126,28 +126,28 @@ return {
   ["/jwt-signer/jwks/:jwt_signer_jwks"] = {
     schema = jwks_schema,
     methods = {
-      GET = endpoints.get_entity_endpoint(jwks_schema),
+      GET = function(self, db)
+        local row, _, err = endpoints.select_entity(self, db, jwks_schema)
+        if err then
+          return endpoints.handle_error(err)
+        elseif row == nil then
+          return kong.response.exit(404, { message = "Not found" })
+        end
+
+        return kong.response.exit(200, post_process_row(row))
+      end,
       DELETE = endpoints.delete_entity_endpoint(jwks_schema),
     },
   },
 
-  ["/jwt-signer/jwks/:id/rotate"] = {
+  ["/jwt-signer/jwks/:jwt_signer_jwks/rotate"] = {
     schema = jwks_schema,
     methods = {
       POST = function(self, db)
-        local id = self.params.id
-
-        local row, err
-
-        if utils.is_valid_uuid(id) then
-          row, err = db.jwt_signer_jwks:select { id = id }
-        else
-          row, err = db.jwt_signer_jwks:select_by_name(id)
-        end
-
+        local row, _, err = endpoints.select_entity(self, db, jwks_schema)
         if err then
           return endpoints.handle_error(err)
-        elseif  row == nil then
+        elseif row == nil then
           return kong.response.exit(404, { message = "Not found" })
         end
 
@@ -156,7 +156,7 @@ return {
         ok, err = cache.rotate_keys(row.name, row, true, true)
         if not ok then return endpoints.handle_error(err) end
 
-        row, err = db.jwt_signer_jwks:select { id = row.id }
+        row, _, err = endpoints.select_entity(self, db, jwks_schema)
         if err then
           return endpoints.handle_error(err)
         elseif row == nil then
