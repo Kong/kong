@@ -1083,7 +1083,7 @@ CREATE TABLE IF NOT EXISTS admins (
 
       -- create default roles if they do not exist (checking for read-only one)
       local read_only_present = connector:query("select * from rbac_roles where name='default:read-only';")
-      if not read_only_present then
+      if not read_only_present[1] then
         assert(connector:query(seed_kong_admin_data_cas()))
       end
     end
