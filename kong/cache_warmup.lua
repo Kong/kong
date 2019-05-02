@@ -1,3 +1,6 @@
+local utils = require "kong.tools.utils"
+
+
 local cache_warmup = {}
 
 
@@ -14,6 +17,26 @@ local ENTITIES_TO_WARMUP = {
 }
 
 
+local function warmup_dns(premature, hosts, count)
+  if premature then
+    return
+  end
+
+  ngx.log(ngx.NOTICE, "warming up DNS entries ...")
+
+  local start = ngx.now()
+
+  for i = 1, count do
+    kong.dns.toip(hosts[i])
+  end
+
+  local elapsed = math.floor((ngx.now() - start) * 1000)
+
+  ngx.log(ngx.NOTICE, "finished warming up DNS entries",
+                      "' into the cache (in ", tostring(elapsed), "ms)")
+end
+
+
 local function fail_cb()
   error("this should never be called as L2 should already be warmed")
 end
@@ -26,9 +49,25 @@ local function cache_warmup_single_entity(dao)
 
   local start = ngx.now()
 
+  local hosts_array, hosts_set, host_count
+  if entity_name == "services" then
+    hosts_array = {}
+    hosts_set = {}
+    host_count = 0
+  end
+
   for entity, err in dao:each(1000) do
     if err then
       return nil, err
+    end
+
+    if entity_name == "services" then
+      if utils.hostname_type(entity.host) == "name"
+         and hosts_set[entity.host] == nil then
+        host_count = host_count + 1
+        hosts_array[host_count] = entity.host
+        hosts_set[entity.host] = true
+      end
     end
 
     local cache_key = dao:cache_key(entity)
@@ -43,6 +82,10 @@ local function cache_warmup_single_entity(dao)
     if not ok then
       return nil, err
     end
+  end
+
+  if entity_name == "services" and host_count > 0 then
+    ngx.timer.at(0, warmup_dns, hosts_array, host_count)
   end
 
   local elapsed = math.floor((ngx.now() - start) * 1000)
