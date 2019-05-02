@@ -18,7 +18,7 @@ local function get_auth_header(auth_type, entity)
     }
   end
 
-  if auth_type == 'key-auth' then    
+  if auth_type == 'key-auth' then
     return {
       ["Host"] = "route1.com",
       ["apikey"] = "key-" .. pk
@@ -29,10 +29,6 @@ end
 
 for _, strategy in helpers.each_strategy() do
 for _, auth_type in ipairs(auth_types) do
-
-if strategy == 'cassandra' then
-  return
-end
 
 describe("Developer status validation for " .. auth_type .. " [#" .. strategy .. "]", function()
   local db, _, proxy_client
