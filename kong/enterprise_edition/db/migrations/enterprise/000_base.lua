@@ -879,13 +879,12 @@ CREATE TABLE IF NOT EXISTS admins (
       );
 
       CREATE TABLE IF NOT EXISTS files(
-        id uuid,
+        id uuid PRIMARY KEY,
         auth boolean,
         name text,
         type text,
         contents text,
-        created_at timestamp,
-        PRIMARY KEY (id, name)
+        created_at timestamp
       );
 
       CREATE INDEX IF NOT EXISTS ON files(name);

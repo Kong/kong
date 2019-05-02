@@ -28,10 +28,6 @@ end
 
 for _, strategy in helpers.each_strategy() do
 
-if strategy == 'cassandra' then
-  return
-end
-
 describe("files API (#" .. strategy .. "): ", function()
   local db
   local client
@@ -495,7 +491,9 @@ describe("files API (#" .. strategy .. "): ", function()
               method = "PATCH",
               path = "/files/" .. fileStub.id,
               body = {
-                contents = "bar"
+                contents = "bar",
+                name = "changed_name",
+                auth = false,
               },
               headers = {["Content-Type"] = content_type}
             })
@@ -503,12 +501,23 @@ describe("files API (#" .. strategy .. "): ", function()
             local body = assert.res_status(200, res)
             local json = cjson.decode(body)
             assert.equal("bar", json.contents)
+            assert.equal("changed_name", json.name)
+            assert.equal(false, json.auth)
             assert.equal(fileStub.id, json.id)
 
-            local in_db = assert(db.files:select {
+            fileStub = assert(db.files:select {
               id = fileStub.id,
             })
-            assert.same(json, in_db)
+            assert.same(json, fileStub)
+
+            local res = assert(client:send {
+              method = "GET",
+              path = "/files/" .. fileStub.name
+            })
+
+            local body = assert.res_status(200, res)
+            local json = cjson.decode(body)
+            assert.same(fileStub, json)
           end
         end)
 
@@ -518,7 +527,9 @@ describe("files API (#" .. strategy .. "): ", function()
               method = "PATCH",
               path = "/files/" .. fileStub.name,
               body = {
-                contents = "bar"
+                contents = "bar",
+                name = "changed_name_again",
+                auth = false,
               },
               headers = {["Content-Type"] = content_type}
             })
@@ -526,13 +537,24 @@ describe("files API (#" .. strategy .. "): ", function()
             local body = assert.res_status(200, res)
             local json = cjson.decode(body)
             assert.equal("bar", json.contents)
+            assert.equal("changed_name_again", json.name)
+            assert.equal(false, json.auth)
             assert.equal(fileStub.id, json.id)
 
-            local in_db = assert(db.files:select {
+            fileStub = assert(db.files:select {
               id = fileStub.id,
             })
 
-            assert.same(json, in_db)
+            assert.same(json, fileStub)
+
+            local res = assert(client:send {
+              method = "GET",
+              path = "/files/" .. fileStub.name
+            })
+
+            local body = assert.res_status(200, res)
+            local json = cjson.decode(body)
+            assert.same(fileStub, json)
           end
         end)
 
@@ -542,7 +564,9 @@ describe("files API (#" .. strategy .. "): ", function()
               method = "PATCH",
               path = "/files/" .. fileSlashStub.name,
               body = {
-                contents = "bar"
+                contents = "bar",
+                name = "changed_name/with_slash",
+                auth = true,
               },
               headers = {["Content-Type"] = content_type}
             })
@@ -550,13 +574,25 @@ describe("files API (#" .. strategy .. "): ", function()
             local body = assert.res_status(200, res)
             local json = cjson.decode(body)
             assert.equal("bar", json.contents)
+            assert.equal("changed_name/with_slash", json.name)
+            assert.equal(true, json.auth)
             assert.equal(fileSlashStub.id, json.id)
 
-            local in_db = assert(db.files:select {
+            fileSlashStub = assert(db.files:select {
               id = fileSlashStub.id,
             })
 
-            assert.same(json, in_db)
+            assert.same(json, fileSlashStub)
+
+
+            local res = assert(client:send {
+              method = "GET",
+              path = "/files/" .. fileSlashStub.name
+            })
+
+            local body = assert.res_status(200, res)
+            local json = cjson.decode(body)
+            assert.same(fileSlashStub, json)
           end
         end)
         describe("errors", function()
