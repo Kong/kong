@@ -189,6 +189,7 @@ local function load_plugin_entity_strategy(schema, db, plugin)
   if not dao then
     return nil, err
   end
+  dao.plugin_name = plugin
   db.daos[schema.name] = dao
 end
 
