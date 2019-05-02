@@ -106,34 +106,34 @@ end
 
 local function overwrites()
 
-  -- legacy DAO overwrites
-  local strategies = {}
-  for _, strategy in ipairs({"postgres", "cassandra"}) do
+  -- -- legacy DAO overwrites
+  -- local strategies = {}
+  -- for _, strategy in ipairs({"postgres", "cassandra"}) do
 
-    strategies[strategy] = require("kong.dao.db." .. strategy)
-    local kong_dao_db_strategy_query_orig = strategies[strategy].query
+  --   strategies[strategy] = require("kong.dao.db." .. strategy)
+  --   local kong_dao_db_strategy_query_orig = strategies[strategy].query
 
-    strategies[strategy].query = function(self, query, ...)
-      local t = trace("legacy_query", trace_data and {
-        query     = query,
-        traceback = debug.traceback(),
-      })
+  --   strategies[strategy].query = function(self, query, ...)
+  --     local t = trace("legacy_query", trace_data and {
+  --       query     = query,
+  --       traceback = debug.traceback(),
+  --     })
 
-      if trace_data then
-        -- c* hack
-        local p = {...}
-        if p[3] and p[1] then
-          t:add_data("args", setmetatable(p[1], __data_mt))
-        end
-      end
+  --     if trace_data then
+  --       -- c* hack
+  --       local p = {...}
+  --       if p[3] and p[1] then
+  --         t:add_data("args", setmetatable(p[1], __data_mt))
+  --       end
+  --     end
 
-      local r = pack(kong_dao_db_strategy_query_orig(self, query, ...))
+  --     local r = pack(kong_dao_db_strategy_query_orig(self, query, ...))
 
-      t:finish()
+  --     t:finish()
 
-      return unpack(r)
-    end
-  end
+  --     return unpack(r)
+  --   end
+  -- end
 
 
   -- yayyy more legacy hacks
