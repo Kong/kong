@@ -1,7 +1,8 @@
-## Unreleased
+## v1.0.0
 
 ### Changed
 
+- Kong 1.0 CE / EE 0.35 Support (drops support for older releases)
 - Change function `unauthorized` log level from notice to debug
 
 ## v0.1.1
