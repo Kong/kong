@@ -233,9 +233,22 @@ for _, strategy in helpers.each_strategy() do
         assert.same(expected, res)
       end)
 
-      pending("it links existing admin to new workspace", function()
-        -- need to refactor link_to_workspace. putting this test in as a
-        -- placeholder to get it out of the admins routes spec
+      it("it links existing admin to new workspace", function()
+        local opts = {
+          token_optional = true,
+          db = db,
+          workspace = default_ws,
+        }
+
+        local params = {
+          username = admins[2].username,
+          email = admins[2].email,
+          status = enums.CONSUMERS.STATUS.APPROVED,
+        }
+
+        local res = admins_helpers.create(params, opts)
+        assert.same(200, res.code)
+        assert.same(admins_helpers.transmogrify(admins[2]), res.body.admin)
       end)
 
       it("returns 409 when rbac_user with same name already exists", function()
