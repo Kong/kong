@@ -5,16 +5,10 @@ local cache_warmup = {}
 
 
 local tostring = tostring
-local pairs = pairs
+local ipairs = ipairs
 local math = math
 local kong = kong
 local ngx = ngx
-
-
-local ENTITIES_TO_WARMUP = {
-  ["services"] = true,
-  ["plugins"] = true,
-}
 
 
 local function warmup_dns(premature, hosts, count)
@@ -97,34 +91,43 @@ end
 
 
 -- Loads entities from the database into the cache, for rapid subsequent
--- access. This function is intented to be used during worker initialization
--- The list of entities to be loaded is defined by the ENTITIES_TO_WARMUP
--- variable.
-function cache_warmup.execute(configured_plugins)
+-- access. This function is intented to be used during worker initialization.
+function cache_warmup.execute(entities)
   if not kong.cache then
     return true
   end
 
-  for entity_name, dao in pairs(kong.db.daos) do
-    local warmup = ENTITIES_TO_WARMUP[entity_name]
-    if not warmup and dao.plugin_name then
-      warmup = configured_plugins[dao.plugin_name]
+  for _, entity_name in ipairs(entities) do
+    if entity_name == "routes" then
+      -- do not spend shm memory by caching individual Routes entries
+      -- because the routes are kept in-memory by building the router object
+      kong.log.notice("the 'routes' entry is ignored in the list of ",
+                      "'db_cache_warmup_entities' because Kong ",
+                      "caches routes in memory separately")
+      goto continue
     end
 
-    if warmup then
-      local ok, err = cache_warmup_single_entity(dao)
-      if not ok then
-        if err == "no memory" then
-          kong.log.warn("cache warmup has been stopped because cache ",
-                        "memory is exhausted, please consider increasing ",
-                        "the value of 'mem_cache_size' (currently at ",
-                        kong.configuration.mem_cache_size, ")")
+    local dao = kong.db[entity_name]
+    if not (type(dao) == "table" and dao.schema) then
+      kong.log.warn(entity_name, " is not a valid entity name, please check ",
+                    "the value of 'db_cache_warmup_entities'")
+      goto continue
+    end
 
-          return true
-        end
-        return nil, err
+    local ok, err = cache_warmup_single_entity(dao)
+    if not ok then
+      if err == "no memory" then
+        kong.log.warn("cache warmup has been stopped because cache ",
+                      "memory is exhausted, please consider increasing ",
+                      "the value of 'mem_cache_size' (currently at ",
+                      kong.configuration.mem_cache_size, ")")
+
+        return true
       end
+      return nil, err
     end
+
+    ::continue::
   end
 
   return true

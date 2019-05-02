@@ -600,6 +600,23 @@
                                  # expires, a new attempt to refresh the stale
                                  # entities will be made.
 
+#db_cache_warmup_entities = services, plugins
+                                 # Entities to be pre-loaded from the datastore
+                                 # into the in-memory cache at Kong start-up.
+                                 # This speeds up the first access of endpoints
+                                 # that use the given entities.
+                                 #
+                                 # When the `services` entity is configured
+                                 # for warmup, the DNS entries for values in
+                                 # its `host` attribute are pre-resolved
+                                 # asynchronously as well.
+                                 #
+                                 # Cache size set in `mem_cache_size` should
+                                 # be set to a value large enough to hold all
+                                 # instances of the specified entities.
+                                 # If the size is insufficient, Kong will log
+                                 # a warning.
+
 #------------------------------------------------------------------------------
 # DNS RESOLVER
 #------------------------------------------------------------------------------
