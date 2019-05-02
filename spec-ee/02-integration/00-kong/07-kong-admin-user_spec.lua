@@ -1,5 +1,6 @@
 local helpers = require "spec.helpers"
 local crypto = require "kong.plugins.basic-auth.crypto"
+local utils = require "kong.tools.utils"
 local DB = require "kong.db"
 
 for _, strategy in helpers.each_strategy() do
@@ -10,7 +11,10 @@ for _, strategy in helpers.each_strategy() do
   end)
 
   local function init_db()
-    local db = assert(DB.new(helpers.test_conf, strategy))
+    local conf = utils.deep_copy(helpers.test_conf)
+    conf.cassandra_timeout = 60000 -- default used in the `migrations` cmd as well
+
+    local db = assert(DB.new(conf, strategy))
     assert(db:init_connector())
     assert(db:connect())
     finally(function()
@@ -26,6 +30,7 @@ for _, strategy in helpers.each_strategy() do
 
       helpers.setenv("KONG_PASSWORD", "foo")
       assert(db:schema_reset())
+      
       helpers.bootstrap_database(db)
 
       local admins = db.admins:select_all()
