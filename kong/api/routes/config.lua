@@ -30,7 +30,12 @@ return {
       if self.params._format_version then
         entities, err_or_ver = dc:parse_table(self.params)
       else
-      local config = self.params.config
+        local config = self.params.config
+        if not config then
+          return kong.response.exit(400, {
+            message = "expected a declarative configuration"
+          })
+        end
         -- TODO extract proper filename from the input
         entities, err_or_ver = dc:parse_string(config, "config.yml", accept)
       end
