@@ -1859,15 +1859,23 @@ describe("Router", function()
 
       for i, args in ipairs(checks) do
 
-        local config = args[5] == true and "(strip = on, plain)" or "(strip = off, plain)"
+        local config
+        if args[5] == true then
+          config = "(strip = on, plain)"
+        else
+          config = "(strip = off, plain)"
+        end
 
-        it("(" .. i .. ") " .. config ..
-           " is not appended to upstream url " .. args[1] ..
-           " (with " .. (args[2] and ("uri " .. args[2]) or
-           ("host test" .. i .. ".domain.org")) .. ")" ..
-           " when requesting " .. args[3], function()
+        local description
+        if args[2] then
+          description = string.format("(%d) (%s) %s with uri %s when requesting %s",
+            i, config, args[1], args[2], args[3])
+        else
+          description = string.format("(%d) (%s) %s with host %s when requesting %s",
+            i, config, args[1], "localbin-" .. i .. ".com", args[3])
+        end
 
-
+        it(description, function()
           local use_case_routes = {
             {
               service      = {
@@ -1879,16 +1887,16 @@ describe("Router", function()
                 strip_path = args[5],
                 paths      = { args[2] },
               },
-              headers   = {
+              headers      = {
                 -- only add the header is no path is provided
-                host    = args[2] == nil and nil or { "test" .. i .. ".domain.org" },
+                host       = args[2] == nil and nil or { "localbin-" .. i .. ".com" },
               },
             }
           }
 
           local router = assert(Router.new(use_case_routes) )
 
-          local _ngx = mock_ngx("GET", args[3], { host = "test" .. i .. ".domain.org" })
+          local _ngx = mock_ngx("GET", args[3], { host = "localbin-" .. i .. ".com" })
           local match_t = router.exec(_ngx)
           assert.same(use_case_routes[1].route, match_t.route)
           assert.equal(args[1], match_t.upstream_url_t.path)
@@ -1904,14 +1912,18 @@ describe("Router", function()
       end
 
       for i, args in ipairs(checks) do
-        local config = args[5] == true and "(strip = on, regex)" or "(strip = off, regex)"
+        local config
+        if args[5] == true then
+          config = "(strip = on, regex)"
+        else
+          config = "(strip = off, regex)"
+        end
 
         if args[2] then -- skip test cases which match on host
-          it("(" .. i .. ") " .. config ..
-            " is not appended to upstream url " .. args[1] ..
-            " (with " .. (args[2] and ("uri " .. make_a_regex(args[2])) or
-            ("host test" .. i .. ".domain.org")) .. ")" ..
-            " when requesting " .. args[3], function()
+          local description = string.format("(%d) (%s) %s with uri %s when requesting %s",
+                                            i, config, args[1], make_a_regex(args[2]), args[3])
+
+          it(description, function()
 
 
             local use_case_routes = {
@@ -1925,16 +1937,16 @@ describe("Router", function()
                   strip_path = args[5],
                   paths      = { make_a_regex(args[2]) },
                 },
-                headers   = {
+                headers      = {
                   -- only add the header is no path is provided
-                  host    = args[2] == nil and nil or { "test" .. i .. ".domain.org" },
+                  host       = args[2] == nil and nil or { "localbin-" .. i .. ".com" },
                 },
               }
             }
 
             local router = assert(Router.new(use_case_routes) )
 
-            local _ngx = mock_ngx("GET", args[3], { host = "test" .. i .. ".domain.org" })
+            local _ngx = mock_ngx("GET", args[3], { host = "localbin-" .. i .. ".com" })
             local match_t = router.exec(_ngx)
             assert.same(use_case_routes[1].route, match_t.route)
             assert.equal(args[1], match_t.upstream_url_t.path)

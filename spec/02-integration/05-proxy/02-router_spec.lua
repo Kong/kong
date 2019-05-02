@@ -713,7 +713,7 @@ for _, strategy in helpers.each_strategy() do
         end)
       end)
 
-      describe(" = true", function()
+      describe("= true", function()
         it("forwards request Host", function()
           local res = assert(proxy_client:send {
             method  = "GET",
@@ -994,7 +994,7 @@ for _, strategy in helpers.each_strategy() do
               },
               service = {
                 name = "plain_" .. i,
-                path = args[1]
+                path = args[1],
               }
             }
           end
@@ -1008,32 +1008,27 @@ for _, strategy in helpers.each_strategy() do
           end
         end)
 
-        local function check(i, request_uri, expected_uri)
-          return function()
-            local res = assert(proxy_client:send {
-              method  = "GET",
-              path    = request_uri,
+        for i, args in ipairs(checks) do
+          local config = string.format("route.strip_path=%s", args[5] and "on" or "off")
+
+          local description
+          if args[2] then
+            description = string.format("(%d) (%s) %s with uri %s when requesting %s",
+                                        i, config, args[1], args[2], args[3])
+          else
+            description = string.format("(%d) (%s) %s with host %s when requesting %s",
+                                        i, config, args[1], "localbin-" .. i .. ".com", args[3])
+          end
+
+          it(description, function()
+            local res = assert(proxy_client:get(args[3], {
               headers = {
                 ["Host"] = "localbin-" .. i .. ".com",
               }
-            })
+            }))
 
-            local json = assert.res_status(200, res)
-            local data = cjson.decode(json)
-
-            assert.equal(expected_uri, data.vars.request_uri)
-          end
-        end
-
-        for i, args in ipairs(checks) do
-          local config = "(strip = " .. (args[5] and "on" or "off") .. ")"
-
-          it("(" .. i .. ") " .. config ..
-             " is not appended to upstream url " .. args[1] ..
-             " (with " .. (args[2] and ("uri " .. args[2]) or
-             ("host test" .. i .. ".domain.org")) .. ")" ..
-             " when requesting " .. args[3], function()
-            check(i, args[3], args[4])
+            local data = assert.response(res).has.jsonbody()
+            assert.equal(args[4], data.vars.request_uri)
           end)
         end
       end)
@@ -1059,7 +1054,7 @@ for _, strategy in helpers.each_strategy() do
               },
               service = {
                 name = "make_regex_" .. i,
-                path = args[1]
+                path = args[1],
               }
             }
           end
@@ -1071,33 +1066,23 @@ for _, strategy in helpers.each_strategy() do
           remove_routes(strategy, routes)
         end)
 
-        local function check(i, request_uri, expected_uri)
-          return function()
-            local res = assert(proxy_client:send {
-              method  = "GET",
-              path    = request_uri,
-              headers = {
-                ["Host"] = "localbin-" .. i .. ".com",
-              }
-            })
-
-            local json = assert.res_status(200, res)
-            local data = cjson.decode(json)
-
-            assert.equal(expected_uri, data.vars.request_uri)
-          end
-        end
-
         for i, args in ipairs(checks) do
           if args[2] then  -- skip if hostbased match
-            local config = "(strip = " .. (args[5] and "on" or "off") .. ")"
 
-            it("(" .. i .. ") " .. config ..
-              " is not appended to upstream url " .. args[1] ..
-              " (with " .. (args[2] and ("uri " .. make_a_regex(args[2])) or
-              ("host test" .. i .. ".domain.org")) .. ")" ..
-              " when requesting " .. args[3], function()
-              check(i, args[3], args[4])
+            local config = string.format("route.strip_path=%s", args[5] and "on" or "off")
+
+            local description = string.format("(%d) (%s) %s with uri %s when requesting %s",
+                                              i, config, args[1], make_a_regex(args[2]), args[3])
+
+            it(description, function()
+              local res = assert(proxy_client:get(args[3], {
+                headers = {
+                  ["Host"] = "localbin-" .. i .. ".com",
+                }
+              }))
+
+              local data = assert.response(res).has.jsonbody()
+              assert.equal(args[4], data.vars.request_uri)
             end)
           end
         end
