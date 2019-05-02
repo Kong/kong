@@ -1,3 +1,5 @@
+-- XXX EE. This file comes from EE and CE moved it to 04-plugins_triggering_spec.lua.
+-- TODO EE. Merge this one with 04* and delete this one
 local helpers = require "spec.helpers"
 local utils = require "kong.tools.utils"
 local cjson = require "cjson"

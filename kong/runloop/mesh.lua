@@ -11,6 +11,7 @@ local cluster_ca_tools = require "kong.tools.cluster_ca"
 
 
 local encode_base64 = ngx.encode_base64
+local http2_enabled
 
 
 local function simple_mesh_alpn_select(ssl, protos, mesh_alpn)
@@ -33,8 +34,9 @@ local function nginx_mesh_alpn_select(ssl, protos, mesh_server_ssl_ctx, mesh_alp
       -- https://github.com/openssl/openssl/issues/1652#issuecomment-384660673
       ssl:setVerify(mesh_server_ssl_ctx:getVerify()) -- to set e.g. VERIFY_FAIL_IF_NO_PEER_CERT
       return v
-    -- elseif v == "h2" -- TODO: figure out if current proxy listener directive has http2 allowed
-    elseif v == "http/1.1" then
+    elseif v == "http/1.1" or (v == "h2" and http2_enabled) then
+      -- TODO: Figure out if current proxy listener directive has http2 allowed.
+      -- For now this is better than not having http2 support at all.
       return v
     end
   end
@@ -60,6 +62,13 @@ local function init()
   -- This should run in init phase (in master, not worker)
 
   ngx.log(ngx.INFO, "initialising cluster ca...")
+
+  for _, listener in ipairs(singletons.configuration.proxy_listeners) do
+    if listener.http2 then
+      http2_enabled = true
+      break
+    end
+  end
 
   local ca_cert
   local node_cert

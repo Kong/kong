@@ -6,6 +6,7 @@ local cjson = require "cjson"
 local enums = require "kong.enterprise_edition.dao.enums"
 local ee_api = require "kong.enterprise_edition.api_helpers"
 
+local kong = kong
 local null = ngx.null
 local kong = kong
 local consumers_schema = kong.db.consumers.schema
@@ -23,11 +24,11 @@ return {
 
     GET = function(self, db, helpers, parent)
       local args = self.args.uri
-      local opts = endpoints.extract_options(args, db.consumers.schema, "select")
 
       -- Search by custom_id: /consumers?custom_id=xxx
       if args.custom_id then
-        local consumer, _, err_t = db.consumers:select_by_custom_id(args.custom_id, opts)
+        self.params.consumers = args.custom_id
+        local consumer, _, err_t = endpoints.select_entity(self, db, db.consumers.schema, "select_by_custom_id")
         if err_t then
           return endpoints.handle_error(err_t)
         end
@@ -38,10 +39,10 @@ return {
         end
         --]] EE
 
-        return helpers.responses.send_HTTP_OK {
+        return kong.response.exit(200, {
           data = { consumer },
           next = null,
-        }
+        })
       end
 
       ---EE [[

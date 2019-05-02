@@ -41,11 +41,13 @@ local function new(self)
   -- supports.  Also as an optimization we will only compile trusted ips if
   -- Kong is not run with the default 0.0.0.0/0, ::/0 aka trust all ip
   -- addresses settings.
+  local idx = 1
   for i = 1, n_ips do
     local address = ips[i]
 
     if ip.valid(address) then
-      table.insert(trusted_ips, address)
+      trusted_ips[idx] = address
+      idx = idx + 1
 
       if address == "0.0.0.0/0" then
         trust_all_ipv4 = true

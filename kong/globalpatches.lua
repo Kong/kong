@@ -5,6 +5,7 @@ local ran_before
 local tracing = require "kong.tracing"
 
 
+
 return function(options)
 
   if ran_before then
@@ -60,7 +61,7 @@ return function(options)
     if options.cli then
       -- ngx.shared.DICT proxy
       -- https://github.com/bsm/fakengx/blob/master/fakengx.lua
-      -- with minor fixes and addtions such as exptime
+      -- with minor fixes and additions such as exptime
       --
       -- See https://github.com/openresty/resty-cli/pull/12
       -- for a definitive solution of using shms in CLI

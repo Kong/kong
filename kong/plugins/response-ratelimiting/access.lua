@@ -1,6 +1,9 @@
 local policies = require "kong.plugins.response-ratelimiting.policies"
 local timestamp = require "kong.tools.timestamp"
 
+
+local kong = kong
+local next = next
 local pairs = pairs
 local tostring = tostring
 
@@ -8,11 +11,8 @@ local tostring = tostring
 local EMPTY = {}
 local HTTP_INTERNAL_SERVER_ERROR = 500
 local HTTP_TOO_MANY_REQUESTS = 429
-
-
-local _M = {}
-
 local RATELIMIT_REMAINING = "X-RateLimit-Remaining"
+
 
 local function get_identifier(conf)
   local identifier
@@ -30,32 +30,36 @@ local function get_identifier(conf)
   return identifier or kong.client.get_forwarded_ip()
 end
 
-local function get_usage(conf, identifier, current_timestamp, limits)
+
+local function get_usage(conf, identifier, limits, current_timestamp)
   local usage = {}
 
   for k, v in pairs(limits) do -- Iterate over limit names
     for lk, lv in pairs(v) do -- Iterare over periods
-      local current_usage, err = policies[conf.policy].usage(conf, identifier, current_timestamp, lk, k)
+      local current_usage, err = policies[conf.policy].usage(conf, identifier, k, lk, current_timestamp)
       if err then
         return nil, err
       end
 
-      local remaining = lv - current_usage
-
       if not usage[k] then
         usage[k] = {}
       end
+
       if not usage[k][lk] then
         usage[k][lk] = {}
       end
 
       usage[k][lk].limit = lv
-      usage[k][lk].remaining = remaining
+      usage[k][lk].remaining = lv - current_usage
     end
   end
 
   return usage
 end
+
+
+local _M = {}
+
 
 function _M.execute(conf)
   if not next(conf.limits) then
@@ -69,7 +73,7 @@ function _M.execute(conf)
   kong.ctx.plugin.identifier = identifier -- For later use
 
   -- Load current metric for configured period
-  local usage, err = get_usage(conf, identifier, current_timestamp, conf.limits)
+  local usage, err = get_usage(conf, identifier, conf.limits, current_timestamp)
   if err then
     if conf.fault_tolerant then
       kong.log.err("failed to get usage: ", tostring(err))
@@ -101,5 +105,6 @@ function _M.execute(conf)
 
   kong.ctx.plugin.usage = usage -- For later use
 end
+
 
 return _M

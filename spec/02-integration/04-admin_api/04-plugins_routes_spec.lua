@@ -1,4 +1,6 @@
 local helpers = require "spec.helpers"
+local admin_api = require "spec.fixtures.admin_api"
+local utils = require "kong.tools.utils"
 local cjson = require "cjson"
 
 for _, strategy in helpers.each_strategy() do
@@ -65,13 +67,13 @@ for _, strategy in helpers.each_strategy() do
 
           services[i] = service
 
-          plugins[i] = assert(db.plugins:insert {
+          plugins[i] = assert(db.plugins:insert({
             name = "key-auth",
             service = { id = service.id },
             config = {
               key_names = { "testkey" },
             }
-          })
+          }, { nulls = true }))
         end
       end)
 
@@ -118,6 +120,29 @@ for _, strategy in helpers.each_strategy() do
               path = "/plugins/f4aecadc-05c7-11e6-8d41-1f3b3d5fa15c"
             })
             assert.res_status(404, res)
+          end)
+        end)
+
+
+        describe("PUT", function()
+          it("can create a plugin", function()
+            local service = admin_api.services:insert()
+            admin_api.routes:insert({
+              paths = { "/mypath" },
+              service = { id = service.id },
+            })
+            local res = assert(client:send {
+              method = "PUT",
+              path = "/plugins/" .. utils.uuid(),
+              body = {
+                name = "key-auth",
+                service = {
+                  id = service.id,
+                }
+              },
+              headers = {["Content-Type"] = "application/json"}
+            })
+            assert.res_status(200, res)
           end)
         end)
 
@@ -230,14 +255,27 @@ for _, strategy in helpers.each_strategy() do
 
     describe("/plugins/schema/{plugin}", function()
       describe("GET", function()
-        it("returns the schema of a plugin config", function()
+        it("returns the schema of all bundled plugins", function()
+          for plugin, _ in pairs(helpers.test_conf.loaded_plugins) do
+            local res = assert(client:send {
+              method = "GET",
+              path = "/plugins/schema/" .. plugin,
+            })
+            local body = assert.res_status(200, res)
+            local json = cjson.decode(body)
+            assert.is_table(json.fields)
+          end
+        end)
+        it("returns nested records and empty array defaults as arrays", function()
           local res = assert(client:send {
             method = "GET",
             path = "/plugins/schema/request-transformer",
           })
           local body = assert.res_status(200, res)
-          local json = cjson.decode(body)
-          assert.is_table(json.fields)
+          assert.match('{"fields":[{', body, 1, true)
+          assert.not_match('"fields":{', body, 1, true)
+          assert.match('"default":[]', body, 1, true)
+          assert.not_match('"default":{}', body, 1, true)
         end)
         it("returns nested records and empty array defaults as arrays", function()
           local res = assert(client:send {

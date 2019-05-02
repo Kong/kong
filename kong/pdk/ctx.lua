@@ -91,7 +91,7 @@ local function new(self)
     -- those would be visible on the *.ctx namespace for now
     -- TODO: hide them in a private table shared between this
     -- module and the global.lua one
-    keys = setmetatable({}, { __mode = "k" }),
+    keys = setmetatable({}, { __mode = "v" }),
   }
 
 

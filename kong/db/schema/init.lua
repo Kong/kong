@@ -904,7 +904,14 @@ end
 -- @param field The field definition table.
 local function handle_missing_field(field, value)
   if field.default ~= nil then
-    return tablex.deepcopy(field.default)
+    local copy = tablex.deepcopy(field.default)
+    if (field.type == "array" or field.type == "set")
+      and type(copy) == "table"
+      and not getmetatable(copy)
+    then
+      setmetatable(copy, cjson.array_mt)
+    end
+    return copy
   end
 
   -- If `nilable` (metaschema only), a default value is not necessary.
@@ -965,7 +972,7 @@ end
 
 
 local function resolve_field(self, k, field, subschema)
-  field = field or self.fields[k]
+  field = field or self.fields[tostring(k)]
   if not field then
     return nil, validation_errors.UNKNOWN
   end
@@ -998,7 +1005,7 @@ validate_fields = function(self, input)
 
   for k, v in pairs(input) do
     local err
-    local field = self.fields[k]
+    local field = self.fields[tostring(k)]
     if field and field.type == "self" then
       field = input
     else
@@ -1452,6 +1459,10 @@ function Schema:process_auto_fields(input, context, nulls)
     if context == "update" and field.type == "record"
        and output[key] ~= nil and output[key] ~= null then
       read_before_write = true
+    end
+
+    if context == "select" and field.type == "integer" and type(output[key]) == "number" then
+      output[key] = floor(output[key])
     end
   end
 

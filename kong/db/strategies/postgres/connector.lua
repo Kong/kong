@@ -30,7 +30,7 @@ local WARN                          = ngx.WARN
 local SQL_INFORMATION_SCHEMA_TABLES = [[
 SELECT table_name
   FROM information_schema.tables
- WHERE table_schema = 'public';
+ WHERE table_schema = CURRENT_SCHEMA;
 ]]
 local PROTECTED_TABLES = {
   schema_migrations = true,
@@ -123,7 +123,10 @@ local setkeepalive
 
 local function connect(config)
   local phase  = get_phase()
-  if phase == "init" or phase == "init_worker" or ngx.IS_CLI then
+  -- TODO: remove preread from here when the issue with starttls has been fixed
+  -- TODO: make also sure that Cassandra doesn't use LuaSockets on preread after
+  --       starttls has been fixed
+  if phase == "preread" or phase == "init" or phase == "init_worker" or ngx.IS_CLI then
     -- Force LuaSocket usage in the CLI in order to allow for self-signed
     -- certificates to be trusted (via opts.cafile) in the resty-cli
     -- interpreter (no way to set lua_ssl_trusted_certificate).
@@ -148,7 +151,19 @@ local function connect(config)
   end
 
   if connection.sock:getreusedtimes() == 0 then
-    ok, err = connection:query("SET TIME ZONE 'UTC';");
+    if config.schema == "" then
+      local res = connection:query("SELECT CURRENT_SCHEMA AS schema")
+      if res and res[1] and res[1].schema and res[1].schema ~= null then
+        config.schema = res[1].schema
+      else
+        config.schema = "public"
+      end
+    end
+
+    ok, err = connection:query(concat {
+      "SET SCHEMA ",    connection:escape_literal(config.schema), ";\n",
+      "SET TIME ZONE ", connection:escape_literal("UTC"), ";",
+    })
     if not ok then
       setkeepalive(connection)
       return nil, err
@@ -159,56 +174,20 @@ local function connect(config)
 end
 
 
-local function close(connection)
-  if not connection or not connection.sock then
-    return nil, "no active connection"
-  end
-
-  local ok, err = connection:disconnect()
-  if not ok then
-    if err then
-      log(WARN, "unable to close postgres connection (", err, ")")
-
-    else
-      log(WARN, "unable to close postgres connection")
-    end
-
-    return nil, err
-  end
-
-  return true
-end
-
-
 setkeepalive = function(connection)
   if not connection or not connection.sock then
-    return nil, "no active connection"
+    return true
   end
 
-  local ok, err
   if connection.sock_type == "luasocket" then
-    ok, err = connection:disconnect()
-    if not ok then
-      if err then
-        log(WARN, "unable to close postgres connection (", err, ")")
-
-      else
-        log(WARN, "unable to close postgres connection")
-      end
-
+    local _, err = connection:disconnect()
+    if err then
       return nil, err
     end
 
   else
-    ok, err = connection:keepalive()
-    if not ok then
-      if err then
-        log(WARN, "unable to set keepalive for postgres connection (", err, ")")
-
-      else
-        log(WARN, "unable to set keepalive for postgres connection")
-      end
-
+    local _, err = connection:keepalive()
+    if err then
       return nil, err
     end
   end
@@ -361,11 +340,11 @@ function _mt:close()
     return true
   end
 
-  local ok, err = close(conn)
+  local _, err = conn:disconnect()
 
   self:store_connection(nil)
 
-  if not ok then
+  if err then
     return nil, err
   end
 
@@ -379,11 +358,11 @@ function _mt:setkeepalive()
     return true
   end
 
-  local ok, err = setkeepalive(conn)
+  local _, err = setkeepalive(conn)
 
   self:store_connection(nil)
 
-  if not ok then
+  if err then
     return nil, err
   end
 
@@ -441,12 +420,14 @@ end
 
 
 function _mt:reset()
+  local schema = self:escape_identifier(self.config.schema)
   local user = self:escape_identifier(self.config.user)
+
   local ok, err = self:query(concat {
     "BEGIN;\n",
-    "  DROP SCHEMA IF EXISTS public CASCADE;\n",
-    "  CREATE SCHEMA IF NOT EXISTS public AUTHORIZATION ", user, ";\n",
-    "  GRANT ALL ON SCHEMA public TO ", user, ";\n",
+    "  DROP SCHEMA IF EXISTS ", schema ," CASCADE;\n",
+    "  CREATE SCHEMA IF NOT EXISTS ", schema, " AUTHORIZATION ", user, ";\n",
+    "  GRANT ALL ON SCHEMA ", schema ," TO ", user, ";\n",
     "COMMIT;",
   })
 
@@ -677,12 +658,14 @@ function _mt:schema_reset()
     error("no connection")
   end
 
+  local schema = self:escape_identifier(self.config.schema)
   local user = self:escape_identifier(self.config.user)
+
   local ok, err = self:query(concat {
     "BEGIN;\n",
-    "  DROP SCHEMA IF EXISTS public CASCADE;\n",
-    "  CREATE SCHEMA IF NOT EXISTS public AUTHORIZATION ", user, ";\n",
-    "  GRANT ALL ON SCHEMA public TO ", user, ";\n",
+    "  DROP SCHEMA IF EXISTS ", schema, " CASCADE;\n",
+    "  CREATE SCHEMA IF NOT EXISTS ", schema, " AUTHORIZATION ", user, ";\n",
+    "  GRANT ALL ON SCHEMA ", schema ," TO ", user, ";\n",
     "COMMIT;",
   })
 
@@ -785,6 +768,28 @@ function _mt:record_migration(subsystem, name, state)
   end
 
   return true
+end
+
+
+function _mt:are_014_apis_present()
+  local _, err = self:query([[
+    DO $$
+    BEGIN
+      IF EXISTS(SELECT id FROM apis) THEN
+        RAISE EXCEPTION 'there are apis in the db';
+      END IF;
+    EXCEPTION WHEN UNDEFINED_TABLE THEN
+      -- Do nothing, table does not exist
+    END;
+    $$;
+  ]])
+  if err and err:match("there are apis in the db") then
+    return true
+  end
+  if err then
+    return nil, err
+  end
+  return false
 end
 
 
@@ -973,6 +978,7 @@ function _M.new(kong_config)
     user       = kong_config.pg_user,
     password   = kong_config.pg_password,
     database   = kong_config.pg_database,
+    schema     = "",
     ssl        = kong_config.pg_ssl,
     ssl_verify = kong_config.pg_ssl_verify,
     cafile     = kong_config.lua_ssl_trusted_certificate,

@@ -11,7 +11,7 @@ local cjson = require "cjson.safe"
 local utils = require "kong.tools.utils"
 local log = require "kong.cmd.utils.log"
 local env = require "kong.cmd.utils.env"
-local ip = require "kong.tools.ip"
+local ip = require "resty.mediador.ip"
 local ciphers = require "kong.tools.ciphers"
 local ee_conf_loader = require "kong.enterprise_edition.conf_loader"
 
@@ -188,7 +188,6 @@ local CONF_INFERENCES = {
                 }
               },
   plugins = { typ = "array" },
-  custom_plugins = { typ = "array" },
   anonymous_reports = { typ = "boolean" },
   nginx_daemon = { typ = "ngx_boolean" },
   nginx_optimizations = { typ = "boolean" },
@@ -815,7 +814,10 @@ local function load(path, custom_conf)
 
   -- load defaults, they are our mandatory base
   local s = pl_stringio.open(kong_default_conf)
-  local defaults, err = pl_config.read(s)
+  local defaults, err = pl_config.read(s, {
+    smart = false,
+    list_delim = "_blank_" -- mandatory but we want to ignore it
+  })
   s:close()
   if not defaults then
     return nil, "could not load default conf: " .. err
@@ -973,22 +975,6 @@ local function load(path, custom_conf)
             plugins[plugin_name] = true
           end
         end
-      end
-    end
-
-    if conf.custom_plugins and #conf.custom_plugins > 0 then
-      local warned
-
-      for i = 1, #conf.custom_plugins do
-        local plugin_name = pl_stringx.strip(conf.custom_plugins[i])
-
-        if not plugins[plugin_name] and not warned then
-          log.warn("the 'custom_plugins' configuration property is " ..
-                   "deprecated, use 'plugins' instead")
-          warned = true
-        end
-
-        plugins[plugin_name] = true
       end
     end
 

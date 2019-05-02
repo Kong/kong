@@ -37,7 +37,7 @@ local function parse_name_list(input, errors)
   end
 
   table.sort(name_list)
-  return setmetatable(name_list, cjson.empty_array_mt)
+  return setmetatable(name_list, cjson.array_mt)
 end
 
 

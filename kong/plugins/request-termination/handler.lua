@@ -22,7 +22,7 @@ local RequestTerminationHandler = BasePlugin:extend()
 
 
 RequestTerminationHandler.PRIORITY = 2
-RequestTerminationHandler.VERSION = "0.2.0"
+RequestTerminationHandler.VERSION = "1.0.0"
 
 
 function RequestTerminationHandler:new()

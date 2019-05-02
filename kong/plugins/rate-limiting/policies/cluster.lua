@@ -9,9 +9,6 @@ local floor = math.floor
 local fmt = string.format
 
 
-local EMPTY_UUID = "00000000-0000-0000-0000-000000000000"
-
-
 return {
   cassandra = {
     increment = function(connector, limits, identifier, current_timestamp, service_id, route_id, value)
@@ -27,7 +24,6 @@ return {
                AND period_date = ?
                AND service_id = ?
                AND route_id = ?
-               AND api_id = ?
           ]], {
             cassandra.counter(value),
             identifier,
@@ -35,40 +31,6 @@ return {
             cassandra.timestamp(period_date),
             cassandra.uuid(service_id),
             cassandra.uuid(route_id),
-            cassandra.uuid(EMPTY_UUID),
-          })
-          if not res then
-            kong.log.err("cluster policy: could not increment cassandra counter for period '",
-                         period, "': ", err)
-          end
-        end
-      end
-
-      return true
-    end,
-    increment_api = function(connector, limits, identifier, current_timestamp, api_id, value)
-      local periods = timestamp.get_timestamps(current_timestamp)
-
-      for period, period_date in pairs(periods) do
-        if limits[period] then
-          local res, err = connector:query([[
-            UPDATE ratelimiting_metrics
-               SET value = value + ?
-             WHERE identifier = ?
-               AND period = ?
-               AND period_date = ?
-               AND service_id = ?
-               AND route_id = ?
-               AND api_id = ?
-          ]], {
-            cassandra.counter(value),
-            identifier,
-            period,
-            cassandra.timestamp(period_date),
-            cassandra.uuid(EMPTY_UUID),
-            cassandra.uuid(EMPTY_UUID),
-            cassandra.uuid(api_id),
-
           })
           if not res then
             kong.log.err("cluster policy: could not increment cassandra counter for period '",
@@ -90,45 +52,12 @@ return {
            AND period_date = ?
            AND service_id = ?
            AND route_id = ?
-           AND api_id = ?
       ]], {
         identifier,
         period,
         cassandra.timestamp(periods[period]),
         cassandra.uuid(service_id),
         cassandra.uuid(route_id),
-        cassandra.uuid(EMPTY_UUID),
-      })
-
-      if not rows then
-        return nil, err
-      end
-
-      if #rows <= 1 then
-        return rows[1]
-      end
-
-      return nil, "bad rows result"
-    end,
-    find_api = function(connector, identifier, period, current_timestamp, api_id)
-      local periods = timestamp.get_timestamps(current_timestamp)
-
-      local rows, err = connector:query([[
-        SELECT value
-          FROM ratelimiting_metrics
-         WHERE identifier = ?
-           AND period = ?
-           AND period_date = ?
-           AND service_id = ?
-           AND route_id = ?
-           AND api_id = ?
-      ]], {
-        identifier,
-        period,
-        cassandra.timestamp(periods[period]),
-        cassandra.uuid(EMPTY_UUID),
-        cassandra.uuid(EMPTY_UUID),
-        cassandra.uuid(api_id),
       })
 
       if not rows then
@@ -152,46 +81,11 @@ return {
         if limits[period] then
           len = len + 1
           buf[len] = fmt([[
-            INSERT INTO "ratelimiting_metrics" ("identifier", "period", "period_date", "service_id", "route_id", "api_id", "value")
-                 VALUES ('%s', '%s', TO_TIMESTAMP('%s') AT TIME ZONE 'UTC', '%s', '%s', '%s', %d)
-            ON CONFLICT ("identifier", "period", "period_date", "service_id", "route_id", "api_id") DO UPDATE
+            INSERT INTO "ratelimiting_metrics" ("identifier", "period", "period_date", "service_id", "route_id", "value")
+                 VALUES ('%s', '%s', TO_TIMESTAMP('%s') AT TIME ZONE 'UTC', '%s', '%s', %d)
+            ON CONFLICT ("identifier", "period", "period_date", "service_id", "route_id") DO UPDATE
                     SET "value" = "ratelimiting_metrics"."value" + EXCLUDED."value"
-          ]], identifier, period, floor(period_date / 1000), service_id, route_id, EMPTY_UUID, value)
-        end
-      end
-
-      if len > 1 then
-        local sql
-        if len == 2 then
-          sql = buf[2]
-
-        else
-          buf[len + 1] = "COMMIT;"
-          sql = concat(buf, ";\n")
-        end
-
-        local res, err = connector:query(sql)
-        if not res then
-          return nil, err
-        end
-      end
-
-      return true
-    end,
-    increment_api = function(connector, limits, identifier, current_timestamp, api_id, value)
-      local buf = { "BEGIN" }
-      local len = 1
-      local periods = timestamp.get_timestamps(current_timestamp)
-
-      for period, period_date in pairs(periods) do
-        if limits[period] then
-          len = len + 1
-          buf[len] = fmt([[
-            INSERT INTO "ratelimiting_metrics" ("identifier", "period", "period_date", "service_id", "route_id", "api_id", "value")
-                 VALUES ('%s', '%s', TO_TIMESTAMP('%s') AT TIME ZONE 'UTC', '%s', '%s', '%s', %d)
-            ON CONFLICT ("identifier", "period", "period_date", "service_id", "route_id", "api_id") DO UPDATE
-                    SET "value" = "ratelimiting_metrics"."value" + EXCLUDED."value"
-          ]], identifier, period, floor(period_date / 1000), EMPTY_UUID, EMPTY_UUID, api_id, value)
+          ]], identifier, period, floor(period_date / 1000), service_id, route_id, value)
         end
       end
 
@@ -224,31 +118,8 @@ return {
            AND "period_date" = TO_TIMESTAMP('%s') AT TIME ZONE 'UTC'
            AND "service_id" = '%s'
            AND "route_id" = '%s'
-           AND "api_id" = '%s'
          LIMIT 1;
-      ]], identifier, period, floor(periods[period] / 1000), service_id, route_id, EMPTY_UUID)
-
-      local res, err = connector:query(sql)
-      if not res or err then
-        return nil, err
-      end
-
-      return res[1]
-    end,
-    find_api = function(connector, identifier, period, current_timestamp, api_id)
-      local periods = timestamp.get_timestamps(current_timestamp)
-
-      local sql = fmt([[
-        SELECT "value"
-          FROM "ratelimiting_metrics"
-         WHERE "identifier" = '%s'
-           AND "period" = '%s'
-           AND "period_date" = TO_TIMESTAMP('%s') AT TIME ZONE 'UTC'
-           AND "service_id" = '%s'
-           AND "route_id" = '%s'
-           AND "api_id" = '%s'
-         LIMIT 1;
-      ]], identifier, period, floor(periods[period] / 1000), EMPTY_UUID, EMPTY_UUID, api_id)
+      ]], identifier, period, floor(periods[period] / 1000), service_id, route_id)
 
       local res, err = connector:query(sql)
       if not res or err then

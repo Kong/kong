@@ -275,8 +275,8 @@ local function prepare_prefix(kong_config, nginx_custom_template_path)
   end
 
   -- generate default SSL certs if needed
-  if kong_config.proxy_ssl_enabled and not kong_config.ssl_cert and
-     not kong_config.ssl_cert_key then
+  if not kong_config.ssl_cert and not kong_config.ssl_cert_key and
+    (kong_config.proxy_ssl_enabled or kong_config.stream_listeners[1] ~= nil) then
     log.verbose("SSL enabled, no custom certificate set: using default certificate")
     local ok, err = gen_default_ssl_cert(kong_config, "default")
     if not ok then
