@@ -58,7 +58,7 @@ end
 
 
 local function configure_portal(db)
-  db.workspaces:upsert_by_name("default", {
+  return db.workspaces:upsert_by_name("default", {
     name = "default",
     config = {
       portal = true,
@@ -128,8 +128,7 @@ local function create_portal_sitemap()
   pl_file.write(sitemap_filename, sitemap_str)
 end
 
--- TODO DEVX: re-impliment once api endpoints are done
-for _, strategy in helpers.each_strategy({"postgres"}) do
+for _, strategy in helpers.each_strategy() do
   describe("Portal Rendering [#" .. strategy .. "]", function()
     local db
     local cookie
@@ -146,7 +145,7 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
         portal_auto_approve = true,
         portal_session_conf = PORTAL_SESSION_CONF,
       }))
-      configure_portal(db)
+      assert(configure_portal(db))
       create_portal_index()
       create_portal_sitemap()
     end)
@@ -250,8 +249,6 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
 
       lazy_teardown(function()
         db:truncate("files")
-        db:truncate("consumers")
-        db:truncate("developers")
       end)
 
       describe("unauthenticated user", function()
@@ -641,6 +638,7 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
             ['apikey'] = 'dog'
           }
         })
+
         cookie = assert.response(res).has.header("Set-Cookie")
 
         auth_page_pair = assert(db.files:insert {
@@ -781,8 +779,6 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
 
       lazy_teardown(function()
         db:truncate("files")
-        db:truncate("consumers")
-        db:truncate("developers")
       end)
 
       describe("authenticated user", function()
@@ -1026,8 +1022,6 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
 
       lazy_teardown(function()
         db:truncate("files")
-        db:truncate("consumers")
-        db:truncate("developers")
       end)
 
       describe("authenticated user", function()
@@ -1501,11 +1495,9 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
 
       lazy_teardown(function()
         db:truncate("files")
-        db:truncate("consumers")
-        db:truncate("developers")
       end)
 
-      describe("authenticated user #test", function()
+      describe("authenticated user", function()
         it("can render sitemap for authenticated user", function()
           local res = gui_client_request({
             method = "GET",
