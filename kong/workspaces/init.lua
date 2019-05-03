@@ -12,7 +12,6 @@ local ngx_log = ngx.log
 local DEBUG   = ngx.DEBUG
 local next    = next
 local values = tablex.values
-local cache = singletons.cache
 local pairs = pairs
 local setmetatable = setmetatable
 local ipairs = ipairs
