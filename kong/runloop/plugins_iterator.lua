@@ -136,6 +136,7 @@ local function load_plugin_configuration(ctx,
                                         route_id,
                                         service_id,
                                         consumer_id,
+                                        nil, -- placeholder for api_id
                                         true)
   local plugin, err = load_plugin_into_memory_ws(ctx, key)
   trace:finish()
