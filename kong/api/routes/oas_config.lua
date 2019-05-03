@@ -23,7 +23,7 @@ return {
         return endpoints.handle_error(err_t)
       end
 
-      return helpers.responses.send_HTTP_CREATED(res)
+      return kong.response.exit(201, res)
     end,
 
     PATCH = function(self, dao, helpers)
@@ -33,10 +33,10 @@ return {
       end
 
       if resources_created then
-        return helpers.responses.send_HTTP_CREATED(res)
+        return kong.response.exit(201, res)
       end
 
-      return helpers.responses.send_HTTP_OK(res)
+      return kong.response.exit(200, res)
     end,
   }
 }

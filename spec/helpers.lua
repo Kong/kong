@@ -227,7 +227,7 @@ local function get_db_utils(strategy, tables, plugins)
     tables[#tables + 1] = "workspace_entities"
     tables[#tables + 1] = "rbac_role_entities"
     ngx.ctx.workspaces = nil
-    truncate_tables(db, dao, tables)
+    truncate_tables(db, tables)
   end
 
   -- blueprints
