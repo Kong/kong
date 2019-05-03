@@ -176,11 +176,14 @@ local function query_entity(context, self, db, schema, method)
     return dao[method or context](dao, args, opts)
   end
 
-
-  if context == "page" and method then
+  if context == "page" then
     local size, err = get_page_size(args)
     if err then
       return nil, err, db[schema.name].errors:invalid_size(err)
+    end
+
+    if not method then
+      return dao[method or context](dao, size, args.offset, opts)
     end
 
     return dao[method](dao, self.params[schema.name], size, args.offset, opts)
