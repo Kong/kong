@@ -30,11 +30,10 @@ for _, strategy in helpers.each_strategy() do
 describe("Admin API (#" .. strategy .. "): ", function()
   local bp
   local db
-  local dao
   local client
 
   lazy_setup(function()
-    bp, db, dao = helpers.get_db_utils(strategy, {
+    bp, db  = helpers.get_db_utils(strategy, {
       "consumers",
       "plugins",
     }, {
@@ -51,22 +50,8 @@ describe("Admin API (#" .. strategy .. "): ", function()
   end)
 
   before_each(function()
-    dao:truncate_tables()
-    ngx.ctx.workspaces = dao.workspaces:find_all()
-    consumer = assert(dao.consumers:insert {
-      username = "bob",
-      custom_id = "1234"
-    })
-    consumer2 = assert(dao.consumers:insert {
-      username = "bob pop",  -- containing space for urlencoded test
-      custom_id = "abcd"
-    })
-    consumer3 = assert(dao.consumers:insert {
-      username = "83825bb5-38c7-4160-8c23-54dd2b007f31",  -- uuid format
-      custom_id = "1a2b"
-    })
+    db:truncate()
     client = helpers.admin_client()
-    ngx.ctx.workspaces = dao.workspaces:find_all({name = "default"})
   end)
 
   after_each(function()
@@ -732,20 +717,6 @@ describe("Admin API (#" .. strategy .. "): ", function()
 
 
   describe("/consumers/{username_or_id}/plugins/{plugin}", function()
-    local plugin, plugin2
-    -- before_each(function()
-    --   ngx.ctx.workspaces = dao.workspaces:find_all()
-    --   plugin = assert(dao.plugins:insert {
-    --     name = "rewriter",
-    --     consumer_id = consumer.id
-    --   })
-    --   plugin2 = assert(dao.plugins:insert {
-    --     name = "rewriter",
-    --     consumer_id = consumer2.id
-    --   })
-    --   ngx.ctx.workspaces = {}
-    -- end)
-
     describe("GET", function()
 
       it("retrieves by id", function()
@@ -777,12 +748,10 @@ describe("Admin API (#" .. strategy .. "): ", function()
         local plugin = bp.rewriter_plugins:insert({ consumer = { id = consumer.id }})
 
         -- Create an consumer and try to query our plugin through it
-        ngx.ctx.workspaces = dao.workspaces:find_all()
         local w_consumer = bp.consumers:insert {
           custom_id = "wc",
           username = "wrong-consumer"
         }
-        ngx.ctx.workspaces = {}
         -- Try to request the plugin through it (belongs to the fixture consumer instead)
         local res = assert(client:send {
           method = "GET",
