@@ -108,7 +108,7 @@ for _, strategy in helpers.each_strategy() do
                 ["Content-Type"] = "application/json",
               }
             }))
-            assert.res_status(201, res)
+            local consumer = cjson.decode(assert.res_status(201, res))
 
             local rows
 
@@ -123,6 +123,40 @@ for _, strategy in helpers.each_strategy() do
                 assert.matches('"username":"bob"', object.entity, nil, true)
               end
             end
+
+            res = assert(admin_client:send({
+              method = "POST",
+              path   = "/rbac/roles",
+              body   = {
+                name = "role123"
+              },
+              headers = {
+                ["Content-Type"] = "application/json",
+              }
+            }))
+            assert.res_status(201, res)
+
+            helpers.wait_until(function()
+              rows = fetch_all(db.audit_objects)
+              return 7 == #rows
+            end)
+
+            res = assert(admin_client:send({
+              method = "POST",
+              path   = "/rbac/roles/role123/entities",
+              body   = {
+                entity_id = consumer.id,
+              },
+              headers = {
+                ["Content-Type"] = "application/json",
+              }
+            }))
+            assert.res_status(201, res)
+
+            helpers.wait_until(function()
+              rows = fetch_all(db.audit_objects)
+              return 8 == #rows
+            end)
           end)
 
           it("UPDATE", function()

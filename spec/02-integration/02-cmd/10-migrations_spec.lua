@@ -14,7 +14,7 @@ local lua_path = [[ KONG_LUA_PATH_OVERRIDE="./spec/fixtures/migrations/?.lua;]] 
                  [[./spec/fixtures/custom_plugins/?/init.lua;" ]]
 
 
-for _, strategy in helpers.each_strategy({"postgres"}) do
+for _, strategy in helpers.each_strategy() do
 
 
   local function run_kong(cmd, env)

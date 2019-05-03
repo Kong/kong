@@ -241,7 +241,7 @@ function _M.create(params, opts)
       -- haven't really created an admin, so...
       return {
         code = 200,
-        body = { admin = admin },
+        body = { admin = opts.raw and admin or transmogrify(admin) },
       }
     end
 

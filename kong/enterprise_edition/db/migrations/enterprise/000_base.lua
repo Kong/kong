@@ -4,6 +4,16 @@ local crypto       = require "kong.plugins.basic-auth.crypto"
 local fmt = string.format
 local created_ts = math.floor(ngx.now()) * 1000
 
+local function detect(f, t)
+  for _, v in ipairs(t) do
+    local res = f(v)
+    if res then
+      return res
+    end
+  end
+end
+
+
 local function seed_kong_admin_data_cas()
   local res = {}
   local def_ws_id = '00000000-0000-0000-0000-000000000000'
@@ -387,7 +397,7 @@ return {
         PRIMARY KEY(key)
       );
       INSERT INTO vitals_locks(key, expiry)
-      VALUES ('delete_status_codes', NULL);
+      VALUES ('delete_status_codes', NULL) ON CONFLICT DO NOTHING;
 
 
 
@@ -401,7 +411,7 @@ return {
       );
 
       INSERT INTO workspaces(id, name, config)
-      VALUES ('00000000-0000-0000-0000-000000000000', 'default', '{"portal":true}'::json);
+      VALUES ('00000000-0000-0000-0000-000000000000', 'default', '{"portal":true}'::json) ON CONFLICT DO NOTHING;
 
       CREATE TABLE IF NOT EXISTS workspace_entities(
         workspace_id uuid,
@@ -500,14 +510,20 @@ return {
 
       CREATE INDEX IF NOT EXISTS portal_files_name_idx on files(name);
 
+      DO $$
+      BEGIN
+        IF not EXISTS (SELECT column_name
+               FROM information_schema.columns
+               WHERE table_schema='public' and table_name='consumers' and column_name='type') THEN
+          ALTER TABLE consumers
+            ADD COLUMN type int NOT NULL DEFAULT 0,
+            ADD COLUMN email text,
+            ADD COLUMN status integer,
+            ADD COLUMN meta text;
 
-      ALTER TABLE consumers
-        ADD COLUMN type int NOT NULL DEFAULT 0,
-        ADD COLUMN email text,
-        ADD COLUMN status integer,
-        ADD COLUMN meta text;
-
-      ALTER TABLE consumers ADD CONSTRAINT consumers_email_type_key UNIQUE(email, type);
+            ALTER TABLE consumers ADD CONSTRAINT consumers_email_type_key UNIQUE(email, type);
+         END IF;
+      END$$;
 
       CREATE INDEX IF NOT EXISTS consumers_type_idx
         ON consumers (type);
@@ -576,7 +592,7 @@ return {
           IF NOT EXISTS(
               SELECT FROM information_schema.triggers
                WHERE event_object_table = 'audit_objects'
-                 AND trigger_name = 'deleted_expired_audit_objects_trigger')
+                 AND trigger_name = 'delete_expired_audit_objects_trigger')
           THEN
               CREATE TRIGGER delete_expired_audit_objects_trigger
                AFTER INSERT on audit_objects
@@ -620,7 +636,7 @@ return {
           IF NOT EXISTS(
               SELECT FROM information_schema.triggers
                WHERE event_object_table = 'audit_requests'
-                 AND trigger_name = 'deleted_expired_audit_requests_trigger')
+                 AND trigger_name = 'delete_expired_audit_requests_trigger')
           THEN
               CREATE TRIGGER delete_expired_audit_requests_trigger
                AFTER INSERT on audit_requests
@@ -643,23 +659,28 @@ return {
 DO $$
 DECLARE lastid uuid;
 DECLARE def_ws_id uuid;
+DECLARE tmp record;
 BEGIN
 
 SELECT uuid_in(overlay(overlay(md5(random()::text || ':' || clock_timestamp()::text) placing '4' from 13) placing to_hex(floor(random()*(11-8+1) + 8)::int)::text from 17)::cstring) into lastid;
 SELECT id into def_ws_id from workspaces where name = 'default';
 
-INSERT INTO rbac_roles(id, name, comment)
-VALUES (lastid, 'default:read-only', 'Read access to all endpoints, across all workspaces');
+SELECT * into tmp FROM rbac_roles WHERE name='default:read-only' LIMIT 1;
 
-INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value)
-VALUES (def_ws_id, 'default', lastid, 'rbac_roles', 'name', 'read-only');
+IF NOT FOUND THEN
+  INSERT INTO rbac_roles(id, name, comment)
+  VALUES (lastid, 'default:read-only', 'Read access to all endpoints, across all workspaces');
 
-INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value)
-VALUES (def_ws_id, 'default', lastid, 'rbac_roles', 'id', lastid);
+  INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value)
+  VALUES (def_ws_id, 'default', lastid, 'rbac_roles', 'name', 'read-only');
+
+  INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value)
+  VALUES (def_ws_id, 'default', lastid, 'rbac_roles', 'id', lastid);
 
 
-INSERT INTO rbac_role_endpoints(role_id, workspace, endpoint, actions, negative)
-VALUES (lastid, '*', '*', 1, FALSE);
+  INSERT INTO rbac_role_endpoints(role_id, workspace, endpoint, actions, negative)
+  VALUES (lastid, '*', '*', 1, FALSE);
+END IF;
 
 END $$;
 
@@ -668,61 +689,73 @@ END $$;
 DO $$
 DECLARE lastid uuid;
 DECLARE def_ws_id uuid;
+DECLARE tmp record;
 BEGIN
 
 SELECT uuid_in(overlay(overlay(md5(random()::text || ':' || clock_timestamp()::text) placing '4' from 13) placing to_hex(floor(random()*(11-8+1) + 8)::int)::text from 17)::cstring) into lastid;
 SELECT id into def_ws_id from workspaces where name = 'default';
 
-INSERT INTO rbac_roles(id, name, comment)
-VALUES (lastid, 'default:admin', 'Full access to all endpoints, across all workspaces—except RBAC Admin API');
+SELECT * into tmp FROM rbac_roles WHERE name='default:admin' LIMIT 1;
 
-INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value)
-VALUES (def_ws_id, 'default', lastid, 'rbac_roles', 'name', 'admin');
+IF NOT FOUND THEN
+  INSERT INTO rbac_roles(id, name, comment)
+  VALUES (lastid, 'default:admin', 'Full access to all endpoints, across all workspaces—except RBAC Admin API');
 
-INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value)
-VALUES (def_ws_id, 'default', lastid, 'rbac_roles', 'id', lastid);
+  INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value)
+  VALUES (def_ws_id, 'default', lastid, 'rbac_roles', 'name', 'admin');
+
+  INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value)
+  VALUES (def_ws_id, 'default', lastid, 'rbac_roles', 'id', lastid);
 
 
-INSERT INTO rbac_role_endpoints(role_id, workspace, endpoint, actions, negative)
-VALUES (lastid, '*', '*', 15, FALSE);
+  INSERT INTO rbac_role_endpoints(role_id, workspace, endpoint, actions, negative)
+  VALUES (lastid, '*', '*', 15, FALSE);
 
-INSERT INTO rbac_role_endpoints(role_id, workspace, endpoint, actions, negative)
-VALUES (lastid, '*', '/rbac/*', 15, TRUE);
+  INSERT INTO rbac_role_endpoints(role_id, workspace, endpoint, actions, negative)
+  VALUES (lastid, '*', '/rbac/*', 15, TRUE);
 
-INSERT INTO rbac_role_endpoints(role_id, workspace, endpoint, actions, negative)
-VALUES (lastid, '*', '/rbac/*/*', 15, TRUE);
+  INSERT INTO rbac_role_endpoints(role_id, workspace, endpoint, actions, negative)
+  VALUES (lastid, '*', '/rbac/*/*', 15, TRUE);
 
-INSERT INTO rbac_role_endpoints(role_id, workspace, endpoint, actions, negative)
-VALUES (lastid, '*', '/rbac/*/*/*', 15, TRUE);
+  INSERT INTO rbac_role_endpoints(role_id, workspace, endpoint, actions, negative)
+  VALUES (lastid, '*', '/rbac/*/*/*', 15, TRUE);
 
-INSERT INTO rbac_role_endpoints(role_id, workspace, endpoint, actions, negative)
-VALUES (lastid, '*', '/rbac/*/*/*/*', 15, TRUE);
+  INSERT INTO rbac_role_endpoints(role_id, workspace, endpoint, actions, negative)
+  VALUES (lastid, '*', '/rbac/*/*/*/*', 15, TRUE);
 
-INSERT INTO rbac_role_endpoints(role_id, workspace, endpoint, actions, negative)
-VALUES (lastid, '*', '/rbac/*/*/*/*/*', 15, TRUE);
+  INSERT INTO rbac_role_endpoints(role_id, workspace, endpoint, actions, negative)
+  VALUES (lastid, '*', '/rbac/*/*/*/*/*', 15, TRUE);
+END IF;
+
 END $$;
 
 -- super-admin role
 DO $$
 DECLARE lastid uuid;
 DECLARE def_ws_id uuid;
+DECLARE tmp record;
 BEGIN
 
 SELECT uuid_in(overlay(overlay(md5(random()::text || ':' || clock_timestamp()::text) placing '4' from 13) placing to_hex(floor(random()*(11-8+1) + 8)::int)::text from 17)::cstring) into lastid;
 SELECT id into def_ws_id from workspaces where name = 'default';
 
-INSERT INTO rbac_roles(id, name, comment)
-VALUES (lastid, 'default:super-admin', 'Full access to all endpoints, across all workspaces');
+SELECT * into tmp FROM rbac_roles WHERE name='default:super-admin' LIMIT 1;
 
-INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value)
-VALUES (def_ws_id, 'default', lastid, 'rbac_roles', 'name', 'super-admin');
+IF NOT FOUND THEN
+  INSERT INTO rbac_roles(id, name, comment)
+  VALUES (lastid, 'default:super-admin', 'Full access to all endpoints, across all workspaces');
 
-INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value)
-VALUES (def_ws_id, 'default', lastid, 'rbac_roles', 'id', lastid);
+  INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value)
+  VALUES (def_ws_id, 'default', lastid, 'rbac_roles', 'name', 'super-admin');
+
+  INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value)
+  VALUES (def_ws_id, 'default', lastid, 'rbac_roles', 'id', lastid);
 
 
-INSERT INTO rbac_role_endpoints(role_id, workspace, endpoint, actions, negative)
-VALUES (lastid, '*', '*', 15, FALSE);
+  INSERT INTO rbac_role_endpoints(role_id, workspace, endpoint, actions, negative)
+  VALUES (lastid, '*', '*', 15, FALSE);
+END IF;
+
 END $$;
 
 CREATE TABLE IF NOT EXISTS admins (
@@ -879,13 +912,12 @@ CREATE TABLE IF NOT EXISTS admins (
       );
 
       CREATE TABLE IF NOT EXISTS files(
-        id uuid,
+        id uuid PRIMARY KEY,
         auth boolean,
         name text,
         type text,
         contents text,
-        created_at timestamp,
-        PRIMARY KEY (id, name)
+        created_at timestamp
       );
 
       CREATE INDEX IF NOT EXISTS ON files(name);
@@ -1037,6 +1069,23 @@ CREATE TABLE IF NOT EXISTS admins (
       CREATE INDEX IF NOT EXISTS developers_email_idx ON developers(email);
       CREATE INDEX IF NOT EXISTS developers_consumer_id_idx ON developers(consumer_id);
       CREATE INDEX IF NOT EXISTS developers_email_idx ON developers(email);
-    ]] .. seed_kong_admin_data_cas(),
+    ]],
+    teardown = function(connector)
+      local coordinator = connector:connect_migrations()
+
+      -- create default workspace if doesn't exist
+      for rows, err in coordinator:iterate("select * from workspaces") do
+        if not detect(function(x) return x.name == "default" end, rows) then
+          connector:query([[INSERT INTO workspaces(id, name)
+            VALUES (00000000-0000-0000-0000-000000000000, 'default');]])
+        end
+      end
+
+      -- create default roles if they do not exist (checking for read-only one)
+      local read_only_present = connector:query("select * from rbac_roles where name='default:read-only';")
+      if not read_only_present[1] then
+        assert(connector:query(seed_kong_admin_data_cas()))
+      end
+    end
   },
 }

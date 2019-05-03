@@ -37,7 +37,7 @@ local function create_portal_index()
   if not pl_path.exists(views_path) then
     pl_path.mkdir(views_path)
   end
-  
+
   pl_file.write(index_filename, index_str)
 end
 
@@ -118,27 +118,23 @@ end
 
 for _, strategy in helpers.each_strategy() do
 
-  if strategy == 'cassandra' then
-    return
-  end
-
   describe("router", function ()
     describe("portal_gui_use_subdomains = off", function()
       local db
-    
+
       setup(function()
         _, db, _ = helpers.get_db_utils(strategy)
         assert(helpers.start_kong({
-          database    = strategy, 
+          database    = strategy,
           portal      = true,
           portal_auth = "basic-auth",
           portal_auto_approve = true,
           portal_session_conf = PORTAL_SESSION_CONF,
         }))
         create_portal_index()
-  
+
         configure_portal(db, "default")
-  
+
         local res = client_request({
           method = "POST",
           path = "/workspaces",
@@ -152,31 +148,31 @@ for _, strategy in helpers.each_strategy() do
           headers = {["Content-Type"] = "application/json"},
         })
         assert.equals(201, res.status)
-  
+
         create_workspace_files("default")
       end)
-    
+
       teardown(function()
         db:truncate()
         helpers.stop_kong()
       end)
-    
+
       it("correctly identifies default workspace", function()
         local res = gui_client_request({
           method = "GET",
           path = "/",
         })
-  
+
         assert.equals(res.status, 200)
         assert.not_nil(string.match(res.body, '<meta name="KONG:WORKSPACE" content="default" />'))
-        
+
         res = gui_client_request({
           method = "GET",
           path = "/test",
         })
         assert.equals(res.status, 200)
         assert.not_nil(string.match(res.body, '<meta name="KONG:WORKSPACE" content="default" />'))
-        
+
         res = gui_client_request({
           method = "GET",
           path = "/nested/test",
@@ -184,7 +180,7 @@ for _, strategy in helpers.each_strategy() do
         assert.equals(res.status, 200)
         assert.not_nil(string.match(res.body, '<meta name="KONG:WORKSPACE" content="default" />'))
       end)
-  
+
       it("correctly identifies custom workspace", function()
         local res = gui_client_request({
           method = "GET",
@@ -192,28 +188,28 @@ for _, strategy in helpers.each_strategy() do
         })
         assert.equals(res.status, 200)
         assert.not_nil(string.match(res.body, '<meta name="KONG:WORKSPACE" content="default" />'))
-  
+
         res = gui_client_request({
           method = "GET",
           path = "/team_gruce"
         })
         assert.equals(res.status, 200)
         assert.not_nil(string.match(res.body, '<meta name="KONG:WORKSPACE" content="team_gruce" />'))
-  
+
         res = gui_client_request({
           method = "GET",
           path = "/team_gruce/endpoint"
         })
         assert.equals(res.status, 200)
         assert.not_nil(string.match(res.body, '<meta name="KONG:WORKSPACE" content="team_gruce" />'))
-  
+
         res = gui_client_request({
           method = "GET",
           path = "/team_gruce/endpoint/another_endpoint"
         })
         assert.equals(res.status, 200)
         assert.not_nil(string.match(res.body, '<meta name="KONG:WORKSPACE" content="team_gruce" />'))
-  
+
         res = gui_client_request({
           method = "GET",
           path = "/team_gruce/default"
@@ -221,15 +217,15 @@ for _, strategy in helpers.each_strategy() do
         assert.equals(res.status, 200)
         assert.not_nil(string.match(res.body, '<meta name="KONG:WORKSPACE" content="team_gruce" />'))
       end)
-  
-      it("correctly overrides default (conf.default) config when workspace config present", function()  
+
+      it("correctly overrides default (conf.default) config when workspace config present", function()
         local res = gui_client_request({
           method = "GET",
           path = "/default"
         })
         assert.equals(res.status, 200)
         assert.not_nil(string.match(res.body, '<meta name="KONG:PORTAL_AUTH" content="basic%-auth" />'))
-  
+
         res = gui_client_request({
           method = "GET",
           path = "/team_gruce"
@@ -249,7 +245,7 @@ for _, strategy in helpers.each_strategy() do
         portal_gui_protocol = 'http'
 
         assert(helpers.start_kong({
-          database    = strategy, 
+          database    = strategy,
           portal      = true,
           portal_auth = "basic-auth",
           portal_auto_approve = true,
@@ -261,7 +257,7 @@ for _, strategy in helpers.each_strategy() do
 
         create_portal_index()
         configure_portal(db, "default")
-  
+
         local res = client_request({
           method = "POST",
           path = "/workspaces",
@@ -275,10 +271,10 @@ for _, strategy in helpers.each_strategy() do
           headers = {["Content-Type"] = "application/json"},
         })
         assert.equals(201, res.status)
-  
+
         create_workspace_files("default")
       end)
-    
+
       teardown(function()
         db:truncate()
         helpers.stop_kong()
@@ -308,7 +304,7 @@ for _, strategy in helpers.each_strategy() do
         assert.not_nil(string.match(res.body, '<meta name="KONG:WORKSPACE" content="default" />'))
       end)
 
-      it("correctly identifies custom workspace", function()  
+      it("correctly identifies custom workspace", function()
         local res = gui_client_request({
           method = "GET",
           path = "/",
@@ -332,7 +328,7 @@ for _, strategy in helpers.each_strategy() do
         assert.not_nil(string.match(res.body, '<meta name="KONG:WORKSPACE" content="team_gruce" />'))
       end)
 
-      it("returns 500 if subdomain not included", function()  
+      it("returns 500 if subdomain not included", function()
         local res = gui_client_request({
           method = "GET",
           path = "/",
@@ -345,7 +341,7 @@ for _, strategy in helpers.each_strategy() do
         assert.not_nil(string.match(res.body, '{"message":"An unexpected error occurred"}'))
       end)
 
-      it("returns 500 if subdomain is not a recognized workspace", function()  
+      it("returns 500 if subdomain is not a recognized workspace", function()
         local res = gui_client_request({
           method = "GET",
           path = "/",
@@ -358,7 +354,7 @@ for _, strategy in helpers.each_strategy() do
         assert.not_nil(string.match(res.body, '{"message":"An unexpected error occurred"}'))
       end)
 
-      it("returns 500 if subdomain is invalid", function()  
+      it("returns 500 if subdomain is invalid", function()
         local res = gui_client_request({
           method = "GET",
           path = "/",

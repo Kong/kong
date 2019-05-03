@@ -252,7 +252,7 @@ function State.load(db)
     return nil, prefix_err(db, "failed to check schema state: " .. err)
   end
 
-  local legacy_res, err = db.connector:is_014(rows)
+  local legacy_res =  db.connector:is_034(rows)
 
   db.connector:close()
 
@@ -269,7 +269,7 @@ function State.load(db)
     pending_migrations = nil,
     missing_migrations = nil,
     new_migrations = nil,
-    legacy_is_014 = legacy_res.is_014,
+    legacy_is_034 = legacy_res.is_034,
   }
 
   if legacy_res.invalid_state then
@@ -391,4 +391,3 @@ end
 
 
 return State
-
