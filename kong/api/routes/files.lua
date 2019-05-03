@@ -38,7 +38,7 @@ return {
         return endpoints.handle_error(err_t)
       end
 
-      return helpers.responses.send_HTTP_OK(paginated_results)
+      return kong.response.exit(200, paginated_results)
     end,
   },
 
@@ -64,9 +64,7 @@ return {
         table.insert(partials, partial)
       end
 
-      return helpers.responses.send_HTTP_OK({
-        data = partials
-      })
+      return kong.response.exit(200, {data = partials})
     end
   }
 }

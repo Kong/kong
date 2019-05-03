@@ -7,10 +7,10 @@ local workspaces  = require "kong.workspaces"
 for _, strategy in helpers.each_strategy() do
 
 describe("Workspaces Admin API (#" .. strategy .. "): ", function()
-  local client, dao, db, bp
+  local client,  db, bp
 
   setup(function()
-    bp, db, dao = helpers.get_db_utils(strategy)
+    bp, db = helpers.get_db_utils(strategy)
 
     assert(helpers.start_kong({
       database = strategy,
@@ -53,7 +53,10 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
         assert.equals("foo", json.name)
 
         -- no files created, portal is off
-        local files_count = dao.files:count()
+        local files_count = 0
+        for f, err in db.files:each() do
+          files_count = files_count + 1
+        end
         assert.equals(0, files_count)
       end)
 
@@ -196,7 +199,7 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
 
           local body = assert.res_status(201, res)
           local json = cjson.decode(body)
-          assert.equals(json.config.portal_auth_conf, '{"hide_credentials":true}') 
+          assert.equals(json.config.portal_auth_conf, '{"hide_credentials":true}')
         end)
 
         it("(key-auth) handles invalid config object", function()
@@ -259,7 +262,7 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
 
           local body = assert.res_status(201, res)
           local json = cjson.decode(body)
-          assert.equals(json.config.portal_auth_conf, '{"hide_credentials":true}') 
+          assert.equals(json.config.portal_auth_conf, '{"hide_credentials":true}')
         end)
       end)
     end)
@@ -413,7 +416,7 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
               portal = true
             }
           })
-  
+
           local res = client:patch("/workspaces/rad-portal-man", {
             body = {
               config = {
@@ -426,7 +429,7 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
               ["Content-Type"] = "application/json",
             }
           })
-  
+
           local body = assert.res_status(400, res)
           local json = cjson.decode(body)
           assert.equals("'config.portal_auth' must be set in order to configure 'config.portal_auth_type'", json.message)
@@ -439,7 +442,7 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
               portal = true
             }
           })
-  
+
           local res = client:patch("/workspaces/rad-portal-man", {
             body = {
               config = {
@@ -453,7 +456,7 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
               ["Content-Type"] = "application/json",
             }
           })
-  
+
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
           assert.equals('{"hide_credentials":true}', json.config.portal_auth_conf)
@@ -467,7 +470,7 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
               portal_auth = 'basic-auth'
             }
           })
-  
+
           local res = client:patch("/workspaces/rad-portal-man", {
             body = {
               config = {
@@ -480,7 +483,7 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
               ["Content-Type"] = "application/json",
             }
           })
-  
+
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
           assert.equals('{"hide_credentials":true}', json.config.portal_auth_conf)
