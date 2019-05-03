@@ -145,6 +145,7 @@ for _, strategy in helpers.each_strategy() do
           local body = assert.res_status(200, res)
 
           local json = cjson.decode(body)
+          json.path = nil
           assert.same(service, json)
         end)
 
@@ -153,6 +154,7 @@ for _, strategy in helpers.each_strategy() do
           local body = assert.res_status(200, res)
 
           local json = cjson.decode(body)
+          json.path = nil
           assert.same(service, json)
         end)
 

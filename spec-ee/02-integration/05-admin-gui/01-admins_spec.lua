@@ -454,11 +454,11 @@ for _, strategy in helpers.each_strategy() do
 
   describe("Admin API - Admins Register #" .. strategy, function()
     local client
-    local db, dao
+    local db
 
     describe("/admins/register basic-auth", function()
       before_each(function()
-        _, db, dao = helpers.get_db_utils(strategy)
+        _, db = helpers.get_db_utils(strategy)
         assert(helpers.start_kong({
           database = strategy,
           admin_gui_url = "http://manager.konghq.com",
@@ -545,7 +545,7 @@ for _, strategy in helpers.each_strategy() do
 
     describe("/admins/register ldap-auth-advanced", function()
       before_each(function()
-        _, db, dao = helpers.get_db_utils(strategy)
+        _, db = helpers.get_db_utils(strategy)
         assert(helpers.start_kong({
           database = strategy,
           admin_gui_url = "http://manager.konghq.com",
@@ -575,8 +575,8 @@ for _, strategy in helpers.each_strategy() do
 
         local admin = res.body.admin
 
-        local reset_secret = dao.consumer_reset_secrets:find_all({
-          consumer_id = admin.consumer.id
+        local reset_secret = db.consumer_reset_secrets:select_all({
+          id = admin.consumer.id
         })[1]
         assert.equal(nil, reset_secret)
 
@@ -601,18 +601,18 @@ for _, strategy in helpers.each_strategy() do
 
   pending("Admin API - auto-approval #" .. strategy, function()
     local client
-    local dao
     local consumer
+    local db
 
     before_each(function()
-      _, _, dao = helpers.get_db_utils(strategy)
+      _, db  = helpers.get_db_utils(strategy)
       assert(helpers.start_kong({
         database = strategy,
         admin_gui_url = "http://manager.konghq.com",
         admin_gui_auth = 'basic-auth',
         enforce_rbac = "on",
       }))
-      ee_helpers.register_rbac_resources(dao)
+      ee_helpers.register_rbac_resources(db)
       client = assert(helpers.admin_client())
     end)
 
@@ -644,7 +644,7 @@ for _, strategy in helpers.each_strategy() do
       assert.same(enums.CONSUMERS.STATUS.INVITED, consumer.status)
 
       -- add credentials for him
-      assert(dao.basicauth_credentials:insert {
+      assert(db.basicauth_credentials:insert {
         username    = "gruce@konghq.com",
         password    = "kong",
         consumer_id = consumer.id,
@@ -660,7 +660,7 @@ for _, strategy in helpers.each_strategy() do
         }
       })
 
-      local updated_consumers = dao.consumers:find_all { id = consumer.id }
+      local updated_consumers = db.consumers:select({ id = consumer.id })
       assert.same(enums.CONSUMERS.STATUS.APPROVED, updated_consumers[1].status)
     end)
   end)
@@ -877,17 +877,17 @@ for _, strategy in helpers.each_strategy() do
 
     describe("with 3rd-party auth", function()
       local client
-      local dao
+      local db
 
       before_each(function()
-        _, _, dao = helpers.get_db_utils(strategy)
+        _, db = helpers.get_db_utils(strategy)
         assert(helpers.start_kong({
           database = strategy,
           admin_gui_url = "http://manager.konghq.com",
           admin_gui_auth = "ldap-auth-advanced",
           enforce_rbac = "on",
         }))
-        ee_helpers.register_rbac_resources(dao)
+        ee_helpers.register_rbac_resources(db)
 
         client = assert(helpers.admin_client())
       end)

@@ -8,12 +8,12 @@ for _, strategy in helpers.each_strategy() do
     local consumer
     local admin_client
     local bp
-    local db, dao
+    local db
     local route1
     local route2
 
     lazy_setup(function()
-      bp, db, dao = helpers.get_db_utils(strategy, {
+      bp, db = helpers.get_db_utils(strategy, {
         "routes",
         "services",
         "plugins",
@@ -326,7 +326,7 @@ for _, strategy in helpers.each_strategy() do
       describe("GET", function()
         lazy_setup(function()
           db:truncate("keyauth_credentials")
-          dao:truncate_tables()
+          db:truncate("consumers")
           consumer = bp.consumers:insert({
             username = "bob"
           }, { nulls = true })

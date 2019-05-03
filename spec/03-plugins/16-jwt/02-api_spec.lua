@@ -9,10 +9,9 @@ for _, strategy in helpers.each_strategy() do
     local consumer
     local db
     local bp
-    local dao
 
     lazy_setup(function()
-      bp, db, dao = helpers.get_db_utils(strategy, {
+      bp, db = helpers.get_db_utils(strategy, {
         "routes",
         "services",
         "plugins",
@@ -357,7 +356,6 @@ for _, strategy in helpers.each_strategy() do
         lazy_setup(function()
           db:truncate("jwt_secrets")
           db:truncate("consumers")
-          dao:truncate_tables()
           consumer = bp.consumers:insert {
             username = "bob"
           }
@@ -430,7 +428,7 @@ for _, strategy in helpers.each_strategy() do
         local credential
         before_each(function()
           db:truncate("jwt_secrets")
-          dao:truncate_tables()
+          db:truncate("consumers")
           consumer = bp.consumers:insert({
             username = "bob"
           }, { nulls = true })
