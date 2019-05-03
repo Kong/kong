@@ -323,12 +323,12 @@ return {
     end,
 
     GET = function(self, dao_factory, helpers)
-      return helpers.responses.send_HTTP_OK()
+      return kong.response.exit(200)
     end,
 
     DELETE = function(self, dao_factory, helpers)
       -- stub for logging out
-      return helpers.responses.send_HTTP_OK()
+      return kong.response.exit(200)
     end,
   },
 }
