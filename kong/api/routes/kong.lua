@@ -273,7 +273,7 @@ return {
 
       if err or not ok then
         ngx.log(ngx.ERR, _log_prefix, err)
-        return helpers.responses.send_HTTP_INTERNAL_SERVER_ERROR()
+        return kong.response.exit(500, { message = "An unexpected error occurred" })
       end
 
       -- apply auth plugin
