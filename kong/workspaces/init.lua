@@ -910,7 +910,9 @@ function _M.retrieve_ws_config(config_name, workspace)
     workspace.config[config_name] ~= ngx.null then
     conf = workspace.config[config_name]
   else
-    conf = singletons.configuration[config_name]
+    if singletons.configuration then
+      conf = singletons.configuration[config_name]
+    end
   end
 
   -- if table, return a copy so that we don't mutate the conf

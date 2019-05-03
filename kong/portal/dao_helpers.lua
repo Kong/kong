@@ -3,7 +3,6 @@ local constants  = require "kong.constants"
 local Errors     = require "kong.db.errors"
 local singletons = require "kong.singletons"
 local auth       = require "kong.portal.auth"
-local utils      = require "kong.tools.utils"
 local workspaces = require "kong.workspaces"
 local enums      = require "kong.enterprise_edition.dao.enums"
 local enterprise_utils = require "kong.enterprise_edition.utils"
@@ -89,9 +88,13 @@ end
 
 
 local function set_portal_auth_conf(ws, entity)
-  local ws_config = ws.config or {}
   local entity_config = entity.config or {}
-  local auth_type = ws_config.portal_auth or entity_config.portal_auth
+
+  local auth_type = entity_config.portal_auth 
+  if not auth_type or auth_type == ngx.null then
+    auth_type = workspaces.retrieve_ws_config(ws_constants.PORTAL_AUTH, ws)
+  end
+
   local auth_empty = not auth_type or
                         auth_type == ngx.null or
                         auth_type == ""
@@ -107,14 +110,11 @@ local function set_portal_auth_conf(ws, entity)
      entity_config.portal_auth_conf and
      entity_config.portal_auth_conf ~= ngx.null then
 
-    local entity_auth_conf = entity_config.portal_auth_conf
-    local ws_auth_conf = cjson.decode(ws_config.portal_auth_conf)
-
-    if type(entity_auth_conf) ~= "table" then
+    local auth_conf = entity_config.portal_auth_conf
+    if type(auth_conf) ~= "table" then
       return nil, "'config.portal_auth_conf' must be type 'table'"
     end
 
-    local auth_conf = utils.deep_merge(ws_auth_conf or {}, entity_auth_conf)
     local ok, err = singletons.invoke_plugin({
       name = auth_type,
       config = auth_conf,
