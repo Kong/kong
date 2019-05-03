@@ -157,12 +157,12 @@ function _M.authenticate(self, rbac_enabled, gui_auth)
   end
 
   if not ctx.authenticated_consumer then
-    log(ERR, _log_prefix, "no consumer mapped from plugin", gui_auth)
+    log(DEBUG, _log_prefix, "no consumer mapped from plugin ", gui_auth)
     return kong.response.exit(401, { message = "Unauthorized" })
   end
 
   if self.consumer and ctx.authenticated_consumer.id ~= self.consumer.id then
-    log(ERR, _log_prefix, "authenticated consumer is not an admin")
+    log(DEBUG, _log_prefix, "authenticated consumer is not an admin")
     return kong.response.exit(401, { message = "Unauthorized" })
   end
 

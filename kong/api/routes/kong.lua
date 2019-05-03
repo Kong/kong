@@ -13,6 +13,9 @@ local find = string.find
 local select = select
 local tonumber = tonumber
 local kong = kong
+local log = ngx.log
+local DEBUG = ngx.DEBUG
+local ERR = ngx.ERR
 
 
 local tagline = "Welcome to " .. _KONG._NAME
@@ -185,7 +188,7 @@ return {
                                                       kong.db,
                                                       ngx.ctx.rbac.user)
       if err then
-        ngx.log(ngx.ERR, "[userinfo] ", err)
+        log(ERR, "[userinfo] ", err)
         return kong.response.exit(500, err)
       end
 
@@ -238,12 +241,12 @@ return {
 
       local admin, err = ee_api.validate_admin()
       if not admin then
-        ngx.log(ngx.DEBUG, _log_prefix, "Admin not found")
+        log(DEBUG, _log_prefix, "Admin not found")
         return kong.response.exit(401, { message = "Unauthorized" })
       end
 
       if err then
-        ngx.log(ngx.ERR, _log_prefix, err)
+        log(ERR, _log_prefix, err)
         return kong.response.exit(500, err)
       end
 
@@ -269,7 +272,7 @@ return {
       })
 
       if err or not ok then
-        ngx.log(ngx.ERR, _log_prefix, err)
+        log(ERR, _log_prefix, err)
         return helpers.responses.send_HTTP_INTERNAL_SERVER_ERROR()
       end
 
@@ -284,15 +287,14 @@ return {
         })
 
        if err or not ok then
-         ngx.log(ngx.ERR, _log_prefix, err)
+         log(ERR, _log_prefix, err)
          return kong.response.exit(500, err)
        end
       end
 
       -- Plugin ran but consumer was not created on context
       if not ngx.ctx.authenticated_consumer then
-        ngx.log(ngx.ERR, _log_prefix, "no consumer mapped from plugin",
-                gui_auth)
+        log(DEBUG, _log_prefix, "no consumer mapped from plugin ", gui_auth)
 
         return kong.response.exit(401, { message = "Unauthorized" })
       end
@@ -300,8 +302,7 @@ return {
       if self.consumer
          and ngx.ctx.authenticated_consumer.id ~= self.consumer.id
       then
-        ngx.log(ngx.ERR, _log_prefix, "no rbac user mapped with these " ..
-                "credentials")
+        log(DEBUG, _log_prefix, "authenticated consumer is not an admin")
         return kong.response.exit(401, { message = "Unauthorized" })
       end
 
@@ -314,7 +315,7 @@ return {
       })
 
       if err or not ok then
-        ngx.log(ngx.ERR, _log_prefix, err)
+        log(ERR, _log_prefix, err)
         return kong.response.exit(500, err)
       end
     end,
