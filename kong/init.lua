@@ -646,7 +646,12 @@ function Kong.ssl_certificate()
 
   runloop.certificate.before(ctx)
 
-  update_plugins()
+  local ok, err = update_plugins()
+  if not ok then
+    ngx_log(ngx_CRIT, "could not ensure plugins map is up to date: ", err)
+    return ngx.exit(ngx.ERROR)
+  end
+
   execute_plugins(ctx, "certificate")
 end
 
@@ -754,7 +759,12 @@ function Kong.rewrite()
 
   runloop.rewrite.before(ctx)
 
-  update_plugins()
+  local ok, err = update_plugins()
+  if not ok then
+    ngx_log(ngx_CRIT, "could not ensure plugins map is up to date: ", err)
+    return kong.response.exit(500, { message  = "An unexpected error occurred" })
+  end
+
   execute_plugins(ctx, "rewrite")
 
   runloop.rewrite.after(ctx)
@@ -767,7 +777,12 @@ function Kong.preread()
 
   runloop.preread.before(ctx)
 
-  update_plugins()
+  local ok, err = update_plugins()
+  if not ok then
+    ngx_log(ngx_CRIT, "could not ensure plugins map is up to date: ", err)
+    return kong.response.exit(500, { message  = "An unexpected error occurred" })
+  end
+
   execute_plugins(ctx, "preread")
 
   runloop.preread.after(ctx)
@@ -782,7 +797,6 @@ function Kong.access()
 
   ctx.delay_response = true
 
-  update_plugins()
   local phase_plugins = plugins.phases.access
   for plugin, plugin_conf in plugins_iterator(ctx, "access", plugins) do
     if not ctx.delayed_response and phase_plugins[plugin.name] then
