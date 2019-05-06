@@ -10,7 +10,6 @@ local NOTICE  = ngx.NOTICE
 local DEBUG   = ngx.DEBUG
 
 
-local SHM_CACHE = "kong_db_cache"
 --[[
 Hypothesis
 ----------
@@ -141,40 +140,60 @@ function _M.new(opts)
     error("opts.neg_ttl must be a number", 2)
   end
 
+  if opts.cache_pages and opts.cache_pages ~= 1 and opts.cache_pages ~= 2 then
+    error("opts.cache_pages must be 1 or 2", 2)
+  end
+
   if opts.resty_lock_opts and type(opts.resty_lock_opts) ~= "table" then
     error("opts.resty_lock_opts must be a table", 2)
   end
 
-  local mlcache, err = resty_mlcache.new(SHM_CACHE, SHM_CACHE, {
-    shm_miss         = "kong_db_cache_miss",
-    shm_locks        = "kong_locks",
-    shm_set_retries  = 3,
-    lru_size         = LRU_SIZE,
-    ttl              = max(opts.ttl     or 3600, 0),
-    neg_ttl          = max(opts.neg_ttl or 300,  0),
-    resurrect_ttl    = opts.resurrect_ttl or 30,
-    resty_lock_opts  = opts.resty_lock_opts,
-    ipc = {
-      register_listeners = function(events)
-        for _, event_t in pairs(events) do
-          opts.worker_events.register(function(data)
-            event_t.handler(data)
-          end, "mlcache", event_t.channel)
-        end
-      end,
-      broadcast = function(channel, data)
-        opts.worker_events.post("mlcache", channel, data)
+  local mlcaches = {}
+  local shm_names = {}
+
+  for i = 1, opts.cache_pages or 1 do
+    local channel_name  = (i == 1) and "mlcache"            or "mlcache_2"
+    local shm_name      = (i == 1) and "kong_db_cache"      or "kong_db_cache_2"
+    local shm_miss_name = (i == 1) and "kong_db_cache_miss" or "kong_db_cache_miss_2"
+
+    if ngx.shared[shm_name] then
+      local mlcache, err = resty_mlcache.new(shm_name, shm_name, {
+        shm_miss         = shm_miss_name,
+        shm_locks        = "kong_locks",
+        shm_set_retries  = 3,
+        lru_size         = LRU_SIZE,
+        ttl              = max(opts.ttl     or 3600, 0),
+        neg_ttl          = max(opts.neg_ttl or 300,  0),
+        resurrect_ttl    = opts.resurrect_ttl or 30,
+        resty_lock_opts  = opts.resty_lock_opts,
+        ipc = {
+          register_listeners = function(events)
+            for _, event_t in pairs(events) do
+              opts.worker_events.register(function(data)
+                event_t.handler(data)
+              end, channel_name, event_t.channel)
+            end
+          end,
+          broadcast = function(channel, data)
+            opts.worker_events.post(channel_name, channel, data)
+          end
+        }
+      })
+      if not mlcache then
+        return nil, "failed to instantiate mlcache: " .. err
       end
-    }
-  })
-  if not mlcache then
-    return nil, "failed to instantiate mlcache: " .. err
+      mlcaches[i] = mlcache
+      shm_names[i] = shm_name
+    end
   end
 
   local self          = {
     propagation_delay = max(opts.propagation_delay or 0, 0),
     cluster_events    = opts.cluster_events,
-    mlcache           = mlcache,
+    mlcache           = mlcaches[1],
+    mlcaches          = mlcaches,
+    shm_names         = shm_names,
+    curr_mlcache      = 1,
   }
 
   local ok, err = self.cluster_events:subscribe("invalidations", function(key)
@@ -226,14 +245,21 @@ function _M:get_bulk(bulk, opts)
 end
 
 
-function _M:safe_set(key, value)
+function _M:safe_set(key, value, shadow_page)
   local str_marshalled, err = marshall_for_shm(value, self.mlcache.ttl,
                                                       self.mlcache.neg_ttl)
   if err then
     return nil, err
   end
 
-  return ngx.shared[SHM_CACHE]:safe_set(SHM_CACHE .. key, str_marshalled)
+  local page = 1
+  if shadow_page and #self.mlcaches == 2 then
+    page = (self.curr_mlcache == 1) and 2 or 1
+  end
+
+  local shm_name = self.shm_names[page]
+
+  return ngx.shared[shm_name]:safe_set(shm_name .. key, str_marshalled)
 end
 
 
@@ -287,13 +313,30 @@ function _M:invalidate(key)
 end
 
 
-function _M:purge()
+function _M:purge(shadow_page)
   log(NOTICE, "purging (local) cache")
 
-  local ok, err = self.mlcache:purge()
+  local page = 1
+  if shadow_page and #self.mlcaches == 2 then
+    page = (self.curr_mlcache == 1) and 2 or 1
+  end
+
+  local ok, err = self.mlcaches[page]:purge()
   if not ok then
     log(ERR, "failed to purge cache: ", err)
   end
+end
+
+
+function _M:flip()
+  if #self.mlcaches == 1 then
+    return
+  end
+
+  log(DEBUG, "flipping current cache")
+
+  self.curr_mlcache = (self.curr_mlcache == 1) and 2 or 1
+  self.mlcache = self.mlcaches[self.curr_mlcache]
 end
 
 
