@@ -196,13 +196,10 @@ local function build_new_plugins(version)
 end
 
 
-local function update_plugins(version)
-  local err
-  if not version then
-    version, err = kong.cache:get("plugins_map:version", { ttl = 0 }, utils.uuid)
-    if err then
-      return nil, "failed to retrieve plugins map version: " .. err
-    end
+local function update_plugins()
+  local version, err = kong.cache:get("plugins_map:version", { ttl = 0 }, utils.uuid)
+  if err then
+    return nil, "failed to retrieve plugins map version: " .. err
   end
 
   if not plugins or plugins.version ~= version then
