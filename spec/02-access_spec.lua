@@ -68,7 +68,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.plugins:insert {
-        route_id = route3.id,
+        route = { id = route3.id },
         name   = "forward-proxy",
         config = {
           proxy_host = helpers.mock_upstream_host,
