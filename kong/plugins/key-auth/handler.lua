@@ -1,4 +1,6 @@
 local constants = require "kong.constants"
+local sha256 = require "resty.sha256"
+local to_hex = require "resty.string".to_hex
 
 
 local kong = kong
@@ -84,13 +86,21 @@ local function do_authentication(conf)
     return nil, { status = 500, message = "Invalid plugin configuration" }
   end
 
+  if conf.validate_signature then
+    if type(conf.signature_names) ~= "table" then
+      kong.log.err("no conf.signature_names set, aborting plugin execution")
+      return nil, { status = 500, message = "Invalid plugin configuration" }
+    end
+  end
+
   local headers = kong.request.get_headers()
   local query = kong.request.get_query()
   local key
+  local signature
   local body
 
   -- read in the body if we want to examine POST args
-  if conf.key_in_body then
+  if conf.key_in_body or conf.signature_in_body then
     local err
     body, err = kong.request.get_body()
 
@@ -100,7 +110,7 @@ local function do_authentication(conf)
     end
   end
 
-  -- search in headers & querystring
+  -- search api key in headers & querystring
   for i = 1, #conf.key_names do
     local name = conf.key_names[i]
     local v = headers[name]
@@ -142,6 +152,54 @@ local function do_authentication(conf)
     return nil, { status = 401, message = "No API key found in request" }
   end
 
+   -- search for signatire in headers & querystring
+   if conf.validate_signature then
+    for i = 1, #conf.signature_names do
+      local name = conf.signature_names[i]
+      local v = headers[name]
+      if not v then
+        -- search in querystring
+        v = query[name]
+      end
+
+      -- search the body, if we asked to
+      if not v and conf.signature_in_body then
+        v = body[name]
+      end
+
+      if type(v) == "string" then
+        signature = v
+
+        if conf.hide_credentials then
+          query[name] = nil
+          kong.service.request.set_query(query)
+          kong.service.request.clear_header(name)
+
+          if conf.key_in_body then
+            body[name] = nil
+            kong.service.request.set_body(body)
+          end
+        end
+
+        break
+
+      elseif type(v) == "table" then
+        -- duplicate API key
+        return nil, { status = 401, message = "Duplicate signature found" }
+      end
+    end
+
+    -- this request is missing a signature, HTTP 401
+    if not signature or signature == "" then
+      kong.response.set_header("WWW-Authenticate", _realm)
+    return nil, { status = 401, message = "No signature found in request" }
+  end
+  end
+
+
+
+
+
   -- retrieve our consumer linked to this API key
 
   local cache = kong.cache
@@ -175,9 +233,44 @@ local function do_authentication(conf)
     return nil, { status = 500, message = "An unexpected error occurred" }
   end
 
-  set_consumer(consumer, credential)
+  if conf.validate_signature then
+    -- 4. Verify sha256
+    local secret = credential.secret
+    local now = math.floor(ngx.time())
+    local sha = sha256:new()
+    local ks = key .. secret
 
-  return true
+
+    local verify_sig = function(time)
+      sha:reset()
+      sha:update(ks)
+      sha:update(tostring(time))
+      local final = to_hex(sha:final())
+      --print("  verifying - sha(" .. ks .. " .. " .. tostring(time) .. ") = " .. final)
+      -- print(signature .. " == " .. final)
+      return signature == final
+    end
+
+    if verify_sig(now) then
+      -- authenticated by the current second
+      set_consumer(consumer, credential)
+      return true
+    end
+
+    for distance = 1, 300 do
+      if verify_sig(now + distance) or verify_sig(now - distance) then
+        print(" ****  Verified")
+        -- authenticated with `distance` seconds
+        set_consumer(consumer, credential)
+        return true
+      end
+    end
+
+    return nil, { status = 500, message = "Invalid signature" }
+  else
+    set_consumer(consumer, credential)
+    return true
+  end
 end
 
 

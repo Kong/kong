@@ -27,11 +27,22 @@ return {
         -- Do nothing, accept existing state
       END$$;
 
+
+      DO $$
+      BEGIN
+        ALTER TABLE IF EXISTS ONLY "keyauth_credentials" ADD COLUMN "secret" TEXT;
+      EXCEPTION WHEN DUPLICATE_COLUMN OR UNDEFINED_TABLE THEN
+        -- Do nothing, accept existing state
+      END$$;
     ]],
   },
   cassandra = {
     up = [[
       ALTER TABLE keyauth_credentials ADD tags set<text>;
+
+
+      ALTER TABLE "keyauth_credentials" ADD "secret" text;
+      CREATE INDEX IF NOT EXISTS ON keyauth_credentials(secret);
     ]],
   }
 }
