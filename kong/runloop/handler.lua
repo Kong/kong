@@ -45,7 +45,7 @@ local update_time  = ngx.update_time
 local subsystem    = ngx.config.subsystem
 local start_time   = ngx.req.start_time
 local clear_header = ngx.req.clear_header
-local starttls     = ngx.req.starttls
+local starttls     = ngx.req.starttls -- luacheck: ignore
 local unpack       = unpack
 
 
@@ -94,8 +94,11 @@ do
 
   local function load_service_from_db(service_pk)
     local service, err = kong.db.services:select(service_pk)
-    -- kong.db.services:select returns a third value, which we discard here:
-    return service, err
+    if service == nil then
+      -- the third value means "do not cache"
+      return nil, err, -1
+    end
+    return service
   end
 
 
@@ -714,7 +717,7 @@ return {
       end
 
       -- Terminate TLS
-      if ssl_termination_ctx and not starttls(ssl_termination_ctx) then -- luacheck: ignore
+      if ssl_termination_ctx and not starttls(ssl_termination_ctx) then
         -- errors are logged by nginx core
         return exit(ERROR)
       end
