@@ -112,6 +112,8 @@ local TLS_SCHEMES = {
   tls = true,
 }
 
+local TTL_ZERO = { ttl = 0 }
+
 local PLUGINS_MUTEX_OPTS
 
 local declarative_entities
@@ -197,7 +199,7 @@ end
 
 
 local function update_plugins()
-  local version, err = kong.cache:get("plugins_map:version", { ttl = 0 }, utils.uuid)
+  local version, err = kong.cache:get("plugins_map:version", TTL_ZERO, utils.uuid)
   if err then
     return nil, "failed to retrieve plugins map version: " .. err
   end
@@ -206,7 +208,7 @@ local function update_plugins()
     local ok, err = concurrency.with_coroutine_mutex(PLUGINS_MUTEX_OPTS, function()
       -- we have the lock but we might not have needed it. check the
       -- version again and rebuild if necessary
-      version, err = kong.cache:get("plugins_map:version", { ttl = 0 }, utils.uuid)
+      version, err = kong.cache:get("plugins_map:version", TTL_ZERO, utils.uuid)
       if err then
         return nil, "failed to re-retrieve version: " .. err
       end
@@ -588,7 +590,7 @@ function Kong.init_worker()
   end
   kong.cache = cache
 
-  local ok, err = cache:get("router:version", { ttl = 0 }, function()
+  local ok, err = cache:get("router:version", TTL_ZERO, function()
     return "init"
   end)
   if not ok then
@@ -596,7 +598,7 @@ function Kong.init_worker()
     return
   end
 
-  local ok, err = cache:get("plugins_map:version", { ttl = 0 }, function()
+  local ok, err = cache:get("plugins_map:version", TTL_ZERO, function()
     return "init"
   end)
   if not ok then
