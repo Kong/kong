@@ -1,3 +1,9 @@
+## Unreleased
+
+### Changed
+
+* Moved old schema to new schema format
+
 ## 0.0.6
 
 ### Fixes
