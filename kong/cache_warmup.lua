@@ -36,11 +36,6 @@ local function warmup_dns(premature, hosts, count)
 end
 
 
-local function fail_cb()
-  error("this should never be called as L2 should already be warmed")
-end
-
-
 local function cache_warmup_single_entity(dao)
   local entity_name = dao.schema.name
 
@@ -72,12 +67,6 @@ local function cache_warmup_single_entity(dao)
     local cache_key = dao:cache_key(entity)
 
     local ok, err = kong.cache:safe_set(cache_key, entity)
-    if not ok then
-      return nil, err
-    end
-
-    -- NOTE: this is just for warming up L1
-    ok, err = kong.cache:get(cache_key, nil, fail_cb)
     if not ok then
       return nil, err
     end
