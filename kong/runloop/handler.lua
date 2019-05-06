@@ -176,7 +176,8 @@ do
     if not kong.cache then
       services_init_cache, err = build_services_init_cache(db)
       if err then
-        return nil, "could not build services init cache: " .. err
+        services_init_cache = {}
+        log(WARN, "could not build services init cache: ", err)
       end
     end
 
