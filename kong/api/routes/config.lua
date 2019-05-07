@@ -1,4 +1,5 @@
 local declarative = require("kong.db.declarative")
+local concurrency = require("kong.concurrency")
 local reports = require("kong.reports")
 local kong = kong
 local dc = declarative.new_config(kong.configuration)
@@ -30,7 +31,7 @@ return {
       if self.params._format_version then
         entities, err_or_ver = dc:parse_table(self.params)
       else
-      local config = self.params.config
+        local config = self.params.config
         -- TODO extract proper filename from the input
         entities, err_or_ver = dc:parse_string(config, "config.yml", accept)
       end
@@ -39,7 +40,10 @@ return {
         return kong.response.exit(400, { error = err_or_ver })
       end
 
-      local ok, err = declarative.load_into_cache_with_events(entities)
+      local ok, err = concurrency.with_worker_mutex({ name = "dbless-worker" }, function()
+        return declarative.load_into_cache_with_events(entities)
+      end)
+
       if not ok then
         kong.log.err("failed loading declarative config into cache: ", err)
         return kong.response.exit(500, { message = "An unexpected error occurred" })
