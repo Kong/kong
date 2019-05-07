@@ -1,5 +1,6 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
+local admin_api = require "spec.fixtures.admin_api"
 
 
 local function fetch_all(dao)
@@ -13,7 +14,7 @@ end
 
 for _, strategy in helpers.each_strategy() do
   describe("audit_log with #" .. strategy, function()
-    local admin_client, proxy_client
+    local admin_client, proxy_client, proxy_ssl_client
     local db, bp
 
     setup(function()
@@ -33,6 +34,7 @@ for _, strategy in helpers.each_strategy() do
     before_each(function()
       admin_client = helpers.admin_client()
       proxy_client = helpers.proxy_client()
+      proxy_ssl_client = helpers.proxy_ssl_client()
 
       db:truncate("audit_objects")
       db:truncate("audit_requests")
@@ -156,6 +158,59 @@ for _, strategy in helpers.each_strategy() do
             helpers.wait_until(function()
               rows = fetch_all(db.audit_objects)
               return 8 == #rows
+            end)
+          end)
+
+          it("CREATE on proxy side", function()
+            -- oauth2 plugin creates entities on the proxy side; use it to assert
+            -- that audit log creates an object log on the proxy path
+
+            assert(admin_api.routes:insert({
+              paths     = { "/" },
+            }))
+            local c1 = admin_api.consumers:insert({
+              username = "consumer123",
+              custom_id = "consumer123"
+            })
+            local client1 = admin_api.oauth2_credentials:insert {
+              client_id      = "clientid123",
+              client_secret  = "secret123",
+              redirect_uris  = { "http://google.com/kong" },
+              name           = "testapp",
+              consumer       = { id = c1.id },
+            }
+            local plugin = admin_api.oauth2_plugins:insert({
+              config   = {
+                enable_authorization_code = true,
+                scopes = { "email", "profile", "user.email" },
+              },
+            })
+            local res = assert(proxy_ssl_client:send {
+              method  = "POST",
+              path    = "/oauth2/authorize",
+              body    = {
+                provision_key = plugin.config.provision_key,
+                client_id = client1.client_id,
+                authenticated_userid = "userid123",
+                scope = "email",
+                response_type = "code",
+                state = "hello"
+              },
+              headers = {
+                ["Content-Type"] = "application/json"
+              }
+            })
+            assert.res_status(200, res)
+
+            helpers.wait_until(function()
+              local rows = fetch_all(db.audit_objects)
+              local found = false
+              for _, entry in ipairs(rows) do
+                if entry.dao_name == "oauth2_authorization_codes" then
+                  found = true
+                end
+              end
+              return found == true
             end)
           end)
 
