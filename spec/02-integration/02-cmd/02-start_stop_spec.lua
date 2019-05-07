@@ -266,21 +266,30 @@ describe("kong start/stop #" .. strategy, function()
           nginx_conf = "spec/fixtures/custom_nginx.template",
         }))
 
-        -- get a connection, retry until kong starts
         helpers.wait_until(function()
-          local pok
-          pok, proxy_client = pcall(helpers.proxy_client)
-          return pok
-        end, 10)
+          -- get a connection, retry until kong starts
+          helpers.wait_until(function()
+            local pok
+            pok, proxy_client = pcall(helpers.proxy_client)
+            return pok
+          end, 10)
 
-        local res = assert(proxy_client:send {
-          method = "GET",
-          path = "/",
-          headers = {
-            host = "example.test",
-          }
-        })
-        assert.res_status(200, res)
+          local res = assert(proxy_client:send {
+            method = "GET",
+            path = "/",
+            headers = {
+              host = "example.test",
+            }
+          })
+          local ok = res.status == 200
+
+          if proxy_client then
+            proxy_client:close()
+            proxy_client = nil
+          end
+
+          return ok
+        end, 10)
       end)
     end)
   end
