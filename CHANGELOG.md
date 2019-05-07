@@ -1,3 +1,8 @@
+## v1.2.2
+
+- Fix with a workaround an issue of current EE 0.35 calling `endpoints.page_collection` on
+  `:8001/openid-connect/issuers`.
+
 ## v1.2.1
 
 - Change more reentrant migrations (not a real issue, but for future)

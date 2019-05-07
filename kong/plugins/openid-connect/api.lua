@@ -46,7 +46,7 @@ return {
     schema = issuers_schema,
     methods = {
       GET = function(self, db)
-        local issuers, _, err_t, offset = endpoints.page_collection(self, db, issuers_schema)
+        local issuers, _, err_t, offset = endpoints.page_collection(self, db, issuers_schema, "page")
         if err_t then
           return endpoints.handle_error(err_t)
         end
