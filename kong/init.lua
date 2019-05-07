@@ -115,8 +115,6 @@ local TLS_SCHEMES = {
 
 local TTL_ZERO = { ttl = 0 }
 
-local PLUGINS_MUTEX_OPTS
-
 local declarative_entities
 local loaded_plugins
 local plugins
@@ -225,7 +223,22 @@ local function update_plugins()
   end
 
   if not plugins or plugins.version ~= version then
-    local ok, err = concurrency.with_coroutine_mutex(PLUGINS_MUTEX_OPTS, function()
+
+    local timeout = 60
+    if kong.configuration.database == "cassandra" then
+      -- cassandra_timeout is defined in ms
+      timeout = kong.configuration.cassandra_timeout / 1000
+
+    elseif kong.configuration.database == "postgres" then
+      -- pg_timeout is defined in ms
+      timeout = kong.configuration.pg_timeout / 1000
+    end
+    local plugins_mutex_opts = {
+      name = "plugins",
+      timeout = timeout,
+    }
+
+    local ok, err = concurrency.with_coroutine_mutex(plugins_mutex_opts, function()
       -- we have the lock but we might not have needed it. check the
       -- version again and rebuild if necessary
       version, err = kong.cache:get("plugins_plan:version", TTL_ZERO, utils.uuid)
@@ -480,21 +493,6 @@ function Kong.init()
   -- Load plugins as late as possible so that everything is set up
   assert(db.plugins:load_plugin_schemas(config.loaded_plugins))
 
-  do
-    local timeout = 60
-    if kong.configuration.database == "cassandra" then
-      -- cassandra_timeout is defined in ms
-      timeout = kong.configuration.cassandra_timeout / 1000
-
-    elseif kong.configuration.database == "postgres" then
-      -- pg_timeout is defined in ms
-      timeout = kong.configuration.pg_timeout / 1000
-    end
-    PLUGINS_MUTEX_OPTS = {
-      name = "plugins",
-      timeout = timeout,
-    }
-  end
 
   if kong.configuration.database == "off" then
     local err
