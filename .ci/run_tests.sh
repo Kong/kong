@@ -17,7 +17,9 @@ if [ "$TEST_SUITE" == "integration" ]; then
     eval "$TEST_CMD" spec/02-integration/
 fi
 if [ "$TEST_SUITE" == "dbless" ]; then
-    eval "$TEST_CMD" spec/02-integration/02-cmd spec/02-integration/05-proxy
+    eval "$TEST_CMD" spec/02-integration/02-cmd \
+                     spec/02-integration/05-proxy \
+                     spec/03-plugins/10-basic-auth/03-access_spec.lua
 fi
 if [ "$TEST_SUITE" == "plugins" ]; then
     eval "$TEST_CMD" spec/03-plugins/

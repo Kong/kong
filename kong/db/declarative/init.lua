@@ -251,7 +251,7 @@ local function post_crud_create_event(entity_name, item)
 end
 
 
-function declarative.load_into_cache(entities, send_events)
+function declarative.load_into_cache(entities)
 
   -- FIXME atomicity of cache update
   -- FIXME track evictions (and do something when they happen)
@@ -269,124 +269,143 @@ function declarative.load_into_cache(entities, send_events)
   -- but filtered for a given tag
   local tags_by_name = {}
 
-  for entity_name, items in pairs(entities) do
-    local dao = kong.db[entity_name]
-    local schema = dao.schema
 
-    -- Keys: tag_name, eg "admin"
-    -- Values: dictionary of uuids associated to this tag,
-    --         for a specific entity type
-    --         i.e. "all the services associated to the 'admin' tag"
-    --         The ids are keys, and the values are `true`
-    local taggings = {}
+  local schemas = {}
+  for entity_name, _ in pairs(entities) do
+    table.insert(schemas, kong.db[entity_name].schema)
+  end
+  local sorted_schemas, err = topological_sort(schemas)
+  if not sorted_schemas then
+    return nil, err
+  end
 
-    local uniques = {}
-    local page_for = {}
-    local foreign_fields = {}
-    for fname, fdata in schema:each_field() do
-      if fdata.unique then
-        table.insert(uniques, fname)
-      end
-      if fdata.type == "foreign" then
-        page_for[fdata.reference] = {}
-        foreign_fields[fname] = fdata.reference
-      end
-    end
+  for i = 1, #sorted_schemas do
+    local needed_schema = sorted_schemas[i]
+    for entity_name, items in pairs(entities) do
+      local dao = kong.db[entity_name]
+      local schema = dao.schema
+      if schema == needed_schema then
+        -- Keys: tag_name, eg "admin"
+        -- Values: dictionary of uuids associated to this tag,
+        --         for a specific entity type
+        --         i.e. "all the services associated to the 'admin' tag"
+        --         The ids are keys, and the values are `true`
+        local taggings = {}
 
-    local ids = {}
-    for id, item in pairs(items) do
-      table.insert(ids, id)
-
-      local cache_key = dao:cache_key(id)
-      item = remove_nulls(item)
-      local ok, err = kong.cache:get(cache_key, nil, function()
-        return item
-      end)
-      if not ok then
-        return nil, err
-      end
-
-      if schema.cache_key then
-        local cache_key = dao:cache_key(item)
-        ok, err = kong.cache:get(cache_key, nil, function()
-          return item
-        end)
-        if not ok then
-          return nil, err
+        local uniques = {}
+        local page_for = {}
+        local foreign_fields = {}
+        for fname, fdata in schema:each_field() do
+          if fdata.unique then
+            table.insert(uniques, fname)
+          end
+          if fdata.type == "foreign" then
+            page_for[fdata.reference] = {}
+            foreign_fields[fname] = fdata.reference
+          end
         end
-      end
 
-      for _, unique in ipairs(uniques) do
-        if item[unique] then
-          local cache_key = entity_name .. "|" .. unique .. ":" .. item[unique]
-          ok, err = kong.cache:get(cache_key, nil, function()
+        local ids = {}
+        for id, item in pairs(items) do
+          table.insert(ids, id)
+
+          item = remove_nulls(item)
+          item = dao:insert(item, {
+            declarative = true,
+            no_broadcast_crud_event = true,
+          })
+
+          local cache_key = dao:cache_key(id)
+          local ok, err = kong.cache:get(cache_key, nil, function()
             return item
           end)
           if not ok then
             return nil, err
           end
+
+          if schema.cache_key then
+            local cache_key = dao:cache_key(item)
+            ok, err = kong.cache:get(cache_key, nil, function()
+              return item
+            end)
+            if not ok then
+              return nil, err
+            end
+          end
+
+          for _, unique in ipairs(uniques) do
+            if item[unique] then
+              local cache_key = entity_name .. "|" .. unique .. ":" .. item[unique]
+              ok, err = kong.cache:get(cache_key, nil, function()
+                return item
+              end)
+              if not ok then
+                return nil, err
+              end
+            end
+          end
+
+          for fname, ref in pairs(foreign_fields) do
+            if item[fname] then
+              local fschema = kong.db[ref].schema
+
+              local fid = declarative_config.pk_string(fschema, item[fname])
+              page_for[ref][fid] = page_for[ref][fid] or {}
+              table.insert(page_for[ref][fid], id)
+            end
+          end
+
+          if item.tags then
+            for _, tag_name in ipairs(item.tags) do
+              table.insert(tags, tag_name .. "|" .. entity_name .. "|" .. id)
+
+              tags_by_name[tag_name] = tags_by_name[tag_name] or {}
+              table.insert(tags_by_name[tag_name], tag_name .. "|" .. entity_name .. "|" .. id)
+
+              taggings[tag_name] = taggings[tag_name] or {}
+              taggings[tag_name][id] = true
+            end
+          end
         end
-      end
 
-      for fname, ref in pairs(foreign_fields) do
-        if item[fname] then
-          local fschema = kong.db[ref].schema
-
-          local fid = declarative_config.pk_string(fschema, item[fname])
-          page_for[ref][fid] = page_for[ref][fid] or {}
-          table.insert(page_for[ref][fid], id)
-        end
-      end
-
-      if item.tags then
-        for _, tag_name in ipairs(item.tags) do
-          table.insert(tags, tag_name .. "|" .. entity_name .. "|" .. id)
-
-          tags_by_name[tag_name] = tags_by_name[tag_name] or {}
-          table.insert(tags_by_name[tag_name], tag_name .. "|" .. entity_name .. "|" .. id)
-
-          taggings[tag_name] = taggings[tag_name] or {}
-          taggings[tag_name][id] = true
-        end
-      end
-    end
-
-    local ok, err = kong.cache:get(entity_name .. "|list", nil, function()
-      return ids
-    end)
-    if not ok then
-      return nil, err
-    end
-
-    for ref, fids in pairs(page_for) do
-      for fid, entries in pairs(fids) do
-        local key = entity_name .. "|" .. ref .. "|" .. fid .. "|list"
-        ok, err = kong.cache:get(key, nil, function()
-          return entries
+        local ok, err = kong.cache:get(entity_name .. "|list", nil, function()
+          return ids
         end)
         if not ok then
           return nil, err
         end
-      end
-    end
 
-    -- taggings:admin|services|list -> uuids of services tagged "admin"
-    for tag_name, entity_ids_dict in pairs(taggings) do
-      local key = "taggings:" .. tag_name .. "|" .. entity_name .. "|list"
-      ok, err = kong.cache:get(key, nil, function()
-        -- transform the dict into a sorted array
-        local arr = {}
-        local len = 0
-        for id in pairs(entity_ids_dict) do
-          len = len + 1
-          arr[len] = id
+        for ref, fids in pairs(page_for) do
+          for fid, entries in pairs(fids) do
+            local key = entity_name .. "|" .. ref .. "|" .. fid .. "|list"
+            ok, err = kong.cache:get(key, nil, function()
+              return entries
+            end)
+            if not ok then
+              return nil, err
+            end
+          end
         end
-        -- stay consistent with pagination
-        table.sort(arr)
-        return arr
-      end)
-      if not ok then
-        return nil, err
+
+        -- taggings:admin|services|list -> uuids of services tagged "admin"
+        for tag_name, entity_ids_dict in pairs(taggings) do
+          local key = "taggings:" .. tag_name .. "|" .. entity_name .. "|list"
+          ok, err = kong.cache:get(key, nil, function()
+            -- transform the dict into a sorted array
+            local arr = {}
+            local len = 0
+            for id in pairs(entity_ids_dict) do
+              len = len + 1
+              arr[len] = id
+            end
+            -- stay consistent with pagination
+            table.sort(arr)
+            return arr
+          end)
+          if not ok then
+            return nil, err
+          end
+        end
       end
     end
   end

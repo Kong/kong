@@ -96,7 +96,6 @@ for _, strategy in helpers.each_strategy() do
       proxy_client = helpers.proxy_client()
     end)
 
-
     lazy_teardown(function()
       if proxy_client then
         proxy_client:close()
@@ -308,7 +307,6 @@ for _, strategy in helpers.each_strategy() do
       end)
 
     end)
-
 
     describe("config.anonymous", function()
 
@@ -575,4 +573,57 @@ for _, strategy in helpers.each_strategy() do
 
     end)
   end)
+
+  if strategy == "off" then
+    describe("Plugin: basic-auth (access) [#" .. strategy .. "]", function()
+      describe("declarative config", function()
+        it("hashes the password", function()
+          local yaml_file = helpers.make_yaml_file [[
+            _format_version: "1.1"
+            consumers:
+            - username: test
+              basicauth_credentials:
+              - username: test
+                password: qwerty
+          ]]
+
+          local admin_client
+
+          finally(function()
+            os.remove(yaml_file)
+            helpers.stop_kong(helpers.test_conf.prefix)
+            if admin_client then
+              admin_client:close()
+            end
+          end)
+
+          assert(helpers.start_kong({
+            database = "off",
+            declarative_config = yaml_file,
+            nginx_conf = "spec/fixtures/custom_nginx.template",
+          }))
+
+          -- get a connection, retry until kong starts
+          helpers.wait_until(function()
+            local pok
+            pok, admin_client = pcall(helpers.admin_client)
+            return pok
+          end, 10)
+
+          local res = assert(admin_client:get("/consumers/test/basicauth_credentials"))
+          local body = assert.res_status(200, res)
+
+          local json = cjson.decode(body)
+          local pass = json.data[1].password
+          assert.is_string(pass)
+          assert.not_equal("qwerty", pass)
+
+          local crypto = require "kong.plugins.basic-auth.crypto"
+          local hash   = crypto.hash(json.data[1].consumer.id, "qwerty")
+          assert.equal(hash, pass)
+        end)
+      end)
+    end)
+  end
+
 end

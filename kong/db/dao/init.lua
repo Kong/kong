@@ -855,7 +855,7 @@ function DAO:insert(entity, options)
     return nil, err, err_t
   end
 
-  self:post_crud_event("create", row)
+  self:post_crud_event("create", row, nil, options)
 
   return row
 end
@@ -1044,7 +1044,11 @@ function DAO:row_to_entity(row, options)
 end
 
 
-function DAO:post_crud_event(operation, entity, old_entity)
+function DAO:post_crud_event(operation, entity, old_entity, options)
+  if options and options.no_broadcast_crud_event then
+    return
+  end
+
   if self.events then
     local _, err = self.events.post_local("dao:crud", operation, {
       operation  = operation,
