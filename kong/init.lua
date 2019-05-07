@@ -80,8 +80,6 @@ local cache_warmup = require "kong.cache_warmup"
 local plugins_iterator = require "kong.runloop.plugins_iterator"
 local balancer_execute = require("kong.runloop.balancer").execute
 local kong_error_handlers = require "kong.error_handlers"
-local BasePlugin   = require "kong.plugins.base_plugin"
-local reports = require "kong.reports"
 
 local kong             = kong
 local ngx              = ngx
@@ -102,7 +100,7 @@ local set_current_peer = ngx_balancer.set_current_peer
 local set_ssl_ctx      = ngx_balancer.set_ssl_ctx
 local set_timeouts     = ngx_balancer.set_timeouts
 local set_more_tries   = ngx_balancer.set_more_tries
-local subsystem        = ngx.config.subsystem
+
 
 local ffi = require "ffi"
 local cast = ffi.cast
@@ -113,158 +111,12 @@ local TLS_SCHEMES = {
   tls = true,
 }
 
-local TTL_ZERO = { ttl = 0 }
-
 local declarative_entities
-local loaded_plugins
-local plugins
 local schema_state
 
 
-local function should_process_plugin(plugin)
-  local c = constants.PROTOCOLS_WITH_SUBSYSTEM
-  for _, protocol in ipairs(plugin.protocols) do
-    if c[protocol] == subsystem then
-      return true
-    end
-  end
-end
-
-
-local function get_loaded_plugins()
-  local loaded = assert(kong.db.plugins:get_handlers())
-
-  if kong.configuration.anonymous_reports then
-
-    reports.configure_ping(kong.configuration)
-    reports.add_ping_value("database_version", kong.db.infos.db_ver)
-    reports.toggle(true)
-
-    loaded[#loaded + 1] = {
-      name = "reports",
-      handler = reports,
-    }
-  end
-
-  return loaded
-end
-
-
-local function build_plugins(version)
-  loaded_plugins = loaded_plugins or get_loaded_plugins()
-
-  local new_plugins = {
-    map = {},
-    loaded = loaded_plugins,
-    combos = {},
-  }
-
-  if subsystem == "stream" then
-    new_plugins.phases = {
-      init_worker = {},
-      preread     = {},
-      log         = {},
-    }
-
-  else
-    new_plugins.phases = {
-      init_worker   = {},
-      certificate   = {},
-      rewrite       = {},
-      access        = {},
-      header_filter = {},
-      body_filter   = {},
-      log           = {},
-    }
-  end
-
-  for plugin, err in kong.db.plugins:each(1000) do
-    if err then
-      return nil, err
-    end
-
-    if should_process_plugin(plugin) then
-      new_plugins.map[plugin.name] = true
-
-      local combo_key = (plugin.route    and 1 or 0)
-                      + (plugin.service  and 2 or 0)
-                      + (plugin.consumer and 4 or 0)
-
-      new_plugins.combos[plugin.name] = new_plugins.combos[plugin.name] or {}
-      new_plugins.combos[plugin.name][combo_key] = true
-    end
-  end
-
-  for _, plugin in ipairs(loaded_plugins) do
-    if new_plugins.combos[plugin.name] then
-      for phase_name, phase in pairs(new_plugins.phases) do
-        if plugin.handler[phase_name] ~= BasePlugin[phase_name] then
-          phase[plugin.name] = true
-        end
-      end
-
-    else
-      if plugin.handler.init_worker ~= BasePlugin.init_worker then
-        new_plugins.phases.init_worker[plugin.name] = true
-      end
-    end
-  end
-
-  plugins = new_plugins
-
-  return true
-end
-
-
-local function update_plugins()
-  local version, err = kong.cache:get("plugins_plan:version", TTL_ZERO, utils.uuid)
-  if err then
-    return nil, "failed to retrieve plugins plan version: " .. err
-  end
-
-  if not plugins or plugins.version ~= version then
-
-    local timeout = 60
-    if kong.configuration.database == "cassandra" then
-      -- cassandra_timeout is defined in ms
-      timeout = kong.configuration.cassandra_timeout / 1000
-
-    elseif kong.configuration.database == "postgres" then
-      -- pg_timeout is defined in ms
-      timeout = kong.configuration.pg_timeout / 1000
-    end
-    local plugins_mutex_opts = {
-      name = "plugins",
-      timeout = timeout,
-    }
-
-    local ok, err = concurrency.with_coroutine_mutex(plugins_mutex_opts, function()
-      -- we have the lock but we might not have needed it. check the
-      -- version again and rebuild if necessary
-      version, err = kong.cache:get("plugins_plan:version", TTL_ZERO, utils.uuid)
-      if err then
-        return nil, "failed to re-retrieve version: " .. err
-      end
-
-      if not plugins or plugins.version ~= version then
-        local ok, err = build_plugins(version)
-        if not ok then
-          return nil, "error found when building plugins plan: " .. err
-        end
-      end
-
-      return true
-    end)
-    if not ok then
-      return nil, "failed to rebuild plugin plan: " .. err
-    end
-  end
-
-  return true
-end
-
-
 local function execute_plugins(ctx, phase)
+  local plugins = runloop.get_plugins()
   local phase_plugins = plugins.phases[phase]
 
   for plugin, configuration in plugins_iterator(ctx, phase, plugins) do
@@ -343,7 +195,7 @@ local function load_declarative_config(kong_config, entities)
 
   if not kong_config.declarative_config then
     -- no configuration yet, just build empty plugins plan
-    local ok, err = build_plugins(utils.uuid())
+    local ok, err = runloop.build_plugins(utils.uuid())
     if not ok then
       error("error building initial plugins: " .. err)
     end
@@ -367,7 +219,7 @@ local function load_declarative_config(kong_config, entities)
     kong.log.notice("declarative config loaded from ",
                     kong_config.declarative_config)
 
-    ok, err = build_plugins(utils.uuid())
+    ok, err = runloop.build_plugins(utils.uuid())
     if not ok then
       error("error building initial plugins: " .. err)
     end
@@ -493,7 +345,6 @@ function Kong.init()
   -- Load plugins as late as possible so that everything is set up
   assert(db.plugins:load_plugin_schemas(config.loaded_plugins))
 
-
   if kong.configuration.database == "off" then
     local err
     declarative_entities, err = parse_declarative_config(kong.configuration)
@@ -502,7 +353,7 @@ function Kong.init()
     end
 
   else
-    local ok, err = build_plugins("init")
+    local ok, err = runloop.build_plugins("init")
     if not ok then
       error("error building initial plugins: " .. err)
     end
@@ -580,19 +431,9 @@ function Kong.init_worker()
   end
   kong.cache = cache
 
-  local ok, err = cache:get("router:version", TTL_ZERO, function()
-    return "init"
-  end)
+  ok, err = runloop.set_init_versions_in_cache()
   if not ok then
-    ngx_log(ngx_CRIT, "could not set router version in cache: ", err)
-    return
-  end
-
-  local ok, err = cache:get("plugins_plan:version", TTL_ZERO, function()
-    return "init"
-  end)
-  if not ok then
-    ngx_log(ngx_CRIT, "could not set plugins version in cache: ", err)
+    ngx_log(ngx_CRIT, err)
     return
   end
 
@@ -620,7 +461,8 @@ function Kong.init_worker()
 
 
   -- run plugins init_worker context
-  update_plugins()
+  runloop.update_plugins()
+  local plugins = runloop.get_plugins()
   local phase_plugins = plugins.phases.init_worker
   for _, plugin in ipairs(plugins.loaded) do
     if phase_plugins[plugin.name] then
@@ -638,7 +480,7 @@ function Kong.ssl_certificate()
 
   runloop.certificate.before(ctx)
 
-  local ok, err = update_plugins()
+  local ok, err = runloop.update_plugins()
   if not ok then
     ngx_log(ngx_CRIT, "could not ensure plugins plan is up to date: ", err)
     return ngx.exit(ngx.ERROR)
@@ -751,7 +593,7 @@ function Kong.rewrite()
 
   runloop.rewrite.before(ctx)
 
-  local ok, err = update_plugins()
+  local ok, err = runloop.update_plugins()
   if not ok then
     ngx_log(ngx_CRIT, "could not ensure plugins plan is up to date: ", err)
     return kong.response.exit(500, { message  = "An unexpected error occurred" })
@@ -769,7 +611,7 @@ function Kong.preread()
 
   runloop.preread.before(ctx)
 
-  local ok, err = update_plugins()
+  local ok, err = runloop.update_plugins()
   if not ok then
     ngx_log(ngx_CRIT, "could not ensure plugins plan is up to date: ", err)
     return kong.response.exit(500, { message  = "An unexpected error occurred" })
@@ -789,6 +631,7 @@ function Kong.access()
 
   ctx.delay_response = true
 
+  local plugins = runloop.get_plugins()
   local phase_plugins = plugins.phases.access
   for plugin, plugin_conf in plugins_iterator(ctx, "access", plugins) do
     if not ctx.delayed_response and phase_plugins[plugin.name] then
@@ -856,7 +699,8 @@ function Kong.handle_error()
   ctx.KONG_UNEXPECTED = true
 
   if not ctx.plugins then
-    update_plugins()
+    runloop.update_plugins()
+    local plugins = runloop.get_plugins()
     for _ in plugins_iterator(ctx, "content", plugins) do
       -- just build list of plugins
     end
