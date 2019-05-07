@@ -5,10 +5,14 @@ local singletons  = require "kong.singletons"
 local endpoints   = require "kong.api.endpoints"
 local enums       = require "kong.enterprise_edition.dao.enums"
 local files       = require "kong.portal.migrations.01_initial_files"
+local constants    = require "kong.constants"
 
 
 local kong = kong
 local type = type
+
+
+local PORTAL = constants.WORKSPACE_CONFIG.PORTAL
 
 
 local _M = {}
@@ -311,5 +315,16 @@ function _M.check_initialized(workspace, db)
 
   return workspace
 end
+
+
+function _M.exit_if_portal_disabled()
+  local ws = ngx.ctx.workspaces and ngx.ctx.workspaces[1] or {}
+  local enabled_in_ws = workspaces.retrieve_ws_config(PORTAL, ws, true)
+  local enabled_in_conf = kong.configuration.portal
+  if not enabled_in_conf or not enabled_in_ws then
+    return kong.response.exit(404, { message = "Not Found" })
+  end
+end
+
 
 return _M
