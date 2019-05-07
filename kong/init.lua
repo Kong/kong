@@ -487,7 +487,12 @@ function Kong.init_worker()
 
 
   -- run plugins init_worker context
-  runloop.update_plugins_iterator()
+  ok, err = runloop.update_plugins_iterator()
+  if not ok then
+    ngx_log(ngx_CRIT, "error building plugins iterator: ", err)
+    return
+  end
+
   local plugins_iterator = runloop.get_plugins_iterator()
   local mock_ctx = {} -- ctx is not available in init_worker, use table instead
   for plugin, _ in plugins_iterator:iterate(mock_ctx, "init_worker") do
