@@ -36,9 +36,10 @@ return {
     before = get_cert_id_from_sni,
 
     -- override to include the snis list when getting an individual certificate
-    GET = endpoints.get_entity_endpoint(kong.db.certificates.schema,
-                                        nil, nil, "select_with_name_list"),
-
+    GET = function(self, db, helpers)
+      return endpoints.get_entity_endpoint(kong.db.certificates.schema,
+        nil, nil, "select_with_name_list")(self, db, helpers)
+    end,
     -- override to create a new SNI in the PUT /certificates/foo.com (create) case
     PUT = function(self, db, helpers)
       local cert, err_t, _
@@ -69,4 +70,3 @@ return {
     before = get_cert_id_from_sni,
   },
 }
-
