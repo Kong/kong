@@ -367,6 +367,17 @@ for _, strategy in helpers.each_strategy() do
 
         assert.equal(1, #json.data)
       end)
+      it("returns created_at as epoch time", function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/consumers?size=1",
+        })
+
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+
+        assert.same("number", type(json.data[1].created_at))
+      end)
     end)
   end)
 
