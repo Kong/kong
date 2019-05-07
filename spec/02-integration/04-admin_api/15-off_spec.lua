@@ -20,6 +20,7 @@ describe("Admin API #off", function()
   lazy_setup(function()
     assert(helpers.start_kong({
       database = "off",
+      mem_cache_size = "32k",
     }))
   end)
 
@@ -223,6 +224,164 @@ describe("Admin API #off", function()
 
       assert.response(res).has.status(201)
     end)
+
+    it("fails with 413 and preserves previous cache if config does not fit in cache", function()
+      local res = assert(client:send {
+        method = "POST",
+        path = "/config",
+        body = {
+          config = [[
+          {
+            "_format_version" : "1.1",
+            "consumers" : [
+              {
+                "username" : "previous",
+              },
+            ],
+          }
+          ]],
+        },
+        headers = {
+          ["Content-Type"] = "application/json"
+        }
+      })
+
+      assert.response(res).has.status(201)
+
+      client:close()
+      client = assert(helpers.admin_client())
+
+      local consumers = {}
+      for i = 1, 20000 do
+        table.insert(consumers, [[
+          {
+            "username" : "bobby-]] .. i .. [[",
+          }
+        ]])
+      end
+      local config = [[
+      {
+        "_format_version" : "1.1",
+        "consumers" : [
+      ]] .. table.concat(consumers, ", ") .. [[
+        ]
+      }
+      ]]
+      res = assert(client:send {
+        method = "POST",
+        path = "/config",
+        body = {
+          config = config,
+        },
+        headers = {
+          ["Content-Type"] = "application/json"
+        }
+      })
+
+      assert.response(res).has.status(413)
+
+      client:close()
+      client = assert(helpers.admin_client())
+
+      res = assert(client:send {
+        method = "GET",
+        path = "/consumers/previous",
+        headers = {
+          ["Content-Type"] = "application/json"
+        }
+      })
+
+      local body = assert.response(res).has.status(200)
+      local json = cjson.decode(body)
+      assert.same("previous", json.username)
+
+    end)
+
+    it("succeeds with 200 and replaces previous cache if config fits in cache", function()
+      local res = assert(client:send {
+        method = "POST",
+        path = "/config",
+        body = {
+          config = [[
+          {
+            "_format_version" : "1.1",
+            "consumers" : [
+              {
+                "username" : "previous",
+              },
+            ],
+          }
+          ]],
+        },
+        headers = {
+          ["Content-Type"] = "application/json"
+        }
+      })
+
+      assert.response(res).has.status(201)
+
+      client:close()
+      client = assert(helpers.admin_client())
+
+      local consumers = {}
+      for i = 1, 10 do
+        table.insert(consumers, [[
+          {
+            "username" : "bobby-]] .. i .. [[",
+          }
+        ]])
+      end
+      local config = [[
+      {
+        "_format_version" : "1.1",
+        "consumers" : [
+      ]] .. table.concat(consumers, ", ") .. [[
+        ]
+      }
+      ]]
+      res = assert(client:send {
+        method = "POST",
+        path = "/config",
+        body = {
+          config = config,
+        },
+        headers = {
+          ["Content-Type"] = "application/json"
+        }
+      })
+
+      assert.response(res).has.status(201)
+
+      client:close()
+      client = assert(helpers.admin_client())
+
+      res = assert(client:send {
+        method = "GET",
+        path = "/consumers/previous",
+        headers = {
+          ["Content-Type"] = "application/json"
+        }
+      })
+
+      assert.response(res).has.status(404)
+
+      client:close()
+      client = assert(helpers.admin_client())
+
+      res = assert(client:send {
+        method = "GET",
+        path = "/consumers/bobby-10",
+        headers = {
+          ["Content-Type"] = "application/json"
+        }
+      })
+
+      local body = assert.response(res).has.status(200)
+      local json = cjson.decode(body)
+      assert.same("bobby-10", json.username)
+
+    end)
+
     it("accepts configuration as a YAML string", function()
       local res = assert(client:send {
         method = "POST",
