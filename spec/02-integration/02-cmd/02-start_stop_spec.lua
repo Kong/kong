@@ -102,7 +102,7 @@ describe("kong start/stop", function()
         portal = "on",
         portal_auth = "key-auth",
         portal_auth_conf = '{ "keys": "never-ever-show" }',
-        portal_session_conf = '{ "keys": "never-ever-show" }',
+        portal_session_conf = '{ "storage": "kong" }',
       }))
       assert.matches('KONG_PG_PASSWORD ENV found with "******"', stdout, nil, true)
       assert.matches('KONG_CASSANDRA_PASSWORD ENV found with "******"', stdout, nil, true)

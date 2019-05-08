@@ -1,4 +1,5 @@
 local helpers = require "spec.helpers"
+local run_ws = require "kong.workspaces".run_with_ws_scope
 
 for _, strategy in helpers.each_strategy() do
   describe("Plugin execution is restricted to correct workspace #" .. strategy, function()
@@ -174,12 +175,12 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(403, res)
       end)
       it("cache added for plugin in default workspace", function()
-        local cache_key = db.plugins:cache_key_ws(ws_default,
-                                                   "key-auth",
-                                                   nil,
-                                                   s.id,
-                                                   nil,
-                                                   nil)
+        local cache_key = db.plugins:cache_key("key-auth",
+                                                nil,
+                                                s.id,
+                                                nil,
+                                                nil,
+                                                false)
         local res
         helpers.wait_until(function()
           res = admin_client:get("/cache/" .. cache_key)
@@ -218,12 +219,12 @@ for _, strategy in helpers.each_strategy() do
         assert.is_equal(cred_default.consumer.id, body.id)
       end)
       it("negative cache not added for non enabled plugin", function()
-        local cache_key = db.plugins:cache_key_ws(nil,
-                                                   "request-transformer",
-                                                   nil,
-                                                   nil,
-                                                   nil,
-                                                   route1.id)
+        local cache_key = db.plugins:cache_key("request-transformer",
+                                                nil,
+                                                nil,
+                                                nil,
+                                                route1.id,
+                                                false)
 
         local res
         helpers.wait_until(function()
@@ -304,12 +305,14 @@ for _, strategy in helpers.each_strategy() do
         assert.equals("ok", body.headers["x-test"])
       end)
       it("cache added for plugin in foo workspace", function()
-        local cache_key = db.plugins:cache_key_ws(ws_foo,
-                                                   "request-transformer",
-                                                   nil,
-                                                   s.id,
-                                                   nil,
-                                                   nil)
+         local cache_key = run_ws({ ws_foo }, function()
+          return db.plugins:cache_key("request-transformer",
+                                      nil,
+                                      s.id,
+                                      nil,
+                                      nil,
+                                      false)
+        end)
 
         local res
         helpers.wait_until(function()
@@ -326,12 +329,12 @@ for _, strategy in helpers.each_strategy() do
 
       end)
       it("negative cache added for non enabled plugin in default workspace", function()
-        local cache_key = db.plugins:cache_key_ws(ws_default,
-                                                   "request-transformer",
-                                                   nil,
-                                                   s.id,
-                                                   nil,
-                                                   nil)
+        local cache_key = db.plugins:cache_key("request-transformer",
+                                                nil,
+                                                s.id,
+                                                nil,
+                                                nil,
+                                                false)
 
         local res
         helpers.wait_until(function()
@@ -365,12 +368,12 @@ for _, strategy in helpers.each_strategy() do
         assert.is_nil(body.headers["x-test"])
       end)
       it("cache not added for plugin in foo workspace", function()
-        local cache_key = db.plugins:cache_key_ws(nil,
-                                                   "request-transformer",
-                                                   nil,
-                                                   s.id,
-                                                   nil,
-                                                   nil)
+        local cache_key = db.plugins:cache_key("request-transformer",
+                                                nil,
+                                                s.id,
+                                                nil,
+                                                nil,
+                                                false)
 
         local res
         helpers.wait_until(function()

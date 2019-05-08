@@ -37,9 +37,9 @@ for _, strategy in helpers.each_strategy() do
 
 describe("Admin API - Developer Portal - " .. strategy, function()
   local client, portal_api_client
-  local db, dao
+  local db
 
-  _, db, dao = helpers.get_db_utils(strategy)
+  _, db, _ = helpers.get_db_utils(strategy)
   -- do not run tests for cassandra < 3
   if strategy == "cassandra" and db.connector.major_version < 3 then
     return
@@ -64,7 +64,7 @@ describe("Admin API - Developer Portal - " .. strategy, function()
   before_each(function()
     client = helpers.admin_client()
     portal_api_client = ee_helpers.portal_api_client()
-    configure_portal(db)
+    configure_portal()
   end)
 
   after_each(function()
@@ -402,7 +402,7 @@ describe("Admin API - Developer Portal - " .. strategy, function()
           }))
 
           client = assert(helpers.admin_client())
-          configure_portal(dao)
+          configure_portal()
         end)
 
         it("returns 501 if portal_invite_email is turned off", function()
@@ -443,7 +443,7 @@ describe("Admin API - Developer Portal - " .. strategy, function()
           }))
 
           client = assert(helpers.admin_client())
-          configure_portal(dao)
+          configure_portal()
         end)
 
         it("returns 400 if not sent with emails param", function()
@@ -621,6 +621,8 @@ describe("Admin API - Developer Portal - " .. strategy, function()
         status = enums.CONSUMERS.STATUS.APPROVED,
       })
 
+      configure_portal()
+
       for i = 1, 10 do
         assert(client_request({
           method = "POST",
@@ -645,7 +647,6 @@ describe("Admin API - Developer Portal - " .. strategy, function()
       end
 
       client = assert(helpers.admin_client())
-      configure_portal(dao)
     end)
 
     describe("POST", function()
@@ -747,6 +748,8 @@ describe("Admin API - Developer Portal - " .. strategy, function()
         status = enums.CONSUMERS.STATUS.APPROVED,
       })
 
+      configure_portal()
+
       res = client_request({
         method = "POST",
         path = "/default/developers/" .. developer.id .. "/credentials/basic-auth",
@@ -771,7 +774,6 @@ describe("Admin API - Developer Portal - " .. strategy, function()
       key_auth = cjson.decode(res.body)
 
       client = assert(helpers.admin_client())
-      configure_portal(dao)
     end)
 
     describe("GET", function()

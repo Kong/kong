@@ -14,6 +14,21 @@ local SIGNING_ALGORITHM = "SHA256"
 local signing_key
 
 
+local function request_id()
+  local ctx = ngx.ctx
+  if ctx.admin_api then
+    return ctx.admin_api.req_id
+  end
+
+  local ok, res = pcall(function() return ngx.var.set_request_id end)
+  if ok then
+    return res
+  end
+
+  return utils.uuid()
+end
+
+
 local function serialize(data)
   local p = {}
 
@@ -81,7 +96,7 @@ local function dao_audit_handler(data)
   end
 
   local data = {
-    request_id = ngx.ctx.admin_api.req_id,
+    request_id = request_id(),
     entity_key = pk_value,
     dao_name   = data.schema.table or data.schema.name,
     operation  = data.operation,
@@ -152,7 +167,7 @@ local function admin_log_handler()
   end
 
   local data = {
-    request_id   = ngx.ctx.admin_api.req_id,
+    request_id   = request_id(),
     client_ip    = ngx.var.remote_addr,
     path         = uri,
     payload      = ngx.req.get_body_data(),

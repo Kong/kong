@@ -173,7 +173,9 @@ function _M.validate(params, db, admin_to_update)
     end
     admin.consumer = consumer
 
-    if consumer.username and consumer.username == params.username then
+    if consumer.username and consumer.username == params.username or
+       consumer.custom_id and consumer.custom_id == params.custom_id
+    then
       matches = matches + 1
     end
 
@@ -306,7 +308,7 @@ function _M.create(params, opts)
       }
     end
   else
-    log(ERR, _log_prefix, "No email configuration found.")
+    log(DEBUG, _log_prefix, "Kong is not configured to send email")
   end
 
   return {
@@ -352,33 +354,40 @@ function _M.update(params, admin_to_update, opts)
   end
 
   -- keep consumer and credential names in sync with admin
-  if params.username ~= admin_to_update.username then
+  if params.username ~= admin_to_update.username or
+     params.custom_id and params.custom_id ~= admin_to_update.custom_id
+  then
     -- update consumer
     local _, err = workspaces.run_with_ws_scope(
       {},
       db.consumers.update,
       db.consumers,
       { id = admin_to_update.consumer.id },
-      { username = params.username }
+      {
+        username = params.username,
+        custom_id = params.custom_id,
+      }
     )
     if err then
       return nil, err
     end
 
-    -- update basic-auth credential, if any
-    local creds, err = db.basicauth_credentials:page_for_consumer(admin.consumer)
-    if err then
-      return nil, err
-    end
-
-    if creds[1] then
-      local _, err = workspaces.run_with_ws_scope({},
-                     db.basicauth_credentials.update,
-                     db.basicauth_credentials,
-                     { id = creds[1].id },
-                     { username = admin.username })
+    -- if name changed, update basic-auth credential, if any
+    if params.username ~= admin_to_update.username then
+      local creds, err = db.basicauth_credentials:page_for_consumer(admin.consumer)
       if err then
         return nil, err
+      end
+
+      if creds[1] then
+        local _, err = workspaces.run_with_ws_scope({},
+                       db.basicauth_credentials.update,
+                       db.basicauth_credentials,
+                       { id = creds[1].id },
+                       { username = admin.username })
+        if err then
+          return nil, err
+        end
       end
     end
   end

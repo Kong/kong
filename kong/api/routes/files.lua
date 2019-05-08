@@ -3,7 +3,12 @@ local crud_helpers = require "kong.portal.crud_helpers"
 local renderer     = require "kong.portal.renderer"
 local utils        = require "kong.tools.utils"
 
+
+local kong = kong
+
+
 local unescape_uri = ngx.unescape_uri
+
 
 local function find_file(db, file_pk)
   local id = unescape_uri(file_pk)
@@ -17,6 +22,10 @@ end
 
 return {
   ["/files"] = {
+    before = function(self, db, helpers)
+      crud_helpers.exit_if_portal_disabled()
+    end,
+
     -- List all files stored in the portal file system
     GET = function(self, db, helpers, parent)
       local size = self.params.size or 100
@@ -44,6 +53,8 @@ return {
 
   ["/files/partials/*"] = {
     before = function(self, db, helpers)
+      crud_helpers.exit_if_portal_disabled()
+
       local file_pk = self.params.splat
 
       -- Find a file by id or field "name"
@@ -63,8 +74,15 @@ return {
       for idx, partial in pairs(partials_dict) do
         table.insert(partials, partial)
       end
-
-      return kong.response.exit(200, {data = partials})
+      return kong.response.exit(200, {
+        data = partials
+      })
     end
-  }
+  },
+
+  ["/files/:files"] = {
+    before = function(self, db, helpers)
+      crud_helpers.exit_if_portal_disabled()
+    end
+  },
 }

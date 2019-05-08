@@ -11,27 +11,27 @@ local Consumers = {}
 
 local sql_templates = {
   page_by_type_first = [[
-  SELECT id, username, custom_id, created_at
+  SELECT id, username, custom_id, extract('epoch' from created_at at time zone 'UTC') as created_at
     FROM consumers
     WHERE type = %s
     ORDER BY id
     LIMIT %s;]],
   page_by_type_next  = [[
-  SELECT id, username, custom_id, created_at
+  SELECT id, username, custom_id, extract('epoch' from created_at at time zone 'UTC') as created_at
     FROM consumers
     WHERE id >= %s AND type = %s
     ORDER BY id
     LIMIT %s;]],
 
   page_by_type_first_ws  = [[
-    SELECT id, username, custom_id, created_at
+    SELECT id, username, custom_id, extract('epoch' from created_at at time zone 'UTC') as created_at
     FROM workspace_entities ws_e INNER JOIN consumers c
     ON ( unique_field_name = 'id' AND ws_e.workspace_id in ( %s ) and ws_e.entity_id = c.id::varchar )
     WHERE type = %s ORDER BY id LIMIT %s;
   ]],
 
   page_by_type_next_ws  = [[
-    SELECT id, username, custom_id, created_at
+    SELECT id, username, custom_id, extract('epoch' from created_at at time zone 'UTC') as created_at
     FROM workspace_entities ws_e INNER JOIN consumers c
     ON ( unique_field_name = 'id' AND ws_e.workspace_id in ( %s ) and ws_e.entity_id = c.id::varchar )
     WHERE id >= %s AND type = %s ORDER BY id LIMIT %s;

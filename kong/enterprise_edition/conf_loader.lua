@@ -125,6 +125,10 @@ local function validate_portal_session(conf, errors)
       errors[#errors+1] = "portal_session_conf must be valid json or not set: "
         .. err .. " - " .. conf.portal_session_conf
     else
+      if session_config.storage ~= "kong" then
+        errors[#errors+1] = "portal_session_conf 'storage' must equal 'kong'"
+      end
+
       conf.portal_session_conf = session_config
        -- used for writing back to prefix/.kong_env
       setmetatable(conf.portal_session_conf, {

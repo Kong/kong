@@ -14,6 +14,7 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
 
     assert(helpers.start_kong({
       database = strategy,
+      portal = true,
     }))
 
     client = assert(helpers.admin_client())
@@ -567,7 +568,7 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
           assert.equals(
-            '{"hide_credentials":true,"key_names":["dog"]}',
+            '{"hide_credentials":true}',
             json.config.portal_auth_conf
           )
         end)

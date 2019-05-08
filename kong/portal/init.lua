@@ -7,8 +7,8 @@ local app_helpers = require "lapis.application"
 local singletons = require "kong.singletons"
 local ee_api = require "kong.enterprise_edition.api_helpers"
 local workspaces = require "kong.workspaces"
-local constants = require "kong.constants"
 local Errors = require "kong.db.errors"
+local crud_helpers = require "kong.portal.crud_helpers"
 
 
 local log = ngx.log
@@ -18,7 +18,6 @@ local sub = string.sub
 local find = string.find
 
 
-local PORTAL = constants.WORKSPACE_CONFIG.PORTAL
 local NEEDS_BODY = tablex.readonly({ PUT = 1, POST = 2, PATCH = 3 })
 
 
@@ -176,16 +175,13 @@ app:before_filter(function(self)
     return kong.response.exit(404, { message = fmt("'%s' workspace not found", ws_name) })
   end
 
-  -- check if portal is enabled
-  local portal_enabled = workspaces.retrieve_ws_config(PORTAL, ws)
-  if not portal_enabled then
-    return kong.response.exit(404, { message =  fmt("'%s' portal disabled", ws_name) })
-  end
-
   -- save workspace name in the context; if not passed, default workspace is
   -- 'default'
   ctx.workspaces = { ws }
   self.params.workspace_name = nil
+
+  -- if portal is not enabled in both kong.conf and workspace, return 404
+  crud_helpers.exit_if_portal_disabled()
 
   local cors_conf = {
     origins = workspaces.build_ws_portal_cors_origins(ws),

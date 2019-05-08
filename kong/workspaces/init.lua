@@ -894,14 +894,19 @@ end
 --   in an error.
 -- * if workspace specific config does not exist fall back to
 --   default config value.
-function _M.retrieve_ws_config(config_name, workspace)
+-- * if 'explicitly_ws' flag evaluates to true, workspace config
+--   will be returned, even if it is nil/null
+function _M.retrieve_ws_config(config_name, workspace, explicitly_ws)
   local conf
-  if workspace.config and
+
+  if explicitly_ws or workspace.config and
     workspace.config[config_name] ~= nil and
     workspace.config[config_name] ~= ngx.null then
     conf = workspace.config[config_name]
   else
-    conf = singletons.configuration[config_name]
+    if singletons.configuration then
+      conf = singletons.configuration[config_name]
+    end
   end
 
   -- if table, return a copy so that we don't mutate the conf

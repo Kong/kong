@@ -79,6 +79,20 @@ for _, strategy in helpers.each_strategy() do
         assert.same(enums.CONSUMERS.STATUS.INVITED, admin.status)
       end)
 
+      it("sets consumer username and custom_id same as admin's", function()
+        local admin_params = {
+          username = "admin-2",
+          custom_id = "admin-2-custom-id",
+          email = "admin-2@konghq.com",
+          status = enums.CONSUMERS.STATUS.APPROVED,
+        }
+
+        local admin, err = admins:insert(admin_params)
+        assert.is_nil(err)
+        assert.same(admin.username, admin.consumer.username)
+        assert.same(admin.custom_id, admin.consumer.custom_id)
+      end)
+
       it("generates unique rbac_user.name", function()
         -- we aren't keeping this in sync with admin name, so it needs
         -- to be unique. That way if you create an admin 'kinman' and change

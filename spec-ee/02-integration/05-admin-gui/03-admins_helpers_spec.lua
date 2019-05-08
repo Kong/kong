@@ -105,6 +105,18 @@ for _, strategy in helpers.each_strategy() do
         assert.is_false(res)
       end)
 
+      it("requires unique consumer.custom_id", function()
+        local params = {
+          custom_id = admins[2].consumer.custom_id,
+        }
+
+        local res, match, err = admins_helpers.validate(params, db)
+
+        assert.is_nil(err)
+        assert.same(admins[2], match)
+        assert.is_false(res)
+      end)
+
       it("requires unique admin.email", function()
         local params = {
           username = "i-am-unique",
@@ -377,6 +389,18 @@ for _, strategy in helpers.each_strategy() do
 
         local consumers = assert(db.admins:page_for_consumer(admin.consumer))
         assert.same(params.username, consumers[1].username)
+      end)
+
+      it("keeps custom_id for admin and consumer in sync", function()
+        local params = {
+          custom_id = "custom-id-" .. utils.uuid(),
+        }
+
+        local res = assert(admins_helpers.update(params, admin, { db = db }))
+        assert.same(params.custom_id, res.body.custom_id)
+
+        local consumers = assert(db.admins:page_for_consumer(admin.consumer))
+        assert.same(params.custom_id, consumers[1].custom_id)
       end)
     end)
 

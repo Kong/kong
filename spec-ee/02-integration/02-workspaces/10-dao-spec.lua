@@ -314,7 +314,7 @@ for _, strategy in helpers.each_strategy() do
           assert.is_true(ok)
         end)
 
-        it("#flaky upserts an existing service in workspace [default]", function()
+        it("upserts an existing service in workspace [default]", function()
           local res, err
 
           -- adding new service to run test against
@@ -328,49 +328,15 @@ for _, strategy in helpers.each_strategy() do
           -- and without overriding values with default values
           
           -- upserting service [s] with new name
-          local s_upserted, err = db.services:upsert({ id = s.id }, { name = "test-upsert"})
+          local s_upserted, err = db.services:upsert({ id = s.id }, { name = "test-upsert", host = "httpbin.org" })
           
           assert.is_nil(err)
-          res, err = db.services.select({ id = s.id })
+          res, err = db.services:select({ id = s.id })
           assert.is_nil(err)
           assert.same(s_upserted, res)
 
           -- cleaning up service that we have created
           local ok, err = db.services:delete({ id = s.id })
-          assert.is_nil(err)
-          assert.is_true(ok)
-        end)
-
-        it("#flaky upserts shared service [s0] in workspace [w1]", function()
-          local res, err
-          local s0 = assert(bp.services:insert({ name = "s0" }))
-          
-          local copy_s0 = s0
-          copy_s0.name = "s0-upsert"
-
-          -- TODO: check with team whether upsert should be 
-          -- workspace aware
-
-          -- fails to update before [s0] is beign shared
-          res, err = run_ws({ w1 }, function()
-            return db.services:upsert({ id = s0.id }, copy_s0)
-          end)
-          assert.not_same(s0, res)
-          assert.same("[" .. strategy .. "] could not find the entity with primary key '{id=\"" .. s0.id .. "\"}'", err)
-
-          -- adding shared service [s0] with workspace [w1]
-          assert.is_nil(workspaces.add_entity_relation("services", s0, w1))
-
-          -- succeeds to update before [s0] is beign shared
-          res, err = run_ws({ w1 }, function()
-            return db.services:upsert({ id = s0.id }, s0)
-          end)
-          assert.is_nil(res) 
-          assert.is_nil(err)
-          assert.same("s0-upsert", res.name)
-
-          -- cleanup
-          local ok, err = db.services:delete({ id = s0.id })
           assert.is_nil(err)
           assert.is_true(ok)
         end)
@@ -482,8 +448,8 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       describe("cache_key():", function()
-        it("#flaky retrieves plugins cache key from workspace [default] but fails to retrieve from workspace [w1]", function()
-          local res, err
+        it("retrieves different cache key for different workspaces", function()
+          local res, res_1, res_2, err
           
           -- adding new plugin to run tests against
           local p = bp.plugins:insert({ name = "key-auth" })
@@ -492,19 +458,52 @@ for _, strategy in helpers.each_strategy() do
           assert.same(p, res)
 
           -- retrieving plugins cache key from the workspace [default]
-          res, err = db.plugins:cache_key(p)
+          res_1, err = db.plugins:cache_key(p.id)
           assert.is_nil(err)
-          assert.not_nil(res)
-
-          -- TODO: check with team whether 'cache_key' should 
-          -- be workspace aware or not.
+          assert.not_nil(res_1)
 
           -- retrieving plugins cache key from the workspace [w1]
-          res, err = run_ws({ w1 }, function()
-            return db.plugins:cache_key(p)
+          res_2, err = run_ws({ w1 }, function()
+            return db.plugins:cache_key(p.id)
           end)
           assert.is_nil(err)
-          assert.is_nil(res)
+          assert.not_nil(res_2)
+
+          assert.not_same(res_1, res_2)
+        
+          -- cleanup, removing plugin
+          local ok, err = db.plugins:delete({ id = p.id })
+          assert.is_nil(err)
+          assert.is_true(ok)
+        end)
+
+        it("retrieves same cache key for different workspaces with skip flag on", function()
+          local res, res_1, res_2,  err
+          
+          -- adding new plugin to run tests against
+          local p = bp.plugins:insert({ name = "key-auth" })
+          res, err = db.plugins:select({ id = p.id })
+          assert.is_nil(err)
+          assert.same(p, res)
+
+          -- retrieving plugins cache key from the workspace [default]
+          res_1, err = db.plugins:cache_key(p.id, nil, nil, nil, nil, true)
+          assert.is_nil(err)
+          assert.not_nil(res_1)
+
+          -- retrieving plugins cache key from the workspace [w1]
+          res_2, err = run_ws({ w1 }, function()
+            return db.plugins:cache_key(p.id, nil, nil, nil, nil, true)
+          end)
+          assert.is_nil(err)
+          assert.not_nil(res_2)
+
+          assert.same(res_1, res_2)          
+        
+          -- cleanup, removing plugin
+          local ok, err = db.plugins:delete({ id = p.id })
+          assert.is_nil(err)
+          assert.is_true(ok)
         end)
       end)
     end)

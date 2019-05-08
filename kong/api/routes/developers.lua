@@ -67,6 +67,10 @@ end
 
 return {
   ["/developers"] = {
+    before = function(self, db, helpers)
+      crud_helpers.exit_if_portal_disabled()
+    end,
+
     GET = function(self, db, helpers, parent)
       local size = self.params.size or 100
       local offset = self.params.offset
@@ -106,6 +110,10 @@ return {
   },
 
   ["/developers/:developers"] = {
+    before = function(self, db, helpers)
+      crud_helpers.exit_if_portal_disabled()
+    end,
+
     PATCH = function(self, db, helpers)
       local developer_pk = self.params.developers
       self.params.developers = nil
@@ -148,6 +156,10 @@ return {
 
 
   ["/developers/:email_or_id/plugins/"] = {
+    before = function(self, db, helpers)
+      crud_helpers.exit_if_portal_disabled()
+    end,
+
     GET = function(self, db, helpers)
       local developer = find_developer(db, self.params.email_or_id)
       if not developer then
@@ -187,6 +199,10 @@ return {
   },
 
   ["/developers/:email_or_id/plugins/:id"] = {
+    before = function(self, db, helpers)
+      crud_helpers.exit_if_portal_disabled()
+    end,
+
     GET = function(self, db, helpers)
       local developer = find_developer(db, self.params.email_or_id)
       if not developer then
@@ -263,6 +279,8 @@ return {
 
   ["/developers/:developers/credentials/:plugin"] = {
     before = function(self, db, helpers)
+      crud_helpers.exit_if_portal_disabled()
+
       validate_credential_plugin(self, db, helpers)
 
       local developer_pk = self.params.developers
@@ -286,6 +304,8 @@ return {
 
   ["/developers/:developers/credentials/:plugin/:credential_id"] = {
     before = function(self, db, helpers)
+      crud_helpers.exit_if_portal_disabled()
+
       validate_credential_plugin(self, db, helpers)
 
       local developer_pk = self.params.developers
@@ -312,6 +332,10 @@ return {
   },
 
   ["/developers/invite"] = {
+    before = function(self, db, helpers)
+      crud_helpers.exit_if_portal_disabled()
+    end,
+
     POST = function(self, db, helpers)
       if not self.params.emails or next(self.params.emails) == nil then
         return kong.response.exit(400, { message = "emails param required" })
