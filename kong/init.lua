@@ -940,10 +940,14 @@ end
 
 
 function Kong.serve_portal_api()
+  kong_global.set_phase(kong, PHASES.admin_api)
+
   return lapis.serve("kong.portal")
 end
 
 function Kong.serve_portal_gui()
+  kong_global.set_phase(kong, PHASES.admin_api)
+
   return lapis.serve("kong.portal.gui")
 end
 
