@@ -18,6 +18,7 @@ local function send_workspace_not_found_error(err)
 
   local err_msg = 'failed to retrieve workspace for the request (reason: ' .. err .. ')'
   ngx.log(ngx.ERR, err_msg)
+  kong.ctx.core.phase = 0x00000010
   kong.response.exit(500, { message = "An unexpected error occurred"})
 end
 
