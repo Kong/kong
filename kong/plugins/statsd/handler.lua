@@ -1,4 +1,3 @@
-local BasePlugin       = require "kong.plugins.base_plugin"
 local basic_serializer = require "kong.plugins.log-serializers.basic"
 local statsd_logger    = require "kong.plugins.statsd.statsd_logger"
 
@@ -11,7 +10,7 @@ local string_format = string.format
 local NGX_ERR       = ngx.ERR
 
 
-local StatsdHandler = BasePlugin:extend()
+local StatsdHandler = {}
 StatsdHandler.PRIORITY = 11
 StatsdHandler.VERSION = "1.0.0"
 
@@ -132,14 +131,7 @@ local function log(premature, conf, message)
 end
 
 
-function StatsdHandler:new()
-  StatsdHandler.super.new(self, "statsd")
-end
-
-
 function StatsdHandler:log(conf)
-  StatsdHandler.super.log(self)
-
   if not ngx.ctx.service then
     return
   end

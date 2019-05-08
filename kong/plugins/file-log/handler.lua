@@ -3,7 +3,6 @@ local ffi = require "ffi"
 local cjson = require "cjson"
 local system_constants = require "lua_system_constants"
 local basic_serializer = require "kong.plugins.log-serializers.basic"
-local BasePlugin = require "kong.plugins.base_plugin"
 
 local ngx_timer = ngx.timer.at
 local O_CREAT = system_constants.O_CREAT()
@@ -58,17 +57,12 @@ local function log(premature, conf, message)
   ffi.C.write(fd, msg, #msg)
 end
 
-local FileLogHandler = BasePlugin:extend()
+local FileLogHandler = {}
 
 FileLogHandler.PRIORITY = 9
 FileLogHandler.VERSION = "1.0.0"
 
-function FileLogHandler:new()
-  FileLogHandler.super.new(self, "file-log")
-end
-
 function FileLogHandler:log(conf)
-  FileLogHandler.super.log(self)
   local message = basic_serializer.serialize(ngx)
 
   local ok, err = ngx_timer(0, log, conf, message)

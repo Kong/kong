@@ -1,18 +1,11 @@
 -- Copyright (C) Kong Inc.
-local BasePlugin = require "kong.plugins.base_plugin"
 local access = require "kong.plugins.hmac-auth.access"
 
 
-local HMACAuthHandler = BasePlugin:extend()
-
-
-function HMACAuthHandler:new()
-  HMACAuthHandler.super.new(self, "hmac-auth")
-end
+local HMACAuthHandler = {}
 
 
 function HMACAuthHandler:access(conf)
-  HMACAuthHandler.super.access(self)
   access.execute(conf)
 end
 

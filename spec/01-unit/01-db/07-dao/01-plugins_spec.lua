@@ -37,16 +37,14 @@ describe("kong.db.dao.plugins", function()
       assert.is_nil(err)
       assert.is_table(handlers)
 
-      assert.same({
-        {
-          handler = { _name = "key-auth" },
-          name = "key-auth",
-        },
-        {
-          handler = { _name = "basic-auth" },
-          name = "basic-auth",
-        },
-      }, handlers)
+      assert.equal("basic-auth", handlers[2].name)
+      assert.equal("key-auth", handlers[1].name)
+
+      for i = 1, #handlers do
+        assert.is_number(handlers[i].handler.PRIORITY)
+        assert.matches("%d%.%d%.%d", handlers[i].handler.VERSION)
+        assert.is_function(handlers[i].handler.access)
+      end
     end)
 
     it("fails on invalid plugin schemas", function()

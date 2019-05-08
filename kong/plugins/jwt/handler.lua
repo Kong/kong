@@ -1,4 +1,3 @@
-local BasePlugin = require "kong.plugins.base_plugin"
 local constants = require "kong.constants"
 local jwt_decoder = require "kong.plugins.jwt.jwt_parser"
 
@@ -11,7 +10,7 @@ local tostring = tostring
 local re_gmatch = ngx.re.gmatch
 
 
-local JwtHandler = BasePlugin:extend()
+local JwtHandler = {}
 
 
 JwtHandler.PRIORITY = 1005
@@ -57,11 +56,6 @@ local function retrieve_token(conf)
       return m[1]
     end
   end
-end
-
-
-function JwtHandler:new()
-  JwtHandler.super.new(self, "jwt")
 end
 
 
@@ -236,8 +230,6 @@ end
 
 
 function JwtHandler:access(conf)
-  JwtHandler.super.access(self)
-
   -- check if preflight request and whether it should be authenticated
   if not conf.run_on_preflight and kong.request.get_method() == "OPTIONS" then
     return

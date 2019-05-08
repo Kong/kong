@@ -1,5 +1,4 @@
 local constants = require "kong.constants"
-local BasePlugin = require "kong.plugins.base_plugin"
 
 
 local kong = kong
@@ -9,16 +8,11 @@ local type = type
 local _realm = 'Key realm="' .. _KONG._NAME .. '"'
 
 
-local KeyAuthHandler = BasePlugin:extend()
+local KeyAuthHandler = {}
 
 
 KeyAuthHandler.PRIORITY = 1003
 KeyAuthHandler.VERSION = "1.0.0"
-
-
-function KeyAuthHandler:new()
-  KeyAuthHandler.super.new(self, "key-auth")
-end
 
 
 local function load_credential(key)
@@ -186,8 +180,6 @@ end
 
 
 function KeyAuthHandler:access(conf)
-  KeyAuthHandler.super.access(self)
-
   -- check if preflight request and whether it should be authenticated
   if not conf.run_on_preflight and kong.request.get_method() == "OPTIONS" then
     return
