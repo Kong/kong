@@ -1010,7 +1010,7 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
 
-    describe("plugin with run_on", function()
+    describe("plugin with", function()
       describe("#http", function()
         local proxy_ssl_client
 
@@ -1520,7 +1520,7 @@ for _, strategy in helpers.each_strategy() do
           helpers.stop_kong("servroot2", true)
         end)
 
-        it("= 'first' does get executed when running on first", function()
+        it("run_on = 'first' does get executed when running on first", function()
           local res = assert(proxy_client:get("/status/200", {
             headers = {
               ["Host"] = "first-on-first.org",
@@ -1536,7 +1536,7 @@ for _, strategy in helpers.each_strategy() do
           }, json)
         end)
 
-        it("= 'first' does get executed when running on first (https)", function()
+        it("run_on = 'first' does get executed when running on first (https)", function()
           local res = assert(proxy_ssl_client:get("/status/200", {
             headers = {
               ["Host"] = "first-on-first-https.org",
@@ -1552,7 +1552,7 @@ for _, strategy in helpers.each_strategy() do
           }, json)
         end)
 
-        it("= 'first' does not get executed when running on second", function()
+        it("run_on = 'first' does not get executed when running on second", function()
           local res = assert(proxy_client:get("/", {
             headers = {
               ["Host"] = "first-on-second.org",
@@ -1568,7 +1568,7 @@ for _, strategy in helpers.each_strategy() do
           }, json)
         end)
 
-        it("= 'first' does not get executed when running on second (https)", function()
+        it("run_on = 'first' does not get executed when running on second (https)", function()
           local res = assert(proxy_ssl_client:get("/", {
             headers = {
               ["Host"] = "first-on-second-https.org",
@@ -1584,7 +1584,7 @@ for _, strategy in helpers.each_strategy() do
           }, json)
         end)
 
-        it("= 'second' does get executed when running on second", function()
+        it("run_on = 'second' does get executed when running on second", function()
           local res = assert(proxy_client:get("/", {
             headers = {
               ["Host"] = "second-on-second.org",
@@ -1600,7 +1600,7 @@ for _, strategy in helpers.each_strategy() do
           }, json)
         end)
 
-        it("= 'second' does get executed when running on second (https)", function()
+        it("run_on = 'second' does get executed when running on second (https)", function()
           local res = assert(proxy_ssl_client:get("/", {
             headers = {
               ["Host"] = "second-on-second-https.org",
@@ -1616,7 +1616,7 @@ for _, strategy in helpers.each_strategy() do
           }, json)
         end)
 
-        it("= 'second' does not get executed when running on first", function()
+        it("run_on = 'second' does not get executed when running on first", function()
           local res = assert(proxy_client:get("/status/200", {
             headers = {
               ["Host"] = "second-on-first.org",
@@ -1632,7 +1632,7 @@ for _, strategy in helpers.each_strategy() do
           }, json)
         end)
 
-        it("= 'second' does not get executed when running on first (https)", function()
+        it("run_on = 'second' does not get executed when running on first (https)", function()
           local res = assert(proxy_ssl_client:get("/status/200", {
             headers = {
               ["Host"] = "second-on-first-https.org",
@@ -1648,7 +1648,7 @@ for _, strategy in helpers.each_strategy() do
           }, json)
         end)
 
-        it("= 'all' does get executed when running on first", function()
+        it("run_on = 'all' does get executed when running on first", function()
           local res = assert(proxy_client:get("/status/200", {
             headers = {
               ["Host"] = "all-on-first.org",
@@ -1664,7 +1664,7 @@ for _, strategy in helpers.each_strategy() do
           }, json)
         end)
 
-        it("= 'all' does get executed when running on first (https)", function()
+        it("run_on = 'all' does get executed when running on first (https)", function()
           local res = assert(proxy_ssl_client:get("/status/200", {
             headers = {
               ["Host"] = "all-on-first-https.org",
@@ -1680,7 +1680,7 @@ for _, strategy in helpers.each_strategy() do
           }, json)
         end)
 
-        it("= 'all' does get executed when running on second", function()
+        it("run_on = 'all' does get executed when running on second", function()
           local res = assert(proxy_client:get("/", {
             headers = {
               ["Host"] = "all-on-second.org",
@@ -1696,7 +1696,7 @@ for _, strategy in helpers.each_strategy() do
           }, json)
         end)
 
-        it("= 'all' does get executed when running on second (https)", function()
+        it("run_on = 'all' does get executed when running on second (https)", function()
           local res = assert(proxy_ssl_client:get("/", {
             headers = {
               ["Host"] = "all-on-second-https.org",
@@ -2194,7 +2194,7 @@ for _, strategy in helpers.each_strategy() do
           helpers.stop_kong("servroot2", true)
         end)
 
-        it("= 'first' does get executed when running on first", function()
+        it("run_on = 'first' does get executed when running on first", function()
           local tcp = ngx.socket.tcp()
           assert(tcp:connect("127.0.0.1", 18003))
 
@@ -2210,7 +2210,7 @@ for _, strategy in helpers.each_strategy() do
           }, json)
         end)
 
-        it("= 'first' does get executed when running on first (tls)", function()
+        it("run_on = 'first' does get executed when running on first (tls)", function()
           local tcp = ngx.socket.tcp()
           assert(tcp:connect("127.0.0.1", 18443))
 
@@ -2226,7 +2226,7 @@ for _, strategy in helpers.each_strategy() do
           }, json)
         end)
 
-        it("= 'first' does not get executed when running on second", function()
+        it("run_on = 'first' does not get executed when running on second", function()
           local tcp = ngx.socket.tcp()
           assert(tcp:connect("127.0.0.1", 18004))
 
@@ -2242,7 +2242,7 @@ for _, strategy in helpers.each_strategy() do
           }, json)
         end)
 
-        it("= 'first' does not get executed when running on second (tls)", function()
+        it("run_on = 'first' does not get executed when running on second (tls)", function()
           local tcp = ngx.socket.tcp()
           assert(tcp:connect("127.0.0.1", 18444))
 
@@ -2258,7 +2258,7 @@ for _, strategy in helpers.each_strategy() do
           }, json)
         end)
 
-        it("= 'second' does get executed when running on second", function()
+        it("run_on = 'second' does get executed when running on second", function()
           local tcp = ngx.socket.tcp()
           assert(tcp:connect("127.0.0.1", 18005))
 
@@ -2274,7 +2274,7 @@ for _, strategy in helpers.each_strategy() do
           }, json)
         end)
 
-        it("= 'second' does get executed when running on second (tls)", function()
+        it("run_on = 'second' does get executed when running on second (tls)", function()
           local tcp = ngx.socket.tcp()
           assert(tcp:connect("127.0.0.1", 18445))
 
@@ -2290,7 +2290,7 @@ for _, strategy in helpers.each_strategy() do
           }, json)
         end)
 
-        it("= 'second' does not get executed when running on first", function()
+        it("run_on = 'second' does not get executed when running on first", function()
           local tcp = ngx.socket.tcp()
           assert(tcp:connect("127.0.0.1", 18006))
 
@@ -2306,7 +2306,7 @@ for _, strategy in helpers.each_strategy() do
           }, json)
         end)
 
-        it("= 'second' does not get executed when running on first (tls)", function()
+        it("run_on = 'second' does not get executed when running on first (tls)", function()
           local tcp = ngx.socket.tcp()
           assert(tcp:connect("127.0.0.1", 18446))
 
@@ -2322,7 +2322,7 @@ for _, strategy in helpers.each_strategy() do
           }, json)
         end)
 
-        it("= 'all' does get executed when running on first", function()
+        it("run_on = 'all' does get executed when running on first", function()
           local tcp = ngx.socket.tcp()
           assert(tcp:connect("127.0.0.1", 18007))
 
@@ -2338,7 +2338,7 @@ for _, strategy in helpers.each_strategy() do
           }, json)
         end)
 
-        it("= 'all' does get executed when running on first (tls)", function()
+        it("run_on = 'all' does get executed when running on first (tls)", function()
           local tcp = ngx.socket.tcp()
           assert(tcp:connect("127.0.0.1", 18447))
 
@@ -2354,7 +2354,7 @@ for _, strategy in helpers.each_strategy() do
           }, json)
         end)
 
-        it("= 'all' does get executed when running on second", function()
+        it("run_on = 'all' does get executed when running on second", function()
           local tcp = ngx.socket.tcp()
           assert(tcp:connect("127.0.0.1", 18008))
 
@@ -2370,7 +2370,7 @@ for _, strategy in helpers.each_strategy() do
           }, json)
         end)
 
-        it("= 'all' does get executed when running on second (tls)", function()
+        it("run_on = 'all' does get executed when running on second (tls)", function()
           local tcp = ngx.socket.tcp()
           assert(tcp:connect("127.0.0.1", 18448))
 
