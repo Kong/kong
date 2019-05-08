@@ -324,12 +324,15 @@ function _M.resolve_workspace_entities(workspaces)
 end
 
 
--- XXX EE should return 2nd value for error
 local function get_role_entities(db, role, opts)
   opts = opts or {}
   opts.skip_rbac = true
   local res = {}
-  for role in db.rbac_role_entities:each_for_role({id = role.id}, nil,  opts) do
+  for role, err in db.rbac_role_entities:each_for_role({id = role.id}, nil,  opts) do
+    if err then
+      return nil, err
+    end
+
     table.insert(res, role)
   end
 
@@ -341,7 +344,11 @@ local function get_role_endpoints(db, role, opts)
   opts = opts or {}
   opts.skip_rbac = true
   local res = {}
-  for role in db.rbac_role_endpoints:each_for_role({id = role.id}, nil, opts) do
+  for role, err in db.rbac_role_endpoints:each_for_role({id = role.id}, nil, opts) do
+    if err then
+      return nil, err
+    end
+
     table.insert(res, role)
   end
 
@@ -396,7 +403,6 @@ local function resolve_role_entity_permissions(roles)
   -- the order of iteration
   local positive_entities, negative_entities =  {}, {}
   for _, role in ipairs(roles) do
-    -- local role_entities, err = kong.db.rbac_roles:get_entities(kong.db, role) -- XXX EE: __skip_rbac = true
     local role_entities, err = _M.get_role_entities(kong.db, role)
     if err then
       return _, _, err
@@ -764,7 +770,7 @@ local function resolve_role_endpoint_permissions(roles)
                   -- negative or not
 
   for _, role in ipairs(roles) do
-    local roles_endpoints, err = get_role_endpoints(kong.db, role, {skip_rbac = true}) -- XXX EE __skip_rbac = true
+    local roles_endpoints, err = get_role_endpoints(kong.db, role)
     if err then
       return _, _, err
     end
