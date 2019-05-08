@@ -704,7 +704,7 @@ describe("Admin API RBAC with #" .. strategy, function()
             },
           })
 
-          assert.res_status(400, res) -- XXX EE: new dao returns 400 for id conflicting and 409 for other unique keys conflicting.
+          assert.res_status(400, res)
         end)
       end)
     end)
