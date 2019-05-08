@@ -1,12 +1,11 @@
 -- Copyright (C) Kong Inc.
 
-local BasePlugin = require "kong.plugins.base_plugin"
 local strip = require("pl.stringx").strip
 local tonumber = tonumber
 
 local MB = 2^20
 
-local RequestSizeLimitingHandler = BasePlugin:extend()
+local RequestSizeLimitingHandler = {}
 
 RequestSizeLimitingHandler.PRIORITY = 951
 RequestSizeLimitingHandler.VERSION = "1.0.0"
@@ -22,12 +21,7 @@ local function check_size(length, allowed_size, headers)
   end
 end
 
-function RequestSizeLimitingHandler:new()
-  RequestSizeLimitingHandler.super.new(self, "request-size-limiting")
-end
-
 function RequestSizeLimitingHandler:access(conf)
-  RequestSizeLimitingHandler.super.access(self)
   local headers = kong.request.get_headers()
   local cl = headers["content-length"]
 

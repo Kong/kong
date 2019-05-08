@@ -409,15 +409,15 @@ do
     for _, plugin in ipairs(loaded_plugins) do
       if new_plugins_plan.combos[plugin.name] then
         for phase_name, phase in pairs(new_plugins_plan.phases) do
-          if plugin.handler[phase_name] ~= BasePlugin[phase_name] then
+          if type(plugin.handler[phase_name]) == "function"
+             and plugin.handler[phase_name] ~= BasePlugin[phase_name] then
             phase[plugin.name] = true
           end
         end
 
-      else
-        if plugin.handler.init_worker ~= BasePlugin.init_worker then
-          new_plugins_plan.phases.init_worker[plugin.name] = true
-        end
+      elseif type(plugin.handler.init_worker) == "function"
+             and plugin.handler.init_worker ~= BasePlugin.init_worker then
+        new_plugins_plan.phases.init_worker[plugin.name] = true
       end
     end
 

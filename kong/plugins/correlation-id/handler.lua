@@ -1,5 +1,4 @@
 -- Copyright (C) Kong Inc.
-local BasePlugin = require "kong.plugins.base_plugin"
 local uuid = require "kong.tools.utils".uuid
 
 
@@ -40,28 +39,20 @@ do
 end
 
 
-local CorrelationIdHandler = BasePlugin:extend()
+local CorrelationIdHandler = {}
 
 
 CorrelationIdHandler.PRIORITY = 1
 CorrelationIdHandler.VERSION = "1.0.0"
 
 
-function CorrelationIdHandler:new()
-  CorrelationIdHandler.super.new(self, "correlation-id")
-end
-
-
 function CorrelationIdHandler:init_worker()
-  CorrelationIdHandler.super.init_worker(self)
   worker_uuid = uuid()
   worker_counter = 0
 end
 
 
 function CorrelationIdHandler:access(conf)
-  CorrelationIdHandler.super.access(self)
-
   -- Set header for upstream
   local correlation_id = kong.request.get_header(conf.header_name)
   if not correlation_id then
@@ -80,8 +71,6 @@ end
 
 
 function CorrelationIdHandler:header_filter(conf)
-  CorrelationIdHandler.super.header_filter(self)
-
   if not conf.echo_downstream then
     return
   end

@@ -2,6 +2,7 @@ local constants = require "kong.constants"
 local utils = require "kong.tools.utils"
 local DAO = require "kong.db.dao"
 local plugin_loader = require "kong.db.schema.plugin_loader"
+local BasePlugin = require "kong.plugins.base_plugin"
 
 
 local Plugins = {}
@@ -269,7 +270,14 @@ function Plugins:load_plugin_schemas(plugin_set)
     local handler, err = load_plugin(self, plugin)
 
     if handler then
-      handlers[plugin] = handler()
+      if getmetatable(handler) == BasePlugin then
+        -- Backwards-compatibility for 0.x and 1.x plugins inheriting from the
+        -- BasePlugin class.
+        -- TODO: deprecate & remove
+        handler = handler()
+      end
+
+      handlers[plugin] = handler
 
     else
       errs = errs or {}

@@ -1,4 +1,3 @@
-local BasePlugin = require "kong.plugins.base_plugin"
 local constants = require "kong.constants"
 local tablex = require "pl.tablex"
 local groups = require "kong.plugins.acl.groups"
@@ -36,21 +35,14 @@ local function get_to_be_blocked(config, groups, in_group)
 end
 
 
-local ACLHandler = BasePlugin:extend()
+local ACLHandler = {}
 
 
 ACLHandler.PRIORITY = 950
 ACLHandler.VERSION = "1.0.0"
 
 
-function ACLHandler:new()
-  ACLHandler.super.new(self, "acl")
-end
-
-
 function ACLHandler:access(conf)
-  ACLHandler.super.access(self)
-
   -- simplify our plugins 'conf' table
   local config = config_cache[conf]
   if not config then
