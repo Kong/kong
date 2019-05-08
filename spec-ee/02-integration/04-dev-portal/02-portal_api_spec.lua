@@ -110,7 +110,7 @@ local rbac_mode = {"off", "on"}
 
 for _, strategy in helpers.each_strategy() do
   for idx, rbac in ipairs(rbac_mode) do
-    describe("Developer Portal - Portal API " .. strategy .. " (ENFORCE_RBAC = " .. rbac .. ")", function()
+    describe("Developer Portal - Portal API #" .. strategy .. " (ENFORCE_RBAC = " .. rbac .. ")", function()
       local portal_api_client
       local _, db, _ = helpers.get_db_utils(strategy)
 
