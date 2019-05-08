@@ -2183,6 +2183,7 @@ for _, strategy in helpers.each_strategy() do
                             "0.0.0.0:18007,0.0.0.0:18447,0.0.0.0:18008,0.0.0.0:18448",
             proxy_listen  = "off",
             admin_listen  = "off",
+            admin_gui_listen = "off",
           })
 
           assert(helpers.start_kong {
@@ -2191,7 +2192,9 @@ for _, strategy in helpers.each_strategy() do
             stream_listen = "0.0.0.0:19444,0.0.0.0:19445,0.0.0.0:19448",
             proxy_listen  = "off",
             admin_listen  = "off",
+            admin_gui_listen = "off",
           })
+
         end)
 
         lazy_teardown(function()
