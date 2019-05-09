@@ -7,7 +7,7 @@ require("spec.helpers") -- add spec/fixtures/custom_plugins to package.path
 describe("kong.db.dao.plugins", function()
   local self
 
-  lazy_setup(function()
+  before_each(function()
     assert(Entity.new(require("kong.db.schema.entities.services")))
     assert(Entity.new(require("kong.db.schema.entities.routes")))
     assert(Entity.new(require("kong.db.schema.entities.consumers")))
@@ -23,39 +23,44 @@ describe("kong.db.dao.plugins", function()
     }
   end)
 
-  describe("load_plugin_schemas", function()
+  describe("load_plugin_schemas and get_handlers", function()
 
-    it("loads valid plugin schemas", function()
-      local schemas, err = Plugins.load_plugin_schemas(self, {
+    it("loads valid plugin schemas and sets the plugin handlers", function()
+      local ok, err = Plugins.load_plugin_schemas(self, {
         ["key-auth"] = true,
         ["basic-auth"] = true,
       })
+      assert.is_truthy(ok)
       assert.is_nil(err)
 
-      table.sort(schemas, function(a, b)
-        return a.name < b.name
-      end)
+      local handlers, err = Plugins.get_handlers(self)
+      assert.is_nil(err)
+      assert.is_table(handlers)
 
       assert.same({
-        {
-          handler = { _name = "basic-auth" },
-          name = "basic-auth",
-        },
         {
           handler = { _name = "key-auth" },
           name = "key-auth",
         },
-      }, schemas)
+        {
+          handler = { _name = "basic-auth" },
+          name = "basic-auth",
+        },
+      }, handlers)
     end)
 
     it("fails on invalid plugin schemas", function()
-      local schemas, err = Plugins.load_plugin_schemas(self, {
+      local ok, err = Plugins.load_plugin_schemas(self, {
         ["key-auth"] = true,
         ["invalid-schema"] = true,
       })
 
-      assert.is_nil(schemas)
+      assert.is_nil(ok)
       assert.match("error loading plugin schemas: on plugin 'invalid-schema'", err, 1, true)
+
+      local handlers, err = Plugins.get_handlers(self)
+      assert.is_nil(handlers)
+      assert.is_string(err)
     end)
 
   end)
