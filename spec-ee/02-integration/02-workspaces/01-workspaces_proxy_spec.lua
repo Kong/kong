@@ -382,7 +382,8 @@ for _, strategy in helpers.each_strategy() do
                                                 s.id,
                                                 nil,
                                                 nil,
-                                                false)
+                                                true)
+        cache_key = cache_key .. ws_foo.id
 
         local res
         helpers.wait_until(function()
