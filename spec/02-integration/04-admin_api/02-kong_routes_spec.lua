@@ -3,24 +3,30 @@ local cjson = require "cjson"
 
 local UUID_PATTERN = "%x%x%x%x%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%x%x%x%x%x%x%x%x"
 
-describe("Admin API - Kong routes", function()
+local strategies = {}
+for _, strategy in helpers.each_strategy() do
+  table.insert(strategies, strategy)
+end
+table.insert(strategies, "off")
+for _, strategy in pairs(strategies) do
+describe("Admin API - Kong routes with strategy #" .. strategy, function()
+  local meta = require "kong.meta"
+  local client
+
+  lazy_setup(function()
+    helpers.get_db_utils(nil, {}) -- runs migrations
+    assert(helpers.start_kong {
+      pg_password = "hide_me"
+    })
+    client = helpers.admin_client(10000)
+  end)
+
+  lazy_teardown(function()
+    if client then client:close() end
+    helpers.stop_kong()
+  end)
+
   describe("/", function()
-    local meta = require "kong.meta"
-    local client
-
-    lazy_setup(function()
-      helpers.get_db_utils(nil, {}) -- runs migrations
-      assert(helpers.start_kong {
-        pg_password = "hide_me"
-      })
-      client = helpers.admin_client(10000)
-    end)
-
-    lazy_teardown(function()
-      if client then client:close() end
-      helpers.stop_kong()
-    end)
-
     it("returns Kong's version number and tagline", function()
       local res = assert(client:send {
         method = "GET",
@@ -105,170 +111,109 @@ describe("Admin API - Kong routes", function()
     end)
   end)
 
-  for _, strategy in helpers.each_strategy() do
-    describe("/status with DB: #" .. strategy, function()
-      local client
+  describe("/status", function()
+    it("returns status info", function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/status"
+      })
+      local body = assert.res_status(200, res)
+      local json = cjson.decode(body)
+      assert.is_table(json.database)
+      assert.is_table(json.server)
 
-      lazy_setup(function()
-        helpers.get_db_utils(strategy)
+      assert.is_boolean(json.database.reachable)
 
-        assert(helpers.start_kong {
-          database = strategy,
-        })
-        client = helpers.admin_client(10000)
-      end)
-
-      lazy_teardown(function()
-        if client then client:close() end
-        helpers.stop_kong()
-      end)
-
-      it("returns status info", function()
-        local res = assert(client:send {
-          method = "GET",
-          path = "/status"
-        })
-        local body = assert.res_status(200, res)
-        local json = cjson.decode(body)
-        assert.is_table(json.database)
-        assert.is_table(json.server)
-
-        assert.is_boolean(json.database.reachable)
-
-        assert.is_number(json.server.connections_accepted)
-        assert.is_number(json.server.connections_active)
-        assert.is_number(json.server.connections_handled)
-        assert.is_number(json.server.connections_reading)
-        assert.is_number(json.server.connections_writing)
-        assert.is_number(json.server.connections_waiting)
-        assert.is_number(json.server.total_requests)
-      end)
-
-      it("database.reachable is `true` when DB connection is healthy", function()
-        -- In this test, we know our DB is reachable because it must be
-        -- so in our test suite. Ideally, a test when the DB isn't reachable
-        -- should be provided (start Kong, kill DB, request `/status`),
-        -- but this isn't currently possible in our test suite.
-        -- Additionally, let's emphasize that we only test DB connection, not
-        -- the health of said DB itself.
-
-        local res = assert(client:send {
-          method = "GET",
-          path = "/status"
-        })
-        local body = assert.res_status(200, res)
-        local json = cjson.decode(body)
-
-        assert.is_true(json.database.reachable)
-      end)
+      assert.is_number(json.server.connections_accepted)
+      assert.is_number(json.server.connections_active)
+      assert.is_number(json.server.connections_handled)
+      assert.is_number(json.server.connections_reading)
+      assert.is_number(json.server.connections_writing)
+      assert.is_number(json.server.connections_waiting)
+      assert.is_number(json.server.total_requests)
     end)
-  end
 
-  describe("/schemas/:entity", function()
-    describe("GET", function()
-      local client
+    it("database.reachable is `true` when DB connection is healthy", function()
+      -- In this test, we know our DB is reachable because it must be
+      -- so in our test suite. Ideally, a test when the DB isn't reachable
+      -- should be provided (start Kong, kill DB, request `/status`),
+      -- but this isn't currently possible in our test suite.
+      -- Additionally, let's emphasize that we only test DB connection, not
+      -- the health of said DB itself.
 
-      lazy_setup(function()
-        helpers.get_db_utils(nil, {})
-        assert(helpers.start_kong())
-        client = helpers.admin_client(10000)
-      end)
+      local res = assert(client:send {
+        method = "GET",
+        path = "/status"
+      })
+      local body = assert.res_status(200, res)
+      local json = cjson.decode(body)
 
-      lazy_teardown(function()
-        if client then client:close() end
-        helpers.stop_kong()
-      end)
-
-      it("returns the schema of all DB entities", function()
-        for _, dao in pairs(helpers.db.daos) do
-          local res = assert(client:send {
-            method = "GET",
-            path = "/schemas/" .. dao.schema.name,
-          })
-          local body = assert.res_status(200, res)
-          local json = cjson.decode(body)
-          assert.is_table(json.fields)
-        end
-      end)
-      it("returns 404 on a missing entity", function()
-        local res = assert(client:send {
-          method = "GET",
-          path = "/schemas/not-present",
-        })
-        local body = assert.res_status(404, res)
-        local json = cjson.decode(body)
-        assert.same({ message = "No entity named 'not-present'" }, json)
-      end)
-      it("does not return schema of a foreign key", function()
-        local res = assert(client:send {
-          method = "GET",
-          path = "/schemas/routes",
-        })
-        local body = assert.res_status(200, res)
-        local json = cjson.decode(body)
-        for _, field in pairs(json.fields) do
-          if next(field) == "service" then
-            local fdata = field["service"]
-            assert.is_nil(fdata.schema)
-          end
-        end
-      end)
+      assert.is_true(json.database.reachable)
     end)
   end)
 
   describe("/schemas/:entity", function()
-    describe("GET", function()
-      local client
-
-      lazy_setup(function()
-        helpers.get_db_utils(nil, {})
-        assert(helpers.start_kong())
-        client = helpers.admin_client(10000)
-      end)
-
-      lazy_teardown(function()
-        if client then client:close() end
-        helpers.stop_kong()
-      end)
-
-      it("returns schema of all plugins", function()
-        for plugin, _ in pairs(helpers.test_conf.loaded_plugins) do
-          local res = assert(client:send {
-            method = "GET",
-            path = "/schemas/plugins/" .. plugin,
-          })
-          local body = assert.res_status(200, res)
-          local json = cjson.decode(body)
-          assert.is_table(json.fields)
-        end
-      end)
-      it("returns 404 on a non-existent plugin", function()
+    it("returns the schema of all DB entities", function()
+      for _, dao in pairs(helpers.db.daos) do
         local res = assert(client:send {
           method = "GET",
-          path = "/schemas/plugins/not-present",
+          path = "/schemas/" .. dao.schema.name,
         })
-        local body = assert.res_status(404, res)
+        local body = assert.res_status(200, res)
         local json = cjson.decode(body)
-        assert.same({ message = "No plugin named 'not-present'" }, json)
-      end)
+        assert.is_table(json.fields)
+      end
+    end)
+    it("returns 404 on a missing entity", function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/schemas/not-present",
+      })
+      local body = assert.res_status(404, res)
+      local json = cjson.decode(body)
+      assert.same({ message = "No entity named 'not-present'" }, json)
+    end)
+    it("does not return schema of a foreign key", function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/schemas/routes",
+      })
+      local body = assert.res_status(200, res)
+      local json = cjson.decode(body)
+      for _, field in pairs(json.fields) do
+        if next(field) == "service" then
+          local fdata = field["service"]
+          assert.is_nil(fdata.schema)
+        end
+      end
+    end)
+  end)
+
+  describe("/schemas/:entity", function()
+    it("returns schema of all plugins", function()
+      for plugin, _ in pairs(helpers.test_conf.loaded_plugins) do
+        local res = assert(client:send {
+          method = "GET",
+          path = "/schemas/plugins/" .. plugin,
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.is_table(json.fields)
+      end
+    end)
+    it("returns 404 on a non-existent plugin", function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/schemas/plugins/not-present",
+      })
+      local body = assert.res_status(404, res)
+      local json = cjson.decode(body)
+      assert.same({ message = "No plugin named 'not-present'" }, json)
     end)
   end)
 
 
   describe("/schemas/:db_entity_name/validate", function()
-    local client
-
-    lazy_setup(function()
-      helpers.get_db_utils(nil, {})
-      assert(helpers.start_kong())
-      client = helpers.admin_client(10000)
-    end)
-
-    lazy_teardown(function()
-      if client then client:close() end
-      helpers.stop_kong()
-    end)
-
     it("returns 200 on a valid schema", function()
       local res = assert(client:post("/schemas/services/validate", {
         body = { host = "example.com" },
@@ -309,3 +254,4 @@ describe("Admin API - Kong routes", function()
     end)
   end)
 end)
+end
