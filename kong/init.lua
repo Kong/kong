@@ -115,11 +115,11 @@ local declarative_entities
 local schema_state
 
 
-local function execute_plugins(ctx, phase)
-  local plugins = runloop.get_plugins()
-  local phase_plugins = plugins.phases[phase]
+local function execute_plugins_plan(ctx, phase)
+  local plugins_plan = runloop.get_plugins_plan()
+  local phase_plugins = plugins_plan.phases[phase]
 
-  for plugin, configuration in plugins_iterator(ctx, phase, plugins) do
+  for plugin, configuration in plugins_iterator(ctx, phase, plugins_plan) do
     if phase_plugins[plugin.name] then
       kong_global.set_named_ctx(kong, "plugin", configuration)
       kong_global.set_namespaced_log(kong, plugin.name)
@@ -195,9 +195,9 @@ local function load_declarative_config(kong_config, entities)
 
   if not kong_config.declarative_config then
     -- no configuration yet, just build empty plugins plan
-    local ok, err = runloop.build_plugins(utils.uuid())
+    local ok, err = runloop.build_plugins_plan(utils.uuid())
     if not ok then
-      error("error building initial plugins: " .. err)
+      error("error building initial plugins plan: " .. err)
     end
     return true
   end
@@ -219,9 +219,9 @@ local function load_declarative_config(kong_config, entities)
     kong.log.notice("declarative config loaded from ",
                     kong_config.declarative_config)
 
-    ok, err = runloop.build_plugins(utils.uuid())
+    ok, err = runloop.build_plugins_plan(utils.uuid())
     if not ok then
-      error("error building initial plugins: " .. err)
+      error("error building initial plugins plan: " .. err)
     end
 
     assert(runloop.build_router(kong.db, "init"))
@@ -353,7 +353,7 @@ function Kong.init()
     end
 
   else
-    local ok, err = runloop.build_plugins("init")
+    local ok, err = runloop.build_plugins_plan("init")
     if not ok then
       error("error building initial plugins: " .. err)
     end
@@ -461,10 +461,10 @@ function Kong.init_worker()
 
 
   -- run plugins init_worker context
-  runloop.update_plugins()
-  local plugins = runloop.get_plugins()
-  local phase_plugins = plugins.phases.init_worker
-  for _, plugin in ipairs(plugins.loaded) do
+  runloop.update_plugins_plan()
+  local plugins_plan = runloop.get_plugins_plan()
+  local phase_plugins = plugins_plan.phases.init_worker
+  for _, plugin in ipairs(plugins_plan.loaded) do
     if phase_plugins[plugin.name] then
       kong_global.set_namespaced_log(kong, plugin.name)
       plugin.handler:init_worker()
@@ -480,13 +480,13 @@ function Kong.ssl_certificate()
 
   runloop.certificate.before(ctx)
 
-  local ok, err = runloop.update_plugins()
+  local ok, err = runloop.update_plugins_plan()
   if not ok then
     ngx_log(ngx_CRIT, "could not ensure plugins plan is up to date: ", err)
     return ngx.exit(ngx.ERROR)
   end
 
-  execute_plugins(ctx, "certificate")
+  execute_plugins_plan(ctx, "certificate")
 end
 
 function Kong.balancer()
@@ -593,13 +593,13 @@ function Kong.rewrite()
 
   runloop.rewrite.before(ctx)
 
-  local ok, err = runloop.update_plugins()
+  local ok, err = runloop.update_plugins_plan()
   if not ok then
     ngx_log(ngx_CRIT, "could not ensure plugins plan is up to date: ", err)
     return kong.response.exit(500, { message  = "An unexpected error occurred" })
   end
 
-  execute_plugins(ctx, "rewrite")
+  execute_plugins_plan(ctx, "rewrite")
 
   runloop.rewrite.after(ctx)
 end
@@ -611,13 +611,13 @@ function Kong.preread()
 
   runloop.preread.before(ctx)
 
-  local ok, err = runloop.update_plugins()
+  local ok, err = runloop.update_plugins_plan()
   if not ok then
     ngx_log(ngx_CRIT, "could not ensure plugins plan is up to date: ", err)
     return kong.response.exit(500, { message  = "An unexpected error occurred" })
   end
 
-  execute_plugins(ctx, "preread")
+  execute_plugins_plan(ctx, "preread")
 
   runloop.preread.after(ctx)
 end
@@ -631,9 +631,9 @@ function Kong.access()
 
   ctx.delay_response = true
 
-  local plugins = runloop.get_plugins()
-  local phase_plugins = plugins.phases.access
-  for plugin, plugin_conf in plugins_iterator(ctx, "access", plugins) do
+  local plugins_plan = runloop.get_plugins_plan()
+  local phase_plugins = plugins_plan.phases.access
+  for plugin, plugin_conf in plugins_iterator(ctx, "access", plugins_plan) do
     if not ctx.delayed_response and phase_plugins[plugin.name] then
       kong_global.set_named_ctx(kong, "plugin", plugin_conf)
       kong_global.set_namespaced_log(kong, plugin.name)
@@ -666,7 +666,7 @@ function Kong.header_filter()
 
   runloop.header_filter.before(ctx)
 
-  execute_plugins(ctx, "header_filter")
+  execute_plugins_plan(ctx, "header_filter")
 
   runloop.header_filter.after(ctx)
 end
@@ -676,7 +676,7 @@ function Kong.body_filter()
 
   local ctx = ngx.ctx
 
-  execute_plugins(ctx, "body_filter")
+  execute_plugins_plan(ctx, "body_filter")
 
   runloop.body_filter.after(ctx)
 end
@@ -686,7 +686,7 @@ function Kong.log()
 
   local ctx = ngx.ctx
 
-  execute_plugins(ctx, "log")
+  execute_plugins_plan(ctx, "log")
 
   runloop.log.after(ctx)
 end
@@ -699,9 +699,9 @@ function Kong.handle_error()
   ctx.KONG_UNEXPECTED = true
 
   if not ctx.plugins then
-    runloop.update_plugins()
-    local plugins = runloop.get_plugins()
-    for _ in plugins_iterator(ctx, "content", plugins) do
+    runloop.update_plugins_plan()
+    local plugins_plan = runloop.get_plugins_plan()
+    for _ in plugins_iterator(ctx, "content", plugins_plan) do
       -- just build list of plugins
     end
   end

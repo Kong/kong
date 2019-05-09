@@ -64,7 +64,7 @@ local EMPTY_T = {}
 local TTL_ZERO = { ttl = 0 }
 
 
-local get_plugins, build_plugins, update_plugins
+local get_plugins_plan, build_plugins_plan, update_plugins_plan
 
 local get_router, build_router
 local server_header = meta._SERVER_TOKENS
@@ -329,7 +329,7 @@ end
 
 
 do
-  local plugins
+  local plugins_plan
   local loaded_plugins
 
 
@@ -361,24 +361,24 @@ do
   end
 
 
-  build_plugins = function(version)
+  build_plugins_plan = function(version)
     loaded_plugins = loaded_plugins or get_loaded_plugins()
 
-    local new_plugins = {
+    local new_plugins_plan = {
       map = {},
       combos = {},
       loaded = loaded_plugins,
     }
 
     if subsystem == "stream" then
-      new_plugins.phases = {
+      new_plugins_plan.phases = {
         init_worker = {},
         preread     = {},
         log         = {},
       }
 
     else
-      new_plugins.phases = {
+      new_plugins_plan.phases = {
         init_worker   = {},
         certificate   = {},
         rewrite       = {},
@@ -395,20 +395,20 @@ do
       end
 
       if should_process_plugin(plugin) then
-        new_plugins.map[plugin.name] = true
+        new_plugins_plan.map[plugin.name] = true
 
         local combo_key = (plugin.route    and 1 or 0)
                         + (plugin.service  and 2 or 0)
                         + (plugin.consumer and 4 or 0)
 
-        new_plugins.combos[plugin.name] = new_plugins.combos[plugin.name] or {}
-        new_plugins.combos[plugin.name][combo_key] = true
+        new_plugins_plan.combos[plugin.name] = new_plugins_plan.combos[plugin.name] or {}
+        new_plugins_plan.combos[plugin.name][combo_key] = true
       end
     end
 
     for _, plugin in ipairs(loaded_plugins) do
-      if new_plugins.combos[plugin.name] then
-        for phase_name, phase in pairs(new_plugins.phases) do
+      if new_plugins_plan.combos[plugin.name] then
+        for phase_name, phase in pairs(new_plugins_plan.phases) do
           if plugin.handler[phase_name] ~= BasePlugin[phase_name] then
             phase[plugin.name] = true
           end
@@ -416,24 +416,24 @@ do
 
       else
         if plugin.handler.init_worker ~= BasePlugin.init_worker then
-          new_plugins.phases.init_worker[plugin.name] = true
+          new_plugins_plan.phases.init_worker[plugin.name] = true
         end
       end
     end
 
-    plugins = new_plugins
+    plugins_plan = new_plugins_plan
 
     return true
   end
 
 
-  update_plugins = function()
+  update_plugins_plan = function()
     local version, err = kong.cache:get("plugins_plan:version", TTL_ZERO, utils.uuid)
     if err then
       return nil, "failed to retrieve plugins plan version: " .. err
     end
 
-    if not plugins or plugins.version ~= version then
+    if not plugins_plan or plugins_plan.version ~= version then
 
       local timeout = 60
       if kong.configuration.database == "cassandra" then
@@ -457,8 +457,8 @@ do
           return nil, "failed to re-retrieve plugins plan version: " .. err
         end
 
-        if not plugins or plugins.version ~= version then
-          local ok, err = build_plugins(version)
+        if not plugins_plan or plugins_plan.version ~= version then
+          local ok, err = build_plugins_plan(version)
           if not ok then
             return nil, "error found when building plugins plan: " .. err
           end
@@ -474,8 +474,8 @@ do
     return true
   end
 
-  get_plugins = function()
-    return plugins
+  get_plugins_plan = function()
+    return plugins_plan
   end
 end
 
@@ -802,9 +802,9 @@ end
 return {
   build_router = build_router,
 
-  build_plugins = build_plugins,
-  update_plugins = update_plugins,
-  get_plugins = get_plugins,
+  build_plugins_plan = build_plugins_plan,
+  update_plugins_plan = update_plugins_plan,
+  get_plugins_plan = get_plugins_plan,
   set_init_versions_in_cache = set_init_versions_in_cache,
   -- exported for unit-testing purposes only
   _set_check_router_rebuild = _set_check_router_rebuild,
