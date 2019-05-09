@@ -1,6 +1,6 @@
 [![Build Status][badge-travis-image]][badge-travis-url]
 
-# kong-plugin-proxy-cache
+# Kong proxy-cache plugin
 
 HTTP Proxy Caching for Kong
 
@@ -41,7 +41,7 @@ You can also apply it for every API using the `http://kong:8001/plugins/` endpoi
 
 ### Strategies
 
-`kong-plugin-proxy-cache` is designed to support storing proxy cache data in different backend formats. Currently `memory` is the only strategy provided, using a `lua_shared_dict`. Note that the default dictionary, `kong_db_cache`, is also used by other plugins and elements of Kong to store unrelated database cache entities. Using this dictionary is an easy way to bootstrap the proxy-cache plugin, but it is not recommended for large-scale installations as significant usage will put pressure on other facets of Kong's database caching operations. It is recommended to define a separate `lua_shared_dict` via a custom Nginx template at this time.
+The `proxy-cache` plugin is designed to support storing proxy cache data in different backend formats. Currently `memory` is the only strategy provided, using a `lua_shared_dict`. Note that the default dictionary, `kong_db_cache`, is also used by other plugins and elements of Kong to store unrelated database cache entities. Using this dictionary is an easy way to bootstrap the proxy-cache plugin, but it is not recommended for large-scale installations as significant usage will put pressure on other facets of Kong's database caching operations. It is recommended to define a separate `lua_shared_dict` via a custom Nginx template at this time.
 
 ### Cache Key
 
