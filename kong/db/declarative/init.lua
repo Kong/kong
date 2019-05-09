@@ -9,6 +9,7 @@ local tablex = require "pl.tablex"
 local deepcopy = tablex.deepcopy
 local null = ngx.null
 local SHADOW = true
+local md5 = ngx.md5
 
 
 local declarative = {}
@@ -59,7 +60,7 @@ local function pretty_print_error(err_t, item, indent)
 end
 
 
-function Config:parse_file(filename, accept)
+function Config:parse_file(filename, accept, old_hash)
   if type(filename) ~= "string" then
     error("filename must be a string", 2)
   end
@@ -69,11 +70,19 @@ function Config:parse_file(filename, accept)
     return nil, err
   end
 
-  return self:parse_string(contents, filename, accept)
+  return self:parse_string(contents, filename, accept, old_hash)
 end
 
 
-function Config:parse_string(contents, filename, accept)
+function Config:parse_string(contents, filename, accept, old_hash)
+  -- we don't care about the strength of the hash
+  -- because declarative config is only loaded by Kong administrators,
+  -- not outside actors that could exploit it for collisions
+  local new_hash = md5(contents)
+
+  if old_hash and old_hash == new_hash then
+    return nil, "configuration is identical", nil, nil, old_hash
+  end
 
   -- do not accept Lua by default
   accept = accept or { yaml = true, json = true }
@@ -125,11 +134,11 @@ function Config:parse_string(contents, filename, accept)
     return nil, err, { error = err }
   end
 
-  return self:parse_table(dc_table)
+  return self:parse_table(dc_table, new_hash)
 end
 
 
-function Config:parse_table(dc_table)
+function Config:parse_table(dc_table, hash)
   if type(dc_table) ~= "table" then
     error("expected a table as input", 2)
   end
@@ -145,7 +154,12 @@ function Config:parse_table(dc_table)
     return nil, pretty_print_error(err_t), err_t
   end
 
-  return entities, dc_table._format_version
+  if not hash then
+    print(cjson.encode(dc_table))
+    hash = md5(cjson.encode(dc_table))
+  end
+
+  return entities, nil, nil, dc_table._format_version, hash
 end
 
 
@@ -261,7 +275,12 @@ local function post_crud_create_event(entity_name, item)
 end
 
 
-function declarative.load_into_cache(entities, shadow_page)
+function declarative.get_current_hash()
+  return ngx.shared.kong:get("declarative_config:hash")
+end
+
+
+function declarative.load_into_cache(entities, hash, shadow_page)
   -- Array of strings with this format:
   -- "<tag_name>|<entity_name>|<uuid>".
   -- For example, a service tagged "admin" would produce
@@ -400,11 +419,16 @@ function declarative.load_into_cache(entities, shadow_page)
     return nil, err
   end
 
+  local ok, err = ngx.shared.kong:safe_set("declarative_config:hash", hash or true)
+  if not ok then
+    return nil, "failed to set declarative_config:hash in shm: " .. err
+  end
+
   return true
 end
 
 
-function declarative.load_into_cache_with_events(entities)
+function declarative.load_into_cache_with_events(entities, hash)
 
   -- ensure any previous update finished (we're flipped to the latest page)
   local _, err = kong.worker_events.poll()
@@ -415,7 +439,7 @@ function declarative.load_into_cache_with_events(entities)
   post_upstream_crud_delete_events()
 
   local ok
-  ok, err = declarative.load_into_cache(entities, SHADOW)
+  ok, err = declarative.load_into_cache(entities, hash, SHADOW)
 
   if ok then
     ok, err = kong.worker_events.post("declarative", "flip_config", true)

@@ -28,12 +28,12 @@ return {
         })
       end
 
-      local entities, err_or_ver, err_t
+      local entities, _, err_t, vers
       if self.params._format_version then
-        entities, err_or_ver, err_t = dc:parse_table(self.params)
+        entities, _, err_t, vers = dc:parse_table(self.params)
       else
         local config = self.params.config
-        entities, err_or_ver, err_t = dc:parse_string(config, nil, accept)
+        entities, _, err_t, vers = dc:parse_string(config, nil, accept)
       end
 
       if not entities then
@@ -56,7 +56,7 @@ return {
         return kong.response.exit(500, { message = "An unexpected error occurred" })
       end
 
-      _reports.decl_fmt_version = err_or_ver
+      _reports.decl_fmt_version = vers
       reports.send("dbless-reconfigure", _reports)
 
       return kong.response.exit(201, entities)
