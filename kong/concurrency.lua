@@ -2,6 +2,9 @@ local resty_lock = require "resty.lock"
 local ngx_semaphore = require "ngx.semaphore"
 
 
+local get_phase = ngx.get_phase
+
+
 local concurrency = {}
 
 
@@ -63,6 +66,10 @@ function concurrency.with_coroutine_mutex(opts, fn)
   end
   if opts.on_timeout and opts.on_timeout ~= "run_unlocked" then
     error("invalid value for opts.on_timeout", 2)
+  end
+
+  if get_phase() == "init_worker" then
+    return fn()
   end
 
   local timeout = opts.timeout or 60
