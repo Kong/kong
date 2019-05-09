@@ -16,6 +16,7 @@ local ngx_WARN = ngx.WARN
 local ngx_DEBUG = ngx.DEBUG
 
 
+
 local function has_a_common_protocol_with_route(plugin, route)
   local plugin_prot = plugin.protocols
   local route_prot = route.protocols
@@ -73,6 +74,11 @@ local function check_protocols_match(self, plugin)
   end
 
   return true
+end
+
+
+local function sort_by_handler_priority(a, b)
+  return (a.handler.PRIORITY or 0) > (b.handler.PRIORITY or 0)
 end
 
 
@@ -206,7 +212,7 @@ local function plugin_entity_loader(db)
 end
 
 
-local function load_plugin(self, plugin, plugin_list)
+local function load_plugin(self, plugin)
   local db = self.db
 
   if constants.DEPRECATED_PLUGINS[plugin] then
@@ -235,11 +241,6 @@ local function load_plugin(self, plugin, plugin_list)
 
   ngx_log(ngx_DEBUG, "Loading plugin: ", plugin)
 
-  plugin_list[#plugin_list+1] = {
-    name = plugin,
-    handler = handler(),
-  }
-
   if db.strategy then -- skip during tests
     local _, err = plugin_loader.load_entities(plugin, db.errors,
                                                plugin_entity_loader(db))
@@ -248,25 +249,31 @@ local function load_plugin(self, plugin, plugin_list)
     end
   end
 
-  return true
+  return handler
 end
 
 
---- Load subschemas for all configured plugins into the Plugins
--- entity, and produce a list of these plugins with their names
--- and initialized handlers.
+--- Load subschemas for all configured plugins into the Plugins entity. It has two side effects:
+--  * It makes the Plugin sub-schemas available for the rest of the application
+--  * It initializes the Plugin.
 -- @param plugin_set a set of plugin names.
--- @return an array of tables, or nil and an error message.
+-- @return true if success, or nil and an error message.
 function Plugins:load_plugin_schemas(plugin_set)
-  local plugin_list = {}
+  self.handlers = nil
+
+  local handlers = {}
   local errs
 
   -- load installed plugins
   for plugin in pairs(plugin_set) do
-    local ok, err = load_plugin(self, plugin, plugin_list)
-    if not ok then
+    local handler, err = load_plugin(self, plugin)
+
+    if handler then
+      handlers[plugin] = handler()
+
+    else
       errs = errs or {}
-      table.insert(errs, "on plugin '" .. plugin .. "': " .. err)
+      table.insert(errs, "on plugin '" .. plugin .. "': " .. tostring(err))
     end
   end
 
@@ -274,7 +281,29 @@ function Plugins:load_plugin_schemas(plugin_set)
     return nil, "error loading plugin schemas: " .. table.concat(errs, "; ")
   end
 
-  return plugin_list
+  self.handlers = handlers
+
+  return true
+end
+
+
+-- Requires Plugins:load_plugin_schemas to be loaded first
+-- @return an array where each element has the format { name = "keyauth", handler = function() .. end }. Or nil, error
+function Plugins:get_handlers()
+  if not self.handlers then
+    return nil, "Please invoke Plugins:load_plugin_schemas() before invoking Plugins:get_plugin_handlers"
+  end
+
+  local list = {}
+  local len = 0
+  for name, handler in pairs(self.handlers) do
+    len = len + 1
+    list[len] = { name = name, handler = handler }
+  end
+
+  table.sort(list, sort_by_handler_priority)
+
+  return list
 end
 
 

@@ -481,7 +481,8 @@ function Kong.init()
   end
 
   -- Load plugins as late as possible so that everything is set up
-  loaded_plugins = assert(db.plugins:load_plugin_schemas(config.loaded_plugins))
+  assert(db.plugins:load_plugin_schemas(config.loaded_plugins))
+  loaded_plugins = assert(db.plugins:get_handlers())
   sort_plugins_for_execution(loaded_plugins)
 
   do
