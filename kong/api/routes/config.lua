@@ -1,6 +1,7 @@
 local declarative = require("kong.db.declarative")
 local concurrency = require("kong.concurrency")
 local reports = require("kong.reports")
+local errors = require("kong.db.errors")
 local kong = kong
 local dc = declarative.new_config(kong.configuration)
 
@@ -27,17 +28,16 @@ return {
         })
       end
 
-      local entities, err_or_ver
+      local entities, err_or_ver, err_t
       if self.params._format_version then
-        entities, err_or_ver = dc:parse_table(self.params)
+        entities, err_or_ver, err_t = dc:parse_table(self.params)
       else
         local config = self.params.config
-        -- TODO extract proper filename from the input
-        entities, err_or_ver = dc:parse_string(config, "config.yml", accept)
+        entities, err_or_ver, err_t = dc:parse_string(config, nil, accept)
       end
 
       if not entities then
-        return kong.response.exit(400, { error = err_or_ver })
+        return kong.response.exit(400, errors:declarative_config(err_t))
       end
 
       local ok, err = concurrency.with_worker_mutex({ name = "dbless-worker" }, function()
