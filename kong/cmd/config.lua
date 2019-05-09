@@ -72,9 +72,9 @@ local function execute(args)
       error("expected a declarative configuration file; see `kong config --help`")
     end
 
-    local dc_table, err_or_ver = dc:parse_file(filename, accepted_formats)
+    local dc_table, err, _, vers = dc:parse_file(filename, accepted_formats)
     if not dc_table then
-      error("Failed parsing:\n" .. err_or_ver)
+      error("Failed parsing:\n" .. err)
     end
 
     if args.command == "db_import" then
@@ -103,7 +103,7 @@ local function execute(args)
         kong_reports.configure_ping(conf)
         kong_reports.toggle(true)
 
-        local report = { decl_fmt_version = err_or_ver }
+        local report = { decl_fmt_version = vers }
         kong_reports.send("config-db-import", report)
       end
 
