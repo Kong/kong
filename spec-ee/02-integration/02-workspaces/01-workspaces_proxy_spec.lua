@@ -355,7 +355,7 @@ for _, strategy in helpers.each_strategy() do
         end, 7)
 
         local content = res:read_body()
-        assert.is_equal("", content)
+        assert.is_equal("{}", content)
       end)
       it("delete plugin on foo side", function()
         local res = assert(admin_client:send {
