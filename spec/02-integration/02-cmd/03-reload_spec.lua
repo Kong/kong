@@ -1,4 +1,5 @@
 local helpers = require "spec.helpers"
+local cjson = require "cjson"
 
 describe("kong reload", function()
   lazy_setup(function()
@@ -79,8 +80,76 @@ describe("kong reload", function()
     client:close()
   end)
 
+  it("clears the 'kong' shm", function()
+    local client
+
+    assert(helpers.start_kong(nil, nil, true))
+
+    finally(function()
+      helpers.stop_kong(nil, true)
+      if client then
+        client:close()
+      end
+    end)
+
+    client = helpers.admin_client()
+    local res = assert(client:get("/"))
+    local body = assert.res_status(200, res)
+    local json = cjson.decode(body)
+    local prng_seeds_1 = json.prng_seeds
+    client:close()
+
+    assert(helpers.kong_exec("reload --prefix " .. helpers.test_conf.prefix))
+    ngx.sleep(1)
+
+    client = helpers.admin_client()
+    local res = assert(client:get("/"))
+    local body = assert.res_status(200, res)
+    local json = cjson.decode(body)
+    local prng_seeds_2 = json.prng_seeds
+    client:close()
+
+    for k in pairs(prng_seeds_1) do
+      assert.is_nil(prng_seeds_2[k])
+    end
+end)
+
+  it("clears the 'kong' shm but preserves 'node_id'", function()
+    local client
+
+    assert(helpers.start_kong(nil, nil, true))
+
+    finally(function()
+      helpers.stop_kong(nil, true)
+      if client then
+        client:close()
+      end
+    end)
+
+    client = helpers.admin_client()
+    local res = assert(client:get("/"))
+    local body = assert.res_status(200, res)
+    local json = cjson.decode(body)
+    local node_id_1 = json.node_id
+    client:close()
+
+    assert(helpers.kong_exec("reload --prefix " .. helpers.test_conf.prefix))
+    ngx.sleep(1)
+
+    client = helpers.admin_client()
+    local res = assert(client:get("/"))
+    local body = assert.res_status(200, res)
+    local json = cjson.decode(body)
+    local node_id_2 = json.node_id
+    client:close()
+
+    assert.equal(node_id_1, node_id_2)
+  end)
+
   describe("errors", function()
     it("complains about missing PID if not already running", function()
+      helpers.prepare_prefix()
+
       local ok, err = helpers.kong_exec("reload --prefix " .. helpers.test_conf.prefix)
       assert.False(ok)
       assert.matches("Error: nginx not running in prefix: " .. helpers.test_conf.prefix, err, nil, true)
