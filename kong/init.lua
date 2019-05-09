@@ -136,7 +136,6 @@ local function build_new_plugins(version)
   local new_plugins = {
     version = version,
     map = {},
-    cache = {},
     loaded = loaded_plugins,
     combos = {},
   }
@@ -167,8 +166,6 @@ local function build_new_plugins(version)
 
     if plugin_protocols_match_current_subsystem(plugin) then
       new_plugins.map[plugin.name] = true
-      local cache_key = kong.db.plugins:cache_key(plugin)
-      new_plugins.cache[cache_key] = plugin
 
       local combo_key = (plugin.route    and 1 or 0)
                       + (plugin.service  and 2 or 0)

@@ -20,6 +20,17 @@ local MUST_LOAD_CONFIGURATION_IN_PHASES = {
   content     = true,
 }
 
+-- Loads a plugin config from the datastore.
+-- @return plugin config table or an empty sentinel table in case of a db-miss
+local function load_plugin_from_db(key)
+  local row, err = kong.db.plugins:select_by_cache_key(key)
+  if err then
+    return nil, tostring(err)
+  end
+
+  return row
+end
+
 
 --- Load the configuration for a plugin entry in the DB.
 -- Given a Route, Service, Consumer and a plugin name, retrieve the plugin's
@@ -38,8 +49,16 @@ local function load_configuration(self,
                                         route_id,
                                         service_id,
                                         consumer_id)
+  local plugin, err = kong.cache:get(key,
+                                     nil,
+                                     load_plugin_from_db,
+                                     key)
+  if err then
+    ngx.ctx.delay_response = false
+    ngx.log(ngx.ERR, tostring(err))
+    return ngx.exit(ngx.ERROR)
+  end
 
-  local plugin = self.plugins.cache[key]
   if not plugin or not plugin.enabled then
     return
   end
