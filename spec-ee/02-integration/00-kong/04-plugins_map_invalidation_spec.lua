@@ -83,7 +83,7 @@ for _, strategy in helpers.each_strategy() do
     ----------
 
     describe("plugins_map:version", function()
-      local service_plugin_id, version_1, version_2
+      local service_plugin_id
 
       it("is created at startup", function()
         local admin_res_1 = assert(admin_client_1:send {
@@ -173,7 +173,6 @@ for _, strategy in helpers.each_strategy() do
         local msg_1  = cjson.decode(body_1)
 
         assert.matches("^[%w-]+$", msg_1.message)
-        version_1 = msg_1.message
 
         wait_for_propagation()
 
@@ -200,7 +199,6 @@ for _, strategy in helpers.each_strategy() do
         local msg_2  = cjson.decode(body_2)
 
         assert.matches("^[%w-]+$", msg_2.message)
-        version_2 = msg_2.message
 
         -- each node has their own map version
         assert.not_equal(msg_1.message, msg_2.message)
