@@ -13,14 +13,7 @@ return {
       end
 
       if ttl then
-        local retval
-        if not value or type(value) == "table"  then
-          retval = value
-        else
-          retval = { message = value }
-        end
-
-        return kong.response.exit(200, retval)
+        return kong.response.exit(200, type(value) == "table" and value or { message = value })
       end
 
       return kong.response.exit(404, { message = "Not found" })
