@@ -440,6 +440,45 @@ describe("Admin API #off", function()
       assert.response(res).has.status(201)
     end)
 
+    it("returns 304 if checking hash and configuration is identical", function()
+      local res = assert(client:send {
+        method = "POST",
+        path = "/config?check_hash=1",
+        body = {
+          config = [[
+          _format_version: "1.1"
+          consumers:
+          - username: bobby_tables
+          ]],
+        },
+        headers = {
+          ["Content-Type"] = "application/json"
+        }
+      })
+
+      assert.response(res).has.status(201)
+
+      client:close()
+      client = helpers.admin_client()
+
+      res = assert(client:send {
+        method = "POST",
+        path = "/config?check_hash=1",
+        body = {
+          config = [[
+          _format_version: "1.1"
+          consumers:
+          - username: bobby_tables
+          ]],
+        },
+        headers = {
+          ["Content-Type"] = "application/json"
+        }
+      })
+
+      assert.response(res).has.status(304)
+    end)
+
     it("returns 400 on an invalid config string", function()
       local res = assert(client:send {
         method = "POST",
