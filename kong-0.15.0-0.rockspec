@@ -82,6 +82,7 @@ build = {
     ["kong.enterprise_edition.dao.factory"] = "kong/enterprise_edition/dao/factory.lua",
     ["kong.enterprise_edition.dao.migrations.core.postgres"] = "kong/enterprise_edition/dao/migrations/core/postgres.lua",
     ["kong.enterprise_edition.dao.migrations.core.cassandra"] = "kong/enterprise_edition/dao/migrations/core/cassandra.lua",
+    ["kong.enterprise_edition.db.migrations.helpers"] = "kong/enterprise_edition/db/migrations/helpers.lua",
     ["kong.enterprise_edition.db.typedefs"] = "kong/enterprise_edition/db/typedefs.lua",
     ["kong.enterprise_edition.feature_flags"] = "kong/enterprise_edition/feature_flags.lua",
     ["kong.enterprise_edition.jwt"] = "kong/enterprise_edition/jwt.lua",

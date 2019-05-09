@@ -86,6 +86,54 @@ local function create_developer_table_cassandra(connector, coordinator)
   end
 end
 
+local function migrate_legacy_admins(connector, coordinator)
+  for map_result, err in coordinator:iterate("SELECT * FROM consumers_rbac_users_map") do
+    if err then
+      return nil, err
+    end
+    -- nothing to migrate
+    if not map_result[1] then
+      return true
+    end
+    local consumer, err = connector:query("SELECT * FROM consumers WHERE id = " .. map_result[1].consumer_id)
+
+    if err then
+      return nil, err
+    end
+    if not consumer[1] then
+      return true
+    end
+
+    -- gsub requires a string
+    if not consumer[1].custom_id then
+      consumer[1].custom_id = ''
+    end
+
+    if not consumer[1].username then
+      consumer[1].username = ''
+    end
+
+    local ok, err = connector:query(
+      fmt("INSERT INTO admins(id, created_at, updated_at, consumer_id, rbac_user_id, email, status, username, custom_id) " ..
+        "VALUES(%s, '%s', '%s', %s, %s, '%s', %s, '%s', '%s')",
+        utils.uuid(),
+        consumer[1].created_at,
+        consumer[1].created_at,
+        map_result[1].consumer_id,
+        map_result[1].user_id,
+        consumer[1].email,
+        consumer[1].status,
+        string.gsub(consumer[1].username, "^[a-zA-Z0-9-_~.]*:", ""),
+        string.gsub(consumer[1].custom_id, "^[a-zA-Z0-9-_~.]*:", "")
+      )
+    )
+
+    if not ok then
+      return nil, err
+    end
+  end
+  return true
+end
 
 return {
   postgres = {
@@ -112,7 +160,7 @@ return {
 
      CREATE INDEX IF NOT EXISTS workspace_entities_idx_entity_id ON workspace_entities(entity_id);
 
-     ALTER TABLE "consumers" DROP COLUMN IF EXISTS status;
+     ALTER TABLE "consumers" DROP CONSTRAINT IF EXISTS "consumers_status_fkey";
      ALTER TABLE "consumers" DROP CONSTRAINT IF EXISTS "consumers_type_fkey";
      ALTER TABLE "credentials" DROP CONSTRAINT IF EXISTS "credentials_consumer_type_fkey";
      DROP TABLE IF EXISTS consumer_statuses;
@@ -138,10 +186,38 @@ return {
         CREATE INDEX idx_rbac_token_ident on rbac_users(user_token_ident);
         END IF;
       END$$;
+
+    CREATE TABLE IF NOT EXISTS admins (
+      id          uuid,
+      created_at  TIMESTAMP WITHOUT TIME ZONE  DEFAULT (CURRENT_TIMESTAMP(0) AT TIME ZONE 'UTC'),
+      updated_at  TIMESTAMP WITHOUT TIME ZONE  DEFAULT (CURRENT_TIMESTAMP(0) AT TIME ZONE 'UTC'),
+      consumer_id  uuid references consumers (id),
+      rbac_user_id  uuid references rbac_users (id),
+      email text,
+      status int,
+      username text unique,
+      custom_id text unique,
+      PRIMARY KEY(id)
+    );
     ]],
 
     teardown = function(connector)
       assert(connector:connect_migrations())
+      -- migrate legacy admins using consumers_rbac_users_map
+      assert(connector:query([[
+        INSERT INTO admins(id, rbac_user_id, consumer_id)
+        SELECT uuid_in(overlay(overlay(md5(random()::text || ':' || clock_timestamp()::text) placing '4' from 13) placing to_hex(floor(random()*(11-8+1) + 8)::int)::text from 17)::cstring), user_id, consumer_id FROM consumers_rbac_users_map;
+
+        UPDATE admins AS a
+          SET email = c.email,
+          custom_id = regexp_replace(c.custom_id, '^[a-zA-Z0-9\-\_\~\.]*:','',''), -- custom_id currently formatted as workspace:custom_id
+          username = regexp_replace(c.username, '^[a-zA-Z0-9\-\_\~\.]*:','',''), -- username currently formatted as workspace:username
+          created_at = c.created_at,
+          status = c.status,
+          updated_at = now()::timestamp(0)
+        FROM consumers AS c
+        WHERE a.consumer_id = c.id;
+      ]]))
 
       -- iterate over consumers and create associated developers
       create_developer_table_postgres(connector)
@@ -173,6 +249,11 @@ return {
         WHERE id = '00000000-0000-0000-0000-000000000000'
       ]]))
 
+      -- after the legacy admins are migrated, we don't need this table
+      assert(connector:query([[
+        DROP TABLE IF EXISTS consumers_rbac_users_map;
+      ]]))
+
     end
   },
 
@@ -182,10 +263,31 @@ return {
 
       ALTER TABLE rbac_users ADD user_token_ident text;
       CREATE INDEX IF NOT EXISTS ON rbac_users(user_token_ident);
+
+      CREATE TABLE IF NOT EXISTS admins (
+        id          uuid,
+        created_at  timestamp,
+        updated_at  timestamp,
+        consumer_id  uuid,
+        rbac_user_id  uuid,
+        email text,
+        status int,
+        username   text,
+        custom_id  text,
+        PRIMARY KEY(id)
+      );
+      CREATE INDEX IF NOT EXISTS admins_consumer_id_idx ON admins(consumer_id);
+      CREATE INDEX IF NOT EXISTS admins_rbac_user_id_idx ON admins(rbac_user_id);
+      CREATE INDEX IF NOT EXISTS admins_email_idx ON admins(email);
+      CREATE INDEX IF NOT EXISTS admins_username_idx ON admins(username);
+      CREATE INDEX IF NOT EXISTS admins_custom_id_idx ON admins(custom_id);
     ]],
 
     teardown = function(connector)
       local coordinator = connector:connect_migrations()
+
+      -- migrate admins from consumers via consumers_rbac_users_map
+      assert(migrate_legacy_admins(connector, coordinator))
 
       -- iterate over consumers and create associated developers
       create_developer_table_cassandra(connector, coordinator)
@@ -207,6 +309,11 @@ return {
         UPDATE workspaces
         SET config = '{"portal":false}'
         WHERE id = 00000000-0000-0000-0000-000000000000
+      ]]))
+
+      -- after the legacy admins are migrated, we don't need this table
+      assert(connector:query([[
+        DROP TABLE IF EXISTS consumers_rbac_users_map;
       ]]))
     end
   }

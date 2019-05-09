@@ -1,5 +1,6 @@
 local utils        = require "kong.tools.utils"
 local crypto       = require "kong.plugins.basic-auth.crypto"
+local helpers = require "kong.enterprise_edition.db.migrations.helpers"
 
 local fmt = string.format
 local created_ts = math.floor(ngx.now()) * 1000
@@ -11,231 +12,6 @@ local function detect(f, t)
       return res
     end
   end
-end
-
-
-local function seed_kong_admin_data_cas()
-  local res = {}
-  local def_ws_id = '00000000-0000-0000-0000-000000000000'
-  local super_admin_role_id = utils.uuid()
-
-  local function add_to_default_ws(id, type, field_name, field_value)
-    if field_value then
-      table.insert(res,
-        fmt("INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value) VALUES(%s, 'default', '%s', '%s', '%s', '%s')",
-          def_ws_id, id, type, field_name, field_value))
-    else
-      table.insert(res,
-        fmt("INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value) VALUES(%s, 'default', '%s', '%s', '%s', null)",
-          def_ws_id, id, type, field_name))
-    end
-  end
-
-  local roles = {
-    {
-      utils.uuid(), "read-only", 'Read access to all endpoints, across all workspaces',
-      {"(%s, '*', '*', 1, FALSE)"}
-    },
-    { utils.uuid(), "admin", 'Full access to all endpoints, across all workspaces—except RBAC Admin API',
-      {"(%s, '*', '*', 15, FALSE);",
-       "(%s, '*', '/rbac/*', 15, TRUE);",
-       "(%s, '*', '/rbac/*/*', 15, TRUE);",
-       "(%s, '*', '/rbac/*/*/*', 15, TRUE);",
-       "(%s, '*', '/rbac/*/*/*/*', 15, TRUE);",
-       "(%s, '*', '/rbac/*/*/*/*/*', 15, TRUE);",
-      },
-    },
-    { super_admin_role_id, "super-admin", 'Full access to all endpoints, across all workspaces',
-      {"(%s, '*', '*', 15, FALSE)"}
-    }
-  }
-  for _, role in ipairs(roles) do
-    table.insert(res,
-      fmt("INSERT into rbac_roles(id, name, comment, created_at) VALUES(%s, 'default:%s', '%s', '%s')",
-        role[1] , role[2], role[3], created_ts))
-    add_to_default_ws(role[1], "rbac_roles", "id", role[1])
-    add_to_default_ws(role[1], "rbac_roles", "name", role[2])
-
-    for _, endpoint in ipairs(role[4]) do
-      table.insert(res,
-        fmt(
-          fmt("INSERT INTO rbac_role_endpoints(role_id, workspace, endpoint, actions, negative) VALUES %s", endpoint),
-          role[1]))
-    end
-  end
-
-  --seed kong_admin
-  local password = os.getenv("KONG_PASSWORD")
-
-  if password then
-    local password = password
-
-    local kong_admin_rbac_id = utils.uuid()
-    -- create kong_admin RBAC user
-    table.insert(res,
-      fmt("INSERT into rbac_users(id, name, user_token, enabled, comment, created_at) VALUES(%s, 'default:%s', '%s', %s, '%s', %s)",
-        kong_admin_rbac_id, "kong_admin", password, 'true', "Initial RBAC Secure User", created_ts))
-    add_to_default_ws(kong_admin_rbac_id, "rbac_users", "id", kong_admin_rbac_id)
-    add_to_default_ws(kong_admin_rbac_id, "rbac_users", "name", "kong_admin")
-    add_to_default_ws(kong_admin_rbac_id, "rbac_users", "user_token", password)
-
-    -- add user-roles relation
-    table.insert(res,
-      fmt("INSERT into rbac_user_roles(user_id, role_id) VALUES(%s, %s)",
-        kong_admin_rbac_id , super_admin_role_id))
-
-    --create default role for the user
-    local kong_admin_rbac_default_role_id =  utils.uuid()
-    table.insert(res,
-      fmt("INSERT into rbac_roles(id, name, comment, is_default, created_at) VALUES(%s, 'default:%s', '%s', %s, %s)",
-        kong_admin_rbac_default_role_id , "kong_admin", "Default user role generated for kong_admin", 'true', created_ts))
-    add_to_default_ws(kong_admin_rbac_default_role_id, "rbac_roles", "id", kong_admin_rbac_default_role_id)
-    add_to_default_ws(kong_admin_rbac_default_role_id, "rbac_roles", "name", "kong_admin")
-
-    table.insert(res,
-      fmt("INSERT into rbac_user_roles(user_id, role_id) VALUES(%s, %s)",
-        kong_admin_rbac_id , kong_admin_rbac_default_role_id))
-
-
-    -- create kong_admin user
-    local kong_admin_id = utils.uuid()
-    table.insert(res,
-      fmt("INSERT into rbac_users(id, name, user_token, enabled, comment, created_at) VALUES(%s, 'default:%s-%s', '%s', %s, '%s', %s)",
-        kong_admin_id, "kong_admin", kong_admin_id, password, 'true', "Initial RBAC Secure User", created_ts))
-    add_to_default_ws(kong_admin_id, "rbac_users", "id", kong_admin_id)
-    add_to_default_ws(kong_admin_id, "rbac_users", "name", "kong_admin-" .. kong_admin_id)
-    add_to_default_ws(kong_admin_id, "rbac_users", "user_token", password)
-
-    -- add user-roles relation
-    table.insert(res,
-      fmt("INSERT into rbac_user_roles(user_id, role_id) VALUES(%s, %s)",
-        kong_admin_id , super_admin_role_id))
-
-    --create default role for the user
-    local kong_admin_default_role_id =  utils.uuid()
-    table.insert(res,
-      fmt("INSERT into rbac_roles(id, name, comment, is_default, created_at) VALUES(%s, 'default:%s-%s', '%s', %s, %s)",
-        kong_admin_default_role_id , "kong_admin", kong_admin_id, "Default user role generated for kong_admin", 'true', created_ts))
-    add_to_default_ws(kong_admin_default_role_id, "rbac_roles", "id", kong_admin_default_role_id)
-    add_to_default_ws(kong_admin_default_role_id, "rbac_roles", "name", "kong_admin")
-
-    table.insert(res,
-      fmt("INSERT into rbac_user_roles(user_id, role_id) VALUES(%s, %s)",
-        kong_admin_id , kong_admin_default_role_id))
-
-    -- create the admin consumer
-
-    local kong_admin_consumer_id =  utils.uuid()
-    table.insert(res,
-      fmt("INSERT into consumers(id, username, type, created_at) VALUES(%s, 'default:%s', %s, %s)",
-        kong_admin_consumer_id , "kong_admin", 2, created_ts))
-
-    add_to_default_ws(kong_admin_consumer_id, "consumers", "id", kong_admin_consumer_id)
-    add_to_default_ws(kong_admin_consumer_id, "consumers", "username", "kong_admin")
-    add_to_default_ws(kong_admin_consumer_id, "consumers", "custom_id", nil)
-
-    -- create admin
-    local kong_admin_admin_id =  utils.uuid()
-    table.insert(res,
-      fmt("INSERT into admins(id, consumer_id, rbac_user_id, status, username, created_at, updated_at)" ..
-        "VALUES(%s , %s, %s, %s, '%s', %s, %s)",
-        kong_admin_admin_id , kong_admin_consumer_id, kong_admin_id, 0, "kong_admin", created_ts, created_ts))
-
-    add_to_default_ws(kong_admin_admin_id, "admins", "id", kong_admin_admin_id)
-    add_to_default_ws(kong_admin_admin_id, "admins", "username", "kong_admin")
-    add_to_default_ws(kong_admin_admin_id, "admins", "custom_id", nil)
-    add_to_default_ws(kong_admin_admin_id, "admins", "email", nil)
-
-    -- create basic-auth credential for admin
-    local kong_admin_basic_auth_id = utils.uuid()
-    table.insert(res,
-      fmt("INSERT into basicauth_credentials(id, consumer_id, username, password, created_at)" ..
-        "VALUES(%s , %s, 'default:%s', '%s', %s)",
-        kong_admin_basic_auth_id , kong_admin_consumer_id, "kong_admin", crypto.encrypt(kong_admin_consumer_id, password), created_ts))
-
-    add_to_default_ws(kong_admin_basic_auth_id, "basicauth_credentials", "id", kong_admin_basic_auth_id)
-    add_to_default_ws(kong_admin_basic_auth_id, "basicauth_credentials", "username", "kong_admin")
-  end
-
-  return table.concat(res, ";") .. ';'
-end
-
-
-local function seed_kong_admin_data_pg()
-  local password = os.getenv("KONG_PASSWORD")
-  if not password then
-    return ""
-  end
-
-  local random_password = utils.random_string()
-  local kong_admin_consumer_id = utils.uuid()
-  return fmt([[
-    DO $$
-    DECLARE kong_admin_user_id uuid;
-    DECLARE def_ws_id uuid;
-    DECLARE super_admin_role_id uuid;
-    DECLARE kong_admin_default_role_id uuid;
-    DECLARE kong_admin_consumer_id uuid;
-    DECLARE kong_admin_admin_id uuid;
-    DECLARE kong_admin_basic_auth_id uuid;
-    DECLARE tmp record;
-    BEGIN
-
-    SELECT uuid_in(overlay(overlay(md5(random()::text || ':' || clock_timestamp()::text) placing '4' from 13) placing to_hex(floor(random()*(11-8+1) + 8)::int)::text from 17)::cstring) into kong_admin_user_id;
-    SELECT id into def_ws_id from workspaces where name = 'default';
-
-
-    -- create kong_admin user
-    SELECT * into tmp FROM rbac_users WHERE name='default:kong-admin' LIMIT 1;
-    IF NOT FOUND THEN
-        INSERT INTO rbac_users(id, name, user_token, enabled, comment) VALUES(kong_admin_user_id, CONCAT('default:kong_admin-', kong_admin_user_id::varchar), '%s', true, 'Initial RBAC Secure User');
-        INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value) VALUES(def_ws_id, 'default', kong_admin_user_id, 'rbac_users', 'id', kong_admin_user_id);
-        INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value) VALUES(def_ws_id, 'default', kong_admin_user_id, 'rbac_users', 'name', CONCAT('kong_admin-', kong_admin_user_id::varchar));
-        INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value) VALUES(def_ws_id, 'default', kong_admin_user_id, 'rbac_users', 'user_token', '%s');
-
-        SELECT id into super_admin_role_id from rbac_roles where name = 'default:super-admin';
-        INSERT into rbac_user_roles(user_id, role_id) VALUES(kong_admin_user_id, super_admin_role_id);
-
-        -- create default role for the user
-        SELECT uuid_in(overlay(overlay(md5(random()::text || ':' || clock_timestamp()::text) placing '4' from 13) placing to_hex(floor(random()*(11-8+1) + 8)::int)::text from 17)::cstring) into kong_admin_default_role_id;
-        INSERT into rbac_roles(id, name, comment, is_default) VALUES(kong_admin_default_role_id, CONCAT('default:kong_admin-', kong_admin_user_id::varchar), 'Default user role generated for kong_admin', true);
-        INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value) VALUES(def_ws_id, 'default', kong_admin_default_role_id, 'rbac_roles', 'id', kong_admin_default_role_id);
-        INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value) VALUES(def_ws_id, 'default', kong_admin_default_role_id, 'rbac_roles', 'name', CONCAT('kong_admin-', kong_admin_user_id::varchar));
-        INSERT into rbac_user_roles(user_id, role_id) VALUES(kong_admin_user_id, kong_admin_default_role_id);
-    END IF;
-
-    -- create the admin consumer
-    SELECT * into tmp FROM consumers where username='default:kong-admin' limit 1;
-    IF NOT FOUND THEN
-        SELECT '%s'::uuid into kong_admin_consumer_id;
-        INSERT into consumers(id, username, type) VALUES(kong_admin_consumer_id, 'default:kong_admin', 2);
-        INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value) VALUES(def_ws_id, 'default', kong_admin_consumer_id, 'consumers', 'id', kong_admin_consumer_id);
-        INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value) VALUES(def_ws_id, 'default', kong_admin_consumer_id, 'consumers', 'username', 'kong_admin');
-        INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value) VALUES(def_ws_id, 'default', kong_admin_consumer_id, 'consumers', 'custom_id', null);
-    END IF;
-
-    -- create admin
-    SELECT * into tmp FROM admins where username='default:kong-admin' limit 1;
-    IF NOT FOUND THEN
-        SELECT uuid_in(overlay(overlay(md5(random()::text || ':' || clock_timestamp()::text) placing '4' from 13) placing to_hex(floor(random()*(11-8+1) + 8)::int)::text from 17)::cstring) into kong_admin_admin_id;
-        INSERT into admins(id, consumer_id, rbac_user_id, status, username) VALUES(kong_admin_admin_id , kong_admin_consumer_id, kong_admin_user_id, 0, 'kong_admin');
-        INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value) VALUES(def_ws_id, 'default', kong_admin_admin_id, 'admins', 'id', kong_admin_admin_id);
-        INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value) VALUES(def_ws_id, 'default', kong_admin_admin_id, 'admins', 'username', 'kong_admin');
-        INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value) VALUES(def_ws_id, 'default', kong_admin_admin_id, 'admins', 'custom_id', null);
-        INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value) VALUES(def_ws_id, 'default', kong_admin_admin_id, 'admins', 'email', null);
-    END IF;
-
-    -- create basic-auth credentials
-    SELECT * into tmp FROM basicauth_credentials where username='default:kong_admin' limit 1;
-    IF NOT FOUND THEN
-        SELECT uuid_in(overlay(overlay(md5(random()::text || ':' || clock_timestamp()::text) placing '4' from 13) placing to_hex(floor(random()*(11-8+1) + 8)::int)::text from 17)::cstring) into kong_admin_basic_auth_id;
-        INSERT into basicauth_credentials(id, consumer_id, username, password) VALUES(kong_admin_basic_auth_id, kong_admin_consumer_id, 'default:kong_admin', '%s');
-        INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value) VALUES(def_ws_id, 'default', kong_admin_basic_auth_id, 'basicauth_credentials', 'id', kong_admin_basic_auth_id);
-        INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value) VALUES(def_ws_id, 'default', kong_admin_basic_auth_id, 'basicauth_credentials', 'username', 'kong_admin');
-    END IF;
-
-    END $$;
-  ]], random_password, random_password, kong_admin_consumer_id, crypto.encrypt(kong_admin_consumer_id, password))
 end
 
 
@@ -278,6 +54,183 @@ local function seed_kong_admin_data_rbac_pg()
   ]], password, password)
 end
 
+local function seed_kong_admin_data_pg()
+  local password = os.getenv("KONG_PASSWORD")
+  if not password then
+    return ""
+  end
+
+  local random_password = utils.random_string()
+  local kong_admin_consumer_id = utils.uuid()
+  return fmt([[
+    DO $$
+    DECLARE kong_admin_user_id uuid;
+    DECLARE def_ws_id uuid;
+    DECLARE super_admin_role_id uuid;
+    DECLARE kong_admin_default_role_id uuid;
+    DECLARE kong_admin_consumer_id uuid;
+    DECLARE kong_admin_admin_id uuid;
+    DECLARE kong_admin_basic_auth_id uuid;
+    DECLARE kong_rbac_user_id uuid;
+    DECLARE tmp record;
+    BEGIN
+
+    SELECT uuid_in(overlay(overlay(md5(random()::text || ':' || clock_timestamp()::text) placing '4' from 13) placing to_hex(floor(random()*(11-8+1) + 8)::int)::text from 17)::cstring) into kong_admin_user_id;
+    SELECT id into def_ws_id from workspaces where name = 'default';
+
+
+    -- create kong_admin user
+    SELECT * into tmp FROM rbac_users WHERE name='default:kong_admin' LIMIT 1;
+    IF NOT FOUND THEN
+        INSERT INTO rbac_users(id, name, user_token, enabled, comment) VALUES(kong_admin_user_id, CONCAT('default:kong_admin-', kong_admin_user_id::varchar), '%s', true, 'Initial RBAC Secure User');
+        INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value) VALUES(def_ws_id, 'default', kong_admin_user_id, 'rbac_users', 'id', kong_admin_user_id);
+        INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value) VALUES(def_ws_id, 'default', kong_admin_user_id, 'rbac_users', 'name', CONCAT('kong_admin-', kong_admin_user_id::varchar));
+        INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value) VALUES(def_ws_id, 'default', kong_admin_user_id, 'rbac_users', 'user_token', '%s');
+
+        SELECT id into super_admin_role_id from rbac_roles where name = 'default:super-admin';
+        INSERT into rbac_user_roles(user_id, role_id) VALUES(kong_admin_user_id, super_admin_role_id);
+
+        -- create default role for the user
+        SELECT uuid_in(overlay(overlay(md5(random()::text || ':' || clock_timestamp()::text) placing '4' from 13) placing to_hex(floor(random()*(11-8+1) + 8)::int)::text from 17)::cstring) into kong_admin_default_role_id;
+        INSERT into rbac_roles(id, name, comment, is_default) VALUES(kong_admin_default_role_id, CONCAT('default:kong_admin-', kong_admin_user_id::varchar), 'Default user role generated for kong_admin', true);
+        INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value) VALUES(def_ws_id, 'default', kong_admin_default_role_id, 'rbac_roles', 'id', kong_admin_default_role_id);
+        INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value) VALUES(def_ws_id, 'default', kong_admin_default_role_id, 'rbac_roles', 'name', CONCAT('kong_admin-', kong_admin_user_id::varchar));
+        INSERT into rbac_user_roles(user_id, role_id) VALUES(kong_admin_user_id, kong_admin_default_role_id);
+    END IF;
+
+    -- create the admin consumer
+    SELECT * into tmp FROM consumers where username='default:kong_admin' limit 1;
+    IF NOT FOUND THEN
+        SELECT '%s'::uuid into kong_admin_consumer_id;
+        INSERT into consumers(id, username, type, custom_id) VALUES(kong_admin_consumer_id, 'default:kong_admin', 2, 'foo:bar');
+        INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value) VALUES(def_ws_id, 'default', kong_admin_consumer_id, 'consumers', 'id', kong_admin_consumer_id);
+        INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value) VALUES(def_ws_id, 'default', kong_admin_consumer_id, 'consumers', 'username', 'kong_admin');
+        INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value) VALUES(def_ws_id, 'default', kong_admin_consumer_id, 'consumers', 'custom_id', null);
+    END IF;
+
+    -- populate consumers_rbac_users_map
+    SELECT * into tmp FROM consumers_rbac_users_map where consumer_id=kong_admin_consumer_id limit 1;
+    IF NOT FOUND THEN
+        SELECT uuid_in(overlay(overlay(md5(random()::text || ':' || clock_timestamp()::text) placing '4' from 13) placing to_hex(floor(random()*(11-8+1) + 8)::int)::text from 17)::cstring) into kong_admin_admin_id;
+        SELECT id FROM consumers where username='default:kong_admin' limit 1 into kong_admin_consumer_id;
+        SELECT id FROM rbac_users where name='default:kong_admin' limit 1 into kong_rbac_user_id;
+        INSERT into consumers_rbac_users_map(consumer_id, user_id) VALUES(kong_admin_consumer_id, kong_rbac_user_id);
+        INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value) VALUES(def_ws_id, 'default', kong_admin_admin_id, 'admins', 'id', kong_admin_admin_id);
+        INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value) VALUES(def_ws_id, 'default', kong_admin_admin_id, 'admins', 'username', 'kong_admin');
+        INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value) VALUES(def_ws_id, 'default', kong_admin_admin_id, 'admins', 'custom_id', null);
+        INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value) VALUES(def_ws_id, 'default', kong_admin_admin_id, 'admins', 'email', null);
+    END IF;
+
+    -- create basic-auth credentials
+    SELECT * into tmp FROM basicauth_credentials where username='default:kong_admin' limit 1;
+    IF NOT FOUND THEN
+        SELECT uuid_in(overlay(overlay(md5(random()::text || ':' || clock_timestamp()::text) placing '4' from 13) placing to_hex(floor(random()*(11-8+1) + 8)::int)::text from 17)::cstring) into kong_admin_basic_auth_id;
+        INSERT into basicauth_credentials(id, consumer_id, username, password) VALUES(kong_admin_basic_auth_id, kong_admin_consumer_id, 'default:kong_admin', '%s');
+        INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value) VALUES(def_ws_id, 'default', kong_admin_basic_auth_id, 'basicauth_credentials', 'id', kong_admin_basic_auth_id);
+        INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value) VALUES(def_ws_id, 'default', kong_admin_basic_auth_id, 'basicauth_credentials', 'username', 'kong_admin');
+    END IF;
+
+    END $$;
+  ]], random_password, random_password, kong_admin_consumer_id, crypto.encrypt(kong_admin_consumer_id, password))
+end
+
+local function seed_kong_admin_data_cas()
+  local res = {}
+  local super_admin_role_id = utils.uuid()
+  local roles = {
+    {
+      utils.uuid(), "read-only", 'Read access to all endpoints, across all workspaces',
+      {"(%s, '*', '*', 1, FALSE)"}
+    },
+    { utils.uuid(), "admin", 'Full access to all endpoints, across all workspaces-except RBAC Admin API',
+      {"(%s, '*', '*', 15, FALSE);",
+       "(%s, '*', '/rbac/*', 15, TRUE);",
+       "(%s, '*', '/rbac/*/*', 15, TRUE);",
+       "(%s, '*', '/rbac/*/*/*', 15, TRUE);",
+       "(%s, '*', '/rbac/*/*/*/*', 15, TRUE);",
+       "(%s, '*', '/rbac/*/*/*/*/*', 15, TRUE);",
+      },
+    },
+    { super_admin_role_id, "super-admin", 'Full access to all endpoints, across all workspaces',
+      {"(%s, '*', '*', 15, FALSE)"}
+    }
+  }
+
+  for _, role in ipairs(roles) do
+    table.insert(res,
+      fmt("INSERT into rbac_roles(id, name, comment, created_at) VALUES(%s, 'default:%s', '%s', '%s')",
+        role[1] , role[2], role[3], created_ts))
+    helpers.add_to_default_ws(res, role[1], "rbac_roles", "id", role[1])
+    helpers.add_to_default_ws(res, role[1], "rbac_roles", "name", role[2])
+
+    for _, endpoint in ipairs(role[4]) do
+      table.insert(res,
+        fmt(
+          fmt("INSERT INTO rbac_role_endpoints(role_id, workspace, endpoint, actions, negative) VALUES %s", endpoint),
+          role[1]))
+    end
+  end
+
+  local password = os.getenv("KONG_PASSWORD")
+
+  if password then
+    local password = password
+
+    local kong_admin_rbac_id = utils.uuid()
+    -- create kong_admin RBAC user
+    table.insert(res,
+      fmt("INSERT into rbac_users(id, name, user_token, enabled, comment, created_at) VALUES(%s, 'default:%s', '%s', %s, '%s', %s)",
+        kong_admin_rbac_id, "kong_admin", password, 'true', "Initial RBAC Secure User", created_ts))
+    helpers.add_to_default_ws(res, kong_admin_rbac_id, "rbac_users", "id", kong_admin_rbac_id)
+    helpers.add_to_default_ws(res, kong_admin_rbac_id, "rbac_users", "name", "kong_admin")
+    helpers.add_to_default_ws(res, kong_admin_rbac_id, "rbac_users", "user_token", password)
+
+    -- add user-roles relation
+    table.insert(res,
+      fmt("INSERT into rbac_user_roles(user_id, role_id) VALUES(%s, %s)",
+        kong_admin_rbac_id, super_admin_role_id))
+
+    --create default role for the user
+    local kong_admin_rbac_default_role_id = utils.uuid()
+    table.insert(res,
+      fmt("INSERT into rbac_roles(id, name, comment, is_default, created_at) VALUES(%s, 'default:%s', '%s', %s, %s)",
+        kong_admin_rbac_default_role_id , "kong_admin", "Default user role generated for kong_admin", 'true', created_ts))
+    helpers.add_to_default_ws(res, kong_admin_rbac_default_role_id, "rbac_roles", "id", kong_admin_rbac_default_role_id)
+    helpers.add_to_default_ws(res, kong_admin_rbac_default_role_id, "rbac_roles", "name", "kong_admin")
+
+    table.insert(res,
+      fmt("INSERT into rbac_user_roles(user_id, role_id) VALUES(%s, %s)",
+        kong_admin_rbac_id, kong_admin_rbac_default_role_id))
+
+
+    -- create the admin consumer
+    local kong_admin_consumer_id = utils.uuid()
+    table.insert(res,
+      fmt("INSERT into consumers(id, username, type, created_at, status, custom_id) VALUES(%s, 'default:%s', %s, %s, %s, 'default:%s')",
+        kong_admin_consumer_id, "kong_admin", 2, created_ts, 0, 'bar'))
+
+    helpers.add_to_default_ws(res, kong_admin_consumer_id, "consumers", "id", kong_admin_consumer_id)
+    helpers.add_to_default_ws(res, kong_admin_consumer_id, "consumers", "username", "kong_admin")
+    helpers.add_to_default_ws(res, kong_admin_consumer_id, "consumers", "custom_id", nil)
+
+    -- add bootstrapped admin to consumers_rbac_users_map
+    table.insert(res,
+    fmt("INSERT into consumers_rbac_users_map(consumer_id, user_id, created_at) VALUES(%s, %s, %s)",
+      kong_admin_consumer_id, kong_admin_rbac_id, created_ts))
+
+    -- create basic-auth credential for admin
+    local kong_admin_basic_auth_id = utils.uuid()
+    table.insert(res,
+      fmt("INSERT into basicauth_credentials(id, consumer_id, username, password, created_at)" ..
+        "VALUES(%s , %s, 'default:%s', '%s', %s)",
+        kong_admin_basic_auth_id, kong_admin_consumer_id, "kong_admin", crypto.encrypt(kong_admin_consumer_id, password), created_ts))
+
+    helpers.add_to_default_ws(res, kong_admin_basic_auth_id, "basicauth_credentials", "id", kong_admin_basic_auth_id)
+    helpers.add_to_default_ws(res, kong_admin_basic_auth_id, "basicauth_credentials", "username", "kong_admin")
+  end
+
+  return table.concat(res, ";") .. ";"
+end
 
 return {
   postgres = {
@@ -484,6 +437,13 @@ return {
         comment text,
         created_at timestamp without time zone default (CURRENT_TIMESTAMP(0) at time zone 'utc'),
         PRIMARY KEY(role_id, entity_id)
+      );
+
+      CREATE TABLE IF NOT EXISTS consumers_rbac_users_map(
+        consumer_id uuid REFERENCES consumers (id) ON DELETE CASCADE,
+        user_id uuid REFERENCES rbac_users (id) ON DELETE CASCADE,
+        created_at timestamp without time zone DEFAULT timezone('utc'::text, ('now'::text)::timestamp(0) with time zone),
+        PRIMARY KEY (consumer_id, user_id)
       );
 
       CREATE TABLE IF NOT EXISTS rbac_role_endpoints(
@@ -757,19 +717,6 @@ IF NOT FOUND THEN
 END IF;
 
 END $$;
-
-CREATE TABLE IF NOT EXISTS admins (
-  id          uuid,
-  created_at  TIMESTAMP WITHOUT TIME ZONE  DEFAULT (CURRENT_TIMESTAMP(0) AT TIME ZONE 'UTC'),
-  updated_at  TIMESTAMP WITHOUT TIME ZONE  DEFAULT (CURRENT_TIMESTAMP(0) AT TIME ZONE 'UTC'),
-  consumer_id  uuid references consumers (id),
-  rbac_user_id  uuid references rbac_users (id),
-  email text,
-  status int,
-  username text unique,
-  custom_id text unique,
-  PRIMARY KEY(id)
-);
     ]] .. seed_kong_admin_data_rbac_pg() .. seed_kong_admin_data_pg()
   },
   cassandra = {
@@ -1038,23 +985,6 @@ CREATE TABLE IF NOT EXISTS admins (
         count counter,
         PRIMARY KEY(workspace_id, entity_type)
       );
-      CREATE TABLE IF NOT EXISTS admins (
-        id          uuid,
-        created_at  timestamp,
-        updated_at  timestamp,
-        consumer_id  uuid,
-        rbac_user_id  uuid,
-        email text,
-        status int,
-        username   text,
-        custom_id  text,
-        PRIMARY KEY(id)
-      );
-      CREATE INDEX IF NOT EXISTS admins_consumer_id_idx ON admins(consumer_id);
-      CREATE INDEX IF NOT EXISTS admins_rbac_user_id_idx ON admins(rbac_user_id);
-      CREATE INDEX IF NOT EXISTS admins_email_idx ON admins(email);
-      CREATE INDEX IF NOT EXISTS admins_username_idx ON admins(username);
-      CREATE INDEX IF NOT EXISTS admins_custom_id_idx ON admins(custom_id);
 
       CREATE TABLE IF NOT EXISTS developers (
         id          uuid,
@@ -1069,6 +999,13 @@ CREATE TABLE IF NOT EXISTS admins (
       CREATE INDEX IF NOT EXISTS developers_email_idx ON developers(email);
       CREATE INDEX IF NOT EXISTS developers_consumer_id_idx ON developers(consumer_id);
       CREATE INDEX IF NOT EXISTS developers_email_idx ON developers(email);
+
+      CREATE TABLE IF NOT EXISTS consumers_rbac_users_map(
+        consumer_id uuid,
+        user_id uuid,
+        created_at timestamp,
+        PRIMARY KEY (consumer_id, user_id)
+      );
     ]],
     teardown = function(connector)
       local coordinator = connector:connect_migrations()
@@ -1082,8 +1019,10 @@ CREATE TABLE IF NOT EXISTS admins (
       end
 
       -- create default roles if they do not exist (checking for read-only one)
-      local read_only_present = connector:query("select * from rbac_roles where name='default:read-only';")
-      if not read_only_present[1] then
+      local read_only_present = connector:query([[
+        SELECT * FROM rbac_roles WHERE name='default:read-only';
+      ]])
+      if not (read_only_present and read_only_present[1]) then
         assert(connector:query(seed_kong_admin_data_cas()))
       end
     end
