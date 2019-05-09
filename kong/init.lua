@@ -115,6 +115,31 @@ local declarative_entities
 local schema_state
 
 
+local reset_kong_shm
+do
+  local preserve_keys = {
+    "events:requests",
+    "kong:node_id",
+  }
+
+  reset_kong_shm = function()
+    local preserved = {}
+
+    for _, key in ipairs(preserve_keys) do
+      -- ignore errors
+      preserved[key] = ngx.shared.kong:get(key)
+    end
+
+    ngx.shared.kong:flush_all()
+    ngx.shared.kong:flush_expired(0)
+
+    for _, key in ipairs(preserve_keys) do
+      ngx.shared.kong:set(key, preserved[key])
+    end
+  end
+end
+
+
 local function execute_plugins_plan(ctx, phase)
   local plugins_plan = runloop.get_plugins_plan()
   local phase_plugins = plugins_plan.phases[phase]
@@ -234,6 +259,8 @@ end
 
 
 function Kong.init()
+  reset_kong_shm()
+
   -- special math.randomseed from kong.globalpatches not taking any argument.
   -- Must only be called in the init or init_worker phases, to avoid
   -- duplicated seeds.
