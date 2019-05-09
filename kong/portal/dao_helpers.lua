@@ -1,12 +1,14 @@
 local cjson      = require "cjson.safe"
 local constants  = require "kong.constants"
 local Errors     = require "kong.db.errors"
+local Schema     = require "kong.db.schema"
 local singletons = require "kong.singletons"
 local auth       = require "kong.portal.auth"
 local workspaces = require "kong.workspaces"
 local enums      = require "kong.enterprise_edition.dao.enums"
-local enterprise_utils = require "kong.enterprise_edition.utils"
 
+local enterprise_utils = require "kong.enterprise_edition.utils"
+local MetaSchema   = require "kong.db.schema.metaschema"
 local log = ngx.log
 local ERR = ngx.ERR
 local _log_prefix = "[developers] "
@@ -87,6 +89,136 @@ local function create_consumer(entity)
 end
 
 
+local function build_temp_record (input_fields)
+  if type(input_fields) ~= "table" then
+    return nil, 'config.portal_developer_meta_fields must be arrays'
+  end
+
+  local fields = {}
+  for _, v in ipairs(input_fields) do
+    if not v.title or type(v.title) ~= "string" then
+      return nil, 'portal_developer_meta_fields titles are required and must be strings'
+    end
+
+    if not v.validator or type(v.validator) ~= "table" or not v.validator.type then
+      return nil, 'portal_developer_meta_fields validator is required'
+    end
+
+    table.insert(fields, { [v.title] = v.validator })
+  end
+
+  return {
+    type = "record",
+    fields = fields,
+  }
+end
+
+local function validate_developer_meta_fields(input_fields)
+  input_fields = cjson.decode(input_fields)
+  if input_fields == nil then
+    return nil, 'error decoding developer meta fields'
+  end
+
+  local schema, err = build_temp_record(input_fields)
+  if not schema then
+    return nil, err
+  end
+
+  local temp = {
+    name          = "temp developer meta fields",
+    primary_key   = { "name" },
+    fields = {{ meta_field = schema }},
+  }
+
+  local ok, err_t = MetaSchema:validate(temp)
+  if not ok then
+    return nil, err_t
+  end
+
+  return ok
+end
+
+
+local function set_portal_developer_meta_fields(ws, entity)
+  local entity_config = entity.config or {}
+  if entity_config.portal_developer_meta_fields and
+    entity_config.portal_developer_meta_fields ~= ngx.null then
+
+    local meta_fields = entity_config.portal_developer_meta_fields
+    local ok, err = validate_developer_meta_fields(meta_fields)
+    if not ok then
+      return nil, err
+    end
+
+     entity.config.portal_developer_meta_fields = meta_fields
+  end
+
+  return entity
+end
+
+local function validate_incoming_developer_meta(ws, entity)
+  local ws_config = ws.config or {}
+  if ws_config.portal_developer_meta_fields and
+  ws_config.portal_developer_meta_fields ~= ngx.null  then
+
+    -- build temp schema to validate developer meta
+    -- against developer meta fields(json)
+    local meta_fields = cjson.decode(ws_config.portal_developer_meta_fields)
+    local temp_schema = build_temp_record(meta_fields)
+
+    local meta_fields_schema, err = Schema.new(temp_schema)
+    if not meta_fields_schema then
+      return nil, err
+    end
+
+    local meta = cjson.decode(entity.meta)
+    if not meta then
+      return nil, "meta param is invalid"
+    end
+
+    -- we need to strip empty strings for valiidation
+    for k, v in pairs(meta) do
+      if v == "" then
+        meta[k] = nil
+      end
+    end
+
+    for _, v in ipairs(meta_fields) do
+      -- frontend send will always send us numbers, so if a field is a number
+      -- convert it to a number for validation
+      if v.validator.type == "number" and meta[v.title] ~= nil then
+        -- tonumber will return nil if argument will not convert to number
+        -- however because this is being saved to a table,
+        -- if the field is optional the validator will approve this
+        -- to prevent this we only save the result if it is not nil
+        local meta_number = tonumber(meta[v.title])
+        if meta_number ~= nil then
+          meta[v.title] = meta_number
+        end
+      end
+      -- validate email
+      if v.is_email and meta[v.title] then
+        local ok, err = enterprise_utils.validate_email(meta[v.title])
+        if not ok then
+          return nil, meta[v.title] .. " is not a valid email " .. err
+        end
+      end
+    end
+
+    local ok, err = meta_fields_schema:validate_field(meta_fields_schema, meta)
+
+    if not ok then
+      return nil, err
+    end
+
+  elseif entity.meta then
+    return nil, "'config.portal_extra_fields' must be set to validate developer meta"
+  end
+
+  return entity
+end
+
+
 local function set_portal_auth_conf(ws, entity)
   local entity_config = entity.config or {}
 
@@ -135,19 +267,28 @@ local function set_portal_auth_conf(ws, entity)
 end
 
 
+
 local function create_developer(self, entity, options)
-  -- TODO: validate meta information
+  local workspace = ngx.ctx.workspaces and ngx.ctx.workspaces[1] or {}
 
-  -- local meta, err = cjson.decode(entity.meta)
-  -- if err then
-  --   return nil, nil, "cannot parse json"
-  -- end
+  if entity.email then
+    -- validate email
+    local ok, err = enterprise_utils.validate_email(entity.email)
+    if not ok then
+      local code = Errors.codes.SCHEMA_VIOLATION
+      local err_t = { code = code, fields = { email = err, }, }
+      return nil, err, err_t
+    end
+  end
 
-  -- local full_name = meta.full_name
-  -- if not full_name or full_name == "" then
-  --   local err_t = "meta param missing key: 'full_name'"
-  --   return nil, nil, err_t
-  -- end
+  -- validate develoer meta field against portal extra fields
+  local ok, err = validate_incoming_developer_meta(workspace, entity)
+  if not ok then
+   local code = Errors.codes.SCHEMA_VIOLATION
+   local err_t = { code = code, fields = { meta = err,}, }
+   local err = "developer update: error in validating developer meta fields "
+   return nil, err, err_t
+  end
 
   -- create developers consumer
   local consumer = create_consumer(entity)
@@ -215,9 +356,21 @@ end
 
 
 local function update_developer(self, developer, entity, options)
+
+  local workspace = ngx.ctx.workspaces and ngx.ctx.workspaces[1] or {}
+  -- validate developer meta field against portal extra fields
+  if entity.meta then
+    local ok, err = validate_incoming_developer_meta(workspace, entity)
+    if not ok then
+      local code = Errors.codes.SCHEMA_VIOLATION
+      local err_t = { code = code, fields = { meta = err,}, }
+      local err = "developer update: error in validating developer meta fields "
+      return nil, err, err_t
+    end
+  end
+
   -- check if email is being updated
   if entity.email and entity.email ~= developer.email then
-    local workspace = ngx.ctx.workspaces and ngx.ctx.workspaces[1] or {}
 
     -- validate email
     local ok, err = enterprise_utils.validate_email(entity.email)
@@ -326,4 +479,5 @@ return {
   create_developer = create_developer,
   update_developer = update_developer,
   set_portal_auth_conf = set_portal_auth_conf,
+  set_portal_developer_meta_fields = set_portal_developer_meta_fields,
 }

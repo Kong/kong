@@ -138,6 +138,7 @@ local function load_plugin_configuration(ctx,
                                         consumer_id,
                                         nil, -- placeholder for api_id
                                         true)
+  local ws_scope = ctx.workspaces or {}
   local plugin, err = load_plugin_into_memory_ws(ctx, key)
   trace:finish()
 
@@ -180,12 +181,17 @@ local function load_plugin_configuration(ctx,
   cfg.service_id  = plugin.service and plugin.service.id
   cfg.consumer_id = plugin.consumer and plugin.consumer.id
 
-  local plugin_ws = {
-    id = plugin.workspace_id,
-    name = plugin.workspace_name
-  }
-
-  ctx.workspaces = { plugin_ws }
+  -- when workspace scope is not empty or nil:
+  -- narrow the scope to workspace where plugin is found
+  -- add the workspace to plugin_configuration
+  if #ws_scope > 0 then
+    local plugin_ws = {
+      id = plugin.workspace_id,
+      name = plugin.workspace_name
+    }
+    ctx.workspaces = { plugin_ws }
+    cfg.workspace = plugin_ws
+  end
 
   return cfg
 end
@@ -296,9 +302,26 @@ local function get_next(self)
   end
 
   -- return the plugin configuration
-  local plugins_for_request = ctx.plugins_for_request
-  if plugins_for_request[plugin.name] then
-    return plugin, plugins_for_request[plugin.name]
+  local plugin_configuration = ctx.plugins_for_request[plugin.name]
+  if plugin_configuration then
+
+    -- when workspace scope not empty return plugin
+    -- only if it has workspace information.
+    -- even the global plugin will have workspace detail as it is re-fetched
+    -- plugins in access phase
+    if ctx.workspaces then
+      if plugin_configuration.workspace then
+        return plugin, plugin_configuration
+      end
+
+      -- ignore global plugin fetched in earlier phase
+      -- as it has not been applied in current workspace
+      return get_next(self)
+    end
+
+    -- when workspace scope empty, return global plugin
+    -- fetched in earlier phase
+    return plugin, plugin_configuration
   end
 
   return get_next(self) -- Load next plugin

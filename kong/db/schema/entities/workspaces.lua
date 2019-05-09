@@ -49,6 +49,8 @@ local config_schema = {
     { portal_emails_from = email },
     { portal_emails_reply_to = email },
     { portal_cors_origins = { type = "array", elements = { type = "string", is_regex = true } } },
+    { portal_developer_meta_fields = { type  = "string" , default =
+      "[{\"label\":\"Full Name\",\"title\":\"full_name\",\"validator\":{\"required\":true,\"type\":\"string\"}}]"} },
   }
 }
 

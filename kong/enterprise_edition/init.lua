@@ -197,6 +197,9 @@ function _M.prepare_portal(self, kong_config)
   local portal_gui_url = workspaces.build_ws_portal_gui_url(kong_config, workspace)
   local portal_auth = workspaces.retrieve_ws_config(ws_constants.PORTAL_AUTH, workspace)
 
+  local portal_developer_meta_fields =
+    workspaces.retrieve_ws_config(ws_constants.PORTAL_DEVELOPER_META_FIELDS, workspace, true) or '[]'
+
   return {
     PORTAL_API_URL = prepare_variable(kong_config.portal_api_url),
     PORTAL_AUTH = prepare_variable(portal_auth),
@@ -207,6 +210,7 @@ function _M.prepare_portal(self, kong_config)
     PORTAL_GUI_SSL_PORT = prepare_variable(portal_gui_ssl_port),
     PORTAL_IS_AUTHENTICATED = prepare_variable(is_authenticated),
     PORTAL_GUI_USE_SUBDOMAINS = prepare_variable(kong_config.portal_gui_use_subdomains),
+    PORTAL_DEVELOPER_META_FIELDS = prepare_variable(portal_developer_meta_fields),
     RBAC_ENFORCED = prepare_variable(rbac_enforced),
     RBAC_HEADER = prepare_variable(kong_config.rbac_auth_header),
     KONG_VERSION = prepare_variable(meta.versions.package),

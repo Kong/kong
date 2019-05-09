@@ -20,6 +20,7 @@ local function validate_insert(entity)
   return Developers:validate_insert(developer)
 end
 
+
 -- TODO DEVX: look into implementing update validation
 -- local function validate_update(entity)
 --   local Developers = Schema.new(developers)

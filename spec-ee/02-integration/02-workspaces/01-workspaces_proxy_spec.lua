@@ -1,5 +1,14 @@
 local helpers = require "spec.helpers"
 local run_ws = require "kong.workspaces".run_with_ws_scope
+local utils = require "kong.tools.utils"
+local pl_path = require "pl.path"
+local pl_file = require "pl.file"
+local pl_stringx = require "pl.stringx"
+local cjson = require "cjson"
+
+
+local LOG_WAIT_TIMEOUT = 10
+
 
 for _, strategy in helpers.each_strategy() do
   describe("Plugin execution is restricted to correct workspace #" .. strategy, function()
@@ -385,6 +394,249 @@ for _, strategy in helpers.each_strategy() do
         end, 7)
         assert.response(res).has.jsonbody()
       end)
+    end)
+  end)
+  describe("proxy-intercepted error #" .. strategy, function()
+    local FILE_LOG_PATH_DEFAULT = os.tmpname()
+    local FILE_LOG_PATH_FOO = os.tmpname()
+    local FILE_LOG_PATH = os.tmpname()
+    local proxy_client
+
+    lazy_setup(function()
+      local bp = helpers.get_db_utils(strategy, {
+        "routes",
+        "services",
+        "plugins",
+      }, {
+        "error-handler-log",
+      })
+
+      local ws_foo = bp.workspaces:insert({name = "foo"})
+      do
+        -- service to mock HTTP 502
+        local mock_service_default = bp.services:insert {
+          name            = "timeout",
+          host            = "httpbin.org",
+          connect_timeout = 1, -- ms
+        }
+
+        bp.routes:insert {
+          hosts     = { "timeout-default" },
+          protocols = { "http" },
+          service   = mock_service_default,
+        }
+
+        bp.plugins:insert {
+          name     = "file-log",
+          service  = { id = mock_service_default.id },
+          config   = {
+            path   = FILE_LOG_PATH_DEFAULT,
+            reopen = true,
+          }
+        }
+
+        local mock_service_foo = bp.services:insert_ws( {
+          name            = "timeout",
+          host            = "httpbin.org",
+          connect_timeout = 1, -- ms
+        }, ws_foo)
+
+        bp.routes:insert_ws({
+          hosts     = { "timeout-foo" },
+          protocols = { "http" },
+          service   = mock_service_foo,
+        }, ws_foo)
+
+        bp.plugins:insert_ws( {
+          name     = "file-log",
+          service  = { id = mock_service_foo.id },
+          config   = {
+            path   = FILE_LOG_PATH_FOO,
+            reopen = true,
+          }
+        }, ws_foo)
+      end
+
+      do
+        -- global plugin to catch Nginx-produced client errors
+        -- added in default ws
+        bp.plugins:insert {
+          name = "file-log",
+          config = {
+            path = FILE_LOG_PATH,
+            reopen = true,
+          }
+        }
+
+        -- global plugin to catch Nginx-produced client errors
+        -- added in foo ws
+        bp.plugins:insert_ws ({
+          name = "error-handler-log",
+          config = {},
+        }, ws_foo)
+      end
+
+      -- start mock httpbin instance
+      assert(helpers.start_kong {
+        database = strategy,
+        admin_listen = "127.0.0.1:9011",
+        proxy_listen = "127.0.0.1:9010",
+        proxy_listen_ssl = "127.0.0.1:9453",
+        admin_listen_ssl = "127.0.0.1:9454",
+        prefix = "servroot2",
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+      })
+
+      -- start Kong instance with our services and plugins
+      assert(helpers.start_kong {
+        database = strategy,
+        db_update_propagation = strategy == "cassandra" and 3 or 0
+      })
+    end)
+
+
+    lazy_teardown(function()
+      helpers.stop_kong("servroot2")
+      helpers.stop_kong()
+    end)
+
+
+    before_each(function()
+      proxy_client = helpers.proxy_client()
+    end)
+
+
+    after_each(function()
+      pl_file.delete(FILE_LOG_PATH_DEFAULT)
+      pl_file.delete(FILE_LOG_PATH_FOO)
+      pl_file.delete(FILE_LOG_PATH)
+
+      if proxy_client then
+        proxy_client:close()
+      end
+    end)
+
+
+    it("executes ws default plugins on Bad Gateway (HTTP 504)", function()
+      -- triggers error_page directive
+      local uuid = utils.uuid()
+
+      local res = assert(proxy_client:send {
+        method = "GET",
+        path = "/status/200",
+        headers = {
+          ["Host"] = "timeout-default",
+          ["X-UUID"] = uuid,
+        }
+      })
+      assert.res_status(504, res) -- Bad Gateway
+      -- should not execute foo workspace plugin for server error
+      assert.is_nil(res.headers["Log-Plugin-Phases"])
+
+      -- TEST: ensure that our logging plugin was executed and wrote
+      -- something to disk.
+
+      helpers.wait_until(function()
+        return pl_path.exists(FILE_LOG_PATH_DEFAULT)
+          and pl_path.getsize(FILE_LOG_PATH_DEFAULT) > 0
+      end, LOG_WAIT_TIMEOUT)
+
+      local log = pl_file.read(FILE_LOG_PATH_DEFAULT)
+      local log_message = cjson.decode(pl_stringx.strip(log))
+      assert.equal("127.0.0.1", log_message.client_ip)
+      assert.equal(uuid, log_message.request.headers["x-uuid"])
+    end)
+
+
+    it("executes workspace foo plugins on Bad Gateway (HTTP 504)", function()
+      -- triggers error_page directive
+      local uuid = utils.uuid()
+
+      local res = assert(proxy_client:send {
+        method = "GET",
+        path = "/status/200",
+        headers = {
+          ["Host"] = "timeout-foo",
+          ["X-UUID"] = uuid,
+        }
+      })
+      assert.res_status(504, res) -- Bad Gateway
+      assert.equal("rewrite,access,header_filter", res.headers["Log-Plugin-Phases"])
+
+      -- TEST: ensure that our logging plugin was executed and wrote
+      -- something to disk.
+
+      helpers.wait_until(function()
+        return pl_path.exists(FILE_LOG_PATH_FOO)
+          and pl_path.getsize(FILE_LOG_PATH_FOO) > 0
+      end, LOG_WAIT_TIMEOUT)
+
+      local log = pl_file.read(FILE_LOG_PATH_FOO)
+      local log_message = cjson.decode(pl_stringx.strip(log))
+      assert.equal("127.0.0.1", log_message.client_ip)
+      assert.equal(uuid, log_message.request.headers["x-uuid"])
+    end)
+
+
+    it("executes global plugins on Nginx-produced client errors (HTTP 494) for default ws service", function()
+      -- triggers error_page directive
+      local uuid = utils.uuid()
+
+      local res = assert(proxy_client:send {
+        method = "GET",
+        path = "/",
+        headers = {
+          ["Host"] = "refused",
+          ["X-Large"] = string.rep("a", 2^10 * 10), -- default large_client_header_buffers is 8k
+          ["X-UUID"] = uuid,
+        }
+      })
+      assert.res_status(494, res)
+
+      -- TEST: ensure that our logging plugin was executed and wrote
+      -- something to disk.
+
+      helpers.wait_until(function()
+        return pl_path.exists(FILE_LOG_PATH)
+          and pl_path.getsize(FILE_LOG_PATH) > 0
+      end, LOG_WAIT_TIMEOUT)
+
+      local log = pl_file.read(FILE_LOG_PATH)
+      local log_message = cjson.decode(pl_stringx.strip(log))
+
+      assert.equal(uuid, log_message.request.headers["x-uuid"])
+      assert.equal("header_filter", res.headers["Log-Plugin-Phases"])
+      assert.equal(494, log_message.response.status)
+    end)
+
+    it("executes global plugins from workspace default and foo on Nginx-produced client errors (HTTP 494) for foo ws service", function()
+      local uuid = utils.uuid()
+
+      local res = assert(proxy_client:send {
+        method = "GET",
+        path = "/",
+        headers = {
+          ["Host"] = "refused-foo",
+          ["X-Large"] = string.rep("a", 2^10 * 10), -- default large_client_header_buffers is 8k
+          ["X-UUID"] = uuid,
+        }
+      })
+      assert.res_status(494, res)
+
+      -- TEST: ensure that our logging plugin was executed and wrote
+      -- something to disk.
+
+      helpers.wait_until(function()
+        return pl_path.exists(FILE_LOG_PATH)
+          and pl_path.getsize(FILE_LOG_PATH) > 0
+      end, LOG_WAIT_TIMEOUT)
+
+      local log = pl_file.read(FILE_LOG_PATH)
+      local log_message = cjson.decode(pl_stringx.strip(log))
+
+      assert.equal(uuid, log_message.request.headers["x-uuid"])
+      assert.equal("header_filter", res.headers["Log-Plugin-Phases"])
+      assert.equal(494, log_message.response.status)
     end)
   end)
 end

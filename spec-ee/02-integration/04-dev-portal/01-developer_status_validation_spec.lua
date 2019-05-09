@@ -86,6 +86,7 @@ describe("Developer status validation for " .. auth_type .. " [#" .. strategy ..
       status   = enums.CONSUMERS.STATUS.APPROVED,
       password = "password-approved_developer@konghq.com",
       key = "key-approved_developer@konghq.com",
+      meta = '{"full_name":"Approved Name"}',
     }
 
     pending_developer = db.developers:insert {
@@ -93,6 +94,7 @@ describe("Developer status validation for " .. auth_type .. " [#" .. strategy ..
       status   = enums.CONSUMERS.STATUS.PENDING,
       password = "password-pending_developer@konghq.com",
       key = "key-pending_developer@konghq.com",
+      meta = '{"full_name":"Pending Name"}',
     }
 
     rejected_developer = db.developers:insert {
@@ -100,6 +102,7 @@ describe("Developer status validation for " .. auth_type .. " [#" .. strategy ..
       status   = enums.CONSUMERS.STATUS.REJECTED,
       password = "password-rejected_developer@konghq.com",
       key = "key-rejected_developer@konghq.com",
+      meta = '{"full_name":"Rejected Name"}',
     }
 
     revoked_developer = db.developers:insert {
@@ -107,6 +110,7 @@ describe("Developer status validation for " .. auth_type .. " [#" .. strategy ..
       status   = enums.CONSUMERS.STATUS.REVOKED,
       password = "password-revoked_developer@konghq.com",
       key = "key-revoked_developer@konghq.com",
+      meta = '{"full_name":"Revoked Name"}',
     }
 
     invited_developer = db.developers:insert {
@@ -114,6 +118,7 @@ describe("Developer status validation for " .. auth_type .. " [#" .. strategy ..
       status   = enums.CONSUMERS.STATUS.INVITED,
       password = "password-invited_developer@konghq.com",
       key = "key-invited_developer@konghq.com",
+      meta = '{"full_name":"Invited Name"}',
     }
 
     assert(helpers.start_kong({

@@ -127,7 +127,8 @@ describe("portal_gui", function()
 
     it("inserts the appropriate values with empty config", function()
       stub(workspaces, "get_workspace").returns({
-        name = "default"
+        name = "default",
+        config = {},
       })
 
       singletons.configuration = {
@@ -137,6 +138,7 @@ describe("portal_gui", function()
       index_conf = ee.prepare_portal({
         workspace = {
           name = "default",
+          config = {},
         },
       }, conf)
 
@@ -150,6 +152,7 @@ describe("portal_gui", function()
         PORTAL_GUI_PORT = "8003",
         PORTAL_GUI_SSL_PORT = "8446",
         PORTAL_GUI_USE_SUBDOMAINS = 'false',
+        PORTAL_DEVELOPER_META_FIELDS = "[]",
         RBAC_ENFORCED = 'false',
         RBAC_HEADER = "Kong-Admin-Token",
         KONG_VERSION = tostring(meta.versions.package),
@@ -159,7 +162,8 @@ describe("portal_gui", function()
 
     it("inserts the appropriate values with different workspace name", function()
       stub(workspaces, "get_workspace").returns({
-        name = "gruce"
+        name = "gruce",
+        config = {},
       })
 
       index_conf = ee.prepare_portal({}, conf)
@@ -174,6 +178,7 @@ describe("portal_gui", function()
         PORTAL_GUI_PORT = "8003",
         PORTAL_GUI_SSL_PORT = "8446",
         PORTAL_GUI_USE_SUBDOMAINS = 'false',
+        PORTAL_DEVELOPER_META_FIELDS = "[]",
         RBAC_ENFORCED = 'false',
         RBAC_HEADER = "Kong-Admin-Token",
         KONG_VERSION = tostring(meta.versions.package),
@@ -185,6 +190,7 @@ describe("portal_gui", function()
       stub(workspaces, "get_workspace").returns({
         config = {
           portal_auth = "key-auth",
+          portal_developer_meta_fields = '[{"dog": "cat"}]'
         },
         name = "default"
       })
@@ -203,6 +209,7 @@ describe("portal_gui", function()
         PORTAL_GUI_PORT = "8003",
         PORTAL_GUI_SSL_PORT = "8446",
         PORTAL_GUI_USE_SUBDOMAINS = 'false',
+        PORTAL_DEVELOPER_META_FIELDS = '[{"dog": "cat"}]',
         RBAC_ENFORCED = 'false',
         RBAC_HEADER = "Kong-Admin-Token",
         KONG_VERSION = tostring(meta.versions.package),
