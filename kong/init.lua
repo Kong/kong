@@ -608,21 +608,14 @@ function Kong.ssl_certificate()
     return ngx.exit(ngx.ERROR)
   end
 
-  local old_ws = ctx.workspaces
   for plugin, plugin_conf in plugins_iterator(ctx, loaded_plugins,
                                               configured_plugins, true) do
-    -- run certificate phase in global scope
-    ctx.workspaces = {}
 
     kong_global.set_namespaced_log(kong, plugin.name)
     plugin.handler:certificate(plugin_conf)
     kong_global.reset_log(kong)
   end
 
-  ctx.workspaces = old_ws
-  -- empty `plugins_for_request` table - this phase runs in a global scope, so
-  -- such table will have plugins that aren't part of this request's workspaces
-  ctx.plugins_for_request = {}
 end
 
 function Kong.balancer()
@@ -741,14 +734,11 @@ function Kong.rewrite()
     return responses.send_HTTP_INTERNAL_SERVER_ERROR()
   end
 
-  local old_ws = ctx.workspaces
   -- we're just using the iterator, as in this rewrite phase no consumer nor
   -- api will have been identified, hence we'll just be executing the global
   -- plugins
   for plugin, plugin_conf in plugins_iterator(ctx, loaded_plugins,
                                               configured_plugins, true) do
-    -- run certificate phase in global scope
-    ctx.workspaces = {}
 
     kong_global.set_named_ctx(kong, "plugin", plugin_conf)
     kong_global.set_namespaced_log(kong, plugin.name)
@@ -757,11 +747,6 @@ function Kong.rewrite()
 
     kong_global.reset_log(kong)
   end
-
-  ctx.workspaces = old_ws
-  -- empty `plugins_for_request` table - this phase runs in a global scope, so
-  -- such table will have plugins that aren't part of this request's workspaces
-  ctx.plugins_for_request = {}
 
   runloop.rewrite.after(ctx)
 end
@@ -891,8 +876,7 @@ function Kong.log()
   -- So we would need to reload the plugins(global) which apply to the request by
   -- setting access_or_cert_ctx to true.
   for plugin, plugin_conf in plugins_iterator(ctx, loaded_plugins,
-                                              configured_plugins,
-                                              not ctx.workspaces) do
+                                              configured_plugins) do
     kong_global.set_named_ctx(kong, "plugin", plugin_conf)
     kong_global.set_namespaced_log(kong, plugin.name)
 
