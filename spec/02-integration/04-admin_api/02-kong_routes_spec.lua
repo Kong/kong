@@ -150,6 +150,121 @@ describe("Admin API - Kong routes with strategy #" .. strategy, function()
 
       assert.is_true(json.database.reachable)
     end)
+
+    describe("memory stats", function()
+      it("returns lua_shared_dicts memory stats", function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/status",
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        local lua_shared_dicts = json.memory.lua_shared_dicts
+
+        assert.matches("%d+%.%d+ MiB", lua_shared_dicts.kong.capacity)
+        assert.matches("%d+%.%d+ MiB", lua_shared_dicts.kong.allocated_slabs)
+        assert.matches("%d+%.%d+ MiB", lua_shared_dicts.kong_db_cache.capacity)
+        assert.matches("%d+%.%d+ MiB", lua_shared_dicts.kong_db_cache.allocated_slabs)
+      end)
+
+      it("returns workers Lua VM allocated memory", function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/status",
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        local workers_lua_vms = json.memory.workers_lua_vms
+
+        for _, worker in ipairs(workers_lua_vms) do
+          assert.matches("%d+%.%d+ MiB", worker.allocated_gc)
+          assert.matches("%d+", worker.pid)
+        end
+      end)
+
+      it("returns workers in ascending PID values", function()
+        do
+          -- restart with 2 workers
+          if client then
+            client:close()
+          end
+
+          helpers.stop_kong()
+
+          assert(helpers.start_kong {
+            nginx_worker_processes = 2,
+          })
+
+          client = helpers.admin_client(10000)
+        end
+
+        finally(function()
+          -- restart with default number of workers
+          if client then
+            client:close()
+          end
+
+          helpers.stop_kong()
+          assert(helpers.start_kong())
+          client = helpers.admin_client(10000)
+        end)
+
+        local res = assert(client:send {
+          method = "GET",
+          path = "/status",
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        local workers_lua_vms = json.memory.workers_lua_vms
+
+        if #workers_lua_vms > 1 then
+          for i = 1, #workers_lua_vms do
+            if workers_lua_vms[i + 1] then
+              assert.gt(workers_lua_vms[i + 1].pid, workers_lua_vms[i].pid)
+            end
+          end
+        end
+      end)
+
+      it("accepts a 'unit' querystring argument", function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/status?unit=k",
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        local lua_shared_dicts = json.memory.lua_shared_dicts
+        local workers_lua_vms = json.memory.workers_lua_vms
+
+        assert.matches("%d+%.%d+ KiB", lua_shared_dicts.kong.capacity)
+        assert.matches("%d+%.%d+ KiB", workers_lua_vms[1].allocated_gc)
+      end)
+
+      it("accepts a 'scale' querystring argument", function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/status?scale=3",
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        local lua_shared_dicts = json.memory.lua_shared_dicts
+        local workers_lua_vms = json.memory.workers_lua_vms
+
+        assert.matches("%d+%.%d%d%d MiB", lua_shared_dicts.kong.capacity)
+        assert.matches("%d+%.%d%d%d MiB", workers_lua_vms[1].allocated_gc)
+      end)
+
+      it("returns HTTP 400 on invalid 'unit' querystring parameter", function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/status?unit=V",
+        })
+        local body = assert.res_status(400, res)
+        local json = cjson.decode(body)
+        assert.equal("invalid unit 'V' (expected 'k/K', 'm/M', or 'g/G')",
+                     json.message)
+      end)
+    end)
   end)
 
   describe("/schemas/:entity", function()
