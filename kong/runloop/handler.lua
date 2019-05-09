@@ -367,7 +367,7 @@ return {
         -- invalidate this entity anywhere it is cached if it has a
         -- caching key
 
-        local cache_key = db[data.schema.name]:cache_key(data.entity, nil, nil, nil, true)
+        local cache_key = db[data.schema.name]:cache_key(data.entity, nil, nil, nil, nil, true)
 
         if cache_key then
           cache:invalidate(cache_key, workspaces)
