@@ -9,6 +9,11 @@ function _Workspaces:insert(entity, options)
     return kong.response.exit(400, { message = err })
   end
 
+  entity, err = portal_helpers.set_portal_developer_meta_fields({}, entity)
+  if not entity then
+    return kong.response.exit(400, { message = err })
+  end
+
   return self.super.insert(self, entity, options)
 end
 
@@ -24,6 +29,10 @@ function _Workspaces:update(workspace_pk, entity, options)
     return kong.response.exit(400, { message = err })
   end
 
+  entity, err = portal_helpers.set_portal_developer_meta_fields({}, entity)
+  if not entity then
+    return kong.response.exit(400, { message = err })
+  end
 
   return self.super.update(self, { id = ws.id }, entity, options)
 end
@@ -36,6 +45,11 @@ function _Workspaces:update_by_name(workspace_name, entity, options)
   end
 
   entity, err = portal_helpers.set_portal_auth_conf(ws, entity)
+  if not entity then
+    return kong.response.exit(400, { message = err })
+  end
+
+  entity, err = portal_helpers.set_portal_developer_meta_fields({}, entity)
   if not entity then
     return kong.response.exit(400, { message = err })
   end

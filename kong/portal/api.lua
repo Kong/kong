@@ -13,7 +13,7 @@ local secrets            = require "kong.enterprise_edition.consumer_reset_secre
 
 local kong = kong
 
-
+local PORTAL_DEVELOPER_META_FIELDS = constants.WORKSPACE_CONFIG.PORTAL_DEVELOPER_META_FIELDS
 local PORTAL_AUTH = constants.WORKSPACE_CONFIG.PORTAL_AUTH
 local PORTAL_AUTO_APPROVE = constants.WORKSPACE_CONFIG.PORTAL_AUTO_APPROVE
 local PORTAL_TOKEN_EXP = constants.WORKSPACE_CONFIG.PORTAL_TOKEN_EXP
@@ -42,6 +42,7 @@ local function get_developer_status()
 
   return enums.CONSUMERS.STATUS.PENDING
 end
+
 
 local function get_workspace()
   return ngx.ctx.workspaces and ngx.ctx.workspaces[1] or {}
@@ -192,8 +193,10 @@ return {
 
       if developer.status == enums.CONSUMERS.STATUS.PENDING then
         local portal_emails = portal_smtp_client.new()
+        -- if name does not exist, we use the email for email template
+        local name_or_email = developer.meta.full_name or developer.email
         local email, err = portal_emails:access_request(developer.email,
-                                                      developer.meta.full_name)
+                            name_or_email)
         if err then
           if err.code then
             return kong.response.exit(err.code, { message = err.message })
@@ -378,6 +381,18 @@ return {
     end
   },
 
+  ["/developer/meta_fields"] = {
+    before = function(self, dao_factory, helpers)
+      crud_helpers.exit_if_portal_disabled()
+    end,
+
+    GET = function(self, dao_factory, helpers)
+      local workspace = get_workspace()
+      local developer_extra_fields = workspaces.retrieve_ws_config(PORTAL_DEVELOPER_META_FIELDS, workspace)
+      return kong.response.exit(200, developer_extra_fields)
+    end,
+  },
+
   ["/developer/password"] = {
     before = function(self, db, helpers)
       auth.authenticate_api_session(self, db, helpers)
@@ -452,44 +467,31 @@ return {
       auth.authenticate_api_session(self, db, helpers)
     end,
 
-    PATCH = function(self, db, helpers)
+    -- PUT is used by portal gui to avoid issues with validation after schema change
+    PUT = function(self, db, helpers)
       local meta_params = self.params.meta and cjson.decode(self.params.meta)
 
       if not meta_params then
         return kong.response.exit(400, { message = "meta required" })
       end
 
-      local current_dev_meta = self.developer.meta and
-                                               cjson.decode(self.developer.meta)
-
-      if not current_dev_meta then
-        return kong.response.exit(404, { message = "Not found" })
-      end
-
-      -- Iterate over meta update params and assign them to current meta
-      for k, v in pairs(meta_params) do
-        -- Only assign values that are already in the current meta
-        if current_dev_meta[k] then
-          current_dev_meta[k] = v
-        end
-      end
-
-      local ok, err = db.developers:update({
+      local developer, _, err = db.developers:update({
         id = self.developer.id
       }, {
-        meta = cjson.encode(current_dev_meta)
+        meta = cjson.encode(meta_params)
       })
 
       if err then
         return endpoints.handle_error(err)
       end
 
-      if not ok then
+      if not developer then
         return kong.response.exit(404, { message = "Not found" })
       end
 
-      return kong.response.exit(204)
+      return kong.response.exit(200)
     end,
+
   },
 
   ["/credentials/:plugin"] = {

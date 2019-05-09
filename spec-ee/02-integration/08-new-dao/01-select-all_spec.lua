@@ -133,13 +133,13 @@ for _, strategy in helpers.each_strategy() do
           local ws1 = assert(bp.workspaces:insert({ name = "ws_11" }))
           local ws2 = assert(bp.workspaces:insert({ name = "ws_22" }))
 
-          local c1 = assert(bp.developers:insert_ws({ email = "developer1@example.com" }, ws1))
-          local c2 = assert(bp.developers:insert_ws({ email = "developer2@example.com" }, ws1))
-          local c3 = assert(bp.developers:insert_ws({ email = "developer3@example.com" }, ws1))
+          local c1 = assert(bp.developers:insert_ws({ email = "developer1@example.com" , meta = '{"full_name":"Test Name"}' }, ws1))
+          local c2 = assert(bp.developers:insert_ws({ email = "developer2@example.com" , meta = '{"full_name":"Test Name"}' }, ws1))
+          local c3 = assert(bp.developers:insert_ws({ email = "developer3@example.com" , meta = '{"full_name":"Test Name"}' }, ws1))
 
-          local c4 = assert(bp.developers:insert_ws({ email = "developer4@example.com" }, ws2))
-          local c5 = assert(bp.developers:insert_ws({ email = "developer5@example.com" }, ws2))
-          local c6 = assert(bp.developers:insert_ws({ email = "developer6@example.com" }, ws2))
+          local c4 = assert(bp.developers:insert_ws({ email = "developer4@example.com" , meta = '{"full_name":"Test Name"}' }, ws2))
+          local c5 = assert(bp.developers:insert_ws({ email = "developer5@example.com" , meta = '{"full_name":"Test Name"}' }, ws2))
+          local c6 = assert(bp.developers:insert_ws({ email = "developer6@example.com" , meta = '{"full_name":"Test Name"}' }, ws2))
 
           local sort = function(a, b)
             return a.email < b.email

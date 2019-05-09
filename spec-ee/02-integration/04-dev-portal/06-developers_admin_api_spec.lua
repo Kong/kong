@@ -77,7 +77,8 @@ describe("Admin API - Developer Portal - " .. strategy, function()
       lazy_setup(function()
         for i = 1, 5 do
           assert(db.developers:insert {
-            email = "developer-" .. i .. "@dog.com"
+            email = "developer-" .. i .. "@dog.com",
+            meta = '{"full_name":"Testy Mctesty Face"}',
           })
         end
         configure_portal()
@@ -100,7 +101,8 @@ describe("Admin API - Developer Portal - " .. strategy, function()
       it("filters by developer status", function()
         assert(db.developers:insert {
           email = "developer-pending@dog.com",
-          status = enums.CONSUMERS.STATUS.PENDING
+          status = enums.CONSUMERS.STATUS.PENDING,
+          meta = '{"full_name":"Pending Name"}',
         })
 
         local res = assert(client:send {
@@ -284,6 +286,213 @@ describe("Admin API - Developer Portal - " .. strategy, function()
         local fields = resp_body_json.fields
 
         assert.equal("already exists with value 'fancypants@konghq.com'", fields.email)
+      end)
+
+      it("updates the developer meta with valid meta", function()
+        local meta = '{"full_name":"Testy Facey McTesty Test"}'
+        local res = assert(client:send {
+          method = "PATCH",
+          body = {
+            meta = meta,
+          },
+          path = "/developers/".. developer.id,
+          headers = {
+            ["Content-Type"] = "application/json",
+          }
+        })
+
+        local body = assert.res_status(200, res)
+        local resp_body_json = cjson.decode(body)
+
+        assert.equals(meta, resp_body_json.developer.meta)
+      end)
+
+      it("updates email meta with validation against developer_meta_fields", function()
+        local meta_fields = cjson.encode({{
+            label = "personal email",
+            title = "p_email",
+            is_email = true,
+            validator = {
+              type = "string",
+              required = true,
+            },
+          }
+        })
+        assert(db.workspaces:upsert_by_name("default", {
+          name = "default",
+          config = {
+            portal = true,
+            portal_auth = "basic-auth",
+            portal_developer_meta_fields = meta_fields
+          }
+        }))
+
+        local bad_email_meta = '{"p_email":"McTesty Test"}'
+        local res = assert(client:send {
+          method = "PATCH",
+          body = {
+            meta = bad_email_meta,
+          },
+          path = "/developers/".. developer.id,
+          headers = {
+            ["Content-Type"] = "application/json",
+          }
+        })
+
+        local body = assert.res_status(400, res)
+        local resp_body_json = cjson.decode(body)
+
+        assert.equals("McTesty Test is not a valid email missing '@' symbol", resp_body_json.fields.meta)
+
+        local good_email_meta = '{"p_email":"mctesty.test@whodis.com"}'
+        local res = assert(client:send {
+          method = "PATCH",
+          body = {
+            meta = good_email_meta,
+          },
+          path = "/developers/".. developer.id,
+          headers = {
+            ["Content-Type"] = "application/json",
+          }
+        })
+
+        local body = assert.res_status(200, res)
+        local resp_body_json = cjson.decode(body)
+
+        assert.equals(good_email_meta, resp_body_json.developer.meta)
+      end)
+
+      it("updates number meta with validation against developer_meta_fields", function()
+        local meta_fields = cjson.encode({{
+            label = "Magic Number",
+            title = "magic_number",
+            validator = {
+              type = "number",
+              required = true,
+            },
+          }
+        })
+        assert(db.workspaces:upsert_by_name("default", {
+          name = "default",
+          config = {
+            portal = true,
+            portal_auth = "basic-auth",
+            portal_developer_meta_fields = meta_fields
+          }
+        }))
+        local bad_meta = '{"magic_number":"not a number"}'
+        local res = assert(client:send {
+          method = "PATCH",
+          body = {
+            meta = bad_meta,
+          },
+          path = "/developers/".. developer.id,
+          headers = {
+            ["Content-Type"] = "application/json",
+          }
+        })
+
+        local body = assert.res_status(400, res)
+        local resp_body_json = cjson.decode(body)
+
+        assert.equals('expected a number', resp_body_json.fields.meta.magic_number)
+
+        -- We expect the front end to input stringy numbers
+        local good_meta = '{"magic_number":"42"}'
+        local res = assert(client:send {
+          method = "PATCH",
+          body = {
+            meta = good_meta,
+          },
+          path = "/developers/".. developer.id,
+          headers = {
+            ["Content-Type"] = "application/json",
+          }
+        })
+
+        local body = assert.res_status(200, res)
+        local resp_body_json = cjson.decode(body)
+
+        assert.equals(good_meta, resp_body_json.developer.meta)
+      end)
+
+      it("updates developer meta but only fully, no partial meta update", function()
+        local meta_fields = cjson.encode({{
+            label = "Full Name",
+            title = "full_name",
+            validator = {
+              type = "string",
+              required = true,
+            }
+          }, {
+            label = "Personal Email",
+            title = "personal_email",
+            is_email = true,
+            validator = {
+              type = "string",
+              required = true,
+            }
+          },
+        })
+        assert(db.workspaces:upsert_by_name("default", {
+          name = "default",
+          config = {
+            portal = true,
+            portal_auth = "basic-auth",
+            portal_developer_meta_fields = meta_fields
+          }
+        }))
+        --set orginal meta
+        local orginal_meta = '{"full_name":"Gruce", "personal_email": "gruce@konghq.com"}'
+        local res = assert(client:send {
+          method = "PATCH",
+          body = {
+            meta = orginal_meta,
+          },
+          path = "/developers/".. developer.id,
+          headers = {
+            ["Content-Type"] = "application/json",
+          }
+        })
+
+        local body = assert.res_status(200, res)
+        local resp_body_json = cjson.decode(body)
+
+        assert.equals(orginal_meta, resp_body_json.developer.meta)
+
+        local bad_meta = '{"personal_email":"mr.gruce@konghq.com"}'
+        local res = assert(client:send {
+          method = "PATCH",
+          body = {
+            meta = bad_meta,
+          },
+          path = "/developers/".. developer.id,
+          headers = {
+            ["Content-Type"] = "application/json",
+          }
+        })
+
+        local body = assert.res_status(400, res)
+        local resp_body_json = cjson.decode(body)
+
+        assert.equals("required field missing", resp_body_json.fields.meta.full_name)
+
+        local new_meta = '{"full_name":"Mr. Gruce", "personal_email": "gruce@konghq.com"}'
+        local res = assert(client:send {
+          method = "PATCH",
+          body = {
+            meta = new_meta,
+          },
+          path = "/developers/".. developer.id,
+          headers = {
+            ["Content-Type"] = "application/json",
+          }
+        })
+
+        local body = assert.res_status(200, res)
+        local resp_body_json = cjson.decode(body)
+
+        assert.equals(new_meta, resp_body_json.developer.meta)
       end)
 
       describe("smtp", function()

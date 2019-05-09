@@ -136,5 +136,6 @@ return {
     PORTAL_EMAILS_REPLY_TO = "portal_emails_reply_to",
     PORTAL_SESSION_CONF = "portal_session_conf",
     PORTAL_CORS_ORIGINS = "portal_cors_origins",
+    PORTAL_DEVELOPER_META_FIELDS = "portal_developer_meta_fields",
   }
 }

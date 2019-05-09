@@ -475,9 +475,7 @@ for _, strategy in helpers.each_strategy() do
               assert.equal("required field missing", message)
             end)
 
-            -- XXX DEVX
-            -- TODO Validate META
-            pending("returns a 400 if meta is missing", function()
+            it("returns a 400 if meta is missing", function()
               local res = register_developer(portal_api_client, {
                 email = "gruce@konghq.com",
                 password = "kong",
@@ -486,11 +484,11 @@ for _, strategy in helpers.each_strategy() do
               local body = assert.res_status(400, res)
               local resp_body_json = cjson.decode(body)
               local message = resp_body_json.fields.meta
+              assert.equal("meta param is invalid", message)
 
-              assert.equal("meta param is missing", message)
             end)
 
-            pending("returns a 400 if meta is invalid", function()
+            it("returns a 400 if meta is invalid", function()
               local res = register_developer(portal_api_client, {
                 email = "gruce@konghq.com",
                 password = "kong",
@@ -499,23 +497,9 @@ for _, strategy in helpers.each_strategy() do
 
               local body = assert.res_status(400, res)
               local resp_body_json = cjson.decode(body)
-              local message = resp_body_json.message
+              local message = resp_body_json.fields.meta
 
               assert.equal("meta param is invalid", message)
-            end)
-
-            pending("returns a 400 if meta.full_name key is missing", function()
-              local res = register_developer(portal_api_client, {
-                email = "gruce@konghq.com",
-                password = "kong",
-                meta = "{\"something_else\":\"not full name\"}",
-              })
-
-              local body = assert.res_status(400, res)
-              local resp_body_json = cjson.decode(body)
-              local message = resp_body_json.message
-
-              assert.equal("meta param missing key: 'full_name'", message)
             end)
 
             it("registers a developer and set status to pending", function()
@@ -628,7 +612,7 @@ for _, strategy in helpers.each_strategy() do
 
             -- XXX DEVX
             -- Enable these when meta validation is in place
-            pending("returns a 400 if meta is missing", function()
+            it("returns a 400 if meta is missing", function()
               local res = register_developer(portal_api_client, {
                 email = "gruce@konghq.com",
                 key = "kong",
@@ -636,12 +620,12 @@ for _, strategy in helpers.each_strategy() do
 
               local body = assert.res_status(400, res)
               local resp_body_json = cjson.decode(body)
-              local message = resp_body_json.message
+              local message = resp_body_json.fields.meta
 
-              assert.equal("meta param is missing", message)
+              assert.equal("meta param is invalid", message)
             end)
 
-            pending ("returns a 400 if meta is invalid", function()
+            it("returns a 400 if meta is invalid", function()
               local res = register_developer(portal_api_client, {
                 email = "gruce@konghq.com",
                 key = "kong",
@@ -650,12 +634,12 @@ for _, strategy in helpers.each_strategy() do
 
               local body = assert.res_status(400, res)
               local resp_body_json = cjson.decode(body)
-              local message = resp_body_json.message
+              local message = resp_body_json.fields.meta
 
               assert.equal("meta param is invalid", message)
             end)
 
-            pending("returns a 400 if meta.full_name key is missing", function()
+            it("returns a 400 if meta.full_name key is missing", function()
               local res = register_developer(portal_api_client, {
                 email = "gruce@konghq.com",
                 key = "kong",
@@ -664,9 +648,11 @@ for _, strategy in helpers.each_strategy() do
 
               local body = assert.res_status(400, res)
               local resp_body_json = cjson.decode(body)
-              local message = resp_body_json.message
+              local full_name = resp_body_json.fields.meta.full_name
+              local something_else = resp_body_json.fields.meta.something_else
 
-              assert.equal("meta param missing key: 'full_name'", message)
+              assert.equal("required field missing", full_name)
+              assert.equal("unknown field", something_else)
             end)
 
             it("registers a developer and set status to pending", function()
@@ -1872,7 +1858,7 @@ for _, strategy in helpers.each_strategy() do
           end)
         end)
 
-        pending("/developer/meta [basic-auth]", function()
+        describe("/developer/meta [basic-auth]", function()
           local cookie
 
           lazy_setup(function()
@@ -1908,12 +1894,12 @@ for _, strategy in helpers.each_strategy() do
             close_clients(portal_api_client)
           end)
 
-          describe("PATCH", function()
+          describe("PUT", function()
             it("updates the meta", function()
               local new_meta = "{\"full_name\":\"KONG!!!\"}"
 
               local res = assert(portal_api_client:send {
-                method = "PATCH",
+                method = "PUT",
                 body = {
                   meta = new_meta
                 },
@@ -1924,7 +1910,7 @@ for _, strategy in helpers.each_strategy() do
                 }
               })
 
-              assert.res_status(204, res)
+              assert.res_status(200, res)
 
               local res = assert(portal_api_client:send {
                 method = "GET",
@@ -1941,7 +1927,7 @@ for _, strategy in helpers.each_strategy() do
               assert.equal(meta, new_meta)
             end)
 
-            it("ignores keys that are not in the current meta", function()
+            it("keys not matching schema throw an error", function()
               local res = assert(portal_api_client:send {
                 method = "GET",
                 path = "/developer",
@@ -1954,10 +1940,10 @@ for _, strategy in helpers.each_strategy() do
               local resp_body_json = cjson.decode(body)
               local current_meta = resp_body_json.meta
 
-              local new_meta = "{\"new_key\":\"not in current meta\"}"
+              local new_meta = "{\"new_key\":\"not in current schema\"}"
 
               local res = assert(portal_api_client:send {
-                method = "PATCH",
+                method = "PUT",
                 body = {
                   meta = new_meta
                 },
@@ -1968,7 +1954,7 @@ for _, strategy in helpers.each_strategy() do
                 },
               })
 
-              assert.res_status(204, res)
+              assert.res_status(400, res)
 
               local res = assert(portal_api_client:send {
                 method = "GET",
@@ -1986,6 +1972,44 @@ for _, strategy in helpers.each_strategy() do
             end)
           end)
         end)
+
+        describe("/developer/meta-fields ", function()
+          lazy_setup(function()
+            portal_api_client = assert(ee_helpers.portal_api_client())
+            close_clients(portal_api_client)
+          end)
+
+          lazy_teardown(function()
+            portal_api_client = assert(ee_helpers.portal_api_client())
+            close_clients(portal_api_client)
+          end)
+
+          describe("GET", function()
+            it("returns default developer meta fields in format for portal templates", function ()
+              local res = assert(portal_api_client:send {
+                method = "GET",
+                path = "/developer/meta_fields",
+                headers = {
+                  ["Content-Type"] = "application/json",
+                },
+              })
+              local body = assert.res_status(200, res)
+              local expect = {{
+                title = "full_name",
+                label = "Full Name",
+                is_email = false,
+                validator = {
+                   type = "string",
+                   required = true,
+                  }
+                },
+              }
+
+              assert(expect, body)
+            end)
+          end)
+        end)
+
 
         describe("/credentials/:plugin [basic-auth]", function()
           local credential
@@ -3494,12 +3518,12 @@ for _, strategy in helpers.each_strategy() do
             close_clients(portal_api_client)
           end)
 
-          describe("PATCH", function()
+          describe("PUT", function()
             it("updates the meta", function()
               local new_meta = "{\"full_name\":\"KONG!!!\"}"
 
               local res = assert(portal_api_client:send {
-                method = "PATCH",
+                method = "PUT",
                 body = {
                   meta = new_meta
                 },
@@ -3510,7 +3534,7 @@ for _, strategy in helpers.each_strategy() do
                 }
               })
 
-              assert.res_status(204, res)
+              assert.res_status(200, res)
 
               local res = assert(portal_api_client:send {
                 method = "GET",
@@ -3527,7 +3551,7 @@ for _, strategy in helpers.each_strategy() do
               assert.equal(meta, new_meta)
             end)
 
-            it("ignores keys that are not in the current meta", function()
+            it("returns 400 for keys that are not in the extra fields schema", function()
               local res = assert(portal_api_client:send {
                 method = "GET",
                 path = "/developer",
@@ -3543,7 +3567,7 @@ for _, strategy in helpers.each_strategy() do
               local new_meta = "{\"new_key\":\"not in current meta\"}"
 
               local res = assert(portal_api_client:send {
-                method = "PATCH",
+                method = "PUT",
                 body = {
                   meta = new_meta
                 },
@@ -3554,7 +3578,7 @@ for _, strategy in helpers.each_strategy() do
                 },
               })
 
-              assert.res_status(204, res)
+              assert.res_status(400, res)
 
               local res = assert(portal_api_client:send {
                 method = "GET",

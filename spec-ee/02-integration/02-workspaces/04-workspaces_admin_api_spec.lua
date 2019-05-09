@@ -262,6 +262,62 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
           local json = cjson.decode(body)
           assert.equals(json.config.portal_auth_conf, '{"hide_credentials":true}')
         end)
+
+        it("portal-meta-fields handles invalid config", function()
+          local res = assert(client:post("/workspaces", {
+            body   = {
+              name = "foo",
+              config = {
+                portal_auth = "key-auth",
+                portal_auth_conf = {
+                  ["hide_credentials"] = true,
+                },
+                portal_developer_meta_fields = cjson.encode({{
+                  label = "Gotcha",
+                  title = "gotcha"
+                }}),
+              }
+            },
+            headers = {
+              ["Content-Type"] = "application/json",
+            }
+          }))
+
+          assert.res_status(400, res)
+        end)
+
+        it("portal-meta-fields accepts valid config", function()
+          local meta_fields = {{
+            label = "TEST",
+            title = "test",
+            validator = {
+              type = "string",
+              required = true
+            }
+          }}
+
+          local res = assert(client:post("/workspaces", {
+            body   = {
+              name = "foo",
+              config = {
+                portal_auth = "key-auth",
+                portal_auth_conf = {
+                  ["hide_credentials"] = true
+                },
+                portal_developer_meta_fields = cjson.encode(meta_fields)
+              }
+            },
+            headers = {
+              ["Content-Type"] = "application/json",
+            }
+          }))
+
+          local body = assert.res_status(201, res)
+          local json = cjson.decode(body)
+          local meta_json = cjson.decode(json.config.portal_developer_meta_fields)
+          assert.same(meta_json, meta_fields)
+
+        end)
       end)
     end)
 
