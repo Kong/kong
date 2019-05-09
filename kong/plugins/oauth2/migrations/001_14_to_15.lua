@@ -36,7 +36,8 @@ return {
       END$$;
 
       UPDATE "oauth2_tokens"
-         SET "ttl" = "created_at" + (COALESCE("expires_in", 0)::TEXT || ' seconds')::INTERVAL;
+         SET "ttl" = "created_at" + ("expires_in"::TEXT || ' seconds')::INTERVAL
+       WHERE "expires_in" > 0;
 
 
       ALTER TABLE IF EXISTS ONLY "oauth2_credentials"
