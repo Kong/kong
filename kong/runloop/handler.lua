@@ -418,13 +418,6 @@ return {
         cache:invalidate("router:version")
       end, "crud", "routes")
 
-      worker_events.register(function(data)
-        -- assume an update doesnt also change the whole entity!
-        if data.operation ~= "update" then
-          log(DEBUG, "[events] Plugin updated, invalidating plugin map")
-          cache:invalidate("plugins_map:version")
-        end
-      end, "crud", "plugins")
 
       worker_events.register(function(data)
         if data.operation ~= "create" and
@@ -438,6 +431,13 @@ return {
           cache:invalidate("router:version")
         end
       end, "crud", "services")
+
+
+      worker_events.register(function(data)
+        log(DEBUG, "[events] Plugin updated, invalidating plugins map")
+        cache:invalidate("plugins_map:version")
+      end, "crud", "plugins")
+
 
       -- SSL certs / SNIs invalidations
 
