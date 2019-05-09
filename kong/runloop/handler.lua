@@ -439,13 +439,6 @@ return {
         end
       end, "crud", "services")
 
-
-      worker_events.register(function(data)
-        log(DEBUG, "[events] Plugin updated, invalidating plugins map")
-        cache:invalidate("plugins_map:version")
-      end, "crud", "plugins")
-
-
       -- SSL certs / SNIs invalidations
 
 
