@@ -1,11 +1,65 @@
 local utils = require "kong.tools.utils"
 local pl_stringx   = require "pl.stringx"
 
-
 local kong         = kong
 local fmt          = string.format
-local ngx_utc_time = ngx.utctime
 local audit_ttl    = kong.configuration.audit_log_record_ttl
+
+local created_ts = math.floor(ngx.now()) * 1000
+local portal_rbac_paths = {
+  ['/portal/*']                     = { '/developers/*', '/files/*' },
+  ['/portal/developers']            = { '/developers/*' },
+  ['/portal/developers/*']          = { '/developers/*' },
+  ['/portal/developers/*/*']        = { '/developers/*/*' },
+  ['/portal/developers/*/email']    = { '/developers/*/email' },
+  ['/portal/developers/*/meta']     = { '/developers/*/meta' },
+  ['/portal/developers/*/password'] = { '/developers/*/password' },
+  ['/portal/invite']                = { '/developers/invite' },
+}
+
+
+local function replace_portal_rbac_endpoint(row, db_type, connector)
+  local res = {}
+
+  local id_formatter = "'%s'"
+
+  if db_type == "cassandra" then
+    id_formatter = "%s"
+  end
+
+  if not row.created_at and db_type == "cassandra" then
+    row.created_at = created_ts
+  end
+
+  for _, endpoint_replacement in ipairs(portal_rbac_paths[row.endpoint]) do
+    local query_res = assert(connector:query(
+      fmt("SELECT role_id FROM rbac_role_endpoints WHERE role_id = " .. id_formatter .. " AND endpoint = '%s' AND workspace = '%s'",
+      row.role_id, endpoint_replacement, row.workspace)
+    ))
+
+    -- see if modified endpoint already exists
+    -- if it does not create a new rbac endpoint
+    if not query_res[1] then
+      table.insert(res,
+        fmt("INSERT into rbac_role_endpoints(role_id, workspace, endpoint, actions, negative, comment, created_at) " ..
+            "VALUES(" .. id_formatter .. ", '%s', '%s', %s, %s, '%s', '%s')",
+        row.role_id, row.workspace, endpoint_replacement, row.actions, row.negative, row.comment, row.created_at
+      ))
+    end
+  end
+
+  if next(res) then
+    local query = table.concat(res, ";")
+    assert(connector:query(query))
+  end
+
+  -- cleanup stale rbac endpoint
+  local delete_query = fmt(
+    "DELETE FROM rbac_role_endpoints WHERE role_id = " .. id_formatter .. " AND endpoint = '%s' AND workspace = '%s'",
+    row.role_id, row.endpoint, row.workspace
+  )
+  assert(connector:query(delete_query))
+end
 
 
 local function build_developer_queries(res, consumer, db_type, connector)
@@ -21,7 +75,7 @@ local function build_developer_queries(res, consumer, db_type, connector)
   end
 
   if not consumer.created_at and db_type == "cassandra" then
-    consumer.created_at = ngx_utc_time()
+    consumer.created_at = created_ts
   end
 
   table.insert(res,
@@ -41,6 +95,34 @@ local function build_developer_queries(res, consumer, db_type, connector)
         "VALUES(" .. id_formatter .. ", '%s', '%s', 'developers', 'email', '%s')",
     workspace.id, workspace.name, developer_id, developer_email
   ))
+end
+
+
+local function transform_portal_rbac_routes_postgres(connector)
+  for rbac_role_endpoint, err in connector:iterate('SELECT * FROM "rbac_role_endpoints";') do
+    if err then
+      return nil, err
+    end
+
+    if portal_rbac_paths[rbac_role_endpoint.endpoint] then
+      replace_portal_rbac_endpoint(rbac_role_endpoint, "postgres", connector)
+    end
+  end
+end
+
+
+local function transform_portal_rbac_routes_cassandra(connector, coordinator)
+  for rows, err in coordinator:iterate("SELECT * FROM rbac_role_endpoints") do
+    if err then
+      return nil, err
+    end
+
+    for _, rbac_role_endpoint in ipairs(rows) do  
+      if portal_rbac_paths[rbac_role_endpoint.endpoint] then
+        replace_portal_rbac_endpoint(rbac_role_endpoint, "cassandra", connector)
+      end
+    end
+  end
 end
 
 
@@ -73,7 +155,6 @@ local function create_developer_table_cassandra(connector, coordinator)
     end
 
     for _, consumer in ipairs(rows) do
-
       if consumer.type == 1 then
         build_developer_queries(res, consumer, "cassandra", connector)
       end
@@ -138,47 +219,46 @@ end
 return {
   postgres = {
     up = [[
-     DO $$
-     BEGIN
-     ALTER TABLE IF EXISTS ONLY "rbac_user_roles"
-       ADD CONSTRAINT rbac_user_roles_role_id_fkey FOREIGN KEY (role_id) REFERENCES rbac_roles(id) ON DELETE CASCADE;
+      DO $$
+      BEGIN
+        ALTER TABLE IF EXISTS ONLY "rbac_user_roles"
+          ADD CONSTRAINT rbac_user_roles_role_id_fkey FOREIGN KEY (role_id) REFERENCES rbac_roles(id) ON DELETE CASCADE;
 
-     ALTER TABLE IF EXISTS ONLY "rbac_user_roles"
-       ADD CONSTRAINT rbac_user_roles_user_id_fkey FOREIGN KEY (user_id) REFERENCES rbac_users(id) ON DELETE CASCADE;
+        ALTER TABLE IF EXISTS ONLY "rbac_user_roles"
+          ADD CONSTRAINT rbac_user_roles_user_id_fkey FOREIGN KEY (user_id) REFERENCES rbac_users(id) ON DELETE CASCADE;
 
-     ALTER TABLE IF EXISTS ONLY "rbac_role_entities"
-       ADD CONSTRAINT rbac_role_entities_role_id_fkey FOREIGN KEY (role_id) REFERENCES rbac_roles(id) ON DELETE CASCADE;
+        ALTER TABLE IF EXISTS ONLY "rbac_role_entities"
+          ADD CONSTRAINT rbac_role_entities_role_id_fkey FOREIGN KEY (role_id) REFERENCES rbac_roles(id) ON DELETE CASCADE;
 
-     CREATE INDEX IF NOT EXISTS rbac_role_entities_role_idx on rbac_role_entities(role_id);
+        CREATE INDEX IF NOT EXISTS rbac_role_entities_role_idx on rbac_role_entities(role_id);
 
-     ALTER TABLE IF EXISTS ONLY "rbac_role_endpoints"
-       ADD CONSTRAINT rbac_role_endpoints_role_id_fkey FOREIGN KEY (role_id) REFERENCES rbac_roles(id) ON DELETE CASCADE;
+        ALTER TABLE IF EXISTS ONLY "rbac_role_endpoints"
+          ADD CONSTRAINT rbac_role_endpoints_role_id_fkey FOREIGN KEY (role_id) REFERENCES rbac_roles(id) ON DELETE CASCADE;
 
-     CREATE INDEX IF NOT EXISTS rbac_role_endpoints_role_idx on rbac_role_endpoints(role_id);
+        CREATE INDEX IF NOT EXISTS rbac_role_endpoints_role_idx on rbac_role_endpoints(role_id);
 
-     CREATE INDEX IF NOT EXISTS cluster_events_expire_at_idx ON cluster_events(expire_at);
+        CREATE INDEX IF NOT EXISTS cluster_events_expire_at_idx ON cluster_events(expire_at);
 
-     CREATE INDEX IF NOT EXISTS workspace_entities_idx_entity_id ON workspace_entities(entity_id);
+        CREATE INDEX IF NOT EXISTS workspace_entities_idx_entity_id ON workspace_entities(entity_id);
 
-     ALTER TABLE "consumers" DROP CONSTRAINT IF EXISTS "consumers_status_fkey";
-     ALTER TABLE "consumers" DROP CONSTRAINT IF EXISTS "consumers_type_fkey";
-     ALTER TABLE "credentials" DROP CONSTRAINT IF EXISTS "credentials_consumer_type_fkey";
-     DROP TABLE IF EXISTS consumer_statuses;
-     DROP TABLE IF EXISTS consumer_types;
+        ALTER TABLE "consumers" DROP CONSTRAINT IF EXISTS "consumers_status_fkey";
+        ALTER TABLE "consumers" DROP CONSTRAINT IF EXISTS "consumers_type_fkey";
+        ALTER TABLE "credentials" DROP CONSTRAINT IF EXISTS "credentials_consumer_type_fkey";
+        DROP TABLE IF EXISTS consumer_statuses;
+        DROP TABLE IF EXISTS consumer_types;
+      END
+      $$;
 
-     END
-     $$;
+      ALTER TABLE audit_objects
+         ADD COLUMN ttl timestamp WITH TIME ZONE DEFAULT (CURRENT_TIMESTAMP(0)
+           AT TIME ZONE 'UTC' + INTERVAL ']] .. audit_ttl .. [[');
 
-     ALTER TABLE audit_objects
-        ADD COLUMN ttl timestamp WITH TIME ZONE DEFAULT (CURRENT_TIMESTAMP(0)
-          AT TIME ZONE 'UTC' + INTERVAL ']] .. audit_ttl .. [[');
+      ALTER TABLE audit_requests
+         ADD COLUMN ttl timestamp WITH TIME ZONE DEFAULT (CURRENT_TIMESTAMP(0)
+           AT TIME ZONE 'UTC' + INTERVAL ']] .. audit_ttl .. [[');
 
-     ALTER TABLE audit_requests
-        ADD COLUMN ttl timestamp WITH TIME ZONE DEFAULT (CURRENT_TIMESTAMP(0)
-          AT TIME ZONE 'UTC' + INTERVAL ']] .. audit_ttl .. [[');
-
-    ALTER TABLE rbac_users
-        ADD COLUMN user_token_ident text;
+      ALTER TABLE rbac_users
+         ADD COLUMN user_token_ident text;
 
       DO $$
       BEGIN
@@ -187,18 +267,29 @@ return {
         END IF;
       END$$;
 
-    CREATE TABLE IF NOT EXISTS admins (
-      id          uuid,
-      created_at  TIMESTAMP WITHOUT TIME ZONE  DEFAULT (CURRENT_TIMESTAMP(0) AT TIME ZONE 'UTC'),
-      updated_at  TIMESTAMP WITHOUT TIME ZONE  DEFAULT (CURRENT_TIMESTAMP(0) AT TIME ZONE 'UTC'),
-      consumer_id  uuid references consumers (id),
-      rbac_user_id  uuid references rbac_users (id),
-      email text,
-      status int,
-      username text unique,
-      custom_id text unique,
-      PRIMARY KEY(id)
-    );
+      CREATE TABLE IF NOT EXISTS admins (
+        id          uuid,
+        created_at  TIMESTAMP WITHOUT TIME ZONE  DEFAULT (CURRENT_TIMESTAMP(0) AT TIME ZONE 'UTC'),
+        updated_at  TIMESTAMP WITHOUT TIME ZONE  DEFAULT (CURRENT_TIMESTAMP(0) AT TIME ZONE 'UTC'),
+        consumer_id  uuid references consumers (id),
+        rbac_user_id  uuid references rbac_users (id),
+        email text,
+        status int,
+        username text unique,
+        custom_id text unique,
+        PRIMARY KEY(id)
+      );
+
+      CREATE TABLE IF NOT EXISTS developers (
+        id          uuid,
+        created_at  timestamp,
+        updated_at  timestamp,
+        email text  unique,
+        status int,
+        meta text,
+        consumer_id  uuid references consumers (id) on delete cascade,
+        PRIMARY KEY(id)
+      );
     ]],
 
     teardown = function(connector)
@@ -221,6 +312,9 @@ return {
 
       -- iterate over consumers and create associated developers
       create_developer_table_postgres(connector)
+
+      -- iterate over rbac_role_endpoints and transform changed routes
+      transform_portal_rbac_routes_postgres(connector)
 
       -- remove unneccesssary columns in consumers
       assert(connector:query([[
@@ -264,6 +358,20 @@ return {
       ALTER TABLE rbac_users ADD user_token_ident text;
       CREATE INDEX IF NOT EXISTS ON rbac_users(user_token_ident);
 
+      CREATE TABLE IF NOT EXISTS developers (
+        id          uuid,
+        created_at  timestamp,
+        updated_at  timestamp,
+        consumer_id  uuid,
+        email text,
+        status int,
+        meta text,
+        PRIMARY KEY(id)
+      );
+      CREATE INDEX IF NOT EXISTS developers_email_idx ON developers(email);
+      CREATE INDEX IF NOT EXISTS developers_consumer_id_idx ON developers(consumer_id);
+      CREATE INDEX IF NOT EXISTS developers_email_idx ON developers(email);
+
       CREATE TABLE IF NOT EXISTS admins (
         id          uuid,
         created_at  timestamp,
@@ -291,6 +399,9 @@ return {
 
       -- iterate over consumers and create associated developers
       create_developer_table_cassandra(connector, coordinator)
+      
+      -- iterate over rbac_role_endpoints and transform changed routes
+      transform_portal_rbac_routes_cassandra(connector, coordinator)
 
       -- remove unneccesssary columns in consumers
       assert(connector:query([[

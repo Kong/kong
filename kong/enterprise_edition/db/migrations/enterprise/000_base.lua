@@ -605,16 +605,6 @@ return {
       END;
       $$;
 
-      CREATE TABLE IF NOT EXISTS developers (
-        id          uuid,
-        created_at  timestamp,
-        updated_at  timestamp,
-        email text  unique,
-        status int,
-        meta text,
-        consumer_id  uuid references consumers (id) on delete cascade,
-        PRIMARY KEY(id)
-      );
 -- read-only role
 DO $$
 DECLARE lastid uuid;
@@ -986,25 +976,11 @@ END $$;
         PRIMARY KEY(workspace_id, entity_type)
       );
 
-      CREATE TABLE IF NOT EXISTS developers (
-        id          uuid,
-        created_at  timestamp,
-        updated_at  timestamp,
-        consumer_id  uuid,
-        email text,
-        status int,
-        meta text,
-        PRIMARY KEY(id)
-      );
-      CREATE INDEX IF NOT EXISTS developers_email_idx ON developers(email);
-      CREATE INDEX IF NOT EXISTS developers_consumer_id_idx ON developers(consumer_id);
-      CREATE INDEX IF NOT EXISTS developers_email_idx ON developers(email);
-
-      CREATE TABLE IF NOT EXISTS consumers_rbac_users_map(
-        consumer_id uuid,
-        user_id uuid,
-        created_at timestamp,
-        PRIMARY KEY (consumer_id, user_id)
+      CREATE TABLE IF NOT EXISTS consumers_rbac_users_map(	
+        consumer_id uuid,	
+        user_id uuid,	
+        created_at timestamp,	
+        PRIMARY KEY (consumer_id, user_id)	
       );
     ]],
     teardown = function(connector)
