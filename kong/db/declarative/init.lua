@@ -79,7 +79,7 @@ function Config:parse_string(contents, filename, accept)
   accept = accept or { yaml = true, json = true }
 
   local dc_table, err
-  if accept.yaml and filename:match("ya?ml$") then
+  if accept.yaml and ((not filename) or filename:match("ya?ml$")) then
     local pok
     pok, dc_table, err = pcall(lyaml.load, contents)
     if not pok then
@@ -106,15 +106,23 @@ function Config:parse_string(contents, filename, accept)
       table.insert(accepted, k)
     end
     table.sort(accepted)
-    return nil, "unknown file extension (" ..
+    local err = "unknown file extension (" ..
                 table.concat(accepted, ", ") ..
                 " " .. (#accepted == 1 and "is" or "are") ..
                 " supported): " .. filename
+    return nil, err, { error = err }
   end
 
-  if not dc_table then
-    return nil, "failed parsing declarative configuration file " ..
-        filename .. (err and ": " .. err or "")
+  if dc_table ~= nil and type(dc_table) ~= "table" then
+    dc_table = nil
+    err = "expected an object"
+  end
+
+  if type(dc_table) ~= "table" then
+    err = "failed parsing declarative configuration" ..
+        (filename and " file " .. filename or "") ..
+        (err and ": " .. err or "")
+    return nil, err, { error = err }
   end
 
   return self:parse_table(dc_table)
@@ -123,8 +131,9 @@ end
 
 function Config:parse_table(dc_table)
   if type(dc_table) ~= "table" then
-    return nil, "expected a table as input"
+    error("expected a table as input", 2)
   end
+
   local ok, err_t = self.schema:validate(dc_table)
   if not ok then
     return nil, pretty_print_error(err_t), err_t

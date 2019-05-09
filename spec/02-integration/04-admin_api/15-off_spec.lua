@@ -455,7 +455,14 @@ describe("Admin API #off", function()
       local body =assert.response(res).has.status(400)
       local json = cjson.decode(body)
       assert.same({
-        error = "expected a table as input",
+        code = 14,
+        fields = {
+          error ="failed parsing declarative configuration: expected an object",
+        },
+        message = [[declarative config is invalid: ]] ..
+                  [[{error="failed parsing declarative configuration: ]] ..
+                  [[expected an object"}]],
+        name = "invalid declarative configuration",
       }, json)
     end)
   end)

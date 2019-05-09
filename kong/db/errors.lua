@@ -40,6 +40,7 @@ local ERRORS              = {
   INVALID_OPTIONS         = 11, -- invalid options given
   OPERATION_UNSUPPORTED   = 12, -- operation is not supported with this strategy
   FOREIGN_KEYS_UNRESOLVED = 13, -- foreign key(s) could not be resolved
+  DECLARATIVE_CONFIG      = 14, -- error parsing declarative configuration
 }
 
 
@@ -60,6 +61,7 @@ local ERRORS_NAMES                 = {
   [ERRORS.INVALID_OPTIONS]         = "invalid options",
   [ERRORS.OPERATION_UNSUPPORTED]   = "operation unsupported",
   [ERRORS.FOREIGN_KEYS_UNRESOLVED] = "foreign keys unresolved",
+  [ERRORS.DECLARATIVE_CONFIG]      = "invalid declarative configuration",
 }
 
 
@@ -447,6 +449,18 @@ function _M:operation_unsupported(err)
   end
 
   return new_err_t(self, ERRORS.OPERATION_UNSUPPORTED, err)
+end
+
+
+function _M:declarative_config(err_t)
+  if type(err_t) ~= "table" then
+    error("err_t must be a table", 2)
+  end
+
+  local message = fmt("declarative config is invalid: %s",
+                      pl_pretty(err_t, ""))
+
+  return new_err_t(self, ERRORS.DECLARATIVE_CONFIG, message, err_t)
 end
 
 
