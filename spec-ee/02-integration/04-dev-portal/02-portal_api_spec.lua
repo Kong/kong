@@ -484,8 +484,7 @@ for _, strategy in helpers.each_strategy() do
               local body = assert.res_status(400, res)
               local resp_body_json = cjson.decode(body)
               local message = resp_body_json.fields.meta
-              assert.equal("meta param is invalid", message)
-
+              assert.equal("required field missing", message["full_name"])
             end)
 
             it("returns a 400 if meta is invalid", function()
@@ -499,7 +498,7 @@ for _, strategy in helpers.each_strategy() do
               local resp_body_json = cjson.decode(body)
               local message = resp_body_json.fields.meta
 
-              assert.equal("meta param is invalid", message)
+              assert.equal("required field missing", message["full_name"])
             end)
 
             it("registers a developer and set status to pending", function()
@@ -622,7 +621,7 @@ for _, strategy in helpers.each_strategy() do
               local resp_body_json = cjson.decode(body)
               local message = resp_body_json.fields.meta
 
-              assert.equal("meta param is invalid", message)
+              assert.equal("required field missing", message["full_name"])
             end)
 
             it("returns a 400 if meta is invalid", function()
@@ -636,7 +635,7 @@ for _, strategy in helpers.each_strategy() do
               local resp_body_json = cjson.decode(body)
               local message = resp_body_json.fields.meta
 
-              assert.equal("meta param is invalid", message)
+              assert.equal("required field missing", message["full_name"])
             end)
 
             it("returns a 400 if meta.full_name key is missing", function()
