@@ -196,16 +196,16 @@ end
 
 
 local function update_plugins()
-  local version, err = kong.cache:get("plugins_map:version", TTL_ZERO, utils.uuid)
+  local version, err = kong.cache:get("plugins_plan:version", TTL_ZERO, utils.uuid)
   if err then
-    return nil, "failed to retrieve plugins map version: " .. err
+    return nil, "failed to retrieve plugins plan version: " .. err
   end
 
   if not plugins or plugins.version ~= version then
     local ok, err = concurrency.with_coroutine_mutex(PLUGINS_MUTEX_OPTS, function()
       -- we have the lock but we might not have needed it. check the
       -- version again and rebuild if necessary
-      version, err = kong.cache:get("plugins_map:version", TTL_ZERO, utils.uuid)
+      version, err = kong.cache:get("plugins_plan:version", TTL_ZERO, utils.uuid)
       if err then
         return nil, "failed to re-retrieve version: " .. err
       end
@@ -214,7 +214,7 @@ local function update_plugins()
         local new_plugins, err = build_new_plugins(version)
 
         if not new_plugins then
-          return nil, "error found when building plugins: " .. err
+          return nil, "error found when building plugins plan: " .. err
         end
         plugins = new_plugins
       end
@@ -222,7 +222,7 @@ local function update_plugins()
       return true
     end)
     if not ok then
-      return nil, "failed to rebuild plugins map: " .. err
+      return nil, "failed to rebuild plugin plan: " .. err
     end
   end
 
@@ -331,7 +331,7 @@ local function load_declarative_config(kong_config, entities)
   end
 
   if not kong_config.declarative_config then
-    -- no configuration yet, just build empty plugins map
+    -- no configuration yet, just build empty plugins plan
     local err
     plugins, err = build_new_plugins(utils.uuid())
     if err then
@@ -595,11 +595,11 @@ function Kong.init_worker()
     return
   end
 
-  local ok, err = cache:get("plugins_map:version", TTL_ZERO, function()
+  local ok, err = cache:get("plugins_plan:version", TTL_ZERO, function()
     return "init"
   end)
   if not ok then
-    ngx_log(ngx_CRIT, "could not set plugins map version in cache: ", err)
+    ngx_log(ngx_CRIT, "could not set plugins version in cache: ", err)
     return
   end
 
@@ -647,7 +647,7 @@ function Kong.ssl_certificate()
 
   local ok, err = update_plugins()
   if not ok then
-    ngx_log(ngx_CRIT, "could not ensure plugins map is up to date: ", err)
+    ngx_log(ngx_CRIT, "could not ensure plugins plan is up to date: ", err)
     return ngx.exit(ngx.ERROR)
   end
 
@@ -760,7 +760,7 @@ function Kong.rewrite()
 
   local ok, err = update_plugins()
   if not ok then
-    ngx_log(ngx_CRIT, "could not ensure plugins map is up to date: ", err)
+    ngx_log(ngx_CRIT, "could not ensure plugins plan is up to date: ", err)
     return kong.response.exit(500, { message  = "An unexpected error occurred" })
   end
 
@@ -778,7 +778,7 @@ function Kong.preread()
 
   local ok, err = update_plugins()
   if not ok then
-    ngx_log(ngx_CRIT, "could not ensure plugins map is up to date: ", err)
+    ngx_log(ngx_CRIT, "could not ensure plugins plan is up to date: ", err)
     return kong.response.exit(500, { message  = "An unexpected error occurred" })
   end
 
