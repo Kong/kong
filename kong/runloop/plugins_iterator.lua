@@ -89,14 +89,14 @@ end
 local function get_next(self)
   local i = self.i + 1
 
-  local plugin = self.plugins.loaded[i]
+  local plugin = self.plugins_plan.loaded[i]
   if not plugin then
     return nil
   end
 
   self.i = i
 
-  if not self.plugins.map[plugin.name] then
+  if not self.plugins_plan.map[plugin.name] then
     return get_next(self)
   end
 
@@ -123,7 +123,7 @@ local function get_next(self)
     local consumer_id = consumer and consumer.id or nil
 
     local name   = plugin.name
-    local combos = self.plugins.combos[name]
+    local combos = self.plugins_plan.combos[name]
 
     local plugin_configuration
 
@@ -213,16 +213,16 @@ local plugins_iterator_mt = { __call = get_next }
 -- @param[type=string] phase Plugins iterator execution phase
 -- @param[type=table] plugins Plugins table
 -- @treturn function iterator
-local function plugins_iterator(ctx, phase, plugins)
+local function plugins_iterator(ctx, phase, plugins_plan)
   if not ctx.plugins then
     ctx.plugins = {}
   end
 
   local plugins_iterator_state = {
-    i       = 0,
-    ctx     = ctx,
-    phase   = phase,
-    plugins = plugins,
+    i = 0,
+    ctx = ctx,
+    phase = phase,
+    plugins_plan = plugins_plan,
   }
 
   return setmetatable(plugins_iterator_state, plugins_iterator_mt)
