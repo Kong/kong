@@ -1073,6 +1073,28 @@ luassert:register("assertion", "formparam", req_form_param,
                   "assertion.req_form_param.negative",
                   "assertion.req_form_param.positive")
 
+---
+-- Adds an assertion to ensure a value is greater than another.
+-- @name is_gt
+local function is_gt(state, arguments)
+  local expected = arguments[1]
+  local value = arguments[2]
+
+  arguments[1] = value
+  arguments[2] = expected
+
+  return value > expected
+end
+say:set("assertion.gt.negative", [[
+Given value (%s) should be greater than expected value (%s)
+]])
+say:set("assertion.gt.positive", [[
+Given value (%s) should not be greater than expected value (%s)
+]])
+luassert:register("assertion", "gt", is_gt,
+                  "assertion.gt.negative",
+                  "assertion.gt.positive")
+
 --- Assertion to check whether a CN is matched in an SSL cert.
 -- @param expected The CN value
 -- @param cert The cert
