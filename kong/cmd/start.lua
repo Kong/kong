@@ -7,6 +7,7 @@ local kill = require "kong.cmd.utils.kill"
 local log = require "kong.cmd.utils.log"
 local DB = require "kong.db"
 
+
 local function execute(args)
   args.db_timeout = args.db_timeout * 1000
   args.lock_timeout = args.lock_timeout
@@ -30,20 +31,33 @@ local function execute(args)
   assert(db:init_connector())
 
   local schema_state = assert(db:schema_state())
-
   local err
 
   xpcall(function()
     assert(prefix_handler.prepare_prefix(conf, args.nginx_conf))
 
-    if not schema_state:is_up_to_date() then
-      if args.run_migrations then
-        migrations_utils.up(schema_state, db, {
-          ttl = args.lock_timeout,
-        })
+    if not schema_state:is_up_to_date() and args.run_migrations then
+      migrations_utils.up(schema_state, db, {
+        ttl = args.lock_timeout,
+      })
 
-      else
-        migrations_utils.print_state(schema_state)
+      schema_state = assert(db:schema_state())
+    end
+
+    migrations_utils.check_state(schema_state, db)
+
+    if schema_state.missing_migrations or schema_state.pending_migrations then
+      local r = ""
+      if schema_state.missing_migrations then
+        log.info("Database is missing some migrations:\n%s",
+                 tostring(schema_state.missing_migrations))
+
+        r = "\n\n"
+      end
+
+      if schema_state.pending_migrations then
+        log.info("%sDatabase has pending migrations:\n%s",
+                 r, tostring(schema_state.pending_migrations))
       end
     end
 
