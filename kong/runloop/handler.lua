@@ -73,6 +73,31 @@ local _set_check_router_rebuild
 local build_router_timeout
 
 
+local update_lua_mem
+do
+  local pid = ngx.worker.pid
+  local kong_shm = ngx.shared.kong
+
+  local LUA_MEM_SAMPLE_RATE = 10 -- seconds
+  local last = ngx.time()
+
+  update_lua_mem = function(force)
+    local time = ngx.time()
+
+    if force or time - last >= LUA_MEM_SAMPLE_RATE then
+      local count = collectgarbage("count")
+
+      local ok, err = kong_shm:safe_set("kong:mem:" .. pid(), count)
+      if not ok then
+        log(ERROR, "could not record Lua VM allocated memory: ", err)
+      end
+
+      last = ngx.time()
+    end
+  end
+end
+
+
 local function get_now()
   update_time()
   return ngx_now() * 1000 -- time is kept in seconds with millisecond resolution.
@@ -812,6 +837,7 @@ return {
   init_worker = {
     before = function()
       reports.init_worker()
+      update_lua_mem(true)
 
       register_events()
 
@@ -1393,6 +1419,8 @@ return {
   },
   log = {
     after = function(ctx)
+      update_lua_mem()
+
       reports.log()
 
       if not ctx.KONG_PROXIED then
