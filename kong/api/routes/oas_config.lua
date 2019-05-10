@@ -4,6 +4,9 @@ local singletons   = require "kong.singletons"
 local uuid         = require("kong.tools.utils").uuid
 
 
+local kong = kong
+
+
 local function rebuild_routes()
   local old_wss = ngx.ctx.workspaces
   ngx.ctx.workspaces = {}

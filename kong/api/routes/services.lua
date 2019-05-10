@@ -7,6 +7,9 @@ local uuid = require("kong.tools.utils").uuid
 local workspaces = require "kong.workspaces"
 
 
+local kong = kong
+
+
 local function post_process(data)
   local r_data = utils.deep_copy(data)
   r_data.config = nil

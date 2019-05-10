@@ -6,6 +6,7 @@ local renderer    = require "kong.portal.renderer"
 local ee          = require "kong.enterprise_edition"
 
 
+local kong = kong
 local _M = {}
 local config = singletons.configuration
 

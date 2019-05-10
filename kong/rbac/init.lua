@@ -8,7 +8,6 @@ local tablex     = require "pl.tablex"
 local bcrypt     = require "bcrypt"
 local new_tab    = require "table.new"
 
-
 local band   = bit.band
 local bor    = bit.bor
 local fmt    = string.format

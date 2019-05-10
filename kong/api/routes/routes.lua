@@ -8,6 +8,7 @@ local core_handler = require "kong.runloop.handler"
 local uuid = require("kong.tools.utils").uuid
 
 
+local kong = kong
 local null        = ngx.null
 
 

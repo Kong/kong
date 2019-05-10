@@ -11,6 +11,7 @@ local Errors = require "kong.db.errors"
 local crud_helpers = require "kong.portal.crud_helpers"
 
 
+local kong = kong
 local log = ngx.log
 local ERR = ngx.ERR
 local fmt = string.format
