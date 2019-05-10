@@ -1,11 +1,14 @@
 local helpers = require "spec.helpers"
+local utils = require "kong.tools.utils"
 local DB = require "kong.db"
 
 
 for _, strategy in helpers.each_strategy() do
 
   local function init_db()
-    local db = assert(DB.new(helpers.test_conf, strategy))
+    local conf = utils.deep_copy(helpers.test_conf)
+    conf.cassandra_timeout = 60000 -- default used in the `migrations` cmd as well
+    local db = assert(DB.new(conf, strategy))
     assert(db:init_connector())
     assert(db:connect())
     finally(function()
@@ -29,7 +32,7 @@ for _, strategy in helpers.each_strategy() do
       assert.equal("default", default_ws.name)
       assert.equal("00000000-0000-0000-0000-000000000000", default_ws.id)
       assert.same({}, default_ws.meta)
-      assert.same({ portal = false }, default_ws.config)
+      assert.equal(false , default_ws.config.portal)
     end)
   end)
 end
