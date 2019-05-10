@@ -448,7 +448,7 @@ for _ , strategy in helpers.each_strategy() do
       assert(helpers.start_kong({
         database = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
-        custom_plugins = "introspection-endpoint, oauth2-introspection",
+        plugins = "bundled,introspection-endpoint, oauth2-introspection",
         lua_package_path = "?/init.lua;./kong/?.lua;./spec/fixtures/?.lua;/kong-plugin/spec/fixtures/custom_plugins/?.lua;;",
       }))
 

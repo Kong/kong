@@ -1,7 +1,6 @@
 -- Copyright (C) Kong Inc.
 
 local BasePlugin = require "kong.plugins.base_plugin"
-local responses = require "kong.tools.responses"
 local constants = require "kong.constants"
 
 local utils = require "kong.tools.utils"
@@ -296,7 +295,7 @@ function OAuth2Introspection:access(conf)
       set_anonymous_consumer(consumer)
 
     else
-      return responses.send(err.status, err.message, err.headers)
+      return kong.response.exit(401, err.message, err.headers)
     end
   end
 end
