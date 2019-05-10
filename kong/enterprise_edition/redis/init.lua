@@ -48,7 +48,7 @@ _M.config_schema = {
     { database = { type = "integer", default = 0 } },
     { sentinel_master = { type = "string", } },
     { sentinel_role = { type = "string", one_of = { "master", "slave", "any" }, } },
-    { sentinel_addresses = { type = "array", elements = { type = "string" }, min_len = 1, custom_validator =  validate_sentinel_addresses } },
+    { sentinel_addresses = { type = "array", elements = { type = "string" }, len_min = 1, custom_validator =  validate_sentinel_addresses } },
   },
 
   entity_checks = {
