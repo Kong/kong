@@ -13,6 +13,8 @@ local ERR = ngx.ERR
 
 local DEVELOPER_TYPE = enums.CONSUMERS.TYPE.DEVELOPER
 
+local kong = kong
+
 local _M = {}
 
 local auth_plugins = {
@@ -56,7 +58,7 @@ local function get_developer()
     return nil, "Unauthorized"
   end
 
-  local developer, err = singletons.db.developers:select_by_email(consumer.username)
+  local developer, err = kong.db.developers:select_by_email(consumer.username)
   if err then
     return nil, err
   end
@@ -216,9 +218,9 @@ function _M.authenticate_gui_session(self, db, helpers)
   end
 
   if self.is_admin then
-    ee_api.authenticate(self, singletons.dao,
-                          singletons.configuration.enforce_rbac ~= "off",
-                          singletons.configuration.admin_gui_auth)
+    ee_api.authenticate(self,
+                          kong.configuration.enforce_rbac ~= "off",
+                          kong.configuration.admin_gui_auth)
 
     rbac.validate_user(self.rbac_user)
     self.developer = {}
@@ -266,6 +268,7 @@ function _M.authenticate_gui_session(self, db, helpers)
   end
 
   local developer = get_developer()
+
   if not developer then
     if ngx.ctx.authenticated_session then
       ngx.ctx.authenticated_session:destroy()
@@ -280,7 +283,7 @@ end
 function _M.verify_developer_status(consumer)
   if consumer and consumer.type == DEVELOPER_TYPE then
     local email = consumer.username
-    local developer, err = singletons.db.developers:select_by_email(email)
+    local developer, err = kong.db.developers:select_by_email(email)
 
     if err then
       kong.log.err(err)

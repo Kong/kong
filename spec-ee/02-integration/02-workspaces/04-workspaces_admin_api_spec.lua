@@ -7,10 +7,10 @@ local workspaces  = require "kong.workspaces"
 for _, strategy in helpers.each_strategy() do
 
 describe("Workspaces Admin API (#" .. strategy .. "): ", function()
-  local client, dao, db, bp
+  local client,  db, bp
 
   setup(function()
-    bp, db, dao = helpers.get_db_utils(strategy)
+    bp, db = helpers.get_db_utils(strategy)
 
     assert(helpers.start_kong({
       database = strategy,
@@ -54,7 +54,10 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
         assert.equals("foo", json.name)
 
         -- no files created, portal is off
-        local files_count = dao.files:count()
+        local files_count = 0
+        for f, err in db.files:each() do
+          files_count = files_count + 1
+        end
         assert.equals(0, files_count)
       end)
 

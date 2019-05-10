@@ -3,11 +3,10 @@ local cjson      = require "cjson"
 
 for _, strategy in helpers.each_strategy() do
   describe("Admin API - Open API Spec routes - " .. strategy, function()
-    local client
-    local dao
+    local client, db, _
 
     setup(function()
-      _, _, dao = helpers.get_db_utils(strategy)
+      _, db = helpers.get_db_utils(strategy)
 
       assert(helpers.start_kong({
         database = strategy,
@@ -15,7 +14,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     teardown(function()
-      helpers.stop_kong()
+      helpers.stop_kong(nil, true, true)
     end)
 
     describe("/oas-config", function()
@@ -23,7 +22,7 @@ for _, strategy in helpers.each_strategy() do
         describe("Error Handling", function()
 
           before_each(function()
-            dao:truncate_tables()
+            db:truncate()
             client = assert(helpers.admin_client())
           end)
 
@@ -31,7 +30,7 @@ for _, strategy in helpers.each_strategy() do
             if client then client:close() end
           end)
 
-          it("should return 400 if spec if not passed", function()
+          it("hould return 400 if spec if not passed", function()
             local res = assert(client:send {
               method = "POST",
               path = "/oas-config",
@@ -279,7 +278,7 @@ for _, strategy in helpers.each_strategy() do
                 end)
 
                 teardown(function()
-                  dao:truncate_tables()
+                  db:truncate()
                 end)
 
                 it("should generate 2 services and 4 routes", function()
@@ -359,7 +358,7 @@ for _, strategy in helpers.each_strategy() do
         describe("Error Handling", function()
 
           before_each(function()
-            dao:truncate_tables()
+            db:truncate()
             client = assert(helpers.admin_client())
           end)
 
@@ -675,7 +674,7 @@ for _, strategy in helpers.each_strategy() do
                 end)
 
                 teardown(function()
-                  dao:truncate_tables()
+                  db:truncate()
                 end)
 
                 it("should update existing services (host, port and path change) but not update routes", function()

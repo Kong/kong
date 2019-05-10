@@ -2,7 +2,6 @@ local singletons    = require "kong.singletons"
 local cjson         = require "cjson.safe"
 local constants     = require "kong.constants"
 local auth          = require "kong.portal.auth"
-local crud          = require "kong.api.crud_helpers"
 local workspaces    = require "kong.workspaces"
 local portal_smtp_client = require "kong.portal.emails"
 local endpoints          = require "kong.api.endpoints"
@@ -263,7 +262,7 @@ return {
 
       local cred_pk = { id = credential.id }
       local entity = { [self.plugin.credential_key] = new_password }
-      local ok, err = crud.portal_crud.update_login_credential(
+      local ok, err = crud_helpers.update_login_credential(
                                               self.collection, cred_pk, entity)
       if err then
         return endpoints.handle_error(err)
@@ -428,7 +427,7 @@ return {
       end
 
       local cred_pk = { id = credential.id }
-      local ok, err = crud.portal_crud.update_login_credential(self.collection,
+      local ok, err = crud_helpers.update_login_credential(self.collection,
                                                           cred_pk, cred_params)
       if err then
         return endpoints.handle_error(err)

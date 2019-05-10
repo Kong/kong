@@ -39,9 +39,7 @@ for i = 1, #plugins do
   plugin_map[plugins[i]] = true
 end
 
-local deprecated_plugins = {
-  "galileo",
-}
+local deprecated_plugins = {} -- no currently deprecated plugin
 
 local deprecated_plugin_map = {}
 for _, plugin in ipairs(deprecated_plugins) do

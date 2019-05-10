@@ -8,6 +8,7 @@ local api_helpers = require "kong.enterprise_edition.api_helpers"
 local workspaces = require "kong.workspaces"
 
 
+local kong = kong
 local band  = bit.band
 local bxor  = bit.bxor
 local fmt   = string.format
@@ -445,7 +446,7 @@ return {
       if self.params.entity_id ~= "*" then
         local _, err
         entity_type, _, err = api_helpers.resolve_entity_type(singletons.db,
-                                                              singletons.dao,
+                                                              {},   -- XXX EE remove when old-dao is gone
                                                               self.params.entity_id)
         -- database error
         if entity_type == nil then
@@ -620,7 +621,7 @@ return {
         local ws_name = self.params.workspace
 
         if ws_name ~= "*" then
-          local w, err = workspaces.run_with_ws_scope({}, singletons.dao.workspaces.find_all, singletons.dao.workspaces, {
+          local w, err = workspaces.run_with_ws_scope({}, singletons.db.workspaces.select_all, singletons.db.workspaces, {
             name = ws_name
           })
           if err then

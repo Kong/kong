@@ -35,11 +35,11 @@ local function get_collection_endpoint(schema, next_page_prefix)
                                      escape_uri(offset))
                               or null
 
-    return helpers.responses.send_HTTP_OK {
+    return kong.response.exit(200, {
       data   = data,
       offset = offset,
       next   = next_page,
-    }
+    })
   end
 end
 

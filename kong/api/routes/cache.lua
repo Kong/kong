@@ -1,34 +1,36 @@
-local singletons = require "kong.singletons"
+local kong = kong
+
 
 return {
   ["/cache/:key"] = {
-    GET = function(self, _, helpers)
+    GET = function(self)
       -- probe the cache to see if a key has been requested before
 
-      local ttl, err, value = singletons.cache:probe(self.params.key)
+      local ttl, err, value = kong.cache:probe(self.params.key)
       if err then
-        return helpers.responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+        kong.log.err(err)
+        return kong.response.exit(500, { message = "An unexpected error happened" })
       end
 
       if ttl then
-        return helpers.responses.send_HTTP_OK(value)
+        return kong.response.exit(200, type(value) == "table" and value or { message = value })
       end
 
-      return helpers.responses.send_HTTP_NOT_FOUND()
+      return kong.response.exit(404, { message = "Not found" })
     end,
 
-    DELETE = function(self, _, helpers)
-      singletons.cache:invalidate_local(self.params.key)
+    DELETE = function(self)
+      kong.cache:invalidate_local(self.params.key)
 
-      return helpers.responses.send_HTTP_NO_CONTENT()
+      return kong.response.exit(204) -- no content
     end,
   },
 
   ["/cache"] = {
-    DELETE = function(self, _, helpers)
-      singletons.cache:purge()
+    DELETE = function()
+      kong.cache:purge()
 
-      return helpers.responses.send_HTTP_NO_CONTENT()
+      return kong.response.exit(204) -- no content
     end,
   },
 }

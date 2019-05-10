@@ -1,9 +1,12 @@
 local pl_tablex   = require "pl.tablex"
 local pl_stringx   = require "pl.stringx"
 local constants    = require "kong.constants"
-local singletons   = require "kong.singletons"
 local workspaces = require "kong.workspaces"
 local ws_constants = constants.WORKSPACE_CONFIG
+local endpoints          = require "kong.api.endpoints"
+
+
+local kong = kong
 
 local no_files_found = {
   name = "unauthenticated/index",
@@ -23,7 +26,7 @@ local function build_url_obj(page, path, url_map)
   local workspace = workspaces.get_workspace()
   local url_items = {}
 
-  local page_url = workspaces.build_ws_portal_gui_url(singletons.configuration, workspace) .. '/' .. path
+  local page_url = workspaces.build_ws_portal_gui_url(kong.configuration, workspace) .. '/' .. path
   page_url = pl_stringx.rstrip(page_url, '/')
   url_items["loc"] = page_url
 
@@ -127,7 +130,7 @@ local function find_file(filename, filetype, is_authenticated)
     filename = 'unauthenticated/' .. filename
   end
 
-  local file = singletons.db.files:select_by_name(filename)
+  local file = kong.db.files:select_by_name(filename)
   if file and file.auth == is_authenticated and file.type == filetype then
     return file
   end
@@ -135,7 +138,7 @@ end
 
 
 local function find_partial_by_name(partial_name, is_authenticated)
-  local file = singletons.db.files:select_by_name(partial_name)
+  local file = kong.db.files:select_by_name(partial_name)
   if file and file.auth == is_authenticated then
     return file
   end
@@ -335,8 +338,21 @@ local function compile_sitemap(self)
     spec_filter = { type = 'spec' }
   end
 
-  local pages = singletons.dao.files:find_all(page_filter)
-  local specs = singletons.dao.files:find_all(spec_filter)
+  local pages, err, err_t = kong.db.files:select_all(page_filter, {
+    skip_rbac = true,
+  })
+
+  if err then
+    return endpoints.handle_error(err_t)
+  end
+
+  local specs, err, err_t = kong.db.files:select_all(spec_filter, {
+    skip_rbac = true,
+  })
+
+  if err then
+    return endpoints.handle_error(err_t)
+  end
 
   return build_xml_template(pages, specs)
 end

@@ -12,7 +12,6 @@ local ngx_log = ngx.log
 local DEBUG   = ngx.DEBUG
 local next    = next
 local values = tablex.values
-local cache = singletons.cache
 local pairs = pairs
 local setmetatable = setmetatable
 local ipairs = ipairs
@@ -143,7 +142,7 @@ end
 
 
 function _M.upsert_default(db)
-  db = db or singletons.db
+  db = db or singletons.db or kong.db -- XXX EE: safeguard to catch db if available anywhere.
 
   local cb = function()
     return db.workspaces:upsert_by_name(DEFAULT_WORKSPACE, {
@@ -275,7 +274,6 @@ end
 
 
 function _M.delete_entity_relation(table_name, entity)
-  local dao = singletons.dao
   local db = singletons.db
 
   local constraints = workspaceable_relations[table_name]
@@ -299,13 +297,6 @@ function _M.delete_entity_relation(table_name, entity)
     }, {skip_rbac = true})
     if err then
       return err
-    end
-
-    if dao[table_name] then
-      local cache_key = dao[table_name]:entity_cache_key(entity)
-      if cache and cache_key then
-        cache:invalidate(cache_key .. row.workspace_id)
-      end
     end
 
     if not seen[row.workspace_id] then

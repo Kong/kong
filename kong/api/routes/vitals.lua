@@ -11,7 +11,7 @@ end
 
 local function fetch_consumer(self, helpers, db, consumer_id)
   if not consumer_id then
-    return helpers.responses.send_HTTP_NOT_FOUND()
+    return kong.response.exit(404, { message = "Not found" })
   end
 
   self.args = {}
@@ -19,7 +19,7 @@ local function fetch_consumer(self, helpers, db, consumer_id)
 
   self.consumer = endpoints.select_entity(self, db, db.consumers.schema)
   if not self.consumer then
-    return helpers.responses.send_HTTP_NOT_FOUND()
+    return kong.response.exit(404, { message = "Not found" })
   end
 end
 
@@ -28,7 +28,7 @@ return {
     GET = function(self, dao, helpers)
       local data = kong.vitals:get_index()
 
-      return helpers.responses.send_HTTP_OK(data)
+      return kong.response.exit(200, data)
     end
   },
   ["/vitals/cluster"] = {
@@ -41,14 +41,14 @@ return {
 
       if err then
         if err:find("Invalid query params", nil, true) then
-          return helpers.responses.send_HTTP_BAD_REQUEST(err)
+          return kong.response.exit(400, { message = err })
 
         else
           return helpers.yield_error(err)
         end
       end
 
-      return helpers.responses.send_HTTP_OK(cluster_stats)
+      return kong.response.exit(200, cluster_stats)
     end
   },
   ["/vitals/cluster/status_codes"] = {
@@ -64,14 +64,14 @@ return {
 
       if err then
         if err:find("Invalid query params", nil, true) then
-          return helpers.responses.send_HTTP_BAD_REQUEST(err)
+          return kong.response.exit(400, { message = err })
 
         else
           return helpers.yield_error(err)
         end
       end
 
-      return helpers.responses.send_HTTP_OK(status_codes)
+      return kong.response.exit(200, status_codes)
     end
   },
   ["/vitals/nodes/"] = {
@@ -85,14 +85,14 @@ return {
 
       if err then
         if err:find("Invalid query params", nil, true) then
-          return helpers.responses.send_HTTP_BAD_REQUEST(err)
+          return kong.response.exit(400, { message = err })
 
         else
           return helpers.yield_error(err)
         end
       end
 
-      return helpers.responses.send_HTTP_OK(all_node_stats)
+      return kong.response.exit(200, all_node_stats)
     end
   },
   ["/vitals/nodes/:node_id"] = {
@@ -106,15 +106,15 @@ return {
 
       if err then
         if err:find("Invalid query params: invalid node_id") or err:find("node does not exist") then
-          return helpers.responses.send_HTTP_NOT_FOUND()
+          return kong.response.exit(404, { message = "Not found" })
         elseif err:find("Invalid query params", nil, true) then
-          return helpers.responses.send_HTTP_BAD_REQUEST(err)
+          return kong.response.exit(400, { message = err })
         else
           return helpers.yield_error(err)
         end
       end
 
-      return helpers.responses.send_HTTP_OK(requested_node_stats)
+      return kong.response.exit(200, requested_node_stats)
     end
   },
   ["/vitals/consumers/:consumer_id/cluster"] = {
@@ -134,7 +134,7 @@ return {
 
       if err then
         if err:find("Invalid query params", nil, true) then
-          return helpers.responses.send_HTTP_BAD_REQUEST(err)
+          return kong.response.exit(400, { message = err })
 
         else
           -- something went wrong in the arguments we set, not user-entered
@@ -142,7 +142,7 @@ return {
         end
       end
 
-      return helpers.responses.send_HTTP_OK(cluster_stats)
+      return kong.response.exit(200, cluster_stats)
     end
   },
   ["/vitals/status_codes/by_service"] = {
@@ -150,11 +150,11 @@ return {
       local service, service_err = kong.db.services:select({ id = self.params.service_id })
 
       if service_err then
-        helpers.responses.send_HTTP_BAD_REQUEST("Invalid query params: service_id is invalid")
+        kong.response.exit(400, { message = "Invalid query params: service_id is invalid" })
       end
 
       if not service then
-        helpers.responses.send_HTTP_NOT_FOUND()
+        kong.response.exit(404, { message = "Not found" })
       end
 
       local opts = {
@@ -170,13 +170,13 @@ return {
 
       if err then
         if err:find("Invalid query params", nil, true) then
-          return helpers.responses.send_HTTP_BAD_REQUEST(err)
+          return kong.response.exit(400, { message = err })
         else
           return helpers.yield_error(err)
         end
       end
 
-      return helpers.responses.send_HTTP_OK(status_codes)
+      return kong.response.exit(200, status_codes)
     end
   },
   ["/vitals/status_codes/by_route"] = {
@@ -184,11 +184,11 @@ return {
       local route, route_err = kong.db.routes:select({ id = self.params.route_id })
 
       if route_err then
-        helpers.responses.send_HTTP_BAD_REQUEST("Invalid query params: route_id is invalid")
+        kong.response.exit(400, { message = "Invalid query params: route_id is invalid" })
       end
 
       if not route then
-        helpers.responses.send_HTTP_NOT_FOUND()
+        kong.response.exit(404, { message = "Not found" })
       end
 
       local opts = {
@@ -204,13 +204,13 @@ return {
 
       if err then
         if err:find("Invalid query params", nil, true) then
-          return helpers.responses.send_HTTP_BAD_REQUEST(err)
+          return kong.response.exit(400, { message = err })
         else
           return helpers.yield_error(err)
         end
       end
 
-      return helpers.responses.send_HTTP_OK(status_codes)
+      return kong.response.exit(200, status_codes)
     end
   },
   ["/vitals/status_codes/by_consumer"] = {
@@ -230,13 +230,13 @@ return {
       local requested_routes, err = kong.vitals:get_status_codes(opts)
       if err then
         if err:find("Invalid query params", nil, true) then
-          return helpers.responses.send_HTTP_BAD_REQUEST(err)
+          return kong.response.exit(400, { message = err })
         else
           return helpers.yield_error(err)
         end
       end
 
-      return helpers.responses.send_HTTP_OK(requested_routes)
+      return kong.response.exit(200, requested_routes)
     end
   },
   ["/vitals/status_codes/by_consumer_and_route"] = {
@@ -258,13 +258,13 @@ return {
 
       if err then
         if err:find("Invalid query params", nil, true) then
-          return helpers.responses.send_HTTP_BAD_REQUEST(err)
+          return kong.response.exit(400, { message = err })
         else
           return helpers.yield_error(err)
         end
       end
 
-      return helpers.responses.send_HTTP_OK(requested_routes)
+      return kong.response.exit(200, requested_routes)
     end
   },
   ["/vitals/status_code_classes"] = {
@@ -292,13 +292,13 @@ return {
 
       if err then
         if err:find("Invalid query params", nil, true) then
-          return helpers.responses.send_HTTP_BAD_REQUEST(err)
+          return kong.response.exit(400, { message = err })
         else
           return helpers.yield_error(err)
         end
       end
 
-      return helpers.responses.send_HTTP_OK(res)
+      return kong.response.exit(200, res)
     end
   },
 }

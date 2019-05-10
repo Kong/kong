@@ -94,13 +94,12 @@ for _, strategy in helpers.each_strategy() do
     end)
   end)
   describe("Plugin: workspace scope test key-auth (access) #" .. strategy, function()
-    local admin_client, proxy_client, route1, plugin_foo, ws_foo, ws_default, dao, db, bp, s
+    local admin_client, proxy_client, route1, plugin_foo, ws_foo, ws_default, db, bp, s
     local consumer_default, cred_default
     setup(function()
-      bp, db, dao = helpers.get_db_utils(strategy)
+      bp, db = helpers.get_db_utils(strategy)
 
-      ws_default = dao.workspaces:find_all({name = "default"})[1]
-
+      ws_default = assert(db.workspaces:select_by_name("default"))
 
       assert(helpers.start_kong({
         database   = strategy,
@@ -356,7 +355,7 @@ for _, strategy in helpers.each_strategy() do
         end, 7)
 
         local content = res:read_body()
-        assert.is_equal("", content)
+        assert.is_equal("{}", content)
       end)
       it("delete plugin on foo side", function()
         local res = assert(admin_client:send {
@@ -383,7 +382,8 @@ for _, strategy in helpers.each_strategy() do
                                                 s.id,
                                                 nil,
                                                 nil,
-                                                false)
+                                                true)
+        cache_key = cache_key .. ws_foo.id
 
         local res
         helpers.wait_until(function()

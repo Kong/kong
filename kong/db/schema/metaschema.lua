@@ -509,4 +509,42 @@ function MetaSchema.get_supported_validator_set()
 end
 
 
+MetaSchema.MetaSubSchema = Schema.new({
+
+  name = "metasubschema",
+
+  fields = {
+    {
+      name = {
+        type = "string",
+        required = true,
+      },
+    },
+    {
+      fields = fields_array,
+    },
+    {
+      entity_checks = entity_checks_schema,
+    },
+    {
+      check = {
+        type = "function",
+        nilable = true,
+      },
+    },
+  },
+
+  check = function(schema)
+    local errors = {}
+
+    if not schema.fields then
+      errors["fields"] = meta_errors.TABLE:format("fields")
+      return nil, errors
+    end
+
+    return check_fields(schema, errors)
+  end,
+
+})
+
 return MetaSchema

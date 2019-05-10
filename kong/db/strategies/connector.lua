@@ -134,12 +134,7 @@ function Connector:run_up_migration()
 end
 
 
-function Connector:post_run_up_migrations()
-  return true
-end
-
-
-function Connector:post_run_teardown_migrations()
+function Connector:wait_for_schema_consensus()
   return true
 end
 

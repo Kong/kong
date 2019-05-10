@@ -1,5 +1,6 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
+local utils   = require "kong.tools.utils"
 
 local function it_content_types(title, fn)
   local test_form_encoded = fn("application/x-www-form-urlencoded")
@@ -24,13 +25,12 @@ for _, strategy in helpers.each_strategy() do
 describe("Admin API #" .. strategy, function()
   local bp
   local db
-  local dao
   local client
   local weight_default, weight_min, weight_max = 100, 0, 1000
   local default_port = 8000
 
   lazy_setup(function()
-    bp, db, dao = helpers.get_db_utils(strategy, {
+    bp, db = helpers.get_db_utils(strategy, {
       "upstreams",
       "targets",
     })
@@ -46,7 +46,6 @@ describe("Admin API #" .. strategy, function()
 
   before_each(function()
     client = assert(helpers.admin_client())
-    ngx.ctx.workspaces = dao.workspaces:find_all({name = "default"})
   end)
 
   after_each(function()
@@ -566,11 +565,18 @@ describe("Admin API #" .. strategy, function()
       describe("POST #" .. mode, function()
         local upstream
         local target_path
-        local my_target_name = localhost .. ":8192"
+        local target
+        local wrong_target
 
-        before_each(function()
+        lazy_setup(function()
+          local my_target_name = localhost .. ":8192"
+
+          wrong_target = bp.targets:insert {
+            target = my_target_name,
+            weight = 10
+          }
+
           upstream = bp.upstreams:insert {}
-          target_path = "/upstreams/" .. upstream.id .. "/targets/" .. my_target_name
           local status, body = assert(client_send({
             method = "PATCH",
             path = "/upstreams/" .. upstream.id,
@@ -593,7 +599,7 @@ describe("Admin API #" .. strategy, function()
           assert.same(200, status, body)
           local json = assert(cjson.decode(body))
 
-          status = assert(client_send({
+          status, body = assert(client_send({
             method = "POST",
             path = "/upstreams/" .. upstream.id .. "/targets",
             headers = {["Content-Type"] = "application/json"},
@@ -604,6 +610,26 @@ describe("Admin API #" .. strategy, function()
             }
           }))
           assert.same(201, status)
+          target = assert(cjson.decode(body))
+          assert.same(my_target_name, target.target)
+
+          target_path = "/upstreams/" .. upstream.id .. "/targets/" .. target.target
+        end)
+
+        it("checks every combination of valid and invalid upstream and target", function()
+          for i, u in ipairs({ utils.uuid(), "invalid", upstream.name, upstream.id }) do
+            for j, t in ipairs({ utils.uuid(), "invalid:1234", wrong_target.id, target.target, target.id }) do
+              for _, e in ipairs({ "healthy", "unhealthy" }) do
+                local expected = (i >= 3 and j >= 4) and 204 or 404
+                local path = "/upstreams/" .. u .. "/targets/" .. t .. "/" .. e
+                local status = assert(client_send {
+                  method = "POST",
+                  path = "/upstreams/" .. u .. "/targets/" .. t .. "/" .. e
+                })
+                assert.same(expected, status, "bad status for path " .. path)
+              end
+            end
+          end
         end)
 
         it("flips the target status from UNHEALTHY to HEALTHY", function()
@@ -619,7 +645,7 @@ describe("Admin API #" .. strategy, function()
           })
           assert.same(200, status)
           json = assert(cjson.decode(body))
-          assert.same(my_target_name, json.data[1].target)
+          assert.same(target.target, json.data[1].target)
           assert.same("UNHEALTHY", json.data[1].health)
           status = assert(client_send {
             method = "POST",
@@ -632,7 +658,7 @@ describe("Admin API #" .. strategy, function()
           })
           assert.same(200, status)
           json = assert(cjson.decode(body))
-          assert.same(my_target_name, json.data[1].target)
+          assert.same(target.target, json.data[1].target)
           assert.same("HEALTHY", json.data[1].health)
         end)
 
@@ -649,7 +675,7 @@ describe("Admin API #" .. strategy, function()
           })
           assert.same(200, status)
           json = assert(cjson.decode(body))
-          assert.same(my_target_name, json.data[1].target)
+          assert.same(target.target, json.data[1].target)
           assert.same("HEALTHY", json.data[1].health)
           status = assert(client_send {
             method = "POST",
@@ -662,7 +688,7 @@ describe("Admin API #" .. strategy, function()
           })
           assert.same(200, status)
           json = assert(cjson.decode(body))
-          assert.same(my_target_name, json.data[1].target)
+          assert.same(target.target, json.data[1].target)
           assert.same("UNHEALTHY", json.data[1].health)
         end)
       end)

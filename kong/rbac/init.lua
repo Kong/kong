@@ -8,7 +8,6 @@ local tablex     = require "pl.tablex"
 local bcrypt     = require "bcrypt"
 local new_tab    = require "table.new"
 
-
 local band   = bit.band
 local bor    = bit.bor
 local fmt    = string.format
@@ -608,16 +607,7 @@ local function add_default_role_entity_permission(entity, table_name)
     return true
   end
 
-  local schema
-  local entity_dao = rawget(kong.dao.daos, table_name)
-
-  if entity_dao then -- old dao
-    schema = entity_dao.schema
-
-  else -- new dao
-    schema = kong.db.daos[table_name].schema
-  end
-
+  local schema = kong.db.daos[table_name].schema
   local entity_id = schema.primary_key[1]
 
   local function insert()
@@ -729,15 +719,7 @@ function _M.validate_entity_operation(entity, table_name)
   local permissions_map = rbac_ctx.entities_perms
   local action = rbac_ctx.action
 
-  local schema
-  local entity_dao = rawget(kong.dao.daos, table_name)
-
-  if entity_dao then -- old dao
-    schema = entity_dao.schema
-
-  else -- new dao
-    schema = kong.db.daos[table_name].schema
-  end
+  local schema = kong.db.daos[table_name].schema
 
   local entity_id = schema.primary_key[1]
 

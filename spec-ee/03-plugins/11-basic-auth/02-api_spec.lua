@@ -37,7 +37,7 @@ for _, strategy in helpers.each_strategy() do
 
     teardown(function()
       if admin_client then admin_client:close() end
-      helpers.stop_kong()
+      helpers.stop_kong(nil, true, true)
     end)
 
     describe("/consumers/:consumer/basic-auth/", function()

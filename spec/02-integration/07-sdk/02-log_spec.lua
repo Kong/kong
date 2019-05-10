@@ -66,7 +66,7 @@ describe("SDK: kong.log", function()
     })
 
     assert(helpers.start_kong({
-      custom_plugins = "logger,logger-last",
+      plugins = "bundled,logger,logger-last",
       nginx_conf     = "spec/fixtures/custom_nginx.template",
     }))
 

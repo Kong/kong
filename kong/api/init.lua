@@ -2,7 +2,6 @@ local lapis       = require "lapis"
 local utils       = require "kong.tools.utils"
 local tablex      = require "pl.tablex"
 local pl_pretty   = require "pl.pretty"
-local responses   = require "kong.tools.responses"
 local singletons  = require "kong.singletons"
 local app_helpers = require "lapis.application"
 local api_helpers = require "kong.api.api_helpers"
@@ -21,7 +20,6 @@ local find     = string.find
 local type     = type
 local pairs    = pairs
 local ipairs   = ipairs
-local tostring = tostring
 local fmt      = string.format
 
 
@@ -39,7 +37,7 @@ local function parse_params(fn)
         content_type = content_type:lower()
 
         if find(content_type, "application/json", 1, true) and not self.json then
-          return responses.send_HTTP_BAD_REQUEST("Cannot parse JSON body")
+          return kong.response.exit(400, { message = "Cannot parse JSON body" })
 
         elseif find(content_type, "application/x-www-form-urlencode", 1, true) then
           self.params = utils.decode_args(self.params)
@@ -49,7 +47,13 @@ local function parse_params(fn)
 
     self.params = api_helpers.normalize_nested_params(self.params)
 
-    local res = fn(self, ...)
+    local res, err = fn(self, ...)
+
+    if err then
+      kong.log.err(err)
+      return ngx.exit(500)
+    end
+
     if res == nil and ngx.status >= 200 then
       return ngx.exit(0)
     end
@@ -64,7 +68,8 @@ local function new_db_on_error(self)
   local err = self.errors[1]
 
   if type(err) ~= "table" then
-    return responses.send_HTTP_INTERNAL_SERVER_ERROR(tostring(err))
+    kong.log.err(err)
+    return kong.response.exit(500, { message = "An unexpected error occurred" })
   end
 
   if err.strategy then
@@ -76,20 +81,21 @@ local function new_db_on_error(self)
   or err.code == Errors.codes.FOREIGN_KEY_VIOLATION
   or err.code == Errors.codes.INVALID_OFFSET
   then
-    return responses.send_HTTP_BAD_REQUEST(err)
+    return kong.response.exit(400, err)
   end
 
   if err.code == Errors.codes.NOT_FOUND then
-    return responses.send_HTTP_NOT_FOUND(err)
+    return kong.response.exit(404, err)
   end
 
   if err.code == Errors.codes.PRIMARY_KEY_VIOLATION
   or err.code == Errors.codes.UNIQUE_VIOLATION
   then
-    return responses.send_HTTP_CONFLICT(err)
+    return kong.response.exit(409, err)
   end
 
-  return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+  kong.log.err(err)
+  return kong.response.exit(500, { message = "An unexpected error occurred" })
 end
 
 
@@ -98,11 +104,12 @@ local function on_error(self)
   local err = self.errors[1]
 
   if type(err) ~= "table" then
-    return responses.send_HTTP_INTERNAL_SERVER_ERROR(tostring(err))
+    kong.log.err(err)
+    return kong.response.exit(500, { message = "An unexpected error occurred" })
   end
 
   if err.forbidden then
-    return responses.send_HTTP_FORBIDDEN(err.tbl)
+    return kong.response.exit(403, { message = err.tbl.message })
   end
 
   if err.name then
@@ -110,18 +117,19 @@ local function on_error(self)
   end
 
   if err.db then
-    return responses.send_HTTP_INTERNAL_SERVER_ERROR(err.message)
+    kong.log.err(err.message)
+    return kong.response.exit(500, { message = "An unexpected error occurred" })
   end
 
   if err.unique then
-    return responses.send_HTTP_CONFLICT(err.tbl)
+    return kong.response.exit(409, err.tbl)
   end
 
   if err.foreign then
-    return responses.send_HTTP_NOT_FOUND(err.tbl)
+    return kong.response.exit(404, err.tbl or { message = "Not found" })
   end
 
-  return responses.send_HTTP_BAD_REQUEST(err.tbl or err.message)
+  return kong.response.exit(400, err.tbl or err.message)
 end
 
 
@@ -140,7 +148,7 @@ end
 
 
 app.handle_404 = function(self)
-  return responses.send_HTTP_NOT_FOUND()
+  return kong.response.exit(404, { message = "Not found" })
 end
 
 
@@ -150,7 +158,7 @@ app.handle_error = function(self, err, trace)
       err = pl_pretty.write(err)
     end
     if find(err, "don't know how to respond to", nil, true) then
-      return responses.send_HTTP_METHOD_NOT_ALLOWED()
+      return kong.response.exit(405, { message = "Method not allowed" })
     end
   end
 
@@ -158,7 +166,7 @@ app.handle_error = function(self, err, trace)
 
   -- We just logged the error so no need to give it to responses and log it
   -- twice
-  return responses.send_HTTP_INTERNAL_SERVER_ERROR()
+  return kong.response.exit(500, { message = "An unexpected error occurred" })
 end
 
 
@@ -186,10 +194,10 @@ app:before_filter(function(self)
     local workspace, err = workspaces.fetch_workspace(ws_name)
     if err then
       ngx.log(ngx.ERR, err)
-      return responses.send_HTTP_INTERNAL_SERVER_ERROR()
+      return kong.response.exit(500, { message = "And unexpected error occurred" })
     end
     if not workspace then
-      responses.send_HTTP_NOT_FOUND(fmt("Workspace '%s' not found", ws_name))
+      kong.response.exit(404, {message = fmt("Workspace '%s' not found", ws_name)})
     end
 
     -- set fetched workspace reference into the context
@@ -255,12 +263,11 @@ app:before_filter(function(self)
     return
   end
 
-  return responses.send_HTTP_UNSUPPORTED_MEDIA_TYPE()
+  return kong.response.exit(415)
 end)
 
 
 local handler_helpers = {
-  responses = responses,
   yield_error = app_helpers.yield_error
 }
 
@@ -270,7 +277,7 @@ local function attach_routes(routes)
 
     for method_name, method_handler in pairs(methods) do
       local wrapped_handler = function(self)
-        return method_handler(self, singletons.dao, handler_helpers)
+        return method_handler(self, {}, handler_helpers)
       end
 
       methods[method_name] = parse_params(wrapped_handler)
@@ -318,7 +325,7 @@ ngx.log(ngx.DEBUG, "Loading Admin API endpoints")
 
 
 -- Load core routes
-for _, v in ipairs({"kong", "apis", "cache", }) do
+for _, v in ipairs({"kong", "cache"}) do
   local routes = require("kong.api.routes." .. v)
   attach_routes(routes)
 end

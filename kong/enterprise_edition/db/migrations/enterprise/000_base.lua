@@ -131,7 +131,7 @@ local function seed_kong_admin_data_pg()
     END IF;
 
     END $$;
-  ]], random_password, random_password, kong_admin_consumer_id, crypto.encrypt(kong_admin_consumer_id, password))
+  ]], random_password, random_password, kong_admin_consumer_id, crypto.hash(kong_admin_consumer_id, password))
 end
 
 local function seed_kong_admin_data_cas()
@@ -223,7 +223,7 @@ local function seed_kong_admin_data_cas()
     table.insert(res,
       fmt("INSERT into basicauth_credentials(id, consumer_id, username, password, created_at)" ..
         "VALUES(%s , %s, 'default:%s', '%s', %s)",
-        kong_admin_basic_auth_id, kong_admin_consumer_id, "kong_admin", crypto.encrypt(kong_admin_consumer_id, password), created_ts))
+          kong_admin_basic_auth_id, kong_admin_consumer_id, "kong_admin", crypto.hash(kong_admin_consumer_id, password), created_ts))
 
     helpers.add_to_default_ws(res, kong_admin_basic_auth_id, "basicauth_credentials", "id", kong_admin_basic_auth_id)
     helpers.add_to_default_ws(res, kong_admin_basic_auth_id, "basicauth_credentials", "username", "kong_admin")
@@ -976,11 +976,11 @@ END $$;
         PRIMARY KEY(workspace_id, entity_type)
       );
 
-      CREATE TABLE IF NOT EXISTS consumers_rbac_users_map(	
-        consumer_id uuid,	
-        user_id uuid,	
-        created_at timestamp,	
-        PRIMARY KEY (consumer_id, user_id)	
+      CREATE TABLE IF NOT EXISTS consumers_rbac_users_map(
+        consumer_id uuid,
+        user_id uuid,
+        created_at timestamp,
+        PRIMARY KEY (consumer_id, user_id)
       );
     ]],
     teardown = function(connector)

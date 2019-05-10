@@ -8,28 +8,6 @@ local CassandraConnector   = {}
 CassandraConnector.__index = CassandraConnector
 
 
-local function wait_for_schema_consensus(self)
-  local conn = self:get_stored_connection()
-  if not conn then
-    error("no connection")
-  end
-
-  log.verbose("waiting for Cassandra schema consensus (%dms timeout)...",
-              self.cluster.max_schema_consensus_wait)
-
-  local ok, err = self.cluster:wait_schema_consensus(conn)
-
-  log.verbose("Cassandra schema consensus: %s",
-              ok and "reached" or "not reached")
-
-  if err then
-    return nil, "failed to wait for schema consensus: " .. err
-  end
-
-  return true
-end
-
-
 function CassandraConnector.new(kong_config)
   local cluster_options       = {
     shm                       = "kong_cassandra",
@@ -220,14 +198,14 @@ end
 function CassandraConnector:setkeepalive()
   local conn = self:get_stored_connection()
   if not conn then
-    return
+    return true
   end
 
-  local ok, err = conn:setkeepalive()
+  local _, err = conn:setkeepalive()
 
   self:store_connection(nil)
 
-  if not ok then
+  if err then
     return nil, err
   end
 
@@ -238,15 +216,37 @@ end
 function CassandraConnector:close()
   local conn = self:get_stored_connection()
   if not conn then
-    return
+    return true
   end
 
-  local ok, err = conn:close()
+  local _, err = conn:close()
 
   self:store_connection(nil)
 
-  if not ok then
+  if err then
     return nil, err
+  end
+
+  return true
+end
+
+
+function CassandraConnector:wait_for_schema_consensus()
+  local conn = self:get_stored_connection()
+  if not conn then
+    error("no connection")
+  end
+
+  log.verbose("waiting for Cassandra schema consensus (%dms timeout)...",
+              self.cluster.max_schema_consensus_wait)
+
+  local ok, err = self.cluster:wait_schema_consensus(conn)
+
+  log.verbose("Cassandra schema consensus: %s",
+              ok and "reached" or "not reached")
+
+  if err then
+    return nil, "failed to wait for schema consensus: " .. err
   end
 
   return true
@@ -393,7 +393,7 @@ function CassandraConnector:reset()
     end
   end
 
-  ok, err = wait_for_schema_consensus(self)
+  ok, err = self:wait_for_schema_consensus()
   if not ok then
     self:setkeepalive()
     return nil, err
@@ -482,7 +482,7 @@ function CassandraConnector:setup_locks(default_ttl, no_schema_consensus)
   if not no_schema_consensus then
     -- called from tests, ignored when called from bootstrapping, since
     -- we wait for schema consensus as part of bootstrap
-    ok, err = wait_for_schema_consensus(self)
+    ok, err = self:wait_for_schema_consensus()
     if not ok then
       self:setkeepalive()
       return nil, err
@@ -720,7 +720,7 @@ do
       return nil, err
     end
 
-    ok, err = wait_for_schema_consensus(self)
+    ok, err = self:wait_for_schema_consensus()
     if not ok then
       return nil, err
     end
@@ -744,7 +744,7 @@ do
 
     log("dropped '%s' keyspace", self.keyspace)
 
-    ok, err = wait_for_schema_consensus(self)
+    ok, err = self:wait_for_schema_consensus()
     if not ok then
       return nil, err
     end
@@ -851,23 +851,63 @@ do
   end
 
 
-  function CassandraConnector:post_run_up_migrations()
-    local ok, err = wait_for_schema_consensus(self)
-    if not ok then
+  local function does_table_exist(self, table_name)
+    local cql
+
+    -- For now we will assume that a release version number of 3 and greater
+    -- will use the same schema. This is recognized as a hotfix and will be
+    -- revisited for a more considered solution at a later time.
+    if self.major_version >= 3 then
+      cql = [[
+        SELECT COUNT(*) FROM system_schema.tables
+         WHERE keyspace_name = ? AND table_name = ?
+      ]]
+
+    else
+      cql = [[
+        SELECT COUNT(*) FROM system.schema_columnfamilies
+         WHERE keyspace_name = ? AND columnfamily_name = ?
+      ]]
+    end
+
+    local conn = self:get_stored_connection()
+    if not conn then
+      error("no connection")
+    end
+
+    local rows, err = conn:execute(cql, {
+      self.keyspace,
+      table_name,
+    })
+    if err then
       return nil, err
+    end
+
+    if not rows or not rows[1] or rows[1].count == 0 then
+      return false
     end
 
     return true
   end
 
 
-  function CassandraConnector:post_run_teardown_migrations()
-    local ok, err = wait_for_schema_consensus(self)
-    if not ok then
+  function CassandraConnector:are_014_apis_present()
+    local exists, err = does_table_exist(self, "apis")
+    if err then
       return nil, err
     end
 
-    return true
+    if not exists then
+      return false
+    end
+
+    local rows, err = self:query([[
+      SELECT * FROM ]] .. self.keyspace .. [[.apis LIMIT 1;
+    ]])
+    if err then
+      return nil, err
+    end
+    return rows and #rows > 0 or false
   end
 
 
@@ -992,38 +1032,19 @@ do
       ["admins"] = { '2018-06-30-000000_rbac_consumer_admins'} ,
     }
 
-
-    local cql
-
-    -- For now we will assume that a release version number of 3 and greater
-    -- will use the same schema. This is recognized as a hotfix and will be
-    -- revisited for a more considered solution at a later time.
-    if self.major_version >= 3 then
-      cql = [[
-        SELECT COUNT(*) FROM system_schema.tables
-         WHERE keyspace_name = ? AND table_name = ?
-      ]]
-
-    else
-      cql = [[
-        SELECT COUNT(*) FROM system.schema_columnfamilies
-         WHERE keyspace_name = ? AND columnfamily_name = ?
-      ]]
-    end
-
-    local conn = self:get_stored_connection()
-
-    local rows, err = conn:execute(cql, {
-      self.keyspace,
-      "schema_migrations",
-    })
+    local exists, err = does_table_exist(self, "schema_migrations")
     if err then
       return nil, err
     end
 
-    if not rows or not rows[1] or rows[1].count == 0 then
+    if not exists then
       -- no trace of legacy migrations: above 0.14
       return res
+    end
+
+    local conn = self:get_stored_connection()
+    if not conn then
+      error("no connection")
     end
 
     local ok, err = conn:change_keyspace(self.keyspace)

@@ -1,8 +1,10 @@
 local oas_config   = require "kong.enterprise_edition.oas_config"
-local endpoints    = require "kong.api.endpoints"
 local core_handler = require "kong.runloop.handler"
 local singletons   = require "kong.singletons"
 local uuid         = require("kong.tools.utils").uuid
+
+
+local kong = kong
 
 
 local function rebuild_routes()
@@ -20,23 +22,23 @@ return {
 
       local res, err_t = oas_config.post_auto_config(self.params.spec)
       if err_t then
-        return endpoints.handle_error(err_t)
+        return kong.response.exit(err_t.code, { message = err_t.message })
       end
 
-      return helpers.responses.send_HTTP_CREATED(res)
+      return kong.response.exit(201, res)
     end,
 
     PATCH = function(self, dao, helpers)
       local ok, err_t, res, resources_created = oas_config.patch_auto_config(self.params.spec, self.params.recreate_routes)
       if not ok then
-        return endpoints.handle_error(err_t)
+        return kong.response.exit(err_t.code, { message = err_t.message })
       end
 
       if resources_created then
-        return helpers.responses.send_HTTP_CREATED(res)
+        return kong.response.exit(201, res)
       end
 
-      return helpers.responses.send_HTTP_OK(res)
+      return kong.response.exit(200, res)
     end,
   }
 }

@@ -140,8 +140,7 @@ return {
         local email_res, err = portal_emails:approved(developer.email)
         if err then
           if err.code then
-            -- TODO DEVX update this to use endpoints.handle_error
-            return helpers.responses.send(err.code, {message = err.message})
+            return kong.response.exit(err.code, { message = err.message })
           end
 
           return endpoints.handle_error(err)
@@ -344,7 +343,7 @@ return {
       local res, err = portal_emails:invite(self.params.emails)
       if err then
         if err.code then
-          return helpers.responses.send(err.code, {message = err.message})
+          return kong.response.exit(err.code, { message = err.message })
         end
 
         return endpoints.handle_error(err)

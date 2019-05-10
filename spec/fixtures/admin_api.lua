@@ -57,4 +57,4 @@ admin_api_as_db["basicauth_credentials"] = {
 }
 
 
-return blueprints.new(nil, admin_api_as_db)
+return blueprints.new(admin_api_as_db)

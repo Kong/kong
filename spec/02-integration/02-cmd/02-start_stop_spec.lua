@@ -2,7 +2,10 @@ local helpers = require "spec.helpers"
 
 describe("kong start/stop", function()
   lazy_setup(function()
-    helpers.get_db_utils(nil, {}) -- runs migrations
+    helpers.get_db_utils(nil, {
+      "routes",
+      "services",
+    }) -- runs migrations
     helpers.prepare_prefix()
   end)
   after_each(function()
@@ -34,6 +37,17 @@ describe("kong start/stop", function()
   it("start/stop custom Kong conf/prefix", function()
     assert(helpers.kong_exec("start --conf " .. helpers.test_conf_path))
     assert(helpers.kong_exec("stop --prefix " .. helpers.test_conf.prefix))
+  end)
+  it("start/stop Kong with only stream listeners enabled", function()
+    assert(helpers.kong_exec("start ", {
+      prefix = helpers.test_conf.prefix,
+      admin_listen = "off",
+      proxy_listen = "off",
+      stream_listen = "127.0.0.1:9022",
+    }))
+    assert(helpers.kong_exec("stop", {
+      prefix = helpers.test_conf.prefix
+    }))
   end)
   it("start dumps Kong config in prefix", function()
     assert(helpers.kong_exec("start --conf " .. helpers.test_conf_path))
@@ -113,16 +127,6 @@ describe("kong start/stop", function()
       local contents = helpers.file.read(helpers.test_conf.nginx_conf)
       assert.matches("# This is a custom nginx configuration template for Kong specs", contents, nil, true)
       assert.matches("daemon on;", contents, nil, true)
-    end)
-  end)
-
-  describe("using deprecated custom_plugin property" , function()
-    it("prints a warning to stderr", function()
-      local _, stderr, stdout = assert(helpers.kong_exec("start --conf " ..
-                                  "spec/fixtures/deprecated_custom_plugin.conf"))
-      assert.matches("Kong started", stdout, nil, true)
-      assert.matches("[warn] the 'custom_plugins' configuration property is " ..
-                     "deprecated, use 'plugins' instead", stderr, nil, true)
     end)
   end)
 
@@ -215,7 +219,7 @@ describe("kong start/stop", function()
           method = "GET",
           path = "/hello",
         })
-        assert.res_status(404, res) -- no API configured
+        assert.res_status(404, res) -- no Route configured
       end
 
       assert(helpers.stop_kong(helpers.test_conf.prefix))

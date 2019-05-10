@@ -14,6 +14,7 @@ local error = error
 local lower = string.lower
 local tonumber = tonumber
 local getmetatable = getmetatable
+local setmetatable = setmetatable
 local check_phase = phase_checker.check
 
 
@@ -25,21 +26,37 @@ local header_body_log = phase_checker.new(PHASES.header_filter,
                                           PHASES.log)
 
 
-local function headers(response_headers, err)
-  local mt = getmetatable(response_headers)
-  local index = mt.__index
-  mt.__index = function(_, name)
-    if type(name) == "string" then
-      local var = fmt("upstream_http_%s", gsub(lower(name), "-", "_"))
-      if not ngx.var[var] then
-        return nil
+local attach_resp_headers_mt
+
+
+do
+  local resp_headers_orig_mt_index
+
+
+  local resp_headers_mt = {
+    __index = function(t, name)
+      if type(name) == "string" then
+        local var = fmt("upstream_http_%s", gsub(lower(name), "-", "_"))
+        if not ngx.var[var] then
+          return nil
+        end
       end
+
+      return resp_headers_orig_mt_index(t, name)
+    end,
+  }
+
+
+  attach_resp_headers_mt = function(response_headers, err)
+    if not resp_headers_orig_mt_index then
+      local mt = getmetatable(response_headers)
+      resp_headers_orig_mt_index = mt.__index
     end
 
-    return index(response_headers, name)
-  end
+    setmetatable(response_headers, resp_headers_mt)
 
-  return response_headers, err
+    return response_headers, err
+  end
 end
 
 
@@ -106,7 +123,7 @@ local function new(pdk, major_version)
     check_phase(header_body_log)
 
     if max_headers == nil then
-      return headers(ngx.resp.get_headers(MAX_HEADERS_DEFAULT))
+      return attach_resp_headers_mt(ngx.resp.get_headers(MAX_HEADERS_DEFAULT))
     end
 
     if type(max_headers) ~= "number" then
@@ -119,7 +136,7 @@ local function new(pdk, major_version)
       error("max_headers must be <= " .. MAX_HEADERS, 2)
     end
 
-    return headers(ngx.resp.get_headers(max_headers))
+    return attach_resp_headers_mt(ngx.resp.get_headers(max_headers))
   end
 
   ---

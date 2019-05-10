@@ -289,13 +289,13 @@ local function new(self)
   -- Returns the path, including the querystring if any. No
   -- transformations/normalizations are done.
   --
-  -- @function kong.request.get_path_with_query()
+  -- @function kong.request.get_path_with_query
   -- @phases rewrite, access, header_filter, body_filter, log, admin_api
   -- @treturn string the path with the querystring
   -- @usage
   -- -- Given a request to https://example.com:1234/v1/movies?movie=foo
   --
-  -- kong.request.get_raw_path_and_query() -- "/v1/movies?movie=foo"
+  -- kong.request.get_path_with_query() -- "/v1/movies?movie=foo"
   function _REQUEST.get_path_with_query()
     check_phase(PHASES.request)
     return ngx.var.request_uri or ""

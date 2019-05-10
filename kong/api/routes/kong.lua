@@ -1,6 +1,5 @@
 local utils = require "kong.tools.utils"
 local singletons = require "kong.singletons"
-local public = require "kong.tools.public"
 local workspaces = require "kong.workspaces"
 local conf_loader = require "kong.conf_loader"
 local ee_api = require "kong.enterprise_edition.api_helpers"
@@ -13,6 +12,8 @@ local find = string.find
 local select = select
 local tonumber = tonumber
 local kong = kong
+local knode  = (kong and kong.node) and kong.node or
+               require "kong.pdk.node".new()
 local log = ngx.log
 local DEBUG = ngx.DEBUG
 local ERR = ngx.ERR
@@ -25,14 +26,15 @@ local lua_version = jit and jit.version or _VERSION
 return {
   ["/"] = {
     GET = function(self, dao, helpers)
-      local distinct_plugins = setmetatable({}, cjson.empty_array_mt)
+      local distinct_plugins = setmetatable({}, cjson.array_mt)
       local prng_seeds = {}
 
       do
         local set = {}
-        for row, err in kong.db.plugins:each() do
+        for row, err in kong.db.plugins:each(1000) do
           if err then
-            return helpers.responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+            kong.log.err(err)
+            return kong.response.exit(500, { message = "An unexpected error happened" })
           end
 
           if not set[row.name] then
@@ -68,12 +70,12 @@ return {
         license.license_key = nil
       end
 
-      local node_id, err = public.get_node_id()
+      local node_id, err = knode.get_id()
       if node_id == nil then
         ngx.log(ngx.ERR, "could not get node id: ", err)
       end
 
-      return helpers.responses.send_HTTP_OK {
+      return kong.response.exit(200, {
         tagline = tagline,
         version = version,
         hostname = utils.get_hostname(),
@@ -90,14 +92,15 @@ return {
         configuration = conf_loader.remove_sensitive(singletons.configuration),
         prng_seeds = prng_seeds,
         license = license,
-      }
+      })
     end
   },
   ["/status"] = {
     GET = function(self, dao, helpers)
       local r = ngx.location.capture "/nginx_status"
       if r.status ~= 200 then
-        return helpers.responses.send_HTTP_INTERNAL_SERVER_ERROR(r.body)
+        kong.log.err(r.body)
+        return kong.response.exit(500, { message = "An unexpected error happened" })
       end
 
       local var = ngx.var
@@ -129,7 +132,7 @@ return {
       -- ignore error
       kong.db:close()
 
-      return helpers.responses.send_HTTP_OK(status_response)
+      return kong.response.exit(200, status_response)
     end
   },
 
@@ -273,7 +276,7 @@ return {
 
       if err or not ok then
         log(ERR, _log_prefix, err)
-        return helpers.responses.send_HTTP_INTERNAL_SERVER_ERROR()
+        return kong.response.exit(500, { message = "An unexpected error occurred" })
       end
 
       -- apply auth plugin
@@ -321,12 +324,12 @@ return {
     end,
 
     GET = function(self, dao_factory, helpers)
-      return helpers.responses.send_HTTP_OK()
+      return kong.response.exit(200)
     end,
 
     DELETE = function(self, dao_factory, helpers)
       -- stub for logging out
-      return helpers.responses.send_HTTP_OK()
+      return kong.response.exit(200)
     end,
   },
 }

@@ -83,7 +83,7 @@ for _, strategy in helpers.each_strategy() do
     ----------
 
     describe("plugins_map:version", function()
-      local service_plugin_id, version_1, version_2
+      local service_plugin_id
 
       it("is created at startup", function()
         local admin_res_1 = assert(admin_client_1:send {
@@ -173,7 +173,6 @@ for _, strategy in helpers.each_strategy() do
         local msg_1  = cjson.decode(body_1)
 
         assert.matches("^[%w-]+$", msg_1.message)
-        version_1 = msg_1.message
 
         wait_for_propagation()
 
@@ -200,42 +199,9 @@ for _, strategy in helpers.each_strategy() do
         local msg_2  = cjson.decode(body_2)
 
         assert.matches("^[%w-]+$", msg_2.message)
-        version_2 = msg_2.message
 
         -- each node has their own map version
         assert.not_equal(msg_1.message, msg_2.message)
-      end)
-
-      it("is not invalidated on plugin update", function()
-        local admin_res_plugin = assert(admin_client_1:send {
-          method = "PATCH",
-          path   = "/plugins/" .. service_plugin_id,
-          body   = {
-            ["config.resp_header_value"] = "2",
-          },
-          headers = {
-            ["Content-Type"] = "application/json",
-          },
-        })
-        assert.res_status(200, admin_res_plugin)
-
-        wait_for_propagation()
-
-        local admin_res_1 = assert(admin_client_1:send {
-          method = "GET",
-          path   = "/cache/plugins_map:version",
-        })
-        local body_1 = assert.res_status(200, admin_res_1)
-        local msg_1  = cjson.decode(body_1)
-        assert.equal(version_1, msg_1.message)
-
-        local admin_res_2 = assert(admin_client_2:send {
-          method = "GET",
-          path   = "/cache/plugins_map:version",
-        })
-        local body_2 = assert.res_status(200, admin_res_2)
-        local msg_2  = cjson.decode(body_2)
-        assert.equal(version_2, msg_2.message)
       end)
 
       it("is invalidated on plugin delete", function()

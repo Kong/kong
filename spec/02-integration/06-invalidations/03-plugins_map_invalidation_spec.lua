@@ -1,5 +1,6 @@
-local cjson        = require "cjson"
-local helpers      = require "spec.helpers"
+local cjson   = require "cjson"
+local helpers = require "spec.helpers"
+local utils   = require "kong.tools.utils"
 
 
 local POLL_INTERVAL = 0.3
@@ -96,7 +97,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("plugins_map:version", function()
-      local service_plugin_id, version_1, version_2
+      local service_plugin_id
 
       it("is created at startup", function()
         local admin_res_1 = assert(admin_client_1:send {
@@ -168,7 +169,6 @@ for _, strategy in helpers.each_strategy() do
         local msg_1  = cjson.decode(body_1)
 
         assert.matches("^[%w-]+$", msg_1.message)
-        version_1 = msg_1.message
 
         wait_for_propagation()
 
@@ -195,13 +195,12 @@ for _, strategy in helpers.each_strategy() do
         local msg_2  = cjson.decode(body_2)
 
         assert.matches("^[%w-]+$", msg_2.message)
-        version_2 = msg_2.message
 
         -- each node has their own map version
         assert.not_equal(msg_1.message, msg_2.message)
       end)
 
-      it("is not invalidated on plugin update", function()
+      it("is invalidated on plugin PATCH", function()
         local admin_res_plugin = assert(admin_client_1:send {
           method = "PATCH",
           path   = "/plugins/" .. service_plugin_id,
@@ -216,21 +215,11 @@ for _, strategy in helpers.each_strategy() do
 
         wait_for_propagation()
 
-        local admin_res_1 = assert(admin_client_1:send {
-          method = "GET",
-          path   = "/cache/plugins_map:version",
-        })
-        local body_1 = assert.res_status(200, admin_res_1)
-        local msg_1  = cjson.decode(body_1)
-        assert.equal(version_1, msg_1.message)
-
         local admin_res_2 = assert(admin_client_2:send {
           method = "GET",
           path   = "/cache/plugins_map:version",
         })
-        local body_2 = assert.res_status(200, admin_res_2)
-        local msg_2  = cjson.decode(body_2)
-        assert.equal(version_2, msg_2.message)
+        assert.res_status(404, admin_res_2)
       end)
 
       it("is invalidated on plugin delete", function()
@@ -239,6 +228,36 @@ for _, strategy in helpers.each_strategy() do
           path   = "/plugins/" .. service_plugin_id,
         })
         assert.res_status(204, admin_res_plugin)
+
+        local admin_res_1 = assert(admin_client_1:send {
+          method = "GET",
+          path   = "/cache/plugins_map:version",
+        })
+        assert.res_status(404, admin_res_1)
+
+        wait_for_propagation()
+
+        local admin_res_2 = assert(admin_client_2:send {
+          method = "GET",
+          path   = "/cache/plugins_map:version",
+        })
+        assert.res_status(404, admin_res_2)
+      end)
+
+      it("is invalidated on plugin PUT", function()
+        -- A regression test for https://github.com/Kong/kong/issues/4191
+        local admin_res_plugin = assert(admin_client_1:send {
+          method = "PUT",
+          path   = "/plugins/" .. utils.uuid(),
+          body   = {
+            name    = "dummy",
+            service = { id = service_fixture.id },
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+        })
+        assert.res_status(200, admin_res_plugin)
 
         local admin_res_1 = assert(admin_client_1:send {
           method = "GET",

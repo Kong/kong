@@ -30,7 +30,7 @@ for _, strategy in helpers.each_strategy() do
 
       helpers.setenv("KONG_PASSWORD", "foo")
       assert(db:schema_reset())
-      
+
       helpers.bootstrap_database(db)
 
       local admins = db.admins:select_all()
@@ -38,7 +38,7 @@ for _, strategy in helpers.each_strategy() do
 
       local consumer = db.consumers:each()()
       local cred = db.basicauth_credentials:each()()
-      assert.same(crypto.encrypt(consumer.id, os.getenv("KONG_PASSWORD"))  , cred.password)
+      assert.same(crypto.hash(consumer.id, os.getenv("KONG_PASSWORD"))  , cred.password)
     end)
 
   end)

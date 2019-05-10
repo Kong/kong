@@ -9,7 +9,7 @@ local re_find = ngx.re.find
 local BotDetectionHandler = BasePlugin:extend()
 
 BotDetectionHandler.PRIORITY = 2500
-BotDetectionHandler.VERSION = "0.1.0"
+BotDetectionHandler.VERSION = "1.0.0"
 
 local BAD_REQUEST = 400
 local FORBIDDEN = 403
