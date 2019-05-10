@@ -124,7 +124,7 @@ local function up(schema_state, db, opts)
   local ok, err = db:cluster_mutex(MIGRATIONS_MUTEX_KEY, opts, function()
     schema_state = assert(db:schema_state())
 
-    if schema_state.pending_migrations then
+    if not opts.force and schema_state.pending_migrations then
       error("Database has pending migrations; run 'kong migrations finish'")
     end
 
@@ -134,13 +134,22 @@ local function up(schema_state, db, opts)
 
       assert(db:run_migrations(schema_state.executed_migrations, {
         run_up = true,
+        run_teardown = true,
+        skip_teardown_migrations = schema_state.pending_migrations
       }))
+
+      schema_state = assert(db:schema_state())
+      if schema_state.pending_migrations then
+        log("\nDatabase has pending migrations; run 'kong migrations finish' when ready")
+        return
+      end
     end
 
     if not schema_state.new_migrations then
       if not opts.force then
         log("Database is already up-to-date")
       end
+
       return
     end
 
@@ -149,6 +158,12 @@ local function up(schema_state, db, opts)
     assert(db:run_migrations(schema_state.new_migrations, {
       run_up = true,
     }))
+
+    schema_state = assert(db:schema_state())
+    if schema_state.pending_migrations then
+      log("\nDatabase has pending migrations; run 'kong migrations finish' when ready")
+      return
+    end
   end)
   if err then
     error(err)

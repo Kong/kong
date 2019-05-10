@@ -449,6 +449,26 @@ do
     local run_up = options.run_up
     local run_teardown = options.run_teardown
 
+    local skip_teardown_migrations = {}
+    if run_teardown and options.skip_teardown_migrations then
+      for _, t in ipairs(options.skip_teardown_migrations) do
+        for _, mig in ipairs(t.migrations) do
+          local ok, mod = utils.load_module_if_exists(t.namespace .. "." ..
+                                                      mig.name)
+          if ok then
+            local strategy_migration = mod[self.strategy]
+            if strategy_migration and strategy_migration.teardown then
+              if not skip_teardown_migrations[t.subsystem] then
+                skip_teardown_migrations[t.subsystem] = {}
+              end
+
+              skip_teardown_migrations[t.subsystem][mig.name] = true
+            end
+          end
+        end
+      end
+    end
+
     if not run_up and not run_teardown then
       error("options.run_up or options.run_teardown must be given", 2)
     end
@@ -512,7 +532,10 @@ do
           end
         end
 
-        if run_teardown and strategy_migration.teardown then
+        local skip_teardown = skip_teardown_migrations[t.subsystem] and
+                              skip_teardown_migrations[t.subsystem][mig.name]
+
+        if not skip_teardown and run_teardown and strategy_migration.teardown then
           if run_up then
             -- ensure schema consensus is reached before running DML queries
             -- that could span all peers
@@ -559,8 +582,8 @@ do
         end
 
         log("%s migrated up to: %s %s", t.subsystem, mig.name,
-            strategy_migration.teardown
-            and not run_teardown and "(pending)" or "(executed)")
+            strategy_migration.teardown and not run_teardown and "(pending)"
+                                                              or "(executed)")
 
         n_migrations = n_migrations + 1
       end
