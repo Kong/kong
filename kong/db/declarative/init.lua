@@ -8,6 +8,7 @@ local tablex = require "pl.tablex"
 
 local deepcopy = tablex.deepcopy
 local null = ngx.null
+local ngx_get_phase = ngx.get_phase
 
 
 local declarative = {}
@@ -256,7 +257,10 @@ function declarative.load_into_cache(entities, send_events)
   -- FIXME atomicity of cache update
   -- FIXME track evictions (and do something when they happen)
 
-  kong.cache:purge()
+  local phase = ngx_get_phase()
+  if phase ~= "init_worker" then
+    kong.cache:purge()
+  end
 
   -- Array of strings with this format:
   -- "<tag_name>|<entity_name>|<uuid>".
@@ -419,7 +423,9 @@ function declarative.load_into_cache(entities, send_events)
     return nil, "failed to set declarative_config:loaded in shm: " .. err
   end
 
-  kong.cache:invalidate("router:version")
+  if phase ~= "init_worker" then
+    kong.cache:invalidate("router:version")
+  end
   return true
 end
 
