@@ -13,7 +13,7 @@ describe("rate-limiting-advanced API", function()
     })
 
     assert(helpers.start_kong({
-      custom_plugins = "rate-limiting-advanced",
+      plugins = "rate-limiting-advanced",
       nginx_conf = "spec/fixtures/custom_nginx.template",
     }))
     admin_client = helpers.admin_client()

@@ -2,7 +2,6 @@
 
 local BasePlugin   = require "kong.plugins.base_plugin"
 local ratelimiting = require "kong.tools.public.rate-limiting"
-local responses    = require "kong.tools.responses"
 local schema       = require "kong.plugins.rate-limiting-advanced.schema"
 
 
@@ -257,7 +256,7 @@ function NewRLHandler:access(conf)
   end
 
   if deny then
-    return responses.send(429, "API rate limit exceeded")
+    return kong.response.exit(429, { message = "API rate limit exceeded" })
   end
 end
 

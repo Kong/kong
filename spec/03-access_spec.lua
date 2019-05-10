@@ -253,7 +253,7 @@ for i, policy in ipairs({"cluster", "redis"}) do
       })
 
       assert(helpers.start_kong{
-        custom_plugins = "rate-limiting-advanced",
+        plugins = "rate-limiting-advanced,key-auth",
         nginx_conf = "spec/fixtures/custom_nginx.template",
       })
     end)
