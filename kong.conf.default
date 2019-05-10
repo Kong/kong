@@ -1138,7 +1138,7 @@
                         #
                         # portal_session_conf = { "cookie_name": "portal_session", \
                         #                          "secret": "changeme", \
-                                                   "storage": "kong" }
+                        #                          "storage": "kong" }
 
 #portal_auto_approve = off
                         # Developer Portal Auto Approve Access
