@@ -173,7 +173,7 @@ local function validate_incoming_developer_meta(ws, entity)
 
     local meta = cjson.decode(entity.meta)
     if not meta then
-      return nil, "meta param is invalid"
+      meta = {}
     end
 
     -- we need to strip empty strings for valiidation
