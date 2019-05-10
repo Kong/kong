@@ -545,7 +545,8 @@ local function tcp_server(port, opts, ...)
       assert(server:bind("*", port))
       assert(server:listen())
       local line
-      for _ = 1, (opts.requests or 1) do
+      local oks, fails = 0, 0
+      for i = 1, (opts.requests or 1) do
         local client = assert(server:accept())
 
         if opts.tls then
@@ -561,9 +562,23 @@ local function tcp_server(port, opts, ...)
           client:dohandshake()
         end
 
-        line = assert(client:receive())
-        client:send((opts.prefix or "") .. line .. "\n")
-        client:close()
+        local err
+        line, err = client:receive()
+        if err == "closed" then
+          fails = fails + 1
+
+        else
+          if line == "@DIE@" then
+            client:send(string.format("%d:%d\n", oks, fails))
+            client:close()
+            break
+          end
+
+          oks = oks + 1
+
+          client:send((opts.prefix or "") .. line .. "\n")
+          client:close()
+        end
       end
       server:close()
       return line
@@ -573,6 +588,16 @@ local function tcp_server(port, opts, ...)
   local thr = thread:start(...)
   ngx.sleep(0.01)
   return thr
+end
+
+local function kill_tcp_server(port)
+  local sock = ngx.socket.tcp()
+  assert(sock:connect("localhost", port))
+  assert(sock:send("@DIE@\n"))
+  local str = assert(sock:receive())
+  assert(sock:close())
+  local oks, fails = str:match("(%d+):(%d+)")
+  return tonumber(oks), tonumber(fails)
 end
 
 --- Starts a HTTP server.
@@ -1637,6 +1662,7 @@ return {
   wait_until = wait_until,
   tcp_server = tcp_server,
   udp_server = udp_server,
+  kill_tcp_server = kill_tcp_server,
   http_server = http_server,
   get_proxy_ip = get_proxy_ip,
   get_proxy_port = get_proxy_port,
