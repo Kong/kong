@@ -8,7 +8,6 @@ local singletons = require "kong.singletons"
 
 local PORTAL_SESSION_CONF = "{ \"cookie_name\": \"portal_session\", \"secret\": \"super-secret\", \"cookie_secure\": false, \"storage\": \"kong\" }"
 
-
 local function close_clients(clients)
   for idx, client in ipairs(clients) do
     client:close()
@@ -151,7 +150,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     lazy_teardown(function()
-      helpers.stop_kong(nil, true)
+      helpers.stop_kong()
     end)
 
     describe("pages", function()
