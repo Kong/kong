@@ -169,8 +169,11 @@ for _, strategy in helpers.each_strategy() do
           plugins = "with-migrations",
         })
         assert.same(5, code)
-        assert.match("database has new migrations available:\n" ..
-                     "with-migrations: 000_base_with_migrations, 001_14_to_15",
+        assert.match("executed migrations:\n" ..
+                     "core: 000_base\n\n" ..
+                     "new migrations available:\n" ..
+                     "with-migrations: 000_base_with_migrations, 001_14_to_15\n\n" ..
+                     "run 'kong migrations up' to proceed",
                      stdout, 1, true)
       end)
 

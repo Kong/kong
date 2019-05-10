@@ -1,6 +1,7 @@
 local DB = require "kong.db"
 local log = require "kong.cmd.utils.log"
 local tty = require "kong.cmd.utils.tty"
+local meta = require "kong.meta"
 local conf_loader = require "kong.conf_loader"
 local kong_global = require "kong.global"
 local migrations_utils = require "kong.cmd.utils.migrations"
@@ -94,21 +95,82 @@ local function execute(args)
 
   if args.command == "list" then
     if schema_state.needs_bootstrap then
-      log("database needs bootstrapping; run 'kong migrations bootstrap'")
-      os.exit(3)
+      if schema_state.legacy_invalid_state then
+        -- legacy: migration from 0.14 to 1.0 cannot be performed
+        if schema_state.legacy_missing_component then
+          log("Migrations can only be listed on a %s %s that has been " ..
+              "upgraded to 1.0, but the current %s seems to be older "  ..
+              "than 0.14 (missing migrations for '%s')",
+              db.strategy, db.infos.db_desc, db.infos.db_desc,
+              schema_state.legacy_missing_component)
+
+          os.exit(2)
+        end
+
+        if schema_state.legacy_missing_migration then
+          log("Migrations can only be listed on a %s %s that has been " ..
+              "upgraded to 1.0, but the current %s seems to be older "  ..
+              "than 0.14 (missing migration '%s' for '%s')",
+              db.strategy, db.infos.db_desc, db.infos.db_desc,
+              schema_state.legacy_missing_migration,
+              schema_state.legacy_missing_component)
+
+          os.exit(2)
+        end
+
+        log("Migrations can only be listed on a %s %s that has been "     ..
+            "upgraded to 1.0, but the current %s seems to be older than " ..
+            "0.14 (missing migrations)", db.strategy, db.infos.db_desc,
+            db.infos.db_desc)
+
+        os.exit(2)
+
+      elseif not schema_state.legacy_is_014 then
+        log("Database needs bootstrapping; run 'kong migrations bootstrap'")
+        os.exit(3)
+      end
     end
+
+    local r = ""
 
     if schema_state.executed_migrations then
-      log("executed migrations:\n%s", schema_state.executed_migrations)
+      log("Executed migrations:\n%s", schema_state.executed_migrations)
+      r = "\n"
     end
 
-    migrations_utils.print_state(schema_state)
+    if schema_state.pending_migrations then
+      log("%sPending migrations:\n%s", r, schema_state.pending_migrations)
+      r = "\n"
+    end
+
+    if schema_state.new_migrations then
+      log("%sNew migrations available:\n%s", r, schema_state.new_migrations)
+      r = "\n"
+    end
+
+    if schema_state.pending_migrations and schema_state.new_migrations then
+      if r ~= "" then
+        log("")
+      end
+
+      log.warn("Database has pending migrations from a previous upgrade, " ..
+               "and new migrations from this upgrade (version %s)",
+               tostring(meta._VERSION))
+
+      log("\nRun 'kong migrations finish' when ready to complete pending " ..
+          "migrations (%s %s will be incompatible with the previous Kong " ..
+          "version)", db.strategy, db.infos.db_desc)
+
+      os.exit(4)
+    end
 
     if schema_state.pending_migrations then
+      log("\nRun 'kong migrations finish' when ready")
       os.exit(4)
     end
 
     if schema_state.new_migrations then
+      log("\nRun 'kong migrations up' to proceed")
       os.exit(5)
     end
 

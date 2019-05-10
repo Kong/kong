@@ -80,6 +80,8 @@ local cache_warmup = require "kong.cache_warmup"
 local plugins_iterator = require "kong.runloop.plugins_iterator"
 local balancer_execute = require("kong.runloop.balancer").execute
 local kong_error_handlers = require "kong.error_handlers"
+local migrations_utils = require "kong.cmd.utils.migrations"
+
 
 local kong             = kong
 local ngx              = ngx
@@ -304,17 +306,19 @@ function Kong.init()
   assert(db:init_connector())
 
   schema_state = assert(db:schema_state())
-  if schema_state.needs_bootstrap  then
-    error("database needs bootstrap; run 'kong migrations bootstrap'")
+  migrations_utils.check_state(schema_state, db)
 
-  elseif schema_state.new_migrations then
-    error("new migrations available; run 'kong migrations list'")
+  if schema_state.missing_migrations or schema_state.pending_migrations then
+    if schema_state.missing_migrations then
+      ngx_log(ngx_WARN, "database is missing some migrations:\n",
+                        schema_state.missing_migrations)
+    end
+
+    if schema_state.pending_migrations then
+      ngx_log(ngx_WARN, "database has pending migrations:\n",
+                        schema_state.pending_migrations)
+    end
   end
-  --[[
-  if schema_state.pending_migrations then
-    assert(db:load_pending_migrations(schema_state.pending_migrations))
-  end
-  --]]
 
   assert(db:connect())
   assert(db.plugins:check_db_against_config(config.loaded_plugins))
