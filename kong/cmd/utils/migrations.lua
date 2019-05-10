@@ -192,26 +192,41 @@ local function finish(schema_state, db, opts)
     error("cannot run migrations; run 'kong migrations bootstrap' instead")
   end
 
-  if opts.force then
-    error("cannot use --force with 'finish'")
-  end
-
   opts.no_wait = true -- exit the mutex if another node acquired it
 
   local ok, err = db:cluster_mutex(MIGRATIONS_MUTEX_KEY, opts, function()
     local schema_state = assert(db:schema_state())
 
-    if not schema_state.pending_migrations then
-      log("no pending migrations to finish")
+    if opts.force then
+      assert(db:run_migrations(schema_state.executed_migrations, {
+        run_up = true,
+        run_teardown = true,
+      }))
+
+      schema_state = assert(db:schema_state())
+    end
+
+    if schema_state.pending_migrations then
+      log.debug("pending migrations to finish:\n%s",
+                schema_state.pending_migrations)
+
+      assert(db:run_migrations(schema_state.pending_migrations, {
+        run_teardown = true,
+      }))
+
+      schema_state = assert(db:schema_state())
+    end
+
+    if schema_state.new_migrations then
+      log("\nnew migrations available; run 'kong migrations up' to proceed")
       return
     end
 
-    log.debug("pending migrations to finish:\n%s",
-              schema_state.pending_migrations)
+    if not opts.force and not schema_state.pending_migrations then
+      log("no pending migrations to finish")
+    end
 
-    assert(db:run_migrations(schema_state.pending_migrations, {
-      run_teardown = true,
-    }))
+    return
   end)
   if err then
     error(err)
