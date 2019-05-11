@@ -42,7 +42,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
           }
 
           assert(helpers.start_kong({
-            custom_plugins = "ldap-auth-advanced",
+            plugins = "ldap-auth-advanced",
             database       = strategy,
             nginx_conf     = "spec/fixtures/custom_nginx.template",
           }))
