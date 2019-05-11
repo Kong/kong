@@ -1,4 +1,3 @@
-local responses = require "kong.tools.responses"
 local constants = require "kong.constants"
 local ldap_cache = require "kong.plugins.ldap-auth-advanced.cache"
 local ldap = require "kong.plugins.ldap-auth-advanced.ldap"
@@ -306,7 +305,7 @@ local function do_authentication(conf)
       return false, { status = 500 }
     end
 
-    return false, { status = 401 }
+    return false, { status = 401, message = "Unauthorized" }
   end
 
   local is_authorized, credential = authenticate(conf, proxy_authorization_value)
@@ -368,7 +367,7 @@ function _M.execute(conf)
 
   local ok, err = do_authentication(conf)
   if not ok then
-    return responses.send(err.status, err.message)
+    return kong.response.exit(err.status, { message = err.message })
   end
 end
 

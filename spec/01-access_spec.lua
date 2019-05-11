@@ -58,7 +58,7 @@ for _, strategy in helpers.each_strategy() do
       }
       
       assert(helpers.start_kong({
-        custom_plugins = "ldap-auth-advanced",
+        plugins = "ldap-auth-advanced",
         database   = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
       }))
@@ -314,7 +314,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
           }
     
           assert(helpers.start_kong({
-            custom_plugins = "ldap-auth-advanced",
+            plugins = "ldap-auth-advanced",
             database   = strategy,
             nginx_conf = "spec/fixtures/custom_nginx.template",
           }))
@@ -780,7 +780,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
           }
     
           assert(helpers.start_kong({
-            custom_plugins = "ldap-auth-advanced",
+            plugins = "ldap-auth-advanced,key-auth",
             database   = strategy,
             nginx_conf = "spec/fixtures/custom_nginx.template",
           }))
@@ -929,7 +929,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
     
         setup(function()
           local _
-          bp, _, dao = helpers.get_db_utils(strategy, nil, { "ldap-auth-advanced" })
+          bp, dao, _ = helpers.get_db_utils(strategy, nil, { "ldap-auth-advanced" })
     
           routes = {
             bp.routes:insert {
@@ -1092,7 +1092,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
           }
     
           assert(helpers.start_kong({
-            custom_plugins = "ldap-auth-advanced",
+            plugins = "ldap-auth-advanced",
             database   = strategy,
             nginx_conf = "spec/fixtures/custom_nginx.template",
           }))
