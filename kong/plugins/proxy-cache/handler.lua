@@ -1,7 +1,6 @@
 local BasePlugin  = require "kong.plugins.base_plugin"
 local strategies  = require "kong.plugins.proxy-cache.strategies"
 local cache_key   = require "kong.plugins.proxy-cache.cache_key"
-local responses   = require "kong.tools.responses"
 local utils       = require "kong.tools.utils"
 local ee          = require "kong.enterprise_edition"
 
@@ -357,7 +356,7 @@ function ProxyCacheHandler:access(conf)
     -- this request wasn't found in the data store, but the client only wanted
     -- cache data. see https://tools.ietf.org/html/rfc7234#section-5.2.1.7
     if conf.cache_control and cc["only-if-cached"] then
-      return responses.send(ngx.HTTP_GATEWAY_TIMEOUT)
+      return kong.response.exit(ngx.HTTP_GATEWAY_TIMEOUT)
     end
 
     ngx.req.read_body()

@@ -41,7 +41,7 @@ describe("Plugin: proxy-cache", function()
     })
 
     assert(helpers.start_kong({
-      custom_plugins = "proxy-cache",
+      plugins = "proxy-cache",
       nginx_conf = "spec/fixtures/custom_nginx.template",
     }))
 

@@ -68,7 +68,7 @@ describe("proxy-cache invalidations via: " .. strategy, function()
       admin_gui_ssl         = false,
       db_update_frequency   = POLL_INTERVAL,
       db_update_propagation = db_update_propagation,
-      custom_plugins        = "proxy-cache",
+      plugins        = "proxy-cache",
       nginx_conf            = "spec/fixtures/custom_nginx.template",
     })
 
@@ -84,7 +84,7 @@ describe("proxy-cache invalidations via: " .. strategy, function()
       admin_gui_ssl         = false,
       db_update_frequency   = POLL_INTERVAL,
       db_update_propagation = db_update_propagation,
-      custom_plugins        = "proxy-cache",
+      plugins        = "proxy-cache",
     })
 
     client_1       = helpers.http_client("127.0.0.1", 8000)
