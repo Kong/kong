@@ -162,6 +162,57 @@ describe("Admin API: #" .. strategy, function()
         assert.contains("foo.com", json.data[1].snis)
       end)
 
+      it("allows private key to be absent (CA certificate)", function()
+        local res = client:post("/certificates", {
+          body    = {
+            cert  = ssl_fixtures.cert,
+            snis  = cjson.null,
+          },
+          headers = { ["Content-Type"] = "application/json" },
+        })
+        local body = assert.res_status(201, res)
+        local json = cjson.decode(body)
+
+        local id = json.id
+
+        res  = client:get("/certificates/" .. id)
+        body = assert.res_status(200, res)
+        json = cjson.decode(body)
+        assert.same({}, json.snis)
+      end)
+
+      it("accept empty SNI as array when cert has no private key", function()
+        local res = client:post("/certificates", {
+          body    = {
+            cert  = ssl_fixtures.cert,
+            snis  = {},
+          },
+          headers = { ["Content-Type"] = "application/json" },
+        })
+        local body = assert.res_status(201, res)
+        local json = cjson.decode(body)
+        local id = json.id
+
+        res  = client:get("/certificates/" .. id)
+        body = assert.res_status(200, res)
+        json = cjson.decode(body)
+        assert.same({}, json.snis)
+      end)
+
+      it("prohibits setting SNI on certificate without private keys", function()
+        local res = client:post("/certificates", {
+          body    = {
+            cert  = ssl_fixtures.cert,
+            snis  = { "a.example.com" },
+          },
+          headers = { ["Content-Type"] = "application/json" },
+        })
+        local body = assert.res_status(400, res)
+        local json = cjson.decode(body)
+        assert.matches("snis: cannot be specified because the 'key' attribute is not set", json.message,
+                       nil, true)
+      end)
+
       it_content_types("creates a certificate and returns it with the snis pseudo-property", function(content_type)
         return function()
           local body
@@ -357,10 +408,9 @@ describe("Admin API: #" .. strategy, function()
         assert.same({
           code     = Errors.codes.SCHEMA_VIOLATION,
           name     = "schema violation",
-          message  = "2 schema violations (cert: required field missing; key: required field missing)",
+          message  = "schema violation (cert: required field missing)",
           fields  = {
             cert = "required field missing",
-            key = "required field missing",
           }
         }, cjson.decode(body))
       end)
@@ -383,11 +433,94 @@ describe("Admin API: #" .. strategy, function()
           }
         }, cjson.decode(body))
       end)
+
+      it("allows private key to be absent (CA certificate)", function()
+        local id = utils.uuid()
+
+        local res = client:put("/certificates/" .. id, {
+          body    = {
+            cert  = ssl_fixtures.cert,
+            snis  = cjson.null,
+          },
+          headers = { ["Content-Type"] = "application/json" },
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.equal(json.id, id)
+
+        res  = client:get("/certificates/" .. id)
+        body = assert.res_status(200, res)
+        json = cjson.decode(body)
+        assert.same({}, json.snis)
+      end)
+
+      it("accept empty SNI as array when cert has no private key", function()
+        local id = utils.uuid()
+
+        local res = client:put("/certificates/" .. id, {
+          body    = {
+            cert  = ssl_fixtures.cert,
+            snis  = {},
+          },
+          headers = { ["Content-Type"] = "application/json" },
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.equal(json.id, id)
+
+        res  = client:get("/certificates/" .. id)
+        body = assert.res_status(200, res)
+        json = cjson.decode(body)
+        assert.same({}, json.snis)
+      end)
+
+      it("prohibits setting SNI on certificate without private keys", function()
+        local id = utils.uuid()
+
+        local res = client:put("/certificates/" .. id, {
+          body    = {
+            cert  = ssl_fixtures.cert,
+            snis  = { "a.example.com" },
+          },
+          headers = { ["Content-Type"] = "application/json" },
+        })
+        local body = assert.res_status(400, res)
+        local json = cjson.decode(body)
+        assert.matches("snis: cannot be specified because the 'key' attribute is not set", json.message,
+                       nil, true)
+      end)
+
+      it("only prohibits adding SNI to certificate without private keys", function()
+        local id = utils.uuid()
+
+        local res = client:put("/certificates/" .. id, {
+          body    = {
+            cert  = ssl_fixtures.cert,
+            snis  = {},
+          },
+          headers = { ["Content-Type"] = "application/json" },
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.equal(json.id, id)
+
+        res = client:put("/certificates/" .. id, {
+          body    = {
+            snis  = { "put.example.com" },
+          },
+          headers = { ["Content-Type"] = "application/json" },
+        })
+        body = assert.res_status(400, res)
+        json = cjson.decode(body)
+        assert.matches("snis: cannot be specified because the 'key' attribute is not set",
+                       json.message, nil, true)
+      end)
     end)
 
     describe("PATCH", function()
       local cert_foo
       local cert_bar
+      local cert_no_key
 
       before_each(function()
         assert(db:truncate("certificates"))
@@ -414,6 +547,16 @@ describe("Admin API: #" .. strategy, function()
         })
         local body = assert.res_status(201, res)
         cert_bar = cjson.decode(body)
+
+        local res = client:post("/certificates", {
+          body    = {
+            cert  = ssl_fixtures.cert,
+            snis  = cjson.null,
+          },
+          headers = { ["Content-Type"] = "application/json" },
+        })
+        local body = assert.res_status(201, res)
+        cert_no_key = cjson.decode(body)
       end)
 
       it_content_types("updates a certificate by cert id", function(content_type)
@@ -486,8 +629,8 @@ describe("Admin API: #" .. strategy, function()
         res  = client:get("/certificates")
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
-        assert.equal(2, #json.data)
-        assert.same({ { "bar.com" }, { "foo.com" } }, get_snis_lists(json.data))
+        assert.equal(3, #json.data)
+        assert.same({ {}, { "bar.com" }, { "foo.com" } }, get_snis_lists(json.data))
       end)
 
       it("updates snis associated with a certificate", function()
@@ -505,8 +648,8 @@ describe("Admin API: #" .. strategy, function()
         res  = client:get("/certificates")
         body = assert.res_status(200, res)
         json = cjson.decode(body)
-        assert.equal(2, #json.data)
-        assert.same({ { "bar.com" }, { "baz.com" } }, get_snis_lists(json.data))
+        assert.equal(3, #json.data)
+        assert.same({ {}, { "bar.com" }, { "baz.com" } }, get_snis_lists(json.data))
       end)
 
       it("updates only the certificate if no snis are specified", function()
@@ -537,7 +680,7 @@ describe("Admin API: #" .. strategy, function()
         res  = client:get("/certificates")
         body = assert.res_status(200, res)
         json = cjson.decode(body)
-        assert.same({ { "bar.com" }, { "foo.com" } }, get_snis_lists(json.data))
+        assert.same({ {}, { "bar.com" }, { "foo.com" } }, get_snis_lists(json.data))
       end)
 
       it("returns a conflict when duplicated snis are present in the request", function()
@@ -556,8 +699,8 @@ describe("Admin API: #" .. strategy, function()
         res = client:get("/certificates")
         body = assert.res_status(200, res)
         json = cjson.decode(body)
-        assert.equal(2, #json.data)
-        assert.same({ { "bar.com" }, { "foo.com" } }, get_snis_lists(json.data))
+        assert.equal(3, #json.data)
+        assert.same({ {}, { "bar.com" }, { "foo.com" } }, get_snis_lists(json.data))
       end)
 
       it("returns a conflict when a pre-existing sni present in " ..
@@ -580,8 +723,8 @@ describe("Admin API: #" .. strategy, function()
         res  = client:get("/certificates")
         body = assert.res_status(200, res)
         json = cjson.decode(body)
-        assert.equal(2, #json.data)
-        assert.same({ { "bar.com" }, { "foo.com" } }, get_snis_lists(json.data))
+        assert.equal(3, #json.data)
+        assert.same({ {}, { "bar.com" }, { "foo.com" } }, get_snis_lists(json.data))
       end)
 
       it("deletes all snis from a certificate if snis field is JSON null", function()
@@ -605,8 +748,48 @@ describe("Admin API: #" .. strategy, function()
         res  = client:get("/certificates")
         body = assert.res_status(200, res)
         json = cjson.decode(body)
-        assert.equal(2, #json.data)
-        assert.same({ {}, { "foo.com" } }, get_snis_lists(json.data))
+        assert.equal(3, #json.data)
+        assert.same({ {}, {}, { "foo.com" } }, get_snis_lists(json.data))
+      end)
+
+      it("prohibits adding SNI to certificate without private keys", function()
+        local res = client:patch("/certificates/" .. cert_no_key.id, {
+          body    = {
+            snis  = { "patch.example.com" },
+          },
+          headers = { ["Content-Type"] = "application/json" },
+        })
+        local body = assert.res_status(400, res)
+        local json = cjson.decode(body)
+        assert.matches("certificate: cannot be used by SNI because specified Certificate does not have the 'key' attribute set",
+                       json.message, nil, true)
+      end)
+
+      it("only prohibits removal of private key from certificate with SNI names", function()
+        local res = client:patch("/certificates/" .. cert_foo.id, {
+          body    = {
+            key = cjson.null,
+          },
+          headers = { ["Content-Type"] = "application/json" },
+        })
+        local body = assert.res_status(400, res)
+        local json = cjson.decode(body)
+        assert.matches("key: cannot be removed, since one or more SNIs are still associated to this Certificate",
+                       json.message, nil, true)
+      end)
+
+      it("removing private key and SNIs at the same time from certificate should succeed", function()
+        local res = client:patch("/certificates/" .. cert_foo.id, {
+          body    = {
+            key = cjson.null,
+            snis = cjson.null,
+          },
+          headers = { ["Content-Type"] = "application/json" },
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.equal(0, #json.snis)
+        assert.equal(cjson.null, json.key)
       end)
     end)
 
@@ -648,6 +831,8 @@ describe("Admin API: #" .. strategy, function()
     describe("POST", function()
 
       local certificate
+      local certificate_no_key
+
       before_each(function()
         assert(db:truncate("certificates"))
         assert(db:truncate("snis"))
@@ -656,6 +841,10 @@ describe("Admin API: #" .. strategy, function()
         bp.snis:insert({
           name = "ttt.com",
           certificate = { id = certificate.id }
+        })
+
+        certificate_no_key = bp.certificates:insert({
+          key = cjson.null,
         })
       end)
 
@@ -723,6 +912,20 @@ describe("Admin API: #" .. strategy, function()
         local json = cjson.decode(body)
         assert.equals("unique constraint violation", json.name)
       end)
+
+      it("prohibits adding SNI if private key not present", function()
+        local res = client:post("/certificates/" .. certificate_no_key.id .. "/snis", {
+          body    = {
+            name = "foo.com",
+          },
+          headers = { ["Content-Type"] = "application/json" },
+        })
+
+        local body = assert.res_status(400, res)
+        local json = cjson.decode(body)
+        assert.match("certificate: cannot be used by SNI because specified Certificate does not have the 'key' attribute set",
+                     json.message, nil, true)
+      end)
     end)
 
     describe("GET", function()
@@ -747,8 +950,7 @@ describe("Admin API: #" .. strategy, function()
   end)
 
   describe("/snis/:name", function()
-
-    local certificate, sni
+    local certificate, sni, certificate_no_key
 
     before_each(function()
       assert(db:truncate("certificates"))
@@ -759,6 +961,10 @@ describe("Admin API: #" .. strategy, function()
         name        = "foo.com",
         certificate = certificate,
       }
+
+      certificate_no_key = bp.certificates:insert({
+        key = cjson.null,
+      })
     end)
 
     describe("GET", function()
@@ -830,6 +1036,22 @@ describe("Admin API: #" .. strategy, function()
           }
         }, cjson.decode(body))
       end)
+
+      it("prohibits adding SNI if private key not present", function()
+        local id = utils.uuid()
+        local res = client:put("/snis/" .. id, {
+          body    = {
+            name = "updated.com",
+            certificate = { id = certificate_no_key.id },
+          },
+          headers = { ["Content-Type"] = "application/json" },
+        })
+
+        local body = assert.res_status(400, res)
+        local json = cjson.decode(body)
+        assert.match("certificate: cannot be used by SNI because specified Certificate does not have the 'key' attribute set",
+                     json.message, nil, true)
+      end)
     end)
 
     describe("PATCH", function()
@@ -859,6 +1081,20 @@ describe("Admin API: #" .. strategy, function()
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
         assert.same({ "foo.com" }, json.snis)
+      end)
+
+      it("unable to update a SNI to point to a certificate missing private key", function()
+        local res = client:patch("/snis/foo.com", {
+          body = {
+            certificate = { id = certificate_no_key.id },
+          },
+          headers = { ["Content-Type"] = "application/json" },
+        })
+
+        local body = assert.res_status(400, res)
+        local json = cjson.decode(body)
+        assert.match("certificate: cannot be used by SNI because specified Certificate does not have the 'key' attribute set",
+                     json.message, nil, true)
       end)
     end)
 
