@@ -259,7 +259,7 @@ end
 --
 -- /services
 local function get_collection_endpoint(schema, foreign_schema, foreign_field_name, method)
-  return not foreign_schema and function(self, db, helpers, post_process)
+  return not foreign_schema and function(self, db, helpers, post_process, prefix_path)
     local data, _, err_t, offset = page_collection(self, db, schema, method)
     if err_t then
       return handle_error(err_t)
@@ -278,9 +278,18 @@ local function get_collection_endpoint(schema, foreign_schema, foreign_field_nam
       p_data = data
     end
 
-    local next_page = offset and fmt("/%s?offset=%s",
-                                     schema.name,
-                                     escape_uri(offset)) or null
+    next_page = null
+    if offset then
+      -- if next page parameter was passed use it instead otherwise construct
+      -- next page using schema name
+      if preifx_path then
+        next_page = fmt("%s?offset=%s", prefix_path, escape_uri(offset))
+      else
+        next_page = fmt("/%s?offset=%s",
+                            schema.name, 
+                            escape_uri(offset))
+      end
+    end
 
     return ok {
       data   = setmetatable(p_data, cjson.empty_array_mt),
@@ -288,7 +297,7 @@ local function get_collection_endpoint(schema, foreign_schema, foreign_field_nam
       next   = next_page,
     }
 
-  end or function(self, db, helpers)
+  end or function(self, db, helpers, post_process, prefix_path)
     local foreign_entity, _, err_t = select_entity(self, db, foreign_schema)
     if err_t then
       return handle_error(err_t)
@@ -306,10 +315,31 @@ local function get_collection_endpoint(schema, foreign_schema, foreign_field_nam
       return handle_error(err_t)
     end
 
-    local foreign_key = self.params[foreign_schema.name]
-    local next_page = offset and fmt("/%s/%s/%s?offset=%s", foreign_schema.name,
-                                     foreign_key, schema.name, escape_uri(offset)) or null
+    -- post process data
+    local p_data = {}
+    if type(post_process) == "function" then
+      for i, row in ipairs(data) do
+        local p_row = post_process(row)
+        if p_row and next(p_row) then
+          p_data[#p_data+1] = p_row
+        end
+      end
+    else
+      p_data = data
+    end
 
+    local foreign_key = self.params[foreign_schema.name]
+    local next_page = null
+    if offset then
+      -- if next page parameter was passed use it instead otherwise construct
+      -- next page using schema names
+      if prefix_path then
+        next_page = fmt("%s?offset=%s", prefix_path, escape_uri(offset))
+      else
+        next_page = fmt("/%s/%s/%s?offset=%s", foreign_schema.name,
+                            foreign_key, schema.name, escape_uri(offset))
+      end
+    end
 
     return ok {
       data   = data,
