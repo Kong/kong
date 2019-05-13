@@ -32,6 +32,7 @@ local plugins = {
   "pre-function",
   "post-function",
   "prometheus",
+  "proxy-cache",
 }
 
 local plugin_map = {}
