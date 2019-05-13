@@ -233,8 +233,9 @@ local function get_next(self)
     end
   end
 
-  -- return the plugin configuration
-  if ctx.plugins[plugin.name] then
+  local phase = self.iterator.phases[self.phase]
+  if phase and phase[plugin.name]
+  and (ctx.plugins[plugin.name] or self.phase == "init_worker") then
     return plugin, ctx.plugins[plugin.name]
   end
 
@@ -288,17 +289,15 @@ function PluginsIterator.new(version)
     end
   end
 
+  local phase_handler
   for _, plugin in ipairs(loaded_plugins) do
     if combos[plugin.name] then
       for phase_name, phase in pairs(phases) do
-        if plugin.handler[phase_name] ~= BasePlugin[phase_name] then
+        phase_handler = plugin.handler[phase_name]
+        if type(phase_handler) == "function"
+        and phase_handler ~= BasePlugin[phase_name] then
           phase[plugin.name] = true
         end
-      end
-
-    else
-      if plugin.handler.init_worker ~= BasePlugin.init_worker then
-        phases.init_worker[plugin.name] = true
       end
     end
   end
