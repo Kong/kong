@@ -78,7 +78,7 @@ for _, strategy in helpers.each_strategy() do
 
       assert(helpers.start_kong({
         database = strategy,
-        custom_plugins = "forward-proxy",
+        plugins = "forward-proxy",
         nginx_conf     = "spec/fixtures/custom_nginx.template",
       }))
 
