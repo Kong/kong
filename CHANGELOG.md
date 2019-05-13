@@ -1,8 +1,9 @@
-## Unreleased
+## 0.0.7
 
 ### Changed
 
 * Moved old schema to new schema format
+* Use pdk
 
 ## 0.0.6
 
