@@ -1,3 +1,8 @@
+## 0.4
+
+* convert to new dao
+* use pdk
+
 ## 0.3.3
 
 * Set credential id to allow rate limiting based on access token
