@@ -5,7 +5,7 @@ return {
   generate_admin_api = false,
   primary_key = { "role", "entity_id" },
   fields = {
-    { role = { type = "foreign", required = true, reference = "rbac_roles", on_delete = "cascade" } }, -- XXX EE
+    { role = { type = "foreign", required = true, reference = "rbac_roles", on_delete = "cascade" } },
     { entity_id = {type = "string", required = true,} },
     { entity_type = {type = "string", required = true} },
     { actions = {type = "integer", required = true,} },

@@ -6,7 +6,7 @@ return {
   generate_admin_api = false,
   primary_key = { "role", "workspace", "endpoint" },
   fields = {
-    { role = { type = "foreign", required = true, reference = "rbac_roles", on_delete = "cascade" } }, -- XXX EE
+    { role = { type = "foreign", required = true, reference = "rbac_roles", on_delete = "cascade" } },
     { workspace = {type = "string", required = true, default = workspaces.DEFAULT_WORKSPACE}},
     { endpoint = {type = "string", required = true} },
     { actions = {type = "integer", required = true,} },
