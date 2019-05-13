@@ -500,9 +500,9 @@ end
 function Kong.ssl_certificate()
   kong_global.set_phase(kong, PHASES.certificate)
 
-  local ctx = ngx.ctx
+  local mock_ctx = {} -- ctx is not available in cert phase, use table instead
 
-  runloop.certificate.before(ctx)
+  runloop.certificate.before(mock_ctx)
 
   local ok, err = runloop.update_plugins_iterator()
   if not ok then
@@ -510,7 +510,7 @@ function Kong.ssl_certificate()
     return ngx.exit(ngx.ERROR)
   end
 
-  execute_plugins_iterator(ctx, "certificate")
+  execute_plugins_iterator(mock_ctx, "certificate")
 end
 
 function Kong.balancer()
