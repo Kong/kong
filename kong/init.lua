@@ -143,17 +143,13 @@ end
 
 local function execute_plugins_iterator(ctx, phase)
   local plugins_iterator = runloop.get_plugins_iterator()
-  local phase_plugins = plugins_iterator.phases[phase]
-
   for plugin, configuration in plugins_iterator:iterate(ctx, phase) do
-    if phase_plugins[plugin.name] then
-      kong_global.set_named_ctx(kong, "plugin", configuration)
-      kong_global.set_namespaced_log(kong, plugin.name)
+    kong_global.set_named_ctx(kong, "plugin", configuration)
+    kong_global.set_namespaced_log(kong, plugin.name)
 
-      plugin.handler[phase](plugin.handler, configuration)
+    plugin.handler[phase](plugin.handler, configuration)
 
-      kong_global.reset_log(kong)
-    end
+    kong_global.reset_log(kong)
   end
 end
 
@@ -493,13 +489,11 @@ function Kong.init_worker()
   -- run plugins init_worker context
   runloop.update_plugins_iterator()
   local plugins_iterator = runloop.get_plugins_iterator()
-  local phase_plugins = plugins_iterator.phases.init_worker
-  for _, plugin in ipairs(plugins_iterator.loaded) do
-    if phase_plugins[plugin.name] then
-      kong_global.set_namespaced_log(kong, plugin.name)
-      plugin.handler:init_worker()
-      kong_global.reset_log(kong)
-    end
+  local mock_ctx = {} -- ctx is not available in init_worker, use table instead
+  for plugin, _ in plugins_iterator:iterate(mock_ctx, "init_worker") do
+    kong_global.set_namespaced_log(kong, plugin.name)
+    plugin.handler:init_worker()
+    kong_global.reset_log(kong)
   end
 end
 
@@ -662,9 +656,8 @@ function Kong.access()
   ctx.delay_response = true
 
   local plugins_iterator = runloop.get_plugins_iterator()
-  local phase_plugins = plugins_iterator.phases.access
   for plugin, plugin_conf in plugins_iterator:iterate(ctx, "access") do
-    if not ctx.delayed_response and phase_plugins[plugin.name] then
+    if not ctx.delayed_response then
       kong_global.set_named_ctx(kong, "plugin", plugin_conf)
       kong_global.set_namespaced_log(kong, plugin.name)
 
