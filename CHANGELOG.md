@@ -1,3 +1,9 @@
+## 0.35
+
+### Changed
+
+- Convert to new dao
+
 ## 0.34.0
 
 ### Changed
