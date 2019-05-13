@@ -290,6 +290,26 @@ return {
         consumer_id  uuid references consumers (id) on delete cascade,
         PRIMARY KEY(id)
       );
+
+      ALTER TABLE IF EXISTS ONLY "workspaces"
+        ALTER "created_at" TYPE TIMESTAMP WITH TIME ZONE USING "created_at" AT TIME ZONE 'UTC',
+        ALTER "created_at" SET DEFAULT CURRENT_TIMESTAMP(0) AT TIME ZONE 'UTC';
+
+      ALTER TABLE IF EXISTS ONLY "rbac_users"
+        ALTER "created_at" TYPE TIMESTAMP WITH TIME ZONE USING "created_at" AT TIME ZONE 'UTC',
+        ALTER "created_at" SET DEFAULT CURRENT_TIMESTAMP(0) AT TIME ZONE 'UTC';
+
+      ALTER TABLE IF EXISTS ONLY "rbac_roles"
+        ALTER "created_at" TYPE TIMESTAMP WITH TIME ZONE USING "created_at" AT TIME ZONE 'UTC',
+        ALTER "created_at" SET DEFAULT CURRENT_TIMESTAMP(0) AT TIME ZONE 'UTC';
+
+      ALTER TABLE IF EXISTS ONLY "rbac_role_entities"
+        ALTER "created_at" TYPE TIMESTAMP WITH TIME ZONE USING "created_at" AT TIME ZONE 'UTC',
+        ALTER "created_at" SET DEFAULT CURRENT_TIMESTAMP(0) AT TIME ZONE 'UTC';
+
+      ALTER TABLE IF EXISTS ONLY "rbac_role_endpoints"
+        ALTER "created_at" TYPE TIMESTAMP WITH TIME ZONE USING "created_at" AT TIME ZONE 'UTC',
+        ALTER "created_at" SET DEFAULT CURRENT_TIMESTAMP(0) AT TIME ZONE 'UTC';
     ]],
 
     teardown = function(connector)
