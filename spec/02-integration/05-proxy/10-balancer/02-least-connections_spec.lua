@@ -3,7 +3,7 @@ local helpers = require "spec.helpers"
 -- create two servers, one double the delay of the other
 local fixtures = {
   http_mock = {
-    lambda_plugin = [[
+    least_connections = [[
 
       server {
           server_name mock_aws_lambda;
@@ -64,7 +64,7 @@ for _, strategy in helpers.each_strategy() do
 
       local upstream1 = assert(bp.upstreams:insert({
         name = "lcupstream",
-        algorithm = "least",
+        algorithm = "least-connections",
       }))
 
       assert(bp.targets:insert({
@@ -128,7 +128,7 @@ for _, strategy in helpers.each_strategy() do
       end
 
       -- wait while we're executing
-      local finish_at = ngx.now() + 5
+      local finish_at = ngx.now() + 1.5
       repeat
         ngx.sleep(0.1)
       until ngx.now() >= finish_at

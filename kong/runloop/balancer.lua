@@ -196,8 +196,8 @@ end
 local create_balancer
 do
   local balancer_types = {
-    consistent = require("resty.dns.balancer.ring"),
-    least      = require("resty.dns.balancer.least_connections"),
+    ["consistent"] = require("resty.dns.balancer.ring"),
+    ["least-connections"] = require("resty.dns.balancer.least_connections"),
   }
 
   local create_healthchecker
