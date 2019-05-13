@@ -90,22 +90,23 @@ describe("kong reload #" .. strategy, function()
     helpers.clean_prefix()
   end)
   after_each(function()
-    helpers.kill_all()
+    helpers.stop_kong(nil, true)
   end)
 
   it("send a 'reload' signal to a running Nginx master process", function()
     assert(helpers.start_kong())
-    ngx.sleep(1)
 
-    local nginx_pid = helpers.file.read(helpers.test_conf.nginx_pid)
+    local nginx_pid = assert_wait_call(helpers.file.read, helpers.test_conf.nginx_pid)
 
     -- kong_exec uses test conf too, so same prefix
-    assert(helpers.kong_exec("reload --prefix " .. helpers.test_conf.prefix))
-    ngx.sleep(1)
+    assert(kong_reload("reload --prefix " .. helpers.test_conf.prefix))
+
+    local nginx_pid_after = assert_wait_call(helpers.file.read, helpers.test_conf.nginx_pid)
 
     -- same master PID
-    assert.equal(nginx_pid, helpers.file.read(helpers.test_conf.nginx_pid))
+    assert.equal(nginx_pid, nginx_pid_after)
   end)
+
   it("reloads from a --conf argument", function()
     assert(helpers.start_kong({
       proxy_listen = "0.0.0.0:9002"
@@ -115,7 +116,7 @@ describe("kong reload #" .. strategy, function()
     local client = helpers.http_client("0.0.0.0", 9002, 5000)
     client:close()
 
-    ngx.sleep(1)
+    local workers = get_kong_workers()
 
     local nginx_pid = assert(helpers.file.read(helpers.test_conf.nginx_pid),
                              "no nginx master PID")
@@ -124,7 +125,7 @@ describe("kong reload #" .. strategy, function()
       proxy_listen = "0.0.0.0:9000"
     }))
 
-    ngx.sleep(1)
+    wait_until_no_common_workers(workers, 2)
 
     -- same master PID
     assert.equal(nginx_pid, helpers.file.read(helpers.test_conf.nginx_pid))
@@ -133,21 +134,23 @@ describe("kong reload #" .. strategy, function()
     client = helpers.http_client("0.0.0.0", 9000, 5000)
     client:close()
   end)
+
   it("accepts a custom nginx template", function()
     assert(helpers.start_kong({
       proxy_listen = "0.0.0.0:9002"
     }, nil, true))
 
+    local workers = get_kong_workers()
+
     -- http_client errors out if cannot connect
     local client = helpers.http_client("0.0.0.0", 9002, 5000)
     client:close()
 
-    ngx.sleep(1)
-
     assert(helpers.kong_exec("reload --conf " .. helpers.test_conf_path
            .. " --nginx-conf spec/fixtures/custom_nginx.template"))
 
-    ngx.sleep(1)
+
+    wait_until_no_common_workers(workers, 2)
 
     -- new server
     client = helpers.http_client(helpers.mock_upstream_host,
@@ -179,8 +182,7 @@ describe("kong reload #" .. strategy, function()
     local prng_seeds_1 = json.prng_seeds
     client:close()
 
-    assert(helpers.kong_exec("reload --prefix " .. helpers.test_conf.prefix))
-    ngx.sleep(1)
+    assert(kong_reload("reload --prefix " .. helpers.test_conf.prefix))
 
     client = helpers.admin_client()
     local res = assert(client:get("/"))
@@ -192,7 +194,7 @@ describe("kong reload #" .. strategy, function()
     for k in pairs(prng_seeds_1) do
       assert.is_nil(prng_seeds_2[k])
     end
-end)
+  end)
 
   it("clears the 'kong' shm but preserves 'node_id'", function()
     local client
@@ -213,8 +215,7 @@ end)
     local node_id_1 = json.node_id
     client:close()
 
-    assert(helpers.kong_exec("reload --prefix " .. helpers.test_conf.prefix))
-    ngx.sleep(1)
+    assert(kong_reload("reload --prefix " .. helpers.test_conf.prefix))
 
     client = helpers.admin_client()
     local res = assert(client:get("/"))
