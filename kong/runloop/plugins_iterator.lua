@@ -1,3 +1,7 @@
+local BasePlugin   = require "kong.plugins.base_plugin"
+local constants    = require "kong.constants"
+local reports      = require "kong.reports"
+
 local kong         = kong
 local setmetatable = setmetatable
 
@@ -20,6 +24,42 @@ local MUST_LOAD_CONFIGURATION_IN_PHASES = {
   content     = true,
 }
 
+
+local subsystem = ngx.config.subsystem
+
+
+local loaded_plugins
+
+
+local function get_loaded_plugins()
+  local loaded = assert(kong.db.plugins:get_handlers())
+
+  if kong.configuration.anonymous_reports then
+    reports.configure_ping(kong.configuration)
+    reports.add_ping_value("database_version", kong.db.infos.db_ver)
+    reports.toggle(true)
+
+    loaded[#loaded + 1] = {
+      name = "reports",
+      handler = reports,
+    }
+  end
+
+  return loaded
+end
+
+
+local function should_process_plugin(plugin)
+  local c = constants.PROTOCOLS_WITH_SUBSYSTEM
+  for _, protocol in ipairs(plugin.protocols) do
+    if c[protocol] == subsystem then
+      return true
+    end
+  end
+end
+
+
+
 -- Loads a plugin config from the datastore.
 -- @return plugin config table or an empty sentinel table in case of a db-miss
 local function load_plugin_from_db(key)
@@ -40,7 +80,7 @@ end
 -- @param[type=string] service_id Id of the service being proxied.
 -- @param[type=string] consumer_id Id of the donsumer making the request (if any).
 -- @treturn table Plugin configuration, if retrieved.
-local function load_configuration(self,
+local function load_configuration(ctx,
                                   name,
                                   route_id,
                                   service_id,
@@ -54,7 +94,7 @@ local function load_configuration(self,
                                      load_plugin_from_db,
                                      key)
   if err then
-    ngx.ctx.delay_response = false
+    ctx.delay_response = false
     ngx.log(ngx.ERR, tostring(err))
     return ngx.exit(ngx.ERROR)
   end
@@ -64,7 +104,7 @@ local function load_configuration(self,
   end
 
   if plugin.run_on ~= "all" then
-    if self.ctx.is_service_mesh_request then
+    if ctx.is_service_mesh_request then
       if plugin.run_on == "first" then
         return
       end
@@ -89,14 +129,14 @@ end
 local function get_next(self)
   local i = self.i + 1
 
-  local plugin = self.plugins_plan.loaded[i]
+  local plugin = self.iterator.loaded[i]
   if not plugin then
     return nil
   end
 
   self.i = i
 
-  if not self.plugins_plan.map[plugin.name] then
+  if not self.iterator.map[plugin.name] then
     return get_next(self)
   end
 
@@ -123,7 +163,7 @@ local function get_next(self)
     local consumer_id = consumer and consumer.id or nil
 
     local name   = plugin.name
-    local combos = self.plugins_plan.combos[name]
+    local combos = self.iterator.combos[name]
 
     local plugin_configuration
 
@@ -134,56 +174,56 @@ local function get_next(self)
       end
 
       if route_id and service_id and consumer_id and combos[COMBO_RSC] then
-        plugin_configuration = load_configuration(self, name, route_id, service_id, consumer_id)
+        plugin_configuration = load_configuration(ctx, name, route_id, service_id, consumer_id)
         if plugin_configuration then
           break
         end
       end
 
       if route_id and consumer_id and combos[COMBO_RC] then
-        plugin_configuration = load_configuration(self, name, route_id, nil, consumer_id)
+        plugin_configuration = load_configuration(ctx, name, route_id, nil, consumer_id)
         if plugin_configuration then
           break
         end
       end
 
       if service_id and consumer_id and combos[COMBO_SC] then
-        plugin_configuration = load_configuration(self, name, nil, service_id, consumer_id)
+        plugin_configuration = load_configuration(ctx, name, nil, service_id, consumer_id)
         if plugin_configuration then
           break
         end
       end
 
       if route_id and service_id and combos[COMBO_RS] then
-        plugin_configuration = load_configuration(self, name, route_id, service_id, nil)
+        plugin_configuration = load_configuration(ctx, name, route_id, service_id, nil)
         if plugin_configuration then
           break
         end
       end
 
       if consumer_id and combos[COMBO_C] then
-        plugin_configuration = load_configuration(self, name, nil, nil, consumer_id)
+        plugin_configuration = load_configuration(ctx, name, nil, nil, consumer_id)
         if plugin_configuration then
           break
         end
       end
 
       if route_id and combos[COMBO_R] then
-        plugin_configuration = load_configuration(self, name, route_id, nil, nil)
+        plugin_configuration = load_configuration(ctx, name, route_id, nil, nil)
         if plugin_configuration then
           break
         end
       end
 
       if service_id and combos[COMBO_S] then
-        plugin_configuration = load_configuration(self, name, nil, service_id, nil)
+        plugin_configuration = load_configuration(ctx, name, nil, service_id, nil)
         if plugin_configuration then
           break
         end
       end
 
       if combos[COMBO_GLOBAL] then
-        plugin_configuration = load_configuration(self, name, nil, nil, nil)
+        plugin_configuration = load_configuration(ctx, name, nil, nil, nil)
       end
 
     until true
@@ -202,7 +242,78 @@ local function get_next(self)
 end
 
 
-local plugins_iterator_mt = { __call = get_next }
+
+local PluginsIterator = {}
+local PluginsIterator_mt = { __index = PluginsIterator }
+
+
+function PluginsIterator.new(version)
+  loaded_plugins = loaded_plugins or get_loaded_plugins()
+
+  local map = {}
+  local combos = {}
+  local phases
+  if subsystem == "stream" then
+    phases = {
+      init_worker = {},
+      preread     = {},
+      log         = {},
+    }
+  else
+    phases = {
+      init_worker   = {},
+      certificate   = {},
+      rewrite       = {},
+      access        = {},
+      header_filter = {},
+      body_filter   = {},
+      log           = {},
+    }
+  end
+
+  for plugin, err in kong.db.plugins:each(1000) do
+    if err then
+      return nil, err
+    end
+
+    if should_process_plugin(plugin) then
+      map[plugin.name] = true
+
+      local combo_key = (plugin.route    and 1 or 0)
+                      + (plugin.service  and 2 or 0)
+                      + (plugin.consumer and 4 or 0)
+
+      combos[plugin.name] = combos[plugin.name] or {}
+      combos[plugin.name][combo_key] = true
+    end
+  end
+
+  for _, plugin in ipairs(loaded_plugins) do
+    if combos[plugin.name] then
+      for phase_name, phase in pairs(phases) do
+        if plugin.handler[phase_name] ~= BasePlugin[phase_name] then
+          phase[plugin.name] = true
+        end
+      end
+
+    else
+      if plugin.handler.init_worker ~= BasePlugin.init_worker then
+        phases.init_worker[plugin.name] = true
+      end
+    end
+  end
+
+  return setmetatable({
+    map = map,
+    version = version,
+    phases = phases,
+    combos = combos,
+    loaded = loaded_plugins,
+  }, PluginsIterator_mt)
+end
+
+
+local iteration_mt = { __call = get_next }
 
 
 --- Plugins for request iterator.
@@ -211,22 +322,21 @@ local plugins_iterator_mt = { __call = get_next }
 --
 -- @param[type=table] ctx Nginx context table
 -- @param[type=string] phase Plugins iterator execution phase
--- @param[type=table] plugins Plugins table
 -- @treturn function iterator
-local function plugins_iterator(ctx, phase, plugins_plan)
+function PluginsIterator:iterate(ctx, phase)
   if not ctx.plugins then
     ctx.plugins = {}
   end
 
-  local plugins_iterator_state = {
-    i = 0,
-    ctx = ctx,
+  local iteration = {
+    iterator = self,
     phase = phase,
-    plugins_plan = plugins_plan,
+    ctx = ctx,
+    i = 0,
   }
 
-  return setmetatable(plugins_iterator_state, plugins_iterator_mt)
+  return setmetatable(iteration, iteration_mt)
 end
 
 
-return plugins_iterator
+return PluginsIterator
