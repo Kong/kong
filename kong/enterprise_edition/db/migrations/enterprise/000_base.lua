@@ -60,7 +60,6 @@ local function seed_kong_admin_data_pg()
     return ""
   end
 
-  local random_password = utils.random_string()
   local kong_admin_consumer_id = utils.uuid()
   return fmt([[
     DO $$
@@ -78,25 +77,6 @@ local function seed_kong_admin_data_pg()
     SELECT uuid_in(overlay(overlay(md5(random()::text || ':' || clock_timestamp()::text) placing '4' from 13) placing to_hex(floor(random()*(11-8+1) + 8)::int)::text from 17)::cstring) into kong_admin_user_id;
     SELECT id into def_ws_id from workspaces where name = 'default';
 
-
-    -- create kong_admin user
-    SELECT * into tmp FROM rbac_users WHERE name='default:kong_admin' LIMIT 1;
-    IF NOT FOUND THEN
-        INSERT INTO rbac_users(id, name, user_token, enabled, comment) VALUES(kong_admin_user_id, CONCAT('default:kong_admin-', kong_admin_user_id::varchar), '%s', true, 'Initial RBAC Secure User');
-        INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value) VALUES(def_ws_id, 'default', kong_admin_user_id, 'rbac_users', 'id', kong_admin_user_id);
-        INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value) VALUES(def_ws_id, 'default', kong_admin_user_id, 'rbac_users', 'name', CONCAT('kong_admin-', kong_admin_user_id::varchar));
-        INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value) VALUES(def_ws_id, 'default', kong_admin_user_id, 'rbac_users', 'user_token', '%s');
-
-        SELECT id into super_admin_role_id from rbac_roles where name = 'default:super-admin';
-        INSERT into rbac_user_roles(user_id, role_id) VALUES(kong_admin_user_id, super_admin_role_id);
-
-        -- create default role for the user
-        SELECT uuid_in(overlay(overlay(md5(random()::text || ':' || clock_timestamp()::text) placing '4' from 13) placing to_hex(floor(random()*(11-8+1) + 8)::int)::text from 17)::cstring) into kong_admin_default_role_id;
-        INSERT into rbac_roles(id, name, comment, is_default) VALUES(kong_admin_default_role_id, CONCAT('default:kong_admin-', kong_admin_user_id::varchar), 'Default user role generated for kong_admin', true);
-        INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value) VALUES(def_ws_id, 'default', kong_admin_default_role_id, 'rbac_roles', 'id', kong_admin_default_role_id);
-        INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value) VALUES(def_ws_id, 'default', kong_admin_default_role_id, 'rbac_roles', 'name', CONCAT('kong_admin-', kong_admin_user_id::varchar));
-        INSERT into rbac_user_roles(user_id, role_id) VALUES(kong_admin_user_id, kong_admin_default_role_id);
-    END IF;
 
     -- create the admin consumer
     SELECT * into tmp FROM consumers where username='default:kong_admin' limit 1;
@@ -131,7 +111,7 @@ local function seed_kong_admin_data_pg()
     END IF;
 
     END $$;
-  ]], random_password, random_password, kong_admin_consumer_id, crypto.hash(kong_admin_consumer_id, password))
+  ]], kong_admin_consumer_id, crypto.hash(kong_admin_consumer_id, password))
 end
 
 local function seed_kong_admin_data_cas()
