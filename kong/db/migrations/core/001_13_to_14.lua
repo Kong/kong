@@ -54,7 +54,7 @@ return {
         SELECT * FROM snis;
       ]])
       if err then
-        return err
+        return nil, err
       end
       local sql_buffer = { "BEGIN;" }
       local len = #rows
