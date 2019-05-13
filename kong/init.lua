@@ -617,10 +617,13 @@ function Kong.rewrite()
 
   runloop.rewrite.before(ctx)
 
-  local ok, err = runloop.update_plugins_iterator()
-  if not ok then
-    ngx_log(ngx_CRIT, "could not ensure plugins iterator is up to date: ", err)
-    return kong.response.exit(500, { message  = "An unexpected error occurred" })
+  -- On HTTPS requests, the plugins iterator is already updated in the ssl_certificate phase
+  if ngx.var.https ~= "on" then
+    local ok, err = runloop.update_plugins_iterator()
+    if not ok then
+      ngx_log(ngx_CRIT, "could not ensure plugins iterator is up to date: ", err)
+      return kong.response.exit(500, { message  = "An unexpected error occurred" })
+    end
   end
 
   execute_plugins_iterator(ctx, "rewrite")
