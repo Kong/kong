@@ -278,11 +278,11 @@ local function get_collection_endpoint(schema, foreign_schema, foreign_field_nam
       p_data = data
     end
 
-    next_page = null
+    local next_page = null
     if offset then
       -- if next page parameter was passed use it instead otherwise construct
       -- next page using schema name
-      if preifx_path then
+      if prefix_path then
         next_page = fmt("%s?offset=%s", prefix_path, escape_uri(offset))
       else
         next_page = fmt("/%s?offset=%s",
@@ -342,7 +342,7 @@ local function get_collection_endpoint(schema, foreign_schema, foreign_field_nam
     end
 
     return ok {
-      data   = data,
+      data   = setmetatable(p_data, cjson.empty_array_mt),
       offset = offset,
       next   = next_page,
     }

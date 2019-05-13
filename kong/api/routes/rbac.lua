@@ -348,31 +348,8 @@ return {
     schema = rbac_roles.schema,
     methods = {
       GET  = function(self, db, helpers, parent)
-        local args = self.args.uri
-        local opts = endpoints.extract_options(args, "rbac_roles", "select")
-        local size, err = endpoints.get_page_size(args)
-        if err then
-          return endpoints.handle_error(db.rbac_roles.errors:invalid_size(err))
-        end
-
-        local data, _, err_t, offset = db.rbac_roles:page(size, args.offset, opts)
-        if err_t then
-          return endpoints.handle_error(err_t)
-        end
-
-        data = remove_default_roles(data)
-        setmetatable(data, cjson.empty_array_mt)
-
-        local next_page = offset and fmt("/%s?offset=%s",
-          "rbac_roles",
-          endpoints.escape_uri(offset)) or ngx.null
-
-
-        return kong.response.exit(200, {
-          data   = data,
-          offset = offset,
-          next   = next_page,
-        })
+        local next_page = fmt("/rbac/roles")
+        return endpoints.get_collection_endpoint(rbac_roles.schema)(self, db, helpers, nil, next_page)
       end,
       POST = endpoints.post_collection_endpoint(rbac_roles.schema),
     }
@@ -425,14 +402,8 @@ return {
       find_current_role(self, db, helpers)
     end,
     GET = function(self, db, helpers)
-      -- XXX: EE. do proper pagination.  Investigate if we can page through it
-      local entities = rbac.get_role_entities(db, self.rbac_role)
-
-      entities = tablex.map(post_process_actions, entities)
-
-      return kong.response.exit(200, {
-        data = entities
-      })
+      local next_page = fmt("/rbac/roles/%s/entities", self.rbac_role.id)
+      return endpoints.get_collection_endpoint(kong.db.rbac_role_entities.schema, rbac_roles.schema, "role")(self, db, helpers, post_process_actions, next_page)
     end,
 
     POST = function(self, db, helpers)
@@ -594,15 +565,8 @@ return {
       end,
 
       GET = function(self, db, helpers)
-        local endpoints = rbac.get_role_endpoints(db, self.rbac_role)
-
-        tablex.map(post_process_actions, endpoints) -- post_process_actions
-        return kong.response.exit(200, { -- XXX EE. Should we keep old
-                                         -- structure? or should we
-                                         -- just return endoints and
-                                         -- that's it? also, pagination?
-          data = endpoints
-        })
+       local next_page = fmt("/rbac/roles/%s/endpoints", self.rbac_role.id)
+       return endpoints.get_collection_endpoint(kong.db.rbac_role_endpoints.schema, rbac_roles.schema, "role")(self, db, helpers, post_process_actions, next_page)
       end,
 
       POST = function(self, dao_factory, helpers)
