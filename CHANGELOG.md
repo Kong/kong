@@ -1,4 +1,4 @@
-## Unreleased
+## 0.35
 
 ### Fixed
 
@@ -9,6 +9,11 @@
 
 - ldaps protocol support
 - Tests for multiple connection strategies
+
+### Changed
+
+- Change to new dao
+- Change to use pdk
 
 ## 0.33
 
