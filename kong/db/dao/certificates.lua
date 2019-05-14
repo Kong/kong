@@ -56,7 +56,7 @@ function _Certificates:insert(cert, options)
 
   if (not cert.key or cert.key == null) and name_list and #name_list ~= 0 then
     local err_t = self.errors:schema_violation({
-      snis = "private key is not present, \"snis\" field should be absent",
+      snis = "cannot be specified because the 'key' attribute is not set",
     })
 
     return nil, tostring(err_t), err_t
@@ -118,10 +118,19 @@ function _Certificates:update(cert_pk, cert, options)
   if cert.key or cert.cert then
     if cert.key == null then
       -- user tries to remove private key from cert
-      if (name_list and #name_list ~= 0) or #snis ~= 0 then
+      if #snis > 0 and not name_list then
         local err_t = self.errors:schema_violation({
-          key = "one or more SNI names are still associated with this" ..
-                 " certificate, private key cannot be removed",
+          key = "cannot be removed, since one or more SNIs are still" ..
+                " associated to this Certificate",
+        })
+
+        return nil, tostring(err_t), err_t
+      end
+
+      if name_list and #name_list ~= 0 then
+        local err_t = self.errors:schema_violation({
+          snis = "cannot associate SNIs to this Certificate" ..
+                 " because the 'key' attribute is not set",
         })
 
         return nil, tostring(err_t), err_t
@@ -166,7 +175,7 @@ function _Certificates:upsert(cert_pk, cert, options)
 
   if (not cert.key or cert.key == null) and name_list and #name_list ~= 0 then
     local err_t = self.errors:schema_violation({
-      snis = "private key is not present, \"snis\" field should be absent",
+      snis = "cannot be specified because the 'key' attribute is not set",
     })
 
     return nil, tostring(err_t), err_t

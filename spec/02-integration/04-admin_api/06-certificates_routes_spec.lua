@@ -206,7 +206,7 @@ describe("Admin API: #" .. strategy, function()
         })
         local body = assert.res_status(400, res)
         local json = cjson.decode(body)
-        assert.matches("snis: private key is not present, \"snis\" field should be absent", json.message,
+        assert.matches("snis: cannot be specified because the 'key' attribute is not set", json.message,
                        nil, true)
       end)
 
@@ -483,7 +483,7 @@ describe("Admin API: #" .. strategy, function()
         })
         local body = assert.res_status(400, res)
         local json = cjson.decode(body)
-        assert.matches("snis: private key is not present, \"snis\" field should be absent", json.message,
+        assert.matches("snis: cannot be specified because the 'key' attribute is not set", json.message,
                        nil, true)
       end)
 
@@ -509,7 +509,7 @@ describe("Admin API: #" .. strategy, function()
         })
         body = assert.res_status(400, res)
         json = cjson.decode(body)
-        assert.matches("snis: private key is not present, \"snis\" field should be absent",
+        assert.matches("snis: cannot be specified because the 'key' attribute is not set",
                        json.message, nil, true)
       end)
     end)
@@ -758,7 +758,7 @@ describe("Admin API: #" .. strategy, function()
         })
         local body = assert.res_status(400, res)
         local json = cjson.decode(body)
-        assert.matches("certificate: must have the \"key\" field (private key) set to assign SNI names",
+        assert.matches("certificate: cannot be used by SNI because specified Certificate does not have the 'key' attribute set",
                        json.message, nil, true)
       end)
 
@@ -771,8 +771,22 @@ describe("Admin API: #" .. strategy, function()
         })
         local body = assert.res_status(400, res)
         local json = cjson.decode(body)
-        assert.matches("key: one or more SNI names are still associated with this certificate, private key cannot be removed",
+        assert.matches("key: cannot be removed, since one or more SNIs are still associated to this Certificate",
                        json.message, nil, true)
+      end)
+
+      it("removing private key and SNIs at the same time from certificate should succeed", function()
+        local res = client:patch("/certificates/" .. cert_foo.id, {
+          body    = {
+            key = cjson.null,
+            snis = cjson.null,
+          },
+          headers = { ["Content-Type"] = "application/json" },
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.equal(0, #json.snis)
+        assert.equal(cjson.null, json.key)
       end)
     end)
 
@@ -906,7 +920,7 @@ describe("Admin API: #" .. strategy, function()
 
         local body = assert.res_status(400, res)
         local json = cjson.decode(body)
-        assert.match("certificate: must have the \"key\" field (private key) set to assign SNI names",
+        assert.match("certificate: cannot be used by SNI because specified Certificate does not have the 'key' attribute set",
                      json.message, nil, true)
       end)
     end)
@@ -1105,7 +1119,7 @@ describe("Admin API: #" .. strategy, function()
 
         local body = assert.res_status(400, res)
         local json = cjson.decode(body)
-        assert.match("certificate: must have the \"key\" field (private key) set to assign SNI names",
+        assert.match("certificate: cannot be used by SNI because specified Certificate does not have the 'key' attribute set",
                      json.message, nil, true)
       end)
     end)
@@ -1149,7 +1163,7 @@ describe("Admin API: #" .. strategy, function()
 
         local body = assert.res_status(400, res)
         local json = cjson.decode(body)
-        assert.match("certificate: must have the \"key\" field (private key) set to assign SNI names",
+        assert.match("certificate: cannot be used by SNI because specified Certificate does not have the 'key' attribute set",
                      json.message, nil, true)
       end)
     end)
