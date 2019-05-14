@@ -825,7 +825,7 @@ for _, strategy in helpers.each_strategy() do
         -- this is to ensure we have deterministic number of shdicts that don't change over time
         -- how many udp packets are we expecting below
         nginx_conf = "spec/fixtures/custom_nginx_statsd_advanced.template",
-        custom_plugins = "statsd-advanced",
+        plugins = "bundled,statsd-advanced",
       }))
 
       proxy_client = helpers.proxy_client()
@@ -919,7 +919,7 @@ for _, strategy in helpers.each_strategy() do
         -- this is to ensure we have the right number of shdicts being used so we know
         -- how many udp packets are we expecting below
         nginx_conf = "spec/fixtures/custom_nginx_statsd_advanced.template",
-        custom_plugins = "statsd-advanced",
+        plugins = "bundled,statsd-advanced",
       }))
 
       proxy_client = helpers.proxy_client()
