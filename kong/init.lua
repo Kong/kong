@@ -246,7 +246,7 @@ local function load_declarative_config(kong_config, entities)
       error("error building initial plugins iterator: " .. err)
     end
 
-    assert(runloop.build_router(kong.db, "init"))
+    assert(runloop.build_router("init"))
 
     mesh.init()
 
@@ -389,7 +389,7 @@ function Kong.init()
       error("error building initial plugins: " .. tostring(err))
     end
 
-    assert(runloop.build_router(db, "init"))
+    assert(runloop.build_router("init"))
   end
 
   db:close()

@@ -22,6 +22,11 @@ local function setup_it_block()
       response = {
         exit = function() end,
       },
+      cache = {
+        get = function()
+          return "1"
+        end
+      }
     },
 
     modules = {
@@ -35,11 +40,6 @@ local function setup_it_block()
         cluster_events = {
           subscribe = function() end,
         },
-        cache = {
-          get = function()
-            return "1"
-          end
-        }
       }},
 
       { "kong.runloop.balancer", {
@@ -84,15 +84,15 @@ describe("runloop handler", function()
       local semaphores = require "ngx.semaphore"._semaphores
       local handler = require "kong.runloop.handler"
 
-      local check_router_rebuild_spy = spy.new(function()
+      local build_router_spy = spy.new(function()
         return nil, "error injected by test (feel free to ignore :) )"
       end)
 
-      handler._set_check_router_rebuild(check_router_rebuild_spy)
+      handler._set_build_router(build_router_spy)
 
       handler.access.before({})
 
-      assert.spy(check_router_rebuild_spy).was_called(1)
+      assert.spy(build_router_spy).was_called(1)
 
       -- check semaphore
       assert.equal(1, semaphores[1].value)
@@ -104,11 +104,11 @@ describe("runloop handler", function()
       local semaphores = require "ngx.semaphore"._semaphores
       local handler = require "kong.runloop.handler"
 
-      local check_router_rebuild_spy = spy.new(function()
-        return handler.check_router_rebuild()
+      local build_router_spy = spy.new(function()
+        return true
       end)
 
-      handler._set_check_router_rebuild(check_router_rebuild_spy)
+      handler._set_build_router(build_router_spy)
 
       handler.access.before({})
 
@@ -116,7 +116,7 @@ describe("runloop handler", function()
       assert.equal(1, semaphores[1].value)
 
       -- was called even if semaphore timed out on acquisition
-      assert.spy(check_router_rebuild_spy).was_called(1)
+      assert.spy(build_router_spy).was_called(1)
 
       -- cause failure to acquire semaphore
       semaphores[1].wait = function()
@@ -126,7 +126,7 @@ describe("runloop handler", function()
       handler.access.before({})
 
       -- was called even if semaphore timed out on acquisition
-      assert.spy(check_router_rebuild_spy).was_called(2)
+      assert.spy(build_router_spy).was_called(2)
 
       -- check semaphore
       assert.equal(1, semaphores[1].value)
