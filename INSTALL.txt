@@ -3,9 +3,9 @@ Installation guide for Kong custom plugins
 ==========================================
 
 --------------------------------
-| Kong version    | 0.30       |
+| Kong version    | 0.35.0     |
 |-----------------|------------|
-| Latest revision | 2017/12/15 |
+| Latest revision | 2019/04/14 |
 --------------------------------
 
 Custom plugins for Kong consist of Lua source files that need to be in the file
@@ -110,12 +110,12 @@ section 3.
     The plugin `something` being located on the file system such that the
     handler file is:
 
-    /usr/local/custom/kong/plugins/something/handler.lua
+    /usr/local/kong/plugins/something/handler.lua
 
-    The location of the `kong` directory is: /usr/local/custom, hence the
+    The location of the `kong` directory is: /usr/local, hence the
     proper path setup would be:
 
-    lua_package_path = /usr/local/custom/?.lua;;
+    lua_package_path = /usr/local/?.lua;;
 
     Multiple plugins:
 
@@ -137,19 +137,19 @@ sources, you must still do so for each node in your Kong nodes.
 3. Instruct Kong to load your custom plugin
 ===========================================
 
-You must now add the custom plugin's name to the `custom_plugins` list in your
+You must now add the custom plugin's name to the `plugins` list in your
 Kong configuration (on each Kong node):
 
-    custom_plugins = <plugin-name>
+    plugins = <plugin-name>
 
 If you are using two or more custom plugins, insert commas in between, like so:
 
-    custom_plugins = plugin1,plugin2
+    plugins = plugin1,plugin2
 
 Note: you can also set this property via its environment variable equivalent:
-`KONG_CUSTOM_PLUGINS`.
+`KONG_PLUGINS`.
 
-Reminder: don't forget to update the `custom_plugins` directive for each node
+Reminder: don't forget to update the `plugins` directive for each node
 in your Kong cluster.
 
 
@@ -184,7 +184,7 @@ There are three steps to completely remove a plugin.
    This step in itself will make that the plugin is no longer used. But
    it is still possible to re-apply the plugin.
 
-2. remove the plugin from the `custom_plugins` directive (on each Kong node).
+2. remove the plugin from the `plugins` directive (on each Kong node).
    Make sure to have completed step 1 before doing so. After this step
    it will be impossible for anyone to re-apply the plugin to any Kong
    api, consumer, or even globally. This step requires to restart/reload the
@@ -205,19 +205,19 @@ reasons:
 * "plugin is in use but not enabled" -> this error means that you configured a
   custom plugin from another node, and that the plugin configuration is in the
   database, but that the current node you are trying to start does not have it
-  in its custom_plugins directive.
-  To resolve, add the plugin's name to the node's custom_plugins directive.
+  in its `plugins` directive.
+  To resolve, add the plugin's name to the node's `plugins` directive.
 
 * "plugin is enabled but not installed" -> this means that the plugin's name
-  is present in the custom_plugins directive, but that Kong is unable to load
+  is present in the `plugins` directive, but that Kong is unable to load
   the `handler.lua` source file from the file system.
   To resolve, make sure that the lua_package_path directive is properly set to
   load this plugin's Lua sources.
 
 * "no configuration schema found for plugin" -> the plugin is installed,
-  enabled in custom_plugins, but Kong is unable to load the `schema.lua`
+  enabled in `plugins`, but Kong is unable to load the `schema.lua`
   source file from the file system.
   To resolve, make sure that the `schema.lua` file is present alongside the
   plugin's `handler.lua` file.
 
-Feel free to contact <support@mashape.com> for further troubleshooting.
+Feel free to contact <support@konghq.com> for further troubleshooting.
