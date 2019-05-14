@@ -178,7 +178,7 @@ for _, strategy in helpers.each_strategy() do
       assert(helpers.start_kong({
         nginx_conf = "spec/fixtures/custom_nginx.template",
         database = strategy,
-        custom_plugins = "canary",
+        plugins = "canary,key-auth,acl",
       }))
       proxy_client = helpers.proxy_client()
       admin_client = helpers.admin_client()

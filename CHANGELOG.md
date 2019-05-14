@@ -1,8 +1,9 @@
-## Unreleased
+## 0.4 13-May-2019
 
 ### Changed
 
 - Change schema to a new DAO format
+- Use pdk
 
 ## 0.3.0 30-Nov-2018
 
