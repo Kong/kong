@@ -33,8 +33,8 @@ local function check_private_key_exists(self, sni)
 
   if not cert.key then
     local err_t = self.errors:schema_violation({
-      certificate = "must have the \"key\" field (private key) set to" ..
-                    " assign SNI names",
+      certificate = "cannot be used by SNI because specified Certificate" ..
+                    " does not have the 'key' attribute set",
     })
     return nil, tostring(err_t), err_t
   end
