@@ -538,7 +538,7 @@ for _, strategy in helpers.each_strategy() do
         local creds = assert(db.basicauth_credentials:page_for_consumer(admin.consumer))
         assert.same(original_cred.username, creds[1].username)
 
-        local digest = assert(basicauth_crypto.encrypt(creds[1].consumer.id,
+        local digest = assert(basicauth_crypto.hash(creds[1].consumer.id,
                               params.password))
         assert.truthy(creds[1].password == digest)
       end)

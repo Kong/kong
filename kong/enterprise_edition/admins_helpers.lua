@@ -421,7 +421,7 @@ local function verify_password(admin, old_password, new_password)
   end
 
   if creds[1] then
-    local digest, err = basicauth_crypto.encrypt(creds[1].consumer.id,
+    local digest, err = basicauth_crypto.hash(creds[1].consumer.id,
                                                  old_password)
 
     if err then
