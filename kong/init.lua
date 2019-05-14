@@ -250,6 +250,11 @@ local function load_declarative_config(kong_config, entities)
 
     mesh.init()
 
+    ok, err = ngx.shared.kong:safe_set("declarative_config:loaded", true)
+    if not ok then
+      kong.log.warn("failed marking declarative_config as loaded: ", err)
+    end
+
     return true
   end)
 end

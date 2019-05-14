@@ -252,7 +252,7 @@ local function post_crud_create_event(entity_name, item)
 end
 
 
-local function cache_entities(entities)
+function declarative.load_into_cache(entities, shadow_page)
   -- Array of strings with this format:
   -- "<tag_name>|<entity_name>|<uuid>".
   -- For example, a service tagged "admin" would produce
@@ -294,14 +294,14 @@ local function cache_entities(entities)
 
       local cache_key = dao:cache_key(id)
       item = remove_nulls(item)
-      local ok, err = kong.cache:safe_set(cache_key, item, SHADOW)
+      local ok, err = kong.cache:safe_set(cache_key, item, shadow_page)
       if not ok then
         return nil, err
       end
 
       if schema.cache_key then
         local cache_key = dao:cache_key(item)
-        ok, err = kong.cache:safe_set(cache_key, item, SHADOW)
+        ok, err = kong.cache:safe_set(cache_key, item, shadow_page)
         if not ok then
           return nil, err
         end
@@ -310,7 +310,7 @@ local function cache_entities(entities)
       for _, unique in ipairs(uniques) do
         if item[unique] then
           local cache_key = entity_name .. "|" .. unique .. ":" .. item[unique]
-          ok, err = kong.cache:safe_set(cache_key, item, SHADOW)
+          ok, err = kong.cache:safe_set(cache_key, item, shadow_page)
           if not ok then
             return nil, err
           end
@@ -340,7 +340,7 @@ local function cache_entities(entities)
       end
     end
 
-    local ok, err = kong.cache:safe_set(entity_name .. "|list", ids, SHADOW)
+    local ok, err = kong.cache:safe_set(entity_name .. "|list", ids, shadow_page)
     if not ok then
       return nil, err
     end
@@ -348,7 +348,7 @@ local function cache_entities(entities)
     for ref, fids in pairs(page_for) do
       for fid, entries in pairs(fids) do
         local key = entity_name .. "|" .. ref .. "|" .. fid .. "|list"
-        ok, err = kong.cache:safe_set(key, entries, SHADOW)
+        ok, err = kong.cache:safe_set(key, entries, shadow_page)
         if not ok then
           return nil, err
         end
@@ -367,7 +367,7 @@ local function cache_entities(entities)
       end
       -- stay consistent with pagination
       table.sort(arr)
-      ok, err = kong.cache:safe_set(key, arr, SHADOW)
+      ok, err = kong.cache:safe_set(key, arr, shadow_page)
       if not ok then
         return nil, err
       end
@@ -378,7 +378,7 @@ local function cache_entities(entities)
     -- tags:admin|list -> all tags tagged "admin", regardless of the entity type
     -- each tag is encoded as a string with the format "admin|services|uuid", where uuid is the service uuid
     local key = "tags:" .. tag_name .. "|list"
-    local ok, err = kong.cache:safe_set(key, tags, SHADOW)
+    local ok, err = kong.cache:safe_set(key, tags, shadow_page)
     if not ok then
       return nil, err
     end
@@ -386,7 +386,7 @@ local function cache_entities(entities)
 
   -- tags|list -> all tags, with no distinction of tag name or entity type.
   -- each tag is encoded as a string with the format "admin|services|uuid", where uuid is the service uuid
-  local ok, err = kong.cache:safe_set("tags|list", tags, SHADOW)
+  local ok, err = kong.cache:safe_set("tags|list", tags, shadow_page)
   if not ok then
     return nil, err
   end
@@ -395,37 +395,33 @@ local function cache_entities(entities)
 end
 
 
-function declarative.load_into_cache(entities, send_events)
+function declarative.load_into_cache_with_events(entities)
 
-  local ok, err = cache_entities(entities)
+  -- ensure any previous update finished (we're flipped to the latest page)
+  local _, err = kong.worker_events.poll()
+  if err then
+    return nil, err
+  end
+
+  post_upstream_crud_delete_events()
+
+  local ok
+  ok, err = declarative.load_into_cache(entities, SHADOW)
+
   if ok then
-    kong.cache:flip()
-
-    ok, err = ngx.shared.kong:safe_add("declarative_config:loaded", true)
+    ok, err = kong.worker_events.post("declarative", "flip_config", true)
     if not ok then
-      if err == "exists" then
-        ok, err = true, nil
-      else
-        ok, err = nil, "failed to set declarative_config:loaded in shm: " .. err
-      end
+      return nil, "failed to flip declarative config cache pages: " .. err
     end
-
-    kong.cache:invalidate("router:version")
   end
 
   kong.cache:purge(SHADOW)
 
-  return ok, err
-end
-
-
-function declarative.load_into_cache_with_events(entities)
-  post_upstream_crud_delete_events()
-
-  local ok, err = declarative.load_into_cache(entities)
   if not ok then
     return nil, err
   end
+
+  kong.cache:invalidate("router:version")
 
   for _, entity_name in ipairs({"upstreams", "targets"}) do
     if entities[entity_name] then
