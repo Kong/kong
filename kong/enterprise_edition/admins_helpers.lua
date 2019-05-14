@@ -3,6 +3,7 @@ local enums = require "kong.enterprise_edition.dao.enums"
 local workspaces = require "kong.workspaces"
 local secrets = require "kong.enterprise_edition.consumer_reset_secret_helpers"
 local ee_utils = require "kong.enterprise_edition.utils"
+local basicauth_crypto = require "kong.plugins.basic-auth.crypto"
 local utils = require "kong.tools.utils"
 local cjson = require "cjson"
 
@@ -355,18 +356,18 @@ function _M.update(params, admin_to_update, opts)
 
   -- keep consumer and credential names in sync with admin
   if params.username ~= admin_to_update.username or
-     params.custom_id and params.custom_id ~= admin_to_update.custom_id
+    params.custom_id and params.custom_id ~= admin_to_update.custom_id
   then
     -- update consumer
     local _, err = workspaces.run_with_ws_scope(
-      {},
-      db.consumers.update,
-      db.consumers,
-      { id = admin_to_update.consumer.id },
-      {
-        username = params.username,
-        custom_id = params.custom_id,
-      }
+                   {},
+                   db.consumers.update,
+                   db.consumers,
+                   { id = admin_to_update.consumer.id },
+                   {
+                     username = params.username,
+                     custom_id = params.custom_id,
+                   }
     )
     if err then
       return nil, err
@@ -393,6 +394,78 @@ function _M.update(params, admin_to_update, opts)
   end
 
   return { code = 200, body = transmogrify(admin) }
+end
+
+
+--- Verify an admin's basic auth credential password checking old vs. new
+-- @param `db` database strategy
+-- @param{type=string} `old_password`
+-- @param{type=string} `new_password`
+--
+-- @return{type=table} credential
+-- @return{type=string} bad_request_message
+-- @return error
+local function verify_password(admin, old_password, new_password)
+  if not new_password or not old_password or new_password == old_password then
+    return nil, "Passwords cannot be the same"
+  end
+
+  local creds, err = workspaces.run_with_ws_scope(
+                     {},
+                     kong.db.basicauth_credentials.page_for_consumer,
+                     kong.db.basicauth_credentials,
+                     admin.consumer
+  )
+  if err then
+    return nil, nil, err
+  end
+
+  if creds[1] then
+    local digest, err = basicauth_crypto.encrypt(creds[1].consumer.id,
+                                                 old_password)
+
+    if err then
+      kong.log.err(err)
+      return nil, nil, err
+    end
+
+    local valid = creds[1].password == digest
+
+    if not valid then
+      return nil, "Old password is invalid"
+    end
+
+    return creds[1]
+  end
+
+  return nil, "Bad request"
+end
+
+
+function _M.update_password(admin, params)
+  local creds, bad_req_message, err = verify_password(admin, params.old_password,
+                                                      params.password)
+  if err then
+    return nil, err
+  end
+
+  if bad_req_message then
+    return { code = 400, body = { message = bad_req_message }}
+  end
+
+  local _, err = workspaces.run_with_ws_scope(
+                 {},
+                 kong.db.basicauth_credentials.update,
+                 kong.db.basicauth_credentials,
+                 { id = creds.id },
+                 { password = params.password }
+  )
+
+  if err then
+    return nil, err
+  end
+
+  return { code = 200, body = { message = "Password reset successfully" }}
 end
 
 

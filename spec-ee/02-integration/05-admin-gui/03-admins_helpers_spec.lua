@@ -2,6 +2,7 @@ local helpers = require "spec.helpers"
 local utils = require "kong.tools.utils"
 local enums = require "kong.enterprise_edition.dao.enums"
 local admins_helpers = require "kong.enterprise_edition.admins_helpers"
+local basicauth_crypto = require "kong.plugins.basic-auth.crypto"
 local workspaces = require "kong.workspaces"
 local singletons = require "kong.singletons"
 
@@ -506,6 +507,40 @@ for _, strategy in helpers.each_strategy() do
         for _, key in ipairs({ "config", "created_at", "id", "meta", "name" }) do
           assert.not_nil(ws[key])
         end
+      end)
+    end)
+
+    describe("credentials", function()
+      it("update_password - successful", function()
+        local admin = assert(db.admins:insert({
+          username = "an_admin",
+          custom_id = ngx.null,
+          email = "an_admin@test.com",
+          status = enums.CONSUMERS.TYPE.INVITED,
+        }))
+
+        -- create a credential to keep in sync
+        local original_cred = assert(db.basicauth_credentials:insert({
+          consumer = admin.consumer,
+          username = admin.username,
+          password = "original-gangster",
+        }))
+
+        local params = {
+          old_password = 'original-gangster',
+          password = "new-hotness"
+        }
+
+        local res = assert(admins_helpers.update_password(admin, params))
+        assert.equal("Password reset successfully", res.body.message)
+        assert.equal(200, res.code)
+
+        local creds = assert(db.basicauth_credentials:page_for_consumer(admin.consumer))
+        assert.same(original_cred.username, creds[1].username)
+
+        local digest = assert(basicauth_crypto.encrypt(creds[1].consumer.id,
+                              params.password))
+        assert.truthy(creds[1].password == digest)
       end)
     end)
   end)

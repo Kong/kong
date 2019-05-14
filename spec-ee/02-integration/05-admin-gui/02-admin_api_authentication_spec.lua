@@ -7,6 +7,7 @@ local utils = require "kong.tools.utils"
 local client
 local db, dao
 local post = ee_helpers.post
+local get_admin_cookie_basic_auth = ee_helpers.get_admin_cookie_basic_auth
 
 local function truncate_tables(db)
   db:truncate("workspace_entities")
@@ -64,21 +65,6 @@ local function admin(db, workspace, name, role, email)
 
     return admin
   end)
-end
-
-local function get_admin_cookie_basic_auth(username, password)
-  local res = assert(client:send {
-    method = "GET",
-    path = "/auth",
-    headers = {
-      ["Authorization"] = "Basic " .. ngx.encode_base64(username .. ":"
-                                                        .. password),
-      ["Kong-Admin-User"] = username,
-    }
-  })
-
-  assert.res_status(200, res)
-  return res.headers["Set-Cookie"]
 end
 
 
@@ -253,7 +239,7 @@ for _, strategy in helpers.each_strategy() do
 
 
         it("credentials in another workspace can access workspace data", function()
-          local cookie = get_admin_cookie_basic_auth(test_admin.username, 'another-one')
+          local cookie = get_admin_cookie_basic_auth(client, test_admin.username, 'another-one')
           local res = client:send {
             method = "GET",
             path = "/test-ws/services",
@@ -272,7 +258,7 @@ for _, strategy in helpers.each_strategy() do
 
         it("rbac token in another workspace can access data across workspaces",
           function()
-          local cookie = get_admin_cookie_basic_auth(test_admin.username, 'another-one')
+          local cookie = get_admin_cookie_basic_auth(client, test_admin.username, 'another-one')
           local res = client:send {
             method = "GET",
             path = "/services",
@@ -287,7 +273,7 @@ for _, strategy in helpers.each_strategy() do
 
         it("credentials in another workspace cannot access workspace data not"
           .. " permissioned for", function()
-          local cookie = get_admin_cookie_basic_auth(test_admin.username, 'another-one')
+          local cookie = get_admin_cookie_basic_auth(client, test_admin.username, 'another-one')
           local res = client:send {
             method = "GET",
             path = "/plugins",
@@ -395,7 +381,7 @@ for _, strategy in helpers.each_strategy() do
 
 
         it("credentials in another workspace can access workspace data", function()
-          local cookie = get_admin_cookie_basic_auth(test_admin.username, 'another-one')
+          local cookie = get_admin_cookie_basic_auth(client, test_admin.username, 'another-one')
 
           local res = client:send {
             method = "GET",

@@ -242,6 +242,22 @@ function _M.create_admin(email, custom_id, status, bp, db, username)
 end
 
 
+function _M.get_admin_cookie_basic_auth(client, username, password)
+  local res = assert(client:send {
+    method = "GET",
+    path = "/auth",
+    headers = {
+      ["Authorization"] = "Basic " .. ngx.encode_base64(username .. ":"
+                                                        .. password),
+      ["Kong-Admin-User"] = username,
+    }
+  })
+
+  assert.res_status(200, res)
+  return res.headers["Set-Cookie"]
+end
+
+
 local http_flags = { "ssl", "http2", "proxy_protocol", "transparent" }
 _M.portal_api_listeners = conf_loader.parse_listeners(helpers.test_conf.portal_api_listen, http_flags)
 _M.portal_gui_listeners = conf_loader.parse_listeners(helpers.test_conf.portal_gui_listen, http_flags)

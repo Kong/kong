@@ -9,6 +9,7 @@ local admins_helpers = require "kong.enterprise_edition.admins_helpers"
 local secrets = require "kong.enterprise_edition.consumer_reset_secret_helpers"
 local ee_utils = require "kong.enterprise_edition.utils"
 local escape = require("socket.url").escape
+local get_admin_cookie = ee_helpers.get_admin_cookie_basic_auth
 
 
 for _, strategy in helpers.each_strategy() do
@@ -933,6 +934,132 @@ for _, strategy in helpers.each_strategy() do
           local body = assert.res_status(404, res)
           local json = cjson.decode(body)
           assert.same("Not found", json.message)
+        end)
+      end)
+    end)
+  end)
+
+  describe("/admins/self/password #" .. strategy, function()
+    describe("with basic-auth", function()
+      local client
+      local db
+      local admin
+
+      local password_reset = function (client, cookie, body)
+        return client:send {
+          method = "PATCH",
+          path  = "/admins/self/password",
+          headers = {
+            ["Content-Type"] = "application/json",
+            ["kong-admin-user"] = "gruce",
+            cookie = cookie,
+          },
+          body = body,
+        }
+      end
+
+      lazy_setup(function()
+        _, db = helpers.get_db_utils(strategy)
+
+        assert(helpers.start_kong({
+          database = strategy,
+          admin_gui_url = "http://manager.konghq.com",
+          admin_gui_auth = "basic-auth",
+          enforce_rbac = "on",
+        }))
+        ee_helpers.register_rbac_resources(db)
+        client = assert(helpers.admin_client())
+
+        local res = assert(admins_helpers.create({
+          custom_id = "gruce",
+          username = "gruce",
+          email = "gruce@konghq.com",
+        }, {
+          token_optional = false,
+          remote_addr = "localhost",
+          db = db,
+          workspace = ngx.ctx.workspaces[1],
+          raw = true,
+        }))
+
+        admin = res.body.admin
+
+        -- add credentials
+        assert(db.basicauth_credentials:insert {
+          username    = "gruce",
+          password    = "original_gangster",
+          consumer = admin.consumer,
+        })
+      end)
+
+      lazy_teardown(function()
+        if client then client:close() end
+        assert(helpers.stop_kong())
+      end)
+
+      describe("POST", function()
+        it("400 - old_password required", function()
+          local cookie = get_admin_cookie(client, "gruce", "original_gangster")
+          local res = assert(password_reset(client, cookie, {password = "new_hotness"}))
+
+          assert.res_status(400, res)
+        end)
+
+        it("400 - old_password cannot be the same as new password", function()
+          local cookie = get_admin_cookie(client, "gruce", "original_gangster")
+          local res = assert(password_reset(client, cookie, {
+            password = "new_hotness",
+            old_password = "new_hotness"
+          }))
+
+          local body = assert.res_status(400, res)
+          local json = cjson.decode(body)
+
+          assert.equal("Passwords cannot be the same", json.message)
+        end)
+
+        it("400 - old_password must be correct", function()
+          local cookie = get_admin_cookie(client, "gruce", "original_gangster")
+          local res = assert(password_reset(client, cookie, {
+            password = "new_hotness",
+            old_password = "i_Am_Not_Correct"
+          }))
+          local body = assert.res_status(400, res)
+          local json = cjson.decode(body)
+
+          assert.equal("Old password is invalid", json.message)
+        end)
+
+        it("password can be reset successfully", function()
+          local old_password = "original_gangster"
+          local new_password = "new_hotness"
+
+          local cookie = get_admin_cookie(client, "gruce", old_password)
+          local res = assert(password_reset(client, cookie, {
+            password = new_password,
+            old_password = old_password,
+          }))
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+
+          assert.equal("Password reset successfully", json.message)
+
+          -- use the new password to obtain a cookie
+          local cookie = get_admin_cookie(client, "gruce", new_password)
+          assert.truthy(cookie)
+
+          -- ensure old password doesn't work anymore
+          local res = assert(client:send {
+            method = "GET",
+            path = "/auth",
+            headers = {
+              ["Authorization"] = "Basic " ..
+                                  ngx.encode_base64("gruce" .. ":" .. old_password),
+              ["Kong-Admin-User"] = "gruce",
+            }
+          })
+
+          assert.res_status(403, res)
         end)
       end)
     end)

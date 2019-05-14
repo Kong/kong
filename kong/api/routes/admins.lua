@@ -444,4 +444,24 @@ return {
       return kong.response.exit(201)
     end,
   },
+
+  ["/admins/self/password"] = {
+    before = function(self, db, helpers, parent)
+      validate_auth_plugin(self, db, helpers)
+
+      if not self.admin then
+        return kong.response.exit(404, {message = "Not found"})
+      end
+    end,
+
+    PATCH = function(self, db, helpers, parent)
+      local res, err = admins.update_password(self.admin, self.params)
+
+      if err then
+        return endpoints.handle_error(err)
+      end
+
+      return kong.response.exit(res.code, res.body)
+    end
+  }
 }
