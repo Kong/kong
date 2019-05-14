@@ -1304,21 +1304,22 @@ return {
       end
     end,
     after = function(ctx)
+      local enabled_headers = kong.configuration.enabled_headers
       if ctx.KONG_PROXIED then
-        if singletons.configuration.enabled_headers[constants.HEADERS.UPSTREAM_LATENCY] then
+        if enabled_headers[constants.HEADERS.UPSTREAM_LATENCY] then
           header[constants.HEADERS.UPSTREAM_LATENCY] = ctx.KONG_WAITING_TIME
         end
 
-        if singletons.configuration.enabled_headers[constants.HEADERS.PROXY_LATENCY] then
+        if enabled_headers[constants.HEADERS.PROXY_LATENCY] then
           header[constants.HEADERS.PROXY_LATENCY] = ctx.KONG_PROXY_LATENCY
         end
 
-        if singletons.configuration.enabled_headers[constants.HEADERS.VIA] then
+        if enabled_headers[constants.HEADERS.VIA] then
           header[constants.HEADERS.VIA] = server_header
         end
 
       else
-        if singletons.configuration.enabled_headers[constants.HEADERS.SERVER] then
+        if enabled_headers[constants.HEADERS.SERVER] then
           header[constants.HEADERS.SERVER] = server_header
 
         else
