@@ -1,3 +1,10 @@
+## 0.31.5
+
+### Changed
+
+- Convert to new dao
+- Use PDK
+
 ## 0.31.4
 
 ### Changed
