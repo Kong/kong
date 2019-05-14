@@ -8,15 +8,17 @@ local api_helpers = require "kong.enterprise_edition.api_helpers"
 local workspaces = require "kong.workspaces"
 
 
-local kong = kong
-local band  = bit.band
-local bxor  = bit.bxor
-local fmt   = string.format
+local kong       = kong
+local band       = bit.band
+local bxor       = bit.bxor
+local fmt        = string.format
+local escape_uri = ngx.escape_uri
 
-
-local rbac_users = kong.db.rbac_users
-local rbac_roles = kong.db.rbac_roles
-local endpoints   = require "kong.api.endpoints"
+local rbac_users          = kong.db.rbac_users
+local rbac_roles          = kong.db.rbac_roles
+local rbac_role_entities  = kong.db.rbac_role_entities
+local rbac_role_endpoints = kong.db.rbac_role_endpoints
+local endpoints           = require "kong.api.endpoints"
 
 local function rbac_operation_allowed(kong_conf, rbac_ctx, current_ws, dest_ws)
   if kong_conf.rbac == "off" then
@@ -81,6 +83,14 @@ local function post_process_actions(row)
 
 
   row.actions = actions_t
+  return row
+end
+
+
+local function post_process_actions_remove_default(row)
+  if row.is_default then
+    return
+  end
   return row
 end
 
@@ -160,9 +170,8 @@ return {
           return endpoints.handle_error(err_t)
         end
 
-        local next_page = offset and fmt("/%s?offset=%s",
-          "rbac_users",
-          endpoints.escape_uri(offset)) or ngx.null
+        local next_page = offset and fmt("/rbac/users?offset=%s",
+          escape_uri(offset)) or ngx.null
 
         -- filter non-proxy rbac_users (consumers)
         local res = {}
@@ -349,7 +358,10 @@ return {
     methods = {
       GET  = function(self, db, helpers, parent)
         local next_page = fmt("/rbac/roles")
-        return endpoints.get_collection_endpoint(rbac_roles.schema)(self, db, helpers, nil, next_page)
+        return endpoints.get_collection_endpoint(rbac_roles.schema)
+                                                (self, db, helpers, 
+                                                 post_process_actions_remove_default, 
+                                                 next_page)
       end,
       POST = endpoints.post_collection_endpoint(rbac_roles.schema),
     }
@@ -403,7 +415,12 @@ return {
     end,
     GET = function(self, db, helpers)
       local next_page = fmt("/rbac/roles/%s/entities", self.rbac_role.id)
-      return endpoints.get_collection_endpoint(kong.db.rbac_role_entities.schema, rbac_roles.schema, "role")(self, db, helpers, post_process_actions, next_page)
+      return endpoints.get_collection_endpoint(rbac_role_entities.schema, 
+                                               rbac_roles.schema, 
+                                               "role")
+                                              (self, db, helpers, 
+                                               post_process_actions, 
+                                               next_page)
     end,
 
     POST = function(self, db, helpers)
@@ -566,7 +583,12 @@ return {
 
       GET = function(self, db, helpers)
        local next_page = fmt("/rbac/roles/%s/endpoints", self.rbac_role.id)
-       return endpoints.get_collection_endpoint(kong.db.rbac_role_endpoints.schema, rbac_roles.schema, "role")(self, db, helpers, post_process_actions, next_page)
+       return endpoints.get_collection_endpoint(rbac_role_endpoints.schema, 
+                                                rbac_roles.schema, 
+                                                "role")
+                                                (self, db, helpers, 
+                                                 post_process_actions, 
+                                                 next_page)
       end,
 
       POST = function(self, dao_factory, helpers)
