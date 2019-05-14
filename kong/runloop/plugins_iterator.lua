@@ -19,15 +19,28 @@ local function load_plugin_into_memory(key)
 end
 
 
+-- TODO relying on `select_by_cache_key_migrating` is likely not the best
+-- alternative here; for one, it might (will?) be removed in a future release;
+-- second, it can likely be optimized for our purposes here (fetching a plugin
+-- without a workspace available)
+local function load_plugin_into_memory_global_scope(key)
+  local row, err = kong.db.plugins.strategy:select_by_cache_key_migrating(key)
+  if err then
+    return nil, err
+  end
+
+  return row and kong.db.plugins:row_to_entity(row)
+end
+
+
 local function load_plugin_into_memory_ws(ctx, key)
   local ws_scope = ctx.workspaces or {}
 
   -- query with "global cache key" - no workspace attached to it
   local plugin, err, hit_level = kong.cache:get(key,
                                                 nil,
-                                                load_plugin_into_memory,
+                                                load_plugin_into_memory_global_scope,
                                                 key)
-
   if err then
     return nil, err
   end
@@ -38,10 +51,11 @@ local function load_plugin_into_memory_ws(ctx, key)
     return plugin
   end
 
-  -- if the workspace scope is empty, the following logic is not relevant -
-  -- return
+  -- if workspace scope is empty, we can't query by cache_key, so
+  -- attempt to find a plugin for the given combination of name/service/route/
+  -- consumer (pre-0.15 way)
   if #ws_scope == 0 then
-    return plugin, err
+    return plugin
   end
 
   local found
@@ -56,7 +70,7 @@ local function load_plugin_into_memory_ws(ctx, key)
     if plugin then
       found = true
 
-      if plugin.enabled then -- using .enabled as a sentinel for positive cache -
+      if plugin.enabled ~= nil then -- using .enabled as a sentinel for positive cache -
         return plugin        -- if it was a negative cache, such field would not
                              -- be there
       end
@@ -77,7 +91,7 @@ local function load_plugin_into_memory_ws(ctx, key)
       if ttl then -- ttl means a cached value was found (positive or negative)
         found = true
 
-        if plugin and plugin.enabled then -- if positive, return (again, using
+        if plugin and plugin.enabled ~= nil then -- if positive, return (again, using
                                           -- `.enabled` as a sentinel)
           return plugin
         end
@@ -90,24 +104,28 @@ local function load_plugin_into_memory_ws(ctx, key)
      return plugin
   end
 
-  -- if we got here, no L1 or L2 entry was found in any workspace, so attempt to
-  -- load a plugin into memory - by querying the database
-  plugin = load_plugin_into_memory(key)
-
-  -- iterate over the workspace scope, adding a positive entry (for the workspace
-  -- the plugin belongs to) and negative entries for workspaces the plugin doesn't
-  -- belong to
   for _, ws in ipairs(ws_scope) do
     local plugin_cache_key = key .. ws.id
+    plugin = load_plugin_into_memory(plugin_cache_key)
 
-    local to_be_cached
-    if plugin and ws.id == plugin.workspace_id then
-      to_be_cached = plugin
+    if plugin and  ws.id == plugin.workspace_id then
+
+      -- +ve cache plugin and return
+      -- no further DB call required
+      local _, err = kong.cache:get(plugin_cache_key, nil, function ()
+        return plugin
+      end)
+      if err then
+        return nil, err
+      end
+
+      return plugin
     end
 
+    -- -ve cache plugin and continue
     local _, err = kong.cache:get(plugin_cache_key, nil, function ()
-      return to_be_cached
-    end, plugin_cache_key)
+      return plugin
+    end)
     if err then
       return nil, err
     end

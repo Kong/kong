@@ -214,11 +214,29 @@ return {
           row.service_id  == ngx.null and "" or row.service_id,
           row.consumer_id == ngx.null and "" or row.consumer_id,
           row.api_id      == ngx.null and "" or row.api_id,
+          -- XXX EE: needs to be updated
         }, ":")
 
         local sql = string.format([[
-          UPDATE "plugins" SET "cache_key" = '%s' WHERE "id" = '%s';
-        ]], cache_key, row.id)
+          SELECT "workspace_id" from workspace_entities WHERE
+          entity_type = 'plugins' AND unique_field_name = 'id' AND
+          unique_field_value = '%s';
+        ]], row.id)
+
+        local rows, err = connector:query(sql)
+        if err then
+          return nil, err
+        end
+
+        if #rows == 0 then
+          return nil, "Plugin must be linked to aleast one workspace"
+        end
+
+        local workspace_id = rows[1].workspace_id
+
+        local sql = string.format([[
+          UPDATE "plugins" SET "cache_key" = '%s%s' WHERE "id" = '%s';
+        ]], cache_key, workspace_id, row.id)
 
         assert(connector:query(sql))
       end
@@ -307,13 +325,32 @@ return {
         created_at = "created_at",
         enabled = "enabled",
         cache_key = function(row)
+
+          local sql = string.format([[
+          SELECT "workspace_id" from workspace_entities WHERE
+          entity_type = 'plugins' AND unique_field_name = 'id' AND
+          unique_field_value = '%s' ALLOW FILTERING;
+          ]], row.id)
+
+          local ws_entities, err = connector:query(sql)
+          if err then
+            return nil, err
+          end
+
+          if #ws_entities == 0 then
+            return nil, "Plugin must be linked to aleast one workspace"
+          end
+
+          local workspace_id = ws_entities[1].workspace_id
+
           return table.concat({
             "plugins",
             row.name,
             row.route_id or "",
             row.service_id or "",
             row.consumer_id or "",
-            row.api_id or ""
+            row.api_id or "",
+            workspace_id
           }, ":")
         end,
       }))
@@ -384,6 +421,7 @@ return {
 
       assert(connector:query("DROP TABLE IF EXISTS plugins_temp"))
       assert(connector:query("DROP TABLE IF EXISTS schema_migrations"))
+
     end,
   },
 }

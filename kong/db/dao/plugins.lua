@@ -332,7 +332,7 @@ function Plugins:select_by_cache_key(key, options)
   if schema_state:is_migration_executed("core", "001_14_to_15") then
     self.select_by_cache_key = self.super.select_by_cache_key
     Plugins.select_by_cache_key = nil
-    return self.super.select_by_cache_key(self, key)
+    return self.super.select_by_cache_key(self, key, options)
   end
 
   -- first try new way

@@ -337,7 +337,8 @@ for _, strategy in helpers.each_strategy() do
         assert.is_equal(ws_foo.id, body.workspace_id)
 
       end)
-      it("negative cache added for non enabled plugin in default workspace", function()
+      -- marked as pending as negative cache is now lazy loaded
+      pending("negative cache added for non enabled plugin in default workspace", function()
         local cache_key = db.plugins:cache_key("request-transformer",
                                                 nil,
                                                 s.id,
@@ -638,6 +639,158 @@ for _, strategy in helpers.each_strategy() do
       assert.equal(uuid, log_message.request.headers["x-uuid"])
       assert.equal("header_filter", res.headers["Log-Plugin-Phases"])
       assert.equal(494, log_message.response.status)
+    end)
+  end)
+
+  describe("global plugin per workspace #" .. strategy, function()
+    local FILE_LOG_PATH_DEFAULT = os.tmpname()
+    local FILE_LOG_PATH_FOO = os.tmpname()
+    local proxy_client
+
+    lazy_setup(function()
+      local bp = helpers.get_db_utils(strategy, {
+        "routes",
+        "services",
+        "plugins",
+      })
+
+      local ws_foo = bp.workspaces:insert({name = "foo"})
+      do
+        local mock_service_default = bp.services:insert {
+          name = "service-default"
+        }
+
+        bp.routes:insert {
+          hosts     = { "service-default" },
+          protocols = { "http" },
+          service   = mock_service_default,
+        }
+
+        -- global plugin added in default ws
+        bp.plugins:insert {
+          name = "file-log",
+          config = {
+            path = FILE_LOG_PATH_DEFAULT,
+            reopen = true,
+          }
+        }
+
+        local mock_service_foo = bp.services:insert_ws( {
+          name  = "service-foo",
+        }, ws_foo)
+
+        bp.routes:insert_ws({
+          hosts     = { "service-foo" },
+          protocols = { "http" },
+          service   = mock_service_foo,
+        }, ws_foo)
+
+        -- global plugin added in foo ws
+
+        bp.plugins:insert_ws( {
+          name = "file-log",
+          config = {
+            path = FILE_LOG_PATH_FOO,
+            reopen = true,
+          }
+        }, ws_foo)
+      end
+
+      -- start mock httpbin instance
+      assert(helpers.start_kong {
+        database = strategy,
+        admin_listen = "127.0.0.1:9011",
+        proxy_listen = "127.0.0.1:9010",
+        proxy_listen_ssl = "127.0.0.1:9453",
+        admin_listen_ssl = "127.0.0.1:9454",
+        prefix = "servroot2",
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+      })
+
+      -- start Kong instance with our services and plugins
+      assert(helpers.start_kong {
+        database = strategy,
+        db_update_propagation = strategy == "cassandra" and 3 or 0
+      })
+    end)
+
+
+    lazy_teardown(function()
+      helpers.stop_kong("servroot2")
+      helpers.stop_kong()
+    end)
+
+
+    before_each(function()
+      proxy_client = helpers.proxy_client()
+    end)
+
+
+    after_each(function()
+      pl_file.delete(FILE_LOG_PATH_DEFAULT)
+      pl_file.delete(FILE_LOG_PATH_FOO)
+
+      if proxy_client then
+        proxy_client:close()
+      end
+    end)
+
+
+    it("executes ws default plugin", function()
+      -- triggers error_page directive
+      local uuid = utils.uuid()
+
+      local res = assert(proxy_client:send {
+        method = "GET",
+        path = "/status/200",
+        headers = {
+          ["Host"] = "service-default",
+          ["X-UUID"] = uuid,
+        }
+      })
+      assert.res_status(200, res) -- Bad Gateway
+
+      -- TEST: ensure that our logging plugin was executed and wrote
+      -- something to disk.
+
+      helpers.wait_until(function()
+        return pl_path.exists(FILE_LOG_PATH_DEFAULT)
+          and pl_path.getsize(FILE_LOG_PATH_DEFAULT) > 0
+      end, LOG_WAIT_TIMEOUT)
+
+      local log = pl_file.read(FILE_LOG_PATH_DEFAULT)
+      local log_message = cjson.decode(pl_stringx.strip(log))
+      assert.equal("127.0.0.1", log_message.client_ip)
+      assert.equal(uuid, log_message.request.headers["x-uuid"])
+    end)
+
+
+    it("executes ws foo plugin", function()
+      -- triggers error_page directive
+      local uuid = utils.uuid()
+
+      local res = assert(proxy_client:send {
+        method = "GET",
+        path = "/status/200",
+        headers = {
+          ["Host"] = "service-foo",
+          ["X-UUID"] = uuid,
+        }
+      })
+      assert.res_status(200, res) -- Bad Gateway
+
+      -- TEST: ensure that our logging plugin was executed and wrote
+      -- something to disk.
+
+      helpers.wait_until(function()
+        return pl_path.exists(FILE_LOG_PATH_FOO)
+          and pl_path.getsize(FILE_LOG_PATH_FOO) > 0
+      end, LOG_WAIT_TIMEOUT)
+
+      local log = pl_file.read(FILE_LOG_PATH_FOO)
+      local log_message = cjson.decode(pl_stringx.strip(log))
+      assert.equal("127.0.0.1", log_message.client_ip)
+      assert.equal(uuid, log_message.request.headers["x-uuid"])
     end)
   end)
 end
