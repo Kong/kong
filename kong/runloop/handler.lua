@@ -66,9 +66,8 @@ local TTL_ZERO = { ttl = 0 }
 
 local get_plugins_iterator, build_plugins_iterator, update_plugins_iterator
 
-local get_router, build_router
+local get_router, build_router, update_router
 local server_header = meta._SERVER_TOKENS
-local _set_check_router_rebuild
 
 local build_router_timeout
 
@@ -522,7 +521,8 @@ do
     return service
   end
 
-  build_router = function(db, version)
+  build_router = function(version)
+    local db = kong.db
     local routes, i = {}, 0
 
     local err
@@ -585,11 +585,12 @@ do
       return rp1 > rp2
     end)
 
-    local err
-    router, err = Router.new(routes)
-    if not router then
+    local new_router, err = Router.new(routes)
+    if not new_router then
       return nil, "could not create router: " .. err
     end
+
+    router = new_router
 
     if version then
       router_version = version
@@ -601,7 +602,7 @@ do
   end
 
 
-  local function check_router_rebuild()
+  update_router = function()
     -- we might not need to rebuild the router (if we were not
     -- the first request in this process to enter this code path)
     -- check again and rebuild only if necessary
@@ -617,38 +618,6 @@ do
       return true
     end
 
-    -- router needs to be rebuilt in this worker
-    log(DEBUG, "rebuilding router")
-
-    local ok, err = build_router(singletons.db, version)
-    if not ok then
-      log(CRIT, "could not rebuild router: ", err)
-      return nil, err
-    end
-
-    return true
-  end
-
-
-  -- for unit-testing purposes only
-  _set_check_router_rebuild = function(f)
-    check_router_rebuild = f
-  end
-
-
-  get_router = function()
-    local version, err = singletons.cache:get("router:version",
-                                              CACHE_ROUTER_OPTS,
-                                              utils.uuid)
-    if err then
-      log(CRIT, "could not ensure router is up to date: ", err)
-      return nil, err
-    end
-
-    if version == router_version then
-      return router
-    end
-
     -- wrap router rebuilds in a per-worker mutex:
     -- this prevents dogpiling the database during rebuilds in
     -- high-concurrency traffic patterns;
@@ -661,12 +630,33 @@ do
       timeout = build_router_timeout,
       on_timeout = "run_unlocked",
     }
-    local ok, err = concurrency.with_coroutine_mutex(opts, check_router_rebuild)
+    local ok, err = concurrency.with_coroutine_mutex(opts, function()
+      -- we have the lock but we might not have needed it. check the
+      -- version again and rebuild if necessary
+      version, err = kong.cache:get("router:version", CACHE_ROUTER_OPTS, utils.uuid)
+      if err then
+        return nil, "failed to re-retrieve router version: " .. err
+      end
+
+      if version ~= router_version then
+        local ok, err = build_router(version)
+        if not ok then
+          return nil, "error found when building router: " .. err
+        end
+      end
+
+      return true
+    end)
 
     if not ok then
       return nil, err
     end
 
+    return true
+  end
+
+
+  get_router = function()
     return router
   end
 end
@@ -758,8 +748,6 @@ return {
   update_plugins_iterator = update_plugins_iterator,
   get_plugins_iterator = get_plugins_iterator,
   set_init_versions_in_cache = set_init_versions_in_cache,
-  -- exported for unit-testing purposes only
-  _set_check_router_rebuild = _set_check_router_rebuild,
 
   init_worker = {
     before = function()
@@ -809,8 +797,12 @@ return {
   },
   preread = {
     before = function(ctx)
-      local router, err = get_router()
-      if not router then
+      local router
+      local ok, err = update_router()
+      if ok then
+        router = get_router()
+      end
+      if not ok or not router then
         log(ERR, "no router to route connection (reason: " .. err .. ")")
         return exit(500)
       end
@@ -906,8 +898,13 @@ return {
     before = function(ctx)
       -- router for Routes/Services
 
-      local router, err = get_router()
-      if not router then
+      local router
+      local ok, err = update_router()
+      if ok then
+        router = get_router()
+      end
+
+      if not ok or not router then
         kong.log.err("no router to route request (reason: " .. tostring(err) ..  ")")
         return kong.response.exit(500, { message  = "An unexpected error occurred" })
       end
