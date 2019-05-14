@@ -1,4 +1,4 @@
-## Unreleased
+## 0.2
 
 ### Changed
 
