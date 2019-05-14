@@ -4,6 +4,9 @@ local helpers = require "spec.helpers"
 local Errors  = require "kong.db.errors"
 
 
+local WORKER_SYNC_TIMEOUT = 10
+
+
 local function it_content_types(title, fn)
   local test_form_encoded = fn("application/x-www-form-urlencoded")
   local test_multipart = fn("multipart/form-data")
@@ -20,6 +23,7 @@ describe("Admin API #off", function()
   lazy_setup(function()
     assert(helpers.start_kong({
       database = "off",
+      nginx_worker_processes = 8,
       mem_cache_size = "32k",
     }))
   end)
@@ -248,6 +252,22 @@ describe("Admin API #off", function()
 
       assert.response(res).has.status(201)
 
+      helpers.wait_until(function()
+        res = assert(client:send {
+          method = "GET",
+          path = "/consumers/previous",
+          headers = {
+            ["Content-Type"] = "application/json"
+          }
+        })
+
+        local body = res:read_body()
+        local json = cjson.decode(body)
+        if res.status == 200 and json.username == "previous" then
+          return true
+        end
+      end, WORKER_SYNC_TIMEOUT)
+
       client:close()
       client = assert(helpers.admin_client())
 
@@ -283,103 +303,122 @@ describe("Admin API #off", function()
       client:close()
       client = assert(helpers.admin_client())
 
-      res = assert(client:send {
-        method = "GET",
-        path = "/consumers/previous",
-        headers = {
-          ["Content-Type"] = "application/json"
-        }
-      })
+      helpers.wait_until(function()
+        res = assert(client:send {
+          method = "GET",
+          path = "/consumers/previous",
+          headers = {
+            ["Content-Type"] = "application/json"
+          }
+        })
 
-      local body = assert.response(res).has.status(200)
-      local json = cjson.decode(body)
-      assert.same("previous", json.username)
+        local body = res:read_body()
+        local json = cjson.decode(body)
+        if res.status == 200 and json.username == "previous" then
+          return true
+        end
+      end, WORKER_SYNC_TIMEOUT)
 
     end)
 
     it("succeeds with 200 and replaces previous cache if config fits in cache", function()
-      local res = assert(client:send {
-        method = "POST",
-        path = "/config",
-        body = {
-          config = [[
-          {
-            "_format_version" : "1.1",
-            "consumers" : [
-              {
-                "username" : "previous",
-              },
-            ],
+      -- stress test to check for worker concurrency issues
+      for k = 1, 100 do
+        if client then
+          client:close()
+          client = helpers.admin_client()
+        end
+        local res = assert(client:send {
+          method = "POST",
+          path = "/config",
+          body = {
+            config = [[
+            {
+              "_format_version" : "1.1",
+              "consumers" : [
+                {
+                  "username" : "previous",
+                },
+              ],
+            }
+            ]],
+          },
+          headers = {
+            ["Content-Type"] = "application/json"
           }
-          ]],
-        },
-        headers = {
-          ["Content-Type"] = "application/json"
+        })
+
+        assert.response(res).has.status(201)
+        client:close()
+
+        local consumers = {}
+        for i = 1, 10 do
+          table.insert(consumers, [[
+            {
+              "username" : "bobby-]] .. k .. "-" .. i .. [[",
+            }
+          ]])
+        end
+        local config = [[
+        {
+          "_format_version" : "1.1",
+          "consumers" : [
+        ]] .. table.concat(consumers, ", ") .. [[
+          ]
         }
-      })
+        ]]
 
-      assert.response(res).has.status(201)
-
-      client:close()
-      client = assert(helpers.admin_client())
-
-      local consumers = {}
-      for i = 1, 10 do
-        table.insert(consumers, [[
-          {
-            "username" : "bobby-]] .. i .. [[",
+        client = assert(helpers.admin_client())
+        res = assert(client:send {
+          method = "POST",
+          path = "/config",
+          body = {
+            config = config,
+          },
+          headers = {
+            ["Content-Type"] = "application/json"
           }
-        ]])
+        })
+
+        assert.response(res).has.status(201)
+
+        client:close()
+
+        helpers.wait_until(function()
+          client = assert(helpers.admin_client())
+          res = assert(client:send {
+            method = "GET",
+            path = "/consumers/previous",
+            headers = {
+              ["Content-Type"] = "application/json"
+            }
+          })
+          client:close()
+
+          return res.status == 404
+        end, WORKER_SYNC_TIMEOUT)
+
+        helpers.wait_until(function()
+          client = assert(helpers.admin_client())
+
+          res = assert(client:send {
+            method = "GET",
+            path = "/consumers/bobby-" .. k .. "-10",
+            headers = {
+              ["Content-Type"] = "application/json"
+            }
+          })
+          local body = res:read_body()
+          client:close()
+
+          if res.status ~= 200 then
+            return false
+          end
+
+          local json = cjson.decode(body)
+          return "bobby-" .. k .. "-10" == json.username
+        end, WORKER_SYNC_TIMEOUT)
       end
-      local config = [[
-      {
-        "_format_version" : "1.1",
-        "consumers" : [
-      ]] .. table.concat(consumers, ", ") .. [[
-        ]
-      }
-      ]]
-      res = assert(client:send {
-        method = "POST",
-        path = "/config",
-        body = {
-          config = config,
-        },
-        headers = {
-          ["Content-Type"] = "application/json"
-        }
-      })
-
-      assert.response(res).has.status(201)
-
-      client:close()
-      client = assert(helpers.admin_client())
-
-      res = assert(client:send {
-        method = "GET",
-        path = "/consumers/previous",
-        headers = {
-          ["Content-Type"] = "application/json"
-        }
-      })
-
-      assert.response(res).has.status(404)
-
-      client:close()
-      client = assert(helpers.admin_client())
-
-      res = assert(client:send {
-        method = "GET",
-        path = "/consumers/bobby-10",
-        headers = {
-          ["Content-Type"] = "application/json"
-        }
-      })
-
-      local body = assert.response(res).has.status(200)
-      local json = cjson.decode(body)
-      assert.same("bobby-10", json.username)
-
     end)
 
     it("accepts configuration as a YAML string", function()
@@ -400,6 +439,7 @@ describe("Admin API #off", function()
 
       assert.response(res).has.status(201)
     end)
+
     it("returns 400 on an invalid config string", function()
       local res = assert(client:send {
         method = "POST",

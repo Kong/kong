@@ -1133,4 +1133,60 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
   end)
+
+  describe("Router at startup [#" .. strategy .. "]" , function()
+    local proxy_client
+    local route
+
+    lazy_setup(function()
+      local bp = helpers.get_db_utils(strategy, {
+        "routes",
+        "services",
+        "apis",
+      })
+
+      route = bp.routes:insert({
+        methods    = { "GET" },
+        protocols  = { "http" },
+        strip_path = false,
+      })
+
+      assert(helpers.start_kong({
+        database = strategy,
+        nginx_worker_processes = 4,
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+      }))
+    end)
+
+    lazy_teardown(function()
+      helpers.stop_kong()
+    end)
+
+    before_each(function()
+      proxy_client = helpers.proxy_client()
+    end)
+
+    after_each(function()
+      if proxy_client then
+        proxy_client:close()
+      end
+    end)
+
+    it("uses configuration from datastore or declarative_config", function()
+      for _ = 1, 1000 do
+        proxy_client = helpers.proxy_client()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/get",
+          headers = { ["kong-debug"] = 1 },
+        })
+
+        assert.response(res).has_status(200)
+
+        assert.equal(route.service.name, res.headers["kong-service-name"])
+        proxy_client:close()
+      end
+    end)
+
+  end)
 end

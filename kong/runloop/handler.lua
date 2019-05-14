@@ -350,6 +350,18 @@ local function register_events()
       log(ERR, "failed broadcasting upstream ", operation, " to workers: ", err)
     end
   end)
+
+
+  -- declarative config updates
+
+
+  if db.strategy == "off" then
+    worker_events.register(function()
+      cache:flip()
+    end, "declarative", "flip_config")
+  end
+
+
 end
 
 
