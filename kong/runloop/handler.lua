@@ -705,8 +705,8 @@ do
 end
 
 
-local function balancer_setup_stage1(ctx, scheme, host_type, host, port,
-                                     service, route)
+local function balancer_prepare(ctx, scheme, host_type, host, port,
+                                service, route)
   local balancer_data = {
     scheme         = scheme,    -- scheme for balancer: http, https
     type           = host_type, -- type of 'host': ipv4, ipv6, name
@@ -738,7 +738,7 @@ local function balancer_setup_stage1(ctx, scheme, host_type, host, port,
 end
 
 
-local function balancer_setup_stage2(ctx)
+local function balancer_execute(ctx)
   local balancer_data = ctx.balancer_data
 
   do -- Check for KONG_ORIGINS override
@@ -961,14 +961,14 @@ return {
         upstream_url_t.port = tonumber(var.server_port, 10)
       end
 
-      balancer_setup_stage1(ctx, match_t.upstream_scheme,
-                            upstream_url_t.type,
-                            upstream_url_t.host,
-                            upstream_url_t.port,
-                            service, route)
+      balancer_prepare(ctx, match_t.upstream_scheme,
+                       upstream_url_t.type,
+                       upstream_url_t.host,
+                       upstream_url_t.port,
+                       service, route)
     end,
     after = function(ctx)
-      local ok, err, errcode = balancer_setup_stage2(ctx)
+      local ok, err, errcode = balancer_execute(ctx)
       if not ok then
         local body = utils.get_default_exit_body(errcode, err)
         return kong.response.exit(errcode, body)
@@ -1154,11 +1154,11 @@ return {
         upstream_url_t.port = service_port
       end
 
-      balancer_setup_stage1(ctx, match_t.upstream_scheme,
-                            upstream_url_t.type,
-                            upstream_url_t.host,
-                            upstream_url_t.port,
-                            service, route)
+      balancer_prepare(ctx, match_t.upstream_scheme,
+                       upstream_url_t.type,
+                       upstream_url_t.host,
+                       upstream_url_t.port,
+                       service, route)
 
       ctx.router_matches = match_t.matches
 
@@ -1210,7 +1210,7 @@ return {
       local balancer_data = ctx.balancer_data
       balancer_data.scheme = var.upstream_scheme -- COMPAT: pdk
 
-      local ok, err, errcode = balancer_setup_stage2(ctx)
+      local ok, err, errcode = balancer_execute(ctx)
       if not ok then
         local body = utils.get_default_exit_body(errcode, err)
         return kong.response.exit(errcode, body)
