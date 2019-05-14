@@ -281,7 +281,7 @@ function State.load(db)
   local rows_as_hash = {}
 
   if not rows then
-    schema_state.needs_bootstrap = true
+    schema_state.needs_bootstrap = not legacy_res.is_034
 
   else
     for _, row in ipairs(rows) do

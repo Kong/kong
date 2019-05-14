@@ -308,7 +308,7 @@ function Kong.init()
   assert(db:init_connector())
 
   schema_state = assert(db:schema_state())
-  if schema_state.needs_bootstrap  then
+  if schema_state.needs_bootstrap then
     error("database needs bootstrap; run 'kong migrations bootstrap'")
 
   elseif schema_state.new_migrations then

@@ -109,27 +109,26 @@ local function up(schema_state, db, opts)
                 db.infos.db_desc))
     end
 
-    if schema_state.legacy_is_034 then
-      local present, err = db:are_014_apis_present()
-      if err then
-        error(err)
-      end
+    -- fresh install: must bootstrap (which will run migrations up)
+    error("cannot run migrations: database needs bootstrapping; " ..
+          "run 'kong migrations bootstrap'")
+  end
 
-      if present then
-        error("cannot run migrations: you have `api` entities in your database; " ..
-              "please convert them to `routes` and `services` prior to " ..
-              "migrating to Kong 1.0.")
-      end
-
-      -- legacy: migration from 0.14 to 1.0 can be performed
-      log("upgrading from 0.14, bootstrapping database...")
-      assert(db:schema_bootstrap())
-
-    else
-      -- fresh install: must bootstrap (which will run migrations up)
-      error("cannot run migrations: database needs bootstrapping; " ..
-            "run 'kong migrations bootstrap'")
+  if schema_state.legacy_is_034 then
+    local present, err = db:are_014_apis_present()
+    if err then
+      error(err)
     end
+
+    if present then
+      error("cannot run migrations: you have `api` entities in your database; " ..
+            "please convert them to `routes` and `services` prior to " ..
+            "migrating to Kong 1.0.")
+    end
+
+    -- legacy: migration from 0.14 to 1.0 can be performed
+    log("upgrading from 0.14, bootstrapping database...")
+    assert(db:schema_bootstrap())
   end
 
   local ok, err = db:cluster_mutex(MIGRATIONS_MUTEX_KEY, opts, function()

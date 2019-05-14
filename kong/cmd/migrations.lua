@@ -93,16 +93,15 @@ local function execute(args)
   local schema_state = assert(db:schema_state())
 
   if args.command == "list" then
-    if schema_state.needs_bootstrap then
-      log("database needs bootstrapping; run 'kong migrations bootstrap'")
-      os.exit(3)
-    end
-
     if schema_state.executed_migrations then
       log("executed migrations:\n%s", schema_state.executed_migrations)
     end
 
     migrations_utils.print_state(schema_state)
+
+    if schema_state.needs_bootstrap then
+      os.exit(3)
+    end
 
     if schema_state.pending_migrations then
       os.exit(4)
