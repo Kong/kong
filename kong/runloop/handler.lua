@@ -17,8 +17,8 @@ local mesh         = require "kong.runloop.mesh"
 local constants    = require "kong.constants"
 local singletons   = require "kong.singletons"
 local certificate  = require "kong.runloop.certificate"
-local concurrency  = require "kong.concurrency"
 local ngx_re       = require "ngx.re"
+local semaphore    = require "ngx.semaphore"
 local PluginsIterator = require "kong.runloop.plugins_iterator"
 
 
@@ -39,6 +39,7 @@ local exit         = ngx.exit
 local header       = ngx.header
 local ngx_now      = ngx.now
 local timer_at     = ngx.timer.at
+local timer_every  = ngx.timer.every
 local re_match     = ngx.re.match
 local re_find      = ngx.re.find
 local re_split     = ngx_re.split
@@ -62,14 +63,19 @@ local CACHE_ROUTER_OPTS = { ttl = 0 }
 local SUBSYSTEMS = constants.PROTOCOLS_WITH_SUBSYSTEM
 local EMPTY_T = {}
 local TTL_ZERO = { ttl = 0 }
+local REBUILD_TIMEOUT
 
 
-local get_plugins_iterator, build_plugins_iterator, update_plugins_iterator
+local get_plugins_iterator, get_updated_plugins_iterator
+local build_plugins_iterator, update_plugins_iterator
+local rebuild_plugins_iterator, plugins_iterator_semaphore
 
 local get_router, build_router, update_router
 local server_header = meta._SERVER_TOKENS
+local rebuild_router, router_semaphore
 
-local build_router_timeout
+-- for tests
+local _set_rebuild_plugins_iterator, _set_rebuild_router
 
 
 local update_lua_mem
@@ -364,6 +370,90 @@ local function register_events()
 end
 
 
+local rebuild
+do
+
+  local function get_version(name)
+    if not kong.cache then
+      return "init"
+    end
+
+    local version, err = kong.cache:get(name .. ":version", TTL_ZERO, utils.uuid)
+    if err then
+      return nil, "could not ensure " .. name .. " is up to date: " .. err
+    end
+
+    return version
+  end
+
+
+  local function rebuild_timer(premature, name, callback, version, semaphore)
+    if premature then
+      semaphore:post()
+      return
+    end
+
+    local pok, ok, err = pcall(callback, version)
+    if not pok or not ok then
+      log(CRIT, "could not rebuild ", name, " asynchronously:", ok or err)
+    end
+    semaphore:post()
+  end
+
+
+  -- @param name "router" or "plugins_iterator"
+  -- @param callback A function that will update either the router or plugins_iterator
+  -- @param version target version
+  -- @param semaphore router_semaphore or plugins_iterator_semaphore
+  -- @param timeout how much time to wait when trying to acquire the semaphore.
+  -- @returns true if callback was either successfully executed synchronously,
+  -- enqueued via async timer, or not needed (because current_version == target).
+  -- nil otherwise (callback was neither called successfully nor enqueued,
+  -- or an error happened).
+  -- @returns error message as a second return value in case of failure/error
+  rebuild = function(name, callback, version, semaphore, timeout)
+    local current_version, err = get_version(name)
+    if not current_version then
+      return nil, err
+    end
+    if current_version == version then
+      return true
+    end
+
+    local ok, err = semaphore:wait(timeout)
+    if not ok then
+      return nil, err
+    end
+
+    current_version, err = get_version(name)
+    if not current_version then
+      semaphore:post()
+      return nil, err
+    end
+    if current_version == version then
+      semaphore:post()
+      return true
+    end
+
+    if timeout > 0 then
+      local pok, ok, err = pcall(callback, version)
+      semaphore:post()
+      if not pok or not ok then
+        return nil, "could not rebuild ", name, " synchronously: " .. tostring(ok or err)
+      end
+      return ok, err
+    end
+
+    local ok, err = timer_at(0, rebuild_timer, name, callback, version, semaphore)
+    if not ok then
+      semaphore:post()
+      return nil, "could not create rebuild timer: " .. err
+    end
+    return true
+  end
+end
+
+
 do
   local plugins_iterator
 
@@ -384,49 +474,43 @@ do
       return nil, "failed to retrieve plugins iterator version: " .. err
     end
 
-    if not plugins_iterator or plugins_iterator.version ~= version then
+    if plugins_iterator and plugins_iterator.version == version then
+      return true
+    end
 
-      local timeout = 60
-      if kong.configuration.database == "cassandra" then
-        -- cassandra_timeout is defined in ms
-        timeout = kong.configuration.cassandra_timeout / 1000
-
-      elseif kong.configuration.database == "postgres" then
-        -- pg_timeout is defined in ms
-        timeout = kong.configuration.pg_timeout / 1000
-      end
-      local plugins_mutex_opts = {
-        name = "plugins",
-        timeout = timeout,
-      }
-
-      local ok, err = concurrency.with_coroutine_mutex(plugins_mutex_opts, function()
-        -- we have the lock but we might not have needed it. check the
-        -- version again and rebuild if necessary
-        version, err = kong.cache:get("plugins_iterator:version", TTL_ZERO, utils.uuid)
-        if err then
-          return nil, "failed to re-retrieve plugins iterator version: " .. err
-        end
-
-        if not plugins_iterator or plugins_iterator.version ~= version then
-          local ok, err = build_plugins_iterator(version)
-          if not ok then
-            return nil, "error found when building plugins iterator: " .. err
-          end
-        end
-
-        return true
-      end)
-      if not ok then
-        return nil, "failed to rebuild plugins iterator: " .. err
-      end
+    local ok, err = build_plugins_iterator(version)
+    if not ok then
+      return nil, "error found when building plugins iterator: " .. err
     end
 
     return true
   end
 
+
+  rebuild_plugins_iterator = function(timeout)
+    local version = plugins_iterator and plugins_iterator.version
+    return rebuild("plugins_iterator", update_plugins_iterator,
+                   version, plugins_iterator_semaphore, timeout)
+  end
+
+
+  get_updated_plugins_iterator = function()
+    local ok, err = rebuild_plugins_iterator(REBUILD_TIMEOUT)
+    if not ok then
+      -- If an error happens while updating, log it and return non-updated version
+      log(CRIT, "error while updating plugins iterator: ", err)
+    end
+    return plugins_iterator
+  end
+
+
   get_plugins_iterator = function()
     return plugins_iterator
+  end
+
+  -- for tests only
+  _set_rebuild_plugins_iterator = function(f)
+    rebuild_plugins_iterator = f
   end
 end
 
@@ -603,12 +687,9 @@ do
 
 
   update_router = function()
-    -- we might not need to rebuild the router (if we were not
-    -- the first request in this process to enter this code path)
-    -- check again and rebuild only if necessary
-    local version, err = singletons.cache:get("router:version",
-                                              CACHE_ROUTER_OPTS,
-                                              utils.uuid)
+    local version, err = kong.cache:get("router:version",
+                                        CACHE_ROUTER_OPTS,
+                                        utils.uuid)
     if err then
       log(CRIT, "could not ensure router is up to date: ", err)
       return nil, err
@@ -618,38 +699,9 @@ do
       return true
     end
 
-    -- wrap router rebuilds in a per-worker mutex:
-    -- this prevents dogpiling the database during rebuilds in
-    -- high-concurrency traffic patterns;
-    -- requests that arrive on this process during a router rebuild will be
-    -- queued. once the lock is acquired we re-check the
-    -- router version again to prevent unnecessary subsequent rebuilds
-
-    local opts = {
-      name = "build_router",
-      timeout = build_router_timeout,
-      on_timeout = "run_unlocked",
-    }
-    local ok, err = concurrency.with_coroutine_mutex(opts, function()
-      -- we have the lock but we might not have needed it. check the
-      -- version again and rebuild if necessary
-      version, err = kong.cache:get("router:version", CACHE_ROUTER_OPTS, utils.uuid)
-      if err then
-        return nil, "failed to re-retrieve router version: " .. err
-      end
-
-      if version ~= router_version then
-        local ok, err = build_router(version)
-        if not ok then
-          return nil, "error found when building router: " .. err
-        end
-      end
-
-      return true
-    end)
-
+    local ok, err = build_router(version)
     if not ok then
-      return nil, err
+      return nil, "error found when building router: " .. err
     end
 
     return true
@@ -658,6 +710,17 @@ do
 
   get_router = function()
     return router
+  end
+
+
+  rebuild_router = function(timeout)
+    return rebuild("router", update_router, router_version, router_semaphore, timeout)
+  end
+
+
+  -- for tests only
+  _set_rebuild_router = function(f)
+    rebuild_router = f
   end
 end
 
@@ -747,32 +810,66 @@ return {
   build_plugins_iterator = build_plugins_iterator,
   update_plugins_iterator = update_plugins_iterator,
   get_plugins_iterator = get_plugins_iterator,
+  get_updated_plugins_iterator = get_updated_plugins_iterator,
   set_init_versions_in_cache = set_init_versions_in_cache,
+
+  -- exposed only for tests
+  _set_rebuild_router = _set_rebuild_router,
+  _set_rebuild_plugins_iterator = _set_rebuild_plugins_iterator,
 
   init_worker = {
     before = function()
       reports.init_worker()
       update_lua_mem(true)
 
+      local err
+      plugins_iterator_semaphore, err = semaphore.new(1)
+      if err then
+        log(CRIT, "failed to create plugins iterator semaphore: ", err)
+      end
+
+      router_semaphore, err = semaphore.new(1)
+      if err then
+        log(CRIT, "failed to create router semaphore: ", err)
+      end
+
       register_events()
+
 
       -- initialize balancers for active healthchecks
       timer_at(0, function()
         balancer.init()
       end)
 
+      timer_every(1, function(premature)
+        if premature then
+          return
+        end
+
+        -- Don't wait for the semaphore (timeout = 0) when updating via the timer
+        -- If the semaphore is locked, that means that the rebuild is already ongoing
+        local ok, err = rebuild_router(0)
+        if not ok and error ~= "timeout" then -- ignore semaphore timeout
+          log(ERR, "failure while rebuilding router via timer: ", err)
+        end
+        ok, err = rebuild_plugins_iterator(0)
+        if not ok and error ~= "timeout" then -- ignore semaphore timeout
+          log(ERR, "failure while rebuilding plugins_iterator via timer: ", err)
+        end
+      end)
 
       do
-        build_router_timeout = 60
-        if singletons.configuration.database == "cassandra" then
-          -- cassandra_timeout is defined in ms
-          build_router_timeout = kong.configuration.cassandra_timeout / 1000
+        REBUILD_TIMEOUT = 60
 
-        elseif singletons.configuration.database == "postgres" then
-          -- pg_timeout is defined in ms
-          build_router_timeout = kong.configuration.pg_timeout / 1000
+        if kong.configuration.database == "cassandra" then
+          REBUILD_TIMEOUT = kong.configuration.cassandra_timeout / 1000
+        end
+
+        if kong.configuration.database == "postgres" then
+          REBUILD_TIMEOUT = kong.configuration.pg_timeout / 1000
         end
       end
+
     end
   },
   certificate = {
@@ -797,15 +894,13 @@ return {
   },
   preread = {
     before = function(ctx)
-      local router
-      local ok, err = update_router()
-      if ok then
-        router = get_router()
-      end
-      if not ok or not router then
+      local ok, err = rebuild_router(REBUILD_TIMEOUT)
+      if not ok then
         log(ERR, "no router to route connection (reason: " .. err .. ")")
         return exit(500)
       end
+
+      local router = get_router()
 
       local match_t = router.exec()
       if not match_t then
@@ -898,16 +993,14 @@ return {
     before = function(ctx)
       -- router for Routes/Services
 
-      local router
-      local ok, err = update_router()
-      if ok then
-        router = get_router()
-      end
+      local ok, err = rebuild_router(REBUILD_TIMEOUT)
 
-      if not ok or not router then
+      if not ok then
         kong.log.err("no router to route request (reason: " .. tostring(err) ..  ")")
         return kong.response.exit(500, { message  = "An unexpected error occurred" })
       end
+
+      local router = get_router()
 
       -- routing request
 

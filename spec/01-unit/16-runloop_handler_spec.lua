@@ -22,9 +22,23 @@ local function setup_it_block()
       response = {
         exit = function() end,
       },
+      worker_events = {
+        register = function() end,
+      },
+      cluster_events = {
+        subscribe = function() end,
+      },
+      configuration = {
+        database = "dummy",
+      },
+      db = {
+        strategy = "dummy",
+      },
       cache = {
-        get = function() end,
-      }
+        get = function()
+          return "1"
+        end
+      },
     },
 
     modules = {
@@ -53,7 +67,7 @@ local function setup_it_block()
         _semaphores = semaphores,
         new = function()
           local s = {
-            value = 0,
+            value = 1,
             wait = function(self, timeout)
               self.value = self.value - 1
               return true
@@ -68,8 +82,6 @@ local function setup_it_block()
           return s
         end,
       }},
-
-      { "kong.concurrency", {} },
 
       { "kong.runloop.handler", {} },
 
@@ -87,16 +99,32 @@ describe("runloop handler", function()
       local semaphores = require "ngx.semaphore"._semaphores
       local handler = require "kong.runloop.handler"
 
-      kong.cache.get = spy.new(function()
+      local rebuild_router_spy = spy.new(function()
+        return nil, "error injected by test (feel free to ignore :) )"
+      end)
+      local rebuild_plugins_iterator_spy = spy.new(function()
         return nil, "error injected by test (feel free to ignore :) )"
       end)
 
+      handler._set_rebuild_router(rebuild_router_spy)
+      handler._set_rebuild_plugins_iterator(rebuild_plugins_iterator_spy)
+
+      handler.init_worker.before()
+
+      assert.equal(1, semaphores[1].value)
+      assert.equal(1, semaphores[2].value)
+
+      assert.spy(rebuild_router_spy).was_called(0)
+      assert.spy(rebuild_plugins_iterator_spy).was_called(0)
+
       handler.access.before({})
 
-      assert.spy(kong.cache.get).was_called(1)
+      assert.spy(rebuild_router_spy).was_called(1)
+      assert.spy(rebuild_plugins_iterator_spy).was_called(0)
 
       -- check semaphore
       assert.equal(1, semaphores[1].value)
+      assert.equal(1, semaphores[2].value)
     end)
 
     it("bypasses router_semaphore upon acquisition timeout", function()
@@ -105,15 +133,17 @@ describe("runloop handler", function()
       local semaphores = require "ngx.semaphore"._semaphores
       local handler = require "kong.runloop.handler"
 
-      spy.on(kong.cache, "get")
+      local rebuild_router_spy = spy.new(function() end)
+      local rebuild_plugins_iterator_spy = spy.new(function() end)
+      handler._set_rebuild_router(rebuild_router_spy)
+      handler._set_rebuild_plugins_iterator(rebuild_plugins_iterator_spy)
 
-      handler.access.before({})
-
-      -- check semaphore
+      handler.init_worker.before()
       assert.equal(1, semaphores[1].value)
+      assert.equal(1, semaphores[2].value)
 
-      -- was called even if semaphore timed out on acquisition
-      assert.spy(kong.cache.get).was_called(1)
+      assert.spy(rebuild_router_spy).was_called(0)
+      assert.spy(rebuild_plugins_iterator_spy).was_called(0)
 
       -- cause failure to acquire semaphore
       semaphores[1].wait = function()
@@ -123,10 +153,12 @@ describe("runloop handler", function()
       handler.access.before({})
 
       -- was called even if semaphore timed out on acquisition
-      assert.spy(kong.cache.get).was_called(2)
+      assert.spy(rebuild_router_spy).was_called(1)
+      assert.spy(rebuild_plugins_iterator_spy).was_called(0)
 
-      -- check semaphore
+      -- check semaphores
       assert.equal(1, semaphores[1].value)
+      assert.equal(1, semaphores[2].value)
     end)
 
   end)

@@ -4,10 +4,11 @@ local utils   = require "kong.tools.utils"
 
 
 local POLL_INTERVAL = 0.3
+local TIMER_REBUILDS = 1
 
 
 for _, strategy in helpers.each_strategy() do
-  describe("plugins map with db [#" .. strategy .. "]", function()
+  describe("plugins iterator with db [#" .. strategy .. "]", function()
 
     local admin_client_1
     local admin_client_2
@@ -73,7 +74,7 @@ for _, strategy in helpers.each_strategy() do
       admin_client:close()
 
       wait_for_propagation = function()
-        ngx.sleep(POLL_INTERVAL * 2 + db_update_propagation * 2)
+        ngx.sleep(TIMER_REBUILDS + POLL_INTERVAL * 2 + db_update_propagation * 2)
       end
     end)
 
@@ -118,9 +119,13 @@ for _, strategy in helpers.each_strategy() do
         assert.equal("init", msg_2.message)
       end)
 
-      it("is invalidated on plugin creation", function()
-        -- create Plugin
+      it("changes on plugin creation", function()
+        local admin_res_before = admin_client_2:get("/cache/plugins_iterator:version")
+        local body_before = assert.res_status(200, admin_res_before)
+        local msg_before  = cjson.decode(body_before)
+        assert.matches("^[%w-]+$", msg_before.message)
 
+        -- create Plugin
         local admin_res_plugin = assert(admin_client_1:send {
           method = "POST",
           path   = "/plugins",
@@ -136,22 +141,18 @@ for _, strategy in helpers.each_strategy() do
         local plugin = cjson.decode(body)
         service_plugin_id = plugin.id
 
-        local admin_res_1 = assert(admin_client_1:send {
-          method = "GET",
-          path   = "/cache/plugins_iterator:version",
-        })
-        assert.res_status(404, admin_res_1)
-
         wait_for_propagation()
 
-        local admin_res_2 = assert(admin_client_2:send {
-          method = "GET",
-          path   = "/cache/plugins_iterator:version",
-        })
-        assert.res_status(404, admin_res_2)
+        local admin_res_after = admin_client_2:get("/cache/plugins_iterator:version")
+        local body_after = assert.res_status(200, admin_res_after)
+        local msg_after  = cjson.decode(body_after)
+        assert.matches("^[%w-]+$", msg_after.message)
+
+        -- the version has changed
+        assert.not_equal(msg_before.message, msg_after.message)
       end)
 
-      it("is created on proxied request", function()
+      it("changes on proxied request or timer", function()
         local res_1 = assert(proxy_client_1:send {
           method  = "GET",
           path    = "/status/200",
@@ -170,14 +171,20 @@ for _, strategy in helpers.each_strategy() do
 
         assert.matches("^[%w-]+$", msg_1.message)
 
-        wait_for_propagation()
+        wait_for_propagation() -- this gives time for node 2 to self-update via timer
 
         local admin_res_2 = assert(admin_client_2:send {
           method = "GET",
           path   = "/cache/plugins_iterator:version",
         })
-        assert.res_status(404, admin_res_2)
+        local body_2 = assert.res_status(200, admin_res_2)
+        local msg_2  = cjson.decode(body_2)
+        assert.matches("^[%w-]+$", msg_2.message)
 
+        -- each node has their own map version
+        assert.not_equal(msg_1.message, msg_2.message)
+
+        -- check that node 2 was already up to date via its timer
         local res_2 = assert(proxy_client_2:send {
           method  = "GET",
           path    = "/status/200",
@@ -187,20 +194,24 @@ for _, strategy in helpers.each_strategy() do
         })
         assert.res_status(200, res_2)
 
-        local admin_res_2 = assert(admin_client_2:send {
+        local admin_res_3 = assert(admin_client_2:send {
           method = "GET",
           path   = "/cache/plugins_iterator:version",
         })
-        local body_2 = assert.res_status(200, admin_res_2)
-        local msg_2  = cjson.decode(body_2)
+        local body_3 = assert.res_status(200, admin_res_3)
+        local msg_3  = cjson.decode(body_3)
+        assert.matches("^[%w-]+$", msg_3.message)
 
-        assert.matches("^[%w-]+$", msg_2.message)
-
-        -- each node has their own map version
-        assert.not_equal(msg_1.message, msg_2.message)
+        -- no version change
+        assert.equals(msg_2.message, msg_3.message)
       end)
 
-      it("is invalidated on plugin PATCH", function()
+      it("changes on plugin PATCH", function()
+        local admin_res_before = admin_client_2:get("/cache/plugins_iterator:version")
+        local body_before = assert.res_status(200, admin_res_before)
+        local msg_before  = cjson.decode(body_before)
+        assert.matches("^[%w-]+$", msg_before.message)
+
         local admin_res_plugin = assert(admin_client_1:send {
           method = "PATCH",
           path   = "/plugins/" .. service_plugin_id,
@@ -215,36 +226,44 @@ for _, strategy in helpers.each_strategy() do
 
         wait_for_propagation()
 
-        local admin_res_2 = assert(admin_client_2:send {
-          method = "GET",
-          path   = "/cache/plugins_iterator:version",
-        })
-        assert.res_status(404, admin_res_2)
+        local admin_res_after = admin_client_2:get("/cache/plugins_iterator:version")
+        local body_after = assert.res_status(200, admin_res_after)
+        local msg_after  = cjson.decode(body_after)
+        assert.matches("^[%w-]+$", msg_after.message)
+
+        -- the version has changed
+        assert.not_equal(msg_before.message, msg_after.message)
       end)
 
-      it("is invalidated on plugin delete", function()
+      it("changes on plugin DELETE", function()
+        local admin_res_before = admin_client_2:get("/cache/plugins_iterator:version")
+        local body_before = assert.res_status(200, admin_res_before)
+        local msg_before  = cjson.decode(body_before)
+        assert.matches("^[%w-]+$", msg_before.message)
+
         local admin_res_plugin = assert(admin_client_1:send {
           method = "DELETE",
           path   = "/plugins/" .. service_plugin_id,
         })
         assert.res_status(204, admin_res_plugin)
 
-        local admin_res_1 = assert(admin_client_1:send {
-          method = "GET",
-          path   = "/cache/plugins_iterator:version",
-        })
-        assert.res_status(404, admin_res_1)
-
         wait_for_propagation()
 
-        local admin_res_2 = assert(admin_client_2:send {
-          method = "GET",
-          path   = "/cache/plugins_iterator:version",
-        })
-        assert.res_status(404, admin_res_2)
+        local admin_res_after = admin_client_2:get("/cache/plugins_iterator:version")
+        local body_after = assert.res_status(200, admin_res_after)
+        local msg_after  = cjson.decode(body_after)
+        assert.matches("^[%w-]+$", msg_after.message)
+
+        -- the version has changed
+        assert.not_equal(msg_before.message, msg_after.message)
       end)
 
-      it("is invalidated on plugin PUT", function()
+      it("changes on plugin PUT", function()
+        local admin_res_before = admin_client_2:get("/cache/plugins_iterator:version")
+        local body_before = assert.res_status(200, admin_res_before)
+        local msg_before  = cjson.decode(body_before)
+        assert.matches("^[%w-]+$", msg_before.message)
+
         -- A regression test for https://github.com/Kong/kong/issues/4191
         local admin_res_plugin = assert(admin_client_1:send {
           method = "PUT",
@@ -259,19 +278,15 @@ for _, strategy in helpers.each_strategy() do
         })
         assert.res_status(200, admin_res_plugin)
 
-        local admin_res_1 = assert(admin_client_1:send {
-          method = "GET",
-          path   = "/cache/plugins_iterator:version",
-        })
-        assert.res_status(404, admin_res_1)
-
         wait_for_propagation()
 
-        local admin_res_2 = assert(admin_client_2:send {
-          method = "GET",
-          path   = "/cache/plugins_iterator:version",
-        })
-        assert.res_status(404, admin_res_2)
+        local admin_res_after = admin_client_2:get("/cache/plugins_iterator:version")
+        local body_after = assert.res_status(200, admin_res_after)
+        local msg_after  = cjson.decode(body_after)
+        assert.matches("^[%w-]+$", msg_after.message)
+
+        -- the version has changed
+        assert.not_equal(msg_before.message, msg_after.message)
       end)
     end)
   end)
