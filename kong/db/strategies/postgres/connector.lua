@@ -639,9 +639,10 @@ end
 
 function _mt:remove_lock(key, owner)
   local sql = concat {
-    "DELETE FROM locks\n",
-    "      WHERE key   = ", self:escape_literal(key), "\n",
-         "   AND owner = ", self:escape_literal(owner), ";"
+    "DELETE\n",
+    "  FROM ", self:escape_identifier("locks"), "\n",
+    " WHERE ", self:escape_identifier("key"), "   = ", self:escape_literal(key), "\n",
+    "   AND ", self:escape_identifier("owner"), " = ", self:escape_literal(owner), ";"
   }
 
   local res, err = self:query(sql)

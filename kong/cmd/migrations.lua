@@ -43,6 +43,7 @@ Options:
                                     migrations.
 
  -c,--conf        (optional string) Configuration file.
+
 ]]
 
 

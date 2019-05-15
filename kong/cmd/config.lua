@@ -123,14 +123,14 @@ Usage: kong config COMMAND [OPTIONS]
 Use declarative configuration files with Kong.
 
 The available commands are:
-  init                          Generate an example config file to
-                                get you started.
+  init                                Generate an example config file to
+                                      get you started.
 
-  db_import <file>              Import a declarative config file into
-                                the Kong database.
+  db_import <file>                    Import a declarative config file into
+                                      the Kong database.
 
-  parse <file>                  Parse a declarative config file (check
-                                its syntax) but do not load it into Kong.
+  parse <file>                        Parse a declarative config file (check
+                                      its syntax) but do not load it into Kong.
 
 Options:
  -c,--conf        (optional string)   Configuration file.

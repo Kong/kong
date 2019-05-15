@@ -39,8 +39,7 @@ The available commands are:
  %s
 
 Options:
-%s
-]], table.concat(cmds_arr, "\n "), options)
+%s]], table.concat(cmds_arr, "\n "), options)
 
 return function(args)
   local cmd_name = table.remove(args, 1)
