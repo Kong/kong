@@ -128,7 +128,7 @@ local function up(schema_state, db, opts)
       error("Database has pending migrations; run 'kong migrations finish'")
     end
 
-    if opts.force then
+    if opts.force and schema_state.executed_migrations then
       log.debug("forcing re-execution of these migrations:\n%s",
                 schema_state.executed_migrations)
 
@@ -197,7 +197,7 @@ local function finish(schema_state, db, opts)
   local ok, err = db:cluster_mutex(MIGRATIONS_MUTEX_KEY, opts, function()
     local schema_state = assert(db:schema_state())
 
-    if opts.force then
+    if opts.force and schema_state.executed_migrations then
       assert(db:run_migrations(schema_state.executed_migrations, {
         run_up = true,
         run_teardown = true,
