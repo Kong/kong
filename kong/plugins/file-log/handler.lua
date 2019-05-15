@@ -60,7 +60,7 @@ end
 local FileLogHandler = {}
 
 FileLogHandler.PRIORITY = 9
-FileLogHandler.VERSION = "1.0.0"
+FileLogHandler.VERSION = "2.0.0"
 
 function FileLogHandler:log(conf)
   local message = basic_serializer.serialize(ngx)

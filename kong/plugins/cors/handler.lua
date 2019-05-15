@@ -17,7 +17,7 @@ local CorsHandler = {}
 
 
 CorsHandler.PRIORITY = 2000
-CorsHandler.VERSION = "1.0.0"
+CorsHandler.VERSION = "2.0.0"
 
 
 -- per-plugin cache of normalized origins for runtime comparison

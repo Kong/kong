@@ -12,7 +12,7 @@ local KeyAuthHandler = {}
 
 
 KeyAuthHandler.PRIORITY = 1003
-KeyAuthHandler.VERSION = "1.0.0"
+KeyAuthHandler.VERSION = "2.0.0"
 
 
 local function load_credential(key)

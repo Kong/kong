@@ -4,7 +4,7 @@ local cjson = require "cjson"
 local LogglyLogHandler = {}
 
 LogglyLogHandler.PRIORITY = 6
-LogglyLogHandler.VERSION = "1.0.0"
+LogglyLogHandler.VERSION = "2.0.0"
 
 local os_date = os.date
 local tostring = tostring

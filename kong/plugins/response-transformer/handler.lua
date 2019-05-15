@@ -40,7 +40,7 @@ end
 
 
 ResponseTransformerHandler.PRIORITY = 800
-ResponseTransformerHandler.VERSION = "1.0.0"
+ResponseTransformerHandler.VERSION = "2.0.0"
 
 
 return ResponseTransformerHandler

@@ -14,7 +14,7 @@ local JwtHandler = {}
 
 
 JwtHandler.PRIORITY = 1005
-JwtHandler.VERSION = "1.0.0"
+JwtHandler.VERSION = "2.0.0"
 
 
 --- Retrieve a JWT in a request.
