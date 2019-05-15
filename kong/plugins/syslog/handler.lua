@@ -11,7 +11,7 @@ local string_upper = string.upper
 local SysLogHandler = {}
 
 SysLogHandler.PRIORITY = 4
-SysLogHandler.VERSION = "1.0.0"
+SysLogHandler.VERSION = "2.0.0"
 
 local SENDER_NAME = "kong"
 

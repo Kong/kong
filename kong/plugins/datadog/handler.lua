@@ -12,7 +12,7 @@ local NGX_ERR       = ngx.ERR
 
 local DatadogHandler    = {}
 DatadogHandler.PRIORITY = 10
-DatadogHandler.VERSION = "1.0.0"
+DatadogHandler.VERSION = "2.0.0"
 
 
 local get_consumer_id = {

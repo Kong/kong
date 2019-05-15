@@ -7,7 +7,7 @@ local udp = ngx.socket.udp
 local UdpLogHandler = {}
 
 UdpLogHandler.PRIORITY = 8
-UdpLogHandler.VERSION = "1.0.0"
+UdpLogHandler.VERSION = "2.0.0"
 
 local function log(premature, conf, str)
   if premature then

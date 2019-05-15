@@ -12,7 +12,7 @@ local NGX_ERR       = ngx.ERR
 
 local StatsdHandler = {}
 StatsdHandler.PRIORITY = 11
-StatsdHandler.VERSION = "1.0.0"
+StatsdHandler.VERSION = "2.0.0"
 
 
 local get_consumer_id = {
