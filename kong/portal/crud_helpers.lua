@@ -277,13 +277,7 @@ function _M.update_login_credential(collection, cred_pk, entity)
 end
 
 
-function _M.check_initialized(workspace, db)
-  -- if portal is not enabled, return early
-  local config = workspace.config
-  if not config.portal then
-    return workspace
-  end
-
+local function initialize_portal_files(premature, workspace, db)
   -- Check if any files exist
   local any_file = workspaces.run_with_ws_scope(
     { workspace },
@@ -311,6 +305,24 @@ function _M.check_initialized(workspace, db)
     if not ok then
       return nil, err
     end
+  end
+
+  return workspace
+end
+
+
+function _M.check_initialized(workspace, db)
+  -- if portal is not enabled, return early
+  local config = workspace.config
+  if not config.portal then
+    return workspace
+  end
+
+  -- run database insertions in the background to avoid partial insertion on
+  -- request terminations from the browser
+  local ok, err = ngx.timer.at(0, initialize_portal_files, workspace, db)
+  if not ok then
+    return nil, err
   end
 
   return workspace

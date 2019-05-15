@@ -120,6 +120,9 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
           }
         }))
 
+        -- sleep to allow time for threaded file migrations to complete
+        ngx.sleep(5)
+
         local body = assert.res_status(201, res)
         local json = cjson.decode(body)
 
@@ -391,6 +394,9 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
           }
         }))
 
+        -- sleep to allow time for threaded file migrations to complete
+        ngx.sleep(5)
+
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
 
@@ -414,6 +420,9 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
             ["Content-Type"] = "application/json",
           }
         }))
+
+        -- sleep to allow time for threaded file migrations to complete
+        ngx.sleep(5)
 
         -- make sure /files exists
         local res = assert(client:get("/rad-portal-man/files"))

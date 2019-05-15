@@ -530,6 +530,9 @@ for _, strategy in helpers.each_strategy() do
             })
             assert.equals(res.status, 201)
 
+            -- sleep to allow time for threaded file migrations to complete
+            ngx.sleep(5)
+
             res = client_request({
               method = "GET",
               path = "/noauth-test/files/unauthenticated/404"
@@ -1476,6 +1479,9 @@ for _, strategy in helpers.each_strategy() do
 
         assert.equals(res.status, 201)
 
+        -- sleep to allow time for threaded file migrations to complete
+        ngx.sleep(5)
+
         assert(register_developer({
           email = "derpdog@konghq.com",
           key = "dog2",
@@ -1516,7 +1522,7 @@ for _, strategy in helpers.each_strategy() do
           assert.equals(1, stringx.count(body, '/default/page_pair'))
         end)
 
-        it("can render sitemap for authenticated user (new workspace default files)", function()
+        it("can render sitemap for authenticated user (new workspace default files) #test", function()
           local res = gui_client_request({
             method = "GET",
             path = "/sitemaptest/sitemap.xml",
