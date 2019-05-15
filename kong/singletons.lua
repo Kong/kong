@@ -6,6 +6,7 @@ local _M = {
   worker_events = nil,
   router = nil,
   origins = nil,
+  configured_plugins = nil,
 }
 
 return _M
