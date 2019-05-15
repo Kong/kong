@@ -342,15 +342,56 @@ return {
           tags set<text>, -- added in 1.1.0
           PRIMARY KEY (id)
         );
-
-        CREATE INDEX IF NOT EXISTS ON plugins(name);
-        CREATE INDEX IF NOT EXISTS ON plugins(api_id);
-        CREATE INDEX IF NOT EXISTS ON plugins(route_id);
-        CREATE INDEX IF NOT EXISTS ON plugins(service_id);
-        CREATE INDEX IF NOT EXISTS ON plugins(consumer_id);
-        CREATE INDEX IF NOT EXISTS ON plugins(cache_key);
-        CREATE INDEX IF NOT EXISTS ON plugins(run_on);
       ]]))
+
+      local _, err = connector:query("CREATE INDEX IF NOT EXISTS ON plugins(name)")
+      if err and not (string.find(err, "Column .- was not found in table") or
+                      string.find(err, "[Ii]nvalid column name")           or
+                      string.find(err, "[Uu]ndefined column name")) then
+        return nil, err
+      end
+
+      _, err = connector:query("CREATE INDEX IF NOT EXISTS ON plugins(api_id)")
+      if err and not (string.find(err, "Column .- was not found in table") or
+                      string.find(err, "[Ii]nvalid column name")           or
+                      string.find(err, "[Uu]ndefined column name")) then
+        return nil, err
+      end
+
+      _, err = connector:query("CREATE INDEX IF NOT EXISTS ON plugins(route_id)")
+      if err and not (string.find(err, "Column .- was not found in table") or
+                      string.find(err, "[Ii]nvalid column name")           or
+                      string.find(err, "[Uu]ndefined column name")) then
+        return nil, err
+      end
+
+      _, err = connector:query("CREATE INDEX IF NOT EXISTS ON plugins(service_id)")
+      if err and not (string.find(err, "Column .- was not found in table") or
+                      string.find(err, "[Ii]nvalid column name")           or
+                      string.find(err, "[Uu]ndefined column name")) then
+        return nil, err
+      end
+
+      _, err = connector:query("CREATE INDEX IF NOT EXISTS ON plugins(consumer_id)")
+      if err and not (string.find(err, "Column .- was not found in table") or
+                      string.find(err, "[Ii]nvalid column name")           or
+                      string.find(err, "[Uu]ndefined column name")) then
+        return nil, err
+      end
+
+      _, err = connector:query("CREATE INDEX IF NOT EXISTS ON plugins(cache_key)")
+      if err and not (string.find(err, "Column .- was not found in table") or
+                      string.find(err, "[Ii]nvalid column name")           or
+                      string.find(err, "[Uu]ndefined column name")) then
+        return nil, err
+      end
+
+      _, err = connector:query("CREATE INDEX IF NOT EXISTS ON plugins(run_on)")
+      if err and not (string.find(err, "Column .- was not found in table") or
+                      string.find(err, "[Ii]nvalid column name")           or
+                      string.find(err, "[Uu]ndefined column name")) then
+        return nil, err
+      end
 
       plugins_def = {
         name    = "plugins",
