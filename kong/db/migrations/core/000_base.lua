@@ -72,7 +72,6 @@ return {
         "regex_priority"  BIGINT,
         "strip_path"      BOOLEAN,
         "preserve_host"   BOOLEAN
-
       );
 
       DO $$
