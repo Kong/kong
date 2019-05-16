@@ -155,7 +155,7 @@ for _, strategy in helpers.each_strategy() do
       })
 
       assert.response(r).has.status(200)
-      
+
       -- Getting back the TCP server input
       local ok, res = thread:join()
       assert.True(ok)
@@ -164,6 +164,8 @@ for _, strategy in helpers.each_strategy() do
       -- Making sure it's alright
       local log_message = cjson.decode(res)
       assert.equal("TLSv1.2", log_message.request.tls.version)
+      assert.is_string(log_message.request.tls.cipher)
+      assert.equal("NONE", log_message.request.tls.client_verify)
     end)
 
   end)

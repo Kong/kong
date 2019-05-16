@@ -20,10 +20,14 @@ function _M.serialize(ngx)
 
   local request_tls
   local request_tls_ver = ngx_ssl.get_tls1_version_str()
-  if request_tls_ver then 
-    request_tls = { version = request_tls_ver } 
+  if request_tls_ver then
+    request_tls = {
+      version = request_tls_ver,
+      cipher = var.ssl_cipher,
+      client_verify = var.ssl_client_verify,
+    }
   end
-  
+
   local request_uri = var.request_uri or ""
 
   return {
