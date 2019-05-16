@@ -53,7 +53,7 @@ local function ldap_authenticate(given_username, given_password, conf)
   local opts
 
   -- keep TLS connections in a separate pool to avoid reusing non-secure
-  -- connections and vice-versa, because StartTLS use the same port
+  -- connections and vice-versa, because STARTTLS use the same port
   if conf.start_tls then
     opts = {
       pool = conf.ldap_host .. ":" .. conf.ldap_port .. ":starttls"
@@ -68,8 +68,14 @@ local function ldap_authenticate(given_username, given_password, conf)
   end
 
   if conf.start_tls then
-    -- convert connection to a StarTLS connection only if it is a new connection
-    if sock:getreusedtimes() == 0 then
+    -- convert connection to a STARTTLS connection only if it is a new connection
+    local count, err = sock:getreusedtimes()
+    if not count then
+      -- connection was closed, just return instead
+      return nil, err
+    end
+
+    if count == 0 then
       local ok, err = ldap.start_tls(sock)
       if not ok then
         return nil, err
