@@ -5,15 +5,6 @@ local helpers = require "kong.enterprise_edition.db.migrations.helpers"
 local fmt = string.format
 local created_ts = math.floor(ngx.now()) * 1000
 
-local function detect(f, t)
-  for _, v in ipairs(t) do
-    local res = f(v)
-    if res then
-      return res
-    end
-  end
-end
-
 
 local function seed_kong_admin_data_rbac_pg()
   local password = os.getenv("KONG_PASSWORD")
@@ -114,7 +105,7 @@ local function seed_kong_admin_data_pg()
   ]], kong_admin_consumer_id, crypto.hash(kong_admin_consumer_id, password))
 end
 
-local function seed_kong_admin_data_cas()
+local function seed_kong_admin_data_cas(def_ws_id)
   local res = {}
   local super_admin_role_id = utils.uuid()
   local roles = {
@@ -140,8 +131,8 @@ local function seed_kong_admin_data_cas()
     table.insert(res,
       fmt("INSERT into rbac_roles(id, name, comment, created_at) VALUES(%s, 'default:%s', '%s', '%s')",
         role[1] , role[2], role[3], created_ts))
-    helpers.add_to_default_ws(res, role[1], "rbac_roles", "id", role[1])
-    helpers.add_to_default_ws(res, role[1], "rbac_roles", "name", role[2])
+    helpers.add_to_default_ws(res, role[1], "rbac_roles", "id", role[1], def_ws_id)
+    helpers.add_to_default_ws(res, role[1], "rbac_roles", "name", role[2], def_ws_id)
 
     for _, endpoint in ipairs(role[4]) do
       table.insert(res,
@@ -161,9 +152,9 @@ local function seed_kong_admin_data_cas()
     table.insert(res,
       fmt("INSERT into rbac_users(id, name, user_token, enabled, comment, created_at) VALUES(%s, 'default:%s', '%s', %s, '%s', %s)",
         kong_admin_rbac_id, "kong_admin", password, 'true', "Initial RBAC Secure User", created_ts))
-    helpers.add_to_default_ws(res, kong_admin_rbac_id, "rbac_users", "id", kong_admin_rbac_id)
-    helpers.add_to_default_ws(res, kong_admin_rbac_id, "rbac_users", "name", "kong_admin")
-    helpers.add_to_default_ws(res, kong_admin_rbac_id, "rbac_users", "user_token", password)
+    helpers.add_to_default_ws(res, kong_admin_rbac_id, "rbac_users", "id", kong_admin_rbac_id, def_ws_id)
+    helpers.add_to_default_ws(res, kong_admin_rbac_id, "rbac_users", "name", "kong_admin", def_ws_id)
+    helpers.add_to_default_ws(res, kong_admin_rbac_id, "rbac_users", "user_token", password, def_ws_id)
 
     -- add user-roles relation
     table.insert(res,
@@ -175,8 +166,8 @@ local function seed_kong_admin_data_cas()
     table.insert(res,
       fmt("INSERT into rbac_roles(id, name, comment, is_default, created_at) VALUES(%s, 'default:%s', '%s', %s, %s)",
         kong_admin_rbac_default_role_id , "kong_admin", "Default user role generated for kong_admin", 'true', created_ts))
-    helpers.add_to_default_ws(res, kong_admin_rbac_default_role_id, "rbac_roles", "id", kong_admin_rbac_default_role_id)
-    helpers.add_to_default_ws(res, kong_admin_rbac_default_role_id, "rbac_roles", "name", "kong_admin")
+    helpers.add_to_default_ws(res, kong_admin_rbac_default_role_id, "rbac_roles", "id", kong_admin_rbac_default_role_id, def_ws_id)
+    helpers.add_to_default_ws(res, kong_admin_rbac_default_role_id, "rbac_roles", "name", "kong_admin", def_ws_id)
 
     table.insert(res,
       fmt("INSERT into rbac_user_roles(user_id, role_id) VALUES(%s, %s)",
@@ -189,9 +180,9 @@ local function seed_kong_admin_data_cas()
       fmt("INSERT into consumers(id, username, type, created_at, status, custom_id) VALUES(%s, 'default:%s', %s, %s, %s, 'default:%s')",
         kong_admin_consumer_id, "kong_admin", 2, created_ts, 0, 'bar'))
 
-    helpers.add_to_default_ws(res, kong_admin_consumer_id, "consumers", "id", kong_admin_consumer_id)
-    helpers.add_to_default_ws(res, kong_admin_consumer_id, "consumers", "username", "kong_admin")
-    helpers.add_to_default_ws(res, kong_admin_consumer_id, "consumers", "custom_id", nil)
+    helpers.add_to_default_ws(res, kong_admin_consumer_id, "consumers", "id", kong_admin_consumer_id, def_ws_id)
+    helpers.add_to_default_ws(res, kong_admin_consumer_id, "consumers", "username", "kong_admin", def_ws_id)
+    helpers.add_to_default_ws(res, kong_admin_consumer_id, "consumers", "custom_id", nil, def_ws_id)
 
     -- add bootstrapped admin to consumers_rbac_users_map
     table.insert(res,
@@ -205,8 +196,8 @@ local function seed_kong_admin_data_cas()
         "VALUES(%s , %s, 'default:%s', '%s', %s)",
           kong_admin_basic_auth_id, kong_admin_consumer_id, "kong_admin", crypto.hash(kong_admin_consumer_id, password), created_ts))
 
-    helpers.add_to_default_ws(res, kong_admin_basic_auth_id, "basicauth_credentials", "id", kong_admin_basic_auth_id)
-    helpers.add_to_default_ws(res, kong_admin_basic_auth_id, "basicauth_credentials", "username", "kong_admin")
+    helpers.add_to_default_ws(res, kong_admin_basic_auth_id, "basicauth_credentials", "id", kong_admin_basic_auth_id, def_ws_id)
+    helpers.add_to_default_ws(res, kong_admin_basic_auth_id, "basicauth_credentials", "username", "kong_admin", def_ws_id)
   end
 
   return table.concat(res, ";") .. ";"
@@ -343,8 +334,15 @@ return {
         config                    JSON                      DEFAULT '{"portal":false}'::json
       );
 
-      INSERT INTO workspaces(id, name, config)
-      VALUES ('00000000-0000-0000-0000-000000000000', 'default', '{"portal":true}'::json) ON CONFLICT DO NOTHING;
+
+      DO $$
+      DECLARE def_ws_id uuid;
+      BEGIN
+
+      SELECT uuid_in(overlay(overlay(md5(random()::text || ':' || clock_timestamp()::text) placing '4' from 13) placing to_hex(floor(random()*(11-8+1) + 8)::int)::text from 17)::cstring) into def_ws_id;
+      INSERT INTO workspaces(id, name, config) VALUES (def_ws_id, 'default', '{"portal":true}'::json) ON CONFLICT DO NOTHING;
+      END $$;
+
 
       CREATE TABLE IF NOT EXISTS workspace_entities(
         workspace_id uuid,
@@ -761,9 +759,6 @@ END $$;
 
       CREATE INDEX IF NOT EXISTS ON workspaces(name);
 
-      INSERT INTO workspaces(id, name, config, meta)
-      VALUES (00000000-0000-0000-0000-000000000000, 'default', '{"portal":true}', '{}');
-
       CREATE TABLE IF NOT EXISTS workspace_entities(
         workspace_id uuid,
         workspace_name text,
@@ -964,22 +959,37 @@ END $$;
       );
     ]],
     teardown = function(connector)
-      local coordinator = connector:connect_migrations()
-
       -- create default workspace if doesn't exist
-      for rows, err in coordinator:iterate("select * from workspaces") do
-        if not detect(function(x) return x.name == "default" end, rows) then
-          connector:query([[INSERT INTO workspaces(id, name)
-            VALUES (00000000-0000-0000-0000-000000000000, 'default');]])
-        end
+      local default_ws, err = connector:query([[
+        SELECT * FROM workspaces WHERE name='default';
+      ]])
+      if err then
+        return nil, err
+      end
+
+      if not (default_ws and default_ws[1]) then
+        assert(connector:query(fmt([[INSERT INTO workspaces(id, name, config, meta)
+          VALUES (uuid(), 'default', '{"portal":true}', '{}' );]])))
       end
 
       -- create default roles if they do not exist (checking for read-only one)
       local read_only_present = connector:query([[
         SELECT * FROM rbac_roles WHERE name='default:read-only';
       ]])
+
+      local default_ws_id, err = connector:query([[
+        SELECT id FROM workspaces WHERE name='default';
+      ]])
+      if err then
+        return nil, err
+      end
+
+      if not (default_ws_id and default_ws_id[1]) then
+        return nil, "failed to fetch default workspace"
+      end
+
       if not (read_only_present and read_only_present[1]) then
-        assert(connector:query(seed_kong_admin_data_cas()))
+        assert(connector:query(seed_kong_admin_data_cas(default_ws_id[1].id)))
       end
     end
   },

@@ -117,7 +117,7 @@ local function transform_portal_rbac_routes_cassandra(connector, coordinator)
       return nil, err
     end
 
-    for _, rbac_role_endpoint in ipairs(rows) do  
+    for _, rbac_role_endpoint in ipairs(rows) do
       if portal_rbac_paths[rbac_role_endpoint.endpoint] then
         replace_portal_rbac_endpoint(rbac_role_endpoint, "cassandra", connector)
       end
@@ -340,7 +340,7 @@ return {
       assert(connector:query([[
         UPDATE workspaces
         SET config = '{"portal":false}'::json
-        WHERE id = '00000000-0000-0000-0000-000000000000'
+        WHERE name = 'default'
       ]]))
 
       -- after the legacy admins are migrated, we don't need this table
@@ -399,7 +399,7 @@ return {
 
       -- iterate over consumers and create associated developers
       create_developer_table_cassandra(connector, coordinator)
-      
+
       -- iterate over rbac_role_endpoints and transform changed routes
       transform_portal_rbac_routes_cassandra(connector, coordinator)
 
@@ -416,11 +416,22 @@ return {
         ALTER TABLE audit_requests DROP expire;
       ]]))
 
-      assert(connector:query([[
+      local default_ws_id, err = connector:query([[
+        SELECT id FROM workspaces WHERE name='default';
+      ]])
+      if err then
+        return nil, err
+      end
+
+      if not (default_ws_id and default_ws_id[1]) then
+        return nil, "failed to fetch default workspace"
+      end
+
+      assert(connector:query(fmt([[
         UPDATE workspaces
         SET config = '{"portal":false}'
-        WHERE id = 00000000-0000-0000-0000-000000000000
-      ]]))
+        WHERE id = %s
+      ]], default_ws_id[1].id)))
 
       -- after the legacy admins are migrated, we don't need this table
       assert(connector:query([[

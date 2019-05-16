@@ -27,10 +27,8 @@ for _, strategy in helpers.each_strategy() do
 
       local workspaces = db.workspaces:select_all()
       local default_ws = workspaces[1]
-
       assert.equal(1, #workspaces)
       assert.equal("default", default_ws.name)
-      assert.equal("00000000-0000-0000-0000-000000000000", default_ws.id)
       assert.same({}, default_ws.meta)
       assert.equal(false , default_ws.config.portal)
     end)
