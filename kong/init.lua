@@ -122,7 +122,6 @@ local PLUGINS_MAP_CACHE_OPTS = { ttl = 0 }
 
 local plugins_map_semaphore
 local plugins_map_version
-local configured_plugins
 local loaded_plugins
 local schema_state
 
@@ -141,7 +140,7 @@ local function build_plugins_map(db, version)
     plugins_map_version = version
   end
 
-  configured_plugins = map
+  singletons.configured_plugins = map
 
   return true
 end
@@ -589,7 +588,8 @@ function Kong.ssl_certificate()
   end
 
   for plugin, plugin_conf in plugins_iterator(ctx, loaded_plugins,
-                                              configured_plugins, true) do
+                                              singletons.configured_plugins,
+                                              true) do
 
     kong_global.set_namespaced_log(kong, plugin.name)
     plugin.handler:certificate(plugin_conf)
@@ -717,7 +717,8 @@ function Kong.rewrite()
   -- route will have been identified, hence we'll just be executing the global
   -- plugins
   for plugin, plugin_conf in plugins_iterator(ctx, loaded_plugins,
-                                              configured_plugins, true) do
+                                              singletons.configured_plugins,
+                                              true) do
 
     kong_global.set_named_ctx(kong, "plugin", plugin_conf)
     kong_global.set_namespaced_log(kong, plugin.name)
@@ -744,7 +745,8 @@ function Kong.preread()
   end
 
   for plugin, plugin_conf in plugins_iterator(ctx, loaded_plugins,
-                                              configured_plugins, true) do
+                                              singletons.configured_plugins,
+                                              true) do
     kong_global.set_named_ctx(kong, "plugin", plugin_conf)
     kong_global.set_namespaced_log(kong, plugin.name)
 
@@ -767,7 +769,8 @@ function Kong.access()
 
   local old_ws = ctx.workspaces
   for plugin, plugin_conf in plugins_iterator(ctx, loaded_plugins,
-                                              configured_plugins, true) do
+                                              singletons.configured_plugins,
+                                              true) do
     if not ctx.delayed_response then
       kong_global.set_named_ctx(kong, "plugin", plugin_conf)
       kong_global.set_namespaced_log(kong, plugin.name)
@@ -811,7 +814,7 @@ function Kong.header_filter()
 
   local old_ws = ctx.workspaces
   for plugin, plugin_conf in plugins_iterator(ctx, loaded_plugins,
-                                              configured_plugins) do
+                                              singletons.configured_plugins) do
     kong_global.set_named_ctx(kong, "plugin", plugin_conf)
     kong_global.set_namespaced_log(kong, plugin.name)
 
@@ -832,7 +835,7 @@ function Kong.body_filter()
 
   local old_ws = ctx.workspaces
   for plugin, plugin_conf in plugins_iterator(ctx, loaded_plugins,
-                                              configured_plugins) do
+                                              singletons.configured_plugins) do
     kong_global.set_named_ctx(kong, "plugin", plugin_conf)
     kong_global.set_namespaced_log(kong, plugin.name)
 
@@ -856,7 +859,7 @@ function Kong.log()
   -- So we would need to reload the plugins(global) which apply to the request by
   -- setting access_or_cert_ctx to true.
   for plugin, plugin_conf in plugins_iterator(ctx, loaded_plugins,
-                                              configured_plugins) do
+                                              singletons.configured_plugins) do
     kong_global.set_named_ctx(kong, "plugin", plugin_conf)
     kong_global.set_namespaced_log(kong, plugin.name)
 
@@ -879,7 +882,8 @@ function Kong.handle_error()
 
   local old_ws = ctx.workspaces
   if not ctx.plugins_for_request then
-    for _ in plugins_iterator(ctx, loaded_plugins, configured_plugins, true) do
+    for _ in plugins_iterator(ctx, loaded_plugins,
+                              singletons.configured_plugins, true) do
       -- just build list of plugins
       ctx.workspaces = old_ws
     end

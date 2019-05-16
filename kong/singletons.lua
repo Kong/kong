@@ -7,6 +7,7 @@ local _M = {
   router = nil,
   api_router = nil,
   origins = nil,
+  configured_plugins = nil,
 }
 
 return _M
