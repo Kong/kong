@@ -2,13 +2,19 @@ package = "kong-proxy-cache-plugin"
 version = "1.2.0-0"
 
 source = {
-  url = "https://github.com/Kong/kong-plugin-proxy-cache",
+  url = "git://github.com/Kong/kong-plugin-proxy-cache",
   tag = "1.2.0"
 }
 
 supported_platforms = {"linux", "macosx"}
+
 description = {
   summary = "HTTP Proxy Caching for Kong",
+  license = "Apache 2.0",
+}
+
+dependencies = {
+  "lua >= 5.1",
 }
 
 build = {
