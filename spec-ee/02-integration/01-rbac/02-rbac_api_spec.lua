@@ -2656,7 +2656,7 @@ describe("Admin API RBAC with #" .. strategy, function()
         assert.is_table(json.data)
       end)
 
-      it("#flaky limits the size of returned entities", function()
+      it("limits the size of returned entities", function()
         local res
 
         res = assert(client:send {
