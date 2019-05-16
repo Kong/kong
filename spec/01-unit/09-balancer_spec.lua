@@ -494,10 +494,22 @@ describe("Balancer", function()
       })
     end
     balancer.subscribe_to_healthcheck_events(cb)
-    my_balancer.report_http_status("127.0.0.1", 1111, 429)
-    my_balancer.report_http_status("127.0.0.1", 1111, 200)
+    my_balancer.report_http_status({
+      address = {
+        ip = "127.0.0.1",
+        port = 1111,
+      }}, 429)
+    my_balancer.report_http_status({
+      address = {
+        ip = "127.0.0.1",
+        port = 1111,
+      }}, 200)
     balancer.unsubscribe_from_healthcheck_events(cb)
-    my_balancer.report_http_status("127.0.0.1", 1111, 429)
+    my_balancer.report_http_status({
+      address = {
+        ip = "127.0.0.1",
+        port = 1111,
+      }}, 429)
     hc:stop()
     assert.same({
       upstream_id = "hc",

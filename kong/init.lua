@@ -624,17 +624,16 @@ function Kong.balancer()
     -- Report HTTP status for health checks
     local balancer = balancer_data.balancer
     if balancer then
-      local ip, port = balancer_data.ip, balancer_data.port
-
       if previous_try.state == "failed" then
         if previous_try.code == 504 then
-          balancer.report_timeout(ip, port)
+          balancer.report_timeout(balancer_data.balancer_handle)
         else
-          balancer.report_tcp_failure(ip, port)
+          balancer.report_tcp_failure(balancer_data.balancer_handle)
         end
 
       else
-        balancer.report_http_status(ip, port, previous_try.code)
+        balancer.report_http_status(balancer_data.balancer_handle,
+                                    previous_try.code)
       end
     end
 
