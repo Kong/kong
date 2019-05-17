@@ -43,6 +43,15 @@ for shm_name, shm in pairs(ngx.shared) do
 end
 
 
+local function convert_bytes(bytes, unit, scale)
+  if string.lower(unit) == "b" then
+    return bytes
+  end
+
+  return utils.bytes_to_str(bytes, unit, scale)
+end
+
+
 return {
   ["/"] = {
     GET = function(self, dao, helpers)
@@ -192,8 +201,8 @@ return {
 
         if count then
           table.insert(status_response.memory.workers_lua_vms, {
-            pid = pid,
-            allocated_gc = utils.bytes_to_str(count, unit, scale)
+            pid = tonumber(pid),
+            http_allocated_gc = convert_bytes(count, unit, scale)
           })
         end
 
@@ -212,8 +221,8 @@ return {
         local allocated = shm.capacity - shm.zone:free_space()
 
         status_response.memory.lua_shared_dicts[shm.name] = {
-          capacity = utils.bytes_to_str(shm.capacity, unit, scale),
-          allocated_slabs = utils.bytes_to_str(allocated, unit, scale),
+          capacity = convert_bytes(shm.capacity, unit, scale),
+          allocated_slabs = convert_bytes(allocated, unit, scale),
         }
       end
 
