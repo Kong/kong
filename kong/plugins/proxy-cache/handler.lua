@@ -9,7 +9,6 @@ local floor            = math.floor
 local get_method       = ngx.req.get_method
 local ngx_get_uri_args = ngx.req.get_uri_args
 local ngx_get_headers  = ngx.req.get_headers
-local resp_get_headers = ngx.resp.get_headers
 local ngx_log          = ngx.log
 local ngx_now          = ngx.now
 local ngx_re_gmatch    = ngx.re.gmatch
@@ -253,7 +252,7 @@ local ProxyCacheHandler = BasePlugin:extend()
 
 
 ProxyCacheHandler.PRIORITY = 100
-ProxyCacheHandler.VERSION = "1.2.0"
+ProxyCacheHandler.VERSION = "1.2.1"
 
 
 function ProxyCacheHandler:new()
@@ -414,7 +413,7 @@ function ProxyCacheHandler:header_filter(conf)
 
   -- if this is a cacheable request, gather the headers and mark it so
   if cacheable_response(ngx, conf, cc) then
-    ctx.res_headers = resp_get_headers(0, true)
+    ctx.res_headers = ngx.resp.get_headers(0, true)
     ctx.res_ttl = conf.cache_control and resource_ttl(cc) or conf.cache_ttl
     ngx.ctx.proxy_cache = ctx
 
