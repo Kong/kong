@@ -481,12 +481,12 @@ end
 
 --- returns a pre-configured `http_client` for the Kong SSL proxy port.
 -- @name proxy_ssl_client
-local function proxy_ssl_client(timeout)
+local function proxy_ssl_client(timeout, sni)
   local proxy_ip = get_proxy_ip(true)
   local proxy_port = get_proxy_port(true)
   assert(proxy_ip, "No https-proxy found in the configuration")
   local client = http_client(proxy_ip, proxy_port, timeout)
-  assert(client:ssl_handshake())
+  assert(client:ssl_handshake(nil, sni, false)) -- explicit no-verify
   return client
 end
 
