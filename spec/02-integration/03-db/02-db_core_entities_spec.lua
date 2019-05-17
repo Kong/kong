@@ -347,11 +347,35 @@ for _, strategy in helpers.each_strategy() do
             strategy = strategy,
             message  = unindent([[
               schema violation
-              (must set one of 'methods', 'hosts', 'paths' when 'protocols' is 'http' or 'https')
+              (must set one of 'methods', 'hosts', 'paths' when 'protocols' is 'http')
             ]], true, true),
             fields   = {
               ["@entity"] = {
-                "must set one of 'methods', 'hosts', 'paths' when 'protocols' is 'http' or 'https'",
+                "must set one of 'methods', 'hosts', 'paths' when 'protocols' is 'http'",
+              }
+            },
+
+          }, err_t)
+        end)
+
+        it("errors on missing routing methods for https", function()
+          local route, err, err_t = db.routes:insert({
+            protocols = { "https" }
+          })
+          assert.is_nil(route)
+          assert.is_string(err)
+          assert.is_table(err_t)
+          assert.same({
+            code     = Errors.codes.SCHEMA_VIOLATION,
+            name     = "schema violation",
+            strategy = strategy,
+            message  = unindent([[
+              schema violation
+              (must set one of 'methods', 'hosts', 'paths', 'snis' when 'protocols' is 'https')
+            ]], true, true),
+            fields   = {
+              ["@entity"] = {
+                "must set one of 'methods', 'hosts', 'paths', 'snis' when 'protocols' is 'https'",
               }
             },
 
@@ -802,12 +826,45 @@ for _, strategy in helpers.each_strategy() do
               strategy    = strategy,
               message  = unindent([[
                 schema violation
-                (must set one of 'methods', 'hosts', 'paths' when 'protocols' is 'http' or 'https')
+                (must set one of 'methods', 'hosts', 'paths' when 'protocols' is 'http')
               ]], true, true),
               fields   = {
                 ["@entity"] = {
-                  "must set one of 'methods', 'hosts', 'paths' when 'protocols' is 'http' or 'https'",
+                  "must set one of 'methods', 'hosts', 'paths' when 'protocols' is 'http'",
                 }
+              },
+            }, err_t)
+          end)
+
+          it("fails if all routing criteria for http would be null", function()
+            local route = bp.routes:insert({
+              hosts   = { "example.com" },
+              methods = { "GET" },
+              snis    = { "example.org" },
+            })
+
+            local new_route, _, err_t = db.routes:update({ id = route.id }, {
+              protocols = { "http" },
+              hosts   = ngx.null,
+              methods = ngx.null,
+            })
+            assert.is_nil(new_route)
+            assert.same({
+              code        = Errors.codes.SCHEMA_VIOLATION,
+              name = "schema violation",
+              strategy    = strategy,
+              message  = unindent([[
+                3 schema violations
+                (must set one of 'methods', 'hosts', 'paths' when 'protocols' is 'http';
+                'snis' can only be set when 'protocols' is 'https' or 'tls';
+                snis: length must be 0)
+              ]], true, true),
+              fields   = {
+                ["@entity"] = {
+                  "must set one of 'methods', 'hosts', 'paths' when 'protocols' is 'http'",
+                  "'snis' can only be set when 'protocols' is 'https' or 'tls'",
+                },
+                ["snis"] = "length must be 0",
               },
             }, err_t)
           end)
@@ -852,11 +909,11 @@ for _, strategy in helpers.each_strategy() do
               strategy    = strategy,
               message  = unindent([[
                 schema violation
-                (must set one of 'methods', 'hosts', 'paths' when 'protocols' is 'http' or 'https')
+                (must set one of 'methods', 'hosts', 'paths' when 'protocols' is 'http')
               ]], true, true),
               fields   = {
                 ["@entity"] = {
-                  "must set one of 'methods', 'hosts', 'paths' when 'protocols' is 'http' or 'https'",
+                  "must set one of 'methods', 'hosts', 'paths' when 'protocols' is 'http'",
                 }
               },
             }, err_t)

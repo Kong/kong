@@ -200,11 +200,33 @@ for _, strategy in helpers.each_strategy() do
                 name    = "schema violation",
                 message = unindent([[
                   schema violation
-                  (must set one of 'methods', 'hosts', 'paths' when 'protocols' is 'http' or 'https')
+                  (must set one of 'methods', 'hosts', 'paths' when 'protocols' is 'http')
                 ]], true, true),
-                fields = {
+                fields  = {
                   ["@entity"] = {
-                    "must set one of 'methods', 'hosts', 'paths' when 'protocols' is 'http' or 'https'"
+                    "must set one of 'methods', 'hosts', 'paths' when 'protocols' is 'http'",
+                  }
+                }
+              }, cjson.decode(body))
+
+              -- Missing https params
+              res = client:post("/routes", {
+                body = {
+                  protocols = { "https" },
+                },
+                headers = { ["Content-Type"] = content_type }
+              })
+              body = assert.res_status(400, res)
+              assert.same({
+                code    = Errors.codes.SCHEMA_VIOLATION,
+                name    = "schema violation",
+                message = unindent([[
+                  schema violation
+                  (must set one of 'methods', 'hosts', 'paths', 'snis' when 'protocols' is 'https')
+                ]], true, true),
+                fields  = {
+                  ["@entity"] = {
+                    "must set one of 'methods', 'hosts', 'paths', 'snis' when 'protocols' is 'https'",
                   }
                 }
               }, cjson.decode(body))
@@ -710,11 +732,11 @@ for _, strategy in helpers.each_strategy() do
                   name    = "schema violation",
                   message = unindent([[
                   schema violation
-                  (must set one of 'methods', 'hosts', 'paths' when 'protocols' is 'http' or 'https')
-                ]], true, true),
+                  (must set one of 'methods', 'hosts', 'paths' when 'protocols' is 'http')
+                  ]], true, true),
                   fields  = {
                     ["@entity"] = {
-                      "must set one of 'methods', 'hosts', 'paths' when 'protocols' is 'http' or 'https'"
+                      "must set one of 'methods', 'hosts', 'paths' when 'protocols' is 'http'",
                     }
                   }
                 }, cjson.decode(body))
