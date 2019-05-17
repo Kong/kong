@@ -177,8 +177,9 @@ describe("Admin API - Kong routes with strategy #" .. strategy, function()
         local workers_lua_vms = json.memory.workers_lua_vms
 
         for _, worker in ipairs(workers_lua_vms) do
-          assert.matches("%d+%.%d+ MiB", worker.allocated_gc)
+          assert.matches("%d+%.%d+ MiB", worker.http_allocated_gc)
           assert.matches("%d+", worker.pid)
+          assert.is_number(worker.pid)
         end
       end)
 
@@ -237,7 +238,27 @@ describe("Admin API - Kong routes with strategy #" .. strategy, function()
         local workers_lua_vms = json.memory.workers_lua_vms
 
         assert.matches("%d+%.%d+ KiB", lua_shared_dicts.kong.capacity)
-        assert.matches("%d+%.%d+ KiB", workers_lua_vms[1].allocated_gc)
+        assert.matches("%d+%.%d+ KiB", workers_lua_vms[1].http_allocated_gc)
+      end)
+
+      it("when unit is bytes, returned properties are numbers", function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/status?unit=b",
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        local lua_shared_dicts = json.memory.lua_shared_dicts
+        local workers_lua_vms = json.memory.workers_lua_vms
+
+        assert.matches("%d+", lua_shared_dicts.kong.capacity)
+        assert.is_number(lua_shared_dicts.kong.capacity)
+
+        assert.matches("%d+", lua_shared_dicts.kong.allocated_slabs)
+        assert.is_number(lua_shared_dicts.kong.allocated_slabs)
+
+        assert.matches("%d+", workers_lua_vms[1].http_allocated_gc)
+        assert.is_number(workers_lua_vms[1].http_allocated_gc)
       end)
 
       it("accepts a 'scale' querystring argument", function()
@@ -251,7 +272,7 @@ describe("Admin API - Kong routes with strategy #" .. strategy, function()
         local workers_lua_vms = json.memory.workers_lua_vms
 
         assert.matches("%d+%.%d%d%d MiB", lua_shared_dicts.kong.capacity)
-        assert.matches("%d+%.%d%d%d MiB", workers_lua_vms[1].allocated_gc)
+        assert.matches("%d+%.%d%d%d MiB", workers_lua_vms[1].http_allocated_gc)
       end)
 
       it("returns HTTP 400 on invalid 'unit' querystring parameter", function()
