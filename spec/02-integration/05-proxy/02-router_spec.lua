@@ -34,7 +34,7 @@ local function insert_routes(bp, routes)
     service = bp.named_services:insert(service)
     route.service = service
 
-    if not route.protocol then
+    if not route.protocols then
       route.protocols = { "http" }
     end
 
@@ -808,6 +808,84 @@ for _, strategy in helpers.each_strategy() do
         assert.equal(routes[2].id,           res.headers["kong-route-id"])
         assert.equal(routes[2].service.id,   res.headers["kong-service-id"])
         assert.equal(routes[2].service.name, res.headers["kong-service-name"])
+      end)
+    end)
+
+    describe("[snis] for HTTPs connections", function()
+      local routes
+      local proxy_ssl_client
+
+      lazy_setup(function()
+        routes = insert_routes(bp, {
+          {
+            protocols = { "https" },
+            snis = { "www.example.org" },
+            service = {
+              name = "service_behind_www.example.org"
+            },
+          },
+          {
+            protocols = { "https" },
+            snis = { "example.org" },
+            service = {
+              name = "service_behind_example.org"
+            },
+          },
+        })
+      end)
+
+      lazy_teardown(function()
+        remove_routes(strategy, routes)
+      end)
+
+      after_each(function()
+        if proxy_ssl_client then
+          proxy_ssl_client:close()
+        end
+      end)
+
+      it("matches a Route based on its 'snis' attribute", function()
+        proxy_ssl_client = helpers.proxy_ssl_client(nil, "www.example.org")
+
+        local res = assert(proxy_ssl_client:send {
+          method  = "GET",
+          path    = "/status/200",
+          headers = { ["kong-debug"] = 1 },
+        })
+        assert.res_status(200, res)
+        assert.equal("service_behind_www.example.org",
+                     res.headers["kong-service-name"])
+
+        res = assert(proxy_ssl_client:send {
+          method  = "GET",
+          path    = "/status/201",
+          headers = { ["kong-debug"] = 1 },
+        })
+        assert.res_status(201, res)
+        assert.equal("service_behind_www.example.org",
+                     res.headers["kong-service-name"])
+
+        proxy_ssl_client:close()
+
+        proxy_ssl_client = helpers.proxy_ssl_client(nil, "example.org")
+
+        local res = assert(proxy_ssl_client:send {
+          method  = "GET",
+          path    = "/status/200",
+          headers = { ["kong-debug"] = 1 },
+        })
+        assert.res_status(200, res)
+        assert.equal("service_behind_example.org",
+                     res.headers["kong-service-name"])
+
+        res = assert(proxy_ssl_client:send {
+          method  = "GET",
+          path    = "/status/201",
+          headers = { ["kong-debug"] = 1 },
+        })
+        assert.res_status(201, res)
+        assert.equal("service_behind_example.org",
+                     res.headers["kong-service-name"])
       end)
     end)
 
