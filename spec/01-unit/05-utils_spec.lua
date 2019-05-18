@@ -592,17 +592,34 @@ describe("Utils", function()
     end)
 
     it("scale arg", function()
+      -- 3
       assert.equal("5497558", utils.bytes_to_str(5497558, "b", 3))
       assert.equal("5368.709 KiB", utils.bytes_to_str(5497558, "k", 3))
       assert.equal("5.243 MiB", utils.bytes_to_str(5497558, "m", 3))
       assert.equal("0.005 GiB", utils.bytes_to_str(5497558, "g", 3))
       assert.equal("5.120 GiB", utils.bytes_to_str(5497558998, "g", 3))
+
+      -- 0
+      assert.equal("5 GiB", utils.bytes_to_str(5497558998, "g", 0))
+
+      -- decimals
+      assert.equal("5.12 GiB", utils.bytes_to_str(5497558998, "g", 2.2))
     end)
 
     it("errors on invalid unit arg", function()
       assert.has_error(function()
         utils.bytes_to_str(1234, "V")
       end, "invalid unit 'V' (expected 'k/K', 'm/M', or 'g/G')")
+    end)
+
+    it("errors on invalid scale arg", function()
+      assert.has_error(function()
+        utils.bytes_to_str(1234, "k", -1)
+      end, "scale must be equal or greater than 0")
+
+      assert.has_error(function()
+        utils.bytes_to_str(1234, "k", "")
+      end, "scale must be equal or greater than 0")
     end)
   end)
 end)
