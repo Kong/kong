@@ -893,6 +893,22 @@ describe("routes schema", function()
           end
         end
       end)
+
+      it("rejects specifying 'snis' if 'protocols' does not have 'tls'", function()
+        local route = Routes:process_auto_fields({
+          protocols = { "tcp" },
+          snis = { "example.org" },
+          service = s,
+        }, "insert")
+        local ok, errs = Routes:validate(route)
+        assert.falsy(ok)
+        assert.same({
+          ["@entity"] = {
+            "'snis' can only be set when 'protocols' is 'tls'",
+          },
+          snis = "length must be 0",
+        }, errs)
+      end)
     end)
 
     it("errors if no L4 matching attribute set", function()
