@@ -221,7 +221,7 @@ describe("Admin API - Kong routes with strategy #" .. strategy, function()
         if #workers_lua_vms > 1 then
           for i = 1, #workers_lua_vms do
             if workers_lua_vms[i + 1] then
-              assert.gt(workers_lua_vms[i + 1].pid, workers_lua_vms[i].pid)
+              assert.gt(workers_lua_vms[i].pid, workers_lua_vms[i + 1].pid)
             end
           end
         end
