@@ -507,7 +507,8 @@ describe("schema", function()
               type = "array",
               elements = {
                 type = "string",
-                one_of = { "foo", "bar", "baz" }
+                one_of = { "foo", "bar", "baz" },
+                not_one_of = { "forbidden", "also_forbidden" },
               }
             }
           }
@@ -518,6 +519,8 @@ describe("schema", function()
       assert.truthy(Test:validate({ f = {"baz", "foo"} }))
       assert.falsy(Test:validate({ f = {"hello"} }))
       assert.falsy(Test:validate({ f = {"foo", "hello", "foo"} }))
+      assert.falsy(Test:validate({ f = {"baz", "foo", "forbidden"} }))
+      assert.falsy(Test:validate({ f = {"baz", "foo", "also_forbidden"} }))
     end)
 
     it("ensures a set is a table", function()
@@ -1507,7 +1510,12 @@ describe("schema", function()
     it("test conditional checks", function()
       local Test = Schema.new({
         fields = {
-          { policy = { type = "string", one_of = { "redis", "bla" } } },
+          { policy = {
+              type = "string",
+              one_of = { "redis", "bla" },
+              not_one_of = { "cluster" },
+            }
+          },
           { redis_host = { type = "string" } },
           { redis_port = { type = "number" } },
         },
@@ -1540,6 +1548,9 @@ describe("schema", function()
       }))
       assert.falsy(Test:validate_update({
         policy = "redis",
+      }))
+      assert.falsy(Test:validate_update({
+        policy = "cluster",
       }))
     end)
 
@@ -1615,7 +1626,7 @@ describe("schema", function()
       local Test = Schema.new({
         fields = {
           { redis_host = { type = "string" } },
-          { a_set = { type = "set", elements = { type = "string", one_of = { "foo", "bar" } } } },
+          { a_set = { type = "set", elements = { type = "string", one_of = { "foo", "bar" }, not_one_of = { "forbidden", "also_forbidden" } } } },
         },
         entity_checks = {
           { conditional = { if_field = "a_set",
@@ -1644,6 +1655,13 @@ describe("schema", function()
       })
       assert.truthy(ok)
       assert.is_nil(err)
+
+      ok, err = Test:validate_update({
+        a_set = { "forbidden" },
+        redis_host = "host_foo",
+      })
+      assert.falsy(ok)
+      assert.same("must not be one of: forbidden, also_forbidden", err.a_set[1])
     end)
 
     it("test custom entity checks", function()
