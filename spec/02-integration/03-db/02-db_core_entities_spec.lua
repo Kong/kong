@@ -583,7 +583,7 @@ for _, strategy in helpers.each_strategy() do
         describe("#stream context", function()
           it("creates a Route with 'snis'", function()
             local route, err, err_t = db.routes:insert({
-              protocols = { "tcp" },
+              protocols = { "tls" },
               snis      = { "example.com" },
               service   = bp.services:insert(),
             })
@@ -648,7 +648,7 @@ for _, strategy in helpers.each_strategy() do
         describe("#stream context", function()
           it("returns a Route with L4 matching properties", function()
             local route_inserted, err = db.routes:insert({
-              protocols  = { "tcp" },
+              protocols  = { "tls" },
               snis       = { "example.com" },
               sources    = {
                 { ip = "127.0.0.1" },

@@ -158,5 +158,11 @@ return {
                       then_match = { len_eq = 0 },
                       then_err = "cannot set 'sources' when 'protocols' is 'http' or 'https'",
                     }},
+    { conditional = { if_field = "protocols",
+                      if_match = { elements = { type = "string", not_one_of = { "tls" }}},
+                      then_field = "snis",
+                      then_match = { len_eq = 0 },
+                      then_err = "'snis' can only be set when 'protocols' is 'tls'",
+                    }},
   },
 }
