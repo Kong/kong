@@ -32,26 +32,6 @@ local strip_foreign_schemas = function(fields)
 end
 
 
-local shms = {}
-
-for shm_name, shm in pairs(ngx.shared) do
-  table.insert(shms, {
-    zone = shm,
-    name = shm_name,
-    capacity = shm:capacity(),
-  })
-end
-
-
-local function convert_bytes(bytes, unit, scale)
-  if string.lower(unit) == "b" then
-    return bytes
-  end
-
-  return utils.bytes_to_str(bytes, unit, scale)
-end
-
-
 return {
   ["/"] = {
     GET = function(self, dao, helpers)
@@ -127,7 +107,7 @@ return {
         end
 
         if query.scale then
-          scale = query.scale
+          scale = tonumber(query.scale)
         end
 
         -- validate unit and scale arguments
@@ -150,6 +130,7 @@ return {
       local accepted, handled, total = select(3, find(r.body, "accepts handled requests\n (%d*) (%d*) (%d*)"))
 
       local status_response = {
+        memory = knode.get_memory_stats(unit, scale),
         server = {
           connections_active = tonumber(var.connections_active),
           connections_reading = tonumber(var.connections_reading),
@@ -162,10 +143,6 @@ return {
         database = {
           reachable = true,
         },
-        memory = {
-          workers_lua_vms = kong.table.new(ngx.worker.count(), 0),
-          lua_shared_dicts = kong.table.new(0, #shms),
-        }
       }
 
       -- TODO: no way to bypass connection pool
@@ -177,54 +154,6 @@ return {
       end
 
       kong.db:close() -- ignore errors
-
-      -- memory stats
-      -- get workers Lua VM allocated memory
-
-      local keys, err = ngx.shared.kong:get_keys()
-      if not keys then
-        ngx.log(ngx.ERR, "could not get kong shm keys: ", err)
-        goto lua_shared_dicts
-      end
-
-      for i = 1, #keys do
-        local pid = string.match(keys[i], "kong:mem:(%d+)")
-        if not pid then
-          goto continue
-        end
-
-        local count, err = ngx.shared.kong:get("kong:mem:" .. pid)
-        if err then
-          ngx.log(ngx.ERR, "could not get Lua VM allocated memory (pid: ",
-                           pid, "): ", err)
-        end
-
-        if count then
-          table.insert(status_response.memory.workers_lua_vms, {
-            pid = tonumber(pid),
-            http_allocated_gc = convert_bytes(count, unit, scale)
-          })
-        end
-
-        ::continue::
-      end
-
-      table.sort(status_response.memory.workers_lua_vms, function(a, b)
-        return a.pid > b.pid
-      end)
-
-      -- get lua_shared_dicts allocated slabs
-
-      ::lua_shared_dicts::
-
-      for _, shm in ipairs(shms) do
-        local allocated = shm.capacity - shm.zone:free_space()
-
-        status_response.memory.lua_shared_dicts[shm.name] = {
-          capacity = convert_bytes(shm.capacity, unit, scale),
-          allocated_slabs = convert_bytes(allocated, unit, scale),
-        }
-      end
 
       return kong.response.exit(200, status_response)
     end
