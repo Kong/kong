@@ -930,8 +930,8 @@ end
 -- of `b/B`, `k/K`, `m/M`, or `g/G` for bytes (unchanged), kibibytes,
 -- mebibytes, or gibibytes, respectively. Defaults to `b` (bytes).
 -- @tparam[opt] number scale The number of digits to the right of the decimal
--- point.
--- @return string A human-readable string.
+-- point. Defaults to 2.
+-- @treturn string A human-readable string.
 -- @usage
 --
 -- bytes_to_str(5497558) -- "5497558"
@@ -944,7 +944,12 @@ function _M.bytes_to_str(bytes, unit, scale)
   end
 
   scale = scale or 2
-  local fspec = "%." .. scale .. "f"
+
+  if type(scale) ~= "number" or scale < 0 then
+    error("scale must be equal or greater than 0", 2)
+  end
+
+  local fspec = fmt("%%.%df", scale)
 
   if lower(unit) == "k" then
     return fmt(fspec .. " KiB", bytes / 2^10)
