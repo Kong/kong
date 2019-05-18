@@ -73,6 +73,7 @@ local validation_errors = {
   STARTS_WITH               = "should start with: %s",
   CONTAINS                  = "expected to contain: %s",
   ONE_OF                    = "expected one of: %s",
+  NOT_ONE_OF                = "must not be one of: %s",
   IS_REGEX                  = "not a valid regex: %s",
   TIMESTAMP                 = "expected a valid timestamp",
   UUID                      = "expected a valid UUID",
@@ -271,6 +272,15 @@ Schema.validators = {
     return nil, validation_errors.ONE_OF:format(concat(options, ", "))
   end,
 
+  not_one_of = function(value, options)
+    for _, option in ipairs(options) do
+      if value == option then
+        return nil, validation_errors.NOT_ONE_OF:format(concat(options, ", "))
+      end
+    end
+    return true
+  end,
+
   timestamp = function(value)
     return value > 0 or nil
   end,
@@ -302,6 +312,7 @@ Schema.validators = {
 Schema.validators_order = {
   "eq",
   "ne",
+  "not_one_of",
   "one_of",
 
   -- type-dependent
