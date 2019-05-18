@@ -1266,10 +1266,6 @@ function _M.new(routes)
       local req_method = get_method()
       local req_uri = var.request_uri
       local req_host = var.http_host or ""
-      local src_ip = var.remote_addr
-      local src_port = tonumber(var.remote_port, 10)
-      local dst_ip = var.server_addr
-      local dst_port = tonumber(var.server_port, 10)
       local sni = var.ssl_server_name
 
       do
@@ -1280,8 +1276,8 @@ function _M.new(routes)
       end
 
       local match_t = find_route(req_method, req_uri, req_host,
-                                 src_ip, src_port,
-                                 dst_ip, dst_port,
+                                 nil, nil, -- src_ip, src_port
+                                 nil, nil, -- dst_ip, dst_port
                                  sni)
       if not match_t then
         return nil
