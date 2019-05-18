@@ -800,6 +800,7 @@ return {
   _set_router_version = _set_router_version,
   _set_update_plugins_iterator = _set_update_plugins_iterator,
   _get_updated_router = get_updated_router,
+  _update_lua_mem = update_lua_mem,
 
   init_worker = {
     before = function()
