@@ -73,6 +73,12 @@ return function(options)
       function SharedDict:new()
         return setmetatable({data = {}}, {__index = self})
       end
+      function SharedDict:capacity()
+        return 0
+      end
+      function SharedDict:free_space()
+        return 0
+      end
       function SharedDict:get(key)
         return self.data[key] and self.data[key].value, nil
       end
