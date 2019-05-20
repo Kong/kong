@@ -1,5 +1,6 @@
 local mocker = require("spec.fixtures.mocker")
 
+local EXPECTED_ROUTER_ERROR = "attempt to index local 'router' (a nil value)"
 
 local function setup_it_block()
 
@@ -117,7 +118,7 @@ describe("runloop handler", function()
       assert.spy(rebuild_router_spy).was_called(0)
       assert.spy(rebuild_plugins_iterator_spy).was_called(0)
 
-      handler.access.before({})
+      assert.error(function() handler.access.before({}) end, EXPECTED_ROUTER_ERROR)
 
       assert.spy(rebuild_router_spy).was_called(1)
       assert.spy(rebuild_plugins_iterator_spy).was_called(0)
@@ -150,7 +151,7 @@ describe("runloop handler", function()
         return nil, "timeout"
       end
 
-      handler.access.before({})
+      assert.error(function() handler.access.before({}) end, EXPECTED_ROUTER_ERROR)
 
       -- was called even if semaphore timed out on acquisition
       assert.spy(rebuild_router_spy).was_called(1)
