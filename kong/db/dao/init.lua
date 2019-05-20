@@ -293,9 +293,9 @@ local function check_update(self, key, entity, options, name)
   if read_before_write then
     local err, err_t
     if name then
-       rbw_entity, err, err_t = self.strategy:select_by_field(name, key, options)
+       rbw_entity, err, err_t = self["select_by_" .. name](self, key, options)
     else
-       rbw_entity, err, err_t = self.strategy:select(key, options)
+       rbw_entity, err, err_t = self:select(key, options)
     end
     if err then
       return nil, nil, err, err_t
