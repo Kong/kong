@@ -721,6 +721,23 @@
                                  # single query.
 
 #------------------------------------------------------------------------------
+# TUNING & BEHAVIOR
+#------------------------------------------------------------------------------
+
+#router_consistency = strict     # Defines whether or not updates of internal
+                                 # data structures used in routing are
+                                 # done asynchronously. Accepted values are:
+                                 #
+                                 # - `strict` - the state of memory is
+                                 #   checked against the latest datastore
+                                 #   state on each request: if memory is
+                                 #   outdated, it is updated before handling
+                                 #   the request.
+                                 # - `eventual` - the state of memory is
+                                 #   updated asynchronously via an internal
+                                 #   periodic timer.
+
+#------------------------------------------------------------------------------
 # DEVELOPMENT & MISCELLANEOUS
 #------------------------------------------------------------------------------
 

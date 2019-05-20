@@ -454,6 +454,12 @@ describe("Configuration loader", function()
       assert.equal("database has an invalid value: 'mysql' (postgres, cassandra, off)", err)
       assert.is_nil(conf)
 
+      local conf, err = conf_loader(nil, {
+        router_consistency = "magical"
+      })
+      assert.equal("router_consistency has an invalid value: 'magical' (strict, eventual)", err)
+      assert.is_nil(conf)
+
       conf, err = conf_loader(nil, {
         cassandra_consistency = "FOUR"
       })
@@ -461,6 +467,7 @@ describe("Configuration loader", function()
                  .. " (ALL, EACH_QUORUM, QUORUM, LOCAL_QUORUM, ONE, TWO,"
                  .. " THREE, LOCAL_ONE)", err)
       assert.is_nil(conf)
+
     end)
     it("enforces listen addresses format", function()
       local conf, err = conf_loader(nil, {
