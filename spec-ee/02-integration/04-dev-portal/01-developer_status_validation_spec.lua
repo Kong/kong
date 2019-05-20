@@ -125,6 +125,7 @@ describe("Developer status validation for " .. auth_type .. " [#" .. strategy ..
       database = strategy,
       portal = true,
       portal_auth = auth_type,
+      portal_session_conf = "{ \"cookie_name\": \"portal_session\", \"secret\": \"super-secret\", \"cookie_secure\": false, \"storage\": \"kong\" }",
     }))
 
     proxy_client = helpers.proxy_client()

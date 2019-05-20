@@ -68,7 +68,12 @@ for _, strategy in helpers.each_strategy() do
           portal_auth = "basic-auth",
         }
 
-        assert(helpers.start_kong(singletons.configuration))
+        assert(helpers.start_kong({
+          database = strategy,
+          portal = conf_on,
+          portal_auth = "basic-auth",
+          portal_session_conf = "{ \"cookie_name\": \"portal_session\", \"secret\": \"super-secret\", \"cookie_secure\": false, \"storage\": \"kong\" }",
+        }))
 
         developer = assert(db.developers:insert {
           email = "gruce@konghq.com",

@@ -116,10 +116,6 @@ end
 
 local function validate_portal_session(conf, errors)
   if conf.portal_session_conf then
-    if not conf.portal_auth or conf.portal_auth == "" then
-      errors[#errors+1] = "portal_session_conf is set with no portal_auth"
-    end
-
     local session_config, err = cjson.decode(tostring(conf.portal_session_conf))
     if err then
       errors[#errors+1] = "portal_session_conf must be valid json or not set: "
@@ -137,6 +133,11 @@ local function validate_portal_session(conf, errors)
         end
       })
     end
+  elseif conf.portal_auth and
+         conf.portal_auth ~= "" and
+         conf.portal_auth ~= "openid-connect" then
+    -- portal_session_conf is required for portal_auth other than openid-connect
+    errors[#errors+1] = "portal_session_conf is required when portal_auth is set to " .. conf.portal_auth
   end
 end
 

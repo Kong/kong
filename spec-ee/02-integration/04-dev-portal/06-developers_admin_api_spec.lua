@@ -53,6 +53,7 @@ describe("Admin API - Developer Portal - " .. strategy, function()
     assert(helpers.start_kong({
       portal = true,
       portal_auth = "basic-auth",
+      portal_session_conf = "{ \"cookie_name\": \"portal_session\", \"secret\": \"super-secret\", \"cookie_secure\": false, \"storage\": \"kong\" }",
       database = strategy,
     }))
   end)
@@ -605,6 +606,7 @@ describe("Admin API - Developer Portal - " .. strategy, function()
             database   = strategy,
             portal     = true,
             portal_auth = "basic-auth",
+            portal_session_conf = "{ \"cookie_name\": \"portal_session\", \"secret\": \"super-secret\", \"cookie_secure\": false, \"storage\": \"kong\" }",
             portal_auth_config = "{ \"hide_credentials\": true }",
             portal_auto_approve = "off",
             portal_invite_email = "off",
@@ -643,6 +645,7 @@ describe("Admin API - Developer Portal - " .. strategy, function()
             database   = strategy,
             portal     = true,
             portal_auth = "basic-auth",
+            portal_session_conf = "{ \"cookie_name\": \"portal_session\", \"secret\": \"super-secret\", \"cookie_secure\": false, \"storage\": \"kong\" }",
             portal_auth_config = "{ \"hide_credentials\": true }",
             portal_auto_approve = "off",
             portal_emails_from = "me@example.com",
@@ -818,6 +821,7 @@ describe("Admin API - Developer Portal - " .. strategy, function()
         database   = strategy,
         portal     = true,
         portal_auth = "basic-auth",
+        portal_session_conf = "{ \"cookie_name\": \"portal_session\", \"secret\": \"super-secret\", \"cookie_secure\": false, \"storage\": \"kong\" }",
         portal_auth_config = "{ \"hide_credentials\": true }",
         portal_auto_approve = "off",
         portal_invite_email = "off",
@@ -945,6 +949,7 @@ describe("Admin API - Developer Portal - " .. strategy, function()
         database   = strategy,
         portal     = true,
         portal_auth = "basic-auth",
+        portal_session_conf = "{ \"cookie_name\": \"portal_session\", \"secret\": \"super-secret\", \"cookie_secure\": false, \"storage\": \"kong\" }",
         portal_auth_config = "{ \"hide_credentials\": true }",
         portal_auto_approve = "off",
         portal_invite_email = "off",

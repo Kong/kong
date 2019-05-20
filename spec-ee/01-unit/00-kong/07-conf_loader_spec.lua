@@ -212,7 +212,7 @@ describe("Configuration loader - enterprise", function()
       assert.equal("portal_session_conf must be valid json or not set: Expected value but found invalid token at character 1 - wow", err)
     end)
 
-    it("enforces portal_auth when portal_session_conf is set", function()
+    it("enforces portal_session_conf when portal_auth is set to something other than openid-connect", function()
       local _, err = conf_loader(nil, {
         portal = "on",
         portal_auth = "basic-auth",
@@ -220,12 +220,18 @@ describe("Configuration loader - enterprise", function()
       })
       assert.is_nil(err)
 
+      local _, err = conf_loader(nil, {
+        portal = "on",
+        portal_auth = "openid-connect",
+      })
+      assert.is_nil(err)
+
       local conf, err = conf_loader(nil, {
         portal = "on",
-        portal_session_conf = "{ \"cookie_name\": \"portal_session\", \"secret\": \"super-secret\", \"cookie_secure\": false, \"storage\": \"kong\" }",
+        portal_auth = "basic-auth",
       })
       assert.is_nil(conf)
-      assert.equal("portal_session_conf is set with no portal_auth", err)
+      assert.equal("portal_session_conf is required when portal_auth is set to basic-auth", err)
     end)
 
     it("enforces portal_session_conf 'storage' must be set to 'kong'", function()
