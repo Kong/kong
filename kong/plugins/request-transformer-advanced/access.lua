@@ -21,7 +21,6 @@ local str_find = string.find
 local pcall = pcall
 local pairs = pairs
 local error = error
-local tostring = tostring
 local rawset = rawset
 local pl_copy_table = pl_tablex.deepcopy
 
@@ -144,22 +143,7 @@ local function iter(config_array)
       return i, current_name
     end
 
-    -- FIXME: the engine is unsafe at render time until
-    -- https://github.com/stevedonovan/Penlight/pull/256 is merged
-    -- and released once that is merged, this pcall() should be
-    -- removed (for performance reasons)
-    local status, res, err = pcall(param_value, current_value,
-      config_array)
-    if not status then
-      -- this is a hard error because the renderer isn't safe
-      -- throw a 500 for this one. This check and error can be removed once
-      -- it's safe
-      return error("[request-transformer-advanced] failed to render the template " ..
-              tostring(current_value) .. ", error: the renderer " ..
-              "encountered a value that was not coercable to a " ..
-              "string (usually a table)")
-    end
-
+    local res, err = param_value(current_value, config_array)
     if err then
       return error("[request-transformer-advanced] failed to render the template ",
         current_value, ", error:", err)
@@ -482,21 +466,7 @@ end
 local function transform_uri(conf)
   if conf.replace.uri then
 
-    -- FIXME: the engine is unsafe at render time until
-    -- https://github.com/stevedonovan/Penlight/pull/256 is merged
-    -- and released once that is merged, this pcall() should be
-    -- removed (for performance reasons)
-    local status, res, err = pcall(param_value, conf.replace.uri,
-      conf.replace)
-    if not status then
-      -- this is a hard error because the renderer isn't safe
-      -- throw a 500 for this one. This check and error can be removed once
-      -- it's safe
-      return error("[request-transformer-advanced] failed to render the template " ..
-              tostring(conf.replace.uri) ..
-              ", error: the renderer encountered a value that was not" ..
-              " coercable to a string (usually a table)")
-    end
+    local res, err = param_value(conf.replace.uri, conf.replace)
     if err then
       return error("[request-transformer-advanced] failed to render the template ",
         conf.replace.uri, ", error:", err)
