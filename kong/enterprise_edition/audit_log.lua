@@ -115,7 +115,7 @@ local function dao_audit_handler(data)
   end
 
   local ok, err = singletons.db.audit_objects:insert(data,
-    { ttl = ttl }
+    { ttl = ttl, no_broadcast_crud_event = true }
   )
   if not ok then
     ngx.log(ngx.ERR, "failed to write audit log entry: ", err)
@@ -131,7 +131,7 @@ local function audit_log_writer(_, data)
   local ttl = singletons.configuration.audit_log_record_ttl
 
   local ok, err = singletons.db.audit_requests:insert(data,
-    { ttl = ttl }
+    { ttl = ttl, no_broadcast_crud_event = true }
   )
   if not ok then
     ngx.log(ngx.ERR, "failed to write audit log entry: ", err)
