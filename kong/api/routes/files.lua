@@ -68,7 +68,7 @@ return {
     end,
 
     GET = function(self, db, helpers)
-      local partials_dict = renderer.find_partials_in_page(self.file.contents, {}, true)
+      local partials_dict = renderer.find_partials_in_page(self.file.contents, {})
       local partials = {}
 
       for idx, partial in pairs(partials_dict) do

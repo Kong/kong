@@ -137,11 +137,8 @@ local function find_file(filename, filetype, is_authenticated)
 end
 
 
-local function find_partial_by_name(partial_name, is_authenticated)
-  local file = kong.db.files:select_by_name(partial_name)
-  if file and file.auth == is_authenticated then
-    return file
-  end
+local function find_partial_by_name(partial_name)
+  return kong.db.files.db.files:select_by_name(partial_name)
 end
 
 
@@ -181,8 +178,12 @@ local function search_for_valid_spec(path, extension, is_authenticated)
 
   local spec_loader = nil
 
-  if spec then
+  if spec and is_authenticated then
     spec_loader = find_file(path .. '/loader', 'page', true)
+  end
+
+  if spec and not spec_loader then
+    spec_loader = find_file(path .. '/loader', 'page', false)
   end
 
   local pathname
@@ -211,42 +212,33 @@ local function search_for_valid_spec(path, extension, is_authenticated)
 end
 
 
-local function find_partials_in_page(page, partials, is_authenticated)
+local function find_partials_in_page(page, partials)
   local partial_match = find_next_partial(page)
 
   if not partial_match then
     return partials
   end
 
-  local partial = nil
   local partial_name = parse_partial_name(partial_match)
-
-  if is_authenticated then
-    partial = find_partial_by_name(partial_name, true)
-  end
-
-  if not partial then
-    partial = find_partial_by_name(partial_name, false)
-  end
+  local partial = find_partial_by_name(partial_name)
 
   if not partial or partials[partial_name] then
     partial = { contents = '' }
     page = replace_partial_in_page(page, partial.contents, partial_match)
-    return find_partials_in_page(page, partials, is_authenticated)
+    return find_partials_in_page(page, partials)
   end
 
   partials[partial_name] = partial
   page = replace_partial_in_page(page, partial.contents, partial_match)
-  return find_partials_in_page(page, partials, is_authenticated)
+  return find_partials_in_page(page, partials)
 end
 
 
 local function retrieve_partials(self, page)
   local partials = {}
   local page = page.contents
-  local is_authenticated = self.developer ~= nil
 
-  return find_partials_in_page(page, partials, is_authenticated)
+  return find_partials_in_page(page, partials)
 end
 
 

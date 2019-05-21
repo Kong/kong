@@ -830,19 +830,6 @@ for _, strategy in helpers.each_strategy() do
           assert.equals(1, stringx.count(body, unauth_page_pair.id))
           assert.equals(1, stringx.count(body, unauth_partial.id))
         end)
-
-        it("cannot render authenticated partials", function()
-          local res = gui_client_request({
-            method = "GET",
-            path = "/default/page_pair",
-          })
-          local status = res.status
-          local body = res.body
-
-          assert.equals(status, 200)
-          assert.equals(1, stringx.count(body, unauth_page_pair.id))
-          assert.equals(0, stringx.count(body, auth_partial.id))
-        end)
       end)
 
       describe("special cases", function()
@@ -902,7 +889,8 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("specs", function()
-      local root_spec_loader, auth_nested_spec_loader, unauth_nested_spec_loader,
+      local auth_root_spec_loader, unauth_root_spec_loader,
+            auth_nested_spec_loader, unauth_nested_spec_loader,
             auth_spec1, auth_spec2, unauth_spec1, unauth_spec2,
             auth_nested_spec, unauth_nested_spec, login_page,
             spec_with_spaces
@@ -922,12 +910,21 @@ for _, strategy in helpers.each_strategy() do
         })
         cookie = assert.response(res).has.header("Set-Cookie")
 
-        root_spec_loader = assert(db.files:insert {
+        auth_root_spec_loader = assert(db.files:insert {
           name = "loader",
           auth = true,
           type = "page",
           contents = [[
-            <h1>root_spec_loader</h1>
+            <h1>auth_root_spec_loader</h1>
+          ]]
+        })
+
+        unauth_root_spec_loader = assert(db.files:insert {
+          name = "unauthenticated/loader",
+          auth = false,
+          type = "page",
+          contents = [[
+            <h1>unauth_root_spec_loader</h1>
           ]]
         })
 
@@ -1040,7 +1037,7 @@ for _, strategy in helpers.each_strategy() do
           local body = res.body
 
           assert.equals(200, status)
-          assert.equals(1, stringx.count(body, root_spec_loader.id))
+          assert.equals(1, stringx.count(body, auth_root_spec_loader.id))
           assert.equals(1, stringx.count(body, auth_spec1.id))
 
           res = gui_client_request({
@@ -1054,7 +1051,7 @@ for _, strategy in helpers.each_strategy() do
           body = res.body
 
           assert.equals(200, status)
-          assert.equals(1, stringx.count(body, root_spec_loader.id))
+          assert.equals(1, stringx.count(body, auth_root_spec_loader.id))
           assert.equals(1, stringx.count(body, auth_spec2.id))
         end)
 
@@ -1070,7 +1067,7 @@ for _, strategy in helpers.each_strategy() do
           local body = res.body
 
           assert.equals(200, status)
-          assert.equals(1, stringx.count(body, root_spec_loader.id))
+          assert.equals(1, stringx.count(body, auth_root_spec_loader.id))
           assert.equals(1, stringx.count(body, unauth_spec1.id))
 
           res = gui_client_request({
@@ -1084,7 +1081,31 @@ for _, strategy in helpers.each_strategy() do
           body = res.body
 
           assert.equals(200, status)
-          assert.equals(1, stringx.count(body, root_spec_loader.id))
+          assert.equals(1, stringx.count(body, auth_root_spec_loader.id))
+          assert.equals(1, stringx.count(body, unauth_spec2.id))
+        end)
+
+        it("can render unauthenticated loader and unauthenticated specs", function()
+          local res = gui_client_request({
+            method = "GET",
+            path = "/default/unauth_spec1",
+          })
+          local status = res.status
+          local body = res.body
+
+          assert.equals(200, status)
+          assert.equals(1, stringx.count(body, unauth_root_spec_loader.id))
+          assert.equals(1, stringx.count(body, unauth_spec1.id))
+
+          res = gui_client_request({
+            method = "GET",
+            path = "/default/unauth_spec2",
+          })
+          status = res.status
+          body = res.body
+
+          assert.equals(200, status)
+          assert.equals(1, stringx.count(body, unauth_root_spec_loader.id))
           assert.equals(1, stringx.count(body, unauth_spec2.id))
         end)
 
@@ -1262,7 +1283,7 @@ for _, strategy in helpers.each_strategy() do
 
           assert.equals(200, status)
           assert.equals(1, stringx.count(body, login_page.id))
-          assert.equals(0, stringx.count(body, root_spec_loader.id))
+          assert.equals(0, stringx.count(body, auth_root_spec_loader.id))
           assert.equals(0, stringx.count(body, auth_spec1.id))
 
           res = gui_client_request({
@@ -1274,7 +1295,7 @@ for _, strategy in helpers.each_strategy() do
 
           assert.equals(200, status)
           assert.equals(1, stringx.count(body, login_page.id))
-          assert.equals(0, stringx.count(body, root_spec_loader.id))
+          assert.equals(0, stringx.count(body, auth_root_spec_loader.id))
           assert.equals(0, stringx.count(body, auth_spec2.id))
         end)
 
@@ -1359,7 +1380,7 @@ for _, strategy in helpers.each_strategy() do
           local body = res.body
 
           assert.equals(200, status)
-          assert.equals(1, stringx.count(body, root_spec_loader.id))
+          assert.equals(1, stringx.count(body, auth_root_spec_loader.id))
           assert.equals(1, stringx.count(body, spec_with_spaces.id))
         end)
       end)
