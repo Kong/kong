@@ -1,7 +1,7 @@
-local request_transformer_schema = require "kong.plugins.request-transformer-advanced.schema"
+local request_transformer_schema = require "kong.plugins.request-transformer.schema"
 local v = require("spec.helpers").validate_plugin_config_schema
 
-describe("Plugin: request-transformer-advanced(schema)", function()
+describe("Plugin: request-transformer(schema)", function()
   it("validates http_method", function()
     local ok, err = v({ http_method = "GET" }, request_transformer_schema)
     assert.truthy(ok)

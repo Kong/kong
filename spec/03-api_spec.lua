@@ -2,7 +2,7 @@ local helpers = require "spec.helpers"
 local cjson = require "cjson"
 
 for _, strategy in helpers.each_strategy() do
-describe("Plugin: request-transformer-advanced (API) [#" .. strategy .. "]", function()
+describe("Plugin: request-transformer (API) [#" .. strategy .. "]", function()
   local admin_client
 
   lazy_teardown(function()
@@ -21,7 +21,7 @@ describe("Plugin: request-transformer-advanced (API) [#" .. strategy .. "]", fun
 
       assert(helpers.start_kong({
         database   = strategy,
-        plugins    = "bundled, request-transformer-advanced",
+        plugins    = "bundled, request-transformer",
         nginx_conf = "spec/fixtures/custom_nginx.template",
       }))
       admin_client = helpers.admin_client()
@@ -33,7 +33,7 @@ describe("Plugin: request-transformer-advanced (API) [#" .. strategy .. "]", fun
           method = "POST",
           path = "/plugins",
           body = {
-            name = "request-transformer-advanced",
+            name = "request-transformer",
             config = {
               remove = {
                 headers = {"just_a_key"},
@@ -57,7 +57,7 @@ describe("Plugin: request-transformer-advanced (API) [#" .. strategy .. "]", fun
           method = "POST",
           path = "/plugins",
           body = {
-            name = "request-transformer-advanced",
+            name = "request-transformer",
             config = {
               add = {
                 headers = {"just_a_key"},
@@ -70,7 +70,7 @@ describe("Plugin: request-transformer-advanced (API) [#" .. strategy .. "]", fun
         })
         local body = assert.response(res).has.status(400)
         local json = cjson.decode(body)
-        local msg = "key 'just_a_key' has no value"
+        local msg = { "invalid value: just_a_key" }
         local expected = { config = { add = { headers = msg } } }
         assert.same(expected, json["fields"])
       end)
@@ -79,7 +79,7 @@ describe("Plugin: request-transformer-advanced (API) [#" .. strategy .. "]", fun
           method = "POST",
           path = "/plugins",
           body = {
-            name = "request-transformer-advanced",
+            name = "request-transformer",
             config = {
               replace = {
                 headers = {"just_a_key"},
@@ -92,7 +92,7 @@ describe("Plugin: request-transformer-advanced (API) [#" .. strategy .. "]", fun
         })
         local body = assert.response(res).has.status(400)
         local json = cjson.decode(body)
-        local msg = "key 'just_a_key' has no value"
+        local msg = { "invalid value: just_a_key" }
         local expected = { config = { replace = { headers = msg } } }
         assert.same(expected, json["fields"])
       end)
@@ -101,7 +101,7 @@ describe("Plugin: request-transformer-advanced (API) [#" .. strategy .. "]", fun
           method = "POST",
           path = "/plugins",
           body = {
-            name = "request-transformer-advanced",
+            name = "request-transformer",
             config = {
               append = {
                 headers = {"just_a_key"},
@@ -114,7 +114,7 @@ describe("Plugin: request-transformer-advanced (API) [#" .. strategy .. "]", fun
         })
         local body = assert.response(res).has.status(400)
         local json = cjson.decode(body)
-        local msg = "key 'just_a_key' has no value"
+        local msg = { "invalid value: just_a_key" }
         local expected = { config = { append = { headers = msg } } }
         assert.same(expected, json["fields"])
       end)

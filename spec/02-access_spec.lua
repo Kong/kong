@@ -2,7 +2,7 @@ local helpers = require "spec.helpers"
 local cjson   = require "cjson"
 
 for _, strategy in helpers.each_strategy() do
-describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", function()
+describe("Plugin: request-transformer(access) [#" .. strategy .. "]", function()
   local client
 
   lazy_setup(function()
@@ -89,7 +89,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
 
     bp.plugins:insert {
       route = { id = route1.id },
-      name = "request-transformer-advanced",
+      name = "request-transformer",
       config = {
         add = {
           headers = {"h1:v1", "h2:value:2"}, -- payload containing a colon
@@ -100,7 +100,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
     }
     bp.plugins:insert {
       route = { id = route2.id },
-      name = "request-transformer-advanced",
+      name = "request-transformer",
       config = {
         add = {
           headers = {"host:mark"}
@@ -109,7 +109,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
     }
     bp.plugins:insert {
       route = { id = route3.id },
-      name = "request-transformer-advanced",
+      name = "request-transformer",
       config = {
         add = {
           headers = {"x-added:a1", "x-added2:b1", "x-added3:c2"},
@@ -132,7 +132,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
     }
     bp.plugins:insert {
       route = { id = route4.id },
-      name = "request-transformer-advanced",
+      name = "request-transformer",
       config = {
         remove = {
           headers = {"x-to-remove"},
@@ -143,7 +143,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
     }
     bp.plugins:insert {
       route = { id = route5.id },
-      name = "request-transformer-advanced",
+      name = "request-transformer",
       config = {
         replace = {
           headers = {"h1:v1"},
@@ -154,7 +154,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
     }
     bp.plugins:insert {
       route = { id = route6.id },
-      name = "request-transformer-advanced",
+      name = "request-transformer",
       config = {
         append = {
           headers = {"h1:v1", "h1:v2", "h2:v1",},
@@ -165,14 +165,14 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
     }
     bp.plugins:insert {
       route = { id = route7.id },
-      name = "request-transformer-advanced",
+      name = "request-transformer",
       config = {
         http_method = "POST"
       }
     }
     bp.plugins:insert {
       route = { id = route8.id },
-      name = "request-transformer-advanced",
+      name = "request-transformer",
       config = {
         http_method = "GET"
       }
@@ -180,7 +180,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
 
     bp.plugins:insert {
       route = { id = route9.id },
-      name = "request-transformer-advanced",
+      name = "request-transformer",
       config = {
         rename = {
           headers = {"x-to-rename:x-is-renamed"},
@@ -192,7 +192,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
 
     bp.plugins:insert {
       route = { id = route10.id },
-      name = "request-transformer-advanced",
+      name = "request-transformer",
       config = {
         add = {
           querystring = {"uri_param1:$(uri_captures.user1)", "uri_param2[some_index][1]:$(uri_captures.user2)"},
@@ -202,7 +202,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
 
     bp.plugins:insert {
       route = { id = route11.id },
-      name = "request-transformer-advanced",
+      name = "request-transformer",
       config = {
         replace = {
           uri = "/requests/user2/$(uri_captures.user2)/user1/$(uri_captures.user1)",
@@ -212,7 +212,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
 
     bp.plugins:insert {
       route = { id = route12.id },
-      name = "request-transformer-advanced",
+      name = "request-transformer",
       config = {
         add = {
           querystring = {"uri_param1:$(uri_captures.user1 or 'default1')", "uri_param2:$(uri_captures.user2 or 'default2')"},
@@ -222,7 +222,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
 
     bp.plugins:insert {
       route = { id = route13.id },
-      name = "request-transformer-advanced",
+      name = "request-transformer",
       config = {
         replace = {
           uri = "/requests/user2/$(10 * uri_captures.user1)",
@@ -232,7 +232,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
 
     bp.plugins:insert {
       route = { id = route14.id },
-      name = "request-transformer-advanced",
+      name = "request-transformer",
       config = {
         replace = {
           uri = "/requests$(uri_captures[0])",
@@ -242,7 +242,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
 
     bp.plugins:insert {
       route = { id = route15.id },
-      name = "request-transformer-advanced",
+      name = "request-transformer",
       config = {
         add = {
           querystring = {"uri_param1:$(uri_captures.user1)", "uri_param2:$(headers.host)"},
@@ -256,7 +256,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
 
     bp.plugins:insert {
       route = { id = route16.id },
-      name = "request-transformer-advanced",
+      name = "request-transformer",
       config = {
         replace = {
           querystring = {"q2:$(headers['x-remove-header'])"},
@@ -273,7 +273,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
 
     bp.plugins:insert {
       route = { id = route17.id },
-      name = "request-transformer-advanced",
+      name = "request-transformer",
       config = {
         replace = {
           querystring = {"q2:$(headers['x-replace-header'])"},
@@ -288,7 +288,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
 
     bp.plugins:insert {
       route = { id = route18.id },
-      name = "request-transformer-advanced",
+      name = "request-transformer",
       config = {
         add = {
           querystring = {[[q1:$('$(uri_captures.user1)')]]},
@@ -298,7 +298,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
 
     bp.plugins:insert {
       route = { id = route19.id },
-      name = "request-transformer-advanced",
+      name = "request-transformer",
       config = {
         add = {
           -- not inserting a value, but the `uri_captures` table itself to provoke a rendering error
@@ -309,7 +309,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
 
     assert(helpers.start_kong({
       database = strategy,
-      plugins = "bundled, request-transformer-advanced",
+      plugins = "bundled, request-transformer",
       nginx_conf = "spec/fixtures/custom_nginx.template",
     }))
   end)

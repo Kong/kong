@@ -145,11 +145,11 @@ local function iter(config_array)
 
     local res, err = param_value(current_value, config_array)
     if err then
-      return error("[request-transformer-advanced] failed to render the template ",
+      return error("[request-transformer] failed to render the template ",
         current_value, ", error:", err)
     end
 
-    ngx_log(DEBUG, "[request-transformer-advanced] template `", current_value,
+    ngx_log(DEBUG, "[request-transformer] template `", current_value,
       "` rendered to `", res, "`")
 
     return i, current_name, res
@@ -208,9 +208,8 @@ local function transform_headers(conf)
 
   -- Append header(s)
   for _, name, value in iter(conf.append.headers) do
-    req_set_header(name, append_value(req_get_headers()[name], value))
-    if name:lower() == HOST then -- Host header has a special treatment
-      ngx.var.upstream_host = value
+    if name:lower() ~= HOST then
+      req_set_header(name, append_value(req_get_headers()[name], value))
     end
   end
 end
@@ -468,11 +467,11 @@ local function transform_uri(conf)
 
     local res, err = param_value(conf.replace.uri, conf.replace)
     if err then
-      return error("[request-transformer-advanced] failed to render the template ",
+      return error("[request-transformer] failed to render the template ",
         conf.replace.uri, ", error:", err)
     end
 
-    ngx_log(DEBUG, "[request-transformer-advanced] template `", conf.replace.uri,
+    ngx_log(DEBUG, "[request-transformer] template `", conf.replace.uri,
       "` rendered to `", res, "`")
 
     if res then

@@ -5,7 +5,8 @@ local _M = {}
 
 
 function _M.rt_rename(_, _, dao)
-  local plugins, err = dao.plugins:find_all({ name = "request-transformer" })
+  local plugins, err = dao.plugins:find_all(
+                       { name = "request-transformer-advanced" })
   if err then
     return err
   end
@@ -13,7 +14,7 @@ function _M.rt_rename(_, _, dao)
   for i = 1, #plugins do
     local plugin = plugins[i]
     local _, err = dao.plugins:insert({
-      name = "request-transformer-advanced",
+      name = "request-transformer",
       api_id = plugin.api_id,
       consumer_id = plugin.consumer_id,
       enabled = plugin.enabled,

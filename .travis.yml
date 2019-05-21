@@ -26,11 +26,11 @@ services:
 
 env:
   global:
-    - PLUGIN_NAME=request-transformer-advanced
+    - PLUGIN_NAME=request-transformer
     - LUAROCKS=3.0.4
     - OPENSSL=1.1.1a
-    - KONG_REPOSITORY=kong-ee
-    - KONG_LATEST=master
+    - KONG_REPOSITORY=kong
+    - KONG_LATEST=feat/move_req_transf
     - CASSANDRA_BASE=2.2.12
     - CASSANDRA_LATEST=3.9
     - OPENRESTY_LATEST=1.13.6.2
@@ -50,7 +50,7 @@ env:
       KONG_TAG=$KONG_LATEST
 
 install:
-  - git clone --single-branch https://github.com/Kong/kong-ci ../kong-ci
+  - git clone --single-branch https://$GITHUB_TOKEN:@github.com/Kong/kong-ci ../kong-ci
   - source ../kong-ci/setup_plugin_env.sh
 
 script:
