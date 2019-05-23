@@ -9,7 +9,7 @@ local floor            = math.floor
 local get_method       = ngx.req.get_method
 local ngx_get_uri_args = ngx.req.get_uri_args
 local ngx_get_headers  = ngx.req.get_headers
-local resp_get_headers = ngx.resp.get_headers
+local resp_get_headers = ngx.resp and ngx.resp.get_headers
 local ngx_log          = ngx.log
 local ngx_now          = ngx.now
 local ngx_re_gmatch    = ngx.re.gmatch
@@ -253,7 +253,7 @@ local ProxyCacheHandler = BasePlugin:extend()
 
 
 ProxyCacheHandler.PRIORITY = 100
-ProxyCacheHandler.VERSION = "1.2.0"
+ProxyCacheHandler.VERSION = "1.2.1"
 
 
 function ProxyCacheHandler:new()
