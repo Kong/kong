@@ -9,6 +9,7 @@ local floor            = math.floor
 local get_method       = ngx.req.get_method
 local ngx_get_uri_args = ngx.req.get_uri_args
 local ngx_get_headers  = ngx.req.get_headers
+local resp_get_headers = ngx.resp and ngx.resp.get_headers
 local ngx_log          = ngx.log
 local ngx_now          = ngx.now
 local ngx_re_gmatch    = ngx.re.gmatch
@@ -262,7 +263,7 @@ end
 function ProxyCacheHandler:init_worker()
   -- catch notifications from other nodes that we purged a cache entry
   local cluster_events = kong.cluster_events
-ngx.log(ngx.ERR, "init_worker proxycache")
+
   -- only need one worker to handle purges like this
   -- if/when we introduce inline LRU caching this needs to involve
   -- worker events as well
@@ -413,7 +414,7 @@ function ProxyCacheHandler:header_filter(conf)
 
   -- if this is a cacheable request, gather the headers and mark it so
   if cacheable_response(ngx, conf, cc) then
-    ctx.res_headers = ngx.resp.get_headers(0, true)
+    ctx.res_headers = resp_get_headers(0, true)
     ctx.res_ttl = conf.cache_control and resource_ttl(cc) or conf.cache_ttl
     ngx.ctx.proxy_cache = ctx
 
