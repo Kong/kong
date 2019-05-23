@@ -263,7 +263,7 @@ end
 function ProxyCacheHandler:init_worker()
   -- catch notifications from other nodes that we purged a cache entry
   local cluster_events = kong.cluster_events
-ngx.log(ngx.ERR, "init_worker proxycache")
+
   -- only need one worker to handle purges like this
   -- if/when we introduce inline LRU caching this needs to involve
   -- worker events as well
