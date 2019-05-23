@@ -141,8 +141,7 @@ do
 end
 
 
-local function execute_plugins_iterator(ctx, phase)
-  local plugins_iterator = runloop.get_plugins_iterator()
+local function execute_plugins_iterator(plugins_iterator, ctx, phase)
   for plugin, configuration in plugins_iterator:iterate(ctx, phase) do
     kong_global.set_named_ctx(kong, "plugin", configuration)
     kong_global.set_namespaced_log(kong, plugin.name)
@@ -514,13 +513,8 @@ function Kong.ssl_certificate()
 
   runloop.certificate.before(mock_ctx)
 
-  local ok, err = runloop.update_plugins_iterator()
-  if not ok then
-    ngx_log(ngx_CRIT, "could not ensure plugins iterator is up to date: ", err)
-    return ngx.exit(ngx.ERROR)
-  end
-
-  execute_plugins_iterator(mock_ctx, "certificate")
+  local plugins_iterator = runloop.get_updated_plugins_iterator()
+  execute_plugins_iterator(plugins_iterator, mock_ctx, "certificate")
 end
 
 function Kong.balancer()
@@ -628,15 +622,14 @@ function Kong.rewrite()
   runloop.rewrite.before(ctx)
 
   -- On HTTPS requests, the plugins iterator is already updated in the ssl_certificate phase
-  if ngx.var.https ~= "on" then
-    local ok, err = runloop.update_plugins_iterator()
-    if not ok then
-      ngx_log(ngx_CRIT, "could not ensure plugins iterator is up to date: ", err)
-      return kong.response.exit(500, { message  = "An unexpected error occurred" })
-    end
+  local plugins_iterator
+  if ngx.var.https == "on" then
+    plugins_iterator = runloop.get_plugins_iterator()
+  else
+    plugins_iterator = runloop.get_updated_plugins_iterator()
   end
 
-  execute_plugins_iterator(ctx, "rewrite")
+  execute_plugins_iterator(plugins_iterator, ctx, "rewrite")
 
   runloop.rewrite.after(ctx)
 end
@@ -648,13 +641,8 @@ function Kong.preread()
 
   runloop.preread.before(ctx)
 
-  local ok, err = runloop.update_plugins_iterator()
-  if not ok then
-    ngx_log(ngx_CRIT, "could not ensure plugins iterator is up to date: ", err)
-    return kong.response.exit(500, { message  = "An unexpected error occurred" })
-  end
-
-  execute_plugins_iterator(ctx, "preread")
+  local plugins_iterator = runloop.get_updated_plugins_iterator()
+  execute_plugins_iterator(plugins_iterator, ctx, "preread")
 
   runloop.preread.after(ctx)
 end
@@ -702,7 +690,8 @@ function Kong.header_filter()
 
   runloop.header_filter.before(ctx)
 
-  execute_plugins_iterator(ctx, "header_filter")
+  local plugins_iterator = runloop.get_plugins_iterator()
+  execute_plugins_iterator(plugins_iterator, ctx, "header_filter")
 
   runloop.header_filter.after(ctx)
 end
@@ -712,7 +701,8 @@ function Kong.body_filter()
 
   local ctx = ngx.ctx
 
-  execute_plugins_iterator(ctx, "body_filter")
+  local plugins_iterator = runloop.get_plugins_iterator()
+  execute_plugins_iterator(plugins_iterator, ctx, "body_filter")
 
   runloop.body_filter.after(ctx)
 end
@@ -722,7 +712,8 @@ function Kong.log()
 
   local ctx = ngx.ctx
 
-  execute_plugins_iterator(ctx, "log")
+  local plugins_iterator = runloop.get_plugins_iterator()
+  execute_plugins_iterator(plugins_iterator, ctx, "log")
 
   runloop.log.after(ctx)
 end
@@ -735,8 +726,8 @@ function Kong.handle_error()
   ctx.KONG_UNEXPECTED = true
 
   if not ctx.plugins then
-    runloop.update_plugins_iterator()
-    local plugins_iterator = runloop.get_plugins_iterator()
+
+    local plugins_iterator = runloop.get_updated_plugins_iterator()
     for _ in plugins_iterator:iterate(ctx, "content") do
       -- just build list of plugins
     end
