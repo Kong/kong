@@ -101,6 +101,7 @@ protocol=https
 [error]
 
 
+
 === TEST 4: client.get_protocol() returns "https" when kong receives an http request from a trusted ip and allow_terminated is true
 --- http_config eval: $t::Util::HttpConfig
 --- config
@@ -152,6 +153,7 @@ X-Forwarded-Proto: https
 protocol=http
 --- no_error_log
 [error]
+
 
 
 === TEST 6: client.get_protocol() returns "http" when kong receives an http request from a non trusted ip
@@ -310,5 +312,3 @@ qq{
 protocol=tls
 --- no_error_log
 [error]
-
-

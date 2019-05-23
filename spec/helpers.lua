@@ -533,7 +533,7 @@ end
 -- @param `port`    The port where the server will be listening to
 -- @param `opts     A table of options defining the server's behavior
 -- @return `thread` A thread object
-local function tcp_server(port, opts, ...)
+local function tcp_server(port, opts)
   local threads = require "llthreads2.ex"
   opts = opts or {}
   local thread = threads.new({
@@ -541,15 +541,17 @@ local function tcp_server(port, opts, ...)
       local socket = require "socket"
       local server = assert(socket.tcp())
       server:settimeout(360)
-      assert(server:setoption('reuseaddr', true))
+      assert(server:setoption("reuseaddr", true))
       assert(server:bind("*", port))
       assert(server:listen())
       local line
       local oks, fails = 0, 0
-      for i = 1, (opts.requests or 1) do
+      local handshake_done = false
+      local n = opts.requests or 1
+      for _ = 1, n + 1 do
         local client = assert(server:accept())
 
-        if opts.tls then
+        if opts.tls and handshake_done then
           local ssl = require "ssl"
           local params = {
             mode = "server",
@@ -568,15 +570,23 @@ local function tcp_server(port, opts, ...)
           fails = fails + 1
 
         else
-          if line == "@DIE@" then
-            client:send(string.format("%d:%d\n", oks, fails))
-            client:close()
-            break
+          if not handshake_done then
+            assert(line == "\\START")
+            client:send("\\OK\n")
+            handshake_done = true
+
+          else
+            if line == "@DIE@" then
+              client:send(string.format("%d:%d\n", oks, fails))
+              client:close()
+              break
+            end
+
+            oks = oks + 1
+
+            client:send((opts.prefix or "") .. line .. "\n")
           end
 
-          oks = oks + 1
-
-          client:send((opts.prefix or "") .. line .. "\n")
           client:close()
         end
       end
@@ -585,8 +595,27 @@ local function tcp_server(port, opts, ...)
     end
   }, port, opts)
 
-  local thr = thread:start(...)
-  ngx.sleep(0.01)
+  local thr = thread:start()
+
+  -- not necessary for correctness because we do the handshake,
+  -- but avoids harmless "connection error" messages in the wait loop
+  -- in case the client is ready before the server below.
+  ngx.sleep(0.001)
+
+  local sock = ngx.socket.tcp()
+  sock:settimeout(0.01)
+  while true do
+    if sock:connect("localhost", port) then
+      sock:send("\\START\n")
+      local ok = sock:receive()
+      sock:close()
+      if ok == "\\OK" then
+        break
+      end
+    end
+  end
+  sock:close()
+
   return thr
 end
 

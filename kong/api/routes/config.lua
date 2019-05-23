@@ -39,7 +39,12 @@ return {
       if self.params._format_version then
         entities, _, err_t, vers, new_hash = dc:parse_table(self.params)
       else
-      local config = self.params.config
+        local config = self.params.config
+        if not config then
+          return kong.response.exit(400, {
+            message = "expected a declarative configuration"
+          })
+        end
         entities, _, err_t, vers, new_hash =
           dc:parse_string(config, nil, accept, old_hash)
       end

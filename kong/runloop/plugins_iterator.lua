@@ -71,7 +71,7 @@ local function load_plugin_from_db(key)
 end
 
 
---- Load the configuration for a plugin entry in the DB.
+--- Load the configuration for a plugin entry.
 -- Given a Route, Service, Consumer and a plugin name, retrieve the plugin's
 -- configuration if it exists. Results are cached in ngx.dict
 -- @param[type=string] name Name of the plugin being tested for configuration.
@@ -241,7 +241,8 @@ end
 local PluginsIterator = {}
 
 
---- Plugins for request iterator.
+--- Plugins Iterator
+--
 -- Iterate over the plugin loaded for a request, stored in
 --`ngx.ctx.plugins`.
 --

@@ -491,7 +491,7 @@ describe("Admin API #off", function()
         }
       })
 
-      local body =assert.response(res).has.status(400)
+      local body = assert.response(res).has.status(400)
       local json = cjson.decode(body)
       assert.same({
         code = 14,
@@ -502,6 +502,19 @@ describe("Admin API #off", function()
                   [[{error="failed parsing declarative configuration: ]] ..
                   [[expected an object"}]],
         name = "invalid declarative configuration",
+      }, json)
+    end)
+
+    it("returns 400 when given no input", function()
+      local res = assert(client:send {
+        method = "POST",
+        path = "/config",
+      })
+
+      local body = assert.response(res).has.status(400)
+      local json = cjson.decode(body)
+      assert.same({
+        message = "expected a declarative configuration",
       }, json)
     end)
   end)
