@@ -176,41 +176,41 @@ local function migrate_legacy_admins(connector, coordinator)
     if not map_result[1] then
       return true
     end
-    local consumer, err = connector:query("SELECT * FROM consumers WHERE id = " .. map_result[1].consumer_id)
+    for i=1,#map_result do
+      local consumer, err = connector:query("SELECT * FROM consumers WHERE id = " .. map_result[i].consumer_id)
 
-    if err then
-      return nil, err
-    end
-    if not consumer[1] then
-      return true
-    end
+      if err then
+        return nil, err
+      end
+      if not consumer[1] then
+        return true
+      end
+      -- gsub requires a string
+      if not consumer[1].custom_id then
+        consumer[1].custom_id = ''
+      end
 
-    -- gsub requires a string
-    if not consumer[1].custom_id then
-      consumer[1].custom_id = ''
-    end
+      if not consumer[1].username then
+        consumer[1].username = ''
+      end
 
-    if not consumer[1].username then
-      consumer[1].username = ''
-    end
-
-    local ok, err = connector:query(
-      fmt("INSERT INTO admins(id, created_at, updated_at, consumer_id, rbac_user_id, email, status, username, custom_id) " ..
-        "VALUES(%s, '%s', '%s', %s, %s, '%s', %s, '%s', '%s')",
-        utils.uuid(),
-        consumer[1].created_at,
-        consumer[1].created_at,
-        map_result[1].consumer_id,
-        map_result[1].user_id,
-        consumer[1].email,
-        consumer[1].status,
-        string.gsub(consumer[1].username, "^[a-zA-Z0-9-_~.]*:", ""),
-        string.gsub(consumer[1].custom_id, "^[a-zA-Z0-9-_~.]*:", "")
+      local ok, err = connector:query(
+        fmt("INSERT INTO admins(id, created_at, updated_at, consumer_id, rbac_user_id, email, status, username, custom_id) " ..
+          "VALUES(%s, '%s', '%s', %s, %s, '%s', %s, '%s', '%s')",
+          utils.uuid(),
+          consumer[1].created_at,
+          consumer[1].created_at,
+          map_result[i].consumer_id,
+          map_result[i].user_id,
+          consumer[1].email,
+          consumer[1].status,
+          string.gsub(consumer[1].username, "^[a-zA-Z0-9-_~.]*:", ""),
+          string.gsub(consumer[1].custom_id, "^[a-zA-Z0-9-_~.]*:", "")
+        )
       )
-    )
-
-    if not ok then
-      return nil, err
+      if not ok then
+        return nil, err
+      end
     end
   end
   return true
