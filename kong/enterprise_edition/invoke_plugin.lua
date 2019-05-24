@@ -95,16 +95,26 @@ end
 
 
 local function validate(opts)
-  local plugin = loaded_plugins_map[opts.name]
+  if type(opts) ~= "table" then
+    return nil, "invoke_plugin validate: opts must be a table"
+  end
 
+  local plugin = loaded_plugins_map[opts.name]
   if not plugin then
     return nil, "plugin: " .. opts.name .. " not found."
+  end
+
+  local config = {}
+  if type(opts.config) == "string" then
+    config = cjson.decode(opts.config)
+  elseif type(opts.config) == "table" then
+    config = utils.deep_copy(opts.config)
   end
 
   local fields = {
     name = opts.name,
     service = { id = SERVICE_IDS[opts.api_type], },
-    config = utils.deep_copy(opts.config or {}),
+    config = config,
   }
 
   -- convert plugin configuration over to model to obtain defaults

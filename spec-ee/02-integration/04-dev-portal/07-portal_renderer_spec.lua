@@ -528,7 +528,8 @@ for _, strategy in helpers.each_strategy() do
               },
               headers = {["Content-Type"] = "application/json"},
             })
-            assert.equals(res.status, 201)
+
+            assert.equals(201, res.status)
 
             -- sleep to allow time for threaded file migrations to complete
             ngx.sleep(5)

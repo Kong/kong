@@ -42,6 +42,7 @@ local log = require "kong.cmd.utils.log"
 local DB = require "kong.db"
 local singletons = require "kong.singletons"
 local ffi = require "ffi"
+local invoke_plugin = require "kong.enterprise_edition.invoke_plugin"
 
 ffi.cdef[[
 int setenv(const char *name, const char *value, int overwrite);
@@ -215,7 +216,13 @@ local function get_db_utils(strategy, tables, plugins)
   end
 
   db:truncate("plugins")
-  assert(db.plugins:load_plugin_schemas(conf.loaded_plugins))
+  local loaded_plugins = assert(db.plugins:load_plugin_schemas(conf.loaded_plugins))
+
+  -- XXX EE
+  singletons.invoke_plugin = invoke_plugin.new {
+    loaded_plugins = loaded_plugins,
+    kong_global = kong_global,
+  }
 
   -- cleanup new DB tables
   if not tables then

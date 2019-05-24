@@ -467,6 +467,38 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
         assert.equals(json.config.portal_auto_approve, expected_config.portal_auto_approve)
       end)
 
+      it("validats auth type with current auth conf when none is sent with request", function()
+        assert(bp.workspaces:insert {
+          name = "neat-portal-friend",
+          config = {
+            portal = true,
+            portal_auth = "key-auth",
+            portal_auth_conf = {
+              ["key_in_body"] = false,
+            }
+          }
+        })
+
+        local res = client:patch("/workspaces/neat-portal-friend", {
+          body = {
+            config = {
+              portal_auth = "basic-auth",
+            }
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          }
+        })
+
+        local body = assert.res_status(400, res)
+        local json = cjson.decode(body)
+        assert.same({
+          config = {
+            key_in_body = 'unknown field'
+          }
+        }, json.message)
+      end)
+
       describe("portal_auth_conf", function()
 
         before_each(function()
@@ -498,7 +530,7 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
 
           local body = assert.res_status(400, res)
           local json = cjson.decode(body)
-          assert.equals("'config.portal_auth' must be set in order to configure 'config.portal_auth_type'", json.message)
+          assert.equals("'config.portal_auth' must be set in order to configure 'config.portal_auth_conf'", json.message)
         end)
 
         it("(basic-auth) allows PATCH when setting 'portal_auth' in same call", function()

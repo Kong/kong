@@ -11,6 +11,7 @@ local enterprise_utils = require "kong.enterprise_edition.utils"
 local MetaSchema   = require "kong.db.schema.metaschema"
 local log = ngx.log
 local ERR = ngx.ERR
+local null = ngx.null
 local _log_prefix = "[developers] "
 local helpers = {} -- XXX EE remove this
 local ws_constants = constants.WORKSPACE_CONFIG
@@ -142,7 +143,7 @@ end
 local function set_portal_developer_meta_fields(ws, entity)
   local entity_config = entity.config or {}
   if entity_config.portal_developer_meta_fields and
-    entity_config.portal_developer_meta_fields ~= ngx.null then
+    entity_config.portal_developer_meta_fields ~= null then
 
     local meta_fields = entity_config.portal_developer_meta_fields
     local ok, err = validate_developer_meta_fields(meta_fields)
@@ -159,7 +160,7 @@ end
 local function validate_incoming_developer_meta(ws, entity)
   local ws_config = ws.config or {}
   if ws_config.portal_developer_meta_fields and
-  ws_config.portal_developer_meta_fields ~= ngx.null  then
+  ws_config.portal_developer_meta_fields ~= null then
 
     -- build temp schema to validate developer meta
     -- against developer meta fields(json)
@@ -220,47 +221,75 @@ end
 
 
 local function set_portal_auth_conf(ws, entity)
-  local entity_config = entity.config or {}
-
-  local auth_type = entity_config.portal_auth 
-  if not auth_type or auth_type == ngx.null then
-    auth_type = workspaces.retrieve_ws_config(ws_constants.PORTAL_AUTH, ws)
+  -- if config not sent, no need to validate
+  local entity_config = entity.config
+  if entity_config == nil then
+    return entity
   end
 
-  local auth_empty = not auth_type or
-                        auth_type == ngx.null or
-                        auth_type == ""
-
-  if auth_empty and
-     entity_config.portal_auth_conf and
-     entity_config.portal_auth_conf ~= ngx.null then
-
-    return nil, "'config.portal_auth' must be set in order to configure 'config.portal_auth_type'"
+  if type(entity_config) ~= "table" then
+    return nil, "'config' must be type 'table'"
   end
 
-  if auth_type and
-     entity_config.portal_auth_conf and
-     entity_config.portal_auth_conf ~= ngx.null then
+  local portal_auth = entity_config.portal_auth
+  local portal_auth_conf = entity_config.portal_auth_conf
 
-    local auth_conf = entity_config.portal_auth_conf
-    if type(auth_conf) ~= "table" then
-      return nil, "'config.portal_auth_conf' must be type 'table'"
-    end
+  -- portal_auth and portal_auth_conf not updated, no need to validate
+  if portal_auth == nil and portal_auth_conf == nil then
+    return entity
+  end
 
-    local ok, err = singletons.invoke_plugin({
-      name = auth_type,
-      config = auth_conf,
-      phases = { "access" },
-      api_type = "portal",
-      db = kong.db,
-      validate_only = true,
-    })
+  if portal_auth == null then
+    -- portal_auth sent as null, validate with default from kong.conf
+    portal_auth = kong.configuration.portal_auth
+  elseif portal_auth == nil then
+    -- portal_auth not sent in request, validate with either ws or kong.conf
+    portal_auth = workspaces.retrieve_ws_config(ws_constants.PORTAL_AUTH, ws)
+  elseif type(portal_auth) ~= "string" then
+    return nil, "'config.portal_auth' must be type 'string'"
+  end
 
-    if not ok then
+  if portal_auth_conf == null then
+    -- portal_auth_conf sent as null, validate with default from kong.conf
+    portal_auth_conf = kong.configuration.portal_auth_conf
+  elseif portal_auth_conf == nil then
+    -- portal_auth_conf not sent in request, validate with either ws or kong.conf
+    portal_auth_conf = workspaces.retrieve_ws_config(ws_constants.PORTAL_AUTH_CONF, ws)
+  elseif type(portal_auth_conf) ~= "table" then
+    return nil, "'config.portal_auth_conf' must be type 'table'"
+  else
+    -- encode user submitted portal_auth_conf
+    local encoded_portal_auth_conf, err = cjson.encode(portal_auth_conf)
+    if err then
       return nil, err
     end
 
-    entity.config.portal_auth_conf = cjson.encode(auth_conf)
+    -- re assign to entity
+    entity_config.portal_auth_conf = encoded_portal_auth_conf
+  end
+
+  -- if portal_auth is disabled, we don't have anything to validate, eject
+  if portal_auth == "" then
+    return entity
+  end
+
+  -- portal_auth not set in workspace or kong.conf, but config.portal_auth_conf
+  if portal_auth == nil then
+    return nil, "'config.portal_auth' must be set in order to configure 'config.portal_auth_conf'"
+  end
+
+  -- validate auth type and conf
+  local ok, err = singletons.invoke_plugin({
+    name = portal_auth,
+    config = portal_auth_conf,
+    phases = { "access" },
+    api_type = "portal",
+    db = kong.db,
+    validate_only = true,
+  })
+
+  if not ok then
+    return nil, err
   end
 
   return entity
