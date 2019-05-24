@@ -19,27 +19,31 @@ local function seed_kong_admin_data_rbac_pg()
     DECLARE def_ws_id uuid;
     DECLARE super_admin_role_id uuid;
     DECLARE kong_admin_default_role_id uuid;
+    DECLARE tmp record;
     BEGIN
 
     SELECT uuid_in(overlay(overlay(md5(random()::text || ':' || clock_timestamp()::text) placing '4' from 13) placing to_hex(floor(random()*(11-8+1) + 8)::int)::text from 17)::cstring) into kong_admin_user_id;
     SELECT id into def_ws_id from workspaces where name = 'default';
 
     -- create kong_admin user
-    INSERT INTO rbac_users(id, name, user_token, enabled, comment) VALUES(kong_admin_user_id, 'default:kong_admin', '%s', true, 'Initial RBAC Secure User');
-    INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value) VALUES(def_ws_id, 'default', kong_admin_user_id, 'rbac_users', 'id', kong_admin_user_id);
-    INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value) VALUES(def_ws_id, 'default', kong_admin_user_id, 'rbac_users', 'name', 'kong_admin');
-    INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value) VALUES(def_ws_id, 'default', kong_admin_user_id, 'rbac_users', 'user_token', '%s');
+    SELECT * into tmp FROM rbac_users WHERE name IN ('kong_admin', 'default:kong_admin') LIMIT 1;
+    IF NOT FOUND THEN
+      INSERT INTO rbac_users(id, name, user_token, enabled, comment) VALUES(kong_admin_user_id, 'default:kong_admin', '%s', true, 'Initial RBAC Secure User');
+      INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value) VALUES(def_ws_id, 'default', kong_admin_user_id, 'rbac_users', 'id', kong_admin_user_id);
+      INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value) VALUES(def_ws_id, 'default', kong_admin_user_id, 'rbac_users', 'name', 'kong_admin');
+      INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value) VALUES(def_ws_id, 'default', kong_admin_user_id, 'rbac_users', 'user_token', '%s');
 
 
-    SELECT id into super_admin_role_id from rbac_roles where name = 'default:super-admin';
-    INSERT into rbac_user_roles(user_id, role_id) VALUES(kong_admin_user_id, super_admin_role_id);
+      SELECT id into super_admin_role_id from rbac_roles where name = 'default:super-admin';
+      INSERT into rbac_user_roles(user_id, role_id) VALUES(kong_admin_user_id, super_admin_role_id);
 
-    -- create default role for the user
-    SELECT uuid_in(overlay(overlay(md5(random()::text || ':' || clock_timestamp()::text) placing '4' from 13) placing to_hex(floor(random()*(11-8+1) + 8)::int)::text from 17)::cstring) into kong_admin_default_role_id;
-    INSERT into rbac_roles(id, name, comment, is_default) VALUES(kong_admin_default_role_id, 'default:kong_admin', 'Default user role generated for kong_admin', true);
-    INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value) VALUES(def_ws_id, 'default', kong_admin_default_role_id, 'rbac_roles', 'id', kong_admin_default_role_id);
-    INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value) VALUES(def_ws_id, 'default', kong_admin_default_role_id, 'rbac_roles', 'name', 'kong_admin');
-    INSERT into rbac_user_roles(user_id, role_id) VALUES(kong_admin_user_id, kong_admin_default_role_id);
+      -- create default role for the user
+      SELECT uuid_in(overlay(overlay(md5(random()::text || ':' || clock_timestamp()::text) placing '4' from 13) placing to_hex(floor(random()*(11-8+1) + 8)::int)::text from 17)::cstring) into kong_admin_default_role_id;
+      INSERT into rbac_roles(id, name, comment, is_default) VALUES(kong_admin_default_role_id, 'default:kong_admin', 'Default user role generated for kong_admin', true);
+      INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value) VALUES(def_ws_id, 'default', kong_admin_default_role_id, 'rbac_roles', 'id', kong_admin_default_role_id);
+      INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value) VALUES(def_ws_id, 'default', kong_admin_default_role_id, 'rbac_roles', 'name', 'kong_admin');
+      INSERT into rbac_user_roles(user_id, role_id) VALUES(kong_admin_user_id, kong_admin_default_role_id);
+    END IF;
 
     END $$;
   ]], password, password)
@@ -77,11 +81,8 @@ local function seed_kong_admin_data_pg()
         INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value) VALUES(def_ws_id, 'default', kong_admin_consumer_id, 'consumers', 'id', kong_admin_consumer_id);
         INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value) VALUES(def_ws_id, 'default', kong_admin_consumer_id, 'consumers', 'username', 'kong_admin');
         INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value) VALUES(def_ws_id, 'default', kong_admin_consumer_id, 'consumers', 'custom_id', null);
-    END IF;
 
     -- populate consumers_rbac_users_map
-    SELECT * into tmp FROM consumers_rbac_users_map where consumer_id=kong_admin_consumer_id limit 1;
-    IF NOT FOUND THEN
         SELECT uuid_in(overlay(overlay(md5(random()::text || ':' || clock_timestamp()::text) placing '4' from 13) placing to_hex(floor(random()*(11-8+1) + 8)::int)::text from 17)::cstring) into kong_admin_admin_id;
         SELECT id FROM consumers where username='default:kong_admin' limit 1 into kong_admin_consumer_id;
         SELECT id FROM rbac_users where name='default:kong_admin' limit 1 into kong_rbac_user_id;
@@ -91,7 +92,6 @@ local function seed_kong_admin_data_pg()
         INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value) VALUES(def_ws_id, 'default', kong_admin_admin_id, 'admins', 'custom_id', null);
         INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value) VALUES(def_ws_id, 'default', kong_admin_admin_id, 'admins', 'email', null);
     END IF;
-
     -- create basic-auth credentials
     SELECT * into tmp FROM basicauth_credentials where username='default:kong_admin' limit 1;
     IF NOT FOUND THEN
