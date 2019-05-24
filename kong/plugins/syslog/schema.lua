@@ -17,6 +17,7 @@ return {
           { successful_severity = severity },
           { client_errors_severity = severity },
           { server_errors_severity = severity },
+          { serializer = { type = "foreign", reference = "log_serializers" } },
     }, }, },
   },
 }

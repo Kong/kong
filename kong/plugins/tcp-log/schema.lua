@@ -13,6 +13,7 @@ return {
           { keepalive = { type = "number", default = 60000 }, },
           { tls = { type = "boolean", default = false }, },
           { tls_sni = { type = "string" }, },
+          { serializer = { type = "foreign", reference = "log_serializers" } },
         },
     }, },
   }

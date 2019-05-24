@@ -16,6 +16,7 @@ return {
           { retry_count = { type = "integer", default = 10 }, },
           { queue_size = { type = "integer", default = 1 }, },
           { flush_timeout = { type = "number", default = 2 }, },
+          { serializer = { type = "foreign", reference = "log_serializers" } },
     }, }, },
   },
 }

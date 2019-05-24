@@ -1,4 +1,4 @@
-local basic_serializer = require "kong.plugins.log-serializers.basic"
+local serializers = require "kong.tools.log_serializers"
 local BatchQueue = require "kong.tools.batch_queue"
 local cjson = require "cjson"
 local url = require "socket.url"
@@ -139,9 +139,27 @@ local function get_queue_id(conf)
              conf.flush_timeout)
 end
 
+local function get_serializer(name)
+  return serializers.get_serializer(name)
+end
+
+function HttpLogHandler:access(conf)
+  local ok, err = serializers.load_serializer(conf.serializer)
+  if not ok then
+    ngx.log(ngx.ERR, err)
+  end
+end
+
 
 function HttpLogHandler:log(conf)
-  local entry = cjson_encode(basic_serializer.serialize(ngx))
+  local serialize, err = get_serializer(conf.serializer)
+  if not serialize then
+    ngx.log(ngx.ERR, err)
+    return
+  end
+
+  local message = serialize(ngx)
+  local entry = cjson_encode(message)
 
   local queue_id = get_queue_id(conf)
   local q = queues[queue_id]

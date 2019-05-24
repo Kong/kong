@@ -1,5 +1,5 @@
-local basic_serializer = require "kong.plugins.log-serializers.basic"
-local statsd_logger    = require "kong.plugins.datadog.statsd_logger"
+local statsd_logger = require "kong.plugins.datadog.statsd_logger"
+local serializers = require "kong.tools.log_serializers"
 
 
 local ngx_log       = ngx.log
@@ -134,12 +134,31 @@ local function log(premature, conf, message)
 end
 
 
+local function get_serializer(name)
+  return serializers.get_serializer(name)
+end
+
+
+function DatadogHandler:access(conf)
+  local ok, err = serializers.load_serializer(conf.serializer)
+  if not ok then
+    ngx.log(ngx.ERR, err)
+  end
+end
+
+
 function DatadogHandler:log(conf)
   if not ngx.ctx.service then
     return
   end
 
-  local message = basic_serializer.serialize(ngx)
+  local serialize, err = get_serializer(conf.serializer)
+  if not serialize then
+    ngx.log(ngx.ERR, err)
+    return
+  end
+
+  local message = serialize(ngx)
 
   local ok, err = ngx_timer_at(0, log, conf, message)
   if not ok then

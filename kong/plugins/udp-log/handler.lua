@@ -1,4 +1,4 @@
-local serializer = require "kong.plugins.log-serializers.basic"
+local serializers = require "kong.tools.log_serializers"
 local cjson = require "cjson"
 
 local timer_at = ngx.timer.at
@@ -36,8 +36,27 @@ local function log(premature, conf, str)
   end
 end
 
+local function get_serializer(name)
+  return serializers.get_serializer(name)
+end
+
+function UdpLogHandler:access(conf)
+  local ok, err = serializers.load_serializer(conf.serializer)
+  if not ok then
+    ngx.log(ngx.ERR, err)
+  end
+end
+
 function UdpLogHandler:log(conf)
-  local ok, err = timer_at(0, log, conf, cjson.encode(serializer.serialize(ngx)))
+  local serialize, err = get_serializer(conf.serializer)
+  if not serialize then
+    ngx.log(ngx.ERR, err)
+    return
+  end
+
+  local message = serialize(ngx)
+
+  local ok, err = timer_at(0, log, conf, cjson.encode(message))
   if not ok then
     ngx.log(ngx.ERR, "[udp-log] could not create timer: ", err)
   end

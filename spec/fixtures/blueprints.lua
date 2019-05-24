@@ -348,6 +348,15 @@ function _M.new(db)
     }
   end)
 
+  res.log_serializers = new_blueprint(db.log_serializers, function(overrides)
+    return {
+      name = "foo",
+      chunk = overrides.chunk or ngx.encode_base64(
+        [[return {serialize = function() return true end}]]
+      )
+    }
+  end)
+
   return res
 end
 

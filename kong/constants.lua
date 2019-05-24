@@ -94,6 +94,7 @@ return {
     "plugins",
     "cluster_ca",
     "tags",
+    "log_serializers",
   },
   RATELIMIT = {
     PERIODS = {

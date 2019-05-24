@@ -26,6 +26,7 @@ return {
           { client_errors_severity = severity },
           { server_errors_severity = severity },
           { timeout = { type = "number", default = 10000 }, },
+          { serializer = { type = "foreign", reference = "log_serializers" } },
         },
       },
     },
