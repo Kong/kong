@@ -51,6 +51,7 @@ local unique_accross_ws = {
   rbac_users = true,
   workspaces = true,
   workspace_entities = true,
+  snis = true,
 }
 
 

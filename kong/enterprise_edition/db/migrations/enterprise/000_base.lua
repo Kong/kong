@@ -5,7 +5,6 @@ local helpers = require "kong.enterprise_edition.db.migrations.helpers"
 local fmt = string.format
 local created_ts = math.floor(ngx.now()) * 1000
 
-
 local function seed_kong_admin_data_rbac_pg()
   local password = os.getenv("KONG_PASSWORD")
   if not password then

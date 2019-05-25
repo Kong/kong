@@ -5,8 +5,8 @@ return {
   primary_key  = { "id" },
   endpoint_key = "name",
   dao          = "kong.db.dao.snis",
--- XXX if snis
---  workspaceable = true,
+
+  workspaceable = true,
 
   fields = {
     { id           = typedefs.uuid, },

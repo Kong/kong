@@ -1,8 +1,6 @@
 local cassandra = require "cassandra"
 local utils = require "kong.tools.utils"
 
-local fmt = string.format
-
 
 return {
   postgres = {
@@ -10,17 +8,13 @@ return {
       -- 2018-03-27-123400_prepare_certs_and_snis
       DO $$
       BEGIN
-        ALTER TABLE IF EXISTS ssl_certificates    RENAME TO certificates;
-        ALTER TABLE IF EXISTS ssl_servers_names   RENAME TO snis;
-      EXCEPTION WHEN duplicate_table THEN
-        -- Do nothing, accept existing state
-      END$$;
+        INSERT INTO certificates(id, created_at, cert, key)
+          SELECT id, created_at, cert, key FROM ssl_certificates;
 
-      DO $$
-      BEGIN
-        ALTER TABLE snis RENAME COLUMN ssl_certificate_id TO certificate_id;
-        ALTER TABLE snis ADD    COLUMN id uuid;
-      EXCEPTION WHEN undefined_column THEN
+        INSERT INTO snis(id, created_at, name, certificate_id)
+          SELECT uuid_in(overlay(overlay(md5(random()::text || ':' || clock_timestamp()::text) placing '4' from 13) placing to_hex(floor(random()*(11-8+1) + 8)::int)::text from 17)::cstring),
+                 created_at, name, ssl_certificate_id FROM ssl_servers_names;
+      EXCEPTION WHEN undefined_table THEN
         -- Do nothing, accept existing state
       END$$;
 
@@ -46,28 +40,9 @@ return {
 
     ]],
 
-    teardown = function(connector, helpers)
-      assert(connector:connect_migrations())
-
-      -- 2018-03-27-125400_fill_in_snis_ids
-      local rows, err = connector:query([[
-        SELECT * FROM snis;
-      ]])
-      if err then
-        return nil, err
-      end
-      local sql_buffer = { "BEGIN;" }
-      local len = #rows
-      for i = 1, len do
-        sql_buffer[i + 1] = fmt("UPDATE snis SET id = '%s' WHERE name = '%s';",
-                                utils.uuid(),
-                                rows[i].name)
-      end
-      sql_buffer[len + 2] = "COMMIT;"
-      assert(connector:query(table.concat(sql_buffer)))
-
-      -- 2018-03-27-130400_make_ids_primary_keys_in_snis successfully covered
-      -- in 000_base
+    teardown = function(connector)
+      assert(connector:query("DROP TABLE IF EXISTS ssl_servers_names"))
+      assert(connector:query("DROP TABLE IF EXISTS ssl_certificates"))
     end,
   },
 
