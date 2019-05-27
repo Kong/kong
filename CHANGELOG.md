@@ -58,6 +58,9 @@ For more details about the updated installation, please visit the official docs:
 - The loading of declarative configuration is now done atomically, and with a
   safety check to verify that the new configuration fits in memory.
   [#4579](https://github.com/Kong/kong/pull/4579)
+- The status code for HTTPS redirects is now configurable: a new attribute
+  `https_redirect_status_code` was added to Route entities.
+  [#4424](https://github.com/Kong/kong/pull/4424)
 
 ##### Configuration
 
@@ -87,6 +90,10 @@ For more details about the updated installation, please visit the official docs:
   `check_hash` query argument; hash checking only happens if its value is set to
   `1`.
   [#4609](https://github.com/Kong/kong/pull/4609)
+- :fireworks: Entity **schema validation endpoints**: the new endpoint
+  `/schemas/:entity_name/validate` can be used to validate an instance
+  of any entity type in Kong without creating the entity.
+  [#4413](https://github.com/Kong/kong/pull/4413)
 - :fireworks: Add **memory statistics** to the `/status` endpoint. The response now
   includes a `memory` field, which contains `lua_shared_dicts` and `workers_lua_vms`,
   with stats on shared dictionaries and workers Lua VM memory usage. Additionally,
@@ -103,6 +110,9 @@ For more details about the updated installation, please visit the official docs:
 
 ##### Plugins
 
+- :fireworks: *proxy-cache*: the [HTTP proxy cache plugin](https://github.com/kong/kong-plugin-proxy-cache),
+  previously an Enterprise-only feature, is now bundled in Kong.
+  [#4650](https://github.com/Kong/kong/pull/4650)
 - Logging plugins: log request TLS version, cipher, and verification status.
   [#4581](https://github.com/Kong/kong/pull/4581)
   [#4626](https://github.com/Kong/kong/pull/4626)
