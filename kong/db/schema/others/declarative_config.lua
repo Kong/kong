@@ -1,3 +1,4 @@
+local uuid = require("resty.jit-uuid")
 local utils = require("kong.tools.utils")
 local Errors = require("kong.db.errors")
 local Entity = require("kong.db.schema.entity")
@@ -339,6 +340,121 @@ local function validate_references(self, input)
 end
 
 
+-- This is a best-effort generation of a cache-key-like identifier
+-- to feed the hash when generating deterministic UUIDs.
+-- We do not use the actual `cache_key` function from the DAO because
+-- at this point we don't have the auto-generated values populated
+-- by process_auto_fields. Whenever we are missing a needed value to
+-- ensure uniqueness, we bail out and return `nil` (instead of
+-- producing an incorrect identifier that may not be unique).
+local function build_cache_key(entity, item, schema, parent_fk, child_key)
+  local ck = { entity }
+  for _, k in ipairs(schema.cache_key) do
+    if schema.fields[k].auto then
+      return nil
+
+    elseif type(item[k]) == "string" then
+      table.insert(ck, item[k])
+
+    elseif item[k] == nil then
+      if k == child_key then
+        if parent_fk.id and next(parent_fk, "id") == nil then
+          table.insert(ck, parent_fk.id)
+        else
+          -- FIXME support building cache_keys with fk's whose pk is not id
+          return nil
+        end
+
+      elseif schema.fields[k].required then
+        return nil
+
+      else
+        table.insert(ck, "")
+      end
+    end
+  end
+  return table.concat(ck, ":")
+end
+
+
+local uuid_generators = {
+  _entities = uuid.factory_v5("fd02801f-0957-4a15-a55a-c8d9606f30b5"),
+}
+
+
+local function generate_uuid(namespace, name)
+  local factory = uuid_generators[namespace]
+  if not factory then
+    factory = uuid.factory_v5(uuid_generators["_entities"](namespace))
+    uuid_generators[namespace] = factory
+  end
+  return factory(name)
+end
+
+
+local function get_key_for_uuid_gen(entity, item, schema, parent_fk, child_key)
+  if #schema.primary_key ~= 1 then
+    -- entity schema has a composite PK
+    return
+  end
+
+  local pk_name = schema.primary_key[1]
+  if item[pk_name] ~= nil then
+    -- PK is already set, do not generate UUID
+    return
+  end
+
+  if schema.fields[pk_name].uuid ~= true then
+    -- PK is not a UUID
+    return
+  end
+
+  if schema.endpoint_key and
+     item[schema.endpoint_key] ~= nil then
+    -- generate a PK based on the endpoint_key
+    return pk_name, item[schema.endpoint_key]
+  end
+
+  if schema.cache_key then
+    return pk_name, build_cache_key(entity, item, schema, parent_fk, child_key)
+  end
+end
+
+
+local function generate_ids(input, known_entities, parent_entity)
+  for _, entity in ipairs(known_entities) do
+    if type(input[entity]) ~= "table" then
+      goto continue
+    end
+
+    local parent_fk
+    local child_key
+    if parent_entity then
+      local parent_schema = all_schemas[parent_entity]
+      if parent_schema.fields[entity] then
+        goto continue
+      end
+      parent_fk = parent_schema:extract_pk_values(input)
+      child_key = foreign_children[parent_entity][entity]
+    end
+
+    local schema = all_schemas[entity]
+    for _, item in ipairs(input[entity]) do
+      local pk_name, key = get_key_for_uuid_gen(entity, item, schema,
+                                                parent_fk, child_key)
+      if key then
+        item[pk_name] = generate_uuid(schema.name, key)
+      end
+
+      generate_ids(item, known_entities, entity)
+
+    end
+
+    ::continue::
+  end
+end
+
+
 local function flatten(self, input)
   local output = {}
 
@@ -346,6 +462,8 @@ local function flatten(self, input)
   if not ok then
     return nil, err
   end
+
+  generate_ids(input, self.known_entities)
 
   local processed = self:process_auto_fields(input, "insert")
 
