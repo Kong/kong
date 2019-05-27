@@ -107,4 +107,155 @@ describe("kong config", function()
 
     assert(helpers.stop_kong())
   end)
+
+  it("#db config db_import is idempotent based on endpoint_key and cache_key", function()
+    assert(db.plugins:truncate())
+    assert(db.routes:truncate())
+    assert(db.services:truncate())
+
+    local filename = helpers.make_yaml_file([[
+      _format_version: "1.1"
+      services:
+      - name: foo
+        url: http://example.com
+        routes:
+          - name: r1
+            hosts: ['foo.test']
+        plugins:
+        - name: basic-auth
+        - name: tcp-log
+          config:
+            port: 10000
+            host: 127.0.0.1
+      - name: bar
+        url: https://example.org
+        routes:
+          - name: r2
+            hosts: ['bar.test']
+        plugins:
+        - name: basic-auth
+        - name: tcp-log
+          config:
+            port: 10000
+            host: 127.0.0.1
+    ]])
+
+    assert(helpers.start_kong({
+      nginx_conf = "spec/fixtures/custom_nginx.template",
+    }))
+
+    assert(helpers.kong_exec("config db_import " .. filename, {
+      prefix = helpers.test_conf.prefix,
+    }))
+
+    local client = helpers.admin_client()
+
+    local res = client:get("/routes")
+    local body = assert.res_status(200, res)
+    local json = cjson.decode(body)
+    assert.equals(2, #json.data)
+
+    res = client:get("/services/foo")
+    assert.res_status(200, res)
+
+    res = client:get("/services/bar")
+    assert.res_status(200, res)
+
+    res = client:get("/services/foo/plugins")
+    body = assert.res_status(200, res)
+    json = cjson.decode(body)
+    assert.equals(2, #json.data)
+
+    res = client:get("/services/bar/plugins")
+    body = assert.res_status(200, res)
+    json = cjson.decode(body)
+    assert.equals(2, #json.data)
+
+    res = client:get("/plugins")
+    body = assert.res_status(200, res)
+    json = cjson.decode(body)
+    assert.equals(4, #json.data)
+
+    assert(helpers.kong_exec("config db_import " .. filename, {
+      prefix = helpers.test_conf.prefix,
+    }))
+
+    client = helpers.admin_client()
+
+    res = client:get("/routes")
+    body = assert.res_status(200, res)
+    json = cjson.decode(body)
+    assert.equals(2, #json.data)
+
+    res = client:get("/services/foo")
+    assert.res_status(200, res)
+
+    res = client:get("/services/bar")
+    assert.res_status(200, res)
+
+    res = client:get("/services/foo/plugins")
+    body = assert.res_status(200, res)
+    json = cjson.decode(body)
+    assert.equals(2, #json.data)
+
+    res = client:get("/services/bar/plugins")
+    body = assert.res_status(200, res)
+    json = cjson.decode(body)
+    assert.equals(2, #json.data)
+
+    res = client:get("/plugins")
+    body = assert.res_status(200, res)
+    json = cjson.decode(body)
+    assert.equals(4, #json.data)
+
+    assert(helpers.stop_kong())
+  end)
+
+  it("#db config db_import is not idempotent when endpoint_key is not used", function()
+    assert(db.plugins:truncate())
+    assert(db.routes:truncate())
+    assert(db.services:truncate())
+
+    -- note that routes have no name
+    local filename = helpers.make_yaml_file([[
+      _format_version: "1.1"
+      services:
+      - name: foo
+        url: https://example.com
+        routes:
+          - hosts: ['foo.test']
+      - name: bar
+        url: https://example.com
+        routes:
+          - hosts: ['bar.test']
+    ]])
+
+    assert(helpers.start_kong({
+      nginx_conf = "spec/fixtures/custom_nginx.template",
+    }))
+
+    assert(helpers.kong_exec("config db_import " .. filename, {
+      prefix = helpers.test_conf.prefix,
+    }))
+
+    local client = helpers.admin_client()
+
+    local res = client:get("/routes")
+    local body = assert.res_status(200, res)
+    local json = cjson.decode(body)
+    assert.equals(2, #json.data)
+
+    assert(helpers.kong_exec("config db_import " .. filename, {
+      prefix = helpers.test_conf.prefix,
+    }))
+
+    client = helpers.admin_client()
+
+    res = client:get("/routes")
+    body = assert.res_status(200, res)
+    json = cjson.decode(body)
+    assert.equals(4, #json.data)
+
+    assert(helpers.stop_kong())
+  end)
 end)
