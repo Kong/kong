@@ -129,6 +129,9 @@ describe("DAO", function()
       -- mock strategy
       local data
       local strategy = {
+        select = function()
+          return data
+        end,
         update = function(_, _, value)
           -- no defaults pre-applied before partial update
           assert(value.b == nil)
@@ -152,6 +155,9 @@ describe("DAO", function()
       -- mock strategy
       local data
       local strategy = {
+        select = function()
+          return data
+        end,
         update = function(_, _, value)
           -- no defaults pre-applied before partial update
           assert(value.b == nil)
@@ -199,6 +205,9 @@ describe("DAO", function()
       -- mock strategy
       local data
       local strategy = {
+        select = function()
+          return data
+        end,
         update = function(_, _, value)
           -- no defaults pre-applied before partial update
           assert(value.b == nil)
@@ -269,6 +278,9 @@ describe("DAO", function()
       -- mock strategy
       local data
       local strategy = {
+        select = function()
+          return data
+        end,
         update = function(_, _, value)
           data = utils.deep_merge(data, value)
           return data
@@ -289,6 +301,9 @@ describe("DAO", function()
       -- mock strategy
       local data
       local strategy = {
+        select = function()
+          return data
+        end,
         update = function(_, _, value)
           data = utils.deep_merge(data, value)
           return data
@@ -297,7 +312,7 @@ describe("DAO", function()
 
       local dao = DAO.new(mock_db, schema, strategy, errors)
 
-      data = { a = 42, b = null, u = null, r = nil }
+      data = { a = 42, b = nil, u = null, r = nil }
       local row, err = dao:update({ a = 43 }, { u = "foo", r = { f1 = 10 } }, { nulls = true })
       assert.falsy(err)
       assert.same({ a = 42, b = "hello", u = "foo", r = { f1 = 10, f2 = "world" } }, row)
@@ -309,6 +324,9 @@ describe("DAO", function()
       -- mock strategy
       local data
       local strategy = {
+        select = function()
+          return data
+        end,
         update = function(_, _, value)
           data = utils.deep_merge(data, value)
           return data
@@ -317,7 +335,7 @@ describe("DAO", function()
 
       local dao = DAO.new(mock_db, schema, strategy, errors)
 
-      data = { a = 42, b = null, u = null, r = null }
+      data = { a = 42, b = null, u = nil, r = nil }
       local row, err = dao:update({ a = 43 }, { u = "foo", r = { f1 = 10 } }, { nulls = true })
       assert.falsy(err)
       assert.same({ a = 42, b = null, u = "foo", r = { f1 = 10, f2 = "world" } }, row)
@@ -329,6 +347,9 @@ describe("DAO", function()
       -- mock strategy
       local data
       local strategy = {
+        select = function()
+          return data
+        end,
         update = function(_, _, value)
           data = utils.deep_merge(data, value)
           return data
