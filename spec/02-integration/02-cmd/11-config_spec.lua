@@ -9,7 +9,6 @@ describe("kong config", function()
   lazy_setup(function()
     local _
     _, db = helpers.get_db_utils(nil, {}) -- runs migrations
-    helpers.prepare_prefix()
   end)
   after_each(function()
     helpers.kill_all()
@@ -106,6 +105,45 @@ describe("kong config", function()
     assert.equals(2, #json.data)
 
     assert(helpers.stop_kong())
+  end)
+
+  it("#db config db_import does not require Kong to be running", function()
+    local filename = helpers.make_yaml_file([[
+      _format_version: "1.1"
+      services:
+      - name: foo
+        host: example.com
+        protocol: https
+        _comment: my comment
+        _ignore:
+        - foo: bar
+        routes:
+          - hosts: ['foo.test']
+        plugins:
+          - name: key-auth
+            _comment: my comment
+            _ignore:
+            - foo: bar
+          - name: http-log
+            config:
+              http_endpoint: https://example.com
+      - name: bar
+        host: example.test
+        port: 3000
+        routes:
+          - hosts: ['bar.test']
+        plugins:
+        - name: basic-auth
+        - name: tcp-log
+          config:
+            port: 10000
+            host: 127.0.0.1
+
+    ]])
+
+    assert(helpers.kong_exec("config db_import " .. filename, {
+      prefix = helpers.test_conf.prefix,
+    }))
   end)
 
   it("#db config db_import is idempotent based on endpoint_key and cache_key", function()
