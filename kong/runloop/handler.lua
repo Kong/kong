@@ -118,6 +118,15 @@ local function get_now()
 end
 
 
+local function warmup_hostname_dns_timer(premature, host)
+  if premature then
+    return
+  end
+
+  kong.dns.toip(host)
+end
+
+
 local function register_events()
   -- initialize local local_events hooks
   local db             = kong.db
@@ -205,6 +214,13 @@ local function register_events()
       -- only allowed because no Route is pointing to it anymore.
       log(DEBUG, "[events] Service updated, invalidating router")
       cache:invalidate("router:version")
+    end
+
+    if data.operation == "create" or
+       data.operation == "update" then
+      if utils.hostname_type(data.entity.host) == "name" then
+        timer_at(0, warmup_hostname_dns_timer, data.entity.host)
+      end
     end
   end, "crud", "services")
 

@@ -41,6 +41,43 @@ end
 
 for _, strategy in helpers.each_strategy() do
   describe("DNS [#" ..  strategy .. "]", function()
+    describe("#db Services are warmed up on creation", function()
+      local mock_dns, admin_client
+      lazy_setup(function()
+        mock_dns = helpers.udp_server(10101, 2)
+        assert(helpers.start_kong{
+          database = strategy,
+          dns_resolver = "127.0.0.1:10101"
+        })
+        admin_client = helpers.admin_client()
+      end)
+
+      lazy_teardown(function()
+        if admin_client then
+          admin_client:close()
+        end
+
+        helpers.stop_kong()
+      end)
+
+      it("warms up the cache when a new service is created", function()
+        admin_client:post("/services", {
+          headers = { ["Content-Type"] = "application/json" },
+          body = {
+            name = "serv",
+            host = "example.net",
+            path = "/",
+          }
+        })
+
+        ngx.sleep(2)
+
+        local ok, res = mock_dns:join()
+        assert.truthy(ok)
+        assert.matches("example.net", table.concat(res))
+      end)
+    end)
+
     describe("retries", function()
       local retries = 3
       local proxy_client
