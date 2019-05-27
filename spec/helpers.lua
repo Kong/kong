@@ -1611,7 +1611,8 @@ local function stop_kong(prefix, preserve_prefix, preserve_dc)
 
   wait_pid(running_conf.nginx_pid)
 
-  if not preserve_prefix then
+  -- note: set env var "KONG_TEST_DONT_CLEAN" !! the "_TEST" will be dropped
+  if not (preserve_prefix or os.getenv("KONG_DONT_CLEAN")) then
     clean_prefix(prefix)
   end
 
