@@ -43,6 +43,7 @@ dependencies = {
   "kong-plugin-serverless-functions ~> 0.2",
   "kong-prometheus-plugin ~> 0.3",
   "kong-proxy-cache-plugin ~> 1.2",
+  "kong-plugin-request-transformer ~> 1.2",
 }
 build = {
   type = "builtin",
@@ -268,10 +269,6 @@ build = {
 
     ["kong.plugins.request-size-limiting.handler"] = "kong/plugins/request-size-limiting/handler.lua",
     ["kong.plugins.request-size-limiting.schema"] = "kong/plugins/request-size-limiting/schema.lua",
-
-    ["kong.plugins.request-transformer.handler"] = "kong/plugins/request-transformer/handler.lua",
-    ["kong.plugins.request-transformer.access"] = "kong/plugins/request-transformer/access.lua",
-    ["kong.plugins.request-transformer.schema"] = "kong/plugins/request-transformer/schema.lua",
 
     ["kong.plugins.response-transformer.handler"] = "kong/plugins/response-transformer/handler.lua",
     ["kong.plugins.response-transformer.body_transformer"] = "kong/plugins/response-transformer/body_transformer.lua",
