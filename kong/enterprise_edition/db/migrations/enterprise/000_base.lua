@@ -967,8 +967,8 @@ END $$;
       end
 
       if not (default_ws and default_ws[1]) then
-        assert(connector:query(fmt([[INSERT INTO workspaces(id, name, config, meta)
-          VALUES (uuid(), 'default', '{"portal":true}', '{}' );]])))
+        assert(connector:query(fmt([[INSERT INTO workspaces(id, name, config, meta, created_at)
+          VALUES (uuid(), 'default', '{"portal":true}', '{}', %s);]], created_ts)))
       end
 
       -- create default roles if they do not exist (checking for read-only one)

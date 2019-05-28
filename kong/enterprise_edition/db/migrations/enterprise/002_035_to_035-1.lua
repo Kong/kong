@@ -1,5 +1,5 @@
 local fmt = string.format
-
+local created_ts = math.floor(ngx.now()) * 1000
 
 -- fixing snis implies:
 -- for each sni in snis table
@@ -129,7 +129,49 @@ return {
     cassandra = {
       up = [[]],
       teardown = function(connector)
+
+        local function fix_dupe_workspace_and_timestamp()
+          -- delete extra default workspace if there are 2 default wss
+          -- and fix timestamp if there's only 1
+          local def_workspaces, err = connector:query("select * from workspaces where name = 'default'")
+          if err then
+            return nil, err
+          end
+
+          local ws_000, err = connector:query(
+            "select * from workspaces where name = 'default' and id=00000000-0000-0000-0000-000000000000;")
+          if err then
+            return nil, err
+          end
+          if #ws_000 == 0 then
+            return true
+          end
+
+          if #def_workspaces == 2 then
+            -- if we have 2 default workspaces, and one has 0000...0000 id, we delete it FTI-701
+            local _, err = connector:query("delete from workspaces where id=00000000-0000-0000-0000-000000000000;")
+            if err then
+              return nil, err
+            end
+
+          elseif #def_workspaces == 1 then
+            -- if we have only one, we have to add the created_at timestamp FT-677
+            assert(connector:query(
+              fmt([[INSERT INTO workspaces(id, name, config, meta, created_at)
+                  VALUES (00000000-0000-0000-0000-000000000000, 'default', '{"portal":true}', '{}', %s);]], created_ts)))
+          end
+        end
+
+
+
         local coordinator = connector:connect_migrations()
+
+        -- delete extra default workspace if there are 2 default wss
+        -- and fix timestamp if there's only 1
+        local _, err = fix_dupe_workspace_and_timestamp()
+        if err then
+          return nil, err
+        end
 
         -- update rbac_role_entities entity_type from ssl_certificates to certificates
         for rows, err in coordinator:iterate("select * from rbac_role_entities where entity_type = 'ssl_certificates'") do

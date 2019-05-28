@@ -30,6 +30,7 @@ for _, strategy in helpers.each_strategy() do
       assert.equal(1, #workspaces)
       assert.equal("default", default_ws.name)
       assert.same({}, default_ws.meta)
+      assert.is_not_nil(default_ws.created_at)
       assert.equal(false , default_ws.config.portal)
     end)
   end)
