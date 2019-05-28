@@ -14,6 +14,9 @@ dependencies = {
 build = {
   type = "builtin",
   modules = {
+    ["kong.plugins.pre-function._handler"] = "kong/plugins/pre-function/_handler.lua",
+    ["kong.plugins.pre-function._schema"] = "kong/plugins/pre-function/_schema.lua",
+
     ["kong.plugins.pre-function.handler"] = "kong/plugins/pre-function/handler.lua",
     ["kong.plugins.pre-function.schema"] = "kong/plugins/pre-function/schema.lua",
 
