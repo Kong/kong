@@ -115,9 +115,9 @@ return {
         return true
       end
     }},
-    { conditional = {
+    {conditional_at_least_one_of = {
       if_field = "config.strategy", if_match = { eq = "redis" },
-      then_field = "config.redis.host", then_match = { required = true },
+      then_at_least_one_of = {"config.redis.host", "config.redis.sentinel_master"},
     }},
   },
 }

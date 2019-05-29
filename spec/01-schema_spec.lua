@@ -73,8 +73,8 @@ describe("rate-limiting-advanced schema", function()
     assert.is_truthy(ok)
   end)
 
-  it("errors with a missing redis config", function()
-    local ok, err = v({
+  it("errors with a missing/incomplete redis config", function()
+    local ok = v({
       window_size = { 60 },
       limit = { 10 },
       sync_rate = 10,
@@ -82,9 +82,8 @@ describe("rate-limiting-advanced schema", function()
     }, rate_limiting_schema)
 
     assert.is_falsy(ok)
-    assert.same("required field missing", err.config.redis.host)
 
-    ok, err = v({
+    local ok, err = v({
       window_size = { 60 },
       limit = { 10 },
       sync_rate = 10,
@@ -95,8 +94,20 @@ describe("rate-limiting-advanced schema", function()
     }, rate_limiting_schema)
 
     assert.is_falsy(ok)
-    assert.same("All or none of 'host', 'port' must be set. Only 'host' found",
-                 err.config.redis["@entity"][1])
+    assert.is_truthy(err.config.redis["@entity"])
+
+    ok = v({
+      window_size = { 60 },
+      limit = { 10 },
+      sync_rate = 10,
+      strategy = "redis",
+      redis = {
+        sentinel_master = "example.com",
+      }
+    }, rate_limiting_schema)
+
+    assert.is_falsy(ok)
+
   end)
 
   it("accepts a hide_client_headers config", function ()
