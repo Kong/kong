@@ -26,7 +26,7 @@ local function load_credential(key)
   if not cred then
     return nil, err
   end
-  return cred
+  return cred, nil, cred.ttl
 end
 
 

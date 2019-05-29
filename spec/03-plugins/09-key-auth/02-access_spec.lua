@@ -759,7 +759,7 @@ for _, strategy in helpers.each_strategy() do
             ["apikey"] = "kong",
           }
         })
-        assert.res_status(401, res)
+        assert.res_status(403, res)
       end)
     end)
   end)
