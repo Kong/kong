@@ -1309,6 +1309,9 @@ function _M.new(connector, schema, errors)
 
     upsert_expressions = concat(upsert_expressions, ", ")
 
+    local ttl_expression = "EXTRACT (EPOCH FROM (ttl - CURRENT_TIMESTAMP)) AS ttl"
+    select_expressions = concat({ select_expressions, ttl_expression }, ", ")
+
     create_statement = concat {
       "CREATE TABLE IF NOT EXISTS ", table_name_escaped, " (\n",
       "  ",   concat(create_expressions, ",\n  "), "\n",
