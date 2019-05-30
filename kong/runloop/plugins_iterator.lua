@@ -2,7 +2,14 @@ local BasePlugin   = require "kong.plugins.base_plugin"
 local constants    = require "kong.constants"
 local reports      = require "kong.reports"
 
+
 local kong         = kong
+local type         = type
+local error        = error
+local pairs        = pairs
+local ipairs       = ipairs
+local assert       = assert
+local tostring     = tostring
 
 
 local COMBO_R      = 1
@@ -129,9 +136,9 @@ local function load_configuration_through_combos(ctx, combos, plugin)
   local plugin_configuration
   local name = plugin.name
 
-  local route        = ctx.route
-  local service      = ctx.service
-  local consumer     = ctx.authenticated_consumer
+  local route    = ctx.route
+  local service  = ctx.service
+  local consumer = ctx.authenticated_consumer
 
   if route and plugin.no_route then
     route = nil
