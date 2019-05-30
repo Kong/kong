@@ -2387,5 +2387,163 @@ for _, strategy in helpers.each_strategy() do
         end)
       end)
     end)
+
+    describe("plugin's init_worker", function()
+      describe("[pre-configured]", function()
+        lazy_setup(function()
+          if proxy_client then
+            proxy_client:close()
+          end
+
+          helpers.stop_kong()
+
+          db:truncate("routes")
+          db:truncate("services")
+          db:truncate("plugins")
+
+          -- never used as the plugins short-circuit
+          local service = assert(bp.services:insert {
+            name = "mock-service",
+            host = helpers.mock_upstream_host,
+            port = helpers.mock_upstream_port,
+          })
+
+          local route = assert(bp.routes:insert {
+            hosts     = { "runs-init-worker.org" },
+            protocols = { "http" },
+            service   = service,
+          })
+
+          bp.plugins:insert {
+            name = "short-circuit",
+            route = { id = route.id },
+            config = {
+              status = 200,
+              message = "plugin executed"
+            },
+            run_on = "first",
+          }
+
+          assert(helpers.start_kong {
+            database   = strategy,
+            nginx_conf = "spec/fixtures/custom_nginx.template",
+          })
+
+          proxy_client = helpers.proxy_client()
+        end)
+
+        lazy_teardown(function()
+          if proxy_client then
+            proxy_client:close()
+          end
+
+          helpers.stop_kong(nil, true)
+        end)
+
+        it("is executed", function()
+          local res = assert(proxy_client:get("/status/400", {
+            headers = {
+              ["Host"] = "runs-init-worker.org",
+            }
+          }))
+
+          assert.equal("true", res.headers["Kong-Init-Worker-Called"])
+
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+
+          assert.same({
+            status  = 200,
+            message = "plugin executed"
+          }, json)
+        end)
+      end)
+
+      if strategy ~= "off" then
+        describe("[runtime-configured]", function()
+          local admin_client
+          local route
+
+          lazy_setup(function()
+            if proxy_client then
+              proxy_client:close()
+            end
+
+            helpers.stop_kong()
+
+            db:truncate("routes")
+            db:truncate("services")
+            db:truncate("plugins")
+
+            -- never used as the plugins short-circuit
+            local service = assert(bp.services:insert {
+              name = "mock-service",
+              host = helpers.mock_upstream_host,
+              port = helpers.mock_upstream_port,
+            })
+
+            route = assert(bp.routes:insert {
+              hosts     = { "runs-init-worker.org" },
+              protocols = { "http" },
+              service   = service,
+            })
+
+            assert(helpers.start_kong {
+              database   = strategy,
+              nginx_conf = "spec/fixtures/custom_nginx.template",
+            })
+
+            proxy_client = helpers.proxy_client()
+            admin_client = helpers.admin_client()
+          end)
+
+          lazy_teardown(function()
+            if proxy_client then
+              proxy_client:close()
+            end
+
+            if admin_client then
+              admin_client:close()
+            end
+
+            helpers.stop_kong(nil, true)
+          end)
+
+          it("is executed", function()
+            local res = assert(admin_client:post("/plugins", {
+              headers = {
+                ["Content-Type"] = "application/json"
+              },
+              body = {
+                name = "short-circuit",
+                route = { id = route.id },
+                config = {
+                  status = 200,
+                  message = "plugin executed"
+                },
+                run_on = "first",
+              }
+            }))
+
+            assert.res_status(201, res)
+
+            local res = assert(proxy_client:get("/status/400", {
+              headers = {
+                ["Host"] = "runs-init-worker.org",
+              }
+            }))
+
+            assert.equal("true", res.headers["Kong-Init-Worker-Called"])
+
+            local body = assert.res_status(200, res)
+            local json = cjson.decode(body)
+            assert.same({
+              status  = 200,
+              message = "plugin executed"
+            }, json)
+          end)
+        end)
+      end
+    end)
   end)
 end

@@ -498,8 +498,7 @@ function Kong.init_worker()
   end
 
   local plugins_iterator = runloop.get_plugins_iterator()
-  local mock_ctx = {} -- ctx is not available in init_worker, use table instead
-  for plugin, _ in plugins_iterator:iterate(mock_ctx, "init_worker") do
+  for plugin, _ in plugins_iterator:iterate(nil, "init_worker") do
     kong_global.set_namespaced_log(kong, plugin.name)
     plugin.handler:init_worker()
     kong_global.reset_log(kong)
