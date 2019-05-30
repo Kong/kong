@@ -226,6 +226,10 @@ local MAJOR_VERSIONS = {
   latest = 1,
 }
 
+if ngx.config.subsystem == 'http' then
+  table.insert(MAJOR_VERSIONS[1].modules, 'client.tls')
+end
+
 
 local _PDK = {
   major_versions = MAJOR_VERSIONS,

@@ -10,10 +10,11 @@ DEPS_HASH=$(cat .ci/setup_env.sh .travis.yml | md5sum | awk '{ print $1 }')
 OPENSSL_DOWNLOAD=$DOWNLOAD_CACHE/$DEPS_HASH/openssl-$OPENSSL
 OPENRESTY_DOWNLOAD=$DOWNLOAD_CACHE/$DEPS_HASH/openresty-$OPENRESTY
 OPENRESTY_PATCHES_DOWNLOAD=$DOWNLOAD_CACHE/$DEPS_HASH/openresty-patches-master
+KONG_NGINX_MODULE_DOWNLOAD=$DOWNLOAD_CACHE/lua-kong-nginx-module-$KONG_NGINX_MODULE
 LUAROCKS_DOWNLOAD=$DOWNLOAD_CACHE/$DEPS_HASH/luarocks-$LUAROCKS
 CPAN_DOWNLOAD=$DOWNLOAD_CACHE/$DEPS_HASH/cpanm
 
-mkdir -p $OPENSSL_DOWNLOAD $OPENRESTY_DOWNLOAD $OPENRESTY_PATCHES_DOWNLOAD $LUAROCKS_DOWNLOAD $CPAN_DOWNLOAD
+mkdir -p $OPENSSL_DOWNLOAD $OPENRESTY_DOWNLOAD $OPENRESTY_PATCHES_DOWNLOAD $KONG_NGINX_MODULE_DOWNLOAD $LUAROCKS_DOWNLOAD $CPAN_DOWNLOAD
 
 if [ ! "$(ls -A $OPENSSL_DOWNLOAD)" ]; then
   pushd $DOWNLOAD_CACHE/$DEPS_HASH
@@ -30,6 +31,12 @@ fi
 if [ ! "$(ls -A $OPENRESTY_PATCHES_DOWNLOAD)" ]; then
   pushd $DOWNLOAD_CACHE/$DEPS_HASH
     curl -s -S -L https://github.com/Kong/openresty-patches/archive/master.tar.gz | tar xz
+  popd
+fi
+
+if [ ! "$(ls -A $KONG_NGINX_MODULE_DOWNLOAD)" ]; then
+  pushd $DOWNLOAD_CACHE/$DEPS_HASH
+    git clone -q https://github.com/Kong/lua-kong-nginx-module.git $KONG_NGINX_MODULE_DOWNLOAD
   popd
 fi
 
@@ -70,6 +77,7 @@ if [ ! "$(ls -A $OPENRESTY_INSTALL)" ]; then
     "--with-http_stub_status_module"
     "--with-http_v2_module"
     "--with-stream_ssl_preread_module"
+    "--add-module=$KONG_NGINX_MODULE_DOWNLOAD"
   )
 
   pushd $OPENRESTY_DOWNLOAD
@@ -85,6 +93,12 @@ if [ ! "$(ls -A $OPENRESTY_INSTALL)" ]; then
     eval ./configure ${OPENRESTY_OPTS[*]} &> build.log || (cat build.log && exit 1)
     make &> build.log || (cat build.log && exit 1)
     make install &> build.log || (cat build.log && exit 1)
+
+    echo "Installing lua-kong-nginx-module $..."
+    pushd $KONG_NGINX_MODULE_DOWNLOAD
+      git checkout -q $KONG_NGINX_MODULE
+      make install LUA_LIB_DIR=$OPENRESTY_INSTALL/lualib
+    popd
   popd
 fi
 
