@@ -13,8 +13,7 @@ local mock_fn_two = [[
 ]]
 
 local mock_fn_three = [[
-  local responses = require "kong.tools.responses"
-  return responses.send(406, "Invalid")
+  return kong.response.exit(406, { message = "Invalid" })
 ]]
 
 local mock_fn_four = [[
@@ -30,8 +29,10 @@ local mock_fn_five = [[
 describe("Plugin: serverless-functions", function()
   it("priority of plugins", function()
     local pre = require "kong.plugins.pre-function.handler"
-    local post = require "kong.plugins.pre-function.handler"
-    assert(pre.PRIORITY > post.PRIORITY, "expected the priority of PRE to be higher than POST")
+    local post = require "kong.plugins.post-function.handler"
+    assert(pre.PRIORITY > post.PRIORITY, "expected the priority of PRE (" ..
+           tostring(pre.PRIORITY) .. ") to be higher than POST (" ..
+           tostring(post.PRIORITY)..")")
   end)
 end)
 
