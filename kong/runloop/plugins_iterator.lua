@@ -261,10 +261,11 @@ local PluginsIterator = {}
 -- Iterate over the plugin loaded for a request, stored in
 --`ngx.ctx.plugins`.
 --
--- @param[type=table] ctx Nginx context table
 -- @param[type=string] phase Plugins iterator execution phase
+-- @param[type=table] ctx Nginx context table
 -- @treturn function iterator
-local function iterate(self, ctx, phase)
+local function iterate(self, phase, ctx)
+  -- no ctx, we are in init_worker phase
   if ctx and not ctx.plugins then
     ctx.plugins = {}
   end
