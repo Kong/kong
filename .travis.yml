@@ -53,6 +53,8 @@ before_install:
 install:
   - luarocks make
   - cd kong-ce
+  # the following line is a hack to get around failing LuaSec upgrades
+  - luarocks remove luasec --force
   - make dev
   - createuser --createdb kong
   - createdb -U kong kong_tests
