@@ -24,6 +24,16 @@ local mock_fn_five = [[
   ngx.exit(ngx.status)
 ]]
 
+local mock_fn_six = [[
+  local count = 0
+  return function()
+      count = count + 1
+      ngx.status = 200
+      ngx.say(ngx.worker.pid() * 1000 + count)
+      ngx.exit(ngx.status)
+    end
+]]
+
 
 
 describe("Plugin: serverless-functions", function()
@@ -74,6 +84,11 @@ for _, plugin_name in ipairs({ "pre-function", "post-function" }) do
         hosts   = { "four." .. plugin_name .. ".com" },
       }
 
+      local route6 = bp.routes:insert {
+        service = { id = service.id },
+        hosts   = { "six." .. plugin_name .. ".com" },
+      }
+
       bp.plugins:insert {
         name    = plugin_name,
         route   = { id = route1.id },
@@ -106,6 +121,14 @@ for _, plugin_name in ipairs({ "pre-function", "post-function" }) do
         },
       }
 
+      bp.plugins:insert {
+        name    = plugin_name,
+        route   = { id = route6.id },
+        config  = {
+          functions = { mock_fn_six }
+        },
+      }
+
       assert(helpers.start_kong({
         nginx_conf = "spec/fixtures/custom_nginx.template",
       }))
@@ -133,6 +156,24 @@ for _, plugin_name in ipairs({ "pre-function", "post-function" }) do
         })
 
         assert.res_status(503, res)
+      end)
+
+      it("with upvalues", function()
+        local results = {}
+        for i = 1, 50 do
+          local res = assert(client:send {
+            method = "GET",
+            path = "/status/200",
+            headers = {
+              ["Host"] = "six." .. plugin_name .. ".com"
+            }
+          })
+
+          local body = assert.res_status(200, res)
+          assert.is_string(body)
+          assert.is_nil(results[body])
+          results[body] = nil
+        end
       end)
 
       it("using ngx.status and exit", function()

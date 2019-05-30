@@ -1,5 +1,9 @@
 # Changelog; Kong Serverless Functions Plugin
 
+## Unreleased
+
+- Functions can now have upvalues
+
 ## 0.2.0
 
 - Updated schemas to new format

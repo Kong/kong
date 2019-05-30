@@ -18,7 +18,9 @@ return function(plugin_name, priority)
     if not functions then
       functions = {}
       for _, fn_str in ipairs(config.functions) do
-        table.insert(functions, loadstring(fn_str))
+        local func1 = loadstring(fn_str)
+        local _, func2 = pcall(func1)
+        table.insert(functions, type(func2) == "function" and func2 or func1)
       end
       config_cache[config] = functions
     end
