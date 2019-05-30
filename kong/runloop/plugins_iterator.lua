@@ -12,6 +12,9 @@ local assert       = assert
 local tostring     = tostring
 
 
+local EMPTY_T      = {}
+
+
 local COMBO_R      = 1
 local COMBO_S      = 2
 local COMBO_RS     = 3
@@ -212,41 +215,41 @@ end
 local function get_next(self)
   local i = self.i + 1
 
-  local plugin = self.iterator.loaded[i]
+  local plugin = self.loaded[i]
   if not plugin then
     return nil
   end
 
   self.i = i
 
+  local name = plugin.name
   if not self.ctx then
-    if self.iterator.phases[self.phase][plugin.name] then
+    if self.phases[name] then
       return plugin
     end
 
     return get_next(self)
   end
 
-  if not self.iterator.map[plugin.name] then
+  if not self.map[name] then
     return get_next(self)
   end
 
   local ctx = self.ctx
+  local plugins = ctx.plugins
 
-  if MUST_LOAD_CONFIGURATION_IN_PHASES[self.phase] then
-    local combos = self.iterator.combos[plugin.name]
+  if self.configure then
+    local combos = self.combos[name]
     if combos then
       local cfg = load_configuration_through_combos(ctx, combos, plugin)
       if cfg then
-        ctx.plugins[plugin.name] = cfg
+        plugins[name] = cfg
       end
     end
   end
 
-  local phase = self.iterator.phases[self.phase]
-  if phase and phase[plugin.name]
-  and (ctx.plugins[plugin.name] or self.phase == "init_worker") then
-    return plugin, ctx.plugins[plugin.name]
+  if self.phases[name] and plugins[name] then
+    return plugin, plugins[name]
   end
 
   return get_next(self) -- Load next plugin
@@ -271,8 +274,11 @@ local function iterate(self, phase, ctx)
   end
 
   local iteration = {
-    iterator = self,
-    phase = phase,
+    configure = MUST_LOAD_CONFIGURATION_IN_PHASES[phase],
+    loaded = self.loaded,
+    phases = self.phases[phase] or EMPTY_T,
+    combos = self.combos,
+    map = self.map,
     ctx = ctx,
     i = 0,
   }
