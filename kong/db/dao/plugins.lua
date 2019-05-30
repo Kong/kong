@@ -270,7 +270,7 @@ function Plugins:load_plugin_schemas(plugin_set)
     local handler, err = load_plugin(self, plugin)
 
     if handler then
-      if getmetatable(handler) == BasePlugin then
+      if type(handler.is) == "function" and handler:is(BasePlugin) then
         -- Backwards-compatibility for 0.x and 1.x plugins inheriting from the
         -- BasePlugin class.
         -- TODO: deprecate & remove
