@@ -1,6 +1,6 @@
 # Table of Contents
 
-- [1.2.0rc1](#120rc1)
+- [1.2.0rc2](#120rc2)
 - [1.1.2](#112)
 - [1.1.1](#111)
 - [1.1.0](#110)
@@ -27,13 +27,13 @@
 - [0.10.0](#0100---20170307)
 - [0.9.9 and prior](#099---20170202)
 
-## [1.2.0rc1]
+## [1.2.0rc2]
 
-> Released on: 2019/05/24
+> Released on: 2019/05/31
 
 This release brings **improvements to reduce P95 latency** and **consolidates
-declarative configuration support**. It also comes with a **newly open sourced
-plugin**, previously only available to Enterprise customers, and a few
+declarative configuration support**. It also comes with **newly open sourced
+plugins**, previously only available to Enterprise customers, and a few
 features around usability.
 
 ### Installation
@@ -61,6 +61,11 @@ For more details about the updated installation, please visit the official docs:
 - The status code for HTTPS redirects is now configurable: a new attribute
   `https_redirect_status_code` was added to Route entities.
   [#4424](https://github.com/Kong/kong/pull/4424)
+- Schema fields can now be marked immutable
+  [#4381](https://github.com/Kong/kong/pull/4381)
+- DAO operations can now be passed a new options `no_broadcast_crud_event`
+  to prevent Kong firing the worker events.
+  [#4540](https://github.com/Kong/kong/pull/4540)
 
 ##### Configuration
 
@@ -113,6 +118,9 @@ For more details about the updated installation, please visit the official docs:
 - :fireworks: *proxy-cache*: the [HTTP proxy cache plugin](https://github.com/kong/kong-plugin-proxy-cache),
   previously an Enterprise-only feature, is now bundled in Kong.
   [#4650](https://github.com/Kong/kong/pull/4650)
+- :fireworks: The `request-transformer` and `request-transformer-advanced`
+  (previously only available in Enterprise) plugins were merged
+  [#4658](https://github.com/Kong/kong/pull/4658)
 - Logging plugins: log request TLS version, cipher, and verification status.
   [#4581](https://github.com/Kong/kong/pull/4581)
   [#4626](https://github.com/Kong/kong/pull/4626)
@@ -131,12 +139,20 @@ For more details about the updated installation, please visit the official docs:
   [#4635](https://github.com/Kong/kong/pull/4635)
 - Improvements in reentrancy of Cassandra migrations.
   [#4611](https://github.com/Kong/kong/pull/4611)
+- Fix to an issue introduced in `1.2.0rc1` where `init_worker` was not being
+  called on plugins that implemented it
+  [#4670](https://github.com/Kong/kong/pull/4670)
+- Fix to an issue where `:new` was not always called when Plugins
+  deep-inherited from BasePlugin
+  [#4671](https://github.com/Kong/kong/pull/4671) 
 
 #### CLI
 
 - `kong migrations [up|finish] -f` commands do not run if there are no executed
   migrations.
   [#4617](https://github.com/Kong/kong/pull/4617)
+- Fix db_import to upsert via deterministic v5 UUIDs
+  [#4657](https://github.com/Kong/kong/pull/4657) 
 
 #### Plugins
 
@@ -3746,7 +3762,7 @@ First version running with Cassandra.
 
 [Back to TOC](#table-of-contents)
 
-[1.2.0rc1]: https://github.com/Kong/kong/compare/1.1.2...1.2.0rc1
+[1.2.0rc2]: https://github.com/Kong/kong/compare/1.1.2...1.2.0rc2
 [1.1.2]: https://github.com/Kong/kong/compare/1.1.1...1.1.2
 [1.1.1]: https://github.com/Kong/kong/compare/1.1.0...1.1.1
 [1.1.0]: https://github.com/Kong/kong/compare/1.0.3...1.1.0
