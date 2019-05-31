@@ -2,7 +2,7 @@ local helpers = require "spec.helpers"
 local redis = require "resty.redis"
 
 
-local REDIS_HOST = "127.0.0.1"
+local REDIS_HOST = helpers.redis_host
 local REDIS_PORT = 6379
 local REDIS_DB_1 = 1
 local REDIS_DB_2 = 2

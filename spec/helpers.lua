@@ -1324,6 +1324,7 @@ return {
 
   mock_upstream_stream_port     = MOCK_UPSTREAM_STREAM_PORT,
   mock_upstream_stream_ssl_port = MOCK_UPSTREAM_STREAM_SSL_PORT,
+  redis_host = os.getenv("KONG_SPEC_REDIS_HOST") or "127.0.0.1",
 
   -- Kong testing helpers
   execute = exec,
@@ -1412,6 +1413,5 @@ return {
   end,
   unsetenv = function(env)
     return ffi.C.unsetenv(env) == 0
-  end
-
+  end,
 }

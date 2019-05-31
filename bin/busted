@@ -28,7 +28,8 @@ if not os.getenv("KONG_BUSTED_RESPAWNED") then
     end
 
     local var = line:match("^(KONG_[^=]*)")
-    if var then
+    local var_for_spec = line:match("^(KONG_SPEC_[^=]*)")
+    if var and not var_for_spec then
       -- remove existing KONG_xxx and KONG_TEST_xxx variables; prepend
       table.insert(script, 1, "unset " .. var)
     end
