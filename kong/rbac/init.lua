@@ -31,6 +31,7 @@ local whitelisted_endpoints = {
   ["/admins/register"] = true,
   ["/admins/password_resets"] = true,
   ["/admins/self/password"] = true,
+  ["/admins/self/token"] = true,
 }
 
 

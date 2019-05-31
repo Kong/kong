@@ -5,6 +5,7 @@ local admins_helpers = require "kong.enterprise_edition.admins_helpers"
 local basicauth_crypto = require "kong.plugins.basic-auth.crypto"
 local workspaces = require "kong.workspaces"
 local singletons = require "kong.singletons"
+local bcrypt = require "bcrypt"
 
 local cache = {
   get = function(self, x, y, f, ...) return f(...) end,
@@ -541,6 +542,34 @@ for _, strategy in helpers.each_strategy() do
         local digest = assert(basicauth_crypto.hash(creds[1].consumer.id,
                               params.password))
         assert.truthy(creds[1].password == digest)
+      end)
+    end)
+
+    describe("rbac token", function()
+      it("update_token - successful", function()
+        local admin = db.admins:insert({
+          username = "an_admin_1",
+          email = "test@konghq.com",
+          status = 4,
+        })
+
+        db.rbac_user_roles:insert({
+          user = { id = admin.rbac_user.id },
+          role = { id = 4 }
+        })
+
+        local params = {
+          token = "my-new-token"
+        }
+
+        local original_rbac_user = kong.db.rbac_users:select({id = admin.rbac_user.id})
+        local res = assert(admins_helpers.update_token(admin, params))
+        local updated_rbac_user = kong.db.rbac_users:select({id = admin.rbac_user.id})
+        assert.not_equal(original_rbac_user.user_token, updated_rbac_user.user_token)
+        assert(bcrypt.verify("my-new-token", updated_rbac_user.user_token))
+        assert.equal("Token reset successfully", res.body.message)
+        assert.equal(200, res.code)
+        assert.not_equal(admin.rbac_user.user_token, params.token)
       end)
     end)
   end)

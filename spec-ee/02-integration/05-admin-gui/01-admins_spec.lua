@@ -1578,4 +1578,232 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
   end)
+
+  describe("Admin API - Admins Token Reset #" .. strategy, function()
+    local client
+    local db
+    local bp
+    local another_ws
+    local outside_admin
+    local admin
+    local admins = {}
+
+    lazy_setup(function()
+      bp, db = helpers.get_db_utils(strategy, {
+        "consumers",
+        "rbac_users",
+        "rbac_roles",
+        "rbac_user_roles",
+        "admins",
+      })
+      local config = {
+        database = strategy,
+        admin_gui_url = "http://manager.konghq.com",
+        admin_gui_auth = "basic-auth",
+        enforce_rbac = "on",
+      }
+      assert(helpers.start_kong(config))
+
+      another_ws = assert(bp.workspaces:insert({
+        name = "another-one",
+      }))
+
+      ee_helpers.register_rbac_resources(db)
+
+      local role = db.rbac_roles:select_by_name("super-admin")
+      for i = 1, 3 do
+        -- admins that are already approved
+        admins[i] = assert(db.admins:insert {
+          username = "admin-" .. i .. "@test.com",
+          custom_id = "admin-" .. i,
+          email = "admin-" .. i .. "@test.com",
+          status = enums.CONSUMERS.STATUS.APPROVED,
+        })
+
+        assert(db.basicauth_credentials:insert {
+          username    = admins[i].username,
+          password    = "hunter" .. i,
+          consumer = {
+            id = admins[i].consumer.id,
+          },
+        })
+        db.rbac_user_roles:insert({
+          user = { id = admins[i].rbac_user.id },
+          role = { id = role.id }
+        })
+      end
+      admin = admins[1]
+
+      local ws, err = db.workspaces:select_by_name(another_ws.name)
+      assert.not_nil(ws)
+      assert.is_nil(err)
+      assert.same("another-one", ws.name)
+      local role = db.rbac_roles:insert({ name = "another-one" })
+      workspaces.run_with_ws_scope({ws}, function ()
+        outside_admin, _ = kong.db.admins:insert({
+          username = "outsider1",
+          email = "outsider1@konghq.com",
+          status = enums.CONSUMERS.STATUS.APPROVED,
+        })
+
+        assert.is_not_nil(role)
+      end)
+
+      admins_helpers.link_to_workspace(outside_admin, "another-one")
+      workspaces.run_with_ws_scope({ws}, function ()
+        assert(db.basicauth_credentials:insert {
+          username    = outside_admin.username,
+          password    = "outsider1pass",
+          consumer = {
+            id = outside_admin.consumer.id,
+          },
+        })
+
+        assert.is_not_nil(role)
+      end)
+
+    end)
+
+    lazy_teardown(function()
+      helpers.stop_kong()
+      db:truncate("workspace_entities")
+      db:truncate("consumers")
+      db:truncate("rbac_user_roles")
+      db:truncate("rbac_roles")
+      db:truncate("rbac_users")
+      db:truncate("admins")
+      db:truncate("basicauth_credentials")
+    end)
+
+    before_each(function()
+      client = assert(helpers.admin_client())
+    end)
+
+    after_each(function()
+      if client then client:close() end
+    end)
+
+    describe("/admins/self/token", function()
+      describe("PATCH", function ()
+        it("updates an admin token successfully", function()
+          local cookie = get_admin_cookie(client, admin.username, 'hunter1')
+          local res = client:send {
+            method = "PATCH",
+            path = "/admins/self/token",
+            body = {
+              token = "foo",
+            },
+            headers = {
+              ["Content-Type"] = "application/json",
+              ["Kong-Admin-User"] = admin.username,
+              cookie = cookie,
+            }
+          }
+          assert.res_status(200, res)
+          assert(string.find(admin.rbac_user.user_token, "^%$2b%$"))
+        end)
+
+        it("allows read-only admins to update tokens", function()
+          local cookie = get_admin_cookie(client, admin.username, 'hunter1')
+          local res = assert(client:send {
+            path = "/admins/" .. admins[3].username .. "/roles",
+            method = "POST",
+            body = {
+              roles = "read-only",
+            },
+            headers = {
+              ["Content-Type"] = "application/json",
+              ["Kong-Admin-User"] = admin.username,
+              cookie = cookie,
+            },
+          })
+          assert.res_status(201, res)
+
+          local res = assert(client:send {
+            path = "/admins/" .. admins[3].username .. "/roles",
+            method = "DELETE",
+            body = {
+              roles = "super-admin",
+            },
+            headers = {
+              ["Content-Type"] = "application/json",
+              ["cookie"] = cookie,
+              ["Kong-Admin-User"] = admin.username,
+            },
+          })
+          assert.res_status(204, res)
+
+          res = assert(client:send {
+            path = "/admins/" .. admins[3].username .. "/roles",
+            method = "GET",
+            headers = {
+              ["Content-Type"] = "application/json",
+              ["cookie"] = cookie,
+              ["Kong-Admin-User"] = admin.username,
+            },
+          })
+
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+
+          assert.same(1, #json.roles)
+          assert.same("read-only", json.roles[1].name)
+
+          local cookie = get_admin_cookie(client, admins[3].username, 'hunter3')
+          local res = client:send {
+            method = "PATCH",
+            path = "/admins/self/token",
+            body = {
+              token = "foo1",
+            },
+            headers = {
+              ["Content-Type"] = "application/json",
+              ["cookie"] = cookie,
+              ["Kong-Admin-User"] = admins[3].username,
+            }
+          }
+
+          assert.res_status(200, res)
+          assert(string.find(admins[3].rbac_user.user_token, "^%$2b%$"))
+        end)
+
+        it("is workspace agnostic", function()
+          local cookie = get_admin_cookie(client, outside_admin.username, 'outsider1pass')
+          local res = client:send {
+            method = "PATCH",
+            path = "/admins/self/token",
+            body = {
+              token = "foo2",
+            },
+            headers = {
+              ["Content-Type"] = "application/json",
+              ["Kong-Admin-User"] = outside_admin.username,
+              cookie = cookie,
+            }
+          }
+          assert.res_status(200, res)
+          assert(string.find(outside_admin.rbac_user.user_token, "^%$2b%$"))
+        end)
+
+        it("checks for correct number of parameters", function()
+          local cookie = get_admin_cookie(client, admin.username, 'hunter1')
+          local res = assert(client:send {
+            path = "/admins/self/token",
+            body = {
+            },
+            method = "PATCH",
+            headers = {
+              ["Content-Type"] = "application/json",
+              ["Kong-Admin-User"] = admin.username,
+              cookie = cookie,
+            },
+          })
+
+          res = assert.res_status(400, res)
+          local json = cjson.decode(res)
+          assert.equal("You must supply a new token", json.message)
+        end)
+      end)
+    end)
+  end)
 end

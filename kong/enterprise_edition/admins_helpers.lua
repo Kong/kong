@@ -6,6 +6,7 @@ local ee_utils = require "kong.enterprise_edition.utils"
 local basicauth_crypto = require "kong.plugins.basic-auth.crypto"
 local utils = require "kong.tools.utils"
 local cjson = require "cjson"
+local rbac = require "kong.rbac"
 
 local emails = singletons.admin_emails
 
@@ -19,6 +20,7 @@ local _log_prefix = "[admins] "
 
 
 local _M = {}
+
 
 -- creates a user-friendly representation from a fully-instantiated admin
 -- that we've fetched from the db. For reference:
@@ -466,6 +468,42 @@ function _M.update_password(admin, params)
   end
 
   return { code = 200, body = { message = "Password reset successfully" }}
+end
+
+
+
+
+function _M.update_token(admin, params)
+
+  if not params.token then
+    return { code = 400, body = { message = "You must supply a new token" }}
+  end
+
+  admin.rbac_user.user_token = params.token
+  local check_result = kong.db.rbac_users.schema.check(admin.rbac_user)
+
+  if not check_result then
+    return nil, check_result
+  end
+
+  local ident = rbac.get_token_ident(params.token)
+
+  local _, err = workspaces.run_with_ws_scope(
+    {},
+    kong.db.rbac_users.update,
+    kong.db.rbac_users,
+    { id = admin.rbac_user.id },
+    {
+      user_token = admin.rbac_user.user_token,
+      user_token_ident = ident
+    }
+  )
+
+  if err then
+    return nil, err
+  end
+
+  return { code = 200, body = { message = "Token reset successfully" }}
 end
 
 
