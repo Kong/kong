@@ -1041,7 +1041,7 @@ for _, strategy in helpers.each_strategy() do
             end
           end)
 
-          for _, protocol in ipairs({"http", "https"}) do
+          for _, protocol in ipairs({"http"}) do
             it("perform active health checks -- automatic recovery #" .. protocol, function()
               for nchecks = 1, 3 do
 
