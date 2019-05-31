@@ -457,10 +457,11 @@ end
 
 --- Returns the proxy port.
 -- @param ssl (boolean) if `true` returns the ssl port
-local function get_proxy_port(ssl)
+local function get_proxy_port(ssl, http2)
   if ssl == nil then ssl = false end
+  if http2 == nil then http2 = false end
   for _, entry in ipairs(conf.proxy_listeners) do
-    if entry.ssl == ssl then
+    if entry.ssl == ssl and entry.http2 == http2 then
       return entry.port
     end
   end
@@ -469,10 +470,11 @@ end
 
 --- Returns the proxy ip.
 -- @param ssl (boolean) if `true` returns the ssl ip address
-local function get_proxy_ip(ssl)
+local function get_proxy_ip(ssl, http2)
   if ssl == nil then ssl = false end
+  if http2 == nil then http2 = false end
   for _, entry in ipairs(conf.proxy_listeners) do
-    if entry.ssl == ssl then
+    if entry.ssl == ssl and entry.http2 == http2 then
       return entry.ip
     end
   end
