@@ -1,0 +1,33 @@
+pipeline {
+  agent {
+    node {
+      label 'docker-compose'
+    }
+  }
+  options {
+    timeout(time: 150, unit: 'MINUTES')
+  }
+  environment {
+    BINTRAY = credentials('bintray')
+    GITHUB = credentials('github')
+  }
+  stages {
+    stage('prepare') {
+      steps {
+        sh 'git clone https://github.com/Kong/kong-gojira /tmp/gojira'
+      }
+    }
+    stage('all') {
+      environment {
+        TEST_SUITE='lint'
+        GOJIRA='/tmp/gojira/gojira.sh'
+      }
+      steps {
+        sh '$GOJIRA up -k ./'
+        sh '$GOJIRA run make dev -k .'
+        sh '$GOJIRA run make lint -k .'
+        sh '$GOJIRA down -k ./'
+      }
+    }
+  }
+}
