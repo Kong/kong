@@ -19,6 +19,7 @@ local singletons   = require "kong.singletons"
 local certificate  = require "kong.runloop.certificate"
 local concurrency  = require "kong.concurrency"
 local ngx_re       = require "ngx.re"
+local cache_warmup = require "kong.cache_warmup"
 local PluginsIterator = require "kong.runloop.plugins_iterator"
 
 
@@ -573,6 +574,10 @@ do
       end
     end
 
+    local hosts_array = {}
+    local hosts_set   = {}
+    local host_count  = 0
+
     for route, err in db.routes:each(1000) do
       if err then
         return nil, "could not load routes: " .. err
@@ -592,6 +597,16 @@ do
         local service_subsystem
         if service then
           service_subsystem = SUBSYSTEMS[service.protocol]
+
+          if kong.cache then
+            local host = service.host
+            if utils.hostname_type(host) == "name" and hosts_set[host] == nil then
+              host_count = host_count + 1
+              hosts_array[host_count] = host
+              hosts_set[host] = true
+            end
+          end
+
         else
           service_subsystem = subsystem
         end
@@ -633,6 +648,10 @@ do
     end
 
     singletons.router = router
+
+    if host_count > 0 then
+      timer_at(0, cache_warmup.warmup_dns, hosts_array, host_count)
+    end
 
     return true
   end

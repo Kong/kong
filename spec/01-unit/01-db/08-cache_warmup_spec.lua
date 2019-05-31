@@ -125,7 +125,7 @@ describe("cache_warmup", function()
     assert.same(kong.cache:get("777", nil, function() return "nope" end), "nope")
   end)
 
-  it("warms up DNS when caching services", function()
+  it("warms up DNS", function()
     local cache_table = {}
     local db_data = {
       ["my_entity"] = {
@@ -156,6 +156,7 @@ describe("cache_warmup", function()
     cache_warmup._mock_kong(kong)
 
     assert.truthy(cache_warmup.execute({"my_entity", "services"}))
+    assert.truthy(cache_warmup.warm_services_dns())
 
     ngx.sleep(0) -- yield so that async DNS caching happens
 

@@ -164,6 +164,12 @@ local function execute_cache_warmup(kong_config)
       return nil, err
     end
   end
+
+  local ok, err = cache_warmup.warm_services_dns(kong_config.db_cache_warmup_entities)
+  if not ok then
+    return nil, err
+  end
+
   return true
 end
 

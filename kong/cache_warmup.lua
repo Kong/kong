@@ -1,19 +1,12 @@
 local utils = require "kong.tools.utils"
 
 
-local cache_warmup = {}
-
-
 local tostring = tostring
 local ipairs = ipairs
 local math = math
+local type = type
 local kong = kong
 local ngx = ngx
-
-
-function cache_warmup._mock_kong(mock_kong)
-  kong = mock_kong
-end
 
 
 local function warmup_dns(premature, hosts, count)
@@ -21,7 +14,8 @@ local function warmup_dns(premature, hosts, count)
     return
   end
 
-  ngx.log(ngx.NOTICE, "warming up DNS entries ...")
+  ngx.log(ngx.NOTICE, "warming up DNS entries or worker #", ngx.worker.id(),
+                      "...")
 
   local start = ngx.now()
 
@@ -31,37 +25,22 @@ local function warmup_dns(premature, hosts, count)
 
   local elapsed = math.floor((ngx.now() - start) * 1000)
 
-  ngx.log(ngx.NOTICE, "finished warming up DNS entries",
-                      "' into the cache (in ", tostring(elapsed), "ms)")
+  ngx.log(ngx.NOTICE, "finished warming up DNS entries on worker #",
+                      ngx.worker.id(), " into the cache (in ",
+                      tostring(elapsed), "ms)")
 end
 
 
 local function cache_warmup_single_entity(dao)
   local entity_name = dao.schema.name
 
-  ngx.log(ngx.NOTICE, "Preloading '", entity_name, "' into the cache ...")
+  ngx.log(ngx.NOTICE, "Preloading '", entity_name, "' into the cache...")
 
   local start = ngx.now()
-
-  local hosts_array, hosts_set, host_count
-  if entity_name == "services" then
-    hosts_array = {}
-    hosts_set = {}
-    host_count = 0
-  end
 
   for entity, err in dao:each(1000) do
     if err then
       return nil, err
-    end
-
-    if entity_name == "services" then
-      if utils.hostname_type(entity.host) == "name"
-         and hosts_set[entity.host] == nil then
-        host_count = host_count + 1
-        hosts_array[host_count] = entity.host
-        hosts_set[entity.host] = true
-      end
     end
 
     local cache_key = dao:cache_key(entity)
@@ -72,15 +51,21 @@ local function cache_warmup_single_entity(dao)
     end
   end
 
-  if entity_name == "services" and host_count > 0 then
-    ngx.timer.at(0, warmup_dns, hosts_array, host_count)
-  end
-
   local elapsed = math.floor((ngx.now() - start) * 1000)
 
   ngx.log(ngx.NOTICE, "finished preloading '", entity_name,
                       "' into the cache (in ", tostring(elapsed), "ms)")
   return true
+end
+
+
+local cache_warmup = {
+  warmup_dns = warmup_dns
+}
+
+
+function cache_warmup._mock_kong(mock_kong)
+  kong = mock_kong
 end
 
 
@@ -126,6 +111,38 @@ function cache_warmup.execute(entities)
 
   return true
 end
+
+
+-- Warms DNS cache on select entities (currently only 'services')
+function cache_warmup.warm_services_dns()
+  if not kong.cache then
+    return true
+  end
+
+  local host_count = 0
+  local hosts_array = {}
+  local hosts_set = {}
+
+  for entity, err in kong.db.services:each(1000) do
+    if err then
+      return nil, err
+    end
+
+    local host = entity.host
+    if utils.hostname_type(host) == "name" and hosts_set[host] == nil then
+      host_count = host_count + 1
+      hosts_array[host_count] = entity.host
+      hosts_set[host] = true
+    end
+  end
+
+  if host_count > 0 then
+    ngx.timer.at(0, warmup_dns, hosts_array, host_count)
+  end
+
+  return true
+end
+
 
 
 return cache_warmup
