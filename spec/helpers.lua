@@ -29,6 +29,7 @@ local conf_loader = require "kong.conf_loader"
 local kong_global = require "kong.global"
 local Blueprints = require "spec.fixtures.blueprints"
 local pl_stringx = require "pl.stringx"
+local pl_tablex = require "pl.tablex"
 local pl_utils = require "pl.utils"
 local pl_path = require "pl.path"
 local pl_file = require "pl.file"
@@ -1656,6 +1657,83 @@ local function make_yaml_file(content, filename)
   return filename
 end
 
+-- Generate grpcurl flags from a table of `flag-value`. If `value` is not a
+-- string, value is ignored and `flag` is passed as is.
+local function gen_grpcurl_opts(opts_t)
+  local opts_l = {}
+
+  for opt, val in pairs(opts_t) do
+    if val ~= false then
+      opts_l[#opts_l + 1] = opt .. " " .. (type(val) == "string" and val or "")
+    end
+  end
+
+  return table.concat(opts_l, " ")
+end
+
+--- Creates a gRPC client, based on the grpcurl CLI. Based on https://github.com/fullstorydev/grpcurl
+-- @name grpc_client
+-- @param host hostname to connect to
+-- @param port port to connect to
+-- @param opts table with options supported by grpcurl
+-- @return grpc client
+local function grpc_client(host, port, opts)
+  local host = assert(host)
+  local port = assert(tostring(port))
+
+  opts = opts or {}
+  if not opts["-proto"] then
+    opts["-proto"] = MOCK_GRPC_UPSTREAM_PROTO_PATH
+  end
+
+  return setmetatable({
+    opts = opts,
+    cmd_template = string.format("bin/grpcurl %%s %s:%s %%s", host, port)
+
+  }, {
+    __call = function(t, args)
+      local service = assert(args.service)
+      local body = args.body
+
+      local t_body = type(body)
+      if t_body ~= "nil" then
+        if t_body == "table" then
+          body = cjson.encode(body)
+        end
+
+        args.opts["-d"] = string.format("'%s'", body)
+      end
+
+      local opts = gen_grpcurl_opts(pl_tablex.merge(t.opts, args.opts, true))
+      local ok, err, out = exec(string.format(t.cmd_template, opts, service))
+
+      if ok then
+        return ok, out
+      else
+        return nil, err
+      end
+    end
+  })
+end
+
+--- returns a pre-configured `grpc_client` for the Kong proxy port.
+-- @name proxy_client_grpc
+local function proxy_client_grpc()
+  local proxy_ip = get_proxy_ip(false, true)
+  local proxy_port = get_proxy_port(false, true)
+  assert(proxy_ip, "No http-proxy found in the configuration")
+  return grpc_client(proxy_ip, proxy_port, {["-plaintext"] = true})
+end
+
+--- returns a pre-configured `grpc_client` for the Kong SSL proxy port.
+-- @name proxy_client_grpcs
+local function proxy_client_grpcs()
+  local proxy_ip = get_proxy_ip(true, true)
+  local proxy_port = get_proxy_port(true, true)
+  assert(proxy_ip, "No https-proxy found in the configuration")
+  return grpc_client(proxy_ip, proxy_port, {["-insecure"] = true})
+end
+
 
 ----------
 -- Exposed
@@ -1704,6 +1782,7 @@ return {
   kong_exec = kong_exec,
   get_version = get_version,
   http_client = http_client,
+  grpc_client = grpc_client,
   wait_until = wait_until,
   tcp_server = tcp_server,
   udp_server = udp_server,
@@ -1712,6 +1791,8 @@ return {
   get_proxy_ip = get_proxy_ip,
   get_proxy_port = get_proxy_port,
   proxy_client = proxy_client,
+  proxy_client_grpc = proxy_client_grpc,
+  proxy_client_grpcs = proxy_client_grpcs,
   admin_client = admin_client,
   proxy_ssl_client = proxy_ssl_client,
   admin_ssl_client = admin_ssl_client,
