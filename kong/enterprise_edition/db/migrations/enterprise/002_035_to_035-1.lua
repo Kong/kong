@@ -69,6 +69,48 @@ local function fix_snis_postgres(connector)
   end
 end
 
+
+local function fix_plugin_cache_key(connector)
+  for row, err in connector:iterate('SELECT * FROM "plugins";') do
+    if err then
+      return nil, err
+    end
+
+    local sql = string.format([[
+          SELECT "workspace_id" from workspace_entities WHERE
+          entity_type = 'plugins' AND unique_field_name = 'id' AND
+          unique_field_value = '%s';
+        ]], row.id)
+
+    local rows, err = connector:query(sql)
+    if err then
+      return nil, err
+    end
+
+    if #rows == 0 then
+      return nil, "Plugin must be linked to aleast one workspace"
+    end
+
+    local workspace_id = rows[1].workspace_id
+
+    local cache_key = table.concat({
+      "plugins",
+      row.name,
+      row.route_id    == ngx.null and "" or row.route_id,
+      row.service_id  == ngx.null and "" or row.service_id,
+      row.consumer_id == ngx.null and "" or row.consumer_id,
+      row.api_id      == ngx.null and "" or row.api_id,
+      workspace_id
+    }, ":")
+
+    local sql = string.format([[
+          UPDATE "plugins" SET "cache_key" = '%s' WHERE "id" = '%s';
+        ]], cache_key, row.id)
+
+    assert(connector:query(sql))
+  end
+end
+
 local function ws_as_map(coordinator)
   local workspaces_map = {}
   for rows, err in coordinator:iterate("select * from workspaces;") do
@@ -123,6 +165,7 @@ return {
 
     teardown = function(connector)
       fix_snis_postgres(connector) -- step 3
+      fix_plugin_cache_key(connector)
     end
   },
 
