@@ -7,6 +7,7 @@ local tostring = tostring
 local ipairs = ipairs
 local table = table
 local type = type
+local null = ngx.null
 
 
 -- Get an array of SNI names from either
@@ -51,6 +52,14 @@ function _Certificates:insert(cert, options)
   local name_list, err, err_t = parse_name_list(cert.snis, self.errors)
   if err then
     return nil, err, err_t
+  end
+
+  if (not cert.key or cert.key == null) and name_list and #name_list ~= 0 then
+    local err_t = self.errors:schema_violation({
+      snis = "cannot be specified because the 'key' attribute is not set",
+    })
+
+    return nil, tostring(err_t), err_t
   end
 
   if name_list then
@@ -99,8 +108,35 @@ function _Certificates:update(cert_pk, cert, options)
     end
   end
 
+  local snis
+  snis, err, err_t = self.db.snis:list_for_certificate(cert_pk)
+  if not snis then
+    return nil, err, err_t
+  end
+
   -- update certificate if necessary
   if cert.key or cert.cert then
+    if cert.key == null then
+      -- user tries to remove private key from cert
+      if #snis > 0 and not name_list then
+        local err_t = self.errors:schema_violation({
+          key = "cannot be removed, since one or more SNIs are still" ..
+                " associated to this Certificate",
+        })
+
+        return nil, tostring(err_t), err_t
+      end
+
+      if name_list and #name_list ~= 0 then
+        local err_t = self.errors:schema_violation({
+          snis = "cannot associate SNIs to this Certificate" ..
+                 " because the 'key' attribute is not set",
+        })
+
+        return nil, tostring(err_t), err_t
+      end
+    end
+
     cert.snis = nil
     cert, err, err_t = self.super.update(self, cert_pk, cert, options)
     if err then
@@ -117,10 +153,7 @@ function _Certificates:update(cert_pk, cert, options)
     end
 
   else
-    cert.snis, err, err_t = self.db.snis:list_for_certificate(cert_pk)
-    if not cert.snis then
-      return nil, err, err_t
-    end
+    cert.snis = snis
   end
 
   return cert
@@ -138,6 +171,14 @@ function _Certificates:upsert(cert_pk, cert, options)
     if not ok then
       return nil, err, err_t
     end
+  end
+
+  if (not cert.key or cert.key == null) and name_list and #name_list ~= 0 then
+    local err_t = self.errors:schema_violation({
+      snis = "cannot be specified because the 'key' attribute is not set",
+    })
+
+    return nil, tostring(err_t), err_t
   end
 
   cert.snis = nil
